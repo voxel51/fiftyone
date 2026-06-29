@@ -17,6 +17,7 @@ export class SelectorValidationError extends Error {}
 
 export interface SelectorProps<T> {
   id?: string;
+  disabled?: boolean;
   value?: string;
   onSelect: (search: string, v?: T) => Promise<string> | void;
   placeholder: string;
@@ -31,13 +32,14 @@ export interface SelectorProps<T> {
   overflowContainer?: boolean;
   onMouseEnter?: React.MouseEventHandler;
   cy?: string;
-  footer?: React.JSX.Element;
-  DuringSuspense?: (props: React.PropsWithChildren) => React.JSX.Element;
+  footer?: JSX.Element;
+  DuringSuspense?: (props: React.PropsWithChildren) => JSX.Element;
 }
 
 function Selector<T>(props: SelectorProps<T>) {
   const {
     id,
+    disabled,
     value,
     onSelect,
     placeholder,
@@ -135,6 +137,7 @@ function Selector<T>(props: SelectorProps<T>) {
       title={editing && search.length ? search : placeholder}
     >
       <Input
+        disabled={disabled}
         inputStyle={editing ? { ...inputStyle } : inputStyle}
         inputClassName={inputClassName}
         spellCheck={false}
@@ -226,7 +229,7 @@ function Selector<T>(props: SelectorProps<T>) {
                 </Suspense>
               </motion.div>
             </AnimatePresence>
-          )
+          ),
         )}
     </div>
   );

@@ -13,6 +13,24 @@ export type {
 export { createMcapResourceClient } from "./resource-client";
 
 /**
+ * Shared MCAP stream classification and topic matching helpers.
+ */
+export {
+  chooseAnnotationTopic,
+  topicPrefix,
+  topicTokens,
+} from "./topic-matching";
+export {
+  hasPayload,
+  isCompressedImageStream,
+  isImageAnnotationsStream,
+  isPointCloudStream,
+  streamTopics,
+  topicName,
+} from "./stream-topics";
+export type { McapPreviewTopics } from "./stream-topics";
+
+/**
  * Default tolerance for synchronized MCAP playback windows.
  */
 export { DEFAULT_MCAP_SYNC_TOLERANCE_NS } from "./sync";

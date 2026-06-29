@@ -70,7 +70,7 @@ const NewFieldSchema = () => {
   // Label schema state
   const [classes, setClasses] = useState<string[]>([]);
   const [attributes, setAttributes] = useState<AttributeConfig[]>(
-    DEFAULT_DETECTION_ATTRIBUTES_2D
+    DEFAULT_DETECTION_ATTRIBUTES_2D,
   );
   const [newAttributes, setNewAttributes] = useState<Set<string>>(new Set());
 
@@ -97,13 +97,13 @@ const NewFieldSchema = () => {
   // Get label type options based on media type
   const labelTypeOptions = useMemo(
     () => getLabelTypeOptions(currentMediaType),
-    [currentMediaType]
+    [currentMediaType],
   );
 
   // Validate field name
   const fieldNameError = useMemo(
     () => validateFieldName(fieldName, schemasData),
-    [fieldName, schemasData]
+    [fieldName, schemasData],
   );
 
   const canCreate = fieldName.trim() !== "" && !fieldNameError && !isCreating;
@@ -119,7 +119,7 @@ const NewFieldSchema = () => {
       setNewAttributes(new Set());
       setClasses([]);
     },
-    [is3dMedia]
+    [is3dMedia],
   );
 
   const handlePrimitiveTypeChange = useCallback((newType: string) => {
@@ -134,7 +134,7 @@ const NewFieldSchema = () => {
     (config: SchemaConfigType) => {
       setPrimitiveConfig(config);
     },
-    []
+    [],
   );
 
   // Class handlers
@@ -163,7 +163,7 @@ const NewFieldSchema = () => {
   const handleEditAttribute = useCallback(
     (oldName: string, config: AttributeConfig) => {
       setAttributes((prev) =>
-        prev.map((attr) => (attr.name === oldName ? config : attr))
+        prev.map((attr) => (attr.name === oldName ? config : attr)),
       );
       if (newAttributes.has(oldName)) {
         setNewAttributes((prev) => {
@@ -174,7 +174,7 @@ const NewFieldSchema = () => {
         });
       }
     },
-    [newAttributes]
+    [newAttributes],
   );
 
   const handleDeleteAttribute = useCallback(
@@ -188,14 +188,14 @@ const NewFieldSchema = () => {
         });
       }
     },
-    [newAttributes]
+    [newAttributes],
   );
 
   const handleAttributeOrderChange = useCallback(
     (newOrder: AttributeConfig[]) => {
       setAttributes(newOrder);
     },
-    []
+    [],
   );
 
   const handleCreate = useCallback(async () => {
@@ -208,7 +208,7 @@ const NewFieldSchema = () => {
     let label_schema_config: LabelSchemaConfig | undefined;
     if (category === "label") {
       const newAttrsArr = attributes.filter((attr) =>
-        newAttributes.has(attr.name)
+        newAttributes.has(attr.name),
       );
       label_schema_config = {
         classes,

@@ -97,7 +97,7 @@ export class LabelToggledEvent extends CustomEvent<LabelToggledEventData> {
  * Callback type for event handlers.
  */
 export type EventCallback = (
-  event: LabelHoveredEvent | LabelUnhoveredEvent | LabelToggledEvent
+  event: LabelHoveredEvent | LabelUnhoveredEvent | LabelToggledEvent,
 ) => void;
 
 /**
@@ -118,7 +118,7 @@ export class SelectiveRenderingEventBus extends EventTarget {
    * @param event - The event to emit.
    */
   emit(
-    event: LabelHoveredEvent | LabelUnhoveredEvent | LabelToggledEvent
+    event: LabelHoveredEvent | LabelUnhoveredEvent | LabelToggledEvent,
   ): void {
     this.dispatchEvent(event);
   }
@@ -134,7 +134,7 @@ export class SelectiveRenderingEventBus extends EventTarget {
       | typeof FO_LABEL_UNHOVERED_EVENT
       | typeof FO_LABEL_TOGGLED_EVENT,
     callback: EventCallback,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): () => void {
     this.addEventListener(eventName, callback as EventListener, {
       signal: this.#abortController.signal,
@@ -146,7 +146,7 @@ export class SelectiveRenderingEventBus extends EventTarget {
         () => {
           this.removeEventListener(eventName, callback);
         },
-        { once: true }
+        { once: true },
       );
     }
 

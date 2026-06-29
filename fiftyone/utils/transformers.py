@@ -557,6 +557,7 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
     def _embed_prompts(self, prompts):
         # I don't think this is ever called with preprocess = False
         # but just in case
+        inputs = None
         if self.preprocess:
             inputs = self.transforms.processor(
                 text=prompts,
@@ -566,6 +567,26 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
             text_features = self._model.base_model.get_text_features(
                 **inputs.to(self._device)
             )
+            if isinstance(text_features, torch.Tensor):
+                # transformers < 5 returns the pooled embedding directly
+                pass
+            elif isinstance(
+                text_features,
+                transformers.modeling_outputs.BaseModelOutputWithPooling,
+            ):
+                # transformers 5.x returns a ``BaseModelOutputWithPooling``
+                # object instead of a plain tensor; pull the pooled embedding.
+                if text_features.pooler_output is None:
+                    raise ValueError(
+                        "get_text_features() returned a "
+                        "BaseModelOutputWithPooling without a pooler_output"
+                    )
+                text_features = text_features.pooler_output
+            else:
+                raise ValueError(
+                    "get_text_features() returned an unsupported output "
+                    f"type: {type(text_features)}"
+                )
         return text_features
 
 
@@ -701,7 +722,36 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         )
 
     def _load_transforms(self, config):
-        processor = super()._load_transforms(config)
+        try:
+            processor = super()._load_transforms(config)
+        except AttributeError:
+            # AutoProcessor can't resolve the tokenizer for some models; resolve
+            # the processor class from the config and load it directly.
+            from transformers.models.auto.processing_auto import PROCESSOR_MAPPING
+
+            ta = dict(config.transforms_args or {})
+            name = ta.pop("pretrained_model_name_or_path", None)
+            name = name or ta.pop("name_or_path", None)
+
+            proc_cls = PROCESSOR_MAPPING.get(
+                type(transformers.AutoConfig.from_pretrained(name, **ta)), None
+            )
+            if proc_cls is None:
+                raise
+
+            if getattr(proc_cls, "tokenizer_class", None) is None:
+                # No tokenizer_class to auto-resolve; build the fast tokenizer
+                # directly.
+                processor = proc_cls(
+                    image_processor=transformers.AutoImageProcessor.from_pretrained(
+                        name, **ta
+                    ),
+                    tokenizer=transformers.PreTrainedTokenizerFast.from_pretrained(
+                        name, **ta
+                    ),
+                )
+            else:
+                processor = proc_cls.from_pretrained(name, **ta)
         return _HFTransformsHandler(
             processor, **(config.transformers_processor_kwargs)
         )
@@ -1702,6 +1752,8 @@ def _get_image_size(img):
         width, height = img.size
     elif isinstance(img, np.ndarray):
         height, width = img.shape[:2]
+    else:
+        raise ValueError(f"Unsupported image type: {type(img)}")
 
     return height, width
 

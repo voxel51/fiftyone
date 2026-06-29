@@ -1,11 +1,5 @@
 import { setFetchFunction } from "@fiftyone/utilities";
-import { createMultimodalQueryClient } from "../../../query";
-import type { DecodedOutputCache } from "../../../query/decode";
-import { createDecodeClient } from "../../../query/decode";
 import { mcapErrorMessage } from "../errors";
-import { createMcapDecoderRegistry } from "../decoders";
-import { createInlineMcapResourceClient } from "../resources";
-import type { McapResourceClient } from "../types";
 import {
   isMcapPlaybackWorkerStreamRequest,
   runMcapPlaybackWorkerStreamRequest,
@@ -19,30 +13,19 @@ import type {
   McapPlaybackWorkerRpcRequest,
   McapPlaybackWorkerStreamType,
 } from "./playback-worker-types";
+import { createWorkerResourceClient } from "./worker-resource-client";
 
 type McapPlaybackWorkerScope = {
   close(): void;
   onmessage: ((event: MessageEvent<McapPlaybackWorkerRequest>) => void) | null;
   postMessage(
     response: McapPlaybackWorkerResponse,
-    transfer?: readonly Transferable[]
+    transfer?: readonly Transferable[],
   ): void;
 };
 
 const workerScope = self as unknown as McapPlaybackWorkerScope;
 const scheduler = new McapPlaybackWorkerScheduler();
-
-const transferSafeNoopDecodedOutputCache: DecodedOutputCache = {
-  clear() {
-    return Promise.resolve();
-  },
-  get() {
-    return Promise.resolve(undefined);
-  },
-  put() {
-    return Promise.resolve();
-  },
-};
 
 let activeSourceKey = "";
 let mcap = createWorkerResourceClient();
@@ -54,7 +37,7 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
     setFetchFunction(
       message.payload.origin,
       message.payload.headers,
-      message.payload.pathPrefix
+      message.payload.pathPrefix,
     );
     return;
   }
@@ -103,7 +86,7 @@ async function runAndRespond(message: McapPlaybackWorkerRpcRequest) {
 }
 
 async function streamRequest(
-  message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>
+  message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>,
 ) {
   for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
     postResponse({
@@ -147,20 +130,4 @@ function transferablesForResponse(response: McapPlaybackWorkerResponse) {
   }
 
   return transferablesForMcapResult(response.result);
-}
-
-function createWorkerResourceClient(): McapResourceClient {
-  const query = createMultimodalQueryClient();
-
-  return createInlineMcapResourceClient({
-    byteClient: query.bytes,
-    decodeClient: createDecodeClient({
-      // Decoded visualization buffers are transferred to the UI thread.
-      // Reusing worker-cached decoded results would either return detached
-      // buffers or force extra clones, so playback-window reuse belongs on
-      // the main thread.
-      cache: transferSafeNoopDecodedOutputCache,
-      registry: createMcapDecoderRegistry(),
-    }),
-  });
 }

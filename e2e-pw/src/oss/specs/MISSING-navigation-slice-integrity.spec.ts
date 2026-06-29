@@ -53,7 +53,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 
   await Promise.all(
     groupSpecs.flatMap((spec, index) => [
-      mediaFactory.createBlankImage({
+      mediaFactory.createImage({
         outputPath: spec.img1Path,
         width: 320,
         height: 240,
@@ -61,7 +61,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
         watermarkString: spec.img1Name,
         hideLogs: true,
       }),
-      mediaFactory.createBlankImage({
+      mediaFactory.createImage({
         outputPath: spec.img2Path,
         width: 320,
         height: 240,
@@ -69,7 +69,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
         watermarkString: spec.img2Name,
         hideLogs: true,
       }),
-    ])
+    ]),
   );
 
   groupSpecs.forEach((spec, index) => {
@@ -220,7 +220,7 @@ test.describe.serial("navigation slice integrity", () => {
       {
         beforeScreenshot: async () =>
           ensureMain2dCanvasReadyForScreenshot(modal),
-      }
+      },
     );
   });
 });

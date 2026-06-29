@@ -1,82 +1,68 @@
-import { renderHook, act } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { atom } from "jotai";
+// @vitest-environment jsdom
+import { act, renderHook } from "@testing-library/react";
+import { atom, getDefaultStore } from "jotai";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// ── Mocks ────────────────────────────────────────────────────────────────────
+// vi.mock factories run before imports, so shared mutable state lives in
+// vi.hoisted() — also pre-import.
+const refs = vi.hoisted(() => ({
+  annotationContext: null as unknown,
+  scene: null as unknown,
+  onExit: null as unknown,
+}));
 
-const mockOnExit = vi.fn();
-const mockCreateDetection = vi.fn();
-const mockExitInteractiveMode = vi.fn();
-
-// Stable references to prevent infinite re-renders
-const stableScene = {
-  exitInteractiveMode: mockExitInteractiveMode,
-  isDestroyed: false,
-  renderLoopActive: true,
-  getEventChannel: () => "test-channel",
-};
-const stableLighterReturn = { scene: stableScene };
-const stableAnnotationContext = { selectedLabel: null };
-const noopEventHook = (_event: string, _handler: unknown) => {};
-
-// Stable atoms — atomFamily mocks must return the SAME atom for the same key
-const defaultFieldAtom = atom<string | null>(null);
-const fieldTypeAtom = atom(null);
-const labelSchemaAtom = atom(null);
-const fieldsOfTypeAtom = atom<string[]>([]);
+vi.mock("recoil", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("recoil")>();
+  return { ...actual, useRecoilValue: () => false };
+});
 
 vi.mock("@fiftyone/lighter", () => ({
   UNDEFINED_LIGHTER_SCENE_ID: "undefined-scene",
-  useLighter: () => stableLighterReturn,
-  useLighterEventHandler: () => noopEventHook,
-}));
-
-vi.mock("../state", () => ({
-  fieldType: () => fieldTypeAtom,
-  isFieldReadOnly: () => false,
-  labelSchemaData: () => labelSchemaAtom,
-}));
-
-vi.mock("../useLabels", () => ({
-  labelsByPath: atom<Record<string, unknown>>({}),
-}));
-
-const currentTypeAtom = atom<string | null>(null);
-
-const isPatchesViewAtom = atom(false);
-
-vi.mock("recoil", () => ({
-  useRecoilValue: () => false,
+  useLighter: () => ({ scene: refs.scene }),
+  useLighterEventHandler: () => (_e: string, _h: unknown) => {},
 }));
 
 vi.mock("@fiftyone/state", () => ({
-  isPatchesView: isPatchesViewAtom,
+  isPatchesView: atom(false),
 }));
 
-vi.mock("./state", () => ({
-  currentType: currentTypeAtom,
-  defaultField: () => defaultFieldAtom,
-  fieldsOfType: () => fieldsOfTypeAtom,
-  useAnnotationContext: () => stableAnnotationContext,
-}));
-
-vi.mock("./useCreate", () => ({
-  default: () => mockCreateDetection,
+vi.mock("./useAnnotationContext", () => ({
+  useAnnotationContext: () => refs.annotationContext,
+  useAnnotationFields: () => ({ fields: [] as string[] }),
 }));
 
 vi.mock("./useExit", () => ({
-  default: () => mockOnExit,
+  default: () => refs.onExit,
 }));
 
-const { useDetectionMode } = await import("./useDetectionMode");
+import {
+  createMockAnnotationContext,
+  createMockScene,
+  type MockAnnotationContext,
+  type MockScene,
+} from "./__testing__/mocks";
+
+const { useDetectionMode, _unsafeDetectionModeActiveAtom } =
+  await import("./useDetectionMode");
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-describe("useDetectionMode", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+const store = getDefaultStore();
 
+// Typed accessors so tests read `annotationContext().clear` etc.
+const annotationContext = () => refs.annotationContext as MockAnnotationContext;
+const scene = () => refs.scene as MockScene;
+const onExit = () => refs.onExit as ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  store.set(_unsafeDetectionModeActiveAtom, false);
+  refs.annotationContext = createMockAnnotationContext();
+  refs.scene = createMockScene();
+  refs.onExit = vi.fn();
+});
+
+describe("useDetectionMode", () => {
   it("starts with detectionModeActive=false", () => {
     const { result } = renderHook(() => useDetectionMode());
     expect(result.current.detectionModeActive).toBe(false);
@@ -91,12 +77,14 @@ describe("useDetectionMode", () => {
       expect(result.current.detectionModeActive).toBe(true);
     });
 
-    it("does not call onExit", () => {
+    it("does not call onExit, clear, or exitInteractiveMode", () => {
       const { result } = renderHook(() => useDetectionMode());
 
       act(() => result.current.activateDetectionMode());
 
-      expect(mockOnExit).not.toHaveBeenCalled();
+      expect(onExit()).not.toHaveBeenCalled();
+      expect(annotationContext().clear).not.toHaveBeenCalled();
+      expect(scene().exitInteractiveMode).not.toHaveBeenCalled();
     });
   });
 
@@ -111,45 +99,94 @@ describe("useDetectionMode", () => {
       expect(result.current.detectionModeActive).toBe(false);
     });
 
-    it("finalizes the current detection", () => {
+    it("finalizes the current detection (scene().exitInteractiveMode + clear + onExit)", () => {
       const { result } = renderHook(() => useDetectionMode());
 
       act(() => result.current.activateDetectionMode());
       act(() => result.current.deactivateDetectionMode());
 
-      expect(mockOnExit).toHaveBeenCalledOnce();
-      expect(mockExitInteractiveMode).toHaveBeenCalledOnce();
+      expect(scene().exitInteractiveMode).toHaveBeenCalledOnce();
+      expect(annotationContext().clear).toHaveBeenCalledOnce();
+      expect(onExit()).toHaveBeenCalledOnce();
     });
   });
 
   describe("toggleDetectionMode", () => {
-    it("enables detection mode when inactive", () => {
+    it("enables detection mode when inactive without firing exit chain", () => {
       const { result } = renderHook(() => useDetectionMode());
 
       act(() => result.current.toggleDetectionMode());
 
       expect(result.current.detectionModeActive).toBe(true);
-      expect(mockOnExit).not.toHaveBeenCalled();
+      expect(onExit()).not.toHaveBeenCalled();
+      expect(annotationContext().clear).not.toHaveBeenCalled();
+      expect(scene().exitInteractiveMode).not.toHaveBeenCalled();
     });
 
-    it("disables detection mode and finalizes detection when active", () => {
+    it("disables and finalizes when active", () => {
       const { result } = renderHook(() => useDetectionMode());
 
       act(() => result.current.activateDetectionMode());
       act(() => result.current.toggleDetectionMode());
 
       expect(result.current.detectionModeActive).toBe(false);
-      expect(mockOnExit).toHaveBeenCalledOnce();
-      expect(mockExitInteractiveMode).toHaveBeenCalledOnce();
+      expect(onExit()).toHaveBeenCalledOnce();
+      expect(annotationContext().clear).toHaveBeenCalledOnce();
+      expect(scene().exitInteractiveMode).toHaveBeenCalledOnce();
     });
+  });
 
-    it("does not call onExit or exitInteractiveMode when toggling on", () => {
+  describe("create", () => {
+    it("calls scene().exitInteractiveMode then annotationContext.createNew(DETECTION)", () => {
       const { result } = renderHook(() => useDetectionMode());
 
-      act(() => result.current.toggleDetectionMode());
+      act(() => result.current.create());
 
-      expect(mockOnExit).not.toHaveBeenCalled();
-      expect(mockExitInteractiveMode).not.toHaveBeenCalled();
+      expect(scene().exitInteractiveMode).toHaveBeenCalledOnce();
+      expect(annotationContext().createNew).toHaveBeenCalledOnce();
+      expect(annotationContext().createNew).toHaveBeenCalledWith("Detection");
+    });
+  });
+
+  describe("auto-activation", () => {
+    it("activates when a non-mask Detection label is selected", () => {
+      refs.annotationContext = createMockAnnotationContext({
+        selected: {
+          label: { type: "Detection", data: {} },
+          type: "Detection",
+        },
+      });
+
+      const { result } = renderHook(() => useDetectionMode());
+
+      expect(result.current.detectionModeActive).toBe(true);
+    });
+
+    it("does NOT activate when the selected Detection has a mask", () => {
+      refs.annotationContext = createMockAnnotationContext({
+        selected: {
+          label: { type: "Detection", data: { mask: {} } },
+          type: "Detection",
+        },
+      });
+
+      const { result } = renderHook(() => useDetectionMode());
+
+      expect(result.current.detectionModeActive).toBe(false);
+    });
+
+    it("does NOT activate while mid-mask-authoring", () => {
+      refs.annotationContext = createMockAnnotationContext({
+        selected: {
+          label: { type: "Detection", data: {} },
+          type: "Detection",
+          isEditingMask: true,
+        },
+      });
+
+      const { result } = renderHook(() => useDetectionMode());
+
+      expect(result.current.detectionModeActive).toBe(false);
     });
   });
 });

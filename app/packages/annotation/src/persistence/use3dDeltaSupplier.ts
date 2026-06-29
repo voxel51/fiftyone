@@ -45,37 +45,23 @@ const omit = <T, K extends keyof T>(data: T, ...keys: K[]): Omit<T, K> => {
 
 /**
  * Build a {@link LabelProxy} instance from a reconciled 3d label.
- *
- * @param label Reconciled 3d label
- * @param requireLabel If true, only build proxy if label has a label value.
- *   Used for mutations to avoid persisting incomplete labels.
  */
 const buildAnnotationLabel = (
   label: ReconciledDetection3D | ReconciledPolyline3D,
-  requireLabel = true
 ): LabelProxy | undefined => {
-  if (label._cls === "Detection" && (!requireLabel || label.label)) {
+  if (label._cls === "Detection") {
     return {
       type: "Detection",
       data: omit(label, ...reservedAttributes) as DetectionLabel,
       path: label.path,
     };
-  } else if (label._cls === "Polyline" && (!requireLabel || label.label)) {
+  } else if (label._cls === "Polyline") {
     return {
       type: "Polyline",
       data: omit(label, ...reservedAttributes) as PolylineLabel,
       path: label.path,
     };
   }
-};
-
-/**
- * Build a {@link LabelProxy} for deletions
- */
-const buildAnnotationLabelForDelete = (
-  label: ReconciledDetection3D | ReconciledPolyline3D
-): LabelProxy | undefined => {
-  return buildAnnotationLabel(label, false);
 };
 
 /**
@@ -96,7 +82,7 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
   const dragInProgress = useIsDragInProgress();
 
   const getLabelDelta = useGetLabelDelta(buildAnnotationLabel);
-  const getLabelDeleteDelta = useGetLabelDelta(buildAnnotationLabelForDelete, {
+  const getLabelDeleteDelta = useGetLabelDelta(buildAnnotationLabel, {
     opType: "delete",
   });
 

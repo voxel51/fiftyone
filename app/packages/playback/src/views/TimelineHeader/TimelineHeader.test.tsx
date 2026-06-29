@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { useRef } from "react";
+import React, { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { setBufferedRanges } from "../../lib/playback/store-access";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
+import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import TimelineHeader from "./TimelineHeader";
 
 /**
@@ -12,10 +14,16 @@ function HeaderHarness({
   onToggle,
   labelWidth = 100,
   duration = 10,
+  rulerOverlay,
+  extraActions,
+  children,
 }: {
   onToggle?: () => void;
   labelWidth?: number;
   duration?: number;
+  rulerOverlay?: React.ReactNode;
+  extraActions?: React.ReactNode;
+  children?: React.ReactNode;
 }) {
   const zoomRef = useRef<HTMLDivElement>(null);
   return (
@@ -25,7 +33,11 @@ function HeaderHarness({
           labelWidth={labelWidth}
           zoomRef={zoomRef}
           onToggle={onToggle}
-        />
+          rulerOverlay={rulerOverlay}
+          extraActions={extraActions}
+        >
+          {children}
+        </TimelineHeader>
       </div>
     </PlaybackProvider>
   );
@@ -80,6 +92,96 @@ describe("TimelineHeader", () => {
     const children = Array.from(root.children);
     expect(children).toHaveLength(2);
     expect(children[0].querySelector('[aria-label="Play"]')).not.toBeNull();
-    expect(children[1]).toBe(screen.getByTestId("timeline-ruler"));
+    expect(children[1].getAttribute("data-testid")).toBe("timeline-ruler");
+  });
+
+  it("renders rulerOverlay inside the ruler's DOM node", () => {
+    render(
+      <HeaderHarness
+        rulerOverlay={<div data-testid="my-overlay">overlay</div>}
+      />,
+    );
+    const ruler = screen.getByTestId("timeline-ruler");
+    expect(ruler.querySelector('[data-testid="my-overlay"]')).not.toBeNull();
+  });
+
+  it("forwards extraActions to the controls row", () => {
+    render(<HeaderHarness extraActions={<button>Tag Mode</button>} />);
+    expect(screen.getByRole("button", { name: "Tag Mode" })).toBeTruthy();
+  });
+
+  it("renders children in the belowRuler slot when provided", () => {
+    render(
+      <HeaderHarness>
+        <div data-testid="pinned-section">pinned tracks</div>
+      </HeaderHarness>,
+    );
+    expect(screen.getByTestId("pinned-section")).toBeTruthy();
+    // The root should gain a third child (the belowRuler wrapper).
+    const root = screen.getByTestId("timeline-header-root");
+    expect(root.children).toHaveLength(3);
+  });
+
+  it("does not render the belowRuler slot when children is absent", () => {
+    render(<HeaderHarness />);
+    const root = screen.getByTestId("timeline-header-root");
+    expect(root.children).toHaveLength(2);
+  });
+
+  describe("buffered-ranges strip", () => {
+    function SetBufferedRanges({
+      ranges,
+    }: {
+      ranges: ReadonlyArray<readonly [number, number]>;
+    }) {
+      const store = usePlaybackStore();
+      // Syncs the test-provided ranges into the playback store the strip
+      // reads from.
+      React.useEffect(() => {
+        setBufferedRanges(store, ranges);
+      }, [store, ranges]);
+      return null;
+    }
+
+    it("is absent while no ranges are published", () => {
+      render(<HeaderHarness />);
+      expect(screen.queryByTestId("buffered-ranges-strip")).toBeNull();
+    });
+
+    it("renders one shaded segment per buffered range, mapped into the view window", () => {
+      render(
+        <HeaderHarness duration={10} labelWidth={100}>
+          <SetBufferedRanges
+            ranges={[
+              [2, 4],
+              [6, 8],
+            ]}
+          />
+        </HeaderHarness>,
+      );
+      const strip = screen.getByTestId("buffered-ranges-strip");
+      // Lane starts after the label column, like the ruler and playhead.
+      expect(strip.getAttribute("style") ?? "").toContain("left: 100px");
+      const segments = Array.from(strip.children) as HTMLElement[];
+      expect(segments).toHaveLength(2);
+      // View window is [0, 10] → [2,4] maps to left 20% / width 20%.
+      // Parse the percentages — ratio math carries float noise.
+      expect(parseFloat(segments[0].style.left)).toBeCloseTo(20);
+      expect(parseFloat(segments[0].style.width)).toBeCloseTo(20);
+      expect(parseFloat(segments[1].style.left)).toBeCloseTo(60);
+      expect(parseFloat(segments[1].style.width)).toBeCloseTo(20);
+    });
+
+    it("clamps ranges that extend beyond the view window", () => {
+      render(
+        <HeaderHarness duration={10}>
+          <SetBufferedRanges ranges={[[-2, 25]]} />
+        </HeaderHarness>,
+      );
+      const strip = screen.getByTestId("buffered-ranges-strip");
+      const segment = strip.children[0] as HTMLElement;
+      expect(segment.style.left).toBe("0%");
+      expect(segment.style.width).toBe("100%");
+    });
   });
 });

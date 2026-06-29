@@ -1,16 +1,13 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useAtomValue } from "jotai";
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   PlaybackProvider,
   usePlayback,
   usePlaybackStore,
 } from "../../lib/playback/PlaybackProvider";
-import {
-  viewEndAtom,
-  viewStartAtom,
-} from "../../lib/playback/atoms";
+import { viewEndAtom, viewStartAtom } from "../../lib/playback/atoms";
 import TimelineRuler from "./TimelineRuler";
 import styles from "./TimelineRuler.module.css";
 
@@ -20,7 +17,9 @@ function ViewReadout() {
   const store = usePlaybackStore();
   const vs = useAtomValue(viewStartAtom, { store });
   const ve = useAtomValue(viewEndAtom, { store });
-  return <span data-testid="view">{`${vs.toFixed(3)} / ${ve.toFixed(3)}`}</span>;
+  return (
+    <span data-testid="view">{`${vs.toFixed(3)} / ${ve.toFixed(3)}`}</span>
+  );
 }
 
 function Seeker({ time }: { time: number }) {
@@ -77,7 +76,7 @@ function renderRuler(opts: RenderOpts = {}) {
       {seekTo !== undefined ? <Seeker time={seekTo} /> : null}
       <TimelineRuler labelWidth={labelWidth} />
       <ViewReadout />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -98,7 +97,7 @@ function renderRulerWithZoomRef(opts: RenderOpts = {}) {
       ) : null}
       <Harness />
       <ViewReadout />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -107,8 +106,7 @@ const inlineStyle = (el: Element): string => el.getAttribute("style") ?? "";
 describe("TimelineRuler", () => {
   // Save the original so afterEach can restore Element.prototype — otherwise
   // the stub leaks into later test suites that share the test runner.
-  const originalGetBoundingClientRect =
-    Element.prototype.getBoundingClientRect;
+  const originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
 
   beforeEach(() => {
     // The wheel handler reads getBoundingClientRect to convert the cursor's
@@ -136,10 +134,18 @@ describe("TimelineRuler", () => {
       const { container } = renderRuler();
       expect(container.querySelector(`.${styles.ruler}`)).not.toBeNull();
       expect(container.querySelector(`.${styles.lane}`)).not.toBeNull();
-      expect(container.querySelectorAll(`.${styles.loopHandle}`)).toHaveLength(2);
-      expect(container.querySelector(`.${styles.playheadGroup}`)).not.toBeNull();
-      expect(container.querySelector(`.${styles.playheadHandle}`)).not.toBeNull();
-      expect(container.querySelector(`.${styles.playheadTriangle}`)).not.toBeNull();
+      expect(container.querySelectorAll(`.${styles.loopHandle}`)).toHaveLength(
+        2,
+      );
+      expect(
+        container.querySelector(`.${styles.playheadGroup}`),
+      ).not.toBeNull();
+      expect(
+        container.querySelector(`.${styles.playheadHandle}`),
+      ).not.toBeNull();
+      expect(
+        container.querySelector(`.${styles.playheadTriangle}`),
+      ).not.toBeNull();
     });
 
     it("omits the labelSpacer when labelWidth is 0", () => {
@@ -159,14 +165,33 @@ describe("TimelineRuler", () => {
       const group = container.querySelector(`.${styles.playheadGroup}`);
       expect(inlineStyle(group!)).toContain("left: 80px");
     });
+
+    it("renders the overlay prop inside the ruler's DOM node", () => {
+      const Harness = () => {
+        const ref = useRef<HTMLDivElement>(null);
+        return (
+          <PlaybackProvider duration={10} stepInterval={1 / 30}>
+            <TimelineRuler
+              overlay={<div data-testid="ruler-overlay">over</div>}
+              zoomRef={ref}
+            />
+          </PlaybackProvider>
+        );
+      };
+      render(<Harness />);
+      const ruler = screen.getByTestId("timeline-ruler");
+      expect(
+        ruler.querySelector('[data-testid="ruler-overlay"]'),
+      ).not.toBeNull();
+    });
   });
 
   describe("ticks", () => {
     it("uses 1s intervals when the view is wider than 3s", () => {
       const { container } = renderRuler({ duration: 10 });
-      const labels = Array.from(container.querySelectorAll(`.${styles.tick}`)).map(
-        (el) => el.textContent
-      );
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
       // 0s through 10s inclusive.
       expect(labels).toEqual([
         "0s",
@@ -189,9 +214,9 @@ describe("TimelineRuler", () => {
         viewStart: 0,
         viewEnd: 3,
       });
-      const labels = Array.from(container.querySelectorAll(`.${styles.tick}`)).map(
-        (el) => el.textContent
-      );
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
       expect(labels).toEqual(["0s", "0.5s", "1s", "1.5s", "2s", "2.5s", "3s"]);
     });
 
@@ -201,9 +226,9 @@ describe("TimelineRuler", () => {
         viewStart: 1,
         viewEnd: 2,
       });
-      const labels = Array.from(container.querySelectorAll(`.${styles.tick}`)).map(
-        (el) => el.textContent
-      );
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
       expect(labels[0]).toBe("1s");
       expect(labels[labels.length - 1]).toBe("2s");
       // 11 ticks across a 1s window at 0.1s spacing.
@@ -254,7 +279,9 @@ describe("TimelineRuler", () => {
 
     it("always renders both loop handles (start + end)", () => {
       const { container } = renderRuler({ duration: 10 });
-      const handles = container.querySelectorAll<HTMLElement>(`.${styles.loopHandle}`);
+      const handles = container.querySelectorAll<HTMLElement>(
+        `.${styles.loopHandle}`,
+      );
       expect(handles).toHaveLength(2);
     });
 
@@ -265,7 +292,9 @@ describe("TimelineRuler", () => {
         defaultLoopEnd: 7,
       });
       // Two handles still present; their exact x is JSDOM-opaque.
-      expect(container.querySelectorAll(`.${styles.loopHandle}`)).toHaveLength(2);
+      expect(container.querySelectorAll(`.${styles.loopHandle}`)).toHaveLength(
+        2,
+      );
     });
   });
 

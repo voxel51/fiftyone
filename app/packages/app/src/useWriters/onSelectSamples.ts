@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import {
   setSelectedSamples,
   type setSelectedSamplesMutation,
@@ -20,7 +24,7 @@ const onSelectSamples: RegisteredWriter<"selectedSamples"> =
       ([id, type]) => ({
         id,
         type,
-      })
+      }),
     );
 
     commitMutation<setSelectedSamplesMutation>(environment, {

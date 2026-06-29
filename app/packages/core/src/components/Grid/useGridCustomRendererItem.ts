@@ -19,7 +19,7 @@ type GridSampleResult = SampleRendererSampleLike;
 
 /** Hook that wraps default grid media rendering with sample renderer support. */
 export function useGridCustomRendererItem(
-  createDefaultLooker: ReturnType<typeof fos.useCreateLooker>
+  createDefaultLooker: ReturnType<typeof fos.useCreateLooker>,
 ) {
   const dataset = fos.useCurrentDataset();
   const schema = fos.useSampleSchema();
@@ -28,7 +28,7 @@ export function useGridCustomRendererItem(
   const activatorCtx = useMemo(() => ({ dataset, schema }), [dataset, schema]);
   const sampleRenderers = useActivePlugins(
     PluginComponentType.SampleRenderer,
-    activatorCtx
+    activatorCtx,
   );
   const { isDisabled: isDatasetRendererDisabled } =
     fos.useGridCustomRendererFailover(dataset?.name);
@@ -49,7 +49,7 @@ export function useGridCustomRendererItem(
         selectedMediaField,
         dataset,
         schema,
-        "grid"
+        "grid",
       );
       const matchedRenderer = getMatchingSampleRenderer(sampleRenderers, ctx);
       const canonicalRenderer = matchedRenderer
@@ -66,7 +66,7 @@ export function useGridCustomRendererItem(
         Renderer: getSampleRendererComponent(
           matchedRenderer,
           "grid",
-          canonicalRenderer
+          canonicalRenderer,
         ),
       };
     },
@@ -76,7 +76,7 @@ export function useGridCustomRendererItem(
       schema,
       selectedMediaField,
       sampleRenderers,
-    ]
+    ],
   );
 
   const createDefaultItem = useCallback(
@@ -86,7 +86,7 @@ export function useGridCustomRendererItem(
           ...result,
           symbol: id,
         },
-        { fontSize }
+        { fontSize },
       ) as fos.Lookers;
 
       if (!looker) {
@@ -95,7 +95,7 @@ export function useGridCustomRendererItem(
 
       return looker;
     },
-    [createDefaultLooker]
+    [createDefaultLooker],
   );
 
   const createItem = useCallback(
@@ -127,12 +127,12 @@ export function useGridCustomRendererItem(
       } catch (error) {
         console.error(
           "Failed to create plugin renderer, using default:",
-          error
+          error,
         );
         return createDefaultItem(result, id, fontSize);
       }
     },
-    [createDefaultItem, getResolvedRenderer, RecoilBridge, trackEvent]
+    [createDefaultItem, getResolvedRenderer, RecoilBridge, trackEvent],
   );
 
   return { createItem };

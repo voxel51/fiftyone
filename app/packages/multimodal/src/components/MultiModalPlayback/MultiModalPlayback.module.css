@@ -16,3 +16,9 @@
   flex: 1;
   min-width: 0;
 }
+
+.sidebarPane {
+  height: 100%;
+  min-height: 360px;
+  width: min(360px, 32vw);
+}

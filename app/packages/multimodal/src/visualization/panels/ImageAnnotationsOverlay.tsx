@@ -9,6 +9,7 @@ import type {
   ImageAnnotationsVisualization,
   RgbaColor,
 } from "../../decoders";
+import { groupLineSegmentsByLabel } from "../../utils/line-segment-grouping";
 import styles from "./image-annotations-overlay.module.css";
 
 export type ImageAnnotationPrimitive =
@@ -30,6 +31,7 @@ export interface ImageAnnotationsOverlayProps {
   readonly imageWidth: number;
   readonly imageHeight: number;
   readonly fit: "contain" | "cover";
+  readonly strokeWidth?: number;
   readonly selectedKey?: string | null;
   readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
 }
@@ -50,6 +52,7 @@ export function ImageAnnotationsOverlay({
   imageWidth,
   imageHeight,
   fit,
+  strokeWidth,
   selectedKey,
   onSelectPrimitive,
 }: ImageAnnotationsOverlayProps) {
@@ -61,7 +64,7 @@ export function ImageAnnotationsOverlay({
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
+    if (!el) return undefined;
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) return;
@@ -100,6 +103,7 @@ export function ImageAnnotationsOverlay({
               <SetPrimitives
                 set={set}
                 setIndex={i}
+                strokeWidth={strokeWidth}
                 selectedKey={selectedKey ?? null}
                 onSelectPrimitive={onSelectPrimitive}
               />
@@ -114,6 +118,7 @@ export function ImageAnnotationsOverlay({
 interface SetPrimitivesProps {
   readonly set: ImageAnnotationsVisualization;
   readonly setIndex: number;
+  readonly strokeWidth?: number;
   readonly selectedKey: string | null;
   readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
 }
@@ -121,6 +126,7 @@ interface SetPrimitivesProps {
 function SetPrimitives({
   set,
   setIndex,
+  strokeWidth,
   selectedKey,
   onSelectPrimitive,
 }: SetPrimitivesProps) {
@@ -134,6 +140,7 @@ function SetPrimitives({
             primitiveIndex={j}
             setIndex={setIndex}
             texts={set.texts}
+            strokeWidth={strokeWidth}
             selectedKey={selectedKey}
             onSelectPrimitive={onSelectPrimitive}
           />
@@ -144,10 +151,11 @@ function SetPrimitives({
             primitiveIndex={j}
             setIndex={setIndex}
             texts={set.texts}
+            strokeWidth={strokeWidth}
             selectedKey={selectedKey}
             onSelectPrimitive={onSelectPrimitive}
           />
-        )
+        ),
       )}
       {set.circles.map((c, j) => (
         <CirclePrimitive
@@ -156,6 +164,7 @@ function SetPrimitives({
           primitiveIndex={j}
           setIndex={setIndex}
           texts={set.texts}
+          strokeWidth={strokeWidth}
           selectedKey={selectedKey}
           onSelectPrimitive={onSelectPrimitive}
         />
@@ -179,6 +188,7 @@ interface CirclePrimitiveProps {
   readonly primitiveIndex: number;
   readonly setIndex: number;
   readonly texts: readonly ImageAnnotationText[];
+  readonly strokeWidth?: number;
   readonly selectedKey: string | null;
   readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
 }
@@ -188,6 +198,7 @@ function CirclePrimitive({
   primitiveIndex,
   setIndex,
   texts,
+  strokeWidth,
   selectedKey,
   onSelectPrimitive,
 }: CirclePrimitiveProps) {
@@ -210,7 +221,7 @@ function CirclePrimitive({
       className={clsx(
         styles.primitive,
         onClick && styles.selectable,
-        isSelected && styles.selected
+        isSelected && styles.selected,
       )}
       style={primitiveStyle(color, INTERIOR_FILL)}
       onClick={onClick}
@@ -220,7 +231,7 @@ function CirclePrimitive({
         cx={x}
         cy={y}
         r={radius}
-        strokeWidth={lineWidth(primitive.thickness)}
+        strokeWidth={lineWidth(primitive.thickness, strokeWidth)}
         vectorEffect="non-scaling-stroke"
         fill="none"
       />
@@ -233,6 +244,7 @@ interface PolylinePrimitiveProps {
   readonly primitiveIndex: number;
   readonly setIndex: number;
   readonly texts: readonly ImageAnnotationText[];
+  readonly strokeWidth?: number;
   readonly selectedKey: string | null;
   readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
 }
@@ -242,10 +254,11 @@ function PolylinePrimitive({
   primitiveIndex,
   setIndex,
   texts,
+  strokeWidth,
   selectedKey,
   onSelectPrimitive,
 }: PolylinePrimitiveProps) {
-  const thickness = lineWidth(primitive.thickness);
+  const thickness = lineWidth(primitive.thickness, strokeWidth);
   const centroid = pointsCentroid(primitive.points);
   const label = centroid ? nearestLabel(texts, centroid) : null;
   const color = colorForLabel(label);
@@ -266,7 +279,7 @@ function PolylinePrimitive({
         className={clsx(
           styles.primitive,
           onClick && styles.selectable,
-          isSelected && styles.selected
+          isSelected && styles.selected,
         )}
         style={primitiveStyle(color, undefined)}
         onClick={onClick}
@@ -291,7 +304,7 @@ function PolylinePrimitive({
       className={clsx(
         styles.primitive,
         onClick && styles.selectable,
-        isSelected && styles.selected
+        isSelected && styles.selected,
       )}
       style={primitiveStyle(color, closed ? INTERIOR_FILL : undefined)}
       onClick={onClick}
@@ -327,6 +340,7 @@ interface LineListGroupsProps {
   readonly primitiveIndex: number;
   readonly setIndex: number;
   readonly texts: readonly ImageAnnotationText[];
+  readonly strokeWidth?: number;
   readonly selectedKey: string | null;
   readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
 }
@@ -336,10 +350,11 @@ function LineListGroups({
   primitiveIndex,
   setIndex,
   texts,
+  strokeWidth,
   selectedKey,
   onSelectPrimitive,
 }: LineListGroupsProps) {
-  const thickness = lineWidth(primitive.thickness);
+  const thickness = lineWidth(primitive.thickness, strokeWidth);
   const groups = groupLineListByLabel(primitive.points, texts);
 
   return (
@@ -347,7 +362,7 @@ function LineListGroups({
       {groups.map((group, gi) => {
         const color = colorForLabel(group.label);
         const key = `pg-${setIndex}-${primitiveIndex}-${gi}-${boundsKey(
-          group.bounds
+          group.bounds,
         )}`;
         const onClick = pickHandler(onSelectPrimitive, {
           key,
@@ -371,7 +386,7 @@ function LineListGroups({
             className={clsx(
               styles.primitive,
               onClick && styles.selectable,
-              isSelected && styles.selected
+              isSelected && styles.selected,
             )}
             style={primitiveStyle(color, INTERIOR_FILL)}
             onClick={onClick}
@@ -437,7 +452,7 @@ function TextPrimitive({
     <g
       className={clsx(
         onClick && styles.selectable,
-        isSelected && styles.selected
+        isSelected && styles.selected,
       )}
       style={{ ["--ann-stroke" as never]: color } as CSSProperties}
       onClick={onClick}
@@ -491,43 +506,15 @@ interface LineListGroup {
   readonly bounds: Bounds;
 }
 
-/**
- * Each annotation message encodes N objects with cuboid edges and
- * labels paired by index: `points` is `N * segmentsPerObject * 2`
- * long, `texts.length === N`, and the Nth chunk of segments is
- * labeled by the Nth text. Use that pairing directly rather than
- * spatially guessing. Falls back to one big group when the data
- * doesn't divide cleanly (other producers might encode differently).
- */
 function groupLineListByLabel(
   points: readonly Point2[],
-  texts: readonly ImageAnnotationText[]
+  texts: readonly ImageAnnotationText[],
 ): readonly LineListGroup[] {
-  const segmentCount = Math.floor(points.length / 2);
-  if (segmentCount === 0) return [];
-  if (texts.length === 0 || segmentCount % texts.length !== 0) {
-    const segments: [Point2, Point2][] = [];
-    for (let i = 0; i < segmentCount; i++) {
-      segments.push([points[i * 2], points[i * 2 + 1]]);
-    }
-    return [{ label: null, segments, bounds: segmentsBounds(segments) }];
-  }
-  const segmentsPerObject = segmentCount / texts.length;
-  const groups: LineListGroup[] = [];
-  for (let i = 0; i < texts.length; i++) {
-    const segments: [Point2, Point2][] = [];
-    const start = i * segmentsPerObject;
-    for (let j = 0; j < segmentsPerObject; j++) {
-      const seg = start + j;
-      segments.push([points[seg * 2], points[seg * 2 + 1]]);
-    }
-    groups.push({
-      label: texts[i]?.text ?? null,
-      segments,
-      bounds: segmentsBounds(segments),
-    });
-  }
-  return groups;
+  return groupLineSegmentsByLabel(points, texts).map(({ label, segments }) => ({
+    label,
+    segments,
+    bounds: segmentsBounds(segments),
+  }));
 }
 
 function segmentsBounds(segments: readonly [Point2, Point2][]): Bounds {
@@ -550,7 +537,7 @@ function segmentsBounds(segments: readonly [Point2, Point2][]): Bounds {
 
 function nearestTextIndex(
   texts: readonly ImageAnnotationText[],
-  point: Point2
+  point: Point2,
 ): number {
   let bestIdx = -1;
   let bestDist = Infinity;
@@ -571,10 +558,10 @@ function nearestTextIndex(
 
 function nearestLabel(
   texts: readonly ImageAnnotationText[],
-  point: Point2
+  point: Point2,
 ): string | null {
   const idx = nearestTextIndex(texts, point);
-  return idx === -1 ? null : texts[idx]?.text ?? null;
+  return idx === -1 ? null : (texts[idx]?.text ?? null);
 }
 
 function pointsCentroid(points: readonly Point2[]): Point2 | null {
@@ -620,13 +607,13 @@ function colorForLabel(label: string | null): string {
 function boundsKey(b: Bounds): string {
   const r = (v: number) => Math.round(v / 20);
   return `${r(b.minX)}|${r(b.minY)}|${r(b.maxX - b.minX)}|${r(
-    b.maxY - b.minY
+    b.maxY - b.minY,
   )}`;
 }
 
 function primitiveStyle(
   color: string,
-  interior: string | undefined
+  interior: string | undefined,
 ): CSSProperties {
   const out: Record<string, string> = { "--ann-stroke": color };
   if (interior) out["--ann-interior"] = interior;
@@ -637,7 +624,7 @@ function pickHandler(
   onSelectPrimitive:
     | ((picked: ImageAnnotationPickedPrimitive) => void)
     | undefined,
-  picked: ImageAnnotationPickedPrimitive
+  picked: ImageAnnotationPickedPrimitive,
 ): ((e: React.MouseEvent) => void) | undefined {
   if (!onSelectPrimitive) return undefined;
   return (e) => {
@@ -646,7 +633,11 @@ function pickHandler(
   };
 }
 
-function lineWidth(thickness: number): number {
+function lineWidth(thickness: number, override?: number): number {
+  if (typeof override === "number" && Number.isFinite(override)) {
+    return Math.max(0, override);
+  }
+
   // Source thickness is conservative; bump it ~1.5x for readability while
   // keeping the look light.
   return Math.max(1.5, thickness * 1.5);
@@ -656,7 +647,7 @@ function displayRect(
   container: { width: number; height: number },
   imageWidth: number,
   imageHeight: number,
-  fit: "contain" | "cover"
+  fit: "contain" | "cover",
 ): Rect {
   const containerAspect = container.width / Math.max(1, container.height);
   const imageAspect = imageWidth / Math.max(1, imageHeight);
@@ -676,7 +667,6 @@ function displayRect(
   };
 }
 
-
 function rgbaToCss(color: RgbaColor | null | undefined): string | undefined {
   if (!color) return undefined;
   const [r, g, b, a] = color;
@@ -684,7 +674,7 @@ function rgbaToCss(color: RgbaColor | null | undefined): string | undefined {
   const g255 = clamp01(g) * 255;
   const b255 = clamp01(b) * 255;
   return `rgba(${r255.toFixed(0)}, ${g255.toFixed(0)}, ${b255.toFixed(
-    0
+    0,
   )}, ${clamp01(a).toFixed(3)})`;
 }
 

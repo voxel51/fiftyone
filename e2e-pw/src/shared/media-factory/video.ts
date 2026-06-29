@@ -6,9 +6,9 @@ import { spawnSync } from "child_process";
 import { Duration } from "src/oss/utils";
 
 /**
- * Options for generating a blank video file via ffmpeg.
+ * Options for generating a video file via ffmpeg.
  */
-interface CreateBlankVideoOptions {
+interface CreateVideoOptions {
   /**
    * Duration of the video in seconds.
    */
@@ -39,18 +39,18 @@ interface CreateBlankVideoOptions {
 }
 
 /**
- * Generates a blank, solid-color video file using ffmpeg.
+ * Generates a solid-color video file using ffmpeg.
  *
  * The video is encoded with the `libvpx` VP8 codec at a target bitrate of 1Mbps
  * and `yuv420p` pixel format. The ffmpeg process is run synchronously via a
  * shell subprocess with a 5-second timeout. Performance timing is always logged
  * to the console on completion.
  *
- * @param options - Configuration for video generation. See {@link CreateBlankVideoOptions}.
+ * @param options - Configuration for video generation. See {@link CreateVideoOptions}.
  * @returns A `Promise` that resolves when the video has been written to disk.
  *
  * @example
- * await createBlankVideo({
+ * await createVideo({
  *   outputPath: "/tmp/videos/clip.webm",
  *   duration: 3,
  *   width: 640,
@@ -59,14 +59,14 @@ interface CreateBlankVideoOptions {
  *   color: "#00ff00",
  * });
  */
-export const createBlankVideo = async (
-  options: CreateBlankVideoOptions
+export const createVideo = async (
+  options: CreateVideoOptions,
 ): Promise<void> => {
   const { duration, width, height, frameRate, color, outputPath } = options;
   const startTime = performance.now();
 
   const ffmpegCommand = `ffmpeg -filter_complex 'color=c=${color}:s=${width}x${height}' -t ${duration} -r ${String(
-    frameRate
+    frameRate,
   )} -c:v libvpx -b:v 1M -pix_fmt yuv420p ${outputPath}`;
 
   spawnSync(ffmpegCommand, {
@@ -77,6 +77,6 @@ export const createBlankVideo = async (
   const endTime = performance.now();
   const timeTaken = endTime - startTime;
   console.log(
-    `Video generation, path = ${outputPath}, completed in ${timeTaken} milliseconds`
+    `Video generation, path = ${outputPath}, completed in ${timeTaken} milliseconds`,
   );
 };

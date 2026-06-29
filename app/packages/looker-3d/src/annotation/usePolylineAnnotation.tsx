@@ -75,7 +75,7 @@ export const usePolylineAnnotation = ({
 
     const sum = allPoints.reduce(
       (acc, point) => [acc[0] + point[0], acc[1] + point[1], acc[2] + point[2]],
-      [0, 0, 0]
+      [0, 0, 0],
     );
 
     return [
@@ -132,7 +132,7 @@ export const usePolylineAnnotation = ({
                 pointIndex,
                 [newPosition.x, newPosition.y, newPosition.z],
                 // Update shared vertices
-                true
+                true,
               );
 
               const newPoints3d = newSegments.map((seg) => seg.points);
@@ -243,7 +243,7 @@ export const usePolylineAnnotation = ({
         }
       }
     },
-    [isAnnotateMode, editSegmentsMode]
+    [isAnnotateMode, editSegmentsMode],
   );
 
   const handleSegmentPointerOut = useCallback(() => {
@@ -272,7 +272,7 @@ export const usePolylineAnnotation = ({
         effectivePoints3d,
         clickPosition,
         // Distance threshold
-        0.2
+        0.2,
       );
 
       if (clickResult) {
@@ -288,7 +288,7 @@ export const usePolylineAnnotation = ({
           currentSegments,
           segmentIndex,
           newVertexPosition,
-          clickPosition
+          clickPosition,
         );
 
         // If newSegments is null, it means the new vertex was too close to an existing vertex
@@ -305,7 +305,7 @@ export const usePolylineAnnotation = ({
       effectivePoints3d,
       labelId,
       updatePolylinePoints,
-    ]
+    ],
   );
 
   const transientPolyline = useTransientPolyline(labelId);
@@ -331,7 +331,7 @@ export const usePolylineAnnotation = ({
           ] as Vector3Tuple;
         }
         return point;
-      })
+      }),
     );
   }, [effectivePoints3d, transientPolyline?.vertexDeltas]);
 
@@ -378,7 +378,7 @@ export const usePolylineAnnotation = ({
           dashed
           dashSize={0.1}
           gapSize={0.1}
-        />
+        />,
       );
     }
 
@@ -394,7 +394,7 @@ export const usePolylineAnnotation = ({
           dashed
           dashSize={0.1}
           gapSize={0.1}
-        />
+        />,
       );
     }
 

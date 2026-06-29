@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import {
   DiscordLink,
   DocsLink,
@@ -9,7 +13,7 @@ import {
 import { isNotebook } from "@fiftyone/state";
 import { styles } from "@fiftyone/utilities";
 import { animated, useSpring } from "@react-spring/web";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 

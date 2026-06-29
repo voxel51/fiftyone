@@ -15,10 +15,10 @@ const test = base.extend<{
   },
   datasetName: async ({ annotateSDK, datasetFactory }, use, testInfo) => {
     const name = getUniqueDatasetNameWithPrefix(
-      `detection-mode-${testInfo.title.replace(/\s+/g, "-")}`
+      `detection-mode-${testInfo.title.replace(/\s+/g, "-")}`,
     );
 
-    await datasetFactory.createBlankDataset({
+    await datasetFactory.createDataset({
       datasetName: name,
       schema: {
         detections: "Detections",
@@ -63,8 +63,7 @@ test.describe.serial("detection mode", () => {
 
     // hover over the canvas
     await modal.sampleCanvas.assert.hasCursor("pointer");
-    await modal.sampleCanvas.move(0.5, 0.5);
-    await modal.sampleCanvas.assert.hasCursor("crosshair");
+    await modal.sampleCanvas.move(0.5, 0.5, "crosshair");
 
     // Deactivate by clicking the button again
     await modal.sidebar.annotate.detectionMode("Detections");
@@ -111,7 +110,7 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("nwse-resize");
     await modal.sampleCanvas.assert.hasScreenshot(
-      "draw-and-quit-detection-selected.png"
+      "draw-and-quit-detection-selected.png",
     );
 
     // Click-to-quit off the detection
@@ -121,7 +120,7 @@ test.describe.serial("detection mode", () => {
     await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sampleCanvas.assert.hasCursor("default");
     await modal.sampleCanvas.assert.hasScreenshot(
-      "draw-and-quit-exited-detection-mode.png"
+      "draw-and-quit-exited-detection-mode.png",
     );
   });
 
@@ -144,7 +143,7 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("nesw-resize");
     await modal.sampleCanvas.assert.hasScreenshot(
-      "multiple-detections-second-selected.png"
+      "multiple-detections-second-selected.png",
     );
 
     // Click-to-quit off both detections
@@ -154,7 +153,7 @@ test.describe.serial("detection mode", () => {
     await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sampleCanvas.assert.hasCursor("default");
     await modal.sampleCanvas.assert.hasScreenshot(
-      "multiple-detections-exited-detection-mode.png"
+      "multiple-detections-exited-detection-mode.png",
     );
   });
 });

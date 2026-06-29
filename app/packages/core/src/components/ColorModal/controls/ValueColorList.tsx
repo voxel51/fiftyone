@@ -40,7 +40,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
 }) => {
   const [input, setInput] = useState<ValueColorInput[]>(initialValue);
   const [showPicker, setShowPicker] = useState(
-    Array(input?.length > 0 ? input.length : 1).fill(false)
+    Array(input?.length > 0 ? input.length : 1).fill(false),
   );
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -76,7 +76,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
       setInput(copy);
       onSyncUpdate(copy);
     },
-    [input, onSyncUpdate]
+    [input, onSyncUpdate],
   );
 
   // onBlur and onEnter in textfield to validate color and sync with atoms
@@ -98,7 +98,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
       } else {
         // convert to hex code
         const hexColor = colorString.to.hex(
-          colorString.get(color)?.value ?? []
+          colorString.get(color)?.value ?? [],
         );
         const copy = cloneDeep(input);
         copy[changeIdx].color = hexColor;
@@ -106,7 +106,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
         onSyncUpdate(copy);
       }
     },
-    [input, values, onSyncUpdate]
+    [input, values, onSyncUpdate],
   );
 
   // on changing tabs, sync local state with new session values
@@ -149,7 +149,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
             color={input[index].color}
             onClick={() => {
               setShowPicker((prev) =>
-                prev.map((_, i) => (i === index ? !prev[index] : _))
+                prev.map((_, i) => (i === index ? !prev[index] : _)),
               );
             }}
           >
@@ -169,7 +169,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
                   disableAlpha={true}
                   onBlur={() =>
                     setShowPicker((prev) =>
-                      prev.map((_, i) => (i === index ? false : _))
+                      prev.map((_, i) => (i === index ? false : _)),
                     )
                   }
                   className={colorPicker}

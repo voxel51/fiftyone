@@ -55,7 +55,7 @@ function renderTrack(opts: RenderOpts = {}) {
       ) : null}
       <TimelineTrack {...baseTrack} {...track} />
       <PlayheadReadout />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -284,6 +284,35 @@ describe("TimelineTrack", () => {
     });
   });
 
+  describe("onEventDelete", () => {
+    it("renders interval events with a label column and no crash when onEventDelete is absent", () => {
+      // Smoke-test: component renders without onEventDelete — no delete entry shown.
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 2, endSec: 5 }],
+          labelWidth: 100,
+        },
+      });
+      expect(container.querySelector(`.${styles.intervalBar}`)).not.toBeNull();
+    });
+
+    it("does not crash when onEventDelete is provided alongside interval events", () => {
+      const onEventDelete = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 2, endSec: 5, label: "tag-a" }],
+          labelWidth: 100,
+          onEventDelete,
+        },
+      });
+      expect(container.querySelector(`.${styles.intervalBar}`)).not.toBeNull();
+    });
+  });
+
   describe("color + bg props", () => {
     it("uses the `bg` prop verbatim for the bar background when provided", () => {
       const { container } = renderTrack({
@@ -298,7 +327,7 @@ describe("TimelineTrack", () => {
       const bar = container.querySelector(`.${styles.bar}`) as HTMLElement;
       // JSDOM normalizes #ff000055 to rgba(255, 0, 0, 0.333).
       expect(inlineStyle(bar).toLowerCase()).toMatch(
-        /background:\s*(#ff000055|rgba\(255,\s*0,\s*0,\s*0\.33)/
+        /background:\s*(#ff000055|rgba\(255,\s*0,\s*0,\s*0\.33)/,
       );
     });
   });

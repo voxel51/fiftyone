@@ -1,0 +1,106 @@
+name: Sync develop to community
+
+# Keeps the long-lived `community` branch current with `develop` by merging
+# `develop` into `community` once a day, rather than on every push to
+# `develop`. When the merge conflicts, it posts a summary to the #community
+# Slack channel and fails so a maintainer can resolve it on the `community`
+# branch.
+
+on:
+  schedule:
+    # 09:00 America/New_York. GitHub cron runs in UTC and ignores DST, so this
+    # fires at 09:00 during EDT (summer) and 08:00 during EST (winter).
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-develop-to-community
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    # The `community` branch is OSS-only.
+    if: github.repository == 'voxel51/fiftyone'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+
+      - name: Merge develop into community
+        id: merge
+        run: |
+          git config user.name 'voxel51-bot'
+          git config user.email 'bot@voxel51.com'
+
+          if ! git ls-remote --exit-code origin community >/dev/null 2>&1; then
+            # First run — create community from develop. Nothing to merge.
+            git push origin "HEAD:refs/heads/community"
+            exit 0
+          fi
+
+          git fetch origin community
+          git checkout community
+
+          if git merge-base --is-ancestor origin/develop community; then
+            echo "community already contains develop; nothing to sync."
+            exit 0
+          fi
+
+          if git merge origin/develop --no-edit; then
+            git push origin community
+            exit 0
+          fi
+
+          conflicts="$(git diff --name-only --diff-filter=U)"
+          git merge --abort
+
+          {
+            echo "### ⚠️ develop → community conflict"
+            echo
+            echo "Merging \`develop\` into \`community\` conflicted in:"
+            echo
+            printf '%s\n' "$conflicts" | sed 's/^/- `/; s/$/`/'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          {
+            echo "conflicts<<EOF"
+            printf '%s\n' "$conflicts"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "::error::Merging develop into community conflicted — resolve on the community branch."
+          exit 1
+
+      - name: "Notify #community of conflict"
+        if: failure() && steps.merge.outputs.conflicts != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_COMMUNITY_WEBHOOK_URL }}
+          CONFLICTS: ${{ steps.merge.outputs.conflicts }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "::warning::SLACK_COMMUNITY_WEBHOOK_URL not set; skipping Slack notification."
+            exit 0
+          fi
+
+          files="$(printf '%s\n' "$CONFLICTS" | sed 's/^/• /')"
+          text="$(printf '%s\n' \
+            ":warning: develop → community sync conflicted" \
+            "" \
+            "Merging \`develop\` into \`community\` failed — resolve on the \`community\` branch." \
+            "" \
+            "Commit: <$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$SHA|${SHA:0:9}>" \
+            "Conflicting files:" \
+            "$files" \
+            "" \
+            "<$RUN_URL|View workflow run>")"
+
+          jq -nc --arg text "$text" '{text: $text}' \
+            | curl -sS -X POST -H 'Content-type: application/json' --data @- "$SLACK_WEBHOOK_URL"

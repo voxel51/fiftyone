@@ -25,7 +25,7 @@ export const foxgloveCompressedImageDecoder: Decoder = {
     const message = decodeProtobufMessage(
       bytes,
       FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
-      context
+      context,
     );
     const data = requiredBytes(message, "data");
     const format = optionalString(message, "format") ?? "unknown";

@@ -2,7 +2,10 @@ name: Pull Request
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    # `edited` catches base changes — notably GitHub auto-retargeting a stacked
+    # PR to develop when the PR below it merges — so the heavy suite runs before
+    # it can land (no `synchronize` fires on an auto-retarget).
+    types: [opened, synchronize, reopened, closed, ready_for_review, edited]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,6 +18,9 @@ jobs:
       app-changes: ${{ steps.filter.outputs.app }}
       e2e-changes: ${{ steps.filter.outputs.e2e-pw }}
       fiftyone-changes: ${{ steps.filter.outputs.fiftyone }}
+      format-changes: ${{ steps.filter.outputs.format }}
+      run-ci: ${{ steps.gate.outputs.run-ci }}
+      heavy: ${{ steps.gate.outputs.heavy }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -43,15 +49,60 @@ jobs:
               - '.github/workflows/build.yml'
               - '.github/workflows/test.yml'
               - 'plugins/**'
+            format:
+              - '**/*.ts'
+              - '**/*.tsx'
+              - '**/*.js'
+              - '**/*.jsx'
+              - '**/*.json'
+              - '**/*.css'
+              - '**/*.scss'
+              - '**/*.md'
+
+      - name: Gate CI by base branch
+        id: gate
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          ACTION: ${{ github.event.action }}
+          BASE_CHANGED: ${{ github.event.changes.base != null }}
+        shell: bash
+        run: |
+          # `edited` fires on title/body edits too; only (re)run when the base
+          # changed (e.g. a stacked PR auto-retargeted to develop after the one
+          # below merged).
+          run_ci=true
+          if [ "$ACTION" = "edited" ] && [ "$BASE_CHANGED" != "true" ]; then
+            run_ci=false
+          fi
+          # Heavy jobs (build/test/e2e/windows) only for PRs targeting a
+          # long-lived branch. Intra-stack PRs (base = another feature branch)
+          # skip them and are tested when promoted to develop/release.
+          heavy=false
+          if [ "$run_ci" = "true" ]; then
+            case "$BASE_REF" in
+              develop|main|release/*) heavy=true ;;
+            esac
+          fi
+          echo "run-ci=$run_ci" >> "$GITHUB_OUTPUT"
+          echo "heavy=$heavy" >> "$GITHUB_OUTPUT"
 
   build:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: >-
+      github.event.action != 'closed' &&
+      needs.modified-files.outputs.heavy == 'true' && (
+      needs.modified-files.outputs.app-changes == 'true' ||
+      needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/build.yml
 
   e2e:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.e2e-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: >-
+      github.event.action != 'closed' &&
+      needs.modified-files.outputs.heavy == 'true' && (
+      needs.modified-files.outputs.app-changes == 'true' ||
+      needs.modified-files.outputs.e2e-changes == 'true' ||
+      needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/e2e.yml
     secrets:
       docker-username: ${{ secrets.RO_DOCKERHUB_USERNAME }}
@@ -59,40 +110,29 @@ jobs:
 
   lint:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: >-
+      github.event.action != 'closed' &&
+      needs.modified-files.outputs.run-ci == 'true' && (
+      needs.modified-files.outputs.app-changes == 'true' ||
+      needs.modified-files.outputs.fiftyone-changes == 'true' ||
+      needs.modified-files.outputs.format-changes == 'true')
     uses: ./.github/workflows/lint-app.yml
-
-  teams:
-    runs-on: ubuntu-latest
-    if: false && github.base_ref == 'develop' # temporarily disabled
-    steps:
-      - uses: convictional/trigger-workflow-and-wait@v1.6.5
-        with:
-          owner: voxel51
-          repo: fiftyone-teams
-          github_token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
-          github_user: voxel51-bot
-          workflow_file_name: merge-oss.yml
-          ref: develop
-          wait_interval: 20
-          client_payload: |
-            {
-              "author": "${{ github.event.pull_request.user.login }}",
-              "branch": "${{ github.head_ref || github.ref_name }}",
-              "pr": ${{ github.event.pull_request.number }}
-            }
-          propagate_failure: true
-          trigger_workflow: true
-          wait_workflow: true
 
   test:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: >-
+      github.event.action != 'closed' &&
+      needs.modified-files.outputs.heavy == 'true' && (
+      needs.modified-files.outputs.app-changes == 'true' ||
+      needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/test.yml
 
   test-windows:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: >-
+      github.event.action != 'closed' &&
+      needs.modified-files.outputs.heavy == 'true' &&
+      needs.modified-files.outputs.fiftyone-changes == 'true'
     uses: ./.github/workflows/windows-test.yml
 
   all-tests:

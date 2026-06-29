@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import CircleIcon from "@mui/icons-material/Circle";
 import { Chip, FormControl, MenuItem, Select, Tooltip } from "@mui/material";
 import { usePanelEvent } from "@fiftyone/operators";
@@ -22,7 +22,7 @@ const PillBadge = ({
   tooltipTitle?: string;
 }) => {
   const getInitialChipSelection = (
-    text: string | string[] | [string, string][]
+    text: string | string[] | [string, string][],
   ) => {
     if (typeof text === "string") return text;
     if (Array.isArray(text)) {
@@ -35,7 +35,7 @@ const PillBadge = ({
 
   const getInitialChipColor = (
     text: string | string[] | [string, string][],
-    color?: string
+    color?: string,
   ) => {
     if (typeof text === "string") return color;
     if (Array.isArray(text)) {
@@ -47,7 +47,7 @@ const PillBadge = ({
   };
 
   const [chipSelection, setChipSelection] = useState(
-    getInitialChipSelection(text)
+    getInitialChipSelection(text),
   );
   const [chipColor, setChipColor] = useState(getInitialChipColor(text, color));
 
@@ -116,7 +116,7 @@ const PillBadge = ({
                     disableUnderline={true}
                     onChange={(event) => {
                       const selectedText = text.find(
-                        (t) => t[0] === event.target.value
+                        (t) => t[0] === event.target.value,
                       );
                       setChipSelection(event.target.value);
                       setChipColor(selectedText?.[1] ?? "default");

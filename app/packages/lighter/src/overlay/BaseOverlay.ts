@@ -23,11 +23,20 @@ import type {
 /**
  * Base abstract class for all overlays.
  */
-export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
-  implements InteractionHandler
-{
+export abstract class BaseOverlay<
+  Label extends RawLookerLabel = RawLookerLabel,
+> implements InteractionHandler {
   readonly id: string;
   readonly cursor?: string;
+
+  /**
+   * Whether this overlay represents real annotation data that should be
+   * saved. Set to `false` for UI scaffolding (e.g. the point-selection
+   * keypoint overlay) that lives in the scene but must not be picked up by
+   * persistence. Consumers walking `scene.getAllOverlays()` for save deltas
+   * should skip overlays where this is `false`.
+   */
+  public isPersistent = true;
 
   protected isHoveredState = false;
 
@@ -84,7 +93,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
     if (!bounds) return false;
 
     return ["x", "y", "width", "height"].every(
-      (prop) => !Number.isNaN(bounds[prop])
+      (prop) => !Number.isNaN(bounds[prop]),
     );
   }
 
@@ -131,7 +140,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   render(
     renderer: Renderer2D,
     style: DrawStyle | null,
-    meta: RenderMeta
+    meta: RenderMeta,
   ): void | Promise<void> {
     // Store the current style for use in other methods
     this.currentStyle = style || undefined;
@@ -146,7 +155,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   protected abstract renderImpl(
     renderer: Renderer2D,
-    meta: RenderMeta
+    meta: RenderMeta,
   ): void | Promise<void>;
 
   /**

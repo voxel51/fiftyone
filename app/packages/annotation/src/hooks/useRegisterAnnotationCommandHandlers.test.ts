@@ -7,8 +7,7 @@ vi.mock("@fiftyone/annotation", () => ({
 }));
 
 vi.mock("@fiftyone/command-bus", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@fiftyone/command-bus")>();
+  const actual = await importOriginal<typeof import("@fiftyone/command-bus")>();
   return {
     ...actual,
     useRegisterCommandHandler: vi.fn(),
@@ -22,7 +21,7 @@ import type { LabelProxy } from "../deltas";
 import type { Field } from "@fiftyone/utilities";
 
 function makeCommand(
-  overrides: Partial<{ labelId: string; labelType: string }> = {}
+  overrides: Partial<{ labelId: string; labelType: string }> = {},
 ) {
   const labelId = overrides.labelId ?? "label-1";
   const labelType = overrides.labelType ?? "Detection";
@@ -54,7 +53,7 @@ describe("useRegisterAnnotationCommandHandlers", () => {
   function getRegisteredHandler() {
     renderHook(() => useRegisterAnnotationCommandHandlers());
     return vi.mocked(useRegisterCommandHandler).mock.calls[0][1] as (
-      cmd: ReturnType<typeof makeCommand>
+      cmd: ReturnType<typeof makeCommand>,
     ) => Promise<boolean>;
   }
 
@@ -100,7 +99,7 @@ describe("useRegisterAnnotationCommandHandlers", () => {
 
     expect(mockDispatch).not.toHaveBeenCalledWith(
       "annotation:deleteSuccess",
-      expect.anything()
+      expect.anything(),
     );
   });
 

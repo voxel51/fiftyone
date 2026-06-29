@@ -180,7 +180,7 @@ export function getAbsolutePluginPath(name: string, path: string): string {
 
 export function usePluginSettings<T>(
   pluginName: string,
-  defaults?: Partial<T>
+  defaults?: Partial<T>,
 ): T {
   const datasetAppConfig = recoil.useRecoilValue(fos.datasetAppConfig);
   const appConfig = recoil.useRecoilValue(fos.config);
@@ -192,7 +192,7 @@ export function usePluginSettings<T>(
     return _.merge<T | {}, Partial<T>, Partial<T>>(
       { ...defaults },
       _.get(appConfigPlugins, pluginName, {}),
-      _.get(datasetPlugins, pluginName, {})
+      _.get(datasetPlugins, pluginName, {}),
     );
   }, [appConfig, pluginName, defaults, datasetAppConfig]);
 
@@ -205,11 +205,14 @@ export * from "./state";
 export {
   createSampleRendererRenderContext,
   getMatchingSampleRenderer,
+  getSampleRendererGridSlotComponent,
   getSampleRendererComponent,
+  SAMPLE_RENDERER_GRID_SLOT,
 } from "./sample-renderer";
 export type {
   GridConfig,
   MatchMedia,
+  SampleRendererGridSlot,
   SampleRendererMatchContext,
   SampleRendererMediaContext,
   SampleRendererOptions,

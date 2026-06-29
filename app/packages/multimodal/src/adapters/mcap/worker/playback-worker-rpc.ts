@@ -70,13 +70,17 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
   },
+  readTopicTimeBounds: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+  },
 };
 
 /**
  * Returns the worker operation descriptor for one RPC type.
  */
 export function mcapPlaybackWorkerOperation(
-  type: McapPlaybackWorkerRpcType
+  type: McapPlaybackWorkerRpcType,
 ): McapPlaybackWorkerOperation {
   return MCAP_PLAYBACK_WORKER_OPERATIONS[type];
 }
@@ -85,7 +89,7 @@ export function mcapPlaybackWorkerOperation(
  * Narrows a scheduled worker request to the streaming operation family.
  */
 export function isMcapPlaybackWorkerStreamRequest(
-  message: McapPlaybackWorkerRpcRequest
+  message: McapPlaybackWorkerRpcRequest,
 ): message is McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType> {
   return mcapPlaybackWorkerOperation(message.type).kind === "stream";
 }
@@ -95,7 +99,7 @@ export function isMcapPlaybackWorkerStreamRequest(
  */
 export function runMcapPlaybackWorkerUnaryRequest(
   client: McapResourceClient,
-  message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerUnaryType>
+  message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerUnaryType>,
 ): Promise<McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType]> {
   switch (message.type) {
     case "readFrameTransformBootstrap":
@@ -114,6 +118,8 @@ export function runMcapPlaybackWorkerUnaryRequest(
       return client.readTimelineRange(message.payload);
     case "readTopics":
       return client.readTopics(message.payload);
+    case "readTopicTimeBounds":
+      return client.readTopicTimeBounds(message.payload);
   }
 }
 
@@ -122,7 +128,7 @@ export function runMcapPlaybackWorkerUnaryRequest(
  */
 export async function* runMcapPlaybackWorkerStreamRequest(
   client: McapResourceClient,
-  message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>
+  message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>,
 ): AsyncGenerator<
   McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType],
   void,

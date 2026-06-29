@@ -3,17 +3,15 @@ import { useLighter } from "@fiftyone/lighter";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
-import type { PrimitiveAtom } from "jotai";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { type PrimitiveAtom, getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
-import { editing } from "./Edit";
-import { savedLabel } from "./Edit/state";
+import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import { ICONS } from "./Icons";
 import { fieldType } from "./state";
 import useColor from "./useColor";
-import { hoveringLabelIds } from "./useHover";
+import { useIsLabelHovering } from "./useHover";
 
 const Container = animated(styled.div`
   display: flex;
@@ -57,12 +55,11 @@ const Line = styled.div<{ fill: string }>`
 const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const label = useAtomValue(atom);
   const type = useAtomValue(fieldType(label.path ?? ""));
-  const setEditing = useSetAtom(editing);
+  const { select, setSavedData } = useAnnotationContext();
   const Icon = ICONS[type] ?? (() => null);
-  const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
   const { scene } = useLighter();
 
-  const isHovering = hoveringLabelIdsList.includes(label.overlay.id);
+  const isHovering = useIsLabelHovering(label.overlay.id);
 
   const color = useColor(label.overlay);
 
@@ -104,14 +101,18 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
           },
         });
 
-        // For 3D labels, select3DLabelForAnnotation handles setting the editing atom
-        // to the correct 3D-specific atom.
-        // We should not overwrite it here
+        // For 3D labels, select3DLabelForAnnotation handles setting the
+        // editing pointer to the correct 3D-specific atom. We should not
+        // overwrite it here — just sync savedLabel so dirty tracking starts
+        // from this label's data.
         if (!is3DLabel) {
-          setEditing(atom);
+          select(atom);
+        } else {
+          // 3D-specific: editing pointer is set by the looker-3d hooks
+          // (useSetEditingToExisting3dLabel etc.); we only sync the
+          // savedLabel snapshot to start dirty-tracking from this label.
+          setSavedData(store.get(atom).data);
         }
-
-        store.set(savedLabel, store.get(atom).data);
       }}
       className={isHovering ? "hovering" : ""}
       onMouseEnter={handleMouseEnter}
@@ -121,8 +122,15 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
       <Header>
         <Column>
           <Icon fill={color} />
-          <div style={!label.data.label ? { color } : { paddingLeft: "8px" }}>
-            {label.data.label ?? "None"}
+          <div
+            style={{
+              ...(!label.data.label
+                ? { color, fontStyle: "italic", opacity: 0.7 }
+                : {}),
+              ...{ paddingLeft: "8px" },
+            }}
+          >
+            {label.data.label || "(no label)"}
           </div>
         </Column>
 

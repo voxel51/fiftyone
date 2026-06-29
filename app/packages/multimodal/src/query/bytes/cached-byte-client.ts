@@ -3,6 +3,7 @@ import {
   DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES,
   DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES,
 } from "./constants";
+import { safeNumber } from "./bigint-utils";
 import { serializeCacheKey } from "../cache-utils";
 import { byteSourceAccessKey } from "./cache";
 import { parseByteSize } from "./byte-size";
@@ -18,7 +19,7 @@ import type {
  * Default byte-cache fill block size from explicit source metadata.
  */
 export function defaultByteCacheBlockSizeBytes(
-  request: ByteRangeReadRequest
+  request: ByteRangeReadRequest,
 ): number {
   return request.source.readProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
     ? DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES
@@ -31,7 +32,7 @@ export function defaultByteCacheBlockSizeBytes(
  */
 export function createCachedByteClient(
   reader: ByteClient,
-  caches: ByteCacheLayers
+  caches: ByteCacheLayers,
 ): ByteClient {
   const pendingByteReads = new Map<string, Promise<ByteRangeReadResult>>();
 
@@ -47,7 +48,8 @@ export function createCachedByteClient(
         const blockSizeBytes =
           typeof caches.blockSizeBytes === "function"
             ? caches.blockSizeBytes(request)
-            : caches.blockSizeBytes ?? defaultByteCacheBlockSizeBytes(request);
+            : (caches.blockSizeBytes ??
+              defaultByteCacheBlockSizeBytes(request));
 
         if (
           blockSizeBytes !== undefined &&
@@ -125,7 +127,7 @@ function byteRangeAccessKey(request: ByteRangeReadRequest): string {
 
 function sliceByteRangeResult(
   result: ByteRangeReadResult,
-  range: ByteRange
+  range: ByteRange,
 ): ByteRangeReadResult {
   if (
     result.range.offset === range.offset &&
@@ -142,14 +144,4 @@ function sliceByteRangeResult(
     range,
     source: result.source,
   };
-}
-
-function safeNumber(value: bigint): number {
-  if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
-    throw new Error(
-      `Byte length ${value.toString()} exceeds safe number range`
-    );
-  }
-
-  return Number(value);
 }

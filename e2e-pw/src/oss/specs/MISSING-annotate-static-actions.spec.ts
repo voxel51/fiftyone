@@ -11,7 +11,7 @@ import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "smoke-annotate-static-actions"
+  "smoke-annotate-static-actions",
 );
 const id = "000000000000000000000000";
 
@@ -29,7 +29,7 @@ const test = base.extend<{
 
 test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createBlankDataset({
+  await datasetFactory.createDataset({
     datasetName,
     schema: {
       detections: "Detections",
@@ -144,7 +144,7 @@ test.describe.serial("static actions toolbar", () => {
     await modal.sidebar.switchMode("annotate");
 
     const labelListHeader = modal.sidebar.locator.getByText(
-      "Click labels to edit"
+      "Click labels to edit",
     );
 
     // Label list is visible before editing

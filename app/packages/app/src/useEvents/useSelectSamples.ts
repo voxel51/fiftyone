@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { SelectionType } from "@fiftyone/state";
 import { useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
@@ -15,7 +19,7 @@ const useSelectSamples: EventHandlerHook = () => {
       }
       setter("selectedSamples", map);
     },
-    [setter]
+    [setter],
   );
 };
 

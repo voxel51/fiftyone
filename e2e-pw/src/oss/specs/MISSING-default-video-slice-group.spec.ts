@@ -9,7 +9,7 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
  */
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "video-default-group-slice-regression"
+  "video-default-group-slice-regression",
 );
 const testVideoPath = `/tmp/test-video-${datasetName}.webm`;
 const testImgPath = `/tmp/test-img-${datasetName}.jpg`;
@@ -30,7 +30,7 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createBlankVideo({
+  await mediaFactory.createVideo({
     outputPath: testVideoPath,
     duration: 2,
     width: 50,
@@ -39,13 +39,13 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
     color: "#000000",
   });
 
-  await mediaFactory.createBlankImage({
+  await mediaFactory.createImage({
     outputPath: testImgPath,
     width: 50,
     height: 50,
   });
 
-  await mediaFactory.createBlankImage({
+  await mediaFactory.createImage({
     outputPath: testImgPath2,
     width: 50,
     height: 50,

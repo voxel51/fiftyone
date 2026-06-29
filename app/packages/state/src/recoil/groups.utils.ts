@@ -7,7 +7,7 @@ type SliceToSampleMap = Record<string, ModalSample>;
  */
 export const getGroupSampleMediaPath = (
   sample: ModalSample,
-  mediaField: string
+  mediaField: string,
 ) => {
   if (Array.isArray(sample?.urls)) {
     const mediaFieldUrl = sample.urls.find((url) => url.field === mediaField);
@@ -32,7 +32,7 @@ export const getRepresentative3dSlice = ({
   const pinnedRepresentativeSlice =
     pinnedSlice && sampleMap[pinnedSlice] ? pinnedSlice : null;
   const activeRepresentativeSlice = activeSlices.find((slice) =>
-    Boolean(sampleMap[slice])
+    Boolean(sampleMap[slice]),
   );
 
   return (
@@ -79,7 +79,7 @@ export const resolveInteraction3dState = ({
     sampleMap,
     representativeSlice,
     representativeSample: representativeSlice
-      ? sampleMap[representativeSlice] ?? modalSample
+      ? (sampleMap[representativeSlice] ?? modalSample)
       : modalSample,
   };
 };
@@ -119,14 +119,14 @@ export const normalizeActive3dSlices = ({
     uniqueSlices.includes(preferredFo3dSlice);
   const activeFo3dSlice = canUsePreferredFo3dSlice
     ? preferredFo3dSlice
-    : uniqueSlices.find((slice) => fo3dSliceSet.has(slice)) ?? null;
+    : (uniqueSlices.find((slice) => fo3dSliceSet.has(slice)) ?? null);
 
   if (!activeFo3dSlice) {
     return uniqueSlices;
   }
 
   return uniqueSlices.filter(
-    (slice) => !fo3dSliceSet.has(slice) || slice === activeFo3dSlice
+    (slice) => !fo3dSliceSet.has(slice) || slice === activeFo3dSlice,
   );
 };
 
@@ -145,7 +145,7 @@ export const resolvePinned3dSlice = ({
   samples: SliceToSampleMap;
 }) => {
   const validActiveSlices = active3dSlices.filter((slice) =>
-    Boolean(samples[slice])
+    Boolean(samples[slice]),
   );
 
   if (pinnedSlice && validActiveSlices.includes(pinnedSlice)) {
@@ -182,10 +182,10 @@ export const resolveNormalized3dSelection = ({
   samples: SliceToSampleMap;
 }) => {
   const validAll3dSlices = all3dSlices.filter((slice) =>
-    Boolean(samples[slice])
+    Boolean(samples[slice]),
   );
   const validActive3dSlices = active3dSlices.filter((slice) =>
-    Boolean(samples[slice])
+    Boolean(samples[slice]),
   );
   const nextPinnedSlice = resolvePinned3dSlice({
     active3dSlices: validActive3dSlices,

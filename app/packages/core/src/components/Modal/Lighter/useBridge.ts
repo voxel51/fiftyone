@@ -25,14 +25,16 @@ import { useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { editing } from "../Sidebar/Annotate/Edit";
+import { useAnnotationContext } from "../Sidebar/Annotate/Edit/useAnnotationContext";
 import {
   current,
   currentData,
-  savedLabel,
-} from "../Sidebar/Annotate/Edit/state";
+} from "../Sidebar/Annotate/Edit/useAnnotationContext/selectors";
 import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
-import { usePolylineMode } from "../Sidebar/Annotate/Edit/usePolylineMode";
+import {
+  usePolylineMode,
+  usePolylineModeInstaller,
+} from "../Sidebar/Annotate/Edit/usePolylineMode";
 import {
   SegmentationTool,
   useSegmentationMode,
@@ -54,16 +56,15 @@ export const useBridge = (scene: Scene2D | null) => {
   const annotationEventBus = useAnnotationEventBus();
   const commandBus = useCommandBus();
   const eventBus = useLighterEventBus(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
   const save = useSetAtom(currentData);
-  const setEditing = useSetAtom(editing);
-  const setSavedLabel = useSetAtom(savedLabel);
+  const { clear, setEditingMask } = useAnnotationContext();
   const getCurrentLabel = useAtomCallback(
-    useCallback((get) => get(current), [])
+    useCallback((get) => get(current), []),
   );
   const {
     addLabelToSidebar,
@@ -72,13 +73,15 @@ export const useBridge = (scene: Scene2D | null) => {
     updateLabelData,
   } = useLabelsContext();
   const fieldSchema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
 
   const segmentationMode = useSegmentationMode();
   const detectionMode = useDetectionMode();
   const polylineMode = usePolylineMode();
   const focus = useFocus();
+
+  usePolylineModeInstaller();
 
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
@@ -99,12 +102,12 @@ export const useBridge = (scene: Scene2D | null) => {
             overlay,
             payload.currentLabel,
             payload.value,
-            annotationEventBus
-          )
+            annotationEventBus,
+          ),
         );
       },
-      [annotationEventBus, scene]
-    )
+      [annotationEventBus, scene],
+    ),
   );
 
   useAnnotationEventHandler(
@@ -120,8 +123,8 @@ export const useBridge = (scene: Scene2D | null) => {
           tooltip: payload.tooltip ?? false,
         });
       },
-      [scene, eventBus]
-    )
+      [scene, eventBus],
+    ),
   );
 
   useAnnotationEventHandler(
@@ -136,8 +139,8 @@ export const useBridge = (scene: Scene2D | null) => {
           id: payload.id,
         });
       },
-      [scene, eventBus]
-    )
+      [scene, eventBus],
+    ),
   );
 
   useEventHandler(
@@ -156,11 +159,11 @@ export const useBridge = (scene: Scene2D | null) => {
           {
             id: payload.id,
             overlay: payload.handler.overlay,
-          }
+          },
         );
       },
-      [annotationEventBus]
-    )
+      [annotationEventBus],
+    ),
   );
 
   // Maintain refs so we don't miss events as useEventHandler
@@ -198,7 +201,7 @@ export const useBridge = (scene: Scene2D | null) => {
       f.selectOverlay(payload.id, {
         ignoreSideEffects: payload.ignoreSideEffects,
       });
-    }, [])
+    }, []),
   );
 
   // Route overlay deselection into the focus controller (exits edit mode
@@ -215,7 +218,7 @@ export const useBridge = (scene: Scene2D | null) => {
       focusRef.current.deselectOverlay({
         ignoreSideEffects: payload.ignoreSideEffects,
       });
-    }, [])
+    }, []),
   );
 
   // Merge tool: when selection clears (e.g. right-click deselect), drop
@@ -231,7 +234,7 @@ export const useBridge = (scene: Scene2D | null) => {
           ignoreSideEffects: payload.ignoreSideEffects,
         });
       }
-    }, [])
+    }, []),
   );
 
   useEventHandler(
@@ -243,14 +246,13 @@ export const useBridge = (scene: Scene2D | null) => {
 
         // If the removed overlay is the one being edited, close the sidebar
         if (currentLabel?.overlay?.id === payload.id) {
-          setEditing(null);
-          setSavedLabel(null);
+          clear();
         }
 
         removeLabelFromSidebar(payload.id);
       },
-      [getCurrentLabel, removeLabelFromSidebar, setEditing, setSavedLabel]
-    )
+      [clear, getCurrentLabel, removeLabelFromSidebar],
+    ),
   );
 
   useEventHandler(
@@ -269,8 +271,8 @@ export const useBridge = (scene: Scene2D | null) => {
           });
         }
       },
-      [addLabelToSidebar]
-    )
+      [addLabelToSidebar],
+    ),
   );
 
   useEventHandler(
@@ -295,22 +297,22 @@ export const useBridge = (scene: Scene2D | null) => {
             console.error("Failed to persist undo of creation:", error);
           });
       },
-      [commandBus, fieldSchema, getLabelById]
-    )
+      [commandBus, fieldSchema, getLabelById],
+    ),
   );
 
   const handleUndoRedo = useCallback(
     (
       payload:
         | AnnotationEventGroup["annotation:labelEdit"]
-        | AnnotationEventGroup["annotation:undoLabelEdit"]
+        | AnnotationEventGroup["annotation:undoLabelEdit"],
     ) => {
       // sync data with the sidebar
       if (payload.label) {
         updateLabelData(payload.label._id ?? payload.label.id, payload.label);
       }
     },
-    [updateLabelData]
+    [updateLabelData],
   );
 
   useAnnotationEventHandler("annotation:labelEdit", handleUndoRedo);
@@ -323,14 +325,14 @@ export const useBridge = (scene: Scene2D | null) => {
       }
 
       const newLabel = coerceStringBooleans(
-        payload.command.nextLabel as Record<string, unknown>
+        payload.command.nextLabel as Record<string, unknown>,
       );
 
       if (newLabel) {
         save(newLabel, true);
       }
     },
-    [save]
+    [save],
   );
 
   useEventHandler("lighter:command-executed", handleCommandEvent);
@@ -344,18 +346,17 @@ export const useBridge = (scene: Scene2D | null) => {
         if (!payload.label) return;
 
         const newLabel = coerceStringBooleans(
-          payload.label as Record<string, unknown>
+          payload.label as Record<string, unknown>,
         );
 
         if (newLabel) {
           save(newLabel);
         }
 
-        segmentationMode.setEditingMask(payload.id, payload.hasMask);
-        detectionMode.setEditingMask(payload.id, payload.hasMask);
+        setEditingMask(payload.id, payload.hasMask);
       },
-      [detectionMode, save, segmentationMode]
-    )
+      [save, setEditingMask],
+    ),
   );
 
   useEventHandler(
@@ -366,7 +367,7 @@ export const useBridge = (scene: Scene2D | null) => {
       } else if (detectionMode.detectionModeActive) {
         detectionMode.create();
       }
-    }, [detectionMode, segmentationMode])
+    }, [detectionMode, segmentationMode]),
   );
 
   useEventHandler(
@@ -375,14 +376,14 @@ export const useBridge = (scene: Scene2D | null) => {
       if (segmentationMode.segmentationModeActive) {
         segmentationMode.deactivateSegmentationMode();
       }
-    }, [segmentationMode])
+    }, [segmentationMode]),
   );
 
   useEventHandler(
     "lighter:detection-mode-quit",
     useCallback(() => {
       detectionMode.deactivateDetectionMode();
-    }, [detectionMode])
+    }, [detectionMode]),
   );
 
   // Generic "quit the active mode" request from global gestures (e.g.
@@ -405,7 +406,7 @@ export const useBridge = (scene: Scene2D | null) => {
         polylineMode.deactivatePolylineMode();
         return;
       }
-    }, [detectionMode, polylineMode, segmentationMode])
+    }, [detectionMode, polylineMode, segmentationMode]),
   );
 
   useEventHandler(
@@ -414,7 +415,7 @@ export const useBridge = (scene: Scene2D | null) => {
       if (segmentationMode.segmentationModeActive) {
         segmentationMode.finalizePointSelection();
       }
-    }, [segmentationMode])
+    }, [segmentationMode]),
   );
 
   const context = useColorMappingContext();

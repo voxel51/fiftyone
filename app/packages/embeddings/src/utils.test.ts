@@ -12,7 +12,7 @@ describe("shouldResolveSelection", () => {
       view,
       filters,
       patchesField,
-      pointsField
+      pointsField,
     );
 
     expect(result).toBe(false);
@@ -28,7 +28,7 @@ describe("shouldResolveSelection", () => {
       view,
       filters,
       patchesField,
-      pointsField
+      pointsField,
     );
 
     expect(result).toBe(true);
@@ -44,7 +44,7 @@ describe("shouldResolveSelection", () => {
       view,
       filters,
       patchesField,
-      pointsField
+      pointsField,
     );
 
     expect(result).toBe(true);

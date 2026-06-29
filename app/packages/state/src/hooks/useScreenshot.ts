@@ -1,5 +1,4 @@
 import { getFetchFunction, sendEvent } from "@fiftyone/utilities";
-import html2canvas from "html2canvas";
 import { useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";
 
@@ -8,7 +7,7 @@ import * as fos from "../";
 const SCREENSHOT_QUALITY = 0.25;
 
 export const useScreenshot = (
-  context: "ipython" | "colab" | "databricks" | undefined
+  context: "ipython" | "colab" | "databricks" | undefined,
 ) => {
   const subscription = useRecoilValue(fos.stateSubscription);
 
@@ -43,7 +42,7 @@ export const useScreenshot = (
                 img.onerror = reject;
                 img.src = dataURL;
               });
-            })
+            }),
         );
     });
     return Promise.all(promises);
@@ -59,12 +58,12 @@ export const useScreenshot = (
             "GET",
             link.getAttribute("href"),
             undefined,
-            "text"
+            "text",
           ).then((text: string) => {
             const style = document.createElement("style");
             style.appendChild(document.createTextNode(text));
             document.head.appendChild(style);
-          })
+          }),
         );
       }
     });
@@ -98,7 +97,8 @@ export const useScreenshot = (
   const capture = useCallback(() => {
     const { width } = document.body.getBoundingClientRect();
     captureCallbacks()
-      .then(() => html2canvas(document.body))
+      .then(() => import("html2canvas"))
+      .then(({ default: html2canvas }) => html2canvas(document.body))
       .then((canvas) => {
         const imgData = canvas.toDataURL("image/jpeg", SCREENSHOT_QUALITY);
 
@@ -109,7 +109,7 @@ export const useScreenshot = (
               subscription,
               width,
             },
-            "*"
+            "*",
           );
           return;
         }
@@ -124,16 +124,19 @@ export const useScreenshot = (
             const proxy = params.get("proxy");
 
             window.location.assign(
-              `${proxy || "/"}screenshot/${subscription}.html?proxy=${proxy}`
+              `${proxy || "/"}screenshot/${subscription}.html?proxy=${proxy}`,
             );
           }
         });
+      })
+      .catch((error) => {
+        console.error("Screenshot capture failed:", error);
       });
   }, [captureCallbacks, context, subscription]);
 
   return useCallback(() => {
     const notebook = new URLSearchParams(window.location.search).get(
-      "notebook"
+      "notebook",
     );
     if (!notebook) return;
 

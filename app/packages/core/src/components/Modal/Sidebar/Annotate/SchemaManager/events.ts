@@ -44,7 +44,7 @@ const DOM_EVENT_NAMES: Record<keyof SchemaManagerEventGroup, string> = {
  */
 export const dispatchSchemaManagerEvent = (
   dispatch: ReturnType<typeof useSchemaManagerEventBus>["dispatch"],
-  event: keyof SchemaManagerEventGroup
+  event: keyof SchemaManagerEventGroup,
 ) => {
   dispatch(event);
   document.dispatchEvent(new CustomEvent(DOM_EVENT_NAMES[event]));

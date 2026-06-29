@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
+import type { LoadStatus } from "../../../load-status";
 import type {
   McapFrameTransformResolution,
   McapFrameTransformTimeRange,
@@ -16,7 +17,7 @@ const DYNAMIC_TRANSFORM_LOOKAHEAD_NS = 500_000_000n;
 const DYNAMIC_TRANSFORM_RETRY_BASE_DELAY_MS = 250;
 const DYNAMIC_TRANSFORM_WINDOW_MAX_RETRIES = 3;
 
-export type McapFrameTransformsStatus = "idle" | "loading" | "ready" | "error";
+export type McapFrameTransformsStatus = LoadStatus;
 
 /**
  * Resolves a frame transform at a playback time.
@@ -24,7 +25,7 @@ export type McapFrameTransformsStatus = "idle" | "loading" | "ready" | "error";
 export type McapFrameTransformResolver = (
   sourceFrameId: string,
   targetFrameId: string,
-  timeNs: bigint
+  timeNs: bigint,
 ) => McapFrameTransformResolution;
 
 export interface McapFrameTransformsState {
@@ -69,7 +70,7 @@ export function useMcapFrameTransforms({
   const inFlightRangesRef = useRef<readonly McapFrameTransformTimeRange[]>([]);
   const retryCountRef = useRef<Map<string, number>>(new Map());
   const retryTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
-    new Map()
+    new Map(),
   );
   const sourceGenerationRef = useRef(0);
 
@@ -174,7 +175,7 @@ export function useMcapFrameTransforms({
         storeRef.current?.addDynamic(set.samples, requestedRange);
         retryCountRef.current.delete(requestedRangeKey);
         inFlightRangesRef.current = inFlightRangesRef.current.filter(
-          (candidate) => candidate !== requestedRange
+          (candidate) => candidate !== requestedRange,
         );
         setState((current) => ({
           ...current,
@@ -195,7 +196,7 @@ export function useMcapFrameTransforms({
         if (retryCount >= DYNAMIC_TRANSFORM_WINDOW_MAX_RETRIES) {
           retryCountRef.current.delete(requestedRangeKey);
           inFlightRangesRef.current = inFlightRangesRef.current.filter(
-            (candidate) => candidate !== requestedRange
+            (candidate) => candidate !== requestedRange,
           );
           return;
         }
@@ -213,7 +214,7 @@ export function useMcapFrameTransforms({
           }
 
           inFlightRangesRef.current = inFlightRangesRef.current.filter(
-            (candidate) => candidate !== requestedRange
+            (candidate) => candidate !== requestedRange,
           );
           setState((current) => ({
             ...current,
@@ -232,7 +233,7 @@ export function useMcapFrameTransforms({
   const frameIds = useMemo(
     () => storeRef.current?.frameIds() ?? [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.version]
+    [state.version],
   );
   const resolve = useCallback<McapFrameTransformResolver>(
     (sourceFrameId, targetFrameId, requestTimeNs) =>
@@ -246,7 +247,7 @@ export function useMcapFrameTransforms({
         targetFrameId,
       },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.version]
+    [state.version],
   );
 
   return useMemo(
@@ -256,7 +257,7 @@ export function useMcapFrameTransforms({
       resolve,
       status: state.status,
     }),
-    [frameIds, resolve, state.error, state.status]
+    [frameIds, resolve, state.error, state.status],
   );
 }
 
@@ -269,7 +270,7 @@ function dynamicTransformRetryDelayMs(retryCount: number): number {
 }
 
 function clearRetryTimeouts(
-  timeouts: Map<string, ReturnType<typeof setTimeout>>
+  timeouts: Map<string, ReturnType<typeof setTimeout>>,
 ) {
   for (const timeout of timeouts.values()) {
     clearTimeout(timeout);
@@ -289,9 +290,9 @@ function dynamicRangeForTime(timeNs: bigint): McapFrameTransformTimeRange {
 
 function isTimeInRanges(
   ranges: readonly McapFrameTransformTimeRange[],
-  timeNs: bigint
+  timeNs: bigint,
 ) {
   return ranges.some(
-    (range) => range.startTimeNs <= timeNs && timeNs <= range.endTimeNs
+    (range) => range.startTimeNs <= timeNs && timeNs <= range.endTimeNs,
   );
 }

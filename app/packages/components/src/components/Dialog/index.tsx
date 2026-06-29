@@ -4,7 +4,6 @@ import {
   Dialog as MuiDialog,
   DialogProps as MuiDialogProps,
 } from "@mui/material";
-import React from "react";
 
 export default function Dialog(props: DialogProps) {
   const { children, PaperProps, onClose, ...otherProps } = props;
@@ -35,6 +34,6 @@ export default function Dialog(props: DialogProps) {
 type DialogProps = Omit<MuiDialogProps, "onClose"> & {
   onClose?: (
     event: unknown,
-    reason: "backdropClick" | "escapeKeyDown" | "closeButtonClick"
+    reason: "backdropClick" | "escapeKeyDown" | "closeButtonClick",
   ) => void;
 };

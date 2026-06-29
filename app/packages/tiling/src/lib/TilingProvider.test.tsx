@@ -1,6 +1,13 @@
-import { act, cleanup, render, renderHook } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+} from "@testing-library/react";
 import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   TileIdScope,
   TileSettingsContent,
@@ -47,7 +54,10 @@ describe("TilingProvider", () => {
           <Wrapper initialTiles={initialTiles}>{children}</Wrapper>
         ),
       });
-      expect(Object.keys(result.current.tiles)).toEqual(["camera-1", "lidar-1"]);
+      expect(Object.keys(result.current.tiles)).toEqual([
+        "camera-1",
+        "lidar-1",
+      ]);
     });
 
     it("auto-lays out the initial tiles when no initialLayout is provided", () => {
@@ -73,7 +83,9 @@ describe("TilingProvider", () => {
         firstId = result.current.addTile(makeTile("a"), { idPrefix: "camera" });
       });
       act(() => {
-        secondId = result.current.addTile(makeTile("b"), { idPrefix: "camera" });
+        secondId = result.current.addTile(makeTile("b"), {
+          idPrefix: "camera",
+        });
       });
       expect(firstId).toBe("camera-1");
       expect(secondId).toBe("camera-2");
@@ -152,6 +164,79 @@ describe("TilingProvider", () => {
     });
   });
 
+  describe("initialLayout prop", () => {
+    it("uses the provided initialLayout instead of auto-laying out", () => {
+      const initialTiles = {
+        "a-1": makeTile("a"),
+        "b-1": makeTile("b"),
+      };
+      const explicitLayout = "a-1";
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={initialTiles}
+            initialLayout={explicitLayout}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+      expect(result.current.layout).toBe("a-1");
+    });
+  });
+
+  describe("setTileTitle", () => {
+    it("updates the title of a registered tile", () => {
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={{ "cam-1": makeTile("Camera") }}>
+            {children}
+          </Wrapper>
+        ),
+      });
+      act(() => {
+        result.current.setTileTitle("cam-1", "Front Camera");
+      });
+      expect(result.current.tiles["cam-1"].title).toBe("Front Camera");
+    });
+
+    it("is a no-op when the title is unchanged", () => {
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={{ "cam-1": makeTile("Camera") }}>
+            {children}
+          </Wrapper>
+        ),
+      });
+      const before = result.current.tiles["cam-1"];
+      act(() => {
+        result.current.setTileTitle("cam-1", "Camera");
+      });
+      // Reference-equal — no re-render triggered.
+      expect(result.current.tiles["cam-1"]).toBe(before);
+    });
+  });
+
+  describe("TileSettingsContent", () => {
+    it("does not bubble sidebar portal clicks back to the tile body", () => {
+      const onPanePointerDown = vi.fn();
+      render(
+        <TilingProvider
+          initialTiles={{
+            "tile-1": makeTile("tile"),
+          }}
+        >
+          <SettingsPortalHarness onPanePointerDown={onPanePointerDown} />
+        </TilingProvider>,
+      );
+
+      fireEvent.click(screen.getByTestId("focus-tile"));
+      fireEvent.pointerDown(screen.getByTestId("settings-button"));
+
+      expect(onPanePointerDown).not.toHaveBeenCalled();
+    });
+  });
+
   describe("removeTile", () => {
     it("drops the tile from the tiles map and the layout", () => {
       const { result } = renderHook(() => useTiling(), {
@@ -198,6 +283,43 @@ describe("TilingProvider", () => {
         result.current.removeTile("a-1");
       });
       expect(result.current.focusedTileId).toBe("b-1");
+    });
+
+    it("collapses the split when removing the second of two tiles", () => {
+      // Removing "b-1" from {row, "a-1", "b-1"} should collapse to just "a-1".
+      const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={initialTiles}>{children}</Wrapper>
+        ),
+      });
+      act(() => {
+        result.current.removeTile("b-1");
+      });
+      expect(result.current.layout).toBe("a-1");
+      expect(result.current.tiles["b-1"]).toBeUndefined();
+    });
+
+    it("preserves the sibling subtree when removing a leaf from a deeper split", () => {
+      // 3-tile layout: {row, "a-1", {col, "b-1", "c-1"}}
+      // Removing "c-1" → {row, "a-1", "b-1"} — both children survive so the
+      // root split node is reconstructed (not collapsed).
+      const initialTiles = {
+        "a-1": makeTile("a"),
+        "b-1": makeTile("b"),
+        "c-1": makeTile("c"),
+      };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={initialTiles}>{children}</Wrapper>
+        ),
+      });
+      act(() => {
+        result.current.removeTile("c-1");
+      });
+      expect(result.current.tiles["c-1"]).toBeUndefined();
+      expect(result.current.tiles["a-1"]).toBeDefined();
+      expect(result.current.tiles["b-1"]).toBeDefined();
     });
 
     it("is a no-op when removing an unknown id", () => {
@@ -262,15 +384,21 @@ describe("TilingProvider", () => {
     });
   });
 
+  describe("useTiling guard", () => {
+    it("throws when called outside a TilingProvider", () => {
+      const consoleError = console.error;
+      console.error = () => {};
+      expect(() => renderHook(() => useTiling())).toThrow(
+        "useTiling must be used inside <TilingProvider>",
+      );
+      console.error = consoleError;
+    });
+  });
+
   describe("settings portal", () => {
-    function Host({
-      initialFocus,
-    }: {
-      initialFocus?: string;
-    }) {
+    function Host({ initialFocus }: { initialFocus?: string }) {
       const tiling = useTiling();
-      // Bind the slot DOM element on mount so TileSettingsContent
-      // has somewhere to portal into.
+      // This effect primes the focused tile for settings portal tests.
       React.useEffect(() => {
         if (initialFocus) tiling.setFocusedTileId(initialFocus);
       }, [tiling, initialFocus]);
@@ -303,7 +431,7 @@ describe("TilingProvider", () => {
       const utils = render(
         <TilingProvider>
           <Host />
-        </TilingProvider>
+        </TilingProvider>,
       );
       expect(utils.queryByTestId("cam-settings")).toBeNull();
       expect(utils.queryByTestId("lid-settings")).toBeNull();
@@ -313,14 +441,14 @@ describe("TilingProvider", () => {
       const utils = render(
         <TilingProvider initialTiles={{ "cam-1": makeTile("cam") }}>
           <Host />
-        </TilingProvider>
+        </TilingProvider>,
       );
       act(() => {
         utils.getByTestId("focus-cam").click();
       });
-      expect(utils.getByTestId("slot").contains(
-        utils.getByTestId("cam-settings")
-      )).toBe(true);
+      expect(
+        utils.getByTestId("slot").contains(utils.getByTestId("cam-settings")),
+      ).toBe(true);
       expect(utils.queryByTestId("lid-settings")).toBeNull();
     });
 
@@ -333,7 +461,7 @@ describe("TilingProvider", () => {
           }}
         >
           <Host />
-        </TilingProvider>
+        </TilingProvider>,
       );
       act(() => utils.getByTestId("focus-cam").click());
       expect(utils.queryByTestId("cam-settings")).not.toBeNull();
@@ -345,3 +473,30 @@ describe("TilingProvider", () => {
     });
   });
 });
+
+function SettingsPortalHarness({
+  onPanePointerDown,
+}: {
+  readonly onPanePointerDown: () => void;
+}) {
+  const { setFocusedTileId, setSettingsSlotEl } = useTiling();
+
+  return (
+    <>
+      <button
+        data-testid="focus-tile"
+        onClick={() => setFocusedTileId("tile-1")}
+      >
+        focus
+      </button>
+      <div data-testid="settings-slot" ref={setSettingsSlotEl} />
+      <TileIdScope tileId="tile-1">
+        <div data-testid="tile-body" onPointerDown={onPanePointerDown}>
+          <TileSettingsContent>
+            <button data-testid="settings-button">settings</button>
+          </TileSettingsContent>
+        </div>
+      </TileIdScope>
+    </>
+  );
+}

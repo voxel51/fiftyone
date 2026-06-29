@@ -8,8 +8,11 @@ import type { RegisteredTile } from "./types";
 import { useTileRegistry } from "./use-tile-registry";
 import {
   useSetTileSelection,
+  useSetTileTitle,
   useTileSelection,
   useTileSelectionFor,
+  useTileTitle,
+  useTileTitleFor,
   useTileTypes,
 } from "./use-tile-state";
 
@@ -60,7 +63,7 @@ describe("useTileSelection / useTileSelectionFor / useSetTileSelection", () => {
         value: useTileSelection<{ x: number }>(),
         set: useSetTileSelection(),
       }),
-      { wrapper: wrap("graph-1") }
+      { wrapper: wrap("graph-1") },
     );
     act(() => {
       result.current.set({ x: 7 });
@@ -93,7 +96,7 @@ describe("useTileSelection / useTileSelectionFor / useSetTileSelection", () => {
             </TilingProvider>
           </JotaiProvider>
         ),
-      }
+      },
     );
     expect(result.current).toBeNull();
     act(() => {
@@ -110,6 +113,111 @@ describe("useTileSelection / useTileSelectionFor / useSetTileSelection", () => {
   });
 });
 
+describe("useTileTitle / useTileTitleFor / useSetTileTitle", () => {
+  afterEach(() => cleanup());
+
+  it("useTileTitle returns null when outside a TileIdScope", () => {
+    const { result } = renderHook(() => ({ title: useTileTitle() }), {
+      wrapper: makePlainWrap(),
+    });
+    expect(result.current.title).toBeNull();
+  });
+
+  it("useTileTitle returns the tile's current title when scoped", () => {
+    const store = createStore();
+    const { result } = renderHook(() => ({ title: useTileTitle() }), {
+      wrapper: ({ children }) => (
+        <JotaiProvider store={store}>
+          <TilingProvider
+            initialTiles={{ "cam-1": { title: "Camera", render: () => null } }}
+          >
+            <TileIdScope tileId="cam-1">{children}</TileIdScope>
+          </TilingProvider>
+        </JotaiProvider>
+      ),
+    });
+    expect(result.current.title).toBe("Camera");
+  });
+
+  it("useTileTitleFor returns null for a null tileId", () => {
+    const { result } = renderHook(() => ({ title: useTileTitleFor(null) }), {
+      wrapper: makePlainWrap(),
+    });
+    expect(result.current.title).toBeNull();
+  });
+
+  it("useTileTitleFor returns the title for an explicit tileId", () => {
+    const store = createStore();
+    const { result } = renderHook(() => ({ title: useTileTitleFor("cam-1") }), {
+      wrapper: ({ children }) => (
+        <JotaiProvider store={store}>
+          <TilingProvider
+            initialTiles={{ "cam-1": { title: "Camera", render: () => null } }}
+          >
+            {children}
+          </TilingProvider>
+        </JotaiProvider>
+      ),
+    });
+    expect(result.current.title).toBe("Camera");
+  });
+
+  it("useSetTileTitle updates the tile's title", () => {
+    const store = createStore();
+    const { result } = renderHook(
+      () => ({
+        setTitle: useSetTileTitle(),
+        title: useTileTitleFor("cam-1"),
+      }),
+      {
+        wrapper: ({ children }) => (
+          <JotaiProvider store={store}>
+            <TilingProvider
+              initialTiles={{
+                "cam-1": { title: "Camera", render: () => null },
+              }}
+            >
+              <TileIdScope tileId="cam-1">{children}</TileIdScope>
+            </TilingProvider>
+          </JotaiProvider>
+        ),
+      },
+    );
+    expect(result.current.title).toBe("Camera");
+    act(() => {
+      result.current.setTitle("Front Camera");
+    });
+    expect(result.current.title).toBe("Front Camera");
+  });
+
+  it("useSetTileTitle is a no-op when called outside a TileIdScope", () => {
+    const store = createStore();
+    const { result } = renderHook(
+      () => ({
+        setTitle: useSetTileTitle(),
+        title: useTileTitleFor("cam-1"),
+      }),
+      {
+        wrapper: ({ children }) => (
+          <JotaiProvider store={store}>
+            <TilingProvider
+              initialTiles={{
+                "cam-1": { title: "Camera", render: () => null },
+              }}
+            >
+              {children}
+            </TilingProvider>
+          </JotaiProvider>
+        ),
+      },
+    );
+    act(() => {
+      result.current.setTitle("Should Not Change");
+    });
+    expect(result.current.title).toBe("Camera");
+  });
+});
+
 describe("useTileTypes", () => {
   afterEach(() => cleanup());
 
@@ -119,7 +227,7 @@ describe("useTileTypes", () => {
         registry: useTileRegistry(),
         types: useTileTypes(),
       }),
-      { wrapper: makePlainWrap() }
+      { wrapper: makePlainWrap() },
     );
   }
 

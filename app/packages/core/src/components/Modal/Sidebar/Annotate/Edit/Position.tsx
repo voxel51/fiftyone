@@ -5,7 +5,6 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
@@ -13,7 +12,7 @@ import {
   imagePixelsToCanvasPixels,
   relativeToImagePixels,
 } from "./coordinateConversion";
-import { currentData, currentOverlay } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 const createInput = (name: string, readOnly?: boolean) => {
   return {
@@ -56,32 +55,42 @@ export default function Position({ readOnly = false }: PositionProps) {
     dimensions: {},
   });
 
-  const overlay = useAtomValue(currentOverlay);
-  const [data, setData] = useAtom(currentData);
+  const { selected, setData } = useAnnotationContext();
+  const overlay = selected?.overlay;
+  const data = selected?.data;
 
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   const toImagePixels = useCallback(
     (relative: Parameters<typeof relativeToImagePixels>[0]) => {
-      const dims = scene
-        ?.getCanonicalMedia()
-        ?.getOriginalDimensions() ?? { width: 1, height: 1 };
+      const dims = scene?.getCanonicalMedia()?.getOriginalDimensions() ?? {
+        width: 1,
+        height: 1,
+      };
       return relativeToImagePixels(relative, dims);
     },
-    [scene]
+    [scene],
   );
 
   const toCanvasPixels = useCallback(
     (imageRect: Parameters<typeof imagePixelsToCanvasPixels>[0]) => {
       const canonicalMedia = scene?.getCanonicalMedia();
-      const dims = canonicalMedia?.getOriginalDimensions() ?? { width: 1, height: 1 };
-      const rendered = canonicalMedia?.getRenderedBounds() ?? { x: 0, y: 0, width: 1, height: 1 };
+      const dims = canonicalMedia?.getOriginalDimensions() ?? {
+        width: 1,
+        height: 1,
+      };
+      const rendered = canonicalMedia?.getRenderedBounds() ?? {
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+      };
       return imagePixelsToCanvasPixels(imageRect, dims, rendered);
     },
-    [scene]
+    [scene],
   );
 
   useEffect(() => {
@@ -119,7 +128,7 @@ export default function Position({ readOnly = false }: PositionProps) {
         bounding_box: [relative.x, relative.y, relative.width, relative.height],
       });
     },
-    [data?._id, overlay, toImagePixels, setData]
+    [data?._id, overlay, toImagePixels, setData],
   );
 
   useEventHandler("lighter:overlay-bounds-changed", handleBoundsChange);
@@ -151,7 +160,7 @@ export default function Position({ readOnly = false }: PositionProps) {
         },
       },
     }),
-    [readOnly]
+    [readOnly],
   );
 
   return (
@@ -179,7 +188,12 @@ export default function Position({ readOnly = false }: PositionProps) {
           };
           const newCanvasBounds = toCanvasPixels(newImagePixels);
           scene?.executeCommand(
-            new TransformOverlayCommand(overlay, overlay.id, oldBounds, newCanvasBounds)
+            new TransformOverlayCommand(
+              overlay,
+              overlay.id,
+              oldBounds,
+              newCanvasBounds,
+            ),
           );
         }}
       />

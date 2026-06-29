@@ -12,7 +12,7 @@ import {
   hasGroupSlices,
   modalGroupSlice,
 } from "./groups";
-import { modalLooker, modalSample } from "./modal";
+import { groupSampleAtMainSlice, modalLooker } from "./modal";
 import { dynamicGroupsViewMode, selectedMediaField } from "./options";
 import { fieldPaths } from "./schema";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
@@ -37,21 +37,21 @@ export const dynamicGroupFields = selector<string[]>({
         ftype: EMBEDDED_DOCUMENT_FIELD,
         embeddedDocType: GROUP,
         space: State.SPACE.SAMPLE,
-      })
+      }),
     );
     const lists = get(
-      fieldPaths({ ftype: LIST_FIELD, space: State.SPACE.SAMPLE })
+      fieldPaths({ ftype: LIST_FIELD, space: State.SPACE.SAMPLE }),
     );
     const primitives = get(
-      fieldPaths({ ftype: DYNAMIC_GROUP_FIELDS, space: State.SPACE.SAMPLE })
+      fieldPaths({ ftype: DYNAMIC_GROUP_FIELDS, space: State.SPACE.SAMPLE }),
     ).filter((path) => path !== "filepath" && path !== "id");
 
     const filtered = primitives.filter(
       (path) =>
         lists.every((list) => !path.startsWith(list)) &&
         groups.every(
-          (group) => path !== `${group}.id` && path !== `${group}.name`
-        )
+          (group) => path !== `${group}.id` && path !== `${group}.name`,
+        ),
     );
 
     return filtered;
@@ -61,7 +61,7 @@ export const dynamicGroupFields = selector<string[]>({
 export const dynamicGroupPageSelector = selectorFamily<
   (
     cursor: number,
-    pageSize: number
+    pageSize: number,
   ) => {
     after: string | null;
     count: number;
@@ -138,7 +138,10 @@ export const imaVidLookerState = atomFamily<any, string>({
 export const groupByFieldValue = selector({
   key: "groupByFieldValue",
   get: ({ get }) => {
-    return get(modalSample)?.sample?._group ?? null;
+    // Always read from the sample on the main groupSlice, independent of
+    // which slice the modal is currently displaying. See
+    // {@link groupSampleAtMainSlice}.
+    return get(groupSampleAtMainSlice)?.sample?._group ?? null;
   },
 });
 
@@ -154,7 +157,7 @@ export const imaVidStoreKey = selectorFamily<
       const mediaField = get(selectedMediaField(modal));
 
       return `${JSON.stringify(
-        get(view)
+        get(view),
       )}-${groupByFieldValue}-${slice}-${mediaField}`;
     },
 });
@@ -187,7 +190,7 @@ export const dynamicGroupParameters =
       const viewArr = get(view);
       if (!viewArr) return null;
       const groupByViewStageNode = viewArr.find(
-        (view) => view._cls === GROUP_BY_VIEW_STAGE
+        (view) => view._cls === GROUP_BY_VIEW_STAGE,
       );
       if (!groupByViewStageNode) return null;
       // fifth index is 'flat', we want it to be false for dynamic groups

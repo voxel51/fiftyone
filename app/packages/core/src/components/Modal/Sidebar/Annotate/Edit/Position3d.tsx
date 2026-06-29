@@ -11,10 +11,9 @@ import {
 } from "@fiftyone/looker-3d";
 import { DETECTION } from "@fiftyone/utilities";
 import { Box, Stack, TextField } from "@mui/material";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { Vector3Tuple } from "three";
-import { currentData, currentOverlay } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 interface Coordinates3d {
   position: { x?: number; y?: number; z?: number };
@@ -57,8 +56,9 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
     dimensions: {},
     rotation: {},
   });
-  const data = useAtomValue<DetectionLabel>(currentData);
-  const overlay = useAtomValue(currentOverlay);
+  const { selected } = useAnnotationContext();
+  const data = selected?.data as DetectionLabel | null;
+  const overlay = selected?.overlay;
   const eventBus = useAnnotationEventBus();
   const labelId = data?._id ?? "";
 
@@ -83,7 +83,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
       // This shouldn't really happen but is here for a fallback
       console.warn(
         "[Position3d] Using fallback data path - workingLabel not available for label:",
-        data._id
+        data._id,
       );
       baseLocation = data.location;
       baseDimensions = data.dimensions;
@@ -210,7 +210,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
         });
       }
     },
-    [data, transformState, overlay, eventBus, readOnly]
+    [data, transformState, overlay, eventBus, readOnly],
   );
 
   return (

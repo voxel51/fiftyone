@@ -16,11 +16,7 @@ import {
   collectTileIds,
 } from "../views/MosaicGrid/MosaicGrid";
 import { tileSelectionAtom } from "./atoms";
-import type {
-  AddTileOptions,
-  TilingContextValue,
-  TilingTile,
-} from "./types";
+import type { AddTileOptions, TilingContextValue, TilingTile } from "./types";
 
 export type { AddTileOptions, TilingContextValue, TilingTile } from "./types";
 
@@ -57,7 +53,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   const [layout, setLayoutState] = useState<MosaicNode<string> | null>(
     initialLayout === undefined
       ? autoLayoutFn(Object.keys(initialTiles))
-      : initialLayout
+      : initialLayout,
   );
   const [focusedTileId, setFocusedTileId] = useState<string | null>(null);
   // Mirror `focusedTileId` in a ref so `addTile` can resolve the target
@@ -65,6 +61,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   // updater (state updaters must remain pure; nested setState calls
   // duplicate in Strict Mode).
   const focusedTileIdRef = useRef<string | null>(null);
+  // This effect mirrors focusedTileId into a ref for stable addTile calls.
   useEffect(() => {
     focusedTileIdRef.current = focusedTileId;
   }, [focusedTileId]);
@@ -74,7 +71,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   // Portal target the settings sidebar registers; `<TileSettingsContent>`
   // children render here when their tile is focused.
   const [settingsSlotEl, setSettingsSlotEl] = useState<HTMLElement | null>(
-    null
+    null,
   );
   // Seed the counter past any `<prefix>-<n>` suffix in the initial tiles,
   // so the first `addTile("camera", ...)` against `{ "camera-1": ... }`
@@ -84,7 +81,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     Object.keys(initialTiles).reduce((max, id) => {
       const m = id.match(/-(\d+)$/);
       return m ? Math.max(max, Number(m[1])) : max;
-    }, 0) + 1
+    }, 0) + 1,
   );
   // Always-current ref so autoLayout stays referentially stable — avoids
   // stale captures in useMemo dependency-suppressed consumers (TilingHeader).
@@ -104,7 +101,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       // updaters synchronously (and Strict Mode replays them), so
       // side effects belong here, not inside.
       const idsToRemove = Object.keys(tiles).filter(
-        (id) => !presentIds.has(id)
+        (id) => !presentIds.has(id),
       );
       if (idsToRemove.length > 0) {
         setTiles((prev) => {
@@ -119,16 +116,16 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         }
       }
       setFocusedTileId((current) =>
-        current && presentIds.has(current) ? current : null
+        current && presentIds.has(current) ? current : null,
       );
     },
-    [tiles]
+    [tiles],
   );
 
   const addTile = useCallback(
     (
       tile: TilingTile,
-      { idPrefix = "tile", targetId, focus = true }: AddTileOptions = {}
+      { idPrefix = "tile", targetId, focus = true }: AddTileOptions = {},
     ): string => {
       const id = `${idPrefix}-${counterRef.current++}`;
       setTiles((prev) => ({ ...prev, [id]: tile }));
@@ -140,31 +137,28 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       if (focus) setFocusedTileId(id);
       return id;
     },
-    []
+    [],
   );
 
-  const removeTile = useCallback(
-    (id: string) => {
-      setTiles((prev) => {
-        if (!(id in prev)) return prev;
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      setLayoutState((prev) => {
-        if (prev === null) return null;
-        if (typeof prev === "string") return prev === id ? null : prev;
-        // Walk the tree, collapsing the parent split when one child is removed.
-        const stripped = stripTile(prev, id);
-        return stripped;
-      });
-      setFocusedTileId((current) => (current === id ? null : current));
-      // Release the per-tile atomFamily entry so the store doesn't
-      // grow unbounded across long sessions.
-      tileSelectionAtom.remove(id);
-    },
-    []
-  );
+  const removeTile = useCallback((id: string) => {
+    setTiles((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setLayoutState((prev) => {
+      if (prev === null) return null;
+      if (typeof prev === "string") return prev === id ? null : prev;
+      // Walk the tree, collapsing the parent split when one child is removed.
+      const stripped = stripTile(prev, id);
+      return stripped;
+    });
+    setFocusedTileId((current) => (current === id ? null : current));
+    // Release the per-tile atomFamily entry so the store doesn't
+    // grow unbounded across long sessions.
+    tileSelectionAtom.remove(id);
+  }, []);
 
   const setTileTitle = useCallback((tileId: string, title: string) => {
     setTiles((prev) => {
@@ -208,7 +202,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       autoLayout,
       settingsSlotEl,
       setTileTitle,
-    ]
+    ],
   );
 
   return (
@@ -224,7 +218,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
  */
 function stripTile(
   node: MosaicNode<string>,
-  id: string
+  id: string,
 ): MosaicNode<string> | null {
   if (typeof node === "string") return node === id ? null : node;
   const first = stripTile(node.first, id);
@@ -272,5 +266,12 @@ export const TileSettingsContent: React.FC<{
   const tileId = useTileId();
   const { focusedTileId, settingsSlotEl } = useTiling();
   if (!tileId || tileId !== focusedTileId || !settingsSlotEl) return null;
-  return createPortal(children, settingsSlotEl);
+  return createPortal(
+    <div onPointerDown={stopPortalEvent}>{children}</div>,
+    settingsSlotEl,
+  );
 };
+
+function stopPortalEvent(event: React.SyntheticEvent) {
+  event.stopPropagation();
+}

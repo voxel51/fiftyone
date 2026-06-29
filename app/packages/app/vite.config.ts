@@ -28,23 +28,33 @@ async function loadConfig() {
       // Vite's worker bundling breaks ort's WASM resolution and emits hashed
       // copies that ort can't find by name. Emit unhashed copies and clean up.
       (() => {
-        const ortWasmFiles = ["ort-wasm-simd-threaded.jsep.wasm", "ort-wasm-simd-threaded.jsep.mjs"];
+        const ortWasmFiles = [
+          "ort-wasm-simd-threaded.jsep.wasm",
+          "ort-wasm-simd-threaded.jsep.mjs",
+        ];
         let assetsDir = "";
         return {
           name: "copy-ort-wasm",
           apply: "build",
           configResolved(config) {
-            assetsDir = path.resolve(config.root, config.build.outDir, "assets");
+            assetsDir = path.resolve(
+              config.root,
+              config.build.outDir,
+              "assets",
+            );
           },
           buildStart() {
             const ortDist = path.dirname(require.resolve("onnxruntime-web"));
             for (const f of ortWasmFiles) {
-              this.emitFile({ type: "asset", fileName: `assets/${f}`, source: fs.readFileSync(path.join(ortDist, f)) });
+              this.emitFile({
+                type: "asset",
+                fileName: `assets/${f}`,
+                source: fs.readFileSync(path.join(ortDist, f)),
+              });
             }
           },
           closeBundle() {
-            if (!fs.existsSync(assetsDir))
-              return;
+            if (!fs.existsSync(assetsDir)) return;
             const keep = new Set(ortWasmFiles);
             for (const f of fs.readdirSync(assetsDir)) {
               if (f.includes("ort-wasm") && !keep.has(f)) {
@@ -76,12 +86,41 @@ async function loadConfig() {
       dedupe: ["react", "react-dom", "react/jsx-runtime"],
     },
     build: {
+      commonjsOptions: {
+        // The @foxglove wasm packages locate their .wasm binaries with
+        // `require("./<name>.wasm")`, which foxgloveWasmAsUrl() resolves
+        // to a Vite `?url` module (a single default export holding the
+        // asset URL string). Default CommonJS interop hands `require()`
+        // the frozen module namespace instead of that string, and the
+        // emscripten glue then crashes on `filename.startsWith(...)`.
+        // Returning the default export for exactly these ids gives the
+        // glue the URL string, matching the dev-mode esbuild shim.
+        requireReturnsDefault: (id: string) =>
+          /[\\/]@foxglove[\\/]wasm-(lz4|zstd|bz2)[\\/].*\.wasm\?url$/.test(id)
+            ? "auto"
+            : false,
+      },
       rollupOptions: {
         onwarn(warning, warn) {
           if (warning.code === "MODULE_LEVEL_DIRECTIVE") {
             return;
           }
           warn(warning);
+        },
+        output: {
+          // Give the heavy, lazily-loaded vendor libs their own deterministic
+          // chunks so rollup doesn't hoist them into the entry or glue them
+          // together (e.g. mapbox + plotly landing in one blob). Each only
+          // loads when its panel/view opens.
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (/[\\/](mapbox-gl|@mapbox)[\\/]/.test(id)) return "mapbox-gl";
+              if (/[\\/]plotly\.js/.test(id) || /react-plotly\.js/.test(id))
+                return "plotly";
+              if (/[\\/]recharts[\\/]/.test(id)) return "recharts";
+              if (/[\\/]html2canvas[\\/]/.test(id)) return "html2canvas";
+            }
+          },
         },
       },
     },
@@ -132,7 +171,7 @@ function foxgloveWasmAsUrl(): Plugin {
         !source.endsWith(".wasm") ||
         !importer ||
         !/[\\/]node_modules[\\/]@foxglove[\\/]wasm-(lz4|zstd|bz2)[\\/]/.test(
-          importer
+          importer,
         )
       ) {
         return null;
@@ -159,20 +198,23 @@ function foxgloveWasmOptimizeAsUrl() {
   return {
     name: "foxglove-wasm-url",
     setup(build) {
-      build.onResolve({ filter: /^\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm$/ }, (args) => {
-        if (!wrapperPattern.test(args.importer)) {
-          return undefined;
-        }
+      build.onResolve(
+        { filter: /^\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm$/ },
+        (args) => {
+          if (!wrapperPattern.test(args.importer)) {
+            return undefined;
+          }
 
-        return {
-          namespace,
-          path: path.resolve(args.resolveDir, args.path),
-        };
-      });
+          return {
+            namespace,
+            path: path.resolve(args.resolveDir, args.path),
+          };
+        },
+      );
 
       build.onLoad({ filter: /.*/, namespace }, (args) => ({
         contents: `module.exports = ${JSON.stringify(
-          `/@fs/${normalizePath(args.path)}`
+          `/@fs/${normalizePath(args.path)}`,
         )};`,
         loader: "js",
       }));

@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { useSessionSetter, useSetModalState } from "@fiftyone/state";
 import { useCallback } from "react";
 import type { EventHandlerHook } from "./registerEvent";
@@ -51,7 +55,7 @@ const useSetSample: EventHandlerHook = ({ router }) => {
         setter("modalSelector", selector);
       });
     },
-    [router, setModalState, setter]
+    [router, setModalState, setter],
   );
 };
 

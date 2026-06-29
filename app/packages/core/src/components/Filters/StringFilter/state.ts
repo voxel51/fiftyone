@@ -39,7 +39,7 @@ export const pathSearchCount = selectorFamily({
             modal,
             path,
             filter: { path, value },
-          })
+          }),
         )?.values?.[0]?.count || 0
       );
     },
@@ -74,7 +74,7 @@ export const stringSearchResults = selectorFamily<
 
       if (!modal && get(fos.queryPerformance)) {
         const filters = Object.fromEntries(
-          Object.entries(get(fos.filters) || {}).filter(([p]) => p !== path)
+          Object.entries(get(fos.filters) || {}).filter(([p]) => p !== path),
         );
 
         const keys = new Set(Object.keys(filters));
@@ -87,7 +87,7 @@ export const stringSearchResults = selectorFamily<
               exclude: [...selected.filter((s) => s !== null)] as string[],
               search,
               ...get(fos.filterSearch(path)),
-            })
+            }),
           )?.map((value) => ({ value, count: null })),
         };
       }

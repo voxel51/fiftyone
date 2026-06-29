@@ -2,7 +2,7 @@ import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { createBlankImage } from "src/shared/media-factory/image";
+import { createImage } from "src/shared/media-factory/image";
 
 const IMAGES = {
   grid: "#cccccc",
@@ -28,13 +28,13 @@ const writeImages = async () => {
 
   Object.entries(IMAGES).forEach(([key, color]) => {
     createPromises.push(
-      createBlankImage({
+      createImage({
         outputPath: `/tmp/${key}-media-field.png`,
         width: 50,
         height: 50,
         fillColor: color,
         hideLogs: true,
-      })
+      }),
     );
   });
 
@@ -84,7 +84,7 @@ test.describe.serial("media field", () => {
   test("modal media field", async ({ grid, fiftyoneLoader, modal, page }) => {
     test.skip(
       true,
-      "TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL"
+      "TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL",
     );
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.openFirstSample();

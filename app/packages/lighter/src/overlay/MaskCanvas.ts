@@ -96,7 +96,7 @@ export class MaskCanvas {
    * Plain `undefined` and `{ $binary: { base64 } }` wrappers are unwrapped.
    */
   private static extractSource(
-    mask?: SerializedMask | OverlayMask
+    mask?: SerializedMask | OverlayMask,
   ): string | OverlayMask | undefined {
     if (!mask) return undefined;
     if (typeof mask === "string") return mask;
@@ -206,7 +206,7 @@ export class MaskCanvas {
     containerId: string,
     color: string,
     opacity: number,
-    onDecoded?: () => void
+    onDecoded?: () => void,
   ): void {
     this.currentColor = color;
     this.decodeMaskIfNeeded(color, onDecoded);
@@ -224,7 +224,7 @@ export class MaskCanvas {
         { type: "canvas", canvas: this.canvas },
         bounds,
         { opacity },
-        containerId
+        containerId,
       );
 
       return;
@@ -235,7 +235,7 @@ export class MaskCanvas {
         { type: "bitmap", bitmap: this.maskBitmap },
         bounds,
         { opacity },
-        containerId
+        containerId,
       );
 
       return;
@@ -363,7 +363,7 @@ export class MaskCanvas {
   private paint(
     point: Point,
     toolState: SegmentationToolState,
-    style: DrawStyle | undefined
+    style: DrawStyle | undefined,
   ) {
     if (!this.context) return;
 
@@ -399,7 +399,7 @@ export class MaskCanvas {
     worldPoint: Point,
     bounds: Rect,
     toolState: SegmentationToolState,
-    style: DrawStyle | undefined
+    style: DrawStyle | undefined,
   ): Rect | undefined {
     this.ensureCanvas(bounds);
 
@@ -446,7 +446,7 @@ export class MaskCanvas {
     worldPoints: Point[],
     bounds: Rect,
     toolState: SegmentationToolState,
-    style: DrawStyle | undefined
+    style: DrawStyle | undefined,
   ): Rect | undefined {
     if (worldPoints.length < 3) return undefined;
 
@@ -520,7 +520,7 @@ export class MaskCanvas {
     otherSource: HTMLCanvasElement | ImageBitmap,
     otherBounds: Rect,
     ourBounds: Rect,
-    onEncoded?: (encoded: string) => void
+    onEncoded?: (encoded: string) => void,
   ): Rect {
     this.ensureCanvas(ourBounds);
     this.paintStart(ourBounds);
@@ -529,11 +529,11 @@ export class MaskCanvas {
     const minY = Math.min(ourBounds.y, otherBounds.y);
     const maxX = Math.max(
       ourBounds.x + ourBounds.width,
-      otherBounds.x + otherBounds.width
+      otherBounds.x + otherBounds.width,
     );
     const maxY = Math.max(
       ourBounds.y + ourBounds.height,
-      otherBounds.y + otherBounds.height
+      otherBounds.y + otherBounds.height,
     );
 
     const newBounds =
@@ -618,7 +618,7 @@ export class MaskCanvas {
     from: Point,
     to: Point,
     tool: SegmentationToolState,
-    style: DrawStyle | undefined
+    style: DrawStyle | undefined,
   ): void {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
@@ -662,7 +662,7 @@ export class MaskCanvas {
     width: number,
     height: number,
     offsetX = 0,
-    offsetY = 0
+    offsetY = 0,
   ) {
     const { maskCanvas, maskContext } = createMaskCanvas(width, height);
 
@@ -705,7 +705,7 @@ export class MaskCanvas {
    */
   private updateBounds(
     oldBounds: Rect,
-    extent: { minX: number; minY: number; maxX: number; maxY: number }
+    extent: { minX: number; minY: number; maxX: number; maxY: number },
   ): Rect | undefined {
     if (!this.canvas || !this.context) return undefined;
 
@@ -830,7 +830,7 @@ export class MaskCanvas {
    */
   restoreSnapshot(
     snapshot: MaskSnapshot | undefined,
-    onEncoded?: (encoded: string) => void
+    onEncoded?: (encoded: string) => void,
   ): void {
     if (!snapshot) {
       this.canvas = undefined;
@@ -843,7 +843,7 @@ export class MaskCanvas {
 
     const { maskCanvas, maskContext } = createMaskCanvas(
       snapshot.width,
-      snapshot.height
+      snapshot.height,
     );
     maskContext.putImageData(snapshot.imageData, 0, 0);
 

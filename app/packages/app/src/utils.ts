@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { matchPath } from "./routing";
 
 export const getDatasetName = (pathname?: string) => {
@@ -7,7 +11,7 @@ export const getDatasetName = (pathname?: string) => {
       path: "/datasets/:name",
     },
     window.location.search,
-    {}
+    {},
   );
 
   if (result) {

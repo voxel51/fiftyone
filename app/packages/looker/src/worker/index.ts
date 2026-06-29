@@ -101,7 +101,7 @@ const processLabels = async (
   labelTagColors: ProcessSample["labelTagColors"],
   selectedLabelTags: ProcessSample["selectedLabelTags"],
   schema: ProcessSample["schema"],
-  activePaths: ProcessSample["activePaths"]
+  activePaths: ProcessSample["activePaths"],
 ): Promise<[Promise<ImageBitmap[]>[], ArrayBuffer[]]> => {
   const maskPathDecodingPromises: Promise<void>[] = [];
   const painterPromises: Promise<void>[] = [];
@@ -145,8 +145,8 @@ const processLabels = async (
               sources,
               cls,
               maskPathDecodingPromises,
-              maskTargetsBuffers
-            )
+              maskTargetsBuffers,
+            ),
           );
 
           if (cls in DeserializerFactory) {
@@ -170,7 +170,7 @@ const processLabels = async (
             labelTagColors,
             selectedLabelTags,
             schema,
-            activePaths
+            activePaths,
           );
         bitmapPromises.push(...moreBitmapPromises);
         maskTargetsBuffers.push(...moreMaskTargetsBuffers);
@@ -226,8 +226,8 @@ const processLabels = async (
               customizeColorSetting,
               colorscale,
               labelTagColors,
-              selectedLabelTags
-            )
+              selectedLabelTags,
+            ),
           );
         }
       }
@@ -265,7 +265,7 @@ const processLabels = async (
 const collectBitmapPromises = (label, cls, bitmapPromises) => {
   if (cls === DETECTIONS) {
     label?.detections?.forEach((detection) =>
-      collectBitmapPromises(detection, DETECTION, bitmapPromises)
+      collectBitmapPromises(detection, DETECTION, bitmapPromises),
     );
     return;
   }
@@ -284,7 +284,7 @@ const collectBitmapPromises = (label, cls, bitmapPromises) => {
     const imageData = new ImageData(
       new Uint8ClampedArray(label[overlayField].image),
       width,
-      height
+      height,
     );
 
     // set raw image to null - will be garbage collected
@@ -297,7 +297,7 @@ const collectBitmapPromises = (label, cls, bitmapPromises) => {
           label[overlayField].bitmap = imageBitmap;
           resolve(imageBitmap);
         });
-      })
+      }),
     );
   }
 };
@@ -373,7 +373,7 @@ const processSample = async ({
       labelTagColors,
       selectedLabelTags,
       schema,
-      activePaths
+      activePaths,
     );
 
     if (bitmapPromises.length !== 0) {
@@ -401,8 +401,8 @@ const processSample = async ({
         labelTagColors,
         selectedLabelTags,
         schema,
-        activePaths
-      )
+        activePaths,
+      ),
     );
     const framePromisesResolved = await Promise.all(allFramePromises);
     for (const [bitmapPromises, buffers] of framePromisesResolved) {
@@ -432,7 +432,7 @@ const processSample = async ({
         selectedLabelTags,
       },
       // @ts-ignore
-      transferables
+      transferables,
     );
   });
 };
@@ -509,7 +509,7 @@ const createReader = ({
               slice: group?.name,
             },
             "json",
-            2
+            2,
           );
 
         return await (async () => {
@@ -543,7 +543,7 @@ const createReader = ({
         cancelled = true;
       },
     },
-    new CountQueuingStrategy({ highWaterMark: HIGH_WATER_MARK })
+    new CountQueuingStrategy({ highWaterMark: HIGH_WATER_MARK }),
   );
   return {
     sampleId,
@@ -570,9 +570,9 @@ const getSendChunk =
             value.labelTagColors,
             value.selectedLabelTags,
             value.schema,
-            value.activePaths
-          )
-        )
+            value.activePaths,
+          ),
+        ),
       );
 
       const allLabelsResults = allLabelsPromiseResults
@@ -600,7 +600,7 @@ const getSendChunk =
           uuid,
         },
         // @ts-ignore
-        transferables
+        transferables,
       );
     }
   };
@@ -694,7 +694,12 @@ type Method =
   | ResolveColorMethod
   | SetStreamMethod;
 
-if (typeof onmessage !== "undefined") {
+// Register only inside a real worker scope.
+const workerScope = globalThis as { WorkerGlobalScope?: new () => unknown };
+if (
+  typeof workerScope.WorkerGlobalScope !== "undefined" &&
+  self instanceof workerScope.WorkerGlobalScope
+) {
   onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
     switch (method) {
       case "init":

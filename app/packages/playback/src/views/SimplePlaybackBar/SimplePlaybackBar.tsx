@@ -6,11 +6,12 @@ import {
   usePlayhead,
 } from "../../lib/playback/use-playback-state";
 import PlayheadTime from "../Playhead/PlayheadTime";
-import { PauseIcon, PlayIcon } from "../TimelineControls/timeline-controls-icons";
+import {
+  PauseIcon,
+  PlayIcon,
+} from "../TimelineControls/timeline-controls-icons";
+import { clamp } from "../../lib/playback/utils";
 import styles from "./SimplePlaybackBar.module.css";
-
-const clamp = (v: number, lo: number, hi: number) =>
-  Math.min(hi, Math.max(lo, v));
 
 /**
  * Click-or-drag scrub track. Subscribes to playheadAtom (re-renders on

@@ -1,7 +1,6 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { expandPath, field } from "@fiftyone/state";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
-import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilCallback } from "recoil";
@@ -15,22 +14,18 @@ import {
   resolveVisibleAttribute,
 } from "./evaluateWhen";
 import { generatePrimitiveSchema } from "./schemaHelpers";
-import {
-  currentData,
-  currentField,
-  currentOverlay,
-  currentSchema,
-} from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 const useSchema = (readOnly: boolean) => {
-  const config = useAtomValue(currentSchema);
-  const data = useAtomValue(currentData);
+  const { selected } = useAnnotationContext();
+  const config = selected?.schema ?? null;
+  const data = selected?.data;
   const isLabelReadOnly = config?.read_only;
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
   const allAttributes = useMemo(
     () => (Array.isArray(config?.attributes) ? config.attributes : []),
-    [config]
+    [config],
   );
 
   const visibleAttributes = useMemo(() => {
@@ -48,16 +43,21 @@ const useSchema = (readOnly: boolean) => {
     }, new Map<string, AttributeConfig>());
   }, [allAttributes, data]);
 
-  // Stable string key — only changes when the visible attribute set changes
-  const visibleKey = [...visibleAttributes.keys()].join("\0");
+  // Key on the winning entry's index, not its name: same-name variants must
+  // bust the schema memo when the active one swaps (Toyota model -> Honda).
+  const visibleKey = [...visibleAttributes.values()]
+    .map((attr) => allAttributes.indexOf(attr))
+    .join("\0");
 
   // Reruns only when the visible attribute set changes.
   return useMemo(() => {
+    const taxonomy = config?.applied_taxonomy;
     const properties: Record<string, SchemaType | undefined> = {
       label: generatePrimitiveSchema("label", {
         type: "str",
-        component: config?.component || "dropdown",
-        values: config?.classes || [],
+        component: taxonomy ? "dropdown" : config?.component || "dropdown",
+        values: taxonomy ? [] : config?.classes || [],
+        taxonomy,
         readOnly: effectiveReadOnly,
       }),
     };
@@ -68,6 +68,7 @@ const useSchema = (readOnly: boolean) => {
         type: attr.type as FieldType,
         component: attr.component as ComponentType | undefined,
         values: attr.values as string[] | number[] | undefined,
+        taxonomy: attr.taxonomy,
         readOnly: effectiveReadOnly || attr.read_only,
       });
     }
@@ -107,7 +108,7 @@ const useParseFieldValue = () => {
 
         return data;
       },
-    []
+    [],
   );
 };
 
@@ -119,12 +120,13 @@ const useParseFieldValue = () => {
  * the returned callback keeps a stable identity across data changes.
  */
 const useHandleSchemaChange = (readOnly: boolean) => {
-  const config = useAtomValue(currentSchema);
-  const [data] = useAtom(currentData);
-  const overlay = useAtomValue(currentOverlay);
+  const { selected } = useAnnotationContext();
+  const config = selected?.schema ?? null;
+  const data = selected?.data;
+  const overlay = selected?.overlay;
   const eventBus = useAnnotationEventBus();
   const parseFieldValue = useParseFieldValue();
-  const field = useAtomValue(currentField);
+  const field = selected?.field ?? null;
 
   const configRef = useRef(config);
   const dataRef = useRef(data);
@@ -149,8 +151,8 @@ const useHandleSchemaChange = (readOnly: boolean) => {
           Object.entries(changes).map(async ([key, value]) => [
             key,
             await parseFieldValue(field, key, value),
-          ])
-        )
+          ]),
+        ),
       );
 
       const value = { ...data, ...result };
@@ -160,7 +162,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         : [];
 
       const uniqueConditionalNames = new Set(
-        allAttributes.filter((a) => a.when).map((a) => a.name)
+        allAttributes.filter((a) => a.when).map((a) => a.name),
       );
 
       // Iterate over the unique conditional attribute names, obtain the current and
@@ -172,12 +174,12 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         const prevOwner = resolveVisibleAttribute(
           name,
           allAttributes,
-          (data ?? {}) as Record<string, unknown>
+          (data ?? {}) as Record<string, unknown>,
         );
         const currentOwner = resolveVisibleAttribute(
           name,
           allAttributes,
-          value
+          value,
         );
 
         if (!currentOwner || prevOwner !== currentOwner) {
@@ -195,7 +197,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         value,
       });
     },
-    [eventBus, parseFieldValue, readOnly]
+    [eventBus, parseFieldValue, readOnly],
   );
 };
 
@@ -205,9 +207,10 @@ export interface AnnotationSchemaProps {
 
 const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const schema = useSchema(readOnly);
-  const [data] = useAtom(currentData);
-  const overlay = useAtomValue(currentOverlay);
-  const field = useAtomValue(currentField);
+  const { selected } = useAnnotationContext();
+  const data = selected?.data;
+  const overlay = selected?.overlay;
+  const field = selected?.field ?? null;
   const onChange = useHandleSchemaChange(readOnly);
 
   if (!field) throw new Error("no field");
@@ -219,7 +222,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
       Object.entries(data || {}).map(([key, value]) => [
         key,
         Array.isArray(value) ? value.join(", ") : value,
-      ])
+      ]),
     );
   }, [data, readOnly]);
 

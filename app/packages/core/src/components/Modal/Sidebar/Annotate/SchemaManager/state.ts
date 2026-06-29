@@ -53,8 +53,8 @@ export const isActiveFieldSelected = atomFamily((path: string) =>
       if (toggle) {
         set(selectedHiddenFields, new Set());
       }
-    }
-  )
+    },
+  ),
 );
 
 /**
@@ -76,8 +76,8 @@ export const isHiddenFieldSelected = atomFamily((path: string) =>
       if (toggle) {
         set(selectedActiveFields, new Set());
       }
-    }
-  )
+    },
+  ),
 );
 
 // =============================================================================
@@ -92,7 +92,7 @@ export const fieldHasSchema = atomFamily((path: string) =>
     const legacyData = get(labelSchemaData(path));
     if (legacyData?.label_schema) return true;
     return false;
-  })
+  }),
 );
 
 /**
@@ -102,7 +102,7 @@ export const fieldIsReadOnly = atomFamily((path: string) =>
   atom((get) => {
     const data = get(labelSchemaData(path));
     return isFieldReadOnly(data);
-  })
+  }),
 );
 
 /**
@@ -151,7 +151,7 @@ export const hiddenFieldTypes = atom((get) => {
 export const hiddenFieldAttrCounts = atom((get) => {
   const fields = get(sortedInactivePaths);
   return Object.fromEntries(
-    fields.map((f) => [f, get(fieldAttributeCount(f))])
+    fields.map((f) => [f, get(fieldAttributeCount(f))]),
   );
 });
 
@@ -193,5 +193,5 @@ export const hasJsonChanges = atom((get) => {
  * Current label schema being edited (per field)
  */
 export const currentLabelSchema = atomFamily((_field: string) =>
-  atom<object | undefined>(undefined)
+  atom<object | undefined>(undefined),
 );

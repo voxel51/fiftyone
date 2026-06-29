@@ -18,7 +18,7 @@ export default function ConfusionMatrices(props) {
   const [confusionMatrixConfig, setConfusionMatrixConfig] =
     usePanelStatePartial<PLOT_CONFIG_TYPE>(
       `${id}_cmc`,
-      DEFAULT_CONFUSION_MATRIX_CONFIG
+      DEFAULT_CONFUSION_MATRIX_CONFIG,
     );
 
   const evaluationMaskTargets = useMemo(() => {
@@ -45,7 +45,7 @@ export default function ConfusionMatrices(props) {
         },
         maskTargets: { primary: evaluationMaskTargets },
       },
-      { ...confusionMatrixConfig, gtField: gt_field, predField: pred_field }
+      { ...confusionMatrixConfig, gtField: gt_field, predField: pred_field },
     );
   }, [evaluation, confusionMatrixConfig, evaluationMaskTargets]);
   const compareConfusionMatrixPlotlyData = useMemo(() => {
@@ -70,7 +70,7 @@ export default function ConfusionMatrices(props) {
             secondary: evaluationMaskTargets,
           },
         },
-        { ...confusionMatrixConfig, gtField: gt_field, predField: pred_field }
+        { ...confusionMatrixConfig, gtField: gt_field, predField: pred_field },
       );
     }
     return [];
@@ -82,7 +82,7 @@ export default function ConfusionMatrices(props) {
   ]);
   const classes = getClasses(
     evaluation?.confusion_matrix,
-    evaluationMaskTargets
+    evaluationMaskTargets,
   );
 
   return (

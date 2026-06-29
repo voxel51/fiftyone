@@ -97,10 +97,10 @@ jobs:
           path: fiftyone-teams
           token: ${{ secrets.RO_FOT_FG_PAT }}
           ref: ${{ steps.get_branch.outputs.branch_name }}
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
         uses: jlumbroso/free-disk-space@v1.3.1
         with:

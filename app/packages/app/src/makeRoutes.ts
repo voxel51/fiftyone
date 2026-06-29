@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { createResourceGroup } from "@fiftyone/utilities";
 import type { ConcreteRequest } from "relay-runtime";
 import type { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
@@ -38,7 +42,7 @@ const makeRoutes = () => {
         import("./pages/IndexPage").then((module) => module.default),
       query: () =>
         import("./pages/__generated__/IndexPageQuery.graphql").then(
-          (module) => module.default
+          (module) => module.default,
         ),
     },
 
@@ -47,7 +51,7 @@ const makeRoutes = () => {
         import("./pages/datasets/DatasetPage").then((module) => module.default),
       query: () =>
         import("./pages/datasets/__generated__/DatasetPageQuery.graphql").then(
-          (module) => module.default
+          (module) => module.default,
         ),
       searchParams: { view: "savedViewSlug" },
       transform: (state, variables) => {

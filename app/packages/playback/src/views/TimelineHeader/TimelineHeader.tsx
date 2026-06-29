@@ -1,6 +1,7 @@
 import React, { type ReactNode } from "react";
 import TimelineControls from "../TimelineControls/TimelineControls";
 import TimelineRuler from "../TimelineRuler/TimelineRuler";
+import BufferedRangesStrip from "./BufferedRangesStrip";
 import styles from "./TimelineHeader.module.css";
 
 export interface TimelineHeaderProps {
@@ -17,6 +18,14 @@ export interface TimelineHeaderProps {
    * "show / hide tracks" affordance.
    */
   onToggle?: () => void;
+  /**
+   * Overlay rendered on top of the ruler row (position:relative wrapper).
+   * Used by TemporalTagRangeOverlay to capture pointer events for range
+   * selection — sits only over the ruler, not the controls row above.
+   */
+  rulerOverlay?: ReactNode;
+  /** Injected into the controls row — use for feature-specific action buttons. */
+  extraActions?: ReactNode;
   /**
    * Content rendered below the ruler, still inside the always-visible
    * header region. Used by `TimelineWithTracks` to keep pinned tracks
@@ -35,12 +44,19 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   labelWidth,
   zoomRef,
   onToggle,
+  rulerOverlay,
+  extraActions,
   children,
 }) => {
   return (
     <div className={styles.root} data-testid="timeline-header-root">
-      <TimelineControls onToggle={onToggle} />
-      <TimelineRuler labelWidth={labelWidth} zoomRef={zoomRef} />
+      <BufferedRangesStrip labelWidth={labelWidth} />
+      <TimelineControls onToggle={onToggle} extraActions={extraActions} />
+      <TimelineRuler
+        labelWidth={labelWidth}
+        zoomRef={zoomRef}
+        overlay={rulerOverlay}
+      />
       {children ? <div className={styles.belowRuler}>{children}</div> : null}
     </div>
   );

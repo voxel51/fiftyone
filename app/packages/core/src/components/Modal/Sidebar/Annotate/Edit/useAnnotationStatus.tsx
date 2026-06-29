@@ -16,7 +16,7 @@ import {
   PolylineEntryStatus,
   PolylineProgressStatus,
 } from "./annotationStatusContent";
-import { currentData } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 import { _unsafeDetectionModeActiveAtom } from "./useDetectionMode";
 import { _unsafeMergeTargetIdAtom } from "./useMergeTool";
 import { _unsafePolylineModeActiveAtom } from "./usePolylineMode";
@@ -27,7 +27,7 @@ import {
 } from "./useSegmentationMode";
 
 const countVertices = (
-  points: PolylineAnnotationLabel["data"]["points"] | undefined
+  points: PolylineAnnotationLabel["data"]["points"] | undefined,
 ): number => points?.reduce((total, segment) => total + segment.length, 0) ?? 0;
 
 /**
@@ -43,7 +43,7 @@ export const useAnnotationStatus = () => {
 
   const detectionModeActive = useAtomValue(_unsafeDetectionModeActiveAtom);
   const segmentationModeActive = useAtomValue(
-    _unsafeSegmentationModeActiveAtom
+    _unsafeSegmentationModeActiveAtom,
   );
   const polylineModeActive = useAtomValue(_unsafePolylineModeActiveAtom);
   const tool = useAtomValue(_unsafeToolAtom);
@@ -54,7 +54,8 @@ export const useAnnotationStatus = () => {
     error: inferenceError,
   } = useInferenceStatus();
   const { positivePoints, negativePoints } = useToolsContext();
-  const polylineData = useAtomValue(currentData) as
+  const { selected } = useAnnotationContext();
+  const polylineData = (selected?.data ?? null) as
     | PolylineAnnotationLabel["data"]
     | null;
 

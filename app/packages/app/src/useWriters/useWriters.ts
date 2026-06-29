@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { type Session, useSession } from "@fiftyone/state";
 import { env } from "@fiftyone/utilities";
 import type { MutableRefObject } from "react";
@@ -10,7 +14,7 @@ const useWriters = (
   subscription: string,
   environment: Environment,
   router: RoutingContext<Queries>,
-  sessionRef: MutableRefObject<Session>
+  sessionRef: MutableRefObject<Session>,
 ) => {
   useSession((key, value) => {
     if (env().VITE_NO_STATE && "fieldVisibilityStage" === key) {

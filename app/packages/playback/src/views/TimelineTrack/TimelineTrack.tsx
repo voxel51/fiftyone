@@ -26,12 +26,13 @@ import styles from "./TimelineTrack.module.css";
  */
 export type TimelineTrackEvent =
   | number
-  | { startSec: number; endSec?: number; label?: string };
+  | { startSec: number; endSec?: number; label?: string; data?: unknown };
 
-interface NormalizedEvent {
+export interface NormalizedEvent {
   startSec: number;
   endSec?: number;
   label?: string;
+  data?: unknown;
 }
 
 function normalizeEvent(e: TimelineTrackEvent): NormalizedEvent {
@@ -57,6 +58,8 @@ export interface TimelineTrackProps {
   events?: TimelineTrackEvent[];
   /** Fired when an event marker / bar is clicked. Typically seeks. */
   onEventClick?: (event: NormalizedEvent) => void;
+  /** Fired when the user chooses "Delete" from the event context menu. */
+  onEventDelete?: (event: NormalizedEvent) => void;
   /** Override the label column text. Defaults to `id`. */
   label?: string;
   height?: number;
@@ -75,6 +78,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   end,
   events = [],
   onEventClick,
+  onEventDelete,
   label,
   height = 28,
   labelWidth = 0,
@@ -93,8 +97,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   // Degenerate view (zero/negative width) — would produce NaN/Infinity
   // CSS values and break layout for every bar/marker below.
   if (viewDuration <= 0) return null;
-  const pct = (t: number) =>
-    `${((t - viewStart) / viewDuration) * 100}%`;
+  const pct = (t: number) => `${((t - viewStart) / viewDuration) * 100}%`;
 
   // Background bar is rendered only when both start/end are provided.
   const hasBackground = start !== undefined && end !== undefined;
@@ -158,7 +161,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           const rect = e.currentTarget.getBoundingClientRect();
           seek(
             viewStart +
-              ((e.clientX - rect.left) / rect.width) * (viewEnd - viewStart)
+              ((e.clientX - rect.left) / rect.width) * (viewEnd - viewStart),
           );
         }}
       >
@@ -178,7 +181,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           .filter((e) =>
             e.endSec !== undefined
               ? e.endSec >= viewStart && e.startSec <= viewEnd
-              : e.startSec >= viewStart && e.startSec <= viewEnd
+              : e.startSec >= viewStart && e.startSec <= viewEnd,
           )
           .map((e, i) => {
             const handleClick = (ev: React.MouseEvent) => {
@@ -188,7 +191,10 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                 const rect = lane.getBoundingClientRect();
                 const t =
                   viewStart +
-                  Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width)) *
+                  Math.max(
+                    0,
+                    Math.min(1, (ev.clientX - rect.left) / rect.width),
+                  ) *
                     viewDuration;
                 seek(t);
               }
@@ -213,14 +219,21 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                 >
                   Shrink window to fit
                 </MenuTextItem>
+                {onEventDelete && (
+                  <>
+                    <MenuSeparator />
+                    <MenuTextItem onClick={() => onEventDelete(e)}>
+                      Delete tag
+                    </MenuTextItem>
+                  </>
+                )}
               </>
             );
             if (isInterval) {
               const left = pct(Math.max(e.startSec, viewStart));
               const right = Math.min(e.endSec!, viewEnd);
               const width = `${
-                ((right - Math.max(e.startSec, viewStart)) / viewDuration) *
-                100
+                ((right - Math.max(e.startSec, viewStart)) / viewDuration) * 100
               }%`;
               return (
                 <ContextMenu key={i} menu={menu}>

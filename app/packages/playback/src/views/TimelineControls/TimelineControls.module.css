@@ -6,6 +6,13 @@
   border-bottom: 1px solid var(--color-content-border-default);
 }
 
+/* Suppress focus rings from pointer clicks on the row itself and its children.
+   Keyboard rings still show via :focus-visible so accessibility is preserved. */
+.root:focus:not(:focus-visible),
+.root :focus:not(:focus-visible) {
+  outline: none;
+}
+
 .clickable {
   cursor: pointer;
 }
@@ -18,3 +25,13 @@
   margin: 0 6px;
 }
 
+.buffering {
+  align-items: center;
+  color: var(--color-content-text-secondary);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 11px;
+  gap: 4px;
+  margin-left: 6px;
+  white-space: nowrap;
+}

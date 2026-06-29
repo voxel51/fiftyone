@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import {
   DEFAULT_LABEL_SELECTION_STYLE,
   useSessionSetter,
@@ -17,7 +21,7 @@ const useSetLabelSelectionStyle: EventHandlerHook = () => {
           : DEFAULT_LABEL_SELECTION_STYLE;
       setter("labelSelectionStyle", style);
     },
-    [setter]
+    [setter],
   );
 };
 

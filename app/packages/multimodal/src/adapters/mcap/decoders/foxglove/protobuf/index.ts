@@ -19,12 +19,12 @@ const messageTypeCache = new WeakMap<Uint8Array, Map<string, Type>>();
 export function decodeProtobufMessage(
   bytes: Uint8Array,
   payload: PayloadDescriptor,
-  context: DecodeContext
+  context: DecodeContext,
 ): Record<string, unknown> {
   const schemaData = schemaDataFromContext(context);
   if (!schemaData) {
     throw new Error(
-      `Schema data is required to decode ${payload.schema ?? "payload"}`
+      `Schema data is required to decode ${payload.schema ?? "payload"}`,
     );
   }
 

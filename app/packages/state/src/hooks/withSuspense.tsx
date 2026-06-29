@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 export default function withSuspense<ComponentProps>(
   Component: React.ComponentType<ComponentProps>,
-  LoaderComponent: React.ComponentType<ComponentProps>
+  LoaderComponent: React.ComponentType<ComponentProps>,
 ) {
   const ComponentWithSuspense = (props: ComponentProps) => {
     const Loading = LoaderComponent || DefaultLoader;

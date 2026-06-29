@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { DynamicGroup } from "./DynamicGroup";
 import GroupSample3d from "./GroupSample3d";
@@ -8,26 +8,24 @@ import { GroupView } from "./GroupView";
 const Group = () => {
   const dynamic = useRecoilValue(fos.isDynamicGroup);
   const only3d = useRecoilValue(fos.only3d);
-  const {
-    is3dVisible,
-    is3dVisibleSetting: isLooker3DVisible,
-    isPinned,
-  } = fos.useRenderConfig3dState();
+  const is3dVisible = fos.useIs3dVisible();
+  const isLooker3DVisible = fos.useIs3dVisibleSetting();
+  const isPinned = fos.useIs3dPinned();
   const actions = fos.useRenderConfig3dActions();
   const isMainVisible = useRecoilValue(fos.groupMediaIsMain2DViewerVisible);
 
   const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
   const isCarouselVisible = useRecoilValue(
-    fos.groupMediaIsCarouselVisibleSetting
+    fos.groupMediaIsCarouselVisibleSetting,
   );
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
 
   const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
-    fos.dynamicGroupsViewMode(true)
+    fos.dynamicGroupsViewMode(true),
   );
   const setIsMainLookerVisible = useSetRecoilState(
-    fos.groupMediaIsMain2DViewerVisibleSetting
+    fos.groupMediaIsMain2DViewerVisibleSetting,
   );
 
   // This effect enforces view-mode constraints for dynamic groups (skipped in annotate mode)

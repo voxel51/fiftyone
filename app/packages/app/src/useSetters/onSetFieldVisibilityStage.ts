@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import {
   setFieldVisibilityStage,
   type setFieldVisibilityStageMutation,
@@ -40,7 +44,7 @@ const onSetFieldVisibilityStage: RegisteredSetter =
         ...router.get().state,
         event: "fieldVisibility",
         fieldVisibility: stage,
-      }
+      },
     );
 
     // send event as side effect

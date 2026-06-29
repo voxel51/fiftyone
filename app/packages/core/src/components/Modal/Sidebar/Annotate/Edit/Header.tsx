@@ -1,4 +1,4 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { Round } from "../Actions";
 
@@ -16,13 +16,7 @@ import * as fos from "@fiftyone/state";
 import { isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { useSchemaManagerModal } from "../SchemaManager/hooks";
-import {
-  currentData,
-  currentFieldIsReadOnlyAtom,
-  currentOverlay,
-  currentType,
-  useAnnotationContext,
-} from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
@@ -37,23 +31,30 @@ const LabelHamburgerMenu = () => {
 
   const deleteCommand = useCommand(
     KnownCommands.ModalDeleteAnnotation,
-    KnownContexts.ModalAnnotate
+    KnownContexts.ModalAnnotate,
   );
 
   // Permission and read-only state
   const canEditLabels = useRecoilValue(fos.canEditLabels);
-  const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const { selected, setData } = useAnnotationContext();
+  const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
   const { openSchemaManager } = useSchemaManagerModal();
   const isGenerated = useRecoilValue(isGeneratedView);
 
   // Mask state
-  const type = useAtomValue(currentType);
-  const data = useAtomValue(currentData);
-  const overlay = useAtomValue(currentOverlay);
-  const setData = useSetAtom(currentData);
+  const type = selected?.type ?? null;
+  const data = selected?.data;
+  const overlay = selected?.overlay;
   const { isEditingMask } = useSegmentationMode();
 
-  const isMaskDetection = !!(data?.mask || data?.mask_path || isEditingMask);
+  // `mask`/`mask_path` are Detection-only fields; the union narrows them
+  // out. Cast at the access site.
+  const maskFields = data as { mask?: unknown; mask_path?: unknown } | null;
+  const isMaskDetection = !!(
+    maskFields?.mask ||
+    maskFields?.mask_path ||
+    isEditingMask
+  );
   const isDetection = type === DETECTION;
 
   const handleAddMask = useCallback(() => {
@@ -126,16 +127,17 @@ const LabelHamburgerMenu = () => {
 };
 
 const Header = () => {
-  const type = useAtomValue(currentType);
+  const annotationContext = useAnnotationContext();
+  const { selected } = annotationContext;
+  const type = selected?.type ?? null;
   const Icon = ICONS[type?.toLowerCase() ?? ""];
-  const color = useColor(useAtomValue(currentOverlay) ?? undefined);
+  const color = useColor(selected?.overlay ?? undefined);
 
   const { exitAnnotationMode } = useAnnotationController();
   const onExit = useExit();
   const { scene } = useLighter();
   const { deactivateDetectionMode } = useDetectionMode();
-  const annotationContext = useAnnotationContext();
-  const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
 
   // In patches view with single label, clicking back should go to explore mode
   const isPatches = useRecoilValue(fos.isPatchesView);
@@ -169,7 +171,7 @@ const Header = () => {
       {currentFieldIsReadOnly && <span>Read-only</span>}
       <ItemRight>
         <Stack direction="row" alignItems="center">
-          {annotationContext.selectedLabel !== null && <LabelHamburgerMenu />}
+          {annotationContext.selected?.label != null && <LabelHamburgerMenu />}
         </Stack>
       </ItemRight>
     </Row>

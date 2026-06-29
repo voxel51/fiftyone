@@ -57,6 +57,55 @@ export interface McapReadIndexedMessageTimesRequest {
 }
 
 /**
+ * Filters for resolving the newest indexed entries at or before a time.
+ */
+export interface McapReadLatestIndexedMessageTimesRequest {
+  /**
+   * Inclusive upper bound: return the newest entries with log time at
+   * or before this timestamp, however far back they are.
+   */
+  readonly timeNs: bigint;
+
+  /**
+   * Topic names to resolve; each topic gets an independent result.
+   */
+  readonly topics: readonly string[];
+
+  /**
+   * Newest-first entry count per topic; defaults to 1.
+   */
+  readonly limitPerTopic?: number;
+
+  /**
+   * Per-topic cap on chunk message-index reads during the walk.
+   */
+  readonly maxChunkProbesPerTopic?: number;
+}
+
+/**
+ * Filters for resolving per-topic first/last indexed message times.
+ */
+export interface McapReadTopicIndexedTimeBoundsRequest {
+  /**
+   * Topic names to resolve; each topic gets an independent result.
+   */
+  readonly topics: readonly string[];
+
+  /**
+   * Per-topic cap on chunk message-index reads during each walk.
+   */
+  readonly maxChunkProbesPerTopic?: number;
+}
+
+/**
+ * First and last indexed message log times for one topic.
+ */
+export interface McapTopicIndexedTimeBounds {
+  readonly firstLogTimeNs: bigint;
+  readonly lastLogTimeNs: bigint;
+}
+
+/**
  * Parsed payload of one MCAP MessageIndex record.
  */
 export interface ParsedMcapMessageIndexRecord {
@@ -70,7 +119,7 @@ export interface ParsedMcapMessageIndexRecord {
    */
   readonly records: readonly (readonly [
     logTimeNs: bigint,
-    messageOffset: bigint
+    messageOffset: bigint,
   ])[];
 }
 
@@ -79,7 +128,7 @@ export interface ParsedMcapMessageIndexRecord {
  */
 export type McapReaderFactory = (
   source: ByteSourceDescriptor,
-  readable: McapTypes.IReadable
+  readable: McapTypes.IReadable,
 ) => Promise<McapIndexedReaderLike>;
 
 /**
@@ -110,8 +159,24 @@ export interface McapIndexedReaderLike {
    * Reads timestamp-only message-index entries without decoding chunk records.
    */
   readIndexedMessageTimes?(
-    args?: McapReadIndexedMessageTimesRequest
+    args?: McapReadIndexedMessageTimesRequest,
   ): AsyncGenerator<McapIndexedMessageTime, void, void>;
+
+  /**
+   * Resolves the newest indexed entries at or before a time per topic,
+   * with unbounded lookback, without decoding chunk records.
+   */
+  readLatestIndexedMessageTimes?(
+    args: McapReadLatestIndexedMessageTimesRequest,
+  ): Promise<ReadonlyMap<string, readonly McapIndexedMessageTime[]>>;
+
+  /**
+   * Resolves per-topic first/last indexed message times without
+   * decoding chunk records.
+   */
+  readTopicIndexedTimeBounds?(
+    args: McapReadTopicIndexedTimeBoundsRequest,
+  ): Promise<ReadonlyMap<string, McapTopicIndexedTimeBounds | null>>;
 
   /**
    * Streams full MCAP messages through the core indexed reader API.

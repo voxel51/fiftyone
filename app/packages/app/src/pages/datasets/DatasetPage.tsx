@@ -1,7 +1,13 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import {
   ActivityToast,
   Dataset,
+  DatasetGridRendererFailover,
   QueryPerformanceToast,
+  SchemaManagerOutlet,
   Snackbar,
   Starter,
 } from "@fiftyone/core";
@@ -11,7 +17,6 @@ import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { datasetQueryContext } from "@fiftyone/state";
-import React from "react";
 import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
@@ -19,7 +24,6 @@ import Nav from "../../components/Nav";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
 import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
-import { DatasetGridRendererFailover } from "./DatasetGridRendererFailover";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
@@ -113,6 +117,12 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
     <Nav fragment={data} hasDataset={!isEmpty}>
       <div className={style.page} data-cy={"dataset-page"}>
         <DatasetGridRendererFailover />
+        {/* Rendered outside the isEmpty branch so the schema manager URL
+            entry point (`?schemaManager=open`) works even on freshly-created
+            empty datasets, where defining a schema before adding samples is
+            a legitimate first-step workflow. SchemaManagerOutlet doesn't
+            depend on `datasetQueryContext.Provider`. */}
+        <SchemaManagerOutlet />
         {isEmpty ? (
           <Starter mode="ADD_SAMPLE" />
         ) : (

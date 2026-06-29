@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { Button, ExternalLink, useTheme } from "@fiftyone/components";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import {
@@ -8,7 +12,7 @@ import {
   Typography,
   useColorScheme,
 } from "@mui/material";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 
 const ENTERPRISE_TOOLTIP_LS = "fiftyone-enterprise-tooltip-seen";
@@ -134,11 +138,17 @@ const BaseEnterpriseButton = styled(Button)<{
     background: linear-gradient(
       90deg,
       rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, ${({ $isLightMode }) => ($isLightMode ? "0.3" : "0.2")})
+      rgba(
+          255,
+          255,
+          255,
+          ${({ $isLightMode }) => ($isLightMode ? "0.3" : "0.2")}
+        )
         50%,
       rgba(255, 255, 255, 0) 100%
     );
-    transition: all ${({ $isLightMode }) => ($isLightMode ? "0.8s" : "0.6s")} ease;
+    transition: all ${({ $isLightMode }) => ($isLightMode ? "0.8s" : "0.6s")}
+      ease;
     z-index: 1;
   }
 
@@ -166,7 +176,7 @@ const BaseEnterpriseButton = styled(Button)<{
             255,
             255,
             255,
-            ${({ isLightMode }) => (isLightMode ? "0.6" : "0.2")}
+            ${({ $isLightMode }) => ($isLightMode ? "0.6" : "0.2")}
           )
           50%,
         rgba(255, 255, 255, 0) 100%
@@ -208,7 +218,9 @@ const PopoverFooter = styled(Stack)`
 
 export default function Teams({
   disablePopover = false,
-}: { disablePopover?: boolean }) {
+}: {
+  disablePopover?: boolean;
+}) {
   const [showPopover, setShowPopover] = useState(false);
 
   const { mode } = useColorScheme();
@@ -220,7 +232,7 @@ export default function Teams({
     const hasSeenTooltip = window.localStorage.getItem(ENTERPRISE_TOOLTIP_LS);
 
     // don't show intro popoverif we're in playwright
-    const isPlaywright = window["IS_PLAYWRIGHT"];
+    const isPlaywright = window.IS_PLAYWRIGHT;
 
     if (!hasSeenTooltip && !isPlaywright) {
       setShowPopover(true);
@@ -241,7 +253,7 @@ export default function Teams({
     setShowPopover(false);
     window.open(
       "https://voxel51.com/why-upgrade?utm_source=FiftyOneApp",
-      "_blank"
+      "_blank",
     );
   }, [markTooltipSeen]);
 

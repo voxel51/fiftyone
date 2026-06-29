@@ -103,13 +103,13 @@ export class KeyManager {
     const command = this.commandRegistry.getCommand(commandId);
     if (!command) {
       throw new Error(
-        `The command id ${commandId} is not registered for binding ${sequence}`
+        `The command id ${commandId} is not registered for binding ${sequence}`,
       );
     }
 
     if (this.isKeyBound(keySequences)) {
       throw new Error(
-        `The binding ${sequence} is already bound in this context`
+        `The binding ${sequence} is already bound in this context`,
       );
     }
     this.bindings.set(this.normalizeBinding(keySequences), command);
@@ -125,7 +125,7 @@ export class KeyManager {
 
   public unbindKey(sequence: string) {
     this.bindings.delete(
-      this.normalizeBinding(KeyParser.parseBinding(sequence))
+      this.normalizeBinding(KeyParser.parseBinding(sequence)),
     );
   }
 

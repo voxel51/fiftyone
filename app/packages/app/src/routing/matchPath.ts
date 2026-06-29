@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
 import type { ModalSelector, State } from "@fiftyone/state";
 import { pathToRegexp } from "path-to-regexp";
@@ -24,7 +28,7 @@ interface MatchPathOptions<T extends OperationType> {
   searchParams?: { [key: string]: string };
   transform?: (
     state: LocationState<T>,
-    variables: Partial<VariablesOf<T>>
+    variables: Partial<VariablesOf<T>>,
   ) => VariablesOf<T>;
 }
 
@@ -38,7 +42,7 @@ export const matchPath = <T extends OperationType>(
   pathname: string,
   options: MatchPathOptions<T>,
   search: string,
-  state: LocationState<T>
+  state: LocationState<T>,
 ): MatchPathResult<T> | null => {
   const { path, searchParams = {}, transform } = options;
 

@@ -45,7 +45,7 @@ fob = fou.lazy_import("fiftyone.core.brain")
 fod = fou.lazy_import("fiftyone.core.dataset")
 foe = fou.lazy_import("fiftyone.core.evaluation")
 fors = fou.lazy_import("fiftyone.core.runs")
-fommtt = fou.lazy_import("fiftyone.multimodal.tags._temporal_tags")
+fota = fou.lazy_import("fiftyone.core.tags")
 
 
 logger = logging.getLogger(__name__)
@@ -836,11 +836,11 @@ def drop_orphan_stores(dry_run=False):
             _delete_stores(conn, orphan_store_ids)
 
 
-def drop_orphan_temporal_tags(dry_run=False):
-    """Drops all orphan multimodal temporal tags from the database.
+def drop_orphan_tags(dry_run=False):
+    """Drops all orphan tags from the database.
 
-    Orphan temporal tags are those that are associated with a dataset that no
-    longer exists in the database.
+    Orphan tags are those that are associated with a dataset that no longer
+    exists in the database.
 
     Args:
         dry_run (False): whether to log the actions that would be taken but not
@@ -850,19 +850,18 @@ def drop_orphan_temporal_tags(dry_run=False):
     _logger = _get_logger(dry_run=dry_run)
 
     dataset_ids = set(conn.datasets.distinct("_id"))
-    orphan_dataset_ids = fommtt.get_orphan_dataset_ids(dataset_ids)
-    num_temporal_tags = fommtt.count_for_dataset_ids(orphan_dataset_ids)
+    orphan_dataset_ids = fota.get_orphan_dataset_ids(dataset_ids)
+    num_tags = fota.count_for_dataset_ids(orphan_dataset_ids)
 
-    if num_temporal_tags:
+    if num_tags:
         _logger.info(
-            "Deleting %d orphan multimodal temporal tag(s) for %d "
-            "dataset(s): %s",
-            num_temporal_tags,
+            "Deleting %d orphan tag(s) for %d dataset(s): %s",
+            num_tags,
             len(orphan_dataset_ids),
             orphan_dataset_ids,
         )
         if not dry_run:
-            fommtt.delete_for_dataset_ids(orphan_dataset_ids)
+            fota.delete_for_dataset_ids(orphan_dataset_ids)
 
 
 def stream_collection(collection_name):
@@ -1448,13 +1447,11 @@ def delete_dataset(name, dry_run=False):
             conn.drop_collection(frame_collection_name)
 
     _id = dataset_dict["_id"]
-    num_temporal_tags = fommtt.count_for_dataset_id(_id)
-    if num_temporal_tags > 0:
-        _logger.info(
-            "Deleting %d multimodal temporal tag(s)", num_temporal_tags
-        )
+    num_tags = fota.count_for_dataset_id(_id)
+    if num_tags > 0:
+        _logger.info("Deleting %d tag(s)", num_tags)
         if not dry_run:
-            fommtt.delete_for_dataset_id(_id)
+            fota.delete_for_dataset_id(_id)
 
     view_ids = _get_saved_view_ids(dataset_dict)
 

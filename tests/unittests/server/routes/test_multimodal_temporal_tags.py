@@ -1,5 +1,5 @@
 """
-Multimodal temporal tag route unit tests.
+Tag route unit tests.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -18,17 +18,17 @@ from starlette.exceptions import HTTPException
 import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.multimodal.server.routes as fomr
-import fiftyone.multimodal.tags as fomt
+import fiftyone.multimodal.tags._temporal_tags as fota
 
 
 @pytest.fixture(autouse=True)
-def clean_temporal_tags():
-    """Ensures each test starts with an empty temporal tag collection."""
-    foo.get_db_conn().drop_collection(fomt.TEMPORAL_TAGS_COLLECTION_NAME)
+def clean_tags():
+    """Ensures each test starts with an empty tag collection."""
+    foo.get_db_conn().drop_collection(fota.TAGS_COLLECTION_NAME)
 
     yield
 
-    foo.get_db_conn().drop_collection(fomt.TEMPORAL_TAGS_COLLECTION_NAME)
+    foo.get_db_conn().drop_collection(fota.TAGS_COLLECTION_NAME)
 
 
 @pytest.fixture(name="dataset")
@@ -63,34 +63,34 @@ def fixture_sample_ids(dataset):
     return [str(sample.id) for sample in dataset.iter_samples()]
 
 
-@pytest.fixture(name="sample_temporal_tags_endpoint")
-def fixture_sample_temporal_tags_endpoint():
-    """Returns the sample temporal tags endpoint instance."""
-    return fomr.SampleTemporalTagsEndpoint(
+@pytest.fixture(name="sample_tags_endpoint")
+def fixture_sample_tags_endpoint():
+    """Returns the sample tags endpoint instance."""
+    return fomr.SampleTagsEndpoint(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
 
-@pytest.fixture(name="sample_temporal_tag_endpoint")
-def fixture_sample_temporal_tag_endpoint():
-    """Returns the sample temporal tag item endpoint instance."""
-    return fomr.SampleTemporalTagEndpoint(
+@pytest.fixture(name="sample_tag_endpoint")
+def fixture_sample_tag_endpoint():
+    """Returns the sample tag item endpoint instance."""
+    return fomr.SampleTagEndpoint(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
 
-@pytest.fixture(name="temporal_tags_endpoint")
-def fixture_temporal_tags_endpoint():
-    """Returns the dataset temporal tags endpoint instance."""
-    return fomr.TemporalTagsEndpoint(
+@pytest.fixture(name="tags_endpoint")
+def fixture_tags_endpoint():
+    """Returns the dataset tags endpoint instance."""
+    return fomr.TagsEndpoint(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
 
-@pytest.fixture(name="temporal_tag_counts_endpoint")
-def fixture_temporal_tag_counts_endpoint():
-    """Returns the temporal tag counts endpoint instance."""
-    return fomr.TemporalTagCountsEndpoint(
+@pytest.fixture(name="tag_counts_endpoint")
+def fixture_tag_counts_endpoint():
+    """Returns the tag counts endpoint instance."""
+    return fomr.TagCountsEndpoint(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -98,7 +98,7 @@ def fixture_temporal_tag_counts_endpoint():
 def _make_request(
     dataset_id,
     sample_id=None,
-    temporal_tag_id=None,
+    tag_id=None,
     query_params=None,
     body=None,
 ):
@@ -106,8 +106,8 @@ def _make_request(
     request.path_params = {"dataset_id": dataset_id}
     if sample_id is not None:
         request.path_params["sample_id"] = sample_id
-    if temporal_tag_id is not None:
-        request.path_params["temporal_tag_id"] = temporal_tag_id
+    if tag_id is not None:
+        request.path_params["tag_id"] = tag_id
 
     request.query_params = QueryParams(query_params or {})
     payload = {} if body is None else body
@@ -136,13 +136,13 @@ def _dataset_last_modified_at(dataset):
     return dataset_doc["last_modified_at"]
 
 
-class TestMultimodalTemporalTagsRoute:
-    """Tests for the multimodal temporal tag collection route."""
+class TestTagsRoute:
+    """Tests for the tag collection route."""
 
     @pytest.mark.asyncio
     async def test_sample_scoped_create_list_and_delete_temporal_tags(
         self,
-        sample_temporal_tags_endpoint,
+        sample_tags_endpoint,
         dataset,
         dataset_id,
         sample_ids,
@@ -162,8 +162,8 @@ class TestMultimodalTemporalTagsRoute:
             },
         )
 
-        response = await sample_temporal_tags_endpoint.post(request)
-        created = _json_body(response)["temporal_tags"]
+        response = await sample_tags_endpoint.post(request)
+        created = _json_body(response)["tags"]
         after_post = _modified_timestamps(dataset, sample_ids[0])
 
         assert len(created) == 1
@@ -186,8 +186,8 @@ class TestMultimodalTemporalTagsRoute:
             },
         )
         await asyncio.sleep(0.05)
-        response = await sample_temporal_tags_endpoint.get(request)
-        listed = _json_body(response)["temporal_tags"]
+        response = await sample_tags_endpoint.get(request)
+        listed = _json_body(response)["tags"]
         after_get = _modified_timestamps(dataset, sample_ids[0])
 
         assert listed == created
@@ -199,7 +199,7 @@ class TestMultimodalTemporalTagsRoute:
             body={"ids": [created[0]["id"]]},
         )
         await asyncio.sleep(0.05)
-        response = await sample_temporal_tags_endpoint.delete(request)
+        response = await sample_tags_endpoint.delete(request)
         after_delete = _modified_timestamps(dataset, sample_ids[0])
 
         assert _json_body(response) == {"deleted": 1}
@@ -207,24 +207,38 @@ class TestMultimodalTemporalTagsRoute:
         assert after_delete[1] > after_get[1]
 
         request = _make_request(dataset_id, sample_id=sample_ids[0])
-        response = await sample_temporal_tags_endpoint.get(request)
+        response = await sample_tags_endpoint.get(request)
 
-        assert _json_body(response)["temporal_tags"] == []
+        assert _json_body(response)["tags"] == []
 
     @pytest.mark.asyncio
     async def test_lists_sample_temporal_tags_with_optional_range(
         self,
-        sample_temporal_tags_endpoint,
+        sample_tags_endpoint,
         dataset,
         dataset_id,
         sample_ids,
     ):
-        fomt.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(sample_ids[0], 0, 10, "clip"),
-                fomt.TemporalTag(sample_ids[0], 30, 40, "outside"),
-                fomt.TemporalTag(sample_ids[1], 5, 15, "other-sample"),
+                fota.TemporalTag(
+                    sample_ids[0], 0, 10, "clip", kind=fota.TagKind.TEMPORAL
+                ),
+                fota.TemporalTag(
+                    sample_ids[0],
+                    30,
+                    40,
+                    "outside",
+                    kind=fota.TagKind.TEMPORAL,
+                ),
+                fota.TemporalTag(
+                    sample_ids[1],
+                    5,
+                    15,
+                    "other-sample",
+                    kind=fota.TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -233,26 +247,31 @@ class TestMultimodalTemporalTagsRoute:
             sample_id=sample_ids[0],
             query_params={"start": "5", "end": "15"},
         )
-        response = await sample_temporal_tags_endpoint.get(request)
-        temporal_tags = _json_body(response)["temporal_tags"]
+        response = await sample_tags_endpoint.get(request)
+        tags = _json_body(response)["tags"]
 
-        assert len(temporal_tags) == 1
-        assert temporal_tags[0]["sample_id"] == sample_ids[0]
-        assert temporal_tags[0]["tag"] == "clip"
+        assert len(tags) == 1
+        assert tags[0]["sample_id"] == sample_ids[0]
+        assert tags[0]["tag"] == "clip"
 
     @pytest.mark.asyncio
     async def test_updates_sample_temporal_tag(
         self,
-        sample_temporal_tag_endpoint,
-        sample_temporal_tags_endpoint,
+        sample_tag_endpoint,
+        sample_tags_endpoint,
         dataset,
         dataset_id,
         sample_ids,
     ):
-        created = fomt.add_temporal_tags(
+        created = fota.add_temporal_tags(
             dataset,
-            fomt.TemporalTag(
-                sample_ids[0], 0, 10, "review", created_by="alice"
+            fota.TemporalTag(
+                sample_ids[0],
+                0,
+                10,
+                "review",
+                created_by="alice",
+                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
         before_patch = _modified_timestamps(dataset, sample_ids[0])
@@ -261,7 +280,7 @@ class TestMultimodalTemporalTagsRoute:
         request = _make_request(
             dataset_id,
             sample_id=sample_ids[0],
-            temporal_tag_id=created.id,
+            tag_id=created.id,
             body={
                 "id": created.id,
                 "start": 5,
@@ -270,8 +289,8 @@ class TestMultimodalTemporalTagsRoute:
                 "last_modified_by": "bob",
             },
         )
-        response = await sample_temporal_tag_endpoint.patch(request)
-        updated = _json_body(response)["temporal_tag"]
+        response = await sample_tag_endpoint.patch(request)
+        updated = _json_body(response)["tag"]
         after_patch = _modified_timestamps(dataset, sample_ids[0])
 
         assert updated["id"] == created.id
@@ -289,25 +308,43 @@ class TestMultimodalTemporalTagsRoute:
         assert after_patch[1] > before_patch[1]
 
         request = _make_request(dataset_id, sample_id=sample_ids[0])
-        response = await sample_temporal_tags_endpoint.get(request)
+        response = await sample_tags_endpoint.get(request)
 
-        assert _json_body(response)["temporal_tags"] == [updated]
+        assert _json_body(response)["tags"] == [updated]
 
     @pytest.mark.asyncio
     async def test_lists_scene_temporal_tags_with_optional_range(
         self,
-        temporal_tags_endpoint,
-        temporal_tag_counts_endpoint,
+        tags_endpoint,
+        tag_counts_endpoint,
         dataset,
         dataset_id,
         sample_ids,
     ):
-        fomt.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(sample_ids[0], 0, 10, "clip"),
-                fomt.TemporalTag(sample_ids[1], 10, 20, "clip"),
-                fomt.TemporalTag(sample_ids[2], 30, 40, "outside"),
+                fota.TemporalTag(
+                    sample_ids[0],
+                    0,
+                    10,
+                    "clip",
+                    kind=fota.TagKind.TEMPORAL,
+                ),
+                fota.TemporalTag(
+                    sample_ids[1],
+                    10,
+                    20,
+                    "clip",
+                    kind=fota.TagKind.TEMPORAL,
+                ),
+                fota.TemporalTag(
+                    sample_ids[2],
+                    30,
+                    40,
+                    "outside",
+                    kind=fota.TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -317,12 +354,12 @@ class TestMultimodalTemporalTagsRoute:
             dataset_id,
             query_params={"start": "5", "end": "15"},
         )
-        response = await temporal_tags_endpoint.get(request)
-        temporal_tags = _json_body(response)["temporal_tags"]
+        response = await tags_endpoint.get(request)
+        tags = _json_body(response)["tags"]
         after_get = _dataset_last_modified_at(dataset)
 
-        assert [tag["sample_id"] for tag in temporal_tags] == sample_ids[:2]
-        assert [tag["tag"] for tag in temporal_tags] == ["clip", "clip"]
+        assert [tag["sample_id"] for tag in tags] == sample_ids[:2]
+        assert [tag["tag"] for tag in tags] == ["clip", "clip"]
         assert after_get == before_get
 
         await asyncio.sleep(0.05)
@@ -330,7 +367,7 @@ class TestMultimodalTemporalTagsRoute:
             dataset_id,
             query_params={"start": "5", "end": "15"},
         )
-        response = await temporal_tag_counts_endpoint.get(request)
+        response = await tag_counts_endpoint.get(request)
         after_counts = _dataset_last_modified_at(dataset)
 
         assert _json_body(response)["counts"] == {"clip": 2}
@@ -339,19 +376,43 @@ class TestMultimodalTemporalTagsRoute:
     @pytest.mark.asyncio
     async def test_lists_tag_hits_across_samples_and_counts_all_tags(
         self,
-        temporal_tags_endpoint,
-        temporal_tag_counts_endpoint,
+        tags_endpoint,
+        tag_counts_endpoint,
         dataset,
         dataset_id,
         sample_ids,
     ):
-        fomt.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(sample_ids[0], 0, 10, "candidate"),
-                fomt.TemporalTag(sample_ids[1], 10, 20, "candidate"),
-                fomt.TemporalTag(sample_ids[2], 20, 30, "review"),
-                fomt.TemporalTag(sample_ids[2], 30, 40, "other"),
+                fota.TemporalTag(
+                    sample_ids[0],
+                    0,
+                    10,
+                    "candidate",
+                    kind=fota.TagKind.TEMPORAL,
+                ),
+                fota.TemporalTag(
+                    sample_ids[1],
+                    10,
+                    20,
+                    "candidate",
+                    kind=fota.TagKind.TEMPORAL,
+                ),
+                fota.TemporalTag(
+                    sample_ids[2],
+                    20,
+                    30,
+                    "review",
+                    kind=fota.TagKind.TEMPORAL,
+                ),
+                fota.TemporalTag(
+                    sample_ids[2],
+                    30,
+                    40,
+                    "other",
+                    kind=fota.TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -359,12 +420,12 @@ class TestMultimodalTemporalTagsRoute:
             dataset_id,
             query_params={"tags": "candidate,review"},
         )
-        response = await temporal_tags_endpoint.get(request)
-        temporal_tags = _json_body(response)["temporal_tags"]
+        response = await tags_endpoint.get(request)
+        tags = _json_body(response)["tags"]
 
         assert [
             (tag["sample_id"], tag["start"], tag["end"], tag["tag"])
-            for tag in temporal_tags
+            for tag in tags
         ] == [
             (sample_ids[0], 0, 10, "candidate"),
             (sample_ids[1], 10, 20, "candidate"),
@@ -372,7 +433,7 @@ class TestMultimodalTemporalTagsRoute:
         ]
 
         request = _make_request(dataset_id)
-        response = await temporal_tag_counts_endpoint.get(request)
+        response = await tag_counts_endpoint.get(request)
 
         assert _json_body(response)["counts"] == {
             "candidate": 2,
@@ -382,13 +443,13 @@ class TestMultimodalTemporalTagsRoute:
 
     @pytest.mark.asyncio
     async def test_bulk_create_and_delete_by_filter(
-        self, sample_temporal_tags_endpoint, dataset_id, sample_ids
+        self, sample_tags_endpoint, dataset_id, sample_ids
     ):
         request = _make_request(
             dataset_id,
             sample_id=sample_ids[0],
             body={
-                "temporal_tags": [
+                "tags": [
                     {
                         "start": 0,
                         "end": 10,
@@ -405,9 +466,9 @@ class TestMultimodalTemporalTagsRoute:
             },
         )
 
-        response = await sample_temporal_tags_endpoint.post(request)
+        response = await sample_tags_endpoint.post(request)
 
-        assert len(_json_body(response)["temporal_tags"]) == 2
+        assert len(_json_body(response)["tags"]) == 2
 
         request = _make_request(
             dataset_id,
@@ -418,13 +479,13 @@ class TestMultimodalTemporalTagsRoute:
                 }
             },
         )
-        response = await sample_temporal_tags_endpoint.delete(request)
+        response = await sample_tags_endpoint.delete(request)
 
         assert _json_body(response) == {"deleted": 1}
 
         request = _make_request(dataset_id, sample_id=sample_ids[0])
-        response = await sample_temporal_tags_endpoint.get(request)
-        remaining = _json_body(response)["temporal_tags"]
+        response = await sample_tags_endpoint.get(request)
+        remaining = _json_body(response)["tags"]
 
         assert len(remaining) == 1
         assert remaining[0]["sample_id"] == sample_ids[0]
@@ -433,17 +494,35 @@ class TestMultimodalTemporalTagsRoute:
     @pytest.mark.asyncio
     async def test_delete_all_is_sample_scoped(
         self,
-        sample_temporal_tags_endpoint,
+        sample_tags_endpoint,
         dataset,
         dataset_id,
         sample_ids,
     ):
-        fomt.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(sample_ids[0], 0, 10, "first"),
-                fomt.TemporalTag(sample_ids[0], 10, 20, "second"),
-                fomt.TemporalTag(sample_ids[1], 0, 10, "other"),
+                fota.TemporalTag(
+                    sample_ids[0],
+                    0,
+                    10,
+                    "first",
+                    kind=fota.TagKind.TEMPORAL,
+                ),
+                fota.TemporalTag(
+                    sample_ids[0],
+                    10,
+                    20,
+                    "second",
+                    kind=fota.TagKind.TEMPORAL,
+                ),
+                fota.TemporalTag(
+                    sample_ids[1],
+                    0,
+                    10,
+                    "other",
+                    kind=fota.TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -452,40 +531,46 @@ class TestMultimodalTemporalTagsRoute:
             sample_id=sample_ids[0],
             body={"delete_all": True},
         )
-        response = await sample_temporal_tags_endpoint.delete(request)
+        response = await sample_tags_endpoint.delete(request)
 
         assert _json_body(response) == {"deleted": 2}
-        assert fomt.count_temporal_tags(dataset) == {"other": 1}
-        assert [tag.sample_id for tag in fomt.list_temporal_tags(dataset)] == [
+        assert fota.count_temporal_tags(dataset) == {"other": 1}
+        assert [tag.sample_id for tag in fota.list_temporal_tags(dataset)] == [
             sample_ids[1]
         ]
 
     @pytest.mark.asyncio
     async def test_validation_errors_return_400(
         self,
-        sample_temporal_tags_endpoint,
-        sample_temporal_tag_endpoint,
-        temporal_tags_endpoint,
-        temporal_tag_counts_endpoint,
+        sample_tags_endpoint,
+        sample_tag_endpoint,
+        tags_endpoint,
+        tag_counts_endpoint,
         dataset,
         dataset_id,
         sample_ids,
     ):
-        temporal_tag = fomt.add_temporal_tags(
+        temporal_tag = fota.add_temporal_tags(
             dataset,
-            fomt.TemporalTag(sample_ids[0], 0, 10, "review"),
+            fota.TemporalTag(
+                sample_ids[0],
+                0,
+                10,
+                "review",
+                kind=fota.TagKind.TEMPORAL,
+            ),
         )[0]
         cases = [
             (
-                sample_temporal_tags_endpoint.post,
+                sample_tags_endpoint.post,
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
-                    body={"temporal_tags": []},
+                    body={"tags": []},
                 ),
             ),
             (
-                sample_temporal_tags_endpoint.post,
+                sample_tags_endpoint.post,
                 _make_request(
                     dataset_id,
                     sample_id=str(ObjectId()),
@@ -497,7 +582,7 @@ class TestMultimodalTemporalTagsRoute:
                 ),
             ),
             (
-                sample_temporal_tags_endpoint.post,
+                sample_tags_endpoint.post,
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
@@ -509,7 +594,7 @@ class TestMultimodalTemporalTagsRoute:
                 ),
             ),
             (
-                sample_temporal_tags_endpoint.post,
+                sample_tags_endpoint.post,
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
@@ -522,7 +607,7 @@ class TestMultimodalTemporalTagsRoute:
                 ),
             ),
             (
-                sample_temporal_tags_endpoint.post,
+                sample_tags_endpoint.post,
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
@@ -535,7 +620,7 @@ class TestMultimodalTemporalTagsRoute:
                 ),
             ),
             (
-                sample_temporal_tags_endpoint.post,
+                sample_tags_endpoint.post,
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
@@ -548,23 +633,23 @@ class TestMultimodalTemporalTagsRoute:
                 ),
             ),
             (
-                sample_temporal_tags_endpoint.delete,
+                sample_tags_endpoint.delete,
                 _make_request(dataset_id, sample_id=sample_ids[0]),
             ),
             (
-                sample_temporal_tag_endpoint.patch,
+                sample_tag_endpoint.patch,
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
-                    temporal_tag_id=temporal_tag.id,
+                    tag_id=temporal_tag.id,
                 ),
             ),
             (
-                sample_temporal_tag_endpoint.patch,
+                sample_tag_endpoint.patch,
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
-                    temporal_tag_id=temporal_tag.id,
+                    tag_id=temporal_tag.id,
                     body={
                         "id": str(ObjectId()),
                         "start": 1,
@@ -572,11 +657,11 @@ class TestMultimodalTemporalTagsRoute:
                 ),
             ),
             (
-                sample_temporal_tag_endpoint.patch,
+                sample_tag_endpoint.patch,
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
-                    temporal_tag_id=temporal_tag.id,
+                    tag_id=temporal_tag.id,
                     body={
                         "sample_id": sample_ids[1],
                         "start": 1,
@@ -584,11 +669,11 @@ class TestMultimodalTemporalTagsRoute:
                 ),
             ),
             (
-                sample_temporal_tag_endpoint.patch,
+                sample_tag_endpoint.patch,
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
-                    temporal_tag_id=temporal_tag.id,
+                    tag_id=temporal_tag.id,
                     body={
                         "created_by": "alice",
                         "start": 1,
@@ -596,11 +681,11 @@ class TestMultimodalTemporalTagsRoute:
                 ),
             ),
             (
-                sample_temporal_tag_endpoint.patch,
+                sample_tag_endpoint.patch,
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
-                    temporal_tag_id=temporal_tag.id,
+                    tag_id=temporal_tag.id,
                     body={
                         "anchor": "camera_front",
                         "start": 1,
@@ -608,11 +693,11 @@ class TestMultimodalTemporalTagsRoute:
                 ),
             ),
             (
-                temporal_tags_endpoint.get,
+                tags_endpoint.get,
                 _make_request(dataset_id, query_params={"start": "soon"}),
             ),
             (
-                sample_temporal_tags_endpoint.get,
+                sample_tags_endpoint.get,
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
@@ -620,7 +705,7 @@ class TestMultimodalTemporalTagsRoute:
                 ),
             ),
             (
-                temporal_tag_counts_endpoint.get,
+                tag_counts_endpoint.get,
                 _make_request(
                     dataset_id, query_params={"sample_id": sample_ids[0]}
                 ),
@@ -635,83 +720,86 @@ class TestMultimodalTemporalTagsRoute:
 
     @pytest.mark.asyncio
     async def test_temporal_tag_update_not_found_returns_404(
-        self, sample_temporal_tag_endpoint, dataset, dataset_id, sample_ids
+        self, sample_tag_endpoint, dataset, dataset_id, sample_ids
     ):
-        temporal_tag = fomt.add_temporal_tags(
+        temporal_tag = fota.add_temporal_tags(
             dataset,
-            fomt.TemporalTag(sample_ids[0], 0, 10, "review"),
+            fota.TemporalTag(
+                sample_ids[0],
+                0,
+                10,
+                "review",
+                kind=fota.TagKind.TEMPORAL,
+            ),
         )[0]
 
         cases = [
             _make_request(
                 dataset_id,
                 sample_id=sample_ids[0],
-                temporal_tag_id=str(ObjectId()),
+                tag_id=str(ObjectId()),
                 body={"start": 1},
             ),
             _make_request(
                 dataset_id,
                 sample_id=sample_ids[1],
-                temporal_tag_id=temporal_tag.id,
+                tag_id=temporal_tag.id,
                 body={"start": 1},
             ),
         ]
 
         for request in cases:
             with pytest.raises(HTTPException) as exc_info:
-                await sample_temporal_tag_endpoint.patch(request)
+                await sample_tag_endpoint.patch(request)
 
             assert exc_info.value.status_code == 404
 
-        persisted = fomt.list_temporal_tags(dataset)
+        persisted = fota.list_temporal_tags(dataset)
         assert [(tag.start, tag.end, tag.tag) for tag in persisted] == [
             (0, 10, "review")
         ]
 
     @pytest.mark.asyncio
-    async def test_dataset_not_found_returns_404(self, temporal_tags_endpoint):
+    async def test_dataset_not_found_returns_404(self, tags_endpoint):
         request = _make_request("missing-dataset")
 
         with pytest.raises(HTTPException) as exc_info:
-            await temporal_tags_endpoint.get(request)
+            await tags_endpoint.get(request)
 
         assert exc_info.value.status_code == 404
         assert "Dataset 'missing-dataset' not found" in exc_info.value.detail
 
-    def test_multimodal_routes_register_temporal_tag_endpoints(self):
+    def test_multimodal_routes_register_tag_endpoints(self):
         routes = dict(fomr.MultimodalRoutes)
-        temporal_routes = [
+        tag_routes = [
             (path, endpoint)
             for path, endpoint in fomr.MultimodalRoutes
-            if "temporal-tags" in path
+            if "/tags" in path
         ]
 
-        assert temporal_routes == [
+        assert tag_routes == [
             (
-                "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags/{temporal_tag_id}",
-                fomr.SampleTemporalTagEndpoint,
+                "/dataset/{dataset_id}/sample/{sample_id}/tags/{tag_id}",
+                fomr.SampleTagEndpoint,
             ),
             (
-                "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags",
-                fomr.SampleTemporalTagsEndpoint,
+                "/dataset/{dataset_id}/sample/{sample_id}/tags",
+                fomr.SampleTagsEndpoint,
             ),
             (
-                "/dataset/{dataset_id}/multimodal/temporal-tags/counts",
-                fomr.TemporalTagCountsEndpoint,
+                "/dataset/{dataset_id}/tags/counts",
+                fomr.TagCountsEndpoint,
             ),
             (
-                "/dataset/{dataset_id}/multimodal/temporal-tags",
-                fomr.TemporalTagsEndpoint,
+                "/dataset/{dataset_id}/tags",
+                fomr.TagsEndpoint,
             ),
         ]
+        assert routes["/dataset/{dataset_id}/tags"] is fomr.TagsEndpoint
         assert (
-            routes["/dataset/{dataset_id}/multimodal/temporal-tags"]
-            is fomr.TemporalTagsEndpoint
+            routes["/dataset/{dataset_id}/tags/counts"]
+            is fomr.TagCountsEndpoint
         )
-        assert (
-            routes["/dataset/{dataset_id}/multimodal/temporal-tags/counts"]
-            is fomr.TemporalTagCountsEndpoint
-        )
-        assert not hasattr(fomr.TemporalTagsEndpoint, "post")
-        assert not hasattr(fomr.TemporalTagsEndpoint, "delete")
-        assert not hasattr(fomr.TemporalTagCountsEndpoint, "post")
+        assert not hasattr(fomr.TagsEndpoint, "post")
+        assert not hasattr(fomr.TagsEndpoint, "delete")
+        assert not hasattr(fomr.TagCountsEndpoint, "post")

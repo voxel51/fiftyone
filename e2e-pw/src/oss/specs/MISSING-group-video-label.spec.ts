@@ -25,7 +25,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 
   await Promise.all(
     [testVideoPath1, testVideoPath2].map(async (outputPath) => {
-      mediaFactory.createBlankVideo({
+      mediaFactory.createVideo({
         outputPath,
         duration: 3,
         width: 100,
@@ -33,7 +33,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
         frameRate: 5,
         color: "#000000",
       });
-    })
+    }),
   );
 
   await fiftyoneLoader.executePythonCode(
@@ -59,7 +59,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
       d2 = fo.Detection(bounding_box=[0.2, 0.2, 0.25, 0.25], label="s1d2")
       frame["d2"] = d2
     sample2.save() 
-    `
+    `,
   );
 });
 
@@ -138,7 +138,7 @@ test.describe.serial("groups video labels", () => {
     const sampleLoadEventPromiseForv2 =
       eventUtils.getEventReceivedPromiseForPredicate(
         "canvas-loaded",
-        (e) => e.detail.sampleFilepath === testVideoPath2
+        (e) => e.detail.sampleFilepath === testVideoPath2,
       );
 
     // change slice and repeat

@@ -22,10 +22,7 @@
         "@babel/preset-typescript": "^7.17.12",
         "@fiftyone/utilities": "workspace:^",
         "jest": "^29.7.0",
-        "prettier": "2.2.1",
+        "prettier": "^3.8.4",
         "vite": "^7.3.2"
-    },
-    "dependencies": {
-        "moment": "^2.29.4"
     }
 }

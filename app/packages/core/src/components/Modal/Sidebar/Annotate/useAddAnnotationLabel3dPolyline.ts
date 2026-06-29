@@ -2,7 +2,7 @@ import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { POLYLINE } from "@fiftyone/utilities";
 import { useCallback } from "react";
-import type { LabelType } from "./Edit/state";
+import type { LabelType } from "./Edit/useAnnotationContext";
 
 /**
  * This hook returns a function which is called a polyline is registered in the sidebar.
@@ -12,7 +12,7 @@ export const useAddAnnotationLabel3dPolyline = () => {
     (
       field: string,
       type: LabelType,
-      data: AnnotationLabel["data"]
+      data: AnnotationLabel["data"],
     ): AnnotationLabel | null => {
       if (type !== POLYLINE) {
         return null;
@@ -29,6 +29,6 @@ export const useAddAnnotationLabel3dPolyline = () => {
         path: field,
       };
     },
-    []
+    [],
   );
 };

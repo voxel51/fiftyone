@@ -23,7 +23,7 @@ const groupCarouselSlices = selector<string[]>({
     }
 
     const mediaTypes = Object.fromEntries(
-      get(fos.groupMediaTypes).map(({ name, mediaType }) => [name, mediaType])
+      get(fos.groupMediaTypes).map(({ name, mediaType }) => [name, mediaType]),
     );
 
     return slices.filter((slice) => !is3d(mediaTypes[slice]));
@@ -35,7 +35,7 @@ const pageParams = selector({
   get: ({ get }) => {
     const params = {
       dataset: get(fos.datasetName) as string,
-      view: get(fos.groupView),
+      view: get(fos.view),
       filter: {
         group: {
           slice: get(fos.groupSlice),
@@ -63,7 +63,7 @@ const Column: React.FC = () => {
   const currentSlice = useRecoilValue(fos.modalGroupSlice);
   const highlight = useCallback(
     (sample) => get(sample, groupField).name === currentSlice,
-    [currentSlice, groupField]
+    [currentSlice, groupField],
   );
 
   const createLooker = fos.useCreateLooker(
@@ -73,7 +73,7 @@ const Column: React.FC = () => {
       ...opts,
       thumbnailTitle: (sample) => get(sample, groupField).name,
     },
-    highlight
+    highlight,
   );
 
   const select = fos.useSelectSample();
@@ -107,7 +107,7 @@ const Column: React.FC = () => {
             "selectthumbnail",
             ({ detail }: CustomEvent) => {
               selectSample.current(detail.id, detail.altKey);
-            }
+            },
           );
 
           store.lookers.set(sampleId, looker);
@@ -149,7 +149,7 @@ const Column: React.FC = () => {
         selected,
         style,
         id,
-        isSelected
+        isSelected,
       );
       store.lookers.get(id)?.updateOptions({
         ...opts,
@@ -159,11 +159,11 @@ const Column: React.FC = () => {
         highlight: highlight(store.samples.get(id)!.sample as Sample),
       });
     },
-    [highlight, opts, selected, store, style]
+    [highlight, opts, selected, store, style],
   );
 
   const options = useRecoilValueLoadable(
-    fos.lookerOptions({ modal: true, withFilter: true })
+    fos.lookerOptions({ modal: true, withFilter: true }),
   );
   useLayoutEffect(() => {
     deferred(() => flashlight.updateItems(updateItem));
@@ -175,7 +175,7 @@ const Column: React.FC = () => {
 
   return (
     <>
-      {isEmpty && <Loading>No data</Loading>}
+      {isEmpty && <Loading>No samples</Loading>}
       <div
         style={{
           display: "block",
@@ -194,7 +194,7 @@ export const GroupCarousel: React.FC<{ fullHeight?: boolean }> = ({
 }) => {
   const [height, setHeight] = useBrowserStorage(
     "carousel-height",
-    fullHeight ? 500 : 150
+    fullHeight ? 500 : 150,
   );
 
   const theme = useTheme();

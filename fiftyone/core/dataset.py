@@ -54,7 +54,7 @@ fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 food = fou.lazy_import("fiftyone.operators.delegated")
 foos = fou.lazy_import("fiftyone.operators.store")
-fommtt = fou.lazy_import("fiftyone.multimodal.tags._temporal_tags")
+fota = fou.lazy_import("fiftyone.core.tags")
 
 
 _SUMMARY_FIELD_KEY = "_summary_field"
@@ -347,6 +347,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not _virtual:
             self._update_last_loaded_at()
 
+        if doc.media_type:
+            self._configure_media_type(doc.media_type)
+
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
 
@@ -472,15 +475,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self._contains_videos(any_slice=True):
             self._init_frames()
 
+        should_reload = self._configure_media_type(media_type)
+        self.save()
+        if should_reload:
+            self.reload()
+
+    def _configure_media_type(self, media_type):
+        """
+        Return:
+            True/False whether when a save is done a reload should also be done
+        """
+        self._doc.media_type = media_type
+
+        if self._contains_videos(any_slice=True):
+            self._init_frames()
+
         if media_type == fom.GROUP:
             # The `metadata` field of group datasets always stays as the
             # generic `Metadata` type because slices may have different types
-            self.save()
+            return False
         else:
             self._update_metadata_field(media_type)
-
-            self.save()
-            self.reload()
+            return True
 
     def _update_metadata_field(self, media_type):
         idx = None
@@ -6013,9 +6029,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         foo.bulk_write(ops, self._sample_collection)
 
         if sample_ids is None:
-            fommtt.delete_for_dataset_id(self._doc.id)
+            fota.delete_for_dataset_id(self._doc.id)
         else:
-            fommtt.delete_for_sample_ids(self._doc.id, sample_ids)
+            fota.delete_for_sample_ids(self._doc.id, sample_ids)
 
         self._update_last_deletion_at(now)
 
@@ -9388,12 +9404,21 @@ def _create_dataset(
     obj,
     name,
     persistent=False,
+    media_type=None,
     _patches=False,
     _frames=False,
     _clips=False,
     _src_collection=None,
 ):
     slug = _validate_dataset_name(name)
+
+    if media_type is not None and (
+        not isinstance(media_type, str) or media_type not in fom.MEDIA_TYPES
+    ):
+        raise ValueError(
+            "Invalid media type '%s'. Must be one of %s"
+            % (media_type, sorted(fom.MEDIA_TYPES))
+        )
 
     _id = ObjectId()
     now = datetime.utcnow()
@@ -9427,7 +9452,7 @@ def _create_dataset(
         version=focn.VERSION,
         created_at=now,
         last_modified_at=now,
-        media_type=None,  # will be inferred when first sample is added
+        media_type=media_type,
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
         persistent=persistent,
@@ -10022,7 +10047,7 @@ def _delete_dataset_extras(dataset):
     svc = foos.ExecutionStoreService(dataset_id=dataset_id)
     svc.cleanup()
 
-    fommtt.delete_for_dataset_id(dataset_id)
+    fota.delete_for_dataset_id(dataset_id)
 
 
 def _clone_collection(
@@ -10033,6 +10058,9 @@ def _clone_collection(
 ):
     slug = _validate_dataset_name(name)
 
+    if sample_collection._is_dynamic_groups:
+        sample_collection = sample_collection.flatten()
+
     contains_videos = sample_collection._contains_videos(any_slice=True)
 
     if isinstance(sample_collection, fov.DatasetView):
@@ -10041,9 +10069,6 @@ def _clone_collection(
 
         if view.media_type == fom.MIXED:
             raise ValueError("Cloning mixed views is not allowed")
-
-        if view._is_dynamic_groups:
-            raise ValueError("Cloning dynamic grouped views is not allowed")
     else:
         dataset = sample_collection
         view = None
@@ -10148,13 +10173,14 @@ def _clone_collection(
 
     clone_dataset = load_dataset(name)
 
-    fommtt.clone_tags(
+    fota.clone_tags(
         dataset, clone_dataset, sample_collection=sample_collection, now=now
     )
 
     # Clone extras (full datasets only)
     if view is None and (
-        dataset.has_saved_views
+        _extras_cloners
+        or dataset.has_saved_views
         or dataset.has_workspaces
         or dataset.has_annotation_runs
         or dataset.has_brain_runs
@@ -10535,9 +10561,38 @@ def _update_no_overwrite(d, dnew):
     d.update({k: v for k, v in dnew.items() if k not in d})
 
 
+# Hooks invoked when a full dataset is cloned, as
+# ``cloner(src_dataset, dst_dataset, now, id_map)``. This lets downstream code
+# register additional "extras" to clone (e.g. execution store records) without
+# this module needing to know about those concepts. See
+# :func:`register_extras_cloner`.
+_extras_cloners = []
+
+
+def register_extras_cloner(cloner):
+    """Registers a callable to be invoked during :func:`_clone_extras`.
+
+    Each registered cloner is called as ``cloner(src_dataset, dst_dataset,
+    now, id_map)`` whenever a full dataset (not a view) is cloned, where
+    ``id_map`` is a ``{str(old_id): str(new_id)}`` dict mapping the source
+    dataset doc id and every cloned run doc id to their newly-minted clone
+    counterparts. Failures in a cloner are logged but do not abort the clone.
+
+    Args:
+        cloner: a callable with signature
+            ``cloner(src_dataset, dst_dataset, now, id_map)``
+    """
+    if cloner not in _extras_cloners:
+        _extras_cloners.append(cloner)
+
+
 def _clone_extras(src_dataset, dst_dataset, now):
     src_doc = src_dataset._doc
     dst_doc = dst_dataset._doc
+
+    # Maps source ids (dataset doc + cloned run docs) to their new clone ids,
+    # so extras cloners can rewrite references that change on clone
+    id_map = {str(src_doc.id): str(dst_doc.id)}
 
     # Clone saved views
     for _view_doc in src_doc.get_saved_views():
@@ -10566,6 +10621,7 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.timestamp = now
         run_doc.save(upsert=True)
 
+        id_map[str(_run_doc.id)] = str(run_doc.id)
         dst_doc.annotation_runs[anno_key] = run_doc
 
     # Clone brain method runs
@@ -10575,6 +10631,7 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.timestamp = now
         run_doc.save(upsert=True)
 
+        id_map[str(_run_doc.id)] = str(run_doc.id)
         dst_doc.brain_methods[brain_key] = run_doc
 
     # Clone evaluation runs
@@ -10584,6 +10641,7 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.timestamp = now
         run_doc.save(upsert=True)
 
+        id_map[str(_run_doc.id)] = str(run_doc.id)
         dst_doc.evaluations[eval_key] = run_doc
 
     # Clone other runs
@@ -10593,9 +10651,21 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.timestamp = now
         run_doc.save(upsert=True)
 
+        id_map[str(_run_doc.id)] = str(run_doc.id)
         dst_doc.runs[run_key] = run_doc
 
     dst_doc.save()
+
+    # Run any registered extras cloners (e.g. execution store cloning).
+    # Best-effort: a failure here must not abort the clone, which has already
+    # copied the dataset and its samples.
+    for cloner in _extras_cloners:
+        try:
+            cloner(src_dataset, dst_dataset, now, id_map)
+        except Exception:
+            logger.warning(
+                "Failed to run extras cloner %r", cloner, exc_info=True
+            )
 
 
 def _clone_reference_doc(ref_doc):

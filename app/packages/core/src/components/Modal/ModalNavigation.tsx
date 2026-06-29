@@ -59,14 +59,14 @@ const Arrow = styled.span<{
 
 const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const showModalNavigationControls = useRecoilValue(
-    fos.showModalNavigationControls
+    fos.showModalNavigationControls,
   );
   const clearUndo = useUndoRedo(KnownContexts.ModalAnnotate).clear;
   const sidebarwidth = useRecoilValue(fos.sidebarWidth(true));
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
 
   const countLoadable = useRecoilValueLoadable(
-    fos.count({ path: "", extended: true, modal: false })
+    fos.count({ path: "", extended: true, modal: false }),
   );
   const count = useRef<number | null>(null);
   if (countLoadable.state === "hasValue") {
@@ -92,16 +92,14 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
             clearUndo();
             return await navigation.next(offset).then((s) => {
               selectiveRenderingEventBus.removeAllListeners();
-              setModal(s, {
-                source: fos.SET_EXPANDED_SAMPLE_SOURCE_NAVIGATION,
-              });
+              setModal(s);
             });
           }
         },
         onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [closePanels, setModal, clearUndo]
+    [closePanels, setModal, clearUndo],
   );
 
   const previousNavigator = useMemo(
@@ -114,16 +112,14 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
             clearUndo();
             return await navigation.previous(offset).then((s) => {
               selectiveRenderingEventBus.removeAllListeners();
-              setModal(s, {
-                source: fos.SET_EXPANDED_SAMPLE_SOURCE_NAVIGATION,
-              });
+              setModal(s);
             });
           }
         },
         onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [closePanels, setModal, clearUndo]
+    [closePanels, setModal, clearUndo],
   );
 
   useEffect(() => {

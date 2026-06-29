@@ -105,6 +105,7 @@ export class DetectionOverlay
   private moveStartPosition?: Point;
   private moveStartBounds?: Rect;
   private isSelectedState = false;
+  private isBeingEstablished = false;
 
   #relativeBounds: Rect;
 
@@ -253,10 +254,10 @@ export class DetectionOverlay
       this.bounds,
       this.containerId,
       maskColor,
-      isEditingMask ? 0.7 : style.opacity ?? BASE_ALPHA,
+      isEditingMask ? 0.7 : (style.opacity ?? BASE_ALPHA),
       () => {
         this.markDirty();
-      }
+      },
     );
 
     // lightweight border when editing detection mask
@@ -264,7 +265,7 @@ export class DetectionOverlay
       renderer.drawScrim(
         this.bounds,
         renderMeta.canonicalMediaBounds,
-        this.containerId
+        this.containerId,
       );
 
       renderer.drawRect(
@@ -274,7 +275,7 @@ export class DetectionOverlay
           lineWidth: 1,
           dashPattern: [4, 4],
         },
-        this.containerId
+        this.containerId,
       );
 
       this.maskKeypoints?.render(renderer, style, renderMeta);
@@ -324,7 +325,7 @@ export class DetectionOverlay
           strokeStyle: hoverStrokeColor,
           lineWidth: style.lineWidth || STROKE_WIDTH,
         },
-        this.containerId
+        this.containerId,
       );
     } else if (overlayStrokeColor && overlayDash) {
       renderer.drawRect(
@@ -334,7 +335,7 @@ export class DetectionOverlay
           lineWidth: style.lineWidth,
           dashPattern: [overlayDash, overlayDash],
         },
-        this.containerId
+        this.containerId,
       );
     }
 
@@ -348,13 +349,13 @@ export class DetectionOverlay
       renderer.drawScrim(
         this.bounds,
         renderMeta.canonicalMediaBounds,
-        this.containerId
+        this.containerId,
       );
       renderer.drawHandles(
         this.bounds,
         style.lineWidth || STROKE_WIDTH,
         color,
-        this.containerId
+        this.containerId,
       );
     }
 
@@ -392,7 +393,7 @@ export class DetectionOverlay
           fontColor: "#ffffff",
           backgroundColor: style.fillStyle || style.strokeStyle || "#000",
         },
-        this.containerId
+        this.containerId,
       );
     }
 
@@ -433,7 +434,7 @@ export class DetectionOverlay
 
   private getResizeRegion(
     worldPoint: Point,
-    scale: number
+    scale: number,
   ): ResizeRegion | null {
     const { x, y, height, width } = this.bounds;
 
@@ -445,20 +446,20 @@ export class DetectionOverlay
     return isNorth && isWest
       ? "RESIZE_NW"
       : isNorth && isEast
-      ? "RESIZE_NE"
-      : isNorth
-      ? "RESIZE_N"
-      : isSouth && isWest
-      ? "RESIZE_SW"
-      : isSouth && isEast
-      ? "RESIZE_SE"
-      : isSouth
-      ? "RESIZE_S"
-      : isWest
-      ? "RESIZE_W"
-      : isEast
-      ? "RESIZE_E"
-      : null;
+        ? "RESIZE_NE"
+        : isNorth
+          ? "RESIZE_N"
+          : isSouth && isWest
+            ? "RESIZE_SW"
+            : isSouth && isEast
+              ? "RESIZE_SE"
+              : isSouth
+                ? "RESIZE_S"
+                : isWest
+                  ? "RESIZE_W"
+                  : isEast
+                    ? "RESIZE_E"
+                    : null;
   }
 
   getCursor(worldPoint: Point, scale: number): string {
@@ -511,13 +512,14 @@ export class DetectionOverlay
     segmentationToolState,
   }: OverlayEvent): boolean {
     this.segmentationTool = segmentationToolState;
+    this.isBeingEstablished = !this.hasValidBounds();
 
     // Segmentation painting takes priority over drag/resize
     if (this.isPaintingActive()) {
       return this.onSegmentationPointerDown(
         point,
         worldPoint,
-        segmentationToolState!
+        segmentationToolState!,
       );
     }
 
@@ -560,7 +562,7 @@ export class DetectionOverlay
   private onSegmentationPointerDown(
     point: Point,
     worldPoint: Point,
-    toolState: SegmentationToolState
+    toolState: SegmentationToolState,
   ): boolean {
     if (toolState.tool === SegmentationTool.Pen) {
       return this.onPenPointerDown(point, worldPoint, toolState);
@@ -585,7 +587,7 @@ export class DetectionOverlay
       worldPoint,
       this.bounds,
       toolState,
-      this.currentStyle
+      this.currentStyle,
     );
 
     if (updatedBounds) {
@@ -609,7 +611,7 @@ export class DetectionOverlay
   private onPenPointerDown(
     _point: Point,
     worldPoint: Point,
-    _toolState: SegmentationToolState
+    _toolState: SegmentationToolState,
   ): boolean {
     this.maskKeypoints ??= new MaskKeypoints({
       coordinateSystem: this.coordinateSystem,
@@ -672,7 +674,7 @@ export class DetectionOverlay
       worldPoint,
       this.bounds,
       segmentationToolState!,
-      this.currentStyle
+      this.currentStyle,
     );
 
     if (updatedBounds) {
@@ -731,7 +733,7 @@ export class DetectionOverlay
     point: Point,
     _event: PointerEvent,
     scale: number,
-    maintainAspectRatio = false
+    maintainAspectRatio = false,
   ): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
@@ -779,7 +781,7 @@ export class DetectionOverlay
 
     if (
       ["SETTING", "RESIZE_NW", "RESIZE_W", "RESIZE_SW"].includes(
-        this.interactionState
+        this.interactionState,
       )
     ) {
       maintainX =
@@ -797,7 +799,7 @@ export class DetectionOverlay
 
     if (
       ["SETTING", "RESIZE_SW", "RESIZE_S", "RESIZE_SE"].includes(
-        this.interactionState
+        this.interactionState,
       )
     ) {
       maintainY =
@@ -853,16 +855,20 @@ export class DetectionOverlay
 
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
-    const wasPainting = this.interactionState === "PAINTING";
-
-    this.interactionState = "NONE";
     const croppedBounds = this.mask?.paintEnd(this.bounds, (encoded) => {
       this.maskSource = encoded;
       this.markDirty();
     });
+
     if (croppedBounds) {
       this.bounds = croppedBounds;
     }
+
+    const wasPainting = this.interactionState === "PAINTING";
+    const isEstablishing = this.isBeingEstablished;
+
+    this.isBeingEstablished = false;
+    this.interactionState = "NONE";
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
@@ -872,6 +878,7 @@ export class DetectionOverlay
       this.eventBus.dispatch("lighter:overlay-paint-end", {
         id: this.id,
         paintStrokeData: this.mask?.getPaintStrokeData(),
+        isEstablishing,
       });
     }
 
@@ -977,7 +984,7 @@ export class DetectionOverlay
       distanceFromLineSegment(
         point,
         { x: drawnBounds.x, y: drawnBounds.y },
-        { x: drawnBounds.x + drawnBounds.width, y: drawnBounds.y }
+        { x: drawnBounds.x + drawnBounds.width, y: drawnBounds.y },
       ),
       distanceFromLineSegment(
         point,
@@ -985,7 +992,7 @@ export class DetectionOverlay
         {
           x: drawnBounds.x + drawnBounds.width,
           y: drawnBounds.y + drawnBounds.height,
-        }
+        },
       ),
       distanceFromLineSegment(
         point,
@@ -993,12 +1000,12 @@ export class DetectionOverlay
           x: drawnBounds.x + drawnBounds.width,
           y: drawnBounds.y + drawnBounds.height,
         },
-        { x: drawnBounds.x, y: drawnBounds.y + drawnBounds.height }
+        { x: drawnBounds.x, y: drawnBounds.y + drawnBounds.height },
       ),
       distanceFromLineSegment(
         point,
         { x: drawnBounds.x, y: drawnBounds.y + drawnBounds.height },
-        { x: drawnBounds.x, y: drawnBounds.y }
+        { x: drawnBounds.x, y: drawnBounds.y },
       ),
     ];
 
@@ -1168,7 +1175,7 @@ export class DetectionOverlay
    */
   addMaskKeypoint(
     worldPoint: Point,
-    options?: { id?: string; variant?: string; dragging?: boolean }
+    options?: { id?: string; variant?: string; dragging?: boolean },
   ): string | null {
     this.maskKeypoints ??= new MaskKeypoints({
       coordinateSystem: this.coordinateSystem,
@@ -1232,7 +1239,7 @@ export class DetectionOverlay
       absolutePoints,
       this.bounds,
       segmentationToolState,
-      this.currentStyle
+      this.currentStyle,
     );
 
     if (updatedBounds) {
@@ -1244,9 +1251,13 @@ export class DetectionOverlay
       this.markDirty();
     });
 
+    const isEstablishing = this.isBeingEstablished;
+    this.isBeingEstablished = false;
+
     this.eventBus.dispatch("lighter:overlay-paint-end", {
       id: this.id,
       paintStrokeData: this.mask?.getPaintStrokeData(),
+      isEstablishing,
     });
 
     this.cancelPenPolygon();
@@ -1323,7 +1334,7 @@ export class DetectionOverlay
       this.bounds,
       (encoded) => {
         this.maskSource = encoded;
-      }
+      },
     );
 
     this.bounds = newBounds;
@@ -1356,7 +1367,7 @@ export class DetectionOverlay
 
   restoreMaskSnapshot(
     snapshot: MaskSnapshot | undefined,
-    bounds: Rect | undefined
+    bounds: Rect | undefined,
   ): void {
     this.mask ??= new MaskCanvas();
 

@@ -30,8 +30,18 @@ describe("MosaicGrid pure helpers", () => {
       // 4 tiles → row of two columns of one tile each.
       expect(layout).toEqual({
         direction: "row",
-        first: { direction: "column", first: "a", second: "b", splitPercentage: 50 },
-        second: { direction: "column", first: "c", second: "d", splitPercentage: 50 },
+        first: {
+          direction: "column",
+          first: "a",
+          second: "b",
+          splitPercentage: 50,
+        },
+        second: {
+          direction: "column",
+          first: "c",
+          second: "d",
+          splitPercentage: 50,
+        },
         splitPercentage: 50,
       });
     });
@@ -71,6 +81,12 @@ describe("MosaicGrid pure helpers", () => {
       const next = addTileToLayout(layout, "d", "ghost");
       expect(collectTileIds(next).sort()).toEqual(["a", "b", "c", "d"]);
     });
+
+    it("throws when the new id already exists in the layout", () => {
+      expect(() => addTileToLayout("a", "a")).toThrow(
+        'Tile id "a" already exists in layout',
+      );
+    });
   });
 });
 
@@ -81,7 +97,7 @@ describe("MosaicGrid component", () => {
     render(<MosaicGrid tiles={{}} value={null} onChange={() => {}} />);
     expect(screen.getByTestId("mosaic-grid")).toBeTruthy();
     expect(screen.getByTestId("mosaic-grid-empty").textContent).toBe(
-      "No tiles open"
+      "No tiles open",
     );
   });
 });

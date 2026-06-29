@@ -18,7 +18,7 @@ import type {
 
 function createDetection(
   id: string,
-  overrides: Partial<ReconciledDetection3D> = {}
+  overrides: Partial<ReconciledDetection3D> = {},
 ): ReconciledDetection3D {
   return {
     _id: id,
@@ -38,7 +38,7 @@ function createDetection(
 
 function createPolyline(
   id: string,
-  overrides: Partial<ReconciledPolyline3D> = {}
+  overrides: Partial<ReconciledPolyline3D> = {},
 ): ReconciledPolyline3D {
   return {
     _id: id,

@@ -3,13 +3,13 @@ import {
   useToolsContext,
   useToolsState,
 } from "./useToolsContext";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { useLighter } from "@fiftyone/lighter";
 import { useAnnotationAgent } from "./useAnnotationAgent";
 import { useAgentSelector } from "./useAgentSelector";
 import { useApplyInferenceResult } from "./useApplyInferenceResult";
-import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
-import useCreate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useCreate";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { useRegisterPointSelectionEventHandlers } from "./useRegisterPointSelectionEventHandlers";
 import { useRegisterAgentLifecycleEvents } from "./useRegisterAgentLifecycleEvents";
 
@@ -33,10 +33,15 @@ const isToolsContextValid = (context: ToolsContext): boolean => {
 export const useRegisterAnnotationToolEventHandlers = () => {
   const toolsContext = useToolsContext();
   const { reset: resetToolsState } = useToolsState();
-  const { selectedLabel } = useAnnotationContext();
+  const { selected, createNew } = useAnnotationContext();
+  const { scene } = useLighter();
 
   const agent = useAnnotationAgent(useAgentSelector().activeAgent?.agent);
-  const applyInferenceResult = useApplyInferenceResult(useCreate("Detection"));
+  const createDetection = useCallback(
+    () => createNew("Detection"),
+    [createNew],
+  );
+  const applyInferenceResult = useApplyInferenceResult(createDetection);
 
   // register handlers for specific tools
   useRegisterPointSelectionEventHandlers();
@@ -50,7 +55,7 @@ export const useRegisterAnnotationToolEventHandlers = () => {
       let cancelled = false;
 
       if (isToolsContextValid(toolsContext) && agent) {
-        const labelId = selectedLabel?.overlay?.id ?? uuidv4();
+        const labelId = selected?.label?.overlay?.id ?? uuidv4();
 
         agent
           .infer(labelId)
@@ -69,13 +74,15 @@ export const useRegisterAnnotationToolEventHandlers = () => {
       };
     },
     // trigger inference every time the input context changes
-    [toolsContext]
+    [toolsContext],
   );
 
-  // reset tools state on mount and unmount
+  // Reset tools state on mount, unmount, and whenever the lighter scene is
+  // rebuilt (sample navigation) so prompts from a previous sample don't leak
+  // into inference on the new one.
   useEffect(() => {
     resetToolsState();
 
     return resetToolsState;
-  }, []);
+  }, [scene]);
 };

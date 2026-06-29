@@ -361,7 +361,7 @@ describe("Skip field tests", () => {
 
   it("skip Detections's subpath ending with .bounding_box", () => {
     expect(skipField(FIELDS.DETECTIONS_BOUNDINGBOX_FIELD.path, SCHEMA)).toBe(
-      true
+      true,
     );
   });
 
@@ -371,16 +371,16 @@ describe("Skip field tests", () => {
 
   it("skip fields in an embedded document when they don't match embeddedDocType in parents.", () => {
     expect(skipField(FIELDS.GROUND_TRUTH_DETECTIONS_FIELD.path, SCHEMA)).toBe(
-      false
+      false,
     );
     expect(
-      skipField(FIELDS.GROUND_TRUTH_DETECTIONS_SKIP_FIELD.path, SCHEMA)
+      skipField(FIELDS.GROUND_TRUTH_DETECTIONS_SKIP_FIELD.path, SCHEMA),
     ).toBe(true);
   });
 
   it("A skipped path 'index' prefixed with 'frames.' should still be skipped", () => {
     expect(
-      skipField(`frames.${FIELDS.DETECTIONS_INDEX_FIELD.path}`, SCHEMA)
+      skipField(`frames.${FIELDS.DETECTIONS_INDEX_FIELD.path}`, SCHEMA),
     ).toBe(true);
   });
 
@@ -428,7 +428,7 @@ describe("Disabled field types in schema fields", () => {
 
   it("A field with ObjectIdField type and non top-level 'id' path is enabled", () => {
     expect(disabledField(FIELDS.OBJECT_ID_TYPE_NESTED.path, SCHEMA)).toBe(
-      false
+      false,
     );
   });
 
@@ -440,8 +440,8 @@ describe("Disabled field types in schema fields", () => {
         NOT_GROUP_DATASET,
         false,
         false,
-        true
-      )
+        true,
+      ),
     ).toBe(true);
   });
 
@@ -453,8 +453,8 @@ describe("Disabled field types in schema fields", () => {
         NOT_GROUP_DATASET,
         true,
         false,
-        false
-      )
+        false,
+      ),
     ).toBe(true);
   });
 
@@ -466,8 +466,8 @@ describe("Disabled field types in schema fields", () => {
         NOT_GROUP_DATASET,
         true,
         false,
-        false
-      )
+        false,
+      ),
     ).toBe(false);
   });
 
@@ -478,14 +478,14 @@ describe("Disabled field types in schema fields", () => {
         SCHEMA,
         NOT_GROUP_DATASET,
         false,
-        false
-      )
+        false,
+      ),
     ).toBe(false);
   });
 
   it("A field with VectorField type is enabled", () => {
     expect(
-      disabledField(FIELDS.VECTOR_TYPE.path, SCHEMA, NOT_GROUP_DATASET)
+      disabledField(FIELDS.VECTOR_TYPE.path, SCHEMA, NOT_GROUP_DATASET),
     ).toBe(false);
   });
 
@@ -500,11 +500,11 @@ describe("Disabled field types in schema fields", () => {
           FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD.path,
           SCHEMA,
           NOT_GROUP_DATASET,
-          false
-        )
+          false,
+        ),
       ).toBe(false);
       expect(
-        disabledField(FIELDS.GROUP_FIELD.path, SCHEMA, GROUP_DATASET, false)
+        disabledField(FIELDS.GROUP_FIELD.path, SCHEMA, GROUP_DATASET, false),
       ).toBe(true);
     });
 
@@ -530,8 +530,8 @@ describe("Disabled field types in schema fields", () => {
           NOT_GROUP_DATASET,
           false,
           false,
-          true
-        )
+          true,
+        ),
       ).toBe(true);
     });
 
@@ -543,8 +543,8 @@ describe("Disabled field types in schema fields", () => {
           NOT_GROUP_DATASET,
           false,
           false,
-          true
-        )
+          true,
+        ),
       ).toBe(true);
     });
   });
@@ -563,8 +563,8 @@ describe("Disabled field types in schema fields", () => {
           false,
           false,
           false,
-          true
-        )
+          true,
+        ),
       ).toBe(true);
     });
 
@@ -577,8 +577,8 @@ describe("Disabled field types in schema fields", () => {
           false,
           false,
           false,
-          false
-        )
+          false,
+        ),
       ).toBe(false);
     });
   });
@@ -594,8 +594,8 @@ describe("Disabled field types in schema fields", () => {
           FIELDS.SAMPLE_ID_FIELD.path,
           SCHEMA,
           NOT_GROUP_DATASET,
-          true
-        )
+          true,
+        ),
       ).toBe(true);
     });
 
@@ -605,8 +605,8 @@ describe("Disabled field types in schema fields", () => {
           FIELDS.FRAME_NUMBER_FIELD.path,
           SCHEMA,
           NOT_GROUP_DATASET,
-          true
-        )
+          true,
+        ),
       ).toBe(true);
     });
   });
@@ -623,8 +623,8 @@ describe("Disabled field types in schema fields", () => {
           SCHEMA,
           NOT_GROUP_DATASET,
           false,
-          true
-        )
+          true,
+        ),
       ).toBe(true);
     });
 
@@ -635,8 +635,8 @@ describe("Disabled field types in schema fields", () => {
           SCHEMA,
           NOT_GROUP_DATASET,
           false,
-          true
-        )
+          true,
+        ),
       ).toBe(true);
     });
   });
@@ -648,7 +648,7 @@ describe("Disabled field types in schema fields", () => {
 
     it("metadata field is disabled", () => {
       expect(
-        disabledField(FIELDS.METADATA_FIELD.path, SCHEMA, NOT_GROUP_DATASET)
+        disabledField(FIELDS.METADATA_FIELD.path, SCHEMA, NOT_GROUP_DATASET),
       ).toBe(true);
     });
 
@@ -657,8 +657,8 @@ describe("Disabled field types in schema fields", () => {
         disabledField(
           FIELDS.METADATA_WIDTH_FIELD.path,
           SCHEMA,
-          NOT_GROUP_DATASET
-        )
+          NOT_GROUP_DATASET,
+        ),
       ).toBe(true);
     });
   });
@@ -672,18 +672,18 @@ describe("Disabled field types in schema fields", () => {
       expect(disabledField(FIELDS.DETECTION_FIELD.path, SCHEMA)).toBe(true);
       expect(disabledField(FIELDS.DETECTIONS_FIELD.path, SCHEMA)).toBe(true);
       expect(disabledField(FIELDS.CLASSIFICATION_FIELD.path, SCHEMA)).toBe(
-        true
+        true,
       );
       expect(disabledField(FIELDS.CLASSIFICATIONS_FIELD.path, SCHEMA)).toBe(
-        true
+        true,
       );
       expect(disabledField(FIELDS.KEYPOINT_FIELD.path, SCHEMA)).toBe(true);
       expect(disabledField(FIELDS.KEYPOINTS_FIELD.path, SCHEMA)).toBe(true);
       expect(disabledField(FIELDS.TEMPORAL_DETECTION_FIELD.path, SCHEMA)).toBe(
-        true
+        true,
       );
       expect(disabledField(FIELDS.TEMPORAL_DETECTIONS_FIELD.path, SCHEMA)).toBe(
-        true
+        true,
       );
       expect(disabledField(FIELDS.REGRESSION_FIELD.path, SCHEMA)).toBe(true);
       expect(disabledField(FIELDS.HEATMAP_FIELD.path, SCHEMA)).toBe(true);
@@ -696,7 +696,7 @@ describe("Disabled field types in schema fields", () => {
 
     it("disable a field of TemporalDetection label with FrameSupportField type", () => {
       expect(
-        disabledField(FIELDS.TEMPORAL_DETECTION_FRAME_SUPPORT.path, SCHEMA)
+        disabledField(FIELDS.TEMPORAL_DETECTION_FRAME_SUPPORT.path, SCHEMA),
       ).toBe(true);
     });
   });
@@ -709,7 +709,7 @@ describe("Disabled field types in schema fields", () => {
     it("Detection nested fields that are disabled", () => {
       const disabledSubFields = getDisabledNestedLabelFields(
         "detection",
-        DETECTION_DISABLED_SUB_PATHS
+        DETECTION_DISABLED_SUB_PATHS,
       );
       disabledSubFields.forEach((field) => {
         SCHEMA[field.path] = field;
@@ -734,7 +734,7 @@ describe("Disabled field types in schema fields", () => {
     it("Polyline nested fields that are disabled", () => {
       const disabledSubFields = getDisabledNestedLabelFields(
         "polyline",
-        POLYLINE_DISABLED_SUB_PATHS
+        POLYLINE_DISABLED_SUB_PATHS,
       );
       disabledSubFields.forEach((field) => {
         SCHEMA[field.path] = field;
@@ -759,7 +759,7 @@ describe("Disabled field types in schema fields", () => {
     it("Classification nested fields that are disabled", () => {
       const disabledSubFields = getDisabledNestedLabelFields(
         "classification",
-        CLASSIFICATION_DISABLED_SUB_PATHS
+        CLASSIFICATION_DISABLED_SUB_PATHS,
       );
       disabledSubFields.forEach((field) => {
         SCHEMA[field.path] = field;
@@ -784,7 +784,7 @@ describe("Disabled field types in schema fields", () => {
     it("Regression nested fields that are disabled", () => {
       const disabledSubFields = getDisabledNestedLabelFields(
         "regression",
-        REGRESSION_DISABLED_SUB_PATHS
+        REGRESSION_DISABLED_SUB_PATHS,
       );
       disabledSubFields.forEach((field) => {
         SCHEMA[field.path] = field;
@@ -809,7 +809,7 @@ describe("Disabled field types in schema fields", () => {
     it("Keypoint nested fields that are disabled", () => {
       const disabledSubFields = getDisabledNestedLabelFields(
         "keypoint",
-        KEYPOINT_DISABLED_SUB_PATHS
+        KEYPOINT_DISABLED_SUB_PATHS,
       );
       disabledSubFields.forEach((field) => {
         SCHEMA[field.path] = field;
@@ -835,7 +835,7 @@ describe("Disabled field types in schema fields", () => {
       SCHEMA = { ...ORIGINAL_SCHEMA };
       const disabledSubFields = getDisabledNestedLabelFields(
         "segmentation",
-        SEGMENTATION_DISABLED_SUB_PATHS
+        SEGMENTATION_DISABLED_SUB_PATHS,
       );
       disabledSubFields.forEach((field) => {
         SCHEMA[field.path] = field;
@@ -861,7 +861,7 @@ describe("Disabled field types in schema fields", () => {
       SCHEMA = { ...ORIGINAL_SCHEMA };
       const disabledSubFields = getDisabledNestedLabelFields(
         "heatmap",
-        HEATMAP_DISABLED_SUB_PATHS
+        HEATMAP_DISABLED_SUB_PATHS,
       );
       disabledSubFields.forEach((field) => {
         SCHEMA[field.path] = field;
@@ -887,7 +887,7 @@ describe("Disabled field types in schema fields", () => {
       SCHEMA = { ...ORIGINAL_SCHEMA };
       const disabledSubFields = getDisabledNestedLabelFields(
         "temporal",
-        TEMPORAL_DETECTION_DISABLED_SUB_PATHS
+        TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
       );
       disabledSubFields.forEach((field) => {
         SCHEMA[field.path] = field;
@@ -913,7 +913,7 @@ describe("Disabled field types in schema fields", () => {
       SCHEMA = { ...ORIGINAL_SCHEMA };
       const disabledSubFields = getDisabledNestedLabelFields(
         "geolocation",
-        GEOLOCATION_DISABLED_SUB_PATHS
+        GEOLOCATION_DISABLED_SUB_PATHS,
       );
       disabledSubFields.forEach((field) => {
         SCHEMA[field.path] = field;
@@ -939,7 +939,7 @@ describe("Disabled field types in schema fields", () => {
       SCHEMA = { ...ORIGINAL_SCHEMA };
       const disabledSubFields = getDisabledNestedLabelFields(
         "geolocations",
-        GEOLOCATIONS_DISABLED_SUB_PATHS
+        GEOLOCATIONS_DISABLED_SUB_PATHS,
       );
       disabledSubFields.forEach((field) => {
         SCHEMA[field.path] = field;
@@ -969,19 +969,19 @@ describe("Disabled field types in schema fields", () => {
 
     it("getPath should return original path when dataset.mediaType is 'image'", () => {
       expect(getPath(FIELDS.SAMPLE_ID_FIELD.path, "image", SCHEMA)).toEqual(
-        FIELDS.SAMPLE_ID_FIELD.path
+        FIELDS.SAMPLE_ID_FIELD.path,
       );
     });
 
     it("getPath should return [frames.]path when dataset.mediaType is 'video'", () => {
       expect(getPath(FIELDS.SAMPLE_ID_FIELD.path, "video", SCHEMA)).toEqual(
-        `frames.${FIELDS.SAMPLE_ID_FIELD.path}`
+        `frames.${FIELDS.SAMPLE_ID_FIELD.path}`,
       );
     });
 
     it("getPath should return same paths as input when dataset.mediaType is 'video' but path does not exist in frameSchema", () => {
       expect(getPath(NON_EXISTENT_PATH, "video", SCHEMA)).toEqual(
-        NON_EXISTENT_PATH
+        NON_EXISTENT_PATH,
       );
     });
   });
@@ -1005,10 +1005,10 @@ describe("Disabled field types in schema fields", () => {
 
     it("getSubPath should return correct subpaths in an image dataset", () => {
       expect(
-        getSubPaths(FIELDS.METADATA_FIELD.path, SCHEMA, "image")
+        getSubPaths(FIELDS.METADATA_FIELD.path, SCHEMA, "image"),
       ).toContain(FIELDS.METADATA_FIELD.path);
       expect(
-        getSubPaths(FIELDS.METADATA_FIELD.path, SCHEMA, "image")
+        getSubPaths(FIELDS.METADATA_FIELD.path, SCHEMA, "image"),
       ).toContain(FIELDS.METADATA_WIDTH_FIELD.path);
     });
 
@@ -1028,21 +1028,21 @@ describe("Disabled field types in schema fields", () => {
         disabledField(
           FIELDS.DETECTIONS_LIST_FIELD.path,
           SCHEMA,
-          NOT_GROUP_DATASET
-        )
+          NOT_GROUP_DATASET,
+        ),
       ).toBe(true);
       expect(disabledField(FIELDS.REGRESSION_FIELD.path, SCHEMA, "")).toBe(
-        true
+        true,
       );
       expect(disabledField(FIELDS.HEATMAP_FIELD.path, SCHEMA, "")).toBe(true);
       expect(disabledField(FIELDS.SEGMENTATION_FIELD.path, SCHEMA, "")).toBe(
-        true
+        true,
       );
     });
 
     it("List of non-labels are enabled", () => {
       expect(
-        disabledField(FIELDS.CUSTOM_LIST_FIELD.path, SCHEMA, NOT_GROUP_DATASET)
+        disabledField(FIELDS.CUSTOM_LIST_FIELD.path, SCHEMA, NOT_GROUP_DATASET),
       ).toBe(false);
     });
   });

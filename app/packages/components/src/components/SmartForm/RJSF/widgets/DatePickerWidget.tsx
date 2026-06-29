@@ -1,6 +1,5 @@
 import { WidgetProps } from "@rjsf/utils";
 import { DatePicker, FormField } from "@voxel51/voodo";
-import React from "react";
 
 export default function DatePickerWidget(props: WidgetProps) {
   const {

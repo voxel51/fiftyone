@@ -9,7 +9,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "smoke-annotate-action-switching"
+  "smoke-annotate-action-switching",
 );
 const id = "000000000000000000000000";
 
@@ -23,7 +23,7 @@ const test = base.extend<{
 
 test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createBlankDataset({
+  await datasetFactory.createDataset({
     datasetName,
     schema: {
       detections: "Detections",

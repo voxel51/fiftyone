@@ -86,14 +86,13 @@ export type RenderConfig3dImperativeState = {
   /** Resolves the latest pinned status */
   getIsPinned: () => Promise<boolean>;
 };
-
 /**
  * Suspense-compatible 3D render state for React rendering.
  */
 export const useRenderConfig3dState = (): RenderConfig3dState => {
   const is3dVisible = useRecoilValue(internals.groupMediaIs3dVisible);
   const is3dVisibleSetting = useRecoilValue(
-    internals.groupMedia3dVisibleSetting
+    internals.groupMedia3dVisibleSetting,
   );
   const isPinned = useRecoilValue(internals.is3dPinned);
   const has3dSlice = useRecoilValue(internals.has3dSlice);
@@ -155,7 +154,7 @@ export const useRenderConfig3dState = (): RenderConfig3dState => {
       pinnedSlice,
       realFo3dSlices,
       sceneSample,
-    ]
+    ],
   );
 };
 
@@ -168,14 +167,14 @@ export const useRenderConfig3dImperativeState =
       ({ snapshot }) =>
         async () =>
           snapshot.getPromise(internals.is3dPinned),
-      []
+      [],
     );
 
     return useMemo<RenderConfig3dImperativeState>(
       () => ({
         getIsPinned,
       }),
-      [getIsPinned]
+      [getIsPinned],
     );
   };
 
@@ -188,7 +187,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
       (content: unknown | null) => {
         set(internals.fo3dContent, content);
       },
-    []
+    [],
   );
 
   const setPinned = useRecoilCallback(
@@ -200,17 +199,17 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
         }
 
         const samples = await snapshot.getPromise(
-          internals.all3dSlicesToSampleMap
+          internals.all3dSlicesToSampleMap,
         );
         const all3dSlices = await snapshot.getPromise(internals.all3dSlices);
         const currentActive3dSlices = await snapshot.getPromise(
-          internals.active3dSlices
+          internals.active3dSlices,
         );
         const currentPinnedSlice = await snapshot.getPromise(
-          internals.pinned3DSampleSlice
+          internals.pinned3DSampleSlice,
         );
         const currentRealFo3dSlices = await snapshot.getPromise(
-          internals.realFo3dSlices
+          internals.realFo3dSlices,
         );
         const { nextActive3dSlices, nextPinnedSlice } =
           resolveNormalized3dSelection({
@@ -228,7 +227,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
         set(internals.pinned3DSampleSlice, nextPinnedSlice);
         set(internals.is3dPinned, Boolean(nextPinnedSlice));
       },
-    []
+    [],
   );
 
   const initializeFromModalSlice = useRecoilCallback(
@@ -248,24 +247,24 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
         set(internals.pinned3DSampleSlice, sliceName);
         set(internals.is3dPinned, true);
       },
-    []
+    [],
   );
 
   const reconcileAvailableSlices = useRecoilCallback(
     ({ snapshot, set }) =>
       async () => {
         const samples = await snapshot.getPromise(
-          internals.all3dSlicesToSampleMap
+          internals.all3dSlicesToSampleMap,
         );
         const all3dSlices = await snapshot.getPromise(internals.all3dSlices);
         const currentActive3dSlices = await snapshot.getPromise(
-          internals.active3dSlices
+          internals.active3dSlices,
         );
         const currentPinnedSlice = await snapshot.getPromise(
-          internals.pinned3DSampleSlice
+          internals.pinned3DSampleSlice,
         );
         const currentRealFo3dSlices = await snapshot.getPromise(
-          internals.realFo3dSlices
+          internals.realFo3dSlices,
         );
         const { nextActive3dSlices, nextPinnedSlice } =
           resolveNormalized3dSelection({
@@ -288,24 +287,24 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
           set(internals.is3dPinned, false);
         }
       },
-    []
+    [],
   );
 
   const toggleSlice = useRecoilCallback(
     ({ snapshot, set }) =>
       async (sliceName: string, enabled: boolean) => {
         const samples = await snapshot.getPromise(
-          internals.all3dSlicesToSampleMap
+          internals.all3dSlicesToSampleMap,
         );
         const all3dSlices = await snapshot.getPromise(internals.all3dSlices);
         const currentActive3dSlices = await snapshot.getPromise(
-          internals.active3dSlices
+          internals.active3dSlices,
         );
         const currentPinnedSlice = await snapshot.getPromise(
-          internals.pinned3DSampleSlice
+          internals.pinned3DSampleSlice,
         );
         const currentRealFo3dSlices = await snapshot.getPromise(
-          internals.realFo3dSlices
+          internals.realFo3dSlices,
         );
 
         const requestedActive3dSlices = enabled
@@ -334,7 +333,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
           set(internals.is3dPinned, false);
         }
       },
-    []
+    [],
   );
 
   const setVisible = useRecoilCallback(
@@ -342,7 +341,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
       (visible: boolean) => {
         set(internals.groupMedia3dVisibleSetting, visible);
       },
-    []
+    [],
   );
 
   const focusSlice = useRecoilCallback(
@@ -360,14 +359,14 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
         }
 
         const currentActive3dSlices = await snapshot.getPromise(
-          internals.active3dSlices
+          internals.active3dSlices,
         );
         const all3dSlices = await snapshot.getPromise(internals.all3dSlices);
         const currentRealFo3dSlices = await snapshot.getPromise(
-          internals.realFo3dSlices
+          internals.realFo3dSlices,
         );
         const samples = await snapshot.getPromise(
-          internals.all3dSlicesToSampleMap
+          internals.all3dSlicesToSampleMap,
         );
         const { nextActive3dSlices } = resolveNormalized3dSelection({
           active3dSlices: [sliceName, ...currentActive3dSlices],
@@ -385,7 +384,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
         set(internals.pinned3DSampleSlice, sliceName);
         set(internals.is3dPinned, true);
       },
-    []
+    [],
   );
 
   return useMemo<RenderConfig3dActions>(
@@ -406,6 +405,6 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
       setPinned,
       setVisible,
       toggleSlice,
-    ]
+    ],
   );
 };

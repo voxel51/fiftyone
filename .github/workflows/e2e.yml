@@ -136,6 +136,22 @@ jobs:
         mongodb-version:
           - "latest"
         shard: [1, 2, 3, 4]
+    services:
+      # Run MongoDB as a service container rather than via a Docker-based
+      # action. Container actions are built from `docker:latest` at job start
+      # (before any step runs), so the previous `supercharge/mongodb-github-action`
+      # added an extra, unauthenticated Docker Hub pull that intermittently timed
+      # out. The runner's docker daemon pulls `mongo` directly here, with native
+      # health checks and retries.
+      mongo:
+        image: mongo:${{ matrix.mongodb-version }}
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -176,11 +192,6 @@ jobs:
           username: ${{ env.docker-username }}
           password: ${{ env.docker-password }}
 
-      - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.12.1
-        with:
-          mongodb-version: ${{ matrix.mongodb-version }}
-
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -206,7 +217,7 @@ jobs:
 
       - name: Install fiftyone
         run: |
-          uv pip install --system . -r requirements/e2e.txt
+          uv pip install --system '.[multimodal]' -r requirements/e2e.txt
 
       - name: Configure
         id: test_config
@@ -214,13 +225,8 @@ jobs:
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
 
-      # - name: Setup FFmpeg (with retries)
-      #   uses: FedericoCarboni/setup-ffmpeg@v3
-
-      # Use this until https://github.com/federicocarboni/setup-ffmpeg/pull/23
-      # is merged or the maintainer addresses the root issue.
-      - name: Setup FFmpeg (with retries)
-        uses: afoley587/setup-ffmpeg@main
+      - name: Setup FFmpeg
+        uses: ./.github/actions/setup-ffmpeg
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache

@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { viewsAreEqual } from "@fiftyone/state";
 import { NotFoundError, Resource, isNotebook } from "@fiftyone/utilities";
 import type { Action, Location } from "history";
@@ -39,12 +43,12 @@ export interface Entry<T extends OperationType> extends FiftyOneLocation {
 type Subscription<T extends OperationType> = (
   entry: Entry<T>,
   action?: Action,
-  previousEntry?: Entry<T>
+  previousEntry?: Entry<T>,
 ) => void;
 
 type Subscribe<T extends OperationType> = (
   subscription: Subscription<T>,
-  onPending?: () => void
+  onPending?: () => void,
 ) => () => void;
 
 export interface RoutingContext<T extends OperationType> {
@@ -65,7 +69,7 @@ export interface Router<T extends OperationType> {
 export const createRouter = <T extends OperationType>(
   environment: Environment,
   routes: RouteDefinition<T>[],
-  handleError?: (error: unknown) => void
+  handleError?: (error: unknown) => void,
 ): Router<T> => {
   const history = isNotebook() ? createMemoryHistory() : createBrowserHistory();
 
@@ -83,7 +87,7 @@ export const createRouter = <T extends OperationType>(
   const update = (
     location: FiftyOneLocation,
     action?: Action,
-    attach?: Resource<Entry<T>>
+    attach?: Resource<Entry<T>>,
   ) => {
     currentEntryResource.load().then(({ cleanup }) => {
       try {
@@ -162,7 +166,7 @@ export const createRouter = <T extends OperationType>(
         update(
           history.location as FiftyOneLocation,
           undefined,
-          currentEntryResource
+          currentEntryResource,
         );
       }
       return currentEntryResource.load();
@@ -244,7 +248,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
         location.pathname,
         route,
         location.search,
-        location.state
+        location.state,
       );
 
       if (match) {
@@ -269,7 +273,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
             matchResult.variables || {},
             {
               fetchPolicy,
-            }
+            },
           );
 
           let resolveEntry: (entry: Entry<T>) => void;
@@ -280,7 +284,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
             environment,
             concreteRequest,
             matchResult.variables || {},
-            { fetchPolicy }
+            { fetchPolicy },
           ).subscribe({
             next: (data) => {
               const { state: _, ...rest } = location;
@@ -300,7 +304,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
           });
 
           return promise;
-        }
+        },
       );
     });
 

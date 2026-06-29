@@ -48,7 +48,7 @@ const isFiniteBox = (b: Box3) =>
 export function useFo3dBounds(
   objectRef: React.RefObject<Group>,
   isReady: boolean = true,
-  opts: Options = {}
+  opts: Options = {},
 ) {
   const {
     stableSamples = DEFAULT_STABLE_SAMPLES,

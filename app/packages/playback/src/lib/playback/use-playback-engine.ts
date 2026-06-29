@@ -14,15 +14,14 @@ import {
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
+import { SEEK_BAR_DEBOUNCE } from "../constants";
+import { clamp, clampAndValidateBounds } from "./utils";
 import type {
   PlaybackConfig,
   PlaybackContextValue,
   PlaybackStore,
   PlaybackStream,
 } from "./types";
-
-const clamp = (v: number, lo: number, hi: number) =>
-  Math.min(hi, Math.max(lo, v));
 
 export function usePlaybackEngine({
   duration = 0,
@@ -49,7 +48,7 @@ export function usePlaybackEngine({
     const rawLoopEnd = clamp(
       defaultLoopEnd ?? initialDuration,
       0,
-      initialDuration
+      initialDuration,
     );
     // Inverted / collapsed window → fall back to the full timeline so the
     // RAF wrap path isn't trapped in a zero-width loop.
@@ -132,10 +131,10 @@ export function usePlaybackEngine({
         fire();
       } else {
         // Debounced so streams don't thrash their caches during rapid scrubbing.
-        seekDebounceRef.current = setTimeout(fire, 50);
+        seekDebounceRef.current = setTimeout(fire, SEEK_BAR_DEBOUNCE);
       }
     },
-    [store]
+    [store],
   );
 
   const doCommit = useCallback(
@@ -146,7 +145,7 @@ export function usePlaybackEngine({
         s.onCommit?.(time, store);
       }
     },
-    [store, isActive]
+    [store, isActive],
   );
 
   const tick = useCallback(
@@ -158,7 +157,8 @@ export function usePlaybackEngine({
         return;
       }
 
-      const dt = ((timestamp - lastTimestampRef.current) / 1000) * store.get(speedAtom);
+      const dt =
+        ((timestamp - lastTimestampRef.current) / 1000) * store.get(speedAtom);
       lastTimestampRef.current = timestamp;
 
       const currentTime = store.get(playheadAtom);
@@ -180,7 +180,10 @@ export function usePlaybackEngine({
         isBuffering = true;
         // "loading" means fetch already in flight — don't re-request.
         if (state === "missing") {
-          s.prefetch?.([targetTime, Math.min(duration, targetTime + (s.lookaheadSeconds ?? 3))]);
+          s.prefetch?.([
+            targetTime,
+            Math.min(duration, targetTime + (s.lookaheadSeconds ?? 3)),
+          ]);
         }
       }
 
@@ -196,7 +199,7 @@ export function usePlaybackEngine({
 
       rafIdRef.current = requestAnimationFrame(tick);
     },
-    [store, fireSeekEvent, doCommit, isActive]
+    [store, fireSeekEvent, doCommit, isActive],
   );
 
   useEffect(() => {
@@ -233,7 +236,24 @@ export function usePlaybackEngine({
       }
       return true;
     },
-    [isActive]
+    [isActive],
+  );
+
+  /**
+   * Commit `time` if every blocking stream is ready, and mirror the
+   * readiness into `isBufferingAtom` so paused seeks/steps surface the
+   * same "catching up" signal the RAF loop provides during playback.
+   * While paused nothing re-evaluates readiness, so the stream that
+   * fulfils the missing data is responsible for clearing the flag (the
+   * MCAP data stream does this when the playhead tick becomes covered).
+   */
+  const commitIfReady = useCallback(
+    (time: number) => {
+      const ready = checkAllReady(time);
+      store.set(isBufferingAtom, !ready);
+      if (ready) doCommit(time);
+    },
+    [checkAllReady, doCommit, store],
   );
 
   const actions = useMemo(
@@ -242,7 +262,7 @@ export function usePlaybackEngine({
         const clamped = clamp(time, 0, store.get(durationAtom));
         store.set(playheadAtom, clamped);
         fireSeekEvent(clamped);
-        if (checkAllReady(clamped)) doCommit(clamped);
+        commitIfReady(clamped);
       },
       play: () => {
         const current = store.get(playheadAtom);
@@ -261,41 +281,41 @@ export function usePlaybackEngine({
         const next = clamp(
           store.get(playheadAtom) - store.get(stepIntervalAtom),
           0,
-          store.get(durationAtom)
+          store.get(durationAtom),
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
-        if (checkAllReady(next)) doCommit(next);
+        commitIfReady(next);
       },
       stepForward: () => {
         const next = clamp(
           store.get(playheadAtom) + store.get(stepIntervalAtom),
           0,
-          store.get(durationAtom)
+          store.get(durationAtom),
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
-        if (checkAllReady(next)) doCommit(next);
+        commitIfReady(next);
       },
       setView: (start: number, end: number) => {
-        // Apply the same validation as setLoop so the visible window
-        // can't end up inverted, collapsed, or outside [0, duration].
-        const dur = store.get(durationAtom);
-        const vs = clamp(start, 0, dur);
-        const ve = clamp(end, 0, dur);
-        if (ve <= vs) return;
-        store.set(viewStartAtom, vs);
-        store.set(viewEndAtom, ve);
+        const bounds = clampAndValidateBounds(
+          start,
+          end,
+          store.get(durationAtom),
+        );
+        if (!bounds) return;
+        store.set(viewStartAtom, bounds.start);
+        store.set(viewEndAtom, bounds.end);
       },
       setLoop: (start: number, end: number) => {
-        const dur = store.get(durationAtom);
-        const ls = clamp(start, 0, dur);
-        const le = clamp(end, 0, dur);
-        // Reject inverted / collapsed windows so the RAF wrap path can't
-        // get trapped in a zero-width loop.
-        if (le <= ls) return;
-        store.set(loopStartAtom, ls);
-        store.set(loopEndAtom, le);
+        const bounds = clampAndValidateBounds(
+          start,
+          end,
+          store.get(durationAtom),
+        );
+        if (!bounds) return;
+        store.set(loopStartAtom, bounds.start);
+        store.set(loopEndAtom, bounds.end);
       },
       setSpeed: (speed: number) => {
         // NaN / Infinity / non-positive values would corrupt `dt` in the
@@ -318,7 +338,10 @@ export function usePlaybackEngine({
         };
       },
       subscribeStream: (id: string) => {
-        subscribersRef.current.set(id, (subscribersRef.current.get(id) ?? 0) + 1);
+        subscribersRef.current.set(
+          id,
+          (subscribersRef.current.get(id) ?? 0) + 1,
+        );
         // One-shot cleanup. StrictMode's setup→cleanup→setup cycle (and
         // any consumer that retains a stale cleanup) would otherwise
         // double-decrement and drop a still-mounted stream.
@@ -338,16 +361,15 @@ export function usePlaybackEngine({
     [
       store,
       fireSeekEvent,
-      doCommit,
-      checkAllReady,
+      commitIfReady,
       recomputeDuration,
       recomputeStepInterval,
-    ]
+    ],
   );
 
   const contextValue = useMemo<PlaybackContextValue>(
     () => ({ duration, stepInterval, ...actions }),
-    [duration, stepInterval, actions]
+    [duration, stepInterval, actions],
   );
 
   return { store, contextValue };

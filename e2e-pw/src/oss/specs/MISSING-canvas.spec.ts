@@ -19,7 +19,7 @@ const test = base.extend<{
 
   datasetName: async ({ datasetFactory }, use) => {
     const datasetName = getUniqueDatasetNameWithPrefix(`canvas-regressions`);
-    await datasetFactory.createBlankDataset({
+    await datasetFactory.createDataset({
       datasetName,
       numbered: true, // Numbering ensures we capture the rendering details
     });

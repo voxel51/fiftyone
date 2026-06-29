@@ -4,7 +4,7 @@ import * as fos from "../..";
 
 export default function useHoveredSample(
   sample: Sample,
-  args?: { update?: () => void; clear?: () => void }
+  args?: { update?: () => void; clear?: () => void },
 ) {
   const setSample = useSetRecoilState(fos.hoveredSample);
   function onMouseEnter() {

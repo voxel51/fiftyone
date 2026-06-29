@@ -1,6 +1,6 @@
 import { useDragDelta } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useEffect, useRef } from "react";
+import React, { type ReactNode, useEffect, useRef } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   useLoopEnd,
@@ -9,12 +9,11 @@ import {
   useViewEnd,
   useViewStart,
 } from "../../lib/playback/use-playback-state";
+import { clamp } from "../../lib/playback/utils";
 import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;
 const CLICK_PX_THRESHOLD = 3;
-const clamp = (v: number, lo: number, hi: number) =>
-  Math.min(hi, Math.max(lo, v));
 
 function tickLabel(t: number): string {
   const s = Math.floor(t);
@@ -31,12 +30,15 @@ export interface TimelineRulerProps {
    */
   zoomRef?: React.RefObject<HTMLElement | null>;
   className?: string;
+  /** Optional overlay rendered inside the ruler's positioned context. */
+  overlay?: ReactNode;
 }
 
 const TimelineRuler: React.FC<TimelineRulerProps> = ({
   labelWidth = 0,
   zoomRef,
   className,
+  overlay,
 }) => {
   const playhead = usePlayhead();
   const viewStart = useViewStart();
@@ -81,7 +83,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const vd = startVe - startVs;
       dragRef.current.maxAbsDelta = Math.max(
         dragRef.current.maxAbsDelta,
-        Math.abs(delta)
+        Math.abs(delta),
       );
       seek(clamp(startValue + (delta / laneWidth) * vd, 0, duration));
     },
@@ -99,7 +101,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const t = clamp(
         startValue + (delta / laneWidth) * vd,
         0,
-        loopEnd - 1 / 60
+        loopEnd - 1 / 60,
       );
       setLoop(t, loopEnd);
     },
@@ -117,7 +119,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const t = clamp(
         startValue + (delta / laneWidth) * vd,
         loopStart + 1 / 60,
-        duration
+        duration,
       );
       setLoop(loopStart, t);
     },
@@ -134,7 +136,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const { startVs, startVe, laneWidth } = dragRef.current;
       dragRef.current.maxAbsDelta = Math.max(
         dragRef.current.maxAbsDelta,
-        Math.abs(delta)
+        Math.abs(delta),
       );
       const vd = startVe - startVs;
       const dt = (delta / laneWidth) * vd;
@@ -188,7 +190,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         const ratio = clamp(
           (e.clientX - rect.left - labelWidth) / laneWidth,
           0,
-          1
+          1,
         );
         const pivotTime = vs + ratio * (ve - vs);
         const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
@@ -196,7 +198,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         const newStart = clamp(
           pivotTime - ratio * newDuration,
           0,
-          duration - newDuration
+          duration - newDuration,
         );
         setViewRef.current(newStart, newStart + newDuration);
       } else if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
@@ -217,11 +219,9 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const loopStartRatio = clamp((loopStart - viewStart) / viewDuration, 0, 1);
   const loopEndRatio = clamp((loopEnd - viewStart) / viewDuration, 0, 1);
 
-  const tickInterval =
-    viewDuration <= 1 ? 0.1 : viewDuration <= 3 ? 0.5 : 1;
+  const tickInterval = viewDuration <= 1 ? 0.1 : viewDuration <= 3 ? 0.5 : 1;
   const ticks: number[] = [];
-  const firstTick =
-    Math.ceil(viewStart / tickInterval - 1e-9) * tickInterval;
+  const firstTick = Math.ceil(viewStart / tickInterval - 1e-9) * tickInterval;
   for (
     let t = Math.round(firstTick * 1e4) / 1e4;
     t <= viewEnd + 1e-9;
@@ -341,6 +341,8 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
           <div className={styles.playheadTriangle} />
         </div>
       </div>
+
+      {overlay}
     </div>
   );
 };

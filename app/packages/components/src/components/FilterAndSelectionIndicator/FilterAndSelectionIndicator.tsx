@@ -1,6 +1,5 @@
 import { PillButton } from "@fiftyone/components";
 import { Check, FilterList } from "@mui/icons-material";
-import React from "react";
 
 const commonStyles = {
   height: "1.5rem",

@@ -36,7 +36,7 @@ const ICON_CLASS_MAP: Record<string, string> = {
 const ALL_ICON_CLASSES = Object.values(ICON_CLASS_MAP);
 
 export class ThumbnailSelectorElement<
-  State extends BaseState
+  State extends BaseState,
 > extends BaseElement<State> {
   private shown: boolean;
   private selected: boolean;
@@ -58,7 +58,7 @@ export class ThumbnailSelectorElement<
 
           dispatchEvent(
             "selectthumbnail",
-            getThumbnailSelectionModifiers(event)
+            getThumbnailSelectionModifiers(event),
           );
 
           return { options: { selected: !selected } };
@@ -91,7 +91,7 @@ export class ThumbnailSelectorElement<
       hovering,
       options: { selected, selectionIcon, inSelectionMode, thumbnailTitle },
     }: Readonly<State>,
-    sample
+    sample,
   ) {
     const shown = hovering || selected || inSelectionMode;
     if (this.shown !== shown) {

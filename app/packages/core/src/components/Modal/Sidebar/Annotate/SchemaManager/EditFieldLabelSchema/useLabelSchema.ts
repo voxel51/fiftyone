@@ -30,30 +30,38 @@ import { currentLabelSchema } from "../state";
 import { type AttributeConfig, reconcileComponent } from "../utils";
 
 const fetchAndMergeOntologyAttributes = async (
-  draft: FieldSchema,
   name: string,
-  setCurrent: (schema: FieldSchema) => void
+  setCurrent: (updater: (live: unknown) => unknown) => void,
 ): Promise<void> => {
   const result = await getFetchFunction()(
     "GET",
-    `/ontologies/${encodeURIComponent(name)}/attributes`
+    `/ontologies/${encodeURIComponent(name)}/attributes`,
   );
 
   const attrs = (result as { attributes: AttributeConfig[] }).attributes;
   if (!attrs?.length) return;
 
-  const existing = Array.isArray(draft.attributes) ? [...draft.attributes] : [];
-  const byName = new Map(existing.map((a) => [a.name, a]));
-  const orderedNames = existing.map((a) => a.name);
+  setCurrent((live) => {
+    const liveSchema = live as FieldSchema | undefined;
+    // If the ontology was cleared or switched while the fetch was in flight,
+    // discard the result rather than restoring stale data.
+    if (liveSchema?.applied_ontology !== name) return live;
 
-  for (const attr of attrs) {
-    if (!byName.has(attr.name)) orderedNames.push(attr.name);
-    byName.set(attr.name, attr);
-  }
+    const existing = Array.isArray(liveSchema.attributes)
+      ? [...liveSchema.attributes]
+      : [];
+    const byName = new Map(existing.map((a) => [a.name, a]));
+    const orderedNames = existing.map((a) => a.name);
 
-  setCurrent({
-    ...draft,
-    attributes: orderedNames.map((n) => byName.get(n)),
+    for (const attr of attrs) {
+      if (!byName.has(attr.name)) orderedNames.push(attr.name);
+      byName.set(attr.name, attr);
+    }
+
+    return {
+      ...liveSchema,
+      attributes: orderedNames.map((n) => byName.get(n)),
+    };
   });
 };
 
@@ -158,23 +166,28 @@ export const useAppliedOntology = (field: string) => {
             return acc;
           }, [])
         : [],
-    [schema?.attributes]
+    [schema?.attributes],
   );
 
   return {
     appliedOntology: schema?.applied_ontology,
+    appliedTaxonomy: schema?.applied_taxonomy,
     ontologyAttributes,
-    applyOntology: (name: string) => {
-      const draft = { ...(schema as FieldSchema), applied_ontology: name };
+    applyOntology: (name: string, taxonomy?: string) => {
+      const draft: FieldSchema = {
+        ...(schema as FieldSchema),
+        applied_ontology: name,
+        applied_taxonomy: taxonomy,
+      };
       setCurrent(draft);
-      fetchAndMergeOntologyAttributes(draft, name, setCurrent).catch(() => {
-        // Preview failed. The name is already set, attributes will hydrate after save
+      fetchAndMergeOntologyAttributes(name, setCurrent).catch(() => {
         console.error(`Failed to fetch ontology attributes for ${name}`);
       });
     },
     clearOntology: () => {
       const next: FieldSchema = { ...(schema as FieldSchema) };
       delete next.applied_ontology;
+      delete next.applied_taxonomy;
       // Drop ontology-owned attributes (carry the `_source` marker). The
       // backend's dehydrate only strips them while `applied_ontology` is
       // still set, so we'd leave orphaned `when` clauses for the validator
@@ -376,7 +389,7 @@ export default function useLabelSchema(field: string) {
   const validate = useValidate(field);
   const schemaChanged = useHasChanges(
     validate.currentLabelSchema,
-    save.savedLabelSchema
+    save.savedLabelSchema,
   );
 
   const hasChanges =

@@ -18,10 +18,9 @@ import {
   Remove,
   Timeline,
 } from "@mui/icons-material";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
-import { editing } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 import useExit from "./useExit";
 import {
   MAX_CURSOR_SIZE,
@@ -178,7 +177,7 @@ export const useSegmentationActions = (): {
     mergeTool,
   } = useSegmentationMode();
 
-  const editingValue = useAtomValue(editing);
+  const { isEditing } = useAnnotationContext();
   const onExit = useExit();
 
   // Three-tier Escape behaviour, mirroring the right-click flow in
@@ -187,7 +186,7 @@ export const useSegmentationActions = (): {
   //   2. switch to the Select tool
   //   3. exit segmentation mode entirely
   const handleEscape = useCallback(() => {
-    if (editingValue !== null) {
+    if (isEditing) {
       onExit();
       return;
     }
@@ -198,12 +197,12 @@ export const useSegmentationActions = (): {
     }
 
     deactivateSegmentationMode();
-  }, [editingValue, tool, onExit, switchTool, deactivateSegmentationMode]);
+  }, [isEditing, tool, onExit, switchTool, deactivateSegmentationMode]);
 
   const brushCursor = useMemo(() => {
     const cursorSize = Math.min(
       MAX_CURSOR_SIZE,
-      Math.max(MIN_CURSOR_SIZE, toolSize)
+      Math.max(MIN_CURSOR_SIZE, toolSize),
     );
 
     return buildBrushCursor({
@@ -379,7 +378,7 @@ export const useSegmentationActions = (): {
       toolMode,
       toolShape,
       toolSize,
-    ]
+    ],
   );
 
   // Wire `shortcut` declarations on toolbar actions into actual keybindings.
@@ -425,7 +424,7 @@ export const useSegmentationActions = (): {
           switchToolShape(
             toolShape === SegmentationToolShape.Circle
               ? SegmentationToolShape.Square
-              : SegmentationToolShape.Circle
+              : SegmentationToolShape.Circle,
           ),
         label: "Toggle brush shape",
         enablement: () => segmentationModeActive,

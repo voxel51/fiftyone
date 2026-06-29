@@ -166,8 +166,8 @@ const ObjectEditor = ({
     backgroundColor: state.matches("editing")
       ? theme.background.level2
       : state.matches("reading.submitted")
-      ? theme.background.level1
-      : theme.background.body,
+        ? theme.background.level1
+        : theme.background.body,
     borderColor:
       active && stageState.matches("focusedViewBar.yes")
         ? theme.primary.plainColor
@@ -193,8 +193,8 @@ const ObjectEditor = ({
       backgroundColor: state?.matches("editing")
         ? theme.background.level2
         : state?.matches("reading.submitted")
-        ? theme.background.level1
-        : theme.background.body,
+          ? theme.background.level1
+          : theme.background.body,
       borderColor:
         active && stageState.matches("focusedViewBar.yes")
           ? theme.primary.plainColor
@@ -341,8 +341,8 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
     backgroundColor: state.matches("editing")
       ? theme.background.level2
       : state.matches("reading.submitted")
-      ? theme.background.level1
-      : theme.background.body,
+        ? theme.background.level1
+        : theme.background.body,
     borderStyle: "solid",
     borderColor:
       active && stageState.matches("focusedViewBar.yes")
@@ -395,8 +395,8 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
                 isObject
                   ? ". . ."
                   : state.matches("reading") && value.length > 24
-                  ? value.slice(0, 25) + "..."
-                  : value
+                    ? value.slice(0, 25) + "..."
+                    : value
               }
               onFocus={() => !isEditing && send({ type: "EDIT" })}
               onBlur={() =>

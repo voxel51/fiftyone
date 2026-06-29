@@ -58,6 +58,7 @@ NAME = "name"
 PRECISION = "precision"
 RANGE = "range"
 READ_ONLY = "read_only"
+TAXONOMY = "taxonomy"
 TYPE = "type"
 VALUES = "values"
 
@@ -208,7 +209,6 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
     fom.THREE_D: {fol.Detection, fol.Detections, fol.Polyline, fol.Polylines},
 }
 SUPPORTED_LISTS_OF_PRIMITIVES = (
-    fof.BooleanField,
     fof.FloatField,
     fof.IntField,
     fof.StringField,

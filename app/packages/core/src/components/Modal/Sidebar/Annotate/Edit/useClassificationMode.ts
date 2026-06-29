@@ -1,11 +1,12 @@
 import { useReset3dAnnotationMode } from "@fiftyone/looker-3d/src/state/accessors";
 import { isPatchesView } from "@fiftyone/state";
 import { CLASSIFICATION } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { currentType, fieldsOfType } from "./state";
-import useCreate from "./useCreate";
+import {
+  useAnnotationContext,
+  useAnnotationFields,
+} from "./useAnnotationContext";
 import useExit from "./useExit";
 
 /**
@@ -15,12 +16,13 @@ import useExit from "./useExit";
  * for the "Create new classification" button.
  */
 export const useClassificationMode = () => {
-  const create = useCreate(CLASSIFICATION);
+  const annotationContext = useAnnotationContext();
   const onExit = useExit();
   const isPatchView = useRecoilValue(isPatchesView);
   const reset3dAnnotationMode = useReset3dAnnotationMode();
-  const fields = useAtomValue(fieldsOfType(CLASSIFICATION));
-  const classificationModeActive = useAtomValue(currentType) === CLASSIFICATION;
+  const { fields } = useAnnotationFields(CLASSIFICATION);
+  const classificationModeActive =
+    annotationContext.selected?.type === CLASSIFICATION;
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -28,17 +30,17 @@ export const useClassificationMode = () => {
   const tooltip = isPatchView
     ? "Creating classifications is not supported in this view"
     : noActiveFields
-    ? "No active fields"
-    : classificationModeActive
-    ? "Exit classification creation"
-    : "Create new classification";
+      ? "No active fields"
+      : classificationModeActive
+        ? "Exit classification creation"
+        : "Create new classification";
 
   const activateClassificationMode = useCallback(() => {
     if (disabled) return;
 
-    create();
+    annotationContext.createNew(CLASSIFICATION);
     reset3dAnnotationMode();
-  }, [create, disabled, reset3dAnnotationMode]);
+  }, [annotationContext, disabled, reset3dAnnotationMode]);
 
   const deactivateClassificationMode = useCallback(() => {
     onExit();
@@ -72,6 +74,6 @@ export const useClassificationMode = () => {
       activateClassificationMode,
       deactivateClassificationMode,
       toggleClassificationMode,
-    ]
+    ],
   );
 };

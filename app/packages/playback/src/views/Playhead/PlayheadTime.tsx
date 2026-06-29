@@ -18,7 +18,14 @@ const PlayheadTime: React.FC = () => {
   const safeDuration = duration ?? 0;
   const safePlayhead = Math.min(playhead, safeDuration);
   return (
-    <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+    <Text
+      variant={TextVariant.Xs}
+      color={TextColor.Secondary}
+      style={{
+        fontFamily:
+          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+      }}
+    >
       {`${formatTime(safePlayhead)} / ${formatTime(safeDuration)}`}
     </Text>
   );

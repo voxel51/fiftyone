@@ -30,7 +30,7 @@ export const HoveredPointMarker = ({ position }: HoveredPointMarkerProps) => {
       // For perspective camera, scale with distance
       scale = Math.min(
         MAX_SCALE,
-        Math.max(MIN_SCALE, distance * DISTANCE_SCALE_FACTOR)
+        Math.max(MIN_SCALE, distance * DISTANCE_SCALE_FACTOR),
       );
     }
 

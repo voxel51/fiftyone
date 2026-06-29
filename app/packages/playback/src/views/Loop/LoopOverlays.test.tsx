@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import { viewEndAtom, viewStartAtom } from "../../lib/playback/atoms";
+import { LOOP_EDGE_EPSILON } from "../TimelineControls/timeline-controls-utils";
 import LoopOverlays from "./LoopOverlays";
 import styles from "./LoopOverlays.module.css";
 
@@ -46,7 +47,7 @@ function renderOverlays(opts: RenderOpts) {
         <ViewSetter start={opts.viewStart} end={opts.viewEnd} />
       ) : null}
       <LoopOverlays labelWidth={labelWidth} />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -101,25 +102,27 @@ describe("LoopOverlays", () => {
     expect(masks).toHaveLength(2);
     // Exactly one of the two carries `right: 0`.
     const withRight = Array.from(masks).filter((m) =>
-      (m.getAttribute("style") ?? "").includes("right: 0")
+      (m.getAttribute("style") ?? "").includes("right: 0"),
     );
     expect(withRight).toHaveLength(1);
   });
 
-  it("treats bounds within LOOP_EDGE_EPSILON (0.001) of the view edges as at the edge", () => {
+  it("treats bounds within LOOP_EDGE_EPSILON of the view edges as at the edge", () => {
+    const duration = 10;
     const { container } = renderOverlays({
-      duration: 10,
-      defaultLoopStart: 0.0005,
-      defaultLoopEnd: 9.9995,
+      duration,
+      defaultLoopStart: LOOP_EDGE_EPSILON / 2,
+      defaultLoopEnd: duration - LOOP_EDGE_EPSILON / 2,
     });
     expect(container.querySelectorAll(maskClass)).toHaveLength(0);
   });
 
   it("renders the left mask when loop start is just past epsilon", () => {
-    // 0.002 > 0.001 epsilon → left mask should render.
+    const duration = 10;
+    // slightly greater than epsilon → left mask should render
     const { container } = renderOverlays({
-      duration: 10,
-      defaultLoopStart: 0.002,
+      duration,
+      defaultLoopStart: LOOP_EDGE_EPSILON + 0.01,
     });
     expect(container.querySelectorAll(maskClass)).toHaveLength(1);
   });

@@ -8,7 +8,7 @@ const videoDatasetName = getUniqueDatasetNameWithPrefix("video-dataset");
 const detectionDatasetName =
   getUniqueDatasetNameWithPrefix("detection-dataset");
 const groupVideoDatasetName = getUniqueDatasetNameWithPrefix(
-  "group-video-dataset"
+  "group-video-dataset",
 );
 
 const id = "000000000000000000000000";
@@ -34,7 +34,7 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeAll(
   async ({ fiftyoneLoader, datasetFactory, mediaFactory, foWebServer }) => {
     await foWebServer.startWebServer();
-    await datasetFactory.createBlankDataset({
+    await datasetFactory.createDataset({
       datasetName,
       schema: {
         classification: "Classification",
@@ -44,7 +44,7 @@ test.beforeAll(
       }),
     });
 
-    await datasetFactory.createBlankDataset({
+    await datasetFactory.createDataset({
       datasetName: detectionDatasetName,
       schema: {
         predictions: "Detections",
@@ -70,7 +70,7 @@ test.beforeAll(
       savedViews: { patches: "dataset.to_patches('predictions')" },
     });
 
-    await mediaFactory.createBlankVideo({
+    await mediaFactory.createVideo({
       outputPath: "/tmp/blank-video.webm",
       duration: 1,
       width: 50,
@@ -109,7 +109,7 @@ test.beforeAll(
       group=group.element("video1")
   )
   dataset.add_samples([sample])`);
-  }
+  },
 );
 
 const DEFAULT_LABEL_SCHEMA = {
@@ -222,7 +222,7 @@ test.describe.serial("schema manager", () => {
 
     // Annotation should be disabled for video datasets
     await modal.sidebar.assert.hasDisabledMessage(
-      "isn\u2019t supported for video datasets"
+      "isn\u2019t supported for video datasets",
     );
     await schemaManager.assert.isDisabled();
   });
@@ -274,7 +274,7 @@ test.describe.serial("schema manager", () => {
 
     // Annotation should be disabled for grouped datasets with no supported slices
     await modal.sidebar.assert.hasDisabledMessage(
-      "has no slices that support annotation"
+      "has no slices that support annotation",
     );
     await schemaManager.assert.isDisabled();
   });

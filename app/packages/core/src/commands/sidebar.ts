@@ -134,7 +134,7 @@ export const requestCollapseField = (path: string, modal: boolean = false) => {
  */
 export const requestExpandAndScrollToField = (
   path: string,
-  modal: boolean = false
+  modal: boolean = false,
 ) => {
   const bus = getCommandBus();
   const Command = modal

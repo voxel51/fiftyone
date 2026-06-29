@@ -1,12 +1,18 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { IconName } from "@voxel51/voodo";
 import React, { useEffect } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TilingProvider } from "../../lib/TilingProvider";
+import { TilingProvider, useTiling } from "../../lib/TilingProvider";
 import type { RegisteredTile } from "../../lib/types";
 import { useTileRegistry } from "../../lib/use-tile-registry";
 import TilingHeader from "./TilingHeader";
+
+// Reads the current tile count so tests can assert addTile was called.
+const TileCount: React.FC = () => {
+  const { tiles } = useTiling();
+  return <span data-testid="tile-count">{Object.keys(tiles).length}</span>;
+};
 
 const CameraTile: React.FC = () => <div data-testid="camera-body" />;
 const LidarTile: React.FC = () => <div data-testid="lidar-body" />;
@@ -25,13 +31,25 @@ const RegisterTiles: React.FC<{ entries: RegisteredTile[] }> = ({
 };
 
 describe("TilingHeader", () => {
-  afterEach(() => cleanup());
+  beforeEach(() => {
+    // voodo's Dropdown (headlessui Menu) uses ResizeObserver internally.
+    global.ResizeObserver = vi.fn().mockImplementation(() => ({
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn(),
+    }));
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it("renders the filename and no add-tile menu when nothing is registered", () => {
     render(
       <TilingProvider>
         <TilingHeader fileName="session.fo" />
-      </TilingProvider>
+      </TilingProvider>,
     );
     expect(screen.getByText("session.fo")).toBeTruthy();
     expect(screen.queryByTestId("tiling-header-add-tile")).toBeNull();
@@ -41,10 +59,14 @@ describe("TilingHeader", () => {
     render(
       <TilingProvider>
         <TilingHeader fileName="x" />
-      </TilingProvider>
+      </TilingProvider>,
     );
-    expect(screen.queryByTestId("tiling-header-toggle-left-sidebar")).toBeNull();
-    expect(screen.queryByTestId("tiling-header-toggle-right-sidebar")).toBeNull();
+    expect(
+      screen.queryByTestId("tiling-header-toggle-left-sidebar"),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId("tiling-header-toggle-right-sidebar"),
+    ).toBeNull();
   });
 
   it("renders sidebar toggles and reflects open state via aria-pressed", () => {
@@ -59,7 +81,7 @@ describe("TilingHeader", () => {
           onToggleLeftSidebar={onLeft}
           onToggleRightSidebar={onRight}
         />
-      </TilingProvider>
+      </TilingProvider>,
     );
 
     const left = screen.getByTestId("tiling-header-toggle-left-sidebar");
@@ -95,8 +117,34 @@ describe("TilingHeader", () => {
           ]}
         />
         <TilingHeader fileName="x" />
-      </TilingProvider>
+      </TilingProvider>,
     );
     expect(screen.getByTestId("tiling-header-add-tile")).toBeTruthy();
+  });
+
+  it("clicking a menu item calls addTile with the registered tile type", () => {
+    render(
+      <TilingProvider>
+        <RegisterTiles
+          entries={[
+            {
+              type: "camera",
+              typeLabel: "Camera",
+              icon: IconName.GridView,
+              Tile: CameraTile,
+            },
+          ]}
+        />
+        <TilingHeader fileName="x" />
+        <TileCount />
+      </TilingProvider>,
+    );
+    expect(screen.getByTestId("tile-count").textContent).toBe("0");
+
+    // Open the dropdown and click the Camera menu item.
+    fireEvent.click(screen.getByTestId("tiling-header-add-tile"));
+    fireEvent.click(screen.getByText("Camera"));
+
+    expect(screen.getByTestId("tile-count").textContent).toBe("1");
   });
 });

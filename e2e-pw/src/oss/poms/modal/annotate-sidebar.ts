@@ -15,10 +15,10 @@ export class ModalAnnotateSidebarPom {
     this.assert = new ModalAnnotateSidebarAsserter(this);
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
     this.annotationSliceSelector = this.locator.getByTestId(
-      "selector-annotation-slice"
+      "selector-annotation-slice",
     );
     this.annotationSliceResultsContainer = page.getByTestId(
-      "selector-results-container-annotation-slice"
+      "selector-results-container-annotation-slice",
     );
   }
 
@@ -31,7 +31,7 @@ export class ModalAnnotateSidebarPom {
     return Number(
       await this.locator
         .getByTestId("sidebar-group-Labels-field-count")
-        .textContent()
+        .textContent(),
     );
   }
 
@@ -44,7 +44,7 @@ export class ModalAnnotateSidebarPom {
     return Number(
       await this.locator
         .getByTestId("sidebar-group-PRIMITIVES-field-count")
-        .textContent()
+        .textContent(),
     );
   }
 
@@ -101,8 +101,8 @@ export class ModalAnnotateSidebarPom {
     const resultsContainer = await this.openAnnotationSliceResults();
     const slices = await resultsContainer.evaluate((div) =>
       Array.from(div.querySelectorAll("[data-cy^='selector-result-']")).map(
-        (node) => (node as HTMLElement).innerText
-      )
+        (node) => (node as HTMLElement).innerText,
+      ),
     );
 
     await this.page.keyboard.press("Escape");
@@ -119,6 +119,21 @@ export class ModalAnnotateSidebarPom {
     const resultsContainer = await this.openAnnotationSliceResults();
     await resultsContainer.getByTestId(`selector-result-${slice}`).click();
     await expect(this.annotationSliceSelector).toHaveValue(slice);
+  }
+
+  /**
+   * Resolves on the next successful PATCH to the per-sample dataset
+   * endpoint — the backend persist call fired after the user commits an
+   * annotation. Returns the promise so callers can `start = waitForPatch()`
+   * before the user gesture and `await start` after.
+   */
+  waitForPatch() {
+    return this.page.waitForResponse(
+      (resp) =>
+        resp.request().method() === "PATCH" &&
+        /\/dataset\/[^/]+\/sample\//.test(resp.url()) &&
+        resp.status() < 400,
+    );
   }
 
   /**
@@ -145,6 +160,33 @@ export class ModalAnnotateSidebarPom {
       await this.page.getByTestId("detection-mode").click();
     }
   }
+
+  /**
+   * Toggle segmentation mode. When inactive this enters segmentation mode
+   * (selecting the Select tool by default). When active it deactivates the
+   * mode.
+   */
+  async segmentationMode() {
+    await this.page.getByTestId("segmentation-mode").click();
+  }
+
+  /**
+   * The Voodo segmentation toolbar lives in a portal. Buttons are tagged with
+   * `aria-label="Select" | "Brush" | "Pen" | "AI" | "Merge"` (and likewise for
+   * mode/shape sub-groups).
+   */
+  private toolbarButton(label: string) {
+    return this.page.getByRole("button", { name: label, exact: true });
+  }
+
+  /**
+   * Switch to a segmentation tool from the floating segmentation toolbar.
+   *
+   * Requires `segmentationMode()` to have been called first.
+   */
+  async pickTool(tool: "Select" | "Brush" | "Pen" | "AI" | "Merge") {
+    await this.toolbarButton(tool).click();
+  }
 }
 
 /**
@@ -159,8 +201,8 @@ class ModalAnnotateSidebarAsserter {
   async verifyActiveLabelsIsExpanded() {
     await expect(
       this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-toggle"
-      )
+        "sidebar-group-Labels-toggle",
+      ),
     ).toHaveAttribute("data-testid", "RemoveIcon");
   }
 
@@ -170,8 +212,8 @@ class ModalAnnotateSidebarAsserter {
   async verifyActiveLabelsIsCollapsed() {
     await expect(
       this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-toggle"
-      )
+        "sidebar-group-Labels-toggle",
+      ),
     ).toHaveAttribute("data-testid", "AddIcon");
   }
 
@@ -181,8 +223,8 @@ class ModalAnnotateSidebarAsserter {
   async verifyActivePrimitiveFieldsIsExpanded() {
     await expect(
       this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-PRIMITIVES-toggle"
-      )
+        "sidebar-group-PRIMITIVES-toggle",
+      ),
     ).toHaveAttribute("data-testid", "RemoveIcon");
   }
 
@@ -192,8 +234,8 @@ class ModalAnnotateSidebarAsserter {
   async verifyActivePrimitiveFieldsIsCollapsed() {
     await expect(
       this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-PRIMITIVES-toggle"
-      )
+        "sidebar-group-PRIMITIVES-toggle",
+      ),
     ).toHaveAttribute("data-testid", "AddIcon");
   }
 
@@ -203,8 +245,11 @@ class ModalAnnotateSidebarAsserter {
    * @param expectedCount The expected number of active labels
    */
   async verifyActiveLabelsCount(expectedCount: number) {
-    const actualCount = await this.modalAnnotateSidebar.getActiveLabelsCount();
-    expect(actualCount).toBe(expectedCount);
+    await expect(
+      this.modalAnnotateSidebar.locator.getByTestId(
+        "sidebar-group-Labels-field-count",
+      ),
+    ).toHaveText(expectedCount.toString());
   }
 
   /**
@@ -213,9 +258,11 @@ class ModalAnnotateSidebarAsserter {
    * @param expectedCount The expected number of active primitive fields
    */
   async verifyActivePrimitiveFieldsCount(expectedCount: number) {
-    const actualCount =
-      await this.modalAnnotateSidebar.getActivePrimitiveFieldsCount();
-    expect(actualCount).toBe(expectedCount);
+    await expect(
+      this.modalAnnotateSidebar.locator.getByTestId(
+        "sidebar-group-PRIMITIVES-field-count",
+      ),
+    ).toHaveText(expectedCount.toString());
   }
 
   /**
@@ -236,7 +283,7 @@ class ModalAnnotateSidebarAsserter {
    */
   async verifySelectedAnnotationSlice(expectedSlice: string) {
     await expect(this.modalAnnotateSidebar.annotationSliceSelector).toHaveValue(
-      expectedSlice
+      expectedSlice,
     );
   }
 
@@ -257,7 +304,7 @@ class ModalAnnotateSidebarAsserter {
    */
   async classificationIsActive(active = true) {
     const button = this.modalAnnotateSidebar.page.getByTestId(
-      "create-classification"
+      "create-classification",
     );
     await expect(button).toHaveAttribute("data-cy-active", active.toString());
   }
@@ -268,9 +315,35 @@ class ModalAnnotateSidebarAsserter {
    * @param active Whether detection mode should be active (default true)
    */
   async detectionModeIsActive(active = true) {
-    const button = this.modalAnnotateSidebar.page.getByTestId(
-      "detection-mode"
-    );
+    const button = this.modalAnnotateSidebar.page.getByTestId("detection-mode");
     await expect(button).toHaveAttribute("data-cy-active", active.toString());
+  }
+
+  /**
+   * Assert that segmentation mode is active or inactive
+   *
+   * @param active Whether segmentation mode should be active (default true)
+   */
+  async segmentationModeIsActive(active = true) {
+    const button =
+      this.modalAnnotateSidebar.page.getByTestId("segmentation-mode");
+    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+  }
+
+  /**
+   * Assert that a given segmentation tool button is currently the active one
+   * in the floating toolbar.
+   *
+   * @param tool The tool that should be active
+   */
+  async toolIsActive(tool: "Select" | "Brush" | "Pen" | "AI" | "Merge") {
+    // Voodo's ToolbarAction reflects the `active` prop as an attribute on the
+    // <button>. We don't depend on Voodo's internal class names: aria-pressed
+    // is the closest standard signal.
+    const button = this.modalAnnotateSidebar.page.getByRole("button", {
+      name: tool,
+      exact: true,
+    });
+    await expect(button).toHaveAttribute("aria-pressed", "true");
   }
 }

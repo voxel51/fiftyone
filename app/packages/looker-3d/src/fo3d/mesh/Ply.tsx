@@ -46,7 +46,7 @@ const DEFAULT_PLY_MATERIAL: FoMeshMaterial = {
 
 export const inferPlyIsPointCloud = (
   geometry: BufferGeometry | null | undefined,
-  explicitIsPointCloud: boolean | undefined
+  explicitIsPointCloud: boolean | undefined,
 ) => {
   if (typeof explicitIsPointCloud === "boolean") {
     return explicitIsPointCloud;
@@ -88,7 +88,7 @@ const PlyWithPointsMaterial = ({
     overrideMaterial,
     pointsContainerRef,
     quaternion,
-    vertexColorsAvailable
+    vertexColorsAvailable,
   );
 
   const mesh = useMemo(() => new Points(geometry), [geometry]);
@@ -140,8 +140,8 @@ const PlyWithMaterialOverride = ({
         ...defaultMaterial,
         vertexColors: true,
         color: "#ffffff",
-      } as FoMeshBasicMaterialProps),
-    [defaultMaterial]
+      }) as FoMeshBasicMaterialProps,
+    [defaultMaterial],
   );
 
   const { material } = useMeshMaterialControls(name, basicMaterial);
@@ -200,12 +200,12 @@ export const Ply = ({
     () =>
       preTransformedPlyPath ??
       getSampleSrc(getResolvedUrlForFo3dAsset(plyPath, fo3dRoot)),
-    [plyPath, preTransformedPlyPath, fo3dRoot]
+    [plyPath, preTransformedPlyPath, fo3dRoot],
   );
 
   const resourcePath = useMemo(
     () => getBasePathForTextures(fo3dRoot, plyUrl),
-    [fo3dRoot, plyUrl]
+    [fo3dRoot, plyUrl],
   );
 
   const geometry_ = useFoLoader(PLYLoader, plyUrl, (loader) => {
@@ -224,11 +224,11 @@ export const Ply = ({
   const [isGeometryResolved, setIsGeometryResolved] = useState(false);
   const resolvedDefaultMaterial = useMemo(
     () => defaultMaterial ?? DEFAULT_PLY_MATERIAL,
-    [defaultMaterial]
+    [defaultMaterial],
   );
   const shouldRenderAsPointCloud = useMemo(
     () => inferPlyIsPointCloud(geometry, isPcd),
-    [geometry, isPcd]
+    [geometry, isPcd],
   );
 
   useEffect(() => {

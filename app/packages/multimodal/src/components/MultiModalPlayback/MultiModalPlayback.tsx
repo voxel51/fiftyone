@@ -5,15 +5,18 @@ import {
   TilingInspectorSidebar,
   TilingProvider,
   useTiling,
+  type TilingHeaderCaption,
   type TilingTile,
 } from "@fiftyone/tiling";
 import { Drawer } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useState, type ReactNode } from "react";
+import React, { useCallback, useState, type ReactNode } from "react";
+import type { MosaicNode } from "react-mosaic-component";
 import {
   PlaybackProvider,
-  TimelineWithTracks,
+  TemporalTagTimeline,
   TrackProvider,
+  type TemporalTagTimelineProps,
   type Track,
 } from "@fiftyone/playback";
 import {
@@ -23,10 +26,13 @@ import {
 import styles from "./MultiModalPlayback.module.css";
 
 const EMPTY_SOURCES: readonly SceneSource[] = [];
+const SIDEBAR_SIZE_PX = 360;
 
 export interface MultiModalPlaybackProps {
   /** Filename rendered on the left of the top bar. */
   fileName: string;
+  /** Optional caption rendered below the filename in the top bar. */
+  headerCaption?: TilingHeaderCaption;
 
   /** Tracks broadcast through the embedded TrackProvider. */
   tracks?: Track[];
@@ -35,6 +41,13 @@ export interface MultiModalPlaybackProps {
 
   /** Initial tile entries seeded into the embedded TilingProvider. */
   initialTiles?: Record<string, TilingTile>;
+
+  /**
+   * Initial mosaic tree seeded into the embedded TilingProvider. Leave
+   * `undefined` to auto-lay-out `initialTiles`; pass an explicit tree to
+   * restore a saved arrangement.
+   */
+  initialLayout?: MosaicNode<string> | null;
 
   /** Discoverable data sources for the current scene. */
   sceneSources?: readonly SceneSource[];
@@ -53,6 +66,19 @@ export interface MultiModalPlaybackProps {
   defaultLeftOpen?: boolean;
   /** Whether the right sidebar starts open. @default true */
   defaultRightOpen?: boolean;
+  /** Observes left-sidebar visibility — e.g. to persist the choice. */
+  onLeftOpenChange?: (open: boolean) => void;
+  /** Observes right-sidebar visibility — e.g. to persist the choice. */
+  onRightOpenChange?: (open: boolean) => void;
+
+  /**
+   * Callback that persists a newly-created temporal tag.  When provided,
+   * the temporal-tag workflow is enabled in the timeline (button, `T`
+   * hotkey, Shift+drag).
+   */
+  onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
+  /** Callback that deletes an existing temporal tag by its backend id. */
+  onTagDelete?: TemporalTagTimelineProps["onEventDelete"];
 
   /**
    * Rendered inside the providers this component owns. Use it for
@@ -98,14 +124,20 @@ export interface MultiModalPlaybackProps {
  */
 const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   fileName,
+  headerCaption,
   tracks,
   defaultPinnedTrackIds,
   initialTiles,
+  initialLayout,
   sceneSources = EMPTY_SOURCES,
   leftSidebar = <TileSettingsSidebar />,
   rightSidebar = <TilingInspectorSidebar />,
   defaultLeftOpen = true,
   defaultRightOpen = true,
+  onLeftOpenChange,
+  onRightOpenChange,
+  onTagCreate,
+  onTagDelete,
   children,
   className,
 }) => {
@@ -116,14 +148,22 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
         initialPinnedIds={defaultPinnedTrackIds}
       >
         <SceneInventoryProvider sources={sceneSources}>
-          <TilingProvider initialTiles={initialTiles}>
+          <TilingProvider
+            initialTiles={initialTiles}
+            initialLayout={initialLayout}
+          >
             {children}
             <Layout
               fileName={fileName}
+              headerCaption={headerCaption}
               leftSidebar={leftSidebar}
               rightSidebar={rightSidebar}
               defaultLeftOpen={defaultLeftOpen}
               defaultRightOpen={defaultRightOpen}
+              onLeftOpenChange={onLeftOpenChange}
+              onRightOpenChange={onRightOpenChange}
+              onTagCreate={onTagCreate}
+              onTagDelete={onTagDelete}
               className={className}
             />
           </TilingProvider>
@@ -135,19 +175,29 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
 
 interface LayoutProps {
   fileName: string;
+  headerCaption?: TilingHeaderCaption;
   leftSidebar: ReactNode;
   rightSidebar: ReactNode;
   defaultLeftOpen: boolean;
   defaultRightOpen: boolean;
+  onLeftOpenChange?: (open: boolean) => void;
+  onRightOpenChange?: (open: boolean) => void;
+  onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
+  onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
   className?: string;
 }
 
 function Layout({
   fileName,
+  headerCaption,
   leftSidebar,
   rightSidebar,
   defaultLeftOpen,
   defaultRightOpen,
+  onLeftOpenChange,
+  onRightOpenChange,
+  onTagCreate,
+  onTagDelete,
   className,
 }: LayoutProps) {
   const { layout, tiles, focusedTileId, setLayout, setFocusedTileId } =
@@ -155,27 +205,43 @@ function Layout({
   const [leftOpen, setLeftOpen] = useState(defaultLeftOpen);
   const [rightOpen, setRightOpen] = useState(defaultRightOpen);
 
+  const updateLeftOpen = (open: boolean) => {
+    setLeftOpen(open);
+    onLeftOpenChange?.(open);
+  };
+  const updateRightOpen = (open: boolean) => {
+    setRightOpen(open);
+    onRightOpenChange?.(open);
+  };
+  // Re-selecting the focused tile clears focus (toggle off); "action" reasons
+  // (close/fullscreen) always focus without toggling.
+  const handleFocusTile = useCallback(
+    (id: string, reason: "select" | "action") => {
+      setFocusedTileId(reason === "select" && focusedTileId === id ? null : id);
+    },
+    [focusedTileId, setFocusedTileId],
+  );
+
   return (
     <div className={clsx(styles.root, className)}>
       <TilingHeader
         fileName={fileName}
+        headerCaption={headerCaption}
         leftSidebarOpen={leftOpen}
         rightSidebarOpen={rightOpen}
-        onToggleLeftSidebar={() => setLeftOpen((v) => !v)}
-        onToggleRightSidebar={() => setRightOpen((v) => !v)}
+        onToggleLeftSidebar={() => updateLeftOpen(!leftOpen)}
+        onToggleRightSidebar={() => updateRightOpen(!rightOpen)}
       />
 
       <div className={styles.body}>
         <Drawer
           side="left"
           mode="push"
-          defaultSize={280}
-          minSize={200}
-          maxSize={500}
+          maxSize={SIDEBAR_SIZE_PX}
           open={leftOpen}
-          onOpenChange={setLeftOpen}
+          onOpenChange={updateLeftOpen}
         >
-          {leftSidebar}
+          <div className={styles.sidebarPane}>{leftSidebar}</div>
         </Drawer>
 
         <div className={styles.main}>
@@ -184,24 +250,25 @@ function Layout({
             value={layout}
             onChange={setLayout}
             focusedTileId={focusedTileId}
-            onFocusTile={setFocusedTileId}
+            onFocusTile={handleFocusTile}
           />
         </div>
 
         <Drawer
           side="right"
           mode="push"
-          defaultSize={280}
-          minSize={200}
-          maxSize={500}
+          maxSize={SIDEBAR_SIZE_PX}
           open={rightOpen}
-          onOpenChange={setRightOpen}
+          onOpenChange={updateRightOpen}
         >
-          {rightSidebar}
+          <div className={styles.sidebarPane}>{rightSidebar}</div>
         </Drawer>
       </div>
 
-      <TimelineWithTracks />
+      <TemporalTagTimeline
+        onTagCreate={onTagCreate}
+        onEventDelete={onTagDelete}
+      />
     </div>
   );
 }

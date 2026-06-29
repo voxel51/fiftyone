@@ -69,7 +69,7 @@ function parseColorWithAlphaUncached(color: string): {
   if (color.startsWith("rgb")) {
     // Handle rgba and rgb formats
     const match = color.match(
-      /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/
+      /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/,
     );
     if (match) {
       const [, r, g, b, a] = match;
@@ -82,7 +82,7 @@ function parseColorWithAlphaUncached(color: string): {
   if (color.startsWith("hsl")) {
     // Handle hsla and hsl formats
     const match = color.match(
-      /hsla?\(([\d.]+),\s*(\d+)%,\s*(\d+)%(?:,\s*([\d.]+))?\)/
+      /hsla?\(([\d.]+),\s*(\d+)%,\s*(\d+)%(?:,\s*([\d.]+))?\)/,
     );
     if (match) {
       const [, h, s, l, a] = match;
@@ -108,7 +108,7 @@ function parseColorWithAlphaUncached(color: string): {
 export function hslToRgb(
   h: number,
   s: number,
-  l: number
+  l: number,
 ): { r: number; g: number; b: number } {
   // Normalize hue to 0-360
   h = h % 360;
@@ -171,7 +171,7 @@ export function hslToRgb(
 export function generateColorFromId(
   id: string,
   saturation: number = 70,
-  lightness: number = 50
+  lightness: number = 50,
 ): string {
   // Create a hash from the overlay ID for deterministic color generation
   let hash = 0;

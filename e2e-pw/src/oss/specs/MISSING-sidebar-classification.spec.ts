@@ -26,7 +26,7 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  await datasetFactory.createBlankDataset({
+  await datasetFactory.createDataset({
     datasetName,
     numSamples: 5,
     numbered: true,
@@ -53,11 +53,11 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     const gridRefreshedEventPromise =
       eventUtils.getEventReceivedPromiseForPredicate(
         "re-render-tag",
-        () => true
+        () => true,
       );
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
 
     // test case: visibility mode - show label
@@ -67,7 +67,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await gridRefreshedEventPromise;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "visible-cat.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
 
     // test case: visibility mode - hide label
@@ -75,7 +75,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await gridRefreshedEventPromise;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "not-visible-cat.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
   });
 
@@ -86,7 +86,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
   }) => {
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
 
     await sidebar.clickFieldDropdown("ground_truth");
@@ -101,7 +101,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await grid.assert.isEntryCountTextEqualTo("3 of 5 samples");
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-frog.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
 
     // Test with visibility mode:
@@ -110,7 +110,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     const gridRefreshedEventPromise =
       eventUtils.getEventReceivedPromiseForPredicate(
         "re-render-tag",
-        () => true
+        () => true,
       );
 
     // test case: visibility mode - show label
@@ -118,7 +118,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await gridRefreshedEventPromise;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-frog-ship-visible-frog.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
 
     // test case: visibility mode - hide label
@@ -126,7 +126,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await gridRefreshedEventPromise;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-frog-ship-invisible-frog.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
   });
 
@@ -137,7 +137,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
   }) => {
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
     await sidebar.clickFieldDropdown("ground_truth");
     await entryExpandPromise;
@@ -146,7 +146,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-ship.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
 
     // Test the visibility mode:
@@ -156,7 +156,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     const gridRefreshedEventPromise =
       eventUtils.getEventReceivedPromiseForPredicate(
         "re-render-tag",
-        () => true
+        () => true,
       );
 
     // test case: visibility mode - show label
@@ -164,7 +164,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await gridRefreshedEventPromise;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-ship-visible-cat.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
 
     // test case: visibility mode - hide label
@@ -172,7 +172,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await gridRefreshedEventPromise;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-ship-invisible-cat.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
   });
 });

@@ -6,17 +6,17 @@ torchvision
 typing_extensions==4.15.0
 
 # precommit requirements
-pre-commit==4.3.0
-pylint==3.3.9
+pre-commit==4.6.0
+pylint==4.0.5
 jupyter-client==8.8.0
 
 # docs requirements
 autodocsumm==0.2.15
 docutils==0.22.4
-pypandoc>=1.11
+pypandoc>=1.17
 sphinx-markdown-builder==0.6.10
-huggingface_hub>=1.3.2
-requests>=2.32.5
+huggingface_hub>=1.17.0
+requests>=2.34.2
 ipykernel==7.2.0
 ipython_genutils==0.2.0
 Jinja2==3.1.6
@@ -25,13 +25,12 @@ jsx-lexer==2.0.1
 libsass==0.23.0
 myst-parser==5.1.0
 nbsphinx==0.9.8
-pydata-sphinx-theme==0.17.1
+pydata-sphinx-theme==0.18.0
 sphinx-autobuild==2025.8.25
 sphinx-tabs==3.5.0
 sphinx-design==0.7.0
-# Sphinx 9.1.0 is available but requires Python >=3.12
-# build-docs.yml uses Python 3.11
-# Using latest compatible version from 9.0.x series
+# 9.1.0 is available (needs Python >=3.12, which we now have);
+# holding at 9.0.x until the 9.1 bump is validated separately
 Sphinx==9.0.4
 sphinx-copybutton==0.5.2
 sphinxcontrib-jquery==4.1
@@ -39,4 +38,4 @@ sphinx-pushfeedback==0.1.8
 sphinx-docsearch==0.3.0
 sphinx-remove-toctrees==1.0.0.post1
 sphinx-autoapi==3.8.0
-sphinx-sitemap==2.6.0
+sphinx-sitemap==2.9.0

@@ -28,7 +28,7 @@ export function useFetchFrustumParameters() {
   const datasetId = useRecoilValue(fos.datasetId);
   const sampleId = useRecoilValue(fos.currentSampleId);
   const isGroup = useRecoilValue(fos.isGroup);
-  const modalSample = useRecoilValue(fos.modalSample);
+  const modalSample = fos.useStableModalSample();
 
   const { resolveUrlForImageSlice, isLoadingImageSlices } =
     useImageSlicesIfAvailable(modalSample);
@@ -63,16 +63,16 @@ export function useFetchFrustumParameters() {
             fetch<void, GroupStaticTransformResponse>(
               "GET",
               `/dataset/${encodeURIComponent(
-                datasetId
-              )}/sample/${encodeURIComponent(sampleId)}/group/static_transforms`
+                datasetId,
+              )}/sample/${encodeURIComponent(sampleId)}/group/static_transforms`,
             ),
             fetch<void, GroupIntrinsicsResponse>(
               "GET",
               `/dataset/${encodeURIComponent(
-                datasetId
-              )}/sample/${encodeURIComponent(sampleId)}/group/intrinsics`
+                datasetId,
+              )}/sample/${encodeURIComponent(sampleId)}/group/intrinsics`,
             ),
-          ]
+          ],
         );
 
         // Build frustum data for each non-3D slice

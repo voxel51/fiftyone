@@ -60,8 +60,10 @@ export type WorkerNotifications = {
 };
 
 export type WorkerMessageType = keyof WorkerMessages;
-export type WorkerRequest<T extends WorkerMessageType> = WorkerMessages[T]["request"];
-export type WorkerResponse<T extends WorkerMessageType> = WorkerMessages[T]["response"];
+export type WorkerRequest<T extends WorkerMessageType> =
+  WorkerMessages[T]["request"];
+export type WorkerResponse<T extends WorkerMessageType> =
+  WorkerMessages[T]["response"];
 
 /** Status events emitted during the provider lifecycle. */
 export type ProviderStatus = "loading" | "encoding" | "ready" | "failure";
