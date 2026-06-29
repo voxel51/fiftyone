@@ -85,6 +85,10 @@ jobs:
         uses: jlumbroso/free-disk-space@v1.3.1
         with:
           large-packages: false # e2e test failed when `true`
+      - name: Setup FFmpeg
+        id: setup-ffmpeg
+        uses: ./.github/actions/setup-ffmpeg
+        background: true
       - name: Install requirements
         run: |
           uv pip install --system -U wheel setuptools
@@ -98,8 +102,8 @@ jobs:
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
 
-      - name: Setup FFmpeg
-        uses: ./.github/actions/setup-ffmpeg
+      - name: Wait for FFmpeg
+        wait: setup-ffmpeg
 
       # Important: use pytest_wrapper.py instead of pytest directly to ensure
       # that services shut down cleanly and do not conflict with steps later in

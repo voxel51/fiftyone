@@ -39,18 +39,19 @@ jobs:
         if: steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
 
-      - name: Lint ESLint packages
-        run: |
-          cd app
-          ESLINT_PACKAGES=$(grep -v '^#' ./eslint-packages.txt | xargs)
-          yarn eslint $ESLINT_PACKAGES
+      - parallel:
+          - name: Lint ESLint packages
+            run: |
+              cd app
+              ESLINT_PACKAGES=$(grep -v '^#' ./eslint-packages.txt | xargs)
+              yarn eslint $ESLINT_PACKAGES
 
-      - name: Check formatting
-        run: |
-          cd app
-          yarn format:check
+          - name: Check formatting
+            run: |
+              cd app
+              yarn format:check
 
-      - name: Check multimodal package
-        run: |
-          cd app
-          yarn check
+          - name: Check multimodal package
+            run: |
+              cd app
+              yarn check
