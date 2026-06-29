@@ -12,7 +12,7 @@ import type { CuboidProjectionData } from "./types";
  */
 export function useProjectedCuboid(
   cuboid: CuboidTransformData | null | undefined,
-  frustumData: FrustumData
+  frustumData: FrustumData,
 ): CuboidProjectionData | null {
   return useMemo(() => {
     if (!cuboid) return null;

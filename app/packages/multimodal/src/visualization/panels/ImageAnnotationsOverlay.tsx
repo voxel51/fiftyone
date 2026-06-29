@@ -155,7 +155,7 @@ function SetPrimitives({
             selectedKey={selectedKey}
             onSelectPrimitive={onSelectPrimitive}
           />
-        )
+        ),
       )}
       {set.circles.map((c, j) => (
         <CirclePrimitive
@@ -221,7 +221,7 @@ function CirclePrimitive({
       className={clsx(
         styles.primitive,
         onClick && styles.selectable,
-        isSelected && styles.selected
+        isSelected && styles.selected,
       )}
       style={primitiveStyle(color, INTERIOR_FILL)}
       onClick={onClick}
@@ -279,7 +279,7 @@ function PolylinePrimitive({
         className={clsx(
           styles.primitive,
           onClick && styles.selectable,
-          isSelected && styles.selected
+          isSelected && styles.selected,
         )}
         style={primitiveStyle(color, undefined)}
         onClick={onClick}
@@ -304,7 +304,7 @@ function PolylinePrimitive({
       className={clsx(
         styles.primitive,
         onClick && styles.selectable,
-        isSelected && styles.selected
+        isSelected && styles.selected,
       )}
       style={primitiveStyle(color, closed ? INTERIOR_FILL : undefined)}
       onClick={onClick}
@@ -362,7 +362,7 @@ function LineListGroups({
       {groups.map((group, gi) => {
         const color = colorForLabel(group.label);
         const key = `pg-${setIndex}-${primitiveIndex}-${gi}-${boundsKey(
-          group.bounds
+          group.bounds,
         )}`;
         const onClick = pickHandler(onSelectPrimitive, {
           key,
@@ -386,7 +386,7 @@ function LineListGroups({
             className={clsx(
               styles.primitive,
               onClick && styles.selectable,
-              isSelected && styles.selected
+              isSelected && styles.selected,
             )}
             style={primitiveStyle(color, INTERIOR_FILL)}
             onClick={onClick}
@@ -452,7 +452,7 @@ function TextPrimitive({
     <g
       className={clsx(
         onClick && styles.selectable,
-        isSelected && styles.selected
+        isSelected && styles.selected,
       )}
       style={{ ["--ann-stroke" as never]: color } as CSSProperties}
       onClick={onClick}
@@ -508,7 +508,7 @@ interface LineListGroup {
 
 function groupLineListByLabel(
   points: readonly Point2[],
-  texts: readonly ImageAnnotationText[]
+  texts: readonly ImageAnnotationText[],
 ): readonly LineListGroup[] {
   return groupLineSegmentsByLabel(points, texts).map(({ label, segments }) => ({
     label,
@@ -537,7 +537,7 @@ function segmentsBounds(segments: readonly [Point2, Point2][]): Bounds {
 
 function nearestTextIndex(
   texts: readonly ImageAnnotationText[],
-  point: Point2
+  point: Point2,
 ): number {
   let bestIdx = -1;
   let bestDist = Infinity;
@@ -558,10 +558,10 @@ function nearestTextIndex(
 
 function nearestLabel(
   texts: readonly ImageAnnotationText[],
-  point: Point2
+  point: Point2,
 ): string | null {
   const idx = nearestTextIndex(texts, point);
-  return idx === -1 ? null : texts[idx]?.text ?? null;
+  return idx === -1 ? null : (texts[idx]?.text ?? null);
 }
 
 function pointsCentroid(points: readonly Point2[]): Point2 | null {
@@ -607,13 +607,13 @@ function colorForLabel(label: string | null): string {
 function boundsKey(b: Bounds): string {
   const r = (v: number) => Math.round(v / 20);
   return `${r(b.minX)}|${r(b.minY)}|${r(b.maxX - b.minX)}|${r(
-    b.maxY - b.minY
+    b.maxY - b.minY,
   )}`;
 }
 
 function primitiveStyle(
   color: string,
-  interior: string | undefined
+  interior: string | undefined,
 ): CSSProperties {
   const out: Record<string, string> = { "--ann-stroke": color };
   if (interior) out["--ann-interior"] = interior;
@@ -624,7 +624,7 @@ function pickHandler(
   onSelectPrimitive:
     | ((picked: ImageAnnotationPickedPrimitive) => void)
     | undefined,
-  picked: ImageAnnotationPickedPrimitive
+  picked: ImageAnnotationPickedPrimitive,
 ): ((e: React.MouseEvent) => void) | undefined {
   if (!onSelectPrimitive) return undefined;
   return (e) => {
@@ -647,7 +647,7 @@ function displayRect(
   container: { width: number; height: number },
   imageWidth: number,
   imageHeight: number,
-  fit: "contain" | "cover"
+  fit: "contain" | "cover",
 ): Rect {
   const containerAspect = container.width / Math.max(1, container.height);
   const imageAspect = imageWidth / Math.max(1, imageHeight);
@@ -674,7 +674,7 @@ function rgbaToCss(color: RgbaColor | null | undefined): string | undefined {
   const g255 = clamp01(g) * 255;
   const b255 = clamp01(b) * 255;
   return `rgba(${r255.toFixed(0)}, ${g255.toFixed(0)}, ${b255.toFixed(
-    0
+    0,
   )}, ${clamp01(a).toFixed(3)})`;
 }
 

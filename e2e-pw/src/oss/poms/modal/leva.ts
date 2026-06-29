@@ -44,7 +44,7 @@ export class ModalLevaPom {
       .locator("div")
       .nth(0);
     const sliderWidth = await slider.evaluate(
-      (el) => el.getBoundingClientRect().width
+      (el) => el.getBoundingClientRect().width,
     );
     return await slider.click({ position: { x: sliderWidth * 0.99, y: 0 } });
   }
@@ -57,17 +57,17 @@ class LevaAsserter {
     await Promise.all(
       DEFAULT_FOLDER_NAMES.map((folderName) =>
         expect(this.modalLevaPom.getFolder(folderName)).toContainText(
-          folderName
-        )
-      )
+          folderName,
+        ),
+      ),
     );
   }
 
   async verifyAssetFolders(assetNames: string[]) {
     await Promise.all(
       assetNames.map((assetName) =>
-        expect(this.modalLevaPom.getFolder(assetName)).toHaveCount(2)
-      )
+        expect(this.modalLevaPom.getFolder(assetName)).toHaveCount(2),
+      ),
     );
   }
 }

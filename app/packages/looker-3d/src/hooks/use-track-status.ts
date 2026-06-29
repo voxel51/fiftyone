@@ -14,12 +14,12 @@ const noop = () => undefined;
 /** Tracks THREE loading-manager events and mirrors status/logs into Recoil. */
 export const useTrackStatus = (
   loadingManager: LoadingManager | null,
-  isSceneReady = false
+  isSceneReady = false,
 ) => {
   const loadingStatusView = useLoadingStatus();
   const setLogs = useSetRecoilState(fo3dAssetsParseStatusThisSample);
   const [loadingStatusState, setLoadingStatus] = useRecoilState(
-    fo3dLoadingStatusThisSample
+    fo3dLoadingStatusThisSample,
   );
 
   // Keep a ref to the latest loadingStatus to avoid stale closures

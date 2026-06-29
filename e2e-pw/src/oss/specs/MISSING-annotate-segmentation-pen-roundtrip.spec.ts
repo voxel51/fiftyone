@@ -17,7 +17,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "smoke-annotate-segmentation-pen"
+  "smoke-annotate-segmentation-pen",
 );
 
 const test = base.extend<{
@@ -111,7 +111,10 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     });
 
     // ── 5. Verify from Python that the saved sample has a non-empty mask ────
-    const state = await annotateSDK.getDetectionsState(datasetName, "instances");
+    const state = await annotateSDK.getDetectionsState(
+      datasetName,
+      "instances",
+    );
 
     expect(state.present).toBe(true);
     expect(state.count).toBeGreaterThanOrEqual(1);

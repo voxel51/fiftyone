@@ -116,7 +116,7 @@ describe("resolvePlaybackLayout", () => {
       capabilities: { ...STRONG_LOCAL, memoryGb: 2 },
       readProfile: "local",
       sources: Array.from({ length: 6 }, (_, i) =>
-        imageSource(`/cam-${i}`, 100)
+        imageSource(`/cam-${i}`, 100),
       ),
     });
 
@@ -125,7 +125,7 @@ describe("resolvePlaybackLayout", () => {
 
   it("tightens the budget for remote sources by downlink", () => {
     const sources = Array.from({ length: 6 }, (_, i) =>
-      imageSource(`/cam-${i}`, 100)
+      imageSource(`/cam-${i}`, 100),
     );
 
     const slow = resolvePlaybackLayout({

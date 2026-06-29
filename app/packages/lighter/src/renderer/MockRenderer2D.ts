@@ -44,7 +44,7 @@ export class MockRenderer2D implements Renderer2D {
     bounds: Rect,
     width: number,
     color: number | string,
-    containerId: string
+    containerId: string,
   ): void {
     this.containers.set(containerId, {
       type: "handles",
@@ -57,7 +57,7 @@ export class MockRenderer2D implements Renderer2D {
   drawScrim(
     bounds: Rect,
     canonicalMediaBounds: Rect,
-    containerId: string
+    containerId: string,
   ): void {
     this.containers.set(containerId, {
       type: "scrim",
@@ -78,7 +78,7 @@ export class MockRenderer2D implements Renderer2D {
     text: string,
     position: Point,
     options: TextOptions | undefined,
-    containerId: string
+    containerId: string,
   ): Rect {
     this.containers.set(containerId, {
       type: "text",
@@ -93,7 +93,7 @@ export class MockRenderer2D implements Renderer2D {
     center: Point,
     radius: number,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void {
     this.containers.set(containerId, {
       type: "point",
@@ -107,7 +107,7 @@ export class MockRenderer2D implements Renderer2D {
     centers: Point[],
     radius: number,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void {
     this.containers.set(containerId, {
       type: "points",
@@ -121,7 +121,7 @@ export class MockRenderer2D implements Renderer2D {
     start: Point,
     end: Point,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void {
     this.containers.set(containerId, {
       type: "line",
@@ -134,7 +134,7 @@ export class MockRenderer2D implements Renderer2D {
   drawLines(
     segments: Array<[Point, Point]>,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void {
     this.containers.set(containerId, {
       type: "lines",
@@ -155,7 +155,7 @@ export class MockRenderer2D implements Renderer2D {
     image: ImageSource,
     destination: Rect,
     options: ImageOptions | undefined,
-    containerId: string
+    containerId: string,
   ): void {
     this.containers.set(containerId, {
       type: "image",

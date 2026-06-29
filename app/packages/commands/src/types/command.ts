@@ -27,7 +27,7 @@ export class Command {
     private readonly executeFunc: CommandFunction,
     private enablementFunc: () => boolean,
     public readonly label?: string,
-    public readonly description?: string
+    public readonly description?: string,
   ) {
     //We don't fire listeners for initial
     //enablement, assuming the call is in process

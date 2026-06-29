@@ -54,7 +54,7 @@ async function checkPort(port: number): Promise<boolean> {
  */
 export async function assertPortAvailableOrWaitWithTimeout(
   port: number,
-  timeout = 60000
+  timeout = 60000,
 ): Promise<void> {
   console.log("Checking port availability:", port, "timeout:", timeout);
   const checkInterval = timeout > 5000 ? 5000 : timeout;

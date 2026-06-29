@@ -42,7 +42,7 @@ describe("readTopicIndexedTimeBoundsForReader", () => {
     const results = await readTopicIndexedTimeBoundsForReader(
       reader,
       readable,
-      { topics: ["/camera"] }
+      { topics: ["/camera"] },
     );
 
     expect(results.get("/camera")).toEqual({
@@ -69,7 +69,7 @@ describe("readTopicIndexedTimeBoundsForReader", () => {
     const results = await readTopicIndexedTimeBoundsForReader(
       reader,
       readable,
-      { topics: ["/camera", "/lidar", "/unknown"] }
+      { topics: ["/camera", "/lidar", "/unknown"] },
     );
 
     expect(results.get("/camera")).toEqual({
@@ -87,9 +87,9 @@ describe("readTopicIndexedTimeBoundsForReader", () => {
     const topics = Array.from({ length: 129 }, (_, i) => `/topic-${i}`);
 
     await expect(
-      readTopicIndexedTimeBoundsForReader(reader, readable, { topics })
+      readTopicIndexedTimeBoundsForReader(reader, readable, { topics }),
     ).rejects.toThrow(
-      "MCAP topic time bounds support at most 128 topics per request"
+      "MCAP topic time bounds support at most 128 topics per request",
     );
   });
 
@@ -103,9 +103,9 @@ describe("readTopicIndexedTimeBoundsForReader", () => {
         readTopicIndexedTimeBoundsForReader(reader, readable, {
           maxChunkProbesPerTopic,
           topics,
-        })
+        }),
       ).rejects.toThrow(
-        "MCAP topic time-bounds lookup requires a positive integer maxChunkProbesPerTopic"
+        "MCAP topic time-bounds lookup requires a positive integer maxChunkProbesPerTopic",
       );
     }
   });
@@ -139,14 +139,14 @@ function createReadable(
   chunks: readonly {
     readonly bytes: Uint8Array;
     readonly offset: bigint;
-  }[]
+  }[],
 ): {
   readonly readable: McapTypes.IReadable;
 } {
   const size = chunks.reduce(
     (max, chunk) =>
       Math.max(max, Number(chunk.offset) + chunk.bytes.byteLength),
-    0
+    0,
   );
   const buffer = new Uint8Array(size);
   for (const chunk of chunks) {
@@ -156,7 +156,7 @@ function createReadable(
   return {
     readable: {
       read: vi.fn(async (offset: bigint, readSize: bigint) =>
-        buffer.slice(Number(offset), Number(offset + readSize))
+        buffer.slice(Number(offset), Number(offset + readSize)),
       ),
       size: vi.fn(async () => BigInt(buffer.byteLength)),
     } as McapTypes.IReadable,
@@ -165,7 +165,7 @@ function createReadable(
 
 function createMessageIndexRecord(
   channelId: number,
-  records: readonly (readonly [logTimeNs: bigint, messageOffset: bigint])[]
+  records: readonly (readonly [logTimeNs: bigint, messageOffset: bigint])[],
 ): Uint8Array {
   const contentLength = 2 + 4 + records.length * 16;
   const bytes = new Uint8Array(1 + 8 + contentLength);
@@ -187,7 +187,7 @@ function createMessageIndexRecord(
 }
 
 function createChunkIndex(
-  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {},
 ): McapTypes.TypedMcapRecords["ChunkIndex"] {
   return {
     chunkLength: options.chunkLength ?? 256n,
@@ -204,7 +204,7 @@ function createChunkIndex(
 }
 
 function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
 ): McapTypes.TypedMcapRecords["Channel"] {
   return {
     id: options.id ?? 7,

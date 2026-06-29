@@ -94,7 +94,7 @@ const interactiveHandlerAtom = atom<InteractiveKeypointHandler | null>(null);
  */
 export const usePointSelection = (): PointSelection => {
   const [keypointOverlayId, setKeypointOverlayId] = useAtom(
-    keypointOverlayIdAtom
+    keypointOverlayIdAtom,
   );
   const [isActive, setIsActive] = useAtom(pointSelectionActiveAtom);
   // deactivate() reads the current handler fresh from the store (see
@@ -103,7 +103,7 @@ export const usePointSelection = (): PointSelection => {
 
   const { getOverlay, scene, overlayFactory } = useLighter();
   const eventBus = useLighterEventBus(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   const { selected } = useAnnotationContext();
@@ -114,7 +114,7 @@ export const usePointSelection = (): PointSelection => {
   const resolveVariant = useCallback(
     (relativePoint: Point, ctx: ClickEventModifiers): PointSelectionVariant =>
       resolvePointVariant(relativePoint, ctx, selectedLabelRef.current),
-    []
+    [],
   );
 
   // Guards read fresh from the jotai store so a deactivate→activate pair
@@ -135,7 +135,7 @@ export const usePointSelection = (): PointSelection => {
           label: { label: "", points: [] },
           field: "",
           variantStyles: POINT_SELECTION_VARIANT_STYLES,
-        }
+        },
       );
       // UI scaffolding; exclude from persistence
       overlay.isPersistent = false;
@@ -149,7 +149,7 @@ export const usePointSelection = (): PointSelection => {
         overlay,
         eventBus,
         resolveVariant,
-        resolvePointHit
+        resolvePointHit,
       );
       setInteractiveHandler(handler);
       scene.enterInteractiveMode(handler);

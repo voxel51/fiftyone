@@ -28,7 +28,7 @@ const MESSAGE_INDEX_CONTENT_HEADER_BYTES = 6;
 export async function* readIndexedMessageTimesForReader(
   reader: McapIndexedReaderLike,
   readable: McapTypes.IReadable,
-  args: McapReadIndexedMessageTimesRequest = {}
+  args: McapReadIndexedMessageTimesRequest = {},
 ): AsyncGenerator<McapIndexedMessageTime, void, void> {
   if (
     args.limit !== undefined &&
@@ -95,7 +95,7 @@ export async function* readIndexedMessageTimesForReader(
         readable,
         reader,
         startTimeNs: args.startTimeNs,
-      }))
+      })),
     );
   }
 
@@ -114,7 +114,7 @@ export async function* readIndexedMessageTimesForReader(
  * Parses one raw MCAP MessageIndex record into channel offsets.
  */
 export function parseMcapMessageIndexRecord(
-  bytes: Uint8Array
+  bytes: Uint8Array,
 ): ParsedMcapMessageIndexRecord {
   const reader = new McapStreamReader(MESSAGE_INDEX_RECORD_READER_OPTIONS);
   reader.append(bytes);
@@ -126,8 +126,8 @@ export function parseMcapMessageIndexRecord(
     throw new Error(
       `Expected MCAP MessageIndex record: ${mcapErrorMessage(
         error,
-        "failed to parse record"
-      )}`
+        "failed to parse record",
+      )}`,
     );
   }
 
@@ -139,7 +139,7 @@ export function parseMcapMessageIndexRecord(
   }
   if (reader.bytesRemaining() !== 0) {
     throw new Error(
-      `MCAP MessageIndex byte range has ${reader.bytesRemaining()} trailing bytes`
+      `MCAP MessageIndex byte range has ${reader.bytesRemaining()} trailing bytes`,
     );
   }
   assertMessageIndexRecordsFillRecord(bytes);
@@ -162,7 +162,7 @@ function assertMessageIndexRecordsFillRecord(bytes: Uint8Array) {
   const recordLength = view.getBigUint64(1, true);
   if (recordLength > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw new Error(
-      "MCAP MessageIndex record length exceeds safe number range"
+      "MCAP MessageIndex record length exceeds safe number range",
     );
   }
 
@@ -177,7 +177,7 @@ function assertMessageIndexRecordsFillRecord(bytes: Uint8Array) {
   const recordsEnd = recordsStart + recordsByteLength;
   if (recordsEnd !== recordEnd) {
     throw new Error(
-      `MCAP MessageIndex records byte range mismatch: recordsStart=${recordsStart}, recordsEnd=${recordsEnd}, recordsByteLength=${recordsByteLength}, recordEnd=${recordEnd}, MCAP_RECORD_HEADER_BYTES=${MCAP_RECORD_HEADER_BYTES}, MESSAGE_INDEX_CONTENT_HEADER_BYTES=${MESSAGE_INDEX_CONTENT_HEADER_BYTES}`
+      `MCAP MessageIndex records byte range mismatch: recordsStart=${recordsStart}, recordsEnd=${recordsEnd}, recordsByteLength=${recordsByteLength}, recordEnd=${recordEnd}, MCAP_RECORD_HEADER_BYTES=${MCAP_RECORD_HEADER_BYTES}, MESSAGE_INDEX_CONTENT_HEADER_BYTES=${MESSAGE_INDEX_CONTENT_HEADER_BYTES}`,
     );
   }
 }
@@ -220,7 +220,7 @@ export async function readChunkIndexedMessageTimes({
     const messageIndex = parseMcapMessageIndexRecord(bytes);
     if (messageIndex.channelId !== channelId) {
       throw new Error(
-        `MCAP MessageIndex channel ${messageIndex.channelId} did not match expected channel ${channelId}`
+        `MCAP MessageIndex channel ${messageIndex.channelId} did not match expected channel ${channelId}`,
       );
     }
 
@@ -245,7 +245,7 @@ export async function readChunkIndexedMessageTimes({
 function readExactRange(
   readable: McapTypes.IReadable,
   offset: bigint,
-  size: bigint
+  size: bigint,
 ): Promise<Uint8Array> {
   return (
     (
@@ -262,7 +262,7 @@ function readExactRange(
  */
 export function channelIdsForTopics(
   channelsById: ReadonlyMap<number, McapTypes.TypedMcapRecords["Channel"]>,
-  topics: readonly string[] | undefined
+  topics: readonly string[] | undefined,
 ): ReadonlySet<number> {
   const topicSet = topics === undefined ? undefined : new Set(topics);
   const channelIds = new Set<number>();
@@ -278,7 +278,7 @@ export function channelIdsForTopics(
 
 function messageIndexRangeForChannel(
   chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"],
-  channelId: number
+  channelId: number,
 ): { readonly length: bigint; readonly offset: bigint } | undefined {
   const offset: bigint | undefined =
     chunkIndex.messageIndexOffsets.get(channelId);
@@ -287,7 +287,7 @@ function messageIndexRangeForChannel(
   }
 
   const offsets: bigint[] = [...chunkIndex.messageIndexOffsets.values()].sort(
-    compareBigInt
+    compareBigInt,
   );
   const startOffset: bigint | undefined = offsets[0];
   if (startOffset === undefined) {
@@ -304,7 +304,7 @@ function messageIndexRangeForChannel(
 
   if (nextOffset < offset) {
     throw new Error(
-      `MCAP MessageIndex range for channel ${channelId} has a negative length`
+      `MCAP MessageIndex range for channel ${channelId} has a negative length`,
     );
   }
 
@@ -317,7 +317,7 @@ function messageIndexRangeForChannel(
 function chunkOverlapsRange(
   chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"],
   startTimeNs: bigint | undefined,
-  endTimeNs: bigint | undefined
+  endTimeNs: bigint | undefined,
 ): boolean {
   if (startTimeNs !== undefined && chunkIndex.messageEndTime < startTimeNs) {
     return false;
@@ -330,7 +330,7 @@ function chunkOverlapsRange(
 }
 
 function chunksAreOrdered(
-  chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][]
+  chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
 ): boolean {
   let previousEndTime: bigint | undefined;
 
@@ -351,7 +351,7 @@ function chunksAreOrdered(
 function isWithinIndexedRange(
   logTimeNs: bigint,
   startTimeNs: bigint | undefined,
-  endTimeNs: bigint | undefined
+  endTimeNs: bigint | undefined,
 ): boolean {
   if (startTimeNs !== undefined && logTimeNs < startTimeNs) {
     return false;
@@ -369,7 +369,7 @@ function isWithinIndexedRange(
  */
 export function compareIndexedMessageTimes(
   left: McapIndexedMessageTime,
-  right: McapIndexedMessageTime
+  right: McapIndexedMessageTime,
 ) {
   const timeComparison = compareBigInt(left.logTimeNs, right.logTimeNs);
   if (timeComparison !== 0) {
@@ -378,7 +378,7 @@ export function compareIndexedMessageTimes(
 
   const chunkComparison = compareBigInt(
     left.chunkStartOffset,
-    right.chunkStartOffset
+    right.chunkStartOffset,
   );
   if (chunkComparison !== 0) {
     return chunkComparison;
@@ -386,7 +386,7 @@ export function compareIndexedMessageTimes(
 
   const offsetComparison = compareBigInt(
     left.messageOffset,
-    right.messageOffset
+    right.messageOffset,
   );
   if (offsetComparison !== 0) {
     return offsetComparison;

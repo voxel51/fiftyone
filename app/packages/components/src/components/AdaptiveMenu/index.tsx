@@ -18,7 +18,7 @@ import PopoutButton from "../PopoutButton";
 import { hideOverflowingNodes } from "./utils";
 
 export default function AdaptiveMenu<T extends AdaptiveMenuItemPropsType>(
-  props: AdaptiveMenuPropsType<T>
+  props: AdaptiveMenuPropsType<T>,
 ) {
   const {
     id,
@@ -36,10 +36,13 @@ export default function AdaptiveMenu<T extends AdaptiveMenuItemPropsType>(
   const pendingMoveRef = useRef<Array<number>>([]);
 
   const itemsById = useMemo(() => {
-    return items.reduce((itemsById, item, index) => {
-      itemsById[item.id] = { ...item, index };
-      return itemsById;
-    }, {} as Record<string, AdaptiveMenuItemPropsType>);
+    return items.reduce(
+      (itemsById, item, index) => {
+        itemsById[item.id] = { ...item, index };
+        return itemsById;
+      },
+      {} as Record<string, AdaptiveMenuItemPropsType>,
+    );
   }, [items]);
 
   const computedItems = previewItems || items;
@@ -210,7 +213,7 @@ export default function AdaptiveMenu<T extends AdaptiveMenuItemPropsType>(
 }
 
 function AdaptiveMenuItems<T extends AdaptiveMenuItemPropsType>(
-  props: AdaptiveMenuItemsPropsType<T>
+  props: AdaptiveMenuItemsPropsType<T>,
 ) {
   const { items, variant, closeOverflow, refresh } = props;
   return items.map((item) => {
@@ -228,7 +231,7 @@ function AdaptiveMenuItems<T extends AdaptiveMenuItemPropsType>(
 }
 
 function MoreItems<T extends AdaptiveMenuItemPropsType>(
-  props: MoreItemsPropsType<T>
+  props: MoreItemsPropsType<T>,
 ) {
   const { id, items, onMove, onEnd, onStart, orientation, refresh } = props;
   const [open, setOpen] = React.useState(false);

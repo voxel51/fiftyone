@@ -32,7 +32,7 @@ type SyncCandidate = {
 
 type SyncCandidateTieBreaker<Candidate extends SyncCandidate> = (
   left: Candidate,
-  right: Candidate
+  right: Candidate,
 ) => number;
 
 /**
@@ -55,7 +55,7 @@ export function createWindowBounds({
     resolved[topic] = resolveStreamSyncPolicy(
       timeNs,
       streamPolicies?.[topic] ?? defaultStreamPolicy,
-      topic
+      topic,
     );
   }
 
@@ -93,7 +93,7 @@ export function selectSynchronizedWindow({
     const selected = selectCandidatesForTopic(
       candidatesByTopic.get(topic) ?? [],
       timeNs,
-      streamPolicies[topic]
+      streamPolicies[topic],
     );
     messagesByTopic[topic] = selected;
     messages.push(...selected);
@@ -105,12 +105,12 @@ export function selectSynchronizedWindow({
     timeNs,
     activeTimeline,
     endTimeNs: maxBigInt(
-      Object.values(streamPolicies).map((policy) => policy.endTimeNs)
+      Object.values(streamPolicies).map((policy) => policy.endTimeNs),
     ),
     messages,
     messagesByTopic,
     startTimeNs: minBigInt(
-      Object.values(streamPolicies).map((policy) => policy.startTimeNs ?? 0n)
+      Object.values(streamPolicies).map((policy) => policy.startTimeNs ?? 0n),
     ),
     streamPolicies,
   };
@@ -122,7 +122,7 @@ export function selectSynchronizedWindow({
  * bounded scan window.
  */
 export function isUnboundedLatestPolicy(
-  policy: McapResolvedStreamSyncPolicy
+  policy: McapResolvedStreamSyncPolicy,
 ): boolean {
   return (
     policy.mode === PlaybackSyncMode.LATEST && policy.startTimeNs === undefined
@@ -136,7 +136,7 @@ export function selectCandidatesForTopic<Candidate extends SyncCandidate>(
   candidates: readonly Candidate[],
   timeNs: bigint,
   policy: McapResolvedStreamSyncPolicy | undefined,
-  tieBreaker?: SyncCandidateTieBreaker<Candidate>
+  tieBreaker?: SyncCandidateTieBreaker<Candidate>,
 ): readonly Candidate[] {
   if (!policy) {
     throw new Error("Missing MCAP stream sync policy");
@@ -146,8 +146,8 @@ export function selectCandidatesForTopic<Candidate extends SyncCandidate>(
     isWithinRange(
       candidate.timelineTimeNs,
       policy.startTimeNs,
-      policy.endTimeNs
-    )
+      policy.endTimeNs,
+    ),
   );
   const compareByTime = (left: Candidate, right: Candidate) =>
     compareCandidateByTimelineTime(left, right, tieBreaker);
@@ -156,7 +156,7 @@ export function selectCandidatesForTopic<Candidate extends SyncCandidate>(
     case PlaybackSyncMode.NEAREST:
       return inWindow
         .sort((left, right) =>
-          compareCandidateByDistance(left, right, timeNs, tieBreaker)
+          compareCandidateByDistance(left, right, timeNs, tieBreaker),
         )
         .slice(0, policy.limit)
         .sort(compareByTime);
@@ -181,7 +181,7 @@ export function selectCandidatesForTopic<Candidate extends SyncCandidate>(
  */
 export function compareByTimelineTime(
   left: McapDecodedMessage,
-  right: McapDecodedMessage
+  right: McapDecodedMessage,
 ) {
   return compareCandidateByTimelineTime(left, right);
 }
@@ -203,7 +203,7 @@ export function compareBigInt(left: bigint, right: bigint) {
 export function isWithinRange(
   value: bigint,
   startTimeNs: bigint | undefined,
-  endTimeNs: bigint | undefined
+  endTimeNs: bigint | undefined,
 ) {
   return (
     (startTimeNs === undefined || value >= startTimeNs) &&
@@ -250,13 +250,13 @@ export function maxBigInt(values: readonly bigint[]): bigint {
 function resolveStreamSyncPolicy(
   timeNs: bigint,
   policy: McapStreamSyncPolicy | undefined,
-  topic: string
+  topic: string,
 ): McapResolvedStreamSyncPolicy {
   const mode = normalizePlaybackSyncMode(policy?.mode);
   const limit = policy?.limit ?? DEFAULT_STREAM_SYNC_LIMIT;
   if (!Number.isFinite(limit) || !Number.isInteger(limit) || limit < 1) {
     throw new Error(
-      `MCAP sync policy for ${topic} must request a positive integer frame limit`
+      `MCAP sync policy for ${topic} must request a positive integer frame limit`,
     );
   }
 
@@ -313,7 +313,7 @@ function resolveStreamSyncPolicy(
 }
 
 function normalizePlaybackSyncMode(
-  mode: PlaybackSyncMode | undefined
+  mode: PlaybackSyncMode | undefined,
 ):
   | PlaybackSyncMode.NEAREST
   | PlaybackSyncMode.STRICT
@@ -338,11 +338,11 @@ function normalizePlaybackSyncMode(
 function assertNonNegativeTolerance(
   topic: string,
   field: "toleranceAfterNs" | "toleranceBeforeNs",
-  value: bigint
+  value: bigint,
 ) {
   if (value < 0n) {
     throw new Error(
-      `MCAP sync policy ${field} for ${topic} cannot be negative`
+      `MCAP sync policy ${field} for ${topic} cannot be negative`,
     );
   }
 }
@@ -351,12 +351,12 @@ function assertUnsupportedTolerance(
   topic: string,
   mode: PlaybackSyncMode,
   field: "toleranceAfterNs" | "toleranceBeforeNs",
-  policy: McapStreamSyncPolicy | undefined
+  policy: McapStreamSyncPolicy | undefined,
 ) {
   const value = policy?.[field];
   if (value !== undefined && value !== 0n) {
     throw new Error(
-      `MCAP sync policy ${field} for ${topic} is not valid for ${PlaybackSyncMode[mode]}`
+      `MCAP sync policy ${field} for ${topic} is not valid for ${PlaybackSyncMode[mode]}`,
     );
   }
 }
@@ -365,7 +365,7 @@ function compareCandidateByDistance<Candidate extends SyncCandidate>(
   left: Candidate,
   right: Candidate,
   timeNs: bigint,
-  tieBreaker?: SyncCandidateTieBreaker<Candidate>
+  tieBreaker?: SyncCandidateTieBreaker<Candidate>,
 ) {
   const leftDistance = absBigInt(left.timelineTimeNs - timeNs);
   const rightDistance = absBigInt(right.timelineTimeNs - timeNs);
@@ -380,7 +380,7 @@ function compareCandidateByDistance<Candidate extends SyncCandidate>(
 function compareCandidateByTimelineTime<Candidate extends SyncCandidate>(
   left: Candidate,
   right: Candidate,
-  tieBreaker?: SyncCandidateTieBreaker<Candidate>
+  tieBreaker?: SyncCandidateTieBreaker<Candidate>,
 ) {
   if (left.timelineTimeNs !== right.timelineTimeNs) {
     return left.timelineTimeNs < right.timelineTimeNs ? -1 : 1;

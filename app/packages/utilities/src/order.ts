@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 export function useItemsWithOrderPersistence<T extends SortableItemType>(
   items: T[],
-  key: string
+  key: string,
 ) {
   const initialOrder = localStorage.getItem(key);
   const [order, updateOrder] = useState(initialOrder);
@@ -24,7 +24,7 @@ export function useItemsWithOrderPersistence<T extends SortableItemType>(
       items.reduce((acc, item, index) => {
         acc[item.id] = index;
         return acc;
-      }, {} as IdToIndexType)
+      }, {} as IdToIndexType),
     );
     localStorage.setItem(key, orderCache);
     updateOrder(orderCache);
@@ -34,7 +34,7 @@ export function useItemsWithOrderPersistence<T extends SortableItemType>(
 
 function sortItems<T extends SortableItemType>(
   items: T[],
-  idToIndex: IdToIndexType
+  idToIndex: IdToIndexType,
 ) {
   const sortedItems = [...items];
   const totalItems = items.length;

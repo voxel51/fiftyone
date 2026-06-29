@@ -12,7 +12,7 @@ const showDeleteConfirmation = atom(false);
 
 const askForDeleteConfirmation = atomWithStorage(
   "HA.askForDeleteConfirmation",
-  true
+  true,
 );
 
 const Row = styled.div`

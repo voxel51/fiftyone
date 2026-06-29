@@ -24,6 +24,6 @@ export default function OperatorViewModal() {
         />
       </PaletteContentContainer>
     </OperatorPalette>,
-    document.body
+    document.body,
   );
 }

@@ -15,7 +15,7 @@ import { MaskKeypoints } from "./MaskKeypoints";
  * coordinates equal pixel coordinates keeps thresholds easy to reason about.
  */
 const makeMaskKeypoints = (
-  keypointThreshold = 25
+  keypointThreshold = 25,
 ): { mk: MaskKeypoints; renderer: MockRenderer2D } => {
   const renderer = new MockRenderer2D();
   const coordinateSystem = new CoordinateSystem2D();

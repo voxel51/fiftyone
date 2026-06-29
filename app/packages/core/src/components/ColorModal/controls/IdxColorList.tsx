@@ -54,7 +54,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
 }) => {
   const [input, setInput] = useState<Input[]>(initialValue ?? []);
   const [showPicker, setShowPicker] = useState(
-    Array(values?.length ?? 0).fill(false)
+    Array(values?.length ?? 0).fill(false),
   );
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -82,21 +82,21 @@ const IdxColorList: React.FC<IdxColorProp> = ({
       setInput(valueColors);
       onSyncUpdate(valueColors as MaskColorInput[]);
     },
-    [input, setInput, onSyncUpdate]
+    [input, setInput, onSyncUpdate],
   );
 
   // color picker selection and sync with session
   const hanldeColorChange = useCallback(
     (color: any, colorIdx: number) => {
       setShowPicker((prev) =>
-        prev.map((status, i) => (i === colorIdx ? false : status))
+        prev.map((status, i) => (i === colorIdx ? false : status)),
       );
       const copy = input ? [...cloneDeep(input)] : [];
       copy[colorIdx].color = color?.hex;
       setInput(copy);
       onSyncUpdate(copy as MaskColorInput[]);
     },
-    [input, onSyncUpdate]
+    [input, onSyncUpdate],
   );
 
   // onBlue and onEnter in numberfield to validate certain rules
@@ -118,7 +118,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
         }, 1000);
       }
     },
-    [input, values, onSyncUpdate, onValidate]
+    [input, values, onSyncUpdate, onValidate],
   );
 
   // onBlur and onEnter in textfield to validate color and sync with atoms
@@ -140,7 +140,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
       } else {
         // convert to hex code
         const hexColor = colorString.to.hex(
-          colorString.get(color)?.value ?? []
+          colorString.get(color)?.value ?? [],
         );
         const copy = cloneDeep(input);
         copy[changeIdx].color = hexColor;
@@ -148,7 +148,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
         onSyncUpdate(copy as MaskColorInput[]);
       }
     },
-    [input, values, onSyncUpdate]
+    [input, values, onSyncUpdate],
   );
 
   // on changing tabs or session value changed, sync local state with new session values
@@ -194,7 +194,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
             color={input[index].color}
             onClick={() => {
               setShowPicker((prev) =>
-                prev.map((_, i) => (i === index ? !prev[index] : _))
+                prev.map((_, i) => (i === index ? !prev[index] : _)),
               );
             }}
           >
@@ -214,7 +214,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
                   disableAlpha
                   onBlur={() =>
                     setShowPicker((prev) =>
-                      prev.map((_, i) => (i === index ? false : _))
+                      prev.map((_, i) => (i === index ? false : _)),
                     )
                   }
                   className={colorPicker}

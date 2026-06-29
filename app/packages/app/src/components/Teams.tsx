@@ -138,11 +138,17 @@ const BaseEnterpriseButton = styled(Button)<{
     background: linear-gradient(
       90deg,
       rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, ${({ $isLightMode }) => ($isLightMode ? "0.3" : "0.2")})
+      rgba(
+          255,
+          255,
+          255,
+          ${({ $isLightMode }) => ($isLightMode ? "0.3" : "0.2")}
+        )
         50%,
       rgba(255, 255, 255, 0) 100%
     );
-    transition: all ${({ $isLightMode }) => ($isLightMode ? "0.8s" : "0.6s")} ease;
+    transition: all ${({ $isLightMode }) => ($isLightMode ? "0.8s" : "0.6s")}
+      ease;
     z-index: 1;
   }
 
@@ -170,7 +176,7 @@ const BaseEnterpriseButton = styled(Button)<{
             255,
             255,
             255,
-            ${({ isLightMode }) => (isLightMode ? "0.6" : "0.2")}
+            ${({ $isLightMode }) => ($isLightMode ? "0.6" : "0.2")}
           )
           50%,
         rgba(255, 255, 255, 0) 100%
@@ -212,7 +218,9 @@ const PopoverFooter = styled(Stack)`
 
 export default function Teams({
   disablePopover = false,
-}: { disablePopover?: boolean }) {
+}: {
+  disablePopover?: boolean;
+}) {
   const [showPopover, setShowPopover] = useState(false);
 
   const { mode } = useColorScheme();
@@ -245,7 +253,7 @@ export default function Teams({
     setShowPopover(false);
     window.open(
       "https://voxel51.com/why-upgrade?utm_source=FiftyOneApp",
-      "_blank"
+      "_blank",
     );
   }, [markTooltipSeen]);
 

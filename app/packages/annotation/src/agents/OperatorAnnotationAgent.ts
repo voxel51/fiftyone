@@ -35,9 +35,9 @@ import { OperatorResponse } from "@fiftyone/operators/src/types";
  * All {@link AnnotationContext} fields are forwarded to the operator as
  * `params`, so the operator can access them via `ctx.params`.
  */
-export class OperatorAnnotationAgent<T extends InferenceResultProxy>
-  implements AnnotationAgent<T>
-{
+export class OperatorAnnotationAgent<
+  T extends InferenceResultProxy,
+> implements AnnotationAgent<T> {
   private readonly subscriptionControllers = new Map<string, AbortController>();
   private lifecycleStatus: AnnotationAgentLifecycleStatus = "idle";
   private readonly lifecycleListeners =
@@ -74,7 +74,7 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
         const sessionId = response.result?.id;
         if (!sessionId) {
           throw new Error(
-            `Operator ${this.operatorUri} returned a delegated result with no operator id`
+            `Operator ${this.operatorUri} returned a delegated result with no operator id`,
           );
         }
         // Delegated execution: surface the handoff as idle locally; subscribers
@@ -120,7 +120,7 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
    * @param task The task to query capabilities for.
    */
   async listInferenceCapabilities(
-    task: AgentTaskType
+    task: AgentTaskType,
   ): Promise<InferenceCapability[]> {
     const schema = await this.resolveInputSchema({ task });
     const inferenceCapabilities = schema?.type?.properties
@@ -148,7 +148,7 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
    */
   async subscribe(
     _sessionId: string,
-    _callback: (result: SyncInferenceResult<T>) => void
+    _callback: (result: SyncInferenceResult<T>) => void,
   ): Promise<void> {
     // todo
   }
@@ -213,7 +213,7 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
    * @param params Params forwarded to the operator's `resolve_input`.
    */
   private async resolveInputSchema(
-    params: Record<string, unknown>
+    params: Record<string, unknown>,
   ): Promise<ResolveTypeResponse> {
     const response: ResolveTypeResponse = await getFetchFunction()(
       "POST",
@@ -222,7 +222,7 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
         operator_uri: this.operatorUri,
         params,
         target: "inputs",
-      }
+      },
     );
     if (response?.error) throw new Error(String(response.error));
     return response;
@@ -246,7 +246,7 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
         if (!(capability in props)) {
           throw new Error(
             `Operator ${this.operatorUri} is missing required input property ` +
-              `"${capability}" for task "${task}"`
+              `"${capability}" for task "${task}"`,
           );
         }
       }

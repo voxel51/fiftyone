@@ -63,7 +63,10 @@ import { retrieveTransferables } from "./utils";
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
 const LABEL_LIST_KEY = Object.fromEntries(
-  Object.entries(LABEL_LISTS_MAP).map(([k, v]) => [withPath(LABELS_PATH, k), v])
+  Object.entries(LABEL_LISTS_MAP).map(([k, v]) => [
+    withPath(LABELS_PATH, k),
+    v,
+  ]),
 );
 const LABELS_SET = new Set(LABELS);
 
@@ -94,7 +97,7 @@ const getLabelsWorker = (() => {
 
 export abstract class AbstractLooker<
   State extends BaseState,
-  S extends Sample = Sample
+  S extends Sample = Sample,
 > {
   public readonly subscriptions: {
     [fieldName: string]: ((newValue: any) => void)[];
@@ -131,7 +134,7 @@ export abstract class AbstractLooker<
   constructor(
     sample: S,
     config: State["config"],
-    options: Partial<State["options"]> = {}
+    options: Partial<State["options"]> = {},
   ) {
     this.abortController = new AbortController();
     this.eventTarget = new EventTarget();
@@ -179,13 +182,13 @@ export abstract class AbstractLooker<
               return { options: { showControls: false } };
             }
             return {};
-          }
+          },
         ),
-      3500
+      3500,
     );
 
     this.asyncLabelsRenderingManager = new AsyncLabelsRenderingManager(
-      this as unknown as Lookers
+      this as unknown as Lookers,
     );
 
     this.init();
@@ -205,7 +208,7 @@ export abstract class AbstractLooker<
 
     // .find() instead of .filter() because label "instance" is unique per looker
     const label = this.currentOverlays.find(
-      (o) => o.label.instance?._id === instanceId
+      (o) => o.label.instance?._id === instanceId,
     );
 
     if (!label) {
@@ -237,19 +240,19 @@ export abstract class AbstractLooker<
     selectiveRenderingEventBus.on(
       FO_LABEL_HOVERED_EVENT,
       this.labelHoveredListener,
-      this.abortController.signal
+      this.abortController.signal,
     );
 
     selectiveRenderingEventBus.on(
       FO_LABEL_UNHOVERED_EVENT,
       this.labelUnhoveredListener,
-      this.abortController.signal
+      this.abortController.signal,
     );
   }
 
   public subscribeToState(
     field: string,
-    callback: (value: any) => void
+    callback: (value: any) => void,
   ): () => void {
     if (!(field in this.subscriptions)) {
       this.subscriptions[field] = [];
@@ -260,7 +263,7 @@ export abstract class AbstractLooker<
     // return unsubscribe function
     return () => {
       const newCallbacks = this.subscriptions[field].filter(
-        (cb) => cb !== callback
+        (cb) => cb !== callback,
       );
       if (newCallbacks.length === 0) {
         delete this.subscriptions[field];
@@ -319,7 +322,7 @@ export abstract class AbstractLooker<
     if (detail instanceof Event) {
       this.eventTarget.dispatchEvent(
         // @ts-ignore
-        new detail.constructor(detail.type, detail)
+        new detail.constructor(detail.type, detail),
       );
       return;
     }
@@ -329,7 +332,7 @@ export abstract class AbstractLooker<
 
   protected dispatchImpliedEvents(
     previous: Readonly<State>,
-    next: Readonly<State>
+    next: Readonly<State>,
   ): void {
     if (previous.options.showJSON !== next.options.showJSON) {
       this.dispatchEvent("options", { showJSON: next.options.showJSON });
@@ -354,7 +357,7 @@ export abstract class AbstractLooker<
             sample: this.sample,
             symbol: this.state.config.symbol,
             modifiers: detail,
-          })
+          }),
         );
         return;
       }
@@ -396,7 +399,7 @@ export abstract class AbstractLooker<
         if (this.isBatching) {
           this.batchMergedUpdates = mergeUpdates(
             this.batchMergedUpdates,
-            updates
+            updates,
           );
           return;
         }
@@ -438,7 +441,7 @@ export abstract class AbstractLooker<
 
         [this.currentOverlays, this.state.rotate] = processOverlays(
           this.state,
-          this.pluckedOverlays
+          this.pluckedOverlays,
         );
 
         this.state.mouseIsOnOverlay =
@@ -470,7 +473,7 @@ export abstract class AbstractLooker<
           0,
           0,
           this.state.windowBBox[2] * dpr,
-          this.state.windowBBox[3] * dpr
+          this.state.windowBBox[3] * dpr,
         );
 
         ctx.translate(this.state.pan[0] * dpr, this.state.pan[1] * dpr);
@@ -488,7 +491,7 @@ export abstract class AbstractLooker<
           tlx,
           tly,
           w,
-          h
+          h,
         );
 
         ctx.globalAlpha = Math.min(1, this.state.options.alpha / BASE_ALPHA);
@@ -504,7 +507,7 @@ export abstract class AbstractLooker<
           new CustomEvent("canvas-loaded", {
             detail: { sampleFilepath: this.sample.filepath },
             bubbles: true,
-          })
+          }),
         );
       } catch (error) {
         if (error instanceof AppError || error instanceof MediaError) {
@@ -519,7 +522,7 @@ export abstract class AbstractLooker<
   addEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    optionsOrUseCapture?: boolean | AddEventListenerOptions
+    optionsOrUseCapture?: boolean | AddEventListenerOptions,
   ) {
     const argsWithSignal: AddEventListenerOptions =
       typeof optionsOrUseCapture === "boolean"
@@ -584,9 +587,9 @@ export abstract class AbstractLooker<
                   this.dispatchEvent("options", { showControls: false });
                 }
                 return {};
-              }
+              },
             ),
-          3500
+          3500,
         );
       },
     };
@@ -598,7 +601,7 @@ export abstract class AbstractLooker<
   attach(
     element: HTMLElement | string,
     dimensions?: Dimensions,
-    fontSize?: number
+    fontSize?: number,
   ): void {
     if (typeof element === "string") {
       element = document.getElementById(element);
@@ -646,7 +649,7 @@ export abstract class AbstractLooker<
 
   abstract updateOptions(
     options: Partial<State["options"]>,
-    disableReload?: boolean
+    disableReload?: boolean,
   ): void;
 
   private updateSampleDebounced = (() => {
@@ -726,7 +729,7 @@ export abstract class AbstractLooker<
         filter: this.state.options.filter,
         schema: this.state.config.fieldSchema,
         active: this.state.options.activePaths,
-      })
+      }),
     );
   }
 
@@ -784,18 +787,18 @@ export abstract class AbstractLooker<
 
   protected abstract hasDefaultZoom(
     state: State,
-    overlays: Overlay<State>[]
+    overlays: Overlay<State>[],
   ): boolean;
 
   protected abstract getElements(
-    config: Readonly<State["config"]>
+    config: Readonly<State["config"]>,
   ): LookerElement<State>;
 
   protected abstract getDefaultOptions(): State["options"];
 
   protected abstract getInitialState(
     config: State["config"],
-    options: Partial<State["options"]>
+    options: Partial<State["options"]>,
   ): State;
 
   protected getImageSource(): CanvasImageSource {
@@ -848,7 +851,7 @@ export abstract class AbstractLooker<
     const [tlx, tly, w, h] = this.state.windowBBox;
     this.state.mediaBBox = getFitRect(
       this.state.dimensions,
-      this.state.windowBBox
+      this.state.windowBBox,
     );
     this.state.transformedWindowBBox = [
       tlx + this.state.pan[0],
@@ -859,7 +862,7 @@ export abstract class AbstractLooker<
 
     this.state.transformedMediaBBox = getFitRect(
       this.state.dimensions,
-      this.state.transformedWindowBBox
+      this.state.transformedWindowBBox,
     );
     this.state.canvasBBox = [
       this.state.mediaBBox[0] - this.state.windowBBox[0],
@@ -886,7 +889,7 @@ export abstract class AbstractLooker<
 
     this.state.hasDefaultZoom = this.hasDefaultZoom(
       this.state,
-      this.pluckedOverlays
+      this.pluckedOverlays,
     );
 
     return this.state;
@@ -895,10 +898,10 @@ export abstract class AbstractLooker<
   protected hasResized(): boolean {
     return Boolean(
       !this.previousState?.windowBBox ||
-        !this.state?.windowBBox ||
-        this.previousState.windowBBox.some(
-          (v, i) => v !== this.state.windowBBox[i]
-        )
+      !this.state?.windowBBox ||
+      this.previousState.windowBBox.some(
+        (v, i) => v !== this.state.windowBBox[i],
+      ),
     );
   }
 
@@ -1004,13 +1007,13 @@ const mapFields = (value, schema: Schema, ftype: string) => {
 
     if (ftype === LIST_FIELD) {
       result[fieldName] = value[key].map((v) =>
-        mapFields(v, schema[fieldName].fields, schema[fieldName].subfield)
+        mapFields(v, schema[fieldName].fields, schema[fieldName].subfield),
       );
     } else {
       result[fieldName] = mapFields(
         value[key],
         schema[fieldName].fields,
-        schema[fieldName].ftype
+        schema[fieldName].ftype,
       );
     }
   }

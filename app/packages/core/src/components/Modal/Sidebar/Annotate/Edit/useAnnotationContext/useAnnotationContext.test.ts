@@ -4,11 +4,7 @@
 
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
-import {
-  atom,
-  getDefaultStore,
-  type PrimitiveAtom,
-} from "jotai";
+import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // vi.mock factories run before imports, so external state lives in vi.hoisted().
@@ -143,7 +139,7 @@ describe("useAnnotationContext.select", () => {
 
   it("seeds isEditingMask=true when the label has an inline mask", () => {
     const labelAtom = makeLabelAtom(
-      makeLabel({ data: { mask: { bitmap: "data" } } })
+      makeLabel({ data: { mask: { bitmap: "data" } } }),
     );
 
     const { result } = renderHook(() => useAnnotationContext());
@@ -154,7 +150,7 @@ describe("useAnnotationContext.select", () => {
 
   it("seeds isEditingMask=true when the label has a mask_path", () => {
     const labelAtom = makeLabelAtom(
-      makeLabel({ data: { mask_path: "/path/to/mask.png" } })
+      makeLabel({ data: { mask_path: "/path/to/mask.png" } }),
     );
 
     const { result } = renderHook(() => useAnnotationContext());
@@ -197,7 +193,7 @@ describe("useAnnotationContext.clear", () => {
     // register `predictions` as a visible Detection field.
     setVisible(["predictions"]);
     const labelAtom = makeLabelAtom(
-      makeLabel({ path: "predictions", data: { label: "dog" } })
+      makeLabel({ path: "predictions", data: { label: "dog" } }),
     );
     store.set(editingLabelAtom, labelAtom);
 
@@ -300,9 +296,7 @@ describe("useAnnotationContext.readEditing", () => {
       store.set(editingLabelAtom, labelAtom);
     });
 
-    expect(result.current.readEditing().selected?.label.data._id).toBe(
-      "fresh"
-    );
+    expect(result.current.readEditing().selected?.label.data._id).toBe("fresh");
   });
 
   it("reflects pendingNewType when it's the only thing set", () => {
@@ -365,7 +359,7 @@ describe("useAnnotationContext.lastUsed", () => {
 describe("useAnnotationContext.setData", () => {
   it("merges into the current label's data by default", () => {
     const labelAtom = makeLabelAtom(
-      makeLabel({ id: "abc", data: { label: "cat" } })
+      makeLabel({ id: "abc", data: { label: "cat" } }),
     );
     store.set(editingLabelAtom, labelAtom);
 
@@ -380,7 +374,7 @@ describe("useAnnotationContext.setData", () => {
 
   it("replaces the data wholesale when options.replace is true", () => {
     const labelAtom = makeLabelAtom(
-      makeLabel({ id: "abc", data: { label: "cat", confidence: 0.9 } })
+      makeLabel({ id: "abc", data: { label: "cat", confidence: 0.9 } }),
     );
     store.set(editingLabelAtom, labelAtom);
 
@@ -388,8 +382,8 @@ describe("useAnnotationContext.setData", () => {
     act(() =>
       result.current.setData(
         { _id: "abc", label: "dog" } as AnnotationLabel["data"],
-        { replace: true }
-      )
+        { replace: true },
+      ),
     );
 
     expect(store.get(labelAtom).data).toEqual({

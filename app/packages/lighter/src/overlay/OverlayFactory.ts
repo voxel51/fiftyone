@@ -31,7 +31,7 @@ export class OverlayFactory {
     factory.register("detection", (opts) => new DetectionOverlay(opts));
     factory.register(
       "classification",
-      (opts) => new ClassificationOverlay(opts)
+      (opts) => new ClassificationOverlay(opts),
     );
     factory.register("image", (opts) => new ImageOverlay(opts));
     factory.register("keypoint", (opts) => new KeypointOverlay(opts));

@@ -9,7 +9,7 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
  */
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "video-default-group-slice-regression"
+  "video-default-group-slice-regression",
 );
 const testVideoPath = `/tmp/test-video-${datasetName}.webm`;
 const testImgPath = `/tmp/test-img-${datasetName}.jpg`;

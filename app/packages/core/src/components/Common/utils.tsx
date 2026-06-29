@@ -20,7 +20,7 @@ import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
  */
 const getNumeralFormat = (
   fieldType: string,
-  bounds: [number, number]
+  bounds: [number, number],
 ): string => {
   const precision = getPrecision(fieldType, bounds);
   if (precision > 0) {
@@ -40,7 +40,7 @@ export const getFormatter = (fieldType: string, timeZone: string, bounds) => {
     dtFormatters = getDateTimeRangeFormattersWithPrecision(
       timeZone,
       bounds[0],
-      bounds[1]
+      bounds[1],
     );
 
     hasTitle = !!dtFormatters.common;
@@ -97,7 +97,7 @@ export const getFormatter = (fieldType: string, timeZone: string, bounds) => {
 
 export const getStep = (
   bounds: [number, number],
-  fieldType?: string
+  fieldType?: string,
 ): number => {
   const delta = bounds[1] - bounds[0];
   const max = 100;
@@ -122,7 +122,7 @@ export const getStep = (
  */
 export const getPrecision = (
   fieldType: string,
-  bounds: [number, number]
+  bounds: [number, number],
 ): number => {
   if ([DATE_TIME_FIELD, DATE_FIELD].includes(fieldType)) {
     // float precision for date/datetime

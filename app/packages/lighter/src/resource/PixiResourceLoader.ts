@@ -98,13 +98,13 @@ export class PixiResourceLoader implements ResourceLoader {
         }
         // Wait before retrying with exponential backoff
         await new Promise((resolve) =>
-          setTimeout(resolve, 1000 * Math.pow(2, i))
+          setTimeout(resolve, 1000 * Math.pow(2, i)),
         );
       }
     }
 
     throw new Error(
-      `Failed to load resource after ${retries} attempts: ${url}`
+      `Failed to load resource after ${retries} attempts: ${url}`,
     );
   }
 
@@ -139,7 +139,7 @@ export class PixiResourceLoader implements ResourceLoader {
         }
 
         throw new Error(
-          `Asset not available in cache after background loading: ${url}`
+          `Asset not available in cache after background loading: ${url}`,
         );
       } catch (error) {
         if (i === retries - 1) {
@@ -147,13 +147,13 @@ export class PixiResourceLoader implements ResourceLoader {
         }
         // Wait before retrying with exponential backoff
         await new Promise((resolve) =>
-          setTimeout(resolve, 1000 * Math.pow(2, i))
+          setTimeout(resolve, 1000 * Math.pow(2, i)),
         );
       }
     }
 
     throw new Error(
-      `Failed to load resource in background after ${retries} attempts: ${url}`
+      `Failed to load resource in background after ${retries} attempts: ${url}`,
     );
   }
 
@@ -166,7 +166,7 @@ export class PixiResourceLoader implements ResourceLoader {
   // @ts-expect-error unused — alternate hint-based loader, not yet wired up
   private async loadWithHint<T>(
     url: string,
-    hint: LoadOptions["hint"]
+    hint: LoadOptions["hint"],
   ): Promise<T> {
     if (hint === "texture") {
       // return await loadTextures(url, {
@@ -205,7 +205,7 @@ export class PixiResourceLoader implements ResourceLoader {
    */
   async loadMultiple<T>(
     urls: string[],
-    options?: LoadOptions
+    options?: LoadOptions,
   ): Promise<Record<string, T>> {
     await this.ensureInitialized();
 
@@ -226,13 +226,13 @@ export class PixiResourceLoader implements ResourceLoader {
         }
         // Wait before retrying with exponential backoff
         await new Promise((resolve) =>
-          setTimeout(resolve, 1000 * Math.pow(2, i))
+          setTimeout(resolve, 1000 * Math.pow(2, i)),
         );
       }
     }
 
     throw new Error(
-      `Failed to load resources after ${retries} attempts: ${urls.join(", ")}`
+      `Failed to load resources after ${retries} attempts: ${urls.join(", ")}`,
     );
   }
 
@@ -244,7 +244,7 @@ export class PixiResourceLoader implements ResourceLoader {
    */
   private async loadMultipleWithHint<T>(
     urls: string[],
-    _hint: LoadOptions["hint"]
+    _hint: LoadOptions["hint"],
   ): Promise<Record<string, T>> {
     // For now, use the generic Assets.load which auto-detects based on file extension
     // The hint parameter is available for future extensibility when we need type-specific loading

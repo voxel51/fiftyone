@@ -21,7 +21,7 @@ export const stageDefinitions = graphQLSyncFragmentAtom<
     },
     default: [],
   },
-  { key: "stageDefinitions" }
+  { key: "stageDefinitions" },
 );
 
 export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
@@ -41,12 +41,15 @@ export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
 
       if (Array.isArray(newView) && Array.isArray(current)) {
         // if 'seed' changes in a Take stage, clear '_rand'
-        const oldTakes = current.reduce((acc, cur) => {
-          if (cur._cls === TAKE_VIEW_STAGE && cur._uuid) {
-            acc[cur._uuid] = cur;
-          }
-          return acc;
-        }, {} as { [key: string]: State.Stage });
+        const oldTakes = current.reduce(
+          (acc, cur) => {
+            if (cur._cls === TAKE_VIEW_STAGE && cur._uuid) {
+              acc[cur._uuid] = cur;
+            }
+            return acc;
+          },
+          {} as { [key: string]: State.Stage },
+        );
 
         newView.forEach((stage) => {
           if (stage._cls !== TAKE_VIEW_STAGE) return;
@@ -65,7 +68,7 @@ export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
   },
   {
     key: "view",
-  }
+  },
 );
 
 export const viewCls = graphQLSyncFragmentAtom<
@@ -80,7 +83,7 @@ export const viewCls = graphQLSyncFragmentAtom<
   },
   {
     key: "viewCls",
-  }
+  },
 );
 
 export const viewName = graphQLSyncFragmentAtom<
@@ -96,7 +99,7 @@ export const viewName = graphQLSyncFragmentAtom<
   },
   {
     key: "viewName",
-  }
+  },
 );
 
 export const isRootView = selector<boolean>({
@@ -262,7 +265,7 @@ export const selectedSavedViewState = atom<DatasetViewOption | null>({
  */
 export const getStageKwarg = <T>(
   stage: State.Stage,
-  key: string
+  key: string,
 ): T | undefined => {
   const kwarg = stage.kwargs?.find(([k]) => k === key);
   return kwarg ? (kwarg[1] as T) : undefined;

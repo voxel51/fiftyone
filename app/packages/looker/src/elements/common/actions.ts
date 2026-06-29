@@ -65,7 +65,7 @@ const escape: Control = {
 
         dispatchEvent("close");
         return {};
-      }
+      },
     );
   },
 };
@@ -128,7 +128,7 @@ export const toggleOverlays: Control = {
           dispatchEvent("showOverlays", false);
           dispatchEvent("tooltip", null);
         }
-      }
+      },
     );
   },
   afterAction: (update, dispatchEvent) => {
@@ -139,7 +139,7 @@ export const toggleOverlays: Control = {
         if (!thumbnail) {
           dispatchEvent("showOverlays", true);
         }
-      }
+      },
     );
   },
 };
@@ -159,7 +159,7 @@ export const rotatePrevious: Control = {
       },
       (state, overlays) => {
         dispatchTooltipEvent(dispatchEvent)(state, overlays);
-      }
+      },
     ),
 };
 
@@ -180,7 +180,7 @@ export const rotateNext: Control = {
       },
       (state, overlays) => {
         dispatchTooltipEvent(dispatchEvent)(state, overlays);
-      }
+      },
     ),
 };
 
@@ -229,13 +229,13 @@ export const zoomIn: Control = {
           [ww, wh],
           dimensions,
           scale * SCALE_FACTOR,
-          zoomPad
+          zoomPad,
         );
         return {
           scale: newScale,
           pan: [x - xs * newScale, y - ys * newScale],
         };
-      }
+      },
     );
   },
 };
@@ -264,13 +264,13 @@ export const zoomOut: Control = {
           [ww, wh],
           dimensions,
           scale / SCALE_FACTOR,
-          zoomPad
+          zoomPad,
         );
         return {
           scale: newScale,
           pan: [x - xs * newScale, y - ys * newScale],
         };
-      }
+      },
     );
   },
 };
@@ -305,7 +305,7 @@ export const settings: Control = {
             showOptions: true,
           };
         }
-      }
+      },
     );
   },
 };
@@ -380,7 +380,7 @@ export const nextFrame: Control<VideoState> = {
           frameNumber: Math.min(end, frameNumber + 1),
         };
       },
-      (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
+      (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays),
     );
   },
 };
@@ -418,11 +418,11 @@ export const previousFrame: Control<VideoState> = {
         return {
           frameNumber: Math.max(
             lockedToSupport ? support[0] : 1,
-            frameNumber - 1
+            frameNumber - 1,
           ),
         };
       },
-      (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
+      (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays),
     );
   },
 };

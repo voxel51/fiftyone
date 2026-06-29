@@ -19,10 +19,10 @@ export default ({
   const isSlotVisible = fos.useIs3dVisibleSetting();
   const actions = fos.useRenderConfig3dActions();
   const [isCarouselVisible, setIsCarouselVisible] = useRecoilState(
-    fos.groupMediaIsCarouselVisibleSetting
+    fos.groupMediaIsCarouselVisibleSetting,
   );
   const [isMainVisible, setIsMainVisible] = useRecoilState(
-    fos.groupMediaIsMain2DViewerVisibleSetting
+    fos.groupMediaIsMain2DViewerVisibleSetting,
   );
   const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
   const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
@@ -50,7 +50,7 @@ export default ({
             isImavidInNestedGroup || (!isMainVisible && !isCarouselVisible)
           }
           setValue={(value) => actions.setVisible(value)}
-        />
+        />,
       );
     }
 
@@ -69,7 +69,7 @@ export default ({
           (!(isSlotVisible && threeDSliceExists) && !isCarouselVisible)
         }
         setValue={(value) => setIsMainVisible(value)}
-      />
+      />,
     );
 
     if (isSequentialAccessAllowed) {
@@ -83,7 +83,7 @@ export default ({
             (!(isSlotVisible && threeDSliceExists) && !isMainVisible)
           }
           setValue={(value) => setIsCarouselVisible(value)}
-        />
+        />,
       );
     }
 

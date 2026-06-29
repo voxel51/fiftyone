@@ -31,11 +31,11 @@ export const MAX_TOPIC_TIME_BOUNDS_TOPICS = 128;
 export async function readTopicIndexedTimeBoundsForReader(
   reader: McapIndexedReaderLike,
   readable: McapTypes.IReadable,
-  args: McapReadTopicIndexedTimeBoundsRequest
+  args: McapReadTopicIndexedTimeBoundsRequest,
 ): Promise<ReadonlyMap<string, McapTopicIndexedTimeBounds | null>> {
   if (args.topics.length > MAX_TOPIC_TIME_BOUNDS_TOPICS) {
     throw new Error(
-      `MCAP topic time bounds support at most ${MAX_TOPIC_TIME_BOUNDS_TOPICS} topics per request`
+      `MCAP topic time bounds support at most ${MAX_TOPIC_TIME_BOUNDS_TOPICS} topics per request`,
     );
   }
 
@@ -50,7 +50,7 @@ export async function readTopicIndexedTimeBoundsForReader(
   for (const topic of args.topics) {
     results.set(
       topic,
-      await topicTimeBounds({ maxChunkProbes, readable, reader, topic })
+      await topicTimeBounds({ maxChunkProbes, readable, reader, topic }),
     );
   }
 
@@ -76,7 +76,7 @@ async function topicTimeBounds({
   const chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][] =
     reader.chunkIndexes;
   const memberChunks = chunkIndexes.filter((chunkIndex) =>
-    chunkHasAnyChannel(chunkIndex, channelIds)
+    chunkHasAnyChannel(chunkIndex, channelIds),
   );
   if (memberChunks.length === 0) {
     return null;
@@ -127,7 +127,7 @@ async function directionalBound({
   const ordered = [...memberChunks].sort((left, right) =>
     direction === "first"
       ? compareBigInt(left.messageStartTime, right.messageStartTime)
-      : compareBigInt(right.messageEndTime, left.messageEndTime)
+      : compareBigInt(right.messageEndTime, left.messageEndTime),
   );
 
   let best: bigint | undefined;
@@ -146,7 +146,7 @@ async function directionalBound({
     }
     if (probes >= maxChunkProbes) {
       console.warn(
-        `[mcap] topic time-bounds walk for ${topic} hit the ${maxChunkProbes}-chunk probe cap; using best bound found so far`
+        `[mcap] topic time-bounds walk for ${topic} hit the ${maxChunkProbes}-chunk probe cap; using best bound found so far`,
       );
       break;
     }
@@ -181,7 +181,7 @@ async function directionalBound({
 
 function chunkHasAnyChannel(
   chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"],
-  channelIds: ReadonlySet<number>
+  channelIds: ReadonlySet<number>,
 ): boolean {
   for (const channelId of channelIds) {
     if (chunkIndex.messageIndexOffsets.has(channelId)) {

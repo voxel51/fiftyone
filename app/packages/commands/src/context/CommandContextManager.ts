@@ -69,12 +69,12 @@ export class CommandContextManager {
   // TODO: hardcoded modal context chain — refactor to be dynamic
   private modalContext = new CommandContext(
     KnownContexts.Modal,
-    this.defaultContext
+    this.defaultContext,
   );
   // TODO: hardcoded modalAnnotate context chain — refactor to be dynamic
   private modalAnnotateContext = new CommandContext(
     KnownContexts.ModalAnnotate,
-    this.modalContext
+    this.modalContext,
   );
 
   // TODO: hardcoded fixed stack order — refactor to be dynamic
@@ -107,7 +107,7 @@ export class CommandContextManager {
         return this.getActiveContext().canUndo();
       },
       "Undo",
-      "Undoes the previous command."
+      "Undoes the previous command.",
     );
     this.defaultContext.bindKey("ctrl+z", KnownCommands.Undo);
     this.defaultContext.bindKey("meta+z", KnownCommands.Undo);
@@ -120,7 +120,7 @@ export class CommandContextManager {
         return this.getActiveContext().canRedo();
       },
       "Redo",
-      "Redoes a previously undone command."
+      "Redoes a previously undone command.",
     );
     this.defaultContext.bindKey("ctrl+shift+z", KnownCommands.Redo);
     this.defaultContext.bindKey("meta+y", KnownCommands.Redo);
@@ -146,7 +146,7 @@ export class CommandContextManager {
    */
   public createCommandContext(
     id: string,
-    _inheritCurrent: boolean
+    _inheritCurrent: boolean,
   ): CommandContext {
     const existing = this.contexts.get(id);
     if (existing) {
@@ -209,11 +209,11 @@ export class CommandContextManager {
     this.defaultContext = new CommandContext(KnownContexts.Default);
     this.modalContext = new CommandContext(
       KnownContexts.Modal,
-      this.defaultContext
+      this.defaultContext,
     );
     this.modalAnnotateContext = new CommandContext(
       KnownContexts.ModalAnnotate,
-      this.modalContext
+      this.modalContext,
     );
     this.contextStack = [
       this.defaultContext,
@@ -250,16 +250,6 @@ export class CommandContextManager {
     return () => {
       this.listeners.delete(listener);
     };
-  }
-  /**
-   * Fires any context listeners that are registered
-   * TODO: currently unused because stack is fixed — will be needed after refactor
-   */
-  // @ts-expect-error unused — needed after the context-stack refactor (see TODO above)
-  private _fireListeners() {
-    this.listeners.forEach((listener) => {
-      listener(this.contextStack[this.contextStack.length - 1].id);
-    });
   }
 
   /**

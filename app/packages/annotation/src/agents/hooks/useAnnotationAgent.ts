@@ -21,7 +21,7 @@ import { useSampleDescriptor } from "./useSampleDescriptor";
  * polygon, represented as counter-clockwise points from the top-left corner.
  */
 const bboxToRoi = (
-  bbox: [x: number, y: number, width: number, height: number]
+  bbox: [x: number, y: number, width: number, height: number],
 ): ROI => [
   [bbox[0], bbox[1]], // top-left
   [bbox[0], bbox[1] + bbox[3]], // bottom-left
@@ -65,7 +65,7 @@ export interface ResolvedAgent<T> {
  * @param agent Agent to wrap
  */
 export const useAnnotationAgent = <T extends InferenceResultProxy>(
-  agent?: AnnotationAgent<T>
+  agent?: AnnotationAgent<T>,
 ): ResolvedAgent<T> | null => {
   const [supportedTasks, setSupportedTasks] = useAtom(supportedTaskAtom);
 
@@ -81,7 +81,7 @@ export const useAnnotationAgent = <T extends InferenceResultProxy>(
         .infer(annotationContext)
         .then((res) => ({ labelId, ...res }));
     },
-    [agent, annotationContext]
+    [agent, annotationContext],
   );
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export const useAnnotationAgent = <T extends InferenceResultProxy>(
 
   const resolvedAgent = useMemo(
     () => ({ infer, inferenceCapabilities: capabilities, supportedTasks }),
-    [capabilities, infer, supportedTasks]
+    [capabilities, infer, supportedTasks],
   );
 
   return agent ? resolvedAgent : null;

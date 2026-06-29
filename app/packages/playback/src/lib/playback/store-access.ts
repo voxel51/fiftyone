@@ -32,7 +32,7 @@ export function getPlayhead(store: PlaybackStore): number {
  */
 export function subscribePlayhead(
   store: PlaybackStore,
-  callback: () => void
+  callback: () => void,
 ): () => void {
   return store.sub(playheadAtom, callback);
 }
@@ -59,7 +59,7 @@ export function getIsBuffering(store: PlaybackStore): boolean {
  */
 export function setIsBuffering(
   store: PlaybackStore,
-  isBuffering: boolean
+  isBuffering: boolean,
 ): void {
   store.set(isBufferingAtom, isBuffering);
 }
@@ -75,7 +75,7 @@ export function getBufferingDetail(store: PlaybackStore): string | null {
  */
 export function setBufferingDetail(
   store: PlaybackStore,
-  detail: string | null
+  detail: string | null,
 ): void {
   store.set(bufferingDetailAtom, detail);
 }
@@ -88,7 +88,7 @@ export function getBufferedRanges(store: PlaybackStore): BufferedRanges {
 /** Publish the time ranges that are buffered across every blocking stream. */
 export function setBufferedRanges(
   store: PlaybackStore,
-  ranges: BufferedRanges
+  ranges: BufferedRanges,
 ): void {
   store.set(bufferedRangesAtom, ranges);
 }
@@ -96,7 +96,7 @@ export function setBufferedRanges(
 /** Non-reactive read of a stream's current committed value. */
 export function getStreamValue<T = unknown>(
   store: PlaybackStore,
-  id: string
+  id: string,
 ): T | null {
   return store.get(streamValueAtom(id)) as T | null;
 }
@@ -108,7 +108,7 @@ export function getStreamValue<T = unknown>(
 export function setStreamValue(
   store: PlaybackStore,
   id: string,
-  value: unknown
+  value: unknown,
 ): void {
   store.set(streamValueAtom(id), value);
 }

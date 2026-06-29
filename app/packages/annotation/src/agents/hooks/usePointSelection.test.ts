@@ -51,21 +51,18 @@ const hoisted = vi.hoisted(() => {
       public clearPoints = vi.fn();
     },
     // a constructor stub so we can spy on `new InteractiveKeypointHandler(...)`
-    InteractiveKeypointHandler: vi
-      .fn()
-      .mockImplementation(function (this: { pruneCommands: ReturnType<typeof vi.fn> }) {
-        this.pruneCommands = vi.fn();
-      }),
+    InteractiveKeypointHandler: vi.fn().mockImplementation(function (this: {
+      pruneCommands: ReturnType<typeof vi.fn>;
+    }) {
+      this.pruneCommands = vi.fn();
+    }),
   };
 });
 
 vi.mock("jotai", () => ({
   atom: hoisted.atom,
   useAtom: (a: { __key: number; initial: unknown }) =>
-    [
-      hoisted.read(a),
-      (value: unknown) => hoisted.write(a, value),
-    ] as const,
+    [hoisted.read(a), (value: unknown) => hoisted.write(a, value)] as const,
   getDefaultStore: () => ({
     get: hoisted.read,
     set: hoisted.write,
@@ -99,7 +96,7 @@ vi.mock(
         ? { label: hoisted.selectedLabelRef.value }
         : null,
     }),
-  })
+  }),
 );
 
 // Pure helper imported by the hook — keep its real implementation; it's
@@ -159,15 +156,17 @@ describe("usePointSelection", () => {
       act(() => result.current.activate());
       rerender();
 
-      const factoryCreate = (hoisted.overlayFactoryRef.value as {
-        create: ReturnType<typeof vi.fn>;
-      }).create;
+      const factoryCreate = (
+        hoisted.overlayFactoryRef.value as {
+          create: ReturnType<typeof vi.fn>;
+        }
+      ).create;
       expect(factoryCreate).toHaveBeenCalledWith(
         "keypoint",
         expect.objectContaining({
           field: "",
           variantStyles: expect.any(Object),
-        })
+        }),
       );
       expect(scene.addOverlay).toHaveBeenCalledWith(createdOverlay);
       expect(scene.enterInteractiveMode).toHaveBeenCalledTimes(1);

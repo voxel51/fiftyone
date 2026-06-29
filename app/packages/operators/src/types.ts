@@ -146,7 +146,7 @@ class OperatorObject extends BaseType {
     return this.defineProperty(
       name,
       new OperatorMap(keyType, valueType),
-      options
+      options,
     );
   }
   /**
@@ -187,7 +187,7 @@ class OperatorObject extends BaseType {
   }
   static propertiesFromJSON(json: any): ObjectProperties {
     const entries: Array<[string, Property]> = Object.entries(
-      json.properties
+      json.properties,
     ).map(([k, v]) => [k, Property.fromJSON(v)]);
     return new Map(entries);
   }
@@ -365,7 +365,12 @@ class OperatorNumber extends BaseType {
    * number
    */
   constructor(
-    options: { min?: number; max?: number; int?: boolean; float?: boolean } = {}
+    options: {
+      min?: number;
+      max?: number;
+      int?: boolean;
+      float?: boolean;
+    } = {},
   ) {
     super();
     this.min = options.min;
@@ -390,7 +395,7 @@ export class List extends BaseType {
   constructor(
     public elementType: ANY_TYPE,
     public minItems?: number,
-    public maxItems?: number
+    public maxItems?: number,
   ) {
     super();
   }
@@ -459,7 +464,10 @@ export class Tuple extends BaseType {
  * {@link OperatorString|String} and value can be any one of operator type.
  */
 class OperatorMap extends BaseType {
-  constructor(public keyType: ANY_TYPE, public valueType: ANY_TYPE) {
+  constructor(
+    public keyType: ANY_TYPE,
+    public valueType: ANY_TYPE,
+  ) {
     super();
   }
 
@@ -473,7 +481,10 @@ export { OperatorMap as Map };
  * Operator type for defining a trigger for an operator.
  */
 export class Trigger extends BaseType {
-  constructor(public operator: string, public params: object) {
+  constructor(
+    public operator: string,
+    public params: object,
+  ) {
     super();
   }
   static fromJSON({ operator, params }) {
@@ -554,11 +565,14 @@ export class UploadedFile extends OperatorObject {
  *  that can be rendered at various places in the app
  */
 export class Placement {
-  constructor(public place: Places, public view: View = null) {}
+  constructor(
+    public place: Places,
+    public view: View = null,
+  ) {}
   static fromJSON(json) {
     return new Placement(
       json.place,
-      json.view ? View.fromJSON(json.view) : null
+      json.view ? View.fromJSON(json.view) : null,
     );
   }
 }
@@ -617,7 +631,7 @@ export class Form extends View {
     public live: boolean = false,
     public submitButtonLabel: string = "Execute",
     public cancelButtonLabel: string = "Close",
-    options: ViewProps
+    options: ViewProps,
   ) {
     super(options);
     this.name = "Form";
@@ -627,7 +641,7 @@ export class Form extends View {
       json.live as boolean,
       json.submitButtonLabel as string,
       json.cancelButtonLabel as string,
-      json
+      json,
     );
   }
 }
@@ -1035,7 +1049,10 @@ export class KeyValueView extends View {
  * operator type. Must be used in conjunction with {@link TableView}
  */
 export class Column extends View {
-  constructor(public key: string, options: ViewProps) {
+  constructor(
+    public key: string,
+    options: ViewProps,
+  ) {
     super(options);
     this.name = "Column";
   }
@@ -1173,7 +1190,7 @@ export class PromptView extends View {
   constructor(
     public label: string,
     public submitButtonLabel: string,
-    public cancelButtonLabel: string
+    public cancelButtonLabel: string,
   ) {
     super({ label });
     this.name = "PromptView";
@@ -1182,7 +1199,7 @@ export class PromptView extends View {
     return new PromptView(
       json.label,
       json.submit_button_label,
-      json.cancel_button_label
+      json.cancel_button_label,
     );
   }
 }

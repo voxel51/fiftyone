@@ -23,7 +23,7 @@ export default function useSearchSchemaFields(mergedSchema: {
   const setExcludedPaths = useSetRecoilState(fos.excludedPathsState({}));
 
   const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
-    fos.searchMetaFilterState
+    fos.searchMetaFilterState,
   );
 
   const searchResults = useRecoilValue(fos.schemaSearchResultList);
@@ -32,11 +32,11 @@ export default function useSearchSchemaFields(mergedSchema: {
       async (newPaths: string[] = []) => {
         set(fos.schemaSearchResultList, newPaths);
       },
-    []
+    [],
   );
 
   const [searchSchemaFieldsRaw] = useMutation<foq.searchSelectFieldsMutation>(
-    foq.searchSelectFields
+    foq.searchSelectFields,
   );
 
   const searchSchemaFields = useCallback(
@@ -59,7 +59,7 @@ export default function useSearchSchemaFields(mergedSchema: {
               .filter((path) => !searchSelectFields?.includes(path))
               .filter((path) => {
                 const childPathsInSearchResults = searchSelectFields.filter(
-                  (pp) => pp.startsWith(`${path}.`)
+                  (pp) => pp.startsWith(`${path}.`),
                 );
                 return !childPathsInSearchResults.length;
               });
@@ -78,7 +78,7 @@ export default function useSearchSchemaFields(mergedSchema: {
       setExcludedPaths,
       setSearchMetaFilter,
       setSearchResults,
-    ]
+    ],
   );
 
   return {

@@ -43,7 +43,7 @@ export const SelectSampleCheckbox = ({
     selectedSamplesMap,
     style,
     sampleId,
-    isSelected
+    isSelected,
   );
 
   const iconClass = selectionIcon ? ICON_CLASS_MAP[selectionIcon] : undefined;

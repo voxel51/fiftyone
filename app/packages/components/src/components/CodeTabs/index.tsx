@@ -25,7 +25,7 @@ export default function CodeTabs(props: CodeTabsProps) {
         currentTabsById[tab.id] = tab;
         return currentTabsById;
       }, {}),
-    [tabs]
+    [tabs],
   );
   const computedTab = selected || tab;
   const tabProps = tabsById?.[computedTab] || {};

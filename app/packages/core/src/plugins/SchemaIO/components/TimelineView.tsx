@@ -16,7 +16,7 @@ export default function TimelineView(props: ViewPropsType) {
 
   const finalConfig = useMemo(
     () => ({ ...DEFAULT_CONFIG, ...providedConfig }),
-    [providedConfig]
+    [providedConfig],
   );
   if (!timeline_name) {
     throw new Error("Timeline name is required");

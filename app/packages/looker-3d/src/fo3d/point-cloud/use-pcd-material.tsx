@@ -26,7 +26,7 @@ import { useFo3dContext } from "../context";
 
 export const getMinMaxForAttribute = (
   geometry: BufferGeometry,
-  attributeName: string
+  attributeName: string,
 ) => {
   if (!geometry.hasAttribute(attributeName)) {
     return [0, 1];
@@ -61,13 +61,13 @@ export const usePcdMaterial = (
   defaultMaterial: PcdAsset["defaultMaterial"],
   pcdContainerRef: React.RefObject<any>,
   quaternion?: Quaternion,
-  vertexColorsAvailable: boolean = false
+  vertexColorsAvailable: boolean = false,
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
 
   const { boundingBox: pcdBoundingBox } = useFo3dBounds(
     pcdContainerRef,
-    !!geometry
+    !!geometry,
   );
 
   const minMaxCoordinates = useMemo(() => {
@@ -118,7 +118,7 @@ export const usePcdMaterial = (
       }
 
       const minMax = computeMinMaxForColorBufferAttribute(
-        geometry.getAttribute(attrib)
+        geometry.getAttribute(attrib),
       );
 
       return {
@@ -128,7 +128,7 @@ export const usePcdMaterial = (
     }
 
     const minMax = computeMinMaxForScalarBufferAttribute(
-      geometry.getAttribute("intensity")
+      geometry.getAttribute("intensity"),
     );
 
     return {

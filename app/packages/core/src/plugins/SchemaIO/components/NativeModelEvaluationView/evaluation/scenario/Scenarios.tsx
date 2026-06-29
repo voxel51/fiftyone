@@ -94,19 +94,19 @@ export default function Scenarios(props) {
   const trackEvent = useTrackEvent();
   const [scenario, setScenario] = usePanelStatePartial(
     `${key}_scenario`,
-    getDefaultScenario(scenarios)
+    getDefaultScenario(scenarios),
   );
   const [mode, setMode] = usePanelStatePartial(
     `${key}_scenario_mode`,
-    "charts"
+    "charts",
   );
   const [selectedSubsets, setSelectedSubsets] = usePanelStatePartial(
     `${key}_scenario_subsets`,
-    ["all"]
+    ["all"],
   );
   const [differenceMode, setDifferenceMode] = usePanelStatePartial(
     `${key}_scenario_difference_mode`,
-    "percentage"
+    "percentage",
   );
 
   const updateScenario = useCallback(
@@ -114,14 +114,14 @@ export default function Scenarios(props) {
       setScenario(scenarioId);
       setSelectedSubsets(["all"]);
     },
-    [setScenario, setSelectedSubsets]
+    [setScenario, setSelectedSubsets],
   );
 
   const fullScenario = data?.[`scenario_${scenario}_${key}`] || {};
   const subsets = fullScenario?.subsets || [];
   const scenarioChanges = useMemo(
     () => data?.[`scenario_${scenario}_changes`] || [],
-    [data, scenario]
+    [data, scenario],
   );
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
   const scenariosIds = Object.keys(scenarios);
@@ -144,7 +144,7 @@ export default function Scenarios(props) {
     });
     deleteScenario(scenario, () => {
       const firstNonDeletedScenario = scenariosIds.find(
-        (id) => id !== scenario
+        (id) => id !== scenario,
       );
       if (firstNonDeletedScenario) {
         updateScenario(firstNonDeletedScenario);
@@ -372,7 +372,7 @@ export default function Scenarios(props) {
                 () => {
                   setLoadingScenario(false);
                 },
-                true
+                true,
               );
             }}
           >
@@ -558,10 +558,10 @@ function Scenario(props) {
 function ScenarioTables(props) {
   const inapplicable = getInapplicableMetrics(props.evaluation);
   const hidePredictionStatistics = inapplicable.includes(
-    "prediction_statistics"
+    "prediction_statistics",
   );
   const hideConfidenceDistribution = inapplicable.includes(
-    "confidence_distribution"
+    "confidence_distribution",
   );
 
   return (
@@ -787,7 +787,7 @@ function ModelPerformanceMetricsTable(props) {
   const width = getWidth(props);
   const inapplicable = getInapplicableMetrics(props.evaluation);
   const metrics = MODEL_PERFORMANCE_METRICS.filter(
-    (metric) => !inapplicable.includes(metric.key)
+    (metric) => !inapplicable.includes(metric.key),
   );
 
   return (
@@ -876,7 +876,7 @@ const CONFIDENCE_DISTRIBUTION_METRICS = {
   std: { label: "Standard Deviation", key: "std" },
 };
 const CONFIDENCE_DISTRIBUTION_METRICS_VALUES = Object.values(
-  CONFIDENCE_DISTRIBUTION_METRICS
+  CONFIDENCE_DISTRIBUTION_METRICS,
 );
 
 function ConfidenceDistributionTable(props) {
@@ -955,7 +955,7 @@ function ConfidenceDistributionTable(props) {
                     <Stack direction="row" spacing={1}>
                       <Typography>
                         {formatValueAsNumber(
-                          compareConfidenceDistribution[metric]
+                          compareConfidenceDistribution[metric],
                         )}
                       </Typography>
                       <Difference
@@ -1012,10 +1012,10 @@ function ScenarioChartCard(props) {
 function ScenarioCharts(props) {
   const inapplicable = getInapplicableMetrics(props.evaluation);
   const hidePredictionStatistics = inapplicable.includes(
-    "prediction_statistics"
+    "prediction_statistics",
   );
   const hideConfidenceDistribution = inapplicable.includes(
-    "confidence_distribution"
+    "confidence_distribution",
   );
 
   return (
@@ -1290,7 +1290,7 @@ function ScenarioModelPerformanceChart(props) {
   const { key, compareKey } = props.data?.view;
   const inapplicable = getInapplicableMetrics(props.evaluation);
   const metricFields = MODEL_PERFORMANCE_METRICS.filter(
-    (metric) => !inapplicable.includes(metric.key)
+    (metric) => !inapplicable.includes(metric.key),
   );
 
   const theta = [];
@@ -1371,7 +1371,7 @@ function ConfusionMatrixChart(props) {
   const compareSubsetData = compareScenario?.subsets_data[subset];
   const [config, setConfig] = usePanelStatePartial(
     `${subset}_matrix_config`,
-    DEFAULT_CONFUSION_MATRIX_CONFIG
+    DEFAULT_CONFUSION_MATRIX_CONFIG,
   );
   const evaluationMaskTargets = props.evaluation?.mask_targets || {};
   const compareEvaluationMaskTargets =
@@ -1387,7 +1387,7 @@ function ConfusionMatrixChart(props) {
       },
       maskTargets: { primary: evaluationMaskTargets },
     },
-    config
+    config,
   );
   const compareMatrixData = compareSubsetData?.confusion_matrix;
   const compareMatrixPlotlyData = compareScenario
@@ -1404,7 +1404,7 @@ function ConfusionMatrixChart(props) {
             secondary: evaluationMaskTargets,
           },
         },
-        config
+        config,
       )
     : undefined;
   const classes = getClasses(matrixData, evaluationMaskTargets);
@@ -1571,11 +1571,11 @@ function ConfidenceDistributionChart(props) {
 
         compareLowerfence.push(compareConfidenceDistribution.min);
         compareQ1.push(
-          compareConfidenceDistribution.avg - compareConfidenceDistribution.std
+          compareConfidenceDistribution.avg - compareConfidenceDistribution.std,
         );
         compareMedian.push(compareConfidenceDistribution.avg);
         compareQ3.push(
-          compareConfidenceDistribution.avg + compareConfidenceDistribution.std
+          compareConfidenceDistribution.avg + compareConfidenceDistribution.std,
         );
         compareUpperfence.push(compareConfidenceDistribution.max);
       }

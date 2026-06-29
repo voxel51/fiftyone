@@ -42,7 +42,7 @@ const LEAF_OPERATOR_HANDLERS: Record<
  */
 function evaluateCondition(
   cond: AttributeCondition,
-  currentValues: Record<string, unknown>
+  currentValues: Record<string, unknown>,
 ): boolean {
   switch (cond.operator) {
     case "and":
@@ -57,7 +57,7 @@ function evaluateCondition(
     default: {
       const _exhaustive: never = cond;
       throw new Error(
-        `Unhandled operator: ${(_exhaustive as AttributeCondition).operator}`
+        `Unhandled operator: ${(_exhaustive as AttributeCondition).operator}`,
       );
     }
   }
@@ -80,7 +80,7 @@ function evaluateCondition(
  */
 export function evaluateWhen(
   condition: AttributeCondition | undefined,
-  currentValues: Record<string, unknown>
+  currentValues: Record<string, unknown>,
 ): boolean {
   if (!condition) return true;
   return evaluateCondition(condition, currentValues);
@@ -97,16 +97,16 @@ export function evaluateWhen(
  */
 function isConditionFulfillable(
   cond: AttributeCondition,
-  valuesByField: Map<string, Set<unknown>>
+  valuesByField: Map<string, Set<unknown>>,
 ): boolean {
   switch (cond.operator) {
     case "and":
       return cond.conditions.every((c) =>
-        isConditionFulfillable(c, valuesByField)
+        isConditionFulfillable(c, valuesByField),
       );
     case "or":
       return cond.conditions.some((c) =>
-        isConditionFulfillable(c, valuesByField)
+        isConditionFulfillable(c, valuesByField),
       );
     case "equals": {
       const allowed = valuesByField.get(cond.field);
@@ -125,7 +125,7 @@ function isConditionFulfillable(
     default: {
       const _exhaustive: never = cond;
       throw new Error(
-        `Unhandled operator: ${(_exhaustive as AttributeCondition).operator}`
+        `Unhandled operator: ${(_exhaustive as AttributeCondition).operator}`,
       );
     }
   }
@@ -152,7 +152,7 @@ function isConditionFulfillable(
  */
 export function isWhenFulfillable(
   condition: AttributeCondition | undefined,
-  schemaAttributes: AttributeConfig[]
+  schemaAttributes: AttributeConfig[],
 ): boolean {
   if (!condition) return true;
 
@@ -194,13 +194,13 @@ export function isWhenFulfillable(
 export function resolveVisibleAttribute(
   name: string,
   allAttributes: AttributeConfig[],
-  formData: Record<string, unknown>
+  formData: Record<string, unknown>,
 ): AttributeConfig | undefined {
   return allAttributes
     .filter((a) => a.name === name && a.when)
     .find(
       (a) =>
         evaluateWhen(a.when, formData) ||
-        !isWhenFulfillable(a.when, allAttributes)
+        !isWhenFulfillable(a.when, allAttributes),
     );
 }

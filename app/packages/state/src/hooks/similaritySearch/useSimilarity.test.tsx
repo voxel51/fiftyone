@@ -12,7 +12,7 @@ const TEST_DS = {
 
 const getRecoilRoot = (
   type: "selectedSample" | "selectedLabel" | "activeImageSort" | "default",
-  modal = false
+  modal = false,
 ) => {
   const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     return (
@@ -25,7 +25,7 @@ const getRecoilRoot = (
               new Map([
                 ["1", "default"],
                 ["2", "default"],
-              ])
+              ]),
             );
           }
           if (type === "selectedLabel") {
@@ -65,7 +65,7 @@ describe("similarity search helper text and icon are correct", () => {
   test("Default state show text similarity search", async () => {
     const { result } = renderHook(
       () => fos.useSimilarityType({ isImageSearch: true }),
-      { wrapper: getRecoilRoot("default") }
+      { wrapper: getRecoilRoot("default") },
     );
     expect(result.current.text).toBe("Sort by text similarity");
     expect(result.current.showImageSimilarityIcon).toBe(false);
@@ -75,7 +75,7 @@ describe("similarity search helper text and icon are correct", () => {
     const { result } = renderHook(
       // isImageSearch is false/true does not impact this test scenario
       () => fos.useSimilarityType({ isImageSearch: false }),
-      { wrapper: getRecoilRoot("selectedSample") }
+      { wrapper: getRecoilRoot("selectedSample") },
     );
     expect(result.current.text).toBe("Search by image similarity");
     expect(result.current.showImageSimilarityIcon).toBe(true);
@@ -84,7 +84,7 @@ describe("similarity search helper text and icon are correct", () => {
   test("when an image similarity is done and extended stage has sorting setting, should show image icon", () => {
     const { result } = renderHook(
       () => fos.useSimilarityType({ isImageSearch: true }),
-      { wrapper: getRecoilRoot("activeImageSort") }
+      { wrapper: getRecoilRoot("activeImageSort") },
     );
     expect(result.current.text).toBe("Search by image similarity");
     expect(result.current.showImageSimilarityIcon).toBe(true);
@@ -93,7 +93,7 @@ describe("similarity search helper text and icon are correct", () => {
   test("when an text similarity is done and extended stage has sorting setting, should show text icon", () => {
     const { result } = renderHook(
       () => fos.useSimilarityType({ isImageSearch: false }),
-      { wrapper: getRecoilRoot("activeImageSort") }
+      { wrapper: getRecoilRoot("activeImageSort") },
     );
     expect(result.current.text).toBe("Sort by text similarity");
     expect(result.current.showImageSimilarityIcon).toBe(false);
@@ -105,7 +105,7 @@ describe("similarity search helper text and icon are correct", () => {
       () => fos.useSimilarityType({ isImageSearch: false }),
       {
         wrapper: getRecoilRoot("selectedLabel", true),
-      }
+      },
     );
     expect(result.current.text).toBe("Search by image similarity");
     expect(result.current.showImageSimilarityIcon).toBe(true);

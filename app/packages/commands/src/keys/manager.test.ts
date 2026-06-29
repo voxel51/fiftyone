@@ -23,7 +23,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -34,7 +34,7 @@ describe("KeyManager", () => {
     expect(() => {
       keyManager.bindKey("ctrl+s", "fo.unregistered");
     }).toThrowError(
-      "The command id fo.unregistered is not registered for binding ctrl+s"
+      "The command id fo.unregistered is not registered for binding ctrl+s",
     );
   });
   it("can match a single sequence command binding", async () => {
@@ -46,7 +46,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -65,7 +65,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -87,7 +87,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -110,7 +110,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -130,7 +130,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -153,7 +153,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -181,7 +181,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command1).toBeDefined();
     const command2 = commandRegistry.registerCommand(
@@ -191,7 +191,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command2).toBeDefined();
     //The start sequence ctrl+s is the same for both commands, one is User the other Core
@@ -226,7 +226,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -262,7 +262,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command1).toBeDefined();
     const command2 = commandRegistry.registerCommand(
@@ -272,7 +272,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     const binding = "ctrl+s, alt+d";
     expect(() => {

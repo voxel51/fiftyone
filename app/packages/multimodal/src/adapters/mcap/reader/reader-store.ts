@@ -40,7 +40,7 @@ export function createMcapReaderStore({
       if (!reader) {
         reader = readerFactory(
           source,
-          new ByteClientReadable(source, byteClient)
+          new ByteClientReadable(source, byteClient),
         ).catch((error) => {
           readers.delete(key);
           throw error;

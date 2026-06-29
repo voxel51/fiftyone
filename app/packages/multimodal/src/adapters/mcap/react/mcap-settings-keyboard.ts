@@ -21,7 +21,7 @@ function isEnterKey(event: React.KeyboardEvent<HTMLElement>): boolean {
 // fallback on keyUp so keyboard users can still toggle these guarded checkboxes.
 // Pointer/click toggles stay intact.
 export function preventSettingsCheckboxSpaceToggle(
-  event: React.KeyboardEvent<HTMLElement>
+  event: React.KeyboardEvent<HTMLElement>,
 ) {
   if (isSpaceKey(event)) {
     event.preventDefault();

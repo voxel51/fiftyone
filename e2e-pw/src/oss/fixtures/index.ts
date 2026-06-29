@@ -52,7 +52,7 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
       const rand = Math.floor(Math.random() * 100);
 
       await use(
-        3050 + workerInfo.workerIndex + workerInfo.parallelIndex + rand
+        3050 + workerInfo.workerIndex + workerInfo.parallelIndex + rand,
       );
     },
     { scope: "worker" },

@@ -43,7 +43,7 @@ const MAX_NEXT_MESSAGE_SCAN_TICKS = 120;
  */
 export function useInterpolatedImageAnnotations(
   topic: string,
-  { interpolate = true }: UseInterpolatedImageAnnotationsOptions = {}
+  { interpolate = true }: UseInterpolatedImageAnnotationsOptions = {},
 ): ImageAnnotationsVisualization | null {
   const topics = useMemo(() => (topic ? [topic] : EMPTY_TOPICS), [topic]);
   const sets = useInterpolatedImageAnnotationSets(topics, { interpolate });
@@ -57,7 +57,7 @@ export function useInterpolatedImageAnnotations(
  */
 export function useInterpolatedImageAnnotationSets(
   topics: readonly string[],
-  { interpolate = true }: UseInterpolatedImageAnnotationsOptions = {}
+  { interpolate = true }: UseInterpolatedImageAnnotationsOptions = {},
 ): readonly {
   readonly frame: ImageAnnotationsVisualization;
   readonly topic: string;
@@ -100,7 +100,7 @@ export function useInterpolatedImageAnnotationSets(
       }
       subscriptionsRef.current.clear();
     },
-    []
+    [],
   );
 
   // Re-render every RAF tick so the lerp tracks the playhead.
@@ -118,7 +118,7 @@ export function useInterpolatedImageAnnotationSets(
         timeline,
         topics: stableTopics,
       }),
-    [cacheSnapshot, dataStream, interpolate, playhead, stableTopics, timeline]
+    [cacheSnapshot, dataStream, interpolate, playhead, stableTopics, timeline],
   );
 }
 
@@ -191,7 +191,7 @@ function useStableTopics(topics: readonly string[]): readonly string[] {
  */
 function useTopicCacheSnapshot(
   dataStream: McapDataStream | null,
-  topics: readonly string[]
+  topics: readonly string[],
 ): string {
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
@@ -212,12 +212,12 @@ function useTopicCacheSnapshot(
         for (const unsubscribe of unsubscribeFns) unsubscribe();
       };
     },
-    [dataStream, topics]
+    [dataStream, topics],
   );
 
   const getSnapshot = useCallback(
     () => topicCacheSnapshot(dataStream, topics),
-    [dataStream, topics]
+    [dataStream, topics],
   );
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
@@ -225,7 +225,7 @@ function useTopicCacheSnapshot(
 
 function topicCacheSnapshot(
   dataStream: McapDataStream | null,
-  topics: readonly string[]
+  topics: readonly string[],
 ): string {
   if (!dataStream || topics.length === 0) return "";
   let snapshot = "";
@@ -314,7 +314,7 @@ function nextDistinctAnnotationMessage({
   const startIndex = lowerBoundBigInt(timeline.ticks, currentTick) + 1;
   const endIndex = Math.min(
     timeline.ticks.length,
-    startIndex + MAX_NEXT_MESSAGE_SCAN_TICKS
+    startIndex + MAX_NEXT_MESSAGE_SCAN_TICKS,
   );
   for (let i = startIndex; i < endIndex; i++) {
     const msg = cache.get(timeline.ticks[i]);

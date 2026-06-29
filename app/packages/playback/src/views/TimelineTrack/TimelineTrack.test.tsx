@@ -55,7 +55,7 @@ function renderTrack(opts: RenderOpts = {}) {
       ) : null}
       <TimelineTrack {...baseTrack} {...track} />
       <PlayheadReadout />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -327,7 +327,7 @@ describe("TimelineTrack", () => {
       const bar = container.querySelector(`.${styles.bar}`) as HTMLElement;
       // JSDOM normalizes #ff000055 to rgba(255, 0, 0, 0.333).
       expect(inlineStyle(bar).toLowerCase()).toMatch(
-        /background:\s*(#ff000055|rgba\(255,\s*0,\s*0,\s*0\.33)/
+        /background:\s*(#ff000055|rgba\(255,\s*0,\s*0,\s*0\.33)/,
       );
     });
   });

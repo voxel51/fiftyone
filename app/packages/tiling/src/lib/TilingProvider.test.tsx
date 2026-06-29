@@ -227,7 +227,7 @@ describe("TilingProvider", () => {
           }}
         >
           <SettingsPortalHarness onPanePointerDown={onPanePointerDown} />
-        </TilingProvider>
+        </TilingProvider>,
       );
 
       fireEvent.click(screen.getByTestId("focus-tile"));
@@ -389,7 +389,7 @@ describe("TilingProvider", () => {
       const consoleError = console.error;
       console.error = () => {};
       expect(() => renderHook(() => useTiling())).toThrow(
-        "useTiling must be used inside <TilingProvider>"
+        "useTiling must be used inside <TilingProvider>",
       );
       console.error = consoleError;
     });
@@ -431,7 +431,7 @@ describe("TilingProvider", () => {
       const utils = render(
         <TilingProvider>
           <Host />
-        </TilingProvider>
+        </TilingProvider>,
       );
       expect(utils.queryByTestId("cam-settings")).toBeNull();
       expect(utils.queryByTestId("lid-settings")).toBeNull();
@@ -441,13 +441,13 @@ describe("TilingProvider", () => {
       const utils = render(
         <TilingProvider initialTiles={{ "cam-1": makeTile("cam") }}>
           <Host />
-        </TilingProvider>
+        </TilingProvider>,
       );
       act(() => {
         utils.getByTestId("focus-cam").click();
       });
       expect(
-        utils.getByTestId("slot").contains(utils.getByTestId("cam-settings"))
+        utils.getByTestId("slot").contains(utils.getByTestId("cam-settings")),
       ).toBe(true);
       expect(utils.queryByTestId("lid-settings")).toBeNull();
     });
@@ -461,7 +461,7 @@ describe("TilingProvider", () => {
           }}
         >
           <Host />
-        </TilingProvider>
+        </TilingProvider>,
       );
       act(() => utils.getByTestId("focus-cam").click());
       expect(utils.queryByTestId("cam-settings")).not.toBeNull();

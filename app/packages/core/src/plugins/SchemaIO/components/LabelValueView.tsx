@@ -19,8 +19,8 @@ export default function LabelValueView(props) {
           {data != null
             ? data.toString()
             : defaultValue != null
-            ? defaultValue.toString()
-            : "No value provided"}
+              ? defaultValue.toString()
+              : "No value provided"}
         </Typography>
       </Stack>
     </Box>

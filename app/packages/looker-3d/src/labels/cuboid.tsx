@@ -73,7 +73,7 @@ export const Cuboid = ({
     { selected, color },
     isHovered,
     label,
-    isSelectedForAnnotation
+    isSelectedForAnnotation,
   );
 
   const {
@@ -170,24 +170,24 @@ export const Cuboid = ({
 
   const renderBoxGeometry = useMemo(
     () => displayDimensions && new THREE.BoxGeometry(...displayDimensions),
-    [displayDimensions]
+    [displayDimensions],
   );
 
   const renderEdgesGeometry = useMemo(
     () => new THREE.EdgesGeometry(renderBoxGeometry),
-    [renderBoxGeometry]
+    [renderBoxGeometry],
   );
   const lineSegmentsGeometry = useMemo(
     () =>
       new LineSegmentsGeometry().fromLineSegments(
-        new THREE.LineSegments(renderEdgesGeometry)
+        new THREE.LineSegments(renderEdgesGeometry),
       ),
-    [renderEdgesGeometry]
+    [renderEdgesGeometry],
   );
 
   const complementaryColor = useMemo(
     () => chroma(strokeAndFillColor).set("hsl.h", "+180").hex(),
-    [strokeAndFillColor]
+    [strokeAndFillColor],
   );
 
   const material = useMemo(
@@ -205,7 +205,7 @@ export const Cuboid = ({
       isHovered,
       isSimilarLabelHovered,
       strokeAndFillColor,
-    ]
+    ],
   );
 
   // This effect cleans up geometries and material on unmount
@@ -232,7 +232,7 @@ export const Cuboid = ({
       // By default, quaternion is preferred automatically over euler
       ref={contentRef}
       userData={{ [FO_USER_DATA.LABEL_ID]: label._id }}
-      rotation={combinedQuaternion ? undefined : fallbackEuler ?? undefined}
+      rotation={combinedQuaternion ? undefined : (fallbackEuler ?? undefined)}
       quaternion={combinedQuaternion ?? undefined}
       position={displayPosition}
     >

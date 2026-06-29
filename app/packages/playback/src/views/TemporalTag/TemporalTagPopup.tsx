@@ -10,7 +10,13 @@ import {
   Variant,
   ZIndex,
 } from "@voxel51/voodo";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { fmtBound } from "../TimelineControls/timeline-controls-utils";
@@ -22,7 +28,7 @@ const NEW_TAG_SENTINEL = "__new__";
 
 function pickTopLeft(
   anchor: { x: number; y: number },
-  size: { width: number; height: number }
+  size: { width: number; height: number },
 ) {
   const vp = { width: window.innerWidth, height: window.innerHeight };
   const top =
@@ -104,10 +110,13 @@ const TemporalTagPopup: React.FC = () => {
     }
   }, [ctx]);
 
-  const selectOptions = useMemo<Descriptor<{ label: string }>[]>(() => [
-    ...existingTags.map((tag) => ({ id: tag, data: { label: tag } })),
-    { id: NEW_TAG_SENTINEL, data: { label: "New tag…" } },
-  ], [existingTags]);
+  const selectOptions = useMemo<Descriptor<{ label: string }>[]>(
+    () => [
+      ...existingTags.map((tag) => ({ id: tag, data: { label: tag } })),
+      { id: NEW_TAG_SENTINEL, data: { label: "New tag…" } },
+    ],
+    [existingTags],
+  );
 
   if (!ctx || state?.phase !== "selected" || !state.anchor) return null;
 
@@ -151,26 +160,78 @@ const TemporalTagPopup: React.FC = () => {
       aria-label="Create temporal tag"
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <Text variant={TextVariant.Sm} color={TextColor.Secondary} className={styles.popupLabel}>
+      <Text
+        variant={TextVariant.Sm}
+        color={TextColor.Secondary}
+        className={styles.popupLabel}
+      >
         Add temporal tag
       </Text>
 
       {/* Nudge controls */}
       <div className={styles.popupNudge}>
-        <Text variant={TextVariant.Xs} color={TextColor.Secondary} className={styles.popupNudgeLabel}>Start</Text>
-        <Button size={Size.Xs} variant={Variant.Borderless} onClick={() => nudgeStart(-NUDGE_STEP)} aria-label="Start −0.1s">−</Button>
-        <Text variant={TextVariant.Xs} color={TextColor.Primary} className={styles.popupNudgeTime}>
+        <Text
+          variant={TextVariant.Xs}
+          color={TextColor.Secondary}
+          className={styles.popupNudgeLabel}
+        >
+          Start
+        </Text>
+        <Button
+          size={Size.Xs}
+          variant={Variant.Borderless}
+          onClick={() => nudgeStart(-NUDGE_STEP)}
+          aria-label="Start −0.1s"
+        >
+          −
+        </Button>
+        <Text
+          variant={TextVariant.Xs}
+          color={TextColor.Primary}
+          className={styles.popupNudgeTime}
+        >
           {selection ? fmtBound(selection.start) : "—"}
         </Text>
-        <Button size={Size.Xs} variant={Variant.Borderless} onClick={() => nudgeStart(NUDGE_STEP)} aria-label="Start +0.1s">+</Button>
+        <Button
+          size={Size.Xs}
+          variant={Variant.Borderless}
+          onClick={() => nudgeStart(NUDGE_STEP)}
+          aria-label="Start +0.1s"
+        >
+          +
+        </Button>
       </div>
       <div className={styles.popupNudge}>
-        <Text variant={TextVariant.Xs} color={TextColor.Secondary} className={styles.popupNudgeLabel}>End</Text>
-        <Button size={Size.Xs} variant={Variant.Borderless} onClick={() => nudgeEnd(-NUDGE_STEP)} aria-label="End −0.1s">−</Button>
-        <Text variant={TextVariant.Xs} color={TextColor.Primary} className={styles.popupNudgeTime}>
+        <Text
+          variant={TextVariant.Xs}
+          color={TextColor.Secondary}
+          className={styles.popupNudgeLabel}
+        >
+          End
+        </Text>
+        <Button
+          size={Size.Xs}
+          variant={Variant.Borderless}
+          onClick={() => nudgeEnd(-NUDGE_STEP)}
+          aria-label="End −0.1s"
+        >
+          −
+        </Button>
+        <Text
+          variant={TextVariant.Xs}
+          color={TextColor.Primary}
+          className={styles.popupNudgeTime}
+        >
           {selection ? fmtBound(selection.end) : "—"}
         </Text>
-        <Button size={Size.Xs} variant={Variant.Borderless} onClick={() => nudgeEnd(NUDGE_STEP)} aria-label="End +0.1s">+</Button>
+        <Button
+          size={Size.Xs}
+          variant={Variant.Borderless}
+          onClick={() => nudgeEnd(NUDGE_STEP)}
+          aria-label="End +0.1s"
+        >
+          +
+        </Button>
       </div>
 
       {/* Existing-tag picker */}
@@ -210,19 +271,31 @@ const TemporalTagPopup: React.FC = () => {
       )}
 
       {error && (
-        <Text variant={TextVariant.Xs} color={TextColor.Destructive}>{error}</Text>
+        <Text variant={TextVariant.Xs} color={TextColor.Destructive}>
+          {error}
+        </Text>
       )}
 
       <div className={styles.popupActions}>
-        <Button size={Size.Xs} variant={Variant.Borderless} onClick={actions?.exitTagMode} disabled={submitting}>
+        <Button
+          size={Size.Xs}
+          variant={Variant.Borderless}
+          onClick={actions?.exitTagMode}
+          disabled={submitting}
+        >
           Cancel
         </Button>
-        <Button size={Size.Xs} variant={Variant.Primary} onClick={handleSubmit} disabled={submitting || !pendingLabel.trim()}>
+        <Button
+          size={Size.Xs}
+          variant={Variant.Primary}
+          onClick={handleSubmit}
+          disabled={submitting || !pendingLabel.trim()}
+        >
           {submitting ? "Saving…" : "Accept"}
         </Button>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 };
 

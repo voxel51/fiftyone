@@ -68,7 +68,7 @@ export async function readMcapSynchronizedMessageBatch({
       defaultStreamPolicy: request.defaultStreamPolicy,
       streamPolicies: request.streamPolicies,
       topics: request.topics,
-    })
+    }),
   );
   // Unbounded-lookback policies contribute their tick time, not an open
   // start: the scan stays bounded by the batch tick span (plus explicit
@@ -76,14 +76,14 @@ export async function readMcapSynchronizedMessageBatch({
   const startTimeNs = minBigInt(
     windowBounds.flatMap((bounds) =>
       Object.values(bounds.streamPolicies).map(
-        (policy) => policy.startTimeNs ?? bounds.timeNs
-      )
-    )
+        (policy) => policy.startTimeNs ?? bounds.timeNs,
+      ),
+    ),
   );
   const endTimeNs = maxBigInt(
     windowBounds.flatMap((bounds) =>
-      Object.values(bounds.streamPolicies).map((policy) => policy.endTimeNs)
-    )
+      Object.values(bounds.streamPolicies).map((policy) => policy.endTimeNs),
+    ),
   );
   const minTickNs = minBigInt([...request.timeNs]);
   const rawDecodeCache = new Map<string, Promise<McapDecodedMessage>>();
@@ -216,7 +216,7 @@ async function backfillIndexedPredecessors({
 
   const appendEntries = (
     topic: string,
-    entries: readonly McapIndexedMessageTime[]
+    entries: readonly McapIndexedMessageTime[],
   ) => {
     if (entries.length === 0) {
       return;
@@ -225,7 +225,7 @@ async function backfillIndexedPredecessors({
     // Same duplicate-identity collapse as the scan collection: one
     // representative per (channel, log time).
     const seenIdentities = new Set<string>(
-      topicCandidates.map(indexedMessageIdentity)
+      topicCandidates.map(indexedMessageIdentity),
     );
     for (const entry of entries) {
       const identity = indexedMessageIdentity(entry);
@@ -337,8 +337,8 @@ async function backfillRawPredecessors({
       ([topic, policy]) =>
         isUnboundedLatestPolicy(policy) &&
         !(candidatesByTopic.get(topic) ?? []).some(
-          (candidate) => candidate.timelineTimeNs <= minTickNs
-        )
+          (candidate) => candidate.timelineTimeNs <= minTickNs,
+        ),
     )
     .map(([topic]) => topic);
   if (needyTopics.length === 0) {
@@ -369,7 +369,7 @@ async function backfillRawPredecessors({
 }
 
 async function decodeWindowsFromCandidates<
-  Candidate extends { readonly timelineTimeNs: bigint; readonly topic: string }
+  Candidate extends { readonly timelineTimeNs: bigint; readonly topic: string },
 >({
   candidates,
   decodeCandidate,
@@ -380,7 +380,7 @@ async function decodeWindowsFromCandidates<
 }: {
   readonly candidates: ReadonlyMap<string, readonly Candidate[]>;
   readonly decodeCandidate: (
-    candidate: Candidate
+    candidate: Candidate,
   ) => Promise<McapDecodedMessage>;
   readonly selectTieBreaker: (left: Candidate, right: Candidate) => number;
   readonly timeline: McapTimelineStrategy;
@@ -400,7 +400,7 @@ async function decodeWindowsFromCandidates<
           candidates.get(topic) ?? [],
           timeNs,
           streamPolicies[topic],
-          selectTieBreaker
+          selectTieBreaker,
         );
         const decoded = await Promise.all(selected.map(decodeCandidate));
         messagesByTopic[topic] = decoded;
@@ -412,19 +412,19 @@ async function decodeWindowsFromCandidates<
       return {
         activeTimeline: timeline.id,
         endTimeNs: maxBigInt(
-          Object.values(streamPolicies).map((policy) => policy.endTimeNs)
+          Object.values(streamPolicies).map((policy) => policy.endTimeNs),
         ),
         messages,
         messagesByTopic,
         startTimeNs: minBigInt(
           Object.values(streamPolicies).map(
-            (policy) => policy.startTimeNs ?? 0n
-          )
+            (policy) => policy.startTimeNs ?? 0n,
+          ),
         ),
         streamPolicies,
         timeNs,
       };
-    })
+    }),
   );
 }
 
@@ -485,7 +485,7 @@ async function collectIndexedCandidates({
 
 function indexedMessageIdentity(message: McapIndexedMessageTime): string {
   return [message.channelId.toString(), message.logTimeNs.toString()].join(
-    INDEXED_LOOKUP_KEY_SEPARATOR
+    INDEXED_LOOKUP_KEY_SEPARATOR,
   );
 }
 
@@ -575,7 +575,7 @@ async function decodeIndexedCandidate({
         decodeClient,
         source,
         timeline,
-      })
+      }),
     );
     indexedDecodeCache.set(key, decoded);
   }
@@ -613,13 +613,13 @@ async function resolveRawCandidateForIndexedMessage({
   const matches = (await rawCandidates).filter(
     (raw) =>
       raw.message.channelId === candidate.channelId &&
-      raw.message.logTime === candidate.logTimeNs
+      raw.message.logTime === candidate.logTimeNs,
   );
   if (matches.length === 0) {
     throw new Error(
       `Missing MCAP message for indexed ${candidate.topic} entry with channel ${
         candidate.channelId
-      } at ${candidate.logTimeNs.toString()}`
+      } at ${candidate.logTimeNs.toString()}`,
     );
   }
 
@@ -636,7 +636,7 @@ async function resolveRawCandidateForIndexedMessage({
 
 function compareDuplicateRawMatches(
   left: McapRawMessageCandidate,
-  right: McapRawMessageCandidate
+  right: McapRawMessageCandidate,
 ) {
   if (left.message.sequence !== right.message.sequence) {
     return left.message.sequence - right.message.sequence;
@@ -698,7 +698,7 @@ async function decodeRawCandidate({
 
 function compareRawCandidateTieBreaker(
   left: McapRawMessageCandidate,
-  right: McapRawMessageCandidate
+  right: McapRawMessageCandidate,
 ) {
   if (left.message.channelId !== right.message.channelId) {
     return left.message.channelId - right.message.channelId;
@@ -709,7 +709,7 @@ function compareRawCandidateTieBreaker(
 
 function compareIndexedCandidateTieBreaker(
   left: McapIndexedMessageCandidate,
-  right: McapIndexedMessageCandidate
+  right: McapIndexedMessageCandidate,
 ) {
   if (left.channelId !== right.channelId) {
     return left.channelId - right.channelId;
@@ -717,7 +717,7 @@ function compareIndexedCandidateTieBreaker(
 
   const chunkComparison = compareBigInt(
     left.chunkStartOffset,
-    right.chunkStartOffset
+    right.chunkStartOffset,
   );
   if (chunkComparison !== 0) {
     return chunkComparison;
@@ -728,7 +728,7 @@ function compareIndexedCandidateTieBreaker(
 
 function serializeIndexedLookupKey(candidate: McapIndexedMessageCandidate) {
   return [candidate.topic, candidate.logTimeNs.toString()].join(
-    INDEXED_LOOKUP_KEY_SEPARATOR
+    INDEXED_LOOKUP_KEY_SEPARATOR,
   );
 }
 

@@ -92,7 +92,7 @@ export const numGroupFieldsActive = selectorFamily<
 
       if (params.group === "tags") {
         return active.filter(
-          (p) => p.startsWith("tags.") && p.slice("tags.".length).includes(f)
+          (p) => p.startsWith("tags.") && p.slice("tags.".length).includes(f),
         ).length;
       }
 
@@ -100,12 +100,12 @@ export const numGroupFieldsActive = selectorFamily<
         return active.filter(
           (p) =>
             p.startsWith("_label_tags.") &&
-            p.slice("_label_tags.".length).includes(f)
+            p.slice("_label_tags.".length).includes(f),
         ).length;
       }
 
       const paths = new Set(
-        get(fos.sidebarGroup({ ...params, loading: true }))
+        get(fos.sidebarGroup({ ...params, loading: true })),
       );
 
       return active.filter((p) => p.includes(f) && paths.has(p)).length;

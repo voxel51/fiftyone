@@ -21,7 +21,7 @@ const NONFINITES = {
 const useNonfiniteSettings = (params: { modal: boolean; path: string }) => {
   function useData(key: fos.Nonfinite): [fos.Nonfinite, NonfiniteState] {
     const [value, setValue] = useRecoilState(
-      fos.nonfiniteAtom({ ...params, key })
+      fos.nonfiniteAtom({ ...params, key }),
     );
 
     return [
@@ -45,14 +45,14 @@ const useNonfinites = (options: { modal: boolean; path: string }) => {
   const get = useNonfiniteSettings(options);
   const list = [get("none")];
   const { ftype, subfield } = fos.useAssertedRecoilValue(
-    fos.field(options.path)
+    fos.field(options.path),
   );
   const data = useRecoilValue(
     fos.nonfiniteData({
       extended: false,
       path: options.path,
       modal: options.modal,
-    })
+    }),
   );
   if (ftype === FLOAT_FIELD || subfield === FLOAT_FIELD) {
     for (const key of state.FLOAT_NONFINITES) {
@@ -93,7 +93,7 @@ function Nonfinites({ modal, path }: { modal: boolean; path: string }) {
           name={NONFINITES[key]}
           forceColor={true}
           disabled={Boolean(
-            one && nonfinites.length === 1 && !(one && hasBounds)
+            one && nonfinites.length === 1 && !(one && hasBounds),
           )}
           {...props}
         />

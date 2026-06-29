@@ -34,7 +34,7 @@ export const DEFAULT_BOUNDING_BOX = new Box3(
   // min
   new Vector3(-5, -5, -5),
   // max
-  new Vector3(5, 5, 5)
+  new Vector3(5, 5, 5),
 );
 
 export const ACTIONS = [
@@ -139,15 +139,16 @@ export const PANEL_IDS = [
  * Get the DOM element ID for a given panel ID.
  * Convention: element ID is `${panelId}-panel`
  */
-export const getPanelElementId = (panelId: typeof PANEL_IDS[number]): string =>
-  `${panelId}-panel`;
+export const getPanelElementId = (
+  panelId: (typeof PANEL_IDS)[number],
+): string => `${panelId}-panel`;
 
 /**
  * Get the CSS grid area name for a side panel ID.
  * Maps "side-top" -> "top", "side-bottom" -> "bottom"
  */
 export const getSidePanelGridArea = (
-  panelId: typeof PANEL_ID_SIDE_TOP | typeof PANEL_ID_SIDE_BOTTOM
+  panelId: typeof PANEL_ID_SIDE_TOP | typeof PANEL_ID_SIDE_BOTTOM,
 ): "top" | "bottom" => panelId.replace("side-", "") as "top" | "bottom";
 
 export const VIEW_TYPE_TOP = "Top";

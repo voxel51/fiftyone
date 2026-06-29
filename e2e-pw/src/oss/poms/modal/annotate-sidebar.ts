@@ -15,10 +15,10 @@ export class ModalAnnotateSidebarPom {
     this.assert = new ModalAnnotateSidebarAsserter(this);
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
     this.annotationSliceSelector = this.locator.getByTestId(
-      "selector-annotation-slice"
+      "selector-annotation-slice",
     );
     this.annotationSliceResultsContainer = page.getByTestId(
-      "selector-results-container-annotation-slice"
+      "selector-results-container-annotation-slice",
     );
   }
 
@@ -31,7 +31,7 @@ export class ModalAnnotateSidebarPom {
     return Number(
       await this.locator
         .getByTestId("sidebar-group-Labels-field-count")
-        .textContent()
+        .textContent(),
     );
   }
 
@@ -44,7 +44,7 @@ export class ModalAnnotateSidebarPom {
     return Number(
       await this.locator
         .getByTestId("sidebar-group-PRIMITIVES-field-count")
-        .textContent()
+        .textContent(),
     );
   }
 
@@ -101,8 +101,8 @@ export class ModalAnnotateSidebarPom {
     const resultsContainer = await this.openAnnotationSliceResults();
     const slices = await resultsContainer.evaluate((div) =>
       Array.from(div.querySelectorAll("[data-cy^='selector-result-']")).map(
-        (node) => (node as HTMLElement).innerText
-      )
+        (node) => (node as HTMLElement).innerText,
+      ),
     );
 
     await this.page.keyboard.press("Escape");
@@ -132,7 +132,7 @@ export class ModalAnnotateSidebarPom {
       (resp) =>
         resp.request().method() === "PATCH" &&
         /\/dataset\/[^/]+\/sample\//.test(resp.url()) &&
-        resp.status() < 400
+        resp.status() < 400,
     );
   }
 
@@ -201,8 +201,8 @@ class ModalAnnotateSidebarAsserter {
   async verifyActiveLabelsIsExpanded() {
     await expect(
       this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-toggle"
-      )
+        "sidebar-group-Labels-toggle",
+      ),
     ).toHaveAttribute("data-testid", "RemoveIcon");
   }
 
@@ -212,8 +212,8 @@ class ModalAnnotateSidebarAsserter {
   async verifyActiveLabelsIsCollapsed() {
     await expect(
       this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-toggle"
-      )
+        "sidebar-group-Labels-toggle",
+      ),
     ).toHaveAttribute("data-testid", "AddIcon");
   }
 
@@ -223,8 +223,8 @@ class ModalAnnotateSidebarAsserter {
   async verifyActivePrimitiveFieldsIsExpanded() {
     await expect(
       this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-PRIMITIVES-toggle"
-      )
+        "sidebar-group-PRIMITIVES-toggle",
+      ),
     ).toHaveAttribute("data-testid", "RemoveIcon");
   }
 
@@ -234,8 +234,8 @@ class ModalAnnotateSidebarAsserter {
   async verifyActivePrimitiveFieldsIsCollapsed() {
     await expect(
       this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-PRIMITIVES-toggle"
-      )
+        "sidebar-group-PRIMITIVES-toggle",
+      ),
     ).toHaveAttribute("data-testid", "AddIcon");
   }
 
@@ -247,8 +247,8 @@ class ModalAnnotateSidebarAsserter {
   async verifyActiveLabelsCount(expectedCount: number) {
     await expect(
       this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-field-count"
-      )
+        "sidebar-group-Labels-field-count",
+      ),
     ).toHaveText(expectedCount.toString());
   }
 
@@ -260,8 +260,8 @@ class ModalAnnotateSidebarAsserter {
   async verifyActivePrimitiveFieldsCount(expectedCount: number) {
     await expect(
       this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-PRIMITIVES-field-count"
-      )
+        "sidebar-group-PRIMITIVES-field-count",
+      ),
     ).toHaveText(expectedCount.toString());
   }
 
@@ -283,7 +283,7 @@ class ModalAnnotateSidebarAsserter {
    */
   async verifySelectedAnnotationSlice(expectedSlice: string) {
     await expect(this.modalAnnotateSidebar.annotationSliceSelector).toHaveValue(
-      expectedSlice
+      expectedSlice,
     );
   }
 
@@ -304,7 +304,7 @@ class ModalAnnotateSidebarAsserter {
    */
   async classificationIsActive(active = true) {
     const button = this.modalAnnotateSidebar.page.getByTestId(
-      "create-classification"
+      "create-classification",
     );
     await expect(button).toHaveAttribute("data-cy-active", active.toString());
   }
@@ -315,9 +315,7 @@ class ModalAnnotateSidebarAsserter {
    * @param active Whether detection mode should be active (default true)
    */
   async detectionModeIsActive(active = true) {
-    const button = this.modalAnnotateSidebar.page.getByTestId(
-      "detection-mode"
-    );
+    const button = this.modalAnnotateSidebar.page.getByTestId("detection-mode");
     await expect(button).toHaveAttribute("data-cy-active", active.toString());
   }
 
@@ -327,9 +325,8 @@ class ModalAnnotateSidebarAsserter {
    * @param active Whether segmentation mode should be active (default true)
    */
   async segmentationModeIsActive(active = true) {
-    const button = this.modalAnnotateSidebar.page.getByTestId(
-      "segmentation-mode"
-    );
+    const button =
+      this.modalAnnotateSidebar.page.getByTestId("segmentation-mode");
     await expect(button).toHaveAttribute("data-cy-active", active.toString());
   }
 

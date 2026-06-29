@@ -58,6 +58,15 @@ const Toast: React.FC<ToastProps> = ({
 
   const [open, setOpen] = useRecoilState(toastStateAtom); // State management for toast visibility
 
+  const handleClose =
+    onHandleClose ??
+    ((_event, reason) => {
+      if (reason === "clickaway") {
+        return;
+      }
+      setOpen(false);
+    });
+
   const action = (
     <div>
       <Box display="flex" justifyContent="flex-end">
@@ -76,7 +85,7 @@ const Toast: React.FC<ToastProps> = ({
         horizontal: layout?.horizontal || "center",
       }}
       open={open}
-      onClose={onHandleClose}
+      onClose={handleClose}
       autoHideDuration={duration}
       sx={snackbarStyle}
     >

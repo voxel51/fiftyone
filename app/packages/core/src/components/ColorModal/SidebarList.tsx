@@ -29,7 +29,7 @@ const SidebarList: React.FC = () => {
     { paths: [{ path: "tags" }, { path: "_label_tags" }], name: "tags" },
   ];
   const fieldGroups = useRecoilValue(
-    fos.sidebarGroups({ modal: false, loading: false })
+    fos.sidebarGroups({ modal: false, loading: false }),
   )
     .filter((g) => g.name !== "tags")
     .map((group) => ({
@@ -39,7 +39,7 @@ const SidebarList: React.FC = () => {
 
   const groups = [...stableGroup, ...fieldGroups];
   const [groupOpen, setGroupOpen] = React.useState(
-    new Array(groups.length).fill(true)
+    new Array(groups.length).fill(true),
   );
   const handleGroupClick = (_, idx) => {
     setGroupOpen((prev) => ({ ...prev, [idx]: !prev[idx] }));
@@ -50,7 +50,7 @@ const SidebarList: React.FC = () => {
       async (value: ACTIVE_FIELD | { path: string }) => {
         set(activeColorEntry, value);
       },
-    []
+    [],
   );
 
   return (
@@ -126,8 +126,8 @@ const SidebarList: React.FC = () => {
                           ? typeof entry === "string"
                             ? activeEntry === entry
                             : typeof activeEntry === "object"
-                            ? activeEntry.path === entry.path
-                            : false
+                              ? activeEntry.path === entry.path
+                              : false
                           : false
                       }
                       onClick={() => onSelectField(entry)}

@@ -90,7 +90,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
 
   dispatchImpliedEvents(
     previousState: Readonly<ImaVidState>,
-    state: Readonly<ImaVidState>
+    state: Readonly<ImaVidState>,
   ): void {
     super.dispatchImpliedEvents(previousState, state);
     const previousPlaying = previousState.playing && !previousState.buffering;
@@ -116,7 +116,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
 
   getInitialState(
     config: ImaVidState["config"],
-    options: ImaVidState["options"]
+    options: ImaVidState["options"],
   ): ImaVidState {
     return {
       ...this.getInitialBaseState(),
@@ -148,7 +148,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     let defaultPlaybackRate = DEFAULT_PLAYBACK_RATE;
 
     const mayBePlayBackRateFromLocalStorage = localStorage.getItem(
-      IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY
+      IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY,
     );
 
     if (mayBePlayBackRateFromLocalStorage) {
@@ -208,7 +208,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
 
   updateOptions(
     options: Partial<ImaVidState["options"]>,
-    disableReload = false
+    disableReload = false,
   ) {
     const reload =
       !disableReload &&
@@ -232,7 +232,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
 
     const thisFrameSampleWithCachedImage =
       this.frameStoreController.store.getSampleAtFrame(
-        this.frameNumber
+        this.frameNumber,
       )?.sample;
 
     if (thisFrameSampleWithCachedImage) {
@@ -285,12 +285,12 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
         if (sampleIdFromFramesStore) {
           this.frameStoreController.store.updateSample(
             sampleIdFromFramesStore,
-            sample
+            sample,
           );
         } else {
           // get current sample from frame number and update it
           const sampleId = this.frameStoreController.store.frameIndex.get(
-            this.frameNumber
+            this.frameNumber,
           );
           if (sampleId) {
             this.frameStoreController.store.updateSample(sampleId, sample);
@@ -310,7 +310,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
 }
 
 export const getSampleWithResettedMasks = (
-  sample: ModalSampleExtendedWithImage["sample"]
+  sample: ModalSampleExtendedWithImage["sample"],
 ) => {
   const getFieldWithMaskResetted = (value) => {
     if (!value.mask_path?.length && !value.map_path?.length) {

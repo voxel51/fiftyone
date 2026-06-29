@@ -115,19 +115,19 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
             schemaAtoms.fields({
               path: expandedPath,
               ftype: VALID_PRIMITIVE_TYPES,
-            })
+            }),
           );
           const docType = get(schemaAtoms.field(expandedPath)).embeddedDocType;
 
           const fs = labelFields.map(({ name, dbField }) => {
             const filter = get(
-              primitiveFilter({ modal, path: `${expandedPath}.${name}` })
+              primitiveFilter({ modal, path: `${expandedPath}.${name}` }),
             );
 
             return keypointFilter(name, docType, (value: unknown) => {
               const correctedValue = value?.[0] ? value[0] : value;
               return filter(
-                correctedValue?.[name === "id" ? "id" : dbField || name]
+                correctedValue?.[name === "id" ? "id" : dbField || name],
               );
             });
           });
@@ -142,7 +142,7 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
               matchesLabelTags(
                 correctedValue as { tags: string[] },
                 currentFilter?._label_tags,
-                currentVisibility?._label_tags
+                currentVisibility?._label_tags,
               ) &&
               fs.every((filter) => {
                 return filter(correctedValue);
@@ -172,7 +172,7 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
 export const keypointFilter = (
   name: string,
   embeddedDocType: string,
-  filter: (value: unknown) => boolean
+  filter: (value: unknown) => boolean,
 ) => {
   const isKeypoints = KEYPOINT_TYPES.has(embeddedDocType);
 
@@ -192,7 +192,7 @@ const matchesLabelTags = (
     tags: string[];
   },
   filter?: State.CategoricalFilter<string>,
-  visibility?: State.CategoricalFilter<string>
+  visibility?: State.CategoricalFilter<string>,
 ) => {
   // in either visibility or filter is set
   if (!filter && !visibility) {

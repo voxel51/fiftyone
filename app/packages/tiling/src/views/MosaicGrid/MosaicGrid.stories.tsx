@@ -53,10 +53,10 @@ function GridShell({
   initialIds?: string[];
 }) {
   const [tiles, setTiles] = useState<Record<string, TilingTile>>(() =>
-    Object.fromEntries(initialIds.map((id) => [id, makeTile(id)]))
+    Object.fromEntries(initialIds.map((id) => [id, makeTile(id)])),
   );
   const [layout, setLayout] = useState<MosaicNode<string> | null>(() =>
-    autoLayout(initialIds)
+    autoLayout(initialIds),
   );
   const [focused, setFocused] = useState<string | null>(null);
   const [counter, setCounter] = useState(initialIds.length);

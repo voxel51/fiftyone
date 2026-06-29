@@ -6,9 +6,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // jsdom we just need the layout to mount, so stub MosaicGrid to a
 // passthrough that renders each tile's body.
 vi.mock("@fiftyone/tiling", async () => {
-  const actual = await vi.importActual<typeof import("@fiftyone/tiling")>(
-    "@fiftyone/tiling"
-  );
+  const actual =
+    await vi.importActual<typeof import("@fiftyone/tiling")>(
+      "@fiftyone/tiling",
+    );
   return {
     ...actual,
     MosaicGrid: ({
@@ -62,10 +63,10 @@ describe("MultiModalPlayback shell", () => {
           "camera-1": { title: "camera_front", render: () => null },
           "lidar-1": { title: "lidar_top", render: () => null },
         }}
-      />
+      />,
     );
     expect(screen.getByTestId("title-camera-1").textContent).toBe(
-      "camera_front"
+      "camera_front",
     );
     expect(screen.getByTestId("title-lidar-1").textContent).toBe("lidar_top");
   });
@@ -83,7 +84,7 @@ describe("MultiModalPlayback shell", () => {
         fileName="x"
         defaultLeftOpen={false}
         defaultRightOpen={false}
-      />
+      />,
     );
     expect(screen.queryByTestId("drawer")).toBeNull();
   });
@@ -100,11 +101,11 @@ describe("MultiModalPlayback shell", () => {
         initialTiles={{
           "camera-1": { title: "Camera", render: () => null },
         }}
-      />
+      />,
     );
 
     expect(screen.getByTestId("caption-context").textContent).toBe(
-      "Scene context"
+      "Scene context",
     );
     fireEvent.click(screen.getByTestId("select-camera-1"));
     expect(screen.getByTestId("caption-context").textContent).toBe("Camera");
@@ -112,7 +113,7 @@ describe("MultiModalPlayback shell", () => {
 
     fireEvent.click(screen.getByTestId("select-camera-1"));
     expect(screen.getByTestId("caption-context").textContent).toBe(
-      "Scene context"
+      "Scene context",
     );
     expect(screen.getByTestId("select-camera-1").dataset.focused).toBe("false");
   });
@@ -129,7 +130,7 @@ describe("MultiModalPlayback shell", () => {
         initialTiles={{
           "camera-1": { title: "Camera", render: () => null },
         }}
-      />
+      />,
     );
 
     fireEvent.click(screen.getByTestId("action-camera-1"));

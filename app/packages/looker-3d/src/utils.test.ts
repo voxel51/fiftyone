@@ -132,7 +132,7 @@ describe("getColorFromPoolBasedOnHash", () => {
   });
   it("returns same color for same string", () => {
     expect(getColorFromPoolBasedOnHash("repeat")).toBe(
-      getColorFromPoolBasedOnHash("repeat")
+      getColorFromPoolBasedOnHash("repeat"),
     );
   });
 });
@@ -161,7 +161,7 @@ describe("getGridQuaternionFromUpVector", () => {
       result.w * result.w +
         result.x * result.x +
         result.y * result.y +
-        result.z * result.z
+        result.z * result.z,
     );
     expect(magnitude).toBeCloseTo(1);
     const targetNormal = new Vector3(0, 1, 0);
@@ -182,7 +182,7 @@ describe("getGridQuaternionFromUpVector", () => {
       result.w * result.w +
         result.x * result.x +
         result.y * result.y +
-        result.z * result.z
+        result.z * result.z,
     );
     expect(magnitude).toBeCloseTo(1);
   });
@@ -198,7 +198,7 @@ describe("getGridQuaternionFromUpVector", () => {
       result.w * result.w +
         result.x * result.x +
         result.y * result.y +
-        result.z * result.z
+        result.z * result.z,
     );
     expect(magnitude).toBeCloseTo(1);
   });
@@ -229,7 +229,7 @@ describe("getGridQuaternionFromUpVector", () => {
       result.w * result.w +
         result.x * result.x +
         result.y * result.y +
-        result.z * result.z
+        result.z * result.z,
     );
     expect(magnitude).toBeCloseTo(1);
     const rotated = up.clone().applyQuaternion(result);
@@ -425,7 +425,7 @@ describe("getPlaneFromPositionAndQuaternion", () => {
     const normalMagnitude = Math.sqrt(
       result.normal.x * result.normal.x +
         result.normal.y * result.normal.y +
-        result.normal.z * result.normal.z
+        result.normal.z * result.normal.z,
     );
     expect(normalMagnitude).toBeCloseTo(1);
   });
@@ -441,7 +441,7 @@ describe("getPlaneFromPositionAndQuaternion", () => {
     const normalMagnitude = Math.sqrt(
       result.normal.x * result.normal.x +
         result.normal.y * result.normal.y +
-        result.normal.z * result.normal.z
+        result.normal.z * result.normal.z,
     );
     expect(normalMagnitude).toBeCloseTo(1);
   });
@@ -508,7 +508,7 @@ describe("eulerToQuaternion", () => {
       result[0] * result[0] +
         result[1] * result[1] +
         result[2] * result[2] +
-        result[3] * result[3]
+        result[3] * result[3],
     );
     expect(magnitude).toBeCloseTo(1, 5);
   });
@@ -522,7 +522,7 @@ describe("eulerToQuaternion", () => {
       result[0] * result[0] +
         result[1] * result[1] +
         result[2] * result[2] +
-        result[3] * result[3]
+        result[3] * result[3],
     );
     expect(magnitude).toBeCloseTo(1, 5);
   });
@@ -660,7 +660,7 @@ describe("eulerToQuaternion and quaternionToEuler roundtrip", () => {
       quaternion[0] * quaternion[0] +
         quaternion[1] * quaternion[1] +
         quaternion[2] * quaternion[2] +
-        quaternion[3] * quaternion[3]
+        quaternion[3] * quaternion[3],
     );
     expect(magnitude).toBeCloseTo(1, 5);
   });
@@ -808,14 +808,14 @@ describe("isValidPolylineSegment", () => {
       isValidPolylineSegment([
         [1, 2, 3],
         [4, 5, 6],
-      ])
+      ]),
     ).toBe(true);
     expect(
       isValidPolylineSegment([
         [1, 2, 3],
         [4, 5, 6],
         [7, 8, 9],
-      ])
+      ]),
     ).toBe(true);
   });
 
@@ -830,14 +830,14 @@ describe("isValidPolylineSegment", () => {
       isValidPolylineSegment([
         [1, 2, 3],
         [4, 5, "6"],
-      ])
+      ]),
     ).toBe(false);
     expect(isValidPolylineSegment([[1, 2, 3], null])).toBe(false);
     expect(
       isValidPolylineSegment([
         [1, 2, 3],
         [4, 5],
-      ])
+      ]),
     ).toBe(false);
   });
 
@@ -847,14 +847,14 @@ describe("isValidPolylineSegment", () => {
       isValidPolylineSegment([
         [1, 2, 3],
         [Number.POSITIVE_INFINITY, 5, 6],
-      ])
+      ]),
     ).toBe(false);
     expect(
       isValidPolylineSegment([
         [1, 2, 3],
         [4, 5, 6],
         [7, 8, 9],
-      ])
+      ]),
     ).toBe(true);
   });
 });

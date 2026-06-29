@@ -55,7 +55,7 @@ export interface CreateInlineMcapResourceClientOptions {
  * Creates an MCAP resource client over the generic byte and decode clients.
  */
 export function createInlineMcapResourceClient(
-  options: CreateInlineMcapResourceClientOptions = {}
+  options: CreateInlineMcapResourceClientOptions = {},
 ): McapResourceClient {
   const query = createMultimodalQueryClient();
   const byteClient = options.byteClient ?? query.bytes;
@@ -96,7 +96,7 @@ export function createInlineMcapResourceClient(
     },
 
     async *readDecodedMessages(
-      request: McapReadDecodedMessagesRequest
+      request: McapReadDecodedMessagesRequest,
     ): AsyncGenerator<McapDecodedMessage, void, void> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const reader = await readerStore.get(request.source);
@@ -109,7 +109,7 @@ export function createInlineMcapResourceClient(
     },
 
     async readTimelineRange(
-      request: McapReadTimelineRangeRequest
+      request: McapReadTimelineRangeRequest,
     ): Promise<McapTimelineRange> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const reader = await readerStore.get(request.source);
@@ -157,7 +157,7 @@ export function createInlineMcapResourceClient(
     },
 
     async readFrameTransformBootstrap(
-      request: McapReadFrameTransformBootstrapRequest
+      request: McapReadFrameTransformBootstrapRequest,
     ): Promise<McapFrameTransformSet> {
       const sourceKey = byteSourceAccessKey(request.source);
       const cached = frameTransformBootstrapReads.get(sourceKey);
@@ -178,7 +178,7 @@ export function createInlineMcapResourceClient(
     },
 
     async readFrameTransformWindow(
-      request: McapReadFrameTransformWindowRequest
+      request: McapReadFrameTransformWindowRequest,
     ): Promise<McapFrameTransformSet> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const sourceKey = byteSourceAccessKey(request.source);
@@ -191,7 +191,7 @@ export function createInlineMcapResourceClient(
       const read = readerStore
         .get(request.source)
         .then((reader) =>
-          readMcapFrameTransformWindow({ reader, request, timeline })
+          readMcapFrameTransformWindow({ reader, request, timeline }),
         )
         .catch((error) => {
           if (frameTransformWindowReads.get(windowKey) === read) {
@@ -205,7 +205,7 @@ export function createInlineMcapResourceClient(
     },
 
     async readSynchronizedMessageBatch(
-      request: McapReadSynchronizedMessageBatchRequest
+      request: McapReadSynchronizedMessageBatchRequest,
     ): Promise<readonly McapSynchronizedMessageWindow[]> {
       if (request.timeNs.length === 0) {
         return [];
@@ -230,7 +230,7 @@ export function createInlineMcapResourceClient(
     },
 
     async readSynchronizedMessages(
-      request: McapReadSynchronizedMessagesRequest
+      request: McapReadSynchronizedMessagesRequest,
     ): Promise<McapSynchronizedMessageWindow> {
       const windows = await client.readSynchronizedMessageBatch({
         ...request,

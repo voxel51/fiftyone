@@ -12,7 +12,7 @@ type ElementEvent<State extends BaseState, E extends Event> = (args: {
 
 export type Events<
   State extends BaseState,
-  CustomEvents extends Record<string, Event> = Record<string, never>
+  CustomEvents extends Record<string, Event> = Record<string, never>,
 > = {
   [K in keyof (HTMLElementEventMap & CustomEvents)]?: ElementEvent<
     State,
@@ -34,7 +34,7 @@ interface BootParams<State extends BaseState> {
 
 export abstract class BaseElement<
   State extends BaseState,
-  Element extends HTMLElement = HTMLElement | null
+  Element extends HTMLElement = HTMLElement | null,
 > {
   children: BaseElement<State>[] = [];
   element: Element;
@@ -106,12 +106,12 @@ export abstract class BaseElement<
 
   abstract createHTMLElement(
     dispatchEvent: DispatchEvent,
-    config: Readonly<State["config"]>
+    config: Readonly<State["config"]>,
   ): Element | null;
 
   abstract renderSelf(
     state: Readonly<State>,
-    sample: Readonly<Sample>
+    sample: Readonly<Sample>,
   ): Element | null;
 
   protected getEvents(_config: Readonly<State["config"]>): Events<State> {

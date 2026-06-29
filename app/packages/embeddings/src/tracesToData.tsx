@@ -1,5 +1,4 @@
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { CustomizeColor } from "@fiftyone/state";
 import { Color, cssColorNames } from "./Color";
 import { sortStringsAlphabetically } from "./sortStringsAlphabetically";
 
@@ -14,7 +13,7 @@ export function tracesToData(
   plotSelection,
   selectionStyle,
   colorscale,
-  setting
+  setting,
 ) {
   const isCategorical = style === "categorical";
   const isContinuous = style === "continuous";
@@ -74,8 +73,8 @@ export function tracesToData(
           color: isCategorical
             ? color.toCSSRGBString()
             : isUncolored
-            ? null
-            : labelsForColors,
+              ? null
+              : labelsForColors,
           size: 6,
           colorbar:
             isCategorical || isUncolored
@@ -122,7 +121,12 @@ const addLineBreaks = ([key, trace]) => {
   return [key, trace];
 };
 
-const getLabelColor = (key: string, setting: CustomizeColor): Color | null => {
+const getLabelColor = (
+  key: string,
+  setting: {
+    valueColors?: ReadonlyArray<{ value: string; color: string }> | null;
+  },
+): Color | null => {
   if (!setting || !setting.valueColors) {
     return null;
   }
@@ -133,7 +137,7 @@ const getLabelColor = (key: string, setting: CustomizeColor): Color | null => {
 
 // converts CSS color (hex, name, rgb) to Color object
 const getConvertedColor = (
-  color: string | [number, number, number]
+  color: string | [number, number, number],
 ): Color | null => {
   if (Array.isArray(color)) {
     return Color.fromCSSRGBValues(...color);
@@ -153,7 +157,7 @@ const getConvertedColor = (
     return Color.fromCSSRGBValues(
       parseInt(c[0]),
       parseInt(c[1]),
-      parseInt(c[2])
+      parseInt(c[2]),
     );
   }
 

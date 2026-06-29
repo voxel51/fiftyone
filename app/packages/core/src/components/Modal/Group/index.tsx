@@ -17,15 +17,15 @@ const Group = () => {
   const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
   const isCarouselVisible = useRecoilValue(
-    fos.groupMediaIsCarouselVisibleSetting
+    fos.groupMediaIsCarouselVisibleSetting,
   );
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
 
   const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
-    fos.dynamicGroupsViewMode(true)
+    fos.dynamicGroupsViewMode(true),
   );
   const setIsMainLookerVisible = useSetRecoilState(
-    fos.groupMediaIsMain2DViewerVisibleSetting
+    fos.groupMediaIsMain2DViewerVisibleSetting,
   );
 
   // This effect enforces view-mode constraints for dynamic groups (skipped in annotate mode)

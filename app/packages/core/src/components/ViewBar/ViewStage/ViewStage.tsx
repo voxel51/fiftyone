@@ -300,13 +300,13 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             if (e.key === "Enter") {
               const match = getMatch(
                 stageInfo.map((s) => s.name),
-                e.target.value
+                e.target.value,
               );
               const value = match
                 ? match
                 : bestMatch.value
-                ? bestMatch.value
-                : e.target.value;
+                  ? bestMatch.value
+                  : e.target.value;
               send({
                 type: "COMMIT",
                 value,

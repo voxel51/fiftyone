@@ -82,13 +82,14 @@ export function resolveAncestors(path: string): string[] {
   return ancestors;
 }
 
-export function getProtocol(path: string): string {
+export function getProtocol(path: string): string | undefined {
   const pathType = determinePathType(path);
   if (pathType === PathType.URL) {
     if (path.endsWith("://")) return path.slice(0, -3);
     const url = new URL(path);
     return url.protocol.replace(/:$/, "");
   }
+  return undefined;
 }
 
 export function getBasename(path: string) {

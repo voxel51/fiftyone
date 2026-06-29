@@ -32,10 +32,7 @@ const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
 };
 
-export default function Embeddings({
-  containerHeight: _containerHeight,
-  dimensions,
-}) {
+export default function Embeddings({ dimensions }) {
   const el = useRef();
   const theme = useTheme();
   const resetZoom = useResetPlotZoom();
@@ -47,14 +44,14 @@ export default function Embeddings({
   const [dragMode, setDragMode] = usePanelStatePartial(
     "dragMode",
     "lasso",
-    true
+    true,
   );
   const [showCTA, setShowCTA] = useState(false);
 
   const warnings = useWarnings();
   const setPanelCloseEffect = useSetPanelCloseEffect();
   const embeddingsDocumentationLink = useExternalLink(
-    "https://docs.voxel51.com"
+    "https://docs.voxel51.com",
   );
   const computeViz = useComputeVisualization();
 
@@ -66,7 +63,7 @@ export default function Embeddings({
   const [loadingPlotError] = usePanelStatePartial(
     "loadingPlotError",
     null,
-    true
+    true,
   );
 
   const selectorStyle = {

@@ -23,9 +23,9 @@ import type {
 /**
  * Base abstract class for all overlays.
  */
-export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
-  implements InteractionHandler
-{
+export abstract class BaseOverlay<
+  Label extends RawLookerLabel = RawLookerLabel,
+> implements InteractionHandler {
   readonly id: string;
   readonly cursor?: string;
 
@@ -93,7 +93,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
     if (!bounds) return false;
 
     return ["x", "y", "width", "height"].every(
-      (prop) => !Number.isNaN(bounds[prop])
+      (prop) => !Number.isNaN(bounds[prop]),
     );
   }
 
@@ -140,7 +140,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   render(
     renderer: Renderer2D,
     style: DrawStyle | null,
-    meta: RenderMeta
+    meta: RenderMeta,
   ): void | Promise<void> {
     // Store the current style for use in other methods
     this.currentStyle = style || undefined;
@@ -155,7 +155,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   protected abstract renderImpl(
     renderer: Renderer2D,
-    meta: RenderMeta
+    meta: RenderMeta,
   ): void | Promise<void>;
 
   /**

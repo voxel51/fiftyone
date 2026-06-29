@@ -8,7 +8,10 @@ import type { EventUtils } from "src/shared/event-utils";
 export class ToolbarPom {
   readonly assert: ToolbarAsserter;
 
-  constructor(readonly page: Page, readonly eventUtils: EventUtils) {
+  constructor(
+    readonly page: Page,
+    readonly eventUtils: EventUtils,
+  ) {
     this.assert = new ToolbarAsserter(this);
   }
 

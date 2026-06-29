@@ -54,7 +54,7 @@ const ColorModal = () => {
         resetEntry();
       }
     },
-    [resetEntry]
+    [resetEntry],
   );
 
   fos.useEventHandler(document, "keydown", keyboardHandler);
@@ -88,7 +88,7 @@ const ColorModal = () => {
                 e,
                 _direction,
                 _ref,
-                { width: dw, height: dh }
+                { width: dw, height: dh },
               ) => {
                 setWidth(width + dw);
                 setHeight(height + dh);
@@ -166,7 +166,7 @@ const ColorModal = () => {
           </Draggable>
         </ModalWrapper>
       </Fragment>,
-      targetContainer
+      targetContainer,
     );
   } else {
     console.error("target container not found");

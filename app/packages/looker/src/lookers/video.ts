@@ -62,7 +62,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   dispatchImpliedEvents(
     previousState: Readonly<VideoState>,
-    state: Readonly<VideoState>
+    state: Readonly<VideoState>,
   ): void {
     super.dispatchImpliedEvents(previousState, state);
     const previousPlaying = previousState.playing && !previousState.buffering;
@@ -137,7 +137,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   getInitialState(
     config: VideoState["config"],
-    options: VideoState["options"]
+    options: VideoState["options"],
   ): VideoState {
     const firstFrame = config.support ? config.support[0] : 1;
 
@@ -191,17 +191,17 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   loadOverlays(sample: VideoSample) {
     this.sampleOverlays = loadOverlays(
       Object.fromEntries(
-        Object.entries(sample).filter(([fieldName]) => fieldName !== "frames")
+        Object.entries(sample).filter(([fieldName]) => fieldName !== "frames"),
       ),
       this.state.config.fieldSchema,
-      true
+      true,
     );
     const [firstFrameData] = sample.frames?.length
       ? sample.frames
       : [{ frame_number: 1 }];
     const firstFrameOverlays = loadOverlays(
       withFrames(firstFrameData),
-      this.state.config.fieldSchema
+      this.state.config.fieldSchema,
     );
     const firstFrame = {
       sample: firstFrameData as FrameSample,
@@ -235,7 +235,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       frameCount = getFrameNumber(
         this.state.duration,
         this.state.duration,
-        this.state.config.frameRate
+        this.state.config.frameRate,
       );
     }
 
@@ -271,7 +271,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     const frameCount = getFrameNumber(
       this.state.duration,
       this.state.duration,
-      this.state.config.frameRate
+      this.state.config.frameRate,
     );
 
     jotaiStore.set(updateTimelineConfigAtom, {
@@ -399,7 +399,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   updateOptions(
     options: Partial<VideoState["options"]>,
-    disableReload = false
+    disableReload = false,
   ) {
     const reload =
       !disableReload &&

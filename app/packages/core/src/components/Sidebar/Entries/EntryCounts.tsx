@@ -38,7 +38,7 @@ export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
         path,
       });
     },
-    [modal, path]
+    [modal, path],
   );
   const hasFilters = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
   const queryPerformance = useRecoilValue(fos.queryPerformance) && !modal;
@@ -67,7 +67,7 @@ const labelTagCount = selectorFamily<
         fos.cumulativeCounts({
           ...fos.MATCH_LABEL_TAGS,
           ...rest,
-        })
+        }),
       );
       return labeltags[tag] ?? 0;
     },
@@ -86,7 +86,7 @@ export const labelTagsCount = selectorFamily({
         fos.cumulativeCounts({
           ...fos.MATCH_LABEL_TAGS,
           ...props,
-        })
+        }),
       );
 
       if (!labelTagObj) return { count: 0, results: [] };

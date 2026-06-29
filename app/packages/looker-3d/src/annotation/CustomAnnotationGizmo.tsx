@@ -66,7 +66,7 @@ type GizmoHelperContext = {
 };
 
 const Context = /* @__PURE__ */ React.createContext<GizmoHelperContext>(
-  {} as GizmoHelperContext
+  {} as GizmoHelperContext,
 );
 
 const useGizmoContext = () => {
@@ -95,13 +95,13 @@ type GizmoHelperProps = ThreeElements["group"] & {
 };
 
 const isOrbitControls = (
-  controls: ControlsProto
+  controls: ControlsProto,
 ): controls is OrbitControlsType => {
   return "minPolarAngle" in (controls as OrbitControlsType);
 };
 
 const isCameraControls = (
-  controls: CameraControlsType | ControlsProto
+  controls: CameraControlsType | ControlsProto,
 ): controls is CameraControlsType => {
   return "getTarget" in (controls as CameraControlsType);
 };
@@ -124,7 +124,7 @@ const AnnotationGizmoHelper = ({
   const size = useThree((state) => state.size);
   const mainCamera = useThree((state) => state.camera);
   const defaultControls = useThree(
-    (state) => state.controls
+    (state) => state.controls,
   ) as unknown as ControlsProto | null;
   const invalidate = useThree((state) => state.invalidate);
   const gizmoRef = React.useRef<Group>(null!);
@@ -186,7 +186,7 @@ const AnnotationGizmoHelper = ({
 
       invalidate();
     },
-    [defaultControls, cameraState, onTarget, invalidate, onCameraTween]
+    [defaultControls, cameraState, onTarget, invalidate, onCameraTween],
   );
 
   useFrame((_, delta) => {
@@ -218,7 +218,7 @@ const AnnotationGizmoHelper = ({
             defaultControls.setPosition(
               mainCamera.position.x,
               mainCamera.position.y,
-              mainCamera.position.z
+              mainCamera.position.z,
             );
 
           if (onUpdate) onUpdate();
@@ -242,7 +242,7 @@ const AnnotationGizmoHelper = ({
 
   const gizmoHelperContext = React.useMemo(
     () => ({ tweenCamera }),
-    [tweenCamera]
+    [tweenCamera],
   );
 
   // Position gizmo component within scene (hardcoded for top-left alignment)
@@ -505,10 +505,10 @@ const CustomGizmo = ({
         newPosition.x,
         newPosition.y,
         newPosition.z,
-        true // animate
+        true, // animate
       );
     },
-    [mainCamera, cameraControlsRef, mainCameraState]
+    [mainCamera, cameraControlsRef, mainCameraState],
   );
 
   return (

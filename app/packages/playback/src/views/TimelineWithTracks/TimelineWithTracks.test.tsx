@@ -1,5 +1,4 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import { TrackProvider, type Track } from "../../lib/tracks/TrackProvider";
@@ -34,7 +33,7 @@ function renderTimeline(opts: RenderOpts = {}) {
       <TrackProvider initialTracks={tracks} initialPinnedIds={pinnedIds}>
         <TimelineWithTracks labelWidth={labelWidth} />
       </TrackProvider>
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 

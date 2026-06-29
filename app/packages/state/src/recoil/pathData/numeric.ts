@@ -39,7 +39,7 @@ export const nonfiniteData = selectorFamily({
         aggregation({
           ...params,
           path: params.path.split(".").slice(0, -1).join("."),
-        })
+        }),
       );
 
       if (data.__typename === "IntAggregation") {
@@ -89,7 +89,7 @@ export const boundedCount = selectorFamily<
     ({ get }) => {
       const nonfinites = Object.entries(get(nonfiniteData(params))).reduce(
         (sum, [key, count]) => (key === "none" ? sum : sum + (count || 0)),
-        0
+        0,
       );
 
       return get(count(params)) - nonfinites;

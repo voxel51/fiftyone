@@ -33,19 +33,19 @@ export const AgentSelect = ({
           label: descriptor.label,
         },
       })) ?? [],
-    [agentSelector.agents]
+    [agentSelector.agents],
   );
 
   const handleChange = useCallback(
     (value: string | null) => {
       const selected = value
-        ? agentSelector.agents?.find((e) => e.id === value) ?? null
+        ? (agentSelector.agents?.find((e) => e.id === value) ?? null)
         : null;
 
       setAgent(selected);
       onChange?.(selected);
     },
-    [agentSelector.agents, onChange]
+    [agentSelector.agents, onChange],
   );
 
   return (

@@ -49,7 +49,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
       ...sourceCounts(sources),
       topicCount,
     }),
-    [source?.sizeBytes, sources, topicCount]
+    [source?.sizeBytes, sources, topicCount],
   );
   const headerCaption = useMemo(
     () => (
@@ -61,7 +61,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
         topicCount={metadata.topicCount}
       />
     ),
-    [metadata]
+    [metadata],
   );
   const {
     initialTiles,
@@ -159,12 +159,12 @@ function McapHeaderCaption({
     `${(imageCount + pointCloudCount).toLocaleString()} ${plural(
       imageCount + pointCloudCount,
       "preview stream",
-      "preview streams"
+      "preview streams",
     )}`,
     `${labelCount.toLocaleString()} ${plural(
       labelCount,
       "label topic",
-      "label topics"
+      "label topics",
     )}`,
   ].filter(Boolean);
 
@@ -175,10 +175,10 @@ function sourceCounts(sources: readonly { type: string }[]) {
   return {
     imageCount: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.IMAGE).length,
     labelCount: sources.filter(
-      (s) => s.type === MCAP_SOURCE_TYPE.IMAGE_ANNOTATION
+      (s) => s.type === MCAP_SOURCE_TYPE.IMAGE_ANNOTATION,
     ).length,
     pointCloudCount: sources.filter(
-      (s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD
+      (s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD,
     ).length,
   };
 }

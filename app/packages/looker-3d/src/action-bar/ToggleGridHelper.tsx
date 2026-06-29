@@ -28,7 +28,7 @@ const GridConfigurator = () => {
     useRecoilState(gridSectionSizeAtom);
   const [gridSize, setGridSize] = useRecoilState(gridSizeAtom);
   const [isGridInfinitelyLarge, setIsGridInfinitelyLarge] = useRecoilState(
-    isGridInfinitelyLargeAtom
+    isGridInfinitelyLargeAtom,
   );
   const [shouldGridFade, setShouldGridFade] =
     useRecoilState(shouldGridFadeAtom);

@@ -36,7 +36,7 @@ describe("useMcapFrameTransforms", () => {
         label="frames"
         onState={onState}
         source={source}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -46,7 +46,7 @@ describe("useMcapFrameTransforms", () => {
       expect(onState).toHaveBeenLastCalledWith(
         expect.objectContaining({
           frameIds: ["base_link", "lidar"],
-        })
+        }),
       );
     });
     expect(client.readFrameTransformBootstrap).toHaveBeenCalledWith({
@@ -68,7 +68,7 @@ describe("useMcapFrameTransforms", () => {
         label="frames"
         source={source}
         timeNs={100n}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -97,7 +97,7 @@ describe("useMcapFrameTransforms", () => {
         label="frames"
         source={source}
         timeNs={100n}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -114,7 +114,7 @@ describe("useMcapFrameTransforms", () => {
         label="frames"
         source={source}
         timeNs={100n}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -144,7 +144,7 @@ describe("useMcapFrameTransforms", () => {
         label="frames"
         source={source}
         timeNs={100n}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -157,7 +157,7 @@ describe("useMcapFrameTransforms", () => {
         label="frames"
         source={source}
         timeNs={200n}
-      />
+      />,
     );
     expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(1);
 
@@ -185,13 +185,13 @@ describe("useMcapFrameTransforms", () => {
         label="frames"
         source={source}
         timeNs={100n}
-      />
+      />,
     );
 
     await flushReactWork();
     expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("frames").textContent).toBe(
-      "ready:pending:temporary tf failure"
+      "ready:pending:temporary tf failure",
     );
 
     await runNextTimer();
@@ -215,7 +215,7 @@ describe("useMcapFrameTransforms", () => {
         label="frames"
         source={source}
         timeNs={200n}
-      />
+      />,
     );
 
     await flushReactWork();
@@ -337,7 +337,7 @@ function sample(
         readonly y: number;
         readonly z: number;
       } = new Vector3(),
-  timeNs?: bigint
+  timeNs?: bigint,
 ): McapFrameTransformSample {
   return {
     childFrameId,

@@ -25,7 +25,7 @@ export default function Inputs({
       modal,
       path,
       withBounds: false,
-    })
+    }),
   );
   const setSnackBarErrors = useSetRecoilState(fos.snackbarErrors);
 

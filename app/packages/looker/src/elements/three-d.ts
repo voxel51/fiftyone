@@ -65,7 +65,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
 
   createHTMLElement(
     dispatchEvent: DispatchEvent,
-    { src, isOpmAvailable, isFo3d }: Readonly<ThreeDState["config"]>
+    { src, isOpmAvailable, isFo3d }: Readonly<ThreeDState["config"]>,
   ) {
     this.isOpmAvailable = isOpmAvailable;
     this.isFo3d = isFo3d;
@@ -78,7 +78,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
       // use 1x1 bas64 blank img
       this.element.setAttribute(
         "src",
-        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWNgYGD4DwABDQF/w6a5YwAAAABJRU5ErkJggg=="
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWNgYGD4DwABDQF/w6a5YwAAAABJRU5ErkJggg==",
       );
     }
 

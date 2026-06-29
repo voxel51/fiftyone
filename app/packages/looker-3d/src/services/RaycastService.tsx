@@ -61,7 +61,7 @@ export const RaycastService = ({ panelId }: RaycastServiceProps) => {
       const raycastableObjects = getRaycastableObjects(scene);
       const intersections = raycaster.intersectObjects(
         raycastableObjects,
-        false
+        false,
       );
 
       if (intersections.length === 0) {
@@ -100,7 +100,7 @@ export const RaycastService = ({ panelId }: RaycastServiceProps) => {
         timestamp: Date.now(),
       });
     },
-    [activeCursorPanel, panelId, camera, raycaster, scene]
+    [activeCursorPanel, panelId, camera, raycaster, scene],
   );
 
   // This effect clears stale raycast result when the cursor leaves all panels

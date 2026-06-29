@@ -28,10 +28,10 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
 
     return Boolean(
       isExtendedSelectionOn ||
-        hasFiltersValue ||
-        selectedSampleSet.size > 0 ||
-        isAttributeVisibilityOn ||
-        get(fos.gridSortBy)
+      hasFiltersValue ||
+      selectedSampleSet.size > 0 ||
+      isAttributeVisibilityOn ||
+      get(fos.gridSortBy),
     );
   },
 });
@@ -88,11 +88,11 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
           ]);
         }
       },
-    []
+    [],
   );
 
   const shouldToggleBookMarkIconOn = useRecoilValue(
-    shouldToggleBookMarkIconOnSelector
+    shouldToggleBookMarkIconOnSelector,
   );
 
   return shouldToggleBookMarkIconOn ? (

@@ -12,7 +12,7 @@ import typescript from "react-syntax-highlighter/dist/esm/languages/hljs/typescr
 import yaml from "react-syntax-highlighter/dist/esm/languages/hljs/yaml";
 import a11yDark from "react-syntax-highlighter/dist/esm/styles/hljs/a11y-dark";
 import a11yLight from "react-syntax-highlighter/dist/esm/styles/hljs/a11y-light";
-import { scrollable } from "../../scrollable.module.css";
+import scrollableStyles from "../../scrollable.module.css";
 
 SyntaxHighlighter.registerLanguage("bash", bash);
 SyntaxHighlighter.registerLanguage("javascript", javascript);
@@ -58,7 +58,7 @@ export default function CodeBlock({
       />
       <SyntaxHighlighter
         showLineNumbers
-        className={scrollable}
+        className={scrollableStyles.scrollable}
         language={(language ?? "python").toLowerCase()}
         customStyle={{ margin: 0, lineHeight: 1.75 }}
         style={mode === "dark" ? a11yDark : a11yLight}

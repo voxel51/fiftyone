@@ -12,7 +12,7 @@ import { Command } from "./types";
 export class CreateUserCommand extends Command<{ id: string; email: string }> {
   constructor(
     public readonly email: string,
-    public readonly displayName: string
+    public readonly displayName: string,
   ) {
     super();
   }
@@ -58,7 +58,7 @@ export const Demo = () => {
   // Shared state for handlers (simulating repository)
   const userIdCounterRef = useRef(0);
   const usersRef = useRef(
-    new Map<string, { id: string; name: string; email: string }>()
+    new Map<string, { id: string; name: string; email: string }>(),
   );
   const counterRef = useRef(0);
 
@@ -74,7 +74,7 @@ export const Demo = () => {
       usersRef.current.set(id, user);
 
       return { id, email: cmd.email };
-    }, [])
+    }, []),
   );
 
   // Register DeleteUserCommand handler
@@ -86,7 +86,7 @@ export const Demo = () => {
 
       usersRef.current.delete(cmd.userId);
       // Returns void
-    }, [])
+    }, []),
   );
 
   // Register FetchUserCommand handler
@@ -101,7 +101,7 @@ export const Demo = () => {
         throw new Error(`User not found: ${cmd.userId}`);
       }
       return user;
-    }, [])
+    }, []),
   );
 
   // Register IncrementCounterCommand handler
@@ -113,7 +113,7 @@ export const Demo = () => {
 
       counterRef.current += cmd.amount;
       return { newValue: counterRef.current };
-    }, [])
+    }, []),
   );
 
   // Register ToggleFeatureCommand handler
@@ -126,7 +126,7 @@ export const Demo = () => {
       // Simulate feature toggle logic
       const enabled = Math.random() > 0.5;
       return { enabled };
-    }, [])
+    }, []),
   );
 
   const handleCreateUser = async () => {
@@ -134,7 +134,7 @@ export const Demo = () => {
     setStatus("Creating user...");
     try {
       const result = await bus.execute(
-        new CreateUserCommand("user@example.com", "John Doe")
+        new CreateUserCommand("user@example.com", "John Doe"),
       );
       setStatus(`User created: ${result.id} (${result.email})`);
       setLastUserId(result.id);

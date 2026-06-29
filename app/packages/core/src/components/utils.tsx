@@ -109,10 +109,10 @@ export const TabOption = ({ active, options, color }: TabOptionProps) => {
         o.text === active
           ? color || theme.primary.plainColor
           : hovering[i]
-          ? theme.background.body
-          : theme.background.level2,
+            ? theme.background.body
+            : theme.background.level2,
       color: hovering ? theme.text.primary : theme.text.secondary,
-    }))
+    })),
   );
 
   const [style, set] = useSpring(() => ({
@@ -208,13 +208,13 @@ export const Button: React.FC<
     backgroundColor: disabled
       ? theme.background.paper
       : hover
-      ? color
-      : theme.background.body,
+        ? color
+        : theme.background.body,
     color: disabled
       ? theme.text.secondary
       : hover
-      ? theme.text.buttonHighlight
-      : theme.text.secondary,
+        ? theme.text.buttonHighlight
+        : theme.text.secondary,
     config: {
       duration: 150,
     },

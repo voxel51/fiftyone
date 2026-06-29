@@ -1,7 +1,4 @@
-import {
-  getFetchFunction,
-  setFetchFunction,
-} from "@fiftyone/utilities";
+import { getFetchFunction, setFetchFunction } from "@fiftyone/utilities";
 import * as ort from "onnxruntime-web";
 import type {
   DownloadProgress,
@@ -30,7 +27,7 @@ import { getEmbedding, putEmbedding } from "./embeddingCache";
 
 function postNotification<T extends keyof WorkerNotifications>(
   type: T,
-  result: WorkerNotifications[T]
+  result: WorkerNotifications[T],
 ): void {
   self.postMessage({ type, result });
 }
@@ -55,7 +52,7 @@ function postResponse<T extends WorkerMessageType>(
   id: number,
   type: T,
   result: WorkerResponse<T>,
-  transfer?: Transferable[]
+  transfer?: Transferable[],
 ): void {
   self.postMessage({ id, type, success: true, result }, transfer as any);
 }
@@ -89,10 +86,7 @@ const CACHE_PREFIX = `${ENCODER_CACHE_KEY}:${SAM2_INPUT_SIZE}:`;
  * Uses the shared fetch function so the path prefix configured by the main
  * thread is applied. Throws on non-2xx responses.
  */
-async function resolveModelUrl(
-  family: string,
-  file: string,
-): Promise<string> {
+async function resolveModelUrl(family: string, file: string): Promise<string> {
   const data = await getFetchFunction()<undefined, { url: string }>(
     "GET",
     `/runtime-assets/models/${family}/${file}`,
@@ -126,7 +120,9 @@ async function loadImageData(url: string): Promise<ImageData> {
     throw new Error(`Image fetch failed (check CORS headers): ${e}`);
   }
   if (!response.ok)
-    throw new Error(`Image fetch failed: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Image fetch failed: ${response.status} ${response.statusText}`,
+    );
 
   const blob = await response.blob();
   const bitmap = await createImageBitmap(blob).catch((e) => {
@@ -135,8 +131,7 @@ async function loadImageData(url: string): Promise<ImageData> {
 
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
   const ctx = canvas.getContext("2d");
-  if (!ctx)
-    throw new Error("Failed to get 2d context");
+  if (!ctx) throw new Error("Failed to get 2d context");
 
   ctx.drawImage(bitmap, 0, 0);
   bitmap.close();
@@ -158,13 +153,11 @@ function preprocessImage(imageData: ImageData): ProcessedImage {
   // to 1024x1024. No padding; just stretch the image to fill the input.
   const canvas = new OffscreenCanvas(SAM2_INPUT_SIZE, SAM2_INPUT_SIZE);
   const ctx = canvas.getContext("2d");
-  if (!ctx)
-    throw new Error("Failed to get 2d context");
+  if (!ctx) throw new Error("Failed to get 2d context");
 
   const tmp = new OffscreenCanvas(width, height);
   const tmpCtx = tmp.getContext("2d");
-  if (!tmpCtx)
-    throw new Error("Failed to get 2d context");
+  if (!tmpCtx) throw new Error("Failed to get 2d context");
   tmpCtx.putImageData(imageData, 0, 0);
   ctx.drawImage(tmp, 0, 0, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE);
 
@@ -186,7 +179,9 @@ function preprocessImage(imageData: ImageData): ProcessedImage {
  * Posts progress and warning notifications back to the main thread during download.
  */
 async function loadModel(): Promise<void> {
-  const opts: ort.InferenceSession.SessionOptions = { executionProviders: ["wasm"] };
+  const opts: ort.InferenceSession.SessionOptions = {
+    executionProviders: ["wasm"],
+  };
 
   async function loadSession(
     family: string,
@@ -201,28 +196,47 @@ async function loadModel(): Promise<void> {
       buf = await loadModelWeights(
         url,
         cacheKey,
-        (loaded, total) => postProgressNotification({ file: name, loaded, total }),
-        postWarningNotification
+        (loaded, total) =>
+          postProgressNotification({ file: name, loaded, total }),
+        postWarningNotification,
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      postErrorNotification({ kind: "download_failure", message: `${name} download failed: ${msg}` });
+      postErrorNotification({
+        kind: "download_failure",
+        message: `${name} download failed: ${msg}`,
+      });
       throw err;
     }
     try {
       return await ort.InferenceSession.create(buf, opts);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      postErrorNotification({ kind: failureKind, message: `${name} init failed: ${msg}` });
+      postErrorNotification({
+        kind: failureKind,
+        message: `${name} init failed: ${msg}`,
+      });
       throw err;
     }
   }
 
   if (!encoderSession)
-    encoderSession = await loadSession(FAMILY, ENCODER_FILE, ENCODER_CACHE_KEY, "encoder", "encoder_failure");
+    encoderSession = await loadSession(
+      FAMILY,
+      ENCODER_FILE,
+      ENCODER_CACHE_KEY,
+      "encoder",
+      "encoder_failure",
+    );
 
   if (!decoderSession)
-    decoderSession = await loadSession(FAMILY, DECODER_FILE, DECODER_CACHE_KEY, "decoder", "decoder_failure");
+    decoderSession = await loadSession(
+      FAMILY,
+      DECODER_FILE,
+      DECODER_CACHE_KEY,
+      "decoder",
+      "decoder_failure",
+    );
 }
 
 /**
@@ -234,10 +248,9 @@ async function loadModel(): Promise<void> {
  */
 async function embedAndDecode(
   imageUrl: string,
-  points: PromptPoint[]
+  points: PromptPoint[],
 ): Promise<InferenceResult> {
-  if (!encoderSession || !decoderSession)
-    throw new Error("Model not loaded");
+  if (!encoderSession || !decoderSession) throw new Error("Model not loaded");
 
   if (points.length === 0)
     throw new Error("At least one prompt point is required");
@@ -252,9 +265,21 @@ async function embedAndDecode(
   if (cached) {
     try {
       encResults = {
-        image_embed: new ort.Tensor("float32", cached.imageEmbed.data, cached.imageEmbed.dims),
-        high_res_feats_0: new ort.Tensor("float32", cached.highResFeats0.data, cached.highResFeats0.dims),
-        high_res_feats_1: new ort.Tensor("float32", cached.highResFeats1.data, cached.highResFeats1.dims),
+        image_embed: new ort.Tensor(
+          "float32",
+          cached.imageEmbed.data,
+          cached.imageEmbed.dims,
+        ),
+        high_res_feats_0: new ort.Tensor(
+          "float32",
+          cached.highResFeats0.data,
+          cached.highResFeats0.dims,
+        ),
+        high_res_feats_1: new ort.Tensor(
+          "float32",
+          cached.highResFeats1.data,
+          cached.highResFeats1.dims,
+        ),
       };
       geometry = cached.processedImage;
       cacheHit = true;
@@ -270,22 +295,40 @@ async function embedAndDecode(
     geometry = processed;
 
     encResults = await encoderSession.run({
-      image: new ort.Tensor("float32", processed.tensor, [1, 3, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE]),
+      image: new ort.Tensor("float32", processed.tensor, [
+        1,
+        3,
+        SAM2_INPUT_SIZE,
+        SAM2_INPUT_SIZE,
+      ]),
     });
 
     // Fire-and-forget: IDB write runs in background while decoder proceeds.
     // Memory LRU is updated synchronously inside putEmbedding before the first await.
-    putEmbedding(cacheKey, {
-      // Key names are defined by the ONNX model and must match exactly.
-      // Encode — input: "image"; outputs: "image_embed", "high_res_feats_0", "high_res_feats_1"
-      imageEmbed: { data: encResults["image_embed"].data as Float32Array, dims: [...encResults["image_embed"].dims] },
-      highResFeats0: { data: encResults["high_res_feats_0"].data as Float32Array, dims: [...encResults["high_res_feats_0"].dims] },
-      highResFeats1: { data: encResults["high_res_feats_1"].data as Float32Array, dims: [...encResults["high_res_feats_1"].dims] },
-      processedImage: {
-        originalWidth: geometry.originalWidth,
-        originalHeight: geometry.originalHeight,
+    putEmbedding(
+      cacheKey,
+      {
+        // Key names are defined by the ONNX model and must match exactly.
+        // Encode — input: "image"; outputs: "image_embed", "high_res_feats_0", "high_res_feats_1"
+        imageEmbed: {
+          data: encResults["image_embed"].data as Float32Array,
+          dims: [...encResults["image_embed"].dims],
+        },
+        highResFeats0: {
+          data: encResults["high_res_feats_0"].data as Float32Array,
+          dims: [...encResults["high_res_feats_0"].dims],
+        },
+        highResFeats1: {
+          data: encResults["high_res_feats_1"].data as Float32Array,
+          dims: [...encResults["high_res_feats_1"].dims],
+        },
+        processedImage: {
+          originalWidth: geometry.originalWidth,
+          originalHeight: geometry.originalHeight,
+        },
       },
-    }, postWarningNotification);
+      postWarningNotification,
+    );
   }
 
   // Build decoder inputs
@@ -306,7 +349,11 @@ async function embedAndDecode(
     high_res_feats_1: encResults["high_res_feats_1"],
     point_coords: new ort.Tensor("float32", coords, [1, n, 2]),
     point_labels: new ort.Tensor("float32", labels, [1, n]),
-    mask_input: new ort.Tensor("float32", new Float32Array(SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE), [1, 1, SAM2_OUTPUT_SIZE, SAM2_OUTPUT_SIZE]),
+    mask_input: new ort.Tensor(
+      "float32",
+      new Float32Array(SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE),
+      [1, 1, SAM2_OUTPUT_SIZE, SAM2_OUTPUT_SIZE],
+    ),
     has_mask_input: new ort.Tensor("float32", new Float32Array([0]), [1]),
   });
 
@@ -317,19 +364,22 @@ async function embedAndDecode(
 
   let bestIdx = 0;
   for (let i = 1; i < ious.length; i++) {
-    if (ious[i] > ious[bestIdx])
-      bestIdx = i;
+    if (ious[i] > ious[bestIdx]) bestIdx = i;
   }
 
   const bestMask = masks.slice(bestIdx * sz, (bestIdx + 1) * sz);
   const bbox = computeMaskBbox(bestMask, geometry);
 
-  if (!bbox)
-    throw new Error("Model returned an empty mask");
+  if (!bbox) throw new Error("Model returned an empty mask");
 
   const finalMask = postprocessMask(bestMask, geometry, bbox);
 
-  return { mask: finalMask, maskWidth: bbox.w, maskHeight: bbox.h, bbox: normalizeBbox(bbox, geometry) };
+  return {
+    mask: finalMask,
+    maskWidth: bbox.w,
+    maskHeight: bbox.h,
+    bbox: normalizeBbox(bbox, geometry),
+  };
 }
 
 // Worker message handler
@@ -350,14 +400,19 @@ self.onmessage = async (e: MessageEvent) => {
     } else if (type === "embedAndDecode") {
       const result = await embedAndDecode(payload.imageUrl, payload.points);
       postStatusNotification("ready");
-      postResponse(id, "embedAndDecode", result, [result.mask.buffer as ArrayBuffer]);
+      postResponse(id, "embedAndDecode", result, [
+        result.mask.buffer as ArrayBuffer,
+      ]);
     } else {
       postError(id, type, `Unknown message type: ${type}`);
     }
   } catch (err) {
     if (type === "embedAndDecode") {
       postStatusNotification("failure");
-      postErrorNotification({ kind: "inference_failure", message: err instanceof Error ? err.message : String(err) });
+      postErrorNotification({
+        kind: "inference_failure",
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
     postError(id, type, err instanceof Error ? err.message : String(err));
   }

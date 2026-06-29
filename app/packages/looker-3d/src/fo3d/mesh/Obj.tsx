@@ -34,7 +34,7 @@ const ObjMeshDefaultMaterial = ({
     () =>
       preTransformedObjPath ??
       getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
-    [objPath, preTransformedObjPath, fo3dRoot]
+    [objPath, preTransformedObjPath, fo3dRoot],
   );
 
   const mesh_ = useFoLoader(OBJLoader, objUrl);
@@ -95,19 +95,19 @@ const ObjMeshWithCustomMaterial = ({
     () =>
       preTransformedObjPath ??
       getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
-    [objPath, preTransformedObjPath, fo3dRoot]
+    [objPath, preTransformedObjPath, fo3dRoot],
   );
 
   const mtlUrl = useMemo(
     () =>
       preTransformedMtlPath ??
       getSampleSrc(getResolvedUrlForFo3dAsset(mtlPath, fo3dRoot)),
-    [mtlPath, preTransformedMtlPath, fo3dRoot]
+    [mtlPath, preTransformedMtlPath, fo3dRoot],
   );
 
   const resourcePath = useMemo(
     () => (mtlUrl ? getBasePathForTextures(fo3dRoot, mtlUrl) : null),
-    [fo3dRoot, mtlUrl]
+    [fo3dRoot, mtlUrl],
   );
 
   const materials = useFoLoader(MTLLoader, mtlUrl, (loader) => {

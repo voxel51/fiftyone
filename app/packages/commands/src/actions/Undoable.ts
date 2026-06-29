@@ -21,7 +21,7 @@ export class DelegatingUndoable extends DelegatingAction implements Undoable {
   constructor(
     id: string,
     execFn: () => void | Promise<void>,
-    undoFn: () => void | Promise<void>
+    undoFn: () => void | Promise<void>,
   ) {
     super(id, execFn);
     this._undoFn = undoFn;

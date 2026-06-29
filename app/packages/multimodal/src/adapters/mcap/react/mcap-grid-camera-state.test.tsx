@@ -17,7 +17,7 @@ describe("MCAP grid camera state", () => {
       <>
         <CameraHarness id="a" />
         <CameraHarness id="b" />
-      </>
+      </>,
     );
 
     expect(screen.getByTestId("camera-a").textContent).toBe("empty");

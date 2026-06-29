@@ -56,8 +56,8 @@ export default ({
           cursor: disableTag
             ? "not-allowed"
             : disabled || !available
-            ? "default"
-            : "pointer",
+              ? "default"
+              : "pointer",
         }}
         icon={tagging ? <Loading /> : <LocalOffer />}
         open={open}

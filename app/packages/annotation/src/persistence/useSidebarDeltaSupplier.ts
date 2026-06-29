@@ -38,7 +38,7 @@ export const useSidebarDeltaSupplier = (): DeltaSupplier => {
   return useCallback(() => {
     return {
       deltas: Object.entries(stagedMutations).flatMap(([path, mutation]) =>
-        getLabelDelta({ data: mutation.data, path, op: mutation.op }, path)
+        getLabelDelta({ data: mutation.data, path, op: mutation.op }, path),
       ),
     };
   }, [getLabelDelta, stagedMutations]);

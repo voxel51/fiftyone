@@ -18,8 +18,8 @@ export default function KeyValueView(props) {
   const keyValue = isPlainObject(data)
     ? data
     : isPlainObject(defaultValue)
-    ? defaultValue
-    : {};
+      ? defaultValue
+      : {};
 
   return (
     <Box {...getComponentProps(props, "container")}>

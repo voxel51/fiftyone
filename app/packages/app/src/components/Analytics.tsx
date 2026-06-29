@@ -43,7 +43,7 @@ export default function Analytics({ fragment }: { fragment: Analytics$key }) {
         version
       }
     `,
-    fragment
+    fragment,
   );
   const callGA = useCallGA(info);
 

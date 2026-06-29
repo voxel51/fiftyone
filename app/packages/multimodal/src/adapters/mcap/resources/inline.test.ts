@@ -9,19 +9,19 @@ import { createInlineMcapResourceClient } from "./inline";
 import { MCAP_ACTIVE_TIMELINE } from "../types";
 
 const FRAME_TRANSFORM_SCHEMA_DATA = bytes(
-  "CmcKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiIrCglUaW1lc3RhbXASDwoHc2Vjb25kcxgBIAEoAxINCgVuYW5vcxgCIAEoBWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwpnChlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAFiBnByb3RvMwrIAgodZm94Z2xvdmUvRnJhbWVUcmFuc2Zvcm0ucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYuVGltZXN0YW1wLnByb3RvGhZmb3hnbG92ZS9WZWN0b3IzLnByb3RvGhlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvIsABCg5GcmFtZVRyYW5zZm9ybRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD3BhcmVudF9mcmFtZV9pZBgCIAEoCRIWCg5jaGlsZF9mcmFtZV9pZBgDIAEoCRImCgt0cmFuc2xhdGlvbhgEIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSJgoIcm90YXRpb24YBSABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzM="
+  "CmcKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiIrCglUaW1lc3RhbXASDwoHc2Vjb25kcxgBIAEoAxINCgVuYW5vcxgCIAEoBWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwpnChlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAFiBnByb3RvMwrIAgodZm94Z2xvdmUvRnJhbWVUcmFuc2Zvcm0ucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYuVGltZXN0YW1wLnByb3RvGhZmb3hnbG92ZS9WZWN0b3IzLnByb3RvGhlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvIsABCg5GcmFtZVRyYW5zZm9ybRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD3BhcmVudF9mcmFtZV9pZBgCIAEoCRIWCg5jaGlsZF9mcmFtZV9pZBgDIAEoCRImCgt0cmFuc2xhdGlvbhgEIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSJgoIcm90YXRpb24YBSABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzM=",
 );
 const FRAME_TRANSFORMS_SCHEMA_DATA = bytes(
-  "CmcKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiIrCglUaW1lc3RhbXASDwoHc2Vjb25kcxgBIAEoAxINCgVuYW5vcxgCIAEoBWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwpnChlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAFiBnByb3RvMwrIAgodZm94Z2xvdmUvRnJhbWVUcmFuc2Zvcm0ucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYuVGltZXN0YW1wLnByb3RvGhZmb3hnbG92ZS9WZWN0b3IzLnByb3RvGhlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvIsABCg5GcmFtZVRyYW5zZm9ybRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD3BhcmVudF9mcmFtZV9pZBgCIAEoCRIWCg5jaGlsZF9mcmFtZV9pZBgDIAEoCRImCgt0cmFuc2xhdGlvbhgEIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSJgoIcm90YXRpb24YBSABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzMKkgEKHmZveGdsb3ZlL0ZyYW1lVHJhbnNmb3Jtcy5wcm90bxIIZm94Z2xvdmUaHWZveGdsb3ZlL0ZyYW1lVHJhbnNmb3JtLnByb3RvIj8KD0ZyYW1lVHJhbnNmb3JtcxIsCgp0cmFuc2Zvcm1zGAEgAygLMhguZm94Z2xvdmUuRnJhbWVUcmFuc2Zvcm1iBnByb3RvMw=="
+  "CmcKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiIrCglUaW1lc3RhbXASDwoHc2Vjb25kcxgBIAEoAxINCgVuYW5vcxgCIAEoBWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwpnChlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAFiBnByb3RvMwrIAgodZm94Z2xvdmUvRnJhbWVUcmFuc2Zvcm0ucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYuVGltZXN0YW1wLnByb3RvGhZmb3hnbG92ZS9WZWN0b3IzLnByb3RvGhlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvIsABCg5GcmFtZVRyYW5zZm9ybRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD3BhcmVudF9mcmFtZV9pZBgCIAEoCRIWCg5jaGlsZF9mcmFtZV9pZBgDIAEoCRImCgt0cmFuc2xhdGlvbhgEIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSJgoIcm90YXRpb24YBSABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzMKkgEKHmZveGdsb3ZlL0ZyYW1lVHJhbnNmb3Jtcy5wcm90bxIIZm94Z2xvdmUaHWZveGdsb3ZlL0ZyYW1lVHJhbnNmb3JtLnByb3RvIj8KD0ZyYW1lVHJhbnNmb3JtcxIsCgp0cmFuc2Zvcm1zGAEgAygLMhguZm94Z2xvdmUuRnJhbWVUcmFuc2Zvcm1iBnByb3RvMw==",
 );
 const FRAME_TRANSFORM_MESSAGE = bytes(
-  "CgQIBxAUEgNtYXAaBWxpZGFyIhsJAAAAAAAA8D8RAAAAAAAAAEAZAAAAAAAACEAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw=="
+  "CgQIBxAUEgNtYXAaBWxpZGFyIhsJAAAAAAAA8D8RAAAAAAAAAEAZAAAAAAAACEAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw==",
 );
 const FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP = bytes(
-  "EgNtYXAaBWxpZGFyIhsJAAAAAAAA8D8RAAAAAAAAAEAZAAAAAAAACEAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw=="
+  "EgNtYXAaBWxpZGFyIhsJAAAAAAAA8D8RAAAAAAAAAEAZAAAAAAAACEAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw==",
 );
 const FRAME_TRANSFORMS_MESSAGE_WITHOUT_TIMESTAMP = bytes(
-  "ClMSA21hcBoJYmFzZV9saW5rIhsJAAAAAAAA8D8RAAAAAAAAAAAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPwpVEgliYXNlX2xpbmsaBWxpZGFyIhsJAAAAAAAAAAARAAAAAAAAAEAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw=="
+  "ClMSA21hcBoJYmFzZV9saW5rIhsJAAAAAAAA8D8RAAAAAAAAAAAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPwpVEgliYXNlX2xpbmsaBWxpZGFyIhsJAAAAAAAAAAARAAAAAAAAAEAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw==",
 );
 
 describe("MCAP resources", () => {
@@ -80,7 +80,7 @@ describe("MCAP resources", () => {
               [9, 5n],
             ]),
           }),
-        })
+        }),
       ),
     });
 
@@ -107,7 +107,7 @@ describe("MCAP resources", () => {
       },
     });
     expect(topics[1]?.metadata["mcap.channel_metadata.frame_id"]).toBe(
-      "cam-left"
+      "cam-left",
     );
     expect(topics[2]).toMatchObject({
       displayName: "/lidar",
@@ -146,7 +146,7 @@ describe("MCAP resources", () => {
               }),
             ],
           ]),
-        })
+        }),
       ),
     });
 
@@ -155,10 +155,10 @@ describe("MCAP resources", () => {
     });
 
     expect(topics[0]?.metadata["mcap.channel_metadata.frame_id"]).toBe(
-      "raw-camera-front"
+      "raw-camera-front",
     );
     expect(topics[1]?.metadata["mcap.channel_metadata.frame_id"]).toBe(
-      "lidar-top"
+      "lidar-top",
     );
   });
 
@@ -172,7 +172,7 @@ describe("MCAP resources", () => {
           channelsById: new Map([
             [7, createChannel({ id: 7, topic: "/camera" })],
           ]),
-        })
+        }),
       ),
     });
 
@@ -208,7 +208,7 @@ describe("MCAP resources", () => {
             ],
           ]),
           schemasById: new Map(),
-        })
+        }),
       ),
     });
 
@@ -258,7 +258,7 @@ describe("MCAP resources", () => {
       readerFactory: vi.fn(async () =>
         createReader({
           readMessages,
-        })
+        }),
       ),
     });
 
@@ -304,7 +304,7 @@ describe("MCAP resources", () => {
           statistics: createStatistics({
             channelMessageCounts: new Map([[10, 1n]]),
           }),
-        })
+        }),
       ),
     });
 
@@ -356,7 +356,7 @@ describe("MCAP resources", () => {
               }),
             ],
           ]),
-        })
+        }),
       ),
     });
 
@@ -409,7 +409,7 @@ describe("MCAP resources", () => {
           statistics: createStatistics({
             channelMessageCounts: new Map([[10, 1n]]),
           }),
-        })
+        }),
       ),
     });
 
@@ -464,7 +464,7 @@ describe("MCAP resources", () => {
               }),
             ],
           ]),
-        })
+        }),
       ),
     });
 
@@ -521,7 +521,7 @@ describe("MCAP resources", () => {
               }),
             ],
           ]),
-        })
+        }),
       ),
     });
 
@@ -585,7 +585,7 @@ describe("MCAP resources", () => {
               }),
             ],
           ]),
-        })
+        }),
       ),
     });
 
@@ -637,7 +637,7 @@ describe("MCAP resources", () => {
           statistics: createStatistics({
             channelMessageCounts: new Map([[10, 1n]]),
           }),
-        })
+        }),
       ),
     });
 
@@ -683,7 +683,7 @@ describe("MCAP resources", () => {
           statistics: createStatistics({
             channelMessageCounts: new Map([[10, 10_000n]]),
           }),
-        })
+        }),
       ),
     });
 
@@ -709,7 +709,7 @@ describe("MCAP resources", () => {
           channelsById: new Map([[7, createChannel()]]),
           messages: [message],
           schemasById: new Map([[3, createSchema(schemaData)]]),
-        })
+        }),
       ),
     });
 
@@ -718,7 +718,7 @@ describe("MCAP resources", () => {
         limit: 1,
         source,
         topics: ["/topic"],
-      })
+      }),
     );
 
     expect(messages).toHaveLength(1);
@@ -765,7 +765,7 @@ describe("MCAP resources", () => {
       readerFactory: vi.fn(async () =>
         createReader({
           messages: [createMessage(new Uint8Array([1]))],
-        })
+        }),
       ),
     });
 
@@ -775,8 +775,8 @@ describe("MCAP resources", () => {
           limit: 0,
           source: createMcapSourceDescriptor(),
           topics: ["/topic"],
-        })
-      )
+        }),
+      ),
     ).resolves.toEqual([]);
     expect(decodeClient.decode).not.toHaveBeenCalled();
   });
@@ -816,7 +816,7 @@ describe("MCAP resources", () => {
             [8, createChannel({ id: 8, topic: "/lidar" })],
           ]),
           readMessages,
-        })
+        }),
       ),
     });
 
@@ -833,10 +833,10 @@ describe("MCAP resources", () => {
 
     expect(windows).toHaveLength(2);
     expect(
-      windows[0]?.messages.map((message) => message.timelineTimeNs)
+      windows[0]?.messages.map((message) => message.timelineTimeNs),
     ).toEqual([90n, 108n]);
     expect(
-      windows[1]?.messages.map((message) => message.timelineTimeNs)
+      windows[1]?.messages.map((message) => message.timelineTimeNs),
     ).toEqual([90n, 108n]);
     expect(readMessages).toHaveBeenCalledTimes(1);
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
@@ -863,7 +863,7 @@ describe("MCAP resources", () => {
       readerFactory: vi.fn(async () =>
         createReader({
           messages,
-        })
+        }),
       ),
     });
 
@@ -932,7 +932,7 @@ describe("MCAP resources", () => {
           ]),
           readIndexedMessageTimes,
           readMessages,
-        })
+        }),
       ),
     });
 
@@ -949,10 +949,10 @@ describe("MCAP resources", () => {
 
     expect(windows).toHaveLength(2);
     expect(
-      windows[0]?.messages.map((message) => message.timelineTimeNs)
+      windows[0]?.messages.map((message) => message.timelineTimeNs),
     ).toEqual([90n, 108n]);
     expect(
-      windows[1]?.messages.map((message) => message.timelineTimeNs)
+      windows[1]?.messages.map((message) => message.timelineTimeNs),
     ).toEqual([90n, 108n]);
     expect(readIndexedMessageTimes).toHaveBeenCalledWith({
       endTimeNs: 125n,
@@ -977,7 +977,7 @@ describe("MCAP resources", () => {
       client.readTopicTimeBounds({
         source: createMcapSourceDescriptor(),
         topics: ["/camera", "/lidar"],
-      })
+      }),
     ).resolves.toEqual([
       { firstMessageTimeNs: null, lastMessageTimeNs: null, topic: "/camera" },
       { firstMessageTimeNs: null, lastMessageTimeNs: null, topic: "/lidar" },
@@ -996,7 +996,7 @@ describe("MCAP resources", () => {
       readerFactory: vi.fn(async () =>
         Object.assign(createReader({ chunkIndexes: [createChunkIndex()] }), {
           readTopicIndexedTimeBounds,
-        })
+        }),
       ),
     });
     const request = {
@@ -1043,7 +1043,7 @@ describe("MCAP resources", () => {
           readIndexedMessageTimes,
           readLatestIndexedMessageTimes,
           readMessages,
-        })
+        }),
       ),
     });
 
@@ -1117,7 +1117,7 @@ describe("MCAP resources", () => {
           readIndexedMessageTimes,
           readLatestIndexedMessageTimes,
           readMessages,
-        })
+        }),
       ),
     });
 
@@ -1135,8 +1135,8 @@ describe("MCAP resources", () => {
 
     expect(
       windows[0]?.messagesByTopic["/topic"]?.map(
-        (message) => message.timelineTimeNs
-      )
+        (message) => message.timelineTimeNs,
+      ),
     ).toEqual([80n, 90n]);
     expect(readLatestIndexedMessageTimes).toHaveBeenCalledExactlyOnceWith({
       limitPerTopic: 2,
@@ -1165,7 +1165,7 @@ describe("MCAP resources", () => {
               : [],
           ],
         ]);
-      }
+      },
     );
     const readMessages = vi.fn(async function* (args?: {
       readonly endTime?: bigint;
@@ -1183,7 +1183,7 @@ describe("MCAP resources", () => {
           readIndexedMessageTimes,
           readLatestIndexedMessageTimes,
           readMessages,
-        })
+        }),
       ),
     });
 
@@ -1212,7 +1212,7 @@ describe("MCAP resources", () => {
     });
     expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(1);
     expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(
-      4_000n
+      4_000n,
     );
 
     // Backward seek before the memoized predecessor: fresh probe.
@@ -1261,7 +1261,7 @@ describe("MCAP resources", () => {
           readIndexedMessageTimes,
           readLatestIndexedMessageTimes,
           readMessages,
-        })
+        }),
       ),
     });
 
@@ -1287,7 +1287,7 @@ describe("MCAP resources", () => {
     });
     expect(readLatestIndexedMessageTimes).not.toHaveBeenCalled();
     expect(windows[0]?.messagesByTopic["/camera"]?.[0]?.timelineTimeNs).toBe(
-      90n
+      90n,
     );
   });
 
@@ -1306,7 +1306,7 @@ describe("MCAP resources", () => {
         createReader({
           readIndexedMessageTimes,
           readLatestIndexedMessageTimes,
-        })
+        }),
       ),
     });
 
@@ -1315,7 +1315,7 @@ describe("MCAP resources", () => {
         timeNs: [5_000n],
         source,
         topics: ["/topic"],
-      })
+      }),
     ).rejects.toThrow("index read failed");
   });
 
@@ -1352,7 +1352,7 @@ describe("MCAP resources", () => {
     });
 
     expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(
-      1_000n
+      1_000n,
     );
     // One bounded scan plus one bounded lookback — clamped at 0, never
     // the whole file beyond the documented lookback.
@@ -1394,7 +1394,7 @@ describe("MCAP resources", () => {
         createReader({
           readIndexedMessageTimes,
           readMessages,
-        })
+        }),
       ),
     });
 
@@ -1428,7 +1428,7 @@ describe("MCAP resources", () => {
         source: createMcapSourceDescriptor(),
         timeNs: [],
         topics: ["/camera"],
-      })
+      }),
     ).resolves.toEqual([]);
     expect(readerFactory).not.toHaveBeenCalled();
   });
@@ -1466,14 +1466,14 @@ describe("MCAP resources", () => {
           ],
           readIndexedMessageTimes,
           readMessages,
-        })
+        }),
       ),
     });
 
     await expect(
       client.readTimelineRange({
         source,
-      })
+      }),
     ).resolves.toEqual({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
       endTimeNs: 450n,
@@ -1500,8 +1500,8 @@ describe("MCAP resources", () => {
         client.readDecodedMessages({
           source,
           topics: ["/topic"],
-        })
-      )
+        }),
+      ),
     ).rejects.toThrow("exceeds source size 128");
     expect(readBytes).not.toHaveBeenCalled();
   });
@@ -1518,7 +1518,7 @@ describe("MCAP resources", () => {
               messageStartTime: 10n,
             }),
           ],
-        })
+        }),
       );
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
@@ -1530,7 +1530,7 @@ describe("MCAP resources", () => {
     };
 
     await expect(client.readTimelineRange(request)).rejects.toThrow(
-      "temporary init failure"
+      "temporary init failure",
     );
     await expect(client.readTimelineRange(request)).resolves.toEqual({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
@@ -1542,7 +1542,7 @@ describe("MCAP resources", () => {
 });
 
 async function collect<T>(
-  generator: AsyncGenerator<T, void, void>
+  generator: AsyncGenerator<T, void, void>,
 ): Promise<readonly T[]> {
   const messages: T[] = [];
   for await (const message of generator) {
@@ -1635,7 +1635,7 @@ function createIndexedMessageTime(
   topic: string,
   channelId: number,
   logTimeNs: bigint,
-  messageOffset: bigint
+  messageOffset: bigint,
 ) {
   return {
     channelId,
@@ -1659,7 +1659,7 @@ function createTestDecodeClient(): DecodeClient {
 }
 
 function createTestDecodedOutput(
-  overrides: Partial<DecodedOutput> = {}
+  overrides: Partial<DecodedOutput> = {},
 ): DecodedOutput {
   return {
     attributes: {},
@@ -1672,7 +1672,7 @@ function createTestDecodedOutput(
 }
 
 function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
 ): McapTypes.TypedMcapRecords["Channel"] {
   return {
     id: options.id ?? 7,
@@ -1686,7 +1686,7 @@ function createChannel(
 
 function createSchema(
   data: Uint8Array,
-  options: Partial<McapTypes.TypedMcapRecords["Schema"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["Schema"]> = {},
 ): McapTypes.TypedMcapRecords["Schema"] {
   return {
     data,
@@ -1698,7 +1698,7 @@ function createSchema(
 }
 
 function createStatistics(
-  options: Partial<McapTypes.TypedMcapRecords["Statistics"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["Statistics"]> = {},
 ): McapTypes.TypedMcapRecords["Statistics"] {
   return {
     attachmentCount: options.attachmentCount ?? 0,
@@ -1715,7 +1715,7 @@ function createStatistics(
 }
 
 function createChunkIndex(
-  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {},
 ): McapTypes.TypedMcapRecords["ChunkIndex"] {
   return {
     chunkLength: options.chunkLength ?? 256n,
@@ -1733,7 +1733,7 @@ function createChunkIndex(
 
 function createMessage(
   data: Uint8Array,
-  options: Partial<McapTypes.TypedMcapRecords["Message"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["Message"]> = {},
 ): McapTypes.TypedMcapRecords["Message"] {
   return {
     channelId: options.channelId ?? 7,

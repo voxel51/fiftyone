@@ -10,12 +10,12 @@ const useReset = (options: { modal: boolean; path: string }) => {
         set(fos.numericExcludeAtom(options), false);
 
         const listField = await snapshot.getPromise(
-          fos.isListField(options.path)
+          fos.isListField(options.path),
         );
         (await snapshot.getPromise(fos.isSidebarFilterMode)) &&
           set(fos.numericIsMatchingAtom(options), !listField);
       },
-    [options]
+    [options],
   );
 };
 
@@ -29,7 +29,7 @@ function Reset({
   path: string;
 }) {
   const hasVisibilitySetting = useRecoilValue(
-    fos.fieldHasVisibilitySetting({ modal, path })
+    fos.fieldHasVisibilitySetting({ modal, path }),
   );
   const isFiltered = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
   const reset = useReset({ modal, path });

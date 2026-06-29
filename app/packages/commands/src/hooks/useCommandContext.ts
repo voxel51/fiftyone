@@ -11,7 +11,7 @@ import { resolveContext } from "./utils";
  */
 export const useCommandContext = (
   context?: CommandContext | string,
-  inheritCurrent?: boolean
+  inheritCurrent?: boolean,
 ): {
   context: CommandContext;
   activate: () => void;

@@ -18,7 +18,7 @@ type TraceWithIds = {
 function getIdForTrace(
   point: Plotly.Point,
   trace: TraceWithIds,
-  options: { is2DArray?: boolean } = {}
+  options: { is2DArray?: boolean } = {},
 ) {
   const { is2DArray = false } = options;
   const { data } = point;

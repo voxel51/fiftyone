@@ -26,7 +26,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
     window.dispatchEvent(
       new CustomEvent(FRAME_LOADED_EVENT, {
         detail: { localId: localIdRef.current },
-      })
+      }),
     );
   }, [data?.signature]);
 
@@ -63,7 +63,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
         });
       }
     },
-    [triggerEvent, on_load_range, localIdRef.current]
+    [triggerEvent, on_load_range, localIdRef.current],
   );
 
   const [_currentFrame, setCurrentFrame] = useState(DEFAULT_FRAME_NUMBER);
@@ -80,7 +80,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
       });
       setCurrentFrame(frameNumber);
     },
-    [data, setPanelState, panelId, target]
+    [data, setPanelState, panelId, target],
   );
 
   const { isTimelineInitialized, subscribe } = useTimeline(timeline_name);

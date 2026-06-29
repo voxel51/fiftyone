@@ -34,7 +34,7 @@ export function getCuboidWorldCorners(
   location: [number, number, number],
   dimensions: [number, number, number],
   rotation?: [number, number, number],
-  quaternion?: [number, number, number, number]
+  quaternion?: [number, number, number, number],
 ): Vector3[] {
   const [w, h, d] = dimensions;
   const hw = w / 2;
@@ -59,11 +59,11 @@ export function getCuboidWorldCorners(
       quaternion[0],
       quaternion[1],
       quaternion[2],
-      quaternion[3]
+      quaternion[3],
     );
   } else if (rotation) {
     q = new Quaternion().setFromEuler(
-      new Euler(rotation[0], rotation[1], rotation[2])
+      new Euler(rotation[0], rotation[1], rotation[2]),
     );
   } else {
     q = new Quaternion();
@@ -84,7 +84,7 @@ export function getCuboidWorldCorners(
 export function projectToPixel(
   worldPoint: Vector3,
   worldToCam: Matrix4,
-  intrinsics: CameraIntrinsics
+  intrinsics: CameraIntrinsics,
 ): ProjectedCorner | null {
   const camPt = worldPoint.clone().applyMatrix4(worldToCam);
 
@@ -104,7 +104,7 @@ export function projectToPixel(
  */
 export function computeCuboidProjection(
   label: CuboidTransformData,
-  frustumData: FrustumData
+  frustumData: FrustumData,
 ): CuboidProjectionData | null {
   if (!frustumData.intrinsics || !frustumData.staticTransform) return null;
 
@@ -114,14 +114,14 @@ export function computeCuboidProjection(
     label.location,
     label.dimensions,
     label.rotation,
-    label.quaternion
+    label.quaternion,
   );
 
   const camToWorld = staticTransformToMatrix4(staticTransform);
   const worldToCam = camToWorld.clone().invert();
 
   const projected = corners.map((c) =>
-    projectToPixel(c, worldToCam, intrinsics)
+    projectToPixel(c, worldToCam, intrinsics),
   );
 
   const edges: CuboidProjectionData["edges"] = [];
@@ -145,7 +145,7 @@ export function computeCuboidProjection(
  */
 export function computePolylineProjection(
   label: PolylineTransformData,
-  frustumData: FrustumData
+  frustumData: FrustumData,
 ): PolylineProjectionData | null {
   if (!frustumData.intrinsics || !frustumData.staticTransform) return null;
 
@@ -159,7 +159,7 @@ export function computePolylineProjection(
 
   for (const segment of label.points3d) {
     const projected = segment.map((pt) =>
-      projectToPixel(new Vector3(pt[0], pt[1], pt[2]), worldToCam, intrinsics)
+      projectToPixel(new Vector3(pt[0], pt[1], pt[2]), worldToCam, intrinsics),
     );
 
     allVertices.push(...projected);

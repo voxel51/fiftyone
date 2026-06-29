@@ -28,12 +28,12 @@ export function useStreamValue<T = unknown>(id: string): T | null {
  * identity re-derives the combined atom.
  */
 export function useStreamValues<T = unknown>(
-  ids: readonly string[]
+  ids: readonly string[],
 ): readonly (T | null)[] {
   const store = usePlaybackStore();
   const valuesAtom = useMemo(
     () => atom((get) => ids.map((id) => get(streamValueAtom(id)))),
-    [ids]
+    [ids],
   );
   return useAtomValue(valuesAtom, { store }) as readonly (T | null)[];
 }

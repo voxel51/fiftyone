@@ -26,13 +26,13 @@ export const PointSizeSlider = () => {
 
   const [minBound, setMinBound] = useState(pointSizeNum / 10);
   const [maxBound, setMaxBound] = useState(() =>
-    pointSizeNum === 0 ? 2 : pointSizeNum * 2
+    pointSizeNum === 0 ? 2 : pointSizeNum * 2,
   );
   const [isTextBoxEmpty, setIsTextBoxEmpty] = useState(false);
 
   const step = useMemo(
     () => (pointSizeNum === 0 ? 0.01 : pointSizeNum / 10),
-    [minBound, maxBound]
+    [minBound, maxBound],
   );
 
   const handleSliderChange = useCallback(
@@ -40,7 +40,7 @@ export const PointSizeSlider = () => {
       setPointSize(String(newValue));
       setIsTextBoxEmpty(false);
     },
-    [setPointSize]
+    [setPointSize],
   );
 
   const handleTextBoxChange = useCallback(
@@ -63,14 +63,14 @@ export const PointSizeSlider = () => {
         setMaxBound(Number(newValue) * 2);
       }
     },
-    [setPointSize, setIsTextBoxEmpty]
+    [setPointSize, setIsTextBoxEmpty],
   );
 
   const handlePointSizeAttenuationChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setIsPointSizeAttenuated(e.target.checked);
     },
-    [setIsPointSizeAttenuated]
+    [setIsPointSizeAttenuated],
   );
 
   return (
@@ -134,7 +134,7 @@ export const SetPointSizeButton = () => {
       e.preventDefault();
       return false;
     },
-    [setAction]
+    [setAction],
   );
 
   return (

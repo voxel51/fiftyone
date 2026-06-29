@@ -37,7 +37,7 @@ export type PointSelectionVariant =
 export const resolvePointVariant = (
   relativePoint: Point,
   { shiftKey }: ClickEventModifiers,
-  label: AnnotationLabel | null
+  label: AnnotationLabel | null,
 ): PointSelectionVariant => {
   const onMask =
     label && label.overlay instanceof DetectionOverlay

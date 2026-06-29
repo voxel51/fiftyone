@@ -33,7 +33,7 @@ export default function LoaderView(props: LoaderViewProps) {
   const dependencyHash = useDependencyHash(params, dependencies);
   const { shouldLoad, markLoaded } = useLoadTrigger(
     state as LoaderState,
-    dependencyHash
+    dependencyHash,
   );
   const executeLoad = useExecuteLoader({ operator, params, path, onChange });
 

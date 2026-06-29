@@ -16,7 +16,7 @@ export class AddKeypointPointCommand implements Undoable {
     private overlay: KeypointOverlay,
     private pointId: string,
     private relativePosition: [number, number],
-    private variant?: string
+    private variant?: string,
   ) {
     this.id = `add-keypoint-point-${pointId}-${Date.now()}`;
     this.description = `Add keypoint point ${pointId}`;
@@ -24,7 +24,7 @@ export class AddKeypointPointCommand implements Undoable {
 
   execute(): void {
     const worldPoint = this.overlay.relativePointToAbsolute(
-      this.relativePosition
+      this.relativePosition,
     );
     this.overlay.addPoint(worldPoint, {
       variant: this.variant,

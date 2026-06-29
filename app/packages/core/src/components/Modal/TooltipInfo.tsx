@@ -171,7 +171,7 @@ const LABEL_CHANGE_EVENT_NAME = "fo-hide-label-change";
 
 const getHiddenLabels = (datasetName: string, labelName: string) => {
   const hiddenLabels = localStorage.getItem(
-    getHiddenLabelsKey(datasetName, labelName)
+    getHiddenLabelsKey(datasetName, labelName),
   );
   const hiddenLabelsArray = hiddenLabels ? hiddenLabels.split(",") : [];
   const sortedHiddenLabels = hiddenLabelsArray.sort();
@@ -208,7 +208,7 @@ export const ContentItem = ({
     hiddenLabels.add(name);
     localStorage.setItem(
       getHiddenLabelsKey(datasetName, field),
-      [...hiddenLabels].join(",")
+      [...hiddenLabels].join(","),
     );
     setIsThisItemVisible(false);
     dispatchHideLabelChangeEvent();
@@ -298,13 +298,13 @@ const TagInfo = ({ tags }: { tags: string[] }) => {
 
 export const TooltipInfo = React.memo(() => {
   const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
-    fos.isTooltipLocked
+    fos.isTooltipLocked,
   );
   const detail = useRecoilValue(fos.tooltipDetail);
   const coords = useRecoilValue(fos.tooltipCoordinates);
   const position = useMemo(
     () => (detail ? coords : { top: -1000, left: -1000, bottom: "unset" }),
-    [coords, detail]
+    [coords, detail],
   );
 
   const coordsProps = useSpring({
@@ -397,7 +397,7 @@ export const TooltipInfo = React.memo(() => {
 
   return ReactDOM.createPortal(
     <Draggable handle={"#" + TOOLTIP_HEADER_ID}>{tooltipDiv}</Draggable>,
-    document.body
+    document.body,
   );
 });
 
@@ -406,7 +406,7 @@ const HiddenItems = ({ field }: { field: string }) => {
   const [shouldShowHidden, setShouldShowHidden] = useState(false);
 
   const [currentHiddenLabels, setCurrentHiddenLabels] = useState(
-    getHiddenLabels(datasetName, field)
+    getHiddenLabels(datasetName, field),
   );
 
   const refreshHiddenLabels = useCallback(() => {
@@ -482,7 +482,7 @@ const HiddenItemRow = ({
     hiddenLabels.delete(name);
     localStorage.setItem(
       getHiddenLabelsKey(datasetName, field),
-      [...hiddenLabels].join(",")
+      [...hiddenLabels].join(","),
     );
     refreshHiddenLabels();
     window.dispatchEvent(new CustomEvent(LABEL_CHANGE_EVENT_NAME));
@@ -512,7 +512,7 @@ const HiddenItemRow = ({
 
 const Header = ({ title, labelId }: { title: string; labelId: string }) => {
   const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
-    fos.isTooltipLocked
+    fos.isTooltipLocked,
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
   const canAnnotateField = useCanAnnotateField(title);
@@ -615,7 +615,7 @@ const useTarget = (field, target) => {
 
 const AttrInfo = ({ label, field, labelType, children = null }) => {
   let entries = Object.entries(label).filter(
-    ([k]) => "tags" !== k && !k.startsWith("_")
+    ([k]) => "tags" !== k && !k.startsWith("_"),
   );
   if (!entries || !entries.length) {
     return null;
@@ -627,8 +627,8 @@ const AttrInfo = ({ label, field, labelType, children = null }) => {
   const other = entries.filter(
     ([name]) =>
       ![...defaultLabels, ...HIDDEN_LABELS[labelType], "attributes"].includes(
-        name
-      )
+        name,
+      ),
   );
   const mapper = ([name, value]) => (
     <ContentItem key={name} name={name} field={field} value={value} />
@@ -637,7 +637,7 @@ const AttrInfo = ({ label, field, labelType, children = null }) => {
   const attributes =
     typeof label.attributes === "object"
       ? Object.entries(
-          label.attributes as { [key: string]: { value: string | number } }
+          label.attributes as { [key: string]: { value: string | number } },
         ).map<[string, string | number]>(([k, v]) => [
           "attributes." + k,
           v.value,
@@ -651,7 +651,7 @@ const AttrInfo = ({ label, field, labelType, children = null }) => {
           ([k, v]) =>
             typeof v === "string" &&
             v.length > 0 &&
-            (k === "_id" || !k.startsWith("_"))
+            (k === "_id" || !k.startsWith("_")),
         )
         .map(([k, v]) => ["instance " + (k === "_id" ? "id" : k), v])
     : null;
@@ -726,7 +726,7 @@ const KeypointInfo = ({ detail }) => {
               .map(([k, v]) => [
                 `${k === "label" ? "skeleton" : k}[${detail.point.index}]`,
                 v,
-              ])
+              ]),
           )}
           labelType={detail.type}
         />

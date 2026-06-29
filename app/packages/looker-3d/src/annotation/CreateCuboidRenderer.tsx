@@ -39,15 +39,15 @@ export const CreateCuboidRenderer = ({
   const [isCreatingCuboid, setIsCreatingCuboid] =
     useRecoilState(isCreatingCuboidAtom);
   const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
+    selectedLabelForAnnotationAtom,
   );
   const { createCuboid } = useCuboidOperations();
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
   const [creationState, setCreationState] = useRecoilState(
-    cuboidCreationStateAtom
+    cuboidCreationStateAtom,
   );
   const setIsCreatingCuboidPointerDown = useSetRecoilState(
-    isCreatingCuboidPointerDownAtom
+    isCreatingCuboidPointerDownAtom,
   );
 
   const setEditingToNewCuboid = useSetEditingToNewCuboid();
@@ -71,7 +71,7 @@ export const CreateCuboidRenderer = ({
   const raycastPlane = useMemo(() => {
     const plane = getPlaneFromPositionAndQuaternion(
       annotationPlane.position,
-      annotationPlane.quaternion
+      annotationPlane.quaternion,
     );
 
     return {
@@ -101,17 +101,17 @@ export const CreateCuboidRenderer = ({
       // Calculate yaw rotation from direction vector (in plane's local space)
       const localDirection = new THREE.Vector2(
         directionVector.dot(planeAxes.localX),
-        directionVector.dot(planeAxes.localY)
+        directionVector.dot(planeAxes.localY),
       );
       const yaw = Math.atan2(localDirection.y, localDirection.x);
 
       // Create rotation quaternion combining plane orientation with yaw
       const planeQuaternion = new THREE.Quaternion(
-        ...annotationPlane.quaternion
+        ...annotationPlane.quaternion,
       );
       const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(
         planeAxes.normal,
-        yaw
+        yaw,
       );
       const finalQuaternion = yawQuaternion.multiply(planeQuaternion);
 
@@ -129,7 +129,7 @@ export const CreateCuboidRenderer = ({
           number,
           number,
           number,
-          number
+          number,
         ],
       };
     }
@@ -145,17 +145,17 @@ export const CreateCuboidRenderer = ({
       // Calculate yaw rotation
       const localDirection = new THREE.Vector2(
         directionVector.dot(planeAxes.localX),
-        directionVector.dot(planeAxes.localY)
+        directionVector.dot(planeAxes.localY),
       );
       const yaw = Math.atan2(localDirection.y, localDirection.x);
 
       // Create rotation quaternion
       const planeQuaternion = new THREE.Quaternion(
-        ...annotationPlane.quaternion
+        ...annotationPlane.quaternion,
       );
       const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(
         planeAxes.normal,
-        yaw
+        yaw,
       );
       const finalQuaternion = yawQuaternion.multiply(planeQuaternion);
 
@@ -186,7 +186,7 @@ export const CreateCuboidRenderer = ({
           number,
           number,
           number,
-          number
+          number,
         ],
       };
     }
@@ -247,7 +247,7 @@ export const CreateCuboidRenderer = ({
       setCreationState,
       setIsCreatingCuboidPointerDown,
       annotationEventBus,
-    ]
+    ],
   );
 
   // Handle pointer move - update current position for preview
@@ -267,7 +267,7 @@ export const CreateCuboidRenderer = ({
         currentPosition: position,
       }));
     },
-    [isCreatingCuboid, creationState.step, setCreationState]
+    [isCreatingCuboid, creationState.step, setCreationState],
   );
 
   // Handle final click (step 2) - commit the cuboid
@@ -344,7 +344,7 @@ export const CreateCuboidRenderer = ({
       createCuboid,
       handleClick,
       workingDoc,
-    ]
+    ],
   );
 
   // Reset creation state when create mode is disabled

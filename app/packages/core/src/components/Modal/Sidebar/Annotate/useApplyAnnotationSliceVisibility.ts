@@ -9,6 +9,6 @@ export function useApplyAnnotationSliceVisibility() {
 
   return useCallback(
     (sliceName: string) => actions.focusSlice(sliceName),
-    [actions]
+    [actions],
   );
 }

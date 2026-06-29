@@ -55,19 +55,19 @@ import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
 
 export const TypeGuards = {
   isHoverable: (
-    body: Partial<BaseOverlay & Hoverable>
+    body: Partial<BaseOverlay & Hoverable>,
   ): body is BaseOverlay & Hoverable =>
     "getTooltipInfo" in body &&
     "onHoverEnter" in body &&
     "onHoverLeave" in body &&
     "onHoverMove" in body,
   isSelectable: (
-    body: BaseOverlay | InteractionHandler
+    body: BaseOverlay | InteractionHandler,
   ): body is BaseOverlay & InteractionHandler & Selectable =>
     "id" in body && "isSelected" in body && "setSelected" in body,
 
   isSpatial: (
-    body: BaseOverlay | InteractionHandler
+    body: BaseOverlay | InteractionHandler,
   ): body is BaseOverlay & Spatial => "bounds" in body,
 
   isInteractionHandler: (value: unknown): value is InteractionHandler =>
@@ -176,7 +176,7 @@ export class Scene2D {
       config.canvas,
       this.selectionManager,
       config.renderer,
-      this.eventChannel
+      this.eventChannel,
     );
 
     this.eventBus = getEventBus<LighterEventGroup>(this.eventChannel);
@@ -190,7 +190,7 @@ export class Scene2D {
         this.overlays.forEach((overlay) => {
           overlay.markDirty();
         });
-      }
+      },
     );
 
     // Listen for scene options changes to trigger re-rendering
@@ -258,7 +258,7 @@ export class Scene2D {
             overlay,
             event.id,
             startBounds,
-            bounds
+            bounds,
           );
           CommandContextManager.instance()
             .getActiveContext()
@@ -283,7 +283,7 @@ export class Scene2D {
             overlay,
             event.id,
             startBounds,
-            endBounds
+            endBounds,
           );
           CommandContextManager.instance()
             .getActiveContext()
@@ -313,14 +313,14 @@ export class Scene2D {
             beforeSnapshot,
             beforeBounds,
             afterSnapshot,
-            afterBounds
+            afterBounds,
           );
 
           CommandContextManager.instance()
             .getActiveContext()
             .pushUndoable(command);
         }
-      }
+      },
     );
 
     // Listen for DO_OVERLAY_HOVER events to force hover state
@@ -359,7 +359,7 @@ export class Scene2D {
    */
   private registerEventHandler<K extends keyof LighterEventGroup>(
     event: K,
-    handler: EventHandler<LighterEventGroup[K]>
+    handler: EventHandler<LighterEventGroup[K]>,
   ): void {
     const offHandler = this.eventBus.on(event, handler);
     this.abortController.signal.addEventListener("abort", offHandler);
@@ -416,7 +416,7 @@ export class Scene2D {
    */
   private createFieldBins(
     overlays: Map<string, BaseOverlay>,
-    activePaths: string[]
+    activePaths: string[],
   ): Record<string, string[]> {
     const bins: Record<string, string[]> = {};
 
@@ -441,7 +441,7 @@ export class Scene2D {
   private buildInitialOrder(
     bins: Record<string, string[]>,
     activePaths: string[],
-    overlays?: Map<string, BaseOverlay>
+    overlays?: Map<string, BaseOverlay>,
   ): string[] {
     const ordered: string[] = [];
 
@@ -465,7 +465,7 @@ export class Scene2D {
    */
   private addRemainingOverlays(
     ordered: string[],
-    overlays: Map<string, BaseOverlay>
+    overlays: Map<string, BaseOverlay>,
   ): string[] {
     const result = [...ordered];
 
@@ -501,7 +501,7 @@ export class Scene2D {
    */
   private rotateOverlays(
     overlays: string[],
-    rotate: number
+    rotate: number,
   ): [string[], number] {
     if (overlays.length === 0) {
       return [overlays, 0];
@@ -535,7 +535,7 @@ export class Scene2D {
 
     const newRotation = Math.min(
       this.rotation + 1,
-      this.overlayOrder.length - 1
+      this.overlayOrder.length - 1,
     );
 
     if (newRotation !== this.rotation) {
@@ -892,7 +892,7 @@ export class Scene2D {
     if (orderState.rotate !== 0) {
       [contained, newRotate] = this.rotateOverlays(
         contained,
-        orderState.rotate
+        orderState.rotate,
       );
     }
 
@@ -1029,7 +1029,7 @@ export class Scene2D {
    * @returns A function to unregister the callback.
    */
   registerRenderCallback(
-    callback: Omit<RenderCallback, "id"> & { id?: string }
+    callback: Omit<RenderCallback, "id"> & { id?: string },
   ): () => void {
     const id = callback.id || `render-callback-${Date.now()}-${Math.random()}`;
 
@@ -1058,10 +1058,10 @@ export class Scene2D {
    * @param phase - The phase to execute callbacks for.
    */
   private async executeRenderCallbacks(
-    phase: "before" | "after"
+    phase: "before" | "after",
   ): Promise<void> {
     const callbacks = Array.from(this.renderCallbacks.values()).filter(
-      (callback) => callback.phase === phase
+      (callback) => callback.phase === phase,
     );
 
     for (const callback of callbacks) {
@@ -1088,7 +1088,7 @@ export class Scene2D {
         this,
         overlay,
         undefined,
-        undefined
+        undefined,
       );
       this.executeCommand(command);
       return;
@@ -1152,7 +1152,7 @@ export class Scene2D {
 
       this.overlays.delete(id);
       this.overlayOrder = this.overlayOrder.filter(
-        (overlayId) => overlayId !== id
+        (overlayId) => overlayId !== id,
       );
       this.renderingState.clear(id);
     }
@@ -1203,7 +1203,7 @@ export class Scene2D {
    */
   async transformOverlay(
     id: string,
-    options: TransformOptions
+    options: TransformOptions,
   ): Promise<boolean> {
     const overlay = this.overlays.get(id);
     if (!overlay) {
@@ -1240,7 +1240,7 @@ export class Scene2D {
       overlay,
       id,
       oldBounds,
-      newBounds
+      newBounds,
     );
 
     await this.executeCommand(command);
@@ -1262,7 +1262,7 @@ export class Scene2D {
    */
   getVisibleOverlays(): BaseOverlay[] {
     return Array.from(this.overlays.values()).filter((overlay) =>
-      this.shouldShowOverlay(overlay)
+      this.shouldShowOverlay(overlay),
     );
   }
 
@@ -1283,7 +1283,7 @@ export class Scene2D {
   getVisibleSelectableOverlays(): BaseOverlay[] {
     return Array.from(this.overlays.values()).filter(
       (overlay) =>
-        this.shouldShowOverlay(overlay) && TypeGuards.isSelectable(overlay)
+        this.shouldShowOverlay(overlay) && TypeGuards.isSelectable(overlay),
     );
   }
 
@@ -1579,7 +1579,7 @@ export class Scene2D {
    */
   private shouldRenderOverlay(
     overlay: BaseOverlay | undefined,
-    status: string
+    status: string,
   ): boolean {
     return (
       overlay !== undefined &&
@@ -1627,7 +1627,7 @@ export class Scene2D {
         this.createOverlayStyle(overlay),
         {
           canonicalMediaBounds,
-        }
+        },
       );
 
       if (ret instanceof Promise) {
@@ -1668,7 +1668,7 @@ export class Scene2D {
    * @param handler - The interaction handler to use for interactive mode.
    */
   public enterInteractiveMode(
-    handler: InteractionHandler | InteractiveDetectionHandler
+    handler: InteractionHandler | InteractiveDetectionHandler,
   ): void {
     if (this.interactiveMode) {
       return;
@@ -1720,7 +1720,7 @@ export class Scene2D {
    * coupling lighter to the consumer's identity.
    */
   public setEmptyCanvasClickHandler(
-    handler: EmptyCanvasClickHandler | null
+    handler: EmptyCanvasClickHandler | null,
   ): void {
     this.interactionManager.setEmptyCanvasClickHandler(handler);
   }

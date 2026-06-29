@@ -19,7 +19,7 @@ declare module "three/webgpu" {
     init(): Promise<void>;
     setClearColor(
       color: import("three").ColorRepresentation,
-      alpha?: number
+      alpha?: number,
     ): void;
   }
 }

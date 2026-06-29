@@ -26,7 +26,7 @@ const ResourceCount = () => {
   const groupStats = useRecoilValue(fos.groupStatistics(false));
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   const result = useRecoilValueLoadable(
-    fos.count({ path: "_", extended: true, modal: false })
+    fos.count({ path: "_", extended: true, modal: false }),
   );
 
   if (
@@ -46,11 +46,11 @@ const ResourceCount = () => {
 const GroupsCount = () => {
   const element = useRecoilValue(fos.elementNames);
   const elementTotal = useRecoilValue(
-    fos.count({ path: "", extended: false, modal: false })
+    fos.count({ path: "", extended: false, modal: false }),
   );
   const groupSlice = useRecoilValue(fos.groupSlice);
   const total = useRecoilValue(
-    fos.count({ path: "_", extended: false, modal: false })
+    fos.count({ path: "_", extended: false, modal: false }),
   );
 
   return (
@@ -70,10 +70,10 @@ const Count = () => {
   let element = useRecoilValue(fos.elementNames);
   const isDynamicGroupViewStageActive = useRecoilValue(fos.isDynamicGroup);
   let total = useRecoilValue(
-    fos.count({ path: "", extended: false, modal: false })
+    fos.count({ path: "", extended: false, modal: false }),
   );
   const subtotal = useRecoilValue(
-    fos.count({ path: "", extended: true, modal: false })
+    fos.count({ path: "", extended: true, modal: false }),
   );
 
   const parent = useRecoilValue(parentMediaTypeSelector);

@@ -14,8 +14,7 @@ export const QP_WAIT = 5151;
 
 declare global {
   interface WindowEventMap
-    extends GlobalEventHandlersEventMap,
-      WindowEventHandlersEventMap {
+    extends GlobalEventHandlersEventMap, WindowEventHandlersEventMap {
     queryperformance: QueryPerformanceToastEvent;
   }
 }
@@ -176,7 +175,7 @@ const QueryPerformanceToast = ({
         </>
       }
     />,
-    element
+    element,
   );
 };
 

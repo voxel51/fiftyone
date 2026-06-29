@@ -31,7 +31,7 @@ export class SampleCanvasPom {
 
   constructor(
     readonly page: Page,
-    readonly eventUtils: EventUtils
+    readonly eventUtils: EventUtils,
   ) {
     this.assert = new SampleCanvasAsserter(this);
   }

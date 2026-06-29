@@ -1,14 +1,18 @@
-import { Operator, types } from "@fiftyone/operators";
-import { ExecutionContext } from "@fiftyone/operators/src/operators";
-import { Property } from "@fiftyone/operators/src/types";
+import { Operator, OperatorConfig, types } from "@fiftyone/operators";
+import type { ExecutionContext } from "@fiftyone/operators/src/operators";
+import type { Property } from "@fiftyone/operators/src/types";
 import * as fos from "@fiftyone/state";
 import { getBrainKeysFromDataset, useBrainResult } from "./useBrainResult";
 
 export class OpenEmbeddingsPanel extends Operator {
-  constructor() {
-    super("open-embeddings-panel", "Open Embeddings Panel");
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "open-embeddings-panel",
+      label: "Open Embeddings Panel",
+    });
   }
-  useHooks(_ctx: ExecutionContext) {
+  useHooks() {
     const [, setBrainKey] = useBrainResult();
     return {
       setBrainKey,
@@ -23,6 +27,7 @@ export class OpenEmbeddingsPanel extends Operator {
       label: "Brain Key",
       description: "The brain key to use for the embeddings",
     });
+    return new types.Property(inputs);
   }
   async execute(ctx) {
     const { brainKey } = ctx.params;

@@ -248,7 +248,7 @@ function FieldInfoExpanded({
   const descTooLong = field.description && field.description.length > 250;
   const tooManyInfoKeys = field.info && Object.keys(field.info).length > 2;
   const [isCollapsed, setIsCollapsed] = useState(
-    descTooLong || tooManyInfoKeys
+    descTooLong || tooManyInfoKeys,
   );
 
   const setIsCustomizingColor = useSetRecoilState(activeColorEntry);
@@ -315,7 +315,7 @@ function FieldInfoExpanded({
         )}
       </FieldInfoExpandedContainer>
     </FieldInfoHoverTarget>,
-    document.body
+    document.body,
   );
 }
 
@@ -364,7 +364,7 @@ function ExpFieldInfoDesc({ collapsed, description }) {
 // of the target element
 function computePopoverPosition(
   el: MutableRefObject<HTMLElement>,
-  hoverTarget: MutableRefObject<HTMLElement>
+  hoverTarget: MutableRefObject<HTMLElement>,
 ) {
   const targetBounds = hoverTarget.current.getBoundingClientRect();
   const selfBounds = el.current.getBoundingClientRect();

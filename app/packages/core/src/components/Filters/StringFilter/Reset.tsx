@@ -15,7 +15,7 @@ export default function (params: {
 
         reset(isFilterMode ? fos.filter(params) : fos.visibility(params));
       },
-    [params.modal, params.path]
+    [params.modal, params.path],
   );
 
   return (

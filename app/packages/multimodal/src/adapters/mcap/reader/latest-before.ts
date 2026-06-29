@@ -33,12 +33,12 @@ export const DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES = 64;
 export async function readLatestIndexedMessageTimesForReader(
   reader: McapIndexedReaderLike,
   readable: McapTypes.IReadable,
-  args: McapReadLatestIndexedMessageTimesRequest
+  args: McapReadLatestIndexedMessageTimesRequest,
 ): Promise<ReadonlyMap<string, readonly McapIndexedMessageTime[]>> {
   const limit = args.limitPerTopic ?? 1;
   if (!Number.isFinite(limit) || !Number.isInteger(limit) || limit < 1) {
     throw new Error(
-      "MCAP latest-message lookup requires a positive integer per-topic limit"
+      "MCAP latest-message lookup requires a positive integer per-topic limit",
     );
   }
 
@@ -62,7 +62,7 @@ export async function readLatestIndexedMessageTimesForReader(
         reader,
         timeNs: args.timeNs,
         topic,
-      })
+      }),
     );
   }
 
@@ -97,10 +97,10 @@ async function latestEntriesForTopic({
     .filter(
       (chunkIndex) =>
         chunkIndex.messageStartTime <= timeNs &&
-        chunkHasAnyChannel(chunkIndex, channelIds)
+        chunkHasAnyChannel(chunkIndex, channelIds),
     )
     .sort((left, right) =>
-      compareBigInt(right.messageEndTime, left.messageEndTime)
+      compareBigInt(right.messageEndTime, left.messageEndTime),
     );
 
   // Newest-first best-N across the walk.
@@ -118,7 +118,7 @@ async function latestEntriesForTopic({
     }
     if (probes >= maxChunkProbes) {
       console.warn(
-        `[mcap] predecessor walk for ${topic} hit the ${maxChunkProbes}-chunk probe cap; using best match found so far`
+        `[mcap] predecessor walk for ${topic} hit the ${maxChunkProbes}-chunk probe cap; using best match found so far`,
       );
       break;
     }
@@ -146,7 +146,7 @@ async function latestEntriesForTopic({
 
 function chunkHasAnyChannel(
   chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"],
-  channelIds: ReadonlySet<number>
+  channelIds: ReadonlySet<number>,
 ): boolean {
   for (const channelId of channelIds) {
     if (chunkIndex.messageIndexOffsets.has(channelId)) {

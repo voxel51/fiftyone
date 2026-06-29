@@ -45,7 +45,7 @@ export default function FileView(props) {
                 clear();
                 showError(
                   customMaxSizeMessage ||
-                    `File size must be less than ${humanReadableBytes(maxSize)}`
+                    `File size must be less than ${humanReadableBytes(maxSize)}`,
                 );
                 return;
               }
@@ -78,7 +78,7 @@ export default function FileView(props) {
 }
 
 function fileToBase64(
-  file: File
+  file: File,
 ): Promise<{ result?: string; error?: ProgressEvent<EventTarget> }> {
   return new Promise((resolve) => {
     const fileReader = new FileReader();

@@ -253,7 +253,7 @@ async function Hook(context) {
         const { account } = params;
         const response = await services.util.http.get(
             `https://fiftyone.ai/list_groups/${user.id}`,
-            { headers: { Authorization: `Bearer ${account?.access_token}` } }
+            { headers: { Authorization: `Bearer ${account?.access_token}` } },
         );
         return response.json();
     }
@@ -270,7 +270,7 @@ async function Hook(context) {
         if (!group) {
             group = await services.directory.groups.createGroup(
                 orgId,
-                groupName
+                groupName,
             );
         }
 
@@ -286,7 +286,7 @@ async function Hook(context) {
                 accessorId,
                 updatedGroupName,
                 updatedGroupDescription,
-                updatedGroupUserIds
+                updatedGroupUserIds,
             );
         }
     }
@@ -301,22 +301,22 @@ functions and access to directory operations.
 
 ### **External API Integration**
 
--   `getGroups`: This function calls an external API to retrieve a list of
-    groups to which the signing-in user should be added. It utilizes the
-    `services.util.http.get` method for making the HTTP request, demonstrating
-    how external services can be queried within the hook.
--   `addUserToGroup`: For each group retrieved from the external API, this
-    function checks if the group exists in the organization's directory. If a
-    group does not exist, it is created, and then the user is added to it. This
-    process involves querying and modifying the organization's group directory,
-    illustrating the hook's capability to perform complex operations like
-    dynamic group management based on external data.
+- `getGroups`: This function calls an external API to retrieve a list of groups
+  to which the signing-in user should be added. It utilizes the
+  `services.util.http.get` method for making the HTTP request, demonstrating
+  how external services can be queried within the hook.
+- `addUserToGroup`: For each group retrieved from the external API, this
+  function checks if the group exists in the organization's directory. If a
+  group does not exist, it is created, and then the user is added to it. This
+  process involves querying and modifying the organization's group directory,
+  illustrating the hook's capability to perform complex operations like dynamic
+  group management based on external data.
 
 ### Error Handling
 
--   The try-catch block around the external API call and group manipulation
-    logic ensures that errors do not prevent the user from signing in but are
-    properly logged
+- The try-catch block around the external API call and group manipulation logic
+  ensures that errors do not prevent the user from signing in but are properly
+  logged
 
 ### Summary
 

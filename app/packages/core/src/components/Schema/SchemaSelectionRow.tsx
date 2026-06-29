@@ -181,7 +181,7 @@ export const SchemaSelectionRow = (props: Props) => {
               } else {
                 const newPaths = Object.assign({}, expandedPaths);
                 const element = finalSchema.filter(
-                  (sc) => sc.path === path
+                  (sc) => sc.path === path,
                 )?.[0];
 
                 newPaths[path] = {

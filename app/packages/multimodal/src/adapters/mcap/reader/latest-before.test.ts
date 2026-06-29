@@ -41,7 +41,7 @@ describe("readLatestIndexedMessageTimesForReader", () => {
     const results = await readLatestIndexedMessageTimesForReader(
       reader,
       readable,
-      { timeNs: 1_000n, topics: ["/camera"] }
+      { timeNs: 1_000n, topics: ["/camera"] },
     );
 
     expect(results.get("/camera")?.map((entry) => entry.logTimeNs)).toEqual([
@@ -87,7 +87,7 @@ describe("readLatestIndexedMessageTimesForReader", () => {
     const results = await readLatestIndexedMessageTimesForReader(
       reader,
       readable,
-      { timeNs: 100n, topics: ["/camera"] }
+      { timeNs: 100n, topics: ["/camera"] },
     );
 
     expect(results.get("/camera")?.map((entry) => entry.logTimeNs)).toEqual([
@@ -131,7 +131,7 @@ describe("readLatestIndexedMessageTimesForReader", () => {
     const results = await readLatestIndexedMessageTimesForReader(
       reader,
       readable,
-      { timeNs: 50n, topics: ["/camera"] }
+      { timeNs: 50n, topics: ["/camera"] },
     );
 
     expect(results.get("/camera")?.map((entry) => entry.logTimeNs)).toEqual([
@@ -176,7 +176,7 @@ describe("readLatestIndexedMessageTimesForReader", () => {
     const results = await readLatestIndexedMessageTimesForReader(
       reader,
       readable,
-      { timeNs: 50n, topics: ["/camera"] }
+      { timeNs: 50n, topics: ["/camera"] },
     );
 
     expect(results.get("/camera")?.map((entry) => entry.logTimeNs)).toEqual([
@@ -206,7 +206,7 @@ describe("readLatestIndexedMessageTimesForReader", () => {
     const results = await readLatestIndexedMessageTimesForReader(
       reader,
       readable,
-      { limitPerTopic: 2, timeNs: 100n, topics: ["/camera"] }
+      { limitPerTopic: 2, timeNs: 100n, topics: ["/camera"] },
     );
 
     expect(results.get("/camera")?.map((entry) => entry.logTimeNs)).toEqual([
@@ -233,7 +233,7 @@ describe("readLatestIndexedMessageTimesForReader", () => {
     const results = await readLatestIndexedMessageTimesForReader(
       reader,
       readable,
-      { timeNs: 50n, topics: ["/camera", "/lidar"] }
+      { timeNs: 50n, topics: ["/camera", "/lidar"] },
     );
 
     expect(results.get("/camera")).toEqual([]);
@@ -275,7 +275,7 @@ describe("readLatestIndexedMessageTimesForReader", () => {
     const results = await readLatestIndexedMessageTimesForReader(
       reader,
       readable,
-      { maxChunkProbesPerTopic: 1, timeNs: 50n, topics: ["/camera"] }
+      { maxChunkProbesPerTopic: 1, timeNs: 50n, topics: ["/camera"] },
     );
 
     expect(results.get("/camera")?.map((entry) => entry.logTimeNs)).toEqual([
@@ -294,9 +294,9 @@ describe("readLatestIndexedMessageTimesForReader", () => {
         limitPerTopic: 0,
         timeNs: 50n,
         topics: ["/camera"],
-      })
+      }),
     ).rejects.toThrow(
-      "MCAP latest-message lookup requires a positive integer per-topic limit"
+      "MCAP latest-message lookup requires a positive integer per-topic limit",
     );
   });
 
@@ -310,9 +310,9 @@ describe("readLatestIndexedMessageTimesForReader", () => {
           maxChunkProbesPerTopic,
           timeNs: 50n,
           topics: ["/camera"],
-        })
+        }),
       ).rejects.toThrow(
-        "MCAP latest-message lookup requires a positive integer maxChunkProbesPerTopic"
+        "MCAP latest-message lookup requires a positive integer maxChunkProbesPerTopic",
       );
     }
   });
@@ -346,7 +346,7 @@ function createReadable(
   chunks: readonly {
     readonly bytes: Uint8Array;
     readonly offset: bigint;
-  }[]
+  }[],
 ): {
   readonly readable: McapTypes.IReadable;
   readonly reads: Array<{ readonly offset: bigint; readonly size: bigint }>;
@@ -354,7 +354,7 @@ function createReadable(
   const size = chunks.reduce(
     (max, chunk) =>
       Math.max(max, Number(chunk.offset) + chunk.bytes.byteLength),
-    0
+    0,
   );
   const buffer = new Uint8Array(size);
   for (const chunk of chunks) {
@@ -378,7 +378,7 @@ function createReadable(
 
 function createMessageIndexRecord(
   channelId: number,
-  records: readonly (readonly [logTimeNs: bigint, messageOffset: bigint])[]
+  records: readonly (readonly [logTimeNs: bigint, messageOffset: bigint])[],
 ): Uint8Array {
   const contentLength = 2 + 4 + records.length * 16;
   const bytes = new Uint8Array(1 + 8 + contentLength);
@@ -400,7 +400,7 @@ function createMessageIndexRecord(
 }
 
 function createChunkIndex(
-  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {},
 ): McapTypes.TypedMcapRecords["ChunkIndex"] {
   return {
     chunkLength: options.chunkLength ?? 256n,
@@ -417,7 +417,7 @@ function createChunkIndex(
 }
 
 function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
 ): McapTypes.TypedMcapRecords["Channel"] {
   return {
     id: options.id ?? 7,

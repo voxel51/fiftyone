@@ -47,7 +47,7 @@ export default function Evaluation(props: EvaluationProps) {
   } = props;
   const [activeTab, setActiveTab] = usePanelStatePartial(
     `${name}_evaluation_tab`,
-    "overview"
+    "overview",
   );
   const trackEvent = useTrackEvent();
   const [loadingCompare, setLoadingCompare] = useState(false);
@@ -74,7 +74,7 @@ export default function Evaluation(props: EvaluationProps) {
       evaluations,
       name,
       currentType,
-      currentMethod
+      currentMethod,
     );
   }, [data, name]);
 
@@ -236,7 +236,7 @@ export default function Evaluation(props: EvaluationProps) {
                     ) : (
                       menuItem
                     );
-                  }
+                  },
                 )}
               </EvaluationSelect>
               {compareKey ? (

@@ -20,7 +20,7 @@ interface McapModalSettingsContextValue {
   readonly interpolate3dAnnotations: boolean;
   readonly setImageLabelTopics: (
     imageTopic: string,
-    labelTopics: readonly string[]
+    labelTopics: readonly string[],
   ) => void;
   readonly setInterpolate2dAnnotations: (enabled: boolean) => void;
   readonly setInterpolate3dAnnotations: (enabled: boolean) => void;
@@ -77,7 +77,7 @@ export function readMcapModalSettings(): McapPersistedModalSettings {
  * Writes the full persisted MCAP modal settings payload.
  */
 export function writeMcapModalSettings(
-  settings: McapPersistedModalSettings
+  settings: McapPersistedModalSettings,
 ): void {
   try {
     globalThis.localStorage?.setItem(
@@ -85,11 +85,11 @@ export function writeMcapModalSettings(
       JSON.stringify({
         version: VERSION,
         imageLabelTopics: normalizeImageLabelTopicMap(
-          settings.imageLabelTopics
+          settings.imageLabelTopics,
         ),
         interpolate2dAnnotations: settings.interpolate2dAnnotations,
         interpolate3dAnnotations: settings.interpolate3dAnnotations,
-      })
+      }),
     );
   } catch {
     // Settings persistence is a convenience; storage failures should not
@@ -104,18 +104,18 @@ export const McapModalSettingsProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const [settings, setSettings] = useState<McapPersistedModalSettings>(
-    readMcapModalSettings
+    readMcapModalSettings,
   );
 
   const update = useCallback(
     (
       resolver: (
-        current: McapPersistedModalSettings
-      ) => McapPersistedModalSettings
+        current: McapPersistedModalSettings,
+      ) => McapPersistedModalSettings,
     ) => {
       setSettings((current) => resolver(current));
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -128,7 +128,7 @@ export const McapModalSettingsProvider: React.FC<{
         ...current,
         interpolate2dAnnotations: enabled,
       })),
-    [update]
+    [update],
   );
   const setInterpolate3dAnnotations = useCallback(
     (enabled: boolean) =>
@@ -136,7 +136,7 @@ export const McapModalSettingsProvider: React.FC<{
         ...current,
         interpolate3dAnnotations: enabled,
       })),
-    [update]
+    [update],
   );
   const setImageLabelTopics = useCallback(
     (imageTopic: string, labelTopics: readonly string[]) => {
@@ -151,7 +151,7 @@ export const McapModalSettingsProvider: React.FC<{
         },
       }));
     },
-    [update]
+    [update],
   );
 
   const value = useMemo<McapModalSettingsContextValue>(
@@ -168,7 +168,7 @@ export const McapModalSettingsProvider: React.FC<{
       setImageLabelTopics,
       setInterpolate2dAnnotations,
       setInterpolate3dAnnotations,
-    ]
+    ],
   );
 
   return (
@@ -185,14 +185,14 @@ export function useMcapModalSettings(): McapModalSettingsContextValue {
   const ctx = useContext(McapModalSettingsContext);
   if (!ctx) {
     throw new Error(
-      "useMcapModalSettings must be used inside <McapModalSettingsProvider>"
+      "useMcapModalSettings must be used inside <McapModalSettingsProvider>",
     );
   }
   return ctx;
 }
 
 function normalizeImageLabelTopicMap(
-  value: unknown
+  value: unknown,
 ): Record<string, readonly string[]> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return {};
@@ -216,7 +216,7 @@ function normalizeTopicList(value: unknown): readonly string[] {
     new Set(
       value
         .map((topic) => (typeof topic === "string" ? topic.trim() : ""))
-        .filter(Boolean)
-    )
+        .filter(Boolean),
+    ),
   );
 }

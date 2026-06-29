@@ -70,7 +70,7 @@ export class McapGridPreviewWorkerPool {
 
   request(
     payload: McapGridPreviewRequestPayload,
-    options: McapGridPreviewPoolRequestOptions = {}
+    options: McapGridPreviewPoolRequestOptions = {},
   ): Promise<McapGridPreviewResult> {
     const sourceKey = byteSourceAccessKey(payload.source);
     const slot = this.slotForSource(sourceKey);
@@ -113,7 +113,7 @@ export class McapGridPreviewWorkerPool {
       if (slot.worker === worker) {
         this.resetSlot(
           slot,
-          mcapErrorMessage(error, "MCAP grid preview worker startup failed")
+          mcapErrorMessage(error, "MCAP grid preview worker startup failed"),
         );
       } else {
         disposeWorker(worker);
@@ -180,7 +180,7 @@ export function getMcapGridPreviewPool(): McapGridPreviewWorkerPool {
  * Disposes and reconfigures the singleton grid preview pool for tests.
  */
 export function resetMcapGridPreviewPoolForTests(
-  options: CreateMcapGridPreviewPoolOptions = {}
+  options: CreateMcapGridPreviewPoolOptions = {},
 ): void {
   sharedPool?.dispose();
   sharedPool = null;
@@ -223,7 +223,7 @@ function normalizePoolSize(poolSize: number | undefined): number {
   return clamp(
     Math.trunc(requested),
     MIN_GRID_PREVIEW_WORKERS,
-    MAX_GRID_PREVIEW_WORKERS
+    MAX_GRID_PREVIEW_WORKERS,
   );
 }
 
