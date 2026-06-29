@@ -44,7 +44,7 @@ export const useHoverState = (): HoverState => {
   useCursor(
     isHovered,
     isSegmenting || isEditSegmentsMode ? "crosshair" : "pointer",
-    isSegmenting ? "crosshair" : "auto"
+    isSegmenting ? "crosshair" : "auto",
   );
 
   return {
@@ -66,7 +66,7 @@ const useMeshTooltipProps = (label: any) => {
         if (selectedLabel?._id === label._id) return;
 
         const isCurrentlyTransforming = Boolean(
-          snapshot.getLoadable(isCurrentlyTransformingAtom).getValue()
+          snapshot.getLoadable(isCurrentlyTransformingAtom).getValue(),
         );
         if (isCurrentlyTransforming) return;
 
@@ -81,10 +81,10 @@ const useMeshTooltipProps = (label: any) => {
             instanceId: label.instance._id,
             field: label.path,
             frameNumber: label.frame_number,
-          })
+          }),
         );
       },
-    [label]
+    [label],
   );
 
   const onPointerOut = useRecoilCallback(
@@ -102,7 +102,7 @@ const useMeshTooltipProps = (label: any) => {
 
         selectiveRenderingEventBus.emit(new LabelUnhoveredEvent());
       },
-    [label]
+    [label],
   );
 
   const onPointerMissed = useRecoilCallback(
@@ -116,7 +116,7 @@ const useMeshTooltipProps = (label: any) => {
           set(fos.tooltipDetail, null);
         }
       },
-    []
+    [],
   );
 
   const onPointerMove = useRecoilCallback(
@@ -128,7 +128,7 @@ const useMeshTooltipProps = (label: any) => {
         if (selectedLabel?._id === label._id) return;
 
         const isCurrentlyTransforming = Boolean(
-          snapshot.getLoadable(isCurrentlyTransformingAtom).getValue()
+          snapshot.getLoadable(isCurrentlyTransformingAtom).getValue(),
         );
 
         if (isCurrentlyTransforming) {
@@ -146,11 +146,11 @@ const useMeshTooltipProps = (label: any) => {
         } else {
           set(
             fos.tooltipCoordinates,
-            fos.computeCoordinates([e.clientX, e.clientY])
+            fos.computeCoordinates([e.clientX, e.clientY]),
           );
         }
       },
-    [label]
+    [label],
   );
 
   return { onPointerOver, onPointerOut, onPointerMissed, onPointerMove };
@@ -199,7 +199,7 @@ export const useLabelColor = (
   props: Pick<BaseOverlayProps, "selected" | "color">,
   isHovered: boolean,
   label: any,
-  isSelectedForAnnotation?: boolean
+  isSelectedForAnnotation?: boolean,
 ) => {
   const isSimilarLabelHovered = useSimilarLabels3d(label);
 

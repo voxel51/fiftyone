@@ -36,7 +36,7 @@ export const useFo3dSceneContextState = ({
 }: UseFo3dSceneContextStateArgs) => {
   const [upVector, setUpVectorVal] = useFo3dUpVector(
     foScene,
-    settings?.defaultUp
+    settings?.defaultUp,
   );
 
   const {
@@ -49,7 +49,7 @@ export const useFo3dSceneContextState = ({
   } = useFo3dPersistentPreferences();
 
   const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
-    null
+    null,
   );
 
   const { effectiveSceneBoundingBox, cursorBounds, lookAt } =
@@ -99,7 +99,7 @@ export const useFo3dSceneContextState = ({
       hoverMetadata,
       setHoverMetadata,
       settings,
-    ]
+    ],
   );
 
   return {

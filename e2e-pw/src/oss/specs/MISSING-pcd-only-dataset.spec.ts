@@ -4,7 +4,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "pcd-orthographic-projection"
+  "pcd-orthographic-projection",
 );
 const normalPcd = `/tmp/test-pcd1-${datasetName}.pcd`;
 const pcdWithNaN = `/tmp/test-pcd2-${datasetName}.pcd`;
@@ -67,7 +67,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
     fou3d.compute_orthographic_projection_images(
         dataset, (-1, 64), "/tmp/ortho", skip_failures=True
     )
-    `
+    `,
   );
 });
 
@@ -87,7 +87,7 @@ test.describe.serial("orthographic projections", () => {
       {
         mask,
         animations: "allow",
-      }
+      },
     );
 
     // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL

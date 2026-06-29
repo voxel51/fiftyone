@@ -44,7 +44,7 @@ export default function ClassPerformance(props) {
   const [classMode, setClassMode] = usePanelStatePartial(`${id}_cpvm`, "chart");
   const [performanceClass, setPerformanceClass] = usePanelStatePartial(
     `${id}_cpm`,
-    "precision"
+    "precision",
   );
   const evaluationMaskTargets = useMemo(() => {
     return evaluation?.mask_targets || {};
@@ -81,7 +81,7 @@ export default function ClassPerformance(props) {
   const performanceClasses = Object.keys(perClassPerformance);
   const classPerformance = formatPerClassPerformance(
     perClassPerformance[performanceClass],
-    classPerformanceConfig
+    classPerformanceConfig,
   );
   const selectedPoints =
     activeFilter?.type === "label"
@@ -167,7 +167,7 @@ export default function ClassPerformance(props) {
               histfunc: "sum",
               y: classPerformance.map((metrics) => metrics.compareValue),
               x: classPerformance.map(
-                (metrics) => metrics.compareProperty || metrics.property
+                (metrics) => metrics.compareProperty || metrics.property,
               ),
               type: "histogram",
               name: `${CLASS_LABELS[performanceClass]} per class`,

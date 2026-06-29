@@ -23,7 +23,7 @@ describe("schema search", () => {
     });
 
     const contents = testSnapshot.getLoadable(
-      ss.schemaSearchResultList
+      ss.schemaSearchResultList,
     ).contents;
 
     expect(contents).toEqual([FIELDS.ID_FIELD.path]);
@@ -42,7 +42,7 @@ describe("schema search", () => {
     });
 
     const contents = testSnapshot.getLoadable(
-      ss.schemaSearchResultList
+      ss.schemaSearchResultList,
     ).contents;
 
     expect(contents).toEqual([]);

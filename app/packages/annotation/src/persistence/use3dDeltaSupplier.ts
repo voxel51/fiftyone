@@ -47,7 +47,7 @@ const omit = <T, K extends keyof T>(data: T, ...keys: K[]): Omit<T, K> => {
  * Build a {@link LabelProxy} instance from a reconciled 3d label.
  */
 const buildAnnotationLabel = (
-  label: ReconciledDetection3D | ReconciledPolyline3D
+  label: ReconciledDetection3D | ReconciledPolyline3D,
 ): LabelProxy | undefined => {
   if (label._cls === "Detection") {
     return {

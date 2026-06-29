@@ -70,7 +70,7 @@ export interface ParsedMcapMessageIndexRecord {
    */
   readonly records: readonly (readonly [
     logTimeNs: bigint,
-    messageOffset: bigint
+    messageOffset: bigint,
   ])[];
 }
 
@@ -79,7 +79,7 @@ export interface ParsedMcapMessageIndexRecord {
  */
 export type McapReaderFactory = (
   source: ByteSourceDescriptor,
-  readable: McapTypes.IReadable
+  readable: McapTypes.IReadable,
 ) => Promise<McapIndexedReaderLike>;
 
 /**
@@ -110,7 +110,7 @@ export interface McapIndexedReaderLike {
    * Reads timestamp-only message-index entries without decoding chunk records.
    */
   readIndexedMessageTimes?(
-    args?: McapReadIndexedMessageTimesRequest
+    args?: McapReadIndexedMessageTimesRequest,
   ): AsyncGenerator<McapIndexedMessageTime, void, void>;
 
   /**

@@ -209,7 +209,7 @@ export type AnnotationAgentLifecycle =
  * Listener for {@link AnnotationAgent.onLifecycleEvent}.
  */
 export type AnnotationAgentLifecycleListener = (
-  event: AnnotationAgentLifecycle
+  event: AnnotationAgentLifecycle,
 ) => void;
 
 /**
@@ -246,7 +246,7 @@ export interface AnnotationAgent<T extends InferenceResultProxy> {
    * @param task - The task to query capabilities for.
    */
   listInferenceCapabilities(
-    task: AgentTaskType
+    task: AgentTaskType,
   ): Promise<InferenceCapability[]>;
 
   /**
@@ -269,7 +269,7 @@ export interface AnnotationAgent<T extends InferenceResultProxy> {
    */
   subscribe(
     sessionId: string,
-    callback: (result: SyncInferenceResult<T>) => void
+    callback: (result: SyncInferenceResult<T>) => void,
   ): Promise<void>;
 
   /**

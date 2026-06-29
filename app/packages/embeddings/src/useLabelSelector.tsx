@@ -26,7 +26,7 @@ export function useLabelSelector() {
       values:
         availableFields &&
         availableFields.filter((item) =>
-          item.toLowerCase().includes(search.toLowerCase())
+          item.toLowerCase().includes(search.toLowerCase()),
         ),
     }),
   };

@@ -18,6 +18,7 @@ jobs:
       app-changes: ${{ steps.filter.outputs.app }}
       e2e-changes: ${{ steps.filter.outputs.e2e-pw }}
       fiftyone-changes: ${{ steps.filter.outputs.fiftyone }}
+      format-changes: ${{ steps.filter.outputs.format }}
       run-ci: ${{ steps.gate.outputs.run-ci }}
       heavy: ${{ steps.gate.outputs.heavy }}
     steps:
@@ -48,6 +49,15 @@ jobs:
               - '.github/workflows/build.yml'
               - '.github/workflows/test.yml'
               - 'plugins/**'
+            format:
+              - '**/*.ts'
+              - '**/*.tsx'
+              - '**/*.js'
+              - '**/*.jsx'
+              - '**/*.json'
+              - '**/*.css'
+              - '**/*.scss'
+              - '**/*.md'
 
       - name: Gate CI by base branch
         id: gate
@@ -104,7 +114,8 @@ jobs:
       github.event.action != 'closed' &&
       needs.modified-files.outputs.run-ci == 'true' && (
       needs.modified-files.outputs.app-changes == 'true' ||
-      needs.modified-files.outputs.fiftyone-changes == 'true')
+      needs.modified-files.outputs.fiftyone-changes == 'true' ||
+      needs.modified-files.outputs.format-changes == 'true')
     uses: ./.github/workflows/lint-app.yml
 
   test:

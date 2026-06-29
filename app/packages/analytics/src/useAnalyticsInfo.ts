@@ -4,7 +4,7 @@ import type { AnalyticsInfo } from "./usingAnalytics";
 
 export default function useAnalyticsInfo(): [
   AnalyticsInfo,
-  (info: AnalyticsInfo) => void
+  (info: AnalyticsInfo) => void,
 ] {
   return useRecoilState<AnalyticsInfo>(analyticsInfo);
 }

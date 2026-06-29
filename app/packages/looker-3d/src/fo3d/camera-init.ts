@@ -69,7 +69,7 @@ export const resolveConfiguredUpVector = ({
     return new Vector3(
       pluginDefaultUp[0],
       pluginDefaultUp[1],
-      pluginDefaultUp[2]
+      pluginDefaultUp[2],
     );
   }
 
@@ -116,7 +116,7 @@ export const resolveUpVector = ({
  * 6. fallback — DEFAULT_CAMERA_POSITION, target at origin
  */
 export const resolveCameraConfig = (
-  sources: CameraConfigSources
+  sources: CameraConfigSources,
 ): ResolvedCameraConfig => {
   const {
     savedState,
@@ -145,12 +145,12 @@ export const resolveCameraConfig = (
       position: new Vector3(
         savedState.position[0],
         savedState.position[1],
-        savedState.position[2]
+        savedState.position[2],
       ),
       target: new Vector3(
         savedState.target[0],
         savedState.target[1],
-        savedState.target[2]
+        savedState.target[2],
       ),
       source: "savedState",
     };
@@ -162,7 +162,7 @@ export const resolveCameraConfig = (
       position: new Vector3(
         overriddenCameraPosition[0],
         overriddenCameraPosition[1],
-        overriddenCameraPosition[2]
+        overriddenCameraPosition[2],
       ),
       target: resolveTarget(),
       source: "operatorOverride",
@@ -175,7 +175,7 @@ export const resolveCameraConfig = (
       position: new Vector3(
         scenePosition[0],
         scenePosition[1],
-        scenePosition[2]
+        scenePosition[2],
       ),
       target: resolveTarget(),
       source: "scenePosition",
@@ -203,7 +203,7 @@ export const resolveCameraConfig = (
         size,
         upVector,
         2.5,
-        "top"
+        "top",
       ),
       target: center.clone(),
       source: "computedFromBbox",
@@ -235,7 +235,7 @@ export interface ViewConfigSources {
  */
 export const resolveViewConfig = (
   view: "pov" | "top",
-  sources: ViewConfigSources
+  sources: ViewConfigSources,
 ): { position: Vector3; target: Vector3 } => {
   const {
     boundingBox,
@@ -258,7 +258,7 @@ export const resolveViewConfig = (
           size,
           upVector,
           2.5,
-          "top"
+          "top",
         ),
         target: center.clone(),
       };
@@ -278,7 +278,7 @@ export const resolveViewConfig = (
       position: new Vector3(
         overriddenCameraPosition[0],
         overriddenCameraPosition[1],
-        overriddenCameraPosition[2]
+        overriddenCameraPosition[2],
       ),
       target,
     };
@@ -289,7 +289,7 @@ export const resolveViewConfig = (
       position: new Vector3(
         scenePosition[0],
         scenePosition[1],
-        scenePosition[2]
+        scenePosition[2],
       ),
       target,
     };
@@ -311,7 +311,7 @@ export const resolveViewConfig = (
         size,
         upVector,
         1.5,
-        "pov"
+        "pov",
       ),
       target,
     };

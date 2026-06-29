@@ -28,7 +28,7 @@ const SEEK_TOLERANCE_S = 0.15;
  * (see `playback-store-context.ts`).
  */
 export function useVideoSync(
-  videoRef: RefObject<HTMLVideoElement | null>
+  videoRef: RefObject<HTMLVideoElement | null>,
 ): void {
   const store = usePlaybackStore();
   const isPlaying = useAtomValue(isPlayingAtom, { store });

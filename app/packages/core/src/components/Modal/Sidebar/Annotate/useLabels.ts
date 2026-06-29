@@ -47,7 +47,7 @@ const LABEL_LIST_INFO: Record<string, { listKey: string; type: LabelType }> = {
  */
 const collectFulfilled = <T>(
   results: PromiseSettledResult<T>[],
-  context: string
+  context: string,
 ): T[] => {
   const values: T[] = [];
 
@@ -57,7 +57,7 @@ const collectFulfilled = <T>(
     } else {
       console.warn(
         `Skipping label in ${context}: failed to create annotation label`,
-        result.reason
+        result.reason,
       );
     }
   }
@@ -88,7 +88,7 @@ const buildLabelResolveUrl = (
   expandedPath: string,
   isList: boolean,
   idx: number,
-  item: unknown
+  item: unknown,
 ): ((subField: string) => string | undefined) => {
   return (subField: string) => {
     const key = isList
@@ -143,7 +143,7 @@ const handleSample = async ({
     } catch (error) {
       console.warn(
         `Skipping path "${path}": unable to resolve field type`,
-        error
+        error,
       );
 
       continue;
@@ -162,13 +162,13 @@ const handleSample = async ({
             expandedPath,
             isList,
             idx,
-            item
+            item,
           ),
           skipMaskDecode: hasExistingOverlay(
-            (item as { _id?: string })?._id ?? ""
+            (item as { _id?: string })?._id ?? "",
           ),
-        })
-      )
+        }),
+      ),
     );
 
     labels.push(...collectFulfilled(settled, `path "${path}"`));
@@ -208,13 +208,13 @@ const handleSample = async ({
                 expandedPath,
                 true,
                 idx,
-                item
+                item,
               ),
               skipMaskDecode: hasExistingOverlay(
-                (item as { _id?: string })?._id ?? ""
+                (item as { _id?: string })?._id ?? "",
               ),
-            })
-          )
+            }),
+          ),
         );
 
         labels.push(...collectFulfilled(settled, `schema "${schemaPath}"`));
@@ -228,17 +228,17 @@ const handleSample = async ({
               schemaPath,
               false,
               0,
-              fieldData
+              fieldData,
             ),
             skipMaskDecode: hasExistingOverlay(
-              (fieldData as { _id?: string })?._id ?? ""
+              (fieldData as { _id?: string })?._id ?? "",
             ),
-          })
+          }),
         );
       } catch (err) {
         console.warn(
           `Skipping label at "${schemaPath}": failed to create annotation label`,
-          err
+          err,
         );
       }
     } else {
@@ -247,7 +247,7 @@ const handleSample = async ({
   }
 
   return labels.sort((a, b) =>
-    (a.data.label ?? "").localeCompare(b.data?.label ?? "")
+    (a.data.label ?? "").localeCompare(b.data?.label ?? ""),
   );
 };
 
@@ -256,7 +256,7 @@ export const addLabel = atom(
   (get, set, newLabel: AnnotationLabel) => {
     const existingLabels = get(labels);
     const alreadyHaveIt = existingLabels.some(
-      (label) => label.overlay.id === newLabel.overlay.id
+      (label) => label.overlay.id === newLabel.overlay.id,
     );
 
     if (!alreadyHaveIt) {
@@ -265,11 +265,11 @@ export const addLabel = atom(
       set(
         labels,
         newList.sort((a, b) =>
-          (a.data.label ?? "").localeCompare(b.data?.label ?? "")
-        )
+          (a.data.label ?? "").localeCompare(b.data?.label ?? ""),
+        ),
       );
     }
-  }
+  },
 );
 
 export const labels = atom<Array<AnnotationLabel>>([]);
@@ -338,7 +338,7 @@ const useUpdateLabelAtom = () => {
       }
 
       return false;
-    }, [])
+    }, []),
   );
 };
 
@@ -398,14 +398,14 @@ export const useLabelsContext = (): LabelsContext => {
     useCallback(
       (get, _set, id: string) =>
         get(labels).find((label) => label.data._id === id),
-      []
-    )
+      [],
+    ),
   );
 
   const removeLabelFromSidebar = useCallback(
     (labelId: string) =>
       setLabels((prev) => prev.filter((label) => label.data._id !== labelId)),
-    [setLabels]
+    [setLabels],
   );
 
   return useMemo(
@@ -415,7 +415,7 @@ export const useLabelsContext = (): LabelsContext => {
       removeLabelFromSidebar,
       updateLabelData,
     }),
-    [addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData]
+    [addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData],
   );
 };
 
@@ -483,7 +483,7 @@ export default function useLabels() {
 
         return type as LabelType;
       },
-    []
+    [],
   );
 
   // Reset labels when active schemas change to reload and update scene
@@ -579,7 +579,7 @@ export default function useLabels() {
             // update sidebar, or add if this is a new label
             const updated = updateLabelAtom(
               annotationLabel.data._id,
-              annotationLabel.data
+              annotationLabel.data,
             );
 
             // new label, add it. Attach to the scene first so the overlay

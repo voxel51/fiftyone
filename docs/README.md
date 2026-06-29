@@ -11,17 +11,17 @@ generate its documentation and API reference from source.
 
 Before building the docs locally, ensure you have:
 
--   Python 3.12 installed and a
-    [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
-    created specifically for documentation.
+- Python 3.12 installed and a
+  [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
+  created specifically for documentation.
 
     **Note:** Do **NOT** use the same environment where you ran `install.sh`
     with the `-d` (dev mode) flag, as docs dependencies may conflict with test
     dependencies.
 
--   [pandoc](https://pandoc.org/installing.html) installed.
+- [pandoc](https://pandoc.org/installing.html) installed.
 
--   A Unix-like shell environment to execute bash commands.
+- A Unix-like shell environment to execute bash commands.
 
 ## Setup
 
@@ -62,13 +62,13 @@ bash docs/generate_docs.bash
 
 A couple notable flags are supported:
 
--   `-c` performs a clean build by removing the `docs/build` folder beforehand.
-    This is sometimes necessary to force updates, e.g. if you have edited a
-    template and want to see how it affects pages whose source files haven't
-    changed
--   `-s` will update static files only, i.e. `custom.css` and `custom.js`
-    mentioned below
--   `-f` will perform a fast build, i.e. zoo and plugin docs will be skipped
+- `-c` performs a clean build by removing the `docs/build` folder beforehand.
+  This is sometimes necessary to force updates, e.g. if you have edited a
+  template and want to see how it affects pages whose source files haven't
+  changed
+- `-s` will update static files only, i.e. `custom.css` and `custom.js`
+  mentioned below
+- `-f` will perform a fast build, i.e. zoo and plugin docs will be skipped
 
 ## Previewing a single page
 
@@ -122,15 +122,15 @@ This extends the theme `pydata_sphinx_theme`. However, you should prefer to
 make changes in the following locations instead of the theme itself whenever
 possible:
 
--   `docs/source/_static` contains `custom.css` and `custom.js` files, where
-    any CSS overrides or custom JS should be added
--   `docs/source/_templates` contains HTML files (Jinja2 templates) that
-    override theme templates of the same name. These should extend the theme
-    templates - see the existing templates for how to do this. If you need to
-    override part of the theme template that isn't conveniently marked as a
-    block (and isn't a separate file that you can override), our convention is
-    to add a block prefixed with `custom_` to the theme template, then override
-    that block locally
+- `docs/source/_static` contains `custom.css` and `custom.js` files, where any
+  CSS overrides or custom JS should be added
+- `docs/source/_templates` contains HTML files (Jinja2 templates) that override
+  theme templates of the same name. These should extend the theme templates -
+  see the existing templates for how to do this. If you need to override part
+  of the theme template that isn't conveniently marked as a block (and isn't a
+  separate file that you can override), our convention is to add a block
+  prefixed with `custom_` to the theme template, then override that block
+  locally
 
 ### Compile CSS
 

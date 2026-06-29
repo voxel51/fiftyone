@@ -45,7 +45,7 @@ export const useRegisterAnnotationCommandHandlers = () => {
           throw error;
         }
       },
-      [deleteLabel, eventBus]
-    )
+      [deleteLabel, eventBus],
+    ),
   );
 };

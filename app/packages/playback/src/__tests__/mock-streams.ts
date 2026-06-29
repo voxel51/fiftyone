@@ -14,7 +14,10 @@ export function makeReadyStream(id: string, blocking = true): PlaybackStream {
  * Always "loading" (stuck waiting). Use to test the buffering/spinner UI.
  * Returns "loading" (not "missing") so the engine won't call prefetch on it.
  */
-export function makeBufferingStream(id: string, blocking = true): PlaybackStream {
+export function makeBufferingStream(
+  id: string,
+  blocking = true,
+): PlaybackStream {
   return { id, blocking, bufferState: () => "loading" };
 }
 
@@ -24,7 +27,7 @@ export function makeBufferingStream(id: string, blocking = true): PlaybackStream
 export function makeMissingStream(
   id: string,
   blocking = true,
-  onPrefetch?: (range: [number, number]) => void
+  onPrefetch?: (range: [number, number]) => void,
 ): PlaybackStream {
   return {
     id,
@@ -42,7 +45,7 @@ export function makeWindowedStream(
   id: string,
   readyStart: number,
   readyEnd: number,
-  blocking = true
+  blocking = true,
 ): PlaybackStream {
   return {
     id,
@@ -63,7 +66,7 @@ export function makeWindowedStream(
 export function makeRollingWindowStream(
   id: string,
   windowSeconds = 3,
-  blocking = true
+  blocking = true,
 ): PlaybackStream & { updateHead: (time: number) => void } {
   let head = 0;
   return {

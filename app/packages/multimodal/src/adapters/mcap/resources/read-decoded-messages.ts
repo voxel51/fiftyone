@@ -56,7 +56,7 @@ export async function* readMcapDecodedMessages({
       !isWithinRange(
         decodedMessage.timelineTimeNs,
         request.startTimeNs,
-        request.endTimeNs
+        request.endTimeNs,
       )
     ) {
       continue;

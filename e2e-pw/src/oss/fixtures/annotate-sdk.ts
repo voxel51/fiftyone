@@ -72,14 +72,14 @@ export class AnnotateSDK {
   async getDetectionsState(
     dataset: string,
     field: string,
-    options: { sampleIndex?: number } = {}
+    options: { sampleIndex?: number } = {},
   ): Promise<DetectionsState> {
     const sampleIndex = options.sampleIndex ?? 0;
     const resultFile = path.join(
       os.tmpdir(),
       `detections-state-${Date.now()}-${Math.random()
         .toString(36)
-        .substring(2)}.json`
+        .substring(2)}.json`,
     );
 
     await this.loader.executePythonCode(`

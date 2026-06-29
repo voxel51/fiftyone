@@ -17,7 +17,9 @@ const idleState: TemporalTagModeState = {
 
 const readyState: TemporalTagModeState = { ...idleState, phase: "ready" };
 
-function makeActions(overrides: Partial<TemporalTagContextValue["actions"]> = {}) {
+function makeActions(
+  overrides: Partial<TemporalTagContextValue["actions"]> = {},
+) {
   return {
     enterTagMode: vi.fn(),
     exitTagMode: vi.fn(),
@@ -39,7 +41,7 @@ function renderButton(ctx: TemporalTagContextValue | null) {
       </TemporalTagProvider>
     ) : (
       <TemporalTagButton />
-    )
+    ),
   );
 }
 
@@ -79,7 +81,7 @@ describe("TemporalTagButton", () => {
     };
     renderButton(ctx);
     expect(
-      screen.getByRole("button", { name: "Enter tag mode (T)" })
+      screen.getByRole("button", { name: "Enter tag mode (T)" }),
     ).toBeTruthy();
   });
 
@@ -167,7 +169,7 @@ describe("TemporalTagButton", () => {
         <TemporalTagProvider value={ctx}>
           <input data-testid="text-input" />
           <TemporalTagButton />
-        </TemporalTagProvider>
+        </TemporalTagProvider>,
       );
       const input = screen.getByTestId("text-input");
       fireEvent.keyDown(input, { key: "t" });

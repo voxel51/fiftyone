@@ -119,7 +119,7 @@ test.describe.serial("flat direct 3d parity", () => {
       });
       await modal.sidebar.assert.verifySidebarFieldCount("detections", 1);
       expect(await modal.sidebar.getSampleFilepath(false)).toBe(
-        spec.filepath.split("/").at(-1)
+        spec.filepath.split("/").at(-1),
       );
     };
 

@@ -56,7 +56,7 @@ export function ImagePanel({
   const [canvasError, setCanvasError] = useState<string | null>(null);
   const [status, setStatus] = useState<ImageLoadStatus>("loading");
   const [textureHandle, setTextureHandle] = useState<ImageTextureHandle | null>(
-    null
+    null,
   );
   const scene = useMemo(
     () => (
@@ -64,7 +64,7 @@ export function ImagePanel({
         <ImageTexturePlane fit={fit} textureHandle={textureHandle} />
       </Base2DScene>
     ),
-    [fit, textureHandle]
+    [fit, textureHandle],
   );
 
   useEffect(() => {
@@ -139,7 +139,7 @@ export function ImagePanel({
 function replaceTextureHandle(
   nextHandle: ImageTextureHandle | null,
   handleRef: MutableRefObject<ImageTextureHandle | null>,
-  setHandle: (handle: ImageTextureHandle | null) => void
+  setHandle: (handle: ImageTextureHandle | null) => void,
 ) {
   const previousHandle = handleRef.current;
   if (previousHandle && previousHandle !== nextHandle) {
@@ -152,7 +152,7 @@ function replaceTextureHandle(
 
 async function createImageTexture(
   bytes: Uint8Array,
-  mimeType: string | undefined
+  mimeType: string | undefined,
 ): Promise<ImageTextureHandle> {
   const blob = new Blob([bytes as BlobPart], {
     type: mimeType ?? "image/jpeg",

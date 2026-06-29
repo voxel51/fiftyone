@@ -111,7 +111,7 @@ export const useFo3dContent = () => useRecoilValue(internals.fo3dContent);
 export const useStableActive3dSamplesMap = (): Record<string, ModalSample> => {
   const loadable = useRecoilValueLoadable(internals.active3dSlicesToSampleMap);
   const ref = useRef<Record<string, ModalSample>>(
-    loadable.state === "hasValue" ? loadable.contents : {}
+    loadable.state === "hasValue" ? loadable.contents : {},
   );
   if (loadable.state === "hasValue") {
     ref.current = loadable.contents;
@@ -131,7 +131,7 @@ export const useStableActive3dSamplesMap = (): Record<string, ModalSample> => {
 export const useStableAll3dSamplesMap = (): Record<string, ModalSample> => {
   const loadable = useRecoilValueLoadable(internals.all3dSlicesToSampleMap);
   const ref = useRef<Record<string, ModalSample>>(
-    loadable.state === "hasValue" ? loadable.contents : {}
+    loadable.state === "hasValue" ? loadable.contents : {},
   );
   if (loadable.state === "hasValue") {
     ref.current = loadable.contents;
@@ -151,7 +151,7 @@ export const useStableAll3dSamplesMap = (): Record<string, ModalSample> => {
 export const useStableInteraction3dSample = (): ModalSample | undefined => {
   const loadable = useRecoilValueLoadable(internals.interaction3dSample);
   const ref = useRef<ModalSample | undefined>(
-    loadable.state === "hasValue" ? loadable.contents : undefined
+    loadable.state === "hasValue" ? loadable.contents : undefined,
   );
   if (loadable.state === "hasValue") {
     ref.current = loadable.contents;
@@ -173,7 +173,7 @@ export const useStableInteraction3dSample = (): ModalSample | undefined => {
 export const useStableSceneSample3d = (): ModalSample | undefined => {
   const loadable = useRecoilValueLoadable(internals.sceneSample);
   const ref = useRef<ModalSample | undefined>(
-    loadable.state === "hasValue" ? loadable.contents : undefined
+    loadable.state === "hasValue" ? loadable.contents : undefined,
   );
   if (loadable.state === "hasValue") {
     ref.current = loadable.contents;
@@ -193,7 +193,7 @@ export const useStableSceneSample3d = (): ModalSample | undefined => {
 export const useStableActiveFo3dSlice = (): string | null => {
   const loadable = useRecoilValueLoadable(internals.activeFo3dSlice);
   const ref = useRef<string | null>(
-    loadable.state === "hasValue" ? loadable.contents : null
+    loadable.state === "hasValue" ? loadable.contents : null,
   );
   if (loadable.state === "hasValue") {
     ref.current = loadable.contents;
@@ -213,7 +213,7 @@ export const useStableActiveFo3dSlice = (): string | null => {
 export const useStableRealFo3dSlices = (): string[] => {
   const loadable = useRecoilValueLoadable(internals.realFo3dSlices);
   const ref = useRef<string[]>(
-    loadable.state === "hasValue" ? loadable.contents : []
+    loadable.state === "hasValue" ? loadable.contents : [],
   );
   if (loadable.state === "hasValue") {
     ref.current = loadable.contents;

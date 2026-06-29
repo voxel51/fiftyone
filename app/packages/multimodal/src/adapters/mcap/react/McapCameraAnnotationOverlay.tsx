@@ -51,7 +51,7 @@ const McapCameraAnnotationOverlay: React.FC<
         data: picked.primitive.value,
       });
     },
-    [setSelection, topic]
+    [setSelection, topic],
   );
 
   if (!frame) return null;

@@ -23,7 +23,7 @@ export { translateToUISchema } from "./ui";
  */
 export function translateSchema(
   schemaIO: SchemaType,
-  options: TranslationOptions = {}
+  options: TranslationOptions = {},
 ): TranslationResult {
   const warnings: string[] = [];
   const context: TranslationContext = {
@@ -34,7 +34,7 @@ export function translateSchema(
 
   const schema = addChoicesToSchema(
     translateToJSONSchema(schemaIO, context),
-    schemaIO
+    schemaIO,
   );
   const uiSchema = translateToUISchema(schemaIO, context);
 

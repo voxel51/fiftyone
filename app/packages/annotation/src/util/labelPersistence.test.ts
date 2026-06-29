@@ -46,7 +46,7 @@ describe("handleLabelPersistence", () => {
     vi.mocked(buildLabelDeltas).mockReturnValue([]);
     vi.mocked(buildJsonPath).mockImplementation(
       (basePath, deltaPath) =>
-        `/${[...(basePath?.split(".") || []), deltaPath].join("/")}`
+        `/${[...(basePath?.split(".") || []), deltaPath].join("/")}`,
     );
     vi.mocked(buildAnnotationPath).mockReturnValue("predictions.detections");
   });
@@ -99,7 +99,7 @@ describe("handleLabelPersistence", () => {
       mockAnnotationLabel,
       mockSchema,
       mockOpType,
-      false
+      false,
     );
   });
 
@@ -126,12 +126,12 @@ describe("handleLabelPersistence", () => {
     expect(buildJsonPath).toHaveBeenNthCalledWith(
       1,
       "predictions.detections",
-      "label"
+      "label",
     );
     expect(buildJsonPath).toHaveBeenNthCalledWith(
       2,
       "predictions.detections",
-      "confidence"
+      "confidence",
     );
   });
 
@@ -159,7 +159,7 @@ describe("handleLabelPersistence", () => {
           op: "replace",
         },
       ],
-      undefined
+      undefined,
     );
   });
 
@@ -247,7 +247,7 @@ describe("handleLabelPersistence", () => {
           op: "replace",
         },
       ],
-      undefined
+      undefined,
     );
   });
 
@@ -265,7 +265,7 @@ describe("handleLabelPersistence", () => {
         annotationLabel: mockAnnotationLabel,
         schema: mockSchema,
         opType: mockOpType,
-      })
+      }),
     ).rejects.toThrow("Network error");
   });
 
@@ -299,7 +299,7 @@ describe("handleLabelPersistence", () => {
           customProp: "custom-value",
         },
       ],
-      undefined
+      undefined,
     );
   });
 
@@ -311,7 +311,7 @@ describe("handleLabelPersistence", () => {
     vi.mocked(buildLabelDeltas).mockReturnValue(mockDeltas);
     vi.mocked(buildJsonPath).mockReturnValue("/label");
     vi.mocked(buildAnnotationPath).mockReturnValue(
-      "predictions.detections.detections"
+      "predictions.detections.detections",
     );
 
     await handleLabelPersistence({
@@ -328,7 +328,7 @@ describe("handleLabelPersistence", () => {
       mockAnnotationLabel,
       mockSchema,
       mockOpType,
-      true
+      true,
     );
     expect(buildJsonPath).toHaveBeenCalledWith(null, "label");
     expect(mockPatchSample).toHaveBeenCalledWith(
@@ -337,7 +337,7 @@ describe("handleLabelPersistence", () => {
         labelId: "label-id",
         labelPath: "predictions.detections.detections",
         opType: mockOpType,
-      }
+      },
     );
   });
 });

@@ -20,7 +20,7 @@ export const roundTuple = <T extends number[]>(tuple: T): T =>
  * Rounds all numeric values in a detection label for consistent precision.
  */
 export function roundDetection(
-  detection: ReconciledDetection3D
+  detection: ReconciledDetection3D,
 ): ReconciledDetection3D {
   return {
     ...detection,
@@ -37,12 +37,12 @@ export function roundDetection(
  * Rounds all numeric values in a polyline label for consistent precision.
  */
 export function roundPolyline(
-  polyline: ReconciledPolyline3D
+  polyline: ReconciledPolyline3D,
 ): ReconciledPolyline3D {
   return {
     ...polyline,
     points3d: polyline.points3d.map((segment) =>
-      segment.map((point) => roundTuple(point))
+      segment.map((point) => roundTuple(point)),
     ),
   };
 }

@@ -50,7 +50,7 @@ const isMetadataField = (path: string) => {
 export const getPath = (
   path: string,
   mediaType: MediaType,
-  frameSchema?: { [key: string]: Field }
+  frameSchema?: { [key: string]: Field },
 ) => {
   if (mediaType === "video") {
     if (!frameSchema?.[path]) {
@@ -76,7 +76,7 @@ export const getSubPaths = (
   path: string,
   schema: DatasetSchema,
   mediaType: MediaType,
-  frameSchema?: DatasetSchema
+  frameSchema?: DatasetSchema,
 ) => {
   if (!path) {
     throw new Error("path is required");
@@ -159,7 +159,7 @@ export const disabledField = (
   isFrameView?: boolean,
   isClipsView?: boolean,
   isVideo?: boolean,
-  isPatchesView?: boolean
+  isPatchesView?: boolean,
 ): boolean => {
   const currField = combinedSchema[path] || ({} as Field);
   const { ftype, embeddedDocType } = currField;
@@ -301,7 +301,7 @@ export const disabledField = (
   if (embeddedDocType && ftype === LIST_FIELD) {
     const embeddedRoot = embeddedDocType?.substring(
       embeddedDocType.lastIndexOf(".") + 1,
-      embeddedDocType.length
+      embeddedDocType.length,
     );
     if (VALID_LABEL_TYPES.includes(embeddedRoot)) {
       return true;

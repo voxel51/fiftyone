@@ -4,7 +4,7 @@ import type { BYTE_SOURCE_READ_PROFILE } from "./constants";
  * Byte-source locality hint used to choose cache fill behavior.
  */
 export type ByteSourceReadProfile =
-  typeof BYTE_SOURCE_READ_PROFILE[keyof typeof BYTE_SOURCE_READ_PROFILE];
+  (typeof BYTE_SOURCE_READ_PROFILE)[keyof typeof BYTE_SOURCE_READ_PROFILE];
 
 /**
  * Half-open byte range to read from a source.
@@ -108,7 +108,7 @@ export interface ByteClient {
    * Optionally resolves source metadata without reading bytes.
    */
   stat?(
-    source: ByteSourceDescriptor
+    source: ByteSourceDescriptor,
   ): Promise<ByteSourceDescriptor | undefined>;
 
   /**

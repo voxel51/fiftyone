@@ -44,23 +44,23 @@ describe("useMcapGridPreview", () => {
 
   it("loads an initial preview through the shared pool", async () => {
     poolHarness.pool.request.mockResolvedValueOnce(
-      readyResult({ bytes: [1, 2, 3], nextStartTimeNs: 5n })
+      readyResult({ bytes: [1, 2, 3], nextStartTimeNs: 5n }),
     );
 
     const { unmount } = render(
-      <PreviewHarness id="initial" source={sourceForId("initial")} />
+      <PreviewHarness id="initial" source={sourceForId("initial")} />,
     );
 
     await waitFor(() => {
       expect(screen.getByTestId("preview-initial").textContent).toBe(
-        "ready:1:frame:"
+        "ready:1:frame:",
       );
     });
 
     expect(poolHarness.pool.acquire).toHaveBeenCalledTimes(1);
     expect(poolHarness.pool.request).toHaveBeenCalledWith(
       { source: sourceForId("initial") },
-      { signal: expect.any(AbortSignal) }
+      { signal: expect.any(AbortSignal) },
     );
 
     const signal = poolHarness.pool.request.mock.calls[0]?.[1]
@@ -78,7 +78,7 @@ describe("useMcapGridPreview", () => {
       .mockResolvedValueOnce(emptyResult(false));
 
     const { rerender } = render(
-      <PreviewHarness id="source" source={sourceForId("first")} />
+      <PreviewHarness id="source" source={sourceForId("first")} />,
     );
     const firstSignal = poolHarness.pool.request.mock.calls[0]?.[1]
       ?.signal as AbortSignal;
@@ -90,7 +90,7 @@ describe("useMcapGridPreview", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("preview-source").textContent).toBe(
-        "empty:0:no-frame:"
+        "empty:0:no-frame:",
       );
     });
     expect(poolHarness.pool.acquire).toHaveBeenCalledTimes(2);
@@ -104,7 +104,7 @@ describe("useMcapGridPreview", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("preview-error").textContent).toBe(
-        "error:0:no-frame:boom"
+        "error:0:no-frame:boom",
       );
     });
   });
@@ -114,7 +114,7 @@ describe("useMcapGridPreview", () => {
     const hover = deferred<McapGridPreviewResult>();
     poolHarness.pool.request
       .mockResolvedValueOnce(
-        readyResult({ bytes: [1, 2, 3], nextStartTimeNs: 10n })
+        readyResult({ bytes: [1, 2, 3], nextStartTimeNs: 10n }),
       )
       .mockReturnValueOnce(hover.promise);
 
@@ -125,14 +125,14 @@ describe("useMcapGridPreview", () => {
           latestState.current = state;
         }}
         source={sourceForId("hover")}
-      />
+      />,
     );
 
     await waitFor(() => {
       expect(latestState.current?.status).toBe("ready");
     });
     expect(imageFrame(latestState.current?.frame ?? null)?.image.bytes[0]).toBe(
-      1
+      1,
     );
 
     act(() => {
@@ -151,7 +151,7 @@ describe("useMcapGridPreview", () => {
 
     await waitFor(() => {
       expect(
-        imageFrame(latestState.current?.frame ?? null)?.image.bytes[0]
+        imageFrame(latestState.current?.frame ?? null)?.image.bytes[0],
       ).toBe(9);
     });
 
@@ -164,10 +164,10 @@ describe("useMcapGridPreview", () => {
   it("reloads and sends the selected stream topic when it changes", async () => {
     poolHarness.pool.request
       .mockResolvedValueOnce(
-        readyResult({ bytes: [1], streamTopic: "/camera/front" })
+        readyResult({ bytes: [1], streamTopic: "/camera/front" }),
       )
       .mockResolvedValueOnce(
-        readyResult({ bytes: [2], streamTopic: "/camera/back" })
+        readyResult({ bytes: [2], streamTopic: "/camera/back" }),
       );
 
     const { rerender } = render(
@@ -175,12 +175,12 @@ describe("useMcapGridPreview", () => {
         id="selected"
         selectedStreamTopic="/camera/front"
         source={sourceForId("selected")}
-      />
+      />,
     );
 
     await waitFor(() => {
       expect(screen.getByTestId("preview-selected").textContent).toBe(
-        "ready:1:frame:"
+        "ready:1:frame:",
       );
     });
 
@@ -189,7 +189,7 @@ describe("useMcapGridPreview", () => {
         id="selected"
         selectedStreamTopic="/camera/back"
         source={sourceForId("selected")}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -206,7 +206,7 @@ describe("useMcapGridPreview", () => {
     const reload = deferred<McapGridPreviewResult>();
     poolHarness.pool.request
       .mockResolvedValueOnce(
-        readyResult({ bytes: [1], streamTopic: "/camera/front" })
+        readyResult({ bytes: [1], streamTopic: "/camera/front" }),
       )
       .mockReturnValueOnce(reload.promise);
 
@@ -218,7 +218,7 @@ describe("useMcapGridPreview", () => {
         }}
         selectedStreamTopic="/camera/front"
         source={sourceForId("reload-play")}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -235,7 +235,7 @@ describe("useMcapGridPreview", () => {
           }}
           selectedStreamTopic="/camera/back"
           source={sourceForId("reload-play")}
-        />
+        />,
       );
     });
 
@@ -326,7 +326,7 @@ function createImage(bytes: readonly number[]): EncodedImageVisualization {
 }
 
 function imageFrame(
-  frame: McapGridPreviewFrame | null
+  frame: McapGridPreviewFrame | null,
 ): Extract<McapGridPreviewFrame, { kind: "image" }> | null {
   return frame?.kind === "image" ? frame : null;
 }

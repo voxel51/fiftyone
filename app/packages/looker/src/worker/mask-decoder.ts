@@ -9,7 +9,7 @@ const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
  * Returns undefined if not a PNG.
  */
 const getMaybePngHeader = async (
-  blob: Blob
+  blob: Blob,
 ): Promise<{ bitDepth: number; colorType: number } | undefined> => {
   // https://www.w3.org/TR/2003/REC-PNG-20031110/#11IHDR
 
@@ -38,7 +38,7 @@ export const decodeMaskOnDisk = async (
   blob: Blob,
   cls: string,
   field: string,
-  coloring: Coloring
+  coloring: Coloring,
 ) => {
   let channels: number = 4;
 

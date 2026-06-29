@@ -16,7 +16,7 @@ vi.mock("@fiftyone/state", () => ({
     (_key: string, _initialValue: unknown, useSessionStorage: boolean) =>
       useSessionStorage
         ? [storageState.sessionUpVector, storageState.sessionSetter]
-        : [storageState.localUpVector, storageState.localSetter]
+        : [storageState.localUpVector, storageState.localSetter],
   ),
 }));
 
@@ -25,7 +25,7 @@ const buildScene = (up?: string | null) =>
     cameraProps: {
       up,
     },
-  } as FoScene);
+  }) as FoScene;
 
 describe("useFo3dUpVector", () => {
   beforeEach(() => {
@@ -39,7 +39,7 @@ describe("useFo3dUpVector", () => {
     storageState.sessionUpVector = new Vector3(1, 0, 0);
 
     const { result } = renderHook(() =>
-      useFo3dUpVector(buildScene("Y"), undefined)
+      useFo3dUpVector(buildScene("Y"), undefined),
     );
 
     expect(result.current[0].equals(new Vector3(0, 1, 0))).toBe(true);
@@ -65,7 +65,7 @@ describe("useFo3dUpVector", () => {
     storageState.localUpVector = new Vector3(-1, 0, 0);
 
     const { result } = renderHook(() =>
-      useFo3dUpVector(buildScene(undefined), undefined)
+      useFo3dUpVector(buildScene(undefined), undefined),
     );
 
     expect(result.current[0].equals(new Vector3(-1, 0, 0))).toBe(true);
@@ -75,7 +75,7 @@ describe("useFo3dUpVector", () => {
     const nextUpVector = new Vector3(0, 0, 1);
 
     const { result } = renderHook(() =>
-      useFo3dUpVector(buildScene("Y"), undefined)
+      useFo3dUpVector(buildScene("Y"), undefined),
     );
 
     storageState.sessionSetter.mockClear();
@@ -97,7 +97,7 @@ describe("useFo3dUpVector", () => {
     const nextUpVector = new Vector3(0, 0, -1);
 
     const { result } = renderHook(() =>
-      useFo3dUpVector(buildScene(undefined), undefined)
+      useFo3dUpVector(buildScene(undefined), undefined),
     );
 
     storageState.sessionSetter.mockClear();

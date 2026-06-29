@@ -84,7 +84,7 @@ vi.mock("@fiftyone/lighter", async () => {
       (
         event: string,
         handler: (...args: any[]) => any,
-        { once = false } = {}
+        { once = false } = {},
       ) => {
         useEffect(() => {
           if (once) return mockBus.once(event, handler);
@@ -140,7 +140,7 @@ const CONTENT_BOUNDS = { x: 0, y: 0, width: 50, height: 50 };
 
 const fireMediaBoundsChanged = (bounds = BOUNDS) =>
   act(() =>
-    mockBus.dispatch("lighter:canonical-media-bounds-changed", { bounds })
+    mockBus.dispatch("lighter:canonical-media-bounds-changed", { bounds }),
   );
 
 const fireRendererReady = () =>
@@ -242,7 +242,7 @@ describe("useViewport", () => {
       expect(mockFitToContent).not.toHaveBeenCalled();
       expect(mockEventBusDispatch).toHaveBeenCalledWith(
         "lighter:viewport-init-complete",
-        {}
+        {},
       );
     });
 

@@ -57,11 +57,9 @@ export function useSyncWorkingToSidebar() {
         } as AnnotationLabel;
         store.set(
           editingAtomRef as unknown as PrimitiveAtom<AnnotationLabel | null>,
-          restoredEditing
+          restoredEditing,
         );
-        select(
-          editingAtomRef as unknown as PrimitiveAtom<AnnotationLabel>
-        );
+        select(editingAtomRef as unknown as PrimitiveAtom<AnnotationLabel>);
         clearedEditingRef.current = null;
         lastSyncedWorkingLabelRef.current = workingLabel;
         return;
@@ -70,10 +68,10 @@ export function useSyncWorkingToSidebar() {
 
     // Only sync for 3D editing atoms
     const editingCuboid = isEditingAtom(
-      currentEditingCuboidAtom as unknown as PrimitiveAtom<AnnotationLabel>
+      currentEditingCuboidAtom as unknown as PrimitiveAtom<AnnotationLabel>,
     );
     const editingPolyline = isEditingAtom(
-      currentEditingPolylineAtom as unknown as PrimitiveAtom<AnnotationLabel>
+      currentEditingPolylineAtom as unknown as PrimitiveAtom<AnnotationLabel>,
     );
     if (!editingCuboid && !editingPolyline) return;
 

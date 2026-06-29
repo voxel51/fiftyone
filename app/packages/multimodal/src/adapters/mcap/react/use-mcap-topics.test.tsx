@@ -39,7 +39,7 @@ describe("useMcapTopics", () => {
     });
 
     const { unmount } = render(
-      <TopicsHarness client={failedClient} label="failed" source={source} />
+      <TopicsHarness client={failedClient} label="failed" source={source} />,
     );
 
     await waitFor(() => {
@@ -49,7 +49,7 @@ describe("useMcapTopics", () => {
 
     const retryClient = createTopicsClient(async () => [createTopic("camera")]);
     render(
-      <TopicsHarness client={retryClient} label="retry" source={source} />
+      <TopicsHarness client={retryClient} label="retry" source={source} />,
     );
 
     await waitFor(() => {
@@ -66,7 +66,7 @@ describe("useMcapTopics", () => {
     ]);
 
     const { rerender } = render(
-      <TopicsHarness client={client} label="topics" source={firstSource} />
+      <TopicsHarness client={client} label="topics" source={firstSource} />,
     );
 
     await waitFor(() => {
@@ -74,7 +74,7 @@ describe("useMcapTopics", () => {
     });
 
     rerender(
-      <TopicsHarness client={client} label="topics" source={secondSource} />
+      <TopicsHarness client={client} label="topics" source={secondSource} />,
     );
 
     await waitFor(() => {
@@ -111,7 +111,7 @@ function TopicsHarness({
 }
 
 function createTopicsClient(
-  readTopics: McapResourceClient["readTopics"] = vi.fn(async () => [])
+  readTopics: McapResourceClient["readTopics"] = vi.fn(async () => []),
 ): McapResourceClient {
   return {
     dispose: vi.fn(),

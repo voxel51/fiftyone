@@ -33,7 +33,7 @@ export const useFo3dCameraControlsConfig = ({
 }: UseFo3dCameraControlsConfigArgs) => {
   const isSegmentingPointerDown = useRecoilValue(isSegmentingPointerDownAtom);
   const isCreatingCuboidPointerDown = useRecoilValue(
-    isCreatingCuboidPointerDownAtom
+    isCreatingCuboidPointerDownAtom,
   );
   const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
 
@@ -96,7 +96,7 @@ export const useFo3dCameraControlsConfig = ({
       keyState.current[modifierKey] = isPressed;
       updateCameraControlsConfig();
     },
-    [updateCameraControlsConfig]
+    [updateCameraControlsConfig],
   );
 
   // Global listeners are intentional: modifier keys can change even when canvas

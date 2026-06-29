@@ -12,7 +12,7 @@ export function shouldResolveSelection(
   view: ViewStage[],
   filters: Filters,
   patchesField?: string,
-  pointsField?: string
+  pointsField?: string,
 ) {
   const samplesType = isPatchesView(view) ? "patches" : "samples";
   const plotType = patchesField ? "patches" : "samples";

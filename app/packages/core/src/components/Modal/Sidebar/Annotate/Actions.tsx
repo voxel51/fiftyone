@@ -330,8 +330,8 @@ export const ThreeDPolylines = () => {
       (fieldType) =>
         fieldType === POLYLINE.toLocaleLowerCase() ||
         fieldType === POLYLINES.toLocaleLowerCase(),
-      []
-    )
+      [],
+    ),
   );
 
   const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
@@ -386,8 +386,8 @@ export const ThreeDCuboids = () => {
       (fieldType) =>
         fieldType === DETECTION.toLocaleLowerCase() ||
         fieldType === DETECTIONS.toLocaleLowerCase(),
-      []
-    )
+      [],
+    ),
   );
 
   const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;

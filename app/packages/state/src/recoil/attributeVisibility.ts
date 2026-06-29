@@ -75,7 +75,7 @@ export const fieldHasVisibilitySetting = selectorFamily<
         fields({
           path: expandedPath,
           ftype: VALID_PRIMITIVE_TYPES,
-        })
+        }),
       );
 
       return (

@@ -17,7 +17,7 @@ describe("OperatorPromptFooter", () => {
         requiresOrchestratorSetup
         onCancel={vi.fn()}
         onSubmit={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.queryByTestId("requires-orchestrator")).not.toBeNull();
@@ -29,7 +29,7 @@ describe("OperatorPromptFooter", () => {
         requiresOrchestratorSetup={false}
         onCancel={vi.fn()}
         onSubmit={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.queryByTestId("requires-orchestrator")).toBeNull();
@@ -41,7 +41,7 @@ describe("OperatorPromptFooter", () => {
         requiresOrchestratorSetup
         onCancel={vi.fn()}
         onSubmit={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.queryByRole("button", { name: "Close" })).not.toBeNull();
@@ -58,7 +58,7 @@ describe("OperatorPromptFooter", () => {
         onSubmit={vi.fn()}
         hasSubmitButtonOptions={true}
         submitButtonOptions={submitButtonOptions}
-      />
+      />,
     );
 
     expect(screen.getByLabelText("split button")).not.toBeNull();
@@ -72,7 +72,7 @@ describe("OperatorPromptFooter", () => {
         onCancel={vi.fn()}
         onSubmit={vi.fn()}
         hasSubmitButtonOptions={false}
-      />
+      />,
     );
 
     expect(screen.queryByRole("button", { name: /execute/i })).not.toBeNull();
@@ -87,7 +87,7 @@ describe("OperatorPromptFooter", () => {
         requiresOrchestratorSetup
         onCancel={onCancel}
         onSubmit={vi.fn()}
-      />
+      />,
     );
 
     screen.getByRole("button", { name: "Close" }).click();
@@ -102,7 +102,7 @@ describe("OperatorPromptFooter", () => {
         onCancel={onCancel}
         onSubmit={vi.fn()}
         hasSubmitButtonOptions={false}
-      />
+      />,
     );
 
     screen.getByRole("button", { name: /cancel/i }).click();
@@ -117,7 +117,7 @@ describe("OperatorPromptFooter", () => {
         onCancel={vi.fn()}
         onSubmit={onSubmit}
         hasSubmitButtonOptions={false}
-      />
+      />,
     );
 
     screen.getByRole("button", { name: /execute/i }).click();
@@ -134,7 +134,7 @@ describe("OperatorPromptFooter", () => {
         hasSubmitButtonOptions={false}
         disableSubmit
         disabledReason="Submission disabled"
-      />
+      />,
     );
 
     const executeButton = screen.getByRole("button", { name: /execute/i });
@@ -152,7 +152,7 @@ describe("OperatorPromptFooter", () => {
         onSubmit={vi.fn()}
         hasSubmitButtonOptions={false}
         submitOptionsLoading
-      />
+      />,
     );
 
     expect(screen.queryByRole("button", { name: /execute/i })).toBeNull();
@@ -168,7 +168,7 @@ describe("OperatorPromptFooter", () => {
         hasSubmitButtonOptions={true}
         submitButtonOptions={submitButtonOptions}
         submitOptionsLoading
-      />
+      />,
     );
 
     expect(screen.queryByLabelText("split button")).toBeNull();
@@ -183,7 +183,7 @@ describe("OperatorPromptFooter", () => {
         onSubmit={vi.fn()}
         hasSubmitButtonOptions={false}
         loading
-      />
+      />,
     );
 
     expect(screen.queryByRole("progressbar")).not.toBeNull();
@@ -199,7 +199,7 @@ describe("OperatorPromptFooter", () => {
         onSubmit={onSubmit}
         hasSubmitButtonOptions={true}
         submitButtonOptions={submitButtonOptions}
-      />
+      />,
     );
 
     expect(screen.getByLabelText("split button")).not.toBeNull();

@@ -37,7 +37,7 @@ export const Stl = ({
     () =>
       preTransformedStlPath ??
       getSampleSrc(getResolvedUrlForFo3dAsset(stlPath, fo3dRoot)),
-    [stlPath, preTransformedStlPath, fo3dRoot]
+    [stlPath, preTransformedStlPath, fo3dRoot],
   );
 
   const points_ = useFoLoader(STLLoader, stlUrl);

@@ -154,7 +154,7 @@ export interface McapGridPreviewDecodeRequest {
  */
 export async function decodeGridPreview(
   entry: McapGridPreviewEntry,
-  { selectedStreamTopic, source, startTimeNs }: McapGridPreviewDecodeRequest
+  { selectedStreamTopic, source, startTimeNs }: McapGridPreviewDecodeRequest,
 ): Promise<McapGridPreviewResult> {
   if (entry.topics === undefined) {
     entry.topics = streamTopics(await entry.client.readTopics({ source }));
@@ -227,14 +227,14 @@ export async function decodeGridPreview(
 function chooseSelection(
   entry: McapGridPreviewEntry,
   topics: McapGridTopics,
-  selectedStreamTopic: string | null | undefined
+  selectedStreamTopic: string | null | undefined,
 ): McapGridPreviewSelection | null {
   if (selectedStreamTopic) {
     if (topics.image.includes(selectedStreamTopic)) {
       return {
         annotationTopic: chooseAnnotationTopic(
           selectedStreamTopic,
-          topics.annotations
+          topics.annotations,
         ),
         kind: "image",
         streamTopic: selectedStreamTopic,
@@ -259,7 +259,7 @@ function chooseSelection(
 }
 
 function chooseAutoSelection(
-  topics: McapGridTopics
+  topics: McapGridTopics,
 ): McapGridPreviewSelection | null {
   return chooseCameraSelection(topics) ?? choosePointCloudSelection(topics);
 }
@@ -269,7 +269,7 @@ function chooseAutoSelection(
  * Deterministic so a sample keeps the same preview camera across renders.
  */
 export function chooseCameraSelection(
-  topics: McapGridTopics
+  topics: McapGridTopics,
 ): McapGridCameraSelection | null {
   const imageTopic = topics.image[0];
   if (!imageTopic) {
@@ -284,7 +284,7 @@ export function chooseCameraSelection(
 }
 
 function choosePointCloudSelection(
-  topics: McapGridTopics
+  topics: McapGridTopics,
 ): McapGridPointCloudSelection | null {
   const pointCloudTopic = topics.pointCloud[0];
   return pointCloudTopic
@@ -312,7 +312,7 @@ interface McapGridPreviewReadResult {
 }
 
 async function readNextPreviewFrame(
-  request: ReadPreviewFrameRequest
+  request: ReadPreviewFrameRequest,
 ): Promise<McapGridPreviewReadResult | null> {
   if (request.selection.kind === "point-cloud") {
     return readNextPointCloudPreviewFrame(request);
@@ -488,7 +488,7 @@ async function readImageFrameNear({
 }
 
 function imageFrame(
-  message: McapDecodedMessage
+  message: McapDecodedMessage,
 ): EncodedImageVisualization | null {
   const visualization = message.decoded.output.visualization;
   return visualization?.kind === VISUALIZATION_KIND.ENCODED_IMAGE
@@ -497,7 +497,7 @@ function imageFrame(
 }
 
 function annotationsFrame(
-  message: McapDecodedMessage
+  message: McapDecodedMessage,
 ): ImageAnnotationsVisualization | null {
   const visualization = message.decoded.output.visualization;
   return visualization?.kind === VISUALIZATION_KIND.IMAGE_ANNOTATIONS
@@ -506,7 +506,7 @@ function annotationsFrame(
 }
 
 function pointCloudFrame(
-  message: McapDecodedMessage
+  message: McapDecodedMessage,
 ): PointCloudVisualization | null {
   const visualization = message.decoded.output.visualization;
   return visualization?.kind === VISUALIZATION_KIND.POINT_CLOUD

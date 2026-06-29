@@ -44,14 +44,14 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
     // select bottle in ground_truth.detections.label
     await sidebar.clickFieldDropdown("ground_truth");
     await entryExpandPromise;
     await sidebar.applyLabelFromList(
       ["bottle"],
-      "select-detections-with-label"
+      "select-detections-with-label",
     );
 
     // verify the number of samples in the result
@@ -59,7 +59,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "select-bottle.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
 
     // go to visibility mode
@@ -70,7 +70,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "select-bottle-show-cat.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
 
     // test case: visibility mode - hide label
@@ -78,7 +78,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "select-bottle-hide-person-cat.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
   });
 
@@ -92,14 +92,14 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
 
     await sidebar.clickFieldDropdown("ground_truth");
     await entryExpandPromise;
     await sidebar.applyLabelFromList(
       ["bottle"],
-      "exclude-detections-with-label"
+      "exclude-detections-with-label",
     );
 
     // verify the number of samples in the result
@@ -108,7 +108,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     await grid.assert.isLookerCountEqualTo(5);
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "exclude-bottle.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
 
     // Test with visibility mode:
@@ -119,7 +119,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "exclude-bottle-show-cup.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
 
     // test case: visibility mode - hide label
@@ -127,7 +127,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "exclude-bottle-hide-cup.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
   });
 
@@ -141,7 +141,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
 
     await sidebar.clickFieldDropdown("ground_truth");
@@ -166,7 +166,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-bottle-show-cup.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
 
     // test case: visibility mode - hide label
@@ -174,7 +174,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-bottle-hide-cup.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
   });
 
@@ -188,7 +188,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
 
     await sidebar.clickFieldDropdown("ground_truth");
@@ -201,7 +201,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-bottle.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
 
     // Test the visibility mode:
@@ -212,7 +212,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-bottle-show-horse.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
 
     // test case: visibility mode - hide label
@@ -220,7 +220,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-bottle-hide-horse.png",
-      { animations: "allow" }
+      { animations: "allow" },
     );
   });
 });

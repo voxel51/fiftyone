@@ -12,7 +12,7 @@ import type {
 } from "./playback-worker-types";
 
 type PendingRequest<
-  Type extends McapPlaybackWorkerUnaryType = McapPlaybackWorkerUnaryType
+  Type extends McapPlaybackWorkerUnaryType = McapPlaybackWorkerUnaryType,
 > = {
   readonly reject: (error: Error) => void;
   readonly resolve: (result: McapPlaybackWorkerResultByType[Type]) => void;
@@ -37,7 +37,7 @@ export class McapPlaybackWorkerTransport {
   private streams = new Map<number, PendingStream>();
 
   constructor(
-    private readonly isActiveSource: (sourceKey: string) => boolean
+    private readonly isActiveSource: (sourceKey: string) => boolean,
   ) {}
 
   /**
@@ -47,7 +47,7 @@ export class McapPlaybackWorkerTransport {
     worker: Worker,
     sourceKey: string,
     type: Type,
-    payload: McapPlaybackWorkerRequestPayloadByType[Type]
+    payload: McapPlaybackWorkerRequestPayloadByType[Type],
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     const id = this.nextRequestId++;
     const message = createRpcRequest(id, sourceKey, type, payload);
@@ -75,7 +75,7 @@ export class McapPlaybackWorkerTransport {
     worker: Worker,
     sourceKey: string,
     type: Type,
-    payload: McapPlaybackWorkerRequestPayloadByType[Type]
+    payload: McapPlaybackWorkerRequestPayloadByType[Type],
   ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
     const id = this.nextRequestId++;
     const message = createRpcRequest(id, sourceKey, type, payload);
@@ -158,7 +158,7 @@ export class McapPlaybackWorkerTransport {
   }
 
   private handleStreamResponse(
-    response: Extract<McapPlaybackWorkerResponse, { readonly stream: true }>
+    response: Extract<McapPlaybackWorkerResponse, { readonly stream: true }>,
   ) {
     const stream = this.streams.get(response.id);
     if (!stream) {
@@ -203,19 +203,19 @@ function createRpcRequest<Type extends McapPlaybackWorkerUnaryType>(
   id: number,
   sourceKey: string,
   type: Type,
-  payload: McapPlaybackWorkerRequestPayloadByType[Type]
+  payload: McapPlaybackWorkerRequestPayloadByType[Type],
 ): McapPlaybackWorkerRpcRequest<Type>;
 function createRpcRequest<Type extends McapPlaybackWorkerStreamType>(
   id: number,
   sourceKey: string,
   type: Type,
-  payload: McapPlaybackWorkerRequestPayloadByType[Type]
+  payload: McapPlaybackWorkerRequestPayloadByType[Type],
 ): McapPlaybackWorkerRpcRequest<Type>;
 function createRpcRequest(
   id: number,
   sourceKey: string,
   type: McapPlaybackWorkerRpcRequest["type"],
-  payload: McapPlaybackWorkerRpcRequest["payload"]
+  payload: McapPlaybackWorkerRpcRequest["payload"],
 ): McapPlaybackWorkerRequest {
   return {
     id,
@@ -227,7 +227,7 @@ function createRpcRequest(
 }
 
 function nextStreamValue(
-  stream: PendingStream
+  stream: PendingStream,
 ): Promise<IteratorResult<unknown, void>> {
   const value = stream.values.shift();
   if (value !== undefined) {

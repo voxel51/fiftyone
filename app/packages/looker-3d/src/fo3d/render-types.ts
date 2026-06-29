@@ -17,7 +17,7 @@ export class BoxGeometryAsset {
     readonly width: number,
     readonly height: number,
     readonly depth: number,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -31,7 +31,7 @@ export class CylinderGeometryAsset {
     readonly openEnded: boolean,
     readonly thetaStart: number,
     readonly thetaLength: number,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -39,7 +39,7 @@ export class PlaneGeometryAsset {
   constructor(
     readonly width: number,
     readonly height: number,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -52,7 +52,7 @@ export class SphereGeometryAsset {
     readonly phiLength: number,
     readonly thetaStart: number,
     readonly thetaLength: number,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -60,7 +60,7 @@ export class FbxAsset {
   constructor(
     readonly fbxPath: string,
     readonly preTransformedFbxPath?: string,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -68,7 +68,7 @@ export class GltfAsset {
   constructor(
     readonly gltfPath: string,
     readonly preTransformedGltfPath?: string,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -78,7 +78,7 @@ export class ObjAsset {
     readonly mtlPath?: string,
     readonly preTransformedObjPath?: string,
     readonly preTransformedMtlPath?: string,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 
@@ -87,7 +87,7 @@ export class PcdAsset {
     readonly pcdPath?: string,
     readonly preTransformedPcdPath?: string,
     readonly defaultMaterial?: FoPointcloudMaterialProps,
-    readonly centerGeometry?: boolean
+    readonly centerGeometry?: boolean,
   ) {}
 }
 
@@ -97,7 +97,7 @@ export class PlyAsset {
     readonly preTransformedPlyPath?: string,
     readonly defaultMaterial?: FoMeshMaterial,
     readonly isPcd?: boolean,
-    readonly centerGeometry?: boolean
+    readonly centerGeometry?: boolean,
   ) {}
 }
 
@@ -105,7 +105,7 @@ export class StlAsset {
   constructor(
     readonly stlPath?: string,
     readonly preTransformedStlPath?: string,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
   ) {}
 }
 

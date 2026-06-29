@@ -20,7 +20,7 @@ const GroupSlice = () => {
       const values = groupSlicesValue.filter((name) => name.includes(search));
       return { values, total: values.length };
     },
-    [groupSlicesValue]
+    [groupSlicesValue],
   );
 
   return (

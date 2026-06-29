@@ -17,7 +17,7 @@ type LabelData = AnnotationLabel["data"];
 const makeField = (embeddedDocType: string): Field =>
   ({
     embeddedDocType,
-  } as Field);
+  }) as Field;
 
 describe("delta calculation utilities", () => {
   describe("buildAnnotationPath", () => {
@@ -67,7 +67,7 @@ describe("delta calculation utilities", () => {
   describe("buildJsonPath", () => {
     it("builds path from labelPath and operationPath", () => {
       expect(buildJsonPath("predictions.detections", "label")).toBe(
-        "/predictions/detections/label"
+        "/predictions/detections/label",
       );
     });
 
@@ -78,7 +78,7 @@ describe("delta calculation utilities", () => {
 
     it("handles nested operation paths", () => {
       expect(buildJsonPath("predictions.detections", "bounding_box/0")).toBe(
-        "/predictions/detections/bounding_box/0"
+        "/predictions/detections/bounding_box/0",
       );
     });
 
@@ -281,7 +281,7 @@ describe("delta calculation utilities", () => {
 
       const deltas = buildKeypointsMutationDeltas(
         {},
-        { type: "Keypoint", path, data: newKeypoint }
+        { type: "Keypoint", path, data: newKeypoint },
       );
 
       expect(deltas.some((d) => d.op === "add")).toBe(true);
@@ -319,7 +319,7 @@ describe("delta calculation utilities", () => {
           path,
           data: { _id: "kp-1" } as unknown as KeypointLabel,
         },
-        makeField("fiftyone.core.labels.Keypoints")
+        makeField("fiftyone.core.labels.Keypoints"),
       );
 
       // fast-json-patch emits a "shift down + pop" sequence: the trailing
@@ -344,7 +344,7 @@ describe("delta calculation utilities", () => {
           path: "kp",
           data: { _id: "kp-1" } as unknown as KeypointLabel,
         },
-        makeField("fiftyone.core.labels.Keypoint")
+        makeField("fiftyone.core.labels.Keypoint"),
       );
 
       expect(deltas).toEqual([{ op: "remove", path: "/" }]);
@@ -359,7 +359,7 @@ describe("delta calculation utilities", () => {
           data: { _id: "kp-1" } as unknown as KeypointLabel,
         },
         makeField("fiftyone.core.labels.Keypoints"),
-        true
+        true,
       );
 
       expect(deltas).toEqual([{ op: "remove", path: "/" }]);
@@ -373,7 +373,7 @@ describe("delta calculation utilities", () => {
           path: "keypoints",
           data: { _id: "kp-1" } as unknown as KeypointLabel,
         },
-        makeField("fiftyone.core.labels.Keypoints")
+        makeField("fiftyone.core.labels.Keypoints"),
       );
 
       expect(deltas).toEqual([]);

@@ -9,8 +9,8 @@ export default function TagsView(props) {
   const tags = Array.isArray(data)
     ? data
     : Array.isArray(defaultValue)
-    ? defaultValue
-    : [];
+      ? defaultValue
+      : [];
 
   return (
     <Box {...getComponentProps(props, "container")}>

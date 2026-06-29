@@ -69,7 +69,7 @@ export default function GridView(props: ViewPropsType) {
                   layout: { width, height },
                 },
                 "item",
-                baseItemProps
+                baseItemProps,
               )}
             >
               <DynamicIO

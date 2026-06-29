@@ -40,7 +40,7 @@ async function loadConfig() {
             assetsDir = path.resolve(
               config.root,
               config.build.outDir,
-              "assets"
+              "assets",
             );
           },
           buildStart() {
@@ -171,7 +171,7 @@ function foxgloveWasmAsUrl(): Plugin {
         !source.endsWith(".wasm") ||
         !importer ||
         !/[\\/]node_modules[\\/]@foxglove[\\/]wasm-(lz4|zstd|bz2)[\\/]/.test(
-          importer
+          importer,
         )
       ) {
         return null;
@@ -198,20 +198,23 @@ function foxgloveWasmOptimizeAsUrl() {
   return {
     name: "foxglove-wasm-url",
     setup(build) {
-      build.onResolve({ filter: /^\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm$/ }, (args) => {
-        if (!wrapperPattern.test(args.importer)) {
-          return undefined;
-        }
+      build.onResolve(
+        { filter: /^\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm$/ },
+        (args) => {
+          if (!wrapperPattern.test(args.importer)) {
+            return undefined;
+          }
 
-        return {
-          namespace,
-          path: path.resolve(args.resolveDir, args.path),
-        };
-      });
+          return {
+            namespace,
+            path: path.resolve(args.resolveDir, args.path),
+          };
+        },
+      );
 
       build.onLoad({ filter: /.*/, namespace }, (args) => ({
         contents: `module.exports = ${JSON.stringify(
-          `/@fs/${normalizePath(args.path)}`
+          `/@fs/${normalizePath(args.path)}`,
         )};`,
         loader: "js",
       }));

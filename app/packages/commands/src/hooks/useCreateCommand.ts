@@ -22,7 +22,7 @@ export const useCreateCommand = (
   execFn: CommandFunction,
   enablement: () => boolean,
   label?: string,
-  description?: string
+  description?: string,
 ): CommandHookReturn => {
   const boundContext = useMemo(() => {
     return resolveContext(context);
@@ -43,7 +43,7 @@ export const useCreateCommand = (
       () => exec.current(),
       () => enable.current(),
       label,
-      description
+      description,
     );
 
     setEnabled(cmd.isEnabled());

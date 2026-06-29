@@ -56,10 +56,10 @@ export const PolylinePointMarker = ({
   const setTransformMode = useSetRecoilState(transformModeAtom);
 
   const [selectedPoint, setSelectedPoint] = useRecoilState(
-    selectedPolylineVertexAtom
+    selectedPolylineVertexAtom,
   );
   const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
-    currentArchetypeSelectedForTransformAtom
+    currentArchetypeSelectedForTransformAtom,
   );
 
   const setSegmentState = useSetRecoilState(activeSegmentationStateAtom);
@@ -117,7 +117,7 @@ export const PolylinePointMarker = ({
       setTransformMode,
       setSegmentState,
       setEditSegmentsMode,
-    ]
+    ],
   );
 
   const { updatePolyline } = useUpdateTransient();

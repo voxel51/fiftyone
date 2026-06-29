@@ -21,7 +21,7 @@ import { usePlayback } from "./PlaybackProvider";
 export function useVideoStream(
   id: string,
   videoRef: RefObject<HTMLVideoElement | null>,
-  options: { blocking?: boolean } = {}
+  options: { blocking?: boolean } = {},
 ): void {
   const { registerStream } = usePlayback();
   const [duration, setDuration] = useState(0);

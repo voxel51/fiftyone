@@ -67,7 +67,7 @@ const inferFieldSchema = (labelProxy: LabelProxy): Field | null => {
  */
 export const useGetLabelDelta = <T>(
   labelConstructor: LabelConstructor<T>,
-  options: UseGetLabelDeltaOptions = {}
+  options: UseGetLabelDeltaOptions = {},
 ): ((labelSource: T, path: string) => JSONDeltas) => {
   const { opType = "mutate" } = options;
   const sample = useActiveModalSample();
@@ -93,7 +93,7 @@ export const useGetLabelDelta = <T>(
             labelProxy,
             schema,
             opType,
-            isGenerated
+            isGenerated,
           );
 
           return labelDeltas.map((delta) => ({
@@ -106,6 +106,6 @@ export const useGetLabelDelta = <T>(
 
       return [];
     },
-    [isGenerated, labelConstructor, sample, modalSampleSchema, opType]
+    [isGenerated, labelConstructor, sample, modalSampleSchema, opType],
   );
 };
