@@ -49,8 +49,9 @@ Workflows are built from **stages**. The core stage types are:
 
 A running workflow creates **tasks** — units of work assigned to members.
 Each member sees their share under **My Tasks**. Progress is tracked per
-unique sample: a stage's total reflects the number of unique samples it
-must process.
+unique sample: a stage's total reflects the number of unique samples
+currently available to work on — this number updates as upstream stages
+push new samples in.
 
 ----
 
