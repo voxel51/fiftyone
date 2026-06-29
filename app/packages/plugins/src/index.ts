@@ -63,15 +63,17 @@ export async function loadPlugins() {
   // bundle, not the sum of all of them.
   await Promise.all(
     plugins.map((plugin) => {
-      usingRegistry().registerPluginDefinition(plugin);
+      const registry = usingRegistry();
+      registry.registerPluginDefinition(plugin);
       if (!plugin.hasJS) {
         return undefined;
       }
       const name = plugin.name;
-      if (usingRegistry().hasScript(name)) {
+      if (registry.hasScript(name)) {
         console.debug(`Plugin "${name}": already loaded`);
         return undefined;
       }
+      registry.registerScript(name);
       const cacheKey = plugin.jsBundleHash ? `?h=${plugin.jsBundleHash}` : "";
       return loadScript(
         name,
