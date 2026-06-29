@@ -9,7 +9,11 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only cancel an in-progress run when the new run will actually run CI.
+  # A PR title/body edit fires an `edited` event (no base change) that skips
+  # every heavy job; letting it cancel the running suite would leave the PR
+  # falsely green, since `all-tests` treats skipped jobs as a pass.
+  cancel-in-progress: ${{ github.event.action != 'edited' || github.event.changes.base != null }}
 
 jobs:
   modified-files:
