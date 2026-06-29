@@ -8,6 +8,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   modified-files:
     runs-on: ubuntu-latest
@@ -91,12 +94,12 @@ jobs:
       needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/test.yml
     with:
-      # Full Python coverage on PRs into long-lived release/main branches;
-      # boundary versions only (drop the 3.11 middle) on develop/feature PRs.
+      # Boundary versions only (drop the 3.11 middle) on develop/feature PRs;
+      # full Python coverage on every other base (release/main, etc.).
       python-versions: >-
-        ${{ (github.base_ref == 'main' ||
-        startsWith(github.base_ref, 'release/'))
-        && '["3.10", "3.11", "3.12"]' || '["3.10", "3.12"]' }}
+        ${{ (github.base_ref == 'develop' ||
+        startsWith(github.base_ref, 'feat/'))
+        && '["3.10", "3.12"]' || '["3.10", "3.11", "3.12"]' }}
 
   test-windows:
     needs: modified-files
@@ -106,9 +109,9 @@ jobs:
     uses: ./.github/workflows/windows-test.yml
     with:
       python-versions: >-
-        ${{ (github.base_ref == 'main' ||
-        startsWith(github.base_ref, 'release/'))
-        && '["3.10", "3.11", "3.12"]' || '["3.10", "3.12"]' }}
+        ${{ (github.base_ref == 'develop' ||
+        startsWith(github.base_ref, 'feat/'))
+        && '["3.10", "3.12"]' || '["3.10", "3.11", "3.12"]' }}
 
   all-tests:
     runs-on: ubuntu-latest
