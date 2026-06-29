@@ -104,7 +104,7 @@ export interface AnnotationContext {
    */
   setData: (
     data: Partial<AnnotationLabel["data"]>,
-    options?: { replace?: boolean }
+    options?: { replace?: boolean },
   ) => void;
   /** Move the current label to a different schema field. */
   setField: (path: string) => void;
@@ -129,7 +129,7 @@ export interface AnnotationContext {
    */
   createNew: (
     type: LabelType,
-    overrides?: CreateOptions
+    overrides?: CreateOptions,
   ) => AnnotationLabel | null;
   /** Drop the editing pointer and reset all derived state. */
   clear: () => void;
