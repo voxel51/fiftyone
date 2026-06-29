@@ -1,3 +1,8 @@
+import {
+  type LabelRef,
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 import { useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
@@ -10,6 +15,7 @@ import { activePrimitiveAtom } from "../useActivePrimitive";
 import {
   currentEditingMaskAtom,
   editingLabelAtom,
+  editingRefAtom,
   pendingNewTypeAtom,
   savedLabel,
   savedLabelPath,
@@ -57,6 +63,8 @@ const lastUsedLabelAtom = atomFamily(
  */
 export const useAnnotationContext = (): AnnotationContext => {
   const { scene, addOverlay, overlayFactory } = useLighter();
+  const engine = useAnnotationEngine();
+  const sample = useActiveAnnotationSampleId();
 
   const label = useAtomValue(current);
   const data = useAtomValue(currentData);
@@ -71,6 +79,7 @@ export const useAnnotationContext = (): AnnotationContext => {
   const dirty = useAtomValue(hasChanges);
   const fieldReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
   const pendingNewType = useAtomValue(pendingNewTypeAtom);
+  const ref = useAtomValue(editingRefAtom);
 
   const selected = useMemo<AnnotationContextSelected | null>(
     () =>
@@ -79,6 +88,7 @@ export const useAnnotationContext = (): AnnotationContext => {
             label,
             data,
             field: field ?? null,
+            ref,
             type,
             overlay,
             schema,
@@ -98,6 +108,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       isNew,
       label,
       overlay,
+      ref,
       savedData,
       schema,
       type,
@@ -114,6 +125,7 @@ export const useAnnotationContext = (): AnnotationContext => {
               label: labelValue,
               data: dataValue,
               field: get(currentField) ?? null,
+              ref: get(editingRefAtom),
               type: get(currentType),
               overlay: get(currentOverlay),
               schema: get(currentSchema),
@@ -135,6 +147,7 @@ export const useAnnotationContext = (): AnnotationContext => {
   const writeData = useSetAtom(currentData);
   const writeField = useSetAtom(currentField);
   const setEditingLabel = useSetAtom(editingLabelAtom);
+  const setEditingRef = useSetAtom(editingRefAtom);
   const setPendingNewType = useSetAtom(pendingNewTypeAtom);
   const setSaved = useSetAtom(savedLabel);
   // jotai loses the WritableAtom shape on plain `atom<T>(initial)` — cast.
@@ -212,23 +225,32 @@ export const useAnnotationContext = (): AnnotationContext => {
   );
 
   const selectExisting = useAtomCallback(
-    useCallback((get, set, labelAtom: PrimitiveAtom<AnnotationLabel>) => {
-      const label = get(labelAtom);
-      const data = label.data;
-      set(savedLabel, data);
-      set(savedLabelPath, label.path ?? null);
-      set(editingLabelAtom, labelAtom);
-      set(pendingNewTypeAtom, null);
-      // Seed mask flag from committed data — no lighter event has fired yet.
-      const maskFields = data as { mask?: unknown; mask_path?: unknown };
-      set(
-        currentEditingMaskAtom,
-        Boolean(maskFields.mask || maskFields.mask_path),
-      );
-    }, []),
+    useCallback(
+      (
+        get,
+        set,
+        labelAtom: PrimitiveAtom<AnnotationLabel>,
+        ref: LabelRef | null,
+      ) => {
+        const label = get(labelAtom);
+        const data = label.data;
+        set(savedLabel, data);
+        set(savedLabelPath, label.path ?? null);
+        set(editingLabelAtom, labelAtom);
+        set(editingRefAtom, ref);
+        set(pendingNewTypeAtom, null);
+        // Seed mask flag from committed data — no lighter event has fired yet.
+        const maskFields = data as { mask?: unknown; mask_path?: unknown };
+        set(
+          currentEditingMaskAtom,
+          Boolean(maskFields.mask || maskFields.mask_path),
+        );
+      },
+      [],
+    ),
   );
   const select = useCallback<AnnotationContext["select"]>(
-    (labelAtom) => selectExisting(labelAtom),
+    (labelAtom, ref) => selectExisting(labelAtom, ref ?? null),
     [selectExisting],
   );
 
@@ -252,6 +274,7 @@ export const useAnnotationContext = (): AnnotationContext => {
     setSaved(null);
     setSavedPath(null);
     setEditingLabel(null);
+    setEditingRef(null);
     setPendingNewType(null);
     setActivePrimitive(null);
     setCurrentEditingMask(false);
@@ -260,6 +283,7 @@ export const useAnnotationContext = (): AnnotationContext => {
     setActivePrimitive,
     setCurrentEditingMask,
     setEditingLabel,
+    setEditingRef,
     setPendingNewType,
     setSaved,
     setSavedPath,
@@ -280,7 +304,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       const built = createNewLabel(
         createType,
         { ...overrides, field: resolvedField, labelValue: resolvedLabelValue },
-        { scene, addOverlay, overlayFactory },
+        { scene, addOverlay, overlayFactory, engine, sample },
       );
 
       if (built) {
@@ -300,7 +324,9 @@ export const useAnnotationContext = (): AnnotationContext => {
       clear,
       computeFieldFor,
       computeLabelFor,
+      engine,
       overlayFactory,
+      sample,
       scene,
       setEditingLabel,
       setPendingNewType,

@@ -48,7 +48,9 @@ export class SelectionManager {
    * @param id - The ID of the overlay to unregister.
    */
   removeSelectable(id: string): void {
-    this.deselect(id);
+    // Removal-driven deselect; flag it so listeners can distinguish it from a
+    // user-driven deselect
+    this.deselect(id, { ignoreSideEffects: true });
     this.selectableOverlays.delete(id);
   }
 
@@ -112,7 +114,7 @@ export class SelectionManager {
       ignoreSideEffects,
     });
 
-    this.emitSelectionChanged([], [id]);
+    this.emitSelectionChanged([], [id], ignoreSideEffects);
   }
 
   /**
@@ -152,7 +154,7 @@ export class SelectionManager {
       previouslySelectedIds: previouslySelected,
     });
 
-    this.emitSelectionChanged([], previouslySelected);
+    this.emitSelectionChanged([], previouslySelected, ignoreSideEffects);
   }
 
   /**
@@ -193,12 +195,14 @@ export class SelectionManager {
   private emitSelectionChanged(
     selectedIds: string[],
     deselectedIds: string[],
+    ignoreSideEffects = false,
   ): void {
     if (selectedIds.length === 0 && deselectedIds.length === 0) return;
 
     this.eventBus.dispatch("lighter:selection-changed", {
       selectedIds,
       deselectedIds,
+      ignoreSideEffects,
     });
   }
 

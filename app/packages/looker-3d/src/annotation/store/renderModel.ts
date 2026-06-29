@@ -118,11 +118,6 @@ export function deriveRenderModel(
   const polylines: ReconciledPolyline3D[] = [];
 
   for (const [labelId, label] of Object.entries(workingDoc.labelsById)) {
-    // Skip deleted labels
-    if (workingDoc.deletedIds.has(labelId)) {
-      continue;
-    }
-
     if (isDetection(label)) {
       const withTransient = applyTransientToCuboid(
         label,

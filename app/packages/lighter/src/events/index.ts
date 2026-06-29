@@ -16,11 +16,21 @@ export type LighterEventGroup = {
   // OVERLAY LIFECYCLE EVENTS
   // ============================================================================
   /** Emitted when an overlay is added to the scene */
-  "lighter:overlay-added": { id: string; overlay: BaseOverlay };
+  "lighter:overlay-added": {
+    id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
+    overlay: BaseOverlay;
+  };
   /** Emitted when an overlay has finished loading resources and is ready */
   "lighter:overlay-loaded": { id: string };
-  /** Emitted when an overlay is removed from the scene */
-  "lighter:overlay-removed": { id: string };
+  /**
+   * Emitted when an overlay is removed from the scene. `lifecycle` is set
+   * when the removal is a teardown / sync eviction (scene reset, scrub-off,
+   * unmount) rather than a user-initiated delete — consumers that persist
+   * deletions must ignore lifecycle removals.
+   */
+  "lighter:overlay-removed": { id: string; lifecycle?: boolean };
   /** Emitted when an overlay encounters an error during loading or rendering */
   "lighter:overlay-error": { id: string; error: Error };
   /** Emitted when an overlay's bounds change */
@@ -29,15 +39,28 @@ export type LighterEventGroup = {
     bounds: Rect;
   };
   /**
-   * Emitted when an overlay's label is updated, or when an overlay's
-   * editing state changes in a way subscribers need to observe (e.g.
-   * `DetectionOverlay.initMask`/`removeMask` flipping mask-canvas state
-   * without changing label data).
+   * Requests that the engine commit this overlay's current label — emit it
+   * after locally mutating an overlay (paint/merge/restore/init/remove a mask,
+   * or applying an agent label). This is NOT a passive notification: the engine
+   * bridge handles it by COMMITTING the overlay (a Sample write + an undo entry
+   * + autosave persistence), and it consumes the in-flight gesture key used to
+   * coalesce a multi-step mask edit into one undo unit. Async mask encodes
+   * re-emit it from their encode callback so the freshly-encoded mask commits
+   * (the synchronous finalize that preceded it read an empty pending mask).
+   * Don't emit it just to signal "the label changed" — that commits.
    */
-  "lighter:overlay-label-updated": {
+  "lighter:overlay-commit-requested": {
     id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
     label: RawLookerLabel;
     hasMask: boolean;
+    /**
+     * Optional id correlating this update to a multi-commit gesture (e.g. a
+     * merge): the engine bridge stamps it on the commit so every write the
+     * gesture causes — even across async ticks — shares one undo unit.
+     */
+    gestureId?: string;
   };
 
   // ============================================================================
@@ -69,7 +92,13 @@ export type LighterEventGroup = {
   "lighter:overlay-create": { eventId: string };
   /** Emitted when an overlay finishes being established */
   "lighter:overlay-establish": {
+    /**
+     * Event id — note this may be the interaction handler's id rather than the
+     * overlay's. Use {@link overlayId} to identify the established overlay.
+     */
     id: string;
+    /** ID of the overlay that was established. */
+    overlayId: string;
     handler: InteractionHandler;
     startBounds: Rect;
     startPosition: Point;
@@ -90,7 +119,13 @@ export type LighterEventGroup = {
   };
   /** Emitted when an overlay drag ends */
   "lighter:overlay-drag-end": {
+    /**
+     * Event id — may be the interaction handler's id. Use {@link overlayId} to
+     * identify the dragged overlay.
+     */
     id: string;
+    /** ID of the overlay that was dragged. */
+    overlayId: string;
     startPosition: Point;
     endPosition: Point;
     startBounds: Rect;
@@ -109,7 +144,13 @@ export type LighterEventGroup = {
   };
   /** Emitted when an overlay resize ends */
   "lighter:overlay-resize-end": {
+    /**
+     * Event id — may be the interaction handler's id. Use {@link overlayId} to
+     * identify the resized overlay.
+     */
     id: string;
+    /** ID of the overlay that was resized. */
+    overlayId: string;
     startPosition: Point;
     endPosition: Point;
     startBounds: Rect;
@@ -130,6 +171,8 @@ export type LighterEventGroup = {
   /** Emitted when a paint stroke (brush/eraser) ends */
   "lighter:overlay-paint-end": {
     id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
     paintStrokeData: PaintStrokeData | undefined;
     /** True when this stroke is the first of a brand-new overlay */
     isEstablishing?: boolean;
@@ -153,6 +196,8 @@ export type LighterEventGroup = {
   /** Emitted when a keypoint is added during interactive creation */
   "lighter:keypoint-point-added": {
     id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
     pointId: string;
     /** Relative coordinates of the added point */
     point: Point;
@@ -162,6 +207,8 @@ export type LighterEventGroup = {
   /** Emitted when a keypoint is moved via drag */
   "lighter:keypoint-point-moved": {
     id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
     pointId: string;
     /** Relative coordinates before the move */
     from: Point;
@@ -171,6 +218,8 @@ export type LighterEventGroup = {
   /** Emitted when a keypoint is deleted */
   "lighter:keypoint-point-deleted": {
     id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
     pointId: string;
     /** Optional keypoint variant. */
     variant?: string;
@@ -195,6 +244,14 @@ export type LighterEventGroup = {
   "lighter:selection-changed": {
     selectedIds: string[];
     deselectedIds: string[];
+    /**
+     * True when the selection state change was driven by something other than
+     * a user gesture — currently set when an overlay is removed from the
+     * scene (its selection is dropped as a side effect of removal, not because
+     * the user picked something else). Listeners that care about user intent
+     * should skip deselect entries when this is true.
+     */
+    ignoreSideEffects?: boolean;
   };
   /** Emitted when all overlays are deselected */
   "lighter:selection-cleared": {

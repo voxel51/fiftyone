@@ -13,6 +13,7 @@ import { KeypointDetails } from "./KeypointDetails";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
+import TemporalDetectionDetails from "./TemporalDetectionDetails";
 import { useAnnotationContext } from "./useAnnotationContext";
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
@@ -92,6 +93,8 @@ export default function Edit() {
 
   const is3dDetection =
     overlay && isDetection3d(overlay.label as DetectionLabel);
+  const isTemporalDetection =
+    (data as { _cls?: string } | null)?._cls === "TemporalDetection";
   const primitiveEditingActive = activePrimitivePath !== null;
 
   return (
@@ -109,6 +112,9 @@ export default function Edit() {
         )}
         {type === POLYLINE && <PolylineDetails />}
         {type === KEYPOINT && <KeypointDetails />}
+        {isTemporalDetection && (
+          <TemporalDetectionDetails readOnly={isReadOnly} />
+        )}
         {field && <AnnotationSchema readOnly={isReadOnly} />}
         {isMaskDetection && <MaskPreview />}
       </Content>

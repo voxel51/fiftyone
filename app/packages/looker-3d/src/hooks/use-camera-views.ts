@@ -255,7 +255,8 @@ export const useCameraViews = ({
         return;
       }
 
-      if (!event.metaKey && event.code === "KeyZ") {
+      // exclude ctrlKey so Windows Ctrl+Z falls through to undo
+      if (!event.metaKey && !event.ctrlKey && event.code === "KeyZ") {
         setCameraViewStatus({
           viewName: "Crop",
           timestamp: Date.now(),

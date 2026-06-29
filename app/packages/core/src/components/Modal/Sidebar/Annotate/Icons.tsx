@@ -72,6 +72,25 @@ export const Keypoint = ({ fill }: { fill: string }) => {
   );
 };
 
+export const TemporalDetection = ({ fill }: { fill: string }) => {
+  return (
+    <Container>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="21"
+        viewBox="0 0 20 21"
+        fill="none"
+      >
+        <path
+          d="M4 10.5L6 8.5L8 10.5L6 12.5L4 10.5ZM7 10H13V11H7V10ZM12 10.5L14 8.5L16 10.5L14 12.5L12 10.5Z"
+          fill={fill}
+        />
+      </svg>
+    </Container>
+  );
+};
+
 export const Locking = ({ on }: { on: boolean }) => {
   const theme = useTheme();
   const color = on ? theme.text.secondary : theme.text.disabled;
@@ -103,4 +122,6 @@ export const ICONS = {
   polylines: Polyline,
   keypoint: Keypoint,
   keypoints: Keypoint,
+  temporaldetection: TemporalDetection,
+  temporaldetections: TemporalDetection,
 };

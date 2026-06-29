@@ -27,7 +27,6 @@ import {
 } from "../hooks";
 import type { Looker3dSettings } from "../settings";
 import { useCurrent3dAnnotationMode } from "../state/accessors";
-import { Annotation3d } from "./Annotation3d";
 import {
   FO3D_CAMERA_LIFECYCLE,
   FO3D_CAMERA_LIFECYCLE_ACTION,
@@ -231,7 +230,6 @@ export const MediaTypeFo3dComponent = () => {
 
   return (
     <Fo3dSceneContext.Provider value={contextValue}>
-      {canAnnotate && <Annotation3d />}
       <Fo3dPanels
         shouldRenderMultiPanelView={shouldRenderMultiPanelView}
         upVector={upVector}

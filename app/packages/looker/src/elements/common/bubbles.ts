@@ -94,7 +94,7 @@ export const getField = (keys: string[], schema: Schema) => {
 export const parseSample = (keys: string[], sample: Data, schema: Schema) => {
   if (keys[0] === FRAMES && schema?.frames?.embeddedDocType === FRAMES_SAMPLE) {
     return {
-      values: sample?.frames[0] as Sample[],
+      values: (sample?.frames?.[0] ?? []) as Sample[],
       schema: schema.frames.fields,
       keys: keys.slice(1),
     };

@@ -2,7 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { currentTimeAtom, isPlayingAtom, playheadAtom } from "./atoms";
+import { isPlayingAtom, seekEventAtom } from "./atoms";
 import { PlaybackProvider, usePlaybackStore } from "./PlaybackProvider";
 import { useVideoSync } from "./use-video-sync";
 
@@ -51,8 +51,6 @@ function renderSync(video: FakeVideo | null, duration = 10) {
       return {
         store,
         isPlaying: useAtomValue(isPlayingAtom, { store }),
-        playhead: useAtomValue(playheadAtom, { store }),
-        currentTime: useAtomValue(currentTimeAtom, { store }),
       };
     },
     {
@@ -115,54 +113,28 @@ describe("useVideoSync", () => {
     });
   });
 
-  describe("playhead → video seek", () => {
-    it("seeks the video when playhead diverges beyond the tolerance (0.15s)", () => {
+  describe("seek events → video", () => {
+    it("seeks the video when a seek event fires", () => {
       const video = makeVideo(0);
       const { result } = renderSync(video);
 
       act(() => {
-        result.current.store.set(playheadAtom, 5);
+        result.current.store.set(seekEventAtom, { time: 5, seq: 1 });
       });
 
-      // video.currentTime should be updated to 5 (delta = 5 > 0.15)
       expect(video.currentTime).toBe(5);
-    });
-
-    it("does not seek when the delta is within the tolerance", () => {
-      const video = makeVideo(0);
-      const { result } = renderSync(video);
-
-      act(() => {
-        // 0.1 < SEEK_TOLERANCE_S (0.15) → no seek
-        result.current.store.set(playheadAtom, 0.1);
-      });
-
-      expect(video.currentTime).toBe(0);
     });
 
     it("does not seek when the ref is null", () => {
       const { result } = renderSync(null);
-      // Should not throw
+      // Should not throw — the subscription guard exits early on null.
       act(() => {
-        result.current.store.set(playheadAtom, 5);
+        result.current.store.set(seekEventAtom, { time: 5, seq: 1 });
       });
     });
   });
 
-  describe("video → atoms sync", () => {
-    it("updates playhead and currentTime atoms when timeupdate fires", () => {
-      const video = makeVideo(0);
-      const { result } = renderSync(video);
-
-      act(() => {
-        video.currentTime = 3.5;
-        video._fire("timeupdate");
-      });
-
-      expect(result.current.playhead).toBe(3.5);
-      expect(result.current.currentTime).toBe(3.5);
-    });
-
+  describe("ended handling", () => {
     it("sets isPlayingAtom to false when the ended event fires", () => {
       const video = makeVideo(0);
       const { result } = renderSync(video);
@@ -180,16 +152,12 @@ describe("useVideoSync", () => {
   });
 
   describe("cleanup", () => {
-    it("removes timeupdate and ended listeners when unmounted", () => {
+    it("removes the ended listener when unmounted", () => {
       const video = makeVideo();
       const { unmount } = renderSync(video);
 
       act(() => unmount());
 
-      expect(video.removeEventListener).toHaveBeenCalledWith(
-        "timeupdate",
-        expect.any(Function),
-      );
       expect(video.removeEventListener).toHaveBeenCalledWith(
         "ended",
         expect.any(Function),

@@ -2,14 +2,12 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/command-bus";
-import { CommandContextManager } from "@fiftyone/commands";
 import {
-  DetectionOverlay,
-  MergeDetectionsCommand,
-  useLighter,
-} from "@fiftyone/lighter";
+  getFieldSchema,
+  useAnnotationEngine,
+  useDeleteAnnotation,
+} from "@fiftyone/annotation";
+import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
@@ -52,10 +50,10 @@ export interface MergeTool {
  */
 export const useMergeTool = (): MergeTool => {
   const [mergeTargetId, setMergeTargetId] = useAtom(mergeTargetIdAtom);
-  const commandBus = useCommandBus();
-  const { scene, removeOverlay } = useLighter();
-  const { addLabelToSidebar, getLabelById, removeLabelFromSidebar } =
-    useLabelsContext();
+  const deleteAnnotation = useDeleteAnnotation();
+  const engine = useAnnotationEngine();
+  const { scene } = useLighter();
+  const { getLabelById } = useLabelsContext();
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
@@ -107,21 +105,27 @@ export const useMergeTool = (): MergeTool => {
       const schema = getFieldSchema(fieldSchema, sourceLabel.path);
       if (!schema) return true;
 
-      // 1. Merge source mask into target. Snapshots are captured for undo.
-      if (!targetOverlay.mergeFrom(overlay)) return true;
+      // One gesture id tags every commit this merge causes — the target's bbox
+      // + async mask re-encode (stamped onto the events `mergeFrom` emits, read
+      // by the engine bridge) and the source delete (below) — so a single Ctrl-Z
+      // reverts the whole merge. Scoped to these writes: nothing else coalesces.
+      const gestureId = engine.mintGestureId();
+
+      // 1. Merge source mask into target. The merged-target commits flow
+      // through the engine (captured for undo); snapshots back the rollback.
+      if (!targetOverlay.mergeFrom(overlay, gestureId)) return true;
       const paintData = targetOverlay.getPaintStrokeData();
       if (!paintData) return true;
 
-      // Backend deletion + composite undoable push happen async
+      // Backend deletion happens async
       void (async () => {
         // 2. Persist deletion of source and detach from UI. The mask mutation
         // in step 1 is already visible locally — if the backend delete fails,
         // roll the target's mask back so the canvas / sidebar / pending
-        // persist state stay in sync.
+        // persist state stay in sync. The engine's value-based undo stack owns
+        // reverting the merge (target commits + the source delete).
         try {
-          await commandBus.execute(
-            new DeleteAnnotationCommand(sourceLabel, schema),
-          );
+          await deleteAnnotation(sourceLabel, { gestureId });
         } catch (err) {
           targetOverlay.restoreMaskSnapshot(
             paintData.beforeSnapshot,
@@ -130,35 +134,6 @@ export const useMergeTool = (): MergeTool => {
           console.error("Merge tool: failed to delete source detection", err);
           return;
         }
-        removeLabelFromSidebar(overlay.id);
-        removeOverlay(overlay.id, false);
-
-        // 3. Push composite undoable. `execute` (= redo) re-applies the
-        // merged mask and re-deletes; `undo` restores the pre-merge mask
-        // and re-adds the source overlay/label.
-        const command = new MergeDetectionsCommand(
-          targetOverlay,
-          paintData,
-          {
-            deleteSource: async () => {
-              await commandBus.execute(
-                new DeleteAnnotationCommand(sourceLabel, schema),
-              );
-              removeLabelFromSidebar(overlay.id);
-              removeOverlay(overlay.id, false);
-            },
-            restoreSource: () => {
-              scene.addOverlay(overlay);
-              addLabelToSidebar(sourceLabel);
-            },
-          },
-          targetOverlay.id,
-          overlay.id,
-        );
-
-        CommandContextManager.instance()
-          .getActiveContext()
-          .pushUndoable(command);
 
         scene.selectOverlay(targetOverlay.id);
       })();
@@ -166,13 +141,11 @@ export const useMergeTool = (): MergeTool => {
       return true;
     },
     [
-      addLabelToSidebar,
-      commandBus,
+      deleteAnnotation,
+      engine,
       fieldSchema,
       getLabelById,
       mergeTargetId,
-      removeLabelFromSidebar,
-      removeOverlay,
       scene,
       setMergeTargetId,
     ],

@@ -1,3 +1,11 @@
+import {
+  encodeEntityId,
+  GEOMETRY_SIGNAL,
+  type GeometrySignal,
+  useAnnotationEngine,
+  useSceneSampleId,
+} from "@fiftyone/annotation";
+import { useCurrentDatasetId } from "@fiftyone/state";
 import { TransformControlsProps } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Vector3Tuple } from "three";
@@ -11,6 +19,7 @@ import {
 } from "../annotation/store";
 import type { TransientCuboidState } from "../annotation/store/types";
 import { isDetection3dOverlay } from "../types";
+import { radiansToQuaternion } from "../utils";
 
 interface UseCuboidAnnotationProps {
   label: any;
@@ -39,6 +48,10 @@ export const useCuboidAnnotation = ({
   const startDrag = useStartDrag();
   const endDrag = useEndDrag();
 
+  const engine = useAnnotationEngine();
+  const dataset = useCurrentDatasetId() ?? "";
+  const sample = useSceneSampleId();
+
   const transformControlsRef = useRef<TransformControlsProps>(null);
   const contentRef = useRef<THREE.Group>(null);
 
@@ -48,19 +61,53 @@ export const useCuboidAnnotation = ({
     effectiveDimensions,
     effectiveRotation,
     effectiveQuaternion,
-  ] = useMemo(() => {
+  ] = useMemo<
+    [
+      Vector3Tuple,
+      Vector3Tuple,
+      Vector3Tuple,
+      [number, number, number, number] | null,
+    ]
+  >(() => {
     if (isDetection3dOverlay(workingLabel)) {
-      const result = [
+      return [
         workingLabel.location,
         workingLabel.dimensions,
         workingLabel.rotation ?? rotation,
         workingLabel.quaternion ?? null,
       ];
-      return result;
     }
     // Fallback to props if not in working store
     return [location, dimensions, rotation, null];
   }, [workingLabel, location, dimensions, rotation]);
+
+  // Publish absolute cuboid geometry mid-gesture so sidebar observers (the
+  // position panel) preview it without reaching into the working/transient
+  // store. Render-only — the committed write still lands at drag-end. The
+  // payload is ABSOLUTE (location/dimensions/quaternion = base + transient
+  // delta) so the observer stays surface-agnostic, mirroring the 2D path.
+  const publishLiveGeometry = useCallback(
+    (
+      location: Vector3Tuple,
+      dimensions: Vector3Tuple,
+      quaternion: [number, number, number, number],
+    ) => {
+      const path = isDetection3dOverlay(workingLabel)
+        ? workingLabel.path
+        : undefined;
+
+      if (!sample || !path) {
+        return;
+      }
+
+      engine.publishSignal<GeometrySignal>(
+        GEOMETRY_SIGNAL,
+        encodeEntityId(dataset, { sample, path, instanceId: labelId }),
+        { kind: "3d", location, dimensions, quaternion },
+      );
+    },
+    [engine, dataset, sample, workingLabel, labelId],
+  );
 
   const handleTransformStart = useCallback(() => {
     startDrag(labelId);
@@ -72,7 +119,13 @@ export const useCuboidAnnotation = ({
     const transformControls = transformControlsRef.current;
     const mode = transformControls.mode;
 
-    let transientUpdate: TransientCuboidState = {};
+    const transientUpdate: TransientCuboidState = {};
+
+    // live absolute geometry — base, overridden by the active gesture mode
+    let liveLocation = effectiveLocation;
+    let liveDimensions = effectiveDimensions;
+    let liveQuaternion =
+      effectiveQuaternion ?? radiansToQuaternion(effectiveRotation);
 
     if (mode === "translate") {
       const position = contentRef.current.position;
@@ -82,6 +135,7 @@ export const useCuboidAnnotation = ({
         position.y - effectiveLocation[1],
         position.z - effectiveLocation[2],
       ];
+      liveLocation = [position.x, position.y, position.z] as Vector3Tuple;
     } else if (mode === "scale") {
       // Compute transient dimensions delta from scale
       const scale = contentRef.current.scale;
@@ -97,6 +151,7 @@ export const useCuboidAnnotation = ({
         newDimensions[1] - effectiveDimensions[1],
         newDimensions[2] - effectiveDimensions[2],
       ];
+      liveDimensions = newDimensions;
 
       // Reset scale to avoid double application
       contentRef.current.scale.set(1, 1, 1);
@@ -108,11 +163,23 @@ export const useCuboidAnnotation = ({
         quaternion.z,
         quaternion.w,
       ];
+      liveQuaternion = transientUpdate.quaternionOverride;
     }
 
-    // Update transient store
+    // Update transient store (drives the scene render)
     updateCuboid(labelId, transientUpdate);
-  }, [labelId, effectiveLocation, effectiveDimensions, updateCuboid]);
+
+    // mirror the absolute geometry to sidebar observers via the signal pipe
+    publishLiveGeometry(liveLocation, liveDimensions, liveQuaternion);
+  }, [
+    labelId,
+    effectiveLocation,
+    effectiveDimensions,
+    effectiveRotation,
+    effectiveQuaternion,
+    updateCuboid,
+    publishLiveGeometry,
+  ]);
 
   const handleTransformEnd = useCallback(() => {
     if (!contentRef.current || !transformControlsRef.current) {

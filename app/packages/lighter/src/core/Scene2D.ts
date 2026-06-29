@@ -28,6 +28,8 @@ import type {
 import { InteractionManager } from "../interaction/InteractionManager";
 import type { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
+import { CONTAINS } from "./containment";
+export { CONTAINS };
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
@@ -93,15 +95,6 @@ const isUsableBounds = (bounds: Rect | undefined): bounds is Rect => {
 };
 
 /**
- * Const enum for point containment levels.
- */
-export const enum CONTAINS {
-  NONE = 0,
-  CONTENT = 1,
-  BORDER = 2,
-}
-
-/**
  * Interface for overlay ordering state.
  */
 export interface OverlayOrderState {
@@ -156,6 +149,10 @@ export class Scene2D {
   private rotation: number = 0;
   private interactiveMode: boolean = false;
   private interactiveHandler?: InteractionHandler;
+  // When an external authority (the annotation engine) owns undo/redo, Lighter
+  // must not also push its own edit commands — the engine captures the same
+  // edits as value-based entries, so a self-push double-counts every gesture.
+  private externalUndoAuthority: boolean = false;
   private isRenderLoopActive: boolean = false;
   private abortController = new AbortController();
   private readonly sceneId: string;
@@ -233,6 +230,8 @@ export class Scene2D {
 
     // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
     this.registerEventHandler("lighter:overlay-establish", (event) => {
+      if (this.externalUndoAuthority) return;
+
       const { handler, bounds } = event;
 
       if (handler) {
@@ -246,6 +245,8 @@ export class Scene2D {
 
     // Listen for OVERLAY_DRAG_END events to trigger re-rendering of overlays that are currently dragged
     this.registerEventHandler("lighter:overlay-drag-end", (event) => {
+      if (this.externalUndoAuthority) return;
+
       const overlay = this.getOverlay(event.id);
       if (overlay && TypeGuards.isSpatial(overlay)) {
         const { startBounds, bounds } = event;
@@ -269,6 +270,8 @@ export class Scene2D {
 
     // Listen for OVERLAY_RESIZE_END events to trigger re-rendering of overlays that are currently resized
     this.registerEventHandler("lighter:overlay-resize-end", (event) => {
+      if (this.externalUndoAuthority) return;
+
       const overlay = this.getOverlay(event.id);
       if (overlay && TypeGuards.isSpatial(overlay)) {
         const { startBounds, bounds: endBounds } = event;
@@ -296,6 +299,8 @@ export class Scene2D {
     this.registerEventHandler(
       "lighter:overlay-paint-end",
       ({ id, paintStrokeData, isEstablishing }) => {
+        if (this.externalUndoAuthority) return;
+
         if (!id || !paintStrokeData) return;
 
         // First-stroke-of-a-new-mask: the AddOverlayCommand from the
@@ -1109,7 +1114,15 @@ export class Scene2D {
 
     // Register with managers first
     this.interactionManager.addHandler(overlay);
-    if (TypeGuards.isSelectable(overlay)) {
+    // `isSelectable` is structural (has the Selectable methods); honor an
+    // overlay's opt-out via its selection priority (a `selectable: false`
+    // overlay reports < 0). Without this a tool overlay like the point-selection
+    // keypoint scaffold would join the single-selection set and steal/clear the
+    // engine anchor from the label being annotated.
+    if (
+      TypeGuards.isSelectable(overlay) &&
+      overlay.getSelectionPriority() >= 0
+    ) {
       this.selectionManager.addSelectable(overlay);
     }
 
@@ -1118,6 +1131,7 @@ export class Scene2D {
 
     this.eventBus.dispatch("lighter:overlay-added", {
       id: overlay.id,
+      overlayId: overlay.id,
       overlay,
     });
   }
@@ -1126,8 +1140,13 @@ export class Scene2D {
    * Removes an overlay from the scene.
    * @param id - The ID of the overlay to remove.
    * @param withUndo - Whether to track this operation for undo/redo.
+   * @param lifecycle - Whether this is a lifecycle event (not user-driven)
    */
-  removeOverlay(id: string, withUndo: boolean = false): void {
+  removeOverlay(
+    id: string,
+    withUndo: boolean = false,
+    lifecycle: boolean = false,
+  ): void {
     if (withUndo) {
       const overlay = this.overlays.get(id);
       if (overlay) {
@@ -1155,7 +1174,7 @@ export class Scene2D {
       this.renderingState.clear(id);
     }
 
-    this.eventBus.dispatch("lighter:overlay-removed", { id });
+    this.eventBus.dispatch("lighter:overlay-removed", { id, lifecycle });
   }
 
   /**
@@ -1307,6 +1326,15 @@ export class Scene2D {
       isUndoable,
       command,
     });
+  }
+
+  /**
+   * Hand undo/redo authority to an external owner (the annotation engine). While
+   * set, Lighter records no edit commands of its own — the owner captures every
+   * gesture, so a self-push would double-count it on the shared command stack.
+   */
+  setExternalUndoAuthority(enabled: boolean): void {
+    this.externalUndoAuthority = enabled;
   }
 
   /**

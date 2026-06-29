@@ -11,6 +11,12 @@ export function determinePathType(path: string): PathType {
   if (/^\w+:\/\//.test(path)) {
     return PathType.URL;
   }
+  // data: and blob: URLs don't use `//` after the scheme but are URLs in
+  // every other sense — let them through so callers like `getSampleSrc`
+  // don't wrap them in `/media?filepath=...`.
+  if (/^(data|blob):/.test(path)) {
+    return PathType.URL;
+  }
   // backslashes = windows
   if (path?.includes("\\")) {
     return PathType.WINDOWS;

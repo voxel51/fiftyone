@@ -52,4 +52,14 @@ if (typeof window !== "undefined") {
   HTMLCanvasElement.prototype.toDataURL = function () {
     return "";
   };
+
+  // Mock ResizeObserver — jsdom doesn't implement it, but floating UI
+  // (HeadlessUI menus / voodo ContextMenu) instantiates one on open.
+  if (typeof window.ResizeObserver === "undefined") {
+    window.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+  }
 }
