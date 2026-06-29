@@ -116,7 +116,7 @@ describe("worker-backed MCAP resource client", () => {
     expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
   });
 
-  it("sends frame transform windows at idle-prefetch priority", async () => {
+  it("sends frame transform windows at placement-frame priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {
       endTimeNs: 20n,
@@ -131,7 +131,7 @@ describe("worker-backed MCAP resource client", () => {
     expect(worker.messages[1]).toMatchObject({
       id: 1,
       payload: request,
-      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME,
       type: "readFrameTransformWindow",
     });
 

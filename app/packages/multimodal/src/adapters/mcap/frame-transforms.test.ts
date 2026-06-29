@@ -31,7 +31,7 @@ describe("MCAP frame transform store", () => {
     });
   });
 
-  it("uses the latest dynamic sample at or before playback time", () => {
+  it("interpolates dynamic samples around playback time", () => {
     const store = createStore({
       dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
       dynamicSamples: [
@@ -48,14 +48,74 @@ describe("MCAP frame transform store", () => {
         timeNs: 250n,
       }),
     ).toMatchObject({
+      maxInterpolationGapNs: 100n,
       status: "resolved",
       transform: {
-        translation: { x: 2, y: 0, z: 0 },
+        maxInterpolationGapNs: 100n,
+        resolutionKind: "interpolated",
+        translation: { x: 2.5, y: 0, z: 0 },
       },
     });
   });
 
-  it("does not use future dynamic samples", () => {
+  it("carries the largest interpolation gap through composed paths", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n),
+        sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n),
+      ],
+      staticSamples: [sample("base_link", "lidar", { x: 0, y: 2, z: 0 })],
+    });
+
+    expect(
+      store.resolve({
+        sourceFrameId: "lidar",
+        targetFrameId: "map",
+        timeNs: 200n,
+      }),
+    ).toMatchObject({
+      maxInterpolationGapNs: 200n,
+      status: "resolved",
+      transform: {
+        maxInterpolationGapNs: 200n,
+        translation: { x: 2, y: 2, z: 0 },
+      },
+    });
+  });
+
+  it("slerps dynamic rotations around playback time", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", undefined, 100n, new Quaternion()),
+        sample(
+          "map",
+          "base_link",
+          undefined,
+          300n,
+          new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI),
+        ),
+      ],
+    });
+
+    const resolution = store.resolve({
+      sourceFrameId: "base_link",
+      targetFrameId: "map",
+      timeNs: 200n,
+    });
+    if (resolution.status !== "resolved") {
+      throw new Error("Expected resolved transform");
+    }
+
+    const rotated = new Vector3(1, 0, 0).applyQuaternion(
+      resolution.transform.rotation,
+    );
+    expect(rotated.x).toBeCloseTo(0);
+    expect(rotated.y).toBeCloseTo(1);
+  });
+
+  it("clamps the start boundary within tolerance", () => {
     const store = createStore({
       dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
       dynamicSamples: [sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n)],
@@ -66,6 +126,55 @@ describe("MCAP frame transform store", () => {
         sourceFrameId: "base_link",
         targetFrameId: "map",
         timeNs: 250n,
+      }),
+    ).toMatchObject({
+      resolutionKind: "clamped",
+      status: "resolved",
+      transform: {
+        translation: { x: 3, y: 0, z: 0 },
+      },
+    });
+  });
+
+  it("reports missing beyond the boundary clamp tolerance", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n)],
+    });
+
+    expect(
+      store.resolve({
+        policy: {
+          boundaryClampNs: 10n,
+          maxInterpolationGapNs: 250n,
+        },
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 250n,
+      }),
+    ).toMatchObject({
+      status: "missing",
+    });
+  });
+
+  it("reports missing across interpolation gaps larger than the policy allows", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 1000n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n),
+        sample("map", "base_link", { x: 10, y: 0, z: 0 }, 1000n),
+      ],
+    });
+
+    expect(
+      store.resolve({
+        policy: {
+          boundaryClampNs: 50n,
+          maxInterpolationGapNs: 100n,
+        },
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 500n,
       }),
     ).toMatchObject({
       status: "missing",
@@ -262,11 +371,12 @@ function sample(
         readonly z: number;
       } = new Vector3(),
   timeNs?: bigint,
+  rotation = new Quaternion(),
 ): McapFrameTransformSample {
   return {
     childFrameId,
     parentFrameId,
-    rotation: new Quaternion(),
+    rotation,
     ...(timeNs !== undefined ? { timeNs } : {}),
     translation:
       translation instanceof Vector3

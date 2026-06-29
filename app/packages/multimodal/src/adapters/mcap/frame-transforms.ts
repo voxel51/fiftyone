@@ -3,7 +3,9 @@ import { Quaternion, Vector3 } from "three";
 import { nonEmpty } from "./strings";
 import type {
   McapComposedFrameTransform,
+  McapFrameTransformPolicy,
   McapFrameTransformResolution,
+  McapFrameTransformResolutionKind,
   McapFrameTransformSample,
   McapFrameTransformSet,
   McapFrameTransformSetWire,
@@ -13,6 +15,10 @@ import { compareBigInt } from "./sync";
 
 const IDENTITY_QUATERNION = new Quaternion();
 const ZERO_VECTOR = new Vector3();
+const DEFAULT_FRAME_TRANSFORM_POLICY: McapFrameTransformPolicy = {
+  boundaryClampNs: 50_000_000n,
+  maxInterpolationGapNs: 0n,
+};
 
 /**
  * Mutable frame transform index for static and dynamic MCAP transform samples.
@@ -24,6 +30,10 @@ export class McapFrameTransformStore {
   >();
   private dynamicRanges: readonly McapFrameTransformTimeRange[] = [];
   private readonly frameIdsById = new Set<string>();
+  private adjacencyCache: {
+    readonly adjacency: Map<string, McapComposedFrameTransform[]>;
+    readonly timeKey: string;
+  } | null = null;
   private readonly staticSamplesByEdge = new Map<
     string,
     McapFrameTransformSample
@@ -38,6 +48,7 @@ export class McapFrameTransformStore {
           normalized,
         );
         this.addFrameIds(normalized);
+        this.adjacencyCache = null;
       }
     }
   }
@@ -69,6 +80,7 @@ export class McapFrameTransformStore {
     }
 
     this.dynamicRanges = sortAndMergeTimeRanges([...this.dynamicRanges, range]);
+    this.adjacencyCache = null;
   }
 
   isTimeIndexed(timeNs: bigint): boolean {
@@ -82,10 +94,12 @@ export class McapFrameTransformStore {
   }
 
   resolve({
+    policy = DEFAULT_FRAME_TRANSFORM_POLICY,
     sourceFrameId,
     targetFrameId,
     timeNs,
   }: {
+    readonly policy?: McapFrameTransformPolicy;
     readonly sourceFrameId: string;
     readonly targetFrameId: string;
     readonly timeNs?: bigint;
@@ -102,10 +116,12 @@ export class McapFrameTransformStore {
 
     if (source === target) {
       return {
+        resolutionKind: "identity",
         sourceFrameId: source,
         status: "resolved",
         targetFrameId: target,
         transform: {
+          resolutionKind: "identity",
           rotation: IDENTITY_QUATERNION.clone(),
           sourceFrameId: source,
           targetFrameId: target,
@@ -115,12 +131,16 @@ export class McapFrameTransformStore {
     }
 
     const transform = resolveComposedTransform({
-      adjacency: this.buildAdjacency(timeNs),
+      adjacency: this.buildAdjacency(timeNs, policy),
       sourceFrameId: source,
       targetFrameId: target,
     });
     if (transform) {
       return {
+        ...(transform.maxInterpolationGapNs !== undefined
+          ? { maxInterpolationGapNs: transform.maxInterpolationGapNs }
+          : {}),
+        resolutionKind: transform.resolutionKind,
         sourceFrameId: source,
         status: "resolved",
         targetFrameId: target,
@@ -143,45 +163,63 @@ export class McapFrameTransformStore {
     };
   }
 
-  private buildAdjacency(timeNs: bigint | undefined) {
+  private buildAdjacency(
+    timeNs: bigint | undefined,
+    policy: McapFrameTransformPolicy,
+  ) {
+    const timeKey = frameTransformTimeKey(timeNs, policy);
+    if (this.adjacencyCache?.timeKey === timeKey) {
+      return this.adjacencyCache.adjacency;
+    }
+
     const adjacency = new Map<string, McapComposedFrameTransform[]>();
 
-    for (const sample of this.effectiveSamplesForTime(timeNs)) {
-      const childToParent = {
-        rotation: sample.rotation,
-        sourceFrameId: sample.childFrameId,
-        targetFrameId: sample.parentFrameId,
-        translation: sample.translation,
-      };
-
-      pushAdjacency(adjacency, sample.childFrameId, childToParent);
+    for (const childToParent of this.effectiveTransformsForTime(
+      timeNs,
+      policy,
+    )) {
+      pushAdjacency(adjacency, childToParent.sourceFrameId, childToParent);
       pushAdjacency(
         adjacency,
-        sample.parentFrameId,
+        childToParent.targetFrameId,
         invertFrameTransform(childToParent),
       );
     }
 
+    this.adjacencyCache = {
+      adjacency,
+      timeKey,
+    };
+
     return adjacency;
   }
 
-  private effectiveSamplesForTime(timeNs: bigint | undefined) {
-    const samples = new Map<string, McapFrameTransformSample>(
-      this.staticSamplesByEdge,
-    );
+  private effectiveTransformsForTime(
+    timeNs: bigint | undefined,
+    policy: McapFrameTransformPolicy,
+  ) {
+    const transforms = new Map<string, McapComposedFrameTransform>();
+
+    for (const [edgeKey, sample] of this.staticSamplesByEdge.entries()) {
+      transforms.set(edgeKey, transformFromSample(sample, "static"));
+    }
 
     if (timeNs === undefined) {
-      return [...samples.values()];
+      return [...transforms.values()];
     }
 
     for (const [edgeKey, edgeSamples] of this.dynamicSamplesByEdge.entries()) {
-      const sample = latestSampleAtOrBefore(edgeSamples, timeNs);
-      if (sample) {
-        samples.set(edgeKey, sample);
+      const transform = effectiveDynamicTransformForTime(
+        edgeSamples,
+        timeNs,
+        policy,
+      );
+      if (transform) {
+        transforms.set(edgeKey, transform);
       }
     }
 
-    return [...samples.values()];
+    return [...transforms.values()];
   }
 
   private addFrameIds(sample: McapFrameTransformSample): void {
@@ -259,6 +297,7 @@ function resolveComposedTransform({
 }): McapComposedFrameTransform | null {
   const queue: McapComposedFrameTransform[] = [
     {
+      resolutionKind: "identity",
       rotation: IDENTITY_QUATERNION.clone(),
       sourceFrameId,
       targetFrameId: sourceFrameId,
@@ -296,32 +335,107 @@ function resolveComposedTransform({
   return null;
 }
 
-function latestSampleAtOrBefore(
+function effectiveDynamicTransformForTime(
   samples: readonly McapFrameTransformSample[],
   timeNs: bigint,
-) {
-  let low = 0;
-  let high = samples.length - 1;
-  let match: McapFrameTransformSample | undefined;
+  policy: McapFrameTransformPolicy,
+): McapComposedFrameTransform | null {
+  const { after, before } = bracketSamplesForTime(samples, timeNs);
+  if (before?.timeNs === timeNs) {
+    return transformFromSample(before, "exact");
+  }
+  if (after?.timeNs === timeNs) {
+    return transformFromSample(after, "exact");
+  }
 
-  while (low <= high) {
-    const middle = Math.floor((low + high) / 2);
-    const sample = samples[middle];
-    const sampleTimeNs = sample?.timeNs;
-    if (sampleTimeNs === undefined) {
-      high = middle - 1;
-      continue;
+  if (before && after) {
+    const beforeTimeNs = before.timeNs as bigint;
+    const afterTimeNs = after.timeNs as bigint;
+    const gapNs = afterTimeNs - beforeTimeNs;
+    if (
+      policy.maxInterpolationGapNs > 0n &&
+      gapNs > policy.maxInterpolationGapNs
+    ) {
+      return null;
+    }
+    if (gapNs <= 0n) {
+      return transformFromSample(before, "exact");
     }
 
-    if (sampleTimeNs <= timeNs) {
-      match = sample;
+    const ratio = Number(timeNs - beforeTimeNs) / Number(gapNs);
+    return {
+      maxInterpolationGapNs: gapNs,
+      resolutionKind: "interpolated",
+      rotation: before.rotation
+        .clone()
+        .slerp(after.rotation, ratio)
+        .normalize(),
+      sourceFrameId: before.childFrameId,
+      targetFrameId: before.parentFrameId,
+      translation: before.translation.clone().lerp(after.translation, ratio),
+    };
+  }
+
+  if (policy.boundaryClampNs <= 0n) {
+    return null;
+  }
+
+  if (after?.timeNs !== undefined && after.timeNs > timeNs) {
+    return after.timeNs - timeNs <= policy.boundaryClampNs
+      ? transformFromSample(after, "clamped")
+      : null;
+  }
+  if (before?.timeNs !== undefined && before.timeNs < timeNs) {
+    return timeNs - before.timeNs <= policy.boundaryClampNs
+      ? transformFromSample(before, "clamped")
+      : null;
+  }
+
+  return null;
+}
+
+function bracketSamplesForTime(
+  samples: readonly McapFrameTransformSample[],
+  timeNs: bigint,
+): {
+  readonly after?: McapFrameTransformSample;
+  readonly before?: McapFrameTransformSample;
+} {
+  let low = 0;
+  let high = samples.length;
+
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    const sampleTimeNs = samples[middle]?.timeNs;
+    if (sampleTimeNs !== undefined && sampleTimeNs < timeNs) {
       low = middle + 1;
     } else {
-      high = middle - 1;
+      high = middle;
     }
   }
 
-  return match;
+  const after = samples[low];
+  if (after?.timeNs === timeNs) {
+    return { after, before: after };
+  }
+
+  return {
+    ...(after ? { after } : {}),
+    ...(low > 0 ? { before: samples[low - 1] } : {}),
+  };
+}
+
+function transformFromSample(
+  sample: McapFrameTransformSample,
+  resolutionKind: McapFrameTransformResolutionKind,
+): McapComposedFrameTransform {
+  return {
+    resolutionKind,
+    rotation: sample.rotation,
+    sourceFrameId: sample.childFrameId,
+    targetFrameId: sample.parentFrameId,
+    translation: sample.translation,
+  };
 }
 
 function cleanSample(sample: McapFrameTransformSample) {
@@ -419,6 +533,14 @@ function composeFrameTransforms(
   const secondRotation = second.rotation.clone().normalize();
 
   return {
+    ...composeMaxInterpolationGapNs(
+      first.maxInterpolationGapNs,
+      second.maxInterpolationGapNs,
+    ),
+    resolutionKind: composeResolutionKinds(
+      first.resolutionKind,
+      second.resolutionKind,
+    ),
     rotation: secondRotation.clone().multiply(firstRotation).normalize(),
     sourceFrameId: first.sourceFrameId,
     targetFrameId: second.targetFrameId,
@@ -435,6 +557,10 @@ function invertFrameTransform(
   const inverseRotation = transform.rotation.clone().normalize().invert();
 
   return {
+    ...(transform.maxInterpolationGapNs !== undefined
+      ? { maxInterpolationGapNs: transform.maxInterpolationGapNs }
+      : {}),
+    resolutionKind: transform.resolutionKind,
     rotation: inverseRotation,
     sourceFrameId: transform.targetFrameId,
     targetFrameId: transform.sourceFrameId,
@@ -451,4 +577,44 @@ function maxBigInt(left: bigint, right: bigint) {
 
 function compareStrings(left: string, right: string) {
   return left.localeCompare(right);
+}
+
+function composeMaxInterpolationGapNs(
+  first: bigint | undefined,
+  second: bigint | undefined,
+): { readonly maxInterpolationGapNs?: bigint } {
+  if (first === undefined) {
+    return second === undefined ? {} : { maxInterpolationGapNs: second };
+  }
+  if (second === undefined) {
+    return { maxInterpolationGapNs: first };
+  }
+
+  return { maxInterpolationGapNs: maxBigInt(first, second) };
+}
+
+function composeResolutionKinds(
+  first: McapFrameTransformResolutionKind | undefined,
+  second: McapFrameTransformResolutionKind | undefined,
+): McapFrameTransformResolutionKind | undefined {
+  const kinds = [first, second].filter(
+    (kind): kind is McapFrameTransformResolutionKind => kind !== undefined,
+  );
+  if (kinds.includes("clamped")) return "clamped";
+  if (kinds.includes("interpolated")) return "interpolated";
+  if (kinds.includes("exact")) return "exact";
+  if (kinds.includes("static")) return "static";
+  if (kinds.includes("identity")) return "identity";
+  return undefined;
+}
+
+function frameTransformTimeKey(
+  timeNs: bigint | undefined,
+  policy: McapFrameTransformPolicy,
+) {
+  return [
+    timeNs === undefined ? "static" : timeNs.toString(),
+    policy.maxInterpolationGapNs.toString(),
+    policy.boundaryClampNs.toString(),
+  ].join(":");
 }

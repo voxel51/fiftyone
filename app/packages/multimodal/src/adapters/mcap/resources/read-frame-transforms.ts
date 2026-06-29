@@ -1,4 +1,5 @@
 import type { McapTypes } from "@mcap/core";
+import type { Type } from "protobufjs";
 import { Quaternion, Vector3 } from "three";
 import { decodeProtobufMessage } from "../decoders/foxglove/protobuf";
 import {
@@ -8,6 +9,7 @@ import {
   requiredArray,
   requiredNumber,
 } from "../decoders/foxglove/protobuf/records";
+import { protobufFromBinaryDescriptor } from "../mcap-support";
 import { timestampNs } from "../decoders/foxglove/protobuf/timing";
 import type { McapIndexedReaderLike } from "../reader";
 import type { McapTimelineStrategy } from "../timeline";
@@ -24,13 +26,19 @@ import type { McapReadFrameTransformWindowRequest } from "../types";
 const PROTOBUF_ENCODING = "protobuf";
 const FOXGLOVE_FRAME_TRANSFORMS_SCHEMA = "foxglove.FrameTransforms";
 
-// TODO: Also accept tf2_msgs/msg/TFMessage (ROS) and CDR-encoded
-// foxglove.FrameTransform once a CDR decoder lands. Schema discovery will
-// pick those channels up automatically — only the wire decoder is missing.
 const SUPPORTED_TRANSFORM_SCHEMAS: ReadonlySet<string> = new Set([
   "foxglove.FrameTransform",
   FOXGLOVE_FRAME_TRANSFORMS_SCHEMA,
 ]);
+
+type FrameTransformSchemaMatch =
+  | {
+      readonly kind: "single";
+    }
+  | {
+      readonly kind: "batch";
+      readonly repeatedFieldName: string;
+    };
 
 /**
  * Bootstrap scans schema-discovered channels with at most this many messages
@@ -46,6 +54,7 @@ type McapSchema = McapTypes.TypedMcapRecords["Schema"];
 
 interface FrameTransformChannel {
   readonly channel: McapChannel;
+  readonly match: FrameTransformSchemaMatch;
   readonly messageCount: bigint | undefined;
   readonly schema: McapSchema;
 }
@@ -68,11 +77,13 @@ function discoverFrameTransformChannels(
     if (!schema || schema.encoding !== PROTOBUF_ENCODING) {
       continue;
     }
-    if (!SUPPORTED_TRANSFORM_SCHEMAS.has(schema.name)) {
+    const match = classifyFrameTransformSchema(schema);
+    if (!match) {
       continue;
     }
     channels.push({
       channel,
+      match,
       messageCount: reader.statistics?.channelMessageCounts.get(channel.id),
       schema,
     });
@@ -113,6 +124,7 @@ export async function readMcapFrameTransformBootstrap(
     try {
       for (const sample of normalizeFrameTransformMessage({
         channel: entry.channel,
+        match: entry.match,
         message,
         schema: entry.schema,
       })) {
@@ -167,6 +179,7 @@ export async function readMcapFrameTransformWindow({
     try {
       for (const sample of normalizeFrameTransformMessage({
         channel: entry.channel,
+        match: entry.match,
         message,
         schema: entry.schema,
       })) {
@@ -195,10 +208,12 @@ function indexByChannelId(entries: readonly FrameTransformChannel[]) {
 
 function normalizeFrameTransformMessage({
   channel,
+  match,
   message,
   schema,
 }: {
   readonly channel: McapChannel;
+  readonly match: FrameTransformSchemaMatch;
   readonly message: McapTypes.TypedMcapRecords["Message"];
   readonly schema: McapSchema;
 }): readonly McapFrameTransformSample[] {
@@ -219,8 +234,8 @@ function normalizeFrameTransformMessage({
     },
   );
 
-  if (schema.name === FOXGLOVE_FRAME_TRANSFORMS_SCHEMA) {
-    return requiredArray(record, "transforms").map((transform) =>
+  if (match.kind === "batch") {
+    return requiredArray(record, match.repeatedFieldName).map((transform) =>
       normalizeFrameTransformRecord(asRecord(transform)),
     );
   }
@@ -270,6 +285,103 @@ function normalizeFrameTransformRecord(
       requiredNumber(translation, "z"),
     ),
   };
+}
+
+function classifyFrameTransformSchema(
+  schema: McapSchema,
+): FrameTransformSchemaMatch | null {
+  if (schema.encoding !== PROTOBUF_ENCODING) {
+    return null;
+  }
+
+  if (schema.name === FOXGLOVE_FRAME_TRANSFORMS_SCHEMA) {
+    return {
+      kind: "batch",
+      repeatedFieldName: "transforms",
+    };
+  }
+  if (SUPPORTED_TRANSFORM_SCHEMAS.has(schema.name)) {
+    return {
+      kind: "single",
+    };
+  }
+
+  try {
+    const root = protobufFromBinaryDescriptor(schema.data);
+    const type = root.lookupType(schema.name);
+    type.resolveAll();
+    if (isFrameTransformType(type)) {
+      return {
+        kind: "single",
+      };
+    }
+
+    const repeatedTransformField = type.fieldsArray.find(
+      (field) =>
+        field.repeated &&
+        field.resolvedType &&
+        isFrameTransformType(field.resolvedType as Type),
+    );
+    if (repeatedTransformField) {
+      return {
+        kind: "batch",
+        repeatedFieldName: repeatedTransformField.name,
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function isFrameTransformType(type: Type): boolean {
+  const parentField = fieldByName(type, "parentFrameId", "parent_frame_id");
+  const childField = fieldByName(type, "childFrameId", "child_frame_id");
+  const translationField = fieldByName(type, "translation");
+  const rotationField = fieldByName(type, "rotation");
+
+  return (
+    parentField?.type === "string" &&
+    childField?.type === "string" &&
+    isVector3Type(translationField?.resolvedType as Type | null | undefined) &&
+    isQuaternionType(rotationField?.resolvedType as Type | null | undefined)
+  );
+}
+
+function isVector3Type(type: Type | null | undefined): boolean {
+  return Boolean(
+    type &&
+    numericField(type, "x") &&
+    numericField(type, "y") &&
+    numericField(type, "z"),
+  );
+}
+
+function isQuaternionType(type: Type | null | undefined): boolean {
+  return Boolean(
+    type &&
+    numericField(type, "x") &&
+    numericField(type, "y") &&
+    numericField(type, "z") &&
+    numericField(type, "w"),
+  );
+}
+
+function numericField(type: Type, name: string): boolean {
+  const field = fieldByName(type, name);
+  return field?.type === "double" || field?.type === "float";
+}
+
+function fieldByName(type: Type, ...names: string[]) {
+  for (const name of names) {
+    const field = type.fields[name];
+    if (field) {
+      return field;
+    }
+  }
+
+  return undefined;
 }
 
 function createMcapFrameTransformSet({
