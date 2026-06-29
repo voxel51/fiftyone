@@ -73,15 +73,15 @@ to a final review or to the end of the pipeline) and the **Rejected**
 output back to an **Annotate** stage so the sample is fixed and
 resubmitted.
 
-.. image:: /images/enterprise/workflows/workflows_canvas_editor.gif
-   :alt: Building a workflow on the canvas editor
-
 The canvas toolbar provides:
 
 - **Tidy** — auto-layout the graph.
 - **Clear** — remove all connections.
 - **Delete** — remove the selected stage.
 - **Start workflow** — launch the workflow once it is configured.
+
+.. image:: /images/enterprise/workflows/workflows_canvas_editor.gif
+   :alt: Building a workflow on the canvas editor
 
 Using a Template
 ~~~~~~~~~~~~~~~~
