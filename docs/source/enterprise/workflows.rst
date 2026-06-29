@@ -103,8 +103,8 @@ high-stakes labeling:
 .. image:: /images/enterprise/workflows/workflows_canvas_editor.png
    :alt: Two-tier review template on the canvas
 
-Editing Stage Assignees
-~~~~~~~~~~~~~~~~~~~~~~~
+Configuring Stages
+~~~~~~~~~~~~~~~~~~
 
 Click a stage on the canvas to configure it:
 
@@ -116,8 +116,11 @@ Click a stage on the canvas to configure it:
 - **Review** — select who can review and wire the **Accepted** /
   **Rejected** branches to the appropriate downstream stages.
 
+The following example shows how to edit the assignee for an Annotate
+stage:
+
 .. image:: /images/enterprise/workflows/workflows_stage_config.gif
-   :alt: Configuring stage assignees and schema options
+   :alt: Editing the assignee for an Annotate stage
 
 Starting a Workflow
 ~~~~~~~~~~~~~~~~~~~
