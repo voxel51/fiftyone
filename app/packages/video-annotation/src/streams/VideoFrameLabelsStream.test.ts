@@ -1,8 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   resolveSyntheticId,
   VideoFrameLabelsStream,
 } from "./VideoFrameLabelsStream";
+import { getVideoLabelsWindow } from "../../../core/src/client/videoLabelsClient";
+
+vi.mock("../../../core/src/client/videoLabelsClient", () => ({
+  getVideoLabelsWindow: vi.fn(
+    async (req: { startFrame: number; endFrame: number }) => ({
+      frames: {},
+      range: [req.startFrame, req.endFrame],
+    }),
+  ),
+}));
+
+const windowMock = vi.mocked(getVideoLabelsWindow);
 
 function buildStream(): VideoFrameLabelsStream {
   return new VideoFrameLabelsStream({
@@ -53,6 +65,96 @@ describe("VideoFrameLabelsStream extractDetections", () => {
     const value = stream.getValue(timeOfFrame(10, 30));
     expect(value?.detections[0].keyframe).toBe(false);
     expect(value?.detections[0].propagation).toBeNull();
+  });
+});
+
+describe("VideoFrameLabelsStream fetchRange", () => {
+  const chunked = (chunkSize: number, frameCount = 100) =>
+    new VideoFrameLabelsStream({
+      id: "test",
+      sampleId: "s",
+      dataset: "d",
+      view: [],
+      frameCount,
+      frameRate: 30,
+      chunkSize,
+    });
+
+  // Chunk start frames of the calls made since `from`. Asserting on call-count
+  // deltas keeps tests independent without `mockClear` between them — clearing
+  // this async module mock spuriously re-invokes its implementation under
+  // vitest.
+  const startsSince = (from: number) =>
+    windowMock.mock.calls
+      .slice(from)
+      .map((c) => c[0].startFrame)
+      .sort((a, b) => a - b);
+
+  it("fetches one chunk per chunk-sized stride across the range", async () => {
+    const n = windowMock.mock.calls.length;
+    await chunked(10).fetchRange(1, 25);
+    // first-missing frames at 1, 11, 21 → three chunk fetches
+    expect(startsSince(n)).toEqual([1, 11, 21]);
+  });
+
+  it("clamps the start to frame 1", async () => {
+    const n = windowMock.mock.calls.length;
+    await chunked(10).fetchRange(-5, 5);
+    expect(startsSince(n)).toEqual([1]);
+    expect(windowMock.mock.calls[n][0].endFrame).toBe(10);
+  });
+
+  it("clamps the end to the clip's frame count", async () => {
+    const n = windowMock.mock.calls.length;
+    await chunked(10, 100).fetchRange(95, 200);
+    expect(startsSince(n)).toEqual([95]);
+    expect(windowMock.mock.calls[n][0].endFrame).toBe(100);
+  });
+
+  it("skips frames already cached", async () => {
+    const n = windowMock.mock.calls.length;
+    const stream = chunked(10);
+    for (let f = 1; f <= 10; f++) {
+      // @ts-expect-error — test-only: pretend frames 1..10 are cached
+      stream.cache.set(f, { frame_number: f });
+    }
+
+    await stream.fetchRange(1, 20);
+    expect(startsSince(n)).toEqual([11]);
+  });
+
+  it("does not skip frames past an unaligned in-flight chunk", async () => {
+    const n = windowMock.mock.calls.length;
+    const stream = chunked(10, 100);
+
+    // Start an unaligned chunk covering frames 6..15, then ask for 1..20.
+    // The reused 6..15 promise only covers through 15, so the range walk must
+    // still fetch the 16..20 tail rather than striding past it.
+    // @ts-expect-error — test-only: drive the private chunk fetch
+    void stream.fetchChunk(6);
+    await stream.fetchRange(1, 20);
+
+    // Chunks: the pre-existing 6..15, plus 1..10 and 16..20 from the range.
+    expect(startsSince(n)).toEqual([1, 6, 16]);
+  });
+
+  it("is a no-op when the range is empty after clamping", async () => {
+    const n = windowMock.mock.calls.length;
+    await chunked(10).fetchRange(50, 40);
+    expect(windowMock.mock.calls.length).toBe(n);
+  });
+
+  it("populates the cache from the fetched window", async () => {
+    windowMock.mockResolvedValueOnce({
+      frames: { 3: { detections: { detections: [] } } },
+      range: [1, 10],
+    } as never);
+
+    const stream = chunked(10);
+    await stream.fetchRange(1, 5);
+
+    // Frame 3 landed in the cache → ready at its time.
+    expect(stream.bufferState((3 - 1) / 30)).toBe("ready");
   });
 });
 

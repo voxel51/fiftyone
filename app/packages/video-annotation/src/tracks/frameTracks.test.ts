@@ -3,9 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildPerInstanceTracks,
   parseSubTrackId,
+  readEngineOverlay,
+  resolveInstanceFrameLayout,
   segmentAttribute,
   subTrackId,
   type FrameLabelReader,
+  type FrameOverlay,
+  type FrameOverlayReader,
+  type IndexInstance,
   type PerInstanceLabel,
 } from "./frameTracks";
 
@@ -325,5 +330,99 @@ describe("buildPerInstanceTracks dynamic-attribute sub-tracks", () => {
 
     expect(tracks).toHaveLength(1);
     expect(parseSubTrackId(tracks[0].id)).toBeNull();
+  });
+});
+
+describe("readEngineOverlay", () => {
+  it("maps every loaded frame to its labels", () => {
+    const engine: FrameOverlayReader = {
+      loadedFrames: () => [1, 3],
+      listLabels: ({ frame }) =>
+        frame === 1
+          ? ([{ _id: "i1" }] as LabelData[])
+          : frame === 3
+            ? ([{ _id: "i1", keyframe: true }] as LabelData[])
+            : [],
+    };
+
+    const overlay = readEngineOverlay(engine, SAMPLE, PATH);
+
+    expect([...overlay.keys()]).toEqual([1, 3]);
+    expect(overlay.get(3)).toEqual([{ _id: "i1", keyframe: true }]);
+  });
+});
+
+describe("resolveInstanceFrameLayout", () => {
+  const index: IndexInstance[] = [
+    {
+      instanceId: "i1",
+      classLabel: "car",
+      persistedIndex: 1,
+      instance: null,
+      segments: [[1, 5]],
+      keyframes: [1, 5],
+    },
+  ];
+
+  it("reads presence + keyframes straight from the index when nothing is edited", () => {
+    const { presentFrames, keyframeFrames } = resolveInstanceFrameLayout(
+      index,
+      new Map(),
+      "i1",
+    );
+
+    expect(presentFrames).toEqual([1, 2, 3, 4, 5]);
+    expect(keyframeFrames).toEqual([1, 5]);
+  });
+
+  it("adds an overlay keyframe that isn't in the index baseline", () => {
+    const overlay: FrameOverlay = new Map([
+      [3, [{ _id: "i1", keyframe: true }] as LabelData[]],
+    ]);
+
+    const { keyframeFrames } = resolveInstanceFrameLayout(index, overlay, "i1");
+
+    expect(keyframeFrames).toEqual([1, 3, 5]);
+  });
+
+  it("drops a baseline keyframe the overlay no longer flags", () => {
+    const overlay: FrameOverlay = new Map([
+      [5, [{ _id: "i1", keyframe: false }] as LabelData[]],
+    ]);
+
+    const { keyframeFrames } = resolveInstanceFrameLayout(index, overlay, "i1");
+
+    expect(keyframeFrames).toEqual([1]);
+  });
+
+  it("derives a freshly-drawn instance (absent from the index) from the overlay alone", () => {
+    const overlay: FrameOverlay = new Map([
+      [1, [{ _id: "i2", keyframe: true }] as LabelData[]],
+      [2, [{ _id: "i2", keyframe: false }] as LabelData[]],
+    ]);
+
+    const { presentFrames, keyframeFrames } = resolveInstanceFrameLayout(
+      [],
+      overlay,
+      "i2",
+    );
+
+    expect(presentFrames).toEqual([1, 2]);
+    expect(keyframeFrames).toEqual([1]);
+  });
+
+  it("ignores overlay frames belonging to other instances", () => {
+    const overlay: FrameOverlay = new Map([
+      [8, [{ _id: "other", keyframe: true }] as LabelData[]],
+    ]);
+
+    const { presentFrames, keyframeFrames } = resolveInstanceFrameLayout(
+      index,
+      overlay,
+      "i1",
+    );
+
+    expect(presentFrames).toEqual([1, 2, 3, 4, 5]);
+    expect(keyframeFrames).toEqual([1, 5]);
   });
 });
