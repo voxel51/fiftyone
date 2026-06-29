@@ -4249,7 +4249,7 @@
             "source": "https://huggingface.co/facebook/mask2former-swin-tiny-coco-instance",
             "author": "Bowen Cheng, et al.",
             "license": "MIT",
-            "size_bytes": 178000000,
+            "size_bytes": 190840832,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
                 "config": {
@@ -4276,7 +4276,7 @@
             "source": "https://huggingface.co/facebook/mask2former-swin-small-coco-instance",
             "author": "Bowen Cheng, et al.",
             "license": "MIT",
-            "size_bytes": 270000000,
+            "size_bytes": 275775488,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
                 "config": {
@@ -4303,7 +4303,7 @@
             "source": "https://huggingface.co/facebook/mask2former-swin-base-coco-instance",
             "author": "Bowen Cheng, et al.",
             "license": "MIT",
-            "size_bytes": 350000000,
+            "size_bytes": 432013312,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
                 "config": {
@@ -4330,7 +4330,7 @@
             "source": "https://huggingface.co/facebook/mask2former-swin-large-coco-instance",
             "author": "Bowen Cheng, et al.",
             "license": "MIT",
-            "size_bytes": 875000000,
+            "size_bytes": 867172352,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
                 "config": {
@@ -4357,7 +4357,7 @@
             "source": "https://huggingface.co/facebook/mask2former-swin-tiny-coco-panoptic",
             "author": "Bowen Cheng, et al.",
             "license": "MIT",
-            "size_bytes": 178000000,
+            "size_bytes": 190840832,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
                 "config": {
@@ -4384,7 +4384,7 @@
             "source": "https://huggingface.co/facebook/mask2former-swin-small-coco-panoptic",
             "author": "Bowen Cheng, et al.",
             "license": "MIT",
-            "size_bytes": 270000000,
+            "size_bytes": 275775488,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
                 "config": {
@@ -4411,7 +4411,7 @@
             "source": "https://huggingface.co/facebook/mask2former-swin-base-coco-panoptic",
             "author": "Bowen Cheng, et al.",
             "license": "MIT",
-            "size_bytes": 350000000,
+            "size_bytes": 432013312,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
                 "config": {
@@ -4438,7 +4438,7 @@
             "source": "https://huggingface.co/facebook/mask2former-swin-large-coco-panoptic",
             "author": "Bowen Cheng, et al.",
             "license": "MIT",
-            "size_bytes": 875000000,
+            "size_bytes": 1825361101,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
                 "config": {
@@ -4465,7 +4465,7 @@
             "source": "https://huggingface.co/facebook/mask2former-swin-tiny-ade-semantic",
             "author": "Bowen Cheng, et al.",
             "license": "MIT",
-            "size_bytes": 178000000,
+            "size_bytes": 380633088,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
                 "config": {
@@ -4495,7 +4495,7 @@
             "source": "https://huggingface.co/facebook/mask2former-swin-small-ade-semantic",
             "author": "Bowen Cheng, et al.",
             "license": "MIT",
-            "size_bytes": 270000000,
+            "size_bytes": 275775488,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
                 "config": {
@@ -4525,7 +4525,7 @@
             "source": "https://huggingface.co/facebook/mask2former-swin-base-ade-semantic",
             "author": "Bowen Cheng, et al.",
             "license": "MIT",
-            "size_bytes": 350000000,
+            "size_bytes": 432013312,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
                 "config": {
@@ -4555,7 +4555,7 @@
             "source": "https://huggingface.co/facebook/mask2former-swin-large-ade-semantic",
             "author": "Bowen Cheng, et al.",
             "license": "MIT",
-            "size_bytes": 875000000,
+            "size_bytes": 867172352,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
                 "config": {
