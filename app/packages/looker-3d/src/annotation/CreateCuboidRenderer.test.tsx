@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   dispatchAnnotationEvent: vi.fn(),
   recordLastCreatedLabel: vi.fn(),
   selectNewCuboidForTransform: vi.fn(),
+  setActive: vi.fn(),
   setEditingToNewCuboid: vi.fn(),
   setTransformMode: vi.fn(),
   useEmptyCanvasInteraction: vi.fn(),
@@ -32,6 +33,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@fiftyone/annotation", () => ({
   useAnnotationEventBus: () => ({ dispatch: mocks.dispatchAnnotationEvent }),
+  useAnnotationEngine: () => ({
+    interaction: {
+      setActive: mocks.setActive,
+    },
+  }),
+  useSceneSampleId: () => "scene-sample",
 }));
 
 vi.mock("@fiftyone/utilities", () => ({
@@ -215,7 +222,13 @@ describe("CreateCuboidRenderer", () => {
       "vehicle",
     );
     expect(mocks.setEditingToNewCuboid).toHaveBeenCalledTimes(1);
-    expect(setSelectedLabelForAnnotation).toHaveBeenCalledTimes(1);
+    expect(mocks.setActive).toHaveBeenCalledWith([
+      {
+        sample: "scene-sample",
+        path: "ground_truth",
+        instanceId: "new-cuboid-id",
+      },
+    ]);
     expect(mocks.selectNewCuboidForTransform).toHaveBeenCalledTimes(1);
     expect(mocks.setTransformMode).toHaveBeenCalledWith("scale");
     // Create mode exits after a cuboid is placed; press C to start another.
