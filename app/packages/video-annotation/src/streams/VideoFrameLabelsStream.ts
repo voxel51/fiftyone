@@ -152,7 +152,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     const start = Math.max(1, startFrame);
     const end = Math.min(this.frameCount, endFrame);
 
-    const promises: Promise<void>[] = [];
+    const promises = new Set<Promise<void>>();
     let f = start;
 
     while (f <= end) {
@@ -161,14 +161,20 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         continue;
       }
 
+      // Reuse an in-flight chunk, but only skip the frames it actually covers:
+      // chunks can begin at arbitrary frames (prefetch, an overlapping
+      // fetchRange), so striding a full chunkSize past an unaligned promise
+      // would jump over frames it never loaded and resolve with a gap.
       const inflight = this.inflight.get(f);
       if (inflight) {
-        promises.push(inflight);
-        f += this.chunkSize;
+        promises.add(inflight);
+        do {
+          f++;
+        } while (f <= end && this.inflight.get(f) === inflight);
         continue;
       }
 
-      promises.push(this.fetchChunk(f));
+      promises.add(this.fetchChunk(f));
       f += this.chunkSize;
     }
 

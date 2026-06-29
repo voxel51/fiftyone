@@ -123,6 +123,21 @@ describe("VideoFrameLabelsStream fetchRange", () => {
     expect(startsSince(n)).toEqual([11]);
   });
 
+  it("does not skip frames past an unaligned in-flight chunk", async () => {
+    const n = windowMock.mock.calls.length;
+    const stream = chunked(10, 100);
+
+    // Start an unaligned chunk covering frames 6..15, then ask for 1..20.
+    // The reused 6..15 promise only covers through 15, so the range walk must
+    // still fetch the 16..20 tail rather than striding past it.
+    // @ts-expect-error — test-only: drive the private chunk fetch
+    void stream.fetchChunk(6);
+    await stream.fetchRange(1, 20);
+
+    // Chunks: the pre-existing 6..15, plus 1..10 and 16..20 from the range.
+    expect(startsSince(n)).toEqual([1, 6, 16]);
+  });
+
   it("is a no-op when the range is empty after clamping", async () => {
     const n = windowMock.mock.calls.length;
     await chunked(10).fetchRange(50, 40);
