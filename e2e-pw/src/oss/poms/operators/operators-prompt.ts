@@ -68,10 +68,10 @@ class OperatorsPromptAsserter {
 
   async isValidated() {
     await expect(
-      this.panelPom.footer.locator(".MuiCircularProgress-root")
+      this.panelPom.footer.locator(".MuiCircularProgress-root"),
     ).toBeHidden();
     await expect(
-      this.panelPom.footer.locator(".MuiCircularProgress-root")
+      this.panelPom.footer.locator(".MuiCircularProgress-root"),
     ).toBeHidden();
   }
 }

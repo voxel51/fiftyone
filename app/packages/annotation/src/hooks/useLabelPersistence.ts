@@ -34,7 +34,7 @@ const useLabelPersistenceWith = ({
         isGenerated,
       });
     },
-    [applyPatch, isGenerated, opType, sample]
+    [applyPatch, isGenerated, opType, sample],
   );
 };
 
@@ -43,7 +43,7 @@ const useLabelPersistenceWith = ({
  */
 export const useUpsertLabel = (): ((
   annotationLabel: LabelProxy,
-  schema: Field
+  schema: Field,
 ) => Promise<boolean>) => {
   const isGenerated = useRecoilValue(isGeneratedView);
 
@@ -61,7 +61,7 @@ export const useUpsertLabel = (): ((
  */
 export const useDeleteLabel = (): ((
   annotationLabel: LabelProxy,
-  schema: Field
+  schema: Field,
 ) => Promise<boolean>) => {
   const isGenerated = useRecoilValue(isGeneratedView);
 

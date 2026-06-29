@@ -135,7 +135,7 @@ export const ActionToolbar = ({
       .filter(
         (group) =>
           !group.isHidden &&
-          group.actions.some((action) => action.isVisible !== false)
+          group.actions.some((action) => action.isVisible !== false),
       )
       .map((group) => (
         <ToolbarGroup key={group.id}>
@@ -147,7 +147,7 @@ export const ActionToolbar = ({
                 <div key={action.id}>{action.customComponent}</div>
               ) : (
                 <ActionButton key={action.id} action={action} />
-              )
+              ),
             )}
         </ToolbarGroup>
       ))}

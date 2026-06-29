@@ -158,7 +158,7 @@ export const excludedPathsState = atomFamily({
         const isVideo = mediaType === "video";
         const isInSearchMode = !!searchResults?.length;
         const includeNestedFields = await getPromise(
-          fos.includeNestedFieldsState
+          fos.includeNestedFieldsState,
         );
 
         if (!dataset) {
@@ -192,7 +192,7 @@ export const excludedPathsState = atomFamily({
                 isFrameView,
                 isClipsView,
                 isVideo,
-                isPatchesView
+                isPatchesView,
               )
             );
           })
@@ -203,7 +203,7 @@ export const excludedPathsState = atomFamily({
         let finalGreenPaths = greenPaths;
         if (!showNestedField && !isInSearchMode) {
           finalGreenPaths = greenPaths.filter((path) =>
-            isTopLevelField(isVideo, path)
+            isTopLevelField(isVideo, path),
           );
         }
 
@@ -226,7 +226,7 @@ export const excludedPathsState = atomFamily({
 
         if (isInSearchMode && !includeNestedFields) {
           finalGreenPaths = finalGreenPaths.filter((path: string) =>
-            isTopLevelField(isVideo, path)
+            isTopLevelField(isVideo, path),
           );
         }
 

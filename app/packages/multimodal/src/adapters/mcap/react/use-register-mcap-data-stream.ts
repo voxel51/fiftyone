@@ -162,7 +162,7 @@ export function useRegisterMcapDataStream({
     pendingTicksRef.current.get(tickKey)?.has(topic) ?? false;
   const markTopicsPending = (
     tickKeys: readonly string[],
-    topics: readonly string[]
+    topics: readonly string[],
   ): void => {
     const pending = pendingTicksRef.current;
     for (const key of tickKeys) {
@@ -176,7 +176,7 @@ export function useRegisterMcapDataStream({
   };
   const clearTopicsPending = (
     tickKeys: readonly string[],
-    topics: readonly string[]
+    topics: readonly string[],
   ): void => {
     const pending = pendingTicksRef.current;
     for (const key of tickKeys) {
@@ -193,7 +193,7 @@ export function useRegisterMcapDataStream({
       if (!topicCachesRef.current.has(topic)) {
         topicCachesRef.current.set(
           topic,
-          new McapTopicCache(PLAYBACK_POLICY.topicCacheMaxEntries)
+          new McapTopicCache(PLAYBACK_POLICY.topicCacheMaxEntries),
         );
       }
     }
@@ -237,9 +237,9 @@ export function useRegisterMcapDataStream({
   const getActiveTopics = useCallback(
     (): string[] =>
       allTopicsRef.current.filter(
-        (t) => topicCachesRef.current.get(t)?.isActive
+        (t) => topicCachesRef.current.get(t)?.isActive,
       ),
-    []
+    [],
   );
 
   // Core batch-fetch helper. Fetches ticks for the active topic set, fills
@@ -270,7 +270,7 @@ export function useRegisterMcapDataStream({
           return (
             !caches.get(topic)?.has(tick) && !isTopicPending(tickKey, topic)
           );
-        })
+        }),
       );
       if (topicsToFetch.length === 0) return false;
 
@@ -289,7 +289,7 @@ export function useRegisterMcapDataStream({
 
           const activeFetchedTopics = activeTopicsInCaches(
             caches,
-            topicsToFetch
+            topicsToFetch,
           );
           if (activeFetchedTopics.length === 0) return;
 
@@ -306,7 +306,7 @@ export function useRegisterMcapDataStream({
               tick,
               caches,
               lastFrameRef.current,
-              store
+              store,
             );
           }
         })
@@ -319,7 +319,7 @@ export function useRegisterMcapDataStream({
 
       return true;
     },
-    [client, source, store]
+    [client, source, store],
   );
 
   // Fetch the nearest target frame through the worker's current-frame lane so
@@ -336,7 +336,7 @@ export function useRegisterMcapDataStream({
       const tickKey = tick.toString();
       const topicsToFetch = activeTopics.filter(
         (topic) =>
-          !caches.get(topic)?.has(tick) && !isTopicPending(tickKey, topic)
+          !caches.get(topic)?.has(tick) && !isTopicPending(tickKey, topic),
       );
       if (topicsToFetch.length === 0) return false;
 
@@ -355,7 +355,7 @@ export function useRegisterMcapDataStream({
 
           const activeFetchedTopics = activeTopicsInCaches(
             caches,
-            topicsToFetch
+            topicsToFetch,
           );
           if (activeFetchedTopics.length === 0) return;
 
@@ -365,7 +365,7 @@ export function useRegisterMcapDataStream({
             tick,
             caches,
             lastFrameRef.current,
-            store
+            store,
           );
         })
         .catch(noop)
@@ -377,7 +377,7 @@ export function useRegisterMcapDataStream({
 
       return true;
     },
-    [client, source, store]
+    [client, source, store],
   );
 
   // Collect ticks in [startSec, endSec] where at least one active topic
@@ -402,14 +402,14 @@ export function useRegisterMcapDataStream({
         if (tick > endNs) break;
         const tickKey = tick.toString();
         const needsFetch = activeTopics.some(
-          (t) => !caches.get(t)?.has(tick) && !isTopicPending(tickKey, t)
+          (t) => !caches.get(t)?.has(tick) && !isTopicPending(tickKey, t),
         );
         if (needsFetch) toFetch.push(tick);
         if (toFetch.length >= PLAYBACK_POLICY.maxPrefetchBatch) break;
       }
       return toFetch;
     },
-    [getActiveTopics]
+    [getActiveTopics],
   );
 
   // Push cached current frame for the active set, request a missing current
@@ -430,7 +430,7 @@ export function useRegisterMcapDataStream({
           tick,
           topicCachesRef.current,
           lastFrameRef.current,
-          store
+          store,
         );
         fetchCurrentFrame(tick, activeTopics);
       }
@@ -443,7 +443,13 @@ export function useRegisterMcapDataStream({
         timeSec,
       });
     },
-    [collectMissingTicks, fetchBatch, fetchCurrentFrame, getActiveTopics, store]
+    [
+      collectMissingTicks,
+      fetchBatch,
+      fetchCurrentFrame,
+      getActiveTopics,
+      store,
+    ],
   );
 
   // Register the single engine stream and the proactive lookahead subscription.
@@ -501,7 +507,7 @@ export function useRegisterMcapDataStream({
           tick,
           caches,
           lastFrame,
-          commitStore
+          commitStore,
         );
       },
     };
@@ -579,12 +585,12 @@ export function useRegisterMcapDataStream({
         if (!cache.isActive) lastFrameRef.current.delete(topic);
       };
     },
-    [prefetchLookaheadFrom, store]
+    [prefetchLookaheadFrom, store],
   );
 
   const getTopicCache = useCallback(
     (topic: string) => topicCachesRef.current.get(topic),
-    []
+    [],
   );
   const getTimelineIndex = useCallback(() => indexRef.current, []);
 
@@ -602,18 +608,18 @@ export function useRegisterMcapDataStream({
 
 function deriveMcapPlaybackPolicy(
   policy: McapPlaybackPolicy,
-  tickRateHz = DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ
+  tickRateHz = DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ,
 ): DerivedMcapPlaybackPolicy {
   return {
     ...policy,
     maxPrefetchBatch: Math.ceil(tickRateHz * policy.prefetchBatchSeconds),
     prefetchBatchesPerLookahead: Math.ceil(
-      policy.lookaheadSeconds / policy.prefetchBatchSeconds
+      policy.lookaheadSeconds / policy.prefetchBatchSeconds,
     ),
     topicCacheMaxEntries: Math.ceil(
       tickRateHz *
         policy.lookaheadSeconds *
-        policy.topicCacheLookaheadMultiplier
+        policy.topicCacheLookaheadMultiplier,
     ),
   };
 }
@@ -634,7 +640,7 @@ function fillMissingLookaheadFrom({
   const endSec = timeSec + policy.lookaheadSeconds;
   const batchesToQueue = Math.min(
     policy.prefetchBatchesPerPass,
-    policy.prefetchBatchesPerLookahead
+    policy.prefetchBatchesPerLookahead,
   );
   for (let i = 0; i < batchesToQueue; i++) {
     const missing = collectMissingTicks(timeSec, endSec);
@@ -645,7 +651,7 @@ function fillMissingLookaheadFrom({
 
 function activeTopicsInCaches(
   caches: Map<string, McapTopicCache>,
-  topics: readonly string[]
+  topics: readonly string[],
 ): string[] {
   return topics.filter((topic) => caches.get(topic)?.isActive);
 }
@@ -653,7 +659,7 @@ function activeTopicsInCaches(
 function distributeWindowToCaches(
   window: McapSynchronizedMessageWindow,
   caches: Map<string, McapTopicCache>,
-  requestedTopics: readonly string[]
+  requestedTopics: readonly string[],
 ): void {
   // Seed every requested topic for this tick — null if the backend omitted
   // or returned an empty array — so bufferState resolves and the engine
@@ -669,7 +675,7 @@ function pushTickToStore(
   tick: bigint,
   caches: Map<string, McapTopicCache>,
   lastFrame: Map<string, unknown>,
-  store: PlaybackStore
+  store: PlaybackStore,
 ): void {
   for (const topic of activeTopics) {
     const cache = caches.get(topic);

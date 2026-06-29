@@ -23,7 +23,7 @@ import {
 const createSchema = (
   choices: string[],
   disabled: Set<string>,
-  readOnly = false
+  readOnly = false,
 ) => ({
   type: "object",
   view: {
@@ -58,7 +58,7 @@ const Field = () => {
   const currentLabel = selected?.label ?? null;
   const schema = useMemo(
     () => createSchema(fields, disabled, isPatches),
-    [disabled, fields, isPatches]
+    [disabled, fields, isPatches],
   );
   const modalSampleSchema = useModalSampleSchema();
   const commandBus = useCommandBus();
@@ -83,7 +83,7 @@ const Field = () => {
           const fieldSchema = getFieldSchema(modalSampleSchema, currentField);
           if (!currentLabel || !fieldSchema) return;
           await commandBus.execute(
-            new DeleteAnnotationCommand(currentLabel, fieldSchema)
+            new DeleteAnnotationCommand(currentLabel, fieldSchema),
           );
           setCurrentField(newField);
         },
@@ -93,10 +93,10 @@ const Field = () => {
           const fieldSchema = getFieldSchema(modalSampleSchema, newField);
           if (!currentLabel || !fieldSchema) return;
           await commandBus.execute(
-            new DeleteAnnotationCommand(currentLabel, fieldSchema)
+            new DeleteAnnotationCommand(currentLabel, fieldSchema),
           );
           setCurrentField(currentField);
-        }
+        },
       );
     }, [
       modalSampleSchema,
@@ -106,7 +106,7 @@ const Field = () => {
       labelId,
       currentFieldValue,
     ]),
-    () => true
+    () => true,
   );
 
   return (

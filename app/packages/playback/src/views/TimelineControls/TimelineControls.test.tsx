@@ -21,7 +21,7 @@ function renderControls(opts: RenderOpts = {}) {
       defaultLoopEnd={defaultLoopEnd}
     >
       <TimelineControls onToggle={onToggle} />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -110,13 +110,17 @@ describe("TimelineControls", () => {
   it("applies the .clickable class only when onToggle is provided", () => {
     renderControls({ onToggle: vi.fn() });
     expect(
-      screen.getByTestId("timeline-controls-root").classList.contains(styles.clickable)
+      screen
+        .getByTestId("timeline-controls-root")
+        .classList.contains(styles.clickable),
     ).toBe(true);
 
     cleanup();
     renderControls({});
     expect(
-      screen.getByTestId("timeline-controls-root").classList.contains(styles.clickable)
+      screen
+        .getByTestId("timeline-controls-root")
+        .classList.contains(styles.clickable),
     ).toBe(false);
   });
 
@@ -131,16 +135,20 @@ describe("TimelineControls", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
           <TimelineControls extraActions={<button>Custom Action</button>} />
-        </PlaybackProvider>
+        </PlaybackProvider>,
       );
-      expect(screen.getByRole("button", { name: "Custom Action" })).toBeTruthy();
+      expect(
+        screen.getByRole("button", { name: "Custom Action" }),
+      ).toBeTruthy();
     });
 
     it("renders a second divider alongside the extra actions", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
-          <TimelineControls extraActions={<span data-testid="extra">hi</span>} />
-        </PlaybackProvider>
+          <TimelineControls
+            extraActions={<span data-testid="extra">hi</span>}
+          />
+        </PlaybackProvider>,
       );
       // The first divider always exists; a second one appears only with extraActions.
       const dividers = screen.getAllByTestId("timeline-controls-divider");

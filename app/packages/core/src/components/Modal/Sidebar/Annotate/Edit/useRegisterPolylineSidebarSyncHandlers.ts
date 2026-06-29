@@ -20,7 +20,7 @@ export const useRegisterPolylineSidebarSyncHandlers = () => {
   const { selected, setData } = useAnnotationContext();
 
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   const syncFromOverlay = useCallback(
@@ -41,7 +41,7 @@ export const useRegisterPolylineSidebarSyncHandlers = () => {
         filled: overlay.getFilled(),
       });
     },
-    [selected?.label, setData]
+    [selected?.label, setData],
   );
 
   useEventHandler("lighter:keypoint-point-added", syncFromOverlay);

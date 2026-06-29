@@ -11,7 +11,7 @@ export const clamp = (v: number, lo: number, hi: number) =>
 export function clampAndValidateBounds(
   start: number,
   end: number,
-  duration: number
+  duration: number,
 ): { start: number; end: number } | null {
   const s = clamp(start, 0, duration);
   const e = clamp(end, 0, duration);
@@ -35,7 +35,7 @@ export function clampAndValidateBounds(
 export function resolveAtTime<T>(
   cache: Map<number, T>,
   time: number,
-  policy: StreamLookupPolicy
+  policy: StreamLookupPolicy,
 ): T | null {
   // Hot path: exact-time hits dominate normal playback (the engine ticks
   // on stream-aligned step intervals), so skip the linear scan when the

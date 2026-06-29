@@ -105,7 +105,7 @@ export class SavedViewsPom {
     name: string,
     description: string,
     color: Color,
-    newColor: Color
+    newColor: Color,
   ) {
     await this.nameInput().clear();
     await this.nameInput().pressSequentially(name);
@@ -150,7 +150,7 @@ export class SavedViewsPom {
   async openCreateModal(
     { isSelectAlreadyOpen }: { isSelectAlreadyOpen?: boolean } = {
       isSelectAlreadyOpen: false,
-    }
+    },
   ) {
     if (!isSelectAlreadyOpen) {
       await this.openSelect();
@@ -182,7 +182,7 @@ export class SavedViewsPom {
 
   colorInputContainer() {
     return this.dialogLocator.getByTestId(
-      "saved-views-input-color-selection-selection"
+      "saved-views-input-color-selection-selection",
     );
   }
 
@@ -301,12 +301,12 @@ class SavedViewAsserter {
     await expect(colorListBox).toBeVisible();
     // verify default
     await expect(
-      colorListBox.getByRole("option", { name: defaultColor })
+      colorListBox.getByRole("option", { name: defaultColor }),
     ).toBeInViewport();
 
     colorList.forEach(async (color: string) => {
       await expect(
-        colorListBox.getByRole("option", { name: color })
+        colorListBox.getByRole("option", { name: color }),
       ).toBeVisible();
     });
   }
@@ -331,7 +331,7 @@ class SavedViewAsserter {
     await expect(
       this.svp.dialogLocator.getByRole("heading", {
         name,
-      })
+      }),
     ).toBeVisible();
   }
 
@@ -342,7 +342,7 @@ class SavedViewAsserter {
   async verifySearch(
     term: string,
     expectedResult: string[],
-    excluded: string[]
+    excluded: string[],
   ) {
     await this.svp.searchInput().clear();
     await this.svp.searchInput().pressSequentially(term);

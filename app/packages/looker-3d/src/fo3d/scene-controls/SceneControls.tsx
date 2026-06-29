@@ -45,7 +45,7 @@ export const SceneControls = ({
 
   const dirFromUpVector = useMemo(
     () => getOrthonormalAxis(upVector),
-    [upVector]
+    [upVector],
   );
 
   const lastCameraUpdateRef = useRef(0);
@@ -72,7 +72,7 @@ export const SceneControls = ({
       saveCameraState(
         datasetName,
         state.camera.position.toArray(),
-        cameraControls.getTarget(new Vector3()).toArray()
+        cameraControls.getTarget(new Vector3()).toArray(),
       );
       lastCameraUpdateRef.current = now;
     }
@@ -119,10 +119,10 @@ export const SceneControls = ({
             },
           },
         },
-        { collapsed: true, order: PANEL_ORDER_SCENE_CONTROLS }
+        { collapsed: true, order: PANEL_ORDER_SCENE_CONTROLS },
       ),
     }),
-    []
+    [],
   );
 
   // note: we have to separate the scene controls from the point cloud controls
@@ -142,7 +142,7 @@ export const SceneControls = ({
         },
       }),
     }),
-    [pointCloudSettings.enableTooltip]
+    [pointCloudSettings.enableTooltip],
   );
 
   return <Lights lights={scene?.lights} />;

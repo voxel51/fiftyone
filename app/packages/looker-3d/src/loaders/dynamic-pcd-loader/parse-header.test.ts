@@ -81,7 +81,7 @@ TYPE X
 DATA ascii
 `.trimStart();
     expect(() => parseHeader(makeBuffer(hdr))).toThrow(
-      "Unsupported PCD TYPE code: X"
+      "Unsupported PCD TYPE code: X",
     );
   });
 

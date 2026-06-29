@@ -49,10 +49,9 @@ vi.mock("./useToolsContext", () => ({
 }));
 
 vi.mock("./usePointSelection", async () => {
-  const orig = (await vi.importActual<object>("./resolvePointVariant")) as Record<
-    string,
-    unknown
-  >;
+  const orig = (await vi.importActual<object>(
+    "./resolvePointVariant",
+  )) as Record<string, unknown>;
   return {
     // Mirror the constants so the SUT can compare to NEGATIVE_POINT_VARIANT
     NEGATIVE_POINT_VARIANT: orig.NEGATIVE_POINT_VARIANT,
@@ -119,7 +118,7 @@ describe("useRegisterPointSelectionEventHandlers", () => {
       expect(hoisted.rippleSpies.add).toHaveBeenCalledWith(
         "overlay-1",
         "kp-1",
-        1234
+        1234,
       );
     });
 
@@ -172,11 +171,15 @@ describe("useRegisterPointSelectionEventHandlers", () => {
       // ripples would otherwise leak the rAF loop.
       expect(hoisted.rippleSpies.remove).toHaveBeenCalledWith(
         "overlay-1",
-        "kp-1"
+        "kp-1",
       );
       // toolsState mutations ARE gated on active.
-      expect(hoisted.toolsStateSpies.removeNegativePoint).not.toHaveBeenCalled();
-      expect(hoisted.toolsStateSpies.removePositivePoint).not.toHaveBeenCalled();
+      expect(
+        hoisted.toolsStateSpies.removeNegativePoint,
+      ).not.toHaveBeenCalled();
+      expect(
+        hoisted.toolsStateSpies.removePositivePoint,
+      ).not.toHaveBeenCalled();
     });
 
     it("negative variant → removeNegativePoint when active", () => {
@@ -188,9 +191,11 @@ describe("useRegisterPointSelectionEventHandlers", () => {
       });
 
       expect(hoisted.toolsStateSpies.removeNegativePoint).toHaveBeenCalledWith(
-        "kp-neg"
+        "kp-neg",
       );
-      expect(hoisted.toolsStateSpies.removePositivePoint).not.toHaveBeenCalled();
+      expect(
+        hoisted.toolsStateSpies.removePositivePoint,
+      ).not.toHaveBeenCalled();
       expect(hoisted.rippleSpies.remove).toHaveBeenCalledTimes(1);
     });
 
@@ -203,9 +208,11 @@ describe("useRegisterPointSelectionEventHandlers", () => {
       });
 
       expect(hoisted.toolsStateSpies.removePositivePoint).toHaveBeenCalledWith(
-        "kp-pos"
+        "kp-pos",
       );
-      expect(hoisted.toolsStateSpies.removeNegativePoint).not.toHaveBeenCalled();
+      expect(
+        hoisted.toolsStateSpies.removeNegativePoint,
+      ).not.toHaveBeenCalled();
     });
   });
 

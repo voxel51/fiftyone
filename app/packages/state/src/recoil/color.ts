@@ -38,7 +38,7 @@ export const datasetColorScheme = graphQLSyncFragmentAtom<
   },
   {
     key: "datasetColorScheme",
-  }
+  },
 );
 
 export const coloring = selector<Coloring>({
@@ -113,7 +113,7 @@ export const pathColor = selectorFamily<string, string>({
         path === "_label_tags"
           ? get(atoms.colorScheme).labelTags
           : get(atoms.colorScheme)?.fields?.find(
-              (x) => x.path === adjustedPath
+              (x) => x.path === adjustedPath,
             );
 
       if (isValidColor(setting?.fieldColor ?? "")) {
@@ -134,9 +134,9 @@ export const eligibleFieldsToCustomizeColor = selector({
   key: "eligibleFieldsToCustomizeColor",
   get: ({ get }) => {
     const entries = get(
-      sidebarEntries({ modal: false, loading: false })
+      sidebarEntries({ modal: false, loading: false }),
     ).filter(
-      (e) => e.kind == "PATH" && !["_label_tags", "tags"].includes(e.path)
+      (e) => e.kind == "PATH" && !["_label_tags", "tags"].includes(e.path),
     ) as PathEntry[];
     const fields = entries.map((e) => get(schemaAtoms.field(e.path)));
     return fields;
@@ -145,7 +145,7 @@ export const eligibleFieldsToCustomizeColor = selector({
 
 export const ensureColorScheme = (
   colorScheme: any,
-  appConfig?: datasetQuery$data["config"]
+  appConfig?: datasetQuery$data["config"],
 ): ColorSchemeInput => {
   colorScheme = toCamelCase(colorScheme);
   return {
@@ -168,13 +168,13 @@ export const ensureColorScheme = (
     multicolorKeypoints:
       typeof colorScheme?.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints
-        : appConfig?.multicolorKeypoints ?? false,
+        : (appConfig?.multicolorKeypoints ?? false),
     opacity:
       typeof colorScheme?.opacity === "number" ? colorScheme.opacity : 0.7,
     showSkeletons:
       typeof colorScheme?.showSkeletons == "boolean"
         ? colorScheme.showSkeletons
-        : appConfig?.showSkeletons ?? true,
+        : (appConfig?.showSkeletons ?? true),
   };
 };
 
@@ -185,7 +185,7 @@ export function removeRgbProperty(input) {
   // Process the 'colorscales' array
   if (clonedInput.colorscales && Array.isArray(clonedInput.colorscales)) {
     clonedInput.colorscales = clonedInput.colorscales.map(
-      ({ rgb, ...rest }) => rest
+      ({ rgb, ...rest }) => rest,
     );
   }
 

@@ -1,8 +1,10 @@
 # SchemaIOComponent Usage Examples
 
-This document contains real-world usage examples of `SchemaIOComponent` found in the FiftyOne codebase.
+This document contains real-world usage examples of `SchemaIOComponent` found
+in the FiftyOne codebase.
 
 ## Table of Contents
+
 - [Basic Usage](#basic-usage)
 - [Real-World Examples](#real-world-examples)
 - [Field Types](#field-types)
@@ -13,15 +15,18 @@ This document contains real-world usage examples of `SchemaIOComponent` found in
 ## Basic Usage
 
 ```tsx
-import { SchemaIOComponent, type SchemaIOComponentProps } from "@fiftyone/core/plugins/SchemaIO";
+import {
+    SchemaIOComponent,
+    type SchemaIOComponentProps,
+} from "@fiftyone/core/plugins/SchemaIO";
 
 const props: SchemaIOComponentProps = {
-  schema: mySchema,
-  data: initialData,
-  onChange: (data) => console.log(data),
+    schema: mySchema,
+    data: initialData,
+    onChange: (data) => console.log(data),
 };
 
-<SchemaIOComponent {...props} />
+<SchemaIOComponent {...props} />;
 ```
 
 ---
@@ -29,192 +34,197 @@ const props: SchemaIOComponentProps = {
 ## Real-World Examples
 
 ### 1. Field Selection Dropdown
-**Source**: `app/packages/core/src/components/Modal/Sidebar/Annotate/Edit/Field.tsx`
+
+**Source**:
+`app/packages/core/src/components/Modal/Sidebar/Annotate/Edit/Field.tsx`
 
 Creates a dropdown for selecting annotation fields:
 
 ```tsx
 const schema = {
-  type: "object",
-  view: {
-    component: "ObjectView",
-  },
-  properties: {
-    field: {
-      type: "string",
-      view: {
-        name: "DropdownView",
-        label: "field",
-        placeholder: "Select a field",
-        component: "DropdownView",
-        choices: [
-          { name: "Choice", label: "Field 1", value: "field1" },
-          { name: "Choice", label: "Field 2", value: "field2" },
-        ],
-      },
+    type: "object",
+    view: {
+        component: "ObjectView",
     },
-  },
+    properties: {
+        field: {
+            type: "string",
+            view: {
+                name: "DropdownView",
+                label: "field",
+                placeholder: "Select a field",
+                component: "DropdownView",
+                choices: [
+                    { name: "Choice", label: "Field 1", value: "field1" },
+                    { name: "Choice", label: "Field 2", value: "field2" },
+                ],
+            },
+        },
+    },
 };
 
 <SchemaIOComponent
-  schema={schema}
-  data={{ field: "field1" }}
-  onChange={({ field }) => setCurrentField(field)}
-/>
+    schema={schema}
+    data={{ field: "field1" }}
+    onChange={({ field }) => setCurrentField(field)}
+/>;
 ```
 
 ---
 
 ### 2. Read-Only ID Display
-**Source**: `app/packages/core/src/components/Modal/Sidebar/Annotate/Edit/Id.tsx`
+
+**Source**:
+`app/packages/core/src/components/Modal/Sidebar/Annotate/Edit/Id.tsx`
 
 Displays a read-only ID field:
 
 ```tsx
 const schema = {
-  type: "object",
-  view: {
-    component: "ObjectView",
-  },
-  properties: {
-    id: {
-      type: "string",
-      view: {
-        name: "PrimitiveView",
-        readOnly: true,
-        component: "PrimitiveView",
-      },
+    type: "object",
+    view: {
+        component: "ObjectView",
     },
-  },
+    properties: {
+        id: {
+            type: "string",
+            view: {
+                name: "PrimitiveView",
+                readOnly: true,
+                component: "PrimitiveView",
+            },
+        },
+    },
 };
 
-<SchemaIOComponent
-  schema={schema}
-  data={{ id: overlay?.id }}
-/>
+<SchemaIOComponent schema={schema} data={{ id: overlay?.id }} />;
 ```
 
 ---
 
 ### 3. Annotation Schema with Multiple Field Types
-**Source**: `app/packages/core/src/components/Modal/Sidebar/Annotate/Edit/AnnotationSchema.tsx`
+
+**Source**:
+`app/packages/core/src/components/Modal/Sidebar/Annotate/Edit/AnnotationSchema.tsx`
 
 Complex schema with various field types:
 
 ```tsx
 const schema = {
-  type: "object",
-  view: {
-    component: "ObjectView",
-  },
-  properties: {
-    // Dropdown for label selection
-    label: {
-      type: "string",
-      view: {
-        name: "DropdownView",
-        label: "label",
-        component: "DropdownView",
-        choices: [
-          { name: "Choice", label: "Cat", value: "cat" },
-          { name: "Choice", label: "Dog", value: "dog" },
-        ],
-      },
+    type: "object",
+    view: {
+        component: "ObjectView",
     },
-    // Radio buttons for status
-    status: {
-      type: "string",
-      view: {
-        name: "RadioGroup",
-        label: "status",
-        component: "RadioView",
-        choices: [
-          { label: "Active", value: "active" },
-          { label: "Inactive", value: "inactive" },
-        ],
-      },
+    properties: {
+        // Dropdown for label selection
+        label: {
+            type: "string",
+            view: {
+                name: "DropdownView",
+                label: "label",
+                component: "DropdownView",
+                choices: [
+                    { name: "Choice", label: "Cat", value: "cat" },
+                    { name: "Choice", label: "Dog", value: "dog" },
+                ],
+            },
+        },
+        // Radio buttons for status
+        status: {
+            type: "string",
+            view: {
+                name: "RadioGroup",
+                label: "status",
+                component: "RadioView",
+                choices: [
+                    { label: "Active", value: "active" },
+                    { label: "Inactive", value: "inactive" },
+                ],
+            },
+        },
+        // Tags with autocomplete
+        tags: {
+            type: "array",
+            view: {
+                name: "AutocompleteView",
+                label: "tags",
+                component: "AutocompleteView",
+                allow_user_input: false,
+                choices: [
+                    { name: "Choice", label: "Indoor", value: "indoor" },
+                    { name: "Choice", label: "Outdoor", value: "outdoor" },
+                ],
+            },
+            required: true,
+        },
+        // Number input
+        confidence: {
+            type: "number",
+            view: {
+                name: "PrimitiveView",
+                label: "confidence",
+                component: "PrimitiveView",
+            },
+        },
     },
-    // Tags with autocomplete
-    tags: {
-      type: "array",
-      view: {
-        name: "AutocompleteView",
-        label: "tags",
-        component: "AutocompleteView",
-        allow_user_input: false,
-        choices: [
-          { name: "Choice", label: "Indoor", value: "indoor" },
-          { name: "Choice", label: "Outdoor", value: "outdoor" },
-        ],
-      },
-      required: true,
-    },
-    // Number input
-    confidence: {
-      type: "number",
-      view: {
-        name: "PrimitiveView",
-        label: "confidence",
-        component: "PrimitiveView",
-      },
-    },
-  },
 };
 
 <SchemaIOComponent
-  useJSONSchema={true}
-  schema={schema}
-  data={data}
-  onChange={async (changes) => {
-    // Handle changes...
-  }}
-/>
+    useJSONSchema={true}
+    schema={schema}
+    data={data}
+    onChange={async (changes) => {
+        // Handle changes...
+    }}
+/>;
 ```
 
 ---
 
 ### 4. Operator IO Wrapper
+
 **Source**: `app/packages/core/src/plugins/OperatorIO/index.tsx`
 
 Wraps SchemaIOComponent for operator input/output:
 
 ```tsx
 <SchemaIOComponent
-  id={id}
-  shouldClearUseKeyStores={shouldClearUseKeyStores}
-  schema={ioSchema}
-  onChange={onChange}
-  onPathChange={onPathChange}
-  data={data}
-  errors={getErrorsByPath(errors)}
-  initialData={initialData}
-  layout={layout}
-  otherProps={otherProps}
+    id={id}
+    shouldClearUseKeyStores={shouldClearUseKeyStores}
+    schema={ioSchema}
+    onChange={onChange}
+    onPathChange={onPathChange}
+    data={data}
+    errors={getErrorsByPath(errors)}
+    initialData={initialData}
+    layout={layout}
+    otherProps={otherProps}
 />
 ```
 
 ---
 
 ### 5. Development Panel with Multiple Schemas
+
 **Source**: `app/packages/core/src/plugins/OperatorIO/examples/Panel.tsx`
 
 Testing panel with schema switching:
 
 ```tsx
-{mode === "input" && (
-  <SchemaIOComponent
-    schema={ioSchema}
-    onChange={log}
-    errors={inputErrors}
-  />
-)}
-{mode === "output" && (
-  <SchemaIOComponent
-    schema={oSchema}
-    onChange={log}
-    data={state}
-  />
-)}
+{
+    mode === "input" && (
+        <SchemaIOComponent
+            schema={ioSchema}
+            onChange={log}
+            errors={inputErrors}
+        />
+    );
+}
+{
+    mode === "output" && (
+        <SchemaIOComponent schema={oSchema} onChange={log} data={state} />
+    );
+}
 ```
 
 ---
@@ -222,6 +232,7 @@ Testing panel with schema switching:
 ## Field Types
 
 ### String Input
+
 ```tsx
 {
   type: "string",
@@ -234,6 +245,7 @@ Testing panel with schema switching:
 ```
 
 ### Number Input
+
 ```tsx
 {
   type: "number",
@@ -245,6 +257,7 @@ Testing panel with schema switching:
 ```
 
 ### Boolean (Checkbox)
+
 ```tsx
 {
   type: "boolean",
@@ -256,6 +269,7 @@ Testing panel with schema switching:
 ```
 
 ### Dropdown
+
 ```tsx
 {
   type: "string",
@@ -272,6 +286,7 @@ Testing panel with schema switching:
 ```
 
 ### Radio Buttons
+
 ```tsx
 {
   type: "string",
@@ -288,6 +303,7 @@ Testing panel with schema switching:
 ```
 
 ### Autocomplete (Single)
+
 ```tsx
 {
   type: "string",
@@ -305,6 +321,7 @@ Testing panel with schema switching:
 ```
 
 ### Autocomplete (Multiple/Tags)
+
 ```tsx
 {
   type: "array",
@@ -323,6 +340,7 @@ Testing panel with schema switching:
 ```
 
 ### Color Picker
+
 ```tsx
 {
   type: "string",
@@ -335,6 +353,7 @@ Testing panel with schema switching:
 ```
 
 ### Code Editor
+
 ```tsx
 {
   type: "string",
@@ -348,6 +367,7 @@ Testing panel with schema switching:
 ```
 
 ### File Upload
+
 ```tsx
 {
   type: "string",
@@ -360,6 +380,7 @@ Testing panel with schema switching:
 ```
 
 ### Array/List
+
 ```tsx
 {
   type: "array",
@@ -375,6 +396,7 @@ Testing panel with schema switching:
 ```
 
 ### Map (Key-Value)
+
 ```tsx
 {
   type: "object",
@@ -394,6 +416,7 @@ Testing panel with schema switching:
 ## Complex Schemas
 
 ### Nested Objects
+
 ```tsx
 {
   type: "object",
@@ -432,6 +455,7 @@ Testing panel with schema switching:
 ```
 
 ### Array of Objects
+
 ```tsx
 {
   type: "array",
@@ -461,18 +485,18 @@ When using `useJSONSchema={true}`, you can pass additional RJSF-specific props:
 
 ```tsx
 <SchemaIOComponent
-  useJSONSchema={true}
-  schema={schema}
-  data={data}
-  uiSchema={{
-    name: {
-      "ui:placeholder": "Enter name",
-      "ui:help": "Your display name",
-    },
-  }}
-  onChange={(data) => console.log(data)}
-  onSubmit={(data) => console.log("Submitted:", data)}
-  validator={customValidator}
+    useJSONSchema={true}
+    schema={schema}
+    data={data}
+    uiSchema={{
+        name: {
+            "ui:placeholder": "Enter name",
+            "ui:help": "Your display name",
+        },
+    }}
+    onChange={(data) => console.log(data)}
+    onSubmit={(data) => console.log("Submitted:", data)}
+    validator={customValidator}
 />
 ```
 
@@ -486,11 +510,11 @@ All props are fully typed:
 import type { SchemaIOComponentProps } from "@fiftyone/core/plugins/SchemaIO";
 
 const props: SchemaIOComponentProps = {
-  schema: mySchema,        // SchemaType | RJSFSchema
-  data: initialData,       // unknown
-  useJSONSchema: true,     // boolean
-  onChange: (data) => {},  // (data: unknown, liteValues?: Record<string, unknown>) => void
-  onSubmit: (data) => {},  // (data: unknown) => void (RJSF only)
+    schema: mySchema, // SchemaType | RJSFSchema
+    data: initialData, // unknown
+    useJSONSchema: true, // boolean
+    onChange: (data) => {}, // (data: unknown, liteValues?: Record<string, unknown>) => void
+    onSubmit: (data) => {}, // (data: unknown) => void (RJSF only)
 };
 ```
 
@@ -498,7 +522,8 @@ const props: SchemaIOComponentProps = {
 
 ## Schema Detection
 
-The component automatically detects whether a schema is SchemaIO or JSON Schema format:
+The component automatically detects whether a schema is SchemaIO or JSON Schema
+format:
 
 ```tsx
 // SchemaIO format (has `view` property)

@@ -43,7 +43,7 @@ export const foxgloveImageAnnotationsDecoder: Decoder = {
     const message = decodeProtobufMessage(
       bytes,
       FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
-      context
+      context,
     );
 
     const rawCircles = optionalArray(message, "circles");
@@ -89,7 +89,7 @@ function decodeCircle(value: unknown): ImageAnnotationCircle {
     diameter: numberField(record, "diameter"),
     thickness: numberField(record, "thickness"),
     outlineColor: decodeColor(
-      optionalRecord(record, "outlineColor", "outline_color")
+      optionalRecord(record, "outlineColor", "outline_color"),
     ),
     fillColor: decodeColor(optionalRecord(record, "fillColor", "fill_color")),
   };
@@ -103,7 +103,7 @@ function decodePoints(value: unknown): ImageAnnotationPoints {
     points: rawPoints.map((p) => decodePoint(asRecord(p))),
     thickness: numberField(record, "thickness"),
     outlineColor: decodeColor(
-      optionalRecord(record, "outlineColor", "outline_color")
+      optionalRecord(record, "outlineColor", "outline_color"),
     ),
     outlineColors: optionalArray(record, "outlineColors", "outline_colors")
       .map((c) => decodeColor(asRecord(c)))
@@ -120,20 +120,20 @@ function decodeText(value: unknown): ImageAnnotationText {
     fontSize: numberField(record, "fontSize", "font_size"),
     textColor: decodeColor(optionalRecord(record, "textColor", "text_color")),
     backgroundColor: decodeColor(
-      optionalRecord(record, "backgroundColor", "background_color")
+      optionalRecord(record, "backgroundColor", "background_color"),
     ),
   };
 }
 
 function decodePoint(
-  record: Record<string, unknown> | undefined
+  record: Record<string, unknown> | undefined,
 ): readonly [number, number] {
   if (!record) return [0, 0];
   return [numberField(record, "x"), numberField(record, "y")];
 }
 
 function decodeColor(
-  record: Record<string, unknown> | undefined
+  record: Record<string, unknown> | undefined,
 ): RgbaColor | null {
   if (!record) return null;
   return [
@@ -157,7 +157,7 @@ function decodePointsKind(value: unknown): ImageAnnotationPointsKind {
 function optionalArray(
   record: Record<string, unknown>,
   field: string,
-  fallbackField?: string
+  fallbackField?: string,
 ): readonly unknown[] {
   const value =
     record[field] ?? (fallbackField ? record[fallbackField] : undefined);
@@ -171,7 +171,7 @@ function optionalArray(
 function numberField(
   record: Record<string, unknown>,
   field: string,
-  fallbackField?: string
+  fallbackField?: string,
 ): number {
   const value =
     record[field] ?? (fallbackField ? record[fallbackField] : undefined);

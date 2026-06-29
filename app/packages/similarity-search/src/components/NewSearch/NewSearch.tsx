@@ -279,7 +279,7 @@ export default function NewSearch({
                         file.size /
                         1024 /
                         1024
-                      ).toFixed(1)} MB)`
+                      ).toFixed(1)} MB)`,
                     );
                     return;
                   }
@@ -287,7 +287,7 @@ export default function NewSearch({
                   if (!mountedRef.current) return;
                   if (error || !result) {
                     setUploadError(
-                      "Failed to read the image file. Please try again."
+                      "Failed to read the image file. Please try again.",
                     );
                     return;
                   }

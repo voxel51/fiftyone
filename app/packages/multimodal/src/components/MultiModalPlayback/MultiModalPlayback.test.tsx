@@ -15,9 +15,10 @@ vi.mock("../../adapters/mcap/react/use-mcap-scene-inventory", () => ({
 // jsdom we just need the layout to mount, so stub MosaicGrid to a
 // passthrough that renders each tile's body.
 vi.mock("@fiftyone/tiling", async () => {
-  const actual = await vi.importActual<typeof import("@fiftyone/tiling")>(
-    "@fiftyone/tiling"
-  );
+  const actual =
+    await vi.importActual<typeof import("@fiftyone/tiling")>(
+      "@fiftyone/tiling",
+    );
   return {
     ...actual,
     MosaicGrid: ({
@@ -54,10 +55,10 @@ describe("MultiModalPlayback shell", () => {
           "camera-1": { title: "camera_front", render: () => null },
           "lidar-1": { title: "lidar_top", render: () => null },
         }}
-      />
+      />,
     );
     expect(screen.getByTestId("stub-camera-1").textContent).toBe(
-      "camera_front"
+      "camera_front",
     );
     expect(screen.getByTestId("stub-lidar-1").textContent).toBe("lidar_top");
   });
@@ -75,7 +76,7 @@ describe("MultiModalPlayback shell", () => {
         fileName="x"
         defaultLeftOpen={false}
         defaultRightOpen={false}
-      />
+      />,
     );
     expect(screen.queryByTestId("drawer")).toBeNull();
   });

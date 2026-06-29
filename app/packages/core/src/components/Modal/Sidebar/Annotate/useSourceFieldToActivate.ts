@@ -26,7 +26,7 @@ const STAGE_FIELD_EXTRACTORS: {
  */
 export function getSourceFieldFromStages(
   stages: { _cls: string; kwargs: [string, unknown][] }[],
-  helpers: { isPatches: boolean }
+  helpers: { isPatches: boolean },
 ): string | undefined {
   for (const { cls, kwarg, guard } of STAGE_FIELD_EXTRACTORS) {
     if (guard && !guard(helpers)) continue;

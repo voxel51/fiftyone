@@ -64,9 +64,9 @@ describe("MCAP sync policy selection", () => {
             },
           },
           topics: ["/camera"],
-        })
+        }),
       ).toThrow(
-        "MCAP sync policy for /camera must request a positive integer frame limit"
+        "MCAP sync policy for /camera must request a positive integer frame limit",
       );
     }
   });
@@ -74,7 +74,7 @@ describe("MCAP sync policy selection", () => {
 
 function createDecodedMessage(
   topic: string,
-  timelineTimeNs: bigint
+  timelineTimeNs: bigint,
 ): McapDecodedMessage {
   return {
     activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,

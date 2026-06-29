@@ -29,23 +29,23 @@ export const Looker3d = () => {
   const isGroup = useRecoilValue(fos.isGroup);
   const modalMode = fos.useModalMode();
   const isMain2DViewerVisible = useRecoilValue(
-    fos.groupMediaIsMain2DViewerVisible
+    fos.groupMediaIsMain2DViewerVisible,
   );
   const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
   const sample = fos.useStableSceneSample3d();
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   const mediaPath = useMemo(
     () => (sample ? getMediaPathForFo3dSample(sample, mediaField) : null),
-    [sample, mediaField]
+    [sample, mediaField],
   );
   const hasDirect3dPath = useMemo(
     () =>
       Boolean(
         mediaPath &&
-          (isDirect3dSamplePath(mediaPath) ||
-            isDirect3dSamplePath(sample?.sample?.filepath))
+        (isDirect3dSamplePath(mediaPath) ||
+          isDirect3dSamplePath(sample?.sample?.filepath)),
       ),
-    [mediaPath, sample]
+    [mediaPath, sample],
   );
 
   const [isHovering, setIsHovering] = useState(false);
@@ -70,7 +70,7 @@ export const Looker3d = () => {
       hasDirect3dPath ||
       (mediaType === "group" && has3dSlices) ||
       (isDynamicGroup && is3d(parentMediaType)),
-    [mediaType, hasDirect3dPath, has3dSlices, isDynamicGroup, parentMediaType]
+    [mediaType, hasDirect3dPath, has3dSlices, isDynamicGroup, parentMediaType],
   );
 
   const sampleMap = fos.useStableActive3dSamplesMap();
@@ -91,7 +91,7 @@ export const Looker3d = () => {
     async ({ set }) => {
       set(isGridOnAtom, (prev) => !prev);
     },
-    []
+    [],
   );
 
   useHotkey(
@@ -105,7 +105,7 @@ export const Looker3d = () => {
       }
 
       const isColormapModalOpen = await snapshot.getPromise(
-        isColormapModalOpenAtom
+        isColormapModalOpenAtom,
       );
       if (isColormapModalOpen) {
         set(isColormapModalOpenAtom, false);
@@ -113,7 +113,7 @@ export const Looker3d = () => {
       }
 
       const isLevaConfigPanelOn = await snapshot.getPromise(
-        isLevaConfigPanelOnAtom
+        isLevaConfigPanelOnAtom,
       );
       if (isLevaConfigPanelOn) {
         set(isLevaConfigPanelOnAtom, false);
@@ -166,7 +166,7 @@ export const Looker3d = () => {
     [sampleMap, isHovering],
     {
       useTransaction: false,
-    }
+    },
   );
 
   const clear = useCallback(() => {

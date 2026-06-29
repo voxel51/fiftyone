@@ -57,7 +57,7 @@ export const useMergeTool = (): MergeTool => {
   const { addLabelToSidebar, getLabelById, removeLabelFromSidebar } =
     useLabelsContext();
   const fieldSchema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
 
   const sidebarLabels = useAtomValue(labels);
@@ -80,7 +80,7 @@ export const useMergeTool = (): MergeTool => {
     (id: string | null) => {
       setMergeTargetId(id);
     },
-    [setMergeTargetId]
+    [setMergeTargetId],
   );
 
   const clearMergeTarget = useCallback(() => {
@@ -120,12 +120,12 @@ export const useMergeTool = (): MergeTool => {
         // persist state stay in sync.
         try {
           await commandBus.execute(
-            new DeleteAnnotationCommand(sourceLabel, schema)
+            new DeleteAnnotationCommand(sourceLabel, schema),
           );
         } catch (err) {
           targetOverlay.restoreMaskSnapshot(
             paintData.beforeSnapshot,
-            paintData.beforeBounds
+            paintData.beforeBounds,
           );
           console.error("Merge tool: failed to delete source detection", err);
           return;
@@ -142,7 +142,7 @@ export const useMergeTool = (): MergeTool => {
           {
             deleteSource: async () => {
               await commandBus.execute(
-                new DeleteAnnotationCommand(sourceLabel, schema)
+                new DeleteAnnotationCommand(sourceLabel, schema),
               );
               removeLabelFromSidebar(overlay.id);
               removeOverlay(overlay.id, false);
@@ -153,7 +153,7 @@ export const useMergeTool = (): MergeTool => {
             },
           },
           targetOverlay.id,
-          overlay.id
+          overlay.id,
         );
 
         CommandContextManager.instance()
@@ -175,7 +175,7 @@ export const useMergeTool = (): MergeTool => {
       removeOverlay,
       scene,
       setMergeTargetId,
-    ]
+    ],
   );
 
   return useMemo(
@@ -192,6 +192,6 @@ export const useMergeTool = (): MergeTool => {
       setMergeTarget,
       clearMergeTarget,
       disabled,
-    ]
+    ],
   );
 };

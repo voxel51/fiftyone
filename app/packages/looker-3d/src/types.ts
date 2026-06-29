@@ -199,7 +199,7 @@ export interface CuboidCreationState {
  * Type guard to check if an overlay is a Detection overlay (3D).
  */
 export function isDetection3dOverlay(
-  overlay: unknown
+  overlay: unknown,
 ): overlay is OverlayLabel & {
   _cls: "Detection";
   dimensions: THREE.Vector3Tuple;
@@ -223,7 +223,7 @@ export function isDetection3dOverlay(
  * Type guard to check if an overlay is a Polyline overlay (3D).
  */
 export function isPolyline3dOverlay(
-  overlay: unknown
+  overlay: unknown,
 ): overlay is OverlayLabel & {
   _cls: "Polyline";
   points3d: THREE.Vector3Tuple[][];
@@ -242,7 +242,7 @@ export function isPolyline3dOverlay(
  * Type guard to check if a reconciled label is a Detection.
  */
 export function isDetection(
-  label: ReconciledDetection3D | ReconciledPolyline3D
+  label: ReconciledDetection3D | ReconciledPolyline3D,
 ): label is ReconciledDetection3D {
   return label._cls === "Detection";
 }
@@ -251,7 +251,7 @@ export function isDetection(
  * Type guard to check if a reconciled label is a Polyline.
  */
 export function isPolyline(
-  label: ReconciledDetection3D | ReconciledPolyline3D
+  label: ReconciledDetection3D | ReconciledPolyline3D,
 ): label is ReconciledPolyline3D {
   return label._cls === "Polyline";
 }

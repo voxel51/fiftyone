@@ -38,10 +38,10 @@ const Lightning = ({
   const compound = useRecoilValue(fos.isCompoundIndexed(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
   const gridOptimized = useRecoilValue(
-    fos.pathHasIndexes({ path, withFilters: true })
+    fos.pathHasIndexes({ path, withFilters: true }),
   );
   const sidebarOptimized = useRecoilValue(
-    fos.pathHasIndexes({ path, withFilters: false })
+    fos.pathHasIndexes({ path, withFilters: false }),
   );
 
   const tooltip = useMemo(() => {
@@ -80,7 +80,7 @@ const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
     useRecoilValue(fos.isDisabledFrameFilterPath(path)) && !modal;
   const indexed = useRecoilValue(fos.pathHasIndexes({ path }));
   const filteredIndex = useRecoilValue(
-    fos.pathHasIndexes({ path, withFilters: true })
+    fos.pathHasIndexes({ path, withFilters: true }),
   );
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   const frameField = useRecoilValue(fos.isFrameField(path));

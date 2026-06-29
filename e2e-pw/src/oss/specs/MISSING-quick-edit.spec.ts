@@ -194,7 +194,7 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.tooltip.assert.hasAttribute(
       "label",
       "value",
-      false
+      false,
     );
 
     // Transition to quick edit via the sidebar
@@ -228,7 +228,7 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.tooltip.assert.hasAttribute(
       "label",
       "value",
-      false
+      false,
     );
 
     // Transition to quick edit via the tooltip
@@ -238,7 +238,7 @@ test.describe.serial("quick edit", () => {
     await modal.sidebar.edit.assert.redoIsEnabled(false);
     await modal.sidebar.edit.assert.undoIsEnabled(false);
     await modal.sampleCanvas.assert.hasScreenshot(
-      "detection-lighter-selected-centered.png"
+      "detection-lighter-selected-centered.png",
     );
 
     /**
@@ -248,19 +248,19 @@ test.describe.serial("quick edit", () => {
     const assertPosition = async function ({ x, y, width, height }: Box) {
       await modal.sidebar.edit.assert.verifyFieldValue(
         "position.x",
-        (x * IMAGE_WIDTH).toString()
+        (x * IMAGE_WIDTH).toString(),
       );
       await modal.sidebar.edit.assert.verifyFieldValue(
         "position.y",
-        (y * IMAGE_HEIGHT).toString()
+        (y * IMAGE_HEIGHT).toString(),
       );
       await modal.sidebar.edit.assert.verifyFieldValue(
         "dimensions.width",
-        (width * IMAGE_WIDTH).toString()
+        (width * IMAGE_WIDTH).toString(),
       );
       await modal.sidebar.edit.assert.verifyFieldValue(
         "dimensions.height",
-        (height * IMAGE_HEIGHT).toString()
+        (height * IMAGE_HEIGHT).toString(),
       );
     };
 
@@ -273,7 +273,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.move(point.x, point.y, "crosshair");
       await modal.sidebar.edit.assert.undoIsEnabled();
       await modal.sampleCanvas.assert.hasScreenshot(
-        `detection-lighter-selected-${point.name}.png`
+        `detection-lighter-selected-${point.name}.png`,
       );
       await assertPosition(point.resize);
 
@@ -281,7 +281,7 @@ test.describe.serial("quick edit", () => {
       await modal.sidebar.edit.undo();
       await modal.sidebar.edit.assert.redoIsEnabled();
       await modal.sampleCanvas.assert.hasScreenshot(
-        "detection-lighter-selected-centered.png"
+        "detection-lighter-selected-centered.png",
       );
       await assertPosition(INITIAL_BOUNDING_BOX);
 
@@ -290,7 +290,7 @@ test.describe.serial("quick edit", () => {
       await modal.sidebar.edit.assert.redoIsEnabled(false);
       await modal.sidebar.edit.assert.undoIsEnabled();
       await modal.sampleCanvas.assert.hasScreenshot(
-        `detection-lighter-selected-${point.name}.png`
+        `detection-lighter-selected-${point.name}.png`,
       );
       await assertPosition(point.resize);
 
@@ -301,7 +301,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.up();
       await modal.sampleCanvas.move(0.9, 0.9, "crosshair");
       await modal.sampleCanvas.assert.hasScreenshot(
-        "detection-lighter-selected-centered.png"
+        "detection-lighter-selected-centered.png",
       );
       await assertPosition(INITIAL_BOUNDING_BOX);
     }
@@ -314,7 +314,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.up();
       await modal.sidebar.edit.assert.undoIsEnabled();
       await modal.sampleCanvas.assert.hasScreenshot(
-        `detection-lighter-selected-${point.name}-move.png`
+        `detection-lighter-selected-${point.name}-move.png`,
       );
       await assertPosition(point.move);
 
@@ -322,7 +322,7 @@ test.describe.serial("quick edit", () => {
       await modal.sidebar.edit.undo();
       await modal.sidebar.edit.assert.redoIsEnabled();
       await modal.sampleCanvas.assert.hasScreenshot(
-        "detection-lighter-selected-centered.png"
+        "detection-lighter-selected-centered.png",
       );
       await assertPosition(INITIAL_BOUNDING_BOX);
 
@@ -331,7 +331,7 @@ test.describe.serial("quick edit", () => {
       await modal.sidebar.edit.assert.redoIsEnabled(false);
       await modal.sidebar.edit.assert.undoIsEnabled();
       await modal.sampleCanvas.assert.hasScreenshot(
-        `detection-lighter-selected-${point.name}-move.png`
+        `detection-lighter-selected-${point.name}-move.png`,
       );
       await assertPosition(point.move);
 
@@ -342,7 +342,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.up();
       await modal.sidebar.edit.assert.undoIsEnabled();
       await modal.sampleCanvas.assert.hasScreenshot(
-        "detection-lighter-selected-centered.png"
+        "detection-lighter-selected-centered.png",
       );
       await assertPosition(INITIAL_BOUNDING_BOX);
     }
@@ -351,7 +351,7 @@ test.describe.serial("quick edit", () => {
     await modal.sidebar.edit.setFieldValue("confidence", "1.0");
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasScreenshot(
-      "detection-lighter-selected-centered-confidence-1.0.png"
+      "detection-lighter-selected-centered-confidence-1.0.png",
     );
 
     // Deselect
@@ -359,7 +359,7 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.click(0.9, 0.9);
     await modal.sampleCanvas.move(0.9, 0.9, "default");
     await modal.sampleCanvas.assert.hasScreenshot(
-      "detection-lighter-centered-confidence-1.0.png"
+      "detection-lighter-centered-confidence-1.0.png",
     );
   });
 });

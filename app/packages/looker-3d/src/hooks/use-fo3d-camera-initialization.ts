@@ -93,7 +93,7 @@ export const useFo3dCameraInitialization = ({
 
       return overridePosition.clone().add(FALLBACK_TARGET_OFFSET);
     },
-    [cameraControlsRef]
+    [cameraControlsRef],
   );
 
   // Default camera position for mounts/remounts. Prefer persisted position so
@@ -105,7 +105,7 @@ export const useFo3dCameraInitialization = ({
       return new Vector3(
         savedState.position[0],
         savedState.position[1],
-        savedState.position[2]
+        savedState.position[2],
       );
     }
 
@@ -123,7 +123,7 @@ export const useFo3dCameraInitialization = ({
     saveCameraState(
       datasetName ?? undefined,
       cameraRef.current.position.toArray(),
-      target.toArray()
+      target.toArray(),
     );
   }, [cameraRef, cameraControlsRef, datasetName]);
 
@@ -147,7 +147,7 @@ export const useFo3dCameraInitialization = ({
     }
 
     const latestSavedCameraState = getSavedCameraState(
-      datasetName ?? undefined
+      datasetName ?? undefined,
     );
 
     const config = resolveCameraConfig({

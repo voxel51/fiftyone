@@ -37,8 +37,8 @@ export const useRegisterRendererEventHandlers = () => {
           clearEntranceLabelId();
         }
       },
-      [clearEntranceLabelId, entranceLabelId, scene]
-    )
+      [clearEntranceLabelId, entranceLabelId, scene],
+    ),
   );
 
   // Handle the case where the overlay is already in the scene when
@@ -57,7 +57,7 @@ export const useRegisterRendererEventHandlers = () => {
     if (entranceLabelId) {
       const labels3D = [...detections3D, ...polylines3D];
       const targetLabel = labels3D.find(
-        (label) => label._id === entranceLabelId
+        (label) => label._id === entranceLabelId,
       );
 
       if (targetLabel) {

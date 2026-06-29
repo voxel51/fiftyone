@@ -39,6 +39,6 @@ export default () => {
 
       return -Math.max(min, zoom);
     },
-    [zoom]
+    [zoom],
   );
 };

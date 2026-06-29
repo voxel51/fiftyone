@@ -97,8 +97,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   // Degenerate view (zero/negative width) — would produce NaN/Infinity
   // CSS values and break layout for every bar/marker below.
   if (viewDuration <= 0) return null;
-  const pct = (t: number) =>
-    `${((t - viewStart) / viewDuration) * 100}%`;
+  const pct = (t: number) => `${((t - viewStart) / viewDuration) * 100}%`;
 
   // Background bar is rendered only when both start/end are provided.
   const hasBackground = start !== undefined && end !== undefined;
@@ -162,7 +161,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           const rect = e.currentTarget.getBoundingClientRect();
           seek(
             viewStart +
-              ((e.clientX - rect.left) / rect.width) * (viewEnd - viewStart)
+              ((e.clientX - rect.left) / rect.width) * (viewEnd - viewStart),
           );
         }}
       >
@@ -182,7 +181,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           .filter((e) =>
             e.endSec !== undefined
               ? e.endSec >= viewStart && e.startSec <= viewEnd
-              : e.startSec >= viewStart && e.startSec <= viewEnd
+              : e.startSec >= viewStart && e.startSec <= viewEnd,
           )
           .map((e, i) => {
             const handleClick = (ev: React.MouseEvent) => {
@@ -192,7 +191,10 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                 const rect = lane.getBoundingClientRect();
                 const t =
                   viewStart +
-                  Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width)) *
+                  Math.max(
+                    0,
+                    Math.min(1, (ev.clientX - rect.left) / rect.width),
+                  ) *
                     viewDuration;
                 seek(t);
               }
@@ -231,8 +233,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               const left = pct(Math.max(e.startSec, viewStart));
               const right = Math.min(e.endSec!, viewEnd);
               const width = `${
-                ((right - Math.max(e.startSec, viewStart)) / viewDuration) *
-                100
+                ((right - Math.max(e.startSec, viewStart)) / viewDuration) * 100
               }%`;
               return (
                 <ContextMenu key={i} menu={menu}>

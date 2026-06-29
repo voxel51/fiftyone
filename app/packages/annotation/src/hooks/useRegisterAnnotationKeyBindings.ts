@@ -14,6 +14,6 @@ export const useRegisterAnnotationKeybindings = () => {
         label: "Reset zoom and pan",
       },
     ],
-    [scene]
+    [scene],
   );
 };

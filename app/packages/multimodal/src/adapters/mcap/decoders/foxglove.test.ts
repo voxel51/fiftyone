@@ -16,10 +16,10 @@ describe("Foxglove decoders", () => {
     const registry = createMcapDecoderRegistry();
 
     expect(registry.find(foxgloveCompressedImageDecoder.payload)).toBe(
-      foxgloveCompressedImageDecoder
+      foxgloveCompressedImageDecoder,
     );
     expect(registry.find(foxglovePointCloudDecoder.payload)).toBe(
-      foxglovePointCloudDecoder
+      foxglovePointCloudDecoder,
     );
   });
 
@@ -34,7 +34,7 @@ describe("Foxglove decoders", () => {
         },
         streamId: "/camera",
         timeRangeStartKey: "captureTime",
-      }
+      },
     );
 
     expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.ENCODED_IMAGE);
@@ -57,7 +57,7 @@ describe("Foxglove decoders", () => {
       compressedImageMessage("IMAGE/JPEG"),
       {
         schemaData: COMPRESSED_IMAGE_FIXTURE.schemaData,
-      }
+      },
     );
 
     expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.ENCODED_IMAGE);
@@ -72,13 +72,13 @@ describe("Foxglove decoders", () => {
       compressedImageMessage(" JPG "),
       {
         schemaData: COMPRESSED_IMAGE_FIXTURE.schemaData,
-      }
+      },
     );
     const unknown = foxgloveCompressedImageDecoder.decode(
       compressedImageMessage(" UNKNOWN "),
       {
         schemaData: COMPRESSED_IMAGE_FIXTURE.schemaData,
-      }
+      },
     );
 
     if (
@@ -93,13 +93,13 @@ describe("Foxglove decoders", () => {
 
   it("treats invalid optional bigint protobuf fields as absent", () => {
     expect(optionalBigInt({ seconds: "not-a-number" }, "seconds")).toBe(
-      undefined
+      undefined,
     );
     expect(
       optionalBigInt(
         { seconds: { toString: () => "also-not-a-number" } },
-        "seconds"
-      )
+        "seconds",
+      ),
     ).toBe(undefined);
   });
 
@@ -114,7 +114,7 @@ describe("Foxglove decoders", () => {
         },
         streamId: "/lidar",
         timeRangeStartKey: "captureTime",
-      }
+      },
     );
 
     expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POINT_CLOUD);
@@ -151,7 +151,7 @@ describe("Foxglove decoders", () => {
       }),
       {
         schemaData: POINT_CLOUD_FIXTURE.schemaData,
-      }
+      },
     );
 
     expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POINT_CLOUD);
@@ -172,7 +172,7 @@ describe("Foxglove decoders", () => {
     ]);
     expect(output.visualization.scalarFields?.[0]?.name).toBe("rcs");
     expect(
-      Array.from(output.visualization.scalarFields?.[0]?.values ?? [])
+      Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
     ).toEqual([10, 20]);
   });
 
@@ -182,12 +182,12 @@ describe("Foxglove decoders", () => {
         concatProtobufFields(
           float32Bytes([1, 2, 3, 4, 5, 6]),
           new Uint8Array(12),
-          new Uint8Array(8)
-        )
+          new Uint8Array(8),
+        ),
       ),
       {
         schemaData: POINT_CLOUD_FIXTURE.schemaData,
-      }
+      },
     );
 
     expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POINT_CLOUD);
@@ -206,13 +206,13 @@ describe("Foxglove decoders", () => {
         pointCloudMessage(
           concatProtobufFields(
             float32Bytes([1, 2, 3, 4, 5, 6]),
-            Uint8Array.of(1)
-          )
+            Uint8Array.of(1),
+          ),
         ),
         {
           schemaData: POINT_CLOUD_FIXTURE.schemaData,
-        }
-      )
+        },
+      ),
     ).toThrow("Point cloud data length is not aligned to point stride");
   });
 });
@@ -224,7 +224,7 @@ function text(data: Uint8Array): string {
 function compressedImageMessage(format: string): Uint8Array {
   return concatProtobufFields(
     protobufBytesField(2, new TextEncoder().encode("fake-jpeg")),
-    protobufBytesField(3, new TextEncoder().encode(format))
+    protobufBytesField(3, new TextEncoder().encode(format)),
   );
 }
 
@@ -246,12 +246,12 @@ function pointCloudMessage(
   }: {
     readonly fields?: readonly TestPointCloudField[];
     readonly pointStride?: number;
-  } = {}
+  } = {},
 ): Uint8Array {
   return concatProtobufFields(
     protobufFixed32Field(4, pointStride),
     ...fields.map((field) => packedPointCloudField(field)),
-    protobufBytesField(6, data)
+    protobufBytesField(6, data),
   );
 }
 
@@ -265,8 +265,8 @@ function packedPointCloudField({
     concatProtobufFields(
       protobufBytesField(1, new TextEncoder().encode(name)),
       protobufFixed32Field(2, offset),
-      protobufVarintField(3, type)
-    )
+      protobufVarintField(3, type),
+    ),
   );
 }
 
@@ -308,7 +308,7 @@ function writeRadarPoint(
     readonly x: number;
     readonly y: number;
     readonly z: number;
-  }
+  },
 ) {
   view.setFloat32(offset, point.x, true);
   view.setFloat32(offset + 4, point.y, true);
@@ -321,7 +321,7 @@ function writeRadarPoint(
 
 function expectArrayCloseTo(
   actual: readonly number[],
-  expected: readonly number[]
+  expected: readonly number[],
 ) {
   expect(actual).toHaveLength(expected.length);
   actual.forEach((value, index) => {
@@ -343,12 +343,12 @@ function protobufVarintField(fieldNumber: number, value: number): Uint8Array {
 
 function protobufBytesField(
   fieldNumber: number,
-  value: Uint8Array
+  value: Uint8Array,
 ): Uint8Array {
   return concatProtobufFields(
     Uint8Array.of((fieldNumber << 3) | 2),
     varint(value.byteLength),
-    value
+    value,
   );
 }
 

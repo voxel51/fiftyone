@@ -78,7 +78,7 @@ describe("Analytics", () => {
     expect(mockSegment.track).toHaveBeenCalledWith(
       "debounced_event",
       undefined,
-      undefined
+      undefined,
     );
 
     vi.spyOn(Date, "now").mockImplementation(() => 12000); // Within debounce interval (2s)
@@ -170,7 +170,7 @@ describe("Analytics", () => {
     expect(mockSegment.track).toHaveBeenCalledWith(
       "random_event",
       { uri: "<redacted>" },
-      undefined
+      undefined,
     );
   });
 

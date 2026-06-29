@@ -107,7 +107,7 @@ describe("MCAP playback worker scheduler", () => {
         expect.objectContaining({
           jobId: 1,
           sourceKey: "source",
-        })
+        }),
       );
     } finally {
       consoleError.mockRestore();

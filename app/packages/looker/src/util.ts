@@ -61,7 +61,7 @@ export function rescale(
   oldMin: number,
   oldMax: number,
   newMin: number,
-  newMax: number
+  newMax: number,
 ) {
   const normalized = (n - oldMin) / (oldMax - oldMin);
   return normalized * (newMax - newMin) + newMin;
@@ -73,7 +73,7 @@ export function rescale(
 export function inRect(
   x: number,
   y: number,
-  [rx, ry, rw, rh]: BoundingBox
+  [rx, ry, rw, rh]: BoundingBox,
 ): boolean {
   return x >= rx && x <= rx + rw && y >= ry && y <= ry + rh;
 }
@@ -85,7 +85,7 @@ export function distance(
   x1: number,
   y1: number,
   x2: number,
-  y2: number
+  y2: number,
 ): number {
   return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
@@ -106,7 +106,7 @@ export function project2d(
   ax: number,
   ay: number,
   bx: number,
-  by: number
+  by: number,
 ): [number, number] {
   // line vector - this is relative to (0, 0), so coordinates of p need to be
   // transformed accordingly
@@ -125,7 +125,7 @@ export function project2d(
 export function distanceFromLineSegment(
   [px, py]: Coordinates,
   [ax, ay]: Coordinates,
-  [bx, by]: Coordinates
+  [bx, by]: Coordinates,
 ): number {
   const segmentLength = distance(ax, ay, bx, by);
   const [projX, projY] = project2d(px, py, ax, ay, bx, by);
@@ -162,7 +162,7 @@ export function computeBBoxForTextOverlay(
   context: CanvasRenderingContext2D,
   text: string[],
   textHeight: number,
-  padding: number
+  padding: number,
 ): {
   width: number;
   height: number;
@@ -179,7 +179,7 @@ export function computeBBoxForTextOverlay(
 export function getMaxHeightForText(
   lines: string[],
   textHeight: number,
-  padding: number
+  padding: number,
 ): number {
   return lines.length * (textHeight + padding) + padding;
 }
@@ -190,7 +190,7 @@ export function getMaxHeightForText(
 export function getMaxWidthByLine(
   context: CanvasRenderingContext2D,
   lines: string[],
-  padding: number
+  padding: number,
 ): number {
   let maxWidth = 0;
   for (const line of lines) {
@@ -231,7 +231,7 @@ export interface Timeouts {
 export const rescaleCoordates = (
   [x, y]: [number, number],
   from: [number, number],
-  to: [number, number]
+  to: [number, number],
 ): [number, number] => {
   return [
     rescaleCoordate(x, from[0], to[0]),
@@ -242,14 +242,14 @@ export const rescaleCoordates = (
 export const rescaleCoordate = (
   x: number,
   from: number,
-  to: number
+  to: number,
 ): number => {
   return Math.round(rescale(x, 0, from, 0, to));
 };
 
 export const ensureCanvasSize = (
   canvas: HTMLCanvasElement,
-  dimensions: Dimensions
+  dimensions: Dimensions,
 ): void => {
   canvas.width = dimensions[0];
   canvas.height = dimensions[1];
@@ -257,7 +257,7 @@ export const ensureCanvasSize = (
 
 export const getMillisecondsFromPlaybackRate = (
   frameRate: number,
-  playbackRate: number
+  playbackRate: number,
 ): number => {
   const normalizedPlaybackRate =
     playbackRate > 1 ? playbackRate * 1.5 : playbackRate;
@@ -292,7 +292,7 @@ export const getContainingBox = (points: Coordinates[]): BoundingBox => {
 
 export const getFitRect = (
   [mw, mh]: Dimensions,
-  [tlx, tly, w, h]: BoundingBox
+  [tlx, tly, w, h]: BoundingBox,
 ): BoundingBox => {
   if (mw / mh > w / h) {
     const fitHeight = (w * mh) / mw;
@@ -316,7 +316,7 @@ export const rotate = (array: any[], rotation: number): [any[], number] => {
 };
 
 export const getElementBBox = (
-  element: HTMLElement | SVGElement
+  element: HTMLElement | SVGElement,
 ): BoundingBox => {
   const {
     top: tly,
@@ -329,7 +329,7 @@ export const getElementBBox = (
 
 export const getRenderedScale = (
   [ww, wh]: Dimensions,
-  [iw, ih]: Dimensions
+  [iw, ih]: Dimensions,
 ): number => {
   const ar = iw / ih;
   if (ww / wh < ar) {
@@ -344,7 +344,7 @@ export const snapBox = (
   pan: Coordinates,
   [ww, wh]: Dimensions,
   [iw, ih]: Dimensions,
-  pad = true
+  pad = true,
 ): Coordinates => {
   const sww = ww * scale;
   const swh = wh * scale;
@@ -392,14 +392,14 @@ export const clampScale = (
   [ww, wh]: Dimensions,
   [iw, ih]: Dimensions,
   scale: number,
-  pad: number
+  pad: number,
 ): number => {
   return Math.min(Math.max(scale, 0.1), 10);
 };
 
 export const mergeUpdates = <State extends BaseState>(
   state: State,
-  updates: Partial<State>
+  updates: Partial<State>,
 ): State => {
   const merger = (o, n) => {
     if (Array.isArray(n)) {
@@ -432,7 +432,7 @@ const ERRORS = [AppError, GraphQLError, NetworkError, ServerError].reduce(
       [cur.constructor.name]: cur,
     };
   },
-  {}
+  {},
 );
 
 export const createWorker = (
@@ -440,7 +440,7 @@ export const createWorker = (
     [key: string]: ((worker: Worker, args: any) => void)[];
   },
   dispatchEvent?: DispatchEvent,
-  abortController?: AbortController
+  abortController?: AbortController,
 ): Worker => {
   if (typeof Worker === "undefined" || typeof window === "undefined") {
     return null;
@@ -469,7 +469,7 @@ export const createWorker = (
     (error) => {
       dispatchEvent("error", error);
     },
-    signal
+    signal,
   );
 
   worker.addEventListener(
@@ -482,7 +482,7 @@ export const createWorker = (
         dispatchEvent("error", new ErrorEvent("error", { error }));
       }
     },
-    signal
+    signal,
   );
 
   worker.postMessage({
@@ -503,14 +503,14 @@ export const createWorker = (
 
       listeners[method].forEach((callback) => callback(worker, args));
     },
-    signal
+    signal,
   );
   return worker;
 };
 
 export const removeFromBuffers = (
   frameNumber: number,
-  buffers: Buffers
+  buffers: Buffers,
 ): Buffers => {
   return buffers.reduce((acc, cur) => {
     if (cur[0] <= frameNumber && cur[1] >= frameNumber) {
@@ -583,7 +583,7 @@ export const isFloatArray = (arr) =>
 // go through customizedColor array and check if any item.fieldColor has changed;
 export const hasColorChanged = (
   prevColorScheme: Object[],
-  nextColorScheme: Object[]
+  nextColorScheme: Object[],
 ) => {
   if (prevColorScheme?.length !== nextColorScheme?.length) {
     return true;
@@ -618,6 +618,6 @@ const sampleTypeKeys = ["_id", "_media_type", "filepath"] as const;
  */
 export const isSampleIsh = (data: Record<string, unknown>): data is Sample => {
   return sampleTypeKeys.every(
-    (key) => key in data && data[key] !== undefined && data[key] !== null
+    (key) => key in data && data[key] !== undefined && data[key] !== null,
   );
 };

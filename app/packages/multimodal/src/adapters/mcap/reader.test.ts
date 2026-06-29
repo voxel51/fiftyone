@@ -30,7 +30,7 @@ describe("MCAP indexed message times", () => {
         createChunkIndex({
           messageEndTime: 20n,
           messageIndexLength: BigInt(
-            cameraIndex.byteLength + lidarIndex.byteLength
+            cameraIndex.byteLength + lidarIndex.byteLength,
           ),
           messageIndexOffsets: new Map([
             [7, cameraOffset],
@@ -44,7 +44,7 @@ describe("MCAP indexed message times", () => {
     const entries = await collect(
       readIndexedMessageTimesForReader(reader, readable, {
         topics: ["/camera"],
-      })
+      }),
     );
 
     expect(entries.map((entry) => entry.logTimeNs)).toEqual([10n, 20n]);
@@ -90,7 +90,7 @@ describe("MCAP indexed message times", () => {
       readIndexedMessageTimesForReader(reader, readable, {
         limit: 1,
         topics: ["/camera"],
-      })
+      }),
     );
 
     expect(entries.map((entry) => entry.logTimeNs)).toEqual([10n]);
@@ -134,7 +134,7 @@ describe("MCAP indexed message times", () => {
       readIndexedMessageTimesForReader(reader, readable, {
         limit: 1,
         topics: ["/camera"],
-      })
+      }),
     );
 
     expect(entries.map((entry) => entry.logTimeNs)).toEqual([20n]);
@@ -160,8 +160,8 @@ describe("MCAP indexed message times", () => {
         readIndexedMessageTimesForReader(reader, readable, {
           limit: 1.5,
           topics: ["/camera"],
-        })
-      )
+        }),
+      ),
     ).resolves.toEqual([]);
     expect(reads).toEqual([]);
   });
@@ -171,17 +171,17 @@ describe("MCAP indexed message times", () => {
     bytes[0] = MCAP_CHUNK_OPCODE;
 
     expect(() => parseMcapMessageIndexRecord(bytes)).toThrow(
-      "Expected MCAP MessageIndex record"
+      "Expected MCAP MessageIndex record",
     );
   });
 
   it("rejects message index records with leftover content bytes", () => {
     const bytes = messageIndexRecordWithExtraContentByte(
-      createMessageIndexRecord(7, [[10n, 1n]])
+      createMessageIndexRecord(7, [[10n, 1n]]),
     );
 
     expect(() => parseMcapMessageIndexRecord(bytes)).toThrow(
-      "MCAP MessageIndex records byte range mismatch"
+      "MCAP MessageIndex records byte range mismatch",
     );
   });
 
@@ -189,7 +189,7 @@ describe("MCAP indexed message times", () => {
     const readerFactory = vi.fn(async () =>
       createReader({
         chunkIndexes: [],
-      })
+      }),
     );
     const byteClient: ByteClient = {
       readBytes: vi.fn(),
@@ -200,13 +200,13 @@ describe("MCAP indexed message times", () => {
       createSource({
         sourceId: "source|1",
         url: "nested|path",
-      })
+      }),
     );
     await readerStore.get(
       createSource({
         sourceId: "source",
         url: "1|nested|path",
-      })
+      }),
     );
 
     expect(readerFactory).toHaveBeenCalledTimes(2);
@@ -216,7 +216,7 @@ describe("MCAP indexed message times", () => {
     const readerFactory = vi.fn(async () =>
       createReader({
         chunkIndexes: [],
-      })
+      }),
     );
     const byteClient: ByteClient = {
       readBytes: vi.fn(),
@@ -227,13 +227,13 @@ describe("MCAP indexed message times", () => {
       createSource({
         sourceId: "source:1",
         url: "bytes://source/old",
-      })
+      }),
     );
     await readerStore.get(
       createSource({
         sourceId: "source:1",
         url: "bytes://source/new",
-      })
+      }),
     );
 
     expect(readerFactory).toHaveBeenCalledTimes(2);
@@ -243,7 +243,7 @@ describe("MCAP indexed message times", () => {
     const readerFactory = vi.fn(async () =>
       createReader({
         chunkIndexes: [],
-      })
+      }),
     );
     const byteClient: ByteClient = {
       readBytes: vi.fn(),
@@ -254,7 +254,7 @@ describe("MCAP indexed message times", () => {
       createSource({
         sourceId: "source:1",
         url: "bytes://source",
-      })
+      }),
     );
     await readerStore.get({
       sizeBytes: "256",
@@ -276,7 +276,7 @@ describe("MCAP indexed message times", () => {
         sourceId: "source:1",
         url: "mcap-source://sample",
       },
-      byteClient
+      byteClient,
     );
 
     await expect(readable.size()).resolves.toBe(128n);
@@ -297,7 +297,7 @@ describe("MCAP indexed message times", () => {
         sourceId: "source:1",
         url: "mcap-source://sample",
       },
-      byteClient
+      byteClient,
     );
 
     await expect(readable.size()).resolves.toBe(128n);
@@ -318,7 +318,7 @@ describe("MCAP indexed message times", () => {
             ...request.source,
             sizeBytes: "128",
           },
-        })
+        }),
       ),
       stat: vi.fn(async () => undefined),
     };
@@ -342,7 +342,7 @@ describe("MCAP indexed message times", () => {
         bytes: new Uint8Array([1]),
         range: request.range,
         source: request.source,
-      })
+      }),
     );
     const readable = new ByteClientReadable(
       {
@@ -350,7 +350,7 @@ describe("MCAP indexed message times", () => {
         sourceId: "source:1",
         url: "mcap-source://sample",
       },
-      { readBytes }
+      { readBytes },
     );
 
     await expect(readable.read(128n, 1n)).resolves.toEqual(new Uint8Array([1]));
@@ -367,7 +367,7 @@ describe("MCAP indexed message times", () => {
 });
 
 async function collect<T>(
-  generator: AsyncGenerator<T, void, void>
+  generator: AsyncGenerator<T, void, void>,
 ): Promise<readonly T[]> {
   const messages: T[] = [];
   for await (const message of generator) {
@@ -401,7 +401,7 @@ function createReadable(
   chunks: readonly {
     readonly bytes: Uint8Array;
     readonly offset: bigint;
-  }[]
+  }[],
 ): {
   readonly exactReads: Array<{
     readonly offset: bigint;
@@ -413,7 +413,7 @@ function createReadable(
   const size = chunks.reduce(
     (max, chunk) =>
       Math.max(max, Number(chunk.offset) + chunk.bytes.byteLength),
-    0
+    0,
   );
   const buffer = new Uint8Array(size);
   for (const chunk of chunks) {
@@ -444,7 +444,7 @@ function createReadable(
 
 function createMessageIndexRecord(
   channelId: number,
-  records: readonly (readonly [logTimeNs: bigint, messageOffset: bigint])[]
+  records: readonly (readonly [logTimeNs: bigint, messageOffset: bigint])[],
 ): Uint8Array {
   const contentLength = 2 + 4 + records.length * 16;
   const bytes = new Uint8Array(1 + 8 + contentLength);
@@ -466,7 +466,7 @@ function createMessageIndexRecord(
 }
 
 function messageIndexRecordWithExtraContentByte(
-  record: Uint8Array
+  record: Uint8Array,
 ): Uint8Array {
   const bytes = new Uint8Array(record.byteLength + 1);
   bytes.set(record);
@@ -477,7 +477,7 @@ function messageIndexRecordWithExtraContentByte(
 }
 
 function createChunkIndex(
-  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {},
 ): McapTypes.TypedMcapRecords["ChunkIndex"] {
   return {
     chunkLength: options.chunkLength ?? 256n,
@@ -508,7 +508,7 @@ function createSource({
 }
 
 function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
 ): McapTypes.TypedMcapRecords["Channel"] {
   return {
     id: options.id ?? 7,

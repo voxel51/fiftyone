@@ -39,7 +39,7 @@ export const usePersistAnnotationDeltas =
         if (!metadata) {
           console.warn(
             "Generated view persistence requires label metadata but none was provided.",
-            { deltaCount: deltas.length, deltas }
+            { deltaCount: deltas.length, deltas },
           );
           return false;
         }

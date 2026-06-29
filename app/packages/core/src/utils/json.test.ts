@@ -14,7 +14,7 @@ describe("normalizeData", () => {
     ];
 
     primitives.forEach((primitive) =>
-      expect(normalizeData(primitive)).toBe(primitive)
+      expect(normalizeData(primitive)).toBe(primitive),
     );
   });
 
@@ -110,5 +110,4 @@ describe("normalizeData", () => {
       });
     });
   });
-
 });

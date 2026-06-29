@@ -81,7 +81,7 @@ const Header = () => {
   const groupSlices = useRecoilValue(fos.groupSlices);
   const shouldShowSliceSelector = useMemo(
     () => isGroup && groupSlices.length > 1,
-    [isGroup, groupSlices]
+    [isGroup, groupSlices],
   );
 
   return (

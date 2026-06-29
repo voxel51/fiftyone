@@ -41,7 +41,7 @@ const FieldsMaskTargets: React.FC = () => {
         };
       });
     },
-    [setSetting]
+    [setSetting],
   );
 
   const onSyncUpdate = useCallback(
@@ -50,7 +50,7 @@ const FieldsMaskTargets: React.FC = () => {
         updateColorScheme(copy);
       }
     },
-    [updateColorScheme]
+    [updateColorScheme],
   );
 
   useEffect(() => {

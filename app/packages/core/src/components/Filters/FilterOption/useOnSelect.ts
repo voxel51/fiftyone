@@ -36,7 +36,7 @@ export default function ({
   });
   const isFilterMode = useRecoilValue(isSidebarFilterMode);
   const selected = options.find(
-    (o) => o.key === (isFilterMode ? filterKey : visibilityKey)
+    (o) => o.key === (isFilterMode ? filterKey : visibilityKey),
   )?.value;
 
   const onSelectFilter = () => {
@@ -97,7 +97,7 @@ export default function ({
               break;
           }
         },
-      [close]
+      [close],
     ),
     selected,
   };

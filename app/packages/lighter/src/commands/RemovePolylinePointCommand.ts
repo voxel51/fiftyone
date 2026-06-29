@@ -24,19 +24,19 @@ export class RemovePolylinePointCommand implements Undoable {
   constructor(
     private overlay: PolylineOverlay,
     private segmentIdx: number,
-    private indexInSegment: number
+    private indexInSegment: number,
   ) {
     const id = overlay.getPointIdInSegment(segmentIdx, indexInSegment);
     if (id === null) {
       throw new Error(
-        `RemovePolylinePointCommand: no point at segment ${segmentIdx} index ${indexInSegment}`
+        `RemovePolylinePointCommand: no point at segment ${segmentIdx} index ${indexInSegment}`,
       );
     }
 
     const entry = overlay.getPointById(id);
     if (!entry) {
       throw new Error(
-        `RemovePolylinePointCommand: missing entry for point ${id}`
+        `RemovePolylinePointCommand: missing entry for point ${id}`,
       );
     }
 
@@ -59,7 +59,7 @@ export class RemovePolylinePointCommand implements Undoable {
         this.segmentIdx,
         this.relativePosition,
         this.variant,
-        this.pointId
+        this.pointId,
       );
     } else {
       this.overlay.insertPointInSegment(
@@ -67,7 +67,7 @@ export class RemovePolylinePointCommand implements Undoable {
         this.indexInSegment,
         this.relativePosition,
         this.variant,
-        this.pointId
+        this.pointId,
       );
     }
   }

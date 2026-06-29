@@ -28,7 +28,7 @@ import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
  * for tests without losing agent ownership of the callback wiring.
  */
 export type BrowserAnnotationProviderFactory = (
-  options: BrowserAnnotationProviderOptions
+  options: BrowserAnnotationProviderOptions,
 ) => BrowserAnnotationProvider;
 
 const DEFAULT_FACTORY: BrowserAnnotationProviderFactory = (options) =>
@@ -44,9 +44,7 @@ const DEFAULT_FACTORY: BrowserAnnotationProviderFactory = (options) =>
  * The provider is lazily initialized on the first {@link infer} call and
  * reused for subsequent calls.
  */
-export class SAM2BrowserAnnotationAgent
-  implements AnnotationAgent<SegmentationInferenceResult>
-{
+export class SAM2BrowserAnnotationAgent implements AnnotationAgent<SegmentationInferenceResult> {
   private readonly provider: BrowserAnnotationProvider;
   private initialized = false;
   private initializing$: Promise<void> | null = null;
@@ -65,7 +63,7 @@ export class SAM2BrowserAnnotationAgent
   }
 
   async infer(
-    context: AnnotationContext
+    context: AnnotationContext,
   ): Promise<InferenceResult<SegmentationInferenceResult>> {
     if (!context.sampleDescriptor.mediaUrl) {
       throw new Error("Missing media url");
@@ -95,7 +93,7 @@ export class SAM2BrowserAnnotationAgent
               mask: await this.normalizeMask(
                 result.mask,
                 result.maskWidth,
-                result.maskHeight
+                result.maskHeight,
               ),
               mask_width: result.maskWidth,
               mask_height: result.maskHeight,
@@ -125,7 +123,7 @@ export class SAM2BrowserAnnotationAgent
   }
 
   async listInferenceCapabilities(
-    task: AgentTaskType
+    task: AgentTaskType,
   ): Promise<InferenceCapability[]> {
     if (task === AgentTaskType.SEGMENT) {
       return [
@@ -222,8 +220,8 @@ export class SAM2BrowserAnnotationAgent
       .map((point) => this.vec2ToPoint(point, PointLabel.POSITIVE))
       .concat(
         (context.negativePoints ?? []).map((point) =>
-          this.vec2ToPoint(point, PointLabel.NEGATIVE)
-        )
+          this.vec2ToPoint(point, PointLabel.NEGATIVE),
+        ),
       );
   }
 
@@ -235,7 +233,7 @@ export class SAM2BrowserAnnotationAgent
   private normalizeMask(
     mask: Float32Array,
     width: number,
-    height: number
+    height: number,
   ): Promise<string> {
     const binary = new Uint8Array(mask.length);
     for (let i = 0; i < mask.length; i++) {

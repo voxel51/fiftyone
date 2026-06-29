@@ -38,7 +38,10 @@ class MockDetectionOverlay {
 }
 
 class MockDeleteAnnotationCommand {
-  constructor(public label: unknown, public schema: unknown) {}
+  constructor(
+    public label: unknown,
+    public schema: unknown,
+  ) {}
 }
 
 class MockMergeDetectionsCommand {
@@ -51,7 +54,7 @@ class MockMergeDetectionsCommand {
       restoreSource: () => void;
     },
     public targetId: string,
-    public sourceId: string
+    public sourceId: string,
   ) {
     this.id = `merge-${targetId}-${sourceId}-x`;
   }
@@ -112,9 +115,8 @@ vi.mock("../useLabels", () => ({
   }),
 }));
 
-const { useMergeTool, _unsafeMergeTargetIdAtom } = await import(
-  "./useMergeTool"
-);
+const { useMergeTool, _unsafeMergeTargetIdAtom } =
+  await import("./useMergeTool");
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
@@ -166,7 +168,7 @@ describe("useMergeTool", () => {
     const sourceLabel = { data: { _id: "source" }, path: "ground_truth" };
 
     mockGetOverlay.mockImplementation((id: string) =>
-      id === "target" ? target : undefined
+      id === "target" ? target : undefined,
     );
     mockGetLabelById.mockReturnValue(sourceLabel);
 
@@ -187,13 +189,13 @@ describe("useMergeTool", () => {
     expect(target.getPaintStrokeData).toHaveBeenCalledTimes(1);
     expect(mockExecuteCommand).toHaveBeenCalledTimes(1);
     expect(mockExecuteCommand.mock.calls[0][0]).toBeInstanceOf(
-      MockDeleteAnnotationCommand
+      MockDeleteAnnotationCommand,
     );
     expect(mockRemoveLabelFromSidebar).toHaveBeenCalledWith("source");
     expect(mockRemoveOverlay).toHaveBeenCalledWith("source", false);
     expect(mockPushUndoable).toHaveBeenCalledTimes(1);
     expect(mockPushUndoable.mock.calls[0][0]).toBeInstanceOf(
-      MockMergeDetectionsCommand
+      MockMergeDetectionsCommand,
     );
     expect(mockSelectOverlay).toHaveBeenCalledWith("target");
     // Target stays as the merge target across a successful merge.

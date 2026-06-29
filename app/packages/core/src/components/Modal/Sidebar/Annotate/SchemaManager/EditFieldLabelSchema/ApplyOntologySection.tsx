@@ -27,7 +27,7 @@ const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
     clearOntology,
   } = useAppliedOntology(field);
   const { ontologies, isFetching, error } = useOntologies(
-    ONTOLOGY_TYPE.ontology
+    ONTOLOGY_TYPE.ontology,
   );
   const [pickerArmed, setPickerArmed] = useState(false);
 

@@ -103,7 +103,7 @@ export function useCuboidOperations() {
 
         createPushAndExec(`cuboid-update-${labelId}`, execFn, undoFn);
       },
-    [createPushAndExec, updateLabel]
+    [createPushAndExec, updateLabel],
   );
 
   /**
@@ -154,7 +154,7 @@ export function useCuboidOperations() {
         await updateCuboid(labelId, newState);
         endDrag(labelId);
       },
-    [updateCuboid, endDrag]
+    [updateCuboid, endDrag],
   );
 
   /**
@@ -165,7 +165,7 @@ export function useCuboidOperations() {
       labelId: LabelId,
       data: CuboidTransformData,
       path: string,
-      labelClass = ""
+      labelClass = "",
     ) => {
       if (!currentSampleId) return;
 
@@ -179,8 +179,8 @@ export function useCuboidOperations() {
         rotation: data.rotation
           ? roundTuple(data.rotation)
           : data.quaternion
-          ? roundTuple(quaternionToRadians(data.quaternion))
-          : [0, 0, 0],
+            ? roundTuple(quaternionToRadians(data.quaternion))
+            : [0, 0, 0],
         quaternion: data.quaternion ? roundTuple(data.quaternion) : undefined,
         sampleId: currentSampleId,
         tags: [],
@@ -198,7 +198,7 @@ export function useCuboidOperations() {
 
       createPushAndExec(`create-cuboid-${labelId}`, execFn, undoFn);
     },
-    [createPushAndExec, addLabel, deleteLabel, currentSampleId]
+    [createPushAndExec, addLabel, deleteLabel, currentSampleId],
   );
 
   /**
@@ -215,7 +215,7 @@ export function useCuboidOperations() {
         }
 
         const sidebarLabel = getSidebarLabels().find(
-          (l) => l.data._id === labelId
+          (l) => l.data._id === labelId,
         );
 
         const execFn = () => {
@@ -239,7 +239,7 @@ export function useCuboidOperations() {
       removeLabelFromSidebar,
       addLabelToSidebar,
       getSidebarLabels,
-    ]
+    ],
   );
 
   return {
@@ -300,8 +300,8 @@ export function usePolylineOperations() {
         if (updates.points3d) {
           roundedUpdates.points3d = updates.points3d.map((segment) =>
             segment.map(
-              (point) => roundTuple(point) as [number, number, number]
-            )
+              (point) => roundTuple(point) as [number, number, number],
+            ),
           );
         }
 
@@ -321,7 +321,7 @@ export function usePolylineOperations() {
 
         createPushAndExec(`polyline-update-${labelId}`, execFn, undoFn);
       },
-    [createPushAndExec, updateLabel]
+    [createPushAndExec, updateLabel],
   );
 
   /**
@@ -358,8 +358,8 @@ export function usePolylineOperations() {
                   point[0] + delta[0],
                   point[1] + delta[1],
                   point[2] + delta[2],
-                ] as [number, number, number]
-            )
+                ] as [number, number, number],
+            ),
           );
         }
 
@@ -376,14 +376,14 @@ export function usePolylineOperations() {
                 ];
               }
               return point;
-            })
+            }),
           );
         }
 
         await updatePolyline(labelId, { points3d: newPoints3d });
         endDrag(labelId);
       },
-    [updatePolyline, endDrag]
+    [updatePolyline, endDrag],
   );
 
   /**
@@ -393,7 +393,7 @@ export function usePolylineOperations() {
     (labelId: LabelId, newPoints3d: [number, number, number][][]) => {
       return updatePolyline(labelId, { points3d: newPoints3d });
     },
-    [updatePolyline]
+    [updatePolyline],
   );
 
   /**
@@ -404,7 +404,7 @@ export function usePolylineOperations() {
       if (!currentSampleId) return;
 
       const points3d = data.segments.map((seg) =>
-        seg.points.map((pt) => roundTuple(pt) as [number, number, number])
+        seg.points.map((pt) => roundTuple(pt) as [number, number, number]),
       );
 
       const newLabel: ReconciledPolyline3D = {
@@ -430,7 +430,7 @@ export function usePolylineOperations() {
 
       createPushAndExec(`create-polyline-${labelId}`, execFn, undoFn);
     },
-    [createPushAndExec, addLabel, deleteLabel, currentSampleId]
+    [createPushAndExec, addLabel, deleteLabel, currentSampleId],
   );
 
   /**
@@ -447,7 +447,7 @@ export function usePolylineOperations() {
         }
 
         const sidebarLabel = getSidebarLabels().find(
-          (l) => l.data._id === labelId
+          (l) => l.data._id === labelId,
         );
 
         const execFn = () => {
@@ -471,7 +471,7 @@ export function usePolylineOperations() {
       removeLabelFromSidebar,
       addLabelToSidebar,
       getSidebarLabels,
-    ]
+    ],
   );
 
   return {

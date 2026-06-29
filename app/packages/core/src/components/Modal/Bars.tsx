@@ -60,7 +60,7 @@ export const SampleBar: React.FC<{
 
 export const GroupBar = () => {
   const activeSliceDescriptorLabel = useRecoilValue(
-    fos.activeSliceDescriptorLabel
+    fos.activeSliceDescriptorLabel,
   );
 
   const pinnedSliceLabel = useMemo(() => {
@@ -114,7 +114,7 @@ export const GroupSampleBar: React.FC<{
   hoveringRef: MutableRefObject<boolean>;
 }> = ({ hoveringRef, pinned, sampleId }) => {
   const activeSliceDescriptorLabel = useRecoilValue(
-    fos.activeSliceDescriptorLabel
+    fos.activeSliceDescriptorLabel,
   );
 
   return (

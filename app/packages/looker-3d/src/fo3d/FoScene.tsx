@@ -204,12 +204,12 @@ const R3fNode = ({
 
   const isNodeVisible = useMemo(
     () => Boolean(visibilityMap[label]),
-    [label, visibilityMap]
+    [label, visibilityMap],
   );
 
   const assetJsx = useMemo(
     () => (isNodeVisible ? getAssetJsx(node, children) : null),
-    [node, children, isNodeVisible]
+    [node, children, isNodeVisible],
   );
 
   if (!assetJsx) {
@@ -246,7 +246,7 @@ const SceneR3f = ({
 export const FoSceneComponent = ({ scene }: FoSceneProps) => {
   const defaultVisibilityMap = useMemo(
     () => getVisibilityMapFromFo3dParsed(scene),
-    [scene]
+    [scene],
   );
 
   const { isSceneInitialized, fo3dRoot } = useFo3dContext();
@@ -263,7 +263,7 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
       // this saves an extra click for the user
       collapsed: Object.keys(defaultVisibilityMap).length < 2,
     },
-    [defaultVisibilityMap]
+    [defaultVisibilityMap],
   );
 
   const isFo3dBackgroundOn = useRecoilValue(isFo3dBackgroundOnAtom);

@@ -4,7 +4,7 @@ export function useWarnings() {
   const [state, _setState] = usePanelStatePartial(
     "warnings",
     { warnings: [] },
-    true
+    true,
   );
   const { warnings } = state;
   const hasWarnings = Array.isArray(warnings) && warnings.length > 0;

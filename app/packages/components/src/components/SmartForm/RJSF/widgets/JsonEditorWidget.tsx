@@ -43,7 +43,7 @@ export default function JsonEditorWidget(props: WidgetProps) {
       setErrorMessage(null);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Invalid JSON syntax"
+        error instanceof Error ? error.message : "Invalid JSON syntax",
       );
     }
   };

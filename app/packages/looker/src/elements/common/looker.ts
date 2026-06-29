@@ -21,7 +21,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     return {
       click: ({ update }) => {
         update(({ config: { thumbnail } }) =>
-          thumbnail ? { hovering: false } : {}
+          thumbnail ? { hovering: false } : {},
         );
       },
       keydown: ({ event, update, dispatchEvent }) => {
@@ -74,7 +74,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
                 update,
                 dispatchEvent,
                 e.key,
-                e.shiftKey
+                e.shiftKey,
               );
             }
           }

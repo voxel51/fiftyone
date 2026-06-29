@@ -29,7 +29,7 @@ export class FrameNumberElement extends BaseElement<FrameState> {
       this.element.textContent = getFrameString(
         frameNumber,
         duration,
-        frameRate
+        frameRate,
       );
     }
     return this.element;

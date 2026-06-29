@@ -160,7 +160,7 @@ function FileList({ files, onUpdateFiles }: FileListProps) {
             label={name}
             onDelete={() => {
               onUpdateFiles(
-                files.filter(({ name: fileName }) => fileName !== name)
+                files.filter(({ name: fileName }) => fileName !== name),
               );
             }}
           />
@@ -174,7 +174,7 @@ function filterFiles(files: Array<File>, types: FileDropProps["types"]) {
   if (typeof types !== "string" || types.trim().length === 0) return files;
   const typesArray = types.split(",");
   return files.filter((file) =>
-    typesArray.some((type) => file.name.endsWith(type))
+    typesArray.some((type) => file.name.endsWith(type)),
   );
 }
 

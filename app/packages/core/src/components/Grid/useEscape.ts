@@ -11,7 +11,7 @@ const useEscape = () => {
       ({ reset, snapshot }) =>
         async (event: KeyboardEvent) => {
           const escapeKeyHandlerIds = await snapshot.getPromise(
-            fos.escapeKeyHandlerIdsAtom
+            fos.escapeKeyHandlerIdsAtom,
           );
           if (event.key !== "Escape" || escapeKeyHandlerIds.size > 0) {
             return;
@@ -19,7 +19,7 @@ const useEscape = () => {
 
           const modal = await snapshot.getPromise(fos.modalSelector);
           const selectedSampleIds = await snapshot.getPromise(
-            fos.selectedSamples
+            fos.selectedSamples,
           );
           // TODO: modal is always `null` here right after a modal closes, so this isn't the condition we want
           if (modal === null && selectedSampleIds.size > 0) {
@@ -30,8 +30,8 @@ const useEscape = () => {
             }
           }
         },
-      []
-    )
+      [],
+    ),
   );
 };
 

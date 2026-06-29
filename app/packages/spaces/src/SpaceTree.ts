@@ -20,7 +20,7 @@ export default class SpaceTree {
   // the constructor takes the root node, the selected node, and the layout
   constructor(
     serializedTree?: SpaceNodeJSON,
-    onTreeUpdate?: SpaceTreeUpdateCallback
+    onTreeUpdate?: SpaceTreeUpdateCallback,
   ) {
     this.root = serializedTree
       ? spaceNodeFromJSON(serializedTree)

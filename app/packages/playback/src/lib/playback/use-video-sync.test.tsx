@@ -2,11 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  currentTimeAtom,
-  isPlayingAtom,
-  playheadAtom,
-} from "./atoms";
+import { currentTimeAtom, isPlayingAtom, playheadAtom } from "./atoms";
 import { PlaybackProvider, usePlaybackStore } from "./PlaybackProvider";
 import { useVideoSync } from "./use-video-sync";
 
@@ -31,7 +27,10 @@ function makeVideo(initialTime = 0): FakeVideo {
     }),
     removeEventListener: vi.fn((event: string, fn: EventListener) => {
       const arr = listeners.get(event) ?? [];
-      listeners.set(event, arr.filter((f) => f !== fn));
+      listeners.set(
+        event,
+        arr.filter((f) => f !== fn),
+      );
     }),
     _fire(event: string) {
       for (const fn of listeners.get(event) ?? []) fn(new Event(event));
@@ -62,7 +61,7 @@ function renderSync(video: FakeVideo | null, duration = 10) {
           {children}
         </PlaybackProvider>
       ),
-    }
+    },
   );
 }
 
@@ -189,11 +188,11 @@ describe("useVideoSync", () => {
 
       expect(video.removeEventListener).toHaveBeenCalledWith(
         "timeupdate",
-        expect.any(Function)
+        expect.any(Function),
       );
       expect(video.removeEventListener).toHaveBeenCalledWith(
         "ended",
-        expect.any(Function)
+        expect.any(Function),
       );
     });
   });

@@ -42,7 +42,7 @@ export function EmbeddingsPlot({
   const [dragMode, setDragMode] = usePanelStatePartial(
     "dragMode",
     "lasso",
-    true
+    true,
   );
   useKeyDown("s", () => setDragMode("lasso"));
   useKeyDown("g", () => setDragMode("pan"));
@@ -55,7 +55,7 @@ export function EmbeddingsPlot({
         resetZoom();
       }
     },
-    [hasSelection]
+    [hasSelection],
   );
 
   if (labelSelectorLoading || isLoading || !traces)
@@ -67,7 +67,7 @@ export function EmbeddingsPlot({
     resolvedSelection,
     selectionStyle,
     fieldColorscale,
-    setting
+    setting,
   );
   const isCategorical = style === "categorical";
 

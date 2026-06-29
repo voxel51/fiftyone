@@ -12,7 +12,7 @@ export const hoveringLabelIds = atom<string[]>([]);
 export default function useHover() {
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   useEventHandler(
@@ -23,7 +23,7 @@ export default function useHover() {
       if (!current.includes(payload.id)) {
         store.set(hoveringLabelIds, [...current, payload.id]);
       }
-    }, [])
+    }, []),
   );
 
   useEventHandler(
@@ -32,9 +32,9 @@ export default function useHover() {
       const store = getDefaultStore();
       store.set(
         hoveringLabelIds,
-        store.get(hoveringLabelIds).filter((id) => id !== payload.id)
+        store.get(hoveringLabelIds).filter((id) => id !== payload.id),
       );
-    }, [])
+    }, []),
   );
 
   useEventHandler(
@@ -42,7 +42,7 @@ export default function useHover() {
     useCallback((_payload) => {
       const store = getDefaultStore();
       store.set(hoveringLabelIds, []);
-    }, [])
+    }, []),
   );
 
   useAnnotationEventHandler(
@@ -53,7 +53,7 @@ export default function useHover() {
       if (!current.includes(payload.id)) {
         store.set(hoveringLabelIds, [...current, payload.id]);
       }
-    }, [])
+    }, []),
   );
 
   useAnnotationEventHandler(
@@ -62,8 +62,8 @@ export default function useHover() {
       const store = getDefaultStore();
       store.set(
         hoveringLabelIds,
-        store.get(hoveringLabelIds).filter((id) => id !== payload.id)
+        store.get(hoveringLabelIds).filter((id) => id !== payload.id),
       );
-    }, [])
+    }, []),
   );
 }

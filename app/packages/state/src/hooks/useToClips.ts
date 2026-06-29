@@ -29,7 +29,7 @@ export default function useToClips() {
           filters: await snapshot.getPromise(filters),
           extended: await snapshot.getPromise(extendedStages),
           sampleIds: Array.from(
-            (await snapshot.getPromise(selectedSamples)).keys()
+            (await snapshot.getPromise(selectedSamples)).keys(),
           ),
         });
         set(view, (v) => v);
@@ -39,6 +39,6 @@ export default function useToClips() {
           unsubscribe();
         });
       },
-    []
+    [],
   );
 }

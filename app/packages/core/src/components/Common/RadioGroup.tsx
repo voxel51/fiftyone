@@ -47,7 +47,7 @@ const Radio = React.memo(
         </StyledRadio>
       </StyledRadioContainer>
     );
-  }
+  },
 );
 type Props = {
   $horizontal: boolean;
@@ -111,7 +111,7 @@ const RadioGroup = React.memo(
         ))}
       </RadioGroupContainer>
     );
-  }
+  },
 );
 
 export default RadioGroup;

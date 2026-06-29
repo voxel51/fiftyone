@@ -21,7 +21,7 @@ export type Get<K, V> = (key: K) => Promise<Response<K, V>>;
 export type Hide = (ctx: { id: ID }) => void;
 
 export type ItemClick<K, V> = (
-  callbackInterface: ItemClickInterface<K, V>
+  callbackInterface: ItemClickInterface<K, V>,
 ) => void;
 
 export interface ItemClickInterface<K, V> {
@@ -40,7 +40,7 @@ export interface ItemData<K, V> {
 
 export type Measure<K, V> = (
   id: ItemData<K, V>,
-  sizeBytes: Promise<number>
+  sizeBytes: Promise<number>,
 ) => void;
 
 export interface Response<K, V> {

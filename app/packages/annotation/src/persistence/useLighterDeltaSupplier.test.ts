@@ -57,8 +57,9 @@ vi.mock("@fiftyone/utilities", () => ({
 const hoistedSpies = vi.hoisted(() => ({
   useRecoilValueSpy: vi.fn(),
   useGetLabelDeltaSpy: vi.fn(),
-  buildAnnotationPathSpy: vi.fn((proxy: { path?: string }, _isPatches: boolean) =>
-    `built-path/${proxy.path ?? "no-path"}`
+  buildAnnotationPathSpy: vi.fn(
+    (proxy: { path?: string }, _isPatches: boolean) =>
+      `built-path/${proxy.path ?? "no-path"}`,
   ),
 }));
 const mockUseRecoilValue = hoistedSpies.useRecoilValueSpy;
@@ -77,7 +78,7 @@ vi.mock("./useGetLabelDelta", () => ({
 vi.mock("../deltas", () => ({
   buildAnnotationPath: (...args: unknown[]) =>
     hoistedSpies.buildAnnotationPathSpy(
-      ...(args as [{ path?: string }, boolean])
+      ...(args as [{ path?: string }, boolean]),
     ),
 }));
 
@@ -94,7 +95,7 @@ const setIsPatches = (isPatches: boolean) => {
 };
 
 const setLabelDeltaResponses = (
-  responses: Array<Array<{ op: string; path: string; value: unknown }>>
+  responses: Array<Array<{ op: string; path: string; value: unknown }>>,
 ) => {
   const fn = vi.fn();
   responses.forEach((r) => fn.mockReturnValueOnce(r));

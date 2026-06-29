@@ -17,7 +17,7 @@ export type UseMcapResourceClientOptions = Pick<
  * Creates the MCAP resource client for React renderers and owns cleanup.
  */
 export function useMcapResourceClient(
-  options: UseMcapResourceClientOptions = {}
+  options: UseMcapResourceClientOptions = {},
 ): McapResourceClient {
   const { worker = false } = options;
   const client = useMemo(() => createMcapResourceClient({ worker }), [worker]);

@@ -19,7 +19,7 @@ const mcapBuiltInDecoders: readonly Decoder[] = [...foxgloveDecoders];
  * additional decoder registration.
  */
 export function createMcapDecoderRegistry(
-  additionalDecoders: readonly Decoder[] = []
+  additionalDecoders: readonly Decoder[] = [],
 ): DecoderRegistry {
   const registry = new DecoderRegistry();
 

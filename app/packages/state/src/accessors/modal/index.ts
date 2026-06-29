@@ -54,16 +54,16 @@ export const useModalModeController = (): ModalModeController => {
 
   const activateAnnotateMode = useCallback(
     () => setMode(ModalMode.ANNOTATE),
-    [setMode]
+    [setMode],
   );
   const activateExploreMode = useCallback(
     () => setMode(ModalMode.EXPLORE),
-    [setMode]
+    [setMode],
   );
 
   return useMemo(
     () => ({ activateAnnotateMode, activateExploreMode }),
-    [activateExploreMode, activateAnnotateMode]
+    [activateExploreMode, activateAnnotateMode],
   );
 };
 
@@ -119,7 +119,7 @@ export const useActiveModalSample = (): Sample | undefined => {
 export const useStableModalSample = (): ModalSample | undefined => {
   const loadable = useRecoilValueLoadable(modalSample);
   const ref = useRef<ModalSample | undefined>(
-    loadable.state === "hasValue" ? loadable.contents : undefined
+    loadable.state === "hasValue" ? loadable.contents : undefined,
   );
   if (loadable.state === "hasValue") {
     ref.current = loadable.contents;

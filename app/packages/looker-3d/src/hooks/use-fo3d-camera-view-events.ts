@@ -66,17 +66,17 @@ export const useFo3dCameraViewEvents = ({
       overriddenCameraPosition,
       foScene,
       settings,
-    ]
+    ],
   );
 
   const onChangeView = useCallback(
     (
       view: "pov" | "top",
-      { useAnimation = true }: { useAnimation?: boolean } = {}
+      { useAnimation = true }: { useAnimation?: boolean } = {},
     ) => {
       return applyLookAt(buildViewLookAt(view, useAnimation));
     },
-    [buildViewLookAt, applyLookAt]
+    [buildViewLookAt, applyLookAt],
   );
 
   const handleViewChangeEvent = useCallback(
@@ -88,7 +88,7 @@ export const useFo3dCameraViewEvents = ({
         recomputeBounds();
         const timeoutId = window.setTimeout(() => {
           pendingTimeoutIdsRef.current = pendingTimeoutIdsRef.current.filter(
-            (id) => id !== timeoutId
+            (id) => id !== timeoutId,
           );
           const lookAt = buildViewLookAt(view, true);
           applyLookAt(lookAt);
@@ -105,7 +105,7 @@ export const useFo3dCameraViewEvents = ({
       recomputeBounds,
       buildViewLookAt,
       applyLookAt,
-    ]
+    ],
   );
 
   // This effect clears any remaining timeouts

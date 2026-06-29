@@ -21,12 +21,12 @@ export function useSetTileSelection(): (selection: unknown) => void {
       set(selection);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tileId]
+    [tileId],
   );
 }
 
 export function useTileSelectionFor<T = unknown>(
-  tileId: string | null
+  tileId: string | null,
 ): T | null {
   return useAtomValue(tileSelectionAtom(tileId ?? NO_TILE)) as T | null;
 }
@@ -50,7 +50,7 @@ export function useSetTileTitle(): (title: string) => void {
       if (!tileId) return;
       setTileTitle(tileId, title);
     },
-    [tileId, setTileTitle]
+    [tileId, setTileTitle],
   );
 }
 

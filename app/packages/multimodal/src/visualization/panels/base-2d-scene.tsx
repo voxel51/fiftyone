@@ -62,9 +62,9 @@ export function ImageTexturePlane({
         textureHandle?.aspectRatio ?? 1,
         size.width,
         size.height,
-        fit
+        fit,
       ),
-    [fit, size.height, size.width, textureHandle?.aspectRatio]
+    [fit, size.height, size.width, textureHandle?.aspectRatio],
   );
 
   useEffect(() => {
@@ -94,7 +94,7 @@ function imagePlaneScale(
   aspectRatio: number,
   width: number,
   height: number,
-  fit: "contain" | "cover"
+  fit: "contain" | "cover",
 ): [number, number, number] {
   const viewportAspect = width / Math.max(1, height);
   const imageIsWider = aspectRatio > viewportAspect;
