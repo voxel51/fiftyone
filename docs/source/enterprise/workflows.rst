@@ -1,17 +1,17 @@
 .. _enterprise-workflows:
 
-Workflows
-=========
+Annotation Workflows
+====================
 
 .. default-role:: code
 
 Workflows provide a flexible framework for orchestrating data operations
-across your team. You define a multi-stage pipeline, run it over a dataset,
-assign work to members, and track progress one sample at a time. In the
-current release, workflows support **annotate → review** pipelines: you
+across your team to bring humans into the loop. You define a multi-stage
+pipeline, run it over a dataset, assign work to members, and track progress
+one sample at a time. For example, in an annotate-and-review pipeline you
 build a workflow once, start it on a set of samples, and FiftyOne Enterprise
-routes each sample through the stages you defined until it is fully labeled
-and approved.
+routes each sample through the stages you defined to your annotation team
+until it is fully labeled and approved.
 
 .. _enterprise-workflows-annotate-tab:
 
@@ -19,8 +19,8 @@ The Annotate Tab
 ----------------
 
 Workflows live in the **Annotate** tab of the
-:ref:`FiftyOne Enterprise App <enterprise-app>`. Open the tab to see two
-areas:
+:ref:`FiftyOne Enterprise App <enterprise-app>` within a dataset. Open the
+tab to see two areas:
 
 - **My Tasks** — work currently assigned to you, with a progress bar and a
   button to jump straight into labeling or reviewing.
@@ -31,22 +31,18 @@ areas:
    :alt: Annotate tab showing My Tasks and the Workflows grid
 
 Each workflow has a **status** that reflects where it is in its lifecycle:
-**Draft** (still being designed), **Not started** (configured but not yet
-running), or **Running** (actively routing samples through its stages).
+**Draft** (still being designed), **Started** (launched, with tasks being
+created), or **Running** (actively routing samples through its stages).
 
 Workflows are built from **stages**. The core stage types are:
 
 - **Input samples** — a fixed first stage that defines which samples the
   workflow runs on. These are chosen when the workflow is started.
 - **Annotate** — assignees label the samples that reach this stage and
-  submit the sample as they finish.
+  submit the samples as they finish.
 - **Review** — assignees approve or reject labeled samples. A review stage
   has two outgoing branches, **Accepted** and **Rejected**, that you wire
   to downstream stages.
-
-.. note::
-
-   Additional stage types, including **agentic labeling**, are coming soon.
 
 A running workflow creates **tasks** — units of work assigned to members.
 Each member sees their share under **My Tasks**. Progress is tracked per
@@ -76,7 +72,7 @@ resubmitted.
 The canvas toolbar provides:
 
 - **Tidy** — auto-layout the graph.
-- **Clear** — remove all connections.
+- **Clear** — reset the pipeline.
 - **Delete** — remove the selected stage.
 - **Start workflow** — launch the workflow once it is configured.
 
@@ -128,9 +124,10 @@ Starting a Workflow
 ~~~~~~~~~~~~~~~~~~~
 
 When the pipeline is ready, click **Start workflow** and choose the input
-samples to run on. The workflow moves from **Draft** to **Running**, tasks
-are created for each member, and a *"N for you"* indicator appears on the
-workflow card in the Annotate tab.
+samples to run on, typically by selecting a
+:ref:`saved view <app-saving-views>`. The workflow moves from **Draft** to
+**Running**, tasks are created for each member, and a *"N for you"*
+indicator appears on the workflow card in the Annotate tab.
 
 .. TODO: needs capture — Start workflow / input-samples selection screenshot.
 
@@ -171,7 +168,7 @@ tasks open in labeling mode; review tasks open in review mode.
 Task Mode
 ~~~~~~~~~
 
-When you open a sample as part of a task, the sample modal adds three
+When you open a sample as part of a task, the sample modal adds two 
 surfaces alongside the usual viewer:
 
 **Task banner.** Displays task progress at a glance, along with a
@@ -187,16 +184,8 @@ total assigned to the task (for example, *"5 / 501 samples"*).
 .. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_task_progress.webp
    :alt: Task progress bar with Skip and Submit & next buttons
 
-**Discussion.** An in-app comment thread on the sample and its labels.
-You and your teammates can leave comments, edit or delete your own, and
-moderate the thread — keeping the conversation attached to the work
-itself.
-
-.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_discussion.webp
-   :alt: Discussion panel with comment thread on a sample
-
-Annotating
-~~~~~~~~~~
+Annotate
+~~~~~~~~
 
 In an annotate task you label one sample at a time. Click **Submit & next**
 to save your work and advance, or **Skip** to move on without labeling
@@ -207,15 +196,31 @@ samples remain.
 .. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_annotate_task.webp
    :alt: Annotating a sample with Submit & next and Skip
 
-Reviewing
-~~~~~~~~~
+Review
+~~~~~~
 
 In a review task you approve or reject labeled samples. Each sample is
-marked with an **APPROVED** or **REJECTED** badge. Rejecting a sample
-reopens it for annotation — it returns to the labeling stage to be fixed
-and resubmitted. The task progress (for example, *"2 / 2 samples reviewed · 0 remaining
-(1 rejected)"*) reflects outcomes, and you complete the task with
-**Task complete** once all samples have been reviewed.
+marked with an **APPROVED** or **REJECTED** badge. Approving or rejecting
+samples routes them to the next stage as defined in the workflow pipeline;
+for example, rejecting a sample might route it back to the annotate stage
+it came from. The task progress (for example,
+*"2 / 2 samples reviewed · 0 remaining (1 rejected)"*) reflects outcomes,
+and you complete the task with **Task complete** once all samples have
+been reviewed.
+
+Use the discussion tray to leave :ref:`comments <enterprise-comments>` on
+individual samples to flag issues to your teammates.
 
 .. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_review_task.webp
    :alt: Review task mode showing APPROVED and REJECTED badges on a grid
+
+Leaving Comments
+^^^^^^^^^^^^^^^^
+
+While reviewing, you can leave :ref:`comments <enterprise-comments>` on
+individual samples to flag issues, request changes, or discuss specific
+labels with the annotator. Comments stay attached to the sample so the
+conversation follows the work as it moves through the pipeline.
+
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_discussion.webp
+   :alt: Discussion panel attached to a reviewed sample
