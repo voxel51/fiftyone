@@ -1,6 +1,5 @@
 import { useRecoilTransactionObserver_UNSTABLE, useRecoilValue } from "recoil";
 import { useEffect, useState, useCallback } from "react";
-// Replace with actual atom imports
 import * as fos from "@fiftyone/state";
 import { analyticsInfo, useTrackEvent } from "@fiftyone/analytics";
 
@@ -15,7 +14,7 @@ const useTrackViewChanges = () => {
       const view = snapshot.getLoadable(fos.view)?.contents;
       const extendedStages = snapshot.getLoadable(fos.extendedStages)?.contents;
       const count = snapshot.getLoadable(
-        fos.count({ path: "", extended: false, modal: false }),
+        fos.count({ path: "", extended: false, modal: false })
       )?.contents;
       const filters = snapshot.getLoadable(fos.filters)?.contents;
 
@@ -36,7 +35,7 @@ const useTrackViewChanges = () => {
         setChanges((prevChanges) => ({ ...prevChanges, ...newChanges }));
       }
     },
-    [changes],
+    [changes]
   );
 
   useRecoilTransactionObserver_UNSTABLE(handleStateChange);
