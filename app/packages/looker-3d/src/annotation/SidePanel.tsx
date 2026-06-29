@@ -20,11 +20,13 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
 import type { MapControls as MapControlsImpl } from "three-stdlib";
 import { Box3, Vector3 } from "three";
 import {
+  ANNOTATION_CUBOID,
   FO_USER_DATA,
   getPanelElementId,
   getSidePanelGridArea,
@@ -43,16 +45,22 @@ import { FoScene } from "../fo3d/render-types";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
-import { useMainPanelNavigationSyncIntents } from "../state";
+import {
+  isCurrentlyTransformingAtom,
+  selectedLabelForAnnotationAtom,
+  useMainPanelNavigationSyncIntents,
+} from "../state";
 import type { SidePanelId, SidePanelViewType } from "../types";
 import { expandBoundingBox, findObjectByUserData } from "../utils";
 import {
+  applyHeadingToSidePanelCameraFrame,
   applySidePanelCameraFrame,
   applyVisibleWorldHeightZoomToOrthographicCamera,
   applyMainPanelPanSyncIntentToOrthographicCamera,
   applyMainPanelZoomSyncIntentToOrthographicCamera,
   applyPointCloudCropMainPanelSyncToOrthographicCamera,
   deriveSidePanelCameraFrame,
+  getSidePanelHeadingQuaternion,
   doesPointCloudCropFitCamera,
   retargetSidePanelCameraFrame,
   shouldApplyMainPanelNavigationSyncIntent,
@@ -166,6 +174,11 @@ export const SidePanel = ({
   const { imageSlices, resolveUrlForImageSlice, isLoadingImageSlices } =
     useImageSlicesIfAvailable(sample);
 
+  // While a label transform is in progress (e.g. a cuboid face-pull resize
+  // started in this panel), suspend panning so the drag doesn't also move the
+  // orthographic camera. Mirrors the main panel's controls gating.
+  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
+
   const gridArea = getSidePanelGridArea(panelId);
   const safeSelectValue = getSafeSidePanelSelectValue({
     panelId,
@@ -250,6 +263,7 @@ export const SidePanel = ({
             screenSpacePanning
             zoomToCursor
             enableRotate={false}
+            enablePan={!isCurrentlyTransforming}
             zoomSpeed={0.8}
           />
           <SidePanelCameraFrameController
@@ -265,6 +279,7 @@ export const SidePanel = ({
               pointCloudCrop={pointCloudCrop}
               pointCloudCropFitKey={pointCloudCropFitKey}
               sidePanelCameraFrame={sidePanelCameraFrame}
+              upVector={upVector}
             />
             <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
             <group visible={isSceneInitialized}>
@@ -398,13 +413,18 @@ const BoundsSideEffectsComponent = ({
   pointCloudCrop,
   pointCloudCropFitKey,
   sidePanelCameraFrame,
+  upVector,
 }: {
   observe: boolean;
   pointCloudCrop?: PointCloudCrop | null;
   pointCloudCropFitKey: string | null;
   sidePanelCameraFrame: SidePanelCameraFrame;
+  upVector: Vector3 | null;
 }) => {
   const api = useBounds();
+  const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
+  const selectedLabelId = selectedLabel?._id ?? null;
+  const previousSelectedLabelIdRef = useRef<string | null>(null);
 
   const { camera, scene, invalidate } = useThree();
   const controls = useThree(
@@ -458,8 +478,9 @@ const BoundsSideEffectsComponent = ({
       object: THREE.Object3D | THREE.Box3 | undefined,
       target: THREE.Vector3,
       shouldClip = false,
+      baseFrame: SidePanelCameraFrame = sidePanelCameraFrame,
     ) => {
-      const frame = retargetSidePanelCameraFrame(sidePanelCameraFrame, target);
+      const frame = retargetSidePanelCameraFrame(baseFrame, target);
       applySidePanelCameraFrame({
         camera,
         controls,
@@ -481,16 +502,21 @@ const BoundsSideEffectsComponent = ({
   );
 
   const fitToTemporaryMesh = useCallback(
-    (helperMesh: THREE.Mesh, target: THREE.Vector3, dispose: () => void) => {
+    (
+      helperMesh: THREE.Mesh,
+      target: THREE.Vector3,
+      dispose: () => void,
+      baseFrame: SidePanelCameraFrame = sidePanelCameraFrame,
+    ) => {
       scene.add(helperMesh);
-      fitBoundsWithSidePanelFrame(helperMesh, target);
+      fitBoundsWithSidePanelFrame(helperMesh, target, false, baseFrame);
 
       setTimeout(() => {
         scene.remove(helperMesh);
         dispose();
       }, 0);
     },
-    [fitBoundsWithSidePanelFrame, scene],
+    [fitBoundsWithSidePanelFrame, scene, sidePanelCameraFrame],
   );
 
   const fitToPointCloudCrop = useCallback(
@@ -532,7 +558,10 @@ const BoundsSideEffectsComponent = ({
   );
 
   const fitToBox = useCallback(
-    (box: THREE.Box3) => {
+    (
+      box: THREE.Box3,
+      baseFrame: SidePanelCameraFrame = sidePanelCameraFrame,
+    ) => {
       const boxSize = box.getSize(new Vector3());
       const boxCenter = box.getCenter(new Vector3());
       const boxGeometry = new THREE.BoxGeometry(
@@ -545,12 +574,17 @@ const BoundsSideEffectsComponent = ({
       helperMesh.position.copy(boxCenter);
       helperMesh.visible = false;
 
-      fitToTemporaryMesh(helperMesh, boxCenter, () => {
-        boxGeometry.dispose();
-        boxMaterial.dispose();
-      });
+      fitToTemporaryMesh(
+        helperMesh,
+        boxCenter,
+        () => {
+          boxGeometry.dispose();
+          boxMaterial.dispose();
+        },
+        baseFrame,
+      );
     },
-    [fitToTemporaryMesh],
+    [fitToTemporaryMesh, sidePanelCameraFrame],
   );
 
   const fitToCenteredBox = useCallback(
@@ -734,8 +768,28 @@ const BoundsSideEffectsComponent = ({
     );
   };
 
+  // This effect reverts to the world-aligned scene framing when a label is
+  // deselected. The select path heading-aligns to the box, so deselection has
+  // to actively restore the default cardinal view.
+  useEffect(() => {
+    const previousSelectedLabelId = previousSelectedLabelIdRef.current;
+    previousSelectedLabelIdRef.current = selectedLabelId;
+
+    if (
+      previousSelectedLabelId &&
+      !selectedLabelId &&
+      !pointCloudCropRef.current
+    ) {
+      fitBoundsWithSidePanelFrame(undefined, sidePanelCameraFrame.target, true);
+    }
+  }, [
+    selectedLabelId,
+    fitBoundsWithSidePanelFrame,
+    sidePanelCameraFrame.target,
+  ]);
+
   useAnnotationEventHandler("annotation:3dLabelSelected", (payload) => {
-    const { label } = payload;
+    const { label, archetype } = payload;
     const crop = pointCloudCropRef.current;
 
     if (crop?.labelId === label._id) {
@@ -750,14 +804,31 @@ const BoundsSideEffectsComponent = ({
     );
 
     if (object) {
+      // For cuboids, align the orthographic view to the box's heading so it
+      // appears axis-aligned (faces edge-on, handles straight out). The box's
+      // live world orientation comes straight off its scene object. Polylines
+      // keep the world-aligned frame.
+      const frame =
+        archetype === ANNOTATION_CUBOID
+          ? applyHeadingToSidePanelCameraFrame(
+              sidePanelCameraFrame,
+              getSidePanelHeadingQuaternion(
+                object.getWorldQuaternion(new THREE.Quaternion()),
+                upVector ?? new Vector3(0, 1, 0),
+              ),
+            )
+          : sidePanelCameraFrame;
+
       const objectBox = new Box3().setFromObject(object);
 
       if (!objectBox.isEmpty()) {
-        fitToBox(expandBoundingBox(objectBox, 2.5));
+        fitToBox(expandBoundingBox(objectBox, 2.5), frame);
       } else {
         fitBoundsWithSidePanelFrame(
           object,
           object.getWorldPosition(new Vector3()),
+          false,
+          frame,
         );
       }
     }

@@ -457,6 +457,72 @@ export const retargetSidePanelCameraFrame = (
   };
 };
 
+const HEADING_PROJECTION_EPSILON = 1e-8;
+// A cuboid's heading is its local +X axis.
+const CUBOID_HEADING_AXIS = new THREE.Vector3(1, 0, 0);
+
+/**
+ * Yaw-only ("heading") rotation about the scene up that takes a cuboid at zero
+ * yaw to the given orientation. Pitch/roll are intentionally ignored, so the
+ * scene up stays vertical. Returns identity when the heading is degenerate
+ * (parallel to up) or the box is unrotated.
+ */
+export const getSidePanelHeadingQuaternion = (
+  orientation: THREE.Quaternion,
+  upVector: THREE.Vector3,
+): THREE.Quaternion => {
+  const up = upVector.clone().normalize();
+  const projectToGroundPlane = (v: THREE.Vector3) =>
+    v.clone().sub(up.clone().multiplyScalar(v.dot(up)));
+
+  // Project both the zero-yaw heading and the box's actual heading onto the
+  // ground plane; the rotation between them lies in that plane, i.e. is a pure
+  // rotation about up.
+  const reference = projectToGroundPlane(CUBOID_HEADING_AXIS);
+  const heading = projectToGroundPlane(
+    CUBOID_HEADING_AXIS.clone().applyQuaternion(orientation),
+  );
+
+  if (
+    reference.lengthSq() < HEADING_PROJECTION_EPSILON ||
+    heading.lengthSq() < HEADING_PROJECTION_EPSILON
+  ) {
+    return new THREE.Quaternion();
+  }
+
+  return new THREE.Quaternion().setFromUnitVectors(
+    reference.normalize(),
+    heading.normalize(),
+  );
+};
+
+/**
+ * Rotates a camera frame's orientation by a heading (yaw-about-up) rotation,
+ * keeping the same target. Top/bottom views only change their up (direction is
+ * parallel to up, so it's unchanged) and side views only change their direction
+ * (up is parallel to up) — so the box ends up axis-aligned in every view.
+ */
+export const applyHeadingToSidePanelCameraFrame = (
+  frame: SidePanelCameraFrame,
+  headingQuaternion: THREE.Quaternion,
+): SidePanelCameraFrame => {
+  const direction = frame.direction
+    .clone()
+    .applyQuaternion(headingQuaternion)
+    .normalize();
+  const up = frame.up.clone().applyQuaternion(headingQuaternion).normalize();
+
+  return {
+    direction,
+    distance: frame.distance,
+    position: frame.target
+      .clone()
+      .add(direction.clone().multiplyScalar(frame.distance)),
+    target: frame.target.clone(),
+    up,
+  };
+};
+
 export const applySidePanelCameraFrame = ({
   camera,
   controls,

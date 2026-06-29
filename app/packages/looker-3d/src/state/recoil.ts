@@ -6,6 +6,7 @@ import { groupId, nullableModalSampleId } from "@fiftyone/state";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state/src/recoil/customEffects";
 import { atom, atomFamily, DefaultValue, selector } from "recoil";
 import { Vector3 } from "three";
+import type { CuboidResizeFace } from "../annotation/cuboid-face-resize";
 import type {
   AnnotationPlaneState,
   SegmentState,
@@ -23,6 +24,7 @@ import type {
   AssetLoadingLog,
   CuboidCreationState,
   HoveredLabel,
+  HoveredLabelSource,
   LoadingStatusWithContext,
   MainPanelPanSyncIntent,
   MainPanelZoomSyncIntent,
@@ -547,6 +549,21 @@ export const hoveredVertexAtom = atom<{
   pointIndex: number;
 } | null>({
   key: "fo3d-hoveredVertex",
+  default: null,
+});
+
+/**
+ * The currently hovered cuboid resize face. Shared across panels so the hover
+ * feedback (handle opacity/scale, face highlight) shows in every panel, not
+ * just the one under the cursor. `source` records which panel set it so a
+ * pointer-out (or deselect) in one panel doesn't clear another's hover.
+ */
+export const hoveredResizeFaceAtom = atom<{
+  labelId: string;
+  face: CuboidResizeFace;
+  source: HoveredLabelSource;
+} | null>({
+  key: "fo3d-hoveredResizeFace",
   default: null,
 });
 

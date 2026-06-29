@@ -367,7 +367,7 @@ export const ThreeDLabels = ({
               label={label}
               useLegacyCoordinates={settings.useLegacyCoordinates}
               color={getOverlayColor(overlay)}
-              enableFaceResize={isMainPanel}
+              enableFaceResize
               hoverSource={hoverSource}
               showOrientation={showCuboidOrientation}
             />
@@ -383,7 +383,6 @@ export const ThreeDLabels = ({
       handleSelect,
       settings,
       getOverlayColor,
-      isMainPanel,
       showCuboidOrientation,
     ],
   );
