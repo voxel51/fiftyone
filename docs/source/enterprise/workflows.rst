@@ -27,7 +27,7 @@ areas:
 - **Workflows** — a grid of every workflow on the dataset showing its
   status, stage count, members, and overall completion.
 
-.. image:: /images/enterprise/workflows/annotate tab.png
+.. image:: /images/enterprise/workflows/workflows_annotate_tab.png
    :alt: Annotate tab showing My Tasks and the Workflows grid
 
 Each workflow has a **status** that reflects where it is in its lifecycle:
@@ -71,7 +71,7 @@ to a final review or to the end of the pipeline) and the **Rejected**
 output back to an **Annotate** stage so the sample is fixed and
 resubmitted.
 
-.. image:: /images/enterprise/workflows/canvas editor.gif
+.. image:: /images/enterprise/workflows/workflows_canvas_editor.gif
    :alt: Building a workflow on the canvas editor
 
 The canvas toolbar provides:
@@ -88,19 +88,19 @@ Instead of building from scratch, click **Templates** to start from a
 prebuilt pipeline. Templates are a fast way to stand up common
 annotate-and-review patterns; customize the stages after importing.
 
-.. image:: /images/enterprise/workflows/template view.png
+.. image:: /images/enterprise/workflows/workflows_templates_picker.png
    :alt: Templates picker showing prebuilt workflow patterns
 
 For example, the **Human-in-the-loop** template creates a single
 Annotate → Review pipeline:
 
-.. image:: /images/enterprise/workflows/1 review stage template flow.png
+.. image:: /images/enterprise/workflows/workflows_canvas_simple.png
    :alt: Single-stage review template on the canvas
 
 The **Two-tier review** template adds a second review stage for
 high-stakes labeling:
 
-.. image:: /images/enterprise/workflows/2 review stage template flow.png
+.. image:: /images/enterprise/workflows/workflows_canvas_editor.png
    :alt: Two-tier review template on the canvas
 
 Configuring Stages
@@ -119,7 +119,7 @@ Click a stage on the canvas to configure it:
 The following example shows how to edit the assignee for an Annotate
 stage:
 
-.. image:: /images/enterprise/workflows/configure stages.gif
+.. image:: /images/enterprise/workflows/workflows_stage_config.gif
    :alt: Editing the assignee for an Annotate stage
 
 Starting a Workflow
@@ -139,7 +139,7 @@ Cloning and Deleting
 one. **Delete** a workflow you no longer need from the workflow card or the
 detail view.
 
-.. image:: /images/enterprise/workflows/cloning.gif
+.. image:: /images/enterprise/workflows/workflows_clone_delete.gif
    :alt: Cloning a workflow to reuse its pipeline
 
 Viewing Tasks
@@ -148,7 +148,7 @@ Viewing Tasks
 Each workflow has a **Tasks** tab listing every task the workflow has
 generated, so you can see work across the whole pipeline in one place.
 
-.. image:: /images/enterprise/workflows/view tasks.png
+.. image:: /images/enterprise/workflows/workflows_tasks_tab.png
    :alt: Workflow Tasks tab listing all tasks
 
 ----
@@ -179,7 +179,7 @@ You and your teammates can leave comments, edit or delete your own, and
 moderate the thread — keeping the conversation attached to the work
 itself.
 
-.. image:: /images/enterprise/workflows/discussion.png
+.. image:: /images/enterprise/workflows/workflows_discussion.png
    :alt: Discussion panel with comment thread on a sample
 
 Annotating
@@ -191,7 +191,7 @@ to save your work and advance, or **Skip** to move on without labeling
 indicator (for example, *"5 / 501 samples · 496 left"*) tracks how many
 samples remain.
 
-.. image:: /images/enterprise/workflows/annotate task.gif
+.. image:: /images/enterprise/workflows/workflows_annotate_task.gif
    :alt: Annotating a sample with Submit & next and Skip
 
 Reviewing
@@ -204,5 +204,5 @@ and resubmitted. The task progress (for example, *"2 / 2 samples reviewed · 0 r
 (1 rejected)"*) reflects outcomes, and you complete the task with
 **Task complete** once all samples have been reviewed.
 
-.. image:: /images/enterprise/workflows/review stage.png
+.. image:: /images/enterprise/workflows/workflows_review_task.png
    :alt: Review task mode showing APPROVED and REJECTED badges on a grid
