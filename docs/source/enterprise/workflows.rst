@@ -144,6 +144,9 @@ detail view.
 .. image:: /images/enterprise/workflows/workflows_clone_delete.gif
    :alt: Cloning a workflow to reuse its pipeline
 
+.. image:: /images/enterprise/workflows/workflows_delete.png
+   :alt: Delete workflow button on a workflow card
+
 Viewing Tasks
 ~~~~~~~~~~~~~
 
@@ -170,11 +173,17 @@ When you open a sample as part of a task, the sample modal adds three
 surfaces alongside the usual viewer:
 
 **Task banner.** Displays task progress at a glance, along with a
-**Resume work** button to jump back into the task and a link to
+**Resume labeling** button to jump back into the task and a link to
 **View workflow** for the full pipeline context.
 
+.. image:: /images/enterprise/workflows/workflows_task_banner.png
+   :alt: Task banner showing progress, Resume labeling, and View workflow
+
 **Task progress.** Shows how many samples have been completed out of the
-total assigned to the task (for example, *"5 / 501 samples · 496 left"*).
+total assigned to the task (for example, *"5 / 501 samples"*).
+
+.. image:: /images/enterprise/workflows/workflows_task_progress.png
+   :alt: Task progress bar with Skip and Submit & next buttons
 
 **Discussion.** An in-app comment thread on the sample and its labels.
 You and your teammates can leave comments, edit or delete your own, and
