@@ -1,4 +1,3 @@
-import { ModalMode } from "@fiftyone/state";
 import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import {
@@ -36,9 +35,8 @@ const buildDetection = (
   }) as ReconciledDetection3D;
 
 describe("point-cloud crop", () => {
-  it("creates a crop from selected cuboids outside annotate mode", () => {
+  it("creates a crop from a selected cuboid", () => {
     const crop = getSelectedCuboidPointCloudCrop({
-      mode: ModalMode.EXPLORE,
       renderModel: { detections: [buildDetection()], polylines: [] },
       selectedLabelId: "detection-1",
     });
@@ -86,14 +84,12 @@ describe("point-cloud crop", () => {
 
     expect(
       getSelectedCuboidPointCloudCrop({
-        mode: ModalMode.ANNOTATE,
         renderModel,
         selectedLabelId: null,
       }),
     ).toBeNull();
     expect(
       getSelectedCuboidPointCloudCrop({
-        mode: ModalMode.ANNOTATE,
         renderModel,
         selectedLabelId: "polyline-1",
       }),
@@ -295,7 +291,6 @@ describe("point-cloud crop", () => {
     };
 
     const crop = getSelectedCuboidPointCloudCrop({
-      mode: ModalMode.ANNOTATE,
       renderModel: deriveRenderModel(workingDoc, transient),
       selectedLabelId: detection._id,
       margin: 0,
@@ -314,7 +309,6 @@ describe("point-cloud crop", () => {
   it("derives a raycast crop from cuboid labels", () => {
     const detection = buildDetection();
     const crop = getCuboidPointCloudCrop({
-      mode: ModalMode.ANNOTATE,
       renderModel: { detections: [detection], polylines: [] },
       labelId: detection._id,
       margin: 1,
@@ -343,7 +337,6 @@ describe("point-cloud crop", () => {
 
     expect(
       getSelectedCuboidPointCloudCrop({
-        mode: ModalMode.ANNOTATE,
         renderModel,
         selectedLabelId: "polyline-1",
       }),

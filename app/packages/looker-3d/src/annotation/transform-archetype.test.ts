@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canTransformArchetypeUseMode,
   getSelectedTransformArchetype,
-} from "./transform-shortcuts";
+} from "./transform-archetype";
 
 const selectedCuboid = {
   _id: "cuboid-id",

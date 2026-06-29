@@ -41,7 +41,7 @@ import {
 import {
   canTransformArchetypeUseMode,
   getSelectedTransformArchetype,
-} from "../transform-shortcuts";
+} from "../transform-archetype";
 import type { ToolbarActionGroup, TransformMode } from "../types";
 import { AnnotationPlaneTooltip } from "./AnnotationPlaneTooltip";
 import {
@@ -67,7 +67,18 @@ const createCoordinateAction = (customComponent: React.ReactNode) => ({
   ],
 });
 
+// Several of these shortcuts share a key with non-annotation bindings, so each
+// one carries an explicit priority and an enablement guard and the command bus
+// runs the highest-priority *enabled* command for that key.
+//
+// The transform keys (t = translate, r = rotate, s = scale) double as viewer
+// shortcuts — `t` also frames the top view and `s` also toggles the sidebar —
+// so they sit just above the default priority and win only while a transform
+// target is selected; otherwise they fall through to the viewer shortcuts.
 const TRANSFORM_SHORTCUT_PRIORITY = 100;
+// Escape is claimed by several handlers at once, so its priorities form a
+// ladder from most- to least-specific: cancel an in-progress segment/cuboid
+// first, else deselect a polyline vertex, else exit edit mode and deselect.
 const ACTIVE_ESCAPE_SHORTCUT_PRIORITY = 300;
 const SELECTED_VERTEX_ESCAPE_SHORTCUT_PRIORITY = 200;
 const EXIT_EDIT_ESCAPE_SHORTCUT_PRIORITY = 100;

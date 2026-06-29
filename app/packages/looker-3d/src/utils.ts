@@ -243,7 +243,7 @@ export const getCuboidForwardFaceBasePoint = ({
 
 export type Vector3Input = Vector3 | Vector3Tuple;
 
-export const MIN_VECTOR_DISTANCE_SQUARED = 1e-8;
+const MIN_VECTOR_DISTANCE_SQUARED = 1e-8;
 
 export const toVector3 = (value: Vector3Input) => {
   if (value instanceof Vector3) {

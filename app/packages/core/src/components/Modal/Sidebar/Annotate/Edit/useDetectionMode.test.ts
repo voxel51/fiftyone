@@ -39,7 +39,6 @@ import {
   createMockAnnotationContext,
   createMockScene,
   type MockAnnotationContext,
-  type MockAnnotationContextSelected,
   type MockScene,
 } from "./__testing__/mocks";
 
@@ -54,23 +53,6 @@ const store = getDefaultStore();
 const annotationContext = () => refs.annotationContext as MockAnnotationContext;
 const scene = () => refs.scene as MockScene;
 const onExit = () => refs.onExit as ReturnType<typeof vi.fn>;
-
-const createSelectedDetection = (
-  overrides?: Partial<MockAnnotationContextSelected>,
-): MockAnnotationContextSelected => ({
-  label: { type: "Detection", data: {} },
-  data: {},
-  field: null,
-  type: "Detection",
-  overlay: null,
-  schema: null,
-  savedData: null,
-  isEditingMask: false,
-  isNew: false,
-  hasChanges: false,
-  isFieldReadOnly: false,
-  ...overrides,
-});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -170,7 +152,10 @@ describe("useDetectionMode", () => {
   describe("auto-activation", () => {
     it("activates when a non-mask Detection label is selected", () => {
       refs.annotationContext = createMockAnnotationContext({
-        selected: createSelectedDetection(),
+        selected: {
+          label: { type: "Detection", data: {} },
+          type: "Detection",
+        },
       });
 
       const { result } = renderHook(() => useDetectionMode());
@@ -180,9 +165,10 @@ describe("useDetectionMode", () => {
 
     it("does NOT activate when the selected Detection has a mask", () => {
       refs.annotationContext = createMockAnnotationContext({
-        selected: createSelectedDetection({
+        selected: {
           label: { type: "Detection", data: { mask: {} } },
-        }),
+          type: "Detection",
+        },
       });
 
       const { result } = renderHook(() => useDetectionMode());
@@ -192,9 +178,11 @@ describe("useDetectionMode", () => {
 
     it("does NOT activate while mid-mask-authoring", () => {
       refs.annotationContext = createMockAnnotationContext({
-        selected: createSelectedDetection({
+        selected: {
+          label: { type: "Detection", data: {} },
+          type: "Detection",
           isEditingMask: true,
-        }),
+        },
       });
 
       const { result } = renderHook(() => useDetectionMode());

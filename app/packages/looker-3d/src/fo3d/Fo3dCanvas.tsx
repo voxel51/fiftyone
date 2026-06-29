@@ -193,22 +193,17 @@ const MainPanelOrbitControlsSync = ({
     });
   }, [cameraControlsRef, sceneBoundingBox]);
 
-  // This effect re-syncs the OrbitControls config (zoom/pan speed, min
-  // distance) whenever the sync callback changes, i.e. when the camera
-  // controls ref or scene bounding box changes.
-  useEffect(() => {
-    syncControls();
-  }, [syncControls]);
-
-  // This effect keeps the controls config in sync on every OrbitControls
-  // "change" event (e.g. zoom/pan/rotate), re-subscribing when the callback
-  // identity changes.
+  // This effect syncs the OrbitControls config (zoom/pan speed, min distance)
+  // once when the callback changes, then keeps it in sync on every "change"
+  // event (zoom/pan/rotate). It re-runs when the controls ref or scene bounding
+  // box changes (both fold into the syncControls identity).
   useEffect(() => {
     const controls = cameraControlsRef.current;
     if (!controls) {
       return undefined;
     }
 
+    syncControls();
     controls.addEventListener("change", syncControls);
 
     return () => {

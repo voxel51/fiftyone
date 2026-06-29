@@ -1,3 +1,16 @@
+/**
+ * Camera math for the 3D annotation side panels (top/front/right/…). It derives
+ * each cardinal view's orthographic camera "frame" (position, target, up, view
+ * direction) and keeps those panels in sync with the perspective main panel.
+ *
+ * Rather than coupling the cameras directly, main↔side sync uses a small
+ * timestamped "intent" protocol: the main panel publishes zoom/pan intents
+ * anchored at a raycast world point, and each side panel applies one only while
+ * it is fresh (`*_MAX_AGE_MS`) and its anchor is permitted by the active
+ * point-cloud crop. Zoom is matched by visible-world-height so an object looks
+ * the same size in every panel, and a cuboid's heading (yaw about the scene up)
+ * can be folded into a frame so the box reads axis-aligned across views.
+ */
 import * as THREE from "three";
 import {
   PANEL_ID_MAIN,
@@ -147,20 +160,10 @@ export interface SidePanelCameraUpdate {
   zoom: number;
 }
 
-type SidePanelProjectionCamera = THREE.Camera & {
-  near: number;
-  far: number;
-  updateProjectionMatrix: () => void;
-};
-
 const POINT_CLOUD_CROP_NDC_PADDING = 0.86;
 const getFiniteControlZoomLimit = (value: unknown, fallback: number) => {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 };
-
-// Any FO3D camera (perspective or orthographic) exposes near/far + projection.
-const getProjectionCamera = (camera: THREE.Camera) =>
-  camera as SidePanelProjectionCamera;
 
 const getOrthographicCamera = (camera: THREE.Camera) => {
   const maybeOrthographic = camera as THREE.OrthographicCamera & {
@@ -317,7 +320,7 @@ const resolveSidePanelCameraDistance = ({
   return DEFAULT_SIDE_PANEL_CAMERA_DISTANCE;
 };
 
-export const getSidePanelViewDirection = (
+const getSidePanelViewDirection = (
   viewType: SidePanelViewType,
   upVector: THREE.Vector3,
 ) => {
@@ -359,59 +362,43 @@ export const getSidePanelViewDirection = (
   }
 };
 
-export const getSidePanelCameraUp = (
+const getSidePanelCameraUp = (
   viewType: SidePanelViewType,
   upVector: THREE.Vector3,
 ) => {
   const upDir = upVector.clone().normalize();
 
-  switch (viewType) {
-    case VIEW_TYPE_TOP:
-    case VIEW_TYPE_BOTTOM: {
-      let candidate: THREE.Vector3;
-
-      if (Math.abs(upDir.y) > AXIS_ALIGNMENT_THRESHOLD) {
-        candidate = new THREE.Vector3(0, 0, 1);
-      } else if (Math.abs(upDir.z) > AXIS_ALIGNMENT_THRESHOLD) {
-        candidate = new THREE.Vector3(0, 1, 0);
-      } else if (Math.abs(upDir.x) > AXIS_ALIGNMENT_THRESHOLD) {
-        candidate = new THREE.Vector3(0, 1, 0);
-      } else {
-        const temp = new THREE.Vector3(0, 1, 0);
-        if (Math.abs(upDir.dot(temp)) > AXIS_ALIGNMENT_THRESHOLD) {
-          temp.set(1, 0, 0);
-        }
-        candidate = new THREE.Vector3().crossVectors(temp, upDir).normalize();
-      }
-
-      const projection = candidate
-        .clone()
-        .sub(upDir.clone().multiplyScalar(candidate.dot(upDir)))
-        .normalize();
-      const topUp =
-        projection.length() > MIN_DERIVED_UP_LENGTH
-          ? projection
-          : new THREE.Vector3(0, 0, 1);
-
-      if (viewType === VIEW_TYPE_TOP) {
-        return topUp;
-      }
-
-      const right = new THREE.Vector3().crossVectors(topUp, upDir).normalize();
-      const bottomUp = new THREE.Vector3()
-        .crossVectors(right, upDir.clone().negate())
-        .normalize();
-
-      return bottomUp.length() > MIN_DERIVED_UP_LENGTH ? bottomUp : topUp;
-    }
-    case VIEW_TYPE_LEFT:
-    case VIEW_TYPE_RIGHT:
-    case VIEW_TYPE_FRONT:
-    case VIEW_TYPE_BACK:
-      return upDir.clone();
-    default:
-      return upDir.clone();
+  // Side views keep the scene's up as the camera up. Top and bottom look along
+  // the up axis and need an in-plane "up" instead; both share the same vector
+  // (bottom differs only in its view direction, computed elsewhere).
+  if (viewType !== VIEW_TYPE_TOP && viewType !== VIEW_TYPE_BOTTOM) {
+    return upDir.clone();
   }
+
+  let candidate: THREE.Vector3;
+  if (Math.abs(upDir.y) > AXIS_ALIGNMENT_THRESHOLD) {
+    candidate = new THREE.Vector3(0, 0, 1);
+  } else if (
+    Math.abs(upDir.z) > AXIS_ALIGNMENT_THRESHOLD ||
+    Math.abs(upDir.x) > AXIS_ALIGNMENT_THRESHOLD
+  ) {
+    candidate = new THREE.Vector3(0, 1, 0);
+  } else {
+    const temp = new THREE.Vector3(0, 1, 0);
+    if (Math.abs(upDir.dot(temp)) > AXIS_ALIGNMENT_THRESHOLD) {
+      temp.set(1, 0, 0);
+    }
+    candidate = new THREE.Vector3().crossVectors(temp, upDir).normalize();
+  }
+
+  const projection = candidate
+    .clone()
+    .sub(upDir.clone().multiplyScalar(candidate.dot(upDir)))
+    .normalize();
+
+  return projection.length() > MIN_DERIVED_UP_LENGTH
+    ? projection
+    : new THREE.Vector3(0, 0, 1);
 };
 
 export const deriveSidePanelCameraFrame = ({
@@ -529,14 +516,14 @@ export const applySidePanelCameraFrame = ({
   frame,
   invalidate,
 }: ApplySidePanelCameraFrameOptions) => {
-  const projectionCamera = getProjectionCamera(camera);
-
   camera.position.copy(frame.position);
   camera.up.copy(frame.up);
   controls?.target?.copy(frame.target);
   camera.lookAt(frame.target);
   camera.updateMatrixWorld();
-  projectionCamera.updateProjectionMatrix();
+  (
+    camera as THREE.Camera & { updateProjectionMatrix?: () => void }
+  ).updateProjectionMatrix?.();
   controls?.update?.();
   invalidate?.();
 };
@@ -735,11 +722,6 @@ const applyMainPanelZoomSyncToOrthographicCamera = ({
     camera,
     visibleWorldHeightAtAnchor,
   );
-  const nextZoom = THREE.MathUtils.clamp(
-    targetZoom ?? orthographicCamera.zoom * zoomRatio,
-    minZoom,
-    maxZoom,
-  );
   const update = controls?.target
     ? deriveSidePanelCameraUpdateFromMainViewer({
         currentPosition: camera.position,
@@ -758,7 +740,11 @@ const applyMainPanelZoomSyncToOrthographicCamera = ({
     controls?.target?.copy(update.target);
     orthographicCamera.zoom = update.zoom;
   } else {
-    orthographicCamera.zoom = nextZoom;
+    orthographicCamera.zoom = THREE.MathUtils.clamp(
+      targetZoom ?? orthographicCamera.zoom * zoomRatio,
+      minZoom,
+      maxZoom,
+    );
   }
 
   orthographicCamera.updateProjectionMatrix();

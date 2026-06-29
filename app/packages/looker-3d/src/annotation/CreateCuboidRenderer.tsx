@@ -26,6 +26,7 @@ import {
 import { workingDocSelector } from "./store/working";
 import type { CuboidTransformData } from "./types";
 import { useSetEditingToNewCuboid } from "./useSetEditingToNewCuboid";
+import { roundTuple } from "./utils/rounding-utils";
 
 interface CreateCuboidRendererProps {
   color?: string;
@@ -185,31 +186,12 @@ export const CreateCuboidRenderer = ({
           getScenePointClouds(),
         );
 
-        const location: THREE.Vector3Tuple = [
-          Number(fittedCuboid.location[0].toFixed(7)),
-          Number(fittedCuboid.location[1].toFixed(7)),
-          Number(fittedCuboid.location[2].toFixed(7)),
-        ];
-
-        const dimensions: THREE.Vector3Tuple = [
-          Number(fittedCuboid.dimensions[0].toFixed(7)),
-          Number(fittedCuboid.dimensions[1].toFixed(7)),
-          Number(fittedCuboid.dimensions[2].toFixed(7)),
-        ];
-
-        const quaternion: [number, number, number, number] = [
-          Number(previewCuboid.quaternion[0].toFixed(7)),
-          Number(previewCuboid.quaternion[1].toFixed(7)),
-          Number(previewCuboid.quaternion[2].toFixed(7)),
-          Number(previewCuboid.quaternion[3].toFixed(7)),
-        ];
-
         const labelClass = getDefaultLabel(currentActiveField, workingDoc);
 
         const transformData: CuboidTransformData = {
-          location,
-          dimensions,
-          quaternion,
+          location: roundTuple(fittedCuboid.location),
+          dimensions: roundTuple(fittedCuboid.dimensions),
+          quaternion: roundTuple(previewCuboid.quaternion),
         };
 
         createCuboid(labelId, transformData, currentActiveField, labelClass);

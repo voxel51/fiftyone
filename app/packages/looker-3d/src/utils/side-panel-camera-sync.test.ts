@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   PANEL_ID_MAIN,
   PANEL_ID_SIDE_TOP,
+  VIEW_TYPE_BOTTOM,
   VIEW_TYPE_FRONT,
   VIEW_TYPE_TOP,
 } from "../constants";
@@ -80,6 +81,28 @@ describe("side panel camera sync", () => {
     expect(frame.position.toArray()).toEqual([1, 2, 13]);
     expect(frame.target.toArray()).toEqual([1, 2, 3]);
     expect(frame.up.toArray()).toEqual([0, 1, 0]);
+  });
+
+  it("looks at the bottom view along -up while sharing the top view's up", () => {
+    const top = deriveSidePanelCameraFrame({
+      distance: 10,
+      target: new Vector3(0, 0, 0),
+      upVector: new Vector3(0, 1, 0),
+      viewType: VIEW_TYPE_TOP,
+    });
+    const bottom = deriveSidePanelCameraFrame({
+      distance: 10,
+      target: new Vector3(0, 0, 0),
+      upVector: new Vector3(0, 1, 0),
+      viewType: VIEW_TYPE_BOTTOM,
+    });
+
+    // Bottom looks back along the up axis (opposite the top view) ...
+    expect(top.direction.toArray()).toEqual([0, 1, 0]);
+    expect(bottom.direction.dot(top.direction)).toBe(-1);
+    // ... but keeps the same camera up so geometry stays aligned across views.
+    expect(bottom.up.toArray()).toEqual([0, 0, 1]);
+    expect(bottom.up.toArray()).toEqual(top.up.toArray());
   });
 
   it("keeps fallback side-panel frames centered on the provided target", () => {

@@ -908,11 +908,7 @@ export const Cuboid = ({
 
   const beginFaceResize = useCallback(
     (e: ThreeEvent<PointerEvent>, face: CuboidResizeFace | null) => {
-      if (!canFaceResize) {
-        return;
-      }
-
-      if (!face) {
+      if (!canFaceResize || !face) {
         return;
       }
 

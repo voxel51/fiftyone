@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { getPanelElementId } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { useActiveCursorPanel, useSetRaycastResult } from "../state";
+import { EMPTY_RAYCAST_RESULT } from "../types";
 import type { PanelId } from "../types";
 import { toNDCForElement } from "../utils";
 import type { PointCloudCrop } from "../utils/point-cloud-crop";
@@ -88,17 +89,7 @@ export const RaycastService = ({
 
       if (visibleIntersections.length === 0) {
         // No object hit - clear raycast result
-        setRaycastResult({
-          sourcePanel: null,
-          worldPosition: null,
-          visibleWorldHeightAtPoint: null,
-          intersectedObjectUuid: null,
-          intersectedLabelId: null,
-          isPointCloud: false,
-          pointIndex: null,
-          distance: null,
-          timestamp: Date.now(),
-        });
+        setRaycastResult({ ...EMPTY_RAYCAST_RESULT, timestamp: Date.now() });
         return;
       }
 
@@ -147,17 +138,7 @@ export const RaycastService = ({
   // This effect clears stale raycast result when the cursor leaves all panels
   useEffect(() => {
     if (activeCursorPanel === null) {
-      setRaycastResult({
-        sourcePanel: null,
-        worldPosition: null,
-        visibleWorldHeightAtPoint: null,
-        intersectedObjectUuid: null,
-        intersectedLabelId: null,
-        isPointCloud: false,
-        pointIndex: null,
-        distance: null,
-        timestamp: Date.now(),
-      });
+      setRaycastResult({ ...EMPTY_RAYCAST_RESULT, timestamp: Date.now() });
     }
   }, [activeCursorPanel, setRaycastResult]);
 

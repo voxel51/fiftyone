@@ -32,7 +32,7 @@ import type {
   RaycastResult,
   ShadeBy,
 } from "../types";
-import { Archetype3d, LoadingStatus } from "../types";
+import { Archetype3d, EMPTY_RAYCAST_RESULT, LoadingStatus } from "../types";
 
 // =============================================================================
 // GENERAL 3D
@@ -377,17 +377,7 @@ export const isFo3dPointCropModifierPressedAtom = atom<boolean>({
  */
 export const raycastResultAtom = atom<RaycastResult>({
   key: "fo3d-raycastResult",
-  default: {
-    sourcePanel: null,
-    worldPosition: null,
-    visibleWorldHeightAtPoint: null,
-    intersectedObjectUuid: null,
-    intersectedLabelId: null,
-    isPointCloud: false,
-    pointIndex: null,
-    distance: null,
-    timestamp: 0,
-  },
+  default: EMPTY_RAYCAST_RESULT,
 });
 
 export const mainPanelZoomSyncIntentAtom = atom<MainPanelZoomSyncIntent | null>(

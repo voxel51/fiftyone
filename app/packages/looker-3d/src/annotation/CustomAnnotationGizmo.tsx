@@ -14,6 +14,8 @@ const AXIS_LENGTH = 42;
 const NEGATIVE_AXIS_LENGTH = 28;
 const IDENTITY_QUATERNION = new THREE.Quaternion();
 
+// X/Y/Z colors match drei's (three.js') TransformControls gizmo so this custom
+// overlay reads as the same axes users see on the in-scene transform handles.
 const WORLD_AXES = [
   {
     color: "#ff2060",

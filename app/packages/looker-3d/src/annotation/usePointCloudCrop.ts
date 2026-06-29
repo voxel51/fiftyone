@@ -56,6 +56,9 @@ export const usePointCloudCrop = ({
   const margin = pointCloudSettings.selectedCuboidCropMargin;
   const useLegacyCoordinates = pluginSettings?.useLegacyCoordinates;
 
+  // Explore mode has no working doc, so the crop sources from the on-screen 3D
+  // detection overlays of the active sample(s). Annotate mode sources from the
+  // working doc (see `cropRenderModel`), so this stays empty there.
   const exploreRenderModel = useMemo<RenderModel>(() => {
     if (mode === fos.ModalMode.ANNOTATE) {
       return { detections: [], polylines: [] };
@@ -81,6 +84,7 @@ export const usePointCloudCrop = ({
     [exploreRenderModel, hoveredLabel?.id, selectedLabels],
   );
 
+  // Annotate edits the working doc; explore reads the loaded overlays.
   const cropRenderModel =
     mode === fos.ModalMode.ANNOTATE ? renderModel : exploreRenderModel;
   const selectedCuboidId =
@@ -96,6 +100,10 @@ export const usePointCloudCrop = ({
     return getCuboidCreationPreview(cuboidCreationState, annotationPlane);
   }, [annotationPlane, cuboidCreationState, isCreatingCuboid]);
 
+  // Resolve the single active crop by precedence:
+  //   1. the cuboid currently being drawn (creation preview),
+  //   2. a transient raycast "hover" crop (see below),
+  //   3. the currently selected cuboid.
   return useMemo(() => {
     if (!enabled) {
       return null;
@@ -109,6 +117,10 @@ export const usePointCloudCrop = ({
       );
     }
 
+    // Hover-to-crop: while the modifier is held and the cursor is over the main
+    // panel (but not dragging the camera), preview the crop under the cursor —
+    // the hovered cuboid if there is one, otherwise a box around the hovered
+    // point-cloud point.
     if (
       mode === fos.ModalMode.ANNOTATE &&
       !isMainPanelPointerDown &&
@@ -116,7 +128,6 @@ export const usePointCloudCrop = ({
       raycastResult.sourcePanel === PANEL_ID_MAIN
     ) {
       const raycastCuboidCrop = getCuboidPointCloudCrop({
-        mode,
         renderModel: cropRenderModel,
         labelId: raycastResult.intersectedLabelId,
         margin,
@@ -147,7 +158,6 @@ export const usePointCloudCrop = ({
     }
 
     return getSelectedCuboidPointCloudCrop({
-      mode,
       renderModel: cropRenderModel,
       selectedLabelId: selectedCuboidId,
       margin,
@@ -165,9 +175,7 @@ export const usePointCloudCrop = ({
     raycastResult.sourcePanel,
     raycastResult.visibleWorldHeightAtPoint,
     raycastResult.worldPosition,
-    renderModel,
     cropRenderModel,
-    selectedLabel?._id,
     selectedCuboidId,
     upVector,
     useLegacyCoordinates,

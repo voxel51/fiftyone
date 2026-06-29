@@ -8,7 +8,7 @@ import { useWorkingLabel } from "../annotation/store";
 import {
   canTransformArchetypeUseMode,
   getSelectedTransformArchetype,
-} from "../annotation/transform-shortcuts";
+} from "../annotation/transform-archetype";
 import type {
   ReconciledDetection3D,
   ReconciledPolyline3D,

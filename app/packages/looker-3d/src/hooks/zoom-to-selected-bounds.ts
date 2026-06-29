@@ -9,10 +9,6 @@ import {
   type Vector4Tuple,
 } from "three";
 import type { RenderModel } from "../annotation/store";
-import type {
-  ReconciledDetection3D,
-  ReconciledPolyline3D,
-} from "../annotation/types";
 import { isFiniteVector3 } from "../utils";
 
 type SampleMap = Record<string, fos.ModalSample>;
@@ -44,8 +40,6 @@ const isFiniteVector4Tuple = (value: unknown): value is Vector4Tuple =>
 
 const getLabelId = (label: SelectedLabelLike) =>
   label.labelId ?? label._id ?? label.id;
-
-const getLabelPath = (label: SelectedLabelLike) => label.field ?? label.path;
 
 const doesLabelIdMatch = (label: LabelWithId, labelId?: string) => {
   if (!labelId) {
@@ -132,9 +126,7 @@ export const extractSelectedLabel = (
   return null;
 };
 
-const getLabelQuaternion = (
-  label: ReconciledDetection3D | Record<string, unknown>,
-) => {
+const getLabelQuaternion = (label: Record<string, unknown>) => {
   if (isFiniteVector4Tuple(label.quaternion)) {
     return new Quaternion(...label.quaternion);
   }
@@ -147,7 +139,7 @@ const getLabelQuaternion = (
 };
 
 const createCuboidBoundingBox = (
-  label: ReconciledDetection3D | Record<string, unknown>,
+  label: Record<string, unknown>,
   { useLegacyCoordinates = false }: { useLegacyCoordinates?: boolean } = {},
 ): Box3 | null => {
   if (
@@ -197,7 +189,7 @@ const createCuboidBoundingBox = (
 };
 
 const createPolylineBoundingBox = (
-  label: ReconciledPolyline3D | Record<string, unknown>,
+  label: Record<string, unknown>,
 ): Box3 | null => {
   if (!Array.isArray(label.points3d)) {
     return null;
@@ -284,7 +276,7 @@ const findSampleForSelection = (
   return interactionSample;
 };
 
-export const resolveSelectedLabelBoundingBox = ({
+const resolveSelectedLabelBoundingBox = ({
   selectedLabel,
   interactionSample,
   activeSampleMap,
@@ -296,7 +288,7 @@ export const resolveSelectedLabelBoundingBox = ({
   useLegacyCoordinates?: boolean;
 }) => {
   const labelId = getLabelId(selectedLabel);
-  const labelPath = getLabelPath(selectedLabel);
+  const labelPath = selectedLabel.field ?? selectedLabel.path;
   const sample = findSampleForSelection(
     selectedLabel,
     interactionSample,

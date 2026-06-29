@@ -188,6 +188,19 @@ export interface RaycastResult {
   timestamp: number;
 }
 
+/** A raycast result with no hit; callers stamp their own `timestamp`. */
+export const EMPTY_RAYCAST_RESULT: RaycastResult = {
+  sourcePanel: null,
+  worldPosition: null,
+  visibleWorldHeightAtPoint: null,
+  intersectedObjectUuid: null,
+  intersectedLabelId: null,
+  isPointCloud: false,
+  pointIndex: null,
+  distance: null,
+  timestamp: 0,
+};
+
 export interface MainPanelZoomSyncIntent {
   id: string;
   anchor: [number, number, number];

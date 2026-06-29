@@ -42,24 +42,33 @@ export const getCuboidCreationPreview = (
   const localY = new THREE.Vector3(0, 1, 0).applyQuaternion(planeQuaternion);
   const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(planeQuaternion);
 
-  if (step === 1) {
-    // The first click anchors one edge of the cuboid; the box grows from there
-    // toward the cursor only (its length axis runs center -> current), so the
-    // far edge tracks the cursor instead of ballooning out both ways.
-    const directionVector = current.clone().sub(center);
-    const directionLength = directionVector.length();
-    const length = Math.max(directionLength, MIN_DIMENSION);
+  // Both steps anchor the box at the first click and grow it toward a target
+  // (the cursor in step 1, the committed orientation point in step 2): the
+  // length axis runs center -> target, so the far edge tracks the target
+  // instead of ballooning out both ways.
+  const deriveHeading = (target: THREE.Vector3) => {
+    const direction = target.clone().sub(center);
+    const directionLength = direction.length();
     const lengthDirection =
       directionLength > MIN_PERPENDICULAR_LENGTH
-        ? directionVector.clone().normalize()
+        ? direction.clone().normalize()
         : localX.clone();
-    const finalQuaternion = computeYawQuaternion(
+
+    return {
+      length: Math.max(directionLength, MIN_DIMENSION),
       lengthDirection,
-      localX,
-      localY,
-      normal,
-      planeQuaternion,
-    );
+      quaternion: computeYawQuaternion(
+        lengthDirection,
+        localX,
+        localY,
+        normal,
+        planeQuaternion,
+      ),
+    };
+  };
+
+  if (step === 1) {
+    const { length, lengthDirection, quaternion } = deriveHeading(current);
     const cuboidCenter = center
       .clone()
       .addScaledVector(lengthDirection, length / 2);
@@ -67,49 +76,35 @@ export const getCuboidCreationPreview = (
     return {
       location: cuboidCenter.toArray() as THREE.Vector3Tuple,
       dimensions: [length, MIN_DIMENSION, DEFAULT_HEIGHT],
-      quaternion: finalQuaternion.toArray() as [number, number, number, number],
+      quaternion: quaternion.toArray() as [number, number, number, number],
     };
   }
 
   if (step === 2 && orientationPoint) {
-    const orientation = new THREE.Vector3(...orientationPoint);
-    // Length is anchored from the first click to the orientation point.
-    const directionVector = orientation.clone().sub(center);
-    const directionLength = directionVector.length();
-    const length = Math.max(directionLength, MIN_DIMENSION);
-    const centerToOrientation =
-      directionLength > MIN_PERPENDICULAR_LENGTH
-        ? directionVector.clone().normalize()
-        : localX.clone();
-    const finalQuaternion = computeYawQuaternion(
-      centerToOrientation,
-      localX,
-      localY,
-      normal,
-      planeQuaternion,
+    const { length, lengthDirection, quaternion } = deriveHeading(
+      new THREE.Vector3(...orientationPoint),
     );
-    const centerToCurrent = current.clone().sub(center);
-    const projection = centerToOrientation
-      .clone()
-      .multiplyScalar(centerToCurrent.dot(centerToOrientation));
-    const perpendicular = centerToCurrent.clone().sub(projection);
-    const perpendicularLength = perpendicular.length();
-    const width = Math.max(perpendicularLength, MIN_DIMENSION);
     const cuboidCenter = center
       .clone()
-      .addScaledVector(centerToOrientation, length / 2);
+      .addScaledVector(lengthDirection, length / 2);
 
     // Width grows from the length axis toward the cursor side only, so the
     // anchored edge stays put while the opposite face tracks the cursor.
+    const perpendicular = current
+      .clone()
+      .sub(center)
+      .projectOnPlane(lengthDirection);
+    const perpendicularLength = perpendicular.length();
+    const width = Math.max(perpendicularLength, MIN_DIMENSION);
+
     if (perpendicularLength > MIN_PERPENDICULAR_LENGTH) {
-      const perpendicularDirection = perpendicular.clone().normalize();
-      cuboidCenter.add(perpendicularDirection.multiplyScalar(width / 2));
+      cuboidCenter.addScaledVector(perpendicular.normalize(), width / 2);
     }
 
     return {
       location: cuboidCenter.toArray() as THREE.Vector3Tuple,
       dimensions: [length, width, DEFAULT_HEIGHT],
-      quaternion: finalQuaternion.toArray() as [number, number, number, number],
+      quaternion: quaternion.toArray() as [number, number, number, number],
     };
   }
 
