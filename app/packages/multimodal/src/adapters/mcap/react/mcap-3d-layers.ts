@@ -1,0 +1,211 @@
+import { Quaternion, Vector3 } from "three";
+import type { PointCloudVisualization } from "../../../decoders";
+import type {
+  PointCloudFrameTransform,
+  PointCloudPanelLayer,
+} from "../../../visualization/panels/point-cloud";
+import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
+import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
+
+/**
+ * Resolution of one source frame into the world frame for placement.
+ * `pending` means "not resolvable yet" (frames/time/window still loading) and
+ * the layer can still render in its source frame; `missing` means the data is
+ * loaded but no path exists and the cloud should be dropped with a warning.
+ */
+type FrameTransformResolution =
+  | {
+      readonly maxInterpolationGapNs?: bigint;
+      readonly status: "resolved";
+      readonly transform: PointCloudFrameTransform;
+    }
+  | { readonly status: "pending" }
+  | { readonly status: "missing" };
+
+export interface Mcap3dTransformGapWarning {
+  readonly frameId: string;
+  readonly gapNs: bigint;
+}
+
+/**
+ * Builds the point-cloud layers for the 3D tile, transforming each cloud into
+ * the chosen world frame. Clouds that cannot be placed *yet* (transforms still
+ * loading) render in their own frame when callers choose to draw through
+ * pending state; clouds with no resolvable path to the world frame are dropped
+ * and reported through `unresolvedFrameIds`.
+ */
+export function build3dLayers({
+  frameTransforms,
+  frames,
+  largeInterpolationGapWarningNs = 0n,
+  selectedTopics,
+  worldFrameId,
+}: {
+  readonly frameTransforms: McapFrameTransformsState;
+  readonly frames: readonly (McapTopicPlaybackFrame<PointCloudVisualization> | null)[];
+  readonly largeInterpolationGapWarningNs?: bigint;
+  readonly selectedTopics: readonly string[];
+  readonly worldFrameId: string;
+}) {
+  const pointCloudLayers: PointCloudPanelLayer[] = [];
+  const clampedFrameIds = new Set<string>();
+  const largeInterpolationGapsByFrameId = new Map<string, bigint>();
+  const unresolvedFrameIds = new Set<string>();
+  const transformCache = new Map<string, FrameTransformResolution>();
+  const resolveCachedFrameTransform = (
+    sourceFrameId: string,
+    requestedTimeNs: bigint,
+  ) => {
+    const cacheKey = `${sourceFrameId}:${requestedTimeNs.toString()}`;
+    const cached = transformCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const resolution = resolveFrameTransform({
+      frameTransforms,
+      sourceFrameId,
+      timeNs: requestedTimeNs,
+      clampedFrameIds,
+      largeInterpolationGapWarningNs,
+      largeInterpolationGapsByFrameId,
+      unresolvedFrameIds,
+      worldFrameId,
+    });
+    transformCache.set(cacheKey, resolution);
+
+    return resolution;
+  };
+
+  selectedTopics.forEach((topic, index) => {
+    const playbackFrame = frames[index];
+    if (!playbackFrame) {
+      return;
+    }
+
+    const frame = playbackFrame.frame;
+    if (!frame.coordinateFrameId) {
+      // Frameless cloud: nothing to transform, render at the scene origin.
+      pointCloudLayers.push({ frame, id: topic });
+      return;
+    }
+
+    const resolution = resolveCachedFrameTransform(
+      frame.coordinateFrameId,
+      playbackFrame.contentTimeNs,
+    );
+    // Drop only genuinely unplaceable clouds (`missing`): the warning explains
+    // why. A `pending` transform still renders in the source frame for callers
+    // that choose to draw through pending placement.
+    if (resolution.status === "missing") {
+      return;
+    }
+
+    pointCloudLayers.push({
+      frame,
+      frameTransform:
+        resolution.status === "resolved" ? resolution.transform : undefined,
+      id: topic,
+    });
+  });
+
+  return {
+    clampedFrameIds: [...clampedFrameIds].sort(),
+    largeInterpolationGaps: [...largeInterpolationGapsByFrameId.entries()]
+      .map(([frameId, gapNs]) => ({ frameId, gapNs }))
+      .sort((left, right) => left.frameId.localeCompare(right.frameId)),
+    pointCloudLayers,
+    unresolvedFrameIds: [...unresolvedFrameIds].sort(),
+  };
+}
+
+function resolveFrameTransform({
+  frameTransforms,
+  largeInterpolationGapWarningNs,
+  largeInterpolationGapsByFrameId,
+  sourceFrameId,
+  timeNs,
+  clampedFrameIds,
+  unresolvedFrameIds,
+  worldFrameId,
+}: {
+  readonly frameTransforms: McapFrameTransformsState;
+  readonly largeInterpolationGapWarningNs: bigint;
+  readonly largeInterpolationGapsByFrameId: Map<string, bigint>;
+  readonly sourceFrameId: string;
+  readonly timeNs: bigint | undefined;
+  readonly clampedFrameIds: Set<string>;
+  readonly unresolvedFrameIds: Set<string>;
+  readonly worldFrameId: string;
+}): FrameTransformResolution {
+  // No world frame chosen yet (frames still loading). Treat as loading so the
+  // cloud renders in its own frame instead of vanishing.
+  if (!worldFrameId) {
+    return { status: "pending" };
+  }
+
+  if (sourceFrameId === worldFrameId) {
+    return {
+      status: "resolved",
+      transform: {
+        rotation: new Quaternion(),
+        sourceFrameId,
+        targetFrameId: worldFrameId,
+        translation: new Vector3(),
+      },
+    };
+  }
+
+  // Playback time not known yet: loading, not missing.
+  if (timeNs === undefined) {
+    return { status: "pending" };
+  }
+
+  const resolution = frameTransforms.resolve(
+    sourceFrameId,
+    worldFrameId,
+    timeNs,
+  );
+  if (resolution.status === "resolved") {
+    if (resolution.resolutionKind === "clamped") {
+      clampedFrameIds.add(sourceFrameId);
+    }
+    if (
+      largeInterpolationGapWarningNs > 0n &&
+      resolution.maxInterpolationGapNs !== undefined &&
+      resolution.maxInterpolationGapNs > largeInterpolationGapWarningNs
+    ) {
+      setMaxInterpolationGap(
+        largeInterpolationGapsByFrameId,
+        sourceFrameId,
+        resolution.maxInterpolationGapNs,
+      );
+    }
+    return {
+      ...(resolution.maxInterpolationGapNs !== undefined
+        ? { maxInterpolationGapNs: resolution.maxInterpolationGapNs }
+        : {}),
+      status: "resolved",
+      transform: resolution.transform,
+    };
+  }
+  if (resolution.status === "pending") {
+    return { status: "pending" };
+  }
+
+  // The transform window is loaded but no path connects this frame to the world
+  // frame. Surface it; the caller drops the cloud rather than draw it wrong.
+  unresolvedFrameIds.add(sourceFrameId);
+  return { status: "missing" };
+}
+
+function setMaxInterpolationGap(
+  gapsByFrameId: Map<string, bigint>,
+  frameId: string,
+  gapNs: bigint,
+) {
+  const current = gapsByFrameId.get(frameId);
+  if (current === undefined || gapNs > current) {
+    gapsByFrameId.set(frameId, gapNs);
+  }
+}

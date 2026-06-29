@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unknown-property */
 import { GizmoHelper, GizmoViewport, OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
+import * as THREE from "three";
 import {
   useCallback,
   useLayoutEffect,
@@ -17,6 +18,9 @@ const DEFAULT_AMBIENT_LIGHT_INTENSITY = 0.8;
 const GIZMO_MARGIN_PIXELS: [number, number] = [72, 72];
 const GIZMO_RENDER_PRIORITY = 1;
 const CAMERA_POSE_EPSILON = 0.000001;
+const DEFAULT_FOCUS_DIRECTION = new THREE.Vector3(1, -1, 0.75).normalize();
+const FOCUS_PADDING = 1.2;
+const MIN_FOCUS_RADIUS = 1;
 const Z_UP_AXIS = { x: 0, y: 0, z: 1 } as const;
 
 type VectorTuple = readonly [number, number, number];
@@ -32,9 +36,19 @@ type CameraHandle = {
   readonly position: MutableVectorHandle;
 };
 
+type FocusCameraHandle = CameraHandle & {
+  readonly isPerspectiveCamera?: boolean;
+  readonly fov?: number;
+  updateProjectionMatrix: () => void;
+};
+
 type OrbitControlsHandle = {
   readonly target: MutableVectorHandle;
   update: () => void;
+};
+
+type SceneHandle = {
+  updateWorldMatrix: (updateParents: boolean, updateChildren: boolean) => void;
 };
 
 /**
@@ -45,13 +59,19 @@ export interface ThreeCameraPose {
   readonly target: VectorTuple;
 }
 
+export type ThreeCameraPoseChangeSource = "focus" | "initial" | "interaction";
+
 /**
  * Props for the shared 3D visualization scene shell.
  */
 export interface Base3DSceneProps {
   readonly cameraPose?: ThreeCameraPose | null;
   readonly children?: ReactNode;
-  readonly onCameraPoseChange?: (pose: ThreeCameraPose) => void;
+  readonly focusSceneRequestKey?: number;
+  readonly onCameraPoseChange?: (
+    pose: ThreeCameraPose,
+    source: ThreeCameraPoseChangeSource,
+  ) => void;
   readonly showGizmo?: boolean;
 }
 
@@ -61,6 +81,7 @@ export interface Base3DSceneProps {
 export function Base3DScene({
   cameraPose,
   children,
+  focusSceneRequestKey,
   onCameraPoseChange,
   showGizmo = true,
 }: Base3DSceneProps) {
@@ -76,6 +97,7 @@ export function Base3DScene({
       {children}
       <ControlledOrbitControls
         cameraPose={cameraPose}
+        focusSceneRequestKey={focusSceneRequestKey}
         onCameraPoseChange={onCameraPoseChange}
       />
       {showGizmo ? (
@@ -96,20 +118,31 @@ export function Base3DScene({
 
 function ControlledOrbitControls({
   cameraPose,
+  focusSceneRequestKey,
   onCameraPoseChange,
 }: {
   readonly cameraPose?: ThreeCameraPose | null;
-  readonly onCameraPoseChange?: (pose: ThreeCameraPose) => void;
+  readonly focusSceneRequestKey?: number;
+  readonly onCameraPoseChange?: (
+    pose: ThreeCameraPose,
+    source: ThreeCameraPoseChangeSource,
+  ) => void;
 }) {
   const applyingPoseRef = useRef(false);
+  const emittedInitialPoseRef = useRef(false);
+  const interactingRef = useRef(false);
   const lastEmittedPoseRef = useRef<ThreeCameraPose | null>(null);
   const [controls, setControls] = useState<OrbitControlsHandle | null>(null);
   const camera = useThree((state) => state.camera);
   const invalidate = useThree((state) => state.invalidate);
+  const scene = useThree((state) => state.scene);
+  const size = useThree((state) => state.size);
   const setControlsRef = useCallback((nextControls: unknown) => {
     setControls((nextControls as OrbitControlsHandle | null) ?? null);
   }, []);
 
+  // This layout effect applies an externally controlled camera pose before the
+  // next paint so the camera and OrbitControls target move together.
   useLayoutEffect(() => {
     if (!cameraPose || !controls) {
       return;
@@ -126,8 +159,64 @@ function ControlledOrbitControls({
     lastEmittedPoseRef.current = cameraPose;
   }, [camera, cameraPose, controls, invalidate]);
 
+  // This layout effect emits the initial camera pose once OrbitControls is
+  // available to downstream consumers.
+  useLayoutEffect(() => {
+    if (!controls || emittedInitialPoseRef.current) {
+      return;
+    }
+
+    emittedInitialPoseRef.current = true;
+    const pose = cameraPoseFromScene(camera, controls);
+    lastEmittedPoseRef.current = pose;
+    onCameraPoseChange?.(pose, "initial");
+  }, [camera, controls, onCameraPoseChange]);
+
+  // This layout effect focuses the camera on current scene bounds when a
+  // caller requests an explicit recenter.
+  useLayoutEffect(() => {
+    if (focusSceneRequestKey === undefined || !controls) {
+      return;
+    }
+
+    applyingPoseRef.current = true;
+    const pose = focusCameraOnScene({
+      camera,
+      controls,
+      scene,
+      viewportHeight: size.height,
+      viewportWidth: size.width,
+    });
+    applyingPoseRef.current = false;
+
+    if (!pose) {
+      return;
+    }
+
+    lastEmittedPoseRef.current = pose;
+    onCameraPoseChange?.(pose, "focus");
+    invalidate();
+  }, [
+    camera,
+    controls,
+    focusSceneRequestKey,
+    invalidate,
+    onCameraPoseChange,
+    scene,
+    size.height,
+    size.width,
+  ]);
+
+  const handleStart = useCallback(() => {
+    interactingRef.current = true;
+  }, []);
+  const handleEnd = useCallback(() => {
+    interactingRef.current = false;
+  }, []);
   const handleChange = useCallback(() => {
-    if (applyingPoseRef.current || !controls) {
+    // Programmatic camera writes also make OrbitControls dispatch `change`.
+    // Only changes bracketed by user interaction should be reported upstream.
+    if (applyingPoseRef.current || !interactingRef.current || !controls) {
       return;
     }
 
@@ -137,7 +226,7 @@ function ControlledOrbitControls({
     }
 
     lastEmittedPoseRef.current = pose;
-    onCameraPoseChange?.(pose);
+    onCameraPoseChange?.(pose, "interaction");
   }, [camera, controls, onCameraPoseChange]);
 
   return (
@@ -145,7 +234,10 @@ function ControlledOrbitControls({
       enableDamping={false}
       makeDefault
       onChange={handleChange}
+      onEnd={handleEnd}
+      onStart={handleStart}
       ref={setControlsRef}
+      zoomToCursor
     />
   );
 }
@@ -169,23 +261,110 @@ function cameraPoseFromScene(
   };
 }
 
+function focusCameraOnScene({
+  camera,
+  controls,
+  scene,
+  viewportHeight,
+  viewportWidth,
+}: {
+  readonly camera: FocusCameraHandle;
+  readonly controls: OrbitControlsHandle;
+  readonly scene: SceneHandle;
+  readonly viewportHeight: number;
+  readonly viewportWidth: number;
+}): ThreeCameraPose | null {
+  scene.updateWorldMatrix(true, true);
+  const bounds = new THREE.Box3().setFromObject(
+    scene as unknown as THREE.Object3D,
+  );
+  if (bounds.isEmpty()) {
+    return null;
+  }
+
+  const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+  const radius = Math.max(sphere.radius, MIN_FOCUS_RADIUS);
+  const direction = vectorFromHandle(camera.position).sub(
+    vectorFromHandle(controls.target),
+  );
+  if (direction.lengthSq() <= CAMERA_POSE_EPSILON) {
+    direction.copy(DEFAULT_FOCUS_DIRECTION);
+  } else {
+    direction.normalize();
+  }
+
+  const distance = focusDistanceForCamera({
+    camera,
+    radius,
+    viewportHeight,
+    viewportWidth,
+  });
+  const position = sphere.center
+    .clone()
+    .add(direction.multiplyScalar(distance));
+
+  camera.position.set(position.x, position.y, position.z);
+  controls.target.set(sphere.center.x, sphere.center.y, sphere.center.z);
+  camera.updateProjectionMatrix();
+  controls.update();
+
+  return cameraPoseFromScene(camera, controls);
+}
+
+function focusDistanceForCamera({
+  camera,
+  radius,
+  viewportHeight,
+  viewportWidth,
+}: {
+  readonly camera: FocusCameraHandle;
+  readonly radius: number;
+  readonly viewportHeight: number;
+  readonly viewportWidth: number;
+}) {
+  if (camera.isPerspectiveCamera === true && typeof camera.fov === "number") {
+    const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+    const aspect =
+      viewportHeight > 0 && viewportWidth > 0
+        ? viewportWidth / viewportHeight
+        : 1;
+    const horizontalFov =
+      2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(aspect, 0.000001));
+    const verticalDistance = radius / Math.sin(verticalFov / 2);
+    const horizontalDistance = radius / Math.sin(horizontalFov / 2);
+
+    return Math.max(verticalDistance, horizontalDistance) * FOCUS_PADDING;
+  }
+
+  return radius * 3 * FOCUS_PADDING;
+}
+
+function vectorFromHandle(handle: MutableVectorHandle): THREE.Vector3 {
+  return new THREE.Vector3(handle.x, handle.y, handle.z);
+}
+
 function cameraPoseEquals(
   first: ThreeCameraPose | null | undefined,
   second: ThreeCameraPose | null | undefined,
+  epsilon = CAMERA_POSE_EPSILON,
 ): boolean {
   if (!first || !second) {
     return first === second;
   }
 
   return (
-    vectorTupleEquals(first.position, second.position) &&
-    vectorTupleEquals(first.target, second.target)
+    vectorTupleEquals(first.position, second.position, epsilon) &&
+    vectorTupleEquals(first.target, second.target, epsilon)
   );
 }
 
-function vectorTupleEquals(first: VectorTuple, second: VectorTuple): boolean {
+function vectorTupleEquals(
+  first: VectorTuple,
+  second: VectorTuple,
+  epsilon = CAMERA_POSE_EPSILON,
+): boolean {
   return first.every(
-    (value, index) => Math.abs(value - second[index]) <= CAMERA_POSE_EPSILON,
+    (value, index) => Math.abs(value - second[index]) <= epsilon,
   );
 }
 
@@ -193,6 +372,8 @@ function useZUpSceneCoordinates() {
   const camera = useThree((state) => state.camera);
   const invalidate = useThree((state) => state.invalidate);
 
+  // This layout effect switches the camera to Z-up coordinates while the scene
+  // is mounted and restores the previous up vector on cleanup.
   useLayoutEffect(() => {
     const previousUp = camera.up.clone();
 

@@ -14,6 +14,7 @@ vi.mock("./base-3d-scene", () => ({
   Base3DScene: ({
     cameraPose,
     children,
+    focusSceneRequestKey,
     onCameraPoseChange,
     showGizmo = true,
   }: {
@@ -22,24 +23,32 @@ vi.mock("./base-3d-scene", () => ({
       readonly target: readonly [number, number, number];
     } | null;
     readonly children?: ReactNode;
-    readonly onCameraPoseChange?: (pose: {
-      readonly position: readonly [number, number, number];
-      readonly target: readonly [number, number, number];
-    }) => void;
+    readonly focusSceneRequestKey?: number;
+    readonly onCameraPoseChange?: (
+      pose: {
+        readonly position: readonly [number, number, number];
+        readonly target: readonly [number, number, number];
+      },
+      source: "interaction",
+    ) => void;
     readonly showGizmo?: boolean;
   }) => (
     <div
       data-camera-pose={cameraPose ? JSON.stringify(cameraPose) : ""}
+      data-focus-scene-request-key={focusSceneRequestKey ?? ""}
       data-testid="base-3d-scene"
       data-show-gizmo={String(showGizmo)}
     >
       <button
         data-testid="camera-change"
         onClick={() =>
-          onCameraPoseChange?.({
-            position: [7, 8, 9],
-            target: [1, 2, 3],
-          })
+          onCameraPoseChange?.(
+            {
+              position: [7, 8, 9],
+              target: [1, 2, 3],
+            },
+            "interaction",
+          )
         }
         type="button"
       />
@@ -213,10 +222,47 @@ describe("PointCloudPanel", () => {
 
     fireEvent.click(screen.getByTestId("camera-change"));
 
-    expect(onCameraPoseChange).toHaveBeenCalledWith({
-      position: [7, 8, 9],
-      target: [1, 2, 3],
-    });
+    expect(onCameraPoseChange).toHaveBeenCalledWith(
+      {
+        position: [7, 8, 9],
+        target: [1, 2, 3],
+      },
+      "interaction",
+    );
+  });
+
+  it("can request camera focus on the visible 3D scene", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    render(
+      <PointCloudPanel
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 1,
+              positions: new Float32Array([1, 2, 3]),
+            },
+            id: "/points",
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen
+        .getByTestId("base-3d-scene")
+        .getAttribute("data-focus-scene-request-key"),
+    ).toBe("");
+
+    fireEvent.click(screen.getByLabelText("Focus camera on visible 3D data"));
+
+    expect(
+      screen
+        .getByTestId("base-3d-scene")
+        .getAttribute("data-focus-scene-request-key"),
+    ).toBe("1");
   });
 
   it("uses an automatic camera pose unless fitting is disabled", () => {

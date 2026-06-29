@@ -1,14 +1,19 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree } from "@react-three/fiber";
+import { Icon, IconName, Size } from "@voxel51/voodo";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 
 import type {
   PointCloudScalarField,
   PointCloudVisualization,
 } from "../../decoders";
-import { Base3DScene, type ThreeCameraPose } from "./base-3d-scene";
+import {
+  Base3DScene,
+  type ThreeCameraPose,
+  type ThreeCameraPoseChangeSource,
+} from "./base-3d-scene";
 import {
   VISUALIZATION_HUD_BACKGROUND_COLOR,
   VISUALIZATION_HUD_BORDER_COLOR,
@@ -103,6 +108,7 @@ interface PointCloudObjectTransform {
  * Transform from a point-cloud frame into the panel's fixed frame.
  */
 export interface PointCloudFrameTransform {
+  readonly resolutionKind?: string;
   readonly rotation: THREE.Quaternion;
   readonly sourceFrameId: string;
   readonly targetFrameId: string;
@@ -136,7 +142,10 @@ export interface PointCloudPanelProps {
   readonly fit?: "initial" | "frame" | "never";
   readonly layers: readonly PointCloudPanelLayer[];
   readonly maxRenderedPoints?: number;
-  readonly onCameraPoseChange?: (pose: PointCloudCameraPose) => void;
+  readonly onCameraPoseChange?: (
+    pose: PointCloudCameraPose,
+    source: ThreeCameraPoseChangeSource,
+  ) => void;
   readonly pointSize?: number;
   readonly showGizmo?: boolean;
   readonly showHud?: boolean;
@@ -164,6 +173,7 @@ export function PointCloudPanel({
   warning = null,
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
+  const [focusSceneRequestKey, setFocusSceneRequestKey] = useState(0);
   const renderLayers = useMemo(
     () =>
       layers.map((layer) => ({
@@ -188,6 +198,8 @@ export function PointCloudPanel({
   const [initialFitPose, setInitialFitPose] =
     useState<PointCloudCameraPose | null>(null);
 
+  // This effect captures the first fitted camera pose for initial-fit mode and
+  // clears it when the panel switches to another fit policy.
   useEffect(() => {
     if (fit !== "initial") {
       if (initialFitPose) setInitialFitPose(null);
@@ -213,6 +225,10 @@ export function PointCloudPanel({
     (sum, layer) => sum + layer.frame.pointCount,
     0,
   );
+  const hasPointCloudLayers = layers.length > 0;
+  const requestFocusScene = useCallback(() => {
+    setFocusSceneRequestKey((current) => current + 1);
+  }, []);
 
   return (
     <div className={className} style={{ ...styles.panel, ...style }}>
@@ -224,6 +240,7 @@ export function PointCloudPanel({
       >
         <Base3DScene
           cameraPose={cameraPose ?? fittedCameraPose}
+          focusSceneRequestKey={focusSceneRequestKey || undefined}
           onCameraPoseChange={onCameraPoseChange}
           showGizmo={showGizmo}
         >
@@ -240,9 +257,27 @@ export function PointCloudPanel({
 
       {canvasError ? (
         <div style={styles.status}>{canvasError}</div>
-      ) : finitePointCount === 0 ? (
+      ) : hasPointCloudLayers && finitePointCount === 0 ? (
         <div style={styles.status}>No finite points</div>
-      ) : showHud ? (
+      ) : null}
+      {!canvasError ? (
+        <div style={styles.focusControls}>
+          <button
+            aria-label="Focus camera on visible 3D data"
+            onClick={requestFocusScene}
+            style={styles.focusButton}
+            title="Focus camera on visible 3D data"
+            type="button"
+          >
+            <Icon
+              name={IconName.Move}
+              size={Size.Xs}
+              style={styles.focusButtonIcon}
+            />
+          </button>
+        </div>
+      ) : null}
+      {!canvasError && showHud && hasPointCloudLayers ? (
         <div style={styles.hud}>
           {pointCountLabel(finitePointCount, declaredPointCount)}
         </div>
@@ -294,6 +329,8 @@ function PointCloudPoints({
   const invalidate = useThree((state) => state.invalidate);
   const geometry = useMemo(() => createPointCloudGeometry(data), [data]);
 
+  // This effect requests a repaint when point geometry changes and disposes the
+  // old GPU geometry on cleanup.
   useEffect(() => {
     invalidate();
     return () => geometry.dispose();
@@ -853,6 +890,24 @@ const styles: Record<string, CSSProperties> = {
     height: "100%",
     width: "100%",
   },
+  focusButton: {
+    alignItems: "center",
+    background: VISUALIZATION_HUD_BACKGROUND_COLOR,
+    border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
+    borderRadius: HUD_BORDER_RADIUS_PX,
+    color: VISUALIZATION_HUD_TEXT_COLOR,
+    cursor: "pointer",
+    display: "inline-flex",
+    height: 24,
+    justifyContent: "center",
+    padding: 0,
+    width: 24,
+  },
+  focusButtonIcon: {
+    flex: "0 0 auto",
+    height: 13,
+    width: 13,
+  },
   hud: {
     background: VISUALIZATION_HUD_BACKGROUND_COLOR,
     border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
@@ -885,6 +940,14 @@ const styles: Record<string, CSSProperties> = {
     padding: STATUS_PADDING_PX,
     position: "absolute",
     textAlign: "center",
+  },
+  focusControls: {
+    alignItems: "flex-start",
+    display: "flex",
+    gap: 6,
+    left: HUD_OFFSET_PX,
+    position: "absolute",
+    top: HUD_OFFSET_PX,
   },
   warning: {
     background: VISUALIZATION_HUD_BACKGROUND_COLOR,
