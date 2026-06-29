@@ -73,7 +73,7 @@
     },
     "resolutions": {
         "@types/mapbox-gl": "2.7.21",
-        "@types/react": "18.2.0",
+        "@types/react": "18.3.12",
         "@voxel51/voodo": "^0.0.35",
         "brace-expansion": "^5.0.6",
         "minimatch": "9.0.7",
