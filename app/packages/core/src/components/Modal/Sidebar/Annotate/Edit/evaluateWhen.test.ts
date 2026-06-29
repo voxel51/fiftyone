@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyConditionalOwnerChange,
   evaluateWhen,
   isWhenFulfillable,
   resolveVisibleAttribute,
@@ -835,5 +836,269 @@ describe("mixed conditional/unconditional variants for the same name", () => {
       (a) => a.name === "animal_name" && !a.when,
     );
     expect(hasUnconditional).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyConditionalOwnerChange
+//
+// Two branches introduced in useHandleSchemaChange (AnnotationSchema.tsx):
+//
+//   1. Owner CHANGED  (prevOwner !== undefined && prevOwner !== currentOwner)
+//      → value[name] is set to null to carry an explicit unset.
+//
+//   2. Became VISIBLE with no value
+//      (prevOwner === undefined && currentOwner && value[name] == null)
+//      → value[name] is seeded with the winning entry's `default`.
+// ---------------------------------------------------------------------------
+
+describe("applyConditionalOwnerChange", () => {
+  // Schema: two conditional variants of "animal_name" that share the same
+  // slot but are gated on different category values.
+  const attributes: AttributeConfig[] = [
+    {
+      name: "category",
+      type: "str",
+      component: "dropdown",
+      values: ["mammal", "reptile", "bird"],
+    },
+    {
+      name: "animal_name",
+      type: "str",
+      component: "dropdown",
+      values: ["dog", "cat"],
+      default: "dog",
+      when: { operator: "equals" as const, field: "category", value: "mammal" },
+    },
+    {
+      name: "animal_name",
+      type: "str",
+      component: "dropdown",
+      values: ["snake", "lizard"],
+      default: "snake",
+      when: {
+        operator: "equals" as const,
+        field: "category",
+        value: "reptile",
+      },
+    },
+  ];
+
+  // ── Branch 1: owner changed ──────────────────────────────────────────────
+
+  describe("owner changed (prevOwner !== undefined && prevOwner !== currentOwner)", () => {
+    it("nulls the value when the winning entry switches between two variants", () => {
+      // Previously category was "mammal" (mammal entry owned the slot), now
+      // the user changed it to "reptile" (reptile entry takes ownership).
+      const prevData = { category: "mammal", animal_name: "dog" };
+      const nextValue = { category: "reptile", animal_name: "dog" };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.animal_name).toBeNull();
+    });
+
+    it("nulls the value when the winning entry disappears (attribute becomes hidden)", () => {
+      // "bird" has no matching variant — currentOwner will be undefined.
+      const prevData = { category: "mammal", animal_name: "dog" };
+      const nextValue = { category: "bird", animal_name: "dog" };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.animal_name).toBeNull();
+    });
+
+    it("uses null, not deletion, so the key still exists in the object", () => {
+      const prevData = { category: "mammal", animal_name: "dog" };
+      const nextValue = { category: "reptile", animal_name: "dog" };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(
+        Object.prototype.hasOwnProperty.call(nextValue, "animal_name"),
+      ).toBe(true);
+      expect(nextValue.animal_name).toBeNull();
+    });
+
+    it("does NOT null the value when the owner is unchanged", () => {
+      // category stays "mammal" — same entry wins before and after.
+      const prevData = { category: "mammal", animal_name: "dog" };
+      const nextValue = { category: "mammal", animal_name: "cat" };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.animal_name).toBe("cat");
+    });
+  });
+
+  // ── Branch 2: became visible with no value ───────────────────────────────
+
+  describe("became visible with null value (prevOwner === undefined && currentOwner && value[name] == null)", () => {
+    it("seeds the default when the attribute transitions from hidden to visible", () => {
+      // "bird" → "mammal": prevOwner was undefined (hidden), currentOwner is the
+      // mammal entry which carries default = "dog".
+      const prevData = { category: "bird" };
+      const nextValue: Record<string, unknown> = {
+        category: "mammal",
+        animal_name: null,
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.animal_name).toBe("dog");
+    });
+
+    it("seeds the correct default for the other variant", () => {
+      const prevData = { category: "bird" };
+      const nextValue: Record<string, unknown> = {
+        category: "reptile",
+        animal_name: null,
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.animal_name).toBe("snake");
+    });
+
+    it("treats undefined value the same as null (== null check)", () => {
+      const prevData = { category: "bird" };
+      const nextValue: Record<string, unknown> = {
+        category: "mammal",
+        animal_name: undefined,
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.animal_name).toBe("dog");
+    });
+
+    it("does NOT overwrite an existing non-null value when the attribute becomes visible", () => {
+      const prevData = { category: "bird" };
+      const nextValue: Record<string, unknown> = {
+        category: "mammal",
+        animal_name: "cat",
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.animal_name).toBe("cat");
+    });
+
+    it("does NOT write a default when the winning entry has no default field", () => {
+      const noDefaultAttributes: AttributeConfig[] = [
+        {
+          name: "category",
+          type: "str",
+          component: "dropdown",
+          values: ["mammal", "bird"],
+        },
+        {
+          name: "animal_name",
+          type: "str",
+          component: "dropdown",
+          values: ["dog", "cat"],
+          // no `default` property
+          when: {
+            operator: "equals" as const,
+            field: "category",
+            value: "mammal",
+          },
+        },
+      ];
+
+      const prevData = { category: "bird" };
+      const nextValue: Record<string, unknown> = {
+        category: "mammal",
+        animal_name: null,
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        noDefaultAttributes,
+        prevData,
+        nextValue,
+      );
+
+      // Should remain null — no default to apply.
+      expect(nextValue.animal_name).toBeNull();
+    });
+  });
+
+  // ── No-op cases ──────────────────────────────────────────────────────────
+
+  describe("no-op cases (neither branch fires)", () => {
+    it("leaves the value untouched when both prev and current owner are undefined", () => {
+      const prevData = { category: "bird" };
+      const nextValue: Record<string, unknown> = {
+        category: "bird",
+        animal_name: null,
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.animal_name).toBeNull();
+    });
+
+    it("leaves an existing value untouched when the same owner continues to win", () => {
+      const prevData = { category: "mammal", animal_name: "cat" };
+      const nextValue: Record<string, unknown> = {
+        category: "mammal",
+        animal_name: "cat",
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.animal_name).toBe("cat");
+    });
   });
 });

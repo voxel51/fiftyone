@@ -7,6 +7,7 @@ import {
 } from "@fiftyone/utilities";
 import type { BaseOverlay, OverlayFactory, Scene2D } from "@fiftyone/lighter";
 import type { PrimitiveAtom } from "jotai";
+import type { AttributeConfig } from "../../SchemaManager/utils";
 
 export type LabelType =
   | typeof CLASSIFICATION
@@ -17,7 +18,7 @@ export type LabelType =
 /** Fields the annotation-context consumers actually read off the schema. */
 export interface LabelSchema {
   read_only?: boolean;
-  attributes?: unknown[];
+  attributes?: AttributeConfig[];
   classes?: string[];
   default?: unknown;
   [key: string]: unknown;

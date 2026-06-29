@@ -9,9 +9,9 @@ import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import type { AttributeConfig } from "../SchemaManager/utils";
 import type { ComponentType, FieldType } from "../useSchemaManager";
 import {
+  applyConditionalOwnerChange,
   evaluateWhen,
   isWhenFulfillable,
-  resolveVisibleAttribute,
 } from "./evaluateWhen";
 import { generatePrimitiveSchema } from "./schemaHelpers";
 import { useAnnotationContext } from "./useAnnotationContext";
@@ -140,7 +140,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   return useCallback(
     async (changes: Record<string, unknown>) => {
       const config = configRef.current;
-      const data = dataRef.current;
+      const data = dataRef.current as Record<string, unknown> | undefined;
       const overlay = overlayRef.current;
       const field = fieldRef.current;
 
@@ -165,28 +165,11 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         allAttributes.filter((a) => a.when).map((a) => a.name),
       );
 
-      // Iterate over the unique conditional attribute names, obtain the current and
-      // previous owner of the data attribute value, and conditionally delete the
-      // value if the owner has changed or the attribute has become hidden entirely.
+      // Iterate over the unique conditional attribute names and apply
+      // owner-change rules (clear stale value or seed a new default).
       for (const name of uniqueConditionalNames) {
         if (!name) continue;
-
-        const prevOwner = resolveVisibleAttribute(
-          name,
-          allAttributes,
-          (data ?? {}) as Record<string, unknown>,
-        );
-        const currentOwner = resolveVisibleAttribute(
-          name,
-          allAttributes,
-          value,
-        );
-
-        if (!currentOwner || prevOwner !== currentOwner) {
-          // null, not `delete`: the auto-save delta must carry an explicit
-          // unset, otherwise the existing-detection merge resurrects the value.
-          value[name] = null;
-        }
+        applyConditionalOwnerChange(name, allAttributes, data ?? {}, value);
       }
 
       if (isEqual(value, overlay.label)) return;
