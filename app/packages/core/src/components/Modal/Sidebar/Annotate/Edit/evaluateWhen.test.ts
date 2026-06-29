@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyConditionalOwnerChange,
   evaluateWhen,
   isWhenFulfillable,
   resolveVisibleAttribute,
@@ -20,8 +21,8 @@ describe("evaluateWhen", () => {
       expect(
         evaluateWhen(
           { operator: "equals", field: "category", value: "mammal" },
-          { category: "mammal" },
-        ),
+          { category: "mammal" }
+        )
       ).toBe(true);
     });
 
@@ -29,8 +30,8 @@ describe("evaluateWhen", () => {
       expect(
         evaluateWhen(
           { operator: "equals", field: "category", value: "mammal" },
-          { category: "bird" },
-        ),
+          { category: "bird" }
+        )
       ).toBe(false);
     });
 
@@ -38,8 +39,8 @@ describe("evaluateWhen", () => {
       expect(
         evaluateWhen(
           { operator: "equals", field: "category", value: "mammal" },
-          {},
-        ),
+          {}
+        )
       ).toBe(false);
     });
 
@@ -65,8 +66,8 @@ describe("evaluateWhen", () => {
       expect(
         evaluateWhen(
           { operator: "in", field: "category", value: ["mammal", "bird"] },
-          { category: "reptile" },
-        ),
+          { category: "reptile" }
+        )
       ).toBe(false);
     });
 
@@ -74,8 +75,8 @@ describe("evaluateWhen", () => {
       expect(
         evaluateWhen(
           { operator: "in", field: "category", value: "mammal" },
-          { category: "mammal" },
-        ),
+          { category: "mammal" }
+        )
       ).toBe(false);
     });
   });
@@ -94,8 +95,8 @@ describe("evaluateWhen", () => {
               { operator: "equals", field: "size", value: "large" },
             ],
           },
-          { category: "mammal", size: "large" },
-        ),
+          { category: "mammal", size: "large" }
+        )
       ).toBe(true);
     });
 
@@ -109,8 +110,8 @@ describe("evaluateWhen", () => {
               { operator: "equals", field: "size", value: "large" },
             ],
           },
-          { category: "mammal", size: "small" },
-        ),
+          { category: "mammal", size: "small" }
+        )
       ).toBe(false);
     });
 
@@ -124,8 +125,8 @@ describe("evaluateWhen", () => {
               { operator: "equals", field: "category", value: "bird" },
             ],
           },
-          { category: "reptile" },
-        ),
+          { category: "reptile" }
+        )
       ).toBe(false);
     });
   });
@@ -153,8 +154,8 @@ describe("evaluateWhen", () => {
               { operator: "equals", field: "category", value: "bird" },
             ],
           },
-          { category: "reptile" },
-        ),
+          { category: "reptile" }
+        )
       ).toBe(false);
     });
   });
@@ -179,10 +180,10 @@ describe("evaluateWhen", () => {
         ],
       };
       expect(evaluateWhen(cond, { has_damage: true, region: "front" })).toBe(
-        true,
+        true
       );
       expect(evaluateWhen(cond, { has_damage: true, region: "rear" })).toBe(
-        true,
+        true
       );
     });
 
@@ -205,7 +206,7 @@ describe("evaluateWhen", () => {
         ],
       };
       expect(evaluateWhen(cond, { has_damage: false, region: "front" })).toBe(
-        false,
+        false
       );
     });
 
@@ -232,7 +233,7 @@ describe("evaluateWhen", () => {
           category: "mammal",
           size: "large",
           priority: "low",
-        }),
+        })
       ).toBe(true);
       expect(evaluateWhen(cond, { priority: "urgent" })).toBe(true);
     });
@@ -271,7 +272,7 @@ describe("evaluateWhen", () => {
   it("throws on an unknown operator (exhaustiveness guard)", () => {
     expect(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      evaluateWhen({ operator: "contains" as any, field: "x", value: "y" }, {}),
+      evaluateWhen({ operator: "contains" as any, field: "x", value: "y" }, {})
     ).toThrow("Unhandled operator: contains");
   });
 });
@@ -305,8 +306,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "equals", field: "category", value: "mammal" },
-          animalAttributes,
-        ),
+          animalAttributes
+        )
       ).toBe(true);
     });
 
@@ -314,8 +315,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "equals", field: "category", value: "insect" },
-          animalAttributes,
-        ),
+          animalAttributes
+        )
       ).toBe(false);
     });
 
@@ -323,8 +324,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "equals", field: "notes", value: "foo" },
-          animalAttributes,
-        ),
+          animalAttributes
+        )
       ).toBe(true);
     });
   });
@@ -334,8 +335,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "in", field: "category", value: ["insect", "mammal"] },
-          animalAttributes,
-        ),
+          animalAttributes
+        )
       ).toBe(true);
     });
 
@@ -343,8 +344,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "in", field: "category", value: ["insect", "fungus"] },
-          animalAttributes,
-        ),
+          animalAttributes
+        )
       ).toBe(false);
     });
   });
@@ -360,8 +361,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "size", value: "large" },
             ],
           },
-          animalAttributes,
-        ),
+          animalAttributes
+        )
       ).toBe(true);
     });
 
@@ -375,8 +376,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "category", value: "mammal" },
             ],
           },
-          animalAttributes,
-        ),
+          animalAttributes
+        )
       ).toBe(false);
     });
 
@@ -390,8 +391,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "category", value: "fungus" },
             ],
           },
-          animalAttributes,
-        ),
+          animalAttributes
+        )
       ).toBe(false);
     });
   });
@@ -407,8 +408,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "category", value: "mammal" },
             ],
           },
-          animalAttributes,
-        ),
+          animalAttributes
+        )
       ).toBe(true);
     });
 
@@ -422,8 +423,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "category", value: "fungus" },
             ],
           },
-          animalAttributes,
-        ),
+          animalAttributes
+        )
       ).toBe(false);
     });
   });
@@ -445,8 +446,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "size", value: "large" },
             ],
           },
-          animalAttributes,
-        ),
+          animalAttributes
+        )
       ).toBe(true);
     });
 
@@ -466,8 +467,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "size", value: "large" },
             ],
           },
-          animalAttributes,
-        ),
+          animalAttributes
+        )
       ).toBe(false);
     });
   });
@@ -476,8 +477,8 @@ describe("isWhenFulfillable", () => {
     expect(
       isWhenFulfillable(
         { operator: "equals", field: "category", value: "mammal" },
-        animalAttributes,
-      ),
+        animalAttributes
+      )
     ).toBe(true);
   });
 
@@ -485,8 +486,8 @@ describe("isWhenFulfillable", () => {
     expect(
       isWhenFulfillable(
         { operator: "equals", field: "category", value: "dragon" },
-        animalAttributes,
-      ),
+        animalAttributes
+      )
     ).toBe(false);
   });
 
@@ -528,8 +529,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "equals", field: "animal_name", value: "dog" },
-          duplicateNameAttributes,
-        ),
+          duplicateNameAttributes
+        )
       ).toBe(true);
     });
 
@@ -537,8 +538,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "equals", field: "animal_name", value: "snake" },
-          duplicateNameAttributes,
-        ),
+          duplicateNameAttributes
+        )
       ).toBe(true);
     });
 
@@ -546,8 +547,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "equals", field: "animal_name", value: "dragon" },
-          duplicateNameAttributes,
-        ),
+          duplicateNameAttributes
+        )
       ).toBe(false);
     });
 
@@ -563,7 +564,7 @@ describe("isWhenFulfillable", () => {
         value: "dog",
       };
       expect(isWhenFulfillable(cond, duplicateNameAttributes)).toBe(
-        isWhenFulfillable(cond, reversed),
+        isWhenFulfillable(cond, reversed)
       );
     });
   });
@@ -575,8 +576,8 @@ describe("isWhenFulfillable", () => {
         // before the frontend is updated (e.g. from a newer backend).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { operator: "contains" as any, field: "category", value: "mammal" },
-        animalAttributes,
-      ),
+        animalAttributes
+      )
     ).toThrow("Unhandled operator: contains");
   });
 
@@ -590,8 +591,8 @@ describe("isWhenFulfillable", () => {
             { operator: "contains" as any, field: "category", value: "mammal" },
           ],
         },
-        animalAttributes,
-      ),
+        animalAttributes
+      )
     ).toThrow("Unhandled operator: contains");
   });
 });
@@ -661,7 +662,7 @@ describe("resolveVisibleAttribute", () => {
     const result = resolveVisibleAttribute(
       "impossible_field",
       schemaWithVariants,
-      { category: "mammal" },
+      { category: "mammal" }
     );
     expect(result).toBe(schemaWithVariants[3]);
   });
@@ -670,7 +671,7 @@ describe("resolveVisibleAttribute", () => {
     const result = resolveVisibleAttribute(
       "impossible_field",
       schemaWithVariants,
-      {},
+      {}
     );
     expect(result).toBe(schemaWithVariants[3]);
   });
@@ -749,7 +750,7 @@ describe("resolveVisibleAttribute", () => {
       const result = resolveVisibleAttribute(
         "damage_location",
         schemaWithAndVariant,
-        { has_damage: true, vehicle_type: "car" },
+        { has_damage: true, vehicle_type: "car" }
       );
       expect(result).toBe(schemaWithAndVariant[2]);
     });
@@ -758,7 +759,7 @@ describe("resolveVisibleAttribute", () => {
       const result = resolveVisibleAttribute(
         "damage_location",
         schemaWithAndVariant,
-        { has_damage: true, vehicle_type: "motorcycle" },
+        { has_damage: true, vehicle_type: "motorcycle" }
       );
       expect(result).toBeUndefined();
     });
@@ -823,7 +824,7 @@ describe("mixed conditional/unconditional variants for the same name", () => {
   it("unconditional-sibling guard check returns true for a mixed name", () => {
     // This is the exact predicate used in the AnnotationSchema fix.
     const hasUnconditional = mixedAttributes.some(
-      (a) => a.name === "notes" && !a.when,
+      (a) => a.name === "notes" && !a.when
     );
     expect(hasUnconditional).toBe(true);
   });
@@ -832,8 +833,272 @@ describe("mixed conditional/unconditional variants for the same name", () => {
     // "animal_name" in schemaWithVariants has no unconditional entry, so the
     // guard does NOT fire and deletion logic proceeds normally.
     const hasUnconditional = schemaWithVariants.some(
-      (a) => a.name === "animal_name" && !a.when,
+      (a) => a.name === "animal_name" && !a.when
     );
     expect(hasUnconditional).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyConditionalOwnerChange
+//
+// Two branches introduced in useHandleSchemaChange (AnnotationSchema.tsx):
+//
+//   1. Owner CHANGED  (prevOwner !== undefined && prevOwner !== currentOwner)
+//      → value[name] is set to null to carry an explicit unset.
+//
+//   2. Became VISIBLE with no value
+//      (prevOwner === undefined && currentOwner && value[name] == null)
+//      → value[name] is seeded with the winning entry's `default`.
+// ---------------------------------------------------------------------------
+
+describe("applyConditionalOwnerChange", () => {
+  // Schema: two conditional variants of "animal_name" that share the same
+  // slot but are gated on different category values.
+  const attributes: AttributeConfig[] = [
+    {
+      name: "category",
+      type: "str",
+      component: "dropdown",
+      values: ["mammal", "reptile", "bird"],
+    },
+    {
+      name: "animal_name",
+      type: "str",
+      component: "dropdown",
+      values: ["dog", "cat"],
+      default: "dog",
+      when: { operator: "equals" as const, field: "category", value: "mammal" },
+    },
+    {
+      name: "animal_name",
+      type: "str",
+      component: "dropdown",
+      values: ["snake", "lizard"],
+      default: "snake",
+      when: {
+        operator: "equals" as const,
+        field: "category",
+        value: "reptile",
+      },
+    },
+  ];
+
+  // ── Branch 1: owner changed ──────────────────────────────────────────────
+
+  describe("owner changed (prevOwner !== undefined && prevOwner !== currentOwner)", () => {
+    it("nulls the value when the winning entry switches between two variants", () => {
+      // Previously category was "mammal" (mammal entry owned the slot), now
+      // the user changed it to "reptile" (reptile entry takes ownership).
+      const prevData = { category: "mammal", animal_name: "dog" };
+      const nextValue = { category: "reptile", animal_name: "dog" };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue
+      );
+
+      expect(nextValue.animal_name).toBeNull();
+    });
+
+    it("nulls the value when the winning entry disappears (attribute becomes hidden)", () => {
+      // "bird" has no matching variant — currentOwner will be undefined.
+      const prevData = { category: "mammal", animal_name: "dog" };
+      const nextValue = { category: "bird", animal_name: "dog" };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue
+      );
+
+      expect(nextValue.animal_name).toBeNull();
+    });
+
+    it("uses null, not deletion, so the key still exists in the object", () => {
+      const prevData = { category: "mammal", animal_name: "dog" };
+      const nextValue = { category: "reptile", animal_name: "dog" };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue
+      );
+
+      expect(
+        Object.prototype.hasOwnProperty.call(nextValue, "animal_name")
+      ).toBe(true);
+      expect(nextValue.animal_name).toBeNull();
+    });
+
+    it("does NOT null the value when the owner is unchanged", () => {
+      // category stays "mammal" — same entry wins before and after.
+      const prevData = { category: "mammal", animal_name: "dog" };
+      const nextValue = { category: "mammal", animal_name: "cat" };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue
+      );
+
+      expect(nextValue.animal_name).toBe("cat");
+    });
+  });
+
+  // ── Branch 2: became visible with no value ───────────────────────────────
+
+  describe("became visible with null value (prevOwner === undefined && currentOwner && value[name] == null)", () => {
+    it("seeds the default when the attribute transitions from hidden to visible", () => {
+      // "bird" → "mammal": prevOwner was undefined (hidden), currentOwner is the
+      // mammal entry which carries default = "dog".
+      const prevData = { category: "bird" };
+      const nextValue: Record<string, unknown> = {
+        category: "mammal",
+        animal_name: null,
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue
+      );
+
+      expect(nextValue.animal_name).toBe("dog");
+    });
+
+    it("seeds the correct default for the other variant", () => {
+      const prevData = { category: "bird" };
+      const nextValue: Record<string, unknown> = {
+        category: "reptile",
+        animal_name: null,
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue
+      );
+
+      expect(nextValue.animal_name).toBe("snake");
+    });
+
+    it("treats undefined value the same as null (== null check)", () => {
+      const prevData = { category: "bird" };
+      const nextValue: Record<string, unknown> = {
+        category: "mammal",
+        animal_name: undefined,
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue
+      );
+
+      expect(nextValue.animal_name).toBe("dog");
+    });
+
+    it("does NOT overwrite an existing non-null value when the attribute becomes visible", () => {
+      const prevData = { category: "bird" };
+      const nextValue: Record<string, unknown> = {
+        category: "mammal",
+        animal_name: "cat",
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue
+      );
+
+      expect(nextValue.animal_name).toBe("cat");
+    });
+
+    it("does NOT write a default when the winning entry has no default field", () => {
+      const noDefaultAttributes: AttributeConfig[] = [
+        {
+          name: "category",
+          type: "str",
+          component: "dropdown",
+          values: ["mammal", "bird"],
+        },
+        {
+          name: "animal_name",
+          type: "str",
+          component: "dropdown",
+          values: ["dog", "cat"],
+          // no `default` property
+          when: {
+            operator: "equals" as const,
+            field: "category",
+            value: "mammal",
+          },
+        },
+      ];
+
+      const prevData = { category: "bird" };
+      const nextValue: Record<string, unknown> = {
+        category: "mammal",
+        animal_name: null,
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        noDefaultAttributes,
+        prevData,
+        nextValue
+      );
+
+      // Should remain null — no default to apply.
+      expect(nextValue.animal_name).toBeNull();
+    });
+  });
+
+  // ── No-op cases ──────────────────────────────────────────────────────────
+
+  describe("no-op cases (neither branch fires)", () => {
+    it("leaves the value untouched when both prev and current owner are undefined", () => {
+      const prevData = { category: "bird" };
+      const nextValue: Record<string, unknown> = {
+        category: "bird",
+        animal_name: null,
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue
+      );
+
+      expect(nextValue.animal_name).toBeNull();
+    });
+
+    it("leaves an existing value untouched when the same owner continues to win", () => {
+      const prevData = { category: "mammal", animal_name: "cat" };
+      const nextValue: Record<string, unknown> = {
+        category: "mammal",
+        animal_name: "cat",
+      };
+
+      applyConditionalOwnerChange(
+        "animal_name",
+        attributes,
+        prevData,
+        nextValue
+      );
+
+      expect(nextValue.animal_name).toBe("cat");
+    });
   });
 });

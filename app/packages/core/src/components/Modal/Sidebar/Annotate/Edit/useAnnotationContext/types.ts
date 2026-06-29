@@ -7,6 +7,7 @@ import {
 } from "@fiftyone/utilities";
 import type { BaseOverlay, OverlayFactory, Scene2D } from "@fiftyone/lighter";
 import type { PrimitiveAtom } from "jotai";
+import type { AttributeConfig } from "../../SchemaManager/utils";
 
 export type LabelType =
   | typeof CLASSIFICATION
@@ -17,7 +18,7 @@ export type LabelType =
 /** Fields the annotation-context consumers actually read off the schema. */
 export interface LabelSchema {
   read_only?: boolean;
-  attributes?: unknown[];
+  attributes?: AttributeConfig[];
   classes?: string[];
   default?: unknown;
   [key: string]: unknown;
@@ -103,7 +104,7 @@ export interface AnnotationContext {
    */
   setData: (
     data: Partial<AnnotationLabel["data"]>,
-    options?: { replace?: boolean },
+    options?: { replace?: boolean }
   ) => void;
   /** Move the current label to a different schema field. */
   setField: (path: string) => void;
@@ -128,7 +129,7 @@ export interface AnnotationContext {
    */
   createNew: (
     type: LabelType,
-    overrides?: CreateOptions,
+    overrides?: CreateOptions
   ) => AnnotationLabel | null;
   /** Drop the editing pointer and reset all derived state. */
   clear: () => void;

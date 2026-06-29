@@ -42,7 +42,7 @@ const LEAF_OPERATOR_HANDLERS: Record<
  */
 function evaluateCondition(
   cond: AttributeCondition,
-  currentValues: Record<string, unknown>,
+  currentValues: Record<string, unknown>
 ): boolean {
   switch (cond.operator) {
     case "and":
@@ -57,7 +57,7 @@ function evaluateCondition(
     default: {
       const _exhaustive: never = cond;
       throw new Error(
-        `Unhandled operator: ${(_exhaustive as AttributeCondition).operator}`,
+        `Unhandled operator: ${(_exhaustive as AttributeCondition).operator}`
       );
     }
   }
@@ -80,7 +80,7 @@ function evaluateCondition(
  */
 export function evaluateWhen(
   condition: AttributeCondition | undefined,
-  currentValues: Record<string, unknown>,
+  currentValues: Record<string, unknown>
 ): boolean {
   if (!condition) return true;
   return evaluateCondition(condition, currentValues);
@@ -97,16 +97,16 @@ export function evaluateWhen(
  */
 function isConditionFulfillable(
   cond: AttributeCondition,
-  valuesByField: Map<string, Set<unknown>>,
+  valuesByField: Map<string, Set<unknown>>
 ): boolean {
   switch (cond.operator) {
     case "and":
       return cond.conditions.every((c) =>
-        isConditionFulfillable(c, valuesByField),
+        isConditionFulfillable(c, valuesByField)
       );
     case "or":
       return cond.conditions.some((c) =>
-        isConditionFulfillable(c, valuesByField),
+        isConditionFulfillable(c, valuesByField)
       );
     case "equals": {
       const allowed = valuesByField.get(cond.field);
@@ -125,7 +125,7 @@ function isConditionFulfillable(
     default: {
       const _exhaustive: never = cond;
       throw new Error(
-        `Unhandled operator: ${(_exhaustive as AttributeCondition).operator}`,
+        `Unhandled operator: ${(_exhaustive as AttributeCondition).operator}`
       );
     }
   }
@@ -152,7 +152,7 @@ function isConditionFulfillable(
  */
 export function isWhenFulfillable(
   condition: AttributeCondition | undefined,
-  schemaAttributes: AttributeConfig[],
+  schemaAttributes: AttributeConfig[]
 ): boolean {
   if (!condition) return true;
 
@@ -171,6 +171,53 @@ export function isWhenFulfillable(
   }
 
   return isConditionFulfillable(condition, valuesByField);
+}
+
+/**
+ * Applies the conditional-ownership change rules for a single attribute name
+ * to a mutable form-value map.
+ *
+ * Two cases are handled:
+ *
+ * 1. **Owner changed** – the winning entry for `name` is different between
+ *    `prevData` and `nextValue` (e.g. category switched from "mammal" to
+ *    "reptile"). The stale value is explicitly set to `null` so that the
+ *    auto-save delta carries an unset signal rather than the wrong value.
+ *
+ * 2. **Became visible with no value** – the attribute was hidden in `prevData`
+ *    (`prevOwner === undefined`) but is now visible, and the slot is still
+ *    empty (`null` / `undefined`). If the newly-winning entry carries a
+ *    `default`, that default is written into `nextValue`.
+ *
+ * @param name          - The shared attribute name to examine.
+ * @param allAttributes - All attribute configs for the current label schema.
+ * @param prevData      - Form values before the current change.
+ * @param nextValue     - Mutable form-value map being built for the new state.
+ *                        Modified in-place.
+ */
+export function applyConditionalOwnerChange(
+  name: string,
+  allAttributes: AttributeConfig[],
+  prevData: Record<string, unknown>,
+  nextValue: Record<string, unknown>
+): void {
+  const prevOwner = resolveVisibleAttribute(name, allAttributes, prevData);
+  const currentOwner = resolveVisibleAttribute(name, allAttributes, nextValue);
+
+  if (prevOwner !== undefined && prevOwner !== currentOwner) {
+    // null, not `delete`: the auto-save delta must carry an explicit
+    // unset, otherwise the existing-detection merge resurrects the value.
+    nextValue[name] = null;
+  } else if (
+    prevOwner === undefined &&
+    currentOwner &&
+    nextValue[name] == null
+  ) {
+    const defaultVal = currentOwner.default;
+    if (defaultVal !== undefined) {
+      nextValue[name] = defaultVal;
+    }
+  }
 }
 
 /**
@@ -194,13 +241,13 @@ export function isWhenFulfillable(
 export function resolveVisibleAttribute(
   name: string,
   allAttributes: AttributeConfig[],
-  formData: Record<string, unknown>,
+  formData: Record<string, unknown>
 ): AttributeConfig | undefined {
   return allAttributes
     .filter((a) => a.name === name && a.when)
     .find(
       (a) =>
         evaluateWhen(a.when, formData) ||
-        !isWhenFulfillable(a.when, allAttributes),
+        !isWhenFulfillable(a.when, allAttributes)
     );
 }
