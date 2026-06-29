@@ -3,7 +3,10 @@ import { Checkbox, Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React, { useCallback, useMemo } from "react";
 import { useSceneInventory, type SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
-import { useMcapModalSettings } from "./mcap-modal-settings";
+import {
+  type McapTemporalPolicySettings,
+  useMcapModalSettings,
+} from "./mcap-modal-settings";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import styles from "./McapSettingsSidebar.module.css";
 
@@ -28,7 +31,13 @@ const McapSettingsSidebar: React.FC = () => {
       title={<span className={styles.contextTitle}>{contextTitle}</span>}
     >
       <div ref={slotRef} />
-      {!focusedTile ? <GlobalSceneSettings /> : null}
+      {focusedTile ? (
+        <div className={styles.root}>
+          <TimeResolutionSettings />
+        </div>
+      ) : (
+        <GlobalSceneSettings />
+      )}
     </SidebarPanel>
   );
 };
@@ -51,6 +60,8 @@ function GlobalSceneSettings() {
         <SummaryMetric label="Labels" value={counts.labels} />
       </div>
 
+      <TimeResolutionSettings />
+
       <section className={styles.section}>
         <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
           Labels
@@ -71,6 +82,126 @@ function GlobalSceneSettings() {
         </div>
       </section>
     </div>
+  );
+}
+
+function TimeResolutionSettings() {
+  const { resetTemporalPolicy, setTemporalPolicy, temporalPolicy } =
+    useMcapModalSettings();
+
+  return (
+    <TemporalPolicySettings
+      onReset={resetTemporalPolicy}
+      onUpdate={setTemporalPolicy}
+      policy={temporalPolicy}
+    />
+  );
+}
+
+function TemporalPolicySettings({
+  onReset,
+  onUpdate,
+  policy,
+}: {
+  readonly onReset: () => void;
+  readonly onUpdate: (policy: Partial<McapTemporalPolicySettings>) => void;
+  readonly policy: McapTemporalPolicySettings;
+}) {
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionHeader}>
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          Time synchronization
+        </Text>
+        <button className={styles.resetButton} onClick={onReset} type="button">
+          Reset
+        </button>
+      </div>
+      <div className={styles.controlStack}>
+        <PolicyNumberInput
+          label="Stale media warning"
+          onChange={(staleMediaWarningMs) => onUpdate({ staleMediaWarningMs })}
+          tooltip="Shows a stale badge when latest-at-or-before media is older than this threshold. Media lookup is unbounded and never uses future samples. Enter 0 to disable the warning."
+          value={policy.staleMediaWarningMs}
+        />
+        <PolicyNumberInput
+          label="Max interpolation gap"
+          onChange={(maxInterpolationGapMs) =>
+            onUpdate({ maxInterpolationGapMs })
+          }
+          tooltip="Largest gap between bracketing transform samples that can be interpolated. Larger gaps make placement unavailable. Enter 0 to remove the gap limit."
+          value={policy.maxInterpolationGapMs}
+        />
+        <PolicyNumberInput
+          label="Transform gap warning"
+          onChange={(transformGapWarningMs) =>
+            onUpdate({ transformGapWarningMs })
+          }
+          tooltip="Shows a 3D warning when a rendered transform interpolates across a wider gap than this. Rendering continues if the max interpolation gap allows it. Enter 0 to disable the warning."
+          value={policy.transformGapWarningMs}
+        />
+        <PolicyNumberInput
+          label="Boundary clamp"
+          onChange={(boundaryClampMs) => onUpdate({ boundaryClampMs })}
+          tooltip="Start/end tolerance for using the nearest transform sample when a full interpolation bracket does not exist. Enter 0 to disable boundary clamping."
+          value={policy.boundaryClampMs}
+        />
+      </div>
+    </section>
+  );
+}
+
+function PolicyNumberInput({
+  label,
+  onChange,
+  tooltip,
+  value,
+}: {
+  readonly label: string;
+  readonly onChange: (value: number) => void;
+  readonly tooltip: string;
+  readonly value: number;
+}) {
+  return (
+    <label className={styles.controlRow}>
+      <ControlLabel label={label} tooltip={tooltip} />
+      <span className={styles.numberInputWrap}>
+        <input
+          aria-label={label}
+          className={styles.numberInput}
+          max={60_000}
+          min={0}
+          onChange={(event) => onChange(Number(event.target.value))}
+          step={1}
+          type="number"
+          value={value}
+        />
+        <span className={styles.unitLabel}>ms</span>
+      </span>
+    </label>
+  );
+}
+
+function ControlLabel({
+  label,
+  tooltip,
+}: {
+  readonly label: string;
+  readonly tooltip: string;
+}) {
+  return (
+    <span className={styles.labelWithTooltip}>
+      <span className={styles.controlLabel}>{label}</span>
+      <span
+        aria-label={tooltip}
+        className={styles.tooltipIcon}
+        data-tooltip={tooltip}
+        role="img"
+        tabIndex={0}
+      >
+        ?
+      </span>
+    </span>
   );
 }
 

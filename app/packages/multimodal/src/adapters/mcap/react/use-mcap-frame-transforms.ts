@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type { LoadStatus } from "../../../load-status";
 import type {
+  McapFrameTransformPolicy,
   McapFrameTransformResolution,
   McapFrameTransformTimeRange,
 } from "../frame-transform-types";
@@ -9,9 +10,9 @@ import { McapFrameTransformStore } from "../frame-transforms";
 import { mcapErrorMessage } from "../errors";
 import type { McapActiveTimeline, McapResourceClient } from "../types";
 
-// Keep demand-driven dynamic transform reads small and idle-priority; this gives
-// the resolver a little temporal slack without letting dense transform channels
-// chase every playback tick.
+// Keep demand-driven dynamic transform reads small and placement-priority; this
+// gives the resolver a little temporal slack without letting dense transform
+// channels chase every playback tick.
 const DYNAMIC_TRANSFORM_LOOKBACK_NS = 500_000_000n;
 const DYNAMIC_TRANSFORM_LOOKAHEAD_NS = 500_000_000n;
 const DYNAMIC_TRANSFORM_RETRY_BASE_DELAY_MS = 250;
@@ -38,6 +39,14 @@ export interface McapFrameTransformsState {
 export interface UseMcapFrameTransformsOptions {
   readonly activeTimeline?: McapActiveTimeline;
   readonly client: McapResourceClient;
+  /**
+   * Offline playback path: load one dynamic transform index for the source
+   * range, then resolve synchronously during playback. `null` means the
+   * timeline range is still loading; `undefined` keeps the old demand-driven
+   * fallback for callers that do not have a source range.
+   */
+  readonly dynamicRange?: McapFrameTransformTimeRange | null;
+  readonly policy?: McapFrameTransformPolicy;
   readonly source: ByteSourceDescriptor | null;
   readonly timeNs?: bigint;
 }
@@ -59,6 +68,8 @@ const IDLE_FRAME_TRANSFORMS_STATE = {
 export function useMcapFrameTransforms({
   activeTimeline,
   client,
+  dynamicRange,
+  policy,
   source,
   timeNs,
 }: UseMcapFrameTransformsOptions): McapFrameTransformsState {
@@ -73,11 +84,18 @@ export function useMcapFrameTransforms({
     new Map(),
   );
   const sourceGenerationRef = useRef(0);
+  const dynamicRangeMode =
+    dynamicRange === null
+      ? "pending"
+      : dynamicRange === undefined
+        ? "fallback"
+        : "range";
+  const dynamicRangeStartTimeNs = dynamicRange?.startTimeNs;
+  const dynamicRangeEndTimeNs = dynamicRange?.endTimeNs;
 
-  /**
-   * Resets transform state when the source changes and loads the initial
-   * source-wide transform bootstrap before dynamic windows are requested.
-   */
+  // This effect resets transform state when the source changes and loads the
+  // initial source-wide transform bootstrap before dynamic windows are
+  // requested.
   useEffect(() => {
     const retryTimeouts = retryTimeoutsRef.current;
     clearRetryTimeouts(retryTimeouts);
@@ -95,6 +113,15 @@ export function useMcapFrameTransforms({
       return;
     }
 
+    if (dynamicRangeMode === "pending") {
+      setState({
+        error: null,
+        status: "loading",
+        version: sourceGeneration,
+      });
+      return;
+    }
+
     const store = new McapFrameTransformStore();
     storeRef.current = store;
     let active = true;
@@ -106,12 +133,31 @@ export function useMcapFrameTransforms({
 
     client
       .readFrameTransformBootstrap({ source })
-      .then((set) => {
+      .then(async (set) => {
         if (!active || sourceGeneration !== sourceGenerationRef.current) {
           return;
         }
 
         store.addStatic(set.samples);
+        if (
+          dynamicRangeStartTimeNs !== undefined &&
+          dynamicRangeEndTimeNs !== undefined
+        ) {
+          const dynamicSet = await client.readFrameTransformWindow({
+            activeTimeline,
+            endTimeNs: dynamicRangeEndTimeNs,
+            source,
+            startTimeNs: dynamicRangeStartTimeNs,
+          });
+          if (!active || sourceGeneration !== sourceGenerationRef.current) {
+            return;
+          }
+          store.addDynamic(dynamicSet.samples, {
+            endTimeNs: dynamicRangeEndTimeNs,
+            startTimeNs: dynamicRangeStartTimeNs,
+          });
+        }
+
         setState((current) => ({
           ...current,
           error: null,
@@ -136,14 +182,23 @@ export function useMcapFrameTransforms({
       active = false;
       clearRetryTimeouts(retryTimeouts);
     };
-  }, [activeTimeline, client, source]);
+  }, [
+    activeTimeline,
+    client,
+    dynamicRangeEndTimeNs,
+    dynamicRangeMode,
+    dynamicRangeStartTimeNs,
+    source,
+  ]);
 
-  /**
-   * Requests the dynamic transform window around the active playback time when
-   * the resolver has not already indexed that time for the current source.
-   */
+  // This effect requests the dynamic transform window around the active
+  // playback time when the resolver has not already indexed that time for the
+  // current source.
   useEffect(() => {
     const store = storeRef.current;
+    if (dynamicRangeMode !== "fallback") {
+      return;
+    }
     if (!source || !store || state.status !== "ready" || timeNs === undefined) {
       return;
     }
@@ -225,7 +280,15 @@ export function useMcapFrameTransforms({
       });
 
     return undefined;
-  }, [activeTimeline, client, source, state.status, state.version, timeNs]);
+  }, [
+    activeTimeline,
+    client,
+    dynamicRangeMode,
+    source,
+    state.status,
+    state.version,
+    timeNs,
+  ]);
 
   // The store is mutated in place; `state.version` is the cache-busting signal
   // that tells memoized consumers (frameIds, resolve, downstream renderers) to
@@ -238,6 +301,7 @@ export function useMcapFrameTransforms({
   const resolve = useCallback<McapFrameTransformResolver>(
     (sourceFrameId, targetFrameId, requestTimeNs) =>
       storeRef.current?.resolve({
+        ...(policy ? { policy } : {}),
         sourceFrameId,
         targetFrameId,
         timeNs: requestTimeNs,
@@ -247,7 +311,7 @@ export function useMcapFrameTransforms({
         targetFrameId,
       },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.version],
+    [policy?.boundaryClampNs, policy?.maxInterpolationGapNs, state.version],
   );
 
   return useMemo(

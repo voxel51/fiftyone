@@ -84,6 +84,49 @@ describe("useMcapFrameTransforms", () => {
     });
   });
 
+  it("loads one source-range dynamic transform index for offline playback", async () => {
+    const source = createSource("source-range");
+    const client = createFrameTransformClient({
+      bootstrapSamples: [sample("base_link", "lidar")],
+      windowSamples: [sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n)],
+    });
+
+    const { rerender } = render(
+      <FrameTransformsHarness
+        client={client}
+        dynamicRange={{ endTimeNs: 1_000n, startTimeNs: 0n }}
+        label="frames"
+        source={source}
+        timeNs={100n}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledWith({
+        activeTimeline: undefined,
+        endTimeNs: 1_000n,
+        source,
+        startTimeNs: 0n,
+      });
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("frames").textContent).toBe("ready:resolved:");
+    });
+
+    rerender(
+      <FrameTransformsHarness
+        client={client}
+        dynamicRange={{ endTimeNs: 1_000n, startTimeNs: 0n }}
+        label="frames"
+        source={source}
+        timeNs={900n}
+      />,
+    );
+
+    await flushReactWork();
+    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(1);
+  });
+
   it("rebuilds transform cache when the active timeline changes", async () => {
     const source = createSource("timeline-switch");
     const client = createFrameTransformClient({
@@ -226,6 +269,7 @@ describe("useMcapFrameTransforms", () => {
 function FrameTransformsHarness({
   activeTimeline,
   client,
+  dynamicRange,
   label,
   onState,
   source,
@@ -233,6 +277,10 @@ function FrameTransformsHarness({
 }: {
   readonly activeTimeline?: McapActiveTimeline;
   readonly client: McapResourceClient;
+  readonly dynamicRange?: {
+    readonly endTimeNs: bigint;
+    readonly startTimeNs: bigint;
+  } | null;
   readonly label: string;
   readonly onState?: (state: McapFrameTransformsState) => void;
   readonly source: ByteSourceDescriptor | null;
@@ -241,6 +289,7 @@ function FrameTransformsHarness({
   const state = useMcapFrameTransforms({
     activeTimeline,
     client,
+    dynamicRange,
     source,
     timeNs,
   });

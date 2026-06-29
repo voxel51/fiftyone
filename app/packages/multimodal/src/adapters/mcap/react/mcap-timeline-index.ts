@@ -7,6 +7,7 @@ import type { McapTimelineRange } from "../types";
 export interface McapTimelineIndex {
   readonly ticks: readonly bigint[];
   readonly durationSec: number;
+  readonly endTimeNs: bigint;
   readonly startTimeNs: bigint;
   secToNs(timeSec: number): bigint;
   nearestTick(timeSec: number): bigint | undefined;
@@ -48,5 +49,12 @@ export function createMcapTimelineIndex(
     return timeNs - before <= after - timeNs ? before : after;
   }
 
-  return { ticks, durationSec, startTimeNs, secToNs, nearestTick };
+  return {
+    ticks,
+    durationSec,
+    endTimeNs: range.endTimeNs,
+    startTimeNs,
+    secToNs,
+    nearestTick,
+  };
 }

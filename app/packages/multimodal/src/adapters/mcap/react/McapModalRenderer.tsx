@@ -6,6 +6,7 @@ import React, { useMemo } from "react";
 import MultiModalPlayback from "../../../components/MultiModalPlayback/MultiModalPlayback";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { McapDataStreamProvider } from "./mcap-data-stream-context";
+import { McapFrameTransformsProvider } from "./mcap-frame-transforms-context";
 import { McapModalSettingsProvider } from "./mcap-modal-settings";
 import McapSettingsSidebar from "./McapSettingsSidebar";
 import { McapStreams } from "./McapStreams";
@@ -94,26 +95,28 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
 
   return (
     <McapModalSettingsProvider>
-      <McapDataStreamProvider>
-        <MultiModalPlayback
-          fileName={fileName}
-          headerCaption={headerCaption}
-          sceneSources={sources}
-          initialTiles={initialTiles}
-          initialLayout={initialLayout}
-          tracks={tracks.length > 0 ? tracks : undefined}
-          onTagDelete={onTagDelete}
-          leftSidebar={<McapSettingsSidebar />}
-          defaultLeftOpen={defaultLeftOpen}
-          defaultRightOpen={defaultRightOpen}
-          onLeftOpenChange={onLeftOpenChange}
-          onRightOpenChange={onRightOpenChange}
-          onTagCreate={onTagCreate}
-        >
-          <McapStreams ctx={ctx} client={client} />
-          <McapModalLayoutPersistence />
-        </MultiModalPlayback>
-      </McapDataStreamProvider>
+      <McapFrameTransformsProvider>
+        <McapDataStreamProvider>
+          <MultiModalPlayback
+            fileName={fileName}
+            headerCaption={headerCaption}
+            sceneSources={sources}
+            initialTiles={initialTiles}
+            initialLayout={initialLayout}
+            tracks={tracks.length > 0 ? tracks : undefined}
+            onTagDelete={onTagDelete}
+            leftSidebar={<McapSettingsSidebar />}
+            defaultLeftOpen={defaultLeftOpen}
+            defaultRightOpen={defaultRightOpen}
+            onLeftOpenChange={onLeftOpenChange}
+            onRightOpenChange={onRightOpenChange}
+            onTagCreate={onTagCreate}
+          >
+            <McapStreams ctx={ctx} client={client} />
+            <McapModalLayoutPersistence />
+          </MultiModalPlayback>
+        </McapDataStreamProvider>
+      </McapFrameTransformsProvider>
     </McapModalSettingsProvider>
   );
 };

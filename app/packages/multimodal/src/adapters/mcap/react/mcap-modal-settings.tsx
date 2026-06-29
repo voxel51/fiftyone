@@ -7,33 +7,56 @@ import React, {
   useState,
 } from "react";
 
+export interface McapTemporalPolicySettings {
+  readonly boundaryClampMs: number;
+  readonly maxInterpolationGapMs: number;
+  readonly staleMediaWarningMs: number;
+  readonly transformGapWarningMs: number;
+}
+
 interface McapPersistedModalSettings {
   version: 1;
   imageLabelTopics: Record<string, readonly string[]>;
   interpolate2dAnnotations: boolean;
   interpolate3dAnnotations: boolean;
+  temporalPolicy: McapTemporalPolicySettings;
 }
 
 interface McapModalSettingsContextValue {
   readonly imageLabelTopics: Record<string, readonly string[]>;
   readonly interpolate2dAnnotations: boolean;
   readonly interpolate3dAnnotations: boolean;
+  readonly temporalPolicy: McapTemporalPolicySettings;
   readonly setImageLabelTopics: (
     imageTopic: string,
     labelTopics: readonly string[],
   ) => void;
   readonly setInterpolate2dAnnotations: (enabled: boolean) => void;
   readonly setInterpolate3dAnnotations: (enabled: boolean) => void;
+  readonly resetTemporalPolicy: () => void;
+  readonly setTemporalPolicy: (
+    policy: Partial<McapTemporalPolicySettings>,
+  ) => void;
 }
 
 const STORAGE_KEY = "fiftyone.mcap.modal-settings";
 const VERSION = 1;
+
+export const DEFAULT_MCAP_TEMPORAL_POLICY: McapTemporalPolicySettings = {
+  boundaryClampMs: 50,
+  maxInterpolationGapMs: 0,
+  staleMediaWarningMs: 2000,
+  transformGapWarningMs: 2000,
+};
+
+const MAX_TEMPORAL_POLICY_MS = 60_000;
 
 const DEFAULT_SETTINGS: McapPersistedModalSettings = {
   version: VERSION,
   imageLabelTopics: {},
   interpolate2dAnnotations: true,
   interpolate3dAnnotations: true,
+  temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
 };
 
 const McapModalSettingsContext =
@@ -47,11 +70,11 @@ export function readMcapModalSettings(): McapPersistedModalSettings {
     const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed: unknown = JSON.parse(raw);
-    if (
-      typeof parsed !== "object" ||
-      parsed === null ||
-      (parsed as { version?: unknown }).version !== VERSION
-    ) {
+    if (typeof parsed !== "object" || parsed === null) {
+      return DEFAULT_SETTINGS;
+    }
+
+    if ((parsed as { version?: unknown }).version !== VERSION) {
       return DEFAULT_SETTINGS;
     }
 
@@ -67,6 +90,7 @@ export function readMcapModalSettings(): McapPersistedModalSettings {
         typeof candidate.interpolate3dAnnotations === "boolean"
           ? candidate.interpolate3dAnnotations
           : DEFAULT_SETTINGS.interpolate3dAnnotations,
+      temporalPolicy: normalizeTemporalPolicy(candidate.temporalPolicy),
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -89,6 +113,7 @@ export function writeMcapModalSettings(
         ),
         interpolate2dAnnotations: settings.interpolate2dAnnotations,
         interpolate3dAnnotations: settings.interpolate3dAnnotations,
+        temporalPolicy: normalizeTemporalPolicy(settings.temporalPolicy),
       }),
     );
   } catch {
@@ -138,6 +163,25 @@ export const McapModalSettingsProvider: React.FC<{
       })),
     [update],
   );
+  const setTemporalPolicy = useCallback(
+    (policy: Partial<McapTemporalPolicySettings>) =>
+      update((current) => ({
+        ...current,
+        temporalPolicy: normalizeTemporalPolicy({
+          ...current.temporalPolicy,
+          ...policy,
+        }),
+      })),
+    [update],
+  );
+  const resetTemporalPolicy = useCallback(
+    () =>
+      update((current) => ({
+        ...current,
+        temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
+      })),
+    [update],
+  );
   const setImageLabelTopics = useCallback(
     (imageTopic: string, labelTopics: readonly string[]) => {
       const normalizedImageTopic = imageTopic.trim();
@@ -159,15 +203,20 @@ export const McapModalSettingsProvider: React.FC<{
       imageLabelTopics: settings.imageLabelTopics,
       interpolate2dAnnotations: settings.interpolate2dAnnotations,
       interpolate3dAnnotations: settings.interpolate3dAnnotations,
+      temporalPolicy: settings.temporalPolicy,
+      resetTemporalPolicy,
       setImageLabelTopics,
       setInterpolate2dAnnotations,
       setInterpolate3dAnnotations,
+      setTemporalPolicy,
     }),
     [
       settings,
+      resetTemporalPolicy,
       setImageLabelTopics,
       setInterpolate2dAnnotations,
       setInterpolate3dAnnotations,
+      setTemporalPolicy,
     ],
   );
 
@@ -219,4 +268,38 @@ function normalizeTopicList(value: unknown): readonly string[] {
         .filter(Boolean),
     ),
   );
+}
+
+function normalizeTemporalPolicy(value: unknown): McapTemporalPolicySettings {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return DEFAULT_MCAP_TEMPORAL_POLICY;
+  }
+
+  const candidate = value as Partial<McapTemporalPolicySettings>;
+  return {
+    boundaryClampMs: normalizePolicyMs(
+      candidate.boundaryClampMs,
+      DEFAULT_MCAP_TEMPORAL_POLICY.boundaryClampMs,
+    ),
+    maxInterpolationGapMs: normalizePolicyMs(
+      candidate.maxInterpolationGapMs,
+      DEFAULT_MCAP_TEMPORAL_POLICY.maxInterpolationGapMs,
+    ),
+    staleMediaWarningMs: normalizePolicyMs(
+      candidate.staleMediaWarningMs,
+      DEFAULT_MCAP_TEMPORAL_POLICY.staleMediaWarningMs,
+    ),
+    transformGapWarningMs: normalizePolicyMs(
+      candidate.transformGapWarningMs,
+      DEFAULT_MCAP_TEMPORAL_POLICY.transformGapWarningMs,
+    ),
+  };
+}
+
+function normalizePolicyMs(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.min(MAX_TEMPORAL_POLICY_MS, Math.max(0, Math.round(value)));
 }

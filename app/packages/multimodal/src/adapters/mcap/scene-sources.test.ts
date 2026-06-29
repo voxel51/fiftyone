@@ -105,6 +105,18 @@ describe("mcapStreamPolicies", () => {
     });
   });
 
+  it("leaves latest lookback unbounded", () => {
+    const sources = mcapSceneSources([
+      createTopic("/cam/image_rect_compressed"),
+    ]);
+
+    expect(mcapStreamPolicies(sources)).toEqual({
+      "/cam/image_rect_compressed": {
+        mode: PlaybackSyncMode.LATEST,
+      },
+    });
+  });
+
   it("ignores sources with unknown types", () => {
     expect(
       mcapStreamPolicies([{ id: "/radar", type: "radar", label: "radar" }]),
