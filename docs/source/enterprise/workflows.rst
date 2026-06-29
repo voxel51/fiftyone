@@ -27,7 +27,7 @@ areas:
 - **Workflows** — a grid of every workflow on the dataset showing its
   status, stage count, members, and overall completion.
 
-.. image:: /images/enterprise/workflows/workflows_annotate_tab.png
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_annotate_tab.webp
    :alt: Annotate tab showing My Tasks and the Workflows grid
 
 Each workflow has a **status** that reflects where it is in its lifecycle:
@@ -80,7 +80,7 @@ The canvas toolbar provides:
 - **Delete** — remove the selected stage.
 - **Start workflow** — launch the workflow once it is configured.
 
-.. image:: /images/enterprise/workflows/workflows_canvas_editor.gif
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_canvas_editor_demo.webp
    :alt: Building a workflow on the canvas editor
 
 Using a Template
@@ -90,19 +90,19 @@ Instead of building from scratch, click **Templates** to start from a
 prebuilt pipeline. Templates are a fast way to stand up common
 annotate-and-review patterns; customize the stages after importing.
 
-.. image:: /images/enterprise/workflows/workflows_templates_picker.png
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_templates_picker.webp
    :alt: Templates picker showing prebuilt workflow patterns
 
 For example, the **Human-in-the-loop** template creates a single
 Annotate → Review pipeline:
 
-.. image:: /images/enterprise/workflows/workflows_canvas_simple.png
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_canvas_simple.webp
    :alt: Single-stage review template on the canvas
 
 The **Two-tier review** template adds a second review stage for
 high-stakes labeling:
 
-.. image:: /images/enterprise/workflows/workflows_canvas_editor.png
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_two_tier_template.webp
    :alt: Two-tier review template on the canvas
 
 Configuring Stages
@@ -121,7 +121,7 @@ Click a stage on the canvas to configure it:
 The following example shows how to edit the assignee for a Review
 stage:
 
-.. image:: /images/enterprise/workflows/workflows_stage_config.gif
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_stage_config.webp
    :alt: Editing the assignee for a Review stage
 
 Starting a Workflow
@@ -140,13 +140,13 @@ Cloning and Deleting
 **Clone** a workflow to reuse its pipeline as the starting point for a new
 one.
 
-.. image:: /images/enterprise/workflows/workflows_clone_delete.gif
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_clone_delete.webp
    :alt: Cloning a workflow to reuse its pipeline
 
 **Delete** a workflow you no longer need from the workflow card or the
 detail view.
 
-.. image:: /images/enterprise/workflows/workflows_delete.png
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_delete.webp
    :alt: Delete workflow button on a workflow card
 
 Viewing Tasks
@@ -155,7 +155,7 @@ Viewing Tasks
 Each workflow has a **Tasks** tab listing every task the workflow has
 generated, so you can see work across the whole pipeline in one place.
 
-.. image:: /images/enterprise/workflows/workflows_tasks_tab.png
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_tasks_tab.webp
    :alt: Workflow Tasks tab listing all tasks
 
 ----
@@ -178,13 +178,13 @@ surfaces alongside the usual viewer:
 **Resume labeling** button to jump back into the task and a link to
 **View workflow** for the full pipeline context.
 
-.. image:: /images/enterprise/workflows/workflows_task_banner.png
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_task_banner.webp
    :alt: Task banner showing progress, Resume labeling, and View workflow
 
 **Task progress.** Shows how many samples have been completed out of the
 total assigned to the task (for example, *"5 / 501 samples"*).
 
-.. image:: /images/enterprise/workflows/workflows_task_progress.png
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_task_progress.webp
    :alt: Task progress bar with Skip and Submit & next buttons
 
 **Discussion.** An in-app comment thread on the sample and its labels.
@@ -192,7 +192,7 @@ You and your teammates can leave comments, edit or delete your own, and
 moderate the thread — keeping the conversation attached to the work
 itself.
 
-.. image:: /images/enterprise/workflows/workflows_discussion.png
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_discussion.webp
    :alt: Discussion panel with comment thread on a sample
 
 Annotating
@@ -204,7 +204,7 @@ to save your work and advance, or **Skip** to move on without labeling
 indicator (for example, *"5 / 501 samples · 496 left"*) tracks how many
 samples remain.
 
-.. image:: /images/enterprise/workflows/workflows_annotate_task.gif
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_annotate_task.webp
    :alt: Annotating a sample with Submit & next and Skip
 
 Reviewing
@@ -217,5 +217,5 @@ and resubmitted. The task progress (for example, *"2 / 2 samples reviewed · 0 r
 (1 rejected)"*) reflects outcomes, and you complete the task with
 **Task complete** once all samples have been reviewed.
 
-.. image:: /images/enterprise/workflows/workflows_review_task.png
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_review_task.webp
    :alt: Review task mode showing APPROVED and REJECTED badges on a grid
