@@ -18,13 +18,16 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getMcapTopicStatus,
+  getMcapTopicStaleAgeNs,
   setMcapTopicStartTimeSec,
+  setMcapTopicStaleAgeNs,
   setMcapTopicStatus,
   type McapTopicStatus,
 } from "./mcap-stream-status-state";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ } from "../timeline";
 import type {
+  McapDecodedMessage,
   McapResourceClient,
   McapStreamSyncPolicies,
   McapSynchronizedMessageWindow,
@@ -35,6 +38,7 @@ import { resetMcapPlaybackBuffering } from "./mcap-playback-buffering";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import { createMcapTimelineIndex } from "./mcap-timeline-index";
 import { McapTopicCache } from "./mcap-topic-cache";
+import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
 // One engine stream owns all MCAP topics so camera/lidar tiles stay on the
 // same synchronized timeline and fetch in shared batches.
@@ -128,15 +132,6 @@ const MAX_FETCH_FAILURE_STREAK = 3;
  */
 const BUFFERED_RANGES_PUBLISH_INTERVAL_MS = 500;
 
-/**
- * Age past which a rendered frame counts as "stale": selection is
- * latest-at-or-before with unbounded lookback, so a mid-recording
- * sensor dropout keeps rendering the last frame — the status flips so
- * a frozen frame can't read as live. Generous enough that normally
- * sparse streams (keyframe-rate annotations) never trip it.
- */
-const STALE_THRESHOLD_NS = 3_000_000_000n;
-
 const PLAYBACK_POLICY = deriveMcapPlaybackPolicy(DEFAULT_MCAP_PLAYBACK_POLICY);
 
 const noop = (): void => undefined;
@@ -145,6 +140,7 @@ export interface UseMcapDataStreamOptions {
   client: McapResourceClient;
   source: ByteSourceDescriptor | null;
   allTopics: readonly string[];
+  staleMediaWarningNs: bigint;
   streamPolicies: McapStreamSyncPolicies;
 }
 
@@ -165,6 +161,7 @@ export function useRegisterMcapDataStream({
   client,
   source,
   allTopics,
+  staleMediaWarningNs,
   streamPolicies,
 }: UseMcapDataStreamOptions): void {
   const { registerStream, seek, subscribeStream } = usePlayback();
@@ -180,7 +177,9 @@ export function useRegisterMcapDataStream({
   // is covering. Per-topic so a request that omits a newly-subscribed
   // topic doesn't make collectMissingTicks think that topic is in flight.
   const pendingTicksRef = useRef<Map<string, Set<string>>>(new Map());
-  const lastFrameRef = useRef<Map<string, unknown>>(new Map());
+  const lastFrameRef = useRef<Map<string, McapTopicPlaybackFrame<unknown>>>(
+    new Map(),
+  );
   // Consecutive fetch failures per topic; reset on the first success.
   const failureStreakRef = useRef<Map<string, number>>(new Map());
   // Topics currently in the "failed" state (streak hit the cap). Sticky
@@ -200,10 +199,14 @@ export function useRegisterMcapDataStream({
   // stable callbacks below read fresh values without listing them as
   // deps (which would invalidate the registered stream every render).
   const allTopicsRef = useRef(allTopics);
+  const staleMediaWarningNsRef = useRef(staleMediaWarningNs);
   const streamPoliciesRef = useRef(streamPolicies);
   useEffect(() => {
     allTopicsRef.current = allTopics;
   }, [allTopics]);
+  useEffect(() => {
+    staleMediaWarningNsRef.current = staleMediaWarningNs;
+  }, [staleMediaWarningNs]);
   useEffect(() => {
     streamPoliciesRef.current = streamPolicies;
   }, [streamPolicies]);
@@ -316,6 +319,7 @@ export function useRegisterMcapDataStream({
     for (const topic of topicCachesRef.current.keys()) {
       setStreamValue(store, topic, null);
       setMcapTopicStatus(store, topic, "loading");
+      setMcapTopicStaleAgeNs(store, topic, null);
       setMcapTopicStartTimeSec(store, topic, null);
     }
     resetMcapPlaybackBuffering(store);
@@ -451,6 +455,7 @@ export function useRegisterMcapDataStream({
       const cache = caches.get(topic);
 
       let status: McapTopicStatus;
+      let staleAgeNs: bigint | null = null;
       if (tick === null || !cache?.has(tick)) {
         status = failed.has(topic) ? "failed" : "loading";
       } else {
@@ -462,15 +467,17 @@ export function useRegisterMcapDataStream({
           if (!msg) {
             status = "gap";
           } else {
-            // Latest-at-or-before selection holds the last frame through
-            // dropouts; flag it once the frame is older than the
-            // threshold so a frozen frame can't read as live.
-            status =
-              tick - msg.timelineTimeNs > STALE_THRESHOLD_NS
-                ? "stale"
-                : "ready";
+            staleAgeNs = staleAgeForMessage(
+              tick,
+              msg,
+              staleMediaWarningNsRef.current,
+            );
+            status = staleAgeNs === null ? "ready" : "stale";
           }
         }
+      }
+      if (getMcapTopicStaleAgeNs(store, topic) !== staleAgeNs) {
+        setMcapTopicStaleAgeNs(store, topic, staleAgeNs);
       }
       if (getMcapTopicStatus(store, topic) !== status) {
         setMcapTopicStatus(store, topic, status);
@@ -503,6 +510,12 @@ export function useRegisterMcapDataStream({
     // coverage — refresh the timeline's buffered shading (throttled).
     scheduleBufferedRangesPublish();
   }, [getActiveTopics, scheduleBufferedRangesPublish, store]);
+
+  // Sidebar threshold changes should update stale/ready badges even when the
+  // playhead is paused and no stream commit is happening.
+  useEffect(() => {
+    publishStreamStatuses();
+  }, [publishStreamStatuses, staleMediaWarningNs]);
 
   // Failure bookkeeping for one rejected fetch. Below the streak cap the
   // ticks stay uncached so the engine retries; at the cap the requested
@@ -941,7 +954,7 @@ export function useRegisterMcapDataStream({
     (topic: string) => topicCachesRef.current.get(topic),
     [],
   );
-  const getTimelineIndex = useCallback(() => indexRef.current, []);
+  const getTimelineIndex = useCallback(() => index, [index]);
 
   useEffect(() => {
     setDataStream({ subscribeToTopic, getTopicCache, getTimelineIndex });
@@ -1013,6 +1026,16 @@ function nsToSeconds(deltaNs: bigint): number {
   );
 }
 
+function staleAgeForMessage(
+  tick: bigint,
+  msg: McapDecodedMessage,
+  staleMediaWarningNs: bigint,
+): bigint | null {
+  if (staleMediaWarningNs <= 0n) return null;
+  const ageNs = tick >= msg.timelineTimeNs ? tick - msg.timelineTimeNs : 0n;
+  return ageNs > staleMediaWarningNs ? ageNs : null;
+}
+
 function distributeWindowToCaches(
   window: McapSynchronizedMessageWindow,
   caches: Map<string, McapTopicCache>,
@@ -1031,7 +1054,7 @@ function pushTickToStore(
   activeTopics: string[],
   tick: bigint,
   caches: Map<string, McapTopicCache>,
-  lastFrame: Map<string, unknown>,
+  lastFrame: Map<string, McapTopicPlaybackFrame<unknown>>,
   store: PlaybackStore,
 ): void {
   for (const topic of activeTopics) {
@@ -1039,10 +1062,21 @@ function pushTickToStore(
     if (!cache) continue;
     const msg = cache.get(tick);
     const viz = msg?.decoded.output.visualization ?? null;
-    if (viz !== null) lastFrame.set(topic, viz);
-    // Still publish `null` when the current atom holds data, but avoid
-    // waking subscribers when the selected source tick hasn't changed.
-    const toWrite = lastFrame.get(topic) ?? null;
+    let toWrite: McapTopicPlaybackFrame<unknown> | null;
+    if (msg === undefined) {
+      toWrite = lastFrame.get(topic) ?? null;
+    } else if (msg && viz !== null) {
+      toWrite = {
+        ageNs: tick >= msg.timelineTimeNs ? tick - msg.timelineTimeNs : 0n,
+        contentTimeNs: msg.timelineTimeNs,
+        frame: viz,
+        requestedTimeNs: tick,
+      };
+      lastFrame.set(topic, toWrite);
+    } else {
+      toWrite = null;
+      lastFrame.delete(topic);
+    }
     if (getStreamValue(store, topic) === toWrite) continue;
     setStreamValue(store, topic, toWrite);
   }

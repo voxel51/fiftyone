@@ -19,6 +19,7 @@ import { VISUALIZATION_KIND } from "../../../visualization";
 import type {
   McapDecodedMessage,
   McapResourceClient,
+  McapStreamSyncPolicies,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
 } from "../types";
@@ -27,6 +28,7 @@ import {
   McapDataStreamProvider,
   useMcapDataStream,
 } from "./mcap-data-stream-context";
+import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 import { useRegisterMcapDataStream } from "./use-register-mcap-data-stream";
 
 const TOPIC = "/CAM_FRONT/image_rect_compressed";
@@ -238,6 +240,97 @@ describe("stream status + buffering feedback", () => {
     });
     // No message was ever resolved, so no frame is published either.
     expect(getStreamValue(store, TOPIC)).toBeNull();
+  });
+
+  it("keeps displaying old media and marks it stale past the warning threshold", async () => {
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readSynchronizedMessages: vi.fn(async (request) =>
+        request.timeNs === 0n
+          ? createWindow({
+              timeNs: 0n,
+              visualization: {
+                bytes: new Uint8Array([1]),
+                kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+              },
+            })
+          : createWindow({
+              messageTimeNs: 0n,
+              timeNs: request.timeNs,
+              visualization: {
+                bytes: new Uint8Array([1]),
+                kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+              },
+            }),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTopicTimeBounds: vi.fn(async () => [
+        {
+          firstMessageTimeNs: 0n,
+          lastMessageTimeNs: 0n,
+          topic: TOPIC,
+        },
+      ]),
+    });
+
+    const { rerender } = render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+        staleMediaWarningNs={500_000_000n}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    await waitFor(() => {
+      const value = getStreamValue(
+        store,
+        TOPIC,
+      ) as McapTopicPlaybackFrame | null;
+      expect(value?.contentTimeNs).toBe(0n);
+      expect(getMcapTopicStatus(store, TOPIC)).toBe("ready");
+    });
+
+    await act(async () => {
+      api?.seek(1);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      const value = getStreamValue(
+        store,
+        TOPIC,
+      ) as McapTopicPlaybackFrame | null;
+      expect(value).not.toBeNull();
+      expect(value?.contentTimeNs).toBe(0n);
+      expect(value?.requestedTimeNs).toBeGreaterThan(500_000_000n);
+      expect(value?.ageNs).toBe(value?.requestedTimeNs);
+      expect(getMcapTopicStatus(store, TOPIC)).toBe("stale");
+    });
+
+    rerender(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+        staleMediaWarningNs={0n}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getMcapTopicStatus(store, TOPIC)).toBe("ready");
+    });
   });
 
   it("marks the topic 'failed' after repeated fetch failures and stops stalling on those ticks", async () => {
@@ -463,13 +556,17 @@ function Harness({
   onStore,
   onApi,
   source,
+  staleMediaWarningNs = 0n,
   subscribe = true,
+  streamPolicies = {},
 }: {
   readonly client: McapResourceClient;
   readonly onStore: (store: PlaybackStore) => void;
   readonly onApi?: (api: ReturnType<typeof usePlayback>) => void;
   readonly source: ByteSourceDescriptor | null;
+  readonly staleMediaWarningNs?: bigint;
   readonly subscribe?: boolean;
+  readonly streamPolicies?: McapStreamSyncPolicies;
 }) {
   const dataStream = useMcapDataStream();
   const store = usePlaybackStore();
@@ -478,7 +575,8 @@ function Harness({
     allTopics: [TOPIC],
     client,
     source,
-    streamPolicies: {},
+    staleMediaWarningNs,
+    streamPolicies,
   });
 
   useEffect(() => {
@@ -575,13 +673,18 @@ function createTimelineRange(endTimeNs = 1_000_000_000n): McapTimelineRange {
 }
 
 function createWindow({
+  messageTimeNs,
   timeNs,
   visualization,
 }: {
+  readonly messageTimeNs?: bigint;
   readonly timeNs: bigint;
   readonly visualization: McapDecodedMessage["decoded"]["output"]["visualization"];
 }): McapSynchronizedMessageWindow {
-  const message = createDecodedMessage({ timeNs, visualization });
+  const message = createDecodedMessage({
+    timeNs: messageTimeNs ?? timeNs,
+    visualization,
+  });
   return {
     activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
     endTimeNs: timeNs,

@@ -2,6 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  DEFAULT_MCAP_TEMPORAL_POLICY,
   McapModalSettingsProvider,
   readMcapModalSettings,
   useMcapModalSettings,
@@ -21,6 +22,7 @@ describe("mcap-modal-settings", () => {
       imageLabelTopics: {},
       interpolate2dAnnotations: true,
       interpolate3dAnnotations: true,
+      temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
     });
   });
 
@@ -32,6 +34,12 @@ describe("mcap-modal-settings", () => {
       },
       interpolate2dAnnotations: false,
       interpolate3dAnnotations: true,
+      temporalPolicy: {
+        boundaryClampMs: 0,
+        maxInterpolationGapMs: 500,
+        staleMediaWarningMs: 250,
+        transformGapWarningMs: 1500,
+      },
     });
 
     expect(readMcapModalSettings()).toEqual({
@@ -41,6 +49,12 @@ describe("mcap-modal-settings", () => {
       },
       interpolate2dAnnotations: false,
       interpolate3dAnnotations: true,
+      temporalPolicy: {
+        boundaryClampMs: 0,
+        maxInterpolationGapMs: 500,
+        staleMediaWarningMs: 250,
+        transformGapWarningMs: 1500,
+      },
     });
   });
 
@@ -52,6 +66,7 @@ describe("mcap-modal-settings", () => {
       },
       interpolate2dAnnotations: true,
       interpolate3dAnnotations: true,
+      temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
     });
 
     const read = readMcapModalSettings();
@@ -70,6 +85,12 @@ describe("mcap-modal-settings", () => {
       result.current.setInterpolate2dAnnotations(false);
       result.current.setInterpolate3dAnnotations(false);
       result.current.setImageLabelTopics("/camera/front", ["/labels"]);
+      result.current.setTemporalPolicy({
+        boundaryClampMs: 75,
+        maxInterpolationGapMs: 125,
+        staleMediaWarningMs: 500,
+        transformGapWarningMs: 1500,
+      });
     });
 
     expect(result.current.interpolate2dAnnotations).toBe(false);
@@ -77,10 +98,53 @@ describe("mcap-modal-settings", () => {
     expect(result.current.imageLabelTopics["/camera/front"]).toEqual([
       "/labels",
     ]);
+    expect(result.current.temporalPolicy).toEqual({
+      boundaryClampMs: 75,
+      maxInterpolationGapMs: 125,
+      staleMediaWarningMs: 500,
+      transformGapWarningMs: 1500,
+    });
     expect(readMcapModalSettings()).toMatchObject({
       imageLabelTopics: { "/camera/front": ["/labels"] },
       interpolate2dAnnotations: false,
       interpolate3dAnnotations: false,
+      temporalPolicy: {
+        boundaryClampMs: 75,
+        maxInterpolationGapMs: 125,
+        staleMediaWarningMs: 500,
+        transformGapWarningMs: 1500,
+      },
+    });
+
+    act(() => {
+      result.current.resetTemporalPolicy();
+    });
+
+    expect(result.current.temporalPolicy).toEqual(DEFAULT_MCAP_TEMPORAL_POLICY);
+  });
+
+  it("clamps invalid temporal policy values", () => {
+    writeMcapModalSettings({
+      version: 1,
+      imageLabelTopics: {},
+      interpolate2dAnnotations: true,
+      interpolate3dAnnotations: true,
+      temporalPolicy: {
+        boundaryClampMs: -10,
+        maxInterpolationGapMs: 100_000,
+        staleMediaWarningMs: Number.NaN,
+        transformGapWarningMs: Number.POSITIVE_INFINITY,
+      },
+    });
+
+    expect(readMcapModalSettings()).toMatchObject({
+      temporalPolicy: {
+        boundaryClampMs: 0,
+        maxInterpolationGapMs: 60_000,
+        staleMediaWarningMs: DEFAULT_MCAP_TEMPORAL_POLICY.staleMediaWarningMs,
+        transformGapWarningMs:
+          DEFAULT_MCAP_TEMPORAL_POLICY.transformGapWarningMs,
+      },
     });
   });
 });

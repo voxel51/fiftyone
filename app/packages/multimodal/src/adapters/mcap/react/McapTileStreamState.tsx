@@ -5,6 +5,7 @@ import styles from "./McapTile.module.css";
 import {
   McapTopicStatus,
   useMcapTopicStartTimes,
+  useMcapTopicStaleAges,
   useMcapTopicStatuses,
 } from "./mcap-stream-status-state";
 
@@ -78,6 +79,50 @@ function gapCopy(startSec: number | null): string {
     : "No data at this time";
 }
 
+function formatStaleAge(ageNs: bigint): string {
+  if (ageNs < 1_000_000_000n) {
+    const ms = Number(ageNs / 1_000_000n);
+    return `${Math.max(1, ms)}ms`;
+  }
+
+  const seconds = Number(ageNs) / 1_000_000_000;
+  if (seconds < 10) {
+    return `${seconds.toFixed(1)}s`;
+  }
+  if (seconds < 60) {
+    return `${Math.round(seconds)}s`;
+  }
+
+  const totalSeconds = Math.round(seconds);
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+  return `${minutes}m ${String(remainingSeconds).padStart(2, "0")}s`;
+}
+
+function oldestStaleAgeNs(
+  statuses: readonly McapTopicStatus[],
+  staleAges: readonly (bigint | null)[],
+): bigint | null {
+  let oldest: bigint | null = null;
+  statuses.forEach((status, index) => {
+    if (status !== "stale") return;
+    const age = staleAges[index];
+    if (age === null || age === undefined) return;
+    if (oldest === null || age > oldest) oldest = age;
+  });
+  return oldest;
+}
+
+function staleCopy(
+  statuses: readonly McapTopicStatus[],
+  staleAges: readonly (bigint | null)[],
+  summary: StatusSummary,
+): string {
+  const ageNs = oldestStaleAgeNs(statuses, staleAges);
+  const ageCopy = ageNs === null ? "" : ` from ${formatStaleAge(ageNs)} ago`;
+  return `Displaying stale frame${ageCopy}${affectedSuffix(summary)}`;
+}
+
 /**
  * Drops empty entries and keeps the array referentially stable by
  * content, so the derived status atom isn't rebuilt on every render of
@@ -103,6 +148,7 @@ export const McapTileStatusBadge: React.FC<{
   const stableTopics = useStableTopics(topics);
   const statuses = useMcapTopicStatuses(stableTopics);
   const startTimes = useMcapTopicStartTimes(stableTopics);
+  const staleAges = useMcapTopicStaleAges(stableTopics);
   const summary = summarizeStatuses(statuses);
 
   if (!summary) return null;
@@ -126,7 +172,7 @@ export const McapTileStatusBadge: React.FC<{
         `${gapCopy(earliestGapStartSec(statuses, startTimes))}${affectedSuffix(
           summary,
         )}`}
-      {summary.status === "stale" && `No new data${affectedSuffix(summary)}`}
+      {summary.status === "stale" && staleCopy(statuses, staleAges, summary)}
       {summary.status === "failed" &&
         `Failed to load${affectedSuffix(summary)}`}
     </span>

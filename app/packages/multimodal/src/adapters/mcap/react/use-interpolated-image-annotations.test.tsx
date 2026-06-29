@@ -55,6 +55,7 @@ function makeTimeline(ticks: readonly bigint[]): McapTimelineIndex {
   return {
     ticks,
     durationSec: 1,
+    endTimeNs: ticks.at(-1) ?? startTimeNs,
     startTimeNs,
     secToNs: toNs,
     nearestTick: (sec) => {
