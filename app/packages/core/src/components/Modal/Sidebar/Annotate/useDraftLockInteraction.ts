@@ -51,12 +51,22 @@ export const useDraftLockInteraction = (): LighterInteractionPolicy => {
     return true;
   }, []);
 
-  const interceptDeselect = useCallback((): boolean => {
+  const interceptDeselect = useCallback((id: string): boolean => {
+    const currentLabel = STORE.get(current);
     const isDraft =
-      STORE.get(pendingNewTypeAtom) !== null ||
-      Boolean(STORE.get(current)?.isNew);
+      STORE.get(pendingNewTypeAtom) !== null || Boolean(currentLabel?.isNew);
 
     if (!isDraft) {
+      return false;
+    }
+
+    // Only the draft's OWN overlay being deselected ends the draft. A foreign
+    // deselect — e.g. the point-selection keypoint overlay swapped out by the
+    // single-selection manager when the inferred detection is selected — must
+    // not tear the draft down. Mirrors interceptSelect's foreign-overlay guard.
+    // (A pre-overlay pending-schema draft has no id to match, so it still ends.)
+    const ownOverlayId = currentLabel?.overlay?.id;
+    if (ownOverlayId && ownOverlayId !== id) {
       return false;
     }
 

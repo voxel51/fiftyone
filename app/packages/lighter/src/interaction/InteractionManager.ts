@@ -1203,16 +1203,22 @@ export class InteractionManager {
         const pointsEstablished =
           overlay instanceof KeypointOverlay && overlay.hasValidBounds();
 
-        interactiveHandler.resetOverlay();
-        this.removeHandler(interactiveHandler);
-
         if (pointsEstablished) {
+          // Tier 1a: points placed — commit. Clear the keypoint scaffolding;
+          // the finalize handler re-arms a fresh session (deactivate→activate).
+          interactiveHandler.resetOverlay();
+          this.removeHandler(interactiveHandler);
+
           this.eventBus.dispatch("lighter:point-selection-finalize", {
             eventId: generateUUID(),
           });
 
           return;
         }
+
+        // No points placed: leave the keypoint session installed so the user
+        // can keep clicking, and fall through to the no-points right-click
+        // tiers — Tier 2 (deselect the committed label) then Tier 3 (exit mode).
       }
     }
 

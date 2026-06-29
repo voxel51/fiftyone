@@ -155,10 +155,11 @@ export const useBridge = (scene: Scene2D | null) => {
     "lighter:point-selection-finalize",
     useCallback(() => {
       if (segmentationMode.segmentationModeActive) {
+        // Commit the in-progress mask and re-arm a fresh point session. The
+        // committed label stays selected (a second right-click deselects it);
+        // `finalizePointSelection` flags the next click to seed a NEW mask so
+        // it doesn't refine the one just committed.
         segmentationMode.finalizePointSelection();
-        // Deselect the committed label so the next click starts a fresh
-        // detection
-        focusRef.current.deselectOverlay();
       }
     }, [segmentationMode]),
   );

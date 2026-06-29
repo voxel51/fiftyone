@@ -1114,7 +1114,15 @@ export class Scene2D {
 
     // Register with managers first
     this.interactionManager.addHandler(overlay);
-    if (TypeGuards.isSelectable(overlay)) {
+    // `isSelectable` is structural (has the Selectable methods); honor an
+    // overlay's opt-out via its selection priority (a `selectable: false`
+    // overlay reports < 0). Without this a tool overlay like the point-selection
+    // keypoint scaffold would join the single-selection set and steal/clear the
+    // engine anchor from the label being annotated.
+    if (
+      TypeGuards.isSelectable(overlay) &&
+      overlay.getSelectionPriority() >= 0
+    ) {
       this.selectionManager.addSelectable(overlay);
     }
 

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 
+import { usePointSelectionSeed } from "@fiftyone/annotation/src/agents";
 import { BaseOverlay, DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { isPatchesView } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
@@ -72,6 +73,7 @@ export const useSegmentationMode = () => {
   const manualMode = useManualSegmentationTools();
   const aiMode = useAIAnnotationMode();
   const mergeTool = useMergeTool();
+  const { markSeedNew } = usePointSelectionSeed();
 
   const editingLabelType = selected?.type ?? null;
 
@@ -262,12 +264,15 @@ export const useSegmentationMode = () => {
   /**
    * Finish the current AI point-selection session. Cycle deactivate→activate
    * so the keypoint overlay/handler is re-installed for a fresh next
-   * detection while staying in AI mode.
+   * detection while staying in AI mode. The committed label stays selected
+   * (a second right-click deselects it); `markSeedNew` makes the next click
+   * seed a NEW mask rather than refine the still-selected committed one.
    */
   const finalizePointSelection = useCallback(() => {
     aiMode.deactivate();
     aiMode.activate();
-  }, [aiMode]);
+    markSeedNew();
+  }, [aiMode, markSeedNew]);
 
   // ----------------------------  Public interface  ----------------------- //
 
