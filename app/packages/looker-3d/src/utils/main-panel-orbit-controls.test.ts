@@ -54,7 +54,7 @@ describe("main panel orbit controls", () => {
     expect(veryCloseSpeed).toBeLessThanOrEqual(MAIN_PANEL_CLOSE_ZOOM_MAX_SPEED);
   });
 
-  it("gently increases orbit pan speed as the camera gets close to the target", () => {
+  it("increases orbit pan speed linearly as the camera gets close to the target", () => {
     const sceneBoundingBox = makeSceneBounds();
     const closeSpeed = getMainPanelOrbitPanSpeed({
       distance: 0.1,
@@ -65,9 +65,8 @@ describe("main panel orbit controls", () => {
       sceneBoundingBox,
     });
 
-    expect(closeSpeed).toBeGreaterThan(MAIN_PANEL_ORBIT_PAN_SPEED);
-    expect(veryCloseSpeed).toBeGreaterThan(closeSpeed);
-    expect(veryCloseSpeed).toBeLessThanOrEqual(MAIN_PANEL_CLOSE_PAN_MAX_SPEED);
+    expect(closeSpeed).toBeCloseTo(MAIN_PANEL_ORBIT_PAN_SPEED * 6);
+    expect(veryCloseSpeed).toBe(MAIN_PANEL_CLOSE_PAN_MAX_SPEED);
   });
 
   it("uses max speed at the camera-target floor so zooming and panning stay responsive", () => {

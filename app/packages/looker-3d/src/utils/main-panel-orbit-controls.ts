@@ -9,7 +9,7 @@ export const MAIN_PANEL_CLOSE_NAVIGATION_DISTANCE_RATIO = 0.03;
 export const MAIN_PANEL_CLOSE_NAVIGATION_MIN_DISTANCE = 0.1;
 export const MAIN_PANEL_CLOSE_NAVIGATION_MAX_DISTANCE = 3;
 export const MAIN_PANEL_CLOSE_ZOOM_MAX_SPEED = 32;
-export const MAIN_PANEL_CLOSE_PAN_MAX_SPEED = 4;
+export const MAIN_PANEL_CLOSE_PAN_MAX_SPEED = 24;
 export const MAIN_PANEL_CAMERA_TARGET_EPSILON = 1e-4;
 
 const MAX_CLOSE_ZOOM_RADIUS_DELTA_RATIO = 0.95;
@@ -144,7 +144,7 @@ export const getMainPanelOrbitPanSpeed = ({
   }
 
   return MathUtils.clamp(
-    baseSpeed * Math.sqrt(closeNavigationDistance / distance),
+    baseSpeed * (closeNavigationDistance / distance),
     baseSpeed,
     maxSpeed,
   );
