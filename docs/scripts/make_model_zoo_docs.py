@@ -84,6 +84,8 @@ _MODEL_TEMPLATE = """
 {% elif 'med-sam' in name %}
     from fiftyone import ViewField as F
     from fiftyone.utils.huggingface import load_from_hub
+{% elif 'twelvelabs' in name and 'embeddings' in tags %}
+    import fiftyone.brain as fob
 {% endif %}
 
 {% if 'imagenet' in name %}
@@ -116,6 +118,8 @@ _MODEL_TEMPLATE = """
         .set_field("frames.gt_detections", None)
         .save()
     )
+{% elif 'twelvelabs' in name %}
+    dataset = foz.load_zoo_dataset("quickstart-video")
 {% else %}
     dataset = foz.load_zoo_dataset(
         "coco-2017",
@@ -299,6 +303,42 @@ _MODEL_TEMPLATE = """
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
+{% elif 'twelvelabs' in name and 'embeddings' in tags %}
+    model = foz.load_zoo_model("{{ name }}")
+
+    dataset.apply_model(model, label_field="predictions")
+
+    dataset.compute_embeddings(model, embeddings_field="twelvelabs")
+
+    # Text-to-video search
+    fob.compute_similarity(
+        dataset,
+        model=model,
+        embeddings="twelvelabs",
+        brain_key="tl_sim",
+    )
+
+    view = dataset.sort_by_similarity(
+        "a person riding a bike",
+        brain_key="tl_sim",
+        k=10,
+    )
+
+    session = fo.launch_app(view)
+{% elif 'twelvelabs' in name and 'caption' in tags %}
+    # Default configuration
+    model = foz.load_zoo_model("{{ name }}")
+
+    # Custom prompt and generation length
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        prompt="List the main objects that appear in this video.",
+        max_tokens=1024,
+    )
+
+    dataset.apply_model(model, label_field="caption")
+
+    session = fo.launch_app(dataset)
 {% else %}
     model = foz.load_zoo_model("{{ name }}")
 
@@ -407,8 +447,10 @@ def _render_model_content(template, model_name):
 
     if zoo_model.supports_cpu:
         supports_cpu = "yes"
-    else:
+    elif zoo_model.supports_cpu is False:
         supports_cpu = "no"
+    else:
+        supports_cpu = "N/A"
 
     cpu_packages = (
         zoo_model.requirements.cpu_packages
@@ -420,8 +462,10 @@ def _render_model_content(template, model_name):
 
     if zoo_model.supports_gpu:
         supports_gpu = "yes"
-    else:
+    elif zoo_model.supports_gpu is False:
         supports_gpu = "no"
+    else:
+        supports_gpu = "N/A"
 
     gpu_packages = (
         zoo_model.requirements.gpu_packages
