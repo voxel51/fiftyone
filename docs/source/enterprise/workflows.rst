@@ -118,11 +118,11 @@ Click a stage on the canvas to configure it:
 - **Review** — select who can review and wire the **Accepted** /
   **Rejected** branches to the appropriate downstream stages.
 
-The following example shows how to edit the assignee for an Annotate
+The following example shows how to edit the assignee for a Review
 stage:
 
 .. image:: /images/enterprise/workflows/workflows_stage_config.gif
-   :alt: Editing the assignee for an Annotate stage
+   :alt: Editing the assignee for a Review stage
 
 Starting a Workflow
 ~~~~~~~~~~~~~~~~~~~
