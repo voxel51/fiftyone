@@ -138,11 +138,13 @@ Cloning and Deleting
 ~~~~~~~~~~~~~~~~~~~~
 
 **Clone** a workflow to reuse its pipeline as the starting point for a new
-one. **Delete** a workflow you no longer need from the workflow card or the
-detail view.
+one.
 
 .. image:: /images/enterprise/workflows/workflows_clone_delete.gif
    :alt: Cloning a workflow to reuse its pipeline
+
+**Delete** a workflow you no longer need from the workflow card or the
+detail view.
 
 .. image:: /images/enterprise/workflows/workflows_delete.png
    :alt: Delete workflow button on a workflow card
