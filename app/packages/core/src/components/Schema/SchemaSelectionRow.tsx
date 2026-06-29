@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { Box, Typography } from "@mui/material";
 
 import Checkbox from "@mui/material/Checkbox";

@@ -1,6 +1,5 @@
 import * as fos from "@fiftyone/state";
 import { FLOAT_FIELD } from "@fiftyone/utilities";
-import React from "react";
 import type { RecoilValueReadOnly, SetterOrUpdater } from "recoil";
 import { useRecoilState, useRecoilValue } from "recoil";
 import Checkbox from "../../Common/Checkbox";

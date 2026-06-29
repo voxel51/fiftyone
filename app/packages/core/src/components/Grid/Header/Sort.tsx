@@ -6,7 +6,6 @@ import {
   similarityParameters,
 } from "@fiftyone/state";
 import { ArrowDownward, ArrowUpward } from "@mui/icons-material";
-import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { ActionOption } from "../../Actions/Common";
 import { SORT_BY_INDEXED_FIELDS } from "../../../utils/links";

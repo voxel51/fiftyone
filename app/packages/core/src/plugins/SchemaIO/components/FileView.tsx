@@ -1,5 +1,5 @@
 import { Alert, Box, Typography } from "@mui/material";
-import React, { useState } from "react";
+import { useState } from "react";
 import FileDrop from "./FileDrop";
 import HeaderView from "./HeaderView";
 import { getComponentProps } from "../utils";

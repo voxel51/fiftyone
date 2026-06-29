@@ -1,5 +1,5 @@
 import { debounce, merge, mergeWith } from "lodash";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
 import { DimensionsType, useUnboundState } from "@fiftyone/state";
@@ -7,7 +7,6 @@ import {
   PANEL_STATE_CHANGE_DEBOUNCE,
   PANEL_STATE_PATH_CHANGE_DEBOUNCE,
 } from "./constants";
-import { executeOperator } from "./operators";
 import { useCurrentSample, useGlobalExecutionContext } from "./state";
 import usePanelEvent from "./usePanelEvent";
 import { memoizedDebounce } from "./utils";

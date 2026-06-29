@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  handleLabelPersistence,
-  type LabelPersistenceArgs,
-} from "./labelPersistence";
+import { handleLabelPersistence } from "./labelPersistence";
 import type { Sample } from "@fiftyone/looker";
 import type { Field } from "@fiftyone/utilities";
-import type { AnnotationLabel } from "@fiftyone/state";
 import type { LabelProxy } from "../deltas";
 import type { JSONDeltas } from "@fiftyone/core/src/client";
 import type { OpType } from "../types";

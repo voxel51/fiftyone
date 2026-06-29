@@ -1,7 +1,7 @@
 import { PillButton } from "@fiftyone/components";
 import { useOutsideClick } from "@fiftyone/state";
 import { Settings } from "@mui/icons-material";
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { ActionProps } from "../types";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 import Options from "./Options";

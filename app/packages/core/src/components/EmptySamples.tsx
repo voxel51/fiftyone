@@ -2,7 +2,7 @@ import { Button, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import ClearAll from "@mui/icons-material/ClearAll";
 import { Typography } from "@mui/material";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import ErrorImg from "../images/error.svg";

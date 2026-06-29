@@ -5,7 +5,6 @@ import {
 } from "@fiftyone/components";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
-import React from "react";
 import { ViewPropsType } from "../utils/types";
 
 export default function ArrowNavView(props: ViewPropsType) {
