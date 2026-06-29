@@ -38,7 +38,8 @@ Workflows are built from **stages**. The core stage types are:
 
 - **Input samples** — a fixed first stage that defines which samples the
   workflow runs on. These are chosen when the workflow is started.
-- **Annotate** — assignees label the samples that reach this stage.
+- **Annotate** — assignees label the samples that reach this stage and
+  submit the sample as they finish.
 - **Review** — assignees approve or reject labeled samples. A review stage
   has two outgoing branches, **Accepted** and **Rejected**, that you wire
   to downstream stages.
