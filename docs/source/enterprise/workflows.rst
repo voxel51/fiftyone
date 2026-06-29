@@ -27,6 +27,9 @@ areas:
 - **Workflows** — a grid of every workflow on the dataset showing its
   status, stage count, members, and overall completion.
 
+.. image:: /images/enterprise/workflows/workflows_annotate_tab.png
+   :alt: Annotate tab showing My Tasks and the Workflows grid
+
 Each workflow has a **status** that reflects where it is in its lifecycle:
 **Draft** (still being designed), **Not started** (configured but not yet
 running), or **Running** (actively routing samples through its stages).
