@@ -107,11 +107,15 @@ def get_model_type(model, task=None):
         "semantic-segmentation",
         "depth-estimation",
         "pose-estimation",
+        "universal-segmentation",
     )
     if task is not None and task not in supported_tasks:
         raise ValueError(
             f"Unknown task: {task}. Valid tasks are {supported_tasks}"
         )
+
+    if task == "universal-segmentation":
+        return "universal-segmentation"
 
     zs = _is_zero_shot_model(model)
 
@@ -1169,6 +1173,11 @@ class FiftyOneTransformerForUniversalSegmentationConfig(
             d["name_or_path"] = DEFAULT_UNIVERSAL_SEGMENTATION_PATH
         super().__init__(d)
         self.task = self.parse_string(d, "task", default="instance")
+        valid_tasks = {"semantic", "instance", "panoptic"}
+        if self.task not in valid_tasks:
+            raise ValueError(
+                f"Invalid task '{self.task}'. Must be one of {sorted(valid_tasks)}"
+            )
 
 
 class FiftyOneTransformerForUniversalSegmentation(FiftyOneTransformer):
@@ -1746,14 +1755,25 @@ class TransformersUniversalSemanticSegmentatorOutputProcessor(
             target_sizes = [tuple(sz) for sz in image_sizes.tolist()]
         else:
             target_sizes = [tuple(int(x) for x in sz) for sz in image_sizes]
+        # confidence_thresh is not applicable to semantic segmentation because
+        # post_process_semantic_segmentation returns a per-pixel argmax with no
+        # associated per-pixel confidence score.
         seg_maps = self._processor.post_process_semantic_segmentation(
             output, target_sizes=target_sizes
         )
+        effective_classes = classes if classes is not None else self.classes
         results = []
         for m in seg_maps:
             mask = m.cpu().numpy().astype(np.int16)
             if self.no_background_cls:
                 mask += 1
+            if effective_classes is not None and self.classes is not None:
+                allowed_indices = {
+                    i + (1 if self.no_background_cls else 0)
+                    for i, c in enumerate(self.classes)
+                    if c in effective_classes
+                }
+                mask = np.where(np.isin(mask, list(allowed_indices)), mask, 0)
             results.append(fol.Segmentation(mask=mask))
         return results
 
@@ -1801,7 +1821,7 @@ class TransformersUniversalSegmentatorOutputProcessor(
         classes=None,
         **kwargs,
     ):
-        threshold = confidence_thresh if confidence_thresh is not None else 0.5
+        threshold = confidence_thresh if confidence_thresh is not None else 0.0
         post_process = (
             self._processor.post_process_panoptic_segmentation
             if self.task == "panoptic"
