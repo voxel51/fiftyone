@@ -1,5 +1,17 @@
 import type { Quaternion, Vector3 } from "three";
 
+export interface McapFrameTransformPolicy {
+  readonly boundaryClampNs: bigint;
+  readonly maxInterpolationGapNs: bigint;
+}
+
+export type McapFrameTransformResolutionKind =
+  | "identity"
+  | "static"
+  | "exact"
+  | "interpolated"
+  | "clamped";
+
 /**
  * Transform sample from a child frame into its parent frame.
  *
@@ -63,6 +75,12 @@ export interface McapFrameTransformSetWire {
  * Composed transform mapping coordinates from sourceFrameId into targetFrameId.
  */
 export interface McapComposedFrameTransform {
+  /**
+   * Largest bracketing sample gap used by any interpolated dynamic edge in
+   * this composed path. Undefined when the path did not interpolate.
+   */
+  readonly maxInterpolationGapNs?: bigint;
+  readonly resolutionKind?: McapFrameTransformResolutionKind;
   readonly rotation: Quaternion;
   readonly sourceFrameId: string;
   readonly targetFrameId: string;
@@ -77,6 +95,8 @@ export type McapFrameTransformResolution = {
   readonly targetFrameId: string;
 } & (
   | {
+      readonly maxInterpolationGapNs?: bigint;
+      readonly resolutionKind?: McapFrameTransformResolutionKind;
       readonly status: "resolved";
       readonly transform: McapComposedFrameTransform;
     }

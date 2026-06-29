@@ -24,13 +24,22 @@ export const MCAP_PLAYBACK_WORKER_PRIORITY = Object.freeze({
    */
   CURRENT_FRAME: 0,
   /**
+   * Work needed to place already-selected current-frame data into the 3D scene.
+   * This almost always has to do with transforms.
+   *
+   * Placement reads are latency-sensitive because late transforms can make
+   * point clouds appear in the wrong frame, but they should not jump ahead of
+   * the current-frame payloads that first make a tile renderable.
+   */
+  PLACEMENT_FRAME: 1,
+  /**
    * Work needed to keep playback batches ready around the active time window.
    */
-  PLAYBACK_BATCH: 1,
+  PLAYBACK_BATCH: 2,
   /**
    * Opportunistic background work that can wait behind interactive playback.
    */
-  IDLE_PREFETCH: 2,
+  IDLE_PREFETCH: 3,
 } as const);
 
 /**

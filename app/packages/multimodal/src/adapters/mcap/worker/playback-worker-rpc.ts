@@ -52,7 +52,7 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
   },
   readFrameTransformWindow: {
     kind: "unary",
-    priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME,
   },
   readSynchronizedMessageBatch: {
     kind: "unary",
