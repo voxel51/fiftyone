@@ -528,7 +528,7 @@ toolbar and draw a box on the current frame. The first box creates a new
 :class:`Instance <fiftyone.core.labels.Instance>` and marks a keyframe for
 the object at that frame. Scrub the playhead forward and adjust the box on a
 second frame to add the next keyframe. FiftyOne linearly interpolates the
-bounding box between adjacent keyframes at render time.
+bounding box between adjacent keyframes and updates the intermediate labels.
 :ref:`Polylines <polylines>` and mask labels are not
 interpolated, simply propagated forward.
 
@@ -545,18 +545,18 @@ Tracks support two kinds of attributes, configured per-attribute in the
 * **Static attributes** apply to the whole track. Their value is the same on
   every frame. Use these for properties that don't change across the track's
   lifetime (e.g. a vehicle's ``make`` or ``color``).
-* **Dynamic attributes** are keyframed independently of geometry. Their
-  value is held step-wise from the previous attribute keyframe until the
-  next one. Use these for properties that change mid-track (e.g.
-  ``occluded``, ``turn_signal``). Each dynamic attribute has its own nested
-  track under the parent object track.
+* **Dynamic attributes** can change value across a track. Use these for
+  properties that vary mid-track (e.g. ``occluded``, ``turn_signal``).
+  Each dynamic attribute has its own nested track under the parent object
+  track.
 
 .. image:: https://cdn.voxel51.com/user_guide/annotation/video_schema_dynamic_attribute_toggle.webp
    :alt: Dynamic attribute toggle in the schema editor
 
 Static and dynamic attributes are both edited in the right sidebar. Static
-attribute changes propagate to all keyframes. Dynamic attribute changes
-apply to the current frame and propagate forward until the next keyframe.
+attribute updates apply to every frame in the track. Dynamic attribute
+updates propagate forward from the playhead until the next attribute value
+change. Note that dynamic attributes do not have explicit keyframes.
 
 .. image:: https://cdn.voxel51.com/user_guide/annotation/video_dynamic_attribute_sublanes.webp
    :alt: Dynamic attribute sub-lanes on the timeline
@@ -574,19 +574,19 @@ timeline shows its keyframes as diamonds.
 .. image:: https://cdn.voxel51.com/user_guide/annotation/video_keyframes_on_track.webp
    :alt: Keyframe diamonds on a selected object track
 
-There are two kinds of keyframes, tracked independently per track:
+There are two ways a track's value can vary over time:
 
 * **Geometry keyframes** record an explicit bounding box, mask, or polyline
-  position. They are created automatically when you draw or resize an object,
-  or by pressing **K** at the playhead to commit the current geometry without
-  resizing. Between adjacent bounding box geometry keyframes, FiftyOne
-  linearly interpolates bounding boxes at render time. These keyframes are
-  indicated by diamonds.
-* **Attribute keyframes** record an explicit value for a dynamic attribute.
-  They are created automatically when you change the value of a dynamic
-  attribute from the right sidebar. Between adjacent attribute keyframes, the
-  previous value is held until the next keyframe. These keyframes
-  are indicated by different colored segments in the attribute tracks.
+  position. They are created automatically when you draw or resize an
+  object, or by pressing **K** at the playhead to commit the current
+  geometry without resizing. Between adjacent bounding box keyframes,
+  FiftyOne linearly interpolates the bounding box at render time. These
+  keyframes are indicated by diamonds.
+* **Dynamic attribute changes** are propagated forward in time rather than
+  interpolated. When you change a dynamic attribute's value from the right
+  sidebar, the new value is held forward until the next attribute change.
+  These changes are not explicit keyframes; they are indicated by
+  differently colored segments in the attribute sub-tracks.
 
 The first frame of a track is always a keyframe. Press **K** with a track
 selected, or click the |video-kf-icon| toolbar button, to manually mark a
@@ -637,11 +637,12 @@ move it to a new start and end time.
              type="video/mp4">
    </video>
 
-**Split.** With the playhead on the desired frame and a track selected, click
-the |video-split-icon| button in the toolbar to split the track into
-two tracks at the playhead. Each side gets a fresh ``Instance`` and static
-attributes are copied to both. Dynamic attributes are split at the playhead,
-with the previous value propagated forward on the right side.
+**Split.** With the playhead on the desired frame and a track selected,
+click the |video-split-icon| button in the toolbar to split the track into
+two tracks at the playhead. The segment before the playhead retains the
+original ``Instance``; the segment after the playhead is assigned a new
+``Instance``. Static attributes are copied to both tracks and dynamic
+attributes are split at the playhead.
 
 .. raw:: html
 
