@@ -265,6 +265,101 @@ export function buildTracksFromIndex({
   return statesToTracks(states, resolveColor, dynamicAttributes);
 }
 
+/** The engine read surface the overlay reader needs. */
+export type FrameOverlayReader = Pick<
+  AnnotationEngine,
+  "listLabels" | "loadedFrames"
+>;
+
+/**
+ * The engine's materialized frames + their live labels, keyed by frame number —
+ * the overlay that shadows the server index. Reads every loaded frame, not just
+ * the dirty set: a successful autosave folds edits into the seed and clears the
+ * dirty set, so a dirty-only overlay would revert to the stale index after each
+ * save. The engine is authoritative for every frame it holds, so overlaying all
+ * of them keeps the merge correct post-save. Bounded by the loaded window (the
+ * cache is windowed + never evicts, so it covers every frame touched this
+ * session — including every keyframe the user created — atop the index baseline).
+ */
+export function readEngineOverlay(
+  engine: FrameOverlayReader,
+  sample: string,
+  path: string,
+): FrameOverlay {
+  const overlay: FrameOverlay = new Map<number, LabelData[]>();
+
+  for (const frame of engine.loadedFrames(sample)) {
+    overlay.set(frame, engine.listLabels({ sample, path, frame }));
+  }
+
+  return overlay;
+}
+
+/** One instance's whole-clip keyframe + presence frames (1-indexed, ascending). */
+export interface InstanceFrameLayout {
+  /** Every frame the instance is present on. */
+  presentFrames: number[];
+  /** Frames carrying `keyframe: true`. */
+  keyframeFrames: number[];
+}
+
+/**
+ * The instance's keyframe + presence frames from the server index baseline
+ * merged with the engine's dirty-frame overlay — the payload-free layout
+ * re-interpolation needs WITHOUT walking the clip. Keyframes come straight off
+ * the index's `keyframes` (the server already flags them), shadowed by the
+ * overlay at edited frames; presence is the same index ⊕ overlay merge the
+ * timeline uses. Box geometry is NOT here (the index carries none) — fetch the
+ * affected range for that.
+ */
+export function resolveInstanceFrameLayout(
+  index: IndexInstance[],
+  overlay: FrameOverlay,
+  instanceId: string,
+): InstanceFrameLayout {
+  const baseline = index.find((entry) => entry.instanceId === instanceId);
+
+  const dirtySorted = [...overlay.keys()].sort((a, b) => a - b);
+  const dirtySet = new Set(dirtySorted);
+
+  const presentInOverlay: number[] = [];
+  const dirtyKeyframes: number[] = [];
+  for (const frame of dirtySorted) {
+    for (const label of overlay.get(frame) ?? []) {
+      if (addressIdOf(label) !== instanceId) {
+        continue;
+      }
+
+      presentInOverlay.push(frame);
+      if (label.keyframe) {
+        dirtyKeyframes.push(frame);
+      }
+
+      break;
+    }
+  }
+
+  const segments = mergePresence(
+    baseline?.segments ?? [],
+    dirtySorted,
+    presentInOverlay,
+  );
+
+  const presentFrames: number[] = [];
+  for (const [start, end] of segments) {
+    for (let f = start; f <= end; f++) {
+      presentFrames.push(f);
+    }
+  }
+
+  const keyframeFrames = [
+    ...(baseline?.keyframes ?? []).filter((frame) => !dirtySet.has(frame)),
+    ...dirtyKeyframes,
+  ].sort((a, b) => a - b);
+
+  return { presentFrames, keyframeFrames };
+}
+
 /** Shape the accumulated states into sorted, colored timeline tracks. */
 function statesToTracks(
   states: Map<string, InstanceState>,

@@ -140,16 +140,22 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /**
-   * Resolve once every frame in [1, frameCount] is cached. Coalesces
-   * against any in-flight chunks; otherwise walks the range in chunk-
-   * sized strides and dispatches fetches in parallel. Expensive over long
-   * clips; used for one-shot full-clip analyses (e.g. timeline tracks).
+   * Resolve once every frame in `[startFrame, endFrame]` (inclusive, clamped to
+   * the clip) is cached. Coalesces against in-flight chunks; otherwise walks the
+   * range in chunk-sized strides and dispatches the missing chunks in parallel.
+   *
+   * The bounded fetch an op uses when it needs a known span loaded — e.g.
+   * re-interpolation reading its segment's keyframe endpoints and step-holding
+   * the tail filler — without warming the whole clip.
    */
-  async warmupAll(): Promise<void> {
-    const promises: Promise<void>[] = [];
-    let f = 1;
+  async fetchRange(startFrame: number, endFrame: number): Promise<void> {
+    const start = Math.max(1, startFrame);
+    const end = Math.min(this.frameCount, endFrame);
 
-    while (f <= this.frameCount) {
+    const promises: Promise<void>[] = [];
+    let f = start;
+
+    while (f <= end) {
       if (this.cache.has(f)) {
         f++;
         continue;
@@ -167,6 +173,15 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     }
 
     await Promise.all(promises);
+  }
+
+  /**
+   * Resolve once every frame in [1, frameCount] is cached. Expensive over long
+   * clips — prefer {@link fetchRange} for a bounded need. Retained for one-shot
+   * whole-clip analyses.
+   */
+  async warmupAll(): Promise<void> {
+    return this.fetchRange(1, this.frameCount);
   }
 
   /** Total frames in the clip — useful for callers iterating the cache. */
