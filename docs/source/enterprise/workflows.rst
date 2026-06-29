@@ -157,7 +157,7 @@ surfaces alongside the usual viewer:
 **View workflow** for the full pipeline context.
 
 **Task progress.** Shows how many samples have been completed out of the
-total assigned to the task (for example, *"2 / 66 samples"*).
+total assigned to the task (for example, *"5 / 501 samples · 496 left"*).
 
 **Discussion.** An in-app comment thread on the sample and its labels.
 You and your teammates can leave comments, edit or delete your own, and
@@ -173,8 +173,8 @@ Annotating
 In an annotate task you label one sample at a time. Click **Submit & next**
 to save your work and advance, or **Skip** to move on without labeling
 (the sample stays pending until someone completes it). The progress
-indicator (for example, *"2 / 66 samples"*) tracks how many samples
-remain.
+indicator (for example, *"5 / 501 samples · 496 left"*) tracks how many
+samples remain.
 
 .. image:: /images/enterprise/workflows/workflows_annotate_task.gif
    :alt: Annotating a sample with Submit & next and Skip
@@ -185,8 +185,8 @@ Reviewing
 In a review task you approve or reject labeled samples. Each sample is
 marked with an **APPROVED** or **REJECTED** badge. Rejecting a sample
 reopens it for annotation — it returns to the labeling stage to be fixed
-and resubmitted. The task progress (for example, *"5 / 5 reviewed ·
-1 rejected"*) reflects outcomes, and you complete the task with
+and resubmitted. The task progress (for example, *"2 / 2 samples reviewed · 0 remaining
+(1 rejected)"*) reflects outcomes, and you complete the task with
 **Task complete** once all samples have been reviewed.
 
 .. image:: /images/enterprise/workflows/workflows_review_task.png
