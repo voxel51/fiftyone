@@ -10,8 +10,8 @@ import {
 } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 import styles from "./VideoAnnotationTopBar.module.css";
+import { useModalSampleFrameRate } from "../state/accessors";
 import { useVideoAnnotationStatusContent } from "../state/videoAnnotationStatus";
-import { getModalSampleFrameRate } from "../utils/modalSample";
 
 /**
  * Media facts shown at the top-left of the bar. Resolution and codec are
@@ -47,6 +47,7 @@ const finitePositive = (value: unknown): number | null =>
 const formatFps = (fps: number): string => `${Number(fps.toFixed(2))} fps`;
 
 const useMediaInfo = (sample: ModalSample): MediaInfo => {
+  const frameRate = useModalSampleFrameRate(sample);
   return useMemo(() => {
     const metadata = (
       sample.sample as { metadata?: VideoMetadataLike } | undefined
@@ -54,7 +55,7 @@ const useMediaInfo = (sample: ModalSample): MediaInfo => {
 
     const width = finitePositive(metadata?.frame_width);
     const height = finitePositive(metadata?.frame_height);
-    const fps = finitePositive(getModalSampleFrameRate(sample));
+    const fps = finitePositive(frameRate);
     const codec =
       typeof metadata?.encoding_str === "string" && metadata.encoding_str
         ? metadata.encoding_str
@@ -66,7 +67,7 @@ const useMediaInfo = (sample: ModalSample): MediaInfo => {
       fps: fps ? formatFps(fps) : null,
       codec,
     };
-  }, [sample]);
+  }, [sample, frameRate]);
 };
 
 const MetaItem: React.FC<{ children: React.ReactNode; muted?: boolean }> = ({

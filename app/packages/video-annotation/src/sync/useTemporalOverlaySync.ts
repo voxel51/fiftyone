@@ -19,11 +19,11 @@ import { isTemporalDetectionsField } from "@fiftyone/utilities";
 import { type MutableRefObject, useEffect, useRef } from "react";
 import { frameAt, usePlayhead } from "@fiftyone/playback";
 import {
+  useModalSampleFrameRate,
   useTemporalDetectionFieldPaths,
   useVisibleLabelSchemas,
 } from "../state/accessors";
 import type { FrameLabelReader } from "../tracks/frameTracks";
-import { getModalSampleFrameRate } from "../utils/modalSample";
 
 /**
  * Minimal scene surface the diff needs — typed against the lighter
@@ -196,7 +196,7 @@ export const useEngineTemporalSample = (): Record<string, unknown> => {
 const useCurrentFrameRef = (): MutableRefObject<number | null> => {
   const modalSample = useModalSample();
   const playheadSec = usePlayhead();
-  const frameRate = getModalSampleFrameRate(modalSample);
+  const frameRate = useModalSampleFrameRate(modalSample);
 
   const currentFrame =
     frameRate && Number.isFinite(frameRate) && frameRate > 0

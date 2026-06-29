@@ -5,7 +5,7 @@
 import { frameAt, usePlayhead } from "@fiftyone/playback";
 import { useModalSample } from "@fiftyone/state";
 import { useCallback, useRef } from "react";
-import { getModalSampleFrameRate } from "../utils/modalSample";
+import { useModalSampleFrameRate } from "./accessors";
 
 /**
  * The single source of "current frame" for the engine integration on the video
@@ -21,7 +21,7 @@ import { getModalSampleFrameRate } from "../utils/modalSample";
  */
 export const useCurrentFrame = (): number => {
   const playhead = usePlayhead();
-  const fps = getModalSampleFrameRate(useModalSample());
+  const fps = useModalSampleFrameRate(useModalSample());
 
   return fps && Number.isFinite(fps) ? frameAt(playhead, fps) : -1;
 };

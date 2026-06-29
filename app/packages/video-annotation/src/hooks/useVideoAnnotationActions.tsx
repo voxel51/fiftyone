@@ -4,9 +4,9 @@ import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { frameAt, usePlayhead } from "@fiftyone/playback";
-import { getModalSampleFrameRate } from "../utils/modalSample";
 import {
   labelSchemaData,
+  useModalSampleFrameRate,
   useTemporalDetectionFieldPaths,
   useVisibleLabelSchemas,
 } from "../state/accessors";
@@ -90,7 +90,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
 
     return active[0] ?? null;
   }, [tdFieldPaths, visible, selectedTdField]);
-  const fps = getModalSampleFrameRate(modalSample);
+  const fps = useModalSampleFrameRate(modalSample);
   const canCreateTd =
     !!tdFieldPath && Number.isFinite(fps) && fps !== undefined && fps > 0;
 

@@ -20,6 +20,12 @@ export interface ImaVidImageStreamOptions extends FrameBitmapStreamOptions {
   view: Stage[];
   /** Group slice name, when the dataset is grouped. */
   groupSlice?: string | null;
+  /**
+   * Dynamic-group value, when the clip is a dynamic group rather than a video
+   * sample. Routes `/frames` to that group's ordered samples (ImaVid for an
+   * image dataset grouped into a video).
+   */
+  dynamicGroup?: string | null;
 }
 
 /**
@@ -36,12 +42,14 @@ export class ImaVidImageStream extends FrameBitmapStream<{ src: string }> {
   private readonly dataset: string;
   private readonly view: Stage[];
   private readonly groupSlice: string | null;
+  private readonly dynamicGroup: string | null;
 
   constructor(opts: ImaVidImageStreamOptions) {
     super(opts);
     this.dataset = opts.dataset;
     this.view = opts.view;
     this.groupSlice = opts.groupSlice ?? null;
+    this.dynamicGroup = opts.dynamicGroup ?? null;
   }
 
   protected createWorker(): Worker {
@@ -74,6 +82,7 @@ export class ImaVidImageStream extends FrameBitmapStream<{ src: string }> {
       dataset: this.dataset,
       view: this.view,
       slice: this.groupSlice ?? undefined,
+      dynamicGroup: this.dynamicGroup ?? undefined,
       // The image stream only needs each frame's media path; project to it so
       // `/frames` doesn't ship every label field per frame.
       fields: ["filepath"],
