@@ -150,7 +150,11 @@ let decoderSession: ort.InferenceSession | null = null;
 async function loadImageData(url: string): Promise<ImageData> {
   let response: Response;
   try {
-    response = await fetch(url);
+    // Bypass the HTTP cache so this cors fetch never reuses a cached no-cors
+    // display load of the same URL. A no-cors <img> load sends no Origin, so a
+    // cross-origin host returns it without an Access-Control-Allow-Origin
+    // header (and no Vary); reusing that entry here would fail the CORS check.
+    response = await fetch(url, { cache: "reload" });
   } catch (e) {
     throw new Error(`Image fetch failed (check CORS headers): ${e}`);
   }
