@@ -13,14 +13,6 @@ build a workflow once, start it on a set of samples, and FiftyOne Enterprise
 routes each sample through the stages you defined until it is fully labeled
 and approved.
 
-.. TODO: replace with a 30-60s end-to-end demo video (create -> run ->
-   annotate -> review). Use the YouTube embed pattern, e.g.:
-   .. raw:: html
-     <div style="margin-top: 20px; margin-bottom: 20px">
-       <iframe id="youtube" src="https://www.youtube.com/embed/VIDEO_ID?rel=0"
-               frameborder="0" allowfullscreen></iframe>
-     </div>
-
 .. _enterprise-workflows-annotate-tab:
 
 The Annotate Tab
@@ -35,10 +27,8 @@ areas:
 - **Workflows** — a grid of every workflow on the dataset showing its
   status, stage count, members, and overall completion.
 
-.. image:: /images/enterprise/workflows/workflows_annotate_tab.png
+.. image:: /images/enterprise/workflows/workflows_tasks_tab.png
    :alt: Annotate tab showing My Tasks and the Workflows grid
-
-.. TODO: provided screenshot #3 (Annotate tab: My Tasks + Workflows grid).
 
 Each workflow has a **status** that reflects where it is in its lifecycle:
 **Draft** (still being designed), **Not started** (configured but not yet
@@ -81,11 +71,8 @@ to a final review or to the end of the pipeline) and the **Rejected**
 output back to an **Annotate** stage so the sample is fixed and
 resubmitted.
 
-.. image:: /images/enterprise/workflows/workflows_canvas_editor.png
-   :alt: Workflow canvas editor with stages and connections
-
-.. TODO: provided screenshot #4 or #5 (canvas with Input samples ->
-   Annotate -> Review stages and Accepted/Rejected connections).
+.. image:: /images/enterprise/workflows/workflows_canvas_editor.gif
+   :alt: Building a workflow on the canvas editor
 
 The canvas toolbar provides:
 
@@ -104,8 +91,6 @@ annotate-and-review patterns; customize the stages after importing.
 .. image:: /images/enterprise/workflows/workflows_templates_picker.png
    :alt: Templates picker showing prebuilt workflow patterns
 
-.. TODO: needs capture — templates picker.
-
 Configuring Stages
 ~~~~~~~~~~~~~~~~~~
 
@@ -119,10 +104,8 @@ Click a stage on the canvas to configure it:
 - **Review** — select who can review and wire the **Accepted** /
   **Rejected** branches to the appropriate downstream stages.
 
-.. image:: /images/enterprise/workflows/workflows_stage_config.png
-   :alt: Stage configuration dialog showing assignees and schema options
-
-.. TODO: needs capture — stage configuration dialog (assignees + schema).
+.. image:: /images/enterprise/workflows/workflows_stage_config.gif
+   :alt: Configuring stage assignees and schema options
 
 Starting a Workflow
 ~~~~~~~~~~~~~~~~~~~
@@ -132,10 +115,7 @@ samples to run on. The workflow moves from **Draft** to **Running**, tasks
 are created for each member, and a *"N for you"* indicator appears on the
 workflow card in the Annotate tab.
 
-.. image:: /images/enterprise/workflows/workflows_start_input_samples.png
-   :alt: Start workflow dialog with input sample selection
-
-.. TODO: needs capture — Start workflow / input-samples selection.
+.. TODO: needs capture — Start workflow / input-samples selection screenshot.
 
 Cloning and Deleting
 ~~~~~~~~~~~~~~~~~~~~
@@ -144,10 +124,8 @@ Cloning and Deleting
 one. **Delete** a workflow you no longer need from the workflow card or the
 detail view.
 
-.. image:: /images/enterprise/workflows/workflows_clone_delete.png
-   :alt: Workflow card showing clone and delete controls
-
-.. TODO: needs capture — clone/delete controls.
+.. image:: /images/enterprise/workflows/workflows_clone_delete.gif
+   :alt: Cloning a workflow to reuse its pipeline
 
 Viewing Tasks
 ~~~~~~~~~~~~~
@@ -157,8 +135,6 @@ generated, so you can see work across the whole pipeline in one place.
 
 .. image:: /images/enterprise/workflows/workflows_tasks_tab.png
    :alt: Workflow Tasks tab listing all tasks
-
-.. TODO: needs capture — workflow Tasks tab.
 
 ----
 
@@ -191,9 +167,6 @@ itself.
 .. image:: /images/enterprise/workflows/workflows_discussion.png
    :alt: Discussion panel with comment thread on a sample
 
-.. TODO: needs capture — Discussion / comment thread panel (collapsed in
-   provided screenshot #2).
-
 Annotating
 ~~~~~~~~~~
 
@@ -203,10 +176,8 @@ to save your work and advance, or **Skip** to move on without labeling
 indicator (for example, *"2 / 66 samples"*) tracks how many samples
 remain.
 
-.. image:: /images/enterprise/workflows/workflows_annotate_task.png
-   :alt: Annotate task mode showing Submit & next and Skip buttons
-
-.. TODO: provided screenshot #2 (annotate task mode: Submit & next / Skip).
+.. image:: /images/enterprise/workflows/workflows_annotate_task.gif
+   :alt: Annotating a sample with Submit & next and Skip
 
 Reviewing
 ~~~~~~~~~
@@ -220,5 +191,3 @@ and resubmitted. The task progress (for example, *"5 / 5 reviewed ·
 
 .. image:: /images/enterprise/workflows/workflows_review_task.png
    :alt: Review task mode showing APPROVED and REJECTED badges on a grid
-
-.. TODO: provided screenshot #1 (review task mode: APPROVED/REJECTED grid).
