@@ -212,6 +212,25 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
         self.class_names = self.parse_array(d, "class_names", default=None)
         self.nms_threshold = self.parse_number(d, "nms_threshold", default=0.2)
         self.top_k = self.parse_int(d, "top_k", default=100)
+        self.validate_config()
+
+    def validate_config(self):
+        if self.class_names is not None:
+            if not self.class_names:
+                raise ValueError(
+                    "class_names must contain at least one prompt"
+                )
+            if any(
+                not isinstance(c, str) or not c.strip()
+                for c in self.class_names
+            ):
+                raise ValueError("class_names must contain non-empty strings")
+        if not 0 <= self.score_threshold <= 1:
+            raise ValueError("score_threshold must be in [0, 1]")
+        if not 0 <= self.nms_threshold <= 1:
+            raise ValueError("nms_threshold must be in [0, 1]")
+        if self.top_k < 1:
+            raise ValueError("top_k must be >= 1")
 
 
 class OpenWorldSAMModel(fout.TorchImageModel):
@@ -286,6 +305,9 @@ class OpenWorldSAMModel(fout.TorchImageModel):
             config=hf_config,
             low_cpu_mem_usage=False,
         )
+        self._hf_model = self._hf_model.to(self._device)
+        if self._using_half_precision:
+            self._hf_model = self._hf_model.half()
         self._hf_model.eval()
         return self._hf_model
 
@@ -295,19 +317,33 @@ class OpenWorldSAMModel(fout.TorchImageModel):
         if isinstance(img, torch.Tensor):
             if img.ndim == 4:
                 img = img[0]
-            arr = img.permute(1, 2, 0).cpu().numpy()
+            arr = img.detach().permute(1, 2, 0).cpu().numpy()
             if arr.dtype != np.uint8:
                 arr = (arr * 255).clip(0, 255).astype(np.uint8)
-            return arr
+            return OpenWorldSAMModel._ensure_rgb(arr)
         if isinstance(img, np.ndarray):
             if img.dtype != np.uint8:
-                return (img * 255).clip(0, 255).astype(np.uint8)
-            return img
-        return np.asarray(img).astype(np.uint8)
+                img = (img * 255).clip(0, 255).astype(np.uint8)
+            return OpenWorldSAMModel._ensure_rgb(img)
+        return OpenWorldSAMModel._ensure_rgb(np.asarray(img).astype(np.uint8))
 
     @staticmethod
-    def _preprocess_sam(arr):
-        """HWC uint8 → CHW float32 tensor normalized for SAM2 (1024×1024)."""
+    def _ensure_rgb(arr):
+        if arr.ndim == 2:
+            return np.repeat(arr[..., None], 3, axis=2)
+        if arr.ndim != 3:
+            raise ValueError("Expected a 2D or 3D image array")
+        if arr.shape[2] == 1:
+            return np.repeat(arr, 3, axis=2)
+        if arr.shape[2] == 4:
+            return arr[..., :3]
+        if arr.shape[2] != 3:
+            raise ValueError("Expected an image with 1, 3, or 4 channels")
+        return arr
+
+    def _preprocess_sam(self, arr):
+        """HWC uint8 → CHW tensor normalized for SAM2 (1024×1024), on device."""
+        arr = self._ensure_rgb(arr)
         tensor = torch.as_tensor(
             np.ascontiguousarray(arr.transpose(2, 0, 1))
         ).float()
@@ -319,15 +355,23 @@ class OpenWorldSAMModel(fout.TorchImageModel):
         ).squeeze(0)
         mean = _SAM_PIXEL_MEAN.view(-1, 1, 1)
         std = _SAM_PIXEL_STD.view(-1, 1, 1)
-        return (tensor - mean) / std
+        tensor = (tensor - mean) / std
+        tensor = tensor.to(self._device)
+        if self._using_half_precision:
+            tensor = tensor.half()
+        return tensor
 
-    @staticmethod
-    def _preprocess_beit3(arr):
-        """HWC uint8 → CHW float32 tensor normalized for BEiT-3 (224×224)."""
+    def _preprocess_beit3(self, arr):
+        """HWC uint8 → CHW tensor normalized for BEiT-3 (224×224), on device."""
         from PIL import Image as PILImage
 
+        arr = self._ensure_rgb(arr)
         pil = PILImage.fromarray(arr)
-        return _BEIT_TRANSFORM(pil)
+        tensor = _BEIT_TRANSFORM(pil)
+        tensor = tensor.to(self._device)
+        if self._using_half_precision:
+            tensor = tensor.half()
+        return tensor
 
     def _predict_all(self, imgs):
         class_names = self._classes or ADE20K_150_CLASSES
@@ -366,9 +410,14 @@ class OpenWorldSAMModel(fout.TorchImageModel):
                     pred_classes = instances.pred_classes
                     scores = instances.scores
                 else:
-                    pred_masks = instances.get("masks", torch.empty(0))
+                    pred_masks = instances.get(
+                        "pred_masks", instances.get("masks", torch.empty(0))
+                    )
                     pred_classes = instances.get(
-                        "class_ids", torch.empty(0, dtype=torch.long)
+                        "pred_classes",
+                        instances.get(
+                            "class_ids", torch.empty(0, dtype=torch.long)
+                        ),
                     )
                     scores = instances.get("scores", torch.empty(0))
 
@@ -381,7 +430,7 @@ class OpenWorldSAMModel(fout.TorchImageModel):
                     idx = int(cls_id)
                     label = (
                         class_names[idx]
-                        if idx < len(class_names)
+                        if 0 <= idx < len(class_names)
                         else str(idx)
                     )
                     detections.append(
