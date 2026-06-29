@@ -27,9 +27,6 @@ areas:
 - **Workflows** — a grid of every workflow on the dataset showing its
   status, stage count, members, and overall completion.
 
-.. image:: /images/enterprise/workflows/workflows_tasks_tab.png
-   :alt: Annotate tab showing My Tasks and the Workflows grid
-
 Each workflow has a **status** that reflects where it is in its lifecycle:
 **Draft** (still being designed), **Not started** (configured but not yet
 running), or **Running** (actively routing samples through its stages).
@@ -91,8 +88,20 @@ annotate-and-review patterns; customize the stages after importing.
 .. image:: /images/enterprise/workflows/workflows_templates_picker.png
    :alt: Templates picker showing prebuilt workflow patterns
 
-Configuring Stages
-~~~~~~~~~~~~~~~~~~
+For example, the **Human-in-the-loop** template creates a single
+Annotate → Review pipeline:
+
+.. image:: /images/enterprise/workflows/workflows_canvas_simple.png
+   :alt: Single-stage review template on the canvas
+
+The **Two-tier review** template adds a second review stage for
+high-stakes labeling:
+
+.. image:: /images/enterprise/workflows/workflows_canvas_editor.png
+   :alt: Two-tier review template on the canvas
+
+Editing Stage Assignees
+~~~~~~~~~~~~~~~~~~~~~~~
 
 Click a stage on the canvas to configure it:
 
