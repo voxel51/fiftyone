@@ -856,6 +856,21 @@ class EvaluationConfig(EnvConfig):
         return d
 
 
+def locate_config_dir():
+    """Returns the path to FiftyOne's configuration directory.
+
+    The default location is ``~/.fiftyone``, but you can override this path by
+    setting the ``FIFTYONE_CONFIG_DIR`` environment variable.
+
+    Returns:
+        the path to FiftyOne's configuration directory
+    """
+    if "FIFTYONE_CONFIG_DIR" not in os.environ:
+        return os.path.join(os.path.expanduser("~"), ".fiftyone")
+
+    return os.environ["FIFTYONE_CONFIG_DIR"]
+
+
 def locate_config():
     """Returns the path to the :class:`FiftyOneConfig` on disk.
 
