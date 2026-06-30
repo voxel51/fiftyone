@@ -338,6 +338,10 @@ class _RFDETRBaseModel(fout.TorchImageModel):
         output = self._forward_pass(imgs)
 
         class_names = self._model.class_names
+        if not isinstance(class_names, dict):
+            # The model may expose class names as a list or a {id: label} dict;
+            # ``_sv_detections_to_fo`` expects the dict form, so normalize.
+            class_names = dict(enumerate(class_names))
         filter_classes = set(self.config.filter_classes or ())
         results = output["results"]
         sizes = output["sizes"]
