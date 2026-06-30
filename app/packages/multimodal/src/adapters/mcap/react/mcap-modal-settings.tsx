@@ -45,7 +45,7 @@ const VERSION = 1;
 export const DEFAULT_MCAP_TEMPORAL_POLICY: McapTemporalPolicySettings = {
   boundaryClampMs: 50,
   maxInterpolationGapMs: 0,
-  staleMediaWarningMs: 2000,
+  staleMediaWarningMs: 500,
   transformGapWarningMs: 2000,
 };
 

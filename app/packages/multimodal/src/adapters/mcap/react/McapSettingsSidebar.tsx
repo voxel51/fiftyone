@@ -117,35 +117,51 @@ function TemporalPolicySettings({
           Reset
         </button>
       </div>
-      <div className={styles.controlStack}>
-        <PolicyNumberInput
-          label="Stale media warning"
-          onChange={(staleMediaWarningMs) => onUpdate({ staleMediaWarningMs })}
-          tooltip="Shows a stale badge when latest-at-or-before media is older than this threshold. Media lookup is unbounded and never uses future samples. Enter 0 to disable the warning."
-          value={policy.staleMediaWarningMs}
-        />
-        <PolicyNumberInput
-          label="Max interpolation gap"
-          onChange={(maxInterpolationGapMs) =>
-            onUpdate({ maxInterpolationGapMs })
-          }
-          tooltip="Largest gap between bracketing transform samples that can be interpolated. Larger gaps make placement unavailable. Enter 0 to remove the gap limit."
-          value={policy.maxInterpolationGapMs}
-        />
-        <PolicyNumberInput
-          label="Transform gap warning"
-          onChange={(transformGapWarningMs) =>
-            onUpdate({ transformGapWarningMs })
-          }
-          tooltip="Shows a 3D warning when a rendered transform interpolates across a wider gap than this. Rendering continues if the max interpolation gap allows it. Enter 0 to disable the warning."
-          value={policy.transformGapWarningMs}
-        />
-        <PolicyNumberInput
-          label="Boundary clamp"
-          onChange={(boundaryClampMs) => onUpdate({ boundaryClampMs })}
-          tooltip="Start/end tolerance for using the nearest transform sample when a full interpolation bracket does not exist. Enter 0 to disable boundary clamping."
-          value={policy.boundaryClampMs}
-        />
+      <div className={styles.policyGroups}>
+        <div className={styles.policyGroup}>
+          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+            Observations
+          </Text>
+          <div className={styles.controlStack}>
+            <PolicyNumberInput
+              label="Stale frame warning"
+              onChange={(staleMediaWarningMs) =>
+                onUpdate({ staleMediaWarningMs })
+              }
+              tooltip="Shows a stale badge when latest-at-or-before observations are older than this threshold. Observation lookup is unbounded and never uses future samples. Enter 0 to disable the warning."
+              value={policy.staleMediaWarningMs}
+            />
+          </div>
+        </div>
+        <div className={styles.policyGroup}>
+          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+            Transforms
+          </Text>
+          <div className={styles.controlStack}>
+            <PolicyNumberInput
+              label="Max interpolation gap"
+              onChange={(maxInterpolationGapMs) =>
+                onUpdate({ maxInterpolationGapMs })
+              }
+              tooltip="Largest gap between bracketing transform samples that can be interpolated. Larger gaps make placement unavailable. Enter 0 to remove the gap limit."
+              value={policy.maxInterpolationGapMs}
+            />
+            <PolicyNumberInput
+              label="Large gap warning"
+              onChange={(transformGapWarningMs) =>
+                onUpdate({ transformGapWarningMs })
+              }
+              tooltip="Shows a 3D warning when a rendered transform interpolates across a wider gap than this. Rendering continues if the max interpolation gap allows it. Enter 0 to disable the warning."
+              value={policy.transformGapWarningMs}
+            />
+            <PolicyNumberInput
+              label="Boundary clamp"
+              onChange={(boundaryClampMs) => onUpdate({ boundaryClampMs })}
+              tooltip="Start/end tolerance for using the nearest transform sample when a full interpolation bracket does not exist. Enter 0 to disable boundary clamping."
+              value={policy.boundaryClampMs}
+            />
+          </div>
+        </div>
       </div>
     </section>
   );
