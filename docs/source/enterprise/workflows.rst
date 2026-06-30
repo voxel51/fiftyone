@@ -105,21 +105,18 @@ high-stakes labeling:
 Configuring Stages
 ~~~~~~~~~~~~~~~~~~
 
-Click a stage on the canvas to configure it:
+Click a stage on the canvas to configure it. Workflows are built from
+stages, each with stage-specific configuration options, that can spawn
+tasks and delegated operations.
 
-- **Input samples** — the set of samples the workflow runs on. Use a
-  :ref:`saved view <app-saving-views>` to define which samples enter the
-  pipeline.
-- **Annotate** — select who can annotate (for example, *Anyone can
-  annotate* or specific members) and set the label schema annotators will
-  use.
-- **Review** — select who can review and wire the **Accepted** /
-  **Rejected** branches to the appropriate downstream stages.
+For example, the **Input samples** stage lets you choose which samples
+enter the pipeline, such as a :ref:`saved view <app-saving-views>`:
 
 .. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_input_samples_config.webp
    :alt: Configuring Input samples with saved view selection
 
-The following example shows how to edit the assignee for a Review
+An **Annotate** or **Review** stage lets you set who is assigned to the
+work. The following example shows how to edit the assignee for a Review
 stage:
 
 .. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_stage_config.webp
