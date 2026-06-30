@@ -34,6 +34,13 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
+    :header: Building Annotation Workflows and Ontologies with FiftyOne __SUB_NEW__
+    :description: Design annotation workflows and ontologies that deliver consistent, high-quality labels at scale with FiftyOne. Curate the right data, draft a first pass with an agent or zoo models, review by error likelihood, and close the loop with evaluation.
+    :link: fiftyone_annotation_workflows.html
+    :image: https://cdn.voxel51.com/tutorial_fiftyone_annotation_workflows/data_engine_tile.webp
+    :tags: Dataset-Curation,Annotation,Brain,Embeddings,Model-Evaluation,App
+
+.. customcarditem::
     :header: Using FiftyOne Skills with Gemini CLI __SUB_NEW__
     :description: Use natural language to orchestrate computer vision workflows in Google Colab with FiftyOne Skills and the Gemini CLI. Load data, run inference, and evaluate models through conversational commands.
     :link: gemini_fiftyone_skills.html
@@ -239,6 +246,7 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
+   Building Annotation Workflows and Ontologies <fiftyone_annotation_workflows.ipynb>
    Using FiftyOne Skills with Gemini CLI __SUB_NEW__ <gemini_fiftyone_skills.ipynb>   
    Integrating NVIDIA Cosmos-Transfer with FiftyOne __SUB_NEW__ <cosmos-transfer-integration.ipynb>
    Google Gemini Vision in FiftyOne __SUB_NEW__ <gemini_vision.ipynb>
