@@ -129,7 +129,7 @@ jobs:
     needs: prepare-e2e
     timeout-minutes: 90
     runs-on: ubuntu-latest # the standard runner's 14GB free disk space is not sufficient.  We create more free space with the `jlumbroso/free-disk-space` action as a step (below).
-    name: Test e2e (Mongo ${{ matrix.mongodb-version }}, shard ${{ matrix.shard }}/4)
+    name: Test e2e (Mongo ${{ matrix.mongodb-version }}, shard ${{ matrix.shard }}/6)
     env:
       FIFTYONE_DO_NOT_TRACK: true
       FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE: false
@@ -147,7 +147,7 @@ jobs:
       matrix:
         mongodb-version:
           - "latest"
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     services:
       # Run MongoDB as a service container rather than via a Docker-based
       # action. Container actions are built from `docker:latest` at job start
@@ -279,7 +279,7 @@ jobs:
         wait: setup-ffmpeg
 
       - name: Run Playwright tests
-        run: yarn e2e --shard=${{ matrix.shard }}/4
+        run: yarn e2e --shard=${{ matrix.shard }}/6
         working-directory: e2e-pw
 
       - name: Lint Playwright tests
