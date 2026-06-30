@@ -753,14 +753,14 @@
             "base_filename": null,
             "version": null,
             "description": "Open-vocabulary panoptic segmentation with FC-CLIP (COCO); returns both thing and stuff segments as instance masks. Uses frozen ConvNeXt-Large CLIP backbone + Mask2Former decoder.",
-            "source": "https://huggingface.co/neerajaabhyankar/fc-clip",
+            "source": "https://huggingface.co/Voxel51/fc-clip",
             "author": "Jiarui Xu, et al. (ByteDance)",
             "license": "MIT",
             "size_bytes": 83000000,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.fcclip.FCCLIPModel",
                 "config": {
-                    "name_or_path": "neerajaabhyankar/fc-clip"
+                    "name_or_path": "Voxel51/fc-clip"
                 }
             },
             "requirements": {
