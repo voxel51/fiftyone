@@ -168,13 +168,13 @@ def import_annotations(
     data_dir = None
     existing_filepaths = sample_collection.values("filepath")
     if data_path is None:
-        data_map = {os.path.basename(f): f for f in existing_filepaths}
+        data_map = _BasenameLookup(existing_filepaths)
     elif etau.is_str(data_path) and data_path.endswith(".json"):
         data_map = etas.read_json(data_path)
     elif etau.is_str(data_path):
         if os.path.isdir(data_path):
             data_map = {
-                os.path.basename(f): f
+                os.path.relpath(f, data_path).replace(os.sep, "/"): f
                 for f in etau.list_files(
                     data_path, abs_paths=True, recursive=True
                 )
@@ -182,7 +182,7 @@ def import_annotations(
         else:
             data_map = {}
 
-        data_dir = data_path
+        data_dir = os.path.abspath(data_path)
     else:
         data_map = data_path
 
@@ -286,6 +286,103 @@ def import_annotations(
     finally:
         anno_backend.delete_run(dataset, anno_key)
         api.close()
+
+
+_MISSING = object()  # sentinel for _BasenameLookup.__getitem__
+
+
+class _BasenameLookup(dict):
+    """Maps CVAT filenames to local filepaths via a basename index.
+
+    Builds a ``{basename: [filepaths]}`` index once, then resolves CVAT
+    filenames in O(1) when basenames are unique or O(k) when *k* paths
+    share the same basename (disambiguated by suffix matching).
+
+    Subclasses :class:`dict` so that downstream code expecting a dict-like
+    ``data_map`` (e.g. ``data_map.get(filename)``) continues to work.
+    All standard dict methods (``in``, ``len``, ``items``, iteration, etc.)
+    route through the same resolution logic to avoid behavioral
+    inconsistencies.
+    """
+
+    def __init__(self, filepaths):
+        super().__init__()
+        self._index = defaultdict(list)
+        self._filepaths = tuple(dict.fromkeys(filepaths))
+        self._filepath_set = set(self._filepaths)
+        for f in self._filepaths:
+            self._index[os.path.basename(f)].append(f)
+
+    def _resolve(self, filename):
+        """Resolve a CVAT filename to a local filepath.
+
+        Returns the filepath if unambiguously resolved, or :data:`_MISSING`
+        otherwise.
+        """
+        # Fast path: exact filepath match (e.g. from iterating this object)
+        if filename in self._filepath_set:
+            return filename
+
+        basename = filename.replace(os.sep, "/").rsplit("/", 1)[-1]
+        if candidates := self._index.get(basename):
+            if len(candidates) == 1:
+                return candidates[0]
+
+            # Multiple files share the same basename — use the CVAT
+            # relative path to disambiguate, but only if it contains
+            # directory components.  A bare basename (no "/") matches
+            # all candidates and is ambiguous.
+            normalized = filename.replace(os.sep, "/")
+            if "/" in normalized:
+                suffix = "/" + normalized
+                matches = [
+                    f
+                    for f in candidates
+                    if f.replace(os.sep, "/").endswith(suffix)
+                ]
+                if len(matches) == 1:
+                    return matches[0]
+
+                if len(matches) > 1:
+                    logger.warning(
+                        "Ambiguous CVAT filename '%s' matched %d local "
+                        "paths; skipping",
+                        filename,
+                        len(matches),
+                    )
+
+        return _MISSING
+
+    def get(self, filename, default=None):
+        result = self._resolve(filename)
+        return default if result is _MISSING else result
+
+    def __getitem__(self, filename):
+        result = self._resolve(filename)
+        if result is _MISSING:
+            raise KeyError(filename)
+        return result
+
+    def __contains__(self, filename):
+        return self._resolve(filename) is not _MISSING
+
+    def __len__(self):
+        return len(self._filepaths)
+
+    def __iter__(self):
+        return iter(self._filepaths)
+
+    def __bool__(self):
+        return len(self._filepaths) > 0
+
+    def keys(self):
+        return dict.fromkeys(self._filepaths).keys()
+
+    def values(self):
+        return {f: f for f in self._filepaths}.values()
+
+    def items(self):
+        return {f: f for f in self._filepaths}.items()
 
 
 def _parse_task_metadata(
