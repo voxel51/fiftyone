@@ -33,7 +33,7 @@ tab to see two areas:
 Each workflow has a **status** that reflects where it is in its lifecycle:
 **Draft** (still being designed), **Started** (launched, with tasks being
 created), **Running** (actively routing samples through its stages), or
-**Completed** (all samples have been fully processed).
+**Complete** (all samples have been fully processed).
 
 Workflows are built from **stages**. The core stage types are:
 
@@ -107,8 +107,9 @@ Configuring Stages
 
 Click a stage on the canvas to configure it:
 
-- **Input samples** — the set of samples the workflow runs on, chosen when
-  the workflow is started.
+- **Input samples** — the set of samples the workflow runs on. Use a
+  :ref:`saved view <app-saving-views>` to define which samples enter the
+  pipeline.
 - **Annotate** — select who can annotate (for example, *Anyone can
   annotate* or specific members) and set the label schema annotators will
   use.
@@ -124,11 +125,9 @@ stage:
 Starting a Workflow
 ~~~~~~~~~~~~~~~~~~~
 
-When the pipeline is ready, click **Start workflow** and choose the input
-samples to run on, typically by selecting a
-:ref:`saved view <app-saving-views>`. The workflow moves from **Draft** to
-**Running**, tasks are created for each member, and a *"N for you"*
-indicator appears on the workflow card in the Annotate tab.
+When the pipeline is ready, click **Start workflow**. The workflow moves
+from **Draft** to **Running**, tasks are created for each member, and a
+*"N for you"* indicator appears on the workflow card in the Annotate tab.
 
 .. TODO: needs capture — Start workflow / input-samples selection screenshot.
 
