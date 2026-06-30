@@ -19,6 +19,9 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
+fou.ensure_torch()
+import torch
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_MAPANYTHING_MODEL = "facebook/map-anything-apache"
@@ -63,6 +66,9 @@ class MapAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             ``"fp32"``
     """
 
+    VALID_OUTPUT_TYPES = ("depth", "pointcloud")
+    VALID_AMP_DTYPES = ("bf16", "fp16", "fp32")
+
     def __init__(self, d):
         d = self.init(d)
         super().__init__(d)
@@ -73,21 +79,18 @@ class MapAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.output_type = self.parse_string(
             d, "output_type", default="depth"
         )
-
-        _valid_output_types = ("depth", "pointcloud")
-        if self.output_type not in _valid_output_types:
+        if self.output_type not in self.VALID_OUTPUT_TYPES:
             raise ValueError(
-                "output_type must be one of %s, got '%s'"
-                % (_valid_output_types, self.output_type)
+                f"output_type must be one of {self.VALID_OUTPUT_TYPES}, "
+                f"got '{self.output_type}'"
             )
+
         self.use_amp = self.parse_bool(d, "use_amp", default=True)
         self.amp_dtype = self.parse_string(d, "amp_dtype", default="bf16")
-
-        _valid_amp_dtypes = ("bf16", "fp16", "fp32")
-        if self.amp_dtype not in _valid_amp_dtypes:
+        if self.amp_dtype not in self.VALID_AMP_DTYPES:
             raise ValueError(
-                "amp_dtype must be one of %s, got '%s'"
-                % (_valid_amp_dtypes, self.amp_dtype)
+                f"amp_dtype must be one of {self.VALID_AMP_DTYPES}, "
+                f"got '{self.amp_dtype}'"
             )
 
 
@@ -107,6 +110,10 @@ class MapAnythingModel(fout.TorchImageModel):
     -   ``output_type="pointcloud"``: stores a
         :class:`fiftyone.core.labels.Classification` with the world-frame
         point cloud attached as a numpy array in the ``points3d`` attribute.
+
+    Each image is reconstructed independently (single-view inference);
+    MapAnything's joint multi-view reconstruction is not exposed through the
+    per-sample zoo ``apply_model`` interface.
 
     Example usage::
 
@@ -143,9 +150,6 @@ class MapAnythingModel(fout.TorchImageModel):
 
     def _load_model(self, config):
         """Load the MapAnything model from HuggingFace."""
-        fou.ensure_torch()
-        import torch
-
         if config.device is not None:
             device = torch.device(config.device)
         elif torch.cuda.is_available():
@@ -180,9 +184,6 @@ class MapAnythingModel(fout.TorchImageModel):
 
     def _predict_all(self, imgs):
         """Run MapAnything inference on a list of images."""
-        fou.ensure_torch()
-        import torch
-
         if not isinstance(imgs, list):
             imgs = [imgs]
 
