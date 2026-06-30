@@ -308,12 +308,6 @@ const EventDataMappers = {
   },
 };
 
-// @ts-expect-error unused — helper not currently called
-function getValuesAtIndices(array, indices) {
-  if (!indices || !indices) return null;
-  return indices.map((i) => array[i]);
-}
-
 function mergeData(data, defaults) {
   if (!Array.isArray(data)) {
     data = [data];

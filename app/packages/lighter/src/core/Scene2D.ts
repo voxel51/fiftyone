@@ -887,13 +887,8 @@ export class Scene2D {
     });
 
     // Apply rotation if needed
-    // @ts-expect-error unused — reassigned below but never read
-    let newRotate = orderState.rotate;
     if (orderState.rotate !== 0) {
-      [contained, newRotate] = this.rotateOverlays(
-        contained,
-        orderState.rotate,
-      );
+      [contained] = this.rotateOverlays(contained, orderState.rotate);
     }
 
     // Handle hover-only mode

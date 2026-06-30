@@ -21,9 +21,7 @@ export class MockRenderer2D implements Renderer2D {
   private tickHandlers: (() => void)[] = [];
   private containers = new Map<string, any>();
   private scale = 1;
-  // @ts-expect-error unused mock field
   private panX = 0;
-  // @ts-expect-error unused mock field
   private panY = 0;
   private containerDimensions = { width: 800, height: 600 };
 
@@ -243,7 +241,7 @@ export class MockRenderer2D implements Renderer2D {
   }
 
   getViewportState(): ViewportState {
-    return { scale: this.scale, panX: 0, panY: 0 };
+    return { scale: this.scale, panX: this.panX, panY: this.panY };
   }
 
   setViewportState({ scale, panX, panY }: ViewportState): void {

@@ -14,8 +14,6 @@ const DEFAULT_FILL_STYLE = "rgba(255, 255, 255, 0.6)";
 export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
   public imageSource: HTMLCanvasElement | HTMLImageElement;
   private isOpmAvailable: boolean;
-  // @ts-expect-error unused field
-  private isFo3d: boolean;
 
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -65,10 +63,9 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
 
   createHTMLElement(
     dispatchEvent: DispatchEvent,
-    { src, isOpmAvailable, isFo3d }: Readonly<ThreeDState["config"]>,
+    { src, isOpmAvailable }: Readonly<ThreeDState["config"]>,
   ) {
     this.isOpmAvailable = isOpmAvailable;
-    this.isFo3d = isFo3d;
 
     this.element = new Image();
     this.element.loading = "eager";

@@ -33,9 +33,6 @@ import {
 export class ControlsElement<
   State extends BaseState,
 > extends BaseElement<State> {
-  // @ts-expect-error unused field
-  private showControls: boolean = false;
-
   getEvents(): Events<State> {
     return {
       mouseenter: ({ update }) => {
@@ -74,7 +71,6 @@ export class ControlsElement<
       this.element.style.opacity = "0.0";
       this.element.style.height = "0";
     }
-    this.showControls = showControls;
     return this.element;
   }
 }
