@@ -30,7 +30,10 @@ import {
   type Mcap3dTransformGapWarning,
 } from "./mcap-3d-layers";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
-import { markMcapLatencyEvent } from "./mcap-latency-debug";
+import {
+  isMcapLatencyDebugEnabled,
+  markMcapLatencyEvent,
+} from "./mcap-latency-debug";
 import { useMcapModalSettings } from "./mcap-modal-settings";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import type { McapTileProps } from "./mcap-tile-types";
@@ -132,6 +135,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const frameTransforms = useMcapFrameTransformsContext();
   const { temporalPolicy } = useMcapModalSettings();
   const setTileTitle = useSetTileTitle();
+  const latencyDebugEnabled = useMemo(() => isMcapLatencyDebugEnabled(), []);
   // Start with every source enabled. This tile only mounts after the scene
   // inventory is ready (the renderer gates on it), so `renderableSources` is
   // already populated and the lazy initializer captures the full set once.
@@ -480,6 +484,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
   const handlePanelRenderStats = useCallback(
     (stats: PointCloudPanelRenderStats) => {
+      if (!latencyDebugEnabled) {
+        return;
+      }
       const detail = {
         ...stats,
         placementStatus,
@@ -501,11 +508,17 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         });
       }
     },
-    [placementStatus, provisionalFrameIds, transformedLayerCount, worldFrameId],
+    [
+      latencyDebugEnabled,
+      placementStatus,
+      provisionalFrameIds,
+      transformedLayerCount,
+      worldFrameId,
+    ],
   );
 
   useEffect(() => {
-    if (pointCloudLayers.length === 0) {
+    if (!latencyDebugEnabled || pointCloudLayers.length === 0) {
       return;
     }
 
@@ -533,6 +546,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     }
   }, [
     frameTransforms.status,
+    latencyDebugEnabled,
     placementStatus,
     pointCloudLayers,
     provisionalFrameIds,
@@ -607,7 +621,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             layers={pointCloudLayers}
             className={styles.panel}
             onCameraPoseChange={handleCameraPoseChange}
-            onRenderStats={handlePanelRenderStats}
+            onRenderStats={
+              latencyDebugEnabled ? handlePanelRenderStats : undefined
+            }
             warning={panelWarning}
           />
           <McapTileStatusBadge topics={selectedTopics} />

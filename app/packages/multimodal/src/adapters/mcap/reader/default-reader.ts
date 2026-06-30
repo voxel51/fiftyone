@@ -2,6 +2,7 @@ import "../browser-node-globals";
 import { McapIndexedReader, type McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { loadDecompressHandlers } from "../mcap-support";
+import { ByteClientReadable } from "./byte-readable";
 import { readLatestIndexedMessageTimesForReader } from "./latest-before";
 import { readIndexedMessageTimesForReader } from "./message-index";
 import { readTopicIndexedTimeBoundsForReader } from "./topic-time-bounds";
@@ -27,6 +28,9 @@ export async function createDefaultMcapReader(
     messageIndexCacheSizeBytes: DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES,
     readable,
   });
+  if (readable instanceof ByteClientReadable) {
+    readable.setChunkIndexes(reader.chunkIndexes);
+  }
   const chunkCompressions = compressedChunkTypes(reader);
   assertSupportedChunkCompressions(chunkCompressions, wasmDecompressHandlers);
 

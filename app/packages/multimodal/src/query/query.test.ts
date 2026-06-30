@@ -346,6 +346,57 @@ describe("multimodal query clients", () => {
     });
   });
 
+  it("logs byte-cache fetch and hit debug entries when enabled", async () => {
+    const reader: ByteClient = {
+      readBytes: vi.fn(async (readRequest) => ({
+        bytes: bytesForRange(readRequest),
+        range: readRequest.range,
+        source: readRequest.source,
+      })),
+    };
+    const log = vi.fn();
+    const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
+    const client = createCachedByteClient(reader, {
+      blockSizeBytes: 64,
+      debug: { enabled: true, log },
+      memory: cache,
+    });
+    const first = createByteRangeReadRequest({
+      range: { length: 4n, offset: 4n },
+    });
+    const second = createByteRangeReadRequest({
+      range: { length: 4n, offset: 12n },
+    });
+
+    await client.readBytes(first);
+    await client.readBytes(second);
+
+    expect(log).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        blockFill: true,
+        cacheResult: "fetched",
+        fetchedBytes: 64,
+        fillLength: "64",
+        fillOffset: "0",
+        requestedLength: "4",
+        requestedOffset: "4",
+        returnedBytes: 4,
+      }),
+    );
+    expect(log).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        blockFill: true,
+        cacheResult: "fill-hit",
+        fetchedBytes: 0,
+        requestedLength: "4",
+        requestedOffset: "12",
+        returnedBytes: 4,
+      }),
+    );
+  });
+
   it("allows callers to skip block cache fills for scattered exact reads", async () => {
     const reader: ByteClient = {
       readBytes: vi.fn(async (readRequest) => ({

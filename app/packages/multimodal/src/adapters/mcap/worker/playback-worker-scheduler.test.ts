@@ -81,6 +81,50 @@ describe("MCAP playback worker scheduler", () => {
     expect(ran).toEqual(["first"]);
   });
 
+  it("logs queue wait and run timing when debug is enabled", async () => {
+    const scheduler = new McapPlaybackWorkerScheduler();
+    const consoleLog = vi
+      .spyOn(console, "log")
+      .mockImplementation(() => undefined);
+
+    try {
+      scheduler.setDebug(true);
+      scheduler.enqueue({
+        id: 1,
+        operation: "readSynchronizedMessages",
+        priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+        run: async () => undefined,
+        sourceKey: "source",
+      });
+
+      await flushAsync();
+
+      expect(consoleLog).toHaveBeenCalledWith(
+        "[mcap] worker job",
+        expect.objectContaining({
+          event: "started",
+          jobId: 1,
+          operation: "readSynchronizedMessages",
+          priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+          queueWaitMs: expect.any(Number),
+          sourceKey: "source",
+        }),
+      );
+      expect(consoleLog).toHaveBeenCalledWith(
+        "[mcap] worker job",
+        expect.objectContaining({
+          event: "finished",
+          jobId: 1,
+          operation: "readSynchronizedMessages",
+          runMs: expect.any(Number),
+          sourceKey: "source",
+        }),
+      );
+    } finally {
+      consoleLog.mockRestore();
+    }
+  });
+
   it("continues draining after a rejected job", async () => {
     const scheduler = new McapPlaybackWorkerScheduler();
     const consoleError = vi

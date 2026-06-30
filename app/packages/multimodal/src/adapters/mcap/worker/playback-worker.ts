@@ -28,7 +28,11 @@ const workerScope = self as unknown as McapPlaybackWorkerScope;
 const scheduler = new McapPlaybackWorkerScheduler();
 
 let activeSourceKey = "";
-let mcap = createWorkerResourceClient();
+let debugReads = false;
+let mcap = createWorkerResourceClient({
+  debugByteReads: debugReads,
+  debugChunkReads: debugReads,
+});
 
 workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
   const message = event.data;
@@ -39,6 +43,17 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
       message.payload.headers,
       message.payload.pathPrefix,
     );
+    const nextDebugReads = message.payload.latencyDebug === true;
+    scheduler.setDebug(nextDebugReads);
+    if (debugReads !== nextDebugReads) {
+      debugReads = nextDebugReads;
+      activeSourceKey = "";
+      mcap.dispose();
+      mcap = createWorkerResourceClient({
+        debugByteReads: debugReads,
+        debugChunkReads: debugReads,
+      });
+    }
     return;
   }
 
@@ -56,6 +71,7 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
 
   scheduler.enqueue({
     id: message.id,
+    operation: message.type,
     priority: message.priority,
     run: () => runAndRespond(message),
     sourceKey: message.sourceKey,
@@ -113,7 +129,10 @@ function ensureActiveSource(sourceKey: string) {
 
   activeSourceKey = sourceKey;
   mcap.dispose();
-  mcap = createWorkerResourceClient();
+  mcap = createWorkerResourceClient({
+    debugByteReads: debugReads,
+    debugChunkReads: debugReads,
+  });
 }
 
 function postResponse(response: McapPlaybackWorkerResponse) {

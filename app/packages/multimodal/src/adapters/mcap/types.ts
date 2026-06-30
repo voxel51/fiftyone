@@ -285,6 +285,11 @@ export interface McapDecodedMessage {
   readonly decoded: DecodeResult;
 
   /**
+   * Encoded MCAP message payload size before adapter decoding.
+   */
+  readonly encodedPayloadBytes?: number;
+
+  /**
    * MCAP message log time.
    */
   readonly logTimeNs: bigint;

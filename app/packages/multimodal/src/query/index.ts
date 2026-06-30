@@ -25,6 +25,7 @@ export function createMultimodalQueryClient(
   const byteCaches = {
     blockSizeBytes:
       options.caches?.bytes?.blockSizeBytes ?? defaultByteCacheBlockSizeBytes,
+    debug: options.caches?.bytes?.debug,
     memory:
       options.caches?.bytes?.memory ??
       createMemoryByteRangeCache({

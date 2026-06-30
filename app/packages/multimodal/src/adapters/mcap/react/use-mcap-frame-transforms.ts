@@ -14,6 +14,7 @@ import {
   mcapLatencyDurationMs,
   mcapLatencyNowMs,
 } from "./mcap-latency-debug";
+import { recordMcapFrameTransformBandwidth } from "./mcap-bandwidth-debug";
 
 // Keep demand-driven dynamic transform reads small and placement-priority; this
 // gives the resolver a little temporal slack without letting dense transform
@@ -150,6 +151,10 @@ export function useMcapFrameTransforms({
         }
 
         store.addStatic(set.samples);
+        recordMcapFrameTransformBandwidth({
+          operation: "transform-bootstrap",
+          set,
+        });
         markMcapLatencyEvent(
           "frame transform bootstrap ready",
           {
@@ -263,6 +268,10 @@ export function useMcapFrameTransforms({
         }
 
         storeRef.current?.addDynamic(set.samples, sourceRange);
+        recordMcapFrameTransformBandwidth({
+          operation: "transform-range",
+          set,
+        });
         markMcapLatencyEvent(
           "frame transform range ready",
           {
@@ -351,6 +360,10 @@ export function useMcapFrameTransforms({
         }
 
         storeRef.current?.addDynamic(set.samples, requestedRange);
+        recordMcapFrameTransformBandwidth({
+          operation: "transform-current-window",
+          set,
+        });
         markMcapLatencyEvent(
           "frame transform current window ready",
           {
