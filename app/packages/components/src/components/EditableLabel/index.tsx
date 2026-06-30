@@ -135,9 +135,7 @@ export default function EditableLabel(props: EditableLabelProps) {
               </Stack>
             ),
           }}
-          sx={{
-            backgroundColor: (theme) => theme.palette.background.overlay75,
-          }}
+          sx={{ backgroundColor: "#191919" }}
         />
       )}
       {mode === "view" && iconPosition === "end" && editIcon}
