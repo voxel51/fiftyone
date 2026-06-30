@@ -32,8 +32,8 @@ ls = fou.lazy_import(
     callback=lambda: fou.ensure_import("label_studio_sdk>=0.0.13"),
 )
 brush = fou.lazy_import(
-    "label_studio_converter.brush",
-    callback=lambda: fou.ensure_import("label_studio_converter.brush"),
+    "label_studio_sdk.converter.brush",
+    callback=lambda: fou.ensure_import("label_studio_sdk>=1.0.0"),
 )
 etree = fou.lazy_import(
     "lxml.etree",
