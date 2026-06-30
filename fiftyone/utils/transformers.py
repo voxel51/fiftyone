@@ -1822,22 +1822,25 @@ class TransformersUniversalSegmentatorOutputProcessor(
         **kwargs,
     ):
         threshold = confidence_thresh if confidence_thresh is not None else 0.0
-        post_process = (
-            self._processor.post_process_panoptic_segmentation
-            if self.task == "panoptic"
-            else self._processor.post_process_instance_segmentation
-        )
         if hasattr(image_sizes, "tolist"):
             target_sizes = [tuple(sz) for sz in image_sizes.tolist()]
         else:
             target_sizes = [tuple(int(x) for x in sz) for sz in image_sizes]
-        processed = post_process(
-            output,
+        post_process_kwargs = dict(
             threshold=threshold,
             mask_threshold=self.mask_thresh,
             overlap_mask_area_threshold=self.overlap_mask_area_threshold,
             target_sizes=target_sizes,
         )
+        if self.task == "panoptic":
+            processed = self._processor.post_process_panoptic_segmentation(
+                output, **post_process_kwargs
+            )
+        else:
+            # for instance segmentation, preserve overlapping instances with return_binary_maps set to True.
+            processed = self._processor.post_process_instance_segmentation(
+                output, **post_process_kwargs, return_binary_maps=True
+            )
         results = []
         for item in processed:
             segmentation = item.get("segmentation")
@@ -1845,7 +1848,7 @@ class TransformersUniversalSegmentatorOutputProcessor(
             detections = []
             if segmentation is not None:
                 seg_np = segmentation.cpu().numpy()
-                for seg in segments_info:
+                for i, seg in enumerate(segments_info):
                     score = seg.get("score", 1.0)
                     if (
                         confidence_thresh is not None
@@ -1860,7 +1863,10 @@ class TransformersUniversalSegmentatorOutputProcessor(
                     )
                     if classes is not None and label not in classes:
                         continue
-                    binary_mask = seg_np == seg["id"]
+                    if self.task == "panoptic":
+                        binary_mask = seg_np == seg["id"]
+                    else:
+                        binary_mask = seg_np[i] > 0
                     if not binary_mask.any():
                         continue
                     detections.append(
