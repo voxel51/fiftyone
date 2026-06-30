@@ -2,11 +2,15 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import { humanReadableBytes } from "@fiftyone/utilities";
 import { Size, Spinner } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useMemo } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import MultiModalPlayback from "../../../components/MultiModalPlayback/MultiModalPlayback";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { McapDataStreamProvider } from "./mcap-data-stream-context";
 import { McapFrameTransformsProvider } from "./mcap-frame-transforms-context";
+import {
+  markMcapLatencyEvent,
+  startMcapLatencyDebugSession,
+} from "./mcap-latency-debug";
 import { McapModalSettingsProvider } from "./mcap-modal-settings";
 import McapSettingsSidebar from "./McapSettingsSidebar";
 import { McapStreams } from "./McapStreams";
@@ -40,6 +44,21 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const client = useMcapResourceClient({ worker: true });
   const source = useStableMcapSource(ctx);
   const fileName = fileNameFromPath(ctx.media.path) ?? "recording.mcap";
+  const latencySessionKey = useRef(createMcapLatencySessionKey()).current;
+  useLayoutEffect(() => {
+    startMcapLatencyDebugSession({
+      detail: {
+        fileName,
+        readProfile: source?.readProfile,
+        sizeBytes: source?.sizeBytes,
+      },
+      label: "mcap modal",
+      sessionKey: latencySessionKey,
+      sourceKey:
+        source?.sourceId ??
+        (typeof ctx.media.path === "string" ? ctx.media.path : undefined),
+    });
+  }, [ctx.media.path, fileName, latencySessionKey, source]);
   const { status, error, sources, topicCount } = useMcapSceneInventory({
     client,
     source,
@@ -73,6 +92,18 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
     onRightOpenChange,
   } = useMcapModalLayout({ sources, readProfile: source?.readProfile });
   const { tracks, onTagCreate, onTagDelete } = useMcapTemporalTags(ctx);
+
+  useEffect(() => {
+    if (status !== "ready") return;
+    markMcapLatencyEvent(
+      "scene inventory ready",
+      {
+        ...metadata,
+        sourceCount: sources.length,
+      },
+      { onceKey: "scene-inventory-ready" },
+    );
+  }, [metadata, sources.length, status]);
 
   if (status === "error") {
     return (
@@ -189,6 +220,10 @@ function sourceCounts(sources: readonly { type: string }[]) {
 function fileNameFromPath(path: unknown): string | null {
   if (typeof path !== "string" || !path) return null;
   return path.split(/[/\\]/).pop() || null;
+}
+
+function createMcapLatencySessionKey(): string {
+  return `mcap-modal-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function sourceSizeLabel(sizeBytes: string | undefined): string | null {

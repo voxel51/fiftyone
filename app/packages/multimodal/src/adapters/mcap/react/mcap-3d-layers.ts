@@ -27,6 +27,15 @@ export interface Mcap3dTransformGapWarning {
   readonly gapNs: bigint;
 }
 
+export interface Mcap3dLayerBuildResult {
+  readonly clampedFrameIds: readonly string[];
+  readonly largeInterpolationGaps: readonly Mcap3dTransformGapWarning[];
+  readonly pointCloudLayers: readonly PointCloudPanelLayer[];
+  readonly provisionalFrameIds: readonly string[];
+  readonly transformedLayerCount: number;
+  readonly unresolvedFrameIds: readonly string[];
+}
+
 /**
  * Builds the point-cloud layers for the 3D tile, transforming each cloud into
  * the chosen world frame. Clouds that cannot be placed *yet* (transforms still
@@ -38,18 +47,23 @@ export function build3dLayers({
   frameTransforms,
   frames,
   largeInterpolationGapWarningNs = 0n,
+  provisionalTopicId,
   selectedTopics,
   worldFrameId,
 }: {
   readonly frameTransforms: McapFrameTransformsState;
   readonly frames: readonly (McapTopicPlaybackFrame<PointCloudVisualization> | null)[];
   readonly largeInterpolationGapWarningNs?: bigint;
+  readonly provisionalTopicId?: string | null;
   readonly selectedTopics: readonly string[];
   readonly worldFrameId: string;
-}) {
+}): Mcap3dLayerBuildResult {
   const pointCloudLayers: PointCloudPanelLayer[] = [];
   const clampedFrameIds = new Set<string>();
   const largeInterpolationGapsByFrameId = new Map<string, bigint>();
+  const pendingTopicId = provisionalTopicId ?? selectedTopics[0] ?? null;
+  const provisionalFrameIds = new Set<string>();
+  let transformedLayerCount = 0;
   const unresolvedFrameIds = new Set<string>();
   const transformCache = new Map<string, FrameTransformResolution>();
   const resolveCachedFrameTransform = (
@@ -87,6 +101,7 @@ export function build3dLayers({
     if (!frame.coordinateFrameId) {
       // Frameless cloud: nothing to transform, render at the scene origin.
       pointCloudLayers.push({ frame, id: topic });
+      transformedLayerCount += 1;
       return;
     }
 
@@ -95,10 +110,19 @@ export function build3dLayers({
       playbackFrame.contentTimeNs,
     );
     // Drop only genuinely unplaceable clouds (`missing`): the warning explains
-    // why. A `pending` transform still renders in the source frame for callers
-    // that choose to draw through pending placement.
+    // why. Pending transforms are truthful provisional placement, so render
+    // only the deterministic provisional source instead of raw-overlapping all
+    // sensors in their own frames.
     if (resolution.status === "missing") {
       return;
+    }
+    if (resolution.status === "pending" && topic !== pendingTopicId) {
+      return;
+    }
+    if (resolution.status === "pending") {
+      provisionalFrameIds.add(frame.coordinateFrameId);
+    } else {
+      transformedLayerCount += 1;
     }
 
     pointCloudLayers.push({
@@ -115,6 +139,8 @@ export function build3dLayers({
       .map(([frameId, gapNs]) => ({ frameId, gapNs }))
       .sort((left, right) => left.frameId.localeCompare(right.frameId)),
     pointCloudLayers,
+    provisionalFrameIds: [...provisionalFrameIds].sort(),
+    transformedLayerCount,
     unresolvedFrameIds: [...unresolvedFrameIds].sort(),
   };
 }

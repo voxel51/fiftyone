@@ -55,21 +55,46 @@ describe("build3dLayers", () => {
   });
 
   it("renders a still-loading (pending) cloud in its own frame rather than dropping it", () => {
-    const { pointCloudLayers, unresolvedFrameIds } = build3dLayers({
+    const { pointCloudLayers, provisionalFrameIds, unresolvedFrameIds } =
+      build3dLayers({
+        frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+          sourceFrameId,
+          status: "pending",
+          targetFrameId,
+        })),
+        frames: [playbackFrame(frame("lidar"))],
+        selectedTopics: ["lidar-topic"],
+        worldFrameId: "map",
+      });
+
+    // Pending is transient (window still loading): show the cloud now, snap to
+    // world once the transform arrives. No missing warning.
+    expect(unresolvedFrameIds).toEqual([]);
+    expect(provisionalFrameIds).toEqual(["lidar"]);
+    expect(pointCloudLayers).toHaveLength(1);
+    expect(pointCloudLayers[0]?.frameTransform).toBeUndefined();
+  });
+
+  it("renders only the selected provisional cloud when multiple transforms are pending", () => {
+    const { pointCloudLayers, provisionalFrameIds } = build3dLayers({
       frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
         sourceFrameId,
         status: "pending",
         targetFrameId,
       })),
-      frames: [playbackFrame(frame("lidar"))],
-      selectedTopics: ["lidar-topic"],
+      frames: [
+        playbackFrame(frame("radar_front")),
+        playbackFrame(frame("lidar_top")),
+        playbackFrame(frame("radar_back")),
+      ],
+      provisionalTopicId: "lidar-topic",
+      selectedTopics: ["radar-front-topic", "lidar-topic", "radar-back-topic"],
       worldFrameId: "map",
     });
 
-    // Pending is transient (window still loading): show the cloud now, snap to
-    // world once the transform arrives. No warning.
-    expect(unresolvedFrameIds).toEqual([]);
+    expect(provisionalFrameIds).toEqual(["lidar_top"]);
     expect(pointCloudLayers).toHaveLength(1);
+    expect(pointCloudLayers[0]?.id).toBe("lidar-topic");
     expect(pointCloudLayers[0]?.frameTransform).toBeUndefined();
   });
 
