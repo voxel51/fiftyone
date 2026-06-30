@@ -10177,6 +10177,9 @@
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
                 "config": {
                     "name_or_path": "suinleelab/monet",
+                    "transforms_args": {
+                        "use_fast": false
+                    },
                     "transformers_processor_kwargs": {
                         "padding": true
                     },
