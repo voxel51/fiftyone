@@ -82,10 +82,10 @@ export const useSyncAnnotationVideoStore = (): void => {
     }
     carry.current = null;
 
-    // No whole-clip warmup. The timeline reads the server index; the canvas
-    // reads the playback-driven prefetch window; and re-interpolation fetches
-    // only its affected range on demand (see `useAutoInterpolate`). Seeding
-    // every frame here was the long-video first-load stall.
+    // Whole-clip seed for engine consumers that still walk every frame
+    // (propagation, interpolation, track ops). The timeline no longer needs
+    // it — it reads the server index. Retire once those ops fetch per-range.
+    void stream.warmupAll();
 
     return () => {
       // Carry unsaved edits to the next FrameStore (this same hook stays

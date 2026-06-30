@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/annotation";
 import { getLabelColorFromContext } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
-import type { Stage } from "@fiftyone/utilities";
+import type { LabelData, Stage } from "@fiftyone/utilities";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   useActiveDetectionField,
@@ -20,7 +20,6 @@ import {
   useVisibleLabelSchemas,
 } from "../state/accessors";
 import { useEngineTemporalSample } from "../sync/useTemporalOverlaySync";
-import { useDriveLabelsStream } from "../hooks/useDriveLabelsStream";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
   TimelineWithTracks,
@@ -39,7 +38,7 @@ import {
   objectTrackClassOf,
   objectTrackPathOf,
   parseSubTrackId,
-  readEngineOverlay,
+  type FrameOverlay,
   type PerInstanceLabel,
 } from "../tracks/frameTracks";
 import { useVideoLabelsIndex } from "../hooks/useVideoLabelsIndex";
@@ -228,11 +227,6 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
 
   usePlaybackStream(streamRef.current);
 
-  // Subscribe the labels stream so the playback engine actually drives it (its
-  // `prefetch` per playhead move, gated on label readiness for image sync) —
-  // registration alone leaves it dormant.
-  useDriveLabelsStream();
-
   // Publish so consumers above the surface reach it via useFrameLabelsStream.
   usePublishFrameLabelsStream(streamRef.current);
 
@@ -331,6 +325,30 @@ function useFrameDerivedTracks(
   ]);
 
   return { tracks, resolved: loaded };
+}
+
+/**
+ * The engine's materialized frames + their live labels, keyed by frame number —
+ * the overlay that shadows the server index. Reads every loaded frame, not just
+ * the dirty set: a successful autosave folds edits into the seed and clears the
+ * dirty set, so a dirty-only overlay would revert the timeline to the stale
+ * index after each save. The engine is authoritative for every frame it holds,
+ * so overlaying all of them keeps the timeline correct post-save and composes
+ * index (unloaded) ⊕ engine (loaded window) once the seed is windowed. Bounded
+ * by the loaded window, which today is the whole clip (see `warmupAll`).
+ */
+function readEngineOverlay(
+  engine: ReturnType<typeof useAnnotationEngine>,
+  sample: string,
+  path: string,
+): FrameOverlay {
+  const overlay: FrameOverlay = new Map<number, LabelData[]>();
+
+  for (const frame of engine.loadedFrames(sample)) {
+    overlay.set(frame, engine.listLabels({ sample, path, frame }));
+  }
+
+  return overlay;
 }
 
 /**

@@ -1,16 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Tests for the field-aware `useAutoInterpolate` handler: the bracketing
- * re-lerp (delegated to `useVideoPropagate`, carrying the changed field path +
- * the edit's undo key) and the Case C tail step-hold (geometry held forward
- * over the trailing filler when the LAST keyframe is edited).
- *
- * The keyframe/presence layout is derived from the server index ⊕ the engine's
- * edited-frame overlay (no whole-clip walk); here the index is empty and the
- * overlay (every loaded frame's labels) supplies the whole track — exercising a
- * freshly-loaded track. Box geometry is read via `engine.getLabel` after the
- * affected range is fetched.
+ * Tests for the synchronous, field-aware `useAutoInterpolate` handler: the
+ * bracketing re-lerp (delegated to `useVideoPropagate`, carrying the changed
+ * field path + the edit's undo key) and the Case C tail step-hold (geometry
+ * held forward over the trailing filler when the LAST keyframe is edited).
  */
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -20,19 +14,13 @@ const {
   propagate,
   updateLabel,
   transaction,
-  fetchRange,
   getLabelImpl,
 } = vi.hoisted(() => ({
-  annotationHandlers: new Map<
-    string,
-    (payload: unknown) => void | Promise<void>
-  >(),
+  annotationHandlers: new Map<string, (payload: unknown) => void>(),
   propagate: vi.fn(),
   updateLabel: vi.fn(),
   transaction: vi.fn((fn: () => void) => fn()),
-  fetchRange: vi.fn(async () => {}),
-  // Mutable so individual tests swap in their own label table. Drives both the
-  // overlay (presence + keyframe layout) and the geometry reads.
+  // Mutable so individual tests swap in their own label table.
   getLabelImpl: {
     current: ({ frame }: { frame: number }) =>
       frame === 1 || frame === 3 ? { keyframe: true } : null,
@@ -43,52 +31,28 @@ const {
   },
 }));
 
-const { streamRef } = vi.hoisted(() => ({
-  streamRef: {
-    current: {
-      labelsField: "detections",
-      totalFrames: 3,
-      fetchRange,
-    } as unknown,
-  },
-}));
-
-// The overlay reads every loaded frame; `totalFrames` bounds the loaded set.
-const loadedCount = (): number =>
-  (streamRef.current as { totalFrames?: number } | null)?.totalFrames ?? 0;
-
 vi.mock("@fiftyone/annotation", () => ({
   useAnnotationEventHandler: (
     event: string,
-    cb: (payload: unknown) => void | Promise<void>,
+    cb: (payload: unknown) => void,
   ) => {
     annotationHandlers.set(event, cb);
   },
   useAnnotationEngine: () => ({
     getLabel: (args: { frame: number }) => getLabelImpl.current(args),
-    loadedFrames: () => Array.from({ length: loadedCount() }, (_, i) => i + 1),
-    // The overlay tags each label with the instance id so the layout merge
-    // attributes it to "i1"; absent frames contribute no label.
-    listLabels: ({ frame }: { frame: number }) => {
-      const label = getLabelImpl.current({ frame });
-      return label ? [{ ...label, _id: "i1" }] : [];
-    },
   }),
   useActiveSampleId: () => "sample-1",
   useSurfaceActions: () => ({ transaction, updateLabel }),
 }));
 
+const { streamRef } = vi.hoisted(() => ({
+  streamRef: {
+    current: { labelsField: "detections", totalFrames: 3 } as unknown,
+  },
+}));
+
 vi.mock("../streams/frameLabelsStream", () => ({
   useFrameLabelsStream: () => streamRef.current,
-}));
-
-// Empty server index → the layout comes entirely from the engine overlay.
-vi.mock("./useVideoLabelsIndex", () => ({
-  useVideoLabelsIndex: () => ({ indexByPath: {}, loaded: true }),
-}));
-
-vi.mock("../state/accessors", () => ({
-  useFrameLabelFields: () => ({ "frames.detections": "Detections" }),
 }));
 
 vi.mock("./useVideoPropagate", () => ({
@@ -98,17 +62,14 @@ vi.mock("./useVideoPropagate", () => ({
 import { useAutoInterpolate } from "./useAutoInterpolate";
 
 const fireKeyframeChanged = (payload: unknown) =>
-  act(async () => {
-    await annotationHandlers.get("annotation:keyframeChanged")!(payload);
-  });
+  act(() => annotationHandlers.get("annotation:keyframeChanged")!(payload));
 
 beforeEach(() => {
   annotationHandlers.clear();
   propagate.mockReset();
   updateLabel.mockReset();
   transaction.mockClear();
-  fetchRange.mockClear();
-  streamRef.current = { labelsField: "detections", totalFrames: 3, fetchRange };
+  streamRef.current = { labelsField: "detections", totalFrames: 3 };
   getLabelImpl.current = ({ frame }: { frame: number }) =>
     frame === 1 || frame === 3 ? { keyframe: true } : null;
 });
@@ -118,10 +79,10 @@ afterEach(() => {
 });
 
 describe("useAutoInterpolate (re-lerp)", () => {
-  it("re-lerps both bracketing segments on a middle keyframe edit, threading the field path and undo key", async () => {
+  it("re-lerps both bracketing segments on a middle keyframe edit, threading the field path and undo key", () => {
     renderHook(() => useAutoInterpolate());
 
-    await fireKeyframeChanged({
+    fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 2,
@@ -153,10 +114,10 @@ describe("useAutoInterpolate (re-lerp)", () => {
     expect(updateLabel).not.toHaveBeenCalled();
   });
 
-  it("falls back to the primary field path when the payload omits one", async () => {
+  it("falls back to the primary field path when the payload omits one", () => {
     renderHook(() => useAutoInterpolate());
 
-    await fireKeyframeChanged({
+    fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 2,
@@ -174,11 +135,11 @@ describe("useAutoInterpolate (re-lerp)", () => {
     );
   });
 
-  it("is a no-op without a stream", async () => {
+  it("is a no-op without a stream", () => {
     streamRef.current = null;
     renderHook(() => useAutoInterpolate());
 
-    await fireKeyframeChanged({
+    fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 2,
@@ -191,14 +152,10 @@ describe("useAutoInterpolate (re-lerp)", () => {
 });
 
 describe("useAutoInterpolate (Case C — tail step-hold)", () => {
-  it("step-holds non-keyframe filler after the edited last keyframe, coalesced under the edit's undo key", async () => {
+  it("step-holds non-keyframe filler after the edited last keyframe, coalesced under the edit's undo key", () => {
     // 5 frames: keyframes at 1 and 3 (3 is the last keyframe); 4 and 5 are
     // non-keyframe filler with stale geometry.
-    streamRef.current = {
-      labelsField: "detections",
-      totalFrames: 5,
-      fetchRange,
-    };
+    streamRef.current = { labelsField: "detections", totalFrames: 5 };
     getLabelImpl.current = ({ frame }: { frame: number }) => {
       if (frame === 1) return { keyframe: true, bounding_box: [0, 0, 1, 1] };
       if (frame === 3)
@@ -212,7 +169,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
 
     renderHook(() => useAutoInterpolate());
 
-    await fireKeyframeChanged({
+    fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 3,
@@ -220,9 +177,6 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
       path: "frames.detections",
       undoKey: "g1",
     });
-
-    // The affected span (segment + tail) is fetched before reading geometry.
-    expect(fetchRange).toHaveBeenCalledWith(1, 5);
 
     // Backward bracketing interp (1→3) runs; forward is a no-op (no next KF).
     expect(propagate).toHaveBeenCalledTimes(1);
@@ -252,12 +206,8 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
     });
   });
 
-  it("step-holds all subsequent frames on a single-keyframe track", async () => {
-    streamRef.current = {
-      labelsField: "detections",
-      totalFrames: 3,
-      fetchRange,
-    };
+  it("step-holds all subsequent frames on a single-keyframe track", () => {
+    streamRef.current = { labelsField: "detections", totalFrames: 3 };
     getLabelImpl.current = ({ frame }: { frame: number }) => {
       if (frame === 1)
         return { keyframe: true, bounding_box: [0, 0, 0.5, 0.5] };
@@ -270,7 +220,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
 
     renderHook(() => useAutoInterpolate());
 
-    await fireKeyframeChanged({
+    fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 1,
@@ -288,13 +238,9 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
     );
   });
 
-  it("does not step-hold a non-detection anchor (no bounding_box)", async () => {
+  it("does not step-hold a non-detection anchor (no bounding_box)", () => {
     // A polyline-style track: keyframe present but no bbox to hold forward.
-    streamRef.current = {
-      labelsField: "polylines",
-      totalFrames: 3,
-      fetchRange,
-    };
+    streamRef.current = { labelsField: "polylines", totalFrames: 3 };
     getLabelImpl.current = ({ frame }: { frame: number }) => {
       if (frame === 1) return { keyframe: true, points: [[0, 0]] } as never;
       if (frame === 2) return { keyframe: false, points: [[1, 1]] } as never;
@@ -303,7 +249,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
 
     renderHook(() => useAutoInterpolate());
 
-    await fireKeyframeChanged({
+    fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 1,
@@ -314,12 +260,8 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
     expect(updateLabel).not.toHaveBeenCalled();
   });
 
-  it("does not step-hold on a keyframe removal", async () => {
-    streamRef.current = {
-      labelsField: "detections",
-      totalFrames: 3,
-      fetchRange,
-    };
+  it("does not step-hold on a keyframe removal", () => {
+    streamRef.current = { labelsField: "detections", totalFrames: 3 };
     getLabelImpl.current = ({ frame }: { frame: number }) => {
       if (frame === 1) return { keyframe: true, bounding_box: [0, 0, 1, 1] };
       if (frame === 2)
@@ -329,7 +271,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
 
     renderHook(() => useAutoInterpolate());
 
-    await fireKeyframeChanged({
+    fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 1,
