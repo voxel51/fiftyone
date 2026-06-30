@@ -9,6 +9,7 @@ import eta.core.utils as etau
 from typing import Any, Callable, Dict, List, Optional
 import logging
 
+import fiftyone.core.expressions as foe
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -910,8 +911,12 @@ def index_to_instance(
     progress=None,
 ):
     """Populates :class:`fiftyone.core.labels.Instance` values in the
-    ``instance``attribute of the specified label field based on the values in
-    the specified index attribute.
+    ``instance`` attribute of the specified label field based on the values in
+    the specified index attribute. Instance IDs are shared across frames of
+    the same video (identified by the same `id`, or `sample_id` for a
+    FramesView), slices in a group (for a group dataset), or samples in a
+    dynamic group. To identify per a custom field, pass a `sample_collection`
+    created via :meth:`group_by`.
 
     Args:
         sample_collection: a
@@ -949,16 +954,45 @@ def index_to_instance(
         ),
     )
 
-    if sample_collection.media_type == fom.GROUP:
-        id_path = sample_collection.group_field + ".id"
-        ids = sample_collection.values(id_path)
+    if (
+        sample_collection._is_frames
+        and sample_collection.media_type == fom.IMAGE
+    ):
+        id_path = "sample_id"
+    else:
+        id_path = "id"
 
-        sample_collection = sample_collection.select_group_slices(
+    use_dynamic_group_iteration = False
+    if sample_collection._is_dynamic_groups:
+        (
+            group_expr,
+            _,
+            dynamic_root,
+            _,
+        ) = sample_collection._parse_dynamic_groups()
+        group_values = sample_collection.values(foe.ViewExpression(group_expr))
+        if None not in group_values:
+            use_dynamic_group_iteration = True
+        else:
+            logger.warning(
+                "Some samples have no '%s'; defaulting to '%s'",
+                group_expr,
+                id_path,
+            )
+        if dynamic_root.media_type == fom.GROUP:
+            id_field_resolution_view = dynamic_root.select_group_slices(
+                _allow_mixed=True
+            )
+        else:
+            id_field_resolution_view = dynamic_root
+    elif sample_collection.media_type == fom.GROUP:
+        group_field = sample_collection.group_field
+        id_path = group_field + "." + id_path
+        id_field_resolution_view = sample_collection.select_group_slices(
             _allow_mixed=True
         )
     else:
-        id_path = "id"
-        ids = sample_collection.values(id_path)
+        id_field_resolution_view = sample_collection
 
     is_frame_field = sample_collection._is_frame_field(label_field)
     root, _ = sample_collection._get_label_field_root(label_field)
@@ -970,36 +1004,50 @@ def index_to_instance(
     else:
         index_paths = [index_path]
 
-    with fou.ProgressBar(progress=progress) as pb:
-        for id in pb(ids):
-            view = sample_collection.select_by(id_path, id)
+    def _process_view(view):
+        if is_frame_field:
+            sample_ids, frame_numbers, *indexes = view.values(
+                ["id", "frames.frame_number"] + index_paths
+            )
+            indexes = _zip_values(*indexes)
 
-            if is_frame_field:
-                sample_ids, frame_numbers, *indexes = view.values(
-                    ["id", "frames.frame_number"] + index_paths
-                )
-                indexes = _zip_values(*indexes)
+            instances = _frame_index_to_instance(
+                sample_ids, frame_numbers, indexes
+            )
+        else:
+            sample_ids, *indexes = view.values(["id"] + index_paths)
+            indexes = _zip_values(*indexes)
 
-                instances = _frame_index_to_instance(
-                    sample_ids, frame_numbers, indexes
-                )
-            else:
-                sample_ids, *indexes = view.values(["id"] + index_paths)
-                indexes = _zip_values(*indexes)
+            instances = _index_to_instance(sample_ids, indexes)
 
-                instances = _index_to_instance(sample_ids, indexes)
+        if not instances:
+            return
 
-            if not instances:
-                continue
+        view.set_values(instance_path, instances, key_field="id")
 
-            sample_collection.set_values(
-                instance_path, instances, key_field="id"
+        if clear_index:
+            view.set_values(
+                index_path, _to_none_values(instances), key_field="id"
             )
 
-            if clear_index:
-                sample_collection.set_values(
-                    index_path, _to_none_values(instances), key_field="id"
-                )
+    if use_dynamic_group_iteration:
+        with fou.ProgressBar(total=sample_collection, progress=progress) as pb:
+            for view in pb(sample_collection._iter_dynamic_groups()):
+                if (
+                    view.media_type == fom.GROUP
+                    and view.group_field is not None
+                    and not view._is_dynamic_groups
+                ):
+                    view = view.select_group_slices(_allow_mixed=True)
+
+                _process_view(view)
+    else:
+        ids = list(dict.fromkeys(id_field_resolution_view.values(id_path)))
+
+        with fou.ProgressBar(progress=progress) as pb:
+            for uid in pb(ids):
+                view = id_field_resolution_view.select_by(id_path, uid)
+                _process_view(view)
 
 
 def _index_to_instance(sample_ids, indexes):
