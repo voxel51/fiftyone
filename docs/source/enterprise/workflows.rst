@@ -35,7 +35,9 @@ Each workflow has a **status** that reflects where it is in its lifecycle:
 created), **Running** (actively routing samples through its stages), or
 **Complete** (all samples have been fully processed).
 
-Workflows are built from **stages**. The core stage types are:
+Workflows are built from **stages**, each with stage-specific configuration
+options, that can spawn tasks and delegated operations. The core stage types
+are:
 
 - **Input samples** — a fixed first stage that defines which samples the
   workflow runs on.
@@ -105,9 +107,7 @@ high-stakes labeling:
 Configuring Stages
 ~~~~~~~~~~~~~~~~~~
 
-Click a stage on the canvas to configure it. Workflows are built from
-stages, each with stage-specific configuration options, that can spawn
-tasks and delegated operations.
+Click a stage on the canvas to configure it.
 
 For example, the **Input samples** stage lets you choose which samples
 enter the pipeline, such as a :ref:`saved view <app-saving-views>`:
