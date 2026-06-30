@@ -129,8 +129,6 @@ When the pipeline is ready, click **Start workflow**. The workflow moves
 from **Draft** to **Running**, tasks are created for each member, and a
 *"N for you"* indicator appears on the workflow card in the Annotate tab.
 
-.. TODO: needs capture — Start workflow / input-samples selection screenshot.
-
 Cloning and Deleting
 ~~~~~~~~~~~~~~~~~~~~
 
