@@ -3184,13 +3184,13 @@ def timestamp_to_datetime(ts):
     Returns:
         a `datetime.datetime`
     """
-    dt = datetime.utcfromtimestamp(ts / 1000.0)
+    dt = datetime.fromtimestamp(ts / 1000.0, tz=pytz.utc)
 
     if fo.config.timezone is None:
-        return dt
+        return dt.replace(tzinfo=None)
 
     timezone = pytz.timezone(fo.config.timezone)
-    return dt.replace(tzinfo=pytz.utc).astimezone(timezone)
+    return dt.astimezone(timezone)
 
 
 def timedelta_to_ms(td):
