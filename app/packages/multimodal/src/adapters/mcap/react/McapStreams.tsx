@@ -2,13 +2,14 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useEffect, useMemo } from "react";
 import { useSceneInventory } from "../../../scene-inventory";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
-import { mcapStreamPolicies } from "../scene-sources";
+import { MCAP_SOURCE_TYPE, mcapStreamPolicies } from "../scene-sources";
 import { MCAP_ACTIVE_TIMELINE, type McapResourceClient } from "../types";
 import {
   idleMcapFrameTransformsState,
   useSetMcapFrameTransformsContext,
 } from "./mcap-frame-transforms-context";
 import { useMcapDataStream } from "./mcap-data-stream-context";
+import { markMcapLatencyEvent } from "./mcap-latency-debug";
 import {
   type McapTemporalPolicySettings,
   useMcapModalSettings,
@@ -40,15 +41,33 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
 
   const streamPolicies = useMemo(() => mcapStreamPolicies(sources), [sources]);
   const allTopics = useMemo(() => sources.map((s) => s.id), [sources]);
+  const pointCloudTopics = useMemo(
+    () =>
+      sources
+        .filter((s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD)
+        .map((s) => s.id),
+    [sources],
+  );
   const presentTypes = useMemo(
     () => Array.from(new Set(sources.map((s) => s.type))),
     [sources],
   );
+  useEffect(() => {
+    markMcapLatencyEvent(
+      "playback shell mounted",
+      {
+        pointCloudTopics: pointCloudTopics.length,
+        topics: allTopics.length,
+      },
+      { onceKey: "playback-shell-mounted" },
+    );
+  }, [allTopics.length, pointCloudTopics.length]);
 
   useRegisterMcapDataStream({
     client,
     source,
     allTopics,
+    pointCloudTopics,
     staleMediaWarningNs: msToNs(temporalPolicy.staleMediaWarningMs),
     streamPolicies,
   });

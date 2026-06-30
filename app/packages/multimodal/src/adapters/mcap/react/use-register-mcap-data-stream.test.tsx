@@ -158,6 +158,34 @@ describe("useRegisterMcapDataStream", () => {
 });
 
 describe("stream status + buffering feedback", () => {
+  it("starts with a small adaptive startup batch instead of the full background lookahead", async () => {
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(client.readSynchronizedMessageBatch).toHaveBeenCalled();
+    });
+
+    const request = vi.mocked(client.readSynchronizedMessageBatch).mock
+      .calls[0]?.[0];
+    expect(request?.timeNs.length).toBeGreaterThan(0);
+    expect(request?.timeNs.length).toBeLessThanOrEqual(15);
+    expect(request?.timeNs.at(-1)).toBeLessThanOrEqual(500_000_000n);
+  });
+
   it("reports 'loading' while the current frame is in flight, then 'ready' when it lands", async () => {
     const source = createSource("source");
     const current = deferred<McapSynchronizedMessageWindow>();
@@ -574,6 +602,7 @@ function Harness({
   useRegisterMcapDataStream({
     allTopics: [TOPIC],
     client,
+    pointCloudTopics: [],
     source,
     staleMediaWarningNs,
     streamPolicies,
