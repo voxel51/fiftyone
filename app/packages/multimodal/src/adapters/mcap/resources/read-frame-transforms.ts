@@ -16,6 +16,7 @@ import type { McapTimelineStrategy } from "../timeline";
 import type {
   McapFrameTransformSample,
   McapFrameTransformSet,
+  McapFrameTransformTopicStats,
 } from "../frame-transform-types";
 import {
   compareFrameTransformSamplesByTime,
@@ -57,6 +58,13 @@ interface FrameTransformChannel {
   readonly match: FrameTransformSchemaMatch;
   readonly messageCount: bigint | undefined;
   readonly schema: McapSchema;
+}
+
+interface FrameTransformReadStats {
+  encodedPayloadBytes: number;
+  messageCount: number;
+  topicStats: Map<string, McapFrameTransformTopicStats>;
+  topics: readonly string[];
 }
 
 /**
@@ -112,6 +120,9 @@ export async function readMcapFrameTransformBootstrap(
     return createMcapFrameTransformSet({ samples: [] });
   }
   const channelsById = indexByChannelId(bootstrapChannels);
+  const readStats = createFrameTransformReadStats(
+    bootstrapChannels.map((entry) => entry.channel.topic),
+  );
 
   const samples: McapFrameTransformSample[] = [];
   for await (const message of reader.readMessages({
@@ -121,6 +132,7 @@ export async function readMcapFrameTransformBootstrap(
     if (!entry) {
       continue;
     }
+    recordFrameTransformMessage(readStats, entry.channel.topic, message);
     try {
       for (const sample of normalizeFrameTransformMessage({
         channel: entry.channel,
@@ -137,7 +149,7 @@ export async function readMcapFrameTransformBootstrap(
     }
   }
 
-  return createMcapFrameTransformSet({ samples });
+  return createMcapFrameTransformSet({ readStats, samples });
 }
 
 /**
@@ -161,6 +173,9 @@ export async function readMcapFrameTransformWindow({
     return createMcapFrameTransformSet({ samples: [] });
   }
   const channelsById = indexByChannelId(transformChannels);
+  const readStats = createFrameTransformReadStats(
+    transformChannels.map((entry) => entry.channel.topic),
+  );
   const { endTime, startTime } = timeline.messageReadRange({
     endTimeNs: request.endTimeNs,
     startTimeNs: request.startTimeNs,
@@ -176,6 +191,7 @@ export async function readMcapFrameTransformWindow({
     if (!entry) {
       continue;
     }
+    recordFrameTransformMessage(readStats, entry.channel.topic, message);
     try {
       for (const sample of normalizeFrameTransformMessage({
         channel: entry.channel,
@@ -199,7 +215,38 @@ export async function readMcapFrameTransformWindow({
     }
   }
 
-  return createMcapFrameTransformSet({ samples });
+  return createMcapFrameTransformSet({ readStats, samples });
+}
+
+function createFrameTransformReadStats(
+  topics: readonly string[],
+): FrameTransformReadStats {
+  return {
+    encodedPayloadBytes: 0,
+    messageCount: 0,
+    topicStats: new Map(),
+    topics,
+  };
+}
+
+function recordFrameTransformMessage(
+  stats: FrameTransformReadStats,
+  topic: string,
+  message: McapTypes.TypedMcapRecords["Message"],
+): void {
+  stats.encodedPayloadBytes += message.data.byteLength;
+  stats.messageCount += 1;
+  const topicStats = stats.topicStats.get(topic) ?? {
+    encodedPayloadBytes: 0,
+    messageCount: 0,
+    topic,
+  };
+  stats.topicStats.set(topic, {
+    ...topicStats,
+    encodedPayloadBytes:
+      topicStats.encodedPayloadBytes + message.data.byteLength,
+    messageCount: topicStats.messageCount + 1,
+  });
 }
 
 function indexByChannelId(entries: readonly FrameTransformChannel[]) {
@@ -385,13 +432,23 @@ function fieldByName(type: Type, ...names: string[]) {
 }
 
 function createMcapFrameTransformSet({
+  readStats,
   samples,
 }: {
+  readonly readStats?: FrameTransformReadStats;
   readonly samples: readonly McapFrameTransformSample[];
 }): McapFrameTransformSet {
   const sortedSamples = [...samples].sort(compareFrameTransformSamples);
 
   return {
+    ...(readStats?.messageCount
+      ? {
+          encodedPayloadBytes: readStats.encodedPayloadBytes,
+          messageCount: readStats.messageCount,
+          topicStats: [...readStats.topicStats.values()],
+          topics: readStats.topics,
+        }
+      : {}),
     samples: sortedSamples,
   };
 }

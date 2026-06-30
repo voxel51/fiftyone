@@ -48,6 +48,7 @@ const FRAME_TRANSFORM_WINDOW_READ_CACHE_LIMIT = 32;
 export interface CreateInlineMcapResourceClientOptions {
   readonly byteClient?: ByteClient;
   readonly decodeClient?: DecodeClient;
+  readonly debugChunkReads?: boolean;
   readonly readerFactory?: McapReaderFactory;
 }
 
@@ -66,7 +67,11 @@ export function createInlineMcapResourceClient(
       registry: createMcapDecoderRegistry(),
     });
   const readerFactory = options.readerFactory ?? createDefaultMcapReader;
-  const readerStore = createMcapReaderStore({ byteClient, readerFactory });
+  const readerStore = createMcapReaderStore({
+    byteClient,
+    debugChunkReads: options.debugChunkReads,
+    readerFactory,
+  });
   const topicReads = new Map<string, Promise<readonly StreamInventory[]>>();
   const topicTimeBoundsReads = new Map<
     string,

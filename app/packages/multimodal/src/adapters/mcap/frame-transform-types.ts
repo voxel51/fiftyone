@@ -27,11 +27,21 @@ export interface McapFrameTransformSample {
   readonly translation: Vector3;
 }
 
+export interface McapFrameTransformTopicStats {
+  readonly encodedPayloadBytes: number;
+  readonly messageCount: number;
+  readonly topic: string;
+}
+
 /**
  * Frame transform samples returned by one MCAP resource read.
  */
 export interface McapFrameTransformSet {
+  readonly encodedPayloadBytes?: number;
+  readonly messageCount?: number;
   readonly samples: readonly McapFrameTransformSample[];
+  readonly topicStats?: readonly McapFrameTransformTopicStats[];
+  readonly topics?: readonly string[];
 }
 
 /**
@@ -68,7 +78,11 @@ export interface McapFrameTransformSampleWire {
  * Serialized frame transform set used across worker boundaries.
  */
 export interface McapFrameTransformSetWire {
+  readonly encodedPayloadBytes?: number;
+  readonly messageCount?: number;
   readonly samples: readonly McapFrameTransformSampleWire[];
+  readonly topicStats?: readonly McapFrameTransformTopicStats[];
+  readonly topics?: readonly string[];
 }
 
 /**

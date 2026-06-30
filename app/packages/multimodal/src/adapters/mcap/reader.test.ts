@@ -364,6 +364,94 @@ describe("MCAP indexed message times", () => {
       },
     });
   });
+
+  it("logs debug chunk reads with chunk ids and byte counts", async () => {
+    const logChunkRead = vi.fn();
+    const readBytes = vi.fn(
+      async (request: Parameters<ByteClient["readBytes"]>[0]) => ({
+        bytes: new Uint8Array(16),
+        range: request.range,
+        source: request.source,
+      }),
+    );
+    const readable = new ByteClientReadable(
+      {
+        sizeBytes: "1024",
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+      { readBytes },
+      {
+        debugChunkReads: true,
+        logChunkRead,
+      },
+    );
+    readable.setChunkIndexes([
+      createChunkIndex({
+        chunkLength: 64n,
+        chunkStartOffset: 128n,
+        compression: "zstd",
+      }),
+    ]);
+
+    await readable.read(128n, 16n);
+
+    expect(logChunkRead).toHaveBeenCalledWith({
+      chunkId: "128",
+      chunkLengthBytes: "64",
+      chunkStartOffset: "128",
+      compression: "zstd",
+      fetchedBytes: 16,
+      kind: "chunk",
+      overlapBytes: "16",
+      readOffset: "128",
+      requestedBytes: "16",
+    });
+  });
+
+  it("console logs debug chunk reads by default", async () => {
+    const consoleLog = vi
+      .spyOn(console, "log")
+      .mockImplementation(() => undefined);
+    const readBytes = vi.fn(
+      async (request: Parameters<ByteClient["readBytes"]>[0]) => ({
+        bytes: new Uint8Array(16),
+        range: request.range,
+        source: request.source,
+      }),
+    );
+
+    try {
+      const readable = new ByteClientReadable(
+        {
+          sizeBytes: "1024",
+          sourceId: "source:1",
+          url: "mcap-source://sample",
+        },
+        { readBytes },
+        { debugChunkReads: true },
+      );
+      readable.setChunkIndexes([
+        createChunkIndex({
+          chunkLength: 64n,
+          chunkStartOffset: 128n,
+        }),
+      ]);
+
+      await readable.read(128n, 16n);
+
+      expect(consoleLog).toHaveBeenCalledWith(
+        "[mcap] chunk bytes fetched",
+        expect.objectContaining({
+          chunkId: "128",
+          fetchedBytes: 16,
+          requestedBytes: "16",
+        }),
+      );
+    } finally {
+      consoleLog.mockRestore();
+    }
+  });
 });
 
 async function collect<T>(

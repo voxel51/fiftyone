@@ -19,14 +19,29 @@ const transferSafeNoopDecodedOutputCache: DecodedOutputCache = {
   },
 };
 
+export interface CreateWorkerResourceClientOptions {
+  readonly debugByteReads?: boolean;
+  readonly debugChunkReads?: boolean;
+}
+
 /**
  * Creates an inline MCAP resource client for code running inside a worker.
  */
-export function createWorkerResourceClient(): McapResourceClient {
-  const query = createMultimodalQueryClient();
+export function createWorkerResourceClient({
+  debugByteReads,
+  debugChunkReads,
+}: CreateWorkerResourceClientOptions = {}): McapResourceClient {
+  const query = createMultimodalQueryClient({
+    caches: {
+      bytes: {
+        debug: { enabled: debugByteReads },
+      },
+    },
+  });
 
   return createInlineMcapResourceClient({
     byteClient: query.bytes,
+    debugChunkReads,
     decodeClient: createDecodeClient({
       // Decoded visualization buffers are transferred to the UI thread.
       // Reusing worker-cached decoded results would either return detached

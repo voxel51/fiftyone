@@ -100,6 +100,25 @@ export interface ByteRangeReadResult {
   readonly bytes: Uint8Array;
 }
 
+export interface ByteReadDebugLog {
+  readonly blockFill: boolean;
+  readonly cacheResult: "coalesced" | "fill-hit" | "fetched" | "request-hit";
+  readonly durationMs: number;
+  readonly fetchedBytes: number;
+  readonly fillLength: string;
+  readonly fillOffset: string;
+  readonly readProfile?: ByteSourceReadProfile;
+  readonly requestedLength: string;
+  readonly requestedOffset: string;
+  readonly returnedBytes: number;
+  readonly sourceId: string;
+}
+
+export interface ByteReadDebugOptions {
+  readonly enabled?: boolean;
+  readonly log?: (entry: ByteReadDebugLog) => void;
+}
+
 /**
  * Generic client for reading source byte ranges.
  */
@@ -146,6 +165,12 @@ export interface ByteCacheLayers {
    * small byte reads.
    */
   readonly blockSizeBytes?: ByteCacheBlockSizeBytes;
+
+  /**
+   * Optional debug logging for logical byte requests, cache fills, and
+   * transport-backed read durations.
+   */
+  readonly debug?: ByteReadDebugOptions;
 
   /**
    * In-memory raw byte-range cache used by the default cached byte client.

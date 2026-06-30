@@ -1,5 +1,6 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
 import { hydrateMcapFrameTransformSet } from "../frame-transforms";
+import { isMcapLatencyDebugEnabled } from "../mcap-debug-flags";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 import { workerFetchParameters } from "./worker-resource-client";
 import {
@@ -178,7 +179,10 @@ class WorkerMcapResourceClient implements McapResourceClient {
       };
 
       const initRequest: McapPlaybackWorkerRequest = {
-        payload: workerFetchParameters(),
+        payload: {
+          ...workerFetchParameters(),
+          latencyDebug: isMcapLatencyDebugEnabled(),
+        },
         type: "init",
       };
       worker.postMessage(initRequest);

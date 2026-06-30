@@ -13,6 +13,7 @@ import type {
   ByteRange,
   ByteRangeReadRequest,
   ByteRangeReadResult,
+  ByteReadDebugLog,
 } from "./types";
 
 /**
@@ -42,6 +43,7 @@ export function createCachedByteClient(
     },
 
     async readBytes(request) {
+      const startMs = byteReadNowMs();
       // Widen small reads to cacheable blocks when the source size is known.
       let fillRequest = request;
       if (request.cachePolicy?.blockFill !== false) {
@@ -80,6 +82,13 @@ export function createCachedByteClient(
 
       const cachedFill = await caches.memory.get(fillRequest);
       if (cachedFill) {
+        logByteRead(caches, {
+          cacheResult: "fill-hit",
+          fillRequest,
+          request,
+          result: cachedFill,
+          startMs,
+        });
         return sliceByteRangeResult(cachedFill, request.range);
       }
 
@@ -89,6 +98,13 @@ export function createCachedByteClient(
       ) {
         const cachedRequest = await caches.memory.get(request);
         if (cachedRequest) {
+          logByteRead(caches, {
+            cacheResult: "request-hit",
+            fillRequest,
+            request,
+            result: cachedRequest,
+            startMs,
+          });
           return cachedRequest;
         }
       }
@@ -97,6 +113,7 @@ export function createCachedByteClient(
       // durable byte cache above follows stable sourceId content identity.
       const fillKey = byteRangeAccessKey(fillRequest);
       let fill = pendingByteReads.get(fillKey);
+      const cacheResult = fill ? "coalesced" : "fetched";
       if (!fill) {
         fill = reader
           .readBytes(fillRequest)
@@ -112,9 +129,61 @@ export function createCachedByteClient(
       }
 
       const result = await fill;
+      logByteRead(caches, {
+        cacheResult,
+        fillRequest,
+        request,
+        result,
+        startMs,
+      });
       return sliceByteRangeResult(result, request.range);
     },
   };
+}
+
+function logByteRead(
+  caches: ByteCacheLayers,
+  {
+    cacheResult,
+    fillRequest,
+    request,
+    result,
+    startMs,
+  }: {
+    readonly cacheResult: ByteReadDebugLog["cacheResult"];
+    readonly fillRequest: ByteRangeReadRequest;
+    readonly request: ByteRangeReadRequest;
+    readonly result: ByteRangeReadResult;
+    readonly startMs: number;
+  },
+) {
+  if (!caches.debug?.enabled) return;
+
+  const entry: ByteReadDebugLog = {
+    blockFill:
+      fillRequest.range.offset !== request.range.offset ||
+      fillRequest.range.length !== request.range.length,
+    cacheResult,
+    durationMs: Number((byteReadNowMs() - startMs).toFixed(1)),
+    fetchedBytes: cacheResult === "fetched" ? result.bytes.byteLength : 0,
+    fillLength: fillRequest.range.length.toString(),
+    fillOffset: fillRequest.range.offset.toString(),
+    readProfile: request.source.readProfile,
+    requestedLength: request.range.length.toString(),
+    requestedOffset: request.range.offset.toString(),
+    returnedBytes: safeNumber(request.range.length),
+    sourceId: request.source.sourceId,
+  };
+
+  (caches.debug.log ?? defaultByteReadDebugLogger)(entry);
+}
+
+function defaultByteReadDebugLogger(entry: ByteReadDebugLog): void {
+  console.log("[multimodal] byte read", entry);
+}
+
+function byteReadNowMs(): number {
+  return globalThis.performance?.now?.() ?? Date.now();
 }
 
 function byteRangeAccessKey(request: ByteRangeReadRequest): string {

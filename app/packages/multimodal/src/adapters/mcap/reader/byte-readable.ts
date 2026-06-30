@@ -2,18 +2,44 @@ import type { McapTypes } from "@mcap/core";
 import type { ByteClient, ByteSourceDescriptor } from "../../../query/bytes";
 import { parseByteSize } from "../../../query/bytes";
 
+export interface McapChunkReadDebugLog {
+  readonly chunkId: string;
+  readonly chunkLengthBytes: string;
+  readonly chunkStartOffset: string;
+  readonly compression: string;
+  readonly fetchedBytes: number;
+  readonly kind: "chunk" | "chunk-message-index";
+  readonly overlapBytes: string;
+  readonly readOffset: string;
+  readonly requestedBytes: string;
+}
+
+export interface ByteClientReadableOptions {
+  readonly debugChunkReads?: boolean;
+  readonly logChunkRead?: (entry: McapChunkReadDebugLog) => void;
+}
+
 /**
  * Adapts the generic byte query client to the seekable MCAP readable API.
  */
 export class ByteClientReadable implements McapTypes.IReadable {
+  private chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][] =
+    [];
   private source: ByteSourceDescriptor;
   private resolvedSizeBytes?: bigint;
 
   constructor(
     source: ByteSourceDescriptor,
     private readonly byteClient: ByteClient,
+    private readonly options: ByteClientReadableOptions = {},
   ) {
     this.source = source;
+  }
+
+  setChunkIndexes(
+    chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
+  ): void {
+    this.chunkIndexes = chunkIndexes;
   }
 
   async size(): Promise<bigint> {
@@ -80,6 +106,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
       source: this.source,
     });
     this.updateSource(result.source);
+    this.logChunkRead(offset, size, result.bytes.byteLength);
 
     return result.bytes;
   }
@@ -91,10 +118,154 @@ export class ByteClientReadable implements McapTypes.IReadable {
       this.source = source;
     }
   }
+
+  private logChunkRead(
+    offset: bigint,
+    size: bigint,
+    fetchedBytes: number,
+  ): void {
+    if (!this.options.debugChunkReads || this.chunkIndexes.length === 0) {
+      return;
+    }
+
+    for (const entry of chunkReadDebugEntries({
+      chunkIndexes: this.chunkIndexes,
+      fetchedBytes,
+      offset,
+      size,
+    })) {
+      (this.options.logChunkRead ?? defaultChunkReadLogger)(entry);
+    }
+  }
 }
 
 function sourceSizeBytes(source: ByteSourceDescriptor): bigint | undefined {
   // Bad sample metadata should fall back to unknown-size reads, not crash
   // before the reader can ask the byte client for transport-discovered size.
   return parseByteSize(source.sizeBytes);
+}
+
+function chunkReadDebugEntries({
+  chunkIndexes,
+  fetchedBytes,
+  offset,
+  size,
+}: {
+  readonly chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
+  readonly fetchedBytes: number;
+  readonly offset: bigint;
+  readonly size: bigint;
+}): McapChunkReadDebugLog[] {
+  const readStart = offset;
+  const readEnd = offset + size;
+  const entries: McapChunkReadDebugLog[] = [];
+
+  for (const chunkIndex of chunkIndexes) {
+    const chunkStart = chunkIndex.chunkStartOffset;
+    const chunkEnd = chunkStart + chunkIndex.chunkLength;
+    const chunkOverlap = rangeOverlapBytes(
+      readStart,
+      readEnd,
+      chunkStart,
+      chunkEnd,
+    );
+    if (chunkOverlap > 0n) {
+      entries.push(
+        chunkReadDebugLog({
+          chunkIndex,
+          fetchedBytes,
+          kind: "chunk",
+          offset,
+          overlapBytes: chunkOverlap,
+          size,
+        }),
+      );
+      continue;
+    }
+
+    const messageIndexRange = chunkMessageIndexRange(chunkIndex);
+    if (!messageIndexRange) {
+      continue;
+    }
+    const messageIndexOverlap = rangeOverlapBytes(
+      readStart,
+      readEnd,
+      messageIndexRange.start,
+      messageIndexRange.end,
+    );
+    if (messageIndexOverlap > 0n) {
+      entries.push(
+        chunkReadDebugLog({
+          chunkIndex,
+          fetchedBytes,
+          kind: "chunk-message-index",
+          offset,
+          overlapBytes: messageIndexOverlap,
+          size,
+        }),
+      );
+    }
+  }
+
+  return entries;
+}
+
+function chunkMessageIndexRange(
+  chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"],
+): { readonly end: bigint; readonly start: bigint } | null {
+  const offsets = [...chunkIndex.messageIndexOffsets.values()];
+  if (offsets.length === 0 || chunkIndex.messageIndexLength === 0n) {
+    return null;
+  }
+
+  const start = offsets.reduce((min, candidate) =>
+    candidate < min ? candidate : min,
+  );
+  return {
+    end: start + chunkIndex.messageIndexLength,
+    start,
+  };
+}
+
+function rangeOverlapBytes(
+  leftStart: bigint,
+  leftEnd: bigint,
+  rightStart: bigint,
+  rightEnd: bigint,
+): bigint {
+  const start = leftStart > rightStart ? leftStart : rightStart;
+  const end = leftEnd < rightEnd ? leftEnd : rightEnd;
+  return end > start ? end - start : 0n;
+}
+
+function chunkReadDebugLog({
+  chunkIndex,
+  fetchedBytes,
+  kind,
+  offset,
+  overlapBytes,
+  size,
+}: {
+  readonly chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"];
+  readonly fetchedBytes: number;
+  readonly kind: McapChunkReadDebugLog["kind"];
+  readonly offset: bigint;
+  readonly overlapBytes: bigint;
+  readonly size: bigint;
+}): McapChunkReadDebugLog {
+  return {
+    chunkId: chunkIndex.chunkStartOffset.toString(),
+    chunkLengthBytes: chunkIndex.chunkLength.toString(),
+    chunkStartOffset: chunkIndex.chunkStartOffset.toString(),
+    compression: chunkIndex.compression || "none",
+    fetchedBytes,
+    kind,
+    overlapBytes: overlapBytes.toString(),
+    readOffset: offset.toString(),
+    requestedBytes: size.toString(),
+  };
+}
+
+function defaultChunkReadLogger(entry: McapChunkReadDebugLog): void {
+  console.log("[mcap] chunk bytes fetched", entry);
 }

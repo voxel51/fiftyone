@@ -69,6 +69,7 @@ export async function decodeMcapMessage({
     activeTimeline: timeline.id,
     channelId: message.channelId,
     decoded,
+    encodedPayloadBytes: message.data.byteLength,
     logTimeNs: message.logTime,
     publishTimeNs: message.publishTime,
     sequence: message.sequence,

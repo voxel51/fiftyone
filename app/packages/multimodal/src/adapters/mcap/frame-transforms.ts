@@ -248,6 +248,12 @@ export function dehydrateMcapFrameTransformSet(
   set: McapFrameTransformSet,
 ): McapFrameTransformSetWire {
   return {
+    ...(set.encodedPayloadBytes !== undefined
+      ? { encodedPayloadBytes: set.encodedPayloadBytes }
+      : {}),
+    ...(set.messageCount !== undefined
+      ? { messageCount: set.messageCount }
+      : {}),
     samples: set.samples.map((sample) => ({
       ...sample,
       rotation: {
@@ -262,6 +268,8 @@ export function dehydrateMcapFrameTransformSet(
         z: sample.translation.z,
       },
     })),
+    ...(set.topicStats !== undefined ? { topicStats: set.topicStats } : {}),
+    ...(set.topics !== undefined ? { topics: set.topics } : {}),
   };
 }
 
@@ -274,6 +282,12 @@ export function hydrateMcapFrameTransformSet(
   set: McapFrameTransformSetWire,
 ): McapFrameTransformSet {
   return {
+    ...(set.encodedPayloadBytes !== undefined
+      ? { encodedPayloadBytes: set.encodedPayloadBytes }
+      : {}),
+    ...(set.messageCount !== undefined
+      ? { messageCount: set.messageCount }
+      : {}),
     samples: set.samples.map((sample) => ({
       ...sample,
       rotation: new Quaternion(
@@ -288,6 +302,8 @@ export function hydrateMcapFrameTransformSet(
         sample.translation.z,
       ),
     })),
+    ...(set.topicStats !== undefined ? { topicStats: set.topicStats } : {}),
+    ...(set.topics !== undefined ? { topics: set.topics } : {}),
   };
 }
 

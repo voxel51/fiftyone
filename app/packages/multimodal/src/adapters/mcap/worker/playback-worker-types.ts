@@ -53,6 +53,7 @@ export type McapPlaybackWorkerPriority =
  */
 export type McapPlaybackWorkerFetchParameters = {
   readonly headers: Record<string, string>;
+  readonly latencyDebug?: boolean;
   readonly origin: string;
   readonly pathPrefix: string;
 };
