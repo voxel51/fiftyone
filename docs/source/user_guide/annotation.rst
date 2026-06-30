@@ -5,6 +5,13 @@ In-App Annotation
 
 .. default-role:: code
 
+.. admonition:: Managing an annotation team?
+   :class: tip
+
+   Learn how FiftyOne Enterprise can help you organize and coordinate
+   annotation projects across your team with FiftyOne
+   :ref:`Annotation Workflows <enterprise-workflows>`!
+
 Overview
 --------
 
