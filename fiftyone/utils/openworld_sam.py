@@ -6,6 +6,8 @@ FiftyOne wrapper for OpenWorldSAM zero-shot instance segmentation.
 |
 """
 
+import os
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -23,158 +25,11 @@ _SAM_IMAGE_SIZE = 1024
 _BEIT_IMAGE_SIZE = 224
 
 # ADE20K-150 class list (detectron2 ordering) — default vocabulary
-ADE20K_150_CLASSES = [
-    "wall",
-    "building",
-    "sky",
-    "floor",
-    "tree",
-    "ceiling",
-    "road",
-    "bed",
-    "windowpane",
-    "grass",
-    "cabinet",
-    "sidewalk",
-    "person",
-    "earth",
-    "door",
-    "table",
-    "mountain",
-    "plant",
-    "curtain",
-    "chair",
-    "car",
-    "water",
-    "painting",
-    "sofa",
-    "shelf",
-    "house",
-    "sea",
-    "mirror",
-    "rug",
-    "field",
-    "armchair",
-    "seat",
-    "fence",
-    "desk",
-    "rock",
-    "wardrobe",
-    "lamp",
-    "bathtub",
-    "railing",
-    "cushion",
-    "base",
-    "box",
-    "column",
-    "signboard",
-    "chest of drawers",
-    "counter",
-    "sand",
-    "sink",
-    "skyscraper",
-    "fireplace",
-    "refrigerator",
-    "grandstand",
-    "path",
-    "stairs",
-    "runway",
-    "case",
-    "pool table",
-    "pillow",
-    "screen door",
-    "stairway",
-    "river",
-    "bridge",
-    "bookcase",
-    "blind",
-    "coffee table",
-    "toilet",
-    "flower",
-    "book",
-    "hill",
-    "bench",
-    "countertop",
-    "stove",
-    "palm",
-    "kitchen island",
-    "computer",
-    "swivel chair",
-    "boat",
-    "bar",
-    "arcade machine",
-    "hovel",
-    "bus",
-    "towel",
-    "light",
-    "truck",
-    "tower",
-    "chandelier",
-    "awning",
-    "streetlight",
-    "booth",
-    "television receiver",
-    "airplane",
-    "dirt track",
-    "apparel",
-    "pole",
-    "land",
-    "bannister",
-    "escalator",
-    "ottoman",
-    "bottle",
-    "buffet",
-    "poster",
-    "stage",
-    "van",
-    "ship",
-    "fountain",
-    "conveyer belt",
-    "canopy",
-    "washer",
-    "plaything",
-    "swimming pool",
-    "stool",
-    "barrel",
-    "basket",
-    "waterfall",
-    "tent",
-    "bag",
-    "minibike",
-    "cradle",
-    "oven",
-    "ball",
-    "food",
-    "step",
-    "tank",
-    "trade name",
-    "microwave",
-    "pot",
-    "animal",
-    "bicycle",
-    "lake",
-    "dishwasher",
-    "screen",
-    "blanket",
-    "sculpture",
-    "hood",
-    "sconce",
-    "vase",
-    "traffic light",
-    "tray",
-    "ashcan",
-    "fan",
-    "pier",
-    "crt screen",
-    "plate",
-    "monitor",
-    "bulletin board",
-    "shower",
-    "radiator",
-    "glass",
-    "clock",
-    "flag",
-]
+def _load_ade20k_classes():
+    path = os.path.join(os.path.dirname(__file__), "ade20k_150_classes.txt")
+    with open(path) as f:
+        return [line.strip() for line in f if line.strip()]
+
 
 _BEIT_TRANSFORM = T.Compose(
     [
@@ -189,13 +44,148 @@ _BEIT_TRANSFORM = T.Compose(
 )
 
 
+class OpenWorldSAMTransform:
+    """Dual-branch image transform for OpenWorldSAM.
+
+    Accepts PIL images or HWC uint8 numpy arrays. Returns a dict containing
+    the SAM2-preprocessed tensor (1024×1024), the BEiT-3-preprocessed tensor
+    (224×224), and the original image dimensions. This dict is the per-image
+    unit passed through the DataLoader and into :meth:`OpenWorldSAMModel._predict_all`.
+
+    Args:
+        device: the :class:`torch:torch.device` to move tensors to
+        using_half_precision (False): whether to cast tensors to fp16
+    """
+
+    def __init__(self, device, using_half_precision=False):
+        self._device = device
+        self._using_half_precision = using_half_precision
+
+    def __call__(self, img):
+        from PIL import Image as PILImage
+
+        if isinstance(img, PILImage.Image):
+            arr = np.array(img.convert("RGB"))
+        else:
+            arr = np.asarray(img)
+
+        h, w = arr.shape[:2]
+
+        # SAM2 branch: resize to 1024×1024, ImageNet-style pixel normalization
+        sam_tensor = torch.as_tensor(
+            np.ascontiguousarray(arr.transpose(2, 0, 1))
+        ).float()
+        sam_tensor = F.interpolate(
+            sam_tensor.unsqueeze(0),
+            (_SAM_IMAGE_SIZE, _SAM_IMAGE_SIZE),
+            mode="bilinear",
+            align_corners=False,
+        ).squeeze(0)
+        mean = _SAM_PIXEL_MEAN.view(-1, 1, 1)
+        std = _SAM_PIXEL_STD.view(-1, 1, 1)
+        sam_tensor = (sam_tensor - mean) / std
+        sam_tensor = sam_tensor.to(self._device)
+        if self._using_half_precision:
+            sam_tensor = sam_tensor.half()
+
+        # BEiT-3 branch: resize to 224×224, [0.5, 0.5, 0.5] normalization
+        pil = PILImage.fromarray(arr)
+        beit_tensor = _BEIT_TRANSFORM(pil)
+        beit_tensor = beit_tensor.to(self._device)
+        if self._using_half_precision:
+            beit_tensor = beit_tensor.half()
+
+        return {
+            "image": sam_tensor,
+            "evf_image": beit_tensor,
+            "height": h,
+            "width": w,
+        }
+
+
+class OpenWorldSAMOutputProcessor(fout.OutputProcessor):
+    """Output processor for :class:`OpenWorldSAMModel`.
+
+    Parses the HF model's ``List[Dict]`` output into
+    :class:`fiftyone.core.labels.Detections`. ``frame_size`` is ignored because
+    masks already carry their own spatial dimensions.
+
+    Args:
+        classes (None): the list of class labels for the model
+    """
+
+    def __init__(self, classes=None, **kwargs):
+        if classes is None:
+            raise ValueError("This model requires class labels")
+        self.classes = classes
+
+    def __call__(
+        self,
+        output,
+        frame_size,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs
+    ):
+        return [
+            fol.Detections(
+                detections=self._parse_instances(
+                    out, confidence_thresh, classes
+                )
+            )
+            for out in output
+        ]
+
+    def _parse_instances(self, output, confidence_thresh, filter_classes):
+        if not output or "instances" not in output:
+            return []
+
+        instances = output["instances"]
+        # Support both detectron2 Instances objects and plain dicts
+        if hasattr(instances, "pred_masks"):
+            pred_masks = instances.pred_masks
+            pred_classes = instances.pred_classes
+            scores = instances.scores
+        else:
+            pred_masks = instances.get(
+                "pred_masks", instances.get("masks", torch.empty(0))
+            )
+            pred_classes = instances.get(
+                "pred_classes",
+                instances.get("class_ids", torch.empty(0, dtype=torch.long)),
+            )
+            scores = instances.get("scores", torch.empty(0))
+
+        detections = []
+        for mask_t, cls_id, score in zip(pred_masks, pred_classes, scores):
+            score = float(score)
+            if confidence_thresh is not None and score < confidence_thresh:
+                continue
+            idx = int(cls_id)
+            label = (
+                self.classes[idx] if 0 <= idx < len(self.classes) else str(idx)
+            )
+            if filter_classes is not None and label not in filter_classes:
+                continue
+            mask = (mask_t > 0).cpu().numpy().astype(bool)
+            if not mask.any():
+                continue
+            detections.append(
+                fol.Detection.from_mask(
+                    mask=mask, label=label, confidence=score
+                )
+            )
+
+        return detections
+
+
 class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
     """Configuration for :class:`OpenWorldSAMModel`.
 
     Args:
         name_or_path (None): HF repo ID or local path to the OpenWorldSAM model
             uploaded with ``trust_remote_code=True``
-        score_threshold (0.5): minimum IoU score to keep an instance
+        iou_threshold (0.5): minimum IoU score to keep an instance
         class_names (None): list of text prompts for zero-shot segmentation.
             Defaults to all 150 ADE20K categories
         nms_threshold (0.2): NMS IoU threshold for duplicate suppression
@@ -206,12 +196,11 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
         d = self.init(d)
         super().__init__(d)
         self.name_or_path = self.parse_string(d, "name_or_path")
-        self.score_threshold = self.parse_number(
-            d, "score_threshold", default=0.5
-        )
+        self.iou_threshold = self.parse_number(d, "iou_threshold", default=0.5)
         self.class_names = self.parse_array(d, "class_names", default=None)
         self.nms_threshold = self.parse_number(d, "nms_threshold", default=0.2)
         self.top_k = self.parse_int(d, "top_k", default=100)
+        self.raw_inputs = True  # items are dicts, not stackable tensors
         self.validate_config()
 
     def validate_config(self):
@@ -225,8 +214,8 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
                 for c in self.class_names
             ):
                 raise ValueError("class_names must contain non-empty strings")
-        if not 0 <= self.score_threshold <= 1:
-            raise ValueError("score_threshold must be in [0, 1]")
+        if not 0 <= self.iou_threshold <= 1:
+            raise ValueError("iou_threshold must be in [0, 1]")
         if not 0 <= self.nms_threshold <= 1:
             raise ValueError("nms_threshold must be in [0, 1]")
         if self.top_k < 1:
@@ -261,13 +250,12 @@ class OpenWorldSAMModel(fout.TorchImageModel):
     """
 
     def __init__(self, config):
-        self._hf_model = None
         fout.TorchImageModel.__init__(self, config)
 
     def _parse_classes(self, config):
         if config.class_names:
             return list(config.class_names)
-        return list(ADE20K_150_CLASSES)
+        return _load_ade20k_classes()
 
     def _download_model(self, config):
         pass  # HF Hub handles download automatically on first load
@@ -297,7 +285,7 @@ class OpenWorldSAMModel(fout.TorchImageModel):
 
         hf_config = OpenWorldSAMConfig(
             nms_threshold=config.nms_threshold,
-            iou_threshold=config.score_threshold,
+            iou_threshold=config.iou_threshold,
             detections_per_image=config.top_k,
         )
         self._hf_model = OpenWorldSAMModel.from_pretrained(
@@ -311,136 +299,26 @@ class OpenWorldSAMModel(fout.TorchImageModel):
         self._hf_model.eval()
         return self._hf_model
 
-    @staticmethod
-    def _to_uint8(img):
-        """Convert any image representation to a HWC uint8 numpy array."""
-        if isinstance(img, torch.Tensor):
-            if img.ndim == 4:
-                img = img[0]
-            arr = img.detach().permute(1, 2, 0).cpu().numpy()
-            if arr.dtype != np.uint8:
-                arr = (arr * 255).clip(0, 255).astype(np.uint8)
-            return OpenWorldSAMModel._ensure_rgb(arr)
-        if isinstance(img, np.ndarray):
-            if img.dtype != np.uint8:
-                img = (img * 255).clip(0, 255).astype(np.uint8)
-            return OpenWorldSAMModel._ensure_rgb(img)
-        return OpenWorldSAMModel._ensure_rgb(np.asarray(img).astype(np.uint8))
+    def _build_transforms(self, config):
+        transform = OpenWorldSAMTransform(
+            device=self._device,
+            using_half_precision=bool(self._using_half_precision),
+        )
+        # ragged_batches=True: items are dicts, not uniform tensors, so the
+        # DataLoader must not attempt to torch.stack them
+        return transform, True
 
-    @staticmethod
-    def _ensure_rgb(arr):
-        if arr.ndim == 2:
-            return np.repeat(arr[..., None], 3, axis=2)
-        if arr.ndim != 3:
-            raise ValueError("Expected a 2D or 3D image array")
-        if arr.shape[2] == 1:
-            return np.repeat(arr, 3, axis=2)
-        if arr.shape[2] == 4:
-            return arr[..., :3]
-        if arr.shape[2] != 3:
-            raise ValueError("Expected an image with 1, 3, or 4 channels")
-        return arr
+    def _build_output_processor(self, config):
+        return OpenWorldSAMOutputProcessor(classes=self._classes)
 
-    def _preprocess_sam(self, arr):
-        """HWC uint8 → CHW tensor normalized for SAM2 (1024×1024), on device."""
-        arr = self._ensure_rgb(arr)
-        tensor = torch.as_tensor(
-            np.ascontiguousarray(arr.transpose(2, 0, 1))
-        ).float()
-        tensor = F.interpolate(
-            tensor.unsqueeze(0),
-            (_SAM_IMAGE_SIZE, _SAM_IMAGE_SIZE),
-            mode="bilinear",
-            align_corners=False,
-        ).squeeze(0)
-        mean = _SAM_PIXEL_MEAN.view(-1, 1, 1)
-        std = _SAM_PIXEL_STD.view(-1, 1, 1)
-        tensor = (tensor - mean) / std
-        tensor = tensor.to(self._device)
-        if self._using_half_precision:
-            tensor = tensor.half()
-        return tensor
-
-    def _preprocess_beit3(self, arr):
-        """HWC uint8 → CHW tensor normalized for BEiT-3 (224×224), on device."""
-        from PIL import Image as PILImage
-
-        arr = self._ensure_rgb(arr)
-        pil = PILImage.fromarray(arr)
-        tensor = _BEIT_TRANSFORM(pil)
-        tensor = tensor.to(self._device)
-        if self._using_half_precision:
-            tensor = tensor.half()
-        return tensor
-
-    def _predict_all(self, imgs):
-        class_names = self._classes or ADE20K_150_CLASSES
-        prompts = list(class_names)
+    def _forward_pass(self, imgs):
+        # self._classes is always set by _parse_classes before inference
+        prompts = list(self._classes)
         # Assign sequential integer IDs; class labels in output index into this list
         category_ids = list(range(len(prompts)))
 
-        results = []
-        for img in imgs:
-            arr = self._to_uint8(img)
-            h, w = arr.shape[:2]
-
-            sam_tensor = self._preprocess_sam(arr)
-            beit_tensor = self._preprocess_beit3(arr)
-
-            batch_input = [
-                {
-                    "image": sam_tensor,
-                    "evf_image": beit_tensor,
-                    "height": h,
-                    "width": w,
-                    "prompt": prompts,
-                    "unique_categories": category_ids,
-                }
-            ]
-
-            with torch.no_grad():
-                outputs = self._hf_model(batch_input)
-
-            detections = []
-            if outputs and "instances" in outputs[0]:
-                instances = outputs[0]["instances"]
-                # Support both detectron2 Instances objects and plain dicts
-                if hasattr(instances, "pred_masks"):
-                    pred_masks = instances.pred_masks
-                    pred_classes = instances.pred_classes
-                    scores = instances.scores
-                else:
-                    pred_masks = instances.get(
-                        "pred_masks", instances.get("masks", torch.empty(0))
-                    )
-                    pred_classes = instances.get(
-                        "pred_classes",
-                        instances.get(
-                            "class_ids", torch.empty(0, dtype=torch.long)
-                        ),
-                    )
-                    scores = instances.get("scores", torch.empty(0))
-
-                for mask_t, cls_id, score in zip(
-                    pred_masks, pred_classes, scores
-                ):
-                    mask = (mask_t > 0).cpu().numpy().astype(bool)
-                    if not mask.any():
-                        continue
-                    idx = int(cls_id)
-                    label = (
-                        class_names[idx]
-                        if 0 <= idx < len(class_names)
-                        else str(idx)
-                    )
-                    detections.append(
-                        fol.Detection.from_mask(
-                            mask=mask,
-                            label=label,
-                            confidence=float(score),
-                        )
-                    )
-
-            results.append(fol.Detections(detections=detections))
-
-        return results
+        batch_input = [
+            {**d, "prompt": prompts, "unique_categories": category_ids}
+            for d in imgs
+        ]
+        return self._hf_model(batch_input)
