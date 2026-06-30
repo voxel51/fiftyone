@@ -9,6 +9,11 @@ import type {
 import { McapFrameTransformStore } from "../frame-transforms";
 import { mcapErrorMessage } from "../errors";
 import type { McapActiveTimeline, McapResourceClient } from "../types";
+import {
+  markMcapLatencyEvent,
+  mcapLatencyDurationMs,
+  mcapLatencyNowMs,
+} from "./mcap-latency-debug";
 
 // Keep demand-driven dynamic transform reads small and placement-priority; this
 // gives the resolver a little temporal slack without letting dense transform
@@ -83,6 +88,7 @@ export function useMcapFrameTransforms({
   const retryTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
+  const backgroundRangeKeyRef = useRef<string | null>(null);
   const sourceGenerationRef = useRef(0);
   const dynamicRangeMode =
     dynamicRange === null
@@ -99,6 +105,7 @@ export function useMcapFrameTransforms({
   useEffect(() => {
     const retryTimeouts = retryTimeoutsRef.current;
     clearRetryTimeouts(retryTimeouts);
+    backgroundRangeKeyRef.current = null;
     inFlightRangesRef.current = [];
     retryCountRef.current.clear();
     sourceGenerationRef.current += 1;
@@ -131,33 +138,38 @@ export function useMcapFrameTransforms({
       version: sourceGeneration,
     });
 
+    const bootstrapStartMs = mcapLatencyNowMs();
+    markMcapLatencyEvent("frame transform bootstrap request", undefined, {
+      onceKey: "frame-transform-bootstrap-request",
+    });
     client
       .readFrameTransformBootstrap({ source })
-      .then(async (set) => {
+      .then((set) => {
         if (!active || sourceGeneration !== sourceGenerationRef.current) {
           return;
         }
 
         store.addStatic(set.samples);
-        if (
-          dynamicRangeStartTimeNs !== undefined &&
-          dynamicRangeEndTimeNs !== undefined
-        ) {
-          const dynamicSet = await client.readFrameTransformWindow({
-            activeTimeline,
-            endTimeNs: dynamicRangeEndTimeNs,
-            source,
-            startTimeNs: dynamicRangeStartTimeNs,
-          });
-          if (!active || sourceGeneration !== sourceGenerationRef.current) {
-            return;
-          }
-          store.addDynamic(dynamicSet.samples, {
-            endTimeNs: dynamicRangeEndTimeNs,
-            startTimeNs: dynamicRangeStartTimeNs,
-          });
+        markMcapLatencyEvent(
+          "frame transform bootstrap ready",
+          {
+            durationMs: mcapLatencyDurationMs(bootstrapStartMs),
+            samples: set.samples.length,
+          },
+          { onceKey: "frame-transform-bootstrap-ready" },
+        );
+        markMcapLatencyEvent(
+          "frame transforms interactive ready",
+          { frameIds: store.frameIds().length },
+          { onceKey: "frame-transforms-interactive-ready" },
+        );
+        if (dynamicRangeMode !== "range") {
+          markMcapLatencyEvent(
+            "frame transforms ready",
+            { frameIds: store.frameIds().length },
+            { onceKey: "frame-transforms-ready" },
+          );
         }
-
         setState((current) => ({
           ...current,
           error: null,
@@ -191,12 +203,114 @@ export function useMcapFrameTransforms({
     source,
   ]);
 
+  // With offline playback, prioritize the current playhead's transform window
+  // first, then warm the full source range in the background. That gives the
+  // 3D tile enough truth to place the first visible cloud without waiting for
+  // every transform sample in the recording.
+  useEffect(() => {
+    const store = storeRef.current;
+    if (dynamicRangeMode !== "range") {
+      return;
+    }
+    if (
+      !source ||
+      !store ||
+      state.status !== "ready" ||
+      dynamicRangeStartTimeNs === undefined ||
+      dynamicRangeEndTimeNs === undefined
+    ) {
+      return;
+    }
+
+    const sourceRange = {
+      endTimeNs: dynamicRangeEndTimeNs,
+      startTimeNs: dynamicRangeStartTimeNs,
+    };
+    if (store.isRangeIndexed(sourceRange)) {
+      return;
+    }
+    if (timeNs !== undefined && !store.isTimeIndexed(timeNs)) {
+      return;
+    }
+
+    const sourceRangeKey = frameTransformRangeKey(sourceRange);
+    if (backgroundRangeKeyRef.current === sourceRangeKey) {
+      return;
+    }
+
+    backgroundRangeKeyRef.current = sourceRangeKey;
+    const sourceGeneration = sourceGenerationRef.current;
+    const dynamicRangeStartMs = mcapLatencyNowMs();
+    markMcapLatencyEvent(
+      "frame transform range request",
+      {
+        endTimeNs: dynamicRangeEndTimeNs,
+        startTimeNs: dynamicRangeStartTimeNs,
+      },
+      { onceKey: "frame-transform-range-request" },
+    );
+
+    client
+      .readFrameTransformWindow({
+        activeTimeline,
+        endTimeNs: dynamicRangeEndTimeNs,
+        source,
+        startTimeNs: dynamicRangeStartTimeNs,
+      })
+      .then((set) => {
+        if (sourceGeneration !== sourceGenerationRef.current) {
+          return;
+        }
+
+        storeRef.current?.addDynamic(set.samples, sourceRange);
+        markMcapLatencyEvent(
+          "frame transform range ready",
+          {
+            durationMs: mcapLatencyDurationMs(dynamicRangeStartMs),
+            samples: set.samples.length,
+          },
+          { onceKey: "frame-transform-range-ready" },
+        );
+        markMcapLatencyEvent(
+          "frame transforms ready",
+          { frameIds: storeRef.current?.frameIds().length ?? 0 },
+          { onceKey: "frame-transforms-ready" },
+        );
+        setState((current) => ({
+          ...current,
+          error: null,
+          version: current.version + 1,
+        }));
+      })
+      .catch((caughtError) => {
+        if (sourceGeneration !== sourceGenerationRef.current) {
+          return;
+        }
+
+        setState((current) => ({
+          ...current,
+          error: mcapErrorMessage(caughtError),
+          version: current.version + 1,
+        }));
+      });
+  }, [
+    activeTimeline,
+    client,
+    dynamicRangeEndTimeNs,
+    dynamicRangeMode,
+    dynamicRangeStartTimeNs,
+    source,
+    state.status,
+    state.version,
+    timeNs,
+  ]);
+
   // This effect requests the dynamic transform window around the active
   // playback time when the resolver has not already indexed that time for the
   // current source.
   useEffect(() => {
     const store = storeRef.current;
-    if (dynamicRangeMode !== "fallback") {
+    if (dynamicRangeMode === "pending") {
       return;
     }
     if (!source || !store || state.status !== "ready" || timeNs === undefined) {
@@ -213,7 +327,16 @@ export function useMcapFrameTransforms({
     const requestedRange = dynamicRangeForTime(timeNs);
     const requestedRangeKey = frameTransformRangeKey(requestedRange);
     const sourceGeneration = sourceGenerationRef.current;
+    const requestedRangeStartMs = mcapLatencyNowMs();
     inFlightRangesRef.current = [...inFlightRangesRef.current, requestedRange];
+    markMcapLatencyEvent(
+      "frame transform current window request",
+      {
+        endTimeNs: requestedRange.endTimeNs,
+        startTimeNs: requestedRange.startTimeNs,
+      },
+      { onceKey: "first-frame-transform-current-window-request" },
+    );
 
     client
       .readFrameTransformWindow({
@@ -228,6 +351,14 @@ export function useMcapFrameTransforms({
         }
 
         storeRef.current?.addDynamic(set.samples, requestedRange);
+        markMcapLatencyEvent(
+          "frame transform current window ready",
+          {
+            durationMs: mcapLatencyDurationMs(requestedRangeStartMs),
+            samples: set.samples.length,
+          },
+          { onceKey: "first-frame-transform-current-window-ready" },
+        );
         retryCountRef.current.delete(requestedRangeKey);
         inFlightRangesRef.current = inFlightRangesRef.current.filter(
           (candidate) => candidate !== requestedRange,

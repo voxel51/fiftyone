@@ -84,7 +84,7 @@ describe("useMcapFrameTransforms", () => {
     });
   });
 
-  it("loads one source-range dynamic transform index for offline playback", async () => {
+  it("prioritizes the current transform window before warming the source range", async () => {
     const source = createSource("source-range");
     const client = createFrameTransformClient({
       bootstrapSamples: [sample("base_link", "lidar")],
@@ -94,7 +94,7 @@ describe("useMcapFrameTransforms", () => {
     const { rerender } = render(
       <FrameTransformsHarness
         client={client}
-        dynamicRange={{ endTimeNs: 1_000n, startTimeNs: 0n }}
+        dynamicRange={{ endTimeNs: 2_000_000_000n, startTimeNs: 0n }}
         label="frames"
         source={source}
         timeNs={100n}
@@ -104,7 +104,7 @@ describe("useMcapFrameTransforms", () => {
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledWith({
         activeTimeline: undefined,
-        endTimeNs: 1_000n,
+        endTimeNs: 500_000_100n,
         source,
         startTimeNs: 0n,
       });
@@ -116,15 +116,23 @@ describe("useMcapFrameTransforms", () => {
     rerender(
       <FrameTransformsHarness
         client={client}
-        dynamicRange={{ endTimeNs: 1_000n, startTimeNs: 0n }}
+        dynamicRange={{ endTimeNs: 2_000_000_000n, startTimeNs: 0n }}
         label="frames"
         source={source}
         timeNs={900n}
       />,
     );
 
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledWith({
+        activeTimeline: undefined,
+        endTimeNs: 2_000_000_000n,
+        source,
+        startTimeNs: 0n,
+      });
+    });
     await flushReactWork();
-    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(1);
+    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
   });
 
   it("rebuilds transform cache when the active timeline changes", async () => {

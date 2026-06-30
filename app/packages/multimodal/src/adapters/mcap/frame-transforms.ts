@@ -89,6 +89,14 @@ export class McapFrameTransformStore {
     );
   }
 
+  isRangeIndexed(range: McapFrameTransformTimeRange): boolean {
+    return this.dynamicRanges.some(
+      (indexedRange) =>
+        indexedRange.startTimeNs <= range.startTimeNs &&
+        range.endTimeNs <= indexedRange.endTimeNs,
+    );
+  }
+
   frameIds(): readonly string[] {
     return [...this.frameIdsById].sort(compareStrings);
   }

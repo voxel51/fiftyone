@@ -1,12 +1,5 @@
 import { TileSettingsContent, useSetTileTitle } from "@fiftyone/tiling";
-import {
-  Checkbox,
-  Size,
-  Spinner,
-  Text,
-  TextColor,
-  TextVariant,
-} from "@voxel51/voodo";
+import { Checkbox, Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React, {
   useCallback,
   useEffect,
@@ -20,6 +13,7 @@ import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import {
   PointCloudPanel,
   type PointCloudCameraPose,
+  type PointCloudPanelRenderStats,
 } from "../../../visualization/panels/point-cloud";
 import {
   cameraPoseFromTrackingAnchor,
@@ -36,6 +30,7 @@ import {
   type Mcap3dTransformGapWarning,
 } from "./mcap-3d-layers";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
+import { markMcapLatencyEvent } from "./mcap-latency-debug";
 import { useMcapModalSettings } from "./mcap-modal-settings";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import type { McapTileProps } from "./mcap-tile-types";
@@ -92,13 +87,26 @@ const PREFERRED_CAMERA_TARGET_FRAMES = [
   "ego",
   "vehicle",
 ];
-const EMPTY_3D_LAYER_STATE = {
-  clampedFrameIds: [],
-  largeInterpolationGaps: [],
-  pointCloudLayers: [],
-  unresolvedFrameIds: [],
-} as const;
-
+const PROVISIONAL_TOPIC_KEYWORDS: readonly {
+  readonly score: number;
+  readonly value: string;
+}[] = [
+  { score: 90, value: "lidar_top" },
+  { score: 90, value: "top_lidar" },
+  { score: 70, value: "lidar" },
+  { score: 60, value: "velodyne" },
+  { score: 60, value: "ouster" },
+  { score: 60, value: "hesai" },
+  { score: 60, value: "robosense" },
+  { score: 35, value: "point_cloud" },
+  { score: 35, value: "pointcloud" },
+  { score: 25, value: "/points" },
+  { score: 20, value: "points" },
+];
+const PROVISIONAL_TOPIC_PENALTIES: readonly {
+  readonly score: number;
+  readonly value: string;
+}[] = [{ score: -50, value: "radar" }];
 type FrameSelectionSource = "auto" | "user";
 type CameraTargetResolution =
   | {
@@ -176,10 +184,13 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     knownRenderableSourceIdsRef.current = currentIds;
   }, [renderableSources]);
 
-  // Selection in inventory order, so layers and statuses stay deterministic
-  // regardless of the order sources were toggled in.
+  // Prefer LiDAR-like point clouds first for initial fetch/paint, while keeping
+  // the settings list itself in inventory order.
   const selectedSources = useMemo(
-    () => renderableSources.filter((s) => enabled.has(s.id)),
+    () =>
+      sortPointCloudSourcesForInitialPaint(
+        renderableSources.filter((s) => enabled.has(s.id)),
+      ),
     [renderableSources, enabled],
   );
   const selectedTopics = useMemo(
@@ -203,26 +214,33 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   useEffect(() => {
     setWorldFrameId((current) =>
       nextFrameSelection({
+        allowFallback: frameTransforms.frameIds.length > 0,
         current,
         frameIds,
         preferred: PREFERRED_WORLD_FRAMES,
         selectionSource: worldFrameSelectionSource,
       }),
     );
-  }, [frameIds, worldFrameSelectionSource]);
+  }, [frameIds, frameTransforms.frameIds.length, worldFrameSelectionSource]);
 
   // This effect keeps the camera target on a preferred default until the user
   // explicitly chooses a frame.
   useEffect(() => {
     setCameraTargetFrameId((current) =>
       nextFrameSelection({
+        allowFallback: frameTransforms.frameIds.length > 0,
         current,
         frameIds,
         preferred: [...PREFERRED_CAMERA_TARGET_FRAMES, worldFrameId],
         selectionSource: cameraTargetSelectionSource,
       }),
     );
-  }, [cameraTargetSelectionSource, frameIds, worldFrameId]);
+  }, [
+    cameraTargetSelectionSource,
+    frameIds,
+    frameTransforms.frameIds.length,
+    worldFrameId,
+  ]);
 
   // This effect syncs the tile title with the current 3D source selection.
   useEffect(() => {
@@ -233,40 +251,60 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     setTileTitle(label ?? TILE_TYPE_LABEL);
   }, [selectedTopics, renderableSources, setTileTitle]);
 
-  const hasCoordinateFrame = useMemo(
-    () =>
-      frames.some((playbackFrame) => playbackFrame?.frame.coordinateFrameId),
-    [frames],
+  const provisionalTopicId = useMemo(
+    () => selectProvisionalPointCloudTopic(selectedSources, frames),
+    [frames, selectedSources],
   );
-  const waitingForFrameTransforms =
-    frameTransforms.status === "loading" && hasCoordinateFrame;
   const {
     clampedFrameIds,
     largeInterpolationGaps,
     pointCloudLayers,
+    provisionalFrameIds,
+    transformedLayerCount,
     unresolvedFrameIds,
   } = useMemo(() => {
-    if (waitingForFrameTransforms) {
-      return EMPTY_3D_LAYER_STATE;
-    }
-
     return build3dLayers({
       frameTransforms,
       frames,
       largeInterpolationGapWarningNs: msToNs(
         temporalPolicy.transformGapWarningMs,
       ),
+      provisionalTopicId,
       selectedTopics,
       worldFrameId,
     });
   }, [
     frameTransforms,
     frames,
+    provisionalTopicId,
     selectedTopics,
     temporalPolicy.transformGapWarningMs,
-    waitingForFrameTransforms,
     worldFrameId,
   ]);
+  const placementStatus = useMemo(
+    () =>
+      provisionalFrameIds.length > 0
+        ? "provisional"
+        : transformedLayerCount > 0
+          ? "transformed"
+          : pointCloudLayers.length > 0
+            ? "unframed"
+            : "empty",
+    [
+      pointCloudLayers.length,
+      provisionalFrameIds.length,
+      transformedLayerCount,
+    ],
+  );
+  const placementWarning = useMemo(
+    () =>
+      provisionalFrameIds.length > 0
+        ? `Positioning transforms loading: displaying source-frame preview for ${provisionalFrameIds.join(
+            ", ",
+          )}`
+        : null,
+    [provisionalFrameIds],
+  );
   const transformWarning = useMemo(
     () =>
       transformWarningText({
@@ -340,8 +378,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     ],
   );
   const panelWarning = useMemo(
-    () => joinWarnings(transformWarning, cameraTrackingWarning),
-    [cameraTrackingWarning, transformWarning],
+    () =>
+      joinWarnings(placementWarning, transformWarning, cameraTrackingWarning),
+    [cameraTrackingWarning, placementWarning, transformWarning],
   );
 
   // Re-anchor when the user changes tracking mode or target frame. During
@@ -439,6 +478,67 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     },
     [cameraTargetFrameId, cameraTargetPose, followTrackingMode, worldFrameId],
   );
+  const handlePanelRenderStats = useCallback(
+    (stats: PointCloudPanelRenderStats) => {
+      const detail = {
+        ...stats,
+        placementStatus,
+        provisionalFrameIds,
+        transformedLayerCount,
+        worldFrameId,
+      };
+      markMcapLatencyEvent("point cloud panel painted", detail, {
+        onceKey: "first-point-cloud-panel-painted",
+      });
+      if (placementStatus === "provisional") {
+        markMcapLatencyEvent("provisional point cloud panel painted", detail, {
+          onceKey: "first-provisional-point-cloud-panel-painted",
+        });
+      }
+      if (placementStatus === "transformed") {
+        markMcapLatencyEvent("transformed point cloud panel painted", detail, {
+          onceKey: "first-transformed-point-cloud-panel-painted",
+        });
+      }
+    },
+    [placementStatus, provisionalFrameIds, transformedLayerCount, worldFrameId],
+  );
+
+  useEffect(() => {
+    if (pointCloudLayers.length === 0) {
+      return;
+    }
+
+    const detail = {
+      layers: pointCloudLayers.length,
+      placementStatus,
+      pointCount: pointCountForLayers(pointCloudLayers),
+      provisionalFrameIds,
+      transformStatus: frameTransforms.status,
+      transformedLayerCount,
+      worldFrameId,
+    };
+    markMcapLatencyEvent("3d layers ready", detail, {
+      onceKey: "first-3d-layers-ready",
+    });
+    if (placementStatus === "provisional") {
+      markMcapLatencyEvent("provisional 3d layers ready", detail, {
+        onceKey: "first-provisional-3d-layers-ready",
+      });
+    }
+    if (placementStatus === "transformed") {
+      markMcapLatencyEvent("transformed 3d layers ready", detail, {
+        onceKey: "first-transformed-3d-layers-ready",
+      });
+    }
+  }, [
+    frameTransforms.status,
+    placementStatus,
+    pointCloudLayers,
+    provisionalFrameIds,
+    transformedLayerCount,
+    worldFrameId,
+  ]);
 
   return (
     <>
@@ -500,10 +600,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         <div className={styles.loading}>
           <span className={styles.emptyText}>No sources selected</span>
         </div>
-      ) : waitingForFrameTransforms ? (
-        <div className={styles.loading}>
-          <Spinner size={Size.Lg} />
-        </div>
       ) : pointCloudLayers.length > 0 || panelWarning ? (
         <div className={styles.panelStack}>
           <PointCloudPanel
@@ -511,6 +607,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             layers={pointCloudLayers}
             className={styles.panel}
             onCameraPoseChange={handleCameraPoseChange}
+            onRenderStats={handlePanelRenderStats}
             warning={panelWarning}
           />
           <McapTileStatusBadge topics={selectedTopics} />
@@ -620,6 +717,73 @@ function labelWithCount(label: string, count: number | undefined): string {
 
 function is3dRenderableSource(source: SceneSource): boolean {
   return source.type === MCAP_SOURCE_TYPE.POINT_CLOUD;
+}
+
+function sortPointCloudSourcesForInitialPaint(
+  sources: readonly SceneSource[],
+): SceneSource[] {
+  return sources
+    .map((source, index) => ({
+      index,
+      score: provisionalPointCloudTopicScore(source),
+      source,
+    }))
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .map(({ source }) => source);
+}
+
+function selectProvisionalPointCloudTopic(
+  sources: readonly SceneSource[],
+  frames: readonly (McapTopicPlaybackFrame<PointCloudVisualization> | null)[],
+): string | null {
+  let best: {
+    readonly index: number;
+    readonly score: number;
+    readonly topic: string;
+  } | null = null;
+
+  for (let index = 0; index < sources.length; index++) {
+    const source = sources[index];
+    if (!source) {
+      continue;
+    }
+    if (!frames[index]) {
+      continue;
+    }
+
+    const score = provisionalPointCloudTopicScore(source);
+    if (
+      !best ||
+      score > best.score ||
+      (score === best.score && index < best.index)
+    ) {
+      best = {
+        index,
+        score,
+        topic: source.id,
+      };
+    }
+  }
+
+  return best?.topic ?? sources[0]?.id ?? null;
+}
+
+function provisionalPointCloudTopicScore(source: SceneSource): number {
+  const haystack = `${source.id} ${source.label}`.toLowerCase();
+  let score = 0;
+
+  for (const keyword of PROVISIONAL_TOPIC_KEYWORDS) {
+    if (haystack.includes(keyword.value)) {
+      score += keyword.score;
+    }
+  }
+  for (const penalty of PROVISIONAL_TOPIC_PENALTIES) {
+    if (haystack.includes(penalty.value)) {
+      score += penalty.score;
+    }
+  }
+
+  return score;
 }
 
 function resolveCameraTargetPose({
@@ -775,6 +939,16 @@ function pushFrameId(frameIds: string[], frameId: string | undefined) {
   }
 }
 
+function pointCountForLayers(
+  layers: readonly {
+    readonly frame: {
+      readonly pointCount: number;
+    };
+  }[],
+): number {
+  return layers.reduce((sum, layer) => sum + layer.frame.pointCount, 0);
+}
+
 function uniqueSortedFrameIds(frameIds: readonly string[]): readonly string[] {
   return [...new Set(frameIds.map((id) => id.trim()).filter(Boolean))].sort(
     (left, right) => left.localeCompare(right),
@@ -803,11 +977,13 @@ function msToNs(value: number): bigint {
 }
 
 function nextFrameSelection({
+  allowFallback = true,
   current,
   frameIds,
   preferred,
   selectionSource,
 }: {
+  readonly allowFallback?: boolean;
   readonly current: string;
   readonly frameIds: readonly string[];
   readonly preferred: readonly string[];
@@ -827,7 +1003,7 @@ function nextFrameSelection({
     return current;
   }
 
-  return frameIds[0] ?? "";
+  return allowFallback ? (frameIds[0] ?? "") : "";
 }
 
 export default Mcap3dTile;

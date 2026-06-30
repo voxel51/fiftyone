@@ -131,6 +131,13 @@ export interface PointCloudPanelLayer {
   readonly id: string;
 }
 
+export interface PointCloudPanelRenderStats {
+  readonly declaredPointCount: number;
+  readonly finitePointCount: number;
+  readonly layerCount: number;
+  readonly renderedPointCount: number;
+}
+
 /**
  * Props for rendering decoded point-cloud visualization frames. A panel
  * renders one shared 3D scene; each layer contributes one cloud to it.
@@ -146,6 +153,7 @@ export interface PointCloudPanelProps {
     pose: PointCloudCameraPose,
     source: ThreeCameraPoseChangeSource,
   ) => void;
+  readonly onRenderStats?: (stats: PointCloudPanelRenderStats) => void;
   readonly pointSize?: number;
   readonly showGizmo?: boolean;
   readonly showHud?: boolean;
@@ -166,6 +174,7 @@ export function PointCloudPanel({
   layers,
   maxRenderedPoints = DEFAULT_MAX_RENDERED_POINTS,
   onCameraPoseChange,
+  onRenderStats,
   pointSize = DEFAULT_POINT_SIZE,
   showGizmo = true,
   showHud = true,
@@ -229,6 +238,30 @@ export function PointCloudPanel({
   const requestFocusScene = useCallback(() => {
     setFocusSceneRequestKey((current) => current + 1);
   }, []);
+  useEffect(() => {
+    if (!onRenderStats || !hasPointCloudLayers) return;
+
+    const frame = requestAnimationFrame(() => {
+      onRenderStats({
+        declaredPointCount,
+        finitePointCount,
+        layerCount: layers.length,
+        renderedPointCount: renderLayers.reduce(
+          (sum, layer) => sum + layer.data.renderedPointCount,
+          0,
+        ),
+      });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [
+    declaredPointCount,
+    finitePointCount,
+    hasPointCloudLayers,
+    layers.length,
+    onRenderStats,
+    renderLayers,
+  ]);
 
   return (
     <div className={className} style={{ ...styles.panel, ...style }}>
