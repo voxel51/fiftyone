@@ -116,6 +116,9 @@ Click a stage on the canvas to configure it:
 - **Review** — select who can review and wire the **Accepted** /
   **Rejected** branches to the appropriate downstream stages.
 
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_input_samples_config.webp
+   :alt: Configuring Input samples with saved view selection
+
 The following example shows how to edit the assignee for a Review
 stage:
 
