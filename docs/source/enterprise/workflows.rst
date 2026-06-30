@@ -112,7 +112,7 @@ tasks and delegated operations.
 For example, the **Input samples** stage lets you choose which samples
 enter the pipeline, such as a :ref:`saved view <app-saving-views>`:
 
-.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_input_samples_config.webp
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_input_samples_config_v2.webp
    :alt: Configuring Input samples with saved view selection
 
 An **Annotate** or **Review** stage lets you set who is assigned to the
