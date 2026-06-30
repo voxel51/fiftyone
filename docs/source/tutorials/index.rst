@@ -246,7 +246,7 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
-   Building Annotation Workflows and Ontologies <fiftyone_annotation_workflows.ipynb>
+   Building Annotation Workflows and Ontologies __SUB_NEW__ <fiftyone_annotation_workflows.ipynb>
    Using FiftyOne Skills with Gemini CLI __SUB_NEW__ <gemini_fiftyone_skills.ipynb>   
    Integrating NVIDIA Cosmos-Transfer with FiftyOne __SUB_NEW__ <cosmos-transfer-integration.ipynb>
    Google Gemini Vision in FiftyOne __SUB_NEW__ <gemini_vision.ipynb>
