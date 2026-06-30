@@ -5,6 +5,7 @@ import {
   ImageOptions,
   ImageOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
+  lighterInitErrorAtom,
   overlayFactory,
   useLighterEventHandler,
   useLighterSetupWithPixi,
@@ -12,6 +13,7 @@ import {
 import type { Sample } from "@fiftyone/state";
 import { getSampleSrc, useModalLookerOptions } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
+import Lottie from "lottie-react";
 import React, {
   useCallback,
   useEffect,
@@ -19,12 +21,42 @@ import React, {
   useRef,
   useState,
 } from "react";
+import styled from "styled-components";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
+import gpuErrorAnimation from "./assets/gpu-error.json";
 import { LighterToolbar } from "./LighterToolbar";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
 import useRetrieveViewport from "./useRetrieveViewport";
 import useViewport from "./useViewport";
+
+const ErrorPanel = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  color: ${({ theme }) => theme.text.secondary};
+`;
+
+const ErrorTitle = styled.p`
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.text.primary};
+`;
+
+const ErrorMessage = styled.p`
+  margin: 0;
+  font-size: 0.825rem;
+  color: ${({ theme }) => theme.text.secondary};
+  max-width: 360px;
+  line-height: 1.5;
+`;
 
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
@@ -46,6 +78,8 @@ export const LighterSampleRenderer = ({
   const [isCanvasHovered, setIsCanvasHovered] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
 
+  const initError = useAtomValue(lighterInitErrorAtom);
+
   // use a ref for the sample data, effects do not run solely because the
   // sample changed
   const sampleRef = useRef(sample);
@@ -60,6 +94,23 @@ export const LighterSampleRenderer = ({
       `${sample?.sample?._id}-${sample?.sample?.last_modified_at?.datetime}`,
     );
   }, []);
+
+  if (initError) {
+    return (
+      <ErrorPanel>
+        <Lottie
+          animationData={gpuErrorAnimation}
+          loop
+          style={{ width: 220, height: 220 }}
+        />
+        <ErrorTitle>WebGL context could not be created</ErrorTitle>
+        <ErrorMessage>
+          This is usually caused by an incompatible GPU driver or a browser
+          flag blocking hardware acceleration.
+        </ErrorMessage>
+      </ErrorPanel>
+    );
+  }
 
   return (
     <div
