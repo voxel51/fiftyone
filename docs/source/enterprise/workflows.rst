@@ -206,6 +206,9 @@ it came from. The task progress (for example,
 and you complete the task with **Task complete** once all samples have
 been reviewed.
 
+Use the discussion tray to leave :ref:`comments <enterprise-comments>` on
+individual samples to flag issues to your teammates.
+
 .. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_review_task.webp
    :alt: Review task mode showing APPROVED and REJECTED badges on a grid
 
