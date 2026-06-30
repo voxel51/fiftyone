@@ -78,7 +78,7 @@ test.describe.serial("3d cuboid annotation", () => {
     await modal.annotate3d.assert.labelListed("car");
   });
 
-  test("selecting the cuboid opens its edit form, toolbar, and transform gizmo", async ({
+  test("selecting the cuboid opens its edit form, toolbar, and scale gizmo", async ({
     modal,
   }) => {
     await modal.annotate3d.selectLabel("car");
@@ -89,7 +89,7 @@ test.describe.serial("3d cuboid annotation", () => {
     // selecting a cuboid arms its annotation mode, which mounts the toolbar +
     // transform group; translate is the default gizmo mode
     await modal.annotate3d.assert.toolbarVisible();
-    await modal.annotate3d.assert.transformModeActive("translate");
+    await modal.annotate3d.assert.transformModeActive("scale");
   });
 
   test("editing a cuboid's position via the form persists and round-trips through undo/redo", async ({

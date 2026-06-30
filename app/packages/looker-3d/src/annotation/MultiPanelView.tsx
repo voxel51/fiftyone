@@ -1,7 +1,6 @@
 import { ModalSample, useBrowserStorage } from "@fiftyone/state";
 import { View } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import CameraControlsImpl from "camera-controls";
 import { useCallback, useLayoutEffect, useRef } from "react";
 import styled from "styled-components";
 import * as THREE from "three";
@@ -9,6 +8,7 @@ import { Vector3 } from "three";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import { PANEL_ID_SIDE_BOTTOM, PANEL_ID_SIDE_TOP } from "../constants";
 import { StatusBarRootContainer } from "../containers";
+import type { Fo3dCameraControls } from "../fo3d/camera-controls";
 import { useFo3dContext } from "../fo3d/context";
 import HoverMetadataHUD from "../fo3d/HoverMetadataHUD";
 import type { FoScene } from "../fo3d/render-types";
@@ -42,8 +42,8 @@ const defaultState: MultiPanelViewState = {
 
 interface MultiPanelViewProps {
   assetsGroupRef: React.RefObject<THREE.Group>;
-  cameraControlsRef: React.MutableRefObject<CameraControlsImpl>;
-  cameraRef: React.MutableRefObject<THREE.PerspectiveCamera>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
+  cameraRef: React.RefObject<THREE.PerspectiveCamera>;
   defaultCameraPosition: Vector3;
   foScene: FoScene;
   sample: ModalSample;
@@ -59,14 +59,8 @@ export const MultiPanelView = ({
   sample,
   onPointerMissed,
 }: MultiPanelViewProps) => {
-  const {
-    isSceneInitialized,
-    upVector,
-    lookAt,
-    sceneBoundingBox,
-    autoRotate,
-    pointCloudSettings,
-  } = useFo3dContext();
+  const { isSceneInitialized, upVector, lookAt, sceneBoundingBox, autoRotate } =
+    useFo3dContext();
   const [panelState, setPanelState] = useBrowserStorage<MultiPanelViewState>(
     "fo3d-multi-panel-state",
     defaultState,
@@ -122,7 +116,6 @@ export const MultiPanelView = ({
         foScene={foScene}
         upVector={upVector}
         isSceneInitialized={isSceneInitialized}
-        pointCloudSettings={pointCloudSettings}
         assetsGroupRef={assetsGroupRef}
       />
 

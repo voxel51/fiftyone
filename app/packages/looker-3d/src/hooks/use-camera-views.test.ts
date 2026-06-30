@@ -17,6 +17,7 @@ vi.mock(
 );
 
 vi.mock("@fiftyone/state", () => ({
+  ModalMode: { ANNOTATE: "annotate" },
   modalMode: { key: "modalMode" },
 }));
 
@@ -25,7 +26,8 @@ vi.mock("jotai", () => ({
 }));
 
 vi.mock("recoil", () => ({
-  useRecoilValue: () => null,
+  useRecoilValue: (atom: { key?: string } | null) =>
+    atom?.key === "annotationPlaneAtom" ? { enabled: false } : null,
   useSetRecoilState: () => () => {},
 }));
 
@@ -43,8 +45,12 @@ vi.mock("../fo3d/context", () => ({
 vi.mock("../state", () => ({
   annotationPlaneAtom: { key: "annotationPlaneAtom" },
   cameraViewStatusAtom: { key: "cameraViewStatusAtom" },
+  currentArchetypeSelectedForTransformAtom: {
+    key: "currentArchetypeSelectedForTransformAtom",
+  },
   isFo3dBackgroundOnAtom: { key: "isFo3dBackgroundOnAtom" },
   selectedLabelForAnnotationAtom: { key: "selectedLabelForAnnotationAtom" },
+  selectedPolylineVertexAtom: { key: "selectedPolylineVertexAtom" },
 }));
 
 const makeRefs = () => ({

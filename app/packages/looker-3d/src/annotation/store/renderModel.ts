@@ -1,4 +1,4 @@
-import { useModalMode } from "@fiftyone/state";
+import { ModalMode, useModalMode } from "@fiftyone/state";
 import { useMemo } from "react";
 import { selector, useRecoilValue } from "recoil";
 import { isDetection, isPolyline } from "../../types";
@@ -172,7 +172,7 @@ export function useRenderModel(): RenderModel {
 
   // In explore mode, we return an empty model since rendering
   // uses the loader directly via ThreeDLabels
-  if (mode !== "annotate") {
+  if (mode !== ModalMode.ANNOTATE) {
     return { detections: [], polylines: [] };
   }
 

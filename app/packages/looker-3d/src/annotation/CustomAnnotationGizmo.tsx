@@ -1,42 +1,71 @@
-/**
- * Modification of Drei's GizmoHelper component
- * to support <View /> components.
- *
- * Problem with Drei's default GizmoHelper is that it doesn't support <View /> components
- * because it uses <Hud /> which doesn't work with gl.Scissors
- *
- * This component is a custom implementation of the GizmoHelper component
- * that supports <View /> components.
- *
- * It uses a custom canvas to render the gizmo and syncs with the main camera.
- *
- */
-import {
-  CameraControls as CameraControlsType,
-  OrthographicCamera,
-} from "@react-three/drei";
-import {
-  Canvas,
-  ThreeElements,
-  ThreeEvent,
-  useFrame,
-  useThree,
-} from "@react-three/fiber";
-import CameraControlsImpl from "camera-controls";
-import * as React from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { RefObject } from "react";
 import styled from "styled-components";
 import * as THREE from "three";
 import {
-  CanvasTexture,
-  Group,
-  Matrix4,
-  Object3D,
-  OrthographicCamera as OrthographicCameraImpl,
-  Quaternion,
-  Vector3,
-} from "three";
-import { OrbitControls as OrbitControlsType } from "three-stdlib";
+  getCameraControlsTarget,
+  setCameraControlsPosition,
+  type Fo3dCameraControls,
+} from "../fo3d/camera-controls";
+
+const GIZMO_SIZE = 130;
+const GIZMO_CENTER = GIZMO_SIZE / 2;
+const AXIS_LENGTH = 42;
+const NEGATIVE_AXIS_LENGTH = 28;
+const IDENTITY_QUATERNION = new THREE.Quaternion();
+
+// X/Y/Z colors match drei's (three.js') TransformControls gizmo so this custom
+// overlay reads as the same axes users see on the in-scene transform handles.
+const WORLD_AXES = [
+  {
+    color: "#ff2060",
+    direction: new THREE.Vector3(1, 0, 0),
+    label: "X",
+  },
+  {
+    color: "#20df80",
+    direction: new THREE.Vector3(0, 1, 0),
+    label: "Y",
+  },
+  {
+    color: "#2080ff",
+    direction: new THREE.Vector3(0, 0, 1),
+    label: "Z",
+  },
+] as const;
+
+type AxisRenderState = {
+  color: string;
+  depth: number;
+  direction: THREE.Vector3;
+  endX: number;
+  endY: number;
+  headRadius: number;
+  isNegative: boolean;
+  label?: string;
+  name: string;
+  lineOpacity: number;
+};
+
+type CameraRenderState = {
+  position: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+  target: THREE.Vector3;
+};
+
+const hasCameraRenderStateChanged = (
+  previousState: CameraRenderState | null,
+  camera: THREE.PerspectiveCamera,
+  target: THREE.Vector3,
+) => {
+  return (
+    previousState === null ||
+    !previousState.position.equals(camera.position) ||
+    !previousState.quaternion.equals(camera.quaternion) ||
+    !previousState.target.equals(target)
+  );
+};
+
 const GizmoOverlay = styled.div`
   position: absolute;
   top: 0;
@@ -47,482 +76,285 @@ const GizmoOverlay = styled.div`
   z-index: 10;
 `;
 
-const GizmoCanvas = styled.div`
+const GizmoContainer = styled.div`
   margin-top: 8px;
   margin-left: 10px;
-  width: 130px;
-  aspect-ratio: 1/1;
-  height: auto;
-  pointer-events: auto;
+  width: ${GIZMO_SIZE}px;
+  height: ${GIZMO_SIZE}px;
+  pointer-events: none;
   opacity: 0.6;
 
   &:hover {
     opacity: 1;
   }
+
+  svg {
+    display: block;
+    pointer-events: none;
+  }
+
+  .fo3d-gizmo-axis {
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .fo3d-gizmo-axis circle {
+    transition:
+      r 120ms ease,
+      filter 120ms ease;
+  }
+
+  .fo3d-gizmo-axis:hover circle {
+    filter: brightness(1.2);
+  }
+
+  .fo3d-gizmo-axis:focus-visible circle {
+    stroke: white;
+    stroke-width: 2px;
+  }
 `;
 
-type GizmoHelperContext = {
-  tweenCamera: (direction: Vector3) => void;
-};
+const projectAxis = (
+  direction: THREE.Vector3,
+  inverseCameraQuaternion: THREE.Quaternion,
+  length: number,
+) => {
+  const cameraSpaceDirection = direction
+    .clone()
+    .applyQuaternion(inverseCameraQuaternion);
 
-const Context = /* @__PURE__ */ React.createContext<GizmoHelperContext>(
-  {} as GizmoHelperContext,
-);
-
-const useGizmoContext = () => {
-  return React.useContext<GizmoHelperContext>(Context);
-};
-
-const turnRate = 2 * Math.PI; // turn rate in angles per second
-const dummy = /* @__PURE__ */ new Object3D();
-const matrix = /* @__PURE__ */ new Matrix4();
-const [q1, q2] = [
-  /* @__PURE__ */ new Quaternion(),
-  /* @__PURE__ */ new Quaternion(),
-];
-const targetPosition = /* @__PURE__ */ new Vector3();
-
-type ControlsProto = { update(delta?: number): void; target: Vector3 };
-
-type GizmoHelperProps = ThreeElements["group"] & {
-  margin?: [number, number];
-  renderPriority?: number;
-  autoClear?: boolean;
-  onUpdate?: () => void; // update controls during animation
-  // TODO: in a new major state.controls should be the only means of consuming controls, the
-  // onTarget prop can then be removed!
-  onTarget?: () => Vector3; // return the target to rotate around
-};
-
-const isOrbitControls = (
-  controls: ControlsProto,
-): controls is OrbitControlsType => {
-  return "minPolarAngle" in (controls as OrbitControlsType);
-};
-
-const isCameraControls = (
-  controls: CameraControlsType | ControlsProto,
-): controls is CameraControlsType => {
-  return "getTarget" in (controls as CameraControlsType);
-};
-
-const AnnotationGizmoHelper = ({
-  margin = [80, 80],
-  renderPriority = 1,
-  onUpdate,
-  onTarget,
-  children,
-  externalCameraState,
-  onCameraTween,
-}: GizmoHelperProps & {
-  externalCameraState?: {
-    position: Vector3;
-    quaternion: Quaternion;
-    target: Vector3;
+  return {
+    depth: cameraSpaceDirection.z,
+    x: GIZMO_CENTER + cameraSpaceDirection.x * length,
+    y: GIZMO_CENTER - cameraSpaceDirection.y * length,
   };
-  onCameraTween?: (direction: Vector3) => void;
-}): any => {
-  const size = useThree((state) => state.size);
-  const mainCamera = useThree((state) => state.camera);
-  const defaultControls = useThree(
-    (state) => state.controls,
-  ) as unknown as ControlsProto | null;
-  const invalidate = useThree((state) => state.invalidate);
-  const gizmoRef = React.useRef<Group>(null!);
-  const virtualCam = React.useRef<OrthographicCameraImpl>(null!);
+};
 
-  const animating = React.useRef(false);
-  const radius = React.useRef(0);
-  const focusPoint = React.useRef(new Vector3(0, 0, 0));
-  const defaultUp = React.useRef(new Vector3(0, 0, 0));
+const getAxisRenderState = (
+  cameraQuaternion: THREE.Quaternion,
+): AxisRenderState[] => {
+  const inverseCameraQuaternion = cameraQuaternion.clone().invert();
 
-  // Use external camera state if provided, otherwise use local camera
-  const cameraState = externalCameraState || {
-    position: mainCamera.position,
-    quaternion: mainCamera.quaternion,
-    target: onTarget?.() || new Vector3(0, 0, 0),
-  };
+  return WORLD_AXES.flatMap(({ color, direction, label }) => {
+    const positive = projectAxis(
+      direction,
+      inverseCameraQuaternion,
+      AXIS_LENGTH,
+    );
+    const negativeDirection = direction.clone().negate();
+    const negative = projectAxis(
+      negativeDirection,
+      inverseCameraQuaternion,
+      NEGATIVE_AXIS_LENGTH,
+    );
 
-  React.useEffect(() => {
-    if (externalCameraState) {
-      defaultUp.current.set(0, 1, 0);
-      dummy.up.set(0, 1, 0);
-    } else {
-      defaultUp.current.copy(mainCamera.up);
-      dummy.up.copy(mainCamera.up);
-    }
-  }, [mainCamera, externalCameraState]);
+    const depthRatio = (positive.depth + 1) / 2;
 
-  const tweenCamera = React.useCallback(
-    (direction: Vector3) => {
-      if (onCameraTween) {
-        // Use external camera tween function
-        onCameraTween(direction);
-        return;
-      }
+    return [
+      {
+        color,
+        depth: negative.depth,
+        direction: negativeDirection,
+        endX: negative.x,
+        endY: negative.y,
+        headRadius: 6,
+        isNegative: true,
+        lineOpacity: 0.35,
+        name: label,
+      },
+      {
+        color,
+        depth: positive.depth,
+        direction,
+        endX: positive.x,
+        endY: positive.y,
+        headRadius: 8 + depthRatio * 3,
+        isNegative: false,
+        label,
+        lineOpacity: 0.85,
+        name: label,
+      },
+    ];
+  }).sort((a, b) => a.depth - b.depth);
+};
 
-      // Original tween logic for local camera
-      animating.current = true;
-      if (defaultControls || onTarget) {
-        focusPoint.current =
-          onTarget?.() ||
-          (isCameraControls(defaultControls)
-            ? defaultControls.getTarget(focusPoint.current)
-            : defaultControls?.target || new Vector3(0, 0, 0));
-      }
-      radius.current = cameraState.position.distanceTo(cameraState.target);
-
-      // Rotate from current camera orientation
-      q1.copy(cameraState.quaternion);
-
-      // To new current camera orientation
-      targetPosition
-        .copy(direction)
-        .multiplyScalar(radius.current)
-        .add(cameraState.target);
-
-      dummy.lookAt(targetPosition);
-
-      q2.copy(dummy.quaternion);
-
-      invalidate();
-    },
-    [defaultControls, cameraState, onTarget, invalidate, onCameraTween],
+const AnnotationOrientationGizmoSvg = ({
+  cameraQuaternion,
+  onAxisPointerDown,
+}: {
+  cameraQuaternion: THREE.Quaternion;
+  onAxisPointerDown: (direction: THREE.Vector3) => void;
+}) => {
+  const axes = useMemo(
+    () => getAxisRenderState(cameraQuaternion),
+    [cameraQuaternion],
   );
-
-  useFrame((_, delta) => {
-    if (virtualCam.current && gizmoRef.current) {
-      // Animate step
-      if (animating.current && !onCameraTween) {
-        if (q1.angleTo(q2) < 0.01) {
-          animating.current = false;
-          // Orbit controls uses UP vector as the orbit axes,
-          // so we need to reset it after the animation is done
-          // moving it around for the controls to work correctly
-          if (isOrbitControls(defaultControls)) {
-            mainCamera.up.copy(defaultUp.current);
-          }
-        } else {
-          const step = delta * turnRate;
-          // animate position by doing a slerp and then scaling the position on the unit sphere
-          q1.rotateTowards(q2, step);
-          // animate orientation
-          mainCamera.position
-            .set(0, 0, 1)
-            .applyQuaternion(q1)
-            .multiplyScalar(radius.current)
-            .add(focusPoint.current);
-          mainCamera.up.set(0, 1, 0).applyQuaternion(q1).normalize();
-          mainCamera.quaternion.copy(q1);
-
-          if (isCameraControls(defaultControls))
-            defaultControls.setPosition(
-              mainCamera.position.x,
-              mainCamera.position.y,
-              mainCamera.position.z,
-            );
-
-          if (onUpdate) onUpdate();
-          else if (defaultControls) defaultControls.update(delta);
-          invalidate();
-        }
-      }
-
-      // Sync Gizmo with camera orientation
-      if (externalCameraState) {
-        // Use external camera state
-        matrix.makeRotationFromQuaternion(cameraState.quaternion).invert();
-        gizmoRef.current?.quaternion.setFromRotationMatrix(matrix);
-      } else {
-        // Use local camera
-        matrix.copy(mainCamera.matrix).invert();
-        gizmoRef.current?.quaternion.setFromRotationMatrix(matrix);
-      }
-    }
-  });
-
-  const gizmoHelperContext = React.useMemo(
-    () => ({ tweenCamera }),
-    [tweenCamera],
-  );
-
-  // Position gizmo component within scene (hardcoded for top-left alignment)
-  const [marginX, marginY] = margin;
-  const x = -size.width / 2 + marginX;
-  const y = size.height / 2 - marginY;
-
-  // For external camera state, adjust positioning to be more centered
-  const adjustedX = externalCameraState ? x * 0.5 : x;
-  const adjustedY = externalCameraState ? y * 0.5 : y;
 
   return (
-    <Context.Provider value={gizmoHelperContext}>
-      <OrthographicCamera makeDefault ref={virtualCam} position={[0, 0, 200]} />
-      <group ref={gizmoRef} position={[adjustedX, adjustedY, 0]}>
-        {children}
-      </group>
-    </Context.Provider>
-  );
-};
-
-type AxisProps = {
-  color: string;
-  rotation: [number, number, number];
-  scale?: [number, number, number];
-};
-
-type AxisHeadProps = Omit<ThreeElements["sprite"], "ref"> & {
-  arcStyle: string;
-  label?: string;
-  labelColor: string;
-  axisHeadScale?: number;
-  disabled?: boolean;
-  font: string;
-  onClick?: (e: ThreeEvent<MouseEvent>) => null;
-};
-
-type GizmoViewportProps = ThreeElements["group"] & {
-  axisColors?: [string, string, string];
-  axisScale?: [number, number, number];
-  labels?: [string, string, string];
-  axisHeadScale?: number;
-  labelColor?: string;
-  hideNegativeAxes?: boolean;
-  hideAxisHeads?: boolean;
-  disabled?: boolean;
-  font?: string;
-  onClick?: (e: ThreeEvent<MouseEvent>) => null;
-};
-
-function Axis({ scale = [0.8, 0.05, 0.05], color, rotation }: AxisProps) {
-  return (
-    <group rotation={rotation}>
-      <mesh position={[0.4, 0, 0]}>
-        <boxGeometry args={scale} />
-        <meshBasicMaterial color={color} toneMapped={false} />
-      </mesh>
-    </group>
-  );
-}
-
-function AxisHead({
-  onClick,
-  font,
-  disabled,
-  arcStyle,
-  label,
-  labelColor,
-  axisHeadScale = 1,
-  ...props
-}: AxisHeadProps) {
-  const gl = useThree((state) => state.gl);
-  const texture = React.useMemo(() => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 64;
-    canvas.height = 64;
-
-    const context = canvas.getContext("2d")!;
-    context.beginPath();
-    context.arc(32, 32, 16, 0, 2 * Math.PI);
-    context.closePath();
-    context.fillStyle = arcStyle;
-    context.fill();
-
-    if (label) {
-      context.font = font;
-      context.textAlign = "center";
-      context.fillStyle = labelColor;
-      context.fillText(label, 32, 41);
-    }
-    return new CanvasTexture(canvas);
-  }, [arcStyle, label, labelColor, font]);
-
-  const [active, setActive] = React.useState(false);
-  const scale = (label ? 1 : 0.75) * (active ? 1.2 : 1) * axisHeadScale;
-  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
-    e.stopPropagation();
-    setActive(true);
-  };
-  const handlePointerOut = (e: ThreeEvent<PointerEvent>) => {
-    e.stopPropagation();
-    setActive(false);
-  };
-  return (
-    <sprite
-      scale={scale}
-      onPointerOver={!disabled ? handlePointerOver : undefined}
-      onPointerOut={!disabled ? handlePointerOut : undefined}
-      {...props}
+    <svg
+      aria-label="3D orientation gizmo"
+      height={GIZMO_SIZE}
+      viewBox={`0 0 ${GIZMO_SIZE} ${GIZMO_SIZE}`}
+      width={GIZMO_SIZE}
     >
-      <spriteMaterial
-        map={texture}
-        map-anisotropy={gl.capabilities.getMaxAnisotropy() || 1}
-        alphaTest={0.3}
-        opacity={label ? 1 : 0.75}
-        toneMapped={false}
+      <circle
+        cx={GIZMO_CENTER}
+        cy={GIZMO_CENTER}
+        fill="rgba(255, 255, 255, 0.08)"
+        r="4"
       />
-    </sprite>
-  );
-}
+      {axes.map((axis) => (
+        <g
+          aria-label={`${axis.isNegative ? "Negative" : "Positive"} ${
+            axis.name
+          } axis`}
+          className="fo3d-gizmo-axis"
+          key={`${axis.isNegative ? "negative" : "positive"}-${axis.name}`}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") {
+              return;
+            }
 
-const AnnotationGizmoViewport = ({
-  hideNegativeAxes,
-  hideAxisHeads,
-  disabled,
-  font = "18px Inter var, Arial, sans-serif",
-  axisColors = ["#ff2060", "#20df80", "#2080ff"],
-  axisHeadScale = 1,
-  axisScale,
-  labels = ["X", "Y", "Z"],
-  labelColor = "#000",
-  onClick,
-  ...props
-}: GizmoViewportProps) => {
-  const [colorX, colorY, colorZ] = axisColors;
-  const { tweenCamera } = useGizmoContext();
-  const axisHeadProps = {
-    font,
-    disabled,
-    labelColor,
-    onClick,
-    axisHeadScale,
-    onPointerDown: !disabled
-      ? (e: ThreeEvent<PointerEvent>) => {
-          tweenCamera(e.object.position);
-          e.stopPropagation();
-        }
-      : undefined,
-  };
+            event.preventDefault();
+            event.stopPropagation();
+            onAxisPointerDown(axis.direction);
+          }}
+          onPointerDown={(event) => {
+            if (!event.isPrimary || event.button !== 0) {
+              return;
+            }
 
-  return (
-    <group scale={40} {...props}>
-      <Axis color={colorX} rotation={[0, 0, 0]} scale={axisScale} />
-      <Axis color={colorY} rotation={[0, 0, Math.PI / 2]} scale={axisScale} />
-      <Axis color={colorZ} rotation={[0, -Math.PI / 2, 0]} scale={axisScale} />
-      {!hideAxisHeads && (
-        <>
-          <AxisHead
-            arcStyle={colorX}
-            position={[1, 0, 0]}
-            label={labels[0]}
-            {...axisHeadProps}
+            event.preventDefault();
+            event.stopPropagation();
+            onAxisPointerDown(axis.direction);
+          }}
+          role="button"
+          tabIndex={0}
+        >
+          <line
+            stroke={axis.color}
+            strokeLinecap="round"
+            strokeOpacity={axis.lineOpacity}
+            strokeWidth={axis.isNegative ? 3 : 4}
+            x1={GIZMO_CENTER}
+            x2={axis.endX}
+            y1={GIZMO_CENTER}
+            y2={axis.endY}
           />
-          <AxisHead
-            arcStyle={colorY}
-            position={[0, 1, 0]}
-            label={labels[1]}
-            {...axisHeadProps}
+          <circle
+            cx={axis.endX}
+            cy={axis.endY}
+            fill={axis.color}
+            fillOpacity={axis.isNegative ? 0.8 : 1}
+            r={axis.headRadius}
           />
-          <AxisHead
-            arcStyle={colorZ}
-            position={[0, 0, 1]}
-            label={labels[2]}
-            {...axisHeadProps}
-          />
-          {!hideNegativeAxes && (
-            <>
-              <AxisHead
-                arcStyle={colorX}
-                position={[-1, 0, 0]}
-                {...axisHeadProps}
-              />
-              <AxisHead
-                arcStyle={colorY}
-                position={[0, -1, 0]}
-                {...axisHeadProps}
-              />
-              <AxisHead
-                arcStyle={colorZ}
-                position={[0, 0, -1]}
-                {...axisHeadProps}
-              />
-            </>
+          {axis.label && (
+            <text
+              dominantBaseline="central"
+              fill="#000"
+              fontFamily="Inter var, Arial, sans-serif"
+              fontSize="13"
+              fontWeight="700"
+              pointerEvents="none"
+              textAnchor="middle"
+              x={axis.endX}
+              y={axis.endY + 0.5}
+            >
+              {axis.label}
+            </text>
           )}
-        </>
-      )}
-    </group>
+        </g>
+      ))}
+    </svg>
   );
 };
 
-// Custom Gizmo component that renders in its own canvas but syncs with main camera
-const CustomGizmo = ({
+const AnnotationOrientationGizmo = ({
   mainCamera,
   cameraControlsRef,
 }: {
-  mainCamera: React.RefObject<THREE.PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControlsImpl>;
+  mainCamera: RefObject<THREE.PerspectiveCamera>;
+  cameraControlsRef: RefObject<Fo3dCameraControls>;
 }) => {
-  const [mainCameraState, setMainCameraState] = useState<{
-    position: THREE.Vector3;
-    quaternion: THREE.Quaternion;
-    target: THREE.Vector3;
-  } | null>(null);
+  const [mainCameraState, setMainCameraState] =
+    useState<CameraRenderState | null>(null);
+  const previousCameraState = useRef<CameraRenderState | null>(null);
+  const cameraTarget = useRef(new THREE.Vector3());
 
-  // Sync with main camera and controls using useEffect with proper cleanup
-  React.useEffect(() => {
-    if (!mainCamera.current || !cameraControlsRef.current) return;
+  const syncCameraState = useCallback(() => {
+    const camera = mainCamera.current;
+    const controls = cameraControlsRef.current;
 
-    let animationId: number;
+    if (!camera || !controls) {
+      return;
+    }
+
+    const target = getCameraControlsTarget(controls, cameraTarget.current);
+
+    if (
+      !hasCameraRenderStateChanged(previousCameraState.current, camera, target)
+    ) {
+      return;
+    }
+
+    const nextCameraState = {
+      position: camera.position.clone(),
+      quaternion: camera.quaternion.clone(),
+      target: target.clone(),
+    };
+
+    previousCameraState.current = nextCameraState;
+    setMainCameraState(nextCameraState);
+  }, [mainCamera, cameraControlsRef]);
+
+  useEffect(() => {
+    let animationId: number | undefined;
 
     const updateCameraState = () => {
-      if (mainCamera.current && cameraControlsRef.current) {
-        const target = new THREE.Vector3();
-        cameraControlsRef.current.getTarget(target);
-
-        setMainCameraState({
-          position: mainCamera.current.position.clone(),
-          quaternion: mainCamera.current.quaternion.clone(),
-          target: target,
-        });
-      }
-
+      // The overlay lives outside the R3F canvas, so sample the refs directly
+      // and only re-render the SVG when the camera state has actually changed.
+      syncCameraState();
       animationId = requestAnimationFrame(updateCameraState);
     };
 
     updateCameraState();
 
     return () => {
-      if (animationId) {
+      if (animationId !== undefined) {
         cancelAnimationFrame(animationId);
       }
     };
-  }, [mainCamera, cameraControlsRef]);
+  }, [syncCameraState]);
 
-  // Handle camera tweening when gizmo is clicked
   const handleCameraTween = useCallback(
     (direction: THREE.Vector3) => {
-      if (!mainCamera.current || !cameraControlsRef.current || !mainCameraState)
+      if (
+        !mainCamera.current ||
+        !cameraControlsRef.current ||
+        !mainCameraState
+      ) {
         return;
+      }
 
       const target = mainCameraState.target.clone();
-      const position = mainCameraState.position.clone();
-      const radius = position.distanceTo(target);
+      const radius = mainCameraState.position.distanceTo(target);
 
-      // Calculate new position based on direction
-      const newPosition = direction.clone().multiplyScalar(radius).add(target);
-
-      // Set the new camera position
-      cameraControlsRef.current.setPosition(
-        newPosition.x,
-        newPosition.y,
-        newPosition.z,
-        true, // animate
-      );
+      setCameraControlsPosition({
+        camera: mainCamera.current,
+        controls: cameraControlsRef.current,
+        position: direction.clone().multiplyScalar(radius).add(target),
+      });
     },
     [mainCamera, cameraControlsRef, mainCameraState],
   );
 
   return (
-    <GizmoCanvas>
-      <Canvas style={{ width: "100%", height: "100%" }}>
-        <AnnotationGizmoHelper
-          externalCameraState={mainCameraState || undefined}
-          onCameraTween={handleCameraTween}
-        >
-          <AnnotationGizmoViewport />
-        </AnnotationGizmoHelper>
-      </Canvas>
-    </GizmoCanvas>
+    <GizmoContainer>
+      <AnnotationOrientationGizmoSvg
+        cameraQuaternion={mainCameraState?.quaternion ?? IDENTITY_QUATERNION}
+        onAxisPointerDown={handleCameraTween}
+      />
+    </GizmoContainer>
   );
 };
 
@@ -530,12 +362,12 @@ export const AnnotationMultiViewGizmoOverlayWrapper = ({
   mainCamera,
   cameraControlsRef,
 }: {
-  mainCamera: React.RefObject<THREE.PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControlsImpl>;
+  mainCamera: RefObject<THREE.PerspectiveCamera>;
+  cameraControlsRef: RefObject<Fo3dCameraControls>;
 }) => {
   return (
     <GizmoOverlay>
-      <CustomGizmo
+      <AnnotationOrientationGizmo
         mainCamera={mainCamera}
         cameraControlsRef={cameraControlsRef}
       />

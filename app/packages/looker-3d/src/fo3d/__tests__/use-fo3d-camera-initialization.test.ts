@@ -1,10 +1,10 @@
-import type { CameraControls } from "@react-three/drei";
 import { renderHook } from "@testing-library/react-hooks";
 import type { RefObject } from "react";
 import type { PerspectiveCamera, Vector3Tuple } from "three";
 import { Vector3 } from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useFo3dCameraInitialization } from "../../hooks/use-fo3d-camera-initialization";
+import type { Fo3dCameraControls } from "../camera-controls";
 import { FO3D_CAMERA_LIFECYCLE_ACTION } from "../camera-lifecycle";
 import { getSavedCameraState, saveCameraState } from "../utils";
 
@@ -44,19 +44,14 @@ vi.mock("../utils", () => ({
 
 type CameraHarness = {
   cameraRef: RefObject<PerspectiveCamera>;
-  cameraControlsRef: RefObject<CameraControls>;
-  setLookAt: ReturnType<typeof vi.fn>;
-  getTarget: ReturnType<typeof vi.fn>;
+  cameraControlsRef: RefObject<Fo3dCameraControls>;
+  update: ReturnType<typeof vi.fn>;
 };
 
 const makeCameraHarness = (
   targetValue: [number, number, number] = [4, 5, 6],
 ): CameraHarness => {
-  const setLookAt = vi.fn();
-  const getTarget = vi.fn((target: Vector3) => {
-    target.set(targetValue[0], targetValue[1], targetValue[2]);
-    return target;
-  });
+  const update = vi.fn();
 
   return {
     cameraRef: {
@@ -66,12 +61,11 @@ const makeCameraHarness = (
     } as unknown as RefObject<PerspectiveCamera>,
     cameraControlsRef: {
       current: {
-        setLookAt,
-        getTarget,
+        target: new Vector3(targetValue[0], targetValue[1], targetValue[2]),
+        update,
       },
-    } as unknown as RefObject<CameraControls>,
-    setLookAt,
-    getTarget,
+    } as unknown as RefObject<Fo3dCameraControls>,
+    update,
   };
 };
 
@@ -95,7 +89,7 @@ describe("useFo3dCameraInitialization", () => {
   });
 
   it("restores saved state immediately without waiting for bounds", () => {
-    const { cameraRef, cameraControlsRef, setLookAt } = makeCameraHarness();
+    const { cameraRef, cameraControlsRef, update } = makeCameraHarness();
     const dispatchCameraLifecycle = vi.fn();
 
     vi.mocked(getSavedCameraState).mockReturnValue({
@@ -118,14 +112,16 @@ describe("useFo3dCameraInitialization", () => {
     );
 
     expect(result.current.mountCameraPosition.toArray()).toEqual([10, 20, 30]);
-    expect(setLookAt).toHaveBeenCalledWith(10, 20, 30, 1, 2, 3, false);
+    expect(cameraRef.current?.position.toArray()).toEqual([10, 20, 30]);
+    expect(cameraControlsRef.current?.target.toArray()).toEqual([1, 2, 3]);
+    expect(update).toHaveBeenCalledTimes(1);
     expect(dispatchCameraLifecycle).toHaveBeenLastCalledWith({
       type: FO3D_CAMERA_LIFECYCLE_ACTION.MARK_READY,
     });
   });
 
   it("defers fallback restore until bounds pipeline is resolved", () => {
-    const { cameraRef, cameraControlsRef, setLookAt } = makeCameraHarness();
+    const { cameraRef, cameraControlsRef, update } = makeCameraHarness();
     const dispatchCameraLifecycle = vi.fn();
 
     const { rerender } = renderHook(
@@ -146,32 +142,28 @@ describe("useFo3dCameraInitialization", () => {
       },
     );
 
-    expect(setLookAt).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
     expect(dispatchCameraLifecycle).toHaveBeenLastCalledWith({
       type: FO3D_CAMERA_LIFECYCLE_ACTION.WAIT_FOR_BOUNDS,
     });
 
     rerender({ isBoundsResolved: false });
-    expect(setLookAt).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
     expect(dispatchCameraLifecycle).toHaveBeenLastCalledWith({
       type: FO3D_CAMERA_LIFECYCLE_ACTION.WAIT_FOR_BOUNDS,
     });
 
     rerender({ isBoundsResolved: true });
-    expect(setLookAt).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledTimes(1);
     expect(dispatchCameraLifecycle).toHaveBeenLastCalledWith({
       type: FO3D_CAMERA_LIFECYCLE_ACTION.MARK_READY,
     });
 
-    const [, , , targetX, targetY, targetZ, animated] = setLookAt.mock.calls[0];
-    expect(targetX).toBe(0);
-    expect(targetY).toBe(0);
-    expect(targetZ).toBe(0);
-    expect(animated).toBe(false);
+    expect(cameraControlsRef.current?.target.toArray()).toEqual([0, 0, 0]);
   });
 
   it("restores at most once per render path", () => {
-    const { cameraRef, cameraControlsRef, setLookAt } = makeCameraHarness();
+    const { cameraRef, cameraControlsRef, update } = makeCameraHarness();
     const dispatchCameraLifecycle = vi.fn();
 
     vi.mocked(getSavedCameraState).mockReturnValue({
@@ -197,17 +189,17 @@ describe("useFo3dCameraInitialization", () => {
       },
     );
 
-    expect(setLookAt).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledTimes(1);
 
     rerender({ currentRenderPath: "main" });
-    expect(setLookAt).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledTimes(1);
 
     rerender({ currentRenderPath: "multi" });
-    expect(setLookAt).toHaveBeenCalledTimes(2);
+    expect(update).toHaveBeenCalledTimes(2);
   });
 
-  it("animates post-init override only when override changes after mount", () => {
-    const { cameraRef, cameraControlsRef, setLookAt } = makeCameraHarness();
+  it("applies post-init override only when override changes after mount", () => {
+    const { cameraRef, cameraControlsRef, update } = makeCameraHarness();
     const dispatchCameraLifecycle = vi.fn();
 
     mockRecoilState.overriddenCameraPosition = [1, 2, 3];
@@ -226,21 +218,20 @@ describe("useFo3dCameraInitialization", () => {
       }),
     );
 
-    const initialAnimatedCalls = setLookAt.mock.calls.filter(
-      (call) => call[6] === true,
-    );
-    expect(initialAnimatedCalls).toHaveLength(0);
+    expect(cameraRef.current?.position.toArray()).toEqual([1, 2, 3]);
+    expect(cameraControlsRef.current?.target.toArray()).toEqual([0, 0, 0]);
+    const updateCallsAfterInit = update.mock.calls.length;
 
     mockRecoilState.overriddenCameraPosition = [4, 5, 6];
     rerender();
 
-    expect(setLookAt).toHaveBeenCalledWith(4, 5, 6, 0, 0, 0, true);
+    expect(cameraRef.current?.position.toArray()).toEqual([4, 5, 6]);
+    expect(cameraControlsRef.current?.target.toArray()).toEqual([0, 0, 0]);
+    expect(update).toHaveBeenCalledTimes(updateCallsAfterInit + 1);
   });
 
   it("uses non-degenerate target for origin override when current target is colocated", () => {
-    const { cameraRef, cameraControlsRef, setLookAt } = makeCameraHarness([
-      0, 0, 0,
-    ]);
+    const { cameraRef, cameraControlsRef } = makeCameraHarness([0, 0, 0]);
     const dispatchCameraLifecycle = vi.fn();
 
     mockRecoilState.overriddenCameraPosition = [1, 2, 3];
@@ -262,7 +253,8 @@ describe("useFo3dCameraInitialization", () => {
     mockRecoilState.overriddenCameraPosition = [0, 0, 0];
     rerender();
 
-    expect(setLookAt).toHaveBeenCalledWith(0, 0, 0, 0, 0, 1, true);
+    expect(cameraRef.current?.position.toArray()).toEqual([0, 0, 0]);
+    expect(cameraControlsRef.current?.target.toArray()).toEqual([0, 0, 1]);
   });
 
   it("persists camera state on cleanup", () => {
@@ -283,6 +275,9 @@ describe("useFo3dCameraInitialization", () => {
         dispatchCameraLifecycle,
       }),
     );
+
+    cameraRef.current?.position.set(9, 8, 7);
+    cameraControlsRef.current?.target.set(4, 5, 6);
 
     unmount();
 

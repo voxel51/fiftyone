@@ -42,8 +42,8 @@ import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
-import { useDeactivateAllModes } from "./useDeactivateAllModes";
 import { useAnnotationUndoRedo } from "./useAnnotationUndoRedo";
+import { useDeactivateAllModes } from "./useDeactivateAllModes";
 import { useGroupAnnotationSliceReady } from "./useGroupAnnotationSliceReady";
 
 const ActionsDiv = styled.div`
