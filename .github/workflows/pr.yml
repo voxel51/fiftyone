@@ -15,6 +15,10 @@ concurrency:
   # falsely green, since `all-tests` treats skipped jobs as a pass.
   cancel-in-progress: ${{ github.event.action != 'edited' || github.event.changes.base != null }}
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   modified-files:
     runs-on: ubuntu-latest
@@ -130,6 +134,11 @@ jobs:
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/test.yml
+    with:
+      python-versions: >-
+        ${{ (github.base_ref == 'develop' ||
+        startsWith(github.base_ref, 'feat/'))
+        && '["3.10", "3.12"]' || '["3.10", "3.11", "3.12"]' }}
 
   test-windows:
     needs: modified-files
@@ -138,6 +147,11 @@ jobs:
       needs.modified-files.outputs.heavy == 'true' &&
       needs.modified-files.outputs.fiftyone-changes == 'true'
     uses: ./.github/workflows/windows-test.yml
+    with:
+      python-versions: >-
+        ${{ (github.base_ref == 'develop' ||
+        startsWith(github.base_ref, 'feat/'))
+        && '["3.10", "3.12"]' || '["3.10", "3.11", "3.12"]' }}
 
   all-tests:
     runs-on: ubuntu-latest
