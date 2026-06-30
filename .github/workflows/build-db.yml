@@ -86,18 +86,14 @@ jobs:
       - name: Clone fiftyone
         uses: actions/checkout@v6
       - name: Download fiftyone-db
-        id: download-fiftyone-db
         uses: actions/download-artifact@v8
         with:
           name: dist-sdist
           path: downloads
-        background: true
       - name: Set up Python 3.10
         uses: actions/setup-python@v6
         with:
           python-version: "3.10"
-      - name: Wait for fiftyone-db
-        wait: download-fiftyone-db
       - name: Install fiftyone-db
         run: |
           pip install downloads/fiftyone_db-*.tar.gz

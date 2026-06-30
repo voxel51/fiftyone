@@ -44,10 +44,6 @@ jobs:
             requirements/common.txt
             requirements/github.txt
             requirements/test.txt
-      - name: Setup FFmpeg
-        id: setup-ffmpeg
-        uses: ./.github/actions/setup-ffmpeg
-        background: true
       - name: Install requirements
         run: |
           uv pip install --system -U wheel setuptools
@@ -61,8 +57,8 @@ jobs:
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
 
-      - name: Wait for FFmpeg
-        wait: setup-ffmpeg
+      - name: Setup FFmpeg
+        uses: ./.github/actions/setup-ffmpeg
 
       # Important: use pytest_wrapper.py instead of pytest directly to ensure
       # that services shut down cleanly and do not conflict with steps later in
