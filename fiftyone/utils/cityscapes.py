@@ -39,6 +39,7 @@ def parse_cityscapes_dataset(
     fine_annos=None,
     coarse_annos=None,
     person_annos=None,
+    extra_attrs=True,
 ):
     """Parses the Cityscapes archive(s) in the specified directory and writes
     the requested splits in subdirectories of ``dataset_dir`` in
@@ -68,6 +69,13 @@ def parse_cityscapes_dataset(
             not (False), or only if the ZIP file exists (None)
         person_annos (None): whether to load the person detections (True), or
             not (False), or only if the ZIP file exists (None)
+        extra_attrs (True): whether to load extra attributes onto the person
+            detections. Only applies when ``person_annos`` are loaded.
+            Supported values are:
+
+            -   ``True``: load all extra attributes
+            -   ``False``: do not load any extra attributes
+            -   a name or list of names of specific attributes to load
 
     Raises:
         OSError: if any required source files are not present
@@ -111,6 +119,7 @@ def parse_cityscapes_dataset(
             fine_annos_dir,
             coarse_annos_dir,
             person_annos_dir,
+            extra_attrs=extra_attrs,
         )
 
 
@@ -218,6 +227,7 @@ def _export_split(
     fine_annos_dir,
     coarse_annos_dir,
     person_annos_dir,
+    extra_attrs=True,
 ):
     images_map = _parse_images(images_dir, split)
 
@@ -232,7 +242,9 @@ def _export_split(
         coarse_annos_map = {}
 
     if person_annos_dir:
-        person_annos_map = _parse_person_annos(person_annos_dir, split)
+        person_annos_map = _parse_person_annos(
+            person_annos_dir, split, extra_attrs=extra_attrs
+        )
     else:
         person_annos_map = {}
 
@@ -377,7 +389,7 @@ def _parse_polygon_annos(glob_patt, split, anno_type, suffix):
     return annos_map
 
 
-def _parse_person_annos(person_annos_dir, split):
+def _parse_person_annos(person_annos_dir, split, extra_attrs=True):
     paths_patt = os.path.join(person_annos_dir, split, "*", "*.json")
     anno_paths = etau.get_glob_matches(paths_patt)
     if not anno_paths:
@@ -390,7 +402,9 @@ def _parse_person_annos(person_annos_dir, split):
             uuid = os.path.splitext(os.path.basename(anno_path))[0][
                 : -len("_gtBboxCityPersons")
             ]
-            detections_map[uuid] = _parse_bbox_file(anno_path)
+            detections_map[uuid] = _parse_bbox_file(
+                anno_path, extra_attrs=extra_attrs
+            )
 
     return detections_map
 
@@ -413,7 +427,7 @@ def _parse_polygons_file(json_path):
     return fol.Polylines(polylines=polylines)
 
 
-def _parse_bbox_file(json_path):
+def _parse_bbox_file(json_path, extra_attrs=True):
     d = etas.load_json(json_path)
 
     width = d["imgWidth"]
@@ -424,7 +438,23 @@ def _parse_bbox_file(json_path):
         label = obj["label"]
         x, y, w, h = obj["bbox"]
         bounding_box = [x / width, y / height, w / width, h / height]
-        detection = fol.Detection(label=label, bounding_box=bounding_box)
+        attributes = _parse_bbox_attributes(obj, extra_attrs)
+        detection = fol.Detection(
+            label=label, bounding_box=bounding_box, **attributes
+        )
         detections.append(detection)
 
     return fol.Detections(detections=detections)
+
+
+def _parse_bbox_attributes(obj, extra_attrs):
+    if extra_attrs is True:
+        return {k: v for k, v in obj.items() if k not in ("label", "bbox")}
+
+    if not extra_attrs:
+        return {}
+
+    if etau.is_str(extra_attrs):
+        extra_attrs = [extra_attrs]
+
+    return {k: obj[k] for k in extra_attrs if k in obj}
