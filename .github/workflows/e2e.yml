@@ -53,8 +53,9 @@ jobs:
         with:
           path: fiftyone/server/static
           key: app-static-${{ runner.os }}-${{ steps.app-tree-hash.outputs.hash }}
+        background: true
 
-      - name: Cache Node Modules
+      - name: Cache app Node Modules
         id: app-node-cache
         uses: actions/cache@v5
         with:
@@ -62,25 +63,7 @@ jobs:
             app/node_modules
             app/.yarn/cache
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
-
-      - name: Install app
-        if: steps.app-static-cache.outputs.cache-hit != 'true' && steps.app-node-cache.outputs.cache-hit != 'true'
-        run: yarn install
-        working-directory: app
-
-      - name: Build app
-        if: steps.app-static-cache.outputs.cache-hit != 'true'
-        run: make app
-
-      - name: Bundle built app static assets
-        run: tar -czf e2e-app-static.tgz fiftyone/server/static
-
-      - name: Upload built app static assets
-        uses: actions/upload-artifact@v7
-        with:
-          name: e2e-app-static
-          path: e2e-app-static.tgz
-          retention-days: 1
+        background: true
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
@@ -89,6 +72,21 @@ jobs:
           path: |
             e2e-pw/node_modules
           key: node-modules-${{ hashFiles('e2e-pw/yarn.lock') }}
+        background: true
+
+      - name: Wait for dependency caches
+        wait: [app-static-cache, app-node-cache, e2e-node-cache]
+
+      - name: Install app
+        if: steps.app-static-cache.outputs.cache-hit != 'true' && steps.app-node-cache.outputs.cache-hit != 'true'
+        run: yarn install
+        working-directory: app
+
+      - name: Build app
+        id: build-app
+        if: steps.app-static-cache.outputs.cache-hit != 'true'
+        run: make app
+        background: true
 
       - name: Install E2E dependencies if not cached
         run: yarn install
@@ -112,6 +110,20 @@ jobs:
         run: yarn playwright install chromium
         if: steps.playwright-browser-cache.outputs.cache-hit != 'true'
         working-directory: e2e-pw
+
+      - name: Wait for app build
+        if: steps.app-static-cache.outputs.cache-hit != 'true'
+        wait: build-app
+
+      - name: Bundle built app static assets
+        run: tar -czf e2e-app-static.tgz fiftyone/server/static
+
+      - name: Upload built app static assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-app-static
+          path: e2e-app-static.tgz
+          retention-days: 1
 
   test-e2e:
     needs: prepare-e2e
@@ -211,22 +223,17 @@ jobs:
         uses: jlumbroso/free-disk-space@v1.3.1
         with:
           large-packages: false # e2e test failed when `true`
-      - name: Install requirements
+      - name: Install Python dependencies
+        id: install-python-dependencies
         run: |
           uv pip install --system -r requirements/e2e.txt
-
-      - name: Install fiftyone
-        run: |
           uv pip install --system '.[multimodal]' -r requirements/e2e.txt
-
-      - name: Configure
-        id: test_config
-        run: |
-          python tests/utils/setup_config.py
-          python tests/utils/github_actions_flags.py
+        background: true
 
       - name: Setup FFmpeg
+        id: setup-ffmpeg
         uses: ./.github/actions/setup-ffmpeg
+        background: true
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
@@ -258,6 +265,18 @@ jobs:
         run: yarn playwright install chromium
         if: steps.playwright-browser-cache.outputs.cache-hit != 'true'
         working-directory: e2e-pw
+
+      - name: Wait for Python dependencies
+        wait: install-python-dependencies
+
+      - name: Configure
+        id: test_config
+        run: |
+          python tests/utils/setup_config.py
+          python tests/utils/github_actions_flags.py
+
+      - name: Wait for FFmpeg
+        wait: setup-ffmpeg
 
       - name: Run Playwright tests
         run: yarn e2e --shard=${{ matrix.shard }}/4

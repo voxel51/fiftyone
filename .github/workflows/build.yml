@@ -54,6 +54,7 @@ jobs:
         with:
           path: fiftyone/server/static
           key: app-static-${{ runner.os }}-${{ steps.app-tree-hash.outputs.hash }}
+        background: true
 
       - name: Cache Node Modules
         id: node-cache
@@ -63,6 +64,10 @@ jobs:
             app/node_modules
             app/.yarn/cache
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
+        background: true
+
+      - name: Wait for caches
+        wait: [app-static-cache, node-cache]
       - name: Install app
         if: steps.app-static-cache.outputs.cache-hit != 'true' && steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
