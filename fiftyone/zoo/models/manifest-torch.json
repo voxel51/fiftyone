@@ -11168,6 +11168,7 @@
                     "torchvision",
                     "transformers",
                     "timm",
+                    "torchscale",
                     "einops",
                     "safetensors"
                 ],

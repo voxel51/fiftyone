@@ -62,12 +62,8 @@ class OpenWorldSAMTransform:
         self._using_half_precision = using_half_precision
 
     def __call__(self, img):
-        from PIL import Image as PILImage
-
-        if isinstance(img, PILImage.Image):
-            arr = np.array(img.convert("RGB"))
-        else:
-            arr = np.asarray(img)
+        pil = fout.to_rgb_pil(img)
+        arr = np.array(pil)
 
         h, w = arr.shape[:2]
 
@@ -89,7 +85,7 @@ class OpenWorldSAMTransform:
             sam_tensor = sam_tensor.half()
 
         # BEiT-3 branch: resize to 224×224, [0.5, 0.5, 0.5] normalization
-        pil = PILImage.fromarray(arr)
+        pil = fout.to_rgb_pil(arr)
         beit_tensor = _BEIT_TRANSFORM(pil)
         beit_tensor = beit_tensor.to(self._device)
         if self._using_half_precision:
@@ -185,10 +181,10 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
     Args:
         name_or_path (None): HF repo ID or local path to the OpenWorldSAM model
             uploaded with ``trust_remote_code=True``
-        iou_threshold (0.5): minimum IoU score to keep an instance
-        class_names (None): list of text prompts for zero-shot segmentation.
+        iou_thresh (0.5): minimum IoU score to keep an instance
+        classes (None): list of text prompts for zero-shot segmentation.
             Defaults to all 150 ADE20K categories
-        nms_threshold (0.2): NMS IoU threshold for duplicate suppression
+        nms_thresh (0.2): NMS IoU threshold for duplicate suppression
         top_k (100): maximum instances returned per image
     """
 
@@ -196,28 +192,17 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
         d = self.init(d)
         super().__init__(d)
         self.name_or_path = self.parse_string(d, "name_or_path")
-        self.iou_threshold = self.parse_number(d, "iou_threshold", default=0.5)
-        self.class_names = self.parse_array(d, "class_names", default=None)
-        self.nms_threshold = self.parse_number(d, "nms_threshold", default=0.2)
+        self.iou_thresh = self.parse_number(d, "iou_thresh", default=0.5)
+        self.nms_thresh = self.parse_number(d, "nms_thresh", default=0.2)
         self.top_k = self.parse_int(d, "top_k", default=100)
         self.raw_inputs = True  # items are dicts, not stackable tensors
         self.validate_config()
 
     def validate_config(self):
-        if self.class_names is not None:
-            if not self.class_names:
-                raise ValueError(
-                    "class_names must contain at least one prompt"
-                )
-            if any(
-                not isinstance(c, str) or not c.strip()
-                for c in self.class_names
-            ):
-                raise ValueError("class_names must contain non-empty strings")
-        if not 0 <= self.iou_threshold <= 1:
-            raise ValueError("iou_threshold must be in [0, 1]")
-        if not 0 <= self.nms_threshold <= 1:
-            raise ValueError("nms_threshold must be in [0, 1]")
+        if not 0 <= self.iou_thresh <= 1:
+            raise ValueError("iou_thresh must be in [0, 1]")
+        if not 0 <= self.nms_thresh <= 1:
+            raise ValueError("nms_thresh must be in [0, 1]")
         if self.top_k < 1:
             raise ValueError("top_k must be >= 1")
 
@@ -240,7 +225,7 @@ class OpenWorldSAMModel(fout.TorchImageModel):
         dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
         model = foz.load_zoo_model(
             "openworld-sam-ade20k-torch",
-            class_names=["person", "car", "chair", "table"],
+            classes=["person", "car", "chair", "table"],
         )
         dataset.apply_model(model, label_field="owsam_pred")
         session = fo.launch_app(dataset)
@@ -253,8 +238,8 @@ class OpenWorldSAMModel(fout.TorchImageModel):
         fout.TorchImageModel.__init__(self, config)
 
     def _parse_classes(self, config):
-        if config.class_names:
-            return list(config.class_names)
+        if config.classes is not None:
+            return list(config.classes)
         return _load_ade20k_classes()
 
     def _download_model(self, config):
@@ -284,8 +269,8 @@ class OpenWorldSAMModel(fout.TorchImageModel):
         ).OpenWorldSAMModel
 
         hf_config = OpenWorldSAMConfig(
-            nms_threshold=config.nms_threshold,
-            iou_threshold=config.iou_threshold,
+            nms_thresh=config.nms_thresh,
+            iou_thresh=config.iou_thresh,
             detections_per_image=config.top_k,
         )
         self._hf_model = OpenWorldSAMModel.from_pretrained(
@@ -312,7 +297,6 @@ class OpenWorldSAMModel(fout.TorchImageModel):
         return OpenWorldSAMOutputProcessor(classes=self._classes)
 
     def _forward_pass(self, imgs):
-        # self._classes is always set by _parse_classes before inference
         prompts = list(self._classes)
         # Assign sequential integer IDs; class labels in output index into this list
         category_ids = list(range(len(prompts)))
