@@ -32,7 +32,12 @@ export default function AddPanelItem({
         const newNode = new SpaceNode();
         newNode.type = name;
         spaces.addNodeAfter(node, newNode);
-        if (e.altKey) {
+        if (e.altKey && e.shiftKey) {
+          // Shift+Alt opens the panel full-screen: it was already added as a
+          // tab above, so we intentionally skip splitting the layout. This
+          // preserves full-screen open, which split-by-default would otherwise
+          // remove entirely.
+        } else if (e.altKey) {
           spaces.splitLayout(node, Layout.Horizontal);
         } else if (e.shiftKey) {
           spaces.splitLayout(node, Layout.Vertical);
