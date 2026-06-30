@@ -95,8 +95,6 @@ jobs:
       needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/test.yml
     with:
-      # Boundary versions only (drop the 3.11 middle) on develop/feature PRs;
-      # full Python coverage on every other base (release/main, etc.).
       python-versions: >-
         ${{ (github.base_ref == 'develop' ||
         startsWith(github.base_ref, 'feat/'))

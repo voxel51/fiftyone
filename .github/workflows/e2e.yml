@@ -273,4 +273,5 @@ jobs:
         with:
           name: playwright-report-mongodb-${{ matrix.mongodb-version }}-shard-${{ matrix.shard }}
           path: e2e-pw/playwright-report/
-          retention-days: 1
+          # 3 days so reports from Friday/weekend runs survive into Monday.
+          retention-days: 3
