@@ -166,7 +166,7 @@ tasks open in labeling mode; review tasks open in review mode.
 Task Mode
 ~~~~~~~~~
 
-When you open a sample as part of a task, the sample modal adds two 
+When you open a sample as part of a task, the sample modal adds two
 surfaces alongside the usual viewer:
 
 **Task banner.** Displays task progress at a glance, along with a
@@ -205,9 +205,6 @@ it came from. The task progress (for example,
 *"2 / 2 samples reviewed · 0 remaining (1 rejected)"*) reflects outcomes,
 and you complete the task with **Task complete** once all samples have
 been reviewed.
-
-Use the discussion tray to leave :ref:`comments <enterprise-comments>` on
-individual samples to flag issues to your teammates.
 
 .. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_review_task.webp
    :alt: Review task mode showing APPROVED and REJECTED badges on a grid
