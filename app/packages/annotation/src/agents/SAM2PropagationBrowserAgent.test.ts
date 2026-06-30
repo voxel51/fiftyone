@@ -17,7 +17,6 @@ const keyframe = (
   index: 2,
   instance: { _cls: "Instance", _id: INSTANCE },
   keyframe: true,
-  propagation: null,
   ...overrides,
 });
 
@@ -56,7 +55,7 @@ const baseArgs = (
 });
 
 describe("SAM2PropagationBrowserAgent forward run", () => {
-  it("emits the horizon frame and records a single parent keyframe", async () => {
+  it("emits the horizon frame with no propagation provenance", async () => {
     const emitted: Array<{ frame: number; det: PropagatedDetection }> = [];
     const { agent } = makeAgent();
 
@@ -68,14 +67,15 @@ describe("SAM2PropagationBrowserAgent forward run", () => {
     for (const { det } of emitted) {
       expect(det.keyframe).toBe(false);
       expect(det.instance?._id).toBe(INSTANCE);
-      expect(det.propagation?.method).toBe("sam2");
-      expect(det.propagation?.parent_keyframes).toEqual(["seed"]);
+      // No `propagation` blob: it would persist as a `replace` over a
+      // server-absent path on the next edit (the frame-patch error).
+      expect(det).not.toHaveProperty("propagation");
     }
   });
 });
 
 describe("SAM2PropagationBrowserAgent bracketed run", () => {
-  it("leaves both keyframe endpoints untouched and records two parents", async () => {
+  it("leaves both keyframe endpoints untouched and writes no provenance", async () => {
     const emitted: Array<{ frame: number; det: PropagatedDetection }> = [];
     const { agent } = makeAgent();
 
@@ -86,9 +86,6 @@ describe("SAM2PropagationBrowserAgent bracketed run", () => {
 
     // Both endpoints (frames 1 and 3) are user keyframes → only frame 2.
     expect(emitted.map((e) => e.frame)).toEqual([2]);
-    expect(emitted[0].det.propagation?.parent_keyframes).toEqual([
-      "seed",
-      "end",
-    ]);
+    expect(emitted[0].det).not.toHaveProperty("propagation");
   });
 });

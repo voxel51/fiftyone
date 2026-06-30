@@ -13,8 +13,8 @@ import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 
 /**
  * Builds the bridge's `onEditCommit` callback: after a box drag / resize lands
- * on the engine, promote the touched frame to a keyframe (clearing any
- * interpolation provenance) and dispatch `annotation:keyframeChanged` so
+ * on the engine, promote the touched frame to a keyframe and dispatch
+ * `annotation:keyframeChanged` so
  * {@link useAutoInterpolate} re-lerps the bracketing segments against the new
  * geometry. This is the engine-era equivalent of the wiring the pre-engine
  * `upsertFromOverlay` carried via `toLocalDetection`. The promotion write folds
@@ -50,16 +50,13 @@ export const useKeyframePromotionOnEdit = (): ((
       }
 
       // Promote the touched frame to a keyframe when it isn't one already,
-      // clearing interpolation provenance, folded into the edit's undo unit (the
-      // commit's `undoKey`). An already-keyframe edit writes nothing here (no
-      // empty undo entry) but still re-lerps below against its new geometry.
+      // folded into the edit's undo unit (the commit's `undoKey`). An
+      // already-keyframe edit writes nothing here (no empty undo entry) but
+      // still re-lerps below against its new geometry.
       if (!det.keyframe) {
         engine.transaction(
           () => {
-            engine.updateLabel(ref, {
-              keyframe: true,
-              ...(det.propagation ? { propagation: null } : {}),
-            });
+            engine.updateLabel(ref, { keyframe: true });
           },
           { undoKey },
         );

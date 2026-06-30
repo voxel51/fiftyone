@@ -20,7 +20,6 @@ function keyframe(
     label: "car",
     bounding_box: bbox,
     keyframe: true,
-    propagation: null,
   };
 }
 
@@ -34,7 +33,7 @@ describe("PropagationBrowserAgent.infer", () => {
   it("lerps a bbox between two keyframes and emits one Detection per in-between frame", async () => {
     const agent = new PropagationBrowserAgent();
     // For a tracked object both keyframes share one synthetic overlay id
-    // (`instance-<...>`); provenance must record their distinct mongo `_id`s.
+    // (`instance-<...>`); their distinct mongo `_id`s are carried for identity.
     const left = keyframe("instance-inst-1", [0.0, 0.0, 0.1, 0.1], "oid-left");
     const right = keyframe(
       "instance-inst-1",
@@ -65,9 +64,35 @@ describe("PropagationBrowserAgent.infer", () => {
       _cls: "Instance",
       _id: "inst-1",
     });
-    expect(midpoint?.detection.propagation).toMatchObject({
-      method: "linear",
-      parent_keyframes: ["oid-left", "oid-right"],
-    });
+  });
+
+  // Interpolated detections must carry no `propagation` provenance blob. The
+  // client persisted that blob against a baseline that held `propagation: null`
+  // (written on keyframe promotion) while the server stored the field as
+  // absent, so a later null→blob transition diffed as a `replace` over a
+  // path the server can't resolve — the frame-patch error. No blob, no replace.
+  it("emits no propagation provenance on interpolated detections", async () => {
+    const agent = new PropagationBrowserAgent();
+    const left = keyframe("instance-inst-1", [0.0, 0.0, 0.1, 0.1], "oid-left");
+    const right = keyframe(
+      "instance-inst-1",
+      [1.0, 1.0, 0.1, 0.1],
+      "oid-right",
+    );
+
+    const context: PropagationContext = {
+      ...baseContext,
+      fromFrame: 5,
+      toFrame: 15,
+      parentKeyframes: [left, right],
+    };
+
+    const result = (await agent.infer(
+      context,
+    )) as SyncInferenceResult<PropagationInferenceResult> & { labelId: string };
+
+    for (const { detection } of result.response.perFrame) {
+      expect(detection).not.toHaveProperty("propagation");
+    }
   });
 });

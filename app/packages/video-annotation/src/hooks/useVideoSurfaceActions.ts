@@ -209,12 +209,6 @@ const makeTrackOps = (
           const set = !det.keyframe;
           const update: Partial<LabelData> = { keyframe: set };
 
-          // promotion clears interpolation provenance — only when present, so
-          // an unchanged baseline doesn't accrue a no-op `propagation: null` op
-          if (set && det.propagation) {
-            update.propagation = null;
-          }
-
           actions.updateLabel({ path: labelPath, instanceId, frame }, update);
           changed.push({ trackId, instanceId, set, path: labelPath });
         }

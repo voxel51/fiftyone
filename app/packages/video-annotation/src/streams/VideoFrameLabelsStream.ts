@@ -442,7 +442,6 @@ function extractDetections(
       index: det.index,
       instance: det.instance ?? undefined,
       keyframe: det.keyframe ?? false,
-      propagation: det.propagation ?? null,
     });
   }
 
