@@ -38,7 +38,7 @@ created), **Running** (actively routing samples through its stages), or
 Workflows are built from **stages**. The core stage types are:
 
 - **Input samples** — a fixed first stage that defines which samples the
-  workflow runs on. These are chosen when the workflow is started.
+  workflow runs on.
 - **Annotate** — assignees label the samples that reach this stage and
   submit the samples as they finish.
 - **Review** — assignees approve or reject labeled samples. A review stage
