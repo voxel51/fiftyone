@@ -11,7 +11,7 @@ import {
   Typography,
   TypographyProps,
 } from "@mui/material";
-import React, { useState } from "react";
+import { useState } from "react";
 import TooltipProvider from "../TooltipProvider";
 
 export default function EditableLabel(props: EditableLabelProps) {
@@ -44,7 +44,7 @@ export default function EditableLabel(props: EditableLabelProps) {
   // When a placeholder is supplied and the value is empty, render the
   // muted placeholder so the field stays a visible (clickable) target —
   // e.g. an unset description. Otherwise render exactly as before so
-  // existing consumers are unaffected.
+  // existing consumers are byte-for-byte unaffected.
   const showPlaceholder = !label && placeholder !== undefined;
   const labelNode = showPlaceholder ? (
     <Typography
@@ -135,7 +135,9 @@ export default function EditableLabel(props: EditableLabelProps) {
               </Stack>
             ),
           }}
-          sx={{ backgroundColor: "#191919" }}
+          sx={{
+            backgroundColor: (theme) => theme.palette.background.overlay75,
+          }}
         />
       )}
       {mode === "view" && iconPosition === "end" && editIcon}
