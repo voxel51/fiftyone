@@ -32,7 +32,8 @@ tab to see two areas:
 
 Each workflow has a **status** that reflects where it is in its lifecycle:
 **Draft** (still being designed), **Started** (launched, with tasks being
-created), or **Running** (actively routing samples through its stages).
+created), **Running** (actively routing samples through its stages), or
+**Completed** (all samples have been fully processed).
 
 Workflows are built from **stages**. The core stage types are:
 
