@@ -4,14 +4,8 @@ import {
   useAnnotationEventHandler,
   useSurfaceActions,
 } from "@fiftyone/annotation";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
-import { useVideoLabelsIndex } from "./useVideoLabelsIndex";
-import { useFrameLabelFields } from "../state/accessors";
-import {
-  readEngineOverlay,
-  resolveInstanceFrameLayout,
-} from "../tracks/frameTracks";
 import { useVideoPropagate } from "./useVideoPropagate";
 
 const SURFACE = "video";
@@ -61,13 +55,10 @@ export function resolveSegmentsToRepropagate(
  * Subscribe to `annotation:keyframeChanged` and re-propagate (linear) each
  * in-between segment that needs re-lerping against the new keyframe layout.
  *
- * The keyframe/presence layout is read from the server index (`keyframes` is a
- * first-class field there) merged with the engine's edited-frame overlay, so
- * the layout reflects the edit that just fired the event WITHOUT walking the
- * clip. Only the affected span's box geometry is then fetched on demand — the
- * index carries no payloads. Mount once inside the surface; a no-op until a
- * stream is published (it supplies the field path) and an instance is
- * identified.
+ * Keyframe frames are read from the engine, so the layout reflects the edit
+ * that just fired the event. Mount once inside the surface; a no-op until a
+ * stream is published
+ * (it supplies the field path / frame count) and an instance is identified.
  */
 export const useAutoInterpolate = (): void => {
   const engine = useAnnotationEngine();
@@ -76,16 +67,10 @@ export const useAutoInterpolate = (): void => {
   const propagate = useVideoPropagate();
   const actions = useSurfaceActions(engine, SURFACE);
 
-  // The presence/keyframe baseline for every active frame field. `keyframes`
-  // rides the index for free, so no dynamic-attribute projection is needed.
-  const frameFields = useFrameLabelFields();
-  const fields = useMemo(() => Object.keys(frameFields), [frameFields]);
-  const { indexByPath } = useVideoLabelsIndex(stream, fields);
-
   useAnnotationEventHandler(
     "annotation:keyframeChanged",
     useCallback(
-      async (payload) => {
+      (payload) => {
         if (!stream) {
           return;
         }
@@ -99,46 +84,35 @@ export const useAutoInterpolate = (): void => {
         // re-lerp on the field the change happened on (a non-primary track,
         // e.g. a polyline, re-lerps in place); fall back to the primary field
         const path = payload.path ?? `frames.${stream.labelsField}`;
+        const keyframeFrames: number[] = [];
+        // Every frame the instance is present on (keyframe or filler). The tail
+        // step-hold below walks the trailing filler.
+        const presentFrames: number[] = [];
 
-        // Keyframe + presence frames from the index baseline ⊕ the engine's
-        // edited-frame overlay — the payload-free layout, no whole-clip walk.
-        const { keyframeFrames, presentFrames } = resolveInstanceFrameLayout(
-          indexByPath[path] ?? [],
-          readEngineOverlay(engine, sampleId, path),
-          instanceId,
-        );
+        for (let f = 1; f <= stream.totalFrames; f++) {
+          const det = engine.getLabel({
+            sample: sampleId,
+            path,
+            instanceId,
+            frame: f,
+          });
+
+          if (!det) {
+            continue;
+          }
+
+          presentFrames.push(f);
+
+          if (det.keyframe) {
+            keyframeFrames.push(f);
+          }
+        }
 
         const segments = resolveSegmentsToRepropagate(
           keyframeFrames,
           frame,
           kind,
         );
-
-        // The tail step-hold (Case C below) walks the trailing filler when the
-        // LAST keyframe is edited — empty otherwise. Computed up front so the
-        // on-demand fetch covers it.
-        const hasNextKeyframe = keyframeFrames.some((kf) => kf > frame);
-        const tailFrames =
-          kind === "set" && !hasNextKeyframe
-            ? presentFrames.filter((f) => f > frame)
-            : [];
-
-        // Fetch only the affected span's box geometry: the segment endpoints the
-        // re-lerp reads, the in-between filler it overwrites, and the tail filler
-        // the step-hold rewrites. The index gave us the layout for free — the
-        // boxes are the one thing it doesn't carry.
-        let lo = frame;
-        let hi = frame;
-        for (const [from, to] of segments) {
-          lo = Math.min(lo, from);
-          hi = Math.max(hi, to);
-        }
-
-        if (tailFrames.length > 0) {
-          hi = Math.max(hi, tailFrames[tailFrames.length - 1]);
-        }
-
-        await stream.fetchRange(lo, hi);
 
         // Re-lerp under the triggering edit's gesture key (when present) so
         // each segment coalesces into that edit's single undo unit, on the
@@ -156,46 +130,51 @@ export const useAutoInterpolate = (): void => {
         // Step-hold the edited keyframe's box forward over that filler,
         // coalesced into the edit's undo unit. Detections only — a keyframe is a
         // bbox concern (mirrors the guard in `useKeyframePromotionOnEdit`).
-        if (tailFrames.length === 0) {
-          return;
-        }
+        if (kind === "set") {
+          const anchor = engine.getLabel({
+            sample: sampleId,
+            path,
+            instanceId,
+            frame,
+          });
+          const hasNextKeyframe = keyframeFrames.some((kf) => kf > frame);
 
-        const anchor = engine.getLabel({
-          sample: sampleId,
-          path,
-          instanceId,
-          frame,
-        });
+          if (
+            anchor &&
+            Array.isArray(anchor.bounding_box) &&
+            !hasNextKeyframe
+          ) {
+            const tailFrames = presentFrames.filter((f) => f > frame);
 
-        if (!anchor || !Array.isArray(anchor.bounding_box)) {
-          return;
-        }
+            if (tailFrames.length > 0) {
+              actions.transaction(
+                () => {
+                  for (const tailFrame of tailFrames) {
+                    const existing = engine.getLabel({
+                      sample: sampleId,
+                      path,
+                      instanceId,
+                      frame: tailFrame,
+                    });
 
-        actions.transaction(
-          () => {
-            for (const tailFrame of tailFrames) {
-              const existing = engine.getLabel({
-                sample: sampleId,
-                path,
-                instanceId,
-                frame: tailFrame,
-              });
+                    // Only overwrite filler — never a real keyframe in the tail.
+                    if (!existing || existing.keyframe === true) {
+                      continue;
+                    }
 
-              // Only overwrite filler — never a real keyframe in the tail.
-              if (!existing || existing.keyframe === true) {
-                continue;
-              }
-
-              actions.updateLabel(
-                { path, instanceId, frame: tailFrame },
-                { bounding_box: anchor.bounding_box, keyframe: false },
+                    actions.updateLabel(
+                      { path, instanceId, frame: tailFrame },
+                      { bounding_box: anchor.bounding_box, keyframe: false },
+                    );
+                  }
+                },
+                undoKey ? { undoKey } : undefined,
               );
             }
-          },
-          undoKey ? { undoKey } : undefined,
-        );
+          }
+        }
       },
-      [engine, sampleId, stream, propagate, actions, indexByPath],
+      [engine, sampleId, stream, propagate, actions],
     ),
   );
 };
