@@ -6,7 +6,6 @@ import {
   Orientation,
   Spacing,
 } from "@voxel51/voodo";
-import React from "react";
 import { SimilarityRun } from "../../types";
 import SampleThumbnails from "./SampleThumbnails";
 import { ExpandedSection } from "../styled";

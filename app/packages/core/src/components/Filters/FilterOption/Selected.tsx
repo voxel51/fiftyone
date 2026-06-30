@@ -1,5 +1,4 @@
 import { isSidebarFilterMode } from "@fiftyone/state";
-import React from "react";
 import { useRecoilValue } from "recoil";
 import { getIcon } from "./FilterItem";
 import { Option, OptionKey } from "./useOptions";

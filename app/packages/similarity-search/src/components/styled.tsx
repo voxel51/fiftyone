@@ -9,7 +9,7 @@
  * containers. Keep styled() wrappers only for components that need
  * non-flex CSS (borders, backgrounds, positioning, fixed dimensions).
  */
-import React, { CSSProperties, HTMLAttributes, forwardRef } from "react";
+import { CSSProperties, HTMLAttributes, forwardRef } from "react";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 

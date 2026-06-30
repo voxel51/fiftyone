@@ -2,7 +2,7 @@ import { MuiButton } from "@fiftyone/components";
 import { Typography } from "@mui/material";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import styled from "styled-components";
 import { CheckboxView } from "../../../../../plugins/SchemaIO/components";
 import { useAnnotationContext } from "../Edit/useAnnotationContext";

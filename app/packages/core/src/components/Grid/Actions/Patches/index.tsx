@@ -1,7 +1,7 @@
 import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { FlipToBack } from "@mui/icons-material";
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import Loading from "../../../Actions/Loading";
 import type { ActionProps } from "../../../Actions/types";

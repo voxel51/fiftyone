@@ -1,7 +1,7 @@
 import { PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject, ReactNode } from "react";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import Popout from "../../../Actions/Popout";
 import Checkbox from "../../../Common/Checkbox";

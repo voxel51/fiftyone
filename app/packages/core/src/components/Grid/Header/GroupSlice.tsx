@@ -1,6 +1,6 @@
 import { Selector } from "@fiftyone/components";
 import { groupSlice, groupSlices, useSetGroupSlice } from "@fiftyone/state";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 
 const Slice = ({ value }: { className?: string; value: string }) => {

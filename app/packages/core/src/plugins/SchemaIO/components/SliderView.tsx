@@ -1,5 +1,5 @@
 import { Box, Grid, Slider, TextField, Typography } from "@mui/material";
-import { isNumber, isEqual } from "lodash";
+import { isNumber } from "lodash";
 import React, { useEffect, useRef, useState } from "react";
 import { useKey } from "../hooks";
 import { autoFocus, getComponentProps } from "../utils";

@@ -1,5 +1,4 @@
 import { FormControlLabel, Switch } from "@mui/material";
-import React from "react";
 import { HeaderView } from ".";
 import { autoFocus, getComponentProps } from "../utils";
 import { useKey } from "../hooks";
