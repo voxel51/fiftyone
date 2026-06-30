@@ -56,6 +56,8 @@ beforeEach(() => {
 
 describe("useKeyframePromotionOnEdit", () => {
   it("promotes a non-keyframe frame and re-lerps, folded into the edit's undo unit", () => {
+    // Legacy data may still carry a `propagation` blob; promotion must NOT
+    // try to clear it with `propagation: null` (that null is the poison).
     frameData = { A: det({ keyframe: false, propagation: { foo: 1 } }) };
 
     render()("A", PATH, "gesture:1");
@@ -64,9 +66,12 @@ describe("useKeyframePromotionOnEdit", () => {
     expect(mockEngine.transaction.mock.calls[0][1]).toEqual({
       undoKey: "gesture:1",
     });
+    // Promotion writes only `keyframe: true` — no `propagation: null`, which
+    // would seed a null baseline that the next re-lerp diffs as a `replace`
+    // over a server-absent path (the frame-patch error).
     expect(mockEngine.updateLabel).toHaveBeenCalledWith(
       { sample: SAMPLE, path: PATH, instanceId: "A", frame: FRAME },
-      { keyframe: true, propagation: null },
+      { keyframe: true },
     );
     expect(mockBus.dispatch).toHaveBeenCalledWith(
       "annotation:keyframeChanged",

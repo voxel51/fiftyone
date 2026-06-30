@@ -107,18 +107,6 @@ export class SAM2PropagationBrowserAgent implements AnnotationAgent<PropagationI
 
     await this.ensureInitialized();
 
-    const runId = objectId();
-    // Provenance records the source keyframes' mongo `_id`s (not the
-    // cross-frame-stable synthetic overlay id, which is identical for both
-    // ends of a track); fall back to the synthetic id only if unpersisted.
-    // A forward run has a single parent (the seed); a bracketed run has two.
-    const parentKeyframes: [string, ...string[]] = args.endKeyframe
-      ? [
-          args.seedKeyframe._id ?? args.seedKeyframe.id,
-          args.endKeyframe._id ?? args.endKeyframe.id,
-        ]
-      : [args.seedKeyframe._id ?? args.seedKeyframe.id];
-
     this.setStatus("inferring");
 
     try {
@@ -162,11 +150,6 @@ export class SAM2PropagationBrowserAgent implements AnnotationAgent<PropagationI
             index: args.seedKeyframe.index,
             instance: { _cls: "Instance", _id: args.instanceId },
             keyframe: false,
-            propagation: {
-              method: "sam2",
-              run_id: runId,
-              parent_keyframes: parentKeyframes,
-            },
           };
 
           args.onDetection(frameIdx, detection);
