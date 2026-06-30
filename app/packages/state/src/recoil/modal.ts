@@ -204,22 +204,18 @@ export const modalSample = graphQLSelector<
  */
 export const groupSampleAtMainSlice = graphQLSelector<
   VariablesOf<mainSampleQuery>,
-  ModalSample
+  ModalSample | null
 >({
   environment: RelayEnvironmentKey,
   key: "groupSampleAtMainSlice",
   query: mainSample,
-  mapResponse: (data: ModalSampleResponse, { variables }) => {
+  mapResponse: (data: ModalSampleResponse) => {
+    // For disjoint/sparse groups, the current group may have no sample on the
+    // pinned slice. Return null rather than throwing so consumers can fall back
+    // to the displayed sample instead of erroring out (e.g. dynamic group
+    // pagination). See {@link groupByFieldValue}.
     if (!data.sample) {
-      if (variables.filter.group) {
-        throw new GroupSampleNotFound(
-          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`,
-        );
-      }
-
-      throw new SampleNotFound(
-        `sample with id ${variables.filter.id} not found`,
-      );
+      return null;
     }
 
     return mapSampleResponse(data.sample) as ModalSample;
