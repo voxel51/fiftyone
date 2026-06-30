@@ -69,19 +69,23 @@ export async function loadPlugins() {
         return undefined;
       }
       const name = plugin.name;
-      if (registry.hasScript(name)) {
+      // Reuse the in-flight (or settled) load so overlapping loadPlugins()
+      // calls resolve only once the bundle has registered its components.
+      const existing = registry.getScript(name);
+      if (existing) {
         console.debug(`Plugin "${name}": already loaded`);
-        return undefined;
+        return existing;
       }
-      registry.registerScript(name);
       const cacheKey = plugin.jsBundleHash ? `?h=${plugin.jsBundleHash}` : "";
-      return loadScript(
+      const promise = loadScript(
         name,
         pathPrefix + plugin.jsBundleServerPath + cacheKey
       ).catch((e) => {
         console.error(`Plugin "${name}": failed to load!`);
         console.error(e);
       });
+      registry.registerScript(name, promise);
+      return promise;
     })
   );
 }
@@ -97,7 +101,6 @@ async function loadScript(name, url) {
       } else {
         reject(new Error(`Plugin "${name}": Failed to load script ${url}`));
       }
-      usingRegistry().registerScript(name);
     };
     const script = document.createElement("script");
     script.type = "application/javascript";
