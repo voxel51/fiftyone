@@ -49,7 +49,7 @@ jobs:
 
       - name: Cache built app static assets
         id: app-static-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: fiftyone/server/static
           key: app-static-${{ runner.os }}-${{ steps.app-tree-hash.outputs.hash }}
@@ -57,7 +57,7 @@ jobs:
 
       - name: Cache app Node Modules
         id: app-node-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             app/node_modules
@@ -67,7 +67,7 @@ jobs:
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             e2e-pw/node_modules
@@ -100,7 +100,7 @@ jobs:
         working-directory: e2e-pw
 
       - name: Cache playwright browser
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         id: playwright-browser-cache
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
@@ -237,7 +237,7 @@ jobs:
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             e2e-pw/node_modules
@@ -255,7 +255,7 @@ jobs:
         working-directory: e2e-pw
 
       - name: Cache playwright browser
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         id: playwright-browser-cache
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
