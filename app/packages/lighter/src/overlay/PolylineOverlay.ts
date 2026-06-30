@@ -7,8 +7,9 @@ import {
   LABEL_ARCHETYPE_PRIORITY,
   PREVIEW_LINE_OPACITY,
 } from "../constants";
+import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { DrawStyle, Point, RawLookerLabel } from "../types";
+import type { DrawStyle, Point, RawLookerLabel, Rect } from "../types";
 import {
   distance,
   distanceFromLineSegment,
@@ -19,6 +20,7 @@ import {
   type KeypointLabel,
   type KeypointRenderContext,
 } from "./KeypointOverlay";
+import { BaseOverlay } from "./BaseOverlay";
 
 export type PolylineLabel = RawLookerLabel & {
   label?: string;
@@ -113,6 +115,12 @@ export class PolylineOverlay extends KeypointOverlay {
    * the opposite endpoint of the active segment.
    */
   private previewAnchorPointId: string | null = null;
+
+  /**
+   * Absolute-space rect of the most recently drawn label text (background
+   * box), or `undefined` when no label is drawn.
+   */
+  private textBounds?: Rect;
 
   constructor(options: PolylineOptions) {
     const { flatPoints, connections, segmentBoundaries } =
@@ -867,6 +875,105 @@ export class PolylineOverlay extends KeypointOverlay {
         opacity: PREVIEW_LINE_OPACITY,
       },
       this.containerId,
+    );
+  }
+
+  /**
+   * Renders the label text at the centroid of the polyline's points.
+   * Anchoring on the centroid reads more clearly for polylines/polygons,
+   * where the bounding-box corner can sit far from any actual geometry.
+   */
+  protected override renderLabelText(
+    renderer: Renderer2D,
+    ctx: KeypointRenderContext
+  ): void {
+    // Reset first so a no-draw frame clears any stale hit region.
+    this.textBounds = undefined;
+
+    if (!this.label || !this.label.label?.length) {
+      return;
+    }
+
+    if (ctx.absPoints.length === 0) {
+      return;
+    }
+
+    if (!BaseOverlay.validBounds(this.bounds)) {
+      return;
+    }
+
+    const centroid = PolylineOverlay.computeCentroid(ctx.absPoints);
+
+    // `drawText` returns the absolute-space background rect; retain it for
+    // hover/selection hit-testing.
+    this.textBounds = renderer.drawText(
+      this.label.label,
+      centroid,
+      {
+        fontColor: "#ffffff",
+        backgroundColor: ctx.style.fillStyle || ctx.style.strokeStyle || "#000",
+        anchor: { vertical: "center", horizontal: "center" },
+      },
+      this.containerId
+    );
+  }
+
+  /**
+   * Extends the inherited point/edge/interior hit-testing so the label text
+   * box is also a hit target. A point landing on the label (but not on the
+   * geometry) reports `BORDER`.
+   */
+  override getContainmentLevel(point: Point): CONTAINS {
+    const base = super.getContainmentLevel(point);
+    if (base !== CONTAINS.NONE) {
+      return base;
+    }
+
+    if (
+      this.textBounds &&
+      PolylineOverlay.pointInRect(point, this.textBounds)
+    ) {
+      return CONTAINS.BORDER;
+    }
+
+    return CONTAINS.NONE;
+  }
+
+  /**
+   * Treats a cursor over the label text as a direct hit (distance 0), so the
+   * label wins overlay-ordering ties.
+   */
+  override getMouseDistance(point: Point): number {
+    const wp = this.renderer?.screenToWorld(point) ?? point;
+    if (this.textBounds && PolylineOverlay.pointInRect(wp, this.textBounds)) {
+      return 0;
+    }
+
+    return super.getMouseDistance(point);
+  }
+
+  /**
+   * Returns the centroid (mean position) of the given points. Callers are
+   * responsible for ensuring the array is non-empty.
+   */
+  private static computeCentroid(points: Point[]): Point {
+    let sumX = 0;
+    let sumY = 0;
+
+    for (const p of points) {
+      sumX += p.x;
+      sumY += p.y;
+    }
+
+    return {
+      x: sumX / points.length,
+      y: sumY / points.length,
+    };
+  }
+
+  private static pointInRect(p: Point, r: Rect): boolean {
+    return (
+      p.x >= r.x && p.y >= r.y && p.x <= r.x + r.width && p.y <= r.y + r.height
     );
   }
 
