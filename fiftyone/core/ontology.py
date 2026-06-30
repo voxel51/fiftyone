@@ -607,33 +607,54 @@ def _find_label_schema_refs_by_ontology(
 def delete_ontology(name: str, force: bool = False) -> None:
     """Deletes an ontology and all its versions from the database.
 
-    If any label schema references this ontology (via
-    ``applied_ontology`` on a field), the default behavior is to raise
-    rather than silently break those schemas. Pass ``force=True`` to
-    inline the ontology's attributes into each affected schema as
-    permanent local copies and then delete the ontology.
+    Behavior depends on the ontology's type:
 
-    Inlining and deletion run as two phases: every affected schema is
-    inlined and saved first, and the ontology is deleted only if every
-    save succeeds. If something fails mid-inline, the ontology still
-    exists and the call is safely re-runnable — already-inlined
-    schemas no longer match the lookup.
+    - **AnnotationOntology**: if any label schema references this ontology
+      via ``applied_ontology``, raises unless ``force=True``. With force,
+      the ontology's attributes are inlined into each affected schema as
+      permanent local copies before deletion.
+    - **Taxonomy**: if any annotation ontology references this taxonomy
+      via its ``taxonomy`` field, raises unless ``force=True``. With
+      force, the reference is unset on each affected annotation ontology
+      (saving appends a new version). Label schemas are not scanned —
+      ``applied_taxonomy`` is a hydration-time output, never persisted.
+
+    Cascade writes run before the ontology itself is deleted, so a
+    mid-cascade failure leaves the call safely re-runnable.
 
     Args:
         name: the ontology name
-        force: if False (default), raise if any label schema references
-            the ontology. If True, inline the ontology's attributes
-            into each affected schema as local copies before deleting.
+        force: if False (default), raise if anything references the
+            ontology. If True, cascade as described above before deleting.
 
     Raises:
         ValueError: if the ontology does not exist, or if it is in use
             and ``force=False``
     """
-    # Late imports to avoid circular dependency with annotation/dataset.
+    ontology = load_ontology(name)
+
+    if ontology.is_annotation_ontology:
+        _delete_annotation_ontology(ontology, force=force)
+    elif ontology.is_taxonomy:
+        _delete_taxonomy(ontology, force=force)
+    else:
+        # Defensive: load_ontology only returns known types today, but a
+        # new OntologyType added without a cascade handler must not fall
+        # through to a silent delete.
+        raise ValueError(
+            f"Cannot delete ontology {name!r}: no cascade handler for "
+            f"type {type(ontology).__name__}"
+        )
+
+
+def _delete_annotation_ontology(
+    ontology: "AnnotationOntology", force: bool
+) -> None:
+    # Late imports to avoid a circular dependency with annotation/dataset.
     from fiftyone.core.annotation import inline_applied_ontology
     from fiftyone.core.odm.dataset import DatasetDocument
 
-    ontology = load_ontology(name)
+    name = ontology.name
     affected = _find_label_schema_refs_by_ontology(name)
 
     if affected and not force:
@@ -656,6 +677,55 @@ def delete_ontology(name: str, force: bool = False) -> None:
         dataset_doc.save()
 
     _objects_by_slug(name).delete()
+
+
+def _delete_taxonomy(ontology: "Taxonomy", force: bool) -> None:
+    name = ontology.name
+    referencing_ao_names = _find_annotation_ontology_refs_by_taxonomy(name)
+
+    if referencing_ao_names and not force:
+        raise ValueError(
+            f"Taxonomy '{name}' is bundled by "
+            f"{len(referencing_ao_names)} annotation ontology(ies). "
+            f"Pass force=True to unset the reference on each before "
+            f"deleting."
+        )
+
+    # Each save appends a new AO version, so a re-run finds no matches.
+    for ao_name in referencing_ao_names:
+        ao = load_ontology(ao_name)
+        ao.taxonomy = None
+        ao.save()
+
+    _objects_by_slug(name).delete()
+
+
+def _find_annotation_ontology_refs_by_taxonomy(
+    taxonomy_name: str,
+) -> list[str]:
+    """Returns names of annotation ontologies whose latest version
+    bundles the given taxonomy. Older versions may still reference it
+    after an unset; we only act on the latest version per slug.
+    """
+    # ``root.taxonomy`` is stored as a slug; normalize the input so
+    # callers can pass either the name or slug form.
+    taxonomy_slug = fou.to_slug(taxonomy_name)
+    pipeline = [
+        {"$match": {"type": OntologyType.ANNOTATION_ONTOLOGY.value}},
+        {"$sort": {"slug": 1, "version": -1}},
+        {
+            "$group": {
+                "_id": "$slug",
+                "name": {"$first": "$name"},
+                "root": {"$first": "$root"},
+            }
+        },
+        {"$match": {"root.taxonomy": taxonomy_slug}},
+        {"$project": {"name": 1, "_id": 0}},
+    ]
+    # pylint: disable-next=no-member
+    matches = OntologyDocument.objects.aggregate(pipeline)
+    return [m["name"] for m in matches]
 
 
 def apply_ontology(
