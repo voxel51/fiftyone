@@ -9,6 +9,7 @@ import {
   type FoSceneNode,
   GltfAsset,
   type MeshAsset,
+  MirisStreamAsset,
   ObjAsset,
   PcdAsset,
   PlaneGeometryAsset,
@@ -102,6 +103,13 @@ const toQuaternion = (
 const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
   const nodeType = node._type.toLowerCase();
   const material = node.defaultMaterial;
+
+  if (nodeType === "mirisstream" && hasStringField(node, "assetUuid")) {
+    return new MirisStreamAsset(
+      node.assetUuid,
+      getOptionalStringField(node, "viewerKey")
+    );
+  }
 
   if (nodeType.endsWith("mesh")) {
     const meshMaterial = isFoMeshMaterial(material) ? material : undefined;
@@ -237,6 +245,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
 
 const buildSceneNode = (node: FoSceneRawNode): FoSceneNode => {
   return {
+    uuid: node.uuid,
     asset: parseAsset(node),
     name: node.name,
     visible: node.visible,
