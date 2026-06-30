@@ -9,7 +9,11 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Don't cancel an in-flight run for a no-op `edited` event (title/body edit,
+  # e.g. a bot stamping the enterprise-sync link). Those edits don't change the
+  # base, the gate below skips their CI anyway, and cancelling would wipe out the
+  # real run's results. Still cancel on base-changing edits and code pushes.
+  cancel-in-progress: ${{ github.event.action != 'edited' || github.event.changes.base != null }}
 
 jobs:
   modified-files:
