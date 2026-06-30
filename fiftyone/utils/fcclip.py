@@ -12,34 +12,76 @@ class FCCLIPModelConfig(fout.TorchImageModelConfig, HasZooModel):
     Args:
         name_or_path (None): HF repo or local path to the FC-CLIP model
             uploaded with ``trust_remote_code=True``
-        score_threshold (0.8): minimum panoptic segment confidence to keep
-        class_names (None): optional list of custom class names for
-            open-vocabulary inference (overrides COCO 133-class default)
+        confidence_thresh (0.8): minimum panoptic segment confidence to keep
     """
 
     def __init__(self, d):
         d = self.init(d)
         super().__init__(d)
         self.name_or_path = self.parse_string(d, "name_or_path")
-        self.score_threshold = self.parse_number(
-            d, "score_threshold", default=0.8
+        self.confidence_thresh = self.parse_number(
+            d, "confidence_thresh", default=0.8
         )
-        self.class_names = self.parse_array(d, "class_names", default=None)
         self.validate_config()
 
     def validate_config(self):
-        if not 0 <= self.score_threshold <= 1:
-            raise ValueError("score_threshold must be between 0 and 1")
-        if self.class_names is not None:
-            if not self.class_names:
-                raise ValueError(
-                    "class_names must contain at least one prompt"
-                )
-            if any(
-                not isinstance(c, str) or not c.strip()
-                for c in self.class_names
-            ):
-                raise ValueError("class_names must contain non-empty strings")
+        if not 0 <= self.confidence_thresh <= 1:
+            raise ValueError("confidence_thresh must be between 0 and 1")
+
+
+class FCCLIPOutputProcessor(fout.OutputProcessor):
+    """Converts FC-CLIP panoptic segmentation outputs to
+    :class:`fiftyone.core.labels.Detections`.
+    """
+
+    def __init__(self, classes=None, **kwargs):
+        super().__init__(classes=classes, **kwargs)
+        self.classes = classes
+
+    def __call__(
+        self,
+        output,
+        frame_size,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs
+    ):
+        return [
+            self._to_detections(panoptic_seg, segments_info, classes)
+            for panoptic_seg, segments_info in output
+        ]
+
+    def _to_detections(self, panoptic_seg, segments_info, classes):
+        detections = []
+        for seg in segments_info:
+            cat_id = seg["category_id"]
+            mask = (panoptic_seg == seg["id"]).numpy().astype(bool)
+            if not mask.any():
+                continue
+            label = (
+                self.classes[cat_id]
+                if self.classes and 0 <= cat_id < len(self.classes)
+                else str(cat_id)
+            )
+            if classes is not None and label not in classes:
+                continue
+            detections.append(fol.Detection.from_mask(mask=mask, label=label))
+        return fol.Detections(detections=detections)
+
+
+class _FCCLIPTransform:
+    """Preprocess any image type to an FC-CLIP pixel_values tensor.
+
+    Accepts PIL images, HWC uint8/float numpy arrays, and CHW tensors.
+    Wraps the HF model's ``preprocess_image`` method and returns the
+    pixel_values tensor on CPU (moved to device in ``_predict_all``).
+    """
+
+    def __init__(self, preprocess_fn):
+        self._preprocess_fn = preprocess_fn
+
+    def __call__(self, img):
+        return self._preprocess_fn(img)
 
 
 class FCCLIPModel(fout.TorchImageModel):
@@ -71,14 +113,14 @@ class FCCLIPModel(fout.TorchImageModel):
         fout.TorchImageModel.__init__(self, config)
 
     def _parse_classes(self, config):
-        if config.class_names:
-            return config.class_names
+        if config.classes is not None:
+            self._hf_model.set_class_names(config.classes)
+            return config.classes
         if self._hf_model is not None:
             return self._hf_model.config.stuff_classes
         return None
 
     def _download_model(self, config):
-        # HF Hub handles download automatically on first load
         pass
 
     def _load_model(self, config):
@@ -90,50 +132,43 @@ class FCCLIPModel(fout.TorchImageModel):
             config.name_or_path,
             trust_remote_code=True,
             cache_dir=fo.config.model_zoo_dir,
-            # open_clip can't initialize inside HF's meta-device context
             low_cpu_mem_usage=False,
         )
         self._hf_model.eval()
-        if config.class_names:
-            self._hf_model.set_class_names(config.class_names)
-
-        self._hf_model.config.object_mask_threshold = config.score_threshold
+        self._hf_model.config.object_mask_threshold = config.confidence_thresh
         return self._hf_model
 
+    def _build_transforms(self, config):
+        return _FCCLIPTransform(self._hf_model.preprocess_image), False
+
+    @property
+    def has_collate_fn(self):
+        return True
+
+    @staticmethod
+    def collate_fn(batch):
+        return batch
+
+    def _build_output_processor(self, config):
+        return FCCLIPOutputProcessor(classes=self._classes)
+
     def _predict_all(self, imgs):
-        results = []
-        for img in imgs:
-            if isinstance(img, torch.Tensor):
-                # DataLoader yields CHW float32 in [0, 1]; preprocess_image wants HWC uint8
-                arr = (
-                    (img.permute(1, 2, 0).cpu().numpy() * 255)
-                    .clip(0, 255)
-                    .astype("uint8")
-                )
-                pixel_values = self._hf_model.preprocess_image(arr)
-            else:
-                pixel_values = self._hf_model.preprocess_image(img)
+        if self._preprocess and self._transforms is not None:
+            imgs = [self._transforms(img) for img in imgs]
+            if self.has_collate_fn:
+                imgs = self.collate_fn(imgs)
+
+        outputs = []
+        for pixel_values in imgs:
             pixel_values = pixel_values.to(self._device)
             with torch.no_grad():
                 panoptic_results = self._hf_model(pixel_values)
-
             panoptic_seg, segments_info = panoptic_results[0]
-            panoptic_seg = panoptic_seg.cpu()
+            outputs.append((panoptic_seg.cpu(), segments_info))
 
-            detections = []
-            for seg in segments_info:
-                cat_id = seg["category_id"]
-                mask = (panoptic_seg == seg["id"]).numpy().astype(bool)
-                if not mask.any():
-                    continue
-                label = (
-                    self._classes[cat_id]
-                    if self._classes and cat_id < len(self._classes)
-                    else str(cat_id)
-                )
-                detections.append(
-                    fol.Detection.from_mask(mask=mask, label=label)
-                )
-
-            results.append(fol.Detections(detections=detections))
-        return results
+        return self._output_processor(
+            outputs,
+            None,
+            confidence_thresh=self.config.confidence_thresh,
+            classes=self.config.filter_classes,
+        )

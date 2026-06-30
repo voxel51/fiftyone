@@ -769,7 +769,8 @@
                     "torchvision",
                     "transformers",
                     "open_clip_torch",
-                    "safetensors"
+                    "safetensors",
+                    "timm>=1.0.17"
                 ],
                 "cpu": {
                     "support": true
