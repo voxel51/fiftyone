@@ -29,7 +29,7 @@ Policy:
 
 Default:
 
-- `staleMediaWarningMs = 2000`
+- `staleMediaWarningMs = 500`
 
 Why the lookback is unbounded: blanking every sparse or dropped stream after a
 short age limit makes playback feel broken and hides useful context. Holding
@@ -120,7 +120,7 @@ The 3D panel follows the same policy per layer:
 
 The left sidebar exposes a "Time synchronization" section with:
 
-- Stale media warning (`staleMediaWarningMs`)
+- Stale frame warning (`staleMediaWarningMs`)
 - Max interpolation gap (`maxInterpolationGapMs`)
 - Transform gap warning (`transformGapWarningMs`)
 - Boundary clamp (`boundaryClampMs`)

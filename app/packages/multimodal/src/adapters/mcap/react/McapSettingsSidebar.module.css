@@ -61,6 +61,18 @@
   gap: 8px;
 }
 
+.policyGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.policyGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .controlRow {
   align-items: center;
   display: grid;
