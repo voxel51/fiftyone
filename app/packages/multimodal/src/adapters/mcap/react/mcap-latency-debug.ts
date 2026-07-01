@@ -1,8 +1,10 @@
 import { isMcapLatencyDebugEnabled } from "../mcap-debug-flags";
+import type { McapPlaybackWorkerAttribution } from "../worker/playback-worker-attribution";
 
 const GLOBAL_KEY = "__FIFTYONE_MCAP_LATENCY__";
 const METRIC_PUBLISH_INTERVAL_MS = 250;
 const BANDWIDTH_RECENT_SAMPLE_LIMIT = 80;
+const WORKER_ATTRIBUTION_RECENT_LIMIT = 80;
 
 export { isMcapLatencyDebugEnabled };
 
@@ -68,6 +70,41 @@ interface McapLatencyBandwidthState {
   readonly total: McapLatencyBandwidthBucket;
 }
 
+interface McapLatencyWorkerAttributionBucket {
+  chunkBytes: number;
+  chunkMessageIndexOverlapBytes: number;
+  chunkOverlapBytes: number;
+  chunksTouched: number;
+  decodedPayloadBytes: number;
+  errors: number;
+  fetchedBytes: number;
+  maxPayloadBytes: number;
+  maxQueueWaitMs: number;
+  maxRunMs: number;
+  payloadBytes: number;
+  queueWaitMs: number;
+  rawPayloadBytes: number;
+  readRequests: number;
+  requestedBytes: number;
+  requests: number;
+  resultMessages: number;
+  resultSamples: number;
+  resultWindows: number;
+  runMs: number;
+  transferables: number;
+}
+
+interface McapLatencyWorkerAttributionState {
+  readonly byLane: Record<string, McapLatencyWorkerAttributionBucket>;
+  readonly byLaneOperation: Record<string, McapLatencyWorkerAttributionBucket>;
+  readonly byOperation: Record<string, McapLatencyWorkerAttributionBucket>;
+  readonly byPriority: Record<string, McapLatencyWorkerAttributionBucket>;
+  readonly recent: Array<
+    McapPlaybackWorkerAttribution & { readonly elapsedMs: number }
+  >;
+  readonly total: McapLatencyWorkerAttributionBucket;
+}
+
 interface McapLatencySession {
   bandwidth: McapLatencyBandwidthState;
   readonly events: McapLatencyEvent[];
@@ -77,6 +114,7 @@ interface McapLatencySession {
   readonly sessionKey?: string;
   readonly sourceKey?: string;
   readonly startMs: number;
+  workerAttribution: McapLatencyWorkerAttributionState;
 }
 
 type McapLatencyGlobal = typeof globalThis & {
@@ -124,6 +162,7 @@ export function startMcapLatencyDebugSession({
     sessionKey,
     sourceKey,
     startMs: mcapLatencyNowMs(),
+    workerAttribution: createWorkerAttributionState(),
   };
   markMcapLatencyEvent("session start", detail);
 }
@@ -232,6 +271,39 @@ export function recordMcapBandwidthSample(
   publishMcapLatencySession(session);
 }
 
+export function recordMcapWorkerAttribution(
+  sample: McapPlaybackWorkerAttribution,
+): void {
+  if (!isMcapLatencyDebugEnabled()) return;
+
+  const session = ensureMcapLatencySession();
+  const elapsedMs = Number((mcapLatencyNowMs() - session.startMs).toFixed(1));
+  const sampleWithElapsed = {
+    ...sample,
+    elapsedMs,
+  };
+  const state = session.workerAttribution;
+  addToWorkerAttributionBucket(state.total, sample);
+  addToWorkerAttributionMap(state.byLane, sample.lane, sample);
+  addToWorkerAttributionMap(state.byOperation, sample.operation, sample);
+  addToWorkerAttributionMap(
+    state.byLaneOperation,
+    `${sample.lane}:${sample.operation}`,
+    sample,
+  );
+  addToWorkerAttributionMap(state.byPriority, String(sample.priority), sample);
+  state.recent.push(sampleWithElapsed);
+  if (state.recent.length > WORKER_ATTRIBUTION_RECENT_LIMIT) {
+    state.recent.splice(
+      0,
+      state.recent.length - WORKER_ATTRIBUTION_RECENT_LIMIT,
+    );
+  }
+
+  console.log("[mcap] worker attribution", workerAttributionLogRow(sample));
+  publishMcapLatencySession(session);
+}
+
 export function mcapLatencyNowMs(): number {
   return globalThis.performance?.now?.() ?? Date.now();
 }
@@ -245,6 +317,7 @@ function ensureMcapLatencySession(): McapLatencySession {
   const current = root[GLOBAL_KEY];
   if (current) {
     current.bandwidth ??= createBandwidthState();
+    current.workerAttribution ??= createWorkerAttributionState();
     return current;
   }
 
@@ -255,6 +328,7 @@ function ensureMcapLatencySession(): McapLatencySession {
     metrics: {},
     seen: new Set(),
     startMs: mcapLatencyNowMs(),
+    workerAttribution: createWorkerAttributionState(),
   };
   root[GLOBAL_KEY] = session;
   return session;
@@ -287,6 +361,43 @@ function createBandwidthBucket(): McapLatencyBandwidthBucket {
   };
 }
 
+function createWorkerAttributionState(): McapLatencyWorkerAttributionState {
+  return {
+    byLane: {},
+    byLaneOperation: {},
+    byOperation: {},
+    byPriority: {},
+    recent: [],
+    total: createWorkerAttributionBucket(),
+  };
+}
+
+function createWorkerAttributionBucket(): McapLatencyWorkerAttributionBucket {
+  return {
+    chunkBytes: 0,
+    chunkMessageIndexOverlapBytes: 0,
+    chunkOverlapBytes: 0,
+    chunksTouched: 0,
+    decodedPayloadBytes: 0,
+    errors: 0,
+    fetchedBytes: 0,
+    maxPayloadBytes: 0,
+    maxQueueWaitMs: 0,
+    maxRunMs: 0,
+    payloadBytes: 0,
+    queueWaitMs: 0,
+    rawPayloadBytes: 0,
+    readRequests: 0,
+    requestedBytes: 0,
+    requests: 0,
+    resultMessages: 0,
+    resultSamples: 0,
+    resultWindows: 0,
+    runMs: 0,
+    transferables: 0,
+  };
+}
+
 function addToBandwidthMap(
   map: Record<string, McapLatencyBandwidthBucket>,
   key: string,
@@ -315,6 +426,47 @@ function addToBandwidthBucket(
   }
   bucket.samples += sample.samples ?? 0;
   bucket.uniqueMessages += sample.uniqueMessages ?? sample.messages ?? 0;
+}
+
+function addToWorkerAttributionMap(
+  map: Record<string, McapLatencyWorkerAttributionBucket>,
+  key: string,
+  sample: McapPlaybackWorkerAttribution,
+) {
+  addToWorkerAttributionBucket(
+    (map[key] ??= createWorkerAttributionBucket()),
+    sample,
+  );
+}
+
+function addToWorkerAttributionBucket(
+  bucket: McapLatencyWorkerAttributionBucket,
+  sample: McapPlaybackWorkerAttribution,
+) {
+  bucket.chunkBytes += sample.chunkBytes;
+  bucket.chunkMessageIndexOverlapBytes += sample.chunkMessageIndexOverlapBytes;
+  bucket.chunkOverlapBytes += sample.chunkOverlapBytes;
+  bucket.chunksTouched += sample.chunksTouched;
+  bucket.decodedPayloadBytes += sample.decodedPayloadBytes;
+  bucket.errors += sample.ok ? 0 : 1;
+  bucket.fetchedBytes += sample.fetchedBytes;
+  bucket.maxPayloadBytes = Math.max(
+    bucket.maxPayloadBytes,
+    sample.payloadBytes,
+  );
+  bucket.maxQueueWaitMs = Math.max(bucket.maxQueueWaitMs, sample.queueWaitMs);
+  bucket.maxRunMs = Math.max(bucket.maxRunMs, sample.runMs);
+  bucket.payloadBytes += sample.payloadBytes;
+  bucket.queueWaitMs += sample.queueWaitMs;
+  bucket.rawPayloadBytes += sample.rawPayloadBytes;
+  bucket.readRequests += sample.readRequests;
+  bucket.requestedBytes += sample.requestedBytes;
+  bucket.requests += 1;
+  bucket.resultMessages += sample.resultMessages;
+  bucket.resultSamples += sample.resultSamples;
+  bucket.resultWindows += sample.resultWindows;
+  bucket.runMs += sample.runMs;
+  bucket.transferables += sample.transferables;
 }
 
 function sanitizeLatencyDetail(value: unknown): unknown {
@@ -395,6 +547,10 @@ function publishMcapLatencySessionNow(session: McapLatencySession): void {
       "data-mcap-latency-bandwidth",
       JSON.stringify(summarizeBandwidth(session.bandwidth)),
     );
+    document.documentElement.setAttribute(
+      "data-mcap-worker-attribution",
+      JSON.stringify(summarizeWorkerAttribution(session.workerAttribution)),
+    );
   } catch {
     // DOM publishing is best-effort debug data.
   }
@@ -462,6 +618,133 @@ function summarizeBandwidthBucket(
   };
 }
 
+function summarizeWorkerAttribution(state: McapLatencyWorkerAttributionState) {
+  return {
+    byLane: summarizeWorkerAttributionMap(state.byLane),
+    byLaneOperation: summarizeWorkerAttributionMap(state.byLaneOperation),
+    byOperation: summarizeWorkerAttributionMap(state.byOperation),
+    byPriority: summarizeWorkerAttributionMap(state.byPriority),
+    recent: state.recent.map((sample) => ({
+      ...sample,
+      chunkMB: bytesToMb(sample.chunkBytes),
+      decodedPayloadMB: bytesToMb(sample.decodedPayloadBytes),
+      fetchedMB: bytesToMb(sample.fetchedBytes),
+      payloadMB: bytesToMb(sample.payloadBytes),
+      rawPayloadMB: bytesToMb(sample.rawPayloadBytes),
+      requestedMB: bytesToMb(sample.requestedBytes),
+    })),
+    topByQueueWait: topWorkerAttributionSamples(
+      state.recent,
+      (sample) => sample.queueWaitMs,
+    ),
+    topByRunMs: topWorkerAttributionSamples(
+      state.recent,
+      (sample) => sample.runMs,
+    ),
+    topByFetchedBytes: topWorkerAttributionSamples(
+      state.recent,
+      (sample) => sample.fetchedBytes,
+    ),
+    topByPayloadBytes: topWorkerAttributionSamples(
+      state.recent,
+      (sample) => sample.payloadBytes,
+    ),
+    total: summarizeWorkerAttributionBucket(state.total),
+  };
+}
+
+function summarizeWorkerAttributionMap(
+  map: Record<string, McapLatencyWorkerAttributionBucket>,
+) {
+  return Object.fromEntries(
+    Object.entries(map)
+      .sort(([, left], [, right]) => right.runMs - left.runMs)
+      .map(([key, bucket]) => [key, summarizeWorkerAttributionBucket(bucket)]),
+  );
+}
+
+function summarizeWorkerAttributionBucket(
+  bucket: McapLatencyWorkerAttributionBucket,
+) {
+  return {
+    avgQueueWaitMs: average(bucket.queueWaitMs, bucket.requests),
+    avgRunMs: average(bucket.runMs, bucket.requests),
+    chunkBytes: bucket.chunkBytes,
+    chunkMB: bytesToMb(bucket.chunkBytes),
+    chunkMessageIndexOverlapBytes: bucket.chunkMessageIndexOverlapBytes,
+    chunkOverlapBytes: bucket.chunkOverlapBytes,
+    chunksTouched: bucket.chunksTouched,
+    decodedPayloadBytes: bucket.decodedPayloadBytes,
+    decodedPayloadMB: bytesToMb(bucket.decodedPayloadBytes),
+    errors: bucket.errors,
+    fetchedBytes: bucket.fetchedBytes,
+    fetchedMB: bytesToMb(bucket.fetchedBytes),
+    maxPayloadBytes: bucket.maxPayloadBytes,
+    maxPayloadMB: bytesToMb(bucket.maxPayloadBytes),
+    maxQueueWaitMs: bucket.maxQueueWaitMs,
+    maxRunMs: bucket.maxRunMs,
+    payloadBytes: bucket.payloadBytes,
+    payloadMB: bytesToMb(bucket.payloadBytes),
+    queueWaitMs: bucket.queueWaitMs,
+    rawPayloadBytes: bucket.rawPayloadBytes,
+    rawPayloadMB: bytesToMb(bucket.rawPayloadBytes),
+    readRequests: bucket.readRequests,
+    requestedBytes: bucket.requestedBytes,
+    requestedMB: bytesToMb(bucket.requestedBytes),
+    requests: bucket.requests,
+    resultMessages: bucket.resultMessages,
+    resultSamples: bucket.resultSamples,
+    resultWindows: bucket.resultWindows,
+    runMs: bucket.runMs,
+    transferables: bucket.transferables,
+  };
+}
+
+function topWorkerAttributionSamples(
+  samples: readonly (McapPlaybackWorkerAttribution & {
+    readonly elapsedMs: number;
+  })[],
+  score: (sample: McapPlaybackWorkerAttribution) => number,
+) {
+  return [...samples]
+    .sort((left, right) => score(right) - score(left))
+    .slice(0, 10)
+    .map((sample) => ({
+      chunkMB: bytesToMb(sample.chunkBytes),
+      chunksTouched: sample.chunksTouched,
+      elapsedMs: sample.elapsedMs,
+      fetchedMB: bytesToMb(sample.fetchedBytes),
+      lane: sample.lane,
+      operation: sample.operation,
+      payloadMB: bytesToMb(sample.payloadBytes),
+      priority: sample.priority,
+      queueWaitMs: sample.queueWaitMs,
+      readRequests: sample.readRequests,
+      request: sample.request,
+      requestId: sample.requestId,
+      runMs: sample.runMs,
+      topChunks: sample.topChunks,
+    }));
+}
+
+function workerAttributionLogRow(sample: McapPlaybackWorkerAttribution) {
+  return {
+    chunkMB: bytesToMb(sample.chunkBytes),
+    chunksTouched: sample.chunksTouched,
+    fetchedMB: bytesToMb(sample.fetchedBytes),
+    lane: sample.lane,
+    operation: sample.operation,
+    payloadMB: bytesToMb(sample.payloadBytes),
+    priority: sample.priority,
+    queueWaitMs: sample.queueWaitMs,
+    readRequests: sample.readRequests,
+    request: sample.request,
+    requestId: sample.requestId,
+    runMs: sample.runMs,
+    topChunks: sample.topChunks.slice(0, 3),
+  };
+}
+
 function effectiveBytesForSample(sample: McapLatencyBandwidthSample): number {
   if (sample.effectiveBytes !== undefined) return sample.effectiveBytes;
   if (sample.rawBytes !== undefined && sample.rawBytes > 0) {
@@ -469,6 +752,11 @@ function effectiveBytesForSample(sample: McapLatencyBandwidthSample): number {
   }
 
   return sample.decodedBytes ?? 0;
+}
+
+function average(total: number, count: number): number {
+  if (count <= 0) return 0;
+  return Number((total / count).toFixed(1));
 }
 
 function bytesToKb(bytes: number): number {

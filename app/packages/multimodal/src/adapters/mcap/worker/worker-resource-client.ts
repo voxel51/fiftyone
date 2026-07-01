@@ -4,6 +4,7 @@ import type { DecodedOutputCache } from "../../../query/decode";
 import { createDecodeClient } from "../../../query/decode";
 import { createMcapDecoderRegistry } from "../decoders";
 import { createInlineMcapResourceClient } from "../resources";
+import type { McapChunkReadDebugLog } from "../reader";
 import type { McapResourceClient } from "../types";
 import type { McapPlaybackWorkerFetchParameters } from "./playback-worker-types";
 
@@ -22,6 +23,7 @@ const transferSafeNoopDecodedOutputCache: DecodedOutputCache = {
 export interface CreateWorkerResourceClientOptions {
   readonly debugByteReads?: boolean;
   readonly debugChunkReads?: boolean;
+  readonly logChunkRead?: (entry: McapChunkReadDebugLog) => void;
 }
 
 /**
@@ -30,6 +32,7 @@ export interface CreateWorkerResourceClientOptions {
 export function createWorkerResourceClient({
   debugByteReads,
   debugChunkReads,
+  logChunkRead,
 }: CreateWorkerResourceClientOptions = {}): McapResourceClient {
   const query = createMultimodalQueryClient({
     caches: {
@@ -42,6 +45,7 @@ export function createWorkerResourceClient({
   return createInlineMcapResourceClient({
     byteClient: query.bytes,
     debugChunkReads,
+    logChunkRead,
     decodeClient: createDecodeClient({
       // Decoded visualization buffers are transferred to the UI thread.
       // Reusing worker-cached decoded results would either return detached

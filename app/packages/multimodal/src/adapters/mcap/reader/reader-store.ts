@@ -1,6 +1,9 @@
 import type { ByteClient, ByteSourceDescriptor } from "../../../query/bytes";
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { ByteClientReadable } from "./byte-readable";
+import {
+  ByteClientReadable,
+  type McapChunkReadDebugLog,
+} from "./byte-readable";
 import type { McapIndexedReaderLike, McapReaderFactory } from "./types";
 
 /**
@@ -17,6 +20,7 @@ export interface McapReaderStore {
 export interface CreateMcapReaderStoreOptions {
   readonly byteClient: ByteClient;
   readonly debugChunkReads?: boolean;
+  readonly logChunkRead?: (entry: McapChunkReadDebugLog) => void;
   readonly readerFactory: McapReaderFactory;
 }
 
@@ -26,6 +30,7 @@ export interface CreateMcapReaderStoreOptions {
 export function createMcapReaderStore({
   byteClient,
   debugChunkReads,
+  logChunkRead,
   readerFactory,
 }: CreateMcapReaderStoreOptions): McapReaderStore {
   const readers = new Map<string, Promise<McapIndexedReaderLike>>();
@@ -42,7 +47,10 @@ export function createMcapReaderStore({
       if (!reader) {
         reader = readerFactory(
           source,
-          new ByteClientReadable(source, byteClient, { debugChunkReads }),
+          new ByteClientReadable(source, byteClient, {
+            debugChunkReads,
+            logChunkRead,
+          }),
         ).catch((error) => {
           readers.delete(key);
           throw error;

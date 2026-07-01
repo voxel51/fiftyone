@@ -1,5 +1,9 @@
 import type { McapFrameTransformSetWire } from "../frame-transform-types";
 import type {
+  McapPlaybackWorkerAttribution,
+  McapPlaybackWorkerLaneName,
+} from "./playback-worker-attribution";
+import type {
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
   McapReadFrameTransformBootstrapRequest,
@@ -53,6 +57,7 @@ export type McapPlaybackWorkerPriority =
  */
 export type McapPlaybackWorkerFetchParameters = {
   readonly headers: Record<string, string>;
+  readonly lane?: McapPlaybackWorkerLaneName;
   readonly latencyDebug?: boolean;
   readonly origin: string;
   readonly pathPrefix: string;
@@ -151,6 +156,7 @@ export type McapPlaybackWorkerRequest =
  * Final success response for one unary worker RPC.
  */
 export type McapPlaybackWorkerUnaryResponse = {
+  readonly debugAttribution?: McapPlaybackWorkerAttribution;
   readonly id: number;
   readonly ok: true;
   readonly result: McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType];
@@ -161,6 +167,7 @@ export type McapPlaybackWorkerUnaryResponse = {
  */
 export type McapPlaybackWorkerStreamResponse =
   | {
+      readonly debugAttribution?: McapPlaybackWorkerAttribution;
       readonly done: false;
       readonly id: number;
       readonly item: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType];
@@ -168,6 +175,7 @@ export type McapPlaybackWorkerStreamResponse =
       readonly stream: true;
     }
   | {
+      readonly debugAttribution?: McapPlaybackWorkerAttribution;
       readonly done: true;
       readonly id: number;
       readonly ok: true;
@@ -178,6 +186,7 @@ export type McapPlaybackWorkerStreamResponse =
  * Failure response for any worker RPC.
  */
 export type McapPlaybackWorkerErrorResponse = {
+  readonly debugAttribution?: McapPlaybackWorkerAttribution;
   readonly error: string;
   readonly id: number;
   readonly ok: false;

@@ -5,8 +5,17 @@ import {
   runMcapPlaybackWorkerStreamRequest,
   runMcapPlaybackWorkerUnaryRequest,
 } from "./playback-worker-rpc";
-import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
+import {
+  McapPlaybackWorkerScheduler,
+  type McapPlaybackWorkerRunContext,
+} from "./playback-worker-scheduler";
 import { transferablesForMcapResult } from "./playback-worker-transfer";
+import {
+  createMcapPlaybackWorkerAttributionCollector,
+  type McapPlaybackWorkerAttributionCollector,
+  type McapPlaybackWorkerLaneName,
+} from "./playback-worker-attribution";
+import type { McapChunkReadDebugLog } from "../reader";
 import type {
   McapPlaybackWorkerRequest,
   McapPlaybackWorkerResponse,
@@ -28,11 +37,10 @@ const workerScope = self as unknown as McapPlaybackWorkerScope;
 const scheduler = new McapPlaybackWorkerScheduler();
 
 let activeSourceKey = "";
+let activeAttribution: McapPlaybackWorkerAttributionCollector | null = null;
 let debugReads = false;
-let mcap = createWorkerResourceClient({
-  debugByteReads: debugReads,
-  debugChunkReads: debugReads,
-});
+let lane: McapPlaybackWorkerLaneName = "foreground";
+let mcap = createMcapClient();
 
 workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
   const message = event.data;
@@ -44,15 +52,13 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
       message.payload.pathPrefix,
     );
     const nextDebugReads = message.payload.latencyDebug === true;
+    lane = message.payload.lane ?? "foreground";
     scheduler.setDebug(nextDebugReads);
     if (debugReads !== nextDebugReads) {
       debugReads = nextDebugReads;
       activeSourceKey = "";
       mcap.dispose();
-      mcap = createWorkerResourceClient({
-        debugByteReads: debugReads,
-        debugChunkReads: debugReads,
-      });
+      mcap = createMcapClient();
     }
     return;
   }
@@ -73,48 +79,101 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
     id: message.id,
     operation: message.type,
     priority: message.priority,
-    run: () => runAndRespond(message),
+    run: (context) => runAndRespond(message, context),
     sourceKey: message.sourceKey,
   });
 };
 
-async function runAndRespond(message: McapPlaybackWorkerRpcRequest) {
+async function runAndRespond(
+  message: McapPlaybackWorkerRpcRequest,
+  context: McapPlaybackWorkerRunContext,
+) {
+  const attribution = debugReads
+    ? createMcapPlaybackWorkerAttributionCollector(message, {
+        lane,
+        queueDepthAtStart: context.queueDepthAtStart,
+        queueWaitMs: context.queueWaitMs,
+        sourceKey: message.sourceKey,
+        startedAtMs: context.startedAtMs,
+      })
+    : null;
+  const previousAttribution = activeAttribution;
+  activeAttribution = attribution;
+
   try {
     ensureActiveSource(message.sourceKey);
     if (isMcapPlaybackWorkerStreamRequest(message)) {
-      await streamRequest(message);
+      await streamRequest(message, attribution);
       return;
     }
 
     const result = await runMcapPlaybackWorkerUnaryRequest(mcap, message);
-    postResponse({
-      id: message.id,
-      ok: true,
-      result,
-    });
+    const transferables = transferablesForMcapResult(result);
+    attribution?.recordResult(result, transferables.length);
+    postResponse(
+      {
+        ...(attribution
+          ? {
+              debugAttribution: attribution.finish({
+                nowMs: workerNowMs(),
+                ok: true,
+              }),
+            }
+          : {}),
+        id: message.id,
+        ok: true,
+        result,
+      },
+      transferables,
+    );
   } catch (error) {
     postResponse({
+      ...(attribution
+        ? {
+            debugAttribution: attribution.finish({
+              error: mcapErrorMessage(error),
+              nowMs: workerNowMs(),
+              ok: false,
+            }),
+          }
+        : {}),
       error: mcapErrorMessage(error),
       id: message.id,
       ok: false,
     });
+  } finally {
+    activeAttribution = previousAttribution;
   }
 }
 
 async function streamRequest(
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>,
+  attribution: McapPlaybackWorkerAttributionCollector | null,
 ) {
   for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
-    postResponse({
-      done: false,
-      id: message.id,
-      item,
-      ok: true,
-      stream: true,
-    });
+    const transferables = transferablesForMcapResult(item);
+    attribution?.recordResult(item, transferables.length);
+    postResponse(
+      {
+        done: false,
+        id: message.id,
+        item,
+        ok: true,
+        stream: true,
+      },
+      transferables,
+    );
   }
 
   postResponse({
+    ...(attribution
+      ? {
+          debugAttribution: attribution.finish({
+            nowMs: workerNowMs(),
+            ok: true,
+          }),
+        }
+      : {}),
     done: true,
     id: message.id,
     ok: true,
@@ -129,14 +188,29 @@ function ensureActiveSource(sourceKey: string) {
 
   activeSourceKey = sourceKey;
   mcap.dispose();
-  mcap = createWorkerResourceClient({
+  mcap = createMcapClient();
+}
+
+function createMcapClient() {
+  return createWorkerResourceClient({
     debugByteReads: debugReads,
     debugChunkReads: debugReads,
+    logChunkRead: logChunkReadForActiveRequest,
   });
 }
 
-function postResponse(response: McapPlaybackWorkerResponse) {
-  workerScope.postMessage(response, transferablesForResponse(response));
+function logChunkReadForActiveRequest(entry: McapChunkReadDebugLog): void {
+  if (debugReads) {
+    console.log("[mcap] chunk bytes fetched", entry);
+  }
+  activeAttribution?.recordChunkRead(entry);
+}
+
+function postResponse(
+  response: McapPlaybackWorkerResponse,
+  transferables = transferablesForResponse(response),
+) {
+  workerScope.postMessage(response, transferables);
 }
 
 function transferablesForResponse(response: McapPlaybackWorkerResponse) {
@@ -149,4 +223,8 @@ function transferablesForResponse(response: McapPlaybackWorkerResponse) {
   }
 
   return transferablesForMcapResult(response.result);
+}
+
+function workerNowMs(): number {
+  return globalThis.performance?.now?.() ?? Date.now();
 }

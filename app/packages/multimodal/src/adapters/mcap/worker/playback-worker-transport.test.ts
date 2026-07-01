@@ -2,6 +2,37 @@ import { describe, expect, it, vi } from "vitest";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 
 describe("MCAP playback worker transport", () => {
+  it("reports debug attribution before settling a unary response", async () => {
+    const worker = createWorker();
+    const onAttribution = vi.fn();
+    const transport = new McapPlaybackWorkerTransport(
+      () => true,
+      onAttribution,
+    );
+    const request = transport.request(worker, "source:1", "readTimelineRange", {
+      source: createSource(),
+    });
+    const attribution = createAttribution();
+
+    transport.handleResponse({
+      debugAttribution: attribution,
+      id: 1,
+      ok: true,
+      result: {
+        activeTimeline: "log",
+        endTimeNs: 2n,
+        startTimeNs: 1n,
+      },
+    });
+
+    expect(onAttribution).toHaveBeenCalledWith(attribution);
+    await expect(request).resolves.toEqual({
+      activeTimeline: "log",
+      endTimeNs: 2n,
+      startTimeNs: 1n,
+    });
+  });
+
   it("settles unary responses even when the source is inactive", async () => {
     const worker = createWorker();
     const transport = new McapPlaybackWorkerTransport(() => false);
@@ -54,6 +85,37 @@ function createWorker(): Worker {
   return {
     postMessage: vi.fn(),
   } as unknown as Worker;
+}
+
+function createAttribution() {
+  return {
+    chunkBytes: 0,
+    chunkMessageIndexOverlapBytes: 0,
+    chunkOverlapBytes: 0,
+    chunksTouched: 0,
+    decodedPayloadBytes: 0,
+    fetchedBytes: 0,
+    lane: "foreground" as const,
+    ok: true,
+    operation: "readTimelineRange",
+    payloadBytes: 0,
+    priority: 0,
+    queueDepthAtStart: 0,
+    queueWaitMs: 0,
+    rawPayloadBytes: 0,
+    readRequests: 0,
+    request: {},
+    requestedBytes: 0,
+    requestId: 1,
+    resultItems: 1,
+    resultMessages: 0,
+    resultSamples: 0,
+    resultWindows: 0,
+    runMs: 1,
+    sourceKey: "source:1",
+    topChunks: [],
+    transferables: 0,
+  };
 }
 
 function createSource() {

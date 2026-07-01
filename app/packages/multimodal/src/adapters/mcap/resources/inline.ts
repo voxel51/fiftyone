@@ -7,6 +7,7 @@ import { readMcapDecodedMessages } from "./read-decoded-messages";
 import {
   createDefaultMcapReader,
   createMcapReaderStore,
+  type McapChunkReadDebugLog,
   type McapReaderFactory,
 } from "../reader";
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
@@ -49,6 +50,7 @@ export interface CreateInlineMcapResourceClientOptions {
   readonly byteClient?: ByteClient;
   readonly decodeClient?: DecodeClient;
   readonly debugChunkReads?: boolean;
+  readonly logChunkRead?: (entry: McapChunkReadDebugLog) => void;
   readonly readerFactory?: McapReaderFactory;
 }
 
@@ -70,6 +72,7 @@ export function createInlineMcapResourceClient(
   const readerStore = createMcapReaderStore({
     byteClient,
     debugChunkReads: options.debugChunkReads,
+    logChunkRead: options.logChunkRead,
     readerFactory,
   });
   const topicReads = new Map<string, Promise<readonly StreamInventory[]>>();

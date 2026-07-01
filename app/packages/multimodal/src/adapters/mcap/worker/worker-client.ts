@@ -1,4 +1,5 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
+import { recordMcapWorkerAttribution } from "../react/mcap-latency-debug";
 import { hydrateMcapFrameTransformSet } from "../frame-transforms";
 import { isMcapLatencyDebugEnabled } from "../mcap-debug-flags";
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
@@ -70,12 +71,14 @@ class WorkerMcapResourceClient implements McapResourceClient {
     name: "foreground",
     transport: new McapPlaybackWorkerTransport(
       (sourceKey) => this.activeSourceKey === sourceKey,
+      recordMcapWorkerAttribution,
     ),
   };
   private readonly idleLane: WorkerLane = {
     name: "idle",
     transport: new McapPlaybackWorkerTransport(
       (sourceKey) => this.activeSourceKey === sourceKey,
+      recordMcapWorkerAttribution,
     ),
   };
 
@@ -232,6 +235,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       const initRequest: McapPlaybackWorkerRequest = {
         payload: {
           ...workerFetchParameters(),
+          lane: lane.name,
           latencyDebug: isMcapLatencyDebugEnabled(),
         },
         type: "init",
