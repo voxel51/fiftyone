@@ -1,12 +1,13 @@
 import { defaultDecoderRegistry } from "../decoders";
 import {
+  createAdaptiveByteCacheBlockSize,
   createCacheApiByteRangeCache,
   createCachedByteClient,
   createHttpByteClient,
   createMemoryByteRangeCache,
   DEFAULT_BYTE_CACHE_SIZE_BYTES,
-  defaultByteCacheBlockSizeBytes,
 } from "./bytes";
+import type { ByteReadDebugLog } from "./bytes";
 import {
   createDecodeClient,
   createMemoryDecodedOutputCache,
@@ -23,11 +24,21 @@ import type {
 export function createMultimodalQueryClient(
   options: CreateMultimodalQueryClientOptions = {},
 ): MultimodalQueryClient {
+  // Explicit block-size overrides own their policy; otherwise measured
+  // small-fetch latency can promote scheme-misclassified sources (a "local"
+  // path served over a WAN) to the remote fill size.
+  const adaptiveBlockSize = options.caches?.bytes?.blockSizeBytes
+    ? null
+    : createAdaptiveByteCacheBlockSize();
   const byteCaches = {
     blockSizeBytes:
-      options.caches?.bytes?.blockSizeBytes ?? defaultByteCacheBlockSizeBytes,
+      options.caches?.bytes?.blockSizeBytes ??
+      adaptiveBlockSize?.blockSizeBytes,
     debug: options.caches?.bytes?.debug,
-    onRead: options.caches?.bytes?.onRead,
+    onRead: chainByteReadObservers(
+      adaptiveBlockSize?.onRead,
+      options.caches?.bytes?.onRead,
+    ),
     memory:
       options.caches?.bytes?.memory ??
       createMemoryByteRangeCache({
@@ -61,6 +72,27 @@ export function createMultimodalQueryClient(
     bytes,
     caches,
     decode,
+  };
+}
+
+function chainByteReadObservers(
+  ...observers: readonly (((entry: ByteReadDebugLog) => void) | undefined)[]
+): ((entry: ByteReadDebugLog) => void) | undefined {
+  const active = observers.filter(
+    (observer): observer is (entry: ByteReadDebugLog) => void =>
+      typeof observer === "function",
+  );
+  if (active.length === 0) {
+    return undefined;
+  }
+  if (active.length === 1) {
+    return active[0];
+  }
+
+  return (entry) => {
+    for (const observer of active) {
+      observer(entry);
+    }
   };
 }
 
