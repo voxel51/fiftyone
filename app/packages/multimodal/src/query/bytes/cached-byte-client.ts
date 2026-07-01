@@ -181,7 +181,8 @@ function logByteRead(
     readonly startMs: number;
   },
 ) {
-  if (!caches.debug?.enabled) return;
+  const debugEnabled = caches.debug?.enabled === true;
+  if (!debugEnabled && !caches.onRead) return;
 
   const entry: ByteReadDebugLog = {
     blockFill:
@@ -199,7 +200,10 @@ function logByteRead(
     sourceId: request.source.sourceId,
   };
 
-  (caches.debug.log ?? defaultByteReadDebugLogger)(entry);
+  caches.onRead?.(entry);
+  if (debugEnabled) {
+    (caches.debug?.log ?? defaultByteReadDebugLogger)(entry);
+  }
 }
 
 function defaultByteReadDebugLogger(entry: ByteReadDebugLog): void {

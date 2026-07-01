@@ -183,6 +183,13 @@ export interface ByteCacheLayers {
   readonly memory: ByteRangeCache;
 
   /**
+   * Always-on observer for completed logical byte reads, independent of
+   * debug logging. Health/telemetry consumers use this to measure real
+   * transport pressure (see `cacheResult`/`fetchedBytes` per entry).
+   */
+  readonly onRead?: (entry: ByteReadDebugLog) => void;
+
+  /**
    * Persistent byte-range cache shared across execution contexts (main
    * thread and workers) and page loads. `false` disables the default
    * Cache API layer; omitting it lets clients construct the default.

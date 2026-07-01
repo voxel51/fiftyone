@@ -22,6 +22,7 @@ import type {
   McapPlaybackWorkerRpcRequest,
   McapPlaybackWorkerStreamType,
 } from "./playback-worker-types";
+import { createMcapTransportMeter } from "./transport-meter";
 import { createWorkerResourceClient } from "./worker-resource-client";
 
 type McapPlaybackWorkerScope = {
@@ -35,6 +36,9 @@ type McapPlaybackWorkerScope = {
 
 const workerScope = self as unknown as McapPlaybackWorkerScope;
 const scheduler = new McapPlaybackWorkerScheduler();
+// One meter for the worker's lifetime: counters are cumulative so the main
+// thread can diff snapshots across source changes and client recreation.
+const transportMeter = createMcapTransportMeter();
 
 let activeSourceKey = "";
 let activeAttribution: McapPlaybackWorkerAttributionCollector | null = null;
@@ -123,6 +127,7 @@ async function runAndRespond(
         id: message.id,
         ok: true,
         result,
+        transport: transportMeter.snapshot(),
       },
       transferables,
     );
@@ -140,6 +145,7 @@ async function runAndRespond(
       error: mcapErrorMessage(error),
       id: message.id,
       ok: false,
+      transport: transportMeter.snapshot(),
     });
   } finally {
     activeAttribution = previousAttribution;
@@ -178,6 +184,7 @@ async function streamRequest(
     id: message.id,
     ok: true,
     stream: true,
+    transport: transportMeter.snapshot(),
   });
 }
 
@@ -196,6 +203,7 @@ function createMcapClient() {
     debugByteReads: debugReads,
     debugChunkReads: debugReads,
     logChunkRead: logChunkReadForActiveRequest,
+    onByteRead: transportMeter.onByteRead,
   });
 }
 

@@ -1,5 +1,6 @@
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import { createMultimodalQueryClient } from "../../../query";
+import type { ByteReadDebugLog } from "../../../query/bytes";
 import type { DecodedOutputCache } from "../../../query/decode";
 import { createDecodeClient } from "../../../query/decode";
 import { createMcapDecoderRegistry } from "../decoders";
@@ -24,6 +25,7 @@ export interface CreateWorkerResourceClientOptions {
   readonly debugByteReads?: boolean;
   readonly debugChunkReads?: boolean;
   readonly logChunkRead?: (entry: McapChunkReadDebugLog) => void;
+  readonly onByteRead?: (entry: ByteReadDebugLog) => void;
 }
 
 /**
@@ -33,11 +35,13 @@ export function createWorkerResourceClient({
   debugByteReads,
   debugChunkReads,
   logChunkRead,
+  onByteRead,
 }: CreateWorkerResourceClientOptions = {}): McapResourceClient {
   const query = createMultimodalQueryClient({
     caches: {
       bytes: {
         debug: { enabled: debugByteReads },
+        onRead: onByteRead,
       },
     },
   });

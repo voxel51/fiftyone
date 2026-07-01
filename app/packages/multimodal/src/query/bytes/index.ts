@@ -41,6 +41,7 @@ export type {
   ByteRangeCache,
   ByteRangeReadRequest,
   ByteRangeReadResult,
+  ByteReadDebugLog,
   ByteClient,
   ByteSourceDescriptor,
   ByteSourceReadProfile,
