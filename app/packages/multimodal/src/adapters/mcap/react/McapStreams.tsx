@@ -69,7 +69,8 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
           (s) =>
             s.type !== MCAP_SOURCE_TYPE.IMAGE_ANNOTATION &&
             s.type !== MCAP_SOURCE_TYPE.SCENE_ANNOTATION &&
-            s.type !== MCAP_SOURCE_TYPE.MAP_LAYER,
+            s.type !== MCAP_SOURCE_TYPE.MAP_LAYER &&
+            s.type !== MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
         )
         .map((s) => s.id),
     [sources],

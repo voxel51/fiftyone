@@ -1,6 +1,7 @@
 import type { PayloadDescriptor } from "../../decoders";
 import type { StreamInventory } from "../../schemas/v1";
 import {
+  FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD,
   FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
   FOXGLOVE_GRID_PAYLOAD,
   FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
@@ -96,6 +97,14 @@ export function isSceneUpdateStream(topic: StreamInventory): boolean {
  */
 export function isGridStream(topic: StreamInventory): boolean {
   return hasPayload(topic, FOXGLOVE_GRID_PAYLOAD);
+}
+
+/**
+ * Returns whether a stream inventory item is a supported Foxglove
+ * CameraCalibration stream.
+ */
+export function isCameraCalibrationStream(topic: StreamInventory): boolean {
+  return hasPayload(topic, FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD);
 }
 
 /**
