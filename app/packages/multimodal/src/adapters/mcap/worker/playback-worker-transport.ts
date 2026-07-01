@@ -1,6 +1,7 @@
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { mcapError } from "../errors";
 import type {
+  McapPlaybackWorkerPriority,
   McapPlaybackWorkerRequest,
   McapPlaybackWorkerRequestPayloadByType,
   McapPlaybackWorkerResponse,
@@ -48,9 +49,10 @@ export class McapPlaybackWorkerTransport {
     sourceKey: string,
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority?: McapPlaybackWorkerPriority,
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     const id = this.nextRequestId++;
-    const message = createRpcRequest(id, sourceKey, type, payload);
+    const message = createRpcRequest(id, sourceKey, type, payload, priority);
 
     return new Promise((resolve, reject) => {
       this.pending.set(id, {
@@ -204,23 +206,26 @@ function createRpcRequest<Type extends McapPlaybackWorkerUnaryType>(
   sourceKey: string,
   type: Type,
   payload: McapPlaybackWorkerRequestPayloadByType[Type],
+  priority?: McapPlaybackWorkerPriority,
 ): McapPlaybackWorkerRpcRequest<Type>;
 function createRpcRequest<Type extends McapPlaybackWorkerStreamType>(
   id: number,
   sourceKey: string,
   type: Type,
   payload: McapPlaybackWorkerRequestPayloadByType[Type],
+  priority?: McapPlaybackWorkerPriority,
 ): McapPlaybackWorkerRpcRequest<Type>;
 function createRpcRequest(
   id: number,
   sourceKey: string,
   type: McapPlaybackWorkerRpcRequest["type"],
   payload: McapPlaybackWorkerRpcRequest["payload"],
+  priority?: McapPlaybackWorkerPriority,
 ): McapPlaybackWorkerRequest {
   return {
     id,
     payload,
-    priority: mcapPlaybackWorkerOperation(type).priority,
+    priority: priority ?? mcapPlaybackWorkerOperation(type).priority,
     sourceKey,
     type,
   } as McapPlaybackWorkerRequest;

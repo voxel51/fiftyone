@@ -271,6 +271,16 @@ export interface McapReadSynchronizedMessageBatchRequest extends Omit<
 }
 
 /**
+ * Scheduling priority for resource reads where callers know whether the work
+ * is immediately user-visible or opportunistic.
+ */
+export type McapResourceReadPriority = "current" | "idle" | "playback";
+
+export interface McapResourceReadOptions {
+  readonly priority?: McapResourceReadPriority;
+}
+
+/**
  * Decoded MCAP message with playback identity and decoder output.
  */
 export interface McapDecodedMessage {
@@ -414,6 +424,7 @@ export interface McapResourceClient {
    */
   readFrameTransformWindow(
     request: McapReadFrameTransformWindowRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapFrameTransformSet>;
 
   /**
@@ -428,5 +439,6 @@ export interface McapResourceClient {
    */
   readSynchronizedMessageBatch(
     request: McapReadSynchronizedMessageBatchRequest,
+    options?: McapResourceReadOptions,
   ): Promise<readonly McapSynchronizedMessageWindow[]>;
 }
