@@ -121,8 +121,9 @@ setup(
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.10",
     extras_require={
-        "multimodal": [
-            "protobuf==7.35.0",
+        "multimodal-mcap": [
+            "protobuf==6.33.6",
         ],
+        "multimodal": ["fiftyone[multimodal-mcap]"],
     },
 )
