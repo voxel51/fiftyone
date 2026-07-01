@@ -1,5 +1,6 @@
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { mcapError } from "../errors";
+import type { McapPlaybackWorkerAttribution } from "./playback-worker-attribution";
 import type {
   McapPlaybackWorkerPriority,
   McapPlaybackWorkerRequest,
@@ -39,6 +40,9 @@ export class McapPlaybackWorkerTransport {
 
   constructor(
     private readonly isActiveSource: (sourceKey: string) => boolean,
+    private readonly onAttribution?: (
+      attribution: McapPlaybackWorkerAttribution,
+    ) => void,
   ) {}
 
   /**
@@ -115,6 +119,10 @@ export class McapPlaybackWorkerTransport {
    * Applies one worker response to the matching pending request or stream.
    */
   handleResponse(response: McapPlaybackWorkerResponse) {
+    if (response.debugAttribution) {
+      this.onAttribution?.(response.debugAttribution);
+    }
+
     if (response.ok && "stream" in response) {
       this.handleStreamResponse(response);
       return;

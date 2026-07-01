@@ -7,9 +7,15 @@ export type McapPlaybackWorkerJob = {
   readonly id: number;
   readonly operation?: string;
   readonly priority: McapPlaybackWorkerPriority;
-  readonly run: () => Promise<void>;
+  readonly run: (context: McapPlaybackWorkerRunContext) => Promise<void>;
   readonly sourceKey: string;
 };
+
+export interface McapPlaybackWorkerRunContext {
+  readonly queueDepthAtStart: number;
+  readonly queueWaitMs: number;
+  readonly startedAtMs: number;
+}
 
 type QueuedJob = McapPlaybackWorkerJob & {
   readonly order: number;
@@ -99,7 +105,11 @@ export class McapPlaybackWorkerScheduler {
         });
 
         try {
-          await job.run();
+          await job.run({
+            queueDepthAtStart: this.queue.length,
+            queueWaitMs,
+            startedAtMs,
+          });
         } catch (error) {
           console.error("MCAP playback worker job failed", {
             error,
