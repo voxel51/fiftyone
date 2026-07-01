@@ -182,6 +182,20 @@ export function createCacheApiByteRangeCache(
           return undefined;
         }
 
+        // Content validator: id and size survive same-size rewrites, the
+        // ETag does not. Entries written before the validator was known
+        // stay servable — most sessions discover it on their first
+        // transport touch, which bounds the unvalidated window.
+        const storedEtag = match.headers.get("x-fo-etag");
+        if (
+          request.source.etag !== undefined &&
+          storedEtag !== null &&
+          storedEtag !== request.source.etag
+        ) {
+          await cache.delete(url);
+          return undefined;
+        }
+
         const bytes = new Uint8Array(await match.arrayBuffer());
         if (BigInt(bytes.byteLength) !== request.range.length) {
           // A truncated or corrupted entry must read as a miss, and staying
@@ -220,6 +234,9 @@ export function createCacheApiByteRangeCache(
             headers: {
               "content-type": "application/octet-stream",
               "x-fo-byte-length": String(result.bytes.byteLength),
+              ...(result.source.etag !== undefined
+                ? { "x-fo-etag": result.source.etag }
+                : {}),
             },
           }),
         );

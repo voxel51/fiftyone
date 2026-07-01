@@ -82,6 +82,69 @@ describe("createCacheApiByteRangeCache", () => {
     ).toBeUndefined();
   });
 
+  it("serves entries whose stored validator matches the source etag", async () => {
+    const cache = createCache();
+    await cache.put(
+      result({
+        bytes: new Uint8Array([7]),
+        offset: 0n,
+        source: source({ etag: "abc" }),
+      }),
+    );
+
+    const hit = await cache.get(
+      request({ length: 1n, offset: 0n, source: source({ etag: "abc" }) }),
+    );
+
+    expect(hit?.bytes).toEqual(new Uint8Array([7]));
+  });
+
+  it("drops entries whose stored validator mismatches the source etag", async () => {
+    const cache = createCache();
+    await cache.put(
+      result({
+        bytes: new Uint8Array([7]),
+        offset: 0n,
+        source: source({ etag: "abc" }),
+      }),
+    );
+
+    const rewritten = await cache.get(
+      request({ length: 1n, offset: 0n, source: source({ etag: "def" }) }),
+    );
+    expect(rewritten).toBeUndefined();
+    // The stale entry is gone even for validator-less follow-up reads.
+    expect(
+      await cache.get(request({ length: 1n, offset: 0n })),
+    ).toBeUndefined();
+  });
+
+  it("keeps serving validator-less entries and validator-less requests", async () => {
+    const cache = createCache();
+    await cache.put(result({ bytes: new Uint8Array([1]), offset: 0n }));
+    await cache.put(
+      result({
+        bytes: new Uint8Array([2]),
+        offset: 10n,
+        source: source({ etag: "abc" }),
+      }),
+    );
+
+    // Entry without a stored validator, request with one: pre-discovery
+    // write stays servable.
+    expect(
+      (
+        await cache.get(
+          request({ length: 1n, offset: 0n, source: source({ etag: "abc" }) }),
+        )
+      )?.bytes,
+    ).toEqual(new Uint8Array([1]));
+    // Entry with a validator, request without one: still a hit.
+    expect(
+      (await cache.get(request({ length: 1n, offset: 10n })))?.bytes,
+    ).toEqual(new Uint8Array([2]));
+  });
+
   it("drops truncated entries instead of returning them", async () => {
     const cache = createCache();
     await cache.put(result({ bytes: new Uint8Array([1, 2]), offset: 0n }));
@@ -233,10 +296,14 @@ function result({
 
 /**
  * Minimal in-memory CacheStorage: insertion-ordered, URL-keyed, enough for
- * the byte-cache contract (open/match/put/delete/keys).
+ * the byte-cache contract (open/match/put/delete/keys) including stored
+ * response headers.
  */
 function createFakeCacheStorage(): CacheStorage {
-  const cachesByName = new Map<string, Map<string, Uint8Array>>();
+  const cachesByName = new Map<
+    string,
+    Map<string, { bytes: Uint8Array; headers: Headers }>
+  >();
 
   const openCache = (name: string): Cache => {
     let entries = cachesByName.get(name);
@@ -254,14 +321,17 @@ function createFakeCacheStorage(): CacheStorage {
         return [...store.keys()].map((url) => ({ url }) as unknown as Request);
       },
       async match(key: RequestInfo | URL) {
-        const bytes = store.get(keyUrl(key));
-        if (!bytes) {
+        const entry = store.get(keyUrl(key));
+        if (!entry) {
           return undefined;
         }
-        return new Response(bytes.slice());
+        return new Response(entry.bytes.slice(), { headers: entry.headers });
       },
       async put(key: RequestInfo | URL, response: Response) {
-        store.set(keyUrl(key), new Uint8Array(await response.arrayBuffer()));
+        store.set(keyUrl(key), {
+          bytes: new Uint8Array(await response.arrayBuffer()),
+          headers: response.headers,
+        });
       },
     } as unknown as Cache;
   };

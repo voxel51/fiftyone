@@ -78,6 +78,32 @@ describe("multimodal query clients", () => {
     });
   });
 
+  it("captures normalized ETag validators from HEAD and ranged responses", async () => {
+    const { extendedFetch } = createFetchMock(
+      {
+        "bytes://source/default": new Uint8Array([9, 9, 9]).buffer,
+      },
+      { etag: 'W/"abc123"' },
+    );
+    const client = createHttpByteClient(extendedFetch);
+    const source = {
+      sourceId: "source:1",
+      url: "bytes://source/default",
+    };
+
+    await expect(client.stat?.(source)).resolves.toEqual({
+      ...source,
+      etag: "abc123",
+      sizeBytes: "3",
+    });
+
+    const read = await client.readBytes({
+      range: { length: 3n, offset: 0n },
+      source,
+    });
+    expect(read.source.etag).toBe("abc123");
+  });
+
   it("falls back to ranged GET when HEAD does not report size", async () => {
     const { calls, extendedFetch } = createFetchMock(
       {
@@ -727,7 +753,7 @@ describe("multimodal query clients", () => {
 
 function createFetchMock(
   responses: Readonly<Record<string, ArrayBufferLike>>,
-  options: { readonly head?: "missing" | "fail" } = {},
+  options: { readonly etag?: string; readonly head?: "missing" | "fail" } = {},
 ): {
   calls: FetchCall[];
   extendedFetch: ExtendedFetchFunction;
@@ -755,6 +781,7 @@ function createFetchMock(
             ? new Headers()
             : new Headers({
                 "Content-Length": response.byteLength.toString(),
+                ...(options.etag ? { ETag: options.etag } : {}),
               }),
         response: new ArrayBuffer(0) as Result,
       };
@@ -764,6 +791,7 @@ function createFetchMock(
       headers: headers?.Range
         ? new Headers({
             "Content-Range": contentRangeHeader(headers.Range, response),
+            ...(options.etag ? { ETag: options.etag } : {}),
           })
         : undefined,
       response: response as Result,
