@@ -17,6 +17,8 @@ import {
   isBufferingAtom,
   isPlayPendingAtom,
   isPlayingAtom,
+  loopEndAtom,
+  loopStartAtom,
   playheadAtom,
   streamValueAtom,
 } from "./atoms";
@@ -25,6 +27,16 @@ import type { BufferedRanges, PlaybackStore } from "./types";
 /** Non-reactive read of the visual playhead position, in seconds. */
 export function getPlayhead(store: PlaybackStore): number {
   return store.get(playheadAtom);
+}
+
+/** Non-reactive read of the active loop start, in seconds. */
+export function getLoopStart(store: PlaybackStore): number {
+  return store.get(loopStartAtom);
+}
+
+/** Non-reactive read of the active loop end, in seconds. */
+export function getLoopEnd(store: PlaybackStore): number {
+  return store.get(loopEndAtom);
 }
 
 /**

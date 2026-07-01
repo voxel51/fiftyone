@@ -460,6 +460,73 @@ describe("stream status + buffering feedback", () => {
     expect(idleCall?.[0].topics).toEqual([TOPIC]);
   });
 
+  it("warms a loop-start runway when the loop end is inside lookahead", async () => {
+    window.history.replaceState(null, "", "/?mcapLatencyDebug=1");
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async (request) =>
+        request.timeNs.map(createEmptyWindow),
+      ),
+      readSynchronizedMessages: vi.fn(async (request) =>
+        createEmptyWindow(request.timeNs),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange(2_000_000_000n)),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(client.readSynchronizedMessageBatch).toHaveBeenCalled();
+    });
+
+    act(() => {
+      api?.seek(1.75);
+    });
+
+    await waitFor(
+      () => {
+        expect(
+          vi
+            .mocked(client.readSynchronizedMessageBatch)
+            .mock.calls.some(([request]) =>
+              request.mcapDataRequestId?.includes("loopback-lookahead"),
+            ),
+        ).toBe(true);
+      },
+      { timeout: 2000 },
+    );
+
+    const loopbackCall = vi
+      .mocked(client.readSynchronizedMessageBatch)
+      .mock.calls.find(([request]) =>
+        request.mcapDataRequestId?.includes("loopback-lookahead"),
+      );
+    expect(loopbackCall?.[1]?.priority).toBe("playback");
+    expect(loopbackCall?.[0].timeNs.length).toBeGreaterThan(0);
+    expect(loopbackCall?.[0].timeNs.at(-1)).toBeLessThanOrEqual(2_000_000_000n);
+
+    await waitFor(() => {
+      const events = readDebugAttribute<Array<{ name: string }>>(
+        "data-mcap-latency-events",
+      );
+      expect(
+        events.some((event) => event.name === "loopback runway request"),
+      ).toBe(true);
+    });
+  });
+
   it("queues covered background lookahead as small idle batches", async () => {
     const source = createSource("source");
     const batches: Array<{
