@@ -22,6 +22,12 @@ export interface McapChunkReadDebugLog {
 export interface ByteClientReadableOptions {
   readonly debugChunkReads?: boolean;
   readonly logChunkRead?: (entry: McapChunkReadDebugLog) => void;
+  /**
+   * Holder for the abort signal of the currently-executing request. Worker
+   * lanes run one request at a time, so a single mutable slot scopes reads
+   * to their owning request without threading signals through `@mcap/core`.
+   */
+  readonly readSignal?: { readonly current: AbortSignal | null };
 }
 
 /**
@@ -36,6 +42,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
   >();
   private source: ByteSourceDescriptor;
   private resolvedSizeBytes?: bigint;
+  private etagDiscoveryStarted = false;
 
   constructor(
     source: ByteSourceDescriptor,
@@ -54,6 +61,11 @@ export class ByteClientReadable implements McapTypes.IReadable {
   async size(): Promise<bigint> {
     const sizeBytes = sourceSizeBytes(this.source);
     if (sizeBytes !== undefined) {
+      // Metadata-provided sizes can make a warm persistent-cache session
+      // fully network-free, which would leave stale entries unvalidated
+      // forever. One non-blocking HEAD discovers the content validator so
+      // cache lookups from here on can compare against it.
+      this.discoverEtagInBackground();
       return sizeBytes;
     }
 
@@ -85,6 +97,24 @@ export class ByteClientReadable implements McapTypes.IReadable {
     return this.resolvedSizeBytes;
   }
 
+  private discoverEtagInBackground(): void {
+    if (this.source.etag !== undefined || this.etagDiscoveryStarted) {
+      return;
+    }
+    this.etagDiscoveryStarted = true;
+    const stat = this.byteClient.stat?.(this.source);
+    if (!stat) {
+      return;
+    }
+    void stat
+      .then((statSource) => {
+        if (statSource) {
+          this.updateSource(statSource);
+        }
+      })
+      .catch(() => undefined);
+  }
+
   async read(offset: bigint, size: bigint): Promise<Uint8Array> {
     return this.readRange(offset, size);
   }
@@ -112,10 +142,12 @@ export class ByteClientReadable implements McapTypes.IReadable {
     const readKey = readRangeKey(offset, size, cachePolicy);
     const pending = this.inFlightReads.get(readKey);
     const cacheResult = pending ? "coalesced" : "fetched";
+    const signal = this.options.readSignal?.current ?? undefined;
     const result = await (pending ??
       this.startReadRange(readKey, {
         cachePolicy,
         range: { length: size, offset },
+        ...(signal ? { signal } : {}),
         source: this.source,
       }));
     this.updateSource(result.source);
@@ -147,6 +179,12 @@ export class ByteClientReadable implements McapTypes.IReadable {
     if (sizeBytes !== undefined) {
       this.resolvedSizeBytes = sizeBytes;
       this.source = source;
+      return;
+    }
+    // A stat can return a validator without a usable size; absorb it so
+    // subsequent reads carry the etag to cache lookups.
+    if (source.etag !== undefined && this.source.etag !== source.etag) {
+      this.source = { ...this.source, etag: source.etag };
     }
   }
 

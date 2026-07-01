@@ -26,6 +26,13 @@ export interface ByteRange {
  */
 export interface ByteSourceDescriptor {
   /**
+   * Transport-discovered content validator (HTTP ETag from HEAD or ranged
+   * GET responses). Not part of source identity — persistent caches use it
+   * to detect content rewrites hiding behind an unchanged id and size.
+   */
+  readonly etag?: string;
+
+  /**
    * Optional source locality hint used to choose default cache fill size.
    */
   readonly readProfile?: ByteSourceReadProfile;
@@ -60,6 +67,13 @@ export interface ByteRangeReadRequest {
      */
     readonly blockFill?: boolean;
   };
+
+  /**
+   * Abort signal for the transport fetch behind this read. Coalesced reads
+   * share one physical fetch, which follows the signal of the request that
+   * started it — abort granularity is the physical fetch, not the waiter.
+   */
+  readonly signal?: AbortSignal;
 
   /**
    * Source to read from.

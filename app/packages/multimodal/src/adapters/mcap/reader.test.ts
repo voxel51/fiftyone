@@ -266,10 +266,12 @@ describe("MCAP indexed message times", () => {
     expect(readerFactory).toHaveBeenCalledTimes(1);
   });
 
-  it("uses descriptor size before probing byte clients", async () => {
+  it("uses descriptor size without waiting on byte clients", async () => {
+    // Stat never settles: size() must resolve from the descriptor anyway,
+    // proving validator discovery stays off the critical path.
     const byteClient: ByteClient = {
       readBytes: vi.fn(),
-      stat: vi.fn(),
+      stat: vi.fn(() => new Promise<undefined>(() => undefined)),
     };
     const readable = new ByteClientReadable(
       {
@@ -281,8 +283,54 @@ describe("MCAP indexed message times", () => {
     );
 
     await expect(readable.size()).resolves.toBe(128n);
-    expect(byteClient.stat).not.toHaveBeenCalled();
+    await expect(readable.size()).resolves.toBe(128n);
+    // Exactly one background content-validator probe; repeat size() calls
+    // must not stack additional transport work.
+    expect(byteClient.stat).toHaveBeenCalledTimes(1);
     expect(byteClient.readBytes).not.toHaveBeenCalled();
+  });
+
+  it("adopts a background-discovered etag for later reads", async () => {
+    const bytes = new Uint8Array(4);
+    let resolveStat: (source: {
+      readonly etag?: string;
+      readonly sizeBytes?: string;
+      readonly sourceId: string;
+      readonly url: string;
+    }) => void = () => undefined;
+    const byteClient: ByteClient = {
+      readBytes: vi.fn(async (request) => ({
+        bytes,
+        range: request.range,
+        source: request.source,
+      })),
+      stat: vi.fn(
+        () =>
+          new Promise<Awaited<ReturnType<NonNullable<ByteClient["stat"]>>>>(
+            (resolve) => {
+              resolveStat = resolve;
+            },
+          ),
+      ),
+    };
+    const descriptor = {
+      sizeBytes: "128",
+      sourceId: "source:1",
+      url: "mcap-source://sample",
+    };
+    const readable = new ByteClientReadable(descriptor, byteClient);
+
+    await expect(readable.size()).resolves.toBe(128n);
+    resolveStat({ ...descriptor, etag: "abc123" });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    await readable.read(0n, 4n);
+    expect(byteClient.readBytes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: expect.objectContaining({ etag: "abc123" }),
+      }),
+    );
   });
 
   it("uses byte client stat when descriptor size is missing", async () => {
