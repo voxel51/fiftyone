@@ -147,7 +147,7 @@ export function ImageTexturePlane({
 export function imageDisplayRect(
   container: ImageDisplaySize,
   imageSize: ImageDisplaySize,
-  fit: "contain" | "cover"
+  fit: "contain" | "cover",
 ): ImageDisplayRect {
   const containerAspect = container.width / Math.max(1, container.height);
   const imageAspect = imageSize.width / Math.max(1, imageSize.height);
@@ -170,7 +170,7 @@ export function imageDisplayRect(
 
 export function transformedImageDisplayRect(
   rect: ImageDisplayRect,
-  viewTransform: ImageViewTransform | undefined
+  viewTransform: ImageViewTransform | undefined,
 ): ImageDisplayRect {
   const transform = normalizeImageViewTransform(viewTransform);
   const width = rect.width * transform.scale;
@@ -198,12 +198,12 @@ export function clampImageViewTransform(
     readonly imageSize: ImageDisplaySize | null;
     readonly maxScale?: number;
     readonly minScale?: number;
-  }
+  },
 ): ImageViewTransform {
   const scale = clampFinite(
     viewTransform.scale,
     Math.min(minScale, maxScale),
-    Math.max(minScale, maxScale)
+    Math.max(minScale, maxScale),
   );
 
   if (
@@ -224,12 +224,12 @@ export function clampImageViewTransform(
   const maxTranslateX = maxImagePanDistance(
     rect.width,
     containerSize.width,
-    scale
+    scale,
   );
   const maxTranslateY = maxImagePanDistance(
     rect.height,
     containerSize.height,
-    scale
+    scale,
   );
 
   return {
@@ -237,12 +237,12 @@ export function clampImageViewTransform(
     translateX: clampFinite(
       viewTransform.translateX,
       -maxTranslateX,
-      maxTranslateX
+      maxTranslateX,
     ),
     translateY: clampFinite(
       viewTransform.translateY,
       -maxTranslateY,
-      maxTranslateY
+      maxTranslateY,
     ),
   };
 }
@@ -250,7 +250,7 @@ export function clampImageViewTransform(
 export function imageViewTransformEquals(
   first: ImageViewTransform,
   second: ImageViewTransform,
-  epsilon = VIEW_TRANSFORM_EPSILON
+  epsilon = VIEW_TRANSFORM_EPSILON,
 ): boolean {
   return (
     Math.abs(first.scale - second.scale) <= epsilon &&
@@ -260,7 +260,7 @@ export function imageViewTransformEquals(
 }
 
 function normalizeImageViewTransform(
-  viewTransform: ImageViewTransform | undefined
+  viewTransform: ImageViewTransform | undefined,
 ): ImageViewTransform {
   if (!viewTransform) {
     return DEFAULT_IMAGE_VIEW_TRANSFORM;
@@ -302,7 +302,7 @@ function clampFinite(value: number, min: number, max: number): number {
 function maxImagePanDistance(
   fittedLength: number,
   containerLength: number,
-  scale: number
+  scale: number,
 ): number {
   const scaledLength = fittedLength * scale;
 
@@ -325,7 +325,7 @@ function imagePlaneScale(
   const rect = imageDisplayRect(
     { height, width },
     { height: 1, width: aspectRatio },
-    fit
+    fit,
   );
 
   return [Math.max(1, rect.width), Math.max(1, rect.height), 1];

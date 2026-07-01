@@ -257,7 +257,7 @@ describe("ImageAnnotationsOverlay", () => {
         imageHeight={100}
         fit="contain"
         viewTransform={{ scale: 2, translateX: 25, translateY: -10 }}
-      />
+      />,
     );
 
     const svg = requireElement<SVGSVGElement>(container, "svg");

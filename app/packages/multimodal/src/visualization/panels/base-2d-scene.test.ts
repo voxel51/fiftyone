@@ -12,8 +12,8 @@ describe("2D image view helpers", () => {
       imageDisplayRect(
         { height: 300, width: 400 },
         { height: 100, width: 200 },
-        "contain"
-      )
+        "contain",
+      ),
     ).toEqual({ height: 200, width: 400, x: 0, y: 50 });
   });
 
@@ -21,8 +21,8 @@ describe("2D image view helpers", () => {
     expect(
       transformedImageDisplayRect(
         { height: 200, width: 400, x: 0, y: 50 },
-        { scale: 2, translateX: 25, translateY: -10 }
-      )
+        { scale: 2, translateX: 25, translateY: -10 },
+      ),
     ).toEqual({ height: 400, width: 800, x: -175, y: -60 });
   });
 
@@ -34,8 +34,8 @@ describe("2D image view helpers", () => {
           containerSize: { height: 300, width: 400 },
           fit: "contain",
           imageSize: { height: 100, width: 200 },
-        }
-      )
+        },
+      ),
     ).toEqual({ scale: 2, translateX: 200, translateY: -50 });
   });
 
@@ -48,8 +48,8 @@ describe("2D image view helpers", () => {
           fit: "contain",
           imageSize: { height: 100, width: 200 },
           minScale: 0.1,
-        }
-      )
+        },
+      ),
     ).toEqual({ scale: 0.5, translateX: 100, translateY: -100 });
   });
 
@@ -62,8 +62,8 @@ describe("2D image view helpers", () => {
           fit: "contain",
           imageSize: { height: 100, width: 200 },
           minScale: 0.1,
-        }
-      )
+        },
+      ),
     ).toEqual({ scale: 1, translateX: 0, translateY: 0 });
   });
 
@@ -75,8 +75,8 @@ describe("2D image view helpers", () => {
           containerSize: { height: 300, width: 400 },
           fit: "cover",
           imageSize: { height: 100, width: 200 },
-        }
-      )
+        },
+      ),
     ).toEqual({ scale: 1, translateX: 100, translateY: 0 });
   });
 
@@ -89,8 +89,8 @@ describe("2D image view helpers", () => {
           fit: "cover",
           imageSize: { height: 100, width: 200 },
           minScale: 0.1,
-        }
-      )
+        },
+      ),
     ).toEqual({ scale: 0.8, translateX: 40, translateY: -30 });
   });
 });

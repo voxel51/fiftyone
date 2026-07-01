@@ -79,7 +79,7 @@ export function ImagePanel({
         />
       </Base2DScene>
     ),
-    [fit, textureHandle, viewTransform]
+    [fit, textureHandle, viewTransform],
   );
 
   useEffect(() => {
