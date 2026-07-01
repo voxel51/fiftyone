@@ -439,6 +439,93 @@ describe("PointCloudPanel", () => {
     expect(cameraPose.target).toEqual([1, 2, 3]);
   });
 
+  it("renders camera frustum wireframes without widening camera bounds", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const setAttribute = vi.spyOn(
+      THREE.BufferGeometry.prototype,
+      "setAttribute",
+    );
+
+    const { container } = render(
+      <PointCloudPanel
+        frustumLayers={[
+          {
+            contentTimeNs: 100n,
+            frame: {
+              height: 900,
+              // fx=fy=450, cx=800, cy=450: at depth 1 the corners span
+              // x ∈ [-800/450, 800/450], y ∈ [-1, 1].
+              K: [450, 0, 800, 0, 450, 450, 0, 0, 1],
+              kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
+              width: 1600,
+            },
+            frameTransform: {
+              rotation: new THREE.Quaternion(0, 0, 0, 1),
+              sourceFrameId: "CAM_FRONT",
+              targetFrameId: "base_link",
+              translation: new THREE.Vector3(100, 200, 1.5),
+            },
+            id: "/CAM_FRONT/camera_info",
+          },
+        ]}
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 1,
+              positions: new Float32Array([1, 2, 3]),
+            },
+            id: "/points",
+          },
+        ]}
+        showHud={false}
+      />,
+    );
+
+    expect(container.querySelector("linesegments")).toBeTruthy();
+    const groups = Array.from(container.querySelectorAll("group"));
+    expect(
+      groups.some((group) => group.getAttribute("position") === "100,200,1.5"),
+    ).toBe(true);
+
+    // 4 apex rays + 4 far-rectangle edges = 8 segments = 16 vertices.
+    const frustumPositions = setAttribute.mock.calls
+      .map(([, attribute]) => attribute as THREE.BufferAttribute)
+      .find((attribute) => attribute.array.length === 16 * 3);
+    expect(frustumPositions).toBeDefined();
+
+    // The frustum at (100, 200) must not drag the camera fit off the cloud.
+    const cameraPose = JSON.parse(
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
+        "{}",
+    ) as { readonly target?: readonly number[] };
+    expect(cameraPose.target).toEqual([1, 2, 3]);
+  });
+
+  it("labels frustum-only scenes in the HUD", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    render(
+      <PointCloudPanel
+        frustumLayers={[
+          {
+            frame: {
+              height: 900,
+              K: [450, 0, 800, 0, 450, 450, 0, 0, 1],
+              kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
+              width: 1600,
+            },
+            id: "/CAM_FRONT/camera_info",
+          },
+        ]}
+        layers={[]}
+      />,
+    );
+
+    expect(screen.getByText("1 camera")).toBeTruthy();
+  });
+
   it("passes controlled camera pose through to the base scene", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const onCameraPoseChange = vi.fn();

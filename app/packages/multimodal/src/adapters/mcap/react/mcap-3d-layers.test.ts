@@ -1,6 +1,7 @@
 import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import type {
+  CameraCalibrationVisualization,
   GridVisualization,
   PointCloudVisualization,
   SceneUpdateVisualization,
@@ -136,6 +137,31 @@ function transformsState(
   resolve: McapFrameTransformsState["resolve"],
 ): McapFrameTransformsState {
   return { error: null, frameIds: [], resolve, status: "ready" };
+}
+
+function calibrationViz(
+  coordinateFrameId?: string,
+): CameraCalibrationVisualization {
+  return {
+    ...(coordinateFrameId ? { coordinateFrameId } : {}),
+    height: 900,
+    K: [1252.8, 0, 826.6, 0, 1252.8, 469.9, 0, 0, 1],
+    kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
+    width: 1600,
+  };
+}
+
+function calibrationPlaybackFrame(
+  value: CameraCalibrationVisualization,
+  contentTimeNs = TIME_NS,
+  requestedTimeNs = contentTimeNs,
+) {
+  return {
+    ageNs: 0n,
+    contentTimeNs,
+    frame: value,
+    requestedTimeNs,
+  };
 }
 
 function gridViz(coordinateFrameId?: string): GridVisualization {
@@ -660,5 +686,129 @@ describe("build3dLayers", () => {
       gridLayers[0]?.frameTransform?.translation.equals(new Vector3(0, 0, 0)),
     ).toBe(true);
     expect(transformedLayerCount).toBe(1);
+  });
+
+  it("places a camera frustum whose frame resolves to the world frame", () => {
+    const transform = {
+      rotation: new Quaternion(),
+      sourceFrameId: "CAM_FRONT",
+      targetFrameId: "base_link",
+      translation: new Vector3(1.7, 0, 1.5),
+    };
+    const { cameraFrustumLayers, transformedLayerCount, unresolvedFrameIds } =
+      build3dLayers({
+        calibrationFrames: [
+          calibrationPlaybackFrame(calibrationViz("CAM_FRONT")),
+        ],
+        frames: [],
+        frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+          sourceFrameId,
+          resolutionKind: "exact",
+          status: "resolved",
+          targetFrameId,
+          transform,
+        })),
+        selectedCalibrationTopics: ["/CAM_FRONT/camera_info"],
+        selectedTopics: [],
+        worldFrameId: "base_link",
+      });
+
+    expect(unresolvedFrameIds).toEqual([]);
+    expect(cameraFrustumLayers).toHaveLength(1);
+    expect(cameraFrustumLayers[0]).toMatchObject({
+      contentTimeNs: TIME_NS,
+      frameTransform: transform,
+      id: "/CAM_FRONT/camera_info",
+    });
+    expect(transformedLayerCount).toBe(1);
+  });
+
+  it("resolves frustum transforms at the requested playhead time", () => {
+    // The camera rig rides the ego: like grids, frustums are frame-locked
+    // and must track the world frame at the playhead, not at the
+    // calibration message's own timestamp.
+    const calls: Array<{ sourceFrameId: string; timeNs: bigint }> = [];
+
+    build3dLayers({
+      calibrationFrames: [
+        calibrationPlaybackFrame(calibrationViz("CAM_FRONT"), 100n, 175n),
+      ],
+      frames: [],
+      frameTransforms: transformsState(
+        (sourceFrameId, targetFrameId, timeNs) => {
+          calls.push({ sourceFrameId, timeNs });
+          return {
+            sourceFrameId,
+            status: "resolved",
+            targetFrameId,
+            transform: {
+              rotation: new Quaternion(),
+              sourceFrameId,
+              targetFrameId,
+              translation: new Vector3(),
+            },
+          };
+        },
+      ),
+      selectedCalibrationTopics: ["/CAM_FRONT/camera_info"],
+      selectedTopics: [],
+      worldFrameId: "base_link",
+    });
+
+    expect(calls).toEqual([{ sourceFrameId: "CAM_FRONT", timeNs: 175n }]);
+  });
+
+  it("hides frustums while transforms are pending and drops missing ones", () => {
+    const pendingResult = build3dLayers({
+      calibrationFrames: [
+        calibrationPlaybackFrame(calibrationViz("CAM_FRONT")),
+      ],
+      frames: [],
+      frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+        sourceFrameId,
+        status: "pending",
+        targetFrameId,
+      })),
+      selectedCalibrationTopics: ["/CAM_FRONT/camera_info"],
+      selectedTopics: [],
+      worldFrameId: "base_link",
+    });
+
+    expect(pendingResult.pendingFrustumFrameIds).toEqual(["CAM_FRONT"]);
+    expect(pendingResult.cameraFrustumLayers).toHaveLength(0);
+
+    const missingResult = build3dLayers({
+      calibrationFrames: [
+        calibrationPlaybackFrame(calibrationViz("CAM_FRONT")),
+      ],
+      frames: [],
+      frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+        sourceFrameId,
+        status: "missing",
+        targetFrameId,
+      })),
+      selectedCalibrationTopics: ["/CAM_FRONT/camera_info"],
+      selectedTopics: [],
+      worldFrameId: "base_link",
+    });
+
+    expect(missingResult.cameraFrustumLayers).toHaveLength(0);
+    expect(missingResult.unresolvedFrameIds).toEqual(["CAM_FRONT"]);
+  });
+
+  it("renders a frameless frustum at the scene origin without consulting transforms", () => {
+    const { cameraFrustumLayers } = build3dLayers({
+      calibrationFrames: [calibrationPlaybackFrame(calibrationViz(undefined))],
+      frames: [],
+      frameTransforms: transformsState(() => {
+        throw new Error("resolve must not run for frameless frustums");
+      }),
+      selectedCalibrationTopics: ["/camera_info"],
+      selectedTopics: [],
+      worldFrameId: "map",
+    });
+
+    expect(cameraFrustumLayers).toHaveLength(1);
+    expect(cameraFrustumLayers[0]?.frameTransform).toBeUndefined();
   });
 });
