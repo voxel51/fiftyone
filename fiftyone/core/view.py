@@ -908,6 +908,16 @@ class DatasetView(foc.SampleCollection):
 
         group_expr, is_id_field, root_view, sort = self._parse_dynamic_groups()
 
+        if isinstance(group_expr, (list, tuple)) and (
+            not isinstance(group_value, (list, tuple))
+            or len(group_value) != len(group_expr)
+        ):
+            # compound key: one value per field, else zip() builds a partial match
+            raise ValueError(
+                "Expected %d values for compound group key %s; found %r"
+                % (len(group_expr), group_expr, group_value)
+            )
+
         if isinstance(is_id_field, (list, tuple)):
             group_value = [
                 ObjectId(v) if i else v
@@ -920,6 +930,19 @@ class DatasetView(foc.SampleCollection):
 
         if etau.is_str(group_expr):
             pipeline.append({"$match": {group_expr[1:]: group_value}})
+        elif isinstance(group_expr, (list, tuple)) and all(
+            etau.is_str(e) and e.startswith("$") for e in group_expr
+        ):
+            # match each field directly (index-eligible); an `$expr` over a
+            # computed array cannot use an index
+            pipeline.append(
+                {
+                    "$match": {
+                        field_ref[1:]: value
+                        for field_ref, value in zip(group_expr, group_value)
+                    }
+                }
+            )
         else:
             pipeline.append(
                 {"$match": {"$expr": {"$eq": [group_expr, group_value]}}}

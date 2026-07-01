@@ -35,9 +35,16 @@ def _make_group_field_stage(view):
     )
     if group_by is None:
         return None
-    return fosg.Mongo(
-        [{"$addFields": {"_group": group_by._get_group_expr(view)[0]}}]
-    )
+    return fosg.Mongo([group_by._group_field_stage(view)])
+
+
+def _include_group_fields(view):
+    # every server read of a grouped view emits `_group` from the stage, even the
+    # plain-pagination path that skips `get_extended_view`; no reader re-derives it
+    for stage in view._stages:
+        if isinstance(stage, fosg.GroupBy):
+            stage._include_group = True
+    return view
 
 
 @gql.input
@@ -133,7 +140,7 @@ def get_view(
             dataset = fod.load_dataset(dataset, reload=reload)
 
         if view_name is not None:
-            return dataset.load_saved_view(view_name)
+            return _include_group_fields(dataset.load_saved_view(view_name))
 
         if stages:
             view = fov.DatasetView._build(dataset, stages)
@@ -168,7 +175,7 @@ def get_view(
                 desc=desc,
             )
 
-        return view
+        return _include_group_fields(view)
 
     if awaitable:
         return fou.run_sync_task(run, dataset, stages)
@@ -246,12 +253,6 @@ def get_extended_view(
     if sort_by:
         view = view.sort_by(sort_by, reverse=bool(desc), create_index=False)
 
-    for stage in view._stages:
-        if isinstance(stage, fosg.GroupBy):
-            view = view.mongo(
-                [{"$addFields": {"_group": stage._get_group_expr(view)[0]}}]
-            )
-
     if pagination_data:
         # omit all dict and vector field values for performance, not needed by grid
         view = _project_pagination_paths(view, media_types)
@@ -300,6 +301,11 @@ def handle_group_filter(
     stages = view._stages
     group_field = dataset.group_field
 
+    if group_field is None:
+        # a slice filter carried over from a previously-viewed grouped dataset;
+        # this dataset isn't grouped, so there's nothing to select
+        return view, None
+
     selected = False
     for stage in stages:
         if isinstance(stage, fosg.SelectGroupSlices) and stage.flat:
@@ -331,15 +337,7 @@ def handle_group_filter(
                 # modal: inject _group so the relay store record carries the
                 # dynamic group value for the sample being viewed
                 view = view._add_view_stage(
-                    fosg.Mongo(
-                        [
-                            {
-                                "$addFields": {
-                                    "_group": stage._get_group_expr(view)[0]
-                                }
-                            }
-                        ]
-                    )
+                    fosg.Mongo([stage._group_field_stage(view)])
                 )
 
             if isinstance(
@@ -388,7 +386,7 @@ def _project_pagination_paths(
         if isinstance(field, (fof.DictField, fof.VectorField))
     ]
 
-    selected_fields = ["_group"]  # store dynamic group values
+    selected_fields = ["_group", "_group_count"]
     for path in schema:
         if any(path.startswith(exclude) for exclude in excluded):
             continue

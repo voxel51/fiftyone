@@ -60,6 +60,7 @@ async def get_metadata(
     url_cache: t.Dict[str, str],
     *,
     additional_media_fields: t.Optional[t.Tuple] = None,
+    skip_dimensions: bool = False,
 ):
     """Gets the metadata for the given local media file.
 
@@ -77,11 +78,11 @@ async def get_metadata(
     filepath = sample["filepath"]
     metadata = sample.get("metadata", None)
 
-    (
-        opm_field,
-        detections_fields,
-        additional_fields,
-    ) = additional_media_fields if additional_media_fields is not None else _get_additional_media_fields(collection)
+    (opm_field, detections_fields, additional_fields,) = (
+        additional_media_fields
+        if additional_media_fields is not None
+        else _get_additional_media_fields(collection)
+    )
 
     filepath_result, filepath_source, urls = _create_media_urls(
         collection,
@@ -117,6 +118,15 @@ async def get_metadata(
                 metadata_cache[filepath] = dict(
                     aspect_ratio=width / height,
                 )
+
+    if filepath not in metadata_cache and skip_dimensions:
+        # caller opted out of dimensions; use a placeholder aspect ratio (plus a
+        # frame_rate placeholder for video, matching the fallback path)
+        metadata_cache[filepath] = (
+            dict(aspect_ratio=1.0, frame_rate=30)
+            if is_video
+            else dict(aspect_ratio=1.0)
+        )
 
     if filepath not in metadata_cache:
         try:

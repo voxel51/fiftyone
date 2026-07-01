@@ -17,6 +17,7 @@ import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 from fiftyone.core.utils import datetime_to_timestamp
 import fiftyone.core.view as fov
 
@@ -140,11 +141,6 @@ async def aggregate_resolver(
 
     view = await _load_view(form, form.slices)
 
-    slice_view = None
-
-    if form.mixed and "" in form.paths:
-        slice_view = await _load_view(form, [form.slice])
-
     if form.sample_ids:
         view = fov.make_optimized_select_view(view, form.sample_ids)
 
@@ -164,7 +160,7 @@ async def aggregate_resolver(
     aggregations, deserializers = zip(
         *[
             _resolve_path_aggregation(
-                path, view, form.query_performance, form.hint
+                path, view, form.query_performance, form.hint, mixed=form.mixed
             )
             for path in form.paths
         ]
@@ -172,9 +168,25 @@ async def aggregate_resolver(
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
 
+    # group-statistics mode on a grouped dataset: one `$group` pass over the
+    # mixed view yields both the sample total and the distinct-group total,
+    # instead of a second `Count` query over a single slice
+    grouped_root = (
+        form.mixed
+        and "" in form.paths
+        and view._root_dataset.media_type == fom.GROUP
+    )
+
     maxTimeMS = form.max_query_time * 1000 if form.max_query_time else None
     try:
-        result = await view._async_aggregate(flattened, maxTimeMS=maxTimeMS)
+        result = (
+            await view._async_aggregate(flattened, maxTimeMS=maxTimeMS)
+            if flattened
+            else []
+        )
+        groups = samples = None
+        if grouped_root:
+            groups, samples = await _grouped_root_counts(view, maxTimeMS)
     except ExecutionTimeout:
         return [
             AggregationQueryTimeout(path=path, query_time=form.max_query_time)
@@ -187,13 +199,34 @@ async def aggregate_resolver(
         results.append(deserialize(result[offset : length + offset]))
         offset += length
 
-    if slice_view:
+    if grouped_root:
         for result in results:
             if isinstance(result, RootAggregation):
-                result.slice = await slice_view._async_aggregate(foa.Count())
+                result.slice = groups
+                result.count = samples
+                result.exists = samples
                 break
 
     return results
+
+
+async def _grouped_root_counts(view, maxTimeMS=None) -> t.Tuple[int, int]:
+    group_id = view._root_dataset.group_field + "._id"
+    pipeline = view._pipeline() + [
+        {"$group": {"_id": "$" + group_id, "_n": {"$sum": 1}}},
+        {
+            "$group": {
+                "_id": None,
+                "groups": {"$sum": 1},
+                "samples": {"$sum": "$_n"},
+            }
+        },
+    ]
+    coll = foo.get_async_db_conn()[view._dataset._sample_collection_name]
+    rows = await foo.aggregate(coll, pipeline, maxTimeMS=maxTimeMS).to_list(1)
+    if not rows:
+        return 0, 0
+    return rows[0]["groups"], rows[0]["samples"]
 
 
 RESULT_MAPPING = {
@@ -242,14 +275,26 @@ def _resolve_path_aggregation(
     view: foc.SampleCollection,
     query_performance: bool,
     hint: t.Optional[str] = None,
+    *,
+    mixed: bool = False,
 ) -> AggregateResult:
-    aggregations: t.List[foa.Aggregation] = [
-        foa.Count(
-            path if path and path != "" else None,
-            _optimize=query_performance,
-            _hint=hint if query_performance else None,
+    # root ("" path) total: the O(1) estimated document count ignores the
+    # pipeline, so only a bare, ungrouped view can use it. stages (filters,
+    # selection) or a single slice need a real `Count`; group-statistics mode
+    # is filled in by `aggregate_resolver` from one combined group pass.
+    grouped_root = not path and view._root_dataset.media_type == fom.GROUP
+    use_estimate = not path and not grouped_root and not view._stages
+    combined_root = grouped_root and mixed
+    exact_root = not path and not use_estimate and not combined_root
+    aggregations: t.List[foa.Aggregation] = []
+    if path or exact_root:
+        aggregations.append(
+            foa.Count(
+                path if path else None,
+                _optimize=query_performance,
+                _hint=hint if query_performance else None,
+            )
         )
-    ]
     field = view.get_field(path)
 
     while isinstance(field, fof.ListField):
@@ -283,6 +328,16 @@ def _resolve_path_aggregation(
             aggregations.append(foa.CountValues(path, _first=LIST_LIMIT))
 
     data = {"path": path}
+    if use_estimate:
+        # estimate the collection the view actually reads (`_dataset`); for
+        # generated views (patches/clips/frames) that differs from `_root_dataset`
+        est = view._dataset._sample_collection.estimated_document_count()
+        data["count"] = est
+        data["exists"] = est
+    elif combined_root:
+        # placeholder; aggregate_resolver overwrites with the combined counts
+        data["count"] = 0
+        data["exists"] = 0
 
     def from_results(results):
         for aggregation, result in zip(aggregations, results):
