@@ -73,6 +73,42 @@ export interface PointCloudVisualization {
 export type RgbaColor = readonly [number, number, number, number];
 
 /**
+ * Structured metadata for one source field packed into a grid message.
+ */
+export interface GridField {
+  readonly name: string;
+  readonly offset: number;
+  readonly type: number;
+}
+
+/**
+ * A 2D data grid rendered as a textured plane in a 3D scene (occupancy
+ * grids, semantic maps, drivable areas). `pose` places the grid's origin
+ * corner in `coordinateFrameId`; cells extend row-major from that corner
+ * with +x spanning columns and +y spanning rows. `rgba` holds
+ * `columnCount * rowCount * 4` bytes, row 0 first — decoders normalize
+ * source layouts (channel order, scalar fields) into straight RGBA so
+ * renderers stay source-format agnostic.
+ */
+export interface GridVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.GRID;
+  /**
+   * Per-message source coordinate frame decoded from the grid payload.
+   */
+  readonly coordinateFrameId?: string;
+  /**
+   * Cell footprint in meters along the grid-local x (column) and y (row)
+   * axes.
+   */
+  readonly cellSize: readonly [number, number];
+  readonly columnCount: number;
+  readonly rowCount: number;
+  readonly pose: ScenePose3D;
+  readonly rgba: Uint8Array;
+  readonly timestampNs?: bigint;
+}
+
+/**
  * 3D position and orientation normalized for FiftyOne scene rendering.
  */
 export interface ScenePose3D {
@@ -287,6 +323,7 @@ export interface ImageAnnotationsVisualization {
  */
 export type DecodedVisualization =
   | EncodedImageVisualization
+  | GridVisualization
   | ImageAnnotationsVisualization
   | PointCloudVisualization
   | SceneUpdateVisualization;
