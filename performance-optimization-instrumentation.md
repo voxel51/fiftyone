@@ -1314,6 +1314,203 @@ Interpretation:
   and all-pane observation lookahead still fetch large overlapping chunks. That
   is now a chunk/worker optimization problem, not a time-policy problem.
 
+## Instrumentation 16: Remote-Transport Capture Harness
+
+Date: 2026-07-01
+
+Problem:
+
+- Every prior baseline and optimization was validated against the `local` read
+  profile. Enterprise usage is ~95% object storage, where every byte read pays
+  a real round trip plus constrained bandwidth. We had no repeatable way to
+  measure that.
+
+Harness added (`app/packages/multimodal/perf/`):
+
+- `shaping-proxy.mjs`: reverse proxy that adds deterministic first-byte latency
+  and a shared token-bucket bandwidth cap to `/media` responses, and logs every
+  request as JSONL (transport ground truth, independent of in-app
+  instrumentation). Shaping applies to worker fetches trivially because it is
+  server-side, avoiding CDP throttling's worker gaps.
+- `capture-run.mjs`: Playwright driver that runs a scripted scenario
+  (immediate-Space, ready-Space, idle10-Space) against an isolated Vite + proxy
+  stack, waits for `playback first 10s stall window finished`, and dumps the
+  four debug DOM attributes plus browser resource timings to a timestamped JSON
+  file.
+- Profiles: `local` (control), `remote-fast` (40 ms / 1000 Mbps),
+  `remote-typical` (100 ms / 200 Mbps), `remote-slow` (180 ms / 60 Mbps).
+
+Measurement-methodology caveat (important):
+
+- The proxy initially logged duplicate rows for one physical response when
+  bucket-wait timers stacked (fixed: idempotent finish). Analyses of proxy
+  JSONL must dedupe rows by request `id`. Early in-session conclusions drawn
+  from raw rows (multi-GB grid pressure, hundreds-of-refetches per block) were
+  artifacts of that bug; every number recorded below is id-deduped.
+
+## Baseline 17: Remote-Typical Is Unusable Before Transport Work
+
+Date: 2026-07-01
+
+Method: `remote-typical` shaping (100 ms first byte, 25 MB/s link),
+immediate-Space scenario, hard-cold browser per run, NuScenes scene-0006 (562
+MB, 19.5 s timeline).
+
+| Metric                       |   Local control | Remote-typical baseline |
+| ---------------------------- | --------------: | ----------------------: |
+| Timeline index ready         |        370.6 ms |              3,592.4 ms |
+| Startup buffer ready         |      1,664.8 ms |             27,452.4 ms |
+| First 3D paint               |      1,680.9 ms |             27,468.6 ms |
+| First playback commit        |        759.2 ms |             29,891.4 ms |
+| First 10 s wall time         |     10,609.5 ms |            152,046.1 ms |
+| First 10 s stalled wall time | 737.0 ms (6.9%) |    141,920.9 ms (93.3%) |
+| Max single stall             |        310.2 ms |             30,664.9 ms |
+| Missing-data stalls          |            0 ms |                    0 ms |
+
+Transport ground truth (id-deduped proxy log, modal file only):
+
+- 2,017 media range requests total; modal file fetched 637 MB with 171 MB (27%)
+  exact-duplicate refetches.
+- 82% of wall time had at most one media request in flight: `@mcap/core`
+  fetches strictly serially (one awaited read per chunk message index, one per
+  chunk), so remote playback degrades into a line of idle round trips.
+- Candidate enumeration alone costs `chunks x topics` small serial `readExact`
+  reads before any chunk data moves.
+- Link utilization ~14%: the link could carry 25 MB/s but mostly idled between
+  serialized round trips.
+
+Interpretation:
+
+- Truthfulness held (missing-data 0 ms) but the product was unusable: ~30 s to
+  first paint and 93% stall.
+- The dominant costs were (1) serialized round trips and (2) refetches from
+  per-worker 128 MB caches churning under playback pressure.
+
+## Optimization 18: Pipelined Chunk Prefetch (Reader Layer)
+
+Date: 2026-07-01
+
+Product stance:
+
+- Do not change which data is read or shown; change only how bytes move.
+  Prefetch is advisory: failures surface exclusively through the real read.
+
+Refactor:
+
+- Added `reader/chunk-prefetch.ts`: resolves the byte ranges an indexed read
+  will touch (per-chunk message-index regions, then chunk data in consumption
+  order) and warms them with bounded concurrency (default 6, matching the
+  browser's per-origin HTTP/1.1 budget; 32-chunk cap per pass).
+- `McapIndexedReaderLike` gains optional `prefetchWindow` /
+  `prefetchChunkData`, wired in `createDefaultMcapReader`.
+- Synchronized batch reads await the message-index warm-up before candidate
+  enumeration (those `readExact` reads cannot coalesce with widened block
+  fills, so ordering matters), then fire chunk-data prefetch for exactly the
+  selected candidates' chunks — never for unselected scan-range chunks.
+- Frame-transform windows and unbounded decoded-message reads fire
+  fire-and-forget window prefetch; racing reads coalesce on identical byte
+  ranges (`ByteClientReadable` in-flight map) or identical fill blocks (cached
+  byte client), so the race cannot double-fetch.
+- Limited (`limit`) decoded reads do not prefetch.
+
+Validation (remote-typical, immediate-Space, cold):
+
+| Metric                       |     Baseline | Prefetch only |
+| ---------------------------- | -----------: | ------------: |
+| Timeline index ready         |   3,592.4 ms |    1,874.4 ms |
+| Startup buffer ready         |  27,452.4 ms |    7,956.6 ms |
+| First 3D paint               |  27,468.6 ms |    7,991.9 ms |
+| First playback commit        |  29,891.4 ms |    7,969.2 ms |
+| First 10 s wall time         | 152,046.1 ms |  108,207.2 ms |
+| First 10 s stalled wall time | 141,920.9 ms |   98,087.4 ms |
+
+Interpretation:
+
+- Startup transformed (first paint -71%), but sustained playback barely
+  improved and modal fetch bytes rose from 637 MB to 1,041 MB with 542 MB (52%)
+  duplicates: prefetched blocks were evicted from the 128 MB per-worker memory
+  cache by concurrent lane traffic before consumption, then refetched serially.
+- Conclusion: pipelining and cache capacity are co-dependent. Prefetch without
+  a shared, larger cache trades latency for bandwidth waste on remote links.
+  The two changes below must ship together.
+
+## Optimization 19: Shared Persistent Byte Cache (Cache API L2)
+
+Date: 2026-07-01
+
+Product stance:
+
+- One user opening one sample should fetch each byte from the network once,
+  regardless of which worker lane or pool needs it, and revisits should not
+  refetch a file that has not changed.
+
+Refactor:
+
+- Added `query/bytes/cache-api-byte-cache.ts`: a `ByteRangeCache` backed by the
+  browser Cache API — origin-scoped, so one stored block serves the main
+  thread, both playback lanes, and the grid preview pool, and survives page
+  reloads.
+- Keyed by content identity (stable `sourceId` + discovered size), never by
+  access URL, so rotating signed object-storage URLs keep hitting. A changed
+  size invalidates naturally; an ETag validator is a known follow-up.
+- Layered under the memory cache in the cached byte client: memory miss →
+  persistent hit promotes to memory; fetches persist fire-and-forget. Exact
+  one-off (`blockFill: false`) reads stay out of the persistent layer so it
+  holds only deterministic block/chunk shapes.
+- Feature-detected (no-op in non-secure contexts); `persistent: false` opts
+  out. Approximate budgets: 256 entries per source, 8 sources, oldest-first.
+
+Validation (remote-typical, immediate-Space, cold browser profile):
+
+| Metric                       |     Baseline | Prefetch + L2 |          Change |
+| ---------------------------- | -----------: | ------------: | --------------: |
+| Timeline index ready         |   3,592.4 ms |    1,209.8 ms |            -67% |
+| Startup buffer ready         |  27,452.4 ms |    7,108.7 ms |            -74% |
+| First 3D paint               |  27,468.6 ms |    7,144.2 ms |            -74% |
+| First playback commit        |  29,891.4 ms |    7,122.1 ms |            -76% |
+| First 10 s wall time         | 152,046.1 ms |   46,913.4 ms |     3.2x faster |
+| First 10 s stalled wall time | 141,920.9 ms |   36,693.3 ms |            -74% |
+| Max single stall             |  30,664.9 ms |   13,297.2 ms |            -57% |
+| Missing-data stalls          |         0 ms |       98.7 ms | small, truthful |
+| Modal bytes fetched          |       637 MB |        652 MB |              ~0 |
+| Modal duplicate bytes        | 171 MB (27%) |    59 MB (9%) |            -65% |
+| Media range requests (all)   |        2,017 |           748 |            -63% |
+
+Local control after both changes: first commit 461.8 ms, first 3D paint 940.2
+ms, first 10 s stall 579.4 ms (5.4%) — same or better than before.
+
+Interpretation:
+
+- The pair delivers the structural win: pipelined fetches at baseline-level
+  byte cost, 3.2x faster sustained playback, and a warm-revisit path (a second
+  visit to the same sample serves init reads from disk).
+- Remote-typical playback is still not realtime (78% stall). Two causes remain,
+  in order: (1) this file's full-fidelity content bitrate (~43 MB/s peak
+  demand) exceeds the 25 MB/s emulated link — no transport work can fix that;
+  it is an adaptive-policy question; (2) average link draw was ~12 MB/s, so
+  scheduling gaps (lane turnarounds, idle-lane contention, decode) now hide
+  remaining headroom — the next audit target.
+
+## Remote Next Steps
+
+1. Idle-lane bandwidth budgets: lanes isolate CPU but share the link; idle
+   prefetch and transform runway should yield to foreground reads on
+   constrained transports, and pause briefly after seeks.
+2. Re-attribute remaining remote stalls now that transport is honest: measure
+   lane turnaround gaps and decode occupancy against link idle time.
+3. Adaptive fidelity policy (product decision): when content bitrate exceeds
+   measured link throughput, choose between longer buffering, topic-priority
+   degradation (e.g. radar first), or server-side assists (topic-filtered
+   slices; per-topic re-chunking at ingest).
+4. Read-profile detection by measured first-read latency instead of filepath
+   scheme (a local path served by a remote FiftyOne session is remote in every
+   way that matters).
+5. ETag validator for the persistent byte cache; abort-on-seek plumbing for
+   in-flight range requests.
+6. Persistence policy review: Cache API stores object-storage bytes on the
+   user's disk (same exposure class as the browser HTTP cache, but worth an
+   explicit enterprise sign-off; `persistent: false` is the kill switch).
+
 ## Next Steps
 
 1. Make baseline capture repeatable with a small browser/dev helper that writes
