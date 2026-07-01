@@ -30,6 +30,8 @@ const DYNAMIC_TRANSFORM_LOOKBACK_NS = 500_000_000n;
 const DYNAMIC_TRANSFORM_PLACEMENT_LOOKAHEAD_NS = 1_000_000_000n;
 const DYNAMIC_TRANSFORM_RUNWAY_LOOKAHEAD_NS = 4_000_000_000n;
 const DYNAMIC_TRANSFORM_RUNWAY_REFRESH_LOOKAHEAD_NS = 2_000_000_000n;
+const DYNAMIC_TRANSFORM_RUNWAY_SEGMENT_NS = 1_500_000_000n;
+const DYNAMIC_TRANSFORM_RUNWAY_OVERLAP_NS = 100_000_000n;
 const DYNAMIC_TRANSFORM_RETRY_BASE_DELAY_MS = 250;
 const DYNAMIC_TRANSFORM_WINDOW_MAX_RETRIES = 3;
 
@@ -233,7 +235,21 @@ export function useMcapFrameTransforms({
       return;
     }
 
-    const runwayRange = dynamicRunwayRangeForTime(timeNs);
+    const runwayRange = dynamicRunwayExtensionRangeForTime({
+      indexedCoverageEndNs: transformCoverageEndForTime({
+        inFlightRanges: [
+          ...inFlightPlacementRangesRef.current,
+          ...inFlightRunwayRangesRef.current,
+        ],
+        store,
+        timeNs,
+      }),
+      timeNs,
+    });
+    if (!runwayRange) {
+      return;
+    }
+
     const runwayRangeKey = frameTransformRangeKey(runwayRange);
     if (runwayRangeKeyRef.current === runwayRangeKey) {
       return;
@@ -511,15 +527,33 @@ function dynamicPlacementRangeForTime(
   };
 }
 
-function dynamicRunwayRangeForTime(
-  timeNs: bigint,
-): McapFrameTransformTimeRange {
+function dynamicRunwayExtensionRangeForTime({
+  indexedCoverageEndNs,
+  timeNs,
+}: {
+  readonly indexedCoverageEndNs: bigint | null;
+  readonly timeNs: bigint;
+}): McapFrameTransformTimeRange | null {
+  const targetEndTimeNs = timeNs + DYNAMIC_TRANSFORM_RUNWAY_LOOKAHEAD_NS;
+  const extensionStartTimeNs =
+    indexedCoverageEndNs === null
+      ? timeNs
+      : subtractWithFloor(
+          indexedCoverageEndNs,
+          DYNAMIC_TRANSFORM_RUNWAY_OVERLAP_NS,
+        );
+  const extensionEndTimeNs = minBigInt(
+    targetEndTimeNs,
+    extensionStartTimeNs + DYNAMIC_TRANSFORM_RUNWAY_SEGMENT_NS,
+  );
+
+  if (extensionEndTimeNs <= extensionStartTimeNs) {
+    return null;
+  }
+
   return {
-    endTimeNs: timeNs + DYNAMIC_TRANSFORM_RUNWAY_LOOKAHEAD_NS,
-    startTimeNs:
-      timeNs > DYNAMIC_TRANSFORM_LOOKBACK_NS
-        ? timeNs - DYNAMIC_TRANSFORM_LOOKBACK_NS
-        : 0n,
+    endTimeNs: extensionEndTimeNs,
+    startTimeNs: extensionStartTimeNs,
   };
 }
 
@@ -532,6 +566,28 @@ function dynamicRunwayCoverageRangeForTime(
   };
 }
 
+function transformCoverageEndForTime({
+  inFlightRanges,
+  store,
+  timeNs,
+}: {
+  readonly inFlightRanges: readonly McapFrameTransformTimeRange[];
+  readonly store: McapFrameTransformStore;
+  readonly timeNs: bigint;
+}): bigint | null {
+  let coverageEnd = store.indexedRangeEndCovering(timeNs);
+  for (const range of inFlightRanges) {
+    if (range.startTimeNs <= timeNs && timeNs <= range.endTimeNs) {
+      coverageEnd =
+        coverageEnd === null
+          ? range.endTimeNs
+          : maxBigInt(coverageEnd, range.endTimeNs);
+    }
+  }
+
+  return coverageEnd;
+}
+
 function isTimeInRanges(
   ranges: readonly McapFrameTransformTimeRange[],
   timeNs: bigint,
@@ -539,6 +595,18 @@ function isTimeInRanges(
   return ranges.some(
     (range) => range.startTimeNs <= timeNs && timeNs <= range.endTimeNs,
   );
+}
+
+function minBigInt(left: bigint, right: bigint): bigint {
+  return left < right ? left : right;
+}
+
+function maxBigInt(left: bigint, right: bigint): bigint {
+  return left > right ? left : right;
+}
+
+function subtractWithFloor(value: bigint, amount: bigint): bigint {
+  return value > amount ? value - amount : 0n;
 }
 
 function isRangeInRanges(

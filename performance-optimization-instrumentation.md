@@ -996,6 +996,66 @@ Interpretation:
 - The next chunk/worker optimization should focus on reducing or deferring
   runway chunk pressure, not on transform payload serialization.
 
+## Optimization 11: Make Transform Runway Progressive
+
+Date: 2026-06-30
+
+Problem observed:
+
+- Removing full-range warmup fixed the worst transform request, but the idle
+  runway still fetched about `116.896 MB` for a `4.5 s` window.
+- That idle window overlapped the foreground placement window. We were asking
+  for near-now transforms twice: once for the current truthy placement, then
+  again for the speculative runway.
+
+Product stance:
+
+- Current placement should stay urgent and truthful.
+- Future transform warmup should be invisible and incremental; it should not
+  spend a large chunk budget before the user sees the future data.
+- A smaller progressive runway preserves playback smoothness while reducing
+  hidden startup pressure.
+
+Refactor:
+
+- Kept foreground placement unchanged: `-500 ms` to `+1 s`.
+- Added a transform-store high-water query for indexed coverage.
+- Changed idle runway from one `-500 ms` to `+4 s` window into a bounded
+  extension beyond current coverage.
+- Each idle extension is capped at `1.5 s`.
+- Each extension overlaps existing coverage by `100 ms` for interpolation
+  safety.
+- A new idle extension is requested only when current indexed or in-flight
+  coverage does not cover the next `2 s`.
+
+Smoke validation:
+
+- Reloaded the local NuScenes sample with `mcapLatencyDebug=1`.
+- Observed `2` transform-window worker requests and `0` full-range transform
+  requests.
+
+| Request        | Lane       | Window | Fetched MB | Chunk MB | Payload MB | Run time |
+| -------------- | ---------- | -----: | ---------: | -------: | ---------: | -------: |
+| Placement      | foreground |  1.5 s |     29.260 |   29.934 |      0.014 | 167.8 ms |
+| Idle extension | idle       |  1.5 s |     43.670 |   44.321 |      0.020 | 594.0 ms |
+
+Transform-window summary after reload:
+
+| Metric              |  Before |  After | Change |
+| ------------------- | ------: | -----: | -----: |
+| Requests            |       2 |      2 |      0 |
+| Fetched MB          | 146.156 | 72.929 | -50.1% |
+| Chunk MB            | 151.222 | 74.255 | -50.9% |
+| Payload MB          |   0.069 |  0.034 | -50.7% |
+| Full-range requests |       0 |      0 |      0 |
+
+Interpretation:
+
+- Progressive runway cut initial transform-window fetch pressure roughly in
+  half without changing current-frame placement.
+- The remaining cost is still chunk-granularity dominated, but the request
+  shape is now sane enough for true chunk/worker policy experiments.
+
 ## Next Steps
 
 1. Make baseline capture repeatable with a small browser/dev helper that writes

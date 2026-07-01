@@ -118,9 +118,9 @@ describe("useMcapFrameTransforms", () => {
     expect(vi.mocked(client.readFrameTransformWindow).mock.calls[1]).toEqual([
       {
         activeTimeline: undefined,
-        endTimeNs: 4_000_000_100n,
+        endTimeNs: 2_400_000_100n,
         source,
-        startTimeNs: 0n,
+        startTimeNs: 900_000_100n,
       },
       { priority: "idle" },
     ]);
@@ -146,7 +146,7 @@ describe("useMcapFrameTransforms", () => {
         dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
         label="frames"
         source={source}
-        timeNs={2_500_000_000n}
+        timeNs={2_100_000_000n}
       />,
     );
 
@@ -156,9 +156,9 @@ describe("useMcapFrameTransforms", () => {
     expect(vi.mocked(client.readFrameTransformWindow).mock.calls[2]).toEqual([
       {
         activeTimeline: undefined,
-        endTimeNs: 6_500_000_000n,
+        endTimeNs: 3_800_000_100n,
         source,
-        startTimeNs: 2_000_000_000n,
+        startTimeNs: 2_300_000_100n,
       },
       { priority: "idle" },
     ]);

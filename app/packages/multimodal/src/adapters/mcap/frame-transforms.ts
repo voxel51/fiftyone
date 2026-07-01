@@ -97,6 +97,14 @@ export class McapFrameTransformStore {
     );
   }
 
+  indexedRangeEndCovering(timeNs: bigint): bigint | null {
+    const range = this.dynamicRanges.find(
+      (candidate) =>
+        candidate.startTimeNs <= timeNs && timeNs <= candidate.endTimeNs,
+    );
+    return range?.endTimeNs ?? null;
+  }
+
   frameIds(): readonly string[] {
     return [...this.frameIdsById].sort(compareStrings);
   }
