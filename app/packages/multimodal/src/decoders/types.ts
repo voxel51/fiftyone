@@ -73,15 +73,30 @@ export interface PointCloudVisualization {
 export type RgbaColor = readonly [number, number, number, number];
 
 /**
- * 3D position and orientation decoded from a Foxglove Pose.
+ * 3D position and orientation normalized for FiftyOne scene rendering.
  */
 export interface ScenePose3D {
   readonly position: readonly [number, number, number];
   readonly quaternion: readonly [number, number, number, number];
 }
 
+export type ScenePoint3D = readonly [number, number, number];
+
 /**
- * Cube / rectangular-prism primitive from a Foxglove SceneEntity.
+ * Arrow primitive. Arrows point along the local +X axis before `pose` is
+ * applied.
+ */
+export interface SceneArrowPrimitive {
+  readonly color: RgbaColor | null;
+  readonly headDiameter: number;
+  readonly headLength: number;
+  readonly pose: ScenePose3D;
+  readonly shaftDiameter: number;
+  readonly shaftLength: number;
+}
+
+/**
+ * Cube / rectangular-prism primitive.
  */
 export interface SceneCubePrimitive {
   readonly color: RgbaColor | null;
@@ -90,32 +105,112 @@ export interface SceneCubePrimitive {
 }
 
 /**
- * SceneEntity decoded from a Foxglove SceneUpdate. A SceneEntity may contain
- * many primitive families; the first renderer slice draws cubes and preserves
- * counts for the rest so unsupported annotation pressure stays visible.
+ * Cylinder primitive. The cylinder's height is its local Z dimension before
+ * `pose` is applied.
+ */
+export interface SceneCylinderPrimitive {
+  readonly bottomScale: number;
+  readonly color: RgbaColor | null;
+  readonly pose: ScenePose3D;
+  readonly size: readonly [number, number, number];
+  readonly topScale: number;
+}
+
+export type SceneLinePrimitiveKind = "line-strip" | "line-loop" | "line-list";
+
+/**
+ * Polyline primitive.
+ */
+export interface SceneLinePrimitive {
+  readonly color: RgbaColor | null;
+  readonly colors: readonly RgbaColor[];
+  readonly indices: readonly number[];
+  readonly points: readonly ScenePoint3D[];
+  readonly pose: ScenePose3D;
+  readonly scaleInvariant: boolean;
+  readonly thickness: number;
+  readonly type: SceneLinePrimitiveKind;
+}
+
+/**
+ * External or embedded 3D model primitive.
+ */
+export interface SceneModelPrimitive {
+  readonly color: RgbaColor | null;
+  readonly data?: Uint8Array;
+  readonly mediaType: string;
+  readonly overrideColor: boolean;
+  readonly pose: ScenePose3D;
+  readonly scale: readonly [number, number, number];
+  readonly url: string;
+}
+
+/**
+ * Sphere / ellipsoid primitive.
+ */
+export interface SceneSpherePrimitive {
+  readonly color: RgbaColor | null;
+  readonly pose: ScenePose3D;
+  readonly size: readonly [number, number, number];
+}
+
+/**
+ * Text label primitive.
+ */
+export interface SceneTextPrimitive {
+  readonly billboard: boolean;
+  readonly color: RgbaColor | null;
+  readonly fontSize: number;
+  readonly pose: ScenePose3D;
+  readonly scaleInvariant: boolean;
+  readonly text: string;
+}
+
+/**
+ * Triangle-list mesh primitive.
+ */
+export interface SceneTrianglePrimitive {
+  readonly color: RgbaColor | null;
+  readonly colors: readonly RgbaColor[];
+  readonly indices: readonly number[];
+  readonly points: readonly ScenePoint3D[];
+  readonly pose: ScenePose3D;
+}
+
+/**
+ * Logical scene entity. An entity may contain many primitive families. Counts
+ * are preserved as explicit metadata so inspectors can show source pressure
+ * without walking render arrays.
  */
 export interface SceneEntityVisualization {
   readonly arrowCount: number;
+  readonly arrows: readonly SceneArrowPrimitive[];
   readonly cubeCount: number;
   readonly cubes: readonly SceneCubePrimitive[];
   readonly cylinderCount: number;
+  readonly cylinders: readonly SceneCylinderPrimitive[];
   readonly frameId?: string;
   readonly frameLocked: boolean;
   readonly id: string;
   readonly lineCount: number;
+  readonly lines: readonly SceneLinePrimitive[];
   readonly lifetimeNs?: bigint;
   readonly metadata: Readonly<Record<string, string>>;
   readonly modelCount: number;
+  readonly models: readonly SceneModelPrimitive[];
   readonly sphereCount: number;
+  readonly spheres: readonly SceneSpherePrimitive[];
   readonly textCount: number;
+  readonly texts: readonly SceneTextPrimitive[];
   readonly timestampNs?: bigint;
   readonly triangleCount: number;
+  readonly triangles: readonly SceneTrianglePrimitive[];
 }
 
 export type SceneEntityDeletionKind = "matching-id" | "all";
 
 /**
- * SceneEntityDeletion decoded from a Foxglove SceneUpdate.
+ * Scene entity deletion.
  */
 export interface SceneEntityDeletionVisualization {
   readonly id: string;
@@ -124,7 +219,7 @@ export interface SceneEntityDeletionVisualization {
 }
 
 /**
- * Renderer-neutral 3D scene update decoded from foxglove.SceneUpdate.
+ * Renderer-neutral 3D scene update.
  */
 export interface SceneUpdateVisualization {
   readonly kind: typeof VISUALIZATION_KIND.SCENE_UPDATE;

@@ -76,6 +76,7 @@
         "@voxel51/voodo": "^0.0.35",
         "buffer": "^6.0.3",
         "lru-cache": "^11.0.1",
+        "meshoptimizer": "^0.22.0",
         "protobufjs": "^7.6.4",
         "three": "^0.182.0"
     },

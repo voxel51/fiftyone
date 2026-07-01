@@ -202,6 +202,7 @@ describe("PointCloudPanel", () => {
               entities: [
                 {
                   arrowCount: 0,
+                  arrows: [],
                   cubeCount: 1,
                   cubes: [
                     {
@@ -214,15 +215,21 @@ describe("PointCloudPanel", () => {
                     },
                   ],
                   cylinderCount: 0,
+                  cylinders: [],
                   frameId: "lidar",
                   frameLocked: false,
                   id: "box",
                   lineCount: 0,
+                  lines: [],
                   metadata: {},
                   modelCount: 0,
+                  models: [],
                   sphereCount: 0,
+                  spheres: [],
                   textCount: 0,
+                  texts: [],
                   triangleCount: 0,
+                  triangles: [],
                 },
               ],
               kind: VISUALIZATION_KIND.SCENE_UPDATE,
@@ -244,6 +251,69 @@ describe("PointCloudPanel", () => {
     expect(groups.map((g) => g.getAttribute("position"))).toContain("10,0,0");
     expect(groups.map((g) => g.getAttribute("position"))).toContain("1,2,3");
     expect(screen.getByText("1 box")).toBeTruthy();
+    expect(screen.queryByText("No finite points")).toBeNull();
+  });
+
+  it("renders scene annotation lines without point-cloud layers", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const { container } = render(
+      <PointCloudPanel
+        annotationLayers={[
+          {
+            frame: {
+              deletions: [],
+              entities: [
+                {
+                  arrowCount: 0,
+                  arrows: [],
+                  cubeCount: 0,
+                  cubes: [],
+                  cylinderCount: 0,
+                  cylinders: [],
+                  frameLocked: false,
+                  id: "map-line",
+                  lineCount: 1,
+                  lines: [
+                    {
+                      color: [0, 1, 0, 1],
+                      colors: [],
+                      indices: [],
+                      points: [
+                        [0, 0, 0],
+                        [1, 0, 0],
+                      ],
+                      pose: {
+                        position: [0, 0, 0],
+                        quaternion: [0, 0, 0, 1],
+                      },
+                      scaleInvariant: false,
+                      thickness: 1,
+                      type: "line-strip",
+                    },
+                  ],
+                  metadata: {},
+                  modelCount: 0,
+                  models: [],
+                  sphereCount: 0,
+                  spheres: [],
+                  textCount: 0,
+                  texts: [],
+                  triangleCount: 0,
+                  triangles: [],
+                },
+              ],
+              kind: VISUALIZATION_KIND.SCENE_UPDATE,
+            },
+            id: "/semantic_map",
+          },
+        ]}
+        layers={[]}
+      />,
+    );
+
+    expect(container.querySelector("linesegments")).toBeTruthy();
+    expect(screen.getByText("1 line")).toBeTruthy();
     expect(screen.queryByText("No finite points")).toBeNull();
   });
 

@@ -46,7 +46,44 @@ describe("foxgloveSceneUpdateDecoder", () => {
               color: { r: 0.1, g: 0.2, b: 0.3, a: 0.4 },
             },
           ],
+          cylinders: [
+            {
+              bottomScale: 0.75,
+              color: { r: 0.9, g: 0.8, b: 0.7, a: 0.6 },
+              pose: {
+                position: { x: 7, y: 8, z: 9 },
+                orientation: { x: 0, y: 0, z: 0, w: 1 },
+              },
+              size: { x: 1, y: 2, z: 3 },
+              topScale: 0.5,
+            },
+          ],
           lines: [{}, {}],
+          models: [
+            {
+              data: new Uint8Array([1, 2, 3]),
+              mediaType: "model/gltf-binary",
+              overrideColor: true,
+              scale: { x: 2, y: 3, z: 4 },
+              url: "asset.glb",
+            },
+          ],
+          spheres: [
+            {
+              color: { r: 0.2, g: 0.4, b: 0.6, a: 0.8 },
+              size: { x: 1, y: 2, z: 3 },
+            },
+          ],
+          texts: [{ text: "hello", fontSize: 12, billboard: true }],
+          triangles: [
+            {
+              points: [
+                { x: 0, y: 0, z: 0 },
+                { x: 1, y: 0, z: 0 },
+                { x: 0, y: 1, z: 0 },
+              ],
+            },
+          ],
         },
       ],
     });
@@ -63,13 +100,18 @@ describe("foxgloveSceneUpdateDecoder", () => {
     expect(visualization.entities[0]).toMatchObject({
       arrowCount: 1,
       cubeCount: 1,
+      cylinderCount: 1,
       frameId: "LIDAR_TOP",
       frameLocked: true,
       id: "box-1",
       lineCount: 2,
       lifetimeNs: 2_000_000_005n,
       metadata: { class: "car" },
+      modelCount: 1,
+      sphereCount: 1,
+      textCount: 1,
       timestampNs: 12_000_000_034n,
+      triangleCount: 1,
     });
     expect(visualization.entities[0]?.cubes[0]).toEqual({
       color: [0.1, 0.2, 0.3, 0.4],
@@ -79,11 +121,47 @@ describe("foxgloveSceneUpdateDecoder", () => {
       },
       size: [4, 5, 6],
     });
+    expect(visualization.entities[0]?.cylinders[0]).toEqual({
+      bottomScale: 0.75,
+      color: [0.9, 0.8, 0.7, 0.6],
+      pose: {
+        position: [7, 8, 9],
+        quaternion: [0, 0, 0, 1],
+      },
+      size: [1, 2, 3],
+      topScale: 0.5,
+    });
+    expect(visualization.entities[0]?.models[0]).toMatchObject({
+      data: new Uint8Array([1, 2, 3]),
+      mediaType: "model/gltf-binary",
+      overrideColor: true,
+      scale: [2, 3, 4],
+      url: "asset.glb",
+    });
+    expect(visualization.entities[0]?.spheres[0]).toMatchObject({
+      color: [0.2, 0.4, 0.6, 0.8],
+      size: [1, 2, 3],
+    });
+    expect(visualization.entities[0]?.texts[0]).toMatchObject({
+      billboard: true,
+      fontSize: 12,
+      text: "hello",
+    });
+    expect(visualization.entities[0]?.triangles[0]?.points).toEqual([
+      [0, 0, 0],
+      [1, 0, 0],
+      [0, 1, 0],
+    ]);
     expect(attributes).toMatchObject({
       cubeCount: 1,
+      cylinderCount: 1,
       entityCount: 1,
       lineCount: 2,
-      unsupportedPrimitiveCount: 3,
+      modelCount: 1,
+      sphereCount: 1,
+      textCount: 1,
+      triangleCount: 1,
+      unsupportedPrimitiveCount: 0,
     });
     expect(timing?.sourceTimestamps?.messageTime).toBe(12_000_000_034n);
   });
