@@ -9,7 +9,8 @@ FiftyOne Enterprise 2.21.0
 
 Includes all updates from :ref:`FiftyOne 1.18.0 <release-notes-v1.18.0>`, plus:
 
-- **Annotation workflows**: streamlined assignment and review flows
+- **Annotation workflows**: streamlined assignment and review flows. See the
+  new :doc:`annotation workflows and ontologies tutorial </tutorials/fiftyone_annotation_workflows>`
 - Temporal tags support for time-based labeling
 
 .. _release-notes-v1.18.0:
@@ -21,61 +22,101 @@ FiftyOne 1.18.0
 App
 ^^^
 - **Video Annotation (GA)**: manually annotate and review object tracks across
-  video frames, with a keyframe data model and live preview (#7655, #7707,
-  #7879, #7880, #7885)
+  video frames, with a keyframe data model and live preview
+  `#7655 <https://github.com/voxel51/fiftyone/pull/7655>`_,
+  `#7879 <https://github.com/voxel51/fiftyone/pull/7879>`_,
+  `#7880 <https://github.com/voxel51/fiftyone/pull/7880>`_,
+  `#7885 <https://github.com/voxel51/fiftyone/pull/7885>`_
 - **Playback**: rebuilt playback engine and timeline with smoother scrubbing
-  (#7530, #7531, #7646)
-- **Temporal tags**: tag samples/frames across time ranges (#7644, #7649,
-  #7656)
-- **3D annotation** improvements: comb-through editing, plus fixes for
-  Windows ctrl-Z, selection bleed, slice leakage, and set-field overwrite
-  (#7886, #7849, #7887, #7888, #7889, #7890)
-- Fixes: restore visible-sample selection (#7825), grid sidebar max-width
-  (#7835), file-explorer initial path display (#7632), select-before-edit
-  (#7726), erase-can-create (#7733), duplicate conditional attributes (#7833),
-  number-dropdown attribute (#7893), default attribute spec now respected
-  (#7896)
+  `#7530 <https://github.com/voxel51/fiftyone/pull/7530>`_,
+  `#7531 <https://github.com/voxel51/fiftyone/pull/7531>`_,
+  `#7646 <https://github.com/voxel51/fiftyone/pull/7646>`_
+- **Temporal tags**: tag samples/frames across time ranges
+  `#7644 <https://github.com/voxel51/fiftyone/pull/7644>`_,
+  `#7649 <https://github.com/voxel51/fiftyone/pull/7649>`_,
+  `#7656 <https://github.com/voxel51/fiftyone/pull/7656>`_
+- **3D annotation** improvements: cuboid editing previews, face resizing, and
+  stable camera focus, plus fixes for Windows ctrl-Z, stale selection when
+  entering annotate mode, 3D label bleed into grouped 2D views, and erroneous
+  value overwrites
+  `#7886 <https://github.com/voxel51/fiftyone/pull/7886>`_,
+  `#7849 <https://github.com/voxel51/fiftyone/pull/7849>`_,
+  `#7887 <https://github.com/voxel51/fiftyone/pull/7887>`_,
+  `#7888 <https://github.com/voxel51/fiftyone/pull/7888>`_,
+  `#7889 <https://github.com/voxel51/fiftyone/pull/7889>`_,
+  `#7890 <https://github.com/voxel51/fiftyone/pull/7890>`_
+- Fixes: Unselect Visible no longer corrupts selected labels
+  `#7825 <https://github.com/voxel51/fiftyone/pull/7825>`_, grid sidebar
+  max-width `#7835 <https://github.com/voxel51/fiftyone/pull/7835>`_,
+  file-explorer initial path display
+  `#7632 <https://github.com/voxel51/fiftyone/pull/7632>`_,
+  select labels before editing
+  `#7726 <https://github.com/voxel51/fiftyone/pull/7726>`_, erase no longer
+  creates new detections
+  `#7733 <https://github.com/voxel51/fiftyone/pull/7733>`_, duplicate
+  conditional attributes
+  `#7833 <https://github.com/voxel51/fiftyone/pull/7833>`_, number-dropdown
+  attribute `#7893 <https://github.com/voxel51/fiftyone/pull/7893>`_, default
+  attribute spec now respected
+  `#7896 <https://github.com/voxel51/fiftyone/pull/7896>`_, deleting a
+  ``Detection`` with an ``fo.Instance()``
+  `#7796 <https://github.com/voxel51/fiftyone/pull/7796>`_
 
 Performance
 ^^^^^^^^^^^
-- Lazy-load Plotly, histograms, and the map panel; defer html2canvas; drop the
-  ``moment`` dependency (#7771, #7772, #7773, #7774, #7788)
-- Panel suspense boundaries, improved panel open behavior and loading states
-  (#7754, #7789, #7792)
-- Debounced sidebar filters and a lighter code-block highlighter (#7823, #7787)
+- Faster App startup and a lighter initial load: the embeddings, histogram, and
+  map panels now load on demand
+  `#7771 <https://github.com/voxel51/fiftyone/pull/7771>`_,
+  `#7772 <https://github.com/voxel51/fiftyone/pull/7772>`_,
+  `#7773 <https://github.com/voxel51/fiftyone/pull/7773>`_,
+  `#7774 <https://github.com/voxel51/fiftyone/pull/7774>`_,
+  `#7788 <https://github.com/voxel51/fiftyone/pull/7788>`_
+- Smoother panel opening, with clearer loading states while panels initialize
+  `#7754 <https://github.com/voxel51/fiftyone/pull/7754>`_,
+  `#7789 <https://github.com/voxel51/fiftyone/pull/7789>`_,
+  `#7792 <https://github.com/voxel51/fiftyone/pull/7792>`_
+- More responsive sidebar filtering and faster code-block rendering
+  `#7823 <https://github.com/voxel51/fiftyone/pull/7823>`_,
+  `#7787 <https://github.com/voxel51/fiftyone/pull/7787>`_
 
 Core
 ^^^^
-- Temporal tags core module and collection handling (#7776, #7791, #7794,
-  #7798, #7814, #7822)
-- Persist dataset media type (#7737); optional protobuf import (#7763)
-- Fixes: race conditions (#7762), core barrel circular dependency (#7777),
-  ``fo.<dataset>`` instance handling (#7796), sparse ``.fo3d`` group specs
-  (#7749)
+- Persist dataset media type
+  `#7737 <https://github.com/voxel51/fiftyone/pull/7737>`_; faster imports by
+  loading protobuf only when needed
+  `#7763 <https://github.com/voxel51/fiftyone/pull/7763>`_
+- Fixes: race conditions
+  `#7762 <https://github.com/voxel51/fiftyone/pull/7762>`_
 
 Models / Zoo
 ^^^^^^^^^^^^
-- Qwen3-VL ``embed_frames`` for in-memory video frame clips (#7843)
-- Transformers 5.x compatibility for SigLIP/MedSigLIP processors and
-  text-tower pooler output (#7840, #7820)
-- New ``quickstart-trajectories`` zoo dataset (#7922)
-- Fix browser-inference media cache collision (#7921)
+- Qwen3-VL ``embed_frames`` for in-memory video frame clips
+  `#7843 <https://github.com/voxel51/fiftyone/pull/7843>`_
+- Transformers 5.x compatibility for the SigLIP and MedSigLIP models
+  `#7840 <https://github.com/voxel51/fiftyone/pull/7840>`_,
+  `#7820 <https://github.com/voxel51/fiftyone/pull/7820>`_
+- New ``quickstart-trajectories`` zoo dataset
+  `#7922 <https://github.com/voxel51/fiftyone/pull/7922>`_
+- Fix cross-origin CORS failure in browser-inference image fetch
+  `#7921 <https://github.com/voxel51/fiftyone/pull/7921>`_
 
 Annotation schema
 ^^^^^^^^^^^^^^^^^^
-- Front-end integration for attribute schemas, smart forms, and class
-  taxonomies (#7729, #7739, #7755)
-
-Build
-^^^^^
-- Migrated the App from Biome to Prettier 3 and reformatted the codebase
-  (#7882)
-- Bumped ``@voxel51/voodo`` (#7750)
+- Define and manage attribute schemas, class taxonomies, and smart annotation
+  forms directly in the App
+  `#7729 <https://github.com/voxel51/fiftyone/pull/7729>`_,
+  `#7739 <https://github.com/voxel51/fiftyone/pull/7739>`_,
+  `#7755 <https://github.com/voxel51/fiftyone/pull/7755>`_
 
 Documentation
 ^^^^^^^^^^^^^
-- Video annotation guide (#7907); custom gateway provider config (#7741);
-  Kapa widget customization (#7753); CLI/skills docs (#7558)
+- New :doc:`annotation workflows and ontologies tutorial </tutorials/fiftyone_annotation_workflows>`
+  `#7931 <https://github.com/voxel51/fiftyone/pull/7931>`_; video annotation
+  guide `#7907 <https://github.com/voxel51/fiftyone/pull/7907>`_; custom
+  gateway provider config
+  `#7741 <https://github.com/voxel51/fiftyone/pull/7741>`_; Kapa widget
+  customization `#7753 <https://github.com/voxel51/fiftyone/pull/7753>`_;
+  CLI/skills docs `#7558 <https://github.com/voxel51/fiftyone/pull/7558>`_
 
 FiftyOne Enterprise 2.20.0
 --------------------------
