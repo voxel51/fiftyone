@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 _IMAGES_ZIP = "leftImg8bit_trainvaltest.zip"
+_IMAGES_EXTRA_ZIP = "leftImg8bit_trainextra.zip"
 _FINE_ANNOS_ZIP = "gtFine_trainvaltest.zip"
 _COARSE_ANNOS_ZIP = "gtCoarse.zip"
 _PERSON_ANNOS_ZIP = "gtBbox_cityPersons_trainval.zip"
@@ -51,6 +52,7 @@ def parse_cityscapes_dataset(
 
         source_dir/
             leftImg8bit_trainvaltest.zip
+            leftImg8bit_trainextra.zip          # optional, required for train_extra split
             gtFine_trainvaltest.zip             # optional
             gtCoarse.zip                        # optional
             gtBbox_cityPersons_trainval.zip     # optional
@@ -61,7 +63,7 @@ def parse_cityscapes_dataset(
         dataset_dir: the directory in which to build the output dataset
         scratch_dir: a scratch directory to use for temporary files
         splits: a list of splits to parse. Supported values are
-            ``(train, test, validation)``
+            ``(train, train_extra, test, validation)``
         fine_annos (None): whether to load the fine annotations (True), or not
             (False), or only if the ZIP file exists (None)
         coarse_annos (None): whether to load the coarse annotations (True), or
@@ -74,6 +76,7 @@ def parse_cityscapes_dataset(
     """
     (
         images_zip_path,
+        images_extra_zip_path,
         fine_annos_zip_path,
         coarse_annos_zip_path,
         person_annos_zip_path,
@@ -82,6 +85,9 @@ def parse_cityscapes_dataset(
     _splits = [_parse_split(s) for s in splits]
 
     images_dir = _extract_images(images_zip_path, scratch_dir)
+
+    if images_extra_zip_path and "train_extra" in _splits:
+        _extract_extra_images(images_extra_zip_path, images_dir)
 
     if fine_annos_zip_path:
         fine_annos_dir = _extract_fine_annos(fine_annos_zip_path, scratch_dir)
@@ -136,6 +142,12 @@ def _parse_source_dir(source_dir, fine_annos, coarse_annos, person_annos):
 
     images_zip_path = os.path.join(source_dir, _IMAGES_ZIP)
 
+    # train_extra images are in a separate zip; include it if present
+    if _IMAGES_EXTRA_ZIP in files:
+        images_extra_zip_path = os.path.join(source_dir, _IMAGES_EXTRA_ZIP)
+    else:
+        images_extra_zip_path = None
+
     if fine_annos is None:
         fine_annos = _FINE_ANNOS_ZIP in files
 
@@ -180,6 +192,7 @@ def _parse_source_dir(source_dir, fine_annos, coarse_annos, person_annos):
 
     return (
         images_zip_path,
+        images_extra_zip_path,
         fine_annos_zip_path,
         coarse_annos_zip_path,
         person_annos_zip_path,
@@ -202,10 +215,13 @@ def _parse_split(split):
     if split == "validation":
         return "val"
 
+    if split == "train_extra":
+        return "train_extra"
+
     if split not in ("test", "train"):
         raise ValueError(
-            "Invalid split '%s''; supported values are %s"
-            % (split, ("train", "test", "validation"))
+            "Invalid split '%s'; supported values are %s"
+            % (split, ("train", "train_extra", "test", "validation"))
         )
 
     return split
@@ -286,6 +302,19 @@ def _export_split(
             exporter.export_sample(sample)
 
     dataset.delete()
+
+
+def _extract_extra_images(images_extra_zip_path, images_dir) -> None:
+    """Extract train_extra images into the existing images directory."""
+    train_extra_dir = os.path.join(images_dir, "train_extra")
+
+    if not os.path.isdir(train_extra_dir):
+        logger.info("Extracting extra images...")
+        etau.extract_zip(
+            images_extra_zip_path,
+            outdir=os.path.dirname(images_dir),
+            delete_zip=False,
+        )
 
 
 def _extract_images(images_zip_path, scratch_dir):

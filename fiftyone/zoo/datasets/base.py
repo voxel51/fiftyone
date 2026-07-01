@@ -640,6 +640,7 @@ class CityscapesDataset(FiftyOneDataset):
 
         source_dir/
             leftImg8bit_trainvaltest.zip
+            leftImg8bit_trainextra.zip          # optional, required for train_extra split
             gtFine_trainvaltest.zip             # optional
             gtCoarse.zip                        # optional
             gtBbox_cityPersons_trainval.zip     # optional
@@ -706,6 +707,10 @@ class CityscapesDataset(FiftyOneDataset):
 
     @property
     def supported_splits(self):
+        return ("train", "train_extra", "validation", "test")
+
+    @property
+    def default_splits(self):
         return ("train", "validation", "test")
 
     @property
