@@ -11222,6 +11222,37 @@
             ],
             "training_data": [],
             "date_added": "2026-01-28 12:00:00"
+        },
+        {
+            "base_name": "point-transformer-v3-nuscenes-torch",
+            "base_filename": "ptv3-nuscenes-semseg-pt-v3m1-0-base.pth",
+            "version": null,
+            "description": "Point Transformer V3 backbone pretrained on nuScenes LiDAR semantic segmentation; produces embeddings for 3D point cloud samples",
+            "source": "https://github.com/Pointcept/PointTransformerV3",
+            "author": "Xiaoyang Wu, et al.",
+            "license": "MIT",
+            "size_bytes": 554519016,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://huggingface.co/Pointcept/PointTransformerV3/resolve/main/nuscenes-semseg-pt-v3m1-0-base/model/model_best.pth"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ptv3.PointTransformerV3Model",
+                "config": {
+                    "grid_size": 0.05,
+                    "feature_keys": ["coord", "strength"]
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "spconv-cu120", "torch-scatter", "timm", "addict", "open3d"],
+                "cpu": { "support": false },
+                "gpu": { "support": true }
+            },
+            "tags": ["embeddings", "3d", "point-cloud", "lidar", "nuscenes", "torch", "transformer", "official"],
+            "training_data": [{ "name": "nuScenes", "url": "https://www.nuscenes.org" }],
+            "date_added": "2026-06-15 12:00:00"
         }
     ]
 }
