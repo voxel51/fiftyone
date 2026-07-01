@@ -63,12 +63,13 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
     markMcapLatencyEvent(
       "playback shell mounted",
       {
+        blockingTopics: blockingTopics.length,
         pointCloudTopics: pointCloudTopics.length,
         topics: allTopics.length,
       },
       { onceKey: "playback-shell-mounted" },
     );
-  }, [allTopics.length, pointCloudTopics.length]);
+  }, [allTopics.length, blockingTopics.length, pointCloudTopics.length]);
 
   useRegisterMcapDataStream({
     blockingTopics,

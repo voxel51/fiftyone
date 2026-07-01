@@ -34,9 +34,21 @@ import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 import { useRegisterMcapDataStream } from "./use-register-mcap-data-stream";
 
 const TOPIC = "/CAM_FRONT/image_rect_compressed";
+const LIDAR_TOPIC = "/LIDAR_TOP";
+const RADAR_TOPIC = "/RADAR_FRONT";
+const DEFAULT_TEST_TOPICS = [TOPIC] as const;
 
 afterEach(() => {
   cleanup();
+  window.history.replaceState(null, "", "/");
+  for (const attr of [
+    "data-mcap-latency-bandwidth",
+    "data-mcap-latency-events",
+    "data-mcap-latency-metrics",
+    "data-mcap-worker-attribution",
+  ]) {
+    document.documentElement.removeAttribute(attr);
+  }
 });
 
 describe("useRegisterMcapDataStream", () => {
@@ -186,9 +198,106 @@ describe("stream status + buffering feedback", () => {
     const options = vi.mocked(client.readSynchronizedMessageBatch).mock
       .calls[0]?.[1];
     expect(request?.timeNs.length).toBeGreaterThan(0);
-    expect(request?.timeNs.length).toBeLessThanOrEqual(15);
-    expect(request?.timeNs.at(-1)).toBeLessThanOrEqual(500_000_000n);
+    expect(request?.timeNs.length).toBeLessThanOrEqual(3);
+    expect(request?.timeNs.at(-1)).toBeLessThanOrEqual(100_000_000n);
     expect(options?.priority).toBe("playback");
+  });
+
+  it("starts multi-topic playback across all active panes with a shallow startup window", async () => {
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readSynchronizedMessages: vi.fn(
+        () => new Promise<McapSynchronizedMessageWindow>(() => undefined),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        allTopics={[LIDAR_TOPIC, RADAR_TOPIC, TOPIC]}
+        blockingTopics={[LIDAR_TOPIC, RADAR_TOPIC, TOPIC]}
+        client={client}
+        onStore={storeCapture.onStore}
+        pointCloudTopics={[LIDAR_TOPIC, RADAR_TOPIC]}
+        source={source}
+        subscribedTopics={[LIDAR_TOPIC, RADAR_TOPIC, TOPIC]}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(client.readSynchronizedMessageBatch).toHaveBeenCalled();
+    });
+
+    const firstBatch = vi.mocked(client.readSynchronizedMessageBatch).mock
+      .calls[0];
+    expect(firstBatch?.[0].topics).toEqual([LIDAR_TOPIC, RADAR_TOPIC, TOPIC]);
+    expect(firstBatch?.[0].timeNs.length).toBeLessThanOrEqual(3);
+    expect(firstBatch?.[1]?.priority).toBe("playback");
+
+    await waitFor(() => {
+      expect(client.readSynchronizedMessages).toHaveBeenCalled();
+    });
+    const firstCurrentFrame = vi.mocked(client.readSynchronizedMessages).mock
+      .calls[0]?.[0];
+    expect(firstCurrentFrame?.topics).toEqual([
+      LIDAR_TOPIC,
+      RADAR_TOPIC,
+      TOPIC,
+    ]);
+  });
+
+  it("bridges debug batch ids into latency events and bandwidth samples", async () => {
+    window.history.replaceState(null, "", "/?mcapLatencyDebug=1");
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(client.readSynchronizedMessageBatch).toHaveBeenCalled();
+    });
+
+    const request = vi.mocked(client.readSynchronizedMessageBatch).mock
+      .calls[0]?.[0];
+    expect(request?.mcapDataRequestId).toMatch(/^mcap-data:startup-lookahead:/);
+
+    await waitFor(() => {
+      const events = readDebugAttribute<
+        Array<{ detail?: Record<string, unknown>; name: string }>
+      >("data-mcap-latency-events");
+      expect(
+        events.some(
+          (event) =>
+            event.name === "mcap data batch request" &&
+            event.detail?.mcapDataRequestId === request?.mcapDataRequestId,
+        ),
+      ).toBe(true);
+    });
+
+    await waitFor(() => {
+      const bandwidth = readDebugAttribute<{
+        recent: Array<{ requestId?: string }>;
+      }>("data-mcap-latency-bandwidth");
+      expect(
+        bandwidth.recent.some(
+          (sample) => sample.requestId === request?.mcapDataRequestId,
+        ),
+      ).toBe(true);
+    });
   });
 
   it("does not queue idle background lookahead while startup data is still in flight", async () => {
@@ -815,30 +924,38 @@ describe("stream status + buffering feedback", () => {
 });
 
 function Harness({
+  allTopics = DEFAULT_TEST_TOPICS,
+  blockingTopics = DEFAULT_TEST_TOPICS,
   client,
   onStore,
   onApi,
+  pointCloudTopics = [],
   source,
   staleMediaWarningNs = 0n,
   subscribe = true,
+  subscribedTopics = DEFAULT_TEST_TOPICS,
   streamPolicies = {},
 }: {
+  readonly allTopics?: readonly string[];
+  readonly blockingTopics?: readonly string[];
   readonly client: McapResourceClient;
   readonly onStore: (store: PlaybackStore) => void;
   readonly onApi?: (api: ReturnType<typeof usePlayback>) => void;
+  readonly pointCloudTopics?: readonly string[];
   readonly source: ByteSourceDescriptor | null;
   readonly staleMediaWarningNs?: bigint;
   readonly subscribe?: boolean;
+  readonly subscribedTopics?: readonly string[];
   readonly streamPolicies?: McapStreamSyncPolicies;
 }) {
   const dataStream = useMcapDataStream();
   const store = usePlaybackStore();
   const api = usePlayback();
   useRegisterMcapDataStream({
-    allTopics: [TOPIC],
-    blockingTopics: [TOPIC],
+    allTopics,
+    blockingTopics,
     client,
-    pointCloudTopics: [],
+    pointCloudTopics,
     source,
     staleMediaWarningNs,
     streamPolicies,
@@ -855,8 +972,13 @@ function Harness({
   useEffect(() => {
     if (!subscribe) return undefined;
 
-    return dataStream?.subscribeToTopic(TOPIC);
-  }, [dataStream, subscribe]);
+    const cleanups = subscribedTopics.map((topic) =>
+      dataStream?.subscribeToTopic(topic),
+    );
+    return () => {
+      for (const cleanup of cleanups) cleanup?.();
+    };
+  }, [dataStream, subscribe, subscribedTopics]);
 
   return null;
 }
@@ -887,6 +1009,12 @@ function capturePlaybackStore() {
       return captured;
     },
   };
+}
+
+function readDebugAttribute<T>(name: string): T {
+  const value = document.documentElement.getAttribute(name);
+  if (!value) throw new Error(`Missing debug attribute: ${name}`);
+  return JSON.parse(value) as T;
 }
 
 function createClient({
