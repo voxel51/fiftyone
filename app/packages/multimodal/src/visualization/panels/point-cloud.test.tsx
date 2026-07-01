@@ -190,6 +190,63 @@ describe("PointCloudPanel", () => {
     ]);
   });
 
+  it("renders scene annotation cubes in the shared 3D scene", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const { container } = render(
+      <PointCloudPanel
+        annotationLayers={[
+          {
+            frame: {
+              deletions: [],
+              entities: [
+                {
+                  arrowCount: 0,
+                  cubeCount: 1,
+                  cubes: [
+                    {
+                      color: [1, 0, 0, 0.8],
+                      pose: {
+                        position: [1, 2, 3],
+                        quaternion: [0, 0, 0, 1],
+                      },
+                      size: [4, 5, 6],
+                    },
+                  ],
+                  cylinderCount: 0,
+                  frameId: "lidar",
+                  frameLocked: false,
+                  id: "box",
+                  lineCount: 0,
+                  metadata: {},
+                  modelCount: 0,
+                  sphereCount: 0,
+                  textCount: 0,
+                  triangleCount: 0,
+                },
+              ],
+              kind: VISUALIZATION_KIND.SCENE_UPDATE,
+            },
+            frameTransform: {
+              rotation: new THREE.Quaternion(0, 0, 0, 1),
+              sourceFrameId: "lidar",
+              targetFrameId: "map",
+              translation: new THREE.Vector3(10, 0, 0),
+            },
+            id: "/markers",
+          },
+        ]}
+        layers={[]}
+      />,
+    );
+
+    const groups = Array.from(container.querySelectorAll("group"));
+    expect(groups.map((g) => g.getAttribute("position"))).toContain("10,0,0");
+    expect(groups.map((g) => g.getAttribute("position"))).toContain("1,2,3");
+    expect(screen.getByText("1 box")).toBeTruthy();
+    expect(screen.queryByText("No finite points")).toBeNull();
+  });
+
   it("passes controlled camera pose through to the base scene", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const onCameraPoseChange = vi.fn();

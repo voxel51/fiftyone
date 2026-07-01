@@ -9,7 +9,10 @@ import React, {
   useState,
 } from "react";
 import { Vector3 } from "three";
-import type { PointCloudVisualization } from "../../../decoders";
+import type {
+  PointCloudVisualization,
+  SceneUpdateVisualization,
+} from "../../../decoders";
 import { useSceneInventory, type SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import {
@@ -146,6 +149,14 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => sources.filter(is3dRenderableSource),
     [sources],
   );
+  const pointCloudSources = useMemo(
+    () => renderableSources.filter(isPointCloudSource),
+    [renderableSources],
+  );
+  const sceneAnnotationSources = useMemo(
+    () => renderableSources.filter(isSceneAnnotationSource),
+    [renderableSources],
+  );
   const frameTransforms = useMcapFrameTransformsContext();
   const { temporalPolicy } = useMcapModalSettings();
   const setTileTitle = useSetTileTitle();
@@ -206,33 +217,50 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     knownRenderableSourceIdsRef.current = currentIds;
   }, [renderableSources]);
 
-  // Prefer LiDAR-like point clouds first for initial fetch/paint, while keeping
-  // the settings list itself in inventory order.
-  const selectedSources = useMemo(
+  // Prefer LiDAR-like point clouds first for initial fetch/paint. SceneUpdate
+  // sources remain schema-driven labels and do not affect the provisional cloud
+  // choice.
+  const selectedPointCloudSources = useMemo(
     () =>
       sortPointCloudSourcesForInitialPaint(
-        renderableSources.filter((s) => enabled.has(s.id)),
+        pointCloudSources.filter((s) => enabled.has(s.id)),
       ),
-    [renderableSources, enabled],
+    [pointCloudSources, enabled],
+  );
+  const selectedSceneAnnotationSources = useMemo(
+    () => sceneAnnotationSources.filter((s) => enabled.has(s.id)),
+    [sceneAnnotationSources, enabled],
+  );
+  const pointCloudTopics = useMemo(
+    () => selectedPointCloudSources.map((s) => s.id),
+    [selectedPointCloudSources],
+  );
+  const sceneAnnotationTopics = useMemo(
+    () => selectedSceneAnnotationSources.map((s) => s.id),
+    [selectedSceneAnnotationSources],
   );
   const selectedTopics = useMemo(
-    () => selectedSources.map((s) => s.id),
-    [selectedSources],
+    () => [...pointCloudTopics, ...sceneAnnotationTopics],
+    [pointCloudTopics, sceneAnnotationTopics],
   );
   const selectedTopicsKey = useMemo(
     () => selectedTopics.join("\0"),
     [selectedTopics],
   );
   const frames =
-    useMcapTopicPlaybackFrames<PointCloudVisualization>(selectedTopics);
+    useMcapTopicPlaybackFrames<PointCloudVisualization>(pointCloudTopics);
+  const annotationFrames = useMcapTopicPlaybackFrames<SceneUpdateVisualization>(
+    sceneAnnotationTopics,
+  );
   const playbackTimeNs = useMcapPlaybackTimeNs();
   const frameIds = useMemo(
     () =>
       uniqueSortedFrameIds([
         ...frameTransforms.frameIds,
         ...frameIdsFromFrames(frames),
+        ...frameIdsFromSceneAnnotationFrames(annotationFrames),
       ]),
-    [frameTransforms.frameIds, frames],
+    [annotationFrames, frameTransforms.frameIds, frames],
   );
 
   // This effect keeps the world frame on a preferred default until the user
@@ -278,36 +306,42 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   }, [selectedTopics, renderableSources, setTileTitle]);
 
   const provisionalTopicId = useMemo(
-    () => selectProvisionalPointCloudTopic(selectedSources, frames),
-    [frames, selectedSources],
+    () => selectProvisionalPointCloudTopic(selectedPointCloudSources, frames),
+    [frames, selectedPointCloudSources],
   );
   const provisionalPlaybackFrame = useMemo(
-    () => playbackFrameForTopic(selectedTopics, frames, provisionalTopicId),
-    [frames, provisionalTopicId, selectedTopics],
+    () => playbackFrameForTopic(pointCloudTopics, frames, provisionalTopicId),
+    [frames, pointCloudTopics, provisionalTopicId],
   );
   const {
     clampedFrameIds,
     largeInterpolationGaps,
+    pendingAnnotationFrameIds,
     pointCloudLayers,
     provisionalFrameIds,
+    sceneAnnotationLayers,
     transformedLayerCount,
     unresolvedFrameIds,
   } = useMemo(() => {
     return build3dLayers({
+      annotationFrames,
       frameTransforms,
       frames,
       largeInterpolationGapWarningNs: msToNs(
         temporalPolicy.transformGapWarningMs,
       ),
       provisionalTopicId,
-      selectedTopics,
+      selectedAnnotationTopics: sceneAnnotationTopics,
+      selectedTopics: pointCloudTopics,
       worldFrameId,
     });
   }, [
+    annotationFrames,
     frameTransforms,
     frames,
+    pointCloudTopics,
     provisionalTopicId,
-    selectedTopics,
+    sceneAnnotationTopics,
     temporalPolicy.transformGapWarningMs,
     worldFrameId,
   ]);
@@ -317,24 +351,35 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         ? "provisional"
         : transformedLayerCount > 0
           ? "transformed"
-          : pointCloudLayers.length > 0
+          : pointCloudLayers.length > 0 || sceneAnnotationLayers.length > 0
             ? "unframed"
             : "empty",
     [
       pointCloudLayers.length,
       provisionalFrameIds.length,
+      sceneAnnotationLayers.length,
       transformedLayerCount,
     ],
   );
-  const placementWarning = useMemo(
-    () =>
-      provisionalFrameIds.length > 0
-        ? `Positioning transforms loading: displaying source-frame preview for ${provisionalFrameIds.join(
-            ", ",
-          )}`
-        : null,
-    [provisionalFrameIds],
-  );
+  const placementWarning = useMemo(() => {
+    const parts: string[] = [];
+    if (provisionalFrameIds.length > 0) {
+      parts.push(
+        `Positioning transforms loading: displaying source-frame preview for ${provisionalFrameIds.join(
+          ", ",
+        )}`,
+      );
+    }
+    if (pendingAnnotationFrameIds.length > 0) {
+      parts.push(
+        `Annotation transforms loading: hiding boxes in ${pendingAnnotationFrameIds.join(
+          ", ",
+        )}`,
+      );
+    }
+
+    return parts.length > 0 ? parts.join(" | ") : null;
+  }, [pendingAnnotationFrameIds, provisionalFrameIds]);
   const transformWarning = useMemo(
     () =>
       transformWarningText({
@@ -651,14 +696,19 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
 
   useEffect(() => {
-    if (!latencyDebugEnabled || pointCloudLayers.length === 0) {
+    if (
+      !latencyDebugEnabled ||
+      (pointCloudLayers.length === 0 && sceneAnnotationLayers.length === 0)
+    ) {
       return;
     }
 
     const detail = {
-      layers: pointCloudLayers.length,
+      annotationLayers: sceneAnnotationLayers.length,
+      layers: pointCloudLayers.length + sceneAnnotationLayers.length,
       placementStatus,
       pointCount: pointCountForLayers(pointCloudLayers),
+      pendingAnnotationFrameIds,
       provisionalFrameIds,
       transformStatus: frameTransforms.status,
       transformedLayerCount,
@@ -681,21 +731,28 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     frameTransforms.status,
     latencyDebugEnabled,
     placementStatus,
+    pendingAnnotationFrameIds,
     pointCloudLayers,
     provisionalFrameIds,
+    sceneAnnotationLayers,
     transformedLayerCount,
     worldFrameId,
   ]);
 
   useEffect(() => {
-    if (!latencyDebugEnabled || pointCloudLayers.length === 0) {
+    if (
+      !latencyDebugEnabled ||
+      (pointCloudLayers.length === 0 && sceneAnnotationLayers.length === 0)
+    ) {
       return;
     }
 
     const debugStateKey = [
       placementStatus,
       pointCloudLayers.length,
+      sceneAnnotationLayers.length,
       transformedLayerCount,
+      pendingAnnotationFrameIds.join(","),
       provisionalFrameIds.join(","),
       unresolvedFrameIds.join(","),
       worldFrameId,
@@ -716,8 +773,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       cameraTargetStatus: cameraTargetResolution.status,
       controlledCamera: controlledCameraPose !== null,
       frameIds: frameIds.length,
-      layers: pointCloudLayers.length,
+      annotationLayers: sceneAnnotationLayers.length,
+      layers: pointCloudLayers.length + sceneAnnotationLayers.length,
       placementStatus,
+      pendingAnnotationFrameIds,
       pointCount: pointCountForLayers(pointCloudLayers),
       provisionalFrameIds,
       transformFrameIds: frameTransforms.frameIds.length,
@@ -735,9 +794,11 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     frameTransforms.frameIds.length,
     frameTransforms.status,
     latencyDebugEnabled,
+    pendingAnnotationFrameIds,
     placementStatus,
     pointCloudLayers,
     provisionalFrameIds,
+    sceneAnnotationLayers,
     trackingMode,
     transformedLayerCount,
     unresolvedFrameIds,
@@ -750,16 +811,16 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         <div className={settingsStyles.root}>
           <div className={settingsStyles.field}>
             <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-              Sources
+              Geometry
             </Text>
-            {renderableSources.length > 0 ? (
+            {pointCloudSources.length > 0 ? (
               <>
                 <div className={settingsStyles.metaText}>
-                  {selectedTopics.length.toLocaleString()} of{" "}
-                  {renderableSources.length.toLocaleString()} selected
+                  {pointCloudTopics.length.toLocaleString()} of{" "}
+                  {pointCloudSources.length.toLocaleString()} selected
                 </div>
                 <div className={settingsStyles.optionStack}>
-                  {renderableSources.map((s) => (
+                  {pointCloudSources.map((s) => (
                     <Checkbox
                       key={s.id}
                       label={labelWithCount(s.label, s.recordCount)}
@@ -772,7 +833,36 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
               </>
             ) : (
               <span className={settingsStyles.emptyText}>
-                No 3D sources available
+                No point cloud topics available
+              </span>
+            )}
+          </div>
+
+          <div className={settingsStyles.field}>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              3D Labels
+            </Text>
+            {sceneAnnotationSources.length > 0 ? (
+              <>
+                <div className={settingsStyles.metaText}>
+                  {sceneAnnotationTopics.length.toLocaleString()} of{" "}
+                  {sceneAnnotationSources.length.toLocaleString()} selected
+                </div>
+                <div className={settingsStyles.optionStack}>
+                  {sceneAnnotationSources.map((s) => (
+                    <Checkbox
+                      key={s.id}
+                      label={labelWithCount(s.label, s.recordCount)}
+                      checked={enabled.has(s.id)}
+                      onChange={(checked) => toggleSource(s.id, checked)}
+                      {...checkboxNoSpaceToggleProps}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <span className={settingsStyles.emptyText}>
+                No 3D label topics available
               </span>
             )}
           </div>
@@ -804,9 +894,12 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         <div className={styles.loading}>
           <span className={styles.emptyText}>No sources selected</span>
         </div>
-      ) : pointCloudLayers.length > 0 || panelWarning ? (
+      ) : pointCloudLayers.length > 0 ||
+        sceneAnnotationLayers.length > 0 ||
+        panelWarning ? (
         <div className={styles.panelStack}>
           <PointCloudPanel
+            annotationLayers={sceneAnnotationLayers}
             cameraPose={panelCameraPose}
             layers={pointCloudLayers}
             className={styles.panel}
@@ -920,7 +1013,15 @@ function labelWithCount(label: string, count: number | undefined): string {
 }
 
 function is3dRenderableSource(source: SceneSource): boolean {
+  return isPointCloudSource(source) || isSceneAnnotationSource(source);
+}
+
+function isPointCloudSource(source: SceneSource): boolean {
   return source.type === MCAP_SOURCE_TYPE.POINT_CLOUD;
+}
+
+function isSceneAnnotationSource(source: SceneSource): boolean {
+  return source.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION;
 }
 
 function sortPointCloudSourcesForInitialPaint(
@@ -1144,6 +1245,23 @@ function frameIdsFromFrames(
       continue;
     }
     pushFrameId(frameIds, playbackFrame.frame.coordinateFrameId);
+  }
+
+  return frameIds;
+}
+
+function frameIdsFromSceneAnnotationFrames(
+  frames: readonly (McapTopicPlaybackFrame<SceneUpdateVisualization> | null)[],
+): readonly string[] {
+  const frameIds: string[] = [];
+
+  for (const playbackFrame of frames) {
+    if (!playbackFrame) {
+      continue;
+    }
+    for (const entity of playbackFrame.frame.entities) {
+      pushFrameId(frameIds, entity.frameId);
+    }
   }
 
   return frameIds;

@@ -4,6 +4,7 @@ import {
   FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
   FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
   FOXGLOVE_POINT_CLOUD_PAYLOAD,
+  FOXGLOVE_SCENE_UPDATE_PAYLOAD,
 } from "./decoders/foxglove/protobuf/payloads";
 
 /**
@@ -14,6 +15,7 @@ export interface McapPreviewTopics {
   readonly image: readonly string[];
   readonly pointCloud: readonly string[];
   readonly previewable: readonly string[];
+  readonly sceneUpdates: readonly string[];
 }
 
 /**
@@ -25,6 +27,7 @@ export function streamTopics(
   const image: string[] = [];
   const annotations: string[] = [];
   const pointCloud: string[] = [];
+  const sceneUpdates: string[] = [];
 
   for (const topic of topics) {
     const name = topicName(topic);
@@ -38,6 +41,8 @@ export function streamTopics(
       pointCloud.push(name);
     } else if (isImageAnnotationsStream(topic)) {
       annotations.push(name);
+    } else if (isSceneUpdateStream(topic)) {
+      sceneUpdates.push(name);
     }
   }
 
@@ -46,6 +51,7 @@ export function streamTopics(
     image,
     pointCloud,
     previewable: [...image, ...pointCloud],
+    sceneUpdates,
   };
 }
 
@@ -75,6 +81,13 @@ export function isImageAnnotationsStream(topic: StreamInventory): boolean {
  */
 export function isPointCloudStream(topic: StreamInventory): boolean {
   return hasPayload(topic, FOXGLOVE_POINT_CLOUD_PAYLOAD);
+}
+
+/**
+ * Returns whether a stream inventory item is a supported Foxglove SceneUpdate stream.
+ */
+export function isSceneUpdateStream(topic: StreamInventory): boolean {
+  return hasPayload(topic, FOXGLOVE_SCENE_UPDATE_PAYLOAD);
 }
 
 /**

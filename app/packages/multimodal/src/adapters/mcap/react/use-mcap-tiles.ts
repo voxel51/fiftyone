@@ -17,8 +17,8 @@ export type { McapTileProps, McapTileType } from "./mcap-tile-types";
  * Tile catalog for the MCAP adapter, keyed by tile type. A tile kind is
  * named for what it renders ("Image", "3D"), not for the sensor behind
  * it; `sourceTypes` lists the scene-source types the tile can display,
- * which gates when the kind is offered. (Annotation sources have no
- * tile of their own; they render as overlays inside image tiles.)
+ * which gates when the kind is offered. Annotation sources render inside the
+ * image or 3D tile that matches their dimensionality.
  */
 const TILE_BY_TYPE: Record<
   McapTileType,
@@ -39,7 +39,10 @@ const TILE_BY_TYPE: Record<
     typeLabel: "3D",
     icon: IconName.Embeddings,
     Tile: Mcap3dTile,
-    sourceTypes: [MCAP_SOURCE_TYPE.POINT_CLOUD],
+    sourceTypes: [
+      MCAP_SOURCE_TYPE.POINT_CLOUD,
+      MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
+    ],
   },
 };
 

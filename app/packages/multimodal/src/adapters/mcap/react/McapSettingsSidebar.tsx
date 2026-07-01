@@ -239,8 +239,11 @@ function SummaryMetric({
 function sceneCounts(sources: readonly SceneSource[]) {
   return {
     images: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.IMAGE).length,
-    labels: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.IMAGE_ANNOTATION)
-      .length,
+    labels: sources.filter(
+      (s) =>
+        s.type === MCAP_SOURCE_TYPE.IMAGE_ANNOTATION ||
+        s.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
+    ).length,
     pointClouds: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD)
       .length,
   };

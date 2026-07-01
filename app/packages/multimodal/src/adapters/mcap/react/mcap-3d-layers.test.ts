@@ -1,6 +1,10 @@
 import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
-import type { PointCloudVisualization } from "../../../decoders";
+import type {
+  PointCloudVisualization,
+  SceneUpdateVisualization,
+} from "../../../decoders";
+import { VISUALIZATION_KIND } from "../../../visualization";
 import { build3dLayers } from "./mcap-3d-layers";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 
@@ -19,6 +23,57 @@ function playbackFrame(
     contentTimeNs,
     frame: value,
     requestedTimeNs: contentTimeNs,
+  };
+}
+
+function sceneUpdate(
+  frameId: string | undefined,
+  timestampNs?: bigint,
+  frameLocked = false,
+): SceneUpdateVisualization {
+  return {
+    deletions: [],
+    entities: [
+      {
+        arrowCount: 0,
+        cubeCount: 1,
+        cubes: [
+          {
+            color: null,
+            pose: {
+              position: [0, 0, 0],
+              quaternion: [0, 0, 0, 1],
+            },
+            size: [1, 1, 1],
+          },
+        ],
+        cylinderCount: 0,
+        ...(frameId ? { frameId } : {}),
+        frameLocked,
+        id: "box",
+        lineCount: 0,
+        metadata: {},
+        modelCount: 0,
+        sphereCount: 0,
+        textCount: 0,
+        ...(timestampNs !== undefined ? { timestampNs } : {}),
+        triangleCount: 0,
+      },
+    ],
+    kind: VISUALIZATION_KIND.SCENE_UPDATE,
+  };
+}
+
+function annotationPlaybackFrame(
+  value: SceneUpdateVisualization,
+  contentTimeNs = TIME_NS,
+  requestedTimeNs = contentTimeNs,
+) {
+  return {
+    ageNs: 0n,
+    contentTimeNs,
+    frame: value,
+    requestedTimeNs,
   };
 }
 
@@ -235,5 +290,138 @@ describe("build3dLayers", () => {
     ]);
     expect(unresolvedFrameIds).toEqual([]);
     expect(pointCloudLayers).toHaveLength(1);
+  });
+
+  it("resolves scene annotations at each entity timestamp", () => {
+    const transform = {
+      rotation: new Quaternion(),
+      sourceFrameId: "lidar",
+      targetFrameId: "base_link",
+      translation: new Vector3(1, 2, 3),
+    };
+    const calls: Array<{ sourceFrameId: string; timeNs: bigint }> = [];
+
+    const { sceneAnnotationLayers } = build3dLayers({
+      annotationFrames: [annotationPlaybackFrame(sceneUpdate("lidar", 250n))],
+      frameTransforms: transformsState(
+        (sourceFrameId, targetFrameId, timeNs) => {
+          calls.push({ sourceFrameId, timeNs });
+          return {
+            resolutionKind: "exact",
+            sourceFrameId,
+            status: "resolved",
+            targetFrameId,
+            transform,
+          };
+        },
+      ),
+      frames: [],
+      selectedAnnotationTopics: ["/markers"],
+      selectedTopics: [],
+      worldFrameId: "base_link",
+    });
+
+    expect(calls).toEqual([{ sourceFrameId: "lidar", timeNs: 250n }]);
+    expect(sceneAnnotationLayers).toHaveLength(1);
+    expect(sceneAnnotationLayers[0]?.frame.entities[0]?.id).toBe("box");
+    expect(sceneAnnotationLayers[0]?.frameTransform).toBe(transform);
+  });
+
+  it("falls back to annotation message time when an entity has no timestamp", () => {
+    const calls: Array<{ sourceFrameId: string; timeNs: bigint }> = [];
+
+    build3dLayers({
+      annotationFrames: [annotationPlaybackFrame(sceneUpdate("lidar"), 900n)],
+      frameTransforms: transformsState(
+        (sourceFrameId, targetFrameId, timeNs) => {
+          calls.push({ sourceFrameId, timeNs });
+          return {
+            sourceFrameId,
+            status: "resolved",
+            targetFrameId,
+            transform: {
+              rotation: new Quaternion(),
+              sourceFrameId,
+              targetFrameId,
+              translation: new Vector3(),
+            },
+          };
+        },
+      ),
+      frames: [],
+      selectedAnnotationTopics: ["/markers"],
+      selectedTopics: [],
+      worldFrameId: "base_link",
+    });
+
+    expect(calls).toEqual([{ sourceFrameId: "lidar", timeNs: 900n }]);
+  });
+
+  it("resolves frame-locked annotations at the requested playhead time", () => {
+    const calls: Array<{ sourceFrameId: string; timeNs: bigint }> = [];
+
+    build3dLayers({
+      annotationFrames: [
+        annotationPlaybackFrame(sceneUpdate("lidar", 100n, true), 100n, 175n),
+      ],
+      frameTransforms: transformsState(
+        (sourceFrameId, targetFrameId, timeNs) => {
+          calls.push({ sourceFrameId, timeNs });
+          return {
+            sourceFrameId,
+            status: "resolved",
+            targetFrameId,
+            transform: {
+              rotation: new Quaternion(),
+              sourceFrameId,
+              targetFrameId,
+              translation: new Vector3(),
+            },
+          };
+        },
+      ),
+      frames: [],
+      selectedAnnotationTopics: ["/markers"],
+      selectedTopics: [],
+      worldFrameId: "base_link",
+    });
+
+    expect(calls).toEqual([{ sourceFrameId: "lidar", timeNs: 175n }]);
+  });
+
+  it("hides annotations while transforms are pending", () => {
+    const { pendingAnnotationFrameIds, sceneAnnotationLayers } = build3dLayers({
+      annotationFrames: [annotationPlaybackFrame(sceneUpdate("lidar"))],
+      frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+        sourceFrameId,
+        status: "pending",
+        targetFrameId,
+      })),
+      frames: [],
+      selectedAnnotationTopics: ["/markers"],
+      selectedTopics: [],
+      worldFrameId: "base_link",
+    });
+
+    expect(pendingAnnotationFrameIds).toEqual(["lidar"]);
+    expect(sceneAnnotationLayers).toHaveLength(0);
+  });
+
+  it("drops and reports annotations whose transform is missing", () => {
+    const { sceneAnnotationLayers, unresolvedFrameIds } = build3dLayers({
+      annotationFrames: [annotationPlaybackFrame(sceneUpdate("lidar"))],
+      frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+        sourceFrameId,
+        status: "missing",
+        targetFrameId,
+      })),
+      frames: [],
+      selectedAnnotationTopics: ["/markers"],
+      selectedTopics: [],
+      worldFrameId: "base_link",
+    });
+
+    expect(sceneAnnotationLayers).toHaveLength(0);
+    expect(unresolvedFrameIds).toEqual(["lidar"]);
   });
 });

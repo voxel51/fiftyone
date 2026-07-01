@@ -73,6 +73,66 @@ export interface PointCloudVisualization {
 export type RgbaColor = readonly [number, number, number, number];
 
 /**
+ * 3D position and orientation decoded from a Foxglove Pose.
+ */
+export interface ScenePose3D {
+  readonly position: readonly [number, number, number];
+  readonly quaternion: readonly [number, number, number, number];
+}
+
+/**
+ * Cube / rectangular-prism primitive from a Foxglove SceneEntity.
+ */
+export interface SceneCubePrimitive {
+  readonly color: RgbaColor | null;
+  readonly pose: ScenePose3D;
+  readonly size: readonly [number, number, number];
+}
+
+/**
+ * SceneEntity decoded from a Foxglove SceneUpdate. A SceneEntity may contain
+ * many primitive families; the first renderer slice draws cubes and preserves
+ * counts for the rest so unsupported annotation pressure stays visible.
+ */
+export interface SceneEntityVisualization {
+  readonly arrowCount: number;
+  readonly cubeCount: number;
+  readonly cubes: readonly SceneCubePrimitive[];
+  readonly cylinderCount: number;
+  readonly frameId?: string;
+  readonly frameLocked: boolean;
+  readonly id: string;
+  readonly lineCount: number;
+  readonly lifetimeNs?: bigint;
+  readonly metadata: Readonly<Record<string, string>>;
+  readonly modelCount: number;
+  readonly sphereCount: number;
+  readonly textCount: number;
+  readonly timestampNs?: bigint;
+  readonly triangleCount: number;
+}
+
+export type SceneEntityDeletionKind = "matching-id" | "all";
+
+/**
+ * SceneEntityDeletion decoded from a Foxglove SceneUpdate.
+ */
+export interface SceneEntityDeletionVisualization {
+  readonly id: string;
+  readonly timestampNs?: bigint;
+  readonly type: SceneEntityDeletionKind;
+}
+
+/**
+ * Renderer-neutral 3D scene update decoded from foxglove.SceneUpdate.
+ */
+export interface SceneUpdateVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.SCENE_UPDATE;
+  readonly deletions: readonly SceneEntityDeletionVisualization[];
+  readonly entities: readonly SceneEntityVisualization[];
+}
+
+/**
  * Filled circle annotation drawn in image pixel coordinates.
  */
 export interface ImageAnnotationCircle {
@@ -133,7 +193,8 @@ export interface ImageAnnotationsVisualization {
 export type DecodedVisualization =
   | EncodedImageVisualization
   | ImageAnnotationsVisualization
-  | PointCloudVisualization;
+  | PointCloudVisualization
+  | SceneUpdateVisualization;
 
 /**
  * Encoded payload identity used by frontend decoder selection.

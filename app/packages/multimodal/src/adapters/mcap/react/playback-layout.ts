@@ -165,7 +165,9 @@ export function resolvePlaybackLayout({
 }): ResolvedPlaybackLayout {
   const rankedImages = rankImageSources(sources);
   const has3d = sources.some(
-    (source) => source.type === MCAP_SOURCE_TYPE.POINT_CLOUD,
+    (source) =>
+      source.type === MCAP_SOURCE_TYPE.POINT_CLOUD ||
+      source.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
   );
 
   const imageTileCount =

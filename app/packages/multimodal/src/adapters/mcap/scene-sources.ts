@@ -4,6 +4,7 @@ import {
   isCompressedImageStream,
   isImageAnnotationsStream,
   isPointCloudStream,
+  isSceneUpdateStream,
   topicName,
 } from "./stream-topics";
 import { topicPrefix } from "./topic-matching";
@@ -20,6 +21,7 @@ export const MCAP_SOURCE_TYPE = {
   IMAGE: "image",
   IMAGE_ANNOTATION: "image-annotation",
   POINT_CLOUD: "point-cloud",
+  SCENE_ANNOTATION: "scene-annotation",
 } as const;
 
 export type McapSourceType =
@@ -38,6 +40,7 @@ const SYNC_POLICY_BY_TYPE: Record<McapSourceType, McapStreamSyncPolicy> = {
   [MCAP_SOURCE_TYPE.IMAGE]: LATEST_SYNC_POLICY,
   [MCAP_SOURCE_TYPE.IMAGE_ANNOTATION]: LATEST_SYNC_POLICY,
   [MCAP_SOURCE_TYPE.POINT_CLOUD]: LATEST_SYNC_POLICY,
+  [MCAP_SOURCE_TYPE.SCENE_ANNOTATION]: LATEST_SYNC_POLICY,
 };
 
 /**
@@ -121,6 +124,9 @@ function sourceTypeFor(topic: StreamInventory): McapSourceType | null {
   }
   if (isImageAnnotationsStream(topic)) {
     return MCAP_SOURCE_TYPE.IMAGE_ANNOTATION;
+  }
+  if (isSceneUpdateStream(topic)) {
+    return MCAP_SOURCE_TYPE.SCENE_ANNOTATION;
   }
   return null;
 }

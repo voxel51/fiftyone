@@ -163,6 +163,9 @@ function categoryForMessage(message: McapDecodedMessage): string {
   if (kind === VISUALIZATION_KIND.POINT_CLOUD) {
     return pointCloudCategoryForTopic(message.topic);
   }
+  if (kind === VISUALIZATION_KIND.SCENE_UPDATE) {
+    return "scene-annotations";
+  }
   if (!kind) {
     return "metadata";
   }

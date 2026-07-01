@@ -209,7 +209,9 @@ function sourceCounts(sources: readonly { type: string }[]) {
   return {
     imageCount: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.IMAGE).length,
     labelCount: sources.filter(
-      (s) => s.type === MCAP_SOURCE_TYPE.IMAGE_ANNOTATION,
+      (s) =>
+        s.type === MCAP_SOURCE_TYPE.IMAGE_ANNOTATION ||
+        s.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
     ).length,
     pointCloudCount: sources.filter(
       (s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD,

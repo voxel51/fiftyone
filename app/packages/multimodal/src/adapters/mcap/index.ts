@@ -25,6 +25,7 @@ export {
   isCompressedImageStream,
   isImageAnnotationsStream,
   isPointCloudStream,
+  isSceneUpdateStream,
   streamTopics,
   topicName,
 } from "./stream-topics";
