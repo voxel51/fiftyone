@@ -66,6 +66,51 @@ export function chooseAnnotationTopic(
 }
 
 /**
+ * Chooses the camera-calibration topic that best matches a selected camera
+ * topic. Prefers the exact `<camera prefix>/camera_info` sibling, then
+ * falls back to the highest shared-token score.
+ */
+export function chooseCalibrationTopic(
+  imageTopic: string,
+  calibrationTopics: readonly string[],
+): string | null {
+  if (calibrationTopics.length === 0) {
+    return null;
+  }
+
+  const cameraPrefix = topicPrefix(imageTopic);
+  const exactTopic = cameraPrefix ? `${cameraPrefix}/camera_info` : "";
+  const exact = calibrationTopics.find((topic) => topic === exactTopic);
+  if (exact) {
+    return exact;
+  }
+
+  let bestTopic: string | null = null;
+  let bestScore = 0;
+  const imageTokens = topicTokens(imageTopic);
+
+  for (const calibrationTopic of calibrationTopics) {
+    const calibrationTokens = topicTokens(calibrationTopic);
+    let score =
+      cameraPrefix && isTopicAtOrBelowPrefix(calibrationTopic, cameraPrefix)
+        ? 10
+        : 0;
+    for (const token of imageTokens) {
+      if (calibrationTokens.has(token)) {
+        score += 1;
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestTopic = calibrationTopic;
+    }
+  }
+
+  return bestTopic;
+}
+
+/**
  * Returns the camera-like topic prefix after removing image suffix segments.
  */
 export function topicPrefix(topic: string): string {
