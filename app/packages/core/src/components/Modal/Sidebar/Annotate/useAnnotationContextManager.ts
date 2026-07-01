@@ -117,6 +117,12 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
   const activateField = useCallback(
     async (field: string): Promise<EnterResult> => {
+      // Set synchronously before any await so the sidebar renders the
+      // primitive editor immediately, avoiding a flash of the label list.
+      if (isPrimitive(field)) {
+        setActivePrimitive(field);
+      }
+
       const mgmtOps = jotaiStore.get(schemaManagementOpsAtom);
 
       if (!canManageSchema || !mgmtOps) {
@@ -140,10 +146,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         // server. Skip the redundant initializeSchema/activateSchemas calls
         // to avoid clobbering the existing schema state.
         if (hasSchema && isAlreadyActive) {
-          if (isPrimitive(field)) {
-            setActivePrimitive(field);
-          }
-
           return {
             status: InitializationStatus.Success,
           };
@@ -162,10 +164,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         listSchemaResponse = await schemaResolver.listSchemas({});
         setLabelSchema(listSchemaResponse.label_schemas);
         setActiveSchemaPaths(listSchemaResponse.active_label_schemas);
-
-        if (isPrimitive(field)) {
-          setActivePrimitive(field);
-        }
 
         return {
           status: InitializationStatus.Success,
