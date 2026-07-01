@@ -1,5 +1,6 @@
 import type { Decoder } from "../../../../decoders";
 import { foxgloveCompressedImageDecoder } from "./compressed-image";
+import { foxgloveGridDecoder } from "./grid";
 import { foxgloveImageAnnotationsDecoder } from "./image-annotations";
 import { foxglovePointCloudDecoder } from "./point-cloud";
 import { foxgloveSceneUpdateDecoder } from "./scene-update";
@@ -8,6 +9,11 @@ import { foxgloveSceneUpdateDecoder } from "./scene-update";
  * Foxglove compressed image decoder export.
  */
 export { foxgloveCompressedImageDecoder } from "./compressed-image";
+
+/**
+ * Foxglove Grid decoder export.
+ */
+export { foxgloveGridDecoder } from "./grid";
 
 /**
  * Foxglove image annotations decoder export.
@@ -29,6 +35,7 @@ export { foxgloveSceneUpdateDecoder } from "./scene-update";
  */
 export const foxgloveDecoders: readonly Decoder[] = [
   foxgloveCompressedImageDecoder,
+  foxgloveGridDecoder,
   foxgloveImageAnnotationsDecoder,
   foxglovePointCloudDecoder,
   foxgloveSceneUpdateDecoder,
