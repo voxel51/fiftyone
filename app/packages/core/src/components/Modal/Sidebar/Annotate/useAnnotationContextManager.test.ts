@@ -12,8 +12,11 @@ const emptyListResponse: ListSchemasResponse = {
   label_schemas: {},
 };
 
-const listResponseWithSchema = (field: string): ListSchemasResponse => ({
-  active_label_schemas: [field],
+const listResponseWithSchema = (
+  field: string,
+  options: { active?: boolean } = { active: true },
+): ListSchemasResponse => ({
+  active_label_schemas: options.active ? [field] : [],
   label_schemas: {
     [field]: {
       default_label_schema: { type: "str", component: "text" },
@@ -160,8 +163,10 @@ describe("activateField", () => {
     });
   });
 
-  it("skips initializeSchema when field already has a schema", async () => {
-    mockListSchemas.mockResolvedValue(listResponseWithSchema("ground_truth"));
+  it("skips initializeSchema when field already has a schema but is inactive", async () => {
+    mockListSchemas.mockResolvedValue(
+      listResponseWithSchema("ground_truth", { active: false }),
+    );
 
     const { result } = renderHook(() => useAnnotationContextManager());
 
@@ -173,6 +178,21 @@ describe("activateField", () => {
     expect(mockActivateSchemas).toHaveBeenCalledWith({
       fields: ["ground_truth"],
     });
+  });
+
+  it("short-circuits when the field is already provisioned and active", async () => {
+    mockListSchemas.mockResolvedValue(listResponseWithSchema("ground_truth"));
+
+    const { result } = renderHook(() => useAnnotationContextManager());
+
+    await act(async () => {
+      await result.current.activateField("ground_truth");
+    });
+
+    // listSchemas is called exactly once — no second refresh, no writes.
+    expect(mockListSchemas).toHaveBeenCalledTimes(1);
+    expect(mockInitializeSchema).not.toHaveBeenCalled();
+    expect(mockActivateSchemas).not.toHaveBeenCalled();
   });
 
   it("returns ServerError when a write operation fails", async () => {
