@@ -1,7 +1,7 @@
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import type { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
-import type { PropagationBlob, SyntheticBox } from "@fiftyone/utilities";
+import type { SyntheticBox } from "@fiftyone/utilities";
 import type { ProviderError } from "../providers";
 
 /** Helper type representing a `fo.Polylines`-like element. */
@@ -203,7 +203,6 @@ export type SegmentationInferenceResult = DetectionsParent;
 export type PropagatedDetection = DetectionLabel & {
   bounding_box: [number, number, number, number];
   keyframe: boolean;
-  propagation: PropagationBlob | null;
 };
 
 /**

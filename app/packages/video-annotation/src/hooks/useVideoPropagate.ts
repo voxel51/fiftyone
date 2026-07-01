@@ -12,7 +12,6 @@ import {
 import {
   type LabelData,
   LabelType,
-  type PropagationBlob,
   type SyntheticBox,
 } from "@fiftyone/utilities";
 import { createElement, useCallback } from "react";
@@ -40,7 +39,6 @@ const toSyntheticBox = (label: LabelData): SyntheticBox => ({
   index: label.index as number | undefined,
   instance: label.instance as SyntheticBox["instance"],
   keyframe: (label.keyframe as boolean) ?? false,
-  propagation: (label.propagation as PropagationBlob | null) ?? null,
 });
 
 /**

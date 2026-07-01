@@ -38,7 +38,7 @@ describe("VideoFrameLabelsStream fetched-empty", () => {
 });
 
 describe("VideoFrameLabelsStream extractDetections", () => {
-  it("defaults missing keyframe to false and propagation to null", () => {
+  it("defaults missing keyframe to false", () => {
     const stream = buildStream();
     // @ts-expect-error — test-only: populate the private cache
     stream.cache.set(10, {
@@ -52,7 +52,7 @@ describe("VideoFrameLabelsStream extractDetections", () => {
 
     const value = stream.getValue(timeOfFrame(10, 30));
     expect(value?.detections[0].keyframe).toBe(false);
-    expect(value?.detections[0].propagation).toBeNull();
+    expect(value?.detections[0]).not.toHaveProperty("propagation");
   });
 });
 

@@ -77,6 +77,8 @@ beforeEach(() => {
 
 describe("track ops", () => {
   it("markKeyframe toggles keyframe on the addressed frame and notifies", () => {
+    // Legacy data may still carry a `propagation` blob; markKeyframe must NOT
+    // try to clear it with `propagation: null` (that null is the poison).
     frameData = {
       2: { A: det("d2", "A", { keyframe: false, propagation: { foo: 1 } }) },
     };
@@ -84,9 +86,12 @@ describe("track ops", () => {
     render().current.markKeyframe(2, ["instance-A"]);
 
     expect(mockActions.transaction).toHaveBeenCalledTimes(1);
+    // Only `keyframe: true` is written — no `propagation: null`, which would
+    // seed a null baseline that a later re-lerp diffs as a `replace` over a
+    // server-absent path (the frame-patch error).
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "A", frame: 2 },
-      { keyframe: true, propagation: null },
+      { keyframe: true },
     );
     expect(mockBus.dispatch).toHaveBeenCalledWith(
       "annotation:keyframeChanged",
