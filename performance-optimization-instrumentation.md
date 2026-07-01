@@ -1526,11 +1526,61 @@ Validation (Playwright probe, immediate-Space):
 | `remote-slow` (7.5 MB/s) | Pill appears 2.5 s into buffering, live MB/s |
 | `local` (unshaped)       | Pill never appears across 45 s               |
 
+## Optimization 21: Network-Aware Idle-Work Gate
+
+Date: 2026-07-01
+
+Product stance:
+
+- Speculative idle reads (background lookahead top-ups, paused warmup,
+  transform runway extensions) should yield the link while a constrained
+  network is the reason the user is waiting — and never change behavior on
+  healthy transports.
+
+Refactor:
+
+- Pure gate `shouldDeferMcapIdleWork` (unit-tested): active only while the
+  network-limited verdict holds; defers idle work during buffering or accepted
+  play intent, plus a 1.5 s post-seek cooldown while foreground catch-up owns
+  the link.
+- Wired into the playing-time background top-up and the paused idle warmup loop
+  (which retries on its cadence rather than dying when gated), and into
+  transform runway extensions via a nullable playback-store context so
+  standalone callers and tests keep ungated behavior.
+- Debug metric `network limited idle deferrals` records gated passes.
+
+Validation (remote-typical, immediate-Space, warm-L2 runs):
+
+| Metric                       | Prefetch + L2 | + idle gate |
+| ---------------------------- | ------------: | ----------: |
+| Startup buffer ready         |    6,586.0 ms |  5,501.4 ms |
+| First 3D paint               |    6,616.1 ms |  5,544.7 ms |
+| First 10 s stalled wall time |   37,519.5 ms | 38,717.4 ms |
+| Stall percent                |         78.6% |       79.2% |
+
+Local control: unchanged (5.9% stall vs 5.4%, run noise; the gate cannot fire
+while the limited verdict is false).
+
+Honest interpretation:
+
+- Startup improved (~1.1 s) but the first-10 s stall profile is flat. The
+  transport log explains why: on this profile the link is over-subscribed by
+  playback-critical work itself (startup fills, current-frame, playback
+  batches, transform placement), and runway extensions key off playhead
+  movement, which freezes during stalls — so there was little idle traffic left
+  for the gate to shed inside the measured window.
+- The gate remains correct hygiene: it bounds idle pileups on moderately
+  constrained links and protects post-seek recovery, at zero healthy-path cost.
+  But the binding constraint on remote-typical is content bitrate vs link
+  throughput, which only adaptive fidelity (product) or server-side assists can
+  move.
+
 ## Remote Next Steps
 
 1. Idle-lane bandwidth budgets: lanes isolate CPU but share the link; idle
    prefetch and transform runway should yield to foreground reads on
-   constrained transports, and pause briefly after seeks.
+   constrained transports, and pause briefly after seeks. — Shipped as
+   Optimization 21 (gate on the limited verdict).
 2. Re-attribute remaining remote stalls now that transport is honest: measure
    lane turnaround gaps and decode occupancy against link idle time.
 3. Adaptive fidelity policy (product decision): when content bitrate exceeds
