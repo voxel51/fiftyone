@@ -15,6 +15,7 @@ describe("mcapSceneSources", () => {
       createTopic("/markers/annotations", "foxglove.SceneUpdate"),
       createTopic("/map", "foxglove.Grid"),
       createTopic("/drivable_area", "foxglove.Grid"),
+      createTopic("/CAM_FRONT/camera_info", "foxglove.CameraCalibration"),
       createTopic("/tf", "foxglove.FrameTransform"),
       createTopic("/diagnostics", "diagnostic_msgs/DiagnosticArray", "ros1"),
     ]);
@@ -49,6 +50,11 @@ describe("mcapSceneSources", () => {
         id: "/drivable_area",
         type: MCAP_SOURCE_TYPE.MAP_LAYER,
         label: "drivable_area",
+      },
+      {
+        id: "/CAM_FRONT/camera_info",
+        type: MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
+        label: "CAM_FRONT/camera_info",
       },
     ]);
   });

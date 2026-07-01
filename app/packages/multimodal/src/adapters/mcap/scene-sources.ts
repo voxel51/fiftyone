@@ -1,6 +1,7 @@
 import type { SceneSource } from "../../scene-inventory";
 import { PlaybackSyncMode, type StreamInventory } from "../../schemas/v1";
 import {
+  isCameraCalibrationStream,
   isCompressedImageStream,
   isGridStream,
   isImageAnnotationsStream,
@@ -19,6 +20,10 @@ import type { McapStreamSyncPolicies, McapStreamSyncPolicy } from "./types";
  * the tile catalog maps them to the tile kinds that can render them.
  */
 export const MCAP_SOURCE_TYPE = {
+  // Foxglove CameraCalibration topics: camera intrinsics/projection.
+  // Paired with image streams by topic prefix and rendered as frustums
+  // in the 3D scene; never a standalone tile.
+  CAMERA_CALIBRATION: "camera-calibration",
   IMAGE: "image",
   IMAGE_ANNOTATION: "image-annotation",
   // Foxglove Grid topics: 2D data grids rendered as textured ground/map
@@ -42,6 +47,7 @@ const LATEST_SYNC_POLICY: McapStreamSyncPolicy = {
 };
 
 const SYNC_POLICY_BY_TYPE: Record<McapSourceType, McapStreamSyncPolicy> = {
+  [MCAP_SOURCE_TYPE.CAMERA_CALIBRATION]: LATEST_SYNC_POLICY,
   [MCAP_SOURCE_TYPE.IMAGE]: LATEST_SYNC_POLICY,
   [MCAP_SOURCE_TYPE.IMAGE_ANNOTATION]: LATEST_SYNC_POLICY,
   // Unbounded lookback is what makes static maps work: a one-shot /map
@@ -138,6 +144,9 @@ function sourceTypeFor(topic: StreamInventory): McapSourceType | null {
   }
   if (isGridStream(topic)) {
     return MCAP_SOURCE_TYPE.MAP_LAYER;
+  }
+  if (isCameraCalibrationStream(topic)) {
+    return MCAP_SOURCE_TYPE.CAMERA_CALIBRATION;
   }
   return null;
 }
