@@ -2,6 +2,8 @@ import {
   getBufferedRanges,
   getBufferingDetail,
   getIsBuffering,
+  getIsPlayPending,
+  getIsPlaying,
   getPlayhead,
   getStreamValue,
   PlaybackProvider,
@@ -181,9 +183,242 @@ describe("stream status + buffering feedback", () => {
 
     const request = vi.mocked(client.readSynchronizedMessageBatch).mock
       .calls[0]?.[0];
+    const options = vi.mocked(client.readSynchronizedMessageBatch).mock
+      .calls[0]?.[1];
     expect(request?.timeNs.length).toBeGreaterThan(0);
     expect(request?.timeNs.length).toBeLessThanOrEqual(15);
     expect(request?.timeNs.at(-1)).toBeLessThanOrEqual(500_000_000n);
+    expect(options?.priority).toBe("playback");
+  });
+
+  it("does not queue idle background lookahead while startup data is still in flight", async () => {
+    const source = createSource("source");
+    const startupBatch = deferred<readonly McapSynchronizedMessageWindow[]>();
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(() => startupBatch.promise),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(client.readSynchronizedMessageBatch).toHaveBeenCalled();
+    });
+
+    act(() => {
+      api?.seek(0.2);
+    });
+    await Promise.resolve();
+
+    const calls = vi.mocked(client.readSynchronizedMessageBatch).mock.calls;
+    expect(calls.some(([, options]) => options?.priority === "idle")).toBe(
+      false,
+    );
+    expect(calls.every(([, options]) => options?.priority === "playback")).toBe(
+      true,
+    );
+  });
+
+  it("starts pending play as soon as the startup window is covered", async () => {
+    const source = createSource("source");
+    const startupBatch = deferred<readonly McapSynchronizedMessageWindow[]>();
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    let startupRequest:
+      | Parameters<McapResourceClient["readSynchronizedMessageBatch"]>[0]
+      | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn((request) => {
+        startupRequest ??= request;
+        return startupBatch.promise;
+      }),
+      readSynchronizedMessages: vi.fn(async (request) =>
+        createEmptyWindow(request.timeNs),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    await waitFor(() => {
+      expect(startupRequest).toBeDefined();
+    });
+    const resolvedStartupRequest = startupRequest;
+    if (!resolvedStartupRequest) {
+      throw new Error("Startup request was not captured");
+    }
+
+    act(() => {
+      api?.play();
+    });
+    expect(getIsPlaying(store)).toBe(false);
+    expect(getIsPlayPending(store)).toBe(true);
+
+    await act(async () => {
+      startupBatch.resolve(
+        resolvedStartupRequest.timeNs.map(createEmptyWindow),
+      );
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(getIsPlaying(store)).toBe(true);
+      expect(getIsPlayPending(store)).toBe(false);
+    });
+  });
+
+  it("warms paused lookahead after the startup window is covered", async () => {
+    const source = createSource("source");
+    const startupBatch = deferred<readonly McapSynchronizedMessageWindow[]>();
+    const storeCapture = capturePlaybackStore();
+    let startupRequest:
+      | Parameters<McapResourceClient["readSynchronizedMessageBatch"]>[0]
+      | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn((request) => {
+        startupRequest ??= request;
+        return startupRequest === request
+          ? startupBatch.promise
+          : Promise.resolve(request.timeNs.map(createEmptyWindow));
+      }),
+      readSynchronizedMessages: vi.fn(async (request) =>
+        createEmptyWindow(request.timeNs),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange(5_000_000_000n)),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(startupRequest).toBeDefined();
+    });
+    const resolvedStartupRequest = startupRequest;
+    if (!resolvedStartupRequest) {
+      throw new Error("Startup request was not captured");
+    }
+
+    await act(async () => {
+      startupBatch.resolve(
+        resolvedStartupRequest.timeNs.map(createEmptyWindow),
+      );
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(
+        vi
+          .mocked(client.readSynchronizedMessageBatch)
+          .mock.calls.some(([, options]) => options?.priority === "idle"),
+      ).toBe(true);
+    });
+
+    const idleCall = vi
+      .mocked(client.readSynchronizedMessageBatch)
+      .mock.calls.find(([, options]) => options?.priority === "idle");
+    expect(idleCall?.[0].timeNs.length).toBeGreaterThan(0);
+    expect(idleCall?.[0].timeNs.length).toBeLessThanOrEqual(30);
+    expect(idleCall?.[0].timeNs.at(-1)).toBeLessThanOrEqual(1_500_000_000n);
+    expect(idleCall?.[0].topics).toEqual([TOPIC]);
+  });
+
+  it("queues covered background lookahead as small idle batches", async () => {
+    const source = createSource("source");
+    const batches: Array<{
+      readonly request: Parameters<
+        McapResourceClient["readSynchronizedMessageBatch"]
+      >[0];
+      readonly resolve: (
+        windows: readonly McapSynchronizedMessageWindow[],
+      ) => void;
+      readonly promise: Promise<readonly McapSynchronizedMessageWindow[]>;
+    }> = [];
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn((request) => {
+        const batch = deferred<readonly McapSynchronizedMessageWindow[]>();
+        batches.push({
+          promise: batch.promise,
+          request,
+          resolve: batch.resolve,
+        });
+        return batch.promise;
+      }),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(batches.length).toBeGreaterThan(0);
+    });
+    const startupRequest = batches[0].request;
+
+    await act(async () => {
+      batches[0].resolve([
+        createEmptyWindow(0n),
+        ...startupRequest.timeNs.map(createEmptyWindow),
+      ]);
+      await Promise.resolve();
+    });
+
+    act(() => {
+      api?.seek(0.001);
+    });
+
+    await waitFor(() => {
+      expect(
+        vi
+          .mocked(client.readSynchronizedMessageBatch)
+          .mock.calls.some(([, options]) => options?.priority === "idle"),
+      ).toBe(true);
+    });
+
+    const idleCall = vi
+      .mocked(client.readSynchronizedMessageBatch)
+      .mock.calls.find(([, options]) => options?.priority === "idle");
+    expect(idleCall?.[0].timeNs.length).toBeGreaterThan(0);
+    expect(idleCall?.[0].timeNs.length).toBeLessThanOrEqual(30);
   });
 
   it("reports 'loading' while the current frame is in flight, then 'ready' when it lands", async () => {
@@ -601,6 +836,7 @@ function Harness({
   const api = usePlayback();
   useRegisterMcapDataStream({
     allTopics: [TOPIC],
+    blockingTopics: [TOPIC],
     client,
     pointCloudTopics: [],
     source,

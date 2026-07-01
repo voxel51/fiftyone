@@ -2,6 +2,7 @@ import {
   getBufferedRanges,
   getBufferingDetail,
   getIsBuffering,
+  getIsPlayPending,
   getIsPlaying,
   getPlayhead,
   getStreamValue,
@@ -81,6 +82,14 @@ interface McapPlaybackPolicy {
   readonly startupMinTicks: number;
 
   /**
+   * Paused warmup horizon. While the user is looking at a loaded sample but
+   * playback is not moving, warm just enough render-blocking data to make
+   * Play feel instant. Active playback still uses the larger rolling
+   * `lookaheadSeconds` horizon.
+   */
+  readonly pausedWarmupRunwaySeconds: number;
+
+  /**
    * Per-worker-request time cap. A single full-lookahead request can decode too
    * much at once and create a large response, so the lookahead is filled by
    * multiple bounded requests.
@@ -144,11 +153,12 @@ interface DerivedMcapPlaybackPolicy extends McapPlaybackPolicy {
 }
 
 const DEFAULT_MCAP_PLAYBACK_POLICY: McapPlaybackPolicy = {
-  lookaheadSeconds: 15,
-  prefetchBatchSeconds: 5,
+  lookaheadSeconds: 4,
+  pausedWarmupRunwaySeconds: 1.5,
+  prefetchBatchSeconds: 1,
   prefetchBatchesPerPass: 1,
-  prefetchRefreshSeconds: 1,
-  startupBufferSeconds: 0.3,
+  prefetchRefreshSeconds: 0.5,
+  startupBufferSeconds: 0.5,
   startupMaxTicks: 15,
   startupMinTicks: 3,
   topicCacheLookaheadMultiplier: 2,
@@ -197,6 +207,7 @@ interface PlaybackStallWindow {
 }
 
 export interface UseMcapDataStreamOptions {
+  blockingTopics: readonly string[];
   client: McapResourceClient;
   source: ByteSourceDescriptor | null;
   allTopics: readonly string[];
@@ -219,6 +230,7 @@ export interface UseMcapDataStreamOptions {
  *   individual topic caches without going through an atom.
  */
 export function useRegisterMcapDataStream({
+  blockingTopics,
   client,
   source,
   allTopics,
@@ -252,6 +264,12 @@ export function useRegisterMcapDataStream({
   const bufferedRangesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const pausedIdleWarmupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const schedulePausedIdleWarmupRef = useRef<
+    ((delayMs?: number) => void) | null
+  >(null);
   const topicStartTimesNsRef = useRef<Map<string, bigint | null>>(new Map());
   const autoSeekSourceEpochRef = useRef<number | null>(null);
   const nextLookaheadRefreshTimeRef = useRef(0);
@@ -264,6 +282,9 @@ export function useRegisterMcapDataStream({
   // stable callbacks below read fresh values without listing them as
   // deps (which would invalidate the registered stream every render).
   const allTopicsRef = useRef(allTopics);
+  const blockingTopicsRef = useRef<ReadonlySet<string>>(
+    new Set(blockingTopics),
+  );
   const pointCloudTopicsRef = useRef<ReadonlySet<string>>(
     new Set(pointCloudTopics),
   );
@@ -272,6 +293,9 @@ export function useRegisterMcapDataStream({
   useEffect(() => {
     allTopicsRef.current = allTopics;
   }, [allTopics]);
+  useEffect(() => {
+    blockingTopicsRef.current = new Set(blockingTopics);
+  }, [blockingTopics]);
   useEffect(() => {
     pointCloudTopicsRef.current = new Set(pointCloudTopics);
   }, [pointCloudTopics]);
@@ -289,6 +313,19 @@ export function useRegisterMcapDataStream({
       ),
     [],
   );
+  const getActiveBlockingTopics = useCallback((): string[] => {
+    const activeTopics = getActiveTopics();
+    const blockingTopics = activeTopics.filter((topic) =>
+      blockingTopicsRef.current.has(topic),
+    );
+    return blockingTopics.length > 0 ? blockingTopics : activeTopics;
+  }, [getActiveTopics]);
+
+  const clearPausedIdleWarmupTimer = useCallback(() => {
+    if (pausedIdleWarmupTimerRef.current === null) return;
+    clearTimeout(pausedIdleWarmupTimerRef.current);
+    pausedIdleWarmupTimerRef.current = null;
+  }, []);
 
   // If a recording's selected renderable topics begin just after the MCAP
   // timeline start, land the initial playhead on the first sampled tick that
@@ -390,6 +427,7 @@ export function useRegisterMcapDataStream({
     topicStartTimesNsRef.current.clear();
     autoSeekSourceEpochRef.current = null;
     nextLookaheadRefreshTimeRef.current = 0;
+    clearPausedIdleWarmupTimer();
     for (const cache of topicCachesRef.current.values()) {
       cache.clear();
     }
@@ -478,7 +516,7 @@ export function useRegisterMcapDataStream({
   const computeBufferedRanges = useCallback((): Array<[number, number]> => {
     const currentIndex = indexRef.current;
     if (!currentIndex) return [];
-    const activeTopics = getActiveTopics();
+    const activeTopics = getActiveBlockingTopics();
     if (activeTopics.length === 0) return [];
     const caches = topicCachesRef.current;
     const { startTimeNs, ticks, durationSec } = currentIndex;
@@ -508,7 +546,18 @@ export function useRegisterMcapDataStream({
     }
     if (runStart !== null) ranges.push([runStart, runEnd]);
     return ranges;
-  }, [getActiveTopics]);
+  }, [getActiveBlockingTopics]);
+
+  const publishBufferedRangesNow = useCallback(() => {
+    if (bufferedRangesTimerRef.current !== null) {
+      clearTimeout(bufferedRangesTimerRef.current);
+      bufferedRangesTimerRef.current = null;
+    }
+    const next = computeBufferedRanges();
+    if (!bufferedRangesEqual(getBufferedRanges(store), next)) {
+      setBufferedRanges(store, next);
+    }
+  }, [computeBufferedRanges, store]);
 
   const scheduleBufferedRangesPublish = useCallback(() => {
     if (bufferedRangesTimerRef.current !== null) return;
@@ -535,8 +584,9 @@ export function useRegisterMcapDataStream({
         clearTimeout(bufferedRangesTimerRef.current);
         bufferedRangesTimerRef.current = null;
       }
+      clearPausedIdleWarmupTimer();
     },
-    [store],
+    [clearPausedIdleWarmupTimer, store],
   );
 
   useEffect(() => {
@@ -576,11 +626,13 @@ export function useRegisterMcapDataStream({
   // onCommit) only wakes React on actual transitions.
   const publishStreamStatuses = useCallback(() => {
     const activeTopics = getActiveTopics();
+    const activeBlockingTopics = getActiveBlockingTopics();
+    const blockingTopicSet = new Set(activeBlockingTopics);
     const caches = topicCachesRef.current;
     const failed = failedTopicsRef.current;
     const tick = indexRef.current?.nearestTick(getPlayhead(store)) ?? null;
 
-    let covered = 0;
+    let blockingCovered = 0;
     for (const topic of activeTopics) {
       const cache = caches.get(topic);
 
@@ -589,7 +641,9 @@ export function useRegisterMcapDataStream({
       if (tick === null || !cache?.has(tick)) {
         status = failed.has(topic) ? "failed" : "loading";
       } else {
-        covered += 1;
+        if (blockingTopicSet.has(topic)) {
+          blockingCovered += 1;
+        }
         if (failed.has(topic)) {
           status = "failed";
         } else {
@@ -615,9 +669,10 @@ export function useRegisterMcapDataStream({
     }
 
     const total = activeTopics.length;
+    const blockingTotal = activeBlockingTopics.length;
     const detail =
-      tick !== null && total > 0 && covered < total
-        ? `${covered}/${total} streams`
+      tick !== null && blockingTotal > 0 && blockingCovered < blockingTotal
+        ? `${blockingCovered}/${blockingTotal} streams`
         : null;
     if (getBufferingDetail(store) !== detail) {
       setBufferingDetail(store, detail);
@@ -629,39 +684,43 @@ export function useRegisterMcapDataStream({
     // wait is over. (Never *set* the flag here; the engine owns that.)
     if (
       tick !== null &&
-      total > 0 &&
-      covered === total &&
+      blockingTotal > 0 &&
+      blockingCovered === blockingTotal &&
       getIsBuffering(store)
     ) {
       setIsBuffering(store, false);
     }
 
-    if (isMcapLatencyDebugEnabled() && tick !== null && total > 0) {
-      const playheadSec = getPlayhead(store);
-      if (covered === total) {
+    const playheadSec = getPlayhead(store);
+    const startupCoverage =
+      tick !== null && blockingTotal > 0
+        ? bufferWindowCoverage({
+            activeTopics: activeBlockingTopics,
+            caches,
+            index: indexRef.current,
+            lookaheadSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+            maxTicks: PLAYBACK_POLICY.startupMaxPrefetchBatch,
+            timeSec: playheadSec,
+          })
+        : null;
+    const startupReady =
+      !!startupCoverage?.total &&
+      startupCoverage.covered === startupCoverage.total;
+
+    if (isMcapLatencyDebugEnabled() && tick !== null && blockingTotal > 0) {
+      if (blockingCovered === blockingTotal) {
         markMcapLatencyEvent(
           "playhead buffer ready",
           {
             playheadSec: Number(playheadSec.toFixed(3)),
-            streams: total,
+            streams: blockingTotal,
             tickNs: tick,
           },
           { onceKey: "first-playhead-buffer-ready" },
         );
       }
 
-      const startupCoverage = bufferWindowCoverage({
-        activeTopics,
-        caches,
-        index: indexRef.current,
-        lookaheadSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
-        maxTicks: PLAYBACK_POLICY.startupMaxPrefetchBatch,
-        timeSec: playheadSec,
-      });
-      if (
-        startupCoverage?.total &&
-        startupCoverage.covered === startupCoverage.total
-      ) {
+      if (startupReady) {
         markMcapLatencyEvent(
           "startup buffer ready",
           {
@@ -669,7 +728,7 @@ export function useRegisterMcapDataStream({
               PLAYBACK_POLICY.startupLookaheadSeconds.toFixed(3),
             ),
             playheadSec: Number(playheadSec.toFixed(3)),
-            streams: total,
+            streams: blockingTotal,
             tickNs: tick,
             ticks: startupCoverage.total,
           },
@@ -680,8 +739,35 @@ export function useRegisterMcapDataStream({
 
     // Every data-flow event that can change statuses can also change
     // coverage — refresh the timeline's buffered shading (throttled).
-    scheduleBufferedRangesPublish();
-  }, [getActiveTopics, scheduleBufferedRangesPublish, store]);
+    if (startupReady && getIsPlayPending(store)) {
+      if (isMcapLatencyDebugEnabled()) {
+        recordMcapLatencyMetric(
+          "startup buffered ranges immediate publish",
+          1,
+          {
+            activeTopics: total,
+            blockingTopics: blockingTotal,
+            coveredTicks: startupCoverage?.covered ?? 0,
+            startupTicks: startupCoverage?.total ?? 0,
+            timeSec: Number(playheadSec.toFixed(3)),
+          },
+        );
+      }
+      publishBufferedRangesNow();
+    } else {
+      scheduleBufferedRangesPublish();
+    }
+
+    if (startupReady && !getIsPlaying(store) && !getIsPlayPending(store)) {
+      schedulePausedIdleWarmupRef.current?.(0);
+    }
+  }, [
+    getActiveTopics,
+    getActiveBlockingTopics,
+    publishBufferedRangesNow,
+    scheduleBufferedRangesPublish,
+    store,
+  ]);
 
   // Sidebar threshold changes should update stale/ready badges even when the
   // playhead is paused and no stream commit is happening.
@@ -796,13 +882,19 @@ export function useRegisterMcapDataStream({
       }
 
       client
-        .readSynchronizedMessageBatch({
-          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-          source,
-          streamPolicies: streamPoliciesRef.current,
-          timeNs: toFetch,
-          topics: topicsToFetch,
-        })
+        .readSynchronizedMessageBatch(
+          {
+            activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+            source,
+            streamPolicies: streamPoliciesRef.current,
+            timeNs: toFetch,
+            topics: topicsToFetch,
+          },
+          {
+            priority:
+              operation === "background-lookahead" ? "idle" : "playback",
+          },
+        )
         .then((windows) => {
           if (sourceEpochRef.current !== sourceEpoch) return;
           handleFetchSuccess(topicsToFetch);
@@ -1014,15 +1106,19 @@ export function useRegisterMcapDataStream({
     ],
   );
 
-  // Collect ticks in [startSec, endSec] where at least one active topic
+  // Collect ticks in [startSec, endSec] where at least one requested topic
   // still needs the data — i.e. not cached and not already pending for
   // that specific topic. Capped by the resolved playback policy.
-  const collectMissingTicks = useCallback(
-    (startSec: number, endSec: number, maxTicks: number): bigint[] => {
+  const collectMissingTicksForTopics = useCallback(
+    (
+      startSec: number,
+      endSec: number,
+      maxTicks: number,
+      topics: readonly string[],
+    ): bigint[] => {
       const currentIndex = indexRef.current;
       if (!currentIndex) return [];
-      const activeTopics = getActiveTopics();
-      if (activeTopics.length === 0) return [];
+      if (topics.length === 0) return [];
       const caches = topicCachesRef.current;
       const startNs = currentIndex.secToNs(startSec);
       const endNs = currentIndex.secToNs(endSec);
@@ -1035,7 +1131,7 @@ export function useRegisterMcapDataStream({
         const tick = ticks[i];
         if (tick > endNs) break;
         const tickKey = tick.toString();
-        const needsFetch = activeTopics.some(
+        const needsFetch = topics.some(
           (t) => !caches.get(t)?.has(tick) && !isTopicPending(tickKey, t),
         );
         if (needsFetch) toFetch.push(tick);
@@ -1043,8 +1139,154 @@ export function useRegisterMcapDataStream({
       }
       return toFetch;
     },
-    [getActiveTopics],
+    [],
   );
+
+  const collectMissingTicks = useCallback(
+    (startSec: number, endSec: number, maxTicks: number): bigint[] =>
+      collectMissingTicksForTopics(
+        startSec,
+        endSec,
+        maxTicks,
+        getActiveTopics(),
+      ),
+    [collectMissingTicksForTopics, getActiveTopics],
+  );
+
+  const runPausedIdleWarmup = useCallback((): boolean => {
+    const currentIndex = indexRef.current;
+    if (
+      !currentIndex ||
+      !source ||
+      getIsPlaying(store) ||
+      getIsPlayPending(store)
+    ) {
+      return false;
+    }
+
+    const timeSec = getPlayhead(store);
+    const activeTopics = getActiveTopics();
+    const activeBlockingTopics = getActiveBlockingTopics();
+    if (activeTopics.length === 0 || activeBlockingTopics.length === 0) {
+      return false;
+    }
+
+    const startupCoverage = bufferWindowCoverage({
+      activeTopics: activeBlockingTopics,
+      caches: topicCachesRef.current,
+      index: currentIndex,
+      lookaheadSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+      maxTicks: PLAYBACK_POLICY.startupMaxPrefetchBatch,
+      timeSec,
+    });
+    if (
+      !startupCoverage?.total ||
+      startupCoverage.covered < startupCoverage.total
+    ) {
+      return false;
+    }
+
+    const endSec = timeSec + PLAYBACK_POLICY.pausedWarmupRunwaySeconds;
+    const primaryMissing = collectMissingTicksForTopics(
+      timeSec,
+      endSec,
+      PLAYBACK_POLICY.maxPrefetchBatch,
+      activeBlockingTopics,
+    );
+    if (
+      primaryMissing.length > 0 &&
+      fetchBatch(primaryMissing, activeBlockingTopics, "background-lookahead")
+    ) {
+      if (isMcapLatencyDebugEnabled()) {
+        recordMcapLatencyMetric("paused idle warmup passes", 1, {
+          activeTopics: activeTopics.length,
+          blockingTopics: activeBlockingTopics.length,
+          horizonSec: Number(
+            PLAYBACK_POLICY.pausedWarmupRunwaySeconds.toFixed(3),
+          ),
+          missingTicks: primaryMissing.length,
+          phase: "primary",
+          timeSec: Number(timeSec.toFixed(3)),
+        });
+      }
+      return true;
+    }
+
+    const allMissing = collectMissingTicksForTopics(
+      timeSec,
+      endSec,
+      PLAYBACK_POLICY.maxPrefetchBatch,
+      activeTopics,
+    );
+    if (
+      allMissing.length > 0 &&
+      fetchBatch(allMissing, activeTopics, "background-lookahead")
+    ) {
+      if (isMcapLatencyDebugEnabled()) {
+        recordMcapLatencyMetric("paused idle warmup passes", 1, {
+          activeTopics: activeTopics.length,
+          blockingTopics: activeBlockingTopics.length,
+          horizonSec: Number(
+            PLAYBACK_POLICY.pausedWarmupRunwaySeconds.toFixed(3),
+          ),
+          missingTicks: allMissing.length,
+          phase: "all",
+          timeSec: Number(timeSec.toFixed(3)),
+        });
+      }
+      return true;
+    }
+
+    return false;
+  }, [
+    collectMissingTicksForTopics,
+    fetchBatch,
+    getActiveBlockingTopics,
+    getActiveTopics,
+    source,
+    store,
+  ]);
+
+  const schedulePausedIdleWarmup = useCallback(
+    (delayMs = 0) => {
+      if (pausedIdleWarmupTimerRef.current !== null) return;
+
+      pausedIdleWarmupTimerRef.current = setTimeout(() => {
+        pausedIdleWarmupTimerRef.current = null;
+        const queuedFetch = runPausedIdleWarmup();
+        if (queuedFetch) {
+          schedulePausedIdleWarmupRef.current?.(
+            PLAYBACK_POLICY.prefetchRefreshSeconds * 1000,
+          );
+        }
+      }, delayMs);
+    },
+    [runPausedIdleWarmup],
+  );
+
+  useEffect(() => {
+    schedulePausedIdleWarmupRef.current = schedulePausedIdleWarmup;
+    return () => {
+      if (schedulePausedIdleWarmupRef.current === schedulePausedIdleWarmup) {
+        schedulePausedIdleWarmupRef.current = null;
+      }
+    };
+  }, [schedulePausedIdleWarmup]);
+
+  useEffect(() => {
+    if (isPlaying) {
+      clearPausedIdleWarmupTimer();
+      return;
+    }
+
+    schedulePausedIdleWarmup(0);
+  }, [
+    clearPausedIdleWarmupTimer,
+    index,
+    isPlaying,
+    schedulePausedIdleWarmup,
+    source,
+  ]);
 
   // Push cached current frame for the active set, request a missing current
   // frame on the priority lane, and then enqueue bounded background lookahead
@@ -1110,6 +1352,8 @@ export function useRegisterMcapDataStream({
       duration: index.durationSec,
       nativeStepSeconds: nativeStep,
       lookaheadSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+      startupBufferSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+      bufferedRanges: computeBufferedRanges,
 
       bufferState: (timeSec) => {
         const tick = index.nearestTick(timeSec);
@@ -1138,7 +1382,7 @@ export function useRegisterMcapDataStream({
           }
           return "missing";
         }
-        const activeTopics = getActiveTopics();
+        const activeTopics = getActiveBlockingTopics();
         if (activeTopics.length === 0) return "ready";
         const tickKey = tick.toString();
         let cachedTopics = 0;
@@ -1284,6 +1528,37 @@ export function useRegisterMcapDataStream({
         timeSec + PLAYBACK_POLICY.prefetchRefreshSeconds;
       const activeTopics = getActiveTopics();
       if (activeTopics.length === 0) return;
+
+      const startupCoverage = bufferWindowCoverage({
+        activeTopics: getActiveBlockingTopics(),
+        caches,
+        index,
+        lookaheadSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+        maxTicks: PLAYBACK_POLICY.startupMaxPrefetchBatch,
+        timeSec,
+      });
+      if (
+        startupCoverage?.total &&
+        startupCoverage.covered < startupCoverage.total
+      ) {
+        fillMissingStartupBufferFrom({
+          activeTopics,
+          collectMissingTicks,
+          fetchBatch,
+          policy: PLAYBACK_POLICY,
+          timeSec,
+        });
+        if (isMcapLatencyDebugEnabled()) {
+          recordMcapLatencyMetric("background lookahead deferred", 1, {
+            activeTopics: activeTopics.length,
+            coveredTicks: startupCoverage.covered,
+            startupTicks: startupCoverage.total,
+            timeSec: Number(timeSec.toFixed(3)),
+          });
+        }
+        return;
+      }
+
       if (isMcapLatencyDebugEnabled()) {
         recordMcapLatencyMetric("background lookahead topups", 1, {
           activeTopics: activeTopics.length,
@@ -1315,6 +1590,8 @@ export function useRegisterMcapDataStream({
     fetchBatch,
     fetchCurrentFrame,
     collectMissingTicks,
+    computeBufferedRanges,
+    getActiveBlockingTopics,
     getActiveTopics,
     publishStreamStatuses,
   ]);
@@ -1578,10 +1855,16 @@ function deriveMcapPlaybackPolicy(
     policy.startupMinTicks / tickRateHz,
     policy.startupMaxTicks / tickRateHz,
   );
+  const pausedWarmupRunwaySeconds = clampNumber(
+    policy.pausedWarmupRunwaySeconds,
+    startupLookaheadSeconds,
+    policy.lookaheadSeconds,
+  );
 
   return {
     ...policy,
     maxPrefetchBatch: Math.ceil(tickRateHz * policy.prefetchBatchSeconds),
+    pausedWarmupRunwaySeconds,
     prefetchBatchesPerLookahead: Math.ceil(
       policy.lookaheadSeconds / policy.prefetchBatchSeconds,
     ),

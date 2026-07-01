@@ -48,6 +48,13 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
         .map((s) => s.id),
     [sources],
   );
+  const blockingTopics = useMemo(
+    () =>
+      sources
+        .filter((s) => s.type !== MCAP_SOURCE_TYPE.IMAGE_ANNOTATION)
+        .map((s) => s.id),
+    [sources],
+  );
   const presentTypes = useMemo(
     () => Array.from(new Set(sources.map((s) => s.type))),
     [sources],
@@ -64,6 +71,7 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
   }, [allTopics.length, pointCloudTopics.length]);
 
   useRegisterMcapDataStream({
+    blockingTopics,
     client,
     source,
     allTopics,
