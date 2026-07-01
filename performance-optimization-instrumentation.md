@@ -1575,6 +1575,58 @@ Honest interpretation:
   throughput, which only adaptive fidelity (product) or server-side assists can
   move.
 
+## Hardening 22: ETag Validation, Abort-On-Seek, Measured Block Size
+
+Date: 2026-07-01
+
+Three ship-safety changes; none chases benchmark numbers, all close field
+failure modes.
+
+ETag validation (correctness):
+
+- The HTTP byte client now captures normalized ETags from HEAD and ranged
+  responses into the source descriptor; `ByteClientReadable` absorbs them and
+  fires one non-blocking HEAD when metadata-supplied sizes would otherwise
+  leave a warm persistent-cache session fully network-free.
+- Persistent-cache entries store the validator and read as a miss (with
+  deletion) when it changes: a re-ingested file under the same id and size can
+  no longer serve stale bytes. Entries written before discovery stay servable;
+  the first transport touch bounds that window.
+
+Abort-on-seek (interactivity):
+
+- Byte reads accept abort signals end-to-end: request → cached client → HTTP
+  fetch. The worker scheduler aborts the running job's signal on cancel; one
+  mutable slot per serial lane scopes reads to their owning request without
+  threading signals through `@mcap/core`.
+- `cancelIdleReads()` on the worker client cancels queued and in-flight
+  speculative idle work (synchronized batches and transform runway windows only
+  — bootstrap/topics/bounds are excluded so their error paths cannot surface UI
+  states from a seek). The data stream calls it on every seek.
+- Cancellations reject with a canonical marker and are benign by contract: no
+  failure streaks, no transform error states, no retry spend. Late worker
+  responses for cancelled ids are ignored.
+
+Measured block-size promotion (misclassified sources):
+
+- Scheme-based profiles miss "local" paths served by a remote FiftyOne session.
+  A per-source EWMA of small-fetch latency (>= 30 ms over >= 4 samples)
+  promotes such sources to the remote fill size — a one-way latch, since
+  flapping block sizes would fragment cache keys. Explicit block-size overrides
+  bypass the heuristic entirely.
+
+Validation:
+
+- Unit coverage per layer (validator round-trips and mismatches, scheduler
+  abort of running jobs, transport local cancellation, client idle-cancel,
+  promotion thresholds and latch).
+- Remote-typical capture (warm L2): first 10 s wall 48.9 s → 32.1 s and stall
+  79.2% → 67.6% versus the idle-gate run — consistent with block-size promotion
+  engaging, because the harness serves a scheme-local path over a shaped WAN,
+  exactly the misclassified case. Treat the delta as one run's evidence, not a
+  controlled experiment.
+- Local control: unchanged (5.2% stall; fast reads never promote).
+
 ## Remote Next Steps
 
 1. Idle-lane bandwidth budgets: lanes isolate CPU but share the link; idle
