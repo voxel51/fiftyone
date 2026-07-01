@@ -21,6 +21,10 @@ export {
   byteSourceCacheKey,
   createMemoryByteRangeCache,
 } from "./cache";
+export {
+  createCacheApiByteRangeCache,
+  type CreateCacheApiByteRangeCacheOptions,
+} from "./cache-api-byte-cache";
 
 /**
  * Public byte-size parsing helper.

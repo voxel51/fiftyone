@@ -109,6 +109,27 @@ export function createCachedByteClient(
         }
       }
 
+      // Exact one-off reads stay out of the persistent layer: their ranges
+      // are not deterministic shapes, so they would fragment it with entries
+      // the block/chunk read paths can never match again.
+      const persistent =
+        request.cachePolicy?.blockFill === false
+          ? undefined
+          : caches.persistent || undefined;
+
+      const persistedFill = await persistent?.get(fillRequest);
+      if (persistedFill) {
+        await caches.memory.put(persistedFill);
+        logByteRead(caches, {
+          cacheResult: "persistent-hit",
+          fillRequest,
+          request,
+          result: persistedFill,
+          startMs,
+        });
+        return sliceByteRangeResult(persistedFill, request.range);
+      }
+
       // In-flight request coalescing follows the active access URL, while the
       // durable byte cache above follows stable sourceId content identity.
       const fillKey = byteRangeAccessKey(fillRequest);
@@ -119,6 +140,9 @@ export function createCachedByteClient(
           .readBytes(fillRequest)
           .then(async (result) => {
             await caches.memory.put(result);
+            // Persisting must not delay the read; the entry lands for the
+            // next context (or reload) to hit.
+            void persistent?.put(result).catch(() => undefined);
 
             return result;
           })
