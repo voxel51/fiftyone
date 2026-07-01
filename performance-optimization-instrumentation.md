@@ -1242,18 +1242,86 @@ Interpretation:
 - The next truly cold comparison should use a hard refresh and fresh run token
   before/after this optimization.
 
+## Optimization 15: Keep Transform Discovery Off The First-Play Path
+
+Date: 2026-07-01
+
+Problem:
+
+- Droid exposed a bad edge case: a low-count `/tf` channel can still be
+  dynamic. Treating every small transform channel as bootstrap/static made the
+  first-open path scan data that was not needed before playback.
+- NuScenes exposed the complementary problem: transform windows are useful for
+  truthful 3D placement, but they are physically heavy enough that they should
+  not contend with observation playback.
+- The previous `0.1 s / 3 tick` startup cushion was too shallow for heavy
+  all-pane playback. It improved first-commit latency but let playback outrun
+  the first real lookahead on NuScenes.
+
+Product stance:
+
+- Stay schema-driven. Topic names are acceptable only as fast hints for known
+  static transform conventions such as `tf_static`; they should not decide the
+  general case.
+- Ambiguous transform channels should be classified by decoding a tiny amount
+  of data, not by assuming a topic name is meaningful.
+- Transform availability should improve 3D placement as it arrives, but it
+  should not block first observation playback. Provisional 3D is preferable to
+  blankness while bounded transform windows warm.
+- A small upfront startup cushion is the right product tradeoff if it avoids
+  visible mid-play stalls.
+
+Refactor:
+
+- Changed transform bootstrap discovery to:
+    - discover transform-capable channels by schema;
+    - directly scan only small static-looking transform topics;
+    - for ambiguous small channels, decode the first transform message and
+      bootstrap only when it contains a static/no-timestamp sample;
+    - leave timestamped dynamic channels to bounded transform window reads.
+- Demoted `readFrameTransformBootstrap` to idle priority.
+- Moved the current transform placement window to idle priority. Placement can
+  catch up without blocking current-frame or playback reads.
+- Restored startup buffering to `0.5 s` with at most `15` ticks. The earlier
+  `0.1 s` cushion was too aggressive for NuScenes.
+- Updated unit tests around transform bootstrap classification, worker
+  priority, transform hook priority, and bounded startup batch depth.
+
+Verification:
+
+| Dataset  | Run token                          | Timeline ready | Startup ready | First commit | First 10 s stall | Notes                                                            |
+| -------- | ---------------------------------- | -------------: | ------------: | -----------: | ---------------: | ---------------------------------------------------------------- |
+| Droid    | `immediateDroid-1782879998229`     |       287.9 ms |      508.9 ms |     628.7 ms |             0 ms | Immediate Space after timeline ready; completed full 10 s window |
+| NuScenes | `domFocusedNuScenes-1782880231047` |       376.6 ms |    1,308.6 ms |   1,510.4 ms |          37.9 ms | DOM-focused Space to keep modal open; completed full 10 s window |
+
+Transform-specific checks:
+
+- NuScenes transform bootstrap now fetched `0 MB`, touched `0` chunks, returned
+  `0` samples, and ran in about `8.9 ms` after waiting on the idle lane.
+- Droid transform bootstrap returned `0` samples and no longer blocked startup.
+  It still fetched about `1.167 MB` to classify the ambiguous dynamic `/tf`
+  channel, which is acceptable for this slice and dramatically better than a
+  full dynamic scan on the foreground path.
+- Dynamic transform windows are still byte-heavy on NuScenes, but they now show
+  up as idle/background pressure rather than first-play blockers.
+
+Interpretation:
+
+- This is the right product shape. The app starts playback from observation
+  data, renders provisional 3D when necessary, and lets transforms improve
+  placement without becoming a hard gate.
+- The remaining meaningful pressure is physical: heavy idle transform windows
+  and all-pane observation lookahead still fetch large overlapping chunks. That
+  is now a chunk/worker optimization problem, not a time-policy problem.
+
 ## Next Steps
 
 1. Make baseline capture repeatable with a small browser/dev helper that writes
    the three debug DOM attributes to a timestamped JSON file.
 2. Stabilize the capture surface so before/after runs use the same active
    stream count and layout.
-3. Reduce the immediate-Space startup-to-active-playback hitch:
-    - when pending Play starts, queue one extra near-playhead background batch
-      immediately;
-    - keep that batch pane-neutral but shallow;
-    - measure whether this removes the first active-playback stall without
-      delaying first commit.
+3. Treat `0.5 s / 15 ticks` as the current local startup cushion unless a new
+   cold baseline shows consistent stalls above the local target.
 4. Add explicit idle-lane budgets and source-profile policy:
     - Local can be more aggressive.
     - Remote should cap concurrent idle byte pressure and ramp after playback
@@ -1263,27 +1331,32 @@ Interpretation:
     - Dedupe current-frame reads by tick/topic set.
     - Avoid issuing one current-frame fetch and a startup batch for overlapping
       data when the batch can satisfy both.
-6. Reduce the byte cost of the now-smooth paused warmup further:
+6. Reduce idle transform runway byte pressure:
+    - keep transform windows bounded and progressive;
+    - avoid refetching overlapping chunks for adjacent transform windows;
+    - keep all transform runway work idle unless a user action explicitly needs
+      a foreground transform.
+7. Reduce the byte cost of the now-smooth paused warmup further:
     - Start with a shallow all-pane background horizon.
     - Ramp the horizon only after playback has stayed ready for a short window.
     - Keep images/current-frame responsive instead of coupling them to heavy
       background work.
-7. Re-run both baselines after each refactor:
+8. Re-run both baselines after each refactor:
     - immediate Space after session start;
     - wait idle for 10 seconds, then Space.
-8. Compare:
+9. Compare:
     - First 3D paint.
     - Playhead buffer ready.
     - Startup buffer ready.
     - First 10 s stalled wall time.
     - Max single stall.
     - Effective MB in the 0-1 s, 2-5 s, and 5-10 s buckets.
-9. After scheduling is healthy, test chunk-level changes:
+10. After scheduling is healthy, test chunk-level changes:
     - Smaller initial byte windows for local startup.
     - Controlled concurrency for point-cloud chunks.
     - Request coalescing where adjacent windows repeatedly hit the same chunk.
     - Prioritized cancellation or demotion for background reads after seeks.
-10. Suggested local success targets:
+11. Suggested local success targets:
     - First 3D paint under 1 second.
     - Playhead buffer ready under 1.5 seconds.
     - Startup buffer ready under 2 seconds.

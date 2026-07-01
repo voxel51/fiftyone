@@ -374,12 +374,15 @@ export function useMcapFrameTransforms({
     );
 
     client
-      .readFrameTransformWindow({
-        activeTimeline,
-        endTimeNs: requestedRange.endTimeNs,
-        source,
-        startTimeNs: requestedRange.startTimeNs,
-      })
+      .readFrameTransformWindow(
+        {
+          activeTimeline,
+          endTimeNs: requestedRange.endTimeNs,
+          source,
+          startTimeNs: requestedRange.startTimeNs,
+        },
+        { priority: "idle" },
+      )
       .then((set) => {
         if (sourceGeneration !== sourceGenerationRef.current) {
           return;

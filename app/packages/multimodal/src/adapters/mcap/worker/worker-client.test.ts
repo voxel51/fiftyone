@@ -77,7 +77,7 @@ describe("worker-backed MCAP resource client", () => {
     await expect(topics).resolves.toEqual(result);
   });
 
-  it("sends frame transform bootstrap reads at current-frame priority", async () => {
+  it("sends frame transform bootstrap reads at idle priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {
       source: createSource("source:1"),
@@ -102,7 +102,7 @@ describe("worker-backed MCAP resource client", () => {
     expect(worker.messages[1]).toMatchObject({
       id: 1,
       payload: request,
-      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
       type: "readFrameTransformBootstrap",
     });
 

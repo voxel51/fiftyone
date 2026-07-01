@@ -158,8 +158,8 @@ const DEFAULT_MCAP_PLAYBACK_POLICY: McapPlaybackPolicy = {
   prefetchBatchSeconds: 1,
   prefetchBatchesPerPass: 1,
   prefetchRefreshSeconds: 0.5,
-  startupBufferSeconds: 0.1,
-  startupMaxTicks: 3,
+  startupBufferSeconds: 0.5,
+  startupMaxTicks: 15,
   startupMinTicks: 3,
   topicCacheLookaheadMultiplier: 2,
 } as const;

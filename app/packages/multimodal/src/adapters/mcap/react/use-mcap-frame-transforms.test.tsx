@@ -72,19 +72,22 @@ describe("useMcapFrameTransforms", () => {
     );
 
     await waitFor(() => {
-      expect(client.readFrameTransformWindow).toHaveBeenCalledWith({
-        activeTimeline: undefined,
-        endTimeNs: 1_000_000_100n,
-        source,
-        startTimeNs: 0n,
-      });
+      expect(client.readFrameTransformWindow).toHaveBeenCalledWith(
+        {
+          activeTimeline: undefined,
+          endTimeNs: 1_000_000_100n,
+          source,
+          startTimeNs: 0n,
+        },
+        { priority: "idle" },
+      );
     });
     await waitFor(() => {
       expect(screen.getByTestId("frames").textContent).toBe("ready:resolved:");
     });
   });
 
-  it("prioritizes the current transform window before warming an idle runway", async () => {
+  it("queues the current transform window before warming the idle runway", async () => {
     const source = createSource("source-range");
     const client = createFrameTransformClient({
       bootstrapSamples: [sample("base_link", "lidar")],
@@ -111,6 +114,7 @@ describe("useMcapFrameTransforms", () => {
         source,
         startTimeNs: 0n,
       },
+      { priority: "idle" },
     ]);
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
@@ -214,12 +218,15 @@ describe("useMcapFrameTransforms", () => {
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
     });
-    expect(client.readFrameTransformWindow).toHaveBeenLastCalledWith({
-      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-      endTimeNs: 1_000_000_100n,
-      source,
-      startTimeNs: 0n,
-    });
+    expect(client.readFrameTransformWindow).toHaveBeenLastCalledWith(
+      {
+        activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+        endTimeNs: 1_000_000_100n,
+        source,
+        startTimeNs: 0n,
+      },
+      { priority: "idle" },
+    );
   });
 
   it("keeps one in-flight dynamic window when playback advances inside it", async () => {
