@@ -1491,6 +1491,41 @@ Interpretation:
   scheduling gaps (lane turnarounds, idle-lane contention, decode) now hide
   remaining headroom — the next audit target.
 
+## Product 20: Attribute Buffering To Slow Networks In The Top Bar
+
+Date: 2026-07-01
+
+Product stance:
+
+- When content bitrate exceeds link throughput, no transport work can make
+  playback realtime. The honest experience is longer buffering — and the user
+  should learn the wait is their network, not a broken viewer.
+- A stall with an idle link must NOT be blamed on the network: that is a
+  scheduling or decode gap, and mis-attributing it would hide our own bugs.
+
+Refactor:
+
+- Always-on `onRead` observer on the byte cache layers (independent of the
+  debug flag) feeding a per-worker transport meter: fetched bytes plus busy
+  time as the union of fetch intervals (parallel fetches count wall time once).
+- Cumulative meter snapshots piggyback on every worker RPC response; the worker
+  client fans them out to `subscribeTransport` listeners.
+- Main-thread rolling-window estimator (pure, unit-tested) combines the engine
+  buffering flag / pending-play intent with link busy fraction: "network
+  limited" requires sustained buffering (>= 1.25 s) while the busiest lane kept
+  the link >= 50% occupied. Asymmetric exit (2.5 s calm, or busy fraction <
+  25%) prevents flapping at batch boundaries.
+- `McapNetworkStatusPill` in the modal top bar (header caption slot): "Slow
+  network" plus observed throughput, e.g. `2 MB/s`. Only rendered while
+  limited.
+
+Validation (Playwright probe, immediate-Space):
+
+| Profile                  | Result                                       |
+| ------------------------ | -------------------------------------------- |
+| `remote-slow` (7.5 MB/s) | Pill appears 2.5 s into buffering, live MB/s |
+| `local` (unshaped)       | Pill never appears across 45 s               |
+
 ## Remote Next Steps
 
 1. Idle-lane bandwidth budgets: lanes isolate CPU but share the link; idle
