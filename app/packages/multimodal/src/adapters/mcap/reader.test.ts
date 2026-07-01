@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ByteClient } from "../../query/bytes";
 import {
   createMcapReaderStore,
+  createCachedMcapDecompressHandlers,
   parseMcapMessageIndexRecord,
   readIndexedMessageTimesForReader,
   type McapIndexedReaderLike,
@@ -365,6 +366,84 @@ describe("MCAP indexed message times", () => {
     });
   });
 
+  it("coalesces identical in-flight byte reads per readable", async () => {
+    const read = deferred<Awaited<ReturnType<ByteClient["readBytes"]>>>();
+    const logChunkRead = vi.fn();
+    const readBytes = vi.fn(() => read.promise);
+    const source = {
+      sizeBytes: "1024",
+      sourceId: "source:1",
+      url: "mcap-source://sample",
+    };
+    const readable = new ByteClientReadable(
+      source,
+      { readBytes },
+      {
+        debugChunkReads: true,
+        logChunkRead,
+      },
+    );
+    readable.setChunkIndexes([
+      createChunkIndex({
+        chunkLength: 64n,
+        chunkStartOffset: 128n,
+      }),
+    ]);
+
+    const first = readable.read(128n, 16n);
+    const second = readable.read(128n, 16n);
+
+    expect(readBytes).toHaveBeenCalledTimes(1);
+
+    read.resolve({
+      bytes: new Uint8Array(16),
+      range: { length: 16n, offset: 128n },
+      source,
+    });
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      new Uint8Array(16),
+      new Uint8Array(16),
+    ]);
+    expect(logChunkRead).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cacheResult: "fetched",
+        fetchedBytes: 16,
+      }),
+    );
+    expect(logChunkRead).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cacheResult: "coalesced",
+        fetchedBytes: 0,
+      }),
+    );
+  });
+
+  it("caches decompressed chunk buffers by compressed byte identity", () => {
+    const decompress = vi.fn(
+      (buffer: Uint8Array, decompressedSize: bigint) =>
+        new Uint8Array([buffer[0] ?? 0, Number(decompressedSize)]),
+    );
+    const handlers = createCachedMcapDecompressHandlers(
+      {
+        lz4: decompress,
+      },
+      1024,
+    );
+    const compressed = new Uint8Array([7, 8, 9]);
+    const sameBytes = new Uint8Array(
+      compressed.buffer,
+      compressed.byteOffset,
+      compressed.byteLength,
+    );
+
+    const first = handlers.lz4(compressed, 3n);
+    const second = handlers.lz4(sameBytes, 3n);
+
+    expect(second).toBe(first);
+    expect(decompress).toHaveBeenCalledTimes(1);
+  });
+
   it("logs debug chunk reads with chunk ids and byte counts", async () => {
     const logChunkRead = vi.fn();
     const readBytes = vi.fn(
@@ -397,6 +476,7 @@ describe("MCAP indexed message times", () => {
     await readable.read(128n, 16n);
 
     expect(logChunkRead).toHaveBeenCalledWith({
+      cacheResult: "fetched",
       chunkId: "128",
       chunkLengthBytes: "64",
       chunkStartOffset: "128",
@@ -453,6 +533,17 @@ describe("MCAP indexed message times", () => {
     }
   });
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, reject, resolve };
+}
 
 async function collect<T>(
   generator: AsyncGenerator<T, void, void>,

@@ -75,6 +75,8 @@ interface McapLatencyWorkerAttributionBucket {
   chunkMessageIndexOverlapBytes: number;
   chunkOverlapBytes: number;
   chunksTouched: number;
+  coalescedReadRequests: number;
+  coalescedRequestedBytes: number;
   decodedPayloadBytes: number;
   errors: number;
   fetchedBytes: number;
@@ -378,6 +380,8 @@ function createWorkerAttributionBucket(): McapLatencyWorkerAttributionBucket {
     chunkMessageIndexOverlapBytes: 0,
     chunkOverlapBytes: 0,
     chunksTouched: 0,
+    coalescedReadRequests: 0,
+    coalescedRequestedBytes: 0,
     decodedPayloadBytes: 0,
     errors: 0,
     fetchedBytes: 0,
@@ -447,6 +451,8 @@ function addToWorkerAttributionBucket(
   bucket.chunkMessageIndexOverlapBytes += sample.chunkMessageIndexOverlapBytes;
   bucket.chunkOverlapBytes += sample.chunkOverlapBytes;
   bucket.chunksTouched += sample.chunksTouched;
+  bucket.coalescedReadRequests += sample.coalescedReadRequests;
+  bucket.coalescedRequestedBytes += sample.coalescedRequestedBytes;
   bucket.decodedPayloadBytes += sample.decodedPayloadBytes;
   bucket.errors += sample.ok ? 0 : 1;
   bucket.fetchedBytes += sample.fetchedBytes;
@@ -627,6 +633,7 @@ function summarizeWorkerAttribution(state: McapLatencyWorkerAttributionState) {
     recent: state.recent.map((sample) => ({
       ...sample,
       chunkMB: bytesToMb(sample.chunkBytes),
+      coalescedRequestedMB: bytesToMb(sample.coalescedRequestedBytes),
       decodedPayloadMB: bytesToMb(sample.decodedPayloadBytes),
       fetchedMB: bytesToMb(sample.fetchedBytes),
       payloadMB: bytesToMb(sample.payloadBytes),
@@ -674,6 +681,9 @@ function summarizeWorkerAttributionBucket(
     chunkMessageIndexOverlapBytes: bucket.chunkMessageIndexOverlapBytes,
     chunkOverlapBytes: bucket.chunkOverlapBytes,
     chunksTouched: bucket.chunksTouched,
+    coalescedReadRequests: bucket.coalescedReadRequests,
+    coalescedRequestedBytes: bucket.coalescedRequestedBytes,
+    coalescedRequestedMB: bytesToMb(bucket.coalescedRequestedBytes),
     decodedPayloadBytes: bucket.decodedPayloadBytes,
     decodedPayloadMB: bytesToMb(bucket.decodedPayloadBytes),
     errors: bucket.errors,
@@ -712,9 +722,12 @@ function topWorkerAttributionSamples(
     .map((sample) => ({
       chunkMB: bytesToMb(sample.chunkBytes),
       chunksTouched: sample.chunksTouched,
+      coalescedReadRequests: sample.coalescedReadRequests,
+      coalescedRequestedMB: bytesToMb(sample.coalescedRequestedBytes),
       elapsedMs: sample.elapsedMs,
       fetchedMB: bytesToMb(sample.fetchedBytes),
       lane: sample.lane,
+      mcapDataRequestId: sample.mcapDataRequestId,
       operation: sample.operation,
       payloadMB: bytesToMb(sample.payloadBytes),
       priority: sample.priority,
@@ -731,8 +744,11 @@ function workerAttributionLogRow(sample: McapPlaybackWorkerAttribution) {
   return {
     chunkMB: bytesToMb(sample.chunkBytes),
     chunksTouched: sample.chunksTouched,
+    coalescedReadRequests: sample.coalescedReadRequests,
+    coalescedRequestedMB: bytesToMb(sample.coalescedRequestedBytes),
     fetchedMB: bytesToMb(sample.fetchedBytes),
     lane: sample.lane,
+    mcapDataRequestId: sample.mcapDataRequestId,
     operation: sample.operation,
     payloadMB: bytesToMb(sample.payloadBytes),
     priority: sample.priority,

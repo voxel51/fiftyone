@@ -3,6 +3,7 @@ import { McapIndexedReader, type McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { loadDecompressHandlers } from "../mcap-support";
 import { ByteClientReadable } from "./byte-readable";
+import { createCachedMcapDecompressHandlers } from "./decompress-cache";
 import { readLatestIndexedMessageTimesForReader } from "./latest-before";
 import { readIndexedMessageTimesForReader } from "./message-index";
 import { readTopicIndexedTimeBoundsForReader } from "./topic-time-bounds";
@@ -23,8 +24,11 @@ export async function createDefaultMcapReader(
   readable: McapTypes.IReadable,
 ): Promise<McapIndexedReaderLike> {
   const wasmDecompressHandlers = await loadDecompressHandlers();
+  const decompressHandlers = createCachedMcapDecompressHandlers(
+    wasmDecompressHandlers,
+  );
   const reader = await McapIndexedReader.Initialize({
-    decompressHandlers: wasmDecompressHandlers,
+    decompressHandlers,
     messageIndexCacheSizeBytes: DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES,
     readable,
   });
@@ -32,7 +36,7 @@ export async function createDefaultMcapReader(
     readable.setChunkIndexes(reader.chunkIndexes);
   }
   const chunkCompressions = compressedChunkTypes(reader);
-  assertSupportedChunkCompressions(chunkCompressions, wasmDecompressHandlers);
+  assertSupportedChunkCompressions(chunkCompressions, decompressHandlers);
 
   return {
     channelsById: reader.channelsById,

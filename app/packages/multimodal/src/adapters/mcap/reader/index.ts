@@ -5,6 +5,7 @@ export {
   type McapReaderStore,
 } from "./reader-store";
 export type { McapChunkReadDebugLog } from "./byte-readable";
+export { createCachedMcapDecompressHandlers } from "./decompress-cache";
 export {
   parseMcapMessageIndexRecord,
   readIndexedMessageTimesForReader,

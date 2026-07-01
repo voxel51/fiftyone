@@ -1,8 +1,13 @@
 import type { McapTypes } from "@mcap/core";
-import type { ByteClient, ByteSourceDescriptor } from "../../../query/bytes";
+import type {
+  ByteClient,
+  ByteRangeReadResult,
+  ByteSourceDescriptor,
+} from "../../../query/bytes";
 import { parseByteSize } from "../../../query/bytes";
 
 export interface McapChunkReadDebugLog {
+  readonly cacheResult: "coalesced" | "fetched";
   readonly chunkId: string;
   readonly chunkLengthBytes: string;
   readonly chunkStartOffset: string;
@@ -25,6 +30,10 @@ export interface ByteClientReadableOptions {
 export class ByteClientReadable implements McapTypes.IReadable {
   private chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][] =
     [];
+  private readonly inFlightReads = new Map<
+    string,
+    Promise<ByteRangeReadResult>
+  >();
   private source: ByteSourceDescriptor;
   private resolvedSizeBytes?: bigint;
 
@@ -100,15 +109,37 @@ export class ByteClientReadable implements McapTypes.IReadable {
       return new Uint8Array();
     }
 
-    const result = await this.byteClient.readBytes({
-      cachePolicy,
-      range: { length: size, offset },
-      source: this.source,
-    });
+    const readKey = readRangeKey(offset, size, cachePolicy);
+    const pending = this.inFlightReads.get(readKey);
+    const cacheResult = pending ? "coalesced" : "fetched";
+    const result = await (pending ??
+      this.startReadRange(readKey, {
+        cachePolicy,
+        range: { length: size, offset },
+        source: this.source,
+      }));
     this.updateSource(result.source);
-    this.logChunkRead(offset, size, result.bytes.byteLength);
+    this.logChunkRead(
+      offset,
+      size,
+      cacheResult === "coalesced" ? 0 : result.bytes.byteLength,
+      cacheResult,
+    );
 
     return result.bytes;
+  }
+
+  private startReadRange(
+    readKey: string,
+    request: Parameters<ByteClient["readBytes"]>[0],
+  ): Promise<ByteRangeReadResult> {
+    const read = this.byteClient.readBytes(request).finally(() => {
+      if (this.inFlightReads.get(readKey) === read) {
+        this.inFlightReads.delete(readKey);
+      }
+    });
+    this.inFlightReads.set(readKey, read);
+    return read;
   }
 
   private updateSource(source: ByteSourceDescriptor) {
@@ -123,12 +154,14 @@ export class ByteClientReadable implements McapTypes.IReadable {
     offset: bigint,
     size: bigint,
     fetchedBytes: number,
+    cacheResult: McapChunkReadDebugLog["cacheResult"],
   ): void {
     if (!this.options.debugChunkReads || this.chunkIndexes.length === 0) {
       return;
     }
 
     for (const entry of chunkReadDebugEntries({
+      cacheResult,
       chunkIndexes: this.chunkIndexes,
       fetchedBytes,
       offset,
@@ -146,11 +179,13 @@ function sourceSizeBytes(source: ByteSourceDescriptor): bigint | undefined {
 }
 
 function chunkReadDebugEntries({
+  cacheResult,
   chunkIndexes,
   fetchedBytes,
   offset,
   size,
 }: {
+  readonly cacheResult: McapChunkReadDebugLog["cacheResult"];
   readonly chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
   readonly fetchedBytes: number;
   readonly offset: bigint;
@@ -172,6 +207,7 @@ function chunkReadDebugEntries({
     if (chunkOverlap > 0n) {
       entries.push(
         chunkReadDebugLog({
+          cacheResult,
           chunkIndex,
           fetchedBytes,
           kind: "chunk",
@@ -196,6 +232,7 @@ function chunkReadDebugEntries({
     if (messageIndexOverlap > 0n) {
       entries.push(
         chunkReadDebugLog({
+          cacheResult,
           chunkIndex,
           fetchedBytes,
           kind: "chunk-message-index",
@@ -239,6 +276,7 @@ function rangeOverlapBytes(
 }
 
 function chunkReadDebugLog({
+  cacheResult,
   chunkIndex,
   fetchedBytes,
   kind,
@@ -246,6 +284,7 @@ function chunkReadDebugLog({
   overlapBytes,
   size,
 }: {
+  readonly cacheResult: McapChunkReadDebugLog["cacheResult"];
   readonly chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"];
   readonly fetchedBytes: number;
   readonly kind: McapChunkReadDebugLog["kind"];
@@ -254,6 +293,7 @@ function chunkReadDebugLog({
   readonly size: bigint;
 }): McapChunkReadDebugLog {
   return {
+    cacheResult,
     chunkId: chunkIndex.chunkStartOffset.toString(),
     chunkLengthBytes: chunkIndex.chunkLength.toString(),
     chunkStartOffset: chunkIndex.chunkStartOffset.toString(),
@@ -264,6 +304,18 @@ function chunkReadDebugLog({
     readOffset: offset.toString(),
     requestedBytes: size.toString(),
   };
+}
+
+function readRangeKey(
+  offset: bigint,
+  size: bigint,
+  cachePolicy: { readonly blockFill?: boolean } | undefined,
+): string {
+  return [
+    offset.toString(),
+    size.toString(),
+    cachePolicy?.blockFill === false ? "exact" : "default",
+  ].join(":");
 }
 
 function defaultChunkReadLogger(entry: McapChunkReadDebugLog): void {
