@@ -15,6 +15,7 @@ import {
   bufferedRangesAtom,
   bufferingDetailAtom,
   isBufferingAtom,
+  isPlayPendingAtom,
   isPlayingAtom,
   playheadAtom,
   streamValueAtom,
@@ -44,6 +45,15 @@ export function subscribePlayhead(
  */
 export function getIsPlaying(store: PlaybackStore): boolean {
   return store.get(isPlayingAtom);
+}
+
+/**
+ * Non-reactive read of queued play intent. Use with getIsPlaying() in
+ * event handlers that need Play/Pause toggle semantics before active
+ * playback has actually started.
+ */
+export function getIsPlayPending(store: PlaybackStore): boolean {
+  return store.get(isPlayPendingAtom);
 }
 
 /** Non-reactive read of the engine buffering flag. */

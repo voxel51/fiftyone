@@ -2,6 +2,7 @@ import { Button, Size, Variant } from "@voxel51/voodo";
 import React from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
+  useIsPlayPending,
   useIsPlaying,
   usePlayhead,
 } from "../../lib/playback/use-playback-state";
@@ -104,6 +105,8 @@ const ProgressBar: React.FC = () => {
  */
 const SimplePlaybackBar: React.FC = () => {
   const isPlaying = useIsPlaying();
+  const isPlayPending = useIsPlayPending();
+  const hasPlayIntent = isPlaying || isPlayPending;
   const { play, pause } = usePlayback();
   return (
     <div className={styles.root}>
@@ -113,11 +116,11 @@ const SimplePlaybackBar: React.FC = () => {
         data-testid="simple-playback-bar-play-pause"
         // React 18/19 type mismatch on FC<{}>.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        leadingIcon={(isPlaying ? PauseIcon : PlayIcon) as any}
-        onClick={isPlaying ? pause : play}
-        aria-label={isPlaying ? "Pause" : "Play"}
-        aria-pressed={isPlaying}
-        title={isPlaying ? "Pause" : "Play"}
+        leadingIcon={(hasPlayIntent ? PauseIcon : PlayIcon) as any}
+        onClick={hasPlayIntent ? pause : play}
+        aria-label={hasPlayIntent ? "Pause" : "Play"}
+        aria-pressed={hasPlayIntent}
+        title={hasPlayIntent ? "Pause" : "Play"}
       />
       <PlayheadTime />
       <ProgressBar />
