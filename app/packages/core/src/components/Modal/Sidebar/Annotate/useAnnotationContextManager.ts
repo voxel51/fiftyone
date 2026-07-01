@@ -41,11 +41,10 @@ export type EnterResult = {
  */
 export interface AnnotationContextManager {
   /**
-   * Initialize and activate a field's annotation schema within an
-   * already-active annotation context.
+   * Ensure a field's annotation schema exists on the server and is activated.
    *
-   * Use this when the annotation context is already entered (e.g. the
-   * Annotate tab is mounted) and you need to activate a specific field.
+   * This is non-destructive: existing schema state is preserved throughout
+   * the async work and atomically swapped once the server responds.
    *
    * @param field The field name to initialize and activate
    */
@@ -55,9 +54,9 @@ export interface AnnotationContextManager {
    * Enter annotation mode, performing any required setup for the specified `path`.
    *
    * If a {@link FieldSchema} does not exist for the specified `path`,
-   * one will be created automatically.
-   *
-   * The modal's active paths will be updated to only include the specified `path`.
+   * one will be created automatically. Existing schema and field visibility
+   * state is preserved — the new field is added to the active set, not
+   * substituted for it.
    *
    * If a `labelId` is provided,
    * that label instance will be opened for editing in the annotation sidebar.
@@ -118,9 +117,12 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
   const activateField = useCallback(
     async (field: string): Promise<EnterResult> => {
-      // Read management ops from the store at execution time to avoid
-      // stale closure — the atom may be set by SchemaManagementProvider's
-      // effect after this callback was created.
+      // Set synchronously before any await so the sidebar renders the
+      // primitive editor immediately, avoiding a flash of the label list.
+      if (isPrimitive(field)) {
+        setActivePrimitive(field);
+      }
+
       const mgmtOps = jotaiStore.get(schemaManagementOpsAtom);
 
       if (!canManageSchema || !mgmtOps) {
@@ -129,20 +131,29 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         };
       }
 
-      // activate only the specified field
-      setActiveFields([field]);
-
-      // clear annotation state
-      setLabelSchema(null);
-      setActiveSchemaPaths(null);
-
-      // create and activate the field schema
+      // Non-destructive: no synchronous clears of schema state.
+      // Existing labelSchemasData / activeLabelSchemas stay intact
+      // so useLabels and the canvas keep rendering throughout.
       try {
-        // check for existing schema
         let listSchemaResponse = await schemaResolver.listSchemas({});
 
-        // if it doesn't exist, create it
-        if (!listSchemaResponse.label_schemas[field]?.label_schema) {
+        const hasSchema =
+          !!listSchemaResponse.label_schemas[field]?.label_schema;
+        const isAlreadyActive =
+          listSchemaResponse.active_label_schemas.includes(field);
+
+        // Fast path: the field is already provisioned and active on the
+        // server. Skip the redundant initializeSchema/activateSchemas
+        // round-trips and sync local state directly from the initial fetch.
+        if (hasSchema && isAlreadyActive) {
+          setLabelSchema(listSchemaResponse.label_schemas);
+          setActiveSchemaPaths(listSchemaResponse.active_label_schemas);
+          return {
+            status: InitializationStatus.Success,
+          };
+        }
+
+        if (!hasSchema) {
           await mgmtOps.initializeSchema({
             field,
             scan_samples: true,
@@ -152,15 +163,9 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
         await mgmtOps.activateSchemas({ fields: [field] });
 
-        // refresh annotation state
         listSchemaResponse = await schemaResolver.listSchemas({});
         setLabelSchema(listSchemaResponse.label_schemas);
         setActiveSchemaPaths(listSchemaResponse.active_label_schemas);
-
-        // if the field is a primitive, activate it directly
-        if (isPrimitive(field)) {
-          setActivePrimitive(field);
-        }
 
         return {
           status: InitializationStatus.Success,
@@ -178,7 +183,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       isPrimitive,
       sampleScanLimit,
       schemaResolver,
-      setActiveFields,
       setActivePrimitive,
       setActiveSchemaPaths,
       setLabelSchema,

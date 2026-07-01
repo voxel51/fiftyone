@@ -36,14 +36,13 @@ const QuickEditAction: FC<{
     return null;
   }
 
+  const handleClick = () => {
+    enterAnnotationMode(path, labelId);
+    onClick?.();
+  };
+
   return type === "icon" ? (
-    <Clickable
-      data-cy="quick-edit"
-      onClick={() => {
-        enterAnnotationMode(path, labelId);
-        onClick?.();
-      }}
-    >
+    <Clickable data-cy="quick-edit" onClick={handleClick}>
       <EditIcon size={Size.Sm} />
     </Clickable>
   ) : (
@@ -51,10 +50,7 @@ const QuickEditAction: FC<{
       data-cy="quick-edit"
       leadingIcon={EditIcon}
       size={Size.Xs}
-      onClick={() => {
-        enterAnnotationMode(path, labelId);
-        onClick?.();
-      }}
+      onClick={handleClick}
     />
   );
 };

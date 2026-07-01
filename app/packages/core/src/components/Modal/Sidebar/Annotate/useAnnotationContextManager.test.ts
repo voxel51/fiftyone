@@ -5,6 +5,8 @@ import type { ListSchemasResponse } from "./useSchemaManager";
 const mockListSchemas = vi.fn();
 const mockInitializeSchema = vi.fn();
 const mockActivateSchemas = vi.fn();
+const mockSetLabelSchema = vi.fn();
+const mockSetActiveSchemaPaths = vi.fn();
 let mockCanManageSchema = true;
 
 const emptyListResponse: ListSchemasResponse = {
@@ -12,8 +14,11 @@ const emptyListResponse: ListSchemasResponse = {
   label_schemas: {},
 };
 
-const listResponseWithSchema = (field: string): ListSchemasResponse => ({
-  active_label_schemas: [field],
+const listResponseWithSchema = (
+  field: string,
+  options: { active?: boolean } = { active: true },
+): ListSchemasResponse => ({
+  active_label_schemas: options.active ? [field] : [],
   label_schemas: {
     [field]: {
       default_label_schema: { type: "str", component: "text" },
@@ -66,8 +71,8 @@ vi.mock("./Edit/useSave", () => ({
 
 vi.mock("./state", () => ({
   useAnnotationSchemaContext: () => ({
-    setLabelSchema: vi.fn(),
-    setActiveSchemaPaths: vi.fn(),
+    setLabelSchema: mockSetLabelSchema,
+    setActiveSchemaPaths: mockSetActiveSchemaPaths,
   }),
 }));
 
@@ -97,6 +102,8 @@ describe("activateField", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCanManageSchema = true;
+    mockSetLabelSchema.mockReset();
+    mockSetActiveSchemaPaths.mockReset();
     mockListSchemas.mockResolvedValue(emptyListResponse);
     mockInitializeSchema.mockResolvedValue({ label_schema: {} });
     mockActivateSchemas.mockResolvedValue({});
@@ -160,8 +167,17 @@ describe("activateField", () => {
     });
   });
 
-  it("skips initializeSchema when field already has a schema", async () => {
-    mockListSchemas.mockResolvedValue(listResponseWithSchema("ground_truth"));
+  it("skips initializeSchema when field already has a schema but is inactive", async () => {
+    const preActivation = listResponseWithSchema("ground_truth", {
+      active: false,
+    });
+    const postActivation = listResponseWithSchema("ground_truth", {
+      active: true,
+    });
+
+    mockListSchemas
+      .mockResolvedValueOnce(preActivation) // pre-activation check
+      .mockResolvedValueOnce(postActivation); // post-activation refresh
 
     const { result } = renderHook(() => useAnnotationContextManager());
 
@@ -173,6 +189,36 @@ describe("activateField", () => {
     expect(mockActivateSchemas).toHaveBeenCalledWith({
       fields: ["ground_truth"],
     });
+
+    // Verify local state is updated with the post-activation response
+    expect(mockSetLabelSchema).toHaveBeenCalledWith(
+      postActivation.label_schemas,
+    );
+    expect(mockSetActiveSchemaPaths).toHaveBeenCalledWith(
+      postActivation.active_label_schemas,
+    );
+  });
+
+  it("short-circuits when the field is already provisioned and active", async () => {
+    const response = listResponseWithSchema("ground_truth");
+    mockListSchemas.mockResolvedValue(response);
+
+    const { result } = renderHook(() => useAnnotationContextManager());
+
+    await act(async () => {
+      await result.current.activateField("ground_truth");
+    });
+
+    // listSchemas is called exactly once — no second refresh, no writes.
+    expect(mockListSchemas).toHaveBeenCalledTimes(1);
+    expect(mockInitializeSchema).not.toHaveBeenCalled();
+    expect(mockActivateSchemas).not.toHaveBeenCalled();
+
+    // Local state must still be synced from the server response
+    expect(mockSetLabelSchema).toHaveBeenCalledWith(response.label_schemas);
+    expect(mockSetActiveSchemaPaths).toHaveBeenCalledWith(
+      response.active_label_schemas,
+    );
   });
 
   it("returns ServerError when a write operation fails", async () => {

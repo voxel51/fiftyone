@@ -1,4 +1,3 @@
-import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { Round } from "../Actions";
 
@@ -11,13 +10,12 @@ import { ItemLeft, ItemRight } from "../Components";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
 
-import { labels } from "../useLabels";
+import { useLabelsCount } from "../useLabels";
 import * as fos from "@fiftyone/state";
 import { isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { useSchemaManagerModal } from "../SchemaManager/hooks";
 import { useAnnotationContext } from "./useAnnotationContext";
-
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
 import useExit from "./useExit";
@@ -139,9 +137,8 @@ const Header = () => {
   const { deactivateDetectionMode } = useDetectionMode();
   const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
 
-  // In patches view with single label, clicking back should go to explore mode
   const isPatches = useRecoilValue(fos.isPatchesView);
-  const labelCount = useAtomValue(labels).length;
+  const labelCount = useLabelsCount();
   const shouldExitToExplore = isPatches && labelCount === 1;
 
   const handleExit = useCallback(() => {

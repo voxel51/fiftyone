@@ -313,6 +313,10 @@ const pathMap = selector<{ [key: string]: string }>({
   },
 });
 
+export const useLabelsCount = () => {
+  return useAtomValue(labels).length;
+};
+
 /**
  * Returns a callback that updates the {@link AnnotationLabelData} for a label
  * identified by its overlay ID.
@@ -462,11 +466,13 @@ export default function useLabels() {
     useState<Set<string> | null>(null);
 
   // Use a ref for the loading state machine to avoid having it as an effect
-  // dependency. When loadingState was both a dep and mutated inside the effect,
-  // the UNSET→LOADING state change triggered a re-render whose cleanup set
-  // stale=true, causing the async result to be discarded and the state reset
-  // to UNSET — an infinite loop that prevented labels from ever loading.
+  // dependency and also avoid mutations causing infinite loops.
   const loadingRef = useRef(LabelsState.UNSET);
+  // Track the previous `active` set so the reset effect can distinguish
+  // purely additive changes (just-activated fields) from destructive ones.
+  const prevActiveRef = useRef<string[] | null>(null);
+  const currentLabelsRef = useRef(currentLabels);
+  currentLabelsRef.current = currentLabels;
 
   const getFieldType = useRecoilCallback(
     ({ snapshot }) =>
@@ -486,40 +492,55 @@ export default function useLabels() {
     [],
   );
 
-  // Reset labels when active schemas change to reload and update scene
+  // Reset labels when the active set changes destructively (a field was
+  // removed). Bail on purely additive changes — the main effect already
+  // refreshes existing overlays and adds new ones incrementally, so a full
+  // tear-down causes existing overlays to flicker out and back in.
   useEffect(() => {
-    const resetOverlays = () => {
-      currentLabels.forEach((label) => {
-        removeOverlay(label.overlay.id, false);
-      });
+    const prev = prevActiveRef.current;
+    const next = active ?? null;
 
-      setLabels([]);
-      loadingRef.current = LabelsState.UNSET;
-      setLoading(LabelsState.UNSET);
-    };
+    prevActiveRef.current = next;
 
-    resetOverlays();
+    if (prev !== null && next !== null) {
+      const removed = prev.filter((p) => !next.includes(p));
+      if (removed.length === 0) {
+        if (loadingRef.current === LabelsState.LOADING) {
+          loadingRef.current = LabelsState.UNSET;
+          setLoading(LabelsState.UNSET);
+        }
+        return;
+      }
+    }
+
+    currentLabelsRef.current.forEach((label) => {
+      removeOverlay(label.overlay.id, false);
+    });
+
+    setLabels([]);
+    loadingRef.current = LabelsState.UNSET;
+    setLoading(LabelsState.UNSET);
   }, [active, removeOverlay, setLabels, setLoading]);
 
-  // Reset when the sample changes so the primary loading effect below starts
-  // fresh instead of entering the refresh path with stale labels.
+  // Cleanup when the sample changes (or on unmount) so the primary loading
+  // effect starts fresh instead of refreshing with stale labels.
   useEffect(() => {
     return () => {
-      currentLabels.forEach((label) => {
+      currentLabelsRef.current.forEach((label) => {
         removeOverlay(label.overlay.id, false);
       });
       setLabels([]);
       loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     };
-  }, [currentSampleId, scene, removeOverlay, setLabels, setLoading]);
+  }, [currentSampleId, removeOverlay, setLabels, setLoading]);
 
   useEffect(() => {
     // Flipped to `true` by the cleanup function so in-flight async work
     // from a superseded effect invocation can bail out before mutating state.
     let stale = false;
 
-    if (modalSample?.sample && active) {
+    if (modalSample?.sample && active && scene) {
       const getLabelsFromSample = () =>
         handleSample({
           createLabel,
@@ -567,26 +588,24 @@ export default function useLabels() {
           result.forEach((annotationLabel) => {
             const existingOverlay = scene?.getOverlay(annotationLabel.data._id);
 
-            // use existing overlay if available
             if (existingOverlay) {
-              // refresh data
+              // refresh data on existing overlay
               existingOverlay.label = annotationLabel.data;
-              // reuse overlay
               annotationLabel.overlay =
                 existingOverlay as AnnotationLabel["overlay"];
+            } else {
+              // Overlay not in current scene — either a brand-new label or
+              // the lighter scene was replaced after our initial attachment
+              addLabelToRenderer(annotationLabel);
             }
 
-            // update sidebar, or add if this is a new label
             const updated = updateLabelAtom(
               annotationLabel.data._id,
               annotationLabel.data,
             );
 
-            // new label, add it. Attach to the scene first so the overlay
-            // has its coordinate system before any sidebar subscriber tries
-            // to read bounds off it.
             if (!updated) {
-              addLabelToRenderer(annotationLabel);
+              // Label is new to the sidebar store
               addLabelToStore(annotationLabel);
             }
           });

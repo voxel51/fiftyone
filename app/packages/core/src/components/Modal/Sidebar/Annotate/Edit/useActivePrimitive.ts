@@ -2,7 +2,6 @@ import { atom, useAtom } from "jotai";
 import { useMemo } from "react";
 import { useIsPrimitiveField } from "../SchemaManager/hooks";
 
-// the path of the primitive that is currently being edited
 export const activePrimitiveAtom = atom<string | null>(null);
 
 export const useActivePrimitive = () => {
