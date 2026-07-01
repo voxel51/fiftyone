@@ -1,9 +1,11 @@
 import { createStore } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
+  bufferedRangesAtom,
   currentTimeAtom,
   durationAtom,
   isBufferingAtom,
+  isPlayPendingAtom,
   isPlayingAtom,
   loopEndAtom,
   loopStartAtom,
@@ -22,6 +24,8 @@ import type {
   PlaybackStore,
   PlaybackStream,
 } from "./types";
+
+const DEFAULT_PREFETCH_LOOKAHEAD_SECONDS = 3;
 
 export function usePlaybackEngine({
   duration = 0,
@@ -70,6 +74,7 @@ export function usePlaybackEngine({
   const subscribersRef = useRef<Map<string, number>>(new Map());
   const rafIdRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
+  const pendingPlayRef = useRef(false);
   const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekSeqRef = useRef(0);
 
@@ -239,6 +244,85 @@ export function usePlaybackEngine({
     [isActive],
   );
 
+  const evaluatePlaybackStart = useCallback(
+    (time: number, requestMissing: boolean): boolean => {
+      const duration = store.get(durationAtom);
+      let activeBlockingStreams = 0;
+      let ready = true;
+
+      for (const s of streamsRef.current.values()) {
+        if (!s.blocking) continue;
+        if (!isActive(s.id)) continue;
+        activeBlockingStreams += 1;
+
+        const state = s.bufferState(time);
+        const currentReady = state === "ready";
+        const startupReady =
+          currentReady && streamHasStartupCoverage(s, time, duration);
+
+        if (currentReady && startupReady) continue;
+
+        ready = false;
+        if (requestMissing) {
+          s.prefetch?.([time, startupPrefetchEnd(s, time, duration)]);
+        }
+      }
+
+      if (activeBlockingStreams === 0 && duration <= 0) return false;
+
+      return ready;
+    },
+    [isActive, store],
+  );
+
+  const clearPendingPlay = useCallback(
+    (clearBuffering = false) => {
+      pendingPlayRef.current = false;
+      store.set(isPlayPendingAtom, false);
+      if (clearBuffering) store.set(isBufferingAtom, false);
+    },
+    [store],
+  );
+
+  const startPlayback = useCallback(() => {
+    clearPendingPlay(true);
+    store.set(isPlayingAtom, true);
+  }, [clearPendingPlay, store]);
+
+  const requestOrStartPlayback = useCallback(
+    (time: number) => {
+      if (evaluatePlaybackStart(time, true)) {
+        startPlayback();
+        return;
+      }
+
+      pendingPlayRef.current = true;
+      store.set(isPlayPendingAtom, true);
+      store.set(isBufferingAtom, true);
+    },
+    [evaluatePlaybackStart, startPlayback, store],
+  );
+
+  const tryStartPendingPlayback = useCallback(() => {
+    if (!pendingPlayRef.current) return;
+    if (store.get(isPlayingAtom)) {
+      clearPendingPlay();
+      return;
+    }
+
+    const time = store.get(playheadAtom);
+    if (evaluatePlaybackStart(time, false)) {
+      startPlayback();
+      return;
+    }
+
+    evaluatePlaybackStart(time, true);
+  }, [clearPendingPlay, evaluatePlaybackStart, startPlayback, store]);
+
+  useEffect(() => {
+    return store.sub(bufferedRangesAtom, tryStartPendingPlayback);
+  }, [store, tryStartPendingPlayback]);
+
   /**
    * Commit `time` if every blocking stream is ready, and mirror the
    * readiness into `isBufferingAtom` so paused seeks/steps surface the
@@ -263,18 +347,22 @@ export function usePlaybackEngine({
         store.set(playheadAtom, clamped);
         fireSeekEvent(clamped);
         commitIfReady(clamped);
+        if (pendingPlayRef.current) requestOrStartPlayback(clamped);
       },
       play: () => {
-        const current = store.get(playheadAtom);
+        let current = store.get(playheadAtom);
         const ls = store.get(loopStartAtom);
         const le = store.get(loopEndAtom);
         if (current < ls || current >= le) {
-          store.set(playheadAtom, ls);
-          fireSeekEvent(ls, true);
+          current = ls;
+          store.set(playheadAtom, current);
+          fireSeekEvent(current, true);
         }
-        store.set(isPlayingAtom, true);
+        requestOrStartPlayback(current);
       },
       pause: () => {
+        const wasPending = pendingPlayRef.current;
+        clearPendingPlay(wasPending);
         store.set(isPlayingAtom, false);
       },
       stepBack: () => {
@@ -286,6 +374,7 @@ export function usePlaybackEngine({
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
         commitIfReady(next);
+        if (pendingPlayRef.current) requestOrStartPlayback(next);
       },
       stepForward: () => {
         const next = clamp(
@@ -296,6 +385,7 @@ export function usePlaybackEngine({
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
         commitIfReady(next);
+        if (pendingPlayRef.current) requestOrStartPlayback(next);
       },
       setView: (start: number, end: number) => {
         const bounds = clampAndValidateBounds(
@@ -342,6 +432,7 @@ export function usePlaybackEngine({
           id,
           (subscribersRef.current.get(id) ?? 0) + 1,
         );
+        tryStartPendingPlayback();
         // One-shot cleanup. StrictMode's setup→cleanup→setup cycle (and
         // any consumer that retains a stale cleanup) would otherwise
         // double-decrement and drop a still-mounted stream.
@@ -361,9 +452,12 @@ export function usePlaybackEngine({
     [
       store,
       fireSeekEvent,
+      clearPendingPlay,
       commitIfReady,
       recomputeDuration,
       recomputeStepInterval,
+      requestOrStartPlayback,
+      tryStartPendingPlayback,
     ],
   );
 
@@ -373,4 +467,49 @@ export function usePlaybackEngine({
   );
 
   return { store, contextValue };
+}
+
+function streamHasStartupCoverage(
+  stream: PlaybackStream,
+  time: number,
+  duration: number,
+): boolean {
+  const startupSeconds = stream.startupBufferSeconds ?? 0;
+  if (startupSeconds <= 0) return true;
+
+  const ranges = stream.bufferedRanges?.();
+  if (!ranges) return true;
+
+  return rangesCoverInterval(
+    ranges,
+    time,
+    Math.min(duration, time + startupSeconds),
+  );
+}
+
+function startupPrefetchEnd(
+  stream: PlaybackStream,
+  time: number,
+  duration: number,
+): number {
+  const lookaheadSeconds = Math.max(
+    stream.startupBufferSeconds ?? 0,
+    stream.lookaheadSeconds ?? DEFAULT_PREFETCH_LOOKAHEAD_SECONDS,
+  );
+  return Math.min(duration, time + lookaheadSeconds);
+}
+
+function rangesCoverInterval(
+  ranges: ReturnType<NonNullable<PlaybackStream["bufferedRanges"]>>,
+  start: number,
+  end: number,
+): boolean {
+  if (end <= start) return true;
+
+  for (const [rangeStart, rangeEnd] of ranges) {
+    if (rangeStart <= start && rangeEnd >= end) return true;
+    if (rangeStart > start) return false;
+  }
+
+  return false;
 }

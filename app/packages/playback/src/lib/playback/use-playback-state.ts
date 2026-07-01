@@ -19,6 +19,7 @@ import {
   currentTimeAtom,
   durationAtom,
   isBufferingAtom,
+  isPlayPendingAtom,
   isPlayingAtom,
   loopEndAtom,
   loopStartAtom,
@@ -50,6 +51,11 @@ export function useCurrentTime(): number {
 export function useIsPlaying(): boolean {
   const store = usePlaybackStore();
   return useAtomValue(isPlayingAtom, { store });
+}
+
+export function useIsPlayPending(): boolean {
+  const store = usePlaybackStore();
+  return useAtomValue(isPlayPendingAtom, { store });
 }
 
 export function useIsBuffering(): boolean {

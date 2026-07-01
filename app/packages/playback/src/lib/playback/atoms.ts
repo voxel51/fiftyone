@@ -59,6 +59,14 @@ export const currentTimeAtom = atom(0);
 export const isPlayingAtom = atom(false);
 
 /**
+ * True after the user has requested playback but before the engine has enough
+ * startup buffer to advance without immediately stalling. This represents
+ * intent, not active clock movement; `isPlayingAtom` remains the source of
+ * truth for actual playback.
+ */
+export const isPlayPendingAtom = atom(false);
+
+/**
  * True when at least one blocking stream is not ready at the next target
  * time. The RAF loop sets this while playing; seek/step set it while
  * paused. UI components read it to show spinners.
