@@ -3,6 +3,80 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.21.0
+--------------------------
+*Released July 1, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.18.0 <release-notes-v1.18.0>`, plus:
+
+- **Annotation workflows**: streamlined assignment and review flows
+- Temporal tags support for time-based labeling
+
+.. _release-notes-v1.18.0:
+
+FiftyOne 1.18.0
+---------------
+*Released July 1, 2026*
+
+App
+^^^
+- **Video Annotation (GA)**: manually annotate and review object tracks across
+  video frames, with a keyframe data model and live preview (#7655, #7707,
+  #7879, #7880, #7885)
+- **Playback**: rebuilt playback engine and timeline with smoother scrubbing
+  (#7530, #7531, #7646)
+- **Temporal tags**: tag samples/frames across time ranges (#7644, #7649,
+  #7656)
+- **3D annotation** improvements: comb-through editing, plus fixes for
+  Windows ctrl-Z, selection bleed, slice leakage, and set-field overwrite
+  (#7886, #7849, #7887, #7888, #7889, #7890)
+- Fixes: restore visible-sample selection (#7825), grid sidebar max-width
+  (#7835), file-explorer initial path display (#7632), select-before-edit
+  (#7726), erase-can-create (#7733), duplicate conditional attributes (#7833),
+  number-dropdown attribute (#7893), default attribute spec now respected
+  (#7896)
+
+Performance
+^^^^^^^^^^^
+- Lazy-load Plotly, histograms, and the map panel; defer html2canvas; drop the
+  ``moment`` dependency (#7771, #7772, #7773, #7774, #7788)
+- Panel suspense boundaries, improved panel open behavior and loading states
+  (#7754, #7789, #7792)
+- Debounced sidebar filters and a lighter code-block highlighter (#7823, #7787)
+
+Core
+^^^^
+- Temporal tags core module and collection handling (#7776, #7791, #7794,
+  #7798, #7814, #7822)
+- Persist dataset media type (#7737); optional protobuf import (#7763)
+- Fixes: race conditions (#7762), core barrel circular dependency (#7777),
+  ``fo.<dataset>`` instance handling (#7796), sparse ``.fo3d`` group specs
+  (#7749)
+
+Models / Zoo
+^^^^^^^^^^^^
+- Qwen3-VL ``embed_frames`` for in-memory video frame clips (#7843)
+- Transformers 5.x compatibility for SigLIP/MedSigLIP processors and
+  text-tower pooler output (#7840, #7820)
+- New ``quickstart-trajectories`` zoo dataset (#7922)
+- Fix browser-inference media cache collision (#7921)
+
+Annotation schema
+^^^^^^^^^^^^^^^^^^
+- Front-end integration for attribute schemas, smart forms, and class
+  taxonomies (#7729, #7739, #7755)
+
+Build
+^^^^^
+- Migrated the App from Biome to Prettier 3 and reformatted the codebase
+  (#7882)
+- Bumped ``@voxel51/voodo`` (#7750)
+
+Documentation
+^^^^^^^^^^^^^
+- Video annotation guide (#7907); custom gateway provider config (#7741);
+  Kapa widget customization (#7753); CLI/skills docs (#7558)
+
 FiftyOne Enterprise 2.20.0
 --------------------------
 *Released June 8, 2026*
