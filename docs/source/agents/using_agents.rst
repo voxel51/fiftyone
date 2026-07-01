@@ -136,6 +136,25 @@ Step 2: Configure Your AI Tool
       Or use the one-click install:
       `Install FiftyOne MCP in VS Code <https://insiders.vscode.dev/redirect/mcp/install?name=fiftyone&config=%7B%22command%22%3A%22fiftyone-mcp%22%7D>`_
 
+   .. tab:: GitHub Copilot
+
+      Add to ``.vscode/mcp.json`` in your workspace (create if it doesn't
+      exist):
+
+      .. code-block:: json
+
+          {
+            "servers": {
+              "fiftyone": {
+                "type": "stdio",
+                "command": "fiftyone-mcp"
+              }
+            }
+          }
+
+      Enable **Agent mode** in Copilot Chat. MCP tools appear automatically
+      once the server is configured.
+
    .. tab:: Gemini CLI
 
       The Gemini CLI extension registers the MCP server automatically.
