@@ -145,6 +145,36 @@ describe("worker-backed MCAP resource client", () => {
     await expect(window).resolves.toEqual(workerResult);
   });
 
+  it("can demote frame transform windows to idle-prefetch priority", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      endTimeNs: 20n,
+      source: createSource("source:1"),
+      startTimeNs: 10n,
+    };
+    const workerResult: McapFrameTransformSet = { samples: [] };
+
+    const window = client.readFrameTransformWindow(request, {
+      priority: "idle",
+    });
+    const worker = workers[0];
+
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      payload: request,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      type: "readFrameTransformWindow",
+    });
+
+    worker.respond({
+      id: 1,
+      ok: true,
+      result: structuredClone(dehydrateMcapFrameTransformSet(workerResult)),
+    });
+
+    await expect(window).resolves.toEqual(workerResult);
+  });
+
   it("sends playback batches at playback priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {
@@ -165,6 +195,95 @@ describe("worker-backed MCAP resource client", () => {
     worker.respond({ id: 1, ok: true, result: [] });
 
     await expect(windows).resolves.toEqual([]);
+  });
+
+  it("can demote speculative playback batches to idle-prefetch priority", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      timeNs: [1n, 2n],
+      source: createSource("source:1"),
+      topics: ["/camera"],
+    };
+
+    const windows = client.readSynchronizedMessageBatch(request, {
+      priority: "idle",
+    });
+    const worker = workers[0];
+
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      type: "readSynchronizedMessageBatch",
+    });
+
+    worker.respond({ id: 1, ok: true, result: [] });
+
+    await expect(windows).resolves.toEqual([]);
+  });
+
+  it("uses a separate foreground worker while idle-prefetch work is pending", async () => {
+    const { client, workers } = createClientHarness();
+    const source = createSource("source:1");
+
+    const idle = client.readSynchronizedMessageBatch(
+      {
+        timeNs: [1n, 2n],
+        source,
+        topics: ["/camera"],
+      },
+      { priority: "idle" },
+    );
+    const current = client.readSynchronizedMessages({
+      timeNs: 1n,
+      source,
+      topics: ["/camera"],
+    });
+
+    expect(workers).toHaveLength(2);
+    expect(workers[0].messages[1]).toMatchObject({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      type: "readSynchronizedMessageBatch",
+    });
+    expect(workers[1].messages[1]).toMatchObject({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      type: "readSynchronizedMessages",
+    });
+
+    const currentWindow = createSynchronizedWindow(1n);
+    workers[1].respond({ id: 1, ok: true, result: currentWindow });
+    await expect(current).resolves.toEqual(currentWindow);
+
+    workers[0].respond({ id: 1, ok: true, result: [] });
+    await expect(idle).resolves.toEqual([]);
+  });
+
+  it("resets idle-prefetch work when the active source changes", async () => {
+    const { client, workers } = createClientHarness();
+
+    const idle = client.readSynchronizedMessageBatch(
+      {
+        timeNs: [1n, 2n],
+        source: createSource("source:1"),
+        topics: ["/camera"],
+      },
+      { priority: "idle" },
+    );
+    const idleWorker = workers[0];
+    const range = client.readTimelineRange(createTimelineRequest("source:2"));
+    const foregroundWorker = workers[1];
+
+    expect(idleWorker.messages.at(-1)).toEqual({ type: "dispose" });
+    expect(idleWorker.terminate).toHaveBeenCalledTimes(1);
+    await expect(idle).rejects.toThrow("different source");
+
+    foregroundWorker.respond({
+      id: 1,
+      ok: true,
+      result: createTimelineRange(2n, 3n),
+    });
+    await expect(range).resolves.toEqual(createTimelineRange(2n, 3n));
   });
 
   it("rejects failed worker responses", async () => {
@@ -369,6 +488,18 @@ function createTimelineRange(startTimeNs: bigint, endTimeNs: bigint) {
     activeTimeline: "log" as const,
     endTimeNs,
     startTimeNs,
+  };
+}
+
+function createSynchronizedWindow(timeNs: bigint) {
+  return {
+    activeTimeline: "log" as const,
+    endTimeNs: timeNs,
+    messages: [],
+    messagesByTopic: {},
+    startTimeNs: timeNs,
+    streamPolicies: {},
+    timeNs,
   };
 }
 

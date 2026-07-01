@@ -1,9 +1,12 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
 import { hydrateMcapFrameTransformSet } from "../frame-transforms";
 import { isMcapLatencyDebugEnabled } from "../mcap-debug-flags";
+import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 import { workerFetchParameters } from "./worker-resource-client";
 import {
+  MCAP_PLAYBACK_WORKER_PRIORITY,
+  type McapPlaybackWorkerPriority,
   type McapPlaybackWorkerRequest,
   type McapPlaybackWorkerRequestPayloadByType,
   type McapPlaybackWorkerResponse,
@@ -21,6 +24,7 @@ import type {
   McapReadFrameTransformWindowRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
+  McapResourceReadOptions,
   McapReadTopicsRequest,
   McapReadTopicTimeBoundsRequest,
   McapReadTimelineRangeRequest,
@@ -30,6 +34,14 @@ import type {
   McapTopicTimeBounds,
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
+
+type WorkerLaneName = "foreground" | "idle";
+
+type WorkerLane = {
+  readonly name: WorkerLaneName;
+  readonly transport: McapPlaybackWorkerTransport;
+  worker?: Worker;
+};
 
 /**
  * Options for creating a worker-backed MCAP resource client.
@@ -54,10 +66,18 @@ export function createWorkerMcapResourceClient(
 class WorkerMcapResourceClient implements McapResourceClient {
   private activeSourceKey = "";
   private disposed = false;
-  private readonly transport = new McapPlaybackWorkerTransport(
-    (sourceKey) => this.activeSourceKey === sourceKey,
-  );
-  private worker: Worker | undefined;
+  private readonly foregroundLane: WorkerLane = {
+    name: "foreground",
+    transport: new McapPlaybackWorkerTransport(
+      (sourceKey) => this.activeSourceKey === sourceKey,
+    ),
+  };
+  private readonly idleLane: WorkerLane = {
+    name: "idle",
+    transport: new McapPlaybackWorkerTransport(
+      (sourceKey) => this.activeSourceKey === sourceKey,
+    ),
+  };
 
   constructor(
     private readonly options: CreateWorkerMcapResourceClientOptions,
@@ -65,7 +85,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   dispose() {
     this.disposed = true;
-    this.resetWorker("MCAP worker disposed");
+    this.resetWorkers("MCAP worker disposed");
   }
 
   async *readDecodedMessages(
@@ -107,10 +127,13 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   readFrameTransformWindow(
     request: McapReadFrameTransformWindowRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapFrameTransformSet> {
-    return this.request("readFrameTransformWindow", request).then(
-      hydrateMcapFrameTransformSet,
-    );
+    return this.request(
+      "readFrameTransformWindow",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+    ).then(hydrateMcapFrameTransformSet);
   }
 
   readSynchronizedMessages(
@@ -121,24 +144,35 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   readSynchronizedMessageBatch(
     request: McapReadSynchronizedMessageBatchRequest,
+    options?: McapResourceReadOptions,
   ): Promise<readonly McapSynchronizedMessageWindow[]> {
-    return this.request("readSynchronizedMessageBatch", request);
+    return this.request(
+      "readSynchronizedMessageBatch",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+    );
   }
 
   private request<Type extends McapPlaybackWorkerUnaryType>(
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority?: McapPlaybackWorkerPriority,
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     if (this.disposed) {
       return Promise.reject(new Error("MCAP worker client is disposed"));
     }
 
+    const effectivePriority =
+      priority ?? mcapPlaybackWorkerOperation(type).priority;
     const sourceKey = byteSourceAccessKey(payload.source);
-    return this.transport.request(
-      this.workerForSource(sourceKey),
+    this.ensureActiveSource(sourceKey);
+    const lane = this.laneForPriority(effectivePriority);
+    return lane.transport.request(
+      this.workerForLane(lane, sourceKey),
       sourceKey,
       type,
       payload,
+      effectivePriority,
     );
   }
 
@@ -150,32 +184,49 @@ class WorkerMcapResourceClient implements McapResourceClient {
       throw new Error("MCAP worker client is disposed");
     }
 
+    const priority = mcapPlaybackWorkerOperation(type).priority;
     const sourceKey = byteSourceAccessKey(payload.source);
-    yield* this.transport.stream(
-      this.workerForSource(sourceKey),
+    this.ensureActiveSource(sourceKey);
+    const lane = this.laneForPriority(priority);
+    yield* lane.transport.stream(
+      this.workerForLane(lane, sourceKey),
       sourceKey,
       type,
       payload,
     );
   }
 
-  private workerForSource(sourceKey: string): Worker {
-    if (this.worker && this.activeSourceKey === sourceKey) {
-      return this.worker;
+  private ensureActiveSource(sourceKey: string) {
+    if (this.activeSourceKey === sourceKey) {
+      return;
     }
 
-    this.resetWorker("MCAP worker reset for a different source");
+    this.resetWorkers("MCAP worker reset for a different source");
+    this.activeSourceKey = sourceKey;
+  }
+
+  private laneForPriority(priority: McapPlaybackWorkerPriority): WorkerLane {
+    return priority === MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH
+      ? this.idleLane
+      : this.foregroundLane;
+  }
+
+  private workerForLane(lane: WorkerLane, sourceKey: string): Worker {
+    if (lane.worker && this.activeSourceKey === sourceKey) {
+      return lane.worker;
+    }
+
+    this.resetLane(lane, "MCAP worker reset for a different source");
     let worker: Worker | undefined;
     try {
       worker = this.createWorker();
       // Wire handlers before init so a synchronous postMessage failure or very
       // early worker response goes through the same transport/reset paths.
-      this.activeSourceKey = sourceKey;
-      this.worker = worker;
+      lane.worker = worker;
       worker.onmessage = (event: MessageEvent<McapPlaybackWorkerResponse>) =>
-        this.transport.handleResponse(event.data);
+        lane.transport.handleResponse(event.data);
       worker.onerror = (event) => {
-        this.resetWorker(event.message || "MCAP worker error");
+        this.resetLane(lane, event.message || "MCAP worker error");
       };
 
       const initRequest: McapPlaybackWorkerRequest = {
@@ -187,15 +238,18 @@ class WorkerMcapResourceClient implements McapResourceClient {
       };
       worker.postMessage(initRequest);
     } catch (error) {
-      if (this.worker === worker) {
-        this.resetWorker(mcapErrorMessage(error, "MCAP worker startup failed"));
+      if (lane.worker === worker) {
+        this.resetLane(
+          lane,
+          mcapErrorMessage(error, "MCAP worker startup failed"),
+        );
       } else {
         disposeWorker(worker);
       }
       throw mcapError(error);
     }
 
-    return this.worker;
+    return lane.worker;
   }
 
   private createWorker(): Worker {
@@ -208,9 +262,14 @@ class WorkerMcapResourceClient implements McapResourceClient {
     });
   }
 
-  private resetWorker(reason: string) {
-    const worker = this.worker;
-    this.worker = undefined;
+  private resetWorkers(reason: string) {
+    this.resetLane(this.foregroundLane, reason);
+    this.resetLane(this.idleLane, reason);
+  }
+
+  private resetLane(lane: WorkerLane, reason: string) {
+    const worker = lane.worker;
+    lane.worker = undefined;
 
     if (worker) {
       worker.onmessage = null;
@@ -226,7 +285,22 @@ class WorkerMcapResourceClient implements McapResourceClient {
       worker.terminate();
     }
 
-    this.transport.rejectAll(reason);
+    lane.transport.rejectAll(reason);
+  }
+}
+
+function resourcePriorityToWorkerPriority(
+  priority: McapResourceReadOptions["priority"],
+): McapPlaybackWorkerPriority | undefined {
+  switch (priority) {
+    case "current":
+      return MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME;
+    case "idle":
+      return MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH;
+    case "playback":
+      return MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH;
+    case undefined:
+      return undefined;
   }
 }
 
