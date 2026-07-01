@@ -38,3 +38,12 @@ export const FOXGLOVE_SCENE_UPDATE_PAYLOAD: PayloadDescriptor = {
   schema: "foxglove.SceneUpdate",
   schemaEncoding: "protobuf",
 };
+
+/**
+ * Payload identity for foxglove.Grid messages.
+ */
+export const FOXGLOVE_GRID_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.Grid",
+  schemaEncoding: "protobuf",
+};

@@ -3,12 +3,14 @@ import { VISUALIZATION_KIND } from "../../../visualization";
 import { createMcapDecoderRegistry } from ".";
 import {
   foxgloveCompressedImageDecoder,
+  foxgloveGridDecoder,
   foxglovePointCloudDecoder,
   foxgloveSceneUpdateDecoder,
 } from "./foxglove";
 import { optionalBigInt } from "./foxglove/protobuf/records";
 import {
   COMPRESSED_IMAGE_FIXTURE,
+  GRID_FIXTURE,
   POINT_CLOUD_FIXTURE,
 } from "./foxglove.test-fixtures";
 
@@ -24,6 +26,9 @@ describe("Foxglove decoders", () => {
     );
     expect(registry.find(foxgloveSceneUpdateDecoder.payload)).toBe(
       foxgloveSceneUpdateDecoder,
+    );
+    expect(registry.find(foxgloveGridDecoder.payload)).toBe(
+      foxgloveGridDecoder,
     );
   });
 
@@ -204,6 +209,79 @@ describe("Foxglove decoders", () => {
     expect(output.visualization.pointCount).toBe(3);
   });
 
+  it("decodes protobuf grid payloads into grid visualizations", () => {
+    // One 2x1 cell grid packed alpha,blue,green,red per cell — the NuScenes
+    // /map channel order — exercising the full protobuf wire path.
+    const data = Uint8Array.of(255, 10, 20, 30, 128, 40, 50, 60);
+    const output = foxgloveGridDecoder.decode(
+      gridWireMessage({
+        cellStride: 4,
+        columnCount: 2,
+        data,
+        fields: [
+          { name: "alpha", offset: 0, type: 1 },
+          { name: "blue", offset: 1, type: 1 },
+          { name: "green", offset: 2, type: 1 },
+          { name: "red", offset: 3, type: 1 },
+        ],
+        rowStride: 8,
+      }),
+      {
+        schemaData: GRID_FIXTURE.schemaData,
+        sourceTimestamps: {
+          captureTime: 10n,
+          receiveTime: 11n,
+        },
+        streamId: "/map",
+        timeRangeStartKey: "captureTime",
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.GRID);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.GRID) {
+      throw new Error("Expected grid visualization");
+    }
+    expect(output.visualization.columnCount).toBe(2);
+    expect(output.visualization.rowCount).toBe(1);
+    expect(output.visualization.cellSize).toEqual([0.1, 0.1]);
+    expect(output.visualization.coordinateFrameId).toBe("map");
+    expect(output.visualization.pose.position).toEqual([920, 1300, 0.5]);
+    expect(Array.from(output.visualization.rgba)).toEqual([
+      30, 20, 10, 255, 60, 50, 40, 128,
+    ]);
+    expect(output.attributes).toMatchObject({
+      colorMode: "color",
+      columnCount: 2,
+      frameId: "map",
+      rowCount: 1,
+    });
+    expect(output.timing?.timeRange?.startNs).toBe(10n);
+  });
+
+  it("decodes protobuf scalar grid payloads into translucent masks", () => {
+    const output = foxgloveGridDecoder.decode(
+      gridWireMessage({
+        cellStride: 1,
+        columnCount: 2,
+        data: Uint8Array.of(0, 1),
+        fields: [{ name: "drivable_area", offset: 0, type: 1 }],
+        rowStride: 2,
+      }),
+      {
+        schemaData: GRID_FIXTURE.schemaData,
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.GRID);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.GRID) {
+      throw new Error("Expected grid visualization");
+    }
+    expect(output.attributes?.colorMode).toBe("scalar");
+    expect(Array.from(output.visualization.rgba)).toEqual([
+      255, 255, 255, 0, 255, 255, 255, 153,
+    ]);
+  });
+
   it("rejects unaligned point cloud payloads with non-zero trailing data", () => {
     expect(() =>
       foxglovePointCloudDecoder.decode(
@@ -274,6 +352,58 @@ function packedPointCloudField({
   );
 }
 
+// foxglove.Grid field numbers: frame_id=2, pose=3, column_count=4,
+// cell_size=5, row_stride=6, cell_stride=7, fields=8, data=9.
+function gridWireMessage({
+  cellStride,
+  columnCount,
+  data,
+  fields,
+  rowStride,
+}: {
+  readonly cellStride: number;
+  readonly columnCount: number;
+  readonly data: Uint8Array;
+  readonly fields: readonly TestPointCloudField[];
+  readonly rowStride: number;
+}): Uint8Array {
+  return concatProtobufFields(
+    protobufBytesField(2, new TextEncoder().encode("map")),
+    protobufBytesField(
+      3,
+      protobufBytesField(
+        1,
+        concatProtobufFields(
+          protobufDoubleField(1, 920),
+          protobufDoubleField(2, 1300),
+          protobufDoubleField(3, 0.5),
+        ),
+      ),
+    ),
+    protobufFixed32Field(4, columnCount),
+    protobufBytesField(
+      5,
+      concatProtobufFields(
+        protobufDoubleField(1, 0.1),
+        protobufDoubleField(2, 0.1),
+      ),
+    ),
+    protobufFixed32Field(6, rowStride),
+    protobufFixed32Field(7, cellStride),
+    ...fields.map((field) =>
+      protobufBytesField(
+        8,
+        concatProtobufFields(
+          protobufBytesField(1, new TextEncoder().encode(field.name)),
+          protobufFixed32Field(2, field.offset),
+          protobufVarintField(3, field.type),
+        ),
+      ),
+    ),
+    protobufBytesField(9, data),
+  );
+}
+
 function radarPointBytes(): Uint8Array {
   const pointStride = 19;
   const data = new Uint8Array(pointStride * 2);
@@ -337,6 +467,14 @@ function protobufFixed32Field(fieldNumber: number, value: number): Uint8Array {
   const bytes = new Uint8Array(5);
   bytes[0] = (fieldNumber << 3) | 5;
   new DataView(bytes.buffer).setUint32(1, value, true);
+
+  return bytes;
+}
+
+function protobufDoubleField(fieldNumber: number, value: number): Uint8Array {
+  const bytes = new Uint8Array(9);
+  bytes[0] = (fieldNumber << 3) | 1;
+  new DataView(bytes.buffer).setFloat64(1, value, true);
 
   return bytes;
 }
