@@ -45,6 +45,21 @@ export const GRID_FIXTURE = Object.freeze({
   ),
 });
 
+/**
+ * CameraCalibration schema fixture.
+ *
+ * The schema bytes are the FileDescriptorSet for
+ * `foxglove.CameraCalibration` captured verbatim from a NuScenes MCAP
+ * export (foxglove/nuscenes2mcap):
+ * https://github.com/foxglove/schemas/blob/main/schemas/proto/foxglove/CameraCalibration.proto
+ * Message bytes are hand-encoded per test.
+ */
+export const CAMERA_CALIBRATION_FIXTURE = Object.freeze({
+  schemaData: bytes(
+    "Cv8BCh9nb29nbGUvcHJvdG9idWYvdGltZXN0YW1wLnByb3RvEg9nb29nbGUucHJvdG9idWYiOwoJVGltZXN0YW1wEhgKB3NlY29uZHMYASABKANSB3NlY29uZHMSFAoFbmFub3MYAiABKAVSBW5hbm9zQoUBChNjb20uZ29vZ2xlLnByb3RvYnVmQg5UaW1lc3RhbXBQcm90b1ABWjJnb29nbGUuZ29sYW5nLm9yZy9wcm90b2J1Zi90eXBlcy9rbm93bi90aW1lc3RhbXBwYvgBAaICA0dQQqoCHkdvb2dsZS5Qcm90b2J1Zi5XZWxsS25vd25UeXBlc2IGcHJvdG8zCpECCiBmb3hnbG92ZS9DYW1lcmFDYWxpYnJhdGlvbi5wcm90bxIIZm94Z2xvdmUaH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8iuQEKEUNhbWVyYUNhbGlicmF0aW9uEi0KCXRpbWVzdGFtcBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEAoIZnJhbWVfaWQYCSABKAkSDQoFd2lkdGgYAiABKAcSDgoGaGVpZ2h0GAMgASgHEhgKEGRpc3RvcnRpb25fbW9kZWwYBCABKAkSCQoBRBgFIAMoARIJCgFLGAYgAygBEgkKAVIYByADKAESCQoBUBgIIAMoAWIGcHJvdG8z",
+  ),
+});
+
 function bytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 }
