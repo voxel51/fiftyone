@@ -224,3 +224,41 @@ export function shouldPublishMcapNetworkHealth(
     Math.abs(nextThroughput - previousThroughput) / previousThroughput > 0.15
   );
 }
+
+/**
+ * Signals for the idle-work gate. `msSinceSeek` is null when no seek has
+ * happened yet.
+ */
+export interface McapIdleWorkGateSignals {
+  readonly buffering: boolean;
+  readonly limited: boolean;
+  readonly msSinceSeek: number | null;
+  readonly playPending: boolean;
+  readonly seekCooldownMs?: number;
+}
+
+const DEFAULT_SEEK_COOLDOWN_MS = 1_500;
+
+/**
+ * Whether speculative idle reads should stand down right now.
+ *
+ * Only a network-limited verdict activates the gate at all: on healthy
+ * transports idle prefetch is what makes playback smooth, so deferring it
+ * there would be a regression. While limited, idle work yields whenever
+ * the user is actively waiting (buffering or accepted play intent) and for
+ * a short cooldown after a seek, when foreground catch-up reads own the
+ * link.
+ */
+export function shouldDeferMcapIdleWork(
+  signals: McapIdleWorkGateSignals,
+): boolean {
+  if (!signals.limited) {
+    return false;
+  }
+  if (signals.buffering || signals.playPending) {
+    return true;
+  }
+
+  const seekCooldownMs = signals.seekCooldownMs ?? DEFAULT_SEEK_COOLDOWN_MS;
+  return signals.msSinceSeek !== null && signals.msSinceSeek < seekCooldownMs;
+}

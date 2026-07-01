@@ -46,6 +46,7 @@ import {
   mcapLatencyNowMs,
   recordMcapLatencyMetric,
 } from "../mcap-latency-debug";
+import { shouldDeferMcapIdleWorkForStore } from "./mcap-network-health";
 import { resetMcapPlaybackBuffering } from "./mcap-playback-buffering";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import { createMcapTimelineIndex } from "./mcap-timeline-index";
@@ -278,6 +279,7 @@ export function useRegisterMcapDataStream({
   >(null);
   const topicStartTimesNsRef = useRef<Map<string, bigint | null>>(new Map());
   const autoSeekSourceEpochRef = useRef<number | null>(null);
+  const lastSeekAtMsRef = useRef<number | null>(null);
   const nextLookaheadRefreshTimeRef = useRef(0);
   const playbackStallSessionIdRef = useRef(0);
   const playbackStallWindowRef = useRef<PlaybackStallWindow | null>(null);
@@ -1423,6 +1425,26 @@ export function useRegisterMcapDataStream({
 
       pausedIdleWarmupTimerRef.current = setTimeout(() => {
         pausedIdleWarmupTimerRef.current = null;
+        // A gated pass must keep the loop alive: retry on the same cadence
+        // so warmup resumes the moment the constrained wait clears.
+        if (
+          shouldDeferMcapIdleWorkForStore(
+            store,
+            lastSeekAtMsRef.current === null
+              ? null
+              : mcapLatencyNowMs() - lastSeekAtMsRef.current,
+          )
+        ) {
+          if (isMcapLatencyDebugEnabled()) {
+            recordMcapLatencyMetric("network limited idle deferrals", 1, {
+              site: "paused-warmup",
+            });
+          }
+          schedulePausedIdleWarmupRef.current?.(
+            PLAYBACK_POLICY.prefetchRefreshSeconds * 1000,
+          );
+          return;
+        }
         const queuedFetch = runPausedIdleWarmup();
         if (queuedFetch) {
           schedulePausedIdleWarmupRef.current?.(
@@ -1431,7 +1453,7 @@ export function useRegisterMcapDataStream({
         }
       }, delayMs);
     },
-    [runPausedIdleWarmup],
+    [runPausedIdleWarmup, store],
   );
 
   useEffect(() => {
@@ -1826,6 +1848,26 @@ export function useRegisterMcapDataStream({
         return;
       }
 
+      // The startup fill above is playback-critical and never yields; the
+      // speculative lookahead below stands down while a constrained network
+      // is the reason playback is waiting.
+      if (
+        shouldDeferMcapIdleWorkForStore(
+          store,
+          lastSeekAtMsRef.current === null
+            ? null
+            : mcapLatencyNowMs() - lastSeekAtMsRef.current,
+        )
+      ) {
+        if (isMcapLatencyDebugEnabled()) {
+          recordMcapLatencyMetric("network limited idle deferrals", 1, {
+            site: "playing-topup",
+            timeSec: Number(timeSec.toFixed(3)),
+          });
+        }
+        return;
+      }
+
       if (isMcapLatencyDebugEnabled()) {
         recordMcapLatencyMetric("background lookahead topups", 1, {
           activeTopics: activeTopics.length,
@@ -1878,7 +1920,12 @@ export function useRegisterMcapDataStream({
 
   // Paused-seek: scrub while paused → push or fetch the seeked tick + window.
   useEffect(() => {
-    if (seekEvent) prefetchLookaheadFrom(seekEvent.time);
+    if (seekEvent) {
+      // Stamp seeks so the idle-work gate can hold speculative reads while
+      // the foreground catch-up fetch owns a constrained link.
+      lastSeekAtMsRef.current = mcapLatencyNowMs();
+      prefetchLookaheadFrom(seekEvent.time);
+    }
   }, [seekEvent, prefetchLookaheadFrom]);
 
   // Mount-time: kick off lookahead so the buffer fills before play/seek.

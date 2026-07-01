@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { McapLaneTransportSnapshot } from "../worker/transport-meter";
 import {
   createMcapNetworkHealthEstimator,
+  shouldDeferMcapIdleWork,
   shouldPublishMcapNetworkHealth,
 } from "./mcap-network-health-estimator";
 
@@ -111,6 +112,51 @@ describe("createMcapNetworkHealthEstimator", () => {
     const health = estimator.evaluate(2_000);
     expect(health.throughputBytesPerSec).toBeNull();
     expect(health.limited).toBe(false);
+  });
+});
+
+describe("shouldDeferMcapIdleWork", () => {
+  it("never defers on a healthy network", () => {
+    expect(
+      shouldDeferMcapIdleWork({
+        buffering: true,
+        limited: false,
+        msSinceSeek: 100,
+        playPending: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("defers while limited and buffering or play-pending", () => {
+    expect(
+      shouldDeferMcapIdleWork({
+        buffering: true,
+        limited: true,
+        msSinceSeek: null,
+        playPending: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldDeferMcapIdleWork({
+        buffering: false,
+        limited: true,
+        msSinceSeek: null,
+        playPending: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("defers only inside the post-seek cooldown", () => {
+    const base = {
+      buffering: false,
+      limited: true,
+      playPending: false,
+    };
+    expect(shouldDeferMcapIdleWork({ ...base, msSinceSeek: 800 })).toBe(true);
+    expect(shouldDeferMcapIdleWork({ ...base, msSinceSeek: 2_000 })).toBe(
+      false,
+    );
+    expect(shouldDeferMcapIdleWork({ ...base, msSinceSeek: null })).toBe(false);
   });
 });
 
