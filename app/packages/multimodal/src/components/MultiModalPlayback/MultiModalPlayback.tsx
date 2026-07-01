@@ -53,6 +53,13 @@ export interface MultiModalPlaybackProps {
   sceneSources?: readonly SceneSource[];
 
   /**
+   * Whether selecting the already-focused tile clears focus. Defaults to the
+   * existing toggle behavior; surfaces with persistent panel settings can opt
+   * out so repeat clicks keep the panel active.
+   */
+  deselectFocusedTileOnRepeatSelect?: boolean;
+
+  /**
    * Override for the left sidebar. Defaults to {@link TileSettingsSidebar}
    * (focused tile's settings).
    */
@@ -130,6 +137,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   initialTiles,
   initialLayout,
   sceneSources = EMPTY_SOURCES,
+  deselectFocusedTileOnRepeatSelect = true,
   leftSidebar = <TileSettingsSidebar />,
   rightSidebar = <TilingInspectorSidebar />,
   defaultLeftOpen = true,
@@ -158,6 +166,9 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               headerCaption={headerCaption}
               leftSidebar={leftSidebar}
               rightSidebar={rightSidebar}
+              deselectFocusedTileOnRepeatSelect={
+                deselectFocusedTileOnRepeatSelect
+              }
               defaultLeftOpen={defaultLeftOpen}
               defaultRightOpen={defaultRightOpen}
               onLeftOpenChange={onLeftOpenChange}
@@ -178,6 +189,7 @@ interface LayoutProps {
   headerCaption?: TilingHeaderCaption;
   leftSidebar: ReactNode;
   rightSidebar: ReactNode;
+  deselectFocusedTileOnRepeatSelect: boolean;
   defaultLeftOpen: boolean;
   defaultRightOpen: boolean;
   onLeftOpenChange?: (open: boolean) => void;
@@ -192,6 +204,7 @@ function Layout({
   headerCaption,
   leftSidebar,
   rightSidebar,
+  deselectFocusedTileOnRepeatSelect,
   defaultLeftOpen,
   defaultRightOpen,
   onLeftOpenChange,
@@ -217,9 +230,13 @@ function Layout({
   // (close/fullscreen) always focus without toggling.
   const handleFocusTile = useCallback(
     (id: string, reason: "select" | "action") => {
-      setFocusedTileId(reason === "select" && focusedTileId === id ? null : id);
+      const shouldDeselect =
+        deselectFocusedTileOnRepeatSelect &&
+        reason === "select" &&
+        focusedTileId === id;
+      setFocusedTileId(shouldDeselect ? null : id);
     },
-    [focusedTileId, setFocusedTileId],
+    [deselectFocusedTileOnRepeatSelect, focusedTileId, setFocusedTileId],
   );
 
   return (
