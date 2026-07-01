@@ -10,12 +10,15 @@ import React, {
 } from "react";
 import { Vector3 } from "three";
 import type {
+  CameraCalibrationVisualization,
+  EncodedImageVisualization,
   GridVisualization,
   PointCloudVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
 import { useSceneInventory, type SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import { chooseCalibrationTopic } from "../topic-matching";
 import {
   PointCloudPanel,
   type PointCloudCameraPose,
@@ -158,6 +161,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => renderableSources.filter(isMapLayerSource),
     [renderableSources],
   );
+  const cameraSources = useMemo(
+    () => renderableSources.filter(isCameraCalibrationSource),
+    [renderableSources],
+  );
   const sceneAnnotationSources = useMemo(
     () => renderableSources.filter(isSceneAnnotationSource),
     [renderableSources],
@@ -240,6 +247,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => mapLayerSources.filter((s) => enabled.has(s.id)),
     [mapLayerSources, enabled],
   );
+  const selectedCameraSources = useMemo(
+    () => cameraSources.filter((s) => enabled.has(s.id)),
+    [cameraSources, enabled],
+  );
   const pointCloudTopics = useMemo(
     () => selectedPointCloudSources.map((s) => s.id),
     [selectedPointCloudSources],
@@ -252,9 +263,46 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => selectedMapLayerSources.map((s) => s.id),
     [selectedMapLayerSources],
   );
+  const cameraTopics = useMemo(
+    () => selectedCameraSources.map((s) => s.id),
+    [selectedCameraSources],
+  );
+  // Camera frames on frustum image planes: pair each calibration topic with
+  // its camera's image stream (same prefix convention the image tile uses,
+  // inverted) so the frustum can show what the camera currently sees.
+  const [showCameraImages, setShowCameraImages] = useState(true);
+  const imageTopicByCalibrationTopic = useMemo(() => {
+    const pairs = new Map<string, string>();
+    for (const source of sources) {
+      if (source.type !== MCAP_SOURCE_TYPE.IMAGE) {
+        continue;
+      }
+      const calibrationTopic = chooseCalibrationTopic(source.id, cameraTopics);
+      if (calibrationTopic && !pairs.has(calibrationTopic)) {
+        pairs.set(calibrationTopic, source.id);
+      }
+    }
+    return pairs;
+  }, [cameraTopics, sources]);
+  const frustumImageTopics = useMemo(
+    () =>
+      showCameraImages
+        ? cameraTopics.map(
+            (topic) => imageTopicByCalibrationTopic.get(topic) ?? "",
+          )
+        : [],
+    [cameraTopics, imageTopicByCalibrationTopic, showCameraImages],
+  );
+  const frustumImageFrames =
+    useMcapTopicPlaybackFrames<EncodedImageVisualization>(frustumImageTopics);
   const selectedTopics = useMemo(
-    () => [...pointCloudTopics, ...mapLayerTopics, ...sceneAnnotationTopics],
-    [mapLayerTopics, pointCloudTopics, sceneAnnotationTopics],
+    () => [
+      ...pointCloudTopics,
+      ...mapLayerTopics,
+      ...cameraTopics,
+      ...sceneAnnotationTopics,
+    ],
+    [cameraTopics, mapLayerTopics, pointCloudTopics, sceneAnnotationTopics],
   );
   const selectedTopicsKey = useMemo(
     () => selectedTopics.join("\0"),
@@ -267,6 +315,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
   const gridFrames =
     useMcapTopicPlaybackFrames<GridVisualization>(mapLayerTopics);
+  const calibrationFrames =
+    useMcapTopicPlaybackFrames<CameraCalibrationVisualization>(cameraTopics);
   const playbackTimeNs = useMcapPlaybackTimeNs();
   const frameIds = useMemo(
     () =>
@@ -274,9 +324,16 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         ...frameTransforms.frameIds,
         ...frameIdsFromFrames(frames),
         ...frameIdsFromGridFrames(gridFrames),
+        ...frameIdsFromCalibrationFrames(calibrationFrames),
         ...frameIdsFromSceneAnnotationFrames(annotationFrames),
       ]),
-    [annotationFrames, frameTransforms.frameIds, frames, gridFrames],
+    [
+      annotationFrames,
+      calibrationFrames,
+      frameTransforms.frameIds,
+      frames,
+      gridFrames,
+    ],
   );
 
   // This effect keeps the world frame on a preferred default until the user
@@ -330,10 +387,12 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     [frames, pointCloudTopics, provisionalTopicId],
   );
   const {
+    cameraFrustumLayers,
     clampedFrameIds,
     gridLayers,
     largeInterpolationGaps,
     pendingAnnotationFrameIds,
+    pendingFrustumFrameIds,
     pendingGridFrameIds,
     pointCloudLayers,
     provisionalFrameIds,
@@ -343,6 +402,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   } = useMemo(() => {
     return build3dLayers({
       annotationFrames,
+      calibrationFrames,
       frameTransforms,
       frames,
       gridFrames,
@@ -351,12 +411,15 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       ),
       provisionalTopicId,
       selectedAnnotationTopics: sceneAnnotationTopics,
+      selectedCalibrationTopics: cameraTopics,
       selectedGridTopics: mapLayerTopics,
       selectedTopics: pointCloudTopics,
       worldFrameId,
     });
   }, [
     annotationFrames,
+    calibrationFrames,
+    cameraTopics,
     frameTransforms,
     frames,
     gridFrames,
@@ -367,6 +430,24 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     temporalPolicy.transformGapWarningMs,
     worldFrameId,
   ]);
+  // Attach each camera's current image to its frustum layer. Done outside
+  // build3dLayers so the pure layer builder stays image-agnostic; index
+  // alignment with cameraTopics mirrors the playback-frames arrays.
+  const frustumLayers = useMemo(
+    () =>
+      cameraFrustumLayers.map((layer) => {
+        const index = cameraTopics.indexOf(layer.id);
+        const imageFrame = index >= 0 ? frustumImageFrames[index] : null;
+        return imageFrame
+          ? {
+              ...layer,
+              image: imageFrame.frame,
+              imageContentTimeNs: imageFrame.contentTimeNs,
+            }
+          : layer;
+      }),
+    [cameraFrustumLayers, cameraTopics, frustumImageFrames],
+  );
   const placementStatus = useMemo<Mcap3dPlacementStatus>(
     () =>
       provisionalFrameIds.length > 0
@@ -375,10 +456,12 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
           ? "transformed"
           : pointCloudLayers.length > 0 ||
               sceneAnnotationLayers.length > 0 ||
-              gridLayers.length > 0
+              gridLayers.length > 0 ||
+              cameraFrustumLayers.length > 0
             ? "unframed"
             : "empty",
     [
+      cameraFrustumLayers.length,
       gridLayers.length,
       pointCloudLayers.length,
       provisionalFrameIds.length,
@@ -409,9 +492,21 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         )}`,
       );
     }
+    if (pendingFrustumFrameIds.length > 0) {
+      parts.push(
+        `Camera transforms loading: hiding frustums in ${pendingFrustumFrameIds.join(
+          ", ",
+        )}`,
+      );
+    }
 
     return parts.length > 0 ? parts.join(" | ") : null;
-  }, [pendingAnnotationFrameIds, pendingGridFrameIds, provisionalFrameIds]);
+  }, [
+    pendingAnnotationFrameIds,
+    pendingFrustumFrameIds,
+    pendingGridFrameIds,
+    provisionalFrameIds,
+  ]);
   const transformWarning = useMemo(
     () =>
       transformWarningText({
@@ -732,21 +827,25 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       !latencyDebugEnabled ||
       (pointCloudLayers.length === 0 &&
         sceneAnnotationLayers.length === 0 &&
-        gridLayers.length === 0)
+        gridLayers.length === 0 &&
+        cameraFrustumLayers.length === 0)
     ) {
       return;
     }
 
     const detail = {
       annotationLayers: sceneAnnotationLayers.length,
+      frustumLayers: cameraFrustumLayers.length,
       gridLayers: gridLayers.length,
       layers:
         pointCloudLayers.length +
         sceneAnnotationLayers.length +
-        gridLayers.length,
+        gridLayers.length +
+        cameraFrustumLayers.length,
       placementStatus,
       pointCount: pointCountForLayers(pointCloudLayers),
       pendingAnnotationFrameIds,
+      pendingFrustumFrameIds,
       pendingGridFrameIds,
       provisionalFrameIds,
       transformStatus: frameTransforms.status,
@@ -767,11 +866,13 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       });
     }
   }, [
+    cameraFrustumLayers.length,
     frameTransforms.status,
     gridLayers.length,
     latencyDebugEnabled,
     placementStatus,
     pendingAnnotationFrameIds,
+    pendingFrustumFrameIds,
     pendingGridFrameIds,
     pointCloudLayers,
     provisionalFrameIds,
@@ -785,7 +886,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       !latencyDebugEnabled ||
       (pointCloudLayers.length === 0 &&
         sceneAnnotationLayers.length === 0 &&
-        gridLayers.length === 0)
+        gridLayers.length === 0 &&
+        cameraFrustumLayers.length === 0)
     ) {
       return;
     }
@@ -795,8 +897,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       pointCloudLayers.length,
       sceneAnnotationLayers.length,
       gridLayers.length,
+      cameraFrustumLayers.length,
       transformedLayerCount,
       pendingAnnotationFrameIds.join(","),
+      pendingFrustumFrameIds.join(","),
       pendingGridFrameIds.join(","),
       provisionalFrameIds.join(","),
       unresolvedFrameIds.join(","),
@@ -819,13 +923,16 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       controlledCamera: controlledCameraPose !== null,
       frameIds: frameIds.length,
       annotationLayers: sceneAnnotationLayers.length,
+      frustumLayers: cameraFrustumLayers.length,
       gridLayers: gridLayers.length,
       layers:
         pointCloudLayers.length +
         sceneAnnotationLayers.length +
-        gridLayers.length,
+        gridLayers.length +
+        cameraFrustumLayers.length,
       placementStatus,
       pendingAnnotationFrameIds,
+      pendingFrustumFrameIds,
       pendingGridFrameIds,
       pointCount: pointCountForLayers(pointCloudLayers),
       provisionalFrameIds,
@@ -837,6 +944,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       trackingMode,
     });
   }, [
+    cameraFrustumLayers.length,
     cameraTargetFrameId,
     cameraTargetResolution.status,
     controlledCameraPose,
@@ -846,6 +954,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     gridLayers.length,
     latencyDebugEnabled,
     pendingAnnotationFrameIds,
+    pendingFrustumFrameIds,
     pendingGridFrameIds,
     placementStatus,
     pointCloudLayers,
@@ -921,6 +1030,41 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
 
           <div className={settingsStyles.field}>
             <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              Cameras
+            </Text>
+            {cameraSources.length > 0 ? (
+              <>
+                <div className={settingsStyles.metaText}>
+                  {cameraTopics.length.toLocaleString()} of{" "}
+                  {cameraSources.length.toLocaleString()} selected
+                </div>
+                <div className={settingsStyles.optionStack}>
+                  {cameraSources.map((s) => (
+                    <Checkbox
+                      key={s.id}
+                      label={labelWithCount(s.label, s.recordCount)}
+                      checked={enabled.has(s.id)}
+                      onChange={(checked) => toggleSource(s.id, checked)}
+                      {...checkboxNoSpaceToggleProps}
+                    />
+                  ))}
+                  <Checkbox
+                    label="Show camera images"
+                    checked={showCameraImages}
+                    onChange={setShowCameraImages}
+                    {...checkboxNoSpaceToggleProps}
+                  />
+                </div>
+              </>
+            ) : (
+              <span className={settingsStyles.emptyText}>
+                No camera calibration topics available
+              </span>
+            )}
+          </div>
+
+          <div className={settingsStyles.field}>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
               3D Labels
             </Text>
             {sceneAnnotationSources.length > 0 ? (
@@ -978,11 +1122,13 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       ) : pointCloudLayers.length > 0 ||
         sceneAnnotationLayers.length > 0 ||
         gridLayers.length > 0 ||
+        cameraFrustumLayers.length > 0 ||
         panelWarning ? (
         <div className={styles.panelStack}>
           <PointCloudPanel
             annotationLayers={sceneAnnotationLayers}
             cameraPose={panelCameraPose}
+            frustumLayers={frustumLayers}
             gridLayers={gridLayers}
             layers={pointCloudLayers}
             className={styles.panel}
@@ -1099,7 +1245,8 @@ function is3dRenderableSource(source: SceneSource): boolean {
   return (
     isPointCloudSource(source) ||
     isSceneAnnotationSource(source) ||
-    isMapLayerSource(source)
+    isMapLayerSource(source) ||
+    isCameraCalibrationSource(source)
   );
 }
 
@@ -1113,6 +1260,10 @@ function isSceneAnnotationSource(source: SceneSource): boolean {
 
 function isMapLayerSource(source: SceneSource): boolean {
   return source.type === MCAP_SOURCE_TYPE.MAP_LAYER;
+}
+
+function isCameraCalibrationSource(source: SceneSource): boolean {
+  return source.type === MCAP_SOURCE_TYPE.CAMERA_CALIBRATION;
 }
 
 function sortPointCloudSourcesForInitialPaint(
@@ -1343,6 +1494,21 @@ function frameIdsFromFrames(
 
 function frameIdsFromGridFrames(
   frames: readonly (McapTopicPlaybackFrame<GridVisualization> | null)[],
+): readonly string[] {
+  const frameIds: string[] = [];
+
+  for (const playbackFrame of frames) {
+    if (!playbackFrame) {
+      continue;
+    }
+    pushFrameId(frameIds, playbackFrame.frame.coordinateFrameId);
+  }
+
+  return frameIds;
+}
+
+function frameIdsFromCalibrationFrames(
+  frames: readonly (McapTopicPlaybackFrame<CameraCalibrationVisualization> | null)[],
 ): readonly string[] {
   const frameIds: string[] = [];
 

@@ -1,11 +1,13 @@
 import { Quaternion, Vector3 } from "three";
 import type {
+  CameraCalibrationVisualization,
   GridVisualization,
   PointCloudVisualization,
   SceneEntityVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
 import type {
+  CameraFrustumPanelLayer,
   GridPanelLayer,
   PointCloudFrameTransform,
   PointCloudPanelLayer,
@@ -35,10 +37,12 @@ export interface Mcap3dTransformGapWarning {
 }
 
 export interface Mcap3dLayerBuildResult {
+  readonly cameraFrustumLayers: readonly CameraFrustumPanelLayer[];
   readonly clampedFrameIds: readonly string[];
   readonly gridLayers: readonly GridPanelLayer[];
   readonly largeInterpolationGaps: readonly Mcap3dTransformGapWarning[];
   readonly pendingAnnotationFrameIds: readonly string[];
+  readonly pendingFrustumFrameIds: readonly string[];
   readonly pendingGridFrameIds: readonly string[];
   readonly pointCloudLayers: readonly PointCloudPanelLayer[];
   readonly provisionalFrameIds: readonly string[];
@@ -56,33 +60,39 @@ export interface Mcap3dLayerBuildResult {
  */
 export function build3dLayers({
   annotationFrames = [],
+  calibrationFrames = [],
   frameTransforms,
   frames,
   gridFrames = [],
   largeInterpolationGapWarningNs = 0n,
   provisionalTopicId,
   selectedAnnotationTopics = [],
+  selectedCalibrationTopics = [],
   selectedGridTopics = [],
   selectedTopics,
   worldFrameId,
 }: {
   readonly annotationFrames?: readonly (McapTopicPlaybackFrame<SceneUpdateVisualization> | null)[];
+  readonly calibrationFrames?: readonly (McapTopicPlaybackFrame<CameraCalibrationVisualization> | null)[];
   readonly frameTransforms: McapFrameTransformsState;
   readonly frames: readonly (McapTopicPlaybackFrame<PointCloudVisualization> | null)[];
   readonly gridFrames?: readonly (McapTopicPlaybackFrame<GridVisualization> | null)[];
   readonly largeInterpolationGapWarningNs?: bigint;
   readonly provisionalTopicId?: string | null;
   readonly selectedAnnotationTopics?: readonly string[];
+  readonly selectedCalibrationTopics?: readonly string[];
   readonly selectedGridTopics?: readonly string[];
   readonly selectedTopics: readonly string[];
   readonly worldFrameId: string;
 }): Mcap3dLayerBuildResult {
+  const cameraFrustumLayers: CameraFrustumPanelLayer[] = [];
   const gridLayers: GridPanelLayer[] = [];
   const pointCloudLayers: PointCloudPanelLayer[] = [];
   const sceneAnnotationLayers: SceneAnnotationPanelLayer[] = [];
   const clampedFrameIds = new Set<string>();
   const largeInterpolationGapsByFrameId = new Map<string, bigint>();
   const pendingAnnotationFrameIds = new Set<string>();
+  const pendingFrustumFrameIds = new Set<string>();
   const pendingGridFrameIds = new Set<string>();
   const pendingTopicId = provisionalTopicId ?? selectedTopics[0] ?? null;
   const provisionalFrameIds = new Set<string>();
@@ -200,6 +210,47 @@ export function build3dLayers({
     });
   });
 
+  selectedCalibrationTopics.forEach((topic, index) => {
+    const playbackFrame = calibrationFrames[index];
+    if (!playbackFrame) {
+      return;
+    }
+
+    const frame = playbackFrame.frame;
+    const layerBase = {
+      contentTimeNs: playbackFrame.contentTimeNs,
+      frame,
+      id: topic,
+    };
+    if (!frame.coordinateFrameId) {
+      // A frustum without a camera frame has no meaningful placement, but
+      // origin rendering keeps it debuggable rather than silently absent.
+      cameraFrustumLayers.push(layerBase);
+      transformedLayerCount += 1;
+      return;
+    }
+
+    // Frustums are frame-locked: the camera rig pose must track the world
+    // frame at the playhead, like grids and frame-locked scene entities.
+    const resolution = resolveCachedFrameTransform(
+      frame.coordinateFrameId,
+      playbackFrame.requestedTimeNs,
+    );
+    if (resolution.status === "missing") {
+      return;
+    }
+    if (resolution.status === "pending") {
+      pendingFrustumFrameIds.add(frame.coordinateFrameId);
+      return;
+    }
+
+    transformedLayerCount += 1;
+    cameraFrustumLayers.push({
+      ...layerBase,
+      frameTransform: resolution.transform,
+    });
+  });
+
   selectedAnnotationTopics.forEach((topic, index) => {
     const playbackFrame = annotationFrames[index];
     if (!playbackFrame) {
@@ -229,12 +280,14 @@ export function build3dLayers({
   });
 
   return {
+    cameraFrustumLayers,
     clampedFrameIds: [...clampedFrameIds].sort(),
     gridLayers,
     largeInterpolationGaps: [...largeInterpolationGapsByFrameId.entries()]
       .map(([frameId, gapNs]) => ({ frameId, gapNs }))
       .sort((left, right) => left.frameId.localeCompare(right.frameId)),
     pendingAnnotationFrameIds: [...pendingAnnotationFrameIds].sort(),
+    pendingFrustumFrameIds: [...pendingFrustumFrameIds].sort(),
     pendingGridFrameIds: [...pendingGridFrameIds].sort(),
     pointCloudLayers,
     provisionalFrameIds: [...provisionalFrameIds].sort(),
