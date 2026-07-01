@@ -26,6 +26,7 @@ export interface CreateWorkerResourceClientOptions {
   readonly debugChunkReads?: boolean;
   readonly logChunkRead?: (entry: McapChunkReadDebugLog) => void;
   readonly onByteRead?: (entry: ByteReadDebugLog) => void;
+  readonly readSignal?: { readonly current: AbortSignal | null };
 }
 
 /**
@@ -36,6 +37,7 @@ export function createWorkerResourceClient({
   debugChunkReads,
   logChunkRead,
   onByteRead,
+  readSignal,
 }: CreateWorkerResourceClientOptions = {}): McapResourceClient {
   const query = createMultimodalQueryClient({
     caches: {
@@ -50,6 +52,7 @@ export function createWorkerResourceClient({
     byteClient: query.bytes,
     debugChunkReads,
     logChunkRead,
+    readSignal,
     decodeClient: createDecodeClient({
       // Decoded visualization buffers are transferred to the UI thread.
       // Reusing worker-cached decoded results would either return detached

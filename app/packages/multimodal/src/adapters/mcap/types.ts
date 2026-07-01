@@ -391,6 +391,15 @@ export interface McapResourceClient {
   dispose(): void;
 
   /**
+   * Cancels queued and in-flight speculative idle-lane reads (background
+   * lookahead batches, transform runway windows). Called on seek so a
+   * constrained link goes to foreground catch-up instead of finishing
+   * transfers nobody needs. Cancelled reads reject with the canonical
+   * cancelled error; consumers treat those as benign.
+   */
+  cancelIdleReads?(): void;
+
+  /**
    * Subscribes to cumulative network-transport snapshots from worker-backed
    * read lanes. Inline clients (tests, workers themselves) omit this;
    * network-health consumers must treat it as optional.

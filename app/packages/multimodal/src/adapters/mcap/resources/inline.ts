@@ -52,6 +52,7 @@ export interface CreateInlineMcapResourceClientOptions {
   readonly debugChunkReads?: boolean;
   readonly logChunkRead?: (entry: McapChunkReadDebugLog) => void;
   readonly readerFactory?: McapReaderFactory;
+  readonly readSignal?: { readonly current: AbortSignal | null };
 }
 
 /**
@@ -74,6 +75,7 @@ export function createInlineMcapResourceClient(
     debugChunkReads: options.debugChunkReads,
     logChunkRead: options.logChunkRead,
     readerFactory,
+    readSignal: options.readSignal,
   });
   const topicReads = new Map<string, Promise<readonly StreamInventory[]>>();
   const topicTimeBoundsReads = new Map<

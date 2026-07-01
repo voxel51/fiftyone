@@ -37,6 +37,7 @@ import type {
   McapStreamSyncPolicies,
   McapSynchronizedMessageWindow,
 } from "../types";
+import { isMcapReadCancelledError } from "../errors";
 import { MCAP_ACTIVE_TIMELINE } from "../types";
 import { useSetMcapDataStream } from "./mcap-data-stream-context";
 import {
@@ -1022,6 +1023,19 @@ export function useRegisterMcapDataStream({
         })
         .catch((error) => {
           if (sourceEpochRef.current !== sourceEpoch) return;
+          // Deliberate cancellation (seek reclaiming the link) is benign:
+          // no failure streaks — the ticks simply stay unfetched, and the
+          // caller's `.finally` still clears pending bookkeeping so future
+          // passes can re-request them.
+          if (isMcapReadCancelledError(error)) {
+            if (latencyDebugEnabled) {
+              recordMcapLatencyMetric("mcap data batch cancelled", 1, {
+                mcapDataRequestId,
+                operation,
+              });
+            }
+            return;
+          }
           handleFetchFailure(error, toFetch, topicsToFetch);
           if (latencyDebugEnabled) {
             markMcapLatencyEvent("mcap data batch failed", {
@@ -1922,11 +1936,13 @@ export function useRegisterMcapDataStream({
   useEffect(() => {
     if (seekEvent) {
       // Stamp seeks so the idle-work gate can hold speculative reads while
-      // the foreground catch-up fetch owns a constrained link.
+      // the foreground catch-up fetch owns a constrained link, and reclaim
+      // it immediately from speculative transfers already in flight.
       lastSeekAtMsRef.current = mcapLatencyNowMs();
+      client?.cancelIdleReads?.();
       prefetchLookaheadFrom(seekEvent.time);
     }
-  }, [seekEvent, prefetchLookaheadFrom]);
+  }, [client, seekEvent, prefetchLookaheadFrom]);
 
   // Mount-time: kick off lookahead so the buffer fills before play/seek.
   // (May be a no-op if no tile has subscribed yet — subscribeToTopic also
