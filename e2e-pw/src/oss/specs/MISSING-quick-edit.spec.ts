@@ -242,12 +242,13 @@ test.describe.serial("quick edit", () => {
     );
 
     /**
-     * Asserts that the sidebar edit fields reflect the given bounding box,
-     * converting relative (0–1) coordinates to absolute pixel values.
+     * Asserts that the sidebar edit fields reflect the given bounding box. The
+     * position panel shows the stored relative (0–1) coordinates directly.
      */
     const assertPosition = async function ({ x, y, width, height }: Box) {
       await modal.sidebar.edit.assert.verifyFieldValue(
         "position.x",
+<<<<<<< HEAD
         (x * IMAGE_WIDTH).toString(),
       );
       await modal.sidebar.edit.assert.verifyFieldValue(
@@ -261,6 +262,21 @@ test.describe.serial("quick edit", () => {
       await modal.sidebar.edit.assert.verifyFieldValue(
         "dimensions.height",
         (height * IMAGE_HEIGHT).toString(),
+=======
+        x.toString(),
+      );
+      await modal.sidebar.edit.assert.verifyFieldValue(
+        "position.y",
+        y.toString(),
+      );
+      await modal.sidebar.edit.assert.verifyFieldValue(
+        "dimensions.width",
+        width.toString(),
+      );
+      await modal.sidebar.edit.assert.verifyFieldValue(
+        "dimensions.height",
+        height.toString(),
+>>>>>>> main
       );
     };
 

@@ -1,9 +1,5 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
+import { useLooker3dSurfaceWrite } from "@fiftyone/annotation";
 import { KnownContexts, usePushUndoable } from "@fiftyone/commands";
-import {
-  useGetSidebarLabels,
-  useLabelsContext,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import * as fos from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useCallback } from "react";
@@ -21,8 +17,6 @@ import { transientAtom, useEndDrag } from "./transient";
 import type { LabelId } from "./types";
 import {
   useAddWorkingLabel,
-  useDeleteWorkingLabel,
-  useRestoreWorkingLabel,
   useUpdateWorkingLabel,
   workingAtom,
 } from "./working";
@@ -34,18 +28,25 @@ import {
 /**
  * Hook that provides operations for manipulating cuboids in the working store.
  * All operations are undoable and integrate with the undo system.
+ *
+ * The working store is the optimistic-render layer: an edit lands there first
+ * (so the scene updates immediately), then commits through the engine surface
+ * controller for persistence. Two shapes:
+ *   - add/edit a label: optimistic working write + `commit` (origin-suppressed,
+ *     so the read-half bridge never echoes the surface's own write back);
+ *   - remove a label: `remove` (engine delete, NOT suppressed) — the read-half
+ *     drops the working entry, and undo re-adds the captured value.
+ * Undo is a value-inverse on the `ModalAnnotate` command-context stack. Sidebar
+ * rows follow the engine read-half (the engine-complete list mirror), so no
+ * surface bookkeeping is needed: a commit derives the row, a delete drops it.
  */
 export function useCuboidOperations() {
   const { createPushAndExec } = usePushUndoable(KnownContexts.ModalAnnotate);
   const updateLabel = useUpdateWorkingLabel();
   const addLabel = useAddWorkingLabel();
-  const deleteLabel = useDeleteWorkingLabel();
-  const restoreLabel = useRestoreWorkingLabel();
   const endDrag = useEndDrag();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const eventBus = useAnnotationEventBus();
-  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
-  const getSidebarLabels = useGetSidebarLabels();
+  const { commit, remove } = useLooker3dSurfaceWrite();
 
   /**
    * Updates cuboid properties.
@@ -87,23 +88,25 @@ export function useCuboidOperations() {
           roundedUpdates.quaternion = roundTuple(updates.quaternion);
         }
 
+        const nextLabel = { ...existingLabel, ...roundedUpdates };
+
         const execFn = () => {
           updateLabel(labelId, roundedUpdates);
-          eventBus.dispatch("annotation:labelEdit", {
-            label: { id: labelId, ...roundedUpdates },
-          });
+          commit(nextLabel);
         };
 
         const undoFn = () => {
           updateLabel(labelId, previousState);
-          eventBus.dispatch("annotation:undoLabelEdit", {
-            label: { id: labelId, ...previousState },
-          });
+          commit(existingLabel);
         };
 
         createPushAndExec(`cuboid-update-${labelId}`, execFn, undoFn);
       },
+<<<<<<< HEAD
     [createPushAndExec, updateLabel],
+=======
+    [createPushAndExec, updateLabel, commit],
+>>>>>>> main
   );
 
   /**
@@ -188,17 +191,26 @@ export function useCuboidOperations() {
         label: labelClass,
       };
 
+      // create collapses into commit: the draft is born with a durable
+      // ObjectId, so the first commit upserts it into the engine
       const execFn = () => {
         addLabel(newLabel);
+        commit(newLabel);
       };
 
+      // undo a create = remove from the scene; the engine delete drives the
+      // read-half to drop the working entry
       const undoFn = () => {
-        deleteLabel(labelId);
+        remove({ path, instanceId: labelId });
       };
 
       createPushAndExec(`create-cuboid-${labelId}`, execFn, undoFn);
     },
+<<<<<<< HEAD
     [createPushAndExec, addLabel, deleteLabel, currentSampleId],
+=======
+    [createPushAndExec, addLabel, currentSampleId, commit, remove],
+>>>>>>> main
   );
 
   /**
@@ -214,24 +226,25 @@ export function useCuboidOperations() {
           return;
         }
 
+<<<<<<< HEAD
         const sidebarLabel = getSidebarLabels().find(
           (l) => l.data._id === labelId,
         );
 
+=======
+>>>>>>> main
         const execFn = () => {
-          deleteLabel(labelId);
-          removeLabelFromSidebar(labelId);
+          remove({ path: existingLabel.path, instanceId: labelId });
         };
 
         const undoFn = () => {
-          restoreLabel(labelId);
-          if (sidebarLabel) {
-            addLabelToSidebar(sidebarLabel);
-          }
+          addLabel(existingLabel);
+          commit(existingLabel);
         };
 
         createPushAndExec(`delete-cuboid-${labelId}`, execFn, undoFn);
       },
+<<<<<<< HEAD
     [
       createPushAndExec,
       deleteLabel,
@@ -240,6 +253,9 @@ export function useCuboidOperations() {
       addLabelToSidebar,
       getSidebarLabels,
     ],
+=======
+    [createPushAndExec, addLabel, commit, remove],
+>>>>>>> main
   );
 
   return {
@@ -256,19 +272,16 @@ export function useCuboidOperations() {
 
 /**
  * Hook that provides operations for manipulating polylines in the working store.
- * All operations are undoable and integrate with the undo system.
+ * All operations are undoable and integrate with the undo system. See
+ * {@link useCuboidOperations} for the optimistic-working + engine-commit model.
  */
 export function usePolylineOperations() {
   const { createPushAndExec } = usePushUndoable(KnownContexts.ModalAnnotate);
   const updateLabel = useUpdateWorkingLabel();
   const addLabel = useAddWorkingLabel();
-  const deleteLabel = useDeleteWorkingLabel();
-  const restoreLabel = useRestoreWorkingLabel();
   const endDrag = useEndDrag();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const eventBus = useAnnotationEventBus();
-  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
-  const getSidebarLabels = useGetSidebarLabels();
+  const { commit, remove } = useLooker3dSurfaceWrite();
 
   /**
    * Updates polyline properties.
@@ -305,23 +318,25 @@ export function usePolylineOperations() {
           );
         }
 
+        const nextLabel = { ...existingLabel, ...roundedUpdates };
+
         const execFn = () => {
           updateLabel(labelId, roundedUpdates);
-          eventBus.dispatch("annotation:labelEdit", {
-            label: { id: labelId, ...roundedUpdates },
-          });
+          commit(nextLabel);
         };
 
         const undoFn = () => {
           updateLabel(labelId, previousState);
-          eventBus.dispatch("annotation:undoLabelEdit", {
-            label: { id: labelId, ...previousState },
-          });
+          commit(existingLabel);
         };
 
         createPushAndExec(`polyline-update-${labelId}`, execFn, undoFn);
       },
+<<<<<<< HEAD
     [createPushAndExec, updateLabel],
+=======
+    [createPushAndExec, updateLabel, commit],
+>>>>>>> main
   );
 
   /**
@@ -422,15 +437,20 @@ export function usePolylineOperations() {
 
       const execFn = () => {
         addLabel(newLabel);
+        commit(newLabel);
       };
 
       const undoFn = () => {
-        deleteLabel(labelId);
+        remove({ path, instanceId: labelId });
       };
 
       createPushAndExec(`create-polyline-${labelId}`, execFn, undoFn);
     },
+<<<<<<< HEAD
     [createPushAndExec, addLabel, deleteLabel, currentSampleId],
+=======
+    [createPushAndExec, addLabel, currentSampleId, commit, remove],
+>>>>>>> main
   );
 
   /**
@@ -446,24 +466,25 @@ export function usePolylineOperations() {
           return;
         }
 
+<<<<<<< HEAD
         const sidebarLabel = getSidebarLabels().find(
           (l) => l.data._id === labelId,
         );
 
+=======
+>>>>>>> main
         const execFn = () => {
-          deleteLabel(labelId);
-          removeLabelFromSidebar(labelId);
+          remove({ path: existingLabel.path, instanceId: labelId });
         };
 
         const undoFn = () => {
-          restoreLabel(labelId);
-          if (sidebarLabel) {
-            addLabelToSidebar(sidebarLabel);
-          }
+          addLabel(existingLabel);
+          commit(existingLabel);
         };
 
         createPushAndExec(`delete-polyline-${labelId}`, execFn, undoFn);
       },
+<<<<<<< HEAD
     [
       createPushAndExec,
       deleteLabel,
@@ -472,6 +493,9 @@ export function usePolylineOperations() {
       addLabelToSidebar,
       getSidebarLabels,
     ],
+=======
+    [createPushAndExec, addLabel, commit, remove],
+>>>>>>> main
   );
 
   return {

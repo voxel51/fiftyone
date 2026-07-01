@@ -1,27 +1,17 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
-import { labelSchemaData } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
-import { getDefaultStore } from "jotai";
+import { useAnnotationEngine, useSceneSampleId } from "@fiftyone/annotation";
 import { useCallback } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
-import { useSetEditingToExisting3dLabel } from "../annotation/useSetEditingToExisting3dLabel";
-import { ANNOTATION_CUBOID, ANNOTATION_POLYLINE } from "../constants";
 import type { OverlayLabel } from "../labels/loader";
-import {
-  currentArchetypeSelectedForTransformAtom,
-  selectedLabelForAnnotationAtom,
-  transformModeAtom,
-} from "../state";
-import { useSetCurrent3dAnnotationMode } from "../state/accessors";
-import {
-  Archetype3d,
-  isDetection3dOverlay,
-  isPolyline3dOverlay,
-} from "../types";
+import type { Archetype3d } from "../types";
 
 /**
- * Hook that provides the logic for selecting a 3D label for annotation.
+ * Selecting a 3D label for annotation = writing the engine's interaction
+ * anchor. The form follows the anchor (sidebar binding), and this surface's
+ * scene-side state (transform controls, selection atoms) follows it through
+ * {@link use3dInteractionAdapter} — one selection path for canvas clicks,
+ * sidebar rows, and entrance labels.
  */
 export const useSelect3DLabelForAnnotation = () => {
+<<<<<<< HEAD
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom,
@@ -29,72 +19,28 @@ export const useSelect3DLabelForAnnotation = () => {
   const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
     currentArchetypeSelectedForTransformAtom,
   );
+=======
+  const engine = useAnnotationEngine();
+  // 3D labels belong to the pinned 3D scene's sample (the working-store key
+  // the bridge registers), not the selected 2D slice in a grouped modal
+  const sample = useSceneSampleId();
+>>>>>>> main
 
-  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
-
-  const setEditingToExistingPolyline =
-    useSetEditingToExisting3dLabel(ANNOTATION_POLYLINE);
-  const setEditingToExistingCuboid =
-    useSetEditingToExisting3dLabel(ANNOTATION_CUBOID);
-
-  const annotationEventBus = useAnnotationEventBus();
-
-  /**
-   * Select a label for annotation editing.
-   *
-   * @param label - The label to select
-   * @param archetype - Optional archetype. If not provided, it will be deduced from the label type.
-   */
-  const select3DLabelForAnnotation = useCallback(
-    (label: OverlayLabel, archetype?: Archetype3d) => {
-      let resolvedArchetype = archetype;
-      if (!resolvedArchetype) {
-        if (isDetection3dOverlay(label)) {
-          resolvedArchetype = ANNOTATION_CUBOID;
-        } else if (isPolyline3dOverlay(label)) {
-          resolvedArchetype = ANNOTATION_POLYLINE;
-        } else {
-          return;
-        }
-      }
-
-      // Check if field is read-only
-      const store = getDefaultStore();
-      const fieldSchemaData = store.get(labelSchemaData(label.path));
-      const isReadOnly = !!fieldSchemaData?.read_only;
-
-      annotationEventBus.dispatch("annotation:3dLabelSelected", {
-        id: label._id ?? (label["id"] as string),
-        archetype: resolvedArchetype,
-        label,
-      });
-
-      if (resolvedArchetype === ANNOTATION_CUBOID) {
-        if (!isReadOnly) {
-          setSelectedLabelForAnnotation(label);
-          setCurrent3dAnnotationMode(ANNOTATION_CUBOID);
-          setCurrentArchetypeSelectedForTransform(resolvedArchetype);
-        }
-
-        setEditingToExistingCuboid(label);
+  return useCallback(
+    (label: OverlayLabel, _archetype?: Archetype3d) => {
+      if (!label._id || !label.path || !sample) {
         return;
       }
 
-      if (resolvedArchetype === ANNOTATION_POLYLINE) {
-        if (!isReadOnly) {
-          setSelectedLabelForAnnotation(label);
-          setCurrent3dAnnotationMode(ANNOTATION_POLYLINE);
-          setCurrentArchetypeSelectedForTransform(resolvedArchetype);
-
-          // We only support translate for polylines for now
-          if (transformMode === "rotate" || transformMode === "scale") {
-            setTransformMode("translate");
-          }
-        }
-
-        setEditingToExistingPolyline(label);
-      }
+      engine.interaction.setActive([
+        {
+          sample,
+          path: label.path,
+          instanceId: label._id,
+        },
+      ]);
     },
+<<<<<<< HEAD
     [
       transformMode,
       setTransformMode,
@@ -105,7 +51,8 @@ export const useSelect3DLabelForAnnotation = () => {
       setEditingToExistingCuboid,
       annotationEventBus,
     ],
+=======
+    [engine, sample],
+>>>>>>> main
   );
-
-  return select3DLabelForAnnotation;
 };

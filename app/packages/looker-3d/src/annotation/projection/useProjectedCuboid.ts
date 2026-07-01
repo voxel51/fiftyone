@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { Vector3 } from "three";
 import type { FrustumData } from "../../frustum/types";
 import type { CuboidTransformData } from "../types";
 import { computeCuboidProjection } from "./geometry";
@@ -13,9 +14,13 @@ import type { CuboidProjectionData } from "./types";
 export function useProjectedCuboid(
   cuboid: CuboidTransformData | null | undefined,
   frustumData: FrustumData,
+<<<<<<< HEAD
+=======
+  upVector?: Vector3 | null,
+>>>>>>> main
 ): CuboidProjectionData | null {
   return useMemo(() => {
     if (!cuboid) return null;
-    return computeCuboidProjection(cuboid, frustumData);
-  }, [cuboid, frustumData]);
+    return computeCuboidProjection(cuboid, frustumData, upVector);
+  }, [cuboid, frustumData, upVector?.x, upVector?.y, upVector?.z]);
 }

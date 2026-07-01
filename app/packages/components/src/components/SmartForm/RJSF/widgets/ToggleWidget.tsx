@@ -46,7 +46,10 @@ export default function ToggleWidget(props: WidgetProps) {
     [],
   );
 
-  const defaultIndex = value === true ? 1 : 0;
+  // Controlled: drive the active tab from `value` so an external change (e.g.
+  // scrubbing video frames, an out-of-band keyframe toggle) is reflected. An
+  // uncontrolled `defaultIndex` is read once at mount and would go stale.
+  const activeIndex = value === true ? 1 : 0;
   const isDisabled = disabled || readonly;
 
   const handleChange = (index: number) => {
@@ -62,11 +65,7 @@ export default function ToggleWidget(props: WidgetProps) {
         pointerEvents: isDisabled ? "none" : "auto",
       }}
     >
-      <ToggleSwitch
-        tabs={tabs}
-        defaultIndex={defaultIndex}
-        onChange={handleChange}
-      />
+      <ToggleSwitch tabs={tabs} index={activeIndex} onChange={handleChange} />
     </div>
   );
 

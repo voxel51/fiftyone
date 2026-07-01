@@ -15,6 +15,7 @@ import { useToolsContext } from "./useToolsContext";
 import { useActiveTask } from "./useActiveTask";
 import { useActiveCapabilities } from "./useActiveCapabilities";
 import { useSampleDescriptor } from "./useSampleDescriptor";
+import { useSegmentBitmapSource } from "./useSegmentBitmapSource";
 
 /**
  * Converts an `[x, y, w, h]` bounding box to a four-corner {@link ROI}
@@ -123,6 +124,7 @@ const useAgentContext = (): AnnotationContext | null => {
   const { selected } = useAnnotationContext();
   const sampleDescriptor = useSampleDescriptor();
   const toolsContext = useToolsContext();
+  const getMediaBitmap = useSegmentBitmapSource() ?? undefined;
 
   return useMemo(() => {
     // Gate on the `type` discriminator and an actual array — Detection3D
@@ -147,6 +149,7 @@ const useAgentContext = (): AnnotationContext | null => {
       ...toolsContext,
       ...labelOverride,
       sampleDescriptor,
+      getMediaBitmap,
     };
-  }, [sampleDescriptor, selected?.label, toolsContext]);
+  }, [sampleDescriptor, selected?.label, toolsContext, getMediaBitmap]);
 };

@@ -368,6 +368,7 @@ export function useRegisterMcapDataStream({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maybeAutoSeekToFirstData, source, store]);
 
+<<<<<<< HEAD
   // This effect retries the initial auto-seek once the timeline index is
   // committed to React state; topic bounds can resolve first.
   useEffect(() => {
@@ -433,6 +434,13 @@ export function useRegisterMcapDataStream({
         bufferedRangesTimerRef.current = null;
       }
     },
+=======
+  const getActiveTopics = useCallback(
+    (): string[] =>
+      allTopicsRef.current.filter(
+        (t) => topicCachesRef.current.get(t)?.isActive,
+      ),
+>>>>>>> main
     [],
   );
 
@@ -629,6 +637,7 @@ export function useRegisterMcapDataStream({
 
       return true;
     },
+<<<<<<< HEAD
     [
       client,
       source,
@@ -637,6 +646,9 @@ export function useRegisterMcapDataStream({
       handleFetchSuccess,
       publishStreamStatuses,
     ],
+=======
+    [client, source, store],
+>>>>>>> main
   );
 
   // Fetch the nearest target frame through the worker's current-frame lane so
@@ -699,6 +711,7 @@ export function useRegisterMcapDataStream({
 
       return true;
     },
+<<<<<<< HEAD
     [
       client,
       source,
@@ -707,6 +720,9 @@ export function useRegisterMcapDataStream({
       handleFetchSuccess,
       publishStreamStatuses,
     ],
+=======
+    [client, source, store],
+>>>>>>> main
   );
 
   // Collect ticks in [startSec, endSec] where at least one active topic
@@ -782,7 +798,10 @@ export function useRegisterMcapDataStream({
       fetchBatch,
       fetchCurrentFrame,
       getActiveTopics,
+<<<<<<< HEAD
       publishStreamStatuses,
+=======
+>>>>>>> main
       store,
     ],
   );
@@ -934,7 +953,11 @@ export function useRegisterMcapDataStream({
         if (!cache.isActive) lastFrameRef.current.delete(topic);
       };
     },
+<<<<<<< HEAD
     [maybeAutoSeekToFirstData, prefetchLookaheadFrom, store],
+=======
+    [prefetchLookaheadFrom, store],
+>>>>>>> main
   );
 
   const getTopicCache = useCallback(

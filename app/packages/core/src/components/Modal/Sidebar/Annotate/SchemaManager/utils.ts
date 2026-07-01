@@ -12,6 +12,7 @@ import {
   getDefaultComponent,
   LABEL_TYPE_OPTIONS,
   LABEL_TYPE_OPTIONS_3D,
+  LABEL_TYPE_OPTIONS_VIDEO,
   LIST_TYPES,
   NUMERIC_TYPES,
   SYSTEM_READ_ONLY_FIELD_NAME,
@@ -79,6 +80,9 @@ export interface AttributeConfig {
   range?: [number, number];
   default?: string | number | boolean | (string | number)[]; // Array for list types
   read_only?: boolean;
+  // Attribute value may vary frame-to-frame within a track; drives sub-track
+  // rows and excludes the attribute from whole-track propagation.
+  dynamic?: boolean;
   when?: AttributeCondition;
   _source?: string;
   taxonomy?: string;
@@ -120,6 +124,7 @@ export interface AttributeFormData {
   default: string;
   listDefault: (string | number)[]; // For list types
   read_only: boolean;
+  dynamic: boolean;
   when?: AttributeCondition;
   _source?: string;
   valuesMode: ValuesMode;
@@ -304,6 +309,7 @@ export const createDefaultFormData = (): AttributeFormData => ({
   default: "",
   listDefault: [],
   read_only: false,
+  dynamic: false,
   valuesMode: VALUES_MODE.simple,
 });
 
@@ -339,6 +345,7 @@ export const toFormData = (config: AttributeConfig): AttributeFormData => {
     default: defaultStr,
     listDefault,
     read_only: config.read_only || false,
+    dynamic: config.dynamic || false,
     when: config.when,
     _source: config._source,
     valuesMode: config.taxonomy ? VALUES_MODE.taxonomy : VALUES_MODE.simple,
@@ -398,6 +405,7 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
       component: data.component || undefined,
       range,
       read_only: data.read_only || undefined,
+      dynamic: data.dynamic || undefined,
       taxonomy: data.taxonomy,
     };
   }
@@ -410,6 +418,7 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
     range,
     default: defaultValue,
     read_only: data.read_only || undefined,
+    dynamic: data.dynamic || undefined,
   };
 };
 
@@ -689,11 +698,20 @@ export const reconcileComponent = (
 // =============================================================================
 
 /**
- * Get label type options based on media type
+ * Get label type options based on media type and field scope.
+ *
+ * Frame-level fields on video are per-image, so they support the full spatial
+ * label set; sample-level video fields are limited to clip-level label types.
  */
-export const getLabelTypeOptions = (mediaType: string | null | undefined) => {
+export const getLabelTypeOptions = (
+  mediaType: string | null | undefined,
+  isFrameField = false,
+) => {
   if (mediaType && is3d(mediaType)) {
     return LABEL_TYPE_OPTIONS_3D;
+  }
+  if (mediaType === "video") {
+    return isFrameField ? LABEL_TYPE_OPTIONS : LABEL_TYPE_OPTIONS_VIDEO;
   }
   return LABEL_TYPE_OPTIONS;
 };
@@ -708,14 +726,30 @@ export const getLabelTypeOptions = (mediaType: string | null | undefined) => {
 export const validateFieldName = (
   fieldName: string,
   existingFields: Record<string, unknown> | null,
+<<<<<<< HEAD
+=======
+  mediaType?: string | null,
+>>>>>>> main
 ): string | null => {
   const trimmed = fieldName.trim();
   if (!trimmed) return null;
   if (existingFields && trimmed in existingFields) {
     return "Field name already exists";
   }
-  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) {
-    return "Invalid field name (use letters, numbers, underscores)";
+
+  // Frame fields only exist on video, where a single "frames." prefix targets
+  // the frame schema (e.g. "frames.detections"). The "." stays disallowed
+  // everywhere else, and deeper paths are rejected.
+  const isVideo = mediaType === "video";
+  const pattern = isVideo
+    ? /^(frames\.)?[a-zA-Z_][a-zA-Z0-9_]*$/
+    : /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+  if (!pattern.test(trimmed)) {
+    return isVideo
+      ? "Invalid field name (use letters, numbers, underscores; prefix with frames. for a frame field)"
+      : "Invalid field name (use letters, numbers, underscores)";
   }
+
   return null;
 };

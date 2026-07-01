@@ -1,3 +1,4 @@
+import type { AnnotationEngine, LabelRef } from "@fiftyone/annotation";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
@@ -7,6 +8,7 @@ import {
 } from "@fiftyone/utilities";
 import type { BaseOverlay, OverlayFactory, Scene2D } from "@fiftyone/lighter";
 import type { PrimitiveAtom } from "jotai";
+import type { AttributeConfig } from "../../SchemaManager/utils";
 
 export type LabelType =
   | typeof CLASSIFICATION
@@ -17,7 +19,7 @@ export type LabelType =
 /** Fields the annotation-context consumers actually read off the schema. */
 export interface LabelSchema {
   read_only?: boolean;
-  attributes?: unknown[];
+  attributes?: AttributeConfig[];
   classes?: string[];
   default?: unknown;
   [key: string]: unknown;
@@ -35,6 +37,15 @@ export interface CreateDeps {
   scene: Scene2D | null;
   addOverlay: (overlay: BaseOverlay, withUndo?: boolean) => void;
   overlayFactory: OverlayFactory;
+  /**
+   * Engine + sample so the Classification create path can write the new label
+   * through to the engine immediately — Classification has no draw gesture
+   * (no `lighter:overlay-establish` ever fires), so without an explicit
+   * engine.updateLabel here the new label lives only in the sidebar's jotai
+   * draft and never reaches the underlying sample / labels list.
+   */
+  engine: AnnotationEngine;
+  sample: string;
 }
 
 /**
@@ -50,6 +61,14 @@ export interface AnnotationContextSelected {
   data: AnnotationLabel["data"];
   /** Field path the current label belongs to. */
   field: string | null;
+  /**
+   * Engine identity captured from the interaction anchor at select time —
+   * the namespace write sites address the engine with (full `frames.<field>`
+   * path, track `instanceId`, present `frame`). Null when the selection had no
+   * anchor (externally-managed editing atoms); write sites then fall back to
+   * `field` + `data._id`.
+   */
+  ref: LabelRef | null;
   /** Canonical type of the current label. */
   type: LabelType | null;
   /** Convenience accessor for `label.overlay`. */
@@ -118,9 +137,11 @@ export interface AnnotationContext {
   /**
    * Point editing at an existing label atom. Snapshots `savedData`, clears
    * any pending new-type flow, and seeds `isEditingMask` from `data.mask` /
-   * `data.mask_path`.
+   * `data.mask_path`. `ref` is the engine identity from the interaction anchor
+   * (carried through to `selected.ref` for the form's write sites); omit it for
+   * externally-managed atoms without an anchor.
    */
-  select: (labelAtom: PrimitiveAtom<AnnotationLabel>) => void;
+  select: (labelAtom: PrimitiveAtom<AnnotationLabel>, ref?: LabelRef) => void;
   /**
    * Build a new label of `type` and make it the editing target. Resolves
    * field/class from `overrides` or last-used memory. Returns null and

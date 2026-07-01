@@ -1,4 +1,15 @@
+<<<<<<< HEAD
 import { cleanup, render, screen } from "@testing-library/react";
+=======
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
+import React from "react";
+>>>>>>> main
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import { TrackProvider, type Track } from "../../lib/tracks/TrackProvider";
@@ -30,7 +41,7 @@ function renderTimeline(opts: RenderOpts = {}) {
 
   return render(
     <PlaybackProvider duration={duration} stepInterval={1 / 30}>
-      <TrackProvider initialTracks={tracks} initialPinnedIds={pinnedIds}>
+      <TrackProvider tracks={tracks} initialPinnedIds={pinnedIds}>
         <TimelineWithTracks labelWidth={labelWidth} />
       </TrackProvider>
     </PlaybackProvider>,
@@ -77,19 +88,20 @@ describe("TimelineWithTracks", () => {
       expect(root.className).not.toContain(styles.noTracks);
     });
 
-    it("renders track labels for registered tracks", () => {
+    it("renders a pinned track exactly once", () => {
       renderTimeline({ tracks: [TRACK_A, TRACK_B], pinnedIds: ["track-a"] });
-      expect(screen.getByText("Track A")).toBeTruthy();
+      // With the drawer closed (default) a pinned row lives only in the header
+      // overlay — not also in the body — so it mounts once under one track id.
+      expect(screen.getAllByText("Track A")).toHaveLength(1);
     });
 
-    it("renders all tracks in the drawer body when open", () => {
+    it("renders rows for both pinned and unpinned tracks", () => {
       renderTimeline({
         tracks: [TRACK_A, TRACK_B],
         pinnedIds: ["track-a"],
       });
-      // Both labels should be visible in the default open state
-      expect(screen.getByText("Track A")).toBeTruthy();
-      expect(screen.getByText("Track B")).toBeTruthy();
+      expect(screen.getAllByText("Track A").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Track B").length).toBeGreaterThan(0);
     });
   });
 

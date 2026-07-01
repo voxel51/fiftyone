@@ -57,7 +57,7 @@ export const Transformable = ({
   const [isCurrentlyTransforming, setIsCurrentlyTransforming] = useRecoilState(
     isCurrentlyTransformingAtom,
   );
-  const isAnnotateMode = modalMode === "annotate";
+  const isAnnotateMode = modalMode === fos.ModalMode.ANNOTATE;
 
   const onTransformStartDecorated = useCallback(() => {
     setIsCurrentlyTransforming(true);
@@ -75,6 +75,10 @@ export const Transformable = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
       if (event.key === "Escape" && isCurrentlyTransforming) {
         setIsCurrentlyTransforming(false);
         event.stopImmediatePropagation();

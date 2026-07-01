@@ -12,6 +12,15 @@ describe("paths", () => {
       );
       expect(paths.determinePathType("s3://example.com")).toBe(
         paths.PathType.URL,
+<<<<<<< HEAD
+=======
+      );
+      expect(
+        paths.determinePathType("data:image/png;base64,iVBORw0KGgo="),
+      ).toBe(paths.PathType.URL);
+      expect(paths.determinePathType("blob:https://example.com/abc-123")).toBe(
+        paths.PathType.URL,
+>>>>>>> main
       );
     });
 

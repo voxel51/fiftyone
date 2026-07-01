@@ -3,7 +3,7 @@
  */
 
 import { type EventDispatcher, getEventBus } from "@fiftyone/events";
-import { CONTAINS } from "../core/Scene2D";
+import { CONTAINS } from "../core/containment";
 import type { LighterEventGroup } from "../events";
 import type {
   InteractionHandler,
@@ -389,10 +389,23 @@ export abstract class BaseOverlay<
   }
 
   /**
-   * Updates the label for this overlay.
+   * Apply label state without emitting — the silent half of
+   * {@link updateLabel}. Used by Sample→overlay reconciliation so an applied
+   * change does not re-enter the overlay→Sample write path. Subclasses override
+   * to apply their derived state, but must NOT dispatch
+   * `lighter:overlay-commit-requested` here (that belongs in {@link updateLabel}).
+   * @param label - The new label.
+   */
+  applyLabel(label: Label) {
+    this.label = label;
+  }
+
+  /**
+   * Apply a label as a user edit: {@link applyLabel} plus the
+   * `lighter:overlay-commit-requested` dispatch that drives downstream sync.
    * @param label - The new label.
    */
   updateLabel(label: Label) {
-    this.label = label;
+    this.applyLabel(label);
   }
 }

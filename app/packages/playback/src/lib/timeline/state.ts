@@ -300,6 +300,25 @@ export const addSubscriberAtom = atom(
       return next;
     });
   },
+<<<<<<< HEAD
+=======
+);
+
+export const removeSubscriberAtom = atom(
+  null,
+  (get, set, { name, id }: { name: TimelineName; id: SubscriptionId }) => {
+    if (!get(_subscribers(name)).has(id)) {
+      return;
+    }
+
+    set(_subscribers(name), (prev) => {
+      // Return a new Map so Jotai (reference-equality) notices the change.
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  },
+>>>>>>> main
 );
 
 export const setFrameNumberAtom = atom(

@@ -2,7 +2,7 @@ import { type Box3, Vector3, type Vector3Tuple } from "three";
 import { DEFAULT_CAMERA_POSITION } from "../constants";
 import type { Looker3dSettings } from "../settings";
 import type { SavedCameraState } from "../types";
-import { calculateCameraPositionForUpVector } from "../utils";
+import { calculateCameraPositionForUpVector, isFiniteVector3 } from "../utils";
 import { getOrthonormalAxis, getUpVectorFromAxis } from "./utils";
 
 /**
@@ -32,14 +32,6 @@ export interface CameraConfigSources {
   boundingBox: Box3 | null;
   upVector: Vector3 | null;
 }
-
-const isFiniteVector3 = (vector: Vector3): boolean => {
-  return (
-    Number.isFinite(vector.x) &&
-    Number.isFinite(vector.y) &&
-    Number.isFinite(vector.z)
-  );
-};
 
 const isFiniteBbox = (bbox: Box3 | null): bbox is Box3 =>
   bbox !== null && isFiniteVector3(bbox.min) && isFiniteVector3(bbox.max);

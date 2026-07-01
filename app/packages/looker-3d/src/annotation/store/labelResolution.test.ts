@@ -28,13 +28,17 @@ function makeDetection(
   };
 }
 
+<<<<<<< HEAD
 function makeDoc(
   labels: ReconciledDetection3D[],
   deletedIds: string[] = [],
 ): WorkingDoc {
+=======
+function makeDoc(labels: ReconciledDetection3D[]): WorkingDoc {
+>>>>>>> main
   const labelsById: WorkingDoc["labelsById"] = {};
   for (const l of labels) labelsById[l._id] = l;
-  return { labelsById, deletedIds: new Set(deletedIds) };
+  return { labelsById };
 }
 
 function setSchemaClasses(field: string, classes: string[]) {
@@ -82,6 +86,7 @@ describe("getDefaultLabel", () => {
     expect(getDefaultLabel("predictions", doc)).toBe("car");
   });
 
+<<<<<<< HEAD
   it("ignores deleted labels", () => {
     const doc = makeDoc(
       [
@@ -94,6 +99,8 @@ describe("getDefaultLabel", () => {
     expect(getDefaultLabel("predictions", doc)).toBe("person");
   });
 
+=======
+>>>>>>> main
   it("ignores labels from other fields", () => {
     const doc = makeDoc([
       makeDetection("1", { label: "car", path: "other_field" }),

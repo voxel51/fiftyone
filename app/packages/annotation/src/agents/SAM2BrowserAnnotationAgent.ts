@@ -65,7 +65,8 @@ export class SAM2BrowserAnnotationAgent implements AnnotationAgent<SegmentationI
   async infer(
     context: AnnotationContext,
   ): Promise<InferenceResult<SegmentationInferenceResult>> {
-    if (!context.sampleDescriptor.mediaUrl) {
+    // Either a decoded-frame source (video) or a media URL (image) is required.
+    if (!context.getMediaBitmap && !context.sampleDescriptor.mediaUrl) {
       throw new Error("Missing media url");
     }
 
@@ -77,10 +78,7 @@ export class SAM2BrowserAnnotationAgent implements AnnotationAgent<SegmentationI
     this.setStatus("inferring");
 
     try {
-      const result = await this.provider.infer({
-        imageUrl: getSampleSrc(context.sampleDescriptor.mediaUrl),
-        points,
-      });
+      const result = await this.runProviderInference(context, points);
 
       this.setStatus("idle");
 
@@ -206,6 +204,42 @@ export class SAM2BrowserAnnotationAgent implements AnnotationAgent<SegmentationI
     }
 
     await this.initializing$;
+  }
+
+  /**
+   * Run the provider on an already-decoded media bitmap when the context
+   * supplies one (e.g. the active video frame), else fetch + decode the media
+   * URL. The bitmap path avoids decoding a video container as an image and
+   * sidesteps a cross-origin media fetch; it reuses the per-frame embedding
+   * cache so repeated prompts on one frame are decoder-only.
+   *
+   * @private
+   */
+  private async runProviderInference(
+    context: AnnotationContext,
+    points: PromptPoint[],
+  ) {
+    const media = context.getMediaBitmap
+      ? await context.getMediaBitmap()
+      : null;
+
+    if (media) {
+      return this.provider.inferBitmap({
+        bitmap: media.bitmap,
+        cacheKey: media.cacheKey,
+        points,
+        useEmbeddingCache: true,
+      });
+    }
+
+    if (!context.sampleDescriptor.mediaUrl) {
+      throw new Error("Missing media url");
+    }
+
+    return this.provider.infer({
+      imageUrl: getSampleSrc(context.sampleDescriptor.mediaUrl),
+      points,
+    });
   }
 
   /**

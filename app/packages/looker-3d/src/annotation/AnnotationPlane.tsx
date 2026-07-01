@@ -28,7 +28,7 @@ export const AnnotationPlane = ({
     useRecoilState(annotationPlaneAtom);
 
   const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const transformMode = useRecoilValue(transformModeAtom);
+  const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
 
   const [
     currentArchetypeSelectedForTransform,
@@ -53,8 +53,14 @@ export const AnnotationPlane = ({
 
   useEffect(() => {
     setCurrentArchetypeSelectedForTransform(null);
+    setTransformMode("scale");
     setAnnotationPlane((prev) => ({ ...prev, enabled: false }));
-  }, [upVector]);
+  }, [
+    setAnnotationPlane,
+    setCurrentArchetypeSelectedForTransform,
+    setTransformMode,
+    upVector,
+  ]);
 
   const planeSize = useMemo(() => {
     if (!sceneBoundingBox) return 10;
@@ -209,12 +215,32 @@ export const AnnotationPlane = ({
       event.stopPropagation();
 
       if (!isDragging) {
+<<<<<<< HEAD
         setCurrentArchetypeSelectedForTransform((prev) =>
           prev === "annotation-plane" ? null : "annotation-plane",
         );
       }
     },
     [showTransformControls, isDragging, isSegmenting],
+=======
+        if (isSelected) {
+          setCurrentArchetypeSelectedForTransform(null);
+          setTransformMode("scale");
+        } else {
+          setTransformMode("translate");
+          setCurrentArchetypeSelectedForTransform("annotation-plane");
+        }
+      }
+    },
+    [
+      showTransformControls,
+      isDragging,
+      isSegmenting,
+      isSelected,
+      setCurrentArchetypeSelectedForTransform,
+      setTransformMode,
+    ],
+>>>>>>> main
   );
 
   const handleTransformStart = useCallback(() => {
@@ -255,8 +281,13 @@ export const AnnotationPlane = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
       if (event.key === "Escape" && isSelected) {
         setCurrentArchetypeSelectedForTransform(null);
+        setTransformMode("scale");
         setIsDragging(false);
         event.stopImmediatePropagation();
         event.preventDefault();
@@ -268,7 +299,7 @@ export const AnnotationPlane = ({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isSelected]);
+  }, [isSelected, setCurrentArchetypeSelectedForTransform, setTransformMode]);
 
   if (!annotationPlane.enabled) {
     return null;

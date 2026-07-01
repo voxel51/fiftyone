@@ -1044,6 +1044,7 @@ describe("MCAP resources", () => {
           readLatestIndexedMessageTimes,
           readMessages,
         }),
+<<<<<<< HEAD
       ),
     });
 
@@ -1307,6 +1308,8 @@ describe("MCAP resources", () => {
           readIndexedMessageTimes,
           readLatestIndexedMessageTimes,
         }),
+=======
+>>>>>>> main
       ),
     });
 
@@ -1316,6 +1319,7 @@ describe("MCAP resources", () => {
         source,
         topics: ["/topic"],
       }),
+<<<<<<< HEAD
     ).rejects.toThrow("index read failed");
   });
 
@@ -1353,6 +1357,10 @@ describe("MCAP resources", () => {
 
     expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(
       1_000n,
+=======
+    ).rejects.toThrow(
+      "Ambiguous MCAP indexed-to-raw match for /topic entry with channel 7 at 90",
+>>>>>>> main
     );
     // One bounded scan plus one bounded lookback — clamped at 0, never
     // the whole file beyond the documented lookback.

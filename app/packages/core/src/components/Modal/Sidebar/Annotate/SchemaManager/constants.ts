@@ -61,6 +61,15 @@ export const LABEL_TYPE_OPTIONS_3D = [
   { id: "classification", data: { label: "Classification" } },
 ];
 
+// Label type options for sample-level fields on video datasets. Spatial labels
+// (detections/polylines) are frame-level only on video, so a sample-level field
+// is limited to the clip-level label types. Frame fields (a "frames." prefix)
+// use LABEL_TYPE_OPTIONS instead — see getLabelTypeOptions.
+export const LABEL_TYPE_OPTIONS_VIDEO = [
+  { id: "classification", data: { label: "Classification" } },
+  { id: "temporaldetections", data: { label: "Temporal Detections" } },
+];
+
 // =============================================================================
 // New Field Category Constants
 // =============================================================================
@@ -122,6 +131,11 @@ export const getDefaultAttributesForType = (
         : DEFAULT_DETECTION_ATTRIBUTES_2D;
     case "polylines":
       return DEFAULT_POLYLINE_ATTRIBUTES;
+    case "temporaldetections":
+      // `support` is edited via the timeline drag handles, not as a
+      // primitive sidebar component. Keep it off the schema's editable
+      // attribute list.
+      return BASE_LABEL_ATTRIBUTES;
     case "classification":
     default:
       return DEFAULT_CLASSIFICATION_ATTRIBUTES;

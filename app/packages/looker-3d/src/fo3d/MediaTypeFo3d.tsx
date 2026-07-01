@@ -2,7 +2,6 @@ import { Loading, LoadingDots } from "@fiftyone/components";
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import type { CameraControls } from "@react-three/drei";
 import { useEffect, useMemo, useReducer, useRef } from "react";
 import {
   LoadingManager,
@@ -27,7 +26,6 @@ import {
 } from "../hooks";
 import type { Looker3dSettings } from "../settings";
 import { useCurrent3dAnnotationMode } from "../state/accessors";
-import { Annotation3d } from "./Annotation3d";
 import {
   FO3D_CAMERA_LIFECYCLE,
   FO3D_CAMERA_LIFECYCLE_ACTION,
@@ -35,6 +33,7 @@ import {
   isFo3dSceneReady,
   type Fo3dCameraLifecycleState,
 } from "./camera-lifecycle";
+import type { Fo3dCameraControls } from "./camera-controls";
 import { Fo3dSceneContext } from "./context";
 import { FoScene } from "./render-types";
 
@@ -44,11 +43,13 @@ interface Fo3dPanelsProps {
   assetsGroupRef: React.RefObject<Group>;
   foScene: FoScene;
   interactionSample: fos.ModalSample;
+  activeSampleMap: Record<string, fos.ModalSample>;
   cameraRef: React.RefObject<PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
   mountCameraPosition: Vector3;
   cameraLifecycleState: Fo3dCameraLifecycleState;
   mode: string;
+  useLegacyCoordinates: boolean;
 }
 
 const Fo3dPanels = ({
@@ -57,18 +58,22 @@ const Fo3dPanels = ({
   assetsGroupRef,
   foScene,
   interactionSample,
+  activeSampleMap,
   cameraRef,
   cameraControlsRef,
   mountCameraPosition,
   cameraLifecycleState,
   mode,
+  useLegacyCoordinates,
 }: Fo3dPanelsProps) => {
   const { resetActiveNode } = useFo3dInteractionLifecycle({
     cameraLifecycleState,
     interactionSample,
+    activeSampleMap,
     upVector,
     mode,
     cameraControlsRef,
+    useLegacyCoordinates,
   });
 
   if (shouldRenderMultiPanelView) {
@@ -114,7 +119,8 @@ const Fo3dLoadErrorState = ({ error }: { error: Error | null }) => {
 };
 
 export const MediaTypeFo3dComponent = () => {
-  const { interactionSample, sceneSample } = fos.useRenderConfig3dState();
+  const { activeSampleMap, interactionSample, sceneSample } =
+    fos.useRenderConfig3dState();
   const settings = usePluginSettings<Looker3dSettings>("3d");
   const mode = fos.useModalMode();
   const canAnnotate = useCanAnnotate().showAnnotationTab;
@@ -148,7 +154,7 @@ export const MediaTypeFo3dComponent = () => {
   }, [sceneSampleId]);
 
   const cameraRef = useRef<PerspectiveCamera | null>(null);
-  const cameraControlsRef = useRef<CameraControls | null>(null);
+  const cameraControlsRef = useRef<Fo3dCameraControls | null>(null);
   const assetsGroupRef = useRef<Group | null>(null);
   const threeJsLoadingStatus = useTrackStatus(loadingManager, isSceneReady);
 
@@ -231,18 +237,19 @@ export const MediaTypeFo3dComponent = () => {
 
   return (
     <Fo3dSceneContext.Provider value={contextValue}>
-      {canAnnotate && <Annotation3d />}
       <Fo3dPanels
         shouldRenderMultiPanelView={shouldRenderMultiPanelView}
         upVector={upVector}
         assetsGroupRef={assetsGroupRef}
         foScene={foScene}
         interactionSample={interactionSample}
+        activeSampleMap={activeSampleMap}
         cameraRef={cameraRef}
         cameraControlsRef={cameraControlsRef}
         mountCameraPosition={mountCameraPosition}
         cameraLifecycleState={cameraLifecycleState}
         mode={mode}
+        useLegacyCoordinates={settings.useLegacyCoordinates}
       />
       {shouldShowAnnotationToolbar && <AnnotationToolbar />}
     </Fo3dSceneContext.Provider>

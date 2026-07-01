@@ -116,8 +116,20 @@ export class ModalAnnotateSidebarPom {
    * @param slice The slice name to select
    */
   async selectAnnotationSlice(slice: string) {
-    const resultsContainer = await this.openAnnotationSliceResults();
-    await resultsContainer.getByTestId(`selector-result-${slice}`).click();
+    // a non-default (3D) slice can be briefly absent from the selector while
+    // the open group's samples load, and the option list only refreshes when
+    // the popover is reopened. So each retry blurs (closes) then re-clicks
+    // (reopens, re-querying) the selector until the result is clickable. Blur,
+    // not Escape — Escape bubbles to the modal and can close it.
+    await expect(async () => {
+      await this.annotationSliceSelector.blur();
+      await this.annotationSliceSelector.click();
+      await expect(this.annotationSliceResultsContainer).toBeVisible();
+      await this.annotationSliceResultsContainer
+        .getByTestId(`selector-result-${slice}`)
+        .click({ timeout: 3000 });
+    }).toPass({ timeout: 30_000 });
+
     await expect(this.annotationSliceSelector).toHaveValue(slice);
   }
 
@@ -161,6 +173,11 @@ export class ModalAnnotateSidebarPom {
     }
   }
 
+  /** Activate polyline-drawing mode (the Polyline action button). */
+  async polylineMode() {
+    await this.page.getByTestId("polyline-mode").click();
+  }
+
   /**
    * Toggle segmentation mode. When inactive this enters segmentation mode
    * (selecting the Select tool by default). When active it deactivates the
@@ -186,6 +203,15 @@ export class ModalAnnotateSidebarPom {
    */
   async pickTool(tool: "Select" | "Brush" | "Pen" | "AI" | "Merge") {
     await this.toolbarButton(tool).click();
+  }
+
+  /**
+   * Switch the brush paint mode in the segmentation toolbar's "mode" group:
+   * "Add" paints into the mask, "Remove" erases from it. The mode group only
+   * renders while the Brush or Pen tool is active.
+   */
+  async pickMaskMode(mode: "Add" | "Remove") {
+    await this.toolbarButton(mode).click();
   }
 }
 

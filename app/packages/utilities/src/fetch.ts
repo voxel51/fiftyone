@@ -601,6 +601,7 @@ export const getEventSource = (
             }
 
             throw new ServerError(
+<<<<<<< HEAD
               {
                 code: response.status,
                 bodyResponse: err,
@@ -613,6 +614,10 @@ export const getEventSource = (
               },
               (err as unknown as { message?: string }).message ??
                 `${response.status} ${response.url}`,
+=======
+              {},
+              (err as unknown as { stack: string }).stack,
+>>>>>>> main
             );
           }
 

@@ -107,13 +107,11 @@ vi.mock("@fiftyone/state", () => ({
   },
 }));
 
-vi.mock("../Sidebar/Annotate/useLabels", async () => {
-  const { atom } = await import("jotai");
-  return {
-    LabelsState: { UNSET: "unset", LOADING: "loading", COMPLETE: "complete" },
-    labelsState: atom("complete"),
-  };
-});
+vi.mock("../Sidebar/Annotate/useLabels", () => ({
+  // existing tests assume labels are ready (reveal gate depends only on
+  // mediaBounds/rendererReady/labels)
+  useAnnotationLabelsReady: () => true,
+}));
 
 vi.mock("../Sidebar/Annotate/state", async () => {
   const { atom } = await import("jotai");

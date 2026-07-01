@@ -3,11 +3,11 @@ import {
   useActiveTask,
   useAgentSelector,
   usePointSelection,
+  usePointSelectionSeed,
   useToolsState,
 } from "@fiftyone/annotation/src/agents";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { atom, getDefaultStore, useAtom, useAtomValue } from "jotai";
-import { useAnnotationContext } from "./useAnnotationContext";
 
 export interface AIAnnotationMode {
   activate(): void;
@@ -44,6 +44,7 @@ const useDefaultAgent = () => {
 };
 
 /**
+<<<<<<< HEAD
  * Helper hook which resets state when the label selection changes.
  *
  * @param isActive Flag indicating whether AI annotation mode is active
@@ -75,6 +76,8 @@ const useLabelReset = (isActive: boolean, reset: () => void) => {
 };
 
 /**
+=======
+>>>>>>> main
  * Hook which provides control over activation/deactivation of AI annotation mode.
  */
 export const useAIAnnotationMode = (): AIAnnotationMode => {
@@ -83,18 +86,21 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
   const { setActiveTask } = useActiveTask();
   const { reset: resetToolsState } = useToolsState();
   const pointSelection = usePointSelection();
+  const { clearSeedNew } = usePointSelectionSeed();
 
   // bootstrap AI annotation capabilities
   useDefaultAgent();
 
-  // Clears prompt state without tearing down point selection. Used on
-  // label change — we stay in AI mode for the next label.
+  // Clears prompt state without tearing down point selection. The SAM2 point
+  // context is reset only at real session boundaries — here on deactivate, and
+  // implicitly on the deactivate→activate cycle a right-click finalize runs.
+  // It is deliberately NOT cleared on selection changes: an inference creating
+  // and selecting a fresh mask IS a selection change, so clearing there wiped
+  // the seed point of every mask after the first.
   const resetTools = useCallback(() => {
     pointSelection.clearPoints();
     resetToolsState();
   }, [pointSelection, resetToolsState]);
-
-  useLabelReset(isActive, resetTools);
 
   // Guards read fresh from the jotai store so back-to-back deactivate /
   // activate calls (e.g. AI right-click finalize) don't no-op on a stale
@@ -102,10 +108,16 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
   const activate = useCallback(() => {
     if (getDefaultStore().get(isActiveAtom)) return;
 
+    // A fresh session refines whatever's selected by default; only a finalize
+    // (which re-activates, then re-marks the flag) seeds a new label. Clearing
+    // here keeps the "select an existing mask, then refine it with points"
+    // entry working after a prior session committed.
+    clearSeedNew();
+
     setActiveTask(AgentTaskType.SEGMENT);
     setIsActive(true);
     pointSelection.activate();
-  }, [pointSelection, setActiveTask, setIsActive]);
+  }, [clearSeedNew, pointSelection, setActiveTask, setIsActive]);
 
   const deactivate = useCallback(() => {
     if (!getDefaultStore().get(isActiveAtom)) return;

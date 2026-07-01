@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type {
   CuboidTransformData,
   PolylinePointTransformData,
@@ -10,11 +10,6 @@ import {
   reconcileDetection,
   reconcilePolyline,
 } from "./merge-utils";
-
-// Mock the coerceStringBooleans function
-vi.mock("@fiftyone/core/src/components/Modal/Sidebar/Annotate", () => ({
-  coerceStringBooleans: vi.fn((obj) => obj),
-}));
 
 // Helper to create a base overlay label for testing
 const createBaseOverlayLabel = (

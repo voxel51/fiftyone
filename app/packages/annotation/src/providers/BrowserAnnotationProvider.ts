@@ -1,16 +1,17 @@
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import type {
   AnnotationProvider,
-  DownloadProgress,
+  BitmapEncodeRequest,
+  BitmapInferenceRequest,
   DownloadProgressCallback,
   ErrorCallback,
   InferenceRequest,
   InferenceResult,
   ProviderError,
-  ProviderStatus,
   StatusCallback,
   WarningCallback,
   WorkerMessageType,
+  WorkerOutbound,
   WorkerRequest,
   WorkerResponse,
 } from "./types";
@@ -144,31 +145,36 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
       throw err;
     }
 
-    this.worker.onmessage = (e: MessageEvent) => {
-      const { id, type, success, result, error } = e.data;
+    this.worker.onmessage = (e: MessageEvent<WorkerOutbound>) => {
+      const msg = e.data;
 
+<<<<<<< HEAD
       if (type === "ready") return;
+=======
+      if (msg.type === "ready") return;
+>>>>>>> main
 
-      if (type === "status") {
-        this.onStatus?.(result as ProviderStatus);
+      if (msg.type === "status") {
+        this.onStatus?.(msg.result);
         return;
       }
 
-      if (type === "progress") {
-        this.onProgress?.(result as DownloadProgress);
+      if (msg.type === "progress") {
+        this.onProgress?.(msg.result);
         return;
       }
 
-      if (type === "warning") {
-        this.onWarning?.(result as string);
+      if (msg.type === "warning") {
+        this.onWarning?.(msg.result);
         return;
       }
 
-      if (type === "error") {
-        this.onError?.(result as ProviderError);
+      if (msg.type === "error") {
+        this.onError?.(msg.result);
         return;
       }
 
+<<<<<<< HEAD
       const entry = this.pending.get(id);
       if (!entry) return;
 
@@ -177,6 +183,19 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
       success
         ? entry.resolve(result)
         : entry.reject(new Error(error ?? "Worker error"));
+=======
+      const entry = this.pending.get(msg.id);
+      if (!entry) return;
+
+      this.pending.delete(msg.id);
+
+      if (msg.success === false) {
+        entry.reject(new Error(msg.error ?? "Worker error"));
+        return;
+      }
+
+      entry.resolve(msg.result);
+>>>>>>> main
     };
 
     this.worker.onerror = (e: ErrorEvent) => {
@@ -208,6 +227,33 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
   async infer(request: InferenceRequest): Promise<InferenceResult> {
     const { id, promise } = this.send("embedAndDecode", request);
     this.lastInferenceId = id;
+    return promise;
+  }
+
+  /**
+   * Run SAM2 against an already-decoded frame bitmap (e.g. an ImaVid video
+   * frame). Used by video propagation; see `videoPropagation.ts`.
+   *
+   * The bitmap is passed by structured clone, NOT as a transferable —
+   * Firefox rejects a payload that both contains a bitmap and lists it in
+   * the transfer list ("invalid transferable array for structured clone").
+   * Cloning a single bitmap is cheap (a handle, not a pixel copy), and it
+   * leaves the caller's bitmap intact — important when the source is a
+   * frame-cache entry the stream still owns.
+   */
+  async inferBitmap(request: BitmapInferenceRequest): Promise<InferenceResult> {
+    const { id, promise } = this.send("embedAndDecodeBitmap", request);
+    this.lastInferenceId = id;
+    return promise;
+  }
+
+  /**
+   * Encode-only — run SAM2's image encoder on a frame and cache the
+   * embedding keyed on `cacheKey`. No decoder, no result. A later
+   * {@link inferBitmap} with the same key then runs the decoder only.
+   */
+  async encodeBitmap(request: BitmapEncodeRequest): Promise<void> {
+    const { promise } = this.send("encodeBitmap", request);
     return promise;
   }
 

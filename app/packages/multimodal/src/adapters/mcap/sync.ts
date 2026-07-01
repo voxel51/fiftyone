@@ -110,7 +110,11 @@ export function selectSynchronizedWindow({
     messages,
     messagesByTopic,
     startTimeNs: minBigInt(
+<<<<<<< HEAD
       Object.values(streamPolicies).map((policy) => policy.startTimeNs ?? 0n),
+=======
+      Object.values(streamPolicies).map((policy) => policy.startTimeNs),
+>>>>>>> main
     ),
     streamPolicies,
   };

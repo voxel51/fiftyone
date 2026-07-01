@@ -207,7 +207,10 @@ describe("TimelineTrack", () => {
       const { container } = renderTrack({ duration: 10 });
       const lane = container.querySelector(`.${styles.lane}`) as HTMLElement;
       // Click at x=250 on a 1000-wide lane → 25% of view [0, 10] = 2.5s.
-      fireEvent.click(lane, { clientX: 250 });
+      // `detail: 1` flags this as a real user click — `fireEvent.click`'s
+      // default `detail: 0` would otherwise be treated as a synthetic
+      // programmatic click and bail (see the gate in TimelineTrack.tsx).
+      fireEvent.click(lane, { clientX: 250, detail: 1 });
       expect(screen.getByTestId("playhead").textContent).toBe("2.500");
     });
 
@@ -219,7 +222,7 @@ describe("TimelineTrack", () => {
       });
       const lane = container.querySelector(`.${styles.lane}`) as HTMLElement;
       // 50% of a [4, 8] window → 6s.
-      fireEvent.click(lane, { clientX: 500 });
+      fireEvent.click(lane, { clientX: 500, detail: 1 });
       expect(screen.getByTestId("playhead").textContent).toBe("6.000");
     });
 
@@ -232,8 +235,174 @@ describe("TimelineTrack", () => {
       // long interval bars can be scrubbed precisely. clientX:250 on a
       // 1000-wide lane → 25% of view [0, 10] = 2.5s, regardless of the
       // event's own startSec.
-      fireEvent.click(event, { clientX: 250 });
+      fireEvent.click(event, { clientX: 250, detail: 1 });
       expect(screen.getByTestId("playhead").textContent).toBe("2.500");
+    });
+  });
+
+  describe("right-click on segment does not seek", () => {
+    it("left-click on an event marker invokes onEventClick with the event", () => {
+      const onEventClick = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 3 }],
+          onEventClick,
+        },
+      });
+      const event = container.querySelector(`.${styles.event}`) as HTMLElement;
+      // Default button on fireEvent.click is 0 (left). `detail: 1` marks
+      // it a real user click (vs. a programmatic `HTMLElement.click()`
+      // which the row's onClick gate intentionally drops).
+      fireEvent.click(event, { clientX: 250, detail: 1 });
+      expect(onEventClick).toHaveBeenCalledTimes(1);
+      expect(onEventClick.mock.calls[0][0]).toMatchObject({ startSec: 3 });
+    });
+
+    it("right-click on an event marker does NOT invoke onEventClick or seek", () => {
+      const onEventClick = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 3 }],
+          onEventClick,
+        },
+      });
+      const event = container.querySelector(`.${styles.event}`) as HTMLElement;
+      // Right-button click — handler should bail before seek or onEventClick.
+      fireEvent.click(event, { clientX: 250, button: 2 });
+      expect(onEventClick).not.toHaveBeenCalled();
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
+    });
+
+    it("right-click on empty lane area does NOT seek (no contextmenu-driven jump)", () => {
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [],
+          onTrackClick: vi.fn(),
+        },
+      });
+      const lane = container.querySelector(`.${styles.lane}`) as HTMLElement;
+      // Full right-click event sequence: mousedown(2) → contextmenu → mouseup(2).
+      // Real browsers don't fire onClick for non-primary buttons, but the
+      // contextmenu open path (portal-based ContextMenu) can synthesize a
+      // follow-up click on right-mouse-up that bubbles to the lane.
+      fireEvent.mouseDown(lane, { clientX: 250, button: 2 });
+      fireEvent.contextMenu(lane, { clientX: 250 });
+      fireEvent.mouseUp(lane, { clientX: 250, button: 2 });
+      // A synthetic click (button defaults to 0) bubbling up after the
+      // contextmenu would otherwise seek to time 2.5s here.
+      fireEvent.click(lane, { clientX: 250, button: 2 });
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
+    });
+
+    it("right-click on the row root does NOT trigger a seek via onTrackClick bubbling", () => {
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [],
+          onTrackClick: vi.fn(),
+        },
+      });
+      const root = container.querySelector(`.${styles.root}`) as HTMLElement;
+      fireEvent.contextMenu(root, { clientX: 500 });
+      // After the contextmenu, no seek should have fired.
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
+    });
+
+    it("does NOT fire onTrackClick when a non-primary-button click reaches the row root", () => {
+      // A synthetic right-mouse-up-triggered click can bubble through a
+      // ContextMenu portal up to the row root. Without the button gate the
+      // consumer's `onTrackClick` would run as a side-effect of right-clicking,
+      // which (downstream of `setActive`) was producing a playhead jump.
+      const onTrackClick = vi.fn();
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [], onTrackClick },
+      });
+      const root = container.querySelector(`.${styles.root}`) as HTMLElement;
+      fireEvent.click(root, { clientX: 500, button: 2 });
+      expect(onTrackClick).not.toHaveBeenCalled();
+    });
+
+    it("does NOT fire onTrackClick on a synthetic programmatic click (detail:0)", () => {
+      // voodo's ContextMenu opens by calling `HTMLElement.click()` on a
+      // hidden anchor that sits inside the row's React subtree, so the
+      // programmatic click bubbles up to the row root. That synthetic
+      // event reports `button === 0` (the default for every programmatic
+      // click — the button gate alone does NOT catch it) AND
+      // `detail === 0`. Real user clicks always have `detail >= 1`.
+      // Without the detail gate, right-clicking an event would call the
+      // row's `onTrackClick` → `selectTrack` → downstream playhead
+      // disruption.
+      const onTrackClick = vi.fn();
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [], onTrackClick },
+      });
+      const root = container.querySelector(`.${styles.root}`) as HTMLElement;
+      // No `button` → defaults to 0 (the spec default for programmatic
+      // clicks); detail 0 → not a user click.
+      fireEvent.click(root, { clientX: 500, detail: 0 });
+      expect(onTrackClick).not.toHaveBeenCalled();
+    });
+
+    it("does NOT seek on a synthetic programmatic click landing on the lane (detail:0)", () => {
+      // The voodo ContextMenu's hidden anchor sits inside the lane's DOM
+      // subtree — `currentTarget.contains(target)` returns true so the
+      // existing containment check can't reject the synthetic click. The
+      // detail-count check is what catches it.
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [] },
+      });
+      const lane = container.querySelector(`.${styles.lane}`) as HTMLElement;
+      fireEvent.click(lane, { clientX: 250, detail: 0 });
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
+    });
+
+    it("does NOT seek on a synthetic programmatic click landing on an event marker (detail:0)", () => {
+      const onEventClick = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 3 }],
+          onEventClick,
+        },
+      });
+      const event = container.querySelector(`.${styles.event}`) as HTMLElement;
+      fireEvent.click(event, { clientX: 300, detail: 0 });
+      expect(onEventClick).not.toHaveBeenCalled();
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
+    });
+
+    it("still fires onTrackClick on a primary-button click on the row root", () => {
+      const onTrackClick = vi.fn();
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [], onTrackClick },
+      });
+      const root = container.querySelector(`.${styles.root}`) as HTMLElement;
+      fireEvent.click(root, { clientX: 500, button: 0, detail: 1 });
+      expect(onTrackClick).toHaveBeenCalledTimes(1);
+    });
+
+    it("right-click on an event marker still fires onContextMenu on the row", () => {
+      const onContextMenu = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 3 }],
+          onContextMenu,
+        },
+      });
+      const event = container.querySelector(`.${styles.event}`) as HTMLElement;
+      // contextmenu bubbles to the row root, which wires onContextMenu.
+      fireEvent.contextMenu(event);
+      expect(onContextMenu).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -284,32 +453,83 @@ describe("TimelineTrack", () => {
     });
   });
 
-  describe("onEventDelete", () => {
-    it("renders interval events with a label column and no crash when onEventDelete is absent", () => {
-      // Smoke-test: component renders without onEventDelete — no delete entry shown.
+  describe("eventMenuItems", () => {
+    const interval = { startSec: 4, endSec: 6 };
+
+    it("adds no custom items (and renders fine) when eventMenuItems is absent", () => {
       const { container } = renderTrack({
-        track: {
-          start: 0,
-          end: 10,
-          events: [{ startSec: 2, endSec: 5 }],
-          labelWidth: 100,
-        },
+        track: { start: 0, end: 10, events: [interval], labelWidth: 100 },
       });
-      expect(container.querySelector(`.${styles.intervalBar}`)).not.toBeNull();
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`,
+      ) as HTMLElement;
+      expect(bar).not.toBeNull();
+      fireEvent.contextMenu(bar);
+      expect(screen.queryByText("Delete track")).toBeNull();
     });
 
-    it("does not crash when onEventDelete is provided alongside interval events", () => {
-      const onEventDelete = vi.fn();
+    it("fires an item's onSelect with the event the menu opened on", () => {
+      const onSelect = vi.fn();
       const { container } = renderTrack({
         track: {
           start: 0,
           end: 10,
-          events: [{ startSec: 2, endSec: 5, label: "tag-a" }],
-          labelWidth: 100,
-          onEventDelete,
+          events: [interval],
+          eventMenuItems: [
+            { label: "Delete track", destructive: true, onSelect },
+          ],
         },
       });
-      expect(container.querySelector(`.${styles.intervalBar}`)).not.toBeNull();
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`,
+      ) as HTMLElement;
+      fireEvent.contextMenu(bar);
+      fireEvent.click(screen.getByText("Delete track"));
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      expect(onSelect.mock.calls[0][0]).toMatchObject({
+        startSec: 4,
+        endSec: 6,
+      });
+    });
+
+    it("renders every supplied item in order (e.g. delete + split + merge)", () => {
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [interval],
+          eventMenuItems: [
+            { label: "Delete track", destructive: true, onSelect: vi.fn() },
+            { label: "Split at playhead", onSelect: vi.fn() },
+            { label: "Merge into B", onSelect: vi.fn() },
+          ],
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`,
+      ) as HTMLElement;
+      fireEvent.contextMenu(bar);
+      expect(screen.getByText("Delete track")).toBeTruthy();
+      expect(screen.getByText("Split at playhead")).toBeTruthy();
+      expect(screen.getByText("Merge into B")).toBeTruthy();
+    });
+
+    it("does not fire onSelect for a disabled item", () => {
+      const onSelect = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [interval],
+          eventMenuItems: [{ label: "Merge into…", disabled: true, onSelect }],
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`,
+      ) as HTMLElement;
+      fireEvent.contextMenu(bar);
+      fireEvent.click(screen.getByText("Merge into…"));
+      expect(onSelect).not.toHaveBeenCalled();
     });
   });
 
@@ -329,6 +549,251 @@ describe("TimelineTrack", () => {
       expect(inlineStyle(bar).toLowerCase()).toMatch(
         /background:\s*(#ff000055|rgba\(255,\s*0,\s*0,\s*0\.33)/,
       );
+    });
+  });
+
+  describe("resizable interval events", () => {
+    /**
+     * Fire a pointer-down on the element via React's synthetic-event
+     * path so onPointerDown handlers run, then dispatch document-level
+     * pointermove / pointerup that the drag handler listens for.
+     */
+    const dragOnElement = (el: HTMLElement, from: number, to: number) => {
+      fireEvent.mouseDown(el, { clientX: from, button: 0 });
+      const move = new MouseEvent("mousemove", {
+        clientX: to,
+        bubbles: true,
+      });
+      document.dispatchEvent(move);
+      const up = new MouseEvent("mouseup", { clientX: to, bubbles: true });
+      document.dispatchEvent(up);
+    };
+
+    const baseInterval = {
+      startSec: 4,
+      endSec: 6,
+      resizable: true as const,
+    };
+
+    it("renders both resize handles on a resizable interval when onEventEdit is provided", () => {
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit: vi.fn(),
+        },
+      });
+      const handles = container.querySelectorAll(`.${styles.resizeHandle}`);
+      expect(handles).toHaveLength(2);
+      expect(
+        container.querySelector(`.${styles.resizeHandleStart}`),
+      ).not.toBeNull();
+      expect(
+        container.querySelector(`.${styles.resizeHandleEnd}`),
+      ).not.toBeNull();
+    });
+
+    it("does not render handles when resizable is true but onEventEdit is missing", () => {
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [baseInterval] },
+      });
+      expect(
+        container.querySelectorAll(`.${styles.resizeHandle}`),
+      ).toHaveLength(0);
+    });
+
+    it("does not render handles when the event opts out of resizable", () => {
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 4, endSec: 6 }],
+          onEventEdit: vi.fn(),
+        },
+      });
+      expect(
+        container.querySelectorAll(`.${styles.resizeHandle}`),
+      ).toHaveLength(0);
+    });
+
+    it("commits a resize-end drag with the new endSec", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const endHandle = container.querySelector(
+        `.${styles.resizeHandleEnd}`,
+      ) as HTMLElement;
+      // Lane is 1000px wide for view [0, 10] → 100px per second.
+      // Drag end handle right by 200px → +2s on endSec (4→6 becomes 4→8).
+      dragOnElement(endHandle, 600, 800);
+      expect(onEventEdit).toHaveBeenCalledTimes(1);
+      const [idx, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(idx).toBe(0);
+      expect(newStart).toBeCloseTo(4);
+      expect(newEnd).toBeCloseTo(8);
+    });
+
+    it("commits a resize-start drag with the new startSec", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const startHandle = container.querySelector(
+        `.${styles.resizeHandleStart}`,
+      ) as HTMLElement;
+      // Drag start handle left by 100px → -1s on startSec (4→6 becomes 3→6).
+      dragOnElement(startHandle, 400, 300);
+      expect(onEventEdit).toHaveBeenCalledTimes(1);
+      const [idx, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(idx).toBe(0);
+      expect(newStart).toBeCloseTo(3);
+      expect(newEnd).toBeCloseTo(6);
+    });
+
+    it("commits a body-drag (move) with both endpoints shifted by the same delta", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`,
+      ) as HTMLElement;
+      // Drag bar right by 100px → +1s on both endpoints (4→6 becomes 5→7).
+      dragOnElement(bar, 500, 600);
+      expect(onEventEdit).toHaveBeenCalledTimes(1);
+      const [idx, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(idx).toBe(0);
+      expect(newStart).toBeCloseTo(5);
+      expect(newEnd).toBeCloseTo(7);
+    });
+
+    it("snaps drag results to snapStepSec when provided", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+          // 5 fps → step 0.2s. View [0,10] over 1000px → 100px/s → 20px/step.
+          snapStepSec: 0.2,
+        },
+      });
+      const endHandle = container.querySelector(
+        `.${styles.resizeHandleEnd}`,
+      ) as HTMLElement;
+      // 175px right of pointer-down clientX 600 → 1.75s raw delta; new
+      // endSec ≈ 7.75; rounded to nearest 0.2 → 7.8.
+      dragOnElement(endHandle, 600, 775);
+      const [, , newEnd] = onEventEdit.mock.calls[0];
+      expect(newEnd).toBeCloseTo(7.8);
+    });
+
+    it("clamps resize-end to a minimum width of snapStepSec", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+          snapStepSec: 0.2,
+        },
+      });
+      const endHandle = container.querySelector(
+        `.${styles.resizeHandleEnd}`,
+      ) as HTMLElement;
+      // Drag end handle far left past start (4) → should clamp to start+0.2.
+      dragOnElement(endHandle, 600, 0);
+      const [, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(newStart).toBeCloseTo(4);
+      expect(newEnd).toBeCloseTo(4.2);
+    });
+
+    it("clamps resize-start to a minimum width of snapStepSec", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+          snapStepSec: 0.2,
+        },
+      });
+      const startHandle = container.querySelector(
+        `.${styles.resizeHandleStart}`,
+      ) as HTMLElement;
+      // Drag start handle far right past end (6) → should clamp to end-0.2.
+      dragOnElement(startHandle, 400, 1000);
+      const [, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(newStart).toBeCloseTo(5.8);
+      expect(newEnd).toBeCloseTo(6);
+    });
+
+    it("does not commit when the pointer never moves past the drag threshold", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const endHandle = container.querySelector(
+        `.${styles.resizeHandleEnd}`,
+      ) as HTMLElement;
+      // Move by 2px (under DRAG_THRESHOLD_PX = 3).
+      dragOnElement(endHandle, 600, 602);
+      expect(onEventEdit).not.toHaveBeenCalled();
+    });
+
+    it("suppresses the lane seek-click that follows a real drag", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`,
+      ) as HTMLElement;
+      // Simulate drag + the synthetic click that mouseup triggers.
+      fireEvent.mouseDown(bar, { clientX: 500 });
+      document.dispatchEvent(
+        new MouseEvent("mousemove", { clientX: 600, bubbles: true }),
+      );
+      document.dispatchEvent(
+        new MouseEvent("mouseup", { clientX: 600, bubbles: true }),
+      );
+      // Browser would then fire click on the bar (and bubble to lane).
+      fireEvent.click(bar, { clientX: 600 });
+
+      // onEventEdit captured the drag; the playhead should NOT have moved
+      // to clientX 600 (which would be 6s).
+      expect(onEventEdit).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
     });
   });
 });

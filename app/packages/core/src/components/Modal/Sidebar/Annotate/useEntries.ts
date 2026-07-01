@@ -1,21 +1,19 @@
 import { EntryKind, type SidebarEntry } from "@fiftyone/state";
-import { getDefaultStore, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { LABELS_GROUP_NAME, labelsExpanded } from "./GroupEntry";
 import { visibleLabelSchemas } from "./state";
-import { LabelsState, labelAtoms, labelsState } from "./useLabels";
+import { usePresentLabelRows } from "./usePresentLabelRows";
 import usePrimitiveEntries from "./usePrimitiveEntries";
-const store = getDefaultStore();
 
 const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
-  const atoms = useAtomValue(labelAtoms);
   const activeFields = useAtomValue(visibleLabelSchemas);
-  const state = useAtomValue(labelsState);
-  const primitiveEntries = usePrimitiveEntries(activeFields || []);
   const expanded = useAtomValue(labelsExpanded);
+  const primitiveEntries = usePrimitiveEntries(activeFields || []);
+  const rows = usePresentLabelRows();
 
   const entries = useMemo(() => {
-    if (state !== LabelsState.COMPLETE) {
+    if (rows === null) {
       return [{ kind: EntryKind.LOADING }] as SidebarEntry[];
     }
 
@@ -23,6 +21,7 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       return [];
     }
 
+<<<<<<< HEAD
     const labelsByField: Record<
       string,
       Array<{ atom: (typeof atoms)[0]; id: string; label: string }>
@@ -57,11 +56,19 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
     }
 
     if (result.length === 0) {
+=======
+    if (rows.length === 0) {
+>>>>>>> main
       return [{ kind: EntryKind.EMPTY_ANNOTATIONS }] as SidebarEntry[];
     }
 
-    return result as SidebarEntry[];
-  }, [atoms, activeFields, state, expanded]);
+    return rows.map(({ id, path, frame }) => ({
+      kind: EntryKind.LABEL,
+      id,
+      path,
+      frame,
+    })) as SidebarEntry[];
+  }, [rows, expanded]);
 
   return [
     [
