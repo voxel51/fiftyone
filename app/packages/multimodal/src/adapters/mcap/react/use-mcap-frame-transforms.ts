@@ -29,6 +29,7 @@ import { recordMcapFrameTransformBandwidth } from "./mcap-bandwidth-debug";
 const DYNAMIC_TRANSFORM_LOOKBACK_NS = 500_000_000n;
 const DYNAMIC_TRANSFORM_PLACEMENT_LOOKAHEAD_NS = 1_000_000_000n;
 const DYNAMIC_TRANSFORM_RUNWAY_LOOKAHEAD_NS = 4_000_000_000n;
+const DYNAMIC_TRANSFORM_RUNWAY_REFRESH_LOOKAHEAD_NS = 2_000_000_000n;
 const DYNAMIC_TRANSFORM_RETRY_BASE_DELAY_MS = 250;
 const DYNAMIC_TRANSFORM_WINDOW_MAX_RETRIES = 3;
 
@@ -54,10 +55,10 @@ export interface UseMcapFrameTransformsOptions {
   readonly activeTimeline?: McapActiveTimeline;
   readonly client: McapResourceClient;
   /**
-   * Offline playback path: load one dynamic transform index for the source
-   * range, then resolve synchronously during playback. `null` means the
-   * timeline range is still loading; `undefined` keeps the old demand-driven
-   * fallback for callers that do not have a source range.
+   * Offline playback path: when the source timeline range is known, use a
+   * small foreground placement read plus a sliding idle runway around playback.
+   * `null` means the timeline range is still loading; `undefined` keeps the
+   * demand-driven fallback for callers that do not have a timeline range.
    */
   readonly dynamicRange?: McapFrameTransformTimeRange | null;
   readonly policy?: McapFrameTransformPolicy;
@@ -102,7 +103,6 @@ export function useMcapFrameTransforms({
   const retryTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
-  const backgroundRangeKeyRef = useRef<string | null>(null);
   const runwayRangeKeyRef = useRef<string | null>(null);
   const sourceGenerationRef = useRef(0);
   const dynamicRangeMode =
@@ -111,16 +111,12 @@ export function useMcapFrameTransforms({
       : dynamicRange === undefined
         ? "fallback"
         : "range";
-  const dynamicRangeStartTimeNs = dynamicRange?.startTimeNs;
-  const dynamicRangeEndTimeNs = dynamicRange?.endTimeNs;
 
   // This effect resets transform state when the source changes and loads the
-  // initial source-wide transform bootstrap before dynamic windows are
-  // requested.
+  // initial static transform bootstrap before dynamic windows are requested.
   useEffect(() => {
     const retryTimeouts = retryTimeoutsRef.current;
     clearRetryTimeouts(retryTimeouts);
-    backgroundRangeKeyRef.current = null;
     runwayRangeKeyRef.current = null;
     inFlightPlacementRangesRef.current = [];
     inFlightRunwayRangesRef.current = [];
@@ -215,14 +211,7 @@ export function useMcapFrameTransforms({
       active = false;
       clearRetryTimeouts(retryTimeouts);
     };
-  }, [
-    activeTimeline,
-    client,
-    dynamicRangeEndTimeNs,
-    dynamicRangeMode,
-    dynamicRangeStartTimeNs,
-    source,
-  ]);
+  }, [activeTimeline, client, dynamicRangeMode, source]);
 
   // Warm a short transform runway on the idle lane. This is intentionally
   // separate from the foreground placement window: if playback outruns the
@@ -236,15 +225,15 @@ export function useMcapFrameTransforms({
     if (!source || !store || state.status !== "ready" || timeNs === undefined) {
       return;
     }
-    if (isTimeInRanges(inFlightRunwayRangesRef.current, timeNs)) {
+    const coverageRange = dynamicRunwayCoverageRangeForTime(timeNs);
+    if (
+      store.isRangeIndexed(coverageRange) ||
+      isRangeInRanges(inFlightRunwayRangesRef.current, coverageRange)
+    ) {
       return;
     }
 
     const runwayRange = dynamicRunwayRangeForTime(timeNs);
-    if (store.isRangeIndexed(runwayRange)) {
-      return;
-    }
-
     const runwayRangeKey = frameTransformRangeKey(runwayRange);
     if (runwayRangeKeyRef.current === runwayRangeKey) {
       return;
@@ -326,124 +315,6 @@ export function useMcapFrameTransforms({
     activeTimeline,
     client,
     dynamicRangeMode,
-    source,
-    state.status,
-    state.version,
-    timeNs,
-  ]);
-
-  // With offline playback, prioritize the current playhead's transform window
-  // first, then warm a runway and full source range in the background. Full
-  // source-range work waits for the idle runway so it cannot monopolize the
-  // idle lane before near-future transforms are available.
-  useEffect(() => {
-    const store = storeRef.current;
-    if (dynamicRangeMode !== "range") {
-      return;
-    }
-    if (
-      !source ||
-      !store ||
-      state.status !== "ready" ||
-      dynamicRangeStartTimeNs === undefined ||
-      dynamicRangeEndTimeNs === undefined
-    ) {
-      return;
-    }
-
-    const sourceRange = {
-      endTimeNs: dynamicRangeEndTimeNs,
-      startTimeNs: dynamicRangeStartTimeNs,
-    };
-    if (store.isRangeIndexed(sourceRange)) {
-      return;
-    }
-    if (timeNs !== undefined && !store.isTimeIndexed(timeNs)) {
-      return;
-    }
-    if (
-      timeNs !== undefined &&
-      !store.isRangeIndexed(dynamicRunwayRangeForTime(timeNs))
-    ) {
-      return;
-    }
-
-    const sourceRangeKey = frameTransformRangeKey(sourceRange);
-    if (backgroundRangeKeyRef.current === sourceRangeKey) {
-      return;
-    }
-
-    backgroundRangeKeyRef.current = sourceRangeKey;
-    const sourceGeneration = sourceGenerationRef.current;
-    const dynamicRangeStartMs = mcapLatencyNowMs();
-    markMcapLatencyEvent(
-      "frame transform range request",
-      {
-        endTimeNs: dynamicRangeEndTimeNs,
-        startTimeNs: dynamicRangeStartTimeNs,
-      },
-      { onceKey: "frame-transform-range-request" },
-    );
-
-    client
-      .readFrameTransformWindow(
-        {
-          activeTimeline,
-          endTimeNs: dynamicRangeEndTimeNs,
-          source,
-          startTimeNs: dynamicRangeStartTimeNs,
-        },
-        { priority: "idle" },
-      )
-      .then((set) => {
-        if (sourceGeneration !== sourceGenerationRef.current) {
-          return;
-        }
-
-        storeRef.current?.addDynamic(set.samples, sourceRange);
-        recordMcapFrameTransformBandwidth({
-          operation: "transform-range",
-          set,
-        });
-        markMcapLatencyEvent(
-          "frame transform range ready",
-          {
-            durationMs: mcapLatencyDurationMs(dynamicRangeStartMs),
-            samples: set.samples.length,
-          },
-          { onceKey: "frame-transform-range-ready" },
-        );
-        markMcapLatencyEvent(
-          "frame transforms ready",
-          { frameIds: storeRef.current?.frameIds().length ?? 0 },
-          { onceKey: "frame-transforms-ready" },
-        );
-        setState((current) => ({
-          ...current,
-          error: null,
-          version: current.version + 1,
-        }));
-      })
-      .catch((caughtError) => {
-        if (sourceGeneration !== sourceGenerationRef.current) {
-          return;
-        }
-
-        if (backgroundRangeKeyRef.current === sourceRangeKey) {
-          backgroundRangeKeyRef.current = null;
-        }
-        setState((current) => ({
-          ...current,
-          error: mcapErrorMessage(caughtError),
-          version: current.version + 1,
-        }));
-      });
-  }, [
-    activeTimeline,
-    client,
-    dynamicRangeEndTimeNs,
-    dynamicRangeMode,
-    dynamicRangeStartTimeNs,
     source,
     state.status,
     state.version,
@@ -652,11 +523,31 @@ function dynamicRunwayRangeForTime(
   };
 }
 
+function dynamicRunwayCoverageRangeForTime(
+  timeNs: bigint,
+): McapFrameTransformTimeRange {
+  return {
+    endTimeNs: timeNs + DYNAMIC_TRANSFORM_RUNWAY_REFRESH_LOOKAHEAD_NS,
+    startTimeNs: timeNs,
+  };
+}
+
 function isTimeInRanges(
   ranges: readonly McapFrameTransformTimeRange[],
   timeNs: bigint,
 ) {
   return ranges.some(
     (range) => range.startTimeNs <= timeNs && timeNs <= range.endTimeNs,
+  );
+}
+
+function isRangeInRanges(
+  ranges: readonly McapFrameTransformTimeRange[],
+  requested: McapFrameTransformTimeRange,
+) {
+  return ranges.some(
+    (range) =>
+      range.startTimeNs <= requested.startTimeNs &&
+      requested.endTimeNs <= range.endTimeNs,
   );
 }

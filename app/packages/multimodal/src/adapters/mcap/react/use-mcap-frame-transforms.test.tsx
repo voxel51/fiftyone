@@ -84,7 +84,7 @@ describe("useMcapFrameTransforms", () => {
     });
   });
 
-  it("prioritizes the current transform window before warming the source range", async () => {
+  it("prioritizes the current transform window before warming an idle runway", async () => {
     const source = createSource("source-range");
     const client = createFrameTransformClient({
       bootstrapSamples: [sample("base_link", "lidar")],
@@ -113,21 +113,12 @@ describe("useMcapFrameTransforms", () => {
       },
     ]);
     await waitFor(() => {
-      expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(3);
+      expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
     });
     expect(vi.mocked(client.readFrameTransformWindow).mock.calls[1]).toEqual([
       {
         activeTimeline: undefined,
         endTimeNs: 4_000_000_100n,
-        source,
-        startTimeNs: 0n,
-      },
-      { priority: "idle" },
-    ]);
-    expect(vi.mocked(client.readFrameTransformWindow).mock.calls[2]).toEqual([
-      {
-        activeTimeline: undefined,
-        endTimeNs: 10_000_000_000n,
         source,
         startTimeNs: 0n,
       },
@@ -147,7 +138,41 @@ describe("useMcapFrameTransforms", () => {
     );
 
     await flushReactWork();
-    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(3);
+    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
+
+    rerender(
+      <FrameTransformsHarness
+        client={client}
+        dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
+        label="frames"
+        source={source}
+        timeNs={2_500_000_000n}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(3);
+    });
+    expect(vi.mocked(client.readFrameTransformWindow).mock.calls[2]).toEqual([
+      {
+        activeTimeline: undefined,
+        endTimeNs: 6_500_000_000n,
+        source,
+        startTimeNs: 2_000_000_000n,
+      },
+      { priority: "idle" },
+    ]);
+    expect(
+      vi.mocked(client.readFrameTransformWindow).mock.calls,
+    ).not.toContainEqual([
+      {
+        activeTimeline: undefined,
+        endTimeNs: 10_000_000_000n,
+        source,
+        startTimeNs: 0n,
+      },
+      { priority: "idle" },
+    ]);
   });
 
   it("rebuilds transform cache when the active timeline changes", async () => {
