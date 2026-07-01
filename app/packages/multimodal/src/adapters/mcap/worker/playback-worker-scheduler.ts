@@ -14,6 +14,12 @@ export type McapPlaybackWorkerJob = {
 export interface McapPlaybackWorkerRunContext {
   readonly queueDepthAtStart: number;
   readonly queueWaitMs: number;
+  /**
+   * Aborts when the job is cancelled while running. Jobs route this into
+   * their byte reads so an unwanted in-flight transfer stops instead of
+   * finishing on the worker's dime.
+   */
+  readonly signal: AbortSignal;
   readonly startedAtMs: number;
 }
 
@@ -43,16 +49,22 @@ export class McapPlaybackWorkerScheduler {
   private nextOrder = 0;
   private queue: QueuedJob[] = [];
   private running = false;
+  private runningAbort: AbortController | null = null;
+  private runningJobId: number | null = null;
 
   cancel(id: number) {
     this.cancelled.add(id);
     this.queue = this.queue.filter((job) => job.id !== id);
+    if (this.runningJobId === id) {
+      this.runningAbort?.abort();
+    }
   }
 
   dispose() {
     this.disposed = true;
     this.cancelled.clear();
     this.queue = [];
+    this.runningAbort?.abort();
   }
 
   setDebug(enabled: boolean) {
@@ -104,10 +116,14 @@ export class McapPlaybackWorkerScheduler {
           sourceKey: job.sourceKey,
         });
 
+        const abort = new AbortController();
+        this.runningAbort = abort;
+        this.runningJobId = job.id;
         try {
           await job.run({
             queueDepthAtStart: this.queue.length,
             queueWaitMs,
+            signal: abort.signal,
             startedAtMs,
           });
         } catch (error) {
@@ -117,6 +133,9 @@ export class McapPlaybackWorkerScheduler {
             sourceKey: job.sourceKey,
           });
         } finally {
+          this.runningAbort = null;
+          this.runningJobId = null;
+          this.cancelled.delete(job.id);
           logWorkerSchedulerDebug(this.debug, {
             event: "finished",
             jobId: job.id,

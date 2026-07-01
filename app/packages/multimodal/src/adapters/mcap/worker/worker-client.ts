@@ -110,6 +110,33 @@ class WorkerMcapResourceClient implements McapResourceClient {
     };
   }
 
+  cancelIdleReads() {
+    // Only the byte-heavy speculative operations: bootstrap/topic/bounds
+    // reads also ride the idle lane, but their consumers surface errors as
+    // UI states and are cheap enough to let finish.
+    const cancelledIds = this.idleLane.transport.cancelPending(
+      (pending) =>
+        pending.type === "readSynchronizedMessageBatch" ||
+        pending.type === "readFrameTransformWindow",
+    );
+    const worker = this.idleLane.worker;
+    if (!worker) {
+      return;
+    }
+    for (const id of cancelledIds) {
+      try {
+        const cancelRequest: McapPlaybackWorkerRequest = {
+          id,
+          type: "cancel",
+        };
+        worker.postMessage(cancelRequest);
+      } catch {
+        // The worker may already be gone; local rejection already settled
+        // the caller.
+      }
+    }
+  }
+
   private emitTransport(lane: WorkerLaneName, snapshot: McapTransportSnapshot) {
     if (this.transportListeners.size === 0) {
       return;

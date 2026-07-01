@@ -19,7 +19,7 @@ import type {
   McapFrameTransformTimeRange,
 } from "../frame-transform-types";
 import { McapFrameTransformStore } from "../frame-transforms";
-import { mcapErrorMessage } from "../errors";
+import { isMcapReadCancelledError, mcapErrorMessage } from "../errors";
 import type { McapActiveTimeline, McapResourceClient } from "../types";
 import {
   markMcapLatencyEvent,
@@ -337,6 +337,12 @@ export function useMcapFrameTransforms({
           inFlightRunwayRangesRef.current.filter(
             (candidate) => candidate !== runwayRange,
           );
+        // A seek-cancelled runway read is not a transform error: in-flight
+        // tracking is already cleared above, so the next playhead move can
+        // simply re-request the window.
+        if (isMcapReadCancelledError(caughtError)) {
+          return;
+        }
         setState((current) => ({
           ...current,
           error: mcapErrorMessage(caughtError),

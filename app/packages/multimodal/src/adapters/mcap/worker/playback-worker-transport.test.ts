@@ -1,7 +1,35 @@
 import { describe, expect, it, vi } from "vitest";
+import { MCAP_READ_CANCELLED_MESSAGE } from "../errors";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 
 describe("MCAP playback worker transport", () => {
+  it("cancels matching pending unary requests locally", async () => {
+    const worker = createWorker();
+    const transport = new McapPlaybackWorkerTransport(() => true);
+    const batch = transport.request(
+      worker,
+      "source:1",
+      "readSynchronizedMessageBatch",
+      { activeTimeline: "log", source: createSource(), timeNs: [], topics: [] },
+    );
+    const topics = transport.request(worker, "source:1", "readTopics", {
+      source: createSource(),
+    });
+
+    const cancelledIds = transport.cancelPending(
+      (pending) => pending.type === "readSynchronizedMessageBatch",
+    );
+
+    expect(cancelledIds).toEqual([1]);
+    await expect(batch).rejects.toThrow(MCAP_READ_CANCELLED_MESSAGE);
+
+    // A late worker response for the cancelled id is ignored, and the
+    // untouched request still settles normally.
+    transport.handleResponse({ error: "late failure", id: 1, ok: false });
+    transport.handleResponse({ id: 2, ok: true, result: [] });
+    await expect(topics).resolves.toEqual([]);
+  });
+
   it("reports debug attribution before settling a unary response", async () => {
     const worker = createWorker();
     const onAttribution = vi.fn();

@@ -1,5 +1,5 @@
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
-import { mcapError } from "../errors";
+import { mcapError, mcapReadCancelledError } from "../errors";
 import type { McapPlaybackWorkerAttribution } from "./playback-worker-attribution";
 import type {
   McapPlaybackWorkerPriority,
@@ -20,6 +20,7 @@ type PendingRequest<
   readonly reject: (error: Error) => void;
   readonly resolve: (result: McapPlaybackWorkerResultByType[Type]) => void;
   readonly sourceKey: string;
+  readonly type: McapPlaybackWorkerUnaryType;
 };
 
 type PendingStream = {
@@ -65,6 +66,7 @@ export class McapPlaybackWorkerTransport {
         reject,
         resolve: resolve as PendingRequest["resolve"],
         sourceKey,
+        type,
       });
 
       try {
@@ -74,6 +76,30 @@ export class McapPlaybackWorkerTransport {
         reject(mcapError(error));
       }
     });
+  }
+
+  /**
+   * Cancels matching pending unary requests: rejects each locally with the
+   * canonical cancelled error and returns their ids so the caller can tell
+   * the worker to drop or abort the matching jobs. Late worker responses
+   * for these ids are ignored by handleResponse.
+   */
+  cancelPending(
+    filter: (pending: {
+      readonly type: McapPlaybackWorkerUnaryType;
+    }) => boolean,
+  ): number[] {
+    const cancelledIds: number[] = [];
+    for (const [id, pending] of this.pending) {
+      if (!filter({ type: pending.type })) {
+        continue;
+      }
+      this.pending.delete(id);
+      pending.reject(mcapReadCancelledError());
+      cancelledIds.push(id);
+    }
+
+    return cancelledIds;
   }
 
   /**

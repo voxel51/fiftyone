@@ -198,6 +198,31 @@ describe("worker-backed MCAP resource client", () => {
     await expect(windows).resolves.toEqual([]);
   });
 
+  it("cancels speculative idle reads and notifies the idle worker", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      timeNs: [1n, 2n],
+      source: createSource("source:1"),
+      topics: ["/camera"],
+    };
+
+    const idleBatch = client.readSynchronizedMessageBatch(request, {
+      priority: "idle",
+    });
+    const idleWorker = workers[0];
+
+    client.cancelIdleReads?.();
+
+    await expect(idleBatch).rejects.toThrow("MCAP read cancelled");
+    expect(idleWorker.messages.at(-1)).toMatchObject({
+      id: 1,
+      type: "cancel",
+    });
+
+    // A late worker response for the cancelled id must not break anything.
+    idleWorker.respond({ error: "late", id: 1, ok: false });
+  });
+
   it("can demote speculative playback batches to idle-prefetch priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {

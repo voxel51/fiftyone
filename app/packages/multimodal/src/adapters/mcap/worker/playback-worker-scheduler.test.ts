@@ -81,6 +81,42 @@ describe("MCAP playback worker scheduler", () => {
     expect(ran).toEqual(["first"]);
   });
 
+  it("aborts the running job's signal when it is cancelled", async () => {
+    const scheduler = new McapPlaybackWorkerScheduler();
+    const gate = deferred<void>();
+    const signals: AbortSignal[] = [];
+
+    scheduler.enqueue({
+      id: 7,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      run: async (context) => {
+        signals.push(context.signal);
+        await gate.promise;
+      },
+      sourceKey: "source",
+    });
+    await flushAsync();
+    expect(signals[0]?.aborted).toBe(false);
+
+    scheduler.cancel(7);
+    expect(signals[0]?.aborted).toBe(true);
+
+    gate.resolve();
+    await flushAsync();
+
+    // The next job gets a fresh, unaborted signal.
+    scheduler.enqueue({
+      id: 8,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      run: async (context) => {
+        signals.push(context.signal);
+      },
+      sourceKey: "source",
+    });
+    await flushAsync();
+    expect(signals[1]?.aborted).toBe(false);
+  });
+
   it("logs queue wait and run timing when debug is enabled", async () => {
     const scheduler = new McapPlaybackWorkerScheduler();
     const consoleLog = vi

@@ -22,6 +22,7 @@ export interface CreateMcapReaderStoreOptions {
   readonly debugChunkReads?: boolean;
   readonly logChunkRead?: (entry: McapChunkReadDebugLog) => void;
   readonly readerFactory: McapReaderFactory;
+  readonly readSignal?: { readonly current: AbortSignal | null };
 }
 
 /**
@@ -32,6 +33,7 @@ export function createMcapReaderStore({
   debugChunkReads,
   logChunkRead,
   readerFactory,
+  readSignal,
 }: CreateMcapReaderStoreOptions): McapReaderStore {
   const readers = new Map<string, Promise<McapIndexedReaderLike>>();
 
@@ -50,6 +52,7 @@ export function createMcapReaderStore({
           new ByteClientReadable(source, byteClient, {
             debugChunkReads,
             logChunkRead,
+            readSignal,
           }),
         ).catch((error) => {
           readers.delete(key);

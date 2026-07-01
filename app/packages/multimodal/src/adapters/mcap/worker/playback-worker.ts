@@ -1,5 +1,5 @@
 import { setFetchFunction } from "@fiftyone/utilities";
-import { mcapErrorMessage } from "../errors";
+import { MCAP_READ_CANCELLED_MESSAGE, mcapErrorMessage } from "../errors";
 import {
   isMcapPlaybackWorkerStreamRequest,
   runMcapPlaybackWorkerStreamRequest,
@@ -39,6 +39,10 @@ const scheduler = new McapPlaybackWorkerScheduler();
 // One meter for the worker's lifetime: counters are cumulative so the main
 // thread can diff snapshots across source changes and client recreation.
 const transportMeter = createMcapTransportMeter();
+// This lane runs one request at a time, so one slot scopes byte reads to
+// the active request's abort signal without threading it through the
+// reader stack (@mcap/core reads carry no signal parameter).
+const activeReadSignal: { current: AbortSignal | null } = { current: null };
 
 let activeSourceKey = "";
 let activeAttribution: McapPlaybackWorkerAttributionCollector | null = null;
@@ -103,6 +107,7 @@ async function runAndRespond(
     : null;
   const previousAttribution = activeAttribution;
   activeAttribution = attribution;
+  activeReadSignal.current = context.signal;
 
   try {
     ensureActiveSource(message.sourceKey);
@@ -132,22 +137,28 @@ async function runAndRespond(
       transferables,
     );
   } catch (error) {
+    // A cancelled request reports the canonical marker no matter which read
+    // the abort surfaced through, so consumers can treat it as benign.
+    const errorMessage = context.signal.aborted
+      ? MCAP_READ_CANCELLED_MESSAGE
+      : mcapErrorMessage(error);
     postResponse({
       ...(attribution
         ? {
             debugAttribution: attribution.finish({
-              error: mcapErrorMessage(error),
+              error: errorMessage,
               nowMs: workerNowMs(),
               ok: false,
             }),
           }
         : {}),
-      error: mcapErrorMessage(error),
+      error: errorMessage,
       id: message.id,
       ok: false,
       transport: transportMeter.snapshot(),
     });
   } finally {
+    activeReadSignal.current = null;
     activeAttribution = previousAttribution;
   }
 }
@@ -204,6 +215,7 @@ function createMcapClient() {
     debugChunkReads: debugReads,
     logChunkRead: logChunkReadForActiveRequest,
     onByteRead: transportMeter.onByteRead,
+    readSignal: activeReadSignal,
   });
 }
 
