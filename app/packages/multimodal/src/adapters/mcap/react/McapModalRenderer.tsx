@@ -12,6 +12,10 @@ import {
   startMcapLatencyDebugSession,
 } from "../mcap-latency-debug";
 import { McapModalSettingsProvider } from "./mcap-modal-settings";
+import {
+  McapNetworkHealthTracker,
+  McapNetworkStatusPill,
+} from "./McapNetworkStatus";
 import McapSettingsSidebar from "./McapSettingsSidebar";
 import { McapStreams } from "./McapStreams";
 import styles from "./McapModalRenderer.module.css";
@@ -73,13 +77,16 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   );
   const headerCaption = useMemo(
     () => (
-      <McapHeaderCaption
-        imageCount={metadata.imageCount}
-        labelCount={metadata.labelCount}
-        pointCloudCount={metadata.pointCloudCount}
-        sizeLabel={metadata.sizeLabel}
-        topicCount={metadata.topicCount}
-      />
+      <>
+        <McapHeaderCaption
+          imageCount={metadata.imageCount}
+          labelCount={metadata.labelCount}
+          pointCloudCount={metadata.pointCloudCount}
+          sizeLabel={metadata.sizeLabel}
+          topicCount={metadata.topicCount}
+        />
+        <McapNetworkStatusPill />
+      </>
     ),
     [metadata],
   );
@@ -145,6 +152,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
             onTagCreate={onTagCreate}
           >
             <McapStreams ctx={ctx} client={client} />
+            <McapNetworkHealthTracker client={client} />
             <McapModalLayoutPersistence />
           </MultiModalPlayback>
         </McapDataStreamProvider>

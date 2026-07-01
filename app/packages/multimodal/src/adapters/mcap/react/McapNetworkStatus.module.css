@@ -1,0 +1,43 @@
+.pill {
+  align-items: center;
+  background: color-mix(
+    in srgb,
+    var(--fo-palette-warning-main, #b58105) 18%,
+    transparent
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--fo-palette-warning-main, #b58105) 45%, transparent);
+  border-radius: 999px;
+  color: var(--fo-palette-warning-main, #ffc48b);
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 500;
+  gap: 0.35rem;
+  line-height: 1;
+  margin-left: 0.5rem;
+  padding: 0.2rem 0.55rem;
+  white-space: nowrap;
+}
+
+.dot {
+  animation: mcap-network-pulse 1.6s ease-in-out infinite;
+  background: currentColor;
+  border-radius: 50%;
+  height: 0.4rem;
+  width: 0.4rem;
+}
+
+.throughput {
+  color: color-mix(in srgb, currentColor 75%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes mcap-network-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
