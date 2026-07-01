@@ -4,6 +4,7 @@ import { createMcapDecoderRegistry } from ".";
 import {
   foxgloveCompressedImageDecoder,
   foxglovePointCloudDecoder,
+  foxgloveSceneUpdateDecoder,
 } from "./foxglove";
 import { optionalBigInt } from "./foxglove/protobuf/records";
 import {
@@ -20,6 +21,9 @@ describe("Foxglove decoders", () => {
     );
     expect(registry.find(foxglovePointCloudDecoder.payload)).toBe(
       foxglovePointCloudDecoder,
+    );
+    expect(registry.find(foxgloveSceneUpdateDecoder.payload)).toBe(
+      foxgloveSceneUpdateDecoder,
     );
   });
 

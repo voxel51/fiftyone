@@ -29,3 +29,12 @@ export const FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD: PayloadDescriptor = {
   schema: "foxglove.ImageAnnotations",
   schemaEncoding: "protobuf",
 };
+
+/**
+ * Payload identity for foxglove.SceneUpdate messages.
+ */
+export const FOXGLOVE_SCENE_UPDATE_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.SceneUpdate",
+  schemaEncoding: "protobuf",
+};

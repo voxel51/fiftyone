@@ -21,6 +21,12 @@ export type {
   PayloadDescriptor,
   PointCloudField,
   PointCloudVisualization,
+  SceneCubePrimitive,
+  SceneEntityDeletionKind,
+  SceneEntityDeletionVisualization,
+  SceneEntityVisualization,
+  ScenePose3D,
+  SceneUpdateVisualization,
 } from "./decoders";
 
 /**

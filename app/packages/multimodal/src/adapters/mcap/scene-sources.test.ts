@@ -12,6 +12,7 @@ describe("mcapSceneSources", () => {
       createTopic("/CAM_FRONT/image_rect_compressed"),
       createTopic("/LIDAR_TOP", "foxglove.PointCloud"),
       createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
+      createTopic("/markers/annotations", "foxglove.SceneUpdate"),
       createTopic("/tf", "foxglove.FrameTransform"),
       createTopic("/diagnostics", "diagnostic_msgs/DiagnosticArray", "ros1"),
     ]);
@@ -31,6 +32,11 @@ describe("mcapSceneSources", () => {
         id: "/CAM_FRONT/annotations",
         type: MCAP_SOURCE_TYPE.IMAGE_ANNOTATION,
         label: "CAM_FRONT/annotations",
+      },
+      {
+        id: "/markers/annotations",
+        type: MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
+        label: "markers/annotations",
       },
     ]);
   });
@@ -88,6 +94,7 @@ describe("mcapStreamPolicies", () => {
       mcapSceneSources([
         createTopic("/cam/image_rect_compressed"),
         createTopic("/cam/annotations", "foxglove.ImageAnnotations"),
+        createTopic("/markers/annotations", "foxglove.SceneUpdate"),
         createTopic("/lidar", "foxglove.PointCloud"),
       ]),
     );
@@ -98,6 +105,9 @@ describe("mcapStreamPolicies", () => {
       mode: PlaybackSyncMode.LATEST,
     });
     expect(policies["/cam/annotations"]).toEqual({
+      mode: PlaybackSyncMode.LATEST,
+    });
+    expect(policies["/markers/annotations"]).toEqual({
       mode: PlaybackSyncMode.LATEST,
     });
     expect(policies["/lidar"]).toEqual({

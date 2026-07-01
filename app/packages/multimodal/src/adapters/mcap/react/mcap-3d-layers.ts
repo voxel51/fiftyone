@@ -1,8 +1,13 @@
 import { Quaternion, Vector3 } from "three";
-import type { PointCloudVisualization } from "../../../decoders";
+import type {
+  PointCloudVisualization,
+  SceneEntityVisualization,
+  SceneUpdateVisualization,
+} from "../../../decoders";
 import type {
   PointCloudFrameTransform,
   PointCloudPanelLayer,
+  SceneAnnotationPanelLayer,
 } from "../../../visualization/panels/point-cloud";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
@@ -30,8 +35,10 @@ export interface Mcap3dTransformGapWarning {
 export interface Mcap3dLayerBuildResult {
   readonly clampedFrameIds: readonly string[];
   readonly largeInterpolationGaps: readonly Mcap3dTransformGapWarning[];
+  readonly pendingAnnotationFrameIds: readonly string[];
   readonly pointCloudLayers: readonly PointCloudPanelLayer[];
   readonly provisionalFrameIds: readonly string[];
+  readonly sceneAnnotationLayers: readonly SceneAnnotationPanelLayer[];
   readonly transformedLayerCount: number;
   readonly unresolvedFrameIds: readonly string[];
 }
@@ -44,23 +51,29 @@ export interface Mcap3dLayerBuildResult {
  * and reported through `unresolvedFrameIds`.
  */
 export function build3dLayers({
+  annotationFrames = [],
   frameTransforms,
   frames,
   largeInterpolationGapWarningNs = 0n,
   provisionalTopicId,
+  selectedAnnotationTopics = [],
   selectedTopics,
   worldFrameId,
 }: {
+  readonly annotationFrames?: readonly (McapTopicPlaybackFrame<SceneUpdateVisualization> | null)[];
   readonly frameTransforms: McapFrameTransformsState;
   readonly frames: readonly (McapTopicPlaybackFrame<PointCloudVisualization> | null)[];
   readonly largeInterpolationGapWarningNs?: bigint;
   readonly provisionalTopicId?: string | null;
+  readonly selectedAnnotationTopics?: readonly string[];
   readonly selectedTopics: readonly string[];
   readonly worldFrameId: string;
 }): Mcap3dLayerBuildResult {
   const pointCloudLayers: PointCloudPanelLayer[] = [];
+  const sceneAnnotationLayers: SceneAnnotationPanelLayer[] = [];
   const clampedFrameIds = new Set<string>();
   const largeInterpolationGapsByFrameId = new Map<string, bigint>();
+  const pendingAnnotationFrameIds = new Set<string>();
   const pendingTopicId = provisionalTopicId ?? selectedTopics[0] ?? null;
   const provisionalFrameIds = new Set<string>();
   let transformedLayerCount = 0;
@@ -133,15 +146,96 @@ export function build3dLayers({
     });
   });
 
+  selectedAnnotationTopics.forEach((topic, index) => {
+    const playbackFrame = annotationFrames[index];
+    if (!playbackFrame) {
+      return;
+    }
+
+    playbackFrame.frame.entities.forEach((entity, entityIndex) => {
+      if (entity.cubeCount === 0) {
+        return;
+      }
+
+      const layer = buildSceneAnnotationLayer({
+        entity,
+        entityIndex,
+        playbackFrame,
+        resolveCachedFrameTransform,
+        pendingAnnotationFrameIds,
+        topic,
+      });
+      if (!layer) {
+        return;
+      }
+
+      transformedLayerCount += 1;
+      sceneAnnotationLayers.push(layer);
+    });
+  });
+
   return {
     clampedFrameIds: [...clampedFrameIds].sort(),
     largeInterpolationGaps: [...largeInterpolationGapsByFrameId.entries()]
       .map(([frameId, gapNs]) => ({ frameId, gapNs }))
       .sort((left, right) => left.frameId.localeCompare(right.frameId)),
+    pendingAnnotationFrameIds: [...pendingAnnotationFrameIds].sort(),
     pointCloudLayers,
     provisionalFrameIds: [...provisionalFrameIds].sort(),
+    sceneAnnotationLayers,
     transformedLayerCount,
     unresolvedFrameIds: [...unresolvedFrameIds].sort(),
+  };
+}
+
+function buildSceneAnnotationLayer({
+  entity,
+  entityIndex,
+  pendingAnnotationFrameIds,
+  playbackFrame,
+  resolveCachedFrameTransform,
+  topic,
+}: {
+  readonly entity: SceneEntityVisualization;
+  readonly entityIndex: number;
+  readonly pendingAnnotationFrameIds: Set<string>;
+  readonly playbackFrame: McapTopicPlaybackFrame<SceneUpdateVisualization>;
+  readonly resolveCachedFrameTransform: (
+    sourceFrameId: string,
+    requestedTimeNs: bigint,
+  ) => FrameTransformResolution;
+  readonly topic: string;
+}): SceneAnnotationPanelLayer | null {
+  const requestedTimeNs = entity.frameLocked
+    ? playbackFrame.requestedTimeNs
+    : (entity.timestampNs ?? playbackFrame.contentTimeNs);
+  const sceneFrame: SceneUpdateVisualization = {
+    ...playbackFrame.frame,
+    deletions: [],
+    entities: [entity],
+  };
+  const id = `${topic}:${entity.id || entityIndex}`;
+
+  if (!entity.frameId) {
+    return { frame: sceneFrame, id };
+  }
+
+  const resolution = resolveCachedFrameTransform(
+    entity.frameId,
+    requestedTimeNs,
+  );
+  if (resolution.status === "missing") {
+    return null;
+  }
+  if (resolution.status === "pending") {
+    pendingAnnotationFrameIds.add(entity.frameId);
+    return null;
+  }
+
+  return {
+    frame: sceneFrame,
+    frameTransform: resolution.transform,
+    id,
   };
 }
 

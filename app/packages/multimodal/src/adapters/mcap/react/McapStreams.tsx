@@ -51,7 +51,11 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
   const blockingTopics = useMemo(
     () =>
       sources
-        .filter((s) => s.type !== MCAP_SOURCE_TYPE.IMAGE_ANNOTATION)
+        .filter(
+          (s) =>
+            s.type !== MCAP_SOURCE_TYPE.IMAGE_ANNOTATION &&
+            s.type !== MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
+        )
         .map((s) => s.id),
     [sources],
   );

@@ -8,6 +8,10 @@ import * as THREE from "three";
 import type {
   PointCloudScalarField,
   PointCloudVisualization,
+  RgbaColor,
+  SceneCubePrimitive,
+  ScenePose3D,
+  SceneUpdateVisualization,
 } from "../../decoders";
 import {
   Base3DScene,
@@ -72,6 +76,8 @@ const CANONICAL_SCALAR_COLOR_FIELDS = [
   "rcs",
 ] as const;
 const NEUTRAL_POINT_COLOR = [0.72, 0.76, 0.82] as const;
+const DEFAULT_SCENE_CUBE_COLOR: RgbaColor = [0.1, 0.78, 0.95, 1];
+const SCENE_CUBE_WIREFRAME_OPACITY = 0.95;
 
 /**
  * Supported point-cloud colouring modes.
@@ -131,7 +137,19 @@ export interface PointCloudPanelLayer {
   readonly id: string;
 }
 
+/**
+ * One transformed 3D annotation layer rendered into the shared scene.
+ */
+export interface SceneAnnotationPanelLayer {
+  readonly frame: SceneUpdateVisualization;
+  readonly frameTransform?: PointCloudFrameTransform;
+  readonly id: string;
+}
+
 export interface PointCloudPanelRenderStats {
+  readonly annotationCubeCount: number;
+  readonly annotationEntityCount: number;
+  readonly annotationLayerCount: number;
   readonly cameraPose?: PointCloudCameraPose;
   readonly cameraPoseSource: "controlled" | "fitted" | "none";
   readonly declaredPointCount: number;
@@ -149,6 +167,7 @@ export interface PointCloudPanelProps {
   readonly className?: string;
   readonly colorBy?: PointCloudColorBy;
   readonly fit?: "initial" | "frame" | "never";
+  readonly annotationLayers?: readonly SceneAnnotationPanelLayer[];
   readonly layers: readonly PointCloudPanelLayer[];
   readonly maxRenderedPoints?: number;
   readonly onCameraPoseChange?: (
@@ -169,6 +188,7 @@ export interface PointCloudPanelProps {
  * streams compose into a single fused view.
  */
 export function PointCloudPanel({
+  annotationLayers = [],
   cameraPose,
   className,
   colorBy,
@@ -203,8 +223,9 @@ export function PointCloudPanel({
   );
 
   const frameFitPose = useMemo(
-    () => cameraPoseForBounds(sceneBoundsForLayers(renderLayers)),
-    [renderLayers],
+    () =>
+      cameraPoseForBounds(sceneBoundsForLayers(renderLayers, annotationLayers)),
+    [annotationLayers, renderLayers],
   );
   const [initialFitPose, setInitialFitPose] =
     useState<PointCloudCameraPose | null>(null);
@@ -242,15 +263,32 @@ export function PointCloudPanel({
     (sum, layer) => sum + layer.frame.pointCount,
     0,
   );
+  const annotationEntityCount = annotationLayers.reduce(
+    (sum, layer) => sum + layer.frame.entities.length,
+    0,
+  );
+  const annotationCubeCount = annotationLayers.reduce(
+    (sum, layer) =>
+      sum +
+      layer.frame.entities.reduce(
+        (entitySum, entity) => entitySum + entity.cubeCount,
+        0,
+      ),
+    0,
+  );
   const hasPointCloudLayers = layers.length > 0;
+  const hasSceneLayers = hasPointCloudLayers || annotationLayers.length > 0;
   const requestFocusScene = useCallback(() => {
     setFocusSceneRequestKey((current) => current + 1);
   }, []);
   useEffect(() => {
-    if (!onRenderStats || !hasPointCloudLayers) return;
+    if (!onRenderStats || !hasSceneLayers) return;
 
     const frame = requestAnimationFrame(() => {
       onRenderStats({
+        annotationCubeCount,
+        annotationEntityCount,
+        annotationLayerCount: annotationLayers.length,
         ...(effectiveCameraPose ? { cameraPose: effectiveCameraPose } : {}),
         cameraPoseSource,
         declaredPointCount,
@@ -265,11 +303,14 @@ export function PointCloudPanel({
 
     return () => cancelAnimationFrame(frame);
   }, [
+    annotationCubeCount,
+    annotationEntityCount,
+    annotationLayers.length,
     declaredPointCount,
     effectiveCameraPose,
     finitePointCount,
     cameraPoseSource,
-    hasPointCloudLayers,
+    hasSceneLayers,
     layers.length,
     onRenderStats,
     renderLayers,
@@ -297,12 +338,17 @@ export function PointCloudPanel({
               pointSize={pointSize}
             />
           ))}
+          {annotationLayers.map((layer) => (
+            <SceneAnnotationLayer key={layer.id} layer={layer} />
+          ))}
         </Base3DScene>
       </WebGpuCanvas>
 
       {canvasError ? (
         <div style={styles.status}>{canvasError}</div>
-      ) : hasPointCloudLayers && finitePointCount === 0 ? (
+      ) : hasPointCloudLayers &&
+        finitePointCount === 0 &&
+        annotationCubeCount === 0 ? (
         <div style={styles.status}>No finite points</div>
       ) : null}
       {!canvasError ? (
@@ -322,13 +368,76 @@ export function PointCloudPanel({
           </button>
         </div>
       ) : null}
-      {!canvasError && showHud && hasPointCloudLayers ? (
+      {!canvasError && showHud && hasSceneLayers ? (
         <div style={styles.hud}>
-          {pointCountLabel(finitePointCount, declaredPointCount)}
+          {hasPointCloudLayers
+            ? pointCountLabel(finitePointCount, declaredPointCount)
+            : annotationCountLabel(annotationCubeCount)}
         </div>
       ) : null}
       {warning ? <div style={styles.warning}>{warning}</div> : null}
     </div>
+  );
+}
+
+function SceneAnnotationLayer({
+  layer,
+}: {
+  readonly layer: SceneAnnotationPanelLayer;
+}) {
+  const invalidate = useThree((state) => state.invalidate);
+  const { frameTransform } = layer;
+  const objectTransform = useMemo(
+    () => pointCloudObjectTransform(frameTransform),
+    [frameTransform],
+  );
+
+  useEffect(() => {
+    invalidate();
+  }, [invalidate, objectTransform]);
+
+  return (
+    <group
+      position={objectTransform.position}
+      quaternion={objectTransform.quaternion}
+    >
+      {layer.frame.entities.map((entity, entityIndex) =>
+        entity.cubes.map((cube, cubeIndex) => (
+          <SceneCubeMesh
+            key={`${entity.id || entityIndex}:${cubeIndex}`}
+            cube={cube}
+          />
+        )),
+      )}
+    </group>
+  );
+}
+
+function SceneCubeMesh({ cube }: { readonly cube: SceneCubePrimitive }) {
+  const size = cube.size;
+  if (!isFinitePositiveVector(size)) {
+    return null;
+  }
+
+  const transform = scenePoseObjectTransform(cube.pose);
+  const [r, g, b, a] = cube.color ?? DEFAULT_SCENE_CUBE_COLOR;
+  const color = new THREE.Color(clamp01(r), clamp01(g), clamp01(b)).getHex();
+
+  return (
+    <group position={transform.position} quaternion={transform.quaternion}>
+      <mesh frustumCulled={false}>
+        <boxGeometry args={[size[0], size[1], size[2]]} />
+        <meshBasicMaterial
+          color={color}
+          opacity={Math.max(
+            0.2,
+            Math.min(SCENE_CUBE_WIREFRAME_OPACITY, clamp01(a)),
+          )}
+          transparent
+          wireframe
+        />
+      </mesh>
+    </group>
   );
 }
 
@@ -808,6 +917,31 @@ function pointCloudObjectTransform(
   };
 }
 
+function scenePoseObjectTransform(
+  pose: ScenePose3D,
+): PointCloudObjectTransform {
+  const [x, y, z, w] = pose.quaternion;
+  const length = Math.hypot(w, x, y, z);
+
+  if (length === 0) {
+    return {
+      position: [pose.position[0], pose.position[1], pose.position[2]],
+      quaternion: [0, 0, 0, 1],
+    };
+  }
+
+  const normalizedRotation = new THREE.Quaternion(x, y, z, w).normalize();
+  return {
+    position: [pose.position[0], pose.position[1], pose.position[2]],
+    quaternion: [
+      normalizedRotation.x,
+      normalizedRotation.y,
+      normalizedRotation.z,
+      normalizedRotation.w,
+    ],
+  };
+}
+
 /**
  * Combined world-space bounds for all current layers. Each layer's geometry
  * bounds start in its local point-cloud frame, so transforms must be applied
@@ -815,6 +949,7 @@ function pointCloudObjectTransform(
  */
 function sceneBoundsForLayers(
   layers: readonly PointCloudRenderLayer[],
+  annotationLayers: readonly SceneAnnotationPanelLayer[],
 ): THREE.Box3 | null {
   const sceneBounds = new THREE.Box3();
   sceneBounds.makeEmpty();
@@ -822,8 +957,49 @@ function sceneBoundsForLayers(
   for (const { data, layer } of layers) {
     sceneBounds.union(worldBoundsForLayer(data.bounds, layer.frameTransform));
   }
+  for (const layer of annotationLayers) {
+    const bounds = boundsForAnnotationLayer(layer);
+    if (bounds) {
+      sceneBounds.union(bounds);
+    }
+  }
 
   return sceneBounds.isEmpty() ? null : sceneBounds;
+}
+
+function boundsForAnnotationLayer(
+  layer: SceneAnnotationPanelLayer,
+): THREE.Box3 | null {
+  const layerBounds = new THREE.Box3();
+  layerBounds.makeEmpty();
+
+  for (const entity of layer.frame.entities) {
+    for (const cube of entity.cubes) {
+      const cubeBounds = boundsForSceneCube(cube);
+      if (cubeBounds) {
+        layerBounds.union(cubeBounds);
+      }
+    }
+  }
+
+  return layerBounds.isEmpty()
+    ? null
+    : worldBoundsForLayer(layerBounds, layer.frameTransform);
+}
+
+function boundsForSceneCube(cube: SceneCubePrimitive): THREE.Box3 | null {
+  if (!isFinitePositiveVector(cube.size)) {
+    return null;
+  }
+
+  return new THREE.Box3()
+    .setFromCenterAndSize(
+      new THREE.Vector3(),
+      new THREE.Vector3(cube.size[0], cube.size[1], cube.size[2]),
+    )
+    .applyMatrix4(
+      matrixFromObjectTransform(scenePoseObjectTransform(cube.pose)),
+    );
 }
 
 /**
@@ -835,14 +1011,19 @@ function worldBoundsForLayer(
   bounds: THREE.Box3,
   frameTransform: PointCloudFrameTransform | undefined,
 ): THREE.Box3 {
-  const transform = pointCloudObjectTransform(frameTransform);
-  const matrix = new THREE.Matrix4().compose(
+  return bounds
+    .clone()
+    .applyMatrix4(
+      matrixFromObjectTransform(pointCloudObjectTransform(frameTransform)),
+    );
+}
+
+function matrixFromObjectTransform(transform: PointCloudObjectTransform) {
+  return new THREE.Matrix4().compose(
     new THREE.Vector3(...transform.position),
     new THREE.Quaternion(...transform.quaternion),
     new THREE.Vector3(1, 1, 1),
   );
-
-  return bounds.clone().applyMatrix4(matrix);
 }
 
 /**
@@ -915,6 +1096,14 @@ function clamp01(value: number): number {
   return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 }
 
+function isFinitePositiveVector(
+  value: readonly [number, number, number],
+): boolean {
+  return value.every(
+    (component) => Number.isFinite(component) && component > 0,
+  );
+}
+
 function pointCountLabel(finitePointCount: number, declaredPointCount: number) {
   if (declaredPointCount > 0 && declaredPointCount !== finitePointCount) {
     return `${formatCount(finitePointCount)} / ${formatCount(
@@ -923,6 +1112,10 @@ function pointCountLabel(finitePointCount: number, declaredPointCount: number) {
   }
 
   return `${formatCount(finitePointCount)} pts`;
+}
+
+function annotationCountLabel(cubeCount: number) {
+  return `${formatCount(cubeCount)} ${cubeCount === 1 ? "box" : "boxes"}`;
 }
 
 function formatCount(value: number) {

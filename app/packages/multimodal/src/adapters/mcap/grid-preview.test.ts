@@ -314,6 +314,7 @@ describe("MCAP grid preview", () => {
         createTopic("/camera/front"),
         createTopic("/camera/front/annotations", "foxglove.ImageAnnotations"),
         createTopic("/lidar/points", "foxglove.PointCloud"),
+        createTopic("/markers", "foxglove.SceneUpdate"),
         createTopic("/tf", "foxglove.FrameTransform"),
       ]),
     ).toEqual({
@@ -321,6 +322,7 @@ describe("MCAP grid preview", () => {
       image: ["/camera/front"],
       pointCloud: ["/lidar/points"],
       previewable: ["/camera/front", "/lidar/points"],
+      sceneUpdates: ["/markers"],
     });
   });
 
@@ -341,6 +343,7 @@ describe("MCAP grid preview", () => {
       image: [],
       pointCloud: [],
       previewable: [],
+      sceneUpdates: [],
     });
   });
 
@@ -356,6 +359,7 @@ describe("MCAP grid preview", () => {
         "/CAM_FRONT/image_rect_compressed",
         "/CAM_BACK/image_rect_compressed",
       ],
+      sceneUpdates: [],
     });
 
     expect(selection).toEqual({
