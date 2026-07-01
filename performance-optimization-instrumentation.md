@@ -871,6 +871,131 @@ Observed result:
   lookahead, not transform placement fallback; those are the next optimization
   surface.
 
+## Instrumentation 9: Add Worker Request Attribution
+
+Date: 2026-06-30
+
+Purpose:
+
+- Before changing chunk size, worker concurrency, cancellation, or request
+  coalescing, measure the causal chain for each worker request.
+- Correlate user-visible stalls with whether work waited in queue, spent time
+  actively decoding/fetching, touched many large chunks, or returned a large
+  payload to the main thread.
+
+Instrumentation added:
+
+- Each final worker response can now carry a debug-only attribution row when
+  `mcapLatencyDebug=1`.
+- Published summary attribute: `data-mcap-worker-attribution`.
+- Console row per completed worker request: `[mcap] worker attribution`.
+- Aggregates by lane, operation, lane+operation, and priority.
+- Tracks recent rows plus top offenders by queue wait, run time, fetched bytes,
+  and payload bytes.
+
+Per-request fields:
+
+- Lane, operation, priority, request id, source key.
+- Requested time/window details, tick count, topic count, topic preview.
+- Queue wait, queue depth at start, and worker run time.
+- Unique read request count, requested bytes, fetched bytes.
+- Chunks touched, unique chunk bytes, data-chunk overlap bytes, message-index
+  overlap bytes, and top chunks.
+- Approximate response payload bytes, raw encoded bytes, decoded payload bytes,
+  result windows/messages/samples, and transferable count.
+
+Smoke-test signal:
+
+- Reloaded the NuScenes local sample with `mcapLatencyDebug=1`.
+- Verified `data-mcap-worker-attribution` was present with both `foreground`
+  and `idle` lanes.
+- Observed request attribution for synchronized batches, transform windows,
+  timeline range, topics, topic bounds, and transform bootstrap.
+- A full-range idle `readFrameTransformWindow` touched about `531 MB` of chunks
+  and fetched about `532 MB` to return about `0.264 MB` of transform payload.
+
+Interpretation:
+
+- This confirms the transform payload itself is tiny, but range shape can force
+  huge chunk pressure.
+- The next optimization should use this attribution to decide whether to split,
+  defer, cancel, coalesce, or reprioritize chunk-heavy background work.
+
+## Optimization 10: Stop Default Full-Range Transform Warmup
+
+Date: 2026-06-30
+
+Problem observed:
+
+- Worker attribution showed a full-range idle `readFrameTransformWindow`
+  touching about `531 MB` of chunks and fetching about `532 MB` to return only
+  about `0.264 MB` of transform payload.
+- That means the expensive part was not transform payload size. It was request
+  shape against MCAP chunk granularity: a broad transform time range forced the
+  reader to touch many mixed-data chunks.
+
+Product stance:
+
+- The user does not need every transform in the file immediately.
+- The user needs truthful placement for the current frame and enough
+  near-future transform coverage to avoid visual snaps during playback.
+- A full-recording transform warmup spends a lot of invisible work on data the
+  user may never look at.
+
+Refactor:
+
+- Removed the default full-source dynamic transform warmup.
+- Kept the foreground placement read small: `-500 ms` to `+1 s` around the
+  current playhead.
+- Kept the idle transform runway: `-500 ms` to `+4 s` around the current
+  playhead.
+- Coalesced runway requests around meaningful coverage instead of exact window
+  equality: if cache or in-flight work covers at least the next `2 s`, small
+  playhead shifts do not queue another overlapping idle runway.
+- Left source/timeline changes resetting the transform store, in-flight
+  windows, and retry state.
+- Removed the now-unused `transform-range` bandwidth operation from live code.
+
+Expected measurement:
+
+- `readFrameTransformWindow` fetched/chunk MB should no longer include a huge
+  full-range idle request on initial load.
+- First transformed placement should remain governed by the small foreground
+  placement window.
+- Provisional fallback after first transformed placement should stay at `0`.
+- If transform coverage gaps appear later in playback, they should show up as
+  small runway/placement requests rather than one massive source-wide request.
+
+Smoke validation:
+
+- Reloaded the local NuScenes sample with `mcapLatencyDebug=1`.
+- Observed `2` transform-window worker requests and `0` full-range transform
+  requests.
+
+| Request     | Lane       | Window | Fetched MB | Chunk MB | Payload MB | Run time |
+| ----------- | ---------- | -----: | ---------: | -------: | ---------: | -------: |
+| Placement   | foreground |  1.5 s |     29.260 |   29.934 |      0.014 | 159.2 ms |
+| Idle runway | idle       |  4.5 s |    116.896 |  121.287 |      0.055 |   1.02 s |
+
+Transform-window summary after reload:
+
+| Metric              |   Value |
+| ------------------- | ------: |
+| Requests            |       2 |
+| Fetched MB          | 146.156 |
+| Chunk MB            | 151.222 |
+| Payload MB          |   0.069 |
+| Full-range requests |       0 |
+
+Interpretation:
+
+- The massive full-range request is gone from initial load.
+- The remaining transform cost is now the idle runway itself: even a local
+  `4.5 s` transform window still touches about `121 MB` of chunks for about
+  `0.055 MB` of payload.
+- The next chunk/worker optimization should focus on reducing or deferring
+  runway chunk pressure, not on transform payload serialization.
+
 ## Next Steps
 
 1. Make baseline capture repeatable with a small browser/dev helper that writes
