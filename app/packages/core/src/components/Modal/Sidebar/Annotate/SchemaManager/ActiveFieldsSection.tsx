@@ -80,20 +80,20 @@ const ActiveFieldsSection = () => {
     useMemo(
       () =>
         atom((get) =>
-          Object.fromEntries(fields.map((f) => [f, get(fieldType(f))]))
+          Object.fromEntries(fields.map((f) => [f, get(fieldType(f))])),
         ),
-      [fields]
-    )
+      [fields],
+    ),
   );
 
   const fieldReadOnlyStates = useAtomValue(
     useMemo(
       () =>
         atom((get) =>
-          Object.fromEntries(fields.map((f) => [f, get(fieldIsReadOnly(f))]))
+          Object.fromEntries(fields.map((f) => [f, get(fieldIsReadOnly(f))])),
         ),
-      [fields]
-    )
+      [fields],
+    ),
   );
 
   const fieldAttrCounts = useAtomValue(
@@ -101,11 +101,11 @@ const ActiveFieldsSection = () => {
       () =>
         atom((get) =>
           Object.fromEntries(
-            fields.map((f) => [f, get(fieldAttributeCount(f))])
-          )
+            fields.map((f) => [f, get(fieldAttributeCount(f))]),
+          ),
         ),
-      [fields]
-    )
+      [fields],
+    ),
   );
 
   const { setActiveSchemas } = useSchemaManager();
@@ -136,7 +136,7 @@ const ActiveFieldsSection = () => {
           ),
         } as ListItemProps,
       })),
-    [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates]
+    [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates],
   );
 
   const handleOrderChange = useCallback(
@@ -147,7 +147,7 @@ const ActiveFieldsSection = () => {
       // Persist to DB
       setActiveSchemas({ fields: newOrder });
     },
-    [setFields, setActiveSchemas]
+    [setFields, setActiveSchemas],
   );
 
   const handleSelected = useCallback(
@@ -155,7 +155,7 @@ const ActiveFieldsSection = () => {
       setSelected(new Set(selectedIds));
       setHiddenSelected(new Set());
     },
-    [setHiddenSelected, setSelected]
+    [setHiddenSelected, setSelected],
   );
 
   const selectedList = useMemo(() => Array.from(selected), [selected]);

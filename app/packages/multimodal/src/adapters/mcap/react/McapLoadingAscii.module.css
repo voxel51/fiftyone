@@ -1,0 +1,41 @@
+.fallingAsciiBox {
+  color: rgba(108, 214, 255, 0.9);
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 22px;
+  overflow: hidden;
+  position: relative;
+  width: 28px;
+}
+
+.fallingAsciiBoxInner {
+  animation: mcap-ascii-fall 1.15s ease-in infinite;
+  display: block;
+  font-family: "SF Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 6px;
+  font-weight: 800;
+  line-height: 0.9;
+  text-align: left;
+  text-shadow: 0 0 8px rgba(108, 214, 255, 0.5);
+  white-space: pre;
+}
+
+@keyframes mcap-ascii-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+
+  24% {
+    opacity: 1;
+  }
+
+  74% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}

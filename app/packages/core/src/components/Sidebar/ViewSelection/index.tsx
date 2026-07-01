@@ -1,6 +1,6 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { Selection } from "@fiftyone/components";
-import { useRefetchableSavedViews } from "@fiftyone/core";
+import { default as useRefetchableSavedViews } from "../../../hooks/useRefetchableSavedViews";
 import * as fos from "@fiftyone/state";
 import React, { Suspense, useEffect, useMemo } from "react";
 import {
@@ -35,7 +35,7 @@ export interface DatasetView {
 
 export default function ViewSelection() {
   const [selected, setSelected] = useRecoilState<fos.DatasetViewOption | null>(
-    fos.selectedSavedViewState
+    fos.selectedSavedViewState,
   );
   const datasetName = useRecoilValue(fos.datasetName);
   const canEditSavedViews = useRecoilValue(fos.canEditSavedViews);
@@ -64,7 +64,7 @@ export default function ViewSelection() {
         viewStages,
       })),
     ],
-    [items]
+    [items],
   );
 
   const searchData = useMemo(
@@ -74,9 +74,9 @@ export default function ViewSelection() {
           id === fos.DEFAULT_SELECTED.id ||
           label?.toLowerCase().includes(viewSearch) ||
           description?.toLowerCase().includes(viewSearch) ||
-          slug?.toLowerCase().includes(viewSearch)
+          slug?.toLowerCase().includes(viewSearch),
       ),
-    [viewOptions, viewSearch]
+    [viewOptions, viewSearch],
   );
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function ViewSelection() {
       searchData?.length
     ) {
       const potentialView = searchData.filter(
-        (v) => v.slug === selected.slug
+        (v) => v.slug === selected.slug,
       )?.[0];
       if (potentialView) {
         setSelected(potentialView as fos.DatasetViewOption);
@@ -108,7 +108,7 @@ export default function ViewSelection() {
   useEffect(() => {
     if (savedViewParam) {
       const potentialView = viewOptions.filter(
-        (v) => v.label === savedViewParam
+        (v) => v.label === savedViewParam,
       )?.[0];
       if (potentialView) {
         if (selected && selected.id === potentialView.id) {
@@ -117,7 +117,7 @@ export default function ViewSelection() {
         setSelected(potentialView as fos.DatasetViewOption);
       } else {
         const potentialUpdatedView = items.filter(
-          (v) => v.name === savedViewParam
+          (v) => v.name === savedViewParam,
         )?.[0];
         if (potentialUpdatedView) {
           refetch(
@@ -131,7 +131,7 @@ export default function ViewSelection() {
                   slug: potentialUpdatedView.slug,
                 });
               },
-            }
+            },
           );
         } else {
           // bad/old view param
@@ -175,7 +175,7 @@ export default function ViewSelection() {
           savedViews={items}
           onEditSuccess={(
             createSavedView: fos.State.SavedView,
-            reload?: boolean
+            reload?: boolean,
           ) => {
             refetch(
               { name: datasetName },
@@ -191,7 +191,7 @@ export default function ViewSelection() {
                     trackEvent("created_saved_view");
                   }
                 },
-              }
+              },
             );
           }}
           onDeleteSuccess={(deletedSavedViewName: string) => {
@@ -204,7 +204,7 @@ export default function ViewSelection() {
                     resetView();
                   }
                 },
-              }
+              },
             );
           }}
         />

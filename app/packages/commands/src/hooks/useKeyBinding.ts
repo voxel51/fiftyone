@@ -12,7 +12,7 @@ import { resolveContext } from "./utils";
 export const useKeyBinding = (
   command: string | Command,
   binding: string,
-  context?: CommandContext | string
+  context?: CommandContext | string,
 ) => {
   const resolvedCtx = useMemo(() => {
     return resolveContext(context);
@@ -34,7 +34,7 @@ export const useKeyBinding = (
     }
     return () => {
       if (cmd) {
-        resolvedCtx.context.unbindKey(binding);
+        resolvedCtx.context.unbindKey(binding, cmd.id);
       }
     };
   }, [resolvedCtx, command, binding]);

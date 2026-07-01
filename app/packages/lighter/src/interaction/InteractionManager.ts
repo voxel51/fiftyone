@@ -10,6 +10,7 @@ import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import {
   SegmentationTool,
+  SegmentationToolMode,
   type SegmentationToolState,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
@@ -55,7 +56,7 @@ export interface OverlayEvent {
 export type EmptyCanvasClickHandler = (
   worldPoint: Point,
   point: Point,
-  event: PointerEvent
+  event: PointerEvent,
 ) => boolean | void;
 
 /**
@@ -83,7 +84,7 @@ export interface KeypointMutationHandler {
 }
 
 function hasKeypointMutation(
-  h: InteractionHandler
+  h: InteractionHandler,
 ): h is InteractionHandler & KeypointMutationHandler {
   return (
     "getSelectedPointIndex" in h &&
@@ -132,7 +133,7 @@ export interface InteractionHandler {
   getCursor?(
     worldPoint: Point,
     scale: number,
-    modifiers?: ClickEventModifiers
+    modifiers?: ClickEventModifiers,
   ): string;
 
   /**
@@ -146,7 +147,7 @@ export interface InteractionHandler {
    */
   onModifiersChanged?(
     modifiers: ClickEventModifiers,
-    worldPoint: Point | null
+    worldPoint: Point | null,
   ): void;
 
   /** Returns the current state of the handler */
@@ -258,7 +259,7 @@ export class InteractionManager {
     private canvas: HTMLCanvasElement,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
-    eventChannel: string
+    eventChannel: string,
   ) {
     this.eventBus = getEventBus<LighterEventGroup>(eventChannel);
     this.setupEventListeners();
@@ -348,6 +349,13 @@ export class InteractionManager {
 
       if (isUnselectedOverlay) {
         this.selectionManager.select(handler!.id);
+
+        // Select an overlay before issuing any edits. The cursor at this point
+        // is a 'pointer' indicating selection, not painting/erasing/keypoint.
+        if (segmentationModeBridge.isActive()) {
+          event.preventDefault();
+          return;
+        }
       }
 
       // Detection mode: defer overlay creation until we confirm this is a drag.
@@ -389,7 +397,7 @@ export class InteractionManager {
       const cursor = handler.getCursor?.(
         worldPoint,
         scale,
-        this.currentModifiers
+        this.currentModifiers,
       );
       if (cursor) {
         this.canvas.style.cursor = cursor;
@@ -432,7 +440,7 @@ export class InteractionManager {
   private configureCursorStyle(
     handler: InteractionHandler,
     worldPoint: Point,
-    scale: number
+    scale: number,
   ): void {
     if (
       segmentationModeBridge.isActive() &&
@@ -450,13 +458,13 @@ export class InteractionManager {
       this.canvas.style.cursor = "pointer";
     } else if (segmentationModeBridge.isActive()) {
       this.canvas.style.cursor = buildBrushCursor(
-        segmentationModeBridge.getToolState(scale)!
+        segmentationModeBridge.getToolState(scale)!,
       );
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
       this.canvas.style.cursor = handler.getCursor(
         worldPoint,
         scale,
-        this.currentModifiers
+        this.currentModifiers,
       );
     }
   }
@@ -532,9 +540,18 @@ export class InteractionManager {
     const pending = this.pendingAction;
     this.pendingAction = undefined;
 
+    const hasSelection = this.selectionManager.getSelectionCount() > 0;
     const editingSegmentation =
+      segmentationModeBridge.isActive() && hasSelection;
+
+    // Erase with nothing selected is a no-op
+    if (
       segmentationModeBridge.isActive() &&
-      this.selectionManager.getSelectionCount() > 0;
+      !hasSelection &&
+      segmentationModeBridge.getToolMode() === SegmentationToolMode.Remove
+    ) {
+      return true;
+    }
 
     if (!editingSegmentation) {
       this.eventBus.dispatch("lighter:overlay-create", {
@@ -554,7 +571,7 @@ export class InteractionManager {
         event,
         scale: pending.scale,
         segmentationToolState: segmentationModeBridge.getToolState(
-          pending.scale
+          pending.scale,
         ),
       });
 
@@ -590,7 +607,7 @@ export class InteractionManager {
 
     const distance = Math.hypot(
       point.x - this.pendingAction.point.x,
-      point.y - this.pendingAction.point.y
+      point.y - this.pendingAction.point.y,
     );
 
     if (distance > this.CLICK_THRESHOLD) {
@@ -635,7 +652,7 @@ export class InteractionManager {
         this.scheduleHoverUpdate(
           this.currentPixelCoordinates,
           event,
-          undefined
+          undefined,
         );
       }
     } else {
@@ -855,6 +872,9 @@ export class InteractionManager {
       if (TypeGuards.isSpatial(handler) && startBounds && startPosition) {
         const detail = {
           id: handler.id,
+          // `handler` is the overlay itself when moving/resizing an existing
+          // overlay; a creation proxy exposes the overlay via `.overlay`.
+          overlayId: handler.overlay?.id ?? handler.id,
           startBounds,
           startPosition,
           endPosition: handler.bounds,
@@ -868,7 +888,13 @@ export class InteractionManager {
               handler: interactiveHandler,
             });
           }
-        } else {
+        } else if (this.isSpatialDragEvent(event)) {
+          // A press that set DRAGGING/RESIZE on pointer-down but never crossed
+          // the click threshold is a selection click (or a sub-threshold
+          // micro-adjustment), not an edit — selection already ran on
+          // pointer-down. Emitting a finalize here would commit a no-op edit
+          // and, on video, promote the frame to a keyframe. Gate on the same
+          // spatial drag threshold the click path uses.
           const type =
             interactionState === "DRAGGING"
               ? "lighter:overlay-drag-end"
@@ -1039,7 +1065,7 @@ export class InteractionManager {
       const cursor = interactiveHandler.getCursor(
         worldPoint,
         this.renderer.getScale(),
-        this.currentModifiers
+        this.currentModifiers,
       );
       if (cursor) {
         this.canvas.style.cursor = cursor;
@@ -1114,6 +1140,11 @@ export class InteractionManager {
         const segmentationToolState =
           segmentationModeBridge.getToolState(scale);
 
+        // Read before commit: an overlay with no valid bounds yet is a
+        // brand-new track whose first polygon establishes it. `commitPenPolygon`
+        // fills the bounds, so this signal must be captured beforehand.
+        const establishingNewTrack = !handler.hasValidBounds?.();
+
         handler.commitPenPolygon({
           point,
           worldPoint,
@@ -1127,6 +1158,23 @@ export class InteractionManager {
           // PaintStrokeCommand emitted by commitPenPolygon. The handler stays
           // installed so the user can keep drawing more polygons.
           interactiveHandler.pruneCommands();
+
+          // The pen handler is already installed by commit time, so the
+          // first-click establish path below is skipped — but a brand-new
+          // track's first polygon still needs `overlay-establish` to fire
+          // (it's the only signal video annotation fans the track across frames
+          // on). Re-emit it here for that first polygon, keeping the handler
+          // installed so the user can keep drawing more polygons.
+          if (establishingNewTrack && handler.hasValidBounds?.()) {
+            this.eventBus.dispatch("lighter:overlay-establish", {
+              id: handler.id,
+              overlayId: handler.overlay?.id ?? handler.id,
+              handler: interactiveHandler,
+              startBounds: handler.bounds,
+              startPosition: { x: handler.bounds.x, y: handler.bounds.y },
+              bounds: handler.bounds,
+            });
+          }
         } else if (interactiveHandler) {
           // First-click case: an InteractiveDetectionHandler still wraps the
           // freshly-created overlay. Tear it down and emit overlay-establish
@@ -1134,6 +1182,8 @@ export class InteractionManager {
           this.removeHandler(interactiveHandler);
           this.eventBus.dispatch("lighter:overlay-establish", {
             id: handler.id,
+            // `handler` is the freshly-created overlay here (see above).
+            overlayId: handler.overlay?.id ?? handler.id,
             handler: interactiveHandler,
             startBounds: handler.bounds,
             startPosition: { x: handler.bounds.x, y: handler.bounds.y },
@@ -1153,16 +1203,22 @@ export class InteractionManager {
         const pointsEstablished =
           overlay instanceof KeypointOverlay && overlay.hasValidBounds();
 
-        interactiveHandler.resetOverlay();
-        this.removeHandler(interactiveHandler);
-
         if (pointsEstablished) {
+          // Tier 1a: points placed — commit. Clear the keypoint scaffolding;
+          // the finalize handler re-arms a fresh session (deactivate→activate).
+          interactiveHandler.resetOverlay();
+          this.removeHandler(interactiveHandler);
+
           this.eventBus.dispatch("lighter:point-selection-finalize", {
             eventId: generateUUID(),
           });
 
           return;
         }
+
+        // No points placed: leave the keypoint session installed so the user
+        // can keep clicking, and fall through to the no-points right-click
+        // tiers — Tier 2 (deselect the committed label) then Tier 3 (exit mode).
       }
     }
 
@@ -1192,7 +1248,7 @@ export class InteractionManager {
   private scheduleHoverUpdate(
     point: Point,
     event: PointerEvent,
-    resolvedHandler: InteractionHandler | undefined
+    resolvedHandler: InteractionHandler | undefined,
   ): void {
     this.latestHoverPoint = point;
     this.latestHoverEvent = event;
@@ -1237,7 +1293,7 @@ export class InteractionManager {
   private handleHover(
     point: Point,
     event: PointerEvent,
-    resolvedHandler: InteractionHandler | undefined
+    resolvedHandler: InteractionHandler | undefined,
   ): void {
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -1334,7 +1390,7 @@ export class InteractionManager {
   }
 
   private handleZoomed = (
-    _event: LighterEventGroup["lighter:zoomed"]
+    _event: LighterEventGroup["lighter:zoomed"],
   ): void => {
     this.handlers?.forEach((handler) => handler.markDirty());
 
@@ -1353,7 +1409,7 @@ export class InteractionManager {
 
     const scale = this.renderer.getScale();
     this.canvas.style.cursor = buildBrushCursor(
-      segmentationModeBridge.getToolState(scale)!
+      segmentationModeBridge.getToolState(scale)!,
     );
   };
 
@@ -1363,7 +1419,7 @@ export class InteractionManager {
     const timeDiff = now - this.lastClickTime;
     const distance = Math.sqrt(
       Math.pow(point.x - this.lastClickPoint.x, 2) +
-        Math.pow(point.y - this.lastClickPoint.y, 2)
+        Math.pow(point.y - this.lastClickPoint.y, 2),
     );
 
     return (
@@ -1376,7 +1432,7 @@ export class InteractionManager {
     // self-managed handlers take precedence to allow editing on top of
     // other overlays
     const selfManaged = this.handlers.find((h) =>
-      isSelfManagedInteractiveHandler(h)
+      isSelfManagedInteractiveHandler(h),
     );
 
     return (
@@ -1410,7 +1466,7 @@ export class InteractionManager {
    */
   private findHandlerAtPoint(
     point: Point,
-    skipCanonicalMedia: boolean = false
+    skipCanonicalMedia: boolean = false,
   ): InteractionHandler | undefined {
     // Single-pass: find best handler at point using priority rules.
     // Priority: selected > highest selectable priority > topmost (reverse order).

@@ -27,7 +27,7 @@ const AddAttributeCard = ({
   onCancel,
 }: AddAttributeCardProps) => {
   const [formState, setFormState] = useState<AttributeFormData>(
-    createDefaultFormData()
+    createDefaultFormData(),
   );
   const [isDirty, setIsDirty] = useState(false);
 

@@ -29,7 +29,7 @@ export function serializeDateValue(type: string, date: Date): string {
  * @returns The serialized value
  */
 export function serializeDatabaseDateValue(
-  value: Primitive | { datetime: number }
+  value: Primitive | { datetime: number },
 ): Primitive {
   if (!isDateInDatabaseFormat(value)) return value;
   return new Date(value.datetime).toISOString();
@@ -41,7 +41,7 @@ export function serializeDatabaseDateValue(
  * @returns True if the value is in the format { _cls: "DateTime", datetime: number }, false otherwise
  */
 export function isDateInDatabaseFormat(
-  value: unknown
+  value: unknown,
 ): value is { datetime: number } {
   return !isNullish(value) && typeof value === "object" && "datetime" in value;
 }
@@ -55,7 +55,7 @@ export function isDateInDatabaseFormat(
  */
 export function serializeFieldValue(
   fieldValue: Primitive | Date,
-  type: string
+  type: string,
 ): Primitive {
   if (fieldValue instanceof Date) {
     return serializeDateValue(type, fieldValue);
@@ -86,7 +86,7 @@ export function serializeFieldValue(
  */
 export function parseDatabaseValue(
   type: string,
-  value: unknown
+  value: unknown,
 ): Primitive | Date {
   /**
    * from the backend we get: { datetime: number, '_cls': 'datetime' }
@@ -96,6 +96,16 @@ export function parseDatabaseValue(
     // within editor we use Date objects, parse the timestamp to a Date
     // and then we will serialize it back on submission to the server
     return new Date(timestamp);
+  }
+  // Transient values stored on Sample (e.g. after an undo restored the
+  // original database value through setField) are already-serialized ISO
+  // strings — parse them back into Date instances so the picker shows the
+  // correct value instead of falling back to "now".
+  if ((type === "date" || type === "datetime") && typeof value === "string") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
   }
   return value as Primitive;
 }

@@ -12,14 +12,14 @@ export function useAnnotationTracking() {
     "annotation:persistenceSuccess",
     useCallback(() => {
       trackEvent("ha_label_saved");
-    }, [trackEvent])
+    }, [trackEvent]),
   );
 
   useAnnotationEventHandler(
     "annotation:persistenceError",
     useCallback(() => {
       trackEvent("ha_label_error");
-    }, [trackEvent])
+    }, [trackEvent]),
   );
 
   useAnnotationEventHandler(
@@ -32,7 +32,7 @@ export function useAnnotationTracking() {
           trackEvent("ha_label_deleted");
         }
       },
-      [trackEvent]
-    )
+      [trackEvent],
+    ),
   );
 }

@@ -68,7 +68,7 @@ describe("ActionManager", () => {
         },
         () => {
           return;
-        }
+        },
       );
 
     it("removes matching entries from the undo stack", async () => {
@@ -128,5 +128,50 @@ describe("ActionManager", () => {
       expect(manager.getUndoStackSize()).toBe(0);
       expect(manager.getRedoStackSize()).toBe(0);
     });
+  });
+
+  describe("describe", () => {
+    const make = (id: string, label?: string) =>
+      new DelegatingUndoable(
+        id,
+        () => undefined,
+        () => undefined,
+        label ? () => label : undefined,
+      );
+
+    it("describes the undo stack newest-first, falling back to id", async () => {
+      await manager.execute(make("a", "edit a"));
+      await manager.execute(make("b")); // no describeFn → id
+
+      expect(manager.describeUndoStack()).toEqual(["b", "edit a"]);
+    });
+
+    it("describes the redo stack newest-first", async () => {
+      await manager.execute(make("a", "edit a"));
+      await manager.execute(make("b", "edit b"));
+      await manager.undo();
+      await manager.undo();
+
+      expect(manager.describeRedoStack()).toEqual(["edit a", "edit b"]);
+    });
+  });
+});
+
+describe("DelegatingUndoable.describe", () => {
+  it("returns the describeFn result, else the id", () => {
+    const described = new DelegatingUndoable(
+      "fo.x",
+      () => undefined,
+      () => undefined,
+      () => "did x",
+    );
+    const bare = new DelegatingUndoable(
+      "fo.y",
+      () => undefined,
+      () => undefined,
+    );
+
+    expect(described.describe()).toBe("did x");
+    expect(bare.describe()).toBe("fo.y");
   });
 });

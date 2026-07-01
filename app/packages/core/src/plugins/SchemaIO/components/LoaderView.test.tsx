@@ -133,7 +133,7 @@ describe("LoaderView", () => {
         expect(mockExecuteOperator).toHaveBeenCalledWith(
           "@test/load_data",
           { key: "value" },
-          expect.objectContaining({ callback: expect.any(Function) })
+          expect.objectContaining({ callback: expect.any(Function) }),
         );
       });
     });

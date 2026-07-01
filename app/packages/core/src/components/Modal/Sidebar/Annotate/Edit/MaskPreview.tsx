@@ -5,10 +5,9 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import styled from "styled-components";
-import { currentOverlay } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 const Container = styled.div`
   display: flex;
@@ -46,7 +45,7 @@ function drawPreview(
   source: CanvasImageSource,
   srcWidth: number,
   srcHeight: number,
-  isDark: boolean
+  isDark: boolean,
 ) {
   if (srcWidth === 0 || srcHeight === 0) return;
 
@@ -92,14 +91,14 @@ function drawPreview(
  * - The overlay finishes rendering (async mask decode completes)
  */
 export default function MaskPreview() {
-  const overlay = useAtomValue(currentOverlay);
+  const overlay = useAnnotationContext().selected?.overlay;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const theme = useTheme();
   const isDark = theme.themeMode === "dark";
 
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   // Draws the preview from the overlay's current canvas or decoded bitmap.
@@ -136,7 +135,7 @@ export default function MaskPreview() {
 
       drawFromOverlay();
     },
-    [isDark, drawFromOverlay]
+    [isDark, drawFromOverlay],
   );
 
   useEventHandler("lighter:overlay-paint-end", handlePaintEnd);
@@ -152,7 +151,7 @@ export default function MaskPreview() {
   const bg = isDark ? "#ffffff" : "#000000";
 
   return (
-    <Container>
+    <Container data-cy="annotate-mask-preview">
       <Label>Mask</Label>
       <CanvasContainer $bg={bg}>
         <StyledCanvas ref={canvasRef} />

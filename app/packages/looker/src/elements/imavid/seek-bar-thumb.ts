@@ -49,7 +49,7 @@ export class SeekBarThumbElement extends BaseElement<
     const value = ((currentFrameNumber - 1) / (totalFrames - 1)) * 100;
     this.element.style.setProperty(
       "--progress",
-      `${Math.max(0, value - 0.5)}%`
+      `${Math.max(0, value - 0.5)}%`,
     );
     //@ts-ignore
     this.element.value = value;

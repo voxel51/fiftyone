@@ -18,7 +18,7 @@ import type {
 
 function createDetection(
   id: string,
-  overrides: Partial<ReconciledDetection3D> = {}
+  overrides: Partial<ReconciledDetection3D> = {},
 ): ReconciledDetection3D {
   return {
     _id: id,
@@ -38,7 +38,7 @@ function createDetection(
 
 function createPolyline(
   id: string,
-  overrides: Partial<ReconciledPolyline3D> = {}
+  overrides: Partial<ReconciledPolyline3D> = {},
 ): ReconciledPolyline3D {
   return {
     _id: id,
@@ -70,7 +70,6 @@ function createEmptyTransientStore(): TransientStore {
 function createEmptyWorkingDoc(): WorkingDoc {
   return {
     labelsById: {},
-    deletedIds: new Set(),
   };
 }
 
@@ -418,7 +417,6 @@ describe("deriveRenderModel", () => {
     const detection = createDetection("det1");
     const workingDoc: WorkingDoc = {
       labelsById: { det1: detection },
-      deletedIds: new Set(),
     };
     const transient = createEmptyTransientStore();
 
@@ -433,7 +431,6 @@ describe("deriveRenderModel", () => {
     const polyline = createPolyline("poly1");
     const workingDoc: WorkingDoc = {
       labelsById: { poly1: polyline },
-      deletedIds: new Set(),
     };
     const transient = createEmptyTransientStore();
 
@@ -452,7 +449,6 @@ describe("deriveRenderModel", () => {
         det1: detection,
         poly1: polyline,
       },
-      deletedIds: new Set(),
     };
     const transient = createEmptyTransientStore();
 
@@ -462,34 +458,12 @@ describe("deriveRenderModel", () => {
     expect(result.polylines).toHaveLength(1);
   });
 
-  it("excludes deleted labels", () => {
-    const detection1 = createDetection("det1");
-    const detection2 = createDetection("det2");
-    const polyline = createPolyline("poly1");
-    const workingDoc: WorkingDoc = {
-      labelsById: {
-        det1: detection1,
-        det2: detection2,
-        poly1: polyline,
-      },
-      deletedIds: new Set(["det1", "poly1"]),
-    };
-    const transient = createEmptyTransientStore();
-
-    const result = deriveRenderModel(workingDoc, transient);
-
-    expect(result.detections).toHaveLength(1);
-    expect(result.detections[0]._id).toBe("det2");
-    expect(result.polylines).toHaveLength(0);
-  });
-
   it("applies transient state to detections", () => {
     const detection = createDetection("det1", {
       location: [0, 0, 0],
     });
     const workingDoc: WorkingDoc = {
       labelsById: { det1: detection },
-      deletedIds: new Set(),
     };
     const transient: TransientStore = {
       cuboids: {
@@ -515,7 +489,6 @@ describe("deriveRenderModel", () => {
     });
     const workingDoc: WorkingDoc = {
       labelsById: { poly1: polyline },
-      deletedIds: new Set(),
     };
     const transient: TransientStore = {
       cuboids: {},
@@ -552,7 +525,6 @@ describe("deriveRenderModel", () => {
         poly1,
         poly2,
       },
-      deletedIds: new Set(),
     };
     const transient: TransientStore = {
       cuboids: {
@@ -582,30 +554,10 @@ describe("deriveRenderModel", () => {
     expect(resultPoly2?.points3d).toEqual([[[7, 7, 7]]]);
   });
 
-  it("does not apply transient state from deleted labels", () => {
-    const detection = createDetection("det1", { location: [0, 0, 0] });
-    const workingDoc: WorkingDoc = {
-      labelsById: { det1: detection },
-      deletedIds: new Set(["det1"]),
-    };
-    const transient: TransientStore = {
-      cuboids: {
-        det1: { positionDelta: [5, 5, 5] },
-      },
-      polylines: {},
-      activeDragLabel: "det1",
-    };
-
-    const result = deriveRenderModel(workingDoc, transient);
-
-    expect(result.detections).toHaveLength(0);
-  });
-
   it("handles empty transient state for existing labels", () => {
     const detection = createDetection("det1", { location: [1, 2, 3] });
     const workingDoc: WorkingDoc = {
       labelsById: { det1: detection },
-      deletedIds: new Set(),
     };
     const transient: TransientStore = {
       cuboids: {

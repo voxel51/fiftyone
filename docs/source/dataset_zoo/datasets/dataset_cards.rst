@@ -202,6 +202,13 @@
     :tags: video,quickstart
 
 .. customcarditem::
+    :header: Quickstart Trajectories
+    :description: Video demo dataset for trajectory annotation. Same 10 segments as Quickstart Video, with per-frame detections linked across frames into object trajectories via fo.Instance values. Ideal for learning trajectory annotation workflows.
+    :link: datasets/quickstart_trajectories.html
+    :image: ../_images/quickstart-trajectories.png
+    :tags: video,quickstart
+
+.. customcarditem::
     :header: Quickstart Groups
     :description: Multimodal demo dataset with 200 KITTI scenes containing grouped images and point clouds. Perfect for learning multimodal data handling and scene analysis.
     :link: datasets/quickstart_groups.html

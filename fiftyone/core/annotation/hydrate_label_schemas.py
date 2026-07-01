@@ -47,7 +47,9 @@ def hydrate_applied_ontology(label_schema: dict) -> dict:
     annotation ontology, returns a new dict with the ontology's attributes
     merged into the ``attributes`` list. Each merged attribute carries a
     ``_source: <ontology_name>`` marker. Attributes are matched by ``name``
-    and ontology values win on collision.
+    and ontology values win on collision. When the ontology has a bundled
+    taxonomy, an ``applied_taxonomy`` key is also surfaced on the response;
+    it is never persisted on the schema itself.
 
     If the schema has no ``applied_ontology`` reference, the schema is
     returned unchanged. If the reference is dangling (deleted ontology)
@@ -89,7 +91,10 @@ def hydrate_applied_ontology(label_schema: dict) -> dict:
         )
         return _strip_applied_ontology(label_schema)
 
-    return _merge(label_schema, ontology)
+    hydrated = _merge(label_schema, ontology)
+    if ontology.taxonomy is not None:
+        hydrated[foac.APPLIED_TAXONOMY] = ontology.taxonomy
+    return hydrated
 
 
 def _strip_applied_ontology(label_schema: dict) -> dict:
@@ -103,8 +108,10 @@ def dehydrate_applied_ontology(label_schema: dict) -> dict:
 
     Companion to :func:`hydrate_applied_ontology`. When the schema has an
     ``applied_ontology`` that resolves to an annotation ontology, drops
-    any attribute whose ``name`` matches an ontology-owned attribute and
-    strips the ``_source`` marker from the remaining attributes.
+    any attribute whose ``name`` matches an ontology-owned attribute,
+    strips the ``_source`` marker from the remaining attributes, and
+    drops the ``applied_taxonomy`` key (surfaced at hydrate time, never
+    persisted).
 
     Otherwise (no reference, dangling reference, or non-annotation
     reference) the schema is returned unchanged — the validator will
@@ -136,6 +143,11 @@ def dehydrate_applied_ontology(label_schema: dict) -> dict:
     ontology_owned_names = {a.name for a in ontology.attributes}
 
     cleaned = copy.deepcopy(label_schema)
+    # ``applied_taxonomy`` is surfaced at hydrate time from the bundled
+    # ontology's ``taxonomy`` field; the canonical store lives on the
+    # ontology, not the label schema. Drop it so a round-tripped schema
+    # doesn't persist a stale copy.
+    cleaned.pop(foac.APPLIED_TAXONOMY, None)
     kept = []
     for attr in cleaned.get(foac.ATTRIBUTES, []):
         # ontology-owned attrs get dropped entirely, so their _source goes
@@ -183,17 +195,46 @@ def inline_applied_ontology(label_schema: dict, ontology: Any) -> dict:
 def _merge(label_schema: dict, ontology: Any) -> dict:
     hydrated = copy.deepcopy(label_schema)
     existing = hydrated.get(foac.ATTRIBUTES, [])
-
-    # Preserve existing schema order; ontology-only attrs appended.
-    by_name: dict = {a.get(foac.NAME): a for a in existing}
-    ordered_names = [a.get(foac.NAME) for a in existing]
-
-    for attr_dict in attributes_with_source(ontology):
-        name = attr_dict.get(foac.NAME)
-        if name not in by_name:
-            ordered_names.append(name)
-        # ontology wins on collision
-        by_name[name] = attr_dict
-
-    hydrated[foac.ATTRIBUTES] = [by_name[n] for n in ordered_names]
+    onto_attrs = attributes_with_source(ontology)
+    hydrated[foac.ATTRIBUTES] = _merge_attributes(existing, onto_attrs)
     return hydrated
+
+
+def _merge_attributes(
+    existing: list[dict], onto_attrs: list[dict]
+) -> list[dict]:
+    """Merges ontology attributes into a schema's existing attributes.
+
+    The ontology owns every name it contributes: its attributes replace any
+    local attribute(s) of that name in place, anchored to the first local
+    occurrence. Local names the ontology doesn't touch pass through
+    unchanged; ontology-only names are appended in declaration order.
+
+    Conditional attributes share a name but differ by their ``when``
+    condition, so one name can map to several variants — all of which must
+    survive. Grouping (rather than keying) by name preserves every variant;
+    a name-keyed dict would collapse them to the last one.
+    """
+    # Group ontology attributes by name, preserving the declaration order of
+    # both the names and the variants within each name.
+    ontology_by_name: dict[str, list[dict]] = {}
+    for attr in onto_attrs:
+        ontology_by_name.setdefault(attr.get(foac.NAME), []).append(attr)
+
+    merged_attributes: list[dict] = []
+    ontology_names_placed: set[str] = set()
+    for attr in existing:
+        name = attr.get(foac.NAME)
+        if name in ontology_by_name:
+            if name not in ontology_names_placed:
+                merged_attributes.extend(ontology_by_name[name])
+                ontology_names_placed.add(name)
+        else:
+            merged_attributes.append(attr)
+
+    for name, variants in ontology_by_name.items():
+        if name not in ontology_names_placed:
+            merged_attributes.extend(variants)
+            ontology_names_placed.add(name)
+
+    return merged_attributes

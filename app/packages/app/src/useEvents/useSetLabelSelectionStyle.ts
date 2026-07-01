@@ -21,7 +21,7 @@ const useSetLabelSelectionStyle: EventHandlerHook = () => {
           : DEFAULT_LABEL_SELECTION_STYLE;
       setter("labelSelectionStyle", style);
     },
-    [setter]
+    [setter],
   );
 };
 

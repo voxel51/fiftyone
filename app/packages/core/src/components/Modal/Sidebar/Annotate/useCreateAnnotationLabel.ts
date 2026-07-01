@@ -1,10 +1,11 @@
 import { useCallback } from "react";
-import type { LabelType } from "./Edit/state";
+import type { LabelType } from "./Edit/useAnnotationContext";
 import {
   CLASSIFICATION,
   DETECTION,
   KEYPOINT,
   POLYLINE,
+  TEMPORAL_DETECTION,
 } from "@fiftyone/utilities";
 import {
   DetectionOverlayOptions,
@@ -15,6 +16,8 @@ import {
   KeypointOverlay,
   PolylineOptions,
   PolylineOverlay,
+  TemporalOptions,
+  TemporalOverlay,
   decodeMaskPath,
   useLighter,
 } from "@fiftyone/lighter";
@@ -27,7 +30,7 @@ import { isFieldReadOnly, labelSchemaData } from "./state";
  * Hook which provides a method for creating an {@link AnnotationLabel}.
  */
 export const useCreateAnnotationLabel = () => {
-  const { overlayFactory } = useLighter();
+  const { overlayFactory, scene } = useLighter();
 
   // Getter for resolving keypoint skeletons by field
   const getSkeletonForField = useGetKeypointSkeleton();
@@ -49,7 +52,7 @@ export const useCreateAnnotationLabel = () => {
          * and any newly-decoded mask would be discarded.
          */
         skipMaskDecode?: boolean;
-      }
+      },
     ): Promise<AnnotationLabel> => {
       if (type === CLASSIFICATION) {
         const overlay = overlayFactory.create<
@@ -88,7 +91,7 @@ export const useCreateAnnotationLabel = () => {
         ) {
           console.warn(
             `[mask-path] detection ${data._id} in field "${field}" has ` +
-              "mask_path but the caller did not provide a resolvable URL"
+              "mask_path but the caller did not provide a resolvable URL",
           );
         }
         const preDecodedMask =
@@ -98,7 +101,7 @@ export const useCreateAnnotationLabel = () => {
         if (label?.mask_path && !label?.mask && maskUrl && !preDecodedMask) {
           console.warn(
             `[mask-path] decode failed for detection ${data._id} in field ` +
-              `"${field}" (url=${maskUrl})`
+              `"${field}" (url=${maskUrl})`,
           );
         }
 
@@ -136,10 +139,31 @@ export const useCreateAnnotationLabel = () => {
             draggable: false,
             deletable: false,
             selectable: true,
-          }
+          },
         );
 
         return { data: polylineLabel, overlay, path: field, type };
+      }
+
+      if (type === TEMPORAL_DETECTION) {
+        const tdLabel = data as TemporalOptions["label"];
+        // overlay id == the TD `_id` (the engine `instanceId`) so the engine
+        // bridge addresses it canonically (matches useTemporalOverlaySync).
+        const overlayId = data._id;
+        const existing = scene?.getOverlay(overlayId);
+
+        if (existing instanceof TemporalOverlay) {
+          existing.label = tdLabel;
+          return { data: tdLabel, overlay: existing, path: field, type };
+        }
+
+        const overlay = overlayFactory.create<TemporalOptions, TemporalOverlay>(
+          "temporal",
+          { id: overlayId, field, label: tdLabel },
+        );
+
+        scene?.addOverlay(overlay);
+        return { data: tdLabel, overlay, path: field, type };
       }
 
       if (type === KEYPOINT) {
@@ -156,7 +180,7 @@ export const useCreateAnnotationLabel = () => {
             draggable: false,
             deletable: false,
             selectable: true,
-          }
+          },
         );
 
         return { data, overlay, path: field, type };
@@ -164,6 +188,6 @@ export const useCreateAnnotationLabel = () => {
 
       throw new Error(`unable to create label of type '${type}'`);
     },
-    [getSkeletonForField, overlayFactory]
+    [getSkeletonForField, overlayFactory, scene],
   );
 };

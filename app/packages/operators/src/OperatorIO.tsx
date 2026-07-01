@@ -4,7 +4,7 @@ export default function OperatorIO(props) {
   const { schema } = props;
   const componentPlugins = useActivePlugins(PluginComponentType.Component, {});
   const OperatorIOComponent = componentPlugins.find(
-    ({ name }) => name === "OperatorIOComponent"
+    ({ name }) => name === "OperatorIOComponent",
   ).component;
   const schemaView = schema?.view;
   const schemaWithoutTitle = schemaView

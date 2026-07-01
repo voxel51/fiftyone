@@ -14,5 +14,5 @@ export const mediaFields = foq.graphQLSyncFragmentAtom<
   },
   {
     key: "mediaFields",
-  }
+  },
 );

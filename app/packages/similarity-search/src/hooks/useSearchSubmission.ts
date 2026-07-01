@@ -80,7 +80,7 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
       input.queryIds,
       input.negativeQueryIds,
       input.uploadedImage,
-    ]
+    ],
   );
 
   const handleSuccess = useCallback(
@@ -93,13 +93,13 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
         const operatorRunId = resultObj?.id?.$oid;
         initRun(
           { ...executionParams, operator_run_id: operatorRunId },
-          { callback: () => input.onSubmitted() }
+          { callback: () => input.onSubmitted() },
         );
       } else {
         input.onSubmitted();
       }
     },
-    [initRun, executionParams, input.onSubmitted]
+    [initRun, executionParams, input.onSubmitted],
   );
 
   const handleError = useCallback((error: unknown) => {
@@ -121,7 +121,7 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
       input.queryType,
       input.textQuery,
       input.queryIds.length,
-      !!input.uploadedImage
+      !!input.uploadedImage,
     );
 
   return {

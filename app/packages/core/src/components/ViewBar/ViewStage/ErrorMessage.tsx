@@ -90,7 +90,7 @@ const ErrorMessage = React.memo(
         ) : null}
       </ErrorMessageDiv>
     );
-  }
+  },
 );
 
 export default ErrorMessage;

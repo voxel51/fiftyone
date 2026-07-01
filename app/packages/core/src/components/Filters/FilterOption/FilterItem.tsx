@@ -71,7 +71,7 @@ function TooltipWrapper({
 const Item = React.forwardRef(
   (
     { icon, value, tooltip, color, highlightedBGColor, onClick }: ItemProp,
-    ref: ForwardedRef<HTMLDivElement>
+    ref: ForwardedRef<HTMLDivElement>,
   ) => {
     const id = String(value)
       .replace(/[\s.,/]/g, "-")
@@ -101,7 +101,7 @@ const Item = React.forwardRef(
         </TooltipWrapper>
       </StyledPanelItem>
     );
-  }
+  },
 );
 
 export default React.memo(Item);

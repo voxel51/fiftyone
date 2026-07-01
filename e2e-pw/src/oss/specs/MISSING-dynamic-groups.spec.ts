@@ -18,7 +18,7 @@ const extensionDatasetNamePairs = ["pcd", "png"].map(
     [
       extension,
       getUniqueDatasetNameWithPrefix(`${extension}-sparse-groups`),
-    ] as const
+    ] as const,
 );
 
 test.afterAll(async ({ foWebServer }) => {

@@ -3,27 +3,19 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 
-import { CommandContextManager } from "@fiftyone/commands";
-import {
-  AddOverlayCommand,
-  BaseOverlay,
-  DetectionOverlay,
-  useLighter,
-} from "@fiftyone/lighter";
+import { usePointSelectionSeed } from "@fiftyone/annotation/src/agents";
+import { BaseOverlay, DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { isPatchesView } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 
 import {
-  current,
-  currentType,
-  fieldsOfType,
   useAnnotationContext,
-} from "./state";
+  useAnnotationFields,
+} from "./useAnnotationContext";
 import { useAIAnnotationMode } from "./useAIAnnotationMode";
-import useCreate from "./useCreate";
 import useExit from "./useExit";
 import {
   SegmentationTool,
@@ -56,19 +48,6 @@ const segmentationModeActiveAtom = atom<boolean>(false);
 
 /** @internal */ export { segmentationModeActiveAtom as _unsafeSegmentationModeActiveAtom };
 
-// Set of label ids currently being authored as masks. Updated by
-// `useBridge` via the public `setEditingMask` action.
-const editingMaskLabelIdsAtom = atom<ReadonlySet<string>>(new Set<string>());
-
-// Derived: does the currently-edited label have a mask?
-const isEditingMaskAtom = atom((get) => {
-  const ids = get(editingMaskLabelIdsAtom);
-  if (ids.size === 0) return false;
-
-  const data = get(current)?.data as { _id?: string } | undefined;
-  return data?._id !== undefined && ids.has(data._id);
-});
-
 /**
  * Segmentation mask tool state hook.
  *
@@ -82,52 +61,48 @@ const isEditingMaskAtom = atom((get) => {
  */
 export const useSegmentationMode = () => {
   const { scene, addOverlay } = useLighter();
-  const { selectedLabel } = useAnnotationContext();
+  const { selected, createNew } = useAnnotationContext();
+  const isEditingMask = selected?.isEditingMask ?? false;
   const onExit = useExit();
   const isPatchView = useRecoilValue(isPatchesView);
-  const fields = useAtomValue(fieldsOfType(DETECTION));
-  const isEditingMask = useAtomValue(isEditingMaskAtom);
-  const setEditingMaskIds = useSetAtom(editingMaskLabelIdsAtom);
+  const { fields } = useAnnotationFields(DETECTION);
   const [segmentationModeActive, setSegmentationModeActive] = useAtom(
-    segmentationModeActiveAtom
-  );
-
-  // Mark `id` as mid-mask authoring (when `hasMask`) or clear that
-  const setEditingMask = useCallback(
-    (id: string, hasMask: boolean) => {
-      setEditingMaskIds((prev) => {
-        const has = prev.has(id);
-        if (hasMask === has) return prev;
-
-        const next = new Set(prev);
-
-        if (hasMask) next.add(id);
-        else next.delete(id);
-
-        return next;
-      });
-    },
-    [setEditingMaskIds]
+    segmentationModeActiveAtom,
   );
 
   const manualMode = useManualSegmentationTools();
   const aiMode = useAIAnnotationMode();
   const mergeTool = useMergeTool();
+  const { markSeedNew } = usePointSelectionSeed();
 
-  const createDetection = useCreate(DETECTION);
-  const editingLabelType = useAtomValue(currentType);
+  const editingLabelType = selected?.type ?? null;
 
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
 
-  const selectedLabelRef = useRef(selectedLabel);
-  selectedLabelRef.current = selectedLabel;
+  const selectedLabelRef = useRef(selected?.label ?? null);
+  selectedLabelRef.current = selected?.label ?? null;
 
+  // `mask` and `mask_path` are Detection-only fields; cast at the access
+  // site since the union narrows them out.
+  const labelData = selected?.label.data as
+    | { mask?: unknown; mask_path?: unknown }
+    | undefined;
+  // A detection being actively drawn with a paint tool IS a segmentation edit,
+  // even before its mask data has materialized — a brush stroke / pen polygon
+  // commits to the overlay canvas first, and a fresh draw has no `mask` /
+  // `mask_path` on its label yet. Without this, the auto-disable below would
+  // tear segmentation mode down mid-draw (e.g. between two pen points), routing
+  // the next click to the mode-quit path instead of the pen handler.
+  const isDrawingTool =
+    manualMode.tool === SegmentationTool.Brush ||
+    manualMode.tool === SegmentationTool.Pen;
   const isEditingSegmentation =
     editingLabelType === DETECTION &&
-    (!!selectedLabel?.data?.mask ||
-      !!selectedLabel?.data?.mask_path ||
-      isEditingMask);
+    (!!labelData?.mask ||
+      !!labelData?.mask_path ||
+      isEditingMask ||
+      (segmentationModeActive && isDrawingTool));
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -135,10 +110,10 @@ export const useSegmentationMode = () => {
   const tooltip = isPatchView
     ? "Creating masks is not supported in this view"
     : noActiveFields
-    ? "No active fields"
-    : segmentationModeActive
-    ? "Exit mask creation"
-    : "Create new mask";
+      ? "No active fields"
+      : segmentationModeActive
+        ? "Exit mask creation"
+        : "Create new mask";
 
   // ---------------  Segmentation mode activation / deactivation  --------- //
 
@@ -219,25 +194,25 @@ export const useSegmentationMode = () => {
         // Adopt an already-selected mask detection as the merge target so
         // the user doesn't have to re-click it. If a non-mask label is
         // selected, deselect it — the Merge tool only operates on masks.
-        const selected = selectedLabelRef.current;
-        const overlayId = selected?.overlay?.id;
-        const data = selected?.data as {
+        const target = selectedLabelRef.current;
+        const overlayId = target?.overlay?.id;
+        const data = target?.data as {
           mask?: unknown;
           mask_path?: unknown;
         };
         const hasMask =
-          selected?.type === "Detection" && !!(data?.mask || data?.mask_path);
+          target?.type === "Detection" && !!(data?.mask || data?.mask_path);
 
         if (hasMask && overlayId) {
           mergeTool.setMergeTarget(overlayId);
-        } else if (selected) {
+        } else if (target) {
           onExit();
         }
       }
 
       manualMode.switchTool(nextTool);
     },
-    [aiMode, closeOpenLabel, manualMode, mergeTool, onExit]
+    [aiMode, closeOpenLabel, manualMode, mergeTool, onExit],
   );
 
   // Pen-tool lifecycle: install/exit the InteractivePenHandler reactively.
@@ -247,7 +222,7 @@ export const useSegmentationMode = () => {
     scene,
     segmentationModeActive,
     tool: manualMode.tool,
-    selectedOverlay: selectedLabel?.overlay,
+    selectedOverlay: selected?.label.overlay,
   });
 
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
@@ -263,7 +238,7 @@ export const useSegmentationMode = () => {
       setSegmentationModeActive(false);
     }
   }, [
-    selectedLabel?.overlay,
+    selected?.label.overlay,
     editingLabelType,
     isEditingSegmentation,
     segmentationModeActive,
@@ -279,46 +254,25 @@ export const useSegmentationMode = () => {
    */
   const create = useCallback(() => {
     closeOpenLabel();
-    // TODO: assume previous `field` and `labelValue`
-    // e.g. createDetection({ field, labelValue });
-    const newLabel = createDetection();
+    const newLabel = createNew(DETECTION);
 
     if (newLabel?.overlay instanceof DetectionOverlay) {
       newLabel.overlay.initMask();
-
-      // Pen tool: the `overlay-establish` event that normally pushes
-      // `AddOverlayCommand` doesn't fire because `onPenPointerDown` doesn't
-      // seed the moveStart state. Push it explicitly so the new detection
-      // can be undone after the user finishes (or abandons) the polygon.
-      // Brush tool reaches establish through the bbox-style drag and pushes
-      // the command itself, so we skip it there.
-      if (manualMode.tool === SegmentationTool.Pen) {
-        CommandContextManager.instance()
-          .getActiveContext()
-          .pushUndoable(
-            new AddOverlayCommand(sceneRef.current!, newLabel.overlay)
-          );
-      }
     }
-  }, [closeOpenLabel, createDetection, manualMode.tool]);
+  }, [closeOpenLabel, createNew, manualMode.tool]);
 
   /**
    * Finish the current AI point-selection session. Cycle deactivate→activate
    * so the keypoint overlay/handler is re-installed for a fresh next
-   * detection while staying in AI mode.
+   * detection while staying in AI mode. The committed label stays selected
+   * (a second right-click deselects it); `markSeedNew` makes the next click
+   * seed a NEW mask rather than refine the still-selected committed one.
    */
   const finalizePointSelection = useCallback(() => {
-    const currentScene = sceneRef.current;
-    const overlay = selectedLabelRef.current?.overlay;
-    if (currentScene && overlay instanceof DetectionOverlay) {
-      CommandContextManager.instance()
-        .getActiveContext()
-        .pushUndoable(new AddOverlayCommand(currentScene, overlay));
-    }
-
     aiMode.deactivate();
     aiMode.activate();
-  }, [aiMode]);
+    markSeedNew();
+  }, [aiMode, markSeedNew]);
 
   // ----------------------------  Public interface  ----------------------- //
 
@@ -338,7 +292,6 @@ export const useSegmentationMode = () => {
       // Bridge actions (wired to Lighter events by `useBridge`)
       create,
       finalizePointSelection,
-      setEditingMask,
 
       // Tool state and actions
       tool: manualMode.tool,
@@ -365,10 +318,9 @@ export const useSegmentationMode = () => {
       toggleSegmentationMode,
       create,
       finalizePointSelection,
-      setEditingMask,
       manualMode,
       switchTool,
       mergeTool,
-    ]
+    ],
   );
 };

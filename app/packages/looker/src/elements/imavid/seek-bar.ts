@@ -54,7 +54,7 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
     this.element.style.setProperty("--end", `${end}%`);
 
     const currentBufferRange = storeBuffer.buffers.at(
-      storeBuffer.getRangeIndexForFrame(currentFrameNumber)
+      storeBuffer.getRangeIndexForFrame(currentFrameNumber),
     );
 
     if (!currentBufferRange) {
@@ -66,7 +66,7 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
 
     this.element.style.setProperty(
       "--buffer-progress",
-      `${Math.min(bufferValue, end)}%`
+      `${Math.min(bufferValue, end)}%`,
     );
 
     // todo: add buffer indicator for fetch as well

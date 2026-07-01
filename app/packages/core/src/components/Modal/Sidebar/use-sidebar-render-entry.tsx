@@ -18,8 +18,8 @@ export const useModalSidebarRenderEntry = () => {
       trigger: (
         event: React.MouseEvent<HTMLDivElement>,
         key: string,
-        cb: () => void
-      ) => void
+        cb: () => void,
+      ) => void,
     ) => {
       switch (entry.kind) {
         case fos.EntryKind.PATH: {
@@ -102,6 +102,6 @@ export const useModalSidebarRenderEntry = () => {
           throw new Error("invalid entry");
       }
     },
-    [disabled, labelPaths, mode]
+    [disabled, labelPaths, mode],
   );
 };

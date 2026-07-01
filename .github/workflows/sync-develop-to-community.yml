@@ -1,0 +1,65 @@
+name: Sync develop to community
+
+# Keeps the long-lived `community` branch current with `develop`.
+#
+# The reverse direction — `community` → `develop` — is the standing
+# `AUTOMATED MERGE community to develop` PR maintained by develop-back-merge.yml.
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+concurrency:
+  group: sync-develop-to-community
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    # The `community` branch is OSS-only.
+    if: github.repository == 'voxel51/fiftyone'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+
+      - name: Merge develop into community
+        run: |
+          git config user.name 'voxel51-bot'
+          git config user.email 'bot@voxel51.com'
+
+          if ! git ls-remote --exit-code origin community >/dev/null 2>&1; then
+            # First run — create community from develop. Nothing to merge.
+            git push origin "HEAD:refs/heads/community"
+            exit 0
+          fi
+
+          git fetch origin community
+          git checkout community
+
+          if git merge-base --is-ancestor origin/develop community; then
+            echo "community already contains develop; nothing to sync."
+            exit 0
+          fi
+
+          if ! git merge origin/develop --no-edit; then
+            {
+              echo "### ⚠️ develop → community conflict"
+              echo
+              echo "Merging \`develop\` into \`community\` conflicted in:"
+              echo
+              git diff --name-only --diff-filter=U | sed 's/^/- `/; s/$/`/'
+            } >> "$GITHUB_STEP_SUMMARY"
+            git merge --abort
+            echo "::error::Merging develop into community conflicted — resolve on the community branch."
+            exit 1
+          fi
+
+          git push origin community

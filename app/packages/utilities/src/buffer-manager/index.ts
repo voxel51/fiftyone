@@ -22,7 +22,7 @@ export class BufferManager {
   get totalFramesInBuffer() {
     return this.buffers.reduce(
       (total, range) => total + range[1] - range[0] + 1,
-      0
+      0,
     );
   }
 
@@ -54,7 +54,7 @@ export class BufferManager {
    */
   public addNewRange(
     newRange: Readonly<BufferRange>,
-    ignoreRangesWithMetadata = true
+    ignoreRangesWithMetadata = true,
   ): void {
     if (!newRange) {
       return;
@@ -62,7 +62,7 @@ export class BufferManager {
 
     if (newRange[1] < newRange[0]) {
       throw new Error(
-        `invalid range: range[1] (value = ${newRange[1]}) must be >= range[0] (value = ${newRange[0]})`
+        `invalid range: range[1] (value = ${newRange[1]}) must be >= range[0] (value = ${newRange[0]})`,
       );
     }
 
@@ -137,7 +137,7 @@ export class BufferManager {
    */
   public getRangeIndexForFrame(frame: number) {
     return this.buffers.findIndex(
-      (range) => range && range[0] <= frame && range[1] >= frame
+      (range) => range && range[0] <= frame && range[1] >= frame,
     );
   }
 

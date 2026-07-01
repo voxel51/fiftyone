@@ -25,6 +25,8 @@ export enum KnownCommands {
   ModalNextSample = "fo.modal.next.sample",
   ModalPreviousSample = "fo.modal.previous.sample",
   ModalDeleteAnnotation = "fo.modal.delete.annotation",
+  ModalStepForward = "fo.modal.step.forward",
+  ModalStepBack = "fo.modal.step.back",
 }
 //callback for context changes
 export type CommandContextListener = (newId: string) => void;
@@ -42,12 +44,12 @@ export class CommandContextManager {
   // TODO: hardcoded modal context chain — refactor to be dynamic
   private modalContext = new CommandContext(
     KnownContexts.Modal,
-    this.defaultContext
+    this.defaultContext,
   );
   // TODO: hardcoded modalAnnotate context chain — refactor to be dynamic
   private modalAnnotateContext = new CommandContext(
     KnownContexts.ModalAnnotate,
-    this.modalContext
+    this.modalContext,
   );
 
   // TODO: hardcoded fixed stack order — refactor to be dynamic
@@ -80,7 +82,7 @@ export class CommandContextManager {
         return this.getActiveContext().canUndo();
       },
       "Undo",
-      "Undoes the previous command."
+      "Undoes the previous command.",
     );
     this.defaultContext.bindKey("ctrl+z", KnownCommands.Undo);
     this.defaultContext.bindKey("meta+z", KnownCommands.Undo);
@@ -93,7 +95,7 @@ export class CommandContextManager {
         return this.getActiveContext().canRedo();
       },
       "Redo",
-      "Redoes a previously undone command."
+      "Redoes a previously undone command.",
     );
     this.defaultContext.bindKey("ctrl+shift+z", KnownCommands.Redo);
     this.defaultContext.bindKey("meta+y", KnownCommands.Redo);
@@ -119,7 +121,7 @@ export class CommandContextManager {
    */
   public createCommandContext(
     id: string,
-    _inheritCurrent: boolean
+    _inheritCurrent: boolean,
   ): CommandContext {
     const existing = this.contexts.get(id);
     if (existing) {
@@ -182,11 +184,11 @@ export class CommandContextManager {
     this.defaultContext = new CommandContext(KnownContexts.Default);
     this.modalContext = new CommandContext(
       KnownContexts.Modal,
-      this.defaultContext
+      this.defaultContext,
     );
     this.modalAnnotateContext = new CommandContext(
       KnownContexts.ModalAnnotate,
-      this.modalContext
+      this.modalContext,
     );
     this.contextStack = [
       this.defaultContext,

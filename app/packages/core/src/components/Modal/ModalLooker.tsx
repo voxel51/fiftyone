@@ -1,7 +1,8 @@
 import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
-import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
+import { isNativeMediaType } from "@fiftyone/utilities";
+import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
@@ -23,7 +24,7 @@ export const useClearSelectedLabels = () => {
     ({ set }) =>
       async () =>
         set(fos.selectedLabels, []),
-    []
+    [],
   );
 };
 
@@ -60,7 +61,7 @@ export const ModalLooker = React.memo(
     ) : (
       <ModalLookerCurrentSample />
     );
-  }
+  },
 );
 
 const ModalLookerCurrentSample = React.memo(() => {
@@ -73,7 +74,7 @@ const ModalLookerContent = React.memo(
   ({ sample }: { sample: fos.ModalSample }) => {
     const mode = useAtomValue(fos.modalMode);
     const shouldRenderImavid = useRecoilValue(
-      fos.shouldRenderImaVidLooker(true)
+      fos.shouldRenderImaVidLooker(true),
     );
     const video = useRecoilValue(fos.isVideoDataset);
 
@@ -97,7 +98,11 @@ const ModalLookerContent = React.memo(
     }
 
     if (video) {
-      return <VideoLookerReact sample={sample} showControls={!isAnnotate} />;
+      return isAnnotate ? (
+        <VideoAnnotationSurface sample={sample} />
+      ) : (
+        <VideoLookerReact sample={sample} showControls />
+      );
     }
 
     if (isNative) {
@@ -119,5 +124,5 @@ const ModalLookerContent = React.memo(
     return (
       <ModalSampleRenderer sample={sample} modalMediaField={modalMediaField} />
     );
-  }
+  },
 );

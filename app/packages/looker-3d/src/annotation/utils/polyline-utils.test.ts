@@ -228,7 +228,7 @@ describe("polyline-utils", () => {
       const result = findClickedSegment(
         effectivePoints,
         clickPosition,
-        distanceThreshold
+        distanceThreshold,
       );
 
       expect(result).not.toBeNull();
@@ -251,7 +251,7 @@ describe("polyline-utils", () => {
       const result = findClickedSegment(
         effectivePoints,
         clickPosition,
-        distanceThreshold
+        distanceThreshold,
       );
 
       expect(result).toBeNull();
@@ -274,7 +274,7 @@ describe("polyline-utils", () => {
       const result = findClickedSegment(
         effectivePoints,
         clickPosition,
-        distanceThreshold
+        distanceThreshold,
       );
 
       expect(result).not.toBeNull();
@@ -295,7 +295,7 @@ describe("polyline-utils", () => {
       const result = findClickedSegment(
         effectivePoints,
         clickPosition,
-        distanceThreshold
+        distanceThreshold,
       );
 
       expect(result).not.toBeNull();
@@ -316,7 +316,7 @@ describe("polyline-utils", () => {
       const result = findClickedSegment(
         effectivePoints,
         clickPosition,
-        distanceThreshold
+        distanceThreshold,
       );
 
       expect(result).not.toBeNull();
@@ -343,7 +343,7 @@ describe("polyline-utils", () => {
         currentSegments,
         segmentIndex,
         newVertexPosition,
-        clickPosition
+        clickPosition,
       );
 
       expect(result).not.toBeNull();
@@ -372,7 +372,7 @@ describe("polyline-utils", () => {
         currentSegments,
         segmentIndex,
         newVertexPosition,
-        clickPosition
+        clickPosition,
       );
 
       expect(result).toBeNull();
@@ -399,7 +399,7 @@ describe("polyline-utils", () => {
         currentSegments,
         segmentIndex,
         newVertexPosition,
-        clickPosition
+        clickPosition,
       );
 
       expect(result).not.toBeNull();
@@ -431,7 +431,7 @@ describe("polyline-utils", () => {
         currentSegments,
         segmentIndex,
         newVertexPosition,
-        clickPosition
+        clickPosition,
       );
 
       expect(result).not.toBeNull();
@@ -461,7 +461,7 @@ describe("polyline-utils", () => {
         currentSegments,
         segmentIndex,
         newVertexPosition,
-        clickPosition
+        clickPosition,
       );
 
       expect(result).toBeNull();
@@ -481,7 +481,7 @@ describe("polyline-utils", () => {
       const result = shouldClosePolylineLoop(
         vertices,
         currentPosition,
-        tolerance
+        tolerance,
       );
 
       expect(result).toBe(true);
@@ -499,7 +499,7 @@ describe("polyline-utils", () => {
       const result = shouldClosePolylineLoop(
         vertices,
         currentPosition,
-        tolerance
+        tolerance,
       );
 
       expect(result).toBe(false);
@@ -516,7 +516,7 @@ describe("polyline-utils", () => {
       const result = shouldClosePolylineLoop(
         vertices,
         currentPosition,
-        tolerance
+        tolerance,
       );
 
       expect(result).toBe(false);
@@ -534,7 +534,7 @@ describe("polyline-utils", () => {
       const result = shouldClosePolylineLoop(
         vertices,
         currentPosition,
-        tolerance
+        tolerance,
       );
 
       expect(result).toBe(true);
@@ -550,12 +550,12 @@ describe("polyline-utils", () => {
 
       // With tolerance 0.2, should not close
       expect(shouldClosePolylineLoop(vertices, currentPosition, 0.2)).toBe(
-        false
+        false,
       );
 
       // With tolerance 0.5, should close
       expect(shouldClosePolylineLoop(vertices, currentPosition, 0.5)).toBe(
-        true
+        true,
       );
     });
   });
@@ -680,7 +680,7 @@ describe("polyline-utils", () => {
         segmentIndex,
         pointIndex,
         newPosition,
-        false // Don't update shared vertices
+        false, // Don't update shared vertices
       );
 
       expect(result).toHaveLength(1);
@@ -710,7 +710,7 @@ describe("polyline-utils", () => {
         segmentIndex,
         pointIndex,
         newPosition,
-        true // Update shared vertices
+        true, // Update shared vertices
       );
 
       expect(result).toHaveLength(2);
@@ -741,7 +741,7 @@ describe("polyline-utils", () => {
         segmentIndex,
         pointIndex,
         newPosition,
-        false // Don't update shared vertices
+        false, // Don't update shared vertices
       );
 
       expect(result).toHaveLength(1);
@@ -767,7 +767,7 @@ describe("polyline-utils", () => {
         segmentIndex,
         pointIndex,
         newPosition,
-        false
+        false,
       );
 
       expect(result).toEqual(currentSegments);
@@ -802,7 +802,7 @@ describe("polyline-utils", () => {
         segmentIndex,
         pointIndex,
         newPosition,
-        false
+        false,
       );
 
       expect(result).toHaveLength(1);
@@ -834,7 +834,7 @@ describe("polyline-utils", () => {
         segmentIndex,
         pointIndex,
         newPosition,
-        true
+        true,
       );
 
       expect(result).toHaveLength(2);

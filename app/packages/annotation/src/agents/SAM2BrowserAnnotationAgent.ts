@@ -28,7 +28,7 @@ import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
  * for tests without losing agent ownership of the callback wiring.
  */
 export type BrowserAnnotationProviderFactory = (
-  options: BrowserAnnotationProviderOptions
+  options: BrowserAnnotationProviderOptions,
 ) => BrowserAnnotationProvider;
 
 const DEFAULT_FACTORY: BrowserAnnotationProviderFactory = (options) =>
@@ -44,9 +44,7 @@ const DEFAULT_FACTORY: BrowserAnnotationProviderFactory = (options) =>
  * The provider is lazily initialized on the first {@link infer} call and
  * reused for subsequent calls.
  */
-export class SAM2BrowserAnnotationAgent
-  implements AnnotationAgent<SegmentationInferenceResult>
-{
+export class SAM2BrowserAnnotationAgent implements AnnotationAgent<SegmentationInferenceResult> {
   private readonly provider: BrowserAnnotationProvider;
   private initialized = false;
   private initializing$: Promise<void> | null = null;
@@ -65,9 +63,10 @@ export class SAM2BrowserAnnotationAgent
   }
 
   async infer(
-    context: AnnotationContext
+    context: AnnotationContext,
   ): Promise<InferenceResult<SegmentationInferenceResult>> {
-    if (!context.sampleDescriptor.mediaUrl) {
+    // Either a decoded-frame source (video) or a media URL (image) is required.
+    if (!context.getMediaBitmap && !context.sampleDescriptor.mediaUrl) {
       throw new Error("Missing media url");
     }
 
@@ -79,10 +78,7 @@ export class SAM2BrowserAnnotationAgent
     this.setStatus("inferring");
 
     try {
-      const result = await this.provider.infer({
-        imageUrl: getSampleSrc(context.sampleDescriptor.mediaUrl),
-        points,
-      });
+      const result = await this.runProviderInference(context, points);
 
       this.setStatus("idle");
 
@@ -95,7 +91,7 @@ export class SAM2BrowserAnnotationAgent
               mask: await this.normalizeMask(
                 result.mask,
                 result.maskWidth,
-                result.maskHeight
+                result.maskHeight,
               ),
               mask_width: result.maskWidth,
               mask_height: result.maskHeight,
@@ -125,7 +121,7 @@ export class SAM2BrowserAnnotationAgent
   }
 
   async listInferenceCapabilities(
-    task: AgentTaskType
+    task: AgentTaskType,
   ): Promise<InferenceCapability[]> {
     if (task === AgentTaskType.SEGMENT) {
       return [
@@ -211,6 +207,42 @@ export class SAM2BrowserAnnotationAgent
   }
 
   /**
+   * Run the provider on an already-decoded media bitmap when the context
+   * supplies one (e.g. the active video frame), else fetch + decode the media
+   * URL. The bitmap path avoids decoding a video container as an image and
+   * sidesteps a cross-origin media fetch; it reuses the per-frame embedding
+   * cache so repeated prompts on one frame are decoder-only.
+   *
+   * @private
+   */
+  private async runProviderInference(
+    context: AnnotationContext,
+    points: PromptPoint[],
+  ) {
+    const media = context.getMediaBitmap
+      ? await context.getMediaBitmap()
+      : null;
+
+    if (media) {
+      return this.provider.inferBitmap({
+        bitmap: media.bitmap,
+        cacheKey: media.cacheKey,
+        points,
+        useEmbeddingCache: true,
+      });
+    }
+
+    if (!context.sampleDescriptor.mediaUrl) {
+      throw new Error("Missing media url");
+    }
+
+    return this.provider.infer({
+      imageUrl: getSampleSrc(context.sampleDescriptor.mediaUrl),
+      points,
+    });
+  }
+
+  /**
    * Build a list of positive and negative prompt points from the provided
    * {@link AnnotationContext}.
    *
@@ -222,8 +254,8 @@ export class SAM2BrowserAnnotationAgent
       .map((point) => this.vec2ToPoint(point, PointLabel.POSITIVE))
       .concat(
         (context.negativePoints ?? []).map((point) =>
-          this.vec2ToPoint(point, PointLabel.NEGATIVE)
-        )
+          this.vec2ToPoint(point, PointLabel.NEGATIVE),
+        ),
       );
   }
 
@@ -235,7 +267,7 @@ export class SAM2BrowserAnnotationAgent
   private normalizeMask(
     mask: Float32Array,
     width: number,
-    height: number
+    height: number,
   ): Promise<string> {
     const binary = new Uint8Array(mask.length);
     for (let i = 0; i < mask.length; i++) {

@@ -8,7 +8,7 @@ const videoDatasetName = getUniqueDatasetNameWithPrefix("video-dataset");
 const detectionDatasetName =
   getUniqueDatasetNameWithPrefix("detection-dataset");
 const groupVideoDatasetName = getUniqueDatasetNameWithPrefix(
-  "group-video-dataset"
+  "group-video-dataset",
 );
 
 const id = "000000000000000000000000";
@@ -94,7 +94,10 @@ test.beforeAll(
   dataset._sample_collection.insert_many(
       [dataset._make_dict(sample, include_id=True)]
   )
-  dataset.save()`);
+  dataset.save()
+  # populate frame count / dimensions so the video looker can load and the
+  # modal stays open
+  dataset.compute_metadata()`);
 
     await fiftyoneLoader.executePythonCode(`
   from bson import ObjectId
@@ -109,7 +112,7 @@ test.beforeAll(
       group=group.element("video1")
   )
   dataset.add_samples([sample])`);
-  }
+  },
 );
 
 const DEFAULT_LABEL_SCHEMA = {
@@ -198,33 +201,23 @@ test.describe.serial("schema manager", () => {
     await schemaManager.assert.isClosed();
   });
 
-  test("schema state resets when switching to video dataset", async ({
+  test("the schema manager is available for a video dataset", async ({
     fiftyoneLoader,
     page,
     modal,
     schemaManager,
   }) => {
-    // Start on image dataset - annotate tab should be functional
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id }),
+    // Video annotation is supported, so a video dataset exposes the same
+    // annotate affordances as image/3D, including the schema manager. Wait on
+    // the modal rather than the looker canvas, which never reports loaded for a
+    // blank seeded video.
+    await fiftyoneLoader.waitUntilGridVisible(page, videoDatasetName, {
+      searchParams: new URLSearchParams({ id: videoId }),
+      readySelector: '[data-cy="modal"]',
     });
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
     await schemaManager.assert.isEnabled();
-
-    // Switch to video dataset
-    await modal.close();
-    await fiftyoneLoader.waitUntilGridVisible(page, videoDatasetName, {
-      searchParams: new URLSearchParams({ id: videoId }),
-    });
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-
-    // Annotation should be disabled for video datasets
-    await modal.sidebar.assert.hasDisabledMessage(
-      "isn\u2019t supported for video datasets"
-    );
-    await schemaManager.assert.isDisabled();
   });
 
   test("patches view required field prompt activates schema and enters edit mode", async ({
@@ -274,7 +267,7 @@ test.describe.serial("schema manager", () => {
 
     // Annotation should be disabled for grouped datasets with no supported slices
     await modal.sidebar.assert.hasDisabledMessage(
-      "has no slices that support annotation"
+      "has no slices that support annotation",
     );
     await schemaManager.assert.isDisabled();
   });

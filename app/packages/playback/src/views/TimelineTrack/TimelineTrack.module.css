@@ -1,0 +1,192 @@
+.root {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-content-border-subtle);
+}
+
+.label {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 10px;
+  border-right: 1px solid var(--color-content-border-default);
+  height: 100%;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Child (sub-track) row — slightly dimmed so it reads as subordinate to its
+   parent object track. The value-segmented bars stay full-strength. */
+.childRow {
+  opacity: 0.92;
+}
+
+/* Fixed gutter so rows with and without an expand chevron keep their labels
+   aligned. Sized to the Xs icon button. */
+.chevronSlot {
+  width: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chevron {
+  opacity: 0.7;
+  transition: opacity 0.1s;
+}
+
+.chevron:hover {
+  opacity: 1;
+}
+
+/* Elbow connector standing in for a child row's color dot — a short vertical
+   stem from the parent above joined to a horizontal tick toward the label,
+   so the row visibly nests. */
+.rail {
+  position: relative;
+  width: 8px;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.rail::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0;
+  bottom: 50%;
+  border-left: 1px solid var(--color-content-border-default);
+}
+
+.rail::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  width: 6px;
+  border-top: 1px solid var(--color-content-border-default);
+}
+
+.labelText {
+  font-size: 0.72rem;
+  color: var(--color-content-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Pin button stays visible — at half opacity when unpinned so it's
+   discoverable, full opacity when pinned (or on hover). */
+.pinButton {
+  opacity: 0.5;
+  transition: opacity 0.1s;
+  flex-shrink: 0;
+}
+
+.pinButtonActive {
+  opacity: 1;
+  color: var(--color-brand-primary);
+}
+
+.label:hover .pinButton {
+  opacity: 1;
+}
+
+.lane {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  cursor: pointer;
+  /* Scope the z-index ordering of the bar / keyframe diamonds / resize
+     handles to this row so the resize handle can reliably paint above the
+     diamond (see `.resizeHandle` / `.intervalBar`). */
+  isolation: isolate;
+}
+
+.bar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 14px;
+  border-radius: 2px;
+}
+
+/* Keyframe diamond. Sits on a presence bar of the same track color, so it
+   needs a contrasting outline + its own stacking context to read clearly —
+   especially on dimmed (unpinned) rows. The theme-adaptive border tracks
+   the foreground color; the shadow separates it from light-colored bars. */
+.event {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 11px;
+  height: 11px;
+  z-index: 3;
+  cursor: pointer;
+  border: 1.5px solid var(--color-content-text-primary);
+  box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.45);
+}
+
+/* Interval bar — one segment of a semantic track, click-to-seek. */
+.intervalBar {
+  position: absolute;
+  top: calc(50% - 6px);
+  height: 12px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.event:hover {
+  filter: brightness(1.15);
+}
+
+/* Lighten on hover with an inset overlay rather than `filter: brightness`.
+   A filter establishes a stacking context, which would re-trap the resize
+   handle below the keyframe diamond *while hovering* — flipping the topmost
+   element (and the cursor) between the handle and the diamond every frame
+   wherever a keyframe sits on the handle (the leading edge). */
+.intervalBar:hover {
+  box-shadow: inset 0 0 0 100px rgba(255, 255, 255, 0.12);
+}
+
+/* Each edge handle straddles the bar boundary: `--resize-inset` inside
+   (preserving the move-vs-resize split within the bar) plus a `--resize-buffer`
+   invisible buffer hanging *past* the edge so you can grab right at or just
+   beyond the endpoint. */
+.resizeHandle {
+  --resize-inset: 6px;
+  --resize-buffer: 6px;
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: calc(var(--resize-inset) + var(--resize-buffer));
+  cursor: ew-resize;
+  /* Above the keyframe diamond */
+  z-index: 4;
+  background: rgba(255, 255, 255, 0.25);
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.intervalBar:hover .resizeHandle {
+  opacity: 1;
+}
+
+.resizeHandleStart {
+  left: calc(-1 * var(--resize-buffer));
+}
+
+.resizeHandleEnd {
+  right: calc(-1 * var(--resize-buffer));
+}

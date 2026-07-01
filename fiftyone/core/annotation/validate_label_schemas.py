@@ -62,9 +62,14 @@ def validate_label_schemas(
     elif fields is None:
         fields = sorted(label_schema.keys())
 
-    all_fields = sample_collection.get_field_schema(flat=True)
+    all_fields = dict(sample_collection.get_field_schema(flat=True))
+    if sample_collection._has_frame_fields():
+        frame_fields = sample_collection.get_frame_field_schema(flat=True)
+        for name, field in frame_fields.items():
+            all_fields[f"frames.{name}"] = field
+
     supported_fields = foau.list_valid_annotation_fields(
-        sample_collection, flatten=True
+        sample_collection, flatten=True, include_frames=True
     )
     exceptions = []
     for field_name in fields:
@@ -190,6 +195,8 @@ def _validate_bool_field_label_schema(
             _validate_default(field_name, value, bool, allow_default)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != foac.BOOL:
             _raise_type_error(field, field_name, value)
 
@@ -211,6 +218,8 @@ def _validate_date_datetime_field_label_schema(
             _validate_default(field_name, value, _type, allow_default)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE:
             invalid_date = (
                 isinstance(field, fof.DateField) and value != foac.DATE
@@ -235,6 +244,8 @@ def _validate_dict_field_label_schema(
             _validate_default(field_name, value, dict, allow_default)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != foac.DICT:
             _raise_type_error(field, field_name, value)
 
@@ -288,6 +299,8 @@ def _validate_float_int_field_label_schema(
             _validate_precision(field_name, value)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != _str_type:
             _raise_type_error(field, field_name, value)
 
@@ -329,6 +342,8 @@ def _validate_float_int_list_field_label_schema(
             _validate_precision(field_name, value)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != _str_type:
             _raise_type_error(field, field_name, value)
 
@@ -355,7 +370,22 @@ def _validate_str_field_label_schema(
     settings = foac.STR_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
     values = label_schema.get(foac.VALUES, None)
-    if component in foac.VALUES_COMPONENTS:
+    taxonomy = label_schema.get(foac.TAXONOMY, None)
+
+    if taxonomy is not None:
+        if component != foac.DROPDOWN:
+            raise ValueError(
+                f"'{foac.TAXONOMY}' requires a '{foac.DROPDOWN}' "
+                f"'{foac.COMPONENT}' for field '{field_name}'"
+            )
+        if values is not None:
+            raise ValueError(
+                f"'{foac.TAXONOMY}' and '{foac.VALUES}' are mutually exclusive "
+                f"settings for field '{field_name}'"
+            )
+        _validate_taxonomy_setting(field_name, taxonomy)
+        settings = settings.union({foac.TAXONOMY})
+    elif component in foac.VALUES_COMPONENTS:
         _validate_values_setting(field_name, values, str)
         settings = settings.union({foac.VALUES})
 
@@ -371,6 +401,8 @@ def _validate_str_field_label_schema(
             )
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != foac.STR:
             _raise_type_error(field, field_name, value)
 
@@ -381,7 +413,22 @@ def _validate_str_list_field_label_schema(
     settings = foac.STR_LIST_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
     values = label_schema.get(foac.VALUES, None)
-    if component in foac.VALUES_COMPONENTS:
+    taxonomy = label_schema.get(foac.TAXONOMY, None)
+
+    if taxonomy is not None:
+        if component != foac.DROPDOWN:
+            raise ValueError(
+                f"'{foac.TAXONOMY}' requires a '{foac.DROPDOWN}' "
+                f"'{foac.COMPONENT}' for field '{field_name}'"
+            )
+        if values is not None:
+            raise ValueError(
+                f"'{foac.TAXONOMY}' and '{foac.VALUES}' are mutually exclusive "
+                f"settings for field '{field_name}'"
+            )
+        _validate_taxonomy_setting(field_name, taxonomy)
+        settings = settings.union({foac.TAXONOMY})
+    elif component in foac.VALUES_COMPONENTS:
         _validate_values_setting(field_name, values, str)
         settings = settings.union({foac.VALUES})
 
@@ -397,6 +444,8 @@ def _validate_str_list_field_label_schema(
             )
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != foac.STR_LIST:
             _raise_type_error(field, field_name, value)
 
@@ -451,6 +500,8 @@ def _validate_label_field_label_schema(
             )
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != class_name:
             _raise_type_error(field, field_name, value)
 
@@ -671,6 +722,14 @@ def _validate_read_only(field_name, value, require=False):
         )
 
 
+def _validate_dynamic(field_name, value):
+    if not isinstance(value, bool):
+        raise ValueError(
+            f"invalid '{foac.DYNAMIC}' value '{value}' for field "
+            f"'{field_name}'"
+        )
+
+
 def _validate_values_setting(field_name, value, _type, key=foac.VALUES):
     if not isinstance(value, list):
         raise ValueError(
@@ -696,7 +755,26 @@ def _validate_values_setting(field_name, value, _type, key=foac.VALUES):
             )
 
 
-def _validate_applied_ontology(field_name: str, value: str) -> None:
+def _validate_taxonomy_setting(field_name: str, taxonomy_name: str):
+    # Late import to avoid a circular import with the ontology SDK.
+    from fiftyone.core.ontology import load_ontology
+
+    try:
+        taxonomy = load_ontology(taxonomy_name)
+    except ValueError:
+        raise ValueError(
+            f"'{foac.TAXONOMY}' references unknown taxonomy "
+            f"'{taxonomy_name}' for field '{field_name}'"
+        )
+
+    if not taxonomy.is_taxonomy:
+        raise ValueError(
+            f"'{foac.TAXONOMY}' references '{taxonomy_name}' which is not "
+            f"a taxonomy for field '{field_name}'"
+        )
+
+
+def _validate_applied_ontology(field_name: str, value: str):
     # Late import to avoid a circular import with the ontology SDK.
     from fiftyone.core.ontology import load_ontology
 
@@ -721,6 +799,8 @@ _DETECTION = "detection"
 _DETECTIONS = "detections"
 _POLYLINE = "polyline"
 _POLYLINES = "polylines"
+_TEMPORAL_DETECTION = "temporaldetection"
+_TEMPORAL_DETECTIONS = "temporaldetections"
 
 _ALL_LABEL_TYPES = {
     _CLASSIFICATION,
@@ -729,4 +809,6 @@ _ALL_LABEL_TYPES = {
     _DETECTIONS,
     _POLYLINE,
     _POLYLINES,
+    _TEMPORAL_DETECTION,
+    _TEMPORAL_DETECTIONS,
 }

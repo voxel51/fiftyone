@@ -23,7 +23,7 @@ type GroupResponse = {
  *   - `isLoadingImageSlices`: Boolean indicating whether the image slices are currently being fetched
  */
 export const useImageSlicesIfAvailable = (
-  sample: ModalSample | undefined
+  sample: ModalSample | undefined,
 ): {
   imageSlices: string[];
   resolveUrlForImageSlice: (sliceName: string) => string | null;
@@ -42,7 +42,7 @@ export const useImageSlicesIfAvailable = (
       setIsLoadingImageSlices(false);
       setImageSlices([]);
       setSliceUrls({});
-      return;
+      return undefined;
     }
 
     let cancelled = false;
@@ -50,6 +50,7 @@ export const useImageSlicesIfAvailable = (
     const fetchImageSlices = async () => {
       try {
         setIsLoadingImageSlices(true);
+
         const fetchFunction = getFetchFunction({ cache: true });
         const path = `/dataset/${dataset}/groups/${groupId}?fields=filepath&resolve_urls=true&media_type=image`;
 
@@ -110,7 +111,7 @@ export const useImageSlicesIfAvailable = (
     (sliceName: string): string | null => {
       return sliceUrls[sliceName] || null;
     },
-    [sliceUrls]
+    [sliceUrls],
   );
 
   if (!hasGroup) {

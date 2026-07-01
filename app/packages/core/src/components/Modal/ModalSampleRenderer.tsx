@@ -36,7 +36,7 @@ class ModalSampleRendererErrorBoundary extends React.Component<
   componentDidCatch(error: Error) {
     console.error(
       "Modal sample renderer failed, falling back to the built-in metadata renderer:",
-      error
+      error,
     );
   }
 
@@ -62,11 +62,11 @@ export const ModalSampleRenderer = React.memo(
 
     const activatorCtx = useMemo(
       () => ({ dataset, schema }),
-      [dataset, schema]
+      [dataset, schema],
     );
     const sampleRenderers = useActivePlugins(
       PluginComponentType.SampleRenderer,
-      activatorCtx
+      activatorCtx,
     );
 
     if (!dataset) {
@@ -82,7 +82,7 @@ export const ModalSampleRenderer = React.memo(
       modalMediaField,
       dataset,
       schema,
-      "modal"
+      "modal",
     );
     const matchedRenderer = getMatchingSampleRenderer(sampleRenderers, ctx);
     const canonicalRenderer = matchedRenderer
@@ -96,7 +96,7 @@ export const ModalSampleRenderer = React.memo(
     const Renderer = getSampleRendererComponent(
       matchedRenderer,
       "modal",
-      canonicalRenderer
+      canonicalRenderer,
     );
 
     // Include sample ID so the error boundary resets when navigating between samples
@@ -110,5 +110,5 @@ export const ModalSampleRenderer = React.memo(
         <Renderer ctx={ctx} />
       </ModalSampleRendererErrorBoundary>
     );
-  }
+  },
 );

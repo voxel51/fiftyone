@@ -28,7 +28,7 @@ const Similarity = ({
   });
 
   const keys = useRecoilValue(
-    availableSimilarityKeys({ modal, isImageSearch: showImageSimilarityIcon })
+    availableSimilarityKeys({ modal, isImageSearch: showImageSimilarityIcon }),
   );
 
   const togglePopover = useCallback(() => {

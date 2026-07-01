@@ -9,7 +9,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "smoke-annotate-canvas-actions"
+  "smoke-annotate-canvas-actions",
 );
 const id = "000000000000000000000000";
 
@@ -83,6 +83,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     // Activate detection mode
     await modal.sidebar.annotate.detectionMode("Detections");
@@ -104,6 +107,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     // Activate detection mode
     await modal.sidebar.annotate.detectionMode("Detections");
@@ -126,6 +132,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     // Activate detection mode
     await modal.sidebar.annotate.detectionMode("Detections");
@@ -141,7 +150,7 @@ test.describe.serial("canvas interactions and action state", () => {
 
     // The label list should be hidden (edit form is showing)
     const labelListHeader = modal.sidebar.locator.getByText(
-      "Click labels to edit"
+      "Click labels to edit",
     );
     await expect(labelListHeader).toBeHidden();
   });
@@ -152,6 +161,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     // Click on the existing detection at (0.4-0.6, 0.4-0.6)
     await modal.sampleCanvas.move(0.5, 0.5, "pointer");
@@ -163,7 +175,7 @@ test.describe.serial("canvas interactions and action state", () => {
 
     // The label list should be hidden (edit form is showing)
     const labelListHeader = modal.sidebar.locator.getByText(
-      "Click labels to edit"
+      "Click labels to edit",
     );
     await expect(labelListHeader).toBeHidden();
   });
@@ -210,12 +222,15 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.assert.selectIsActive();
 
     // Classification tab renders at the top-left of the media bounds.
-    // Move to the top-left area and click.
-    await modal.sampleCanvas.move(0.05, 0.02);
+    // Move to the top-left area and click once the tab is hit-testable.
+    await modal.sampleCanvas.move(0.05, 0.02, "pointer");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
 
@@ -231,12 +246,15 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     // 1. Start in Select mode
     await modal.sidebar.annotate.assert.selectIsActive();
 
     // 2. Click the classification overlay → Classification active
-    await modal.sampleCanvas.move(0.05, 0.02);
+    await modal.sampleCanvas.move(0.05, 0.02, "pointer");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
     await modal.sidebar.annotate.assert.classificationIsActive();
@@ -268,6 +286,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     // Activate detection mode and draw a detection
     await modal.sidebar.annotate.detectionMode("Detections");
@@ -275,6 +296,12 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.up();
+
+    // Wait for the new detection's edit form to open; quitting before the
+    // async establish flow commits would re-activate detection mode
+    await expect(
+      modal.sidebar.locator.getByText("Click labels to edit"),
+    ).toBeHidden();
 
     await modal.sidebar.annotate.assert.detectionModeIsActive();
     await modal.sidebar.annotate.assert.selectIsActive(false);

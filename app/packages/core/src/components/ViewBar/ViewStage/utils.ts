@@ -1,7 +1,7 @@
 export const computeBestMatchString = (options, value) => {
   value = value || "";
   const match = options.filter((n) =>
-    n.toLowerCase().startsWith(value.toLowerCase())
+    n.toLowerCase().startsWith(value.toLowerCase()),
   )[0];
   if (match && value.length) {
     return {
@@ -14,7 +14,7 @@ export const computeBestMatchString = (options, value) => {
 
 export const getMatch = (options, value) => {
   const results = options.filter(
-    (o) => o.toLowerCase() === value.toLowerCase()
+    (o) => o.toLowerCase() === value.toLowerCase(),
   );
   if (results.length === 1) {
     return results[0];

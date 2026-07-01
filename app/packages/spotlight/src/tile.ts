@@ -8,11 +8,11 @@ import { ONE, THREE, ZERO } from "./constants";
 export default (
   items: number[],
   threshold: number,
-  useRemainder: boolean
+  useRemainder: boolean,
 ): number[] => {
   if (threshold < ONE) {
     throw new TilingException(
-      `threshold must be greater than 1, received ${threshold}`
+      `threshold must be greater than 1, received ${threshold}`,
     );
   }
 

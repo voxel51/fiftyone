@@ -84,7 +84,7 @@ vi.mock("@fiftyone/lighter", async () => {
       (
         event: string,
         handler: (...args: any[]) => any,
-        { once = false } = {}
+        { once = false } = {},
       ) => {
         useEffect(() => {
           if (once) return mockBus.once(event, handler);
@@ -107,13 +107,11 @@ vi.mock("@fiftyone/state", () => ({
   },
 }));
 
-vi.mock("../Sidebar/Annotate/useLabels", async () => {
-  const { atom } = await import("jotai");
-  return {
-    LabelsState: { UNSET: "unset", LOADING: "loading", COMPLETE: "complete" },
-    labelsState: atom("complete"),
-  };
-});
+vi.mock("../Sidebar/Annotate/useLabels", () => ({
+  // existing tests assume labels are ready (reveal gate depends only on
+  // mediaBounds/rendererReady/labels)
+  useAnnotationLabelsReady: () => true,
+}));
 
 vi.mock("../Sidebar/Annotate/state", async () => {
   const { atom } = await import("jotai");
@@ -140,7 +138,7 @@ const CONTENT_BOUNDS = { x: 0, y: 0, width: 50, height: 50 };
 
 const fireMediaBoundsChanged = (bounds = BOUNDS) =>
   act(() =>
-    mockBus.dispatch("lighter:canonical-media-bounds-changed", { bounds })
+    mockBus.dispatch("lighter:canonical-media-bounds-changed", { bounds }),
   );
 
 const fireRendererReady = () =>
@@ -242,7 +240,7 @@ describe("useViewport", () => {
       expect(mockFitToContent).not.toHaveBeenCalled();
       expect(mockEventBusDispatch).toHaveBeenCalledWith(
         "lighter:viewport-init-complete",
-        {}
+        {},
       );
     });
 

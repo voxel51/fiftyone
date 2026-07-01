@@ -1,4 +1,3 @@
-import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import type {
   CuboidTransformData,
   PolylinePointTransformData,
@@ -14,7 +13,7 @@ import type { OverlayLabel } from "./loader";
  */
 export function reconcileDetection(
   overlay: OverlayLabel,
-  stagedTransform?: CuboidTransformData
+  stagedTransform?: CuboidTransformData,
 ): ReconciledDetection3D {
   return {
     ...overlay,
@@ -25,11 +24,10 @@ export function reconcileDetection(
 /**
  * Reconciles a raw polyline overlay with staged transform data.
  * Staged segments override the original points3d.
- * Also coerces string booleans from misc data.
  */
 export function reconcilePolyline(
   overlay: OverlayLabel & { points3d: [number, number, number][][] },
-  stagedTransform?: PolylinePointTransformData
+  stagedTransform?: PolylinePointTransformData,
 ): ReconciledPolyline3D {
   // Staged segments take precedence over original points3d
   let finalPoints3d = stagedTransform?.segments
@@ -43,7 +41,7 @@ export function reconcilePolyline(
 
   return {
     ...overlay,
-    ...coerceStringBooleans(stagedTransform?.misc ?? {}),
+    ...(stagedTransform?.misc ?? {}),
     points3d: finalPoints3d,
   } as ReconciledPolyline3D;
 }
@@ -56,14 +54,14 @@ export function createNewDetection(
   labelId: string,
   transformData: CuboidTransformData,
   currentSampleId: string,
-  path: string
+  path: string,
 ): ReconciledDetection3D {
   return {
     _id: labelId,
     _cls: "Detection",
     type: "Detection",
     path,
-    ...coerceStringBooleans(transformData ?? {}),
+    ...(transformData ?? {}),
     location: transformData.location,
     dimensions: transformData.dimensions,
     rotation: transformData.rotation ?? [0, 0, 0],
@@ -82,7 +80,7 @@ export function createNewDetection(
 export function createNewPolyline(
   labelId: string,
   transformData: PolylinePointTransformData,
-  currentSampleId: string
+  currentSampleId: string,
 ): ReconciledPolyline3D | null {
   if (!transformData.segments || transformData.segments.length === 0) {
     return null;
@@ -106,7 +104,7 @@ export function createNewPolyline(
     sampleId: currentSampleId,
     tags: [],
     points3d: validPoints3d,
-    ...coerceStringBooleans(transformData.misc ?? {}),
+    ...(transformData.misc ?? {}),
     isNew: true,
   } as ReconciledPolyline3D;
 }

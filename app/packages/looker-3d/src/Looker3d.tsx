@@ -29,23 +29,23 @@ export const Looker3d = () => {
   const isGroup = useRecoilValue(fos.isGroup);
   const modalMode = fos.useModalMode();
   const isMain2DViewerVisible = useRecoilValue(
-    fos.groupMediaIsMain2DViewerVisible
+    fos.groupMediaIsMain2DViewerVisible,
   );
   const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
   const sample = fos.useStableSceneSample3d();
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   const mediaPath = useMemo(
     () => (sample ? getMediaPathForFo3dSample(sample, mediaField) : null),
-    [sample, mediaField]
+    [sample, mediaField],
   );
   const hasDirect3dPath = useMemo(
     () =>
       Boolean(
         mediaPath &&
-          (isDirect3dSamplePath(mediaPath) ||
-            isDirect3dSamplePath(sample?.sample?.filepath))
+        (isDirect3dSamplePath(mediaPath) ||
+          isDirect3dSamplePath(sample?.sample?.filepath)),
       ),
-    [mediaPath, sample]
+    [mediaPath, sample],
   );
 
   const [isHovering, setIsHovering] = useState(false);
@@ -57,6 +57,9 @@ export const Looker3d = () => {
   const setFo3dHasBackground = useSetRecoilState(fo3dContainsBackground);
 
   const thisSampleId = useRecoilValue(fos.modalSampleId);
+
+  // test affordance: 3D selection has no DOM signal, so expose its count
+  const selectedLabelCount = useRecoilValue(fos.selectedLabels).length;
 
   useEffect(() => {
     return () => {
@@ -70,7 +73,7 @@ export const Looker3d = () => {
       hasDirect3dPath ||
       (mediaType === "group" && has3dSlices) ||
       (isDynamicGroup && is3d(parentMediaType)),
-    [mediaType, hasDirect3dPath, has3dSlices, isDynamicGroup, parentMediaType]
+    [mediaType, hasDirect3dPath, has3dSlices, isDynamicGroup, parentMediaType],
   );
 
   const sampleMap = fos.useStableActive3dSamplesMap();
@@ -91,7 +94,7 @@ export const Looker3d = () => {
     async ({ set }) => {
       set(isGridOnAtom, (prev) => !prev);
     },
-    []
+    [],
   );
 
   useHotkey(
@@ -105,7 +108,7 @@ export const Looker3d = () => {
       }
 
       const isColormapModalOpen = await snapshot.getPromise(
-        isColormapModalOpenAtom
+        isColormapModalOpenAtom,
       );
       if (isColormapModalOpen) {
         set(isColormapModalOpenAtom, false);
@@ -113,7 +116,7 @@ export const Looker3d = () => {
       }
 
       const isLevaConfigPanelOn = await snapshot.getPromise(
-        isLevaConfigPanelOnAtom
+        isLevaConfigPanelOnAtom,
       );
       if (isLevaConfigPanelOn) {
         set(isLevaConfigPanelOnAtom, false);
@@ -166,7 +169,7 @@ export const Looker3d = () => {
     [sampleMap, isHovering],
     {
       useTransaction: false,
-    }
+    },
   );
 
   const clear = useCallback(() => {
@@ -195,7 +198,12 @@ export const Looker3d = () => {
   return (
     <Fo3dErrorBoundary key={looker3dSceneKey} boundaryName="fo3d">
       <Leva />
-      <Container onMouseOver={update} onMouseMove={update} data-cy="looker3d">
+      <Container
+        onMouseOver={update}
+        onMouseMove={update}
+        data-cy="looker3d"
+        data-cy-selected-label-count={selectedLabelCount}
+      >
         <MediaTypeFo3dComponent key={looker3dSceneKey} />
         <ActionBar
           onMouseEnter={() => {

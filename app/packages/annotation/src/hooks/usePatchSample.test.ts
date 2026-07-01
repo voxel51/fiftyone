@@ -21,7 +21,9 @@ import type { JSONDeltas } from "@fiftyone/core/src/client";
 const SAMPLE: Sample = { id: "sample-1" } as Sample;
 const DATASET_ID = "dataset-1";
 const VERSION_TOKEN = "tok-abc";
-const DELTAS: JSONDeltas = [{ path: "/label", value: "cat", op: "replace" }] as any;
+const DELTAS: JSONDeltas = [
+  { path: "/label", value: "cat", op: "replace" },
+] as any;
 
 function makeArgs(overrides = {}) {
   return {
@@ -52,12 +54,15 @@ describe("usePatchSampleWith", () => {
         sample: SAMPLE,
         datasetId: DATASET_ID,
         sampleDeltas: DELTAS,
-      })
+      }),
     );
   });
 
   it("passes all constructor args through to doPatchSample", async () => {
-    const args = makeArgs({ isGenerated: true, generatedDatasetName: "gen-ds" });
+    const args = makeArgs({
+      isGenerated: true,
+      generatedDatasetName: "gen-ds",
+    });
     const { result } = renderHook(() => usePatchSampleWith(args));
 
     await result.current(DELTAS);
@@ -68,7 +73,7 @@ describe("usePatchSampleWith", () => {
         generatedDatasetName: "gen-ds",
         getVersionToken: args.getVersionToken,
         refreshSample: args.refreshSample,
-      })
+      }),
     );
   });
 
@@ -86,7 +91,7 @@ describe("usePatchSampleWith", () => {
         labelId: "l-1",
         labelPath: "predictions",
         opType: "mutate",
-      })
+      }),
     );
   });
 
@@ -100,7 +105,7 @@ describe("usePatchSampleWith", () => {
         labelId: undefined,
         labelPath: undefined,
         opType: undefined,
-      })
+      }),
     );
   });
 

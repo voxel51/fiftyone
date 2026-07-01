@@ -82,7 +82,7 @@ export class FieldVisibilityPom {
 
   get filterRuleInput() {
     return this.containerLocator.getByTestId(
-      "filter-visibility-filter-rule-input"
+      "filter-visibility-filter-rule-input",
     );
   }
 
@@ -94,19 +94,19 @@ export class FieldVisibilityPom {
 
   getFieldVisibilityControl(label: string) {
     return this.containerLocator.getByTestId(
-      `field-visibility-controls-${label}`
+      `field-visibility-controls-${label}`,
     );
   }
 
   getControl(
-    name: "select-all" | "show-field-metadata" | "show-nested-fields"
+    name: "select-all" | "show-field-metadata" | "show-nested-fields",
   ) {
     return this.getFieldVisibilityControl(name);
   }
 
   getFieldInfoContainer(path: string) {
     return this.containerLocator.getByTestId(
-      `schema-selection-info-container-${path}`
+      `schema-selection-info-container-${path}`,
     );
   }
 
@@ -120,7 +120,7 @@ export class FieldVisibilityPom {
       | "parents-only"
       | "nested-only"
       | "all"
-      | "customFields" = "parents-only"
+      | "customFields" = "parents-only",
   ) {
     let paths: string[] = [];
     switch (mode) {
@@ -251,7 +251,7 @@ class FieldVisibilityAsserter {
     const fieldInfoContainer = this.fv.getFieldInfoContainer(path);
     await expect(fieldInfoContainer).toBeVisible();
     await expect(
-      fieldInfoContainer.getByText(`${path} description`)
+      fieldInfoContainer.getByText(`${path} description`),
     ).toBeVisible();
   }
 
@@ -272,7 +272,7 @@ class FieldVisibilityAsserter {
   async assertFieldsAreSelected(fieldNames: string[]) {
     const selectedFields = await this.fv.getSelectionFields(
       "checked",
-      "parents-only"
+      "parents-only",
     );
     for (let i = 0; i < fieldNames.length; i++) {
       expect(selectedFields).toContain(fieldNames[i]);

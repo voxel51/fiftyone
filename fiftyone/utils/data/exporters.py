@@ -45,6 +45,8 @@ from .parsers import (
     ImageSampleParser,
 )
 
+fota = fou.lazy_import("fiftyone.core.tags")
+
 logger = logging.getLogger(__name__)
 
 
@@ -2172,6 +2174,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._metadata_path = None
         self._samples_path = None
         self._frames_path = None
+        self._tags_path = None
         self._media_exporter = None
         self._media_fields = {}
         self._media_field_exporters = {}
@@ -2184,6 +2187,9 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._eval_dir = os.path.join(self.export_dir, "evaluations")
         self._runs_dir = os.path.join(self.export_dir, "runs")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
+        self._tags_path = os.path.join(
+            self.export_dir, fota.TAGS_EXPORT_FILENAME
+        )
 
         if self.use_dirs:
             self._samples_path = os.path.join(self.export_dir, "samples")
@@ -2342,6 +2348,10 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             ]
 
         foo.export_document(dataset_dict, self._metadata_path)
+
+        fota.export_tags(
+            _sample_collection, self._tags_path, progress=progress
+        )
 
         self._media_exporter.close()
         for media_exporter in self._media_field_exporters.values():

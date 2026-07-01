@@ -13,6 +13,7 @@ import { HoveredPointMarker } from "../../components/HoveredPointMarker";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { usePointCloudHoverFromRaycast } from "../../hooks/use-point-cloud-hover-from-raycast";
+import type { PointCloudCrop } from "../../utils/point-cloud-crop";
 import { useFo3dContext } from "../context";
 import { usePcdMaterial } from "../point-cloud/use-pcd-material";
 import type {
@@ -30,6 +31,7 @@ interface PlyProps {
   quaternion: Quaternion;
   scale: Vector3;
   children?: React.ReactNode;
+  pointCloudCrop?: PointCloudCrop | null;
 }
 
 const DEFAULT_PLY_MATERIAL: FoMeshMaterial = {
@@ -46,7 +48,7 @@ const DEFAULT_PLY_MATERIAL: FoMeshMaterial = {
 
 export const inferPlyIsPointCloud = (
   geometry: BufferGeometry | null | undefined,
-  explicitIsPointCloud: boolean | undefined
+  explicitIsPointCloud: boolean | undefined,
 ) => {
   if (typeof explicitIsPointCloud === "boolean") {
     return explicitIsPointCloud;
@@ -60,17 +62,15 @@ const PlyWithPointsMaterial = ({
   geometry,
   defaultMaterial,
   quaternion,
-  position,
-  scale,
   vertexColorsAvailable,
+  pointCloudCrop,
 }: {
   name: string;
   geometry: BufferGeometry;
   defaultMaterial: FoMeshMaterial;
   quaternion: Quaternion;
-  position: Vector3;
-  scale: Vector3;
   vertexColorsAvailable: boolean;
+  pointCloudCrop?: PointCloudCrop | null;
 }) => {
   const overrideMaterial = {
     shadingMode: "height",
@@ -88,7 +88,8 @@ const PlyWithPointsMaterial = ({
     overrideMaterial,
     pointsContainerRef,
     quaternion,
-    vertexColorsAvailable
+    vertexColorsAvailable,
+    pointCloudCrop,
   );
 
   const mesh = useMemo(() => new Points(geometry), [geometry]);
@@ -140,8 +141,8 @@ const PlyWithMaterialOverride = ({
         ...defaultMaterial,
         vertexColors: true,
         color: "#ffffff",
-      } as FoMeshBasicMaterialProps),
-    [defaultMaterial]
+      }) as FoMeshBasicMaterialProps,
+    [defaultMaterial],
   );
 
   const { material } = useMeshMaterialControls(name, basicMaterial);
@@ -192,6 +193,7 @@ export const Ply = ({
   quaternion,
   scale,
   children,
+  pointCloudCrop,
 }: PlyProps) => {
   const { fo3dRoot } = useFo3dContext();
   const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
@@ -200,12 +202,12 @@ export const Ply = ({
     () =>
       preTransformedPlyPath ??
       getSampleSrc(getResolvedUrlForFo3dAsset(plyPath, fo3dRoot)),
-    [plyPath, preTransformedPlyPath, fo3dRoot]
+    [plyPath, preTransformedPlyPath, fo3dRoot],
   );
 
   const resourcePath = useMemo(
     () => getBasePathForTextures(fo3dRoot, plyUrl),
-    [fo3dRoot, plyUrl]
+    [fo3dRoot, plyUrl],
   );
 
   const geometry_ = useFoLoader(PLYLoader, plyUrl, (loader) => {
@@ -224,11 +226,11 @@ export const Ply = ({
   const [isGeometryResolved, setIsGeometryResolved] = useState(false);
   const resolvedDefaultMaterial = useMemo(
     () => defaultMaterial ?? DEFAULT_PLY_MATERIAL,
-    [defaultMaterial]
+    [defaultMaterial],
   );
   const shouldRenderAsPointCloud = useMemo(
     () => inferPlyIsPointCloud(geometry, isPcd),
-    [geometry, isPcd]
+    [geometry, isPcd],
   );
 
   useEffect(() => {
@@ -269,9 +271,8 @@ export const Ply = ({
           geometry={geometry}
           defaultMaterial={resolvedDefaultMaterial}
           quaternion={quaternion}
-          position={position}
-          scale={scale}
           vertexColorsAvailable={isUsingVertexColors}
+          pointCloudCrop={pointCloudCrop}
         />
       );
     }
@@ -300,9 +301,8 @@ export const Ply = ({
     shouldRenderAsPointCloud,
     name,
     resolvedDefaultMaterial,
-    position,
-    scale,
     quaternion,
+    pointCloudCrop,
   ]);
 
   if (!mesh) {

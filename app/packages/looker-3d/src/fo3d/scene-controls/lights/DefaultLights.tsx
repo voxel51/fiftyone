@@ -103,7 +103,7 @@ export const DefaultLights = () => {
 
   const [lightConfig, lightHelperConfig] = useLightControls(
     defaultLightsProps,
-    editingLightRef
+    editingLightRef,
   );
 
   const lightElements = useMemo(() => {

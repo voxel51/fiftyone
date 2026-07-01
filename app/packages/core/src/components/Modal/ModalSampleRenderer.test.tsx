@@ -126,7 +126,7 @@ describe("ModalSampleRenderer", () => {
       "filepath",
       mockDataset,
       mockSchema,
-      "modal"
+      "modal",
     );
   });
 

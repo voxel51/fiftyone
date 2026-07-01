@@ -70,7 +70,7 @@ const NewFieldSchema = () => {
   // Label schema state
   const [classes, setClasses] = useState<string[]>([]);
   const [attributes, setAttributes] = useState<AttributeConfig[]>(
-    DEFAULT_DETECTION_ATTRIBUTES_2D
+    DEFAULT_DETECTION_ATTRIBUTES_2D,
   );
   const [newAttributes, setNewAttributes] = useState<Set<string>>(new Set());
 
@@ -94,16 +94,23 @@ const NewFieldSchema = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [is3dMedia]);
 
-  // Get label type options based on media type
+  // A "frames." prefix targets the frame schema (video only), which changes
+  // both the valid name pattern and the available label types.
+  const isFrameField = useMemo(
+    () => fieldName.trim().startsWith("frames."),
+    [fieldName],
+  );
+
+  // Get label type options based on media type and field scope
   const labelTypeOptions = useMemo(
-    () => getLabelTypeOptions(currentMediaType),
-    [currentMediaType]
+    () => getLabelTypeOptions(currentMediaType, isFrameField),
+    [currentMediaType, isFrameField],
   );
 
   // Validate field name
   const fieldNameError = useMemo(
-    () => validateFieldName(fieldName, schemasData),
-    [fieldName, schemasData]
+    () => validateFieldName(fieldName, schemasData, currentMediaType),
+    [fieldName, schemasData, currentMediaType],
   );
 
   const canCreate = fieldName.trim() !== "" && !fieldNameError && !isCreating;
@@ -119,8 +126,18 @@ const NewFieldSchema = () => {
       setNewAttributes(new Set());
       setClasses([]);
     },
-    [is3dMedia]
+    [is3dMedia],
   );
+
+  // Keep the selected label type within the options available for the current
+  // field scope — e.g. switching to a "frames." field drops the clip-level
+  // types, so a stale selection must fall back to a valid one.
+  useEffect(() => {
+    const ids = labelTypeOptions.map((option) => option.id);
+    if (category === "label" && !ids.includes(labelType)) {
+      handleLabelTypeChange(labelTypeOptions[0].id);
+    }
+  }, [category, labelType, labelTypeOptions, handleLabelTypeChange]);
 
   const handlePrimitiveTypeChange = useCallback((newType: string) => {
     setPrimitiveType(newType);
@@ -134,7 +151,7 @@ const NewFieldSchema = () => {
     (config: SchemaConfigType) => {
       setPrimitiveConfig(config);
     },
-    []
+    [],
   );
 
   // Class handlers
@@ -163,7 +180,7 @@ const NewFieldSchema = () => {
   const handleEditAttribute = useCallback(
     (oldName: string, config: AttributeConfig) => {
       setAttributes((prev) =>
-        prev.map((attr) => (attr.name === oldName ? config : attr))
+        prev.map((attr) => (attr.name === oldName ? config : attr)),
       );
       if (newAttributes.has(oldName)) {
         setNewAttributes((prev) => {
@@ -174,7 +191,7 @@ const NewFieldSchema = () => {
         });
       }
     },
-    [newAttributes]
+    [newAttributes],
   );
 
   const handleDeleteAttribute = useCallback(
@@ -188,14 +205,14 @@ const NewFieldSchema = () => {
         });
       }
     },
-    [newAttributes]
+    [newAttributes],
   );
 
   const handleAttributeOrderChange = useCallback(
     (newOrder: AttributeConfig[]) => {
       setAttributes(newOrder);
     },
-    []
+    [],
   );
 
   const handleCreate = useCallback(async () => {
@@ -208,7 +225,7 @@ const NewFieldSchema = () => {
     let label_schema_config: LabelSchemaConfig | undefined;
     if (category === "label") {
       const newAttrsArr = attributes.filter((attr) =>
-        newAttributes.has(attr.name)
+        newAttributes.has(attr.name),
       );
       label_schema_config = {
         classes,
@@ -300,7 +317,11 @@ const NewFieldSchema = () => {
               <Input
                 value={fieldName}
                 onChange={(e) => setFieldName(e.target.value)}
-                placeholder="Enter field name"
+                placeholder={
+                  currentMediaType === "video"
+                    ? "Enter field name (e.g. frames.detections)"
+                    : "Enter field name"
+                }
                 error={!!fieldNameError}
                 autoFocus
               />

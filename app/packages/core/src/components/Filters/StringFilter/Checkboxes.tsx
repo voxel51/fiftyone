@@ -72,7 +72,7 @@ const useCounts = (modal: boolean, path: string, results: Result[] | null) => {
   if (results) {
     for (const { count, value } of results) {
       if (!data.has(value)) {
-        data.set(value, loading || queryPerformance ? count : count ?? 0);
+        data.set(value, loading || queryPerformance ? count : (count ?? 0));
       }
     }
   }
@@ -99,7 +99,7 @@ const useValues = ({
 
   let allValues = selected.map((value) => ({
     value,
-    count: hasCount ? counts.get(value) ?? null : null,
+    count: hasCount ? (counts.get(value) ?? null) : null,
     loading: loading,
   }));
   const objectId = useRecoilValue(fos.isObjectIdField(path));

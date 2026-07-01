@@ -21,7 +21,7 @@ export default function MetricPerformance(props) {
   const { name, compareKey, evaluation, compareEvaluation, id } = props;
   const [metricMode, setMetricMode] = usePanelStatePartial(
     `${id}_mpvm`,
-    "chart"
+    "chart",
   );
 
   const evaluationInfo = evaluation.info;

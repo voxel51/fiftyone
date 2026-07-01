@@ -131,5 +131,5 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
           return result;
         });
       },
-  }
+  },
 );

@@ -90,7 +90,7 @@ function Action(props: ActionPropsType) {
     (e: React.MouseEvent) => {
       onClick?.(props, e);
     },
-    [onClick, props]
+    [onClick, props],
   );
 
   const content =

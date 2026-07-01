@@ -48,6 +48,7 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+from fiftyone.internal.docs import hide_from_docs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
@@ -368,6 +369,14 @@ class SampleCollection(object):
 
     def __add__(self, samples):
         return self.concat(samples)
+
+    @property
+    @hide_from_docs
+    def temporal_tags(self):
+        """The multimodal temporal tags for this collection."""
+        import fiftyone.multimodal.tags._temporal_tags as fota
+
+        return fota.TemporalTags(self)
 
     @property
     def _dataset(self):
@@ -4312,6 +4321,8 @@ class SampleCollection(object):
 
         When evaluating keypoints, "IoUs" are computed via
         `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
+        You can pass ``keypoint_sigmas`` to customize the per-keypoint OKS
+        falloff.
 
         For temporal segment detection, this method uses ActivityNet-style
         evaluation by default.
@@ -7188,6 +7199,53 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.MatchTags(tags, bool=bool, all=all))
+
+    @hide_from_docs
+    def match_temporal_tags(
+        self,
+        tags=None,
+        *,
+        anchors=None,
+        index_type=None,
+        start=None,
+        end=None,
+        bool=True,
+    ):
+        """Returns a view containing samples that match temporal tags.
+
+        Args:
+            tags (None): an optional temporal tag or iterable of tags
+            anchors (None): an optional anchor or iterable of anchors
+            index_type (None): an optional temporal tag index type
+            start (None): an optional inclusive lower bound for range overlap
+            end (None): an optional exclusive upper bound for range overlap
+            bool (True): whether to include (True) or exclude (False) matching
+                samples
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        import fiftyone.multimodal.tags._temporal_tags as fota
+
+        tag_filter = fota.TemporalTagFilter(
+            tags=tags,
+            anchors=anchors,
+            index_type=index_type,
+            start=start,
+            end=end,
+        )
+        if bool is None:
+            bool = True
+
+        sample_ids = {
+            tag.sample_id
+            for tag in self.temporal_tags.values(filter=tag_filter)
+        }
+
+        if bool:
+            return self.select(sample_ids)
+
+        return self.exclude(sample_ids)
 
     @view_stage
     def mongo(self, pipeline, _needs_frames=None, _group_slices=None):
@@ -10361,6 +10419,8 @@ class SampleCollection(object):
     def to_torch(
         self,
         get_item,
+        *,
+        index_field="id",
         vectorize=False,
         skip_failures=False,
         local_process_group=None,
@@ -10371,6 +10431,11 @@ class SampleCollection(object):
 
         Args:
             get_item: a :class:`fiftyone.utils.torch.GetItem`
+            index_field ("id"): the dotted field path that defines the
+                dataset's rows. The default ``"id"`` yields one row per
+                sample. Use a list-valued path such as ``"frames.id"`` or
+                ``"ground_truth.detections.id"`` to fan out into one row per
+                frame, detection, etc.
             vectorize (False): whether to load and cache the required fields
                 from the sample collection upfront (True) or lazily load the
                 values from each sample when items are retrieved (False).
@@ -10393,6 +10458,7 @@ class SampleCollection(object):
         return FiftyOneTorchDataset(
             self,
             get_item,
+            index_field=index_field,
             vectorize=vectorize,
             skip_failures=skip_failures,
             local_process_group=local_process_group,

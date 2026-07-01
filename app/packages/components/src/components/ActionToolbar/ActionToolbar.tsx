@@ -62,6 +62,8 @@ const ActionButton = ({ action }: { action: ToolbarActionItem }) => {
       disabled={action.isDisabled}
       onClick={action.onClick}
       aria-label={action.label}
+      data-cy={action.id}
+      data-cy-active={String(action.isActive ?? false)}
     >
       {action.icon}
     </StyledToolbarAction>
@@ -135,7 +137,7 @@ export const ActionToolbar = ({
       .filter(
         (group) =>
           !group.isHidden &&
-          group.actions.some((action) => action.isVisible !== false)
+          group.actions.some((action) => action.isVisible !== false),
       )
       .map((group) => (
         <ToolbarGroup key={group.id}>
@@ -147,7 +149,7 @@ export const ActionToolbar = ({
                 <div key={action.id}>{action.customComponent}</div>
               ) : (
                 <ActionButton key={action.id} action={action} />
-              )
+              ),
             )}
         </ToolbarGroup>
       ))}

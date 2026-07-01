@@ -39,24 +39,24 @@ import {
 const fitBoundsOptions = { animate: false, padding: 30 };
 
 const computeBounds = (
-  data: GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>
+  data: GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>,
 ) => {
   return data.features.reduce(
     (bounds, { geometry: { coordinates } }) =>
       bounds.extend(coordinates as [number, number]),
-    new LngLatBounds()
+    new LngLatBounds(),
   );
 };
 
 const fitBounds = (
   map: MapRef,
-  data: GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>
+  data: GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>,
 ) => {
   map.fitBounds(computeBounds(data), fitBoundsOptions);
 };
 
 const createSourceData = (
-  sampleLocationMap: SampleLocationMap
+  sampleLocationMap: SampleLocationMap,
 ): GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }> => {
   const entries = Object.entries(sampleLocationMap);
   if (entries.length === 0) return null;
@@ -87,7 +87,7 @@ const Panel: React.FC<{}> = () => {
         // We still want to pass in other extended stages
         // like similarity search, etc.
         return stageName !== "fiftyone.core.stages.Select";
-      })
+      }),
     ) as unknown as typeof fos.extendedStages;
   }, [unFilteredExtended]);
 
@@ -104,12 +104,12 @@ const Panel: React.FC<{}> = () => {
 
   const settings = usePluginSettings<Required<Settings>>(
     "map",
-    defaultSettings
+    defaultSettings,
   );
 
   const style = useRecoilValue(mapStyle);
   const [{ selection }, setExtendedSelection] = useRecoilState(
-    fos.extendedSelection
+    fos.extendedSelection,
   );
   const resetExtendedSelection = useResetExtendedSelection();
 
@@ -123,9 +123,9 @@ const Panel: React.FC<{}> = () => {
         10,
         {
           trailing: true,
-        }
+        },
       ),
-    []
+    [],
   );
 
   const { ref } = useResizeObserver<HTMLDivElement>({
@@ -157,7 +157,7 @@ const Panel: React.FC<{}> = () => {
         if (
           contains(
             polygon as GeoJSON.Feature<GeoJSON.Polygon>,
-            data.features[index]
+            data.features[index],
           )
         ) {
           selected.add(data.features[index].properties.id);
@@ -177,7 +177,7 @@ const Panel: React.FC<{}> = () => {
         scope: SELECTION_SCOPE,
       });
     },
-    [data, setExtendedSelection]
+    [data, setExtendedSelection],
   );
 
   const bounds = React.useMemo(() => data && computeBounds(data), [data]);
@@ -187,7 +187,7 @@ const Panel: React.FC<{}> = () => {
       new MapboxDraw({
         displayControlsDefault: false,
         defaultMode: "draw_polygon",
-      })
+      }),
   );
   const [mapError, setMapError] = React.useState(false);
 
@@ -227,7 +227,7 @@ const Panel: React.FC<{}> = () => {
 
   const length = React.useMemo(
     () => Object.keys(sampleLocationMap).length,
-    [sampleLocationMap]
+    [sampleLocationMap],
   );
 
   React.useEffect(() => {

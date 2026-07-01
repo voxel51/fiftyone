@@ -31,6 +31,9 @@ const BASE_CTX = {
 
 const BASE_SYMBOL = { description: "sample-id" } as const;
 
+const RGBA_BYTES_PER_PIXEL = 4;
+const MIN_GRID_RENDERER_SIZE_BYTES = 1;
+
 const TestBridge = ({ children }: React.PropsWithChildren) => <>{children}</>;
 
 const getOpenModalButton = (host: HTMLElement) =>
@@ -86,6 +89,17 @@ describe("GridCustomRendererItem", () => {
     const wrapper = renderer?.parentElement as HTMLElement | null;
     expect(wrapper).toBeTruthy();
 
+    const hostClickSpy = vi.fn();
+    const hostContextMenuSpy = vi.fn();
+    host.addEventListener("click", hostClickSpy);
+    host.addEventListener("contextmenu", hostContextMenuSpy);
+
+    fireEvent.click(renderer as HTMLElement);
+    fireEvent.contextMenu(renderer as HTMLElement);
+
+    expect(hostClickSpy).not.toHaveBeenCalled();
+    expect(hostContextMenuSpy).not.toHaveBeenCalled();
+
     fireEvent.mouseEnter(wrapper as HTMLElement);
 
     await waitFor(() => {
@@ -93,19 +107,17 @@ describe("GridCustomRendererItem", () => {
       expect(getSelectControl(host)).toBeTruthy();
     });
 
-    const hostClickSpy = vi.fn();
-    host.addEventListener("click", hostClickSpy);
     const openButton = getOpenModalButton(host) as HTMLElement | null;
     expect(openButton).toBeTruthy();
     openButton?.click();
-    expect(hostClickSpy).toHaveBeenCalled();
+    expect(hostClickSpy).toHaveBeenCalledTimes(1);
 
     const selectSpy = vi.fn();
     looker.addEventListener("selectthumbnail", selectSpy);
     const selectButton = getSelectControl(host) as HTMLElement | null;
     expect(selectButton).toBeTruthy();
     selectButton?.dispatchEvent(
-      new MouseEvent("click", { bubbles: true, shiftKey: true, altKey: true })
+      new MouseEvent("click", { bubbles: true, shiftKey: true, altKey: true }),
     );
     expect(selectSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -117,7 +129,7 @@ describe("GridCustomRendererItem", () => {
           id: "sample-id",
           symbol: BASE_SYMBOL,
         }),
-      })
+      }),
     );
 
     fireEvent.mouseLeave(wrapper as HTMLElement);
@@ -145,11 +157,13 @@ describe("GridCustomRendererItem", () => {
     const host = document.createElement("div");
     document.body.appendChild(host);
 
-    looker.attach(host, [320, 180], 14);
+    const tileWidthPx = 320;
+    const tileHeightPx = 180;
+    looker.attach(host, [tileWidthPx, tileHeightPx], 14);
 
     await waitFor(() => {
       expect(
-        getGridCustomRendererFailover(BASE_CTX.dataset.name)
+        getGridCustomRendererFailover(BASE_CTX.dataset.name),
       ).toMatchObject({
         datasetName: "dataset",
         errorMessage: "render failed",
@@ -163,7 +177,45 @@ describe("GridCustomRendererItem", () => {
 
     expect(Renderer.mock.calls.length).toBe(callsAfterFailure);
     expect(looker.getSampleOverlays()).toEqual([]);
-    expect(looker.getSizeBytesEstimate()).toBe(1);
+    expect(looker.getSizeBytesEstimate()).toBe(
+      tileWidthPx * tileHeightPx * RGBA_BYTES_PER_PIXEL +
+        MIN_GRID_RENDERER_SIZE_BYTES,
+    );
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("estimates size from raw sample shapes safely", () => {
+    const Renderer = () => <div data-testid="renderer">raw sample</div>;
+    const tileWidthPx = 10;
+    const tileHeightPx = 20;
+    const sourceSizeBytes = 123;
+    const rawSampleCtx = {
+      ...BASE_CTX,
+      sample: {
+        id: "sample-id",
+        filepath: "/tmp/file.pdf",
+        metadata: { size_bytes: sourceSizeBytes },
+      },
+    };
+    const looker = new GridCustomRendererItem({
+      pluginName: "pdf-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: rawSampleCtx as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [tileWidthPx, tileHeightPx], 12);
+
+    expect(looker.getSizeBytesEstimate()).toBe(
+      tileWidthPx * tileHeightPx * RGBA_BYTES_PER_PIXEL +
+        sourceSizeBytes +
+        MIN_GRID_RENDERER_SIZE_BYTES,
+    );
 
     looker.destroy();
     host.remove();
@@ -193,9 +245,9 @@ describe("GridCustomRendererItem", () => {
       consoleErrorSpy.mock.calls.some((call) =>
         call.some(
           (arg) =>
-            typeof arg === "string" && arg.includes("synchronously unmount")
-        )
-      )
+            typeof arg === "string" && arg.includes("synchronously unmount"),
+        ),
+      ),
     ).toBe(false);
 
     looker.destroy();

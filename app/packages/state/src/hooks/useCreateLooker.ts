@@ -13,13 +13,13 @@ import {
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
 import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
-import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
   getMimeType,
   isDirect3dSamplePath,
   isFo3dSamplePath,
+  isNativeMediaType,
   isNullish,
 } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
@@ -27,7 +27,7 @@ import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
-import { selectedSamples, sampleSelectionStyle } from "../recoil/atoms";
+import { sampleSelectionStyle, selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName, dynamicGroupsTargetFrameRate } from "../recoil/selectors";
@@ -42,7 +42,7 @@ export default <T extends AbstractLooker<BaseState>>(
   thumbnail: boolean,
   options: Omit<Parameters<T["updateOptions"]>[0], "selected">,
   highlight?: (sample: Sample) => boolean,
-  enableTimeline?: boolean
+  enableTimeline?: boolean,
 ) => {
   const abortControllerRef = useRef(new AbortController());
   const environment = useRelayEnvironment();
@@ -58,26 +58,26 @@ export default <T extends AbstractLooker<BaseState>>(
   const mediaField = useRecoilValue(selectedMediaField(isModal));
 
   const fieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
+    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE }),
   );
   const frameFieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema({ space: State.SPACE.FRAME })
+    schemaAtoms.fieldSchema({ space: State.SPACE.FRAME }),
   );
 
   const shouldRenderImaVidLooker = useRecoilValue(
-    dynamicGroupAtoms.shouldRenderImaVidLooker(isModal)
+    dynamicGroupAtoms.shouldRenderImaVidLooker(isModal),
   );
 
   const isDynamicGroup = useRecoilValue(dynamicGroupAtoms.isDynamicGroup);
   const dynamicGroupsTargetFrameRateValue = useRecoilValue(
-    dynamicGroupsTargetFrameRate
+    dynamicGroupsTargetFrameRate,
   );
 
   // callback to get the latest promise inside another recoil callback
   // gets around the limitation of the fact that snapshot inside callback refs to the committed state at the time
   const getPromise = useRecoilCallback(
     ({ snapshot: { getPromise } }) => getPromise,
-    []
+    [],
   );
 
   useEffect(() => {
@@ -93,7 +93,9 @@ export default <T extends AbstractLooker<BaseState>>(
     ({ snapshot }) =>
       (
         { frameNumber, frameRate, sample, urls: rawUrls, symbol },
-        extra: Partial<Omit<Parameters<T["updateOptions"]>[0], "selected">> = {}
+        extra: Partial<
+          Omit<Parameters<T["updateOptions"]>[0], "selected">
+        > = {},
       ): T => {
         let create:
           | typeof FrameLooker
@@ -186,7 +188,7 @@ export default <T extends AbstractLooker<BaseState>>(
           const orthographicProjectionField = Object.entries(sample)
             .find(
               (el) =>
-                el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
+                el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata",
             )
             ?.at(0) as string | undefined;
           if (orthographicProjectionField) {
@@ -210,21 +212,21 @@ export default <T extends AbstractLooker<BaseState>>(
 
         if (create === ImaVidLooker) {
           const totalFrameCountPromise = getPromise(
-            dynamicGroupsElementCount({ value: sample._group })
+            dynamicGroupsElementCount({ value: sample._group }),
           );
           const page = snapshot
             .getLoadable(
               dynamicGroupAtoms.dynamicGroupPageSelector({
                 value: sample._group,
                 modal: isModal,
-              })
+              }),
             )
             .valueMaybe();
 
           const firstFrameNumber = isModal
-            ? snapshot
+            ? (snapshot
                 .getLoadable(dynamicGroupAtoms.dynamicGroupCurrentElementIndex)
-                .valueMaybe() ?? 1
+                .valueMaybe() ?? 1)
             : 1;
 
           const imavidKey = snapshot
@@ -232,7 +234,7 @@ export default <T extends AbstractLooker<BaseState>>(
               dynamicGroupAtoms.imaVidStoreKey({
                 groupByFieldValue: sample._group,
                 modal: isModal,
-              })
+              }),
             )
             .valueOrThrow();
 
@@ -248,7 +250,7 @@ export default <T extends AbstractLooker<BaseState>>(
                 targetFrameRate: dynamicGroupsTargetFrameRateValue,
                 totalFrameCountPromise,
                 key: imavidKey,
-              })
+              }),
             );
           }
 
@@ -258,11 +260,11 @@ export default <T extends AbstractLooker<BaseState>>(
               ImaVidFramesControllerStore.get(imavidPartitionKey),
             frameRate: dynamicGroupsTargetFrameRateValue,
             firstFrameNumber: isModal
-              ? snapshot
+              ? (snapshot
                   .getLoadable(
-                    dynamicGroupAtoms.dynamicGroupCurrentElementIndex
+                    dynamicGroupAtoms.dynamicGroupCurrentElementIndex,
                   )
-                  .valueMaybe() ?? 1
+                  .valueMaybe() ?? 1)
               : 1,
           } as ImaVidConfig;
         }
@@ -283,7 +285,7 @@ export default <T extends AbstractLooker<BaseState>>(
             selectionType: sampleSelectionType,
             selectionIcon: sampleSelectionIcon,
             highlight: highlight?.(sample),
-          }
+          },
         );
 
         looker.addEventListener(
@@ -291,13 +293,13 @@ export default <T extends AbstractLooker<BaseState>>(
           (event) => {
             handleError(event.error);
           },
-          { signal: abortControllerRef.current.signal }
+          { signal: abortControllerRef.current.signal },
         );
 
         selectiveRenderingEventBus.on(
           FO_LABEL_TOGGLED_EVENT,
           (e) => getOnShiftClickLabelCallback(e),
-          abortControllerRef.current.signal
+          abortControllerRef.current.signal,
         );
 
         return looker;
@@ -320,7 +322,7 @@ export default <T extends AbstractLooker<BaseState>>(
       thumbnail,
       view,
       getOnShiftClickLabelCallback,
-    ]
+    ],
   );
 
   const createLookerRef = useRef(create);

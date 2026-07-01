@@ -1,8 +1,8 @@
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { capitalize } from "lodash";
 import { LabelSchemaMeta } from "./useSchemaManager";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { PRIMITIVE_FIELD_TYPES } from "./SchemaManager/constants";
 
 // Tab state for GUI/JSON toggle
@@ -11,7 +11,7 @@ export const activeSchemaTab = atom<"gui" | "json">("gui");
 export const currentField = atom<null | string>();
 
 export const labelSchemasData = atom<Record<string, LabelSchemaMeta> | null>(
-  null
+  null,
 );
 
 export const labelSchemaData = atomFamily((field: string) => {
@@ -19,7 +19,7 @@ export const labelSchemaData = atomFamily((field: string) => {
     (get) => get(labelSchemasData)?.[field],
     (get, set, value) => {
       set(labelSchemasData, { ...get(labelSchemasData), [field]: value });
-    }
+    },
   );
 });
 
@@ -59,7 +59,7 @@ export const visibleLabelSchemas = atom((get) => {
 export const inactiveLabelSchemas = atom((get) =>
   Object.keys(get(labelSchemasData) ?? {})
     .sort()
-    .filter((field) => !(get(activeLabelSchemas) ?? []).includes(field))
+    .filter((field) => !(get(activeLabelSchemas) ?? []).includes(field)),
 );
 
 // =============================================================================
@@ -88,7 +88,7 @@ export const activePaths = atom(
   },
   (_, set, newOrder: string[]) => {
     set(activePathsOrder, newOrder);
-  }
+  },
 );
 
 // =============================================================================
@@ -99,7 +99,7 @@ export const fieldType = atomFamily((path: string) =>
   atom((get) => {
     const legacyData = get(labelSchemaData(path));
     return legacyData?.type ? capitalize(legacyData.type) : undefined;
-  })
+  }),
 );
 
 export const fieldAttributeCount = atomFamily((path: string) =>
@@ -107,14 +107,63 @@ export const fieldAttributeCount = atomFamily((path: string) =>
     const data = get(labelSchemaData(path));
     const attrs = data?.label_schema?.attributes;
     return Array.isArray(attrs) ? attrs.length : 0;
-  })
+  }),
 );
 
+/**
+ * Names of the attributes the annotation schema declares `dynamic` for a label
+ * field path. A dynamic attribute may change within a track's presence
+ * interval, so the video timeline gives it a value-segmented sub-track and the
+ * sidebar forward-fills edits rather than fanning them across the track. Empty
+ * when the schema is unloaded or the field has no dynamic attributes.
+ *
+ * Lives here (not in the video-annotation package) so it reads the same
+ * `labelSchemaData` atom instance core writes — a cross-package atom import
+ * would resolve to a different, never-written family.
+ */
+const dynamicAttributeNamesFromMeta = (
+  meta: LabelSchemaMeta | null | undefined,
+): string[] => {
+  const attributes = meta?.label_schema?.attributes;
+  if (!Array.isArray(attributes)) {
+    return [];
+  }
+
+  return attributes
+    .filter((attribute) => attribute.dynamic && attribute.name)
+    .map((attribute) => attribute.name);
+};
+
+export const useDynamicAttributeNames = (path: string | null): string[] => {
+  const meta = useAtomValue(labelSchemaData(path ?? ""));
+  return useMemo(() => dynamicAttributeNamesFromMeta(meta), [meta]);
+};
+
+/**
+ * A getter resolving dynamic attribute names for ANY field path, reading the
+ * whole schema map once. Use this when several paths' attributes are needed in
+ * one render (e.g. building per-field tracks) — calling the per-path hook in a
+ * loop would break the rules of hooks, and a single primary-field lookup leaks
+ * one field's dynamic attributes onto every other field's tracks.
+ */
+export const useDynamicAttributeNamesGetter = (): ((
+  path: string | null,
+) => string[]) => {
+  const all = useAtomValue(labelSchemasData);
+  return useCallback(
+    (path: string | null) => dynamicAttributeNamesFromMeta(all?.[path ?? ""]),
+    [all],
+  );
+};
+
 export const fieldTypes = atom((get) => {
-  return (get(activeLabelSchemas) ?? []).reduce((acc, cur) => {
-    acc[cur] = get(fieldType(cur));
-    return acc;
-  }, {} as { [key: string]: string });
+  return (get(activeLabelSchemas) ?? []).reduce(
+    (acc, cur) => {
+      acc[cur] = get(fieldType(cur));
+      return acc;
+    },
+    {} as { [key: string]: string },
+  );
 });
 
 export const addToActiveSchemas = atom(null, (get, set, add: Set<string>) => {
@@ -128,9 +177,9 @@ export const removeFromActiveSchemas = atom(
     const current: string[] = get(activeLabelSchemas) ?? [];
     set(
       activeLabelSchemas,
-      current.filter((field) => !remove.has(field))
+      current.filter((field) => !remove.has(field)),
     );
-  }
+  },
 );
 
 export const schemaManagerDisplayedAtom = atom(false);
@@ -193,6 +242,6 @@ export const useAnnotationSchemaContext = (): AnnotationSchemaContext => {
       setActiveSchemaPaths,
       setLabelSchema,
     }),
-    [activeSchemaPaths, labelSchema, setActiveSchemaPaths, setLabelSchema]
+    [activeSchemaPaths, labelSchema, setActiveSchemaPaths, setLabelSchema],
   );
 };

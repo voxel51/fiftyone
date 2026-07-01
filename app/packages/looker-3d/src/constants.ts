@@ -28,13 +28,20 @@ export const ANNOTATION_CUBOID = "cuboid";
 export const ANNOTATION_POLYLINE = "polyline";
 
 export const DEFAULT_CAMERA_POSITION = () => new Vector3(0, 5, -5);
+export const DEFAULT_SELECTED_CUBOID_CROP_MARGIN = 1.5;
+
+// Tolerance for the point-cloud crop inside-bounds test. Shared by the CPU
+// path (isPointInsidePointCloudCrop) and the GPU shader so they stay in sync;
+// interpolated into GLSL, so keep it a valid float literal.
+export const POINT_CLOUD_CROP_BOUNDS_EPSILON = 1e-6;
+export const UNFOCUSED_LABEL_OPACITY = 0.08;
 
 // Default bounding box when scene bounds cannot be determined
 export const DEFAULT_BOUNDING_BOX = new Box3(
   // min
   new Vector3(-5, -5, -5),
   // max
-  new Vector3(5, 5, 5)
+  new Vector3(5, 5, 5),
 );
 
 export const ACTIONS = [
@@ -139,15 +146,16 @@ export const PANEL_IDS = [
  * Get the DOM element ID for a given panel ID.
  * Convention: element ID is `${panelId}-panel`
  */
-export const getPanelElementId = (panelId: typeof PANEL_IDS[number]): string =>
-  `${panelId}-panel`;
+export const getPanelElementId = (
+  panelId: (typeof PANEL_IDS)[number],
+): string => `${panelId}-panel`;
 
 /**
  * Get the CSS grid area name for a side panel ID.
  * Maps "side-top" -> "top", "side-bottom" -> "bottom"
  */
 export const getSidePanelGridArea = (
-  panelId: typeof PANEL_ID_SIDE_TOP | typeof PANEL_ID_SIDE_BOTTOM
+  panelId: typeof PANEL_ID_SIDE_TOP | typeof PANEL_ID_SIDE_BOTTOM,
 ): "top" | "bottom" => panelId.replace("side-", "") as "top" | "bottom";
 
 export const VIEW_TYPE_TOP = "Top";

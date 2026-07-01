@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import styled from "styled-components";
+import type { Vector3 } from "three";
 import { PANEL_ID_SIDE_TOP, VIEW_TYPE_LEFT, VIEW_TYPE_TOP } from "../constants";
 import { useFetchFrustumParameters } from "../frustum/hooks/internal/useFetchFrustumParameters";
 import type { SidePanelId, SidePanelViewType } from "../types";
@@ -47,7 +48,7 @@ export const encodeImageSliceView = (sliceName: string): string => {
  * Returns null if the view is not an image slice.
  */
 export const decodeImageSliceView = (
-  view: SidePanelViewType
+  view: SidePanelViewType,
 ): string | null => {
   if (!isImageSliceView(view)) {
     return null;
@@ -60,7 +61,7 @@ export const decodeImageSliceView = (
  */
 const isImageSliceAvailable = (
   view: SidePanelViewType,
-  availableSlices: string[]
+  availableSlices: string[],
 ): boolean => {
   const sliceName = decodeImageSliceView(view);
   if (!sliceName) {
@@ -84,6 +85,7 @@ export interface ImageSlicePanelProps {
   imageSlices: string[];
   isLoadingImageSlices: boolean;
   resolveUrlForImageSlice: (sliceName: string) => string | null;
+  upVector?: Vector3 | null;
 }
 
 /**
@@ -99,6 +101,7 @@ export const ImageSlicePanel = ({
   imageSlices,
   isLoadingImageSlices,
   resolveUrlForImageSlice,
+  upVector,
 }: ImageSlicePanelProps) => {
   const { data: frustumData } = useFetchFrustumParameters();
 
@@ -131,7 +134,7 @@ export const ImageSlicePanel = ({
         const defaultView = getDefaultViewForPanel(panelId);
         console.warn(
           `Image slice view "${view}" is no longer available. Falling back to "${defaultView}" view.`,
-          { view, availableSlices: imageSlices }
+          { view, availableSlices: imageSlices },
         );
         setView(defaultView);
         return;
@@ -153,7 +156,11 @@ export const ImageSlicePanel = ({
     <ImageSliceContainer>
       <ImageSliceImg src={imageUrl} />
       {activeFrustum && (
-        <Projected3dOverlays frustumData={activeFrustum} panelId={panelId} />
+        <Projected3dOverlays
+          frustumData={activeFrustum}
+          panelId={panelId}
+          upVector={upVector}
+        />
       )}
     </ImageSliceContainer>
   );

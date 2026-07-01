@@ -31,6 +31,7 @@ export default function FileExplorer({
   chooseButtonLabel,
   chooseMode,
   onChoose,
+  initialPath,
 }) {
   const fsInfo = useAvailableFileSystems();
   const {
@@ -60,7 +61,7 @@ export default function FileExplorer({
     hasNextPage,
     customPath,
     handleCustomPathChange,
-  } = useFileExplorer(fsInfo, chooseMode, onChoose);
+  } = useFileExplorer(fsInfo, chooseMode, onChoose, initialPath);
 
   const hasValue = customPath || chosenFile?.absolute_path;
   const fsReady = fsInfo?.ready;

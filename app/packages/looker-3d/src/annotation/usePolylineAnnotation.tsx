@@ -1,7 +1,6 @@
 import { POLYLINE } from "@fiftyone/utilities";
 import { Line as LineDrei } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
-import chroma from "chroma-js";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
@@ -20,6 +19,8 @@ import {
   hoveredLabelAtom,
   selectedPolylineVertexAtom,
 } from "../state";
+import type { HoveredLabelSource } from "../types";
+import { getComplementaryColor } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import {
   findClickedSegment,
@@ -33,6 +34,7 @@ interface UsePolylineAnnotationProps {
   strokeAndFillColor: string;
   isAnnotateMode: boolean;
   isSelectedForAnnotation: boolean;
+  hoverSource: HoveredLabelSource;
 }
 
 export const usePolylineAnnotation = ({
@@ -41,6 +43,7 @@ export const usePolylineAnnotation = ({
   strokeAndFillColor,
   isAnnotateMode,
   isSelectedForAnnotation,
+  hoverSource,
 }: UsePolylineAnnotationProps) => {
   const labelId = label._id;
 
@@ -75,7 +78,7 @@ export const usePolylineAnnotation = ({
 
     const sum = allPoints.reduce(
       (acc, point) => [acc[0] + point[0], acc[1] + point[1], acc[2] + point[2]],
-      [0, 0, 0]
+      [0, 0, 0],
     );
 
     return [
@@ -92,9 +95,7 @@ export const usePolylineAnnotation = ({
 
     // This is to have contrast for annotation,
     // Or else the point markers would be invisible with large line widths
-    const complementaryColor = chroma(strokeAndFillColor)
-      .set("hsl.h", "+180")
-      .hex();
+    const complementaryColor = getComplementaryColor(strokeAndFillColor);
 
     // Global deduplication set to prevent multiple markers for the same physical vertex
     // This ensures that shared vertices between segments only get one draggable marker
@@ -132,7 +133,7 @@ export const usePolylineAnnotation = ({
                 pointIndex,
                 [newPosition.x, newPosition.y, newPosition.z],
                 // Update shared vertices
-                true
+                true,
               );
 
               const newPoints3d = newSegments.map((seg) => seg.points);
@@ -157,10 +158,9 @@ export const usePolylineAnnotation = ({
 
     if (!strokeAndFillColor) return null;
 
-    const centroidColor = chroma(strokeAndFillColor)
-      .set("hsl.h", "+180")
-      .brighten(1.5)
-      .hex();
+    const centroidColor = getComplementaryColor(strokeAndFillColor, {
+      brighten: 1.5,
+    });
 
     return (
       <PolylinePointMarker
@@ -225,9 +225,9 @@ export const usePolylineAnnotation = ({
 
   const handlePointerOver = useCallback(() => {
     if (isAnnotateMode) {
-      setHoveredLabel({ id: labelId });
+      setHoveredLabel({ id: labelId, source: hoverSource });
     }
-  }, [isAnnotateMode, setHoveredLabel, labelId]);
+  }, [hoverSource, isAnnotateMode, setHoveredLabel, labelId]);
 
   const handlePointerOut = useCallback(() => {
     if (isAnnotateMode) {
@@ -243,7 +243,7 @@ export const usePolylineAnnotation = ({
         }
       }
     },
-    [isAnnotateMode, editSegmentsMode]
+    [isAnnotateMode, editSegmentsMode],
   );
 
   const handleSegmentPointerOut = useCallback(() => {
@@ -272,7 +272,7 @@ export const usePolylineAnnotation = ({
         effectivePoints3d,
         clickPosition,
         // Distance threshold
-        0.2
+        0.2,
       );
 
       if (clickResult) {
@@ -288,7 +288,7 @@ export const usePolylineAnnotation = ({
           currentSegments,
           segmentIndex,
           newVertexPosition,
-          clickPosition
+          clickPosition,
         );
 
         // If newSegments is null, it means the new vertex was too close to an existing vertex
@@ -305,7 +305,7 @@ export const usePolylineAnnotation = ({
       effectivePoints3d,
       labelId,
       updatePolylinePoints,
-    ]
+    ],
   );
 
   const transientPolyline = useTransientPolyline(labelId);
@@ -331,7 +331,7 @@ export const usePolylineAnnotation = ({
           ] as Vector3Tuple;
         }
         return point;
-      })
+      }),
     );
   }, [effectivePoints3d, transientPolyline?.vertexDeltas]);
 
@@ -378,7 +378,7 @@ export const usePolylineAnnotation = ({
           dashed
           dashSize={0.1}
           gapSize={0.1}
-        />
+        />,
       );
     }
 
@@ -394,7 +394,7 @@ export const usePolylineAnnotation = ({
           dashed
           dashSize={0.1}
           gapSize={0.1}
-        />
+        />,
       );
     }
 

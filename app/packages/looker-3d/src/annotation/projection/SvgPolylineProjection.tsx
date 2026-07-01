@@ -42,7 +42,7 @@ export function SvgPolylineProjection({
             fill={color}
             vectorEffect="non-scaling-stroke"
           />
-        ) : null
+        ) : null,
       )}
     </g>
   );

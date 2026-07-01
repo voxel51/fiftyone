@@ -51,7 +51,7 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
   const defaultColor = getColor(
     coloringByField.pool,
     coloringByField.seed,
-    "ground_truth"
+    "ground_truth",
   );
 
   const emptySetting = [];
@@ -88,7 +88,7 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
         ...sampleInput1,
         customizeColorSetting: sampleSettingClassificationDefaultAttribute,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color1);
 
     // Edge cases: fallback to default color
@@ -97,21 +97,21 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
         ...sampleInput1,
         customizeColorSetting: emptySetting,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(defaultColor);
     expect(
       getAssignedColor({
         ...sampleInput1,
         customizeColorSetting: emptySettingWithPath,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(defaultColor);
     expect(
       getAssignedColor({
         ...sampleInput1,
         customizeColorSetting: sampleSettingNullFieldColor,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(defaultColor);
   });
 
@@ -147,14 +147,14 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
         ...sampleInput2,
         customizeColorSetting: sampleSettingClassificationDefaultAttribute,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color2);
     expect(
       getAssignedColor({
         ...sampleInput2,
         customizeColorSetting: sampleSettingClassificationTagAsAttribute,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color3);
   });
 
@@ -200,21 +200,21 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
         ...sampleInput2,
         customizeColorSetting: sampleSettingInvaidAttribute,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color2);
     expect(
       getAssignedColor({
         ...sampleInput2,
         customizeColorSetting: sampleSettingNullAttribute,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color2);
     expect(
       getAssignedColor({
         ...sampleInput2,
         customizeColorSetting: sampleSettingNoAttribute,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color2);
   });
 
@@ -238,21 +238,21 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
         ...sampleInput2,
         customizeColorSetting: sampleSettingEmptyValueColor,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput2,
         customizeColorSetting: sampleSettingNoValueColor,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput2,
         customizeColorSetting: sampleSettingIncomplete,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe("#EE6600");
   });
 });
@@ -298,35 +298,35 @@ describe("Primitive fields bubbles get correct color", () => {
         ...sampleInput,
         customizeColorSetting: validFieldColorSetting,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color1);
 
     // Edge cases: fallback to default color of the field
     const defaultColor = getColor(
       coloringByField.pool,
       coloringByField.seed,
-      "str_field"
+      "str_field",
     );
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: emptySetting,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(defaultColor);
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: emptySettingWithPath,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(defaultColor);
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: emptySettingNullFieldcolor,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(defaultColor);
   });
 
@@ -343,42 +343,42 @@ describe("Primitive fields bubbles get correct color", () => {
         ...sampleInput,
         customizeColorSetting: emptySetting,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: emptySettingWithPath,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: emptySettingWithPath,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: emptySettingWithPath,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: emptySettingNullFieldcolor,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: sampleSettingNullValuecolors,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(pool2);
   });
 
@@ -412,14 +412,14 @@ describe("Primitive fields bubbles get correct color", () => {
         ...sampleInputStr,
         customizeColorSetting: sampleSetting,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color2);
     expect(
       getAssignedColor({
         ...sampleInputList,
         customizeColorSetting: sampleSetting,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color2);
   });
 
@@ -464,14 +464,14 @@ describe("Primitive fields bubbles get correct color", () => {
         ...sampleInputInt,
         customizeColorSetting: intValueSettingString,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color2);
     expect(
       getAssignedColor({
         ...sampleInputList,
         customizeColorSetting: intValueSettingNumber,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color3);
   });
 
@@ -509,14 +509,14 @@ describe("Primitive fields bubbles get correct color", () => {
         ...sampleInputTrue,
         customizeColorSetting: booleanValue,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color2);
     expect(
       getAssignedColor({
         ...sampleInputFalse,
         customizeColorSetting: booleanValue,
         isValidColor: isValidColorMock,
-      })
+      }),
     ).toBe(color3);
   });
 });

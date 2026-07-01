@@ -11,8 +11,8 @@
     "main": "./src/index.ts",
     "scripts": {
         "dev": "vite",
-        "storybook": "start-storybook -p 6006",
-        "build-storybook": "build-storybook"
+        "storybook": "storybook dev -p 6006",
+        "build-storybook": "storybook build"
     },
     "private": true,
     "files": [
@@ -22,9 +22,15 @@
     ],
     "devDependencies": {
         "@mdx-js/react": "^1.6.22",
+        "@storybook/addon-essentials": "^8",
+        "@storybook/addon-interactions": "^8",
+        "@storybook/addon-links": "^8",
+        "@storybook/react": "^8",
+        "@storybook/react-vite": "^8",
         "@types/react-input-autosize": "^2.2.1",
         "@types/react-syntax-highlighter": "^15.5.6",
         "prettier": "^2.7.1",
+        "storybook": "^8",
         "typescript-plugin-css-modules": "^5.1.0",
         "vite": "^7.3.2"
     },
@@ -42,10 +48,12 @@
         "@emotion/styled": "^11.10.4",
         "@fiftyone/commands": "workspace:^",
         "@fiftyone/state": "*",
+        "@fiftyone/utilities": "*",
         "@mui/icons-material": "^5.16.7",
         "@mui/material": "^5.9.0",
         "@react-spring/web": "^9.7.3",
         "@textea/json-viewer": "^3.4.1",
+        "@voxel51/voodo": "^0.0.37",
         "classnames": "^2.3.1",
         "framer-motion": "^6.2.7",
         "material-icons": "^1.13.12",

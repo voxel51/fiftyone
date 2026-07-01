@@ -7,6 +7,12 @@
 // These are browser APIs that aren't available in jsdom but are required by
 // libraries like plotly.js/mapbox-gl
 if (typeof window !== "undefined") {
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+
   window.URL.createObjectURL = () => "mock-object-url";
   window.URL.revokeObjectURL = () => {};
 
@@ -46,4 +52,14 @@ if (typeof window !== "undefined") {
   HTMLCanvasElement.prototype.toDataURL = function () {
     return "";
   };
+
+  // Mock ResizeObserver — jsdom doesn't implement it, but floating UI
+  // (HeadlessUI menus / voodo ContextMenu) instantiates one on open.
+  if (typeof window.ResizeObserver === "undefined") {
+    window.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+  }
 }

@@ -1,6 +1,5 @@
 import {
   useAutoSave,
-  useRegisterAnnotationCommandHandlers,
   useRegisterAnnotationEventHandlers,
   useRegisterAnnotationKeybindings,
   useRegisterRendererEventHandlers,
@@ -39,9 +38,7 @@ import { ModalStatusBar } from "./ModalStatusBar";
 import { Sidebar } from "./Sidebar";
 import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
 import { useAnnotationStatus } from "./Sidebar/Annotate/Edit/useAnnotationStatus";
-import SchemaManagementProvider from "./Sidebar/Annotate/SchemaManagementProvider";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
-import useCanManageSchema from "./Sidebar/Annotate/useCanManageSchema";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
@@ -95,18 +92,16 @@ const AnnotationHandlerRegistration = () => {
 };
 
 const AnnotationHandlerRegistrationInner = () => {
-  useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
   useRegisterAnnotationKeybindings();
   useRegisterRendererEventHandlers();
   useAnnotationTracking();
 
   const modalMode = useModalMode();
-  const canManageSchema = useCanManageSchema();
 
   useAutoSave(modalMode === ModalMode.ANNOTATE);
 
-  return canManageSchema ? <SchemaManagementProvider /> : <Fragment />;
+  return <Fragment />;
 };
 
 const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
@@ -145,7 +140,7 @@ const Modal = () => {
       // Reset the tracked target
       pointerDownTargetRef.current = null;
     },
-    [clearModal]
+    [clearModal],
   );
 
   const { jsonPanel, helpPanel } = useLookerHelpers();
@@ -154,7 +149,7 @@ const Modal = () => {
     ({ snapshot, set }) =>
       async () => {
         const isTooltipCurrentlyLocked = await snapshot.getPromise(
-          fos.isTooltipLocked
+          fos.isTooltipLocked,
         );
         if (isTooltipCurrentlyLocked) {
           set(fos.isTooltipLocked, false);
@@ -174,14 +169,14 @@ const Modal = () => {
         clearModal();
         activeLookerRef.current?.removeEventListener(
           "close",
-          modalCloseHandler
+          modalCloseHandler,
         );
 
         selectiveRenderingEventBus.removeAllListeners();
 
         jotaiStore.set(currentModalUniqueIdJotaiAtom, "");
       },
-    [clearModal, jsonPanel, helpPanel]
+    [clearModal, jsonPanel, helpPanel],
   );
 
   const selectCallback = useRecoilCallback(
@@ -200,7 +195,7 @@ const Modal = () => {
           return newSelected;
         });
       },
-    []
+    [],
   );
 
   const sidebarFn = useRecoilCallback(
@@ -208,7 +203,7 @@ const Modal = () => {
       async () => {
         set(fos.sidebarVisible(true), (prev) => !prev);
       },
-    []
+    [],
   );
 
   const fullscreenFn = useRecoilCallback(
@@ -216,7 +211,7 @@ const Modal = () => {
       async () => {
         set(fos.fullscreen, (prev) => !prev);
       },
-    []
+    [],
   );
 
   const closeFn = useRecoilCallback(
@@ -234,7 +229,7 @@ const Modal = () => {
 
         await modalCloseHandler();
       },
-    [is3dVisible, modalCloseHandler]
+    [is3dVisible, modalCloseHandler],
   );
 
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
@@ -300,10 +295,10 @@ const Modal = () => {
           currentModalUniqueIdJotaiAtom,
           `${snapshot.getLoadable(fos.groupId).getValue()}-${snapshot
             .getLoadable(fos.nullableModalSampleId)
-            .getValue()}`
+            .getValue()}`,
         );
       },
-    [modalCloseHandler, addTooltipEventHandler]
+    [modalCloseHandler, addTooltipEventHandler],
   );
 
   const setActiveLookerRef = useCallback(
@@ -311,7 +306,7 @@ const Modal = () => {
       activeLookerRef.current = looker;
       onLookerSet(looker);
     },
-    [onLookerSet]
+    [onLookerSet],
   );
 
   return ReactDOM.createPortal(
@@ -368,7 +363,7 @@ const Modal = () => {
         </ModalContainer>
       </ModalWrapper>
     </modalContext.Provider>,
-    document.getElementById("modal") as HTMLDivElement
+    document.getElementById("modal") as HTMLDivElement,
   );
 };
 

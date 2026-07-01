@@ -12,7 +12,7 @@ import styled from "styled-components";
 import { activeSchemaTab } from "../state";
 import useCanManageSchema from "../useCanManageSchema";
 import { useSchemaManagerModal } from "../SchemaManager/hooks";
-import { editing } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 const Container = styled.div`
   flex: 1;
@@ -36,7 +36,7 @@ const AddSchema = ({ type }: { type: string }) => {
   const { openSchemaManager } = useSchemaManagerModal();
   const setActiveTab = useSetAtom(activeSchemaTab);
   const Icon = ICONS[type];
-  const setEditing = useSetAtom(editing);
+  const { clear } = useAnnotationContext();
 
   return (
     <Container>
@@ -60,7 +60,7 @@ const AddSchema = ({ type }: { type: string }) => {
         disabled={!canManage}
         onClick={() => {
           setActiveTab("other");
-          setEditing(null);
+          clear();
           openSchemaManager();
         }}
       >

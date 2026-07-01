@@ -21,7 +21,7 @@ export class PersistCommand extends Command<{ success: boolean }> {
 export class CreateUserCommand extends Command<{ id: string }> {
   constructor(
     public readonly email: string,
-    public readonly displayName: string
+    public readonly displayName: string,
   ) {
     super();
   }
@@ -86,14 +86,14 @@ export async function runDemo() {
 
   console.log("\n--- Executing CreateUserCommand ---");
   const createResult = await bus.execute(
-    new CreateUserCommand("user@example.com", "John Doe")
+    new CreateUserCommand("user@example.com", "John Doe"),
   );
   console.log("Result:", createResult);
   // Result: { id: string }
 
   console.log("\n--- Executing DeleteUserCommand ---");
   const deleteResult = await bus.execute(
-    new DeleteUserCommand(createResult.id)
+    new DeleteUserCommand(createResult.id),
   );
   console.log("Result:", deleteResult);
   // Result: undefined (void)

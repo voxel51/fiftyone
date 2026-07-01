@@ -1,9 +1,6 @@
-import { useLighter } from "@fiftyone/lighter";
+import { useAnnotationEngine } from "@fiftyone/annotation";
+import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
-import {
-  clearTransformStateSelector,
-  selectedLabelForAnnotationAtom,
-} from "@fiftyone/looker-3d/src/state";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   DETECTION,
@@ -11,19 +8,19 @@ import {
   KEYPOINT,
   POLYLINE,
 } from "@fiftyone/utilities";
-import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
-import { editing } from ".";
-import { current, currentOverlay, savedLabel } from "./state";
-import useActivePrimitive from "./useActivePrimitive";
+import { usePrimitiveController } from "./useActivePrimitive";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 /**
  * True when the user has produced something to commit — a picked class, a
  * drawn bbox, or placed points. Used to distinguish a real (but possibly
  * label-less) annotation from a "clicked create but didn't draw" dummy.
  */
-const hasDrawnContent = (label: AnnotationLabel): boolean => {
+const hasDrawnContent = (
+  label: AnnotationLabel,
+  overlay?: AnnotationLabel["overlay"],
+): boolean => {
   // A picked class is content on its own and also covers shapes we don't
   // introspect here (e.g. 3D detections).
   if (label.data.label) {
@@ -32,6 +29,12 @@ const hasDrawnContent = (label: AnnotationLabel): boolean => {
 
   switch (label.type) {
     case DETECTION:
+      // `data.bounding_box` is only synced to the overlay's geometry once
+      // the edit form mounts, so consult the overlay's live bounds first
+      if (overlay instanceof DetectionOverlay) {
+        return overlay.hasValidBounds();
+      }
+
       return (
         Array.isArray(label.data.bounding_box) &&
         hasValidBounds(label.data.bounding_box)
@@ -45,65 +48,39 @@ const hasDrawnContent = (label: AnnotationLabel): boolean => {
 };
 
 export default function useExit() {
-  const setEditing = useSetAtom(editing);
-  const [, setActivePrimitive] = useActivePrimitive();
-  const setSaved = useSetAtom(savedLabel);
+  const engine = useAnnotationEngine();
+  const annotationContext = useAnnotationContext();
+  const { clear } = annotationContext;
+  const { setActivePrimitive } = usePrimitiveController();
   const { scene, removeOverlay } = useLighter();
-  const overlay = useAtomValue(currentOverlay);
-  const label = useAtomValue(current);
-
-  /**
-   * 3D SPECIFIC IMPORTS
-   * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
-   * COUPLED TO LIGHTER OR LOOKER-3D.
-   */
-  const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
-  );
-  const clearTransformState = useSetRecoilState(clearTransformStateSelector);
-  /**
-   * 3D SPECIFIC IMPORTS ENDS HERE.
-   */
+  const { label, overlay } = annotationContext.selected ?? {
+    label: null,
+    overlay: undefined,
+  };
 
   return useCallback(() => {
     // If this is an uncommitted dummy label (e.g. create-button click with no
     // shape drawn), remove it from the scene. Label-less labels with actual
     // geometry are valid and must be preserved.
-    if (label?.isNew && !hasDrawnContent(label)) {
+    if (label?.isNew && !hasDrawnContent(label, overlay)) {
       if (scene && !scene.isDestroyed && scene.renderLoopActive) {
         scene.exitInteractiveMode();
         removeOverlay(label.data._id, true);
       }
-    } else if (overlay) {
-      scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });
-      if (TypeGuards.isHoverable(overlay)) {
-        overlay.onHoverLeave?.();
-      }
+    } else if (overlay && TypeGuards.isHoverable(overlay)) {
+      // selection deselect is engine-routed — `setActive([])` below drives the
+      // Lighter bridge's applySelected(false); only hover still needs a direct
+      // poke (it isn't engine-routed on exit yet). The redundant sidebar→Lighter
+      // scene.deselectOverlay is intentionally dropped.
+      overlay.onHoverLeave?.();
     }
 
-    /**
-     * 3D SPECIFIC LOGIC
-     * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
-     * COUPLED TO LIGHTER OR LOOKER-3D.
-     */
-    setSelectedLabelForAnnotation(null);
-    clearTransformState(null);
-    /**
-     * 3D SPECIFIC LOGIC ENDS HERE.
-     */
-
-    // reset editing state
-    setSaved(null);
-    setEditing(null);
+    // reset the sidebar form + primitive editor
+    clear();
     setActivePrimitive(null);
-  }, [
-    clearTransformState,
-    label,
-    overlay,
-    removeOverlay,
-    scene,
-    setActivePrimitive,
-    setEditing,
-    setSaved,
-  ]);
+    // release the engine selection so form-follows-anchor doesn't immediately
+    // re-open the form; surfaces clear their own scene state via their engine
+    // adapters (the 3D adapter + useReset3dOnEditExit watch the anchor).
+    engine.interaction.setActive([]);
+  }, [clear, engine, label, overlay, removeOverlay, scene, setActivePrimitive]);
 }
