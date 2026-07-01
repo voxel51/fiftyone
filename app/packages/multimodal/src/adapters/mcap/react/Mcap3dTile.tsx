@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { Vector3 } from "three";
 import type {
+  GridVisualization,
   PointCloudVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
@@ -153,6 +154,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => renderableSources.filter(isPointCloudSource),
     [renderableSources],
   );
+  const mapLayerSources = useMemo(
+    () => renderableSources.filter(isMapLayerSource),
+    [renderableSources],
+  );
   const sceneAnnotationSources = useMemo(
     () => renderableSources.filter(isSceneAnnotationSource),
     [renderableSources],
@@ -231,6 +236,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => sceneAnnotationSources.filter((s) => enabled.has(s.id)),
     [sceneAnnotationSources, enabled],
   );
+  const selectedMapLayerSources = useMemo(
+    () => mapLayerSources.filter((s) => enabled.has(s.id)),
+    [mapLayerSources, enabled],
+  );
   const pointCloudTopics = useMemo(
     () => selectedPointCloudSources.map((s) => s.id),
     [selectedPointCloudSources],
@@ -239,9 +248,13 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => selectedSceneAnnotationSources.map((s) => s.id),
     [selectedSceneAnnotationSources],
   );
+  const mapLayerTopics = useMemo(
+    () => selectedMapLayerSources.map((s) => s.id),
+    [selectedMapLayerSources],
+  );
   const selectedTopics = useMemo(
-    () => [...pointCloudTopics, ...sceneAnnotationTopics],
-    [pointCloudTopics, sceneAnnotationTopics],
+    () => [...pointCloudTopics, ...mapLayerTopics, ...sceneAnnotationTopics],
+    [mapLayerTopics, pointCloudTopics, sceneAnnotationTopics],
   );
   const selectedTopicsKey = useMemo(
     () => selectedTopics.join("\0"),
@@ -252,15 +265,18 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const annotationFrames = useMcapTopicPlaybackFrames<SceneUpdateVisualization>(
     sceneAnnotationTopics,
   );
+  const gridFrames =
+    useMcapTopicPlaybackFrames<GridVisualization>(mapLayerTopics);
   const playbackTimeNs = useMcapPlaybackTimeNs();
   const frameIds = useMemo(
     () =>
       uniqueSortedFrameIds([
         ...frameTransforms.frameIds,
         ...frameIdsFromFrames(frames),
+        ...frameIdsFromGridFrames(gridFrames),
         ...frameIdsFromSceneAnnotationFrames(annotationFrames),
       ]),
-    [annotationFrames, frameTransforms.frameIds, frames],
+    [annotationFrames, frameTransforms.frameIds, frames, gridFrames],
   );
 
   // This effect keeps the world frame on a preferred default until the user
@@ -315,8 +331,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
   const {
     clampedFrameIds,
+    gridLayers,
     largeInterpolationGaps,
     pendingAnnotationFrameIds,
+    pendingGridFrameIds,
     pointCloudLayers,
     provisionalFrameIds,
     sceneAnnotationLayers,
@@ -327,11 +345,13 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       annotationFrames,
       frameTransforms,
       frames,
+      gridFrames,
       largeInterpolationGapWarningNs: msToNs(
         temporalPolicy.transformGapWarningMs,
       ),
       provisionalTopicId,
       selectedAnnotationTopics: sceneAnnotationTopics,
+      selectedGridTopics: mapLayerTopics,
       selectedTopics: pointCloudTopics,
       worldFrameId,
     });
@@ -339,6 +359,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     annotationFrames,
     frameTransforms,
     frames,
+    gridFrames,
+    mapLayerTopics,
     pointCloudTopics,
     provisionalTopicId,
     sceneAnnotationTopics,
@@ -351,10 +373,13 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         ? "provisional"
         : transformedLayerCount > 0
           ? "transformed"
-          : pointCloudLayers.length > 0 || sceneAnnotationLayers.length > 0
+          : pointCloudLayers.length > 0 ||
+              sceneAnnotationLayers.length > 0 ||
+              gridLayers.length > 0
             ? "unframed"
             : "empty",
     [
+      gridLayers.length,
       pointCloudLayers.length,
       provisionalFrameIds.length,
       sceneAnnotationLayers.length,
@@ -377,9 +402,16 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         )}`,
       );
     }
+    if (pendingGridFrameIds.length > 0) {
+      parts.push(
+        `Map layer transforms loading: hiding grids in ${pendingGridFrameIds.join(
+          ", ",
+        )}`,
+      );
+    }
 
     return parts.length > 0 ? parts.join(" | ") : null;
-  }, [pendingAnnotationFrameIds, provisionalFrameIds]);
+  }, [pendingAnnotationFrameIds, pendingGridFrameIds, provisionalFrameIds]);
   const transformWarning = useMemo(
     () =>
       transformWarningText({
@@ -698,17 +730,24 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   useEffect(() => {
     if (
       !latencyDebugEnabled ||
-      (pointCloudLayers.length === 0 && sceneAnnotationLayers.length === 0)
+      (pointCloudLayers.length === 0 &&
+        sceneAnnotationLayers.length === 0 &&
+        gridLayers.length === 0)
     ) {
       return;
     }
 
     const detail = {
       annotationLayers: sceneAnnotationLayers.length,
-      layers: pointCloudLayers.length + sceneAnnotationLayers.length,
+      gridLayers: gridLayers.length,
+      layers:
+        pointCloudLayers.length +
+        sceneAnnotationLayers.length +
+        gridLayers.length,
       placementStatus,
       pointCount: pointCountForLayers(pointCloudLayers),
       pendingAnnotationFrameIds,
+      pendingGridFrameIds,
       provisionalFrameIds,
       transformStatus: frameTransforms.status,
       transformedLayerCount,
@@ -729,9 +768,11 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     }
   }, [
     frameTransforms.status,
+    gridLayers.length,
     latencyDebugEnabled,
     placementStatus,
     pendingAnnotationFrameIds,
+    pendingGridFrameIds,
     pointCloudLayers,
     provisionalFrameIds,
     sceneAnnotationLayers,
@@ -742,7 +783,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   useEffect(() => {
     if (
       !latencyDebugEnabled ||
-      (pointCloudLayers.length === 0 && sceneAnnotationLayers.length === 0)
+      (pointCloudLayers.length === 0 &&
+        sceneAnnotationLayers.length === 0 &&
+        gridLayers.length === 0)
     ) {
       return;
     }
@@ -751,8 +794,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       placementStatus,
       pointCloudLayers.length,
       sceneAnnotationLayers.length,
+      gridLayers.length,
       transformedLayerCount,
       pendingAnnotationFrameIds.join(","),
+      pendingGridFrameIds.join(","),
       provisionalFrameIds.join(","),
       unresolvedFrameIds.join(","),
       worldFrameId,
@@ -774,9 +819,14 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       controlledCamera: controlledCameraPose !== null,
       frameIds: frameIds.length,
       annotationLayers: sceneAnnotationLayers.length,
-      layers: pointCloudLayers.length + sceneAnnotationLayers.length,
+      gridLayers: gridLayers.length,
+      layers:
+        pointCloudLayers.length +
+        sceneAnnotationLayers.length +
+        gridLayers.length,
       placementStatus,
       pendingAnnotationFrameIds,
+      pendingGridFrameIds,
       pointCount: pointCountForLayers(pointCloudLayers),
       provisionalFrameIds,
       transformFrameIds: frameTransforms.frameIds.length,
@@ -793,8 +843,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     frameIds.length,
     frameTransforms.frameIds.length,
     frameTransforms.status,
+    gridLayers.length,
     latencyDebugEnabled,
     pendingAnnotationFrameIds,
+    pendingGridFrameIds,
     placementStatus,
     pointCloudLayers,
     provisionalFrameIds,
@@ -834,6 +886,35 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             ) : (
               <span className={settingsStyles.emptyText}>
                 No point cloud topics available
+              </span>
+            )}
+          </div>
+
+          <div className={settingsStyles.field}>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              Map Layers
+            </Text>
+            {mapLayerSources.length > 0 ? (
+              <>
+                <div className={settingsStyles.metaText}>
+                  {mapLayerTopics.length.toLocaleString()} of{" "}
+                  {mapLayerSources.length.toLocaleString()} selected
+                </div>
+                <div className={settingsStyles.optionStack}>
+                  {mapLayerSources.map((s) => (
+                    <Checkbox
+                      key={s.id}
+                      label={labelWithCount(s.label, s.recordCount)}
+                      checked={enabled.has(s.id)}
+                      onChange={(checked) => toggleSource(s.id, checked)}
+                      {...checkboxNoSpaceToggleProps}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <span className={settingsStyles.emptyText}>
+                No map layer topics available
               </span>
             )}
           </div>
@@ -896,11 +977,13 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         </div>
       ) : pointCloudLayers.length > 0 ||
         sceneAnnotationLayers.length > 0 ||
+        gridLayers.length > 0 ||
         panelWarning ? (
         <div className={styles.panelStack}>
           <PointCloudPanel
             annotationLayers={sceneAnnotationLayers}
             cameraPose={panelCameraPose}
+            gridLayers={gridLayers}
             layers={pointCloudLayers}
             className={styles.panel}
             onCameraPoseChange={handleCameraPoseChange}
@@ -1013,7 +1096,11 @@ function labelWithCount(label: string, count: number | undefined): string {
 }
 
 function is3dRenderableSource(source: SceneSource): boolean {
-  return isPointCloudSource(source) || isSceneAnnotationSource(source);
+  return (
+    isPointCloudSource(source) ||
+    isSceneAnnotationSource(source) ||
+    isMapLayerSource(source)
+  );
 }
 
 function isPointCloudSource(source: SceneSource): boolean {
@@ -1022,6 +1109,10 @@ function isPointCloudSource(source: SceneSource): boolean {
 
 function isSceneAnnotationSource(source: SceneSource): boolean {
   return source.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION;
+}
+
+function isMapLayerSource(source: SceneSource): boolean {
+  return source.type === MCAP_SOURCE_TYPE.MAP_LAYER;
 }
 
 function sortPointCloudSourcesForInitialPaint(
@@ -1237,6 +1328,21 @@ function transformWarningText({
 
 function frameIdsFromFrames(
   frames: readonly (McapTopicPlaybackFrame<PointCloudVisualization> | null)[],
+): readonly string[] {
+  const frameIds: string[] = [];
+
+  for (const playbackFrame of frames) {
+    if (!playbackFrame) {
+      continue;
+    }
+    pushFrameId(frameIds, playbackFrame.frame.coordinateFrameId);
+  }
+
+  return frameIds;
+}
+
+function frameIdsFromGridFrames(
+  frames: readonly (McapTopicPlaybackFrame<GridVisualization> | null)[],
 ): readonly string[] {
   const frameIds: string[] = [];
 

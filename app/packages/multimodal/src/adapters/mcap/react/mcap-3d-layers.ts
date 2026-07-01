@@ -1,10 +1,12 @@
 import { Quaternion, Vector3 } from "three";
 import type {
+  GridVisualization,
   PointCloudVisualization,
   SceneEntityVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
 import type {
+  GridPanelLayer,
   PointCloudFrameTransform,
   PointCloudPanelLayer,
   SceneAnnotationPanelLayer,
@@ -34,8 +36,10 @@ export interface Mcap3dTransformGapWarning {
 
 export interface Mcap3dLayerBuildResult {
   readonly clampedFrameIds: readonly string[];
+  readonly gridLayers: readonly GridPanelLayer[];
   readonly largeInterpolationGaps: readonly Mcap3dTransformGapWarning[];
   readonly pendingAnnotationFrameIds: readonly string[];
+  readonly pendingGridFrameIds: readonly string[];
   readonly pointCloudLayers: readonly PointCloudPanelLayer[];
   readonly provisionalFrameIds: readonly string[];
   readonly sceneAnnotationLayers: readonly SceneAnnotationPanelLayer[];
@@ -54,26 +58,32 @@ export function build3dLayers({
   annotationFrames = [],
   frameTransforms,
   frames,
+  gridFrames = [],
   largeInterpolationGapWarningNs = 0n,
   provisionalTopicId,
   selectedAnnotationTopics = [],
+  selectedGridTopics = [],
   selectedTopics,
   worldFrameId,
 }: {
   readonly annotationFrames?: readonly (McapTopicPlaybackFrame<SceneUpdateVisualization> | null)[];
   readonly frameTransforms: McapFrameTransformsState;
   readonly frames: readonly (McapTopicPlaybackFrame<PointCloudVisualization> | null)[];
+  readonly gridFrames?: readonly (McapTopicPlaybackFrame<GridVisualization> | null)[];
   readonly largeInterpolationGapWarningNs?: bigint;
   readonly provisionalTopicId?: string | null;
   readonly selectedAnnotationTopics?: readonly string[];
+  readonly selectedGridTopics?: readonly string[];
   readonly selectedTopics: readonly string[];
   readonly worldFrameId: string;
 }): Mcap3dLayerBuildResult {
+  const gridLayers: GridPanelLayer[] = [];
   const pointCloudLayers: PointCloudPanelLayer[] = [];
   const sceneAnnotationLayers: SceneAnnotationPanelLayer[] = [];
   const clampedFrameIds = new Set<string>();
   const largeInterpolationGapsByFrameId = new Map<string, bigint>();
   const pendingAnnotationFrameIds = new Set<string>();
+  const pendingGridFrameIds = new Set<string>();
   const pendingTopicId = provisionalTopicId ?? selectedTopics[0] ?? null;
   const provisionalFrameIds = new Set<string>();
   let transformedLayerCount = 0;
@@ -146,6 +156,50 @@ export function build3dLayers({
     });
   });
 
+  selectedGridTopics.forEach((topic, index) => {
+    const playbackFrame = gridFrames[index];
+    if (!playbackFrame) {
+      return;
+    }
+
+    const frame = playbackFrame.frame;
+    const layerBase = {
+      contentTimeNs: playbackFrame.contentTimeNs,
+      frame,
+      id: topic,
+    };
+    if (!frame.coordinateFrameId) {
+      // Frameless grid: nothing to transform, render at the scene origin.
+      gridLayers.push(layerBase);
+      transformedLayerCount += 1;
+      return;
+    }
+
+    // Grids are frame-locked: a static map anchored in its frame must track
+    // the world frame at the *playhead*, not at the message's own (possibly
+    // file-start) timestamp — otherwise the map rides along with an
+    // ego-relative world frame.
+    const resolution = resolveCachedFrameTransform(
+      frame.coordinateFrameId,
+      playbackFrame.requestedTimeNs,
+    );
+    if (resolution.status === "missing") {
+      return;
+    }
+    if (resolution.status === "pending") {
+      // A misplaced ground plane is worse than a late one: hide until the
+      // transform window resolves instead of drawing at a provisional pose.
+      pendingGridFrameIds.add(frame.coordinateFrameId);
+      return;
+    }
+
+    transformedLayerCount += 1;
+    gridLayers.push({
+      ...layerBase,
+      frameTransform: resolution.transform,
+    });
+  });
+
   selectedAnnotationTopics.forEach((topic, index) => {
     const playbackFrame = annotationFrames[index];
     if (!playbackFrame) {
@@ -176,10 +230,12 @@ export function build3dLayers({
 
   return {
     clampedFrameIds: [...clampedFrameIds].sort(),
+    gridLayers,
     largeInterpolationGaps: [...largeInterpolationGapsByFrameId.entries()]
       .map(([frameId, gapNs]) => ({ frameId, gapNs }))
       .sort((left, right) => left.frameId.localeCompare(right.frameId)),
     pendingAnnotationFrameIds: [...pendingAnnotationFrameIds].sort(),
+    pendingGridFrameIds: [...pendingGridFrameIds].sort(),
     pointCloudLayers,
     provisionalFrameIds: [...provisionalFrameIds].sort(),
     sceneAnnotationLayers,

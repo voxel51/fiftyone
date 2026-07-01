@@ -1,6 +1,7 @@
 import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import type {
+  GridVisualization,
   PointCloudVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
@@ -135,6 +136,34 @@ function transformsState(
   resolve: McapFrameTransformsState["resolve"],
 ): McapFrameTransformsState {
   return { error: null, frameIds: [], resolve, status: "ready" };
+}
+
+function gridViz(coordinateFrameId?: string): GridVisualization {
+  return {
+    ...(coordinateFrameId ? { coordinateFrameId } : {}),
+    cellSize: [0.1, 0.1],
+    columnCount: 2,
+    kind: VISUALIZATION_KIND.GRID,
+    pose: {
+      position: [0, 0, 0],
+      quaternion: [0, 0, 0, 1],
+    },
+    rgba: new Uint8Array(2 * 1 * 4),
+    rowCount: 1,
+  };
+}
+
+function gridPlaybackFrame(
+  value: GridVisualization,
+  contentTimeNs = TIME_NS,
+  requestedTimeNs = contentTimeNs,
+) {
+  return {
+    ageNs: 0n,
+    contentTimeNs,
+    frame: value,
+    requestedTimeNs,
+  };
 }
 
 describe("build3dLayers", () => {
@@ -493,5 +522,143 @@ describe("build3dLayers", () => {
 
     expect(sceneAnnotationLayers).toHaveLength(0);
     expect(unresolvedFrameIds).toEqual(["lidar"]);
+  });
+
+  it("places a grid whose frame resolves to the world frame", () => {
+    const transform = {
+      rotation: new Quaternion(),
+      sourceFrameId: "map",
+      targetFrameId: "base_link",
+      translation: new Vector3(-920, -1300, 0),
+    };
+    const { gridLayers, transformedLayerCount, unresolvedFrameIds } =
+      build3dLayers({
+        frames: [],
+        frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+          sourceFrameId,
+          resolutionKind: "exact",
+          status: "resolved",
+          targetFrameId,
+          transform,
+        })),
+        gridFrames: [gridPlaybackFrame(gridViz("map"))],
+        selectedGridTopics: ["/map"],
+        selectedTopics: [],
+        worldFrameId: "base_link",
+      });
+
+    expect(unresolvedFrameIds).toEqual([]);
+    expect(gridLayers).toHaveLength(1);
+    expect(gridLayers[0]).toMatchObject({
+      contentTimeNs: TIME_NS,
+      frameTransform: transform,
+      id: "/map",
+    });
+    expect(transformedLayerCount).toBe(1);
+  });
+
+  it("resolves grid transforms at the requested playhead time", () => {
+    // A static map is frame-locked: it must track an ego-relative world
+    // frame at the playhead, not at its own (file-start) message time.
+    const calls: Array<{ sourceFrameId: string; timeNs: bigint }> = [];
+
+    build3dLayers({
+      frames: [],
+      frameTransforms: transformsState(
+        (sourceFrameId, targetFrameId, timeNs) => {
+          calls.push({ sourceFrameId, timeNs });
+          return {
+            sourceFrameId,
+            status: "resolved",
+            targetFrameId,
+            transform: {
+              rotation: new Quaternion(),
+              sourceFrameId,
+              targetFrameId,
+              translation: new Vector3(),
+            },
+          };
+        },
+      ),
+      gridFrames: [gridPlaybackFrame(gridViz("map"), 100n, 175n)],
+      selectedGridTopics: ["/map"],
+      selectedTopics: [],
+      worldFrameId: "base_link",
+    });
+
+    expect(calls).toEqual([{ sourceFrameId: "map", timeNs: 175n }]);
+  });
+
+  it("hides grids while transforms are pending", () => {
+    const { gridLayers, pendingGridFrameIds } = build3dLayers({
+      frames: [],
+      frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+        sourceFrameId,
+        status: "pending",
+        targetFrameId,
+      })),
+      gridFrames: [gridPlaybackFrame(gridViz("map"))],
+      selectedGridTopics: ["/map"],
+      selectedTopics: [],
+      worldFrameId: "base_link",
+    });
+
+    expect(pendingGridFrameIds).toEqual(["map"]);
+    expect(gridLayers).toHaveLength(0);
+  });
+
+  it("drops and reports grids whose transform is missing", () => {
+    const { gridLayers, unresolvedFrameIds } = build3dLayers({
+      frames: [],
+      frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+        sourceFrameId,
+        status: "missing",
+        targetFrameId,
+      })),
+      gridFrames: [gridPlaybackFrame(gridViz("map"))],
+      selectedGridTopics: ["/map"],
+      selectedTopics: [],
+      worldFrameId: "base_link",
+    });
+
+    expect(gridLayers).toHaveLength(0);
+    expect(unresolvedFrameIds).toEqual(["map"]);
+  });
+
+  it("renders a frameless grid at the scene origin without consulting transforms", () => {
+    const { gridLayers, transformedLayerCount } = build3dLayers({
+      frames: [],
+      frameTransforms: transformsState(() => {
+        throw new Error("resolve must not run for frameless grids");
+      }),
+      gridFrames: [gridPlaybackFrame(gridViz(undefined))],
+      selectedGridTopics: ["/grid"],
+      selectedTopics: [],
+      worldFrameId: "map",
+    });
+
+    expect(gridLayers).toHaveLength(1);
+    expect(gridLayers[0]?.frameTransform).toBeUndefined();
+    expect(transformedLayerCount).toBe(1);
+  });
+
+  it("treats a grid already in the world frame as an identity placement", () => {
+    const { gridLayers, transformedLayerCount } = build3dLayers({
+      frames: [],
+      frameTransforms: transformsState(() => {
+        throw new Error("resolve must not run for same-frame grids");
+      }),
+      gridFrames: [gridPlaybackFrame(gridViz("map"))],
+      selectedGridTopics: ["/map"],
+      selectedTopics: [],
+      worldFrameId: "map",
+    });
+
+    expect(gridLayers).toHaveLength(1);
+    expect(gridLayers[0]?.frameTransform).toBeDefined();
+    expect(
+      gridLayers[0]?.frameTransform?.translation.equals(new Vector3(0, 0, 0)),
+    ).toBe(true);
+    expect(transformedLayerCount).toBe(1);
   });
 });
