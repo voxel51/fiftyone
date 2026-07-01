@@ -31,6 +31,6 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           payload=$(jq -n \
-            --arg text "Security dependency PR #${PR_NUMBER} opened in voxel51/fiftyone: ${PR_TITLE} ${PR_URL}" \
+            --arg text "🔒 Security dependency PR <${PR_URL}|#${PR_NUMBER}> in voxel51/fiftyone: ${PR_TITLE}" \
             '{text: $text}')
           curl -fsSL -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
