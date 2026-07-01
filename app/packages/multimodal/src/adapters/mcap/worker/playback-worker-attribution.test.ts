@@ -10,6 +10,7 @@ describe("MCAP playback worker attribution", () => {
         id: 7,
         payload: {
           activeTimeline: "log",
+          mcapDataRequestId: "batch:1",
           source: {
             sourceId: "source:1",
             url: "mcap-source://source",
@@ -31,6 +32,7 @@ describe("MCAP playback worker attribution", () => {
     );
 
     collector.recordChunkRead({
+      cacheResult: "fetched",
       chunkId: "1000",
       chunkLengthBytes: "100",
       chunkStartOffset: "1000",
@@ -42,6 +44,7 @@ describe("MCAP playback worker attribution", () => {
       requestedBytes: "120",
     });
     collector.recordChunkRead({
+      cacheResult: "fetched",
       chunkId: "2000",
       chunkLengthBytes: "200",
       chunkStartOffset: "2000",
@@ -49,6 +52,18 @@ describe("MCAP playback worker attribution", () => {
       fetchedBytes: 120,
       kind: "chunk",
       overlapBytes: "40",
+      readOffset: "1000",
+      requestedBytes: "120",
+    });
+    collector.recordChunkRead({
+      cacheResult: "coalesced",
+      chunkId: "1000",
+      chunkLengthBytes: "100",
+      chunkStartOffset: "1000",
+      compression: "zstd",
+      fetchedBytes: 0,
+      kind: "chunk",
+      overlapBytes: "80",
       readOffset: "1000",
       requestedBytes: "120",
     });
@@ -61,11 +76,14 @@ describe("MCAP playback worker attribution", () => {
       }),
     ).toMatchObject({
       chunkBytes: 300,
-      chunkOverlapBytes: 120,
+      chunkOverlapBytes: 200,
       chunksTouched: 2,
+      coalescedReadRequests: 1,
+      coalescedRequestedBytes: 120,
       decodedPayloadBytes: 456,
       fetchedBytes: 120,
       lane: "foreground",
+      mcapDataRequestId: "batch:1",
       ok: true,
       operation: "readSynchronizedMessageBatch",
       payloadBytes: 456,
@@ -77,6 +95,7 @@ describe("MCAP playback worker attribution", () => {
       requestedBytes: 120,
       request: {
         activeTimeline: "log",
+        mcapDataRequestId: "batch:1",
         requestedTicks: 2,
         requestedTopics: 2,
         timeRangeNs: ["100", "200"],

@@ -22,6 +22,7 @@ export interface McapPlaybackWorkerRequestWindow {
   readonly activeTimeline?: string;
   readonly endTimeNs?: string;
   readonly limit?: number;
+  readonly mcapDataRequestId?: string;
   readonly requestedTicks?: number;
   readonly requestedTopics?: number;
   readonly startTimeNs?: string;
@@ -46,9 +47,12 @@ export interface McapPlaybackWorkerAttribution {
   readonly chunkMessageIndexOverlapBytes: number;
   readonly chunkOverlapBytes: number;
   readonly chunksTouched: number;
+  readonly coalescedReadRequests: number;
+  readonly coalescedRequestedBytes: number;
   readonly error?: string;
   readonly fetchedBytes: number;
   readonly lane: McapPlaybackWorkerLaneName;
+  readonly mcapDataRequestId?: string;
   readonly ok: boolean;
   readonly operation: string;
   readonly payloadBytes: number;
@@ -157,6 +161,7 @@ export function createMcapPlaybackWorkerAttributionCollector(
     string,
     { readonly fetchedBytes: number; readonly requestedBytes: number }
   >();
+  const coalescedReadRequests = new Map<string, number>();
   const resultTotals: ResultAccumulator = {
     decodedPayloadBytes: 0,
     payloadBytes: 0,
@@ -177,6 +182,9 @@ export function createMcapPlaybackWorkerAttributionCollector(
         }),
         { fetchedBytes: 0, requestedBytes: 0 },
       );
+      const coalescedRequestedBytes = [
+        ...coalescedReadRequests.values(),
+      ].reduce((sum, requestedBytes) => sum + requestedBytes, 0);
 
       return {
         chunkBytes: totalChunkBytes(chunkReads),
@@ -186,9 +194,12 @@ export function createMcapPlaybackWorkerAttributionCollector(
         ),
         chunkOverlapBytes: totalOverlapBytes(chunkReads, "chunk"),
         chunksTouched: chunkIds.size,
+        coalescedReadRequests: coalescedReadRequests.size,
+        coalescedRequestedBytes,
         ...(error ? { error } : {}),
         fetchedBytes: readTotals.fetchedBytes,
         lane: context.lane,
+        ...mcapDataRequestIdForWorkerRequest(message),
         ok,
         operation: message.type,
         payloadBytes: resultTotals.payloadBytes,
@@ -213,16 +224,19 @@ export function createMcapPlaybackWorkerAttributionCollector(
     },
 
     recordChunkRead(entry) {
-      const readKey = [
-        entry.readOffset,
-        entry.requestedBytes,
-        entry.fetchedBytes,
-      ].join(":");
-      if (!readRequests.has(readKey)) {
-        readRequests.set(readKey, {
-          fetchedBytes: entry.fetchedBytes,
-          requestedBytes: Number(entry.requestedBytes),
-        });
+      const readKey = [entry.readOffset, entry.requestedBytes].join(":");
+      if (entry.cacheResult === "coalesced") {
+        if (!coalescedReadRequests.has(readKey)) {
+          coalescedReadRequests.set(readKey, Number(entry.requestedBytes));
+        }
+      } else {
+        const fetchedReadKey = [readKey, entry.fetchedBytes].join(":");
+        if (!readRequests.has(fetchedReadKey)) {
+          readRequests.set(fetchedReadKey, {
+            fetchedBytes: entry.fetchedBytes,
+            requestedBytes: Number(entry.requestedBytes),
+          });
+        }
       }
 
       chunkIds.add(entry.chunkId);
@@ -328,6 +342,9 @@ function summarizeSynchronizedBatchRequest(
     ...(request.activeTimeline
       ? { activeTimeline: request.activeTimeline }
       : {}),
+    ...(request.mcapDataRequestId
+      ? { mcapDataRequestId: request.mcapDataRequestId }
+      : {}),
     ...(first !== undefined && last !== undefined
       ? {
           timeRangeNs: [first.toString(), last.toString()],
@@ -338,6 +355,15 @@ function summarizeSynchronizedBatchRequest(
     requestedTopics: request.topics.length,
     ...summarizeTopics(request.topics),
   };
+}
+
+function mcapDataRequestIdForWorkerRequest(
+  message: McapPlaybackWorkerAttributionRequest,
+): { readonly mcapDataRequestId?: string } {
+  return message.type === "readSynchronizedMessageBatch" &&
+    message.payload.mcapDataRequestId
+    ? { mcapDataRequestId: message.payload.mcapDataRequestId }
+    : {};
 }
 
 function summarizeBoundedWindow(

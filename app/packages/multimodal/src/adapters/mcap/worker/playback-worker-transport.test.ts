@@ -93,6 +93,8 @@ function createAttribution() {
     chunkMessageIndexOverlapBytes: 0,
     chunkOverlapBytes: 0,
     chunksTouched: 0,
+    coalescedReadRequests: 0,
+    coalescedRequestedBytes: 0,
     decodedPayloadBytes: 0,
     fetchedBytes: 0,
     lane: "foreground" as const,
