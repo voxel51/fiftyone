@@ -109,6 +109,31 @@ export interface GridVisualization {
 }
 
 /**
+ * Camera intrinsics and projection decoded from a calibration message.
+ * Matrices are row-major: `K` is the 3x3 intrinsic matrix, `R` the 3x3
+ * rectification matrix, `P` the 3x4 projection matrix. Only `K` is
+ * guaranteed; exporters routinely omit `R`/`P`/distortion. The camera
+ * convention is OpenCV/Foxglove: +Z forward, +X right, +Y down, with
+ * pixel (0,0) at the image's top-left corner.
+ */
+export interface CameraCalibrationVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.CAMERA_CALIBRATION;
+  /**
+   * Per-message source coordinate frame decoded from the calibration
+   * payload (the camera's frame).
+   */
+  readonly coordinateFrameId?: string;
+  readonly width: number;
+  readonly height: number;
+  readonly K: readonly number[];
+  readonly R?: readonly number[];
+  readonly P?: readonly number[];
+  readonly distortionModel?: string;
+  readonly D?: readonly number[];
+  readonly timestampNs?: bigint;
+}
+
+/**
  * 3D position and orientation normalized for FiftyOne scene rendering.
  */
 export interface ScenePose3D {
@@ -322,6 +347,7 @@ export interface ImageAnnotationsVisualization {
  * contribute metadata, transforms, annotations, or other nonvisual state.
  */
 export type DecodedVisualization =
+  | CameraCalibrationVisualization
   | EncodedImageVisualization
   | GridVisualization
   | ImageAnnotationsVisualization

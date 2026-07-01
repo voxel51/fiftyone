@@ -4,6 +4,7 @@
  * Stable visual artifact kinds emitted by decoders.
  */
 export const VISUALIZATION_KIND = Object.freeze({
+  CAMERA_CALIBRATION: "camera-calibration",
   ENCODED_IMAGE: "encoded-image",
   GRID: "grid",
   IMAGE_ANNOTATIONS: "image-annotations",
@@ -38,6 +39,9 @@ export type PanelType = (typeof PANEL_TYPE)[keyof typeof PANEL_TYPE];
 export const VISUALIZATION_PANEL_REGISTRY: Readonly<
   Record<VisualizationKind, PanelType>
 > = Object.freeze({
+  // Calibration is data, not imagery: its only renderable form is a camera
+  // frustum in the 3D scene, so it maps to the 3D panel family.
+  [VISUALIZATION_KIND.CAMERA_CALIBRATION]: PANEL_TYPE.THREE_D,
   [VISUALIZATION_KIND.ENCODED_IMAGE]: PANEL_TYPE.IMAGE,
   [VISUALIZATION_KIND.GRID]: PANEL_TYPE.THREE_D,
   [VISUALIZATION_KIND.IMAGE_ANNOTATIONS]: PANEL_TYPE.IMAGE,
