@@ -749,6 +749,56 @@
             "date_added": "2026-01-30"
         },
         {
+            "base_name": "fc-clip-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Open-vocabulary panoptic segmentation with FC-CLIP (COCO); returns both thing and stuff segments as instance masks. Uses frozen ConvNeXt-Large CLIP backbone + Mask2Former decoder.",
+            "source": "https://huggingface.co/Voxel51/fc-clip",
+            "author": "Jiarui Xu, et al. (ByteDance)",
+            "license": "MIT",
+            "size_bytes": 83000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.fcclip.FCCLIPModel",
+                "config": {
+                    "name_or_path": "Voxel51/fc-clip"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "open_clip_torch",
+                    "safetensors",
+                    "timm>=1.0.17"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "segmentation",
+                "open-vocabulary",
+                "zero-shot",
+                "torch",
+                "transformers",
+                "clip",
+                "coco",
+                "panoptic",
+                "instance"
+            ],
+            "training_data": [
+                {
+                    "name": "COCO 2017 Panoptic",
+                    "url": "https://cocodataset.org/"
+                }
+            ],
+            "date_added": "2026-06-26 00:00:00"
+        },
+        {
             "base_name": "med-sam-2-video-torch",
             "base_filename": "med-sam-2_pretrain.pth",
             "version": null,

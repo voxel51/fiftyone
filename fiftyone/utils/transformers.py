@@ -727,7 +727,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         except AttributeError:
             # AutoProcessor can't resolve the tokenizer for some models; resolve
             # the processor class from the config and load it directly.
-            from transformers.models.auto.processing_auto import PROCESSOR_MAPPING
+            from transformers.models.auto.processing_auto import (
+                PROCESSOR_MAPPING,
+            )
 
             ta = dict(config.transforms_args or {})
             name = ta.pop("pretrained_model_name_or_path", None)
