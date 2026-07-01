@@ -42,13 +42,19 @@ type FrameTransformSchemaMatch =
     };
 
 /**
- * Bootstrap scans schema-discovered channels with at most this many messages
- * each. Static transform channels publish on the order of one message per
- * child frame (a few dozen at most); dynamic channels publish at sensor rate
- * (thousands+). Channels above the cap are deferred to window reads, which
- * also recover any rare no-timestamp samples on dynamic channels.
+ * Bootstrap only scans channels that are likely static, and only when they
+ * are small. Topic conventions such as `/tf_static` are accepted directly;
+ * ambiguous low-count channels are first classified by decoding one transform
+ * message. Dynamic channels are left to bounded window reads instead of
+ * blocking first playback.
  */
 const BOOTSTRAP_CHANNEL_MESSAGE_CAP = 256n;
+const STATIC_TRANSFORM_TOPIC_SEGMENTS: ReadonlySet<string> = new Set([
+  "static_tf",
+  "static_transform",
+  "static_transforms",
+  "tf_static",
+]);
 
 type McapChannel = McapTypes.TypedMcapRecords["Channel"];
 type McapSchema = McapTypes.TypedMcapRecords["Schema"];
@@ -102,20 +108,21 @@ function discoverFrameTransformChannels(
 
 /**
  * Reads eager static frame transforms by schema discovery. A channel is
- * scanned in bootstrap only if its summary message count is at or below the
- * bootstrap cap, keeping bootstrap fast for files with chatty dynamic
- * transform channels. A sample is emitted as static when the decoded
- * transform message has no `timestamp` (Foxglove convention for
- * "always valid").
+ * scanned in bootstrap only if it is below the bootstrap cap and either has a
+ * known static-transform topic convention or an ambiguous first decoded sample
+ * with no timestamp. This keeps bootstrap off broad dynamic transform channels.
+ * A sample is emitted as static when the decoded transform message has no
+ * `timestamp` (Foxglove convention for "always valid").
  */
 export async function readMcapFrameTransformBootstrap(
   reader: McapIndexedReaderLike,
 ): Promise<McapFrameTransformSet> {
-  const bootstrapChannels = discoverFrameTransformChannels(reader).filter(
-    (entry) =>
-      entry.messageCount === undefined ||
-      entry.messageCount <= BOOTSTRAP_CHANNEL_MESSAGE_CAP,
-  );
+  const bootstrapChannels: FrameTransformChannel[] = [];
+  for (const entry of discoverFrameTransformChannels(reader)) {
+    if (await shouldBootstrapFrameTransformChannel(reader, entry)) {
+      bootstrapChannels.push(entry);
+    }
+  }
   if (bootstrapChannels.length === 0) {
     return createMcapFrameTransformSet({ samples: [] });
   }
@@ -150,6 +157,71 @@ export async function readMcapFrameTransformBootstrap(
   }
 
   return createMcapFrameTransformSet({ readStats, samples });
+}
+
+async function shouldBootstrapFrameTransformChannel(
+  reader: McapIndexedReaderLike,
+  entry: FrameTransformChannel,
+): Promise<boolean> {
+  if (
+    entry.messageCount !== undefined &&
+    entry.messageCount > BOOTSTRAP_CHANNEL_MESSAGE_CAP
+  ) {
+    return false;
+  }
+  if (isStaticTransformBootstrapTopic(entry.channel.topic)) {
+    return true;
+  }
+
+  return firstTransformMessageHasStaticSample(reader, entry);
+}
+
+async function firstTransformMessageHasStaticSample(
+  reader: McapIndexedReaderLike,
+  entry: FrameTransformChannel,
+): Promise<boolean> {
+  for await (const message of reader.readMessages({
+    topics: [entry.channel.topic],
+  })) {
+    if (message.channelId !== entry.channel.id) {
+      continue;
+    }
+    try {
+      return normalizeFrameTransformMessage({
+        channel: entry.channel,
+        match: entry.match,
+        message,
+        schema: entry.schema,
+      }).some((sample) => sample.timeNs === undefined);
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+function isStaticTransformBootstrapTopic(topic: string): boolean {
+  const segments = topic
+    .toLowerCase()
+    .split(/[/.:-]+/)
+    .filter(Boolean);
+  if (
+    segments.some((segment) => STATIC_TRANSFORM_TOPIC_SEGMENTS.has(segment))
+  ) {
+    return true;
+  }
+
+  return segments.some((segment, index) => {
+    const nextSegment = segments[index + 1];
+    return (
+      (segment === "tf" && nextSegment === "static") ||
+      (segment === "static" &&
+        (nextSegment === "tf" ||
+          nextSegment === "transform" ||
+          nextSegment === "transforms"))
+    );
+  });
 }
 
 /**

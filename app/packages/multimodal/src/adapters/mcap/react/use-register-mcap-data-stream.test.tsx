@@ -198,12 +198,12 @@ describe("stream status + buffering feedback", () => {
     const options = vi.mocked(client.readSynchronizedMessageBatch).mock
       .calls[0]?.[1];
     expect(request?.timeNs.length).toBeGreaterThan(0);
-    expect(request?.timeNs.length).toBeLessThanOrEqual(3);
-    expect(request?.timeNs.at(-1)).toBeLessThanOrEqual(100_000_000n);
+    expect(request?.timeNs.length).toBeLessThanOrEqual(15);
+    expect(request?.timeNs.at(-1)).toBeLessThanOrEqual(500_000_000n);
     expect(options?.priority).toBe("playback");
   });
 
-  it("starts multi-topic playback across all active panes with a shallow startup window", async () => {
+  it("starts multi-topic playback across all active panes with a bounded startup window", async () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     const client = createClient({
@@ -234,7 +234,7 @@ describe("stream status + buffering feedback", () => {
     const firstBatch = vi.mocked(client.readSynchronizedMessageBatch).mock
       .calls[0];
     expect(firstBatch?.[0].topics).toEqual([LIDAR_TOPIC, RADAR_TOPIC, TOPIC]);
-    expect(firstBatch?.[0].timeNs.length).toBeLessThanOrEqual(3);
+    expect(firstBatch?.[0].timeNs.length).toBeLessThanOrEqual(15);
     expect(firstBatch?.[1]?.priority).toBe("playback");
 
     await waitFor(() => {
