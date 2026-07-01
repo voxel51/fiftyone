@@ -1056,6 +1056,192 @@ Interpretation:
 - The remaining cost is still chunk-granularity dominated, but the request
   shape is now sane enough for true chunk/worker policy experiments.
 
+## Instrumentation 12: Bridge Message Batch Attribution
+
+Date: 2026-07-01
+
+Problem:
+
+- We could see user-visible latency events, bandwidth category samples, and
+  worker request attribution, but message playback batches did not have one
+  stable join key across all three surfaces.
+- That made it hard to answer whether a specific startup/lookahead batch was
+  expensive because of requested ticks/topics, cache misses, worker queue/run
+  time, chunk bytes, or payload/category mix.
+
+Refactor:
+
+- Added a debug-only `mcapDataRequestId` per message batch fetch.
+- Threaded that id through:
+    - the data-stream `readSynchronizedMessageBatch` payload;
+    - worker attribution root and request summaries;
+    - bandwidth samples for decoded message windows;
+    - per-batch latency events.
+- Added `mcap data batch request`, `mcap data batch settled`, and
+  `mcap data batch failed` events.
+- Per-batch events now include requested ticks/topics, cache coverage before
+  and after, worker priority, operation, and whether the batch cleared pending
+  play or buffering.
+
+Smoke validation:
+
+- Reloaded the local NuScenes sample with `mcapLatencyDebug=1`.
+- Observed common `mcap-data:*` ids across:
+    - `data-mcap-latency-events`;
+    - `data-mcap-latency-bandwidth`;
+    - `data-mcap-worker-attribution`.
+- First startup batch example:
+    - `135` requested topic-ticks;
+    - `0%` cache coverage before;
+    - `100%` cache coverage after;
+    - `607.3 ms` batch duration;
+    - `90` point-cloud messages;
+    - same request id present in events, bandwidth, and worker attribution.
+
+## Optimization 13: Shape Message Startup Around Shallow Pane-Neutral Playback
+
+Date: 2026-07-01
+
+Problem:
+
+- Message playback startup was expensive because requested bytes scale as
+  `topics x ticks`.
+- A first attempt reduced topics by prioritizing a LIDAR-like point-cloud
+  stream first. That helped 3D startup, but it was the wrong product contract:
+  it implicitly made one pane more important than the rest of the visible
+  layout.
+- The better axis is time depth. Every active pane should get a truthful
+  current frame / near-term startup window; the app should then build runway in
+  the background.
+
+Product stance:
+
+- First playback should be pane-neutral. Cameras, radar/point-cloud panes, and
+  other active renderables should all get a fair first-frame path.
+- The startup gate should ask for just enough time depth to avoid an immediate
+  hitch, not half a second of every stream.
+- This does not invent data: missing secondary streams remain loading/stale
+  until their own messages land.
+
+Refactor:
+
+- Restored blocking topics to all active non-annotation renderables.
+- Current-frame fetches cover all active subscribed topics, so no pane is
+  silently deprioritized.
+- Startup lookahead is now a shallow 3-tick window (`0.1 s` at 30 Hz), down
+  from the previous 15-tick / `0.5 s` window.
+- Background lookahead remains idle-lane work after the shallow startup window
+  is covered.
+- Tightened paused idle warmup cadence so background warmup does not chain
+  immediately after every batch completion.
+
+Smoke validation:
+
+- Unit coverage asserts multi-topic current-frame/startup requests include all
+  active panes and cap startup to at most 3 ticks.
+- Browser smoke on the local NuScenes sample:
+    - current-frame request covered `9` topics;
+    - startup request covered `3` ticks x `9` topics;
+    - startup request was foreground/playback priority;
+    - worker attribution linked the same `mcapDataRequestId`;
+    - startup batch touched `9` chunks, fetched `5.259 MB`, decoded `3.319 MB`,
+      and ran in `233.3 ms`.
+
+Interpretation:
+
+- The optimization is now a product-safe byte reduction: fewer startup ticks,
+  same pane fairness.
+- This should reduce startup byte pressure by roughly the tick reduction factor
+  before chunk effects: `3 / 15` of the old startup depth for the same active
+  topic set.
+- This is the right precondition for chunk-level/concurrency work because the
+  request shape no longer encodes a pane preference.
+
+## Optimization 14: Reuse In-Flight Reads and Decompressed Chunks
+
+Date: 2026-07-01
+
+Problem:
+
+- Current-frame and startup/lookahead requests are separate MCAP reader calls.
+- The generic byte client already has byte-range cache/coalescing, but
+  `@mcap/core` only keeps decompressed chunk views inside one `readMessages()`
+  call.
+- Sequential foreground requests can therefore be raw-byte-cache-hot while
+  still paying chunk parse/decompression cost again.
+
+Product stance:
+
+- This is a pure physical-layer optimization. It does not change which panes
+  are shown, how time is resolved, or which data is considered truthful.
+- It should make startup and early playback feel less hitchy without hiding
+  missing/stale data or privileging one pane.
+
+Refactor:
+
+- Added exact in-flight range coalescing inside `ByteClientReadable`.
+    - Identical concurrent `(offset, size, cachePolicy)` reads share one
+      promise.
+    - Coalesced reads are logged with `fetchedBytes: 0`.
+- Added a bounded `64 MB` decompressed chunk cache around MCAP decompress
+  handlers.
+    - Cache key is raw byte-buffer identity + byte range + compression +
+      decompressed size.
+    - This lets adjacent sequential reader calls reuse decompressed chunk data
+      when the raw byte cache returns the same chunk bytes.
+- Extended worker attribution with:
+    - `coalescedReadRequests`;
+    - `coalescedRequestedBytes`;
+    - summarized MB fields in debug DOM attributes / console logs.
+
+Smoke validation:
+
+- Browser smoke on the local NuScenes sample with the active layout at the
+  time:
+    - current-frame request covered `5` topics;
+    - startup request covered `3` ticks x `5` topics;
+    - startup touched `4` chunks, fetched `3.023 MB`, and ran in `10.6 ms`;
+    - `coalescedReadRequests` was `0`, which is expected for the serial
+      foreground worker path.
+- Treat this as a behavioral smoke, not a cold baseline. The app/session had
+  warm caches by this point.
+
+Hard-refresh baseline:
+
+- Mount/startup run:
+    - run token: `hardColdChunkReuse-1782878224117`;
+    - timeline index ready at `352.8 ms`;
+    - current-frame request at `353.7 ms`, cached at `383.8 ms`;
+    - playhead buffer ready at `384.2 ms`;
+    - startup buffer request at `354.0 ms`, ready at `592.6 ms`;
+    - startup batch duration `237.2 ms`;
+    - startup worker: `3` ticks x `9` topics, `9` chunks touched, `5.259 MB`
+      fetched, `3.319 MB` payload, `200.4 ms` worker run, `35.4 ms` queue wait;
+    - startup payload categories: `1.987 MB` lidar point cloud, `1.127 MB`
+      image, `0.061 MB` radar point cloud.
+- Immediate-Space run:
+    - run token: `hardColdPlayChunkReuse-1782878260983`;
+    - current-frame cached at `392.8 ms`;
+    - playhead buffer ready at `393.2 ms`;
+    - startup buffer ready at `612.4 ms`;
+    - first playback commit at `637.3 ms`;
+    - first 10 s playback stall window completed with `0 ms` stall wall time,
+      `0 ms` max stall, `0` stalls, and `0%` stall time;
+    - startup worker: `3` ticks x `9` topics, `9` chunks touched, `5.259 MB`
+      fetched, `3.319 MB` payload, `212.3 ms` worker run, `44.1 ms` queue wait.
+- Caveat: this is a browser hard refresh with a fresh run token and fresh app /
+  worker memory. It is not an OS/server disk-cache-cold run.
+
+Interpretation:
+
+- In-flight coalescing is still useful for overlapping idle/foreground and
+  future concurrent worker paths, and it makes attribution truthful when it
+  happens.
+- The immediate foreground win should come mostly from decompressed chunk
+  reuse, because current-frame and startup are scheduled serially.
+- The next truly cold comparison should use a hard refresh and fresh run token
+  before/after this optimization.
+
 ## Next Steps
 
 1. Make baseline capture repeatable with a small browser/dev helper that writes
@@ -1065,7 +1251,7 @@ Interpretation:
 3. Reduce the immediate-Space startup-to-active-playback hitch:
     - when pending Play starts, queue one extra near-playhead background batch
       immediately;
-    - keep that batch render-blocking-topic-first;
+    - keep that batch pane-neutral but shallow;
     - measure whether this removes the first active-playback stall without
       delaying first commit.
 4. Add explicit idle-lane budgets and source-profile policy:
@@ -1078,10 +1264,10 @@ Interpretation:
     - Avoid issuing one current-frame fetch and a startup batch for overlapping
       data when the batch can satisfy both.
 6. Reduce the byte cost of the now-smooth paused warmup further:
-    - Start with a small LIDAR background horizon.
+    - Start with a shallow all-pane background horizon.
     - Ramp the horizon only after playback has stayed ready for a short window.
     - Keep images/current-frame responsive instead of coupling them to heavy
-      point-cloud background work.
+      background work.
 7. Re-run both baselines after each refactor:
     - immediate Space after session start;
     - wait idle for 10 seconds, then Space.
