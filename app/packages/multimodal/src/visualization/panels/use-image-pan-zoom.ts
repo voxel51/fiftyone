@@ -46,24 +46,24 @@ export function useImagePanZoom({
     (updater: ImageViewTransformUpdater) => void
   >(() => undefined);
   const [containerSize, setContainerSize] = useState<ImageDisplaySize | null>(
-    null
+    null,
   );
   const [isDragging, setIsDragging] = useState(false);
   const [surfaceElement, setSurfaceElement] = useState<HTMLDivElement | null>(
-    null
+    null,
   );
   const [viewTransform, setViewTransform] = useState<ImageViewTransform>(
-    DEFAULT_IMAGE_VIEW_TRANSFORM
+    DEFAULT_IMAGE_VIEW_TRANSFORM,
   );
   const canInteract =
     enabled &&
     Boolean(
       containerSize &&
-        imageSize &&
-        containerSize.width > 0 &&
-        containerSize.height > 0 &&
-        imageSize.width > 0 &&
-        imageSize.height > 0
+      imageSize &&
+      containerSize.width > 0 &&
+      containerSize.height > 0 &&
+      imageSize.width > 0 &&
+      imageSize.height > 0,
     );
 
   const setSurfaceRef = useCallback((element: HTMLDivElement | null) => {
@@ -79,7 +79,7 @@ export function useImagePanZoom({
         maxScale: MAX_IMAGE_VIEW_SCALE,
         minScale: MIN_IMAGE_VIEW_SCALE,
       }),
-    [containerSize, fit, imageSize]
+    [containerSize, fit, imageSize],
   );
 
   const updateViewTransform = useCallback(
@@ -90,7 +90,7 @@ export function useImagePanZoom({
         return imageViewTransformEquals(current, clamped) ? current : clamped;
       });
     },
-    [clampTransform]
+    [clampTransform],
   );
 
   const resetView = useCallback(() => {
@@ -193,7 +193,7 @@ export function useImagePanZoom({
       };
       setIsDragging(true);
     },
-    [canInteract]
+    [canInteract],
   );
 
   const onPointerMove = useCallback(
@@ -222,7 +222,7 @@ export function useImagePanZoom({
         translateY: current.translateY + deltaY,
       }));
     },
-    [updateViewTransform]
+    [updateViewTransform],
   );
 
   const endDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -242,7 +242,7 @@ export function useImagePanZoom({
       overscrollBehavior: enabled ? "contain" : undefined,
       touchAction: enabled ? "none" : undefined,
     }),
-    [canInteract, enabled, isDragging]
+    [canInteract, enabled, isDragging],
   );
 
   return {
@@ -261,7 +261,7 @@ export function useImagePanZoom({
 export function nextImageViewTransformForWheel(
   current: ImageViewTransform,
   deltaY: number,
-  pointer: { readonly x: number; readonly y: number }
+  pointer: { readonly x: number; readonly y: number },
 ): ImageViewTransform {
   if (deltaY === 0) {
     return current;
@@ -270,7 +270,7 @@ export function nextImageViewTransformForWheel(
   const nextScale = clampScale(
     deltaY < 0
       ? current.scale * WHEEL_ZOOM_FACTOR
-      : current.scale / WHEEL_ZOOM_FACTOR
+      : current.scale / WHEEL_ZOOM_FACTOR,
   );
 
   return zoomAtPoint(current, nextScale, pointer);
@@ -307,7 +307,7 @@ function clampScale(scale: number): number {
 function zoomAtPoint(
   current: ImageViewTransform,
   nextScale: number,
-  pointer: { readonly x: number; readonly y: number }
+  pointer: { readonly x: number; readonly y: number },
 ): ImageViewTransform {
   const ratio = nextScale / Math.max(MIN_IMAGE_VIEW_SCALE, current.scale);
 

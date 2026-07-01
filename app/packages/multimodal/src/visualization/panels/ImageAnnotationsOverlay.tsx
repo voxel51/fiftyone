@@ -91,9 +91,9 @@ export function ImageAnnotationsOverlay({
         imageDisplayRect(
           containerSize,
           { height: imageHeight, width: imageWidth },
-          fit
+          fit,
         ),
-        viewTransform
+        viewTransform,
       )
     : null;
 

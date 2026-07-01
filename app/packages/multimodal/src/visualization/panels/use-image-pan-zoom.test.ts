@@ -8,8 +8,8 @@ describe("nextImageViewTransformForWheel", () => {
       nextImageViewTransformForWheel(
         { scale: 1, translateX: 0, translateY: 0 },
         -100,
-        { x: 0, y: 0 }
-      )
+        { x: 0, y: 0 },
+      ),
     ).toEqual({ scale: 1.045, translateX: 0, translateY: 0 });
   });
 
@@ -18,8 +18,8 @@ describe("nextImageViewTransformForWheel", () => {
       nextImageViewTransformForWheel(
         { scale: 1.045, translateX: 0, translateY: 0 },
         100,
-        { x: 0, y: 0 }
-      )
+        { x: 0, y: 0 },
+      ),
     ).toEqual({ scale: 1, translateX: 0, translateY: 0 });
   });
 
@@ -28,8 +28,8 @@ describe("nextImageViewTransformForWheel", () => {
       nextImageViewTransformForWheel(
         { scale: 1, translateX: 0, translateY: 0 },
         100,
-        { x: 0, y: 0 }
-      )
+        { x: 0, y: 0 },
+      ),
     ).toEqual({ scale: 1 / 1.045, translateX: 0, translateY: 0 });
   });
 
@@ -38,8 +38,8 @@ describe("nextImageViewTransformForWheel", () => {
       nextImageViewTransformForWheel(
         { scale: 1, translateX: 0, translateY: 0 },
         -100,
-        { x: 80, y: -40 }
-      )
+        { x: 80, y: -40 },
+      ),
     ).toEqual({
       scale: 1.045,
       translateX: 80 - 80 * 1.045,
@@ -51,7 +51,7 @@ describe("nextImageViewTransformForWheel", () => {
     const next = nextImageViewTransformForWheel(
       { scale: 2, translateX: 40, translateY: -20 },
       100,
-      { x: 100, y: 50 }
+      { x: 100, y: 50 },
     );
 
     expect(next.scale).toBeCloseTo(2 / 1.045);

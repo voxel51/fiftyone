@@ -44,7 +44,7 @@ describe("ImagePanel", () => {
     render(
       <div onPointerDown={onPointerDown}>
         <ImagePanel frame={loadedFrame()} onResetView={vi.fn()} />
-      </div>
+      </div>,
     );
 
     fireEvent.pointerDown(await screen.findByLabelText("Recenter image view"));
@@ -67,6 +67,6 @@ function mockImageBitmap() {
       close: vi.fn(),
       height: 12,
       width: 16,
-    }))
+    })),
   );
 }
