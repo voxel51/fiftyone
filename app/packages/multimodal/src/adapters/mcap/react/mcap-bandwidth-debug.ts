@@ -12,6 +12,7 @@ import {
 export type McapBandwidthOperation =
   | "background-lookahead"
   | "current-frame"
+  | "loopback-lookahead"
   | "playback-prefetch"
   | "startup-lookahead"
   | "transform-bootstrap"

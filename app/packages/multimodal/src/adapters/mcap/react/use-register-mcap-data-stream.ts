@@ -4,6 +4,8 @@ import {
   getIsBuffering,
   getIsPlayPending,
   getIsPlaying,
+  getLoopEnd,
+  getLoopStart,
   getPlayhead,
   getStreamValue,
   setBufferedRanges,
@@ -195,6 +197,7 @@ interface PlaybackStallWindow {
   currentStallStartMs?: number;
   ended: boolean;
   endPlayheadSec: number;
+  kind: "first" | "loopback";
   lastObservationMs?: number;
   lastState?: PlaybackStallState;
   loadingWallMs: number;
@@ -276,6 +279,8 @@ export function useRegisterMcapDataStream({
   const nextLookaheadRefreshTimeRef = useRef(0);
   const playbackStallSessionIdRef = useRef(0);
   const playbackStallWindowRef = useRef<PlaybackStallWindow | null>(null);
+  const lastObservedPlayheadSecRef = useRef<number | null>(null);
+  const loopRunwayStartTickKeyRef = useRef<string | null>(null);
   const indexRef = useRef<McapTimelineIndex | null>(null);
   const sourceEpochRef = useRef(0);
   indexRef.current = index;
@@ -428,6 +433,8 @@ export function useRegisterMcapDataStream({
     topicStartTimesNsRef.current.clear();
     autoSeekSourceEpochRef.current = null;
     nextLookaheadRefreshTimeRef.current = 0;
+    lastObservedPlayheadSecRef.current = null;
+    loopRunwayStartTickKeyRef.current = null;
     clearPausedIdleWarmupTimer();
     for (const cache of topicCachesRef.current.values()) {
       cache.clear();
@@ -933,7 +940,9 @@ export function useRegisterMcapDataStream({
           if (activeFetchedTopics.length === 0) return;
 
           for (const window of windows) {
-            distributeWindowToCaches(window, caches, activeFetchedTopics);
+            distributeWindowToCaches(window, caches, activeFetchedTopics, {
+              pinned: operation === "loopback-lookahead",
+            });
           }
           if (latencyDebugEnabled) {
             const durationMs = mcapLatencyDurationMs(batchStartMs);
@@ -1203,6 +1212,102 @@ export function useRegisterMcapDataStream({
     [],
   );
 
+  const warmLoopStartRunway = useCallback(
+    (timeSec: number, activeTopics: string[]): boolean => {
+      const currentIndex = indexRef.current;
+      if (!currentIndex || activeTopics.length === 0) return false;
+
+      const loopStartSec = getLoopStart(store);
+      const loopEndSec = getLoopEnd(store);
+      if (loopEndSec <= loopStartSec) return false;
+      if (timeSec <= loopStartSec + PLAYBACK_POLICY.startupLookaheadSeconds) {
+        return false;
+      }
+
+      const secondsToLoopEnd = loopEndSec - timeSec;
+      if (
+        secondsToLoopEnd < 0 ||
+        secondsToLoopEnd > PLAYBACK_POLICY.lookaheadSeconds
+      ) {
+        return false;
+      }
+
+      const loopStartTick = currentIndex.nearestTick(loopStartSec);
+      if (loopStartTick === undefined) return false;
+
+      const loopStartTickKey = loopStartTick.toString();
+      if (loopRunwayStartTickKeyRef.current !== loopStartTickKey) {
+        loopRunwayStartTickKeyRef.current = loopStartTickKey;
+        for (const cache of topicCachesRef.current.values()) {
+          cache.clearPinned();
+        }
+      }
+
+      const loopRunwayCoverage = bufferWindowCoverage({
+        activeTopics,
+        caches: topicCachesRef.current,
+        index: currentIndex,
+        lookaheadSeconds: PLAYBACK_POLICY.lookaheadSeconds,
+        maxTicks: PLAYBACK_POLICY.maxPrefetchBatch,
+        timeSec: loopStartSec,
+      });
+      const missing = collectMissingTicksForTopics(
+        loopStartSec,
+        loopStartSec + PLAYBACK_POLICY.lookaheadSeconds,
+        PLAYBACK_POLICY.maxPrefetchBatch,
+        activeTopics,
+      );
+
+      if (isMcapLatencyDebugEnabled()) {
+        const detail = {
+          activeTopics: activeTopics.length,
+          coveredTicks: loopRunwayCoverage?.covered ?? 0,
+          loopEndSec: Number(loopEndSec.toFixed(3)),
+          loopStartSec: Number(loopStartSec.toFixed(3)),
+          missingTicks: missing.length,
+          runwayTicks: loopRunwayCoverage?.total ?? 0,
+          secondsToLoopEnd: Number(secondsToLoopEnd.toFixed(3)),
+          timeSec: Number(timeSec.toFixed(3)),
+        };
+        markMcapLatencyEvent("loopback runway checked", detail);
+        recordMcapLatencyMetric("loopback runway checks", 1, detail);
+      }
+
+      if (missing.length === 0) {
+        if (isMcapLatencyDebugEnabled()) {
+          markMcapLatencyEvent("loopback runway ready", {
+            activeTopics: activeTopics.length,
+            loopStartSec: Number(loopStartSec.toFixed(3)),
+            secondsToLoopEnd: Number(secondsToLoopEnd.toFixed(3)),
+            ticks: loopRunwayCoverage?.total ?? 0,
+            timeSec: Number(timeSec.toFixed(3)),
+          });
+        }
+        return false;
+      }
+
+      const queued = fetchBatch(missing, activeTopics, "loopback-lookahead");
+      if (queued && isMcapLatencyDebugEnabled()) {
+        const detail = {
+          activeTopics: activeTopics.length,
+          loopStartSec: Number(loopStartSec.toFixed(3)),
+          secondsToLoopEnd: Number(secondsToLoopEnd.toFixed(3)),
+          ticks: missing.length,
+          timeSec: Number(timeSec.toFixed(3)),
+        };
+        markMcapLatencyEvent("loopback runway request", detail);
+        recordMcapLatencyMetric(
+          "loopback runway requested ticks",
+          missing.length,
+          detail,
+        );
+      }
+
+      return queued;
+    },
+    [collectMissingTicksForTopics, fetchBatch, store],
+  );
+
   const runPausedIdleWarmup = useCallback((): boolean => {
     const currentIndex = indexRef.current;
     if (
@@ -1234,6 +1339,10 @@ export function useRegisterMcapDataStream({
       startupCoverage.covered < startupCoverage.total
     ) {
       return false;
+    }
+
+    if (warmLoopStartRunway(timeSec, activeTopics)) {
+      return true;
     }
 
     const endSec = timeSec + PLAYBACK_POLICY.pausedWarmupRunwaySeconds;
@@ -1295,6 +1404,7 @@ export function useRegisterMcapDataStream({
     getActiveTopics,
     source,
     store,
+    warmLoopStartRunway,
   ]);
 
   const schedulePausedIdleWarmup = useCallback(
@@ -1401,6 +1511,7 @@ export function useRegisterMcapDataStream({
     let lastCommitGapEventMs = 0;
     let lastCommitWallMs: number | null = null;
     let lastCommittedTickKey: string | null = null;
+    let lastLoopbackTargetStateKey: string | null = null;
 
     const stream: PlaybackStream = {
       id: STREAM_ID,
@@ -1473,6 +1584,29 @@ export function useRegisterMcapDataStream({
           if (stateKey !== lastBufferStateKey) {
             lastBufferStateKey = stateKey;
             markMcapLatencyEvent("playback buffer state", detail);
+          }
+          const currentPlayheadSec = getPlayhead(store);
+          if (
+            isLoopbackTarget(
+              timeSec,
+              currentPlayheadSec,
+              getLoopStart(store),
+              getLoopEnd(store),
+              nativeStep,
+            )
+          ) {
+            const loopbackStateKey = `${stateKey}:${currentPlayheadSec.toFixed(
+              3,
+            )}`;
+            if (loopbackStateKey !== lastLoopbackTargetStateKey) {
+              lastLoopbackTargetStateKey = loopbackStateKey;
+              markMcapLatencyEvent("playback loopback target buffer state", {
+                ...detail,
+                currentPlayheadSec: Number(currentPlayheadSec.toFixed(3)),
+                loopEndSec: Number(getLoopEnd(store).toFixed(3)),
+                loopStartSec: Number(getLoopStart(store).toFixed(3)),
+              });
+            }
           }
           recordMcapLatencyMetric(`buffer state ${state}`, 1, detail);
           if (getIsPlaying(store)) {
@@ -1582,6 +1716,62 @@ export function useRegisterMcapDataStream({
     // chunks instead of creating one tiny worker request per source tick.
     const unsubPlayhead = subscribePlayhead(store, () => {
       const timeSec = getPlayhead(store);
+      const previousPlayheadSec = lastObservedPlayheadSecRef.current;
+      const loopStartSec = getLoopStart(store);
+      const loopEndSec = getLoopEnd(store);
+      const movedBackward =
+        previousPlayheadSec !== null &&
+        timeSec + nativeStep < previousPlayheadSec;
+      const didLoopback =
+        previousPlayheadSec !== null &&
+        isCommittedLoopback(
+          previousPlayheadSec,
+          timeSec,
+          loopStartSec,
+          loopEndSec,
+          nativeStep,
+        );
+      lastObservedPlayheadSecRef.current = timeSec;
+      if (movedBackward) {
+        nextLookaheadRefreshTimeRef.current = 0;
+      }
+      if (
+        didLoopback &&
+        previousPlayheadSec !== null &&
+        isMcapLatencyDebugEnabled()
+      ) {
+        const activeTopics = getActiveTopics();
+        const activeBlockingTopics = getActiveBlockingTopics();
+        const loopStartCoverage = bufferWindowCoverage({
+          activeTopics: activeBlockingTopics,
+          caches,
+          index,
+          lookaheadSeconds: PLAYBACK_POLICY.lookaheadSeconds,
+          maxTicks: PLAYBACK_POLICY.maxPrefetchBatch,
+          timeSec: loopStartSec,
+        });
+        markMcapLatencyEvent("playback loopback committed", {
+          activeTopics: activeTopics.length,
+          blockingTopics: activeBlockingTopics.length,
+          coveredTicks: loopStartCoverage?.covered ?? 0,
+          loopEndSec: Number(loopEndSec.toFixed(3)),
+          loopStartSec: Number(loopStartSec.toFixed(3)),
+          previousPlayheadSec: Number(previousPlayheadSec.toFixed(3)),
+          runwayTicks: loopStartCoverage?.total ?? 0,
+          timeSec: Number(timeSec.toFixed(3)),
+        });
+        finishPlaybackStallWindow(
+          playbackStallWindowRef.current,
+          "loopback-restart",
+          previousPlayheadSec,
+        );
+        playbackStallWindowRef.current = createPlaybackStallWindow(
+          ++playbackStallSessionIdRef.current,
+          timeSec,
+          index.durationSec,
+          "loopback",
+        );
+      }
       if (timeSec < nextLookaheadRefreshTimeRef.current) return;
       nextLookaheadRefreshTimeRef.current =
         timeSec + PLAYBACK_POLICY.prefetchRefreshSeconds;
@@ -1633,6 +1823,11 @@ export function useRegisterMcapDataStream({
           timeSec: Number(timeSec.toFixed(3)),
         });
       }
+
+      if (warmLoopStartRunway(timeSec, activeTopics)) {
+        return;
+      }
+
       // Periodic top-up only fills missing lookahead; current-frame publication
       // stays in prefetchLookaheadFrom for mount, seek, and subscription paths.
       fillMissingLookaheadFrom({
@@ -1668,6 +1863,7 @@ export function useRegisterMcapDataStream({
     getActiveBlockingTopics,
     getActiveTopics,
     publishStreamStatuses,
+    warmLoopStartRunway,
   ]);
 
   // Paused-seek: scrub while paused → push or fetch the seeked tick + window.
@@ -1727,6 +1923,7 @@ function createPlaybackStallWindow(
   sessionId: number,
   startPlayheadSec: number,
   durationSec: number,
+  kind: PlaybackStallWindow["kind"] = "first",
 ): PlaybackStallWindow {
   const endPlayheadSec = Math.min(
     startPlayheadSec + PLAYBACK_STALL_MEASUREMENT_SECONDS,
@@ -1735,6 +1932,7 @@ function createPlaybackStallWindow(
   const window: PlaybackStallWindow = {
     ended: false,
     endPlayheadSec,
+    kind,
     loadingWallMs: 0,
     maxStallMs: 0,
     missingWallMs: 0,
@@ -1745,7 +1943,7 @@ function createPlaybackStallWindow(
     startWallMs: mcapLatencyNowMs(),
   };
 
-  markMcapLatencyEvent("playback first 10s stall window started", {
+  markMcapLatencyEvent(`${playbackStallWindowPrefix(kind)} started`, {
     endPlayheadSec: Number(endPlayheadSec.toFixed(3)),
     measurementSec: Number((endPlayheadSec - startPlayheadSec).toFixed(3)),
     sessionId,
@@ -1864,27 +2062,38 @@ function finishPlaybackStallWindow(
 
   window.ended = true;
   const summary = playbackStallSummary(window, reason, playheadSec, nowMs);
-  markMcapLatencyEvent("playback first 10s stall window finished", summary);
+  const metricPrefix =
+    window.kind === "loopback" ? "playback loopback 10s" : "playback first 10s";
+  markMcapLatencyEvent(
+    `${playbackStallWindowPrefix(window.kind)} finished`,
+    summary,
+  );
   recordMcapLatencyMetric(
-    "playback first 10s stall wall ms",
+    `${metricPrefix} stall wall ms`,
     summary.stallWallMs,
     summary,
   );
   recordMcapLatencyMetric(
-    "playback first 10s max stall ms",
+    `${metricPrefix} max stall ms`,
     summary.maxStallMs,
     summary,
   );
   recordMcapLatencyMetric(
-    "playback first 10s stall count",
+    `${metricPrefix} stall count`,
     summary.stallCount,
     summary,
   );
   recordMcapLatencyMetric(
-    "playback first 10s stall percent",
+    `${metricPrefix} stall percent`,
     summary.stallPercent,
     summary,
   );
+}
+
+function playbackStallWindowPrefix(kind: PlaybackStallWindow["kind"]): string {
+  return kind === "loopback"
+    ? "playback loopback 10s stall window"
+    : "playback first 10s stall window";
 }
 
 function playbackStallSummary(
@@ -1957,6 +2166,36 @@ function deriveMcapPlaybackPolicy(
 
 function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function isCommittedLoopback(
+  previousSec: number,
+  timeSec: number,
+  loopStartSec: number,
+  loopEndSec: number,
+  nativeStepSec: number,
+): boolean {
+  if (loopEndSec <= loopStartSec) return false;
+  const tolerance = Math.max(nativeStepSec * 2, 0.05);
+  return (
+    previousSec >= loopEndSec - tolerance &&
+    Math.abs(timeSec - loopStartSec) <= tolerance
+  );
+}
+
+function isLoopbackTarget(
+  targetSec: number,
+  currentPlayheadSec: number,
+  loopStartSec: number,
+  loopEndSec: number,
+  nativeStepSec: number,
+): boolean {
+  if (loopEndSec <= loopStartSec) return false;
+  const tolerance = Math.max(nativeStepSec * 2, 0.05);
+  return (
+    currentPlayheadSec >= loopEndSec - tolerance &&
+    Math.abs(targetSec - loopStartSec) <= tolerance
+  );
 }
 
 function nextMcapDataRequestId(operation: McapBandwidthOperation): string {
@@ -2119,13 +2358,14 @@ function distributeWindowToCaches(
   window: McapSynchronizedMessageWindow,
   caches: Map<string, McapTopicCache>,
   requestedTopics: readonly string[],
+  options?: { readonly pinned?: boolean },
 ): void {
   // Seed every requested topic for this tick — null if the backend omitted
   // or returned an empty array — so bufferState resolves and the engine
   // doesn't stall on ticks where a topic has no message.
   for (const topic of requestedTopics) {
     const msgs = window.messagesByTopic[topic];
-    caches.get(topic)?.set(window.timeNs, msgs?.[0] ?? null);
+    caches.get(topic)?.set(window.timeNs, msgs?.[0] ?? null, options);
   }
 }
 
