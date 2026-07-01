@@ -102,7 +102,12 @@ export interface ByteRangeReadResult {
 
 export interface ByteReadDebugLog {
   readonly blockFill: boolean;
-  readonly cacheResult: "coalesced" | "fill-hit" | "fetched" | "request-hit";
+  readonly cacheResult:
+    | "coalesced"
+    | "fill-hit"
+    | "fetched"
+    | "persistent-hit"
+    | "request-hit";
   readonly durationMs: number;
   readonly fetchedBytes: number;
   readonly fillLength: string;
@@ -176,4 +181,11 @@ export interface ByteCacheLayers {
    * In-memory raw byte-range cache used by the default cached byte client.
    */
   readonly memory: ByteRangeCache;
+
+  /**
+   * Persistent byte-range cache shared across execution contexts (main
+   * thread and workers) and page loads. `false` disables the default
+   * Cache API layer; omitting it lets clients construct the default.
+   */
+  readonly persistent?: ByteRangeCache | false;
 }

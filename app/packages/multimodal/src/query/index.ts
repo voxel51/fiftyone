@@ -1,5 +1,6 @@
 import { defaultDecoderRegistry } from "../decoders";
 import {
+  createCacheApiByteRangeCache,
   createCachedByteClient,
   createHttpByteClient,
   createMemoryByteRangeCache,
@@ -31,6 +32,10 @@ export function createMultimodalQueryClient(
       createMemoryByteRangeCache({
         maxSizeBytes: DEFAULT_BYTE_CACHE_SIZE_BYTES,
       }),
+    // Shared across workers and page loads; feature-detected, and `false`
+    // opts a client out entirely.
+    persistent:
+      options.caches?.bytes?.persistent ?? createCacheApiByteRangeCache(),
   };
   const decodedCache =
     options.caches?.decoded ??
