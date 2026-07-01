@@ -20,6 +20,7 @@ export type McapBandwidthOperation =
 
 interface RecordMessageWindowBandwidthOptions {
   readonly operation: McapBandwidthOperation;
+  readonly requestId?: string;
   readonly requestedTicks: number;
   readonly requestedTopics: number;
   readonly windows: readonly McapSynchronizedMessageWindow[];
@@ -40,13 +41,14 @@ interface MessageBucket {
 
 export function recordMcapMessageWindowBandwidth({
   operation,
+  requestId: callerRequestId,
   requestedTicks,
   requestedTopics,
   windows,
 }: RecordMessageWindowBandwidthOptions): void {
   if (!isMcapLatencyDebugEnabled()) return;
 
-  const requestId = bandwidthRequestId(operation);
+  const requestId = callerRequestId ?? bandwidthRequestId(operation);
   const occurrences = new Map<string, number>();
   const messagesByKey = new Map<string, McapDecodedMessage>();
   for (const window of windows) {
