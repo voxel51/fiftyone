@@ -10827,6 +10827,36 @@
             "date_added": "2026-01-22 12:00:00"
         },
         {
+            "base_name": "rex-omni-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Vision-language detector that finds any object you name by predicting quantized coordinate tokens",
+            "source": "https://huggingface.co/IDEA-Research/Rex-Omni",
+            "author": "IDEA Research",
+            "license": "IDEA License 1.0 (research-only); based on Qwen2.5-VL under the Qwen RESEARCH LICENSE",
+            "size_bytes": 8131667992,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rex_omni.RexOmniModel",
+                "config": {
+                    "name_or_path": "IDEA-Research/Rex-Omni",
+                    "output_processor_cls": "fiftyone.utils.rex_omni.RexOmniOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.49.0",
+                    "accelerate"
+                ],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "training_data": [],
+            "date_added": "2026-06-30 00:00:00"
+        },
+        {
             "base_name": "rfdetr-nano-coco-torch",
             "base_filename": null,
             "version": null,
