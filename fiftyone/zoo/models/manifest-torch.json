@@ -11222,6 +11222,57 @@
             ],
             "training_data": [],
             "date_added": "2026-01-28 12:00:00"
+        },
+        {
+            "base_name": "openworld-sam-ade20k-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Extends SAM2 Hiera-Large with BEiT-3 language understanding; returns per-instance binary masks for open-vocabulary queries",
+            "source": "https://huggingface.co/Voxel51/openworld-sam",
+            "author": "Shiting Xiao, et al. (Yale / Google DeepMind)",
+            "license": "Apache 2.0",
+            "size_bytes": 5000000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.openworld_sam.OpenWorldSAMModel",
+                "config": {
+                    "name_or_path": "Voxel51/openworld-sam"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "timm",
+                    "torchscale",
+                    "einops",
+                    "safetensors"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "segmentation",
+                "instance",
+                "panoptic",
+                "zero-shot",
+                "open-vocabulary",
+                "torch",
+                "transformers",
+                "sam2",
+                "ade20k"
+            ],
+            "training_data": [
+                {
+                    "name": "ADE20K-150",
+                    "url": "http://sceneparsing.csail.mit.edu/"
+                }
+            ],
+            "date_added": "2026-06-29 00:00:00"
         }
     ]
 }
