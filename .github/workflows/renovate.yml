@@ -48,5 +48,9 @@ jobs:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           LOG_LEVEL: ${{ inputs.logLevel || 'info' }}
           # Auth for the private Artifact Registry index (empty/no-op in OSS).
+          # The token rides in RENOVATE_SECRETS, which Renovate redacts from
+          # its logs, rather than inline in the host rule.
+          RENOVATE_SECRETS: >-
+            {"GAR_TOKEN":"${{ steps.gar.outputs.access_token }}"}
           RENOVATE_HOST_RULES: >-
-            [{"matchHost":"us-central1-python.pkg.dev","hostType":"pypi","username":"oauth2accesstoken","password":"${{ steps.gar.outputs.access_token }}"}]
+            [{"matchHost":"us-central1-python.pkg.dev","hostType":"pypi","username":"oauth2accesstoken","password":"{{ secrets.GAR_TOKEN }}"}]
