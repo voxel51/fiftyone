@@ -125,6 +125,14 @@ export async function readMcapSynchronizedMessageBatch({
           source: request.source,
           timeline,
         }),
+      // Selected candidates name their chunks exactly, so the byte layer can
+      // pipeline those chunk fetches while decoding walks them serially.
+      onCandidatesSelected: (selected) =>
+        void reader.prefetchChunkData?.({
+          chunkStartOffsets: selected.map(
+            (candidate) => candidate.chunkStartOffset,
+          ),
+        }),
       selectTieBreaker: compareIndexedCandidateTieBreaker,
       timeline,
       topics: request.topics,
@@ -373,6 +381,7 @@ async function decodeWindowsFromCandidates<
 >({
   candidates,
   decodeCandidate,
+  onCandidatesSelected,
   selectTieBreaker,
   timeline,
   topics,
@@ -382,6 +391,7 @@ async function decodeWindowsFromCandidates<
   readonly decodeCandidate: (
     candidate: Candidate,
   ) => Promise<McapDecodedMessage>;
+  readonly onCandidatesSelected?: (selected: readonly Candidate[]) => void;
   readonly selectTieBreaker: (left: Candidate, right: Candidate) => number;
   readonly timeline: McapTimelineStrategy;
   readonly topics: readonly string[];
@@ -390,18 +400,50 @@ async function decodeWindowsFromCandidates<
     readonly streamPolicies: McapSynchronizedMessageWindow["streamPolicies"];
   }[];
 }): Promise<readonly McapSynchronizedMessageWindow[]> {
+  // Selection is synchronous, so resolve every window's candidate set before
+  // any decode read starts: the union names exactly which messages (and
+  // therefore chunks) this batch touches.
+  const selections = windowBounds.map(({ timeNs, streamPolicies }) => ({
+    selectedByTopic: topics.map(
+      (topic) =>
+        [
+          topic,
+          selectCandidatesForTopic(
+            candidates.get(topic) ?? [],
+            timeNs,
+            streamPolicies[topic],
+            selectTieBreaker,
+          ),
+        ] as const,
+    ),
+    streamPolicies,
+    timeNs,
+  }));
+
+  if (onCandidatesSelected) {
+    const seen = new Set<Candidate>();
+    const union: Candidate[] = [];
+    for (const selection of selections) {
+      for (const [, selected] of selection.selectedByTopic) {
+        for (const candidate of selected) {
+          if (!seen.has(candidate)) {
+            seen.add(candidate);
+            union.push(candidate);
+          }
+        }
+      }
+    }
+    if (union.length > 0) {
+      onCandidatesSelected(union);
+    }
+  }
+
   return Promise.all(
-    windowBounds.map(async ({ timeNs, streamPolicies }) => {
+    selections.map(async ({ selectedByTopic, streamPolicies, timeNs }) => {
       const messagesByTopic: Record<string, readonly McapDecodedMessage[]> = {};
       const messages: McapDecodedMessage[] = [];
 
-      for (const topic of topics) {
-        const selected = selectCandidatesForTopic(
-          candidates.get(topic) ?? [],
-          timeNs,
-          streamPolicies[topic],
-          selectTieBreaker,
-        );
+      for (const [topic, selected] of selectedByTopic) {
         const decoded = await Promise.all(selected.map(decodeCandidate));
         messagesByTopic[topic] = decoded;
         messages.push(...decoded);
@@ -459,6 +501,16 @@ async function collectIndexedCandidates({
     endTimeNs,
     startTimeNs,
     topics,
+  });
+
+  // The index scan reads one small exact range per (chunk, channel),
+  // serially — a line of round trips on remote transports. Awaiting the
+  // pipelined region warm-up first turns those reads into cache hits.
+  await reader.prefetchWindow?.({
+    endTimeNs: indexedRequest.endTimeNs,
+    includeChunkData: false,
+    startTimeNs: indexedRequest.startTimeNs,
+    topics: indexedRequest.topics,
   });
 
   for await (const message of reader.readIndexedMessageTimes(indexedRequest)) {
