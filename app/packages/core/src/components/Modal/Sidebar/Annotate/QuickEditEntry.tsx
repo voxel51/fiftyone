@@ -1,12 +1,9 @@
 import { useAnnotationController } from "@fiftyone/annotation";
-import { ModalMode, useModalMode } from "@fiftyone/state";
 import { Stack } from "@mui/material";
 import { Button, Clickable, Icon, IconName, Size } from "@voxel51/voodo";
-import { type PrimitiveAtom, useSetAtom } from "jotai";
 import { FC, ReactNode } from "react";
 import useCanAnnotate from "./useCanAnnotate";
 import { useCanAnnotateField } from "./useCanAnnotateField";
-import { usePrimitiveEditOriginMode } from "./Edit/useActivePrimitive";
 
 type QuickEditActionType = "icon" | "button";
 
@@ -34,15 +31,12 @@ const QuickEditAction: FC<{
 }> = ({ labelId, onClick, path, type = "icon" }) => {
   const canAnnotateField = useCanAnnotateField(path);
   const { enterAnnotationMode } = useAnnotationController();
-  const currentMode = useModalMode();
-  const [, setPrimitiveEditOriginMode] = usePrimitiveEditOriginMode();
 
   if (!canAnnotateField) {
     return null;
   }
 
   const handleClick = () => {
-    setPrimitiveEditOriginMode(currentMode as ModalMode);
     enterAnnotationMode(path, labelId);
     onClick?.();
   };

@@ -12,15 +12,10 @@ import { Row } from "./Components";
 
 import { useLabelsCount } from "../useLabels";
 import * as fos from "@fiftyone/state";
-import { isGeneratedView, ModalMode } from "@fiftyone/state";
+import { isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { useSchemaManagerModal } from "../SchemaManager/hooks";
 import { useAnnotationContext } from "./useAnnotationContext";
-import {
-  useActivePrimitive,
-  usePrimitiveEditOriginMode,
-} from "./useActivePrimitive";
-
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
 import useExit from "./useExit";
@@ -137,24 +132,16 @@ const Header = () => {
   const color = useColor(selected?.overlay ?? undefined);
 
   const { exitAnnotationMode } = useAnnotationController();
-  const [activePrimitive] = useActivePrimitive();
-  const [primitiveEditOriginMode, clearPrimitiveEditOriginMode] =
-    usePrimitiveEditOriginMode();
   const onExit = useExit();
   const { scene } = useLighter();
   const { deactivateDetectionMode } = useDetectionMode();
   const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
 
-  // In patches view with single label, clicking back should go to explore mode.
-  // Also exit to explore when a primitive edit was initiated from explore mode.
   const isPatches = useRecoilValue(fos.isPatchesView);
   const labelCount = useLabelsCount();
-  const shouldExitToExplore =
-    (isPatches && labelCount === 1) ||
-    (activePrimitive !== null && primitiveEditOriginMode === ModalMode.EXPLORE);
+  const shouldExitToExplore = isPatches && labelCount === 1;
 
   const handleExit = useCallback(() => {
-    clearPrimitiveEditOriginMode(null);
     if (shouldExitToExplore) {
       exitAnnotationMode();
     }

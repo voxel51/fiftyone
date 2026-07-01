@@ -1,17 +1,8 @@
 import { atom, useAtom } from "jotai";
 import { useMemo } from "react";
 import { useIsPrimitiveField } from "../SchemaManager/hooks";
-import { ModalMode } from "@fiftyone/state";
 
-// the path of the primitive that is currently being edited
 export const activePrimitiveAtom = atom<string | null>(null);
-
-// the mode from which the primitive edit was initiated
-export const primitiveEditOriginModeAtom = atom<ModalMode | null>(null);
-
-export const usePrimitiveEditOriginMode = () => {
-  return useAtom(primitiveEditOriginModeAtom);
-};
 
 export const useActivePrimitive = () => {
   return useAtom(activePrimitiveAtom);
