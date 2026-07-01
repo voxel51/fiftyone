@@ -513,7 +513,7 @@ export default function useLabels() {
       }
     }
 
-    currentLabels.forEach((label) => {
+    currentLabelsRef.current.forEach((label) => {
       removeOverlay(label.overlay.id, false);
     });
 

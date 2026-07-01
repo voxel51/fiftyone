@@ -143,9 +143,11 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
           listSchemaResponse.active_label_schemas.includes(field);
 
         // Fast path: the field is already provisioned and active on the
-        // server. Skip the redundant initializeSchema/activateSchemas calls
-        // to avoid clobbering the existing schema state.
+        // server. Skip the redundant initializeSchema/activateSchemas
+        // round-trips and sync local state directly from the initial fetch.
         if (hasSchema && isAlreadyActive) {
+          setLabelSchema(listSchemaResponse.label_schemas);
+          setActiveSchemaPaths(listSchemaResponse.active_label_schemas);
           return {
             status: InitializationStatus.Success,
           };
