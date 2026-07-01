@@ -2,6 +2,7 @@ import type { PayloadDescriptor } from "../../decoders";
 import type { StreamInventory } from "../../schemas/v1";
 import {
   FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
+  FOXGLOVE_GRID_PAYLOAD,
   FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
   FOXGLOVE_POINT_CLOUD_PAYLOAD,
   FOXGLOVE_SCENE_UPDATE_PAYLOAD,
@@ -88,6 +89,13 @@ export function isPointCloudStream(topic: StreamInventory): boolean {
  */
 export function isSceneUpdateStream(topic: StreamInventory): boolean {
   return hasPayload(topic, FOXGLOVE_SCENE_UPDATE_PAYLOAD);
+}
+
+/**
+ * Returns whether a stream inventory item is a supported Foxglove Grid stream.
+ */
+export function isGridStream(topic: StreamInventory): boolean {
+  return hasPayload(topic, FOXGLOVE_GRID_PAYLOAD);
 }
 
 /**

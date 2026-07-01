@@ -40,6 +40,7 @@ const TILE_BY_TYPE: Record<
     icon: IconName.Embeddings,
     Tile: Mcap3dTile,
     sourceTypes: [
+      MCAP_SOURCE_TYPE.MAP_LAYER,
       MCAP_SOURCE_TYPE.POINT_CLOUD,
       MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
     ],

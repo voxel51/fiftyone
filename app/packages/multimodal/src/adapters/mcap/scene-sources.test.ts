@@ -13,6 +13,8 @@ describe("mcapSceneSources", () => {
       createTopic("/LIDAR_TOP", "foxglove.PointCloud"),
       createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
       createTopic("/markers/annotations", "foxglove.SceneUpdate"),
+      createTopic("/map", "foxglove.Grid"),
+      createTopic("/drivable_area", "foxglove.Grid"),
       createTopic("/tf", "foxglove.FrameTransform"),
       createTopic("/diagnostics", "diagnostic_msgs/DiagnosticArray", "ros1"),
     ]);
@@ -37,6 +39,16 @@ describe("mcapSceneSources", () => {
         id: "/markers/annotations",
         type: MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
         label: "markers/annotations",
+      },
+      {
+        id: "/map",
+        type: MCAP_SOURCE_TYPE.MAP_LAYER,
+        label: "map",
+      },
+      {
+        id: "/drivable_area",
+        type: MCAP_SOURCE_TYPE.MAP_LAYER,
+        label: "drivable_area",
       },
     ]);
   });
@@ -96,6 +108,7 @@ describe("mcapStreamPolicies", () => {
         createTopic("/cam/annotations", "foxglove.ImageAnnotations"),
         createTopic("/markers/annotations", "foxglove.SceneUpdate"),
         createTopic("/lidar", "foxglove.PointCloud"),
+        createTopic("/map", "foxglove.Grid"),
       ]),
     );
 
@@ -111,6 +124,11 @@ describe("mcapStreamPolicies", () => {
       mode: PlaybackSyncMode.LATEST,
     });
     expect(policies["/lidar"]).toEqual({
+      mode: PlaybackSyncMode.LATEST,
+    });
+    // A one-shot static /map stays resolvable for the whole run through the
+    // same unbounded lookback.
+    expect(policies["/map"]).toEqual({
       mode: PlaybackSyncMode.LATEST,
     });
   });

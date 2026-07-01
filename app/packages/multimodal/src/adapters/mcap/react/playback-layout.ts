@@ -167,7 +167,8 @@ export function resolvePlaybackLayout({
   const has3d = sources.some(
     (source) =>
       source.type === MCAP_SOURCE_TYPE.POINT_CLOUD ||
-      source.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
+      source.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION ||
+      source.type === MCAP_SOURCE_TYPE.MAP_LAYER,
   );
 
   const imageTileCount =

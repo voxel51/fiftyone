@@ -59,13 +59,17 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
         .map((s) => s.id),
     [sources],
   );
+  // Map layers are overlays like annotations: playback must not stall on a
+  // one-shot multi-megabyte /map fetch, and a static map is *supposed* to be
+  // older than the playhead, so it never earns a stale-media warning.
   const blockingTopics = useMemo(
     () =>
       sources
         .filter(
           (s) =>
             s.type !== MCAP_SOURCE_TYPE.IMAGE_ANNOTATION &&
-            s.type !== MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
+            s.type !== MCAP_SOURCE_TYPE.SCENE_ANNOTATION &&
+            s.type !== MCAP_SOURCE_TYPE.MAP_LAYER,
         )
         .map((s) => s.id),
     [sources],
