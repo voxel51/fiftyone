@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 import type {
+  GridVisualization,
   PointCloudScalarField,
   PointCloudVisualization,
   RgbaColor,
@@ -208,6 +209,18 @@ export interface SceneAnnotationPanelLayer {
   readonly id: string;
 }
 
+/**
+ * One grid (map) layer rendered as a textured ground plane in the shared
+ * scene. `contentTimeNs` identifies the source message so the GPU texture
+ * survives playback re-delivering the same message in new wrapper objects.
+ */
+export interface GridPanelLayer {
+  readonly contentTimeNs?: bigint;
+  readonly frame: GridVisualization;
+  readonly frameTransform?: PointCloudFrameTransform;
+  readonly id: string;
+}
+
 export interface PointCloudPanelRenderStats {
   readonly annotationCubeCount: number;
   readonly annotationEntityCount: number;
@@ -217,6 +230,7 @@ export interface PointCloudPanelRenderStats {
   readonly cameraPoseSource: "controlled" | "fitted" | "none";
   readonly declaredPointCount: number;
   readonly finitePointCount: number;
+  readonly gridLayerCount: number;
   readonly layerCount: number;
   readonly renderedPointCount: number;
 }
@@ -231,6 +245,7 @@ export interface PointCloudPanelProps {
   readonly colorBy?: PointCloudColorBy;
   readonly fit?: "initial" | "frame" | "never";
   readonly annotationLayers?: readonly SceneAnnotationPanelLayer[];
+  readonly gridLayers?: readonly GridPanelLayer[];
   readonly layers: readonly PointCloudPanelLayer[];
   readonly maxRenderedPoints?: number;
   readonly onCameraPoseChange?: (
@@ -256,6 +271,7 @@ export function PointCloudPanel({
   className,
   colorBy,
   fit = "initial",
+  gridLayers = [],
   layers,
   maxRenderedPoints = DEFAULT_MAX_RENDERED_POINTS,
   onCameraPoseChange,
@@ -287,8 +303,10 @@ export function PointCloudPanel({
 
   const frameFitPose = useMemo(
     () =>
-      cameraPoseForBounds(sceneBoundsForLayers(renderLayers, annotationLayers)),
-    [annotationLayers, renderLayers],
+      cameraPoseForBounds(
+        sceneBoundsForLayers(renderLayers, annotationLayers, gridLayers),
+      ),
+    [annotationLayers, gridLayers, renderLayers],
   );
   const [initialFitPose, setInitialFitPose] =
     useState<PointCloudCameraPose | null>(null);
@@ -337,7 +355,8 @@ export function PointCloudPanel({
   const annotationCubeCount = annotationPrimitiveSummary.cubeCount;
   const annotationPrimitiveCount = annotationPrimitiveSummary.totalCount;
   const hasPointCloudLayers = layers.length > 0;
-  const hasSceneLayers = hasPointCloudLayers || annotationLayers.length > 0;
+  const hasSceneLayers =
+    hasPointCloudLayers || annotationLayers.length > 0 || gridLayers.length > 0;
   const requestFocusScene = useCallback(() => {
     setFocusSceneRequestKey((current) => current + 1);
   }, []);
@@ -354,6 +373,7 @@ export function PointCloudPanel({
         cameraPoseSource,
         declaredPointCount,
         finitePointCount,
+        gridLayerCount: gridLayers.length,
         layerCount: layers.length,
         renderedPointCount: renderLayers.reduce(
           (sum, layer) => sum + layer.data.renderedPointCount,
@@ -372,6 +392,7 @@ export function PointCloudPanel({
     effectiveCameraPose,
     finitePointCount,
     cameraPoseSource,
+    gridLayers.length,
     hasSceneLayers,
     layers.length,
     onRenderStats,
@@ -392,6 +413,13 @@ export function PointCloudPanel({
           onCameraPoseChange={onCameraPoseChange}
           showGizmo={showGizmo}
         >
+          {gridLayers.map((layer, index) => (
+            <GridSceneLayer
+              key={layer.id}
+              layer={layer}
+              renderOrder={index - gridLayers.length}
+            />
+          ))}
           {renderLayers.map(({ data, layer }) => (
             <PointCloudSceneLayer
               key={layer.id}
@@ -434,7 +462,9 @@ export function PointCloudPanel({
         <div style={styles.hud}>
           {hasPointCloudLayers
             ? pointCountLabel(finitePointCount, declaredPointCount)
-            : annotationCountLabel(annotationPrimitiveSummary)}
+            : annotationLayers.length > 0
+              ? annotationCountLabel(annotationPrimitiveSummary)
+              : gridCountLabel(gridLayers.length)}
         </div>
       ) : null}
       {warning ? <div style={styles.warning}>{warning}</div> : null}
@@ -557,6 +587,95 @@ function SceneAnnotationLayer({
       ))}
     </group>
   );
+}
+
+function GridSceneLayer({
+  layer,
+  renderOrder,
+}: {
+  readonly layer: GridPanelLayer;
+  readonly renderOrder: number;
+}) {
+  const invalidate = useThree((state) => state.invalidate);
+  const { frame, frameTransform } = layer;
+  const objectTransform = useMemo(
+    () => pointCloudObjectTransform(frameTransform),
+    [frameTransform],
+  );
+  const poseTransform = useMemo(
+    () => scenePoseObjectTransform(frame.pose),
+    [frame.pose],
+  );
+  // The texture is keyed on message identity (layer id + content time), not
+  // on the frame object: playback re-delivers the same grid message in new
+  // wrapper objects every batch, and re-uploading a multi-megabyte map
+  // texture per batch would stall the scene. `frame` is therefore
+  // deliberately omitted from the deps (the lint disable below); it only
+  // participates as the fallback key when a layer carries no content time.
+  const texture = useMemo(
+    () => createGridTexture(frame),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layer.id, layer.contentTimeNs ?? frame],
+  );
+
+  useEffect(() => () => texture.dispose(), [texture]);
+  useEffect(() => {
+    invalidate();
+  }, [invalidate, objectTransform, poseTransform, renderOrder, texture]);
+
+  const width = frame.columnCount * frame.cellSize[0];
+  const height = frame.rowCount * frame.cellSize[1];
+  if (!isFinitePositiveNumber(width) || !isFinitePositiveNumber(height)) {
+    return null;
+  }
+
+  // Cast, not a type: @react-three/fiber's bundled three types disagree with
+  // the app's pinned three version (its `Texture` requires `isTextureArray`,
+  // which our DataTexture predates), so a structurally-valid texture fails
+  // the material prop check. Runtime is unaffected; drop this cast when the
+  // two three versions are aligned. Same workaround as SceneTextSprite.
+  const textureMap = texture as never;
+
+  return (
+    <group
+      position={objectTransform.position}
+      quaternion={objectTransform.quaternion}
+    >
+      <group
+        position={poseTransform.position}
+        quaternion={poseTransform.quaternion}
+      >
+        {/* The grid pose anchors the plane's origin corner (+x columns,
+            +y rows); PlaneGeometry is centered, hence the half-size offset.
+            depthWrite stays off so coplanar map layers composite by
+            renderOrder instead of z-fighting. */}
+        <mesh position={[width / 2, height / 2, 0]} renderOrder={renderOrder}>
+          <planeGeometry args={[width, height]} />
+          <meshBasicMaterial
+            depthWrite={false}
+            map={textureMap}
+            side={THREE.DoubleSide}
+            transparent
+          />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+function createGridTexture(frame: GridVisualization): THREE.DataTexture {
+  const texture = new THREE.DataTexture(
+    frame.rgba,
+    frame.columnCount,
+    frame.rowCount,
+    THREE.RGBAFormat,
+  );
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+
+  return texture;
 }
 
 function scenePrimitiveKey(
@@ -839,6 +958,8 @@ function SceneTextSprite({
 
   const transform = scenePoseObjectTransform(textPrimitive.pose);
   const [, , , alpha] = textPrimitive.color ?? DEFAULT_SCENE_TEXT_COLOR;
+  // Cast, not a type: fiber's bundled three `Texture` type is out of sync
+  // with the app's pinned three version — see GridSceneLayer's textureMap.
   const textureMap = spriteTexture.texture as never;
   const displayHeight = textPrimitive.scaleInvariant
     ? Math.max(SCENE_TEXT_MIN_CANVAS_FONT_SIZE, textPrimitive.fontSize || 0)
@@ -1696,10 +1817,16 @@ function scenePoseObjectTransform(
  * Combined world-space bounds for all current layers. Each layer's geometry
  * bounds start in its local point-cloud frame, so transforms must be applied
  * before the boxes can be unioned for camera fitting.
+ *
+ * Grid (map) layers can span hundreds of meters, so they never widen bounds
+ * that other content already established — otherwise the camera fit would
+ * frame the whole city map instead of the ego vehicle. They only drive the
+ * fit when they are the only visible content.
  */
 function sceneBoundsForLayers(
   layers: readonly PointCloudRenderLayer[],
   annotationLayers: readonly SceneAnnotationPanelLayer[],
+  gridLayers: readonly GridPanelLayer[] = [],
 ): THREE.Box3 | null {
   const sceneBounds = new THREE.Box3();
   sceneBounds.makeEmpty();
@@ -1713,8 +1840,39 @@ function sceneBoundsForLayers(
       sceneBounds.union(bounds);
     }
   }
+  if (!sceneBounds.isEmpty()) {
+    return sceneBounds;
+  }
+
+  for (const layer of gridLayers) {
+    const bounds = boundsForGridLayer(layer);
+    if (bounds) {
+      sceneBounds.union(bounds);
+    }
+  }
 
   return sceneBounds.isEmpty() ? null : sceneBounds;
+}
+
+function boundsForGridLayer(layer: GridPanelLayer): THREE.Box3 | null {
+  const width = layer.frame.columnCount * layer.frame.cellSize[0];
+  const height = layer.frame.rowCount * layer.frame.cellSize[1];
+  if (!isFinitePositiveNumber(width) || !isFinitePositiveNumber(height)) {
+    return null;
+  }
+
+  return new THREE.Box3(
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(width, height, 0),
+  )
+    .applyMatrix4(
+      matrixFromObjectTransform(scenePoseObjectTransform(layer.frame.pose)),
+    )
+    .applyMatrix4(
+      matrixFromObjectTransform(
+        pointCloudObjectTransform(layer.frameTransform),
+      ),
+    );
 }
 
 function boundsForAnnotationLayer(
@@ -2133,6 +2291,12 @@ function annotationCountLabel(summary: SceneAnnotationPrimitiveSummary) {
   }
 
   return `${formatCount(summary.totalCount)} annotations`;
+}
+
+function gridCountLabel(gridLayerCount: number) {
+  return `${formatCount(gridLayerCount)} map ${
+    gridLayerCount === 1 ? "layer" : "layers"
+  }`;
 }
 
 function formatCount(value: number) {

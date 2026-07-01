@@ -317,6 +317,128 @@ describe("PointCloudPanel", () => {
     expect(screen.queryByText("No finite points")).toBeNull();
   });
 
+  it("renders grid layers as corner-anchored textured planes", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const { container } = render(
+      <PointCloudPanel
+        gridLayers={[
+          {
+            contentTimeNs: 100n,
+            frame: {
+              cellSize: [0.5, 1],
+              columnCount: 4,
+              coordinateFrameId: "map",
+              kind: VISUALIZATION_KIND.GRID,
+              pose: {
+                position: [920, 1300, 0],
+                quaternion: [0, 0, 0, 1],
+              },
+              rgba: new Uint8Array(4 * 2 * 4),
+              rowCount: 2,
+            },
+            frameTransform: {
+              rotation: new THREE.Quaternion(0, 0, 0, 1),
+              sourceFrameId: "map",
+              targetFrameId: "base_link",
+              translation: new THREE.Vector3(-900, -1280, 0),
+            },
+            id: "/map",
+          },
+        ]}
+        layers={[]}
+      />,
+    );
+
+    // 4 columns x 0.5m and 2 rows x 1m => a 2x2m plane whose center sits
+    // half a size away from the pose's origin corner.
+    const plane = container.querySelector("planegeometry");
+    expect(plane?.getAttribute("args")).toBe("2,2");
+    const mesh = container.querySelector("mesh");
+    expect(mesh?.getAttribute("position")).toBe("1,1,0");
+    expect(mesh?.getAttribute("renderOrder")).toBe("-1");
+
+    const groups = Array.from(container.querySelectorAll("group"));
+    expect(
+      groups.some((group) => group.getAttribute("position") === "-900,-1280,0"),
+    ).toBe(true);
+    expect(
+      groups.some((group) => group.getAttribute("position") === "920,1300,0"),
+    ).toBe(true);
+
+    // Grid-only scenes still get a fitted camera and a HUD label.
+    expect(
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose"),
+    ).not.toBe("");
+    expect(screen.getByText("1 map layer")).toBeTruthy();
+    expect(screen.queryByText("No finite points")).toBeNull();
+  });
+
+  it("orders coexisting grid planes under point clouds without widening camera bounds", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const { container } = render(
+      <PointCloudPanel
+        gridLayers={[
+          {
+            frame: {
+              cellSize: [100, 100],
+              columnCount: 10,
+              kind: VISUALIZATION_KIND.GRID,
+              pose: {
+                position: [0, 0, 0],
+                quaternion: [0, 0, 0, 1],
+              },
+              rgba: new Uint8Array(10 * 10 * 4),
+              rowCount: 10,
+            },
+            id: "/map",
+          },
+          {
+            frame: {
+              cellSize: [0.1, 0.1],
+              columnCount: 2,
+              kind: VISUALIZATION_KIND.GRID,
+              pose: {
+                position: [0, 0, 0],
+                quaternion: [0, 0, 0, 1],
+              },
+              rgba: new Uint8Array(2 * 2 * 4),
+              rowCount: 2,
+            },
+            id: "/drivable_area",
+          },
+        ]}
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 1,
+              positions: new Float32Array([1, 2, 3]),
+            },
+            id: "/points",
+          },
+        ]}
+        showHud={false}
+      />,
+    );
+
+    // Coplanar map layers draw in selection order beneath other content.
+    const meshes = Array.from(container.querySelectorAll("mesh"));
+    expect(meshes.map((mesh) => mesh.getAttribute("renderOrder"))).toEqual([
+      "-2",
+      "-1",
+    ]);
+
+    // The 1km map plane must not drag the camera fit away from the cloud.
+    const cameraPose = JSON.parse(
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
+        "{}",
+    ) as { readonly target?: readonly number[] };
+    expect(cameraPose.target).toEqual([1, 2, 3]);
+  });
+
   it("passes controlled camera pose through to the base scene", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const onCameraPoseChange = vi.fn();
