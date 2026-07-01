@@ -2,6 +2,7 @@ import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { DecodeResult } from "../../query/decode";
 import type { PlaybackSyncMode, StreamInventory } from "../../schemas/v1";
 import type { McapFrameTransformSet } from "./frame-transform-types";
+import type { McapLaneTransportSnapshot } from "./worker/transport-meter";
 
 /**
  * MCAP timeline selected as the playback clock/time track.
@@ -388,6 +389,15 @@ export interface McapResourceClient {
    * Releases adapter-owned caches/readers/workers.
    */
   dispose(): void;
+
+  /**
+   * Subscribes to cumulative network-transport snapshots from worker-backed
+   * read lanes. Inline clients (tests, workers themselves) omit this;
+   * network-health consumers must treat it as optional.
+   */
+  subscribeTransport?(
+    listener: (sample: McapLaneTransportSnapshot) => void,
+  ): () => void;
 
   /**
    * Streams decoded messages for the requested topics and time bounds.

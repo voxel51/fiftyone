@@ -4,6 +4,10 @@ import { hydrateMcapFrameTransformSet } from "../frame-transforms";
 import { isMcapLatencyDebugEnabled } from "../mcap-debug-flags";
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
+import type {
+  McapLaneTransportSnapshot,
+  McapTransportSnapshot,
+} from "./transport-meter";
 import { workerFetchParameters } from "./worker-resource-client";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
@@ -67,11 +71,15 @@ export function createWorkerMcapResourceClient(
 class WorkerMcapResourceClient implements McapResourceClient {
   private activeSourceKey = "";
   private disposed = false;
+  private readonly transportListeners = new Set<
+    (sample: McapLaneTransportSnapshot) => void
+  >();
   private readonly foregroundLane: WorkerLane = {
     name: "foreground",
     transport: new McapPlaybackWorkerTransport(
       (sourceKey) => this.activeSourceKey === sourceKey,
       recordMcapWorkerAttribution,
+      (snapshot) => this.emitTransport("foreground", snapshot),
     ),
   };
   private readonly idleLane: WorkerLane = {
@@ -79,6 +87,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     transport: new McapPlaybackWorkerTransport(
       (sourceKey) => this.activeSourceKey === sourceKey,
       recordMcapWorkerAttribution,
+      (snapshot) => this.emitTransport("idle", snapshot),
     ),
   };
 
@@ -88,7 +97,27 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   dispose() {
     this.disposed = true;
+    this.transportListeners.clear();
     this.resetWorkers("MCAP worker disposed");
+  }
+
+  subscribeTransport(
+    listener: (sample: McapLaneTransportSnapshot) => void,
+  ): () => void {
+    this.transportListeners.add(listener);
+    return () => {
+      this.transportListeners.delete(listener);
+    };
+  }
+
+  private emitTransport(lane: WorkerLaneName, snapshot: McapTransportSnapshot) {
+    if (this.transportListeners.size === 0) {
+      return;
+    }
+    const sample: McapLaneTransportSnapshot = { lane, snapshot };
+    for (const listener of this.transportListeners) {
+      listener(sample);
+    }
   }
 
   async *readDecodedMessages(

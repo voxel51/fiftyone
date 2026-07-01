@@ -12,6 +12,7 @@ import type {
   McapPlaybackWorkerStreamType,
   McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
+import type { McapTransportSnapshot } from "./transport-meter";
 
 type PendingRequest<
   Type extends McapPlaybackWorkerUnaryType = McapPlaybackWorkerUnaryType,
@@ -43,6 +44,7 @@ export class McapPlaybackWorkerTransport {
     private readonly onAttribution?: (
       attribution: McapPlaybackWorkerAttribution,
     ) => void,
+    private readonly onTransport?: (snapshot: McapTransportSnapshot) => void,
   ) {}
 
   /**
@@ -121,6 +123,9 @@ export class McapPlaybackWorkerTransport {
   handleResponse(response: McapPlaybackWorkerResponse) {
     if (response.debugAttribution) {
       this.onAttribution?.(response.debugAttribution);
+    }
+    if ("transport" in response && response.transport) {
+      this.onTransport?.(response.transport);
     }
 
     if (response.ok && "stream" in response) {

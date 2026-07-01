@@ -27,6 +27,7 @@ export function createMultimodalQueryClient(
     blockSizeBytes:
       options.caches?.bytes?.blockSizeBytes ?? defaultByteCacheBlockSizeBytes,
     debug: options.caches?.bytes?.debug,
+    onRead: options.caches?.bytes?.onRead,
     memory:
       options.caches?.bytes?.memory ??
       createMemoryByteRangeCache({

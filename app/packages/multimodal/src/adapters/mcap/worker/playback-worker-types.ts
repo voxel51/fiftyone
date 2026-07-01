@@ -3,6 +3,7 @@ import type {
   McapPlaybackWorkerAttribution,
   McapPlaybackWorkerLaneName,
 } from "./playback-worker-attribution";
+import type { McapTransportSnapshot } from "./transport-meter";
 import type {
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
@@ -160,6 +161,7 @@ export type McapPlaybackWorkerUnaryResponse = {
   readonly id: number;
   readonly ok: true;
   readonly result: McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType];
+  readonly transport?: McapTransportSnapshot;
 };
 
 /**
@@ -180,6 +182,7 @@ export type McapPlaybackWorkerStreamResponse =
       readonly id: number;
       readonly ok: true;
       readonly stream: true;
+      readonly transport?: McapTransportSnapshot;
     };
 
 /**
@@ -190,6 +193,7 @@ export type McapPlaybackWorkerErrorResponse = {
   readonly error: string;
   readonly id: number;
   readonly ok: false;
+  readonly transport?: McapTransportSnapshot;
 };
 
 /**
