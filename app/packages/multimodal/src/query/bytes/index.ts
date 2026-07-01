@@ -6,6 +6,7 @@ export * from "./constants";
 /**
  * Public byte query client factories.
  */
+export { createAdaptiveByteCacheBlockSize } from "./adaptive-block-size";
 export {
   createCachedByteClient,
   defaultByteCacheBlockSizeBytes,
