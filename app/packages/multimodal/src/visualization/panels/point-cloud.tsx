@@ -1,16 +1,26 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree } from "@react-three/fiber";
 import { Icon, IconName, Size } from "@voxel51/voodo";
+import { MeshoptDecoder } from "meshoptimizer";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 import type {
   PointCloudScalarField,
   PointCloudVisualization,
   RgbaColor,
+  SceneArrowPrimitive,
   SceneCubePrimitive,
+  SceneCylinderPrimitive,
+  SceneLinePrimitive,
+  SceneModelPrimitive,
+  ScenePoint3D,
   ScenePose3D,
+  SceneSpherePrimitive,
+  SceneTextPrimitive,
+  SceneTrianglePrimitive,
   SceneUpdateVisualization,
 } from "../../decoders";
 import {
@@ -77,7 +87,37 @@ const CANONICAL_SCALAR_COLOR_FIELDS = [
 ] as const;
 const NEUTRAL_POINT_COLOR = [0.72, 0.76, 0.82] as const;
 const DEFAULT_SCENE_CUBE_COLOR: RgbaColor = [0.1, 0.78, 0.95, 1];
+const DEFAULT_SCENE_TEXT_COLOR: RgbaColor = [1, 1, 1, 1];
 const SCENE_CUBE_WIREFRAME_OPACITY = 0.95;
+const SCENE_SURFACE_OPACITY = 0.38;
+const SCENE_TRIANGLE_OPACITY = 0.42;
+const SCENE_LINE_OPACITY = 0.95;
+const SCENE_MODEL_FALLBACK_SIZE = 1;
+const SCENE_TEXT_FONT_FAMILY = "Inter, system-ui, sans-serif";
+const SCENE_TEXT_MIN_CANVAS_FONT_SIZE = 12;
+const SCENE_TEXT_DEFAULT_WORLD_HEIGHT = 0.5;
+const SCENE_TEXT_PADDING_PX = 4;
+const sceneModelLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const sceneModelLoadCache = new Map<string, Promise<THREE.Object3D>>();
+const sceneModelDataAssetCache = new WeakMap<
+  Uint8Array,
+  { readonly cacheKey: string; readonly url: string }
+>();
+let nextSceneModelDataAssetId = 0;
+const MODEL_Y_UP_TO_SCENE_Z_UP_QUATERNION =
+  new THREE.Quaternion().setFromRotationMatrix(
+    new THREE.Matrix4().makeBasis(
+      new THREE.Vector3(1, 0, 0),
+      new THREE.Vector3(0, 0, 1),
+      new THREE.Vector3(0, -1, 0),
+    ),
+  );
+const MODEL_Y_UP_TO_SCENE_Z_UP_QUATERNION_COMPONENTS = [
+  MODEL_Y_UP_TO_SCENE_Z_UP_QUATERNION.x,
+  MODEL_Y_UP_TO_SCENE_Z_UP_QUATERNION.y,
+  MODEL_Y_UP_TO_SCENE_Z_UP_QUATERNION.z,
+  MODEL_Y_UP_TO_SCENE_Z_UP_QUATERNION.w,
+] as [number, number, number, number];
 
 /**
  * Supported point-cloud colouring modes.
@@ -108,6 +148,28 @@ interface PointCloudRenderLayer {
 interface PointCloudObjectTransform {
   readonly position: [number, number, number];
   readonly quaternion: [number, number, number, number];
+}
+
+interface SceneAnnotationPrimitiveSummary {
+  readonly arrowCount: number;
+  readonly cubeCount: number;
+  readonly cylinderCount: number;
+  readonly lineCount: number;
+  readonly modelCount: number;
+  readonly sphereCount: number;
+  readonly textCount: number;
+  readonly totalCount: number;
+  readonly triangleCount: number;
+}
+
+interface SceneIndexedGeometryRenderData {
+  readonly geometry: THREE.BufferGeometry;
+  readonly usesVertexColors: boolean;
+}
+
+interface TextSpriteTexture {
+  readonly aspectRatio: number;
+  readonly texture: THREE.Texture;
 }
 
 /**
@@ -150,6 +212,7 @@ export interface PointCloudPanelRenderStats {
   readonly annotationCubeCount: number;
   readonly annotationEntityCount: number;
   readonly annotationLayerCount: number;
+  readonly annotationPrimitiveCount: number;
   readonly cameraPose?: PointCloudCameraPose;
   readonly cameraPoseSource: "controlled" | "fitted" | "none";
   readonly declaredPointCount: number;
@@ -267,15 +330,12 @@ export function PointCloudPanel({
     (sum, layer) => sum + layer.frame.entities.length,
     0,
   );
-  const annotationCubeCount = annotationLayers.reduce(
-    (sum, layer) =>
-      sum +
-      layer.frame.entities.reduce(
-        (entitySum, entity) => entitySum + entity.cubeCount,
-        0,
-      ),
-    0,
+  const annotationPrimitiveSummary = useMemo(
+    () => annotationPrimitiveSummaryForLayers(annotationLayers),
+    [annotationLayers],
   );
+  const annotationCubeCount = annotationPrimitiveSummary.cubeCount;
+  const annotationPrimitiveCount = annotationPrimitiveSummary.totalCount;
   const hasPointCloudLayers = layers.length > 0;
   const hasSceneLayers = hasPointCloudLayers || annotationLayers.length > 0;
   const requestFocusScene = useCallback(() => {
@@ -289,6 +349,7 @@ export function PointCloudPanel({
         annotationCubeCount,
         annotationEntityCount,
         annotationLayerCount: annotationLayers.length,
+        annotationPrimitiveCount,
         ...(effectiveCameraPose ? { cameraPose: effectiveCameraPose } : {}),
         cameraPoseSource,
         declaredPointCount,
@@ -306,6 +367,7 @@ export function PointCloudPanel({
     annotationCubeCount,
     annotationEntityCount,
     annotationLayers.length,
+    annotationPrimitiveCount,
     declaredPointCount,
     effectiveCameraPose,
     finitePointCount,
@@ -348,7 +410,7 @@ export function PointCloudPanel({
         <div style={styles.status}>{canvasError}</div>
       ) : hasPointCloudLayers &&
         finitePointCount === 0 &&
-        annotationCubeCount === 0 ? (
+        annotationPrimitiveCount === 0 ? (
         <div style={styles.status}>No finite points</div>
       ) : null}
       {!canvasError ? (
@@ -372,7 +434,7 @@ export function PointCloudPanel({
         <div style={styles.hud}>
           {hasPointCloudLayers
             ? pointCountLabel(finitePointCount, declaredPointCount)
-            : annotationCountLabel(annotationCubeCount)}
+            : annotationCountLabel(annotationPrimitiveSummary)}
         </div>
       ) : null}
       {warning ? <div style={styles.warning}>{warning}</div> : null}
@@ -401,14 +463,160 @@ function SceneAnnotationLayer({
       position={objectTransform.position}
       quaternion={objectTransform.quaternion}
     >
-      {layer.frame.entities.map((entity, entityIndex) =>
-        entity.cubes.map((cube, cubeIndex) => (
-          <SceneCubeMesh
-            key={`${entity.id || entityIndex}:${cubeIndex}`}
-            cube={cube}
+      {layer.frame.entities.map((entity, entityIndex) => (
+        <group key={entity.id || entityIndex}>
+          {entity.arrows.map((arrow, primitiveIndex) => (
+            <SceneArrowMesh
+              arrow={arrow}
+              key={scenePrimitiveKey(
+                entity.id,
+                entityIndex,
+                "arrow",
+                primitiveIndex,
+              )}
+            />
+          ))}
+          {entity.cubes.map((cube, primitiveIndex) => (
+            <SceneCubeMesh
+              cube={cube}
+              key={scenePrimitiveKey(
+                entity.id,
+                entityIndex,
+                "cube",
+                primitiveIndex,
+              )}
+            />
+          ))}
+          {entity.cylinders.map((cylinder, primitiveIndex) => (
+            <SceneCylinderMesh
+              cylinder={cylinder}
+              key={scenePrimitiveKey(
+                entity.id,
+                entityIndex,
+                "cylinder",
+                primitiveIndex,
+              )}
+            />
+          ))}
+          {entity.lines.map((line, primitiveIndex) => (
+            <SceneLineMesh
+              key={scenePrimitiveKey(
+                entity.id,
+                entityIndex,
+                "line",
+                primitiveIndex,
+              )}
+              line={line}
+            />
+          ))}
+          {entity.models.map((model, primitiveIndex) => (
+            <SceneModelMesh
+              key={scenePrimitiveKey(
+                entity.id,
+                entityIndex,
+                "model",
+                primitiveIndex,
+              )}
+              model={model}
+            />
+          ))}
+          {entity.spheres.map((sphere, primitiveIndex) => (
+            <SceneSphereMesh
+              key={scenePrimitiveKey(
+                entity.id,
+                entityIndex,
+                "sphere",
+                primitiveIndex,
+              )}
+              sphere={sphere}
+            />
+          ))}
+          {entity.texts.map((text, primitiveIndex) => (
+            <SceneTextSprite
+              key={scenePrimitiveKey(
+                entity.id,
+                entityIndex,
+                "text",
+                primitiveIndex,
+              )}
+              textPrimitive={text}
+            />
+          ))}
+          {entity.triangles.map((triangle, primitiveIndex) => (
+            <SceneTriangleMesh
+              key={scenePrimitiveKey(
+                entity.id,
+                entityIndex,
+                "triangle",
+                primitiveIndex,
+              )}
+              triangle={triangle}
+            />
+          ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function scenePrimitiveKey(
+  entityId: string,
+  entityIndex: number,
+  family: string,
+  primitiveIndex: number,
+) {
+  return `${entityId || entityIndex}:${family}:${primitiveIndex}`;
+}
+
+function SceneArrowMesh({ arrow }: { readonly arrow: SceneArrowPrimitive }) {
+  const shaftRadius = arrow.shaftDiameter / 2;
+  const headRadius = arrow.headDiameter / 2;
+  const hasShaft =
+    Number.isFinite(arrow.shaftLength) &&
+    arrow.shaftLength > 0 &&
+    Number.isFinite(shaftRadius) &&
+    shaftRadius > 0;
+  const hasHead =
+    Number.isFinite(arrow.headLength) &&
+    arrow.headLength > 0 &&
+    Number.isFinite(headRadius) &&
+    headRadius > 0;
+
+  if (!hasShaft && !hasHead) {
+    return null;
+  }
+
+  const transform = scenePoseObjectTransform(arrow.pose);
+  const material = sceneMaterialProps(arrow.color, SCENE_SURFACE_OPACITY);
+
+  return (
+    <group position={transform.position} quaternion={transform.quaternion}>
+      {hasShaft ? (
+        <mesh
+          frustumCulled={false}
+          position={[arrow.shaftLength / 2, 0, 0]}
+          rotation={[0, 0, -Math.PI / 2]}
+        >
+          <cylinderGeometry
+            args={[shaftRadius, shaftRadius, arrow.shaftLength, 16]}
           />
-        )),
-      )}
+          <meshBasicMaterial {...material} />
+        </mesh>
+      ) : null}
+      {hasHead ? (
+        <mesh
+          frustumCulled={false}
+          position={[
+            Math.max(0, arrow.shaftLength) + arrow.headLength / 2,
+            0,
+            0,
+          ]}
+          rotation={[0, 0, -Math.PI / 2]}
+        >
+          <coneGeometry args={[headRadius, arrow.headLength, 16]} />
+          <meshBasicMaterial {...material} />
+        </mesh>
+      ) : null}
     </group>
   );
 }
@@ -420,21 +628,563 @@ function SceneCubeMesh({ cube }: { readonly cube: SceneCubePrimitive }) {
   }
 
   const transform = scenePoseObjectTransform(cube.pose);
-  const [r, g, b, a] = cube.color ?? DEFAULT_SCENE_CUBE_COLOR;
-  const color = new THREE.Color(clamp01(r), clamp01(g), clamp01(b)).getHex();
+  const material = sceneMaterialProps(cube.color, SCENE_CUBE_WIREFRAME_OPACITY);
 
   return (
     <group position={transform.position} quaternion={transform.quaternion}>
       <mesh frustumCulled={false}>
         <boxGeometry args={[size[0], size[1], size[2]]} />
-        <meshBasicMaterial
-          color={color}
-          opacity={Math.max(
-            0.2,
-            Math.min(SCENE_CUBE_WIREFRAME_OPACITY, clamp01(a)),
-          )}
+        <meshBasicMaterial {...material} wireframe />
+      </mesh>
+    </group>
+  );
+}
+
+function SceneCylinderMesh({
+  cylinder,
+}: {
+  readonly cylinder: SceneCylinderPrimitive;
+}) {
+  if (
+    !isFinitePositiveVector(cylinder.size) ||
+    (!isFinitePositiveNumber(cylinder.bottomScale) &&
+      !isFinitePositiveNumber(cylinder.topScale))
+  ) {
+    return null;
+  }
+
+  const transform = scenePoseObjectTransform(cylinder.pose);
+  const material = sceneMaterialProps(cylinder.color, SCENE_SURFACE_OPACITY);
+
+  return (
+    <group position={transform.position} quaternion={transform.quaternion}>
+      <mesh
+        frustumCulled={false}
+        rotation={[Math.PI / 2, 0, 0]}
+        scale={[cylinder.size[0], cylinder.size[2], cylinder.size[1]]}
+      >
+        <cylinderGeometry
+          args={[
+            Math.max(0, cylinder.topScale) / 2,
+            Math.max(0, cylinder.bottomScale) / 2,
+            1,
+            24,
+          ]}
+        />
+        <meshBasicMaterial {...material} wireframe />
+      </mesh>
+    </group>
+  );
+}
+
+function SceneLineMesh({ line }: { readonly line: SceneLinePrimitive }) {
+  const invalidate = useThree((state) => state.invalidate);
+  const renderData = useMemo(() => createSceneLineRenderData(line), [line]);
+
+  useEffect(() => {
+    if (!renderData) return;
+    invalidate();
+    return () => renderData.geometry.dispose();
+  }, [invalidate, renderData]);
+
+  if (!renderData) {
+    return null;
+  }
+
+  const transform = scenePoseObjectTransform(line.pose);
+  const material = sceneMaterialProps(line.color, SCENE_LINE_OPACITY);
+
+  return (
+    <group position={transform.position} quaternion={transform.quaternion}>
+      <lineSegments frustumCulled={false}>
+        <primitive attach="geometry" object={renderData.geometry} />
+        <lineBasicMaterial
+          {...material}
+          linewidth={Math.max(1, line.thickness || 1)}
+          vertexColors={renderData.usesVertexColors}
+        />
+      </lineSegments>
+    </group>
+  );
+}
+
+function SceneModelMesh({ model }: { readonly model: SceneModelPrimitive }) {
+  const invalidate = useThree((state) => state.invalidate);
+  const [object, setObject] = useState<THREE.Object3D | null>(null);
+  const loadedInstanceKeyRef = useRef<string | null>(null);
+  const modelData = model.data;
+  const modelMediaType = model.mediaType;
+  const modelUrl = model.url;
+  const modelColorKey =
+    model.overrideColor && model.color ? rgbaColorKey(model.color) : "";
+  const asset = useMemo(
+    () =>
+      modelAssetForPrimitive({
+        data: modelData,
+        mediaType: modelMediaType,
+        url: modelUrl,
+      }),
+    [modelData, modelMediaType, modelUrl],
+  );
+  const instanceKey = asset
+    ? `${asset.cacheKey}|${model.overrideColor ? modelColorKey : "source"}`
+    : null;
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!asset || !instanceKey) {
+      loadedInstanceKeyRef.current = null;
+      setObject(null);
+      return;
+    }
+
+    if (loadedInstanceKeyRef.current === instanceKey) {
+      return;
+    }
+
+    loadSceneModelAsset(asset)
+      .then((baseObject) => {
+        if (!isActive) {
+          return;
+        }
+        const scene = cloneObject3D(baseObject);
+        if (model.overrideColor && model.color) {
+          applyModelOverrideColor(scene, model.color);
+        }
+        loadedInstanceKeyRef.current = instanceKey;
+        setObject(scene);
+        invalidate();
+      })
+      .catch(() => {
+        if (isActive && loadedInstanceKeyRef.current !== instanceKey) {
+          setObject(null);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [asset, instanceKey, invalidate, model.color, model.overrideColor]);
+
+  useEffect(() => {
+    return () => {
+      if (object) {
+        disposeObject3D(object);
+      }
+    };
+  }, [object]);
+
+  if (!object || !isFinitePositiveVector(model.scale)) {
+    return null;
+  }
+
+  const transform = scenePoseObjectTransform(model.pose);
+
+  return (
+    <group
+      position={transform.position}
+      quaternion={transform.quaternion}
+      scale={model.scale}
+    >
+      <group quaternion={MODEL_Y_UP_TO_SCENE_Z_UP_QUATERNION_COMPONENTS}>
+        <primitive object={object} />
+      </group>
+    </group>
+  );
+}
+
+function SceneSphereMesh({
+  sphere,
+}: {
+  readonly sphere: SceneSpherePrimitive;
+}) {
+  if (!isFinitePositiveVector(sphere.size)) {
+    return null;
+  }
+
+  const transform = scenePoseObjectTransform(sphere.pose);
+  const material = sceneMaterialProps(sphere.color, SCENE_SURFACE_OPACITY);
+
+  return (
+    <group position={transform.position} quaternion={transform.quaternion}>
+      <mesh frustumCulled={false} scale={sphere.size}>
+        <sphereGeometry args={[0.5, 18, 12]} />
+        <meshBasicMaterial {...material} wireframe />
+      </mesh>
+    </group>
+  );
+}
+
+function SceneTextSprite({
+  textPrimitive,
+}: {
+  readonly textPrimitive: SceneTextPrimitive;
+}) {
+  const invalidate = useThree((state) => state.invalidate);
+  const spriteTexture = useMemo(
+    () => createTextSpriteTexture(textPrimitive),
+    [textPrimitive],
+  );
+
+  useEffect(() => {
+    if (!spriteTexture) return;
+    invalidate();
+    return () => spriteTexture.texture.dispose();
+  }, [invalidate, spriteTexture]);
+
+  if (!spriteTexture) {
+    return null;
+  }
+
+  const transform = scenePoseObjectTransform(textPrimitive.pose);
+  const [, , , alpha] = textPrimitive.color ?? DEFAULT_SCENE_TEXT_COLOR;
+  const textureMap = spriteTexture.texture as never;
+  const displayHeight = textPrimitive.scaleInvariant
+    ? Math.max(SCENE_TEXT_MIN_CANVAS_FONT_SIZE, textPrimitive.fontSize || 0)
+    : Math.max(
+        SCENE_TEXT_DEFAULT_WORLD_HEIGHT,
+        textPrimitive.fontSize || SCENE_TEXT_DEFAULT_WORLD_HEIGHT,
+      );
+
+  if (!textPrimitive.billboard) {
+    return (
+      <group position={transform.position} quaternion={transform.quaternion}>
+        <mesh
+          frustumCulled={false}
+          scale={[displayHeight * spriteTexture.aspectRatio, displayHeight, 1]}
+        >
+          <planeGeometry args={[1, 1]} />
+          <meshBasicMaterial
+            map={textureMap}
+            opacity={clamp01(alpha)}
+            side={THREE.DoubleSide}
+            transparent
+          />
+        </mesh>
+      </group>
+    );
+  }
+
+  return (
+    <group position={transform.position} quaternion={transform.quaternion}>
+      <sprite
+        frustumCulled={false}
+        scale={[displayHeight * spriteTexture.aspectRatio, displayHeight, 1]}
+      >
+        <spriteMaterial
+          map={textureMap}
+          opacity={clamp01(alpha)}
+          sizeAttenuation={!textPrimitive.scaleInvariant}
           transparent
-          wireframe
+        />
+      </sprite>
+    </group>
+  );
+}
+
+function createSceneLineRenderData(
+  line: SceneLinePrimitive,
+): SceneIndexedGeometryRenderData | null {
+  const orderedPointIndices = primitivePointIndices(line.points, line.indices);
+  const segmentPairs = lineSegmentPairs(orderedPointIndices, line.type);
+  if (segmentPairs.length === 0) {
+    return null;
+  }
+
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const usesVertexColors = line.colors.length >= line.points.length;
+
+  for (const [startIndex, endIndex] of segmentPairs) {
+    const start = line.points[startIndex];
+    const end = line.points[endIndex];
+    if (!isFinitePoint3(start) || !isFinitePoint3(end)) {
+      continue;
+    }
+
+    positions.push(...start, ...end);
+    if (usesVertexColors) {
+      colors.push(...rgbComponents(line.colors[startIndex]));
+      colors.push(...rgbComponents(line.colors[endIndex]));
+    }
+  }
+
+  if (positions.length === 0) {
+    return null;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(
+      new Float32Array(positions),
+      POINT_COMPONENT_COUNT,
+    ),
+  );
+  if (usesVertexColors) {
+    geometry.setAttribute(
+      "color",
+      new THREE.BufferAttribute(
+        new Float32Array(colors),
+        COLOR_COMPONENT_COUNT,
+      ),
+    );
+  }
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+
+  return { geometry, usesVertexColors };
+}
+
+function createSceneTriangleRenderData(
+  triangle: SceneTrianglePrimitive,
+): SceneIndexedGeometryRenderData | null {
+  const orderedPointIndices = primitivePointIndices(
+    triangle.points,
+    triangle.indices,
+  );
+  const trianglePointCount = Math.floor(orderedPointIndices.length / 3) * 3;
+  if (trianglePointCount === 0) {
+    return null;
+  }
+
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const usesVertexColors = triangle.colors.length >= triangle.points.length;
+
+  for (let index = 0; index < trianglePointCount; index++) {
+    const pointIndex = orderedPointIndices[index];
+    const point = triangle.points[pointIndex];
+    if (!isFinitePoint3(point)) {
+      continue;
+    }
+    positions.push(...point);
+    if (usesVertexColors) {
+      colors.push(...rgbComponents(triangle.colors[pointIndex]));
+    }
+  }
+
+  if (positions.length === 0 || positions.length % 9 !== 0) {
+    return null;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(
+      new Float32Array(positions),
+      POINT_COMPONENT_COUNT,
+    ),
+  );
+  if (usesVertexColors) {
+    geometry.setAttribute(
+      "color",
+      new THREE.BufferAttribute(
+        new Float32Array(colors),
+        COLOR_COMPONENT_COUNT,
+      ),
+    );
+  }
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+
+  return { geometry, usesVertexColors };
+}
+
+function createTextSpriteTexture(
+  textPrimitive: SceneTextPrimitive,
+): TextSpriteTexture | null {
+  if (!textPrimitive.text || typeof document === "undefined") {
+    return null;
+  }
+
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return null;
+  }
+
+  const fontSize = Math.max(
+    SCENE_TEXT_MIN_CANVAS_FONT_SIZE,
+    textPrimitive.fontSize || SCENE_TEXT_MIN_CANVAS_FONT_SIZE,
+  );
+  const font = `${fontSize}px ${SCENE_TEXT_FONT_FAMILY}`;
+  context.font = font;
+  const metrics = context.measureText(textPrimitive.text);
+  const width = Math.max(
+    1,
+    Math.ceil(metrics.width + SCENE_TEXT_PADDING_PX * 2),
+  );
+  const height = Math.max(
+    1,
+    Math.ceil(fontSize * 1.35 + SCENE_TEXT_PADDING_PX * 2),
+  );
+  canvas.width = width;
+  canvas.height = height;
+
+  context.font = font;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = rgbaCss(textPrimitive.color ?? DEFAULT_SCENE_TEXT_COLOR);
+  context.fillText(textPrimitive.text, width / 2, height / 2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+
+  return {
+    aspectRatio: width / height,
+    texture: texture as unknown as THREE.Texture,
+  };
+}
+
+function modelAssetForPrimitive(model: {
+  readonly data?: Uint8Array;
+  readonly mediaType: string;
+  readonly url: string;
+}): { readonly cacheKey: string; readonly url: string } | null {
+  if (model.url) {
+    return { cacheKey: `url:${model.url}`, url: model.url };
+  }
+  if (!model.data?.byteLength || typeof URL === "undefined") {
+    return null;
+  }
+
+  const cachedAsset = sceneModelDataAssetCache.get(model.data);
+  if (cachedAsset) {
+    return cachedAsset;
+  }
+
+  const cacheKey = `data:${nextSceneModelDataAssetId++}`;
+  const blob = new Blob([model.data], {
+    type: model.mediaType || "model/gltf-binary",
+  });
+  const url = URL.createObjectURL(blob);
+  const asset = { cacheKey, url };
+  sceneModelDataAssetCache.set(model.data, asset);
+
+  return asset;
+}
+
+function loadSceneModelAsset(asset: {
+  readonly cacheKey: string;
+  readonly url: string;
+}) {
+  const cached = sceneModelLoadCache.get(asset.cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const loadPromise = new Promise<THREE.Object3D>((resolve, reject) => {
+    sceneModelLoader.load(
+      asset.url,
+      (gltf) => resolve(gltf.scene),
+      undefined,
+      reject,
+    );
+  }).catch((error) => {
+    sceneModelLoadCache.delete(asset.cacheKey);
+    throw error;
+  });
+  sceneModelLoadCache.set(asset.cacheKey, loadPromise);
+
+  return loadPromise;
+}
+
+function cloneObject3D(object: THREE.Object3D) {
+  const clone = object.clone(true);
+  clone.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) {
+      return;
+    }
+    mesh.geometry = mesh.geometry?.clone();
+    if (Array.isArray(mesh.material)) {
+      mesh.material = mesh.material.map((material) => material.clone());
+    } else if (mesh.material) {
+      mesh.material = mesh.material.clone();
+    }
+  });
+
+  return clone;
+}
+
+function applyModelOverrideColor(object: THREE.Object3D, color: RgbaColor) {
+  const [r, g, b, a] = color;
+  const threeColor = new THREE.Color(clamp01(r), clamp01(g), clamp01(b));
+  const opacity = clamp01(a);
+
+  object.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.material) {
+      return;
+    }
+
+    const materials = Array.isArray(mesh.material)
+      ? mesh.material
+      : [mesh.material];
+    const clonedMaterials = materials.map((material) => {
+      const clone = material.clone();
+      if ("color" in clone && clone.color instanceof THREE.Color) {
+        clone.color.copy(threeColor);
+      }
+      clone.opacity = opacity;
+      clone.transparent = opacity < 1 || clone.transparent;
+      return clone;
+    });
+    mesh.material = Array.isArray(mesh.material)
+      ? clonedMaterials
+      : clonedMaterials[0];
+  });
+}
+
+function disposeObject3D(object: THREE.Object3D) {
+  object.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) {
+      return;
+    }
+    mesh.geometry?.dispose();
+    const materials = Array.isArray(mesh.material)
+      ? mesh.material
+      : [mesh.material];
+    materials.forEach((material) => material.dispose());
+  });
+}
+
+function SceneTriangleMesh({
+  triangle,
+}: {
+  readonly triangle: SceneTrianglePrimitive;
+}) {
+  const invalidate = useThree((state) => state.invalidate);
+  const renderData = useMemo(
+    () => createSceneTriangleRenderData(triangle),
+    [triangle],
+  );
+
+  useEffect(() => {
+    if (!renderData) return;
+    invalidate();
+    return () => renderData.geometry.dispose();
+  }, [invalidate, renderData]);
+
+  if (!renderData) {
+    return null;
+  }
+
+  const transform = scenePoseObjectTransform(triangle.pose);
+  const material = sceneMaterialProps(triangle.color, SCENE_TRIANGLE_OPACITY);
+
+  return (
+    <group position={transform.position} quaternion={transform.quaternion}>
+      <mesh frustumCulled={false}>
+        <primitive attach="geometry" object={renderData.geometry} />
+        <meshBasicMaterial
+          {...material}
+          side={THREE.DoubleSide}
+          vertexColors={renderData.usesVertexColors}
         />
       </mesh>
     </group>
@@ -974,11 +1724,37 @@ function boundsForAnnotationLayer(
   layerBounds.makeEmpty();
 
   for (const entity of layer.frame.entities) {
+    for (const arrow of entity.arrows) {
+      const bounds = boundsForSceneArrow(arrow);
+      if (bounds) layerBounds.union(bounds);
+    }
     for (const cube of entity.cubes) {
-      const cubeBounds = boundsForSceneCube(cube);
-      if (cubeBounds) {
-        layerBounds.union(cubeBounds);
-      }
+      const bounds = boundsForSceneCube(cube);
+      if (bounds) layerBounds.union(bounds);
+    }
+    for (const cylinder of entity.cylinders) {
+      const bounds = boundsForSceneCylinder(cylinder);
+      if (bounds) layerBounds.union(bounds);
+    }
+    for (const line of entity.lines) {
+      const bounds = boundsForSceneLine(line);
+      if (bounds) layerBounds.union(bounds);
+    }
+    for (const model of entity.models) {
+      const bounds = boundsForSceneModel(model);
+      if (bounds) layerBounds.union(bounds);
+    }
+    for (const sphere of entity.spheres) {
+      const bounds = boundsForSceneSphere(sphere);
+      if (bounds) layerBounds.union(bounds);
+    }
+    for (const text of entity.texts) {
+      const bounds = boundsForSceneText(text);
+      if (bounds) layerBounds.union(bounds);
+    }
+    for (const triangle of entity.triangles) {
+      const bounds = boundsForSceneTriangle(triangle);
+      if (bounds) layerBounds.union(bounds);
     }
   }
 
@@ -987,19 +1763,124 @@ function boundsForAnnotationLayer(
     : worldBoundsForLayer(layerBounds, layer.frameTransform);
 }
 
+function boundsForSceneArrow(arrow: SceneArrowPrimitive): THREE.Box3 | null {
+  const length = Math.max(0, arrow.shaftLength) + Math.max(0, arrow.headLength);
+  const radius = Math.max(arrow.shaftDiameter, arrow.headDiameter) / 2;
+  if (!isFinitePositiveNumber(length) || !isFinitePositiveNumber(radius)) {
+    return null;
+  }
+
+  return boundsForBoxWithPose(
+    arrow.pose,
+    new THREE.Vector3(0, -radius, -radius),
+    new THREE.Vector3(length, radius, radius),
+  );
+}
+
 function boundsForSceneCube(cube: SceneCubePrimitive): THREE.Box3 | null {
-  if (!isFinitePositiveVector(cube.size)) {
+  return boundsForPoseAndSize(cube.pose, cube.size);
+}
+
+function boundsForSceneCylinder(
+  cylinder: SceneCylinderPrimitive,
+): THREE.Box3 | null {
+  return boundsForPoseAndSize(cylinder.pose, cylinder.size);
+}
+
+function boundsForSceneLine(line: SceneLinePrimitive): THREE.Box3 | null {
+  return boundsForScenePoints(
+    line.points,
+    primitivePointIndices(line.points, line.indices),
+    line.pose,
+  );
+}
+
+function boundsForSceneModel(model: SceneModelPrimitive): THREE.Box3 | null {
+  return boundsForPoseAndSize(
+    model.pose,
+    isFinitePositiveVector(model.scale)
+      ? model.scale
+      : [
+          SCENE_MODEL_FALLBACK_SIZE,
+          SCENE_MODEL_FALLBACK_SIZE,
+          SCENE_MODEL_FALLBACK_SIZE,
+        ],
+  );
+}
+
+function boundsForSceneSphere(sphere: SceneSpherePrimitive): THREE.Box3 | null {
+  return boundsForPoseAndSize(sphere.pose, sphere.size);
+}
+
+function boundsForSceneText(text: SceneTextPrimitive): THREE.Box3 | null {
+  if (!text.text) {
+    return null;
+  }
+
+  const height = text.scaleInvariant
+    ? SCENE_TEXT_DEFAULT_WORLD_HEIGHT
+    : Math.max(
+        SCENE_TEXT_DEFAULT_WORLD_HEIGHT,
+        text.fontSize || SCENE_TEXT_DEFAULT_WORLD_HEIGHT,
+      );
+  const width = Math.max(height, text.text.length * height * 0.5);
+
+  return boundsForPoseAndSize(text.pose, [width, height, 0.05]);
+}
+
+function boundsForSceneTriangle(
+  triangle: SceneTrianglePrimitive,
+): THREE.Box3 | null {
+  return boundsForScenePoints(
+    triangle.points,
+    primitivePointIndices(triangle.points, triangle.indices),
+    triangle.pose,
+  );
+}
+
+function boundsForPoseAndSize(
+  pose: ScenePose3D,
+  size: readonly [number, number, number],
+): THREE.Box3 | null {
+  if (!isFinitePositiveVector(size)) {
     return null;
   }
 
   return new THREE.Box3()
-    .setFromCenterAndSize(
-      new THREE.Vector3(),
-      new THREE.Vector3(cube.size[0], cube.size[1], cube.size[2]),
-    )
-    .applyMatrix4(
-      matrixFromObjectTransform(scenePoseObjectTransform(cube.pose)),
-    );
+    .setFromCenterAndSize(new THREE.Vector3(), new THREE.Vector3(...size))
+    .applyMatrix4(matrixFromObjectTransform(scenePoseObjectTransform(pose)));
+}
+
+function boundsForBoxWithPose(
+  pose: ScenePose3D,
+  min: THREE.Vector3,
+  max: THREE.Vector3,
+): THREE.Box3 {
+  return new THREE.Box3(min, max).applyMatrix4(
+    matrixFromObjectTransform(scenePoseObjectTransform(pose)),
+  );
+}
+
+function boundsForScenePoints(
+  points: readonly ScenePoint3D[],
+  pointIndices: readonly number[],
+  pose: ScenePose3D,
+): THREE.Box3 | null {
+  const bounds = new THREE.Box3();
+  bounds.makeEmpty();
+
+  for (const pointIndex of pointIndices) {
+    const point = points[pointIndex];
+    if (isFinitePoint3(point)) {
+      bounds.expandByPoint(new THREE.Vector3(...point));
+    }
+  }
+
+  return bounds.isEmpty()
+    ? null
+    : bounds.applyMatrix4(
+        matrixFromObjectTransform(scenePoseObjectTransform(pose)),
+      );
 }
 
 /**
@@ -1054,6 +1935,75 @@ function cameraPoseForBounds(
   };
 }
 
+function sceneMaterialProps(
+  color: RgbaColor | null,
+  maxOpacity: number,
+): {
+  readonly color: number;
+  readonly opacity: number;
+  readonly transparent: boolean;
+} {
+  const [r, g, b, a] = color ?? DEFAULT_SCENE_CUBE_COLOR;
+
+  return {
+    color: new THREE.Color(clamp01(r), clamp01(g), clamp01(b)).getHex(),
+    opacity: Math.max(0.2, Math.min(maxOpacity, clamp01(a))),
+    transparent: true,
+  };
+}
+
+function primitivePointIndices(
+  points: readonly ScenePoint3D[],
+  indices: readonly number[],
+) {
+  const sourceIndices =
+    indices.length > 0 ? indices : points.map((_, index) => index);
+
+  return sourceIndices.filter(
+    (index) => Number.isInteger(index) && index >= 0 && index < points.length,
+  );
+}
+
+function lineSegmentPairs(
+  pointIndices: readonly number[],
+  type: SceneLinePrimitive["type"],
+) {
+  const pairs: Array<readonly [number, number]> = [];
+
+  if (type === "line-list") {
+    for (let index = 0; index + 1 < pointIndices.length; index += 2) {
+      pairs.push([pointIndices[index], pointIndices[index + 1]]);
+    }
+    return pairs;
+  }
+
+  for (let index = 0; index + 1 < pointIndices.length; index++) {
+    pairs.push([pointIndices[index], pointIndices[index + 1]]);
+  }
+  if (type === "line-loop" && pointIndices.length > 2) {
+    pairs.push([pointIndices[pointIndices.length - 1], pointIndices[0]]);
+  }
+
+  return pairs;
+}
+
+function rgbComponents(color: RgbaColor | undefined) {
+  const [r, g, b] = color ?? DEFAULT_SCENE_CUBE_COLOR;
+
+  return [clamp01(r), clamp01(g), clamp01(b)] as const;
+}
+
+function rgbaColorKey(color: RgbaColor) {
+  return color.map((component) => clamp01(component).toFixed(4)).join(",");
+}
+
+function rgbaCss(color: RgbaColor) {
+  const [r, g, b, a] = color;
+  return `rgba(${Math.round(clamp01(r) * 255)}, ${Math.round(
+    clamp01(g) * 255,
+  )}, ${Math.round(clamp01(b) * 255)}, ${clamp01(a)})`;
+}
+
 function writeHeightColor(target: Float32Array, offset: number, value: number) {
   const clamped = Math.max(
     NORMALIZED_HEIGHT_MIN,
@@ -1104,6 +2054,16 @@ function isFinitePositiveVector(
   );
 }
 
+function isFinitePositiveNumber(value: number): boolean {
+  return Number.isFinite(value) && value > 0;
+}
+
+function isFinitePoint3(
+  point: ScenePoint3D | undefined,
+): point is ScenePoint3D {
+  return !!point && point.every((component) => Number.isFinite(component));
+}
+
 function pointCountLabel(finitePointCount: number, declaredPointCount: number) {
   if (declaredPointCount > 0 && declaredPointCount !== finitePointCount) {
     return `${formatCount(finitePointCount)} / ${formatCount(
@@ -1114,8 +2074,65 @@ function pointCountLabel(finitePointCount: number, declaredPointCount: number) {
   return `${formatCount(finitePointCount)} pts`;
 }
 
-function annotationCountLabel(cubeCount: number) {
-  return `${formatCount(cubeCount)} ${cubeCount === 1 ? "box" : "boxes"}`;
+function annotationPrimitiveSummaryForLayers(
+  layers: readonly SceneAnnotationPanelLayer[],
+): SceneAnnotationPrimitiveSummary {
+  const summary = {
+    arrowCount: 0,
+    cubeCount: 0,
+    cylinderCount: 0,
+    lineCount: 0,
+    modelCount: 0,
+    sphereCount: 0,
+    textCount: 0,
+    totalCount: 0,
+    triangleCount: 0,
+  };
+
+  for (const layer of layers) {
+    for (const entity of layer.frame.entities) {
+      summary.arrowCount += entity.arrowCount;
+      summary.cubeCount += entity.cubeCount;
+      summary.cylinderCount += entity.cylinderCount;
+      summary.lineCount += entity.lineCount;
+      summary.modelCount += entity.modelCount;
+      summary.sphereCount += entity.sphereCount;
+      summary.textCount += entity.textCount;
+      summary.triangleCount += entity.triangleCount;
+    }
+  }
+  summary.totalCount =
+    summary.arrowCount +
+    summary.cubeCount +
+    summary.cylinderCount +
+    summary.lineCount +
+    summary.modelCount +
+    summary.sphereCount +
+    summary.textCount +
+    summary.triangleCount;
+
+  return summary;
+}
+
+function annotationCountLabel(summary: SceneAnnotationPrimitiveSummary) {
+  const families = [
+    ["arrow", "arrows", summary.arrowCount],
+    ["box", "boxes", summary.cubeCount],
+    ["cylinder", "cylinders", summary.cylinderCount],
+    ["line", "lines", summary.lineCount],
+    ["model", "models", summary.modelCount],
+    ["sphere", "spheres", summary.sphereCount],
+    ["text", "texts", summary.textCount],
+    ["mesh", "meshes", summary.triangleCount],
+  ] as const;
+  const nonEmptyFamilies = families.filter(([, , count]) => count > 0);
+
+  if (nonEmptyFamilies.length === 1) {
+    const [singular, plural, count] = nonEmptyFamilies[0];
+    return `${formatCount(count)} ${count === 1 ? singular : plural}`;
+  }
+
+  return `${formatCount(summary.totalCount)} annotations`;
 }
 
 function formatCount(value: number) {

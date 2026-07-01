@@ -36,6 +36,7 @@ function sceneUpdate(
     entities: [
       {
         arrowCount: 0,
+        arrows: [],
         cubeCount: 1,
         cubes: [
           {
@@ -48,16 +49,69 @@ function sceneUpdate(
           },
         ],
         cylinderCount: 0,
+        cylinders: [],
         ...(frameId ? { frameId } : {}),
         frameLocked,
         id: "box",
         lineCount: 0,
+        lines: [],
         metadata: {},
         modelCount: 0,
+        models: [],
         sphereCount: 0,
+        spheres: [],
         textCount: 0,
+        texts: [],
         ...(timestampNs !== undefined ? { timestampNs } : {}),
         triangleCount: 0,
+        triangles: [],
+      },
+    ],
+    kind: VISUALIZATION_KIND.SCENE_UPDATE,
+  };
+}
+
+function lineSceneUpdate(): SceneUpdateVisualization {
+  return {
+    deletions: [],
+    entities: [
+      {
+        arrowCount: 0,
+        arrows: [],
+        cubeCount: 0,
+        cubes: [],
+        cylinderCount: 0,
+        cylinders: [],
+        frameLocked: false,
+        id: "map-line",
+        lineCount: 1,
+        lines: [
+          {
+            color: null,
+            colors: [],
+            indices: [],
+            points: [
+              [0, 0, 0],
+              [1, 0, 0],
+            ],
+            pose: {
+              position: [0, 0, 0],
+              quaternion: [0, 0, 0, 1],
+            },
+            scaleInvariant: false,
+            thickness: 1,
+            type: "line-strip",
+          },
+        ],
+        metadata: {},
+        modelCount: 0,
+        models: [],
+        sphereCount: 0,
+        spheres: [],
+        textCount: 0,
+        texts: [],
+        triangleCount: 0,
+        triangles: [],
       },
     ],
     kind: VISUALIZATION_KIND.SCENE_UPDATE,
@@ -325,6 +379,22 @@ describe("build3dLayers", () => {
     expect(sceneAnnotationLayers).toHaveLength(1);
     expect(sceneAnnotationLayers[0]?.frame.entities[0]?.id).toBe("box");
     expect(sceneAnnotationLayers[0]?.frameTransform).toBe(transform);
+  });
+
+  it("builds scene annotation layers for non-cube primitives", () => {
+    const { sceneAnnotationLayers } = build3dLayers({
+      annotationFrames: [annotationPlaybackFrame(lineSceneUpdate())],
+      frameTransforms: transformsState(() => {
+        throw new Error("frameless annotations should not resolve transforms");
+      }),
+      frames: [],
+      selectedAnnotationTopics: ["/semantic_map"],
+      selectedTopics: [],
+      worldFrameId: "base_link",
+    });
+
+    expect(sceneAnnotationLayers).toHaveLength(1);
+    expect(sceneAnnotationLayers[0]?.frame.entities[0]?.lineCount).toBe(1);
   });
 
   it("falls back to annotation message time when an entity has no timestamp", () => {

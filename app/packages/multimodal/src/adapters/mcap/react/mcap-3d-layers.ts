@@ -153,7 +153,7 @@ export function build3dLayers({
     }
 
     playbackFrame.frame.entities.forEach((entity, entityIndex) => {
-      if (entity.cubeCount === 0) {
+      if (sceneEntityPrimitiveCount(entity) === 0) {
         return;
       }
 
@@ -237,6 +237,19 @@ function buildSceneAnnotationLayer({
     frameTransform: resolution.transform,
     id,
   };
+}
+
+function sceneEntityPrimitiveCount(entity: SceneEntityVisualization) {
+  return (
+    entity.arrowCount +
+    entity.cubeCount +
+    entity.cylinderCount +
+    entity.lineCount +
+    entity.modelCount +
+    entity.sphereCount +
+    entity.textCount +
+    entity.triangleCount
+  );
 }
 
 function resolveFrameTransform({
