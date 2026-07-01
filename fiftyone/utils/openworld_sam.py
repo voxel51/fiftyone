@@ -6,8 +6,6 @@ FiftyOne wrapper for OpenWorldSAM zero-shot instance segmentation.
 |
 """
 
-import os
-
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -18,76 +16,104 @@ from fiftyone.zoo.models import HasZooModel
 import fiftyone.utils.torch as fout
 
 
-# SAM2 preprocessing constants (ImageNet-style normalization, 1024×1024 input)
-_SAM_PIXEL_MEAN = torch.tensor([123.675, 116.28, 103.53])
-_SAM_PIXEL_STD = torch.tensor([58.395, 57.12, 57.375])
-_SAM_IMAGE_SIZE = 1024
-_BEIT_IMAGE_SIZE = 224
+def build_sam_transform(
+    sam_pixel_mean,
+    sam_pixel_std,
+    sam_image_size,
+    **_kwargs,
+):
+    """Build the SAM2 preprocessing pipeline used by OpenWorldSAM.
 
-# ADE20K-150 class list (detectron2 ordering) — default vocabulary
-def _load_ade20k_classes():
-    path = os.path.join(os.path.dirname(__file__), "ade20k_150_classes.txt")
-    with open(path) as f:
-        return [line.strip() for line in f if line.strip()]
-
-
-_BEIT_TRANSFORM = T.Compose(
-    [
-        T.ToTensor(),
-        T.Resize(
-            (_BEIT_IMAGE_SIZE, _BEIT_IMAGE_SIZE),
-            interpolation=3,
-            antialias=None,
-        ),
-        T.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),
-    ]
-)
-
-
-class OpenWorldSAMTransform:
-    """Dual-branch image transform for OpenWorldSAM.
-
-    Accepts PIL images or HWC uint8 numpy arrays. Returns a dict containing
-    the SAM2-preprocessed tensor (1024×1024), the BEiT-3-preprocessed tensor
-    (224×224), and the original image dimensions. This dict is the per-image
-    unit passed through the DataLoader and into :meth:`OpenWorldSAMModel._predict_all`.
+    Matches ``preprocess_image()`` in the HuggingFace repo: uint8 pixel-space
+    normalization after bilinear resize.
 
     Args:
-        device: the :class:`torch:torch.device` to move tensors to
-        using_half_precision (False): whether to cast tensors to fp16
+        sam_pixel_mean: per-channel mean in ``[0, 255]``
+        sam_pixel_std: per-channel std in ``[0, 255]``
+        sam_image_size: the square input size
     """
+    pixel_mean = torch.tensor(sam_pixel_mean)
+    pixel_std = torch.tensor(sam_pixel_std)
 
-    def __init__(self, device, using_half_precision=False):
-        self._device = device
-        self._using_half_precision = using_half_precision
-
-    def __call__(self, img):
-        pil = fout.to_rgb_pil(img)
-        arr = np.array(pil)
-
-        h, w = arr.shape[:2]
-
-        # SAM2 branch: resize to 1024×1024, ImageNet-style pixel normalization
+    def transform(arr):
         sam_tensor = torch.as_tensor(
             np.ascontiguousarray(arr.transpose(2, 0, 1))
         ).float()
         sam_tensor = F.interpolate(
             sam_tensor.unsqueeze(0),
-            (_SAM_IMAGE_SIZE, _SAM_IMAGE_SIZE),
+            (sam_image_size, sam_image_size),
             mode="bilinear",
             align_corners=False,
         ).squeeze(0)
-        mean = _SAM_PIXEL_MEAN.view(-1, 1, 1)
-        std = _SAM_PIXEL_STD.view(-1, 1, 1)
-        sam_tensor = (sam_tensor - mean) / std
-        sam_tensor = sam_tensor.to(self._device)
+        mean = pixel_mean.view(-1, 1, 1)
+        std = pixel_std.view(-1, 1, 1)
+        return (sam_tensor - mean) / std
+
+    return transform
+
+
+def build_beit_transform(
+    beit_image_size=224,
+    beit_image_mean=(0.5, 0.5, 0.5),
+    beit_image_std=(0.5, 0.5, 0.5),
+    **_kwargs,
+):
+    """Build the BEiT-3 preprocessing pipeline used by OpenWorldSAM.
+
+    Matches ``preprocess_image_beit3()`` in the HuggingFace repo: tensor resize
+    after ``ToTensor()``, instead of resizing after ToPILImage as in the TorchImageModel.
+
+    Args:
+        beit_image_size (224): the square input size
+        beit_image_mean: normalization mean in ``[0, 1]``
+        beit_image_std: normalization std in ``[0, 1]``
+    """
+    return T.Compose(
+        [
+            T.ToTensor(),
+            T.Resize(
+                (beit_image_size, beit_image_size),
+                interpolation=3,
+                antialias=None,
+            ),
+            T.Normalize(mean=beit_image_mean, std=beit_image_std),
+        ]
+    )
+
+
+class OpenWorldSAMTransform:
+    """Dual-branch image transform for OpenWorldSAM.
+
+    Accepts RGB PIL images as produced by :class:`fiftyone.utils.torch.ImageGetItem`.
+    Returns a dict containing the SAM2-preprocessed tensor (1024×1024), the
+    BEiT-3-preprocessed tensor (224×224), and the original image dimensions.
+    This dict is the per-image unit passed through the DataLoader and into
+    :meth:`OpenWorldSAMModel._predict_all`.
+
+    Args:
+        device: the :class:`torch:torch.device` to move tensors to
+        sam_transform: SAM2 branch preprocessing transform
+        beit_transform: BEiT-3 branch preprocessing transform
+        using_half_precision (False): whether to cast tensors to fp16
+    """
+
+    def __init__(
+        self, device, sam_transform, beit_transform, using_half_precision=False
+    ):
+        self._device = device
+        self._using_half_precision = using_half_precision
+        self._sam_transform = sam_transform
+        self._beit_transform = beit_transform
+
+    def __call__(self, pil):
+        w, h = pil.size
+        arr = np.array(pil)
+
+        sam_tensor = self._sam_transform(arr).to(self._device)
         if self._using_half_precision:
             sam_tensor = sam_tensor.half()
 
-        # BEiT-3 branch: resize to 224×224, [0.5, 0.5, 0.5] normalization
-        pil = fout.to_rgb_pil(arr)
-        beit_tensor = _BEIT_TRANSFORM(pil)
-        beit_tensor = beit_tensor.to(self._device)
+        beit_tensor = self._beit_transform(pil).to(self._device)
         if self._using_half_precision:
             beit_tensor = beit_tensor.half()
 
@@ -121,18 +147,16 @@ class OpenWorldSAMOutputProcessor(fout.OutputProcessor):
         frame_size,
         confidence_thresh=None,
         classes=None,
-        **kwargs
+        **kwargs,
     ):
         return [
             fol.Detections(
-                detections=self._parse_instances(
-                    out, confidence_thresh, classes
-                )
+                detections=self._parse_output(out, confidence_thresh, classes)
             )
             for out in output
         ]
 
-    def _parse_instances(self, output, confidence_thresh, filter_classes):
+    def _parse_output(self, output, confidence_thresh, filter_classes):
         if not output or "instances" not in output:
             return []
 
@@ -153,7 +177,9 @@ class OpenWorldSAMOutputProcessor(fout.OutputProcessor):
             scores = instances.get("scores", torch.empty(0))
 
         detections = []
-        for mask_t, cls_id, score in zip(pred_masks, pred_classes, scores):
+        for mask_t, cls_id, score in zip(
+            pred_masks, pred_classes, scores, strict=True
+        ):
             score = float(score)
             if confidence_thresh is not None and score < confidence_thresh:
                 continue
@@ -183,9 +209,17 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
             uploaded with ``trust_remote_code=True``
         iou_thresh (0.5): minimum IoU score to keep an instance
         classes (None): list of text prompts for zero-shot segmentation.
-            Defaults to all 150 ADE20K categories
+            Defaults to ``ADE_PANOPTIC_CLASSES`` from the HuggingFace repo
         nms_thresh (0.2): NMS IoU threshold for duplicate suppression
         top_k (100): maximum instances returned per image
+        transforms_fcn (None): function that builds the BEiT-3 branch transform.
+            Defaults to :func:`build_beit_transform`
+        sam_transforms_fcn (None): function that builds the SAM2 branch
+            transform. Defaults to :func:`build_sam_transform`
+        transforms_args (None): arguments passed to both branch transform
+            factories. The SAM2 branch uses ``sam_pixel_mean``,
+            ``sam_pixel_std``, and ``sam_image_size``. The BEiT branch uses
+            ``beit_image_size``, ``beit_image_mean``, and ``beit_image_std``
     """
 
     def __init__(self, d):
@@ -196,6 +230,13 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
         self.nms_thresh = self.parse_number(d, "nms_thresh", default=0.2)
         self.top_k = self.parse_int(d, "top_k", default=100)
         self.raw_inputs = True  # items are dicts, not stackable tensors
+        self.sam_transforms_fcn = self.parse_raw(
+            d, "sam_transforms_fcn", default=None
+        )
+        if self.transforms_fcn is None:
+            self.transforms_fcn = build_beit_transform
+        if self.sam_transforms_fcn is None:
+            self.sam_transforms_fcn = build_sam_transform
         self.validate_config()
 
     def validate_config(self):
@@ -240,7 +281,20 @@ class OpenWorldSAMModel(fout.TorchImageModel):
     def _parse_classes(self, config):
         if config.classes is not None:
             return list(config.classes)
-        return _load_ade20k_classes()
+
+        import sys, importlib
+
+        if self._local_hf_dir not in sys.path:
+            sys.path.insert(0, self._local_hf_dir)
+
+        try:
+            default_classes = list(
+                importlib.import_module("utils.constants").ADE_PANOPTIC_CLASSES
+            )
+        finally:
+            sys.path.remove(self._local_hf_dir)
+
+        return default_classes
 
     def _download_model(self, config):
         pass  # HF Hub handles download automatically on first load
@@ -252,41 +306,56 @@ class OpenWorldSAMModel(fout.TorchImageModel):
 
         # HF trust_remote_code can't resolve nested package imports, so we
         # download the snapshot and import directly via sys.path.
-        local_dir = snapshot_download(
+        self._local_hf_dir = snapshot_download(
             config.name_or_path,
             cache_dir=fo.config.model_zoo_dir,
             ignore_patterns=["*.pt", "*.pth"],
         )
 
-        if local_dir not in sys.path:
-            sys.path.insert(0, local_dir)
+        if self._local_hf_dir not in sys.path:
+            sys.path.insert(0, self._local_hf_dir)
 
-        OpenWorldSAMConfig = importlib.import_module(
-            "configuration_openworld_sam"
-        ).OpenWorldSAMConfig
-        OpenWorldSAMModel = importlib.import_module(
-            "modeling_openworld_sam"
-        ).OpenWorldSAMModel
+        try:
+            OpenWorldSAMConfig = importlib.import_module(
+                "configuration_openworld_sam"
+            ).OpenWorldSAMConfig
+            OpenWorldSAMModel = importlib.import_module(
+                "modeling_openworld_sam"
+            ).OpenWorldSAMModel
+        finally:
+            sys.path.remove(self._local_hf_dir)
 
         hf_config = OpenWorldSAMConfig(
             nms_thresh=config.nms_thresh,
             iou_thresh=config.iou_thresh,
             detections_per_image=config.top_k,
         )
-        self._hf_model = OpenWorldSAMModel.from_pretrained(
-            local_dir,
+        model = OpenWorldSAMModel.from_pretrained(
+            self._local_hf_dir,
             config=hf_config,
             low_cpu_mem_usage=False,
         )
-        self._hf_model = self._hf_model.to(self._device)
+        model = model.to(self._device)
         if self._using_half_precision:
-            self._hf_model = self._hf_model.half()
-        self._hf_model.eval()
-        return self._hf_model
+            model = model.half()
+        model.eval()
+        return model
+
+    def _load_sam_transform(self, config):
+        import eta.core.utils as etau
+
+        sam_transforms_fcn = config.sam_transforms_fcn
+        if etau.is_str(sam_transforms_fcn):
+            sam_transforms_fcn = etau.get_function(sam_transforms_fcn)
+
+        kwargs = config.transforms_args or {}
+        return sam_transforms_fcn(**kwargs)
 
     def _build_transforms(self, config):
         transform = OpenWorldSAMTransform(
             device=self._device,
+            sam_transform=self._load_sam_transform(config),
+            beit_transform=self._load_transforms(config),
             using_half_precision=bool(self._using_half_precision),
         )
         # ragged_batches=True: items are dicts, not uniform tensors, so the
@@ -305,4 +374,4 @@ class OpenWorldSAMModel(fout.TorchImageModel):
             {**d, "prompt": prompts, "unique_categories": category_ids}
             for d in imgs
         ]
-        return self._hf_model(batch_input)
+        return self._model(batch_input)

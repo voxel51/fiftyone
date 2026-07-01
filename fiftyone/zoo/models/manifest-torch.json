@@ -12108,7 +12108,17 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.openworld_sam.OpenWorldSAMModel",
                 "config": {
-                    "name_or_path": "Voxel51/openworld-sam"
+                    "name_or_path": "Voxel51/openworld-sam",
+                    "sam_transforms_fcn": "fiftyone.utils.openworld_sam.build_sam_transform",
+                    "transforms_fcn": "fiftyone.utils.openworld_sam.build_beit_transform",
+                    "transforms_args": {
+                        "sam_pixel_mean": [123.675, 116.28, 103.53],
+                        "sam_pixel_std": [58.395, 57.12, 57.375],
+                        "sam_image_size": 1024,
+                        "beit_image_size": 224,
+                        "beit_image_mean": [0.5, 0.5, 0.5],
+                        "beit_image_std": [0.5, 0.5, 0.5]
+                    }
                 }
             },
             "requirements": {
@@ -12118,8 +12128,8 @@
                     "transformers",
                     "timm",
                     "torchscale",
-                    "einops",
-                    "safetensors"
+                    "safetensors",
+                    "sentencepiece"
                 ],
                 "cpu": {
                     "support": true
@@ -12130,14 +12140,11 @@
             },
             "tags": [
                 "segmentation",
-                "instance",
-                "panoptic",
+                "instances",
                 "zero-shot",
                 "open-vocabulary",
                 "torch",
-                "transformers",
-                "sam2",
-                "ade20k"
+                "transformer"
             ],
             "training_data": [
                 {
