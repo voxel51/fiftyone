@@ -1,5 +1,5 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { recordMcapWorkerAttribution } from "../react/mcap-latency-debug";
+import { recordMcapWorkerAttribution } from "../mcap-latency-debug";
 import { hydrateMcapFrameTransformSet } from "../frame-transforms";
 import { isMcapLatencyDebugEnabled } from "../mcap-debug-flags";
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";

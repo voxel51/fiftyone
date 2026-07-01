@@ -10,7 +10,7 @@ import { McapFrameTransformsProvider } from "./mcap-frame-transforms-context";
 import {
   markMcapLatencyEvent,
   startMcapLatencyDebugSession,
-} from "./mcap-latency-debug";
+} from "../mcap-latency-debug";
 import { McapModalSettingsProvider } from "./mcap-modal-settings";
 import McapSettingsSidebar from "./McapSettingsSidebar";
 import { McapStreams } from "./McapStreams";

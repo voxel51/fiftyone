@@ -7,7 +7,7 @@ import type {
 import {
   isMcapLatencyDebugEnabled,
   recordMcapBandwidthSample,
-} from "./mcap-latency-debug";
+} from "../mcap-latency-debug";
 
 export type McapBandwidthOperation =
   | "background-lookahead"

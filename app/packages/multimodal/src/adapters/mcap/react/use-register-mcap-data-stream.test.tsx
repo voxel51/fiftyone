@@ -34,6 +34,7 @@ import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 import { useRegisterMcapDataStream } from "./use-register-mcap-data-stream";
 
 const TOPIC = "/CAM_FRONT/image_rect_compressed";
+const IMAGE_ANNOTATION_TOPIC = "/CAM_FRONT/annotations";
 const LIDAR_TOPIC = "/LIDAR_TOP";
 const RADAR_TOPIC = "/RADAR_FRONT";
 const DEFAULT_TEST_TOPICS = [TOPIC] as const;
@@ -772,6 +773,85 @@ describe("stream status + buffering feedback", () => {
     });
   });
 
+  it("keeps held annotation streams ready without stale-frame warning status", async () => {
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readSynchronizedMessages: vi.fn(async (request) =>
+        request.timeNs === 0n
+          ? createWindow({
+              timeNs: 0n,
+              topic: IMAGE_ANNOTATION_TOPIC,
+              visualization: {
+                circles: [],
+                kind: VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
+                points: [],
+                texts: [],
+              },
+            })
+          : createWindow({
+              messageTimeNs: 0n,
+              timeNs: request.timeNs,
+              topic: IMAGE_ANNOTATION_TOPIC,
+              visualization: {
+                circles: [],
+                kind: VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
+                points: [],
+                texts: [],
+              },
+            }),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTopicTimeBounds: vi.fn(async () => [
+        {
+          firstMessageTimeNs: 0n,
+          lastMessageTimeNs: 0n,
+          topic: IMAGE_ANNOTATION_TOPIC,
+        },
+      ]),
+    });
+
+    render(
+      <Harness
+        allTopics={[IMAGE_ANNOTATION_TOPIC]}
+        blockingTopics={[IMAGE_ANNOTATION_TOPIC]}
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+        staleMediaWarningNs={500_000_000n}
+        staleWarningTopics={[]}
+        subscribedTopics={[IMAGE_ANNOTATION_TOPIC]}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    await waitFor(() => {
+      expect(getMcapTopicStatus(store, IMAGE_ANNOTATION_TOPIC)).toBe("ready");
+    });
+
+    await act(async () => {
+      api?.seek(1);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      const value = getStreamValue(
+        store,
+        IMAGE_ANNOTATION_TOPIC,
+      ) as McapTopicPlaybackFrame | null;
+      expect(value).not.toBeNull();
+      expect(value?.contentTimeNs).toBe(0n);
+      expect(value?.requestedTimeNs).toBeGreaterThan(500_000_000n);
+      expect(getMcapTopicStatus(store, IMAGE_ANNOTATION_TOPIC)).toBe("ready");
+    });
+  });
+
   it("marks the topic 'failed' after repeated fetch failures and stops stalling on those ticks", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     try {
@@ -999,6 +1079,7 @@ function Harness({
   pointCloudTopics = [],
   source,
   staleMediaWarningNs = 0n,
+  staleWarningTopics = DEFAULT_TEST_TOPICS,
   subscribe = true,
   subscribedTopics = DEFAULT_TEST_TOPICS,
   streamPolicies = {},
@@ -1011,6 +1092,7 @@ function Harness({
   readonly pointCloudTopics?: readonly string[];
   readonly source: ByteSourceDescriptor | null;
   readonly staleMediaWarningNs?: bigint;
+  readonly staleWarningTopics?: readonly string[];
   readonly subscribe?: boolean;
   readonly subscribedTopics?: readonly string[];
   readonly streamPolicies?: McapStreamSyncPolicies;
@@ -1025,6 +1107,7 @@ function Harness({
     pointCloudTopics,
     source,
     staleMediaWarningNs,
+    staleWarningTopics,
     streamPolicies,
   });
 
@@ -1135,14 +1218,17 @@ function createTimelineRange(endTimeNs = 1_000_000_000n): McapTimelineRange {
 function createWindow({
   messageTimeNs,
   timeNs,
+  topic = TOPIC,
   visualization,
 }: {
   readonly messageTimeNs?: bigint;
   readonly timeNs: bigint;
+  readonly topic?: string;
   readonly visualization: McapDecodedMessage["decoded"]["output"]["visualization"];
 }): McapSynchronizedMessageWindow {
   const message = createDecodedMessage({
     timeNs: messageTimeNs ?? timeNs,
+    topic,
     visualization,
   });
   return {
@@ -1150,7 +1236,7 @@ function createWindow({
     endTimeNs: timeNs,
     messages: [message],
     messagesByTopic: {
-      [TOPIC]: [message],
+      [topic]: [message],
     },
     startTimeNs: timeNs,
     streamPolicies: {},
@@ -1172,9 +1258,11 @@ function createEmptyWindow(timeNs: bigint): McapSynchronizedMessageWindow {
 
 function createDecodedMessage({
   timeNs,
+  topic = TOPIC,
   visualization,
 }: {
   readonly timeNs: bigint;
+  readonly topic?: string;
   readonly visualization: McapDecodedMessage["decoded"]["output"]["visualization"];
 }): McapDecodedMessage {
   return {
@@ -1196,7 +1284,7 @@ function createDecodedMessage({
     publishTimeNs: timeNs,
     sequence: 1,
     timelineTimeNs: timeNs,
-    topic: TOPIC,
+    topic,
   };
 }
 
