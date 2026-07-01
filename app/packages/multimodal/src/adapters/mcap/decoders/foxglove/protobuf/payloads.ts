@@ -47,3 +47,12 @@ export const FOXGLOVE_GRID_PAYLOAD: PayloadDescriptor = {
   schema: "foxglove.Grid",
   schemaEncoding: "protobuf",
 };
+
+/**
+ * Payload identity for foxglove.CameraCalibration messages.
+ */
+export const FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.CameraCalibration",
+  schemaEncoding: "protobuf",
+};

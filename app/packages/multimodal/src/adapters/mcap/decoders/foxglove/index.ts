@@ -1,9 +1,15 @@
 import type { Decoder } from "../../../../decoders";
+import { foxgloveCameraCalibrationDecoder } from "./camera-calibration";
 import { foxgloveCompressedImageDecoder } from "./compressed-image";
 import { foxgloveGridDecoder } from "./grid";
 import { foxgloveImageAnnotationsDecoder } from "./image-annotations";
 import { foxglovePointCloudDecoder } from "./point-cloud";
 import { foxgloveSceneUpdateDecoder } from "./scene-update";
+
+/**
+ * Foxglove camera calibration decoder export.
+ */
+export { foxgloveCameraCalibrationDecoder } from "./camera-calibration";
 
 /**
  * Foxglove compressed image decoder export.
@@ -34,6 +40,7 @@ export { foxgloveSceneUpdateDecoder } from "./scene-update";
  * Built-in Foxglove decoders for the MCAP adapter.
  */
 export const foxgloveDecoders: readonly Decoder[] = [
+  foxgloveCameraCalibrationDecoder,
   foxgloveCompressedImageDecoder,
   foxgloveGridDecoder,
   foxgloveImageAnnotationsDecoder,
