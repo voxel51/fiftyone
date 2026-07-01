@@ -10,10 +10,16 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import React, { useEffect, useMemo, useState } from "react";
-import type { EncodedImageVisualization } from "../../../decoders";
+import type {
+  CameraCalibrationVisualization,
+  EncodedImageVisualization,
+} from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
-import { chooseAnnotationTopic } from "../topic-matching";
+import {
+  chooseAnnotationTopic,
+  chooseCalibrationTopic,
+} from "../topic-matching";
 import { ImagePanel } from "../../../visualization/panels/image";
 import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
 import { useMcapModalSettings } from "./mcap-modal-settings";
@@ -36,6 +42,9 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const images = useSceneSourcesByType(MCAP_SOURCE_TYPE.IMAGE);
   const annotationSources = useSceneSourcesByType(
     MCAP_SOURCE_TYPE.IMAGE_ANNOTATION,
+  );
+  const calibrationSources = useSceneSourcesByType(
+    MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
   );
   const { imageLabelTopics, interpolate2dAnnotations, setImageLabelTopics } =
     useMcapModalSettings();
@@ -70,6 +79,31 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     () => annotationSources.map((s) => s.id),
     [annotationSources],
   );
+  const calibrationTopic = useMemo(
+    () =>
+      topic
+        ? chooseCalibrationTopic(
+            topic,
+            calibrationSources.map((s) => s.id),
+          )
+        : null,
+    [calibrationSources, topic],
+  );
+  const calibration = useMcapTopicStream<CameraCalibrationVisualization>(
+    calibrationTopic ?? "",
+  );
+  // Calibration supplies authoritative dimensions before the first image
+  // decodes, so annotation overlays and pan/zoom get the right aspect
+  // immediately; the loaded image stays authoritative afterwards.
+  const effectiveImageDims = useMemo(() => {
+    if (imageDims) {
+      return imageDims;
+    }
+    if (calibration && calibration.width > 0 && calibration.height > 0) {
+      return { height: calibration.height, width: calibration.width };
+    }
+    return null;
+  }, [calibration, imageDims]);
   const inferredAnnotationTopic = useMemo(
     () => (topic ? chooseAnnotationTopic(topic, annotationTopics) : null),
     [topic, annotationTopics],
@@ -90,7 +124,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   );
   const imagePanZoom = useImagePanZoom({
     fit: IMAGE_FIT,
-    imageSize: imageDims,
+    imageSize: effectiveImageDims,
     resetKey: topic,
   });
   const currentLabel =
@@ -185,11 +219,11 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
             onResetView={imagePanZoom.resetView}
             viewTransform={imagePanZoom.viewTransform}
           />
-          {imageDims && selectedLabelTopics.length > 0 ? (
+          {effectiveImageDims && selectedLabelTopics.length > 0 ? (
             <McapImageAnnotationOverlay
               fit={IMAGE_FIT}
-              imageWidth={imageDims.width}
-              imageHeight={imageDims.height}
+              imageWidth={effectiveImageDims.width}
+              imageHeight={effectiveImageDims.height}
               interpolate={interpolate2dAnnotations}
               topics={selectedLabelTopics}
               viewTransform={imagePanZoom.viewTransform}
