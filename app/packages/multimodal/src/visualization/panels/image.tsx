@@ -1,7 +1,6 @@
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import type { CSSProperties, MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as THREE from "three";
 
 import type { EncodedImageVisualization } from "../../decoders";
 import {
@@ -10,6 +9,7 @@ import {
   type ImageTextureHandle,
   type ImageViewTransform,
 } from "./base-2d-scene";
+import { createImageTexture } from "./image-texture";
 import {
   VISUALIZATION_HUD_BACKGROUND_COLOR,
   VISUALIZATION_HUD_BORDER_COLOR,
@@ -181,75 +181,6 @@ function replaceTextureHandle(
 
   handleRef.current = nextHandle;
   setHandle(nextHandle);
-}
-
-async function createImageTexture(
-  bytes: Uint8Array,
-  mimeType: string | undefined,
-): Promise<ImageTextureHandle> {
-  const blob = new Blob([bytes as BlobPart], {
-    type: mimeType ?? "image/jpeg",
-  });
-
-  if (typeof createImageBitmap === "function") {
-    const image = await createImageBitmap(blob);
-    const texture = textureFromImage(image);
-
-    return {
-      aspectRatio: image.width / Math.max(1, image.height),
-      imageWidth: image.width,
-      imageHeight: image.height,
-      dispose: () => {
-        texture.dispose();
-        image.close();
-      },
-      texture,
-    };
-  }
-
-  const image = await loadHtmlImage(blob);
-  const texture = textureFromImage(image);
-
-  return {
-    aspectRatio: image.naturalWidth / Math.max(1, image.naturalHeight),
-    imageWidth: image.naturalWidth,
-    imageHeight: image.naturalHeight,
-    dispose: () => texture.dispose(),
-    texture,
-  };
-}
-
-function textureFromImage(image: TexImageSource): THREE.Texture {
-  const texture = new THREE.Texture(image);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.generateMipmaps = false;
-  texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearFilter;
-  texture.needsUpdate = true;
-
-  return texture;
-}
-
-async function loadHtmlImage(blob: Blob): Promise<HTMLImageElement> {
-  const objectUrl = URL.createObjectURL(blob);
-  const image = new Image();
-  image.decoding = "async";
-
-  try {
-    image.src = objectUrl;
-    if (image.decode) {
-      await image.decode();
-    } else {
-      await new Promise<void>((resolve, reject) => {
-        image.onload = () => resolve();
-        image.onerror = () => reject(new Error("Image failed to load"));
-      });
-    }
-
-    return image;
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
 }
 
 const styles: Record<string, CSSProperties> = {
