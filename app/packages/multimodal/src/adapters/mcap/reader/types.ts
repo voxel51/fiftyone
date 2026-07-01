@@ -1,5 +1,9 @@
 import type { McapIndexedReader, McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
+import type {
+  McapPrefetchChunkDataRequest,
+  McapPrefetchWindowRequest,
+} from "./chunk-prefetch";
 
 /**
  * One timestamp and byte offset entry from an MCAP message index.
@@ -182,4 +186,16 @@ export interface McapIndexedReaderLike {
    * Streams full MCAP messages through the core indexed reader API.
    */
   readMessages: McapIndexedReader["readMessages"];
+
+  /**
+   * Warms the byte layer for the exact chunks an already-resolved read is
+   * about to touch. Advisory; failures surface only through the real read.
+   */
+  prefetchChunkData?(request: McapPrefetchChunkDataRequest): Promise<void>;
+
+  /**
+   * Warms the byte layer for an upcoming indexed read over a log-time
+   * window. Advisory; failures surface only through the real read.
+   */
+  prefetchWindow?(request: McapPrefetchWindowRequest): Promise<void>;
 }

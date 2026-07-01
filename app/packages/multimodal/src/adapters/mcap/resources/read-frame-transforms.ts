@@ -253,11 +253,21 @@ export async function readMcapFrameTransformWindow({
     startTimeNs: request.startTimeNs,
   });
 
+  const transformTopics = transformChannels.map((entry) => entry.channel.topic);
+  // Transform payloads are tiny but interleaved into mixed chunks, so the
+  // serial read loop below otherwise pays one round trip per chunk touch on
+  // remote transports. Racing reads coalesce on shared byte-cache fill keys.
+  void reader.prefetchWindow?.({
+    endTimeNs: endTime,
+    startTimeNs: startTime,
+    topics: transformTopics,
+  });
+
   const samples: McapFrameTransformSample[] = [];
   for await (const message of reader.readMessages({
     endTime,
     startTime,
-    topics: transformChannels.map((entry) => entry.channel.topic),
+    topics: transformTopics,
   })) {
     const entry = channelsById.get(message.channelId);
     if (!entry) {
