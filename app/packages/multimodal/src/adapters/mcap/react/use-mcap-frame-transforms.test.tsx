@@ -74,7 +74,7 @@ describe("useMcapFrameTransforms", () => {
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledWith({
         activeTimeline: undefined,
-        endTimeNs: 500_000_100n,
+        endTimeNs: 1_000_000_100n,
         source,
         startTimeNs: 0n,
       });
@@ -94,7 +94,7 @@ describe("useMcapFrameTransforms", () => {
     const { rerender } = render(
       <FrameTransformsHarness
         client={client}
-        dynamicRange={{ endTimeNs: 2_000_000_000n, startTimeNs: 0n }}
+        dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
         label="frames"
         source={source}
         timeNs={100n}
@@ -102,37 +102,52 @@ describe("useMcapFrameTransforms", () => {
     );
 
     await waitFor(() => {
-      expect(client.readFrameTransformWindow).toHaveBeenCalledWith({
+      expect(client.readFrameTransformWindow).toHaveBeenCalled();
+    });
+    expect(vi.mocked(client.readFrameTransformWindow).mock.calls[0]).toEqual([
+      {
         activeTimeline: undefined,
-        endTimeNs: 500_000_100n,
+        endTimeNs: 1_000_000_100n,
         source,
         startTimeNs: 0n,
-      });
+      },
+    ]);
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(3);
     });
+    expect(vi.mocked(client.readFrameTransformWindow).mock.calls[1]).toEqual([
+      {
+        activeTimeline: undefined,
+        endTimeNs: 4_000_000_100n,
+        source,
+        startTimeNs: 0n,
+      },
+      { priority: "idle" },
+    ]);
+    expect(vi.mocked(client.readFrameTransformWindow).mock.calls[2]).toEqual([
+      {
+        activeTimeline: undefined,
+        endTimeNs: 10_000_000_000n,
+        source,
+        startTimeNs: 0n,
+      },
+      { priority: "idle" },
+    ]);
     await waitFor(() => {
       expect(screen.getByTestId("frames").textContent).toBe("ready:resolved:");
     });
-
     rerender(
       <FrameTransformsHarness
         client={client}
-        dynamicRange={{ endTimeNs: 2_000_000_000n, startTimeNs: 0n }}
+        dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
         label="frames"
         source={source}
         timeNs={900n}
       />,
     );
 
-    await waitFor(() => {
-      expect(client.readFrameTransformWindow).toHaveBeenCalledWith({
-        activeTimeline: undefined,
-        endTimeNs: 2_000_000_000n,
-        source,
-        startTimeNs: 0n,
-      });
-    });
     await flushReactWork();
-    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
+    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(3);
   });
 
   it("rebuilds transform cache when the active timeline changes", async () => {
@@ -176,7 +191,7 @@ describe("useMcapFrameTransforms", () => {
     });
     expect(client.readFrameTransformWindow).toHaveBeenLastCalledWith({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-      endTimeNs: 500_000_100n,
+      endTimeNs: 1_000_000_100n,
       source,
       startTimeNs: 0n,
     });
