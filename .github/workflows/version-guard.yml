@@ -27,27 +27,53 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # The release flow legitimately bumps VERSION:
-          #   - release automation / back-merge PRs (voxel51-bot, merge/*)
-          #   - release stabilization (PRs targeting a release/v* branch)
-          #   - a deliberate manual bump tagged with the 'version-bump' label
-          if [ "$AUTHOR" = "voxel51-bot" ] \
-            || [[ "$HEAD_REF" == merge/* ]] \
-            || [[ "$BASE_REF" == release/v* ]] \
-            || echo "$LABELS" | grep -q '"version-bump"'; then
-            echo "Release-flow PR; VERSION changes are allowed."
+          parse() { sed -E 's/^VERSION = ["'\'']([^"'\'']+)["'\''].*/\1/'; }
+
+          # Only setup.py is guarded. package/db/setup.py (fiftyone-db) is versioned
+          # independently of the release, so it isn't guarded here.
+          changed=$(git diff "$BASE_SHA...$HEAD_SHA" -- setup.py \
+            | grep -E '^[+-]VERSION = ' || true)
+          if [ -z "$changed" ]; then
+            echo "No VERSION change in setup.py. OK."
             exit 0
           fi
 
-          changed=$(git diff "$BASE_SHA...$HEAD_SHA" -- setup.py package/db/setup.py \
-            | grep -E '^[+-]VERSION = ' || true)
-
-          if [ -n "$changed" ]; then
-            echo "::error::This PR changes the package VERSION outside the release flow:"
+          # Back-merges (release/* -> develop, main -> develop) must keep the base
+          # branch's version — never carry the release version onto develop, so a
+          # merge/* PR may not change the VERSION line.
+          if [[ "$HEAD_REF" == merge/* ]]; then
+            base_got=$(git show "$BASE_SHA:setup.py" | grep -E '^VERSION = ' | head -1 | parse)
+            echo "::error::back-merge changed setup.py VERSION; it must keep the base version ($base_got):"
             echo "$changed"
-            echo "The version number is owned by the release process. Bump it on a"
-            echo "release/v* branch, or add the 'version-bump' label if this is intentional."
+            echo "Resolve the version-file conflict by keeping the base (develop's) version."
             exit 1
           fi
 
-          echo "No out-of-band VERSION change. OK."
+          got=$(grep -E '^VERSION = ' setup.py | head -1 | parse)
+
+          # On a release branch the VERSION must MATCH the branch name:
+          # release/v<X> -> <X>, allowing an rc/.dev/.post suffix.
+          if [[ "$BASE_REF" == release/v* ]]; then
+            want="${BASE_REF#release/v}"
+            want_re=$(printf '%s' "$want" | sed 's/[.]/\\./g')
+            if [ "$got" = "$want" ] || [[ "$got" =~ ^${want_re}([^0-9].*)?$ ]]; then
+              echo "VERSION $got matches release branch release/v$want. OK."
+              exit 0
+            fi
+            echo "::error::setup.py VERSION ($got) does not match release branch release/v$want."
+            echo "On a release branch the package version must match the branch name."
+            exit 1
+          fi
+
+          # Off release branches, only a deliberate bump may change VERSION:
+          # voxel51-bot automation, or a PR labeled 'version-bump'.
+          if [ "$AUTHOR" = "voxel51-bot" ] || echo "$LABELS" | grep -q '"version-bump"'; then
+            echo "Release-flow PR; VERSION change to $got allowed."
+            exit 0
+          fi
+
+          echo "::error::This PR changes setup.py VERSION ($got) outside the release flow:"
+          echo "$changed"
+          echo "Bump it on a release/v* branch (where it must match the branch name), or add"
+          echo "the 'version-bump' label if this is intentional."
+          exit 1
