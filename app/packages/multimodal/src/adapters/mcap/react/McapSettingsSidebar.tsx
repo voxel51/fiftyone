@@ -1,8 +1,20 @@
-import { SidebarPanel, useTiling } from "@fiftyone/tiling";
-import { Checkbox, Text, TextColor, TextVariant } from "@voxel51/voodo";
-import React, { useCallback, useMemo } from "react";
-import { useSceneInventory, type SceneSource } from "../../../scene-inventory";
-import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import { useTiling } from "@fiftyone/tiling";
+import {
+  Checkbox,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  ToggleSwitch,
+} from "@voxel51/voodo";
+import type { Descriptor, ToggleSwitchTab } from "@voxel51/voodo";
+import React, {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   type McapTemporalPolicySettings,
   useMcapModalSettings,
@@ -10,56 +22,102 @@ import {
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import styles from "./McapSettingsSidebar.module.css";
 
+type ActiveSettingsTab = "scene" | "panel";
+
 /**
- * MCAP-specific left sidebar. When a pane is active, the pane body portals
- * its settings into this shell; when no pane is active, the sidebar exposes
- * scene-wide label settings.
+ * MCAP-specific left sidebar. Panel settings stay on an explicit tab while
+ * scene-wide settings are available without stealing focus from the active
+ * panel.
  */
 const McapSettingsSidebar: React.FC = () => {
   const { focusedTileId, setSettingsSlotEl, tiles } = useTiling();
   const focusedTile =
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId] : null;
+  const focusedTileTitle = focusedTile?.title ?? null;
+  const hasPanelTab = focusedTileTitle !== null;
+  const [activeTab, setActiveTab] = useState<ActiveSettingsTab>("scene");
+  const hadPanelTabRef = useRef(false);
   const slotRef = useCallback(
     (el: HTMLDivElement | null) => setSettingsSlotEl(el),
     [setSettingsSlotEl],
   );
 
-  const contextTitle = focusedTile ? focusedTile.title : "Scene context";
+  useLayoutEffect(() => {
+    if (hasPanelTab && !hadPanelTabRef.current) {
+      setActiveTab("panel");
+    } else if (!hasPanelTab) {
+      setActiveTab("scene");
+    }
+    hadPanelTabRef.current = hasPanelTab;
+  }, [hasPanelTab]);
+
+  const tabs = useMemo<Descriptor<ToggleSwitchTab>[]>(() => {
+    const nextTabs: Descriptor<ToggleSwitchTab>[] = [
+      {
+        id: "scene",
+        data: {
+          label: "Scene",
+          content: <GlobalSceneSettings />,
+        },
+      },
+    ];
+
+    if (focusedTileTitle) {
+      nextTabs.push({
+        id: "panel",
+        data: {
+          label: focusedTileTitle,
+          content: <PanelSettingsContent slotRef={slotRef} />,
+        },
+      });
+    }
+
+    return nextTabs;
+  }, [focusedTileTitle, slotRef]);
+  const defaultIndex = activeTab === "panel" && hasPanelTab ? 1 : 0;
+  const handleTabChange = useCallback(
+    (index: number) => {
+      setActiveTab(index === 1 && hasPanelTab ? "panel" : "scene");
+    },
+    [hasPanelTab],
+  );
 
   return (
-    <SidebarPanel
-      title={<span className={styles.contextTitle}>{contextTitle}</span>}
-    >
-      <div ref={slotRef} />
-      {focusedTile ? (
-        <div className={styles.root}>
-          <TimeResolutionSettings />
-        </div>
-      ) : (
-        <GlobalSceneSettings />
-      )}
-    </SidebarPanel>
+    <div className={styles.sidebarRoot}>
+      <ToggleSwitch
+        key={`${hasPanelTab ? "with-panel" : "scene-only"}-${defaultIndex}`}
+        defaultIndex={defaultIndex}
+        fullWidth
+        onChange={handleTabChange}
+        size={Size.Sm}
+        tabs={tabs}
+      />
+    </div>
   );
 };
 
+function PanelSettingsContent({
+  slotRef,
+}: {
+  readonly slotRef: (el: HTMLDivElement | null) => void;
+}) {
+  return (
+    <div className={`${styles.root} ${styles.tabContent}`}>
+      <div ref={slotRef} />
+    </div>
+  );
+}
+
 function GlobalSceneSettings() {
-  const sources = useSceneInventory();
   const {
     interpolate2dAnnotations,
     interpolate3dAnnotations,
     setInterpolate2dAnnotations,
     setInterpolate3dAnnotations,
   } = useMcapModalSettings();
-  const counts = useMemo(() => sceneCounts(sources), [sources]);
 
   return (
-    <div className={styles.root}>
-      <div className={styles.summaryGrid}>
-        <SummaryMetric label="Images" value={counts.images} />
-        <SummaryMetric label="3D" value={counts.pointClouds} />
-        <SummaryMetric label="Labels" value={counts.labels} />
-      </div>
-
+    <div className={`${styles.root} ${styles.tabContent}`}>
       <TimeResolutionSettings />
 
       <section className={styles.section}>
@@ -219,34 +277,6 @@ function ControlLabel({
       </span>
     </span>
   );
-}
-
-function SummaryMetric({
-  label,
-  value,
-}: {
-  readonly label: string;
-  readonly value: number;
-}) {
-  return (
-    <div className={styles.metric}>
-      <span className={styles.metricValue}>{value.toLocaleString()}</span>
-      <span className={styles.metricLabel}>{label}</span>
-    </div>
-  );
-}
-
-function sceneCounts(sources: readonly SceneSource[]) {
-  return {
-    images: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.IMAGE).length,
-    labels: sources.filter(
-      (s) =>
-        s.type === MCAP_SOURCE_TYPE.IMAGE_ANNOTATION ||
-        s.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
-    ).length,
-    pointClouds: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD)
-      .length,
-  };
 }
 
 export default McapSettingsSidebar;

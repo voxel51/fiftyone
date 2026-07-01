@@ -4,42 +4,16 @@
   gap: 16px;
 }
 
-.contextTitle {
-  color: var(--color-brand-primary);
-  font-weight: 700;
-}
-
-.summaryGrid {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.metric {
-  background: var(--color-content-bg-card-2);
-  border: 1px solid var(--color-content-border-default);
-  border-radius: 6px;
+.sidebarRoot {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  padding: 8px;
+  height: 100%;
+  min-height: 0;
+  padding: 12px 16px;
 }
 
-.metricValue {
-  color: var(--color-content-text-primary);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.metricLabel {
-  color: var(--color-content-text-muted);
-  font-size: 10px;
-  line-height: 1.1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.tabContent {
+  margin-top: 12px;
 }
 
 .section {

@@ -141,4 +141,29 @@ describe("MultiModalPlayback shell", () => {
     expect(screen.getByTestId("caption-context").textContent).toBe("Camera");
     expect(screen.getByTestId("select-camera-1").dataset.focused).toBe("true");
   });
+
+  it("can keep repeat tile selection focused", () => {
+    render(
+      <MultiModalPlayback
+        fileName="x"
+        deselectFocusedTileOnRepeatSelect={false}
+        headerCaption={({ focusedTileTitle }) => (
+          <span data-testid="caption-context">
+            {focusedTileTitle ?? "Scene context"}
+          </span>
+        )}
+        initialTiles={{
+          "camera-1": { title: "Camera", render: () => null },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("select-camera-1"));
+    expect(screen.getByTestId("caption-context").textContent).toBe("Camera");
+    expect(screen.getByTestId("select-camera-1").dataset.focused).toBe("true");
+
+    fireEvent.click(screen.getByTestId("select-camera-1"));
+    expect(screen.getByTestId("caption-context").textContent).toBe("Camera");
+    expect(screen.getByTestId("select-camera-1").dataset.focused).toBe("true");
+  });
 });

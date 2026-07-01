@@ -132,6 +132,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
             fileName={fileName}
             headerCaption={headerCaption}
             sceneSources={sources}
+            deselectFocusedTileOnRepeatSelect={false}
             initialTiles={initialTiles}
             initialLayout={initialLayout}
             tracks={tracks.length > 0 ? tracks : undefined}
