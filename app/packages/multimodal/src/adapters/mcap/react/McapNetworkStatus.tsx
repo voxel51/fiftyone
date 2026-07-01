@@ -1,8 +1,10 @@
+// Deep imports on purpose: the playback package root barrel pulls view
+// components whose relay fragments cannot evaluate under vitest.
+import { usePlaybackStore } from "@fiftyone/playback/src/lib/playback/playback-store-context";
 import {
   useIsBuffering,
   useIsPlayPending,
-  usePlaybackStore,
-} from "@fiftyone/playback";
+} from "@fiftyone/playback/src/lib/playback/use-playback-state";
 import { humanReadableBytes } from "@fiftyone/utilities";
 import React, { useEffect, useRef } from "react";
 import type { McapResourceClient } from "../types";

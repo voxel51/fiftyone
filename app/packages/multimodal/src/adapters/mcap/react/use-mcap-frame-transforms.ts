@@ -1,5 +1,10 @@
+// Deep import on purpose: the playback package root barrel pulls view
+// components whose relay fragments cannot evaluate under vitest, and this
+// hook has direct unit tests.
+import { PlaybackStoreContext } from "@fiftyone/playback/src/lib/playback/playback-store-context";
 import {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -22,6 +27,7 @@ import {
   mcapLatencyNowMs,
 } from "../mcap-latency-debug";
 import { recordMcapFrameTransformBandwidth } from "./mcap-bandwidth-debug";
+import { shouldDeferMcapIdleWorkForStore } from "./mcap-network-health";
 
 // Placement reads are foreground work: keep them small so pending Play is not
 // blocked by transform runway decoding. The idle runway keeps playback smooth
@@ -107,6 +113,10 @@ export function useMcapFrameTransforms({
   );
   const runwayRangeKeyRef = useRef<string | null>(null);
   const sourceGenerationRef = useRef(0);
+  // Nullable on purpose: callers inside the playback shell provide the store
+  // (enabling the idle-work gate); standalone callers and tests get null and
+  // keep ungated behavior.
+  const playbackStore = useContext(PlaybackStoreContext);
   const dynamicRangeMode =
     dynamicRange === null
       ? "pending"
@@ -234,6 +244,12 @@ export function useMcapFrameTransforms({
     ) {
       return;
     }
+    // Runway extensions are speculative idle reads; while a constrained
+    // network is the reason playback waits, leave the link to foreground
+    // catch-up. The next playhead move retries once the wait clears.
+    if (playbackStore && shouldDeferMcapIdleWorkForStore(playbackStore, null)) {
+      return;
+    }
 
     const runwayRange = dynamicRunwayExtensionRangeForTime({
       indexedCoverageEndNs: transformCoverageEndForTime({
@@ -331,6 +347,7 @@ export function useMcapFrameTransforms({
     activeTimeline,
     client,
     dynamicRangeMode,
+    playbackStore,
     source,
     state.status,
     state.version,
