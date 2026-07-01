@@ -132,6 +132,8 @@ export interface PointCloudPanelLayer {
 }
 
 export interface PointCloudPanelRenderStats {
+  readonly cameraPose?: PointCloudCameraPose;
+  readonly cameraPoseSource: "controlled" | "fitted" | "none";
   readonly declaredPointCount: number;
   readonly finitePointCount: number;
   readonly layerCount: number;
@@ -225,6 +227,12 @@ export function PointCloudPanel({
       : fit === "frame"
         ? frameFitPose
         : (initialFitPose ?? frameFitPose);
+  const effectiveCameraPose = cameraPose ?? fittedCameraPose;
+  const cameraPoseSource = cameraPose
+    ? "controlled"
+    : fittedCameraPose
+      ? "fitted"
+      : "none";
 
   const finitePointCount = renderLayers.reduce(
     (sum, layer) => sum + layer.data.finitePointCount,
@@ -243,6 +251,8 @@ export function PointCloudPanel({
 
     const frame = requestAnimationFrame(() => {
       onRenderStats({
+        ...(effectiveCameraPose ? { cameraPose: effectiveCameraPose } : {}),
+        cameraPoseSource,
         declaredPointCount,
         finitePointCount,
         layerCount: layers.length,
@@ -256,7 +266,9 @@ export function PointCloudPanel({
     return () => cancelAnimationFrame(frame);
   }, [
     declaredPointCount,
+    effectiveCameraPose,
     finitePointCount,
+    cameraPoseSource,
     hasPointCloudLayers,
     layers.length,
     onRenderStats,
@@ -272,7 +284,7 @@ export function PointCloudPanel({
         style={styles.canvas}
       >
         <Base3DScene
-          cameraPose={cameraPose ?? fittedCameraPose}
+          cameraPose={effectiveCameraPose}
           focusSceneRequestKey={focusSceneRequestKey || undefined}
           onCameraPoseChange={onCameraPoseChange}
           showGizmo={showGizmo}

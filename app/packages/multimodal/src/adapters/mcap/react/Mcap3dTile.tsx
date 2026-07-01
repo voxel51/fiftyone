@@ -3,16 +3,19 @@ import { Checkbox, Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { Vector3 } from "three";
 import type { PointCloudVisualization } from "../../../decoders";
 import { useSceneInventory, type SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import {
   PointCloudPanel,
   type PointCloudCameraPose,
+  type PointCloudFrameTransform,
   type PointCloudPanelRenderStats,
 } from "../../../visualization/panels/point-cloud";
 import {
@@ -111,6 +114,17 @@ const PROVISIONAL_TOPIC_PENALTIES: readonly {
   readonly value: string;
 }[] = [{ score: -50, value: "radar" }];
 type FrameSelectionSource = "auto" | "user";
+type CameraPoseChangeSource = "focus" | "initial" | "interaction";
+type Mcap3dPlacementStatus =
+  | "empty"
+  | "provisional"
+  | "transformed"
+  | "unframed";
+interface ProvisionalCameraView {
+  readonly cameraPose: PointCloudCameraPose;
+  readonly contentTimeNs: bigint;
+  readonly sourceFrameId: string;
+}
 type CameraTargetResolution =
   | {
       readonly pose: Mcap3dCameraTargetPose;
@@ -160,6 +174,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     new Set(renderableSources.map((s) => s.id)),
   );
   const latestCameraPoseRef = useRef<PointCloudCameraPose | null>(null);
+  const lastProvisionalViewRef = useRef<ProvisionalCameraView | null>(null);
+  const hadRecentProvisionalPlacementRef = useRef(false);
+  const cameraPoseRemapKeyRef = useRef<string | null>(null);
+  const lastDebugPlacementStateRef = useRef<string | null>(null);
 
   // This effect keeps the enabled source set aligned as 3D sources appear or
   // disappear after the tile mounts.
@@ -200,6 +218,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const selectedTopics = useMemo(
     () => selectedSources.map((s) => s.id),
     [selectedSources],
+  );
+  const selectedTopicsKey = useMemo(
+    () => selectedTopics.join("\0"),
+    [selectedTopics],
   );
   const frames =
     useMcapTopicPlaybackFrames<PointCloudVisualization>(selectedTopics);
@@ -259,6 +281,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => selectProvisionalPointCloudTopic(selectedSources, frames),
     [frames, selectedSources],
   );
+  const provisionalPlaybackFrame = useMemo(
+    () => playbackFrameForTopic(selectedTopics, frames, provisionalTopicId),
+    [frames, provisionalTopicId, selectedTopics],
+  );
   const {
     clampedFrameIds,
     largeInterpolationGaps,
@@ -285,7 +311,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     temporalPolicy.transformGapWarningMs,
     worldFrameId,
   ]);
-  const placementStatus = useMemo(
+  const placementStatus = useMemo<Mcap3dPlacementStatus>(
     () =>
       provisionalFrameIds.length > 0
         ? "provisional"
@@ -366,6 +392,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     trackingAnchor,
     worldFrameId,
   ]);
+  const panelCameraPose = controlledCameraPose ?? cameraPose;
   const cameraTrackingWarning = useMemo(
     () =>
       cameraTrackingWarningText({
@@ -438,6 +465,95 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     }
   }, [cameraPose, controlledCameraPose]);
 
+  useEffect(() => {
+    lastProvisionalViewRef.current = null;
+    hadRecentProvisionalPlacementRef.current = false;
+    cameraPoseRemapKeyRef.current = null;
+  }, [selectedTopicsKey]);
+
+  const rememberProvisionalCameraPose = useCallback(
+    (pose: PointCloudCameraPose) => {
+      if (placementStatus !== "provisional" || !provisionalPlaybackFrame) {
+        return;
+      }
+
+      const sourceFrameId =
+        provisionalPlaybackFrame.frame.coordinateFrameId?.trim();
+      if (!sourceFrameId || !provisionalFrameIds.includes(sourceFrameId)) {
+        return;
+      }
+
+      lastProvisionalViewRef.current = {
+        cameraPose: pose,
+        contentTimeNs: provisionalPlaybackFrame.contentTimeNs,
+        sourceFrameId,
+      };
+    },
+    [placementStatus, provisionalFrameIds, provisionalPlaybackFrame],
+  );
+
+  useLayoutEffect(() => {
+    if (placementStatus === "provisional") {
+      hadRecentProvisionalPlacementRef.current = true;
+      return;
+    }
+    if (
+      placementStatus !== "transformed" ||
+      !hadRecentProvisionalPlacementRef.current
+    ) {
+      return;
+    }
+
+    hadRecentProvisionalPlacementRef.current = false;
+    if (controlledCameraPose || !worldFrameId) {
+      return;
+    }
+
+    const provisionalView = lastProvisionalViewRef.current;
+    if (!provisionalView || provisionalView.sourceFrameId === worldFrameId) {
+      return;
+    }
+
+    const remapKey = `${provisionalView.sourceFrameId}->${worldFrameId}:${provisionalView.contentTimeNs.toString()}`;
+    if (cameraPoseRemapKeyRef.current === remapKey) {
+      return;
+    }
+
+    const resolution = frameTransforms.resolve(
+      provisionalView.sourceFrameId,
+      worldFrameId,
+      provisionalView.contentTimeNs,
+    );
+    if (resolution.status !== "resolved") {
+      return;
+    }
+
+    const remappedPose = transformCameraPose(
+      provisionalView.cameraPose,
+      resolution.transform,
+    );
+    cameraPoseRemapKeyRef.current = remapKey;
+    latestCameraPoseRef.current = remappedPose;
+    setCameraPose(remappedPose);
+
+    if (latencyDebugEnabled) {
+      markMcapLatencyEvent("3d camera pose remapped", {
+        contentTimeNs: provisionalView.contentTimeNs.toString(),
+        from: cameraPoseDebugDetail(provisionalView.cameraPose),
+        sourceFrameId: provisionalView.sourceFrameId,
+        targetFrameId: worldFrameId,
+        to: cameraPoseDebugDetail(remappedPose),
+        transformKind: resolution.resolutionKind ?? "unknown",
+      });
+    }
+  }, [
+    controlledCameraPose,
+    frameTransforms,
+    latencyDebugEnabled,
+    placementStatus,
+    worldFrameId,
+  ]);
+
   const toggleSource = useCallback((id: string, checked: boolean) => {
     setEnabled((current) => {
       const next = new Set(current);
@@ -458,9 +574,12 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     setCameraTargetFrameId(frameId);
   }, []);
   const handleCameraPoseChange = useCallback(
-    (pose: PointCloudCameraPose) => {
-      setCameraPose(pose);
+    (pose: PointCloudCameraPose, source: CameraPoseChangeSource) => {
       latestCameraPoseRef.current = pose;
+      rememberProvisionalCameraPose(pose);
+      if (source !== "initial") {
+        setCameraPose(pose);
+      }
       if (
         !followTrackingMode ||
         !cameraTargetPose ||
@@ -480,15 +599,28 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         }),
       );
     },
-    [cameraTargetFrameId, cameraTargetPose, followTrackingMode, worldFrameId],
+    [
+      cameraTargetFrameId,
+      cameraTargetPose,
+      followTrackingMode,
+      rememberProvisionalCameraPose,
+      worldFrameId,
+    ],
   );
   const handlePanelRenderStats = useCallback(
     (stats: PointCloudPanelRenderStats) => {
+      if (stats.cameraPose) {
+        latestCameraPoseRef.current = stats.cameraPose;
+        rememberProvisionalCameraPose(stats.cameraPose);
+      }
       if (!latencyDebugEnabled) {
         return;
       }
       const detail = {
         ...stats,
+        ...(stats.cameraPose
+          ? { cameraPose: cameraPoseDebugDetail(stats.cameraPose) }
+          : {}),
         placementStatus,
         provisionalFrameIds,
         transformedLayerCount,
@@ -512,6 +644,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       latencyDebugEnabled,
       placementStatus,
       provisionalFrameIds,
+      rememberProvisionalCameraPose,
       transformedLayerCount,
       worldFrameId,
     ],
@@ -551,6 +684,63 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     pointCloudLayers,
     provisionalFrameIds,
     transformedLayerCount,
+    worldFrameId,
+  ]);
+
+  useEffect(() => {
+    if (!latencyDebugEnabled || pointCloudLayers.length === 0) {
+      return;
+    }
+
+    const debugStateKey = [
+      placementStatus,
+      pointCloudLayers.length,
+      transformedLayerCount,
+      provisionalFrameIds.join(","),
+      unresolvedFrameIds.join(","),
+      worldFrameId,
+      frameTransforms.status,
+      frameTransforms.frameIds.length,
+      cameraTargetFrameId,
+      cameraTargetResolution.status,
+      trackingMode,
+      controlledCameraPose ? "controlled" : "uncontrolled",
+    ].join("|");
+    if (debugStateKey === lastDebugPlacementStateRef.current) {
+      return;
+    }
+    lastDebugPlacementStateRef.current = debugStateKey;
+
+    markMcapLatencyEvent("3d placement state changed", {
+      cameraTargetFrameId,
+      cameraTargetStatus: cameraTargetResolution.status,
+      controlledCamera: controlledCameraPose !== null,
+      frameIds: frameIds.length,
+      layers: pointCloudLayers.length,
+      placementStatus,
+      pointCount: pointCountForLayers(pointCloudLayers),
+      provisionalFrameIds,
+      transformFrameIds: frameTransforms.frameIds.length,
+      transformStatus: frameTransforms.status,
+      transformedLayerCount,
+      unresolvedFrameIds,
+      worldFrameId,
+      trackingMode,
+    });
+  }, [
+    cameraTargetFrameId,
+    cameraTargetResolution.status,
+    controlledCameraPose,
+    frameIds.length,
+    frameTransforms.frameIds.length,
+    frameTransforms.status,
+    latencyDebugEnabled,
+    placementStatus,
+    pointCloudLayers,
+    provisionalFrameIds,
+    trackingMode,
+    transformedLayerCount,
+    unresolvedFrameIds,
     worldFrameId,
   ]);
 
@@ -617,13 +807,11 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       ) : pointCloudLayers.length > 0 || panelWarning ? (
         <div className={styles.panelStack}>
           <PointCloudPanel
-            cameraPose={controlledCameraPose}
+            cameraPose={panelCameraPose}
             layers={pointCloudLayers}
             className={styles.panel}
             onCameraPoseChange={handleCameraPoseChange}
-            onRenderStats={
-              latencyDebugEnabled ? handlePanelRenderStats : undefined
-            }
+            onRenderStats={handlePanelRenderStats}
             warning={panelWarning}
           />
           <McapTileStatusBadge topics={selectedTopics} />
@@ -782,6 +970,19 @@ function selectProvisionalPointCloudTopic(
   }
 
   return best?.topic ?? sources[0]?.id ?? null;
+}
+
+function playbackFrameForTopic(
+  selectedTopics: readonly string[],
+  frames: readonly (McapTopicPlaybackFrame<PointCloudVisualization> | null)[],
+  topic: string | null,
+) {
+  if (!topic) {
+    return null;
+  }
+
+  const index = selectedTopics.indexOf(topic);
+  return index >= 0 ? (frames[index] ?? null) : null;
 }
 
 function provisionalPointCloudTopicScore(source: SceneSource): number {
@@ -963,6 +1164,46 @@ function pointCountForLayers(
   }[],
 ): number {
   return layers.reduce((sum, layer) => sum + layer.frame.pointCount, 0);
+}
+
+function transformCameraPose(
+  pose: PointCloudCameraPose,
+  transform: PointCloudFrameTransform,
+): PointCloudCameraPose {
+  return {
+    position: transformCameraPosePoint(pose.position, transform),
+    target: transformCameraPosePoint(pose.target, transform),
+  };
+}
+
+function transformCameraPosePoint(
+  point: PointCloudCameraPose["position"],
+  transform: PointCloudFrameTransform,
+): PointCloudCameraPose["position"] {
+  const transformed = new Vector3(point[0], point[1], point[2]);
+  const rotationLength = Math.hypot(
+    transform.rotation.w,
+    transform.rotation.x,
+    transform.rotation.y,
+    transform.rotation.z,
+  );
+  if (rotationLength > 0) {
+    transformed.applyQuaternion(transform.rotation.clone().normalize());
+  }
+  transformed.add(transform.translation);
+
+  return [transformed.x, transformed.y, transformed.z];
+}
+
+function cameraPoseDebugDetail(pose: PointCloudCameraPose) {
+  return {
+    position: pose.position.map(roundDebugNumber),
+    target: pose.target.map(roundDebugNumber),
+  };
+}
+
+function roundDebugNumber(value: number): number {
+  return Number(value.toFixed(3));
 }
 
 function uniqueSortedFrameIds(frameIds: readonly string[]): readonly string[] {
