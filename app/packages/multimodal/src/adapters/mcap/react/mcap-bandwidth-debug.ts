@@ -16,7 +16,8 @@ export type McapBandwidthOperation =
   | "startup-lookahead"
   | "transform-bootstrap"
   | "transform-current-window"
-  | "transform-range";
+  | "transform-range"
+  | "transform-runway";
 
 interface RecordMessageWindowBandwidthOptions {
   readonly operation: McapBandwidthOperation;
@@ -208,7 +209,11 @@ function operationPhase(operation: McapBandwidthOperation): string {
   ) {
     return "current-frame";
   }
-  if (operation === "background-lookahead" || operation === "transform-range") {
+  if (
+    operation === "background-lookahead" ||
+    operation === "transform-range" ||
+    operation === "transform-runway"
+  ) {
     return "background";
   }
 
