@@ -39,7 +39,7 @@ import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
   isMcapLatencyDebugEnabled,
   markMcapLatencyEvent,
-} from "./mcap-latency-debug";
+} from "../mcap-latency-debug";
 import { useMcapModalSettings } from "./mcap-modal-settings";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import type { McapTileProps } from "./mcap-tile-types";

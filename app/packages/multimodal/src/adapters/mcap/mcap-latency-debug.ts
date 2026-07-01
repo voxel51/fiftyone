@@ -1,5 +1,4 @@
-import { isMcapLatencyDebugEnabled } from "../mcap-debug-flags";
-import type { McapPlaybackWorkerAttribution } from "../worker/playback-worker-attribution";
+import { isMcapLatencyDebugEnabled } from "./mcap-debug-flags";
 
 const GLOBAL_KEY = "__FIFTYONE_MCAP_LATENCY__";
 const METRIC_PUBLISH_INTERVAL_MS = 250;
@@ -96,13 +95,42 @@ interface McapLatencyWorkerAttributionBucket {
   transferables: number;
 }
 
+interface McapLatencyWorkerAttribution {
+  readonly chunkBytes: number;
+  readonly chunkMessageIndexOverlapBytes: number;
+  readonly chunkOverlapBytes: number;
+  readonly chunksTouched: number;
+  readonly coalescedReadRequests: number;
+  readonly coalescedRequestedBytes: number;
+  readonly decodedPayloadBytes: number;
+  readonly fetchedBytes: number;
+  readonly lane: string;
+  readonly mcapDataRequestId?: string;
+  readonly ok: boolean;
+  readonly operation: string;
+  readonly payloadBytes: number;
+  readonly priority: number;
+  readonly queueWaitMs: number;
+  readonly rawPayloadBytes: number;
+  readonly readRequests: number;
+  readonly request: unknown;
+  readonly requestedBytes: number;
+  readonly requestId: number;
+  readonly resultMessages: number;
+  readonly resultSamples: number;
+  readonly resultWindows: number;
+  readonly runMs: number;
+  readonly topChunks: readonly unknown[];
+  readonly transferables: number;
+}
+
 interface McapLatencyWorkerAttributionState {
   readonly byLane: Record<string, McapLatencyWorkerAttributionBucket>;
   readonly byLaneOperation: Record<string, McapLatencyWorkerAttributionBucket>;
   readonly byOperation: Record<string, McapLatencyWorkerAttributionBucket>;
   readonly byPriority: Record<string, McapLatencyWorkerAttributionBucket>;
   readonly recent: Array<
-    McapPlaybackWorkerAttribution & { readonly elapsedMs: number }
+    McapLatencyWorkerAttribution & { readonly elapsedMs: number }
   >;
   readonly total: McapLatencyWorkerAttributionBucket;
 }
@@ -274,7 +302,7 @@ export function recordMcapBandwidthSample(
 }
 
 export function recordMcapWorkerAttribution(
-  sample: McapPlaybackWorkerAttribution,
+  sample: McapLatencyWorkerAttribution,
 ): void {
   if (!isMcapLatencyDebugEnabled()) return;
 
@@ -435,7 +463,7 @@ function addToBandwidthBucket(
 function addToWorkerAttributionMap(
   map: Record<string, McapLatencyWorkerAttributionBucket>,
   key: string,
-  sample: McapPlaybackWorkerAttribution,
+  sample: McapLatencyWorkerAttribution,
 ) {
   addToWorkerAttributionBucket(
     (map[key] ??= createWorkerAttributionBucket()),
@@ -445,7 +473,7 @@ function addToWorkerAttributionMap(
 
 function addToWorkerAttributionBucket(
   bucket: McapLatencyWorkerAttributionBucket,
-  sample: McapPlaybackWorkerAttribution,
+  sample: McapLatencyWorkerAttribution,
 ) {
   bucket.chunkBytes += sample.chunkBytes;
   bucket.chunkMessageIndexOverlapBytes += sample.chunkMessageIndexOverlapBytes;
@@ -711,10 +739,10 @@ function summarizeWorkerAttributionBucket(
 }
 
 function topWorkerAttributionSamples(
-  samples: readonly (McapPlaybackWorkerAttribution & {
+  samples: readonly (McapLatencyWorkerAttribution & {
     readonly elapsedMs: number;
   })[],
-  score: (sample: McapPlaybackWorkerAttribution) => number,
+  score: (sample: McapLatencyWorkerAttribution) => number,
 ) {
   return [...samples]
     .sort((left, right) => score(right) - score(left))
@@ -740,7 +768,7 @@ function topWorkerAttributionSamples(
     }));
 }
 
-function workerAttributionLogRow(sample: McapPlaybackWorkerAttribution) {
+function workerAttributionLogRow(sample: McapLatencyWorkerAttribution) {
   return {
     chunkMB: bytesToMb(sample.chunkBytes),
     chunksTouched: sample.chunksTouched,

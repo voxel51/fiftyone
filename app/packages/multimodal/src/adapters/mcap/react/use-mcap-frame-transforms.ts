@@ -20,7 +20,7 @@ import {
   markMcapLatencyEvent,
   mcapLatencyDurationMs,
   mcapLatencyNowMs,
-} from "./mcap-latency-debug";
+} from "../mcap-latency-debug";
 import { recordMcapFrameTransformBandwidth } from "./mcap-bandwidth-debug";
 
 // Placement reads are foreground work: keep them small so pending Play is not

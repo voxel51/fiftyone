@@ -45,7 +45,7 @@ import {
   mcapLatencyDurationMs,
   mcapLatencyNowMs,
   recordMcapLatencyMetric,
-} from "./mcap-latency-debug";
+} from "../mcap-latency-debug";
 import { resetMcapPlaybackBuffering } from "./mcap-playback-buffering";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import { createMcapTimelineIndex } from "./mcap-timeline-index";
@@ -217,6 +217,7 @@ export interface UseMcapDataStreamOptions {
   allTopics: readonly string[];
   pointCloudTopics: readonly string[];
   staleMediaWarningNs: bigint;
+  staleWarningTopics: readonly string[];
   streamPolicies: McapStreamSyncPolicies;
 }
 
@@ -240,6 +241,7 @@ export function useRegisterMcapDataStream({
   allTopics,
   pointCloudTopics,
   staleMediaWarningNs,
+  staleWarningTopics,
   streamPolicies,
 }: UseMcapDataStreamOptions): void {
   const { registerStream, seek, subscribeStream } = usePlayback();
@@ -295,6 +297,9 @@ export function useRegisterMcapDataStream({
     new Set(pointCloudTopics),
   );
   const staleMediaWarningNsRef = useRef(staleMediaWarningNs);
+  const staleWarningTopicsRef = useRef<ReadonlySet<string>>(
+    new Set(staleWarningTopics),
+  );
   const streamPoliciesRef = useRef(streamPolicies);
   useEffect(() => {
     allTopicsRef.current = allTopics;
@@ -308,6 +313,9 @@ export function useRegisterMcapDataStream({
   useEffect(() => {
     staleMediaWarningNsRef.current = staleMediaWarningNs;
   }, [staleMediaWarningNs]);
+  useEffect(() => {
+    staleWarningTopicsRef.current = new Set(staleWarningTopics);
+  }, [staleWarningTopics]);
   useEffect(() => {
     streamPoliciesRef.current = streamPolicies;
   }, [streamPolicies]);
@@ -658,13 +666,15 @@ export function useRegisterMcapDataStream({
           const msg = cache.get(tick);
           if (!msg) {
             status = "gap";
-          } else {
+          } else if (staleWarningTopicsRef.current.has(topic)) {
             staleAgeNs = staleAgeForMessage(
               tick,
               msg,
               staleMediaWarningNsRef.current,
             );
             status = staleAgeNs === null ? "ready" : "stale";
+          } else {
+            status = "ready";
           }
         }
       }

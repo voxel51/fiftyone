@@ -9,7 +9,7 @@ import {
   useSetMcapFrameTransformsContext,
 } from "./mcap-frame-transforms-context";
 import { useMcapDataStream } from "./mcap-data-stream-context";
-import { markMcapLatencyEvent } from "./mcap-latency-debug";
+import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
   type McapTemporalPolicySettings,
   useMcapModalSettings,
@@ -48,6 +48,17 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
         .map((s) => s.id),
     [sources],
   );
+  const staleWarningTopics = useMemo(
+    () =>
+      sources
+        .filter(
+          (s) =>
+            s.type === MCAP_SOURCE_TYPE.IMAGE ||
+            s.type === MCAP_SOURCE_TYPE.POINT_CLOUD,
+        )
+        .map((s) => s.id),
+    [sources],
+  );
   const blockingTopics = useMemo(
     () =>
       sources
@@ -82,6 +93,7 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
     allTopics,
     pointCloudTopics,
     staleMediaWarningNs: msToNs(temporalPolicy.staleMediaWarningMs),
+    staleWarningTopics,
     streamPolicies,
   });
   useMcapTiles({ presentTypes });
