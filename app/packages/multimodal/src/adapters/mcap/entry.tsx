@@ -14,6 +14,9 @@ registerComponent({
   activator: (ctx) => ctx.dataset?.mediaType === "multimodal",
   sampleRendererOptions: {
     supports: { extensions: ["mcap"] },
+    // The modal keeps the renderer mounted through sample navigation;
+    // per-sample state swaps by source (activateSource + keyed shell).
+    modal: { persistAcrossSamples: true },
     grid: {
       enabled: true,
       overrideComponent: GridRenderer,
