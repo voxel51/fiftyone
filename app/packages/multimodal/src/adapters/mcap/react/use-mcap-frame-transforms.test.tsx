@@ -72,15 +72,12 @@ describe("useMcapFrameTransforms", () => {
     );
 
     await waitFor(() => {
-      expect(client.readFrameTransformWindow).toHaveBeenCalledWith(
-        {
-          activeTimeline: undefined,
-          endTimeNs: 1_000_000_100n,
-          source,
-          startTimeNs: 0n,
-        },
-        { priority: "idle" },
-      );
+      expect(client.readFrameTransformWindow).toHaveBeenCalledWith({
+        activeTimeline: undefined,
+        endTimeNs: 1_000_000_100n,
+        source,
+        startTimeNs: 0n,
+      });
     });
     await waitFor(() => {
       expect(screen.getByTestId("frames").textContent).toBe("ready:resolved:");
@@ -114,7 +111,6 @@ describe("useMcapFrameTransforms", () => {
         source,
         startTimeNs: 0n,
       },
-      { priority: "idle" },
     ]);
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
@@ -218,15 +214,12 @@ describe("useMcapFrameTransforms", () => {
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
     });
-    expect(client.readFrameTransformWindow).toHaveBeenLastCalledWith(
-      {
-        activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-        endTimeNs: 1_000_000_100n,
-        source,
-        startTimeNs: 0n,
-      },
-      { priority: "idle" },
-    );
+    expect(client.readFrameTransformWindow).toHaveBeenLastCalledWith({
+      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      endTimeNs: 1_000_000_100n,
+      source,
+      startTimeNs: 0n,
+    });
   });
 
   it("keeps one in-flight dynamic window when playback advances inside it", async () => {
