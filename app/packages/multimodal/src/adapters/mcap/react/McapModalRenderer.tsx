@@ -48,6 +48,12 @@ import { useStableMcapSource } from "./use-stable-mcap-source";
 const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const client = useMcapResourceClient({ worker: true });
   const source = useStableMcapSource(ctx);
+  // Ownership must precede the children's first reads, and child effects run
+  // before parent effects — so activation happens during render. The call is
+  // idempotent per source, which keeps re-renders and StrictMode safe.
+  if (source) {
+    client.activateSource?.(source);
+  }
   const fileName = fileNameFromPath(ctx.media.path) ?? "recording.mcap";
   const latencySessionKey = useRef(createMcapLatencySessionKey()).current;
   useLayoutEffect(() => {

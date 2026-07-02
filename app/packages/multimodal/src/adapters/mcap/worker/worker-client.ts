@@ -20,7 +20,7 @@ import {
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
-import { mcapError, mcapErrorMessage } from "../errors";
+import { mcapError, mcapErrorMessage, mcapReadCancelledError } from "../errors";
 import type { McapFrameTransformSet } from "../frame-transform-types";
 import type {
   McapDecodedMessage,
@@ -71,6 +71,7 @@ export function createWorkerMcapResourceClient(
 class WorkerMcapResourceClient implements McapResourceClient {
   private activeSourceKey = "";
   private disposed = false;
+  private explicitOwnership = false;
   private readonly transportListeners = new Set<
     (sample: McapLaneTransportSnapshot) => void
   >();
@@ -108,6 +109,23 @@ class WorkerMcapResourceClient implements McapResourceClient {
     return () => {
       this.transportListeners.delete(listener);
     };
+  }
+
+  activateSource(source: Parameters<typeof byteSourceAccessKey>[0]) {
+    const sourceKey = byteSourceAccessKey(source);
+    this.explicitOwnership = true;
+    if (this.activeSourceKey === sourceKey) {
+      return;
+    }
+    // Ownership follows the renderer lifecycle; requests for retired
+    // sources fail fast instead of flipping ownership back. Switching still
+    // terminates the fleet for now: cancel-and-keep-warm was measured twice
+    // and back-to-back renderer swaps stayed ~5 s to ready versus 0.3 s
+    // with terminate, even with fail-fast and read-boundary aborts — the
+    // residual cost is not yet attributed, so terminate remains the safe
+    // preemption for source switches.
+    this.resetWorkers("MCAP worker reset for a different source");
+    this.activeSourceKey = sourceKey;
   }
 
   cancelIdleReads() {
@@ -226,7 +244,11 @@ class WorkerMcapResourceClient implements McapResourceClient {
     const effectivePriority =
       priority ?? mcapPlaybackWorkerOperation(type).priority;
     const sourceKey = byteSourceAccessKey(payload.source);
-    this.ensureActiveSource(sourceKey);
+    try {
+      this.ensureActiveSource(sourceKey);
+    } catch (error) {
+      return Promise.reject(error);
+    }
     const lane = this.laneForPriority(effectivePriority);
     return lane.transport.request(
       this.workerForLane(lane, sourceKey),
@@ -265,11 +287,15 @@ class WorkerMcapResourceClient implements McapResourceClient {
       return;
     }
 
-    // Keep-warm across source changes was measured and reverted: back-to-back
-    // renderer swaps let the dying sample's late effects flip ownership and
-    // cancel the incoming sample's reads (hop time regressed 0.3 s -> ~4.6 s).
-    // Until source ownership is epoch-versioned, terminating stays the safe
-    // preemption: no stale work, instant lane for the next sample.
+    if (this.explicitOwnership) {
+      // Under explicit ownership only activateSource may switch; a request
+      // for a non-active source is a dying renderer's late effect.
+      throw mcapReadCancelledError();
+    }
+
+    // Legacy request-driven switching (callers that never activate a
+    // source): terminate stays the safe preemption — request order cannot
+    // express ownership, so keep-warm would thrash (0.3 s -> ~4.6 s hops).
     this.resetWorkers("MCAP worker reset for a different source");
     this.activeSourceKey = sourceKey;
   }
