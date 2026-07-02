@@ -5,15 +5,19 @@ import {
   foxgloveCameraCalibrationDecoder,
   foxgloveCompressedImageDecoder,
   foxgloveGridDecoder,
+  foxgloveLocationFixDecoder,
   foxglovePointCloudDecoder,
+  foxglovePoseInFrameDecoder,
   foxgloveSceneUpdateDecoder,
 } from "./foxglove";
+import { jsonPoseDecoder } from "./json";
 import { optionalBigInt } from "./foxglove/protobuf/records";
 import {
   CAMERA_CALIBRATION_FIXTURE,
   COMPRESSED_IMAGE_FIXTURE,
   GRID_FIXTURE,
   POINT_CLOUD_FIXTURE,
+  POSE_IN_FRAME_FIXTURE,
 } from "./foxglove.test-fixtures";
 
 describe("Foxglove decoders", () => {
@@ -34,6 +38,13 @@ describe("Foxglove decoders", () => {
     );
     expect(registry.find(foxgloveCameraCalibrationDecoder.payload)).toBe(
       foxgloveCameraCalibrationDecoder,
+    );
+    expect(registry.find(foxglovePoseInFrameDecoder.payload)).toBe(
+      foxglovePoseInFrameDecoder,
+    );
+    expect(registry.find(jsonPoseDecoder.payload)).toBe(jsonPoseDecoder);
+    expect(registry.find(foxgloveLocationFixDecoder.payload)).toBe(
+      foxgloveLocationFixDecoder,
     );
   });
 
@@ -300,6 +311,53 @@ describe("Foxglove decoders", () => {
       columnCount: 2,
       frameId: "map",
       rowCount: 1,
+    });
+    expect(output.timing?.timeRange?.startNs).toBe(10n);
+  });
+
+  it("decodes protobuf pose-in-frame payloads", () => {
+    // foxglove.PoseInFrame field numbers: frame_id=2, pose=3
+    // (foxglove.Pose: position=1, orientation=2; doubles x=1,y=2,z=3,w=4).
+    const output = foxglovePoseInFrameDecoder.decode(
+      concatProtobufFields(
+        protobufBytesField(2, new TextEncoder().encode("map")),
+        protobufBytesField(
+          3,
+          concatProtobufFields(
+            protobufBytesField(
+              1,
+              concatProtobufFields(
+                protobufDoubleField(1, 995),
+                protobufDoubleField(2, 1375),
+                protobufDoubleField(3, 0.5),
+              ),
+            ),
+            protobufBytesField(
+              2,
+              concatProtobufFields(
+                protobufDoubleField(3, 0.707),
+                protobufDoubleField(4, 0.707),
+              ),
+            ),
+          ),
+        ),
+      ),
+      {
+        schemaData: POSE_IN_FRAME_FIXTURE.schemaData,
+        sourceTimestamps: { captureTime: 10n },
+        streamId: "/pose",
+        timeRangeStartKey: "captureTime",
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POSE);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.POSE) {
+      throw new Error("Expected pose visualization");
+    }
+    expect(output.visualization).toMatchObject({
+      coordinateFrameId: "map",
+      position: [995, 1375, 0.5],
+      quaternion: [0, 0, 0.707, 0.707],
     });
     expect(output.timing?.timeRange?.startNs).toBe(10n);
   });

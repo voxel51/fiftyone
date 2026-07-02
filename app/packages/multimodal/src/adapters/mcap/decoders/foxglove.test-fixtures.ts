@@ -60,6 +60,20 @@ export const CAMERA_CALIBRATION_FIXTURE = Object.freeze({
   ),
 });
 
+/**
+ * PoseInFrame schema fixture.
+ *
+ * The schema bytes are the FileDescriptorSet for `foxglove.PoseInFrame`
+ * captured verbatim from a NuScenes MCAP export (foxglove/nuscenes2mcap):
+ * https://github.com/foxglove/schemas/blob/main/schemas/proto/foxglove/PoseInFrame.proto
+ * Message bytes are hand-encoded per test.
+ */
+export const POSE_IN_FRAME_FIXTURE = Object.freeze({
+  schemaData: bytes(
+    "CmcKGWZveGdsb3ZlL1F1YXRlcm5pb24ucHJvdG8SCGZveGdsb3ZlIjgKClF1YXRlcm5pb24SCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAESCQoBdxgEIAEoAWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwqyAQoTZm94Z2xvdmUvUG9zZS5wcm90bxIIZm94Z2xvdmUaGWZveGdsb3ZlL1F1YXRlcm5pb24ucHJvdG8aFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8iVgoEUG9zZRIjCghwb3NpdGlvbhgBIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSKQoLb3JpZW50YXRpb24YAiABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzMK/wEKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiI7CglUaW1lc3RhbXASGAoHc2Vjb25kcxgBIAEoA1IHc2Vjb25kcxIUCgVuYW5vcxgCIAEoBVIFbmFub3NChQEKE2NvbS5nb29nbGUucHJvdG9idWZCDlRpbWVzdGFtcFByb3RvUAFaMmdvb2dsZS5nb2xhbmcub3JnL3Byb3RvYnVmL3R5cGVzL2tub3duL3RpbWVzdGFtcHBi+AEBogIDR1BCqgIeR29vZ2xlLlByb3RvYnVmLldlbGxLbm93blR5cGVzYgZwcm90bzMK0gEKGmZveGdsb3ZlL1Bvc2VJbkZyYW1lLnByb3RvEghmb3hnbG92ZRoTZm94Z2xvdmUvUG9zZS5wcm90bxofZ29vZ2xlL3Byb3RvYnVmL3RpbWVzdGFtcC5wcm90byJsCgtQb3NlSW5GcmFtZRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCGZyYW1lX2lkGAIgASgJEhwKBHBvc2UYAyABKAsyDi5mb3hnbG92ZS5Qb3NlYgZwcm90bzM=",
+  ),
+});
+
 function bytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 }
