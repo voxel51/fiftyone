@@ -9,7 +9,6 @@ FiftyOne Server aggregations
 from datetime import date, datetime
 import typing as t
 
-from pymongo.errors import ExecutionTimeout
 import strawberry as gql
 
 import fiftyone.core.aggregations as foa
@@ -21,6 +20,7 @@ from fiftyone.core.utils import datetime_to_timestamp
 import fiftyone.core.view as fov
 
 from fiftyone.server.constants import LIST_LIMIT
+from fiftyone.server.db import get_grid_adapter
 from fiftyone.server.exceptions import AggregationQueryTimeout
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.inputs import SelectedLabel
@@ -161,31 +161,7 @@ async def aggregate_resolver(
             ]
         )
 
-    aggregations, deserializers = zip(
-        *[
-            _resolve_path_aggregation(
-                path, view, form.query_performance, form.hint
-            )
-            for path in form.paths
-        ]
-    )
-    counts = [len(a) for a in aggregations]
-    flattened = [item for sublist in aggregations for item in sublist]
-
-    maxTimeMS = form.max_query_time * 1000 if form.max_query_time else None
-    try:
-        result = await view._async_aggregate(flattened, maxTimeMS=maxTimeMS)
-    except ExecutionTimeout:
-        return [
-            AggregationQueryTimeout(path=path, query_time=form.max_query_time)
-            for path in form.paths
-        ]
-
-    results = []
-    offset = 0
-    for length, deserialize in zip(counts, deserializers):
-        results.append(deserialize(result[offset : length + offset]))
-        offset += length
+    results = await get_grid_adapter().aggregate_paths(view, form=form)
 
     if slice_view:
         for result in results:

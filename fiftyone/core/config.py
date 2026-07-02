@@ -96,6 +96,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DATABASE_NAME",
             default="fiftyone",
         )
+        self.grid_backend = self.parse_string(
+            d,
+            "grid_backend",
+            env_var="FIFTYONE_GRID_BACKEND",
+            default="mongo",
+        )
         self.dataset_zoo_dir = self.parse_path(
             d,
             "dataset_zoo_dir",
