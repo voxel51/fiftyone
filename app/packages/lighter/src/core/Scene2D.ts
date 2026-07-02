@@ -469,7 +469,7 @@ export class Scene2D {
   ): string[] {
     const result = [...ordered];
 
-    overlays.forEach((overlay, id) => {
+    overlays.forEach((_overlay, id) => {
       if (!result.includes(id)) {
         result.push(id);
       }
@@ -773,6 +773,7 @@ export class Scene2D {
    * Only recalculates if the cursor is over a non-canonical overlay.
    * @returns True if overlay order should be recalculated.
    */
+  // @ts-expect-error unused — overlay-order recalculation not yet wired up
   private shouldRecalculateOverlayOrder(): boolean {
     const pixelCoordinates = this.interactionManager.getPixelCoordinates();
     if (!pixelCoordinates) {
@@ -886,12 +887,8 @@ export class Scene2D {
     });
 
     // Apply rotation if needed
-    let newRotate = orderState.rotate;
     if (orderState.rotate !== 0) {
-      [contained, newRotate] = this.rotateOverlays(
-        contained,
-        orderState.rotate,
-      );
+      [contained] = this.rotateOverlays(contained, orderState.rotate);
     }
 
     // Handle hover-only mode

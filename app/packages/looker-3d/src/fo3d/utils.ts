@@ -116,7 +116,7 @@ export const getVisibilityMapFromFo3dParsed = (
 ): Record<string, boolean> => {
   if (!foSceneGraph) return null;
 
-  const getVisibilityMapForChild = (child: FoSceneNode, isNested: boolean) => {
+  const getVisibilityMapForChild = (child: FoSceneNode, _isNested: boolean) => {
     if (child.children?.length > 0) {
       const folderName =
         child.name.charAt(0).toUpperCase() + child.name.slice(1);

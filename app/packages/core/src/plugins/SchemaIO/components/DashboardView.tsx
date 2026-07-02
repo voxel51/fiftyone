@@ -394,7 +394,7 @@ const ControlContainer = ({
   onEditLayoutClick,
   onPasteClick,
   onSelectAll,
-  onDeleteSelected,
+  onDeleteSelected: _onDeleteSelected,
   onExportItems,
   onExportAsPNG,
   handleExportMenuOpen,
@@ -403,7 +403,7 @@ const ControlContainer = ({
   isEditMode,
   autoLayout,
   editLayoutOpen,
-  shortcutKey,
+  shortcutKey: _shortcutKey,
   selectedItemIds,
   clipboardData,
   hasMultipleItems,
@@ -576,11 +576,10 @@ export default function DashboardView(props: ViewPropsType) {
   const allow_edit = schema.view.allow_edit;
   const allowMutation = allow_edit || allow_deletion;
   const dataPath = schema.view.data_path || "items_config";
-  const [panelState, setPanelState] = usePanelState();
+  const [panelState] = usePanelState();
 
   // Shared clipboard state
   const clipboardData = useClipboardData();
-  const { clipboardPermissionError } = clipboardData;
 
   // Notification hook for user feedback
   const showNotification = useNotification();
@@ -765,7 +764,7 @@ export default function DashboardView(props: ViewPropsType) {
           layout: layout,
           auto_layout: auto_layout,
         },
-        callback: (result) => {
+        callback: () => {
           if (auto_layout !== undefined) {
             setAutoLayout(auto_layout);
           }
@@ -851,18 +850,6 @@ export default function DashboardView(props: ViewPropsType) {
     setSelectedItemIds(new Set());
   }, []);
 
-  const handleItemToggle = useCallback((id: string) => {
-    setSelectedItemIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  }, []);
-
   const selectAllItems = useCallback(() => {
     if (propertiesAsArray.length === 0) {
       return;
@@ -889,7 +876,6 @@ export default function DashboardView(props: ViewPropsType) {
       });
     } else {
       // Fall back to individual deletes
-      let i = 0;
       for (const id of selectedItemIds) {
         onCloseItem({
           id: id,
@@ -925,7 +911,7 @@ export default function DashboardView(props: ViewPropsType) {
   const shortcutKey = getPlatformShortcutKey();
 
   const onDuplicateItem = useCallback(
-    ({ id, path }) => {
+    ({ id, path: _path }) => {
       const originalItem = getFromPath(
         (panelState as any)?.state,
         `${dataPath}.${id}`,
@@ -1095,7 +1081,7 @@ export default function DashboardView(props: ViewPropsType) {
 
   // Backward compatibility for single item copy
   const copyItemToClipboard = useCallback(
-    ({ id, path }) => {
+    ({ id, path: _path }) => {
       copyItemsToClipboard([id]);
     },
     [copyItemsToClipboard],
@@ -1119,7 +1105,7 @@ export default function DashboardView(props: ViewPropsType) {
   const handleNumRowsChange = (event) => {
     const { value } = event.target;
     const newValue = Math.max(1, Math.min(value, propertiesAsArray.length));
-    setNumRows(value);
+    setNumRows(newValue);
   };
 
   const handleNumColsChange = (event) => {

@@ -30,7 +30,6 @@ export interface CuboidProps extends OverlayProps {
 }
 
 export const Cuboid = ({
-  itemRotation,
   dimensions,
   opacity,
   rotation,

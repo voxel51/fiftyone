@@ -70,7 +70,7 @@ export default function FileDrop({
         onTargetClick={() => {
           fileInputRef.current.click();
         }}
-        onDrop={(files, e) => {
+        onDrop={(files) => {
           addUniqueFiles(files);
           if (active) setActive(false);
         }}

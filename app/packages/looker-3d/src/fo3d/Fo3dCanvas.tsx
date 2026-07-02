@@ -96,13 +96,11 @@ export const Fo3dSceneContent = ({
   near = 0.1,
   far = 2500,
   aspect = 1,
-  zoom = 100,
   autoRotate,
   cameraControlsRef,
   foScene,
   isSceneInitialized,
   isGizmoHelperVisible,
-  pointCloudSettings,
   assetsGroupRef,
   cameraRef,
 }: Fo3dSceneContentProps) => {

@@ -16,7 +16,7 @@ export default function CheckboxView(props) {
           disabled={schema.view?.readOnly}
           autoFocus={autoFocus(props)}
           defaultChecked={data === true}
-          onChange={(e, value) => {
+          onChange={(_e, value) => {
             onChange(path, value);
             setUserChanged();
           }}
