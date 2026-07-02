@@ -2,7 +2,7 @@
 Implementation for temporal tags.
 
 Temporal tags are sample-scoped records stored in the dedicated
-``temporal_tags`` collection. Dataset/sample lifecycle hooks, import/export
+``tags`` collection. Dataset/sample lifecycle hooks, import/export
 sidecars, and low-level orphan cleanup all flow through this module so the
 storage contract stays in one place.
 

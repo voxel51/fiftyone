@@ -221,10 +221,7 @@ def _temporal_tags_from_create_payload(
                 start=record.get("start", None),
                 end=record.get("end", None),
                 tag=record.get("tag", None),
-                index_type=record.get(
-                    "index_type",
-                    foms.TimeTrackType.TIME_TRACK_TYPE_DURATION_NS,
-                ),
+                index_type=record.get("index_type"),
                 anchor=record.get("anchor", None),
                 kind=record.get("kind", None),
                 created_by=record.get("created_by", None),
