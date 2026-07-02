@@ -58,24 +58,36 @@ class PluginDefinition {
 export async function loadPlugins() {
   const plugins = await fetchPluginsMetadata();
   const { pathPrefix } = getFetchParameters();
-  for (const plugin of plugins) {
-    usingRegistry().registerPluginDefinition(plugin);
-    if (plugin.hasJS) {
-      const name = plugin.name;
-      const scriptPath = plugin.jsBundleServerPath;
-      const cacheKey = plugin.jsBundleHash ? `?h=${plugin.jsBundleHash}` : "";
-      if (usingRegistry().hasScript(name)) {
-        console.debug(`Plugin "${name}": already loaded`);
-        continue;
+
+  // Inject bundles in parallel so plugin readiness is gated by the slowest
+  // bundle, not the sum of all of them.
+  await Promise.all(
+    plugins.map((plugin) => {
+      const registry = usingRegistry();
+      registry.registerPluginDefinition(plugin);
+      if (!plugin.hasJS) {
+        return undefined;
       }
-      try {
-        await loadScript(name, pathPrefix + scriptPath + cacheKey);
-      } catch (e) {
+      const name = plugin.name;
+      // Reuse the in-flight (or settled) load so overlapping loadPlugins()
+      // calls resolve only once the bundle has registered its components.
+      const existing = registry.getScript(name);
+      if (existing) {
+        console.debug(`Plugin "${name}": already loaded`);
+        return existing;
+      }
+      const cacheKey = plugin.jsBundleHash ? `?h=${plugin.jsBundleHash}` : "";
+      const promise = loadScript(
+        name,
+        pathPrefix + plugin.jsBundleServerPath + cacheKey
+      ).catch((e) => {
         console.error(`Plugin "${name}": failed to load!`);
         console.error(e);
-      }
-    }
-  }
+      });
+      registry.registerScript(name, promise);
+      return promise;
+    })
+  );
 }
 async function loadScript(name, url) {
   console.debug(`Plugin "${name}": loading script...`);
@@ -89,7 +101,6 @@ async function loadScript(name, url) {
       } else {
         reject(new Error(`Plugin "${name}": Failed to load script ${url}`));
       }
-      usingRegistry().registerScript(name);
     };
     const script = document.createElement("script");
     script.type = "application/javascript";
@@ -180,7 +191,7 @@ export function getAbsolutePluginPath(name: string, path: string): string {
 
 export function usePluginSettings<T>(
   pluginName: string,
-  defaults?: Partial<T>,
+  defaults?: Partial<T>
 ): T {
   const datasetAppConfig = recoil.useRecoilValue(fos.datasetAppConfig);
   const appConfig = recoil.useRecoilValue(fos.config);
@@ -192,7 +203,7 @@ export function usePluginSettings<T>(
     return _.merge<T | {}, Partial<T>, Partial<T>>(
       { ...defaults },
       _.get(appConfigPlugins, pluginName, {}),
-      _.get(datasetPlugins, pluginName, {}),
+      _.get(datasetPlugins, pluginName, {})
     );
   }, [appConfig, pluginName, defaults, datasetAppConfig]);
 
