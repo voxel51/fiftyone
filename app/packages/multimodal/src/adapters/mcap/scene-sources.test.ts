@@ -16,6 +16,9 @@ describe("mcapSceneSources", () => {
       createTopic("/map", "foxglove.Grid"),
       createTopic("/drivable_area", "foxglove.Grid"),
       createTopic("/CAM_FRONT/camera_info", "foxglove.CameraCalibration"),
+      createTopic("/pose", "foxglove.PoseInFrame"),
+      createTopic("/odom", "Pose", "json", "jsonschema"),
+      createTopic("/gps", "foxglove.LocationFix"),
       createTopic("/tf", "foxglove.FrameTransform"),
       createTopic("/diagnostics", "diagnostic_msgs/DiagnosticArray", "ros1"),
     ]);
@@ -55,6 +58,21 @@ describe("mcapSceneSources", () => {
         id: "/CAM_FRONT/camera_info",
         type: MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
         label: "CAM_FRONT/camera_info",
+      },
+      {
+        id: "/pose",
+        type: MCAP_SOURCE_TYPE.POSE,
+        label: "pose",
+      },
+      {
+        id: "/odom",
+        type: MCAP_SOURCE_TYPE.POSE,
+        label: "odom",
+      },
+      {
+        id: "/gps",
+        type: MCAP_SOURCE_TYPE.LOCATION,
+        label: "gps",
       },
     ]);
   });

@@ -1,9 +1,12 @@
 import type { PayloadDescriptor } from "../../decoders";
 import type { StreamInventory } from "../../schemas/v1";
+import { JSON_POSE_PAYLOAD } from "./decoders/json/payloads";
 import {
   FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD,
   FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
   FOXGLOVE_GRID_PAYLOAD,
+  FOXGLOVE_LOCATION_FIX_PAYLOAD,
+  FOXGLOVE_POSE_IN_FRAME_PAYLOAD,
   FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
   FOXGLOVE_POINT_CLOUD_PAYLOAD,
   FOXGLOVE_SCENE_UPDATE_PAYLOAD,
@@ -105,6 +108,25 @@ export function isGridStream(topic: StreamInventory): boolean {
  */
 export function isCameraCalibrationStream(topic: StreamInventory): boolean {
   return hasPayload(topic, FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD);
+}
+
+/**
+ * Returns whether a stream inventory item is a supported pose stream:
+ * Foxglove PoseInFrame or an odometry-style JSON `Pose` export.
+ */
+export function isPoseStream(topic: StreamInventory): boolean {
+  return (
+    hasPayload(topic, FOXGLOVE_POSE_IN_FRAME_PAYLOAD) ||
+    hasPayload(topic, JSON_POSE_PAYLOAD)
+  );
+}
+
+/**
+ * Returns whether a stream inventory item is a supported Foxglove
+ * LocationFix stream.
+ */
+export function isLocationFixStream(topic: StreamInventory): boolean {
+  return hasPayload(topic, FOXGLOVE_LOCATION_FIX_PAYLOAD);
 }
 
 /**
