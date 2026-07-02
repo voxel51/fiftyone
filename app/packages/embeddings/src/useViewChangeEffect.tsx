@@ -18,9 +18,23 @@ export function useViewChangeEffect() {
   const view = useRecoilValue(fos.view);
   const slices = useRecoilValue(fos.currentSlices(false));
   const filters = useRecoilValue(fos.filters);
+<<<<<<< HEAD
   const [, setLoadedPlot] = usePanelStatePartial("loadedPlot", null, true);
   const [, setLoadingPlot] = usePanelStatePartial("loadingPlot", true, true);
   const [, setLoadingPlotError] = usePanelStatePartial(
+=======
+  const [loadedPlot, setLoadedPlot] = usePanelStatePartial(
+    "loadedPlot",
+    null,
+    true,
+  );
+  const [loadingPlot, setLoadingPlot] = usePanelStatePartial(
+    "loadingPlot",
+    true,
+    true,
+  );
+  const [loadingPlotError, setLoadingPlotError] = usePanelStatePartial(
+>>>>>>> main
     "loadingPlotError",
     null,
     true,

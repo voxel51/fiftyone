@@ -1,8 +1,10 @@
-import { useAnnotationContextManager } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useAnnotationContextManager";
-import { useLighter, useLighterEventHandler } from "@fiftyone/lighter";
-import { useCallback, useEffect } from "react";
-import { useSelect3DLabelForAnnotation } from "@fiftyone/looker-3d/src/hooks";
-import { useWorkingDetections, useWorkingPolylines } from "@fiftyone/looker-3d";
+import { useEffect } from "react";
+import { useEngineSelector } from "../engine";
+import {
+  useAnnotationEngine,
+  useClearEntranceLabel,
+  useEntranceLabel,
+} from "../state";
 
 /**
  * Hook which registers event handlers related to renderer events.
@@ -10,16 +12,16 @@ import { useWorkingDetections, useWorkingPolylines } from "@fiftyone/looker-3d";
  * This should be called once in the composition root.
  */
 export const useRegisterRendererEventHandlers = () => {
-  const { scene } = useLighter();
-  const handleLighterEvent = useLighterEventHandler(scene?.getEventChannel());
+  const engine = useAnnotationEngine();
 
-  const select3DLabel = useSelect3DLabelForAnnotation();
-  const detections3D = useWorkingDetections();
-  const polylines3D = useWorkingPolylines();
+  const entranceLabel = useEntranceLabel();
+  const clearEntranceLabel = useClearEntranceLabel();
 
-  const { entranceLabelId, clearEntranceLabelId } =
-    useAnnotationContextManager();
+  // If we entered annotation mode via direct label edit (e.g. via the label's
+  // tooltip) or need to auto-edit a label (e.g. patches view), open it for
+  // editing once the engine knows it.
 
+<<<<<<< HEAD
   // If we entered annotation mode via direct label edit (e.g. via the label's tooltip)
   // or need to auto-edit a label (e.g. patches view), we want to open the label
   // for editing once it's been initialized and added to the rendered scene.
@@ -39,18 +41,27 @@ export const useRegisterRendererEventHandlers = () => {
       },
       [clearEntranceLabelId, entranceLabelId, scene],
     ),
+=======
+  // Write the ENGINE anchor, not a scene — every surface's read-half follows
+  // the anchor (the bridge loop reapplies interaction state to fresh handles;
+  // the 3D adapter watches the anchor against its working store), so the
+  // handoff survives scene re-creation (e.g. the explore→annotate switch
+  // tears the scene down after hydration), and the form opens via the anchor
+  // with no scene dependency at all. Readiness is the engine resolving the
+  // ref (re-evaluated on engine ticks, so store registration/hydration
+  // re-fires it).
+  const resolved = useEngineSelector(
+    engine,
+    (reads) => !!entranceLabel && reads.getLabel(entranceLabel) !== undefined,
+>>>>>>> main
   );
 
-  // Handle the case where the overlay is already in the scene when
-  // entranceLabelId is set (e.g. patches view auto-edit, where overlays are
-  // added before the auto-edit logic determines which label to activate).
   useEffect(() => {
-    if (scene && entranceLabelId && scene.hasOverlay(entranceLabelId)) {
-      scene.selectOverlay(entranceLabelId);
-      clearEntranceLabelId();
+    if (!entranceLabel || !resolved) {
+      return;
     }
-  }, [scene, entranceLabelId, clearEntranceLabelId]);
 
+<<<<<<< HEAD
   // For 3D, we can listen to changes in the working label set and select
   // the label once it's available.
   useEffect(() => {
@@ -67,4 +78,9 @@ export const useRegisterRendererEventHandlers = () => {
       }
     }
   }, [detections3D, entranceLabelId, polylines3D]);
+=======
+    engine.interaction.setActive([entranceLabel]);
+    clearEntranceLabel();
+  }, [clearEntranceLabel, engine, entranceLabel, resolved]);
+>>>>>>> main
 };

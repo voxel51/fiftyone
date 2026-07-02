@@ -5,7 +5,12 @@ export * from "./use-active-modal-sample-value";
 import type { Schema } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo, useRef } from "react";
-import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useRecoilValueLoadable,
+  useSetRecoilState,
+} from "recoil";
 import { ModalMode, modalMode } from "../../jotai";
 import { preferredGroupAnnotationSliceAtom } from "../../jotai/group-annotation";
 import type { ModalViewportState } from "../../jotai/modal";
@@ -20,6 +25,7 @@ import {
   fieldSchema,
   lookerOptions,
   modalSample,
+  selectedLabelMap,
   selectedMediaField,
 } from "../../recoil";
 import { GroupSampleNotFound } from "../../recoil/modal";
@@ -51,11 +57,21 @@ export interface ModalModeController {
  */
 export const useModalModeController = (): ModalModeController => {
   const setMode = useSetAtom(modalMode);
+  const clearSelectedLabels = useSetRecoilState(selectedLabelMap);
 
+<<<<<<< HEAD
   const activateAnnotateMode = useCallback(
     () => setMode(ModalMode.ANNOTATE),
     [setMode],
   );
+=======
+  // Explore's 3D selection has no deselect affordance in Annotate, so clear it
+  // on entry; 2D entry uses the engine anchor, not this map.
+  const activateAnnotateMode = useCallback(() => {
+    clearSelectedLabels({});
+    setMode(ModalMode.ANNOTATE);
+  }, [clearSelectedLabels, setMode]);
+>>>>>>> main
   const activateExploreMode = useCallback(
     () => setMode(ModalMode.EXPLORE),
     [setMode],

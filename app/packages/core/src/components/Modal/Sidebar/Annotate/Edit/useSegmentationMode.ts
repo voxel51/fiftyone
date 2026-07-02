@@ -6,13 +6,8 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 
-import { CommandContextManager } from "@fiftyone/commands";
-import {
-  AddOverlayCommand,
-  BaseOverlay,
-  DetectionOverlay,
-  useLighter,
-} from "@fiftyone/lighter";
+import { usePointSelectionSeed } from "@fiftyone/annotation/src/agents";
+import { BaseOverlay, DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { isPatchesView } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 
@@ -78,6 +73,7 @@ export const useSegmentationMode = () => {
   const manualMode = useManualSegmentationTools();
   const aiMode = useAIAnnotationMode();
   const mergeTool = useMergeTool();
+  const { markSeedNew } = usePointSelectionSeed();
 
   const editingLabelType = selected?.type ?? null;
 
@@ -92,9 +88,21 @@ export const useSegmentationMode = () => {
   const labelData = selected?.label.data as
     | { mask?: unknown; mask_path?: unknown }
     | undefined;
+  // A detection being actively drawn with a paint tool IS a segmentation edit,
+  // even before its mask data has materialized — a brush stroke / pen polygon
+  // commits to the overlay canvas first, and a fresh draw has no `mask` /
+  // `mask_path` on its label yet. Without this, the auto-disable below would
+  // tear segmentation mode down mid-draw (e.g. between two pen points), routing
+  // the next click to the mode-quit path instead of the pen handler.
+  const isDrawingTool =
+    manualMode.tool === SegmentationTool.Brush ||
+    manualMode.tool === SegmentationTool.Pen;
   const isEditingSegmentation =
     editingLabelType === DETECTION &&
-    (!!labelData?.mask || !!labelData?.mask_path || isEditingMask);
+    (!!labelData?.mask ||
+      !!labelData?.mask_path ||
+      isEditingMask ||
+      (segmentationModeActive && isDrawingTool));
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -250,6 +258,7 @@ export const useSegmentationMode = () => {
 
     if (newLabel?.overlay instanceof DetectionOverlay) {
       newLabel.overlay.initMask();
+<<<<<<< HEAD
 
       // Pen tool: the `overlay-establish` event that normally pushes
       // `AddOverlayCommand` doesn't fire because `onPenPointerDown` doesn't
@@ -264,26 +273,23 @@ export const useSegmentationMode = () => {
             new AddOverlayCommand(sceneRef.current!, newLabel.overlay),
           );
       }
+=======
+>>>>>>> main
     }
   }, [closeOpenLabel, createNew, manualMode.tool]);
 
   /**
    * Finish the current AI point-selection session. Cycle deactivate→activate
    * so the keypoint overlay/handler is re-installed for a fresh next
-   * detection while staying in AI mode.
+   * detection while staying in AI mode. The committed label stays selected
+   * (a second right-click deselects it); `markSeedNew` makes the next click
+   * seed a NEW mask rather than refine the still-selected committed one.
    */
   const finalizePointSelection = useCallback(() => {
-    const currentScene = sceneRef.current;
-    const overlay = selectedLabelRef.current?.overlay;
-    if (currentScene && overlay instanceof DetectionOverlay) {
-      CommandContextManager.instance()
-        .getActiveContext()
-        .pushUndoable(new AddOverlayCommand(currentScene, overlay));
-    }
-
     aiMode.deactivate();
     aiMode.activate();
-  }, [aiMode]);
+    markSeedNew();
+  }, [aiMode, markSeedNew]);
 
   // ----------------------------  Public interface  ----------------------- //
 

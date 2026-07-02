@@ -18,6 +18,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 import fiftyone as fo
+import fiftyone.core.frame as fof
 from fiftyone.server import decorators, utils
 from fiftyone.server.exceptions import DbVersionMismatchError
 from fiftyone.server.utils.datasets import (
@@ -269,13 +270,30 @@ def ensure_sample_field(sample: fo.Sample, field: str):
 
     logger.info("Missing sample field %s, attempting to initialize", field)
 
-    schema = sample.dataset.get_field_schema()
-
-    # track our current place in the hierarchy
-    current = sample
     field_parts = field.split(".")
+
+    # `root`/`schema`/`base` describe whose fields we're initializing: the
+    # document that owns `set_field` (`root`), the schema its paths resolve
+    # against, and the index in `field_parts` where those paths begin. They
+    # start at the sample and switch to a frame the moment the walk crosses
+    # into the `frames` collection — frame fields live in their own schema,
+    # owned by the frame document, so the sample schema can't describe them.
+    root = sample
+    schema = sample.dataset.get_field_schema()
+    base = 0
+
+    current = sample
     for idx, part in enumerate(field_parts):
-        field_path = ".".join(field_parts[: idx + 1])
+        if isinstance(current, fof.Frames):
+            # Cross into a frame. `frames[N]` materializes an empty frame if
+            # one doesn't exist yet, which is what we want when initializing
+            # a field on it. The frame number isn't a field to initialize.
+            current = root = current[int(part)]
+            schema = sample.dataset.get_frame_field_schema()
+            base = idx + 1
+            continue
+
+        field_path = ".".join(field_parts[base : idx + 1])
 
         try:
             current_part = current[part]
@@ -300,7 +318,7 @@ def ensure_sample_field(sample: fo.Sample, field: str):
                 logger.info(
                     "Initializing %s field at %s", field_type, field_path
                 )
-                sample.set_field(field_path, field_type())
+                root.set_field(field_path, field_type())
 
         # recurse
         current = current[part]
@@ -342,6 +360,13 @@ def save_sample(
             raise DbVersionMismatchError(
                 sample, etag=generate_sample_etag(sample)
             )
+
+        # `replace_one` writes the sample doc only — for video samples,
+        # frame mutations live in a separate collection and would be lost
+        # by the subsequent `reload(hard=True)`. Flush them explicitly so
+        # the ETag-protected path matches `sample.save()`'s behavior.
+        if sample.media_type == "video":
+            sample.frames.save()
     else:
         sample.save()
 
@@ -462,9 +487,24 @@ class Sample(HTTPEndpoint):
 
         etag = save_sample(sample, if_last_modified_at)
 
-        return utils.json.JSONResponse(
-            utils.json.serialize(sample), headers={"ETag": etag}
-        )
+        response_body = utils.json.serialize(sample)
+
+        # Video sample responses must carry the first frame so the grid's
+        # video tile keeps its `sample.frames[0]` contract after a patch
+        # refresh propagates the new sample. `to_dict` drops `frames` by
+        # default; reconstruct just the head frame to match the grid's
+        # initial-load shape (a single-element list).
+        if sample.media_type == "video" and isinstance(response_body, dict):
+            try:
+                head_frame = sample.frames.first()
+            except Exception:
+                head_frame = None
+            if head_frame is not None:
+                response_body["frames"] = [
+                    head_frame.to_dict(include_private=True)
+                ]
+
+        return utils.json.JSONResponse(response_body, headers={"ETag": etag})
 
     def _handle_patch(self, sample: fo.Sample, data: dict) -> fo.Sample:
         errors = {}
@@ -724,9 +764,7 @@ class CommitMask(HTTPEndpoint):
         mask_path = detection.mask_path
 
         try:
-            detection.export_mask(
-                mask_path, update=True, overwrite_path=True
-            )
+            detection.export_mask(mask_path, update=True, overwrite_path=True)
             etag = save_sample(sample, if_last_modified_at)
         except DbVersionMismatchError:
             raise

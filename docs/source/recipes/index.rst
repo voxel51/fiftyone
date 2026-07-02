@@ -50,8 +50,8 @@ workflows.
     :tags: Torch,Training,Datasets
 
 .. customcarditem::
-    :header: Speeding up with cached fields
-    :description: Improve training performance by preloading specific fields into memory using the `SimpleGetItem` wrapper class with `vectorize=True` in `FiftyOneTorchDataset`.
+    :header: Speed Up FiftyOneTorchDataset with Vectorize Mode
+    :description: Eliminate database query overhead during training by enabling vectorize mode in `FiftyOneTorchDataset`, preloading all required fields into memory before the training loop begins.
     :link: torch-dataset-examples/the_cache_field_names_argument.html
     :image: https://cdn.voxel51.com/recipes_fiftyone_torch_cache_fields/notebook_cache_field_names/fiftyone_torch_cache_fields.webp
     :tags: Torch,Performance,Data-Loading
@@ -159,7 +159,7 @@ workflows.
 
    Data Loading with Torch Datasets <fiftyone_torch_dataloader.ipynb>
    Training on MNIST with Torch <torch-dataset-examples/simple_training_example.ipynb>
-   Speeding up with cached fields <torch-dataset-examples/the_cache_field_names_argument.ipynb>
+   Speed Up FiftyOneTorchDataset with Vectorize Mode <torch-dataset-examples/the_cache_field_names_argument.ipynb>
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
    Removing duplicate objects <remove_duplicate_annos.ipynb>

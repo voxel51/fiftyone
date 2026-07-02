@@ -9,7 +9,24 @@ import { WidgetProps } from "@rjsf/utils";
 import { BaseSlider, FormField } from "@voxel51/voodo";
 
 export default function Slider(props: WidgetProps) {
-  const { value, onChange, schema, uiSchema, label, rawErrors } = props;
+  const {
+    value,
+    onChange,
+    schema,
+    uiSchema,
+    label,
+    rawErrors,
+    registry,
+    name,
+  } = props;
+
+  // @rjsf v5 delivers formContext to widgets via `registry.formContext`;
+  // `props.formContext` is not populated.
+  const formContext = (props.formContext ?? registry?.formContext) as
+    | { onLivePreview?: (name: string, value: unknown) => void }
+    | undefined;
+
+  const onLivePreview = formContext?.onLivePreview;
 
   // Extract min/max from schema
   const min = schema.minimum ?? 0;
@@ -30,6 +47,10 @@ export default function Slider(props: WidgetProps) {
   const maxLabel = uiSchema?.["ui:options"]?.maxLabel;
 
   const handleChange = (newValue: number | number[]) => {
+    onLivePreview?.(name, newValue);
+  };
+
+  const handleChangeCommitted = (newValue: number | number[]) => {
     onChange(newValue);
   };
 
@@ -39,7 +60,9 @@ export default function Slider(props: WidgetProps) {
       max={max}
       step={step}
       value={value}
+      debounceDelay={0}
       onChange={handleChange}
+      onChangeCommitted={handleChangeCommitted}
       multi={isMulti}
       bare={bare}
       labeled={labeled}

@@ -12,6 +12,7 @@ import * as THREE from "three";
 import { SNAP_TOLERANCE } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
+import { useSelect3DLabelForAnnotation } from "../hooks/useSelect3DLabelForAnnotation";
 import {
   activeSegmentationStateAtom,
   annotationPlaneAtom,
@@ -60,6 +61,7 @@ export const SegmentPolylineRenderer = ({
   const { createPolyline, updatePolylinePoints } = usePolylineOperations();
 
   const setEditingToNewPolyline = useSetEditingToNewPolyline();
+  const selectForAnnotation = useSelect3DLabelForAnnotation();
 
   const setIsActivelySegmenting = useSetRecoilState(
     isSegmentingPointerDownAtom,
@@ -142,6 +144,8 @@ export const SegmentPolylineRenderer = ({
         // Set editing for sidebar UI
         setEditingToNewPolyline(labelId, transformData);
 
+        // surface-owned create tracker: commitSegment reads this id to append
+        // the next segment to the same polyline (multi-segment draw)
         if (selectedLabelForAnnotation) {
           setSelectedLabelForAnnotation({
             ...selectedLabelForAnnotation,
@@ -160,6 +164,15 @@ export const SegmentPolylineRenderer = ({
           });
         }
 
+        // selection flows through the engine anchor: use3dInteractionAdapter
+        // attaches the transform controls + scene selection from one source
+        selectForAnnotation({
+          _id: labelId,
+          path: currentActiveField || "",
+          selected: true,
+          _cls: POLYLINE,
+        });
+
         setSegmentState({
           isActive: false,
           vertices: [],
@@ -173,6 +186,10 @@ export const SegmentPolylineRenderer = ({
       currentSampleId,
       createPolyline,
       updatePolylinePoints,
+<<<<<<< HEAD
+=======
+      selectForAnnotation,
+>>>>>>> main
     ],
   );
 
@@ -282,7 +299,7 @@ export const SegmentPolylineRenderer = ({
   });
 
   useEffect(() => {
-    if (ignoreEffects) return;
+    if (ignoreEffects) return undefined;
 
     if (segmentState.isActive) {
       setTooltipDetail(null);
@@ -291,12 +308,15 @@ export const SegmentPolylineRenderer = ({
         document.body.style.cursor = "default";
       };
     }
+
+    return undefined;
   }, [segmentState.isActive]);
 
   useEffect(() => {
-    if (ignoreEffects) return;
+    if (ignoreEffects) return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       if (!segmentState.isActive) return;
 
       // Handle Escape key - cancel segmentation

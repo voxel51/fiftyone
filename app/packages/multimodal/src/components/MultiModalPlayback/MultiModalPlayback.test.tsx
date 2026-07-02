@@ -65,7 +65,11 @@ describe("MultiModalPlayback shell", () => {
         }}
       />,
     );
+<<<<<<< HEAD
     expect(screen.getByTestId("title-camera-1").textContent).toBe(
+=======
+    expect(screen.getByTestId("stub-camera-1").textContent).toBe(
+>>>>>>> main
       "camera_front",
     );
     expect(screen.getByTestId("title-lidar-1").textContent).toBe("lidar_top");

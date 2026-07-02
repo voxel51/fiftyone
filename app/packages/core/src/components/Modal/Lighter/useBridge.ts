@@ -2,45 +2,23 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { getFieldSchema, useDeleteAnnotation } from "@fiftyone/annotation";
 import {
-  AnnotationEventGroup,
-  DeleteAnnotationCommand,
-  getFieldSchema,
-  useAnnotationEventBus,
-  useAnnotationEventHandler,
-} from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/command-bus";
-import {
-  DetectionOverlay,
-  type LighterEventGroup,
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
-  UpdateLabelCommand,
-  useLighterEventBus,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import type { DetectionLabel } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { useSetAtom } from "jotai";
-import { useAtomCallback } from "jotai/utils";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { useAnnotationContext } from "../Sidebar/Annotate/Edit/useAnnotationContext";
-import {
-  current,
-  currentData,
-} from "../Sidebar/Annotate/Edit/useAnnotationContext/selectors";
 import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
 import {
   usePolylineMode,
   usePolylineModeInstaller,
 } from "../Sidebar/Annotate/Edit/usePolylineMode";
-import {
-  SegmentationTool,
-  useSegmentationMode,
-} from "../Sidebar/Annotate/Edit/useSegmentationMode";
-import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
-import useFocus from "../Sidebar/Annotate/useFocus";
+import { useSegmentationMode } from "../Sidebar/Annotate/Edit/useSegmentationMode";
+import { useLabelsContext } from "../Sidebar/Annotate";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
@@ -53,6 +31,7 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
  */
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
+<<<<<<< HEAD
   const annotationEventBus = useAnnotationEventBus();
   const commandBus = useCommandBus();
   const eventBus = useLighterEventBus(
@@ -72,6 +51,14 @@ export const useBridge = (scene: Scene2D | null) => {
     removeLabelFromSidebar,
     updateLabelData,
   } = useLabelsContext();
+=======
+  const deleteAnnotation = useDeleteAnnotation();
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
+  );
+  const { clear, readEditing, setEditingMask } = useAnnotationContext();
+  const { getLabelById } = useLabelsContext();
+>>>>>>> main
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
@@ -79,10 +66,10 @@ export const useBridge = (scene: Scene2D | null) => {
   const segmentationMode = useSegmentationMode();
   const detectionMode = useDetectionMode();
   const polylineMode = usePolylineMode();
-  const focus = useFocus();
 
   usePolylineModeInstaller();
 
+<<<<<<< HEAD
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
     useCallback(
@@ -237,20 +224,21 @@ export const useBridge = (scene: Scene2D | null) => {
     }, []),
   );
 
+=======
+>>>>>>> main
   useEventHandler(
     "lighter:overlay-removed",
     useCallback(
       (payload) => {
         // Read at event-handling time to avoid stale closure
-        const currentLabel = getCurrentLabel();
+        const currentLabel = readEditing().selected?.label;
 
         // If the removed overlay is the one being edited, close the sidebar
         if (currentLabel?.overlay?.id === payload.id) {
           clear();
         }
-
-        removeLabelFromSidebar(payload.id);
       },
+<<<<<<< HEAD
       [clear, getCurrentLabel, removeLabelFromSidebar],
     ),
   );
@@ -272,6 +260,9 @@ export const useBridge = (scene: Scene2D | null) => {
         }
       },
       [addLabelToSidebar],
+=======
+      [readEditing, clear],
+>>>>>>> main
     ),
   );
 
@@ -291,12 +282,11 @@ export const useBridge = (scene: Scene2D | null) => {
           return;
         }
 
-        commandBus
-          .execute(new DeleteAnnotationCommand(label, schema))
-          .catch((error) => {
-            console.error("Failed to persist undo of creation:", error);
-          });
+        deleteAnnotation(label).catch((error) => {
+          console.error("Failed to persist undo of creation:", error);
+        });
       },
+<<<<<<< HEAD
       [commandBus, fieldSchema, getLabelById],
     ),
   );
@@ -339,10 +329,21 @@ export const useBridge = (scene: Scene2D | null) => {
 
   // Sync sidebar/edit state when an overlay's label is mutated outside the
   // command stack (e.g. AI inference applying a new mask via updateLabel).
+=======
+      [deleteAnnotation, fieldSchema, getLabelById],
+    ),
+  );
+
+  // Mode bookkeeping when an overlay's label is mutated outside the command
+  // stack (e.g. AI inference applying a new mask). Form/list data sync is
+  // the engine's: the wiring hook commits the overlay change, the read-half
+  // re-derives rows, and the form follows the anchor — no save-backs.
+>>>>>>> main
   useEventHandler(
-    "lighter:overlay-label-updated",
+    "lighter:overlay-commit-requested",
     useCallback(
       (payload) => {
+<<<<<<< HEAD
         if (!payload.label) return;
 
         const newLabel = coerceStringBooleans(
@@ -356,6 +357,11 @@ export const useBridge = (scene: Scene2D | null) => {
         setEditingMask(payload.id, payload.hasMask);
       },
       [save, setEditingMask],
+=======
+        setEditingMask(payload.id, payload.hasMask);
+      },
+      [setEditingMask],
+>>>>>>> main
     ),
   );
 
@@ -413,6 +419,10 @@ export const useBridge = (scene: Scene2D | null) => {
     "lighter:point-selection-finalize",
     useCallback(() => {
       if (segmentationMode.segmentationModeActive) {
+        // Commit the in-progress mask and re-arm a fresh point session. The
+        // committed label stays selected (a second right-click deselects it);
+        // `finalizePointSelection` flags the next click to seed a NEW mask so
+        // it doesn't refine the one just committed.
         segmentationMode.finalizePointSelection();
       }
     }, [segmentationMode]),

@@ -20,7 +20,11 @@ const onSetSessionSpaces: RegisteredWriter<"sessionSpaces"> =
           workspace: spaces._name || null,
         },
       }),
+<<<<<<< HEAD
       { ...state, event: "spaces", workspace: spaces },
+=======
+      { ...state, event: "spaces", workspace: spaces._name || null },
+>>>>>>> main
     );
 
     commitMutation<setSpacesMutation>(environment, {

@@ -60,6 +60,7 @@ interface UseAttributeFormResult {
   handleDefaultChange: (defaultValue: string) => void;
   handleListDefaultChange: (values: (string | number)[]) => void;
   handleReadOnlyChange: (readOnly: boolean) => void;
+  handleDynamicChange: (dynamic: boolean) => void;
   handleValuesModeChange: (mode: ValuesMode) => void;
   handleTaxonomyChange: (taxonomy: string) => void;
 }
@@ -220,6 +221,16 @@ export default function useAttributeForm({
       onFormStateChange({ ...formState, read_only: readOnly });
     },
     [formState, onFormStateChange],
+<<<<<<< HEAD
+=======
+  );
+
+  const handleDynamicChange = useCallback(
+    (dynamic: boolean) => {
+      onFormStateChange({ ...formState, dynamic });
+    },
+    [formState, onFormStateChange],
+>>>>>>> main
   );
 
   const handleValuesModeChange = useCallback(
@@ -275,6 +286,7 @@ export default function useAttributeForm({
     handleDefaultChange,
     handleListDefaultChange,
     handleReadOnlyChange,
+    handleDynamicChange,
     handleValuesModeChange,
     handleTaxonomyChange,
   };

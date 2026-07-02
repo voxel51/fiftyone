@@ -303,13 +303,33 @@ class DatasetAnnotationTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_temporal_detection_supported(self):
+        # TemporalDetection(s) are valid annotation label types (the
+        # video-annotation sidebar edits them); they were previously rejected
+        # as globally unsupported.
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(filepath="/tmp/video.mp4"))
+        self.assertEqual(dataset.media_type, "video")
+
+        for label_type in [fol.TemporalDetection, fol.TemporalDetections]:
+            type_ = label_type.__name__.lower()
+            dataset.add_sample_field(
+                "events",
+                fo.EmbeddedDocumentField,
+                embedded_doc_type=label_type,
+            )
+            dataset.set_label_schemas({"events": {"type": type_}})
+            dataset.reload()
+            self.assertEqual(dataset.label_schemas["events"]["type"], type_)
+            dataset.set_label_schemas(None)
+            dataset.delete_sample_field("events")
+
+    @drop_datasets
     def test_unsupported(self):
         dataset = fo.Dataset()
         for label_type in [
             fol.GeoLocation,
             fol.GeoLocations,
-            fol.TemporalDetection,
-            fol.TemporalDetections,
         ]:
             dataset.add_sample_field(
                 "unsupported",
@@ -491,6 +511,360 @@ class DatasetAnnotationTests(unittest.TestCase):
         names = [a["name"] for a in saved["attributes"]]
         self.assertEqual(names, ["local"])
         self.assertNotIn("_source", saved["attributes"][0])
+
+
+class FrameLabelSchemaTests(unittest.TestCase):
+    """Frame label fields are addressed by their ``frames.<field>`` path
+    everywhere, but persisted under their relative name in a separate store so
+    the dotted path never becomes a Mongo dict key."""
+
+    @drop_datasets
+    def test_frame_label_schema_roundtrip(self):
+        dataset = _make_video_dataset()
+        schema = dataset.generate_label_schemas(
+            "frames.detections", scan_samples=False
+        )
+
+        dataset.set_label_schemas({"frames.detections": schema})
+
+        self.assertEqual(list(dataset.label_schemas), ["frames.detections"])
+
+        # the dotted path must never reach the sample-level store; it lives in
+        # the frame store under its relative name
+        self.assertEqual(dataset._doc.label_schemas, {})
+        self.assertIn("detections", dataset._doc.frame_label_schemas)
+
+        dataset.reload()
+        self.assertEqual(list(dataset.label_schemas), ["frames.detections"])
+
+    @drop_datasets
+    def test_frame_and_sample_schemas_coexist(self):
+        dataset = _make_video_dataset()
+        dataset.add_sample_field("weather", fo.StringField)
+
+        frame_schema = dataset.generate_label_schemas(
+            "frames.detections", scan_samples=False
+        )
+        sample_schema = dataset.generate_label_schemas(
+            "weather", scan_samples=False
+        )
+
+        dataset.set_label_schemas(
+            {"frames.detections": frame_schema, "weather": sample_schema}
+        )
+
+        self.assertEqual(
+            set(dataset.label_schemas), {"frames.detections", "weather"}
+        )
+        self.assertEqual(list(dataset._doc.label_schemas), ["weather"])
+        self.assertEqual(
+            list(dataset._doc.frame_label_schemas), ["detections"]
+        )
+
+    @drop_datasets
+    def test_frame_label_schema_activation(self):
+        dataset = _make_video_dataset()
+        schema = dataset.generate_label_schemas(
+            "frames.detections", scan_samples=False
+        )
+        dataset.update_label_schema("frames.detections", schema)
+
+        dataset.activate_label_schemas("frames.detections")
+        self.assertEqual(dataset.active_label_schemas, ["frames.detections"])
+
+        dataset.deactivate_label_schemas("frames.detections")
+        self.assertEqual(dataset.active_label_schemas, [])
+
+        dataset.active_label_schemas = ["frames.detections"]
+        self.assertEqual(dataset.active_label_schemas, ["frames.detections"])
+
+        with self.assertRaises(ValueError):
+            dataset.active_label_schemas = ["frames.missing"]
+
+    @drop_datasets
+    def test_update_and_delete_frame_label_schema(self):
+        dataset = _make_video_dataset()
+        schema = dataset.generate_label_schemas(
+            "frames.detections", scan_samples=False
+        )
+
+        dataset.update_label_schema("frames.detections", schema)
+        self.assertIn("frames.detections", dataset.label_schemas)
+        self.assertIn("detections", dataset._doc.frame_label_schemas)
+
+        dataset.delete_label_schemas("frames.detections")
+        self.assertEqual(dataset.label_schemas, {})
+        self.assertEqual(dataset._doc.frame_label_schemas, {})
+
+    @drop_datasets
+    def test_clone_preserves_frame_label_schemas(self):
+        dataset = _make_video_dataset()
+        schema = dataset.generate_label_schemas(
+            "frames.detections", scan_samples=False
+        )
+        dataset.set_label_schemas({"frames.detections": schema})
+        dataset.activate_label_schemas("frames.detections")
+
+        clone = dataset.clone()
+        self.addCleanup(clone.delete)
+
+        self.assertEqual(list(clone.label_schemas), ["frames.detections"])
+        self.assertEqual(list(clone._doc.label_schemas), [])
+        self.assertIn("detections", clone._doc.frame_label_schemas)
+        self.assertEqual(clone.active_label_schemas, ["frames.detections"])
+
+    @drop_datasets
+    def test_list_valid_annotation_fields_includes_frames(self):
+        import fiftyone.core.annotation.utils as foau
+
+        dataset = _make_video_dataset()
+
+        without_frames = foau.list_valid_annotation_fields(
+            dataset, flatten=True
+        )
+        self.assertNotIn("frames.detections", without_frames)
+
+        with_frames = foau.list_valid_annotation_fields(
+            dataset, flatten=True, include_frames=True
+        )
+        self.assertIn("frames.detections", with_frames)
+
+    @drop_datasets
+    def test_sample_level_spatial_labels_excluded_for_video(self):
+        import fiftyone.core.annotation.utils as foau
+
+        dataset = _make_video_dataset()
+        dataset.add_sample_field(
+            "ground_truth", fo.EmbeddedDocumentField, fo.Detections
+        )
+        dataset.add_sample_field("weather", fo.StringField)
+
+        valid = foau.list_valid_annotation_fields(
+            dataset, flatten=True, include_frames=True
+        )
+
+        # sample-level spatial labels belong on frames, not the clip
+        self.assertNotIn("ground_truth", valid)
+        # frame-level spatial labels and sample-level primitives are still valid
+        self.assertIn("frames.detections", valid)
+        self.assertIn("weather", valid)
+
+    @drop_datasets
+    def test_backfill_instances_from_index(self):
+        import fiftyone.core.annotation.utils as foau
+
+        dataset = _make_video_dataset()
+        sample = fo.Sample(filepath="/tmp/video.mp4")
+        sample.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="car", index=1, bounding_box=[0, 0, 0.1, 0.1]
+                    )
+                ]
+            )
+        )
+        sample.frames[2] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="car", index=1, bounding_box=[0, 0, 0.1, 0.1]
+                    ),
+                    fo.Detection(
+                        label="ped", index=2, bounding_box=[0.5, 0.5, 0.1, 0.1]
+                    ),
+                ]
+            )
+        )
+        dataset.add_sample(sample)
+
+        foau.backfill_instances_from_index(dataset, "frames.detections")
+
+        sample.reload()
+        car_f1 = sample.frames[1].detections.detections[0]
+        f2 = sample.frames[2].detections.detections
+        car_f2 = next(d for d in f2 if d.index == 1)
+        ped_f2 = next(d for d in f2 if d.index == 2)
+
+        # every indexed label gets an instance
+        self.assertIsNotNone(car_f1.instance)
+        self.assertIsNotNone(ped_f2.instance)
+        # the same index within a sample is one track
+        self.assertEqual(car_f1.instance.id, car_f2.instance.id)
+        # distinct indices are distinct tracks
+        self.assertNotEqual(car_f2.instance.id, ped_f2.instance.id)
+
+    @drop_datasets
+    def test_backfill_all_fields_when_field_omitted(self):
+        import fiftyone.core.annotation.utils as foau
+
+        dataset = _make_video_dataset()
+        sample = fo.Sample(filepath="/tmp/video.mp4")
+        sample.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="car", index=1, bounding_box=[0, 0, 0.1, 0.1]
+                    )
+                ]
+            )
+        )
+        dataset.add_sample(sample)
+
+        # the all-fields path (no explicit field) mirrors the all-fields scan
+        foau.backfill_instances_from_index(dataset)
+
+        sample.reload()
+        self.assertIsNotNone(
+            sample.frames[1].detections.detections[0].instance
+        )
+
+    @drop_datasets
+    def test_backfill_skips_fields_with_existing_instances(self):
+        import fiftyone.core.annotation.utils as foau
+
+        dataset = _make_video_dataset()
+        existing = fol.Instance()
+        sample = fo.Sample(filepath="/tmp/video.mp4")
+        sample.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="car",
+                        index=1,
+                        instance=existing,
+                        bounding_box=[0, 0, 0.1, 0.1],
+                    )
+                ]
+            )
+        )
+        dataset.add_sample(sample)
+        original_id = sample.frames[1].detections.detections[0].instance.id
+
+        foau.backfill_instances_from_index(dataset, "frames.detections")
+
+        sample.reload()
+        self.assertEqual(
+            sample.frames[1].detections.detections[0].instance.id, original_id
+        )
+
+    @drop_datasets
+    def test_frame_attribute_dynamic_flag(self):
+        dataset = _make_video_dataset()
+        dataset.add_frame_field(
+            "detections.detections.turn_signal", fo.StringField
+        )
+
+        dataset.set_label_schemas(
+            {
+                "frames.detections": {
+                    "type": "detections",
+                    "attributes": [
+                        {
+                            "name": "turn_signal",
+                            "component": "text",
+                            "type": "str",
+                            "dynamic": True,
+                        }
+                    ],
+                }
+            }
+        )
+
+        saved = dataset.label_schemas["frames.detections"]
+        self.assertTrue(saved["attributes"][0]["dynamic"])
+
+        # a non-boolean 'dynamic' value is rejected
+        with self.assertRaises(ExceptionGroup):
+            dataset.set_label_schemas(
+                {
+                    "frames.detections": {
+                        "type": "detections",
+                        "attributes": [
+                            {
+                                "name": "turn_signal",
+                                "component": "text",
+                                "type": "str",
+                                "dynamic": "yes",
+                            }
+                        ],
+                    }
+                }
+            )
+
+    @drop_datasets
+    def test_create_and_activate_frame_field_operator(self):
+        from fiftyone.operators.executor import ExecutionContext
+        from plugins.operators.annotation import CreateAndActivateField
+
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+
+        ctx = ExecutionContext(
+            operator_uri="create_and_activate_field",
+            request_params={
+                "dataset_name": dataset.name,
+                "params": {
+                    "field_name": "frames.detections",
+                    "field_category": "label",
+                    "field_type": "detections",
+                    "label_schema_config": {"classes": ["car", "person"]},
+                },
+            },
+        )
+
+        result = CreateAndActivateField().execute(ctx)
+        self.assertNotIn("error", result)
+
+        dataset.reload()
+
+        # the field is added to the FRAME schema, not the sample schema
+        self.assertIn("detections", dataset.get_frame_field_schema())
+        self.assertNotIn("detections", dataset.get_field_schema())
+
+        # its schema is stored and activated under the "frames." path
+        self.assertIn("frames.detections", dataset.label_schemas)
+        self.assertIn("frames.detections", dataset.active_label_schemas)
+
+    @drop_datasets
+    def test_create_and_activate_sample_field_operator(self):
+        from fiftyone.operators.executor import ExecutionContext
+        from plugins.operators.annotation import CreateAndActivateField
+
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+
+        ctx = ExecutionContext(
+            operator_uri="create_and_activate_field",
+            request_params={
+                "dataset_name": dataset.name,
+                "params": {
+                    "field_name": "events",
+                    "field_category": "label",
+                    "field_type": "classification",
+                    "label_schema_config": {"classes": ["a", "b"]},
+                },
+            },
+        )
+
+        result = CreateAndActivateField().execute(ctx)
+        self.assertNotIn("error", result)
+
+        dataset.reload()
+
+        # no "frames." prefix stays a sample-level field
+        self.assertIn("events", dataset.get_field_schema())
+        self.assertNotIn("events", dataset.get_frame_field_schema())
+        self.assertIn("events", dataset.active_label_schemas)
+
+
+def _make_video_dataset():
+    dataset = fo.Dataset()
+    dataset.media_type = "video"
+    dataset.add_frame_field(
+        "detections", fo.EmbeddedDocumentField, fo.Detections
+    )
+    return dataset
 
 
 def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):

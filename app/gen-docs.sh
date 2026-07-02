@@ -28,7 +28,8 @@ done
 if [ "$REBUILD_TYPEDOC" = true ] ; then
   echo "Rebuilding typedoc JSON..."
   echo "Generating doc JSON... at $DOCS_JSON_FILE"
-  npx typedoc --options typedoc.js --json $DOCS_JSON_FILE
+  # typedoc's type graph exceeds node's default ~4GB heap; raise the ceiling
+  NODE_OPTIONS="--max-old-space-size=8192" npx typedoc --options typedoc.js --json $DOCS_JSON_FILE
 fi
 
 node gen-docs.js $DOCS_JSON_FILE

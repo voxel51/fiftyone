@@ -151,6 +151,7 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     const bounds = this.overlay.bounds;
     this.eventBus.dispatch("lighter:overlay-establish", {
       id: this.overlay.id,
+      overlayId: this.overlay.id,
       handler: this,
       startBounds: bounds,
       startPosition: { x: bounds.x, y: bounds.y },

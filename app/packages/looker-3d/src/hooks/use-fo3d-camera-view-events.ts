@@ -1,10 +1,10 @@
 import * as fos from "@fiftyone/state";
-import type { CameraControls } from "@react-three/drei";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import type { Box3, PerspectiveCamera, Vector3 } from "three";
 import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../constants";
 import { resolveViewConfig } from "../fo3d/camera-init";
+import type { Fo3dCameraControls } from "../fo3d/camera-controls";
 import { FoScene } from "../fo3d/render-types";
 import type { Looker3dSettings } from "../settings";
 import { cameraPositionAtom } from "../state";
@@ -14,7 +14,7 @@ const BOUNDS_RETRY_DELAY_MS = 50;
 
 interface UseFo3dCameraViewEventsArgs {
   cameraRef: React.RefObject<PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
   effectiveSceneBoundingBox: Box3;
   sceneBoundingBox: Box3 | null;
   upVector: Vector3 | null;
@@ -45,7 +45,7 @@ export const useFo3dCameraViewEvents = ({
   const pendingTimeoutIdsRef = useRef<number[]>([]);
 
   const buildViewLookAt = useCallback(
-    (view: "pov" | "top", useAnimation: boolean) => {
+    (view: "pov" | "top") => {
       const viewConfig = resolveViewConfig(view, {
         boundingBox: effectiveSceneBoundingBox,
         upVector,
@@ -57,7 +57,6 @@ export const useFo3dCameraViewEvents = ({
       return {
         position: viewConfig.position,
         target: viewConfig.target,
-        animate: useAnimation,
       };
     },
     [
@@ -67,6 +66,7 @@ export const useFo3dCameraViewEvents = ({
       foScene,
       settings,
     ],
+<<<<<<< HEAD
   );
 
   const onChangeView = useCallback(
@@ -77,6 +77,8 @@ export const useFo3dCameraViewEvents = ({
       return applyLookAt(buildViewLookAt(view, useAnimation));
     },
     [buildViewLookAt, applyLookAt],
+=======
+>>>>>>> main
   );
 
   const handleViewChangeEvent = useCallback(
@@ -90,15 +92,15 @@ export const useFo3dCameraViewEvents = ({
           pendingTimeoutIdsRef.current = pendingTimeoutIdsRef.current.filter(
             (id) => id !== timeoutId,
           );
-          const lookAt = buildViewLookAt(view, true);
-          applyLookAt(lookAt);
+          applyLookAt(buildViewLookAt(view));
         }, BOUNDS_RETRY_DELAY_MS);
         pendingTimeoutIdsRef.current.push(timeoutId);
         return;
       }
 
-      onChangeView(view, { useAnimation: true });
+      applyLookAt(buildViewLookAt(view));
     },
+<<<<<<< HEAD
     [
       onChangeView,
       sceneBoundingBox,
@@ -106,6 +108,9 @@ export const useFo3dCameraViewEvents = ({
       buildViewLookAt,
       applyLookAt,
     ],
+=======
+    [sceneBoundingBox, recomputeBounds, buildViewLookAt, applyLookAt],
+>>>>>>> main
   );
 
   // This effect clears any remaining timeouts

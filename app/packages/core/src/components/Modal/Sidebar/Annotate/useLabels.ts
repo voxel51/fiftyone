@@ -1,34 +1,28 @@
-import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import {
-  activeFields,
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
+import {
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
+import {
   AnnotationLabel,
   AnnotationLabelData,
-  field,
   isPatchesView,
-  ModalSample,
-  useCurrentSampleId,
-  useModalSample,
 } from "@fiftyone/state";
-import { getNormalizedUrls } from "@fiftyone/state/src/utils";
-import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
-import { DETECTION } from "@fiftyone/utilities";
+import { LabelType as EngineLabelType } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom, useAtomCallback } from "jotai/utils";
-import { get } from "lodash";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { selector, useRecoilCallback, useRecoilValue } from "recoil";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/useAnnotationContext";
-import {
-  isFieldReadOnly,
-  labelSchemasData,
-  visibleLabelSchemas,
-} from "./state";
-import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
-import { useSetActiveLabelId } from "./useAnnotationContextManager";
-import { useCreateAnnotationLabel } from "./useCreateAnnotationLabel";
-import useHover from "./useHover";
+import { activeLabelSchemas, visibleLabelSchemas } from "./state";
+import { useSetEntranceLabel } from "./useAnnotationContextManager";
 
 /**
+<<<<<<< HEAD
  * Map from plural label _cls to the list key and singular LabelType.
  * Used to load labels from sample data when the field is not yet in the
  * Recoil schema (e.g. field just created via Schema Manager).
@@ -68,21 +62,18 @@ const collectFulfilled = <T>(
 /**
  * Builds a per-label URL resolver that maps sub-field names (e.g.
  * `"mask_path"`) to fetchable media URLs.
+=======
+ * The sidebar label list is ready to render once label schemas have been
+ * fetched (`activeLabelSchemas` is non-null) AND there is an active annotation
+ * sample to read from. This is the engine-readiness signal that replaces the
+ * old `labelsState` loading gate: the list reads the engine directly, so its
+ * gate keys on the engine's preconditions, not on a mirror-load lifecycle.
+>>>>>>> main
  *
- * Resolution order:
- *   1. Look up the sub-field's structural key (e.g.
- *      `"ground_truth.detections[0].mask_path"`) in the sample's `sources`
- *      map. Mirrors looker's key construction in
- *      `app/packages/looker/src/worker/disk-overlay-decoder.ts`.
- *   2. Fall back to `getSampleSrc(rawValue)` on the sub-field's raw value.
- *
- * Returns `undefined` if neither path produces a usable URL.
- *
- * The closure captures the label's structural context — the expanded
- * sample path, whether the label is a list item, and its index — so the
- * downstream factory can just ask by sub-field name without knowing where
- * its label lives in the sample tree.
+ * Schemas arrive asynchronously via `get_label_schemas`; requiring non-null
+ * schemas keeps the gate from opening on a transient zero-result state.
  */
+<<<<<<< HEAD
 const buildLabelResolveUrl = (
   sources: { [key: string]: string },
   expandedPath: string,
@@ -249,6 +240,12 @@ const handleSample = async ({
   return labels.sort((a, b) =>
     (a.data.label ?? "").localeCompare(b.data?.label ?? ""),
   );
+=======
+export const useAnnotationLabelsReady = (): boolean => {
+  const schemasLoaded = useAtomValue(activeLabelSchemas) !== null;
+  const sampleId = useActiveAnnotationSampleId();
+  return schemasLoaded && Boolean(sampleId);
+>>>>>>> main
 };
 
 export const addLabel = atom(
@@ -262,12 +259,16 @@ export const addLabel = atom(
     if (!alreadyHaveIt) {
       const newList = [...existingLabels, newLabel];
 
+<<<<<<< HEAD
       set(
         labels,
         newList.sort((a, b) =>
           (a.data.label ?? "").localeCompare(b.data?.label ?? ""),
         ),
       );
+=======
+      set(labels, newList.sort(byLabelName));
+>>>>>>> main
     }
   },
 );
@@ -303,16 +304,6 @@ export enum LabelsState {
 }
 export const labelsState = atom<LabelsState>(LabelsState.UNSET);
 
-const pathMap = selector<{ [key: string]: string }>({
-  key: "annotationPathMap",
-  get: ({ get }) => {
-    const paths = get(activeFields({ expanded: false, modal: true }));
-    const expandedPaths = get(activeFields({ expanded: true, modal: true }));
-
-    return Object.fromEntries(paths.map((path, i) => [path, expandedPaths[i]]));
-  },
-});
-
 /**
  * Returns a callback that updates the {@link AnnotationLabelData} for a label
  * identified by its overlay ID.
@@ -333,7 +324,7 @@ const useUpdateLabelAtom = () => {
 
       if (targetAtom) {
         const currentValue = get(targetAtom);
-        set(targetAtom, { ...currentValue, data });
+        set(targetAtom, { ...currentValue, data } as AnnotationLabel);
         return true;
       }
 
@@ -419,117 +410,133 @@ export const useLabelsContext = (): LabelsContext => {
   );
 };
 
-/**
- * Syncs overlay draggable/resizeable flags when label schema read-only state
- * changes (e.g. user toggles read-only in Schema Manager).
- */
-const useSyncOverlayReadOnly = () => {
-  const currentLabels = useAtomValue(labels);
-  const schemas = useAtomValue(labelSchemasData);
-
-  useEffect(() => {
-    if (!schemas) return;
-
-    for (const label of currentLabels) {
-      if (label.type !== DETECTION) continue;
-
-      const overlay = label.overlay;
-      if (!(overlay instanceof DetectionOverlay)) continue;
-
-      const readOnly = isFieldReadOnly(schemas[label.path]);
-      overlay.setDraggable(!readOnly);
-      overlay.setResizeable(!readOnly);
-    }
-  }, [currentLabels, schemas]);
+const SINGULAR: Partial<Record<EngineLabelType, LabelType>> = {
+  [EngineLabelType.Classification]: "Classification",
+  [EngineLabelType.Classifications]: "Classification",
+  [EngineLabelType.Detection]: "Detection",
+  [EngineLabelType.Detections]: "Detection",
+  [EngineLabelType.Keypoint]: "Keypoint",
+  [EngineLabelType.Keypoints]: "Keypoint",
+  [EngineLabelType.Polyline]: "Polyline",
+  [EngineLabelType.Polylines]: "Polyline",
 };
 
+const byLabelName = (a: AnnotationLabel, b: AnnotationLabel) =>
+  (a.data.label ?? "").localeCompare(b.data?.label ?? "");
+
+const sameData = (a: AnnotationLabelData, b: AnnotationLabelData) =>
+  a === b || JSON.stringify(a) === JSON.stringify(b);
+
+const sameEntry = (a: AnnotationLabel, b: AnnotationLabel) =>
+  a.overlay === b.overlay &&
+  a.path === b.path &&
+  a.type === b.type &&
+  sameData(a.data, b.data);
+
+/**
+ * Transitional row shape for an engine label with no mounted Lighter overlay
+ * (3D-shaped data, content-declined data, an in-flight gated mask decode):
+ * enough overlay surface for list rendering — id (entry identity), field +
+ * label (coloring). The same shape the 3D create path puts in rows; it dies
+ * with the mirror when rows derive per-component by ref.
+ */
+const stubOverlay = (
+  id: string,
+  field: string,
+  label: AnnotationLabelData,
+): AnnotationLabel["overlay"] =>
+  ({ id, field, label }) as unknown as AnnotationLabel["overlay"];
+
+/**
+ * The sidebar label list, derived from the annotation engine (the engine is
+ * the source of truth; the Lighter bridge owns overlay hydration). This is a
+ * TRANSITIONAL mirror onto the legacy `labels` atom: rows keep their
+ * `AnnotationLabel` shape (data + overlay handle) until the remaining
+ * consumers (`Edit/state`, focus, 3D ops, agents) migrate to engine reads,
+ * at which point the atoms delete and rows derive per-component by ref.
+ *
+ * EVERY in-scope engine label gets a row — the list never asks another
+ * surface for permission. Rows carry the live Lighter overlay when the scene
+ * has one and a {@link stubOverlay} otherwise (3D-shaped or content-declined
+ * data, an in-flight gated mask decode). Rows the engine does NOT know pass
+ * through untouched (uncommitted creates from un-migrated surfaces — 3D ops
+ * add rows via {@link useLabelsContext}); once the engine learns a label, its
+ * derived row wins, which is what makes duplicates structurally impossible.
+ *
+ * Re-derives on every engine display tick and on `lighter:overlay-added`
+ * (gated mask mounts insert without an engine change — the stub upgrades to
+ * the live overlay when the decode lands).
+ */
 export default function useLabels() {
-  const paths = useRecoilValue(pathMap);
-  const currentLabels = useAtomValue(labels);
-  const modalSample = useModalSample();
-  const currentSampleId = useCurrentSampleId();
-  const setLabels = useSetAtom(labels);
-  const setLoading = useSetAtom(labelsState);
+  const engine = useAnnotationEngine();
+  const { scene } = useLighter();
   const active = useAtomValue(visibleLabelSchemas);
-  const addLabelToRenderer = useAddAnnotationLabelToRenderer();
-  const addLabelToStore = useSetAtom(addLabel);
-  const createLabel = useCreateAnnotationLabel();
-  const { scene, removeOverlay } = useLighter();
-  const updateLabelAtom = useUpdateLabelAtom();
   const isPatches = useRecoilValue(isPatchesView);
-  const setActiveLabelId = useSetActiveLabelId();
-  const [initialOverlayIds, setInitialOverlayIds] =
-    useState<Set<string> | null>(null);
+  const setEntranceLabel = useSetEntranceLabel();
+  const setLoading = useSetAtom(labelsState);
 
-  // Use a ref for the loading state machine to avoid having it as an effect
-  // dependency. When loadingState was both a dep and mutated inside the effect,
-  // the UNSET→LOADING state change triggered a re-render whose cleanup set
-  // stale=true, causing the async result to be discarded and the state reset
-  // to UNSET — an infinite loop that prevented labels from ever loading.
-  const loadingRef = useRef(LabelsState.UNSET);
+  // the sample the sidebar reflects — the selected 2D slice, or the pinned 3D
+  // scene when its slice is selected (the one group-aware resolver)
+  const sampleId = useActiveAnnotationSampleId();
 
-  const getFieldType = useRecoilCallback(
-    ({ snapshot }) =>
-      async (path: string) => {
-        const loadable = await snapshot.getLoadable(field(path));
-        const type = loadable
-          .getValue()
-          ?.embeddedDocType?.split(".")
-          .slice(-1)[0];
+  // ids the mirror derived on its last pass, and for which sample — a row
+  // that WAS engine-derived and no longer is was deleted (drop it, don't
+  // pass it through); a sample switch starts from an empty list
+  const derivedIds = useRef<Set<string>>(new Set());
+  const derivedFor = useRef<string | null>(null);
 
-        if (!type) {
-          throw new Error("no type");
-        }
+  const reconcile = useCallback(() => {
+    if (!sampleId || !active) {
+      return;
+    }
 
+<<<<<<< HEAD
         return type as LabelType;
       },
     [],
   );
+=======
+    const store = getDefaultStore();
+    const current = store.get(labels);
+    const previous = derivedFor.current === sampleId ? current : [];
+    const previousById = new Map(previous.map((l) => [l.data._id, l]));
+    const engineIds = new Set<string>();
+    const next: AnnotationLabel[] = [];
+>>>>>>> main
 
-  // Reset labels when active schemas change to reload and update scene
-  useEffect(() => {
-    const resetOverlays = () => {
-      currentLabels.forEach((label) => {
-        removeOverlay(label.overlay.id, false);
-      });
+    for (const path of active) {
+      const type = SINGULAR[engine.getLabelType(path)];
 
-      setLabels([]);
-      loadingRef.current = LabelsState.UNSET;
-      setLoading(LabelsState.UNSET);
-    };
+      if (!type) {
+        continue;
+      }
 
-    resetOverlays();
-  }, [active, removeOverlay, setLabels, setLoading]);
+      for (const data of engine.listLabels({ sample: sampleId, path })) {
+        engineIds.add(data._id);
 
-  // Reset when the sample changes so the primary loading effect below starts
-  // fresh instead of entering the refresh path with stale labels.
-  useEffect(() => {
-    return () => {
-      currentLabels.forEach((label) => {
-        removeOverlay(label.overlay.id, false);
-      });
-      setLabels([]);
-      loadingRef.current = LabelsState.UNSET;
-      setLoading(LabelsState.UNSET);
-    };
-  }, [currentSampleId, scene, removeOverlay, setLabels, setLoading]);
+        // The scene keys overlays by the track's `instance._id` (the engine
+        // `instanceId`), which equals the doc `_id` for an untracked 2D label
+        // but differs for a per-frame video track — so resolve the instance id
+        // to find the live overlay (and its mask), falling back to `_id`.
+        const instanceId =
+          (data as { instance?: { _id?: string } }).instance?._id ?? data._id;
 
-  useEffect(() => {
-    // Flipped to `true` by the cleanup function so in-flight async work
-    // from a superseded effect invocation can bail out before mutating state.
-    let stale = false;
+        const prev = previousById.get(data._id);
+        const mounted = scene?.getOverlay(instanceId);
+        const live = mounted && mounted.field === path ? mounted : undefined;
 
-    if (modalSample?.sample && active) {
-      const getLabelsFromSample = () =>
-        handleSample({
-          createLabel,
-          paths,
-          sample: modalSample,
-          getFieldType,
-          schemas: active,
-          hasExistingOverlay: (id) => !!id && !!scene?.getOverlay(id),
-        });
+        // keep stub identity across reconciles while the data is unchanged;
+        // a data change rebuilds the stub so its label never goes stale
+        const overlay = (live ??
+          (prev && sameData(prev.data, data as AnnotationLabelData)
+            ? prev.overlay
+            : stubOverlay(
+                data._id,
+                path,
+                data as AnnotationLabelData,
+              ))) as AnnotationLabel["overlay"];
 
+<<<<<<< HEAD
       if (loadingRef.current === LabelsState.UNSET) {
         loadingRef.current = LabelsState.LOADING;
         setLoading(LabelsState.LOADING);
@@ -591,31 +598,108 @@ export default function useLabels() {
             }
           });
         });
+=======
+        const entry = {
+          data: data as AnnotationLabelData,
+          overlay,
+          path,
+          type,
+        } as AnnotationLabel;
+        next.push(prev && sameEntry(prev, entry) ? prev : entry);
+>>>>>>> main
       }
     }
 
-    return () => {
-      stale = true;
-    };
-  }, [
-    active,
-    addLabelToRenderer,
-    addLabelToStore,
-    createLabel,
-    currentSampleId,
-    getFieldType,
-    isPatches,
-    modalSample?.sample,
-    paths,
-    scene,
-    setActiveLabelId,
-    setLabels,
-    setLoading,
-    updateLabelAtom,
-  ]);
+    // engine-unknown rows pass through (uncommitted creates from
+    // un-migrated surfaces) — unless the engine knew them last pass
+    // (deleted: the row must not resurrect)
+    for (const label of previous) {
+      if (
+        !engineIds.has(label.data._id) &&
+        !derivedIds.current.has(label.data._id)
+      ) {
+        next.push(label);
+      }
+    }
 
-  useSyncOverlayReadOnly();
-  useHover();
+    derivedIds.current = engineIds;
+    derivedFor.current = sampleId;
 
-  return initialOverlayIds;
+    next.sort(byLabelName);
+
+    const unchanged =
+      next.length === current.length &&
+      next.every((entry, index) => entry === current[index]);
+
+    if (!unchanged) {
+      store.set(labels, next);
+    }
+  }, [active, engine, sampleId, scene]);
+
+  // first hydration per sample: loading gate (one-shot per sample)
+  const completedFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (completedFor.current !== sampleId) {
+      completedFor.current = null;
+      setLoading(sampleId ? LabelsState.LOADING : LabelsState.UNSET);
+    }
+  }, [sampleId, setLoading]);
+
+  // patches single-label auto-edit: open the source label for editing as soon
+  // as it is discoverable. Kept SEPARATE from the loading gate and re-evaluated
+  // on every engine tick (and whenever the active schema changes) so it
+  // survives the label arriving async OR the source field being activated
+  // after entry. Fires at most once per sample — the user is free to deselect.
+  const enteredFor = useRef<string | null>(null);
+
+  const maybeEnterPatchLabel = useCallback(() => {
+    if (!isPatches || !sampleId || !active || enteredFor.current === sampleId) {
+      return;
+    }
+
+    // count from the engine, not the mirror — a gated overlay hasn't mounted
+    // yet but still makes the patch single-label
+    const all = active.flatMap((path) =>
+      SINGULAR[engine.getLabelType(path)]
+        ? engine.listLabels({ sample: sampleId, path }).map((label) => ({
+            sample: sampleId,
+            path,
+            instanceId: label._id,
+          }))
+        : [],
+    );
+
+    if (all.length === 1) {
+      enteredFor.current = sampleId;
+      setEntranceLabel(all[0]);
+    }
+  }, [active, engine, isPatches, sampleId, setEntranceLabel]);
+
+  useEffect(() => {
+    reconcile();
+    maybeEnterPatchLabel();
+
+    // completeness keys on the engine, never on a surface being mounted —
+    // a 3D slice has no Lighter scene; 2D rows start as stubs and upgrade
+    // when the scene mounts
+    if (completedFor.current !== sampleId && sampleId && active) {
+      completedFor.current = sampleId;
+      setLoading(LabelsState.COMPLETE);
+    }
+
+    return engine.subscribe(() => {
+      reconcile();
+      maybeEnterPatchLabel();
+    });
+  }, [active, engine, maybeEnterPatchLabel, reconcile, sampleId, setLoading]);
+
+  // gated mounts insert without an engine change
+  const on = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
+  );
+  on(
+    "lighter:overlay-added",
+    useCallback(() => reconcile(), [reconcile]),
+  );
 }

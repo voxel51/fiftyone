@@ -1,17 +1,26 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
-import { useLighter } from "@fiftyone/lighter";
-import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
+import {
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+  useEngineSelector,
+  useInteraction,
+} from "@fiftyone/annotation";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
+<<<<<<< HEAD
 import { type PrimitiveAtom, getDefaultStore, useAtomValue } from "jotai";
+=======
+import { useAtomValue } from "jotai";
+>>>>>>> main
 import { useMemo } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
-import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import { ICONS } from "./Icons";
 import { fieldType } from "./state";
 import useColor from "./useColor";
+<<<<<<< HEAD
 import { useIsLabelHovering } from "./useHover";
+=======
+>>>>>>> main
 
 const Container = animated(styled.div`
   display: flex;
@@ -52,71 +61,78 @@ const Line = styled.div<{ fill: string }>`
   background: ${({ fill }) => fill};
 `;
 
-const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
-  const label = useAtomValue(atom);
-  const type = useAtomValue(fieldType(label.path ?? ""));
-  const { select, setSavedData } = useAnnotationContext();
+const LabelEntry = ({
+  id,
+  path,
+  frame,
+}: {
+  id: string;
+  path: string;
+  frame?: number;
+}) => {
+  const engine = useAnnotationEngine();
+  const sample = useActiveAnnotationSampleId();
+  const type = useAtomValue(fieldType(path ?? ""));
   const Icon = ICONS[type] ?? (() => null);
+<<<<<<< HEAD
   const { scene } = useLighter();
 
   const isHovering = useIsLabelHovering(label.overlay.id);
+=======
 
-  const color = useColor(label.overlay);
+  // read the label declaratively by ref — the engine is the source of truth.
+  // `frame` is set for video frame labels (the playhead occurrence the row was
+  // derived at) and absent for sample-level / image labels.
+  const data = useEngineSelector(engine, (e) =>
+    sample ? e.getLabel({ sample, path, instanceId: id, frame }) : undefined,
+  );
+  const labelText = data?.label as string | undefined;
+>>>>>>> main
 
-  const annotationEventBus = useAnnotationEventBus();
+  // the sidebar reflects the selected slice; refs carry its id (from modal
+  // state, so it's correct before the engine registers a store and stays
+  // correct once a grouped 2D + 3D modal registers more than one)
+  const toRef = useMemo(
+    () => () => ({
+      sample,
+      path,
+      instanceId: id,
+      frame,
+    }),
+    [sample, id, path, frame],
+  );
 
-  const handleMouseEnter = useMemo(() => {
-    return () => {
-      annotationEventBus.dispatch("annotation:sidebarLabelHover", {
-        id: label.overlay.id,
-        tooltip: false,
-      });
-    };
-  }, [annotationEventBus, label.overlay.id]);
+  // full-identity read (sample included) — a hand-rolled instanceId+path match
+  // would cross-light a same-id row from another slice in a grouped modal
+  const isHovering = useInteraction(engine, (i) => i.isHovered(toRef()));
 
-  const handleMouseLeave = useMemo(() => {
-    return () => {
-      annotationEventBus.dispatch("annotation:sidebarLabelUnhover", {
-        id: label.overlay.id,
-      });
-    };
-  }, [annotationEventBus, label.overlay.id]);
-
-  const is3DLabel =
-    isDetection3dOverlay(label.data) || isPolyline3dOverlay(label.data);
+  // color reads only `field` + `label` off the overlay (cf. the 3D rows) — a
+  // stub over the engine label is enough, no mounted Lighter overlay needed
+  const overlay = useMemo(
+    () =>
+      ({
+        id,
+        field: path,
+        label: data,
+      }) as unknown as AnnotationLabel["overlay"],
+    [id, path, data],
+  );
+  const color = useColor(overlay as Parameters<typeof useColor>[0]);
 
   return (
     <Container
+      data-cy={`annotate-label-${id}`}
+      data-cy-path={path}
+      data-cy-frame={frame ?? ""}
+      data-cy-label={labelText ?? ""}
       onClick={() => {
-        const store = getDefaultStore();
-        scene?.selectOverlay(store.get(atom).overlay.id);
-
-        annotationEventBus.dispatch("annotation:sidebarLabelSelected", {
-          id: label.overlay.id,
-          type: label.type,
-          data: {
-            ...label.data,
-            path: label.path,
-            id: label.overlay.id,
-          },
-        });
-
-        // For 3D labels, select3DLabelForAnnotation handles setting the
-        // editing pointer to the correct 3D-specific atom. We should not
-        // overwrite it here — just sync savedLabel so dirty tracking starts
-        // from this label's data.
-        if (!is3DLabel) {
-          select(atom);
-        } else {
-          // 3D-specific: editing pointer is set by the looker-3d hooks
-          // (useSetEditingToExisting3dLabel etc.); we only sync the
-          // savedLabel snapshot to start dirty-tracking from this label.
-          setSavedData(store.get(atom).data);
-        }
+        // the form follows the anchor; each surface (2D scene, 3D scene)
+        // projects the selection through its own engine adapter
+        engine.interaction.setActive([toRef()]);
       }}
       className={isHovering ? "hovering" : ""}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => engine.interaction.setHovered(toRef(), true)}
+      onMouseLeave={() => engine.interaction.setHovered(toRef(), false)}
     >
       <Line fill={color} />
       <Header>
@@ -124,13 +140,13 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
           <Icon fill={color} />
           <div
             style={{
-              ...(!label.data.label
+              ...(!labelText
                 ? { color, fontStyle: "italic", opacity: 0.7 }
                 : {}),
               ...{ paddingLeft: "8px" },
             }}
           >
-            {label.data.label || "(no label)"}
+            {labelText || "(no label)"}
           </div>
         </Column>
 

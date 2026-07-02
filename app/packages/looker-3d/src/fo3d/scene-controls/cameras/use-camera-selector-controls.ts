@@ -1,4 +1,3 @@
-import { CameraControls } from "@react-three/drei";
 import { folder, useControls } from "leva";
 import {
   createElement,
@@ -8,10 +7,15 @@ import {
   useState,
 } from "react";
 import { useSetRecoilState } from "recoil";
-import { Vector3 } from "three";
+import { Vector3, type PerspectiveCamera } from "three";
 import { PANEL_ORDER_CAMERAS } from "../../../constants";
 import { useFetchSampleStaticTransform } from "../../../hooks/use-fetch-sample-static-transform";
 import { cameraPositionAtom } from "../../../state";
+import {
+  getCameraControlsTarget,
+  setCameraControlsLookAt,
+  type Fo3dCameraControls,
+} from "../../camera-controls";
 import { customComponent } from "../LevaCustomComponent";
 import { CameraAutocomplete } from "./CameraAutocomplete";
 import {
@@ -21,7 +25,7 @@ import {
 } from "./utils";
 
 type UseCameraSelectorControlsParams = {
-  cameraControlsRef?: React.RefObject<CameraControls>;
+  cameraControlsRef?: React.RefObject<Fo3dCameraControls>;
   lookAt: Vector3 | null;
 };
 
@@ -85,13 +89,14 @@ export const useCameraSelectorControls = ({
 
       if (cameraControlsRef?.current) {
         const fallbackTarget =
-          lookAt || cameraControlsRef.current.getTarget(new Vector3());
+          lookAt || getCameraControlsTarget(cameraControlsRef.current);
         const target = resolveCameraSelectorTarget({
           translation,
           quaternion: selectedCamera.quaternion,
           fallbackTarget,
         });
 
+<<<<<<< HEAD
         cameraControlsRef.current.setLookAt(
           translation[0],
           translation[1],
@@ -101,6 +106,14 @@ export const useCameraSelectorControls = ({
           target.z,
           true,
         );
+=======
+        setCameraControlsLookAt({
+          camera: cameraControlsRef.current.object as PerspectiveCamera,
+          controls: cameraControlsRef.current,
+          position: translation,
+          target,
+        });
+>>>>>>> main
       }
     },
     [cameraOptions, cameraControlsRef, lookAt, setCameraPosition],

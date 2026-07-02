@@ -167,6 +167,22 @@ export class ActionManager {
   }
 
   /**
+   * Newest-first descriptions of the undo stack (line 1 = the next undo).
+   * Backs the undo history view.
+   */
+  describeUndoStack(): string[] {
+    return [...this.undoStack].reverse().map((u) => u.describe?.() ?? u.id);
+  }
+
+  /**
+   * Newest-first descriptions of the redo stack (line 1 = the next redo).
+   * Backs the redo history view.
+   */
+  describeRedoStack(): string[] {
+    return [...this.redoStack].reverse().map((u) => u.describe?.() ?? u.id);
+  }
+
+  /**
    * Executes an action in this context and
    * if it is Undoable, pushes it to the undo
    * stack.

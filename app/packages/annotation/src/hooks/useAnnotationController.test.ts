@@ -1,10 +1,18 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
+<<<<<<< HEAD
 vi.mock(
   "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useAnnotationContextManager",
   () => ({ useAnnotationContextManager: vi.fn() }),
 );
+=======
+// mocked whole (no importOriginal): the real module's graph crosses the
+// core/looker-3d boundary, which a partial mock would drag in
+vi.mock("../state", () => ({
+  useRegisteredAnnotationContextManager: vi.fn(),
+}));
+>>>>>>> main
 
 vi.mock("@fiftyone/state", () => ({
   useModalModeController: vi.fn(),
@@ -14,8 +22,8 @@ vi.mock("./useAnnotationEventBus", () => ({
   useAnnotationEventBus: vi.fn(),
 }));
 
-import { useAnnotationContextManager } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useAnnotationContextManager";
 import { useModalModeController } from "@fiftyone/state";
+import { useRegisteredAnnotationContextManager } from "../state";
 import { useAnnotationEventBus } from "./useAnnotationEventBus";
 import { useAnnotationController } from "./useAnnotationController";
 
@@ -43,7 +51,11 @@ describe("useAnnotationController", () => {
     };
     mockEventBus = { dispatch: vi.fn() };
 
+<<<<<<< HEAD
     vi.mocked(useAnnotationContextManager).mockReturnValue(
+=======
+    vi.mocked(useRegisteredAnnotationContextManager).mockReturnValue(
+>>>>>>> main
       mockContextManager as any,
     );
     vi.mocked(useModalModeController).mockReturnValue(

@@ -75,9 +75,13 @@ export async function readMcapSynchronizedMessageBatch({
   // tolerances) and the open lookback is served by the predecessor probe.
   const startTimeNs = minBigInt(
     windowBounds.flatMap((bounds) =>
+<<<<<<< HEAD
       Object.values(bounds.streamPolicies).map(
         (policy) => policy.startTimeNs ?? bounds.timeNs,
       ),
+=======
+      Object.values(bounds.streamPolicies).map((policy) => policy.startTimeNs),
+>>>>>>> main
     ),
   );
   const endTimeNs = maxBigInt(
@@ -417,9 +421,13 @@ async function decodeWindowsFromCandidates<
         messages,
         messagesByTopic,
         startTimeNs: minBigInt(
+<<<<<<< HEAD
           Object.values(streamPolicies).map(
             (policy) => policy.startTimeNs ?? 0n,
           ),
+=======
+          Object.values(streamPolicies).map((policy) => policy.startTimeNs),
+>>>>>>> main
         ),
         streamPolicies,
         timeNs,
@@ -620,6 +628,18 @@ async function resolveRawCandidateForIndexedMessage({
       `Missing MCAP message for indexed ${candidate.topic} entry with channel ${
         candidate.channelId
       } at ${candidate.logTimeNs.toString()}`,
+<<<<<<< HEAD
+=======
+    );
+  }
+  if (matches.length > 1) {
+    throw new Error(
+      `Ambiguous MCAP indexed-to-raw match for ${
+        candidate.topic
+      } entry with channel ${
+        candidate.channelId
+      } at ${candidate.logTimeNs.toString()}`,
+>>>>>>> main
     );
   }
 

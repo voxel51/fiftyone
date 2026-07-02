@@ -283,6 +283,67 @@ describe("computeCuboidProjection", () => {
     expect(result).not.toBeNull();
     expect(result!.edges).toHaveLength(12);
   });
+
+  it("uses the edge opposite z-up as the default cuboid orientation base", () => {
+    const label: CuboidTransformData = {
+      location: [0, 0, 5],
+      dimensions: [2, 1, 1],
+    };
+    const frustum = makeFrustumData();
+    const result = computeCuboidProjection(label, frustum);
+
+    expect(result?.orientation?.x1).toBeCloseTo(431.111);
+    expect(result?.orientation?.y1).toBeCloseTo(240);
+    expect(result?.orientation?.x2).toBeCloseTo(542.222);
+    expect(result?.orientation?.y2).toBeCloseTo(240);
+  });
+
+  it("uses the edge opposite the provided up vector as the cuboid orientation base", () => {
+    const label: CuboidTransformData = {
+      location: [0, 0, 5],
+      dimensions: [2, 1, 1],
+    };
+    const frustum = makeFrustumData();
+    const result = computeCuboidProjection(
+      label,
+      frustum,
+      new Vector3(0, 1, 0),
+    );
+
+    expect(result?.orientation).toEqual({
+      x1: 420,
+      y1: 190,
+      x2: 520,
+      y2: 190,
+    });
+  });
+
+  it("rotates the projected cuboid orientation with quaternions", () => {
+    const s = Math.SQRT1_2;
+    const label: CuboidTransformData = {
+      location: [0, 0, 5],
+      dimensions: [2, 1, 1],
+      quaternion: [0, 0, s, s],
+    };
+    const frustum = makeFrustumData();
+    const result = computeCuboidProjection(label, frustum);
+
+    expect(result?.orientation?.x1).toBeCloseTo(320);
+    expect(result?.orientation?.y1).toBeCloseTo(351.111);
+    expect(result?.orientation?.x2).toBeCloseTo(320);
+    expect(result?.orientation?.y2).toBeCloseTo(462.222);
+  });
+
+  it("omits cuboid orientation for degenerate heading dimensions", () => {
+    const label: CuboidTransformData = {
+      location: [0, 0, 5],
+      dimensions: [0, 1, 1],
+    };
+    const frustum = makeFrustumData();
+    const result = computeCuboidProjection(label, frustum);
+
+    expect(result?.orientation).toBeNull();
+  });
 });
 
 describe("computePolylineProjection", () => {

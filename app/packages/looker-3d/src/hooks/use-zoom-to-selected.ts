@@ -1,20 +1,31 @@
 import * as fos from "@fiftyone/state";
-import type { CameraControls } from "@react-three/drei";
 import { useRecoilCallback } from "recoil";
-import { Box3, Vector3, type Vector3Tuple } from "three";
-import { selectedLabelForAnnotationAtom } from "../state";
+import { Vector3, type Box3, type PerspectiveCamera } from "three";
+import { renderModelSelector } from "../annotation/store";
 import {
-  calculateCameraPositionForUpVector,
-  getAxisAlignedBoundingBoxForPoints3d,
-} from "../utils";
+  setCameraControlsLookAt,
+  type Fo3dCameraControls,
+} from "../fo3d/camera-controls";
+import { selectedLabelForAnnotationAtom } from "../state";
+import { calculateCameraPositionForUpVector } from "../utils";
+import {
+  getSelectedLabelsBoundingBox,
+  getUnionBoundingBox,
+  resolveAnnotationLabelBoundingBox,
+} from "./zoom-to-selected-bounds";
+
+type SampleMap = Record<string, fos.ModalSample>;
 
 interface UseZoomToSelectedProps {
   interactionSample: fos.ModalSample;
+  activeSampleMap: SampleMap;
   upVector: Vector3 | null;
   mode: string;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
+  useLegacyCoordinates?: boolean;
 }
 
+<<<<<<< HEAD
 type LabelWithId = { _id?: string; id?: string };
 
 /**
@@ -81,6 +92,8 @@ const createBoundingBox = (label: {
   return box;
 };
 
+=======
+>>>>>>> main
 /**
  * Hook that provides a handler function to zoom the camera to selected labels.
  * In annotation mode, it zooms to the selected label for annotation.
@@ -88,9 +101,11 @@ const createBoundingBox = (label: {
  */
 export const useZoomToSelected = ({
   interactionSample,
+  activeSampleMap,
   upVector,
   mode,
   cameraControlsRef,
+  useLegacyCoordinates = false,
 }: UseZoomToSelectedProps) => {
   const handleZoomToSelected = useRecoilCallback(
     ({ snapshot }) =>
@@ -99,17 +114,31 @@ export const useZoomToSelected = ({
           return;
         }
 
-        const selectedLabels =
-          mode === "annotate"
-            ? [
-                await snapshot.getPromise(selectedLabelForAnnotationAtom),
-              ].filter(Boolean)
-            : await snapshot.getPromise(fos.selectedLabels);
+        const boundingBox =
+          mode === fos.ModalMode.ANNOTATE
+            ? getUnionBoundingBox(
+                [
+                  resolveAnnotationLabelBoundingBox({
+                    selectedLabel: await snapshot.getPromise(
+                      selectedLabelForAnnotationAtom,
+                    ),
+                    renderModel: await snapshot.getPromise(renderModelSelector),
+                    useLegacyCoordinates,
+                  }),
+                ].filter((box): box is Box3 => Boolean(box)),
+              )
+            : getSelectedLabelsBoundingBox({
+                selectedLabels: await snapshot.getPromise(fos.selectedLabels),
+                interactionSample,
+                activeSampleMap,
+                useLegacyCoordinates,
+              });
 
-        if (selectedLabels.length === 0) {
+        if (!boundingBox) {
           return;
         }
 
+<<<<<<< HEAD
         const boundingBoxes = selectedLabels
           .map((selectedLabel) => {
             const field = selectedLabel.field;
@@ -130,10 +159,12 @@ export const useZoomToSelected = ({
           boundingBoxes[0].clone(),
         );
 
+=======
+>>>>>>> main
         const center = new Vector3();
         const size = new Vector3();
-        unionBox.getCenter(center);
-        unionBox.getSize(size);
+        boundingBox.getCenter(center);
+        boundingBox.getSize(size);
 
         const cameraPosition = calculateCameraPositionForUpVector(
           center,
@@ -143,6 +174,7 @@ export const useZoomToSelected = ({
           "top",
         );
 
+<<<<<<< HEAD
         await cameraControlsRef.current.setLookAt(
           cameraPosition.x,
           cameraPosition.y,
@@ -154,6 +186,23 @@ export const useZoomToSelected = ({
         );
       },
     [interactionSample, upVector, mode, cameraControlsRef],
+=======
+        setCameraControlsLookAt({
+          camera: cameraControlsRef.current.object as PerspectiveCamera,
+          controls: cameraControlsRef.current,
+          position: cameraPosition,
+          target: center,
+        });
+      },
+    [
+      activeSampleMap,
+      interactionSample,
+      upVector,
+      mode,
+      cameraControlsRef,
+      useLegacyCoordinates,
+    ],
+>>>>>>> main
   );
 
   return handleZoomToSelected;

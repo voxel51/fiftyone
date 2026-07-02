@@ -72,9 +72,13 @@
         "react-plotly.js": "^2.6.0"
     },
     "resolutions": {
+<<<<<<< HEAD
         "@types/mapbox-gl": "2.7.21",
         "@types/react": "18.3.12",
         "@voxel51/voodo": "^0.0.35",
+=======
+        "@voxel51/voodo": "^0.0.37",
+>>>>>>> main
         "brace-expansion": "^5.0.6",
         "minimatch": "9.0.7",
         "prettier": "^3.8.4",

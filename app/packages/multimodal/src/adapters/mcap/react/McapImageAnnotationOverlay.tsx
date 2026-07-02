@@ -53,7 +53,11 @@ const McapImageAnnotationOverlay: React.FC<McapImageAnnotationOverlayProps> = ({
         data: picked.primitive.value,
       });
     },
+<<<<<<< HEAD:app/packages/multimodal/src/adapters/mcap/react/McapImageAnnotationOverlay.tsx
     [annotationSets, setSelection],
+=======
+    [setSelection, topic],
+>>>>>>> main:app/packages/multimodal/src/adapters/mcap/react/McapCameraAnnotationOverlay.tsx
   );
 
   if (annotationSets.length === 0) return null;

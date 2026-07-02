@@ -21,6 +21,7 @@
         "@fiftyone/relay": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
+        "@fiftyone/video-annotation": "workspace:*",
         "@material-ui/core": "4.12.4",
         "@use-gesture/react": "10.1.1",
         "classnames": "^2.2.6",

@@ -4,32 +4,41 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
+import { useScenePointClouds } from "../hooks/use-scene-point-clouds";
+import { useSelect3DLabelForAnnotation } from "../hooks/useSelect3DLabelForAnnotation";
+import type { CuboidCreationState } from "../types";
 import {
   annotationPlaneAtom,
   cuboidCreationStateAtom,
   currentActiveAnnotationField3dAtom,
   isCreatingCuboidAtom,
   isCreatingCuboidPointerDownAtom,
-  selectedLabelForAnnotationAtom,
+  useCuboidTransformCommands,
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
+import { getCuboidCreationPreview } from "./cuboid-creation-preview";
+import { fitCuboidHeightToPoints } from "./fit-cuboid-to-points";
 import { useCuboidOperations } from "./store/operations";
 import {
   getDefaultLabel,
   recordLastCreatedLabel,
 } from "./store/labelResolution";
 import { workingDocSelector } from "./store/working";
-import { CuboidTransformData } from "./types";
+import type { CuboidTransformData } from "./types";
 import { useSetEditingToNewCuboid } from "./useSetEditingToNewCuboid";
+import { roundTuple } from "./utils/rounding-utils";
 
 interface CreateCuboidRendererProps {
   color?: string;
   ignoreEffects?: boolean;
 }
 
-const MIN_DIMENSION = 0.1;
-
-const DEFAULT_HEIGHT = 1;
+const createInitialCuboidCreationState = (): CuboidCreationState => ({
+  step: 0,
+  centerPosition: null,
+  orientationPoint: null,
+  currentPosition: null,
+});
 
 export const CreateCuboidRenderer = ({
   color = "#00ff00",
@@ -38,9 +47,15 @@ export const CreateCuboidRenderer = ({
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const [isCreatingCuboid, setIsCreatingCuboid] =
     useRecoilState(isCreatingCuboidAtom);
+<<<<<<< HEAD
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom,
   );
+=======
+  const selectForAnnotation = useSelect3DLabelForAnnotation();
+  const { selectNewCuboidForTransform, setTransformMode } =
+    useCuboidTransformCommands();
+>>>>>>> main
   const { createCuboid } = useCuboidOperations();
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
   const [creationState, setCreationState] = useRecoilState(
@@ -52,20 +67,18 @@ export const CreateCuboidRenderer = ({
 
   const setEditingToNewCuboid = useSetEditingToNewCuboid();
   const workingDoc = useRecoilValue(workingDocSelector);
+  const getScenePointClouds = useScenePointClouds();
 
   const annotationEventBus = useAnnotationEventBus();
 
   // Track whether we're actively creating (to differentiate from hovering)
   const isActiveRef = useRef(false);
 
-  // Get the plane's local axes from its quaternion
-  const planeAxes = useMemo(() => {
-    const quaternion = new THREE.Quaternion(...annotationPlane.quaternion);
-    const localX = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
-    const localY = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
-    const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);
-    return { localX, localY, normal };
-  }, [annotationPlane.quaternion]);
+  const resetCuboidCreation = useCallback(() => {
+    isActiveRef.current = false;
+    setIsCreatingCuboidPointerDown(false);
+    setCreationState(createInitialCuboidCreationState());
+  }, [setCreationState, setIsCreatingCuboidPointerDown]);
 
   // Calculate the annotation plane for raycasting
   const raycastPlane = useMemo(() => {
@@ -81,6 +94,7 @@ export const CreateCuboidRenderer = ({
   }, [annotationPlane.position, annotationPlane.quaternion]);
 
   // Calculate preview cuboid properties based on creation state
+<<<<<<< HEAD
   const previewCuboid = useMemo(() => {
     const { step, centerPosition, orientationPoint, currentPosition } =
       creationState;
@@ -193,6 +207,12 @@ export const CreateCuboidRenderer = ({
 
     return null;
   }, [creationState, planeAxes, annotationPlane.quaternion]);
+=======
+  const previewCuboid = useMemo(
+    () => getCuboidCreationPreview(creationState, annotationPlane),
+    [creationState, annotationPlane],
+  );
+>>>>>>> main
 
   // Handle click - progress through creation steps
   const handleClick = useCallback(
@@ -278,59 +298,48 @@ export const CreateCuboidRenderer = ({
       if (creationState.step === 2 && previewCuboid) {
         const labelId = objectId();
 
-        const location: THREE.Vector3Tuple = [
-          Number(previewCuboid.location[0].toFixed(7)),
-          Number(previewCuboid.location[1].toFixed(7)),
-          Number(previewCuboid.location[2].toFixed(7)),
-        ];
-
-        const dimensions: THREE.Vector3Tuple = [
-          Number(previewCuboid.dimensions[0].toFixed(7)),
-          Number(previewCuboid.dimensions[1].toFixed(7)),
-          Number(previewCuboid.dimensions[2].toFixed(7)),
-        ];
-
-        const quaternion: [number, number, number, number] = [
-          Number(previewCuboid.quaternion[0].toFixed(7)),
-          Number(previewCuboid.quaternion[1].toFixed(7)),
-          Number(previewCuboid.quaternion[2].toFixed(7)),
-          Number(previewCuboid.quaternion[3].toFixed(7)),
-        ];
+        // The gesture sets the footprint (length/width) and orientation but not
+        // the height. Derive the height and vertical center from the point-cloud
+        // points inside that footprint so the box wraps the object instead of
+        // using a placeholder height that forces a manual resize afterwards.
+        const fittedCuboid = fitCuboidHeightToPoints(
+          previewCuboid,
+          getScenePointClouds(),
+        );
 
         const labelClass = getDefaultLabel(currentActiveField, workingDoc);
 
         const transformData: CuboidTransformData = {
-          location,
-          dimensions,
-          quaternion,
+          location: roundTuple(fittedCuboid.location),
+          dimensions: roundTuple(fittedCuboid.dimensions),
+          quaternion: roundTuple(previewCuboid.quaternion),
         };
 
         createCuboid(labelId, transformData, currentActiveField, labelClass);
 
-        setEditingToNewCuboid(labelId, transformData, labelClass);
-
         recordLastCreatedLabel(currentActiveField, labelClass);
 
-        setSelectedLabelForAnnotation({
+        // Select the freshly created cuboid, drop into edit mode so the user can
+        // fine-tune it, and exit create mode. Press "C" to start another.
+        setEditingToNewCuboid(labelId, transformData, labelClass);
+
+        // selection flows through the engine anchor: use3dInteractionAdapter
+        // attaches the transform controls + scene selection from one source
+        selectForAnnotation({
           _id: labelId,
+          path: currentActiveField,
+          selected: true,
           _cls: DETECTION,
           location,
           dimensions,
           quaternion,
         });
+        selectNewCuboidForTransform();
+        setTransformMode("scale");
 
-        // Exit create mode after creating one cuboid
         setIsCreatingCuboid(false);
 
-        // Reset creation state
-        isActiveRef.current = false;
-        setIsCreatingCuboidPointerDown(false);
-        setCreationState({
-          step: 0,
-          centerPosition: null,
-          orientationPoint: null,
-          currentPosition: null,
-        });
+        resetCuboidCreation();
       } else if (creationState.step < 2) {
         // Handle clicks for steps 0 and 1
         handleClick(intersectionPoint);
@@ -341,8 +350,15 @@ export const CreateCuboidRenderer = ({
       currentActiveField,
       creationState.step,
       previewCuboid,
+      getScenePointClouds,
       createCuboid,
+      selectForAnnotation,
       handleClick,
+      selectNewCuboidForTransform,
+      setEditingToNewCuboid,
+      setIsCreatingCuboid,
+      setTransformMode,
+      resetCuboidCreation,
       workingDoc,
     ],
   );
@@ -352,25 +368,13 @@ export const CreateCuboidRenderer = ({
     if (ignoreEffects) return;
 
     if (!isCreatingCuboid) {
-      isActiveRef.current = false;
-      setIsCreatingCuboidPointerDown(false);
-      setCreationState({
-        step: 0,
-        centerPosition: null,
-        orientationPoint: null,
-        currentPosition: null,
-      });
+      resetCuboidCreation();
     }
-  }, [
-    ignoreEffects,
-    isCreatingCuboid,
-    setCreationState,
-    setIsCreatingCuboidPointerDown,
-  ]);
+  }, [ignoreEffects, isCreatingCuboid, resetCuboidCreation]);
 
   // Set cursor to crosshair when in create mode
   useEffect(() => {
-    if (ignoreEffects) return;
+    if (ignoreEffects) return undefined;
 
     if (isCreatingCuboid) {
       document.body.style.cursor = "crosshair";
@@ -378,39 +382,36 @@ export const CreateCuboidRenderer = ({
         document.body.style.cursor = "default";
       };
     }
+
+    return undefined;
   }, [ignoreEffects, isCreatingCuboid]);
 
-  // Handle Escape key to cancel cuboid creation
+  // Handle Escape key before the modal-level binding closes the modal.
   useEffect(() => {
-    if (ignoreEffects) return;
+    if (ignoreEffects) return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isCreatingCuboid || creationState.step === 0) return;
+      if (!isCreatingCuboid) return;
 
       if (event.key === "Escape") {
-        // Reset creation state
-        isActiveRef.current = false;
-        setIsCreatingCuboidPointerDown(false);
-        setCreationState({
-          step: 0,
-          centerPosition: null,
-          orientationPoint: null,
-          currentPosition: null,
-        });
+        setIsCreatingCuboid(false);
+        resetCuboidCreation();
 
         event.stopImmediatePropagation();
         event.preventDefault();
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      document.removeEventListener("keydown", handleKeyDown, {
+        capture: true,
+      });
   }, [
     ignoreEffects,
     isCreatingCuboid,
-    creationState.step,
-    setCreationState,
-    setIsCreatingCuboidPointerDown,
+    resetCuboidCreation,
+    setIsCreatingCuboid,
   ]);
 
   useEmptyCanvasInteraction({

@@ -5,14 +5,7 @@ import {
   VersionMismatchError,
 } from "@fiftyone/core/src/client";
 import type { Sample } from "@fiftyone/looker";
-import type { Field } from "@fiftyone/utilities";
 import { NotFoundError } from "@fiftyone/utilities";
-import {
-  buildAnnotationPath,
-  buildJsonPath,
-  buildLabelDeltas,
-  LabelProxy,
-} from "../deltas";
 import { isSampleIsh } from "@fiftyone/looker/src/util";
 import type { OpType } from "../types";
 
@@ -141,6 +134,7 @@ export const doPatchSample = async ({
 
   return true;
 };
+<<<<<<< HEAD
 
 export type LabelPersistenceArgs = {
   sample: Sample | null;
@@ -211,3 +205,5 @@ export const handleLabelPersistence = async ({
 
   return await applyPatch(sampleDeltas, patchOptions);
 };
+=======
+>>>>>>> main

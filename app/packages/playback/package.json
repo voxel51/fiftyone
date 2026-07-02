@@ -15,7 +15,7 @@
     "dependencies": {
         "@fiftyone/commands": "workspace:^",
         "@fiftyone/tiling": "*",
-        "@voxel51/voodo": "^0.0.35",
+        "@voxel51/voodo": "^0.0.37",
         "jotai": "^2.9.3",
         "jotai-optics": "^0.4.0",
         "vite-plugin-svgr": "^4.2.0"

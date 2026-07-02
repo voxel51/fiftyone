@@ -1,4 +1,3 @@
-import { useUndoRedo } from "@fiftyone/commands";
 import {
   ClassificationIcon,
   DetectionIcon,
@@ -16,7 +15,12 @@ import {
   useCurrent3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import { is3DDataset, useIs3dPinned, useIsGroupDataset } from "@fiftyone/state";
+import {
+  is3DDataset,
+  isVideoDataset,
+  useIs3dPinned,
+  useIsGroupDataset,
+} from "@fiftyone/state";
 import {
   DETECTION,
   DETECTIONS,
@@ -38,6 +42,7 @@ import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
+import { useAnnotationUndoRedo } from "./useAnnotationUndoRedo";
 import { useDeactivateAllModes } from "./useDeactivateAllModes";
 import { useGroupAnnotationSliceReady } from "./useGroupAnnotationSliceReady";
 
@@ -286,8 +291,12 @@ const Polyline = () => {
   );
 };
 
+// Undo/Redo show a generic tooltip rather than a full stack dump: on video a
+// single edit fans out across many frames, so the raw stack reads as noise.
+// `useAnnotationUndoRedo` still exposes `undoStack` / `redoStack` for debugging
+// and a likely future "history panel" resurfacing.
 export const Undo = () => {
-  const { undo, undoEnabled } = useUndoRedo();
+  const { undo, undoEnabled } = useAnnotationUndoRedo();
 
   return (
     <Tooltip anchor={Anchor.Top} content={<Text>Undo</Text>} portal>
@@ -303,7 +312,7 @@ export const Undo = () => {
 };
 
 export const Redo = () => {
-  const { redo, redoEnabled } = useUndoRedo();
+  const { redo, redoEnabled } = useAnnotationUndoRedo();
 
   return (
     <Tooltip anchor={Anchor.Top} content={<Text>Redo</Text>} portal>
@@ -352,6 +361,8 @@ export const ThreeDPolylines = () => {
       portal
     >
       <Square
+        data-cy="polyline-mode-3d"
+        data-cy-active={String(isPolylineAnnotateActive)}
         $active={isPolylineAnnotateActive}
         className={disabled ? "disabled" : ""}
         onClick={() => {
@@ -407,6 +418,8 @@ export const ThreeDCuboids = () => {
       portal
     >
       <Square
+        data-cy="cuboid-mode"
+        data-cy-active={String(isCuboidAnnotateActive)}
         $active={isCuboidAnnotateActive}
         className={disabled ? "disabled" : ""}
         onClick={() => {
@@ -432,6 +445,13 @@ export const ThreeDCuboids = () => {
 const Actions = () => {
   // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
+  // Video annotation handles the per-frame spatial label types — boxes,
+  // instance masks (Segmentation mode paints onto a detection), and polylines —
+  // plus sample-level Classification (the field picker filters frame-level
+  // paths out). So the surface shows that set (Select + Classification +
+  // Detection + Segmentation + Polyline). Undo/redo are shown — the engine's
+  // value-based stack backs them on video too.
+  const isVideo = useRecoilValue(isVideoDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const is3dSamplePinned = useIs3dPinned();
 
@@ -465,20 +485,31 @@ const Actions = () => {
         <Row>
           <ItemLeft style={{ columnGap: "0.1rem" }}>
             <Select active={noActiveActions} />
-            <Classification />
-            {toolsResolved &&
-              (areThreeDActionsVisible ? (
-                <>
-                  <ThreeDCuboids />
-                  <ThreeDPolylines />
-                </>
-              ) : (
-                <>
-                  <Detection />
-                  <Segmentation />
-                  <Polyline />
-                </>
-              ))}
+            {isVideo ? (
+              <>
+                <Classification />
+                <Detection />
+                <Segmentation />
+                <Polyline />
+              </>
+            ) : (
+              <>
+                <Classification />
+                {toolsResolved &&
+                  (areThreeDActionsVisible ? (
+                    <>
+                      <ThreeDCuboids />
+                      <ThreeDPolylines />
+                    </>
+                  ) : (
+                    <>
+                      <Detection />
+                      <Segmentation />
+                      <Polyline />
+                    </>
+                  ))}
+              </>
+            )}
           </ItemLeft>
           <ItemRight style={{ columnGap: "0.1rem" }}>
             <Undo />

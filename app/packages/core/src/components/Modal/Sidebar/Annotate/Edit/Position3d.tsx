@@ -1,17 +1,24 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
+import {
+  encodeEntityId,
+  GEOMETRY_SIGNAL,
+  type GeometrySignal,
+  useAnnotationEngine,
+  useEngineSelector,
+  useSceneSampleId,
+  useSignalValue,
+} from "@fiftyone/annotation";
 import { LabeledField } from "@fiftyone/components";
 import { DetectionLabel } from "@fiftyone/looker";
 import {
   formatDegrees,
   quaternionToRadians,
   radiansToQuaternion,
-  useIsDragInProgress,
-  useTransientCuboid,
-  useWorkingLabel,
+  useCuboidOperations,
 } from "@fiftyone/looker-3d";
+import { useCurrentDatasetId } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 import { Box, Stack, TextField } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Vector3Tuple } from "three";
 import { useAnnotationContext } from "./useAnnotationContext";
 
@@ -57,18 +64,29 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
     rotation: {},
   });
   const { selected } = useAnnotationContext();
-  const data = selected?.data as DetectionLabel | null;
-  const overlay = selected?.overlay;
-  const eventBus = useAnnotationEventBus();
+  const data = (selected?.data ?? null) as DetectionLabel | null;
+  const field = selected?.field ?? null;
+  const { updateCuboid } = useCuboidOperations();
   const labelId = data?._id ?? "";
 
-  const workingLabel = useWorkingLabel(labelId);
+  const engine = useAnnotationEngine();
+  const sample = useSceneSampleId();
+  const dataset = useCurrentDatasetId() ?? "";
 
-  // Need transient state for live drag preview
-  const transientState = useTransientCuboid(labelId);
-  const isDragInProgress = useIsDragInProgress();
+  // committed baseline — the cuboid's stored geometry read reactively from the
+  // engine so it re-syncs on EVERY committed change (drag-end, number input,
+  // undo/redo). The sidebar never reaches into looker-3d's working/transient
+  // store; mid-gesture changes arrive via the GEOMETRY signal below.
+  const committed = useEngineSelector(engine, (e) =>
+    labelId && field && sample
+      ? (e.getLabel({ sample, path: field, instanceId: labelId }) as
+          | DetectionLabel
+          | undefined)
+      : undefined,
+  );
 
   useEffect(() => {
+<<<<<<< HEAD
     let baseLocation: Vector3Tuple | undefined;
     let baseDimensions: Vector3Tuple | undefined;
     let baseRotation: Vector3Tuple | undefined;
@@ -91,60 +109,78 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
     }
 
     if (!baseLocation || !baseDimensions) {
+=======
+    if (
+      committed?._cls !== DETECTION ||
+      !committed.location ||
+      !committed.dimensions
+    ) {
+>>>>>>> main
       return;
     }
 
-    // Apply transient deltas if they exist (like, during active drag)
-    let displayLocation = baseLocation;
-    let displayDimensions = baseDimensions;
-    let displayQuaternion = baseQuaternion;
-
-    if (transientState) {
-      if (transientState.positionDelta) {
-        displayLocation = [
-          baseLocation[0] + transientState.positionDelta[0],
-          baseLocation[1] + transientState.positionDelta[1],
-          baseLocation[2] + transientState.positionDelta[2],
-        ];
-      }
-      if (transientState.dimensionsDelta) {
-        displayDimensions = [
-          baseDimensions[0] + transientState.dimensionsDelta[0],
-          baseDimensions[1] + transientState.dimensionsDelta[1],
-          baseDimensions[2] + transientState.dimensionsDelta[2],
-        ];
-      }
-      if (transientState.quaternionOverride) {
-        displayQuaternion = transientState.quaternionOverride;
-      }
-    }
-
-    // Convert quaternion to rotation for display
-    let displayRotation = baseRotation;
-    if (displayQuaternion) {
-      displayRotation = quaternionToRadians(displayQuaternion);
-    }
+    const rotation = committed.quaternion
+      ? quaternionToRadians(committed.quaternion)
+      : (committed.rotation ?? [0, 0, 0]);
 
     setTransformState({
       position: {
-        x: displayLocation[0],
-        y: displayLocation[1],
-        z: displayLocation[2],
+        x: committed.location[0],
+        y: committed.location[1],
+        z: committed.location[2],
       },
       dimensions: {
-        lx: displayDimensions[0],
-        ly: displayDimensions[1],
-        lz: displayDimensions[2],
+        lx: committed.dimensions[0],
+        ly: committed.dimensions[1],
+        lz: committed.dimensions[2],
       },
-      rotation: displayRotation
-        ? {
-            rx: displayRotation[0],
-            ry: displayRotation[1],
-            rz: displayRotation[2],
-          }
-        : { rx: 0, ry: 0, rz: 0 },
+      rotation: { rx: rotation[0], ry: rotation[1], rz: rotation[2] },
     });
-  }, [data, workingLabel, transientState, isDragInProgress]);
+  }, [committed]);
+
+  // LIVE geometry from the engine — the 3D scene publishes mid-gesture ABSOLUTE
+  // location/dimensions/quaternion; we render it directly. Render-only: the
+  // committed write lands at drag-end through the controller. Keyed by the
+  // scene's own sample id (where the engine store holds the cuboid).
+  const key = useMemo(
+    () =>
+      labelId && field && sample
+        ? encodeEntityId(dataset, {
+            sample,
+            path: field,
+            instanceId: labelId,
+          })
+        : null,
+    [dataset, sample, field, labelId],
+  );
+
+  const live = useSignalValue<GeometrySignal | null>(
+    engine,
+    GEOMETRY_SIGNAL,
+    key,
+    null,
+  );
+
+  useEffect(() => {
+    if (!live || live.kind !== "3d") {
+      return;
+    }
+
+    const rotation = quaternionToRadians(live.quaternion);
+    setTransformState({
+      position: {
+        x: live.location[0],
+        y: live.location[1],
+        z: live.location[2],
+      },
+      dimensions: {
+        lx: live.dimensions[0],
+        ly: live.dimensions[1],
+        lz: live.dimensions[2],
+      },
+      rotation: { rx: rotation[0], ry: rotation[1], rz: rotation[2] },
+    });
+  }, [live]);
 
   const handleUserInputChange = useCallback(
     (coordinateDelta: Partial<Coordinates3d>) => {
@@ -190,27 +226,22 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
         newState.rotation.rz ?? 0,
       ];
 
-      const newQuaternion = newRotation
-        ? radiansToQuaternion(newRotation)
-        : null;
+      const newQuaternion = radiansToQuaternion(newRotation);
 
-      // Emit event for 3D annotation sync
-      if (overlay?.id) {
-        eventBus.dispatch("annotation:sidebarValueUpdated", {
-          overlayId: overlay.id,
-          currentLabel: overlay.label as DetectionLabel,
-          value: {
-            ...data,
-            _id: data._id,
-            location: newLocation,
-            dimensions: newDimensions,
-            quaternion: newQuaternion,
-            rotation: newRotation,
-          },
-        });
-      }
+      // an undoable working-store write; the autosave relay carries it on
+      // to the engine and persistence
+      void updateCuboid(data._id, {
+        location: newLocation,
+        dimensions: newDimensions,
+        quaternion: newQuaternion,
+        rotation: newRotation,
+      });
     },
+<<<<<<< HEAD
     [data, transformState, overlay, eventBus, readOnly],
+=======
+    [data, transformState, updateCuboid, readOnly],
+>>>>>>> main
   );
 
   return (
@@ -234,6 +265,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
+              inputProps={{ "data-cy": "position3d-x" }}
               disabled={readOnly}
             />
           }
@@ -251,6 +283,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
+              inputProps={{ "data-cy": "position3d-y" }}
               disabled={readOnly}
             />
           }
@@ -268,6 +301,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
+              inputProps={{ "data-cy": "position3d-z" }}
               disabled={readOnly}
             />
           }
@@ -293,7 +327,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
-              inputProps={{ step: 0.1 }}
+              inputProps={{ step: 0.1, "data-cy": "position3d-lx" }}
               disabled={readOnly}
             />
           }
@@ -311,7 +345,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
-              inputProps={{ step: 0.1 }}
+              inputProps={{ step: 0.1, "data-cy": "position3d-ly" }}
               disabled={readOnly}
             />
           }
@@ -329,7 +363,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
-              inputProps={{ step: 0.1 }}
+              inputProps={{ step: 0.1, "data-cy": "position3d-lz" }}
               disabled={readOnly}
             />
           }
@@ -355,7 +389,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
-              inputProps={{ step: 0.01 }}
+              inputProps={{ step: 0.01, "data-cy": "position3d-rx" }}
               disabled={readOnly}
             />
           }
@@ -373,7 +407,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
-              inputProps={{ step: 0.01 }}
+              inputProps={{ step: 0.01, "data-cy": "position3d-ry" }}
               disabled={readOnly}
             />
           }
@@ -391,7 +425,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
-              inputProps={{ step: 0.01 }}
+              inputProps={{ step: 0.01, "data-cy": "position3d-rz" }}
               disabled={readOnly}
             />
           }

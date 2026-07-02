@@ -73,6 +73,15 @@ export class MaskCanvas {
   // canvas contents encoded for persistence to backend
   private pendingMask?: string;
 
+  /**
+   * Count of in-flight async paint/snapshot encodes. While positive, a freshly
+   * painted mask hasn't yet produced its `pendingMask`, so the owning overlay
+   * must NOT drop the mask on a maskless reproject — destroying the canvas would
+   * abort the encode (it bails on canvas-swap) and lose the mask. See
+   * {@link DetectionOverlay.applyLabel}.
+   */
+  private encodingInFlight = 0;
+
   // ---- Editing canvas state ----
   private canvas?: HTMLCanvasElement;
   private context?: CanvasRenderingContext2D;
@@ -291,6 +300,11 @@ export class MaskCanvas {
     this.pendingMask = undefined;
 
     return mask;
+  }
+
+  /** True while a paint/snapshot encode is still resolving (no `pendingMask` yet). */
+  hasPendingEncode(): boolean {
+    return this.encodingInFlight > 0;
   }
 
   /**
@@ -581,6 +595,7 @@ export class MaskCanvas {
     this.updateRawPixelsFromCanvas();
 
     const capturedCanvas = this.canvas;
+    this.encodingInFlight++;
     encodeMask(capturedCanvas)
       .then((encoded) => {
         if (this.canvas !== capturedCanvas) return;
@@ -589,6 +604,9 @@ export class MaskCanvas {
       })
       .catch((err) => {
         console.error("[MaskCanvas] paintEnd encode failed:", err);
+      })
+      .finally(() => {
+        this.encodingInFlight--;
       });
 
     return finalBounds;
@@ -855,6 +873,7 @@ export class MaskCanvas {
     this.updateRawPixelsFromCanvas();
 
     const capturedCanvas = this.canvas;
+    this.encodingInFlight++;
     encodeMask(capturedCanvas)
       .then((encoded) => {
         if (this.canvas !== capturedCanvas) return;
@@ -863,6 +882,9 @@ export class MaskCanvas {
       })
       .catch((err) => {
         console.error("[MaskCanvas] restoreSnapshot encode failed:", err);
+      })
+      .finally(() => {
+        this.encodingInFlight--;
       });
   }
 

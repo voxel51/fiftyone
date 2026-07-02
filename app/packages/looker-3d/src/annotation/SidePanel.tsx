@@ -12,15 +12,26 @@ import {
   View,
 } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
+import type { MapControls as MapControlsImpl } from "three-stdlib";
 import { Box3, Vector3 } from "three";
 import {
+  ANNOTATION_CUBOID,
   FO_USER_DATA,
   getPanelElementId,
   getSidePanelGridArea,
   PANEL_ID_SIDE_TOP,
+  UNFOCUSED_LABEL_OPACITY,
   VIEW_TYPE_BACK,
   VIEW_TYPE_BOTTOM,
   VIEW_TYPE_FRONT,
@@ -34,8 +45,34 @@ import { FoScene } from "../fo3d/render-types";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
+import {
+  isCurrentlyTransformingAtom,
+  selectedLabelForAnnotationAtom,
+  useMainPanelNavigationSyncIntents,
+} from "../state";
 import type { SidePanelId, SidePanelViewType } from "../types";
-import { expandBoundingBox } from "../utils";
+import { expandBoundingBox, findObjectByUserData } from "../utils";
+import {
+  applyHeadingToSidePanelCameraFrame,
+  applySidePanelCameraFrame,
+  applyVisibleWorldHeightZoomToOrthographicCamera,
+  applyMainPanelPanSyncIntentToOrthographicCamera,
+  applyMainPanelZoomSyncIntentToOrthographicCamera,
+  applyPointCloudCropMainPanelSyncToOrthographicCamera,
+  deriveSidePanelCameraFrame,
+  getSidePanelHeadingQuaternion,
+  doesPointCloudCropFitCamera,
+  retargetSidePanelCameraFrame,
+  shouldApplyMainPanelNavigationSyncIntent,
+  shouldApplyMainPanelPanSyncIntent,
+  type SidePanelCameraFrame,
+  type SidePanelControls,
+} from "../utils/side-panel-camera-sync";
+import type { PointCloudCrop } from "../utils/point-cloud-crop";
+import {
+  createPointCloudCropHelperMesh,
+  disposePointCloudCropHelperMesh,
+} from "../utils/point-cloud-crop";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 import { Crosshair3D } from "./Crosshair3D";
@@ -47,6 +84,7 @@ import {
 } from "./ImageSlicePanel";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { useImageSlicesIfAvailable } from "./useImageSlicesIfAvailable";
+import { usePointCloudCrop } from "./usePointCloudCrop";
 
 const SidePanelContainer = styled.div<{ $area: string }>`
   grid-area: ${(p) => p.$area};
@@ -66,6 +104,7 @@ const ViewSelectorWrapper = styled.div`
 `;
 
 /**
+<<<<<<< HEAD
  * Calculate camera position for different side panel views based on upVector and lookAt point
  */
 const calculateCameraPositionForSidePanel = (
@@ -297,6 +336,8 @@ const calculateCameraUpForSidePanel = (
 };
 
 /**
+=======
+>>>>>>> main
  * Returns a dropdown value that is guaranteed to exist in the current side-panel
  * options.
  *
@@ -333,6 +374,13 @@ const getSafeSidePanelSelectValue = ({
   return view;
 };
 
+// Re-fit the side panel via <Bounds> for this long after a view change/reset,
+// then release control so the user can freely pan/zoom.
+const SIDE_PANEL_FIT_OBSERVE_DURATION_MS = 750;
+// <Bounds> framing margin and (near-instant) fit animation duration.
+const SIDE_PANEL_BOUNDS_FIT_MARGIN = 1.25;
+const SIDE_PANEL_BOUNDS_FIT_MAX_DURATION = 0.001;
+
 export interface SidePanelProps {
   panelId: SidePanelId;
   view: SidePanelViewType;
@@ -360,6 +408,11 @@ export const SidePanel = ({
   const { imageSlices, resolveUrlForImageSlice, isLoadingImageSlices } =
     useImageSlicesIfAvailable(sample);
 
+  // While a label transform is in progress (e.g. a cuboid face-pull resize
+  // started in this panel), suspend panning so the drag doesn't also move the
+  // orthographic camera. Mirrors the main panel's controls gating.
+  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
+
   const gridArea = getSidePanelGridArea(panelId);
   const safeSelectValue = getSafeSidePanelSelectValue({
     panelId,
@@ -367,9 +420,15 @@ export const SidePanel = ({
     imageSlices,
     isLoadingImageSlices,
   });
+  const showImageSlicePanel =
+    isImageSliceView(view) && safeSelectValue === view;
+  const pointCloudCrop = usePointCloudCrop({
+    enabled: !showImageSlicePanel,
+  });
 
-  const position = useMemo(
+  const sidePanelCameraFrame = useMemo(
     () =>
+<<<<<<< HEAD
       upVector && lookAt
         ? calculateCameraPositionForSidePanel(
             safeSelectValue,
@@ -387,52 +446,42 @@ export const SidePanel = ({
         ? calculateCameraUpForSidePanel(safeSelectValue, upVector)
         : new Vector3(0, 1, 0),
     [safeSelectValue, upVector],
+=======
+      deriveSidePanelCameraFrame({
+        sceneBoundingBox,
+        target: lookAt ?? new Vector3(0, 0, 0),
+        upVector: upVector ?? new Vector3(0, 1, 0),
+        viewType: safeSelectValue,
+      }),
+    [safeSelectValue, upVector, lookAt, sceneBoundingBox],
+>>>>>>> main
   );
 
   const theme = useTheme();
+  const mapControlsRef = useRef<MapControlsImpl | null>(null);
 
-  const cameraRef = useRef<THREE.OrthographicCamera>();
-
-  // --- "Fit bounds" reset key mechanism ---
-  //
-  // We can't call drei's `useBounds()` API directly from here because it's
-  // only available inside the R3F <Bounds> component tree. Instead, we use a
-  // `fitBoundsKey` counter to coordinate two things:
-  //
-  // 1. Force-remount the R3F <View> (via its `key` prop) so the camera,
-  //    controls, and scene are cleanly re-initialized for the new orientation.
-  //
-  // 2. Temporarily enable <Bounds observe={true}> so drei auto-fits the
-  //    camera to the scene contents. We disable it after 750ms so the user
-  //    can freely pan/zoom without Bounds fighting them.
-  //
-  // Increment `fitBoundsKey` whenever the camera should re-fit: view changes,
-  // reset button clicks, etc.
+  // We can't use drei's `useBounds()` here (it only works inside the <Bounds>
+  // tree), so a `fitBoundsKey` counter coordinates the re-fit on view change or
+  // reset: it remounts the <View> for a clean camera/controls re-init, then
+  // briefly runs a cardinal-aware Bounds fit that we release after
+  // SIDE_PANEL_FIT_OBSERVE_DURATION_MS so the user can pan/zoom freely.
   const [observe, setObserve] = useState(true);
 
   const [fitBoundsKey, setFitBoundsKey] = useState(0);
+  const pointCloudCropFitKey = pointCloudCrop
+    ? pointCloudCrop.source === "raycast-hover"
+      ? null
+      : `${pointCloudCrop.source}-${pointCloudCrop.labelId}-${fitBoundsKey}`
+    : null;
 
   useEffect(() => {
     setObserve(true);
     const timer = setTimeout(() => {
       setObserve(false);
-    }, 750);
+    }, SIDE_PANEL_FIT_OBSERVE_DURATION_MS);
 
     return () => clearTimeout(timer);
   }, [fitBoundsKey]);
-
-  // Update camera to look at the scene center and use correct up vector
-  useEffect(() => {
-    if (cameraRef.current && lookAt && upVector) {
-      cameraRef.current.position.copy(position);
-      cameraRef.current.up.copy(cameraUp);
-      cameraRef.current.lookAt(lookAt);
-      cameraRef.current.updateProjectionMatrix();
-    }
-  }, [position, cameraUp, lookAt, upVector]);
-
-  const showImageSlicePanel =
-    isImageSliceView(view) && safeSelectValue === view;
 
   return (
     <SidePanelContainer id={getPanelElementId(panelId)} $area={gridArea}>
@@ -444,6 +493,7 @@ export const SidePanel = ({
           imageSlices={imageSlices}
           isLoadingImageSlices={isLoadingImageSlices}
           resolveUrlForImageSlice={resolveUrlForImageSlice}
+          upVector={upVector}
         />
       ) : (
         <View
@@ -458,28 +508,48 @@ export const SidePanel = ({
         >
           <OrthographicCamera
             makeDefault
-            ref={cameraRef}
-            position={position}
-            up={cameraUp.toArray() as [number, number, number]}
+            position={sidePanelCameraFrame.position}
+            up={sidePanelCameraFrame.up.toArray() as [number, number, number]}
           />
           <MapControls
             makeDefault
+            ref={mapControlsRef}
             screenSpacePanning
             zoomToCursor
             enableRotate={false}
+            enablePan={!isCurrentlyTransforming}
             zoomSpeed={0.8}
           />
-          <Bounds fit clip observe={observe} margin={1.25} maxDuration={0.001}>
-            <BoundsSideEffectsComponent />
+          <SidePanelCameraFrameController
+            controlsRef={mapControlsRef}
+            frame={sidePanelCameraFrame}
+          />
+          <Bounds
+            margin={SIDE_PANEL_BOUNDS_FIT_MARGIN}
+            maxDuration={SIDE_PANEL_BOUNDS_FIT_MAX_DURATION}
+          >
+            <BoundsSideEffectsComponent
+              observe={!pointCloudCrop && observe}
+              pointCloudCrop={pointCloudCrop}
+              pointCloudCropFitKey={pointCloudCropFitKey}
+              sidePanelCameraFrame={sidePanelCameraFrame}
+              upVector={upVector}
+            />
             <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
             <group visible={isSceneInitialized}>
-              <FoSceneComponent scene={foScene} />
+              <FoSceneComponent
+                scene={foScene}
+                pointCloudCrop={pointCloudCrop}
+              />
             </group>
             {isSceneInitialized && (
               <ThreeDLabels
                 sampleMap={labelSampleMap}
                 globalOpacity={0.5}
                 isMainPanel={false}
+                panelId={panelId}
+                dimAllLabels={pointCloudCrop?.source === "raycast-hover"}
+                unfocusedLabelOpacity={UNFOCUSED_LABEL_OPACITY}
               />
             )}
             {/* `safeSelectValue` is guaranteed to be a cardinal view here */}
@@ -496,7 +566,7 @@ export const SidePanel = ({
                   | "back"
               }
             />
-            <RaycastService panelId={panelId} />
+            <RaycastService panelId={panelId} pointCloudCrop={pointCloudCrop} />
             <SegmentPolylineRenderer ignoreEffects />
             <CreateCuboidRenderer ignoreEffects />
             <Crosshair3D panelId={panelId} />
@@ -513,7 +583,7 @@ export const SidePanel = ({
           }}
           size="small"
           sx={{
-            backgroundColor: (theme as any).background.level3,
+            backgroundColor: theme.background.level3,
             "& .MuiSelect-select": {
               padding: "6px 10px",
               fontSize: "12px",
@@ -552,6 +622,7 @@ export const SidePanel = ({
   );
 };
 
+<<<<<<< HEAD
 function findByUserData(
   scene: THREE.Scene,
   key: (typeof FO_USER_DATA)[keyof typeof FO_USER_DATA],
@@ -566,15 +637,392 @@ function findByUserData(
   return result;
 }
 
+=======
+>>>>>>> main
 const DEFAULT_CUBOID_CREATION_MARGIN = 50;
 const DEFAULT_POLYLINE_VERTEX_FOCUS_SIZE = 5;
 const MIN_POLYLINE_VERTEX_FOCUS_SIZE = 1;
 const MAX_POLYLINE_VERTEX_FOCUS_SIZE = 30;
+const AUTO_EXPAND_FIT_INTERVAL_MS = 125;
+const RAYCAST_HOVER_SYNC_INTERVAL_MS = 125;
+const RAYCAST_HOVER_CENTER_EPSILON_SQ = 1e-8;
 
-const BoundsSideEffectsComponent = () => {
+interface RaycastHoverSyncSnapshot {
+  center: THREE.Vector3;
+  halfSize: THREE.Vector3;
+  visibleWorldHeightAtCenter?: number | null;
+}
+
+const SidePanelCameraFrameController = ({
+  controlsRef,
+  frame,
+}: {
+  controlsRef: { current: SidePanelControls | null };
+  frame: SidePanelCameraFrame;
+}) => {
+  const { camera, invalidate } = useThree();
+  const fallbackControls = useThree(
+    (state) => state.controls as SidePanelControls | undefined,
+  );
+
+  useLayoutEffect(() => {
+    const controls = controlsRef.current ?? fallbackControls;
+
+    applySidePanelCameraFrame({
+      camera,
+      controls,
+      frame,
+      invalidate,
+    });
+  }, [camera, controlsRef, fallbackControls, frame, invalidate]);
+
+  return null;
+};
+
+const BoundsSideEffectsComponent = ({
+  observe,
+  pointCloudCrop,
+  pointCloudCropFitKey,
+  sidePanelCameraFrame,
+  upVector,
+}: {
+  observe: boolean;
+  pointCloudCrop?: PointCloudCrop | null;
+  pointCloudCropFitKey: string | null;
+  sidePanelCameraFrame: SidePanelCameraFrame;
+  upVector: Vector3 | null;
+}) => {
   const api = useBounds();
+  const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
+  const selectedLabelId = selectedLabel?._id ?? null;
+  const previousSelectedLabelIdRef = useRef<string | null>(null);
 
-  const { scene } = useThree();
+  const { camera, scene, invalidate } = useThree();
+  const controls = useThree(
+    (state) => state.controls as SidePanelControls | undefined,
+  );
+  const { mainPanelPanSyncIntent, mainPanelZoomSyncIntent } =
+    useMainPanelNavigationSyncIntents();
+  const pointCloudCropRef = useRef(pointCloudCrop);
+  const lastAutoExpandFitAtRef = useRef(0);
+  const lastRaycastHoverSyncAtRef = useRef(0);
+  const lastRaycastHoverSyncRef = useRef<RaycastHoverSyncSnapshot | null>(null);
+  const lastHandledMainPanelPanSyncIntentRef = useRef<string | null>(null);
+  const lastHandledMainPanelZoomSyncIntentRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    pointCloudCropRef.current = pointCloudCrop;
+  }, [pointCloudCrop]);
+
+  // Geometry identity of the active crop. The re-fit effects below read the
+  // latest crop through a ref, so they key off these derived signatures rather
+  // than spreading every vector component across their dependency arrays.
+  const cropGeometrySignature = useMemo(() => {
+    const crop = pointCloudCrop;
+    if (!crop) {
+      return null;
+    }
+    return [
+      crop.source,
+      crop.center.x,
+      crop.center.y,
+      crop.center.z,
+      crop.halfSize.x,
+      crop.halfSize.y,
+      crop.halfSize.z,
+      crop.quaternion.x,
+      crop.quaternion.y,
+      crop.quaternion.z,
+      crop.quaternion.w,
+    ].join(",");
+  }, [pointCloudCrop]);
+
+  const raycastHoverCropSignature = useMemo(() => {
+    if (cropGeometrySignature === null) {
+      return null;
+    }
+    return `${cropGeometrySignature},${pointCloudCrop?.visibleWorldHeightAtCenter}`;
+  }, [cropGeometrySignature, pointCloudCrop?.visibleWorldHeightAtCenter]);
+
+  const fitBoundsWithSidePanelFrame = useCallback(
+    (
+      object: THREE.Object3D | THREE.Box3 | undefined,
+      target: THREE.Vector3,
+      shouldClip = false,
+      baseFrame: SidePanelCameraFrame = sidePanelCameraFrame,
+    ) => {
+      const frame = retargetSidePanelCameraFrame(baseFrame, target);
+      applySidePanelCameraFrame({
+        camera,
+        controls,
+        frame,
+        invalidate,
+      });
+
+      const bounds = api
+        .refresh(object)
+        .moveTo(frame.position)
+        .lookAt({ target: frame.target, up: frame.up })
+        .fit();
+
+      if (shouldClip) {
+        bounds.clip();
+      }
+    },
+    [api, camera, controls, invalidate, sidePanelCameraFrame],
+  );
+
+  const fitToTemporaryMesh = useCallback(
+    (
+      helperMesh: THREE.Mesh,
+      target: THREE.Vector3,
+      dispose: () => void,
+      baseFrame: SidePanelCameraFrame = sidePanelCameraFrame,
+    ) => {
+      scene.add(helperMesh);
+      fitBoundsWithSidePanelFrame(helperMesh, target, false, baseFrame);
+
+      setTimeout(() => {
+        scene.remove(helperMesh);
+        dispose();
+      }, 0);
+    },
+    [fitBoundsWithSidePanelFrame, scene, sidePanelCameraFrame],
+  );
+
+  const fitToPointCloudCrop = useCallback(
+    (crop: PointCloudCrop) => {
+      const helperMesh = createPointCloudCropHelperMesh(crop);
+      fitToTemporaryMesh(helperMesh, crop.center, () =>
+        disposePointCloudCropHelperMesh(helperMesh),
+      );
+    },
+    [fitToTemporaryMesh],
+  );
+
+  const centerOnPointCloudCrop = useCallback(
+    (crop: PointCloudCrop) => {
+      const frame = retargetSidePanelCameraFrame(
+        sidePanelCameraFrame,
+        crop.center,
+      );
+
+      applySidePanelCameraFrame({
+        camera,
+        controls,
+        frame,
+        invalidate,
+      });
+
+      applyVisibleWorldHeightZoomToOrthographicCamera({
+        camera,
+        controls,
+        invalidate,
+        visibleWorldHeight: crop.visibleWorldHeightAtCenter,
+      });
+
+      if (!doesPointCloudCropFitCamera(crop, camera)) {
+        fitToPointCloudCrop(crop);
+      }
+    },
+    [camera, controls, fitToPointCloudCrop, invalidate, sidePanelCameraFrame],
+  );
+
+  const fitToBox = useCallback(
+    (
+      box: THREE.Box3,
+      baseFrame: SidePanelCameraFrame = sidePanelCameraFrame,
+    ) => {
+      const boxSize = box.getSize(new Vector3());
+      const boxCenter = box.getCenter(new Vector3());
+      const boxGeometry = new THREE.BoxGeometry(
+        boxSize.x,
+        boxSize.y,
+        boxSize.z,
+      );
+      const boxMaterial = new THREE.MeshBasicMaterial({ visible: false });
+      const helperMesh = new THREE.Mesh(boxGeometry, boxMaterial);
+      helperMesh.position.copy(boxCenter);
+      helperMesh.visible = false;
+
+      fitToTemporaryMesh(
+        helperMesh,
+        boxCenter,
+        () => {
+          boxGeometry.dispose();
+          boxMaterial.dispose();
+        },
+        baseFrame,
+      );
+    },
+    [fitToTemporaryMesh, sidePanelCameraFrame],
+  );
+
+  const fitToCenteredBox = useCallback(
+    (center: THREE.Vector3Tuple, size: number) => {
+      fitToBox(
+        new Box3().setFromCenterAndSize(
+          new Vector3(...center),
+          new Vector3(size, size, size),
+        ),
+      );
+    },
+    [fitToBox],
+  );
+
+  useEffect(() => {
+    if (!observe || pointCloudCropRef.current) {
+      return;
+    }
+
+    fitBoundsWithSidePanelFrame(undefined, sidePanelCameraFrame.target, true);
+  }, [fitBoundsWithSidePanelFrame, observe, sidePanelCameraFrame.target]);
+
+  useEffect(() => {
+    const crop = pointCloudCropRef.current;
+    if (!crop || !pointCloudCropFitKey) {
+      return;
+    }
+
+    fitToPointCloudCrop(crop);
+  }, [fitToPointCloudCrop, pointCloudCropFitKey]);
+
+  useEffect(() => {
+    const crop = pointCloudCropRef.current;
+    if (!crop || crop.source !== "creation") {
+      return;
+    }
+
+    if (doesPointCloudCropFitCamera(crop, camera)) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastAutoExpandFitAtRef.current < AUTO_EXPAND_FIT_INTERVAL_MS) {
+      return;
+    }
+
+    lastAutoExpandFitAtRef.current = now;
+    fitToPointCloudCrop(crop);
+  }, [camera, fitToPointCloudCrop, cropGeometrySignature]);
+
+  useEffect(() => {
+    const crop = pointCloudCropRef.current;
+    if (!crop || crop.source !== "raycast-hover") {
+      lastRaycastHoverSyncAtRef.current = 0;
+      lastRaycastHoverSyncRef.current = null;
+      return;
+    }
+
+    // Raycast-hover crops track the pointer. When the current crop already
+    // fits the side panel, keep the user's zoom/pan stable and only let the
+    // crop mask update. Re-centering every hovered point is especially visible
+    // as vertical jitter at high zoom.
+    if (doesPointCloudCropFitCamera(crop, camera)) {
+      return;
+    }
+
+    const lastSync = lastRaycastHoverSyncRef.current;
+    if (
+      lastSync &&
+      lastSync.center.distanceToSquared(crop.center) <=
+        RAYCAST_HOVER_CENTER_EPSILON_SQ &&
+      lastSync.halfSize.distanceToSquared(crop.halfSize) <=
+        RAYCAST_HOVER_CENTER_EPSILON_SQ &&
+      lastSync.visibleWorldHeightAtCenter === crop.visibleWorldHeightAtCenter
+    ) {
+      return;
+    }
+
+    const now = Date.now();
+    if (
+      lastSync &&
+      now - lastRaycastHoverSyncAtRef.current < RAYCAST_HOVER_SYNC_INTERVAL_MS
+    ) {
+      return;
+    }
+
+    lastRaycastHoverSyncAtRef.current = now;
+    lastRaycastHoverSyncRef.current = {
+      center: crop.center.clone(),
+      halfSize: crop.halfSize.clone(),
+      visibleWorldHeightAtCenter: crop.visibleWorldHeightAtCenter,
+    };
+
+    if (
+      !applyPointCloudCropMainPanelSyncToOrthographicCamera({
+        camera,
+        controls,
+        crop,
+        invalidate,
+      })
+    ) {
+      centerOnPointCloudCrop(crop);
+    }
+  }, [
+    camera,
+    centerOnPointCloudCrop,
+    controls,
+    invalidate,
+    raycastHoverCropSignature,
+  ]);
+
+  useEffect(() => {
+    if (
+      !mainPanelZoomSyncIntent ||
+      lastHandledMainPanelZoomSyncIntentRef.current ===
+        mainPanelZoomSyncIntent.id
+    ) {
+      return;
+    }
+
+    lastHandledMainPanelZoomSyncIntentRef.current = mainPanelZoomSyncIntent.id;
+
+    if (
+      !shouldApplyMainPanelNavigationSyncIntent({
+        activeCrop: pointCloudCropRef.current,
+        intent: mainPanelZoomSyncIntent,
+        now: Date.now(),
+      })
+    ) {
+      return;
+    }
+
+    applyMainPanelZoomSyncIntentToOrthographicCamera({
+      camera,
+      controls,
+      intent: mainPanelZoomSyncIntent,
+      invalidate,
+    });
+  }, [camera, controls, invalidate, mainPanelZoomSyncIntent]);
+
+  useEffect(() => {
+    if (
+      !mainPanelPanSyncIntent ||
+      lastHandledMainPanelPanSyncIntentRef.current === mainPanelPanSyncIntent.id
+    ) {
+      return;
+    }
+
+    lastHandledMainPanelPanSyncIntentRef.current = mainPanelPanSyncIntent.id;
+
+    if (
+      !shouldApplyMainPanelPanSyncIntent({
+        activeCrop: pointCloudCropRef.current,
+        intent: mainPanelPanSyncIntent,
+        now: Date.now(),
+      })
+    ) {
+      return;
+    }
+
+    applyMainPanelPanSyncIntentToOrthographicCamera({
+      camera,
+      controls,
+      intent: mainPanelPanSyncIntent,
+      invalidate,
+    });
+  }, [camera, controls, invalidate, mainPanelPanSyncIntent]);
 
   const getVertexFocusBoxSize = () => {
     const sceneBounds = new Box3().setFromObject(scene);
@@ -591,15 +1039,61 @@ const BoundsSideEffectsComponent = () => {
     );
   };
 
-  useAnnotationEventHandler("annotation:3dLabelSelected", (payload) => {
-    const { label } = payload;
+  // This effect reverts to the world-aligned scene framing when a label is
+  // deselected. The select path heading-aligns to the box, so deselection has
+  // to actively restore the default cardinal view.
+  useEffect(() => {
+    const previousSelectedLabelId = previousSelectedLabelIdRef.current;
+    previousSelectedLabelIdRef.current = selectedLabelId;
 
-    const object = findByUserData(scene, FO_USER_DATA.LABEL_ID, label._id);
+    if (
+      previousSelectedLabelId &&
+      !selectedLabelId &&
+      !pointCloudCropRef.current
+    ) {
+      fitBoundsWithSidePanelFrame(undefined, sidePanelCameraFrame.target, true);
+    }
+  }, [
+    selectedLabelId,
+    fitBoundsWithSidePanelFrame,
+    sidePanelCameraFrame.target,
+  ]);
+
+  useAnnotationEventHandler("annotation:3dLabelSelected", (payload) => {
+    const { label, archetype } = payload;
+    const crop = pointCloudCropRef.current;
+
+    if (crop?.labelId === label._id) {
+      fitToPointCloudCrop(crop);
+      return;
+    }
+
+    const object = findObjectByUserData(
+      scene,
+      FO_USER_DATA.LABEL_ID,
+      label._id,
+    );
 
     if (object) {
+      // For cuboids, align the orthographic view to the box's heading so it
+      // appears axis-aligned (faces edge-on, handles straight out). The box's
+      // live world orientation comes straight off its scene object. Polylines
+      // keep the world-aligned frame.
+      const frame =
+        archetype === ANNOTATION_CUBOID
+          ? applyHeadingToSidePanelCameraFrame(
+              sidePanelCameraFrame,
+              getSidePanelHeadingQuaternion(
+                object.getWorldQuaternion(new THREE.Quaternion()),
+                upVector ?? new Vector3(0, 1, 0),
+              ),
+            )
+          : sidePanelCameraFrame;
+
       const objectBox = new Box3().setFromObject(object);
 
       if (!objectBox.isEmpty()) {
+<<<<<<< HEAD
         const expandedBox = expandBoundingBox(objectBox, 2.5);
 
         const expandedSize = expandedBox.getSize(new Vector3());
@@ -621,14 +1115,23 @@ const BoundsSideEffectsComponent = () => {
           scene.remove(helperMesh);
           boxGeometry.dispose();
         }, 0);
+=======
+        fitToBox(expandBoundingBox(objectBox, 2.5), frame);
+>>>>>>> main
       } else {
-        api.refresh(object).reset().fit();
+        fitBoundsWithSidePanelFrame(
+          object,
+          object.getWorldPosition(new Vector3()),
+          false,
+          frame,
+        );
       }
     }
   });
 
   // Focus camera on cuboid creation location when user starts creating
   useAnnotationEventHandler("annotation:cuboidCreationStarted", (payload) => {
+<<<<<<< HEAD
     const { position } = payload;
 
     const boxGeometry = new THREE.BoxGeometry(
@@ -647,11 +1150,15 @@ const BoundsSideEffectsComponent = () => {
       scene.remove(helperMesh);
       boxGeometry.dispose();
     }, 0);
+=======
+    fitToCenteredBox(payload.position, DEFAULT_CUBOID_CREATION_MARGIN);
+>>>>>>> main
   });
 
   useAnnotationEventHandler(
     "annotation:3dPolylineVertexSelected",
     (payload) => {
+<<<<<<< HEAD
       const { position } = payload;
       const focusBoxSize = getVertexFocusBoxSize();
 
@@ -671,6 +1178,9 @@ const BoundsSideEffectsComponent = () => {
         scene.remove(helperMesh);
         boxGeometry.dispose();
       }, 0);
+=======
+      fitToCenteredBox(payload.position, getVertexFocusBoxSize());
+>>>>>>> main
     },
   );
 

@@ -9,12 +9,6 @@ import type { ReconciledDetection3D, ReconciledPolyline3D } from "./types";
 import { currentEditingCuboidAtom } from "./useSetEditingToNewCuboid";
 import { currentEditingPolylineAtom } from "./useSetEditingToNewPolyline";
 
-type ClearedEditingState = {
-  labelId: string;
-  editingAtomRef: PrimitiveAtom<AnnotationLabel | null>;
-  editingData: AnnotationLabel;
-};
-
 /**
  * Hook that syncs changes from the 3D working store to the sidebar
  * "editing" atoms.
@@ -29,17 +23,15 @@ type ClearedEditingState = {
 export function useSyncWorkingToSidebar() {
   const workingDoc = useWorkingDoc();
   const store = getDefaultStore();
-  const { selected, clear, select, isEditingAtom } = useAnnotationContext();
+  const { selected, isEditingAtom } = useAnnotationContext();
 
   // Track the last synced working label to prevent unnecessary updates
   const lastSyncedWorkingLabelRef = useRef<
     ReconciledDetection3D | ReconciledPolyline3D | null
   >(null);
 
-  // Store cleared editing state for potential restoration on redo
-  const clearedEditingRef = useRef<ClearedEditingState | null>(null);
-
   useEffect(() => {
+<<<<<<< HEAD
     // Check if we need to restore previously cleared editing state (redo case)
     if (clearedEditingRef.current) {
       const { labelId, editingAtomRef, editingData } =
@@ -66,6 +58,8 @@ export function useSyncWorkingToSidebar() {
       }
     }
 
+=======
+>>>>>>> main
     // Only sync for 3D editing atoms
     const editingCuboid = isEditingAtom(
       currentEditingCuboidAtom as unknown as PrimitiveAtom<AnnotationLabel>,
@@ -83,20 +77,6 @@ export function useSyncWorkingToSidebar() {
     const editingValue = editingCuboid
       ? currentEditingCuboidAtom
       : currentEditingPolylineAtom;
-
-    // If the label was deleted (like via undo of creation), clear editing state
-    if (workingDoc.deletedIds.has(labelId)) {
-      // Store for potential redo restoration
-      clearedEditingRef.current = {
-        labelId,
-        editingAtomRef: editingValue,
-        editingData: currentEditing,
-      };
-      store.set(editingValue, null);
-      clear();
-      lastSyncedWorkingLabelRef.current = null;
-      return;
-    }
 
     const workingLabel = workingDoc.labelsById[labelId];
     if (!workingLabel) return;
@@ -128,5 +108,5 @@ export function useSyncWorkingToSidebar() {
     store.set(editingValue, updatedEditing);
 
     lastSyncedWorkingLabelRef.current = workingLabel;
-  }, [workingDoc, selected?.label, store, clear, select, isEditingAtom]);
+  }, [workingDoc, selected?.label, store, isEditingAtom]);
 }

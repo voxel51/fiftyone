@@ -164,6 +164,7 @@ export function PointCloudPanel({
   warning = null,
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
+<<<<<<< HEAD
   const renderLayers = useMemo(
     () =>
       layers.map((layer) => ({
@@ -212,6 +213,39 @@ export function PointCloudPanel({
   const declaredPointCount = layers.reduce(
     (sum, layer) => sum + layer.frame.pointCount,
     0,
+=======
+  const [finitePointCount, setFinitePointCount] = useState(0);
+  const scene = useMemo(
+    () => (
+      <PointCloudSceneContent
+        cameraPose={cameraPose}
+        colorBy={colorBy}
+        colors={frame.colors}
+        fit={fit}
+        maxRenderedPoints={maxRenderedPoints}
+        onCameraPoseChange={onCameraPoseChange}
+        onFinitePointCount={setFinitePointCount}
+        pointSize={pointSize}
+        positions={frame.positions}
+        scalarFields={frame.scalarFields}
+        showGizmo={showGizmo}
+        transform={frameTransform}
+      />
+    ),
+    [
+      cameraPose,
+      colorBy,
+      fit,
+      frame.colors,
+      frame.positions,
+      frame.scalarFields,
+      frameTransform,
+      maxRenderedPoints,
+      onCameraPoseChange,
+      pointSize,
+      showGizmo,
+    ],
+>>>>>>> main
   );
 
   return (
@@ -262,10 +296,25 @@ function PointCloudSceneLayer({
   readonly pointSize: number;
 }) {
   const invalidate = useThree((state) => state.invalidate);
+<<<<<<< HEAD
   const { frameTransform } = layer;
   const objectTransform = useMemo(
     () => pointCloudObjectTransform(frameTransform),
     [frameTransform],
+=======
+  const data = useMemo(
+    () =>
+      buildPointCloudRenderData(positions, maxRenderedPoints, {
+        colorBy,
+        colors,
+        scalarFields,
+      }),
+    [colorBy, colors, maxRenderedPoints, positions, scalarFields],
+  );
+  const objectTransform = useMemo(
+    () => pointCloudObjectTransform(transform),
+    [transform],
+>>>>>>> main
   );
 
   // This effect requests a frameloop-on-demand repaint when the layer's

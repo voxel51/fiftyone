@@ -6,6 +6,7 @@ import { groupId, nullableModalSampleId } from "@fiftyone/state";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state/src/recoil/customEffects";
 import { atom, atomFamily, DefaultValue, selector } from "recoil";
 import { Vector3 } from "three";
+import type { CuboidResizeFace } from "../annotation/cuboid-face-resize";
 import type {
   AnnotationPlaneState,
   SegmentState,
@@ -22,12 +23,16 @@ import type {
   Actions,
   AssetLoadingLog,
   CuboidCreationState,
+  HoveredLabel,
+  HoveredLabelSource,
   LoadingStatusWithContext,
+  MainPanelPanSyncIntent,
+  MainPanelZoomSyncIntent,
   PanelId,
   RaycastResult,
   ShadeBy,
 } from "../types";
-import { Archetype3d, LoadingStatus } from "../types";
+import { Archetype3d, EMPTY_RAYCAST_RESULT, LoadingStatus } from "../types";
 
 // =============================================================================
 // GENERAL 3D
@@ -97,6 +102,31 @@ export const isLevaConfigPanelOnAtom = atom<boolean>({
 export const isStatusBarOnAtom = atom<boolean>({
   key: "fo3d-isStatusBarOn",
   default: false,
+});
+
+export type Fo3dPerformanceStats = {
+  fps: number;
+  calls: number;
+  triangles: number;
+  points: number;
+  geometries: number;
+  textures: number;
+  programs: number;
+};
+
+export const DEFAULT_FO3D_PERFORMANCE_STATS: Fo3dPerformanceStats = {
+  fps: 0,
+  calls: 0,
+  triangles: 0,
+  points: 0,
+  geometries: 0,
+  textures: 0,
+  programs: 0,
+};
+
+export const fo3dPerformanceStatsAtom = atom<Fo3dPerformanceStats>({
+  key: "fo3d-performanceStats",
+  default: DEFAULT_FO3D_PERFORMANCE_STATS,
 });
 
 // GRID & BACKGROUND
@@ -240,6 +270,16 @@ export const polylineLabelLineWidthAtom = atom({
   ],
 });
 
+export const showCuboidOrientationAtom = atom<boolean>({
+  key: "fo3d-showCuboidOrientation",
+  default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-showCuboidOrientation", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
 export const avoidZFightingAtom = atom<boolean>({
   key: "fo3d-avoidZFighting",
   default: true,
@@ -279,7 +319,7 @@ export const currentHoveredPointAtom = atom<Vector3 | null>({
 });
 
 // Hover state for labels in annotate mode
-export const hoveredLabelAtom = atom<{ id: string } | null>({
+export const hoveredLabelAtom = atom<HoveredLabel | null>({
   key: "fo3d-hoveredLabel",
   default: null,
 });
@@ -314,18 +354,42 @@ export const activeCursorPanelAtom = atom<PanelId | null>({
 });
 
 /**
+ * Whether a pointer interaction started in the main 3D panel and has not ended.
+ * Used to avoid treating incidental hover while orbiting/panning/zooming as a
+ * request to crop side panels around a label or point.
+ */
+export const isFo3dMainPanelPointerDownAtom = atom<boolean>({
+  key: "fo3d-isMainPanelPointerDown",
+  default: false,
+});
+
+/**
+ * Whether a modifier key that activates raycast-hover side-panel cropping is
+ * currently pressed while the 3D modal is active.
+ */
+export const isFo3dPointCropModifierPressedAtom = atom<boolean>({
+  key: "fo3d-isPointCropModifierPressed",
+  default: false,
+});
+
+/**
  * Centralized raycast result atom that stores intersection data from the RaycastService.
  */
 export const raycastResultAtom = atom<RaycastResult>({
   key: "fo3d-raycastResult",
-  default: {
-    sourcePanel: null,
-    worldPosition: null,
-    intersectedObjectUuid: null,
-    pointIndex: null,
-    distance: null,
-    timestamp: 0,
+  default: EMPTY_RAYCAST_RESULT,
+});
+
+export const mainPanelZoomSyncIntentAtom = atom<MainPanelZoomSyncIntent | null>(
+  {
+    key: "fo3d-mainPanelZoomSyncIntent",
+    default: null,
   },
+);
+
+export const mainPanelPanSyncIntentAtom = atom<MainPanelPanSyncIntent | null>({
+  key: "fo3d-mainPanelPanSyncIntent",
+  default: null,
 });
 
 /**
@@ -479,12 +543,27 @@ export const hoveredVertexAtom = atom<{
 });
 
 /**
+ * The currently hovered cuboid resize face. Shared across panels so the hover
+ * feedback (handle opacity/scale, face highlight) shows in every panel, not
+ * just the one under the cursor. `source` records which panel set it so a
+ * pointer-out (or deselect) in one panel doesn't clear another's hover.
+ */
+export const hoveredResizeFaceAtom = atom<{
+  labelId: string;
+  face: CuboidResizeFace;
+  source: HoveredLabelSource;
+} | null>({
+  key: "fo3d-hoveredResizeFace",
+  default: null,
+});
+
+/**
  * The current transform mode (translate, rotate, scale).
  * Determines how objects are transformed when manipulated.
  */
 export const transformModeAtom = atom<TransformMode>({
   key: "fo3d-transformMode",
-  default: "translate",
+  default: "scale",
 });
 
 /**
@@ -559,7 +638,7 @@ export const clearTransformStateSelector = selector({
   key: "fo3d-clearTransformState",
   get: () => null,
   set: ({ set }) => {
-    set(transformModeAtom, "translate");
+    set(transformModeAtom, "scale");
     set(selectedPolylineVertexAtom, null);
     set(currentArchetypeSelectedForTransformAtom, null);
     set(isCurrentlyTransformingAtom, false);

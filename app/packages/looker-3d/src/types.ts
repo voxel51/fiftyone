@@ -57,6 +57,13 @@ export type SidePanelId =
   | typeof PANEL_ID_SIDE_TOP
   | typeof PANEL_ID_SIDE_BOTTOM;
 
+export type HoveredLabelSource = PanelId | "sidebar";
+
+export interface HoveredLabel {
+  id: string;
+  source?: HoveredLabelSource;
+}
+
 export type SidePanelViewType =
   | typeof VIEW_TYPE_TOP
   | typeof VIEW_TYPE_BOTTOM
@@ -158,7 +165,7 @@ export interface HoverState {
 }
 
 export interface EventHandlers {
-  onPointerOver: () => void;
+  onPointerOver: (e?: ThreeEvent<PointerEvent>) => void;
   onPointerOut: () => void;
   onPointerMissed: () => void;
   onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
@@ -172,9 +179,39 @@ export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";
 export interface RaycastResult {
   sourcePanel: PanelId | null;
   worldPosition: [number, number, number] | null;
+  visibleWorldHeightAtPoint: number | null;
   intersectedObjectUuid: string | null;
+  intersectedLabelId: string | null;
+  isPointCloud: boolean;
   pointIndex: number | null;
   distance: number | null;
+  timestamp: number;
+}
+
+/** A raycast result with no hit; callers stamp their own `timestamp`. */
+export const EMPTY_RAYCAST_RESULT: RaycastResult = {
+  sourcePanel: null,
+  worldPosition: null,
+  visibleWorldHeightAtPoint: null,
+  intersectedObjectUuid: null,
+  intersectedLabelId: null,
+  isPointCloud: false,
+  pointIndex: null,
+  distance: null,
+  timestamp: 0,
+};
+
+export interface MainPanelZoomSyncIntent {
+  id: string;
+  anchor: [number, number, number];
+  zoomRatio: number;
+  visibleWorldHeightAtAnchor?: number | null;
+  timestamp: number;
+}
+
+export interface MainPanelPanSyncIntent {
+  id: string;
+  anchor: [number, number, number];
   timestamp: number;
 }
 

@@ -53,7 +53,8 @@ export default function SelectWidget(props: WidgetProps) {
             .map((s) => s.trim())
         : [];
     }
-    return rawValue;
+    // Option IDs are always strings (String(enumValue)); coerce to match.
+    return String(rawValue);
   }, [multiple, rawValue]);
 
   const handleChange = useCallback(

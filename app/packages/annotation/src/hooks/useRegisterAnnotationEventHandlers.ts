@@ -2,8 +2,6 @@ import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
 import { INDEFINITE_TOAST_TIMEOUT, useActivityToast } from "@fiftyone/state";
 import { useCallback } from "react";
 import { IconName, Variant } from "@voxel51/voodo";
-import { useLabelsContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
-import { DetectionLabel } from "@fiftyone/looker";
 import {
   usePersistenceEventHandler,
   usePersistenceRetryController,
@@ -15,7 +13,6 @@ import {
  */
 export const useRegisterAnnotationEventHandlers = () => {
   const { setConfig } = useActivityToast();
-  const { addLabelToSidebar } = useLabelsContext();
   const handlePersistenceRequest = usePersistenceEventHandler();
   const retryController = usePersistenceRetryController();
 
@@ -82,6 +79,7 @@ export const useRegisterAnnotationEventHandlers = () => {
       },
       [retryController.isUnhealthy, setConfig],
     ),
+<<<<<<< HEAD
   );
 
   useAnnotationEventHandler(
@@ -97,5 +95,7 @@ export const useRegisterAnnotationEventHandlers = () => {
       },
       [addLabelToSidebar],
     ),
+=======
+>>>>>>> main
   );
 };
