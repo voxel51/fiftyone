@@ -1,0 +1,41 @@
+name: Renovate
+
+# Self-hosted so PRs are authored by voxel51-bot, a collaborator with push:
+# community-prs.yml then leaves their base alone instead of retargeting to
+# `community`, which is what looped against Dependabot's default-branch PRs.
+
+on:
+  schedule:
+    # Daily so security PRs (which bypass the in-config `schedule`) land
+    # promptly; routine updates are gated to Wednesday in renovate.json.
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: Renovate log level
+        default: info
+        type: string
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  renovate:
+    # Scheduled runs belong to this repo only, not forks or downstream copies
+    if: github.repository == 'voxel51/fiftyone'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: renovatebot/github-action@v46.1.15
+        with:
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          configurationFile: renovate.json
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          LOG_LEVEL: ${{ inputs.logLevel || 'info' }}

@@ -1,0 +1,51 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": ["config:recommended"],
+    "baseBranches": ["develop"],
+    "gitAuthor": "voxel51-bot <bot@voxel51.com>",
+    "rangeStrategy": "widen",
+    "schedule": ["* * * * 3"],
+    "labels": ["dependencies"],
+    "enabledManagers": [
+        "pip_requirements",
+        "pip_setup",
+        "github-actions",
+        "npm"
+    ],
+    "pip_requirements": {
+        "managerFilePatterns": [
+            "/(^|/)[\\w-]*requirements([-._]\\w+)?\\.(txt|pip)$/",
+            "/(^|/)requirements/[^/]+\\.(txt|pip)$/"
+        ]
+    },
+    "ignoreDeps": [
+        "pymongo",
+        "motor",
+        "mongoengine",
+        "fiftyone-brain",
+        "fiftyone-db",
+        "voxel51-eta"
+    ],
+    "packageRules": [
+        {
+            "matchManagers": ["pip_requirements", "pip_setup"],
+            "groupName": "stable-python-packages",
+            "addLabels": ["python"]
+        },
+        {
+            "matchManagers": ["github-actions"],
+            "groupName": "github-actions",
+            "addLabels": ["github-actions"]
+        },
+        {
+            "matchManagers": ["npm"],
+            "groupName": "app-dependencies",
+            "addLabels": ["app"]
+        }
+    ],
+    "vulnerabilityAlerts": {
+        "enabled": true,
+        "labels": ["dependencies", "security"]
+    },
+    "osvVulnerabilityAlerts": true
+}
