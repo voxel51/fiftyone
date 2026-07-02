@@ -103,6 +103,22 @@ export class McapPlaybackWorkerTransport {
   }
 
   /**
+   * Cancels every pending stream: rejects each locally with the canonical
+   * cancelled error and returns their ids so the caller can tell the worker
+   * to drop or abort the matching jobs. Queued jobs the worker drops send
+   * no response, so local settlement is what keeps consumers from hanging.
+   */
+  cancelStreams(): number[] {
+    const cancelledIds: number[] = [];
+    for (const [id, stream] of [...this.streams]) {
+      this.failStream(id, stream, mcapReadCancelledError());
+      cancelledIds.push(id);
+    }
+
+    return cancelledIds;
+  }
+
+  /**
    * Sends one streaming worker RPC and yields incremental response payloads.
    */
   async *stream<Type extends McapPlaybackWorkerStreamType>(
