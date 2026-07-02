@@ -8,7 +8,9 @@ export const VISUALIZATION_KIND = Object.freeze({
   ENCODED_IMAGE: "encoded-image",
   GRID: "grid",
   IMAGE_ANNOTATIONS: "image-annotations",
+  LOCATION: "location",
   POINT_CLOUD: "point-cloud",
+  POSE: "pose",
   SCENE_UPDATE: "scene-update",
 } as const);
 
@@ -45,6 +47,10 @@ export const VISUALIZATION_PANEL_REGISTRY: Readonly<
   [VISUALIZATION_KIND.ENCODED_IMAGE]: PANEL_TYPE.IMAGE,
   [VISUALIZATION_KIND.GRID]: PANEL_TYPE.THREE_D,
   [VISUALIZATION_KIND.IMAGE_ANNOTATIONS]: PANEL_TYPE.IMAGE,
+  // No MAP panel exists yet; v1 surfaces locations as a 3D-tile HUD
+  // readout. The mapping records the natural home for the data.
+  [VISUALIZATION_KIND.LOCATION]: PANEL_TYPE.MAP,
   [VISUALIZATION_KIND.POINT_CLOUD]: PANEL_TYPE.THREE_D,
+  [VISUALIZATION_KIND.POSE]: PANEL_TYPE.THREE_D,
   [VISUALIZATION_KIND.SCENE_UPDATE]: PANEL_TYPE.THREE_D,
 });
