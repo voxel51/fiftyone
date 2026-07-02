@@ -14,6 +14,7 @@ import {
   startMcapLatencyDebugSession,
 } from "../mcap-latency-debug";
 import { McapModalSettingsProvider } from "./mcap-modal-settings";
+import { McapAdjacentSamplePrewarm } from "./McapAdjacentSamplePrewarm";
 import {
   McapNetworkHealthTracker,
   McapNetworkStatusPill,
@@ -171,6 +172,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
             >
               <McapStreams ctx={ctx} client={client} />
               <McapNetworkHealthTracker client={client} />
+              <McapAdjacentSamplePrewarm ctx={ctx} />
               <McapModalLayoutPersistence />
             </MultiModalPlayback>
           </McapDataStreamProvider>

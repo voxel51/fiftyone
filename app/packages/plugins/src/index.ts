@@ -203,6 +203,7 @@ export * from "./registry";
 export * from "./state";
 
 export {
+  createSampleRendererMediaContext,
   createSampleRendererRenderContext,
   getMatchingSampleRenderer,
   getSampleRendererGridSlotComponent,
