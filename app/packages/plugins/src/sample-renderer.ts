@@ -94,6 +94,21 @@ export type GridConfig = {
 };
 
 /**
+ * Modal-specific renderer behavior.
+ */
+export type ModalConfig = {
+  /**
+   * Keep the renderer mounted while navigating between samples it
+   * supports. The renderer must derive all per-sample state from `ctx`
+   * (or key its own internal subtrees); in exchange the modal stops
+   * remounting it per sample and only resets the error boundary between
+   * samples. Navigating to a sample matched by a different renderer (or
+   * native media) still remounts.
+   */
+  persistAcrossSamples?: boolean;
+};
+
+/**
  * Configuration for registering and selecting a sample renderer.
  */
 export type SampleRendererOptions<TSample = SampleRendererSampleLike> = {
@@ -102,6 +117,7 @@ export type SampleRendererOptions<TSample = SampleRendererSampleLike> = {
     | MatchMedia
     | ((ctx: SampleRendererMatchContext<TSample>) => boolean);
   grid?: GridConfig;
+  modal?: ModalConfig;
 };
 
 type SampleRendererRegistrationLike<TSample = SampleRendererSampleLike> = {
@@ -318,6 +334,18 @@ export function isSampleRendererGridEnabled(
   registration: SampleRendererRegistrationLike,
 ) {
   return registration.sampleRendererOptions.grid?.enabled === true;
+}
+
+/**
+ * Returns whether a renderer opts into persisting across sample navigation
+ * in the modal.
+ */
+export function isSampleRendererModalPersistent(
+  registration: SampleRendererRegistrationLike,
+) {
+  return (
+    registration.sampleRendererOptions.modal?.persistAcrossSamples === true
+  );
 }
 
 /**
