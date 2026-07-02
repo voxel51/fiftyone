@@ -6,8 +6,34 @@ Configuring FiftyOne
 .. default-role:: code
 
 FiftyOne can be configured in various ways. This guide covers the various
-options that exist, how to view your current config, and how to customize your
-config as desired.
+options that exist, how to view your current configs, and how to customize
+your configs as desired.
+
+FiftyOne's configuration options are organized by feature:
+
++-------------------------------------------------+--------------------------------------+-------------------------------------------------------------------------------------------+
+| Environment variable                            | Default value                        | Description                                                                               |
++=================================================+======================================+===========================================================================================+
+| `FIFTYONE_CONFIG_DIR`                           | `~/.fiftyone`                        | The directory where all FiftyOne configuration information that must be persisted to      |
+|                                                 |                                      | disk is stored (unless overridden by per-feature config settings like those below)        |
++-------------------------------------------------+--------------------------------------+-------------------------------------------------------------------------------------------+
+| `FIFTYONE_CONFIG_PATH`                          | `~/.fiftyone/config.json`            | The path to a JSON file containing                                                        |
+|                                                 |                                      | :ref:`general settings <configuring-fiftyone-general>` you have permanently configured    |
++-------------------------------------------------+--------------------------------------+-------------------------------------------------------------------------------------------+
+| `FIFTYONE_APP_CONFIG_PATH`                      | `~/.fiftyone/app_config.json`        | The path to a JSON file containing any                                                    |
+|                                                 |                                      | :ref:`App settings <configuring-fiftyone-app>` you have permanently configured            |
++-------------------------------------------------+--------------------------------------+-------------------------------------------------------------------------------------------+
+| `FIFTYONE_ANNOTATION_CONFIG_PATH`               | `~/.fiftyone/annotation_config.json` | The path to a JSON file containing any                                                    |
+|                                                 |                                      | :ref:`annotation settings <annotation-config>` you have permanently configured            |
++-------------------------------------------------+--------------------------------------+-------------------------------------------------------------------------------------------+
+| `FIFTYONE_BRAIN_CONFIG_PATH`                    | `~/.fiftyone/brain_config.json`      | The path to a JSON file containing any                                                    |
+|                                                 |                                      | :ref:`brain settings <brain-config>` you have permanently configured                      |
++-------------------------------------------------+--------------------------------------+-------------------------------------------------------------------------------------------+
+| `FIFTYONE_EVALUATION_CONFIG_PATH`               | `~/.fiftyone/evaluation_config.json` | The path to a JSON file containing any                                                    |
+|                                                 |                                      | :ref:`evaluation settings <evaluation-config>` you have permanently configured            |
++-------------------------------------------------+--------------------------------------+-------------------------------------------------------------------------------------------+
+
+.. _configuring-fiftyone-general:
 
 Configuration options
 ---------------------
