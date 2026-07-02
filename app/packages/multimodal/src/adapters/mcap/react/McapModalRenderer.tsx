@@ -1,5 +1,6 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { humanReadableBytes } from "@fiftyone/utilities";
+import { byteSourceAccessKey } from "../../../query/bytes";
 import { Size, Spinner } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useEffect, useLayoutEffect, useMemo, useRef } from "react";
@@ -61,6 +62,9 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
       detail: {
         fileName,
         readProfile: source?.readProfile,
+        // Ref-scoped, so equal keys across sessions prove the renderer
+        // mount survived sample navigation (persistAcrossSamples).
+        rendererMountKey: latencySessionKey,
         sizeBytes: source?.sizeBytes,
       },
       label: "mcap modal",
@@ -139,7 +143,13 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   }
 
   return (
-    <McapModalSettingsProvider>
+    // The renderer registers with persistAcrossSamples, so the modal keeps
+    // this component mounted through sample navigation. Hooks above this
+    // line swap sources in place (shared client, ownership activation,
+    // fresh inventory); the playback shell and its per-sample provider
+    // state reset by key. Narrowing this keyed region is the follow-up
+    // lever for cheaper hops.
+    <McapModalSettingsProvider key={source ? byteSourceAccessKey(source) : ""}>
       <McapFrameTransformsProvider>
         <McapPoseTrajectoriesProvider>
           <McapDataStreamProvider>

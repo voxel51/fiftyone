@@ -68,9 +68,11 @@ export function useMcapModalLayout({
     () => buildResolvedTiles(resolved.tiles),
     [resolved],
   );
-  // Read storage once per modal mount — navigating samples remounts the
-  // renderer and picks up whatever the previous sample persisted.
-  const persisted = useMemo(readMcapModalLayout, []);
+  // Re-read storage whenever the scene changes: the renderer persists
+  // across sample navigation, so a new sample arrives as new sources on
+  // the same mount and must pick up whatever the previous sample persisted.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- sources is the storage-read trigger, not an input
+  const persisted = useMemo(readMcapModalLayout, [sources]);
 
   const restored = useMemo(
     () => rebuildTilesFromLayout(persisted?.layout, presentTypes, sources),

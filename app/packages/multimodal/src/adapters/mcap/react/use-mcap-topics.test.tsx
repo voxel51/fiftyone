@@ -58,6 +58,40 @@ describe("useMcapTopics", () => {
     expect(retryClient.readTopics).toHaveBeenCalledTimes(1);
   });
 
+  it("reports loading, not the previous inventory, while a swapped source settles", async () => {
+    const firstSource = createSource("swap-a");
+    const secondSource = createSource("swap-b");
+    let releaseSecond = () => undefined as void;
+    const secondRead = new Promise<void>((resolve) => {
+      releaseSecond = resolve;
+    });
+    const client = createTopicsClient(async ({ source }) => {
+      if (source.sourceId === secondSource.sourceId) {
+        await secondRead;
+      }
+      return [createTopic(source.sourceId)];
+    });
+
+    const { rerender } = render(
+      <TopicsHarness client={client} label="topics" source={firstSource} />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+    });
+
+    // The persistent renderer swaps sources on the same mount; the first
+    // render after the swap must not present the old inventory as ready.
+    rerender(
+      <TopicsHarness client={client} label="topics" source={secondSource} />,
+    );
+    expect(screen.getByTestId("topics").textContent).toBe("loading:0:");
+
+    releaseSecond();
+    await waitFor(() => {
+      expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+    });
+  });
+
   it("reads again when the source key changes", async () => {
     const firstSource = createSource("source-a");
     const secondSource = createSource("source-b");
