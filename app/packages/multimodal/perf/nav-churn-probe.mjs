@@ -9,11 +9,18 @@
  *
  * Usage:
  *   node nav-churn-probe.mjs --app http://localhost:5175 \
- *     --dataset nuscenes-mcap-local [--hops 4] [--headless]
+ *     --dataset nuscenes-mcap-local [--hops 4] [--headless] \
+ *     [--trace-label <name>]
+ *
+ * --trace-label writes a per-transition timeline dump (latency events,
+ * worker attribution/scheduler console rows) to runs/nav-trace-<name>.json.
+ * Headless runs render WebGL in software and inflate paint times and long
+ * tasks; use headed runs when comparing against prior numbers.
  *
  * Playwright resolves like capture-run.mjs (PLAYWRIGHT_BASE or e2e-pw).
  */
 
+import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +31,7 @@ const appOrigin = (args["app"] ?? "http://localhost:5175").replace(/\/$/, "");
 const dataset = args["dataset"] ?? "nuscenes-mcap-local";
 const hops = Number(args["hops"] ?? 4);
 const headless = Boolean(args["headless"]);
+const traceLabel = args["trace-label"] ?? null;
 
 const { chromium } = resolvePlaywright();
 
@@ -32,6 +40,34 @@ const context = await browser.newContext({
   viewport: { height: 1080, width: 1860 },
 });
 const page = await context.newPage();
+
+// Worker attribution and scheduler rows are console-logged continuously,
+// across latency-session resets — the only capture that survives a hop's
+// session restart. Stamped with Node wall-clock for cross-source ordering.
+// Per-chunk-read logs are skipped: they are per-read chatty and their bytes
+// are already aggregated into the attribution rows.
+const consoleRows = [];
+page.on("console", (message) => {
+  const text = message.text();
+  if (
+    !text.startsWith("[mcap] worker attribution") &&
+    !text.startsWith("[mcap] worker job")
+  ) {
+    return;
+  }
+  const row = { atMs: Date.now(), text: text.slice(0, 200) };
+  consoleRows.push(row);
+  const detailArg = message.args()[1];
+  if (detailArg) {
+    detailArg
+      .jsonValue()
+      .then((value) => {
+        row.detail = value;
+      })
+      .catch(() => undefined);
+  }
+});
+const traces = [];
 
 let workersSpawned = 0;
 const liveWorkers = new Set();
@@ -170,6 +206,14 @@ rows.push(
 );
 
 printReport(rows);
+if (traceLabel) {
+  // Late console-detail jsonValue resolutions settle before serialization.
+  await page.waitForTimeout(500);
+  const tracePath = path.join(__dirname, "runs", `nav-trace-${traceLabel}.json`);
+  fs.mkdirSync(path.dirname(tracePath), { recursive: true });
+  fs.writeFileSync(tracePath, JSON.stringify({ dataset, traces }, null, 1));
+  console.log(`[nav-probe] trace written to ${tracePath}`);
+}
 await browser.close();
 
 /**
@@ -205,6 +249,8 @@ async function transition(label, act) {
 }
 
 async function runTransition(label, act) {
+  const wallClickAtMs = Date.now();
+  const consoleStartIndex = consoleRows.length;
   const before = await page.evaluate(() => {
     window.__longTasks = { count: 0, maxMs: 0, totalMs: 0 };
     const events = document.documentElement.getAttribute(
@@ -289,6 +335,35 @@ async function runTransition(label, act) {
     heapBytes: performance.memory?.usedJSHeapSize ?? null,
     longTasks: window.__longTasks,
   }));
+
+  if (traceLabel) {
+    const timeline = await page.evaluate(() => {
+      const attribute = (name) => {
+        const raw = document.documentElement.getAttribute(name);
+        if (!raw) return null;
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return null;
+        }
+      };
+      return {
+        events: attribute("data-mcap-latency-events"),
+        pageNowMs: performance.now(),
+        workerAttributionRecent:
+          attribute("data-mcap-worker-attribution")?.recent ?? null,
+      };
+    });
+    traces.push({
+      clickAtMs: before.clickAtMs,
+      // Console rows carry Node wall-clock; latency events carry page clock.
+      // wallClickAtMs ~ clickAtMs on those respective clocks aligns them.
+      consoleRows: consoleRows.slice(consoleStartIndex),
+      label,
+      timeline,
+      wallClickAtMs,
+    });
+  }
 
   return {
     canvasesAfter: after.canvases,
