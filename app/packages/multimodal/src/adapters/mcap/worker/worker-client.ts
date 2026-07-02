@@ -149,10 +149,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   async *readDecodedMessages(
     request: McapReadDecodedMessagesRequest,
+    options?: McapResourceReadOptions,
   ): AsyncGenerator<McapDecodedMessage, void, void> {
     for await (const message of this.streamRequest(
       "readDecodedMessages",
       request,
+      resourcePriorityToWorkerPriority(options?.priority),
     )) {
       yield message;
     }
@@ -238,20 +240,23 @@ class WorkerMcapResourceClient implements McapResourceClient {
   private async *streamRequest<Type extends McapPlaybackWorkerStreamType>(
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority?: McapPlaybackWorkerPriority,
   ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
     if (this.disposed) {
       throw new Error("MCAP worker client is disposed");
     }
 
-    const priority = mcapPlaybackWorkerOperation(type).priority;
+    const effectivePriority =
+      priority ?? mcapPlaybackWorkerOperation(type).priority;
     const sourceKey = byteSourceAccessKey(payload.source);
     this.ensureActiveSource(sourceKey);
-    const lane = this.laneForPriority(priority);
+    const lane = this.laneForPriority(effectivePriority);
     yield* lane.transport.stream(
       this.workerForLane(lane, sourceKey),
       sourceKey,
       type,
       payload,
+      effectivePriority,
     );
   }
 

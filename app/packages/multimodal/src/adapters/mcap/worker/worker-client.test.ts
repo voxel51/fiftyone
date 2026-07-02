@@ -366,6 +366,38 @@ describe("worker-backed MCAP resource client", () => {
     });
   });
 
+  it("can demote decoded-message streams to idle-prefetch priority", async () => {
+    // Bulk history reads (e.g. pose trajectories) must ride the idle lane so
+    // they never serialize behind current-frame playback work.
+    const { client, workers } = createClientHarness();
+    const stream = client.readDecodedMessages(
+      {
+        source: createSource("source:1"),
+        topics: ["/odom"],
+      },
+      { priority: "idle" },
+    );
+    const first = stream.next();
+
+    expect(workers[0].messages[1]).toMatchObject({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      type: "readDecodedMessages",
+    });
+
+    workers[0].respond({
+      done: true,
+      id: 1,
+      ok: true,
+      stream: true,
+    });
+
+    await expect(first).resolves.toEqual({
+      done: true,
+      value: undefined,
+    });
+  });
+
   it("resets the worker on source changes and ignores stale responses", async () => {
     const { client, workers } = createClientHarness();
     const first = client.readTimelineRange(createTimelineRequest("source:1"));

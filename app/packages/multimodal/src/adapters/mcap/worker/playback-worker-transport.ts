@@ -110,9 +110,10 @@ export class McapPlaybackWorkerTransport {
     sourceKey: string,
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority?: McapPlaybackWorkerPriority,
   ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
     const id = this.nextRequestId++;
-    const message = createRpcRequest(id, sourceKey, type, payload);
+    const message = createRpcRequest(id, sourceKey, type, payload, priority);
     const stream: PendingStream = {
       done: false,
       rejectors: [],
