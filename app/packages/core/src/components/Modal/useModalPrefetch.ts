@@ -278,6 +278,9 @@ export default function useModalPrefetch() {
       // reads are not guaranteed safe to interleave.
       const selectors: (fos.ModalSelector | null)[] = [];
       for (const offset of offsets) {
+        if (cancelled) {
+          return;
+        }
         selectors.push(await peek(offset).catch(() => null));
       }
 
