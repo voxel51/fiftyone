@@ -5,7 +5,7 @@ on:
     # `edited` catches base changes — notably GitHub auto-retargeting a stacked
     # PR to develop when the PR below it merges — so the heavy suite runs before
     # it can land (no `synchronize` fires on an auto-retarget).
-    types: [opened, synchronize, reopened, closed, ready_for_review, edited]
+    types: [opened, synchronize, reopened, closed, edited]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -18,6 +18,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: read
+  checks: read
 
 jobs:
   modified-files:
@@ -155,10 +156,45 @@ jobs:
 
   all-tests:
     runs-on: ubuntu-latest
-    needs: [build, lint, test, e2e]
+    needs: [modified-files, build, lint, test, e2e]
     if: always()
+    env:
+      # A run that skipped the suite (no-op body edit, `closed`, or a failed
+      # gate) must not aggregate its skipped needs into a vacuous green that
+      # becomes the latest `all-tests` for a SHA whose real suite failed.
+      NO_OP: >-
+        ${{ needs.modified-files.result == 'success' &&
+        (needs.modified-files.outputs.run-ci != 'true' ||
+        github.event.action == 'closed') }}
     steps:
-      - run: sh -c ${{
+      - name: Fail when the CI gate did not complete
+        if: needs.modified-files.result != 'success'
+        run: exit 1
+      - name: Mirror the last real all-tests result
+        if: env.NO_OP == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { data } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.payload.pull_request.head.sha,
+              check_name: 'all-tests',
+              per_page: 100,
+            });
+            const prior = data.check_runs
+              .filter((c) => c.status === 'completed')
+              .sort((a, b) => new Date(b.started_at) - new Date(a.started_at))[0];
+            if (!prior) {
+              core.setFailed('No completed all-tests for this commit yet — deferring to the run testing it.');
+            } else if (prior.conclusion === 'success') {
+              core.info('Mirroring the previous all-tests result: success');
+            } else {
+              core.setFailed(`Mirroring the previous all-tests result: ${prior.conclusion}`);
+            }
+      - name: Aggregate suite results
+        if: env.NO_OP != 'true'
+        run: sh -c ${{
           (needs.build.result == 'success' || needs.build.result == 'skipped') &&
           (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
           (needs.test.result == 'success' || needs.test.result == 'skipped') &&
