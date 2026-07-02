@@ -40,7 +40,7 @@ import type {
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
 
-type WorkerLaneName = "foreground" | "idle";
+type WorkerLaneName = "foreground" | "idle" | "bulk";
 
 type WorkerLane = {
   readonly name: WorkerLaneName;
@@ -89,6 +89,14 @@ class WorkerMcapResourceClient implements McapResourceClient {
       (sourceKey) => this.activeSourceKey === sourceKey,
       recordMcapWorkerAttribution,
       (snapshot) => this.emitTransport("idle", snapshot),
+    ),
+  };
+  private readonly bulkLane: WorkerLane = {
+    name: "bulk",
+    transport: new McapPlaybackWorkerTransport(
+      (sourceKey) => this.activeSourceKey === sourceKey,
+      recordMcapWorkerAttribution,
+      (snapshot) => this.emitTransport("bulk", snapshot),
     ),
   };
 
@@ -301,9 +309,13 @@ class WorkerMcapResourceClient implements McapResourceClient {
   }
 
   private laneForPriority(priority: McapPlaybackWorkerPriority): WorkerLane {
-    return priority === MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH
-      ? this.idleLane
-      : this.foregroundLane;
+    if (priority === MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY) {
+      return this.bulkLane;
+    }
+    if (priority === MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH) {
+      return this.idleLane;
+    }
+    return this.foregroundLane;
   }
 
   private workerForLane(lane: WorkerLane, sourceKey: string): Worker {
@@ -361,6 +373,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
   private resetWorkers(reason: string) {
     this.resetLane(this.foregroundLane, reason);
     this.resetLane(this.idleLane, reason);
+    this.resetLane(this.bulkLane, reason);
   }
 
   private resetLane(lane: WorkerLane, reason: string) {
@@ -389,6 +402,8 @@ function resourcePriorityToWorkerPriority(
   priority: McapResourceReadOptions["priority"],
 ): McapPlaybackWorkerPriority | undefined {
   switch (priority) {
+    case "bulk":
+      return MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY;
     case "current":
       return MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME;
     case "idle":

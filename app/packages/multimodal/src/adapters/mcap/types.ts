@@ -281,7 +281,7 @@ export interface McapReadSynchronizedMessageBatchRequest extends Omit<
  * Scheduling priority for resource reads where callers know whether the work
  * is immediately user-visible or opportunistic.
  */
-export type McapResourceReadPriority = "current" | "idle" | "playback";
+export type McapResourceReadPriority = "bulk" | "current" | "idle" | "playback";
 
 export interface McapResourceReadOptions {
   readonly priority?: McapResourceReadPriority;
@@ -419,8 +419,8 @@ export interface McapResourceClient {
 
   /**
    * Streams decoded messages for the requested topics and time bounds.
-   * Pass an idle priority for bulk history reads (e.g. trajectories) so
-   * they never contend with current-frame playback work.
+   * Pass a bulk priority for full-history context reads (e.g. trajectories)
+   * so they never serialize current-frame, playback, or placement work.
    */
   readDecodedMessages(
     request: McapReadDecodedMessagesRequest,
