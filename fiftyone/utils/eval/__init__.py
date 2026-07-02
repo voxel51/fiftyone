@@ -28,6 +28,11 @@ from .segmentation import (
     SegmentationEvaluationConfig,
     SegmentationResults,
 )
+from .vqa import (
+    evaluate_vqa,
+    VQAEvaluationConfig,
+    VQAResults,
+)
 
 # This tells Sphinx to allow refs to imported objects in this module
 # https://stackoverflow.com/a/31594545/16823653

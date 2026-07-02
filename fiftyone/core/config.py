@@ -740,6 +740,14 @@ class EvaluationConfig(EnvConfig):
                 "config_cls": "fiftyone.utils.eval.segmentation.SimpleEvaluationConfig",
             },
         },
+        "vqa": {
+            "exact": {
+                "config_cls": "fiftyone.utils.eval.vqa.ExactMatchEvaluationConfig",
+            },
+            "vqa": {
+                "config_cls": "fiftyone.utils.eval.vqa.VQAAccuracyEvaluationConfig",
+            },
+        },
     }
 
     def __init__(self, d=None):
@@ -770,6 +778,12 @@ class EvaluationConfig(EnvConfig):
             env_var="DEFAULT_FIFTYONE_SEGMENTATION_BACKEND",
             default="simple",
         )
+        self.default_vqa_backend = self.parse_string(
+            d,
+            "default_vqa_backend",
+            env_var="FIFTYONE_DEFAULT_VQA_BACKEND",
+            default="exact",
+        )
 
         self.regression_backends = self._parse_backends(d, "regression")
         if self.default_regression_backend not in self.regression_backends:
@@ -798,6 +812,12 @@ class EvaluationConfig(EnvConfig):
         if self.default_segmentation_backend not in self.segmentation_backends:
             self.default_segmentation_backend = next(
                 iter(sorted(self.segmentation_backends.keys())), None
+            )
+
+        self.vqa_backends = self._parse_backends(d, "vqa")
+        if self.default_vqa_backend not in self.vqa_backends:
+            self.default_vqa_backend = next(
+                iter(sorted(self.vqa_backends.keys())), None
             )
 
     def _parse_backends(self, d, type):
