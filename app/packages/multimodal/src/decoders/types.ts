@@ -134,6 +134,46 @@ export interface CameraCalibrationVisualization {
 }
 
 /**
+ * A geographic fix (GPS/GNSS) decoded from a location message. Angles are
+ * degrees (WGS84), altitude meters. `positionCovariance` is the row-major
+ * 3x3 ENU covariance when the source carries one.
+ */
+export interface LocationVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.LOCATION;
+  /**
+   * Per-message source coordinate frame of the reporting sensor.
+   */
+  readonly coordinateFrameId?: string;
+  readonly latitude: number;
+  readonly longitude: number;
+  readonly altitude?: number;
+  readonly positionCovariance?: readonly number[];
+  readonly timestampNs?: bigint;
+}
+
+/**
+ * A single pose sample from an ego/robot pose stream, normalized across
+ * source schemas (Foxglove PoseInFrame, JSON odometry exports). Position
+ * and orientation are expressed in `coordinateFrameId` when the source
+ * declares one; kinematics are optional and kept only when the source
+ * carries them (velocity/acceleration in the body frame for odometry-style
+ * streams).
+ */
+export interface PoseVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.POSE;
+  /**
+   * Per-message source coordinate frame the pose is expressed in.
+   */
+  readonly coordinateFrameId?: string;
+  readonly position: readonly [number, number, number];
+  readonly quaternion: readonly [number, number, number, number];
+  readonly velocity?: readonly [number, number, number];
+  readonly acceleration?: readonly [number, number, number];
+  readonly angularVelocity?: readonly [number, number, number];
+  readonly timestampNs?: bigint;
+}
+
+/**
  * 3D position and orientation normalized for FiftyOne scene rendering.
  */
 export interface ScenePose3D {
@@ -351,7 +391,9 @@ export type DecodedVisualization =
   | EncodedImageVisualization
   | GridVisualization
   | ImageAnnotationsVisualization
+  | LocationVisualization
   | PointCloudVisualization
+  | PoseVisualization
   | SceneUpdateVisualization;
 
 /**
