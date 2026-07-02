@@ -48,7 +48,7 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
   },
   readFrameTransformBootstrap: {
     kind: "unary",
-    priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME,
   },
   readFrameTransformWindow: {
     kind: "unary",
