@@ -11,6 +11,12 @@
         "github-actions",
         "npm"
     ],
+    "pip_requirements": {
+        "managerFilePatterns": [
+            "/(^|/)[\\w-]*requirements([-._]\\w+)?\\.(txt|pip)$/",
+            "/(^|/)requirements/[^/]+\\.(txt|pip)$/"
+        ]
+    },
     "ignoreDeps": [
         "pymongo",
         "motor",
