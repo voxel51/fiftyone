@@ -526,6 +526,14 @@ describe("PointCloudPanel", () => {
     expect(screen.getByText("1 camera")).toBeTruthy();
   });
 
+  it("renders telemetry hud lines even without scene layers", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    render(<PointCloudPanel hudLines={["6.5 m/s"]} layers={[]} />);
+
+    expect(screen.getByText("6.5 m/s")).toBeTruthy();
+  });
+
   it("passes controlled camera pose through to the base scene", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const onCameraPoseChange = vi.fn();

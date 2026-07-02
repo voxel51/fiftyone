@@ -13,7 +13,9 @@ import type {
   CameraCalibrationVisualization,
   EncodedImageVisualization,
   GridVisualization,
+  LocationVisualization,
   PointCloudVisualization,
+  PoseVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
 import { useSceneInventory, type SceneSource } from "../../../scene-inventory";
@@ -40,6 +42,14 @@ import {
   type Mcap3dTransformGapWarning,
 } from "./mcap-3d-layers";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
+import { useMcapPoseTrajectoriesContext } from "./mcap-pose-trajectories-context";
+import {
+  defaultTrajectoryFrame,
+  locationHudLine,
+  poseMarkerSceneUpdate,
+  speedHudLine,
+  trajectorySceneUpdate,
+} from "./pose-trajectory";
 import {
   isMcapLatencyDebugEnabled,
   markMcapLatencyEvent,
@@ -165,6 +175,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => renderableSources.filter(isCameraCalibrationSource),
     [renderableSources],
   );
+  const poseSources = useMemo(
+    () => renderableSources.filter(isPoseSource),
+    [renderableSources],
+  );
   const sceneAnnotationSources = useMemo(
     () => renderableSources.filter(isSceneAnnotationSource),
     [renderableSources],
@@ -267,6 +281,14 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => selectedCameraSources.map((s) => s.id),
     [selectedCameraSources],
   );
+  const selectedPoseSources = useMemo(
+    () => poseSources.filter((s) => enabled.has(s.id)),
+    [poseSources, enabled],
+  );
+  const poseTopics = useMemo(
+    () => selectedPoseSources.map((s) => s.id),
+    [selectedPoseSources],
+  );
   // Camera frames on frustum image planes: pair each calibration topic with
   // its camera's image stream (same prefix convention the image tile uses,
   // inverted) so the frustum can show what the camera currently sees.
@@ -300,9 +322,16 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       ...pointCloudTopics,
       ...mapLayerTopics,
       ...cameraTopics,
+      ...poseTopics,
       ...sceneAnnotationTopics,
     ],
-    [cameraTopics, mapLayerTopics, pointCloudTopics, sceneAnnotationTopics],
+    [
+      cameraTopics,
+      mapLayerTopics,
+      pointCloudTopics,
+      poseTopics,
+      sceneAnnotationTopics,
+    ],
   );
   const selectedTopicsKey = useMemo(
     () => selectedTopics.join("\0"),
@@ -317,6 +346,15 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     useMcapTopicPlaybackFrames<GridVisualization>(mapLayerTopics);
   const calibrationFrames =
     useMcapTopicPlaybackFrames<CameraCalibrationVisualization>(cameraTopics);
+  const poseFrames = useMcapTopicPlaybackFrames<PoseVisualization>(poseTopics);
+  // Location fixes are pure telemetry (no checkbox, no scene content): the
+  // first LocationFix stream in the inventory feeds the HUD readout.
+  const locationTopics = useMemo(() => {
+    const first = sources.find((s) => s.type === MCAP_SOURCE_TYPE.LOCATION);
+    return first ? [first.id] : [];
+  }, [sources]);
+  const locationFrames =
+    useMcapTopicPlaybackFrames<LocationVisualization>(locationTopics);
   const playbackTimeNs = useMcapPlaybackTimeNs();
   const frameIds = useMemo(
     () =>
@@ -386,6 +424,111 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => playbackFrameForTopic(pointCloudTopics, frames, provisionalTopicId),
     [frames, pointCloudTopics, provisionalTopicId],
   );
+  const trajectories = useMcapPoseTrajectoriesContext();
+  const [trajectoryFrameOverrides, setTrajectoryFrameOverrides] = useState<
+    Readonly<Record<string, string>>
+  >({});
+  // Keyed on frame-id CONTENT, not array identity: `frameIds` is re-derived
+  // every playback tick, and letting that identity churn reach the
+  // trajectory scene updates would rebuild (and dispose) the
+  // multi-thousand-point line geometry every frame.
+  const frameIdsKey = useMemo(() => frameIds.join("\0"), [frameIds]);
+  const defaultPoseFrame = useMemo(
+    () => defaultTrajectoryFrame(frameIdsKey.split("\0")),
+    [frameIdsKey],
+  );
+  // Effective render frame per pose topic: the stream's own frame wins;
+  // frameless streams (JSON odometry) fall back to a user override, then a
+  // global-frame name heuristic over the available frames.
+  const trajectoryFrameByTopic = useMemo(() => {
+    const framesByTopic = new Map<string, string>();
+    for (const topic of poseTopics) {
+      const streamFrameId = trajectories.get(topic)?.streamFrameId;
+      framesByTopic.set(
+        topic,
+        streamFrameId ?? trajectoryFrameOverrides[topic] ?? defaultPoseFrame,
+      );
+    }
+    return framesByTopic;
+  }, [defaultPoseFrame, poseTopics, trajectories, trajectoryFrameOverrides]);
+  // Trajectory lines as synthetic frame-locked SceneUpdates that ride the
+  // existing annotation layer path. The visualization identity is stable per
+  // (topic, fetched trajectory, frame) so per-tick envelope rebuilds never
+  // regenerate the multi-thousand-point line geometry.
+  const trajectorySceneUpdates = useMemo(() => {
+    const updates: { topic: string; update: SceneUpdateVisualization }[] = [];
+    for (const topic of poseTopics) {
+      const trajectory = trajectories.get(topic);
+      if (trajectory?.status !== "ready" || trajectory.points.length < 2) {
+        continue;
+      }
+      updates.push({
+        topic,
+        update: trajectorySceneUpdate({
+          frameId: trajectoryFrameByTopic.get(topic) ?? "",
+          points: trajectory.points,
+          topic,
+        }),
+      });
+    }
+    return updates;
+  }, [poseTopics, trajectories, trajectoryFrameByTopic]);
+  const syntheticPoseAnnotations = useMemo(() => {
+    const topics: string[] = [];
+    const playbackFrames: McapTopicPlaybackFrame<SceneUpdateVisualization>[] =
+      [];
+    if (playbackTimeNs === undefined) {
+      return { playbackFrames, topics };
+    }
+
+    for (const { topic, update } of trajectorySceneUpdates) {
+      topics.push(`${topic}#trajectory`);
+      playbackFrames.push({
+        ageNs: 0n,
+        contentTimeNs: playbackTimeNs,
+        frame: update,
+        requestedTimeNs: playbackTimeNs,
+      });
+    }
+    // Current-pose markers rebuild per pose frame — a single small sphere,
+    // deliberately separate from the trajectory line updates.
+    poseTopics.forEach((topic, index) => {
+      const poseFrame = poseFrames[index];
+      if (!poseFrame) {
+        return;
+      }
+      topics.push(`${topic}#pose`);
+      playbackFrames.push({
+        ageNs: poseFrame.ageNs,
+        contentTimeNs: poseFrame.contentTimeNs,
+        frame: poseMarkerSceneUpdate({
+          frameId:
+            poseFrame.frame.coordinateFrameId ??
+            trajectoryFrameByTopic.get(topic) ??
+            "",
+          pose: poseFrame.frame,
+          topic,
+        }),
+        requestedTimeNs: poseFrame.requestedTimeNs,
+      });
+    });
+
+    return { playbackFrames, topics };
+  }, [
+    playbackTimeNs,
+    poseFrames,
+    poseTopics,
+    trajectoryFrameByTopic,
+    trajectorySceneUpdates,
+  ]);
+  const combinedAnnotationTopics = useMemo(
+    () => [...sceneAnnotationTopics, ...syntheticPoseAnnotations.topics],
+    [sceneAnnotationTopics, syntheticPoseAnnotations.topics],
+  );
+  const combinedAnnotationFrames = useMemo(
+    () => [...annotationFrames, ...syntheticPoseAnnotations.playbackFrames],
+    [annotationFrames, syntheticPoseAnnotations.playbackFrames],
+  );
   const {
     cameraFrustumLayers,
     clampedFrameIds,
@@ -401,7 +544,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     unresolvedFrameIds,
   } = useMemo(() => {
     return build3dLayers({
-      annotationFrames,
+      annotationFrames: combinedAnnotationFrames,
       calibrationFrames,
       frameTransforms,
       frames,
@@ -410,23 +553,23 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         temporalPolicy.transformGapWarningMs,
       ),
       provisionalTopicId,
-      selectedAnnotationTopics: sceneAnnotationTopics,
+      selectedAnnotationTopics: combinedAnnotationTopics,
       selectedCalibrationTopics: cameraTopics,
       selectedGridTopics: mapLayerTopics,
       selectedTopics: pointCloudTopics,
       worldFrameId,
     });
   }, [
-    annotationFrames,
     calibrationFrames,
     cameraTopics,
+    combinedAnnotationFrames,
+    combinedAnnotationTopics,
     frameTransforms,
     frames,
     gridFrames,
     mapLayerTopics,
     pointCloudTopics,
     provisionalTopicId,
-    sceneAnnotationTopics,
     temporalPolicy.transformGapWarningMs,
     worldFrameId,
   ]);
@@ -448,6 +591,24 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       }),
     [cameraFrustumLayers, cameraTopics, frustumImageFrames],
   );
+  // Schema-driven telemetry: speed from the first enabled pose stream whose
+  // latest sample carries velocity, coordinates from the first LocationFix
+  // stream — never keyed on topic names.
+  const hudLines = useMemo(() => {
+    const lines: string[] = [];
+    for (const poseFrame of poseFrames) {
+      const line = speedHudLine(poseFrame?.frame.velocity);
+      if (line) {
+        lines.push(line);
+        break;
+      }
+    }
+    const location = locationHudLine(locationFrames[0]?.frame);
+    if (location) {
+      lines.push(location);
+    }
+    return lines;
+  }, [locationFrames, poseFrames]);
   const placementStatus = useMemo<Mcap3dPlacementStatus>(
     () =>
       provisionalFrameIds.length > 0
@@ -1065,6 +1226,57 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
 
           <div className={settingsStyles.field}>
             <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              Ego Pose
+            </Text>
+            {poseSources.length > 0 ? (
+              <>
+                <div className={settingsStyles.metaText}>
+                  {poseTopics.length.toLocaleString()} of{" "}
+                  {poseSources.length.toLocaleString()} selected
+                </div>
+                <div className={settingsStyles.optionStack}>
+                  {poseSources.map((s) => (
+                    <Checkbox
+                      key={s.id}
+                      label={labelWithCount(s.label, s.recordCount)}
+                      checked={enabled.has(s.id)}
+                      onChange={(checked) => toggleSource(s.id, checked)}
+                      {...checkboxNoSpaceToggleProps}
+                    />
+                  ))}
+                </div>
+                {selectedPoseSources
+                  .filter(
+                    (s) =>
+                      trajectories.get(s.id)?.status === "ready" &&
+                      !trajectories.get(s.id)?.streamFrameId,
+                  )
+                  .map((s) => (
+                    <FrameSelect
+                      disabled={frameIds.length === 0}
+                      key={s.id}
+                      label={`Trajectory Frame (${s.label})`}
+                      onChange={(frameId) =>
+                        setTrajectoryFrameOverrides((current) => ({
+                          ...current,
+                          [s.id]: frameId,
+                        }))
+                      }
+                      options={frameIds}
+                      tooltip="This pose stream declares no coordinate frame; choose the frame its positions are expressed in."
+                      value={trajectoryFrameByTopic.get(s.id) ?? ""}
+                    />
+                  ))}
+              </>
+            ) : (
+              <span className={settingsStyles.emptyText}>
+                No pose topics available
+              </span>
+            )}
+          </div>
+
+          <div className={settingsStyles.field}>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
               3D Labels
             </Text>
             {sceneAnnotationSources.length > 0 ? (
@@ -1129,6 +1341,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             annotationLayers={sceneAnnotationLayers}
             cameraPose={panelCameraPose}
             frustumLayers={frustumLayers}
+            hudLines={hudLines}
             gridLayers={gridLayers}
             layers={pointCloudLayers}
             className={styles.panel}
@@ -1246,7 +1459,8 @@ function is3dRenderableSource(source: SceneSource): boolean {
     isPointCloudSource(source) ||
     isSceneAnnotationSource(source) ||
     isMapLayerSource(source) ||
-    isCameraCalibrationSource(source)
+    isCameraCalibrationSource(source) ||
+    isPoseSource(source)
   );
 }
 
@@ -1264,6 +1478,10 @@ function isMapLayerSource(source: SceneSource): boolean {
 
 function isCameraCalibrationSource(source: SceneSource): boolean {
   return source.type === MCAP_SOURCE_TYPE.CAMERA_CALIBRATION;
+}
+
+function isPoseSource(source: SceneSource): boolean {
+  return source.type === MCAP_SOURCE_TYPE.POSE;
 }
 
 function sortPointCloudSourcesForInitialPaint(
