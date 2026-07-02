@@ -100,8 +100,9 @@ const SCENE_LINE_OPACITY = 0.95;
 const SCENE_MODEL_FALLBACK_SIZE = 1;
 // Camera frustum wireframes: fixed apex-to-image-plane depth in meters.
 // Purely presentational — the value is not data, which is also why
-// frustums never participate in camera-fit bounds.
-const CAMERA_FRUSTUM_DEPTH_M = 1;
+// frustums never participate in camera-fit bounds. Sized so the image
+// planes read at vehicle scale next to LiDAR returns.
+const CAMERA_FRUSTUM_DEPTH_M = 2.5;
 const CAMERA_FRUSTUM_COLOR = 0xffaa33;
 const CAMERA_FRUSTUM_OPACITY = 0.85;
 const SCENE_TEXT_FONT_FAMILY = "Inter, system-ui, sans-serif";
