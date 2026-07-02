@@ -54,3 +54,16 @@ jobs:
         run: |
           cd app
           yarn check
+
+      # Error-count ratchet: fails if TypeScript errors or ESLint warnings exceed
+      # the committed ceilings in app/error-baseline.json (`yarn baseline:update`).
+      # NOTE: if the typecheck flags missing __generated__ modules, uncomment the
+      # Compile Relay step so counts match a normal dev typecheck.
+      # - name: Compile Relay
+      #   run: |
+      #     cd app
+      #     yarn compile
+      - name: Error-count ratchet
+        run: |
+          cd app
+          yarn check:baselines
