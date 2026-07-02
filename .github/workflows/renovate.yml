@@ -22,39 +22,20 @@ concurrency:
 
 permissions:
   contents: read
-  # OIDC for the google-github-actions/auth step
-  id-token: write
 
 jobs:
   renovate:
-    # RENOVATE_REPOSITORIES below scopes each run to whichever repo it's
-    # executing in — the OSS repo or its synced Enterprise copy.
+    # Scheduled runs belong to this repo only, not forks or downstream copies
+    if: github.repository == 'voxel51/fiftyone'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Authenticate to Google Artifact Registry
-        id: gar
-        if: github.repository == 'voxel51/fiftyone-teams'
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
-          token_format: access_token
       - uses: renovatebot/github-action@v46.1.15
         with:
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
-          # Each repo keeps its own config: OSS uses renovate.json; the Enterprise
-          # copy uses renovate-foe.json (the synced renovate.json is inert there).
-          configurationFile: ${{ github.repository == 'voxel51/fiftyone-teams' && 'renovate-foe.json' || 'renovate.json' }}
+          configurationFile: renovate.json
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           LOG_LEVEL: ${{ inputs.logLevel || 'info' }}
-          # Auth for the private Artifact Registry index (empty/no-op in OSS).
-          # The token rides in RENOVATE_SECRETS, which Renovate redacts from
-          # its logs, rather than inline in the host rule.
-          RENOVATE_SECRETS: >-
-            {"GAR_TOKEN":"${{ steps.gar.outputs.access_token }}"}
-          RENOVATE_HOST_RULES: >-
-            [{"matchHost":"us-central1-python.pkg.dev","hostType":"pypi","username":"oauth2accesstoken","password":"{{ secrets.GAR_TOKEN }}"}]
