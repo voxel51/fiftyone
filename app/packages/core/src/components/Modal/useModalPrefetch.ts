@@ -230,12 +230,25 @@ export default function useModalPrefetch() {
         }
 
         const groupSlice = snapshot.getLoadable(fos.groupSlice).getValue();
+        const sliceSelect = snapshot
+          .getLoadable(fos.modalGroupSlice)
+          .getValue();
+
+        // Mirror modalSample's variables guard: without a resolved slice
+        // selection the query variables would be invalid (`slices: [null]`).
+        // Unreachable while grouped navigation lacks `peek`; kept in lockstep
+        // for when it gains it.
+        const hasSlices = snapshot.getLoadable(fos.hasGroupSlices).getValue();
+        if (hasSlices && (!groupSlice || !sliceSelect)) {
+          return;
+        }
+
         const variables = fos.buildModalSampleVariables({
           dataset: snapshot.getLoadable(fos.datasetName).getValue(),
           view: snapshot.getLoadable(fos.view).getValue(),
           id,
           slice: groupSlice || null,
-          sliceSelect: snapshot.getLoadable(fos.modalGroupSlice).getValue(),
+          sliceSelect,
           groupId: groupSlice ? (selector.groupId ?? null) : null,
         });
         const field = snapshot
@@ -288,7 +301,19 @@ export default function useModalPrefetch() {
   // Re-warm the window whenever the current sample (or a variable input)
   // changes.
   useEffect(() => {
+    // In the states below there is nothing to prefetch (modal closed,
+    // navigation without peek support, prefetch disabled by connection
+    // hints) — release anything already warmed rather than just bailing, so
+    // retained queries and decoded bitmaps don't outlive their usefulness.
+    const flush = () => {
+      for (const entry of warmed.current.values()) {
+        entry.release();
+      }
+      warmed.current.clear();
+    };
+
     if (!current?.id) {
+      flush();
       return;
     }
     const currentId = current.id;
@@ -296,11 +321,13 @@ export default function useModalPrefetch() {
     const navigation = fos.modalNavigation.get();
     const peek = navigation?.peek;
     if (!peek) {
+      flush();
       return;
     }
 
     const { lookahead, lookbehind } = resolveWindow(getConnectionHints());
     if (lookahead === 0 && lookbehind === 0) {
+      flush();
       return;
     }
 
@@ -314,39 +341,44 @@ export default function useModalPrefetch() {
 
     let cancelled = false;
 
-    Promise.all(offsets.map((offset) => peek(offset).catch(() => null)))
-      .then((selectors) => {
-        if (cancelled) {
-          return;
-        }
+    (async () => {
+      // Peek sequentially — the peeks share the spotlight cursor, and soft
+      // reads are not guaranteed safe to interleave.
+      const selectors: (fos.ModalSelector | null)[] = [];
+      for (const offset of offsets) {
+        selectors.push(await peek(offset).catch(() => null));
+      }
 
-        const byId = new Map<string, fos.ModalSelector>();
-        for (const selector of selectors) {
-          if (selector?.id) {
-            byId.set(selector.id, selector);
-          }
-        }
+      if (cancelled) {
+        return;
+      }
 
-        const { toWarm, toEvict } = reconcileWindow({
-          currentId,
-          generation,
-          neighborIds: [...byId.keys()],
-          existingKeys: warmed.current.keys(),
-        });
-
-        for (const { id, key } of toWarm) {
-          const selector = byId.get(id);
-          if (selector) {
-            warm(environment, key, selector);
-          }
+      const byId = new Map<string, fos.ModalSelector>();
+      for (const selector of selectors) {
+        if (selector?.id) {
+          byId.set(selector.id, selector);
         }
+      }
 
-        for (const key of toEvict) {
-          warmed.current.get(key)?.release();
-          warmed.current.delete(key);
+      const { toWarm, toEvict } = reconcileWindow({
+        currentId,
+        generation,
+        neighborIds: [...byId.keys()],
+        existingKeys: warmed.current.keys(),
+      });
+
+      for (const { id, key } of toWarm) {
+        const selector = byId.get(id);
+        if (selector) {
+          warm(environment, key, selector);
         }
-      })
-      .catch((error) => console.warn("Failed to prefetch neighbors", error));
+      }
+
+      for (const key of toEvict) {
+        warmed.current.get(key)?.release();
+        warmed.current.delete(key);
+      }
+    })().catch((error) => console.warn("Failed to prefetch neighbors", error));
 
     return () => {
       cancelled = true;
