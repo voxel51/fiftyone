@@ -183,6 +183,15 @@ export class McapPlaybackWorkerTransport {
   }
 
   /**
+   * True when no unary request or stream is in flight. Lanes that exist for
+   * one-shot work (bulk history) use this to release their worker once the
+   * queue drains.
+   */
+  isIdle(): boolean {
+    return this.pending.size === 0 && this.streams.size === 0;
+  }
+
+  /**
    * Rejects all pending work, keeping buffered stream values available first.
    */
   rejectAll(reason: string) {

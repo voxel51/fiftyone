@@ -476,6 +476,59 @@ describe("worker-backed MCAP resource client", () => {
     });
   });
 
+  it("releases the bulk worker once its queue drains", async () => {
+    const { client, workers } = createClientHarness();
+    const stream = client.readDecodedMessages(
+      {
+        source: createSource("source:1"),
+        topics: ["/odom"],
+      },
+      { priority: "bulk" },
+    );
+    const first = stream.next();
+    const worker = workers[0];
+
+    worker.respond({
+      done: true,
+      id: 1,
+      ok: true,
+      stream: true,
+    });
+    await expect(first).resolves.toEqual({ done: true, value: undefined });
+
+    // Bulk work is one-shot: the drained lane's worker (and its caches) go
+    // away instead of lingering for the rest of the session.
+    expect(worker.messages.at(-1)).toMatchObject({ type: "dispose" });
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
+
+    // The next bulk read lazily recreates the lane's worker.
+    const next = client.readDecodedMessages(
+      {
+        source: createSource("source:1"),
+        topics: ["/pose"],
+      },
+      { priority: "bulk" },
+    );
+    const nextFirst = next.next();
+    const recreated = workers.at(-1);
+    expect(recreated).not.toBe(worker);
+    expect(recreated?.messages[0]).toMatchObject({
+      payload: { lane: "bulk" },
+      type: "init",
+    });
+    const nextRequest = recreated?.messages[1];
+    if (nextRequest?.type !== "readDecodedMessages") {
+      throw new Error("Expected a decoded-message request on the new worker");
+    }
+    recreated?.respond({
+      done: true,
+      id: nextRequest.id,
+      ok: true,
+      stream: true,
+    });
+    await expect(nextFirst).resolves.toEqual({ done: true, value: undefined });
+  });
+
   it("resets the worker on source changes and ignores stale responses", async () => {
     const { client, workers } = createClientHarness();
     const first = client.readTimelineRange(createTimelineRequest("source:1"));

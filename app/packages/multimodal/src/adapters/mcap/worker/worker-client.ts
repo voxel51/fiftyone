@@ -281,13 +281,17 @@ class WorkerMcapResourceClient implements McapResourceClient {
     const sourceKey = byteSourceAccessKey(payload.source);
     this.ensureActiveSource(sourceKey);
     const lane = this.laneForPriority(effectivePriority);
-    yield* lane.transport.stream(
-      this.workerForLane(lane, sourceKey),
-      sourceKey,
-      type,
-      payload,
-      effectivePriority,
-    );
+    try {
+      yield* lane.transport.stream(
+        this.workerForLane(lane, sourceKey),
+        sourceKey,
+        type,
+        payload,
+        effectivePriority,
+      );
+    } finally {
+      this.maybeReleaseBulkLane(lane);
+    }
   }
 
   private ensureActiveSource(sourceKey: string) {
@@ -374,6 +378,17 @@ class WorkerMcapResourceClient implements McapResourceClient {
     this.resetLane(this.foregroundLane, reason);
     this.resetLane(this.idleLane, reason);
     this.resetLane(this.bulkLane, reason);
+  }
+
+  // Bulk work is one-shot per file: once the lane's queue drains, its worker
+  // exists only to hold reader and decompress caches nobody will read again.
+  // Release it; the next bulk request lazily recreates the worker.
+  private maybeReleaseBulkLane(lane: WorkerLane) {
+    if (lane !== this.bulkLane || !lane.worker || !lane.transport.isIdle()) {
+      return;
+    }
+
+    this.resetLane(lane, "MCAP bulk lane drained");
   }
 
   private resetLane(lane: WorkerLane, reason: string) {
