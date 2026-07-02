@@ -1,4 +1,5 @@
 import type { McapTypes } from "@mcap/core";
+import { mcapReadCancelledError } from "../errors";
 import type { Type } from "protobufjs";
 import { Quaternion, Vector3 } from "three";
 import { decodeProtobufMessage } from "../decoders/foxglove/protobuf";
@@ -233,10 +234,12 @@ function isStaticTransformBootstrapTopic(topic: string): boolean {
  */
 export async function readMcapFrameTransformWindow({
   reader,
+  readSignal,
   request,
   timeline,
 }: {
   readonly reader: McapIndexedReaderLike;
+  readonly readSignal?: { readonly current: AbortSignal | null };
   readonly request: McapReadFrameTransformWindowRequest;
   readonly timeline: McapTimelineStrategy;
 }): Promise<McapFrameTransformSet> {
@@ -269,6 +272,9 @@ export async function readMcapFrameTransformWindow({
     startTime,
     topics: transformTopics,
   })) {
+    if (readSignal?.current?.aborted) {
+      throw mcapReadCancelledError();
+    }
     const entry = channelsById.get(message.channelId);
     if (!entry) {
       continue;

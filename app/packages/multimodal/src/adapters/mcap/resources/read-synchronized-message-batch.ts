@@ -9,6 +9,7 @@ import {
   minBigInt,
   selectCandidatesForTopic,
 } from "../sync";
+import { mcapReadCancelledError } from "../errors";
 import { decodeMcapMessage, mcapMessageRecordId } from "../message-decoder";
 import type { McapIndexedMessageTime, McapIndexedReaderLike } from "../reader";
 import type { McapTimelineStrategy } from "../timeline";
@@ -49,12 +50,14 @@ export async function readMcapSynchronizedMessageBatch({
   decodeClient,
   predecessorStore,
   reader,
+  readSignal,
   request,
   timeline,
 }: {
   readonly decodeClient: DecodeClient;
   readonly predecessorStore?: McapPredecessorStore;
   readonly reader: McapIndexedReaderLike;
+  readonly readSignal?: { readonly current: AbortSignal | null };
   readonly request: McapReadSynchronizedMessageBatchRequest;
   readonly timeline: McapTimelineStrategy;
 }): Promise<readonly McapSynchronizedMessageWindow[]> {
@@ -114,6 +117,14 @@ export async function readMcapSynchronizedMessageBatch({
 
     return decodeWindowsFromCandidates({
       candidates: indexedCandidates,
+      // Decode dominates warm batches, and a worker lane is serial: without
+      // decode-boundary aborts a cancelled batch would keep the lane busy
+      // for seconds before the next sample's reads run.
+      throwIfAborted: () => {
+        if (readSignal?.current?.aborted) {
+          throw mcapReadCancelledError();
+        }
+      },
       decodeCandidate: (candidate) =>
         decodeIndexedCandidate({
           candidate,
@@ -383,6 +394,7 @@ async function decodeWindowsFromCandidates<
   decodeCandidate,
   onCandidatesSelected,
   selectTieBreaker,
+  throwIfAborted,
   timeline,
   topics,
   windowBounds,
@@ -393,6 +405,7 @@ async function decodeWindowsFromCandidates<
   ) => Promise<McapDecodedMessage>;
   readonly onCandidatesSelected?: (selected: readonly Candidate[]) => void;
   readonly selectTieBreaker: (left: Candidate, right: Candidate) => number;
+  readonly throwIfAborted?: () => void;
   readonly timeline: McapTimelineStrategy;
   readonly topics: readonly string[];
   readonly windowBounds: readonly {
@@ -444,6 +457,7 @@ async function decodeWindowsFromCandidates<
       const messages: McapDecodedMessage[] = [];
 
       for (const [topic, selected] of selectedByTopic) {
+        throwIfAborted?.();
         const decoded = await Promise.all(selected.map(decodeCandidate));
         messagesByTopic[topic] = decoded;
         messages.push(...decoded);
