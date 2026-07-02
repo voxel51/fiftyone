@@ -35,6 +35,21 @@ const traceLabel = args["trace-label"] ?? null;
 // Idle time between transitions — long enough dwells let idle-priority
 // work (adjacent-sample prewarm) fire before the next hop measures it.
 const dwellMs = Number(args["dwell"] ?? 0);
+// Take a full heap snapshot after the teardown GC (implies --force-gc) so
+// retainer paths to leaked buffers can be walked offline. Written to
+// runs/heap-<trace-label>.heapsnapshot; expect hundreds of MB.
+const heapSnapshot = Boolean(args["heap-snapshot"]);
+// Force a full GC after each transition before sampling the heap, so the
+// heap column separates real per-navigation retention from lazy GC.
+const forceGc = Boolean(args["force-gc"]) || heapSnapshot;
+// Track live allocations across the run with the V8 sampling heap
+// profiler; the surviving samples' stacks attribute per-navigation
+// retention. Written to runs/heap-sampling-<trace-label>.json.
+const heapSampling = Boolean(args["heap-sampling"]);
+// Sample each live worker's own JS heap after every transition —
+// page-level usedJSHeapSize lumps all same-process isolates together, so
+// worker attribution needs per-worker sampling.
+const workerHeap = Boolean(args["worker-heap"]);
 
 const { chromium } = resolvePlaywright();
 
@@ -43,6 +58,8 @@ const context = await browser.newContext({
   viewport: { height: 1080, width: 1860 },
 });
 const page = await context.newPage();
+const cdp =
+  forceGc || heapSampling ? await context.newCDPSession(page) : null;
 
 // Worker attribution and scheduler rows are console-logged continuously,
 // across latency-session resets — the only capture that survives a hop's
@@ -133,6 +150,12 @@ for (let attempt = 0; attempt < 3; attempt += 1) {
 }
 await page.waitForSelector("[data-cy=fo-grid]", { timeout: 120_000 });
 
+if (heapSampling && cdp) {
+  // 32 KiB sampling interval: fine enough to catch MB-scale retainers,
+  // cheap enough to leave hop timings representative.
+  await cdp.send("HeapProfiler.startSampling", { samplingInterval: 32768 });
+}
+
 // Custom-renderer grid tiles reveal their open-modal button on hover. Tiles
 // hydrate asynchronously, so keep sweeping plausible tile centers until a
 // hover actually reveals the button.
@@ -187,15 +210,19 @@ rows.push(
   await transition("grid->modal (open #0)", () => openTileFromGrid(0)),
 );
 
-// In-modal hops.
+// In-modal hops. Alternating bounces between the same two samples, which
+// isolates per-hop retention from per-new-source cache growth (no new
+// sources are read and the grid never paginates).
+const alternate = Boolean(args["alternate"]);
 for (let hop = 1; hop <= hops; hop += 1) {
   if (dwellMs > 0) {
     await page.waitForTimeout(dwellMs);
   }
+  const key = alternate && hop % 2 === 0 ? "ArrowLeft" : "ArrowRight";
   rows.push(
-    await transition(`modal next (hop ${hop})`, async () => {
+    await transition(`modal ${key === "ArrowRight" ? "next" : "prev"} (hop ${hop})`, async () => {
       await requireModal();
-      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press(key);
     }),
   );
 }
@@ -212,6 +239,62 @@ rows.push(
 );
 
 printReport(rows);
+if (forceGc && cdp) {
+  // Teardown check: dismiss the modal, outlive the shared-client linger,
+  // and see how much of the run's retention a full unmount releases —
+  // splitting modal-lifetime retainers from page-global ones.
+  console.log("[nav-probe] teardown: dismissing modal and waiting out linger");
+  await page.mouse.click(0, 0);
+  await page
+    .waitForSelector("[data-cy=modal]", { state: "detached", timeout: 15_000 })
+    .catch(() => undefined);
+  await page.waitForTimeout(35_000);
+  await cdp.send("HeapProfiler.collectGarbage");
+  await page.waitForTimeout(500);
+  await cdp.send("HeapProfiler.collectGarbage");
+  const usage = await cdp.send("Runtime.getHeapUsage").catch(() => null);
+  const heapBytes = await page.evaluate(
+    () => performance.memory?.usedJSHeapSize ?? 0,
+  );
+  console.log(
+    `[nav-probe] after teardown: page heap ${(heapBytes / 1048576).toFixed(0)} MB` +
+      (usage
+        ? ` | main isolate ${(usage.usedSize / 1048576).toFixed(0)} MB | backing stores ${((usage.backingStorageSize ?? 0) / 1048576).toFixed(0)} MB`
+        : ""),
+  );
+
+  if (heapSnapshot) {
+    const snapshotPath = path.join(
+      __dirname,
+      "runs",
+      `heap-${traceLabel ?? "run"}.heapsnapshot`,
+    );
+    fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
+    const stream = fs.createWriteStream(snapshotPath);
+    cdp.on("HeapProfiler.addHeapSnapshotChunk", (event) => {
+      stream.write(event.chunk);
+    });
+    console.log("[nav-probe] taking heap snapshot (this can take a minute)");
+    await cdp.send("HeapProfiler.takeHeapSnapshot", { reportProgress: false });
+    await new Promise((resolve) => stream.end(resolve));
+    console.log(`[nav-probe] heap snapshot written to ${snapshotPath}`);
+  }
+}
+if (heapSampling && cdp) {
+  // A final full GC drops the samples that were merely awaiting
+  // collection; what remains is genuinely retained.
+  await cdp.send("HeapProfiler.collectGarbage");
+  await page.waitForTimeout(300);
+  const { profile } = await cdp.send("HeapProfiler.stopSampling");
+  const samplingPath = path.join(
+    __dirname,
+    "runs",
+    `heap-sampling-${traceLabel ?? "run"}.json`,
+  );
+  fs.mkdirSync(path.dirname(samplingPath), { recursive: true });
+  fs.writeFileSync(samplingPath, JSON.stringify(profile));
+  console.log(`[nav-probe] heap sampling profile written to ${samplingPath}`);
+}
 if (traceLabel) {
   // Late console-detail jsonValue resolutions settle before serialization.
   await page.waitForTimeout(500);
@@ -350,11 +433,51 @@ async function runTransition(label, act) {
     await page.waitForTimeout(200);
   }
 
+  if (forceGc && cdp) {
+    await cdp.send("HeapProfiler.collectGarbage");
+    await page.waitForTimeout(300);
+    await cdp.send("HeapProfiler.collectGarbage");
+    // Main-isolate usage next to the page-wide metric splits growth
+    // between the page's own heap and worker isolates/external buffers.
+    const usage = await cdp.send("Runtime.getHeapUsage").catch(() => null);
+    if (usage) {
+      console.log(
+        `[nav-probe]   main isolate ${(usage.usedSize / 1048576).toFixed(0)} MB used` +
+          (usage.embedderHeapUsedSize !== undefined
+            ? ` | embedder ${(usage.embedderHeapUsedSize / 1048576).toFixed(0)} MB`
+            : "") +
+          (usage.backingStorageSize !== undefined
+            ? ` | backing stores ${(usage.backingStorageSize / 1048576).toFixed(0)} MB`
+            : ""),
+      );
+    }
+  }
+
   const after = await page.evaluate(() => ({
     canvases: document.querySelectorAll("canvas").length,
     heapBytes: performance.memory?.usedJSHeapSize ?? null,
     longTasks: window.__longTasks,
   }));
+
+  if (workerHeap) {
+    const perWorker = await Promise.all(
+      [...liveWorkers].map(async (worker) => {
+        const bytes = await worker
+          .evaluate(() => globalThis.performance?.memory?.usedJSHeapSize ?? 0)
+          .catch(() => 0);
+        return { bytes, url: worker.url().split("/").slice(-1)[0] };
+      }),
+    );
+    perWorker.sort((left, right) => right.bytes - left.bytes);
+    const totalMb = perWorker.reduce((sum, w) => sum + w.bytes, 0) / 1048576;
+    console.log(
+      `[nav-probe]   worker heaps ${totalMb.toFixed(0)} MB total | top: ` +
+        perWorker
+          .slice(0, 5)
+          .map((w) => `${w.url.slice(0, 40)}=${(w.bytes / 1048576).toFixed(0)}MB`)
+          .join(" "),
+    );
+  }
 
   if (traceLabel) {
     const timeline = await page.evaluate(() => {
