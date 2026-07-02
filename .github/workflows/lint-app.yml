@@ -64,6 +64,10 @@ jobs:
       #     cd app
       #     yarn compile
       - name: Error-count ratchet
+        # OSS-only: the Enterprise repo has different code and therefore
+        # different counts — it needs its own seeded error-baseline.json
+        # before enabling this there.
+        if: github.repository == 'voxel51/fiftyone'
         run: |
           cd app
           yarn check:baselines
