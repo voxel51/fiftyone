@@ -4,6 +4,7 @@
     "baseBranches": ["develop"],
     "gitAuthor": "voxel51-bot <bot@voxel51.com>",
     "rangeStrategy": "widen",
+    "schedule": ["* * * * 3"],
     "labels": ["dependencies"],
     "enabledManagers": [
         "pip_requirements",

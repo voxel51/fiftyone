@@ -6,7 +6,9 @@ name: Renovate
 
 on:
   schedule:
-    - cron: "0 14 * * 3"
+    # Daily so security PRs (which bypass the in-config `schedule`) land
+    # promptly; routine updates are gated to Wednesday in renovate.json.
+    - cron: "0 14 * * *"
   workflow_dispatch:
     inputs:
       logLevel:
