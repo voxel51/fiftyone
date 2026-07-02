@@ -3488,6 +3488,39 @@
             "date_added": "2024-01-17 14:25:51"
         },
         {
+            "base_name": "universal-segmentation-transformer-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers model for universal segmentation (instance, panoptic, or semantic)",
+            "source": "https://huggingface.co/docs/transformers/en/model_doc/mask2former",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {}
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "panoptic",
+                "segmentation",
+                "torch",
+                "transformers",
+                "official"
+            ],
+            "training_data": [],
+            "date_added": "2025-06-29 00:00:00"
+        },
+        {
             "base_name": "depth-estimation-transformer-torch",
             "base_filename": null,
             "version": null,
@@ -4207,6 +4240,342 @@
                 { "name": "Cap4M", "url": "https://arxiv.org/abs/2112.03857" }
             ],
             "date_added": "2026-06-26 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-tiny-coco-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-T backbone for instance segmentation on COCO, returning per-instance binary masks",
+            "source": "https://huggingface.co/facebook/mask2former-swin-tiny-coco-instance",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 190840832,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-tiny-coco-instance",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-small-coco-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-S backbone for instance segmentation on COCO, returning per-instance binary masks",
+            "source": "https://huggingface.co/facebook/mask2former-swin-small-coco-instance",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 275775488,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-small-coco-instance",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-base-coco-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-B backbone for instance segmentation on COCO, returning per-instance binary masks",
+            "source": "https://huggingface.co/facebook/mask2former-swin-base-coco-instance",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 432013312,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-base-coco-instance",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-large-coco-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-L backbone for instance segmentation on COCO, returning per-instance binary masks",
+            "source": "https://huggingface.co/facebook/mask2former-swin-large-coco-instance",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 867172352,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-large-coco-instance",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-tiny-coco-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-T backbone for panoptic segmentation on COCO, unifying things and stuff into a single segmentation",
+            "source": "https://huggingface.co/facebook/mask2former-swin-tiny-coco-panoptic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 190840832,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-tiny-coco-panoptic",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["panoptic", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-small-coco-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-S backbone for panoptic segmentation on COCO, unifying things and stuff into a single segmentation",
+            "source": "https://huggingface.co/facebook/mask2former-swin-small-coco-panoptic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 275775488,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-small-coco-panoptic",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["panoptic", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-base-coco-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-B backbone for panoptic segmentation on COCO, unifying things and stuff into a single segmentation",
+            "source": "https://huggingface.co/facebook/mask2former-swin-base-coco-panoptic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 432013312,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-base-coco-panoptic",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["panoptic", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-large-coco-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-L backbone for panoptic segmentation on COCO, unifying things and stuff into a single segmentation",
+            "source": "https://huggingface.co/facebook/mask2former-swin-large-coco-panoptic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 1825361101,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-large-coco-panoptic",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["panoptic", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-tiny-ade-semantic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-T backbone for semantic segmentation on ADE20K (150 classes)",
+            "source": "https://huggingface.co/facebook/mask2former-swin-tiny-ade-semantic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 380633088,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-tiny-ade-semantic",
+                    "task": "semantic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["segmentation", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"
+                }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-small-ade-semantic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-S backbone for semantic segmentation on ADE20K (150 classes)",
+            "source": "https://huggingface.co/facebook/mask2former-swin-small-ade-semantic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 275775488,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-small-ade-semantic",
+                    "task": "semantic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["segmentation", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"
+                }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-base-ade-semantic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-B backbone for semantic segmentation on ADE20K (150 classes)",
+            "source": "https://huggingface.co/facebook/mask2former-swin-base-ade-semantic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 432013312,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-base-ade-semantic",
+                    "task": "semantic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["segmentation", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"
+                }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-large-ade-semantic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-L backbone for semantic segmentation on ADE20K (150 classes)",
+            "source": "https://huggingface.co/facebook/mask2former-swin-large-ade-semantic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 867172352,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-large-ade-semantic",
+                    "task": "semantic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["segmentation", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"
+                }
+            ],
+            "date_added": "2026-06-29 00:00:00"
         },
         {
             "base_name": "clip-vit-base32-torch",
