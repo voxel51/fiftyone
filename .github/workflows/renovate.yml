@@ -20,6 +20,8 @@ concurrency:
 
 permissions:
   contents: read
+  # OIDC for the google-github-actions/auth step
+  id-token: write
 
 jobs:
   renovate:
