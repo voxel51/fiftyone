@@ -8384,11 +8384,11 @@ class DatasetFactoryTests(unittest.TestCase):
 
     @drop_datasets
     def test_from_videos(self):
-        filepaths = ["image.jpg"]
+        filepaths = ["video.mp4"]
         dataset = fo.Dataset.from_videos(filepaths)
 
         self.assertEqual(len(dataset), 1)
-        self.assertEqual(dataset.media_type, fom.IMAGE)
+        self.assertEqual(dataset.media_type, fom.VIDEO)
 
         with self.assertRaises(ValueError):
             fo.Dataset.from_videos(filepaths, name=dataset.name)
