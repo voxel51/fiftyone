@@ -45,6 +45,11 @@ export const MCAP_PLAYBACK_WORKER_PRIORITY = Object.freeze({
    * Opportunistic background work that can wait behind interactive playback.
    */
   IDLE_PREFETCH: 3,
+  /**
+   * Bulk history reads for optional context, such as full pose trajectories.
+   * These should not serialize playback or placement work on the same queue.
+   */
+  BULK_HISTORY: 4,
 } as const);
 
 /**

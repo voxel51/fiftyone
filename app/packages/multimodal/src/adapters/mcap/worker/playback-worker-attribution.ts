@@ -16,7 +16,7 @@ import type { McapFrameTransformSetWire } from "../frame-transform-types";
 const TOP_CHUNK_LIMIT = 8;
 const TOPIC_PREVIEW_LIMIT = 8;
 
-export type McapPlaybackWorkerLaneName = "foreground" | "idle";
+export type McapPlaybackWorkerLaneName = "foreground" | "idle" | "bulk";
 
 export interface McapPlaybackWorkerRequestWindow {
   readonly activeTimeline?: string;

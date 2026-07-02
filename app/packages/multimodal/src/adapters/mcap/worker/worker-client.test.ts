@@ -77,7 +77,7 @@ describe("worker-backed MCAP resource client", () => {
     await expect(topics).resolves.toEqual(result);
   });
 
-  it("sends frame transform bootstrap reads at idle priority", async () => {
+  it("sends frame transform bootstrap reads at placement priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {
       source: createSource("source:1"),
@@ -102,7 +102,7 @@ describe("worker-backed MCAP resource client", () => {
     expect(worker.messages[1]).toMatchObject({
       id: 1,
       payload: request,
-      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME,
       type: "readFrameTransformBootstrap",
     });
 
@@ -408,8 +408,8 @@ describe("worker-backed MCAP resource client", () => {
   });
 
   it("can demote decoded-message streams to idle-prefetch priority", async () => {
-    // Bulk history reads (e.g. pose trajectories) must ride the idle lane so
-    // they never serialize behind current-frame playback work.
+    // Callers can still opt into ordinary idle prefetch for bounded decoded
+    // streams; full-history context reads use the separate bulk lane below.
     const { client, workers } = createClientHarness();
     const stream = client.readDecodedMessages(
       {
@@ -427,6 +427,43 @@ describe("worker-backed MCAP resource client", () => {
     });
 
     workers[0].respond({
+      done: true,
+      id: 1,
+      ok: true,
+      stream: true,
+    });
+
+    await expect(first).resolves.toEqual({
+      done: true,
+      value: undefined,
+    });
+  });
+
+  it("routes bulk decoded-message streams to the bulk lane", async () => {
+    const { client, workers } = createClientHarness();
+    const stream = client.readDecodedMessages(
+      {
+        source: createSource("source:1"),
+        topics: ["/odom"],
+      },
+      { priority: "bulk" },
+    );
+    const first = stream.next();
+    const worker = workers[0];
+
+    expect(worker.messages[0]).toMatchObject({
+      payload: {
+        lane: "bulk",
+      },
+      type: "init",
+    });
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
+      type: "readDecodedMessages",
+    });
+
+    worker.respond({
       done: true,
       id: 1,
       ok: true,

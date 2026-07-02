@@ -5,7 +5,7 @@ import type { ByteReadDebugLog } from "../../../query/bytes";
  * resource-client contract can reference it without importing worker
  * internals.
  */
-export type McapTransportLane = "foreground" | "idle";
+export type McapTransportLane = "foreground" | "idle" | "bulk";
 
 /**
  * One lane's cumulative transport counters, forwarded to health listeners.
