@@ -56,3 +56,21 @@ export const FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD: PayloadDescriptor = {
   schema: "foxglove.CameraCalibration",
   schemaEncoding: "protobuf",
 };
+
+/**
+ * Payload identity for foxglove.PoseInFrame messages.
+ */
+export const FOXGLOVE_POSE_IN_FRAME_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.PoseInFrame",
+  schemaEncoding: "protobuf",
+};
+
+/**
+ * Payload identity for foxglove.LocationFix messages.
+ */
+export const FOXGLOVE_LOCATION_FIX_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.LocationFix",
+  schemaEncoding: "protobuf",
+};
