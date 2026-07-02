@@ -81,17 +81,15 @@ if (process.argv.includes("--update")) {
 
 let failed = false;
 for (const [tool, actual] of Object.entries(counts)) {
-  const ceiling = baseline[tool];
-  if (typeof ceiling === "number" && actual <= ceiling) {
-    console.log(`${tool}: OK (${actual}/${ceiling})`);
-  } else {
+  const ceiling = baseline[tool] ?? 0;
+  if (actual > ceiling) {
     console.error(
-      typeof ceiling === "number"
-        ? `${tool}: ${actual} exceeds the baseline of ${ceiling} (+${actual - ceiling}). ` +
-            `Fix the new problems, or run \`yarn baseline:update\` if the increase is intentional.`
-        : `${tool}: no baseline — run \`yarn baseline:update\` and commit error-baseline.json.`,
+      `${tool}: found ${actual} problems, max allowed is ${ceiling} — this pull request adds ${actual - ceiling} new. ` +
+        `Please fix them, or if the increase is expected, update the numbers with \`yarn baseline:update\`.`,
     );
     failed = true;
+  } else {
+    console.log(`${tool}: OK (${actual}/${ceiling})`);
   }
 }
 process.exit(failed ? 1 : 0);
