@@ -14,7 +14,7 @@ from decorators import drop_collection, drop_datasets
 
 import fiftyone as fo
 import fiftyone.core.odm as foo
-import fiftyone.multimodal.tags._temporal_tags as fota
+import fiftyone.core.tags as fota
 from fiftyone.multimodal.schemas import v1 as foms
 
 drop_tags = drop_collection(fota.TAGS_COLLECTION_NAME)
