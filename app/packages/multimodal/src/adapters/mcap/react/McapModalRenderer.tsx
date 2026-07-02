@@ -102,14 +102,8 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
     ),
     [metadata],
   );
-  const {
-    initialTiles,
-    initialLayout,
-    defaultLeftOpen,
-    defaultRightOpen,
-    onLeftOpenChange,
-    onRightOpenChange,
-  } = useMcapModalLayout({ sources, readProfile: source?.readProfile });
+  const { initialTiles, initialLayout, defaultLeftOpen, onLeftOpenChange } =
+    useMcapModalLayout({ sources, readProfile: source?.readProfile });
   const { tracks, onTagCreate, onTagDelete } = useMcapTemporalTags(ctx);
 
   useEffect(() => {
@@ -164,10 +158,9 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
               tracks={tracks.length > 0 ? tracks : undefined}
               onTagDelete={onTagDelete}
               leftSidebar={<McapSettingsSidebar />}
+              rightSidebar={null}
               defaultLeftOpen={defaultLeftOpen}
-              defaultRightOpen={defaultRightOpen}
               onLeftOpenChange={onLeftOpenChange}
-              onRightOpenChange={onRightOpenChange}
               onTagCreate={onTagCreate}
             >
               <McapStreams ctx={ctx} client={client} />

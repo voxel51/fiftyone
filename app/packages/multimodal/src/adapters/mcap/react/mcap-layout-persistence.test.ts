@@ -20,7 +20,6 @@ describe("mcap-layout-persistence", () => {
   it("round-trips sidebar state and layout", () => {
     writeMcapModalLayout({
       leftSidebarOpen: true,
-      rightSidebarOpen: false,
       layout: {
         direction: "row",
         first: "camera-default",
@@ -30,7 +29,6 @@ describe("mcap-layout-persistence", () => {
     });
     const read = readMcapModalLayout();
     expect(read?.leftSidebarOpen).toBe(true);
-    expect(read?.rightSidebarOpen).toBe(false);
     expect(read?.layout).toEqual({
       direction: "row",
       first: "camera-default",
@@ -42,10 +40,8 @@ describe("mcap-layout-persistence", () => {
   it("merges partial writes instead of clobbering other fields", () => {
     writeMcapModalLayout({ leftSidebarOpen: true });
     writeMcapModalLayout({ layout: "camera-default" });
-    writeMcapModalLayout({ rightSidebarOpen: true });
     const read = readMcapModalLayout();
     expect(read?.leftSidebarOpen).toBe(true);
-    expect(read?.rightSidebarOpen).toBe(true);
     expect(read?.layout).toBe("camera-default");
   });
 

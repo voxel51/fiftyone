@@ -23,9 +23,7 @@ export interface McapModalLayout {
   /** `undefined` lets the TilingProvider auto-lay-out `initialTiles`. */
   initialLayout: MosaicNode<string> | undefined;
   defaultLeftOpen: boolean;
-  defaultRightOpen: boolean;
   onLeftOpenChange: (open: boolean) => void;
-  onRightOpenChange: (open: boolean) => void;
 }
 
 export interface UseMcapModalLayoutOptions {
@@ -82,17 +80,12 @@ export function useMcapModalLayout({
   const onLeftOpenChange = useCallback((open: boolean) => {
     writeMcapModalLayout({ leftSidebarOpen: open });
   }, []);
-  const onRightOpenChange = useCallback((open: boolean) => {
-    writeMcapModalLayout({ rightSidebarOpen: open });
-  }, []);
 
   return {
     initialTiles: restored?.tiles ?? defaultTiles,
     initialLayout: restored?.layout ?? resolved.layout,
-    defaultLeftOpen: persisted?.leftSidebarOpen ?? false,
-    defaultRightOpen: persisted?.rightSidebarOpen ?? false,
+    defaultLeftOpen: persisted?.leftSidebarOpen ?? true,
     onLeftOpenChange,
-    onRightOpenChange,
   };
 }
 

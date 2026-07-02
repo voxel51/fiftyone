@@ -66,7 +66,8 @@ export interface MultiModalPlaybackProps {
   leftSidebar?: ReactNode;
   /**
    * Override for the right sidebar. Defaults to {@link TilingInspectorSidebar}
-   * (focused tile's selection payload as JSON).
+   * (focused tile's selection payload as JSON). Pass `null` explicitly to
+   * remove the right sidebar entirely — no drawer and no header toggle.
    */
   rightSidebar?: ReactNode;
   /** Whether the left sidebar starts open. @default true */
@@ -215,6 +216,9 @@ function Layout({
 }: LayoutProps) {
   const { layout, tiles, focusedTileId, setLayout, setFocusedTileId } =
     useTiling();
+  // `null` (as opposed to undefined, which picks up the default sidebar)
+  // removes the region outright: no drawer and no header toggle.
+  const hasRightSidebar = rightSidebar !== null && rightSidebar !== undefined;
   const [leftOpen, setLeftOpen] = useState(defaultLeftOpen);
   const [rightOpen, setRightOpen] = useState(defaultRightOpen);
 
@@ -247,7 +251,9 @@ function Layout({
         leftSidebarOpen={leftOpen}
         rightSidebarOpen={rightOpen}
         onToggleLeftSidebar={() => updateLeftOpen(!leftOpen)}
-        onToggleRightSidebar={() => updateRightOpen(!rightOpen)}
+        onToggleRightSidebar={
+          hasRightSidebar ? () => updateRightOpen(!rightOpen) : undefined
+        }
       />
 
       <div className={styles.body}>
@@ -271,15 +277,17 @@ function Layout({
           />
         </div>
 
-        <Drawer
-          side="right"
-          mode="push"
-          maxSize={SIDEBAR_SIZE_PX}
-          open={rightOpen}
-          onOpenChange={updateRightOpen}
-        >
-          <div className={styles.sidebarPane}>{rightSidebar}</div>
-        </Drawer>
+        {hasRightSidebar ? (
+          <Drawer
+            side="right"
+            mode="push"
+            maxSize={SIDEBAR_SIZE_PX}
+            open={rightOpen}
+            onOpenChange={updateRightOpen}
+          >
+            <div className={styles.sidebarPane}>{rightSidebar}</div>
+          </Drawer>
+        ) : null}
       </div>
 
       <TemporalTagTimeline

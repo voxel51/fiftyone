@@ -17,7 +17,6 @@ import type { MosaicNode } from "react-mosaic-component";
 export interface McapPersistedModalLayout {
   version: 1;
   leftSidebarOpen?: boolean;
-  rightSidebarOpen?: boolean;
   /** Mosaic tree whose leaves are tile ids (e.g. `image-default`). */
   layout?: MosaicNode<string> | null;
 }
@@ -64,10 +63,6 @@ export function readMcapModalLayout(): McapPersistedModalLayout | null {
       leftSidebarOpen:
         typeof candidate.leftSidebarOpen === "boolean"
           ? candidate.leftSidebarOpen
-          : undefined,
-      rightSidebarOpen:
-        typeof candidate.rightSidebarOpen === "boolean"
-          ? candidate.rightSidebarOpen
           : undefined,
       layout: isValidMosaicLayout(candidate.layout)
         ? candidate.layout

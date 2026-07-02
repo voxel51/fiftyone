@@ -70,8 +70,7 @@ describe("useMcapModalLayout", () => {
       first: "image-1",
       second: "3d-1",
     });
-    expect(result.current.defaultLeftOpen).toBe(false);
-    expect(result.current.defaultRightOpen).toBe(false);
+    expect(result.current.defaultLeftOpen).toBe(true);
   });
 
   it("opens one tile per image source bound to distinct streams", () => {
@@ -98,8 +97,7 @@ describe("useMcapModalLayout", () => {
 
   it("restores persisted sidebar state and a valid tile arrangement", () => {
     writeMcapModalLayout({
-      leftSidebarOpen: true,
-      rightSidebarOpen: true,
+      leftSidebarOpen: false,
       layout: {
         direction: "row",
         first: "image-default",
@@ -108,8 +106,7 @@ describe("useMcapModalLayout", () => {
       },
     });
     const { result } = renderLayoutHook(SCENE_SOURCES);
-    expect(result.current.defaultLeftOpen).toBe(true);
-    expect(result.current.defaultRightOpen).toBe(true);
+    expect(result.current.defaultLeftOpen).toBe(false);
     expect(result.current.initialLayout).toEqual({
       direction: "row",
       first: "image-default",
@@ -171,10 +168,8 @@ describe("useMcapModalLayout", () => {
   it("persists sidebar toggles through the change callbacks", () => {
     const { result } = renderLayoutHook(SCENE_SOURCES);
     act(() => result.current.onLeftOpenChange(true));
-    act(() => result.current.onRightOpenChange(true));
     const read = readMcapModalLayout();
     expect(read?.leftSidebarOpen).toBe(true);
-    expect(read?.rightSidebarOpen).toBe(true);
   });
 });
 

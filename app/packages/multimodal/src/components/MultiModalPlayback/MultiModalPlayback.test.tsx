@@ -89,6 +89,17 @@ describe("MultiModalPlayback shell", () => {
     expect(screen.queryByTestId("drawer")).toBeNull();
   });
 
+  it("removes the right sidebar and its toggle when rightSidebar is null", () => {
+    render(<MultiModalPlayback fileName="x" rightSidebar={null} />);
+    expect(screen.queryByText("Select a tile to inspect.")).toBeNull();
+    expect(
+      screen.queryByTestId("tiling-header-toggle-right-sidebar"),
+    ).toBeNull();
+    expect(
+      screen.getByTestId("tiling-header-toggle-left-sidebar"),
+    ).toBeTruthy();
+  });
+
   it("lets header captions react to active pane selection and deselection", () => {
     render(
       <MultiModalPlayback
