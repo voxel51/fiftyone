@@ -5,7 +5,7 @@ on:
     # `edited` catches base changes — notably GitHub auto-retargeting a stacked
     # PR to develop when the PR below it merges — so the heavy suite runs before
     # it can land (no `synchronize` fires on an auto-retarget).
-    types: [opened, synchronize, reopened, closed, ready_for_review, edited]
+    types: [opened, synchronize, reopened, closed, edited]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
