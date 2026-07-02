@@ -18,6 +18,7 @@ import {
 // Hard cap on one topic's history read: a runaway high-rate stream stops
 // here instead of exhausting memory (~50Hz over 8 minutes).
 const TRAJECTORY_READ_LIMIT = 25_000;
+const TRAJECTORY_START_DELAY_MS = 1_500;
 
 /**
  * One pose topic's fetched trajectory history.
@@ -80,18 +81,20 @@ export function useMcapPoseTrajectoriesContext(): McapPoseTrajectories {
 }
 
 /**
- * Bridge that fetches each pose topic's full history once per source at
- * idle priority (the idle lane runs on a separate worker, so playback
- * never stalls behind these bulk reads) and publishes results into the
- * context. Tile selection changes never refetch — the cache is immutable
- * per-topic file data; consumers filter what renders.
+ * Bridge that fetches each pose topic's full history once per source after
+ * first 3D placement is viable. Full-history reads use the bulk lane so they
+ * never serialize playback lookahead or transform placement work. Tile
+ * selection changes never refetch — the cache is immutable per-topic file
+ * data; consumers filter what renders.
  */
 export function McapPoseTrajectoriesBridge({
   client,
+  enabled = true,
   poseTopics,
   source,
 }: {
   readonly client: McapResourceClient;
+  readonly enabled?: boolean;
   readonly poseTopics: readonly string[];
   readonly source: ByteSourceDescriptor | null;
 }) {
@@ -108,7 +111,7 @@ export function McapPoseTrajectoriesBridge({
     trajectoriesRef.current = new Map();
     setTrajectories(EMPTY_TRAJECTORIES);
 
-    if (!sourceKey || !source) {
+    if (!enabled || !sourceKey || !source) {
       return undefined;
     }
 
@@ -121,59 +124,66 @@ export function McapPoseTrajectoriesBridge({
       setTrajectories(new Map(trajectoriesRef.current));
     };
 
-    for (const topic of poseTopics) {
-      if (fetchedTopicsRef.current.has(topic)) {
-        continue;
+    const startTimeout = setTimeout(() => {
+      if (cancelled) {
+        return;
       }
-      fetchedTopicsRef.current.add(topic);
-      commit(topic, { points: [], status: "loading" });
 
-      void (async () => {
-        const points: McapPoseTrajectoryPoint[] = [];
-        let streamFrameId: string | undefined;
-        try {
-          for await (const message of client.readDecodedMessages(
-            {
-              activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-              limit: TRAJECTORY_READ_LIMIT,
-              source,
-              topics: [topic],
-            },
-            { priority: "idle" },
-          )) {
-            if (cancelled) {
-              return;
-            }
-            const visualization = message.decoded.output.visualization;
-            if (visualization?.kind !== VISUALIZATION_KIND.POSE) {
-              continue;
-            }
-            if (!streamFrameId && visualization.coordinateFrameId) {
-              streamFrameId = visualization.coordinateFrameId;
-            }
-            points.push({
-              position: visualization.position,
-              timeNs: message.timelineTimeNs,
-            });
-          }
-
-          commit(topic, {
-            points: decimateTrajectory(points),
-            status: "ready",
-            ...(streamFrameId ? { streamFrameId } : {}),
-          });
-        } catch {
-          commit(topic, { points: [], status: "error" });
+      for (const topic of poseTopics) {
+        if (fetchedTopicsRef.current.has(topic)) {
+          continue;
         }
-      })();
-    }
+        fetchedTopicsRef.current.add(topic);
+        commit(topic, { points: [], status: "loading" });
+
+        void (async () => {
+          const points: McapPoseTrajectoryPoint[] = [];
+          let streamFrameId: string | undefined;
+          try {
+            for await (const message of client.readDecodedMessages(
+              {
+                activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+                limit: TRAJECTORY_READ_LIMIT,
+                source,
+                topics: [topic],
+              },
+              { priority: "bulk" },
+            )) {
+              if (cancelled) {
+                return;
+              }
+              const visualization = message.decoded.output.visualization;
+              if (visualization?.kind !== VISUALIZATION_KIND.POSE) {
+                continue;
+              }
+              if (!streamFrameId && visualization.coordinateFrameId) {
+                streamFrameId = visualization.coordinateFrameId;
+              }
+              points.push({
+                position: visualization.position,
+                timeNs: message.timelineTimeNs,
+              });
+            }
+
+            commit(topic, {
+              points: decimateTrajectory(points),
+              status: "ready",
+              ...(streamFrameId ? { streamFrameId } : {}),
+            });
+          } catch {
+            commit(topic, { points: [], status: "error" });
+          }
+        })();
+      }
+    }, TRAJECTORY_START_DELAY_MS);
 
     return () => {
       cancelled = true;
+      clearTimeout(startTimeout);
     };
     // `poseTopics` identity is derived from the scene inventory, so this
     // covers both source swaps and topics appearing late.
-  }, [client, poseTopics, setTrajectories, source, sourceKey]);
+  }, [client, enabled, poseTopics, setTrajectories, source, sourceKey]);
 
   // This effect clears published trajectories when the bridge unmounts.
   useEffect(
