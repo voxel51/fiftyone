@@ -168,7 +168,8 @@ export function resolvePlaybackLayout({
     (source) =>
       source.type === MCAP_SOURCE_TYPE.POINT_CLOUD ||
       source.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION ||
-      source.type === MCAP_SOURCE_TYPE.MAP_LAYER,
+      source.type === MCAP_SOURCE_TYPE.MAP_LAYER ||
+      source.type === MCAP_SOURCE_TYPE.POSE,
   );
 
   const imageTileCount =
