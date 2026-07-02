@@ -1010,6 +1010,94 @@ class ExportMaskTests(unittest.TestCase):
                         )
 
 
+class VQATests(unittest.TestCase):
+    def test_vqa(self):
+        vqa = fo.VQA()
+
+        self.assertIsInstance(vqa.id, str)
+        self.assertIsNone(vqa.question)
+        self.assertIsNone(vqa.answer)
+
+        vqa = fo.VQA(
+            question="What color is the cat?",
+            answer="black",
+            answers=["black", "black", "gray"],
+            choices=["black", "white", "orange"],
+            question_type="what color",
+            answer_type="other",
+            question_id="q1",
+            confidence=0.9,
+        )
+
+        self.assertEqual(vqa.question, "What color is the cat?")
+        self.assertEqual(vqa.answer, "black")
+        self.assertListEqual(vqa.answers, ["black", "black", "gray"])
+        self.assertListEqual(vqa.choices, ["black", "white", "orange"])
+        self.assertEqual(vqa.question_type, "what color")
+        self.assertEqual(vqa.answer_type, "other")
+        self.assertEqual(vqa.question_id, "q1")
+        self.assertAlmostEqual(vqa.confidence, 0.9)
+
+    def test_vqa_serialization(self):
+        vqa = fo.VQA(
+            question="Is there a dog?",
+            answer="yes",
+            answers=["yes", "yes", "no"],
+            question_id="q1",
+            confidence=0.5,
+        )
+
+        d = vqa.to_dict()
+
+        self.assertIsInstance(d["_id"], ObjectId)
+
+        vqa2 = fo.VQA.from_dict(d)
+
+        self.assertEqual(vqa2.id, vqa.id)
+        self.assertEqual(vqa2.question, vqa.question)
+        self.assertEqual(vqa2.answer, vqa.answer)
+        self.assertListEqual(vqa2.answers, vqa.answers)
+        self.assertEqual(vqa2.question_id, vqa.question_id)
+        self.assertAlmostEqual(vqa2.confidence, vqa.confidence)
+
+    def test_vqa_dynamic_attributes(self):
+        vqa = fo.VQA(
+            question="Which option?",
+            answer="a cat",
+            choices=["a cat", "a dog"],
+        )
+
+        vqa["answer_index"] = 0
+        vqa.set_field("grounding_ids", ["abc123"])
+
+        self.assertEqual(vqa["answer_index"], 0)
+        self.assertListEqual(vqa.get_field("grounding_ids"), ["abc123"])
+
+        vqa2 = fo.VQA.from_dict(vqa.to_dict())
+
+        self.assertEqual(vqa2["answer_index"], 0)
+        self.assertListEqual(vqa2["grounding_ids"], ["abc123"])
+
+    def test_vqas_list(self):
+        vqas = fo.VQAs(
+            vqas=[
+                fo.VQA(question="Q1", answer="yes", question_id="q1"),
+                fo.VQA(question="Q2", answer="two", question_id="q2"),
+            ]
+        )
+
+        self.assertEqual(fo.VQAs._LABEL_LIST_FIELD, "vqas")
+        self.assertEqual(len(vqas.vqas), 2)
+        for vqa in vqas.vqas:
+            self.assertIsInstance(vqa, fo.VQA)
+
+        vqas2 = fo.VQAs.from_dict(vqas.to_dict())
+
+        self.assertEqual(len(vqas2.vqas), 2)
+        self.assertEqual(vqas2.vqas[0].question_id, "q1")
+        self.assertEqual(vqas2.vqas[1].answer, "two")
+
+
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)
