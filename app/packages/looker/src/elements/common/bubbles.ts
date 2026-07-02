@@ -7,6 +7,7 @@ import {
   type Schema,
   TEMPORAL_DETECTIONS,
   VALID_PRIMITIVE_TYPES,
+  VQAS,
   withPath,
 } from "@fiftyone/utilities";
 import type { Sample } from "../..";
@@ -63,6 +64,13 @@ export const getBubbles = (
     if (field.embeddedDocType === withPath(LABELS_PATH, TEMPORAL_DETECTIONS)) {
       out.values = unwind(field.dbField, out.values).flatMap(
         (value) => value.detections || [],
+      ) as Sample[];
+      break;
+    }
+
+    if (field.embeddedDocType === withPath(LABELS_PATH, VQAS)) {
+      out.values = unwind(field.dbField, out.values).flatMap(
+        (value) => value.vqas || [],
       ) as Sample[];
       break;
     }

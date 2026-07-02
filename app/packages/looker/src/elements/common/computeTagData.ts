@@ -21,6 +21,8 @@ import {
   STRING_FIELD,
   TEMPORAL_DETECTION,
   TEMPORAL_DETECTIONS,
+  VQA,
+  VQAS,
   formatDate,
   formatDateTime,
   getColor,
@@ -30,6 +32,7 @@ import type {
   Classification,
   Regression,
   TemporalDetectionLabel,
+  VQALabel,
 } from "../../overlays/classifications";
 import { isValidColor, shouldShowLabelTag } from "../../overlays/util";
 import type { BaseState, LabelTagColor, NONFINITE, Sample } from "../../state";
@@ -323,6 +326,25 @@ export const computeTagData = ({
     };
   };
 
+  const VQA_RENDERER = (path, param: VQALabel): TagData => {
+    const answer = param.answer ?? "null";
+
+    return {
+      path,
+      value: answer,
+      title: `${path}: ${answer}`,
+      color: getAssignedColor({
+        coloring,
+        path,
+        param,
+        isTagged: shouldShowLabelTag(selectedLabelTags, param.tags),
+        labelTagColors,
+        customizeColorSetting,
+        isValidColor,
+      }),
+    };
+  };
+
   const TEMPORAL_DETECTION_RENDERER = (
     path: string,
     param: TemporalDetectionLabel,
@@ -430,6 +452,8 @@ export const computeTagData = ({
     },
     [withPath(LABELS_PATH, TEMPORAL_DETECTION)]: TEMPORAL_DETECTION_RENDERER,
     [withPath(LABELS_PATH, TEMPORAL_DETECTIONS)]: TEMPORAL_DETECTION_RENDERER,
+    [withPath(LABELS_PATH, VQA)]: VQA_RENDERER,
+    [withPath(LABELS_PATH, VQAS)]: VQA_RENDERER,
   };
 
   for (let index = 0; index < activePaths.length; index++) {

@@ -430,3 +430,58 @@ describe("computeLabelTagCounts", () => {
     expect(computeLabelTagCounts(sample, schema)).toEqual({});
   });
 });
+
+describe("computeTagData VQA", () => {
+  beforeAll(() => {
+    Object.defineProperty(globalThis, "CSS", {
+      configurable: true,
+      value: { supports: (_prop: string, color?: string) => Boolean(color) },
+    });
+  });
+
+  const VQA_SCHEMA: Schema = {
+    filepath: makeField("filepath"),
+    question: makeField("question", {
+      embeddedDocType: "fiftyone.core.labels.VQA",
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+    }),
+    questions: makeField("questions", {
+      embeddedDocType: "fiftyone.core.labels.VQAs",
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+      fields: {
+        vqas: makeField("vqas", {
+          ftype: LIST_FIELD,
+          path: "questions.vqas",
+          subfield: EMBEDDED_DOCUMENT_FIELD,
+        }),
+      },
+    }),
+  };
+
+  it("renders answer bubbles for VQA and VQAs fields", () => {
+    const result = computeTagData(
+      makeInput({
+        activePaths: ["question", "questions"],
+        fieldSchema: VQA_SCHEMA,
+        sample: {
+          filepath: "/tmp/sample-1.png",
+          question: {
+            _cls: "VQA",
+            question: "Is there a cat?",
+            answer: "yes",
+          },
+          questions: {
+            _cls: "VQAs",
+            vqas: [
+              { _cls: "VQA", question: "How many?", answer: "2" },
+              { _cls: "VQA", question: "What color?", answer: "black" },
+            ],
+          },
+        },
+      }),
+    );
+
+    expect(result.map((item) => item.value)).toEqual(["yes", "2", "black"]);
+    expect(result[0].title).toBe("question: yes");
+  });
+});

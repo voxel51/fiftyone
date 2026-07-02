@@ -282,6 +282,55 @@ describe("text bubble tests", () => {
   });
 });
 
+describe("VQA bubbles", () => {
+  it("getBubbles unwraps a VQAs field to its vqas", () => {
+    const schema: Schema = {
+      questions: {
+        dbField: "questions",
+        description: null,
+        embeddedDocType: "fiftyone.core.labels.VQAs",
+        fields: {
+          vqas: {
+            dbField: "vqas",
+            description: null,
+            embeddedDocType: "fiftyone.core.labels.VQA",
+            fields: {},
+            ftype: "fiftyone.core.fields.ListField",
+            info: null,
+            name: "vqas",
+            subfield: "fiftyone.core.fields.EmbeddedDocumentField",
+            path: "questions.vqas",
+          },
+        },
+        ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+        info: null,
+        name: "questions",
+        subfield: null,
+        path: "questions",
+      },
+    };
+
+    const sample = {
+      questions: {
+        _cls: "VQAs",
+        vqas: [
+          { _cls: "VQA", question: "Is there a cat?", answer: "yes" },
+          { _cls: "VQA", question: "How many?", answer: "2" },
+        ],
+      },
+    };
+
+    const [field, values] = getBubbles("questions", sample, schema);
+
+    expect(field.embeddedDocType).toBe("fiftyone.core.labels.VQAs");
+    expect(values).toHaveLength(2);
+    expect((values as { answer?: string }[]).map((v) => v.answer)).toEqual([
+      "yes",
+      "2",
+    ]);
+  });
+});
+
 describe("applyTagValue", () => {
   it("prevents XSS", () => {
     const xss = "<img src=# onerror=alert('XSS')>";
