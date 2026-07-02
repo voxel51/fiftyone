@@ -8,6 +8,7 @@ import {
   idleMcapFrameTransformsState,
   useSetMcapFrameTransformsContext,
 } from "./mcap-frame-transforms-context";
+import { McapPoseTrajectoriesBridge } from "./mcap-pose-trajectories-context";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
@@ -70,7 +71,9 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
             s.type !== MCAP_SOURCE_TYPE.IMAGE_ANNOTATION &&
             s.type !== MCAP_SOURCE_TYPE.SCENE_ANNOTATION &&
             s.type !== MCAP_SOURCE_TYPE.MAP_LAYER &&
-            s.type !== MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
+            s.type !== MCAP_SOURCE_TYPE.CAMERA_CALIBRATION &&
+            s.type !== MCAP_SOURCE_TYPE.POSE &&
+            s.type !== MCAP_SOURCE_TYPE.LOCATION,
         )
         .map((s) => s.id),
     [sources],
@@ -91,6 +94,12 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
     );
   }, [allTopics.length, blockingTopics.length, pointCloudTopics.length]);
 
+  const poseTopics = useMemo(
+    () =>
+      sources.filter((s) => s.type === MCAP_SOURCE_TYPE.POSE).map((s) => s.id),
+    [sources],
+  );
+
   useRegisterMcapDataStream({
     blockingTopics,
     client,
@@ -104,11 +113,18 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
   useMcapTiles({ presentTypes });
 
   return (
-    <McapFrameTransformsBridge
-      client={client}
-      source={source}
-      temporalPolicy={temporalPolicy}
-    />
+    <>
+      <McapFrameTransformsBridge
+        client={client}
+        source={source}
+        temporalPolicy={temporalPolicy}
+      />
+      <McapPoseTrajectoriesBridge
+        client={client}
+        poseTopics={poseTopics}
+        source={source}
+      />
+    </>
   );
 }
 
