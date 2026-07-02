@@ -52,11 +52,10 @@ jobs:
           got=$(grep -E '^VERSION = ' setup.py | head -1 | parse)
 
           # On a release branch the VERSION must MATCH the branch name:
-          # release/v<X> -> <X>, allowing an rc/.dev/.post suffix.
+          # release/v<X> -> <X>, exactly.
           if [[ "$BASE_REF" == release/v* ]]; then
             want="${BASE_REF#release/v}"
-            want_re=$(printf '%s' "$want" | sed 's/[.]/\\./g')
-            if [ "$got" = "$want" ] || [[ "$got" =~ ^${want_re}([^0-9].*)?$ ]]; then
+            if [ "$got" = "$want" ]; then
               echo "VERSION $got matches release branch release/v$want. OK."
               exit 0
             fi
