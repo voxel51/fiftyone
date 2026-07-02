@@ -310,7 +310,3 @@ _SCALAR_FIELD_TYPES_MAP = {
     pydicom.valuerep.PersonName: str,
     pydicom.uid.UID: str,
 }
-
-# PersonNameUnicode was removed in pydicom 3; keep it for older pydicom
-if hasattr(pydicom.valuerep, "PersonNameUnicode"):
-    _SCALAR_FIELD_TYPES_MAP[pydicom.valuerep.PersonNameUnicode] = str
