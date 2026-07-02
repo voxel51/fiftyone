@@ -23,7 +23,7 @@ jobs:
       )
     runs-on: ubuntu-latest
     steps:
-      - name: Post to #compliance-security
+      - name: "Post to #compliance-security"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_COMPLIANCE_SECURITY_WEBHOOK_URL }}
           PR_TITLE: ${{ github.event.pull_request.title }}
