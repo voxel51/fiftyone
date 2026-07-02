@@ -201,7 +201,12 @@ export function createInlineMcapResourceClient(
       const read = readerStore
         .get(request.source)
         .then((reader) =>
-          readMcapFrameTransformWindow({ reader, request, timeline }),
+          readMcapFrameTransformWindow({
+            reader,
+            readSignal: options.readSignal,
+            request,
+            timeline,
+          }),
         )
         .catch((error) => {
           if (frameTransformWindowReads.get(windowKey) === read) {
@@ -234,6 +239,7 @@ export function createInlineMcapResourceClient(
         decodeClient,
         predecessorStore,
         reader,
+        readSignal: options.readSignal,
         request,
         timeline,
       });
