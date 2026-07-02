@@ -109,6 +109,14 @@ export const isModalActive = selector<boolean>({
 export type ModalNavigation = {
   next: (offset?: number) => Promise<ModalSelector>;
   previous: (offset?: number) => Promise<ModalSelector>;
+  /**
+   * Resolve the sample at `offset` relative to the current position WITHOUT
+   * moving the cursor — a read-ahead used to prefetch neighboring samples.
+   * Resolves to `null` when the offset is out of range or the sample has not
+   * been paged into the store yet. Optional: the modal can be opened without
+   * navigation (see {@link useSetModalState}), in which case it is absent.
+   */
+  peek?: (offset: number) => Promise<ModalSelector | null>;
 };
 
 export const modalNavigation = (() => {
@@ -148,6 +156,36 @@ export const nullableModalSampleId = selector<string>({
   },
 });
 
+/**
+ * Builds the variables for the {@link mainSample} query for a single sample.
+ *
+ * Shared by {@link modalSample} and the modal prefetch hook so a prefetched
+ * neighbor lands under the exact same Relay store key the selector reads on
+ * navigation — if these diverged, `store-or-network` would silently miss and
+ * the prefetch would buy nothing.
+ */
+export const buildModalSampleVariables = (params: {
+  dataset: VariablesOf<mainSampleQuery>["dataset"];
+  view: VariablesOf<mainSampleQuery>["view"];
+  id: string;
+  slice: string | null;
+  sliceSelect: string | null;
+  groupId: string | null;
+}): VariablesOf<mainSampleQuery> => ({
+  dataset: params.dataset,
+  view: params.view,
+  filter: {
+    id: params.id,
+    group: params.slice
+      ? {
+          slice: params.slice,
+          slices: [params.sliceSelect],
+          id: params.groupId,
+        }
+      : null,
+  },
+});
+
 export const modalSample = graphQLSelector<
   VariablesOf<mainSampleQuery>,
   ModalSample
@@ -182,16 +220,14 @@ export const modalSample = graphQLSelector<
       return null;
     }
 
-    return {
+    return buildModalSampleVariables({
       dataset: get(datasetName),
       view: get(view),
-      filter: {
-        id: current.id,
-        group: slice
-          ? { slice, slices: [sliceSelect], id: get(groupId) }
-          : null,
-      },
-    };
+      id: current.id,
+      slice: slice || null,
+      sliceSelect,
+      groupId: slice ? get(groupId) : null,
+    });
   },
 });
 
