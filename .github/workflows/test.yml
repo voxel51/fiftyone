@@ -1,6 +1,12 @@
 name: Test
 
-on: workflow_call
+on:
+  workflow_call:
+    inputs:
+      python-versions:
+        description: JSON array of Python versions for the Python test matrix
+        type: string
+        default: '["3.10", "3.11", "3.12"]'
 
 jobs:
   test-app:
@@ -52,10 +58,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-        python:
-          - "3.10"
-          - "3.11"
-          - "3.12"
+        python: ${{ fromJSON(inputs.python-versions) }}
     defaults:
       run:
         shell: bash
@@ -114,7 +117,7 @@ jobs:
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
       - name: Upload
-        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.11' }}
+        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.12' }}
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
