@@ -24,10 +24,13 @@ import {
   markMcapLatencyEvent,
 } from "../mcap-latency-debug";
 import Mcap3dTileSettings from "./Mcap3dTileSettings";
+import { build3dLayers } from "./mcap-3d-layers";
 import {
-  build3dLayers,
-  type Mcap3dTransformGapWarning,
-} from "./mcap-3d-layers";
+  buildMcap3dPlacementNotices,
+  buildMcap3dTransformNotices,
+  useStabilizedMcapNotices,
+  type McapHealthNotice,
+} from "./mcap-health";
 import {
   getMcap3dViewStateSnapshot,
   nextMcap3dViewStateRestoreOnceKey,
@@ -270,47 +273,24 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       transformedLayerCount,
     ],
   );
-  const placementNotices = useMemo(() => {
-    const parts: string[] = [];
-    if (provisionalFrameIds.length > 0) {
-      parts.push(
-        `Positioning transforms loading: displaying source-frame preview for ${provisionalFrameIds.join(
-          ", ",
-        )}`,
-      );
-    }
-    if (pendingAnnotationFrameIds.length > 0) {
-      parts.push(
-        `Annotation transforms loading: hiding boxes in ${pendingAnnotationFrameIds.join(
-          ", ",
-        )}`,
-      );
-    }
-    if (pendingGridFrameIds.length > 0) {
-      parts.push(
-        `Map layer transforms loading: hiding grids in ${pendingGridFrameIds.join(
-          ", ",
-        )}`,
-      );
-    }
-    if (pendingFrustumFrameIds.length > 0) {
-      parts.push(
-        `Camera transforms loading: hiding frustums in ${pendingFrustumFrameIds.join(
-          ", ",
-        )}`,
-      );
-    }
-
-    return parts;
-  }, [
-    pendingAnnotationFrameIds,
-    pendingFrustumFrameIds,
-    pendingGridFrameIds,
-    provisionalFrameIds,
-  ]);
+  const placementNotices = useMemo(
+    () =>
+      buildMcap3dPlacementNotices({
+        pendingAnnotationFrameIds,
+        pendingFrustumFrameIds,
+        pendingGridFrameIds,
+        provisionalFrameIds,
+      }),
+    [
+      pendingAnnotationFrameIds,
+      pendingFrustumFrameIds,
+      pendingGridFrameIds,
+      provisionalFrameIds,
+    ],
+  );
   const transformNotices = useMemo(
     () =>
-      transformNoticesText({
+      buildMcap3dTransformNotices({
         clampedFrameIds,
         frameTransformsError: frameTransforms.error,
         largeInterpolationGaps,
@@ -327,7 +307,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
   const {
     cameraTargetResolution,
-    cameraTrackingWarning,
+    cameraTrackingNotice,
     controlledCameraPose,
     handleCameraPoseChange,
     noteRenderedCameraPose,
@@ -346,14 +326,18 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     selectedTopicsKey,
     worldFrameId,
   });
-  const panelNotices = useMemo(
+  const producedNotices = useMemo<readonly McapHealthNotice[]>(
     () => [
       ...placementNotices,
       ...transformNotices,
-      ...(cameraTrackingWarning ? [cameraTrackingWarning] : []),
+      ...(cameraTrackingNotice ? [cameraTrackingNotice] : []),
     ],
-    [cameraTrackingWarning, placementNotices, transformNotices],
+    [cameraTrackingNotice, placementNotices, transformNotices],
   );
+  // Scene-scoped notices are stabilized before reaching the panel:
+  // per-tick condition flips around transform boundaries must not blink
+  // the chip, and the returned identity is stable while content holds.
+  const panelNotices = useStabilizedMcapNotices(producedNotices);
 
   const [restoreMarkOnceKey] = useState(() =>
     nextMcap3dViewStateRestoreOnceKey(),
@@ -633,9 +617,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             gridLayers={gridLayers}
             layers={pointCloudLayers}
             className={styles.panel}
+            notices={panelNotices}
             onCameraPoseChange={handleCameraPoseChange}
             onRenderStats={handlePanelRenderStats}
-            warnings={panelNotices}
           />
           <McapTileStatusBadge topics={selectedTopics} />
         </div>
@@ -646,50 +630,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
 };
 
-function transformNoticesText({
-  clampedFrameIds,
-  frameTransformsError,
-  largeInterpolationGaps,
-  unresolvedFrameIds,
-  worldFrameId,
-}: {
-  readonly clampedFrameIds: readonly string[];
-  readonly frameTransformsError: string | null;
-  readonly largeInterpolationGaps: readonly Mcap3dTransformGapWarning[];
-  readonly unresolvedFrameIds: readonly string[];
-  readonly worldFrameId: string;
-}): string[] {
-  if (frameTransformsError) {
-    return [`Frame transforms failed to load: ${frameTransformsError}`];
-  }
-  if (!worldFrameId) {
-    return [];
-  }
-
-  const parts: string[] = [];
-  if (unresolvedFrameIds.length > 0) {
-    parts.push(
-      `Missing transform to ${worldFrameId}: ${unresolvedFrameIds.join(", ")}`,
-    );
-  }
-  if (clampedFrameIds.length > 0) {
-    parts.push(
-      `Using boundary-clamped transform to ${worldFrameId}: ${clampedFrameIds.join(
-        ", ",
-      )}`,
-    );
-  }
-  if (largeInterpolationGaps.length > 0) {
-    parts.push(
-      `Interpolating transform across large gap to ${worldFrameId}: ${formatInterpolationGapWarnings(
-        largeInterpolationGaps,
-      )}`,
-    );
-  }
-
-  return parts;
-}
-
 function pointCountForLayers(
   layers: readonly {
     readonly frame: {
@@ -698,23 +638,6 @@ function pointCountForLayers(
   }[],
 ): number {
   return layers.reduce((sum, layer) => sum + layer.frame.pointCount, 0);
-}
-
-function formatInterpolationGapWarnings(
-  gaps: readonly Mcap3dTransformGapWarning[],
-): string {
-  return gaps
-    .map(({ frameId, gapNs }) => `${frameId} (${formatNsDuration(gapNs)})`)
-    .join(", ");
-}
-
-function formatNsDuration(value: bigint): string {
-  const ms = Number(value) / 1_000_000;
-  if (ms < 1000) {
-    return `${Math.round(ms)}ms`;
-  }
-
-  return `${(ms / 1000).toFixed(1)}s`;
 }
 
 function msToNs(value: number): bigint {

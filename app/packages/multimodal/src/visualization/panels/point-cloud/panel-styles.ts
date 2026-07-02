@@ -79,7 +79,6 @@ export const styles: Record<string, CSSProperties> = {
     padding: "0 7px",
   },
   noticesIcon: {
-    color: "#facc15",
     flex: "0 0 auto",
     height: 13,
     width: 13,
@@ -103,4 +102,21 @@ export const styles: Record<string, CSSProperties> = {
   noticesItem: {
     margin: 0,
   },
+  noticesItemDetail: {
+    margin: 0,
+    opacity: 0.75,
+  },
+};
+
+/**
+ * Chip icon color per worst notice severity: info gray, warning amber
+ * (the chip's historical color), error red.
+ */
+export const NOTICE_SEVERITY_ICON_COLORS: Record<
+  "error" | "info" | "warning",
+  string
+> = {
+  error: "#f87171",
+  info: "#9ca3af",
+  warning: "#facc15",
 };

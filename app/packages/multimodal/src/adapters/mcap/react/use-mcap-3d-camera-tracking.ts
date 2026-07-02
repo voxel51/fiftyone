@@ -23,6 +23,7 @@ import {
   type Mcap3dCameraTrackingAnchor,
   type Mcap3dTrackingMode,
 } from "./mcap-3d-camera";
+import { buildMcapCameraTargetNotice } from "./mcap-health";
 import {
   nextMcap3dViewStateRestoreOnceKey,
   recordMcap3dCameraView,
@@ -187,9 +188,9 @@ export function useMcap3dCameraTracking({
     worldFrameId,
   ]);
   const panelCameraPose = controlledCameraPose ?? cameraPose;
-  const cameraTrackingWarning = useMemo(
+  const cameraTrackingNotice = useMemo(
     () =>
-      cameraTrackingWarningText({
+      buildMcapCameraTargetNotice({
         cameraTargetFrameId,
         cameraTargetStatus: cameraTargetResolution.status,
         trackingMode,
@@ -495,7 +496,7 @@ export function useMcap3dCameraTracking({
   return {
     cameraPose,
     cameraTargetResolution,
-    cameraTrackingWarning,
+    cameraTrackingNotice,
     controlledCameraPose,
     handleCameraPoseChange,
     noteRenderedCameraPose,
@@ -611,29 +612,6 @@ function trackingAnchorMatches({
     anchor.targetFrameId === targetFrameId &&
     anchor.worldFrameId === worldFrameId
   );
-}
-
-function cameraTrackingWarningText({
-  cameraTargetFrameId,
-  cameraTargetStatus,
-  trackingMode,
-  worldFrameId,
-}: {
-  readonly cameraTargetFrameId: string;
-  readonly cameraTargetStatus: CameraTargetResolution["status"];
-  readonly trackingMode: Mcap3dTrackingMode;
-  readonly worldFrameId: string;
-}) {
-  if (
-    !isFollowTrackingMode(trackingMode) ||
-    cameraTargetStatus !== "missing" ||
-    !cameraTargetFrameId ||
-    !worldFrameId
-  ) {
-    return null;
-  }
-
-  return `Camera target transform unavailable: ${cameraTargetFrameId} to ${worldFrameId}`;
 }
 
 function transformCameraPose(

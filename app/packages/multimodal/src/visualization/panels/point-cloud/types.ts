@@ -13,6 +13,25 @@ import type {
   ThreeCameraPoseChangeSource,
 } from "../base-3d-scene";
 
+export type PanelNoticeSeverity = "error" | "info" | "warning";
+
+/**
+ * Render shape for one diagnostic notice in the panel's collapsed chip.
+ * The panel is a generic visualization layer: producers (e.g. the MCAP
+ * tile) map their richer health models onto this shape. `id` is the
+ * stable identity used for row reconciliation — message/detail update in
+ * place without remounting the row, which is what keeps churning frame
+ * lists from blinking the chip.
+ */
+export interface PanelNotice {
+  /** Volatile specifics (frame-id lists, durations), rendered dimmer. */
+  readonly detail?: string;
+  readonly id: string;
+  /** Short, stable description of the condition. */
+  readonly message: string;
+  readonly severity: PanelNoticeSeverity;
+}
+
 /**
  * Supported point-cloud colouring modes.
  */
@@ -174,6 +193,12 @@ export interface PointCloudPanelProps {
   readonly hudLines?: readonly string[];
   readonly layers: readonly PointCloudPanelLayer[];
   readonly maxRenderedPoints?: number;
+  /**
+   * Diagnostic notices (transform availability, placement fallbacks).
+   * Rendered as a compact corner chip that expands on demand instead of
+   * a free-floating text block. Keyed by `PanelNotice.id`.
+   */
+  readonly notices?: readonly PanelNotice[];
   readonly onCameraPoseChange?: (
     pose: PointCloudCameraPose,
     source: ThreeCameraPoseChangeSource,
@@ -183,10 +208,4 @@ export interface PointCloudPanelProps {
   readonly showGizmo?: boolean;
   readonly showHud?: boolean;
   readonly style?: CSSProperties;
-  /**
-   * Diagnostic notices (transform availability, placement fallbacks).
-   * Rendered as a compact corner chip that expands on demand instead of
-   * a free-floating text block.
-   */
-  readonly warnings?: readonly string[];
 }

@@ -10,15 +10,20 @@ import {
 } from "./camera-fit-bounds";
 import { CameraFrustumSceneLayer } from "./CameraFrustumSceneLayer";
 import { GridSceneLayer } from "./GridSceneLayer";
-import { styles } from "./panel-styles";
+import { NOTICE_SEVERITY_ICON_COLORS, styles } from "./panel-styles";
 import {
   DEFAULT_MAX_RENDERED_POINTS,
   buildPointCloudRenderData,
 } from "./point-cloud-colors";
 import { PointCloudSceneLayer } from "./PointCloudSceneLayer";
 import { SceneAnnotationLayer } from "./SceneAnnotationLayer";
-import type { PointCloudCameraPose, PointCloudPanelProps } from "./types";
-import { EMPTY_WARNINGS, annotationPrimitiveSummaryForLayers } from "./utils";
+import type {
+  PanelNotice,
+  PanelNoticeSeverity,
+  PointCloudCameraPose,
+  PointCloudPanelProps,
+} from "./types";
+import { EMPTY_NOTICES, annotationPrimitiveSummaryForLayers } from "./utils";
 
 // Default WebGL point sprite size in pixels.
 const DEFAULT_POINT_SIZE = 2;
@@ -39,13 +44,13 @@ export function PointCloudPanel({
   hudLines = [],
   layers,
   maxRenderedPoints = DEFAULT_MAX_RENDERED_POINTS,
+  notices = EMPTY_NOTICES,
   onCameraPoseChange,
   onRenderStats,
   pointSize = DEFAULT_POINT_SIZE,
   showGizmo = true,
   showHud = true,
   style,
-  warnings = EMPTY_WARNINGS,
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
   const renderLayers = useMemo(
@@ -216,9 +221,21 @@ export function PointCloudPanel({
           ))}
         </div>
       ) : null}
-      <PanelNotices notices={warnings} />
+      <PanelNotices notices={notices} />
     </div>
   );
+}
+
+/** Worst severity across the chip's notices; drives the icon color only. */
+function worstNoticeSeverity(
+  notices: readonly PanelNotice[],
+): PanelNoticeSeverity {
+  let worst: PanelNoticeSeverity = "info";
+  for (const notice of notices) {
+    if (notice.severity === "error") return "error";
+    if (notice.severity === "warning") worst = "warning";
+  }
+  return worst;
 }
 
 /**
@@ -226,8 +243,15 @@ export function PointCloudPanel({
  * corner. Transform/placement notices are informative but verbose, so
  * the resting state is a warning glyph plus a count; the full messages
  * expand on demand.
+ *
+ * Rows are keyed by notice id, so a notice whose detail text updates per
+ * playback tick edits its row in place instead of remounting it.
  */
-function PanelNotices({ notices }: { readonly notices: readonly string[] }) {
+function PanelNotices({
+  notices,
+}: {
+  readonly notices: readonly PanelNotice[];
+}) {
   const [expanded, setExpanded] = useState(false);
 
   if (notices.length === 0) {
@@ -239,8 +263,11 @@ function PanelNotices({ notices }: { readonly notices: readonly string[] }) {
       {expanded ? (
         <ul aria-label="3D scene notices" style={styles.noticesList}>
           {notices.map((notice) => (
-            <li key={notice} style={styles.noticesItem}>
-              {notice}
+            <li key={notice.id} style={styles.noticesItem}>
+              <div>{notice.message}</div>
+              {notice.detail ? (
+                <div style={styles.noticesItemDetail}>{notice.detail}</div>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -258,7 +285,10 @@ function PanelNotices({ notices }: { readonly notices: readonly string[] }) {
         <Icon
           name={IconName.Warning}
           size={Size.Xs}
-          style={styles.noticesIcon}
+          style={{
+            ...styles.noticesIcon,
+            color: NOTICE_SEVERITY_ICON_COLORS[worstNoticeSeverity(notices)],
+          }}
         />
         {notices.length}
       </button>

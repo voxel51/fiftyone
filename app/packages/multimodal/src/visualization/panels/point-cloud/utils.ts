@@ -6,12 +6,13 @@ import type {
   ScenePoint3D,
 } from "../../../decoders";
 import type {
+  PanelNotice,
   SceneAnnotationPanelLayer,
   SceneAnnotationPrimitiveSummary,
 } from "./types";
 
 const DEFAULT_SCENE_CUBE_COLOR: RgbaColor = [0.1, 0.78, 0.95, 1];
-export const EMPTY_WARNINGS: readonly string[] = [];
+export const EMPTY_NOTICES: readonly PanelNotice[] = [];
 
 export function sceneMaterialProps(
   color: RgbaColor | null,

@@ -619,9 +619,19 @@ describe("PointCloudPanel", () => {
     render(
       <PointCloudPanel
         layers={[]}
-        warnings={[
-          "Missing transform to map: radar_front",
-          "Using boundary-clamped transform to map: lidar_top",
+        notices={[
+          {
+            detail: "radar_front",
+            id: "transform:missing",
+            message: "Missing transform to map",
+            severity: "warning",
+          },
+          {
+            detail: "lidar_top",
+            id: "transform:clamped",
+            message: "Using boundary-clamped transform to map",
+            severity: "info",
+          },
         ]}
       />,
     );
@@ -630,18 +640,48 @@ describe("PointCloudPanel", () => {
 
     fireEvent.click(screen.getByLabelText("2 scene notices"));
 
+    expect(screen.getByText("Missing transform to map")).toBeTruthy();
+    expect(screen.getByText("radar_front")).toBeTruthy();
     expect(
-      screen.getByText("Missing transform to map: radar_front"),
+      screen.getByText("Using boundary-clamped transform to map"),
     ).toBeTruthy();
-    expect(
-      screen.getByText("Using boundary-clamped transform to map: lidar_top"),
-    ).toBeTruthy();
+    expect(screen.getByText("lidar_top")).toBeTruthy();
 
     fireEvent.click(screen.getByLabelText("2 scene notices"));
     expect(screen.queryByText(/boundary-clamped/)).toBeNull();
   });
 
-  it("renders no notices chip without warnings", () => {
+  it("keeps notice rows keyed by id so detail churn edits in place", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const notice = (detail: string) => ({
+      detail,
+      id: "transform:clamped",
+      message: "Using boundary-clamped transform to map",
+      severity: "info" as const,
+    });
+    const { rerender } = render(
+      <PointCloudPanel layers={[]} notices={[notice("lidar_top")]} />,
+    );
+
+    fireEvent.click(screen.getByLabelText("1 scene notice"));
+    const row = screen.getByText("lidar_top").closest("li");
+    expect(row).toBeTruthy();
+
+    rerender(
+      <PointCloudPanel
+        layers={[]}
+        notices={[notice("lidar_top, radar_front")]}
+      />,
+    );
+
+    // Same <li> element: the id-keyed row updated in place instead of
+    // remounting when its detail text changed.
+    expect(screen.getByText("lidar_top, radar_front").closest("li")).toBe(row);
+    expect(screen.getByLabelText("1 scene notice")).toBeTruthy();
+  });
+
+  it("renders no notices chip without notices", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     render(<PointCloudPanel layers={[]} />);
