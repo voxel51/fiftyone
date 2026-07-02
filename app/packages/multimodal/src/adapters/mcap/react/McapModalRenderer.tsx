@@ -7,6 +7,7 @@ import MultiModalPlayback from "../../../components/MultiModalPlayback/MultiModa
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { McapDataStreamProvider } from "./mcap-data-stream-context";
 import { McapFrameTransformsProvider } from "./mcap-frame-transforms-context";
+import { McapPoseTrajectoriesProvider } from "./mcap-pose-trajectories-context";
 import {
   markMcapLatencyEvent,
   startMcapLatencyDebugSession,
@@ -134,28 +135,30 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   return (
     <McapModalSettingsProvider>
       <McapFrameTransformsProvider>
-        <McapDataStreamProvider>
-          <MultiModalPlayback
-            fileName={fileName}
-            headerCaption={headerCaption}
-            sceneSources={sources}
-            deselectFocusedTileOnRepeatSelect={false}
-            initialTiles={initialTiles}
-            initialLayout={initialLayout}
-            tracks={tracks.length > 0 ? tracks : undefined}
-            onTagDelete={onTagDelete}
-            leftSidebar={<McapSettingsSidebar />}
-            defaultLeftOpen={defaultLeftOpen}
-            defaultRightOpen={defaultRightOpen}
-            onLeftOpenChange={onLeftOpenChange}
-            onRightOpenChange={onRightOpenChange}
-            onTagCreate={onTagCreate}
-          >
-            <McapStreams ctx={ctx} client={client} />
-            <McapNetworkHealthTracker client={client} />
-            <McapModalLayoutPersistence />
-          </MultiModalPlayback>
-        </McapDataStreamProvider>
+        <McapPoseTrajectoriesProvider>
+          <McapDataStreamProvider>
+            <MultiModalPlayback
+              fileName={fileName}
+              headerCaption={headerCaption}
+              sceneSources={sources}
+              deselectFocusedTileOnRepeatSelect={false}
+              initialTiles={initialTiles}
+              initialLayout={initialLayout}
+              tracks={tracks.length > 0 ? tracks : undefined}
+              onTagDelete={onTagDelete}
+              leftSidebar={<McapSettingsSidebar />}
+              defaultLeftOpen={defaultLeftOpen}
+              defaultRightOpen={defaultRightOpen}
+              onLeftOpenChange={onLeftOpenChange}
+              onRightOpenChange={onRightOpenChange}
+              onTagCreate={onTagCreate}
+            >
+              <McapStreams ctx={ctx} client={client} />
+              <McapNetworkHealthTracker client={client} />
+              <McapModalLayoutPersistence />
+            </MultiModalPlayback>
+          </McapDataStreamProvider>
+        </McapPoseTrajectoriesProvider>
       </McapFrameTransformsProvider>
     </McapModalSettingsProvider>
   );
