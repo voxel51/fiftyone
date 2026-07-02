@@ -6,37 +6,20 @@
  * Look-ahead prefetch for modal next/previous navigation
  * (FOEPD-4052, Phase 1: image datasets).
  *
- * On each modal sample change, warms a small window of neighbors (N+m forward,
- * N-n back) so arrowing to them is instant, on two layers:
+ * On each modal sample change, warms neighboring samples so arrowing to them
+ * is instant:
  *
- *   1. GraphQL (ALL media types) — fire each neighbor's `mainSample` query and
- *      RETAIN it. The modal env uses `gcReleaseBufferSize: 0`, so query data is
- *      GC'd the moment nothing is subscribed; retain pins it. On navigation
- *      `modalSample` re-resolves with the neighbor's variables and, because
- *      recoil-relay queries with `store-or-network`, reads straight from the
- *      store — no network round-trip. Because the GraphQL is the slow part, this
- *      is a win for image AND video / 3D / multimodal neighbors alike.
- *   2. Media (images only, Phase 1) — off the response, resolve the modal media
- *      URL and warm it with a `new Image()` that stays referenced until the
- *      entry is evicted, keeping the decoded bitmap in memory. When the Looker
- *      mounts and sets the same `src` (looker/.../elements/image.ts), the
- *      browser serves it from memory (or the HTTP cache) → fast first paint.
- *      Non-image samples no-op the media step (see `resolveModalMediaSrc`);
- *      their media needs different machinery in later phases (Three's
- *      LoadingManager for 3D, etc.).
+ *   1. GraphQL (all media types) — fetch and RETAIN each neighbor's
+ *      `mainSample` query. The modal env uses `gcReleaseBufferSize: 0`, so the
+ *      retain is what lets `modalSample` resolve from the Relay store on
+ *      navigation instead of the network.
+ *   2. Media (images only in this phase) — decode the media URL into a
+ *      retained `new Image()` so the bitmap is in memory when the looker
+ *      mounts the same src. Other media types no-op (`resolveModalMediaSrc`).
  *
  * Neighbors come from `navigation.peek(offset)`, which reads the spotlight
- * cursor WITHOUT moving it — the mutating `next`/`previous` would corrupt
- * navigation (see useExpandSample.ts). Grouped / dynamic-group navigation uses a
- * different mechanism and does not set `peek`, so the hook safely no-ops there
- * (Phase 2).
- *
- * The pure decision logic (`resolveWindow`, `reconcileWindow`,
- * `resolveModalMediaSrc`) is exported and unit-tested; the hook itself is thin
- * orchestration over Relay + Recoil.
- *
- * Validate: Network panel — arrowing onto a warmed neighbor should issue NO
- * `/graphql` request and (for images) the media should paint immediately.
+ * cursor without moving it. Grouped / dynamic-group navigation does not
+ * provide `peek`, so the hook no-ops there (Phase 2).
  */
 import { mainSample, type mainSampleQuery } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
@@ -49,35 +32,17 @@ import {
   type IEnvironment,
 } from "relay-runtime";
 
-/** How many samples to warm ahead of / behind the current one. */
-export type PrefetchWindow = { lookahead: number; lookbehind: number };
+// Forward navigation is more common than backward.
+const LOOKAHEAD = 2;
+const LOOKBEHIND = 1;
 
-/**
- * Network Information API hints used to scale the window down on metered / slow
- * connections. Passed in as a plain arg (not read from `navigator` here) so the
- * function stays pure and testable.
- */
-export type ConnectionHints = { saveData?: boolean; effectiveType?: string };
-
-// Forward navigation is more common than backward (ticket: N + m ahead, N - n
-// behind). Fixed default; a user preference could promote this later.
-export const DEFAULT_WINDOW: PrefetchWindow = { lookahead: 2, lookbehind: 1 };
-
-const SLOW_EFFECTIVE_TYPES = new Set(["slow-2g", "2g"]);
-
-/**
- * Resolve the prefetch window from connection hints. Honors Save-Data and slow
- * connections by disabling prefetch (don't burn a metered link warming samples
- * the user may never reach); otherwise returns the default window.
- */
-export function resolveWindow(hints?: ConnectionHints): PrefetchWindow {
-  const slow =
-    Boolean(hints?.saveData) ||
-    (hints?.effectiveType !== undefined &&
-      SLOW_EFFECTIVE_TYPES.has(hints.effectiveType));
-
-  return slow ? { lookahead: 0, lookbehind: 0 } : DEFAULT_WINDOW;
-}
+// Save-Data is an explicit user preference; speculative downloads are exactly
+// the traffic it exists to stop. `connection` is non-standard (Chromium only).
+const prefersReducedData = (): boolean =>
+  Boolean(
+    (navigator as Navigator & { connection?: { saveData?: boolean } })
+      .connection?.saveData,
+  );
 
 /** A neighbor to warm: its sample id and its generation-scoped cache key. */
 export type WarmTarget = { id: string; key: string };
@@ -87,25 +52,19 @@ export type Reconciliation = {
   toWarm: WarmTarget[];
   /** Existing keys outside the current window/generation to release. */
   toEvict: string[];
-  /** All keys that should remain warm (current + window). */
-  keep: Set<string>;
 };
 
 /**
- * Warmed entries are keyed `${generation}::${sampleId}`. The generation bundles
- * (dataset, view, mediaField, group slice); when any changes, prior-generation
- * keys fall out of `keep` and are evicted — the same sample id then needs
- * different query variables.
+ * Warm keys are `${generation}::${sampleId}`; the generation bundles the
+ * query-variable inputs, so changing any of them evicts prior entries.
  */
 export const keyFor = (generation: string, id: string): string =>
   `${generation}::${id}`;
 
 /**
- * Pure window reconciliation: given the current sample, the freshly-peeked
- * neighbor ids, and the keys already warmed, decide what to warm and evict. The
- * current sample is always kept (it was a neighbor a moment ago) but never
- * warmed (its data is already live). Neighbors already warmed, duplicates, and
- * the current id are excluded from `toWarm`.
+ * Decide what to warm and evict given the current sample, the peeked neighbor
+ * ids, and the already-warmed keys. The current sample is kept but never
+ * warmed (its data is already live).
  */
 export function reconcileWindow({
   currentId,
@@ -140,18 +99,13 @@ export function reconcileWindow({
     }
   }
 
-  return { toWarm, toEvict, keep };
+  return { toWarm, toEvict };
 }
 
 /**
- * Resolve the browser media URL to warm for a prefetched sample, or `null` if
- * there's nothing to warm.
- *
- * Phase 1 gate: only `ImageSample` media is warmed. Video / 3D / point-cloud /
- * unknown samples return `null` — their media needs different machinery
- * (Three's LoadingManager for 3D, `<video>` preload for video) that lands in
- * later phases. Only this media step is image-gated; the caller still warms the
- * GraphQL/JSON for every media type.
+ * Resolve the media URL to warm, or `null`. Phase 1 gate: only `ImageSample`
+ * media is warmed — video/3D need different machinery (later phases). The
+ * caller still warms every media type's GraphQL.
  */
 export function resolveModalMediaSrc(
   response: mainSampleQuery["response"],
@@ -182,23 +136,6 @@ const warmImage = (src: string): HTMLImageElement => {
   image.decoding = "async";
   image.src = src;
   return image;
-};
-
-/** Read Network Information API hints, if the browser exposes them. */
-const getConnectionHints = (): ConnectionHints | undefined => {
-  if (typeof navigator === "undefined") {
-    return undefined;
-  }
-  // `connection` is non-standard (Chromium only); guard + narrow.
-  const connection = (
-    navigator as Navigator & {
-      connection?: { saveData?: boolean; effectiveType?: string };
-    }
-  ).connection;
-
-  return connection
-    ? { saveData: connection.saveData, effectiveType: connection.effectiveType }
-    : undefined;
 };
 
 type WarmEntry = {
@@ -234,10 +171,8 @@ export default function useModalPrefetch() {
           .getLoadable(fos.modalGroupSlice)
           .getValue();
 
-        // Mirror modalSample's variables guard: without a resolved slice
-        // selection the query variables would be invalid (`slices: [null]`).
-        // Unreachable while grouped navigation lacks `peek`; kept in lockstep
-        // for when it gains it.
+        // Mirror modalSample's variables guard (unreachable until grouped
+        // navigation gains `peek`).
         const hasSlices = snapshot.getLoadable(fos.hasGroupSlices).getValue();
         if (hasSlices && (!groupSlice || !sliceSelect)) {
           return;
@@ -301,10 +236,8 @@ export default function useModalPrefetch() {
   // Re-warm the window whenever the current sample (or a variable input)
   // changes.
   useEffect(() => {
-    // In the states below there is nothing to prefetch (modal closed,
-    // navigation without peek support, prefetch disabled by connection
-    // hints) — release anything already warmed rather than just bailing, so
-    // retained queries and decoded bitmaps don't outlive their usefulness.
+    // Nothing to prefetch in the early-return states below — also release
+    // anything already warmed so retains/bitmaps don't outlive the modal.
     const flush = () => {
       for (const entry of warmed.current.values()) {
         entry.release();
@@ -325,8 +258,7 @@ export default function useModalPrefetch() {
       return;
     }
 
-    const { lookahead, lookbehind } = resolveWindow(getConnectionHints());
-    if (lookahead === 0 && lookbehind === 0) {
+    if (prefersReducedData()) {
       flush();
       return;
     }
@@ -336,8 +268,8 @@ export default function useModalPrefetch() {
     const generation = JSON.stringify([datasetName, view, mediaField, slice]);
 
     const offsets: number[] = [];
-    for (let i = 1; i <= lookahead; i++) offsets.push(i);
-    for (let i = 1; i <= lookbehind; i++) offsets.push(-i);
+    for (let i = 1; i <= LOOKAHEAD; i++) offsets.push(i);
+    for (let i = 1; i <= LOOKBEHIND; i++) offsets.push(-i);
 
     let cancelled = false;
 

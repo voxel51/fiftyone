@@ -23,11 +23,9 @@ vi.mock("@fiftyone/state", () => ({
 
 import type { mainSampleQuery } from "@fiftyone/relay";
 import {
-  DEFAULT_WINDOW,
   keyFor,
   reconcileWindow,
   resolveModalMediaSrc,
-  resolveWindow,
 } from "./useModalPrefetch";
 
 type Response = mainSampleQuery["response"];
@@ -35,42 +33,11 @@ type Response = mainSampleQuery["response"];
 const response = (sample: unknown): Response =>
   ({ sample }) as unknown as Response;
 
-describe("resolveWindow", () => {
-  it("returns the default window with no hints", () => {
-    expect(resolveWindow()).toEqual(DEFAULT_WINDOW);
-    expect(resolveWindow({})).toEqual(DEFAULT_WINDOW);
-  });
-
-  it("returns the default window on fast/normal connections", () => {
-    expect(resolveWindow({ effectiveType: "4g" })).toEqual(DEFAULT_WINDOW);
-    expect(resolveWindow({ effectiveType: "3g" })).toEqual(DEFAULT_WINDOW);
-    expect(resolveWindow({ saveData: false })).toEqual(DEFAULT_WINDOW);
-  });
-
-  it("disables prefetch under Save-Data", () => {
-    expect(resolveWindow({ saveData: true })).toEqual({
-      lookahead: 0,
-      lookbehind: 0,
-    });
-  });
-
-  it("disables prefetch on slow (2g) connections", () => {
-    expect(resolveWindow({ effectiveType: "2g" })).toEqual({
-      lookahead: 0,
-      lookbehind: 0,
-    });
-    expect(resolveWindow({ effectiveType: "slow-2g" })).toEqual({
-      lookahead: 0,
-      lookbehind: 0,
-    });
-  });
-});
-
 describe("reconcileWindow", () => {
   const gen = "g";
 
   it("warms every neighbor on a fresh open, evicts nothing", () => {
-    const { toWarm, toEvict, keep } = reconcileWindow({
+    const { toWarm, toEvict } = reconcileWindow({
       currentId: "c",
       generation: gen,
       neighborIds: ["a", "b"],
@@ -82,9 +49,6 @@ describe("reconcileWindow", () => {
       { id: "b", key: keyFor(gen, "b") },
     ]);
     expect(toEvict).toEqual([]);
-    expect(keep).toEqual(
-      new Set([keyFor(gen, "c"), keyFor(gen, "a"), keyFor(gen, "b")]),
-    );
   });
 
   it("never warms the current sample", () => {
