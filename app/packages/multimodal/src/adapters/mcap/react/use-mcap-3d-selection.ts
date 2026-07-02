@@ -4,6 +4,12 @@ import type { PointCloudVisualization } from "../../../decoders";
 import { useSceneInventory, type SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { chooseCalibrationTopic } from "../topic-matching";
+import {
+  recordMcap3dShowCameraImages,
+  recordMcap3dSourceSelection,
+  resolveMcap3dSelectionRestore,
+  type Mcap3dViewStateSnapshot,
+} from "./mcap-3d-view-state";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
 const TILE_TYPE_LABEL = "3D";
@@ -33,8 +39,16 @@ const PROVISIONAL_TOPIC_PENALTIES: readonly {
  * enabled, the topic arrays derived from that set, the calibration↔image
  * pairing that feeds camera frustum image planes, and the tile-title sync.
  * State is local to the calling tile — it resets when the tile remounts.
+ * An optional `restore` snapshot (captured by the previous mount via the
+ * session view-state store) seeds the enabled set and camera-image toggle,
+ * but only when the new sample's renderable-source shape strictly matches
+ * the snapshot's; otherwise the defaults apply exactly as a fresh mount.
  */
-export function useMcap3dSelection() {
+export function useMcap3dSelection({
+  restore = null,
+}: {
+  readonly restore?: Mcap3dViewStateSnapshot | null;
+} = {}) {
   const sources = useSceneInventory();
   const renderableSources = useMemo(
     () => sources.filter(is3dRenderableSource),
@@ -61,15 +75,38 @@ export function useMcap3dSelection() {
     [renderableSources],
   );
   const setTileTitle = useSetTileTitle();
-  // Start with every source enabled. This tile only mounts after the scene
-  // inventory is ready (the renderer gates on it), so `renderableSources` is
-  // already populated and the lazy initializer captures the full set once.
+  // Carried-over selection state from the previous sample, resolved once at
+  // mount: it applies only when the new sample's renderable source ids
+  // exactly match the shape the snapshot was captured against.
+  const [selectionRestore] = useState(() =>
+    resolveMcap3dSelectionRestore(
+      restore,
+      renderableSources.map((s) => s.id),
+    ),
+  );
+  // Start with every source enabled (or the carried-over set when the source
+  // shape matches). This tile only mounts after the scene inventory is ready
+  // (the renderer gates on it), so `renderableSources` is already populated
+  // and the lazy initializer captures the full set once.
   const [enabled, setEnabled] = useState<ReadonlySet<string>>(
-    () => new Set(renderableSources.map((s) => s.id)),
+    () =>
+      new Set(
+        selectionRestore.enabledSourceIds ?? renderableSources.map((s) => s.id),
+      ),
   );
   const knownRenderableSourceIdsRef = useRef<ReadonlySet<string>>(
     new Set(renderableSources.map((s) => s.id)),
   );
+
+  // This effect writes the enabled-source selection (with the renderable
+  // source shape it was captured against) through to the session view-state
+  // store so the selection can carry across sample navigation.
+  useEffect(() => {
+    recordMcap3dSourceSelection({
+      enabledSourceIds: [...enabled],
+      renderableSourceIds: renderableSources.map((s) => s.id),
+    });
+  }, [enabled, renderableSources]);
 
   // This effect keeps the enabled source set aligned as 3D sources appear or
   // disappear after the tile mounts.
@@ -147,7 +184,15 @@ export function useMcap3dSelection() {
   // Camera frames on frustum image planes: pair each calibration topic with
   // its camera's image stream (same prefix convention the image tile uses,
   // inverted) so the frustum can show what the camera currently sees.
-  const [showCameraImages, setShowCameraImages] = useState(true);
+  const [showCameraImages, setShowCameraImages] = useState(
+    selectionRestore.showCameraImages ?? true,
+  );
+
+  // This effect writes the camera-image visibility toggle through to the
+  // session view-state store so it can carry across sample navigation.
+  useEffect(() => {
+    recordMcap3dShowCameraImages(showCameraImages);
+  }, [showCameraImages]);
   const imageTopicByCalibrationTopic = useMemo(() => {
     const pairs = new Map<string, string>();
     for (const source of sources) {
@@ -230,6 +275,7 @@ export function useMcap3dSelection() {
     pointCloudTopics,
     poseSources,
     poseTopics,
+    restoredSourceShapeMatches: selectionRestore.sourceShapeMatches,
     sceneAnnotationSources,
     sceneAnnotationTopics,
     selectedPointCloudSources,

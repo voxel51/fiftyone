@@ -1,9 +1,23 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PointCloudVisualization } from "../../../decoders";
+import { markMcapLatencyEvent } from "../mcap-latency-debug";
+import {
+  getMcap3dViewStateSnapshot,
+  resetMcap3dViewStateForTests,
+} from "./mcap-3d-view-state";
 import { useMcap3dFrameSelection } from "./use-mcap-3d-frame-selection";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
+
+vi.mock("../mcap-latency-debug", () => ({
+  markMcapLatencyEvent: vi.fn(),
+}));
+
+beforeEach(() => {
+  vi.mocked(markMcapLatencyEvent).mockClear();
+  resetMcap3dViewStateForTests();
+});
 
 afterEach(() => {
   cleanup();
@@ -101,7 +115,126 @@ describe("useMcap3dFrameSelection", () => {
     expect(result.current.worldFrameId).toBe("world");
     expect(result.current.cameraTargetFrameId).toBe("world");
   });
+
+  it("adopts carried-over user frames once they appear in the streaming inventory", () => {
+    const { rerender, result } = renderHook(useMcap3dFrameSelection, {
+      initialProps: selectionProps({
+        frameTransforms: transforms(["base_link", "map"]),
+        restore: {
+          userCameraTargetFrameId: "ego_vehicle",
+          userWorldFrameId: "odom",
+        },
+      }),
+    });
+
+    // Until the carried frames (re)appear, auto-selection runs untouched.
+    expect(result.current.worldFrameId).toBe("base_link");
+    expect(result.current.worldFrameSelectionSource).toBe("auto");
+    expect(result.current.cameraTargetFrameId).toBe("base_link");
+
+    rerender(
+      selectionProps({
+        frameTransforms: transforms(["base_link", "ego_vehicle", "map"]),
+        restore: {
+          userCameraTargetFrameId: "ego_vehicle",
+          userWorldFrameId: "odom",
+        },
+      }),
+    );
+    // The camera target adopted; the world frame is still pending.
+    expect(result.current.cameraTargetFrameId).toBe("ego_vehicle");
+    expect(result.current.cameraTargetSelectionSource).toBe("user");
+    expect(result.current.worldFrameId).toBe("base_link");
+
+    rerender(
+      selectionProps({
+        frameTransforms: transforms([
+          "base_link",
+          "ego_vehicle",
+          "map",
+          "odom",
+        ]),
+        restore: {
+          userCameraTargetFrameId: "ego_vehicle",
+          userWorldFrameId: "odom",
+        },
+      }),
+    );
+    expect(result.current.worldFrameId).toBe("odom");
+    expect(result.current.worldFrameSelectionSource).toBe("user");
+    expect(restoredFrameEvents().map(([, detail]) => detail)).toEqual([
+      { field: "cameraTargetFrameId", frameId: "ego_vehicle" },
+      { field: "worldFrameId", frameId: "odom" },
+    ]);
+  });
+
+  it("never pins a carried-over frame that does not reappear", () => {
+    const { rerender, result } = renderHook(useMcap3dFrameSelection, {
+      initialProps: selectionProps({
+        frameTransforms: transforms(["base_link", "map"]),
+        restore: { userCameraTargetFrameId: null, userWorldFrameId: "gone" },
+      }),
+    });
+
+    rerender(
+      selectionProps({
+        frameTransforms: transforms(["base_link", "map", "odom"]),
+        restore: { userCameraTargetFrameId: null, userWorldFrameId: "gone" },
+      }),
+    );
+
+    expect(result.current.worldFrameId).toBe("base_link");
+    expect(result.current.worldFrameSelectionSource).toBe("auto");
+    expect(restoredFrameEvents()).toHaveLength(0);
+  });
+
+  it("cancels the pending adoption when the user selects a frame first", () => {
+    const { rerender, result } = renderHook(useMcap3dFrameSelection, {
+      initialProps: selectionProps({
+        frameTransforms: transforms(["base_link", "map"]),
+        restore: { userCameraTargetFrameId: null, userWorldFrameId: "odom" },
+      }),
+    });
+
+    act(() => {
+      result.current.updateWorldFrameId("map");
+    });
+    rerender(
+      selectionProps({
+        frameTransforms: transforms(["base_link", "map", "odom"]),
+        restore: { userCameraTargetFrameId: null, userWorldFrameId: "odom" },
+      }),
+    );
+
+    expect(result.current.worldFrameId).toBe("map");
+    expect(restoredFrameEvents()).toHaveLength(0);
+  });
+
+  it("writes user frame selections through to the view-state store", () => {
+    const { result } = renderHook(useMcap3dFrameSelection, {
+      initialProps: selectionProps({
+        frameTransforms: transforms(["base_link", "map", "odom"]),
+      }),
+    });
+
+    expect(getMcap3dViewStateSnapshot().userWorldFrameId).toBeNull();
+
+    act(() => {
+      result.current.updateWorldFrameId("odom");
+      result.current.updateCameraTargetFrameId("map");
+    });
+    expect(getMcap3dViewStateSnapshot()).toMatchObject({
+      userCameraTargetFrameId: "map",
+      userWorldFrameId: "odom",
+    });
+  });
 });
+
+function restoredFrameEvents() {
+  return vi
+    .mocked(markMcapLatencyEvent)
+    .mock.calls.filter(([name]) => name === "3d view state restored");
+}
 
 function selectionProps(
   overrides: Partial<FrameSelectionProps> = {},

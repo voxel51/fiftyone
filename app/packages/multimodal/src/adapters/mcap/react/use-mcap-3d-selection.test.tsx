@@ -2,6 +2,12 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import {
+  EMPTY_MCAP_3D_VIEW_STATE,
+  getMcap3dViewStateSnapshot,
+  resetMcap3dViewStateForTests,
+  type Mcap3dViewStateSnapshot,
+} from "./mcap-3d-view-state";
 import { useMcap3dSelection } from "./use-mcap-3d-selection";
 
 const { setTileTitleMock, useSceneInventoryMock } = vi.hoisted(() => ({
@@ -20,6 +26,7 @@ vi.mock("@fiftyone/tiling", () => ({
 beforeEach(() => {
   setTileTitleMock.mockClear();
   useSceneInventoryMock.mockReset();
+  resetMcap3dViewStateForTests();
 });
 
 afterEach(() => {
@@ -150,11 +157,69 @@ describe("useMcap3dSelection", () => {
     });
     expect(setTileTitleMock).toHaveBeenLastCalledWith(lidarTop.label);
   });
+
+  it("restores the enabled set and camera-image toggle on a strict shape match", () => {
+    const { result } = renderSelection([lidarTop, lidarFront, boxes], {
+      restore: viewStateSnapshot({
+        enabledSourceIds: [lidarTop.id, boxes.id],
+        renderableSourceIds: [boxes.id, lidarFront.id, lidarTop.id],
+        showCameraImages: false,
+      }),
+    });
+
+    expect(result.current.restoredSourceShapeMatches).toBe(true);
+    expect(result.current.enabled).toEqual(new Set([lidarTop.id, boxes.id]));
+    expect(result.current.showCameraImages).toBe(false);
+  });
+
+  it("falls back to fresh-mount defaults when the source shape differs", () => {
+    const { result } = renderSelection([lidarTop, lidarFront], {
+      restore: viewStateSnapshot({
+        enabledSourceIds: [lidarTop.id],
+        renderableSourceIds: [lidarTop.id, boxes.id],
+        showCameraImages: false,
+      }),
+    });
+
+    expect(result.current.restoredSourceShapeMatches).toBe(false);
+    expect(result.current.enabled).toEqual(
+      new Set([lidarTop.id, lidarFront.id]),
+    );
+    expect(result.current.showCameraImages).toBe(true);
+  });
+
+  it("writes the selection state through to the view-state store", () => {
+    const { result } = renderSelection([lidarTop, lidarFront]);
+
+    expect(getMcap3dViewStateSnapshot()).toMatchObject({
+      enabledSourceIds: [lidarTop.id, lidarFront.id],
+      renderableSourceIds: [lidarTop.id, lidarFront.id],
+      showCameraImages: true,
+    });
+
+    act(() => {
+      result.current.toggleSource(lidarFront.id, false);
+      result.current.setShowCameraImages(false);
+    });
+    expect(getMcap3dViewStateSnapshot()).toMatchObject({
+      enabledSourceIds: [lidarTop.id],
+      showCameraImages: false,
+    });
+  });
 });
 
-function renderSelection(sources: readonly SceneSource[]) {
+function renderSelection(
+  sources: readonly SceneSource[],
+  props: Parameters<typeof useMcap3dSelection>[0] = {},
+) {
   useSceneInventoryMock.mockReturnValue(sources);
-  return renderHook(useMcap3dSelection);
+  return renderHook(useMcap3dSelection, { initialProps: props });
+}
+
+function viewStateSnapshot(
+  overrides: Partial<Mcap3dViewStateSnapshot>,
+): Mcap3dViewStateSnapshot {
+  return { ...EMPTY_MCAP_3D_VIEW_STATE, ...overrides };
 }
 
 function source(id: string, type: string): SceneSource {

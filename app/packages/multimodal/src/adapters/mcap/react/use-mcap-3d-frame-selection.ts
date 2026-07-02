@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   CameraCalibrationVisualization,
   GridVisualization,
   PointCloudVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
+import { markMcapLatencyEvent } from "../mcap-latency-debug";
+import {
+  nextMcap3dViewStateRestoreOnceKey,
+  recordMcap3dUserCameraTargetFrameId,
+  recordMcap3dUserWorldFrameId,
+} from "./mcap-3d-view-state";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
@@ -30,12 +36,22 @@ const PREFERRED_CAMERA_TARGET_FRAMES = [
 ];
 export type FrameSelectionSource = "auto" | "user";
 
+export interface Mcap3dFrameSelectionRestore {
+  readonly userCameraTargetFrameId: string | null;
+  readonly userWorldFrameId: string | null;
+}
+
 /**
  * World-frame and camera-target frame selection for the 3D tile. Derives
  * the available frame ids from the transform graph plus the current playback
  * frames, auto-fills both selections from preferred defaults, and lets the
  * user's explicit choice stick while its frame remains available. State is
  * local to the calling tile — it resets when the tile remounts.
+ * An optional `restore` carries the previous sample's *user* selections as a
+ * pending intent: the auto selection runs untouched while the frame id is
+ * absent, and the intent is adopted only if/when the id (re)appears in the
+ * streaming inventory — so a stale id can never pin the selection. A manual
+ * selection cancels the pending intent.
  */
 export function useMcap3dFrameSelection({
   annotationFrames,
@@ -43,12 +59,14 @@ export function useMcap3dFrameSelection({
   frames,
   frameTransforms,
   gridFrames,
+  restore = null,
 }: {
   readonly annotationFrames: readonly (McapTopicPlaybackFrame<SceneUpdateVisualization> | null)[];
   readonly calibrationFrames: readonly (McapTopicPlaybackFrame<CameraCalibrationVisualization> | null)[];
   readonly frames: readonly (McapTopicPlaybackFrame<PointCloudVisualization> | null)[];
   readonly frameTransforms: McapFrameTransformsState;
   readonly gridFrames: readonly (McapTopicPlaybackFrame<GridVisualization> | null)[];
+  readonly restore?: Mcap3dFrameSelectionRestore | null;
 }) {
   const [worldFrameId, setWorldFrameId] = useState("");
   const [cameraTargetFrameId, setCameraTargetFrameId] = useState("");
@@ -56,6 +74,17 @@ export function useMcap3dFrameSelection({
     useState<FrameSelectionSource>("auto");
   const [cameraTargetSelectionSource, setCameraTargetSelectionSource] =
     useState<FrameSelectionSource>("auto");
+  // Pending carry-over of the previous sample's user-selected frames,
+  // captured once at mount. The intent dies on adoption, on a manual
+  // selection, or with the mount itself (next sample hop).
+  const pendingUserWorldFrameIdRef = useRef(restore?.userWorldFrameId ?? null);
+  const pendingUserCameraTargetFrameIdRef = useRef(
+    restore?.userCameraTargetFrameId ?? null,
+  );
+  const restoreMarkKeyRef = useRef<string | null>(null);
+  if (restoreMarkKeyRef.current === null) {
+    restoreMarkKeyRef.current = nextMcap3dViewStateRestoreOnceKey();
+  }
   const frameIds = useMemo(
     () =>
       uniqueSortedFrameIds([
@@ -107,11 +136,49 @@ export function useMcap3dFrameSelection({
     worldFrameId,
   ]);
 
+  // This effect adopts the previous sample's user-selected frames once they
+  // (re)appear in the streaming frame inventory. Until then the auto
+  // selection above runs untouched; if the frame never (re)appears, nothing
+  // is ever pinned.
+  useEffect(() => {
+    const pendingWorld = pendingUserWorldFrameIdRef.current;
+    if (mcap3dUserFrameRestoreApplies(pendingWorld, frameIds)) {
+      pendingUserWorldFrameIdRef.current = null;
+      setWorldFrameSelectionSource("user");
+      setWorldFrameId(pendingWorld);
+      markMcapLatencyEvent(
+        "3d view state restored",
+        { field: "worldFrameId", frameId: pendingWorld },
+        { onceKey: `${restoreMarkKeyRef.current}:worldFrameId` },
+      );
+    }
+
+    const pendingTarget = pendingUserCameraTargetFrameIdRef.current;
+    if (mcap3dUserFrameRestoreApplies(pendingTarget, frameIds)) {
+      pendingUserCameraTargetFrameIdRef.current = null;
+      setCameraTargetSelectionSource("user");
+      setCameraTargetFrameId(pendingTarget);
+      markMcapLatencyEvent(
+        "3d view state restored",
+        { field: "cameraTargetFrameId", frameId: pendingTarget },
+        { onceKey: `${restoreMarkKeyRef.current}:cameraTargetFrameId` },
+      );
+    }
+  }, [frameIds]);
+
   const updateWorldFrameId = useCallback((frameId: string) => {
+    // A manual selection supersedes any pending carried-over user frame and
+    // is written through to the session view-state store.
+    pendingUserWorldFrameIdRef.current = null;
+    recordMcap3dUserWorldFrameId(frameId);
     setWorldFrameSelectionSource("user");
     setWorldFrameId(frameId);
   }, []);
   const updateCameraTargetFrameId = useCallback((frameId: string) => {
+    // A manual selection supersedes any pending carried-over user frame and
+    // is written through to the session view-state store.
+    pendingUserCameraTargetFrameIdRef.current = null;
+    recordMcap3dUserCameraTargetFrameId(frameId);
     setCameraTargetSelectionSource("user");
     setCameraTargetFrameId(frameId);
   }, []);
@@ -125,6 +192,19 @@ export function useMcap3dFrameSelection({
     worldFrameId,
     worldFrameSelectionSource,
   };
+}
+
+/**
+ * Pure gate for adopting a carried-over user frame selection: the frame id
+ * must currently exist in the streaming frame inventory. "Not yet present"
+ * and "absent" are indistinguishable while frames stream in, so the caller
+ * keeps the intent pending and re-checks as the inventory grows.
+ */
+export function mcap3dUserFrameRestoreApplies(
+  frameId: string | null,
+  frameIds: readonly string[],
+): frameId is string {
+  return frameId !== null && frameId !== "" && frameIds.includes(frameId);
 }
 
 function frameIdsFromFrames(

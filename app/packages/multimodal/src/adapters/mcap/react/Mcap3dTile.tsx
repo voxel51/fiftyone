@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type {
   CameraCalibrationVisualization,
   EncodedImageVisualization,
@@ -22,6 +28,10 @@ import {
   build3dLayers,
   type Mcap3dTransformGapWarning,
 } from "./mcap-3d-layers";
+import {
+  getMcap3dViewStateSnapshot,
+  nextMcap3dViewStateRestoreOnceKey,
+} from "./mcap-3d-view-state";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import { useMcapModalSettings } from "./mcap-modal-settings";
@@ -51,6 +61,10 @@ import { useMcapTopicPlaybackFrames } from "./use-mcap-topic-stream";
  * sidebar offers checkboxes and panel-specific frame controls.
  */
 const Mcap3dTile: React.FC<McapTileProps> = () => {
+  // The previous mount's view state, read once before any write-through can
+  // overwrite it. The tile remounts per sample, so this snapshot is exactly
+  // the state the user left the previous sample's 3D tile in.
+  const [viewStateRestore] = useState(() => getMcap3dViewStateSnapshot());
   const {
     cameraSources,
     cameraTopics,
@@ -63,6 +77,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     pointCloudTopics,
     poseSources,
     poseTopics,
+    restoredSourceShapeMatches,
     sceneAnnotationSources,
     sceneAnnotationTopics,
     selectedPointCloudSources,
@@ -72,7 +87,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     setShowCameraImages,
     showCameraImages,
     toggleSource,
-  } = useMcap3dSelection();
+  } = useMcap3dSelection({ restore: viewStateRestore });
   const frameTransforms = useMcapFrameTransformsContext();
   const { temporalPolicy } = useMcapModalSettings();
   const latencyDebugEnabled = useMemo(() => isMcapLatencyDebugEnabled(), []);
@@ -104,6 +119,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     frames,
     frameTransforms,
     gridFrames,
+    restore: viewStateRestore,
   });
 
   const provisionalTopicId = useMemo(
@@ -126,6 +142,11 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     playbackTimeNs,
     poseFrames,
     poseTopics,
+    // Trajectory overrides share the enabled-set's strict shape gate: they
+    // only carry over onto a same-shaped recording.
+    restore: restoredSourceShapeMatches
+      ? viewStateRestore.trajectoryFrameOverrides
+      : null,
     sceneAnnotationTopics,
   });
   const {
@@ -321,6 +342,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     playbackTimeNs,
     provisionalFrameIds,
     provisionalPlaybackFrame,
+    restore: viewStateRestore,
     selectedTopicsKey,
     worldFrameId,
   });
@@ -332,6 +354,51 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     ],
     [cameraTrackingWarning, placementNotices, transformNotices],
   );
+
+  const [restoreMarkOnceKey] = useState(() =>
+    nextMcap3dViewStateRestoreOnceKey(),
+  );
+  // This effect emits a latency-debug mark for the carried-over view state
+  // fields that restored synchronously at mount. Async restores (user frames,
+  // camera pose, tracking anchor) mark themselves as they apply.
+  useEffect(() => {
+    if (!latencyDebugEnabled) {
+      return;
+    }
+
+    const fields: string[] = [];
+    if (restoredSourceShapeMatches) {
+      if (viewStateRestore.enabledSourceIds) {
+        fields.push("enabledSources");
+      }
+      if (viewStateRestore.showCameraImages !== null) {
+        fields.push("showCameraImages");
+      }
+      if (
+        viewStateRestore.trajectoryFrameOverrides &&
+        Object.keys(viewStateRestore.trajectoryFrameOverrides).length > 0
+      ) {
+        fields.push("trajectoryFrameOverrides");
+      }
+    }
+    if (viewStateRestore.trackingMode !== null) {
+      fields.push("trackingMode");
+    }
+    if (fields.length === 0) {
+      return;
+    }
+
+    markMcapLatencyEvent(
+      "3d view state restored",
+      { fields },
+      { onceKey: `${restoreMarkOnceKey}:mount` },
+    );
+  }, [
+    latencyDebugEnabled,
+    restoredSourceShapeMatches,
+    restoreMarkOnceKey,
+    viewStateRestore,
+  ]);
 
   const handlePanelRenderStats = useCallback(
     (stats: PointCloudPanelRenderStats) => {

@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   PoseVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
+import { recordMcap3dTrajectoryFrameOverrides } from "./mcap-3d-view-state";
 import { useMcapPoseTrajectoriesContext } from "./mcap-pose-trajectories-context";
 import {
   defaultTrajectoryFrame,
@@ -17,7 +18,8 @@ import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
  * synthetic frame-locked SceneUpdates (trajectory lines + current-pose
  * markers) merged into the annotation topics/frames the layer builder
  * consumes. State is local to the calling tile — it resets when the tile
- * remounts.
+ * remounts. An optional `restore` (per-topic frame overrides, already
+ * shape-gated by the caller) seeds the override state at mount.
  */
 export function useMcap3dPoseTrajectories({
   annotationFrames,
@@ -25,6 +27,7 @@ export function useMcap3dPoseTrajectories({
   playbackTimeNs,
   poseFrames,
   poseTopics,
+  restore = null,
   sceneAnnotationTopics,
 }: {
   readonly annotationFrames: readonly (McapTopicPlaybackFrame<SceneUpdateVisualization> | null)[];
@@ -32,12 +35,19 @@ export function useMcap3dPoseTrajectories({
   readonly playbackTimeNs: bigint | undefined;
   readonly poseFrames: readonly (McapTopicPlaybackFrame<PoseVisualization> | null)[];
   readonly poseTopics: readonly string[];
+  readonly restore?: Readonly<Record<string, string>> | null;
   readonly sceneAnnotationTopics: readonly string[];
 }) {
   const trajectories = useMcapPoseTrajectoriesContext();
   const [trajectoryFrameOverrides, setTrajectoryFrameOverrides] = useState<
     Readonly<Record<string, string>>
-  >({});
+  >(() => restore ?? {});
+
+  // This effect writes the per-topic trajectory frame overrides through to
+  // the session view-state store so they can carry across sample navigation.
+  useEffect(() => {
+    recordMcap3dTrajectoryFrameOverrides(trajectoryFrameOverrides);
+  }, [trajectoryFrameOverrides]);
   // Keyed on frame-id CONTENT, not array identity: `frameIds` is re-derived
   // every playback tick, and letting that identity churn reach the
   // trajectory scene updates would rebuild (and dispose) the

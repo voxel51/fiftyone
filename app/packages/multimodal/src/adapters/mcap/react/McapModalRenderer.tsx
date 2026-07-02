@@ -6,6 +6,7 @@ import clsx from "clsx";
 import React, { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import MultiModalPlayback from "../../../components/MultiModalPlayback/MultiModalPlayback";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import { clearMcap3dViewState } from "./mcap-3d-view-state";
 import { McapDataStreamProvider } from "./mcap-data-stream-context";
 import { McapFrameTransformsProvider } from "./mcap-frame-transforms-context";
 import { McapPoseTrajectoriesProvider } from "./mcap-pose-trajectories-context";
@@ -75,6 +76,15 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
         (typeof ctx.media.path === "string" ? ctx.media.path : undefined),
     });
   }, [ctx.media.path, fileName, latencySessionKey, source]);
+  // This effect clears the carried 3D view state when the modal closes: the
+  // renderer persists across sample hops (persistAcrossSamples) and unmounts
+  // only then, so its cleanup is the session boundary for view-state
+  // carry-over.
+  useEffect(() => {
+    return () => {
+      clearMcap3dViewState();
+    };
+  }, []);
   const { status, error, sources, topicCount } = useMcapSceneInventory({
     client,
     source,
