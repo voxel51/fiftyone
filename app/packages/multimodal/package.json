@@ -16,7 +16,7 @@
         "./schemas/v1": "./src/schemas/v1/index.ts",
         "./visualization": "./src/visualization/index.ts",
         "./visualization/panels/image": "./src/visualization/panels/image.tsx",
-        "./visualization/panels/point-cloud": "./src/visualization/panels/point-cloud.tsx"
+        "./visualization/panels/point-cloud": "./src/visualization/panels/point-cloud/index.ts"
     },
     "typesVersions": {
         "*": {
@@ -51,7 +51,7 @@
                 "src/visualization/panels/image.tsx"
             ],
             "visualization/panels/point-cloud": [
-                "src/visualization/panels/point-cloud.tsx"
+                "src/visualization/panels/point-cloud/index.ts"
             ]
         }
     },

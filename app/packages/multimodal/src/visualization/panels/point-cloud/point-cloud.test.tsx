@@ -2,15 +2,15 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
-import { VISUALIZATION_KIND } from "../visualization-registry";
-import { PointCloudPanel } from "./point-cloud";
+import { VISUALIZATION_KIND } from "../../visualization-registry";
+import { PointCloudPanel } from "./index";
 
 vi.mock("@react-three/fiber", () => ({
   useThree: (selector: (state: { invalidate: () => void }) => unknown) =>
     selector({ invalidate: vi.fn() }),
 }));
 
-vi.mock("./base-3d-scene", () => ({
+vi.mock("../base-3d-scene", () => ({
   Base3DScene: ({
     cameraPose,
     children,
@@ -54,7 +54,7 @@ vi.mock("./base-3d-scene", () => ({
   ),
 }));
 
-vi.mock("./webgpu-canvas", () => ({
+vi.mock("../webgpu-canvas", () => ({
   WebGpuCanvas: ({ children }: { readonly children?: ReactNode }) => (
     <div>{children}</div>
   ),
