@@ -93,6 +93,7 @@ function makeStream(
     };
   });
   const stream: McapDataStream = {
+    sourceKey: "test-source",
     subscribeToTopic,
     getTopicCache: (topic) => caches.get(topic),
     getTimelineIndex: () => timeline,

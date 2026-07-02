@@ -20,7 +20,7 @@ import {
   type PlaybackStore,
   type PlaybackStream,
 } from "@fiftyone/playback";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getMcapTopicStatus,
   getMcapTopicStaleAgeNs,
@@ -29,7 +29,10 @@ import {
   setMcapTopicStatus,
   type McapTopicStatus,
 } from "./mcap-stream-status-state";
-import type { ByteSourceDescriptor } from "../../../query/bytes";
+import {
+  byteSourceAccessKey,
+  type ByteSourceDescriptor,
+} from "../../../query/bytes";
 import { DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ } from "../timeline";
 import type {
   McapDecodedMessage,
@@ -1979,13 +1982,31 @@ export function useRegisterMcapDataStream({
     [],
   );
   const getTimelineIndex = useCallback(() => index, [index]);
+  // Per-recording discriminator for cross-tile cache keys (e.g. the shared
+  // image-texture cache): keys embedding it can never collide across
+  // recordings, so no cache flush is needed at the source-change boundary.
+  const sourceKey = useMemo(
+    () => (source ? byteSourceAccessKey(source) : ""),
+    [source],
+  );
 
   useEffect(() => {
-    setDataStream({ subscribeToTopic, getTopicCache, getTimelineIndex });
+    setDataStream({
+      getTimelineIndex,
+      getTopicCache,
+      sourceKey,
+      subscribeToTopic,
+    });
     return () => {
       setDataStream(null);
     };
-  }, [setDataStream, subscribeToTopic, getTopicCache, getTimelineIndex]);
+  }, [
+    setDataStream,
+    sourceKey,
+    subscribeToTopic,
+    getTopicCache,
+    getTimelineIndex,
+  ]);
 }
 
 // ---------------------------------------------------------------------------

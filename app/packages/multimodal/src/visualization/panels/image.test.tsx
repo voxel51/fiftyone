@@ -1,10 +1,20 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EncodedImageVisualization } from "../../decoders";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import { ImagePanel } from "./image";
+import {
+  imageTextureCacheStats,
+  resetImageTextureCacheForTests,
+} from "./image-texture-cache";
 
 vi.mock("./base-2d-scene", () => ({
   Base2DScene: ({ children }: { readonly children?: ReactNode }) => (
@@ -18,6 +28,10 @@ vi.mock("./webgpu-canvas", () => ({
     <div data-testid="webgpu-canvas">{children}</div>
   ),
 }));
+
+beforeEach(() => {
+  resetImageTextureCacheForTests();
+});
 
 afterEach(() => {
   cleanup();
@@ -51,6 +65,43 @@ describe("ImagePanel", () => {
 
     expect(onPointerDown).not.toHaveBeenCalled();
   });
+
+  it("shares one decode between panels rendering the same texture key", async () => {
+    const createBitmap = mockImageBitmap();
+
+    // Distinct frame objects (fresh bytes identities) but the same message
+    // key — the batch re-delivery shape the shared cache collapses.
+    render(
+      <>
+        <ImagePanel frame={loadedFrame()} textureKey="rec|/cam/image|100" />
+        <ImagePanel frame={loadedFrame()} textureKey="rec|/cam/image|100" />
+      </>,
+    );
+
+    await waitFor(() =>
+      expect(screen.queryAllByText("Loading image")).toHaveLength(0),
+    );
+
+    expect(createBitmap).toHaveBeenCalledTimes(1);
+    expect(imageTextureCacheStats().decodeCount).toBe(1);
+  });
+
+  it("decodes privately per panel when no texture key is provided", async () => {
+    const createBitmap = mockImageBitmap();
+
+    render(
+      <>
+        <ImagePanel frame={loadedFrame()} />
+        <ImagePanel frame={loadedFrame()} />
+      </>,
+    );
+
+    await waitFor(() =>
+      expect(screen.queryAllByText("Loading image")).toHaveLength(0),
+    );
+
+    expect(createBitmap).toHaveBeenCalledTimes(2);
+  });
 });
 
 function loadedFrame(): EncodedImageVisualization {
@@ -61,12 +112,11 @@ function loadedFrame(): EncodedImageVisualization {
 }
 
 function mockImageBitmap() {
-  vi.stubGlobal(
-    "createImageBitmap",
-    vi.fn(async () => ({
-      close: vi.fn(),
-      height: 12,
-      width: 16,
-    })),
-  );
+  const createBitmap = vi.fn(async () => ({
+    close: vi.fn(),
+    height: 12,
+    width: 16,
+  }));
+  vi.stubGlobal("createImageBitmap", createBitmap);
+  return createBitmap;
 }

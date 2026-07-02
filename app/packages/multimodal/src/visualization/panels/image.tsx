@@ -11,6 +11,10 @@ import {
 } from "./base-2d-scene";
 import { createImageTexture } from "./image-texture";
 import {
+  acquireImageTexture,
+  type ImageTextureLease,
+} from "./image-texture-cache";
+import {
   VISUALIZATION_HUD_BACKGROUND_COLOR,
   VISUALIZATION_HUD_BORDER_COLOR,
   VISUALIZATION_HUD_TEXT_COLOR,
@@ -44,7 +48,27 @@ export interface ImagePanelProps {
   readonly onImageLoaded?: (width: number, height: number) => void;
   readonly onResetView?: () => void;
   readonly style?: CSSProperties;
+  /**
+   * Opaque shared image-texture cache key for `frame` (callers with
+   * message identity form it with `imageTextureCacheKey`). When present,
+   * the decode goes through the shared cache — surfaces showing the same
+   * frame (e.g. a 3D frustum image plane) share one decode and one GPU
+   * texture, and batch re-delivery of the same message in a fresh bytes
+   * wrapper does not re-decode. When absent, each new `frame.bytes`
+   * identity decodes privately (grid previews carry no message identity).
+   */
+  readonly textureKey?: string;
   readonly viewTransform?: ImageViewTransform;
+}
+
+/**
+ * The panel's claim on its currently displayed texture: the resolved
+ * handle plus the lease-release that gives it back to the shared cache
+ * (or disposes it, on the keyless private path).
+ */
+interface HeldImageTexture {
+  readonly handle: ImageTextureHandle;
+  readonly release: ImageTextureLease["release"];
 }
 
 /**
@@ -58,9 +82,10 @@ export function ImagePanel({
   onImageLoaded,
   onResetView,
   style,
+  textureKey,
   viewTransform,
 }: ImagePanelProps) {
-  const textureHandleRef = useRef<ImageTextureHandle | null>(null);
+  const heldTextureRef = useRef<HeldImageTexture | null>(null);
   const hasVisibleImageRef = useRef(false);
   const onImageLoadedRef = useRef(onImageLoaded);
   onImageLoadedRef.current = onImageLoaded;
@@ -82,18 +107,32 @@ export function ImagePanel({
     [fit, textureHandle, viewTransform],
   );
 
+  // This effect releases the held texture lease on unmount — release, not
+  // dispose: keyed textures may be shared with other surfaces and are
+  // retained by the cache for instant re-acquire; keyless private leases
+  // dispose themselves on release.
   useEffect(() => {
     return () => {
-      textureHandleRef.current?.dispose();
-      textureHandleRef.current = null;
+      heldTextureRef.current?.release();
+      heldTextureRef.current = null;
     };
   }, []);
 
+  // This effect decodes the current frame into the panel texture. With a
+  // `textureKey` the decode goes through the shared image-texture cache
+  // and the key doubles as the effect key, so playback re-delivering the
+  // same message in a fresh `bytes` wrapper neither re-runs the effect
+  // nor re-decodes. Keyless callers keep the bytes-identity lifecycle: a
+  // private decode per new bytes object, disposed on replacement.
+  // `frame.bytes` is therefore deliberately omitted from the deps when a
+  // key is present (the lint disable below). The old texture stays
+  // visible until the next handle resolves (no loading flash); its lease
+  // is released only on replacement.
   useEffect(() => {
     if (frame.bytes.byteLength === 0) {
       hasVisibleImageRef.current = false;
       setStatus("error");
-      replaceTextureHandle(null, textureHandleRef, setTextureHandle);
+      replaceHeldTexture(null, heldTextureRef, setTextureHandle);
       return undefined;
     }
 
@@ -102,32 +141,41 @@ export function ImagePanel({
       setStatus("loading");
     }
 
-    createImageTexture(frame.bytes, frame.mimeType)
+    const lease = acquireImageTexture(textureKey, () =>
+      createImageTexture(frame.bytes, frame.mimeType),
+    );
+    lease.promise
       .then((handle) => {
         if (cancelled) {
-          handle.dispose();
+          lease.release();
           return;
         }
 
-        replaceTextureHandle(handle, textureHandleRef, setTextureHandle);
+        replaceHeldTexture(
+          { handle, release: lease.release },
+          heldTextureRef,
+          setTextureHandle,
+        );
         hasVisibleImageRef.current = true;
         setStatus("loaded");
         onImageLoadedRef.current?.(handle.imageWidth, handle.imageHeight);
       })
       .catch(() => {
+        lease.release();
         if (cancelled) {
           return;
         }
 
         setStatus("error");
         hasVisibleImageRef.current = false;
-        replaceTextureHandle(null, textureHandleRef, setTextureHandle);
+        replaceHeldTexture(null, heldTextureRef, setTextureHandle);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [frame.bytes, frame.mimeType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [textureKey ?? frame.bytes, frame.mimeType]);
 
   return (
     <div className={className} style={{ ...styles.panel, ...style }}>
@@ -169,18 +217,18 @@ export function ImagePanel({
   );
 }
 
-function replaceTextureHandle(
-  nextHandle: ImageTextureHandle | null,
-  handleRef: MutableRefObject<ImageTextureHandle | null>,
+function replaceHeldTexture(
+  next: HeldImageTexture | null,
+  heldRef: MutableRefObject<HeldImageTexture | null>,
   setHandle: (handle: ImageTextureHandle | null) => void,
 ) {
-  const previousHandle = handleRef.current;
-  if (previousHandle && previousHandle !== nextHandle) {
-    previousHandle.dispose();
+  const previous = heldRef.current;
+  if (previous && previous !== next) {
+    previous.release();
   }
 
-  handleRef.current = nextHandle;
-  setHandle(nextHandle);
+  heldRef.current = next;
+  setHandle(next?.handle ?? null);
 }
 
 const styles: Record<string, CSSProperties> = {

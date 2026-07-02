@@ -8,6 +8,7 @@ import type {
   PoseVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
+import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
 import {
   PointCloudPanel,
   type PointCloudPanelRenderStats,
@@ -21,6 +22,7 @@ import {
   build3dLayers,
   type Mcap3dTransformGapWarning,
 } from "./mcap-3d-layers";
+import { useMcapDataStream } from "./mcap-data-stream-context";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import { useMcapModalSettings } from "./mcap-modal-settings";
 import type { McapTileProps } from "./mcap-tile-types";
@@ -170,23 +172,43 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     temporalPolicy.transformGapWarningMs,
     worldFrameId,
   ]);
+  const sourceKey = useMcapDataStream()?.sourceKey ?? "";
   // Attach each camera's current image to its frustum layer. Done outside
   // build3dLayers so the pure layer builder stays image-agnostic; index
-  // alignment with cameraTopics mirrors the playback-frames arrays.
+  // alignment with cameraTopics mirrors the playback-frames arrays. The
+  // texture key matches the one the 2D image tile forms for the same
+  // (recording, image topic, frame), so both surfaces share one decoded
+  // texture through the image-texture cache.
   const frustumLayers = useMemo(
     () =>
       cameraFrustumLayers.map((layer) => {
         const index = cameraTopics.indexOf(layer.id);
         const imageFrame = index >= 0 ? frustumImageFrames[index] : null;
-        return imageFrame
-          ? {
-              ...layer,
-              image: imageFrame.frame,
-              imageContentTimeNs: imageFrame.contentTimeNs,
-            }
-          : layer;
+        if (!imageFrame) {
+          return layer;
+        }
+        const imageTopic = index >= 0 ? (frustumImageTopics[index] ?? "") : "";
+        return {
+          ...layer,
+          image: imageFrame.frame,
+          imageContentTimeNs: imageFrame.contentTimeNs,
+          imageTextureKey:
+            sourceKey && imageTopic
+              ? imageTextureCacheKey(
+                  sourceKey,
+                  imageTopic,
+                  imageFrame.contentTimeNs,
+                )
+              : undefined,
+        };
       }),
-    [cameraFrustumLayers, cameraTopics, frustumImageFrames],
+    [
+      cameraFrustumLayers,
+      cameraTopics,
+      frustumImageFrames,
+      frustumImageTopics,
+      sourceKey,
+    ],
   );
   // Schema-driven telemetry: speed from the first enabled pose stream whose
   // latest sample carries velocity, coordinates from the first LocationFix

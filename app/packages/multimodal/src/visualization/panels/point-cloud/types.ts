@@ -129,6 +129,14 @@ export interface CameraFrustumPanelLayer {
   readonly id: string;
   readonly image?: EncodedImageVisualization;
   readonly imageContentTimeNs?: bigint;
+  /**
+   * Opaque shared image-texture cache key for `image` (formed with
+   * `imageTextureCacheKey`). When present, the frustum image plane
+   * acquires its texture from the shared cache, so surfaces showing the
+   * same camera frame (e.g. the 2D image tile) share one decode and one
+   * GPU texture. Without it the layer decodes privately per message.
+   */
+  readonly imageTextureKey?: string;
 }
 
 export interface PointCloudPanelRenderStats {

@@ -6,6 +6,10 @@ import * as THREE from "three";
 import type { CameraCalibrationVisualization } from "../../../decoders";
 import type { ImageTextureHandle } from "../base-2d-scene";
 import { createImageTexture } from "../image-texture";
+import {
+  acquireImageTexture,
+  type ImageTextureLease,
+} from "../image-texture-cache";
 import { pointCloudObjectTransform } from "./transforms";
 import type { CameraFrustumPanelLayer } from "./types";
 import { isFinitePositiveNumber } from "./utils";
@@ -55,39 +59,66 @@ export function CameraFrustumSceneLayer({
   const [imageHandle, setImageHandle] = useState<ImageTextureHandle | null>(
     null,
   );
-  const imageHandleRef = useRef<ImageTextureHandle | null>(null);
-  const replaceImageHandle = useCallback((next: ImageTextureHandle | null) => {
-    const previous = imageHandleRef.current;
-    if (previous && previous !== next) {
-      previous.dispose();
-    }
-    imageHandleRef.current = next;
-    setImageHandle(next);
-  }, []);
+  const heldImageRef = useRef<{
+    readonly handle: ImageTextureHandle;
+    readonly release: ImageTextureLease["release"];
+  } | null>(null);
+  const replaceHeldImage = useCallback(
+    (
+      next: {
+        readonly handle: ImageTextureHandle;
+        readonly release: ImageTextureLease["release"];
+      } | null,
+    ) => {
+      const previous = heldImageRef.current;
+      if (previous && previous !== next) {
+        previous.release();
+      }
+      heldImageRef.current = next;
+      setImageHandle(next?.handle ?? null);
+    },
+    [],
+  );
 
-  // This effect decodes the camera's current encoded frame into the image
-  // plane texture. It is keyed on message identity (layer id + image
-  // content time) for the same batch-redelivery reason as the geometries,
-  // so `image` is deliberately omitted from the deps.
+  // Message identity for the image decode below: the shared texture key
+  // when the layer carries one, else image content time, else the frame
+  // object itself. Keying on identity instead of `image` survives playback
+  // re-delivering the same message in new wrapper objects every batch.
+  const imageIdentity =
+    layer.imageTextureKey ?? layer.imageContentTimeNs ?? image;
+
+  // This effect resolves the camera's current encoded frame into the image
+  // plane texture. When the layer carries `imageTextureKey` the decode goes
+  // through the shared image-texture cache — the 2D image tile forms the
+  // same key, so both surfaces share one decode and one GPU texture, and
+  // replaced frames release their lease (retained for instant re-acquire)
+  // instead of disposing. Layers without a key fall back to a private
+  // decode per message. The effect is keyed on `imageIdentity`, not the
+  // `image` wrapper, for the same batch-redelivery reason as the
+  // geometries, so `image` is deliberately omitted from the deps.
   useEffect(() => {
     if (!image || image.bytes.byteLength === 0) {
-      replaceImageHandle(null);
+      replaceHeldImage(null);
       return undefined;
     }
 
     let cancelled = false;
-    createImageTexture(image.bytes, image.mimeType)
+    const lease = acquireImageTexture(layer.imageTextureKey, () =>
+      createImageTexture(image.bytes, image.mimeType),
+    );
+    lease.promise
       .then((handle) => {
         if (cancelled) {
-          handle.dispose();
+          lease.release();
           return;
         }
-        replaceImageHandle(handle);
+        replaceHeldImage({ handle, release: lease.release });
         invalidate();
       })
       .catch(() => {
+        lease.release();
         if (!cancelled) {
-          replaceImageHandle(null);
+          replaceHeldImage(null);
         }
       });
 
@@ -95,12 +126,15 @@ export function CameraFrustumSceneLayer({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [invalidate, layer.id, layer.imageContentTimeNs ?? image]);
+  }, [invalidate, layer.id, imageIdentity]);
 
+  // This effect releases the held image lease on unmount — release, not
+  // dispose: the texture may be shared with the 2D image tile and stays
+  // retained by the cache for instant re-acquire.
   useEffect(
     () => () => {
-      imageHandleRef.current?.dispose();
-      imageHandleRef.current = null;
+      heldImageRef.current?.release();
+      heldImageRef.current = null;
     },
     [],
   );

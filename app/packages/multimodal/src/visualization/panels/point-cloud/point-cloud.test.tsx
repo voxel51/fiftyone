@@ -1,8 +1,18 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 import { VISUALIZATION_KIND } from "../../visualization-registry";
+import {
+  imageTextureCacheStats,
+  resetImageTextureCacheForTests,
+} from "../image-texture-cache";
 import { PointCloudPanel } from "./index";
 
 vi.mock("@react-three/fiber", () => ({
@@ -60,9 +70,14 @@ vi.mock("../webgpu-canvas", () => ({
   ),
 }));
 
+beforeEach(() => {
+  resetImageTextureCacheForTests();
+});
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("PointCloudPanel", () => {
@@ -495,6 +510,58 @@ describe("PointCloudPanel", () => {
         "{}",
     ) as { readonly target?: readonly number[] };
     expect(cameraPose.target).toEqual([1, 2, 3]);
+  });
+
+  it("decodes a keyed frustum image through the shared texture cache", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const createBitmap = vi.fn(async () => ({
+      close: vi.fn(),
+      height: 900,
+      width: 1600,
+    }));
+    vi.stubGlobal("createImageBitmap", createBitmap);
+
+    const frustumLayer = {
+      contentTimeNs: 100n,
+      frame: {
+        height: 900,
+        K: [450, 0, 800, 0, 450, 450, 0, 0, 1],
+        kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
+        width: 1600,
+      },
+      id: "/CAM_FRONT/camera_info",
+      image: {
+        bytes: new Uint8Array([1, 2, 3]),
+        kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+      },
+      imageContentTimeNs: 100n,
+      imageTextureKey: "rec\n/CAM_FRONT/image\n100",
+    };
+
+    // Two panels showing the same keyed camera frame — e.g. the 3D tile
+    // plus another surface — must collapse into a single decode.
+    const { container } = render(
+      <>
+        <PointCloudPanel
+          frustumLayers={[frustumLayer]}
+          layers={[]}
+          showHud={false}
+        />
+        <PointCloudPanel
+          frustumLayers={[frustumLayer]}
+          layers={[]}
+          showHud={false}
+        />
+      </>,
+    );
+
+    // The textured image plane mesh appears once the decode lands.
+    await waitFor(() =>
+      expect(container.querySelectorAll("mesh").length).toBeGreaterThan(1),
+    );
+
+    expect(createBitmap).toHaveBeenCalledTimes(1);
+    expect(imageTextureCacheStats().decodeCount).toBe(1);
   });
 
   it("renders telemetry hud lines even without scene layers", () => {

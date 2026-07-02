@@ -21,7 +21,9 @@ import {
   chooseCalibrationTopic,
 } from "../topic-matching";
 import { ImagePanel } from "../../../visualization/panels/image";
+import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
 import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
+import { useMcapDataStream } from "./mcap-data-stream-context";
 import { useMcapModalSettings } from "./mcap-modal-settings";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
@@ -30,7 +32,10 @@ import settingsStyles from "./McapTile.settings.module.css";
 import styles from "./McapTile.module.css";
 import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
 import type { McapTileProps } from "./mcap-tile-types";
-import { useMcapTopicStream } from "./use-mcap-topic-stream";
+import {
+  useMcapTopicPlaybackFrame,
+  useMcapTopicStream,
+} from "./use-mcap-topic-stream";
 
 const IMAGE_FIT = "contain";
 
@@ -74,7 +79,19 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     setImageDims(null);
   }, [topic]);
 
-  const frame = useMcapTopicStream<EncodedImageVisualization>(topic);
+  // Keep the playback wrapper: `contentTimeNs` is the message identity the
+  // shared image-texture cache key needs (bytes identity churns per batch).
+  const playbackFrame =
+    useMcapTopicPlaybackFrame<EncodedImageVisualization>(topic);
+  const frame = playbackFrame?.frame ?? null;
+  const sourceKey = useMcapDataStream()?.sourceKey ?? "";
+  // Shared texture key per (recording, topic, frame). The 3D tile's
+  // frustum image planes form the same key, so both surfaces share one
+  // decode and one GPU texture for the same camera frame.
+  const textureKey =
+    playbackFrame && sourceKey
+      ? imageTextureCacheKey(sourceKey, topic, playbackFrame.contentTimeNs)
+      : undefined;
   const annotationTopics = useMemo(
     () => annotationSources.map((s) => s.id),
     [annotationSources],
@@ -217,6 +234,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               )
             }
             onResetView={imagePanZoom.resetView}
+            textureKey={textureKey}
             viewTransform={imagePanZoom.viewTransform}
           />
           {effectiveImageDims && selectedLabelTopics.length > 0 ? (
