@@ -81,6 +81,7 @@
         "three": "^0.182.0"
     },
     "devDependencies": {
-        "@types/three": "^0.182.0"
+        "@types/three": "^0.182.0",
+        "vite-plugin-relay": "^2.0.0"
     }
 }
