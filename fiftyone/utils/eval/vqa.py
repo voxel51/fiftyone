@@ -5,6 +5,7 @@ VQA evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import Counter
 from copy import deepcopy
 import inspect
 import itertools
@@ -165,6 +166,10 @@ def evaluate_vqa(
 
     -   ``"exact"``: :class:`ExactMatchEvaluationConfig`
     -   ``"vqa"``: :class:`VQAAccuracyEvaluationConfig`
+    -   ``"multiple_choice"``: :class:`MultipleChoiceEvaluationConfig`
+    -   ``"anls"``: :class:`ANLSEvaluationConfig`
+    -   ``"token_f1"``: :class:`TokenF1EvaluationConfig`
+    -   ``"contains"``: :class:`ContainsEvaluationConfig`
 
     If an ``eval_key`` is specified, this method will record:
 
@@ -277,6 +282,19 @@ class VQAEvaluation(BaseEvaluationMethod):
         """
         raise NotImplementedError("subclass must implement _score_pair()")
 
+    def _result_answer(self, label, gt):
+        """Returns the answer string that represents the given label in the
+        evaluation results, or ``None``.
+
+        Args:
+            label: a :class:`fiftyone.core.labels.VQA`, or ``None``
+            gt: the matched ground truth label, or ``None``
+        """
+        if label is None or label.answer is None:
+            return None
+
+        return _normalize_answer(label.answer)
+
     def register_samples(self, samples, eval_key):
         if eval_key is None:
             return
@@ -327,16 +345,8 @@ class VQAEvaluation(BaseEvaluationMethod):
                 pair_scores.append(score)
 
                 scores.append(score)
-                ytrue.append(
-                    _normalize_answer(_gt.answer)
-                    if _gt is not None and _gt.answer is not None
-                    else None
-                )
-                ypred.append(
-                    _normalize_answer(_pred.answer)
-                    if _pred is not None and _pred.answer is not None
-                    else None
-                )
+                ytrue.append(self._result_answer(_gt, _gt))
+                ypred.append(self._result_answer(_pred, _gt))
                 ytrue_ids.append(_gt.id if _gt is not None else None)
                 ypred_ids.append(_pred.id if _pred is not None else None)
                 confs.append(_pred.confidence if _pred is not None else None)
@@ -596,6 +606,234 @@ class VQAAccuracyEvaluation(VQAEvaluation):
         return sum(accs) / len(accs)
 
 
+class MultipleChoiceEvaluationConfig(VQAEvaluationConfig):
+    """Multiple-choice VQA evaluation config.
+
+    Args:
+        pred_field: the name of the field containing the predicted
+            :class:`fiftyone.core.labels.VQA` or
+            :class:`fiftyone.core.labels.VQAs` instances
+        gt_field: the name of the field containing the ground truth
+            :class:`fiftyone.core.labels.VQA` or
+            :class:`fiftyone.core.labels.VQAs` instances
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
+    """
+
+    @property
+    def method(self):
+        return "multiple_choice"
+
+
+class MultipleChoiceEvaluation(VQAEvaluation):
+    """Multiple-choice VQA evaluation.
+
+    Answers are resolved against the ground truth ``choices`` and scored by
+    accuracy over the selected choices. An answer that does not match any
+    choice text (after normalization) is interpreted as a choice letter
+    (``"B"``, ``"(b)"``, ``"b."``) or 0-based integer index when possible.
+
+    Args:
+        config: a :class:`MultipleChoiceEvaluationConfig`
+    """
+
+    _LABEL_SCORE_FIELD = fof.BooleanField
+
+    def _score_pair(self, gt, pred):
+        if gt is None or pred is None or pred.answer is None:
+            return 0.0
+
+        if gt.answer is None:
+            return 0.0
+
+        choices = list(gt.choices or [])
+        gt_answer = _resolve_choice(gt.answer, choices)
+        pred_answer = _resolve_choice(pred.answer, choices)
+
+        return 1.0 if gt_answer and pred_answer == gt_answer else 0.0
+
+    def _result_answer(self, label, gt):
+        if label is None or label.answer is None:
+            return None
+
+        choices = list(gt.choices or []) if gt is not None else []
+        return _resolve_choice(label.answer, choices)
+
+
+class ANLSEvaluationConfig(VQAEvaluationConfig):
+    """Average normalized Levenshtein similarity (ANLS) VQA evaluation
+    config.
+
+    Args:
+        pred_field: the name of the field containing the predicted
+            :class:`fiftyone.core.labels.VQA` or
+            :class:`fiftyone.core.labels.VQAs` instances
+        gt_field: the name of the field containing the ground truth
+            :class:`fiftyone.core.labels.VQA` or
+            :class:`fiftyone.core.labels.VQAs` instances
+        threshold (0.5): the normalized Levenshtein distance at or above
+            which a prediction scores 0
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
+    """
+
+    def __init__(
+        self,
+        pred_field,
+        gt_field,
+        threshold=0.5,
+        custom_metrics=None,
+        **kwargs,
+    ):
+        super().__init__(
+            pred_field, gt_field, custom_metrics=custom_metrics, **kwargs
+        )
+        self.threshold = threshold
+
+    @property
+    def method(self):
+        return "anls"
+
+
+class ANLSEvaluation(VQAEvaluation):
+    """ANLS VQA evaluation, the DocVQA-family protocol.
+
+    Each prediction scores the maximum over the references of
+    ``1 - NL(pred, ref)``, where ``NL`` is the character-level Levenshtein
+    distance divided by the longer string length, computed over lowercased,
+    whitespace-stripped answers. Similarities with
+    ``NL >= config.threshold`` score 0.
+
+    Args:
+        config: an :class:`ANLSEvaluationConfig`
+    """
+
+    def _score_pair(self, gt, pred):
+        if gt is None or pred is None or pred.answer is None:
+            return 0.0
+
+        refs = _get_references(gt)
+        if not refs:
+            return 0.0
+
+        pred_answer = _strip_answer(pred.answer).lower()
+
+        best = 0.0
+        for ref in refs:
+            ref = _strip_answer(ref).lower()
+            length = max(len(pred_answer), len(ref))
+            nl = _levenshtein(pred_answer, ref) / length if length else 0.0
+            if nl < self.config.threshold:
+                best = max(best, 1.0 - nl)
+
+        return best
+
+
+class TokenF1EvaluationConfig(VQAEvaluationConfig):
+    """Token-F1 VQA evaluation config.
+
+    Args:
+        pred_field: the name of the field containing the predicted
+            :class:`fiftyone.core.labels.VQA` or
+            :class:`fiftyone.core.labels.VQAs` instances
+        gt_field: the name of the field containing the ground truth
+            :class:`fiftyone.core.labels.VQA` or
+            :class:`fiftyone.core.labels.VQAs` instances
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
+    """
+
+    @property
+    def method(self):
+        return "token_f1"
+
+
+class TokenF1Evaluation(VQAEvaluation):
+    """Token-F1 VQA evaluation.
+
+    Each prediction scores the maximum over the references of the F1 score
+    of the token-multiset overlap between the normalized prediction and
+    reference.
+
+    Args:
+        config: a :class:`TokenF1EvaluationConfig`
+    """
+
+    def _score_pair(self, gt, pred):
+        if gt is None or pred is None or pred.answer is None:
+            return 0.0
+
+        refs = _get_references(gt)
+        if not refs:
+            return 0.0
+
+        pred_tokens = _normalize_answer(pred.answer).split()
+
+        best = 0.0
+        for ref in refs:
+            ref_tokens = _normalize_answer(ref).split()
+            if not pred_tokens or not ref_tokens:
+                best = max(best, float(pred_tokens == ref_tokens))
+                continue
+
+            overlap = sum(
+                (Counter(pred_tokens) & Counter(ref_tokens)).values()
+            )
+            if overlap == 0:
+                continue
+
+            precision = overlap / len(pred_tokens)
+            recall = overlap / len(ref_tokens)
+            best = max(best, 2 * precision * recall / (precision + recall))
+
+        return best
+
+
+class ContainsEvaluationConfig(VQAEvaluationConfig):
+    """Substring-containment VQA evaluation config.
+
+    Args:
+        pred_field: the name of the field containing the predicted
+            :class:`fiftyone.core.labels.VQA` or
+            :class:`fiftyone.core.labels.VQAs` instances
+        gt_field: the name of the field containing the ground truth
+            :class:`fiftyone.core.labels.VQA` or
+            :class:`fiftyone.core.labels.VQAs` instances
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
+    """
+
+    @property
+    def method(self):
+        return "contains"
+
+
+class ContainsEvaluation(VQAEvaluation):
+    """Substring-containment VQA evaluation.
+
+    A prediction is correct if any normalized reference answer appears as a
+    substring of the normalized prediction, for relaxed scoring of verbose
+    model responses.
+
+    Args:
+        config: a :class:`ContainsEvaluationConfig`
+    """
+
+    _LABEL_SCORE_FIELD = fof.BooleanField
+
+    def _score_pair(self, gt, pred):
+        if gt is None or pred is None or pred.answer is None:
+            return 0.0
+
+        pred_answer = _normalize_answer(pred.answer)
+        for ref in _get_references(gt):
+            ref = _normalize_answer(ref)
+            if ref and ref in pred_answer:
+                return 1.0
+
+        return 0.0
+
+
 class VQAResults(BaseClassificationResults):
     """Class that stores the results of a VQA evaluation.
 
@@ -720,6 +958,62 @@ def _to_label_list(label):
         return list(label.vqas)
 
     return [label]
+
+
+def _get_references(gt):
+    if gt.answers:
+        return list(gt.answers)
+
+    if gt.answer is not None:
+        return [gt.answer]
+
+    return []
+
+
+def _levenshtein(s, t):
+    if s == t:
+        return 0
+
+    if not s:
+        return len(t)
+
+    if not t:
+        return len(s)
+
+    prev = list(range(len(t) + 1))
+    for i, s_char in enumerate(s, 1):
+        curr = [i] + [0] * len(t)
+        for j, t_char in enumerate(t, 1):
+            cost = 0 if s_char == t_char else 1
+            curr[j] = min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost)
+
+        prev = curr
+
+    return prev[-1]
+
+
+def _resolve_choice(answer, choices):
+    """Resolves an answer to the normalized text of one of the given
+    choices, trying normalized text match first, then choice letter, then
+    0-based integer index; returns the normalized answer if unresolved.
+    """
+    norm = _normalize_answer(answer)
+    norm_choices = [_normalize_answer(c) for c in choices]
+    if norm in norm_choices:
+        return norm
+
+    token = _strip_answer(answer).lower().strip("().")
+    if len(token) == 1 and token.isalpha():
+        index = ord(token) - ord("a")
+    elif token.isdigit():
+        index = int(token)
+    else:
+        return norm
+
+    if 0 <= index < len(norm_choices):
+        return norm_choices[index]
+
+    return norm
 
 
 def _match_vqas(gt_labels, pred_labels):

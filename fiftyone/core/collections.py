@@ -4528,6 +4528,10 @@ class SampleCollection(object):
 
         -   ``"exact"``: :class:`fiftyone.utils.eval.vqa.ExactMatchEvaluationConfig`
         -   ``"vqa"``: :class:`fiftyone.utils.eval.vqa.VQAAccuracyEvaluationConfig`
+        -   ``"multiple_choice"``: :class:`fiftyone.utils.eval.vqa.MultipleChoiceEvaluationConfig`
+        -   ``"anls"``: :class:`fiftyone.utils.eval.vqa.ANLSEvaluationConfig`
+        -   ``"token_f1"``: :class:`fiftyone.utils.eval.vqa.TokenF1EvaluationConfig`
+        -   ``"contains"``: :class:`fiftyone.utils.eval.vqa.ContainsEvaluationConfig`
 
         If an ``eval_key`` is specified, this method will record:
 
