@@ -265,6 +265,11 @@ class WorkerMcapResourceClient implements McapResourceClient {
       return;
     }
 
+    // Keep-warm across source changes was measured and reverted: back-to-back
+    // renderer swaps let the dying sample's late effects flip ownership and
+    // cancel the incoming sample's reads (hop time regressed 0.3 s -> ~4.6 s).
+    // Until source ownership is epoch-versioned, terminating stays the safe
+    // preemption: no stale work, instant lane for the next sample.
     this.resetWorkers("MCAP worker reset for a different source");
     this.activeSourceKey = sourceKey;
   }

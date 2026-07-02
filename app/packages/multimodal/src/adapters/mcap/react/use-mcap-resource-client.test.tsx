@@ -5,45 +5,43 @@ import { useMcapResourceClient } from "./use-mcap-resource-client";
 const resourceHarness = vi.hoisted(() => {
   const client = {
     dispose: vi.fn(),
-    readDecodedMessages: vi.fn(async function* () {
-      for (const item of [] as never[]) {
-        yield item;
-      }
-    }),
-    readFrameTransformBootstrap: vi.fn(),
-    readFrameTransformWindow: vi.fn(),
-    readSynchronizedMessageBatch: vi.fn(),
-    readSynchronizedMessages: vi.fn(),
-    readTopics: vi.fn(),
-    readTimelineRange: vi.fn(),
   };
+  const release = vi.fn();
 
   return {
+    acquireSharedMcapResourceClient: vi.fn(() => ({ client, release })),
     client,
-    createMcapResourceClient: vi.fn(() => client),
+    release,
   };
 });
 
 vi.mock("../resource-client", () => ({
-  createMcapResourceClient: resourceHarness.createMcapResourceClient,
+  acquireSharedMcapResourceClient:
+    resourceHarness.acquireSharedMcapResourceClient,
 }));
 
 describe("useMcapResourceClient", () => {
   beforeEach(() => {
-    resourceHarness.client.dispose.mockClear();
-    resourceHarness.createMcapResourceClient.mockClear();
+    resourceHarness.acquireSharedMcapResourceClient.mockClear();
+    resourceHarness.release.mockClear();
   });
 
-  it("passes the worker option through and disposes the client", () => {
+  it("acquires the shared client and releases it on unmount", () => {
     const { unmount } = render(<McapResourceClientHarness worker />);
 
-    expect(resourceHarness.createMcapResourceClient).toHaveBeenCalledWith({
+    expect(
+      resourceHarness.acquireSharedMcapResourceClient,
+    ).toHaveBeenCalledWith({
       worker: true,
     });
+    expect(resourceHarness.release).not.toHaveBeenCalled();
 
     unmount();
 
-    expect(resourceHarness.client.dispose).toHaveBeenCalledTimes(1);
+    // Release, not dispose: the shared client lingers so the next sample's
+    // renderer reuses the warm worker fleet.
+    expect(resourceHarness.release).toHaveBeenCalledTimes(1);
+    expect(resourceHarness.client.dispose).not.toHaveBeenCalled();
   });
 });
 

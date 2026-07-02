@@ -65,7 +65,7 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
     if (debugReads !== nextDebugReads) {
       debugReads = nextDebugReads;
       activeSourceKey = "";
-      mcap.dispose();
+      disposeAllClients();
       mcap = createMcapClient();
     }
     return;
@@ -78,7 +78,7 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
 
   if (message.type === "dispose") {
     scheduler.dispose();
-    mcap.dispose();
+    disposeAllClients();
     workerScope.close();
     return;
   }
@@ -199,14 +199,47 @@ async function streamRequest(
   });
 }
 
+// Adjacent-sample navigation flips between a small set of sources; a parked
+// client keeps its initialized reader (summary parse, message indexes) and
+// decode caches so returning to that sample skips the cold init entirely.
+const MAX_PARKED_SOURCE_CLIENTS = 1;
+const parkedClients = new Map<string, ReturnType<typeof createMcapClient>>();
+
 function ensureActiveSource(sourceKey: string) {
   if (activeSourceKey === sourceKey) {
     return;
   }
 
+  if (activeSourceKey !== "") {
+    parkedClients.set(activeSourceKey, mcap);
+  } else {
+    // The bootstrap client never served a source; nothing worth keeping.
+    mcap.dispose();
+  }
   activeSourceKey = sourceKey;
-  mcap.dispose();
+
+  const warm = parkedClients.get(sourceKey);
+  if (warm) {
+    parkedClients.delete(sourceKey);
+    mcap = warm;
+    return;
+  }
+
   mcap = createMcapClient();
+  while (parkedClients.size > MAX_PARKED_SOURCE_CLIENTS) {
+    const oldest = parkedClients.keys().next().value;
+    if (oldest === undefined) break;
+    parkedClients.get(oldest)?.dispose();
+    parkedClients.delete(oldest);
+  }
+}
+
+function disposeAllClients() {
+  mcap.dispose();
+  for (const parked of parkedClients.values()) {
+    parked.dispose();
+  }
+  parkedClients.clear();
 }
 
 function createMcapClient() {
