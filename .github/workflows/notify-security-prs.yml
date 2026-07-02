@@ -15,7 +15,7 @@ permissions:
 jobs:
   notify:
     if: >-
-      github.repository == 'voxel51/fiftyone' &&
+      github.repository_owner == 'voxel51' &&
       github.event.pull_request.user.login == 'voxel51-bot' &&
       (
         (github.event.action == 'labeled' && github.event.label.name == 'security') ||
@@ -29,8 +29,13 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_COMPLIANCE_SECURITY_WEBHOOK_URL is not set; skipping"
+            exit 0
+          fi
           payload=$(jq -n \
-            --arg text "🔒 Security dependency PR <${PR_URL}|#${PR_NUMBER}> in voxel51/fiftyone: ${PR_TITLE}" \
+            --arg text "🔒 Security dependency PR <${PR_URL}|#${PR_NUMBER}> in ${REPO}: ${PR_TITLE}" \
             '{text: $text}')
           curl -fsSL -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
