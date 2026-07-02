@@ -68,7 +68,7 @@ const SidebarList: React.FC = () => {
         bottomLeft: false,
         topLeft: false,
       }}
-      onResizeStop={(e, direction, ref, { width: d }) => {
+      onResizeStop={(e, _direction, _ref, { width: d }) => {
         setWidth(width + d);
         // reset sidebar width on double click
         if (e.detail === 2) setWidth(WIDTH);

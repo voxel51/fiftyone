@@ -241,7 +241,7 @@ export class MockRenderer2D implements Renderer2D {
   }
 
   getViewportState(): ViewportState {
-    return { scale: this.scale, panX: 0, panY: 0 };
+    return { scale: this.scale, panX: this.panX, panY: this.panY };
   }
 
   setViewportState({ scale, panX, panY }: ViewportState): void {

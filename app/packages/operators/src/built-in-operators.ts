@@ -1118,7 +1118,7 @@ class RegisterPanel extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(_ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("panel_name", { label: "Panel name", required: true });
     inputs.str("panel_label", { label: "Panel label", required: true });
@@ -1153,7 +1153,7 @@ class PromptUserForOperation extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(_ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("operator_uri", { label: "Operator URI", required: true });
     inputs.obj("params", { label: "Params" });
@@ -1206,7 +1206,7 @@ class Notify extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(_ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("message", { label: "Message", required: true });
     inputs.enum("variant", ["info", "success", "warning", "error"], {
@@ -1241,7 +1241,7 @@ class SetExtendedSelection extends Operator {
       resetExtendedSelection: fos.useResetExtendedSelection(),
     };
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(_ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.list("selection", new types.String(), {
       label: "Selection",
@@ -1586,7 +1586,7 @@ class ShowSidebar extends Operator {
   }
   useHooks(): object {
     const modal = useRecoilValue(fos.modal);
-    const [visible, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
+    const [, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
     return {
       show: () => setVisible(true),
     };
@@ -1606,7 +1606,7 @@ class HideSidebar extends Operator {
   }
   useHooks(): object {
     const modal = useRecoilValue(fos.modal);
-    const [visible, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
+    const [, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
     return {
       hide: () => setVisible(false),
     };

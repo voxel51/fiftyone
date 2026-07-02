@@ -23,8 +23,6 @@ const GridConfigurator = () => {
 
   const containerRef = useRef(null);
 
-  const theme = useTheme();
-
   const [gridCellSize, setGridCellSize] = useRecoilState(gridCellSizeAtom);
   const [gridSectionSize, setGridSectionSize] =
     useRecoilState(gridSectionSizeAtom);

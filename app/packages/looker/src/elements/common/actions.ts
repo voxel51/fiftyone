@@ -30,7 +30,7 @@ const escape: Control = {
   eventKeys: "Escape",
   detail: "Escape the current context",
   alwaysHandle: true,
-  action: (update, dispatchEvent, eventKey) => {
+  action: (update, dispatchEvent) => {
     update(
       ({
         hasDefaultZoom,
@@ -118,7 +118,7 @@ export const toggleOverlays: Control = {
 
         return { options: { showOverlays: false } };
       },
-      ({ config: { thumbnail }, options: { showOverlays } }) => {
+      ({ config: { thumbnail } }) => {
         if (thumbnail) {
           return;
         }
@@ -135,7 +135,7 @@ export const toggleOverlays: Control = {
     update(
       ({ config: { thumbnail } }) =>
         thumbnail ? {} : { options: { showOverlays: true } },
-      ({ config: { thumbnail }, options: { showOverlays } }) => {
+      ({ config: { thumbnail } }) => {
         if (!thumbnail) {
           dispatchEvent("showOverlays", true);
         }
@@ -190,7 +190,7 @@ export const help: Control = {
   shortcut: "?",
   detail: "Display this help window",
   action: (update, dispatchEvent) => {
-    update(({ showHelp, SHORTCUTS, config: { thumbnail } }) => {
+    update(({ SHORTCUTS, config: { thumbnail } }) => {
       if (thumbnail) {
         return {};
       }

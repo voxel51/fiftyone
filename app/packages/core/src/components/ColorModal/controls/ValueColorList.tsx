@@ -126,7 +126,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
 
   return (
     <div style={style}>
-      {input?.map((value, index) => (
+      {input?.map((_value, index) => (
         <RowContainer key={index}>
           <Input
             placeholder="Value (e.g. 'car')"

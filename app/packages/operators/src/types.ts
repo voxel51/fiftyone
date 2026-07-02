@@ -9,7 +9,7 @@ export class BaseType {}
  *  type can be useful for displaying a informational-only views.
  */
 export class Void extends BaseType {
-  static fromJSON(json: any) {
+  static fromJSON(_json: any) {
     return new Void();
   }
 }
@@ -343,7 +343,7 @@ export { OperatorString as String };
  * Operator type for representing a boolean value for operator input/output.
  */
 class OperatorBoolean extends BaseType {
-  static fromJSON(json: any) {
+  static fromJSON(_json: any) {
     const Type = this;
     const type = new Type();
     return type;
@@ -409,7 +409,7 @@ export class List extends BaseType {
  * Operator type for representing a sampled id value for operator input/output.
  */
 export class SampleID extends OperatorString {
-  static fromJSON(json: any) {
+  static fromJSON(_json: any) {
     const Type = this;
     const type = new Type();
     return type;

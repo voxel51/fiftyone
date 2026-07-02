@@ -6,7 +6,7 @@ import { getComponentProps } from "../utils";
 import DynamicIO from "./DynamicIO";
 
 export default function OneOfView(props) {
-  const { schema, path, onChange, data, errors } = props;
+  const { schema, path, onChange } = props;
   const { types, view } = schema;
   const { oneof = [] } = view;
   const [tab, setTab] = useState(0);
@@ -16,7 +16,7 @@ export default function OneOfView(props) {
       <HeaderView {...props} nested />
       <Tabs
         value={tab}
-        onChange={(e, tab) => {
+        onChange={(_e, tab) => {
           setTab(tab);
           onChange(path, undefined);
         }}
@@ -25,7 +25,7 @@ export default function OneOfView(props) {
         sx={{ borderBottom: 1, borderColor: "divider" }}
         {...getComponentProps(props, "tabs")}
       >
-        {types.map((type, i) => {
+        {types.map((_type, i) => {
           const label = oneof[i]?.label || `${view?.label} type ${i}`;
           const description = oneof[i]?.description;
           return (

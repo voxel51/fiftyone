@@ -96,10 +96,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
 
   if (tracks.length === 0) {
     return (
-      <div
-        ref={containerRef}
-        className={clsx(styles.root, styles.noTracks, className)}
-      >
+      <div ref={containerRef} className={clsx(styles.root, className)}>
         <TimelineHeader
           labelWidth={labelWidth}
           zoomRef={containerRef}

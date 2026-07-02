@@ -1505,6 +1505,7 @@ export class InteractionManager {
    *
    * @private
    */
+  // @ts-expect-error unused — temporal-drag gate not yet wired up
   private isTemporalDrag(): boolean {
     if (this.clickStartTime) {
       return Date.now() - this.clickStartTime > this.DRAG_TIME_THRESHOLD;

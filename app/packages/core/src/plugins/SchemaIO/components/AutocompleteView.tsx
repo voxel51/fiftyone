@@ -26,7 +26,7 @@ export default function AutocompleteView(props) {
         value={getDefaultValue(data, choices, multiple)}
         freeSolo={allowUserInput}
         size="small"
-        onChange={(e, choice) => {
+        onChange={(_e, choice) => {
           if (choice === null) {
             onChange(path, null);
             setUserChanged();

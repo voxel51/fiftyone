@@ -108,7 +108,6 @@ const isCameraControls = (
 
 const AnnotationGizmoHelper = ({
   margin = [80, 80],
-  renderPriority = 1,
   onUpdate,
   onTarget,
   children,

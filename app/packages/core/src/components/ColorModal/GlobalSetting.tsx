@@ -59,7 +59,7 @@ const GlobalSetting = () => {
         </LabelTitle>
         <Slider
           value={Number(colorScheme.opacity)}
-          onChange={(event: Event, newValue: number | number[]) => {
+          onChange={(_event: Event, newValue: number | number[]) => {
             setColorScheme({ ...colorScheme, opacity: newValue as number });
           }}
           min={0}

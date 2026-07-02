@@ -38,7 +38,7 @@ export const DynamicGroupCarousel = React.memo(() => {
         zIndex: 1000,
         borderBottom: `1px solid ${theme.primary.plainBorder}`,
       }}
-      onResizeStop={(e, direction, ref, { height: delta }) => {
+      onResizeStop={(_e, _direction, _ref, { height: delta }) => {
         setHeight(Math.max(height + delta, 100));
       }}
       data-cy={"group-carousel"}

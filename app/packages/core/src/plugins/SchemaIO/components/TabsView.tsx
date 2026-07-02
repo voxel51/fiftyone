@@ -32,7 +32,7 @@ export default function TabsView(props) {
           value={tab}
           variant="scrollable"
           scrollButtons="auto"
-          onChange={(e, value) => {
+          onChange={(_e, value) => {
             setTab(value);
             setUserChanged();
           }}

@@ -74,11 +74,11 @@ function getComponent(property, options) {
 function getComponentByType(property, options) {
   const typeName = getTypeName(property);
   const component = inputComponentsByType[typeName];
-  if (options?.isOutput) return getOutputComponent(property, options);
+  if (options?.isOutput) return getOutputComponent(property);
   return component;
 }
 
-function getOutputComponent(property, options) {
+function getOutputComponent(property) {
   const typeName = getTypeName(property);
   const component = outputComponentsByType[typeName];
   if (typeName === "List") {

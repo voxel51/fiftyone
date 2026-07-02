@@ -14,7 +14,6 @@ export function useColorByChoices() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [availableFields, setAvailableFields] = useState(null);
-  const [, setError] = useState(null);
 
   useEffect(() => {
     if (loadedPlot && brainKey) {
@@ -29,9 +28,8 @@ export function useColorByChoices() {
           setIsLoading(false);
           setAvailableFields(["uncolored", ...r.fields]);
         })
-        .catch((e) => {
+        .catch(() => {
           setIsLoading(false);
-          setError(e);
         });
     }
   }, [datasetName, brainKey, view, slices, loadedPlot?.patches_field]);

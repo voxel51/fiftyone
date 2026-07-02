@@ -615,7 +615,7 @@ const useTarget = (field, target) => {
 
 const AttrInfo = ({ label, field, labelType, children = null }) => {
   let entries = Object.entries(label).filter(
-    ([k, v]) => "tags" !== k && !k.startsWith("_"),
+    ([k]) => "tags" !== k && !k.startsWith("_"),
   );
   if (!entries || !entries.length) {
     return null;
@@ -722,7 +722,7 @@ const KeypointInfo = ({ detail }) => {
           field={detail.field}
           label={Object.fromEntries(
             detail.point.attributes
-              .filter(([x, y]) => x !== "points")
+              .filter(([x]) => x !== "points")
               .map(([k, v]) => [
                 `${k === "label" ? "skeleton" : k}[${detail.point.index}]`,
                 v,

@@ -60,8 +60,6 @@ const PlyWithPointsMaterial = ({
   geometry,
   defaultMaterial,
   quaternion,
-  position,
-  scale,
   vertexColorsAvailable,
 }: {
   name: string;
