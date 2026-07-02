@@ -162,7 +162,10 @@ jobs:
       # A run that skipped the suite (no-op body edit, `closed`, or a failed
       # gate) must not aggregate its skipped needs into a vacuous green that
       # becomes the latest `all-tests` for a SHA whose real suite failed.
-      NO_OP: ${{ needs.modified-files.result == 'success' && (needs.modified-files.outputs.run-ci != 'true' || github.event.action == 'closed') }}
+      NO_OP: >-
+        ${{ needs.modified-files.result == 'success' &&
+        (needs.modified-files.outputs.run-ci != 'true' ||
+        github.event.action == 'closed') }}
     steps:
       - name: Fail when the CI gate did not complete
         if: needs.modified-files.result != 'success'
