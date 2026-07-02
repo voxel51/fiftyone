@@ -132,6 +132,7 @@ class VQAEvaluationTests(unittest.TestCase):
         d = results.breakdown(by="question_type")
         self.assertAlmostEqual(d["is there"], 1.0)
         self.assertAlmostEqual(d["how many"], 1.0)
+        self.assertTrue(all(type(k) is str for k in d))
 
         # inherited classification machinery works
         self.assertIn("accuracy", results.metrics())

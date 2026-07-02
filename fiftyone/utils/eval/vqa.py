@@ -703,7 +703,7 @@ class VQAResults(BaseClassificationResults):
 
         d = {}
         for value, score in zip(values, self.scores):
-            key = value if value is not None else self.missing
+            key = str(value) if value is not None else self.missing
             d.setdefault(key, []).append(score)
 
         return {k: float(np.mean(v)) for k, v in sorted(d.items())}
