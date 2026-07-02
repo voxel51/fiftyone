@@ -9966,10 +9966,7 @@ def _load_dataset(obj, name, virtual=False):
         raise e
 
 
-def _get_dataset_media_type(name, *, virtual=False) -> Optional[str]:
-    if not virtual:
-        fomi.migrate_dataset_if_necessary(name)
-
+def _get_dataset_media_type(name) -> Optional[str]:
     db = foo.get_db_conn()
     res = db.datasets.find_one({"name": name}, {"media_type": 1})
     if not res:
