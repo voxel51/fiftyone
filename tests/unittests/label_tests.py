@@ -1097,6 +1097,56 @@ class VQATests(unittest.TestCase):
         self.assertEqual(vqas2.vqas[0].question_id, "q1")
         self.assertEqual(vqas2.vqas[1].answer, "two")
 
+    @drop_datasets
+    def test_vqas_filter_and_count(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    questions=fo.VQAs(
+                        vqas=[
+                            fo.VQA(
+                                question="Is there a cat?",
+                                answer="yes",
+                                question_id="q1",
+                            ),
+                            fo.VQA(
+                                question="How many cats?",
+                                answer="two",
+                                question_id="q2",
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image2.jpg",
+                    questions=fo.VQAs(
+                        vqas=[
+                            fo.VQA(
+                                question="Is there a dog?",
+                                answer="yes",
+                                question_id="q3",
+                            )
+                        ]
+                    ),
+                ),
+            ]
+        )
+
+        sample = dataset.first()
+
+        self.assertIsInstance(sample["questions"], fo.VQAs)
+        self.assertIsInstance(sample["questions"].vqas[0], fo.VQA)
+
+        counts = dataset.count_values("questions.vqas.answer")
+
+        self.assertDictEqual(counts, {"yes": 2, "two": 1})
+
+        view = dataset.filter_labels("questions", F("answer") == "yes")
+
+        self.assertEqual(view.count("questions.vqas"), 2)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
