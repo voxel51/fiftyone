@@ -4503,6 +4503,77 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    def evaluate_vqa(
+        self,
+        pred_field,
+        gt_field="ground_truth",
+        eval_key=None,
+        method=None,
+        custom_metrics=None,
+        progress=None,
+        **kwargs,
+    ):
+        """Evaluates the VQA predictions in this collection with respect to
+        the specified ground truth labels.
+
+        Predicted and ground truth labels may be either single
+        :class:`fiftyone.core.labels.VQA` or
+        :class:`fiftyone.core.labels.VQAs` fields (both fields must have the
+        same type). Within ``VQAs`` fields, predictions are matched to
+        ground truth by ``question_id``; labels without a ``question_id``
+        are matched positionally.
+
+        The natively provided ``method`` values and their associated configs
+        are:
+
+        -   ``"exact"``: :class:`fiftyone.utils.eval.vqa.ExactMatchEvaluationConfig`
+        -   ``"vqa"``: :class:`fiftyone.utils.eval.vqa.VQAAccuracyEvaluationConfig`
+
+        If an ``eval_key`` is specified, this method will record:
+
+        -   the per-sample mean question score in an ``eval_key`` sample
+            field
+        -   the per-question score in an ``eval_key`` attribute of each
+            ground truth and predicted label (boolean for ``"exact"``, float
+            for ``"vqa"``)
+        -   the ID of the matched counterpart label in an
+            ``eval_key + "_id"`` attribute of each matched label
+
+        Args:
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.VQA` or
+                :class:`fiftyone.core.labels.VQAs` instances
+            gt_field ("ground_truth"): the name of the field containing the
+                ground truth :class:`fiftyone.core.labels.VQA` or
+                :class:`fiftyone.core.labels.VQAs` instances
+            eval_key (None): a string key to use to refer to this evaluation
+            method (None): a string specifying the evaluation method to use.
+                The supported values are
+                ``fo.evaluation_config.vqa_backends.keys()`` and the default
+                is ``fo.evaluation_config.default_vqa_backend``
+            custom_metrics (None): an optional list of custom metrics to
+                compute or dict mapping metric names to kwargs dicts
+            progress (None): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
+            **kwargs: optional keyword arguments for the constructor of the
+                :class:`fiftyone.utils.eval.vqa.VQAEvaluationConfig` being
+                used
+
+        Returns:
+            a :class:`fiftyone.utils.eval.vqa.VQAResults`
+        """
+        return foue.evaluate_vqa(
+            self,
+            pred_field,
+            gt_field=gt_field,
+            eval_key=eval_key,
+            method=method,
+            custom_metrics=custom_metrics,
+            progress=progress,
+            **kwargs,
+        )
+
     @property
     def has_evaluations(self):
         """Whether this collection has any evaluation results."""
