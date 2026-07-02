@@ -12,6 +12,8 @@
         "check": "yarn workspace @fiftyone/multimodal check",
         "typecheck": "tsc --noEmit -p tsconfig.check.json",
         "typecheck:error-count": "yarn typecheck | grep -c \"error TS\"",
+        "check:baselines": "node ./scripts/check-baselines.mjs",
+        "baseline:update": "node ./scripts/check-baselines.mjs --update",
         "compile": "yarn relay-compiler",
         "dev": "yarn workspace @fiftyone/app dev",
         "dev:py": "node dev.mjs py",

@@ -1,0 +1,5 @@
+{
+    "$comment": "Global ceilings: max allowed TypeScript errors and ESLint warnings (multimodal excluded — it has its own stricter check). Regenerate with `yarn baseline:update`. CI fails if either count rises.",
+    "typescript": 1229,
+    "eslint": 1461
+}
