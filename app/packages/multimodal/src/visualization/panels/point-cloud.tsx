@@ -275,6 +275,12 @@ export interface PointCloudPanelProps {
   readonly annotationLayers?: readonly SceneAnnotationPanelLayer[];
   readonly frustumLayers?: readonly CameraFrustumPanelLayer[];
   readonly gridLayers?: readonly GridPanelLayer[];
+  /**
+   * Extra playback-synced telemetry lines rendered under the HUD count
+   * label (speed, coordinates). Threaded down from the tile because
+   * telemetry is stream state the panel has no business deriving.
+   */
+  readonly hudLines?: readonly string[];
   readonly layers: readonly PointCloudPanelLayer[];
   readonly maxRenderedPoints?: number;
   readonly onCameraPoseChange?: (
@@ -302,6 +308,7 @@ export function PointCloudPanel({
   fit = "initial",
   frustumLayers = [],
   gridLayers = [],
+  hudLines = [],
   layers,
   maxRenderedPoints = DEFAULT_MAX_RENDERED_POINTS,
   onCameraPoseChange,
@@ -496,15 +503,22 @@ export function PointCloudPanel({
           </button>
         </div>
       ) : null}
-      {!canvasError && showHud && hasSceneLayers ? (
+      {!canvasError && showHud && (hasSceneLayers || hudLines.length > 0) ? (
         <div style={styles.hud}>
-          {hasPointCloudLayers
-            ? pointCountLabel(finitePointCount, declaredPointCount)
-            : annotationLayers.length > 0
-              ? annotationCountLabel(annotationPrimitiveSummary)
-              : gridLayers.length > 0
-                ? gridCountLabel(gridLayers.length)
-                : frustumCountLabel(frustumLayers.length)}
+          {hasSceneLayers ? (
+            <div>
+              {hasPointCloudLayers
+                ? pointCountLabel(finitePointCount, declaredPointCount)
+                : annotationLayers.length > 0
+                  ? annotationCountLabel(annotationPrimitiveSummary)
+                  : gridLayers.length > 0
+                    ? gridCountLabel(gridLayers.length)
+                    : frustumCountLabel(frustumLayers.length)}
+            </div>
+          ) : null}
+          {hudLines.map((line) => (
+            <div key={line}>{line}</div>
+          ))}
         </div>
       ) : null}
       {warning ? <div style={styles.warning}>{warning}</div> : null}
@@ -729,20 +743,28 @@ function CameraFrustumSceneLayer({
     () => pointCloudObjectTransform(frameTransform),
     [frameTransform],
   );
-  // Geometries are keyed on message identity (layer id + content time), not
-  // on the frame object: playback re-delivers the same calibration message
-  // in new wrapper objects every batch (see GridSceneLayer's texture memo),
-  // so `frame` is deliberately omitted from the deps (the lint disables
-  // below).
+  // Geometries are keyed on the intrinsic VALUES, not message identity:
+  // calibration messages re-arrive at image cadence carrying the same
+  // intrinsics, and rebuilding (then disposing) GPU geometry per message
+  // floods the renderer with dead pipelines. `frame` is deliberately
+  // omitted from the deps (the lint disables below).
+  const intrinsicsKey = [
+    frame.K[0],
+    frame.K[4],
+    frame.K[2],
+    frame.K[5],
+    frame.width,
+    frame.height,
+  ].join(",");
   const geometry = useMemo(
     () => createCameraFrustumGeometry(frame),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [layer.id, layer.contentTimeNs ?? frame],
+    [intrinsicsKey],
   );
   const imagePlaneGeometry = useMemo(
     () => createCameraImagePlaneGeometry(frame),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [layer.id, layer.contentTimeNs ?? frame],
+    [intrinsicsKey],
   );
   const [imageHandle, setImageHandle] = useState<ImageTextureHandle | null>(
     null,
