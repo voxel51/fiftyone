@@ -1654,6 +1654,39 @@ activation preceding first reads, keep-warm measures clean.
 - Caveat discovered while re-baselining: headless probe runs render WebGL in
   software and inflate paints and long tasks — compare headed runs only.
 
+## Optimization 24: Persist The Renderer Across Sample Navigation
+
+Date: 2026-07-02
+
+Sample navigation previously remounted the custom-renderer subtree twice over:
+`Sample2D` keys `ModalLooker` by sample id and `ModalSampleRenderer` keyed its
+error boundary by renderer + sample id. Every hop re-ran plugin matching,
+re-acquired the resource client, and rebuilt the full tree.
+
+- New opt-in on sample-renderer registration:
+  `sampleRendererOptions.modal.persistAcrossSamples`. When the matched renderer
+  opts in, both core keys collapse to renderer identity — the subtree survives
+  navigation between samples of the same renderer, and still remounts when the
+  renderer changes (or media falls back to native/metadata). The error boundary
+  resets itself between samples via a `resetKey`, so one bad sample cannot pin
+  the rest to the fallback.
+- The MCAP renderer opts in and swaps samples in place: `activateSource`
+  declares ownership during render, the topic inventory is source-scoped (a
+  swapped source reads as loading rather than leaking the previous sample's
+  inventory for one render), the persisted-layout read re-arms per scene, and
+  the playback shell plus per-sample providers reset by a source key. Mount
+  identity verified live: every in-modal hop reports the same ref-scoped
+  `rendererMountKey` in the latency session detail, and dismiss-and-reopen
+  reports a fresh one.
+- Group modals still key by sample (`GroupImageVideoSample`), native media
+  paths are untouched, and non-persistent renderers keep today's
+  remount-per-sample behavior exactly.
+- Probe (headed, local): hops 95–269 ms ready / 358–559 ms paint versus 200–234
+  / 405–587 with keep-warm alone. The mechanism matters more than the delta:
+  with the mount stable, the follow-up lever is narrowing the source-keyed
+  region inside the renderer so the shell and its canvases survive hops too —
+  no further core changes needed.
+
 ## Remote Next Steps
 
 1. Idle-lane bandwidth budgets: lanes isolate CPU but share the link; idle
