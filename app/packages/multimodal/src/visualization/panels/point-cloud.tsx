@@ -105,6 +105,7 @@ const SCENE_MODEL_FALLBACK_SIZE = 1;
 const CAMERA_FRUSTUM_DEPTH_M = 2.5;
 const CAMERA_FRUSTUM_COLOR = 0xffaa33;
 const CAMERA_FRUSTUM_OPACITY = 0.85;
+const EMPTY_WARNINGS: readonly string[] = [];
 const SCENE_TEXT_FONT_FAMILY = "Inter, system-ui, sans-serif";
 const SCENE_TEXT_MIN_CANVAS_FONT_SIZE = 12;
 const SCENE_TEXT_DEFAULT_WORLD_HEIGHT = 0.5;
@@ -293,7 +294,12 @@ export interface PointCloudPanelProps {
   readonly showGizmo?: boolean;
   readonly showHud?: boolean;
   readonly style?: CSSProperties;
-  readonly warning?: string | null;
+  /**
+   * Diagnostic notices (transform availability, placement fallbacks).
+   * Rendered as a compact corner chip that expands on demand instead of
+   * a free-floating text block.
+   */
+  readonly warnings?: readonly string[];
 }
 
 /**
@@ -318,10 +324,9 @@ export function PointCloudPanel({
   showGizmo = true,
   showHud = true,
   style,
-  warning = null,
+  warnings = EMPTY_WARNINGS,
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
-  const [focusSceneRequestKey, setFocusSceneRequestKey] = useState(0);
   const renderLayers = useMemo(
     () =>
       layers.map((layer) => ({
@@ -398,9 +403,6 @@ export function PointCloudPanel({
     annotationLayers.length > 0 ||
     gridLayers.length > 0 ||
     frustumLayers.length > 0;
-  const requestFocusScene = useCallback(() => {
-    setFocusSceneRequestKey((current) => current + 1);
-  }, []);
   useEffect(() => {
     if (!onRenderStats || !hasSceneLayers) return;
 
@@ -452,7 +454,6 @@ export function PointCloudPanel({
       >
         <Base3DScene
           cameraPose={effectiveCameraPose}
-          focusSceneRequestKey={focusSceneRequestKey || undefined}
           onCameraPoseChange={onCameraPoseChange}
           showGizmo={showGizmo}
         >
@@ -487,42 +488,59 @@ export function PointCloudPanel({
         annotationPrimitiveCount === 0 ? (
         <div style={styles.status}>No finite points</div>
       ) : null}
-      {!canvasError ? (
-        <div style={styles.focusControls}>
-          <button
-            aria-label="Focus camera on visible 3D data"
-            onClick={requestFocusScene}
-            style={styles.focusButton}
-            title="Focus camera on visible 3D data"
-            type="button"
-          >
-            <Icon
-              name={IconName.Move}
-              size={Size.Xs}
-              style={styles.focusButtonIcon}
-            />
-          </button>
-        </div>
-      ) : null}
-      {!canvasError && showHud && (hasSceneLayers || hudLines.length > 0) ? (
+      {!canvasError && showHud && hudLines.length > 0 ? (
         <div style={styles.hud}>
-          {hasSceneLayers ? (
-            <div>
-              {hasPointCloudLayers
-                ? pointCountLabel(finitePointCount, declaredPointCount)
-                : annotationLayers.length > 0
-                  ? annotationCountLabel(annotationPrimitiveSummary)
-                  : gridLayers.length > 0
-                    ? gridCountLabel(gridLayers.length)
-                    : frustumCountLabel(frustumLayers.length)}
-            </div>
-          ) : null}
           {hudLines.map((line) => (
             <div key={line}>{line}</div>
           ))}
         </div>
       ) : null}
-      {warning ? <div style={styles.warning}>{warning}</div> : null}
+      <PanelNotices notices={warnings} />
+    </div>
+  );
+}
+
+/**
+ * Collapsed-by-default diagnostics chip in the panel's bottom-left
+ * corner. Transform/placement notices are informative but verbose, so
+ * the resting state is a warning glyph plus a count; the full messages
+ * expand on demand.
+ */
+function PanelNotices({ notices }: { readonly notices: readonly string[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (notices.length === 0) {
+    return null;
+  }
+
+  return (
+    <div style={styles.notices}>
+      {expanded ? (
+        <ul aria-label="3D scene notices" style={styles.noticesList}>
+          {notices.map((notice) => (
+            <li key={notice} style={styles.noticesItem}>
+              {notice}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <button
+        aria-expanded={expanded}
+        aria-label={`${notices.length} scene ${
+          notices.length === 1 ? "notice" : "notices"
+        }`}
+        onClick={() => setExpanded((current) => !current)}
+        style={styles.noticesToggle}
+        title={expanded ? "Hide scene notices" : "Show scene notices"}
+        type="button"
+      >
+        <Icon
+          name={IconName.Warning}
+          size={Size.Xs}
+          style={styles.noticesIcon}
+        />
+        {notices.length}
+      </button>
     </div>
   );
 }
@@ -2497,16 +2515,6 @@ function isFinitePoint3(
   return !!point && point.every((component) => Number.isFinite(component));
 }
 
-function pointCountLabel(finitePointCount: number, declaredPointCount: number) {
-  if (declaredPointCount > 0 && declaredPointCount !== finitePointCount) {
-    return `${formatCount(finitePointCount)} / ${formatCount(
-      declaredPointCount,
-    )} pts`;
-  }
-
-  return `${formatCount(finitePointCount)} pts`;
-}
-
 function annotationPrimitiveSummaryForLayers(
   layers: readonly SceneAnnotationPanelLayer[],
 ): SceneAnnotationPrimitiveSummary {
@@ -2547,66 +2555,11 @@ function annotationPrimitiveSummaryForLayers(
   return summary;
 }
 
-function annotationCountLabel(summary: SceneAnnotationPrimitiveSummary) {
-  const families = [
-    ["arrow", "arrows", summary.arrowCount],
-    ["box", "boxes", summary.cubeCount],
-    ["cylinder", "cylinders", summary.cylinderCount],
-    ["line", "lines", summary.lineCount],
-    ["model", "models", summary.modelCount],
-    ["sphere", "spheres", summary.sphereCount],
-    ["text", "texts", summary.textCount],
-    ["mesh", "meshes", summary.triangleCount],
-  ] as const;
-  const nonEmptyFamilies = families.filter(([, , count]) => count > 0);
-
-  if (nonEmptyFamilies.length === 1) {
-    const [singular, plural, count] = nonEmptyFamilies[0];
-    return `${formatCount(count)} ${count === 1 ? singular : plural}`;
-  }
-
-  return `${formatCount(summary.totalCount)} annotations`;
-}
-
-function gridCountLabel(gridLayerCount: number) {
-  return `${formatCount(gridLayerCount)} map ${
-    gridLayerCount === 1 ? "layer" : "layers"
-  }`;
-}
-
-function frustumCountLabel(frustumLayerCount: number) {
-  return `${formatCount(frustumLayerCount)} ${
-    frustumLayerCount === 1 ? "camera" : "cameras"
-  }`;
-}
-
-function formatCount(value: number) {
-  return Math.round(value).toLocaleString("en-US");
-}
-
 const styles: Record<string, CSSProperties> = {
   canvas: {
     display: "block",
     height: "100%",
     width: "100%",
-  },
-  focusButton: {
-    alignItems: "center",
-    background: VISUALIZATION_HUD_BACKGROUND_COLOR,
-    border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
-    borderRadius: HUD_BORDER_RADIUS_PX,
-    color: VISUALIZATION_HUD_TEXT_COLOR,
-    cursor: "pointer",
-    display: "inline-flex",
-    height: 24,
-    justifyContent: "center",
-    padding: 0,
-    width: 24,
-  },
-  focusButtonIcon: {
-    flex: "0 0 auto",
-    height: 13,
-    width: 13,
   },
   hud: {
     background: VISUALIZATION_HUD_BACKGROUND_COLOR,
@@ -2641,25 +2594,53 @@ const styles: Record<string, CSSProperties> = {
     position: "absolute",
     textAlign: "center",
   },
-  focusControls: {
+  notices: {
     alignItems: "flex-start",
+    bottom: HUD_OFFSET_PX,
     display: "flex",
-    gap: 6,
+    flexDirection: "column",
+    gap: 4,
     left: HUD_OFFSET_PX,
+    maxWidth: "calc(100% - 16px)",
     position: "absolute",
-    top: HUD_OFFSET_PX,
   },
-  warning: {
+  noticesToggle: {
+    alignItems: "center",
     background: VISUALIZATION_HUD_BACKGROUND_COLOR,
     border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
     borderRadius: HUD_BORDER_RADIUS_PX,
-    bottom: HUD_OFFSET_PX,
     color: VISUALIZATION_HUD_TEXT_COLOR,
+    cursor: "pointer",
+    display: "inline-flex",
     fontSize: HUD_FONT_SIZE_PX,
-    left: HUD_OFFSET_PX,
-    lineHeight: 1.2,
-    maxWidth: "calc(100% - 16px)",
-    padding: "5px 7px",
-    position: "absolute",
+    gap: 4,
+    height: 24,
+    justifyContent: "center",
+    padding: "0 7px",
+  },
+  noticesIcon: {
+    color: "#facc15",
+    flex: "0 0 auto",
+    height: 13,
+    width: 13,
+  },
+  noticesList: {
+    background: VISUALIZATION_HUD_BACKGROUND_COLOR,
+    border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
+    borderRadius: HUD_BORDER_RADIUS_PX,
+    color: VISUALIZATION_HUD_TEXT_COLOR,
+    display: "flex",
+    flexDirection: "column",
+    fontSize: HUD_FONT_SIZE_PX,
+    gap: 4,
+    lineHeight: 1.35,
+    listStyle: "none",
+    margin: 0,
+    maxHeight: 160,
+    overflowY: "auto",
+    padding: "6px 8px",
+  },
+  noticesItem: {
+    margin: 0,
   },
 };

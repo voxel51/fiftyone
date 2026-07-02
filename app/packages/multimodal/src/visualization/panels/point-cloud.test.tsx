@@ -14,7 +14,6 @@ vi.mock("./base-3d-scene", () => ({
   Base3DScene: ({
     cameraPose,
     children,
-    focusSceneRequestKey,
     onCameraPoseChange,
     showGizmo = true,
   }: {
@@ -23,7 +22,6 @@ vi.mock("./base-3d-scene", () => ({
       readonly target: readonly [number, number, number];
     } | null;
     readonly children?: ReactNode;
-    readonly focusSceneRequestKey?: number;
     readonly onCameraPoseChange?: (
       pose: {
         readonly position: readonly [number, number, number];
@@ -35,7 +33,6 @@ vi.mock("./base-3d-scene", () => ({
   }) => (
     <div
       data-camera-pose={cameraPose ? JSON.stringify(cameraPose) : ""}
-      data-focus-scene-request-key={focusSceneRequestKey ?? ""}
       data-testid="base-3d-scene"
       data-show-gizmo={String(showGizmo)}
     >
@@ -250,7 +247,6 @@ describe("PointCloudPanel", () => {
     const groups = Array.from(container.querySelectorAll("group"));
     expect(groups.map((g) => g.getAttribute("position"))).toContain("10,0,0");
     expect(groups.map((g) => g.getAttribute("position"))).toContain("1,2,3");
-    expect(screen.getByText("1 box")).toBeTruthy();
     expect(screen.queryByText("No finite points")).toBeNull();
   });
 
@@ -313,7 +309,6 @@ describe("PointCloudPanel", () => {
     );
 
     expect(container.querySelector("linesegments")).toBeTruthy();
-    expect(screen.getByText("1 line")).toBeTruthy();
     expect(screen.queryByText("No finite points")).toBeNull();
   });
 
@@ -366,11 +361,10 @@ describe("PointCloudPanel", () => {
       groups.some((group) => group.getAttribute("position") === "920,1300,0"),
     ).toBe(true);
 
-    // Grid-only scenes still get a fitted camera and a HUD label.
+    // Grid-only scenes still get a fitted camera.
     expect(
       screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose"),
     ).not.toBe("");
-    expect(screen.getByText("1 map layer")).toBeTruthy();
     expect(screen.queryByText("No finite points")).toBeNull();
   });
 
@@ -503,29 +497,6 @@ describe("PointCloudPanel", () => {
     expect(cameraPose.target).toEqual([1, 2, 3]);
   });
 
-  it("labels frustum-only scenes in the HUD", () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-
-    render(
-      <PointCloudPanel
-        frustumLayers={[
-          {
-            frame: {
-              height: 900,
-              K: [450, 0, 800, 0, 450, 450, 0, 0, 1],
-              kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
-              width: 1600,
-            },
-            id: "/CAM_FRONT/camera_info",
-          },
-        ]}
-        layers={[]}
-      />,
-    );
-
-    expect(screen.getByText("1 camera")).toBeTruthy();
-  });
-
   it("renders telemetry hud lines even without scene layers", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 
@@ -575,38 +546,40 @@ describe("PointCloudPanel", () => {
     );
   });
 
-  it("can request camera focus on the visible 3D scene", () => {
+  it("collapses scene notices into a count chip that expands on demand", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     render(
       <PointCloudPanel
-        layers={[
-          {
-            frame: {
-              fields: [],
-              kind: VISUALIZATION_KIND.POINT_CLOUD,
-              pointCount: 1,
-              positions: new Float32Array([1, 2, 3]),
-            },
-            id: "/points",
-          },
+        layers={[]}
+        warnings={[
+          "Missing transform to map: radar_front",
+          "Using boundary-clamped transform to map: lidar_top",
         ]}
       />,
     );
 
-    expect(
-      screen
-        .getByTestId("base-3d-scene")
-        .getAttribute("data-focus-scene-request-key"),
-    ).toBe("");
+    expect(screen.queryByText(/boundary-clamped/)).toBeNull();
 
-    fireEvent.click(screen.getByLabelText("Focus camera on visible 3D data"));
+    fireEvent.click(screen.getByLabelText("2 scene notices"));
 
     expect(
-      screen
-        .getByTestId("base-3d-scene")
-        .getAttribute("data-focus-scene-request-key"),
-    ).toBe("1");
+      screen.getByText("Missing transform to map: radar_front"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("Using boundary-clamped transform to map: lidar_top"),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("2 scene notices"));
+    expect(screen.queryByText(/boundary-clamped/)).toBeNull();
+  });
+
+  it("renders no notices chip without warnings", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    render(<PointCloudPanel layers={[]} />);
+
+    expect(screen.queryByLabelText(/scene notice/)).toBeNull();
   });
 
   it("uses an automatic camera pose unless fitting is disabled", () => {
@@ -634,7 +607,7 @@ describe("PointCloudPanel", () => {
     ).not.toBe("");
   });
 
-  it("renders finite point totals from current layer data immediately", () => {
+  it("keeps the no-finite-points status for partially finite layers off", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     render(
@@ -654,7 +627,6 @@ describe("PointCloudPanel", () => {
     );
 
     expect(screen.queryByText("No finite points")).toBeNull();
-    expect(screen.getByText("2 / 3 pts")).toBeTruthy();
   });
 
   it("defaults to explicit point colors before derived values", () => {

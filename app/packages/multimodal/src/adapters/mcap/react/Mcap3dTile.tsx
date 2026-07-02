@@ -630,7 +630,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       transformedLayerCount,
     ],
   );
-  const placementWarning = useMemo(() => {
+  const placementNotices = useMemo(() => {
     const parts: string[] = [];
     if (provisionalFrameIds.length > 0) {
       parts.push(
@@ -661,16 +661,16 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       );
     }
 
-    return parts.length > 0 ? parts.join(" | ") : null;
+    return parts;
   }, [
     pendingAnnotationFrameIds,
     pendingFrustumFrameIds,
     pendingGridFrameIds,
     provisionalFrameIds,
   ]);
-  const transformWarning = useMemo(
+  const transformNotices = useMemo(
     () =>
-      transformWarningText({
+      transformNoticesText({
         clampedFrameIds,
         frameTransformsError: frameTransforms.error,
         largeInterpolationGaps,
@@ -741,10 +741,13 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       worldFrameId,
     ],
   );
-  const panelWarning = useMemo(
-    () =>
-      joinWarnings(placementWarning, transformWarning, cameraTrackingWarning),
-    [cameraTrackingWarning, placementWarning, transformWarning],
+  const panelNotices = useMemo(
+    () => [
+      ...placementNotices,
+      ...transformNotices,
+      ...(cameraTrackingWarning ? [cameraTrackingWarning] : []),
+    ],
+    [cameraTrackingWarning, placementNotices, transformNotices],
   );
 
   // Re-anchor when the user changes tracking mode or target frame. During
@@ -1335,7 +1338,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         sceneAnnotationLayers.length > 0 ||
         gridLayers.length > 0 ||
         cameraFrustumLayers.length > 0 ||
-        panelWarning ? (
+        panelNotices.length > 0 ? (
         <div className={styles.panelStack}>
           <PointCloudPanel
             annotationLayers={sceneAnnotationLayers}
@@ -1347,7 +1350,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             className={styles.panel}
             onCameraPoseChange={handleCameraPoseChange}
             onRenderStats={handlePanelRenderStats}
-            warning={panelWarning}
+            warnings={panelNotices}
           />
           <McapTileStatusBadge topics={selectedTopics} />
         </div>
@@ -1644,14 +1647,7 @@ function cameraTrackingWarningText({
   return `Camera target transform unavailable: ${cameraTargetFrameId} to ${worldFrameId}`;
 }
 
-function joinWarnings(...warnings: readonly (string | null)[]) {
-  const present = warnings.filter((warning): warning is string =>
-    Boolean(warning),
-  );
-  return present.length > 0 ? present.join(" | ") : null;
-}
-
-function transformWarningText({
+function transformNoticesText({
   clampedFrameIds,
   frameTransformsError,
   largeInterpolationGaps,
@@ -1663,12 +1659,12 @@ function transformWarningText({
   readonly largeInterpolationGaps: readonly Mcap3dTransformGapWarning[];
   readonly unresolvedFrameIds: readonly string[];
   readonly worldFrameId: string;
-}) {
+}): string[] {
   if (frameTransformsError) {
-    return `Frame transforms failed to load: ${frameTransformsError}`;
+    return [`Frame transforms failed to load: ${frameTransformsError}`];
   }
   if (!worldFrameId) {
-    return null;
+    return [];
   }
 
   const parts: string[] = [];
@@ -1692,7 +1688,7 @@ function transformWarningText({
     );
   }
 
-  return parts.length > 0 ? parts.join(" | ") : null;
+  return parts;
 }
 
 function frameIdsFromFrames(
