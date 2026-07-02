@@ -17,9 +17,30 @@
   min-width: 0;
 }
 
+/* Width comes from an inline style: the left pane tracks the resizable
+   drawer width, the right pane stays at the fixed default. */
 .sidebarPane {
   height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
-  width: min(360px, 32vw);
+}
+
+/* Sits over the Drawer's built-in 4px resize strip (absolute, right: 0,
+   z-index: 10 in the same stacking context) so pointer events reach our
+   clamped handle instead of the drawer's own shrink-to-close drag. */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 20;
+  touch-action: none;
+  background: transparent;
+  transition: background 0.12s;
+}
+
+.resizeHandle:hover {
+  background: var(--color-brand-primary);
 }

@@ -9,6 +9,7 @@ import {
 } from "./mcap-layout-persistence";
 import {
   McapModalLayoutPersistence,
+  pruneMosaicLayout,
   useMcapModalLayout,
 } from "./use-mcap-modal-layout";
 
@@ -37,9 +38,13 @@ const STRONG_CAPABILITIES = {
   viewportHeight: 1440,
 };
 
-function renderLayoutHook(sources: readonly SceneSource[]) {
+function renderLayoutHook(sources: readonly SceneSource[], datasetId?: string) {
   return renderHook(() =>
-    useMcapModalLayout({ sources, capabilities: STRONG_CAPABILITIES }),
+    useMcapModalLayout({
+      sources,
+      datasetId,
+      capabilities: STRONG_CAPABILITIES,
+    }),
   );
 }
 
@@ -138,7 +143,7 @@ describe("useMcapModalLayout", () => {
     expect(renderedSourceOf(result.current.initialTiles["image-8"])).toBe("/a");
   });
 
-  it("discards the whole restore when any leaf has an unknown tile type", () => {
+  it("prunes leaves with unknown tile types and promotes the sibling", () => {
     writeMcapModalLayout({
       layout: {
         direction: "row",
@@ -147,13 +152,13 @@ describe("useMcapModalLayout", () => {
       },
     });
     const { result } = renderLayoutHook(SCENE_SOURCES);
-    expect(Object.keys(result.current.initialTiles)).toEqual([
-      "image-1",
-      "3d-1",
-    ]);
+    expect(result.current.initialLayout).toBe("image-default");
+    expect(Object.keys(result.current.initialTiles)).toEqual(["image-default"]);
   });
 
-  it("discards the restore when a leaf's tile kind has no source in the scene", () => {
+  it("prunes leaves whose tile kind has no source in the scene", () => {
+    // A layout saved with a 3D topic, opened on an image-only recording,
+    // keeps its image tile instead of resetting.
     writeMcapModalLayout({
       layout: {
         direction: "row",
@@ -162,7 +167,108 @@ describe("useMcapModalLayout", () => {
       },
     });
     const { result } = renderLayoutHook([SCENE_SOURCES[0]]);
-    expect(Object.keys(result.current.initialTiles)).toEqual(["image-1"]);
+    expect(result.current.initialLayout).toBe("image-default");
+    expect(Object.keys(result.current.initialTiles)).toEqual(["image-default"]);
+  });
+
+  it("keeps surviving split percentages when pruning a nested leaf", () => {
+    writeMcapModalLayout({
+      layout: {
+        direction: "row",
+        splitPercentage: 70,
+        first: {
+          direction: "column",
+          splitPercentage: 30,
+          first: "image-default",
+          second: "radar-9",
+        },
+        second: "3d-1",
+      },
+    });
+    const { result } = renderLayoutHook(SCENE_SOURCES);
+    expect(result.current.initialLayout).toEqual({
+      direction: "row",
+      splitPercentage: 70,
+      first: "image-default",
+      second: "3d-1",
+    });
+  });
+
+  it("falls back to resolver defaults when every leaf is pruned", () => {
+    writeMcapModalLayout({
+      layout: { direction: "row", first: "radar-1", second: "radar-2" },
+    });
+    const { result } = renderLayoutHook(SCENE_SOURCES);
+    expect(Object.keys(result.current.initialTiles)).toEqual([
+      "image-1",
+      "3d-1",
+    ]);
+    expect(result.current.initialLayout).toMatchObject({
+      first: "image-1",
+      second: "3d-1",
+    });
+  });
+
+  it("rebinds surviving image leaves positionally after pruning", () => {
+    writeMcapModalLayout({
+      layout: {
+        direction: "row",
+        first: "image-3",
+        second: { direction: "column", first: "radar-2", second: "image-8" },
+      },
+    });
+    const { result } = renderLayoutHook([
+      { id: "/a", type: "image", label: "a", recordCount: 10 },
+      { id: "/b", type: "image", label: "b", recordCount: 90 },
+    ]);
+    expect(result.current.initialLayout).toEqual({
+      direction: "row",
+      first: "image-3",
+      second: "image-8",
+    });
+    expect(renderedSourceOf(result.current.initialTiles["image-3"])).toBe("/b");
+    expect(renderedSourceOf(result.current.initialTiles["image-8"])).toBe("/a");
+  });
+
+  it("reads the arrangement persisted for the given dataset", () => {
+    writeMcapModalLayout(
+      {
+        layout: {
+          direction: "row",
+          first: "image-1",
+          second: "3d-1",
+          splitPercentage: 20,
+        },
+      },
+      "dataset-a",
+    );
+    writeMcapModalLayout(
+      {
+        layout: {
+          direction: "column",
+          first: "image-1",
+          second: "3d-1",
+          splitPercentage: 80,
+        },
+      },
+      "dataset-b",
+    );
+    const a = renderLayoutHook(SCENE_SOURCES, "dataset-a");
+    expect(a.result.current.initialLayout).toMatchObject({
+      direction: "row",
+      splitPercentage: 20,
+    });
+    const b = renderLayoutHook(SCENE_SOURCES, "dataset-b");
+    expect(b.result.current.initialLayout).toMatchObject({
+      direction: "column",
+      splitPercentage: 80,
+    });
+  });
+
+  it("restores the persisted sidebar width", () => {
+    writeMcapModalLayout({ sidebarWidthPx: 480 }, "dataset-a");
+    const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-a");
+    expect(result.current.defaultLeftSidebarWidth).toBe(480);
   });
 
   it("persists sidebar toggles through the change callbacks", () => {
@@ -170,6 +276,91 @@ describe("useMcapModalLayout", () => {
     act(() => result.current.onLeftOpenChange(true));
     const read = readMcapModalLayout();
     expect(read?.leftSidebarOpen).toBe(true);
+  });
+
+  it("persists sidebar state and width under the hook's dataset", () => {
+    const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-a");
+    act(() => result.current.onLeftOpenChange(false));
+    act(() => result.current.onLeftSidebarWidthChange(420));
+    const read = readMcapModalLayout("dataset-a");
+    expect(read?.leftSidebarOpen).toBe(false);
+    expect(read?.sidebarWidthPx).toBe(420);
+  });
+});
+
+describe("pruneMosaicLayout", () => {
+  const rejecting =
+    (...bad: string[]) =>
+    (id: string) =>
+      !bad.includes(id);
+
+  it("returns the tree intact when every leaf is valid", () => {
+    const tree = {
+      direction: "row" as const,
+      splitPercentage: 60,
+      first: "a-1",
+      second: { direction: "column" as const, first: "b-1", second: "c-1" },
+    };
+    expect(pruneMosaicLayout(tree, () => true)).toEqual(tree);
+  });
+
+  it("prunes an invalid root leaf to null", () => {
+    expect(pruneMosaicLayout("a-1", rejecting("a-1"))).toBeNull();
+  });
+
+  it("promotes the surviving sibling when one child is pruned", () => {
+    expect(
+      pruneMosaicLayout(
+        { direction: "row", first: "a-1", second: "b-1" },
+        rejecting("b-1"),
+      ),
+    ).toBe("a-1");
+  });
+
+  it("prunes a parent whose children are both pruned", () => {
+    expect(
+      pruneMosaicLayout(
+        {
+          direction: "row",
+          first: "a-1",
+          second: { direction: "column", first: "b-1", second: "c-1" },
+        },
+        rejecting("b-1", "c-1"),
+      ),
+    ).toBe("a-1");
+  });
+
+  it("returns null when the whole tree is pruned", () => {
+    expect(
+      pruneMosaicLayout(
+        { direction: "row", first: "a-1", second: "b-1" },
+        rejecting("a-1", "b-1"),
+      ),
+    ).toBeNull();
+  });
+
+  it("keeps split percentages of surviving parents", () => {
+    expect(
+      pruneMosaicLayout(
+        {
+          direction: "row",
+          splitPercentage: 70,
+          first: {
+            direction: "column",
+            splitPercentage: 30,
+            first: "a-1",
+            second: "bad-1",
+          },
+          second: "c-1",
+        },
+        rejecting("bad-1"),
+      ),
+    ).toEqual({
+      direction: "row",
+      splitPercentage: 70,
+      first: "a-1",
+      second: "c-1",
+    });
   });
 });
 
@@ -227,5 +418,23 @@ describe("McapModalLayoutPersistence", () => {
     // Unmount before the 500ms debounce fires.
     unmount();
     expect(readMcapModalLayout()?.layout).toBe("camera-default");
+  });
+
+  it("writes under the dataset it was given", () => {
+    render(
+      <TilingProvider
+        initialTiles={{
+          "camera-default": { title: "Camera", render: () => null },
+        }}
+      >
+        <LayoutDriver next="camera-default" />
+        <McapModalLayoutPersistence datasetId="dataset-a" />
+      </TilingProvider>,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(readMcapModalLayout("dataset-a")?.layout).toBe("camera-default");
   });
 });

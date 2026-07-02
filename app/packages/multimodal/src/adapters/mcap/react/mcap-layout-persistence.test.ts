@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   isValidMosaicLayout,
   mcapTileTypeFromId,
@@ -70,6 +70,122 @@ describe("mcap-layout-persistence", () => {
     const read = readMcapModalLayout();
     expect(read?.leftSidebarOpen).toBe(true);
     expect(read?.layout).toBeUndefined();
+  });
+
+  describe("per-dataset keying", () => {
+    it("keeps separate arrangements per dataset", () => {
+      writeMcapModalLayout({ layout: "image-1" }, "dataset-a");
+      writeMcapModalLayout({ layout: "3d-1" }, "dataset-b");
+      expect(readMcapModalLayout("dataset-a")?.layout).toBe("image-1");
+      expect(readMcapModalLayout("dataset-b")?.layout).toBe("3d-1");
+    });
+
+    it("falls back to the latest write anywhere for a never-seen dataset", () => {
+      writeMcapModalLayout({ layout: "image-1" }, "dataset-a");
+      writeMcapModalLayout({ layout: "3d-1" }, "dataset-b");
+      expect(readMcapModalLayout("dataset-never-seen")?.layout).toBe("3d-1");
+      expect(readMcapModalLayout()?.layout).toBe("3d-1");
+    });
+
+    it("resolves each field independently between entry and fallback", () => {
+      writeMcapModalLayout({ leftSidebarOpen: false }, "dataset-a");
+      writeMcapModalLayout({ layout: "image-1" }, "dataset-b");
+      const read = readMcapModalLayout("dataset-a");
+      // Own entry wins where present…
+      expect(read?.leftSidebarOpen).toBe(false);
+      // …and the fallback fills the fields it doesn't have.
+      expect(read?.layout).toBe("image-1");
+    });
+  });
+
+  describe("v1 migration", () => {
+    it("reads a v1 payload as the fallback layer", () => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          version: 1,
+          leftSidebarOpen: false,
+          layout: "image-1",
+        }),
+      );
+      const read = readMcapModalLayout("dataset-never-seen");
+      expect(read?.leftSidebarOpen).toBe(false);
+      expect(read?.layout).toBe("image-1");
+    });
+
+    it("migrates v1 fields into the v2 fallback on the first write", () => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          version: 1,
+          leftSidebarOpen: false,
+          layout: "image-1",
+        }),
+      );
+      writeMcapModalLayout({ sidebarWidthPx: 400 }, "dataset-a");
+      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+      expect(raw.version).toBe(2);
+      expect(raw.fallback).toMatchObject({
+        leftSidebarOpen: false,
+        layout: "image-1",
+        sidebarWidthPx: 400,
+      });
+      expect(readMcapModalLayout("dataset-a")?.sidebarWidthPx).toBe(400);
+      // The pre-migration fields survived for other datasets too.
+      expect(readMcapModalLayout("dataset-b")?.layout).toBe("image-1");
+    });
+  });
+
+  describe("sidebarWidthPx", () => {
+    it("round-trips through a dataset entry", () => {
+      writeMcapModalLayout({ sidebarWidthPx: 420 }, "dataset-a");
+      expect(readMcapModalLayout("dataset-a")?.sidebarWidthPx).toBe(420);
+    });
+
+    it("drops non-numeric or non-positive widths but keeps valid fields", () => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ version: 2, fallback: { sidebarWidthPx: "wide" } }),
+      );
+      expect(readMcapModalLayout()?.sidebarWidthPx).toBeUndefined();
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          version: 2,
+          fallback: { sidebarWidthPx: -5, leftSidebarOpen: true },
+        }),
+      );
+      const read = readMcapModalLayout();
+      expect(read?.sidebarWidthPx).toBeUndefined();
+      expect(read?.leftSidebarOpen).toBe(true);
+    });
+  });
+
+  describe("eviction", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("caps the table at 20 datasets, evicting the least recently updated", () => {
+      for (let i = 0; i < 20; i++) {
+        vi.setSystemTime(1_000 + i);
+        writeMcapModalLayout({ layout: `image-${i}` }, `dataset-${i}`);
+      }
+      // Touch the oldest entry so it stops being the eviction candidate.
+      vi.setSystemTime(5_000);
+      writeMcapModalLayout({ leftSidebarOpen: true }, "dataset-0");
+      // A 21st dataset evicts dataset-1 (now the least recently updated).
+      vi.setSystemTime(5_001);
+      writeMcapModalLayout({ layout: "image-20" }, "dataset-20");
+
+      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+      const keys = Object.keys(raw.byDataset);
+      expect(keys).toHaveLength(20);
+      expect(keys).not.toContain("dataset-1");
+      expect(keys).toContain("dataset-0");
+      expect(keys).toContain("dataset-20");
+      // The evicted dataset resolves from the fallback from now on.
+      expect(readMcapModalLayout("dataset-1")?.layout).toBe("image-20");
+    });
   });
 
   describe("isValidMosaicLayout", () => {

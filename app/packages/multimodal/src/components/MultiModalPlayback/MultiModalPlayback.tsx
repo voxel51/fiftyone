@@ -10,7 +10,7 @@ import {
 } from "@fiftyone/tiling";
 import { Drawer } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useCallback, useState, type ReactNode } from "react";
+import React, { useCallback, useRef, useState, type ReactNode } from "react";
 import type { MosaicNode } from "react-mosaic-component";
 import {
   PlaybackProvider,
@@ -27,6 +27,20 @@ import styles from "./MultiModalPlayback.module.css";
 
 const EMPTY_SOURCES: readonly SceneSource[] = [];
 const SIDEBAR_SIZE_PX = 360;
+
+// User-resizable bounds for the left sidebar. MIN keeps the settings
+// controls readable (labels + inputs don't wrap into uselessness below
+// ~280); MAX stops the sidebar from crowding the tiles out of the modal.
+export const SIDEBAR_MIN_WIDTH_PX = 280;
+export const SIDEBAR_MAX_WIDTH_PX = 560;
+
+/** Clamp a requested sidebar width to the resizable bounds. */
+export function clampSidebarWidth(px: number): number {
+  return Math.min(
+    SIDEBAR_MAX_WIDTH_PX,
+    Math.max(SIDEBAR_MIN_WIDTH_PX, Math.round(px)),
+  );
+}
 
 export interface MultiModalPlaybackProps {
   /** Filename rendered on the left of the top bar. */
@@ -78,6 +92,19 @@ export interface MultiModalPlaybackProps {
   onLeftOpenChange?: (open: boolean) => void;
   /** Observes right-sidebar visibility — e.g. to persist the choice. */
   onRightOpenChange?: (open: boolean) => void;
+  /**
+   * Starting width of the left sidebar in px, clamped to
+   * {@link SIDEBAR_MIN_WIDTH_PX}–{@link SIDEBAR_MAX_WIDTH_PX}. The pane
+   * is drag-resizable via its edge handle either way; this only seeds
+   * the width (uncontrolled, like `defaultLeftOpen`). Defaults to the
+   * fixed 360px the shell has always used.
+   */
+  leftSidebarWidth?: number;
+  /**
+   * Observes the left sidebar width at drag end — e.g. to persist the
+   * choice. Not called at pointer-move cadence.
+   */
+  onLeftSidebarWidthChange?: (px: number) => void;
 
   /**
    * Callback that persists a newly-created temporal tag.  When provided,
@@ -145,6 +172,8 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   defaultRightOpen = true,
   onLeftOpenChange,
   onRightOpenChange,
+  leftSidebarWidth,
+  onLeftSidebarWidthChange,
   onTagCreate,
   onTagDelete,
   children,
@@ -174,6 +203,8 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               defaultRightOpen={defaultRightOpen}
               onLeftOpenChange={onLeftOpenChange}
               onRightOpenChange={onRightOpenChange}
+              leftSidebarWidth={leftSidebarWidth}
+              onLeftSidebarWidthChange={onLeftSidebarWidthChange}
               onTagCreate={onTagCreate}
               onTagDelete={onTagDelete}
               className={className}
@@ -195,6 +226,8 @@ interface LayoutProps {
   defaultRightOpen: boolean;
   onLeftOpenChange?: (open: boolean) => void;
   onRightOpenChange?: (open: boolean) => void;
+  leftSidebarWidth?: number;
+  onLeftSidebarWidthChange?: (px: number) => void;
   onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
   onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
   className?: string;
@@ -210,6 +243,8 @@ function Layout({
   defaultRightOpen,
   onLeftOpenChange,
   onRightOpenChange,
+  leftSidebarWidth,
+  onLeftSidebarWidthChange,
   onTagCreate,
   onTagDelete,
   className,
@@ -221,6 +256,16 @@ function Layout({
   const hasRightSidebar = rightSidebar !== null && rightSidebar !== undefined;
   const [leftOpen, setLeftOpen] = useState(defaultLeftOpen);
   const [rightOpen, setRightOpen] = useState(defaultRightOpen);
+  // The Drawer has no size-seeding prop, but its open width always
+  // resolves to `maxSize` (its content measurement saturates against the
+  // full-height sidebar), so driving `maxSize` from state gives us both
+  // restore and live drag-resize without forking voodo.
+  const [leftWidth, setLeftWidth] = useState(() =>
+    clampSidebarWidth(leftSidebarWidth ?? SIDEBAR_SIZE_PX),
+  );
+  const leftWidthRef = useRef(leftWidth);
+  leftWidthRef.current = leftWidth;
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const updateLeftOpen = (open: boolean) => {
     setLeftOpen(open);
@@ -229,6 +274,29 @@ function Layout({
   const updateRightOpen = (open: boolean) => {
     setRightOpen(open);
     onRightOpenChange?.(open);
+  };
+
+  const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    // Suppress the compatibility mouse events so a drag can't start a
+    // text selection in the sidebar it borders.
+    event.preventDefault();
+    dragRef.current = {
+      startX: event.clientX,
+      startWidth: leftWidthRef.current,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const handleResizeMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    setLeftWidth(
+      clampSidebarWidth(drag.startWidth + event.clientX - drag.startX),
+    );
+  };
+  const handleResizeEnd = () => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    onLeftSidebarWidthChange?.(leftWidthRef.current);
   };
   // Re-selecting the focused tile clears focus (toggle off); "action" reasons
   // (close/fullscreen) always focus without toggling.
@@ -260,11 +328,27 @@ function Layout({
         <Drawer
           side="left"
           mode="push"
-          maxSize={SIDEBAR_SIZE_PX}
+          maxSize={leftWidth}
           open={leftOpen}
           onOpenChange={updateLeftOpen}
         >
-          <div className={styles.sidebarPane}>{leftSidebar}</div>
+          {/* Pinning the pane to the target width (instead of 100%) keeps
+              the content from reflowing while the drawer's open/close
+              animation sweeps the wrapper width. */}
+          <div className={styles.sidebarPane} style={{ width: leftWidth }}>
+            {leftSidebar}
+          </div>
+          {/* Our clamped resize handle. It overlays the Drawer's built-in
+              shrink-to-close strip (z-index 10) so pointer events land
+              here instead. */}
+          <div
+            className={styles.resizeHandle}
+            data-testid="sidebar-resize-handle"
+            onPointerDown={handleResizeStart}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeEnd}
+            onPointerCancel={handleResizeEnd}
+          />
         </Drawer>
 
         <div className={styles.main}>
@@ -285,7 +369,12 @@ function Layout({
             open={rightOpen}
             onOpenChange={updateRightOpen}
           >
-            <div className={styles.sidebarPane}>{rightSidebar}</div>
+            <div
+              className={styles.sidebarPane}
+              style={{ width: SIDEBAR_SIZE_PX }}
+            >
+              {rightSidebar}
+            </div>
           </Drawer>
         ) : null}
       </div>

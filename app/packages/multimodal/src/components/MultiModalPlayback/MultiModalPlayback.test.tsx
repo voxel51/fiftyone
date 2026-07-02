@@ -45,7 +45,11 @@ vi.mock("@fiftyone/tiling", async () => {
   };
 });
 
-import MultiModalPlayback from "./MultiModalPlayback";
+import MultiModalPlayback, {
+  clampSidebarWidth,
+  SIDEBAR_MAX_WIDTH_PX,
+  SIDEBAR_MIN_WIDTH_PX,
+} from "./MultiModalPlayback";
 
 describe("MultiModalPlayback shell", () => {
   afterEach(() => cleanup());
@@ -153,6 +157,62 @@ describe("MultiModalPlayback shell", () => {
     expect(screen.getByTestId("select-camera-1").dataset.focused).toBe("true");
   });
 
+  it("seeds the left sidebar width from leftSidebarWidth, clamped", () => {
+    const { container } = render(
+      <MultiModalPlayback
+        fileName="x"
+        rightSidebar={null}
+        leftSidebarWidth={10_000}
+      />,
+    );
+    const pane = container.querySelector(".sidebarPane") as HTMLElement;
+    expect(pane.style.width).toBe(`${SIDEBAR_MAX_WIDTH_PX}px`);
+  });
+
+  it("defaults the left sidebar width to 360px when unset", () => {
+    const { container } = render(
+      <MultiModalPlayback fileName="x" rightSidebar={null} />,
+    );
+    const pane = container.querySelector(".sidebarPane") as HTMLElement;
+    expect(pane.style.width).toBe("360px");
+  });
+
+  it("resizes via the handle with clamping and reports the width at drag end", () => {
+    // jsdom 20 has no PointerEvent, so fireEvent would fall back to a
+    // bare Event and drop clientX. MouseEvent carries the coordinates —
+    // all the drag math reads.
+    window.PointerEvent ??= window.MouseEvent as typeof window.PointerEvent;
+    const onWidth = vi.fn();
+    const { container } = render(
+      <MultiModalPlayback
+        fileName="x"
+        rightSidebar={null}
+        onLeftSidebarWidthChange={onWidth}
+      />,
+    );
+    const handle = screen.getByTestId("sidebar-resize-handle");
+    // jsdom has no pointer-capture plumbing; the handler only needs the
+    // call to not throw.
+    handle.setPointerCapture = vi.fn();
+    const pane = container.querySelector(".sidebarPane") as HTMLElement;
+
+    fireEvent.pointerDown(handle, { clientX: 360, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 460, pointerId: 1 });
+    expect(pane.style.width).toBe("460px");
+
+    // Overshooting the bounds clamps instead of tracking the pointer.
+    fireEvent.pointerMove(handle, { clientX: 5_000, pointerId: 1 });
+    expect(pane.style.width).toBe(`${SIDEBAR_MAX_WIDTH_PX}px`);
+
+    fireEvent.pointerUp(handle, { pointerId: 1 });
+    expect(onWidth).toHaveBeenCalledTimes(1);
+    expect(onWidth).toHaveBeenCalledWith(SIDEBAR_MAX_WIDTH_PX);
+
+    // Moves after the drag ended don't resize.
+    fireEvent.pointerMove(handle, { clientX: 100, pointerId: 1 });
+    expect(pane.style.width).toBe(`${SIDEBAR_MAX_WIDTH_PX}px`);
+  });
+
   it("can keep repeat tile selection focused", () => {
     render(
       <MultiModalPlayback
@@ -176,5 +236,21 @@ describe("MultiModalPlayback shell", () => {
     fireEvent.click(screen.getByTestId("select-camera-1"));
     expect(screen.getByTestId("caption-context").textContent).toBe("Camera");
     expect(screen.getByTestId("select-camera-1").dataset.focused).toBe("true");
+  });
+});
+
+describe("clampSidebarWidth", () => {
+  it("passes through in-range widths, rounded to whole pixels", () => {
+    expect(clampSidebarWidth(400)).toBe(400);
+    expect(clampSidebarWidth(400.6)).toBe(401);
+  });
+
+  it("clamps to the resizable bounds", () => {
+    expect(clampSidebarWidth(0)).toBe(SIDEBAR_MIN_WIDTH_PX);
+    expect(clampSidebarWidth(279)).toBe(SIDEBAR_MIN_WIDTH_PX);
+    expect(clampSidebarWidth(561)).toBe(SIDEBAR_MAX_WIDTH_PX);
+    expect(clampSidebarWidth(Number.MAX_SAFE_INTEGER)).toBe(
+      SIDEBAR_MAX_WIDTH_PX,
+    );
   });
 });

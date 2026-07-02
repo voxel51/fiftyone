@@ -44,9 +44,9 @@ import { useStableMcapSource } from "./use-stable-mcap-source";
  * arrangement and stream policies are derived from it, and both are
  * mount-time inputs to the embedded providers.
  *
- * Sidebar visibility and the tile arrangement restore from the user's
- * last session (`useMcapModalLayout`) and persist as they change
- * (`McapModalLayoutPersistence`).
+ * Sidebar visibility, sidebar width, and the tile arrangement restore
+ * from the user's last session on this dataset (`useMcapModalLayout`)
+ * and persist as they change (`McapModalLayoutPersistence`).
  */
 const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const client = useMcapResourceClient({ worker: true });
@@ -112,8 +112,22 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
     ),
     [metadata],
   );
-  const { initialTiles, initialLayout, defaultLeftOpen, onLeftOpenChange } =
-    useMcapModalLayout({ sources, readProfile: source?.readProfile });
+  // Layout persistence is keyed by datasetId — stable across dataset
+  // renames, unlike the name — with a browser-wide fallback for
+  // datasets the user hasn't arranged yet.
+  const datasetId = ctx.dataset.datasetId;
+  const {
+    initialTiles,
+    initialLayout,
+    defaultLeftOpen,
+    onLeftOpenChange,
+    defaultLeftSidebarWidth,
+    onLeftSidebarWidthChange,
+  } = useMcapModalLayout({
+    sources,
+    datasetId,
+    readProfile: source?.readProfile,
+  });
   const { tracks, onTagCreate, onTagDelete } = useMcapTemporalTags(ctx);
 
   useEffect(() => {
@@ -171,12 +185,14 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
               rightSidebar={null}
               defaultLeftOpen={defaultLeftOpen}
               onLeftOpenChange={onLeftOpenChange}
+              leftSidebarWidth={defaultLeftSidebarWidth}
+              onLeftSidebarWidthChange={onLeftSidebarWidthChange}
               onTagCreate={onTagCreate}
             >
               <McapStreams ctx={ctx} client={client} />
               <McapNetworkHealthTracker client={client} />
               <McapAdjacentSamplePrewarm ctx={ctx} />
-              <McapModalLayoutPersistence />
+              <McapModalLayoutPersistence datasetId={datasetId} />
             </MultiModalPlayback>
           </McapDataStreamProvider>
         </McapPoseTrajectoriesProvider>
