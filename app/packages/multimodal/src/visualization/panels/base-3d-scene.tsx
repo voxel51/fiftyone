@@ -102,7 +102,7 @@ export function Base3DScene({
       />
       {showGizmo ? (
         <GizmoHelper
-          alignment="top-right"
+          alignment="top-left"
           margin={GIZMO_MARGIN_PIXELS}
           renderPriority={GIZMO_RENDER_PRIORITY}
         >
