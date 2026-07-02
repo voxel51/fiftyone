@@ -410,9 +410,12 @@ export interface McapResourceClient {
 
   /**
    * Streams decoded messages for the requested topics and time bounds.
+   * Pass an idle priority for bulk history reads (e.g. trajectories) so
+   * they never contend with current-frame playback work.
    */
   readDecodedMessages(
     request: McapReadDecodedMessagesRequest,
+    options?: McapResourceReadOptions,
   ): AsyncGenerator<McapDecodedMessage, void, void>;
 
   /**
