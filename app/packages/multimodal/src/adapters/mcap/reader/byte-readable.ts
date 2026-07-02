@@ -128,6 +128,14 @@ export class ByteClientReadable implements McapTypes.IReadable {
     size: bigint,
     cachePolicy?: { readonly blockFill?: boolean },
   ): Promise<Uint8Array> {
+    // Warm-cache walks (topic bounds, index scans, per-message decode reads)
+    // never reach a network boundary, so a cancelled job would otherwise hold
+    // its serial lane for seconds of pure CPU. Every read consults the
+    // active request's signal, making cancellation effective on cache hits.
+    const activeSignal = this.options.readSignal?.current;
+    if (activeSignal?.aborted) {
+      throw abortedReadableError();
+    }
     const sourceSize = this.resolvedSizeBytes ?? sourceSizeBytes(this.source);
     if (sourceSize !== undefined && offset + size > sourceSize) {
       throw new Error(
@@ -208,6 +216,12 @@ export class ByteClientReadable implements McapTypes.IReadable {
       (this.options.logChunkRead ?? defaultChunkReadLogger)(entry);
     }
   }
+}
+
+function abortedReadableError(): Error {
+  const error = new Error("MCAP read aborted");
+  error.name = "AbortError";
+  return error;
 }
 
 function sourceSizeBytes(source: ByteSourceDescriptor): bigint | undefined {
