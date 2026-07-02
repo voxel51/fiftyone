@@ -36,27 +36,45 @@ const run = (...args) => {
 };
 
 console.log("Counting TypeScript errors…");
-const typescript = run("tsc", "--noEmit", "-p", "tsconfig.check.json", "--pretty", "false")
+const typescript = run(
+  "tsc",
+  "--noEmit",
+  "-p",
+  "tsconfig.check.json",
+  "--pretty",
+  "false",
+)
   .split("\n")
   .filter(
     (line) =>
       /error TS\d+/.test(line) &&
-      !EXCLUDED_PACKAGES.some((pkg) => line.startsWith(`${pkg}/`))
+      !EXCLUDED_PACKAGES.some((pkg) => line.startsWith(`${pkg}/`)),
   ).length;
 
 console.log("Counting ESLint warnings…");
 // Hard errors are unexpected under the root config's only-warn plugin, but a
 // new parse/config error should trip the gate too, so count both.
 const eslint = JSON.parse(
-  run("eslint", "packages", "--ext", ".ts,.tsx", "--format", "json",
-      ...EXCLUDED_PACKAGES.flatMap((pkg) => ["--ignore-pattern", `${pkg}/**`]))
+  run(
+    "eslint",
+    "packages",
+    "--ext",
+    ".ts,.tsx",
+    "--format",
+    "json",
+    ...EXCLUDED_PACKAGES.flatMap((pkg) => ["--ignore-pattern", `${pkg}/**`]),
+  ),
 ).reduce((n, file) => n + file.warningCount + file.errorCount, 0);
 
 const counts = { typescript, eslint };
 const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
 
 if (process.argv.includes("--update")) {
-  writeFileSync(baselinePath, `${JSON.stringify({ ...baseline, ...counts }, null, 2)}\n`);
+  // 4-space indent to satisfy the repo prettier config's *.json override
+  writeFileSync(
+    baselinePath,
+    `${JSON.stringify({ ...baseline, ...counts }, null, 4)}\n`,
+  );
   console.log(`Baseline updated: typescript=${typescript}, eslint=${eslint}`);
   process.exit(0);
 }
@@ -70,8 +88,8 @@ for (const [tool, actual] of Object.entries(counts)) {
     console.error(
       typeof ceiling === "number"
         ? `${tool}: ${actual} exceeds the baseline of ${ceiling} (+${actual - ceiling}). ` +
-          `Fix the new problems, or run \`yarn baseline:update\` if the increase is intentional.`
-        : `${tool}: no baseline — run \`yarn baseline:update\` and commit error-baseline.json.`
+            `Fix the new problems, or run \`yarn baseline:update\` if the increase is intentional.`
+        : `${tool}: no baseline — run \`yarn baseline:update\` and commit error-baseline.json.`,
     );
     failed = true;
   }
