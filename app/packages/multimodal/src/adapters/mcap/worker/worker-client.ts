@@ -126,14 +126,45 @@ class WorkerMcapResourceClient implements McapResourceClient {
       return;
     }
     // Ownership follows the renderer lifecycle; requests for retired
-    // sources fail fast instead of flipping ownership back. Switching still
-    // terminates the fleet for now: cancel-and-keep-warm was measured twice
-    // and back-to-back renderer swaps stayed ~5 s to ready versus 0.3 s
-    // with terminate, even with fail-fast and read-boundary aborts — the
-    // residual cost is not yet attributed, so terminate remains the safe
-    // preemption for source switches.
-    this.resetWorkers("MCAP worker reset for a different source");
+    // sources fail fast instead of flipping ownership back. A declared
+    // switch preempts by cancelling, not terminating: pending reads reject
+    // locally with the benign cancelled error, workers abort the matching
+    // jobs at their read and decode boundaries, and the fleet stays warm —
+    // the next sample skips worker startup and the parked reader keeps its
+    // indexes for a return trip. This depends on activation preceding the
+    // new renderer's first reads (it runs during render); effect-timed
+    // activation raced those reads into the fail-fast path and stalled
+    // hops for seconds.
+    this.cancelAllPendingReads();
     this.activeSourceKey = sourceKey;
+  }
+
+  // Rejects every pending unary and stream locally and tells each lane's
+  // worker to drop or abort the matching jobs. In-flight aborts surface at
+  // the next read or decode boundary, so a lane frees up within one
+  // boundary rather than after the full stale job.
+  private cancelAllPendingReads() {
+    for (const lane of [this.foregroundLane, this.idleLane, this.bulkLane]) {
+      const cancelledIds = [
+        ...lane.transport.cancelPending(() => true),
+        ...lane.transport.cancelStreams(),
+      ];
+      const worker = lane.worker;
+      if (!worker) {
+        continue;
+      }
+      for (const id of cancelledIds) {
+        try {
+          const cancelRequest: McapPlaybackWorkerRequest = {
+            id,
+            type: "cancel",
+          };
+          worker.postMessage(cancelRequest);
+        } catch {
+          // The worker may already be gone; local rejection settled callers.
+        }
+      }
+    }
   }
 
   cancelIdleReads() {

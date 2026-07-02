@@ -85,6 +85,30 @@ describe("MCAP playback worker transport", () => {
     });
   });
 
+  it("cancels pending streams locally and reports their ids", async () => {
+    const worker = createWorker();
+    const transport = new McapPlaybackWorkerTransport(() => true);
+    const stream = transport.stream(worker, "source:1", "readDecodedMessages", {
+      source: createSource(),
+      topics: ["/camera"],
+    });
+    const next = stream.next();
+
+    const cancelledIds = transport.cancelStreams();
+
+    expect(cancelledIds).toEqual([1]);
+    await expect(next).rejects.toThrow(MCAP_READ_CANCELLED_MESSAGE);
+
+    // A late worker response for the cancelled stream is ignored.
+    transport.handleResponse({
+      done: false,
+      id: 1,
+      item: createDecodedMessage(),
+      ok: true,
+      stream: true,
+    });
+  });
+
   it("finishes inactive streams instead of leaving readers pending", async () => {
     const worker = createWorker();
     const transport = new McapPlaybackWorkerTransport(() => false);

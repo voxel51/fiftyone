@@ -294,9 +294,12 @@ describe("worker-backed MCAP resource client", () => {
 
     client.activateSource?.(createSource("source:2"));
 
-    // Switching preempts the old source's work.
-    await expect(first).rejects.toThrow("different source");
-    expect(worker.terminate).toHaveBeenCalledTimes(1);
+    // Switching preempts the old source's work by cancelling: the pending
+    // read rejects with the benign cancelled error and the worker is told
+    // to abort the matching job instead of being terminated.
+    await expect(first).rejects.toThrow("MCAP read cancelled");
+    expect(worker.terminate).not.toHaveBeenCalled();
+    expect(worker.messages.at(-1)).toEqual({ id: 1, type: "cancel" });
 
     // A late read for the retired source fails fast without flipping
     // ownership back.
@@ -304,10 +307,10 @@ describe("worker-backed MCAP resource client", () => {
       client.readTimelineRange(createTimelineRequest("source:1")),
     ).rejects.toThrow("MCAP read cancelled");
 
-    // The active source proceeds on a fresh worker.
+    // The active source proceeds on the same warm worker.
     const second = client.readTimelineRange(createTimelineRequest("source:2"));
-    const secondWorker = workers[1];
-    secondWorker.respond({
+    expect(workers).toHaveLength(1);
+    worker.respond({
       id: 2,
       ok: true,
       result: createTimelineRange(2n, 3n),
@@ -317,13 +320,32 @@ describe("worker-backed MCAP resource client", () => {
     // Back-navigation re-activates the earlier source legitimately.
     client.activateSource?.(createSource("source:1"));
     const third = client.readTimelineRange(createTimelineRequest("source:1"));
-    const thirdWorker = workers[2];
-    thirdWorker.respond({
+    worker.respond({
       id: 3,
       ok: true,
       result: createTimelineRange(1n, 2n),
     });
     await expect(third).resolves.toEqual(createTimelineRange(1n, 2n));
+  });
+
+  it("cancels in-flight streams when a declared switch preempts them", async () => {
+    const { client, workers } = createClientHarness();
+
+    client.activateSource?.(createSource("source:1"));
+    const stream = client.readDecodedMessages({
+      source: createSource("source:1"),
+      topics: ["/camera"],
+    });
+    const first = stream.next();
+    const worker = workers[0];
+
+    client.activateSource?.(createSource("source:2"));
+
+    // The consumer settles with the benign cancelled error even though a
+    // dropped queued job would never produce a worker response.
+    await expect(first).rejects.toThrow("MCAP read cancelled");
+    expect(worker.terminate).not.toHaveBeenCalled();
+    expect(worker.messages.at(-1)).toEqual({ id: 1, type: "cancel" });
   });
 
   it("resets idle-prefetch work when the active source changes", async () => {
