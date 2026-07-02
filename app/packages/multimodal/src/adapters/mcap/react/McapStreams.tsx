@@ -6,10 +6,9 @@ import { MCAP_SOURCE_TYPE, mcapStreamPolicies } from "../scene-sources";
 import { MCAP_ACTIVE_TIMELINE, type McapResourceClient } from "../types";
 import {
   idleMcapFrameTransformsState,
-  useMcapFrameTransformsContext,
   useSetMcapFrameTransformsContext,
 } from "./mcap-frame-transforms-context";
-import { McapPoseTrajectoriesBridge } from "./mcap-pose-trajectories-context";
+import { McapPoseTrajectoriesStartupGate } from "./mcap-pose-trajectories-context";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
@@ -126,26 +125,6 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
         source={source}
       />
     </>
-  );
-}
-
-function McapPoseTrajectoriesStartupGate({
-  client,
-  poseTopics,
-  source,
-}: {
-  readonly client: McapResourceClient;
-  readonly poseTopics: readonly string[];
-  readonly source: ByteSourceDescriptor | null;
-}) {
-  const frameTransforms = useMcapFrameTransformsContext();
-  return (
-    <McapPoseTrajectoriesBridge
-      client={client}
-      enabled={frameTransforms.status === "ready"}
-      poseTopics={poseTopics}
-      source={source}
-    />
   );
 }
 
