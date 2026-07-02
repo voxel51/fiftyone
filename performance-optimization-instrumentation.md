@@ -1627,6 +1627,33 @@ Validation:
   controlled experiment.
 - Local control: unchanged (5.2% stall; fast reads never promote).
 
+## Optimization 23: Keep Workers Warm Across Declared Source Switches
+
+Date: 2026-07-02
+
+Sample navigation previously terminated the worker fleet on every source
+switch. Terminate was load-bearing: two earlier cancel-and-keep-warm attempts
+regressed hops from ~0.3 s to ~5 s, and neither fail-fast ownership nor
+read-boundary aborts fixed it in isolation. The residual is now attributed —
+those measurements predated render-body activation, so the new renderer's first
+reads raced effect-timed activation into the fail-fast path and stalled. With
+activation preceding first reads, keep-warm measures clean.
+
+- `activateSource` switches now cancel instead of terminate: pending unaries
+  and streams reject locally with the canonical cancelled error (new
+  `transport.cancelStreams()` — local settlement matters because dropped queued
+  jobs never produce a worker response), workers abort matching jobs at
+  read/decode boundaries, and the fleet plus parked reader stay alive.
+- Legacy request-driven switching (callers that never declare a source) still
+  terminates; request order cannot express ownership.
+- Probe (`--trace-label` timeline dumps, headed, local): hops 200–234 ms ready
+  / 405–587 ms paint versus 449–620 / 697–1081 under terminate; worker spawns
+  per transition +2 → 0; heap across the run 256→327 MB versus 256→465 MB.
+  Traces show stale jobs draining within one read boundary and new-source reads
+  starting with sub-100 ms queue waits.
+- Caveat discovered while re-baselining: headless probe runs render WebGL in
+  software and inflate paints and long tasks — compare headed runs only.
+
 ## Remote Next Steps
 
 1. Idle-lane bandwidth budgets: lanes isolate CPU but share the link; idle
