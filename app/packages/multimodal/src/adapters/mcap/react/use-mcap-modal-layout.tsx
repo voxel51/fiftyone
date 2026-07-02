@@ -231,9 +231,28 @@ export function McapModalLayoutPersistence({
   const datasetIdRef = useRef(datasetId);
   datasetIdRef.current = datasetId;
 
+  // Write only after the layout actually changes from what this mount
+  // started with. Restores can be PRUNED views of the saved arrangement
+  // (e.g. an image-only sample drops the 3D leaf); persisting one without
+  // a user edit would permanently delete the pruned leaves for the whole
+  // dataset merely because an incompatible sample was viewed. Trees are a
+  // handful of nodes, so content comparison is cheap.
+  const initialLayoutKeyRef = useRef<string | null>(null);
+  if (initialLayoutKeyRef.current === null) {
+    initialLayoutKeyRef.current = JSON.stringify(layout ?? null);
+  }
+  const dirtyRef = useRef(false);
+  if (
+    !dirtyRef.current &&
+    JSON.stringify(layout ?? null) !== initialLayoutKeyRef.current
+  ) {
+    dirtyRef.current = true;
+  }
+
   // This effect syncs the mosaic layout to localStorage (debounced) —
   // persistence is an external system, so an effect is the right tool.
   useEffect(() => {
+    if (!dirtyRef.current) return undefined;
     const timeout = setTimeout(() => {
       writeMcapModalLayout({ layout }, datasetId);
     }, 500);
@@ -244,6 +263,7 @@ export function McapModalLayoutPersistence({
   // debounce can't drop the user's final arrangement.
   useEffect(
     () => () => {
+      if (!dirtyRef.current) return;
       writeMcapModalLayout({ layout: layoutRef.current }, datasetIdRef.current);
     },
     [],

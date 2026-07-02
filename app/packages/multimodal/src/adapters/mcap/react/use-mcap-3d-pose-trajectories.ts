@@ -57,20 +57,37 @@ export function useMcap3dPoseTrajectories({
     () => defaultTrajectoryFrame(frameIdsKey.split("\0")),
     [frameIdsKey],
   );
+  const knownFrameIds = useMemo(
+    () => new Set(frameIdsKey.split("\0")),
+    [frameIdsKey],
+  );
   // Effective render frame per pose topic: the stream's own frame wins;
   // frameless streams (JSON odometry) fall back to a user override, then a
-  // global-frame name heuristic over the available frames.
+  // global-frame name heuristic over the available frames. An override only
+  // applies while its frame exists in the streaming frame inventory: a
+  // restored override from a previous sample must not pin the trajectory to
+  // a frame this recording never publishes (frame ids arrive async, so a
+  // valid override takes effect as soon as its frame shows up).
   const trajectoryFrameByTopic = useMemo(() => {
     const framesByTopic = new Map<string, string>();
     for (const topic of poseTopics) {
       const streamFrameId = trajectories.get(topic)?.streamFrameId;
+      const override = trajectoryFrameOverrides[topic];
       framesByTopic.set(
         topic,
-        streamFrameId ?? trajectoryFrameOverrides[topic] ?? defaultPoseFrame,
+        streamFrameId ??
+          (override && knownFrameIds.has(override) ? override : undefined) ??
+          defaultPoseFrame,
       );
     }
     return framesByTopic;
-  }, [defaultPoseFrame, poseTopics, trajectories, trajectoryFrameOverrides]);
+  }, [
+    defaultPoseFrame,
+    knownFrameIds,
+    poseTopics,
+    trajectories,
+    trajectoryFrameOverrides,
+  ]);
   // Trajectory lines as synthetic frame-locked SceneUpdates that ride the
   // existing annotation layer path. The visualization identity is stable per
   // (topic, fetched trajectory, frame) so per-tick envelope rebuilds never

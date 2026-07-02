@@ -132,6 +132,21 @@ export function imageTextureCacheStats(): ImageTextureCacheStats {
 }
 
 /**
+ * Disposes and forgets every zero-ref retained entry. Live leases are
+ * untouched. Call at a session boundary (e.g. the MCAP modal closing) so
+ * decoded frames from a finished review session don't stay resident until
+ * LRU churn from the next one evicts them.
+ */
+export function releaseRetainedImageTextures(): void {
+  for (const entry of retained.values()) {
+    entry.handle?.dispose();
+    entry.handle = null;
+    entries.delete(entry.key);
+  }
+  retained.clear();
+}
+
+/**
  * Test-only: disposes every settled handle and forgets all entries and
  * counters. Callers must not race it against in-flight decodes they
  * still intend to use — an orphaned decode disposes its own handle on

@@ -1,6 +1,7 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { humanReadableBytes } from "@fiftyone/utilities";
 import { byteSourceAccessKey } from "../../../query/bytes";
+import { releaseRetainedImageTextures } from "../../../visualization/panels/image-texture-cache";
 import { Size, Spinner } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useEffect, useLayoutEffect, useMemo, useRef } from "react";
@@ -76,13 +77,14 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
         (typeof ctx.media.path === "string" ? ctx.media.path : undefined),
     });
   }, [ctx.media.path, fileName, latencySessionKey, source]);
-  // This effect clears the carried 3D view state when the modal closes: the
-  // renderer persists across sample hops (persistAcrossSamples) and unmounts
-  // only then, so its cleanup is the session boundary for view-state
-  // carry-over.
+  // This effect clears the carried 3D view state and the retained decoded
+  // textures when the modal closes: the renderer persists across sample hops
+  // (persistAcrossSamples) and unmounts only then, so its cleanup is the
+  // session boundary for both carry-over stores.
   useEffect(() => {
     return () => {
       clearMcap3dViewState();
+      releaseRetainedImageTextures();
     };
   }, []);
   const { status, error, sources, topicCount } = useMcapSceneInventory({

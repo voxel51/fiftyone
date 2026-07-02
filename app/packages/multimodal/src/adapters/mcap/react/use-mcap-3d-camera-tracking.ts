@@ -477,12 +477,16 @@ export function useMcap3dCameraTracking({
 
   // This effect writes the latest uncontrolled camera pose (with the world
   // frame it is expressed in) through to the session view-state store so the
-  // view can carry across sample navigation.
+  // view can carry across sample navigation. Gated on transformed placement:
+  // during provisional placement the scene renders in its source frame, so a
+  // pose captured then is NOT a world-frame pose yet — recording it would
+  // restore a wrong-frame view on the next sample (the remap machinery that
+  // would have corrected it in-sample cannot run against the store).
   useEffect(() => {
-    if (cameraPose && worldFrameId) {
+    if (cameraPose && worldFrameId && placementStatus === "transformed") {
       recordMcap3dCameraView({ pose: cameraPose, worldFrameId });
     }
-  }, [cameraPose, worldFrameId]);
+  }, [cameraPose, placementStatus, worldFrameId]);
 
   // This effect writes the follow-mode tracking anchor through to the
   // session view-state store so the follow offset can carry across sample

@@ -277,6 +277,9 @@ function Layout({
   };
 
   const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    // Primary button only: a right-click must not arm a drag that the
+    // matching pointerup (suppressed by the context menu) never ends.
+    if (event.button !== 0) return;
     // Suppress the compatibility mouse events so a drag can't start a
     // text selection in the sidebar it borders.
     event.preventDefault();

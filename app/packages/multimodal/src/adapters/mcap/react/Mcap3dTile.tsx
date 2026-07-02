@@ -603,11 +603,15 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         <div className={styles.loading}>
           <span className={styles.emptyText}>No sources selected</span>
         </div>
-      ) : pointCloudLayers.length > 0 ||
+      ) : // Gate on the UNSTABILIZED notices: a live notice condition must keep
+      // the panel (and its GL canvas) mounted even while the stabilizer's
+      // appearance floor still hides it from the chip — otherwise short
+      // transform dropouts would flash the empty state and churn the canvas.
+      pointCloudLayers.length > 0 ||
         sceneAnnotationLayers.length > 0 ||
         gridLayers.length > 0 ||
         cameraFrustumLayers.length > 0 ||
-        panelNotices.length > 0 ? (
+        producedNotices.length > 0 ? (
         <div className={styles.panelStack}>
           <PointCloudPanel
             annotationLayers={sceneAnnotationLayers}

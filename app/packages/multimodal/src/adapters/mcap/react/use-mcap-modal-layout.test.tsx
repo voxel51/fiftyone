@@ -385,13 +385,17 @@ describe("McapModalLayoutPersistence", () => {
     return null;
   }
 
+  // Two tiles so the provider's derived initial layout differs from the
+  // single-leaf arrangement the driver applies — persistence only writes
+  // once the layout changes from what the mount started with.
+  const TWO_TILES = {
+    "camera-default": { title: "Camera", render: () => null },
+    "lidar-default": { title: "Lidar", render: () => null },
+  };
+
   it("writes layout changes after the debounce window", () => {
     render(
-      <TilingProvider
-        initialTiles={{
-          "camera-default": { title: "Camera", render: () => null },
-        }}
-      >
+      <TilingProvider initialTiles={TWO_TILES}>
         <LayoutDriver next="camera-default" />
         <McapModalLayoutPersistence />
       </TilingProvider>,
@@ -405,11 +409,7 @@ describe("McapModalLayoutPersistence", () => {
 
   it("flushes the latest layout on unmount even when the debounce is pending", () => {
     const { unmount } = render(
-      <TilingProvider
-        initialTiles={{
-          "camera-default": { title: "Camera", render: () => null },
-        }}
-      >
+      <TilingProvider initialTiles={TWO_TILES}>
         <LayoutDriver next="camera-default" />
         <McapModalLayoutPersistence />
       </TilingProvider>,
@@ -422,11 +422,7 @@ describe("McapModalLayoutPersistence", () => {
 
   it("writes under the dataset it was given", () => {
     render(
-      <TilingProvider
-        initialTiles={{
-          "camera-default": { title: "Camera", render: () => null },
-        }}
-      >
+      <TilingProvider initialTiles={TWO_TILES}>
         <LayoutDriver next="camera-default" />
         <McapModalLayoutPersistence datasetId="dataset-a" />
       </TilingProvider>,
@@ -436,5 +432,25 @@ describe("McapModalLayoutPersistence", () => {
       vi.advanceTimersByTime(600);
     });
     expect(readMcapModalLayout("dataset-a")?.layout).toBe("camera-default");
+  });
+
+  it("does not persist a layout the user never edited", () => {
+    // A pruned restore mounts as-is; merely viewing it (and closing the
+    // modal) must not overwrite the saved arrangement with the pruned tree.
+    const { unmount } = render(
+      <TilingProvider
+        initialTiles={{
+          "camera-default": { title: "Camera", render: () => null },
+        }}
+      >
+        <McapModalLayoutPersistence datasetId="dataset-a" />
+      </TilingProvider>,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    unmount();
+    expect(readMcapModalLayout("dataset-a")).toBeNull();
   });
 });
