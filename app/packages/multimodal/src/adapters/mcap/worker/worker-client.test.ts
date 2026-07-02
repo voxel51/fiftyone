@@ -285,6 +285,47 @@ describe("worker-backed MCAP resource client", () => {
     await expect(idle).resolves.toEqual([]);
   });
 
+  it("keeps workers warm and fails stale reads under explicit ownership", async () => {
+    const { client, workers } = createClientHarness();
+
+    client.activateSource?.(createSource("source:1"));
+    const first = client.readTimelineRange(createTimelineRequest("source:1"));
+    const worker = workers[0];
+
+    client.activateSource?.(createSource("source:2"));
+
+    // Switching preempts the old source's work.
+    await expect(first).rejects.toThrow("different source");
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
+
+    // A late read for the retired source fails fast without flipping
+    // ownership back.
+    await expect(
+      client.readTimelineRange(createTimelineRequest("source:1")),
+    ).rejects.toThrow("MCAP read cancelled");
+
+    // The active source proceeds on a fresh worker.
+    const second = client.readTimelineRange(createTimelineRequest("source:2"));
+    const secondWorker = workers[1];
+    secondWorker.respond({
+      id: 2,
+      ok: true,
+      result: createTimelineRange(2n, 3n),
+    });
+    await expect(second).resolves.toEqual(createTimelineRange(2n, 3n));
+
+    // Back-navigation re-activates the earlier source legitimately.
+    client.activateSource?.(createSource("source:1"));
+    const third = client.readTimelineRange(createTimelineRequest("source:1"));
+    const thirdWorker = workers[2];
+    thirdWorker.respond({
+      id: 3,
+      ok: true,
+      result: createTimelineRange(1n, 2n),
+    });
+    await expect(third).resolves.toEqual(createTimelineRange(1n, 2n));
+  });
+
   it("resets idle-prefetch work when the active source changes", async () => {
     const { client, workers } = createClientHarness();
 

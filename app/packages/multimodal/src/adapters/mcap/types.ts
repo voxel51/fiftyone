@@ -391,6 +391,15 @@ export interface McapResourceClient {
   dispose(): void;
 
   /**
+   * Declares which source the owning renderer is presenting. Worker-backed
+   * clients switch ownership here (cancelling the previous source's pending
+   * reads while keeping the worker fleet warm); reads for non-active
+   * sources then fail fast with the cancelled error. Callers that never
+   * activate keep legacy request-driven switching.
+   */
+  activateSource?(source: ByteSourceDescriptor): void;
+
+  /**
    * Cancels queued and in-flight speculative idle-lane reads (background
    * lookahead batches, transform runway windows). Called on seek so a
    * constrained link goes to foreground catch-up instead of finishing
