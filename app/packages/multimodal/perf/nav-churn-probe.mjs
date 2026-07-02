@@ -32,6 +32,9 @@ const dataset = args["dataset"] ?? "nuscenes-mcap-local";
 const hops = Number(args["hops"] ?? 4);
 const headless = Boolean(args["headless"]);
 const traceLabel = args["trace-label"] ?? null;
+// Idle time between transitions — long enough dwells let idle-priority
+// work (adjacent-sample prewarm) fire before the next hop measures it.
+const dwellMs = Number(args["dwell"] ?? 0);
 
 const { chromium } = resolvePlaywright();
 
@@ -186,6 +189,9 @@ rows.push(
 
 // In-modal hops.
 for (let hop = 1; hop <= hops; hop += 1) {
+  if (dwellMs > 0) {
+    await page.waitForTimeout(dwellMs);
+  }
   rows.push(
     await transition(`modal next (hop ${hop})`, async () => {
       await requireModal();
@@ -251,6 +257,20 @@ async function transition(label, act) {
 async function runTransition(label, act) {
   const wallClickAtMs = Date.now();
   const consoleStartIndex = consoleRows.length;
+  // The outgoing session's tail (e.g. idle prewarm marks during a dwell)
+  // is wiped when the destination sample opens a fresh session; keep it.
+  const eventsBeforeAct = traceLabel
+    ? await page.evaluate(() => {
+        const raw = document.documentElement.getAttribute(
+          "data-mcap-latency-events",
+        );
+        try {
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      })
+    : null;
   const before = await page.evaluate(() => {
     window.__longTasks = { count: 0, maxMs: 0, totalMs: 0 };
     const events = document.documentElement.getAttribute(
@@ -359,6 +379,7 @@ async function runTransition(label, act) {
       // Console rows carry Node wall-clock; latency events carry page clock.
       // wallClickAtMs ~ clickAtMs on those respective clocks aligns them.
       consoleRows: consoleRows.slice(consoleStartIndex),
+      eventsBeforeAct,
       label,
       timeline,
       wallClickAtMs,
