@@ -121,13 +121,59 @@ describe("useMcap3dCameraTracking", () => {
       target: [102, 0, 0],
     });
 
-    // Back to free: anchor cleared, last uncontrolled pose wins again.
+    // Back to free: anchor cleared, and the displayed pose is frozen in
+    // place — switching modes never moves the camera, so the view does not
+    // snap back to the pre-follow drag pose.
     act(() => {
       result.current.setTrackingMode("free");
     });
     expect(result.current.trackingAnchor).toBeNull();
     expect(result.current.controlledCameraPose).toBeNull();
-    expect(result.current.panelCameraPose).toEqual(pose(100));
+    expect(result.current.panelCameraPose).toEqual({
+      position: [102, 0, 10],
+      target: [102, 0, 0],
+    });
+  });
+
+  it("holds the last controlled pose while the camera target resolution is pending", () => {
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        frameTransforms: translationTransforms(0, 0, 0),
+      }),
+    });
+
+    act(() => {
+      result.current.handleCameraPoseChange(pose(5), "interaction");
+    });
+    act(() => {
+      result.current.setTrackingMode("position");
+    });
+    rerender(
+      trackingProps({ frameTransforms: translationTransforms(10, 0, 0) }),
+    );
+    expect(result.current.panelCameraPose).toEqual({
+      position: [15, 0, 10],
+      target: [15, 0, 0],
+    });
+
+    // Seek outside the indexed transform window: the target resolution goes
+    // pending and the follow view freezes instead of double-jumping through
+    // the stale uncontrolled pose.
+    rerender(trackingProps({ frameTransforms: pendingTransforms() }));
+    expect(result.current.cameraTargetResolution.status).toBe("pending");
+    expect(result.current.panelCameraPose).toEqual({
+      position: [15, 0, 10],
+      target: [15, 0, 0],
+    });
+
+    // The window resolves again: live following resumes.
+    rerender(
+      trackingProps({ frameTransforms: translationTransforms(12, 0, 0) }),
+    );
+    expect(result.current.panelCameraPose).toEqual({
+      position: [17, 0, 10],
+      target: [17, 0, 0],
+    });
   });
 
   it("remaps the provisional camera pose exactly once per remap key", () => {
@@ -241,6 +287,99 @@ describe("useMcap3dCameraTracking", () => {
 
     expect(remapEvents()).toHaveLength(0);
     expect(result.current.panelCameraPose).toEqual(pose(1));
+  });
+});
+
+describe("useMcap3dCameraTracking world-frame changes", () => {
+  it("remaps the camera pose through the old→new world transform", () => {
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+      }),
+    });
+
+    act(() => {
+      result.current.handleCameraPoseChange(pose(1), "interaction");
+    });
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        worldFrameId: "odom",
+      }),
+    );
+
+    // Content re-places through T(odom ← map) = +10 on x; the camera rides
+    // the same transform so the on-screen view is unchanged.
+    expect(result.current.panelCameraPose).toEqual({
+      position: [11, 0, 10],
+      target: [11, 0, 0],
+    });
+    expect(remapEvents()).toHaveLength(1);
+    expect(remapEvents()[0]?.[1]).toMatchObject({
+      sourceFrameId: "map",
+      targetFrameId: "odom",
+    });
+  });
+
+  it("drops the camera pose when the old and new world frames have no path", () => {
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        placementStatus: "transformed",
+      }),
+    });
+
+    act(() => {
+      result.current.handleCameraPoseChange(pose(1), "interaction");
+    });
+    rerender(
+      trackingProps({
+        frameTransforms: missingTransforms(),
+        placementStatus: "transformed",
+        worldFrameId: "odom",
+      }),
+    );
+
+    // A stale-frame pose is worse than a refit: the pose is dropped so the
+    // panel falls back to fitting the re-placed scene.
+    expect(result.current.panelCameraPose).toBeNull();
+    expect(remapEvents()).toHaveLength(0);
+  });
+
+  it("re-anchors follow modes in the new world frame from the remapped pose", () => {
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+      }),
+    });
+
+    act(() => {
+      result.current.handleCameraPoseChange(pose(5), "interaction");
+    });
+    act(() => {
+      result.current.setTrackingMode("position");
+    });
+    expect(result.current.panelCameraPose).toEqual(pose(5));
+
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        worldFrameId: "odom",
+      }),
+    );
+
+    // The anchor re-bases from the remapped pose, so the ego stays exactly
+    // where it was on screen instead of following with a garbage offset.
+    expect(result.current.trackingAnchor).toMatchObject({
+      worldFrameId: "odom",
+    });
+    expect(result.current.panelCameraPose).toEqual({
+      position: [15, 0, 10],
+      target: [15, 0, 0],
+    });
   });
 });
 
@@ -602,6 +741,19 @@ function translationTransforms(
         targetFrameId,
         translation: new Vector3(x, y, z),
       },
+    }),
+    status: "ready",
+  };
+}
+
+function pendingTransforms(): McapFrameTransformsState {
+  return {
+    error: null,
+    frameIds: ["base_link", "lidar", "map"],
+    resolve: (sourceFrameId, targetFrameId) => ({
+      sourceFrameId,
+      status: "pending",
+      targetFrameId,
     }),
     status: "ready",
   };
