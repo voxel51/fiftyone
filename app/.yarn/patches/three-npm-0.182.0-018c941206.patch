@@ -1,5 +1,5 @@
 diff --git a/build/three.webgpu.js b/build/three.webgpu.js
-index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..fd5639b5440bbe60f3cf76a9c593353564a45ae0 100644
+index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..947da801973efaf4b5171c694e71c293864e9e2b 100644
 --- a/build/three.webgpu.js
 +++ b/build/three.webgpu.js
 @@ -29251,7 +29251,10 @@ class RenderObject {
@@ -14,33 +14,65 @@ index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..fd5639b5440bbe60f3cf76a9c5933535
  
  			}
  
-@@ -30236,7 +30239,6 @@ class Geometries extends DataMap {
+@@ -30235,8 +30238,16 @@ class Geometries extends DataMap {
+ 
  			this.info.memory.geometries --;
  
++			// TEMPORARY vendored fix — upstream PR #33939, merged to dev as
++			// 4e369cb; drop this patch once a release (>= r184) ships it.
++			// Delete the disposed geometry's own attributes. Reading them off
++			// the render object instead is wrong once the object was switched
++			// to another geometry: the dispose of the old geometry would then
++			// delete the LIVE geometry's GPU buffers (and leak its own).
++
++			// index
++
  			const index = geometry.index;
 -			const geometryAttributes = renderObject.getAttributes();
  
  			if ( index !== null ) {
  
-@@ -30244,9 +30246,15 @@ class Geometries extends DataMap {
+@@ -30244,12 +30255,16 @@ class Geometries extends DataMap {
  
  			}
  
 -			for ( const geometryAttribute of geometryAttributes ) {
-+			// TEMPORARY vendored fix — drop this patch once
-+			// https://github.com/mrdoob/three.js/pull/33939 ships in a release.
-+			// Delete the disposed geometry's own attributes. Reading them off
-+			// the render object instead is wrong once the object was switched
-+			// to another geometry: the dispose of the old geometry would then
-+			// delete the LIVE geometry's GPU buffers (and leak its own).
-+			for ( const name of Object.keys( geometry.attributes ) ) {
++			// geometry attributes
  
 -				this.attributes.delete( geometryAttribute );
-+				this.attributes.delete( geometry.attributes[ name ] );
++			for ( const attribute of Object.values( geometry.attributes ) ) {
++
++				this.attributes.delete( attribute );
  
  			}
  
-@@ -53885,11 +53893,20 @@ class Nodes extends DataMap {
++			// wireframe attributes
++
+ 			const wireframeAttribute = this.wireframes.get( geometry );
+ 
+ 			if ( wireframeAttribute !== undefined ) {
+@@ -30258,6 +30273,20 @@ class Geometries extends DataMap {
+ 
+ 			}
+ 
++			// node attributes (TODO: Remove this bit once we support BufferAttribute.dispose())
++
++			const currentAttributes = new Set( Object.values( renderObject.geometry.attributes ) );
++
++			for ( const attribute of renderObject.getAttributes() ) {
++
++				if ( currentAttributes.has( attribute ) === false ) {
++
++					this.attributes.delete( attribute );
++
++				}
++
++			}
++
+ 			geometry.removeEventListener( 'dispose', onDispose );
+ 
+ 			this._geometryDisposeListeners.delete( geometry );
+@@ -53885,11 +53914,20 @@ class Nodes extends DataMap {
  		if ( object.isRenderObject ) {
  
  			const nodeBuilderState = this.get( object ).nodeBuilderState;
@@ -65,35 +97,67 @@ index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..fd5639b5440bbe60f3cf76a9c5933535
  			}
  
 diff --git a/src/renderers/common/Geometries.js b/src/renderers/common/Geometries.js
-index eab54b9a80c21ff31fd5a16667da822750d34897..aa8390e17924476fefe05632f94fa739034f9106 100644
+index eab54b9a80c21ff31fd5a16667da822750d34897..01df5c3186db7b48ee1d07eec448ccd7222de95a 100644
 --- a/src/renderers/common/Geometries.js
 +++ b/src/renderers/common/Geometries.js
-@@ -173,7 +173,6 @@ class Geometries extends DataMap {
+@@ -172,8 +172,16 @@ class Geometries extends DataMap {
+ 
  			this.info.memory.geometries --;
  
++			// TEMPORARY vendored fix — upstream PR #33939, merged to dev as
++			// 4e369cb; drop this patch once a release (>= r184) ships it.
++			// Delete the disposed geometry's own attributes. Reading them off
++			// the render object instead is wrong once the object was switched
++			// to another geometry: the dispose of the old geometry would then
++			// delete the LIVE geometry's GPU buffers (and leak its own).
++
++			// index
++
  			const index = geometry.index;
 -			const geometryAttributes = renderObject.getAttributes();
  
  			if ( index !== null ) {
  
-@@ -181,9 +180,15 @@ class Geometries extends DataMap {
+@@ -181,12 +189,16 @@ class Geometries extends DataMap {
  
  			}
  
 -			for ( const geometryAttribute of geometryAttributes ) {
-+			// TEMPORARY vendored fix — drop this patch once
-+			// https://github.com/mrdoob/three.js/pull/33939 ships in a release.
-+			// Delete the disposed geometry's own attributes. Reading them off
-+			// the render object instead is wrong once the object was switched
-+			// to another geometry: the dispose of the old geometry would then
-+			// delete the LIVE geometry's GPU buffers (and leak its own).
-+			for ( const name of Object.keys( geometry.attributes ) ) {
++			// geometry attributes
++
++			for ( const attribute of Object.values( geometry.attributes ) ) {
  
 -				this.attributes.delete( geometryAttribute );
-+				this.attributes.delete( geometry.attributes[ name ] );
++				this.attributes.delete( attribute );
  
  			}
  
++			// wireframe attributes
++
+ 			const wireframeAttribute = this.wireframes.get( geometry );
+ 
+ 			if ( wireframeAttribute !== undefined ) {
+@@ -195,6 +207,20 @@ class Geometries extends DataMap {
+ 
+ 			}
+ 
++			// node attributes (TODO: Remove this bit once we support BufferAttribute.dispose())
++
++			const currentAttributes = new Set( Object.values( renderObject.geometry.attributes ) );
++
++			for ( const attribute of renderObject.getAttributes() ) {
++
++				if ( currentAttributes.has( attribute ) === false ) {
++
++					this.attributes.delete( attribute );
++
++				}
++
++			}
++
+ 			geometry.removeEventListener( 'dispose', onDispose );
+ 
+ 			this._geometryDisposeListeners.delete( geometry );
 diff --git a/src/renderers/common/RenderObject.js b/src/renderers/common/RenderObject.js
 index 702373ee77564ed8d2135d61a8708cf916193779..cb414d9d14e8fd82a8fc36faf376028ed41fc6a2 100644
 --- a/src/renderers/common/RenderObject.js
