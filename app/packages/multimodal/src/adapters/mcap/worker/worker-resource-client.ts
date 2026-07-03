@@ -18,6 +18,10 @@ import type { McapResourceClient } from "../types";
 import type { McapPlaybackWorkerFetchParameters } from "./playback-worker-types";
 
 const transferSafeNoopDecodedOutputCache: DecodedOutputCache = {
+  // A declared-noop cache lets decode callers skip building cache identity
+  // entirely — record-id hashing walks every payload byte, and the ledger
+  // measured it costing more worker CPU than schema decode itself.
+  enabled: false,
   clear() {
     return Promise.resolve();
   },
