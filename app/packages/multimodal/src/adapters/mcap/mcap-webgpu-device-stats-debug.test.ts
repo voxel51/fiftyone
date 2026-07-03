@@ -1,6 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  WEBGPU_DEVICE_BUDGET,
   registerWebGpuRenderer,
   resetWebGpuDeviceRegistryForTests,
 } from "../../visualization/panels/webgpu-device-registry";
@@ -34,6 +35,7 @@ afterEach(() => {
   resetWebGpuDeviceRegistryForTests();
   document.documentElement.removeAttribute(WEBGPU_DEVICE_STATS_ATTRIBUTE);
   setLatencyDebugParam(false);
+  vi.restoreAllMocks();
 });
 
 describe("mcap webgpu device stats debug publisher", () => {
@@ -51,6 +53,24 @@ describe("mcap webgpu device stats debug publisher", () => {
 
     registration.release();
     expect(readPublishedStats()).toMatchObject({ total: 0, totalReleased: 1 });
+  });
+
+  it("serializes the overBudget flag through the attribute", () => {
+    // The registry warns on the budget breach; keep the test output quiet.
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    setLatencyDebugParam(true);
+    initMcapWebGpuDeviceStatsDebugPublisher();
+
+    for (let i = 0; i < WEBGPU_DEVICE_BUDGET; i += 1) {
+      registerWebGpuRenderer("grid-preview");
+    }
+    expect(readPublishedStats()).toMatchObject({ overBudget: false });
+
+    registerWebGpuRenderer("grid-preview");
+    expect(readPublishedStats()).toMatchObject({
+      overBudget: true,
+      total: WEBGPU_DEVICE_BUDGET + 1,
+    });
   });
 
   it("publishes nothing when debug is disabled", () => {

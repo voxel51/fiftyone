@@ -4,9 +4,11 @@
  * renderer corresponds to one `GPUDevice`, so these counts are the page's
  * device footprint.
  *
- * Pure bookkeeping: registration never grants or denies anything (budget
- * policy is a later phase) — the registry exists so device counts are
- * observable and assertable instead of only visible to ad-hoc probe hooks.
+ * Registration is pure bookkeeping and never grants or denies anything —
+ * the modal must never be denied a device at `WebGpuCanvas` mount time, so
+ * every surface registers permissively. Budget policy lives in
+ * {@link canAcquireWebGpuDevice}, a pure read consulted by acquisition
+ * gates (the grid live-lease pool) BEFORE they mount anything.
  *
  * Layering: this is generic visualization machinery and must not import
  * from adapters/ (dependency-cruiser enforces it). Adapter layers may
@@ -23,6 +25,18 @@ export const WEBGPU_DEVICE_BUDGET = 16;
 
 /** Minimum interval between over-budget console warnings. */
 const OVER_BUDGET_WARN_THROTTLE_MS = 10_000;
+
+/**
+ * Who is asking for a device, for {@link canAcquireWebGpuDevice}:
+ *
+ * - `"modal"`: modal tiles. Always granted — the modal must never regress.
+ * - `"grid-live"`: a hovered grid cell going live. The only class the
+ *   budget can deny; a denied cell stays on its snapshot.
+ * - `"snapshot"`: the shared snapshot renderer. Always granted — it is
+ *   the fallback every denied surface degrades to, so denying it would
+ *   leave denied cells with nothing to show.
+ */
+export type WebGpuAcquisitionClass = "modal" | "grid-live" | "snapshot";
 
 /**
  * Handle returned by {@link registerWebGpuRenderer}. `release` is
@@ -87,6 +101,24 @@ export function registerWebGpuRenderer(
       notifySubscribers();
     },
   };
+}
+
+/**
+ * Budget policy: may an acquisition of class `cls` take a new device now?
+ *
+ * Pure read — it reserves nothing. A yes here does not hold a slot for
+ * the caller, so two concurrent grid-live acquires could both read "under
+ * budget" and both proceed. That race is not a real concern at these
+ * rates: grid-live acquires arrive one hover-intent at a time (~120 ms
+ * apart) against a budget of 16, and the worst case is a transient +1
+ * over budget, which the throttled warn surfaces.
+ */
+export function canAcquireWebGpuDevice(cls: WebGpuAcquisitionClass): boolean {
+  if (cls === "modal" || cls === "snapshot") {
+    return true;
+  }
+
+  return liveTotal < WEBGPU_DEVICE_BUDGET;
 }
 
 /** Current registry counters as a plain serializable snapshot. */

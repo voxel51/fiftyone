@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  WEBGPU_DEVICE_BUDGET,
+  registerWebGpuRenderer,
+  resetWebGpuDeviceRegistryForTests,
+} from "./webgpu-device-registry";
+import {
   GRID_LIVE_RENDERER_CAP,
   acquireGridLiveLease,
   gridLiveLeaseStats,
@@ -9,12 +14,21 @@ import {
 
 beforeEach(() => {
   resetGridLiveLeasesForTests();
+  resetWebGpuDeviceRegistryForTests();
 });
 
 afterEach(() => {
   resetGridLiveLeasesForTests();
+  resetWebGpuDeviceRegistryForTests();
   vi.restoreAllMocks();
 });
+
+/** Registers `count` fake devices so the page sits at that live total. */
+function fillDeviceRegistry(count: number) {
+  return Array.from({ length: count }, () =>
+    registerWebGpuRenderer("modal-3d"),
+  );
+}
 
 describe("webgpu-live-lease", () => {
   it("grants leases while under the cap", () => {
@@ -134,6 +148,57 @@ describe("webgpu-live-lease", () => {
     const third = acquireGridLiveLease("cell-c", vi.fn());
     expect(third).not.toBeNull();
     expect(gridLiveLeaseStats()).toMatchObject({ active: 2, revoked: 1 });
+  });
+
+  it("denies a fresh acquire at the device budget and steals nothing", () => {
+    const onRevokedA = vi.fn();
+    const onRevokedB = vi.fn();
+    const leaseA = acquireGridLiveLease("cell-a", onRevokedA);
+    const leaseB = acquireGridLiveLease("cell-b", onRevokedB);
+    // The page reaches the device budget (say, a heavy modal layout).
+    const registrations = fillDeviceRegistry(WEBGPU_DEVICE_BUDGET);
+
+    const denied = acquireGridLiveLease("cell-c", vi.fn());
+
+    // Denied BEFORE the steal: null grant, denied counted, and the two
+    // existing holders are untouched — a denied acquire never evicts.
+    expect(denied).toBeNull();
+    expect(onRevokedA).not.toHaveBeenCalled();
+    expect(onRevokedB).not.toHaveBeenCalled();
+    expect(gridLiveLeaseStats()).toEqual({
+      active: 2,
+      cap: GRID_LIVE_RENDERER_CAP,
+      denied: 1,
+      granted: 2,
+      revoked: 0,
+    });
+
+    // The active set is unchanged: both holders still own their original
+    // leases (idempotent re-acquire hands the same objects back, and is
+    // itself never denied — the holder already owns its device).
+    expect(acquireGridLiveLease("cell-a", onRevokedA)).toBe(leaseA);
+    expect(acquireGridLiveLease("cell-b", onRevokedB)).toBe(leaseB);
+    expect(gridLiveLeaseStats()).toMatchObject({ denied: 1, granted: 2 });
+
+    // Back under budget, the same acquire is granted (stealing resumes:
+    // cell-a is the LRU holder after the refresh order above).
+    registrations[0].release();
+    expect(acquireGridLiveLease("cell-c", vi.fn())).not.toBeNull();
+    expect(onRevokedA).toHaveBeenCalledTimes(1);
+  });
+
+  it("denies under-cap acquires too when the budget is exhausted", () => {
+    // Even with zero live grid cells, an at-budget page grants nothing.
+    fillDeviceRegistry(WEBGPU_DEVICE_BUDGET);
+
+    expect(acquireGridLiveLease("cell-a", vi.fn())).toBeNull();
+    expect(gridLiveLeaseStats()).toEqual({
+      active: 0,
+      cap: GRID_LIVE_RENDERER_CAP,
+      denied: 1,
+      granted: 0,
+      revoked: 0,
+    });
   });
 
   it("never exceeds the cap across a long acquire sweep", () => {

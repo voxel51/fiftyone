@@ -25,10 +25,15 @@
  * Usage:
  *   node webgpu-freeze-probe.mjs --app http://localhost:5175 \
  *     --dataset nuscenes-mcap-local [--rounds 8] [--no-toggles] \
- *     [--no-resize] [--no-orbit] [--assert-max-devices N]
+ *     [--no-resize] [--no-orbit] [--assert-max-devices N] \
+ *     [--assert-budget]
  *
  * --assert-max-devices N exits non-zero when the requestDevice hook count
  * exceeds N (off by default).
+ *
+ * --assert-budget exits non-zero when the app's registry stats report
+ * overBudget, or when the requestDevice hook count exceeds the device
+ * budget (off by default).
  *
  * Headed only: WebGPU needs the real GPU.
  */
@@ -55,6 +60,12 @@ if (assertMaxDevices !== null && !Number.isFinite(assertMaxDevices)) {
   );
   process.exit(1);
 }
+const assertBudget = args["assert-budget"] !== undefined;
+
+// Mirrors WEBGPU_DEVICE_BUDGET in
+// src/visualization/panels/webgpu-device-registry.ts — this probe is
+// plain node and cannot import the TS constant, so keep the two in sync.
+const WEBGPU_DEVICE_BUDGET = 16;
 
 const { chromium } = resolvePlaywright();
 const browser = await chromium.launch({ headless: false });
@@ -466,6 +477,23 @@ if (assertMaxDevices !== null && final.devices > assertMaxDevices) {
       `exceeding --assert-max-devices ${assertMaxDevices}`,
   );
   process.exitCode = 1;
+}
+
+if (assertBudget) {
+  if (registryStats?.overBudget === true) {
+    console.error(
+      `ASSERT FAILED: registry stats report overBudget ` +
+        `(live ${registryStats.total} > budget ${registryStats.budget})`,
+    );
+    process.exitCode = 1;
+  }
+  if (final.devices > WEBGPU_DEVICE_BUDGET) {
+    console.error(
+      `ASSERT FAILED: requestDevice hook counted ${final.devices} devices, ` +
+        `exceeding the device budget of ${WEBGPU_DEVICE_BUDGET}`,
+    );
+    process.exitCode = 1;
+  }
 }
 
 function resolvePlaywright() {

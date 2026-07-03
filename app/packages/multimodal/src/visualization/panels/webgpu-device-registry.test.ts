@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   WEBGPU_DEVICE_BUDGET,
+  canAcquireWebGpuDevice,
   registerWebGpuRenderer,
   resetWebGpuDeviceRegistryForTests,
   subscribeWebGpuDeviceStats,
@@ -100,6 +101,55 @@ describe("webgpu-device-registry", () => {
     registerWebGpuRenderer("grid-preview");
     registerWebGpuRenderer("modal-3d");
     expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("always allows modal and snapshot acquisitions, even over budget", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    expect(canAcquireWebGpuDevice("modal")).toBe(true);
+    expect(canAcquireWebGpuDevice("snapshot")).toBe(true);
+
+    for (let i = 0; i <= WEBGPU_DEVICE_BUDGET; i += 1) {
+      registerWebGpuRenderer("modal-3d");
+    }
+    expect(webGpuDeviceStats().overBudget).toBe(true);
+
+    // The modal must never be denied, and the snapshot renderer is the
+    // fallback denied surfaces degrade to — both stay grantable no matter
+    // how far over budget the page is.
+    expect(canAcquireWebGpuDevice("modal")).toBe(true);
+    expect(canAcquireWebGpuDevice("snapshot")).toBe(true);
+  });
+
+  it("flips grid-live from allowed to denied at exactly the budget", () => {
+    for (let i = 0; i < WEBGPU_DEVICE_BUDGET - 1; i += 1) {
+      registerWebGpuRenderer("grid-preview");
+    }
+    // total == budget - 1: the last slot is still grantable.
+    expect(canAcquireWebGpuDevice("grid-live")).toBe(true);
+
+    const last = registerWebGpuRenderer("modal-3d");
+    expect(webGpuDeviceStats().total).toBe(WEBGPU_DEVICE_BUDGET);
+    // total == budget: grid-live is denied (modal/snapshot are not).
+    expect(canAcquireWebGpuDevice("grid-live")).toBe(false);
+    expect(canAcquireWebGpuDevice("modal")).toBe(true);
+    expect(canAcquireWebGpuDevice("snapshot")).toBe(true);
+
+    // A release re-opens the budget: the policy is a pure read of the
+    // live total, so grid-live recovers as soon as any device goes away.
+    last.release();
+    expect(canAcquireWebGpuDevice("grid-live")).toBe(true);
+  });
+
+  it("reserves nothing: repeated grid-live reads consume no budget", () => {
+    for (let i = 0; i < WEBGPU_DEVICE_BUDGET - 1; i += 1) {
+      registerWebGpuRenderer("grid-preview");
+    }
+
+    // Asking is free — only registration moves the total.
+    expect(canAcquireWebGpuDevice("grid-live")).toBe(true);
+    expect(canAcquireWebGpuDevice("grid-live")).toBe(true);
+    expect(webGpuDeviceStats().total).toBe(WEBGPU_DEVICE_BUDGET - 1);
   });
 
   it("notifies subscribers on every register and release", () => {

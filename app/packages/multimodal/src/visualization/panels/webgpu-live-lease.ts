@@ -18,6 +18,8 @@
  * (dependency-cruiser enforces it).
  */
 
+import { canAcquireWebGpuDevice } from "./webgpu-device-registry";
+
 /**
  * Bounds simultaneous live grid renderers (and so grid `GPUDevice`s).
  * The plan's page-level budget math is: modal devices +
@@ -38,7 +40,7 @@ export interface GridLiveLeaseStats {
   /** Leases currently held (never exceeds the cap). */
   readonly active: number;
   readonly cap: number;
-  /** Acquires denied outright (budget policy — a Phase 3 behavior). */
+  /** Acquires denied outright by the global device-budget policy. */
   readonly denied: number;
   /** Fresh grants (idempotent re-acquires by a holder do not count). */
   readonly granted: number;
@@ -63,9 +65,11 @@ let deniedCount = 0;
 
 /**
  * Acquires (or refreshes) the live-renderer lease for `holderId`.
- * Returns null only when the grant is denied — impossible today, but the
- * Phase 3 budget policy will deny instead of granting, so callers must
- * already treat null as "stay on the snapshot".
+ * Returns null when the global device budget denies the grant
+ * ({@link canAcquireWebGpuDevice} for class "grid-live"); callers treat
+ * null as "stay on the snapshot". Re-acquires by an existing holder are
+ * never denied — that holder already owns its device, so refreshing
+ * recency adds nothing to the footprint.
  *
  * `onRevoked` fires synchronously if the lease is later stolen; it must
  * synchronously mark the holder as no-longer-live (unmount its live
@@ -126,8 +130,12 @@ function tryGrant(
   holderId: string,
   onRevoked: () => void,
 ): GridLiveLease | null {
-  // PHASE 3 SEAM: the budget-policy check slots in HERE and returns null
-  // (deny) — before the steal, so a denied acquire never evicts anyone.
+  // Budget policy gates BEFORE the steal, so a denied acquire never
+  // evicts an existing holder — over budget, the live set is frozen as-is
+  // rather than churned.
+  if (!canAcquireWebGpuDevice("grid-live")) {
+    return null;
+  }
 
   if (leasesByHolder.size >= GRID_LIVE_RENDERER_CAP) {
     revokeOldest();

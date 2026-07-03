@@ -8,6 +8,11 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  WEBGPU_DEVICE_BUDGET,
+  registerWebGpuRenderer,
+  resetWebGpuDeviceRegistryForTests,
+} from "../../../visualization/panels/webgpu-device-registry";
+import {
   acquireGridLiveLease,
   gridLiveLeaseStats,
   resetGridLiveLeasesForTests,
@@ -151,6 +156,7 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
   resetGridLiveLeasesForTests();
+  resetWebGpuDeviceRegistryForTests();
   bitmapHostHarness.lastBitmap = null;
   bitmapViewHarness.lastProps = null;
   cameraPoseHarness.pose = null;
@@ -329,6 +335,38 @@ describe("GridRenderer", () => {
     expect(screen.getByTestId("bitmap-canvas-host")).toBeTruthy();
     expect(snapshotHarness.requests.length).toBe(2);
     expect(gridLiveLeaseStats()).toMatchObject({ active: 2, revoked: 1 });
+  });
+
+  it("stays on the snapshot when the device budget denies going live", () => {
+    vi.useFakeTimers();
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    // The page is already at the device budget before the hover (say, a
+    // heavy modal layout owns every slot).
+    for (let i = 0; i < WEBGPU_DEVICE_BUDGET; i += 1) {
+      registerWebGpuRenderer("modal-3d");
+    }
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+    const cell = pointCloudCells()[0];
+    fireEvent.pointerOver(cell);
+    act(() => {
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS);
+    });
+
+    // Intent fired but the lease was denied: no live panel, the snapshot
+    // host stays up, and nothing was granted or stolen.
+    expect(screen.queryByTestId("point-cloud-panel")).toBeNull();
+    expect(screen.getByTestId("bitmap-canvas-host")).toBeTruthy();
+    expect(gridLiveLeaseStats()).toMatchObject({
+      active: 0,
+      denied: 1,
+      granted: 0,
+      revoked: 0,
+    });
+    // Denial does not re-request the snapshot — the existing one stands.
+    expect(snapshotHarness.requests.length).toBe(1);
   });
 
   it("releases its lease when the cell unmounts", () => {
