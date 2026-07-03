@@ -121,6 +121,7 @@ function PointCloudPreviewFrame({
   return (
     <PointCloudPanel
       cameraPose={cameraPose}
+      canvasSurface="grid-preview"
       className={classes.imagePanel}
       layers={layers}
       onCameraPoseChange={setCameraPose}
@@ -143,6 +144,7 @@ function ImagePreviewFrame({
   return (
     <>
       <ImagePanel
+        canvasSurface="grid-preview"
         className={classes.imagePanel}
         fit={IMAGE_FIT}
         frame={frame.image}

@@ -179,6 +179,11 @@ export interface PointCloudPanelRenderStats {
  */
 export interface PointCloudPanelProps {
   readonly cameraPose?: PointCloudCameraPose | null;
+  /**
+   * Device-registry surface tag passed through to the WebGPU canvas
+   * ("modal-3d", "grid-preview", ...). Bookkeeping only.
+   */
+  readonly canvasSurface?: string;
   readonly className?: string;
   readonly colorBy?: PointCloudColorBy;
   readonly fit?: "initial" | "frame" | "never";

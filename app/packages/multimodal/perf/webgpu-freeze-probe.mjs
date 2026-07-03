@@ -16,10 +16,19 @@
  * Instrumentation is runtime-only (init-script hooks on GPUDevice /
  * GPUBuffer / GPURenderPassEncoder); no sources are patched.
  *
+ * Device accounting is cross-checked two ways at end of run: the
+ * requestDevice hook above, and the app's own webgpu-device-registry
+ * mirrored into the `data-webgpu-device-stats` DOM attribute (the probe
+ * appends `mcapLatencyDebug=1` to the URL so the mcap debug publisher is
+ * active). A loud warning fires if the two disagree.
+ *
  * Usage:
  *   node webgpu-freeze-probe.mjs --app http://localhost:5175 \
  *     --dataset nuscenes-mcap-local [--rounds 8] [--no-toggles] \
- *     [--no-resize] [--no-orbit]
+ *     [--no-resize] [--no-orbit] [--assert-max-devices N]
+ *
+ * --assert-max-devices N exits non-zero when the requestDevice hook count
+ * exceeds N (off by default).
  *
  * Headed only: WebGPU needs the real GPU.
  */
@@ -36,6 +45,16 @@ const rounds = Number(args["rounds"] ?? 8);
 const doToggles = !args["no-toggles"];
 const doResize = !args["no-resize"];
 const doOrbit = !args["no-orbit"];
+const assertMaxDevices =
+  args["assert-max-devices"] !== undefined
+    ? Number(args["assert-max-devices"])
+    : null;
+if (assertMaxDevices !== null && !Number.isFinite(assertMaxDevices)) {
+  console.error(
+    `--assert-max-devices expects a number, got ${args["assert-max-devices"]}`,
+  );
+  process.exit(1);
+}
 
 const { chromium } = resolvePlaywright();
 const browser = await chromium.launch({ headless: false });
@@ -163,8 +182,11 @@ page.on("pageerror", (error) => {
   });
 });
 
+// mcapLatencyDebug=1 turns on the app's debug publishers, including the
+// data-webgpu-device-stats mirror of the webgpu-device-registry that the
+// end-of-run accounting cross-check reads.
 await page.goto(
-  `${appOrigin}/datasets/${encodeURIComponent(dataset)}?gpuProbe=${Date.now()}`,
+  `${appOrigin}/datasets/${encodeURIComponent(dataset)}?gpuProbe=${Date.now()}&mcapLatencyDebug=1`,
   { waitUntil: "domcontentloaded" },
 );
 
@@ -364,6 +386,47 @@ for (let round = 1; round <= rounds; round += 1) {
 }
 
 const final = await sampleProbe();
+
+// Cross-check: the app-side webgpu-device-registry (published to the DOM
+// by the mcap latency-debug bridge) against this probe's own
+// requestDevice hook. Both count cumulative device creations, so any gap
+// means a renderer path is bypassing the registry (or vice versa).
+const registryStats = await page.evaluate(() => {
+  const raw = document.documentElement.getAttribute(
+    "data-webgpu-device-stats",
+  );
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+});
+
+console.log("\n=== device accounting: registry vs requestDevice hook ===");
+if (registryStats) {
+  console.log(
+    `registry: live ${registryStats.total} (high-water ${registryStats.highWaterMark}, ` +
+      `budget ${registryStats.budget}), cumulative ${registryStats.totalRegistered} registered / ` +
+      `${registryStats.totalReleased} released, by surface ${JSON.stringify(registryStats.bySurface)}`,
+  );
+  console.log(`hook: ${final.devices} requestDevice calls (cumulative)`);
+  if (registryStats.totalRegistered !== final.devices) {
+    console.warn(
+      `!!! DEVICE ACCOUNTING DISAGREEMENT: registry says ${registryStats.totalRegistered} ` +
+        `renderers registered, requestDevice hook says ${final.devices} devices created — ` +
+        `some WebGPU renderer path is not going through the device registry ` +
+        `(or a registered renderer never reached init).`,
+    );
+  }
+} else {
+  console.warn(
+    "!!! data-webgpu-device-stats attribute not found — the app under test " +
+      "is either not running the device-registry branch or the mcap debug " +
+      "publisher did not initialize.",
+  );
+}
+
 console.log("\n=== gpu-probe summary ===");
 console.log(
   `vertex buffers: ${final.vertexCreated} created (${(final.vertexCreatedBytes / 1048576).toFixed(1)} MB), ` +
@@ -396,6 +459,14 @@ console.log(
 );
 
 await browser.close();
+
+if (assertMaxDevices !== null && final.devices > assertMaxDevices) {
+  console.error(
+    `ASSERT FAILED: requestDevice hook counted ${final.devices} devices, ` +
+      `exceeding --assert-max-devices ${assertMaxDevices}`,
+  );
+  process.exitCode = 1;
+}
 
 function resolvePlaywright() {
   const candidates = [

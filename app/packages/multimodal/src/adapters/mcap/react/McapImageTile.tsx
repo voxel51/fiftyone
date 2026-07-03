@@ -223,6 +223,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
           style={imagePanZoom.surfaceStyle}
         >
           <ImagePanel
+            canvasSurface="modal-image"
             frame={frame}
             className={styles.panel}
             fit={IMAGE_FIT}

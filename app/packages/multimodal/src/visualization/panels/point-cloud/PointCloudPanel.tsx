@@ -36,6 +36,7 @@ const DEFAULT_POINT_SIZE = 2;
 export function PointCloudPanel({
   annotationLayers = [],
   cameraPose,
+  canvasSurface,
   className,
   colorBy,
   fit = "initial",
@@ -177,6 +178,7 @@ export function PointCloudPanel({
         onError={setCanvasError}
         role="img"
         style={styles.canvas}
+        surface={canvasSurface}
       >
         <Base3DScene
           cameraPose={effectiveCameraPose}

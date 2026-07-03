@@ -616,6 +616,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
           <PointCloudPanel
             annotationLayers={sceneAnnotationLayers}
             cameraPose={panelCameraPose}
+            canvasSurface="modal-3d"
             frustumLayers={frustumLayers}
             hudLines={hudLines}
             gridLayers={gridLayers}

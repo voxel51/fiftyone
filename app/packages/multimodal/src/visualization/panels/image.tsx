@@ -42,6 +42,11 @@ const ORTHOGRAPHIC_IMAGE_CAMERA = {
  */
 export interface ImagePanelProps {
   readonly alt?: string;
+  /**
+   * Device-registry surface tag passed through to the WebGPU canvas
+   * ("modal-image", "grid-preview", ...). Bookkeeping only.
+   */
+  readonly canvasSurface?: string;
   readonly className?: string;
   readonly fit?: "contain" | "cover";
   readonly frame: EncodedImageVisualization;
@@ -76,6 +81,7 @@ interface HeldImageTexture {
  */
 export function ImagePanel({
   alt: _alt = "Image",
+  canvasSurface,
   className,
   fit = "contain",
   frame,
@@ -185,6 +191,7 @@ export function ImagePanel({
         orthographic
         role="img"
         style={styles.canvas}
+        surface={canvasSurface}
       >
         {scene}
       </WebGpuCanvas>
