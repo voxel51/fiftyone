@@ -7,6 +7,11 @@ import { POINT_COMPONENT_COUNT } from "./point-cloud-colors";
 import { pointCloudObjectTransform } from "./transforms";
 import type { PointCloudPanelLayer, PointCloudRenderData } from "./types";
 
+// Default point sprite size in pixels. Lives here (not in the panel) so
+// the offscreen snapshot renderer can share it without importing the
+// panel's WebGPU canvas dependency graph.
+export const DEFAULT_POINT_SIZE = 2;
+
 export function PointCloudSceneLayer({
   data,
   layer,
@@ -93,7 +98,12 @@ function PointCloudPoints({
   );
 }
 
-function createPointCloudGeometry(capacityPoints: number) {
+/**
+ * Builds the persistent point-cloud geometry at a fixed point capacity.
+ * Shared with the offscreen snapshot renderer so live and snapshot paths
+ * produce byte-identical geometry (static usage, capacity-sized buffers).
+ */
+export function createPointCloudGeometry(capacityPoints: number) {
   const geometry = new THREE.BufferGeometry();
   // Default (static) usage on purpose: the WebGPU backend re-uploads the
   // full array on every render for DynamicDrawUsage, while static usage
@@ -113,7 +123,12 @@ function createPointCloudGeometry(capacityPoints: number) {
   return geometry;
 }
 
-function applyPointCloudData(
+/**
+ * Copies one frame's render data into the persistent geometry (in-place
+ * writes, update ranges, draw range, bounds). Shared with the snapshot
+ * renderer for the same reason as {@link createPointCloudGeometry}.
+ */
+export function applyPointCloudData(
   geometry: THREE.BufferGeometry,
   data: PointCloudRenderData,
 ) {

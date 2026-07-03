@@ -1,8 +1,17 @@
 /**
- * GPU-free encoded-image view: decodes bytes with `createImageBitmap` and
- * paints them onto a plain 2D `<canvas>`. Purpose-built for grid preview
- * cells, which must hold zero WebGPU devices at rest — the modal keeps
- * using the WebGPU-backed `ImagePanel`.
+ * GPU-free bitmap views: paint `ImageBitmap`s onto a plain 2D `<canvas>`.
+ * Purpose-built for grid preview cells, which must hold zero WebGPU
+ * devices at rest — the modal keeps using the WebGPU-backed panels.
+ *
+ * Two entry points share one canvas lifecycle (`useBitmapCanvas`):
+ *
+ * - `BitmapImageView` decodes encoded image bytes with `createImageBitmap`
+ *   and paints the result (image preview cells).
+ * - `BitmapCanvasHost` paints a ready `ImageBitmap` handed in as a prop
+ *   (point-cloud preview cells at rest, fed by the shared snapshot
+ *   renderer). The host OWNS every bitmap it is handed: it closes the
+ *   replaced bitmap on swap and the committed one on unmount, so callers
+ *   must not reuse a bitmap after passing a newer one.
  *
  * Fit math intentionally matches `imageDisplayRect` in `base-2d-scene.tsx`
  * (the `ImagePanel` fit semantics) so swapping a cell between this view
@@ -12,7 +21,7 @@
  * cancellation, or on unmount).
  */
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
 const DEFAULT_MIME_TYPE = "image/jpeg";
 
@@ -54,6 +63,18 @@ export interface BitmapImageViewProps {
 }
 
 /**
+ * Props for painting a ready `ImageBitmap`. Ownership transfers to the
+ * host (close-on-replace, close-on-unmount).
+ */
+export interface BitmapCanvasHostProps {
+  readonly bitmap: ImageBitmap | null;
+  readonly className?: string;
+  readonly fit?: "contain" | "cover";
+  readonly role?: string;
+  readonly style?: CSSProperties;
+}
+
+/**
  * Destination rect for drawing an image of `image` size into `container`,
  * center-aligned. Identical math to `imageDisplayRect` in
  * `base-2d-scene.tsx` (the WebGPU `ImagePanel` path) — "cover" fills the
@@ -85,34 +106,25 @@ export function bitmapDrawRect(
 }
 
 /**
- * Renders encoded image bytes to a container-filling 2D canvas. No WebGPU
- * device, no Three.js — decode, draw, done.
+ * Shared canvas lifecycle: owns the committed bitmap (close-on-replace,
+ * close-on-unmount), sizes the backing store to CSS pixels, and redraws
+ * on layout or fit changes.
  */
-export function BitmapImageView({
-  bytes,
-  className,
-  fit = "cover",
-  mimeType,
-  onError,
-  onImageLoaded,
-  style,
-}: BitmapImageViewProps) {
+function useBitmapCanvas(fit: "contain" | "cover") {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  // The committed bitmap — stays drawn until the NEXT decode lands, so
+  // The committed bitmap — stays drawn until the NEXT commit lands, so
   // frame advances and errors never flash an empty canvas (the behavior
   // ImagePanel gets from hasVisibleImageRef).
   const bitmapRef = useRef<ImageBitmap | null>(null);
   const fitRef = useRef(fit);
   fitRef.current = fit;
-  const onErrorRef = useRef(onError);
-  onErrorRef.current = onError;
-  const onImageLoadedRef = useRef(onImageLoaded);
-  onImageLoadedRef.current = onImageLoaded;
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const bitmap = bitmapRef.current;
-    if (!canvas || !bitmap) {
+    // A detached (closed) bitmap reports 0x0; drawing it would throw.
+    // Skipping keeps the guard cheap and the canvas stable.
+    if (!canvas || !bitmap || bitmap.width === 0 || bitmap.height === 0) {
       return;
     }
 
@@ -147,42 +159,21 @@ export function BitmapImageView({
     context.drawImage(bitmap, rect.x, rect.y, rect.width, rect.height);
   }, []);
 
-  // This effect decodes the current bytes and commits the resulting
-  // bitmap. The cleanup flag is the out-of-order guard: only the latest
-  // request may commit — a superseded decode (newer bytes arrived, or
-  // unmount) closes its own bitmap and leaves the previous frame drawn.
-  useEffect(() => {
-    let cancelled = false;
-    createImageBitmap(
-      new Blob([bytes as BlobPart], { type: mimeType ?? DEFAULT_MIME_TYPE }),
-    )
-      .then((bitmap) => {
-        if (cancelled) {
-          bitmap.close();
-          return;
-        }
+  const commit = useCallback(
+    (bitmap: ImageBitmap | null) => {
+      if (bitmapRef.current === bitmap) {
+        return;
+      }
 
-        bitmapRef.current?.close();
-        bitmapRef.current = bitmap;
-        draw();
-        onImageLoadedRef.current?.(bitmap.width, bitmap.height);
-      })
-      .catch((error) => {
-        if (cancelled) {
-          return;
-        }
+      bitmapRef.current?.close();
+      bitmapRef.current = bitmap;
+      draw();
+    },
+    [draw],
+  );
 
-        // Keep the last good frame; only report.
-        onErrorRef.current?.(error);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [bytes, mimeType, draw]);
-
-  // This effect closes the committed bitmap on unmount (in-flight decodes
-  // close their own bitmap via the cancellation guard above).
+  // This effect closes the committed bitmap on unmount (in-flight
+  // producers close their own bitmaps via their cancellation guards).
   useEffect(() => {
     return () => {
       bitmapRef.current?.close();
@@ -203,16 +194,110 @@ export function BitmapImageView({
     return () => observer.disconnect();
   }, [draw]);
 
-  // This effect redraws when `fit` changes without a new decode.
+  // This effect redraws when `fit` changes without a new commit. The
+  // first run is skipped: on mount either nothing is committed yet
+  // (decode path) or the commit itself just drew (ready-bitmap path).
+  const fitDrawnRef = useRef(false);
   useEffect(() => {
+    if (!fitDrawnRef.current) {
+      fitDrawnRef.current = true;
+      return;
+    }
+
     draw();
   }, [draw, fit]);
+
+  return { canvasRef, commit };
+}
+
+/**
+ * Renders encoded image bytes to a container-filling 2D canvas. No WebGPU
+ * device, no Three.js — decode, draw, done.
+ */
+export function BitmapImageView({
+  bytes,
+  className,
+  fit = "cover",
+  mimeType,
+  onError,
+  onImageLoaded,
+  style,
+}: BitmapImageViewProps) {
+  const { canvasRef, commit } = useBitmapCanvas(fit);
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  const onImageLoadedRef = useRef(onImageLoaded);
+  onImageLoadedRef.current = onImageLoaded;
+
+  // This effect decodes the current bytes and commits the resulting
+  // bitmap. The cleanup flag is the out-of-order guard: only the latest
+  // request may commit — a superseded decode (newer bytes arrived, or
+  // unmount) closes its own bitmap and leaves the previous frame drawn.
+  useEffect(() => {
+    let cancelled = false;
+    createImageBitmap(
+      new Blob([bytes as BlobPart], { type: mimeType ?? DEFAULT_MIME_TYPE }),
+    )
+      .then((bitmap) => {
+        if (cancelled) {
+          bitmap.close();
+          return;
+        }
+
+        commit(bitmap);
+        onImageLoadedRef.current?.(bitmap.width, bitmap.height);
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+
+        // Keep the last good frame; only report.
+        onErrorRef.current?.(error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bytes, mimeType, commit]);
 
   return (
     <canvas
       className={className}
       ref={canvasRef}
       role="img"
+      style={{ ...styles.canvas, ...style }}
+    />
+  );
+}
+
+/**
+ * Renders a ready `ImageBitmap` to a container-filling 2D canvas and
+ * takes ownership of it. Passing the same bitmap again is a no-op; a
+ * `null` bitmap leaves the canvas untouched until a real one arrives, so
+ * producers can keep the previous frame visible while the next renders.
+ */
+export function BitmapCanvasHost({
+  bitmap,
+  className,
+  fit = "cover",
+  role = "img",
+  style,
+}: BitmapCanvasHostProps) {
+  const { canvasRef, commit } = useBitmapCanvas(fit);
+
+  // This layout effect adopts the incoming bitmap before paint: the
+  // replaced bitmap is closed exactly once and the swap draws in the same
+  // commit, so a snapshot replacing another never flashes.
+  useLayoutEffect(() => {
+    commit(bitmap);
+  }, [bitmap, commit]);
+
+  return (
+    <canvas
+      className={className}
+      ref={canvasRef}
+      role={role}
       style={{ ...styles.canvas, ...style }}
     />
   );

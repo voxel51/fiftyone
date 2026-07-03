@@ -2,7 +2,11 @@ import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { imageDisplayRect } from "./base-2d-scene";
-import { BitmapImageView, bitmapDrawRect } from "./bitmap-image-view";
+import {
+  BitmapCanvasHost,
+  BitmapImageView,
+  bitmapDrawRect,
+} from "./bitmap-image-view";
 
 afterEach(() => {
   cleanup();
@@ -224,6 +228,65 @@ describe("BitmapImageView", () => {
     await waitFor(() => expect(onError).toHaveBeenCalledWith(failure));
     expect(drawImage).not.toHaveBeenCalled();
     expect(onImageLoaded).not.toHaveBeenCalled();
+  });
+});
+
+describe("BitmapCanvasHost", () => {
+  it("draws a ready bitmap 1:1 when it matches the container size", () => {
+    stubElementSize(100, 50);
+    const context = sharedMockContext();
+    const drawImage = vi.spyOn(context, "drawImage");
+    const bitmap = fakeBitmap(100, 50);
+
+    const { container } = render(<BitmapCanvasHost bitmap={bitmap} />);
+
+    // Snapshots are rendered at the cell's CSS pixel size, so cover fit
+    // degenerates to an exact 1:1 blit — no crop, no stretch.
+    expect(drawImage).toHaveBeenCalledTimes(1);
+    expect(drawImage).toHaveBeenCalledWith(bitmap, 0, 0, 100, 50);
+    const canvas = container.querySelector("canvas");
+    expect(canvas?.width).toBe(100);
+    expect(canvas?.height).toBe(50);
+  });
+
+  it("closes the replaced bitmap on swap and the committed one on unmount", () => {
+    stubElementSize(100, 50);
+    const first = fakeBitmap(10, 10);
+
+    const { rerender, unmount } = render(<BitmapCanvasHost bitmap={first} />);
+    const second = fakeBitmap(20, 20);
+    rerender(<BitmapCanvasHost bitmap={second} />);
+
+    expect(first.close).toHaveBeenCalledTimes(1);
+    expect(second.close).not.toHaveBeenCalled();
+
+    unmount();
+    expect(second.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-rendering with the same bitmap neither closes nor redraws it", () => {
+    stubElementSize(100, 50);
+    const context = sharedMockContext();
+    const drawImage = vi.spyOn(context, "drawImage");
+    const bitmap = fakeBitmap(10, 10);
+
+    const { rerender } = render(<BitmapCanvasHost bitmap={bitmap} />);
+    rerender(<BitmapCanvasHost bitmap={bitmap} />);
+
+    expect(bitmap.close).not.toHaveBeenCalled();
+    expect(drawImage).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips drawing a detached (closed) bitmap", () => {
+    stubElementSize(100, 50);
+    const context = sharedMockContext();
+    const drawImage = vi.spyOn(context, "drawImage");
+    // A closed ImageBitmap reports 0x0; drawing it would throw.
+    const detached = fakeBitmap(0, 0);
+
+    render(<BitmapCanvasHost bitmap={detached} />);
+
+    expect(drawImage).not.toHaveBeenCalled();
   });
 });
 

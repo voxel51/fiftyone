@@ -17,6 +17,10 @@ declare module "three/webgpu" {
     dispose(): void;
     getMaxAnisotropy?(): number;
     init(): Promise<void>;
+    renderAsync(
+      scene: import("three").Object3D,
+      camera: import("three").Camera,
+    ): Promise<void>;
     setClearColor(
       color: import("three").ColorRepresentation,
       alpha?: number,

@@ -274,9 +274,10 @@ function boundsForScenePoints(
 /**
  * Converts one layer's local geometry bounds into panel world coordinates.
  * The returned box is cloned so the render data can keep reusing its local
- * bounding box for geometry and future fit calculations.
+ * bounding box for geometry and future fit calculations. Exported for the
+ * snapshot renderer, whose auto-fit must match the live panel's fit math.
  */
-function worldBoundsForLayer(
+export function worldBoundsForLayer(
   bounds: THREE.Box3,
   frameTransform: PointCloudFrameTransform | undefined,
 ): THREE.Box3 {

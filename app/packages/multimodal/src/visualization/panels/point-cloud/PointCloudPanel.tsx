@@ -15,7 +15,10 @@ import {
   DEFAULT_MAX_RENDERED_POINTS,
   buildPointCloudRenderData,
 } from "./point-cloud-colors";
-import { PointCloudSceneLayer } from "./PointCloudSceneLayer";
+import {
+  DEFAULT_POINT_SIZE,
+  PointCloudSceneLayer,
+} from "./PointCloudSceneLayer";
 import { SceneAnnotationLayer } from "./SceneAnnotationLayer";
 import type {
   PanelNotice,
@@ -24,9 +27,6 @@ import type {
   PointCloudPanelProps,
 } from "./types";
 import { EMPTY_NOTICES, annotationPrimitiveSummaryForLayers } from "./utils";
-
-// Default WebGL point sprite size in pixels.
-const DEFAULT_POINT_SIZE = 2;
 
 /**
  * Production point-cloud visualization panel backed by a stable Three.js
