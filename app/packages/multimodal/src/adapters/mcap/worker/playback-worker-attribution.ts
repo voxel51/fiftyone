@@ -1,3 +1,5 @@
+import type { ByteReadDebugLog } from "../../../query/bytes";
+import type { McapDecodeStageSample } from "../decode-stage-meter";
 import type { McapChunkReadDebugLog } from "../reader/byte-readable";
 import type {
   McapDecodedMessage,
@@ -42,15 +44,42 @@ export interface McapPlaybackWorkerTopChunk {
   readonly reads: number;
 }
 
+export interface McapPlaybackWorkerDecodeSchema {
+  readonly bytes: number;
+  readonly label: string;
+  readonly messages: number;
+  readonly ms: number;
+}
+
 export interface McapPlaybackWorkerAttribution {
+  /** Byte reads served from a cache tier (no link wait). */
+  readonly byteCacheHits: number;
+  /** All byte-range reads observed during the request. */
+  readonly byteReads: number;
+  /**
+   * Summed wall time of network-backed byte reads (fetched + coalesced).
+   * Reads can overlap, so this attributes link involvement rather than
+   * exact wall time.
+   */
+  readonly byteWaitMs: number;
   readonly chunkBytes: number;
   readonly chunkMessageIndexOverlapBytes: number;
   readonly chunkOverlapBytes: number;
   readonly chunksTouched: number;
   readonly coalescedReadRequests: number;
   readonly coalescedRequestedBytes: number;
+  /** Schema decode time, complete per-schema (few schemas per request). */
+  readonly decodeBySchema: readonly McapPlaybackWorkerDecodeSchema[];
+  readonly decodeBytes: number;
+  readonly decodeMessages: number;
+  readonly decodeMs: number;
+  readonly decompressBytes: number;
+  readonly decompressChunks: number;
+  readonly decompressMs: number;
   readonly error?: string;
   readonly fetchedBytes: number;
+  readonly hashBytes: number;
+  readonly hashMs: number;
   readonly lane: McapPlaybackWorkerLaneName;
   readonly mcapDataRequestId?: string;
   readonly ok: boolean;
@@ -89,8 +118,10 @@ export interface McapPlaybackWorkerAttributionCollector {
     readonly nowMs: number;
     readonly ok: boolean;
   }): McapPlaybackWorkerAttribution;
+  recordByteRead(entry: ByteReadDebugLog): void;
   recordChunkRead(entry: McapChunkReadDebugLog): void;
   recordResult(result: unknown, transferables: number): void;
+  recordStage(sample: McapDecodeStageSample): void;
 }
 
 type McapPlaybackWorkerAttributionRequest =
@@ -151,6 +182,26 @@ interface ResultAccumulator {
   transferables: number;
 }
 
+interface StageAccumulator {
+  byteCacheHits: number;
+  byteReads: number;
+  byteWaitMs: number;
+  decodeBytes: number;
+  decodeMessages: number;
+  decodeMs: number;
+  decompressBytes: number;
+  decompressChunks: number;
+  decompressMs: number;
+  hashBytes: number;
+  hashMs: number;
+}
+
+interface DecodeSchemaAccumulator {
+  bytes: number;
+  messages: number;
+  ms: number;
+}
+
 export function createMcapPlaybackWorkerAttributionCollector(
   message: McapPlaybackWorkerAttributionRequest,
   context: McapPlaybackWorkerAttributionContext,
@@ -172,6 +223,20 @@ export function createMcapPlaybackWorkerAttributionCollector(
     resultWindows: 0,
     transferables: 0,
   };
+  const stageTotals: StageAccumulator = {
+    byteCacheHits: 0,
+    byteReads: 0,
+    byteWaitMs: 0,
+    decodeBytes: 0,
+    decodeMessages: 0,
+    decodeMs: 0,
+    decompressBytes: 0,
+    decompressChunks: 0,
+    decompressMs: 0,
+    hashBytes: 0,
+    hashMs: 0,
+  };
+  const decodeBySchema = new Map<string, DecodeSchemaAccumulator>();
 
   return {
     finish({ error, nowMs, ok }) {
@@ -187,6 +252,9 @@ export function createMcapPlaybackWorkerAttributionCollector(
       ].reduce((sum, requestedBytes) => sum + requestedBytes, 0);
 
       return {
+        byteCacheHits: stageTotals.byteCacheHits,
+        byteReads: stageTotals.byteReads,
+        byteWaitMs: roundMs(stageTotals.byteWaitMs),
         chunkBytes: totalChunkBytes(chunkReads),
         chunkMessageIndexOverlapBytes: totalOverlapBytes(
           chunkReads,
@@ -196,8 +264,17 @@ export function createMcapPlaybackWorkerAttributionCollector(
         chunksTouched: chunkIds.size,
         coalescedReadRequests: coalescedReadRequests.size,
         coalescedRequestedBytes,
+        decodeBySchema: decodeSchemaRows(decodeBySchema),
+        decodeBytes: stageTotals.decodeBytes,
+        decodeMessages: stageTotals.decodeMessages,
+        decodeMs: roundMs(stageTotals.decodeMs),
+        decompressBytes: stageTotals.decompressBytes,
+        decompressChunks: stageTotals.decompressChunks,
+        decompressMs: roundMs(stageTotals.decompressMs),
         ...(error ? { error } : {}),
         fetchedBytes: readTotals.fetchedBytes,
+        hashBytes: stageTotals.hashBytes,
+        hashMs: roundMs(stageTotals.hashMs),
         lane: context.lane,
         ...mcapDataRequestIdForWorkerRequest(message),
         ok,
@@ -221,6 +298,18 @@ export function createMcapPlaybackWorkerAttributionCollector(
         topChunks: topChunks(chunkReads),
         transferables: resultTotals.transferables,
       };
+    },
+
+    recordByteRead(entry) {
+      stageTotals.byteReads += 1;
+      if (
+        entry.cacheResult === "fetched" ||
+        entry.cacheResult === "coalesced"
+      ) {
+        stageTotals.byteWaitMs += entry.durationMs;
+      } else {
+        stageTotals.byteCacheHits += 1;
+      }
     },
 
     recordChunkRead(entry) {
@@ -267,7 +356,45 @@ export function createMcapPlaybackWorkerAttributionCollector(
       resultTotals.resultWindows += summary.resultWindows;
       resultTotals.transferables += transferables;
     },
+
+    recordStage(sample) {
+      if (sample.stage === "decode") {
+        stageTotals.decodeBytes += sample.bytes;
+        stageTotals.decodeMessages += 1;
+        stageTotals.decodeMs += sample.ms;
+        const label = sample.label ?? "unknown";
+        const current = decodeBySchema.get(label) ?? {
+          bytes: 0,
+          messages: 0,
+          ms: 0,
+        };
+        current.bytes += sample.bytes;
+        current.messages += 1;
+        current.ms += sample.ms;
+        decodeBySchema.set(label, current);
+      } else if (sample.stage === "decompress") {
+        stageTotals.decompressBytes += sample.bytes;
+        stageTotals.decompressChunks += 1;
+        stageTotals.decompressMs += sample.ms;
+      } else {
+        stageTotals.hashBytes += sample.bytes;
+        stageTotals.hashMs += sample.ms;
+      }
+    },
   };
+}
+
+function decodeSchemaRows(
+  decodeBySchema: Map<string, DecodeSchemaAccumulator>,
+): readonly McapPlaybackWorkerDecodeSchema[] {
+  return [...decodeBySchema.entries()]
+    .sort(([, left], [, right]) => right.ms - left.ms)
+    .map(([label, totals]) => ({
+      bytes: totals.bytes,
+      label,
+      messages: totals.messages,
+      ms: roundMs(totals.ms),
+    }));
 }
 
 function summarizeWorkerRequest(

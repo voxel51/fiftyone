@@ -68,6 +68,42 @@ describe("MCAP playback worker attribution", () => {
       requestedBytes: "120",
     });
     collector.recordResult([createWindow()], 1);
+    collector.recordByteRead(createByteRead("fetched", 30.5));
+    collector.recordByteRead(createByteRead("coalesced", 10));
+    collector.recordByteRead(createByteRead("persistent-hit", 0.4));
+    collector.recordStage({
+      bytes: 2_000_000,
+      label: "foxglove.PointCloud",
+      ms: 8.5,
+      stage: "decode",
+      topic: "/LIDAR_TOP",
+    });
+    collector.recordStage({
+      bytes: 500_000,
+      label: "foxglove.CompressedImage",
+      ms: 1.5,
+      stage: "decode",
+      topic: "/CAM_FRONT",
+    });
+    collector.recordStage({
+      bytes: 2_000_000,
+      label: "foxglove.PointCloud",
+      ms: 7.5,
+      stage: "decode",
+      topic: "/LIDAR_TOP",
+    });
+    collector.recordStage({
+      bytes: 4_000_000,
+      label: "zstd",
+      ms: 3,
+      stage: "decompress",
+    });
+    collector.recordStage({
+      bytes: 2_000_000,
+      ms: 12,
+      stage: "hash",
+      topic: "/LIDAR_TOP",
+    });
 
     expect(
       collector.finish({
@@ -75,7 +111,32 @@ describe("MCAP playback worker attribution", () => {
         ok: true,
       }),
     ).toMatchObject({
+      byteCacheHits: 1,
+      byteReads: 3,
+      byteWaitMs: 40.5,
       chunkBytes: 300,
+      decodeBySchema: [
+        {
+          bytes: 4_000_000,
+          label: "foxglove.PointCloud",
+          messages: 2,
+          ms: 16,
+        },
+        {
+          bytes: 500_000,
+          label: "foxglove.CompressedImage",
+          messages: 1,
+          ms: 1.5,
+        },
+      ],
+      decodeBytes: 4_500_000,
+      decodeMessages: 3,
+      decodeMs: 17.5,
+      decompressBytes: 4_000_000,
+      decompressChunks: 1,
+      decompressMs: 3,
+      hashBytes: 2_000_000,
+      hashMs: 12,
       chunkOverlapBytes: 200,
       chunksTouched: 2,
       coalescedReadRequests: 1,
@@ -110,6 +171,24 @@ describe("MCAP playback worker attribution", () => {
     });
   });
 });
+
+function createByteRead(
+  cacheResult: "coalesced" | "fetched" | "persistent-hit",
+  durationMs: number,
+) {
+  return {
+    blockFill: false,
+    cacheResult,
+    durationMs,
+    fetchedBytes: cacheResult === "fetched" ? 120 : 0,
+    fillLength: "120",
+    fillOffset: "0",
+    requestedLength: "120",
+    requestedOffset: "0",
+    returnedBytes: 120,
+    sourceId: "source:1",
+  };
+}
 
 function createWindow(): McapSynchronizedMessageWindow {
   const message = {

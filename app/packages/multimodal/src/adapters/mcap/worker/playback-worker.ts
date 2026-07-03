@@ -9,6 +9,7 @@ import {
   McapPlaybackWorkerScheduler,
   type McapPlaybackWorkerRunContext,
 } from "./playback-worker-scheduler";
+import { setMcapDecodeStageSink } from "../decode-stage-meter";
 import { transferablesForMcapResult } from "./playback-worker-transfer";
 import {
   createMcapPlaybackWorkerAttributionCollector,
@@ -62,6 +63,13 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
     const nextDebugReads = message.payload.latencyDebug === true;
     lane = message.payload.lane ?? "foreground";
     scheduler.setDebug(nextDebugReads);
+    // Stage samples (hash/decode/decompress) only flow while debugging —
+    // the hot paths skip their timing reads when no sink is installed.
+    setMcapDecodeStageSink(
+      nextDebugReads
+        ? (sample) => activeAttribution?.recordStage(sample)
+        : null,
+    );
     if (debugReads !== nextDebugReads) {
       debugReads = nextDebugReads;
       activeSourceKey = "";
@@ -247,7 +255,10 @@ function createMcapClient() {
     debugByteReads: debugReads,
     debugChunkReads: debugReads,
     logChunkRead: logChunkReadForActiveRequest,
-    onByteRead: transportMeter.onByteRead,
+    onByteRead: (entry) => {
+      transportMeter.onByteRead(entry);
+      activeAttribution?.recordByteRead(entry);
+    },
     readSignal: activeReadSignal,
   });
 }

@@ -1,8 +1,16 @@
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import { createMultimodalQueryClient } from "../../../query";
 import type { ByteReadDebugLog } from "../../../query/bytes";
-import type { DecodedOutputCache } from "../../../query/decode";
-import { createDecodeClient } from "../../../query/decode";
+import type { DecodedOutputCache, DecodeExecutor } from "../../../query/decode";
+import {
+  createDecodeClient,
+  inlineDecodeExecutor,
+} from "../../../query/decode";
+import {
+  isMcapDecodeStageMeterEnabled,
+  mcapDecodeStageNowMs,
+  recordMcapDecodeStage,
+} from "../decode-stage-meter";
 import { createMcapDecoderRegistry } from "../decoders";
 import { createInlineMcapResourceClient } from "../resources";
 import type { McapChunkReadDebugLog } from "../reader";
@@ -18,6 +26,29 @@ const transferSafeNoopDecodedOutputCache: DecodedOutputCache = {
   },
   put() {
     return Promise.resolve();
+  },
+};
+
+// Reports per-message decode time to the stage meter so the ledger can
+// split a request's runMs into fetch-wait vs decode CPU per schema.
+const meteredInlineDecodeExecutor: DecodeExecutor = {
+  async decode(request) {
+    if (!isMcapDecodeStageMeterEnabled()) {
+      return inlineDecodeExecutor.decode(request);
+    }
+
+    const startMs = mcapDecodeStageNowMs();
+    try {
+      return await inlineDecodeExecutor.decode(request);
+    } finally {
+      recordMcapDecodeStage({
+        bytes: request.bytes.byteLength,
+        label: request.payload.schema ?? request.payload.encoding,
+        ms: mcapDecodeStageNowMs() - startMs,
+        stage: "decode",
+        topic: request.context.streamId,
+      });
+    }
   },
 };
 
@@ -59,6 +90,7 @@ export function createWorkerResourceClient({
       // buffers or force extra clones, so playback-window reuse belongs on
       // the main thread.
       cache: transferSafeNoopDecodedOutputCache,
+      executor: meteredInlineDecodeExecutor,
       registry: createMcapDecoderRegistry(),
     }),
   });

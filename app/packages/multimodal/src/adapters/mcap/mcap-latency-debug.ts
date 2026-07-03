@@ -70,15 +70,27 @@ interface McapLatencyBandwidthState {
 }
 
 interface McapLatencyWorkerAttributionBucket {
+  byteCacheHits: number;
+  byteReads: number;
+  byteWaitMs: number;
   chunkBytes: number;
   chunkMessageIndexOverlapBytes: number;
   chunkOverlapBytes: number;
   chunksTouched: number;
   coalescedReadRequests: number;
   coalescedRequestedBytes: number;
+  decodeBytes: number;
   decodedPayloadBytes: number;
+  decodeMessages: number;
+  decodeMs: number;
+  decompressBytes: number;
+  decompressChunks: number;
+  decompressMs: number;
   errors: number;
   fetchedBytes: number;
+  hashBytes: number;
+  hashMs: number;
+  maxDecodeMs: number;
   maxPayloadBytes: number;
   maxQueueWaitMs: number;
   maxRunMs: number;
@@ -95,15 +107,41 @@ interface McapLatencyWorkerAttributionBucket {
   transferables: number;
 }
 
+interface McapLatencyDecodeSchemaBucket {
+  bytes: number;
+  messages: number;
+  ms: number;
+  requests: number;
+}
+
+interface McapLatencyWorkerDecodeSchema {
+  readonly bytes: number;
+  readonly label: string;
+  readonly messages: number;
+  readonly ms: number;
+}
+
 interface McapLatencyWorkerAttribution {
+  readonly byteCacheHits?: number;
+  readonly byteReads?: number;
+  readonly byteWaitMs?: number;
   readonly chunkBytes: number;
   readonly chunkMessageIndexOverlapBytes: number;
   readonly chunkOverlapBytes: number;
   readonly chunksTouched: number;
   readonly coalescedReadRequests: number;
   readonly coalescedRequestedBytes: number;
+  readonly decodeBySchema?: readonly McapLatencyWorkerDecodeSchema[];
+  readonly decodeBytes?: number;
   readonly decodedPayloadBytes: number;
+  readonly decodeMessages?: number;
+  readonly decodeMs?: number;
+  readonly decompressBytes?: number;
+  readonly decompressChunks?: number;
+  readonly decompressMs?: number;
   readonly fetchedBytes: number;
+  readonly hashBytes?: number;
+  readonly hashMs?: number;
   readonly lane: string;
   readonly mcapDataRequestId?: string;
   readonly ok: boolean;
@@ -125,6 +163,7 @@ interface McapLatencyWorkerAttribution {
 }
 
 interface McapLatencyWorkerAttributionState {
+  readonly byDecodeSchema: Record<string, McapLatencyDecodeSchemaBucket>;
   readonly byLane: Record<string, McapLatencyWorkerAttributionBucket>;
   readonly byLaneOperation: Record<string, McapLatencyWorkerAttributionBucket>;
   readonly byOperation: Record<string, McapLatencyWorkerAttributionBucket>;
@@ -322,6 +361,18 @@ export function recordMcapWorkerAttribution(
     sample,
   );
   addToWorkerAttributionMap(state.byPriority, String(sample.priority), sample);
+  for (const row of sample.decodeBySchema ?? []) {
+    const bucket = (state.byDecodeSchema[row.label] ??= {
+      bytes: 0,
+      messages: 0,
+      ms: 0,
+      requests: 0,
+    });
+    bucket.bytes += row.bytes;
+    bucket.messages += row.messages;
+    bucket.ms = Number((bucket.ms + row.ms).toFixed(1));
+    bucket.requests += 1;
+  }
   state.recent.push(sampleWithElapsed);
   if (state.recent.length > WORKER_ATTRIBUTION_RECENT_LIMIT) {
     state.recent.splice(
@@ -393,6 +444,7 @@ function createBandwidthBucket(): McapLatencyBandwidthBucket {
 
 function createWorkerAttributionState(): McapLatencyWorkerAttributionState {
   return {
+    byDecodeSchema: {},
     byLane: {},
     byLaneOperation: {},
     byOperation: {},
@@ -404,15 +456,27 @@ function createWorkerAttributionState(): McapLatencyWorkerAttributionState {
 
 function createWorkerAttributionBucket(): McapLatencyWorkerAttributionBucket {
   return {
+    byteCacheHits: 0,
+    byteReads: 0,
+    byteWaitMs: 0,
     chunkBytes: 0,
     chunkMessageIndexOverlapBytes: 0,
     chunkOverlapBytes: 0,
     chunksTouched: 0,
     coalescedReadRequests: 0,
     coalescedRequestedBytes: 0,
+    decodeBytes: 0,
     decodedPayloadBytes: 0,
+    decodeMessages: 0,
+    decodeMs: 0,
+    decompressBytes: 0,
+    decompressChunks: 0,
+    decompressMs: 0,
     errors: 0,
     fetchedBytes: 0,
+    hashBytes: 0,
+    hashMs: 0,
+    maxDecodeMs: 0,
     maxPayloadBytes: 0,
     maxQueueWaitMs: 0,
     maxRunMs: 0,
@@ -475,15 +539,31 @@ function addToWorkerAttributionBucket(
   bucket: McapLatencyWorkerAttributionBucket,
   sample: McapLatencyWorkerAttribution,
 ) {
+  bucket.byteCacheHits += sample.byteCacheHits ?? 0;
+  bucket.byteReads += sample.byteReads ?? 0;
+  bucket.byteWaitMs = roundBucketMs(
+    bucket.byteWaitMs + (sample.byteWaitMs ?? 0),
+  );
   bucket.chunkBytes += sample.chunkBytes;
   bucket.chunkMessageIndexOverlapBytes += sample.chunkMessageIndexOverlapBytes;
   bucket.chunkOverlapBytes += sample.chunkOverlapBytes;
   bucket.chunksTouched += sample.chunksTouched;
   bucket.coalescedReadRequests += sample.coalescedReadRequests;
   bucket.coalescedRequestedBytes += sample.coalescedRequestedBytes;
+  bucket.decodeBytes += sample.decodeBytes ?? 0;
   bucket.decodedPayloadBytes += sample.decodedPayloadBytes;
+  bucket.decodeMessages += sample.decodeMessages ?? 0;
+  bucket.decodeMs = roundBucketMs(bucket.decodeMs + (sample.decodeMs ?? 0));
+  bucket.decompressBytes += sample.decompressBytes ?? 0;
+  bucket.decompressChunks += sample.decompressChunks ?? 0;
+  bucket.decompressMs = roundBucketMs(
+    bucket.decompressMs + (sample.decompressMs ?? 0),
+  );
   bucket.errors += sample.ok ? 0 : 1;
   bucket.fetchedBytes += sample.fetchedBytes;
+  bucket.hashBytes += sample.hashBytes ?? 0;
+  bucket.hashMs = roundBucketMs(bucket.hashMs + (sample.hashMs ?? 0));
+  bucket.maxDecodeMs = Math.max(bucket.maxDecodeMs, sample.decodeMs ?? 0);
   bucket.maxPayloadBytes = Math.max(
     bucket.maxPayloadBytes,
     sample.payloadBytes,
@@ -501,6 +581,10 @@ function addToWorkerAttributionBucket(
   bucket.resultWindows += sample.resultWindows;
   bucket.runMs += sample.runMs;
   bucket.transferables += sample.transferables;
+}
+
+function roundBucketMs(value: number): number {
+  return Number(value.toFixed(1));
 }
 
 function sanitizeLatencyDetail(value: unknown): unknown {
@@ -654,6 +738,18 @@ function summarizeBandwidthBucket(
 
 function summarizeWorkerAttribution(state: McapLatencyWorkerAttributionState) {
   return {
+    byDecodeSchema: Object.fromEntries(
+      Object.entries(state.byDecodeSchema)
+        .sort(([, left], [, right]) => right.ms - left.ms)
+        .map(([label, bucket]) => [
+          label,
+          {
+            ...bucket,
+            avgMsPerMessage: average(bucket.ms, bucket.messages),
+            bytesMB: bytesToMb(bucket.bytes),
+          },
+        ]),
+    ),
     byLane: summarizeWorkerAttributionMap(state.byLane),
     byLaneOperation: summarizeWorkerAttributionMap(state.byLaneOperation),
     byOperation: summarizeWorkerAttributionMap(state.byOperation),
@@ -704,6 +800,9 @@ function summarizeWorkerAttributionBucket(
   return {
     avgQueueWaitMs: average(bucket.queueWaitMs, bucket.requests),
     avgRunMs: average(bucket.runMs, bucket.requests),
+    byteCacheHits: bucket.byteCacheHits,
+    byteReads: bucket.byteReads,
+    byteWaitMs: bucket.byteWaitMs,
     chunkBytes: bucket.chunkBytes,
     chunkMB: bytesToMb(bucket.chunkBytes),
     chunkMessageIndexOverlapBytes: bucket.chunkMessageIndexOverlapBytes,
@@ -712,11 +811,22 @@ function summarizeWorkerAttributionBucket(
     coalescedReadRequests: bucket.coalescedReadRequests,
     coalescedRequestedBytes: bucket.coalescedRequestedBytes,
     coalescedRequestedMB: bytesToMb(bucket.coalescedRequestedBytes),
+    decodeBytes: bucket.decodeBytes,
+    decodeBytesMB: bytesToMb(bucket.decodeBytes),
     decodedPayloadBytes: bucket.decodedPayloadBytes,
     decodedPayloadMB: bytesToMb(bucket.decodedPayloadBytes),
+    decodeMessages: bucket.decodeMessages,
+    decodeMs: bucket.decodeMs,
+    decompressBytes: bucket.decompressBytes,
+    decompressBytesMB: bytesToMb(bucket.decompressBytes),
+    decompressChunks: bucket.decompressChunks,
+    decompressMs: bucket.decompressMs,
     errors: bucket.errors,
     fetchedBytes: bucket.fetchedBytes,
     fetchedMB: bytesToMb(bucket.fetchedBytes),
+    hashBytes: bucket.hashBytes,
+    hashMs: bucket.hashMs,
+    maxDecodeMs: bucket.maxDecodeMs,
     maxPayloadBytes: bucket.maxPayloadBytes,
     maxPayloadMB: bytesToMb(bucket.maxPayloadBytes),
     maxQueueWaitMs: bucket.maxQueueWaitMs,
@@ -748,12 +858,17 @@ function topWorkerAttributionSamples(
     .sort((left, right) => score(right) - score(left))
     .slice(0, 10)
     .map((sample) => ({
+      byteWaitMs: sample.byteWaitMs,
       chunkMB: bytesToMb(sample.chunkBytes),
       chunksTouched: sample.chunksTouched,
       coalescedReadRequests: sample.coalescedReadRequests,
       coalescedRequestedMB: bytesToMb(sample.coalescedRequestedBytes),
+      decodeBySchema: sample.decodeBySchema,
+      decodeMs: sample.decodeMs,
+      decompressMs: sample.decompressMs,
       elapsedMs: sample.elapsedMs,
       fetchedMB: bytesToMb(sample.fetchedBytes),
+      hashMs: sample.hashMs,
       lane: sample.lane,
       mcapDataRequestId: sample.mcapDataRequestId,
       operation: sample.operation,
@@ -770,11 +885,16 @@ function topWorkerAttributionSamples(
 
 function workerAttributionLogRow(sample: McapLatencyWorkerAttribution) {
   return {
+    byteWaitMs: sample.byteWaitMs,
     chunkMB: bytesToMb(sample.chunkBytes),
     chunksTouched: sample.chunksTouched,
     coalescedReadRequests: sample.coalescedReadRequests,
     coalescedRequestedMB: bytesToMb(sample.coalescedRequestedBytes),
+    decodeBySchema: sample.decodeBySchema?.slice(0, 3),
+    decodeMs: sample.decodeMs,
+    decompressMs: sample.decompressMs,
     fetchedMB: bytesToMb(sample.fetchedBytes),
+    hashMs: sample.hashMs,
     lane: sample.lane,
     mcapDataRequestId: sample.mcapDataRequestId,
     operation: sample.operation,
