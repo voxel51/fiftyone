@@ -2,7 +2,10 @@ import { TileSettingsContent } from "@fiftyone/tiling";
 import { Checkbox, Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React from "react";
 import type { SceneSource } from "../../../scene-inventory";
-import type { Mcap3dTrackingMode } from "./mcap-3d-camera";
+import {
+  isFollowTrackingMode,
+  type Mcap3dTrackingMode,
+} from "./mcap-3d-camera";
 import type { McapPoseTrajectories } from "./mcap-pose-trajectories-context";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import settingsStyles from "./McapTile.settings.module.css";
@@ -265,9 +268,18 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
         />
         <TrackingModeSelect
           onChange={setTrackingMode}
-          tooltip="How the camera follows the target frame during playback. Free leaves OrbitControls fully user-driven; follow modes preserve your current offset while tracking motion."
+          tooltip="How the camera follows the target frame during playback. Free leaves OrbitControls fully user-driven; follow modes preserve your current offset while tracking motion. Shortcuts: E = ego view, T = top view."
           value={trackingMode}
         />
+        {isFollowTrackingMode(trackingMode) &&
+        worldFrameId &&
+        cameraTargetFrameId === worldFrameId ? (
+          <span className={settingsStyles.emptyText}>
+            The camera target and the world frame match, so follow modes change
+            nothing: a frame cannot move relative to itself. Pick a global world
+            frame (like map) to see the target move.
+          </span>
+        ) : null}
       </div>
     </TileSettingsContent>
   );
