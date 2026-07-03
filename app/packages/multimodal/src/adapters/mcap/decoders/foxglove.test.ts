@@ -242,6 +242,38 @@ describe("Foxglove decoders", () => {
     ).toEqual([10, 20]);
   });
 
+  it("decodes strided lidar layouts with trailing scalar fields", () => {
+    // x,y,z,intensity float32 records at stride 16 — the common automotive
+    // lidar layout (nuScenes /LIDAR_TOP is the stride-20 variant).
+    const output = foxglovePointCloudDecoder.decode(
+      pointCloudMessage(float32Bytes([1, 2, 3, 0.5, 4, 5, 6, 7.5]), {
+        fields: [
+          { name: "x", offset: 0, type: 7 },
+          { name: "y", offset: 4, type: 7 },
+          { name: "z", offset: 8, type: 7 },
+          { name: "intensity", offset: 12, type: 7 },
+        ],
+        pointStride: 16,
+      }),
+      {
+        schemaData: POINT_CLOUD_FIXTURE.schemaData,
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POINT_CLOUD);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
+      throw new Error("Expected point cloud visualization");
+    }
+    expect(Array.from(output.visualization.positions)).toEqual([
+      1, 2, 3, 4, 5, 6,
+    ]);
+    expect(output.visualization.scalarFields?.[0]?.name).toBe("intensity");
+    expect(
+      Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
+    ).toEqual([0.5, 7.5]);
+    expect(output.visualization.pointCount).toBe(2);
+  });
+
   it("ignores only unaligned zero padding at the end of point cloud payloads", () => {
     const output = foxglovePointCloudDecoder.decode(
       pointCloudMessage(
