@@ -1,7 +1,7 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ImageAnnotationsOverlay } from "../../../visualization/panels/ImageAnnotationsOverlay";
-import { ImagePanel } from "../../../visualization/panels/image";
+import { BitmapImageView } from "../../../visualization/panels/bitmap-image-view";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
 import type { McapGridPreviewFrame } from "../grid-preview";
 import classes from "./GridRenderer.module.css";
@@ -143,11 +143,13 @@ function ImagePreviewFrame({
 
   return (
     <>
-      <ImagePanel
-        canvasSurface="grid-preview"
+      {/* GPU-free bitmap path: image preview cells hold zero WebGPU
+          devices (the modal's ImagePanel is untouched). */}
+      <BitmapImageView
+        bytes={frame.image.bytes}
         className={classes.imagePanel}
         fit={IMAGE_FIT}
-        frame={frame.image}
+        mimeType={frame.image.mimeType}
         onImageLoaded={(width, height) =>
           setImageDims((prev) =>
             prev?.width === width && prev?.height === height
