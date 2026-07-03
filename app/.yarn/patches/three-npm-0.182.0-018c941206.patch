@@ -1,5 +1,5 @@
 diff --git a/build/three.webgpu.js b/build/three.webgpu.js
-index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..a4a1ec9f25bfec4a24139095e407988492e85a71 100644
+index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..fd5639b5440bbe60f3cf76a9c593353564a45ae0 100644
 --- a/build/three.webgpu.js
 +++ b/build/three.webgpu.js
 @@ -29251,7 +29251,10 @@ class RenderObject {
@@ -37,6 +37,30 @@ index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..a4a1ec9f25bfec4a24139095e4079884
  
 -				this.attributes.delete( geometryAttribute );
 +				this.attributes.delete( geometry.attributes[ name ] );
+ 
+ 			}
+ 
+@@ -53885,11 +53893,20 @@ class Nodes extends DataMap {
+ 		if ( object.isRenderObject ) {
+ 
+ 			const nodeBuilderState = this.get( object ).nodeBuilderState;
+-			nodeBuilderState.usedTimes --;
+ 
+-			if ( nodeBuilderState.usedTimes === 0 ) {
++			// TEMPORARY vendored backport of upstream #33160 (ships in r184):
++			// a render object disposed after its renderer (or one whose nodes
++			// were never built) has no node builder state; decrementing through
++			// undefined threw mid-dispose and poisoned every later frame.
++			if ( nodeBuilderState !== undefined ) {
+ 
+-				this.nodeBuilderCache.delete( this.getForRenderCacheKey( object ) );
++				nodeBuilderState.usedTimes --;
++
++				if ( nodeBuilderState.usedTimes === 0 ) {
++
++					this.nodeBuilderCache.delete( this.getForRenderCacheKey( object ) );
++
++				}
  
  			}
  
@@ -83,6 +107,34 @@ index 702373ee77564ed8d2135d61a8708cf916193779..cb414d9d14e8fd82a8fc36faf376028e
 +				// r182): store ids, not versions — needsGeometryUpdate compares
 +				// ids, so the mismatch re-collected attributes every frame.
 +				attributesId[ nodeAttribute.name ] = attribute.id;
+ 
+ 			}
+ 
+diff --git a/src/renderers/common/nodes/Nodes.js b/src/renderers/common/nodes/Nodes.js
+index 832544018c93a73a2cda0ef2edea69ae5d414915..7c99d35ec3a1f9dde5d8c8381dc58150331f4235 100644
+--- a/src/renderers/common/nodes/Nodes.js
++++ b/src/renderers/common/nodes/Nodes.js
+@@ -258,11 +258,20 @@ class Nodes extends DataMap {
+ 		if ( object.isRenderObject ) {
+ 
+ 			const nodeBuilderState = this.get( object ).nodeBuilderState;
+-			nodeBuilderState.usedTimes --;
+ 
+-			if ( nodeBuilderState.usedTimes === 0 ) {
++			// TEMPORARY vendored backport of upstream #33160 (ships in r184):
++			// a render object disposed after its renderer (or one whose nodes
++			// were never built) has no node builder state; decrementing through
++			// undefined threw mid-dispose and poisoned every later frame.
++			if ( nodeBuilderState !== undefined ) {
+ 
+-				this.nodeBuilderCache.delete( this.getForRenderCacheKey( object ) );
++				nodeBuilderState.usedTimes --;
++
++				if ( nodeBuilderState.usedTimes === 0 ) {
++
++					this.nodeBuilderCache.delete( this.getForRenderCacheKey( object ) );
++
++				}
  
  			}
  
