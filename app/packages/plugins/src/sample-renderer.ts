@@ -98,12 +98,9 @@ export type GridConfig = {
  */
 export type ModalConfig = {
   /**
-   * Keep the renderer mounted while navigating between samples it
+   * Keep the renderer shell mounted while navigating between samples it
    * supports. The renderer must derive all per-sample state from `ctx`
-   * (or key its own internal subtrees); in exchange the modal stops
-   * remounting it per sample and only resets the error boundary between
-   * samples. Navigating to a sample matched by a different renderer (or
-   * native media) still remounts.
+   * (or key its own internal subtrees).
    */
   persistAcrossSamples?: boolean;
 };
