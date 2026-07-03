@@ -767,6 +767,76 @@ describe("PointCloudPanel", () => {
     ).not.toBe("");
   });
 
+  it("re-captures the initial fit when the fit reset key changes", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const layerAt = (x: number) =>
+      ({
+        frame: {
+          fields: [],
+          kind: VISUALIZATION_KIND.POINT_CLOUD,
+          pointCount: 2,
+          positions: new Float32Array([x, 0, 0, x + 10, 0, 0]),
+        },
+        id: "/points",
+      }) as const;
+
+    const { rerender } = render(
+      <PointCloudPanel fitResetKey="base_link" layers={[layerAt(0)]} />,
+    );
+    const firstPose = screen
+      .getByTestId("base-3d-scene")
+      .getAttribute("data-camera-pose");
+    expect(firstPose).not.toBe("");
+
+    // Same key: the captured initial fit survives content movement.
+    rerender(
+      <PointCloudPanel fitResetKey="base_link" layers={[layerAt(100)]} />,
+    );
+    expect(
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose"),
+    ).toBe(firstPose);
+
+    // New key (a world-frame change): the stale fit would frame coordinates
+    // from the old frame, so it re-captures from the re-placed layers.
+    rerender(<PointCloudPanel fitResetKey="map" layers={[layerAt(100)]} />);
+    expect(
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose"),
+    ).not.toBe(firstPose);
+  });
+
+  it("recenters on the current scene through the focus channel", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const onCameraPoseChange = vi.fn();
+
+    render(
+      <PointCloudPanel
+        cameraPose={{ position: [500, 500, 500], target: [400, 400, 400] }}
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 2,
+              positions: new Float32Array([0, 0, 0, 10, 0, 0]),
+            },
+            id: "/points",
+          },
+        ]}
+        onCameraPoseChange={onCameraPoseChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Recenter view"));
+
+    expect(onCameraPoseChange).toHaveBeenCalledTimes(1);
+    const [fitPose, source] = onCameraPoseChange.mock.calls[0];
+    expect(source).toBe("focus");
+    // The fit centers on the layer bounds, not the stranded controlled pose.
+    expect(fitPose.target[0]).toBeCloseTo(5);
+    expect(fitPose.target[1]).toBeCloseTo(0);
+    expect(fitPose.target[2]).toBeCloseTo(0);
+  });
+
   it("keeps the no-finite-points status for partially finite layers off", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 

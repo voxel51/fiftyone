@@ -40,6 +40,7 @@ export function PointCloudPanel({
   className,
   colorBy,
   fit = "initial",
+  fitResetKey,
   frustumLayers = [],
   gridLayers = [],
   hudLines = [],
@@ -80,6 +81,14 @@ export function PointCloudPanel({
   );
   const [initialFitPose, setInitialFitPose] =
     useState<PointCloudCameraPose | null>(null);
+  const [appliedFitResetKey, setAppliedFitResetKey] = useState(fitResetKey);
+  if (appliedFitResetKey !== fitResetKey) {
+    // Render-time state adjustment (not an effect): the re-placed layers and
+    // the new fit key arrive in the same render, so the stale initial fit
+    // must be discarded before this frame's fit fallback is computed.
+    setAppliedFitResetKey(fitResetKey);
+    setInitialFitPose(null);
+  }
 
   // This effect captures the first fitted camera pose for initial-fit mode and
   // clears it when the panel switches to another fit policy.
@@ -100,6 +109,17 @@ export function PointCloudPanel({
         ? frameFitPose
         : (initialFitPose ?? frameFitPose);
   const effectiveCameraPose = cameraPose ?? fittedCameraPose;
+  const handleRecenter = () => {
+    if (!frameFitPose) {
+      return;
+    }
+    // Recentering routes through the controlled-pose channel when a caller
+    // owns the camera (source "focus" counts as a deliberate change, so
+    // follow modes re-base their anchor onto the fitted view); the local
+    // initial-fit capture covers uncontrolled panels.
+    setInitialFitPose(frameFitPose);
+    onCameraPoseChange?.(frameFitPose, "focus");
+  };
   const cameraPoseSource = cameraPose
     ? "controlled"
     : fittedCameraPose
@@ -222,6 +242,21 @@ export function PointCloudPanel({
             <div key={line}>{line}</div>
           ))}
         </div>
+      ) : null}
+      {!canvasError && frameFitPose ? (
+        <button
+          aria-label="Recenter view"
+          onClick={handleRecenter}
+          style={styles.recenter}
+          title="Recenter the view on the current scene"
+          type="button"
+        >
+          <Icon
+            name={IconName.Fullscreen}
+            size={Size.Xs}
+            style={styles.noticesIcon}
+          />
+        </button>
       ) : null}
       <PanelNotices notices={notices} />
     </div>

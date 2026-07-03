@@ -187,6 +187,13 @@ export interface PointCloudPanelProps {
   readonly className?: string;
   readonly colorBy?: PointCloudColorBy;
   readonly fit?: "initial" | "frame" | "never";
+  /**
+   * Identity of the coordinate context the layers are expressed in (e.g.
+   * the world frame id). When it changes, a captured `initial` fit pose is
+   * discarded and re-captured from the re-placed layers, so the fit
+   * fallback never frames coordinates from a stale frame.
+   */
+  readonly fitResetKey?: string;
   readonly annotationLayers?: readonly SceneAnnotationPanelLayer[];
   readonly frustumLayers?: readonly CameraFrustumPanelLayer[];
   readonly gridLayers?: readonly GridPanelLayer[];
