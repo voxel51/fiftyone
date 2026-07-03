@@ -1508,6 +1508,23 @@ export function useRegisterMcapDataStream({
       if (activeTopics.length === 0) return;
       nextLookaheadRefreshTimeRef.current = timeSec;
 
+      // One all-active batch monopolizes the serial worker lane, so
+      // kilobyte-scale overlays (annotations, map layers, calibration,
+      // pose, location) used to wait behind the heavy point-cloud/image
+      // payloads — and so did the transform bootstrap that gates their
+      // placement. Fetch overlays as their own small batch first; the
+      // heavy render-blocking batch follows immediately.
+      const blockingSet = blockingTopicsRef.current;
+      const activeBlockingTopics = activeTopics.filter((topic) =>
+        blockingSet.has(topic),
+      );
+      const overlayTopics =
+        activeBlockingTopics.length > 0
+          ? activeTopics.filter((topic) => !blockingSet.has(topic))
+          : [];
+      const heavyTopics =
+        activeBlockingTopics.length > 0 ? activeBlockingTopics : activeTopics;
+
       const tick = currentIndex.nearestTick(timeSec);
       // Explicit undefined check — `0n` is falsy but a valid tick.
       if (tick !== undefined) {
@@ -1518,18 +1535,19 @@ export function useRegisterMcapDataStream({
           lastFrameRef.current,
           store,
         );
-        fetchCurrentFrame(tick, activeTopics);
+        if (overlayTopics.length > 0) {
+          fetchCurrentFrame(tick, overlayTopics);
+        }
+        fetchCurrentFrame(tick, heavyTopics);
       }
 
+      // The startup gate measures coverage over blocking topics, so its
+      // fill matches that set; overlay lookahead arrives through the
+      // regular background top-ups.
       fillMissingStartupBufferFrom({
-        activeTopics,
+        activeTopics: heavyTopics,
         collectMissingTicks: (startSec, endSec, maxTicks) =>
-          collectMissingTicksForTopics(
-            startSec,
-            endSec,
-            maxTicks,
-            activeTopics,
-          ),
+          collectMissingTicksForTopics(startSec, endSec, maxTicks, heavyTopics),
         fetchBatch,
         policy: PLAYBACK_POLICY,
         timeSec,
