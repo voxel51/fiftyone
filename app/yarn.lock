@@ -21605,8 +21605,8 @@ __metadata:
 
 "three@patch:three@npm%3A0.182.0#~/.yarn/patches/three-npm-0.182.0-018c941206.patch":
   version: 0.182.0
-  resolution: "three@patch:three@npm%3A0.182.0#~/.yarn/patches/three-npm-0.182.0-018c941206.patch::version=0.182.0&hash=17ebd7"
-  checksum: 10/2f2e02a74141a4e5d1d1e828894e6aa652416458b4b9acbb941d41986ba9c1401d29e7ef3cf86a454d711b53ab4ac7c0f570ff716161193db0f00f0542018623
+  resolution: "three@patch:three@npm%3A0.182.0#~/.yarn/patches/three-npm-0.182.0-018c941206.patch::version=0.182.0&hash=487bd6"
+  checksum: 10/74accb298525372636f3644777c5089d6a6c6bb7676c56367da7513ad60eeb809a18ac873462fa5ef68276ef0ef4420ef121650c39b29e22e5b61d76b8388abe
   languageName: node
   linkType: hard
 

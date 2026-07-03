@@ -1,17 +1,20 @@
 diff --git a/build/three.webgpu.js b/build/three.webgpu.js
-index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..846f9f673e2a09f08c8c93b890ba36bc7f74ee62 100644
+index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..a4a1ec9f25bfec4a24139095e407988492e85a71 100644
 --- a/build/three.webgpu.js
 +++ b/build/three.webgpu.js
-@@ -29251,7 +29251,7 @@ class RenderObject {
+@@ -29251,7 +29251,10 @@ class RenderObject {
  				// geometry attribute
  				attribute = geometry.getAttribute( nodeAttribute.name );
  
 -				attributesId[ nodeAttribute.name ] = attribute.version;
++				// TEMPORARY vendored backport of upstream #32700 (shipped after
++				// r182): store ids, not versions — needsGeometryUpdate compares
++				// ids, so the mismatch re-collected attributes every frame.
 +				attributesId[ nodeAttribute.name ] = attribute.id;
  
  			}
  
-@@ -30236,7 +30236,6 @@ class Geometries extends DataMap {
+@@ -30236,7 +30239,6 @@ class Geometries extends DataMap {
  			this.info.memory.geometries --;
  
  			const index = geometry.index;
@@ -19,11 +22,13 @@ index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..846f9f673e2a09f08c8c93b890ba36bc
  
  			if ( index !== null ) {
  
-@@ -30244,9 +30243,13 @@ class Geometries extends DataMap {
+@@ -30244,9 +30246,15 @@ class Geometries extends DataMap {
  
  			}
  
 -			for ( const geometryAttribute of geometryAttributes ) {
++			// TEMPORARY vendored fix — drop this patch once
++			// https://github.com/mrdoob/three.js/pull/33939 ships in a release.
 +			// Delete the disposed geometry's own attributes. Reading them off
 +			// the render object instead is wrong once the object was switched
 +			// to another geometry: the dispose of the old geometry would then
@@ -36,7 +41,7 @@ index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..846f9f673e2a09f08c8c93b890ba36bc
  			}
  
 diff --git a/src/renderers/common/Geometries.js b/src/renderers/common/Geometries.js
-index eab54b9a80c21ff31fd5a16667da822750d34897..bc68e7aa0ae897d1b90f95b131243501cf41e3e0 100644
+index eab54b9a80c21ff31fd5a16667da822750d34897..aa8390e17924476fefe05632f94fa739034f9106 100644
 --- a/src/renderers/common/Geometries.js
 +++ b/src/renderers/common/Geometries.js
 @@ -173,7 +173,6 @@ class Geometries extends DataMap {
@@ -47,11 +52,13 @@ index eab54b9a80c21ff31fd5a16667da822750d34897..bc68e7aa0ae897d1b90f95b131243501
  
  			if ( index !== null ) {
  
-@@ -181,9 +180,13 @@ class Geometries extends DataMap {
+@@ -181,9 +180,15 @@ class Geometries extends DataMap {
  
  			}
  
 -			for ( const geometryAttribute of geometryAttributes ) {
++			// TEMPORARY vendored fix — drop this patch once
++			// https://github.com/mrdoob/three.js/pull/33939 ships in a release.
 +			// Delete the disposed geometry's own attributes. Reading them off
 +			// the render object instead is wrong once the object was switched
 +			// to another geometry: the dispose of the old geometry would then
@@ -64,14 +71,17 @@ index eab54b9a80c21ff31fd5a16667da822750d34897..bc68e7aa0ae897d1b90f95b131243501
  			}
  
 diff --git a/src/renderers/common/RenderObject.js b/src/renderers/common/RenderObject.js
-index 702373ee77564ed8d2135d61a8708cf916193779..1ead4e1f5da8448c260bddaf87ed8ed031f9eb18 100644
+index 702373ee77564ed8d2135d61a8708cf916193779..cb414d9d14e8fd82a8fc36faf376028ed41fc6a2 100644
 --- a/src/renderers/common/RenderObject.js
 +++ b/src/renderers/common/RenderObject.js
-@@ -512,7 +512,7 @@ class RenderObject {
+@@ -512,7 +512,10 @@ class RenderObject {
  				// geometry attribute
  				attribute = geometry.getAttribute( nodeAttribute.name );
  
 -				attributesId[ nodeAttribute.name ] = attribute.version;
++				// TEMPORARY vendored backport of upstream #32700 (shipped after
++				// r182): store ids, not versions — needsGeometryUpdate compares
++				// ids, so the mismatch re-collected attributes every frame.
 +				attributesId[ nodeAttribute.name ] = attribute.id;
  
  			}
