@@ -3122,7 +3122,7 @@ __metadata:
     react-color: "npm:^2.19.3"
     rollup-plugin-external-globals: "npm:^0.6.1"
     styled-components: "npm:^6.1.18"
-    three: "npm:^0.182.0"
+    three: "patch:three@npm%3A0.182.0#~/.yarn/patches/three-npm-0.182.0-018c941206.patch"
     tunnel-rat: "npm:^0.1.2"
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
@@ -3208,7 +3208,8 @@ __metadata:
     lru-cache: "npm:^11.0.1"
     meshoptimizer: "npm:^0.22.0"
     protobufjs: "npm:^7.6.4"
-    three: "npm:^0.182.0"
+    three: "patch:three@npm%3A0.182.0#~/.yarn/patches/three-npm-0.182.0-018c941206.patch"
+    vite-plugin-relay: "npm:^2.0.0"
   languageName: unknown
   linkType: soft
 
@@ -21588,6 +21589,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"three@npm:0.182.0":
+  version: 0.182.0
+  resolution: "three@npm:0.182.0"
+  checksum: 10/37bbc10cea96e001ca7485cfe120e1bc8bcff0c448c492140ce9db8bd113efb6972d6cc71f8426a257eb569bf9aa136fd8887f803435d057ea963c815fe9248a
+  languageName: node
+  linkType: hard
+
 "three@npm:^0.170.0":
   version: 0.170.0
   resolution: "three@npm:0.170.0"
@@ -21595,10 +21603,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three@npm:^0.182.0":
+"three@patch:three@npm%3A0.182.0#~/.yarn/patches/three-npm-0.182.0-018c941206.patch":
   version: 0.182.0
-  resolution: "three@npm:0.182.0"
-  checksum: 10/37bbc10cea96e001ca7485cfe120e1bc8bcff0c448c492140ce9db8bd113efb6972d6cc71f8426a257eb569bf9aa136fd8887f803435d057ea963c815fe9248a
+  resolution: "three@patch:three@npm%3A0.182.0#~/.yarn/patches/three-npm-0.182.0-018c941206.patch::version=0.182.0&hash=3eefe8"
+  checksum: 10/48f4ed219bbec93c68783df4885bde3532812a37973f268a6058330e2e6318a7ea9dc105c077d048fa79bcee1fa992508f53e8111052188528321a8b9da309a3
   languageName: node
   linkType: hard
 

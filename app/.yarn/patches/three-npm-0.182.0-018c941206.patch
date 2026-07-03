@@ -1,0 +1,56 @@
+diff --git a/build/three.webgpu.js b/build/three.webgpu.js
+index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..51a60bc4893daaa8d6f4eb3c7281a9f7ca12d6af 100644
+--- a/build/three.webgpu.js
++++ b/build/three.webgpu.js
+@@ -30236,7 +30236,6 @@ class Geometries extends DataMap {
+ 			this.info.memory.geometries --;
+ 
+ 			const index = geometry.index;
+-			const geometryAttributes = renderObject.getAttributes();
+ 
+ 			if ( index !== null ) {
+ 
+@@ -30244,9 +30243,13 @@ class Geometries extends DataMap {
+ 
+ 			}
+ 
+-			for ( const geometryAttribute of geometryAttributes ) {
++			// Delete the disposed geometry's own attributes. Reading them off
++			// the render object instead is wrong once the object was switched
++			// to another geometry: the dispose of the old geometry would then
++			// delete the LIVE geometry's GPU buffers (and leak its own).
++			for ( const name of Object.keys( geometry.attributes ) ) {
+ 
+-				this.attributes.delete( geometryAttribute );
++				this.attributes.delete( geometry.attributes[ name ] );
+ 
+ 			}
+ 
+diff --git a/src/renderers/common/Geometries.js b/src/renderers/common/Geometries.js
+index eab54b9a80c21ff31fd5a16667da822750d34897..bc68e7aa0ae897d1b90f95b131243501cf41e3e0 100644
+--- a/src/renderers/common/Geometries.js
++++ b/src/renderers/common/Geometries.js
+@@ -173,7 +173,6 @@ class Geometries extends DataMap {
+ 			this.info.memory.geometries --;
+ 
+ 			const index = geometry.index;
+-			const geometryAttributes = renderObject.getAttributes();
+ 
+ 			if ( index !== null ) {
+ 
+@@ -181,9 +180,13 @@ class Geometries extends DataMap {
+ 
+ 			}
+ 
+-			for ( const geometryAttribute of geometryAttributes ) {
++			// Delete the disposed geometry's own attributes. Reading them off
++			// the render object instead is wrong once the object was switched
++			// to another geometry: the dispose of the old geometry would then
++			// delete the LIVE geometry's GPU buffers (and leak its own).
++			for ( const name of Object.keys( geometry.attributes ) ) {
+ 
+-				this.attributes.delete( geometryAttribute );
++				this.attributes.delete( geometry.attributes[ name ] );
+ 
+ 			}
+ 

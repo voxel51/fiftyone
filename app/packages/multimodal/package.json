@@ -78,7 +78,7 @@
         "lru-cache": "^11.0.1",
         "meshoptimizer": "^0.22.0",
         "protobufjs": "^7.6.4",
-        "three": "^0.182.0"
+        "three": "patch:three@npm%3A0.182.0#~/.yarn/patches/three-npm-0.182.0-018c941206.patch"
     },
     "devDependencies": {
         "@types/three": "^0.182.0",
