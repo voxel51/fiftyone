@@ -2,6 +2,7 @@ import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import {
   cameraPoseFromTrackingAnchor,
+  cameraTargetPoseFromFrameTransform,
   cameraTrackingAnchorFromPose,
   type Mcap3dCameraTargetPose,
   type Mcap3dFollowTrackingMode,
@@ -61,6 +62,40 @@ describe("mcap 3d camera tracking", () => {
     expect(followed.position[1]).toBeCloseTo(0);
     expect(followed.position[2]).toBeCloseTo(0);
     expect(followed.target).toEqual([0, 0, 0]);
+  });
+
+  it("treats a near-vertical heading forward axis as no rotation", () => {
+    const anchor = anchorFrom({
+      cameraPose: pose([1, 0, 0], [0, 0, 0]),
+      mode: "heading",
+      targetPose: targetPose([0, 0, 0]),
+    });
+
+    // Pitch the target straight up: its forward axis is vertical, so the
+    // heading yaw is undefined and the follow rotation degrades to identity.
+    const followed = cameraPoseFromTrackingAnchor(
+      anchor,
+      targetPose(
+        [0, 0, 0],
+        new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI / 2),
+      ),
+    );
+
+    expect(followed.position[0]).toBeCloseTo(1);
+    expect(followed.position[1]).toBeCloseTo(0);
+    expect(followed.position[2]).toBeCloseTo(0);
+  });
+
+  it("treats a degenerate zero rotation as identity for the target pose", () => {
+    const target = cameraTargetPoseFromFrameTransform({
+      rotation: new Quaternion(0, 0, 0, 0),
+      sourceFrameId: "base_link",
+      targetFrameId: "map",
+      translation: new Vector3(1, 2, 3),
+    });
+
+    expect(target.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(target.translation.toArray()).toEqual([1, 2, 3]);
   });
 });
 
