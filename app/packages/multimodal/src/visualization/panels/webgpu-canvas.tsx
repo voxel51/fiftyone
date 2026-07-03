@@ -17,6 +17,10 @@ type RendererWithDreiCompat = THREE.WebGPURenderer & {
   }>;
 };
 
+type RendererWithSetSize = {
+  setSize: (width: number, height: number, updateStyle?: boolean) => void;
+};
+
 // Playback canvases redraw frequently; default to CSS pixel density and let
 // inspection surfaces opt into higher DPR explicitly when they need it.
 const DEFAULT_DPR: Dpr = 1;
@@ -26,8 +30,12 @@ const DEFAULT_MAX_ANISOTROPY = 1;
 const styles: Record<string, CSSProperties> = {
   root: {
     height: "100%",
-    minHeight: 0,
-    minWidth: 0,
+    // A canvas measured at 0x0 mid-relayout makes the WebGPU backend
+    // configure a zero-size swapchain/depth texture, which poisons every
+    // command buffer until the next resize. Keep the drawing surface at
+    // least 1px so intermediate collapsed layouts can never hit that path.
+    minHeight: 1,
+    minWidth: 1,
     overflow: "hidden",
     position: "relative",
     width: "100%",
@@ -106,6 +114,15 @@ export function WebGpuCanvas({
     });
     rendererRef.current = renderer;
     rendererReadyRef.current = false;
+    // Hidden or mid-relayout hosts can measure 0x0; a zero-size setSize
+    // makes the WebGPU backend configure an empty swapchain/depth texture
+    // and every later command buffer fails validation until the next
+    // resize. Clamp the drawing surface to at least 1x1. setSize lives on
+    // the common Renderer base, which the resolved types don't surface.
+    const sizedRenderer = renderer as unknown as RendererWithSetSize;
+    const applySize = sizedRenderer.setSize.bind(renderer);
+    sizedRenderer.setSize = (width, height, updateStyle) =>
+      applySize(Math.max(1, width), Math.max(1, height), updateStyle);
     // Canvas may ask for a renderer before React rebuilds callbacks. Read the
     // color from a ref so renderer creation stays stable across color changes.
     prepareWebGpuRenderer(renderer, clearColorRef.current);
