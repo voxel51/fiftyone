@@ -49,6 +49,7 @@ import {
 } from "./use-mcap-3d-camera-tracking";
 import { useMcap3dFrameSelection } from "./use-mcap-3d-frame-selection";
 import { useMcap3dPoseTrajectories } from "./use-mcap-3d-pose-trajectories";
+import { useMcap3dViewShortcuts } from "./use-mcap-3d-view-shortcuts";
 import {
   playbackFrameForTopic,
   selectProvisionalPointCloudTopic,
@@ -309,6 +310,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     cameraTargetResolution,
     cameraTrackingNotice,
     controlledCameraPose,
+    getDisplayedCameraPose,
     handleCameraPoseChange,
     noteRenderedCameraPose,
     panelCameraPose,
@@ -324,6 +326,15 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     provisionalPlaybackFrame,
     restore: viewStateRestore,
     selectedTopicsKey,
+    worldFrameId,
+  });
+  useMcap3dViewShortcuts({
+    cameraTargetFrameId,
+    frameIds,
+    frameTransforms,
+    getDisplayedCameraPose,
+    onApplyCameraPose: handleCameraPoseChange,
+    playbackTimeNs,
     worldFrameId,
   });
   const producedNotices = useMemo<readonly McapHealthNotice[]>(
@@ -617,6 +628,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             annotationLayers={sceneAnnotationLayers}
             cameraPose={panelCameraPose}
             canvasSurface="modal-3d"
+            fitResetKey={worldFrameId}
             frustumLayers={frustumLayers}
             hudLines={hudLines}
             gridLayers={gridLayers}

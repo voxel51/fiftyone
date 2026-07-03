@@ -28,7 +28,7 @@ const PREFERRED_WORLD_FRAMES = [
   "world",
   "odom",
 ];
-const PREFERRED_CAMERA_TARGET_FRAMES = [
+export const PREFERRED_CAMERA_TARGET_FRAMES = [
   "base_link",
   "ego_vehicle",
   "ego",
