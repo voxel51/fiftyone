@@ -119,11 +119,64 @@ describe("PointCloudPanel", () => {
       | undefined;
 
     expect(positionAttribute).toBeDefined();
-    expect(Array.from(positionAttribute?.array ?? [])).toEqual([1, 2, 3]);
+    // The persistent geometry is capacity-padded; the tick's points occupy
+    // the draw-range prefix.
+    expect(Array.from(positionAttribute?.array.slice(0, 3) ?? [])).toEqual([
+      1, 2, 3,
+    ]);
 
     const transformGroups = Array.from(container.querySelectorAll("group"));
     expect(transformGroups.at(-1)?.getAttribute("position")).toBe("10,0,0");
     expect(transformGroups.at(-1)?.getAttribute("quaternion")).toBe("0,0,0,1");
+  });
+
+  it("reuses one geometry across playback ticks within a capacity bucket", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const setAttribute = vi.spyOn(
+      THREE.BufferGeometry.prototype,
+      "setAttribute",
+    );
+    const dispose = vi.spyOn(THREE.BufferGeometry.prototype, "dispose");
+
+    const layersFor = (positions: Float32Array, pointCount: number) => [
+      {
+        frame: {
+          fields: [],
+          kind: VISUALIZATION_KIND.POINT_CLOUD,
+          pointCount,
+          positions,
+        },
+        id: "/points",
+      },
+    ];
+
+    const { rerender } = render(
+      <PointCloudPanel
+        layers={layersFor(new Float32Array([1, 2, 3]), 1)}
+        showHud={false}
+      />,
+    );
+
+    const positionCall = setAttribute.mock.calls.find(
+      ([attributeName]) => attributeName === "position",
+    );
+    const positionAttribute = positionCall?.[1] as THREE.BufferAttribute;
+    const attributeCallsAfterMount = setAttribute.mock.calls.length;
+
+    rerender(
+      <PointCloudPanel
+        layers={layersFor(new Float32Array([4, 5, 6, 7, 8, 9]), 2)}
+        showHud={false}
+      />,
+    );
+
+    // Same capacity bucket: the tick lands in the existing attributes
+    // instead of building (and disposing) a new geometry.
+    expect(setAttribute.mock.calls.length).toBe(attributeCallsAfterMount);
+    expect(dispose).not.toHaveBeenCalled();
+    expect(Array.from(positionAttribute.array.slice(0, 6))).toEqual([
+      4, 5, 6, 7, 8, 9,
+    ]);
   });
 
   it("can hide the scene gizmo for compact previews", () => {
@@ -820,7 +873,9 @@ function renderPointCloudColors({
   );
   const colorAttribute = colorCall?.[1] as THREE.BufferAttribute | undefined;
 
-  return Array.from(colorAttribute?.array ?? []);
+  // The persistent geometry is capacity-padded; the tick's colors occupy
+  // the draw-range prefix.
+  return Array.from(colorAttribute?.array.slice(0, positions.length) ?? []);
 }
 
 function expectArrayCloseTo(
