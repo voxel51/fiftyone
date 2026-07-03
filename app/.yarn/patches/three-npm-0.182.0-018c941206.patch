@@ -1,7 +1,16 @@
 diff --git a/build/three.webgpu.js b/build/three.webgpu.js
-index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..51a60bc4893daaa8d6f4eb3c7281a9f7ca12d6af 100644
+index 31ff163d67f4cc5dec060a11bc7151c64f949fd9..846f9f673e2a09f08c8c93b890ba36bc7f74ee62 100644
 --- a/build/three.webgpu.js
 +++ b/build/three.webgpu.js
+@@ -29251,7 +29251,7 @@ class RenderObject {
+ 				// geometry attribute
+ 				attribute = geometry.getAttribute( nodeAttribute.name );
+ 
+-				attributesId[ nodeAttribute.name ] = attribute.version;
++				attributesId[ nodeAttribute.name ] = attribute.id;
+ 
+ 			}
+ 
 @@ -30236,7 +30236,6 @@ class Geometries extends DataMap {
  			this.info.memory.geometries --;
  
@@ -51,6 +60,19 @@ index eab54b9a80c21ff31fd5a16667da822750d34897..bc68e7aa0ae897d1b90f95b131243501
  
 -				this.attributes.delete( geometryAttribute );
 +				this.attributes.delete( geometry.attributes[ name ] );
+ 
+ 			}
+ 
+diff --git a/src/renderers/common/RenderObject.js b/src/renderers/common/RenderObject.js
+index 702373ee77564ed8d2135d61a8708cf916193779..1ead4e1f5da8448c260bddaf87ed8ed031f9eb18 100644
+--- a/src/renderers/common/RenderObject.js
++++ b/src/renderers/common/RenderObject.js
+@@ -512,7 +512,7 @@ class RenderObject {
+ 				// geometry attribute
+ 				attribute = geometry.getAttribute( nodeAttribute.name );
+ 
+-				attributesId[ nodeAttribute.name ] = attribute.version;
++				attributesId[ nodeAttribute.name ] = attribute.id;
  
  			}
  
