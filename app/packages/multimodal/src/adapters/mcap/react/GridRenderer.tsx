@@ -1,11 +1,19 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ImageAnnotationsOverlay } from "../../../visualization/panels/ImageAnnotationsOverlay";
 import {
   BitmapCanvasHost,
   BitmapImageView,
 } from "../../../visualization/panels/bitmap-image-view";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
+import { acquireGridLiveLease } from "../../../visualization/panels/webgpu-live-lease";
 import { renderPointCloudSnapshot } from "../../../visualization/panels/webgpu-snapshot-renderer";
 import type { McapGridPreviewFrame } from "../grid-preview";
 import classes from "./GridRenderer.module.css";
@@ -28,6 +36,10 @@ const GRID_ANNOTATION_STROKE_WIDTH = 1;
 // the one hovered cell staleness-marks every visible point-cloud cell, so
 // the debounce is what coalesces that churn into one serial snapshot burst.
 const SNAPSHOT_REFRESH_DEBOUNCE_MS = 250;
+// Hover-intent delay before a point-cloud cell requests a live-renderer
+// lease: scroll-past must not thrash leases/renderers (device churn is
+// exactly what the lease pool exists to prevent). Exported for tests.
+export const HOVER_INTENT_DELAY_MS = 120;
 
 /**
  * Grid renderer for MCAP-backed multimodal samples. Shows one camera
@@ -118,7 +130,8 @@ function PreviewFrame({ frame }: { readonly frame: McapGridPreviewFrame }) {
 /**
  * Point-cloud preview cell: a static snapshot bitmap at rest (rendered by
  * the shared offscreen snapshot renderer — zero per-cell WebGPU devices),
- * with the real live `PointCloudPanel` mounted only while hovered.
+ * with the real live `PointCloudPanel` mounted only while hovered AND
+ * holding one of the pool's capped live-renderer leases.
  */
 function PointCloudPreviewFrame({
   frame,
@@ -130,7 +143,15 @@ function PointCloudPreviewFrame({
   // canvas, and the bitmap host no-ops on an unchanged bitmap); the
   // debounce below is what keeps actual snapshot WORK coalesced.
   const [cameraPose, setCameraPose] = useMcapGridCameraPose();
-  const [hovered, setHovered] = useState(false);
+  // Two-step live gate: `wantsLive` flips once the pointer has dwelled
+  // past the intent delay; `live` flips only once the lease pool grants
+  // this cell one of its capped live-renderer slots.
+  const [wantsLive, setWantsLive] = useState(false);
+  const [live, setLive] = useState(false);
+  // Stable per-mount holder id keeps lease acquisition idempotent across
+  // StrictMode's double-invoked effects.
+  const holderId = useId();
+  const intentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [snapshot, setSnapshot] = useState<ImageBitmap | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const inFlightRef = useRef<AbortController | null>(null);
@@ -182,6 +203,44 @@ function PointCloudPreviewFrame({
       setSnapshot(bitmap);
     });
   }, []);
+
+  const cancelHoverIntent = useCallback(() => {
+    if (intentTimerRef.current !== null) {
+      clearTimeout(intentTimerRef.current);
+      intentTimerRef.current = null;
+    }
+  }, []);
+
+  // This effect holds this cell's live-renderer lease while the hover
+  // intent stands: acquire on wants-live, release in the cleanup
+  // (unhover or unmount). StrictMode's double-invoked effect is safe:
+  // the interleaved cleanup releases, the re-run re-acquires, and the
+  // pool is idempotent per holderId — the cell never holds two slots.
+  useEffect(() => {
+    if (!wantsLive) {
+      return undefined;
+    }
+
+    const lease = acquireGridLiveLease(holderId, () => {
+      // Stolen (a newer cell went live at the cap): unmount the live
+      // panel immediately and refresh the snapshot at the current shared
+      // pose — the snapshot host underneath is still mounted, so nothing
+      // flashes.
+      setLive(false);
+      requestSnapshot();
+    });
+    if (lease === null) {
+      // Denied (Phase 3 budget policy): stay on the snapshot.
+      return undefined;
+    }
+
+    setLive(true);
+    return () => {
+      // No-op if this lease was already revoked by a steal.
+      lease.release();
+      setLive(false);
+    };
+  }, [holderId, requestSnapshot, wantsLive]);
 
   // This effect requests a snapshot immediately on mount and whenever the
   // preview frame content changes (content changes are discrete, so no
@@ -236,30 +295,48 @@ function PointCloudPreviewFrame({
     };
   }, [requestSnapshot]);
 
-  // This effect aborts any in-flight snapshot on unmount; the committed
-  // bitmap itself is closed by the host's unmount cleanup.
+  // This effect cancels any pending hover intent and aborts any in-flight
+  // snapshot on unmount (the lease itself is released by the lease
+  // effect's own cleanup); the committed bitmap is closed by the host's
+  // unmount cleanup.
   useEffect(() => {
-    return () => inFlightRef.current?.abort();
-  }, []);
+    return () => {
+      cancelHoverIntent();
+      inFlightRef.current?.abort();
+    };
+  }, [cancelHoverIntent]);
 
   return (
     <div
       className={classes.imagePanel}
-      onPointerEnter={() => setHovered(true)}
+      onPointerEnter={() => {
+        // Arm the hover-intent timer; only a dwell past the delay asks
+        // the pool for a live-renderer lease.
+        cancelHoverIntent();
+        intentTimerRef.current = setTimeout(() => {
+          intentTimerRef.current = null;
+          setWantsLive(true);
+        }, HOVER_INTENT_DELAY_MS);
+      }}
       onPointerLeave={() => {
-        // Back to rest: drop the live panel and refresh the snapshot at
-        // the pose the user left the shared camera in.
-        setHovered(false);
-        requestSnapshot();
+        // Back to rest: a pending intent is simply cancelled; if the cell
+        // went live, dropping wantsLive releases the lease and unmounts
+        // the panel (the lease effect's cleanup), and the snapshot is
+        // refreshed at the pose the user left the shared camera in.
+        cancelHoverIntent();
+        setWantsLive(false);
+        if (live) {
+          requestSnapshot();
+        }
       }}
       ref={rootRef}
     >
       {/* The snapshot host stays mounted UNDERNEATH the live panel while
           hovered so unhovering never flashes an empty cell. */}
       <BitmapCanvasHost bitmap={snapshot} fit={IMAGE_FIT} />
-      {hovered ? (
-        // Hover comes alive: mount the real panel unconditionally (the
-        // cap-2 live-lease pool is Phase 2).
+      {live ? (
+        // Hover comes alive — but only with one of the pool's capped
+        // live-renderer leases; denied/stolen cells stay on the snapshot.
         <PointCloudPanel
           cameraPose={cameraPose}
           canvasSurface="grid-preview"
