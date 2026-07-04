@@ -1,4 +1,8 @@
-import { TileSettingsContent, useSetTileTitle } from "@fiftyone/tiling";
+import {
+  TileSettingsContent,
+  useSetTileTitle,
+  useTileDuplicator,
+} from "@fiftyone/tiling";
 import {
   Checkbox,
   Dropdown,
@@ -9,6 +13,7 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
+import { useStore } from "jotai";
 import React, { useEffect, useMemo, useState } from "react";
 import type {
   CameraCalibrationVisualization,
@@ -26,6 +31,12 @@ import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoo
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import { useMcapModalSettings } from "./mcap-modal-settings";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
+import {
+  chooseNextImageTopic,
+  mcapImageTileBindingsAtom,
+  useMcapImageTileHoverProps,
+  usePublishMcapImageTileBinding,
+} from "./mcap-tile-source-bindings";
 import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
 import { rankImageSources } from "./playback-layout";
 import settingsStyles from "./McapTile.settings.module.css";
@@ -54,19 +65,45 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const { imageLabelTopics, interpolate2dAnnotations, setImageLabelTopics } =
     useMcapModalSettings();
   const setTileTitle = useSetTileTitle();
-  // Open on the resolver-assigned source; tiles added by hand bind the
-  // densest stream instead of whatever happens to be first in the file.
+  const jotaiStore = useStore();
+  // Open on the resolver-assigned source; tiles added by hand (split
+  // buttons, add-tile menu) bind the densest stream no sibling tile is
+  // already showing — splitting repeatedly walks through the cameras.
+  // Read the bindings through the store, not useAtomValue: the default
+  // matters only at bind time, and subscribing would re-render every
+  // image tile whenever a sibling rebinds.
   const [topic, setTopic] = useState<string>(
-    () => initialSourceId ?? rankImageSources(images)[0]?.id ?? "",
+    () =>
+      initialSourceId ??
+      chooseNextImageTopic(
+        rankImageSources(images),
+        jotaiStore.get(mcapImageTileBindingsAtom),
+      ),
   );
 
-  // This effect binds the pane to the best image source once sources resolve.
+  // This effect binds the pane to the best undisplayed image source once
+  // sources resolve.
   useEffect(() => {
     if (topic && images.some((source) => source.id === topic)) return;
 
-    const nextTopic = rankImageSources(images)[0]?.id ?? "";
+    const nextTopic = chooseNextImageTopic(
+      rankImageSources(images),
+      jotaiStore.get(mcapImageTileBindingsAtom),
+    );
     if (nextTopic !== topic) setTopic(nextTopic);
-  }, [images, topic]);
+  }, [images, jotaiStore, topic]);
+
+  // Advertise this tile's stream so spawn points know what's on screen.
+  usePublishMcapImageTileBinding(topic);
+  // Hovering this tile lights up its camera frustum in the 3D scene.
+  const hoverProps = useMcapImageTileHoverProps(topic);
+
+  // How "Duplicate" clones this tile: same source, same title — unlike a
+  // split, which spawns a fresh tile on the next undisplayed stream.
+  useTileDuplicator(() => ({
+    render: () => <McapImageTile initialSourceId={topic} />,
+    title: images.find((s) => s.id === topic)?.label ?? "Image",
+  }));
 
   // This effect syncs the tile title with the selected image source.
   useEffect(() => {
@@ -215,6 +252,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
       {frame ? (
         <div
           className={styles.imageStack}
+          {...hoverProps}
           onPointerCancel={imagePanZoom.onPointerCancel}
           onPointerDown={imagePanZoom.onPointerDown}
           onPointerMove={imagePanZoom.onPointerMove}

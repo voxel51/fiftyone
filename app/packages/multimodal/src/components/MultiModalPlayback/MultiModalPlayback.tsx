@@ -4,6 +4,7 @@ import {
   TilingHeader,
   TilingInspectorSidebar,
   TilingProvider,
+  TilingZeroState,
   useTiling,
   type TilingHeaderCaption,
   type TilingTile,
@@ -47,6 +48,21 @@ export interface MultiModalPlaybackProps {
   fileName: string;
   /** Optional caption rendered below the filename in the top bar. */
   headerCaption?: TilingHeaderCaption;
+
+  /**
+   * Custom content for the add-tile menus (voodo Menu* primitives),
+   * shared by the header's add-tile dropdown and the empty-canvas zero
+   * state. Defaults to the registered tile kinds; pass a source-first
+   * catalog to let users pick actual streams.
+   */
+  addTileMenu?: ReactNode;
+
+  /**
+   * Extra controls appended to the timeline's controls row (after the
+   * transport buttons) — e.g. an absolute-timestamp readout. Composed
+   * with the timeline's own actions, not replacing them.
+   */
+  timelineExtraActions?: ReactNode;
 
   /** Tracks broadcast through the embedded TrackProvider. */
   tracks?: Track[];
@@ -160,6 +176,8 @@ export interface MultiModalPlaybackProps {
 const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   fileName,
   headerCaption,
+  addTileMenu,
+  timelineExtraActions,
   tracks,
   defaultPinnedTrackIds,
   initialTiles,
@@ -194,6 +212,8 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
             <Layout
               fileName={fileName}
               headerCaption={headerCaption}
+              addTileMenu={addTileMenu}
+              timelineExtraActions={timelineExtraActions}
               leftSidebar={leftSidebar}
               rightSidebar={rightSidebar}
               deselectFocusedTileOnRepeatSelect={
@@ -219,6 +239,8 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
 interface LayoutProps {
   fileName: string;
   headerCaption?: TilingHeaderCaption;
+  addTileMenu?: ReactNode;
+  timelineExtraActions?: ReactNode;
   leftSidebar: ReactNode;
   rightSidebar: ReactNode;
   deselectFocusedTileOnRepeatSelect: boolean;
@@ -236,6 +258,8 @@ interface LayoutProps {
 function Layout({
   fileName,
   headerCaption,
+  addTileMenu,
+  timelineExtraActions,
   leftSidebar,
   rightSidebar,
   deselectFocusedTileOnRepeatSelect,
@@ -249,8 +273,16 @@ function Layout({
   onTagDelete,
   className,
 }: LayoutProps) {
-  const { layout, tiles, focusedTileId, setLayout, setFocusedTileId } =
-    useTiling();
+  const {
+    layout,
+    tiles,
+    focusedTileId,
+    setLayout,
+    setFocusedTileId,
+    splitTile,
+    duplicateTile,
+    closeOtherTiles,
+  } = useTiling();
   // `null` (as opposed to undefined, which picks up the default sidebar)
   // removes the region outright: no drawer and no header toggle.
   const hasRightSidebar = rightSidebar !== null && rightSidebar !== undefined;
@@ -319,6 +351,7 @@ function Layout({
       <TilingHeader
         fileName={fileName}
         headerCaption={headerCaption}
+        addTileMenu={addTileMenu}
         leftSidebarOpen={leftOpen}
         rightSidebarOpen={rightOpen}
         onToggleLeftSidebar={() => updateLeftOpen(!leftOpen)}
@@ -361,6 +394,10 @@ function Layout({
             onChange={setLayout}
             focusedTileId={focusedTileId}
             onFocusTile={handleFocusTile}
+            onSplitTile={splitTile}
+            onDuplicateTile={duplicateTile}
+            onCloseOtherTiles={closeOtherTiles}
+            zeroStateView={<TilingZeroState addTileMenu={addTileMenu} />}
           />
         </div>
 
@@ -383,6 +420,7 @@ function Layout({
       </div>
 
       <TemporalTagTimeline
+        extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}
         onEventDelete={onTagDelete}
       />
