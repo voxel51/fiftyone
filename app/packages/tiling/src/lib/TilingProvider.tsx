@@ -15,7 +15,7 @@ import {
   autoLayout as autoLayoutFn,
   collectTileIds,
 } from "../views/MosaicGrid/MosaicGrid";
-import { tileSelectionAtom } from "./atoms";
+import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
 import type { AddTileOptions, TilingContextValue, TilingTile } from "./types";
 
 export type { AddTileOptions, TilingContextValue, TilingTile } from "./types";
@@ -125,7 +125,12 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   const addTile = useCallback(
     (
       tile: TilingTile,
-      { idPrefix = "tile", targetId, focus = true }: AddTileOptions = {},
+      {
+        idPrefix = "tile",
+        targetId,
+        focus = true,
+        direction,
+      }: AddTileOptions = {},
     ): string => {
       const id = `${idPrefix}-${counterRef.current++}`;
       setTiles((prev) => ({ ...prev, [id]: tile }));
@@ -133,11 +138,96 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       // setFocusedTileId — that would violate updater purity).
       const target =
         targetId !== undefined ? targetId : focusedTileIdRef.current;
-      setLayoutState((prev) => addTileToLayout(prev, id, target));
+      setLayoutState((prev) => addTileToLayout(prev, id, target, direction));
       if (focus) setFocusedTileId(id);
       return id;
     },
     [],
+  );
+
+  // Per-tile duplicate factories, registered by tile bodies (see
+  // `useTileDuplicator`). A ref, not state: registration happens in
+  // effects and must never re-render the provider.
+  const duplicatorsRef = useRef(new Map<string, () => TilingTile>());
+
+  const registerTileDuplicator = useCallback(
+    (tileId: string, factory: () => TilingTile) => {
+      duplicatorsRef.current.set(tileId, factory);
+      return () => {
+        if (duplicatorsRef.current.get(tileId) === factory) {
+          duplicatorsRef.current.delete(tileId);
+        }
+      };
+    },
+    [],
+  );
+
+  /**
+   * Fresh same-kind tile from the registry, keyed by the id's
+   * `<type>-<n>` prefix. `null` when the kind was never registered.
+   */
+  const freshTileOfSameKind = useCallback(
+    (tileId: string): { tile: TilingTile; idPrefix: string } | null => {
+      const type = tileTypeFromId(tileId);
+      if (!type) return null;
+      const entry = jotaiStore
+        .get(registeredTilesAtom)
+        .find((registered) => registered.type === type);
+      if (!entry) return null;
+      const TileComponent = entry.Tile;
+      return {
+        idPrefix: entry.type,
+        tile: { title: entry.typeLabel, render: () => <TileComponent /> },
+      };
+    },
+    [jotaiStore],
+  );
+
+  const splitTile = useCallback(
+    (tileId: string, direction: "row" | "column"): string | null => {
+      // A split spawns a FRESH instance (the new tile picks its own
+      // default content — e.g. the next undisplayed stream), unlike
+      // duplicate, which clones the origin's bindings.
+      const fresh = freshTileOfSameKind(tileId);
+      if (fresh) {
+        return addTile(fresh.tile, {
+          direction,
+          idPrefix: fresh.idPrefix,
+          targetId: tileId,
+        });
+      }
+      const factory = duplicatorsRef.current.get(tileId);
+      if (!factory) return null;
+      return addTile(factory(), {
+        direction,
+        idPrefix: tileTypeFromId(tileId) ?? "tile",
+        targetId: tileId,
+      });
+    },
+    [addTile, freshTileOfSameKind],
+  );
+
+  const duplicateTile = useCallback(
+    (tileId: string): string | null => {
+      const factory = duplicatorsRef.current.get(tileId);
+      const tile = factory ? factory() : freshTileOfSameKind(tileId)?.tile;
+      if (!tile) return null;
+      return addTile(tile, {
+        idPrefix: tileTypeFromId(tileId) ?? "tile",
+        targetId: tileId,
+      });
+    },
+    [addTile, freshTileOfSameKind],
+  );
+
+  const closeOtherTiles = useCallback(
+    (tileId: string) => {
+      // Collapsing the tree to the single leaf lets setLayout's
+      // reconciliation drop the other tiles and their atom entries.
+      setLayout(tileId);
+      setFocusedTileId(tileId);
+    },
+    [setLayout],
   );
 
   const removeTile = useCallback((id: string) => {
@@ -188,6 +278,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       addTile,
       removeTile,
       autoLayout,
+      splitTile,
+      duplicateTile,
+      closeOtherTiles,
+      registerTileDuplicator,
       settingsSlotEl,
       setSettingsSlotEl,
       setTileTitle,
@@ -200,6 +294,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       addTile,
       removeTile,
       autoLayout,
+      splitTile,
+      duplicateTile,
+      closeOtherTiles,
+      registerTileDuplicator,
       settingsSlotEl,
       setTileTitle,
     ],
@@ -211,6 +309,15 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     </JotaiProvider>
   );
 };
+
+/**
+ * The `<type>` prefix of a `<type>-<n>` mosaic leaf id (`camera-2` →
+ * `camera`), or `null` when the id doesn't follow the convention.
+ */
+export function tileTypeFromId(tileId: string): string | null {
+  const match = /^(.+)-\d+$/.exec(tileId);
+  return match ? match[1] : null;
+}
 
 /**
  * Remove a tile id from the layout tree. If a split node ends up with

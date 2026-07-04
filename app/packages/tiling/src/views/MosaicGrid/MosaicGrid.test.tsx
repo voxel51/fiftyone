@@ -1,10 +1,17 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import React from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { TilingProvider } from "../../lib/TilingProvider";
 import MosaicGrid, {
   addTileToLayout,
   autoLayout,
   collectTileIds,
 } from "./MosaicGrid";
+
+// Tile windows read tile state (titles) through the tiling context.
+function renderGrid(grid: React.ReactElement) {
+  return render(<TilingProvider>{grid}</TilingProvider>);
+}
 
 describe("MosaicGrid pure helpers", () => {
   describe("autoLayout", () => {
@@ -87,6 +94,37 @@ describe("MosaicGrid pure helpers", () => {
         'Tile id "a" already exists in layout',
       );
     });
+
+    it("honors an explicit direction over the aspect-ratio heuristic", () => {
+      // A single full-canvas leaf is square-ish, so the heuristic would
+      // pick "row"; the forced direction must win.
+      expect(addTileToLayout("a", "b", "a", "column")).toEqual({
+        direction: "column",
+        first: "a",
+        second: "b",
+        splitPercentage: 50,
+      });
+
+      // And the reverse: a leaf inside a row split is taller than wide
+      // (heuristic → "column"), so forcing "row" must override it.
+      const tall = addTileToLayout(
+        { direction: "row", first: "a", second: "b", splitPercentage: 50 },
+        "c",
+        "b",
+        "row",
+      );
+      expect(tall).toEqual({
+        direction: "row",
+        first: "a",
+        second: {
+          direction: "row",
+          first: "b",
+          second: "c",
+          splitPercentage: 50,
+        },
+        splitPercentage: 50,
+      });
+    });
   });
 });
 
@@ -99,5 +137,131 @@ describe("MosaicGrid component", () => {
     expect(screen.getByTestId("mosaic-grid-empty").textContent).toBe(
       "No tiles open",
     );
+  });
+
+  it("renders a custom zero state when zeroStateView is provided", () => {
+    render(
+      <MosaicGrid
+        tiles={{}}
+        value={null}
+        onChange={() => {}}
+        zeroStateView={<button type="button">spawn something</button>}
+      />,
+    );
+    expect(screen.getByText("spawn something")).toBeTruthy();
+    expect(screen.queryByText("No tiles open")).toBeNull();
+  });
+
+  describe("tile actions", () => {
+    const tiles = {
+      "cam-1": { title: "CAM_FRONT", render: () => <div /> },
+    };
+
+    it("fires onSplitTile from the header split buttons", () => {
+      const onSplitTile = vi.fn();
+      renderGrid(
+        <MosaicGrid
+          tiles={tiles}
+          value="cam-1"
+          onChange={() => {}}
+          onSplitTile={onSplitTile}
+        />,
+      );
+      fireEvent.click(screen.getByTestId("tile-header-split-right"));
+      expect(onSplitTile).toHaveBeenCalledWith("cam-1", "row");
+      fireEvent.click(screen.getByTestId("tile-header-split-down"));
+      expect(onSplitTile).toHaveBeenCalledWith("cam-1", "column");
+    });
+
+    it("hides the split buttons when onSplitTile is not wired", () => {
+      renderGrid(
+        <MosaicGrid tiles={tiles} value="cam-1" onChange={() => {}} />,
+      );
+      expect(screen.queryByTestId("tile-header-split-right")).toBeNull();
+      expect(screen.queryByTestId("tile-header-split-down")).toBeNull();
+    });
+
+    it("offers duplicate and close-others in the header context menu", () => {
+      const onDuplicateTile = vi.fn();
+      const onCloseOtherTiles = vi.fn();
+      renderGrid(
+        <MosaicGrid
+          tiles={tiles}
+          value="cam-1"
+          onChange={() => {}}
+          onDuplicateTile={onDuplicateTile}
+          onCloseOtherTiles={onCloseOtherTiles}
+        />,
+      );
+
+      fireEvent.contextMenu(screen.getByTestId("tile-header"));
+      fireEvent.click(screen.getByText("Duplicate"));
+      expect(onDuplicateTile).toHaveBeenCalledWith("cam-1");
+
+      // The menu dismisses on selection; reopen for the next action.
+      fireEvent.contextMenu(screen.getByTestId("tile-header"));
+      fireEvent.click(screen.getByText("Close others"));
+      expect(onCloseOtherTiles).toHaveBeenCalledWith("cam-1");
+    });
+
+    it("omits spawn items from the context menu when handlers are absent", () => {
+      renderGrid(
+        <MosaicGrid tiles={tiles} value="cam-1" onChange={() => {}} />,
+      );
+      fireEvent.contextMenu(screen.getByTestId("tile-header"));
+      expect(screen.queryByText("Duplicate")).toBeNull();
+      expect(screen.queryByText("Split right")).toBeNull();
+      expect(screen.queryByText("Close others")).toBeNull();
+      // The window-state actions are always offered.
+      expect(screen.getByText("Fullscreen")).toBeTruthy();
+      expect(screen.getByText("Close")).toBeTruthy();
+    });
+
+    it("selects the tile when the header itself is clicked", () => {
+      const onFocusTile = vi.fn();
+      renderGrid(
+        <MosaicGrid
+          tiles={tiles}
+          value="cam-1"
+          onChange={() => {}}
+          onFocusTile={onFocusTile}
+        />,
+      );
+      fireEvent.click(screen.getByTestId("tile-header"));
+      expect(onFocusTile).toHaveBeenCalledWith("cam-1", "select");
+    });
+
+    it("does not double-fire a select when a header button is clicked", () => {
+      const onFocusTile = vi.fn();
+      renderGrid(
+        <MosaicGrid
+          tiles={tiles}
+          value="cam-1"
+          onChange={() => {}}
+          onFocusTile={onFocusTile}
+        />,
+      );
+      // Fullscreen focuses through its action callback; the bubbling
+      // click must not ALSO count as a header select (that would toggle
+      // an already-focused tile back off).
+      fireEvent.click(screen.getByTestId("tile-header-fullscreen"));
+      expect(onFocusTile).toHaveBeenCalledWith("cam-1", "action");
+      expect(onFocusTile).not.toHaveBeenCalledWith("cam-1", "select");
+    });
+
+    it("focuses the tile with action semantics on right-click", () => {
+      const onFocusTile = vi.fn();
+      renderGrid(
+        <MosaicGrid
+          tiles={tiles}
+          value="cam-1"
+          onChange={() => {}}
+          onFocusTile={onFocusTile}
+        />,
+      );
+      fireEvent.contextMenu(screen.getByTestId("tile-header"));
+      expect(onFocusTile).toHaveBeenCalledWith("cam-1", "action");
+      expect(onFocusTile).not.toHaveBeenCalledWith("cam-1", "select");
+    });
   });
 });

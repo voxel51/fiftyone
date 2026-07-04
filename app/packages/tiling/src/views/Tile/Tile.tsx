@@ -9,28 +9,61 @@ import {
 } from "@voxel51/voodo";
 import clsx from "clsx";
 import React from "react";
+import { SplitDownIcon, SplitRightIcon, SplitTileIcon } from "./tile-icons";
 import styles from "./Tile.module.css";
 
 export interface TileHeaderProps {
   title: string;
   onClose: () => void;
   onFullscreen: () => void;
+  /** Spawn a sibling tile to the right. Omit to hide the button. */
+  onSplitRight?: () => void;
+  /** Spawn a sibling tile below. Omit to hide the button. */
+  onSplitDown?: () => void;
+  /**
+   * Fired when the header itself is clicked — clicks on the header's
+   * buttons are excluded, since those manage focus through their own
+   * callbacks. Hosts use it to select the tile like a body click.
+   */
+  onSelect?: () => void;
   className?: string;
 }
 
 /**
- * The header bar for a tile — title + the locked-down action set
- * (fullscreen + close). Exported separately from `Tile` so the mosaic
- * grid can use it as react-mosaic's `renderToolbar` (the toolbar is the
- * drag source — the entire header becomes the drag handle).
+ * The header bar for a tile — title + the action set (split right/down
+ * when the host wires them, fullscreen, close). Exported separately from
+ * `Tile` so the mosaic grid can use it as react-mosaic's `renderToolbar`
+ * (the toolbar is the drag source — the entire header becomes the drag
+ * handle). The split actions rest as ONE direction-neutral glyph (so the
+ * affordance is always advertised) and resolve into the split-right /
+ * split-down pair on header hover or keyboard focus; fullscreen and
+ * close stay persistent.
  */
 export const TileHeader: React.FC<TileHeaderProps> = ({
   title,
   onClose,
   onFullscreen,
+  onSplitRight,
+  onSplitDown,
+  onSelect,
   className,
 }) => (
-  <div className={clsx(styles.header, className)} data-testid="tile-header">
+  // onClick (not pointerdown — a focus re-render between pointerdown and
+  // click swallows button clicks) and scoped to this element: voodo's
+  // ContextMenu opens via a programmatic click on a hidden node OUTSIDE
+  // this header, which must not read as a select.
+  <div
+    className={clsx(styles.header, className)}
+    data-testid="tile-header"
+    onClick={
+      onSelect
+        ? (event) => {
+            if ((event.target as HTMLElement).closest("button")) return;
+            onSelect();
+          }
+        : undefined
+    }
+  >
     <Text
       variant={TextVariant.Xs}
       color={TextColor.Secondary}
@@ -40,6 +73,47 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
       {title}
     </Text>
     <div className={styles.actions}>
+      {(onSplitRight || onSplitDown) && (
+        <>
+          {/* Decorative stand-in, never interactive: by the time a
+              pointer could click it, hover has already swapped in the
+              real buttons. A Button (focus-skipped) keeps its box
+              metrics identical to theirs. */}
+          <Button
+            variant={Variant.Borderless}
+            size={Size.Xs}
+            className={styles.splitHint}
+            data-testid="tile-header-split-hint"
+            leadingIcon={SplitTileIcon}
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+          <div className={styles.splitActions}>
+            {onSplitRight && (
+              <Button
+                variant={Variant.Borderless}
+                size={Size.Xs}
+                data-testid="tile-header-split-right"
+                leadingIcon={SplitRightIcon}
+                onClick={onSplitRight}
+                aria-label="Split right"
+                title="Split right"
+              />
+            )}
+            {onSplitDown && (
+              <Button
+                variant={Variant.Borderless}
+                size={Size.Xs}
+                data-testid="tile-header-split-down"
+                leadingIcon={SplitDownIcon}
+                onClick={onSplitDown}
+                aria-label="Split down"
+                title="Split down"
+              />
+            )}
+          </div>
+        </>
+      )}
       <Button
         variant={Variant.Borderless}
         size={Size.Xs}

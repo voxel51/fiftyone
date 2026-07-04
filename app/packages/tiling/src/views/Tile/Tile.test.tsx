@@ -39,6 +39,69 @@ describe("Tile chrome", () => {
       fireEvent.click(screen.getByTestId("tile-header-fullscreen"));
       expect(onFullscreen).toHaveBeenCalledOnce();
     });
+
+    it("hides the split affordance unless its handlers are wired", () => {
+      render(
+        <TileHeader title="t" onClose={() => {}} onFullscreen={() => {}} />,
+      );
+      expect(screen.queryByTestId("tile-header-split-hint")).toBeNull();
+      expect(screen.queryByTestId("tile-header-split-right")).toBeNull();
+      expect(screen.queryByTestId("tile-header-split-down")).toBeNull();
+    });
+
+    it("fires onSelect for header clicks but not for its buttons", () => {
+      const onSelect = vi.fn();
+      render(
+        <TileHeader
+          title="t"
+          onClose={() => {}}
+          onFullscreen={() => {}}
+          onSelect={onSelect}
+        />,
+      );
+      fireEvent.click(screen.getByTestId("tile-header"));
+      expect(onSelect).toHaveBeenCalledOnce();
+      // Buttons manage focus through their own callbacks; the bubbling
+      // click must not also count as a select.
+      fireEvent.click(screen.getByTestId("tile-header-fullscreen"));
+      expect(onSelect).toHaveBeenCalledOnce();
+    });
+
+    it("advertises the split actions with a non-interactive resting glyph", () => {
+      render(
+        <TileHeader
+          title="t"
+          onClose={() => {}}
+          onFullscreen={() => {}}
+          onSplitRight={() => {}}
+          onSplitDown={() => {}}
+        />,
+      );
+      const hint = screen.getByTestId("tile-header-split-hint");
+      // Decorative stand-in: skipped by both screen readers and tabbing.
+      expect(hint.getAttribute("aria-hidden")).toBe("true");
+      expect(hint.getAttribute("tabindex")).toBe("-1");
+    });
+
+    it("fires the split callbacks from their buttons", () => {
+      const onSplitRight = vi.fn();
+      const onSplitDown = vi.fn();
+      render(
+        <TileHeader
+          title="t"
+          onClose={() => {}}
+          onFullscreen={() => {}}
+          onSplitRight={onSplitRight}
+          onSplitDown={onSplitDown}
+        />,
+      );
+      expect(screen.getByLabelText("Split right")).toBeTruthy();
+      expect(screen.getByLabelText("Split down")).toBeTruthy();
+      fireEvent.click(screen.getByTestId("tile-header-split-right"));
+      expect(onSplitRight).toHaveBeenCalledOnce();
+      fireEvent.click(screen.getByTestId("tile-header-split-down"));
+      expect(onSplitDown).toHaveBeenCalledOnce();
+    });
   });
 
   describe("Tile", () => {

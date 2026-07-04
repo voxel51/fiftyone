@@ -12,9 +12,10 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useMemo, type ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import { useTileTypes } from "../../lib/use-tile-state";
 import { useTiling } from "../../lib/TilingProvider";
+import { DefaultAddTileMenuItems } from "../AddTileMenu/DefaultAddTileMenuItems";
 import { SidebarLeftIcon, SidebarRightIcon } from "./tiling-header-icons";
 import styles from "./TilingHeader.module.css";
 
@@ -30,6 +31,12 @@ export type TilingHeaderCaption =
 export interface TilingHeaderProps {
   fileName: string;
   headerCaption?: TilingHeaderCaption;
+  /**
+   * Custom content for the add-tile menu (use the voodo Menu*
+   * primitives). Replaces the default kind-based items — hosts use this
+   * to offer a source-first catalog. "Auto Layout" is always appended.
+   */
+  addTileMenu?: ReactNode;
   leftSidebarOpen?: boolean;
   rightSidebarOpen?: boolean;
   onToggleLeftSidebar?: () => void;
@@ -39,13 +46,14 @@ export interface TilingHeaderProps {
 const TilingHeader: React.FC<TilingHeaderProps> = ({
   fileName,
   headerCaption,
+  addTileMenu,
   leftSidebarOpen,
   rightSidebarOpen,
   onToggleLeftSidebar,
   onToggleRightSidebar,
 }) => {
   const types = useTileTypes();
-  const { addTile, autoLayout, focusedTileId, tiles } = useTiling();
+  const { autoLayout, focusedTileId, tiles } = useTiling();
   const focusedTileTitle =
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId].title : null;
   const caption =
@@ -53,38 +61,18 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
       ? headerCaption({ focusedTileId, focusedTileTitle })
       : headerCaption;
 
-  const tileMenu = useMemo(() => {
-    if (types.length === 0) return null;
-    return (
-      <>
-        {types.map((entry) => {
-          const TileComponent = entry.Tile;
-          return (
-            <MenuIconTextItem
-              key={entry.type}
-              icon={entry.icon}
-              text={entry.typeLabel}
-              onClick={() => {
-                addTile(
-                  {
-                    title: entry.typeLabel,
-                    render: () => <TileComponent />,
-                  },
-                  { idPrefix: entry.type },
-                );
-              }}
-            />
-          );
-        })}
-        <MenuSeparator />
-        <MenuIconTextItem
-          icon={IconName.Refresh}
-          text="Auto Layout"
-          onClick={autoLayout}
-        />
-      </>
-    );
-  }, [types, addTile, autoLayout]);
+  const hasTileMenu = addTileMenu != null || types.length > 0;
+  const tileMenu = hasTileMenu ? (
+    <>
+      {addTileMenu ?? <DefaultAddTileMenuItems />}
+      <MenuSeparator />
+      <MenuIconTextItem
+        icon={IconName.Refresh}
+        text="Auto Layout"
+        onClick={autoLayout}
+      />
+    </>
+  ) : null;
 
   return (
     <div className={styles.root}>

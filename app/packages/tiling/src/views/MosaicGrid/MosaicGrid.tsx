@@ -1,3 +1,9 @@
+import {
+  ContextMenu,
+  IconName,
+  MenuIconTextItem,
+  MenuSeparator,
+} from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -13,6 +19,7 @@ import "react-mosaic-component/react-mosaic-component.css";
 import { TileIdScope } from "../../lib/TilingProvider";
 import { useTileTitle } from "../../lib/use-tile-state";
 import { TileHeader } from "../Tile/Tile";
+import { SplitDownIcon, SplitRightIcon } from "../Tile/tile-icons";
 import styles from "./MosaicGrid.module.css";
 
 /**
@@ -40,6 +47,28 @@ export interface MosaicGridProps {
   focusedTileId?: string | null;
   /** Called when the user selects a tile or invokes one of its actions. */
   onFocusTile?: (id: string, reason: "select" | "action") => void;
+  /**
+   * Spawn a sibling tile beside `id` (`"row"` = right, `"column"` =
+   * below). Wiring this enables the header split buttons and the
+   * matching context-menu items — pass `useTiling().splitTile`.
+   */
+  onSplitTile?: (id: string, direction: "row" | "column") => void;
+  /**
+   * Clone tile `id` next to itself. Enables the "Duplicate" context-menu
+   * item — pass `useTiling().duplicateTile`.
+   */
+  onDuplicateTile?: (id: string) => void;
+  /**
+   * Close every tile except `id`. Enables the "Close others"
+   * context-menu item — pass `useTiling().closeOtherTiles`.
+   */
+  onCloseOtherTiles?: (id: string) => void;
+  /**
+   * Rendered when the layout is empty. Defaults to a muted "No tiles
+   * open" note; pass something actionable (e.g. `TilingZeroState`) to
+   * make the empty canvas a spawn point.
+   */
+  zeroStateView?: React.ReactElement;
   className?: string;
 }
 
@@ -48,8 +77,14 @@ interface TileWindowProps {
   tile: MosaicTileConfig;
   isFocused: boolean;
   onFocus: () => void;
+  /** Focus with "action" semantics (never toggles off) — right-click. */
+  onActionFocus: () => void;
   onClose: () => void;
   onFullscreen: () => void;
+  onSplitRight?: () => void;
+  onSplitDown?: () => void;
+  onDuplicate?: () => void;
+  onCloseOthers?: () => void;
 }
 
 const TileWindow: React.FC<TileWindowProps> = ({
@@ -57,11 +92,62 @@ const TileWindow: React.FC<TileWindowProps> = ({
   tile,
   isFocused,
   onFocus,
+  onActionFocus,
   onClose,
   onFullscreen,
+  onSplitRight,
+  onSplitDown,
+  onDuplicate,
+  onCloseOthers,
 }) => {
   const titleOverride = useTileTitle();
   const title = titleOverride ?? tile.title;
+  const hasSpawnActions = Boolean(onSplitRight || onSplitDown || onDuplicate);
+  const contextMenu = (
+    <>
+      {onSplitRight && (
+        <MenuIconTextItem
+          icon={<SplitRightIcon />}
+          text="Split right"
+          onClick={onSplitRight}
+        />
+      )}
+      {onSplitDown && (
+        <MenuIconTextItem
+          icon={<SplitDownIcon />}
+          text="Split down"
+          onClick={onSplitDown}
+        />
+      )}
+      {onDuplicate && (
+        <MenuIconTextItem
+          icon={IconName.ContentCopy}
+          text="Duplicate"
+          onClick={onDuplicate}
+        />
+      )}
+      {hasSpawnActions && <MenuSeparator />}
+      <MenuIconTextItem
+        icon={IconName.Fullscreen}
+        text="Fullscreen"
+        onClick={onFullscreen}
+      />
+      <MenuSeparator />
+      {onCloseOthers && (
+        <MenuIconTextItem
+          icon={IconName.Remove}
+          text="Close others"
+          onClick={onCloseOthers}
+        />
+      )}
+      <MenuIconTextItem
+        destructive
+        icon={IconName.Close}
+        text="Close"
+        onClick={onClose}
+      />
+    </>
+  );
   return (
     <MosaicWindow<string>
       path={path}
@@ -72,12 +158,22 @@ const TileWindow: React.FC<TileWindowProps> = ({
         // react-mosaic's react-dnd integration needs a native DOM node at
         // the toolbar root to attach the drag source ref. TileHeader is a
         // React FC, so we wrap it in a plain div the connector can grab.
-        <div className={styles.toolbarHeader}>
-          <TileHeader
-            title={title}
-            onClose={onClose}
-            onFullscreen={onFullscreen}
-          />
+        // The right-click menu wraps the header INSIDE that root so the
+        // drag connector's node stays untouched. Right-click focuses with
+        // "action" semantics so the settings sidebar shows the tile the
+        // menu is about to act on; plain header clicks select via
+        // TileHeader's own onSelect.
+        <div className={styles.toolbarHeader} onContextMenu={onActionFocus}>
+          <ContextMenu className={styles.toolbarContextMenu} menu={contextMenu}>
+            <TileHeader
+              title={title}
+              onClose={onClose}
+              onFullscreen={onFullscreen}
+              onSplitRight={onSplitRight}
+              onSplitDown={onSplitDown}
+              onSelect={onFocus}
+            />
+          </ContextMenu>
         </div>
       )}
     >
@@ -106,6 +202,10 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
   onChange,
   focusedTileId,
   onFocusTile,
+  onSplitTile,
+  onDuplicateTile,
+  onCloseOtherTiles,
+  zeroStateView,
   className,
 }) => {
   const [expandedTileId, setExpandedTileId] = useState<string | null>(null);
@@ -175,6 +275,20 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
       focusForAction();
       handleExpand(id, path);
     };
+    // Spawn actions skip focusForAction: addTile focuses the new tile,
+    // and pre-focusing the origin would only cause an extra flicker.
+    const handleSplitRight = onSplitTile
+      ? () => onSplitTile(id, "row")
+      : undefined;
+    const handleSplitDown = onSplitTile
+      ? () => onSplitTile(id, "column")
+      : undefined;
+    const handleDuplicate = onDuplicateTile
+      ? () => onDuplicateTile(id)
+      : undefined;
+    const handleCloseOthers = onCloseOtherTiles
+      ? () => onCloseOtherTiles(id)
+      : undefined;
 
     return (
       <TileIdScope tileId={id}>
@@ -183,8 +297,13 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
           tile={tile}
           isFocused={isFocused}
           onFocus={focusForSelect}
+          onActionFocus={focusForAction}
           onClose={handleClose}
           onFullscreen={handleFullscreen}
+          onSplitRight={handleSplitRight}
+          onSplitDown={handleSplitDown}
+          onDuplicate={handleDuplicate}
+          onCloseOthers={handleCloseOthers}
         />
       </TileIdScope>
     );
@@ -198,9 +317,18 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
         onChange={onChange}
         renderTile={renderWindow}
         zeroStateView={
-          <div className={styles.empty} data-testid="mosaic-grid-empty">
-            No tiles open
-          </div>
+          zeroStateView !== undefined ? (
+            <div
+              className={styles.zeroStateSlot}
+              data-testid="mosaic-grid-empty"
+            >
+              {zeroStateView}
+            </div>
+          ) : (
+            <div className={styles.empty} data-testid="mosaic-grid-empty">
+              No tiles open
+            </div>
+          )
         }
       />
     </div>
@@ -285,14 +413,17 @@ function replaceAtPath(
  * useful for "new tile appears next to the focused one". Otherwise
  * (or if the target id isn't present), the largest tile is split.
  *
- * Split direction follows the target leaf's longer axis so sub-tiles stay
- * roughly square — wider-than-tall splits as a `row` (vertical line),
- * taller-than-wide splits as a `column` (horizontal line).
+ * Without an explicit `direction`, the split follows the target leaf's
+ * longer axis so sub-tiles stay roughly square — wider-than-tall splits
+ * as a `row` (vertical line), taller-than-wide splits as a `column`
+ * (horizontal line). Pass `direction` to force it (split right = `row`,
+ * split down = `column`).
  */
 export function addTileToLayout(
   layout: MosaicNode<string> | null,
   newId: string,
   targetId?: string | null,
+  direction?: "row" | "column",
 ): MosaicNode<string> {
   if (layout === null) return newId;
   if (collectTileIds(layout).includes(newId)) {
@@ -308,11 +439,8 @@ export function addTileToLayout(
         : largest,
     );
 
-  const direction: "row" | "column" =
-    target.rect.w >= target.rect.h ? "row" : "column";
-
   const newSubtree: MosaicNode<string> = {
-    direction,
+    direction: direction ?? (target.rect.w >= target.rect.h ? "row" : "column"),
     first: target.id,
     second: newId,
     splitPercentage: 50,

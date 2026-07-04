@@ -6,14 +6,17 @@ import {
   renderHook,
   screen,
 } from "@testing-library/react";
-import React from "react";
+import React, { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useTileDuplicator } from "./use-tile-state";
+import { useTileRegistry } from "./use-tile-registry";
 import {
   TileIdScope,
   TileSettingsContent,
   TilingProvider,
   TilingTile,
   useTiling,
+  tileTypeFromId,
 } from "./TilingProvider";
 
 const makeTile = (title: string): TilingTile => ({
@@ -500,3 +503,173 @@ function SettingsPortalHarness({
     </>
   );
 }
+
+const KindTile: React.FC = () => <div data-testid="kind-body" />;
+
+/** Registers a `camera` tile kind for spawn-op tests. */
+function RegisterCameraKind() {
+  const { registerTile } = useTileRegistry();
+  useEffect(
+    () =>
+      registerTile({
+        type: "camera",
+        typeLabel: "Camera",
+        icon: null,
+        Tile: KindTile,
+      }),
+    [registerTile],
+  );
+  return null;
+}
+
+function spawnOpsSetup(initialTiles: Record<string, TilingTile>) {
+  return renderHook(() => useTiling(), {
+    wrapper: ({ children }: { children: React.ReactNode }) => (
+      <TilingProvider initialTiles={initialTiles}>
+        <RegisterCameraKind />
+        {children}
+      </TilingProvider>
+    ),
+  });
+}
+
+describe("tileTypeFromId", () => {
+  it("returns the prefix before the numeric suffix", () => {
+    expect(tileTypeFromId("camera-2")).toBe("camera");
+    expect(tileTypeFromId("3d-1")).toBe("3d");
+    expect(tileTypeFromId("a-b-12")).toBe("a-b");
+  });
+
+  it("returns null for ids without the <type>-<n> convention", () => {
+    expect(tileTypeFromId("plain")).toBeNull();
+    expect(tileTypeFromId("-1")).toBeNull();
+    expect(tileTypeFromId("camera-")).toBeNull();
+  });
+});
+
+describe("spawn operations", () => {
+  afterEach(() => cleanup());
+
+  describe("splitTile", () => {
+    it("spawns a fresh same-kind tile in the requested direction", () => {
+      const { result } = spawnOpsSetup({ "camera-1": makeTile("camera") });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.splitTile("camera-1", "column");
+      });
+      expect(newId).toBe("camera-2");
+      expect(result.current.layout).toEqual({
+        direction: "column",
+        first: "camera-1",
+        second: "camera-2",
+        splitPercentage: 50,
+      });
+      expect(result.current.tiles["camera-2"].title).toBe("Camera");
+      expect(result.current.focusedTileId).toBe("camera-2");
+    });
+
+    it("returns null for an unknown kind with no duplicate factory", () => {
+      const { result } = spawnOpsSetup({ "mystery-1": makeTile("m") });
+      let newId: string | null = "sentinel";
+      act(() => {
+        newId = result.current.splitTile("mystery-1", "row");
+      });
+      expect(newId).toBeNull();
+      expect(result.current.layout).toBe("mystery-1");
+    });
+
+    it("falls back to the duplicate factory for unregistered kinds", () => {
+      const { result } = spawnOpsSetup({ "mystery-1": makeTile("m") });
+      act(() => {
+        result.current.registerTileDuplicator("mystery-1", () => ({
+          title: "m (copy)",
+          render: () => null,
+        }));
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.splitTile("mystery-1", "row");
+      });
+      expect(newId).toBe("mystery-2");
+      expect(result.current.tiles["mystery-2"].title).toBe("m (copy)");
+    });
+  });
+
+  describe("duplicateTile", () => {
+    it("prefers the registered duplicate factory", () => {
+      const { result } = spawnOpsSetup({ "camera-1": makeTile("camera") });
+      act(() => {
+        result.current.registerTileDuplicator("camera-1", () => ({
+          title: "CAM_FRONT (copy)",
+          render: () => null,
+        }));
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.duplicateTile("camera-1");
+      });
+      expect(newId).toBe("camera-2");
+      expect(result.current.tiles["camera-2"].title).toBe("CAM_FRONT (copy)");
+      // Placed beside the origin.
+      expect(result.current.layout).toMatchObject({
+        first: "camera-1",
+        second: "camera-2",
+      });
+    });
+
+    it("falls back to a fresh same-kind tile without a factory", () => {
+      const { result } = spawnOpsSetup({ "camera-1": makeTile("camera") });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.duplicateTile("camera-1");
+      });
+      expect(newId).toBe("camera-2");
+      expect(result.current.tiles["camera-2"].title).toBe("Camera");
+    });
+
+    it("uses the tile body's useTileDuplicator registration", () => {
+      const DuplicatorBody: React.FC = () => {
+        useTileDuplicator(() => ({
+          title: "live copy",
+          render: () => null,
+        }));
+        return null;
+      };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }: { children: React.ReactNode }) => (
+          <TilingProvider initialTiles={{ "camera-1": makeTile("camera") }}>
+            <TileIdScope tileId="camera-1">
+              <DuplicatorBody />
+            </TileIdScope>
+            {children}
+          </TilingProvider>
+        ),
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.duplicateTile("camera-1");
+      });
+      expect(newId).toBe("camera-2");
+      expect(result.current.tiles["camera-2"].title).toBe("live copy");
+    });
+  });
+
+  describe("closeOtherTiles", () => {
+    it("keeps only the given tile and focuses it", () => {
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("a"),
+        "camera-2": makeTile("b"),
+        "camera-3": makeTile("c"),
+      });
+      act(() => {
+        result.current.setFocusedTileId("camera-1");
+      });
+      act(() => {
+        result.current.closeOtherTiles("camera-2");
+      });
+      expect(result.current.layout).toBe("camera-2");
+      expect(Object.keys(result.current.tiles)).toEqual(["camera-2"]);
+      expect(result.current.focusedTileId).toBe("camera-2");
+    });
+  });
+});
