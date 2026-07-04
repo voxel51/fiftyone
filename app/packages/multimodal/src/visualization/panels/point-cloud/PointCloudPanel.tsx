@@ -1,5 +1,5 @@
 import { Icon, IconName, Size } from "@voxel51/voodo";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Base3DScene } from "../base-3d-scene";
 import { WebGpuCanvas } from "../webgpu-canvas";
@@ -19,7 +19,16 @@ import {
   DEFAULT_POINT_SIZE,
   PointCloudSceneLayer,
 } from "./PointCloudSceneLayer";
+import { MeasurementLayer } from "./MeasurementLayer";
+import {
+  formatMeasurementDistance,
+  measurementDistance,
+  nextMeasurementState,
+  type MeasurementPoint,
+  type MeasurementState,
+} from "./measurement";
 import { SceneAnnotationLayer } from "./SceneAnnotationLayer";
+import { ScenePickingContext } from "./scene-interactivity";
 import type {
   PanelNotice,
   PanelNoticeSeverity,
@@ -51,6 +60,7 @@ export function PointCloudPanel({
   onRenderStats,
   pointSize = DEFAULT_POINT_SIZE,
   showGizmo = true,
+  showControls = true,
   showHud = true,
   style,
 }: PointCloudPanelProps) {
@@ -126,6 +136,43 @@ export function PointCloudPanel({
       ? "fitted"
       : "none";
 
+  // Two-click distance measurement. Armed mode suspends scene picking
+  // (annotation/frustum clicks) so a measurement click can't double as a
+  // select; orbiting stays live either way.
+  const [measureArmed, setMeasureArmed] = useState(false);
+  const [measurement, setMeasurement] = useState<MeasurementState | null>(null);
+  const handleMeasureToggle = () => {
+    if (measureArmed) setMeasurement(null);
+    setMeasureArmed(!measureArmed);
+  };
+  const handleMeasurePick = useCallback((point: MeasurementPoint) => {
+    setMeasurement((current) => nextMeasurementState(current, point));
+  }, []);
+  // This effect makes Escape peel the tool back one step while armed:
+  // first the current measurement, then the mode itself.
+  useEffect(() => {
+    if (!measureArmed) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      if (measurement) {
+        setMeasurement(null);
+      } else {
+        setMeasureArmed(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [measureArmed, measurement]);
+  const measuredDistance = measurementDistance(measurement);
+  const measureReadout = !measureArmed
+    ? null
+    : measuredDistance !== null
+      ? formatMeasurementDistance(measuredDistance)
+      : measurement
+        ? "Pick the second point"
+        : "Pick two points";
+
   const finitePointCount = renderLayers.reduce(
     (sum, layer) => sum + layer.data.finitePointCount,
     0,
@@ -197,7 +244,11 @@ export function PointCloudPanel({
         camera={PERSPECTIVE_POINT_CAMERA}
         onError={setCanvasError}
         role="img"
-        style={styles.canvas}
+        style={
+          measureArmed
+            ? { ...styles.canvas, cursor: "crosshair" }
+            : styles.canvas
+        }
         surface={canvasSurface}
       >
         <Base3DScene
@@ -205,27 +256,34 @@ export function PointCloudPanel({
           onCameraPoseChange={onCameraPoseChange}
           showGizmo={showGizmo}
         >
-          {gridLayers.map((layer, index) => (
-            <GridSceneLayer
-              key={layer.id}
-              layer={layer}
-              renderOrder={index - gridLayers.length}
+          <ScenePickingContext.Provider value={!measureArmed}>
+            {gridLayers.map((layer, index) => (
+              <GridSceneLayer
+                key={layer.id}
+                layer={layer}
+                renderOrder={index - gridLayers.length}
+              />
+            ))}
+            {renderLayers.map(({ data, layer }) => (
+              <PointCloudSceneLayer
+                key={layer.id}
+                data={data}
+                layer={layer}
+                pointSize={pointSize}
+              />
+            ))}
+            {annotationLayers.map((layer) => (
+              <SceneAnnotationLayer key={layer.id} layer={layer} />
+            ))}
+            {frustumLayers.map((layer) => (
+              <CameraFrustumSceneLayer key={layer.id} layer={layer} />
+            ))}
+            <MeasurementLayer
+              armed={measureArmed}
+              measurement={measurement}
+              onPick={handleMeasurePick}
             />
-          ))}
-          {renderLayers.map(({ data, layer }) => (
-            <PointCloudSceneLayer
-              key={layer.id}
-              data={data}
-              layer={layer}
-              pointSize={pointSize}
-            />
-          ))}
-          {annotationLayers.map((layer) => (
-            <SceneAnnotationLayer key={layer.id} layer={layer} />
-          ))}
-          {frustumLayers.map((layer) => (
-            <CameraFrustumSceneLayer key={layer.id} layer={layer} />
-          ))}
+          </ScenePickingContext.Provider>
         </Base3DScene>
       </WebGpuCanvas>
 
@@ -243,7 +301,7 @@ export function PointCloudPanel({
           ))}
         </div>
       ) : null}
-      {!canvasError && frameFitPose ? (
+      {showControls && !canvasError && frameFitPose ? (
         <button
           aria-label="Recenter view"
           onClick={handleRecenter}
@@ -258,8 +316,48 @@ export function PointCloudPanel({
           />
         </button>
       ) : null}
+      {showControls && !canvasError && frameFitPose ? (
+        <button
+          aria-label="Measure distance"
+          aria-pressed={measureArmed}
+          onClick={handleMeasureToggle}
+          style={
+            measureArmed ? styles.measureToggleActive : styles.measureToggle
+          }
+          title="Measure the distance between two points (Esc clears)"
+          type="button"
+        >
+          <MeasureRulerIcon />
+        </button>
+      ) : null}
+      {showControls && !canvasError && measureReadout ? (
+        <div data-testid="measure-readout" style={styles.measureReadout}>
+          {measureReadout}
+        </div>
+      ) : null}
       <PanelNotices notices={notices} />
     </div>
+  );
+}
+
+/** Diagonal ruler glyph for the measure toggle — IconName has none. */
+function MeasureRulerIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 17 17 3l4 4L7 21z" />
+      <path d="m8 12 2 2" />
+      <path d="m11 9 2 2" />
+      <path d="m14 6 2 2" />
+    </svg>
   );
 }
 

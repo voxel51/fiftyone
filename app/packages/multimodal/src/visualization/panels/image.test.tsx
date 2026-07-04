@@ -46,7 +46,7 @@ describe("ImagePanel", () => {
 
     render(<ImagePanel frame={loadedFrame()} onResetView={onResetView} />);
 
-    fireEvent.click(await screen.findByLabelText("Recenter image view"));
+    fireEvent.click(await screen.findByLabelText("Recenter view"));
 
     expect(onResetView).toHaveBeenCalledTimes(1);
   });
@@ -61,7 +61,7 @@ describe("ImagePanel", () => {
       </div>,
     );
 
-    fireEvent.pointerDown(await screen.findByLabelText("Recenter image view"));
+    fireEvent.pointerDown(await screen.findByLabelText("Recenter view"));
 
     expect(onPointerDown).not.toHaveBeenCalled();
   });

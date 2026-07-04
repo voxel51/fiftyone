@@ -16,11 +16,19 @@ const WHEEL_DELTA_PAGE = 2;
 const WHEEL_LINE_DELTA_PX = 16;
 const WHEEL_PAGE_DELTA_PX = 800;
 const WHEEL_ZOOM_FACTOR = 1.045;
+// Pointer capture (and the grabbing cursor) start only once the pointer
+// travels past this — capturing on pointerdown retargets pointerup at the
+// surface, which swallows click events on overlay content (annotation
+// shapes) in real browsers.
+const DRAG_START_THRESHOLD_PX = 4;
 
 interface DragState {
-  readonly lastX: number;
-  readonly lastY: number;
+  captured: boolean;
+  lastX: number;
+  lastY: number;
   readonly pointerId: number;
+  readonly startX: number;
+  readonly startY: number;
 }
 
 interface UseImagePanZoomOptions {
@@ -185,13 +193,14 @@ export function useImagePanZoom({
       }
 
       event.preventDefault();
-      event.currentTarget.setPointerCapture?.(event.pointerId);
       dragRef.current = {
+        captured: false,
         lastX: event.clientX,
         lastY: event.clientY,
         pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
       };
-      setIsDragging(true);
     },
     [canInteract],
   );
@@ -203,13 +212,23 @@ export function useImagePanZoom({
         return;
       }
 
+      if (!drag.captured) {
+        const traveled = Math.hypot(
+          event.clientX - drag.startX,
+          event.clientY - drag.startY,
+        );
+        if (traveled <= DRAG_START_THRESHOLD_PX) {
+          return;
+        }
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        drag.captured = true;
+        setIsDragging(true);
+      }
+
       const deltaX = event.clientX - drag.lastX;
       const deltaY = event.clientY - drag.lastY;
-      dragRef.current = {
-        lastX: event.clientX,
-        lastY: event.clientY,
-        pointerId: event.pointerId,
-      };
+      drag.lastX = event.clientX;
+      drag.lastY = event.clientY;
 
       if (deltaX === 0 && deltaY === 0) {
         return;
@@ -231,7 +250,9 @@ export function useImagePanZoom({
       return;
     }
 
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (drag.captured) {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    }
     dragRef.current = null;
     setIsDragging(false);
   }, []);

@@ -515,8 +515,8 @@ describe("PointCloudPanel", () => {
             contentTimeNs: 100n,
             frame: {
               height: 900,
-              // fx=fy=450, cx=800, cy=450: at depth 1 the corners span
-              // x ∈ [-800/450, 800/450], y ∈ [-1, 1].
+              // fx=fy=450, cx=800, cy=450: corners scale linearly with
+              // the fixed presentational frustum depth.
               K: [450, 0, 800, 0, 450, 450, 0, 0, 1],
               kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
               width: 1600,
@@ -556,6 +556,10 @@ describe("PointCloudPanel", () => {
       .map(([, attribute]) => attribute as THREE.BufferAttribute)
       .find((attribute) => attribute.array.length === 16 * 3);
     expect(frustumPositions).toBeDefined();
+    const positions = Array.from(frustumPositions?.array ?? []);
+    expect(positions[3]).toBeCloseTo((-800 / 450) * 2.75);
+    expect(positions[4]).toBeCloseTo((-450 / 450) * 2.75);
+    expect(positions[5]).toBeCloseTo(2.75);
 
     // The frustum at (100, 200) must not drag the camera fit off the cloud.
     const cameraPose = JSON.parse(
@@ -563,6 +567,42 @@ describe("PointCloudPanel", () => {
         "{}",
     ) as { readonly target?: readonly number[] };
     expect(cameraPose.target).toEqual([1, 2, 3]);
+  });
+
+  it("passes command-click state through camera frustum selection", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const onSelect = vi.fn();
+
+    const { container } = render(
+      <PointCloudPanel
+        frustumLayers={[
+          {
+            frame: {
+              height: 900,
+              K: [450, 0, 800, 0, 450, 450, 0, 0, 1],
+              kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
+              width: 1600,
+            },
+            id: "/CAM_FRONT/camera_info",
+            onSelect,
+          },
+        ]}
+        layers={[]}
+        showHud={false}
+      />,
+    );
+
+    const frustumGroup = container.querySelector("linesegments")?.parentElement;
+    expect(frustumGroup).toBeTruthy();
+    if (!frustumGroup) {
+      throw new Error("Expected a rendered frustum group");
+    }
+
+    fireEvent.click(frustumGroup, { metaKey: false });
+    fireEvent.click(frustumGroup, { metaKey: true });
+
+    expect(onSelect).toHaveBeenNthCalledWith(1, { metaKey: false });
+    expect(onSelect).toHaveBeenNthCalledWith(2, { metaKey: true });
   });
 
   it("decodes a keyed frustum image through the shared texture cache", async () => {
@@ -835,6 +875,65 @@ describe("PointCloudPanel", () => {
     expect(fitPose.target[0]).toBeCloseTo(5);
     expect(fitPose.target[1]).toBeCloseTo(0);
     expect(fitPose.target[2]).toBeCloseTo(0);
+  });
+
+  it("arms the measurement tool and walks the readout through the picks", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    render(
+      <PointCloudPanel
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 2,
+              positions: new Float32Array([0, 0, 0, 10, 0, 0]),
+            },
+            id: "/points",
+          },
+        ]}
+      />,
+    );
+
+    const toggle = screen.getByLabelText("Measure distance");
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByTestId("measure-readout")).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("measure-readout").textContent).toBe(
+      "Pick two points",
+    );
+
+    // Escape steps the tool back: with no measurement it disarms.
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByTestId("measure-readout")).toBeNull();
+  });
+
+  it("hides the interactive controls when showControls is off (grid previews)", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    render(
+      <PointCloudPanel
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 2,
+              positions: new Float32Array([0, 0, 0, 10, 0, 0]),
+            },
+            id: "/points",
+          },
+        ]}
+        showControls={false}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Recenter view")).toBeNull();
+    expect(screen.queryByLabelText("Measure distance")).toBeNull();
   });
 
   it("keeps the no-finite-points status for partially finite layers off", () => {

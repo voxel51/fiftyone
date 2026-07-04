@@ -3,11 +3,12 @@ import { GizmoHelper, GizmoViewport, OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import {
+  type ReactNode,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
@@ -15,7 +16,7 @@ import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
 const AXIS_COLORS: [string, string, string] = ["#ef4444", "#22c55e", "#3b82f6"];
 const AXIS_LABEL_COLOR = "#f8fafc";
 const DEFAULT_AMBIENT_LIGHT_INTENSITY = 0.8;
-const GIZMO_MARGIN_PIXELS: [number, number] = [72, 72];
+const GIZMO_MARGIN_PIXELS: [number, number] = [42, 42];
 const GIZMO_RENDER_PRIORITY = 1;
 const CAMERA_POSE_EPSILON = 0.000001;
 const DEFAULT_FOCUS_DIRECTION = new THREE.Vector3(1, -1, 0.75).normalize();
@@ -24,6 +25,16 @@ const MIN_FOCUS_RADIUS = 1;
 const Z_UP_AXIS = { x: 0, y: 0, z: 1 } as const;
 
 type VectorTuple = readonly [number, number, number];
+
+// OrbitControls scales both its dolly step and its pan step with the
+// camera→target distance, so zoom and pan grind to a halt as the camera
+// closes in on the target. Below this floor, continuing to zoom in
+// pushes the target ahead of the camera instead (fly-through), keeping
+// a constant working distance — and therefore constant zoom/pan speed.
+const ORBIT_ZOOM_DISTANCE_FLOOR_M = 2;
+
+// 20% smaller than drei's default so the gizmo crowds the scene less.
+const GIZMO_SCALE = 0.7;
 
 type MutableVectorHandle = {
   readonly x: number;
@@ -106,10 +117,12 @@ export function Base3DScene({
           margin={GIZMO_MARGIN_PIXELS}
           renderPriority={GIZMO_RENDER_PRIORITY}
         >
-          <GizmoViewport
-            axisColors={AXIS_COLORS}
-            labelColor={AXIS_LABEL_COLOR}
-          />
+          <mesh scale={GIZMO_SCALE}>
+            <GizmoViewport
+              axisColors={AXIS_COLORS}
+              labelColor={AXIS_LABEL_COLOR}
+            />
+          </mesh>
         </GizmoHelper>
       ) : null}
     </>
@@ -134,6 +147,7 @@ function ControlledOrbitControls({
   const lastEmittedPoseRef = useRef<ThreeCameraPose | null>(null);
   const [controls, setControls] = useState<OrbitControlsHandle | null>(null);
   const camera = useThree((state) => state.camera);
+  const gl = useThree((state) => state.gl);
   const invalidate = useThree((state) => state.invalidate);
   const scene = useThree((state) => state.scene);
   const size = useThree((state) => state.size);
@@ -206,6 +220,46 @@ function ControlledOrbitControls({
     size.height,
     size.width,
   ]);
+
+  // This effect keeps zoom-in usable at close range: after OrbitControls
+  // processes a wheel tick, a camera→target distance below the floor
+  // pushes the target back out along the view direction. The camera
+  // itself doesn't move here — the next dolly tick advances it at
+  // floor-scaled (constant) speed instead of asymptotically stalling.
+  useEffect(() => {
+    const element = gl?.domElement as HTMLElement | undefined;
+    if (!controls || !element) {
+      return undefined;
+    }
+    const handleWheel = (event: WheelEvent) => {
+      if (event.deltaY >= 0 || applyingPoseRef.current) {
+        return;
+      }
+      const dx = controls.target.x - camera.position.x;
+      const dy = controls.target.y - camera.position.y;
+      const dz = controls.target.z - camera.position.z;
+      const distance = Math.hypot(dx, dy, dz);
+      if (distance >= ORBIT_ZOOM_DISTANCE_FLOOR_M || distance === 0) {
+        return;
+      }
+      const scale = ORBIT_ZOOM_DISTANCE_FLOOR_M / distance;
+      controls.target.set(
+        camera.position.x + dx * scale,
+        camera.position.y + dy * scale,
+        camera.position.z + dz * scale,
+      );
+      // Bracket as an interaction so the resulting change event reports
+      // the new pose upstream (follow modes re-derive their anchors).
+      interactingRef.current = true;
+      controls.update();
+      interactingRef.current = false;
+      invalidate();
+    };
+    // Registered after OrbitControls' own wheel listener (the controls
+    // instance exists first), so the dolly has already been applied.
+    element.addEventListener("wheel", handleWheel, { passive: true });
+    return () => element.removeEventListener("wheel", handleWheel);
+  }, [camera, controls, gl, invalidate]);
 
   const handleStart = useCallback(() => {
     interactingRef.current = true;

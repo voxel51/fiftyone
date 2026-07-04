@@ -343,6 +343,7 @@ function PointCloudPreviewFrame({
           className={classes.imagePanel}
           layers={layers}
           onCameraPoseChange={setCameraPose}
+          showControls={false}
           showGizmo={false}
           showHud={false}
           // The panel's own inline styles set position: relative, which

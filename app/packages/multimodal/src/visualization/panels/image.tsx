@@ -205,15 +205,15 @@ export function ImagePanel({
       {!canvasError && status === "loaded" && onResetView ? (
         <div style={styles.resetControls}>
           <button
-            aria-label="Recenter image view"
+            aria-label="Recenter view"
             onClick={onResetView}
             onPointerDown={(event) => event.stopPropagation()}
             style={styles.resetButton}
-            title="Recenter image view"
+            title="Recenter the image view"
             type="button"
           >
             <Icon
-              name={IconName.Move}
+              name={IconName.Fullscreen}
               size={Size.Xs}
               style={styles.resetButtonIcon}
             />
@@ -272,13 +272,15 @@ const styles: Record<string, CSSProperties> = {
     height: 13,
     width: 13,
   },
+  // Mirrors the 3D panel's recenter control (bottom-right, 24×24,
+  // Fullscreen glyph) so every tile shares one recenter interface.
   resetControls: {
     alignItems: "flex-start",
+    bottom: HUD_OFFSET_PX,
     display: "flex",
     gap: 6,
-    left: HUD_OFFSET_PX,
     position: "absolute",
-    top: HUD_OFFSET_PX,
+    right: HUD_OFFSET_PX,
     zIndex: 2,
   },
   status: {

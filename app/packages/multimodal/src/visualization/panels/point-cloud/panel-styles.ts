@@ -9,6 +9,8 @@ import {
 } from "../style-tokens";
 
 const HUD_BORDER_RADIUS_PX = 4;
+// Matches the in-scene measurement overlay color (MeasurementLayer).
+const MEASUREMENT_ACCENT_COLOR = "#ffc857";
 const HUD_FONT_SIZE_PX = 11;
 const HUD_LINE_HEIGHT = 1;
 const HUD_OFFSET_PX = 8;
@@ -69,6 +71,51 @@ export const styles: Record<string, CSSProperties> = {
     position: "absolute",
     right: HUD_OFFSET_PX,
     width: 24,
+  },
+  measureToggle: {
+    alignItems: "center",
+    background: VISUALIZATION_HUD_BACKGROUND_COLOR,
+    border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
+    borderRadius: HUD_BORDER_RADIUS_PX,
+    bottom: HUD_OFFSET_PX + 32,
+    color: VISUALIZATION_HUD_TEXT_COLOR,
+    cursor: "pointer",
+    display: "inline-flex",
+    height: 24,
+    justifyContent: "center",
+    padding: 0,
+    position: "absolute",
+    right: HUD_OFFSET_PX,
+    width: 24,
+  },
+  measureToggleActive: {
+    alignItems: "center",
+    background: VISUALIZATION_HUD_BACKGROUND_COLOR,
+    border: `1px solid ${MEASUREMENT_ACCENT_COLOR}`,
+    borderRadius: HUD_BORDER_RADIUS_PX,
+    bottom: HUD_OFFSET_PX + 32,
+    color: MEASUREMENT_ACCENT_COLOR,
+    cursor: "pointer",
+    display: "inline-flex",
+    height: 24,
+    justifyContent: "center",
+    padding: 0,
+    position: "absolute",
+    right: HUD_OFFSET_PX,
+    width: 24,
+  },
+  measureReadout: {
+    background: VISUALIZATION_HUD_BACKGROUND_COLOR,
+    border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
+    borderRadius: HUD_BORDER_RADIUS_PX,
+    bottom: HUD_OFFSET_PX + 64,
+    color: VISUALIZATION_HUD_TEXT_COLOR,
+    fontSize: HUD_FONT_SIZE_PX,
+    fontVariantNumeric: "tabular-nums",
+    lineHeight: HUD_LINE_HEIGHT,
+    padding: "5px 7px",
+    position: "absolute",
+    right: HUD_OFFSET_PX,
   },
   notices: {
     alignItems: "flex-start",
