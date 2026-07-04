@@ -22,6 +22,22 @@
   pointer-events: none;
 }
 
+/* Buffered-ranges wash behind the ticks (see BufferedLaneShading).
+   First child of the lane, so ticks and their labels paint above it. */
+.bufferedShading {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bufferedSegment {
+  background: var(--color-content-border-active);
+  bottom: 0;
+  opacity: 0.16;
+  position: absolute;
+  top: 0;
+}
+
 .tick {
   position: absolute;
   top: 0;

@@ -10,6 +10,7 @@ import {
   useViewStart,
 } from "../../lib/playback/use-playback-state";
 import { clamp } from "../../lib/playback/utils";
+import BufferedLaneShading from "./BufferedLaneShading";
 import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;
@@ -270,6 +271,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       )}
 
       <div className={styles.lane}>
+        <BufferedLaneShading />
         {ticks.map((t) => (
           <span
             key={t}
