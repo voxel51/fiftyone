@@ -3122,7 +3122,7 @@ __metadata:
     react-color: "npm:^2.19.3"
     rollup-plugin-external-globals: "npm:^0.6.1"
     styled-components: "npm:^6.1.18"
-    three: "patch:three@npm%3A0.182.0#~/.yarn/patches/three-npm-0.182.0-018c941206.patch"
+    three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
     tunnel-rat: "npm:^0.1.2"
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
@@ -3208,7 +3208,7 @@ __metadata:
     lru-cache: "npm:^11.0.1"
     meshoptimizer: "npm:^0.22.0"
     protobufjs: "npm:^7.6.4"
-    three: "patch:three@npm%3A0.182.0#~/.yarn/patches/three-npm-0.182.0-018c941206.patch"
+    three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
     vite-plugin-relay: "npm:^2.0.0"
   languageName: unknown
   linkType: soft
@@ -21589,10 +21589,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three@npm:0.182.0":
-  version: 0.182.0
-  resolution: "three@npm:0.182.0"
-  checksum: 10/37bbc10cea96e001ca7485cfe120e1bc8bcff0c448c492140ce9db8bd113efb6972d6cc71f8426a257eb569bf9aa136fd8887f803435d057ea963c815fe9248a
+"three@npm:0.185.1":
+  version: 0.185.1
+  resolution: "three@npm:0.185.1"
+  checksum: 10/517c6f82ef9e8f10a114bbd349066d65ac55a97e8d9e4cd52c7da4014c646c3d0a335718d69c84d80c7e209769b3cff0cc68de922e2c207c227ca17733b72323
   languageName: node
   linkType: hard
 
@@ -21603,10 +21603,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three@patch:three@npm%3A0.182.0#~/.yarn/patches/three-npm-0.182.0-018c941206.patch":
-  version: 0.182.0
-  resolution: "three@patch:three@npm%3A0.182.0#~/.yarn/patches/three-npm-0.182.0-018c941206.patch::version=0.182.0&hash=6a4653"
-  checksum: 10/5374115a8fb0737c94d3f057be01e4a3166fe8949a8f85e4f852b732e86182a6ad5a8fdafd26775c7f49698f0bb215f6fdb0c05e36171b202adf5ce20f9e9d3c
+"three@patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch":
+  version: 0.185.1
+  resolution: "three@patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch::version=0.185.1&hash=0f2236"
+  checksum: 10/54aa1abaef58c01ddd408f4def9bfa3e51844fadfe3102e904c090c4f6b6833eccd4752fc44d9a760b6dfd99a19252bb9364b952a62f15b78cb037f73f48b8b7
   languageName: node
   linkType: hard
 
