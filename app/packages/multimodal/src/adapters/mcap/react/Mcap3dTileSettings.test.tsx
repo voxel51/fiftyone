@@ -107,6 +107,70 @@ describe("Mcap3dTileSettings", () => {
       screen.getByText("No camera calibration topics available"),
     ).toBeTruthy();
   });
+
+  it("wires the reference grid controls to the settings updater", () => {
+    const props = renderSettings();
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Toggle reference grid" }),
+    );
+    expect(props.setReferenceGrid).toHaveBeenCalledWith({ enabled: false });
+
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Spacing (m)" }), {
+      target: { value: "5" },
+    });
+    expect(props.setReferenceGrid).toHaveBeenCalledWith({ spacingM: 5 });
+
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Opacity (%)" }), {
+      target: { value: "50" },
+    });
+    expect(props.setReferenceGrid).toHaveBeenCalledWith({ opacityPercent: 50 });
+  });
+
+  it("wires the background controls to the settings updater", () => {
+    const props = renderSettings();
+
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Background style" }),
+      { target: { value: "abyss" } },
+    );
+    expect(props.setSceneBackground).toHaveBeenCalledWith({ mode: "abyss" });
+
+    fireEvent.change(screen.getByLabelText("Background color"), {
+      target: { value: "#123456" },
+    });
+    expect(props.setSceneBackground).toHaveBeenCalledWith({
+      solidColor: "#123456",
+    });
+  });
+
+  it("offers the color picker only for the solid background", () => {
+    renderSettings({
+      sceneBackground: { mode: "studio", solidColor: "#050b12" },
+    });
+
+    expect(
+      screen.getByRole("combobox", { name: "Background style" }),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText("Background color")).toBeNull();
+  });
+
+  it("disables the grid appearance inputs while the grid is off", () => {
+    renderSettings({
+      referenceGrid: { enabled: false, opacityPercent: 5, spacingM: 1 },
+    });
+
+    expect(
+      screen
+        .getByRole("spinbutton", { name: "Spacing (m)" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
+    expect(
+      screen
+        .getByRole("spinbutton", { name: "Opacity (%)" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
+  });
 });
 
 function renderSettings(
@@ -132,10 +196,14 @@ function settingsProps(
     pointCloudTopics: [LIDAR.id],
     poseSources: [],
     poseTopics: [],
+    referenceGrid: { enabled: true, opacityPercent: 5, spacingM: 1 },
+    sceneBackground: { mode: "solid" as const, solidColor: "#050b12" },
     sceneAnnotationSources: [],
     sceneAnnotationTopics: [],
     selectedPoseSources: [],
     setCameraSourcesEnabled: vi.fn(),
+    setReferenceGrid: vi.fn(),
+    setSceneBackground: vi.fn(),
     setTrackingMode: vi.fn(),
     setTrajectoryFrameOverrides: vi.fn(),
     toggleSource: vi.fn(),

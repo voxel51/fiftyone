@@ -2,6 +2,8 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  DEFAULT_MCAP_REFERENCE_GRID,
+  DEFAULT_MCAP_SCENE_BACKGROUND,
   DEFAULT_MCAP_TEMPORAL_POLICY,
   McapModalSettingsProvider,
   readMcapModalSettings,
@@ -22,6 +24,8 @@ describe("mcap-modal-settings", () => {
       imageLabelTopics: {},
       interpolate2dAnnotations: true,
       interpolate3dAnnotations: true,
+      referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
+      sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
       temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
     });
   });
@@ -34,6 +38,8 @@ describe("mcap-modal-settings", () => {
       },
       interpolate2dAnnotations: false,
       interpolate3dAnnotations: true,
+      referenceGrid: { enabled: false, opacityPercent: 50, spacingM: 5 },
+      sceneBackground: { mode: "abyss", solidColor: "#112233" },
       temporalPolicy: {
         boundaryClampMs: 0,
         maxInterpolationGapMs: 500,
@@ -49,6 +55,8 @@ describe("mcap-modal-settings", () => {
       },
       interpolate2dAnnotations: false,
       interpolate3dAnnotations: true,
+      referenceGrid: { enabled: false, opacityPercent: 50, spacingM: 5 },
+      sceneBackground: { mode: "abyss", solidColor: "#112233" },
       temporalPolicy: {
         boundaryClampMs: 0,
         maxInterpolationGapMs: 500,
@@ -56,6 +64,64 @@ describe("mcap-modal-settings", () => {
         transformGapWarningMs: 1500,
       },
     });
+  });
+
+  it("backfills 3D scene defaults for older payloads", () => {
+    localStorage.setItem(
+      "fiftyone.mcap.modal-settings",
+      JSON.stringify({
+        version: 1,
+        imageLabelTopics: {},
+        interpolate2dAnnotations: true,
+        interpolate3dAnnotations: true,
+        temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
+      }),
+    );
+
+    const read = readMcapModalSettings();
+    expect(read.referenceGrid).toEqual(DEFAULT_MCAP_REFERENCE_GRID);
+    expect(read.sceneBackground).toEqual(DEFAULT_MCAP_SCENE_BACKGROUND);
+  });
+
+  it("clamps invalid reference-grid values", () => {
+    writeMcapModalSettings({
+      version: 1,
+      imageLabelTopics: {},
+      interpolate2dAnnotations: true,
+      interpolate3dAnnotations: true,
+      referenceGrid: {
+        enabled: true,
+        opacityPercent: 250,
+        spacingM: Number.NaN,
+      },
+      sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
+      temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
+    });
+
+    expect(readMcapModalSettings().referenceGrid).toEqual({
+      enabled: true,
+      opacityPercent: 100,
+      spacingM: DEFAULT_MCAP_REFERENCE_GRID.spacingM,
+    });
+  });
+
+  it("rejects invalid scene background values", () => {
+    writeMcapModalSettings({
+      version: 1,
+      imageLabelTopics: {},
+      interpolate2dAnnotations: true,
+      interpolate3dAnnotations: true,
+      referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
+      sceneBackground: {
+        mode: "plaid" as never,
+        solidColor: "not-a-color",
+      },
+      temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
+    });
+
+    expect(readMcapModalSettings().sceneBackground).toEqual(
+      DEFAULT_MCAP_SCENE_BACKGROUND,
+    );
   });
 
   it("preserves explicit empty label selections", () => {
@@ -66,6 +132,8 @@ describe("mcap-modal-settings", () => {
       },
       interpolate2dAnnotations: true,
       interpolate3dAnnotations: true,
+      referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
+      sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
       temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
     });
 
@@ -84,6 +152,8 @@ describe("mcap-modal-settings", () => {
     act(() => {
       result.current.setInterpolate2dAnnotations(false);
       result.current.setInterpolate3dAnnotations(false);
+      result.current.setReferenceGrid({ enabled: false, spacingM: 10 });
+      result.current.setSceneBackground({ mode: "studio" });
       result.current.setImageLabelTopics("/camera/front", ["/labels"]);
       result.current.setTemporalPolicy({
         boundaryClampMs: 75,
@@ -95,6 +165,15 @@ describe("mcap-modal-settings", () => {
 
     expect(result.current.interpolate2dAnnotations).toBe(false);
     expect(result.current.interpolate3dAnnotations).toBe(false);
+    expect(result.current.referenceGrid).toEqual({
+      enabled: false,
+      opacityPercent: DEFAULT_MCAP_REFERENCE_GRID.opacityPercent,
+      spacingM: 10,
+    });
+    expect(result.current.sceneBackground).toEqual({
+      mode: "studio",
+      solidColor: DEFAULT_MCAP_SCENE_BACKGROUND.solidColor,
+    });
     expect(result.current.imageLabelTopics["/camera/front"]).toEqual([
       "/labels",
     ]);
@@ -108,6 +187,15 @@ describe("mcap-modal-settings", () => {
       imageLabelTopics: { "/camera/front": ["/labels"] },
       interpolate2dAnnotations: false,
       interpolate3dAnnotations: false,
+      referenceGrid: {
+        enabled: false,
+        opacityPercent: DEFAULT_MCAP_REFERENCE_GRID.opacityPercent,
+        spacingM: 10,
+      },
+      sceneBackground: {
+        mode: "studio",
+        solidColor: DEFAULT_MCAP_SCENE_BACKGROUND.solidColor,
+      },
       temporalPolicy: {
         boundaryClampMs: 75,
         maxInterpolationGapMs: 125,
@@ -129,6 +217,8 @@ describe("mcap-modal-settings", () => {
       imageLabelTopics: {},
       interpolate2dAnnotations: true,
       interpolate3dAnnotations: true,
+      referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
+      sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
       temporalPolicy: {
         boundaryClampMs: -10,
         maxInterpolationGapMs: 100_000,

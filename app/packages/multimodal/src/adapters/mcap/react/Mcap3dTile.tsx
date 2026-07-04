@@ -19,6 +19,7 @@ import { imageTextureCacheKey } from "../../../visualization/panels/image-textur
 import {
   PointCloudPanel,
   type PointCloudPanelRenderStats,
+  type ThreeSceneBackground,
 } from "../../../visualization/panels/point-cloud";
 import {
   isMcapLatencyDebugEnabled,
@@ -77,6 +78,22 @@ import { useMcapPlaybackTimeNs } from "./use-mcap-playback-time-ns";
 import { useMcapTopicPlaybackFrames } from "./use-mcap-topic-stream";
 
 /**
+ * Named gradient backdrop profiles for the 3D scene. "Abyss" is dark
+ * (green → violet-black), "Studio" is light and warm (off-white →
+ * taupe). Both kept desaturated so data colors stay legible on top.
+ */
+const ABYSS_BACKGROUND: ThreeSceneBackground = {
+  bottom: "#150d2e",
+  kind: "gradient",
+  top: "#12362b",
+};
+const STUDIO_BACKGROUND: ThreeSceneBackground = {
+  bottom: "#c8b39a",
+  kind: "gradient",
+  top: "#faf4e8",
+};
+
+/**
  * 3D tile: renders every enabled 3D-renderable source fused into one shared
  * scene. Unlike the image tile, sources are multi-selectable — overlaying
  * several sensors in one view is the point of a 3D panel — so the settings
@@ -110,7 +127,33 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     toggleSource,
   } = useMcap3dSelection({ restore: viewStateRestore });
   const frameTransforms = useMcapFrameTransformsContext();
-  const { temporalPolicy } = useMcapModalSettings();
+  const {
+    referenceGrid,
+    sceneBackground,
+    setReferenceGrid,
+    setSceneBackground,
+    temporalPolicy,
+  } = useMcapModalSettings();
+  const panelBackground = useMemo<ThreeSceneBackground>(() => {
+    switch (sceneBackground.mode) {
+      case "abyss":
+        return ABYSS_BACKGROUND;
+      case "studio":
+        return STUDIO_BACKGROUND;
+      default:
+        return { color: sceneBackground.solidColor, kind: "solid" };
+    }
+  }, [sceneBackground]);
+  const worldGrid = useMemo(
+    () =>
+      referenceGrid.enabled
+        ? {
+            opacity: referenceGrid.opacityPercent / 100,
+            spacing: referenceGrid.spacingM,
+          }
+        : null,
+    [referenceGrid],
+  );
   const latencyDebugEnabled = useMemo(() => isMcapLatencyDebugEnabled(), []);
   const lastDebugPlacementStateRef = useRef<string | null>(null);
   const frustumImageFrames =
@@ -694,10 +737,14 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         pointCloudTopics={pointCloudTopics}
         poseSources={poseSources}
         poseTopics={poseTopics}
+        referenceGrid={referenceGrid}
         sceneAnnotationSources={sceneAnnotationSources}
         sceneAnnotationTopics={sceneAnnotationTopics}
+        sceneBackground={sceneBackground}
         selectedPoseSources={selectedPoseSources}
         setCameraSourcesEnabled={setCameraSourcesEnabled}
+        setReferenceGrid={setReferenceGrid}
+        setSceneBackground={setSceneBackground}
         setTrackingMode={setTrackingMode}
         setTrajectoryFrameOverrides={setTrajectoryFrameOverrides}
         toggleSource={toggleSource}
@@ -724,6 +771,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         <div className={styles.panelStack} {...hoverTooltipContainerProps}>
           <PointCloudPanel
             annotationLayers={annotationLayers}
+            background={panelBackground}
             cameraPose={panelCameraPose}
             canvasSurface="modal-3d"
             fitResetKey={worldFrameId}
@@ -735,6 +783,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             notices={panelNotices}
             onCameraPoseChange={handleCameraPoseChange}
             onRenderStats={handlePanelRenderStats}
+            worldGrid={worldGrid}
           />
           <McapTileStatusBadge topics={selectedTopics} />
           {hoverTooltip ? <Mcap3dHoverTooltip tooltip={hoverTooltip} /> : null}

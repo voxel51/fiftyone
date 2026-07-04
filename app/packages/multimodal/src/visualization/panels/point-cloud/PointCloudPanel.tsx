@@ -29,6 +29,7 @@ import {
 } from "./measurement";
 import { SceneAnnotationLayer } from "./SceneAnnotationLayer";
 import { ScenePickingContext } from "./scene-interactivity";
+import { WorldGridLayer } from "./WorldGridLayer";
 import type {
   PanelNotice,
   PanelNoticeSeverity,
@@ -44,6 +45,7 @@ import { EMPTY_NOTICES, annotationPrimitiveSummaryForLayers } from "./utils";
  */
 export function PointCloudPanel({
   annotationLayers = [],
+  background,
   cameraPose,
   canvasSurface,
   className,
@@ -63,6 +65,7 @@ export function PointCloudPanel({
   showControls = true,
   showHud = true,
   style,
+  worldGrid = null,
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
   const renderLayers = useMemo(
@@ -252,11 +255,13 @@ export function PointCloudPanel({
         surface={canvasSurface}
       >
         <Base3DScene
+          background={background}
           cameraPose={effectiveCameraPose}
           onCameraPoseChange={onCameraPoseChange}
           showGizmo={showGizmo}
         >
           <ScenePickingContext.Provider value={!measureArmed}>
+            {worldGrid ? <WorldGridLayer {...worldGrid} /> : null}
             {gridLayers.map((layer, index) => (
               <GridSceneLayer
                 key={layer.id}

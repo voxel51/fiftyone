@@ -11,6 +11,7 @@ import type {
 import type {
   ThreeCameraPose,
   ThreeCameraPoseChangeSource,
+  ThreeSceneBackground,
 } from "../base-3d-scene";
 
 export type PanelNoticeSeverity = "error" | "info" | "warning";
@@ -100,6 +101,19 @@ export interface PointCloudFrameTransform {
  * Camera pose shared by controlled point-cloud panels.
  */
 export type PointCloudCameraPose = ThreeCameraPose;
+
+/**
+ * Appearance of the panel's world reference grid. Every field has a
+ * sensible default; pass `{}` for the stock grid.
+ */
+export interface WorldGridPanelConfig {
+  /** Peak line opacity in [0, 1]. */
+  readonly opacity?: number;
+  /** Closest line spacing in scene units; lines adapt by powers of ten. */
+  readonly spacing?: number;
+  /** World up axis the grid plane is perpendicular to. @default "z" */
+  readonly up?: "x" | "y" | "z";
+}
 
 /**
  * One point cloud rendered into the shared panel scene. `id` is the
@@ -204,6 +218,11 @@ export interface PointCloudPanelRenderStats {
  * renders one shared 3D scene; each layer contributes one cloud to it.
  */
 export interface PointCloudPanelProps {
+  /**
+   * Scene backdrop: one flat color or a vertical gradient. Defaults to
+   * the shared dark panel color.
+   */
+  readonly background?: ThreeSceneBackground;
   readonly cameraPose?: PointCloudCameraPose | null;
   /**
    * Device-registry surface tag passed through to the WebGPU canvas
@@ -245,6 +264,14 @@ export interface PointCloudPanelProps {
   readonly pointSize?: number;
   readonly showGizmo?: boolean;
   readonly showHud?: boolean;
+  /**
+   * Renders an adaptive reference grid on the world ground plane when
+   * set (minor lines every `spacing` units, cardinal lines every ten,
+   * spacing scales by powers of ten with camera distance). Purely
+   * visual: it never occludes content, intercepts picks, or affects
+   * fit bounds. Omit (or pass null) to hide the grid.
+   */
+  readonly worldGrid?: WorldGridPanelConfig | null;
   /**
    * Whether to render the interactive HUD controls (recenter, measure).
    * Modal surfaces keep them; grid previews turn them off.

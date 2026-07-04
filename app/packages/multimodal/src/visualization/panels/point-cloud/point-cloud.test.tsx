@@ -16,8 +16,12 @@ import {
 import { PointCloudPanel } from "./index";
 
 vi.mock("@react-three/fiber", () => ({
-  useThree: (selector: (state: { invalidate: () => void }) => unknown) =>
-    selector({ invalidate: vi.fn() }),
+  useThree: (
+    selector: (state: {
+      invalidate: () => void;
+      viewport: { dpr: number };
+    }) => unknown,
+  ) => selector({ invalidate: vi.fn(), viewport: { dpr: 1 } }),
 }));
 
 vi.mock("../base-3d-scene", () => ({
@@ -655,6 +659,16 @@ describe("PointCloudPanel", () => {
 
     expect(createBitmap).toHaveBeenCalledTimes(1);
     expect(imageTextureCacheStats().decodeCount).toBe(1);
+  });
+
+  it("renders the world reference grid only when opted in", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const { container, rerender } = render(<PointCloudPanel layers={[]} />);
+    expect(container.querySelector('mesh[name="world-grid"]')).toBeNull();
+
+    rerender(<PointCloudPanel layers={[]} worldGrid={{}} />);
+    expect(container.querySelector('mesh[name="world-grid"]')).not.toBeNull();
   });
 
   it("renders telemetry hud lines even without scene layers", () => {

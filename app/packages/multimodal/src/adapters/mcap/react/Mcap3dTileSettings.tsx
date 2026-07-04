@@ -13,6 +13,11 @@ import {
   isFollowTrackingMode,
   type Mcap3dTrackingMode,
 } from "./mcap-3d-camera";
+import type {
+  McapReferenceGridSettings,
+  McapSceneBackgroundMode,
+  McapSceneBackgroundSettings,
+} from "./mcap-modal-settings";
 import type { McapPoseTrajectories } from "./mcap-pose-trajectories-context";
 import {
   checkboxNoSpaceToggleProps,
@@ -33,10 +38,18 @@ export interface Mcap3dTileSettingsProps {
   readonly pointCloudTopics: readonly string[];
   readonly poseSources: readonly SceneSource[];
   readonly poseTopics: readonly string[];
+  readonly referenceGrid: McapReferenceGridSettings;
   readonly sceneAnnotationSources: readonly SceneSource[];
   readonly sceneAnnotationTopics: readonly string[];
+  readonly sceneBackground: McapSceneBackgroundSettings;
   readonly selectedPoseSources: readonly SceneSource[];
   readonly setCameraSourcesEnabled: (checked: boolean) => void;
+  readonly setReferenceGrid: (
+    settings: Partial<McapReferenceGridSettings>,
+  ) => void;
+  readonly setSceneBackground: (
+    settings: Partial<McapSceneBackgroundSettings>,
+  ) => void;
   readonly setTrackingMode: (mode: Mcap3dTrackingMode) => void;
   readonly setTrajectoryFrameOverrides: React.Dispatch<
     React.SetStateAction<Readonly<Record<string, string>>>
@@ -68,10 +81,14 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   pointCloudTopics,
   poseSources,
   poseTopics,
+  referenceGrid,
   sceneAnnotationSources,
   sceneAnnotationTopics,
+  sceneBackground,
   selectedPoseSources,
   setCameraSourcesEnabled,
+  setReferenceGrid,
+  setSceneBackground,
   setTrackingMode,
   setTrajectoryFrameOverrides,
   toggleSource,
@@ -263,6 +280,71 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
           )}
         </div>
 
+        <div className={settingsStyles.field}>
+          <div className={settingsStyles.sectionHeader}>
+            <SettingsLabel
+              label="Reference Grid"
+              tooltip="Adaptive grid on the world ground plane: minor lines at the configured spacing, brighter cardinal lines every tenth, coarsening by powers of ten as the camera recedes."
+            />
+            <Toggle
+              aria-label="Toggle reference grid"
+              checked={referenceGrid.enabled}
+              onChange={(enabled) => setReferenceGrid({ enabled })}
+              size={Size.Sm}
+              {...settingsBooleanNoSpaceToggleProps}
+            />
+          </div>
+          <GridNumberInput
+            disabled={!referenceGrid.enabled}
+            label="Spacing (m)"
+            min={0.01}
+            onChange={(spacingM) => setReferenceGrid({ spacingM })}
+            step={0.5}
+            value={referenceGrid.spacingM}
+          />
+          <GridNumberInput
+            disabled={!referenceGrid.enabled}
+            label="Opacity (%)"
+            max={100}
+            min={0}
+            onChange={(opacityPercent) => setReferenceGrid({ opacityPercent })}
+            step={1}
+            value={referenceGrid.opacityPercent}
+          />
+        </div>
+
+        <div className={settingsStyles.field}>
+          <SettingsLabel
+            label="Background"
+            tooltip="Scene backdrop behind the 3D view: a solid color of your choice, or a named gradient — Abyss (dark) or Studio (light)."
+          />
+          <select
+            aria-label="Background style"
+            className={settingsStyles.select}
+            onChange={(event) =>
+              setSceneBackground({
+                mode: event.target.value as McapSceneBackgroundMode,
+              })
+            }
+            value={sceneBackground.mode}
+          >
+            <option value="solid">Solid color</option>
+            <option value="abyss">Abyss — dark gradient</option>
+            <option value="studio">Studio — light gradient</option>
+          </select>
+          {sceneBackground.mode === "solid" ? (
+            <input
+              aria-label="Background color"
+              className={settingsStyles.select}
+              onChange={(event) =>
+                setSceneBackground({ solidColor: event.target.value })
+              }
+              type="color"
+              value={sceneBackground.solidColor}
+            />
+          ) : null}
+        </div>
+
         <FrameSelect
           disabled={frameIds.length === 0}
           label="World Frame"
@@ -333,6 +415,48 @@ function FrameSelect({
           </option>
         ))}
       </select>
+    </label>
+  );
+}
+
+function GridNumberInput({
+  disabled,
+  label,
+  max,
+  min,
+  onChange,
+  step,
+  value,
+}: {
+  readonly disabled: boolean;
+  readonly label: string;
+  readonly max?: number;
+  readonly min: number;
+  readonly onChange: (value: number) => void;
+  readonly step: number;
+  readonly value: number;
+}) {
+  return (
+    <label className={settingsStyles.field}>
+      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+        {label}
+      </Text>
+      <input
+        aria-label={label}
+        className={settingsStyles.select}
+        disabled={disabled}
+        max={max}
+        min={min}
+        onChange={(event) => {
+          const next = Number(event.target.value);
+          if (Number.isFinite(next)) {
+            onChange(next);
+          }
+        }}
+        step={step}
+        type="number"
+        value={value}
+      />
     </label>
   );
 }

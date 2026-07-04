@@ -2,6 +2,7 @@
 import { GizmoHelper, GizmoViewport, OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { mix, screenUV, vec3 } from "three/tsl";
 import {
   type ReactNode,
   useCallback,
@@ -70,12 +71,31 @@ export interface ThreeCameraPose {
   readonly target: VectorTuple;
 }
 
+/**
+ * Scene backdrop fill: one flat color, or a vertical screen-space
+ * gradient from `top` to `bottom`.
+ */
+export type ThreeSceneBackground =
+  | { readonly color: string; readonly kind: "solid" }
+  | {
+      readonly bottom: string;
+      readonly kind: "gradient";
+      readonly top: string;
+    };
+
+const DEFAULT_SCENE_BACKGROUND: ThreeSceneBackground = {
+  color: VISUALIZATION_PANEL_BACKGROUND_COLOR,
+  kind: "solid",
+};
+
 export type ThreeCameraPoseChangeSource = "focus" | "initial" | "interaction";
 
 /**
  * Props for the shared 3D visualization scene shell.
  */
 export interface Base3DSceneProps {
+  /** Backdrop fill; defaults to the shared dark panel color. */
+  readonly background?: ThreeSceneBackground;
   readonly cameraPose?: ThreeCameraPose | null;
   readonly children?: ReactNode;
   readonly focusSceneRequestKey?: number;
@@ -90,6 +110,7 @@ export interface Base3DSceneProps {
  * Base 3D R3F scene with reusable navigation, axes, and Z-up coordinates.
  */
 export function Base3DScene({
+  background = DEFAULT_SCENE_BACKGROUND,
   cameraPose,
   children,
   focusSceneRequestKey,
@@ -100,10 +121,7 @@ export function Base3DScene({
 
   return (
     <>
-      <color
-        args={[VISUALIZATION_PANEL_BACKGROUND_COLOR]}
-        attach="background"
-      />
+      <SceneBackground background={background} />
       <ambientLight intensity={DEFAULT_AMBIENT_LIGHT_INTENSITY} />
       {children}
       <ControlledOrbitControls
@@ -127,6 +145,65 @@ export function Base3DScene({
       ) : null}
     </>
   );
+}
+
+/**
+ * `backgroundNode` is a WebGPU-renderer extension of Scene that the
+ * pinned three types don't surface.
+ */
+type SceneBackgroundHandle = {
+  background: unknown;
+  backgroundNode: unknown;
+};
+
+/**
+ * Syncs the three scene's backdrop with the configured fill: a plain
+ * `scene.background` color for solids, a screen-space TSL gradient via
+ * `scene.backgroundNode` otherwise. Exported for tests.
+ */
+export function SceneBackground({
+  background,
+}: {
+  readonly background: ThreeSceneBackground;
+}) {
+  const scene = useThree(
+    (state) => state.scene,
+  ) as unknown as SceneBackgroundHandle;
+  const invalidate = useThree((state) => state.invalidate);
+
+  const solidColor = background.kind === "solid" ? background.color : null;
+  const gradientTop = background.kind === "gradient" ? background.top : null;
+  const gradientBottom =
+    background.kind === "gradient" ? background.bottom : null;
+
+  // This effect writes the configured fill onto the scene (an external
+  // three object) and clears it on unmount so the next scene owner
+  // starts from a clean slate.
+  useEffect(() => {
+    if (solidColor !== null) {
+      scene.background = new THREE.Color(solidColor);
+      scene.backgroundNode = null;
+    } else if (gradientTop !== null && gradientBottom !== null) {
+      // THREE.Color converts the sRGB hex values into linear space.
+      const top = new THREE.Color(gradientTop);
+      const bottom = new THREE.Color(gradientBottom);
+      scene.background = null;
+      // screenUV.y is 0 at the top of the canvas under WebGPU.
+      scene.backgroundNode = mix(
+        vec3(top.r, top.g, top.b),
+        vec3(bottom.r, bottom.g, bottom.b),
+        screenUV.y,
+      );
+    }
+    invalidate();
+
+    return () => {
+      scene.background = null;
+      scene.backgroundNode = null;
+    };
+  }, [gradientBottom, gradientTop, invalidate, scene, solidColor]);
+
+  return null;
 }
 
 function ControlledOrbitControls({
