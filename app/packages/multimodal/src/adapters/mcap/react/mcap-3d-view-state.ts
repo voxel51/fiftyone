@@ -39,7 +39,6 @@ export interface Mcap3dViewStateSnapshot {
   readonly enabledSourceIds: readonly string[] | null;
   /** The renderable-source shape the selection state was captured against. */
   readonly renderableSourceIds: readonly string[] | null;
-  readonly showCameraImages: boolean | null;
   /** Follow-mode anchor; carries its own mode/world/target frame gates. */
   readonly trackingAnchor: Mcap3dCameraTrackingAnchor | null;
   readonly trackingMode: Mcap3dTrackingMode | null;
@@ -55,7 +54,6 @@ export const EMPTY_MCAP_3D_VIEW_STATE: Mcap3dViewStateSnapshot = {
   cameraView: null,
   enabledSourceIds: null,
   renderableSourceIds: null,
-  showCameraImages: null,
   trackingAnchor: null,
   trajectoryFrameOverrides: null,
   trackingMode: null,
@@ -80,10 +78,6 @@ export function recordMcap3dSourceSelection({
   readonly renderableSourceIds: readonly string[];
 }): void {
   state = { ...state, enabledSourceIds, renderableSourceIds };
-}
-
-export function recordMcap3dShowCameraImages(showCameraImages: boolean): void {
-  state = { ...state, showCameraImages };
 }
 
 export function recordMcap3dTrajectoryFrameOverrides(
@@ -165,7 +159,6 @@ export function mcap3dSourceShapeMatches(
 
 export interface Mcap3dSelectionRestore {
   readonly enabledSourceIds: readonly string[] | null;
-  readonly showCameraImages: boolean | null;
   readonly sourceShapeMatches: boolean;
 }
 
@@ -187,7 +180,6 @@ export function resolveMcap3dSelectionRestore(
 
   return {
     enabledSourceIds: sourceShapeMatches ? snapshot.enabledSourceIds : null,
-    showCameraImages: sourceShapeMatches ? snapshot.showCameraImages : null,
     sourceShapeMatches,
   };
 }

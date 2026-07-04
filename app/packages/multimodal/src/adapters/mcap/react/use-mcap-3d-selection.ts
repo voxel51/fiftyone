@@ -5,7 +5,6 @@ import { useSceneInventory, type SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { chooseCalibrationTopic } from "../topic-matching";
 import {
-  recordMcap3dShowCameraImages,
   recordMcap3dSourceSelection,
   resolveMcap3dSelectionRestore,
   type Mcap3dViewStateSnapshot,
@@ -40,9 +39,9 @@ const PROVISIONAL_TOPIC_PENALTIES: readonly {
  * pairing that feeds camera frustum image planes, and the tile-title sync.
  * State is local to the calling tile — it resets when the tile remounts.
  * An optional `restore` snapshot (captured by the previous mount via the
- * session view-state store) seeds the enabled set and camera-image toggle,
- * but only when the new sample's renderable-source shape strictly matches
- * the snapshot's; otherwise the defaults apply exactly as a fresh mount.
+ * session view-state store) seeds the enabled set, but only when the new
+ * sample's renderable-source shape strictly matches the snapshot's; otherwise
+ * the defaults apply exactly as a fresh mount.
  */
 export function useMcap3dSelection({
   restore = null,
@@ -184,15 +183,6 @@ export function useMcap3dSelection({
   // Camera frames on frustum image planes: pair each calibration topic with
   // its camera's image stream (same prefix convention the image tile uses,
   // inverted) so the frustum can show what the camera currently sees.
-  const [showCameraImages, setShowCameraImages] = useState(
-    selectionRestore.showCameraImages ?? true,
-  );
-
-  // This effect writes the camera-image visibility toggle through to the
-  // session view-state store so it can carry across sample navigation.
-  useEffect(() => {
-    recordMcap3dShowCameraImages(showCameraImages);
-  }, [showCameraImages]);
   const imageTopicByCalibrationTopic = useMemo(() => {
     const pairs = new Map<string, string>();
     for (const source of sources) {
@@ -208,12 +198,10 @@ export function useMcap3dSelection({
   }, [cameraTopics, sources]);
   const frustumImageTopics = useMemo(
     () =>
-      showCameraImages
-        ? cameraTopics.map(
-            (topic) => imageTopicByCalibrationTopic.get(topic) ?? "",
-          )
-        : [],
-    [cameraTopics, imageTopicByCalibrationTopic, showCameraImages],
+      cameraTopics.map(
+        (topic) => imageTopicByCalibrationTopic.get(topic) ?? "",
+      ),
+    [cameraTopics, imageTopicByCalibrationTopic],
   );
   const selectedTopics = useMemo(
     () => [
@@ -263,6 +251,27 @@ export function useMcap3dSelection({
     });
   }, []);
 
+  const setCameraSourcesEnabled = useCallback(
+    (checked: boolean) => {
+      setEnabled((current) => {
+        const next = new Set(current);
+        let changed = false;
+        for (const source of cameraSources) {
+          if (checked) {
+            if (!next.has(source.id)) {
+              next.add(source.id);
+              changed = true;
+            }
+          } else if (next.delete(source.id)) {
+            changed = true;
+          }
+        }
+        return changed ? next : current;
+      });
+    },
+    [cameraSources],
+  );
+
   return {
     cameraSources,
     cameraTopics,
@@ -282,9 +291,8 @@ export function useMcap3dSelection({
     selectedPoseSources,
     selectedTopics,
     selectedTopicsKey,
+    setCameraSourcesEnabled,
     setEnabled,
-    setShowCameraImages,
-    showCameraImages,
     toggleSource,
   };
 }

@@ -166,6 +166,27 @@ describe("useMcap3dViewShortcuts", () => {
     expect(onApplyCameraPose).not.toHaveBeenCalled();
   });
 
+  it("leaves E and T available to other handlers when the tile is inactive", () => {
+    const onApplyCameraPose = vi.fn();
+    const fallbackHandler = vi.fn((event: KeyboardEvent) => {
+      expect(event.defaultPrevented).toBe(false);
+    });
+    renderHook(useMcap3dViewShortcuts, {
+      initialProps: shortcutOptions({ isActive: false, onApplyCameraPose }),
+    });
+    window.addEventListener("keydown", fallbackHandler);
+
+    try {
+      const handled = fireEvent.keyDown(window, { code: "KeyE" });
+
+      expect(handled).toBe(true);
+      expect(onApplyCameraPose).not.toHaveBeenCalled();
+      expect(fallbackHandler).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener("keydown", fallbackHandler);
+    }
+  });
+
   it("no-ops when neither an ego pose nor a displayed pose resolves", () => {
     const onApplyCameraPose = vi.fn();
     renderHook(useMcap3dViewShortcuts, {
@@ -218,6 +239,7 @@ function shortcutOptions(
     frameIds: ["base_link", "lidar", "map"],
     frameTransforms: translationTransforms(10, 0, 0),
     getDisplayedCameraPose: () => displayedPose(),
+    isActive: true,
     onApplyCameraPose: vi.fn(),
     playbackTimeNs: 0n,
     worldFrameId: "map",

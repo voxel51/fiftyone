@@ -16,6 +16,12 @@
   align-items: center;
 }
 
+.sectionHeader {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
 .optionStack {
   display: flex;
   flex-direction: column;

@@ -6,7 +6,6 @@ import {
   mcap3dSourceShapeMatches,
   nextMcap3dViewStateRestoreOnceKey,
   recordMcap3dCameraView,
-  recordMcap3dShowCameraImages,
   recordMcap3dSourceSelection,
   recordMcap3dTrackingAnchor,
   recordMcap3dTrackingMode,
@@ -29,7 +28,6 @@ describe("mcap3dViewState store", () => {
       enabledSourceIds: ["/lidar/top"],
       renderableSourceIds: ["/lidar/top", "/labels/boxes"],
     });
-    recordMcap3dShowCameraImages(false);
     recordMcap3dTrajectoryFrameOverrides({ "/odom": "map" });
     recordMcap3dTrackingMode("heading");
     recordMcap3dUserWorldFrameId("map");
@@ -53,7 +51,6 @@ describe("mcap3dViewState store", () => {
       },
       enabledSourceIds: ["/lidar/top"],
       renderableSourceIds: ["/lidar/top", "/labels/boxes"],
-      showCameraImages: false,
       trackingAnchor: {
         mode: "heading",
         relativePosition: [1, 0, 0],
@@ -109,13 +106,11 @@ describe("resolveMcap3dSelectionRestore", () => {
       enabledSourceIds: ["a"],
       renderableSourceIds: ["a", "b"],
     });
-    recordMcap3dShowCameraImages(false);
 
     expect(
       resolveMcap3dSelectionRestore(getMcap3dViewStateSnapshot(), ["b", "a"]),
     ).toEqual({
       enabledSourceIds: ["a"],
-      showCameraImages: false,
       sourceShapeMatches: true,
     });
   });
@@ -130,12 +125,10 @@ describe("resolveMcap3dSelectionRestore", () => {
       resolveMcap3dSelectionRestore(getMcap3dViewStateSnapshot(), ["a", "c"]),
     ).toEqual({
       enabledSourceIds: null,
-      showCameraImages: null,
       sourceShapeMatches: false,
     });
     expect(resolveMcap3dSelectionRestore(null, ["a"])).toEqual({
       enabledSourceIds: null,
-      showCameraImages: null,
       sourceShapeMatches: false,
     });
   });

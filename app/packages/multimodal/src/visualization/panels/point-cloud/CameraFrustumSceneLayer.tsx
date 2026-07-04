@@ -1,5 +1,5 @@
 /* eslint-disable react/no-unknown-property */
-import { useThree } from "@react-three/fiber";
+import { useThree, type ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
@@ -10,6 +10,7 @@ import {
   acquireImageTexture,
   type ImageTextureLease,
 } from "../image-texture-cache";
+import { useScenePicking } from "./scene-interactivity";
 import { pointCloudObjectTransform } from "./transforms";
 import type { CameraFrustumPanelLayer } from "./types";
 import { isFinitePositiveNumber } from "./utils";
@@ -18,9 +19,19 @@ import { isFinitePositiveNumber } from "./utils";
 // Purely presentational — the value is not data, which is also why
 // frustums never participate in camera-fit bounds. Sized so the image
 // planes read at vehicle scale next to LiDAR returns.
-const CAMERA_FRUSTUM_DEPTH_M = 2.5;
+const CAMERA_FRUSTUM_DEPTH_M = 2.75;
 const CAMERA_FRUSTUM_COLOR = 0xffaa33;
 const CAMERA_FRUSTUM_OPACITY = 0.85;
+// Highlighted (linked camera tile hovered / pending select) style.
+const CAMERA_FRUSTUM_HIGHLIGHT_COLOR = 0xffffff;
+const CAMERA_FRUSTUM_HIGHLIGHT_OPACITY = 1;
+// Image planes stay slightly translucent so they read as projections
+// into the scene rather than opaque billboards occluding it; hovering
+// (or the linked-tile highlight) brings the full image forward.
+const CAMERA_FRUSTUM_IMAGE_OPACITY = 0.9;
+// A click that traveled further than this (pointer-down → pointer-up, px)
+// is an orbit drag, not a pick.
+const FRUSTUM_CLICK_DRAG_TOLERANCE_PX = 4;
 
 export function CameraFrustumSceneLayer({
   layer,
@@ -59,6 +70,10 @@ export function CameraFrustumSceneLayer({
   const [imageHandle, setImageHandle] = useState<ImageTextureHandle | null>(
     null,
   );
+  const pickingEnabled = useScenePicking();
+  const [hovered, setHovered] = useState(false);
+  const interactive = Boolean(layer.onSelect) && pickingEnabled;
+  const emphasized = Boolean(layer.highlighted) || (hovered && interactive);
   const heldImageRef = useRef<{
     readonly handle: ImageTextureHandle;
     readonly release: ImageTextureLease["release"];
@@ -142,7 +157,25 @@ export function CameraFrustumSceneLayer({
   useEffect(() => () => imagePlaneGeometry?.dispose(), [imagePlaneGeometry]);
   useEffect(() => {
     invalidate();
-  }, [geometry, imageHandle, imagePlaneGeometry, invalidate, objectTransform]);
+  }, [
+    emphasized,
+    geometry,
+    imageHandle,
+    imagePlaneGeometry,
+    invalidate,
+    objectTransform,
+  ]);
+
+  // This effect shows a pointer cursor while a clickable frustum is
+  // hovered; the canvas has no per-object cursor styling of its own.
+  useEffect(() => {
+    if (!hovered || !interactive) return undefined;
+    const previous = document.body.style.cursor;
+    document.body.style.cursor = "pointer";
+    return () => {
+      document.body.style.cursor = previous;
+    };
+  }, [hovered, interactive]);
 
   if (!geometry) {
     return null;
@@ -156,19 +189,50 @@ export function CameraFrustumSceneLayer({
     <group
       position={objectTransform.position}
       quaternion={objectTransform.quaternion}
+      onClick={
+        interactive
+          ? (event: ThreeEvent<MouseEvent>) => {
+              if (event.delta > FRUSTUM_CLICK_DRAG_TOLERANCE_PX) return;
+              event.stopPropagation();
+              layer.onSelect?.({
+                metaKey: event.nativeEvent.metaKey,
+              });
+            }
+          : undefined
+      }
+      onPointerOver={
+        interactive
+          ? (event) => {
+              event.stopPropagation();
+              setHovered(true);
+            }
+          : undefined
+      }
+      onPointerOut={interactive ? () => setHovered(false) : undefined}
     >
       <lineSegments frustumCulled={false}>
         <primitive attach="geometry" object={geometry} />
         <lineBasicMaterial
-          color={CAMERA_FRUSTUM_COLOR}
-          opacity={CAMERA_FRUSTUM_OPACITY}
+          color={
+            emphasized ? CAMERA_FRUSTUM_HIGHLIGHT_COLOR : CAMERA_FRUSTUM_COLOR
+          }
+          opacity={
+            emphasized
+              ? CAMERA_FRUSTUM_HIGHLIGHT_OPACITY
+              : CAMERA_FRUSTUM_OPACITY
+          }
           transparent
         />
       </lineSegments>
       {imageMap && imagePlaneGeometry ? (
         <mesh frustumCulled={false}>
           <primitive attach="geometry" object={imagePlaneGeometry} />
-          <meshBasicMaterial map={imageMap} side={THREE.DoubleSide} />
+          <meshBasicMaterial
+            map={imageMap}
+            opacity={emphasized ? 1 : CAMERA_FRUSTUM_IMAGE_OPACITY}
+            side={THREE.DoubleSide}
+            transparent
+          />
         </mesh>
       ) : null}
     </group>

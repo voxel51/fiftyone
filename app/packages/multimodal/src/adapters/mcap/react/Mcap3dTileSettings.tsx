@@ -1,5 +1,12 @@
 import { TileSettingsContent } from "@fiftyone/tiling";
-import { Checkbox, Text, TextColor, TextVariant } from "@voxel51/voodo";
+import {
+  Checkbox,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Toggle,
+} from "@voxel51/voodo";
 import React from "react";
 import type { SceneSource } from "../../../scene-inventory";
 import {
@@ -7,7 +14,10 @@ import {
   type Mcap3dTrackingMode,
 } from "./mcap-3d-camera";
 import type { McapPoseTrajectories } from "./mcap-pose-trajectories-context";
-import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
+import {
+  checkboxNoSpaceToggleProps,
+  settingsBooleanNoSpaceToggleProps,
+} from "./mcap-settings-keyboard";
 import settingsStyles from "./McapTile.settings.module.css";
 import { TRACKING_MODES } from "./use-mcap-3d-camera-tracking";
 
@@ -26,12 +36,11 @@ export interface Mcap3dTileSettingsProps {
   readonly sceneAnnotationSources: readonly SceneSource[];
   readonly sceneAnnotationTopics: readonly string[];
   readonly selectedPoseSources: readonly SceneSource[];
-  readonly setShowCameraImages: (checked: boolean) => void;
+  readonly setCameraSourcesEnabled: (checked: boolean) => void;
   readonly setTrackingMode: (mode: Mcap3dTrackingMode) => void;
   readonly setTrajectoryFrameOverrides: React.Dispatch<
     React.SetStateAction<Readonly<Record<string, string>>>
   >;
-  readonly showCameraImages: boolean;
   readonly toggleSource: (id: string, checked: boolean) => void;
   readonly trackingMode: Mcap3dTrackingMode;
   readonly trajectories: McapPoseTrajectories;
@@ -62,10 +71,9 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   sceneAnnotationSources,
   sceneAnnotationTopics,
   selectedPoseSources,
-  setShowCameraImages,
+  setCameraSourcesEnabled,
   setTrackingMode,
   setTrajectoryFrameOverrides,
-  showCameraImages,
   toggleSource,
   trackingMode,
   trajectories,
@@ -136,9 +144,20 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
         </div>
 
         <div className={settingsStyles.field}>
-          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            Cameras
-          </Text>
+          <div className={settingsStyles.sectionHeader}>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              Cameras
+            </Text>
+            {cameraSources.length > 0 ? (
+              <Toggle
+                aria-label="Toggle cameras"
+                checked={cameraTopics.length > 0}
+                onChange={setCameraSourcesEnabled}
+                size={Size.Sm}
+                {...settingsBooleanNoSpaceToggleProps}
+              />
+            ) : null}
+          </div>
           {cameraSources.length > 0 ? (
             <>
               <div className={settingsStyles.metaText}>
@@ -155,12 +174,6 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
                     {...checkboxNoSpaceToggleProps}
                   />
                 ))}
-                <Checkbox
-                  label="Show camera images"
-                  checked={showCameraImages}
-                  onChange={setShowCameraImages}
-                  {...checkboxNoSpaceToggleProps}
-                />
               </div>
             </>
           ) : (

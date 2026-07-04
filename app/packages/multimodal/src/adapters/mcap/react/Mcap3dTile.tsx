@@ -1,3 +1,4 @@
+import { useTileId, useTiling } from "@fiftyone/tiling";
 import React, {
   useCallback,
   useEffect,
@@ -35,7 +36,24 @@ import {
   getMcap3dViewStateSnapshot,
   nextMcap3dViewStateRestoreOnceKey,
 } from "./mcap-3d-view-state";
+import { useSetAtom } from "jotai";
 import { useMcapDataStream } from "./mcap-data-stream-context";
+import {
+  useMcapHoveredImageTopic,
+  useMcapImageTileBindings,
+} from "./mcap-tile-source-bindings";
+import {
+  Mcap3dHoverTooltip,
+  useMcap3dHoverTooltip,
+} from "./use-mcap-3d-hover-tooltip";
+import { useOpenMcapImageTile } from "./use-open-mcap-image-tile";
+import {
+  isMcapLabelEcho,
+  isMcapSceneEntitySelected,
+  mcapEntityLabel,
+  mcapSelectedObjectAtom,
+  useMcapSelectedObject,
+} from "./mcap-selected-object";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import { useMcapModalSettings } from "./mcap-modal-settings";
 import type { McapTileProps } from "./mcap-tile-types";
@@ -88,8 +106,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     selectedPoseSources,
     selectedTopics,
     selectedTopicsKey,
-    setShowCameraImages,
-    showCameraImages,
+    setCameraSourcesEnabled,
     toggleSource,
   } = useMcap3dSelection({ restore: viewStateRestore });
   const frameTransforms = useMcapFrameTransformsContext();
@@ -204,17 +221,42 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   // texture key matches the one the 2D image tile forms for the same
   // (recording, image topic, frame), so both surfaces share one decoded
   // texture through the image-texture cache.
+  const openImageTile = useOpenMcapImageTile();
+  const hoveredImageTopic = useMcapHoveredImageTopic();
+  const tileId = useTileId();
+  const { focusedTileId } = useTiling();
+  const imageTileBindings = useMcapImageTileBindings();
+  // The stream shown by the focused (active) tile, if it's an image tile.
+  const focusedImageTopic = focusedTileId
+    ? (imageTileBindings[focusedTileId] ?? null)
+    : null;
   const frustumLayers = useMemo(
     () =>
       cameraFrustumLayers.map((layer) => {
         const index = cameraTopics.indexOf(layer.id);
         const imageFrame = index >= 0 ? frustumImageFrames[index] : null;
-        if (!imageFrame) {
-          return layer;
-        }
         const imageTopic = index >= 0 ? (frustumImageTopics[index] ?? "") : "";
+        // Frustum ↔ tile link: Cmd-clicking the frustum opens/focuses its
+        // camera's tile; hovering that tile lights the frustum up.
+        const linked = imageTopic
+          ? {
+              highlighted:
+                hoveredImageTopic === imageTopic ||
+                focusedImageTopic === imageTopic,
+              imageTopic,
+              onSelect: ({ metaKey }: { readonly metaKey: boolean }) => {
+                if (metaKey) {
+                  openImageTile(imageTopic);
+                }
+              },
+            }
+          : {};
+        if (!imageFrame) {
+          return { ...layer, ...linked };
+        }
         return {
           ...layer,
+          ...linked,
           image: imageFrame.frame,
           imageContentTimeNs: imageFrame.contentTimeNs,
           imageTextureKey:
@@ -231,9 +273,68 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       cameraFrustumLayers,
       cameraTopics,
       frustumImageFrames,
+      focusedImageTopic,
       frustumImageTopics,
+      hoveredImageTopic,
+      openImageTile,
       sourceKey,
     ],
+  );
+  // Wire the scene annotations into the cross-tile selection: each layer
+  // (one entity each) learns whether it's the selected object (or a
+  // label-match echo of one) and how to toggle itself selected. Kept out
+  // of build3dLayers so the pure layer builder stays selection-agnostic.
+  const selectedObject = useMcapSelectedObject();
+  const setSelectedObject = useSetAtom(mcapSelectedObjectAtom);
+  const {
+    containerProps: hoverTooltipContainerProps,
+    onHoverEntity,
+    tooltip: hoverTooltip,
+  } = useMcap3dHoverTooltip();
+  const annotationLayers = useMemo(
+    () =>
+      sceneAnnotationLayers.map((layer) => {
+        const entity = layer.frame.entities[0];
+        if (!entity) return layer;
+        const topic = layer.sourceId ?? "";
+        const entityId = entity.id || layer.id;
+        const label = mcapEntityLabel(entity);
+        const isSelected = isMcapSceneEntitySelected(
+          selectedObject,
+          topic,
+          entityId,
+        );
+        return {
+          ...layer,
+          highlighted: isSelected || isMcapLabelEcho(selectedObject, label),
+          onHoverEntity: (hoveredId: string | null) =>
+            onHoverEntity(hoveredId ? { entityId, label, topic } : null),
+          onSelectEntity: (
+            _entityId: string,
+            modifiers: { readonly shiftKey: boolean },
+          ) => {
+            // Plain click = this instance only; shift-click widens to
+            // every object sharing the label. Re-clicking with the same
+            // scope toggles off; changing the modifier switches scope.
+            const scope = modifiers.shiftKey ? "label" : "instance";
+            setSelectedObject((current) =>
+              isMcapSceneEntitySelected(current, topic, entityId) &&
+              current?.scope === scope
+                ? null
+                : {
+                    entityId,
+                    frameId: entity.frameId,
+                    kind: "scene-annotation",
+                    label,
+                    metadata: entity.metadata,
+                    scope,
+                    topic,
+                  },
+            );
+          },
+        };
+      }),
+    [onHoverEntity, sceneAnnotationLayers, selectedObject, setSelectedObject],
   );
   // Schema-driven telemetry: speed from the first enabled pose stream whose
   // latest sample carries velocity, coordinates from the first LocationFix
@@ -333,6 +434,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     frameIds,
     frameTransforms,
     getDisplayedCameraPose,
+    isActive: Boolean(tileId && focusedTileId === tileId),
     onApplyCameraPose: handleCameraPoseChange,
     playbackTimeNs,
     worldFrameId,
@@ -365,9 +467,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     if (restoredSourceShapeMatches) {
       if (viewStateRestore.enabledSourceIds) {
         fields.push("enabledSources");
-      }
-      if (viewStateRestore.showCameraImages !== null) {
-        fields.push("showCameraImages");
       }
       if (
         viewStateRestore.trajectoryFrameOverrides &&
@@ -598,10 +697,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         sceneAnnotationSources={sceneAnnotationSources}
         sceneAnnotationTopics={sceneAnnotationTopics}
         selectedPoseSources={selectedPoseSources}
-        setShowCameraImages={setShowCameraImages}
+        setCameraSourcesEnabled={setCameraSourcesEnabled}
         setTrackingMode={setTrackingMode}
         setTrajectoryFrameOverrides={setTrajectoryFrameOverrides}
-        showCameraImages={showCameraImages}
         toggleSource={toggleSource}
         trackingMode={trackingMode}
         trajectories={trajectories}
@@ -623,9 +721,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         gridLayers.length > 0 ||
         cameraFrustumLayers.length > 0 ||
         producedNotices.length > 0 ? (
-        <div className={styles.panelStack}>
+        <div className={styles.panelStack} {...hoverTooltipContainerProps}>
           <PointCloudPanel
-            annotationLayers={sceneAnnotationLayers}
+            annotationLayers={annotationLayers}
             cameraPose={panelCameraPose}
             canvasSurface="modal-3d"
             fitResetKey={worldFrameId}
@@ -639,6 +737,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             onRenderStats={handlePanelRenderStats}
           />
           <McapTileStatusBadge topics={selectedTopics} />
+          {hoverTooltip ? <Mcap3dHoverTooltip tooltip={hoverTooltip} /> : null}
         </div>
       ) : (
         <McapTileEmptyState topics={selectedTopics} />

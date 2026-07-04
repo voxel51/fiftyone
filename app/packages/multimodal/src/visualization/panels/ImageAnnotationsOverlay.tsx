@@ -22,6 +22,11 @@ export type ImageAnnotationPrimitive =
   | { readonly kind: "points"; readonly value: ImageAnnotationPoints }
   | { readonly kind: "text"; readonly value: ImageAnnotationText };
 
+export type ImageAnnotationSelectHandler = (
+  picked: ImageAnnotationPickedPrimitive,
+  modifiers: { readonly shiftKey: boolean },
+) => void;
+
 export interface ImageAnnotationPickedPrimitive {
   readonly key: string;
   readonly setIndex: number;
@@ -38,7 +43,13 @@ export interface ImageAnnotationsOverlayProps {
   readonly fit: "contain" | "cover";
   readonly strokeWidth?: number;
   readonly selectedKey?: string | null;
-  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  /**
+   * Cross-view echo: shapes whose derived label equals this are drawn in
+   * the selected style even when `selectedKey` points elsewhere (or at a
+   * 3D object). Best-effort — 2D annotations carry no object ids.
+   */
+  readonly highlightLabel?: string | null;
+  readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
   readonly viewTransform?: ImageViewTransform;
 }
 
@@ -60,6 +71,7 @@ export function ImageAnnotationsOverlay({
   fit,
   strokeWidth,
   selectedKey,
+  highlightLabel,
   onSelectPrimitive,
   viewTransform,
 }: ImageAnnotationsOverlayProps) {
@@ -119,6 +131,7 @@ export function ImageAnnotationsOverlay({
                 setIndex={i}
                 strokeWidth={strokeWidth}
                 selectedKey={selectedKey ?? null}
+                highlightLabel={highlightLabel ?? null}
                 onSelectPrimitive={onSelectPrimitive}
               />
             </Fragment>
@@ -134,7 +147,8 @@ interface SetPrimitivesProps {
   readonly setIndex: number;
   readonly strokeWidth?: number;
   readonly selectedKey: string | null;
-  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  readonly highlightLabel: string | null;
+  readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
 }
 
 function SetPrimitives({
@@ -142,6 +156,7 @@ function SetPrimitives({
   setIndex,
   strokeWidth,
   selectedKey,
+  highlightLabel,
   onSelectPrimitive,
 }: SetPrimitivesProps) {
   return (
@@ -156,6 +171,7 @@ function SetPrimitives({
             texts={set.texts}
             strokeWidth={strokeWidth}
             selectedKey={selectedKey}
+            highlightLabel={highlightLabel}
             onSelectPrimitive={onSelectPrimitive}
           />
         ) : (
@@ -167,6 +183,7 @@ function SetPrimitives({
             texts={set.texts}
             strokeWidth={strokeWidth}
             selectedKey={selectedKey}
+            highlightLabel={highlightLabel}
             onSelectPrimitive={onSelectPrimitive}
           />
         ),
@@ -180,6 +197,7 @@ function SetPrimitives({
           texts={set.texts}
           strokeWidth={strokeWidth}
           selectedKey={selectedKey}
+          highlightLabel={highlightLabel}
           onSelectPrimitive={onSelectPrimitive}
         />
       ))}
@@ -190,6 +208,7 @@ function SetPrimitives({
           primitiveIndex={j}
           setIndex={setIndex}
           selectedKey={selectedKey}
+          highlightLabel={highlightLabel}
           onSelectPrimitive={onSelectPrimitive}
         />
       ))}
@@ -204,7 +223,8 @@ interface CirclePrimitiveProps {
   readonly texts: readonly ImageAnnotationText[];
   readonly strokeWidth?: number;
   readonly selectedKey: string | null;
-  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  readonly highlightLabel: string | null;
+  readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
 }
 
 function CirclePrimitive({
@@ -214,6 +234,7 @@ function CirclePrimitive({
   texts,
   strokeWidth,
   selectedKey,
+  highlightLabel,
   onSelectPrimitive,
 }: CirclePrimitiveProps) {
   const [x, y] = primitive.position;
@@ -229,7 +250,9 @@ function CirclePrimitive({
     color,
     label,
   });
-  const isSelected = selectedKey === key;
+  const isSelected =
+    selectedKey === key ||
+    (highlightLabel !== null && label === highlightLabel);
   return (
     <g
       className={clsx(
@@ -260,7 +283,8 @@ interface PolylinePrimitiveProps {
   readonly texts: readonly ImageAnnotationText[];
   readonly strokeWidth?: number;
   readonly selectedKey: string | null;
-  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  readonly highlightLabel: string | null;
+  readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
 }
 
 function PolylinePrimitive({
@@ -270,6 +294,7 @@ function PolylinePrimitive({
   texts,
   strokeWidth,
   selectedKey,
+  highlightLabel,
   onSelectPrimitive,
 }: PolylinePrimitiveProps) {
   const thickness = lineWidth(primitive.thickness, strokeWidth);
@@ -285,7 +310,9 @@ function PolylinePrimitive({
     color,
     label,
   });
-  const isSelected = selectedKey === key;
+  const isSelected =
+    selectedKey === key ||
+    (highlightLabel !== null && label === highlightLabel);
 
   if (primitive.type === "points") {
     return (
@@ -356,7 +383,8 @@ interface LineListGroupsProps {
   readonly texts: readonly ImageAnnotationText[];
   readonly strokeWidth?: number;
   readonly selectedKey: string | null;
-  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  readonly highlightLabel: string | null;
+  readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
 }
 
 function LineListGroups({
@@ -366,6 +394,7 @@ function LineListGroups({
   texts,
   strokeWidth,
   selectedKey,
+  highlightLabel,
   onSelectPrimitive,
 }: LineListGroupsProps) {
   const thickness = lineWidth(primitive.thickness, strokeWidth);
@@ -392,7 +421,9 @@ function LineListGroups({
           color,
           label: group.label,
         });
-        const isSelected = selectedKey === key;
+        const isSelected =
+          selectedKey === key ||
+          (highlightLabel !== null && group.label === highlightLabel);
         const b = group.bounds;
         return (
           <g
@@ -436,7 +467,8 @@ interface TextPrimitiveProps {
   readonly primitiveIndex: number;
   readonly setIndex: number;
   readonly selectedKey: string | null;
-  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  readonly highlightLabel: string | null;
+  readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
 }
 
 function TextPrimitive({
@@ -444,6 +476,7 @@ function TextPrimitive({
   primitiveIndex,
   setIndex,
   selectedKey,
+  highlightLabel,
   onSelectPrimitive,
 }: TextPrimitiveProps) {
   const [x, y] = primitive.position;
@@ -460,7 +493,9 @@ function TextPrimitive({
     color,
     label,
   });
-  const isSelected = selectedKey === key;
+  const isSelected =
+    selectedKey === key ||
+    (highlightLabel !== null && label === highlightLabel);
 
   return (
     <g
@@ -628,15 +663,13 @@ function primitiveStyle(
 }
 
 function pickHandler(
-  onSelectPrimitive:
-    | ((picked: ImageAnnotationPickedPrimitive) => void)
-    | undefined,
+  onSelectPrimitive: ImageAnnotationSelectHandler | undefined,
   picked: ImageAnnotationPickedPrimitive,
 ): ((e: React.MouseEvent) => void) | undefined {
   if (!onSelectPrimitive) return undefined;
   return (e) => {
     e.stopPropagation();
-    onSelectPrimitive(picked);
+    onSelectPrimitive(picked, { shiftKey: e.shiftKey });
   };
 }
 

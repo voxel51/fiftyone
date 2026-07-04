@@ -116,6 +116,7 @@ export interface Mcap3dViewShortcutsOptions {
   readonly frameIds: readonly string[];
   readonly frameTransforms: McapFrameTransformsState;
   readonly getDisplayedCameraPose: () => PointCloudCameraPose | null;
+  readonly isActive: boolean;
   readonly onApplyCameraPose: (
     pose: PointCloudCameraPose,
     source: CameraPoseChangeSource,
@@ -155,6 +156,7 @@ export function useMcap3dViewShortcuts(
         event.altKey ||
         event.shiftKey ||
         (event.code !== "KeyE" && event.code !== "KeyT") ||
+        !latestOptionsRef.current.isActive ||
         isEditableKeyboardTarget(event.target)
       ) {
         return;

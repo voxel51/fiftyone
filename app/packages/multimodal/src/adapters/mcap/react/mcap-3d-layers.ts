@@ -326,7 +326,7 @@ function buildSceneAnnotationLayer({
   const id = `${topic}:${entity.id || entityIndex}`;
 
   if (!entity.frameId) {
-    return { frame: sceneFrame, id };
+    return { frame: sceneFrame, id, sourceId: topic };
   }
 
   const resolution = resolveCachedFrameTransform(
@@ -345,6 +345,7 @@ function buildSceneAnnotationLayer({
     frame: sceneFrame,
     frameTransform: resolution.transform,
     id,
+    sourceId: topic,
   };
 }
 

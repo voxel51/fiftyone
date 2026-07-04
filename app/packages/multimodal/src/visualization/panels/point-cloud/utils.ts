@@ -14,14 +14,27 @@ import type {
 const DEFAULT_SCENE_CUBE_COLOR: RgbaColor = [0.1, 0.78, 0.95, 1];
 export const EMPTY_NOTICES: readonly PanelNotice[] = [];
 
+// Selected/echoed entities render white and brighter so they pop against
+// the per-class colors without occluding the points inside them.
+const SCENE_EMPHASIS_COLOR_HEX = 0xffffff;
+const SCENE_EMPHASIS_OPACITY_BOOST = 0.3;
+
 export function sceneMaterialProps(
   color: RgbaColor | null,
   maxOpacity: number,
+  emphasized = false,
 ): {
   readonly color: number;
   readonly opacity: number;
   readonly transparent: boolean;
 } {
+  if (emphasized) {
+    return {
+      color: SCENE_EMPHASIS_COLOR_HEX,
+      opacity: Math.min(1, maxOpacity + SCENE_EMPHASIS_OPACITY_BOOST),
+      transparent: true,
+    };
+  }
   const [r, g, b, a] = color ?? DEFAULT_SCENE_CUBE_COLOR;
 
   return {

@@ -120,7 +120,7 @@ describe("useMcap3dSelection", () => {
     );
   });
 
-  it("pairs calibrations with image streams and gates frustum images on the checkbox", () => {
+  it("pairs selected calibrations with image streams for frustum image planes", () => {
     const { result } = renderSelection([
       frontCalibration,
       rearCalibration,
@@ -134,17 +134,40 @@ describe("useMcap3dSelection", () => {
     ]);
     // Index-aligned with cameraTopics: unpaired calibrations get "".
     expect(result.current.frustumImageTopics).toEqual([frontImage.id, ""]);
-    expect(result.current.showCameraImages).toBe(true);
 
     act(() => {
-      result.current.setShowCameraImages(false);
+      result.current.toggleSource(frontCalibration.id, false);
     });
-    expect(result.current.frustumImageTopics).toEqual([]);
+    expect(result.current.cameraTopics).toEqual([rearCalibration.id]);
+    expect(result.current.frustumImageTopics).toEqual([""]);
+  });
+
+  it("toggles all camera calibration sources without touching other 3D sources", () => {
+    const { result } = renderSelection([
+      frontCalibration,
+      rearCalibration,
+      frontImage,
+      lidarTop,
+      boxes,
+    ]);
 
     act(() => {
-      result.current.setShowCameraImages(true);
+      result.current.setCameraSourcesEnabled(false);
     });
-    expect(result.current.frustumImageTopics).toEqual([frontImage.id, ""]);
+    expect(result.current.enabled).toEqual(new Set([lidarTop.id, boxes.id]));
+    expect(result.current.cameraTopics).toEqual([]);
+    expect(result.current.selectedTopics).toEqual([lidarTop.id, boxes.id]);
+
+    act(() => {
+      result.current.setCameraSourcesEnabled(true);
+    });
+    expect(result.current.enabled).toEqual(
+      new Set([frontCalibration.id, rearCalibration.id, lidarTop.id, boxes.id]),
+    );
+    expect(result.current.cameraTopics).toEqual([
+      frontCalibration.id,
+      rearCalibration.id,
+    ]);
   });
 
   it("titles the tile after a single selected source, else the tile type", () => {
@@ -158,18 +181,16 @@ describe("useMcap3dSelection", () => {
     expect(setTileTitleMock).toHaveBeenLastCalledWith(lidarTop.label);
   });
 
-  it("restores the enabled set and camera-image toggle on a strict shape match", () => {
+  it("restores the enabled set on a strict shape match", () => {
     const { result } = renderSelection([lidarTop, lidarFront, boxes], {
       restore: viewStateSnapshot({
         enabledSourceIds: [lidarTop.id, boxes.id],
         renderableSourceIds: [boxes.id, lidarFront.id, lidarTop.id],
-        showCameraImages: false,
       }),
     });
 
     expect(result.current.restoredSourceShapeMatches).toBe(true);
     expect(result.current.enabled).toEqual(new Set([lidarTop.id, boxes.id]));
-    expect(result.current.showCameraImages).toBe(false);
   });
 
   it("falls back to fresh-mount defaults when the source shape differs", () => {
@@ -177,7 +198,6 @@ describe("useMcap3dSelection", () => {
       restore: viewStateSnapshot({
         enabledSourceIds: [lidarTop.id],
         renderableSourceIds: [lidarTop.id, boxes.id],
-        showCameraImages: false,
       }),
     });
 
@@ -185,7 +205,6 @@ describe("useMcap3dSelection", () => {
     expect(result.current.enabled).toEqual(
       new Set([lidarTop.id, lidarFront.id]),
     );
-    expect(result.current.showCameraImages).toBe(true);
   });
 
   it("writes the selection state through to the view-state store", () => {
@@ -194,17 +213,15 @@ describe("useMcap3dSelection", () => {
     expect(getMcap3dViewStateSnapshot()).toMatchObject({
       enabledSourceIds: [lidarTop.id, lidarFront.id],
       renderableSourceIds: [lidarTop.id, lidarFront.id],
-      showCameraImages: true,
     });
 
     act(() => {
       result.current.toggleSource(lidarFront.id, false);
-      result.current.setShowCameraImages(false);
     });
     expect(getMcap3dViewStateSnapshot()).toMatchObject({
       enabledSourceIds: [lidarTop.id],
-      showCameraImages: false,
     });
+    expect(getMcap3dViewStateSnapshot()).not.toHaveProperty("showCameraImages");
   });
 });
 

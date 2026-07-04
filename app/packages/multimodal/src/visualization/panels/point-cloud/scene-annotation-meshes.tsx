@@ -24,6 +24,7 @@ import {
   loadSceneModelAsset,
   modelAssetForPrimitive,
 } from "./scene-models";
+import { useSceneEmphasis } from "./scene-emphasis";
 import { scenePoseObjectTransform } from "./transforms";
 import type { SceneIndexedGeometryRenderData } from "./types";
 import {
@@ -56,6 +57,7 @@ export function SceneArrowMesh({
 }: {
   readonly arrow: SceneArrowPrimitive;
 }) {
+  const emphasized = useSceneEmphasis();
   const shaftRadius = arrow.shaftDiameter / 2;
   const headRadius = arrow.headDiameter / 2;
   const hasShaft =
@@ -74,7 +76,11 @@ export function SceneArrowMesh({
   }
 
   const transform = scenePoseObjectTransform(arrow.pose);
-  const material = sceneMaterialProps(arrow.color, SCENE_SURFACE_OPACITY);
+  const material = sceneMaterialProps(
+    arrow.color,
+    SCENE_SURFACE_OPACITY,
+    emphasized,
+  );
 
   return (
     <group position={transform.position} quaternion={transform.quaternion}>
@@ -109,13 +115,18 @@ export function SceneArrowMesh({
 }
 
 export function SceneCubeMesh({ cube }: { readonly cube: SceneCubePrimitive }) {
+  const emphasized = useSceneEmphasis();
   const size = cube.size;
   if (!isFinitePositiveVector(size)) {
     return null;
   }
 
   const transform = scenePoseObjectTransform(cube.pose);
-  const material = sceneMaterialProps(cube.color, SCENE_CUBE_WIREFRAME_OPACITY);
+  const material = sceneMaterialProps(
+    cube.color,
+    SCENE_CUBE_WIREFRAME_OPACITY,
+    emphasized,
+  );
 
   return (
     <group position={transform.position} quaternion={transform.quaternion}>
@@ -132,6 +143,7 @@ export function SceneCylinderMesh({
 }: {
   readonly cylinder: SceneCylinderPrimitive;
 }) {
+  const emphasized = useSceneEmphasis();
   if (
     !isFinitePositiveVector(cylinder.size) ||
     (!isFinitePositiveNumber(cylinder.bottomScale) &&
@@ -141,7 +153,11 @@ export function SceneCylinderMesh({
   }
 
   const transform = scenePoseObjectTransform(cylinder.pose);
-  const material = sceneMaterialProps(cylinder.color, SCENE_SURFACE_OPACITY);
+  const material = sceneMaterialProps(
+    cylinder.color,
+    SCENE_SURFACE_OPACITY,
+    emphasized,
+  );
 
   return (
     <group position={transform.position} quaternion={transform.quaternion}>
@@ -165,6 +181,7 @@ export function SceneCylinderMesh({
 }
 
 export function SceneLineMesh({ line }: { readonly line: SceneLinePrimitive }) {
+  const emphasized = useSceneEmphasis();
   const invalidate = useThree((state) => state.invalidate);
   const renderData = useMemo(() => createSceneLineRenderData(line), [line]);
 
@@ -179,7 +196,11 @@ export function SceneLineMesh({ line }: { readonly line: SceneLinePrimitive }) {
   }
 
   const transform = scenePoseObjectTransform(line.pose);
-  const material = sceneMaterialProps(line.color, SCENE_LINE_OPACITY);
+  const material = sceneMaterialProps(
+    line.color,
+    SCENE_LINE_OPACITY,
+    emphasized,
+  );
 
   return (
     <group position={transform.position} quaternion={transform.quaternion}>
@@ -188,7 +209,7 @@ export function SceneLineMesh({ line }: { readonly line: SceneLinePrimitive }) {
         <lineBasicMaterial
           {...material}
           linewidth={Math.max(1, line.thickness || 1)}
-          vertexColors={renderData.usesVertexColors}
+          vertexColors={renderData.usesVertexColors && !emphasized}
         />
       </lineSegments>
     </group>
@@ -290,12 +311,17 @@ export function SceneSphereMesh({
 }: {
   readonly sphere: SceneSpherePrimitive;
 }) {
+  const emphasized = useSceneEmphasis();
   if (!isFinitePositiveVector(sphere.size)) {
     return null;
   }
 
   const transform = scenePoseObjectTransform(sphere.pose);
-  const material = sceneMaterialProps(sphere.color, SCENE_SURFACE_OPACITY);
+  const material = sceneMaterialProps(
+    sphere.color,
+    SCENE_SURFACE_OPACITY,
+    emphasized,
+  );
 
   return (
     <group position={transform.position} quaternion={transform.quaternion}>
@@ -422,6 +448,7 @@ export function SceneTriangleMesh({
 }: {
   readonly triangle: SceneTrianglePrimitive;
 }) {
+  const emphasized = useSceneEmphasis();
   const invalidate = useThree((state) => state.invalidate);
   const renderData = useMemo(
     () => createSceneTriangleRenderData(triangle),
@@ -439,7 +466,11 @@ export function SceneTriangleMesh({
   }
 
   const transform = scenePoseObjectTransform(triangle.pose);
-  const material = sceneMaterialProps(triangle.color, SCENE_TRIANGLE_OPACITY);
+  const material = sceneMaterialProps(
+    triangle.color,
+    SCENE_TRIANGLE_OPACITY,
+    emphasized,
+  );
 
   return (
     <group position={transform.position} quaternion={transform.quaternion}>
@@ -448,7 +479,7 @@ export function SceneTriangleMesh({
         <meshBasicMaterial
           {...material}
           side={THREE.DoubleSide}
-          vertexColors={renderData.usesVertexColors}
+          vertexColors={renderData.usesVertexColors && !emphasized}
         />
       </mesh>
     </group>

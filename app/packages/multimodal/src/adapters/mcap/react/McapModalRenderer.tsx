@@ -16,6 +16,10 @@ import {
   startMcapLatencyDebugSession,
 } from "../mcap-latency-debug";
 import { McapModalSettingsProvider } from "./mcap-modal-settings";
+import McapAddTileMenu from "./McapAddTileMenu";
+import McapInspectorSidebar from "./McapInspectorSidebar";
+import { McapSelectionHotkeys } from "./mcap-selected-object";
+import McapTimestampReadout from "./McapTimestampReadout";
 import { McapAdjacentSamplePrewarm } from "./McapAdjacentSamplePrewarm";
 import {
   McapNetworkHealthTracker,
@@ -102,17 +106,13 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const headerCaption = useMemo(
     () => (
       <>
-        <McapHeaderCaption
-          imageCount={metadata.imageCount}
-          labelCount={metadata.labelCount}
-          pointCloudCount={metadata.pointCloudCount}
-          sizeLabel={metadata.sizeLabel}
-          topicCount={metadata.topicCount}
-        />
+        {metadata.sizeLabel ? (
+          <McapHeaderCaption sizeLabel={metadata.sizeLabel} />
+        ) : null}
         <McapNetworkStatusPill />
       </>
     ),
-    [metadata],
+    [metadata.sizeLabel],
   );
   // Layout persistence is keyed by datasetId — stable across dataset
   // renames, unlike the name — with a browser-wide fallback for
@@ -177,6 +177,8 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
             <MultiModalPlayback
               fileName={fileName}
               headerCaption={headerCaption}
+              addTileMenu={<McapAddTileMenu />}
+              timelineExtraActions={<McapTimestampReadout />}
               sceneSources={sources}
               deselectFocusedTileOnRepeatSelect={false}
               initialTiles={initialTiles}
@@ -184,7 +186,8 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
               tracks={tracks.length > 0 ? tracks : undefined}
               onTagDelete={onTagDelete}
               leftSidebar={<McapSettingsSidebar />}
-              rightSidebar={null}
+              rightSidebar={<McapInspectorSidebar />}
+              defaultRightOpen={false}
               defaultLeftOpen={defaultLeftOpen}
               onLeftOpenChange={onLeftOpenChange}
               leftSidebarWidth={defaultLeftSidebarWidth}
@@ -192,6 +195,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
               onTagCreate={onTagCreate}
             >
               <McapStreams ctx={ctx} client={client} />
+              <McapSelectionHotkeys />
               <McapNetworkHealthTracker client={client} />
               <McapAdjacentSamplePrewarm ctx={ctx} />
               <McapModalLayoutPersistence datasetId={datasetId} />
@@ -225,35 +229,11 @@ function McapModalState({
   );
 }
 
-function McapHeaderCaption({
-  imageCount,
-  labelCount,
-  pointCloudCount,
-  sizeLabel,
-  topicCount,
-}: {
-  readonly imageCount: number;
-  readonly labelCount: number;
-  readonly pointCloudCount: number;
-  readonly sizeLabel: string | null;
-  readonly topicCount: number;
-}) {
-  const parts = [
-    sizeLabel,
-    `${topicCount.toLocaleString()} ${plural(topicCount, "topic", "topics")}`,
-    `${(imageCount + pointCloudCount).toLocaleString()} ${plural(
-      imageCount + pointCloudCount,
-      "preview stream",
-      "preview streams",
-    )}`,
-    `${labelCount.toLocaleString()} ${plural(
-      labelCount,
-      "label topic",
-      "label topics",
-    )}`,
-  ].filter(Boolean);
-
-  return <span className={styles.captionText}>{parts.join(" / ")}</span>;
+// Deliberately just the file size: topic/stream/label counts used to
+// render here too, but they ate header real estate without informing
+// any decision the header needs to support.
+function McapHeaderCaption({ sizeLabel }: { readonly sizeLabel: string }) {
+  return <span className={styles.captionText}>{sizeLabel}</span>;
 }
 
 function sourceCounts(sources: readonly { type: string }[]) {
@@ -285,10 +265,6 @@ function sourceSizeLabel(sizeBytes: string | undefined): string | null {
   if (!Number.isSafeInteger(value)) return null;
   if (value === 0) return "0 B";
   return humanReadableBytes(value) || null;
-}
-
-function plural(count: number, singular: string, pluralValue: string): string {
-  return count === 1 ? singular : pluralValue;
 }
 
 export default McapModalRenderer;

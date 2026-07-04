@@ -119,6 +119,26 @@ export interface SceneAnnotationPanelLayer {
   readonly frame: SceneUpdateVisualization;
   readonly frameTransform?: PointCloudFrameTransform;
   readonly id: string;
+  /** Source stream/topic that produced this layer (host-defined). */
+  readonly sourceId?: string;
+  /** Emphasize this layer's entities (selection / cross-tile echo). */
+  readonly highlighted?: boolean;
+  /**
+   * Makes the layer's entities clickable: called with the picked
+   * entity's id (or the entity index as a string when it has none) on
+   * a non-drag click, plus the click's modifier state (hosts widen
+   * selection scope on shift).
+   */
+  readonly onSelectEntity?: (
+    entityId: string,
+    modifiers: { readonly shiftKey: boolean },
+  ) => void;
+  /**
+   * Hover reporting for tooltips: called with the entity id when the
+   * pointer enters one of this layer's entities, and `null` when it
+   * leaves.
+   */
+  readonly onHoverEntity?: (entityId: string | null) => void;
 }
 
 /**
@@ -156,6 +176,12 @@ export interface CameraFrustumPanelLayer {
    * GPU texture. Without it the layer decodes privately per message.
    */
   readonly imageTextureKey?: string;
+  /** Image stream this frustum's camera feeds (host-defined). */
+  readonly imageTopic?: string;
+  /** Emphasize the frustum wireframe (e.g. its camera tile is hovered). */
+  readonly highlighted?: boolean;
+  /** Makes the frustum clickable — called on a non-drag click. */
+  readonly onSelect?: (modifiers: { readonly metaKey: boolean }) => void;
 }
 
 export interface PointCloudPanelRenderStats {
@@ -219,5 +245,11 @@ export interface PointCloudPanelProps {
   readonly pointSize?: number;
   readonly showGizmo?: boolean;
   readonly showHud?: boolean;
+  /**
+   * Whether to render the interactive HUD controls (recenter, measure).
+   * Modal surfaces keep them; grid previews turn them off.
+   * @default true
+   */
+  readonly showControls?: boolean;
   readonly style?: CSSProperties;
 }
