@@ -9,9 +9,6 @@ import {
   DropdownAnchor,
   DropdownTrigger,
   MenuTextItem,
-  Text,
-  TextColor,
-  TextVariant,
 } from "@voxel51/voodo";
 import { useStore } from "jotai";
 import React, { useEffect, useMemo, useState } from "react";
@@ -38,6 +35,7 @@ import {
   usePublishMcapImageTileBinding,
 } from "./mcap-tile-source-bindings";
 import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
+import McapSidebarGroup from "./McapSidebarGroup";
 import { rankImageSources } from "./playback-layout";
 import settingsStyles from "./McapTile.settings.module.css";
 import styles from "./McapTile.module.css";
@@ -201,10 +199,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     <>
       <TileSettingsContent>
         <div className={settingsStyles.root}>
-          <div className={settingsStyles.field}>
-            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-              Source
-            </Text>
+          <McapSidebarGroup title="Source">
             <Dropdown
               anchor={DropdownAnchor.BottomStart}
               trigger={<DropdownTrigger>{currentLabel}</DropdownTrigger>}
@@ -221,32 +216,36 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                 </MenuTextItem>
               ))}
             </Dropdown>
-            <div className={settingsStyles.metaText}>
-              {sourceDetails(images.find((s) => s.id === topic))}
-            </div>
-          </div>
-          <div className={settingsStyles.field}>
-            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-              Labels
-            </Text>
-            {annotationSources.length > 0 ? (
+          </McapSidebarGroup>
+          {annotationSources.length > 0 ? (
+            <McapSidebarGroup
+              summary={`${selectedLabelTopics.length} of ${annotationSources.length} on`}
+              title="Labels"
+              toggle={{
+                ariaLabel: "Toggle labels",
+                checked: selectedLabelTopics.length > 0,
+                onChange: (checked) => {
+                  if (!topic) return;
+                  setImageLabelTopics(
+                    topic,
+                    checked ? [...annotationTopics] : [],
+                  );
+                },
+              }}
+            >
               <div className={settingsStyles.optionStack}>
                 {annotationSources.map((s) => (
                   <Checkbox
                     key={s.id}
-                    label={labelWithCount(s.label, s.recordCount)}
+                    label={s.label}
                     checked={selectedLabelTopics.includes(s.id)}
                     onChange={(checked) => toggleLabelTopic(s.id, checked)}
                     {...checkboxNoSpaceToggleProps}
                   />
                 ))}
               </div>
-            ) : (
-              <span className={settingsStyles.emptyText}>
-                No label topics available
-              </span>
-            )}
-          </div>
+            </McapSidebarGroup>
+          ) : null}
         </div>
       </TileSettingsContent>
       {frame ? (
@@ -294,16 +293,5 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     </>
   );
 };
-
-function labelWithCount(label: string, count: number | undefined): string {
-  return count !== undefined ? `${label} (${count.toLocaleString()})` : label;
-}
-
-function sourceDetails(source: { recordCount?: number } | undefined): string {
-  const count = source?.recordCount;
-  return count !== undefined
-    ? `${count.toLocaleString()} messages`
-    : "Message count unavailable";
-}
 
 export default McapImageTile;
