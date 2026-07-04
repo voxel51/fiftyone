@@ -15,19 +15,6 @@
   margin-top: 12px;
 }
 
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.sectionHeader {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-}
-
 .controlStack {
   display: flex;
   flex-direction: column;
@@ -97,6 +84,7 @@
 }
 
 .resetButton {
+  align-self: flex-start;
   background: transparent;
   border: 0;
   color: var(--color-brand-primary);

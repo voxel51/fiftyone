@@ -112,7 +112,19 @@ describe("McapSettingsSidebar", () => {
     expect(screen.getByText("Interpolate between 2D annotations")).toBeTruthy();
     expect(screen.getByText("Interpolate between 3D annotations")).toBeTruthy();
     expect(screen.getByText("Time synchronization")).toBeTruthy();
+  });
+
+  it("collapses the time synchronization tuning by default", () => {
+    renderSidebar();
+
+    expect(screen.queryByLabelText("Stale frame warning")).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Time synchronization/ }),
+    );
+
     expect(screen.getByLabelText("Stale frame warning")).toBeTruthy();
+    expect(screen.getByText("Reset to defaults")).toBeTruthy();
   });
 
   it("switches to the panel tab when a panel tab first appears", () => {

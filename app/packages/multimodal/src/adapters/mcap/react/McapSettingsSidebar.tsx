@@ -20,6 +20,7 @@ import {
   useMcapModalSettings,
 } from "./mcap-modal-settings";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
+import McapSidebarGroup from "./McapSidebarGroup";
 import styles from "./McapSettingsSidebar.module.css";
 
 type ActiveSettingsTab = "scene" | "panel";
@@ -118,12 +119,7 @@ function GlobalSceneSettings() {
 
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
-      <TimeResolutionSettings />
-
-      <section className={styles.section}>
-        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-          Labels
-        </Text>
+      <McapSidebarGroup title="Labels">
         <div className={styles.controlStack}>
           <Checkbox
             label="Interpolate between 2D annotations"
@@ -138,7 +134,9 @@ function GlobalSceneSettings() {
             {...checkboxNoSpaceToggleProps}
           />
         </div>
-      </section>
+      </McapSidebarGroup>
+
+      <TimeResolutionSettings />
     </div>
   );
 }
@@ -166,15 +164,7 @@ function TemporalPolicySettings({
   readonly policy: McapTemporalPolicySettings;
 }) {
   return (
-    <section className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-          Time synchronization
-        </Text>
-        <button className={styles.resetButton} onClick={onReset} type="button">
-          Reset
-        </button>
-      </div>
+    <McapSidebarGroup defaultExpanded={false} title="Time synchronization">
       <div className={styles.policyGroups}>
         <div className={styles.policyGroup}>
           <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
@@ -221,7 +211,10 @@ function TemporalPolicySettings({
           </div>
         </div>
       </div>
-    </section>
+      <button className={styles.resetButton} onClick={onReset} type="button">
+        Reset to defaults
+      </button>
+    </McapSidebarGroup>
   );
 }
 
