@@ -16,7 +16,8 @@
         "@fiftyone/commands": "workspace:^",
         "@fiftyone/tiling": "*",
         "@voxel51/voodo": "^0.0.35",
-        "jotai": "^2.9.3",
+        "jotai": "^2.20.1",
+        "jotai-family": "^1.0.2",
         "jotai-optics": "^0.4.0",
         "vite-plugin-svgr": "^4.2.0"
     },

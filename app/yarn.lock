@@ -2926,6 +2926,8 @@ __metadata:
     fast-json-patch: "npm:^3.1.1"
     framer-motion: "npm:^6.2.8"
     history: "npm:^5.3.0"
+    jotai: "npm:^2.20.1"
+    jotai-family: "npm:^1.0.2"
     json-edit-react: "npm:^1.28.2"
     lodash: "npm:^4.18.1"
     lru-cache: "npm:^11.0.1"
@@ -3205,6 +3207,8 @@ __metadata:
     "@types/three": "npm:^0.182.0"
     "@voxel51/voodo": "npm:^0.0.35"
     buffer: "npm:^6.0.3"
+    jotai: "npm:^2.20.1"
+    jotai-family: "npm:^1.0.2"
     lru-cache: "npm:^11.0.1"
     protobufjs: "npm:^7.6.4"
     three: "npm:^0.182.0"
@@ -3240,7 +3244,8 @@ __metadata:
     eslint-plugin-react: "npm:^7.35.0"
     eslint-plugin-react-hooks: "npm:rc"
     globals: "npm:^15.8.0"
-    jotai: "npm:^2.9.3"
+    jotai: "npm:^2.20.1"
+    jotai-family: "npm:^1.0.2"
     jotai-optics: "npm:^0.4.0"
     prettier: "npm:^3.8.4"
     typescript-eslint: "npm:^7.17.0"
@@ -3337,10 +3342,12 @@ __metadata:
     "@voxel51/voodo": "npm:^0.0.35"
     babel-plugin-relay: "npm:^14.1.0"
     html2canvas: "npm:1.0.0-rc.7"
+    jotai-effect: "npm:^2.3.1"
     lodash: "npm:^4.18.1"
     prettier: "npm:^3.8.4"
     vite: "npm:^7.3.2"
   peerDependencies:
+    jotai: "*"
     react: "*"
     react-error-boundary: "*"
     react-relay: "*"
@@ -3355,7 +3362,8 @@ __metadata:
   dependencies:
     "@voxel51/voodo": "npm:^0.0.35"
     clsx: "npm:^2.1.1"
-    jotai: "npm:^2.9.3"
+    jotai: "npm:^2.20.1"
+    jotai-family: "npm:^1.0.2"
     react-mosaic-component: "npm:^6.1.1"
   peerDependencies:
     react: "*"
@@ -15479,6 +15487,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jotai-effect@npm:^2.3.1":
+  version: 2.3.1
+  resolution: "jotai-effect@npm:2.3.1"
+  peerDependencies:
+    jotai: ">=2.20.0"
+  checksum: 10/6ca403c0a879a5a6a861469e1e3cb9f809ece5ad04cc50fabbbf7dafa0db12a2754b8cc036d5631d535621d4a5132ccfc8f9e27c7574a97894b8ca2b2101a61b
+  languageName: node
+  linkType: hard
+
+"jotai-family@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "jotai-family@npm:1.0.2"
+  peerDependencies:
+    jotai: ">=2.9.0"
+  checksum: 10/7876d95cd467d6e94302bfbcd424bc14994fb3a01be3f98b3cbb4c78609d9ac493b3bb6a06b715b9616ed3ce574f971b353ffb7667ffd218817918af9fee8e48
+  languageName: node
+  linkType: hard
+
 "jotai-optics@npm:^0.4.0":
   version: 0.4.0
   resolution: "jotai-optics@npm:0.4.0"
@@ -15489,18 +15515,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jotai@npm:^2.9.3":
-  version: 2.9.3
-  resolution: "jotai@npm:2.9.3"
+"jotai@npm:^2.20.1":
+  version: 2.20.1
+  resolution: "jotai@npm:2.20.1"
   peerDependencies:
+    "@babel/core": ">=7.0.0"
+    "@babel/template": ">=7.0.0"
     "@types/react": ">=17.0.0"
     react: ">=17.0.0"
   peerDependenciesMeta:
+    "@babel/core":
+      optional: true
+    "@babel/template":
+      optional: true
     "@types/react":
       optional: true
     react:
       optional: true
-  checksum: 10/4366a50be8edd39f1430ac655677e559cfbb253101e4f2e750bca8ebd81e75ea09ea3828bce727482b15305ffe924dda75bd9a055e903e0cc804b6600478dc36
+  checksum: 10/ef80f16c5322edb9673f5717d4c73d69205cf77fca94d4d766646bc121cc2811107769c0a3c1f322c2e97446635848feb86ce6467e1d35474facedd04ddcd73f
   languageName: node
   linkType: hard
 

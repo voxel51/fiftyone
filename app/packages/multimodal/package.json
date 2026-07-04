@@ -75,6 +75,8 @@
         "@react-three/fiber": "^8.18.0",
         "@voxel51/voodo": "^0.0.35",
         "buffer": "^6.0.3",
+        "jotai": "^2.20.1",
+        "jotai-family": "^1.0.2",
         "lru-cache": "^11.0.1",
         "protobufjs": "^7.6.4",
         "three": "^0.182.0"
