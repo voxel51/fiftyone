@@ -142,7 +142,7 @@ describe("useMcap3dSelection", () => {
     expect(result.current.frustumImageTopics).toEqual([""]);
   });
 
-  it("toggles all camera calibration sources without touching other 3D sources", () => {
+  it("batch-toggles the given sources without touching other 3D sources", () => {
     const { result } = renderSelection([
       frontCalibration,
       rearCalibration,
@@ -150,16 +150,17 @@ describe("useMcap3dSelection", () => {
       lidarTop,
       boxes,
     ]);
+    const cameraIds = [frontCalibration.id, rearCalibration.id];
 
     act(() => {
-      result.current.setCameraSourcesEnabled(false);
+      result.current.setSourcesEnabled(cameraIds, false);
     });
     expect(result.current.enabled).toEqual(new Set([lidarTop.id, boxes.id]));
     expect(result.current.cameraTopics).toEqual([]);
     expect(result.current.selectedTopics).toEqual([lidarTop.id, boxes.id]);
 
     act(() => {
-      result.current.setCameraSourcesEnabled(true);
+      result.current.setSourcesEnabled(cameraIds, true);
     });
     expect(result.current.enabled).toEqual(
       new Set([frontCalibration.id, rearCalibration.id, lidarTop.id, boxes.id]),

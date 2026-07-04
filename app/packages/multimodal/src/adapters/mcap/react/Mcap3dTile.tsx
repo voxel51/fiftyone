@@ -123,7 +123,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     selectedPoseSources,
     selectedTopics,
     selectedTopicsKey,
-    setCameraSourcesEnabled,
+    setSourcesEnabled,
     toggleSource,
   } = useMcap3dSelection({ restore: viewStateRestore });
   const frameTransforms = useMcapFrameTransformsContext();
@@ -742,9 +742,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         sceneAnnotationTopics={sceneAnnotationTopics}
         sceneBackground={sceneBackground}
         selectedPoseSources={selectedPoseSources}
-        setCameraSourcesEnabled={setCameraSourcesEnabled}
         setReferenceGrid={setReferenceGrid}
         setSceneBackground={setSceneBackground}
+        setSourcesEnabled={setSourcesEnabled}
         setTrackingMode={setTrackingMode}
         setTrajectoryFrameOverrides={setTrajectoryFrameOverrides}
         toggleSource={toggleSource}

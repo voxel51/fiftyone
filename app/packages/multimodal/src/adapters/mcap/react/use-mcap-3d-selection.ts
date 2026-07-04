@@ -251,25 +251,25 @@ export function useMcap3dSelection({
     });
   }, []);
 
-  const setCameraSourcesEnabled = useCallback(
-    (checked: boolean) => {
+  const setSourcesEnabled = useCallback(
+    (ids: readonly string[], checked: boolean) => {
       setEnabled((current) => {
         const next = new Set(current);
         let changed = false;
-        for (const source of cameraSources) {
+        for (const id of ids) {
           if (checked) {
-            if (!next.has(source.id)) {
-              next.add(source.id);
+            if (!next.has(id)) {
+              next.add(id);
               changed = true;
             }
-          } else if (next.delete(source.id)) {
+          } else if (next.delete(id)) {
             changed = true;
           }
         }
         return changed ? next : current;
       });
     },
-    [cameraSources],
+    [],
   );
 
   return {
@@ -291,8 +291,8 @@ export function useMcap3dSelection({
     selectedPoseSources,
     selectedTopics,
     selectedTopicsKey,
-    setCameraSourcesEnabled,
     setEnabled,
+    setSourcesEnabled,
     toggleSource,
   };
 }

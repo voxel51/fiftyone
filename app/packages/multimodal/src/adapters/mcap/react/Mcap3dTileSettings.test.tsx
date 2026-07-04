@@ -45,8 +45,6 @@ describe("Mcap3dTileSettings", () => {
 
     const toggle = screen.getByRole("switch", { name: "Toggle cameras" });
     expect(toggle.getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByText("2 of 2 selected")).toBeTruthy();
-    expect(screen.queryByText("Show camera images")).toBeNull();
   });
 
   it("treats partial camera selection as switched on", () => {
@@ -58,17 +56,19 @@ describe("Mcap3dTileSettings", () => {
 
     const toggle = screen.getByRole("switch", { name: "Toggle cameras" });
     expect(toggle.getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByText("1 of 2 selected")).toBeTruthy();
   });
 
-  it("calls the batch camera toggle with the next switch state", () => {
+  it("calls the batch source toggle with the group ids and next state", () => {
     const checkedProps = renderSettings({
       cameraSources: [CAM_FRONT, CAM_BACK],
       cameraTopics: [CAM_FRONT.id],
       enabled: new Set([CAM_FRONT.id]),
     });
     fireEvent.click(screen.getByRole("switch", { name: "Toggle cameras" }));
-    expect(checkedProps.setCameraSourcesEnabled).toHaveBeenCalledWith(false);
+    expect(checkedProps.setSourcesEnabled).toHaveBeenCalledWith(
+      [CAM_FRONT.id, CAM_BACK.id],
+      false,
+    );
 
     cleanup();
 
@@ -78,7 +78,33 @@ describe("Mcap3dTileSettings", () => {
       enabled: new Set(),
     });
     fireEvent.click(screen.getByRole("switch", { name: "Toggle cameras" }));
-    expect(uncheckedProps.setCameraSourcesEnabled).toHaveBeenCalledWith(true);
+    expect(uncheckedProps.setSourcesEnabled).toHaveBeenCalledWith(
+      [CAM_FRONT.id, CAM_BACK.id],
+      true,
+    );
+  });
+
+  it("renders a master switch for point clouds", () => {
+    const props = renderSettings();
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Toggle point clouds" }),
+    );
+    expect(props.setSourcesEnabled).toHaveBeenCalledWith([LIDAR.id], false);
+  });
+
+  it("shows topic labels without message counts", () => {
+    renderSettings({
+      cameraSources: [CAM_FRONT, CAM_BACK],
+      cameraTopics: [CAM_FRONT.id, CAM_BACK.id],
+      enabled: new Set([CAM_FRONT.id, CAM_BACK.id]),
+    });
+
+    expect(
+      screen.getByRole("checkbox", { name: "CAM_FRONT/camera_info" }),
+    ).toBeTruthy();
+    expect(screen.queryByText(/\(233\)/)).toBeNull();
+    expect(screen.queryByText(/selected/)).toBeNull();
   });
 
   it("keeps individual camera checkboxes wired to per-source toggles", () => {
@@ -89,13 +115,13 @@ describe("Mcap3dTileSettings", () => {
     });
 
     fireEvent.click(
-      screen.getByRole("checkbox", { name: "CAM_FRONT/camera_info (233)" }),
+      screen.getByRole("checkbox", { name: "CAM_FRONT/camera_info" }),
     );
 
     expect(props.toggleSource).toHaveBeenCalledWith(CAM_FRONT.id, false);
   });
 
-  it("does not render the camera master switch without camera sources", () => {
+  it("hides source groups that have no sources", () => {
     renderSettings({
       cameraSources: [],
       cameraTopics: [],
@@ -103,13 +129,33 @@ describe("Mcap3dTileSettings", () => {
     });
 
     expect(screen.queryByRole("switch", { name: "Toggle cameras" })).toBeNull();
+    expect(screen.queryByText("Cameras")).toBeNull();
+    expect(screen.queryByText("Map Layers")).toBeNull();
+    expect(screen.queryByText("Ego Pose")).toBeNull();
+    expect(screen.queryByText("3D Labels")).toBeNull();
+    expect(screen.getByText("Point Clouds")).toBeTruthy();
+  });
+
+  it("collapses a group via its header and shows the selection summary", () => {
+    renderSettings({
+      cameraSources: [CAM_FRONT, CAM_BACK],
+      cameraTopics: [CAM_FRONT.id],
+      enabled: new Set([CAM_FRONT.id]),
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cameras/ }));
+
     expect(
-      screen.getByText("No camera calibration topics available"),
-    ).toBeTruthy();
+      screen.queryByRole("checkbox", { name: "CAM_FRONT/camera_info" }),
+    ).toBeNull();
+    expect(screen.getByText("1 of 2 on")).toBeTruthy();
+    // The master switch stays reachable while collapsed.
+    expect(screen.getByRole("switch", { name: "Toggle cameras" })).toBeTruthy();
   });
 
   it("wires the reference grid controls to the settings updater", () => {
     const props = renderSettings();
+    expandAppearance();
 
     fireEvent.click(
       screen.getByRole("switch", { name: "Toggle reference grid" }),
@@ -129,6 +175,7 @@ describe("Mcap3dTileSettings", () => {
 
   it("wires the background controls to the settings updater", () => {
     const props = renderSettings();
+    expandAppearance();
 
     fireEvent.change(
       screen.getByRole("combobox", { name: "Background style" }),
@@ -144,10 +191,22 @@ describe("Mcap3dTileSettings", () => {
     });
   });
 
+  it("collapses appearance controls by default", () => {
+    renderSettings();
+
+    expect(
+      screen.queryByRole("switch", { name: "Toggle reference grid" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("combobox", { name: "Background style" }),
+    ).toBeNull();
+  });
+
   it("offers the color picker only for the solid background", () => {
     renderSettings({
       sceneBackground: { mode: "studio", solidColor: "#050b12" },
     });
+    expandAppearance();
 
     expect(
       screen.getByRole("combobox", { name: "Background style" }),
@@ -159,6 +218,7 @@ describe("Mcap3dTileSettings", () => {
     renderSettings({
       referenceGrid: { enabled: false, opacityPercent: 5, spacingM: 1 },
     });
+    expandAppearance();
 
     expect(
       screen
@@ -172,6 +232,10 @@ describe("Mcap3dTileSettings", () => {
     ).toBe(true);
   });
 });
+
+function expandAppearance() {
+  fireEvent.click(screen.getByRole("button", { name: /Appearance/ }));
+}
 
 function renderSettings(
   overrides: Partial<Mcap3dTileSettingsProps> = {},
@@ -201,9 +265,9 @@ function settingsProps(
     sceneAnnotationSources: [],
     sceneAnnotationTopics: [],
     selectedPoseSources: [],
-    setCameraSourcesEnabled: vi.fn(),
     setReferenceGrid: vi.fn(),
     setSceneBackground: vi.fn(),
+    setSourcesEnabled: vi.fn(),
     setTrackingMode: vi.fn(),
     setTrajectoryFrameOverrides: vi.fn(),
     toggleSource: vi.fn(),

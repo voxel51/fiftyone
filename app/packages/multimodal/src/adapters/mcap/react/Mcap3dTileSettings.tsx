@@ -23,6 +23,7 @@ import {
   checkboxNoSpaceToggleProps,
   settingsBooleanNoSpaceToggleProps,
 } from "./mcap-settings-keyboard";
+import McapSidebarGroup from "./McapSidebarGroup";
 import settingsStyles from "./McapTile.settings.module.css";
 import { TRACKING_MODES } from "./use-mcap-3d-camera-tracking";
 
@@ -43,12 +44,15 @@ export interface Mcap3dTileSettingsProps {
   readonly sceneAnnotationTopics: readonly string[];
   readonly sceneBackground: McapSceneBackgroundSettings;
   readonly selectedPoseSources: readonly SceneSource[];
-  readonly setCameraSourcesEnabled: (checked: boolean) => void;
   readonly setReferenceGrid: (
     settings: Partial<McapReferenceGridSettings>,
   ) => void;
   readonly setSceneBackground: (
     settings: Partial<McapSceneBackgroundSettings>,
+  ) => void;
+  readonly setSourcesEnabled: (
+    ids: readonly string[],
+    checked: boolean,
   ) => void;
   readonly setTrackingMode: (mode: Mcap3dTrackingMode) => void;
   readonly setTrajectoryFrameOverrides: React.Dispatch<
@@ -66,8 +70,10 @@ export interface Mcap3dTileSettingsProps {
 /**
  * Settings sidebar for the 3D tile. Unlike the image tile, sources are
  * multi-selectable — overlaying several sensors in one view is the point of
- * a 3D panel — so the sidebar offers checkboxes and panel-specific frame
- * controls. Pure presentational: all state lives in the tile's hooks.
+ * a 3D panel — so the sidebar offers per-source checkboxes grouped into
+ * collapsible sections, each with a master on/off switch. Groups with no
+ * available sources are hidden entirely. Pure presentational: all state
+ * lives in the tile's hooks.
  */
 const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   cameraSources,
@@ -86,9 +92,9 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   sceneAnnotationTopics,
   sceneBackground,
   selectedPoseSources,
-  setCameraSourcesEnabled,
   setReferenceGrid,
   setSceneBackground,
+  setSourcesEnabled,
   setTrackingMode,
   setTrajectoryFrameOverrides,
   toggleSource,
@@ -102,283 +108,240 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   return (
     <TileSettingsContent>
       <div className={settingsStyles.root}>
-        <div className={settingsStyles.field}>
-          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            Geometry
-          </Text>
-          {pointCloudSources.length > 0 ? (
-            <>
-              <div className={settingsStyles.metaText}>
-                {pointCloudTopics.length.toLocaleString()} of{" "}
-                {pointCloudSources.length.toLocaleString()} selected
-              </div>
-              <div className={settingsStyles.optionStack}>
-                {pointCloudSources.map((s) => (
-                  <Checkbox
-                    key={s.id}
-                    label={labelWithCount(s.label, s.recordCount)}
-                    checked={enabled.has(s.id)}
-                    onChange={(checked) => toggleSource(s.id, checked)}
-                    {...checkboxNoSpaceToggleProps}
-                  />
-                ))}
-              </div>
-            </>
-          ) : (
-            <span className={settingsStyles.emptyText}>
-              No point cloud topics available
-            </span>
-          )}
-        </div>
+        <SourceGroup
+          enabled={enabled}
+          selectedCount={pointCloudTopics.length}
+          setSourcesEnabled={setSourcesEnabled}
+          sources={pointCloudSources}
+          title="Point Clouds"
+          toggleAriaLabel="Toggle point clouds"
+          toggleSource={toggleSource}
+        />
 
-        <div className={settingsStyles.field}>
-          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            Map Layers
-          </Text>
-          {mapLayerSources.length > 0 ? (
-            <>
-              <div className={settingsStyles.metaText}>
-                {mapLayerTopics.length.toLocaleString()} of{" "}
-                {mapLayerSources.length.toLocaleString()} selected
-              </div>
-              <div className={settingsStyles.optionStack}>
-                {mapLayerSources.map((s) => (
-                  <Checkbox
-                    key={s.id}
-                    label={labelWithCount(s.label, s.recordCount)}
-                    checked={enabled.has(s.id)}
-                    onChange={(checked) => toggleSource(s.id, checked)}
-                    {...checkboxNoSpaceToggleProps}
-                  />
-                ))}
-              </div>
-            </>
-          ) : (
-            <span className={settingsStyles.emptyText}>
-              No map layer topics available
-            </span>
-          )}
-        </div>
+        <SourceGroup
+          enabled={enabled}
+          selectedCount={cameraTopics.length}
+          setSourcesEnabled={setSourcesEnabled}
+          sources={cameraSources}
+          title="Cameras"
+          toggleAriaLabel="Toggle cameras"
+          toggleSource={toggleSource}
+        />
 
-        <div className={settingsStyles.field}>
-          <div className={settingsStyles.sectionHeader}>
-            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-              Cameras
-            </Text>
-            {cameraSources.length > 0 ? (
+        <SourceGroup
+          enabled={enabled}
+          selectedCount={sceneAnnotationTopics.length}
+          setSourcesEnabled={setSourcesEnabled}
+          sources={sceneAnnotationSources}
+          title="3D Labels"
+          toggleAriaLabel="Toggle 3D labels"
+          toggleSource={toggleSource}
+        />
+
+        <SourceGroup
+          enabled={enabled}
+          selectedCount={poseTopics.length}
+          setSourcesEnabled={setSourcesEnabled}
+          sources={poseSources}
+          title="Ego Pose"
+          toggleAriaLabel="Toggle ego pose"
+          toggleSource={toggleSource}
+        >
+          {selectedPoseSources
+            .filter(
+              (s) =>
+                trajectories.get(s.id)?.status === "ready" &&
+                !trajectories.get(s.id)?.streamFrameId,
+            )
+            .map((s) => (
+              <FrameSelect
+                disabled={frameIds.length === 0}
+                key={s.id}
+                label={`Trajectory Frame (${s.label})`}
+                onChange={(frameId) =>
+                  setTrajectoryFrameOverrides((current) => ({
+                    ...current,
+                    [s.id]: frameId,
+                  }))
+                }
+                options={frameIds}
+                tooltip="This pose stream declares no coordinate frame; choose the frame its positions are expressed in."
+                value={trajectoryFrameByTopic.get(s.id) ?? ""}
+              />
+            ))}
+        </SourceGroup>
+
+        <SourceGroup
+          enabled={enabled}
+          selectedCount={mapLayerTopics.length}
+          setSourcesEnabled={setSourcesEnabled}
+          sources={mapLayerSources}
+          title="Map Layers"
+          toggleAriaLabel="Toggle map layers"
+          toggleSource={toggleSource}
+        />
+
+        <McapSidebarGroup title="View">
+          <FrameSelect
+            disabled={frameIds.length === 0}
+            label="World Frame"
+            onChange={updateWorldFrameId}
+            options={frameIds}
+            tooltip="Where everything exists. Data is transformed into this stable coordinate system before it is drawn."
+            value={worldFrameId}
+          />
+          <FrameSelect
+            disabled={frameIds.length === 0}
+            label="Camera Target"
+            onChange={updateCameraTargetFrameId}
+            options={frameIds}
+            tooltip="What the camera tracks. This changes your view, but it does not move data in the world."
+            value={cameraTargetFrameId}
+          />
+          <TrackingModeSelect
+            onChange={setTrackingMode}
+            tooltip="How the camera follows the target frame during playback. Free leaves OrbitControls fully user-driven; follow modes preserve your current offset while tracking motion. Shortcuts: E = ego view, T = top view."
+            value={trackingMode}
+          />
+          {isFollowTrackingMode(trackingMode) &&
+          worldFrameId &&
+          cameraTargetFrameId === worldFrameId ? (
+            <span className={settingsStyles.emptyText}>
+              The camera target and the world frame match, so follow modes
+              change nothing: a frame cannot move relative to itself. Pick a
+              global world frame (like map) to see the target move.
+            </span>
+          ) : null}
+        </McapSidebarGroup>
+
+        <McapSidebarGroup defaultExpanded={false} title="Appearance">
+          <div className={settingsStyles.field}>
+            <div className={settingsStyles.sectionHeader}>
+              <SettingsLabel
+                label="Reference Grid"
+                tooltip="Adaptive grid on the world ground plane: minor lines at the configured spacing, brighter cardinal lines every tenth, coarsening by powers of ten as the camera recedes."
+              />
               <Toggle
-                aria-label="Toggle cameras"
-                checked={cameraTopics.length > 0}
-                onChange={setCameraSourcesEnabled}
+                aria-label="Toggle reference grid"
+                checked={referenceGrid.enabled}
+                onChange={(enabled) => setReferenceGrid({ enabled })}
                 size={Size.Sm}
                 {...settingsBooleanNoSpaceToggleProps}
               />
-            ) : null}
+            </div>
+            <GridNumberInput
+              disabled={!referenceGrid.enabled}
+              label="Spacing (m)"
+              min={0.01}
+              onChange={(spacingM) => setReferenceGrid({ spacingM })}
+              step={0.5}
+              value={referenceGrid.spacingM}
+            />
+            <GridNumberInput
+              disabled={!referenceGrid.enabled}
+              label="Opacity (%)"
+              max={100}
+              min={0}
+              onChange={(opacityPercent) =>
+                setReferenceGrid({ opacityPercent })
+              }
+              step={1}
+              value={referenceGrid.opacityPercent}
+            />
           </div>
-          {cameraSources.length > 0 ? (
-            <>
-              <div className={settingsStyles.metaText}>
-                {cameraTopics.length.toLocaleString()} of{" "}
-                {cameraSources.length.toLocaleString()} selected
-              </div>
-              <div className={settingsStyles.optionStack}>
-                {cameraSources.map((s) => (
-                  <Checkbox
-                    key={s.id}
-                    label={labelWithCount(s.label, s.recordCount)}
-                    checked={enabled.has(s.id)}
-                    onChange={(checked) => toggleSource(s.id, checked)}
-                    {...checkboxNoSpaceToggleProps}
-                  />
-                ))}
-              </div>
-            </>
-          ) : (
-            <span className={settingsStyles.emptyText}>
-              No camera calibration topics available
-            </span>
-          )}
-        </div>
 
-        <div className={settingsStyles.field}>
-          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            Ego Pose
-          </Text>
-          {poseSources.length > 0 ? (
-            <>
-              <div className={settingsStyles.metaText}>
-                {poseTopics.length.toLocaleString()} of{" "}
-                {poseSources.length.toLocaleString()} selected
-              </div>
-              <div className={settingsStyles.optionStack}>
-                {poseSources.map((s) => (
-                  <Checkbox
-                    key={s.id}
-                    label={labelWithCount(s.label, s.recordCount)}
-                    checked={enabled.has(s.id)}
-                    onChange={(checked) => toggleSource(s.id, checked)}
-                    {...checkboxNoSpaceToggleProps}
-                  />
-                ))}
-              </div>
-              {selectedPoseSources
-                .filter(
-                  (s) =>
-                    trajectories.get(s.id)?.status === "ready" &&
-                    !trajectories.get(s.id)?.streamFrameId,
-                )
-                .map((s) => (
-                  <FrameSelect
-                    disabled={frameIds.length === 0}
-                    key={s.id}
-                    label={`Trajectory Frame (${s.label})`}
-                    onChange={(frameId) =>
-                      setTrajectoryFrameOverrides((current) => ({
-                        ...current,
-                        [s.id]: frameId,
-                      }))
-                    }
-                    options={frameIds}
-                    tooltip="This pose stream declares no coordinate frame; choose the frame its positions are expressed in."
-                    value={trajectoryFrameByTopic.get(s.id) ?? ""}
-                  />
-                ))}
-            </>
-          ) : (
-            <span className={settingsStyles.emptyText}>
-              No pose topics available
-            </span>
-          )}
-        </div>
-
-        <div className={settingsStyles.field}>
-          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            3D Labels
-          </Text>
-          {sceneAnnotationSources.length > 0 ? (
-            <>
-              <div className={settingsStyles.metaText}>
-                {sceneAnnotationTopics.length.toLocaleString()} of{" "}
-                {sceneAnnotationSources.length.toLocaleString()} selected
-              </div>
-              <div className={settingsStyles.optionStack}>
-                {sceneAnnotationSources.map((s) => (
-                  <Checkbox
-                    key={s.id}
-                    label={labelWithCount(s.label, s.recordCount)}
-                    checked={enabled.has(s.id)}
-                    onChange={(checked) => toggleSource(s.id, checked)}
-                    {...checkboxNoSpaceToggleProps}
-                  />
-                ))}
-              </div>
-            </>
-          ) : (
-            <span className={settingsStyles.emptyText}>
-              No 3D label topics available
-            </span>
-          )}
-        </div>
-
-        <div className={settingsStyles.field}>
-          <div className={settingsStyles.sectionHeader}>
+          <div className={settingsStyles.field}>
             <SettingsLabel
-              label="Reference Grid"
-              tooltip="Adaptive grid on the world ground plane: minor lines at the configured spacing, brighter cardinal lines every tenth, coarsening by powers of ten as the camera recedes."
+              label="Background"
+              tooltip="Scene backdrop behind the 3D view: a solid color of your choice, or a named gradient — Abyss (dark) or Studio (light)."
             />
-            <Toggle
-              aria-label="Toggle reference grid"
-              checked={referenceGrid.enabled}
-              onChange={(enabled) => setReferenceGrid({ enabled })}
-              size={Size.Sm}
-              {...settingsBooleanNoSpaceToggleProps}
-            />
-          </div>
-          <GridNumberInput
-            disabled={!referenceGrid.enabled}
-            label="Spacing (m)"
-            min={0.01}
-            onChange={(spacingM) => setReferenceGrid({ spacingM })}
-            step={0.5}
-            value={referenceGrid.spacingM}
-          />
-          <GridNumberInput
-            disabled={!referenceGrid.enabled}
-            label="Opacity (%)"
-            max={100}
-            min={0}
-            onChange={(opacityPercent) => setReferenceGrid({ opacityPercent })}
-            step={1}
-            value={referenceGrid.opacityPercent}
-          />
-        </div>
-
-        <div className={settingsStyles.field}>
-          <SettingsLabel
-            label="Background"
-            tooltip="Scene backdrop behind the 3D view: a solid color of your choice, or a named gradient — Abyss (dark) or Studio (light)."
-          />
-          <select
-            aria-label="Background style"
-            className={settingsStyles.select}
-            onChange={(event) =>
-              setSceneBackground({
-                mode: event.target.value as McapSceneBackgroundMode,
-              })
-            }
-            value={sceneBackground.mode}
-          >
-            <option value="solid">Solid color</option>
-            <option value="abyss">Abyss — dark gradient</option>
-            <option value="studio">Studio — light gradient</option>
-          </select>
-          {sceneBackground.mode === "solid" ? (
-            <input
-              aria-label="Background color"
+            <select
+              aria-label="Background style"
               className={settingsStyles.select}
               onChange={(event) =>
-                setSceneBackground({ solidColor: event.target.value })
+                setSceneBackground({
+                  mode: event.target.value as McapSceneBackgroundMode,
+                })
               }
-              type="color"
-              value={sceneBackground.solidColor}
-            />
-          ) : null}
-        </div>
-
-        <FrameSelect
-          disabled={frameIds.length === 0}
-          label="World Frame"
-          onChange={updateWorldFrameId}
-          options={frameIds}
-          tooltip="Where everything exists. Data is transformed into this stable coordinate system before it is drawn."
-          value={worldFrameId}
-        />
-        <FrameSelect
-          disabled={frameIds.length === 0}
-          label="Camera Target"
-          onChange={updateCameraTargetFrameId}
-          options={frameIds}
-          tooltip="What the camera tracks. This changes your view, but it does not move data in the world."
-          value={cameraTargetFrameId}
-        />
-        <TrackingModeSelect
-          onChange={setTrackingMode}
-          tooltip="How the camera follows the target frame during playback. Free leaves OrbitControls fully user-driven; follow modes preserve your current offset while tracking motion. Shortcuts: E = ego view, T = top view."
-          value={trackingMode}
-        />
-        {isFollowTrackingMode(trackingMode) &&
-        worldFrameId &&
-        cameraTargetFrameId === worldFrameId ? (
-          <span className={settingsStyles.emptyText}>
-            The camera target and the world frame match, so follow modes change
-            nothing: a frame cannot move relative to itself. Pick a global world
-            frame (like map) to see the target move.
-          </span>
-        ) : null}
+              value={sceneBackground.mode}
+            >
+              <option value="solid">Solid color</option>
+              <option value="abyss">Abyss</option>
+              <option value="studio">Studio</option>
+            </select>
+            {sceneBackground.mode === "solid" ? (
+              <input
+                aria-label="Background color"
+                className={settingsStyles.select}
+                onChange={(event) =>
+                  setSceneBackground({ solidColor: event.target.value })
+                }
+                type="color"
+                value={sceneBackground.solidColor}
+              />
+            ) : null}
+          </div>
+        </McapSidebarGroup>
       </div>
     </TileSettingsContent>
   );
 };
+
+function SourceGroup({
+  children,
+  enabled,
+  selectedCount,
+  setSourcesEnabled,
+  sources,
+  title,
+  toggleAriaLabel,
+  toggleSource,
+}: {
+  readonly children?: React.ReactNode;
+  readonly enabled: ReadonlySet<string>;
+  readonly selectedCount: number;
+  readonly setSourcesEnabled: (
+    ids: readonly string[],
+    checked: boolean,
+  ) => void;
+  readonly sources: readonly SceneSource[];
+  readonly title: string;
+  readonly toggleAriaLabel: string;
+  readonly toggleSource: (id: string, checked: boolean) => void;
+}) {
+  if (sources.length === 0) {
+    return null;
+  }
+
+  return (
+    <McapSidebarGroup
+      summary={`${selectedCount} of ${sources.length} on`}
+      title={title}
+      toggle={{
+        ariaLabel: toggleAriaLabel,
+        checked: selectedCount > 0,
+        onChange: (checked) =>
+          setSourcesEnabled(
+            sources.map((s) => s.id),
+            checked,
+          ),
+      }}
+    >
+      <div className={settingsStyles.optionStack}>
+        {sources.map((s) => (
+          <Checkbox
+            key={s.id}
+            label={s.label}
+            checked={enabled.has(s.id)}
+            onChange={(checked) => toggleSource(s.id, checked)}
+            {...checkboxNoSpaceToggleProps}
+          />
+        ))}
+      </div>
+      {children}
+    </McapSidebarGroup>
+  );
+}
 
 function FrameSelect({
   disabled,
@@ -512,10 +475,6 @@ function SettingsLabel({
       </span>
     </span>
   );
-}
-
-function labelWithCount(label: string, count: number | undefined): string {
-  return count !== undefined ? `${label} (${count.toLocaleString()})` : label;
 }
 
 export default Mcap3dTileSettings;
