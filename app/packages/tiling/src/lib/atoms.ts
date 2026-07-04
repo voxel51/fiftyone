@@ -1,5 +1,5 @@
 import { atom, type PrimitiveAtom } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { atomFamily } from "jotai-family";
 import type { RegisteredTile } from "./types";
 
 /** Registered tile kinds, in registration order. Consumed by the

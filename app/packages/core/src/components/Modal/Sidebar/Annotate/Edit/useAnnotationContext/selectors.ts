@@ -10,7 +10,7 @@ import {
   POLYLINES,
 } from "@fiftyone/utilities";
 import { atom } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { atomFamily } from "jotai-family";
 import {
   fieldType,
   isFieldReadOnly,

@@ -1,7 +1,8 @@
 import { useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
-import { atomFamily, useAtomCallback } from "jotai/utils";
+import { atomFamily } from "jotai-family";
+import { useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
 import { useCallback, useMemo } from "react";
 import { labelSchemaData } from "../../state";

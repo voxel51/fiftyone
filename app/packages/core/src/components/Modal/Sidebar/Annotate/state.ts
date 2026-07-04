@@ -1,5 +1,5 @@
 import { atom, useAtom } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { atomFamily } from "jotai-family";
 import { capitalize } from "lodash";
 import { LabelSchemaMeta } from "./useSchemaManager";
 import { useMemo } from "react";

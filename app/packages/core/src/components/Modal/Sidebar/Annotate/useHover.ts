@@ -5,7 +5,7 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { atom, useAtomValue, getDefaultStore } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { atomFamily } from "jotai-family";
 import { useCallback } from "react";
 
 const hoveringLabelIds = atom<string[]>([]);
