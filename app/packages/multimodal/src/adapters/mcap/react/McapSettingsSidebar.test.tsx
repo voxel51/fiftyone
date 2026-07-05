@@ -101,27 +101,43 @@ describe("McapSettingsSidebar", () => {
     expect(screen.getByRole("tab", { name: "Scene" })).toBeTruthy();
     expect(screen.queryByRole("tab", { name: "Camera" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
-    expect(screen.getByText("Time synchronization")).toBeTruthy();
+    expect(screen.getByText("Advanced timing")).toBeTruthy();
   });
 
-  it("shows scene label and time settings without the count summary", () => {
+  it("shows the playback fidelity control without the count summary", () => {
     renderSidebar();
 
     expect(screen.queryByText("Images")).toBeNull();
     expect(screen.queryByText("3D")).toBeNull();
-    expect(screen.getByText("Interpolate between 2D annotations")).toBeTruthy();
-    expect(screen.getByText("Interpolate between 3D annotations")).toBeTruthy();
-    expect(screen.getByText("Time synchronization")).toBeTruthy();
+    expect(screen.getByLabelText("Between samples")).toBeTruthy();
+    expect(screen.getByText("Advanced timing")).toBeTruthy();
   });
 
-  it("collapses the time synchronization tuning by default", () => {
+  it("persists fidelity mode changes through the select", () => {
+    renderSidebar();
+
+    const select = screen.getByLabelText(
+      "Between samples",
+    ) as HTMLSelectElement;
+    expect(select.value).toBe("smooth");
+
+    fireEvent.change(select, { target: { value: "as-recorded" } });
+
+    expect(
+      (screen.getByLabelText("Between samples") as HTMLSelectElement).value,
+    ).toBe("as-recorded");
+    expect(
+      JSON.parse(localStorage.getItem("fiftyone.mcap.modal-settings") ?? "{}")
+        .fidelityMode,
+    ).toBe("as-recorded");
+  });
+
+  it("collapses the advanced timing tuning by default", () => {
     renderSidebar();
 
     expect(screen.queryByLabelText("Stale frame warning")).toBeNull();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /Time synchronization/ }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /Advanced timing/ }));
 
     expect(screen.getByLabelText("Stale frame warning")).toBeTruthy();
     expect(screen.getByText("Reset to defaults")).toBeTruthy();
@@ -152,7 +168,7 @@ describe("McapSettingsSidebar", () => {
     expect(
       screen.getByRole("tab", { name: "Scene" }).getAttribute("aria-selected"),
     ).toBe("true");
-    expect(screen.getByText("Time synchronization")).toBeTruthy();
+    expect(screen.getByText("Advanced timing")).toBeTruthy();
     expect(screen.queryByTestId(PANEL_SETTINGS_TEST_ID)).toBeNull();
   });
 

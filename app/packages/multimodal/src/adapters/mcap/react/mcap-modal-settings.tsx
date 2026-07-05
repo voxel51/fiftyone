@@ -17,6 +17,17 @@ export interface McapTemporalPolicySettings {
 }
 
 /**
+ * How the viewer renders values between recorded message timestamps.
+ *
+ * - `smooth`: continuous signals (frame transforms, 2D/3D label geometry)
+ *   are interpolated between bracketing samples for fluid playback.
+ * - `as-recorded`: no synthesis anywhere — every signal holds its latest
+ *   recorded sample so the screen only ever shows values that exist in the
+ *   recording.
+ */
+export type McapPlaybackFidelityMode = "smooth" | "as-recorded";
+
+/**
  * Appearance of the 3D tile's world reference grid.
  */
 export interface McapReferenceGridSettings {
@@ -40,28 +51,25 @@ export interface McapSceneBackgroundSettings {
 }
 
 interface McapPersistedModalSettings {
-  version: 1;
+  version: 2;
+  fidelityMode: McapPlaybackFidelityMode;
   imageLabelTopics: Record<string, readonly string[]>;
-  interpolate2dAnnotations: boolean;
-  interpolate3dAnnotations: boolean;
   referenceGrid: McapReferenceGridSettings;
   sceneBackground: McapSceneBackgroundSettings;
   temporalPolicy: McapTemporalPolicySettings;
 }
 
 interface McapModalSettingsContextValue {
+  readonly fidelityMode: McapPlaybackFidelityMode;
   readonly imageLabelTopics: Record<string, readonly string[]>;
-  readonly interpolate2dAnnotations: boolean;
-  readonly interpolate3dAnnotations: boolean;
   readonly referenceGrid: McapReferenceGridSettings;
   readonly sceneBackground: McapSceneBackgroundSettings;
   readonly temporalPolicy: McapTemporalPolicySettings;
+  readonly setFidelityMode: (mode: McapPlaybackFidelityMode) => void;
   readonly setImageLabelTopics: (
     imageTopic: string,
     labelTopics: readonly string[],
   ) => void;
-  readonly setInterpolate2dAnnotations: (enabled: boolean) => void;
-  readonly setInterpolate3dAnnotations: (enabled: boolean) => void;
   readonly setReferenceGrid: (
     settings: Partial<McapReferenceGridSettings>,
   ) => void;
@@ -75,7 +83,14 @@ interface McapModalSettingsContextValue {
 }
 
 const STORAGE_KEY = "fiftyone.mcap.modal-settings";
-const VERSION = 1;
+const VERSION = 2;
+
+export const DEFAULT_MCAP_FIDELITY_MODE: McapPlaybackFidelityMode = "smooth";
+
+const FIDELITY_MODES: readonly McapPlaybackFidelityMode[] = [
+  "smooth",
+  "as-recorded",
+];
 
 export const DEFAULT_MCAP_TEMPORAL_POLICY: McapTemporalPolicySettings = {
   boundaryClampMs: 50,
@@ -110,9 +125,8 @@ const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
 const DEFAULT_SETTINGS: McapPersistedModalSettings = {
   version: VERSION,
+  fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
   imageLabelTopics: {},
-  interpolate2dAnnotations: true,
-  interpolate3dAnnotations: true,
   referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
   sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
   temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
@@ -133,22 +147,27 @@ export function readMcapModalSettings(): McapPersistedModalSettings {
       return DEFAULT_SETTINGS;
     }
 
-    if ((parsed as { version?: unknown }).version !== VERSION) {
+    const version = (parsed as { version?: unknown }).version;
+    if (version !== VERSION && version !== 1) {
       return DEFAULT_SETTINGS;
     }
 
-    const candidate = parsed as Partial<McapPersistedModalSettings>;
+    const candidate = parsed as Partial<McapPersistedModalSettings> & {
+      readonly interpolate2dAnnotations?: unknown;
+      readonly interpolate3dAnnotations?: unknown;
+    };
     return {
       version: VERSION,
+      fidelityMode:
+        version === 1
+          ? // v1 stored two per-dimension interpolation booleans; any explicit
+            // opt-out maps to the unified as-recorded mode.
+            candidate.interpolate2dAnnotations === false ||
+            candidate.interpolate3dAnnotations === false
+            ? "as-recorded"
+            : DEFAULT_MCAP_FIDELITY_MODE
+          : normalizeFidelityMode(candidate.fidelityMode),
       imageLabelTopics: normalizeImageLabelTopicMap(candidate.imageLabelTopics),
-      interpolate2dAnnotations:
-        typeof candidate.interpolate2dAnnotations === "boolean"
-          ? candidate.interpolate2dAnnotations
-          : DEFAULT_SETTINGS.interpolate2dAnnotations,
-      interpolate3dAnnotations:
-        typeof candidate.interpolate3dAnnotations === "boolean"
-          ? candidate.interpolate3dAnnotations
-          : DEFAULT_SETTINGS.interpolate3dAnnotations,
       referenceGrid: normalizeReferenceGrid(candidate.referenceGrid),
       sceneBackground: normalizeSceneBackground(candidate.sceneBackground),
       temporalPolicy: normalizeTemporalPolicy(candidate.temporalPolicy),
@@ -169,11 +188,10 @@ export function writeMcapModalSettings(
       STORAGE_KEY,
       JSON.stringify({
         version: VERSION,
+        fidelityMode: normalizeFidelityMode(settings.fidelityMode),
         imageLabelTopics: normalizeImageLabelTopicMap(
           settings.imageLabelTopics,
         ),
-        interpolate2dAnnotations: settings.interpolate2dAnnotations,
-        interpolate3dAnnotations: settings.interpolate3dAnnotations,
         referenceGrid: normalizeReferenceGrid(settings.referenceGrid),
         sceneBackground: normalizeSceneBackground(settings.sceneBackground),
         temporalPolicy: normalizeTemporalPolicy(settings.temporalPolicy),
@@ -210,19 +228,11 @@ export const McapModalSettingsProvider: React.FC<{
     writeMcapModalSettings(settings);
   }, [settings]);
 
-  const setInterpolate2dAnnotations = useCallback(
-    (enabled: boolean) =>
+  const setFidelityMode = useCallback(
+    (mode: McapPlaybackFidelityMode) =>
       update((current) => ({
         ...current,
-        interpolate2dAnnotations: enabled,
-      })),
-    [update],
-  );
-  const setInterpolate3dAnnotations = useCallback(
-    (enabled: boolean) =>
-      update((current) => ({
-        ...current,
-        interpolate3dAnnotations: enabled,
+        fidelityMode: normalizeFidelityMode(mode),
       })),
     [update],
   );
@@ -285,16 +295,14 @@ export const McapModalSettingsProvider: React.FC<{
 
   const value = useMemo<McapModalSettingsContextValue>(
     () => ({
+      fidelityMode: settings.fidelityMode,
       imageLabelTopics: settings.imageLabelTopics,
-      interpolate2dAnnotations: settings.interpolate2dAnnotations,
-      interpolate3dAnnotations: settings.interpolate3dAnnotations,
       referenceGrid: settings.referenceGrid,
       sceneBackground: settings.sceneBackground,
       temporalPolicy: settings.temporalPolicy,
       resetTemporalPolicy,
+      setFidelityMode,
       setImageLabelTopics,
-      setInterpolate2dAnnotations,
-      setInterpolate3dAnnotations,
       setReferenceGrid,
       setSceneBackground,
       setTemporalPolicy,
@@ -302,9 +310,8 @@ export const McapModalSettingsProvider: React.FC<{
     [
       settings,
       resetTemporalPolicy,
+      setFidelityMode,
       setImageLabelTopics,
-      setInterpolate2dAnnotations,
-      setInterpolate3dAnnotations,
       setReferenceGrid,
       setSceneBackground,
       setTemporalPolicy,
@@ -329,6 +336,12 @@ export function useMcapModalSettings(): McapModalSettingsContextValue {
     );
   }
   return ctx;
+}
+
+function normalizeFidelityMode(value: unknown): McapPlaybackFidelityMode {
+  return FIDELITY_MODES.includes(value as McapPlaybackFidelityMode)
+    ? (value as McapPlaybackFidelityMode)
+    : DEFAULT_MCAP_FIDELITY_MODE;
 }
 
 function normalizeImageLabelTopicMap(

@@ -2,6 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  DEFAULT_MCAP_FIDELITY_MODE,
   DEFAULT_MCAP_REFERENCE_GRID,
   DEFAULT_MCAP_SCENE_BACKGROUND,
   DEFAULT_MCAP_TEMPORAL_POLICY,
@@ -11,6 +12,8 @@ import {
   writeMcapModalSettings,
 } from "./mcap-modal-settings";
 
+const STORAGE_KEY = "fiftyone.mcap.modal-settings";
+
 describe("mcap-modal-settings", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -18,26 +21,24 @@ describe("mcap-modal-settings", () => {
 
   afterEach(() => cleanup());
 
-  it("returns default interpolation settings when nothing is stored", () => {
+  it("returns default settings when nothing is stored", () => {
     expect(readMcapModalSettings()).toEqual({
-      version: 1,
+      version: 2,
+      fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
-      interpolate2dAnnotations: true,
-      interpolate3dAnnotations: true,
       referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
       sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
       temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
     });
   });
 
-  it("round-trips global interpolation settings and image label topics", () => {
+  it("round-trips fidelity mode and image label topics", () => {
     writeMcapModalSettings({
-      version: 1,
+      version: 2,
+      fidelityMode: "as-recorded",
       imageLabelTopics: {
         "/camera/front": ["/labels/front", "/labels/all"],
       },
-      interpolate2dAnnotations: false,
-      interpolate3dAnnotations: true,
       referenceGrid: { enabled: false, opacityPercent: 50, spacingM: 5 },
       sceneBackground: { mode: "abyss", solidColor: "#112233" },
       temporalPolicy: {
@@ -49,12 +50,11 @@ describe("mcap-modal-settings", () => {
     });
 
     expect(readMcapModalSettings()).toEqual({
-      version: 1,
+      version: 2,
+      fidelityMode: "as-recorded",
       imageLabelTopics: {
         "/camera/front": ["/labels/front", "/labels/all"],
       },
-      interpolate2dAnnotations: false,
-      interpolate3dAnnotations: true,
       referenceGrid: { enabled: false, opacityPercent: 50, spacingM: 5 },
       sceneBackground: { mode: "abyss", solidColor: "#112233" },
       temporalPolicy: {
@@ -66,12 +66,27 @@ describe("mcap-modal-settings", () => {
     });
   });
 
-  it("backfills 3D scene defaults for older payloads", () => {
+  it("rejects unknown fidelity modes", () => {
+    writeMcapModalSettings({
+      version: 2,
+      fidelityMode: "plaid" as never,
+      imageLabelTopics: {},
+      referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
+      sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
+      temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
+    });
+
+    expect(readMcapModalSettings().fidelityMode).toBe(
+      DEFAULT_MCAP_FIDELITY_MODE,
+    );
+  });
+
+  it("migrates v1 payloads with interpolation enabled to smooth", () => {
     localStorage.setItem(
-      "fiftyone.mcap.modal-settings",
+      STORAGE_KEY,
       JSON.stringify({
         version: 1,
-        imageLabelTopics: {},
+        imageLabelTopics: { "/camera/front": ["/labels/front"] },
         interpolate2dAnnotations: true,
         interpolate3dAnnotations: true,
         temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
@@ -79,16 +94,33 @@ describe("mcap-modal-settings", () => {
     );
 
     const read = readMcapModalSettings();
+    expect(read.version).toBe(2);
+    expect(read.fidelityMode).toBe("smooth");
+    expect(read.imageLabelTopics["/camera/front"]).toEqual(["/labels/front"]);
     expect(read.referenceGrid).toEqual(DEFAULT_MCAP_REFERENCE_GRID);
     expect(read.sceneBackground).toEqual(DEFAULT_MCAP_SCENE_BACKGROUND);
   });
 
+  it("migrates v1 payloads with any interpolation opt-out to as-recorded", () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        imageLabelTopics: {},
+        interpolate2dAnnotations: false,
+        interpolate3dAnnotations: true,
+        temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
+      }),
+    );
+
+    expect(readMcapModalSettings().fidelityMode).toBe("as-recorded");
+  });
+
   it("clamps invalid reference-grid values", () => {
     writeMcapModalSettings({
-      version: 1,
+      version: 2,
+      fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
-      interpolate2dAnnotations: true,
-      interpolate3dAnnotations: true,
       referenceGrid: {
         enabled: true,
         opacityPercent: 250,
@@ -107,10 +139,9 @@ describe("mcap-modal-settings", () => {
 
   it("rejects invalid scene background values", () => {
     writeMcapModalSettings({
-      version: 1,
+      version: 2,
+      fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
-      interpolate2dAnnotations: true,
-      interpolate3dAnnotations: true,
       referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
       sceneBackground: {
         mode: "plaid" as never,
@@ -126,12 +157,11 @@ describe("mcap-modal-settings", () => {
 
   it("preserves explicit empty label selections", () => {
     writeMcapModalSettings({
-      version: 1,
+      version: 2,
+      fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {
         "/camera/front": [],
       },
-      interpolate2dAnnotations: true,
-      interpolate3dAnnotations: true,
       referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
       sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
       temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
@@ -150,8 +180,7 @@ describe("mcap-modal-settings", () => {
     });
 
     act(() => {
-      result.current.setInterpolate2dAnnotations(false);
-      result.current.setInterpolate3dAnnotations(false);
+      result.current.setFidelityMode("as-recorded");
       result.current.setReferenceGrid({ enabled: false, spacingM: 10 });
       result.current.setSceneBackground({ mode: "studio" });
       result.current.setImageLabelTopics("/camera/front", ["/labels"]);
@@ -163,8 +192,7 @@ describe("mcap-modal-settings", () => {
       });
     });
 
-    expect(result.current.interpolate2dAnnotations).toBe(false);
-    expect(result.current.interpolate3dAnnotations).toBe(false);
+    expect(result.current.fidelityMode).toBe("as-recorded");
     expect(result.current.referenceGrid).toEqual({
       enabled: false,
       opacityPercent: DEFAULT_MCAP_REFERENCE_GRID.opacityPercent,
@@ -184,9 +212,8 @@ describe("mcap-modal-settings", () => {
       transformGapWarningMs: 1500,
     });
     expect(readMcapModalSettings()).toMatchObject({
+      fidelityMode: "as-recorded",
       imageLabelTopics: { "/camera/front": ["/labels"] },
-      interpolate2dAnnotations: false,
-      interpolate3dAnnotations: false,
       referenceGrid: {
         enabled: false,
         opacityPercent: DEFAULT_MCAP_REFERENCE_GRID.opacityPercent,
@@ -213,10 +240,9 @@ describe("mcap-modal-settings", () => {
 
   it("clamps invalid temporal policy values", () => {
     writeMcapModalSettings({
-      version: 1,
+      version: 2,
+      fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
-      interpolate2dAnnotations: true,
-      interpolate3dAnnotations: true,
       referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
       sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
       temporalPolicy: {

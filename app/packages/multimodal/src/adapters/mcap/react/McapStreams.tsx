@@ -12,6 +12,7 @@ import { McapPoseTrajectoriesStartupGate } from "./mcap-pose-trajectories-contex
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
+  type McapPlaybackFidelityMode,
   type McapTemporalPolicySettings,
   useMcapModalSettings,
 } from "./mcap-modal-settings";
@@ -38,7 +39,7 @@ export interface McapStreamsProps {
 export function McapStreams({ ctx, client }: McapStreamsProps) {
   const source = useStableMcapSource(ctx);
   const sources = useSceneInventory();
-  const { temporalPolicy } = useMcapModalSettings();
+  const { fidelityMode, temporalPolicy } = useMcapModalSettings();
 
   const streamPolicies = useMemo(() => mcapStreamPolicies(sources), [sources]);
   const allTopics = useMemo(() => sources.map((s) => s.id), [sources]);
@@ -116,6 +117,7 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
     <>
       <McapFrameTransformsBridge
         client={client}
+        fidelityMode={fidelityMode}
         source={source}
         temporalPolicy={temporalPolicy}
       />
@@ -130,10 +132,12 @@ export function McapStreams({ ctx, client }: McapStreamsProps) {
 
 function McapFrameTransformsBridge({
   client,
+  fidelityMode,
   source,
   temporalPolicy,
 }: {
   readonly client: McapResourceClient;
+  readonly fidelityMode: McapPlaybackFidelityMode;
   readonly source: ByteSourceDescriptor | null;
   readonly temporalPolicy: McapTemporalPolicySettings;
 }) {
@@ -162,6 +166,7 @@ function McapFrameTransformsBridge({
     policy: {
       boundaryClampNs: msToNs(temporalPolicy.boundaryClampMs),
       maxInterpolationGapNs: msToNs(temporalPolicy.maxInterpolationGapMs),
+      resolutionMode: fidelityMode === "smooth" ? "interpolate" : "hold-last",
     },
     source,
     timeNs,

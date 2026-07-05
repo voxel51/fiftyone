@@ -1,6 +1,5 @@
 import { useTiling } from "@fiftyone/tiling";
 import {
-  Checkbox,
   Size,
   Text,
   TextColor,
@@ -16,10 +15,10 @@ import React, {
   useState,
 } from "react";
 import {
+  type McapPlaybackFidelityMode,
   type McapTemporalPolicySettings,
   useMcapModalSettings,
 } from "./mcap-modal-settings";
-import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import McapSidebarGroup from "./McapSidebarGroup";
 import styles from "./McapSettingsSidebar.module.css";
 
@@ -110,34 +109,50 @@ function PanelSettingsContent({
 }
 
 function GlobalSceneSettings() {
-  const {
-    interpolate2dAnnotations,
-    interpolate3dAnnotations,
-    setInterpolate2dAnnotations,
-    setInterpolate3dAnnotations,
-  } = useMcapModalSettings();
-
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
-      <McapSidebarGroup title="Labels">
-        <div className={styles.controlStack}>
-          <Checkbox
-            label="Interpolate between 2D annotations"
-            checked={interpolate2dAnnotations}
-            onChange={setInterpolate2dAnnotations}
-            {...checkboxNoSpaceToggleProps}
-          />
-          <Checkbox
-            label="Interpolate between 3D annotations"
-            checked={interpolate3dAnnotations}
-            onChange={setInterpolate3dAnnotations}
-            {...checkboxNoSpaceToggleProps}
-          />
-        </div>
-      </McapSidebarGroup>
-
+      <PlaybackFidelitySettings />
       <TimeResolutionSettings />
     </div>
+  );
+}
+
+const FIDELITY_OPTIONS: readonly {
+  readonly label: string;
+  readonly value: McapPlaybackFidelityMode;
+}[] = [
+  { label: "Smooth", value: "smooth" },
+  { label: "As recorded", value: "as-recorded" },
+];
+
+function PlaybackFidelitySettings() {
+  const { fidelityMode, setFidelityMode } = useMcapModalSettings();
+
+  return (
+    <McapSidebarGroup title="Playback">
+      <div className={styles.controlStack}>
+        <label className={styles.controlRow}>
+          <ControlLabel
+            label="Between samples"
+            tooltip="Smooth interpolates continuous signals — transforms and 2D/3D label geometry — between recorded samples for fluid playback. As recorded never synthesizes: every signal holds its latest recorded sample, so the scene only shows values that exist in the recording."
+          />
+          <select
+            aria-label="Between samples"
+            className={styles.modeSelect}
+            onChange={(event) =>
+              setFidelityMode(event.target.value as McapPlaybackFidelityMode)
+            }
+            value={fidelityMode}
+          >
+            {FIDELITY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </McapSidebarGroup>
   );
 }
 
@@ -164,7 +179,7 @@ function TemporalPolicySettings({
   readonly policy: McapTemporalPolicySettings;
 }) {
   return (
-    <McapSidebarGroup defaultExpanded={false} title="Time synchronization">
+    <McapSidebarGroup defaultExpanded={false} title="Advanced timing">
       <div className={styles.policyGroups}>
         <div className={styles.policyGroup}>
           <Text variant={TextVariant.Xs} color={TextColor.Secondary}>

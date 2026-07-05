@@ -60,7 +60,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const calibrationSources = useSceneSourcesByType(
     MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
   );
-  const { imageLabelTopics, interpolate2dAnnotations, setImageLabelTopics } =
+  const { fidelityMode, imageLabelTopics, setImageLabelTopics } =
     useMcapModalSettings();
   const setTileTitle = useSetTileTitle();
   const jotaiStore = useStore();
@@ -280,7 +280,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               fit={IMAGE_FIT}
               imageWidth={effectiveImageDims.width}
               imageHeight={effectiveImageDims.height}
-              interpolate={interpolate2dAnnotations}
+              interpolate={fidelityMode === "smooth"}
               topics={selectedLabelTopics}
               viewTransform={imagePanZoom.viewTransform}
             />
