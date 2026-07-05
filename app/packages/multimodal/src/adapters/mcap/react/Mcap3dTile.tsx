@@ -74,6 +74,7 @@ import {
   selectProvisionalPointCloudTopic,
   useMcap3dSelection,
 } from "./use-mcap-3d-selection";
+import { useInterpolatedSceneUpdateFrames } from "./use-interpolated-scene-updates";
 import { useMcapPlaybackTimeNs } from "./use-mcap-playback-time-ns";
 import { useMcapTopicPlaybackFrames } from "./use-mcap-topic-stream";
 
@@ -128,6 +129,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   } = useMcap3dSelection({ restore: viewStateRestore });
   const frameTransforms = useMcapFrameTransformsContext();
   const {
+    fidelityMode,
     referenceGrid,
     sceneBackground,
     setReferenceGrid,
@@ -160,9 +162,13 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     useMcapTopicPlaybackFrames<EncodedImageVisualization>(frustumImageTopics);
   const frames =
     useMcapTopicPlaybackFrames<PointCloudVisualization>(pointCloudTopics);
-  const annotationFrames = useMcapTopicPlaybackFrames<SceneUpdateVisualization>(
-    sceneAnnotationTopics,
-  );
+  const heldAnnotationFrames =
+    useMcapTopicPlaybackFrames<SceneUpdateVisualization>(sceneAnnotationTopics);
+  const annotationFrames = useInterpolatedSceneUpdateFrames({
+    frames: heldAnnotationFrames,
+    interpolate: fidelityMode === "smooth",
+    topics: sceneAnnotationTopics,
+  });
   const gridFrames =
     useMcapTopicPlaybackFrames<GridVisualization>(mapLayerTopics);
   const calibrationFrames =

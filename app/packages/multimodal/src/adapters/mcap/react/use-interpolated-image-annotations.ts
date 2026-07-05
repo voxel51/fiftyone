@@ -188,8 +188,9 @@ function useStableTopics(topics: readonly string[]): readonly string[] {
  * returns a `"topic:revision|"` digest string. The digest changes whenever a
  * watched cache bumps its revision (frames arrive, change, or are cleared),
  * which is what drives the hook to re-derive annotation frames as data streams in.
+ * Shared with `use-interpolated-scene-updates`.
  */
-function useTopicCacheSnapshot(
+export function useTopicCacheSnapshot(
   dataStream: McapDataStream | null,
   topics: readonly string[],
 ): string {
@@ -276,7 +277,7 @@ function currentAnnotationFrame({
   if (!currentViz) return null;
   if (!interpolate) return currentViz;
 
-  const nextMsg = nextDistinctAnnotationMessage({
+  const nextMsg = nextDistinctCachedMessage({
     cache,
     currentTick,
     currentTimelineTimeNs: currentMsg.timelineTimeNs,
@@ -296,7 +297,12 @@ function currentAnnotationFrame({
   return interpolateImageAnnotations(currentViz, nextViz, f);
 }
 
-function nextDistinctAnnotationMessage({
+/**
+ * Finds the next cached source message strictly after `currentTick` whose
+ * timeline time differs from the current message's. Decoder-agnostic; shared
+ * by the 2D image-annotation and 3D scene-update interpolation hooks.
+ */
+export function nextDistinctCachedMessage({
   cache,
   currentTick,
   currentTimelineTimeNs,
