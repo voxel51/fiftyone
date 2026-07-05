@@ -1,4 +1,5 @@
 import { collectTileIds, useTiling, type TilingTile } from "@fiftyone/tiling";
+import { useStore } from "jotai";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import type { MosaicNode } from "react-mosaic-component";
 import type { ByteSourceReadProfile } from "../../../query/bytes";
@@ -8,6 +9,7 @@ import {
   readMcapModalLayout,
   writeMcapModalLayout,
 } from "./mcap-layout-persistence";
+import { mcapPlotTileSeriesAtom } from "./mcap-plot-tile-state";
 import { MCAP_TILE_TYPE } from "./mcap-tile-types";
 import {
   collectPlaybackDeviceCapabilities,
@@ -22,6 +24,8 @@ export interface McapModalLayout {
   initialTiles: Record<string, TilingTile>;
   /** `undefined` lets the TilingProvider auto-lay-out `initialTiles`. */
   initialLayout: MosaicNode<string> | undefined;
+  /** Tile id that should initially render expanded to fullscreen. */
+  initialExpandedTileId: string | null;
   defaultLeftOpen: boolean;
   onLeftOpenChange: (open: boolean) => void;
   /** Persisted sidebar width; `undefined` keeps the shell's default. */
@@ -89,6 +93,14 @@ export function useMcapModalLayout({
     () => rebuildTilesFromLayout(persisted?.layout, presentTypes, sources),
     [persisted, presentTypes, sources],
   );
+  const restoredTileIds = useMemo(
+    () => (restored ? new Set(collectTileIds(restored.layout)) : null),
+    [restored],
+  );
+  const initialExpandedTileId =
+    persisted?.expandedTileId && restoredTileIds?.has(persisted.expandedTileId)
+      ? persisted.expandedTileId
+      : null;
 
   const onLeftOpenChange = useCallback(
     (open: boolean) => {
@@ -107,6 +119,7 @@ export function useMcapModalLayout({
   return {
     initialTiles: restored?.tiles ?? defaultTiles,
     initialLayout: restored?.layout ?? resolved.layout,
+    initialExpandedTileId,
     defaultLeftOpen: persisted?.leftSidebarOpen ?? true,
     onLeftOpenChange,
     defaultLeftSidebarWidth: persisted?.sidebarWidthPx,
@@ -225,11 +238,82 @@ export interface McapModalLayoutPersistenceProps {
 export function McapModalLayoutPersistence({
   datasetId,
 }: McapModalLayoutPersistenceProps): React.ReactElement | null {
-  const { layout } = useTiling();
+  const { expandedTileId, layout, tiles } = useTiling();
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
+  const expandedTileIdRef = useRef(expandedTileId);
+  expandedTileIdRef.current = expandedTileId;
   const datasetIdRef = useRef(datasetId);
   datasetIdRef.current = datasetId;
+  const store = useStore();
+
+  // Restore persisted plot series into the shell-scoped atom for the
+  // plot tiles that survived layout restore, then mirror atom changes
+  // back to storage. Both live here because this component already owns
+  // the layout write cadence and sits inside the TilingProvider's Jotai
+  // store.
+  const seededPlotKeyRef = useRef<string | null>(null);
+  const tilesRef = useRef(tiles);
+  tilesRef.current = tiles;
+
+  // This effect seeds the plot-series atom once per mount from the
+  // persisted dataset entry — persistence is an external system.
+  useEffect(() => {
+    const persisted = readMcapModalLayout(datasetIdRef.current)?.plotSeries;
+    if (persisted) {
+      store.set(mcapPlotTileSeriesAtom, (previous) => {
+        const next = { ...previous };
+        for (const [tileId, series] of Object.entries(persisted)) {
+          if (!(tileId in tilesRef.current) || next[tileId]) continue;
+          next[tileId] = series;
+        }
+        return next;
+      });
+    }
+    seededPlotKeyRef.current = JSON.stringify(
+      store.get(mcapPlotTileSeriesAtom),
+    );
+  }, [store]);
+
+  // This effect mirrors plot-series changes to localStorage (debounced,
+  // flushed on unmount). Restores can reference pruned tiles, so nothing
+  // is written until the atom actually diverges from the seeded state —
+  // merely viewing an incompatible sample must not erase saved series.
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let dirty = false;
+    const currentPlotSeries = () => {
+      const value = store.get(mcapPlotTileSeriesAtom);
+      const compact = Object.fromEntries(
+        Object.entries(value).filter(([, series]) => series.length > 0),
+      );
+      return compact;
+    };
+    const unsubscribe = store.sub(mcapPlotTileSeriesAtom, () => {
+      const key = JSON.stringify(store.get(mcapPlotTileSeriesAtom));
+      if (!dirty && key === seededPlotKeyRef.current) return;
+      dirty = true;
+      if (timeout !== null) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        writeMcapModalLayout(
+          { plotSeries: currentPlotSeries() },
+          datasetIdRef.current,
+        );
+      }, 500);
+    });
+    return () => {
+      unsubscribe();
+      if (timeout !== null) {
+        clearTimeout(timeout);
+      }
+      if (dirty) {
+        writeMcapModalLayout(
+          { plotSeries: currentPlotSeries() },
+          datasetIdRef.current,
+        );
+      }
+    };
+  }, [store]);
 
   // Write only after the layout actually changes from what this mount
   // started with. Restores can be PRUNED views of the saved arrangement
@@ -248,6 +332,17 @@ export function McapModalLayoutPersistence({
   ) {
     dirtyRef.current = true;
   }
+  const initialExpandedTileIdRef = useRef<string | null | undefined>(undefined);
+  if (initialExpandedTileIdRef.current === undefined) {
+    initialExpandedTileIdRef.current = expandedTileId;
+  }
+  const expandedDirtyRef = useRef(false);
+  if (
+    !expandedDirtyRef.current &&
+    expandedTileId !== initialExpandedTileIdRef.current
+  ) {
+    expandedDirtyRef.current = true;
+  }
 
   // This effect syncs the mosaic layout to localStorage (debounced) —
   // persistence is an external system, so an effect is the right tool.
@@ -259,12 +354,36 @@ export function McapModalLayoutPersistence({
     return () => clearTimeout(timeout);
   }, [layout, datasetId]);
 
+  // This effect syncs the fullscreen tile id separately from the layout.
+  // Fullscreen is view state layered over the saved arrangement, so
+  // toggling it must not overwrite the normal mosaic tree.
+  useEffect(() => {
+    if (!expandedDirtyRef.current) return undefined;
+    const timeout = setTimeout(() => {
+      writeMcapModalLayout(
+        { expandedTileId: expandedTileId ?? undefined },
+        datasetId,
+      );
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [expandedTileId, datasetId]);
+
   // This effect flushes the latest layout on unmount so a pending
   // debounce can't drop the user's final arrangement.
   useEffect(
     () => () => {
-      if (!dirtyRef.current) return;
-      writeMcapModalLayout({ layout: layoutRef.current }, datasetIdRef.current);
+      if (dirtyRef.current) {
+        writeMcapModalLayout(
+          { layout: layoutRef.current },
+          datasetIdRef.current,
+        );
+      }
+      if (expandedDirtyRef.current) {
+        writeMcapModalLayout(
+          { expandedTileId: expandedTileIdRef.current ?? undefined },
+          datasetIdRef.current,
+        );
+      }
     },
     [],
   );

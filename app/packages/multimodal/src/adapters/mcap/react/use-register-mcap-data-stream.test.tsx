@@ -1197,6 +1197,14 @@ function createClient({
     readTimelineRange,
     readTopics: vi.fn(async () => []),
     readTopicTimeBounds,
+    enumerateNumericFields: vi.fn(async () => []),
+    readNumericSeries: vi.fn(async () => ({
+      baseTimeNs: 0n,
+      fields: [],
+      messageCount: 0,
+      topic: "",
+      truncated: false,
+    })),
   };
 }
 

@@ -126,6 +126,22 @@ describe("useMcapModalLayout", () => {
     expect(result.current.initialTiles["3d-7"].title).toBe("3D");
   });
 
+  it("restores expanded tile state when the tile survives layout restore", () => {
+    writeMcapModalLayout({
+      expandedTileId: "3d-7",
+      layout: {
+        direction: "row",
+        first: "image-default",
+        second: "3d-7",
+        splitPercentage: 70,
+      },
+    });
+
+    const { result } = renderLayoutHook(SCENE_SOURCES);
+
+    expect(result.current.initialExpandedTileId).toBe("3d-7");
+  });
+
   it("rebinds restored image tiles positionally to ranked sources", () => {
     writeMcapModalLayout({
       layout: {
@@ -145,6 +161,7 @@ describe("useMcapModalLayout", () => {
 
   it("prunes leaves with unknown tile types and promotes the sibling", () => {
     writeMcapModalLayout({
+      expandedTileId: "radar-2",
       layout: {
         direction: "row",
         first: "image-default",
@@ -153,6 +170,7 @@ describe("useMcapModalLayout", () => {
     });
     const { result } = renderLayoutHook(SCENE_SOURCES);
     expect(result.current.initialLayout).toBe("image-default");
+    expect(result.current.initialExpandedTileId).toBeNull();
     expect(Object.keys(result.current.initialTiles)).toEqual(["image-default"]);
   });
 
@@ -385,6 +403,17 @@ describe("McapModalLayoutPersistence", () => {
     return null;
   }
 
+  function ExpandedDriver({ next }: { next: string | null }) {
+    const { setExpandedTileId } = useTiling();
+    // Drives the provider's fullscreen state from test props — stand-in
+    // for the user toggling a tile's fullscreen button.
+    useEffect(() => {
+      setExpandedTileId(next);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [next]);
+    return null;
+  }
+
   // Two tiles so the provider's derived initial layout differs from the
   // single-leaf arrangement the driver applies — persistence only writes
   // once the layout changes from what the mount started with.
@@ -432,6 +461,37 @@ describe("McapModalLayoutPersistence", () => {
       vi.advanceTimersByTime(600);
     });
     expect(readMcapModalLayout("dataset-a")?.layout).toBe("camera-default");
+  });
+
+  it("writes expanded tile changes after the debounce window", () => {
+    render(
+      <TilingProvider initialTiles={TWO_TILES}>
+        <ExpandedDriver next="camera-default" />
+        <McapModalLayoutPersistence datasetId="dataset-a" />
+      </TilingProvider>,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(readMcapModalLayout("dataset-a")?.expandedTileId).toBe(
+      "camera-default",
+    );
+    expect(readMcapModalLayout("dataset-a")?.layout).toBeUndefined();
+  });
+
+  it("flushes expanded tile changes on unmount even when the debounce is pending", () => {
+    const { unmount } = render(
+      <TilingProvider initialTiles={TWO_TILES}>
+        <ExpandedDriver next="camera-default" />
+        <McapModalLayoutPersistence datasetId="dataset-a" />
+      </TilingProvider>,
+    );
+
+    unmount();
+    expect(readMcapModalLayout("dataset-a")?.expandedTileId).toBe(
+      "camera-default",
+    );
   });
 
   it("does not persist a layout the user never edited", () => {

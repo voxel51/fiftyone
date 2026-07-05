@@ -12,6 +12,7 @@ const playbackHarness = vi.hoisted(() => ({
   useMcapModalLayout: vi.fn(() => ({
     defaultLeftOpen: true,
     defaultLeftSidebarWidth: undefined,
+    initialExpandedTileId: null,
     initialLayout: undefined,
     initialTiles: {},
     onLeftOpenChange: vi.fn(),

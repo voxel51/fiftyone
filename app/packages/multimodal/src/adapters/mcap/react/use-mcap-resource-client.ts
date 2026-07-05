@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import {
   acquireSharedMcapResourceClient,
+  createMcapResourceClient,
   type CreateMcapResourceClientOptions,
 } from "../resource-client";
 import type { McapResourceClient } from "../types";
@@ -10,7 +11,7 @@ import type { McapResourceClient } from "../types";
  */
 export type UseMcapResourceClientOptions = Pick<
   CreateMcapResourceClientOptions,
-  "worker"
+  "byteClient" | "worker"
 >;
 
 /**
@@ -22,11 +23,18 @@ export type UseMcapResourceClientOptions = Pick<
 export function useMcapResourceClient(
   options: UseMcapResourceClientOptions = {},
 ): McapResourceClient {
-  const { worker = false } = options;
-  const handle = useMemo(
-    () => acquireSharedMcapResourceClient({ worker }),
-    [worker],
-  );
+  const { byteClient, worker = false } = options;
+  const handle = useMemo(() => {
+    if (byteClient) {
+      const client = createMcapResourceClient({ byteClient, worker });
+      return {
+        client,
+        release: () => client.dispose(),
+      };
+    }
+
+    return acquireSharedMcapResourceClient({ worker });
+  }, [byteClient, worker]);
 
   useEffect(() => {
     return () => {

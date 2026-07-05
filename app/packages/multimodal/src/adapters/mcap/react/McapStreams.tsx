@@ -7,6 +7,7 @@ import {
   idleMcapFrameTransformsState,
   useSetMcapFrameTransformsContext,
 } from "./mcap-frame-transforms-context";
+import { McapNumericSeriesBridge } from "./mcap-numeric-series-context";
 import { McapPoseTrajectoriesStartupGate } from "./mcap-pose-trajectories-context";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import { markMcapLatencyEvent } from "../mcap-latency-debug";
@@ -124,6 +125,7 @@ export function McapStreams({ client, source }: McapStreamsProps) {
         poseTopics={poseTopics}
         source={source}
       />
+      <McapNumericSeriesBridge client={client} source={source} />
     </>
   );
 }

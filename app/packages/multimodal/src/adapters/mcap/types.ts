@@ -168,6 +168,130 @@ export interface McapTopicTimeBounds {
 }
 
 /**
+ * Request for enumerating plottable numeric leaf fields per topic.
+ */
+export interface McapEnumerateNumericFieldsRequest {
+  /**
+   * MCAP source to inspect for channel schemas.
+   */
+  readonly source: ByteSourceDescriptor;
+
+  /**
+   * Optional MCAP topics to include. Undefined means all topics.
+   */
+  readonly topics?: readonly string[];
+}
+
+/**
+ * One numeric leaf field of a topic's message schema, addressed by a
+ * dotted path (e.g. `twist.linear.x`).
+ */
+export interface McapNumericFieldDescriptor {
+  readonly path: string;
+
+  /**
+   * Schema-level value type ("double", "int64", "bool", "enum", …).
+   * Informational: 64-bit integer types lose precision beyond 2^53
+   * when projected to chart values.
+   */
+  readonly valueType: string;
+}
+
+/**
+ * Plottable numeric fields for one topic. `encoding: "unsupported"`
+ * marks topics whose message encoding has no numeric extraction path
+ * yet (e.g. cbor, ros1) — surfaced so gaps stay legible instead of
+ * silently absent.
+ */
+export interface McapTopicNumericFields {
+  readonly topic: string;
+  readonly encoding: "protobuf" | "json" | "unsupported";
+
+  /**
+   * True when fields were derived by sampling decoded messages (JSON
+   * channels carry no walkable schema); fields appearing only later in
+   * the recording may be missing.
+   */
+  readonly sampled?: boolean;
+  readonly fields: readonly McapNumericFieldDescriptor[];
+}
+
+/**
+ * Request for a packed numeric time series of one topic's field paths.
+ */
+export interface McapReadNumericSeriesRequest {
+  /**
+   * Timeline used to interpret request bounds; defaults to MCAP log time.
+   */
+  readonly activeTimeline?: McapActiveTimeline;
+
+  /**
+   * Optional inclusive upper time bound in the active timeline.
+   */
+  readonly endTimeNs?: bigint;
+
+  /**
+   * Dotted numeric leaf paths to project from each decoded message.
+   */
+  readonly fieldPaths: readonly string[];
+
+  /**
+   * Post-decimation cap per field. Defaults to
+   * `DEFAULT_NUMERIC_SERIES_MAX_POINTS`.
+   */
+  readonly maxPointsPerField?: number;
+
+  /**
+   * MCAP source to read through the shared byte query layer.
+   */
+  readonly source: ByteSourceDescriptor;
+
+  /**
+   * Optional inclusive lower time bound in the active timeline.
+   */
+  readonly startTimeNs?: bigint;
+
+  /**
+   * MCAP topic to extract from.
+   */
+  readonly topic: string;
+}
+
+/**
+ * Packed series for one requested field path. Parallel arrays; times
+ * are seconds relative to the result's `baseTimeNs`. `NaN` values mark
+ * messages where the field was missing or non-numeric so charts can
+ * render gaps.
+ */
+export interface McapNumericSeriesField {
+  readonly path: string;
+  readonly timesSec: Float64Array;
+  readonly values: Float64Array;
+}
+
+/**
+ * Numeric series extraction result for one topic.
+ */
+export interface McapNumericSeriesResult {
+  /**
+   * Timeline range start the per-field times are relative to.
+   */
+  readonly baseTimeNs: bigint;
+  readonly fields: readonly McapNumericSeriesField[];
+
+  /**
+   * Messages decoded (post-stride, pre-decimation).
+   */
+  readonly messageCount: number;
+  readonly topic: string;
+
+  /**
+   * True when not every message is represented (scan cap or stride).
+   */
+  readonly truncated: boolean;
+}
+
+/**
  * Request for frame transforms needed before a 3D panel can render.
  */
 export interface McapReadFrameTransformBootstrapRequest {
@@ -448,6 +572,25 @@ export interface McapResourceClient {
   readTopicTimeBounds(
     request: McapReadTopicTimeBoundsRequest,
   ): Promise<readonly McapTopicTimeBounds[]>;
+
+  /**
+   * Enumerates plottable numeric leaf fields per topic from channel
+   * schemas (protobuf) or sampled messages (JSON). Independent of the
+   * decoder registry — covers telemetry topics with no visualization.
+   */
+  enumerateNumericFields(
+    request: McapEnumerateNumericFieldsRequest,
+  ): Promise<readonly McapTopicNumericFields[]>;
+
+  /**
+   * Extracts a packed numeric time series for one topic's field paths.
+   * Pass a bulk priority so full-history extraction never serializes
+   * current-frame, playback, or placement work.
+   */
+  readNumericSeries(
+    request: McapReadNumericSeriesRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapNumericSeriesResult>;
 
   /**
    * Reads eager frame transforms needed for initial 3D placement.

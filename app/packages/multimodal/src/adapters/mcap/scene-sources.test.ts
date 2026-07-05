@@ -11,6 +11,7 @@ describe("mcapSceneSources", () => {
     const sources = mcapSceneSources([
       createTopic("/CAM_FRONT/image_rect_compressed"),
       createTopic("/LIDAR_TOP", "foxglove.PointCloud"),
+      createTopic("/scan", "foxglove.LaserScan"),
       createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
       createTopic("/markers/annotations", "foxglove.SceneUpdate"),
       createTopic("/map", "foxglove.Grid"),
@@ -33,6 +34,11 @@ describe("mcapSceneSources", () => {
         id: "/LIDAR_TOP",
         type: MCAP_SOURCE_TYPE.POINT_CLOUD,
         label: "LIDAR_TOP",
+      },
+      {
+        id: "/scan",
+        type: MCAP_SOURCE_TYPE.POINT_CLOUD,
+        label: "scan",
       },
       {
         id: "/CAM_FRONT/annotations",

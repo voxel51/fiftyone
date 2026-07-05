@@ -21,14 +21,19 @@ import {
   readMcapFrameTransformBootstrap,
   readMcapFrameTransformWindow,
 } from "./read-frame-transforms";
+import { enumerateMcapNumericFields } from "./numeric-fields";
+import { readMcapNumericSeries } from "./read-numeric-series";
 import { readMcapTopics } from "./read-topics";
 import { readMcapTopicTimeBounds } from "./read-topic-time-bounds";
 import type { McapFrameTransformSet } from "../frame-transform-types";
 import {
   type McapDecodedMessage,
+  type McapEnumerateNumericFieldsRequest,
+  type McapNumericSeriesResult,
   type McapReadDecodedMessagesRequest,
   type McapReadFrameTransformBootstrapRequest,
   type McapReadFrameTransformWindowRequest,
+  type McapReadNumericSeriesRequest,
   type McapReadSynchronizedMessageBatchRequest,
   type McapReadSynchronizedMessagesRequest,
   type McapReadTopicsRequest,
@@ -37,6 +42,7 @@ import {
   type McapResourceClient,
   type McapSynchronizedMessageWindow,
   type McapTimelineRange,
+  type McapTopicNumericFields,
   type McapTopicTimeBounds,
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
@@ -78,6 +84,10 @@ export function createInlineMcapResourceClient(
     readSignal: options.readSignal,
   });
   const topicReads = new Map<string, Promise<readonly StreamInventory[]>>();
+  const numericFieldReads = new Map<
+    string,
+    Promise<readonly McapTopicNumericFields[]>
+  >();
   const topicTimeBoundsReads = new Map<
     string,
     Promise<readonly McapTopicTimeBounds[]>
@@ -98,6 +108,7 @@ export function createInlineMcapResourceClient(
   const client: McapResourceClient = {
     dispose() {
       topicReads.clear();
+      numericFieldReads.clear();
       topicTimeBoundsReads.clear();
       predecessorStores.clear();
       frameTransformBootstrapReads.clear();
@@ -143,6 +154,36 @@ export function createInlineMcapResourceClient(
       topicReads.set(sourceKey, read);
 
       return read;
+    },
+
+    async enumerateNumericFields(request: McapEnumerateNumericFieldsRequest) {
+      const sourceKey = byteSourceAccessKey(request.source);
+      const fieldsKey = request.topics
+        ? [sourceKey, ...request.topics].join("\0")
+        : sourceKey;
+      const cached = numericFieldReads.get(fieldsKey);
+      if (cached) {
+        return cached;
+      }
+
+      const read = readerStore
+        .get(request.source)
+        .then((reader) => enumerateMcapNumericFields(reader, request))
+        .catch((error) => {
+          numericFieldReads.delete(fieldsKey);
+          throw error;
+        });
+      numericFieldReads.set(fieldsKey, read);
+
+      return read;
+    },
+
+    async readNumericSeries(
+      request: McapReadNumericSeriesRequest,
+    ): Promise<McapNumericSeriesResult> {
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const reader = await readerStore.get(request.source);
+      return readMcapNumericSeries({ reader, request, timeline });
     },
 
     async readTopicTimeBounds(request: McapReadTopicTimeBoundsRequest) {

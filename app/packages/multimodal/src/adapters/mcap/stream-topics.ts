@@ -5,6 +5,7 @@ import {
   FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD,
   FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
   FOXGLOVE_GRID_PAYLOAD,
+  FOXGLOVE_LASER_SCAN_PAYLOAD,
   FOXGLOVE_LOCATION_FIX_PAYLOAD,
   FOXGLOVE_POSE_IN_FRAME_PAYLOAD,
   FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
@@ -82,10 +83,14 @@ export function isImageAnnotationsStream(topic: StreamInventory): boolean {
 }
 
 /**
- * Returns whether a stream inventory item is a supported Foxglove point-cloud stream.
+ * Returns whether a stream inventory item is a supported point-cloud-kind
+ * stream: Foxglove PointCloud, or LaserScan (decoded into cartesian points).
  */
 export function isPointCloudStream(topic: StreamInventory): boolean {
-  return hasPayload(topic, FOXGLOVE_POINT_CLOUD_PAYLOAD);
+  return (
+    hasPayload(topic, FOXGLOVE_POINT_CLOUD_PAYLOAD) ||
+    hasPayload(topic, FOXGLOVE_LASER_SCAN_PAYLOAD)
+  );
 }
 
 /**
