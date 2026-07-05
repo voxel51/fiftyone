@@ -64,6 +64,12 @@
   max-width: 64px;
 }
 
+/* Voodoo's borderless button owns its text color class; paint the SVG
+   directly so the pressed fullscreen toggle reads as state, not decoration. */
+.fullscreenActive svg {
+  color: var(--color-brand-primary);
+}
+
 .content {
   flex: 1;
   min-height: 0;

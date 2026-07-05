@@ -61,3 +61,24 @@ export const SplitTileIcon = ((): React.ReactElement => (
     <path d="M2 12h20" />
   </svg>
 )) as unknown as React.FC;
+
+/**
+ * Four corners pointing inward — the inverse action while a tile is expanded
+ * to fullscreen. Replace with a Voodoo IconName when the design system exposes
+ * a fullscreen-exit glyph.
+ */
+export const FullscreenExitIcon = ((): React.ReactElement => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M8 3v5H3" />
+    <path d="M16 3v5h5" />
+    <path d="M8 21v-5H3" />
+    <path d="M16 21v-5h5" />
+  </svg>
+)) as unknown as React.FC;

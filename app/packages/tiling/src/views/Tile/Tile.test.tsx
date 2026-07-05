@@ -3,30 +3,28 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import Tile, { TileHeader } from "./Tile";
 
+const noop = () => undefined;
+
 describe("Tile chrome", () => {
   afterEach(() => cleanup());
 
   describe("TileHeader", () => {
     it("renders the title and the close + fullscreen buttons", () => {
       render(
-        <TileHeader
-          title="camera_front"
-          onClose={() => {}}
-          onFullscreen={() => {}}
-        />,
+        <TileHeader title="camera_front" onClose={noop} onFullscreen={noop} />,
       );
       expect(screen.getByText("camera_front")).toBeTruthy();
       expect(screen.getByTestId("tile-header-close")).toBeTruthy();
-      expect(screen.getByTestId("tile-header-fullscreen")).toBeTruthy();
+      const fullscreen = screen.getByTestId("tile-header-fullscreen");
+      expect(fullscreen).toBeTruthy();
+      expect(fullscreen.getAttribute("aria-pressed")).toBe("false");
       expect(screen.getByLabelText("Close")).toBeTruthy();
       expect(screen.getByLabelText("Fullscreen")).toBeTruthy();
     });
 
     it("fires onClose when the close button is clicked", () => {
       const onClose = vi.fn();
-      render(
-        <TileHeader title="t" onClose={onClose} onFullscreen={() => {}} />,
-      );
+      render(<TileHeader title="t" onClose={onClose} onFullscreen={noop} />);
       fireEvent.click(screen.getByTestId("tile-header-close"));
       expect(onClose).toHaveBeenCalledOnce();
     });
@@ -34,16 +32,30 @@ describe("Tile chrome", () => {
     it("fires onFullscreen when the fullscreen button is clicked", () => {
       const onFullscreen = vi.fn();
       render(
-        <TileHeader title="t" onClose={() => {}} onFullscreen={onFullscreen} />,
+        <TileHeader title="t" onClose={noop} onFullscreen={onFullscreen} />,
       );
       fireEvent.click(screen.getByTestId("tile-header-fullscreen"));
       expect(onFullscreen).toHaveBeenCalledOnce();
     });
 
-    it("hides the split affordance unless its handlers are wired", () => {
+    it("shows the inverse fullscreen action while expanded", () => {
       render(
-        <TileHeader title="t" onClose={() => {}} onFullscreen={() => {}} />,
+        <TileHeader
+          title="t"
+          onClose={noop}
+          onFullscreen={noop}
+          isFullscreen
+        />,
       );
+
+      const fullscreen = screen.getByTestId("tile-header-fullscreen");
+      expect(fullscreen.getAttribute("aria-label")).toBe("Exit fullscreen");
+      expect(fullscreen.getAttribute("aria-pressed")).toBe("true");
+      expect(fullscreen.getAttribute("title")).toBe("Exit fullscreen");
+    });
+
+    it("hides the split affordance unless its handlers are wired", () => {
+      render(<TileHeader title="t" onClose={noop} onFullscreen={noop} />);
       expect(screen.queryByTestId("tile-header-split-hint")).toBeNull();
       expect(screen.queryByTestId("tile-header-split-right")).toBeNull();
       expect(screen.queryByTestId("tile-header-split-down")).toBeNull();
@@ -54,8 +66,8 @@ describe("Tile chrome", () => {
       render(
         <TileHeader
           title="t"
-          onClose={() => {}}
-          onFullscreen={() => {}}
+          onClose={noop}
+          onFullscreen={noop}
           onSelect={onSelect}
         />,
       );
@@ -71,10 +83,10 @@ describe("Tile chrome", () => {
       render(
         <TileHeader
           title="t"
-          onClose={() => {}}
-          onFullscreen={() => {}}
-          onSplitRight={() => {}}
-          onSplitDown={() => {}}
+          onClose={noop}
+          onFullscreen={noop}
+          onSplitRight={noop}
+          onSplitDown={noop}
         />,
       );
       const hint = screen.getByTestId("tile-header-split-hint");
@@ -89,8 +101,8 @@ describe("Tile chrome", () => {
       render(
         <TileHeader
           title="t"
-          onClose={() => {}}
-          onFullscreen={() => {}}
+          onClose={noop}
+          onFullscreen={noop}
           onSplitRight={onSplitRight}
           onSplitDown={onSplitDown}
         />,
@@ -107,7 +119,7 @@ describe("Tile chrome", () => {
   describe("Tile", () => {
     it("renders the header and the body content", () => {
       render(
-        <Tile title="lidar_top" onClose={() => {}} onFullscreen={() => {}}>
+        <Tile title="lidar_top" onClose={noop} onFullscreen={noop}>
           <div data-testid="body">body content</div>
         </Tile>,
       );

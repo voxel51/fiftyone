@@ -19,7 +19,11 @@ import "react-mosaic-component/react-mosaic-component.css";
 import { TileIdScope } from "../../lib/TilingProvider";
 import { useTileTitle } from "../../lib/use-tile-state";
 import { TileHeader } from "../Tile/Tile";
-import { SplitDownIcon, SplitRightIcon } from "../Tile/tile-icons";
+import {
+  FullscreenExitIcon,
+  SplitDownIcon,
+  SplitRightIcon,
+} from "../Tile/tile-icons";
 import styles from "./MosaicGrid.module.css";
 
 /**
@@ -76,6 +80,7 @@ interface TileWindowProps {
   path: MosaicBranch[];
   tile: MosaicTileConfig;
   isFocused: boolean;
+  isFullscreen: boolean;
   onFocus: () => void;
   /** Focus with "action" semantics (never toggles off) — right-click. */
   onActionFocus: () => void;
@@ -91,6 +96,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
   path,
   tile,
   isFocused,
+  isFullscreen,
   onFocus,
   onActionFocus,
   onClose,
@@ -103,6 +109,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
   const titleOverride = useTileTitle();
   const title = titleOverride ?? tile.title;
   const hasSpawnActions = Boolean(onSplitRight || onSplitDown || onDuplicate);
+  const fullscreenLabel = isFullscreen ? "Exit fullscreen" : "Fullscreen";
   const contextMenu = (
     <>
       {onSplitRight && (
@@ -128,8 +135,8 @@ const TileWindow: React.FC<TileWindowProps> = ({
       )}
       {hasSpawnActions && <MenuSeparator />}
       <MenuIconTextItem
-        icon={IconName.Fullscreen}
-        text="Fullscreen"
+        icon={isFullscreen ? <FullscreenExitIcon /> : IconName.Fullscreen}
+        text={fullscreenLabel}
         onClick={onFullscreen}
       />
       <MenuSeparator />
@@ -169,6 +176,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
               title={title}
               onClose={onClose}
               onFullscreen={onFullscreen}
+              isFullscreen={isFullscreen}
               onSplitRight={onSplitRight}
               onSplitDown={onSplitDown}
               onSelect={onFocus}
@@ -255,6 +263,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
     const focusForSelect = () => onFocusTile?.(id, "select");
     const focusForAction = () => onFocusTile?.(id, "action");
     const isFocused = focusedTileId === id;
+    const isFullscreen = expandedTileId === id;
 
     // Focus is folded into the action callbacks rather than fired from a
     // toolbar onPointerDown — calling onFocusTile in pointerdown caused a
@@ -296,6 +305,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
           path={path}
           tile={tile}
           isFocused={isFocused}
+          isFullscreen={isFullscreen}
           onFocus={focusForSelect}
           onActionFocus={focusForAction}
           onClose={handleClose}

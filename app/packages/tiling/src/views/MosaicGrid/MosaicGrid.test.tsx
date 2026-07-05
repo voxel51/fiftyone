@@ -13,6 +13,8 @@ function renderGrid(grid: React.ReactElement) {
   return render(<TilingProvider>{grid}</TilingProvider>);
 }
 
+const noop = () => undefined;
+
 describe("MosaicGrid pure helpers", () => {
   describe("autoLayout", () => {
     it("returns null for an empty id list", () => {
@@ -132,7 +134,7 @@ describe("MosaicGrid component", () => {
   afterEach(() => cleanup());
 
   it("renders the zero state when value is null", () => {
-    render(<MosaicGrid tiles={{}} value={null} onChange={() => {}} />);
+    render(<MosaicGrid tiles={{}} value={null} onChange={noop} />);
     expect(screen.getByTestId("mosaic-grid")).toBeTruthy();
     expect(screen.getByTestId("mosaic-grid-empty").textContent).toBe(
       "No tiles open",
@@ -144,7 +146,7 @@ describe("MosaicGrid component", () => {
       <MosaicGrid
         tiles={{}}
         value={null}
-        onChange={() => {}}
+        onChange={noop}
         zeroStateView={<button type="button">spawn something</button>}
       />,
     );
@@ -163,7 +165,7 @@ describe("MosaicGrid component", () => {
         <MosaicGrid
           tiles={tiles}
           value="cam-1"
-          onChange={() => {}}
+          onChange={noop}
           onSplitTile={onSplitTile}
         />,
       );
@@ -174,9 +176,7 @@ describe("MosaicGrid component", () => {
     });
 
     it("hides the split buttons when onSplitTile is not wired", () => {
-      renderGrid(
-        <MosaicGrid tiles={tiles} value="cam-1" onChange={() => {}} />,
-      );
+      renderGrid(<MosaicGrid tiles={tiles} value="cam-1" onChange={noop} />);
       expect(screen.queryByTestId("tile-header-split-right")).toBeNull();
       expect(screen.queryByTestId("tile-header-split-down")).toBeNull();
     });
@@ -188,7 +188,7 @@ describe("MosaicGrid component", () => {
         <MosaicGrid
           tiles={tiles}
           value="cam-1"
-          onChange={() => {}}
+          onChange={noop}
           onDuplicateTile={onDuplicateTile}
           onCloseOtherTiles={onCloseOtherTiles}
         />,
@@ -205,9 +205,7 @@ describe("MosaicGrid component", () => {
     });
 
     it("omits spawn items from the context menu when handlers are absent", () => {
-      renderGrid(
-        <MosaicGrid tiles={tiles} value="cam-1" onChange={() => {}} />,
-      );
+      renderGrid(<MosaicGrid tiles={tiles} value="cam-1" onChange={noop} />);
       fireEvent.contextMenu(screen.getByTestId("tile-header"));
       expect(screen.queryByText("Duplicate")).toBeNull();
       expect(screen.queryByText("Split right")).toBeNull();
@@ -217,13 +215,30 @@ describe("MosaicGrid component", () => {
       expect(screen.getByText("Close")).toBeTruthy();
     });
 
+    it("shows the exit fullscreen action after expanding a tile", () => {
+      renderGrid(<MosaicGrid tiles={tiles} value="cam-1" onChange={noop} />);
+
+      fireEvent.click(screen.getByTestId("tile-header-fullscreen"));
+
+      const fullscreen = screen.getByTestId("tile-header-fullscreen");
+      expect(fullscreen.getAttribute("aria-label")).toBe("Exit fullscreen");
+      expect(fullscreen.getAttribute("aria-pressed")).toBe("true");
+
+      fireEvent.contextMenu(screen.getByTestId("tile-header"));
+      fireEvent.click(screen.getByText("Exit fullscreen"));
+
+      expect(
+        screen.getByTestId("tile-header-fullscreen").getAttribute("aria-label"),
+      ).toBe("Fullscreen");
+    });
+
     it("selects the tile when the header itself is clicked", () => {
       const onFocusTile = vi.fn();
       renderGrid(
         <MosaicGrid
           tiles={tiles}
           value="cam-1"
-          onChange={() => {}}
+          onChange={noop}
           onFocusTile={onFocusTile}
         />,
       );
@@ -237,7 +252,7 @@ describe("MosaicGrid component", () => {
         <MosaicGrid
           tiles={tiles}
           value="cam-1"
-          onChange={() => {}}
+          onChange={noop}
           onFocusTile={onFocusTile}
         />,
       );
@@ -255,7 +270,7 @@ describe("MosaicGrid component", () => {
         <MosaicGrid
           tiles={tiles}
           value="cam-1"
-          onChange={() => {}}
+          onChange={noop}
           onFocusTile={onFocusTile}
         />,
       );
