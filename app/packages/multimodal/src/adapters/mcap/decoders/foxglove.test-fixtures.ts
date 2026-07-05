@@ -61,6 +61,22 @@ export const CAMERA_CALIBRATION_FIXTURE = Object.freeze({
 });
 
 /**
+ * LaserScan schema fixture.
+ *
+ * The schema bytes are a FileDescriptorSet built with protobufjs from the
+ * canonical Foxglove `foxglove/LaserScan.proto` dependency graph
+ * (Pose/Quaternion/Vector3 + google.protobuf.Timestamp), with snake_case
+ * field names preserved to match descriptors captured from real exports:
+ * https://github.com/foxglove/schemas/blob/main/schemas/proto/foxglove/LaserScan.proto
+ * Message bytes are hand-encoded per test.
+ */
+export const LASER_SCAN_FIXTURE = Object.freeze({
+  schemaData: bytes(
+    "Cl0KFWdvb2dsZV9wcm90b2J1Zi5wcm90bxIPZ29vZ2xlLnByb3RvYnVmIisKCVRpbWVzdGFtcBIPCgdzZWNvbmRzGAEgASgDEg0KBW5hbm9zGAIgASgFYgZwcm90bzMK+wIKDmZveGdsb3ZlLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAEiKgoHVmVjdG9yMxIJCgF4GAEgASgBEgkKAXkYAiABKAESCQoBehgDIAEoASJCCgRQb3NlEhkKCHBvc2l0aW9uGAEgASgLMgdWZWN0b3IzEh8KC29yaWVudGF0aW9uGAIgASgLMgpRdWF0ZXJuaW9uIqwBCglMYXNlclNjYW4SLAoJdGltZXN0YW1wGAEgASgLMhlnb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCGZyYW1lX2lkGAIgASgJEhIKBHBvc2UYAyABKAsyBFBvc2USEwoLc3RhcnRfYW5nbGUYBCABKAESEQoJZW5kX2FuZ2xlGAUgASgBEg4KBnJhbmdlcxgGIAMoARITCgtpbnRlbnNpdGllcxgHIAMoAWIGcHJvdG8z",
+  ),
+});
+
+/**
  * PoseInFrame schema fixture.
  *
  * The schema bytes are the FileDescriptorSet for `foxglove.PoseInFrame`

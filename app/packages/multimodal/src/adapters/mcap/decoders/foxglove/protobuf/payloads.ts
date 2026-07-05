@@ -31,6 +31,15 @@ export const FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD: PayloadDescriptor = {
 };
 
 /**
+ * Payload identity for foxglove.LaserScan messages.
+ */
+export const FOXGLOVE_LASER_SCAN_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.LaserScan",
+  schemaEncoding: "protobuf",
+};
+
+/**
  * Payload identity for foxglove.SceneUpdate messages.
  */
 export const FOXGLOVE_SCENE_UPDATE_PAYLOAD: PayloadDescriptor = {

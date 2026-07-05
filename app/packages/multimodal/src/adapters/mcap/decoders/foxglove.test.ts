@@ -5,6 +5,7 @@ import {
   foxgloveCameraCalibrationDecoder,
   foxgloveCompressedImageDecoder,
   foxgloveGridDecoder,
+  foxgloveLaserScanDecoder,
   foxgloveLocationFixDecoder,
   foxglovePointCloudDecoder,
   foxglovePoseInFrameDecoder,
@@ -16,6 +17,7 @@ import {
   CAMERA_CALIBRATION_FIXTURE,
   COMPRESSED_IMAGE_FIXTURE,
   GRID_FIXTURE,
+  LASER_SCAN_FIXTURE,
   POINT_CLOUD_FIXTURE,
   POSE_IN_FRAME_FIXTURE,
 } from "./foxglove.test-fixtures";
@@ -29,6 +31,9 @@ describe("Foxglove decoders", () => {
     );
     expect(registry.find(foxglovePointCloudDecoder.payload)).toBe(
       foxglovePointCloudDecoder,
+    );
+    expect(registry.find(foxgloveLaserScanDecoder.payload)).toBe(
+      foxgloveLaserScanDecoder,
     );
     expect(registry.find(foxgloveSceneUpdateDecoder.payload)).toBe(
       foxgloveSceneUpdateDecoder,
@@ -199,6 +204,71 @@ describe("Foxglove decoders", () => {
     });
     expect(output.timing?.timeRange?.startNs).toBe(10n);
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(123456000001n);
+  });
+
+  it("decodes laser scan payloads into point cloud visualizations", () => {
+    // foxglove.LaserScan field numbers: timestamp=1, frame_id=2, pose=3,
+    // start_angle=4, end_angle=5, ranges=6, intensities=7. Two returns
+    // sweeping 0..90° from a scanner at (1, 1, 0) with identity orientation.
+    const output = foxgloveLaserScanDecoder.decode(
+      concatProtobufFields(
+        protobufBytesField(
+          1,
+          concatProtobufFields(
+            protobufVarintField(1, 12),
+            protobufVarintField(2, 34),
+          ),
+        ),
+        protobufBytesField(2, new TextEncoder().encode("SCAN_TEST")),
+        protobufBytesField(
+          3,
+          protobufBytesField(
+            1,
+            concatProtobufFields(
+              protobufDoubleField(1, 1),
+              protobufDoubleField(2, 1),
+            ),
+          ),
+        ),
+        protobufDoubleField(4, 0),
+        protobufDoubleField(5, Math.PI / 2),
+        protobufBytesField(6, float64Bytes([1, 2])),
+        protobufBytesField(7, float64Bytes([10, 20])),
+      ),
+      {
+        schemaData: LASER_SCAN_FIXTURE.schemaData,
+        sourceTimestamps: {
+          captureTime: 10n,
+          receiveTime: 11n,
+        },
+        streamId: "/scan",
+        timeRangeStartKey: "captureTime",
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POINT_CLOUD);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
+      throw new Error("Expected point cloud visualization");
+    }
+    expect(output.visualization.coordinateFrameId).toBe("SCAN_TEST");
+    expect(output.visualization.pointCount).toBe(2);
+    expectArrayCloseTo(
+      Array.from(output.visualization.positions),
+      [2, 1, 0, 1, 3, 0],
+    );
+    expect(output.visualization.scalarFields?.[0]?.name).toBe("intensity");
+    expect(
+      Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
+    ).toEqual([10, 20]);
+    expect(output.attributes).toMatchObject({
+      endAngle: Math.PI / 2,
+      frameId: "SCAN_TEST",
+      pointCount: 2,
+      rangeCount: 2,
+      startAngle: 0,
+    });
+    expect(output.timing?.timeRange?.startNs).toBe(10n);
+    expect(output.timing?.sourceTimestamps?.messageTime).toBe(12_000_000_034n);
   });
 
   it("decodes point cloud colors and canonical scalar fields", () => {
@@ -648,6 +718,17 @@ function float32Bytes(values: readonly number[]): Uint8Array {
 
   values.forEach((value, index) => {
     view.setFloat32(index * 4, value, true);
+  });
+
+  return data;
+}
+
+function float64Bytes(values: readonly number[]): Uint8Array {
+  const data = new Uint8Array(values.length * 8);
+  const view = new DataView(data.buffer);
+
+  values.forEach((value, index) => {
+    view.setFloat64(index * 8, value, true);
   });
 
   return data;

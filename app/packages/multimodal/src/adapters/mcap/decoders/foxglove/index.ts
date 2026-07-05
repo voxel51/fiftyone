@@ -3,6 +3,7 @@ import { foxgloveCameraCalibrationDecoder } from "./camera-calibration";
 import { foxgloveCompressedImageDecoder } from "./compressed-image";
 import { foxgloveGridDecoder } from "./grid";
 import { foxgloveImageAnnotationsDecoder } from "./image-annotations";
+import { foxgloveLaserScanDecoder } from "./laser-scan";
 import { foxgloveLocationFixDecoder } from "./location-fix";
 import { foxglovePointCloudDecoder } from "./point-cloud";
 import { foxglovePoseInFrameDecoder } from "./pose-in-frame";
@@ -27,6 +28,11 @@ export { foxgloveGridDecoder } from "./grid";
  * Foxglove image annotations decoder export.
  */
 export { foxgloveImageAnnotationsDecoder } from "./image-annotations";
+
+/**
+ * Foxglove LaserScan decoder export.
+ */
+export { foxgloveLaserScanDecoder } from "./laser-scan";
 
 /**
  * Foxglove point cloud decoder export.
@@ -56,6 +62,7 @@ export const foxgloveDecoders: readonly Decoder[] = [
   foxgloveCompressedImageDecoder,
   foxgloveGridDecoder,
   foxgloveImageAnnotationsDecoder,
+  foxgloveLaserScanDecoder,
   foxgloveLocationFixDecoder,
   foxglovePointCloudDecoder,
   foxglovePoseInFrameDecoder,
