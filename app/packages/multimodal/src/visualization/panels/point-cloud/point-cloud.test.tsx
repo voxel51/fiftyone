@@ -16,6 +16,7 @@ import {
 import { PointCloudPanel } from "./index";
 
 vi.mock("@react-three/fiber", () => ({
+  useFrame: vi.fn(),
   useThree: (
     selector: (state: {
       invalidate: () => void;

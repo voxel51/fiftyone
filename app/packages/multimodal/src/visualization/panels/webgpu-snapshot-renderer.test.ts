@@ -8,6 +8,7 @@ import type { PointCloudVisualization } from "../../decoders";
 // R3F components. Mock @react-three/fiber the way point-cloud.test.tsx does
 // so jsdom never loads the real reconciler (which would double-load three).
 vi.mock("@react-three/fiber", () => ({
+  useFrame: vi.fn(),
   useThree: (selector: (state: { invalidate: () => void }) => unknown) =>
     selector({ invalidate: vi.fn() }),
 }));

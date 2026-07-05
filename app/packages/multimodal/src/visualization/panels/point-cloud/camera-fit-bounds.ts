@@ -205,12 +205,12 @@ function boundsForSceneText(text: SceneTextPrimitive): THREE.Box3 | null {
     return null;
   }
 
-  const height = text.scaleInvariant
-    ? SCENE_TEXT_DEFAULT_WORLD_HEIGHT
-    : Math.max(
-        SCENE_TEXT_DEFAULT_WORLD_HEIGHT,
-        text.fontSize || SCENE_TEXT_DEFAULT_WORLD_HEIGHT,
-      );
+  // Scale-invariant text has no fixed world size (it is sized in screen
+  // pixels per frame), so use a nominal height for camera fitting.
+  const height =
+    text.scaleInvariant || !(text.fontSize > 0)
+      ? SCENE_TEXT_DEFAULT_WORLD_HEIGHT
+      : text.fontSize;
   const width = Math.max(height, text.text.length * height * 0.5);
 
   return boundsForPoseAndSize(text.pose, [width, height, 0.05]);
