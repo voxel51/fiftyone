@@ -29,7 +29,7 @@ export interface TilingZeroStateProps {
  * add-tile button that opens the same menu as the header's entry point.
  */
 const TilingZeroState: React.FC<TilingZeroStateProps> = ({ addTileMenu }) => (
-  <div className={styles.root} data-testid="tiling-zero-state">
+  <div className={styles.root} data-cy="tiling-zero-state">
     <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
       No tiles open
     </Text>
@@ -40,7 +40,7 @@ const TilingZeroState: React.FC<TilingZeroStateProps> = ({ addTileMenu }) => (
           variant={Variant.Secondary}
           size={Size.Md}
           leadingIcon={IconName.Add}
-          data-testid="tiling-zero-state-add-tile"
+          data-cy="tiling-zero-state-add-tile"
         >
           Add tile
         </Button>

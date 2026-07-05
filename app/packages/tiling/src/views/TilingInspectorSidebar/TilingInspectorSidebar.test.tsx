@@ -19,17 +19,14 @@ import TilingInspectorSidebar from "./TilingInspectorSidebar";
 const Selector: React.FC<{ payload: unknown }> = ({ payload }) => {
   const setSelection = useSetTileSelection();
   return (
-    <button
-      data-testid="emit-selection"
-      onClick={() => setSelection(payload)}
-    />
+    <button data-cy="emit-selection" onClick={() => setSelection(payload)} />
   );
 };
 
 const FocusButton: React.FC<{ id: string }> = ({ id }) => {
   const { setFocusedTileId } = useTiling();
   return (
-    <button data-testid={`focus-${id}`} onClick={() => setFocusedTileId(id)} />
+    <button data-cy={`focus-${id}`} onClick={() => setFocusedTileId(id)} />
   );
 };
 

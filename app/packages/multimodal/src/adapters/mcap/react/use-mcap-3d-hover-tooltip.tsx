@@ -117,7 +117,7 @@ export const Mcap3dHoverTooltip: React.FC<{
   const showId = tooltip.label !== null && tooltip.label !== tooltip.entityId;
   return (
     <div
-      data-testid="mcap-3d-hover-tooltip"
+      data-cy="mcap-3d-hover-tooltip"
       style={{
         ...tooltipStyle,
         left: tooltip.x + HOVER_TOOLTIP_OFFSET_PX,

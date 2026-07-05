@@ -68,7 +68,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
     // this header, which must not read as a select.
     <div
       className={clsx(styles.header, className)}
-      data-testid="tile-header"
+      data-cy="tile-header"
       onClick={
         onSelect
           ? (event) => {
@@ -97,7 +97,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
               variant={Variant.Borderless}
               size={Size.Xs}
               className={styles.splitHint}
-              data-testid="tile-header-split-hint"
+              data-cy="tile-header-split-hint"
               leadingIcon={SplitTileIcon}
               aria-hidden="true"
               tabIndex={-1}
@@ -107,7 +107,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
                 <Button
                   variant={Variant.Borderless}
                   size={Size.Xs}
-                  data-testid="tile-header-split-right"
+                  data-cy="tile-header-split-right"
                   leadingIcon={SplitRightIcon}
                   onClick={onSplitRight}
                   aria-label="Split right"
@@ -118,7 +118,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
                 <Button
                   variant={Variant.Borderless}
                   size={Size.Xs}
-                  data-testid="tile-header-split-down"
+                  data-cy="tile-header-split-down"
                   leadingIcon={SplitDownIcon}
                   onClick={onSplitDown}
                   aria-label="Split down"
@@ -132,7 +132,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
           variant={Variant.Borderless}
           size={Size.Xs}
           className={isFullscreen ? styles.fullscreenActive : undefined}
-          data-testid="tile-header-fullscreen"
+          data-cy="tile-header-fullscreen"
           leadingIcon={fullscreenIcon}
           onClick={onFullscreen}
           aria-label={fullscreenLabel}
@@ -142,7 +142,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
         <Button
           variant={Variant.Borderless}
           size={Size.Xs}
-          data-testid="tile-header-close"
+          data-cy="tile-header-close"
           leadingIcon={IconName.Close}
           onClick={onClose}
           aria-label="Close"

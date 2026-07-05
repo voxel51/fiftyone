@@ -72,7 +72,7 @@ const ProgressBar: React.FC = () => {
   return (
     <div
       className={styles.track}
-      data-testid="simple-playback-bar-track"
+      data-cy="simple-playback-bar-track"
       role="slider"
       aria-label="Scrub"
       aria-valuemin={0}
@@ -113,7 +113,7 @@ const SimplePlaybackBar: React.FC = () => {
       <Button
         variant={Variant.Borderless}
         size={Size.Xs}
-        data-testid="simple-playback-bar-play-pause"
+        data-cy="simple-playback-bar-play-pause"
         // React 18/19 type mismatch on FC<{}>.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         leadingIcon={(hasPlayIntent ? PauseIcon : PlayIcon) as any}

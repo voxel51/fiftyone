@@ -48,11 +48,11 @@ vi.mock("../base-3d-scene", () => ({
   }) => (
     <div
       data-camera-pose={cameraPose ? JSON.stringify(cameraPose) : ""}
-      data-testid="base-3d-scene"
+      data-cy="base-3d-scene"
       data-show-gizmo={String(showGizmo)}
     >
       <button
-        data-testid="camera-change"
+        data-cy="camera-change"
         onClick={() =>
           onCameraPoseChange?.(
             {

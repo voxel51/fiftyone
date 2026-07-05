@@ -63,7 +63,7 @@ describe("TimelineHeader", () => {
     const onToggle = vi.fn();
     render(<HeaderHarness onToggle={onToggle} />);
     // Click the divider — the only inert filler inside the row.
-    // Targeting by data-testid avoids hitting any aria-hidden svg
+    // Targeting by data-cy avoids hitting any aria-hidden svg
     // children of the voodo Buttons (which would route the click into
     // the button and short-circuit the row handler).
     fireEvent.click(screen.getByTestId("timeline-controls-divider"));
@@ -92,17 +92,15 @@ describe("TimelineHeader", () => {
     const children = Array.from(root.children);
     expect(children).toHaveLength(2);
     expect(children[0].querySelector('[aria-label="Play"]')).not.toBeNull();
-    expect(children[1].getAttribute("data-testid")).toBe("timeline-ruler");
+    expect(children[1].getAttribute("data-cy")).toBe("timeline-ruler");
   });
 
   it("renders rulerOverlay inside the ruler's DOM node", () => {
     render(
-      <HeaderHarness
-        rulerOverlay={<div data-testid="my-overlay">overlay</div>}
-      />,
+      <HeaderHarness rulerOverlay={<div data-cy="my-overlay">overlay</div>} />,
     );
     const ruler = screen.getByTestId("timeline-ruler");
-    expect(ruler.querySelector('[data-testid="my-overlay"]')).not.toBeNull();
+    expect(ruler.querySelector('[data-cy="my-overlay"]')).not.toBeNull();
   });
 
   it("forwards extraActions to the controls row", () => {
@@ -113,7 +111,7 @@ describe("TimelineHeader", () => {
   it("renders children in the belowRuler slot when provided", () => {
     render(
       <HeaderHarness>
-        <div data-testid="pinned-section">pinned tracks</div>
+        <div data-cy="pinned-section">pinned tracks</div>
       </HeaderHarness>,
     );
     expect(screen.getByTestId("pinned-section")).toBeTruthy();

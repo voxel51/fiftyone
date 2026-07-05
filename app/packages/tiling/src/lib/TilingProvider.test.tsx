@@ -493,23 +493,23 @@ describe("TilingProvider", () => {
       }, [tiling, initialFocus]);
       return (
         <>
-          <div data-testid="slot" ref={tiling.setSettingsSlotEl} />
+          <div data-cy="slot" ref={tiling.setSettingsSlotEl} />
           <TileIdScope tileId="cam-1">
             <TileSettingsContent>
-              <span data-testid="cam-settings">cam</span>
+              <span data-cy="cam-settings">cam</span>
             </TileSettingsContent>
           </TileIdScope>
           <TileIdScope tileId="lid-1">
             <TileSettingsContent>
-              <span data-testid="lid-settings">lid</span>
+              <span data-cy="lid-settings">lid</span>
             </TileSettingsContent>
           </TileIdScope>
           <button
-            data-testid="focus-cam"
+            data-cy="focus-cam"
             onClick={() => tiling.setFocusedTileId("cam-1")}
           />
           <button
-            data-testid="focus-lid"
+            data-cy="focus-lid"
             onClick={() => tiling.setFocusedTileId("lid-1")}
           />
         </>
@@ -572,17 +572,14 @@ function SettingsPortalHarness({
 
   return (
     <>
-      <button
-        data-testid="focus-tile"
-        onClick={() => setFocusedTileId("tile-1")}
-      >
+      <button data-cy="focus-tile" onClick={() => setFocusedTileId("tile-1")}>
         focus
       </button>
-      <div data-testid="settings-slot" ref={setSettingsSlotEl} />
+      <div data-cy="settings-slot" ref={setSettingsSlotEl} />
       <TileIdScope tileId="tile-1">
-        <div data-testid="tile-body" onPointerDown={onPanePointerDown}>
+        <div data-cy="tile-body" onPointerDown={onPanePointerDown}>
           <TileSettingsContent>
-            <button data-testid="settings-button">settings</button>
+            <button data-cy="settings-button">settings</button>
           </TileSettingsContent>
         </div>
       </TileIdScope>
@@ -590,7 +587,7 @@ function SettingsPortalHarness({
   );
 }
 
-const KindTile: React.FC = () => <div data-testid="kind-body" />;
+const KindTile: React.FC = () => <div data-cy="kind-body" />;
 
 /** Registers a `camera` tile kind for spawn-op tests. */
 function RegisterCameraKind() {

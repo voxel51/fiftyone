@@ -203,7 +203,7 @@ class ModalAnnotateSidebarAsserter {
       this.modalAnnotateSidebar.locator.getByTestId(
         "sidebar-group-Labels-toggle",
       ),
-    ).toHaveAttribute("data-testid", "RemoveIcon");
+    ).toHaveAttribute("data-cy", "RemoveIcon");
   }
 
   /**
@@ -214,7 +214,7 @@ class ModalAnnotateSidebarAsserter {
       this.modalAnnotateSidebar.locator.getByTestId(
         "sidebar-group-Labels-toggle",
       ),
-    ).toHaveAttribute("data-testid", "AddIcon");
+    ).toHaveAttribute("data-cy", "AddIcon");
   }
 
   /**
@@ -225,7 +225,7 @@ class ModalAnnotateSidebarAsserter {
       this.modalAnnotateSidebar.locator.getByTestId(
         "sidebar-group-PRIMITIVES-toggle",
       ),
-    ).toHaveAttribute("data-testid", "RemoveIcon");
+    ).toHaveAttribute("data-cy", "RemoveIcon");
   }
 
   /**
@@ -236,7 +236,7 @@ class ModalAnnotateSidebarAsserter {
       this.modalAnnotateSidebar.locator.getByTestId(
         "sidebar-group-PRIMITIVES-toggle",
       ),
-    ).toHaveAttribute("data-testid", "AddIcon");
+    ).toHaveAttribute("data-cy", "AddIcon");
   }
 
   /**

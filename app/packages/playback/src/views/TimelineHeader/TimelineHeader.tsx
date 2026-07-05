@@ -48,7 +48,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   children,
 }) => {
   return (
-    <div className={styles.root} data-testid="timeline-header-root">
+    <div className={styles.root} data-cy="timeline-header-root">
       <TimelineControls onToggle={onToggle} extraActions={extraActions} />
       <TimelineRuler
         labelWidth={labelWidth}

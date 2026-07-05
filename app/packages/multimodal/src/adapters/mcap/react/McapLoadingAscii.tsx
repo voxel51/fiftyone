@@ -8,7 +8,7 @@ export function McapLoadingAscii() {
     <span
       aria-hidden="true"
       className={classes.fallingAsciiBox}
-      data-testid="mcap-loading-ascii"
+      data-cy="mcap-loading-ascii"
     >
       <span className={classes.fallingAsciiBoxInner}>{"+--+\n|  |\n+--+"}</span>
     </span>

@@ -348,7 +348,7 @@ function FrameTransformsHarness({
   }, [onState, state]);
 
   return (
-    <div data-testid={label}>
+    <div data-cy={label}>
       {`${state.status}:${resolution.status}:${state.error ?? ""}`}
     </div>
   );

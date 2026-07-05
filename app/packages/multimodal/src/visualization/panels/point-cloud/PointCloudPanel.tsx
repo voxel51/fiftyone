@@ -336,7 +336,7 @@ export function PointCloudPanel({
         </button>
       ) : null}
       {showControls && !canvasError && measureReadout ? (
-        <div data-testid="measure-readout" style={styles.measureReadout}>
+        <div data-cy="measure-readout" style={styles.measureReadout}>
           {measureReadout}
         </div>
       ) : null}

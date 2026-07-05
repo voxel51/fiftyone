@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import OperatorPromptFooter from "./OperatorPromptFooter";
 
 vi.mock("./RequiresOrchestrator", () => ({
-  default: () => <div data-testid="requires-orchestrator" />,
+  default: () => <div data-cy="requires-orchestrator" />,
 }));
 
 describe("OperatorPromptFooter", () => {

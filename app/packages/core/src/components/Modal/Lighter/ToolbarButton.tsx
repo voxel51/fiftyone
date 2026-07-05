@@ -12,7 +12,7 @@ export interface ToolbarButtonProps {
   tooltip: string;
   icon: IconName;
   onClick: () => void;
-  /** Optional data-testid for e2e tests */
+  /** Optional data-cy for e2e tests */
   testId?: string;
 }
 
@@ -32,7 +32,7 @@ const ToolbarButton = ({
 }: ToolbarButtonProps) => (
   <Tooltip content={tooltip} anchor={Anchor.Top} portal aria-label={tooltip}>
     <ButtonWrapper>
-      <Clickable onClick={onClick} data-testid={testId}>
+      <Clickable onClick={onClick} data-cy={testId}>
         <Icon name={icon} size={Size.Lg} />
       </Clickable>
     </ButtonWrapper>

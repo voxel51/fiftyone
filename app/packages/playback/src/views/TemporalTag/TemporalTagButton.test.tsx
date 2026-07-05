@@ -179,7 +179,7 @@ describe("TemporalTagButton", () => {
       };
       render(
         <TemporalTagProvider value={ctx}>
-          <input data-testid="text-input" />
+          <input data-cy="text-input" />
           <TemporalTagButton />
         </TemporalTagProvider>,
       );

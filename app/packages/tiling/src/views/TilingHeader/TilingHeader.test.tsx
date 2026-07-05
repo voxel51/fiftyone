@@ -11,11 +11,11 @@ import TilingHeader from "./TilingHeader";
 // Reads the current tile count so tests can assert addTile was called.
 const TileCount: React.FC = () => {
   const { tiles } = useTiling();
-  return <span data-testid="tile-count">{Object.keys(tiles).length}</span>;
+  return <span data-cy="tile-count">{Object.keys(tiles).length}</span>;
 };
 
-const CameraTile: React.FC = () => <div data-testid="camera-body" />;
-const LidarTile: React.FC = () => <div data-testid="lidar-body" />;
+const CameraTile: React.FC = () => <div data-cy="camera-body" />;
+const LidarTile: React.FC = () => <div data-cy="lidar-body" />;
 
 const RegisterTiles: React.FC<{ entries: RegisteredTile[] }> = ({
   entries,

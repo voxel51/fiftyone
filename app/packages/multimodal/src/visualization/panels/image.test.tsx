@@ -18,14 +18,14 @@ import {
 
 vi.mock("./base-2d-scene", () => ({
   Base2DScene: ({ children }: { readonly children?: ReactNode }) => (
-    <div data-testid="base-2d-scene">{children}</div>
+    <div data-cy="base-2d-scene">{children}</div>
   ),
-  ImageTexturePlane: () => <div data-testid="image-texture-plane" />,
+  ImageTexturePlane: () => <div data-cy="image-texture-plane" />,
 }));
 
 vi.mock("./webgpu-canvas", () => ({
   WebGpuCanvas: ({ children }: { readonly children?: ReactNode }) => (
-    <div data-testid="webgpu-canvas">{children}</div>
+    <div data-cy="webgpu-canvas">{children}</div>
   ),
 }));
 

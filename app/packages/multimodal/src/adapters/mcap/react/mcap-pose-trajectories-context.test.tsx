@@ -193,9 +193,9 @@ function FrameTransformsStatusDriver() {
 
   return (
     <>
-      <button data-testid="set-loading" onClick={() => publish("loading")} />
-      <button data-testid="set-ready" onClick={() => publish("ready")} />
-      <button data-testid="set-error" onClick={() => publish("error")} />
+      <button data-cy="set-loading" onClick={() => publish("loading")} />
+      <button data-cy="set-ready" onClick={() => publish("ready")} />
+      <button data-cy="set-error" onClick={() => publish("error")} />
     </>
   );
 }
@@ -203,7 +203,7 @@ function FrameTransformsStatusDriver() {
 function TrajectoriesProbe() {
   const trajectories = useMcapPoseTrajectoriesContext();
   return (
-    <div data-testid="trajectories">
+    <div data-cy="trajectories">
       {[...trajectories.entries()]
         .map(
           ([topic, state]) =>

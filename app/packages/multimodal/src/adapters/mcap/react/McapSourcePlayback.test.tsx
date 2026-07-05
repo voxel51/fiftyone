@@ -28,7 +28,7 @@ const playbackHarness = vi.hoisted(() => ({
 
 vi.mock("../../../components/MultiModalPlayback/MultiModalPlayback", () => ({
   default: ({ children }: { readonly children?: ReactNode }) => (
-    <div data-testid="playback-shell">{children}</div>
+    <div data-cy="playback-shell">{children}</div>
   ),
 }));
 

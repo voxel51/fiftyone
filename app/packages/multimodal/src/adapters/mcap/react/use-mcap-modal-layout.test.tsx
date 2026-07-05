@@ -18,7 +18,7 @@ import {
 // stubs expose their assigned source for binding assertions.
 vi.mock("./McapImageTile", () => ({
   default: ({ initialSourceId }: { initialSourceId?: string }) => (
-    <div data-testid="image-tile" data-source={initialSourceId} />
+    <div data-cy="image-tile" data-source={initialSourceId} />
   ),
 }));
 vi.mock("./Mcap3dTile", () => ({ default: () => null }));
@@ -51,7 +51,7 @@ function renderLayoutHook(sources: readonly SceneSource[], datasetId?: string) {
 function renderedSourceOf(tile: { render: () => React.ReactNode }) {
   const { container, unmount } = render(<>{tile.render()}</>);
   const source = container
-    .querySelector('[data-testid="image-tile"]')
+    .querySelector('[data-cy="image-tile"]')
     ?.getAttribute("data-source");
   unmount();
   return source;

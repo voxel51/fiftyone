@@ -331,7 +331,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   }, [durationSec, registerPlayheadListener]);
 
   return (
-    <div className={styles.root} data-testid="timeseries-chart">
+    <div className={styles.root} data-cy="timeseries-chart">
       <div className={styles.plot} ref={plotRef} />
     </div>
   );

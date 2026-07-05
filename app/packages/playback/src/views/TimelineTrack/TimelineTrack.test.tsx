@@ -18,7 +18,7 @@ import styles from "./TimelineTrack.module.css";
 function PlayheadReadout() {
   const store = usePlaybackStore();
   const t = useAtomValue(playheadAtom, { store });
-  return <span data-testid="playhead">{t.toFixed(3)}</span>;
+  return <span data-cy="playhead">{t.toFixed(3)}</span>;
 }
 
 function ViewSetter({ start, end }: { start: number; end: number }) {

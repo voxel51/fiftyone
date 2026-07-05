@@ -43,7 +43,7 @@ const LIDAR: SceneSource = {
 const TilingProbe: React.FC = () => {
   const { focusedTileId, tiles } = useTiling();
   return (
-    <span data-testid="tiling-probe">
+    <span data-cy="tiling-probe">
       {JSON.stringify({
         focusedTileId,
         titles: Object.fromEntries(
@@ -90,9 +90,7 @@ function renderMenu({
     <SceneInventoryProvider sources={sources}>
       <TilingProvider initialTiles={initialTiles}>
         {children}
-        <Dropdown
-          trigger={<Button data-testid="open-add-tile-menu">open</Button>}
-        >
+        <Dropdown trigger={<Button data-cy="open-add-tile-menu">open</Button>}>
           <McapAddTileMenu />
         </Dropdown>
         <TilingProbe />

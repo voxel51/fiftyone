@@ -81,13 +81,13 @@ const McapAddTileMenu: React.FC = () => {
       {has3d ? (
         <MenuCheckItem
           checked={open3dTileId !== null}
-          data-testid="mcap-add-tile-3d"
+          data-cy="mcap-add-tile-3d"
           onClick={open3dTile}
         >
           3D scene
         </MenuCheckItem>
       ) : null}
-      <MenuTextItem data-testid="mcap-add-tile-plot" onClick={openPlotTile}>
+      <MenuTextItem data-cy="mcap-add-tile-plot" onClick={openPlotTile}>
         Plot
       </MenuTextItem>
       {rankedImages.length > 0 ? (
@@ -97,7 +97,7 @@ const McapAddTileMenu: React.FC = () => {
             <MenuCheckItem
               key={source.id}
               checked={displayedSourceIds.has(source.id)}
-              data-testid={`mcap-add-tile-source-${source.id}`}
+              data-cy={`mcap-add-tile-source-${source.id}`}
               onClick={() => openImageTile(source.id)}
             >
               {source.label}

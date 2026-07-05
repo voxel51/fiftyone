@@ -35,7 +35,7 @@ function CameraHarness({ id }: { readonly id: string }) {
 
   return (
     <button
-      data-testid={`camera-${id}`}
+      data-cy={`camera-${id}`}
       onClick={() =>
         setPose({
           position: [1, 2, 3],

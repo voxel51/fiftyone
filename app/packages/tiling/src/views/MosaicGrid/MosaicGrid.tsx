@@ -317,7 +317,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
   };
 
   return (
-    <div className={clsx(styles.root, className)} data-testid="mosaic-grid">
+    <div className={clsx(styles.root, className)} data-cy="mosaic-grid">
       <Mosaic<string>
         className={styles.mosaic}
         value={displayValue}
@@ -325,14 +325,11 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
         renderTile={renderWindow}
         zeroStateView={
           zeroStateView !== undefined ? (
-            <div
-              className={styles.zeroStateSlot}
-              data-testid="mosaic-grid-empty"
-            >
+            <div className={styles.zeroStateSlot} data-cy="mosaic-grid-empty">
               {zeroStateView}
             </div>
           ) : (
-            <div className={styles.empty} data-testid="mosaic-grid-empty">
+            <div className={styles.empty} data-cy="mosaic-grid-empty">
               No tiles open
             </div>
           )

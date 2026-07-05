@@ -107,7 +107,7 @@ vi.mock("../../../visualization/panels/ImageAnnotationsOverlay", () => ({
     <div
       data-image-height={imageHeight}
       data-image-width={imageWidth}
-      data-testid="annotations-overlay"
+      data-cy="annotations-overlay"
     />
   ),
 }));
@@ -120,7 +120,7 @@ vi.mock("../../../visualization/panels/bitmap-image-view", async () => {
       return (
         <div
           data-committed={bitmap ? "true" : "false"}
-          data-testid="bitmap-canvas-host"
+          data-cy="bitmap-canvas-host"
         />
       );
     },
@@ -136,7 +136,7 @@ vi.mock("../../../visualization/panels/bitmap-image-view", async () => {
       useEffect(() => {
         onImageLoaded?.(640, 480);
       }, [onImageLoaded]);
-      return <div data-testid="bitmap-image-view" />;
+      return <div data-cy="bitmap-image-view" />;
     },
   };
 });
@@ -145,11 +145,11 @@ vi.mock("../../../visualization/panels/bitmap-image-view", async () => {
 // ImagePanel for image cells; if it ever comes back, the testid reappears
 // and the image-frame test below fails.
 vi.mock("../../../visualization/panels/image", () => ({
-  ImagePanel: () => <div data-testid="image-panel" />,
+  ImagePanel: () => <div data-cy="image-panel" />,
 }));
 
 vi.mock("../../../visualization/panels/point-cloud", () => ({
-  PointCloudPanel: () => <div data-testid="point-cloud-panel" />,
+  PointCloudPanel: () => <div data-cy="point-cloud-panel" />,
 }));
 
 afterEach(() => {

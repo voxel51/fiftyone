@@ -50,7 +50,7 @@ const INITIAL_TILES: Record<string, TilingTile> = {
 
 const TileBody: React.FC<{ label: string }> = ({ label }) => (
   <TileSettingsContent>
-    <div data-testid={PANEL_SETTINGS_TEST_ID}>{label} knobs</div>
+    <div data-cy={PANEL_SETTINGS_TEST_ID}>{label} knobs</div>
   </TileSettingsContent>
 );
 
@@ -61,7 +61,7 @@ const FocusButton: React.FC<{ id: string; testId: string }> = ({
   const { setFocusedTileId } = useTiling();
   return (
     <button
-      data-testid={testId}
+      data-cy={testId}
       onClick={() => setFocusedTileId(id)}
       type="button"
     />

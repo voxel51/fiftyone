@@ -386,7 +386,7 @@ function Layout({
               animation sweeps the wrapper width. */}
           <div
             className={styles.sidebarPane}
-            data-testid="left-sidebar-pane"
+            data-cy="left-sidebar-pane"
             style={{ width: leftWidth }}
           >
             {leftSidebar}
@@ -396,7 +396,7 @@ function Layout({
               here instead. */}
           <div
             className={styles.resizeHandle}
-            data-testid="sidebar-resize-handle"
+            data-cy="sidebar-resize-handle"
             onPointerDown={handleResizeStart}
             onPointerMove={handleResizeMove}
             onPointerUp={handleResizeEnd}

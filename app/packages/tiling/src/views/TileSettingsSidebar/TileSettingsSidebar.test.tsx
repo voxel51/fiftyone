@@ -17,9 +17,9 @@ const SETTINGS_LABEL = "camera-settings-panel";
  * via the portal — same shape a real PlaybackTile would use.
  */
 const TileBody: React.FC = () => (
-  <div data-testid="tile-body">
+  <div data-cy="tile-body">
     <TileSettingsContent>
-      <div data-testid={SETTINGS_LABEL}>camera knobs</div>
+      <div data-cy={SETTINGS_LABEL}>camera knobs</div>
     </TileSettingsContent>
   </div>
 );
@@ -27,7 +27,7 @@ const TileBody: React.FC = () => (
 const FocusButton: React.FC<{ id: string }> = ({ id }) => {
   const { setFocusedTileId } = useTiling();
   return (
-    <button data-testid={`focus-${id}`} onClick={() => setFocusedTileId(id)} />
+    <button data-cy={`focus-${id}`} onClick={() => setFocusedTileId(id)} />
   );
 };
 

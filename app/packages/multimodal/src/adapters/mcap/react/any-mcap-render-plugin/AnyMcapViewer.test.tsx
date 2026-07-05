@@ -17,8 +17,8 @@ vi.mock("../McapSourcePlayback", () => ({
     viewerHarness.lastPlaybackProps = props;
 
     return (
-      <div data-testid="mcap-source-playback">
-        <span data-testid="mcap-source-file-name">{props.fileName}</span>
+      <div data-cy="mcap-source-playback">
+        <span data-cy="mcap-source-file-name">{props.fileName}</span>
         {props.headerActions}
       </div>
     );

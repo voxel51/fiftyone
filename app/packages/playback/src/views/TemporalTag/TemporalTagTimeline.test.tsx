@@ -32,7 +32,7 @@ describe("TemporalTagTimeline slot composition", () => {
     renderTimeline(
       <TemporalTagTimeline
         onTagCreate={async () => {}}
-        extraActions={<span data-testid="host-clock">clock</span>}
+        extraActions={<span data-cy="host-clock">clock</span>}
       />,
     );
     expect(screen.getByTestId("host-clock")).toBeTruthy();
@@ -43,7 +43,7 @@ describe("TemporalTagTimeline slot composition", () => {
     renderTimeline(
       <TemporalTagTimeline
         onTagCreate={async () => {}}
-        rulerOverlay={<div data-testid="host-overlay" />}
+        rulerOverlay={<div data-cy="host-overlay" />}
       />,
     );
     expect(screen.getByTestId("host-overlay")).toBeTruthy();

@@ -92,7 +92,7 @@ const McapTimestampReadout: React.FC = () => {
       color={TextColor.Secondary}
       role="button"
       tabIndex={0}
-      data-testid="mcap-timestamp-readout"
+      data-cy="mcap-timestamp-readout"
       title="Recording log time — click to copy the full timestamp"
       aria-label="Copy log timestamp"
       onClick={handleCopy}

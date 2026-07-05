@@ -47,7 +47,7 @@ const TemporalTagButton: React.FC = () => {
     <Button
       variant={Variant.Icon}
       size={Size.Xs}
-      data-testid="temporal-tag-mode-button"
+      data-cy="temporal-tag-mode-button"
       leadingIcon={IconName.Tag}
       aria-label={active ? "Exit tag mode" : "Enter tag mode (Shift+T)"}
       aria-pressed={active}

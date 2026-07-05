@@ -17,7 +17,7 @@ vi.mock("./SchemaManager/hooks", () => ({
 
 vi.mock("./RequiredFieldPrompt", () => ({
   default: vi.fn(({ requiredField }) => (
-    <div data-testid="required-field-prompt">{requiredField?.field}</div>
+    <div data-cy="required-field-prompt">{requiredField?.field}</div>
   )),
 }));
 

@@ -95,7 +95,7 @@ vi.mock("@react-three/fiber", () => ({
       onCreated?.({ gl: renderer, invalidate: () => undefined });
     }, [gl, onCreated]);
 
-    return <div data-testid="mock-r3f-canvas">{children}</div>;
+    return <div data-cy="mock-r3f-canvas">{children}</div>;
   }),
 }));
 
@@ -115,7 +115,7 @@ describe("WebGpuCanvas device registration", () => {
   it("registers on construction and releases on unmount", async () => {
     const { unmount } = render(
       <WebGpuCanvas surface="test-surface">
-        <div data-testid="scene-child" />
+        <div data-cy="scene-child" />
       </WebGpuCanvas>,
     );
 

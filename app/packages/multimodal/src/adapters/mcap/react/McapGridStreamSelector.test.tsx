@@ -54,7 +54,7 @@ vi.mock("@fiftyone/components", async () => {
       readonly value: string;
     }) => (
       <div>
-        <div data-testid="selected-stream">{value}</div>
+        <div data-cy="selected-stream">{value}</div>
         {useSearch("").values?.map((option) => (
           <div key={option}>
             <Component value={option} />

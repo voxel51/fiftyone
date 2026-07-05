@@ -25,7 +25,7 @@ vi.mock("../utils", () => ({
 // DynamicIO has complex dependencies, mock it for isolation
 vi.mock("./DynamicIO", () => ({
   default: ({ schema }: { schema: { view?: { label?: string } } }) => (
-    <div data-testid="dynamic-io">{schema?.view?.label || "placeholder"}</div>
+    <div data-cy="dynamic-io">{schema?.view?.label || "placeholder"}</div>
   ),
 }));
 

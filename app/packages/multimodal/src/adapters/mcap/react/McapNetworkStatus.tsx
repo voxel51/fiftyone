@@ -104,7 +104,7 @@ export const McapNetworkStatusPill: React.FC = () => {
   return (
     <span
       className={styles.pill}
-      data-testid="mcap-network-status-pill"
+      data-cy="mcap-network-status-pill"
       title="Playback is buffering because the network cannot keep up with this recording's data rate."
     >
       <span className={styles.dot} aria-hidden="true" />
