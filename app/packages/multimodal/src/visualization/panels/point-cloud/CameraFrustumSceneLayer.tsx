@@ -13,22 +13,17 @@ import {
 import { useScenePicking } from "./scene-interactivity";
 import { pointCloudObjectTransform } from "./transforms";
 import type { CameraFrustumPanelLayer } from "./types";
-import { isFinitePositiveNumber } from "./utils";
+import { clamp01, isFinitePositiveNumber } from "./utils";
 
-// Camera frustum wireframes: fixed apex-to-image-plane depth in meters.
-// Purely presentational — the value is not data, which is also why
-// frustums never participate in camera-fit bounds. Sized so the image
-// planes read at vehicle scale next to LiDAR returns.
-const CAMERA_FRUSTUM_DEPTH_M = 2.75;
+// Camera frustum wireframes are purely presentational — depth is not data,
+// which is also why frustums never participate in camera-fit bounds.
+const DEFAULT_CAMERA_FRUSTUM_DEPTH_M = 2.75;
 const CAMERA_FRUSTUM_COLOR = 0xffaa33;
-const CAMERA_FRUSTUM_OPACITY = 0.85;
+const DEFAULT_CAMERA_FRUSTUM_OPACITY = 0.85;
+const CAMERA_FRUSTUM_AXIS_LENGTH_RATIO = 0.28;
 // Highlighted (linked camera tile hovered / pending select) style.
 const CAMERA_FRUSTUM_HIGHLIGHT_COLOR = 0xffffff;
 const CAMERA_FRUSTUM_HIGHLIGHT_OPACITY = 1;
-// Image planes stay slightly translucent so they read as projections
-// into the scene rather than opaque billboards occluding it; hovering
-// (or the linked-tile highlight) brings the full image forward.
-const CAMERA_FRUSTUM_IMAGE_OPACITY = 0.9;
 // A click that traveled further than this (pointer-down → pointer-up, px)
 // is an orbit drag, not a pick.
 const FRUSTUM_CLICK_DRAG_TOLERANCE_PX = 4;
@@ -44,6 +39,16 @@ export function CameraFrustumSceneLayer({
     () => pointCloudObjectTransform(frameTransform),
     [frameTransform],
   );
+  const configuredImagePlaneDepthM = layer.imagePlaneDepthM;
+  const imagePlaneDepthM =
+    typeof configuredImagePlaneDepthM === "number" &&
+    isFinitePositiveNumber(configuredImagePlaneDepthM)
+      ? configuredImagePlaneDepthM
+      : DEFAULT_CAMERA_FRUSTUM_DEPTH_M;
+  const baseOpacity =
+    typeof layer.opacity === "number"
+      ? clamp01(layer.opacity)
+      : DEFAULT_CAMERA_FRUSTUM_OPACITY;
   // Geometries are keyed on the intrinsic VALUES, not message identity:
   // calibration messages re-arrive at image cadence carrying the same
   // intrinsics, and rebuilding (then disposing) GPU geometry per message
@@ -56,16 +61,21 @@ export function CameraFrustumSceneLayer({
     frame.K[5],
     frame.width,
     frame.height,
+    imagePlaneDepthM,
   ].join(",");
   const geometry = useMemo(
-    () => createCameraFrustumGeometry(frame),
+    () => createCameraFrustumGeometry(frame, imagePlaneDepthM),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [intrinsicsKey],
   );
   const imagePlaneGeometry = useMemo(
-    () => createCameraImagePlaneGeometry(frame),
+    () => createCameraImagePlaneGeometry(frame, imagePlaneDepthM),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [intrinsicsKey],
+  );
+  const axisGeometry = useMemo(
+    () => createCameraAxisMarkerGeometry(imagePlaneDepthM),
+    [imagePlaneDepthM],
   );
   const [imageHandle, setImageHandle] = useState<ImageTextureHandle | null>(
     null,
@@ -74,6 +84,9 @@ export function CameraFrustumSceneLayer({
   const [hovered, setHovered] = useState(false);
   const interactive = Boolean(layer.onSelect) && pickingEnabled;
   const emphasized = Boolean(layer.highlighted) || (hovered && interactive);
+  const renderOpacity = emphasized
+    ? CAMERA_FRUSTUM_HIGHLIGHT_OPACITY
+    : baseOpacity;
   const heldImageRef = useRef<{
     readonly handle: ImageTextureHandle;
     readonly release: ImageTextureLease["release"];
@@ -155,9 +168,12 @@ export function CameraFrustumSceneLayer({
   );
   useEffect(() => () => geometry?.dispose(), [geometry]);
   useEffect(() => () => imagePlaneGeometry?.dispose(), [imagePlaneGeometry]);
+  useEffect(() => () => axisGeometry.dispose(), [axisGeometry]);
   useEffect(() => {
     invalidate();
   }, [
+    axisGeometry,
+    baseOpacity,
     emphasized,
     geometry,
     imageHandle,
@@ -216,20 +232,20 @@ export function CameraFrustumSceneLayer({
           color={
             emphasized ? CAMERA_FRUSTUM_HIGHLIGHT_COLOR : CAMERA_FRUSTUM_COLOR
           }
-          opacity={
-            emphasized
-              ? CAMERA_FRUSTUM_HIGHLIGHT_OPACITY
-              : CAMERA_FRUSTUM_OPACITY
-          }
+          opacity={emphasized ? CAMERA_FRUSTUM_HIGHLIGHT_OPACITY : baseOpacity}
           transparent
         />
+      </lineSegments>
+      <lineSegments frustumCulled={false}>
+        <primitive attach="geometry" object={axisGeometry} />
+        <lineBasicMaterial opacity={renderOpacity} transparent vertexColors />
       </lineSegments>
       {imageMap && imagePlaneGeometry ? (
         <mesh frustumCulled={false}>
           <primitive attach="geometry" object={imagePlaneGeometry} />
           <meshBasicMaterial
             map={imageMap}
-            opacity={emphasized ? 1 : CAMERA_FRUSTUM_IMAGE_OPACITY}
+            opacity={renderOpacity}
             side={THREE.DoubleSide}
             transparent
           />
@@ -248,6 +264,7 @@ export function CameraFrustumSceneLayer({
  */
 function cameraFrustumCorners(
   frame: CameraCalibrationVisualization,
+  depth: number,
 ): readonly (readonly [number, number, number])[] | null {
   const fx = frame.K[0];
   const fy = frame.K[4];
@@ -264,7 +281,6 @@ function cameraFrustumCorners(
     return null;
   }
 
-  const depth = CAMERA_FRUSTUM_DEPTH_M;
   const cornerPixels: readonly (readonly [number, number])[] = [
     [0, 0],
     [frame.width, 0],
@@ -284,8 +300,9 @@ function cameraFrustumCorners(
  */
 function createCameraFrustumGeometry(
   frame: CameraCalibrationVisualization,
+  depth: number,
 ): THREE.BufferGeometry | null {
-  const corners = cameraFrustumCorners(frame);
+  const corners = cameraFrustumCorners(frame, depth);
   if (!corners) {
     return null;
   }
@@ -315,8 +332,9 @@ function createCameraFrustumGeometry(
  */
 function createCameraImagePlaneGeometry(
   frame: CameraCalibrationVisualization,
+  depth: number,
 ): THREE.BufferGeometry | null {
-  const corners = cameraFrustumCorners(frame);
+  const corners = cameraFrustumCorners(frame, depth);
   if (!corners) {
     return null;
   }
@@ -333,5 +351,38 @@ function createCameraImagePlaneGeometry(
   );
   geometry.setIndex([0, 1, 2, 0, 2, 3]);
 
+  return geometry;
+}
+
+function createCameraAxisMarkerGeometry(depth: number): THREE.BufferGeometry {
+  const length = depth * CAMERA_FRUSTUM_AXIS_LENGTH_RATIO;
+  const positions = Float32Array.from([
+    0,
+    0,
+    0,
+    length,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    length,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    length,
+  ]);
+  const colors = Float32Array.from([
+    1, 0.15, 0.15, 1, 0.15, 0.15, 0.2, 0.95, 0.25, 0.2, 0.95, 0.25, 0.25, 0.45,
+    1, 0.25, 0.45, 1,
+  ]);
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   return geometry;
 }

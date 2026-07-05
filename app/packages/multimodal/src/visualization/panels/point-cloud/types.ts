@@ -188,6 +188,11 @@ export interface CameraFrustumPanelLayer {
   readonly image?: EncodedImageVisualization;
   readonly imageContentTimeNs?: bigint;
   /**
+   * Presentational distance from optical center to image plane, in scene
+   * units. This scales the rendered frustum without changing data placement.
+   */
+  readonly imagePlaneDepthM?: number;
+  /**
    * Opaque shared image-texture cache key for `image` (formed with
    * `imageTextureCacheKey`). When present, the frustum image plane
    * acquires its texture from the shared cache, so surfaces showing the
@@ -197,6 +202,8 @@ export interface CameraFrustumPanelLayer {
   readonly imageTextureKey?: string;
   /** Image stream this frustum's camera feeds (host-defined). */
   readonly imageTopic?: string;
+  /** Base wireframe/image-plane opacity in [0, 1]. */
+  readonly opacity?: number;
   /** Emphasize the frustum wireframe (e.g. its camera tile is hovered). */
   readonly highlighted?: boolean;
   /** Makes the frustum clickable — called on a non-drag click. */

@@ -133,6 +133,7 @@ describe("Mcap3dTileSettings", () => {
     expect(screen.queryByText("Map Layers")).toBeNull();
     expect(screen.queryByText("Ego Pose")).toBeNull();
     expect(screen.queryByText("3D Labels")).toBeNull();
+    expect(screen.queryByText("Pinhole")).toBeNull();
     expect(screen.getByText("Point Clouds")).toBeTruthy();
   });
 
@@ -171,6 +172,25 @@ describe("Mcap3dTileSettings", () => {
       target: { value: "50" },
     });
     expect(props.setReferenceGrid).toHaveBeenCalledWith({ opacityPercent: 50 });
+  });
+
+  it("wires the pinhole controls to the settings updater", () => {
+    const props = renderSettings();
+    expandPinhole();
+
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Depth (m)" }), {
+      target: { value: "4.5" },
+    });
+    expect(props.setPinholeCamera).toHaveBeenCalledWith({
+      imagePlaneDepthM: 4.5,
+    });
+
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Opacity (%)" }), {
+      target: { value: "40" },
+    });
+    expect(props.setPinholeCamera).toHaveBeenCalledWith({
+      opacityPercent: 40,
+    });
   });
 
   it("wires the background controls to the settings updater", () => {
@@ -237,6 +257,10 @@ function expandAppearance() {
   fireEvent.click(screen.getByRole("button", { name: /Appearance/ }));
 }
 
+function expandPinhole() {
+  fireEvent.click(screen.getByRole("button", { name: /Pinhole/ }));
+}
+
 function renderSettings(
   overrides: Partial<Mcap3dTileSettingsProps> = {},
 ): Mcap3dTileSettingsProps {
@@ -256,6 +280,7 @@ function settingsProps(
     frameIds: [],
     mapLayerSources: [],
     mapLayerTopics: [],
+    pinholeCamera: { imagePlaneDepthM: 2.75, opacityPercent: 85 },
     pointCloudSources: [LIDAR],
     pointCloudTopics: [LIDAR.id],
     poseSources: [],
@@ -265,6 +290,7 @@ function settingsProps(
     sceneAnnotationSources: [],
     sceneAnnotationTopics: [],
     selectedPoseSources: [],
+    setPinholeCamera: vi.fn(),
     setReferenceGrid: vi.fn(),
     setSceneBackground: vi.fn(),
     setSourcesEnabled: vi.fn(),

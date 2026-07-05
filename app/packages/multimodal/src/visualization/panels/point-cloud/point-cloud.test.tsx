@@ -1,5 +1,6 @@
 import {
   cleanup,
+  configure,
   fireEvent,
   render,
   screen,
@@ -74,6 +75,8 @@ vi.mock("../webgpu-canvas", () => ({
     <div>{children}</div>
   ),
 }));
+
+configure({ testIdAttribute: "data-cy" });
 
 beforeEach(() => {
   resetImageTextureCacheForTests();
@@ -566,12 +569,71 @@ describe("PointCloudPanel", () => {
     expect(positions[4]).toBeCloseTo((-450 / 450) * 2.75);
     expect(positions[5]).toBeCloseTo(2.75);
 
+    // The camera-local RGB marker contributes three thin axis segments.
+    const axisPositions = setAttribute.mock.calls
+      .filter(([attributeName]) => attributeName === "position")
+      .map(([, attribute]) => attribute as THREE.BufferAttribute)
+      .find((attribute) => attribute.array.length === 6 * 3);
+    expect(axisPositions).toBeDefined();
+    const axis = Array.from(axisPositions?.array ?? []);
+    expect(axis.slice(0, 3)).toEqual([0, 0, 0]);
+    expect(axis[3]).toBeCloseTo(2.75 * 0.28);
+    expect(axis[4]).toBeCloseTo(0);
+    expect(axis[5]).toBeCloseTo(0);
+
     // The frustum at (100, 200) must not drag the camera fit off the cloud.
     const cameraPose = JSON.parse(
       screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
         "{}",
     ) as { readonly target?: readonly number[] };
     expect(cameraPose.target).toEqual([1, 2, 3]);
+  });
+
+  it("applies custom camera frustum depth and base opacity", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const setAttribute = vi.spyOn(
+      THREE.BufferGeometry.prototype,
+      "setAttribute",
+    );
+
+    const { container } = render(
+      <PointCloudPanel
+        frustumLayers={[
+          {
+            frame: {
+              height: 900,
+              K: [450, 0, 800, 0, 450, 450, 0, 0, 1],
+              kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
+              width: 1600,
+            },
+            id: "/CAM_FRONT/camera_info",
+            imagePlaneDepthM: 4,
+            opacity: 0.42,
+          },
+        ]}
+        layers={[]}
+        showHud={false}
+      />,
+    );
+
+    const frustumPositions = setAttribute.mock.calls
+      .filter(([attributeName]) => attributeName === "position")
+      .map(([, attribute]) => attribute as THREE.BufferAttribute)
+      .find((attribute) => attribute.array.length === 16 * 3);
+    expect(frustumPositions).toBeDefined();
+    const positions = Array.from(frustumPositions?.array ?? []);
+    expect(positions[3]).toBeCloseTo((-800 / 450) * 4);
+    expect(positions[4]).toBeCloseTo((-450 / 450) * 4);
+    expect(positions[5]).toBeCloseTo(4);
+
+    const lineMaterials = Array.from(
+      container.querySelectorAll("linebasicmaterial"),
+    );
+    expect(
+      lineMaterials.some(
+        (material) => material.getAttribute("opacity") === "0.42",
+      ),
+    ).toBe(true);
   });
 
   it("passes command-click state through camera frustum selection", () => {

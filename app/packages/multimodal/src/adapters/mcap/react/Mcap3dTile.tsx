@@ -130,8 +130,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const frameTransforms = useMcapFrameTransformsContext();
   const {
     fidelityMode,
+    pinholeCamera,
     referenceGrid,
     sceneBackground,
+    setPinholeCamera,
     setReferenceGrid,
     setSceneBackground,
     temporalPolicy,
@@ -279,6 +281,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const focusedImageTopic = focusedTileId
     ? (imageTileBindings[focusedTileId] ?? null)
     : null;
+  const pinholeImagePlaneDepthM = pinholeCamera.imagePlaneDepthM;
+  const pinholeOpacity = pinholeCamera.opacityPercent / 100;
   const frustumLayers = useMemo(
     () =>
       cameraFrustumLayers.map((layer) => {
@@ -301,13 +305,19 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             }
           : {};
         if (!imageFrame) {
-          return { ...layer, ...linked };
+          return {
+            ...layer,
+            ...linked,
+            imagePlaneDepthM: pinholeImagePlaneDepthM,
+            opacity: pinholeOpacity,
+          };
         }
         return {
           ...layer,
           ...linked,
           image: imageFrame.frame,
           imageContentTimeNs: imageFrame.contentTimeNs,
+          imagePlaneDepthM: pinholeImagePlaneDepthM,
           imageTextureKey:
             sourceKey && imageTopic
               ? imageTextureCacheKey(
@@ -316,6 +326,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
                   imageFrame.contentTimeNs,
                 )
               : undefined,
+          opacity: pinholeOpacity,
         };
       }),
     [
@@ -326,6 +337,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       frustumImageTopics,
       hoveredImageTopic,
       openImageTile,
+      pinholeImagePlaneDepthM,
+      pinholeOpacity,
       sourceKey,
     ],
   );
@@ -739,6 +752,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         frameIds={frameIds}
         mapLayerSources={mapLayerSources}
         mapLayerTopics={mapLayerTopics}
+        pinholeCamera={pinholeCamera}
         pointCloudSources={pointCloudSources}
         pointCloudTopics={pointCloudTopics}
         poseSources={poseSources}
@@ -748,6 +762,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         sceneAnnotationTopics={sceneAnnotationTopics}
         sceneBackground={sceneBackground}
         selectedPoseSources={selectedPoseSources}
+        setPinholeCamera={setPinholeCamera}
         setReferenceGrid={setReferenceGrid}
         setSceneBackground={setSceneBackground}
         setSourcesEnabled={setSourcesEnabled}

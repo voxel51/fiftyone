@@ -3,6 +3,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_MCAP_FIDELITY_MODE,
+  DEFAULT_MCAP_PINHOLE_CAMERA,
   DEFAULT_MCAP_REFERENCE_GRID,
   DEFAULT_MCAP_SCENE_BACKGROUND,
   DEFAULT_MCAP_TEMPORAL_POLICY,
@@ -26,6 +27,7 @@ describe("mcap-modal-settings", () => {
       version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
+      pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
       sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
       temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
@@ -39,6 +41,7 @@ describe("mcap-modal-settings", () => {
       imageLabelTopics: {
         "/camera/front": ["/labels/front", "/labels/all"],
       },
+      pinholeCamera: { imagePlaneDepthM: 4, opacityPercent: 45 },
       referenceGrid: { enabled: false, opacityPercent: 50, spacingM: 5 },
       sceneBackground: { mode: "abyss", solidColor: "#112233" },
       temporalPolicy: {
@@ -55,6 +58,7 @@ describe("mcap-modal-settings", () => {
       imageLabelTopics: {
         "/camera/front": ["/labels/front", "/labels/all"],
       },
+      pinholeCamera: { imagePlaneDepthM: 4, opacityPercent: 45 },
       referenceGrid: { enabled: false, opacityPercent: 50, spacingM: 5 },
       sceneBackground: { mode: "abyss", solidColor: "#112233" },
       temporalPolicy: {
@@ -71,6 +75,7 @@ describe("mcap-modal-settings", () => {
       version: 2,
       fidelityMode: "plaid" as never,
       imageLabelTopics: {},
+      pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
       sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
       temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
@@ -97,6 +102,7 @@ describe("mcap-modal-settings", () => {
     expect(read.version).toBe(2);
     expect(read.fidelityMode).toBe("smooth");
     expect(read.imageLabelTopics["/camera/front"]).toEqual(["/labels/front"]);
+    expect(read.pinholeCamera).toEqual(DEFAULT_MCAP_PINHOLE_CAMERA);
     expect(read.referenceGrid).toEqual(DEFAULT_MCAP_REFERENCE_GRID);
     expect(read.sceneBackground).toEqual(DEFAULT_MCAP_SCENE_BACKGROUND);
   });
@@ -121,6 +127,7 @@ describe("mcap-modal-settings", () => {
       version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
+      pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       referenceGrid: {
         enabled: true,
         opacityPercent: 250,
@@ -137,11 +144,32 @@ describe("mcap-modal-settings", () => {
     });
   });
 
+  it("clamps invalid pinhole camera values", () => {
+    writeMcapModalSettings({
+      version: 2,
+      fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
+      imageLabelTopics: {},
+      pinholeCamera: {
+        imagePlaneDepthM: -2,
+        opacityPercent: 250,
+      },
+      referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
+      sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
+      temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
+    });
+
+    expect(readMcapModalSettings().pinholeCamera).toEqual({
+      imagePlaneDepthM: 0.05,
+      opacityPercent: 100,
+    });
+  });
+
   it("rejects invalid scene background values", () => {
     writeMcapModalSettings({
       version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
+      pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
       sceneBackground: {
         mode: "plaid" as never,
@@ -162,6 +190,7 @@ describe("mcap-modal-settings", () => {
       imageLabelTopics: {
         "/camera/front": [],
       },
+      pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
       sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
       temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
@@ -181,6 +210,10 @@ describe("mcap-modal-settings", () => {
 
     act(() => {
       result.current.setFidelityMode("as-recorded");
+      result.current.setPinholeCamera({
+        imagePlaneDepthM: 6,
+        opacityPercent: 35,
+      });
       result.current.setReferenceGrid({ enabled: false, spacingM: 10 });
       result.current.setSceneBackground({ mode: "studio" });
       result.current.setImageLabelTopics("/camera/front", ["/labels"]);
@@ -193,6 +226,10 @@ describe("mcap-modal-settings", () => {
     });
 
     expect(result.current.fidelityMode).toBe("as-recorded");
+    expect(result.current.pinholeCamera).toEqual({
+      imagePlaneDepthM: 6,
+      opacityPercent: 35,
+    });
     expect(result.current.referenceGrid).toEqual({
       enabled: false,
       opacityPercent: DEFAULT_MCAP_REFERENCE_GRID.opacityPercent,
@@ -214,6 +251,7 @@ describe("mcap-modal-settings", () => {
     expect(readMcapModalSettings()).toMatchObject({
       fidelityMode: "as-recorded",
       imageLabelTopics: { "/camera/front": ["/labels"] },
+      pinholeCamera: { imagePlaneDepthM: 6, opacityPercent: 35 },
       referenceGrid: {
         enabled: false,
         opacityPercent: DEFAULT_MCAP_REFERENCE_GRID.opacityPercent,
@@ -243,6 +281,7 @@ describe("mcap-modal-settings", () => {
       version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
+      pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
       sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
       temporalPolicy: {

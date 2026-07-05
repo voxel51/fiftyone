@@ -14,6 +14,7 @@ import {
   type Mcap3dTrackingMode,
 } from "./mcap-3d-camera";
 import type {
+  McapPinholeCameraSettings,
   McapReferenceGridSettings,
   McapSceneBackgroundMode,
   McapSceneBackgroundSettings,
@@ -35,6 +36,7 @@ export interface Mcap3dTileSettingsProps {
   readonly frameIds: readonly string[];
   readonly mapLayerSources: readonly SceneSource[];
   readonly mapLayerTopics: readonly string[];
+  readonly pinholeCamera: McapPinholeCameraSettings;
   readonly pointCloudSources: readonly SceneSource[];
   readonly pointCloudTopics: readonly string[];
   readonly poseSources: readonly SceneSource[];
@@ -44,6 +46,9 @@ export interface Mcap3dTileSettingsProps {
   readonly sceneAnnotationTopics: readonly string[];
   readonly sceneBackground: McapSceneBackgroundSettings;
   readonly selectedPoseSources: readonly SceneSource[];
+  readonly setPinholeCamera: (
+    settings: Partial<McapPinholeCameraSettings>,
+  ) => void;
   readonly setReferenceGrid: (
     settings: Partial<McapReferenceGridSettings>,
   ) => void;
@@ -83,6 +88,7 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   frameIds,
   mapLayerSources,
   mapLayerTopics,
+  pinholeCamera,
   pointCloudSources,
   pointCloudTopics,
   poseSources,
@@ -92,6 +98,7 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   sceneAnnotationTopics,
   sceneBackground,
   selectedPoseSources,
+  setPinholeCamera,
   setReferenceGrid,
   setSceneBackground,
   setSourcesEnabled,
@@ -127,6 +134,37 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
           toggleAriaLabel="Toggle cameras"
           toggleSource={toggleSource}
         />
+
+        {cameraSources.length > 0 ? (
+          <McapSidebarGroup
+            defaultExpanded={false}
+            summary={`${pinholeCamera.imagePlaneDepthM} m · ${pinholeCamera.opacityPercent}%`}
+            title="Pinhole"
+          >
+            <SettingsNumberInput
+              label="Depth (m)"
+              max={100}
+              min={0.05}
+              onChange={(imagePlaneDepthM) =>
+                setPinholeCamera({ imagePlaneDepthM })
+              }
+              step={0.25}
+              tooltip="Distance from the optical center to the image plane. Larger depths render bigger camera frustums."
+              value={pinholeCamera.imagePlaneDepthM}
+            />
+            <SettingsNumberInput
+              label="Opacity (%)"
+              max={100}
+              min={0}
+              onChange={(opacityPercent) =>
+                setPinholeCamera({ opacityPercent })
+              }
+              step={1}
+              tooltip="Normal frustum and image-plane opacity. Hovered and focused frustums render fully opaque."
+              value={pinholeCamera.opacityPercent}
+            />
+          </McapSidebarGroup>
+        ) : null}
 
         <SourceGroup
           enabled={enabled}
@@ -229,7 +267,7 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
                 {...settingsBooleanNoSpaceToggleProps}
               />
             </div>
-            <GridNumberInput
+            <SettingsNumberInput
               disabled={!referenceGrid.enabled}
               label="Spacing (m)"
               min={0.01}
@@ -237,7 +275,7 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
               step={0.5}
               value={referenceGrid.spacingM}
             />
-            <GridNumberInput
+            <SettingsNumberInput
               disabled={!referenceGrid.enabled}
               label="Opacity (%)"
               max={100}
@@ -382,32 +420,38 @@ function FrameSelect({
   );
 }
 
-function GridNumberInput({
+function SettingsNumberInput({
   disabled,
   label,
   max,
   min,
   onChange,
   step,
+  tooltip,
   value,
 }: {
-  readonly disabled: boolean;
+  readonly disabled?: boolean;
   readonly label: string;
   readonly max?: number;
   readonly min: number;
   readonly onChange: (value: number) => void;
   readonly step: number;
+  readonly tooltip?: string;
   readonly value: number;
 }) {
   return (
     <label className={settingsStyles.field}>
-      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-        {label}
-      </Text>
+      {tooltip ? (
+        <SettingsLabel label={label} tooltip={tooltip} />
+      ) : (
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          {label}
+        </Text>
+      )}
       <input
         aria-label={label}
         className={settingsStyles.select}
-        disabled={disabled}
+        disabled={Boolean(disabled)}
         max={max}
         min={min}
         onChange={(event) => {

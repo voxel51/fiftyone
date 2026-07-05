@@ -39,6 +39,16 @@ export interface McapReferenceGridSettings {
 }
 
 /**
+ * Appearance of camera-calibration frustums in the 3D tile.
+ */
+export interface McapPinholeCameraSettings {
+  /** Distance from optical center to image plane, in meters. */
+  readonly imagePlaneDepthM: number;
+  /** Base frustum/image-plane opacity, percent (0–100). */
+  readonly opacityPercent: number;
+}
+
+/**
  * 3D scene backdrop styles: a user-picked solid color, or one of two
  * named gradient profiles — "Abyss" (dark) and "Studio" (light, warm).
  */
@@ -54,6 +64,7 @@ interface McapPersistedModalSettings {
   version: 2;
   fidelityMode: McapPlaybackFidelityMode;
   imageLabelTopics: Record<string, readonly string[]>;
+  pinholeCamera: McapPinholeCameraSettings;
   referenceGrid: McapReferenceGridSettings;
   sceneBackground: McapSceneBackgroundSettings;
   temporalPolicy: McapTemporalPolicySettings;
@@ -62,6 +73,7 @@ interface McapPersistedModalSettings {
 interface McapModalSettingsContextValue {
   readonly fidelityMode: McapPlaybackFidelityMode;
   readonly imageLabelTopics: Record<string, readonly string[]>;
+  readonly pinholeCamera: McapPinholeCameraSettings;
   readonly referenceGrid: McapReferenceGridSettings;
   readonly sceneBackground: McapSceneBackgroundSettings;
   readonly temporalPolicy: McapTemporalPolicySettings;
@@ -69,6 +81,9 @@ interface McapModalSettingsContextValue {
   readonly setImageLabelTopics: (
     imageTopic: string,
     labelTopics: readonly string[],
+  ) => void;
+  readonly setPinholeCamera: (
+    settings: Partial<McapPinholeCameraSettings>,
   ) => void;
   readonly setReferenceGrid: (
     settings: Partial<McapReferenceGridSettings>,
@@ -110,6 +125,14 @@ export const DEFAULT_MCAP_REFERENCE_GRID: McapReferenceGridSettings = {
 const MIN_GRID_SPACING_M = 0.01;
 const MAX_GRID_SPACING_M = 10_000;
 
+export const DEFAULT_MCAP_PINHOLE_CAMERA: McapPinholeCameraSettings = {
+  imagePlaneDepthM: 2.75,
+  opacityPercent: 85,
+};
+
+const MIN_PINHOLE_DEPTH_M = 0.05;
+const MAX_PINHOLE_DEPTH_M = 100;
+
 export const DEFAULT_MCAP_SCENE_BACKGROUND: McapSceneBackgroundSettings = {
   mode: "solid",
   solidColor: VISUALIZATION_PANEL_BACKGROUND_COLOR,
@@ -127,6 +150,7 @@ const DEFAULT_SETTINGS: McapPersistedModalSettings = {
   version: VERSION,
   fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
   imageLabelTopics: {},
+  pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
   referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
   sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
   temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
@@ -168,6 +192,7 @@ export function readMcapModalSettings(): McapPersistedModalSettings {
             : DEFAULT_MCAP_FIDELITY_MODE
           : normalizeFidelityMode(candidate.fidelityMode),
       imageLabelTopics: normalizeImageLabelTopicMap(candidate.imageLabelTopics),
+      pinholeCamera: normalizePinholeCamera(candidate.pinholeCamera),
       referenceGrid: normalizeReferenceGrid(candidate.referenceGrid),
       sceneBackground: normalizeSceneBackground(candidate.sceneBackground),
       temporalPolicy: normalizeTemporalPolicy(candidate.temporalPolicy),
@@ -192,6 +217,7 @@ export function writeMcapModalSettings(
         imageLabelTopics: normalizeImageLabelTopicMap(
           settings.imageLabelTopics,
         ),
+        pinholeCamera: normalizePinholeCamera(settings.pinholeCamera),
         referenceGrid: normalizeReferenceGrid(settings.referenceGrid),
         sceneBackground: normalizeSceneBackground(settings.sceneBackground),
         temporalPolicy: normalizeTemporalPolicy(settings.temporalPolicy),
@@ -247,6 +273,17 @@ export const McapModalSettingsProvider: React.FC<{
       })),
     [update],
   );
+  const setPinholeCamera = useCallback(
+    (settings: Partial<McapPinholeCameraSettings>) =>
+      update((current) => ({
+        ...current,
+        pinholeCamera: normalizePinholeCamera({
+          ...current.pinholeCamera,
+          ...settings,
+        }),
+      })),
+    [update],
+  );
   const setSceneBackground = useCallback(
     (settings: Partial<McapSceneBackgroundSettings>) =>
       update((current) => ({
@@ -297,12 +334,14 @@ export const McapModalSettingsProvider: React.FC<{
     () => ({
       fidelityMode: settings.fidelityMode,
       imageLabelTopics: settings.imageLabelTopics,
+      pinholeCamera: settings.pinholeCamera,
       referenceGrid: settings.referenceGrid,
       sceneBackground: settings.sceneBackground,
       temporalPolicy: settings.temporalPolicy,
       resetTemporalPolicy,
       setFidelityMode,
       setImageLabelTopics,
+      setPinholeCamera,
       setReferenceGrid,
       setSceneBackground,
       setTemporalPolicy,
@@ -312,6 +351,7 @@ export const McapModalSettingsProvider: React.FC<{
       resetTemporalPolicy,
       setFidelityMode,
       setImageLabelTopics,
+      setPinholeCamera,
       setReferenceGrid,
       setSceneBackground,
       setTemporalPolicy,
@@ -396,6 +436,28 @@ function normalizeReferenceGrid(value: unknown): McapReferenceGridSettings {
       MIN_GRID_SPACING_M,
       MAX_GRID_SPACING_M,
       DEFAULT_MCAP_REFERENCE_GRID.spacingM,
+    ),
+  };
+}
+
+function normalizePinholeCamera(value: unknown): McapPinholeCameraSettings {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return DEFAULT_MCAP_PINHOLE_CAMERA;
+  }
+
+  const candidate = value as Partial<McapPinholeCameraSettings>;
+  return {
+    imagePlaneDepthM: clampNumber(
+      candidate.imagePlaneDepthM,
+      MIN_PINHOLE_DEPTH_M,
+      MAX_PINHOLE_DEPTH_M,
+      DEFAULT_MCAP_PINHOLE_CAMERA.imagePlaneDepthM,
+    ),
+    opacityPercent: clampNumber(
+      candidate.opacityPercent,
+      0,
+      100,
+      DEFAULT_MCAP_PINHOLE_CAMERA.opacityPercent,
     ),
   };
 }
