@@ -10,7 +10,7 @@ import unittest
 import fiftyone.utils.cvat as fouc
 
 
-class _FakeResponse(object):
+class _FakeResponse:
     def __init__(self, data):
         self._data = data
 
@@ -18,7 +18,7 @@ class _FakeResponse(object):
         return self._data
 
 
-class _FakeCVATAPI(object):
+class _FakeCVATAPI:
     """A minimal stand-in for a CVAT API client that returns a canned
     ``tasks/{id}/data/meta`` response, so we can exercise
     :func:`fiftyone.utils.cvat._parse_task_metadata` without a live server.
@@ -28,7 +28,7 @@ class _FakeCVATAPI(object):
         self._meta = meta
 
     def task_data_meta_url(self, task_id):
-        return "http://cvat.test/api/tasks/%s/data/meta" % task_id
+        return "http://cvat.test/api/tasks/{}/data/meta".format(task_id)
 
     def get(self, url):
         return _FakeResponse(self._meta)
