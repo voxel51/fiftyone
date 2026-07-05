@@ -9,6 +9,7 @@
  */
 export const MCAP_TILE_TYPE = {
   IMAGE: "image",
+  PLOT: "plot",
   THREE_D: "3d",
 } as const;
 

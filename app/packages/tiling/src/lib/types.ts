@@ -52,10 +52,12 @@ export interface TilingContextValue {
   layout: MosaicNode<string> | null;
   tiles: Record<string, TilingTile>;
   focusedTileId: string | null;
+  expandedTileId: string | null;
 
   // Layout setters / operations
   setLayout: (layout: MosaicNode<string> | null) => void;
   setFocusedTileId: (id: string | null) => void;
+  setExpandedTileId: (id: string | null) => void;
   addTile: (tile: TilingTile, options?: AddTileOptions) => string;
   removeTile: (id: string) => void;
   autoLayout: () => void;

@@ -3,6 +3,7 @@ import {
   isValidMosaicLayout,
   mcapTileTypeFromId,
   readMcapModalLayout,
+  sanitizePlotSeries,
   writeMcapModalLayout,
 } from "./mcap-layout-persistence";
 
@@ -45,6 +46,33 @@ describe("mcap-layout-persistence", () => {
     expect(read?.layout).toBe("camera-default");
   });
 
+  it("round-trips expanded tile state separately from layout", () => {
+    writeMcapModalLayout({
+      expandedTileId: "lidar-default",
+      layout: {
+        direction: "row",
+        first: "camera-default",
+        second: "lidar-default",
+      },
+    });
+
+    const read = readMcapModalLayout();
+    expect(read?.layout).toEqual({
+      direction: "row",
+      first: "camera-default",
+      second: "lidar-default",
+    });
+    expect(read?.expandedTileId).toBe("lidar-default");
+  });
+
+  it("clears expanded tile state when written as undefined", () => {
+    writeMcapModalLayout({ expandedTileId: "image-1" }, "dataset-a");
+    writeMcapModalLayout({ expandedTileId: undefined }, "dataset-a");
+
+    expect(readMcapModalLayout("dataset-a")?.expandedTileId).toBeUndefined();
+    expect(readMcapModalLayout()?.expandedTileId).toBeUndefined();
+  });
+
   it("treats corrupt JSON as nothing stored", () => {
     localStorage.setItem(STORAGE_KEY, "{not json");
     expect(readMcapModalLayout()).toBeNull();
@@ -70,6 +98,19 @@ describe("mcap-layout-persistence", () => {
     const read = readMcapModalLayout();
     expect(read?.leftSidebarOpen).toBe(true);
     expect(read?.layout).toBeUndefined();
+  });
+
+  it("drops invalid expanded tile ids but keeps valid fields", () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: 2,
+        fallback: { expandedTileId: "", leftSidebarOpen: true },
+      }),
+    );
+    const read = readMcapModalLayout();
+    expect(read?.expandedTileId).toBeUndefined();
+    expect(read?.leftSidebarOpen).toBe(true);
   });
 
   describe("per-dataset keying", () => {
@@ -248,6 +289,59 @@ describe("mcap-layout-persistence", () => {
       expect(mcapTileTypeFromId("camera")).toBeNull();
       expect(mcapTileTypeFromId("-3")).toBeNull();
       expect(mcapTileTypeFromId("camera-")).toBeNull();
+    });
+  });
+
+  describe("plotSeries", () => {
+    const SERIES = [
+      { color: "#3987e5", fieldPath: "twist.linear.x", topic: "/odom" },
+    ];
+
+    it("round-trips per-dataset plot series", () => {
+      writeMcapModalLayout({ plotSeries: { "plot-1": SERIES } }, "ds-a");
+      expect(readMcapModalLayout("ds-a")?.plotSeries).toEqual({
+        "plot-1": SERIES,
+      });
+    });
+
+    it("never leaks plot series through the browser-wide fallback", () => {
+      writeMcapModalLayout(
+        { layout: "plot-1", plotSeries: { "plot-1": SERIES } },
+        "ds-a",
+      );
+      // Another dataset inherits the layout via the fallback but not
+      // the dataset-scoped series.
+      const other = readMcapModalLayout("ds-b");
+      expect(other?.layout).toBe("plot-1");
+      expect(other?.plotSeries).toBeUndefined();
+    });
+
+    it("sanitizes malformed plot series rows individually", () => {
+      writeMcapModalLayout(
+        {
+          plotSeries: {
+            "plot-1": [
+              ...SERIES,
+              { color: "not-a-color", fieldPath: "x", topic: "/t" },
+              { color: "#ffffff", fieldPath: "", topic: "/t" },
+              "garbage",
+            ] as never,
+            "image-1": SERIES,
+            "no-suffix": SERIES,
+          } as never,
+        },
+        "ds-a",
+      );
+      expect(readMcapModalLayout("ds-a")?.plotSeries).toEqual({
+        "plot-1": SERIES,
+      });
+    });
+
+    it("sanitizePlotSeries rejects non-object payloads", () => {
+      expect(sanitizePlotSeries(null)).toBeUndefined();
+      expect(sanitizePlotSeries([])).toBeUndefined();
+      expect(sanitizePlotSeries("x")).toBeUndefined();
+      expect(sanitizePlotSeries({ "plot-1": [] })).toBeUndefined();
     });
   });
 });

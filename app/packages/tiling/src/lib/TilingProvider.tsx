@@ -30,6 +30,8 @@ export interface TilingProviderProps {
   initialTiles?: Record<string, TilingTile>;
   /** Initial layout tree. If omitted, auto-laid out from `initialTiles`. */
   initialLayout?: MosaicNode<string> | null;
+  /** Tile id that should initially render expanded to fullscreen. */
+  initialExpandedTileId?: string | null;
   children: React.ReactNode;
 }
 
@@ -47,13 +49,22 @@ export interface TilingProviderProps {
 export const TilingProvider: React.FC<TilingProviderProps> = ({
   initialTiles = {},
   initialLayout,
+  initialExpandedTileId,
   children,
 }) => {
-  const [tiles, setTiles] = useState<Record<string, TilingTile>>(initialTiles);
-  const [layout, setLayoutState] = useState<MosaicNode<string> | null>(
+  const initialLayoutValue =
     initialLayout === undefined
       ? autoLayoutFn(Object.keys(initialTiles))
-      : initialLayout,
+      : initialLayout;
+  const [tiles, setTiles] = useState<Record<string, TilingTile>>(initialTiles);
+  const [layout, setLayoutState] = useState<MosaicNode<string> | null>(
+    initialLayoutValue,
+  );
+  const [expandedTileId, setExpandedTileId] = useState<string | null>(
+    initialExpandedTileId &&
+      collectTileIds(initialLayoutValue).includes(initialExpandedTileId)
+      ? initialExpandedTileId
+      : null,
   );
   const [focusedTileId, setFocusedTileId] = useState<string | null>(null);
   // Mirror `focusedTileId` in a ref so `addTile` can resolve the target
@@ -116,6 +127,9 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         }
       }
       setFocusedTileId((current) =>
+        current && presentIds.has(current) ? current : null,
+      );
+      setExpandedTileId((current) =>
         current && presentIds.has(current) ? current : null,
       );
     },
@@ -226,6 +240,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       // reconciliation drop the other tiles and their atom entries.
       setLayout(tileId);
       setFocusedTileId(tileId);
+      setExpandedTileId(null);
     },
     [setLayout],
   );
@@ -245,6 +260,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       return stripped;
     });
     setFocusedTileId((current) => (current === id ? null : current));
+    setExpandedTileId((current) => (current === id ? null : current));
     // Release the per-tile atomFamily entry so the store doesn't
     // grow unbounded across long sessions.
     tileSelectionAtom.remove(id);
@@ -266,6 +282,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     // Read from ref so this callback stays stable across tile additions,
     // avoiding stale captures in useMemo consumers that suppress deps.
     setLayoutState(autoLayoutFn(Object.keys(tilesRef.current)));
+    setExpandedTileId(null);
   }, []);
 
   const value = useMemo<TilingContextValue>(
@@ -273,8 +290,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       layout,
       tiles,
       focusedTileId,
+      expandedTileId,
       setLayout,
       setFocusedTileId,
+      setExpandedTileId,
       addTile,
       removeTile,
       autoLayout,
@@ -290,6 +309,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       layout,
       tiles,
       focusedTileId,
+      expandedTileId,
       setLayout,
       addTile,
       removeTile,

@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import Mcap3dTile from "./Mcap3dTile";
 import McapImageTile from "./McapImageTile";
+import McapPlotTile from "./McapPlotTile";
 import {
   MCAP_TILE_TYPE,
   type McapTileProps,
@@ -45,6 +46,16 @@ const TILE_BY_TYPE: Record<
       MCAP_SOURCE_TYPE.POSE,
       MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
     ],
+  },
+  // Plottable topics are exactly the ones the scene inventory omits
+  // (telemetry has no visualization), so the plot tile is offered
+  // whenever the modal has any source at all; its settings sidebar
+  // enumerates numeric fields independently of scene sources.
+  [MCAP_TILE_TYPE.PLOT]: {
+    typeLabel: "Plot",
+    icon: IconName.Insights,
+    Tile: McapPlotTile,
+    sourceTypes: Object.values(MCAP_SOURCE_TYPE),
   },
 };
 

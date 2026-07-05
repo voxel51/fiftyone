@@ -45,6 +45,7 @@ describe("TilingProvider", () => {
       expect(result.current.tiles).toEqual({});
       expect(result.current.layout).toBeNull();
       expect(result.current.focusedTileId).toBeNull();
+      expect(result.current.expandedTileId).toBeNull();
     });
 
     it("renders with the provided initial tile entries", () => {
@@ -74,6 +75,38 @@ describe("TilingProvider", () => {
         ),
       });
       expect(result.current.layout).not.toBeNull();
+    });
+
+    it("seeds the expanded tile when the initial id is in the layout", () => {
+      const initialTiles = {
+        "camera-1": makeTile("camera"),
+        "lidar-1": makeTile("lidar"),
+      };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={initialTiles}
+            initialExpandedTileId="lidar-1"
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+      expect(result.current.expandedTileId).toBe("lidar-1");
+    });
+
+    it("ignores an initial expanded tile that is not in the layout", () => {
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={{ "camera-1": makeTile("camera") }}
+            initialExpandedTileId="ghost-1"
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+      expect(result.current.expandedTileId).toBeNull();
     });
   });
 
@@ -288,6 +321,23 @@ describe("TilingProvider", () => {
       expect(result.current.focusedTileId).toBe("b-1");
     });
 
+    it("clears expanded state when the expanded tile is removed", () => {
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={{ "a-1": makeTile("a"), "b-1": makeTile("b") }}
+            initialExpandedTileId="a-1"
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+      act(() => {
+        result.current.removeTile("a-1");
+      });
+      expect(result.current.expandedTileId).toBeNull();
+    });
+
     it("collapses the split when removing the second of two tiles", () => {
       // Removing "b-1" from {row, "a-1", "b-1"} should collapse to just "a-1".
       const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
@@ -369,6 +419,24 @@ describe("TilingProvider", () => {
       });
       expect(result.current.focusedTileId).toBeNull();
     });
+
+    it("clears expanded state if the expanded tile was orphaned by the new layout", () => {
+      const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={initialTiles}
+            initialExpandedTileId="a-1"
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+      act(() => {
+        result.current.setLayout("b-1");
+      });
+      expect(result.current.expandedTileId).toBeNull();
+    });
   });
 
   describe("autoLayout", () => {
@@ -384,6 +452,24 @@ describe("TilingProvider", () => {
       });
       expect(result.current.tiles).toEqual(initialTiles);
       expect(result.current.layout).not.toBeNull();
+    });
+
+    it("clears expanded state when rebuilding the layout tree", () => {
+      const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={initialTiles}
+            initialExpandedTileId="a-1"
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+      act(() => {
+        result.current.autoLayout();
+      });
+      expect(result.current.expandedTileId).toBeNull();
     });
   });
 

@@ -1,5 +1,5 @@
 import { useTiling } from "@fiftyone/tiling";
-import { MenuCheckItem, MenuSectionTitle } from "@voxel51/voodo";
+import { MenuCheckItem, MenuSectionTitle, MenuTextItem } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 import { useSceneInventory } from "../../../scene-inventory";
 import { mcapTileTypeFromId } from "./mcap-layout-persistence";
@@ -58,6 +58,19 @@ const McapAddTileMenu: React.FC = () => {
 
   const openImageTile = useOpenMcapImageTile();
 
+  // Unlike the 3D scene, plots are additive by design — comparing two
+  // field sets side by side is the point — so this entry always spawns
+  // a fresh tile instead of focusing an open one.
+  const openPlotTile = () => {
+    const definition = getMcapTileDefinition(MCAP_TILE_TYPE.PLOT);
+    if (!definition) return;
+    const Tile = definition.Tile;
+    addTile(
+      { title: definition.typeLabel, render: () => <Tile /> },
+      { idPrefix: MCAP_TILE_TYPE.PLOT },
+    );
+  };
+
   const displayedSourceIds = useMemo(
     () => new Set(Object.values(bindings)),
     [bindings],
@@ -74,6 +87,9 @@ const McapAddTileMenu: React.FC = () => {
           3D scene
         </MenuCheckItem>
       ) : null}
+      <MenuTextItem data-testid="mcap-add-tile-plot" onClick={openPlotTile}>
+        Plot
+      </MenuTextItem>
       {rankedImages.length > 0 ? (
         <>
           <MenuSectionTitle>Image streams</MenuSectionTitle>

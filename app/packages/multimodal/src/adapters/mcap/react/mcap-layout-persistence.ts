@@ -1,8 +1,9 @@
 import type { MosaicNode } from "react-mosaic-component";
+import { MCAP_TILE_TYPE } from "./mcap-tile-types";
 
 /**
  * Persistence for the MCAP modal's chrome: sidebar visibility, sidebar
- * width, and the mosaic tile arrangement.
+ * width, the mosaic tile arrangement, and the currently expanded tile.
  *
  * One localStorage key holding per-dataset entries plus a browser-wide
  * fallback. Samples in a dataset are typically different recordings with
@@ -25,12 +26,36 @@ import type { MosaicNode } from "react-mosaic-component";
  * `fallback` entry per-field on read.
  */
 export interface McapPersistedModalLayout {
+  /** Tile id rendered expanded over the saved layout, when any. */
+  expandedTileId?: string;
   leftSidebarOpen?: boolean;
   /** Mosaic tree whose leaves are tile ids (e.g. `image-default`). */
   layout?: MosaicNode<string> | null;
+  /**
+   * Enabled plot series per plot tile id. Series reference topics of
+   * one dataset's recordings, so this field is dataset-scoped only —
+   * it is never merged into (or read from) the browser-wide fallback.
+   */
+  plotSeries?: Record<string, readonly McapPersistedPlotSeries[]>;
   /** Left sidebar width in px; the shell clamps it on restore. */
   sidebarWidthPx?: number;
 }
+
+/**
+ * One persisted plot series: a topic's numeric field and the color the
+ * user saw it in.
+ */
+export interface McapPersistedPlotSeries {
+  readonly color: string;
+  readonly fieldPath: string;
+  readonly topic: string;
+}
+
+// Bound the persisted plot config so a corrupt or adversarial payload
+// cannot balloon the localStorage entry parsed on every modal mount.
+const MAX_PLOT_TILES = 32;
+const MAX_PLOT_SERIES_PER_TILE = 64;
+const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 interface PersistedDatasetEntry extends McapPersistedModalLayout {
   /** Last-write timestamp; drives least-recently-updated eviction. */
@@ -76,6 +101,7 @@ function sanitizeEntry(raw: unknown): McapPersistedModalLayout | undefined {
   if (typeof raw !== "object" || raw === null) return undefined;
   const candidate = raw as Record<string, unknown>;
   return {
+    expandedTileId: sanitizeTileId(candidate.expandedTileId),
     leftSidebarOpen:
       typeof candidate.leftSidebarOpen === "boolean"
         ? candidate.leftSidebarOpen
@@ -83,6 +109,7 @@ function sanitizeEntry(raw: unknown): McapPersistedModalLayout | undefined {
     layout: isValidMosaicLayout(candidate.layout)
       ? candidate.layout
       : undefined,
+    plotSeries: sanitizePlotSeries(candidate.plotSeries),
     sidebarWidthPx:
       typeof candidate.sidebarWidthPx === "number" &&
       Number.isFinite(candidate.sidebarWidthPx) &&
@@ -90,6 +117,62 @@ function sanitizeEntry(raw: unknown): McapPersistedModalLayout | undefined {
         ? candidate.sidebarWidthPx
         : undefined,
   };
+}
+
+function sanitizeTileId(raw: unknown): string | undefined {
+  return typeof raw === "string" && raw.length > 0 ? raw : undefined;
+}
+
+/**
+ * Structural validation of the persisted plot-series table: keys must
+ * be plot tile ids, every series a `{topic, fieldPath, color}` record
+ * with a hex color, both tables capped. Invalid rows drop individually.
+ */
+export function sanitizePlotSeries(
+  raw: unknown,
+): Record<string, readonly McapPersistedPlotSeries[]> | undefined {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const result: Record<string, readonly McapPersistedPlotSeries[]> = {};
+  let tileCount = 0;
+  for (const [tileId, rawSeries] of Object.entries(raw)) {
+    if (
+      mcapTileTypeFromId(tileId) !== MCAP_TILE_TYPE.PLOT ||
+      !Array.isArray(rawSeries)
+    ) {
+      continue;
+    }
+    if (tileCount >= MAX_PLOT_TILES) break;
+
+    const series: McapPersistedPlotSeries[] = [];
+    for (const entry of rawSeries as unknown[]) {
+      if (series.length >= MAX_PLOT_SERIES_PER_TILE) break;
+      if (typeof entry !== "object" || entry === null) continue;
+      const record = entry as Record<string, unknown>;
+      if (
+        typeof record.topic === "string" &&
+        record.topic.length > 0 &&
+        typeof record.fieldPath === "string" &&
+        record.fieldPath.length > 0 &&
+        typeof record.color === "string" &&
+        HEX_COLOR_PATTERN.test(record.color)
+      ) {
+        series.push({
+          color: record.color,
+          fieldPath: record.fieldPath,
+          topic: record.topic,
+        });
+      }
+    }
+    if (series.length > 0) {
+      result[tileId] = series;
+      tileCount += 1;
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 /**
@@ -156,8 +239,12 @@ export function readMcapModalLayout(
   const fallback = store.fallback;
   if (!entry && !fallback) return null;
   return {
+    expandedTileId: entry?.expandedTileId ?? fallback?.expandedTileId,
     leftSidebarOpen: entry?.leftSidebarOpen ?? fallback?.leftSidebarOpen,
     layout: entry?.layout ?? fallback?.layout,
+    // Dataset-scoped on purpose: series reference this dataset's topics,
+    // so another dataset's plots must never leak in via the fallback.
+    plotSeries: entry?.plotSeries,
     sidebarWidthPx: entry?.sidebarWidthPx ?? fallback?.sidebarWidthPx,
   };
 }
@@ -189,9 +276,15 @@ export function writeMcapModalLayout(
       };
       evictLeastRecentlyUpdated(byDataset);
     }
+    // The fallback layer tracks the latest arrangement anywhere, but
+    // plot series are dataset-scoped — strip them from both the incoming
+    // patch and anything an older write left behind.
+    const { plotSeries: _datasetOnly, ...fallbackPatch } = patch;
+    const fallback = { ...store?.fallback, ...fallbackPatch };
+    delete fallback.plotSeries;
     const next: PersistedStore = {
       version: VERSION,
-      fallback: { ...store?.fallback, ...patch },
+      fallback,
       byDataset,
     };
     storage.setItem(STORAGE_KEY, JSON.stringify(next));
