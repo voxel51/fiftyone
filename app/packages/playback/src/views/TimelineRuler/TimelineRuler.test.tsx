@@ -8,6 +8,8 @@ import {
   usePlaybackStore,
 } from "../../lib/playback/PlaybackProvider";
 import { viewEndAtom, viewStartAtom } from "../../lib/playback/atoms";
+import { setHoverTime } from "../../lib/playback/store-access";
+import { useHoverTime } from "../../lib/playback/use-playback-state";
 import TimelineRuler from "./TimelineRuler";
 import styles from "./TimelineRuler.module.css";
 
@@ -19,6 +21,16 @@ function ViewReadout() {
   const ve = useAtomValue(viewEndAtom, { store });
   return (
     <span data-testid="view">{`${vs.toFixed(3)} / ${ve.toFixed(3)}`}</span>
+  );
+}
+
+// Renders the shared hover time so tests can assert on the published atom.
+function HoverReadout() {
+  const hover = useHoverTime();
+  return (
+    <span data-testid="hover">
+      {hover === null ? "none" : hover.toFixed(3)}
+    </span>
   );
 }
 
@@ -76,6 +88,7 @@ function renderRuler(opts: RenderOpts = {}) {
       {seekTo !== undefined ? <Seeker time={seekTo} /> : null}
       <TimelineRuler labelWidth={labelWidth} />
       <ViewReadout />
+      <HoverReadout />
     </PlaybackProvider>,
   );
 }
@@ -373,6 +386,64 @@ describe("TimelineRuler", () => {
       // Clamped at the right edge.
       expect(ve).toBeCloseTo(10, 2);
       expect(vs).toBeCloseTo(6, 2);
+    });
+  });
+  describe("hover caret", () => {
+    // jsdom's PointerEvent lacks coordinate support; a MouseEvent with a
+    // pointer event type carries clientX and still triggers React's
+    // onPointerMove handler.
+    const pointerMoveAt = (el: Element, clientX: number) => {
+      fireEvent(el, new MouseEvent("pointermove", { bubbles: true, clientX }));
+    };
+
+    it("publishes the hovered time and renders the shared caret", () => {
+      renderRuler({ duration: 10 });
+      const ruler = screen.getByTestId("timeline-ruler");
+
+      pointerMoveAt(ruler, 250);
+
+      expect(screen.getByTestId("hover").textContent).toBe("2.500");
+      expect(screen.getByTestId("timeline-hover-caret")).toBeTruthy();
+    });
+
+    it("respects the label column when mapping pointer x to time", () => {
+      renderRuler({ duration: 10, labelWidth: 200 });
+      const ruler = screen.getByTestId("timeline-ruler");
+
+      // 200px label column, 800px lane: x=600 is halfway through the lane.
+      pointerMoveAt(ruler, 600);
+
+      expect(screen.getByTestId("hover").textContent).toBe("5.000");
+    });
+
+    it("clears hover state and the caret on pointer leave", () => {
+      renderRuler({ duration: 10 });
+      const ruler = screen.getByTestId("timeline-ruler");
+
+      pointerMoveAt(ruler, 250);
+      fireEvent.pointerLeave(ruler);
+
+      expect(screen.getByTestId("hover").textContent).toBe("none");
+      expect(screen.queryByTestId("timeline-hover-caret")).toBeNull();
+    });
+
+    it("renders a caret for hover published by another surface", () => {
+      // Publishes without touching the ruler, the way a plot panel does.
+      function ExternalHover({ time }: { time: number }) {
+        const store = usePlaybackStore();
+        useEffect(() => {
+          setHoverTime(store, time);
+        }, [store, time]);
+        return null;
+      }
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineRuler />
+          <ExternalHover time={7.5} />
+        </PlaybackProvider>,
+      );
+
+      expect(screen.getByTestId("timeline-hover-caret")).toBeTruthy();
     });
   });
 });

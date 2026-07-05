@@ -18,6 +18,7 @@ import {
   bufferingDetailAtom,
   currentTimeAtom,
   durationAtom,
+  hoverTimeAtom,
   isBufferingAtom,
   isPlayPendingAtom,
   isPlayingAtom,
@@ -37,6 +38,16 @@ import type { BufferedRanges, SeekEvent } from "./types";
 export function usePlayhead(): number {
   const store = usePlaybackStore();
   return useAtomValue(playheadAtom, { store });
+}
+
+/**
+ * Timeline time the pointer is inspecting across hover-capable surfaces
+ * (ruler, plot panels), or null when nothing is hovered. Render-only —
+ * surfaces publish it via `setHoverTime` in store-access.
+ */
+export function useHoverTime(): number | null {
+  const store = usePlaybackStore();
+  return useAtomValue(hoverTimeAtom, { store });
 }
 
 /**

@@ -14,6 +14,7 @@
 import {
   bufferedRangesAtom,
   bufferingDetailAtom,
+  hoverTimeAtom,
   isBufferingAtom,
   isPlayPendingAtom,
   isPlayingAtom,
@@ -48,6 +49,27 @@ export function subscribePlayhead(
   callback: () => void,
 ): () => void {
   return store.sub(playheadAtom, callback);
+}
+
+/** Non-reactive read of the hovered timeline time, in seconds (or null). */
+export function getHoverTime(store: PlaybackStore): number | null {
+  return store.get(hoverTimeAtom);
+}
+
+/**
+ * Publishes the timeline time the pointer is inspecting (null to clear).
+ * Unlike the playhead, hover is UI-owned, so surfaces write it directly.
+ */
+export function setHoverTime(store: PlaybackStore, timeSec: number | null) {
+  store.set(hoverTimeAtom, timeSec);
+}
+
+/** Subscribes to hovered-time changes; returns an unsubscribe. */
+export function subscribeHoverTime(
+  store: PlaybackStore,
+  callback: () => void,
+): () => void {
+  return store.sub(hoverTimeAtom, callback);
 }
 
 /**

@@ -118,3 +118,17 @@
   background: var(--color-brand-primary);
   z-index: 3;
 }
+
+/* Shared hover-time caret: the moment being inspected on ANY time-axis
+   surface (this ruler, plot panels) — dashed to stay distinct from the
+   solid playhead line. */
+.hoverCaret {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed var(--color-content-text-secondary);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 2;
+}

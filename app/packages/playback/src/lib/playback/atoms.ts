@@ -49,6 +49,19 @@ export const streamValueAtom = atomFamily(
 export const playheadAtom = atom(0);
 
 /**
+ * Timeline time (seconds) the pointer is currently inspecting, or null
+ * when nothing is hovered. Hover-capable surfaces (the timeline ruler,
+ * plot panels) both publish into and render from this atom, so a shared
+ * caret lets users correlate one moment across every time-axis surface.
+ * Purely visual: it never drives data fetches or the engine clock.
+ */
+// Same overload quirk as streamValueAtom above: a bare `null` initial
+// value narrows to a read-only Atom; the cast preserves writability.
+export const hoverTimeAtom = atom<number | null>(null) as PrimitiveAtom<
+  number | null
+>;
+
+/**
  * The last time the engine confirmed all blocking streams were ready and
  * advanced the playhead. This is the authoritative "what should I render"
  * time for data-driven consumers. Lags behind `playheadAtom` when streams
