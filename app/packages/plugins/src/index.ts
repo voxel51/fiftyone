@@ -79,14 +79,14 @@ export async function loadPlugins() {
       const cacheKey = plugin.jsBundleHash ? `?h=${plugin.jsBundleHash}` : "";
       const promise = loadScript(
         name,
-        pathPrefix + plugin.jsBundleServerPath + cacheKey
+        pathPrefix + plugin.jsBundleServerPath + cacheKey,
       ).catch((e) => {
         console.error(`Plugin "${name}": failed to load!`);
         console.error(e);
       });
       registry.registerScript(name, promise);
       return promise;
-    })
+    }),
   );
 }
 async function loadScript(name, url) {
@@ -191,7 +191,7 @@ export function getAbsolutePluginPath(name: string, path: string): string {
 
 export function usePluginSettings<T>(
   pluginName: string,
-  defaults?: Partial<T>
+  defaults?: Partial<T>,
 ): T {
   const datasetAppConfig = recoil.useRecoilValue(fos.datasetAppConfig);
   const appConfig = recoil.useRecoilValue(fos.config);
@@ -203,7 +203,7 @@ export function usePluginSettings<T>(
     return _.merge<T | {}, Partial<T>, Partial<T>>(
       { ...defaults },
       _.get(appConfigPlugins, pluginName, {}),
-      _.get(datasetPlugins, pluginName, {})
+      _.get(datasetPlugins, pluginName, {}),
     );
   }, [appConfig, pluginName, defaults, datasetAppConfig]);
 
