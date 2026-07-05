@@ -23,9 +23,18 @@ const CAMERA_POSE_EPSILON = 0.000001;
 const DEFAULT_FOCUS_DIRECTION = new THREE.Vector3(1, -1, 0.75).normalize();
 const FOCUS_PADDING = 1.2;
 const MIN_FOCUS_RADIUS = 1;
-const Z_UP_AXIS = { x: 0, y: 0, z: 1 } as const;
 
 type VectorTuple = readonly [number, number, number];
+export type ThreeSceneUpAxis = "x" | "y" | "z";
+
+const SCENE_UP_AXES: Record<
+  ThreeSceneUpAxis,
+  readonly [number, number, number]
+> = {
+  x: [1, 0, 0],
+  y: [0, 1, 0],
+  z: [0, 0, 1],
+};
 
 // OrbitControls scales both its dolly step and its pan step with the
 // camera→target distance, so zoom and pan grind to a halt as the camera
@@ -104,10 +113,12 @@ export interface Base3DSceneProps {
     source: ThreeCameraPoseChangeSource,
   ) => void;
   readonly showGizmo?: boolean;
+  /** World axis OrbitControls and the camera treat as up. @default "z" */
+  readonly up?: ThreeSceneUpAxis;
 }
 
 /**
- * Base 3D R3F scene with reusable navigation, axes, and Z-up coordinates.
+ * Base 3D R3F scene with reusable navigation, axes, and scene-up coordinates.
  */
 export function Base3DScene({
   background = DEFAULT_SCENE_BACKGROUND,
@@ -116,8 +127,9 @@ export function Base3DScene({
   focusSceneRequestKey,
   onCameraPoseChange,
   showGizmo = true,
+  up = "z",
 }: Base3DSceneProps) {
-  useZUpSceneCoordinates();
+  useSceneUpCoordinates(up);
 
   return (
     <>
@@ -499,16 +511,17 @@ function vectorTupleEquals(
   );
 }
 
-function useZUpSceneCoordinates() {
+function useSceneUpCoordinates(up: ThreeSceneUpAxis) {
   const camera = useThree((state) => state.camera);
   const invalidate = useThree((state) => state.invalidate);
+  const [x, y, z] = SCENE_UP_AXES[up];
 
-  // This layout effect switches the camera to Z-up coordinates while the scene
-  // is mounted and restores the previous up vector on cleanup.
+  // This layout effect switches the camera to the requested scene-up axis while
+  // the scene is mounted and restores the previous up vector on cleanup.
   useLayoutEffect(() => {
     const previousUp = camera.up.clone();
 
-    camera.up.set(Z_UP_AXIS.x, Z_UP_AXIS.y, Z_UP_AXIS.z);
+    camera.up.set(x, y, z);
     camera.updateProjectionMatrix();
     invalidate();
 
@@ -517,5 +530,5 @@ function useZUpSceneCoordinates() {
       camera.updateProjectionMatrix();
       invalidate();
     };
-  }, [camera, invalidate]);
+  }, [camera, invalidate, x, y, z]);
 }

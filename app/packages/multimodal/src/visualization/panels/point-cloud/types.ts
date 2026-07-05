@@ -12,6 +12,7 @@ import type {
   ThreeCameraPose,
   ThreeCameraPoseChangeSource,
   ThreeSceneBackground,
+  ThreeSceneUpAxis,
 } from "../base-3d-scene";
 
 export type PanelNoticeSeverity = "error" | "info" | "warning";
@@ -274,6 +275,8 @@ export interface PointCloudPanelProps {
   ) => void;
   readonly onRenderStats?: (stats: PointCloudPanelRenderStats) => void;
   readonly pointSize?: number;
+  /** World axis treated as up by the shared 3D scene. @default "z" */
+  readonly sceneUp?: ThreeSceneUpAxis;
   readonly showGizmo?: boolean;
   readonly showHud?: boolean;
   /**

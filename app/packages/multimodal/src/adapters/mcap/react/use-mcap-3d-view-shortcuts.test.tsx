@@ -81,6 +81,21 @@ describe("egoViewCameraPose", () => {
     expect(pose.position[1]).toBeCloseTo(38);
     expect(pose.position[2]).toBeCloseTo(6);
   });
+
+  it("places above along the configured up axis", () => {
+    const pose = egoViewCameraPose(
+      {
+        rotation: new Quaternion(),
+        translation: new Vector3(),
+      },
+      "y",
+    );
+
+    expect(pose.target).toEqual([0, 0, 0]);
+    expect(pose.position[0]).toBeCloseTo(-12);
+    expect(pose.position[1]).toBeCloseTo(5);
+    expect(pose.position[2]).toBeCloseTo(0);
+  });
 });
 
 describe("topViewCameraPose", () => {
@@ -122,6 +137,20 @@ describe("topViewCameraPose", () => {
     });
     expect(unknown.position[2]).toBeCloseTo(80);
   });
+
+  it("uses the configured up axis for bird's-eye height", () => {
+    const pose = topViewCameraPose({
+      anchor: new Vector3(10, 20, 30),
+      currentDistance: 100,
+      rotation: new Quaternion(),
+      sceneUpAxis: "y",
+    });
+
+    expect(pose.target).toEqual([10, 20, 30]);
+    expect(pose.position[0]).toBeCloseTo(8);
+    expect(pose.position[1]).toBeCloseTo(120);
+    expect(pose.position[2]).toBeCloseTo(30);
+  });
 });
 
 describe("useMcap3dViewShortcuts", () => {
@@ -161,8 +190,10 @@ describe("useMcap3dViewShortcuts", () => {
     fireEvent.keyDown(window, { code: "KeyZ" });
     expect(onApplyCameraPose).not.toHaveBeenCalled();
 
-    const { getByTestId } = render(<input data-cy="text-input" />);
-    fireEvent.keyDown(getByTestId("text-input"), { code: "KeyE" });
+    const { container } = render(<input data-cy="text-input" />);
+    const input = container.querySelector('[data-cy="text-input"]');
+    expect(input).toBeTruthy();
+    fireEvent.keyDown(input as HTMLElement, { code: "KeyE" });
     expect(onApplyCameraPose).not.toHaveBeenCalled();
   });
 
@@ -217,6 +248,30 @@ describe("useMcap3dViewShortcuts", () => {
     const [pose] = onApplyCameraPose.mock.calls[0];
     expect(pose.target).toEqual([0, 0, 0]);
     expect(pose.position[2]).toBeCloseTo(50);
+  });
+
+  it("applies shortcuts using the configured up axis", () => {
+    const onApplyCameraPose = vi.fn();
+    renderHook(useMcap3dViewShortcuts, {
+      initialProps: shortcutOptions({
+        onApplyCameraPose,
+        sceneUpAxis: "y",
+      }),
+    });
+
+    fireEvent.keyDown(window, { code: "KeyE" });
+    expect(onApplyCameraPose).toHaveBeenCalledTimes(1);
+    let [pose] = onApplyCameraPose.mock.calls[0];
+    expect(pose.target).toEqual([10, 0, 0]);
+    expect(pose.position[0]).toBeCloseTo(-2);
+    expect(pose.position[1]).toBeCloseTo(5);
+    expect(pose.position[2]).toBeCloseTo(0);
+
+    fireEvent.keyDown(window, { code: "KeyT" });
+    expect(onApplyCameraPose).toHaveBeenCalledTimes(2);
+    [pose] = onApplyCameraPose.mock.calls[1];
+    expect(pose.target).toEqual([10, 0, 0]);
+    expect(pose.position[1]).toBeCloseTo(50);
   });
 
   it("unbinds the listener on unmount", () => {

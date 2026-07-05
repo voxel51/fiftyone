@@ -219,7 +219,7 @@ describe("renderPointCloudSnapshot", () => {
     expect([camera.position.x, camera.position.y, camera.position.z]).toEqual(
       pose.position,
     );
-    // Z-up, like useZUpSceneCoordinates in the live scene.
+    // Z-up, matching the live scene's default up axis.
     expect([camera.up.x, camera.up.y, camera.up.z]).toEqual([0, 0, 1]);
     expect(camera.aspect).toBe(2);
     expect(camera.fov).toBe(PERSPECTIVE_POINT_CAMERA.fov);

@@ -211,6 +211,20 @@ describe("Mcap3dTileSettings", () => {
     });
   });
 
+  it("wires the scene up-axis control to the dataset view updater", () => {
+    const props = renderSettings({
+      frameIds: ["map"],
+      sceneUpAxis: "z",
+      worldFrameId: "map",
+    });
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Up Axis" }), {
+      target: { value: "y" },
+    });
+
+    expect(props.setSceneUpAxis).toHaveBeenCalledWith("y");
+  });
+
   it("collapses appearance controls by default", () => {
     renderSettings();
 
@@ -287,12 +301,14 @@ function settingsProps(
     poseTopics: [],
     referenceGrid: { enabled: true, opacityPercent: 5, spacingM: 1 },
     sceneBackground: { mode: "solid" as const, solidColor: "#050b12" },
+    sceneUpAxis: "z",
     sceneAnnotationSources: [],
     sceneAnnotationTopics: [],
     selectedPoseSources: [],
     setPinholeCamera: vi.fn(),
     setReferenceGrid: vi.fn(),
     setSceneBackground: vi.fn(),
+    setSceneUpAxis: vi.fn(),
     setSourcesEnabled: vi.fn(),
     setTrackingMode: vi.fn(),
     setTrajectoryFrameOverrides: vi.fn(),

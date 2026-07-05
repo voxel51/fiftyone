@@ -1,11 +1,15 @@
 import { useEffect, useRef } from "react";
 import { Quaternion, Vector3 } from "three";
 import type { PointCloudCameraPose } from "../../../visualization/panels/point-cloud";
-import { headingRotation, type Mcap3dCameraTargetPose } from "./mcap-3d-camera";
+import type { Mcap3dCameraTargetPose } from "./mcap-3d-camera";
 import type { CameraPoseChangeSource } from "./use-mcap-3d-camera-tracking";
 import { resolveCameraTargetPose } from "./use-mcap-3d-camera-tracking";
 import { PREFERRED_CAMERA_TARGET_FRAMES } from "./use-mcap-3d-frame-selection";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
+import {
+  DEFAULT_MCAP_3D_SCENE_UP_AXIS,
+  type Mcap3dSceneUpAxis,
+} from "./mcap-3d-scene-up";
 
 // Ego chase view: behind and above the ego along its heading, looking at it.
 // Fixed automotive-scale offsets — the trained looker-3d "ego view" is a
@@ -18,9 +22,16 @@ const TOP_VIEW_MIN_HEIGHT_M = 25;
 const TOP_VIEW_MAX_HEIGHT_M = 400;
 const TOP_VIEW_DEFAULT_HEIGHT_M = 80;
 // Slight horizontal lean in top view: keeps OrbitControls away from the
-// degenerate straight-down pole (view direction parallel to the Z up vector)
-// and pins the screen-up direction (~1 degree, visually imperceptible).
+// degenerate straight-down pole (view direction parallel to the scene-up
+// vector) and pins the screen-up direction (~1 degree, visually imperceptible).
 const TOP_VIEW_LEAN_RATIO = 0.02;
+
+const SCENE_UP_VECTORS: Record<Mcap3dSceneUpAxis, Vector3> = {
+  x: new Vector3(1, 0, 0),
+  y: new Vector3(0, 1, 0),
+  z: new Vector3(0, 0, 1),
+};
+const HEADING_DIRECTION_EPSILON = 0.000001;
 
 /**
  * Resolves which frame "the ego" means for view-preset shortcuts. Frame
@@ -45,18 +56,21 @@ export function resolveMcap3dEgoFrameId({
 }
 
 /**
- * Chase view of the ego: camera behind and above it along its yaw heading
- * (level horizon), looking at the ego position. With an identity ego pose
- * (ego-centric world frame) this is a deterministic behind-the-origin view,
- * matching the trained looker-3d "reset to ego view" behavior.
+ * Chase view of the ego: camera behind its heading and above it along the
+ * configured scene-up axis, looking at the ego position. With an identity ego
+ * pose (ego-centric world frame) this is a deterministic behind-the-origin
+ * view, matching the trained looker-3d "reset to ego view" behavior.
  */
 export function egoViewCameraPose(
   egoPose: Mcap3dCameraTargetPose,
+  sceneUpAxis: Mcap3dSceneUpAxis = DEFAULT_MCAP_3D_SCENE_UP_AXIS,
 ): PointCloudCameraPose {
-  const heading = headingRotation(egoPose.rotation);
-  const position = new Vector3(-EGO_VIEW_BACK_M, 0, EGO_VIEW_UP_M)
-    .applyQuaternion(heading)
-    .add(egoPose.translation);
+  const up = sceneUpVector(sceneUpAxis);
+  const forward = headingDirection(egoPose.rotation, sceneUpAxis);
+  const position = egoPose.translation
+    .clone()
+    .addScaledVector(forward, -EGO_VIEW_BACK_M)
+    .addScaledVector(up, EGO_VIEW_UP_M);
 
   return {
     position: [position.x, position.y, position.z],
@@ -72,18 +86,20 @@ export function egoViewCameraPose(
  * Top-down view over an anchor point, preserving the current orbit distance
  * (clamped) so T reads as "rotate my view to bird's-eye", not a zoom reset.
  * The camera leans slightly along the negated heading so the heading points
- * screen-up (with Z-up OrbitControls, screen-up in a near-vertical view is
- * the direction opposite the horizontal lean); without a heading the lean
- * defaults to south, i.e. north-up.
+ * screen-up (in a near-vertical view, screen-up is the direction opposite the
+ * horizontal lean); without a heading the lean defaults to south, i.e.
+ * north-up for the default Z-up view.
  */
 export function topViewCameraPose({
   anchor,
   currentDistance,
   rotation,
+  sceneUpAxis = DEFAULT_MCAP_3D_SCENE_UP_AXIS,
 }: {
   readonly anchor: Vector3;
   readonly currentDistance: number | null;
   readonly rotation: Quaternion | null;
+  readonly sceneUpAxis?: Mcap3dSceneUpAxis;
 }): PointCloudCameraPose {
   const height = Math.min(
     TOP_VIEW_MAX_HEIGHT_M,
@@ -92,18 +108,12 @@ export function topViewCameraPose({
       currentDistance ?? TOP_VIEW_DEFAULT_HEIGHT_M,
     ),
   );
+  const up = sceneUpVector(sceneUpAxis);
   const lean = rotation
-    ? new Vector3(1, 0, 0).applyQuaternion(headingRotation(rotation))
-    : new Vector3(0, 1, 0);
-  lean.setZ(0);
-  if (lean.lengthSq() === 0) {
-    lean.set(0, 1, 0);
-  }
+    ? headingDirection(rotation, sceneUpAxis)
+    : defaultTopViewDirection(sceneUpAxis);
   lean.normalize().multiplyScalar(-height * TOP_VIEW_LEAN_RATIO);
-  const position = anchor
-    .clone()
-    .add(lean)
-    .setZ(anchor.z + height);
+  const position = anchor.clone().add(lean).addScaledVector(up, height);
 
   return {
     position: [position.x, position.y, position.z],
@@ -122,6 +132,7 @@ export interface Mcap3dViewShortcutsOptions {
     source: CameraPoseChangeSource,
   ) => void;
   readonly playbackTimeNs: bigint | undefined;
+  readonly sceneUpAxis?: Mcap3dSceneUpAxis;
   readonly worldFrameId: string;
 }
 
@@ -184,6 +195,7 @@ function viewPresetPoseFor(
     frameTransforms,
     getDisplayedCameraPose,
     playbackTimeNs,
+    sceneUpAxis = DEFAULT_MCAP_3D_SCENE_UP_AXIS,
     worldFrameId,
   }: Mcap3dViewShortcutsOptions,
 ): PointCloudCameraPose | null {
@@ -205,7 +217,7 @@ function viewPresetPoseFor(
   if (code === "KeyE") {
     // No resolvable ego this tick (transform window loading, no frames): a
     // no-op beats a jump to a wrong pose; the next press works once resolved.
-    return egoPose ? egoViewCameraPose(egoPose) : null;
+    return egoPose ? egoViewCameraPose(egoPose, sceneUpAxis) : null;
   }
 
   const currentPose = getDisplayedCameraPose();
@@ -222,7 +234,35 @@ function viewPresetPoseFor(
     anchor,
     currentDistance: currentPose ? cameraOrbitDistance(currentPose) : null,
     rotation: egoPose ? egoPose.rotation : null,
+    sceneUpAxis,
   });
+}
+
+function headingDirection(
+  rotation: Quaternion,
+  sceneUpAxis: Mcap3dSceneUpAxis,
+): Vector3 {
+  const up = sceneUpVector(sceneUpAxis);
+  const forward = new Vector3(1, 0, 0).applyQuaternion(rotation);
+  forward.addScaledVector(up, -forward.dot(up));
+  if (forward.lengthSq() <= HEADING_DIRECTION_EPSILON ** 2) {
+    return fallbackForwardDirection(sceneUpAxis);
+  }
+  return forward.normalize();
+}
+
+function sceneUpVector(sceneUpAxis: Mcap3dSceneUpAxis): Vector3 {
+  return SCENE_UP_VECTORS[sceneUpAxis].clone();
+}
+
+function fallbackForwardDirection(sceneUpAxis: Mcap3dSceneUpAxis): Vector3 {
+  return sceneUpAxis === "x" ? new Vector3(0, 1, 0) : new Vector3(1, 0, 0);
+}
+
+function defaultTopViewDirection(sceneUpAxis: Mcap3dSceneUpAxis): Vector3 {
+  return sceneUpAxis === "z"
+    ? new Vector3(0, 1, 0)
+    : fallbackForwardDirection(sceneUpAxis);
 }
 
 function cameraOrbitDistance(pose: PointCloudCameraPose): number {

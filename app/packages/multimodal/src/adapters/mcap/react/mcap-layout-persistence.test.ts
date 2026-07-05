@@ -344,4 +344,39 @@ describe("mcap-layout-persistence", () => {
       expect(sanitizePlotSeries({ "plot-1": [] })).toBeUndefined();
     });
   });
+
+  describe("sceneUpAxis", () => {
+    it("round-trips per-dataset scene up-axis", () => {
+      writeMcapModalLayout({ sceneUpAxis: "y" }, "ds-a");
+      expect(readMcapModalLayout("ds-a")?.sceneUpAxis).toBe("y");
+    });
+
+    it("never leaks scene up-axis through the browser-wide fallback", () => {
+      writeMcapModalLayout({ layout: "3d-1", sceneUpAxis: "x" }, "ds-a");
+
+      const other = readMcapModalLayout("ds-b");
+      expect(other?.layout).toBe("3d-1");
+      expect(other?.sceneUpAxis).toBeUndefined();
+    });
+
+    it("drops invalid scene up-axis values but keeps valid fields", () => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          version: 2,
+          byDataset: {
+            "ds-a": {
+              leftSidebarOpen: true,
+              sceneUpAxis: "north",
+              updatedAtMs: 1,
+            },
+          },
+        }),
+      );
+
+      const read = readMcapModalLayout("ds-a");
+      expect(read?.leftSidebarOpen).toBe(true);
+      expect(read?.sceneUpAxis).toBeUndefined();
+    });
+  });
 });

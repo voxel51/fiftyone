@@ -1,4 +1,8 @@
 import type { MosaicNode } from "react-mosaic-component";
+import {
+  normalizeMcap3dSceneUpAxis,
+  type Mcap3dSceneUpAxis,
+} from "./mcap-3d-scene-up";
 import { MCAP_TILE_TYPE } from "./mcap-tile-types";
 
 /**
@@ -37,6 +41,11 @@ export interface McapPersistedModalLayout {
    * it is never merged into (or read from) the browser-wide fallback.
    */
   plotSeries?: Record<string, readonly McapPersistedPlotSeries[]>;
+  /**
+   * World axis treated as up by the 3D MCAP scene. Dataset-scoped only:
+   * coordinate conventions belong to the dataset, not the browser fallback.
+   */
+  sceneUpAxis?: Mcap3dSceneUpAxis;
   /** Left sidebar width in px; the shell clamps it on restore. */
   sidebarWidthPx?: number;
 }
@@ -110,6 +119,7 @@ function sanitizeEntry(raw: unknown): McapPersistedModalLayout | undefined {
       ? candidate.layout
       : undefined,
     plotSeries: sanitizePlotSeries(candidate.plotSeries),
+    sceneUpAxis: normalizeMcap3dSceneUpAxis(candidate.sceneUpAxis),
     sidebarWidthPx:
       typeof candidate.sidebarWidthPx === "number" &&
       Number.isFinite(candidate.sidebarWidthPx) &&
@@ -245,6 +255,9 @@ export function readMcapModalLayout(
     // Dataset-scoped on purpose: series reference this dataset's topics,
     // so another dataset's plots must never leak in via the fallback.
     plotSeries: entry?.plotSeries,
+    // Dataset-scoped on purpose: world-up conventions are recording-family
+    // semantics, not reusable browser chrome.
+    sceneUpAxis: entry?.sceneUpAxis,
     sidebarWidthPx: entry?.sidebarWidthPx ?? fallback?.sidebarWidthPx,
   };
 }
@@ -277,11 +290,16 @@ export function writeMcapModalLayout(
       evictLeastRecentlyUpdated(byDataset);
     }
     // The fallback layer tracks the latest arrangement anywhere, but
-    // plot series are dataset-scoped — strip them from both the incoming
-    // patch and anything an older write left behind.
-    const { plotSeries: _datasetOnly, ...fallbackPatch } = patch;
+    // plot series and scene-up semantics are dataset-scoped — strip them
+    // from both the incoming patch and anything an older write left behind.
+    const {
+      plotSeries: _datasetOnlyPlotSeries,
+      sceneUpAxis: _datasetOnlySceneUpAxis,
+      ...fallbackPatch
+    } = patch;
     const fallback = { ...store?.fallback, ...fallbackPatch };
     delete fallback.plotSeries;
+    delete fallback.sceneUpAxis;
     const next: PersistedStore = {
       version: VERSION,
       fallback,

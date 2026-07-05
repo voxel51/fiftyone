@@ -304,6 +304,38 @@ describe("useMcapModalLayout", () => {
     expect(read?.leftSidebarOpen).toBe(false);
     expect(read?.sidebarWidthPx).toBe(420);
   });
+
+  it("restores and persists the dataset scene up-axis", () => {
+    writeMcapModalLayout({ sceneUpAxis: "y" }, "dataset-a");
+    const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-a");
+
+    expect(result.current.sceneUpAxis).toBe("y");
+
+    act(() => result.current.onSceneUpAxisChange("x"));
+
+    expect(result.current.sceneUpAxis).toBe("x");
+    expect(readMcapModalLayout("dataset-a")?.sceneUpAxis).toBe("x");
+    expect(readMcapModalLayout("dataset-b")?.sceneUpAxis).toBeUndefined();
+  });
+
+  it("resets scene up-axis when switching to an unsaved dataset", () => {
+    const { result, rerender } = renderHook(
+      ({ datasetId }: { readonly datasetId: string }) =>
+        useMcapModalLayout({
+          sources: SCENE_SOURCES,
+          datasetId,
+          capabilities: STRONG_CAPABILITIES,
+        }),
+      { initialProps: { datasetId: "dataset-a" } },
+    );
+
+    act(() => result.current.onSceneUpAxisChange("x"));
+    expect(result.current.sceneUpAxis).toBe("x");
+
+    rerender({ datasetId: "dataset-b" });
+
+    expect(result.current.sceneUpAxis).toBe("z");
+  });
 });
 
 describe("pruneMosaicLayout", () => {

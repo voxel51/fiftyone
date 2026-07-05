@@ -17,6 +17,8 @@ const playbackHarness = vi.hoisted(() => ({
     initialTiles: {},
     onLeftOpenChange: vi.fn(),
     onLeftSidebarWidthChange: vi.fn(),
+    onSceneUpAxisChange: vi.fn(),
+    sceneUpAxis: "z",
   })),
   useMcapSceneInventory: vi.fn(() => ({
     error: null,
@@ -77,9 +79,11 @@ describe("McapSourcePlayback", () => {
     );
 
     expect(client.activateSource).toHaveBeenCalledWith(source);
-    expect(screen.getByTestId("mcap-modal-state").textContent).toBe(
-      "No previewable streams in this recording (3 topics found)",
-    );
-    expect(screen.queryByTestId("playback-shell")).toBeNull();
+    expect(
+      screen.getByText(
+        "No previewable streams in this recording (3 topics found)",
+      ),
+    ).toBeTruthy();
+    expect(document.querySelector('[data-cy="playback-shell"]')).toBeNull();
   });
 });

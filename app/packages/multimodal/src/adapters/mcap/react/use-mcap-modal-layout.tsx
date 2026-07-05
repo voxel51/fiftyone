@@ -1,9 +1,19 @@
 import { collectTileIds, useTiling, type TilingTile } from "@fiftyone/tiling";
 import { useStore } from "jotai";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { MosaicNode } from "react-mosaic-component";
 import type { ByteSourceReadProfile } from "../../../query/bytes";
 import type { SceneSource } from "../../../scene-inventory";
+import {
+  DEFAULT_MCAP_3D_SCENE_UP_AXIS,
+  type Mcap3dSceneUpAxis,
+} from "./mcap-3d-scene-up";
 import {
   mcapTileTypeFromId,
   readMcapModalLayout,
@@ -31,6 +41,8 @@ export interface McapModalLayout {
   /** Persisted sidebar width; `undefined` keeps the shell's default. */
   defaultLeftSidebarWidth: number | undefined;
   onLeftSidebarWidthChange: (px: number) => void;
+  sceneUpAxis: Mcap3dSceneUpAxis;
+  onSceneUpAxisChange: (axis: Mcap3dSceneUpAxis) => void;
 }
 
 export interface UseMcapModalLayoutOptions {
@@ -101,6 +113,12 @@ export function useMcapModalLayout({
     persisted?.expandedTileId && restoredTileIds?.has(persisted.expandedTileId)
       ? persisted.expandedTileId
       : null;
+  const persistedSceneUpAxis =
+    persisted?.sceneUpAxis ?? DEFAULT_MCAP_3D_SCENE_UP_AXIS;
+  const [sceneUpAxis, setSceneUpAxis] = useState(persistedSceneUpAxis);
+  useEffect(() => {
+    setSceneUpAxis(persistedSceneUpAxis);
+  }, [datasetId, persistedSceneUpAxis]);
 
   const onLeftOpenChange = useCallback(
     (open: boolean) => {
@@ -116,6 +134,14 @@ export function useMcapModalLayout({
     [datasetId],
   );
 
+  const onSceneUpAxisChange = useCallback(
+    (axis: Mcap3dSceneUpAxis) => {
+      setSceneUpAxis(axis);
+      writeMcapModalLayout({ sceneUpAxis: axis }, datasetId);
+    },
+    [datasetId],
+  );
+
   return {
     initialTiles: restored?.tiles ?? defaultTiles,
     initialLayout: restored?.layout ?? resolved.layout,
@@ -124,6 +150,8 @@ export function useMcapModalLayout({
     onLeftOpenChange,
     defaultLeftSidebarWidth: persisted?.sidebarWidthPx,
     onLeftSidebarWidthChange,
+    sceneUpAxis,
+    onSceneUpAxisChange,
   };
 }
 

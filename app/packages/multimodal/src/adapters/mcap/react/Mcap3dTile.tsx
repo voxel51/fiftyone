@@ -27,6 +27,7 @@ import {
 } from "../mcap-latency-debug";
 import Mcap3dTileSettings from "./Mcap3dTileSettings";
 import { build3dLayers } from "./mcap-3d-layers";
+import { useMcap3dViewSettings } from "./mcap-3d-view-settings-context";
 import {
   buildMcap3dPlacementNotices,
   buildMcap3dTransformNotices,
@@ -138,6 +139,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     setSceneBackground,
     temporalPolicy,
   } = useMcapModalSettings();
+  const { sceneUpAxis, setSceneUpAxis } = useMcap3dViewSettings();
   const panelBackground = useMemo<ThreeSceneBackground>(() => {
     switch (sceneBackground.mode) {
       case "abyss":
@@ -154,9 +156,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         ? {
             opacity: referenceGrid.opacityPercent / 100,
             spacing: referenceGrid.spacingM,
+            up: sceneUpAxis,
           }
         : null,
-    [referenceGrid],
+    [referenceGrid, sceneUpAxis],
   );
   const latencyDebugEnabled = useMemo(() => isMcapLatencyDebugEnabled(), []);
   const lastDebugPlacementStateRef = useRef<string | null>(null);
@@ -499,6 +502,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     isActive: Boolean(tileId && focusedTileId === tileId),
     onApplyCameraPose: handleCameraPoseChange,
     playbackTimeNs,
+    sceneUpAxis,
     worldFrameId,
   });
   const producedNotices = useMemo<readonly McapHealthNotice[]>(
@@ -571,6 +575,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
           : {}),
         placementStatus,
         provisionalFrameIds,
+        sceneUpAxis,
         transformedLayerCount,
         worldFrameId,
       };
@@ -593,6 +598,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       noteRenderedCameraPose,
       placementStatus,
       provisionalFrameIds,
+      sceneUpAxis,
       transformedLayerCount,
       worldFrameId,
     ],
@@ -624,6 +630,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       pendingFrustumFrameIds,
       pendingGridFrameIds,
       provisionalFrameIds,
+      sceneUpAxis,
       transformStatus: frameTransforms.status,
       transformedLayerCount,
       worldFrameId,
@@ -652,6 +659,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     pendingGridFrameIds,
     pointCloudLayers,
     provisionalFrameIds,
+    sceneUpAxis,
     sceneAnnotationLayers,
     transformedLayerCount,
     worldFrameId,
@@ -684,6 +692,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       frameTransforms.status,
       frameTransforms.frameIds.length,
       cameraTargetFrameId,
+      sceneUpAxis,
       cameraTargetResolution.status,
       trackingMode,
       controlledCameraPose ? "controlled" : "uncontrolled",
@@ -712,6 +721,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       pendingGridFrameIds,
       pointCount: pointCountForLayers(pointCloudLayers),
       provisionalFrameIds,
+      sceneUpAxis,
       transformFrameIds: frameTransforms.frameIds.length,
       transformStatus: frameTransforms.status,
       transformedLayerCount,
@@ -735,6 +745,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     placementStatus,
     pointCloudLayers,
     provisionalFrameIds,
+    sceneUpAxis,
     sceneAnnotationLayers,
     trackingMode,
     transformedLayerCount,
@@ -761,10 +772,12 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         sceneAnnotationSources={sceneAnnotationSources}
         sceneAnnotationTopics={sceneAnnotationTopics}
         sceneBackground={sceneBackground}
+        sceneUpAxis={sceneUpAxis}
         selectedPoseSources={selectedPoseSources}
         setPinholeCamera={setPinholeCamera}
         setReferenceGrid={setReferenceGrid}
         setSceneBackground={setSceneBackground}
+        setSceneUpAxis={setSceneUpAxis}
         setSourcesEnabled={setSourcesEnabled}
         setTrackingMode={setTrackingMode}
         setTrajectoryFrameOverrides={setTrajectoryFrameOverrides}
@@ -795,7 +808,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             background={panelBackground}
             cameraPose={panelCameraPose}
             canvasSurface="modal-3d"
-            fitResetKey={worldFrameId}
+            fitResetKey={`${worldFrameId}:${sceneUpAxis}`}
             frustumLayers={frustumLayers}
             hudLines={hudLines}
             gridLayers={gridLayers}
@@ -804,6 +817,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             notices={panelNotices}
             onCameraPoseChange={handleCameraPoseChange}
             onRenderStats={handlePanelRenderStats}
+            sceneUp={sceneUpAxis}
             worldGrid={worldGrid}
           />
           <McapTileStatusBadge topics={selectedTopics} />

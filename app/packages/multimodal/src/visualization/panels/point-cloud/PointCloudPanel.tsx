@@ -61,6 +61,7 @@ export function PointCloudPanel({
   onCameraPoseChange,
   onRenderStats,
   pointSize = DEFAULT_POINT_SIZE,
+  sceneUp = "z",
   showGizmo = true,
   showControls = true,
   showHud = true,
@@ -122,6 +123,10 @@ export function PointCloudPanel({
         ? frameFitPose
         : (initialFitPose ?? frameFitPose);
   const effectiveCameraPose = cameraPose ?? fittedCameraPose;
+  const effectiveWorldGrid = useMemo(
+    () => (worldGrid ? { ...worldGrid, up: worldGrid.up ?? sceneUp } : null),
+    [sceneUp, worldGrid],
+  );
   const handleRecenter = () => {
     if (!frameFitPose) {
       return;
@@ -259,9 +264,12 @@ export function PointCloudPanel({
           cameraPose={effectiveCameraPose}
           onCameraPoseChange={onCameraPoseChange}
           showGizmo={showGizmo}
+          up={sceneUp}
         >
           <ScenePickingContext.Provider value={!measureArmed}>
-            {worldGrid ? <WorldGridLayer {...worldGrid} /> : null}
+            {effectiveWorldGrid ? (
+              <WorldGridLayer {...effectiveWorldGrid} />
+            ) : null}
             {gridLayers.map((layer, index) => (
               <GridSceneLayer
                 key={layer.id}

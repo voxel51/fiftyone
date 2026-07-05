@@ -32,6 +32,7 @@ vi.mock("../base-3d-scene", () => ({
     children,
     onCameraPoseChange,
     showGizmo = true,
+    up = "z",
   }: {
     readonly cameraPose?: {
       readonly position: readonly [number, number, number];
@@ -46,11 +47,13 @@ vi.mock("../base-3d-scene", () => ({
       source: "interaction",
     ) => void;
     readonly showGizmo?: boolean;
+    readonly up?: "x" | "y" | "z";
   }) => (
     <div
       data-camera-pose={cameraPose ? JSON.stringify(cameraPose) : ""}
       data-cy="base-3d-scene"
       data-show-gizmo={String(showGizmo)}
+      data-up-axis={up}
     >
       <button
         data-cy="camera-change"
@@ -210,6 +213,16 @@ describe("PointCloudPanel", () => {
     expect(
       screen.getByTestId("base-3d-scene").getAttribute("data-show-gizmo"),
     ).toBe("false");
+  });
+
+  it("passes the configured scene up-axis to the base scene", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    render(<PointCloudPanel layers={[]} sceneUp="x" worldGrid={{}} />);
+
+    expect(
+      screen.getByTestId("base-3d-scene").getAttribute("data-up-axis"),
+    ).toBe("x");
   });
 
   it("renders every layer in one scene with its own transform", () => {

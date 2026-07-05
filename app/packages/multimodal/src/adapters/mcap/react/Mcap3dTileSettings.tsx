@@ -19,6 +19,10 @@ import type {
   McapSceneBackgroundMode,
   McapSceneBackgroundSettings,
 } from "./mcap-modal-settings";
+import {
+  MCAP_3D_SCENE_UP_AXES,
+  type Mcap3dSceneUpAxis,
+} from "./mcap-3d-scene-up";
 import type { McapPoseTrajectories } from "./mcap-pose-trajectories-context";
 import {
   checkboxNoSpaceToggleProps,
@@ -45,6 +49,7 @@ export interface Mcap3dTileSettingsProps {
   readonly sceneAnnotationSources: readonly SceneSource[];
   readonly sceneAnnotationTopics: readonly string[];
   readonly sceneBackground: McapSceneBackgroundSettings;
+  readonly sceneUpAxis: Mcap3dSceneUpAxis;
   readonly selectedPoseSources: readonly SceneSource[];
   readonly setPinholeCamera: (
     settings: Partial<McapPinholeCameraSettings>,
@@ -55,6 +60,7 @@ export interface Mcap3dTileSettingsProps {
   readonly setSceneBackground: (
     settings: Partial<McapSceneBackgroundSettings>,
   ) => void;
+  readonly setSceneUpAxis: (axis: Mcap3dSceneUpAxis) => void;
   readonly setSourcesEnabled: (
     ids: readonly string[],
     checked: boolean,
@@ -97,10 +103,12 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   sceneAnnotationSources,
   sceneAnnotationTopics,
   sceneBackground,
+  sceneUpAxis,
   selectedPoseSources,
   setPinholeCamera,
   setReferenceGrid,
   setSceneBackground,
+  setSceneUpAxis,
   setSourcesEnabled,
   setTrackingMode,
   setTrajectoryFrameOverrides,
@@ -220,6 +228,11 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
         />
 
         <McapSidebarGroup title="View">
+          <SceneUpAxisSelect
+            onChange={setSceneUpAxis}
+            tooltip="World axis treated as up by the 3D camera, gizmo, and reference grid."
+            value={sceneUpAxis}
+          />
           <FrameSelect
             disabled={frameIds.length === 0}
             label="World Frame"
@@ -489,6 +502,34 @@ function TrackingModeSelect({
         {TRACKING_MODES.map((mode) => (
           <option key={mode.value} value={mode.value}>
             {mode.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function SceneUpAxisSelect({
+  onChange,
+  tooltip,
+  value,
+}: {
+  readonly onChange: (value: Mcap3dSceneUpAxis) => void;
+  readonly tooltip: string;
+  readonly value: Mcap3dSceneUpAxis;
+}) {
+  return (
+    <label className={settingsStyles.field}>
+      <SettingsLabel label="Up Axis" tooltip={tooltip} />
+      <select
+        aria-label="Up Axis"
+        className={settingsStyles.select}
+        onChange={(event) => onChange(event.target.value as Mcap3dSceneUpAxis)}
+        value={value}
+      >
+        {MCAP_3D_SCENE_UP_AXES.map((axis) => (
+          <option key={axis} value={axis}>
+            {axis.toUpperCase()}
           </option>
         ))}
       </select>
