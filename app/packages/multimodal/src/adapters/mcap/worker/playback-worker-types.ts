@@ -6,9 +6,12 @@ import type {
 import type { McapTransportSnapshot } from "./transport-meter";
 import type {
   McapDecodedMessage,
+  McapEnumerateNumericFieldsRequest,
+  McapNumericSeriesResult,
   McapReadDecodedMessagesRequest,
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,
+  McapReadNumericSeriesRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
@@ -16,6 +19,7 @@ import type {
   McapReadTimelineRangeRequest,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
+  McapTopicNumericFields,
   McapTopicTimeBounds,
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
@@ -73,9 +77,11 @@ export type McapPlaybackWorkerFetchParameters = {
  * Typed request payloads supported by the MCAP playback worker RPC surface.
  */
 export type McapPlaybackWorkerRequestPayloadByType = {
+  readonly enumerateNumericFields: McapEnumerateNumericFieldsRequest;
   readonly readDecodedMessages: McapReadDecodedMessagesRequest;
   readonly readFrameTransformBootstrap: McapReadFrameTransformBootstrapRequest;
   readonly readFrameTransformWindow: McapReadFrameTransformWindowRequest;
+  readonly readNumericSeries: McapReadNumericSeriesRequest;
   readonly readSynchronizedMessageBatch: McapReadSynchronizedMessageBatchRequest;
   readonly readSynchronizedMessages: McapReadSynchronizedMessagesRequest;
   readonly readTimelineRange: McapReadTimelineRangeRequest;
@@ -87,8 +93,10 @@ export type McapPlaybackWorkerRequestPayloadByType = {
  * Unary result payloads returned by worker RPC calls.
  */
 export type McapPlaybackWorkerResultByType = {
+  readonly enumerateNumericFields: readonly McapTopicNumericFields[];
   readonly readFrameTransformBootstrap: McapFrameTransformSetWire;
   readonly readFrameTransformWindow: McapFrameTransformSetWire;
+  readonly readNumericSeries: McapNumericSeriesResult;
   readonly readSynchronizedMessageBatch: readonly McapSynchronizedMessageWindow[];
   readonly readSynchronizedMessages: McapSynchronizedMessageWindow;
   readonly readTimelineRange: McapTimelineRange;

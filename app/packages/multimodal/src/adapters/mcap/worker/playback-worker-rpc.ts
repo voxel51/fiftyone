@@ -42,6 +42,10 @@ type McapPlaybackWorkerOperationMap = {
  * Single source of truth for MCAP worker dispatch and scheduling priority.
  */
 export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
+  enumerateNumericFields: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+  },
   readDecodedMessages: {
     kind: "stream",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
@@ -53,6 +57,10 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
   readFrameTransformWindow: {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME,
+  },
+  readNumericSeries: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
   },
   readSynchronizedMessageBatch: {
     kind: "unary",
@@ -102,6 +110,8 @@ export function runMcapPlaybackWorkerUnaryRequest(
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerUnaryType>,
 ): Promise<McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType]> {
   switch (message.type) {
+    case "enumerateNumericFields":
+      return client.enumerateNumericFields(message.payload);
     case "readFrameTransformBootstrap":
       return client
         .readFrameTransformBootstrap(message.payload)
@@ -110,6 +120,8 @@ export function runMcapPlaybackWorkerUnaryRequest(
       return client
         .readFrameTransformWindow(message.payload)
         .then(dehydrateMcapFrameTransformSet);
+    case "readNumericSeries":
+      return client.readNumericSeries(message.payload);
     case "readSynchronizedMessageBatch":
       return client.readSynchronizedMessageBatch(message.payload);
     case "readSynchronizedMessages":

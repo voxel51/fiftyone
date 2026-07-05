@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import type { ByteClient } from "../../query/bytes";
 import {
   acquireSharedMcapResourceClient,
   createMcapResourceClient,
@@ -51,6 +52,15 @@ describe("MCAP resource worker option", () => {
     expect(workerHarness.createWorkerMcapResourceClient).toHaveBeenCalledTimes(
       1,
     );
+  });
+
+  it("uses inline mode when a custom byte client is provided", () => {
+    const byteClient = { readBytes: vi.fn() } as unknown as ByteClient;
+    const client = createMcapResourceClient({ byteClient, worker: true });
+
+    expect(workerHarness.createWorkerMcapResourceClient).not.toHaveBeenCalled();
+
+    client.dispose();
   });
 });
 

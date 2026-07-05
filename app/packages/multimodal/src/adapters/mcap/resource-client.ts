@@ -1,4 +1,5 @@
 import { createInlineMcapResourceClient } from "./resources";
+import type { ByteClient } from "../../query/bytes";
 import type { McapResourceClient } from "./types";
 import { createWorkerMcapResourceClient } from "./worker";
 
@@ -6,6 +7,12 @@ import { createWorkerMcapResourceClient } from "./worker";
  * Options for constructing an MCAP resource client.
  */
 export interface CreateMcapResourceClientOptions {
+  /**
+   * Custom byte reader for inline MCAP clients. Worker clients cannot receive
+   * browser-owned resources like File objects, so this forces inline mode.
+   */
+  readonly byteClient?: ByteClient;
+
   /**
    * Run MCAP resource reads in a playback worker instead of the calling thread.
    */
@@ -19,6 +26,10 @@ export interface CreateMcapResourceClientOptions {
 export function createMcapResourceClient(
   options: CreateMcapResourceClientOptions = {},
 ): McapResourceClient {
+  if (options.byteClient) {
+    return createInlineMcapResourceClient({ byteClient: options.byteClient });
+  }
+
   if (options.worker === true) {
     return createWorkerMcapResourceClient();
   }
@@ -50,6 +61,14 @@ const sharedClients = new Map<string, SharedClientEntry>();
 export function acquireSharedMcapResourceClient(
   options: CreateMcapResourceClientOptions = {},
 ): { client: McapResourceClient; release: () => void } {
+  if (options.byteClient) {
+    const client = createMcapResourceClient(options);
+    return {
+      client,
+      release: () => client.dispose(),
+    };
+  }
+
   const key = options.worker === true ? "worker" : "inline";
   let entry = sharedClients.get(key);
   if (!entry) {

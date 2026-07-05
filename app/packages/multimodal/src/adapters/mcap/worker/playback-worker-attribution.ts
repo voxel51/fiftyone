@@ -3,9 +3,11 @@ import type { McapDecodeStageSample } from "../decode-stage-meter";
 import type { McapChunkReadDebugLog } from "../reader/byte-readable";
 import type {
   McapDecodedMessage,
+  McapEnumerateNumericFieldsRequest,
   McapReadDecodedMessagesRequest,
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,
+  McapReadNumericSeriesRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
@@ -126,8 +128,16 @@ export interface McapPlaybackWorkerAttributionCollector {
 
 type McapPlaybackWorkerAttributionRequest =
   | McapPlaybackWorkerAttributionRequestOf<
+      "enumerateNumericFields",
+      McapEnumerateNumericFieldsRequest
+    >
+  | McapPlaybackWorkerAttributionRequestOf<
       "readDecodedMessages",
       McapReadDecodedMessagesRequest
+    >
+  | McapPlaybackWorkerAttributionRequestOf<
+      "readNumericSeries",
+      McapReadNumericSeriesRequest
     >
   | McapPlaybackWorkerAttributionRequestOf<
       "readFrameTransformBootstrap",
@@ -401,12 +411,18 @@ function summarizeWorkerRequest(
   message: McapPlaybackWorkerAttributionRequest,
 ): McapPlaybackWorkerRequestWindow {
   switch (message.type) {
+    case "enumerateNumericFields":
+      return message.payload.topics
+        ? summarizeTopics(message.payload.topics)
+        : {};
     case "readDecodedMessages":
       return summarizeDecodedMessagesRequest(message.payload);
     case "readFrameTransformBootstrap":
       return {};
     case "readFrameTransformWindow":
       return summarizeBoundedWindow(message.payload);
+    case "readNumericSeries":
+      return summarizeNumericSeriesRequest(message.payload);
     case "readSynchronizedMessageBatch":
       return summarizeSynchronizedBatchRequest(message.payload);
     case "readSynchronizedMessages":
@@ -435,6 +451,31 @@ function summarizeDecodedMessagesRequest(
       ? { startTimeNs: request.startTimeNs.toString() }
       : {}),
     ...(request.topics ? summarizeTopics(request.topics) : {}),
+    ...(request.startTimeNs !== undefined && request.endTimeNs !== undefined
+      ? {
+          windowDurationMs: nsDurationMs(
+            request.startTimeNs,
+            request.endTimeNs,
+          ),
+        }
+      : {}),
+  };
+}
+
+function summarizeNumericSeriesRequest(
+  request: McapReadNumericSeriesRequest,
+): McapPlaybackWorkerRequestWindow {
+  return {
+    ...(request.activeTimeline
+      ? { activeTimeline: request.activeTimeline }
+      : {}),
+    ...(request.endTimeNs !== undefined
+      ? { endTimeNs: request.endTimeNs.toString() }
+      : {}),
+    ...(request.startTimeNs !== undefined
+      ? { startTimeNs: request.startTimeNs.toString() }
+      : {}),
+    ...summarizeTopics([request.topic]),
     ...(request.startTimeNs !== undefined && request.endTimeNs !== undefined
       ? {
           windowDurationMs: nsDurationMs(

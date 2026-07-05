@@ -24,9 +24,12 @@ import { mcapError, mcapErrorMessage, mcapReadCancelledError } from "../errors";
 import type { McapFrameTransformSet } from "../frame-transform-types";
 import type {
   McapDecodedMessage,
+  McapEnumerateNumericFieldsRequest,
+  McapNumericSeriesResult,
   McapReadDecodedMessagesRequest,
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,
+  McapReadNumericSeriesRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapResourceReadOptions,
@@ -36,6 +39,7 @@ import type {
   McapResourceClient,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
+  McapTopicNumericFields,
   McapTopicTimeBounds,
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
@@ -233,6 +237,23 @@ class WorkerMcapResourceClient implements McapResourceClient {
     request: McapReadTopicTimeBoundsRequest,
   ): Promise<readonly McapTopicTimeBounds[]> {
     return this.request("readTopicTimeBounds", request);
+  }
+
+  enumerateNumericFields(
+    request: McapEnumerateNumericFieldsRequest,
+  ): Promise<readonly McapTopicNumericFields[]> {
+    return this.request("enumerateNumericFields", request);
+  }
+
+  readNumericSeries(
+    request: McapReadNumericSeriesRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapNumericSeriesResult> {
+    return this.request(
+      "readNumericSeries",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+    );
   }
 
   readFrameTransformBootstrap(
