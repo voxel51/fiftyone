@@ -58,6 +58,77 @@ describe("MCAP frame transform store", () => {
     });
   });
 
+  it("holds the latest at-or-before sample in hold-last mode", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n),
+        sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n),
+      ],
+    });
+
+    expect(
+      store.resolve({
+        policy: {
+          boundaryClampNs: 50n,
+          maxInterpolationGapNs: 0n,
+          resolutionMode: "hold-last",
+        },
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 250n,
+      }),
+    ).toMatchObject({
+      resolutionKind: "held",
+      status: "resolved",
+      transform: {
+        resolutionKind: "held",
+        translation: { x: 1, y: 0, z: 0 },
+      },
+    });
+  });
+
+  it("still resolves exact samples and start clamps in hold-last mode", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n),
+        sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n),
+      ],
+    });
+    const policy = {
+      boundaryClampNs: 50n,
+      maxInterpolationGapNs: 0n,
+      resolutionMode: "hold-last",
+    } as const;
+
+    expect(
+      store.resolve({
+        policy,
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 100n,
+      }),
+    ).toMatchObject({
+      resolutionKind: "exact",
+      status: "resolved",
+      transform: { translation: { x: 1, y: 0, z: 0 } },
+    });
+
+    expect(
+      store.resolve({
+        policy,
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 60n,
+      }),
+    ).toMatchObject({
+      resolutionKind: "clamped",
+      status: "resolved",
+      transform: { translation: { x: 1, y: 0, z: 0 } },
+    });
+  });
+
   it("carries the largest interpolation gap through composed paths", () => {
     const store = createStore({
       dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },

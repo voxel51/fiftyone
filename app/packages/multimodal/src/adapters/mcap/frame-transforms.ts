@@ -380,6 +380,13 @@ function effectiveDynamicTransformForTime(
     return transformFromSample(after, "exact");
   }
 
+  // As-recorded playback: the latest at-or-before sample is reused verbatim.
+  // Lookback is unbounded (matching latest-at-or-before observation
+  // semantics); only the start boundary falls through to the clamp below.
+  if (policy.resolutionMode === "hold-last" && before) {
+    return transformFromSample(before, "held");
+  }
+
   if (before && after) {
     const beforeTimeNs = before.timeNs as bigint;
     const afterTimeNs = after.timeNs as bigint;
@@ -633,6 +640,7 @@ function composeResolutionKinds(
     (kind): kind is McapFrameTransformResolutionKind => kind !== undefined,
   );
   if (kinds.includes("clamped")) return "clamped";
+  if (kinds.includes("held")) return "held";
   if (kinds.includes("interpolated")) return "interpolated";
   if (kinds.includes("exact")) return "exact";
   if (kinds.includes("static")) return "static";
@@ -648,5 +656,6 @@ function frameTransformTimeKey(
     timeNs === undefined ? "static" : timeNs.toString(),
     policy.maxInterpolationGapNs.toString(),
     policy.boundaryClampNs.toString(),
+    policy.resolutionMode ?? "interpolate",
   ].join(":");
 }

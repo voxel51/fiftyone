@@ -1,8 +1,17 @@
 import type { Quaternion, Vector3 } from "three";
 
+/**
+ * How dynamic transforms are resolved between bracketing samples:
+ * `interpolate` slerps/lerps between them; `hold-last` reuses the latest
+ * at-or-before sample verbatim so playback never shows synthesized poses.
+ */
+export type McapFrameTransformResolutionMode = "interpolate" | "hold-last";
+
 export interface McapFrameTransformPolicy {
   readonly boundaryClampNs: bigint;
   readonly maxInterpolationGapNs: bigint;
+  /** Defaults to `interpolate` when omitted. */
+  readonly resolutionMode?: McapFrameTransformResolutionMode;
 }
 
 export type McapFrameTransformResolutionKind =
@@ -10,6 +19,7 @@ export type McapFrameTransformResolutionKind =
   | "static"
   | "exact"
   | "interpolated"
+  | "held"
   | "clamped";
 
 /**

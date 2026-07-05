@@ -507,7 +507,12 @@ export function useMcapFrameTransforms({
         targetFrameId,
       },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [policy?.boundaryClampNs, policy?.maxInterpolationGapNs, state.version],
+    [
+      policy?.boundaryClampNs,
+      policy?.maxInterpolationGapNs,
+      policy?.resolutionMode,
+      state.version,
+    ],
   );
 
   return useMemo(
