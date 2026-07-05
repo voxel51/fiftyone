@@ -580,6 +580,11 @@ describe("PointCloudPanel", () => {
     expect(axis[3]).toBeCloseTo(2.75 * 0.28);
     expect(axis[4]).toBeCloseTo(0);
     expect(axis[5]).toBeCloseTo(0);
+    expect(
+      Array.from(container.querySelectorAll("linebasicmaterial")).some(
+        (material) => material.getAttribute("linewidth") === "2",
+      ),
+    ).toBe(true);
 
     // The frustum at (100, 200) must not drag the camera fit off the cloud.
     const cameraPose = JSON.parse(

@@ -21,6 +21,7 @@ const DEFAULT_CAMERA_FRUSTUM_DEPTH_M = 2.75;
 const CAMERA_FRUSTUM_COLOR = 0xffaa33;
 const DEFAULT_CAMERA_FRUSTUM_OPACITY = 0.85;
 const CAMERA_FRUSTUM_AXIS_LENGTH_RATIO = 0.28;
+const CAMERA_FRUSTUM_AXIS_LINE_WIDTH = 2;
 // Highlighted (linked camera tile hovered / pending select) style.
 const CAMERA_FRUSTUM_HIGHLIGHT_COLOR = 0xffffff;
 const CAMERA_FRUSTUM_HIGHLIGHT_OPACITY = 1;
@@ -238,7 +239,12 @@ export function CameraFrustumSceneLayer({
       </lineSegments>
       <lineSegments frustumCulled={false}>
         <primitive attach="geometry" object={axisGeometry} />
-        <lineBasicMaterial opacity={renderOpacity} transparent vertexColors />
+        <lineBasicMaterial
+          linewidth={CAMERA_FRUSTUM_AXIS_LINE_WIDTH}
+          opacity={renderOpacity}
+          transparent
+          vertexColors
+        />
       </lineSegments>
       {imageMap && imagePlaneGeometry ? (
         <mesh frustumCulled={false}>
