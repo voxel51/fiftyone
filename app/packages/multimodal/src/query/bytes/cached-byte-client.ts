@@ -113,7 +113,7 @@ export function createCachedByteClient(
       // are not deterministic shapes, so they would fragment it with entries
       // the block/chunk read paths can never match again.
       const persistent =
-        request.cachePolicy?.blockFill === false
+        request.source.localFile || request.cachePolicy?.blockFill === false
           ? undefined
           : caches.persistent || undefined;
 

@@ -1,0 +1,86 @@
+.root {
+  background: var(--color-background-primary);
+  color: var(--color-content-text);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+}
+
+.setup {
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(320px, 1fr);
+  padding: 12px;
+}
+
+.dropZone {
+  align-items: center;
+  background: var(--color-background-primary);
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+  cursor: default;
+  display: flex;
+  min-height: 92px;
+  padding: 12px;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.dropZoneActive {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--color-brand-primary);
+}
+
+.fileInput {
+  display: none;
+}
+
+.urlForm {
+  align-items: flex-end;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(220px, 1fr) auto;
+}
+
+.playback {
+  flex: 1;
+  min-height: 0;
+}
+
+.unmountButton {
+  margin-left: 12px;
+}
+
+.empty {
+  flex: 1;
+  min-height: 280px;
+  transition:
+    background 120ms ease,
+    outline-color 120ms ease;
+}
+
+.emptyActive {
+  background: rgba(255, 255, 255, 0.03);
+  outline: 1px dashed var(--color-brand-primary);
+  outline-offset: -12px;
+}
+
+.error {
+  color: var(--color-content-text-destructive);
+  min-height: 18px;
+  padding: 0 12px 8px;
+}
+
+@media (max-width: 760px) {
+  .setup {
+    grid-template-columns: 1fr;
+  }
+
+  .urlForm {
+    grid-template-columns: 1fr;
+  }
+}

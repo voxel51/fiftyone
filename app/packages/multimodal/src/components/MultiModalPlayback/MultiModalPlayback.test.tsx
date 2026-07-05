@@ -59,6 +59,19 @@ describe("MultiModalPlayback shell", () => {
     expect(screen.getByText("session.fo")).toBeTruthy();
   });
 
+  it("renders header actions beside the filename", () => {
+    render(
+      <MultiModalPlayback
+        fileName="session.fo"
+        headerActions={<button type="button">Unmount recording</button>}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Unmount recording" }),
+    ).toBeTruthy();
+  });
+
   it("seeds the mosaic with the provided initialTiles", () => {
     render(
       <MultiModalPlayback
@@ -158,22 +171,20 @@ describe("MultiModalPlayback shell", () => {
   });
 
   it("seeds the left sidebar width from leftSidebarWidth, clamped", () => {
-    const { container } = render(
+    render(
       <MultiModalPlayback
         fileName="x"
         rightSidebar={null}
         leftSidebarWidth={10_000}
       />,
     );
-    const pane = container.querySelector(".sidebarPane") as HTMLElement;
+    const pane = screen.getByTestId("left-sidebar-pane");
     expect(pane.style.width).toBe(`${SIDEBAR_MAX_WIDTH_PX}px`);
   });
 
   it("defaults the left sidebar width to 360px when unset", () => {
-    const { container } = render(
-      <MultiModalPlayback fileName="x" rightSidebar={null} />,
-    );
-    const pane = container.querySelector(".sidebarPane") as HTMLElement;
+    render(<MultiModalPlayback fileName="x" rightSidebar={null} />);
+    const pane = screen.getByTestId("left-sidebar-pane");
     expect(pane.style.width).toBe("360px");
   });
 
@@ -183,7 +194,7 @@ describe("MultiModalPlayback shell", () => {
     // all the drag math reads.
     window.PointerEvent ??= window.MouseEvent as typeof window.PointerEvent;
     const onWidth = vi.fn();
-    const { container } = render(
+    render(
       <MultiModalPlayback
         fileName="x"
         rightSidebar={null}
@@ -194,7 +205,7 @@ describe("MultiModalPlayback shell", () => {
     // jsdom has no pointer-capture plumbing; the handler only needs the
     // call to not throw.
     handle.setPointerCapture = vi.fn();
-    const pane = container.querySelector(".sidebarPane") as HTMLElement;
+    const pane = screen.getByTestId("left-sidebar-pane");
 
     fireEvent.pointerDown(handle, { clientX: 360, pointerId: 1 });
     fireEvent.pointerMove(handle, { clientX: 460, pointerId: 1 });

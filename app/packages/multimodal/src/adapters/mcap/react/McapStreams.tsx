@@ -1,4 +1,3 @@
-import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useEffect, useMemo } from "react";
 import { useSceneInventory } from "../../../scene-inventory";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
@@ -20,14 +19,14 @@ import { useMcapFrameTransforms } from "./use-mcap-frame-transforms";
 import { useMcapPlaybackTimeNs } from "./use-mcap-playback-time-ns";
 import { useMcapTiles } from "./use-mcap-tiles";
 import { useRegisterMcapDataStream } from "./use-register-mcap-data-stream";
-import { useStableMcapSource } from "./use-stable-mcap-source";
 
 const FRAME_TRANSFORM_RANGE_PADDING_NS = 1_000_000_000n;
 
 export interface McapStreamsProps {
-  ctx: SampleRendererProps["ctx"];
   /** Shared adapter resource client owned by the modal renderer. */
   client: McapResourceClient;
+  /** Byte source currently feeding the playback shell. */
+  source: ByteSourceDescriptor | null;
 }
 
 /**
@@ -36,8 +35,7 @@ export interface McapStreamsProps {
  * sync policies from the source types, then wires the MCAP data layer
  * (single playback stream, per-topic caches, tile registry).
  */
-export function McapStreams({ ctx, client }: McapStreamsProps) {
-  const source = useStableMcapSource(ctx);
+export function McapStreams({ client, source }: McapStreamsProps) {
   const sources = useSceneInventory();
   const { fidelityMode, temporalPolicy } = useMcapModalSettings();
 

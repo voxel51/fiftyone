@@ -11,7 +11,9 @@ export {
   createCachedByteClient,
   defaultByteCacheBlockSizeBytes,
 } from "./cached-byte-client";
+export { createDefaultByteClient } from "./default-byte-client";
 export { createHttpByteClient } from "./http-byte-client";
+export { createLocalFileByteClient } from "./local-file-byte-client";
 
 /**
  * Public byte-cache factories and stable key helpers.

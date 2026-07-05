@@ -33,6 +33,12 @@ export interface ByteSourceDescriptor {
   readonly etag?: string;
 
   /**
+   * Browser-owned local file backing this source. Structured-cloneable, so it
+   * can cross to playback workers; intentionally ignored by cache keys.
+   */
+  readonly localFile?: File;
+
+  /**
    * Optional source locality hint used to choose default cache fill size.
    */
   readonly readProfile?: ByteSourceReadProfile;

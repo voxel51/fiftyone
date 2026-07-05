@@ -1,270 +1,45 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { humanReadableBytes } from "@fiftyone/utilities";
-import { byteSourceAccessKey } from "../../../query/bytes";
-import { releaseRetainedImageTextures } from "../../../visualization/panels/image-texture-cache";
-import { Size, Spinner } from "@voxel51/voodo";
-import clsx from "clsx";
-import React, { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import MultiModalPlayback from "../../../components/MultiModalPlayback/MultiModalPlayback";
-import { MCAP_SOURCE_TYPE } from "../scene-sources";
-import { clearMcap3dViewState } from "./mcap-3d-view-state";
-import { McapDataStreamProvider } from "./mcap-data-stream-context";
-import { McapFrameTransformsProvider } from "./mcap-frame-transforms-context";
-import { McapPoseTrajectoriesProvider } from "./mcap-pose-trajectories-context";
-import {
-  markMcapLatencyEvent,
-  startMcapLatencyDebugSession,
-} from "../mcap-latency-debug";
-import { McapModalSettingsProvider } from "./mcap-modal-settings";
-import McapAddTileMenu from "./McapAddTileMenu";
-import McapInspectorSidebar from "./McapInspectorSidebar";
-import { McapSelectionHotkeys } from "./mcap-selected-object";
-import McapTimestampReadout from "./McapTimestampReadout";
+import React from "react";
 import { McapAdjacentSamplePrewarm } from "./McapAdjacentSamplePrewarm";
-import {
-  McapNetworkHealthTracker,
-  McapNetworkStatusPill,
-} from "./McapNetworkStatus";
-import McapSettingsSidebar from "./McapSettingsSidebar";
-import { McapStreams } from "./McapStreams";
-import styles from "./McapModalRenderer.module.css";
-import {
-  McapModalLayoutPersistence,
-  useMcapModalLayout,
-} from "./use-mcap-modal-layout";
+import { McapSourcePlayback } from "./McapSourcePlayback";
 import { useMcapResourceClient } from "./use-mcap-resource-client";
-import { useMcapSceneInventory } from "./use-mcap-scene-inventory";
 import { useMcapTemporalTags } from "./use-mcap-temporal-tags";
 import { useStableMcapSource } from "./use-stable-mcap-source";
 
 /**
- * SampleRenderer for `.mcap` files. Reads the file's topic inventory to
- * discover which sources (cameras, lidars, annotation streams) the
- * recording actually contains, then composes the playback shell, the
- * MCAP data-stream provider (so the setup hook and tile bodies share
- * one handle), and the non-visual `McapStreams` that wires the
- * scene-inventory + middleware together.
- *
- * The shell mounts once the inventory is ready: the default tile
- * arrangement and stream policies are derived from it, and both are
- * mount-time inputs to the embedded providers.
- *
- * Sidebar visibility, sidebar width, and the tile arrangement restore
- * from the user's last session on this dataset (`useMcapModalLayout`)
- * and persist as they change (`McapModalLayoutPersistence`).
+ * SampleRenderer wrapper for `.mcap` files. It translates the sample renderer
+ * context into a byte source, then delegates the actual playback shell to the
+ * source-oriented host shared with the ad hoc MCAP panel.
  */
 const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const client = useMcapResourceClient({ worker: true });
   const source = useStableMcapSource(ctx);
-  // Ownership must precede the children's first reads, and child effects run
-  // before parent effects — so activation happens during render. The call is
-  // idempotent per source, which keeps re-renders and StrictMode safe.
-  if (source) {
-    client.activateSource?.(source);
-  }
   const fileName = fileNameFromPath(ctx.media.path) ?? "recording.mcap";
-  const latencySessionKey = useRef(createMcapLatencySessionKey()).current;
-  useLayoutEffect(() => {
-    startMcapLatencyDebugSession({
-      detail: {
-        fileName,
-        readProfile: source?.readProfile,
-        // Ref-scoped, so equal keys across sessions prove the renderer
-        // mount survived sample navigation (persistAcrossSamples).
-        rendererMountKey: latencySessionKey,
-        sizeBytes: source?.sizeBytes,
-      },
-      label: "mcap modal",
-      sessionKey: latencySessionKey,
-      sourceKey:
-        source?.sourceId ??
-        (typeof ctx.media.path === "string" ? ctx.media.path : undefined),
-    });
-  }, [ctx.media.path, fileName, latencySessionKey, source]);
-  // This effect clears the carried 3D view state and the retained decoded
-  // textures when the modal closes: the renderer persists across sample hops
-  // (persistAcrossSamples) and unmounts only then, so its cleanup is the
-  // session boundary for both carry-over stores.
-  useEffect(() => {
-    return () => {
-      clearMcap3dViewState();
-      releaseRetainedImageTextures();
-    };
-  }, []);
-  const { status, error, sources, topicCount } = useMcapSceneInventory({
-    client,
-    source,
-  });
-  const metadata = useMemo(
-    () => ({
-      sizeLabel: sourceSizeLabel(source?.sizeBytes),
-      ...sourceCounts(sources),
-      topicCount,
-    }),
-    [source?.sizeBytes, sources, topicCount],
-  );
-  const headerCaption = useMemo(
-    () => (
-      <>
-        {metadata.sizeLabel ? (
-          <McapHeaderCaption sizeLabel={metadata.sizeLabel} />
-        ) : null}
-        <McapNetworkStatusPill />
-      </>
-    ),
-    [metadata.sizeLabel],
-  );
-  // Layout persistence is keyed by datasetId — stable across dataset
-  // renames, unlike the name — with a browser-wide fallback for
-  // datasets the user hasn't arranged yet.
   const datasetId = ctx.dataset.datasetId;
-  const {
-    initialTiles,
-    initialLayout,
-    defaultLeftOpen,
-    onLeftOpenChange,
-    defaultLeftSidebarWidth,
-    onLeftSidebarWidthChange,
-  } = useMcapModalLayout({
-    sources,
-    datasetId,
-    readProfile: source?.readProfile,
-  });
   const { tracks, onTagCreate, onTagDelete } = useMcapTemporalTags(ctx);
 
-  useEffect(() => {
-    if (status !== "ready") return;
-    markMcapLatencyEvent(
-      "scene inventory ready",
-      {
-        ...metadata,
-        sourceCount: sources.length,
-      },
-      { onceKey: "scene-inventory-ready" },
-    );
-  }, [metadata, sources.length, status]);
-
-  if (status === "error") {
-    return (
-      <McapModalState
-        error
-        text={`Failed to read recording: ${error ?? "Unknown error"}`}
-      />
-    );
-  }
-  if (status !== "ready") {
-    return (
-      <McapModalState>
-        <Spinner size={Size.Lg} />
-      </McapModalState>
-    );
-  }
-  if (sources.length === 0) {
-    return <McapModalState text="No previewable streams in this recording" />;
-  }
-
   return (
-    // The renderer registers with persistAcrossSamples, so the modal keeps
-    // this component mounted through sample navigation. Hooks above this
-    // line swap sources in place (shared client, ownership activation,
-    // fresh inventory); the playback shell and its per-sample provider
-    // state reset by key. Narrowing this keyed region is the follow-up
-    // lever for cheaper hops.
-    <McapModalSettingsProvider key={source ? byteSourceAccessKey(source) : ""}>
-      <McapFrameTransformsProvider>
-        <McapPoseTrajectoriesProvider>
-          <McapDataStreamProvider>
-            <MultiModalPlayback
-              fileName={fileName}
-              headerCaption={headerCaption}
-              addTileMenu={<McapAddTileMenu />}
-              timelineExtraActions={<McapTimestampReadout />}
-              sceneSources={sources}
-              deselectFocusedTileOnRepeatSelect={false}
-              initialTiles={initialTiles}
-              initialLayout={initialLayout}
-              tracks={tracks.length > 0 ? tracks : undefined}
-              onTagDelete={onTagDelete}
-              leftSidebar={<McapSettingsSidebar />}
-              rightSidebar={<McapInspectorSidebar />}
-              defaultRightOpen={false}
-              defaultLeftOpen={defaultLeftOpen}
-              onLeftOpenChange={onLeftOpenChange}
-              leftSidebarWidth={defaultLeftSidebarWidth}
-              onLeftSidebarWidthChange={onLeftSidebarWidthChange}
-              onTagCreate={onTagCreate}
-            >
-              <McapStreams ctx={ctx} client={client} />
-              <McapSelectionHotkeys />
-              <McapNetworkHealthTracker client={client} />
-              <McapAdjacentSamplePrewarm ctx={ctx} />
-              <McapModalLayoutPersistence datasetId={datasetId} />
-            </MultiModalPlayback>
-          </McapDataStreamProvider>
-        </McapPoseTrajectoriesProvider>
-      </McapFrameTransformsProvider>
-    </McapModalSettingsProvider>
+    <McapSourcePlayback
+      client={client}
+      fileName={fileName}
+      latencyLabel="mcap modal"
+      latencySourceKey={
+        typeof ctx.media.path === "string" ? ctx.media.path : undefined
+      }
+      layoutScopeKey={datasetId}
+      onTagCreate={onTagCreate}
+      onTagDelete={onTagDelete}
+      source={source}
+      tracks={tracks}
+    >
+      <McapAdjacentSamplePrewarm ctx={ctx} />
+    </McapSourcePlayback>
   );
 };
-
-/** Full-area placeholder shown before the playback shell can mount. */
-function McapModalState({
-  text,
-  error = false,
-  children,
-}: {
-  text?: string;
-  error?: boolean;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className={styles.state} data-testid="mcap-modal-state">
-      {children}
-      {text ? (
-        <span className={clsx(styles.stateText, error && styles.stateError)}>
-          {text}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-// Deliberately just the file size: topic/stream/label counts used to
-// render here too, but they ate header real estate without informing
-// any decision the header needs to support.
-function McapHeaderCaption({ sizeLabel }: { readonly sizeLabel: string }) {
-  return <span className={styles.captionText}>{sizeLabel}</span>;
-}
-
-function sourceCounts(sources: readonly { type: string }[]) {
-  return {
-    imageCount: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.IMAGE).length,
-    labelCount: sources.filter(
-      (s) =>
-        s.type === MCAP_SOURCE_TYPE.IMAGE_ANNOTATION ||
-        s.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
-    ).length,
-    pointCloudCount: sources.filter(
-      (s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD,
-    ).length,
-  };
-}
 
 function fileNameFromPath(path: unknown): string | null {
   if (typeof path !== "string" || !path) return null;
   return path.split(/[/\\]/).pop() || null;
-}
-
-function createMcapLatencySessionKey(): string {
-  return `mcap-modal-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function sourceSizeLabel(sizeBytes: string | undefined): string | null {
-  if (!sizeBytes || !/^\d+$/.test(sizeBytes)) return null;
-  const value = Number(sizeBytes);
-  if (!Number.isSafeInteger(value)) return null;
-  if (value === 0) return "0 B";
-  return humanReadableBytes(value) || null;
 }
 
 export default McapModalRenderer;

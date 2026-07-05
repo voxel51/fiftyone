@@ -3,7 +3,7 @@ import {
   createAdaptiveByteCacheBlockSize,
   createCacheApiByteRangeCache,
   createCachedByteClient,
-  createHttpByteClient,
+  createDefaultByteClient,
   createMemoryByteRangeCache,
   DEFAULT_BYTE_CACHE_SIZE_BYTES,
 } from "./bytes";
@@ -59,7 +59,8 @@ export function createMultimodalQueryClient(
     decoded: decodedCache,
   };
   const bytes =
-    options.bytes ?? createCachedByteClient(createHttpByteClient(), byteCaches);
+    options.bytes ??
+    createCachedByteClient(createDefaultByteClient(), byteCaches);
   const decode =
     options.decode ??
     createDecodeClient({

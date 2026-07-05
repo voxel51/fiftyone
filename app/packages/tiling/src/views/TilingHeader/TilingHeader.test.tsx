@@ -55,6 +55,22 @@ describe("TilingHeader", () => {
     expect(screen.queryByTestId("tiling-header-add-tile")).toBeNull();
   });
 
+  it("renders compact header actions beside the filename stack", () => {
+    render(
+      <TilingProvider>
+        <TilingHeader
+          fileName="session.fo"
+          headerActions={<button type="button">Unmount recording</button>}
+        />
+      </TilingProvider>,
+    );
+
+    expect(screen.getByText("session.fo")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Unmount recording" }),
+    ).toBeTruthy();
+  });
+
   it("does not render sidebar toggles when no handlers are wired", () => {
     render(
       <TilingProvider>
@@ -164,7 +180,7 @@ describe("TilingHeader", () => {
         <TilingHeader
           fileName="x"
           addTileMenu={
-            <MenuTextItem onClick={() => {}}>CAM_FRONT</MenuTextItem>
+            <MenuTextItem onClick={() => undefined}>CAM_FRONT</MenuTextItem>
           }
         />
       </TilingProvider>,
@@ -183,7 +199,7 @@ describe("TilingHeader", () => {
         <TilingHeader
           fileName="x"
           addTileMenu={
-            <MenuTextItem onClick={() => {}}>CAM_FRONT</MenuTextItem>
+            <MenuTextItem onClick={() => undefined}>CAM_FRONT</MenuTextItem>
           }
         />
       </TilingProvider>,

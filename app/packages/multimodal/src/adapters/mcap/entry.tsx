@@ -6,6 +6,7 @@ import {
 import McapModalRenderer from "./react/McapModalRenderer";
 import { initMcapWebGpuDeviceStatsDebugPublisher } from "./mcap-webgpu-device-stats-debug";
 import { GridRenderer, McapGridStreamSelector } from "./react";
+import { AnyMcapViewer } from "./react/any-mcap-render-plugin";
 
 // App-wide debug bridge: mirrors WebGPU device-registry stats into a DOM
 // attribute when mcap latency debug is enabled. Mounted here (not in the
@@ -32,5 +33,17 @@ registerComponent({
           McapGridStreamSelector,
       },
     },
+  },
+});
+
+registerComponent({
+  name: "AnyMcapViewer",
+  label: "Any MCAP Viewer",
+  component: AnyMcapViewer,
+  type: PluginComponentType.Panel,
+  activator: () => true,
+  panelOptions: {
+    allowDuplicates: true,
+    surfaces: "grid",
   },
 });

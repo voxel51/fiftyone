@@ -48,6 +48,8 @@ export interface MultiModalPlaybackProps {
   fileName: string;
   /** Optional caption rendered below the filename in the top bar. */
   headerCaption?: TilingHeaderCaption;
+  /** Optional compact controls rendered beside the filename/caption stack. */
+  headerActions?: ReactNode;
 
   /**
    * Custom content for the add-tile menus (voodo Menu* primitives),
@@ -176,6 +178,7 @@ export interface MultiModalPlaybackProps {
 const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   fileName,
   headerCaption,
+  headerActions,
   addTileMenu,
   timelineExtraActions,
   tracks,
@@ -212,6 +215,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
             <Layout
               fileName={fileName}
               headerCaption={headerCaption}
+              headerActions={headerActions}
               addTileMenu={addTileMenu}
               timelineExtraActions={timelineExtraActions}
               leftSidebar={leftSidebar}
@@ -239,6 +243,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
 interface LayoutProps {
   fileName: string;
   headerCaption?: TilingHeaderCaption;
+  headerActions?: ReactNode;
   addTileMenu?: ReactNode;
   timelineExtraActions?: ReactNode;
   leftSidebar: ReactNode;
@@ -258,6 +263,7 @@ interface LayoutProps {
 function Layout({
   fileName,
   headerCaption,
+  headerActions,
   addTileMenu,
   timelineExtraActions,
   leftSidebar,
@@ -351,6 +357,7 @@ function Layout({
       <TilingHeader
         fileName={fileName}
         headerCaption={headerCaption}
+        headerActions={headerActions}
         addTileMenu={addTileMenu}
         leftSidebarOpen={leftOpen}
         rightSidebarOpen={rightOpen}
@@ -371,7 +378,11 @@ function Layout({
           {/* Pinning the pane to the target width (instead of 100%) keeps
               the content from reflowing while the drawer's open/close
               animation sweeps the wrapper width. */}
-          <div className={styles.sidebarPane} style={{ width: leftWidth }}>
+          <div
+            className={styles.sidebarPane}
+            data-testid="left-sidebar-pane"
+            style={{ width: leftWidth }}
+          >
             {leftSidebar}
           </div>
           {/* Our clamped resize handle. It overlays the Drawer's built-in
