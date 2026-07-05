@@ -8,10 +8,10 @@ import type {
   LocationVisualization,
   PoseVisualization,
   RgbaColor,
+  SceneArrowPrimitive,
   SceneEntityVisualization,
   SceneLinePrimitive,
   ScenePoint3D,
-  SceneSpherePrimitive,
   SceneUpdateVisualization,
 } from "../../../decoders";
 import { VISUALIZATION_KIND } from "../../../visualization";
@@ -35,7 +35,28 @@ export const TRAJECTORY_MAX_POINTS = 5_000;
 // family; distinct from the cyan annotation default.
 const TRAJECTORY_COLOR: RgbaColor = [1, 0.67, 0.2, 1];
 const TRAJECTORY_THICKNESS = 2;
-const POSE_MARKER_DIAMETER_M = 0.6;
+
+type Quaternion = readonly [number, number, number, number];
+
+// RGB axes triad — the RViz/Foxglove idiom for a pose. Each arrow points
+// along +X of its own pose, so Y and Z get a fixed rotation composed onto
+// the pose orientation.
+const POSE_AXIS_SHAFT_LENGTH_M = 0.25;
+const POSE_AXIS_SHAFT_DIAMETER_M = 0.06;
+const POSE_AXIS_HEAD_LENGTH_M = 0.1;
+const POSE_AXIS_HEAD_DIAMETER_M = 0.14;
+
+const X_TO_Y_QUATERNION: Quaternion = [0, 0, Math.SQRT1_2, Math.SQRT1_2];
+const X_TO_Z_QUATERNION: Quaternion = [0, -Math.SQRT1_2, 0, Math.SQRT1_2];
+
+const POSE_AXES: ReadonlyArray<{
+  readonly axisQuaternion: Quaternion;
+  readonly color: RgbaColor;
+}> = [
+  { axisQuaternion: [0, 0, 0, 1], color: [0.92, 0.25, 0.25, 1] },
+  { axisQuaternion: X_TO_Y_QUATERNION, color: [0.3, 0.82, 0.3, 1] },
+  { axisQuaternion: X_TO_Z_QUATERNION, color: [0.3, 0.5, 1, 1] },
+];
 
 /**
  * Uniform-stride decimation that always keeps the final point.
@@ -115,7 +136,8 @@ export function trajectorySceneUpdate({
 
 /**
  * Current-pose marker as its own synthetic SceneUpdate so per-tick pose
- * motion never rebuilds the trajectory line geometry.
+ * motion never rebuilds the trajectory line geometry. Rendered as an RGB
+ * axes triad so the pose orientation is visible.
  */
 export function poseMarkerSceneUpdate({
   frameId,
@@ -126,18 +148,19 @@ export function poseMarkerSceneUpdate({
   readonly pose: PoseVisualization;
   readonly topic: string;
 }): SceneUpdateVisualization {
-  const sphere: SceneSpherePrimitive = {
-    color: TRAJECTORY_COLOR,
-    pose: {
-      position: pose.position,
-      quaternion: pose.quaternion,
-    },
-    size: [
-      POSE_MARKER_DIAMETER_M,
-      POSE_MARKER_DIAMETER_M,
-      POSE_MARKER_DIAMETER_M,
-    ],
-  };
+  const arrows: SceneArrowPrimitive[] = POSE_AXES.map(
+    ({ axisQuaternion, color }) => ({
+      color,
+      headDiameter: POSE_AXIS_HEAD_DIAMETER_M,
+      headLength: POSE_AXIS_HEAD_LENGTH_M,
+      pose: {
+        position: pose.position,
+        quaternion: multiplyQuaternions(pose.quaternion, axisQuaternion),
+      },
+      shaftDiameter: POSE_AXIS_SHAFT_DIAMETER_M,
+      shaftLength: POSE_AXIS_SHAFT_LENGTH_M,
+    }),
+  );
 
   return {
     deletions: [],
@@ -145,11 +168,23 @@ export function poseMarkerSceneUpdate({
       sceneEntity({
         id: `pose:${topic}`,
         frameId,
-        spheres: [sphere],
+        arrows,
       }),
     ],
     kind: VISUALIZATION_KIND.SCENE_UPDATE,
   };
+}
+
+function multiplyQuaternions(a: Quaternion, b: Quaternion): Quaternion {
+  const [ax, ay, az, aw] = a;
+  const [bx, by, bz, bw] = b;
+
+  return [
+    aw * bx + ax * bw + ay * bz - az * by,
+    aw * by - ax * bz + ay * bw + az * bx,
+    aw * bz + ax * by - ay * bx + az * bw,
+    aw * bw - ax * bx - ay * by - az * bz,
+  ];
 }
 
 /**
@@ -184,19 +219,19 @@ export function locationHudLine(
 }
 
 function sceneEntity({
+  arrows = [],
   frameId,
   id,
   lines = [],
-  spheres = [],
 }: {
+  readonly arrows?: readonly SceneArrowPrimitive[];
   readonly frameId: string;
   readonly id: string;
   readonly lines?: readonly SceneLinePrimitive[];
-  readonly spheres?: readonly SceneSpherePrimitive[];
 }): SceneEntityVisualization {
   return {
-    arrowCount: 0,
-    arrows: [],
+    arrowCount: arrows.length,
+    arrows,
     cubeCount: 0,
     cubes: [],
     cylinderCount: 0,
@@ -211,8 +246,8 @@ function sceneEntity({
     metadata: {},
     modelCount: 0,
     models: [],
-    sphereCount: spheres.length,
-    spheres,
+    sphereCount: 0,
+    spheres: [],
     textCount: 0,
     texts: [],
     triangleCount: 0,

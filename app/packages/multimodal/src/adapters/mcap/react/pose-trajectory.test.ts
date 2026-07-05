@@ -84,7 +84,7 @@ describe("trajectorySceneUpdate", () => {
 });
 
 describe("poseMarkerSceneUpdate", () => {
-  it("places one frame-locked sphere at the pose", () => {
+  it("places a frame-locked RGB axes triad at the pose", () => {
     const update = poseMarkerSceneUpdate({
       frameId: "map",
       pose: {
@@ -100,9 +100,43 @@ describe("poseMarkerSceneUpdate", () => {
       frameId: "map",
       frameLocked: true,
       id: "pose:/odom",
-      sphereCount: 1,
+      arrowCount: 3,
+      sphereCount: 0,
     });
-    expect(entity?.spheres[0]?.pose.position).toEqual([10, 20, 0]);
+    for (const arrow of entity?.arrows ?? []) {
+      expect(arrow.pose.position).toEqual([10, 20, 0]);
+      expect(arrow.shaftLength).toBeGreaterThan(0);
+      expect(arrow.shaftDiameter).toBeGreaterThan(0);
+    }
+    // With an identity pose, X keeps identity and Y/Z get the fixed
+    // +X-onto-axis rotations.
+    expect(entity?.arrows[0]?.pose.quaternion).toEqual([0, 0, 0, 1]);
+    expect(entity?.arrows[1]?.pose.quaternion[2]).toBeCloseTo(Math.SQRT1_2);
+    expect(entity?.arrows[2]?.pose.quaternion[1]).toBeCloseTo(-Math.SQRT1_2);
+    // Distinct RGB axis colors.
+    const colors = new Set(
+      (entity?.arrows ?? []).map((arrow) => JSON.stringify(arrow.color)),
+    );
+    expect(colors.size).toBe(3);
+  });
+
+  it("composes the pose orientation onto each axis arrow", () => {
+    // 90° about Z: +X should land on +Y.
+    const update = poseMarkerSceneUpdate({
+      frameId: "map",
+      pose: {
+        kind: VISUALIZATION_KIND.POSE,
+        position: [0, 0, 0],
+        quaternion: [0, 0, Math.SQRT1_2, Math.SQRT1_2],
+      },
+      topic: "/odom",
+    });
+
+    const [x, y, z, w] = update.entities[0]?.arrows[0]?.pose.quaternion ?? [];
+    expect(x).toBeCloseTo(0);
+    expect(y).toBeCloseTo(0);
+    expect(z).toBeCloseTo(Math.SQRT1_2);
+    expect(w).toBeCloseTo(Math.SQRT1_2);
   });
 });
 
