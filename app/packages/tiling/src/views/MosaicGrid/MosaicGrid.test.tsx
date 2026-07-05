@@ -232,6 +232,53 @@ describe("MosaicGrid component", () => {
       ).toBe("Fullscreen");
     });
 
+    it("does not commit the expanded view tree to layout state", () => {
+      const onChange = vi.fn();
+      renderGrid(
+        <MosaicGrid
+          tiles={{
+            ...tiles,
+            "lidar-1": { title: "LIDAR_TOP", render: () => <div /> },
+          }}
+          value={{
+            direction: "row",
+            first: "cam-1",
+            second: "lidar-1",
+          }}
+          onChange={onChange}
+        />,
+      );
+
+      fireEvent.click(screen.getAllByTestId("tile-header-fullscreen")[0]);
+
+      expect(onChange).not.toHaveBeenCalled();
+      expect(screen.getByLabelText("Exit fullscreen")).toBeTruthy();
+    });
+
+    it("uses controlled expanded state when provided", () => {
+      const onExpandedTileIdChange = vi.fn();
+      renderGrid(
+        <MosaicGrid
+          tiles={{
+            ...tiles,
+            "lidar-1": { title: "LIDAR_TOP", render: () => <div /> },
+          }}
+          value={{
+            direction: "row",
+            first: "cam-1",
+            second: "lidar-1",
+          }}
+          onChange={noop}
+          expandedTileId="cam-1"
+          onExpandedTileIdChange={onExpandedTileIdChange}
+        />,
+      );
+
+      fireEvent.click(screen.getByLabelText("Exit fullscreen"));
+
+      expect(onExpandedTileIdChange).toHaveBeenCalledWith(null);
+    });
+
     it("selects the tile when the header itself is clicked", () => {
       const onFocusTile = vi.fn();
       renderGrid(

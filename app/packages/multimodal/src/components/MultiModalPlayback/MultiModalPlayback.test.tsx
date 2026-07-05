@@ -13,15 +13,22 @@ vi.mock("@fiftyone/tiling", async () => {
   return {
     ...actual,
     MosaicGrid: ({
+      expandedTileId,
       focusedTileId,
+      onExpandedTileIdChange,
       onFocusTile,
       tiles,
     }: {
+      expandedTileId?: string | null;
       focusedTileId?: string | null;
+      onExpandedTileIdChange?: (id: string | null) => void;
       onFocusTile?: (id: string, reason: "select" | "action") => void;
       tiles: Record<string, { title: string; render: () => React.ReactNode }>;
     }) => (
-      <div data-testid="mosaic-stub">
+      <div
+        data-expanded-tile-id={expandedTileId ?? ""}
+        data-testid="mosaic-stub"
+      >
         {Object.entries(tiles).map(([id, t]) => (
           <div key={id} data-testid={`stub-${id}`}>
             <span data-testid={`title-${id}`}>{t.title}</span>
@@ -37,6 +44,15 @@ vi.mock("@fiftyone/tiling", async () => {
               onClick={() => onFocusTile?.(id, "action")}
             >
               action
+            </button>
+            <button
+              data-testid={`expand-${id}`}
+              data-expanded={expandedTileId === id ? "true" : "false"}
+              onClick={() =>
+                onExpandedTileIdChange?.(expandedTileId === id ? null : id)
+              }
+            >
+              expand
             </button>
           </div>
         ))}
@@ -86,6 +102,24 @@ describe("MultiModalPlayback shell", () => {
       "camera_front",
     );
     expect(screen.getByTestId("title-lidar-1").textContent).toBe("lidar_top");
+  });
+
+  it("seeds the mosaic expanded tile from initialExpandedTileId", () => {
+    render(
+      <MultiModalPlayback
+        fileName="session.fo"
+        initialTiles={{
+          "camera-1": { title: "camera_front", render: () => null },
+          "lidar-1": { title: "lidar_top", render: () => null },
+        }}
+        initialExpandedTileId="lidar-1"
+      />,
+    );
+
+    expect(screen.getByTestId("mosaic-stub").dataset.expandedTileId).toBe(
+      "lidar-1",
+    );
+    expect(screen.getByTestId("expand-lidar-1").dataset.expanded).toBe("true");
   });
 
   it("renders the default sidebars (settings + inspector empty states)", () => {

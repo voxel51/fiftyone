@@ -5,7 +5,7 @@ import {
   MenuSeparator,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Mosaic,
   MosaicBranch,
@@ -67,6 +67,10 @@ export interface MosaicGridProps {
    * context-menu item — pass `useTiling().closeOtherTiles`.
    */
   onCloseOtherTiles?: (id: string) => void;
+  /** Tile id currently expanded to fullscreen. Omit for local state. */
+  expandedTileId?: string | null;
+  /** Called when the fullscreen tile changes. Omit for local state. */
+  onExpandedTileIdChange?: (id: string | null) => void;
   /**
    * Rendered when the layout is empty. Defaults to a muted "No tiles
    * open" note; pass something actionable (e.g. `TilingZeroState`) to
@@ -200,9 +204,9 @@ const TileWindow: React.FC<TileWindowProps> = ({
  * moves the window. The body content (from `tile.render`) is everything
  * below the toolbar.
  *
- * Fullscreen uses `createExpandUpdate(path, 100)` to push every split
- * percentage on the tile's path to 100%, then restores from a saved
- * snapshot when toggled back.
+ * Fullscreen is rendered as a view transform over the current layout:
+ * the underlying layout tree stays unchanged, and `expandedTileId`
+ * records which tile should show the inverse "Exit fullscreen" action.
  */
 const MosaicGrid: React.FC<MosaicGridProps> = ({
   tiles,
@@ -213,46 +217,40 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
   onSplitTile,
   onDuplicateTile,
   onCloseOtherTiles,
+  expandedTileId,
+  onExpandedTileIdChange,
   zeroStateView,
   className,
 }) => {
-  const [expandedTileId, setExpandedTileId] = useState<string | null>(null);
-  const preExpandLayout = useRef<MosaicNode<string> | null>(null);
-  // The post-expand layout we wrote via onChange. If `value` later
-  // diverges from this while a tile is still expanded, an external
-  // mutation happened (add/remove/reflow) and the snapshot is stale.
-  const expandedLayoutRef = useRef<MosaicNode<string> | null>(null);
+  const [localExpandedTileId, setLocalExpandedTileId] = useState<string | null>(
+    null,
+  );
+  const activeExpandedTileId =
+    expandedTileId === undefined ? localExpandedTileId : expandedTileId;
+  const setActiveExpandedTileId =
+    onExpandedTileIdChange ?? setLocalExpandedTileId;
+  const expandedPath =
+    activeExpandedTileId && value
+      ? findPathForTile(value, activeExpandedTileId)
+      : null;
+  const isExpandedActive = expandedPath !== null;
+  const displayValue =
+    value && expandedPath && expandedPath.length > 0
+      ? updateTree(value, [createExpandUpdate(expandedPath, 100)])
+      : value;
 
-  // This effect invalidates fullscreen restore state after external layout changes.
+  // Clear stale fullscreen state if its tile no longer exists in the layout.
   useEffect(() => {
-    if (
-      expandedTileId !== null &&
-      expandedLayoutRef.current !== null &&
-      value !== expandedLayoutRef.current
-    ) {
-      preExpandLayout.current = null;
+    if (activeExpandedTileId !== null && !isExpandedActive) {
+      setActiveExpandedTileId(null);
     }
-  }, [value, expandedTileId]);
+  }, [activeExpandedTileId, isExpandedActive, setActiveExpandedTileId]);
 
-  const handleExpand = (id: string, path: MosaicBranch[]) => {
-    if (expandedTileId === id) {
-      // If the snapshot was invalidated by an external mutation while
-      // expanded, drop back to the current value instead of restoring a
-      // stale tree that would clobber those updates.
-      if (preExpandLayout.current !== null) {
-        onChange(preExpandLayout.current);
-      }
-      preExpandLayout.current = null;
-      expandedLayoutRef.current = null;
-      setExpandedTileId(null);
+  const handleExpand = (id: string) => {
+    if (activeExpandedTileId === id) {
+      setActiveExpandedTileId(null);
     } else {
-      preExpandLayout.current = value;
-      if (value !== null) {
-        const next = updateTree(value, [createExpandUpdate(path, 100)]);
-        expandedLayoutRef.current = next;
-        onChange(next);
-      }
-      setExpandedTileId(id);
+      setActiveExpandedTileId(id);
     }
   };
 
@@ -263,7 +261,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
     const focusForSelect = () => onFocusTile?.(id, "select");
     const focusForAction = () => onFocusTile?.(id, "action");
     const isFocused = focusedTileId === id;
-    const isFullscreen = expandedTileId === id;
+    const isFullscreen = activeExpandedTileId === id;
 
     // Focus is folded into the action callbacks rather than fired from a
     // toolbar onPointerDown — calling onFocusTile in pointerdown caused a
@@ -271,9 +269,8 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
     // the toolbar's buttons (needed two taps to fullscreen).
     const handleClose = () => {
       focusForAction();
-      if (expandedTileId === id) {
-        preExpandLayout.current = null;
-        setExpandedTileId(null);
+      if (activeExpandedTileId === id) {
+        setActiveExpandedTileId(null);
       }
       if (value !== null) {
         const update = createRemoveUpdate(value, path);
@@ -282,7 +279,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
     };
     const handleFullscreen = () => {
       focusForAction();
-      handleExpand(id, path);
+      handleExpand(id);
     };
     // Spawn actions skip focusForAction: addTile focuses the new tile,
     // and pre-focusing the origin would only cause an extra flicker.
@@ -323,8 +320,8 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
     <div className={clsx(styles.root, className)} data-testid="mosaic-grid">
       <Mosaic<string>
         className={styles.mosaic}
-        value={value}
-        onChange={onChange}
+        value={displayValue}
+        onChange={isExpandedActive ? () => undefined : onChange}
         renderTile={renderWindow}
         zeroStateView={
           zeroStateView !== undefined ? (
@@ -464,6 +461,18 @@ export function collectTileIds(node: MosaicNode<string> | null): string[] {
   if (node === null) return [];
   if (typeof node === "string") return [node];
   return [...collectTileIds(node.first), ...collectTileIds(node.second)];
+}
+
+function findPathForTile(
+  node: MosaicNode<string>,
+  id: string,
+  path: MosaicBranch[] = [],
+): MosaicBranch[] | null {
+  if (typeof node === "string") return node === id ? path : null;
+  return (
+    findPathForTile(node.first, id, [...path, "first"]) ??
+    findPathForTile(node.second, id, [...path, "second"])
+  );
 }
 
 export default MosaicGrid;

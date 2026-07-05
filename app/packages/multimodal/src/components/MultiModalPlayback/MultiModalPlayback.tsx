@@ -80,6 +80,8 @@ export interface MultiModalPlaybackProps {
    * restore a saved arrangement.
    */
   initialLayout?: MosaicNode<string> | null;
+  /** Tile id that should start expanded to fullscreen. */
+  initialExpandedTileId?: string | null;
 
   /** Discoverable data sources for the current scene. */
   sceneSources?: readonly SceneSource[];
@@ -185,6 +187,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   defaultPinnedTrackIds,
   initialTiles,
   initialLayout,
+  initialExpandedTileId,
   sceneSources = EMPTY_SOURCES,
   deselectFocusedTileOnRepeatSelect = true,
   leftSidebar = <TileSettingsSidebar />,
@@ -210,6 +213,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
           <TilingProvider
             initialTiles={initialTiles}
             initialLayout={initialLayout}
+            initialExpandedTileId={initialExpandedTileId}
           >
             {children}
             <Layout
@@ -288,6 +292,8 @@ function Layout({
     splitTile,
     duplicateTile,
     closeOtherTiles,
+    expandedTileId,
+    setExpandedTileId,
   } = useTiling();
   // `null` (as opposed to undefined, which picks up the default sidebar)
   // removes the region outright: no drawer and no header toggle.
@@ -408,6 +414,8 @@ function Layout({
             onSplitTile={splitTile}
             onDuplicateTile={duplicateTile}
             onCloseOtherTiles={closeOtherTiles}
+            expandedTileId={expandedTileId}
+            onExpandedTileIdChange={setExpandedTileId}
             zeroStateView={<TilingZeroState addTileMenu={addTileMenu} />}
           />
         </div>
