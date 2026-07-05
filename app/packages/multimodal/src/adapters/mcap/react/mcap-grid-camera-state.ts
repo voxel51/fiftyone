@@ -1,8 +1,9 @@
-import { atom, getDefaultStore, useAtom } from "jotai";
+import { atom, getDefaultStore, type PrimitiveAtom, useAtom } from "jotai";
 
 import type { PointCloudCameraPose } from "../../../visualization/panels/point-cloud";
 
-const mcapGridCameraPoseAtom = atom<PointCloudCameraPose | null>(null);
+const mcapGridCameraPoseAtom: PrimitiveAtom<PointCloudCameraPose | null> =
+  atom<PointCloudCameraPose | null>(null);
 
 /**
  * Shared camera pose for 3D MCAP grid previews.

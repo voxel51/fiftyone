@@ -1,4 +1,4 @@
-import { atom, useAtom } from "jotai";
+import { atom, type PrimitiveAtom, useAtom } from "jotai";
 import { atomFamily } from "jotai-family";
 import { capitalize } from "lodash";
 import { LabelSchemaMeta } from "./useSchemaManager";
@@ -10,20 +10,25 @@ export const activeSchemaTab = atom<"gui" | "json">("gui");
 
 export const currentField = atom<null | string>();
 
-export const labelSchemasData = atom<Record<string, LabelSchemaMeta> | null>(
-  null,
-);
+const initialLabelSchemasData: Record<string, LabelSchemaMeta> | null = null;
+export const labelSchemasData: PrimitiveAtom<Record<
+  string,
+  LabelSchemaMeta
+> | null> = atom(initialLabelSchemasData);
 
 export const labelSchemaData = atomFamily((field: string) => {
   return atom(
     (get) => get(labelSchemasData)?.[field],
-    (get, set, value) => {
+    (get, set, value: LabelSchemaMeta) => {
       set(labelSchemasData, { ...get(labelSchemasData), [field]: value });
     },
   );
 });
 
-export const activeLabelSchemas = atom<string[] | null>(null);
+const initialActiveLabelSchemas: string[] | null = null;
+export const activeLabelSchemas: PrimitiveAtom<string[] | null> = atom(
+  initialActiveLabelSchemas,
+);
 
 /**
  * Mirror of Recoil activeFields({ modal: true }), written by Sidebar.tsx.
@@ -67,7 +72,10 @@ export const inactiveLabelSchemas = atom((get) =>
 // =============================================================================
 
 // Custom order for active paths (null means use default sorted order)
-export const activePathsOrder = atom<string[] | null>(null);
+const initialActivePathsOrder: string[] | null = null;
+export const activePathsOrder: PrimitiveAtom<string[] | null> = atom(
+  initialActivePathsOrder,
+);
 
 // Active paths with drag-drop ordering support
 export const activePaths = atom(
