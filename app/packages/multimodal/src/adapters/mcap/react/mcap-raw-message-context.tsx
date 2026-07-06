@@ -2,10 +2,6 @@
 // components whose relay fragments cannot evaluate under vitest, and this
 // bridge has direct unit tests (same rule as mcap-numeric-series-context).
 import { PlaybackStoreContext } from "@fiftyone/playback/src/lib/playback/playback-store-context";
-import {
-  getPlayhead,
-  subscribePlayhead,
-} from "@fiftyone/playback/src/lib/playback/store-access";
 import React, {
   createContext,
   useCallback,
@@ -20,7 +16,10 @@ import { byteSourceAccessKey } from "../../../query/bytes";
 import type { StreamInventory } from "../../../schemas/v1";
 import type { McapRawMessageRecordResult, McapResourceClient } from "../types";
 import { useMcapDataStream } from "./mcap-data-stream-context";
-import { shouldDeferMcapIdleWorkForStore } from "./mcap-network-health";
+import {
+  startMcapDemandBridge,
+  useMcapDemandRegistry,
+} from "./mcap-demand-bridge";
 
 /** Playhead-driven refetches run at most this often per bridge tick. */
 const PLAYHEAD_THROTTLE_MS = 300;
@@ -48,6 +47,9 @@ export interface McapRawTopicInfo {
   readonly messageCount: number | null;
 }
 
+/**
+ * Inventory read state for the raw-message topic picker.
+ */
 export interface McapRawTopicsState {
   readonly status: "idle" | "loading" | "ready" | "error";
   readonly topics: readonly McapRawTopicInfo[];
@@ -64,6 +66,9 @@ export interface McapRawRecordState {
   readonly error?: string;
 }
 
+/**
+ * Public raw-message cache and demand API consumed by raw-message tiles.
+ */
 export interface McapRawMessageContextValue {
   readonly topics: McapRawTopicsState;
   readonly recordsByTopic: ReadonlyMap<string, McapRawRecordState>;
@@ -115,33 +120,21 @@ export const McapRawMessageProvider: React.FC<{
   const [topics, setTopics] = useState<McapRawTopicsState>(IDLE_TOPICS);
   const [recordsByTopic, setRecordsByTopic] =
     useState<ReadonlyMap<string, McapRawRecordState>>(EMPTY_RECORDS);
-  const handlersRef = useRef<McapRawMessageHandlers | null>(null);
-  const refCountsRef = useRef(new Map<string, number>());
+  const { handlersRef, refCountsRef, subscribeKey } =
+    useMcapDemandRegistry<McapRawMessageHandlers>();
   const topicsWantedRef = useRef(false);
 
   const ensureTopics = useCallback(() => {
     topicsWantedRef.current = true;
     handlersRef.current?.ensureTopics();
-  }, []);
+  }, [handlersRef]);
 
-  const subscribeRecord = useCallback((topic: string) => {
-    const counts = refCountsRef.current;
-    counts.set(topic, (counts.get(topic) ?? 0) + 1);
-    handlersRef.current?.onDemandChanged();
-    let active = true;
-    return () => {
-      if (!active) {
-        return;
-      }
-      active = false;
-      const current = counts.get(topic) ?? 0;
-      if (current <= 1) {
-        counts.delete(topic);
-      } else {
-        counts.set(topic, current - 1);
-      }
-    };
-  }, []);
+  const subscribeRecord = useCallback(
+    (topic: string) => {
+      return subscribeKey(topic);
+    },
+    [subscribeKey],
+  );
 
   const value = useMemo<McapRawMessageInternalValue>(
     () => ({
@@ -155,7 +148,14 @@ export const McapRawMessageProvider: React.FC<{
       topics,
       topicsWantedRef,
     }),
-    [ensureTopics, recordsByTopic, subscribeRecord, topics],
+    [
+      ensureTopics,
+      handlersRef,
+      recordsByTopic,
+      refCountsRef,
+      subscribeRecord,
+      topics,
+    ],
   );
 
   return (
@@ -213,192 +213,136 @@ export function McapRawMessageBridge({
       return undefined;
     }
 
-    let cancelled = false;
     let topicsRequested = false;
-    let fillQueued = false;
-    let deferPending = false;
-    let lastPlayheadFillMs = Number.NEGATIVE_INFINITY;
     const published = new Map<string, McapRawRecordState>();
     const inflight = new Set<string>();
     const failedAtMs = new Map<string, number>();
-    const timeouts = new Set<ReturnType<typeof setTimeout>>();
 
-    const later = (callback: () => void, ms: number) => {
-      const timeout = setTimeout(() => {
-        timeouts.delete(timeout);
-        callback();
-      }, ms);
-      timeouts.add(timeout);
-    };
-
-    const publish = () => {
-      if (!cancelled) {
+    const publish = (isCancelled: () => boolean) => {
+      if (!isCancelled()) {
         setRecordsByTopic(new Map(published));
       }
     };
 
-    const fill = (userInitiated: boolean) => {
-      if (cancelled || refCountsRef.current.size === 0) {
-        return;
-      }
-
-      // Idle-lane reads share the physical link with foreground
-      // catch-up; while the link is starved, stand down and re-check
-      // (verbatim numeric-series policy).
-      if (
-        playbackStore &&
-        shouldDeferMcapIdleWorkForStore(playbackStore, null)
-      ) {
-        if (!deferPending) {
-          deferPending = true;
-          later(() => {
-            deferPending = false;
-            fill(userInitiated);
-          }, DEFERRED_RETRY_MS);
-        }
-        return;
-      }
-
-      const timeline = dataStreamRef.current?.getTimelineIndex() ?? null;
-      if (!timeline) {
-        later(() => fill(userInitiated), TIMELINE_RETRY_MS);
-        return;
-      }
-      const playheadNs = timeline.secToNs(
-        playbackStore ? getPlayhead(playbackStore) : 0,
-      );
-
-      const now = nowMs();
-      let publishNeeded = false;
-      for (const topic of refCountsRef.current.keys()) {
-        if (inflight.has(topic)) {
-          continue;
-        }
-        const state = published.get(topic);
-        const result = state?.result;
-        if (
-          result &&
-          playheadNs >= result.validFromNs &&
-          playheadNs < result.validUntilNs
-        ) {
-          continue;
-        }
-        if (!userInitiated) {
-          const failed = failedAtMs.get(topic);
-          if (failed !== undefined && now - failed < FAILURE_BACKOFF_MS) {
-            continue;
-          }
-        }
-
-        inflight.add(topic);
-        if (!state) {
-          published.set(topic, { status: "loading" });
-          publishNeeded = true;
-        }
-        void client
-          .readRawMessageRecord({ source, timeNs: playheadNs, topic })
-          .then((record) => {
-            if (cancelled) {
-              return;
-            }
-            inflight.delete(topic);
-            failedAtMs.delete(topic);
-            published.set(topic, { result: record, status: "ready" });
-            publish();
-            // The playhead may have left this result's validity window
-            // while the read was in flight; re-check instead of waiting
-            // for the next playhead move (it may be paused now).
-            queueFill();
-          })
-          .catch((error: unknown) => {
-            if (cancelled) {
-              return;
-            }
-            inflight.delete(topic);
-            failedAtMs.set(topic, nowMs());
-            // Keep whatever record already rendered; only surface a
-            // hard error state when the topic has nothing to show.
-            const previous = published.get(topic);
-            if (!previous?.result) {
-              published.set(topic, {
-                error: error instanceof Error ? error.message : String(error),
-                status: "error",
-              });
-            }
-            publish();
-          });
-      }
-      if (publishNeeded) {
-        publish();
-      }
-    };
-
-    const queueFill = () => {
-      if (fillQueued || cancelled) {
-        return;
-      }
-      fillQueued = true;
-      queueMicrotask(() => {
-        fillQueued = false;
-        fill(true);
-      });
-    };
-
-    const handlers: McapRawMessageHandlers = {
-      ensureTopics() {
-        if (cancelled || topicsRequested) {
-          return;
-        }
-        topicsRequested = true;
-        setTopics({ status: "loading", topics: [] });
-        void client
-          .readTopics({ source })
-          .then((streams) => {
-            if (!cancelled) {
-              setTopics({
-                status: "ready",
-                topics: streams.map(rawTopicInfoFromInventory),
-              });
-            }
-          })
-          .catch(() => {
-            if (!cancelled) {
-              topicsRequested = false;
-              setTopics({ status: "error", topics: [] });
-            }
-          });
-      },
-      onDemandChanged: queueFill,
-    };
-    handlersRef.current = handlers;
-
-    if (topicsWantedRef.current) {
-      handlers.ensureTopics();
-    }
-    // Drain interest registered before this bridge (or source) mounted.
-    queueFill();
-
-    const unsubscribePlayhead = playbackStore
-      ? subscribePlayhead(playbackStore, () => {
-          const now = nowMs();
-          if (now - lastPlayheadFillMs < PLAYHEAD_THROTTLE_MS) {
+    return startMcapDemandBridge<McapRawMessageHandlers>({
+      dataStreamRef,
+      deferredRetryMs: DEFERRED_RETRY_MS,
+      handlersRef,
+      makeHandlers: ({ isCancelled, queueFill }) => ({
+        ensureTopics() {
+          if (isCancelled() || topicsRequested) {
             return;
           }
-          lastPlayheadFillMs = now;
-          fill(false);
-        })
-      : undefined;
+          topicsRequested = true;
+          setTopics({ status: "loading", topics: [] });
+          void client
+            .readTopics({ source })
+            .then((streams) => {
+              if (!isCancelled()) {
+                setTopics({
+                  status: "ready",
+                  topics: streams.map(rawTopicInfoFromInventory),
+                });
+              }
+            })
+            .catch(() => {
+              if (!isCancelled()) {
+                topicsRequested = false;
+                setTopics({ status: "error", topics: [] });
+              }
+            });
+        },
+        onDemandChanged: queueFill,
+      }),
+      onFill({
+        demandKeys,
+        isCancelled,
+        nowMs,
+        playheadSec,
+        queueFill,
+        timeline,
+        userInitiated,
+      }) {
+        if (!timeline) {
+          return;
+        }
+        const playheadNs = timeline.secToNs(playheadSec);
 
-    return () => {
-      cancelled = true;
-      unsubscribePlayhead?.();
-      for (const timeout of timeouts) {
-        clearTimeout(timeout);
-      }
-      if (handlersRef.current === handlers) {
-        handlersRef.current = null;
-      }
-    };
+        const now = nowMs();
+        let publishNeeded = false;
+        for (const topic of demandKeys) {
+          if (inflight.has(topic)) {
+            continue;
+          }
+          const state = published.get(topic);
+          const result = state?.result;
+          if (
+            result &&
+            playheadNs >= result.validFromNs &&
+            playheadNs < result.validUntilNs
+          ) {
+            continue;
+          }
+          if (!userInitiated) {
+            const failed = failedAtMs.get(topic);
+            if (failed !== undefined && now - failed < FAILURE_BACKOFF_MS) {
+              continue;
+            }
+          }
+
+          inflight.add(topic);
+          if (!state) {
+            published.set(topic, { status: "loading" });
+            publishNeeded = true;
+          }
+          void client
+            .readRawMessageRecord({ source, timeNs: playheadNs, topic })
+            .then((record) => {
+              if (isCancelled()) {
+                return;
+              }
+              inflight.delete(topic);
+              failedAtMs.delete(topic);
+              published.set(topic, { result: record, status: "ready" });
+              publish(isCancelled);
+              // The playhead may have left this result's validity window
+              // while the read was in flight; re-check instead of waiting
+              // for the next playhead move (it may be paused now).
+              queueFill();
+            })
+            .catch((error: unknown) => {
+              if (isCancelled()) {
+                return;
+              }
+              inflight.delete(topic);
+              failedAtMs.set(topic, nowMs());
+              // Keep whatever record already rendered; only surface a
+              // hard error state when the topic has nothing to show.
+              const previous = published.get(topic);
+              if (!previous?.result) {
+                published.set(topic, {
+                  error: error instanceof Error ? error.message : String(error),
+                  status: "error",
+                });
+              }
+              publish(isCancelled);
+            });
+        }
+        if (publishNeeded) {
+          publish(isCancelled);
+        }
+      },
+      onHandlersReady(handlers) {
+        if (topicsWantedRef.current) {
+          handlers.ensureTopics();
+        }
+      },
+      playbackStore,
+      playheadThrottleMs: PLAYHEAD_THROTTLE_MS,
+      refCountsRef,
+      requireTimeline: true,
+      timelineRetryMs: TIMELINE_RETRY_MS,
+    });
   }, [
     client,
     handlersRef,
@@ -437,10 +381,6 @@ function rawTopicInfoFromInventory(stream: StreamInventory): McapRawTopicInfo {
     schemaName: stream.metadata["mcap.schema_name"] ?? null,
     topic: stream.metadata["mcap.topic"] ?? stream.displayName ?? "",
   };
-}
-
-function nowMs(): number {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
 function useInternalValue(): McapRawMessageInternalValue {

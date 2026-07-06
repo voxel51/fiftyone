@@ -2,10 +2,6 @@
 // components whose relay fragments cannot evaluate under vitest, and this
 // bridge has direct unit tests.
 import { PlaybackStoreContext } from "@fiftyone/playback/src/lib/playback/playback-store-context";
-import {
-  getPlayhead,
-  subscribePlayhead,
-} from "@fiftyone/playback/src/lib/playback/store-access";
 import React, {
   createContext,
   useCallback,
@@ -23,7 +19,10 @@ import {
   type McapTopicNumericFields,
 } from "../types";
 import { useMcapDataStream } from "./mcap-data-stream-context";
-import { shouldDeferMcapIdleWorkForStore } from "./mcap-network-health";
+import {
+  startMcapDemandBridge,
+  useMcapDemandRegistry,
+} from "./mcap-demand-bridge";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import {
   addCoveredRange,
@@ -117,6 +116,9 @@ function splitSeriesKey(key: string): [topic: string, fieldPath: string] {
   return [key.slice(0, separator), key.slice(separator + 1)];
 }
 
+/**
+ * Public numeric-series cache and demand API consumed by plot tiles.
+ */
 export interface McapNumericSeriesContextValue {
   readonly enumeration: McapNumericFieldsEnumeration;
   readonly seriesByKey: ReadonlyMap<string, McapNumericSeriesState>;
@@ -173,34 +175,22 @@ export const McapNumericSeriesProvider: React.FC<{
     useState<McapNumericFieldsEnumeration>(IDLE_ENUMERATION);
   const [seriesByKey, setSeriesByKey] =
     useState<ReadonlyMap<string, McapNumericSeriesState>>(EMPTY_SERIES);
-  const handlersRef = useRef<McapNumericSeriesHandlers | null>(null);
-  const refCountsRef = useRef(new Map<string, number>());
+  const { handlersRef, refCountsRef, subscribeKey } =
+    useMcapDemandRegistry<McapNumericSeriesHandlers>();
   const enumerationWantedRef = useRef(false);
 
   const ensureEnumeration = useCallback(() => {
     enumerationWantedRef.current = true;
     handlersRef.current?.ensureEnumeration();
-  }, []);
+  }, [handlersRef]);
 
-  const subscribeSeries = useCallback((topic: string, fieldPath: string) => {
-    const key = mcapNumericSeriesKey(topic, fieldPath);
-    const counts = refCountsRef.current;
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-    handlersRef.current?.onDemandChanged();
-    let active = true;
-    return () => {
-      if (!active) {
-        return;
-      }
-      active = false;
-      const current = counts.get(key) ?? 0;
-      if (current <= 1) {
-        counts.delete(key);
-      } else {
-        counts.set(key, current - 1);
-      }
-    };
-  }, []);
+  const subscribeSeries = useCallback(
+    (topic: string, fieldPath: string) => {
+      const key = mcapNumericSeriesKey(topic, fieldPath);
+      return subscribeKey(key);
+    },
+    [subscribeKey],
+  );
 
   const value = useMemo<McapNumericSeriesInternalValue>(
     () => ({
@@ -214,7 +204,14 @@ export const McapNumericSeriesProvider: React.FC<{
       setSeriesByKey,
       subscribeSeries,
     }),
-    [ensureEnumeration, enumeration, seriesByKey, subscribeSeries],
+    [
+      ensureEnumeration,
+      enumeration,
+      handlersRef,
+      refCountsRef,
+      seriesByKey,
+      subscribeSeries,
+    ],
   );
 
   return (
@@ -277,254 +274,196 @@ export function McapNumericSeriesBridge({
       return undefined;
     }
 
-    let cancelled = false;
     let enumerationRequested = false;
-    let fillQueued = false;
-    let deferPending = false;
-    let lastPlayheadFillMs = Number.NEGATIVE_INFINITY;
     const coverage = new Map<string, NsRange[]>();
     const segments = new Map<string, NumericSeriesSegment[]>();
     const published = new Map<string, McapNumericSeriesState>();
     const truncatedKeys = new Set<string>();
     const failedAtMs = new Map<string, number>();
-    const timeouts = new Set<ReturnType<typeof setTimeout>>();
 
-    const later = (callback: () => void, ms: number) => {
-      const timeout = setTimeout(() => {
-        timeouts.delete(timeout);
-        callback();
-      }, ms);
-      timeouts.add(timeout);
-    };
-
-    const publish = () => {
-      if (!cancelled) {
+    const publish = (isCancelled: () => boolean) => {
+      if (!isCancelled()) {
         setSeriesByKey(new Map(published));
       }
     };
 
-    const fill = (userInitiated: boolean) => {
-      if (cancelled || refCountsRef.current.size === 0) {
-        return;
-      }
-
-      // Bulk-lane reads have their own worker but share the physical
-      // link; while foreground catch-up owns a starved link, stand down
-      // and re-check (verbatim pose-trajectory policy).
-      if (
-        playbackStore &&
-        shouldDeferMcapIdleWorkForStore(playbackStore, null)
-      ) {
-        if (!deferPending) {
-          deferPending = true;
-          later(() => {
-            deferPending = false;
-            fill(userInitiated);
-          }, DEFERRED_RETRY_MS);
-        }
-        return;
-      }
-
-      const timeline = dataStreamRef.current?.getTimelineIndex() ?? null;
-      if (playbackStore && !timeline) {
-        later(() => fill(userInitiated), TIMELINE_RETRY_MS);
-        return;
-      }
-      const window =
-        playbackStore && timeline
-          ? quantizedPlayheadWindow(timeline, getPlayhead(playbackStore))
-          : null;
-
-      const now = nowMs();
-      const batches = new Map<
-        string,
-        { fieldPaths: string[]; range: NsRange | null; topic: string }
-      >();
-      let publishNeeded = false;
-      for (const key of refCountsRef.current.keys()) {
-        if (!userInitiated) {
-          const failed = failedAtMs.get(key);
-          if (failed !== undefined && now - failed < FAILURE_BACKOFF_MS) {
-            continue;
-          }
-        }
-        const [topic, fieldPath] = splitSeriesKey(key);
-        let covered = coverage.get(key) ?? [];
-        const missing: readonly (NsRange | null)[] =
-          window === null
-            ? covered.length > 0
-              ? []
-              : [null]
-            : subtractCoveredRanges(window, covered);
-        for (const range of missing) {
-          // Optimistic coverage: marks the range in-flight so throttled
-          // refills never duplicate a pending request; rolled back on
-          // failure.
-          covered = addCoveredRange(covered, range ?? FULL_COVERAGE);
-          const batchKey =
-            range === null
-              ? `${topic}\0full`
-              : `${topic}\0${range.startNs}:${range.endNs}`;
-          let batch = batches.get(batchKey);
-          if (!batch) {
-            batch = { fieldPaths: [], range, topic };
-            batches.set(batchKey, batch);
-          }
-          batch.fieldPaths.push(fieldPath);
-        }
-        coverage.set(key, covered);
-        if (missing.length > 0 && !published.has(key)) {
-          published.set(key, { status: "loading" });
-          publishNeeded = true;
-        }
-      }
-      if (publishNeeded) {
-        publish();
-      }
-
-      for (const batch of batches.values()) {
-        void client
-          .readNumericSeries(
-            {
-              activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-              fieldPaths: batch.fieldPaths,
-              maxPointsPerField: windowPointBudget(
-                batch.range,
-                timeline?.durationSec,
-              ),
-              source,
-              ...(batch.range
-                ? {
-                    endTimeNs: batch.range.endNs,
-                    startTimeNs: batch.range.startNs,
-                  }
-                : {}),
-              topic: batch.topic,
-            },
-            { priority: "bulk" },
-          )
-          .then((result) => {
-            if (cancelled) {
-              return;
-            }
-            const range = batch.range ?? FULL_COVERAGE;
-            for (const field of result.fields) {
-              const key = mcapNumericSeriesKey(batch.topic, field.path);
-              failedAtMs.delete(key);
-              if (result.truncated) {
-                truncatedKeys.add(key);
-              }
-              let keySegments = segments.get(key) ?? [];
-              if (field.timesSec.length > 0) {
-                keySegments = insertSeriesSegment(keySegments, {
-                  endNs: range.endNs,
-                  startNs: range.startNs,
-                  timesSec: field.timesSec,
-                  values: field.values,
-                });
-                segments.set(key, keySegments);
-              }
-              const flat = flattenSeriesSegments(keySegments);
-              published.set(key, {
-                status: "ready",
-                timesSec: flat.timesSec,
-                truncated: truncatedKeys.has(key) || undefined,
-                values: flat.values,
-              });
-            }
-            publish();
-          })
-          .catch((error: unknown) => {
-            if (cancelled) {
-              return;
-            }
-            const message =
-              error instanceof Error ? error.message : String(error);
-            const failedNow = nowMs();
-            for (const fieldPath of batch.fieldPaths) {
-              const key = mcapNumericSeriesKey(batch.topic, fieldPath);
-              coverage.set(
-                key,
-                removeCoveredRange(
-                  coverage.get(key) ?? [],
-                  batch.range ?? FULL_COVERAGE,
-                ),
-              );
-              failedAtMs.set(key, failedNow);
-              // Keep whatever segments already rendered; only surface a
-              // hard error state when the signal has nothing to show.
-              if (!segments.has(key)) {
-                published.set(key, { error: message, status: "error" });
-              }
-            }
-            publish();
-          });
-      }
-    };
-
-    const queueFill = () => {
-      if (fillQueued || cancelled) {
-        return;
-      }
-      fillQueued = true;
-      queueMicrotask(() => {
-        fillQueued = false;
-        fill(true);
-      });
-    };
-
-    const handlers: McapNumericSeriesHandlers = {
-      ensureEnumeration() {
-        if (cancelled || enumerationRequested) {
-          return;
-        }
-        enumerationRequested = true;
-        setEnumeration({ status: "loading", topics: [] });
-        void client
-          .enumerateNumericFields({ source })
-          .then((topics) => {
-            if (!cancelled) {
-              setEnumeration({ status: "ready", topics });
-            }
-          })
-          .catch(() => {
-            if (!cancelled) {
-              enumerationRequested = false;
-              setEnumeration({ status: "error", topics: [] });
-            }
-          });
-      },
-      onDemandChanged: queueFill,
-    };
-    handlersRef.current = handlers;
-
-    if (enumerationWantedRef.current) {
-      handlers.ensureEnumeration();
-    }
-    // Drain interest registered before this bridge (or source) mounted.
-    queueFill();
-
-    const unsubscribePlayhead = playbackStore
-      ? subscribePlayhead(playbackStore, () => {
-          const now = nowMs();
-          if (now - lastPlayheadFillMs < PLAYHEAD_FILL_THROTTLE_MS) {
+    return startMcapDemandBridge<McapNumericSeriesHandlers>({
+      dataStreamRef,
+      deferredRetryMs: DEFERRED_RETRY_MS,
+      handlersRef,
+      makeHandlers: ({ isCancelled, queueFill }) => ({
+        ensureEnumeration() {
+          if (isCancelled() || enumerationRequested) {
             return;
           }
-          lastPlayheadFillMs = now;
-          fill(false);
-        })
-      : undefined;
+          enumerationRequested = true;
+          setEnumeration({ status: "loading", topics: [] });
+          void client
+            .enumerateNumericFields({ source })
+            .then((topics) => {
+              if (!isCancelled()) {
+                setEnumeration({ status: "ready", topics });
+              }
+            })
+            .catch(() => {
+              if (!isCancelled()) {
+                enumerationRequested = false;
+                setEnumeration({ status: "error", topics: [] });
+              }
+            });
+        },
+        onDemandChanged: queueFill,
+      }),
+      onFill({
+        demandKeys,
+        isCancelled,
+        nowMs,
+        playheadSec,
+        timeline,
+        userInitiated,
+      }) {
+        const window =
+          playbackStore && timeline
+            ? quantizedPlayheadWindow(timeline, playheadSec)
+            : null;
 
-    return () => {
-      cancelled = true;
-      unsubscribePlayhead?.();
-      for (const timeout of timeouts) {
-        clearTimeout(timeout);
-      }
-      if (handlersRef.current === handlers) {
-        handlersRef.current = null;
-      }
-    };
+        const now = nowMs();
+        const batches = new Map<
+          string,
+          { fieldPaths: string[]; range: NsRange | null; topic: string }
+        >();
+        let publishNeeded = false;
+        for (const key of demandKeys) {
+          if (!userInitiated) {
+            const failed = failedAtMs.get(key);
+            if (failed !== undefined && now - failed < FAILURE_BACKOFF_MS) {
+              continue;
+            }
+          }
+          const [topic, fieldPath] = splitSeriesKey(key);
+          let covered = coverage.get(key) ?? [];
+          const missing: readonly (NsRange | null)[] =
+            window === null
+              ? covered.length > 0
+                ? []
+                : [null]
+              : subtractCoveredRanges(window, covered);
+          for (const range of missing) {
+            // Optimistic coverage: marks the range in-flight so throttled
+            // refills never duplicate a pending request; rolled back on
+            // failure.
+            covered = addCoveredRange(covered, range ?? FULL_COVERAGE);
+            const batchKey =
+              range === null
+                ? `${topic}\0full`
+                : `${topic}\0${range.startNs}:${range.endNs}`;
+            let batch = batches.get(batchKey);
+            if (!batch) {
+              batch = { fieldPaths: [], range, topic };
+              batches.set(batchKey, batch);
+            }
+            batch.fieldPaths.push(fieldPath);
+          }
+          coverage.set(key, covered);
+          if (missing.length > 0 && !published.has(key)) {
+            published.set(key, { status: "loading" });
+            publishNeeded = true;
+          }
+        }
+        if (publishNeeded) {
+          publish(isCancelled);
+        }
+
+        for (const batch of batches.values()) {
+          void client
+            .readNumericSeries(
+              {
+                activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+                fieldPaths: batch.fieldPaths,
+                maxPointsPerField: windowPointBudget(
+                  batch.range,
+                  timeline?.durationSec,
+                ),
+                source,
+                ...(batch.range
+                  ? {
+                      endTimeNs: batch.range.endNs,
+                      startTimeNs: batch.range.startNs,
+                    }
+                  : {}),
+                topic: batch.topic,
+              },
+              { priority: "bulk" },
+            )
+            .then((result) => {
+              if (isCancelled()) {
+                return;
+              }
+              const range = batch.range ?? FULL_COVERAGE;
+              for (const field of result.fields) {
+                const key = mcapNumericSeriesKey(batch.topic, field.path);
+                failedAtMs.delete(key);
+                if (result.truncated) {
+                  truncatedKeys.add(key);
+                }
+                let keySegments = segments.get(key) ?? [];
+                if (field.timesSec.length > 0) {
+                  keySegments = insertSeriesSegment(keySegments, {
+                    endNs: range.endNs,
+                    startNs: range.startNs,
+                    timesSec: field.timesSec,
+                    values: field.values,
+                  });
+                  segments.set(key, keySegments);
+                }
+                const flat = flattenSeriesSegments(keySegments);
+                published.set(key, {
+                  status: "ready",
+                  timesSec: flat.timesSec,
+                  truncated: truncatedKeys.has(key) || undefined,
+                  values: flat.values,
+                });
+              }
+              publish(isCancelled);
+            })
+            .catch((error: unknown) => {
+              if (isCancelled()) {
+                return;
+              }
+              const message =
+                error instanceof Error ? error.message : String(error);
+              const failedNow = nowMs();
+              for (const fieldPath of batch.fieldPaths) {
+                const key = mcapNumericSeriesKey(batch.topic, fieldPath);
+                coverage.set(
+                  key,
+                  removeCoveredRange(
+                    coverage.get(key) ?? [],
+                    batch.range ?? FULL_COVERAGE,
+                  ),
+                );
+                failedAtMs.set(key, failedNow);
+                // Keep whatever segments already rendered; only surface a
+                // hard error state when the signal has nothing to show.
+                if (!segments.has(key)) {
+                  published.set(key, { error: message, status: "error" });
+                }
+              }
+              publish(isCancelled);
+            });
+        }
+      },
+      onHandlersReady(handlers) {
+        if (enumerationWantedRef.current) {
+          handlers.ensureEnumeration();
+        }
+      },
+      playbackStore,
+      playheadThrottleMs: PLAYHEAD_FILL_THROTTLE_MS,
+      refCountsRef,
+      requireTimeline: Boolean(playbackStore),
+      timelineRetryMs: TIMELINE_RETRY_MS,
+    });
   }, [
     client,
     enumerationWantedRef,
@@ -598,10 +537,6 @@ function windowPointBudget(
       Math.round((FULL_RANGE_POINT_BUDGET * rangeSec) / durationSec),
     ),
   );
-}
-
-function nowMs(): number {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
 function useInternalValue(): McapNumericSeriesInternalValue {
