@@ -83,12 +83,29 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           };
         };
 
+        // Read-ahead: resolve the sample at `offset` WITHOUT moving the cursor
+        // (the `true` flag is the soft/peek mode in spotlight's Iter.next).
+        // Used to prefetch neighbors; returns null when out of range or not yet
+        // paged into the store (iter throws in that case).
+        const peek = async (offset: number) => {
+          const peekId = await cursor.next(offset, true);
+          if (!peekId) {
+            return null;
+          }
+          try {
+            return await iter(Promise.resolve(peekId));
+          } catch {
+            return null;
+          }
+        };
+
         const hasNext = Boolean(await cursor.next(1, true));
         const hasPrevious = Boolean(await cursor.next(-1, true));
 
         setModalState({
           next,
           previous,
+          peek,
         })
           .then(() => iter(Promise.resolve(item.id)))
           .then((data) => setExpandedSample({ ...data, hasNext, hasPrevious }));
