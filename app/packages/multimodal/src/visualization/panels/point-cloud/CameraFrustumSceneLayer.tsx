@@ -129,9 +129,10 @@ export function CameraFrustumSceneLayer({
   // This effect resolves the camera's current encoded frame into the image
   // plane texture. When the layer carries `imageTextureKey` the decode goes
   // through the shared image-texture cache — the 2D image tile forms the
-  // same key, so both surfaces share one decode and one GPU texture, and
-  // replaced frames release their lease (retained for instant re-acquire)
-  // instead of disposing. Layers without a key fall back to a private
+  // same key, so both surfaces share one decode while receiving separate
+  // renderer-owned textures, and replaced frames release their lease
+  // (retained for instant re-acquire) instead of disposing the decoded
+  // source. Layers without a key fall back to a private
   // decode per message. The effect is keyed on `imageIdentity`, not the
   // `image` wrapper, for the same batch-redelivery reason as the
   // geometries, so `image` is deliberately omitted from the deps.
@@ -168,8 +169,8 @@ export function CameraFrustumSceneLayer({
   }, [invalidate, layer.id, imageIdentity]);
 
   // This effect releases the held image lease on unmount — release, not
-  // dispose: the texture may be shared with the 2D image tile and stays
-  // retained by the cache for instant re-acquire.
+  // dispose: the decoded source may stay retained by the cache for instant
+  // re-acquire.
   useEffect(
     () => () => {
       heldImageRef.current?.release();

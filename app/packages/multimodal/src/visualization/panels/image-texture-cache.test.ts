@@ -1,4 +1,4 @@
-import type * as THREE from "three";
+import * as THREE from "three";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import type { ImageTextureHandle } from "./base-2d-scene";
@@ -40,10 +40,17 @@ describe("acquireImageTexture (shared keys)", () => {
     const { handle } = makeHandle();
     resolve(handle);
 
-    await expect(leaseA.promise).resolves.toBe(handle);
-    await expect(leaseB.promise).resolves.toBe(handle);
+    const leasedA = await leaseA.promise;
+    const leasedB = await leaseB.promise;
+    expect(leasedA).not.toBe(handle);
+    expect(leasedB).not.toBe(handle);
+    expect(leasedA.texture).not.toBe(leasedB.texture);
+    expect(leasedA.texture.source).not.toBe(leasedB.texture.source);
     expect(decode).toHaveBeenCalledTimes(1);
     expect(imageTextureCacheStats().decodeCount).toBe(1);
+
+    leaseA.release();
+    leaseB.release();
   });
 
   it("re-acquires a released texture from retention without re-decoding", async () => {
@@ -51,16 +58,22 @@ describe("acquireImageTexture (shared keys)", () => {
     const decode = vi.fn(async () => handle);
 
     const first = acquireImageTexture("k", decode);
-    await first.promise;
+    const firstHandle = await first.promise;
+    const firstDispose = vi.spyOn(firstHandle.texture, "dispose");
     first.release();
+    expect(firstDispose).toHaveBeenCalledTimes(1);
     expect(imageTextureCacheStats().retainedCount).toBe(1);
 
     const second = acquireImageTexture("k", decode);
-    await expect(second.promise).resolves.toBe(handle);
+    const secondHandle = await second.promise;
+    expect(secondHandle).not.toBe(handle);
+    expect(secondHandle.texture).not.toBe(firstHandle.texture);
     expect(decode).toHaveBeenCalledTimes(1);
     expect(imageTextureCacheStats().decodeCount).toBe(1);
     expect(imageTextureCacheStats().retainedCount).toBe(0);
     expect(dispose).not.toHaveBeenCalled();
+
+    second.release();
   });
 
   it("disposes an entry exactly once when it ages out of retention", async () => {
@@ -85,7 +98,7 @@ describe("acquireImageTexture (shared keys)", () => {
     // The evicted key decodes fresh on the next acquire.
     const { handle: freshHandle } = makeHandle();
     const reacquired = acquireImageTexture("k-0", async () => freshHandle);
-    await expect(reacquired.promise).resolves.toBe(freshHandle);
+    await reacquired.promise;
     reacquired.release();
     expect(firstDispose).toHaveBeenCalledTimes(1);
   });
@@ -107,7 +120,9 @@ describe("acquireImageTexture (shared keys)", () => {
     // The key is not poisoned: the next acquire decodes again.
     const { handle } = makeHandle();
     const retry = acquireImageTexture("k", async () => handle);
-    await expect(retry.promise).resolves.toBe(handle);
+    const retryHandle = await retry.promise;
+    expect(retryHandle).not.toBe(handle);
+    retry.release();
     expect(imageTextureCacheStats().decodeCount).toBe(2);
   });
 
@@ -120,7 +135,8 @@ describe("acquireImageTexture (shared keys)", () => {
 
     const { dispose, handle } = makeHandle();
     resolve(handle);
-    await expect(leaseB.promise).resolves.toBe(handle);
+    await leaseA.promise;
+    await leaseB.promise;
     expect(dispose).not.toHaveBeenCalled();
 
     leaseB.release();
@@ -142,8 +158,10 @@ describe("acquireImageTexture (shared keys)", () => {
     expect(imageTextureCacheStats().retainedCount).toBe(1);
 
     const reacquired = acquireImageTexture("k", decode);
-    await expect(reacquired.promise).resolves.toBe(handle);
+    await reacquired.promise;
     expect(decode).toHaveBeenCalledTimes(1);
+
+    reacquired.release();
   });
 
   it("treats release as idempotent per lease", async () => {
@@ -152,7 +170,7 @@ describe("acquireImageTexture (shared keys)", () => {
 
     const leaseA = acquireImageTexture("k", decode);
     const leaseB = acquireImageTexture("k", decode);
-    await leaseA.promise;
+    await Promise.all([leaseA.promise, leaseB.promise]);
 
     leaseA.release();
     leaseA.release();
@@ -188,6 +206,8 @@ describe("acquireImageTexture (shared keys)", () => {
       entryCount: 2,
       retainedCount: 1,
     });
+
+    leaseB.release();
   });
 });
 
@@ -230,6 +250,12 @@ describe("acquireImageTexture (keyless)", () => {
 
 function makeHandle(): { dispose: Mock; handle: ImageTextureHandle } {
   const dispose = vi.fn();
+  const texture = new THREE.Texture({} as TexImageSource);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.generateMipmaps = false;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+
   return {
     dispose,
     handle: {
@@ -237,7 +263,7 @@ function makeHandle(): { dispose: Mock; handle: ImageTextureHandle } {
       dispose,
       imageHeight: 1,
       imageWidth: 1,
-      texture: {} as THREE.Texture,
+      texture,
     },
   };
 }

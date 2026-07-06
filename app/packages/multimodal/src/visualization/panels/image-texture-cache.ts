@@ -1,8 +1,8 @@
 /**
- * Shared, refcounted cache of decoded image textures. One decode + one GPU
- * texture per key, no matter how many surfaces display the frame (e.g. the
- * 2D image tile and a 3D camera-frustum image plane showing the same
- * camera message).
+ * Shared, refcounted cache of decoded image sources. One decode per key,
+ * with a separate Three.js texture lease per consumer, no matter how many
+ * surfaces display the frame (e.g. the 2D image tile and a 3D camera-frustum
+ * image plane showing the same camera message).
  *
  * Keys are opaque strings formed by callers — MCAP consumers use
  * {@link imageTextureCacheKey} (recording key + image topic + content
@@ -16,11 +16,14 @@
  *
  * Model (deliberately dumb — plain maps, no timers/weakrefs/queues):
  * - `acquire` returns a lease; concurrent acquires for one key share the
- *   same in-flight decode promise.
- * - A handle is disposed exactly once: when its entry has zero leases AND
- *   it is evicted from the retention LRU. Released-but-retained entries
- *   are re-acquired instantly, which is what kills the per-frame
- *   dispose/redecode churn on playback batch re-delivery and short seeks.
+ *   same in-flight decode promise, but each settled lease receives its own
+ *   texture object so independent renderers do not fight over GPU ownership.
+ * - The canonical decoded source is disposed exactly once: when its entry has
+ *   zero leases AND it is evicted from the retention LRU. Released lease
+ *   textures are disposed immediately, while released-but-retained entries are
+ *   re-acquired without re-decoding. This kills the per-frame decode churn on
+ *   playback batch re-delivery and short seeks without sharing renderer-owned
+ *   texture state.
  * - Releasing the last lease mid-decode never cancels or disposes: the
  *   decode settles, then the entry is retained/evicted normally.
  * - Failed decodes evict the entry (no poisoned keys) and the rejection
@@ -29,6 +32,8 @@
  *   decode whose release disposes the handle, preserving the keyless
  *   bytes-identity lifecycle grid previews rely on.
  */
+import * as THREE from "three";
+
 import type { ImageTextureHandle } from "./base-2d-scene";
 
 // Retention LRU bound for zero-ref entries: ~6 cameras × a handful of
@@ -38,9 +43,8 @@ import type { ImageTextureHandle } from "./base-2d-scene";
 export const IMAGE_TEXTURE_RETENTION_CAP = 32;
 
 /**
- * One consumer's claim on a cached texture. `release` is idempotent and
- * is the ONLY way a consumer gives the texture back — never call
- * `handle.dispose()` on a leased handle.
+ * One consumer's claim on a cached texture. `release` is idempotent and is
+ * the preferred way a consumer gives the texture back.
  */
 export interface ImageTextureLease {
   readonly promise: Promise<ImageTextureHandle>;
@@ -111,12 +115,25 @@ export function acquireImageTexture(
   entry.refCount += 1;
 
   const target = entry;
+  let leasedHandle: ImageTextureHandle | null = null;
   let released = false;
+  const promise = entry.promise.then((handle) => {
+    const leaseHandle = createLeasedImageTextureHandle(handle);
+    if (released) {
+      leaseHandle.dispose();
+    } else {
+      leasedHandle = leaseHandle;
+    }
+    return leaseHandle;
+  });
+
   return {
-    promise: entry.promise,
+    promise,
     release: () => {
       if (released) return;
       released = true;
+      leasedHandle?.dispose();
+      leasedHandle = null;
       releaseEntry(target);
     },
   };
@@ -226,6 +243,48 @@ function retainEntry(entry: ImageTextureCacheEntry): void {
     entries.delete(oldestKey);
     oldest?.handle?.dispose();
   }
+}
+
+function createLeasedImageTextureHandle(
+  handle: ImageTextureHandle,
+): ImageTextureHandle {
+  const template = handle.texture;
+  // Three.Texture.clone() shares its Source, which can share renderer
+  // bookkeeping across independent canvases. Each lease needs its own Source.
+  const texture = new THREE.Texture(
+    template.image,
+    template.mapping,
+    template.wrapS,
+    template.wrapT,
+    template.magFilter,
+    template.minFilter,
+    template.format,
+    template.type,
+    template.anisotropy,
+    template.colorSpace,
+  );
+  texture.name = template.name;
+  texture.channel = template.channel;
+  texture.internalFormat = template.internalFormat;
+  texture.normalized = template.normalized;
+  texture.offset.copy(template.offset);
+  texture.repeat.copy(template.repeat);
+  texture.center.copy(template.center);
+  texture.rotation = template.rotation;
+  texture.matrixAutoUpdate = template.matrixAutoUpdate;
+  texture.matrix.copy(template.matrix);
+  texture.generateMipmaps = template.generateMipmaps;
+  texture.premultiplyAlpha = template.premultiplyAlpha;
+  texture.flipY = template.flipY;
+  texture.unpackAlignment = template.unpackAlignment;
+  texture.needsUpdate = true;
+  return {
+    aspectRatio: handle.aspectRatio,
+    imageHeight: handle.imageHeight,
+    imageWidth: handle.imageWidth,
+    dispose: () => texture.dispose(),
+    texture,
+  };
 }
 
 /**
