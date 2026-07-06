@@ -1,5 +1,4 @@
 /* eslint-disable react/no-unknown-property */
-import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 
@@ -9,6 +8,7 @@ import {
   scenePoseObjectTransform,
 } from "./transforms";
 import type { GridPanelLayer } from "./types";
+import { useInvalidateOn } from "./use-invalidate-on";
 import { isFinitePositiveNumber } from "./utils";
 
 export function GridSceneLayer({
@@ -18,7 +18,6 @@ export function GridSceneLayer({
   readonly layer: GridPanelLayer;
   readonly renderOrder: number;
 }) {
-  const invalidate = useThree((state) => state.invalidate);
   const { frame, frameTransform } = layer;
   const objectTransform = useMemo(
     () => pointCloudObjectTransform(frameTransform),
@@ -41,9 +40,7 @@ export function GridSceneLayer({
   );
 
   useEffect(() => () => texture.dispose(), [texture]);
-  useEffect(() => {
-    invalidate();
-  }, [invalidate, objectTransform, poseTransform, renderOrder, texture]);
+  useInvalidateOn([objectTransform, poseTransform, renderOrder, texture]);
 
   const width = frame.columnCount * frame.cellSize[0];
   const height = frame.rowCount * frame.cellSize[1];

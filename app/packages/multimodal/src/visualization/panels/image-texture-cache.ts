@@ -36,6 +36,10 @@ import * as THREE from "three";
 
 import type { ImageTextureHandle } from "./base-2d-scene";
 
+type TextureWithNormalized = THREE.Texture & {
+  normalized?: boolean;
+};
+
 // Retention LRU bound for zero-ref entries: ~6 cameras × a handful of
 // recent frames each. Big enough that steady playback with every surface
 // open never evicts the current frames; small enough that a stale
@@ -253,20 +257,22 @@ function createLeasedImageTextureHandle(
   // bookkeeping across independent canvases. Each lease needs its own Source.
   const texture = new THREE.Texture(
     template.image,
-    template.mapping,
+    template.mapping as THREE.Mapping,
     template.wrapS,
     template.wrapT,
     template.magFilter,
     template.minFilter,
-    template.format,
+    template.format as THREE.PixelFormat,
     template.type,
     template.anisotropy,
-    template.colorSpace,
+    template.colorSpace as THREE.ColorSpace,
   );
   texture.name = template.name;
   texture.channel = template.channel;
   texture.internalFormat = template.internalFormat;
-  texture.normalized = template.normalized;
+  (texture as TextureWithNormalized).normalized = (
+    template as TextureWithNormalized
+  ).normalized;
   texture.offset.copy(template.offset);
   texture.repeat.copy(template.repeat);
   texture.center.copy(template.center);

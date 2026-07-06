@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import uPlot, { type AlignedData } from "uplot";
 import "uplot/dist/uPlot.min.css";
+import { CLICK_DRAG_TOLERANCE_PX } from "../interaction";
 import styles from "./TimeseriesChart.module.css";
 
 /** Identity of one drawn series: legend label + mark color. */
@@ -56,9 +57,6 @@ const AXIS_INK = "#898781";
 const GRID_STROKE = "#2c2c2a";
 const TICK_STROKE = "#383835";
 const CHART_FONT = '11px system-ui, -apple-system, "Segoe UI", sans-serif';
-/** Pointer travel beyond this is a drag, not a click-to-seek. */
-const CLICK_SLOP_PX = 4;
-
 /**
  * Dense multi-series line chart on uPlot. Renders on the shared dark
  * visualization surface; identity is carried by the always-present
@@ -203,7 +201,10 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     const onPointerUp = (event: PointerEvent) => {
       const startX = downX;
       downX = null;
-      if (startX === null || Math.abs(event.clientX - startX) > CLICK_SLOP_PX) {
+      if (
+        startX === null ||
+        Math.abs(event.clientX - startX) > CLICK_DRAG_TOLERANCE_PX
+      ) {
         return;
       }
       const seek = onSeekRef.current;

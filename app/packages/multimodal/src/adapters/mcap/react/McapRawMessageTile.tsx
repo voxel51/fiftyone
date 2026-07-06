@@ -1,6 +1,6 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
 import { useSetTileTitle } from "@fiftyone/tiling";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import { rawNodeToJson } from "../resources/raw-record-prune";
 import type { McapRawMessageRecordResult } from "../types";
 import { useMcapDataStream } from "./mcap-data-stream-context";
@@ -11,8 +11,7 @@ import McapRawMessageTree from "./McapRawMessageTree";
 import rawStyles from "./McapRawMessageTile.module.css";
 import McapRawMessageTileSettings from "./McapRawMessageTileSettings";
 import styles from "./McapTile.module.css";
-
-const COPY_FEEDBACK_MS = 1200;
+import { useCopyFeedback } from "./use-copy-feedback";
 
 /**
  * Raw message tile: the escape hatch that makes every topic at least
@@ -87,16 +86,7 @@ function MetaRow({
   readonly topic: string;
 }) {
   const dataStream = useMcapDataStream();
-  const [copied, setCopied] = useState(false);
-  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // This effect clears a pending copy-feedback timer on unmount.
-  useEffect(
-    () => () => {
-      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-    },
-    [],
-  );
+  const [copied, showCopied] = useCopyFeedback(false);
 
   const handleCopyMessage = useCallback(() => {
     if (!result.root) {
@@ -105,13 +95,8 @@ function MetaRow({
     void navigator.clipboard?.writeText(
       JSON.stringify(rawNodeToJson(result.root), null, 2),
     );
-    setCopied(true);
-    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-    copyTimeoutRef.current = setTimeout(
-      () => setCopied(false),
-      COPY_FEEDBACK_MS,
-    );
-  }, [result.root]);
+    showCopied(true);
+  }, [result.root, showCopied]);
 
   const startTimeNs = dataStream?.getTimelineIndex()?.startTimeNs;
   const relativeTime =

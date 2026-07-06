@@ -3,6 +3,7 @@ import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
+import { CLICK_DRAG_TOLERANCE_PX } from "../interaction";
 import {
   type MeasurementPlaneUpAxis,
   type MeasurementPoint,
@@ -16,10 +17,6 @@ const PREVIEW_DOT_SPACING_M = 0.5;
 const PREVIEW_DOT_MAX_SEGMENTS = 160;
 const PREVIEW_MIN_DISTANCE_M = 0.001;
 const MEASUREMENT_RENDER_ORDER = 10_000;
-// A click that traveled further than this (pointer-down → pointer-up, px)
-// is an orbit drag, not a pick.
-const CLICK_DRAG_TOLERANCE_PX = 4;
-
 const GRID_PLANE_NORMALS: Record<MeasurementPlaneUpAxis, THREE.Vector3> = {
   x: new THREE.Vector3(1, 0, 0),
   y: new THREE.Vector3(0, 1, 0),

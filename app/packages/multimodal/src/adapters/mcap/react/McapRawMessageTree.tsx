@@ -1,12 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { rawNodeToJson } from "../resources/raw-record-prune";
 import type { McapRawObjectNode, McapRawValueNode } from "../types";
 import styles from "./McapRawMessageTile.module.css";
+import { useCopyFeedback } from "./use-copy-feedback";
 
 /** Levels expanded by default; deeper nodes open on demand. */
 const AUTO_EXPAND_DEPTH = 2;
-
-const COPY_FEEDBACK_MS = 1200;
 
 /**
  * Collapsible tree over one pruned message record. Children render only
@@ -21,16 +20,7 @@ const McapRawMessageTree: React.FC<{
   const [expandedOverrides, setExpandedOverrides] = useState<
     ReadonlyMap<string, boolean>
   >(new Map());
-  const [copiedPath, setCopiedPath] = useState<string | null>(null);
-  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // This effect clears a pending copy-feedback timer on unmount.
-  useEffect(
-    () => () => {
-      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-    },
-    [],
-  );
+  const [copiedPath, showCopiedPath] = useCopyFeedback<string | null>(null);
 
   const toggle = useCallback((path: string, expanded: boolean) => {
     setExpandedOverrides((previous) => {
@@ -40,17 +30,15 @@ const McapRawMessageTree: React.FC<{
     });
   }, []);
 
-  const copy = useCallback((path: string, node: McapRawValueNode) => {
-    void navigator.clipboard?.writeText(
-      JSON.stringify(rawNodeToJson(node), null, 2),
-    );
-    setCopiedPath(path);
-    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-    copyTimeoutRef.current = setTimeout(
-      () => setCopiedPath(null),
-      COPY_FEEDBACK_MS,
-    );
-  }, []);
+  const copy = useCallback(
+    (path: string, node: McapRawValueNode) => {
+      void navigator.clipboard?.writeText(
+        JSON.stringify(rawNodeToJson(node), null, 2),
+      );
+      showCopiedPath(path);
+    },
+    [showCopiedPath],
+  );
 
   return (
     <div className={styles.tree} data-testid="mcap-raw-tree">

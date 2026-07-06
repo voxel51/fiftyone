@@ -1,18 +1,15 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree, type ThreeEvent } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 
 import type { CameraCalibrationVisualization } from "../../../decoders";
-import type { ImageTextureHandle } from "../base-2d-scene";
-import { createImageTexture } from "../image-texture";
-import {
-  acquireImageTexture,
-  type ImageTextureLease,
-} from "../image-texture-cache";
+import { CLICK_DRAG_TOLERANCE_PX } from "../interaction";
+import { useImageTextureLease } from "../use-image-texture-lease";
 import { useScenePicking } from "./scene-interactivity";
 import { pointCloudObjectTransform } from "./transforms";
 import type { CameraFrustumPanelLayer } from "./types";
+import { useInvalidateOn } from "./use-invalidate-on";
 import {
   SCENE_SELECTED_DASH_SIZE,
   SCENE_SELECTED_GAP_SIZE,
@@ -31,10 +28,6 @@ const CAMERA_FRUSTUM_AXIS_LINE_WIDTH = 2;
 // Highlighted (linked camera tile hovered / pending select) style.
 const CAMERA_FRUSTUM_HIGHLIGHT_COLOR = 0xffffff;
 const CAMERA_FRUSTUM_HIGHLIGHT_OPACITY = 1;
-// A click that traveled further than this (pointer-down → pointer-up, px)
-// is an orbit drag, not a pick.
-const FRUSTUM_CLICK_DRAG_TOLERANCE_PX = 4;
-
 export function CameraFrustumSceneLayer({
   layer,
 }: {
@@ -84,9 +77,6 @@ export function CameraFrustumSceneLayer({
     () => createCameraAxisMarkerGeometry(imagePlaneDepthM),
     [imagePlaneDepthM],
   );
-  const [imageHandle, setImageHandle] = useState<ImageTextureHandle | null>(
-    null,
-  );
   const pickingEnabled = useScenePicking();
   const [hovered, setHovered] = useState(false);
   const interactive = Boolean(layer.onSelect) && pickingEnabled;
@@ -98,92 +88,24 @@ export function CameraFrustumSceneLayer({
   const renderOpacity = emphasized
     ? CAMERA_FRUSTUM_HIGHLIGHT_OPACITY
     : baseOpacity;
-  const heldImageRef = useRef<{
-    readonly handle: ImageTextureHandle;
-    readonly release: ImageTextureLease["release"];
-  } | null>(null);
-  const replaceHeldImage = useCallback(
-    (
-      next: {
-        readonly handle: ImageTextureHandle;
-        readonly release: ImageTextureLease["release"];
-      } | null,
-    ) => {
-      const previous = heldImageRef.current;
-      if (previous && previous !== next) {
-        previous.release();
-      }
-      heldImageRef.current = next;
-      setImageHandle(next?.handle ?? null);
-    },
-    [],
-  );
-
   // Message identity for the image decode below: the shared texture key
   // when the layer carries one, else image content time, else the frame
   // object itself. Keying on identity instead of `image` survives playback
   // re-delivering the same message in new wrapper objects every batch.
   const imageIdentity =
     layer.imageTextureKey ?? layer.imageContentTimeNs ?? image;
-
-  // This effect resolves the camera's current encoded frame into the image
-  // plane texture. When the layer carries `imageTextureKey` the decode goes
-  // through the shared image-texture cache — the 2D image tile forms the
-  // same key, so both surfaces share one decode while receiving separate
-  // renderer-owned textures, and replaced frames release their lease
-  // (retained for instant re-acquire) instead of disposing the decoded
-  // source. Layers without a key fall back to a private
-  // decode per message. The effect is keyed on `imageIdentity`, not the
-  // `image` wrapper, for the same batch-redelivery reason as the
-  // geometries, so `image` is deliberately omitted from the deps.
-  useEffect(() => {
-    if (!image || image.bytes.byteLength === 0) {
-      replaceHeldImage(null);
-      return undefined;
-    }
-
-    let cancelled = false;
-    const lease = acquireImageTexture(layer.imageTextureKey, () =>
-      createImageTexture(image.bytes, image.mimeType),
-    );
-    lease.promise
-      .then((handle) => {
-        if (cancelled) {
-          lease.release();
-          return;
-        }
-        replaceHeldImage({ handle, release: lease.release });
-        invalidate();
-      })
-      .catch(() => {
-        lease.release();
-        if (!cancelled) {
-          replaceHeldImage(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [invalidate, layer.id, imageIdentity]);
-
-  // This effect releases the held image lease on unmount — release, not
-  // dispose: the decoded source may stay retained by the cache for instant
-  // re-acquire.
-  useEffect(
-    () => () => {
-      heldImageRef.current?.release();
-      heldImageRef.current = null;
-    },
-    [],
-  );
+  const { handle: imageHandle } = useImageTextureLease({
+    bytes: image?.bytes,
+    enabled: Boolean(image && image.bytes.byteLength > 0),
+    identity: imageIdentity,
+    mimeType: image?.mimeType,
+    onLoaded: () => invalidate(),
+    textureKey: layer.imageTextureKey,
+  });
   useEffect(() => () => geometry?.dispose(), [geometry]);
   useEffect(() => () => imagePlaneGeometry?.dispose(), [imagePlaneGeometry]);
   useEffect(() => () => axisGeometry.dispose(), [axisGeometry]);
-  useEffect(() => {
-    invalidate();
-  }, [
+  useInvalidateOn([
     axisGeometry,
     baseOpacity,
     emphasized,
@@ -191,7 +113,6 @@ export function CameraFrustumSceneLayer({
     geometry,
     imageHandle,
     imagePlaneGeometry,
-    invalidate,
     objectTransform,
   ]);
 
@@ -221,7 +142,7 @@ export function CameraFrustumSceneLayer({
       onClick={
         interactive
           ? (event: ThreeEvent<MouseEvent>) => {
-              if (event.delta > FRUSTUM_CLICK_DRAG_TOLERANCE_PX) return;
+              if (event.delta > CLICK_DRAG_TOLERANCE_PX) return;
               event.stopPropagation();
               layer.onSelect?.({
                 metaKey: event.nativeEvent.metaKey,

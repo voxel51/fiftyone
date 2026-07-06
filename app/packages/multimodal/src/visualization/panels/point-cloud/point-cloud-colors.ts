@@ -13,7 +13,12 @@ import type {
   PointCloudColorRamp,
   PointCloudRenderData,
 } from "./types";
-import { clamp01 } from "./utils";
+import {
+  clamp01,
+  hexToRgbUnit,
+  normalizeHexColor,
+  normalizeIdentifierName,
+} from "./utils";
 
 // Render budget: beyond ~120k points the GPU cost outweighs the visual gain
 // for typical LiDAR frames. Points are uniformly sampled down to this limit.
@@ -36,8 +41,6 @@ const CANONICAL_SCALAR_COLOR_FIELDS = [
   "rcs",
 ] as const;
 const NEUTRAL_POINT_COLOR = [0.72, 0.76, 0.82] as const;
-const HEX_COLOR_PATTERN = /^#?([0-9a-f]{6})$/i;
-
 export interface PointCloudColorOptions {
   readonly colorBy?: PointCloudColorBy;
   readonly colormap?: PointCloudColormap;
@@ -342,9 +345,9 @@ function scalarColorSource(
   fieldName: string,
   fixedRange: FixedRange,
 ): PointCloudColorSource | null {
-  const requestedName = normalizedFieldName(fieldName);
+  const requestedName = normalizeIdentifierName(fieldName);
   const scalarField = scalarFields?.find(
-    (field) => normalizedFieldName(field.name) === requestedName,
+    (field) => normalizeIdentifierName(field.name) === requestedName,
   );
   if (!scalarField || scalarField.values.length < sourcePointCount) {
     return null;
@@ -544,21 +547,9 @@ function normalizeValue(value: number, min: number, max: number) {
   return (value - min) / span;
 }
 
-function normalizedFieldName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
 function hexToRgbColor(
   value: string | undefined,
 ): readonly [number, number, number] | null {
-  const match = value?.trim().match(HEX_COLOR_PATTERN);
-  if (!match) {
-    return null;
-  }
-
-  return [
-    parseInt(match[1].slice(0, 2), 16) / 255,
-    parseInt(match[1].slice(2, 4), 16) / 255,
-    parseInt(match[1].slice(4, 6), 16) / 255,
-  ];
+  const normalized = normalizeHexColor(value);
+  return normalized ? hexToRgbUnit(normalized) : null;
 }

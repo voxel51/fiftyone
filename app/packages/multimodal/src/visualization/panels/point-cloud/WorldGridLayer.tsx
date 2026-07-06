@@ -21,6 +21,7 @@ import {
   type Node,
 } from "three/tsl";
 import { MeshBasicNodeMaterial } from "three/webgpu";
+import { useInvalidateOn } from "./use-invalidate-on";
 
 /**
  * Infinite reference grid on the world ground plane (perpendicular to the
@@ -232,7 +233,6 @@ export function WorldGridLayer({
   /** World up axis; the grid plane is perpendicular to it. */
   readonly up?: WorldGridUpAxis;
 }) {
-  const invalidate = useThree((state) => state.invalidate);
   // fwidth works in device pixels; scale the target thickness by the
   // canvas' pixel ratio so lines keep their CSS-pixel width at any DPR.
   const dpr = useThree((state) => state.viewport.dpr);
@@ -248,9 +248,7 @@ export function WorldGridLayer({
   );
 
   useEffect(() => () => material.dispose(), [material]);
-  useEffect(() => {
-    invalidate();
-  }, [invalidate, material]);
+  useInvalidateOn([material]);
 
   // Cast, not a type: @react-three/fiber's bundled three types disagree
   // with the app's pinned three version, so the node material fails the

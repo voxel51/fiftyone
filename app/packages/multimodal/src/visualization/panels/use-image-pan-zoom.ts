@@ -1,6 +1,7 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { CLICK_DRAG_TOLERANCE_PX } from "./interaction";
 import {
   clampImageViewTransform,
   DEFAULT_IMAGE_VIEW_TRANSFORM,
@@ -16,12 +17,6 @@ const WHEEL_DELTA_PAGE = 2;
 const WHEEL_LINE_DELTA_PX = 16;
 const WHEEL_PAGE_DELTA_PX = 800;
 const WHEEL_ZOOM_FACTOR = 1.045;
-// Pointer capture (and the grabbing cursor) start only once the pointer
-// travels past this — capturing on pointerdown retargets pointerup at the
-// surface, which swallows click events on overlay content (annotation
-// shapes) in real browsers.
-const DRAG_START_THRESHOLD_PX = 4;
-
 interface DragState {
   captured: boolean;
   lastX: number;
@@ -217,7 +212,7 @@ export function useImagePanZoom({
           event.clientX - drag.startX,
           event.clientY - drag.startY,
         );
-        if (traveled <= DRAG_START_THRESHOLD_PX) {
+        if (traveled <= CLICK_DRAG_TOLERANCE_PX) {
           return;
         }
         event.currentTarget.setPointerCapture?.(event.pointerId);

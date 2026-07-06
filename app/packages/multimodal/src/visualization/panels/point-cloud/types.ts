@@ -237,7 +237,8 @@ export interface CameraFrustumPanelLayer {
    * `imageTextureCacheKey`). When present, the frustum image plane
    * acquires its texture from the shared cache, so surfaces showing the
    * same camera frame (e.g. the 2D image tile) share one decode and one
-   * GPU texture. Without it the layer decodes privately per message.
+   * decoded source while receiving separate texture leases. Without it
+   * the layer decodes privately per message.
    */
   readonly imageTextureKey?: string;
   /** Image stream this frustum's camera feeds (host-defined). */

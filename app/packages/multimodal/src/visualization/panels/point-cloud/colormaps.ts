@@ -1,6 +1,11 @@
 import colormap from "colormap";
 
-import { clamp01 } from "./utils";
+import {
+  clamp01,
+  hexToRgbUnit,
+  normalizeHexColor,
+  normalizeIdentifierName,
+} from "./utils";
 
 export interface PointCloudColorStop {
   readonly color: string;
@@ -59,7 +64,6 @@ export const MAX_POINT_CLOUD_COLORMAP_STOPS = 256;
 const DEFAULT_PRESET_STOP_COUNT = 128;
 const LOOKUP_SIZE = 256;
 const RGB_COMPONENTS = 3;
-const RGB_MAX = 255;
 
 const EXPLICIT_COLOR_MAPS: Record<string, readonly PointCloudColorStop[]> = {
   coolwarm: [
@@ -104,8 +108,6 @@ const EXPLICIT_COLOR_MAPS: Record<string, readonly PointCloudColorStop[]> = {
     { value: 1, color: "#ffff00" },
   ],
 };
-
-const HEX_COLOR_PATTERN = /^#?([0-9a-f]{6})$/i;
 
 export function getGradientFromSchemeName(
   schemeName: string,
@@ -325,8 +327,8 @@ function writeSampledStopColor(
 
   const upper = stops[upperIndex];
   const lower = stops[Math.max(0, upperIndex - 1)];
-  const lowerRgb = hexToRgb(lower.color);
-  const upperRgb = hexToRgb(upper.color);
+  const lowerRgb = hexToRgbUnit(lower.color);
+  const upperRgb = hexToRgbUnit(upper.color);
   const span = upper.value - lower.value;
   const factor = span > 0 ? (value - lower.value) / span : 0;
 
@@ -336,9 +338,7 @@ function writeSampledStopColor(
 }
 
 function normalizePointCloudColormapName(value: unknown): string {
-  return typeof value === "string"
-    ? value.toLowerCase().replace(/[^a-z0-9]/g, "")
-    : "";
+  return normalizeIdentifierName(value);
 }
 
 function normalizeStopCount(value: number): number {
@@ -346,23 +346,6 @@ function normalizeStopCount(value: number): number {
     MAX_POINT_CLOUD_COLORMAP_STOPS,
     Math.max(MIN_POINT_CLOUD_COLORMAP_STOPS, Math.round(value)),
   );
-}
-
-function normalizeHexColor(value: unknown): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const match = value.trim().match(HEX_COLOR_PATTERN);
-  return match ? `#${match[1].toLowerCase()}` : null;
-}
-
-function hexToRgb(color: string): readonly [number, number, number] {
-  const normalized = normalizeHexColor(color) ?? "#000000";
-  return [
-    parseInt(normalized.slice(1, 3), 16) / RGB_MAX,
-    parseInt(normalized.slice(3, 5), 16) / RGB_MAX,
-    parseInt(normalized.slice(5, 7), 16) / RGB_MAX,
-  ];
 }
 
 function roundStopValue(value: number): number {

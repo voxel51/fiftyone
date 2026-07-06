@@ -8,6 +8,7 @@ import { PointsNodeMaterial } from "three/webgpu";
 import { POINT_COMPONENT_COUNT } from "./point-cloud-colors";
 import { pointCloudObjectTransform } from "./transforms";
 import type { PointCloudPanelLayer, PointCloudRenderData } from "./types";
+import { useInvalidateOn } from "./use-invalidate-on";
 
 // Default point sprite size in pixels. Lives here (not in the panel) so
 // the offscreen snapshot renderer can share it without importing the
@@ -35,18 +36,13 @@ export function PointCloudSceneLayer({
   readonly layer: PointCloudPanelLayer;
   readonly pointSize: number;
 }) {
-  const invalidate = useThree((state) => state.invalidate);
   const { frameTransform } = layer;
   const objectTransform = useMemo(
     () => pointCloudObjectTransform(frameTransform),
     [frameTransform],
   );
 
-  // This effect requests a frameloop-on-demand repaint when the layer's
-  // placement changes.
-  useEffect(() => {
-    invalidate();
-  }, [invalidate, objectTransform]);
+  useInvalidateOn([objectTransform]);
 
   return (
     <group

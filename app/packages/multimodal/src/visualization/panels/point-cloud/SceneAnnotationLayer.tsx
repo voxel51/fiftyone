@@ -1,8 +1,9 @@
 /* eslint-disable react/no-unknown-property */
-import { useThree, type ThreeEvent } from "@react-three/fiber";
+import { type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 
 import type { SceneEntityVisualization } from "../../../decoders";
+import { CLICK_DRAG_TOLERANCE_PX } from "../interaction";
 import {
   SceneArrowMesh,
   SceneCubeMesh,
@@ -18,26 +19,20 @@ import { useScenePicking } from "./scene-interactivity";
 import { SceneTextSprite } from "./scene-text-sprite";
 import { pointCloudObjectTransform } from "./transforms";
 import type { SceneAnnotationPanelLayer } from "./types";
-
-// A click that traveled further than this (pointer-down → pointer-up, px)
-// is an orbit drag, not a pick.
-const CLICK_DRAG_TOLERANCE_PX = 4;
+import { useInvalidateOn } from "./use-invalidate-on";
 
 export function SceneAnnotationLayer({
   layer,
 }: {
   readonly layer: SceneAnnotationPanelLayer;
 }) {
-  const invalidate = useThree((state) => state.invalidate);
   const { frameTransform } = layer;
   const objectTransform = useMemo(
     () => pointCloudObjectTransform(frameTransform),
     [frameTransform],
   );
 
-  useEffect(() => {
-    invalidate();
-  }, [invalidate, objectTransform]);
+  useInvalidateOn([objectTransform]);
 
   return (
     <group
@@ -74,7 +69,6 @@ function SceneAnnotationEntity({
     modifiers: { readonly shiftKey: boolean },
   ) => void;
 }) {
-  const invalidate = useThree((state) => state.invalidate);
   const pickingEnabled = useScenePicking();
   const [hovered, setHovered] = useState(false);
   const interactive =
@@ -88,11 +82,7 @@ function SceneAnnotationEntity({
       ? "hover"
       : "none";
 
-  // This effect repaints the demand-driven canvas when emphasis flips —
-  // the material change alone doesn't schedule a frame.
-  useEffect(() => {
-    invalidate();
-  }, [emphasis, invalidate]);
+  useInvalidateOn([emphasis]);
 
   // This effect drops a stale hover when picking is disabled mid-hover
   // (the pointer-out handler is gone by then).

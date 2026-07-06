@@ -33,6 +33,7 @@ import {
   DEFAULT_POINT_CLOUD_COLORMAP,
   getGradientFromSchemeName,
   getPointCloudColormapStops,
+  interpolateHexColors,
   MAX_POINT_CLOUD_COLORMAP_STOPS,
   MIN_POINT_CLOUD_COLORMAP_STOPS,
   normalizeColorStops,
@@ -1305,36 +1306,6 @@ function boundingStops(
   }
   const last = stops[stops.length - 1];
   return [last, last];
-}
-
-function interpolateHexColors(
-  low: string,
-  high: string,
-  factor: number,
-): string {
-  const lowRgb = hexToRgb(low);
-  const highRgb = hexToRgb(high);
-  return rgbToHex(
-    lowRgb.map((component, index) =>
-      Math.round(component + (highRgb[index] - component) * factor),
-    ) as [number, number, number],
-  );
-}
-
-function hexToRgb(color: string): [number, number, number] {
-  return [
-    parseInt(color.slice(1, 3), 16),
-    parseInt(color.slice(3, 5), 16),
-    parseInt(color.slice(5, 7), 16),
-  ];
-}
-
-function rgbToHex([r, g, b]: readonly [number, number, number]): string {
-  return `#${[r, g, b]
-    .map((component) =>
-      Math.max(0, Math.min(255, component)).toString(16).padStart(2, "0"),
-    )
-    .join("")}`;
 }
 
 function SettingsNullableNumberInput({

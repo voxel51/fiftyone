@@ -10,9 +10,10 @@ import {
   type TreePath,
 } from "@voxel51/voodo";
 import { format } from "date-fns/format";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import styles from "./McapTimestampReadout.module.css";
+import { useCopyFeedback } from "./use-copy-feedback";
 
 const NS_PER_SECOND = 1_000_000_000n;
 const NS_PER_MILLISECOND = 1_000_000n;
@@ -26,7 +27,6 @@ const NS_PER_TIME_ZONE_OFFSET_BUCKET = 15n * 60n * NS_PER_SECOND;
 const EPOCH_GATE_MIN_NS = 1_000_000_000_000_000_000n;
 const EPOCH_GATE_MAX_NS = 4_102_444_800_000_000_000n;
 
-const COPY_FEEDBACK_MS = 1200;
 const DEFAULT_TIME_ZONE = "UTC";
 
 const MONO_FONT =
@@ -242,16 +242,7 @@ const McapTimestampReadout: React.FC = () => {
   const playheadSec = usePlayhead();
   const dataStream = useMcapDataStream();
   const [timeZone, setTimeZone] = useState(DEFAULT_TIME_ZONE);
-  const [copied, setCopied] = useState(false);
-  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // This effect clears a pending copy-feedback timer on unmount.
-  useEffect(
-    () => () => {
-      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-    },
-    [],
-  );
+  const [copied, showCopied] = useCopyFeedback(false);
 
   const index = dataStream?.getTimelineIndex() ?? null;
   if (!index || !isPlausibleEpochNs(index.startTimeNs)) return null;
@@ -270,12 +261,7 @@ const McapTimestampReadout: React.FC = () => {
     void navigator.clipboard?.writeText(
       formatMcapTimestampCopyText(absoluteNs),
     );
-    setCopied(true);
-    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-    copyTimeoutRef.current = setTimeout(
-      () => setCopied(false),
-      COPY_FEEDBACK_MS,
-    );
+    showCopied(true);
   };
 
   const handleTimezoneChange = (path: TreePath | null) => {

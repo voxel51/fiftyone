@@ -13,6 +13,8 @@ import type {
 
 const DEFAULT_SCENE_CUBE_COLOR: RgbaColor = [0.1, 0.78, 0.95, 1];
 export const EMPTY_NOTICES: readonly PanelNotice[] = [];
+const HEX_COLOR_PATTERN = /^#?([0-9a-f]{6})$/i;
+const RGB_MAX = 255;
 
 // Selected/echoed entities render white and brighter so they pop against
 // the per-class colors without occluding the points inside them.
@@ -117,6 +119,66 @@ export function rgbaCss(color: RgbaColor) {
 
 export function clamp01(value: number): number {
   return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+}
+
+/** Normalize display identifiers for loose matching across field and colormap names. */
+export function normalizeIdentifierName(value: unknown): string {
+  return typeof value === "string"
+    ? value.toLowerCase().replace(/[^a-z0-9]/g, "")
+    : "";
+}
+
+/** Normalize a six-digit hex color to lowercase `#rrggbb`, or `null` if invalid. */
+export function normalizeHexColor(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const match = value.trim().match(HEX_COLOR_PATTERN);
+  return match ? `#${match[1].toLowerCase()}` : null;
+}
+
+/** Convert a hex color string to normalized RGB channels in `[0, 1]`. */
+export function hexToRgbUnit(value: string): readonly [number, number, number] {
+  const normalized = normalizeHexColor(value) ?? "#000000";
+  return [
+    parseInt(normalized.slice(1, 3), 16) / RGB_MAX,
+    parseInt(normalized.slice(3, 5), 16) / RGB_MAX,
+    parseInt(normalized.slice(5, 7), 16) / RGB_MAX,
+  ];
+}
+
+/** Convert a hex color string to integer RGB channels in `[0, 255]`. */
+export function hexToRgb255(value: string): readonly [number, number, number] {
+  const normalized = normalizeHexColor(value) ?? "#000000";
+  return [
+    parseInt(normalized.slice(1, 3), 16),
+    parseInt(normalized.slice(3, 5), 16),
+    parseInt(normalized.slice(5, 7), 16),
+  ];
+}
+
+/** Convert integer RGB channels to a clamped lowercase `#rrggbb` color. */
+export function rgbToHex(color: readonly [number, number, number]): string {
+  return `#${color
+    .map((component) =>
+      Math.max(0, Math.min(RGB_MAX, component)).toString(16).padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
+/** Interpolate between two hex colors and return the blended `#rrggbb` color. */
+export function interpolateHexColors(
+  low: string,
+  high: string,
+  factor: number,
+): string {
+  const lowRgb = hexToRgb255(low);
+  const highRgb = hexToRgb255(high);
+  return rgbToHex(
+    lowRgb.map((component, index) =>
+      Math.round(component + (highRgb[index] - component) * factor),
+    ) as [number, number, number],
+  );
 }
 
 export function isFinitePositiveVector(
