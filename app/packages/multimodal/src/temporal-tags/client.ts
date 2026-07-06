@@ -31,11 +31,11 @@ type TemporalTagDto = {
 };
 
 type TemporalTagsResponseDto = {
-  readonly temporal_tags: readonly TemporalTagDto[];
+  readonly tags: readonly TemporalTagDto[];
 };
 
 type TemporalTagResponseDto = {
-  readonly temporal_tag: TemporalTagDto;
+  readonly tag: TemporalTagDto;
 };
 
 type TemporalTagCountsResponseDto = {
@@ -80,7 +80,7 @@ export function createTemporalTagsClient(
         )}/sample/${encodeURIComponent(sampleId)}/tags`,
       });
 
-      return response.response.temporal_tags.map(temporalTagFromDto);
+      return response.response.tags.map(temporalTagFromDto);
     },
 
     async clearSampleTemporalTags({
@@ -151,7 +151,7 @@ export function createTemporalTagsClient(
         ),
       });
 
-      return response.response.temporal_tags.map(temporalTagFromDto);
+      return response.response.tags.map(temporalTagFromDto);
     },
 
     async listSampleTemporalTags({
@@ -169,7 +169,7 @@ export function createTemporalTagsClient(
         ),
       });
 
-      return response.response.temporal_tags.map(temporalTagFromDto);
+      return response.response.tags.map(temporalTagFromDto);
     },
 
     async updateSampleTemporalTag({
@@ -191,7 +191,7 @@ export function createTemporalTagsClient(
         )}`,
       });
 
-      return temporalTagFromDto(response.response.temporal_tag);
+      return temporalTagFromDto(response.response.tag);
     },
   };
 }
