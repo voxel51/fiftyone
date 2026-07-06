@@ -6,7 +6,7 @@ import {
   MenuSeparator,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Mosaic,
   MosaicBranch,
@@ -273,10 +273,19 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
   const [localExpandedTileId, setLocalExpandedTileId] = useState<string | null>(
     null,
   );
-  const activeExpandedTileId =
-    expandedTileId === undefined ? localExpandedTileId : expandedTileId;
-  const setActiveExpandedTileId =
-    onExpandedTileIdChange ?? setLocalExpandedTileId;
+  const isExpandedControlled = expandedTileId !== undefined;
+  const activeExpandedTileId = isExpandedControlled
+    ? expandedTileId
+    : localExpandedTileId;
+  const setActiveExpandedTileId = useCallback(
+    (id: string | null) => {
+      if (!isExpandedControlled) {
+        setLocalExpandedTileId(id);
+      }
+      onExpandedTileIdChange?.(id);
+    },
+    [isExpandedControlled, onExpandedTileIdChange],
+  );
   const expandedPath =
     activeExpandedTileId && value
       ? findPathForTile(value, activeExpandedTileId)

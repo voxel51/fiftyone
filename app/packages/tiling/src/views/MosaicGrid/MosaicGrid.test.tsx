@@ -402,6 +402,32 @@ describe("MosaicGrid component", () => {
       expect(onExpandedTileIdChange).toHaveBeenCalledWith(null);
     });
 
+    it("updates local expanded state when only the expanded callback is provided", () => {
+      const onExpandedTileIdChange = vi.fn();
+      renderGrid(
+        <MosaicGrid
+          tiles={tiles}
+          value="cam-1"
+          onChange={noop}
+          onExpandedTileIdChange={onExpandedTileIdChange}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId("tile-header-fullscreen"));
+
+      expect(onExpandedTileIdChange).toHaveBeenCalledWith("cam-1");
+      expect(
+        screen.getByTestId("tile-header-fullscreen").getAttribute("aria-label"),
+      ).toBe("Exit fullscreen");
+
+      fireEvent.click(screen.getByTestId("tile-header-fullscreen"));
+
+      expect(onExpandedTileIdChange).toHaveBeenCalledWith(null);
+      expect(
+        screen.getByTestId("tile-header-fullscreen").getAttribute("aria-label"),
+      ).toBe("Fullscreen");
+    });
+
     it("selects the tile when the header itself is clicked", () => {
       const onFocusTile = vi.fn();
       renderGrid(
