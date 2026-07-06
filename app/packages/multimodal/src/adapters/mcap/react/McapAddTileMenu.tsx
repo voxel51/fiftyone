@@ -28,7 +28,7 @@ const McapAddTileMenu: React.FC = () => {
         return (
           <MenuIconTextItem
             key={type}
-            data-cy={`mcap-add-tile-${type === MCAP_TILE_TYPE.RAW ? "message" : type}`}
+            data-testid={`mcap-add-tile-${type === MCAP_TILE_TYPE.RAW ? "message" : type}`}
             icon={definition.icon}
             text={definition.typeLabel}
             onClick={() => {

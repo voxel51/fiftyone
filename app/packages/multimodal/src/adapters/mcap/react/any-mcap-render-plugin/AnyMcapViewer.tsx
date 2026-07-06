@@ -172,7 +172,7 @@ const AnyMcapViewer: React.FC = () => {
         <>
           <div className={styles.setup}>
             <div
-              data-cy="local-mcap-drop-zone"
+              data-testid="local-mcap-drop-zone"
               className={`${styles.dropZone} ${
                 dragging ? styles.dropZoneActive : ""
               }`}
@@ -181,7 +181,7 @@ const AnyMcapViewer: React.FC = () => {
                 accept=".mcap"
                 aria-label="Choose local MCAP file"
                 className={styles.fileInput}
-                data-cy="local-mcap-input"
+                data-testid="local-mcap-input"
                 onChange={(event) => {
                   openFile(event.target.files?.[0]);
                   event.target.value = "";
@@ -271,7 +271,7 @@ const AnyMcapViewer: React.FC = () => {
             headerActions={
               <Button
                 className={styles.unmountButton}
-                data-cy="any-mcap-unmount"
+                data-testid="any-mcap-unmount"
                 onClick={clearActive}
                 size={Size.Xs}
                 leadingIcon={IconName.ExitWorkspace}

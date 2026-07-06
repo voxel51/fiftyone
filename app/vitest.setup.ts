@@ -3,16 +3,6 @@
  * This file is executed before running tests to set up the test environment
  */
 
-// Testing Library queries target the repo-wide `data-cy` attribute (the
-// data-testid → data-cy rename). Guarded: packages without Testing
-// Library must still load this setup.
-try {
-  const { configure } = await import("@testing-library/react");
-  configure({ testIdAttribute: "data-cy" });
-} catch {
-  // Package doesn't depend on Testing Library.
-}
-
 // Mock window.URL.createObjectURL and revokeObjectURL
 // These are browser APIs that aren't available in jsdom but are required by
 // libraries like plotly.js/mapbox-gl

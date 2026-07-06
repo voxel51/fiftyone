@@ -50,7 +50,7 @@ export const McapTileStatusBadge: React.FC<{
       className={clsx(styles.statusBadge, {
         [styles.statusBadgeError]: notice.status === "failed",
       })}
-      data-cy="mcap-tile-status-badge"
+      data-testid="mcap-tile-status-badge"
       data-status={notice.status}
       role="status"
     >
@@ -77,7 +77,7 @@ export const McapTileEmptyState: React.FC<{
 
   if (stableTopics.length === 0) {
     return (
-      <div className={styles.loading} data-cy="mcap-tile-empty-state">
+      <div className={styles.loading} data-testid="mcap-tile-empty-state">
         <span className={clsx(styles.emptyText, styles.emptyTextError)}>
           No source available
         </span>
@@ -96,7 +96,7 @@ const McapTileEmptyStateForTopics: React.FC<{
   const model = buildMcapTileEmptyStateModel({ startTimes, statuses });
 
   return (
-    <div className={styles.loading} data-cy="mcap-tile-empty-state">
+    <div className={styles.loading} data-testid="mcap-tile-empty-state">
       {model.kind === "failed" ? (
         <span className={clsx(styles.emptyText, styles.emptyTextError)}>
           {model.message}

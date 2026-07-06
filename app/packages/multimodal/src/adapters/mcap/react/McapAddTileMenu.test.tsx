@@ -15,7 +15,7 @@ vi.mock("./McapRawMessageTile", () => ({ default: () => null }));
 const TilingProbe: React.FC = () => {
   const { focusedTileId, tiles } = useTiling();
   return (
-    <span data-cy="tiling-probe">
+    <span data-testid="tiling-probe">
       {JSON.stringify({
         focusedTileId,
         titles: Object.fromEntries(
@@ -27,7 +27,7 @@ const TilingProbe: React.FC = () => {
 };
 
 function probeState() {
-  const probe = document.querySelector('[data-cy="tiling-probe"]');
+  const probe = document.querySelector('[data-testid="tiling-probe"]');
   if (!probe) {
     throw new Error("Missing tiling probe");
   }
@@ -41,7 +41,9 @@ function probeState() {
 function renderMenu() {
   return render(
     <TilingProvider>
-      <Dropdown trigger={<Button data-cy="open-add-tile-menu">open</Button>}>
+      <Dropdown
+        trigger={<Button data-testid="open-add-tile-menu">open</Button>}
+      >
         <McapAddTileMenu />
       </Dropdown>
       <TilingProbe />

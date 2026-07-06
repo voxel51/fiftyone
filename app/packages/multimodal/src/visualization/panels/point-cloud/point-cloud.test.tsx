@@ -1,6 +1,5 @@
 import {
   cleanup,
-  configure,
   fireEvent,
   render,
   screen,
@@ -56,12 +55,12 @@ vi.mock("../base-3d-scene", () => ({
   }) => (
     <div
       data-camera-pose={cameraPose ? JSON.stringify(cameraPose) : ""}
-      data-cy="base-3d-scene"
+      data-testid="base-3d-scene"
       data-show-gizmo={String(showGizmo)}
       data-up-axis={up}
     >
       <button
-        data-cy="camera-change"
+        data-testid="camera-change"
         onClick={() =>
           onCameraPoseChange?.(
             {
@@ -83,8 +82,6 @@ vi.mock("../webgpu-canvas", () => ({
     <div>{children}</div>
   ),
 }));
-
-configure({ testIdAttribute: "data-cy" });
 
 beforeEach(() => {
   resetImageTextureCacheForTests();

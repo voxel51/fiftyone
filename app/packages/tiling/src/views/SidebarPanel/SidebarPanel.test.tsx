@@ -9,7 +9,7 @@ describe("SidebarPanel", () => {
   it("renders the title and the body content", () => {
     render(
       <SidebarPanel title="Settings">
-        <div data-cy="body">child</div>
+        <div data-testid="body">child</div>
       </SidebarPanel>,
     );
     expect(screen.getByText("Settings")).toBeTruthy();

@@ -235,7 +235,7 @@ function McapPlaybackState({
   children?: React.ReactNode;
 }) {
   return (
-    <div className={styles.state} data-cy="mcap-modal-state">
+    <div className={styles.state} data-testid="mcap-modal-state">
       {children}
       {text ? (
         <span className={clsx(styles.stateText, error && styles.stateError)}>

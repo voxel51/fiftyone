@@ -53,7 +53,7 @@ const McapRawMessageTree: React.FC<{
   }, []);
 
   return (
-    <div className={styles.tree} data-cy="mcap-raw-tree">
+    <div className={styles.tree} data-testid="mcap-raw-tree">
       {root.entries.map(([key, node]) => (
         <TreeRow
           copiedPath={copiedPath}
@@ -106,14 +106,14 @@ function TreeRow({
 
   return (
     <>
-      <div className={styles.row} data-cy={`mcap-raw-node-${path}`}>
+      <div className={styles.row} data-testid={`mcap-raw-node-${path}`}>
         <div className={styles.rowMain} style={indent}>
           {expandable ? (
             <button
               aria-expanded={expanded}
               aria-label={`Toggle ${label}`}
               className={styles.chevron}
-              data-cy={`mcap-raw-toggle-${path}`}
+              data-testid={`mcap-raw-toggle-${path}`}
               onClick={() => toggle(path, !expanded)}
               type="button"
             >
@@ -130,7 +130,7 @@ function TreeRow({
         <button
           aria-label={`Copy ${label}`}
           className={styles.copyButton}
-          data-cy={`mcap-raw-copy-${path}`}
+          data-testid={`mcap-raw-copy-${path}`}
           onClick={() => copy(path, node)}
           title="Copy subtree as JSON"
           type="button"

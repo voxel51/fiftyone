@@ -107,7 +107,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
                 <Button
                   variant={Variant.Borderless}
                   size={Size.Xs}
-                  data-cy="tiling-header-add-tile"
+                  data-testid="tiling-header-add-tile"
                   leadingIcon={IconName.GridView}
                   aria-label="Add tile"
                   title="Add tile"
@@ -123,7 +123,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
           <Button
             variant={Variant.Borderless}
             size={Size.Xs}
-            data-cy="tiling-header-toggle-left-sidebar"
+            data-testid="tiling-header-toggle-left-sidebar"
             leadingIcon={SidebarLeftIcon}
             aria-label={leftSidebarOpen ? "Hide settings" : "Show settings"}
             aria-pressed={!!leftSidebarOpen}
@@ -137,7 +137,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
           <Button
             variant={Variant.Borderless}
             size={Size.Xs}
-            data-cy="tiling-header-toggle-right-sidebar"
+            data-testid="tiling-header-toggle-right-sidebar"
             leadingIcon={SidebarRightIcon}
             aria-label={rightSidebarOpen ? "Hide inspector" : "Show inspector"}
             aria-pressed={!!rightSidebarOpen}

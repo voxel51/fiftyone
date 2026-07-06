@@ -138,7 +138,7 @@ function TopicsHarness({
   }, [onState, state]);
 
   return (
-    <div data-cy={label}>
+    <div data-testid={label}>
       {state.status}:{state.topics.length}:{state.error ?? ""}
     </div>
   );

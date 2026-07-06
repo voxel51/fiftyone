@@ -190,10 +190,8 @@ describe("useMcap3dViewShortcuts", () => {
     fireEvent.keyDown(window, { code: "KeyZ" });
     expect(onApplyCameraPose).not.toHaveBeenCalled();
 
-    const { container } = render(<input data-cy="text-input" />);
-    const input = container.querySelector('[data-cy="text-input"]');
-    expect(input).toBeTruthy();
-    fireEvent.keyDown(input as HTMLElement, { code: "KeyE" });
+    const { getByTestId } = render(<input data-testid="text-input" />);
+    fireEvent.keyDown(getByTestId("text-input"), { code: "KeyE" });
     expect(onApplyCameraPose).not.toHaveBeenCalled();
   });
 

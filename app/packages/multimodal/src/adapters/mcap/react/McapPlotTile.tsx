@@ -152,7 +152,7 @@ const McapPlotTile: React.FC<McapTileProps> = () => {
   return (
     <>
       <McapPlotTileSettings />
-      <div className={plotStyles.body} data-cy="mcap-plot-tile">
+      <div className={plotStyles.body} data-testid="mcap-plot-tile">
         {statusNotes.length > 0 ? (
           <span
             className={`${styles.statusBadge} ${

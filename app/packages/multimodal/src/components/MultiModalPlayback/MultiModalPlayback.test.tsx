@@ -30,26 +30,26 @@ vi.mock("@fiftyone/tiling", async () => {
       <div
         data-expanded-tile-id={expandedTileId ?? ""}
         data-layout={JSON.stringify(value ?? null)}
-        data-cy="mosaic-stub"
+        data-testid="mosaic-stub"
       >
         {Object.entries(tiles).map(([id, t]) => (
-          <div key={id} data-cy={`stub-${id}`}>
-            <span data-cy={`title-${id}`}>{t.title}</span>
+          <div key={id} data-testid={`stub-${id}`}>
+            <span data-testid={`title-${id}`}>{t.title}</span>
             <button
-              data-cy={`select-${id}`}
+              data-testid={`select-${id}`}
               data-focused={focusedTileId === id ? "true" : "false"}
               onClick={() => onFocusTile?.(id, "select")}
             >
               select
             </button>
             <button
-              data-cy={`action-${id}`}
+              data-testid={`action-${id}`}
               onClick={() => onFocusTile?.(id, "action")}
             >
               action
             </button>
             <button
-              data-cy={`expand-${id}`}
+              data-testid={`expand-${id}`}
               data-expanded={expandedTileId === id ? "true" : "false"}
               onClick={() =>
                 onExpandedTileIdChange?.(expandedTileId === id ? null : id)
@@ -205,7 +205,7 @@ describe("MultiModalPlayback shell", () => {
       <MultiModalPlayback
         fileName="x"
         headerCaption={({ focusedTileTitle }) => (
-          <span data-cy="caption-context">
+          <span data-testid="caption-context">
             {focusedTileTitle ?? "Scene context"}
           </span>
         )}
@@ -234,7 +234,7 @@ describe("MultiModalPlayback shell", () => {
       <MultiModalPlayback
         fileName="x"
         headerCaption={({ focusedTileTitle }) => (
-          <span data-cy="caption-context">
+          <span data-testid="caption-context">
             {focusedTileTitle ?? "Scene context"}
           </span>
         )}
@@ -313,7 +313,7 @@ describe("MultiModalPlayback shell", () => {
         fileName="x"
         deselectFocusedTileOnRepeatSelect={false}
         headerCaption={({ focusedTileTitle }) => (
-          <span data-cy="caption-context">
+          <span data-testid="caption-context">
             {focusedTileTitle ?? "Scene context"}
           </span>
         )}

@@ -375,7 +375,7 @@ export function PointCloudPanel({
         </button>
       ) : null}
       {showControls && !canvasError && measureReadout ? (
-        <div data-cy="measure-readout" style={styles.measureReadout}>
+        <div data-testid="measure-readout" style={styles.measureReadout}>
           {measureReadout}
         </div>
       ) : null}
@@ -416,7 +416,7 @@ function ColorRampLegend({
   return (
     <div
       aria-label="Point cloud color legend"
-      data-cy="point-cloud-color-legend"
+      data-testid="point-cloud-color-legend"
       style={styles.legend}
     >
       {ramps.map((ramp) => (

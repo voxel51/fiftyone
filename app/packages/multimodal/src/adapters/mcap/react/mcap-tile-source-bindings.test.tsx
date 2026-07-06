@@ -63,7 +63,9 @@ const Publisher: React.FC<{ readonly sourceId: string }> = ({ sourceId }) => {
 };
 
 const BindingsProbe: React.FC = () => (
-  <span data-cy="bindings">{JSON.stringify(useMcapImageTileBindings())}</span>
+  <span data-testid="bindings">
+    {JSON.stringify(useMcapImageTileBindings())}
+  </span>
 );
 
 describe("usePublishMcapImageTileBinding", () => {

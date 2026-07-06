@@ -266,7 +266,7 @@ function PreviewHarness({
     onState?.(state);
   }, [onState, state]);
 
-  return <div data-cy={`preview-${id}`}>{formatState(state)}</div>;
+  return <div data-testid={`preview-${id}`}>{formatState(state)}</div>;
 }
 
 function formatState(state: McapGridPreviewState): string {

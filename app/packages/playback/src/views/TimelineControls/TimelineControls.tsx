@@ -104,7 +104,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
   return (
     <div
       className={clsx(styles.root, { [styles.clickable]: !!onToggle })}
-      data-cy="timeline-controls-root"
+      data-testid="timeline-controls-root"
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       role={onToggle ? "button" : undefined}
@@ -113,7 +113,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       <Button
         variant={Variant.Icon}
         size={Size.Xs}
-        data-cy="timeline-controls-step-back"
+        data-testid="timeline-controls-step-back"
         leadingIcon={IconName.ChevronLeft}
         aria-label="Step back"
         onClick={stepBack}
@@ -121,7 +121,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       <Button
         variant={Variant.Icon}
         size={Size.Xs}
-        data-cy="timeline-controls-play-pause"
+        data-testid="timeline-controls-play-pause"
         leadingIcon={hasPlayIntent ? PauseIcon : PlayIcon}
         aria-label={hasPlayIntent ? "Pause" : "Play"}
         aria-pressed={hasPlayIntent}
@@ -130,7 +130,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       <Button
         variant={Variant.Icon}
         size={Size.Xs}
-        data-cy="timeline-controls-step-forward"
+        data-testid="timeline-controls-step-forward"
         leadingIcon={IconName.ChevronRight}
         aria-label="Step forward"
         onClick={stepForward}
@@ -138,7 +138,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
 
       <span
         className={styles.divider}
-        data-cy="timeline-controls-divider"
+        data-testid="timeline-controls-divider"
         aria-hidden
       />
       <PlayheadTime />
@@ -148,7 +148,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         <>
           <span
             className={styles.divider}
-            data-cy="timeline-controls-divider"
+            data-testid="timeline-controls-divider"
             aria-hidden
           />{" "}
           {extraActions}
@@ -174,7 +174,7 @@ function BufferingIndicator() {
   return (
     <span
       className={styles.buffering}
-      data-cy="timeline-controls-buffering"
+      data-testid="timeline-controls-buffering"
       role="status"
     >
       <Spinner size={Size.Xs} />

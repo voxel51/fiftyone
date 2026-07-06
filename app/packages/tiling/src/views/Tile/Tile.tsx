@@ -130,7 +130,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
     // this header, which must not read as a select.
     <div
       className={clsx(styles.header, className)}
-      data-cy="tile-header"
+      data-testid="tile-header"
       onClick={
         onSelect
           ? (event) => {
@@ -145,7 +145,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
         <input
           aria-label="Panel title"
           className={styles.titleInput}
-          data-cy="tile-header-title-input"
+          data-testid="tile-header-title-input"
           onBlur={commitTitle}
           onChange={(event) => setDraftTitle(event.target.value)}
           onClick={stopTitleEditPropagation}
@@ -168,7 +168,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
           variant={TextVariant.Xs}
           color={TextColor.Secondary}
           className={styles.title}
-          data-cy="tile-header-title"
+          data-testid="tile-header-title"
           onDoubleClick={startEditing}
           title={title}
         >
@@ -186,7 +186,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
               variant={Variant.Borderless}
               size={Size.Xs}
               className={styles.splitHint}
-              data-cy="tile-header-split-hint"
+              data-testid="tile-header-split-hint"
               leadingIcon={SplitTileIcon}
               aria-hidden="true"
               tabIndex={-1}
@@ -196,7 +196,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
                 <Button
                   variant={Variant.Borderless}
                   size={Size.Xs}
-                  data-cy="tile-header-split-right"
+                  data-testid="tile-header-split-right"
                   leadingIcon={SplitRightIcon}
                   onClick={onSplitRight}
                   aria-label="Split right"
@@ -207,7 +207,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
                 <Button
                   variant={Variant.Borderless}
                   size={Size.Xs}
-                  data-cy="tile-header-split-down"
+                  data-testid="tile-header-split-down"
                   leadingIcon={SplitDownIcon}
                   onClick={onSplitDown}
                   aria-label="Split down"
@@ -221,7 +221,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
           variant={Variant.Borderless}
           size={Size.Xs}
           className={isFullscreen ? styles.fullscreenActive : undefined}
-          data-cy="tile-header-fullscreen"
+          data-testid="tile-header-fullscreen"
           leadingIcon={fullscreenIcon}
           onClick={onFullscreen}
           aria-label={fullscreenLabel}
@@ -231,7 +231,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
         <Button
           variant={Variant.Borderless}
           size={Size.Xs}
-          data-cy="tile-header-close"
+          data-testid="tile-header-close"
           leadingIcon={IconName.Close}
           onClick={onClose}
           aria-label="Close"

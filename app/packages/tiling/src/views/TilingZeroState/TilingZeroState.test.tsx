@@ -6,7 +6,7 @@ import { TilingProvider, useTiling } from "../../lib/TilingProvider";
 import { useTileRegistry } from "../../lib/use-tile-registry";
 import TilingZeroState from "./TilingZeroState";
 
-const CameraTile: React.FC = () => <div data-cy="camera-body" />;
+const CameraTile: React.FC = () => <div data-testid="camera-body" />;
 
 function RegisterCameraKind() {
   const { registerTile } = useTileRegistry();
@@ -25,7 +25,7 @@ function RegisterCameraKind() {
 
 const TileCount: React.FC = () => {
   const { tiles } = useTiling();
-  return <span data-cy="tile-count">{Object.keys(tiles).length}</span>;
+  return <span data-testid="tile-count">{Object.keys(tiles).length}</span>;
 };
 
 describe("TilingZeroState", () => {

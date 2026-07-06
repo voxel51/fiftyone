@@ -33,13 +33,13 @@ const McapInspectorSidebar: React.FC = () => {
       {selected === null ? (
         <span
           className={settingsStyles.emptyText}
-          data-cy="mcap-inspector-empty"
+          data-testid="mcap-inspector-empty"
         >
           Click an object in a tile — a 3D box or an image annotation — to
           inspect it. Esc clears the selection.
         </span>
       ) : (
-        <div className={settingsStyles.root} data-cy="mcap-inspector-body">
+        <div className={settingsStyles.root} data-testid="mcap-inspector-body">
           {selected.kind === "scene-annotation" ? (
             <SceneObjectFields selected={selected} />
           ) : (
@@ -48,7 +48,7 @@ const McapInspectorSidebar: React.FC = () => {
           <Button
             variant={Variant.Secondary}
             size={Size.Xs}
-            data-cy="mcap-inspector-clear"
+            data-testid="mcap-inspector-clear"
             onClick={() => setSelected(null)}
           >
             Clear selection

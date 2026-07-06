@@ -52,7 +52,7 @@ vi.mock("@fiftyone/state", () => ({
 
 vi.mock("./MetadataLooker", () => ({
   MetadataLooker: ({ sample }: { sample: { sample: { id: string } } }) => (
-    <div data-cy="metadata">{sample.sample.id}</div>
+    <div data-testid="metadata">{sample.sample.id}</div>
   ),
 }));
 
@@ -83,7 +83,7 @@ const ctx = {
 type TestCtx = typeof ctx;
 
 const Renderer = ({ ctx }: { ctx: TestCtx }) => (
-  <div data-cy="renderer">{ctx.media.url}</div>
+  <div data-testid="renderer">{ctx.media.url}</div>
 );
 
 const registration = {
@@ -186,7 +186,7 @@ describe("ModalSampleRenderer", () => {
     const mountSpy = vi.fn();
     const TrackedRenderer = ({ ctx }: { ctx: TestCtx }) => {
       React.useEffect(() => mountSpy(), []);
-      return <div data-cy="renderer">{ctx.sample.sample.id}</div>;
+      return <div data-testid="renderer">{ctx.sample.sample.id}</div>;
     };
     getComponent.mockReturnValue(TrackedRenderer);
     getSampleRendererComponent.mockReturnValue(TrackedRenderer);
@@ -212,7 +212,7 @@ describe("ModalSampleRenderer", () => {
     const mountSpy = vi.fn();
     const TrackedRenderer = ({ ctx }: { ctx: TestCtx }) => {
       React.useEffect(() => mountSpy(), []);
-      return <div data-cy="renderer">{ctx.sample.sample.id}</div>;
+      return <div data-testid="renderer">{ctx.sample.sample.id}</div>;
     };
     usePersistentRegistration(TrackedRenderer);
     createSampleRendererRenderContext.mockImplementation(
@@ -238,7 +238,7 @@ describe("ModalSampleRenderer", () => {
       if (ctx.sample.sample.id === "sample-bad") {
         throw new Error("boom");
       }
-      return <div data-cy="renderer">{ctx.sample.sample.id}</div>;
+      return <div data-testid="renderer">{ctx.sample.sample.id}</div>;
     };
     usePersistentRegistration(FlakyRenderer);
     createSampleRendererRenderContext.mockImplementation(

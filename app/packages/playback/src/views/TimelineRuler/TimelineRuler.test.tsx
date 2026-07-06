@@ -19,14 +19,18 @@ function ViewReadout() {
   const store = usePlaybackStore();
   const vs = useAtomValue(viewStartAtom, { store });
   const ve = useAtomValue(viewEndAtom, { store });
-  return <span data-cy="view">{`${vs.toFixed(3)} / ${ve.toFixed(3)}`}</span>;
+  return (
+    <span data-testid="view">{`${vs.toFixed(3)} / ${ve.toFixed(3)}`}</span>
+  );
 }
 
 // Renders the shared hover time so tests can assert on the published atom.
 function HoverReadout() {
   const hover = useHoverTime();
   return (
-    <span data-cy="hover">{hover === null ? "none" : hover.toFixed(3)}</span>
+    <span data-testid="hover">
+      {hover === null ? "none" : hover.toFixed(3)}
+    </span>
   );
 }
 
@@ -94,7 +98,7 @@ function renderRulerWithZoomRef(opts: RenderOpts = {}) {
   const Harness = () => {
     const ref = useRef<HTMLDivElement>(null);
     return (
-      <div ref={ref} data-cy="zoom-host">
+      <div ref={ref} data-testid="zoom-host">
         <TimelineRuler labelWidth={opts.labelWidth ?? 0} zoomRef={ref} />
       </div>
     );
@@ -181,7 +185,7 @@ describe("TimelineRuler", () => {
         return (
           <PlaybackProvider duration={10} stepInterval={1 / 30}>
             <TimelineRuler
-              overlay={<div data-cy="ruler-overlay">over</div>}
+              overlay={<div data-testid="ruler-overlay">over</div>}
               zoomRef={ref}
             />
           </PlaybackProvider>
@@ -189,7 +193,9 @@ describe("TimelineRuler", () => {
       };
       render(<Harness />);
       const ruler = screen.getByTestId("timeline-ruler");
-      expect(ruler.querySelector('[data-cy="ruler-overlay"]')).not.toBeNull();
+      expect(
+        ruler.querySelector('[data-testid="ruler-overlay"]'),
+      ).not.toBeNull();
     });
   });
 

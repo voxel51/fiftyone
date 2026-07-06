@@ -120,7 +120,7 @@ describe("Tile chrome", () => {
     it("renders the header and the body content", () => {
       render(
         <Tile title="lidar_top" onClose={noop} onFullscreen={noop}>
-          <div data-cy="body">body content</div>
+          <div data-testid="body">body content</div>
         </Tile>,
       );
       expect(screen.getByText("lidar_top")).toBeTruthy();

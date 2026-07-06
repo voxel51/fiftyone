@@ -94,7 +94,7 @@ describe("TimelineControls", () => {
     const onToggle = vi.fn();
     renderControls({ onToggle });
     // Click the divider — it's the only inert filler inside the row that
-    // isn't a button. Targeting by data-cy avoids hitting any
+    // isn't a button. Targeting by data-testid avoids hitting any
     // aria-hidden svg children of the voodo Buttons.
     fireEvent.click(screen.getByTestId("timeline-controls-divider"));
     expect(onToggle).toHaveBeenCalledTimes(1);
@@ -184,7 +184,7 @@ describe("TimelineControls", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
           <TimelineControls />
-          <input data-cy="text-field" />
+          <input data-testid="text-field" />
         </PlaybackProvider>,
       );
       const input = screen.getByTestId("text-field");
@@ -217,7 +217,9 @@ describe("TimelineControls", () => {
     it("renders a second divider alongside the extra actions", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
-          <TimelineControls extraActions={<span data-cy="extra">hi</span>} />
+          <TimelineControls
+            extraActions={<span data-testid="extra">hi</span>}
+          />
         </PlaybackProvider>,
       );
       // The first divider always exists; a second one appears only with extraActions.

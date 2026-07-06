@@ -289,14 +289,14 @@ const McapTimestampReadout: React.FC = () => {
     <Text
       variant={TextVariant.Xs}
       color={TextColor.Secondary}
-      data-cy="mcap-timestamp-readout"
+      data-testid="mcap-timestamp-readout"
       className={styles.readout}
       style={{ fontFamily: MONO_FONT }}
     >
       <button
         type="button"
         className={styles.copyButton}
-        data-cy="mcap-timestamp-copy"
+        data-testid="mcap-timestamp-copy"
         title="Recording log time — click to copy the full timestamp"
         aria-label="Copy log timestamp"
         onClick={handleCopy}
@@ -306,7 +306,7 @@ const McapTimestampReadout: React.FC = () => {
       <TreeSelect
         anchor={SelectAnchor.TopStart}
         className={timeZonePickerClassName}
-        data-cy="mcap-timezone-picker"
+        data-testid="mcap-timezone-picker"
         displayValue={displayTimeZoneValue}
         onChange={handleTimezoneChange}
         panelMaxHeight="18rem"

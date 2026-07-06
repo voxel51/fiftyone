@@ -126,14 +126,16 @@ function renderReadout(startTimeNs: bigint) {
   );
 }
 
-function getByCy(container: HTMLElement, cy: string): HTMLElement {
-  const element = container.querySelector<HTMLElement>(`[data-cy="${cy}"]`);
+function getByTestId(container: HTMLElement, testId: string): HTMLElement {
+  const element = container.querySelector<HTMLElement>(
+    `[data-testid="${testId}"]`,
+  );
   expect(element).toBeTruthy();
   return element as HTMLElement;
 }
 
 function getTimezoneTrigger(container: HTMLElement): HTMLInputElement {
-  const picker = getByCy(container, "mcap-timezone-picker");
+  const picker = getByTestId(container, "mcap-timezone-picker");
   const input = picker.querySelector<HTMLInputElement>(
     'input[role="combobox"]',
   );
@@ -150,14 +152,14 @@ describe("McapTimestampReadout", () => {
 
   it("shows the recording wall clock at the playhead", () => {
     const { container } = renderReadout(EPOCH_START_NS);
-    const readout = getByCy(container, "mcap-timestamp-readout");
+    const readout = getByTestId(container, "mcap-timestamp-readout");
 
-    expect(getByCy(container, "mcap-timestamp-copy").textContent).toBe(
+    expect(getByTestId(container, "mcap-timestamp-copy").textContent).toBe(
       "14:03:22.123",
     );
     expect(
       readout.querySelector<HTMLInputElement>(
-        '[data-cy="mcap-timezone-picker"] input[role="combobox"]',
+        '[data-testid="mcap-timezone-picker"] input[role="combobox"]',
       )?.value,
     ).toBe("UTC");
   });
@@ -188,9 +190,9 @@ describe("McapTimestampReadout", () => {
 
   it("renders nothing for sim-time recordings", () => {
     const { container } = renderReadout(0n);
-    expect(container.querySelector('[data-cy="mcap-timestamp-readout"]')).toBe(
-      null,
-    );
+    expect(
+      container.querySelector('[data-testid="mcap-timestamp-readout"]'),
+    ).toBe(null);
   });
 
   it("copies the full-precision timestamp and flashes feedback", () => {
@@ -199,19 +201,19 @@ describe("McapTimestampReadout", () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     const { container } = renderReadout(EPOCH_START_NS);
-    fireEvent.click(getByCy(container, "mcap-timestamp-copy"));
+    fireEvent.click(getByTestId(container, "mcap-timestamp-copy"));
 
     expect(writeText).toHaveBeenCalledWith(
       "2019-09-18T14:03:22.123456789Z (1568815402123456789 ns)",
     );
-    expect(getByCy(container, "mcap-timestamp-copy").textContent).toBe(
+    expect(getByTestId(container, "mcap-timestamp-copy").textContent).toBe(
       "Copied",
     );
 
     act(() => {
       vi.advanceTimersByTime(1500);
     });
-    expect(getByCy(container, "mcap-timestamp-copy").textContent).toBe(
+    expect(getByTestId(container, "mcap-timestamp-copy").textContent).toBe(
       "14:03:22.123",
     );
   });
@@ -221,7 +223,7 @@ describe("McapTimestampReadout", () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     const { container } = renderReadout(EPOCH_START_NS);
-    fireEvent.click(getByCy(container, "mcap-timestamp-copy"));
+    fireEvent.click(getByTestId(container, "mcap-timestamp-copy"));
     expect(writeText).toHaveBeenCalledTimes(1);
   });
 });

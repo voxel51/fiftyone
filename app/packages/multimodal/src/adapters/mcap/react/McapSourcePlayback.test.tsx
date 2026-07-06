@@ -30,7 +30,7 @@ const playbackHarness = vi.hoisted(() => ({
 
 vi.mock("../../../components/MultiModalPlayback/MultiModalPlayback", () => ({
   default: ({ children }: { readonly children?: ReactNode }) => (
-    <div data-cy="playback-shell">{children}</div>
+    <div data-testid="playback-shell">{children}</div>
   ),
 }));
 
@@ -80,6 +80,6 @@ describe("McapSourcePlayback", () => {
         "No previewable streams in this recording (3 topics found)",
       ),
     ).toBeTruthy();
-    expect(document.querySelector('[data-cy="playback-shell"]')).toBeNull();
+    expect(document.querySelector('[data-testid="playback-shell"]')).toBeNull();
   });
 });

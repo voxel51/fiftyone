@@ -9,7 +9,7 @@ import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
 vi.mock("./GridTagBubbles", () => ({
   default: ({ sample }: { sample?: { filepath?: string } }) => (
-    <div data-cy="grid-tag-bubbles">{sample?.filepath}</div>
+    <div data-testid="grid-tag-bubbles">{sample?.filepath}</div>
   ),
 }));
 
@@ -57,7 +57,7 @@ describe("GridCustomRendererItem", () => {
 
   it("mounts plugin renderer and leaves dataset fail-open disabled on success", async () => {
     const Renderer = ({ ctx }: { ctx: { media: { url: string | null } } }) => (
-      <div data-cy="renderer">{ctx.media.url}</div>
+      <div data-testid="renderer">{ctx.media.url}</div>
     );
     const looker = new GridCustomRendererItem({
       pluginName: "pdf-renderer",
@@ -83,7 +83,7 @@ describe("GridCustomRendererItem", () => {
     expect(getOpenModalButton(host)).toBeNull();
     expect(getSelectControl(host)).toBeNull();
 
-    const renderer = host.querySelector("[data-cy='renderer']");
+    const renderer = host.querySelector("[data-testid='renderer']");
     expect(renderer).toBeTruthy();
 
     const wrapper = renderer?.parentElement as HTMLElement | null;
@@ -187,7 +187,7 @@ describe("GridCustomRendererItem", () => {
   });
 
   it("estimates size from raw sample shapes safely", () => {
-    const Renderer = () => <div data-cy="renderer">raw sample</div>;
+    const Renderer = () => <div data-testid="renderer">raw sample</div>;
     const tileWidthPx = 10;
     const tileHeightPx = 20;
     const sourceSizeBytes = 123;

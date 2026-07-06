@@ -26,7 +26,7 @@ const BufferedLaneShading: React.FC = () => {
   return (
     <div
       className={styles.bufferedShading}
-      data-cy="buffered-ranges-strip"
+      data-testid="buffered-ranges-strip"
       aria-hidden
     >
       {ranges.map(([startSec, endSec], i) => {

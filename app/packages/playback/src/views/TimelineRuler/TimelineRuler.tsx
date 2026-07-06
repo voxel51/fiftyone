@@ -305,14 +305,14 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
     <div
       ref={rulerRef}
       className={clsx(styles.ruler, className)}
-      data-cy="timeline-ruler"
+      data-testid="timeline-ruler"
       style={{ cursor }}
       {...lanePointerProps}
     >
       {labelWidth > 0 && (
         <div
           className={styles.labelSpacer}
-          data-cy="timeline-ruler-label-spacer"
+          data-testid="timeline-ruler-label-spacer"
           style={{ width: labelWidth }}
         />
       )}
@@ -368,7 +368,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       hoverTime <= viewEnd + 1e-9 ? (
         <div
           className={styles.hoverCaret}
-          data-cy="timeline-hover-caret"
+          data-testid="timeline-hover-caret"
           style={{
             left: laneLeft(clamp((hoverTime - viewStart) / viewDuration, 0, 1)),
           }}
