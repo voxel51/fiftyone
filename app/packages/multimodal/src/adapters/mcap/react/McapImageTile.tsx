@@ -26,7 +26,10 @@ import { ImagePanel } from "../../../visualization/panels/image";
 import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
 import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
 import { useMcapDataStream } from "./mcap-data-stream-context";
-import { useMcapModalSettings } from "./mcap-modal-settings";
+import {
+  useMcapImageLabelTopics,
+  useMcapPlaybackSettings,
+} from "./mcap-modal-settings";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import {
   chooseNextImageTopic,
@@ -60,8 +63,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const calibrationSources = useSceneSourcesByType(
     MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
   );
-  const { fidelityMode, imageLabelTopics, setImageLabelTopics } =
-    useMcapModalSettings();
+  const { fidelityMode } = useMcapPlaybackSettings();
   const setTileTitle = useSetTileTitle();
   const jotaiStore = useStore();
   // Open on the resolver-assigned source; tiles added by hand (split
@@ -78,6 +80,11 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
         jotaiStore.get(mcapImageTileBindingsAtom),
       ),
   );
+  const {
+    hasExplicitLabelTopics,
+    labelTopics: storedLabelTopics,
+    setLabelTopics,
+  } = useMcapImageLabelTopics(topic);
 
   // This effect binds the pane to the best undisplayed image source once
   // sources resolve.
@@ -162,14 +169,20 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   );
   const selectedLabelTopics = useMemo(() => {
     if (!topic) return [];
-    if (Object.hasOwn(imageLabelTopics, topic)) {
+    if (hasExplicitLabelTopics) {
       const available = new Set(annotationTopics);
-      return imageLabelTopics[topic].filter((labelTopic) =>
+      return storedLabelTopics.filter((labelTopic) =>
         available.has(labelTopic),
       );
     }
     return inferredAnnotationTopic ? [inferredAnnotationTopic] : [];
-  }, [annotationTopics, imageLabelTopics, inferredAnnotationTopic, topic]);
+  }, [
+    annotationTopics,
+    hasExplicitLabelTopics,
+    inferredAnnotationTopic,
+    storedLabelTopics,
+    topic,
+  ]);
   const activeTopics = useMemo(
     () => (topic ? [topic, ...selectedLabelTopics] : []),
     [selectedLabelTopics, topic],
@@ -189,8 +202,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     } else {
       next.delete(labelTopic);
     }
-    setImageLabelTopics(
-      topic,
+    setLabelTopics(
       annotationTopics.filter((availableTopic) => next.has(availableTopic)),
     );
   };
@@ -226,10 +238,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                 checked: selectedLabelTopics.length > 0,
                 onChange: (checked) => {
                   if (!topic) return;
-                  setImageLabelTopics(
-                    topic,
-                    checked ? [...annotationTopics] : [],
-                  );
+                  setLabelTopics(checked ? [...annotationTopics] : []);
                 },
               }}
             >

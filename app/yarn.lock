@@ -3215,6 +3215,7 @@ __metadata:
     buffer: "npm:^6.0.3"
     colormap: "npm:^2.3.2"
     date-fns: "npm:^4.1.0"
+    jotai: "npm:^2.9.3"
     lru-cache: "npm:^11.0.1"
     meshoptimizer: "npm:^0.22.0"
     protobufjs: "npm:^7.6.4"

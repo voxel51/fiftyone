@@ -21,7 +21,7 @@ import type {
  * pattern is a one-shot snapshot read at mount plus write-through recording —
  * there are no reactive subscribers, so an atom would add a dependency without
  * adding behavior. It is also deliberately memory-only (unlike the
- * localStorage-backed toggles in `mcap-modal-settings.tsx`): a camera pose or
+ * localStorage-backed toggles in `mcap-modal-settings.ts`): a camera pose or
  * frame selection is only meaningful within one modal session.
  */
 

@@ -1,12 +1,3 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
 import {
   DEFAULT_POINT_CLOUD_COLORMAP,
   POINT_CLOUD_COLORMAPS,
@@ -15,6 +6,9 @@ import {
 } from "../../../visualization/panels/point-cloud";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../../visualization/panels/style-tokens";
 
+/**
+ * Timing tolerances and warning thresholds for synchronized MCAP playback.
+ */
 export interface McapTemporalPolicySettings {
   readonly boundaryClampMs: number;
   readonly maxInterpolationGapMs: number;
@@ -24,12 +18,6 @@ export interface McapTemporalPolicySettings {
 
 /**
  * How the viewer renders values between recorded message timestamps.
- *
- * - `smooth`: continuous signals (frame transforms, 2D/3D label geometry)
- *   are interpolated between bracketing samples for fluid playback.
- * - `as-recorded`: no synthesis anywhere — every signal holds its latest
- *   recorded sample so the screen only ever shows values that exist in the
- *   recording.
  */
 export type McapPlaybackFidelityMode = "smooth" | "as-recorded";
 
@@ -38,7 +26,7 @@ export type McapPlaybackFidelityMode = "smooth" | "as-recorded";
  */
 export interface McapReferenceGridSettings {
   readonly enabled: boolean;
-  /** Peak line opacity, percent (0–100). */
+  /** Peak line opacity, percent (0-100). */
   readonly opacityPercent: number;
   /** Closest line spacing in meters; lines adapt by powers of ten. */
   readonly spacingM: number;
@@ -50,16 +38,18 @@ export interface McapReferenceGridSettings {
 export interface McapPinholeCameraSettings {
   /** Distance from optical center to image plane, in meters. */
   readonly imagePlaneDepthM: number;
-  /** Base frustum/image-plane opacity, percent (0–100). */
+  /** Base frustum/image-plane opacity, percent (0-100). */
   readonly opacityPercent: number;
 }
 
 /**
- * 3D scene backdrop styles: a user-picked solid color, or one of two
- * named gradient profiles — "Abyss" (dark) and "Studio" (light, warm).
+ * 3D scene backdrop styles: a solid color or a named gradient profile.
  */
 export type McapSceneBackgroundMode = "solid" | "abyss" | "studio";
 
+/**
+ * Persisted 3D scene background choice.
+ */
 export interface McapSceneBackgroundSettings {
   readonly mode: McapSceneBackgroundMode;
   /** Hex color (#rrggbb) used while `mode` is "solid". */
@@ -67,9 +57,7 @@ export interface McapSceneBackgroundSettings {
 }
 
 /**
- * How one point-cloud topic is colored in the 3D tile. `colorBy` is either
- * a reserved mode ("auto", "height", "rgb", "uniform") or a decoded scalar
- * channel name; null range ends mean per-frame min/max normalization.
+ * How one point-cloud topic is colored in the 3D tile.
  */
 export interface McapPointCloudColorSettings {
   readonly colorBy: string;
@@ -79,20 +67,10 @@ export interface McapPointCloudColorSettings {
   readonly uniformColor: string;
 }
 
-interface McapPersistedModalSettings {
-  version: 2;
-  fidelityMode: McapPlaybackFidelityMode;
-  imageLabelTopics: Record<string, readonly string[]>;
-  pinholeCamera: McapPinholeCameraSettings;
-  pointCloudColors: Record<string, McapPointCloudColorSettings>;
-  pointCloudPointSize: number;
-  referenceGrid: McapReferenceGridSettings;
-  sceneBackground: McapSceneBackgroundSettings;
-  showPointCloudColorLegend: boolean;
-  temporalPolicy: McapTemporalPolicySettings;
-}
-
-interface McapModalSettingsContextValue {
+/**
+ * Full localStorage payload for browser-wide MCAP modal preferences.
+ */
+export interface McapPersistedModalSettings {
   readonly fidelityMode: McapPlaybackFidelityMode;
   readonly imageLabelTopics: Record<string, readonly string[]>;
   readonly pinholeCamera: McapPinholeCameraSettings;
@@ -102,35 +80,13 @@ interface McapModalSettingsContextValue {
   readonly sceneBackground: McapSceneBackgroundSettings;
   readonly showPointCloudColorLegend: boolean;
   readonly temporalPolicy: McapTemporalPolicySettings;
-  readonly setFidelityMode: (mode: McapPlaybackFidelityMode) => void;
-  readonly setImageLabelTopics: (
-    imageTopic: string,
-    labelTopics: readonly string[],
-  ) => void;
-  readonly setPinholeCamera: (
-    settings: Partial<McapPinholeCameraSettings>,
-  ) => void;
-  readonly setPointCloudColor: (
-    topic: string,
-    settings: Partial<McapPointCloudColorSettings>,
-  ) => void;
-  readonly setPointCloudPointSize: (pointSize: number) => void;
-  readonly setReferenceGrid: (
-    settings: Partial<McapReferenceGridSettings>,
-  ) => void;
-  readonly setSceneBackground: (
-    settings: Partial<McapSceneBackgroundSettings>,
-  ) => void;
-  readonly setShowPointCloudColorLegend: (visible: boolean) => void;
-  readonly resetTemporalPolicy: () => void;
-  readonly setTemporalPolicy: (
-    policy: Partial<McapTemporalPolicySettings>,
-  ) => void;
 }
 
 const STORAGE_KEY = "fiftyone.mcap.modal-settings";
-const VERSION = 2;
 
+/**
+ * Default interpolation policy for newly initialized MCAP modal settings.
+ */
 export const DEFAULT_MCAP_FIDELITY_MODE: McapPlaybackFidelityMode = "smooth";
 
 const FIDELITY_MODES: readonly McapPlaybackFidelityMode[] = [
@@ -138,6 +94,9 @@ const FIDELITY_MODES: readonly McapPlaybackFidelityMode[] = [
   "as-recorded",
 ];
 
+/**
+ * Default timing policy balancing smooth playback with visible data gaps.
+ */
 export const DEFAULT_MCAP_TEMPORAL_POLICY: McapTemporalPolicySettings = {
   boundaryClampMs: 50,
   maxInterpolationGapMs: 0,
@@ -147,6 +106,9 @@ export const DEFAULT_MCAP_TEMPORAL_POLICY: McapTemporalPolicySettings = {
 
 const MAX_TEMPORAL_POLICY_MS = 60_000;
 
+/**
+ * Default world reference grid shown in the 3D MCAP tile.
+ */
 export const DEFAULT_MCAP_REFERENCE_GRID: McapReferenceGridSettings = {
   enabled: true,
   opacityPercent: 5,
@@ -156,6 +118,9 @@ export const DEFAULT_MCAP_REFERENCE_GRID: McapReferenceGridSettings = {
 const MIN_GRID_SPACING_M = 0.01;
 const MAX_GRID_SPACING_M = 10_000;
 
+/**
+ * Default appearance for camera calibration frustums.
+ */
 export const DEFAULT_MCAP_PINHOLE_CAMERA: McapPinholeCameraSettings = {
   imagePlaneDepthM: 2.75,
   opacityPercent: 85,
@@ -164,11 +129,17 @@ export const DEFAULT_MCAP_PINHOLE_CAMERA: McapPinholeCameraSettings = {
 const MIN_PINHOLE_DEPTH_M = 0.05;
 const MAX_PINHOLE_DEPTH_M = 100;
 
+/**
+ * Default 3D scene background for MCAP playback.
+ */
 export const DEFAULT_MCAP_SCENE_BACKGROUND: McapSceneBackgroundSettings = {
   mode: "abyss",
   solidColor: VISUALIZATION_PANEL_BACKGROUND_COLOR,
 };
 
+/**
+ * Default point-cloud color override before source-specific defaults apply.
+ */
 export const DEFAULT_MCAP_POINT_CLOUD_COLOR: McapPointCloudColorSettings = {
   colorBy: "auto",
   colormap: DEFAULT_POINT_CLOUD_COLORMAP,
@@ -181,6 +152,9 @@ const POINT_CLOUD_COLORMAPS_WITHOUT_TURBO = POINT_CLOUD_COLORMAPS.filter(
   (colormap) => colormap !== "turbo",
 );
 
+/**
+ * Chooses a stable default point-cloud color preset by source index.
+ */
 export function defaultMcapPointCloudColorForIndex(
   index: number,
 ): McapPointCloudColorSettings {
@@ -196,6 +170,9 @@ interface PointCloudSourceLike {
   readonly label?: string;
 }
 
+/**
+ * Chooses a stable default point-cloud color preset for a source list.
+ */
 export function defaultMcapPointCloudColorForSource(
   source: PointCloudSourceLike,
   sources: readonly PointCloudSourceLike[],
@@ -238,13 +215,27 @@ const SCENE_BACKGROUND_MODES: readonly McapSceneBackgroundMode[] = [
 ];
 
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+/**
+ * Default point sprite size for MCAP point-cloud rendering.
+ */
 export const DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE = 2;
+/**
+ * Smallest user-selectable MCAP point sprite size.
+ */
 export const MIN_MCAP_POINT_CLOUD_POINT_SIZE = 1;
+/**
+ * Largest user-selectable MCAP point sprite size.
+ */
 export const MAX_MCAP_POINT_CLOUD_POINT_SIZE = 10;
+/**
+ * Increment used by the point-size settings control.
+ */
 export const MCAP_POINT_CLOUD_POINT_SIZE_STEP = 0.25;
 
-const DEFAULT_SETTINGS: McapPersistedModalSettings = {
-  version: VERSION,
+/**
+ * Complete default MCAP modal settings payload.
+ */
+export const DEFAULT_MCAP_MODAL_SETTINGS: McapPersistedModalSettings = {
   fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
   imageLabelTopics: {},
   pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
@@ -256,57 +247,41 @@ const DEFAULT_SETTINGS: McapPersistedModalSettings = {
   temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
 };
 
-const McapModalSettingsContext =
-  createContext<McapModalSettingsContextValue | null>(null);
-
 /**
  * Reads persisted MCAP modal settings from local storage.
  */
 export function readMcapModalSettings(): McapPersistedModalSettings {
   try {
     const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
+    if (!raw) return DEFAULT_MCAP_MODAL_SETTINGS;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) {
-      return DEFAULT_SETTINGS;
+      return DEFAULT_MCAP_MODAL_SETTINGS;
     }
 
-    const version = (parsed as { version?: unknown }).version;
-    if (version !== VERSION && version !== 1) {
-      return DEFAULT_SETTINGS;
-    }
-
-    const candidate = parsed as Partial<McapPersistedModalSettings> & {
-      readonly interpolate2dAnnotations?: unknown;
-      readonly interpolate3dAnnotations?: unknown;
-    };
+    const candidate = parsed as Partial<McapPersistedModalSettings>;
     return {
-      version: VERSION,
-      fidelityMode:
-        version === 1
-          ? // v1 stored two per-dimension interpolation booleans; any explicit
-            // opt-out maps to the unified as-recorded mode.
-            candidate.interpolate2dAnnotations === false ||
-            candidate.interpolate3dAnnotations === false
-            ? "as-recorded"
-            : DEFAULT_MCAP_FIDELITY_MODE
-          : normalizeFidelityMode(candidate.fidelityMode),
-      imageLabelTopics: normalizeImageLabelTopicMap(candidate.imageLabelTopics),
-      pinholeCamera: normalizePinholeCamera(candidate.pinholeCamera),
-      pointCloudColors: normalizePointCloudColorMap(candidate.pointCloudColors),
-      pointCloudPointSize: normalizePointCloudPointSize(
+      fidelityMode: normalizeMcapFidelityMode(candidate.fidelityMode),
+      imageLabelTopics: normalizeMcapImageLabelTopicMap(
+        candidate.imageLabelTopics,
+      ),
+      pinholeCamera: normalizeMcapPinholeCamera(candidate.pinholeCamera),
+      pointCloudColors: normalizeMcapPointCloudColorMap(
+        candidate.pointCloudColors,
+      ),
+      pointCloudPointSize: normalizeMcapPointCloudPointSize(
         candidate.pointCloudPointSize,
       ),
-      referenceGrid: normalizeReferenceGrid(candidate.referenceGrid),
-      sceneBackground: normalizeSceneBackground(candidate.sceneBackground),
+      referenceGrid: normalizeMcapReferenceGrid(candidate.referenceGrid),
+      sceneBackground: normalizeMcapSceneBackground(candidate.sceneBackground),
       showPointCloudColorLegend:
         typeof candidate.showPointCloudColorLegend === "boolean"
           ? candidate.showPointCloudColorLegend
           : false,
-      temporalPolicy: normalizeTemporalPolicy(candidate.temporalPolicy),
+      temporalPolicy: normalizeMcapTemporalPolicy(candidate.temporalPolicy),
     };
   } catch {
-    return DEFAULT_SETTINGS;
+    return DEFAULT_MCAP_MODAL_SETTINGS;
   }
 }
 
@@ -319,24 +294,7 @@ export function writeMcapModalSettings(
   try {
     globalThis.localStorage?.setItem(
       STORAGE_KEY,
-      JSON.stringify({
-        version: VERSION,
-        fidelityMode: normalizeFidelityMode(settings.fidelityMode),
-        imageLabelTopics: normalizeImageLabelTopicMap(
-          settings.imageLabelTopics,
-        ),
-        pinholeCamera: normalizePinholeCamera(settings.pinholeCamera),
-        pointCloudColors: normalizePointCloudColorMap(
-          settings.pointCloudColors,
-        ),
-        pointCloudPointSize: normalizePointCloudPointSize(
-          settings.pointCloudPointSize,
-        ),
-        referenceGrid: normalizeReferenceGrid(settings.referenceGrid),
-        sceneBackground: normalizeSceneBackground(settings.sceneBackground),
-        showPointCloudColorLegend: settings.showPointCloudColorLegend === true,
-        temporalPolicy: normalizeTemporalPolicy(settings.temporalPolicy),
-      }),
+      JSON.stringify(normalizeMcapModalSettings(settings)),
     );
   } catch {
     // Settings persistence is a convenience; storage failures should not
@@ -345,204 +303,45 @@ export function writeMcapModalSettings(
 }
 
 /**
- * Provides persisted MCAP modal settings to the sidebar and tile bodies.
+ * Normalizes a full MCAP modal settings payload before persistence.
  */
-export const McapModalSettingsProvider: React.FC<{
-  children: React.ReactNode;
-}> = ({ children }) => {
-  const [settings, setSettings] = useState<McapPersistedModalSettings>(
-    readMcapModalSettings,
-  );
-
-  const update = useCallback(
-    (
-      resolver: (
-        current: McapPersistedModalSettings,
-      ) => McapPersistedModalSettings,
-    ) => {
-      setSettings((current) => resolver(current));
-    },
-    [],
-  );
-
-  useEffect(() => {
-    writeMcapModalSettings(settings);
-  }, [settings]);
-
-  const setFidelityMode = useCallback(
-    (mode: McapPlaybackFidelityMode) =>
-      update((current) => ({
-        ...current,
-        fidelityMode: normalizeFidelityMode(mode),
-      })),
-    [update],
-  );
-  const setReferenceGrid = useCallback(
-    (settings: Partial<McapReferenceGridSettings>) =>
-      update((current) => ({
-        ...current,
-        referenceGrid: normalizeReferenceGrid({
-          ...current.referenceGrid,
-          ...settings,
-        }),
-      })),
-    [update],
-  );
-  const setPinholeCamera = useCallback(
-    (settings: Partial<McapPinholeCameraSettings>) =>
-      update((current) => ({
-        ...current,
-        pinholeCamera: normalizePinholeCamera({
-          ...current.pinholeCamera,
-          ...settings,
-        }),
-      })),
-    [update],
-  );
-  const setPointCloudColor = useCallback(
-    (topic: string, settings: Partial<McapPointCloudColorSettings>) => {
-      const normalizedTopic = topic.trim();
-      if (!normalizedTopic) return;
-      update((current) => ({
-        ...current,
-        pointCloudColors: {
-          ...current.pointCloudColors,
-          [normalizedTopic]: normalizePointCloudColor({
-            ...(current.pointCloudColors[normalizedTopic] ??
-              DEFAULT_MCAP_POINT_CLOUD_COLOR),
-            ...settings,
-          }),
-        },
-      }));
-    },
-    [update],
-  );
-  const setPointCloudPointSize = useCallback(
-    (pointCloudPointSize: number) =>
-      update((current) => ({
-        ...current,
-        pointCloudPointSize: normalizePointCloudPointSize(pointCloudPointSize),
-      })),
-    [update],
-  );
-  const setSceneBackground = useCallback(
-    (settings: Partial<McapSceneBackgroundSettings>) =>
-      update((current) => ({
-        ...current,
-        sceneBackground: normalizeSceneBackground({
-          ...current.sceneBackground,
-          ...settings,
-        }),
-      })),
-    [update],
-  );
-  const setShowPointCloudColorLegend = useCallback(
-    (showPointCloudColorLegend: boolean) =>
-      update((current) => ({
-        ...current,
-        showPointCloudColorLegend,
-      })),
-    [update],
-  );
-  const setTemporalPolicy = useCallback(
-    (policy: Partial<McapTemporalPolicySettings>) =>
-      update((current) => ({
-        ...current,
-        temporalPolicy: normalizeTemporalPolicy({
-          ...current.temporalPolicy,
-          ...policy,
-        }),
-      })),
-    [update],
-  );
-  const resetTemporalPolicy = useCallback(
-    () =>
-      update((current) => ({
-        ...current,
-        temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
-      })),
-    [update],
-  );
-  const setImageLabelTopics = useCallback(
-    (imageTopic: string, labelTopics: readonly string[]) => {
-      const normalizedImageTopic = imageTopic.trim();
-      if (!normalizedImageTopic) return;
-      const normalizedLabelTopics = normalizeTopicList(labelTopics);
-      update((current) => ({
-        ...current,
-        imageLabelTopics: {
-          ...current.imageLabelTopics,
-          [normalizedImageTopic]: normalizedLabelTopics,
-        },
-      }));
-    },
-    [update],
-  );
-
-  const value = useMemo<McapModalSettingsContextValue>(
-    () => ({
-      fidelityMode: settings.fidelityMode,
-      imageLabelTopics: settings.imageLabelTopics,
-      pinholeCamera: settings.pinholeCamera,
-      pointCloudColors: settings.pointCloudColors,
-      pointCloudPointSize: settings.pointCloudPointSize,
-      referenceGrid: settings.referenceGrid,
-      sceneBackground: settings.sceneBackground,
-      showPointCloudColorLegend: settings.showPointCloudColorLegend,
-      temporalPolicy: settings.temporalPolicy,
-      resetTemporalPolicy,
-      setFidelityMode,
-      setImageLabelTopics,
-      setPinholeCamera,
-      setPointCloudColor,
-      setPointCloudPointSize,
-      setReferenceGrid,
-      setSceneBackground,
-      setShowPointCloudColorLegend,
-      setTemporalPolicy,
-    }),
-    [
-      settings,
-      resetTemporalPolicy,
-      setFidelityMode,
-      setImageLabelTopics,
-      setPinholeCamera,
-      setPointCloudColor,
-      setPointCloudPointSize,
-      setReferenceGrid,
-      setSceneBackground,
-      setShowPointCloudColorLegend,
-      setTemporalPolicy,
-    ],
-  );
-
-  return (
-    <McapModalSettingsContext.Provider value={value}>
-      {children}
-    </McapModalSettingsContext.Provider>
-  );
-};
-
-/**
- * Reads and updates MCAP modal settings.
- */
-export function useMcapModalSettings(): McapModalSettingsContextValue {
-  const ctx = useContext(McapModalSettingsContext);
-  if (!ctx) {
-    throw new Error(
-      "useMcapModalSettings must be used inside <McapModalSettingsProvider>",
-    );
-  }
-  return ctx;
+export function normalizeMcapModalSettings(
+  settings: McapPersistedModalSettings,
+): McapPersistedModalSettings {
+  return {
+    fidelityMode: normalizeMcapFidelityMode(settings.fidelityMode),
+    imageLabelTopics: normalizeMcapImageLabelTopicMap(
+      settings.imageLabelTopics,
+    ),
+    pinholeCamera: normalizeMcapPinholeCamera(settings.pinholeCamera),
+    pointCloudColors: normalizeMcapPointCloudColorMap(
+      settings.pointCloudColors,
+    ),
+    pointCloudPointSize: normalizeMcapPointCloudPointSize(
+      settings.pointCloudPointSize,
+    ),
+    referenceGrid: normalizeMcapReferenceGrid(settings.referenceGrid),
+    sceneBackground: normalizeMcapSceneBackground(settings.sceneBackground),
+    showPointCloudColorLegend: settings.showPointCloudColorLegend === true,
+    temporalPolicy: normalizeMcapTemporalPolicy(settings.temporalPolicy),
+  };
 }
 
-function normalizeFidelityMode(value: unknown): McapPlaybackFidelityMode {
+/**
+ * Returns a supported playback fidelity mode or the default mode.
+ */
+export function normalizeMcapFidelityMode(
+  value: unknown,
+): McapPlaybackFidelityMode {
   return FIDELITY_MODES.includes(value as McapPlaybackFidelityMode)
     ? (value as McapPlaybackFidelityMode)
     : DEFAULT_MCAP_FIDELITY_MODE;
 }
 
-function normalizeImageLabelTopicMap(
+/**
+ * Normalizes persisted image-topic to label-topic selections.
+ */
+export function normalizeMcapImageLabelTopicMap(
   value: unknown,
 ): Record<string, readonly string[]> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -553,12 +352,15 @@ function normalizeImageLabelTopicMap(
   for (const [imageTopic, labelTopics] of Object.entries(value)) {
     const normalizedImageTopic = imageTopic.trim();
     if (!normalizedImageTopic) continue;
-    result[normalizedImageTopic] = normalizeTopicList(labelTopics);
+    result[normalizedImageTopic] = normalizeMcapTopicList(labelTopics);
   }
   return result;
 }
 
-function normalizeTopicList(value: unknown): readonly string[] {
+/**
+ * Normalizes a list of topic names by trimming, filtering, and deduplicating.
+ */
+export function normalizeMcapTopicList(value: unknown): readonly string[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -572,7 +374,10 @@ function normalizeTopicList(value: unknown): readonly string[] {
   );
 }
 
-function normalizePointCloudColorMap(
+/**
+ * Normalizes persisted per-topic point-cloud color overrides.
+ */
+export function normalizeMcapPointCloudColorMap(
   value: unknown,
 ): Record<string, McapPointCloudColorSettings> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -583,12 +388,17 @@ function normalizePointCloudColorMap(
   for (const [topic, settings] of Object.entries(value)) {
     const normalizedTopic = topic.trim();
     if (!normalizedTopic) continue;
-    result[normalizedTopic] = normalizePointCloudColor(settings);
+    result[normalizedTopic] = normalizeMcapPointCloudColor(settings);
   }
   return result;
 }
 
-function normalizePointCloudColor(value: unknown): McapPointCloudColorSettings {
+/**
+ * Normalizes one point-cloud color settings object.
+ */
+export function normalizeMcapPointCloudColor(
+  value: unknown,
+): McapPointCloudColorSettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return DEFAULT_MCAP_POINT_CLOUD_COLOR;
   }
@@ -611,7 +421,10 @@ function normalizePointCloudColor(value: unknown): McapPointCloudColorSettings {
   };
 }
 
-function normalizePointCloudPointSize(value: unknown): number {
+/**
+ * Clamps a point-cloud point size to the supported settings range.
+ */
+export function normalizeMcapPointCloudPointSize(value: unknown): number {
   return clampNumber(
     value,
     MIN_MCAP_POINT_CLOUD_POINT_SIZE,
@@ -630,7 +443,12 @@ function normalizeHexColor(value: unknown, fallback: string): string {
     : fallback;
 }
 
-function normalizeReferenceGrid(value: unknown): McapReferenceGridSettings {
+/**
+ * Normalizes the 3D reference grid settings object.
+ */
+export function normalizeMcapReferenceGrid(
+  value: unknown,
+): McapReferenceGridSettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return DEFAULT_MCAP_REFERENCE_GRID;
   }
@@ -656,7 +474,12 @@ function normalizeReferenceGrid(value: unknown): McapReferenceGridSettings {
   };
 }
 
-function normalizePinholeCamera(value: unknown): McapPinholeCameraSettings {
+/**
+ * Normalizes camera frustum display settings.
+ */
+export function normalizeMcapPinholeCamera(
+  value: unknown,
+): McapPinholeCameraSettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return DEFAULT_MCAP_PINHOLE_CAMERA;
   }
@@ -678,7 +501,12 @@ function normalizePinholeCamera(value: unknown): McapPinholeCameraSettings {
   };
 }
 
-function normalizeSceneBackground(value: unknown): McapSceneBackgroundSettings {
+/**
+ * Normalizes the 3D scene background settings object.
+ */
+export function normalizeMcapSceneBackground(
+  value: unknown,
+): McapSceneBackgroundSettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return DEFAULT_MCAP_SCENE_BACKGROUND;
   }
@@ -711,7 +539,12 @@ function clampNumber(
   return Math.min(max, Math.max(min, value));
 }
 
-function normalizeTemporalPolicy(value: unknown): McapTemporalPolicySettings {
+/**
+ * Normalizes playback timing policy settings.
+ */
+export function normalizeMcapTemporalPolicy(
+  value: unknown,
+): McapTemporalPolicySettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return DEFAULT_MCAP_TEMPORAL_POLICY;
   }

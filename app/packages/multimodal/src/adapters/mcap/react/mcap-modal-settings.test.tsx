@@ -1,7 +1,14 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
-import React from "react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  __resetMcapModalSettingsForTests,
   DEFAULT_MCAP_FIDELITY_MODE,
   DEFAULT_MCAP_PINHOLE_CAMERA,
   DEFAULT_MCAP_POINT_CLOUD_COLOR,
@@ -10,19 +17,23 @@ import {
   DEFAULT_MCAP_SCENE_BACKGROUND,
   DEFAULT_MCAP_TEMPORAL_POLICY,
   MAX_MCAP_POINT_CLOUD_POINT_SIZE,
-  McapModalSettingsProvider,
   defaultMcapPointCloudColorForIndex,
   defaultMcapPointCloudColorForSource,
   readMcapModalSettings,
-  useMcapModalSettings,
+  useMcapImageLabelTopics,
+  useMcapPinholeCameraSettings,
+  useMcapPlaybackSettings,
+  useMcapPointCloudStyleSettings,
+  useMcapReferenceGridSettings,
+  useMcapSceneBackgroundSettings,
+  useMcapTemporalPolicySettings,
   writeMcapModalSettings,
 } from "./mcap-modal-settings";
-
-const STORAGE_KEY = "fiftyone.mcap.modal-settings";
 
 describe("mcap-modal-settings", () => {
   beforeEach(() => {
     localStorage.clear();
+    __resetMcapModalSettingsForTests();
   });
 
   afterEach(() => cleanup());
@@ -30,7 +41,6 @@ describe("mcap-modal-settings", () => {
   it("returns default settings when nothing is stored", () => {
     expect(DEFAULT_MCAP_SCENE_BACKGROUND.mode).toBe("abyss");
     expect(readMcapModalSettings()).toEqual({
-      version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
@@ -45,7 +55,6 @@ describe("mcap-modal-settings", () => {
 
   it("round-trips fidelity mode and image label topics", () => {
     writeMcapModalSettings({
-      version: 2,
       fidelityMode: "as-recorded",
       imageLabelTopics: {
         "/camera/front": ["/labels/front", "/labels/all"],
@@ -65,7 +74,6 @@ describe("mcap-modal-settings", () => {
     });
 
     expect(readMcapModalSettings()).toEqual({
-      version: 2,
       fidelityMode: "as-recorded",
       imageLabelTopics: {
         "/camera/front": ["/labels/front", "/labels/all"],
@@ -87,7 +95,6 @@ describe("mcap-modal-settings", () => {
 
   it("rejects unknown fidelity modes", () => {
     writeMcapModalSettings({
-      version: 2,
       fidelityMode: "plaid" as never,
       imageLabelTopics: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
@@ -104,48 +111,8 @@ describe("mcap-modal-settings", () => {
     );
   });
 
-  it("migrates v1 payloads with interpolation enabled to smooth", () => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        version: 1,
-        imageLabelTopics: { "/camera/front": ["/labels/front"] },
-        interpolate2dAnnotations: true,
-        interpolate3dAnnotations: true,
-        temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
-      }),
-    );
-
-    const read = readMcapModalSettings();
-    expect(read.version).toBe(2);
-    expect(read.fidelityMode).toBe("smooth");
-    expect(read.imageLabelTopics["/camera/front"]).toEqual(["/labels/front"]);
-    expect(read.pinholeCamera).toEqual(DEFAULT_MCAP_PINHOLE_CAMERA);
-    expect(read.pointCloudColors).toEqual({});
-    expect(read.pointCloudPointSize).toBe(DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE);
-    expect(read.referenceGrid).toEqual(DEFAULT_MCAP_REFERENCE_GRID);
-    expect(read.sceneBackground).toEqual(DEFAULT_MCAP_SCENE_BACKGROUND);
-    expect(read.showPointCloudColorLegend).toBe(false);
-  });
-
-  it("migrates v1 payloads with any interpolation opt-out to as-recorded", () => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        version: 1,
-        imageLabelTopics: {},
-        interpolate2dAnnotations: false,
-        interpolate3dAnnotations: true,
-        temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
-      }),
-    );
-
-    expect(readMcapModalSettings().fidelityMode).toBe("as-recorded");
-  });
-
   it("clamps invalid reference-grid values", () => {
     writeMcapModalSettings({
-      version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
@@ -170,7 +137,6 @@ describe("mcap-modal-settings", () => {
 
   it("clamps invalid pinhole camera values", () => {
     writeMcapModalSettings({
-      version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       pinholeCamera: {
@@ -193,7 +159,6 @@ describe("mcap-modal-settings", () => {
 
   it("rejects invalid scene background values", () => {
     writeMcapModalSettings({
-      version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
@@ -215,7 +180,6 @@ describe("mcap-modal-settings", () => {
 
   it("round-trips point cloud color settings", () => {
     writeMcapModalSettings({
-      version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
@@ -262,7 +226,6 @@ describe("mcap-modal-settings", () => {
 
   it("sanitizes invalid point cloud color settings", () => {
     writeMcapModalSettings({
-      version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
@@ -341,7 +304,6 @@ describe("mcap-modal-settings", () => {
 
   it("preserves explicit empty label selections", () => {
     writeMcapModalSettings({
-      version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {
         "/camera/front": [],
@@ -360,25 +322,32 @@ describe("mcap-modal-settings", () => {
     expect(read.imageLabelTopics["/camera/front"]).toEqual([]);
   });
 
-  it("updates settings through the provider hook", () => {
-    const { result } = renderHook(() => useMcapModalSettings(), {
-      wrapper: ({ children }: { children: React.ReactNode }) => (
-        <McapModalSettingsProvider>{children}</McapModalSettingsProvider>
-      ),
-    });
+  it("updates settings through domain hooks", () => {
+    const { result } = renderHook(() => ({
+      imageLabels: useMcapImageLabelTopics("/camera/front"),
+      pinhole: useMcapPinholeCameraSettings(),
+      playback: useMcapPlaybackSettings(),
+      pointCloud: useMcapPointCloudStyleSettings(),
+      referenceGrid: useMcapReferenceGridSettings(),
+      sceneBackground: useMcapSceneBackgroundSettings(),
+      temporalPolicy: useMcapTemporalPolicySettings(),
+    }));
 
     act(() => {
-      result.current.setFidelityMode("as-recorded");
-      result.current.setPinholeCamera({
+      result.current.playback.setFidelityMode("as-recorded");
+      result.current.pinhole.setPinholeCamera({
         imagePlaneDepthM: 6,
         opacityPercent: 35,
       });
-      result.current.setReferenceGrid({ enabled: false, spacingM: 10 });
-      result.current.setSceneBackground({ mode: "studio" });
-      result.current.setShowPointCloudColorLegend(true);
-      result.current.setPointCloudPointSize(4.5);
-      result.current.setImageLabelTopics("/camera/front", ["/labels"]);
-      result.current.setTemporalPolicy({
+      result.current.referenceGrid.setReferenceGrid({
+        enabled: false,
+        spacingM: 10,
+      });
+      result.current.sceneBackground.setSceneBackground({ mode: "studio" });
+      result.current.pointCloud.setShowPointCloudColorLegend(true);
+      result.current.pointCloud.setPointCloudPointSize(4.5);
+      result.current.imageLabels.setLabelTopics(["/labels"]);
+      result.current.temporalPolicy.setTemporalPolicy({
         boundaryClampMs: 75,
         maxInterpolationGapMs: 125,
         staleMediaWarningMs: 500,
@@ -386,26 +355,25 @@ describe("mcap-modal-settings", () => {
       });
     });
 
-    expect(result.current.fidelityMode).toBe("as-recorded");
-    expect(result.current.pinholeCamera).toEqual({
+    expect(result.current.playback.fidelityMode).toBe("as-recorded");
+    expect(result.current.pinhole.pinholeCamera).toEqual({
       imagePlaneDepthM: 6,
       opacityPercent: 35,
     });
-    expect(result.current.referenceGrid).toEqual({
+    expect(result.current.referenceGrid.referenceGrid).toEqual({
       enabled: false,
       opacityPercent: DEFAULT_MCAP_REFERENCE_GRID.opacityPercent,
       spacingM: 10,
     });
-    expect(result.current.sceneBackground).toEqual({
+    expect(result.current.sceneBackground.sceneBackground).toEqual({
       mode: "studio",
       solidColor: DEFAULT_MCAP_SCENE_BACKGROUND.solidColor,
     });
-    expect(result.current.imageLabelTopics["/camera/front"]).toEqual([
-      "/labels",
-    ]);
-    expect(result.current.showPointCloudColorLegend).toBe(true);
-    expect(result.current.pointCloudPointSize).toBe(4.5);
-    expect(result.current.temporalPolicy).toEqual({
+    expect(result.current.imageLabels.labelTopics).toEqual(["/labels"]);
+    expect(result.current.imageLabels.hasExplicitLabelTopics).toBe(true);
+    expect(result.current.pointCloud.showPointCloudColorLegend).toBe(true);
+    expect(result.current.pointCloud.pointCloudPointSize).toBe(4.5);
+    expect(result.current.temporalPolicy.temporalPolicy).toEqual({
       boundaryClampMs: 75,
       maxInterpolationGapMs: 125,
       staleMediaWarningMs: 500,
@@ -435,18 +403,16 @@ describe("mcap-modal-settings", () => {
     });
 
     act(() => {
-      result.current.resetTemporalPolicy();
+      result.current.temporalPolicy.resetTemporalPolicy();
     });
 
-    expect(result.current.temporalPolicy).toEqual(DEFAULT_MCAP_TEMPORAL_POLICY);
+    expect(result.current.temporalPolicy.temporalPolicy).toEqual(
+      DEFAULT_MCAP_TEMPORAL_POLICY,
+    );
   });
 
-  it("updates point cloud colors per topic through the provider hook", () => {
-    const { result } = renderHook(() => useMcapModalSettings(), {
-      wrapper: ({ children }: { children: React.ReactNode }) => (
-        <McapModalSettingsProvider>{children}</McapModalSettingsProvider>
-      ),
-    });
+  it("updates point cloud colors per topic through the style hook", () => {
+    const { result } = renderHook(() => useMcapPointCloudStyleSettings());
 
     act(() => {
       result.current.setPointCloudColor("/lidar/points", {
@@ -492,9 +458,49 @@ describe("mcap-modal-settings", () => {
     );
   });
 
+  it("does not re-render unrelated domain hook consumers", () => {
+    let playbackRenders = 0;
+    let sceneBackgroundRenders = 0;
+
+    const PlaybackConsumer = () => {
+      playbackRenders += 1;
+      const { fidelityMode } = useMcapPlaybackSettings();
+      return <span data-testid="fidelity-mode">{fidelityMode}</span>;
+    };
+
+    const SceneBackgroundControl = () => {
+      sceneBackgroundRenders += 1;
+      const { setSceneBackground } = useMcapSceneBackgroundSettings();
+      return (
+        <button
+          onClick={() => setSceneBackground({ mode: "studio" })}
+          type="button"
+        >
+          Studio
+        </button>
+      );
+    };
+
+    render(
+      <>
+        <PlaybackConsumer />
+        <SceneBackgroundControl />
+      </>,
+    );
+
+    expect(screen.getByTestId("fidelity-mode").textContent).toBe("smooth");
+    const playbackRendersBeforeUpdate = playbackRenders;
+    const sceneBackgroundRendersBeforeUpdate = sceneBackgroundRenders;
+
+    fireEvent.click(screen.getByRole("button", { name: "Studio" }));
+
+    expect(playbackRenders).toBe(playbackRendersBeforeUpdate);
+    expect(sceneBackgroundRenders).toBe(sceneBackgroundRendersBeforeUpdate + 1);
+    expect(readMcapModalSettings().sceneBackground.mode).toBe("studio");
+  });
+
   it("clamps persisted point size to the supported range", () => {
     writeMcapModalSettings({
-      version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
@@ -513,7 +519,6 @@ describe("mcap-modal-settings", () => {
 
   it("clamps invalid temporal policy values", () => {
     writeMcapModalSettings({
-      version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,

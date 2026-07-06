@@ -78,6 +78,7 @@
         "buffer": "^6.0.3",
         "colormap": "^2.3.2",
         "date-fns": "^4.1.0",
+        "jotai": "^2.9.3",
         "lru-cache": "^11.0.1",
         "meshoptimizer": "^0.22.0",
         "protobufjs": "^7.6.4",

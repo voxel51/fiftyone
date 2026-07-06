@@ -13,7 +13,7 @@ import {
   type SceneSource,
 } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
-import { McapModalSettingsProvider } from "./mcap-modal-settings";
+import { __resetMcapModalSettingsForTests } from "./mcap-modal-settings";
 import McapSettingsSidebar from "./McapSettingsSidebar";
 
 const PANEL_SETTINGS_TEST_ID = "panel-settings";
@@ -70,27 +70,26 @@ const FocusButton: React.FC<{ id: string; testId: string }> = ({
 
 function renderSidebar() {
   return render(
-    <McapModalSettingsProvider>
-      <SceneInventoryProvider sources={SOURCES}>
-        <TilingProvider initialTiles={INITIAL_TILES}>
-          <TileIdScope tileId={CAMERA_TILE_ID}>
-            <TileBody label="camera" />
-          </TileIdScope>
-          <TileIdScope tileId={LIDAR_TILE_ID}>
-            <TileBody label="lidar" />
-          </TileIdScope>
-          <FocusButton id={CAMERA_TILE_ID} testId="focus-camera" />
-          <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
-          <McapSettingsSidebar />
-        </TilingProvider>
-      </SceneInventoryProvider>
-    </McapModalSettingsProvider>,
+    <SceneInventoryProvider sources={SOURCES}>
+      <TilingProvider initialTiles={INITIAL_TILES}>
+        <TileIdScope tileId={CAMERA_TILE_ID}>
+          <TileBody label="camera" />
+        </TileIdScope>
+        <TileIdScope tileId={LIDAR_TILE_ID}>
+          <TileBody label="lidar" />
+        </TileIdScope>
+        <FocusButton id={CAMERA_TILE_ID} testId="focus-camera" />
+        <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
+        <McapSettingsSidebar />
+      </TilingProvider>
+    </SceneInventoryProvider>,
   );
 }
 
 describe("McapSettingsSidebar", () => {
   beforeEach(() => {
     localStorage.clear();
+    __resetMcapModalSettingsForTests();
   });
 
   afterEach(() => cleanup());

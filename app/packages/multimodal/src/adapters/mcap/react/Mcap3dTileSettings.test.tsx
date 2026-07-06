@@ -1,10 +1,21 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import Mcap3dTileSettings, {
   type Mcap3dTileSettingsProps,
 } from "./Mcap3dTileSettings";
+import {
+  __resetMcapModalSettingsForTests,
+  DEFAULT_MCAP_FIDELITY_MODE,
+  DEFAULT_MCAP_TEMPORAL_POLICY,
+  readMcapModalSettings,
+  writeMcapModalSettings,
+  type McapPinholeCameraSettings,
+  type McapPointCloudColorSettings,
+  type McapReferenceGridSettings,
+  type McapSceneBackgroundSettings,
+} from "./mcap-modal-settings";
 
 vi.mock("@fiftyone/tiling", () => ({
   TileSettingsContent: ({ children }: { readonly children: unknown }) =>
@@ -29,6 +40,11 @@ const LIDAR = source(
   MCAP_SOURCE_TYPE.POINT_CLOUD,
   100,
 );
+
+beforeEach(() => {
+  localStorage.clear();
+  __resetMcapModalSettingsForTests();
+});
 
 afterEach(() => {
   cleanup();
@@ -166,60 +182,54 @@ describe("Mcap3dTileSettings", () => {
   });
 
   it("wires the reference grid controls to the settings updater", () => {
-    const props = renderSettings();
+    renderSettings();
     expandAppearance();
-
-    fireEvent.click(
-      screen.getByRole("switch", { name: "Toggle reference grid" }),
-    );
-    expect(props.setReferenceGrid).toHaveBeenCalledWith({ enabled: false });
 
     fireEvent.change(screen.getByRole("spinbutton", { name: "Spacing (m)" }), {
       target: { value: "5" },
     });
-    expect(props.setReferenceGrid).toHaveBeenCalledWith({ spacingM: 5 });
+    expect(readMcapModalSettings().referenceGrid.spacingM).toBe(5);
 
     fireEvent.change(screen.getByRole("spinbutton", { name: "Opacity (%)" }), {
       target: { value: "50" },
     });
-    expect(props.setReferenceGrid).toHaveBeenCalledWith({ opacityPercent: 50 });
+    expect(readMcapModalSettings().referenceGrid.opacityPercent).toBe(50);
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Toggle reference grid" }),
+    );
+    expect(readMcapModalSettings().referenceGrid.enabled).toBe(false);
   });
 
   it("wires the pinhole controls to the settings updater", () => {
-    const props = renderSettings();
+    renderSettings();
     expandPinhole();
 
     fireEvent.change(screen.getByRole("spinbutton", { name: "Depth (m)" }), {
       target: { value: "4.5" },
     });
-    expect(props.setPinholeCamera).toHaveBeenCalledWith({
-      imagePlaneDepthM: 4.5,
-    });
+    expect(readMcapModalSettings().pinholeCamera.imagePlaneDepthM).toBe(4.5);
 
     fireEvent.change(screen.getByRole("spinbutton", { name: "Opacity (%)" }), {
       target: { value: "40" },
     });
-    expect(props.setPinholeCamera).toHaveBeenCalledWith({
-      opacityPercent: 40,
-    });
+    expect(readMcapModalSettings().pinholeCamera.opacityPercent).toBe(40);
   });
 
   it("wires the background controls to the settings updater", () => {
-    const props = renderSettings();
+    renderSettings();
     expandAppearance();
+
+    fireEvent.change(screen.getByLabelText("Background color"), {
+      target: { value: "#123456" },
+    });
+    expect(readMcapModalSettings().sceneBackground.solidColor).toBe("#123456");
 
     fireEvent.change(
       screen.getByRole("combobox", { name: "Background style" }),
       { target: { value: "abyss" } },
     );
-    expect(props.setSceneBackground).toHaveBeenCalledWith({ mode: "abyss" });
-
-    fireEvent.change(screen.getByLabelText("Background color"), {
-      target: { value: "#123456" },
-    });
-    expect(props.setSceneBackground).toHaveBeenCalledWith({
-      solidColor: "#123456",
-    });
+    expect(readMcapModalSettings().sceneBackground.mode).toBe("abyss");
   });
 
   it("wires the scene up-axis control to the dataset view updater", () => {
@@ -237,7 +247,7 @@ describe("Mcap3dTileSettings", () => {
   });
 
   it("wires the point cloud color controls to the settings updater", () => {
-    const props = renderSettings();
+    renderSettings();
     expandColorSource(LIDAR.label);
 
     const colorSelect = getVoodooCombobox(/^Color\b/);
@@ -250,7 +260,7 @@ describe("Mcap3dTileSettings", () => {
     expect(screen.queryByRole("option", { name: "RGB" })).toBeNull();
 
     selectVoodooOption(colorSelect, "ring");
-    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+    expect(storedPointCloudColor(LIDAR.id)).toEqual({
       colorBy: "ring",
       colormap: "turbo",
       rangeMax: null,
@@ -260,8 +270,8 @@ describe("Mcap3dTileSettings", () => {
 
     const colormapSelect = getVoodooCombobox(/^Colormap\b/);
     selectVoodooOption(colormapSelect, "Turbo");
-    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
-      colorBy: "auto",
+    expect(storedPointCloudColor(LIDAR.id)).toEqual({
+      colorBy: "ring",
       colormap: "turbo",
       rangeMax: null,
       rangeMin: null,
@@ -269,8 +279,8 @@ describe("Mcap3dTileSettings", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
-    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
-      colorBy: "auto",
+    expect(storedPointCloudColor(LIDAR.id)).toEqual({
+      colorBy: "ring",
       colormap: "turbo",
       rangeMax: null,
       rangeMin: null,
@@ -280,8 +290,8 @@ describe("Mcap3dTileSettings", () => {
     fireEvent.change(screen.getByRole("spinbutton", { name: "Range min" }), {
       target: { value: "2" },
     });
-    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
-      colorBy: "auto",
+    expect(storedPointCloudColor(LIDAR.id)).toEqual({
+      colorBy: "ring",
       colormap: "turbo",
       rangeMax: null,
       rangeMin: 2,
@@ -291,17 +301,17 @@ describe("Mcap3dTileSettings", () => {
     fireEvent.change(screen.getByRole("spinbutton", { name: "Range max" }), {
       target: { value: "9" },
     });
-    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
-      colorBy: "auto",
+    expect(storedPointCloudColor(LIDAR.id)).toEqual({
+      colorBy: "ring",
       colormap: "turbo",
       rangeMax: 9,
-      rangeMin: null,
+      rangeMin: 2,
       uniformColor: "#b8c2d1",
     });
   });
 
   it("wires the global point size control to the settings updater", () => {
-    const props = renderSettings();
+    renderSettings();
     ensurePointCloudStyleExpanded();
     const input = screen.getByRole("spinbutton", { name: "Point size" });
 
@@ -313,7 +323,7 @@ describe("Mcap3dTileSettings", () => {
       target: { value: "4.5" },
     });
 
-    expect(props.setPointCloudPointSize).toHaveBeenCalledWith(4.5);
+    expect(readMcapModalSettings().pointCloudPointSize).toBe(4.5);
   });
 
   it("keeps per-source default colormaps distinct", () => {
@@ -331,7 +341,7 @@ describe("Mcap3dTileSettings", () => {
 
   it("resets a source row to that source's default colormap", () => {
     const radar = source("RADAR_FRONT", "RADAR_FRONT", LIDAR.type, 50);
-    const props = renderSettings({
+    renderSettings({
       pointCloudColors: {
         [radar.id]: {
           colorBy: "height",
@@ -351,7 +361,7 @@ describe("Mcap3dTileSettings", () => {
       screen.getByRole("button", { name: `Reset color for ${radar.label}` }),
     );
 
-    expect(props.setPointCloudColor).toHaveBeenCalledWith(radar.id, {
+    expect(storedPointCloudColor(radar.id)).toEqual({
       colorBy: "auto",
       colormap: "coolwarm",
       rangeMax: null,
@@ -362,7 +372,7 @@ describe("Mcap3dTileSettings", () => {
 
   it("resets a source editor colormap to that source's default colormap", () => {
     const radar = source("RADAR_FRONT", "RADAR_FRONT", LIDAR.type, 50);
-    const props = renderSettings({
+    renderSettings({
       pointCloudColors: {
         [radar.id]: {
           colorBy: "height",
@@ -380,7 +390,7 @@ describe("Mcap3dTileSettings", () => {
     expandColorSource(radar.label);
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
 
-    expect(props.setPointCloudColor).toHaveBeenCalledWith(radar.id, {
+    expect(storedPointCloudColor(radar.id)).toEqual({
       colorBy: "height",
       colormap: "coolwarm",
       rangeMax: null,
@@ -390,7 +400,7 @@ describe("Mcap3dTileSettings", () => {
   });
 
   it("preserves sibling color settings when editing one source field", () => {
-    const props = renderSettings({
+    renderSettings({
       pointCloudColors: {
         [LIDAR.id]: {
           colorBy: "intensity",
@@ -407,7 +417,7 @@ describe("Mcap3dTileSettings", () => {
       target: { value: "3" },
     });
 
-    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+    expect(storedPointCloudColor(LIDAR.id)).toEqual({
       colorBy: "intensity",
       colormap: "turbo",
       rangeMax: 9,
@@ -417,18 +427,18 @@ describe("Mcap3dTileSettings", () => {
   });
 
   it("wires the point cloud color legend switch to the settings updater", () => {
-    const props = renderSettings();
+    renderSettings();
     ensurePointCloudStyleExpanded();
 
     fireEvent.click(
       screen.getByRole("switch", { name: "Show point cloud color legend" }),
     );
 
-    expect(props.setShowPointCloudColorLegend).toHaveBeenCalledWith(true);
+    expect(readMcapModalSettings().showPointCloudColorLegend).toBe(true);
   });
 
   it("saves custom colormap edits from the editor modal", () => {
-    const props = renderSettings();
+    renderSettings();
 
     expandColorSource(LIDAR.label);
     fireEvent.click(screen.getByRole("button", { name: "Edit colormap" }));
@@ -439,7 +449,7 @@ describe("Mcap3dTileSettings", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+    expect(storedPointCloudColor(LIDAR.id)).toEqual({
       colorBy: "auto",
       colormap: expect.objectContaining({
         list: expect.arrayContaining([
@@ -454,7 +464,7 @@ describe("Mcap3dTileSettings", () => {
   });
 
   it("clears a fixed range end back to auto", () => {
-    const props = renderSettings({
+    renderSettings({
       pointCloudColors: {
         [LIDAR.id]: {
           colorBy: "intensity",
@@ -478,7 +488,7 @@ describe("Mcap3dTileSettings", () => {
     fireEvent.change(sourceRangeMin, {
       target: { value: "" },
     });
-    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+    expect(storedPointCloudColor(LIDAR.id)).toEqual({
       colorBy: "intensity",
       colormap: "coolwarm",
       rangeMax: 9,
@@ -501,7 +511,7 @@ describe("Mcap3dTileSettings", () => {
   });
 
   it("shows a swatch and hides ramp controls for uniform coloring", () => {
-    const props = renderSettings({
+    renderSettings({
       pointCloudColors: {
         [LIDAR.id]: {
           colorBy: "uniform",
@@ -520,7 +530,7 @@ describe("Mcap3dTileSettings", () => {
     fireEvent.change(screen.getByLabelText(`Uniform color (${LIDAR.label})`), {
       target: { value: "#ff8800" },
     });
-    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+    expect(storedPointCloudColor(LIDAR.id)).toEqual({
       colorBy: "uniform",
       colormap: "coolwarm",
       rangeMax: null,
@@ -698,17 +708,58 @@ function selectVoodooOption(combobox: HTMLElement, query: string) {
   fireEvent.keyDown(combobox, { key: "Enter" });
 }
 
+interface SettingsTestProps {
+  readonly cameraSources: readonly SceneSource[];
+  readonly cameraTargetFrameId: string;
+  readonly cameraTopics: readonly string[];
+  readonly enabled: ReadonlySet<string>;
+  readonly frameIds: readonly string[];
+  readonly mapLayerSources: readonly SceneSource[];
+  readonly mapLayerTopics: readonly string[];
+  readonly pinholeCamera: McapPinholeCameraSettings;
+  readonly pointCloudColorCapabilities: ReadonlyMap<
+    string,
+    { readonly hasRgb: boolean; readonly scalarFields: readonly string[] }
+  >;
+  readonly pointCloudColors: Record<string, McapPointCloudColorSettings>;
+  readonly pointCloudPointSize: number;
+  readonly pointCloudSources: readonly SceneSource[];
+  readonly pointCloudTopics: readonly string[];
+  readonly poseSources: readonly SceneSource[];
+  readonly poseTopics: readonly string[];
+  readonly referenceGrid: McapReferenceGridSettings;
+  readonly sceneAnnotationSources: readonly SceneSource[];
+  readonly sceneAnnotationTopics: readonly string[];
+  readonly sceneBackground: McapSceneBackgroundSettings;
+  readonly sceneUpAxis: "x" | "y" | "z";
+  readonly selectedPointCloudSources: readonly SceneSource[];
+  readonly selectedPoseSources: readonly SceneSource[];
+  readonly setSceneUpAxis: ReturnType<typeof vi.fn>;
+  readonly setSourcesEnabled: ReturnType<typeof vi.fn>;
+  readonly setTrackingMode: ReturnType<typeof vi.fn>;
+  readonly setTrajectoryFrameOverrides: ReturnType<typeof vi.fn>;
+  readonly showPointCloudColorLegend: boolean;
+  readonly toggleSource: ReturnType<typeof vi.fn>;
+  readonly trackingMode: "free" | "position" | "heading" | "pose";
+  readonly trajectories: Map<string, never>;
+  readonly trajectoryFrameByTopic: Map<string, string>;
+  readonly updateCameraTargetFrameId: ReturnType<typeof vi.fn>;
+  readonly updateWorldFrameId: ReturnType<typeof vi.fn>;
+  readonly worldFrameId: string;
+}
+
 function renderSettings(
-  overrides: Partial<Mcap3dTileSettingsProps> = {},
-): Mcap3dTileSettingsProps {
+  overrides: Partial<SettingsTestProps> = {},
+): SettingsTestProps {
   const props = settingsProps(overrides);
-  render(<Mcap3dTileSettings {...props} />);
+  seedModalSettings(props);
+  render(<Mcap3dTileSettings {...componentProps(props)} />);
   return props;
 }
 
 function settingsProps(
-  overrides: Partial<Mcap3dTileSettingsProps> = {},
-): Mcap3dTileSettingsProps {
+  overrides: Partial<SettingsTestProps> = {},
+): SettingsTestProps {
   return {
     cameraSources: [CAM_FRONT, CAM_BACK],
     cameraTargetFrameId: "",
@@ -735,25 +786,95 @@ function settingsProps(
     sceneAnnotationTopics: [],
     selectedPointCloudSources: [LIDAR],
     selectedPoseSources: [],
-    setPinholeCamera: vi.fn(),
-    setPointCloudColor: vi.fn(),
-    setPointCloudPointSize: vi.fn(),
-    setReferenceGrid: vi.fn(),
-    setSceneBackground: vi.fn(),
-    setShowPointCloudColorLegend: vi.fn(),
     setSceneUpAxis: vi.fn(),
     setSourcesEnabled: vi.fn(),
     setTrackingMode: vi.fn(),
     setTrajectoryFrameOverrides: vi.fn(),
     toggleSource: vi.fn(),
     trackingMode: "free",
-    trajectories: new Map(),
+    trajectories: new Map<string, never>(),
     trajectoryFrameByTopic: new Map(),
     updateCameraTargetFrameId: vi.fn(),
     updateWorldFrameId: vi.fn(),
     worldFrameId: "",
     ...overrides,
   };
+}
+
+function seedModalSettings(props: SettingsTestProps) {
+  writeMcapModalSettings({
+    fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
+    imageLabelTopics: {},
+    pinholeCamera: props.pinholeCamera,
+    pointCloudColors: props.pointCloudColors,
+    pointCloudPointSize: props.pointCloudPointSize,
+    referenceGrid: props.referenceGrid,
+    sceneBackground: props.sceneBackground,
+    showPointCloudColorLegend: props.showPointCloudColorLegend,
+    temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
+  });
+  __resetMcapModalSettingsForTests();
+}
+
+function componentProps(props: SettingsTestProps): Mcap3dTileSettingsProps {
+  return {
+    frameControls: {
+      cameraTargetFrameId: props.cameraTargetFrameId,
+      frameIds: props.frameIds,
+      updateCameraTargetFrameId: props.updateCameraTargetFrameId,
+      updateWorldFrameId: props.updateWorldFrameId,
+      worldFrameId: props.worldFrameId,
+    },
+    pointCloudInputs: {
+      colorCapabilities: props.pointCloudColorCapabilities,
+      selectedSources: props.selectedPointCloudSources,
+    },
+    poseControls: {
+      selectedSources: props.selectedPoseSources,
+      setTrajectoryFrameOverrides: props.setTrajectoryFrameOverrides,
+      trajectories: props.trajectories,
+      trajectoryFrameByTopic: props.trajectoryFrameByTopic,
+    },
+    sceneControls: {
+      sceneUpAxis: props.sceneUpAxis,
+      setSceneUpAxis: props.setSceneUpAxis,
+    },
+    selection: {
+      enabled: props.enabled,
+      setSourcesEnabled: props.setSourcesEnabled,
+      toggleSource: props.toggleSource,
+    },
+    sourceGroups: {
+      camera: {
+        sources: props.cameraSources,
+        topics: props.cameraTopics,
+      },
+      mapLayer: {
+        sources: props.mapLayerSources,
+        topics: props.mapLayerTopics,
+      },
+      pointCloud: {
+        sources: props.pointCloudSources,
+        topics: props.pointCloudTopics,
+      },
+      pose: {
+        sources: props.poseSources,
+        topics: props.poseTopics,
+      },
+      sceneAnnotation: {
+        sources: props.sceneAnnotationSources,
+        topics: props.sceneAnnotationTopics,
+      },
+    },
+    trackingControls: {
+      mode: props.trackingMode,
+      setMode: props.setTrackingMode,
+    },
+  };
+}
+
+function storedPointCloudColor(topic: string) {
+  return readMcapModalSettings().pointCloudColors[topic];
 }
 
 function source(

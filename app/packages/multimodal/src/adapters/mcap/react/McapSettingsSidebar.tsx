@@ -17,7 +17,8 @@ import React, {
 import {
   type McapPlaybackFidelityMode,
   type McapTemporalPolicySettings,
-  useMcapModalSettings,
+  useMcapPlaybackSettings,
+  useMcapTemporalPolicySettings,
 } from "./mcap-modal-settings";
 import McapSidebarGroup from "./McapSidebarGroup";
 import styles from "./McapSettingsSidebar.module.css";
@@ -126,7 +127,7 @@ const FIDELITY_OPTIONS: readonly {
 ];
 
 function PlaybackFidelitySettings() {
-  const { fidelityMode, setFidelityMode } = useMcapModalSettings();
+  const { fidelityMode, setFidelityMode } = useMcapPlaybackSettings();
 
   return (
     <McapSidebarGroup title="Playback">
@@ -158,7 +159,7 @@ function PlaybackFidelitySettings() {
 
 function TimeResolutionSettings() {
   const { resetTemporalPolicy, setTemporalPolicy, temporalPolicy } =
-    useMcapModalSettings();
+    useMcapTemporalPolicySettings();
 
   return (
     <TemporalPolicySettings

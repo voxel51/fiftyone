@@ -46,7 +46,12 @@ import {
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
   defaultMcapPointCloudColorForSource,
-  useMcapModalSettings,
+  useMcapPinholeCameraSettings,
+  useMcapPlaybackSettings,
+  useMcapPointCloudStyleSettings,
+  useMcapReferenceGridSettings,
+  useMcapSceneBackgroundSettings,
+  useMcapTemporalPolicySettings,
 } from "./mcap-modal-settings";
 import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import type { McapTileProps } from "./mcap-tile-types";
@@ -119,22 +124,13 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     toggleSource,
   } = useMcap3dSelection({ restore: viewStateRestore });
   const frameTransforms = useMcapFrameTransformsContext();
-  const {
-    fidelityMode,
-    pinholeCamera,
-    pointCloudColors,
-    pointCloudPointSize,
-    referenceGrid,
-    sceneBackground,
-    showPointCloudColorLegend,
-    setPinholeCamera,
-    setPointCloudColor,
-    setPointCloudPointSize,
-    setReferenceGrid,
-    setSceneBackground,
-    setShowPointCloudColorLegend,
-    temporalPolicy,
-  } = useMcapModalSettings();
+  const { fidelityMode } = useMcapPlaybackSettings();
+  const { temporalPolicy } = useMcapTemporalPolicySettings();
+  const { pinholeCamera } = useMcapPinholeCameraSettings();
+  const { pointCloudColors, pointCloudPointSize, showPointCloudColorLegend } =
+    useMcapPointCloudStyleSettings();
+  const { referenceGrid } = useMcapReferenceGridSettings();
+  const { sceneBackground } = useMcapSceneBackgroundSettings();
   const { sceneUpAxis, setSceneUpAxis } = useMcap3dViewSettings();
   const panelBackground = useMemo<ThreeSceneBackground>(() => {
     switch (sceneBackground.mode) {
@@ -566,46 +562,46 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   return (
     <>
       <Mcap3dTileSettings
-        cameraSources={cameraSources}
-        cameraTargetFrameId={cameraTargetFrameId}
-        cameraTopics={cameraTopics}
-        enabled={enabled}
-        frameIds={frameIds}
-        mapLayerSources={mapLayerSources}
-        mapLayerTopics={mapLayerTopics}
-        pinholeCamera={pinholeCamera}
-        pointCloudColorCapabilities={pointCloudColorCapabilities}
-        pointCloudColors={pointCloudColors}
-        pointCloudPointSize={pointCloudPointSize}
-        pointCloudSources={pointCloudSources}
-        pointCloudTopics={pointCloudTopics}
-        poseSources={poseSources}
-        poseTopics={poseTopics}
-        referenceGrid={referenceGrid}
-        sceneAnnotationSources={sceneAnnotationSources}
-        sceneAnnotationTopics={sceneAnnotationTopics}
-        sceneBackground={sceneBackground}
-        sceneUpAxis={sceneUpAxis}
-        showPointCloudColorLegend={showPointCloudColorLegend}
-        selectedPointCloudSources={selectedPointCloudSources}
-        selectedPoseSources={selectedPoseSources}
-        setPinholeCamera={setPinholeCamera}
-        setPointCloudColor={setPointCloudColor}
-        setPointCloudPointSize={setPointCloudPointSize}
-        setReferenceGrid={setReferenceGrid}
-        setSceneBackground={setSceneBackground}
-        setShowPointCloudColorLegend={setShowPointCloudColorLegend}
-        setSceneUpAxis={setSceneUpAxis}
-        setSourcesEnabled={setSourcesEnabled}
-        setTrackingMode={setTrackingMode}
-        setTrajectoryFrameOverrides={setTrajectoryFrameOverrides}
-        toggleSource={toggleSource}
-        trackingMode={trackingMode}
-        trajectories={trajectories}
-        trajectoryFrameByTopic={trajectoryFrameByTopic}
-        updateCameraTargetFrameId={updateCameraTargetFrameId}
-        updateWorldFrameId={updateWorldFrameId}
-        worldFrameId={worldFrameId}
+        frameControls={{
+          cameraTargetFrameId,
+          frameIds,
+          updateCameraTargetFrameId,
+          updateWorldFrameId,
+          worldFrameId,
+        }}
+        pointCloudInputs={{
+          colorCapabilities: pointCloudColorCapabilities,
+          selectedSources: selectedPointCloudSources,
+        }}
+        poseControls={{
+          selectedSources: selectedPoseSources,
+          setTrajectoryFrameOverrides,
+          trajectories,
+          trajectoryFrameByTopic,
+        }}
+        sceneControls={{
+          sceneUpAxis,
+          setSceneUpAxis,
+        }}
+        selection={{
+          enabled,
+          setSourcesEnabled,
+          toggleSource,
+        }}
+        sourceGroups={{
+          camera: { sources: cameraSources, topics: cameraTopics },
+          mapLayer: { sources: mapLayerSources, topics: mapLayerTopics },
+          pointCloud: { sources: pointCloudSources, topics: pointCloudTopics },
+          pose: { sources: poseSources, topics: poseTopics },
+          sceneAnnotation: {
+            sources: sceneAnnotationSources,
+            topics: sceneAnnotationTopics,
+          },
+        }}
+        trackingControls={{
+          mode: trackingMode,
+          setMode: setTrackingMode,
+        }}
       />
       {selectedTopics.length === 0 ? (
         <div className={styles.loading}>

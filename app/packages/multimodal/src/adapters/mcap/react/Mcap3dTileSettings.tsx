@@ -49,11 +49,12 @@ import {
   MCAP_POINT_CLOUD_POINT_SIZE_STEP,
   MIN_MCAP_POINT_CLOUD_POINT_SIZE,
   defaultMcapPointCloudColorForSource,
-  type McapPinholeCameraSettings,
   type McapPointCloudColorSettings,
-  type McapReferenceGridSettings,
   type McapSceneBackgroundMode,
-  type McapSceneBackgroundSettings,
+  useMcapPinholeCameraSettings,
+  useMcapPointCloudStyleSettings,
+  useMcapReferenceGridSettings,
+  useMcapSceneBackgroundSettings,
 } from "./mcap-modal-settings";
 import type { PointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import {
@@ -69,116 +70,149 @@ import McapSidebarGroup from "./McapSidebarGroup";
 import settingsStyles from "./McapTile.settings.module.css";
 import { TRACKING_MODES } from "./use-mcap-3d-camera-tracking";
 
-export interface Mcap3dTileSettingsProps {
-  readonly cameraSources: readonly SceneSource[];
-  readonly cameraTargetFrameId: string;
-  readonly cameraTopics: readonly string[];
+/**
+ * One source group shown in the 3D settings sidebar.
+ */
+export interface Mcap3dTileSettingsSourceGroup {
+  readonly sources: readonly SceneSource[];
+  readonly topics: readonly string[];
+}
+
+/**
+ * Source groups available to the 3D settings sidebar.
+ */
+export interface Mcap3dTileSettingsSourceGroups {
+  readonly camera: Mcap3dTileSettingsSourceGroup;
+  readonly mapLayer: Mcap3dTileSettingsSourceGroup;
+  readonly pointCloud: Mcap3dTileSettingsSourceGroup;
+  readonly pose: Mcap3dTileSettingsSourceGroup;
+  readonly sceneAnnotation: Mcap3dTileSettingsSourceGroup;
+}
+
+/**
+ * Tile-local source selection controls for the 3D sidebar.
+ */
+export interface Mcap3dTileSettingsSelectionControls {
   readonly enabled: ReadonlySet<string>;
-  readonly frameIds: readonly string[];
-  readonly mapLayerSources: readonly SceneSource[];
-  readonly mapLayerTopics: readonly string[];
-  readonly pinholeCamera: McapPinholeCameraSettings;
-  readonly pointCloudColorCapabilities: ReadonlyMap<
-    string,
-    PointCloudColorCapabilities
-  >;
-  readonly pointCloudColors: Record<string, McapPointCloudColorSettings>;
-  readonly pointCloudPointSize: number;
-  readonly pointCloudSources: readonly SceneSource[];
-  readonly pointCloudTopics: readonly string[];
-  readonly poseSources: readonly SceneSource[];
-  readonly poseTopics: readonly string[];
-  readonly referenceGrid: McapReferenceGridSettings;
-  readonly sceneAnnotationSources: readonly SceneSource[];
-  readonly sceneAnnotationTopics: readonly string[];
-  readonly sceneBackground: McapSceneBackgroundSettings;
-  readonly sceneUpAxis: Mcap3dSceneUpAxis;
-  readonly showPointCloudColorLegend: boolean;
-  readonly selectedPointCloudSources: readonly SceneSource[];
-  readonly selectedPoseSources: readonly SceneSource[];
-  readonly setPinholeCamera: (
-    settings: Partial<McapPinholeCameraSettings>,
-  ) => void;
-  readonly setPointCloudColor: (
-    topic: string,
-    settings: Partial<McapPointCloudColorSettings>,
-  ) => void;
-  readonly setPointCloudPointSize: (pointSize: number) => void;
-  readonly setReferenceGrid: (
-    settings: Partial<McapReferenceGridSettings>,
-  ) => void;
-  readonly setSceneBackground: (
-    settings: Partial<McapSceneBackgroundSettings>,
-  ) => void;
-  readonly setShowPointCloudColorLegend: (visible: boolean) => void;
-  readonly setSceneUpAxis: (axis: Mcap3dSceneUpAxis) => void;
   readonly setSourcesEnabled: (
     ids: readonly string[],
     checked: boolean,
   ) => void;
-  readonly setTrackingMode: (mode: Mcap3dTrackingMode) => void;
-  readonly setTrajectoryFrameOverrides: React.Dispatch<
-    React.SetStateAction<Readonly<Record<string, string>>>
-  >;
   readonly toggleSource: (id: string, checked: boolean) => void;
-  readonly trackingMode: Mcap3dTrackingMode;
-  readonly trajectories: McapPoseTrajectories;
-  readonly trajectoryFrameByTopic: ReadonlyMap<string, string>;
+}
+
+/**
+ * Point-cloud inputs derived from the rendered 3D tile.
+ */
+export interface Mcap3dTileSettingsPointCloudInputs {
+  readonly colorCapabilities: ReadonlyMap<string, PointCloudColorCapabilities>;
+  readonly selectedSources: readonly SceneSource[];
+}
+
+/**
+ * Frame controls owned by the 3D tile instance.
+ */
+export interface Mcap3dTileSettingsFrameControls {
+  readonly cameraTargetFrameId: string;
+  readonly frameIds: readonly string[];
   readonly updateCameraTargetFrameId: (frameId: string) => void;
   readonly updateWorldFrameId: (frameId: string) => void;
   readonly worldFrameId: string;
 }
 
 /**
+ * Pose trajectory controls owned by the 3D tile instance.
+ */
+export interface Mcap3dTileSettingsPoseControls {
+  readonly selectedSources: readonly SceneSource[];
+  readonly setTrajectoryFrameOverrides: React.Dispatch<
+    React.SetStateAction<Readonly<Record<string, string>>>
+  >;
+  readonly trajectories: McapPoseTrajectories;
+  readonly trajectoryFrameByTopic: ReadonlyMap<string, string>;
+}
+
+/**
+ * Camera tracking controls owned by the 3D tile instance.
+ */
+export interface Mcap3dTileSettingsTrackingControls {
+  readonly mode: Mcap3dTrackingMode;
+  readonly setMode: (mode: Mcap3dTrackingMode) => void;
+}
+
+/**
+ * Scene-orientation controls owned by the modal layout state.
+ */
+export interface Mcap3dTileSettingsSceneControls {
+  readonly sceneUpAxis: Mcap3dSceneUpAxis;
+  readonly setSceneUpAxis: (axis: Mcap3dSceneUpAxis) => void;
+}
+
+/**
+ * Grouped props for tile-local state consumed by the 3D settings sidebar.
+ */
+export interface Mcap3dTileSettingsProps {
+  readonly frameControls: Mcap3dTileSettingsFrameControls;
+  readonly pointCloudInputs: Mcap3dTileSettingsPointCloudInputs;
+  readonly poseControls: Mcap3dTileSettingsPoseControls;
+  readonly sceneControls: Mcap3dTileSettingsSceneControls;
+  readonly selection: Mcap3dTileSettingsSelectionControls;
+  readonly sourceGroups: Mcap3dTileSettingsSourceGroups;
+  readonly trackingControls: Mcap3dTileSettingsTrackingControls;
+}
+
+/**
  * Settings sidebar for the 3D tile. Unlike the image tile, sources are
  * multi-selectable — overlaying several sensors in one view is the point of
  * a 3D panel — so the sidebar offers per-source checkboxes grouped into
- * collapsible sections, each with a master on/off switch. Groups with no
- * available sources are hidden entirely. Pure presentational: all state
- * lives in the tile's hooks.
+ * collapsible sections, each with a master on/off switch. Modal-wide
+ * preferences come from domain hooks, tile-local controls arrive as grouped
+ * props, and expanded editor state stays local to this sidebar.
  */
 const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
-  cameraSources,
-  cameraTargetFrameId,
-  cameraTopics,
-  enabled,
-  frameIds,
-  mapLayerSources,
-  mapLayerTopics,
-  pinholeCamera,
-  pointCloudColorCapabilities,
-  pointCloudColors,
-  pointCloudPointSize,
-  pointCloudSources,
-  pointCloudTopics,
-  poseSources,
-  poseTopics,
-  referenceGrid,
-  sceneAnnotationSources,
-  sceneAnnotationTopics,
-  sceneBackground,
-  sceneUpAxis,
-  showPointCloudColorLegend,
-  selectedPointCloudSources,
-  selectedPoseSources,
-  setPinholeCamera,
-  setPointCloudColor,
-  setPointCloudPointSize,
-  setReferenceGrid,
-  setSceneBackground,
-  setShowPointCloudColorLegend,
-  setSceneUpAxis,
-  setSourcesEnabled,
-  setTrackingMode,
-  setTrajectoryFrameOverrides,
-  toggleSource,
-  trackingMode,
-  trajectories,
-  trajectoryFrameByTopic,
-  updateCameraTargetFrameId,
-  updateWorldFrameId,
-  worldFrameId,
+  frameControls,
+  pointCloudInputs,
+  poseControls,
+  sceneControls,
+  selection,
+  sourceGroups,
+  trackingControls,
 }) => {
+  const { pinholeCamera, setPinholeCamera } = useMcapPinholeCameraSettings();
+  const {
+    pointCloudColors,
+    pointCloudPointSize,
+    setPointCloudColor,
+    setPointCloudPointSize,
+    setShowPointCloudColorLegend,
+    showPointCloudColorLegend,
+  } = useMcapPointCloudStyleSettings();
+  const { referenceGrid, setReferenceGrid } = useMcapReferenceGridSettings();
+  const { sceneBackground, setSceneBackground } =
+    useMcapSceneBackgroundSettings();
+  const { cameraTargetFrameId, frameIds, worldFrameId } = frameControls;
+  const { enabled, setSourcesEnabled, toggleSource } = selection;
+  const pointCloudSources = sourceGroups.pointCloud.sources;
+  const pointCloudTopics = sourceGroups.pointCloud.topics;
+  const cameraSources = sourceGroups.camera.sources;
+  const cameraTopics = sourceGroups.camera.topics;
+  const sceneAnnotationSources = sourceGroups.sceneAnnotation.sources;
+  const sceneAnnotationTopics = sourceGroups.sceneAnnotation.topics;
+  const poseSources = sourceGroups.pose.sources;
+  const poseTopics = sourceGroups.pose.topics;
+  const mapLayerSources = sourceGroups.mapLayer.sources;
+  const mapLayerTopics = sourceGroups.mapLayer.topics;
+  const pointCloudColorCapabilities = pointCloudInputs.colorCapabilities;
+  const selectedPointCloudSources = pointCloudInputs.selectedSources;
+  const selectedPoseSources = poseControls.selectedSources;
+  const sceneUpAxis = sceneControls.sceneUpAxis;
+  const setSceneUpAxis = sceneControls.setSceneUpAxis;
+  const trackingMode = trackingControls.mode;
+  const setTrackingMode = trackingControls.setMode;
+  const { setTrajectoryFrameOverrides, trajectories, trajectoryFrameByTopic } =
+    poseControls;
+  const { updateCameraTargetFrameId, updateWorldFrameId } = frameControls;
+
   return (
     <TileSettingsContent>
       <div className={settingsStyles.root}>

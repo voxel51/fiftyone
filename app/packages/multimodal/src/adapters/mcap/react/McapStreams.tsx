@@ -15,7 +15,8 @@ import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
   type McapPlaybackFidelityMode,
   type McapTemporalPolicySettings,
-  useMcapModalSettings,
+  useMcapPlaybackSettings,
+  useMcapTemporalPolicySettings,
 } from "./mcap-modal-settings";
 import { useMcapFrameTransforms } from "./use-mcap-frame-transforms";
 import { useMcapPlaybackTimeNs } from "./use-mcap-playback-time-ns";
@@ -39,7 +40,8 @@ export interface McapStreamsProps {
  */
 export function McapStreams({ client, source }: McapStreamsProps) {
   const sources = useSceneInventory();
-  const { fidelityMode, temporalPolicy } = useMcapModalSettings();
+  const { fidelityMode } = useMcapPlaybackSettings();
+  const { temporalPolicy } = useMcapTemporalPolicySettings();
 
   const streamPolicies = useMemo(() => mcapStreamPolicies(sources), [sources]);
   const allTopics = useMemo(() => sources.map((s) => s.id), [sources]);

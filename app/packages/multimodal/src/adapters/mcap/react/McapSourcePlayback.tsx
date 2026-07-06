@@ -20,7 +20,6 @@ import { Mcap3dViewSettingsProvider } from "./mcap-3d-view-settings-context";
 import { McapDataStreamProvider } from "./mcap-data-stream-context";
 import { McapFrameTransformsProvider } from "./mcap-frame-transforms-context";
 import { McapNumericSeriesProvider } from "./mcap-numeric-series-context";
-import { McapModalSettingsProvider } from "./mcap-modal-settings";
 import { McapPoseTrajectoriesProvider } from "./mcap-pose-trajectories-context";
 import { McapRawMessageProvider } from "./mcap-raw-message-context";
 import { McapSelectionHotkeys } from "./mcap-selected-object";
@@ -174,7 +173,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   }
 
   return (
-    <McapModalSettingsProvider key={byteSourceAccessKey(source)}>
+    <React.Fragment key={byteSourceAccessKey(source)}>
       <McapFrameTransformsProvider>
         <McapPoseTrajectoriesProvider>
           <McapNumericSeriesProvider>
@@ -221,7 +220,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
           </McapNumericSeriesProvider>
         </McapPoseTrajectoriesProvider>
       </McapFrameTransformsProvider>
-    </McapModalSettingsProvider>
+    </React.Fragment>
   );
 };
 
