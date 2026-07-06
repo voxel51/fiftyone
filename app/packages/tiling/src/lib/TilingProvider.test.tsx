@@ -77,6 +77,27 @@ describe("TilingProvider", () => {
       expect(result.current.layout).not.toBeNull();
     });
 
+    it("uses a custom strategy for the initial auto layout", () => {
+      const initialTiles = {
+        "a-1": makeTile("a"),
+        "b-1": makeTile("b"),
+      };
+      const autoLayoutStrategy = vi.fn(() => "b-1");
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={initialTiles}
+            autoLayoutStrategy={autoLayoutStrategy}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+
+      expect(autoLayoutStrategy).toHaveBeenCalledWith(["a-1", "b-1"]);
+      expect(result.current.layout).toBe("b-1");
+    });
+
     it("seeds the expanded tile when the initial id is in the layout", () => {
       const initialTiles = {
         "camera-1": makeTile("camera"),
@@ -490,6 +511,24 @@ describe("TilingProvider", () => {
   });
 
   describe("autoLayout", () => {
+    it("keeps the default balanced layout when no custom strategy is provided", () => {
+      const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={initialTiles}>{children}</Wrapper>
+        ),
+      });
+      act(() => {
+        result.current.autoLayout();
+      });
+      expect(result.current.layout).toEqual({
+        direction: "row",
+        first: "a-1",
+        second: "b-1",
+        splitPercentage: 50,
+      });
+    });
+
     it("preserves the tile set after rebuilding the layout tree", () => {
       const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
       const { result } = renderHook(() => useTiling(), {
@@ -504,13 +543,26 @@ describe("TilingProvider", () => {
       expect(result.current.layout).not.toBeNull();
     });
 
-    it("clears expanded state when rebuilding the layout tree", () => {
+    it("uses a custom strategy and clears expanded state when rebuilding the layout tree", () => {
       const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
+      const autoLayoutStrategy = vi.fn((ids: readonly string[]) => ({
+        direction: "column" as const,
+        first: ids[1],
+        second: ids[0],
+        splitPercentage: 40,
+      }));
       const { result } = renderHook(() => useTiling(), {
         wrapper: ({ children }) => (
           <TilingProvider
             initialTiles={initialTiles}
+            initialLayout={{
+              direction: "row",
+              first: "a-1",
+              second: "b-1",
+              splitPercentage: 50,
+            }}
             initialExpandedTileId="a-1"
+            autoLayoutStrategy={autoLayoutStrategy}
           >
             {children}
           </TilingProvider>
@@ -518,6 +570,13 @@ describe("TilingProvider", () => {
       });
       act(() => {
         result.current.autoLayout();
+      });
+      expect(autoLayoutStrategy).toHaveBeenCalledWith(["a-1", "b-1"]);
+      expect(result.current.layout).toEqual({
+        direction: "column",
+        first: "b-1",
+        second: "a-1",
+        splitPercentage: 40,
       });
       expect(result.current.expandedTileId).toBeNull();
     });
@@ -850,6 +909,25 @@ describe("spawn operations", () => {
     });
   });
 
+  describe("closeOtherTiles", () => {
+    it("keeps only the given tile and focuses it", () => {
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("a"),
+        "camera-2": makeTile("b"),
+        "camera-3": makeTile("c"),
+      });
+      act(() => {
+        result.current.setFocusedTileId("camera-1");
+      });
+      act(() => {
+        result.current.closeOtherTiles("camera-2");
+      });
+      expect(result.current.layout).toBe("camera-2");
+      expect(Object.keys(result.current.tiles)).toEqual(["camera-2"]);
+      expect(result.current.focusedTileId).toBe("camera-2");
+    });
+  });
+
   describe("changeTileType", () => {
     it("replaces a tile in place with a fresh registered type", () => {
       const { result } = changeTypeSetup({
@@ -885,25 +963,6 @@ describe("spawn operations", () => {
       expect(newId).toBeNull();
       expect(result.current.layout).toBe("camera-1");
       expect(result.current.tiles["camera-1"]).toBeDefined();
-    });
-  });
-
-  describe("closeOtherTiles", () => {
-    it("keeps only the given tile and focuses it", () => {
-      const { result } = spawnOpsSetup({
-        "camera-1": makeTile("a"),
-        "camera-2": makeTile("b"),
-        "camera-3": makeTile("c"),
-      });
-      act(() => {
-        result.current.setFocusedTileId("camera-1");
-      });
-      act(() => {
-        result.current.closeOtherTiles("camera-2");
-      });
-      expect(result.current.layout).toBe("camera-2");
-      expect(Object.keys(result.current.tiles)).toEqual(["camera-2"]);
-      expect(result.current.focusedTileId).toBe("camera-2");
     });
   });
 });

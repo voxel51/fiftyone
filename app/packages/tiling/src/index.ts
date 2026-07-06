@@ -13,6 +13,7 @@ export type { TilingProviderProps } from "./lib/TilingProvider";
 export type {
   TilingTile,
   AddTileOptions,
+  TilingAutoLayoutStrategy,
   SetTileTitleOptions,
   TileTitleSource,
   TilingContextValue,

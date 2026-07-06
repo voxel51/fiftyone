@@ -18,14 +18,20 @@ vi.mock("@fiftyone/tiling", async () => {
       onExpandedTileIdChange,
       onFocusTile,
       tiles,
+      value,
     }: {
       expandedTileId?: string | null;
       focusedTileId?: string | null;
       onExpandedTileIdChange?: (id: string | null) => void;
       onFocusTile?: (id: string, reason: "select" | "action") => void;
       tiles: Record<string, { title: string; render: () => React.ReactNode }>;
+      value?: unknown;
     }) => (
-      <div data-expanded-tile-id={expandedTileId ?? ""} data-cy="mosaic-stub">
+      <div
+        data-expanded-tile-id={expandedTileId ?? ""}
+        data-layout={JSON.stringify(value ?? null)}
+        data-cy="mosaic-stub"
+      >
         {Object.entries(tiles).map(([id, t]) => (
           <div key={id} data-cy={`stub-${id}`}>
             <span data-cy={`title-${id}`}>{t.title}</span>
@@ -99,6 +105,52 @@ describe("MultiModalPlayback shell", () => {
       "camera_front",
     );
     expect(screen.getByTestId("title-lidar-1").textContent).toBe("lidar_top");
+  });
+
+  it("forwards a custom auto layout strategy to the tiling provider", () => {
+    const autoLayoutStrategy = vi.fn(() => "lidar-1");
+    render(
+      <MultiModalPlayback
+        fileName="session.fo"
+        autoLayoutStrategy={autoLayoutStrategy}
+        initialTiles={{
+          "camera-1": { title: "camera_front", render: () => null },
+          "lidar-1": { title: "lidar_top", render: () => null },
+        }}
+      />,
+    );
+
+    expect(autoLayoutStrategy).toHaveBeenCalledWith(["camera-1", "lidar-1"]);
+    expect(screen.getByTestId("mosaic-stub").dataset.layout).toBe(
+      JSON.stringify("lidar-1"),
+    );
+  });
+
+  it("uses the forwarded strategy from the toolbar Auto Layout action", () => {
+    const autoLayoutStrategy = vi.fn(() => "lidar-1");
+    render(
+      <MultiModalPlayback
+        fileName="session.fo"
+        addTileMenu={<span>Placeholder tile</span>}
+        autoLayoutStrategy={autoLayoutStrategy}
+        initialTiles={{
+          "camera-1": { title: "camera_front", render: () => null },
+          "lidar-1": { title: "lidar_top", render: () => null },
+        }}
+        initialLayout="camera-1"
+        initialExpandedTileId="camera-1"
+      />,
+    );
+
+    expect(autoLayoutStrategy).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("tiling-header-add-tile"));
+    fireEvent.click(screen.getByText("Auto Layout"));
+
+    expect(autoLayoutStrategy).toHaveBeenCalledWith(["camera-1", "lidar-1"]);
+    expect(screen.getByTestId("mosaic-stub").dataset.layout).toBe(
+      JSON.stringify("lidar-1"),
+    );
+    expect(screen.getByTestId("mosaic-stub").dataset.expandedTileId).toBe("");
   });
 
   it("seeds the mosaic expanded tile from initialExpandedTileId", () => {

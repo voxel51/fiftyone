@@ -19,11 +19,17 @@ import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
 import type {
   AddTileOptions,
   SetTileTitleOptions,
+  TilingAutoLayoutStrategy,
   TilingContextValue,
   TilingTile,
 } from "./types";
 
-export type { AddTileOptions, TilingContextValue, TilingTile } from "./types";
+export type {
+  AddTileOptions,
+  TilingAutoLayoutStrategy,
+  TilingContextValue,
+  TilingTile,
+} from "./types";
 
 const TilingContext = createContext<TilingContextValue | null>(null);
 
@@ -35,6 +41,8 @@ export interface TilingProviderProps {
   initialTiles?: Record<string, TilingTile>;
   /** Initial user-authored titles keyed by tile id. */
   initialManualTileTitles?: Record<string, string>;
+  /** Optional host-specific layout builder used by "Auto Layout". */
+  autoLayoutStrategy?: TilingAutoLayoutStrategy;
   /** Initial layout tree. If omitted, auto-laid out from `initialTiles`. */
   initialLayout?: MosaicNode<string> | null;
   /** Tile id that should initially render expanded to fullscreen. */
@@ -56,14 +64,21 @@ export interface TilingProviderProps {
 export const TilingProvider: React.FC<TilingProviderProps> = ({
   initialTiles = {},
   initialManualTileTitles = {},
+  autoLayoutStrategy,
   initialLayout,
   initialExpandedTileId,
   children,
 }) => {
-  const initialLayoutValue =
-    initialLayout === undefined
-      ? autoLayoutFn(Object.keys(initialTiles))
-      : initialLayout;
+  const initialLayoutValueRef = useRef<MosaicNode<string> | null | undefined>(
+    undefined,
+  );
+  if (initialLayoutValueRef.current === undefined) {
+    initialLayoutValueRef.current =
+      initialLayout === undefined
+        ? (autoLayoutStrategy ?? autoLayoutFn)(Object.keys(initialTiles))
+        : initialLayout;
+  }
+  const initialLayoutValue = initialLayoutValueRef.current;
   const [tiles, setTiles] = useState<Record<string, TilingTile>>(initialTiles);
   const [manualTileTitles, setManualTileTitles] = useState<
     Record<string, string>
@@ -111,6 +126,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   // stale captures in useMemo dependency-suppressed consumers (TilingHeader).
   const tilesRef = useRef(tiles);
   tilesRef.current = tiles;
+  const autoLayoutStrategyRef = useRef(autoLayoutStrategy);
+  autoLayoutStrategyRef.current = autoLayoutStrategy;
   const manualTileTitlesRef = useRef(manualTileTitles);
   manualTileTitlesRef.current = manualTileTitles;
 
@@ -364,7 +381,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     // don't want auto-layout to silently drop it.
     // Read from ref so this callback stays stable across tile additions,
     // avoiding stale captures in useMemo consumers that suppress deps.
-    setLayoutState(autoLayoutFn(Object.keys(tilesRef.current)));
+    const strategy = autoLayoutStrategyRef.current ?? autoLayoutFn;
+    setLayoutState(strategy(Object.keys(tilesRef.current)));
     setExpandedTileId(null);
   }, []);
 

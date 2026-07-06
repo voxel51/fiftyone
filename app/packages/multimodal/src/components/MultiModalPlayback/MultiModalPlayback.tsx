@@ -6,6 +6,7 @@ import {
   TilingProvider,
   TilingZeroState,
   useTiling,
+  type TilingAutoLayoutStrategy,
   type TilingHeaderCaption,
   type TilingTile,
 } from "@fiftyone/tiling";
@@ -75,6 +76,8 @@ export interface MultiModalPlaybackProps {
   initialTiles?: Record<string, TilingTile>;
   /** Initial user-authored tile titles keyed by tile id. */
   initialManualTileTitles?: Record<string, string>;
+  /** Optional host-specific layout builder for the toolbar Auto Layout action. */
+  autoLayoutStrategy?: TilingAutoLayoutStrategy;
 
   /**
    * Initial mosaic tree seeded into the embedded TilingProvider. Leave
@@ -189,6 +192,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   defaultPinnedTrackIds,
   initialTiles,
   initialManualTileTitles,
+  autoLayoutStrategy,
   initialLayout,
   initialExpandedTileId,
   sceneSources = EMPTY_SOURCES,
@@ -216,6 +220,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
           <TilingProvider
             initialTiles={initialTiles}
             initialManualTileTitles={initialManualTileTitles}
+            autoLayoutStrategy={autoLayoutStrategy}
             initialLayout={initialLayout}
             initialExpandedTileId={initialExpandedTileId}
           >

@@ -22,6 +22,10 @@ export interface TilingTile {
   render: () => ReactNode;
 }
 
+export type TilingAutoLayoutStrategy = (
+  tileIds: readonly string[],
+) => MosaicNode<string> | null;
+
 export type TileTitleSource = "auto" | "manual";
 
 export interface SetTileTitleOptions {
