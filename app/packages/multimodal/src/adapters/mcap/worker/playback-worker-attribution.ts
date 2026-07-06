@@ -8,6 +8,7 @@ import type {
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,
   McapReadNumericSeriesRequest,
+  McapReadRawMessageRecordRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
@@ -138,6 +139,10 @@ type McapPlaybackWorkerAttributionRequest =
   | McapPlaybackWorkerAttributionRequestOf<
       "readNumericSeries",
       McapReadNumericSeriesRequest
+    >
+  | McapPlaybackWorkerAttributionRequestOf<
+      "readRawMessageRecord",
+      McapReadRawMessageRecordRequest
     >
   | McapPlaybackWorkerAttributionRequestOf<
       "readFrameTransformBootstrap",
@@ -423,6 +428,11 @@ function summarizeWorkerRequest(
       return summarizeBoundedWindow(message.payload);
     case "readNumericSeries":
       return summarizeNumericSeriesRequest(message.payload);
+    case "readRawMessageRecord":
+      return {
+        timeNs: message.payload.timeNs.toString(),
+        topics: [message.payload.topic],
+      };
     case "readSynchronizedMessageBatch":
       return summarizeSynchronizedBatchRequest(message.payload);
     case "readSynchronizedMessages":

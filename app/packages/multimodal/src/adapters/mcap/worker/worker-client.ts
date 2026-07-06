@@ -29,7 +29,9 @@ import type {
   McapReadDecodedMessagesRequest,
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,
+  McapRawMessageRecordResult,
   McapReadNumericSeriesRequest,
+  McapReadRawMessageRecordRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapResourceReadOptions,
@@ -254,6 +256,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
       request,
       resourcePriorityToWorkerPriority(options?.priority),
     );
+  }
+
+  readRawMessageRecord(
+    request: McapReadRawMessageRecordRequest,
+  ): Promise<McapRawMessageRecordResult> {
+    return this.request("readRawMessageRecord", request);
   }
 
   readFrameTransformBootstrap(

@@ -292,6 +292,201 @@ export interface McapNumericSeriesResult {
 }
 
 /**
+ * Budgets bounding how much of a decoded message record crosses the
+ * worker boundary. Every budget has a conservative default; callers
+ * only override for special views.
+ */
+export interface McapRawPruneBudgets {
+  /**
+   * Maximum elements kept per array (plain or typed).
+   */
+  readonly maxArrayLength?: number;
+
+  /**
+   * Maximum nesting depth before subtrees collapse to a truncation
+   * marker.
+   */
+  readonly maxDepth?: number;
+
+  /**
+   * Maximum characters kept per string value.
+   */
+  readonly maxStringLength?: number;
+
+  /**
+   * Maximum total nodes in the pruned tree.
+   */
+  readonly maxTotalNodes?: number;
+}
+
+/**
+ * Pruned, structured-clone-safe rendering of one decoded message value.
+ * The worker walks the full decoded record but only this bounded tree
+ * crosses the thread boundary — an 18 MB occupancy grid stays put.
+ */
+export type McapRawValueNode =
+  | McapRawScalarNode
+  | McapRawBytesNode
+  | McapRawObjectNode
+  | McapRawArrayNode
+  | McapRawTruncatedNode;
+
+/**
+ * Leaf value, pre-stringified so 64-bit and non-finite values render
+ * (and copy) without further coercion decisions in the UI.
+ */
+export interface McapRawScalarNode {
+  readonly kind: "scalar";
+
+  /**
+   * Display-ready rendering of the value.
+   */
+  readonly value: string;
+  readonly valueType:
+    | "bigint"
+    | "boolean"
+    | "null"
+    | "number"
+    | "string"
+    | "undefined";
+
+  /**
+   * True when a string value was cut at the string budget.
+   */
+  readonly truncated?: boolean;
+}
+
+/**
+ * Byte payloads (protobuf `bytes` fields) summarize instead of listing
+ * elements — a hex preview of the first bytes plus the true length.
+ */
+export interface McapRawBytesNode {
+  readonly kind: "bytes";
+  readonly byteLength: number;
+
+  /**
+   * Space-separated hex of the leading bytes.
+   */
+  readonly preview: string;
+}
+
+export interface McapRawObjectNode {
+  readonly kind: "object";
+  readonly entries: readonly (readonly [string, McapRawValueNode])[];
+
+  /**
+   * Keys dropped by the total-node budget.
+   */
+  readonly droppedEntries?: number;
+}
+
+export interface McapRawArrayNode {
+  readonly kind: "array";
+  readonly items: readonly McapRawValueNode[];
+
+  /**
+   * Real element count; greater than `items.length` when pruned.
+   */
+  readonly totalLength: number;
+}
+
+/**
+ * Subtree collapsed by the depth or total-node budget.
+ */
+export interface McapRawTruncatedNode {
+  readonly kind: "truncated";
+  readonly reason: "depth" | "nodes";
+}
+
+/**
+ * Request for one topic's schema-shaped message record at a playback
+ * time.
+ */
+export interface McapReadRawMessageRecordRequest {
+  /**
+   * Timeline used to interpret `timeNs`; defaults to MCAP log time.
+   */
+  readonly activeTimeline?: McapActiveTimeline;
+
+  /**
+   * Optional overrides for the worker-side prune budgets.
+   */
+  readonly prune?: McapRawPruneBudgets;
+
+  /**
+   * MCAP source to read through the shared byte query layer.
+   */
+  readonly source: ByteSourceDescriptor;
+
+  /**
+   * Playback timeline time; the newest message at or before it is
+   * selected, however far back.
+   */
+  readonly timeNs: bigint;
+
+  /**
+   * MCAP topic to read.
+   */
+  readonly topic: string;
+}
+
+/**
+ * Raw record read outcome: `ok` carries a pruned record tree;
+ * `unsupported` carries message metadata for encodings with no generic
+ * decode path yet (cbor, ros1); `decode-error` marks a corrupt or
+ * schema-mismatched payload; `empty` means the topic has no message at
+ * or before the requested time.
+ */
+export type McapRawMessageRecordStatus =
+  | "decode-error"
+  | "empty"
+  | "ok"
+  | "unsupported";
+
+/**
+ * One topic's message record (or its degrade) at a playback time.
+ */
+export interface McapRawMessageRecordResult {
+  readonly status: McapRawMessageRecordStatus;
+  readonly topic: string;
+  readonly messageEncoding: string;
+  readonly schemaName: string | null;
+
+  /**
+   * Validity window in the active timeline: any request time in
+   * `[validFromNs, validUntilNs)` selects this same result, so callers
+   * skip refetching inside it. `validUntilNs` is a safe lower bound —
+   * probing stops at a bounded horizon, and a request past it simply
+   * re-selects and extends.
+   */
+  readonly validFromNs: bigint;
+  readonly validUntilNs: bigint;
+
+  /**
+   * Selected message identity/metadata; absent when `empty`.
+   */
+  readonly logTimeNs?: bigint;
+  readonly publishTimeNs?: bigint;
+  readonly sequence?: number;
+  readonly encodedPayloadBytes?: number;
+
+  /**
+   * Pruned record tree; present only when `ok`.
+   */
+  readonly root?: McapRawObjectNode;
+
+  /**
+   * True when any prune budget cut the tree.
+   */
+  readonly truncated?: boolean;
+
+  /**
+   * Decoder failure detail; present only when `decode-error`.
+   */
+  readonly decodeError?: string;
+}
+
+/**
  * Request for frame transforms needed before a 3D panel can render.
  */
 export interface McapReadFrameTransformBootstrapRequest {
@@ -591,6 +786,15 @@ export interface McapResourceClient {
     request: McapReadNumericSeriesRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapNumericSeriesResult>;
+
+  /**
+   * Reads one topic's schema-shaped message record at a playback time,
+   * pruned worker-side to bounded size. Rides the idle lane so a large
+   * decode never stalls current-frame or playback reads.
+   */
+  readRawMessageRecord(
+    request: McapReadRawMessageRecordRequest,
+  ): Promise<McapRawMessageRecordResult>;
 
   /**
    * Reads eager frame transforms needed for initial 3D placement.

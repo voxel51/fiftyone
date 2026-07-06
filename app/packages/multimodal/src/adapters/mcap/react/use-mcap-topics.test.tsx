@@ -157,6 +157,7 @@ function createTopicsClient(
     readFrameTransformBootstrap: vi.fn(),
     readFrameTransformWindow: vi.fn(),
     readSynchronizedMessageBatch: vi.fn(async () => []),
+    readRawMessageRecord: vi.fn(),
     readSynchronizedMessages: vi.fn(),
     readTimelineRange: vi.fn(),
     readTopics: vi.fn(readTopics),

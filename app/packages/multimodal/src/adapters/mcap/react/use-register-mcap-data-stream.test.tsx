@@ -1253,6 +1253,7 @@ function createClient({
       topic: "",
       truncated: false,
     })),
+    readRawMessageRecord: vi.fn(),
   };
 }
 

@@ -23,6 +23,7 @@ import {
 } from "./read-frame-transforms";
 import { enumerateMcapNumericFields } from "./numeric-fields";
 import { readMcapNumericSeries } from "./read-numeric-series";
+import { readMcapRawMessageRecord } from "./read-raw-message-record";
 import { readMcapTopics } from "./read-topics";
 import { readMcapTopicTimeBounds } from "./read-topic-time-bounds";
 import type { McapFrameTransformSet } from "../frame-transform-types";
@@ -33,7 +34,9 @@ import {
   type McapReadDecodedMessagesRequest,
   type McapReadFrameTransformBootstrapRequest,
   type McapReadFrameTransformWindowRequest,
+  type McapRawMessageRecordResult,
   type McapReadNumericSeriesRequest,
+  type McapReadRawMessageRecordRequest,
   type McapReadSynchronizedMessageBatchRequest,
   type McapReadSynchronizedMessagesRequest,
   type McapReadTopicsRequest,
@@ -184,6 +187,14 @@ export function createInlineMcapResourceClient(
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const reader = await readerStore.get(request.source);
       return readMcapNumericSeries({ reader, request, timeline });
+    },
+
+    async readRawMessageRecord(
+      request: McapReadRawMessageRecordRequest,
+    ): Promise<McapRawMessageRecordResult> {
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const reader = await readerStore.get(request.source);
+      return readMcapRawMessageRecord({ reader, request, timeline });
     },
 
     async readTopicTimeBounds(request: McapReadTopicTimeBoundsRequest) {

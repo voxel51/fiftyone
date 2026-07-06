@@ -229,6 +229,7 @@ function createClient(
     readFrameTransformBootstrap: vi.fn(async () => ({ samples: [] })),
     readFrameTransformWindow: vi.fn(async () => ({ samples: [] })),
     readSynchronizedMessageBatch: vi.fn(async () => []),
+    readRawMessageRecord: vi.fn(),
     readSynchronizedMessages: vi.fn(),
     readTimelineRange: vi.fn(),
     readTopics: vi.fn(async () => []),
