@@ -6,6 +6,7 @@ import {
   createDefaultByteClient,
   createMemoryByteRangeCache,
   DEFAULT_BYTE_CACHE_SIZE_BYTES,
+  defaultByteFillLockManager,
 } from "./bytes";
 import type { ByteReadDebugLog } from "./bytes";
 import {
@@ -48,6 +49,9 @@ export function createMultimodalQueryClient(
     // opts a client out entirely.
     persistent:
       options.caches?.bytes?.persistent ?? createCacheApiByteRangeCache(),
+    // Single-flights identical block fills across worker lanes (and tabs),
+    // with the persistent layer above as the handoff medium.
+    locks: options.caches?.bytes?.locks ?? defaultByteFillLockManager(),
   };
   const decodedCache =
     options.caches?.decoded ??

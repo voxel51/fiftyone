@@ -6,12 +6,14 @@ import {
 import { safeNumber } from "./bigint-utils";
 import { serializeCacheKey } from "../cache-utils";
 import { byteSourceAccessKey } from "./cache";
+import { byteFillLockName } from "./fill-lock";
 import { parseByteSize } from "./byte-size";
 import { monotonicNowMs } from "../../time";
 import type {
   ByteClient,
   ByteCacheLayers,
   ByteRange,
+  ByteRangeCache,
   ByteRangeReadRequest,
   ByteRangeReadResult,
   ByteReadDebugLog,
@@ -28,6 +30,11 @@ export function defaultByteCacheBlockSizeBytes(
     : DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES;
 }
 
+interface ByteFillOutcome {
+  readonly cacheResult: "fetched" | "persistent-hit";
+  readonly result: ByteRangeReadResult;
+}
+
 /**
  * Wraps a byte reader with raw byte cache lookups, block fills, and request
  * coalescing.
@@ -36,7 +43,64 @@ export function createCachedByteClient(
   reader: ByteClient,
   caches: ByteCacheLayers,
 ): ByteClient {
-  const pendingByteReads = new Map<string, Promise<ByteRangeReadResult>>();
+  const pendingByteReads = new Map<string, Promise<ByteFillOutcome>>();
+  const fillLocks = caches.locks || undefined;
+
+  const fillFromNetwork = async (
+    fillRequest: ByteRangeReadRequest,
+  ): Promise<ByteFillOutcome> => {
+    const result = await reader.readBytes(fillRequest);
+    await caches.memory.put(result);
+    return { cacheResult: "fetched", result };
+  };
+
+  const fillExclusive = (
+    fillRequest: ByteRangeReadRequest,
+    persistent: ByteRangeCache | undefined,
+  ): Promise<ByteFillOutcome> => {
+    if (!fillLocks || !persistent) {
+      // The persistent layer is the cross-context handoff medium; without
+      // it a lock would only serialize fetches that still each hit the
+      // network, so fall through to the plain fetch path.
+      return fillFromNetwork(fillRequest).then((outcome) => {
+        // Persisting must not delay the read; the entry lands for the
+        // next context (or reload) to hit.
+        void persistent?.put(outcome.result).catch(() => undefined);
+        return outcome;
+      });
+    }
+
+    return new Promise<ByteFillOutcome>((resolve, reject) => {
+      fillLocks
+        .request(
+          byteFillLockName(fillRequest),
+          {
+            mode: "exclusive",
+            ...(fillRequest.signal ? { signal: fillRequest.signal } : {}),
+          },
+          async () => {
+            // Re-check the persistent layer under the lock: when another
+            // context raced this fill, its bytes are already on disk and
+            // this read must not touch the network again.
+            const persisted = await persistent.get(fillRequest);
+            if (persisted) {
+              await caches.memory.put(persisted);
+              resolve({ cacheResult: "persistent-hit", result: persisted });
+              return;
+            }
+
+            const outcome = await fillFromNetwork(fillRequest);
+            resolve(outcome);
+            // Waiters are released only after the persistent entry lands —
+            // holding the lock through the put is what turns their fetches
+            // into disk hits. The caller was already resolved above, so
+            // this costs waiters nothing extra and the caller nothing.
+            await persistent.put(outcome.result).catch(() => undefined);
+          },
+        )
+        .catch(reject);
+    });
+  };
 
   return {
     async stat(source) {
@@ -135,33 +199,23 @@ export function createCachedByteClient(
       // durable byte cache above follows stable sourceId content identity.
       const fillKey = byteRangeAccessKey(fillRequest);
       let fill = pendingByteReads.get(fillKey);
-      const cacheResult = fill ? "coalesced" : "fetched";
+      const coalesced = fill !== undefined;
       if (!fill) {
-        fill = reader
-          .readBytes(fillRequest)
-          .then(async (result) => {
-            await caches.memory.put(result);
-            // Persisting must not delay the read; the entry lands for the
-            // next context (or reload) to hit.
-            void persistent?.put(result).catch(() => undefined);
-
-            return result;
-          })
-          .finally(() => {
-            pendingByteReads.delete(fillKey);
-          });
+        fill = fillExclusive(fillRequest, persistent).finally(() => {
+          pendingByteReads.delete(fillKey);
+        });
         pendingByteReads.set(fillKey, fill);
       }
 
-      const result = await fill;
+      const outcome = await fill;
       logByteRead(caches, {
-        cacheResult,
+        cacheResult: coalesced ? "coalesced" : outcome.cacheResult,
         fillRequest,
         request,
-        result,
+        result: outcome.result,
         startMs,
       });
-      return sliceByteRangeResult(result, request.range);
+      return sliceByteRangeResult(outcome.result, request.range);
     },
   };
 }

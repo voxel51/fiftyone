@@ -162,6 +162,20 @@ export interface ByteClient {
 }
 
 /**
+ * Minimal cross-context exclusive-lock surface used to single-flight
+ * identical network block fills. Structurally compatible with the Web
+ * Locks API (`navigator.locks`), which shares the Cache API's origin
+ * scope — together they make one context's fetch every context's bytes.
+ */
+export interface ByteFillLockManager {
+  request<T>(
+    name: string,
+    options: { readonly mode: "exclusive"; readonly signal?: AbortSignal },
+    callback: () => Promise<T> | T,
+  ): Promise<T>;
+}
+
+/**
  * Cache contract for adapter byte-range reads.
  */
 export interface ByteRangeCache {
@@ -215,4 +229,12 @@ export interface ByteCacheLayers {
    * Cache API layer; omitting it lets clients construct the default.
    */
   readonly persistent?: ByteRangeCache | false;
+
+  /**
+   * Cross-context lock manager that single-flights identical block fills
+   * across worker lanes, with the persistent layer as the handoff medium.
+   * `false` disables locking; omitting it lets clients adopt
+   * `navigator.locks` when the runtime provides it.
+   */
+  readonly locks?: ByteFillLockManager | false;
 }
