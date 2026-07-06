@@ -78,6 +78,10 @@ export const foxglovePointCloudDecoder: Decoder = {
     const pointStride = requiredNumber(message, "pointStride", "point_stride");
     const fields = packedFields(requiredArray(message, "fields"));
     const decodedPoints = extractPointCloudData(data, pointStride, fields);
+    applyPose(
+      decodedPoints.positions,
+      decodePose(optionalRecord(message, "pose")),
+    );
     // Per-message Foxglove frame_id carried by this point cloud payload. This
     // is separate from the MCAP channel frame_id metadata fallback.
     const frameId = optionalString(message, "frameId", "frame_id");
@@ -127,6 +131,11 @@ interface DecodedPointCloudData {
   readonly colors?: Float32Array;
   readonly positions: Float32Array;
   readonly scalarFields: readonly PointCloudScalarField[];
+}
+
+interface PointCloudPose {
+  readonly position: readonly [number, number, number];
+  readonly quaternion: readonly [number, number, number, number];
 }
 
 function extractPointCloudData(
@@ -460,6 +469,87 @@ function clamp01(value: number): number {
 
 function normalizedFieldName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function applyPose(positions: Float32Array, pose: PointCloudPose) {
+  const [px, py, pz] = pose.position;
+  const normalized = normalizedQuaternion(pose.quaternion);
+
+  if (!normalized && px === 0 && py === 0 && pz === 0) {
+    return;
+  }
+
+  const [qx, qy, qz, qw] = normalized ?? [0, 0, 0, 1];
+  for (
+    let offset = 0;
+    offset < positions.length;
+    offset += POINT_COMPONENT_COUNT
+  ) {
+    const x = positions[offset];
+    const y = positions[offset + 1];
+    const z = positions[offset + 2];
+    // Quaternion-rotate v via t = 2(q_vec x v); v' = v + w*t + q_vec x t,
+    // then translate from point-cloud-local coordinates into frame_id.
+    const tx = 2 * (qy * z - qz * y);
+    const ty = 2 * (qz * x - qx * z);
+    const tz = 2 * (qx * y - qy * x);
+
+    positions[offset] = px + x + qw * tx + qy * tz - qz * ty;
+    positions[offset + 1] = py + y + qw * ty + qz * tx - qx * tz;
+    positions[offset + 2] = pz + z + qw * tz + qx * ty - qy * tx;
+  }
+}
+
+/**
+ * Returns the unit rotation quaternion, or undefined for identity/degenerate
+ * rotations (absent orientations decode as all zeros).
+ */
+function normalizedQuaternion(
+  quaternion: readonly [number, number, number, number],
+): readonly [number, number, number, number] | undefined {
+  const [x, y, z, w] = quaternion;
+  if (x === 0 && y === 0 && z === 0) {
+    return undefined;
+  }
+
+  const norm = Math.hypot(x, y, z, w);
+  if (!Number.isFinite(norm) || norm === 0) {
+    return undefined;
+  }
+
+  return [x / norm, y / norm, z / norm, w / norm];
+}
+
+function decodePose(
+  record: Record<string, unknown> | undefined,
+): PointCloudPose {
+  const position = record && optionalRecord(record, "position");
+  const orientation = record && optionalRecord(record, "orientation");
+
+  return {
+    position: [
+      numberField(position, "x"),
+      numberField(position, "y"),
+      numberField(position, "z"),
+    ],
+    quaternion: [
+      numberField(orientation, "x"),
+      numberField(orientation, "y"),
+      numberField(orientation, "z"),
+      numberField(orientation, "w"),
+    ],
+  };
+}
+
+function numberField(
+  record: Record<string, unknown> | undefined,
+  field: string,
+  defaultValue = 0,
+): number {
+  const value = record?.[field];
+  if (typeof value === "number") return value;
+  if (typeof value === "bigint") return Number(value);
+  return defaultValue;
 }
 
 function packedFields(values: readonly unknown[]): readonly PointCloudField[] {

@@ -344,6 +344,29 @@ describe("Foxglove decoders", () => {
     expect(output.visualization.pointCount).toBe(2);
   });
 
+  it("applies point cloud pose to decoded positions", () => {
+    const output = foxglovePointCloudDecoder.decode(
+      pointCloudMessage(float32Bytes([1, 0, 0, 0, 2, 3]), {
+        pose: {
+          orientation: { w: Math.SQRT1_2, z: Math.SQRT1_2 },
+          position: { x: 10, y: 20, z: 30 },
+        },
+      }),
+      {
+        schemaData: POINT_CLOUD_FIXTURE.schemaData,
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POINT_CLOUD);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
+      throw new Error("Expected point cloud visualization");
+    }
+    expectArrayCloseTo(
+      Array.from(output.visualization.positions),
+      [10, 21, 30, 8, 20, 33],
+    );
+  });
+
   it("ignores only unaligned zero padding at the end of point cloud payloads", () => {
     const output = foxglovePointCloudDecoder.decode(
       pointCloudMessage(
@@ -522,6 +545,20 @@ interface TestPointCloudField {
   readonly type: number;
 }
 
+interface TestPointCloudPose {
+  readonly orientation?: {
+    readonly w?: number;
+    readonly x?: number;
+    readonly y?: number;
+    readonly z?: number;
+  };
+  readonly position?: {
+    readonly x?: number;
+    readonly y?: number;
+    readonly z?: number;
+  };
+}
+
 function pointCloudMessage(
   data: Uint8Array,
   {
@@ -530,17 +567,68 @@ function pointCloudMessage(
       { name: "y", offset: 4, type: 7 },
       { name: "z", offset: 8, type: 7 },
     ],
+    pose,
     pointStride = 12,
   }: {
     readonly fields?: readonly TestPointCloudField[];
+    readonly pose?: TestPointCloudPose;
     readonly pointStride?: number;
   } = {},
 ): Uint8Array {
   return concatProtobufFields(
+    ...(pose ? [pointCloudPoseField(pose)] : []),
     protobufFixed32Field(4, pointStride),
     ...fields.map((field) => packedPointCloudField(field)),
     protobufBytesField(6, data),
   );
+}
+
+function pointCloudPoseField({
+  orientation,
+  position,
+}: TestPointCloudPose): Uint8Array {
+  const fields: Uint8Array[] = [];
+  if (position) {
+    fields.push(
+      protobufBytesField(
+        1,
+        concatProtobufFields(
+          ...(position.x !== undefined
+            ? [protobufDoubleField(1, position.x)]
+            : []),
+          ...(position.y !== undefined
+            ? [protobufDoubleField(2, position.y)]
+            : []),
+          ...(position.z !== undefined
+            ? [protobufDoubleField(3, position.z)]
+            : []),
+        ),
+      ),
+    );
+  }
+  if (orientation) {
+    fields.push(
+      protobufBytesField(
+        2,
+        concatProtobufFields(
+          ...(orientation.x !== undefined
+            ? [protobufDoubleField(1, orientation.x)]
+            : []),
+          ...(orientation.y !== undefined
+            ? [protobufDoubleField(2, orientation.y)]
+            : []),
+          ...(orientation.z !== undefined
+            ? [protobufDoubleField(3, orientation.z)]
+            : []),
+          ...(orientation.w !== undefined
+            ? [protobufDoubleField(4, orientation.w)]
+            : []),
+        ),
+      ),
+    );
+  }
+
+  return protobufBytesField(3, concatProtobufFields(...fields));
 }
 
 function packedPointCloudField({
