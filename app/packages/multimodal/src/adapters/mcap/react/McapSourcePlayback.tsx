@@ -26,6 +26,7 @@ import {
   McapNetworkStatusPill,
 } from "./McapNetworkStatus";
 import { McapPoseTrajectoriesProvider } from "./mcap-pose-trajectories-context";
+import { McapRawMessageProvider } from "./mcap-raw-message-context";
 import { McapSelectionHotkeys } from "./mcap-selected-object";
 import McapAddTileMenu from "./McapAddTileMenu";
 import McapInspectorSidebar from "./McapInspectorSidebar";
@@ -183,41 +184,45 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
       <McapFrameTransformsProvider>
         <McapPoseTrajectoriesProvider>
           <McapNumericSeriesProvider>
-            <McapDataStreamProvider>
-              <Mcap3dViewSettingsProvider
-                sceneUpAxis={sceneUpAxis}
-                setSceneUpAxis={onSceneUpAxisChange}
-              >
-                <MultiModalPlayback
-                  fileName={fileName}
-                  headerCaption={headerCaption}
-                  headerActions={headerActions}
-                  addTileMenu={<McapAddTileMenu />}
-                  timelineExtraActions={<McapTimestampReadout />}
-                  sceneSources={sources}
-                  deselectFocusedTileOnRepeatSelect={false}
-                  initialTiles={initialTiles}
-                  initialLayout={initialLayout}
-                  initialExpandedTileId={initialExpandedTileId}
-                  tracks={tracks && tracks.length > 0 ? [...tracks] : undefined}
-                  onTagDelete={onTagDelete}
-                  leftSidebar={<McapSettingsSidebar />}
-                  rightSidebar={<McapInspectorSidebar />}
-                  defaultRightOpen={false}
-                  defaultLeftOpen={defaultLeftOpen}
-                  onLeftOpenChange={onLeftOpenChange}
-                  leftSidebarWidth={defaultLeftSidebarWidth}
-                  onLeftSidebarWidthChange={onLeftSidebarWidthChange}
-                  onTagCreate={onTagCreate}
+            <McapRawMessageProvider>
+              <McapDataStreamProvider>
+                <Mcap3dViewSettingsProvider
+                  sceneUpAxis={sceneUpAxis}
+                  setSceneUpAxis={onSceneUpAxisChange}
                 >
-                  <McapStreams client={client} source={source} />
-                  <McapSelectionHotkeys />
-                  <McapNetworkHealthTracker client={client} />
-                  {children}
-                  <McapModalLayoutPersistence datasetId={layoutScopeKey} />
-                </MultiModalPlayback>
-              </Mcap3dViewSettingsProvider>
-            </McapDataStreamProvider>
+                  <MultiModalPlayback
+                    fileName={fileName}
+                    headerCaption={headerCaption}
+                    headerActions={headerActions}
+                    addTileMenu={<McapAddTileMenu />}
+                    timelineExtraActions={<McapTimestampReadout />}
+                    sceneSources={sources}
+                    deselectFocusedTileOnRepeatSelect={false}
+                    initialTiles={initialTiles}
+                    initialLayout={initialLayout}
+                    initialExpandedTileId={initialExpandedTileId}
+                    tracks={
+                      tracks && tracks.length > 0 ? [...tracks] : undefined
+                    }
+                    onTagDelete={onTagDelete}
+                    leftSidebar={<McapSettingsSidebar />}
+                    rightSidebar={<McapInspectorSidebar />}
+                    defaultRightOpen={false}
+                    defaultLeftOpen={defaultLeftOpen}
+                    onLeftOpenChange={onLeftOpenChange}
+                    leftSidebarWidth={defaultLeftSidebarWidth}
+                    onLeftSidebarWidthChange={onLeftSidebarWidthChange}
+                    onTagCreate={onTagCreate}
+                  >
+                    <McapStreams client={client} source={source} />
+                    <McapSelectionHotkeys />
+                    <McapNetworkHealthTracker client={client} />
+                    {children}
+                    <McapModalLayoutPersistence datasetId={layoutScopeKey} />
+                  </MultiModalPlayback>
+                </Mcap3dViewSettingsProvider>
+              </McapDataStreamProvider>
+            </McapRawMessageProvider>
           </McapNumericSeriesProvider>
         </McapPoseTrajectoriesProvider>
       </McapFrameTransformsProvider>
