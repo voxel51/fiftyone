@@ -20,6 +20,25 @@ const DEFAULT_FRAME_TRANSFORM_POLICY: McapFrameTransformPolicy = {
   maxInterpolationGapNs: 0n,
 };
 
+export interface McapFrameGraphSummary {
+  readonly dataBearingReachableCountsByFrameId: ReadonlyMap<string, number>;
+  readonly reachableCountsByFrameId: ReadonlyMap<string, number>;
+  readonly roots: readonly string[];
+  readonly tfConnectedFrameIds: readonly string[];
+}
+
+export const EMPTY_MCAP_FRAME_GRAPH_SUMMARY: McapFrameGraphSummary = {
+  dataBearingReachableCountsByFrameId: new Map(),
+  reachableCountsByFrameId: new Map(),
+  roots: [],
+  tfConnectedFrameIds: [],
+};
+
+interface McapFrameGraphEdge {
+  readonly childFrameId: string;
+  readonly parentFrameId: string;
+}
+
 /**
  * Mutable frame transform index for static and dynamic MCAP transform samples.
  */
@@ -107,6 +126,60 @@ export class McapFrameTransformStore {
 
   frameIds(): readonly string[] {
     return [...this.frameIdsById].sort(compareStrings);
+  }
+
+  summarizeGraph(
+    dataBearingFrameIds: ReadonlySet<string>,
+  ): McapFrameGraphSummary {
+    const edges = this.graphEdges();
+    if (edges.length === 0) {
+      return EMPTY_MCAP_FRAME_GRAPH_SUMMARY;
+    }
+
+    const childFrameIds = new Set<string>();
+    const childrenByParent = new Map<string, string[]>();
+    const frameIds = new Set<string>();
+    const parentFrameIds = new Set<string>();
+
+    for (const edge of edges) {
+      childFrameIds.add(edge.childFrameId);
+      frameIds.add(edge.childFrameId);
+      frameIds.add(edge.parentFrameId);
+      parentFrameIds.add(edge.parentFrameId);
+      pushAdjacency(childrenByParent, edge.parentFrameId, edge.childFrameId);
+    }
+
+    for (const children of childrenByParent.values()) {
+      children.sort(compareStrings);
+    }
+
+    const tfConnectedFrameIds = [...frameIds].sort(compareStrings);
+    const roots = [...parentFrameIds]
+      .filter((frameId) => !childFrameIds.has(frameId))
+      .sort(compareStrings);
+    const reachableCountsByFrameId = new Map<string, number>();
+    const dataBearingReachableCountsByFrameId = new Map<string, number>();
+
+    for (const frameId of tfConnectedFrameIds) {
+      const reachableFrameIds = reachableFrameIdsFrom(
+        frameId,
+        childrenByParent,
+      );
+      reachableCountsByFrameId.set(frameId, reachableFrameIds.length);
+      dataBearingReachableCountsByFrameId.set(
+        frameId,
+        reachableFrameIds.filter((reachableFrameId) =>
+          dataBearingFrameIds.has(reachableFrameId),
+        ).length,
+      );
+    }
+
+    return {
+      dataBearingReachableCountsByFrameId,
+      reachableCountsByFrameId,
+      roots,
+      tfConnectedFrameIds,
+    };
   }
 
   resolve({
@@ -241,6 +314,38 @@ export class McapFrameTransformStore {
   private addFrameIds(sample: McapFrameTransformSample): void {
     this.frameIdsById.add(sample.parentFrameId);
     this.frameIdsById.add(sample.childFrameId);
+  }
+
+  private graphEdges(): readonly McapFrameGraphEdge[] {
+    const edges = new Map<string, McapFrameGraphEdge>();
+
+    for (const [key, sample] of this.staticSamplesByEdge.entries()) {
+      edges.set(key, {
+        childFrameId: sample.childFrameId,
+        parentFrameId: sample.parentFrameId,
+      });
+    }
+
+    for (const [key, samples] of this.dynamicSamplesByEdge.entries()) {
+      const sample = samples[0];
+      if (!sample) {
+        continue;
+      }
+      edges.set(key, {
+        childFrameId: sample.childFrameId,
+        parentFrameId: sample.parentFrameId,
+      });
+    }
+
+    return [...edges.values()].sort((left, right) => {
+      const parentOrder = compareStrings(
+        left.parentFrameId,
+        right.parentFrameId,
+      );
+      return parentOrder === 0
+        ? compareStrings(left.childFrameId, right.childFrameId)
+        : parentOrder;
+    });
   }
 }
 
@@ -564,6 +669,34 @@ function pushAdjacency<Value>(
   }
 }
 
+function reachableFrameIdsFrom(
+  frameId: string,
+  childrenByParent: ReadonlyMap<string, readonly string[]>,
+) {
+  const reachableFrameIds: string[] = [];
+  const visited = new Set<string>();
+  const stack = [frameId];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current || visited.has(current)) {
+      continue;
+    }
+
+    visited.add(current);
+    reachableFrameIds.push(current);
+    const children = childrenByParent.get(current) ?? [];
+    for (let index = children.length - 1; index >= 0; index -= 1) {
+      const childFrameId = children[index];
+      if (childFrameId && !visited.has(childFrameId)) {
+        stack.push(childFrameId);
+      }
+    }
+  }
+
+  return reachableFrameIds;
+}
+
 function composeFrameTransforms(
   first: McapComposedFrameTransform,
   second: McapComposedFrameTransform,
@@ -615,7 +748,11 @@ function maxBigInt(left: bigint, right: bigint) {
 }
 
 function compareStrings(left: string, right: string) {
-  return left.localeCompare(right);
+  if (left === right) {
+    return 0;
+  }
+
+  return left < right ? -1 : 1;
 }
 
 function composeMaxInterpolationGapNs(

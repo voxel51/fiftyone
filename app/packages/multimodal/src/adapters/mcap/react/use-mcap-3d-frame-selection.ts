@@ -5,6 +5,7 @@ import type {
   PointCloudVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
+import type { McapFrameGraphSummary } from "../frame-transforms";
 import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
   nextMcap3dViewStateRestoreOnceKey,
@@ -14,26 +15,9 @@ import {
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
-// Auto-selected world-frame defaults, most-preferred first. Ego-centric frames
-// keep local sensor geometry stable by default; users can opt into map/world
-// frames when they want global motion. These are soft heuristics on frame
-// *names* (not topic/schema names): if none are present the selection falls
-// back to whatever frames the data exposes.
-const PREFERRED_WORLD_FRAMES = [
-  "base_link",
-  "ego_vehicle",
-  "ego",
-  "vehicle",
-  "map",
-  "world",
-  "odom",
-];
-export const PREFERRED_CAMERA_TARGET_FRAMES = [
-  "base_link",
-  "ego_vehicle",
-  "ego",
-  "vehicle",
-];
+const STABLE_WORLD_FRAME_IDS = ["map", "world", "odom"] as const;
+const EGO_FRAME_IDS = ["base_link", "ego_vehicle", "ego", "vehicle"] as const;
+export const PREFERRED_CAMERA_TARGET_FRAMES = EGO_FRAME_IDS;
 export type FrameSelectionSource = "auto" | "user";
 
 export interface Mcap3dFrameSelectionRestore {
@@ -85,56 +69,55 @@ export function useMcap3dFrameSelection({
   if (restoreMarkKeyRef.current === null) {
     restoreMarkKeyRef.current = nextMcap3dViewStateRestoreOnceKey();
   }
-  const frameIds = useMemo(
+  const dataBearingFrameIds = useMemo(
     () =>
       uniqueSortedFrameIds([
-        ...frameTransforms.frameIds,
         ...frameIdsFromFrames(frames),
         ...frameIdsFromGridFrames(gridFrames),
         ...frameIdsFromCalibrationFrames(calibrationFrames),
         ...frameIdsFromSceneAnnotationFrames(annotationFrames),
       ]),
-    [
-      annotationFrames,
-      calibrationFrames,
-      frameTransforms.frameIds,
-      frames,
-      gridFrames,
-    ],
+    [annotationFrames, calibrationFrames, frames, gridFrames],
+  );
+  const frameIds = useMemo(
+    () =>
+      uniqueSortedFrameIds([
+        ...frameTransforms.frameIds,
+        ...dataBearingFrameIds,
+      ]),
+    [dataBearingFrameIds, frameTransforms.frameIds],
+  );
+  const graphSummary = useMemo(
+    () => frameTransforms.summarizeGraph(new Set(dataBearingFrameIds)),
+    [dataBearingFrameIds, frameTransforms],
   );
 
   // This effect keeps the world frame on a preferred default until the user
   // explicitly chooses a frame.
   useEffect(() => {
     setWorldFrameId((current) =>
-      nextFrameSelection({
-        allowFallback: frameTransforms.frameIds.length > 0,
+      nextWorldFrameSelection({
         current,
         frameIds,
-        preferred: PREFERRED_WORLD_FRAMES,
+        graphSummary,
         selectionSource: worldFrameSelectionSource,
       }),
     );
-  }, [frameIds, frameTransforms.frameIds.length, worldFrameSelectionSource]);
+  }, [frameIds, graphSummary, worldFrameSelectionSource]);
 
   // This effect keeps the camera target on a preferred default until the user
   // explicitly chooses a frame.
   useEffect(() => {
     setCameraTargetFrameId((current) =>
-      nextFrameSelection({
-        allowFallback: frameTransforms.frameIds.length > 0,
+      nextCameraTargetFrameSelection({
         current,
         frameIds,
-        preferred: [...PREFERRED_CAMERA_TARGET_FRAMES, worldFrameId],
+        graphSummary,
         selectionSource: cameraTargetSelectionSource,
+        worldFrameId,
       }),
     );
-  }, [
-    cameraTargetSelectionSource,
-    frameIds,
-    frameTransforms.frameIds.length,
-    worldFrameId,
-  ]);
+  }, [cameraTargetSelectionSource, frameIds, graphSummary, worldFrameId]);
 
   // This effect adopts the previous sample's user-selected frames once they
   // (re)appear in the streaming frame inventory. Until then the auto
@@ -278,36 +261,214 @@ function pushFrameId(frameIds: string[], frameId: string | undefined) {
 
 function uniqueSortedFrameIds(frameIds: readonly string[]): readonly string[] {
   return [...new Set(frameIds.map((id) => id.trim()).filter(Boolean))].sort(
-    (left, right) => left.localeCompare(right),
+    compareFrameIds,
   );
 }
 
-function nextFrameSelection({
-  allowFallback = true,
+function nextWorldFrameSelection({
   current,
   frameIds,
-  preferred,
+  graphSummary,
   selectionSource,
 }: {
-  readonly allowFallback?: boolean;
   readonly current: string;
   readonly frameIds: readonly string[];
-  readonly preferred: readonly string[];
+  readonly graphSummary: McapFrameGraphSummary;
   readonly selectionSource: FrameSelectionSource;
 }) {
   if (selectionSource === "user" && current && frameIds.includes(current)) {
     return current;
   }
 
-  for (const frameId of preferred) {
-    if (frameId && frameIds.includes(frameId)) {
-      return frameId;
-    }
+  const tfWorldCandidateFrameIds = worldCandidateFrameIds(
+    graphSummary.tfConnectedFrameIds,
+  );
+  const stableWorldFrameId =
+    firstExactPreferredFrameId(
+      tfWorldCandidateFrameIds,
+      STABLE_WORLD_FRAME_IDS,
+    ) ||
+    uniqueSuffixPreferredFrameId(
+      tfWorldCandidateFrameIds,
+      STABLE_WORLD_FRAME_IDS,
+    );
+  if (stableWorldFrameId) {
+    return stableWorldFrameId;
   }
 
-  if (current && frameIds.includes(current)) {
+  const graphWorldFrameId = graphDerivedWorldFrameId({
+    candidateFrameIds: tfWorldCandidateFrameIds,
+    graphSummary,
+  });
+  if (graphWorldFrameId) {
+    return graphWorldFrameId;
+  }
+
+  const egoWorldFrameId =
+    firstExactPreferredFrameId(tfWorldCandidateFrameIds, EGO_FRAME_IDS) ||
+    uniqueSuffixPreferredFrameId(tfWorldCandidateFrameIds, EGO_FRAME_IDS);
+  if (egoWorldFrameId) {
+    return egoWorldFrameId;
+  }
+
+  return tfWorldCandidateFrameIds[0] ?? "";
+}
+
+function nextCameraTargetFrameSelection({
+  current,
+  frameIds,
+  graphSummary,
+  selectionSource,
+  worldFrameId,
+}: {
+  readonly current: string;
+  readonly frameIds: readonly string[];
+  readonly graphSummary: McapFrameGraphSummary;
+  readonly selectionSource: FrameSelectionSource;
+  readonly worldFrameId: string;
+}) {
+  if (selectionSource === "user" && current && frameIds.includes(current)) {
     return current;
   }
 
-  return allowFallback ? (frameIds[0] ?? "") : "";
+  const targetCandidateFrameIds =
+    graphSummary.tfConnectedFrameIds.length > 0
+      ? graphSummary.tfConnectedFrameIds
+      : frameIds;
+  const egoFrameId =
+    firstExactPreferredFrameId(targetCandidateFrameIds, EGO_FRAME_IDS) ||
+    uniqueSuffixPreferredFrameId(targetCandidateFrameIds, EGO_FRAME_IDS);
+  if (egoFrameId) {
+    return egoFrameId;
+  }
+
+  return worldFrameId && frameIds.includes(worldFrameId) ? worldFrameId : "";
+}
+
+function worldCandidateFrameIds(
+  tfConnectedFrameIds: readonly string[],
+): readonly string[] {
+  const sortedFrameIds = uniqueSortedFrameIds(tfConnectedFrameIds);
+  const nonOpticalFrameIds = sortedFrameIds.filter(
+    (frameId) => !isOpticalFrameId(frameId),
+  );
+
+  return nonOpticalFrameIds.length > 0 ? nonOpticalFrameIds : sortedFrameIds;
+}
+
+function graphDerivedWorldFrameId({
+  candidateFrameIds,
+  graphSummary,
+}: {
+  readonly candidateFrameIds: readonly string[];
+  readonly graphSummary: McapFrameGraphSummary;
+}) {
+  if (candidateFrameIds.length === 0) {
+    return "";
+  }
+
+  const candidateFrameIdSet = new Set(candidateFrameIds);
+  const rootCandidates = graphSummary.roots.filter((frameId) =>
+    candidateFrameIdSet.has(frameId),
+  );
+  if (rootCandidates.length > 0) {
+    return highestReachabilityFrameId(rootCandidates, graphSummary);
+  }
+
+  const maxDataBearingReachability = Math.max(
+    ...candidateFrameIds.map((frameId) =>
+      graphReachableCount(
+        graphSummary.dataBearingReachableCountsByFrameId,
+        frameId,
+      ),
+    ),
+  );
+  if (maxDataBearingReachability <= 0) {
+    return "";
+  }
+
+  return highestReachabilityFrameId(
+    candidateFrameIds.filter(
+      (frameId) =>
+        graphReachableCount(
+          graphSummary.dataBearingReachableCountsByFrameId,
+          frameId,
+        ) === maxDataBearingReachability,
+    ),
+    graphSummary,
+  );
+}
+
+function highestReachabilityFrameId(
+  frameIds: readonly string[],
+  graphSummary: McapFrameGraphSummary,
+) {
+  return [...frameIds].sort((left, right) => {
+    const dataBearingOrder =
+      graphReachableCount(
+        graphSummary.dataBearingReachableCountsByFrameId,
+        right,
+      ) -
+      graphReachableCount(
+        graphSummary.dataBearingReachableCountsByFrameId,
+        left,
+      );
+    if (dataBearingOrder !== 0) {
+      return dataBearingOrder;
+    }
+
+    const reachableOrder =
+      graphReachableCount(graphSummary.reachableCountsByFrameId, right) -
+      graphReachableCount(graphSummary.reachableCountsByFrameId, left);
+    return reachableOrder === 0 ? compareFrameIds(left, right) : reachableOrder;
+  })[0];
+}
+
+function graphReachableCount(
+  countsByFrameId: ReadonlyMap<string, number>,
+  frameId: string,
+) {
+  return countsByFrameId.get(frameId) ?? 0;
+}
+
+function firstExactPreferredFrameId(
+  frameIds: readonly string[],
+  preferredFrameIds: readonly string[],
+) {
+  for (const preferredFrameId of preferredFrameIds) {
+    if (frameIds.includes(preferredFrameId)) {
+      return preferredFrameId;
+    }
+  }
+
+  return "";
+}
+
+function uniqueSuffixPreferredFrameId(
+  frameIds: readonly string[],
+  preferredFrameIds: readonly string[],
+) {
+  for (const preferredFrameId of preferredFrameIds) {
+    const suffix = `/${preferredFrameId}`;
+    const matches = frameIds.filter(
+      (frameId) => frameId !== preferredFrameId && frameId.endsWith(suffix),
+    );
+    if (matches.length === 1) {
+      return matches[0] ?? "";
+    }
+  }
+
+  return "";
+}
+
+function isOpticalFrameId(frameId: string) {
+  return frameId.toLowerCase().includes("optical");
+}
+
+function compareFrameIds(left: string, right: string) {
+  if (left === right) {
+    return 0;
+  }
+
+  return left < right ? -1 : 1;
 }

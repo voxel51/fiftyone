@@ -7,6 +7,7 @@ import type {
   SceneUpdateVisualization,
 } from "../../../decoders";
 import { VISUALIZATION_KIND } from "../../../visualization";
+import { EMPTY_MCAP_FRAME_GRAPH_SUMMARY } from "../frame-transforms";
 import { build3dLayers } from "./mcap-3d-layers";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 
@@ -136,7 +137,13 @@ function annotationPlaybackFrame(
 function transformsState(
   resolve: McapFrameTransformsState["resolve"],
 ): McapFrameTransformsState {
-  return { error: null, frameIds: [], resolve, status: "ready" };
+  return {
+    error: null,
+    frameIds: [],
+    resolve,
+    status: "ready",
+    summarizeGraph: () => EMPTY_MCAP_FRAME_GRAPH_SUMMARY,
+  };
 }
 
 function calibrationViz(

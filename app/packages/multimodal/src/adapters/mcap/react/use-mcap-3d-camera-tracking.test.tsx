@@ -3,6 +3,7 @@ import { Quaternion, Vector3 } from "three";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PointCloudVisualization } from "../../../decoders";
 import type { PointCloudCameraPose } from "../../../visualization/panels/point-cloud";
+import { EMPTY_MCAP_FRAME_GRAPH_SUMMARY } from "../frame-transforms";
 import type { Mcap3dCameraTrackingAnchor } from "./mcap-3d-camera";
 import { resetMcap3dViewStateForTests } from "./mcap-3d-view-state";
 import {
@@ -731,6 +732,7 @@ function translationTransforms(
       },
     }),
     status: "ready",
+    summarizeGraph: () => EMPTY_MCAP_FRAME_GRAPH_SUMMARY,
   };
 }
 
@@ -744,6 +746,7 @@ function pendingTransforms(): McapFrameTransformsState {
       targetFrameId,
     }),
     status: "ready",
+    summarizeGraph: () => EMPTY_MCAP_FRAME_GRAPH_SUMMARY,
   };
 }
 
@@ -757,6 +760,7 @@ function missingTransforms(): McapFrameTransformsState {
       targetFrameId,
     }),
     status: "loading",
+    summarizeGraph: () => EMPTY_MCAP_FRAME_GRAPH_SUMMARY,
   };
 }
 

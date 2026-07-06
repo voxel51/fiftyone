@@ -341,6 +341,152 @@ describe("MCAP frame transform store", () => {
 
     expect(store.frameIds()).toEqual(["base_link", "camera", "lidar", "map"]);
   });
+
+  it("summarizes a single tree root and directed reachability", () => {
+    const store = createStore({
+      staticSamples: [
+        sample("map", "base_link"),
+        sample("base_link", "camera"),
+        sample("base_link", "lidar"),
+      ],
+    });
+
+    const summary = store.summarizeGraph(new Set(["camera", "lidar"]));
+
+    expect(summary.roots).toEqual(["map"]);
+    expect(summary.tfConnectedFrameIds).toEqual([
+      "base_link",
+      "camera",
+      "lidar",
+      "map",
+    ]);
+    expect(counts(summary.reachableCountsByFrameId)).toEqual({
+      base_link: 3,
+      camera: 1,
+      lidar: 1,
+      map: 4,
+    });
+    expect(counts(summary.dataBearingReachableCountsByFrameId)).toEqual({
+      base_link: 2,
+      camera: 1,
+      lidar: 1,
+      map: 2,
+    });
+  });
+
+  it("summarizes forest roots independently", () => {
+    const store = createStore({
+      staticSamples: [sample("map", "base_link"), sample("odom", "wheel")],
+    });
+
+    const summary = store.summarizeGraph(new Set(["base_link", "wheel"]));
+
+    expect(summary.roots).toEqual(["map", "odom"]);
+    expect(summary.tfConnectedFrameIds).toEqual([
+      "base_link",
+      "map",
+      "odom",
+      "wheel",
+    ]);
+    expect(counts(summary.dataBearingReachableCountsByFrameId)).toEqual({
+      base_link: 1,
+      map: 1,
+      odom: 1,
+      wheel: 1,
+    });
+  });
+
+  it("falls back deterministically when every frame is in a cycle", () => {
+    const store = createStore({
+      staticSamples: [
+        sample("cycle_b", "cycle_c"),
+        sample("cycle_c", "cycle_a"),
+        sample("cycle_a", "cycle_b"),
+      ],
+    });
+
+    const summary = store.summarizeGraph(new Set(["cycle_c"]));
+
+    expect(summary.roots).toEqual([]);
+    expect(summary.tfConnectedFrameIds).toEqual([
+      "cycle_a",
+      "cycle_b",
+      "cycle_c",
+    ]);
+    expect(counts(summary.reachableCountsByFrameId)).toEqual({
+      cycle_a: 3,
+      cycle_b: 3,
+      cycle_c: 3,
+    });
+  });
+
+  it("summarizes dynamic-only edges", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 30n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("world", "base_link", undefined, 10n),
+        sample("base_link", "lidar", undefined, 20n),
+      ],
+    });
+
+    const summary = store.summarizeGraph(new Set(["lidar"]));
+
+    expect(summary.roots).toEqual(["world"]);
+    expect(summary.tfConnectedFrameIds).toEqual([
+      "base_link",
+      "lidar",
+      "world",
+    ]);
+    expect(counts(summary.dataBearingReachableCountsByFrameId)).toMatchObject({
+      base_link: 1,
+      world: 1,
+    });
+  });
+
+  it("counts data-bearing reachability for root ranking", () => {
+    const store = createStore({
+      staticSamples: [
+        sample("map", "base_link"),
+        sample("base_link", "camera"),
+        sample("base_link", "lidar"),
+        sample("odom", "wheel"),
+      ],
+    });
+
+    const summary = store.summarizeGraph(new Set(["camera", "lidar", "wheel"]));
+
+    expect(summary.roots).toEqual(["map", "odom"]);
+    expect(counts(summary.dataBearingReachableCountsByFrameId)).toMatchObject({
+      map: 2,
+      odom: 1,
+    });
+    expect(counts(summary.reachableCountsByFrameId)).toMatchObject({
+      map: 4,
+      odom: 2,
+    });
+  });
+
+  it("sorts graph summary ids by codepoint for deterministic tie-breaks", () => {
+    const store = createStore({
+      staticSamples: [
+        sample("z_root", "z_child"),
+        sample("A_root", "A_child"),
+        sample("a_root", "a_child"),
+      ],
+    });
+
+    const summary = store.summarizeGraph(new Set());
+
+    expect(summary.roots).toEqual(["A_root", "a_root", "z_root"]);
+    expect(summary.tfConnectedFrameIds).toEqual([
+      "A_child",
+      "A_root",
+      "a_child",
+      "a_root",
+      "z_child",
+      "z_root",
+    ]);
+  });
 });
 
 describe("frame transform worker boundary serialization", () => {
@@ -454,4 +600,8 @@ function sample(
         ? translation
         : new Vector3(translation.x, translation.y, translation.z),
   };
+}
+
+function counts(countsByFrameId: ReadonlyMap<string, number>) {
+  return Object.fromEntries([...countsByFrameId.entries()]);
 }

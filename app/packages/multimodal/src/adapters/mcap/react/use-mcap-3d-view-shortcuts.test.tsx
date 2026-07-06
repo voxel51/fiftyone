@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, renderHook } from "@testing-library/react";
 import { Quaternion, Vector3 } from "three";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PointCloudCameraPose } from "../../../visualization/panels/point-cloud";
+import { EMPTY_MCAP_FRAME_GRAPH_SUMMARY } from "../frame-transforms";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 import {
   egoViewCameraPose,
@@ -324,6 +325,7 @@ function translationTransforms(
       },
     }),
     status: "ready",
+    summarizeGraph: () => EMPTY_MCAP_FRAME_GRAPH_SUMMARY,
   };
 }
 
@@ -337,5 +339,6 @@ function missingTransforms(): McapFrameTransformsState {
       targetFrameId,
     }),
     status: "loading",
+    summarizeGraph: () => EMPTY_MCAP_FRAME_GRAPH_SUMMARY,
   };
 }

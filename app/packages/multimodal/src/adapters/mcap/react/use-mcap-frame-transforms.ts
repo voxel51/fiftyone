@@ -18,7 +18,11 @@ import type {
   McapFrameTransformResolution,
   McapFrameTransformTimeRange,
 } from "../frame-transform-types";
-import { McapFrameTransformStore } from "../frame-transforms";
+import {
+  EMPTY_MCAP_FRAME_GRAPH_SUMMARY,
+  McapFrameTransformStore,
+  type McapFrameGraphSummary,
+} from "../frame-transforms";
 import { isMcapReadCancelledError, mcapErrorMessage } from "../errors";
 import type { McapActiveTimeline, McapResourceClient } from "../types";
 import {
@@ -52,11 +56,16 @@ export type McapFrameTransformResolver = (
   timeNs: bigint,
 ) => McapFrameTransformResolution;
 
+export type McapFrameGraphSummarizer = (
+  dataBearingFrameIds: ReadonlySet<string>,
+) => McapFrameGraphSummary;
+
 export interface McapFrameTransformsState {
   readonly error: string | null;
   readonly frameIds: readonly string[];
   readonly resolve: McapFrameTransformResolver;
   readonly status: McapFrameTransformsStatus;
+  readonly summarizeGraph: McapFrameGraphSummarizer;
 }
 
 export interface UseMcapFrameTransformsOptions {
@@ -514,6 +523,12 @@ export function useMcapFrameTransforms({
       state.version,
     ],
   );
+  const summarizeGraph = useCallback<McapFrameGraphSummarizer>(
+    (dataBearingFrameIds) =>
+      storeRef.current?.summarizeGraph(dataBearingFrameIds) ??
+      EMPTY_MCAP_FRAME_GRAPH_SUMMARY,
+    [],
+  );
 
   return useMemo(
     () => ({
@@ -521,8 +536,9 @@ export function useMcapFrameTransforms({
       frameIds,
       resolve,
       status: state.status,
+      summarizeGraph,
     }),
-    [frameIds, resolve, state.error, state.status],
+    [frameIds, resolve, state.error, state.status, summarizeGraph],
   );
 }
 

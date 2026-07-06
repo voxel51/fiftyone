@@ -2,6 +2,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type { McapDecodedMessage, McapResourceClient } from "../types";
+import { EMPTY_MCAP_FRAME_GRAPH_SUMMARY } from "../frame-transforms";
 import {
   McapFrameTransformsProvider,
   useSetMcapFrameTransformsContext,
@@ -189,6 +190,7 @@ function FrameTransformsStatusDriver() {
         targetFrameId,
       }),
       status,
+      summarizeGraph: () => EMPTY_MCAP_FRAME_GRAPH_SUMMARY,
     });
 
   return (

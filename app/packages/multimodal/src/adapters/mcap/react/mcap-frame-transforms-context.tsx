@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
+import { EMPTY_MCAP_FRAME_GRAPH_SUMMARY } from "../frame-transforms";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 
 const missingResolve: McapFrameTransformsState["resolve"] = (
@@ -15,6 +16,7 @@ const IDLE_FRAME_TRANSFORMS: McapFrameTransformsState = {
   frameIds: [],
   resolve: missingResolve,
   status: "idle",
+  summarizeGraph: () => EMPTY_MCAP_FRAME_GRAPH_SUMMARY,
 };
 
 interface McapFrameTransformsContextValue {
