@@ -40,6 +40,7 @@ describe("mcap3dViewState store", () => {
       mode: "heading",
       relativePosition: [1, 0, 0],
       relativeTarget: [0, 0, 0],
+      sceneUpAxis: "z",
       targetFrameId: "base_link",
       worldFrameId: "map",
     });
@@ -55,6 +56,7 @@ describe("mcap3dViewState store", () => {
         mode: "heading",
         relativePosition: [1, 0, 0],
         relativeTarget: [0, 0, 0],
+        sceneUpAxis: "z",
         targetFrameId: "base_link",
         worldFrameId: "map",
       },

@@ -526,6 +526,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     provisionalFrameIds,
     provisionalPlaybackFrame,
     restore: viewStateRestore,
+    sceneUpAxis,
     selectedTopicsKey,
     worldFrameId,
   });

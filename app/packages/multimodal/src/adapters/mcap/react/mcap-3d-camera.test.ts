@@ -43,6 +43,29 @@ describe("mcap 3d camera tracking", () => {
     expect(followed.target).toEqual([0, 0, 0]);
   });
 
+  it("follows target heading around the configured scene-up axis", () => {
+    const anchor = anchorFrom({
+      cameraPose: pose([1, 0, 0], [0, 0, 0]),
+      mode: "heading",
+      sceneUpAxis: "y",
+      targetPose: targetPose([0, 0, 0]),
+    });
+
+    const followed = cameraPoseFromTrackingAnchor(
+      anchor,
+      targetPose(
+        [0, 0, 0],
+        new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2),
+      ),
+      "y",
+    );
+
+    expect(followed.position[0]).toBeCloseTo(0);
+    expect(followed.position[1]).toBeCloseTo(0);
+    expect(followed.position[2]).toBeCloseTo(-1);
+    expect(followed.target).toEqual([0, 0, 0]);
+  });
+
   it("follows the full target pose", () => {
     const anchor = anchorFrom({
       cameraPose: pose([0, 0, 1], [0, 0, 0]),
@@ -102,15 +125,18 @@ describe("mcap 3d camera tracking", () => {
 function anchorFrom({
   cameraPose,
   mode,
+  sceneUpAxis = "z",
   targetPose,
 }: {
   readonly cameraPose: PointCloudCameraPose;
   readonly mode: Mcap3dFollowTrackingMode;
+  readonly sceneUpAxis?: "x" | "y" | "z";
   readonly targetPose: Mcap3dCameraTargetPose;
 }) {
   return cameraTrackingAnchorFromPose({
     cameraPose,
     mode,
+    sceneUpAxis,
     targetFrameId: "base_link",
     targetPose,
     worldFrameId: "map",

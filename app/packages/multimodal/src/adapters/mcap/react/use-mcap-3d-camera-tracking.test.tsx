@@ -24,9 +24,29 @@ afterEach(() => {
 type TrackingProps = Parameters<typeof useMcap3dCameraTracking>[0];
 
 describe("useMcap3dCameraTracking", () => {
-  it("passes through user poses in free mode and ignores initial poses", () => {
+  it("defaults to follow position and anchors from the initial panel pose", () => {
     const { result } = renderHook(useMcap3dCameraTracking, {
       initialProps: trackingProps(),
+    });
+
+    expect(result.current.trackingMode).toBe("position");
+    expect(result.current.trackingAnchor).toBeNull();
+    expect(result.current.panelCameraPose).toBeNull();
+
+    act(() => {
+      result.current.handleCameraPoseChange(pose(5), "initial");
+    });
+
+    expect(result.current.trackingAnchor).not.toBeNull();
+    expect(result.current.controlledCameraPose).toEqual(pose(5));
+    expect(result.current.panelCameraPose).toEqual(pose(5));
+  });
+
+  it("passes through user poses in free mode and ignores initial poses", () => {
+    const { result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        restore: cameraRestore({ trackingMode: "free" }),
+      }),
     });
 
     expect(result.current.trackingMode).toBe("free");
@@ -588,12 +608,13 @@ describe("restore compatibility gates", () => {
     ).toBe(false);
   });
 
-  it("gates the tracking anchor on mode and both frame ids", () => {
+  it("gates the tracking anchor on mode, scene-up, and both frame ids", () => {
     const anchor = trackingAnchor({});
     expect(
       mcap3dTrackingAnchorRestoreApplies({
         anchor,
         cameraTargetFrameId: "base_link",
+        sceneUpAxis: "z",
         trackingMode: "position",
         worldFrameId: "map",
       }),
@@ -602,6 +623,7 @@ describe("restore compatibility gates", () => {
       mcap3dTrackingAnchorRestoreApplies({
         anchor,
         cameraTargetFrameId: "base_link",
+        sceneUpAxis: "z",
         trackingMode: "pose",
         worldFrameId: "map",
       }),
@@ -610,6 +632,7 @@ describe("restore compatibility gates", () => {
       mcap3dTrackingAnchorRestoreApplies({
         anchor,
         cameraTargetFrameId: "other",
+        sceneUpAxis: "z",
         trackingMode: "position",
         worldFrameId: "map",
       }),
@@ -618,6 +641,7 @@ describe("restore compatibility gates", () => {
       mcap3dTrackingAnchorRestoreApplies({
         anchor,
         cameraTargetFrameId: "base_link",
+        sceneUpAxis: "z",
         trackingMode: "position",
         worldFrameId: "odom",
       }),
@@ -626,6 +650,16 @@ describe("restore compatibility gates", () => {
       mcap3dTrackingAnchorRestoreApplies({
         anchor,
         cameraTargetFrameId: "base_link",
+        sceneUpAxis: "y",
+        trackingMode: "position",
+        worldFrameId: "map",
+      }),
+    ).toBe(false);
+    expect(
+      mcap3dTrackingAnchorRestoreApplies({
+        anchor,
+        cameraTargetFrameId: "base_link",
+        sceneUpAxis: "z",
         trackingMode: "free",
         worldFrameId: "map",
       }),
@@ -651,6 +685,7 @@ function trackingAnchor(
     mode: "position",
     relativePosition: [5, 0, 10],
     relativeTarget: [5, 0, 0],
+    sceneUpAxis: "z",
     targetFrameId: "base_link",
     worldFrameId: "map",
     ...overrides,
@@ -665,6 +700,7 @@ function trackingProps(overrides: Partial<TrackingProps> = {}): TrackingProps {
     playbackTimeNs: 0n,
     provisionalFrameIds: [],
     provisionalPlaybackFrame: null,
+    sceneUpAxis: "z",
     selectedTopicsKey: "topics",
     worldFrameId: "map",
     ...overrides,

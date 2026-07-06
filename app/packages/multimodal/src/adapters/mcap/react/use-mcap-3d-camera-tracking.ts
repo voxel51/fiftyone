@@ -22,6 +22,10 @@ import {
   type Mcap3dCameraTrackingAnchor,
   type Mcap3dTrackingMode,
 } from "./mcap-3d-camera";
+import {
+  DEFAULT_MCAP_3D_SCENE_UP_AXIS,
+  type Mcap3dSceneUpAxis,
+} from "./mcap-3d-scene-up";
 import { buildMcapCameraTargetNotice } from "./mcap-health";
 import {
   recordMcap3dCameraView,
@@ -53,7 +57,7 @@ export const TRACKING_MODES: readonly {
     value: "pose",
   },
 ] as const;
-const DEFAULT_TRACKING_MODE: Mcap3dTrackingMode = "free";
+const DEFAULT_TRACKING_MODE: Mcap3dTrackingMode = "position";
 export type CameraPoseChangeSource = "focus" | "initial" | "interaction";
 export type Mcap3dPlacementStatus =
   | "empty"
@@ -106,6 +110,7 @@ export function useMcap3dCameraTracking({
   provisionalFrameIds,
   provisionalPlaybackFrame,
   restore = null,
+  sceneUpAxis = DEFAULT_MCAP_3D_SCENE_UP_AXIS,
   selectedTopicsKey,
   worldFrameId,
 }: {
@@ -116,6 +121,7 @@ export function useMcap3dCameraTracking({
   readonly provisionalFrameIds: readonly string[];
   readonly provisionalPlaybackFrame: McapTopicPlaybackFrame<PointCloudVisualization> | null;
   readonly restore?: Mcap3dCameraTrackingRestore | null;
+  readonly sceneUpAxis?: Mcap3dSceneUpAxis;
   readonly selectedTopicsKey: string;
   readonly worldFrameId: string;
 }) {
@@ -173,6 +179,7 @@ export function useMcap3dCameraTracking({
       !trackingAnchorMatches({
         anchor: trackingAnchor,
         mode: followTrackingMode,
+        sceneUpAxis,
         targetFrameId: cameraTargetFrameId,
         worldFrameId,
       })
@@ -180,7 +187,11 @@ export function useMcap3dCameraTracking({
       return null;
     }
     if (cameraTargetPose) {
-      return cameraPoseFromTrackingAnchor(trackingAnchor, cameraTargetPose);
+      return cameraPoseFromTrackingAnchor(
+        trackingAnchor,
+        cameraTargetPose,
+        sceneUpAxis,
+      );
     }
 
     // The target transform is momentarily unresolved (a seek outside the
@@ -205,6 +216,7 @@ export function useMcap3dCameraTracking({
     cameraTargetPose,
     cameraTargetResolution.status,
     followTrackingMode,
+    sceneUpAxis,
     trackingAnchor,
     worldFrameId,
   ]);
@@ -238,6 +250,7 @@ export function useMcap3dCameraTracking({
       !mcap3dTrackingAnchorRestoreApplies({
         anchor,
         cameraTargetFrameId,
+        sceneUpAxis,
         trackingMode,
         worldFrameId,
       })
@@ -247,7 +260,7 @@ export function useMcap3dCameraTracking({
 
     pendingAnchorRestoreRef.current = null;
     setTrackingAnchor(anchor);
-  }, [cameraTargetFrameId, trackingMode, worldFrameId]);
+  }, [cameraTargetFrameId, sceneUpAxis, trackingMode, worldFrameId]);
 
   // Re-anchor when the user changes tracking mode or target frame. During
   // normal playback the anchor remains stable and the target transform moves.
@@ -265,6 +278,7 @@ export function useMcap3dCameraTracking({
         trackingAnchorMatches({
           anchor: current,
           mode: followTrackingMode,
+          sceneUpAxis,
           targetFrameId: cameraTargetFrameId,
           worldFrameId,
         })
@@ -280,6 +294,7 @@ export function useMcap3dCameraTracking({
       return cameraTrackingAnchorFromPose({
         cameraPose: basePose,
         mode: followTrackingMode,
+        sceneUpAxis,
         targetFrameId: cameraTargetFrameId,
         targetPose: cameraTargetPose,
         worldFrameId,
@@ -290,6 +305,7 @@ export function useMcap3dCameraTracking({
     cameraTargetFrameId,
     cameraTargetPose,
     followTrackingMode,
+    sceneUpAxis,
     worldFrameId,
   ]);
 
@@ -501,6 +517,7 @@ export function useMcap3dCameraTracking({
         cameraTrackingAnchorFromPose({
           cameraPose: pose,
           mode: followTrackingMode,
+          sceneUpAxis,
           targetFrameId: cameraTargetFrameId,
           targetPose: cameraTargetPose,
           worldFrameId,
@@ -512,6 +529,7 @@ export function useMcap3dCameraTracking({
       cameraTargetPose,
       followTrackingMode,
       rememberProvisionalCameraPose,
+      sceneUpAxis,
       worldFrameId,
     ],
   );
@@ -608,16 +626,19 @@ export function mcap3dCameraPoseRestoreApplies({
 
 /**
  * Pure gate for applying a carried-over follow-mode tracking anchor: the
- * anchor's mode and both of its frames must match the effective selections.
+ * anchor's mode, scene-up, and both of its frames must match the effective
+ * selections.
  */
 export function mcap3dTrackingAnchorRestoreApplies({
   anchor,
   cameraTargetFrameId,
+  sceneUpAxis,
   trackingMode,
   worldFrameId,
 }: {
   readonly anchor: Mcap3dCameraTrackingAnchor;
   readonly cameraTargetFrameId: string;
+  readonly sceneUpAxis: Mcap3dSceneUpAxis;
   readonly trackingMode: Mcap3dTrackingMode;
   readonly worldFrameId: string;
 }): boolean {
@@ -628,6 +649,7 @@ export function mcap3dTrackingAnchorRestoreApplies({
     trackingAnchorMatches({
       anchor,
       mode: trackingMode,
+      sceneUpAxis,
       targetFrameId: cameraTargetFrameId,
       worldFrameId,
     })
@@ -680,16 +702,19 @@ export function resolveCameraTargetPose({
 function trackingAnchorMatches({
   anchor,
   mode,
+  sceneUpAxis,
   targetFrameId,
   worldFrameId,
 }: {
   readonly anchor: Mcap3dCameraTrackingAnchor | null;
   readonly mode: Exclude<Mcap3dTrackingMode, "free">;
+  readonly sceneUpAxis: Mcap3dSceneUpAxis;
   readonly targetFrameId: string;
   readonly worldFrameId: string;
 }): boolean {
   return (
     anchor?.mode === mode &&
+    anchor.sceneUpAxis === sceneUpAxis &&
     anchor.targetFrameId === targetFrameId &&
     anchor.worldFrameId === worldFrameId
   );

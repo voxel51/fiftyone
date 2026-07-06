@@ -3,8 +3,16 @@ import type {
   PointCloudCameraPose,
   PointCloudFrameTransform,
 } from "../../../visualization/panels/point-cloud";
+import {
+  DEFAULT_MCAP_3D_SCENE_UP_AXIS,
+  type Mcap3dSceneUpAxis,
+} from "./mcap-3d-scene-up";
 
-const Z_AXIS = new Vector3(0, 0, 1);
+const SCENE_UP_VECTORS: Record<Mcap3dSceneUpAxis, Vector3> = {
+  x: new Vector3(1, 0, 0),
+  y: new Vector3(0, 1, 0),
+  z: new Vector3(0, 0, 1),
+};
 const HEADING_FORWARD_EPSILON = 0.000001;
 
 export type Mcap3dTrackingMode = "free" | "position" | "heading" | "pose";
@@ -19,6 +27,7 @@ export interface Mcap3dCameraTrackingAnchor {
   readonly mode: Mcap3dFollowTrackingMode;
   readonly relativePosition: readonly [number, number, number];
   readonly relativeTarget: readonly [number, number, number];
+  readonly sceneUpAxis: Mcap3dSceneUpAxis;
   readonly targetFrameId: string;
   readonly worldFrameId: string;
 }
@@ -52,17 +61,23 @@ export function identityCameraTargetPose(): Mcap3dCameraTargetPose {
 export function cameraTrackingAnchorFromPose({
   cameraPose,
   mode,
+  sceneUpAxis = DEFAULT_MCAP_3D_SCENE_UP_AXIS,
   targetFrameId,
   targetPose,
   worldFrameId,
 }: {
   readonly cameraPose: PointCloudCameraPose;
   readonly mode: Mcap3dFollowTrackingMode;
+  readonly sceneUpAxis?: Mcap3dSceneUpAxis;
   readonly targetFrameId: string;
   readonly targetPose: Mcap3dCameraTargetPose;
   readonly worldFrameId: string;
 }): Mcap3dCameraTrackingAnchor {
-  const inverseRotation = trackingRotation(targetPose, mode).invert();
+  const inverseRotation = trackingRotation(
+    targetPose,
+    mode,
+    sceneUpAxis,
+  ).invert();
 
   return {
     mode,
@@ -76,6 +91,7 @@ export function cameraTrackingAnchorFromPose({
       targetPose.translation,
       inverseRotation,
     ),
+    sceneUpAxis,
     targetFrameId,
     worldFrameId,
   };
@@ -84,8 +100,9 @@ export function cameraTrackingAnchorFromPose({
 export function cameraPoseFromTrackingAnchor(
   anchor: Mcap3dCameraTrackingAnchor,
   targetPose: Mcap3dCameraTargetPose,
+  sceneUpAxis = anchor.sceneUpAxis,
 ): PointCloudCameraPose {
-  const rotation = trackingRotation(targetPose, anchor.mode);
+  const rotation = trackingRotation(targetPose, anchor.mode, sceneUpAxis);
 
   return {
     position: targetOffsetToWorldPoint(
@@ -104,12 +121,13 @@ export function cameraPoseFromTrackingAnchor(
 function trackingRotation(
   targetPose: Mcap3dCameraTargetPose,
   mode: Mcap3dFollowTrackingMode,
+  sceneUpAxis: Mcap3dSceneUpAxis,
 ): Quaternion {
   if (mode === "position") {
     return new Quaternion();
   }
   if (mode === "heading") {
-    return headingRotation(targetPose.rotation);
+    return headingRotation(targetPose.rotation, sceneUpAxis);
   }
 
   return targetPose.rotation.clone().normalize();
@@ -120,17 +138,36 @@ function trackingRotation(
  * should follow heading but stay level (heading tracking, ego/top view
  * presets).
  */
-export function headingRotation(rotation: Quaternion): Quaternion {
-  // Heading assumes an X-forward, Z-up body frame (ROS REP 103) — true for
-  // ego frames like base_link, wrong for optical camera frames whose X axis
-  // points right. When the forward axis is near-vertical the yaw is
+export function headingRotation(
+  rotation: Quaternion,
+  sceneUpAxis: Mcap3dSceneUpAxis = DEFAULT_MCAP_3D_SCENE_UP_AXIS,
+): Quaternion {
+  // Heading assumes an X-forward body frame (ROS REP 103) — true for ego
+  // frames like base_link, wrong for optical camera frames whose X axis
+  // points right. When the forward axis is parallel to scene-up the yaw is
   // undefined; fall back to no rotation instead of a jittery angle.
+  const up = sceneUpVector(sceneUpAxis);
   const forward = new Vector3(1, 0, 0).applyQuaternion(rotation);
-  if (Math.hypot(forward.x, forward.y) < HEADING_FORWARD_EPSILON) {
+  forward.addScaledVector(up, -forward.dot(up));
+  if (forward.lengthSq() < HEADING_FORWARD_EPSILON ** 2) {
     return new Quaternion();
   }
-  const yaw = Math.atan2(forward.y, forward.x);
-  return new Quaternion().setFromAxisAngle(Z_AXIS, yaw).normalize();
+  forward.normalize();
+
+  const reference = fallbackForwardDirection(sceneUpAxis);
+  const signedYaw = Math.atan2(
+    new Vector3().crossVectors(reference, forward).dot(up),
+    reference.dot(forward),
+  );
+  return new Quaternion().setFromAxisAngle(up, signedYaw).normalize();
+}
+
+function sceneUpVector(sceneUpAxis: Mcap3dSceneUpAxis): Vector3 {
+  return SCENE_UP_VECTORS[sceneUpAxis].clone();
+}
+
+function fallbackForwardDirection(sceneUpAxis: Mcap3dSceneUpAxis): Vector3 {
+  return sceneUpAxis === "x" ? new Vector3(0, 1, 0) : new Vector3(1, 0, 0);
 }
 
 function worldPointToTargetOffset(
