@@ -54,11 +54,24 @@ const CANONICAL_SCALAR_FIELDS = Object.freeze([
 const CANONICAL_SCALAR_FIELD_NAMES: ReadonlySet<string> = new Set(
   CANONICAL_SCALAR_FIELDS,
 );
+// Every numeric channel that is neither a position component nor consumed
+// by color extraction is a color-by-field candidate (ring, velocity, ...).
+// Capped so exotic layouts cannot balloon worker→main transfer cost.
+const MAX_SCALAR_FIELDS = 16;
+const POSITION_FIELD_NAMES: ReadonlySet<string> = new Set(["x", "y", "z"]);
 
 const RED_COLOR_CHANNEL_NAMES = Object.freeze(["r", "red"] as const);
 const GREEN_COLOR_CHANNEL_NAMES = Object.freeze(["g", "green"] as const);
 const BLUE_COLOR_CHANNEL_NAMES = Object.freeze(["b", "blue"] as const);
 const PACKED_COLOR_FIELD_NAMES = Object.freeze(["color", "rgb", "rgba"]);
+const COLOR_FIELD_NAMES: ReadonlySet<string> = new Set([
+  ...RED_COLOR_CHANNEL_NAMES,
+  ...GREEN_COLOR_CHANNEL_NAMES,
+  ...BLUE_COLOR_CHANNEL_NAMES,
+  ...PACKED_COLOR_FIELD_NAMES,
+  "a",
+  "alpha",
+]);
 
 /**
  * Decoder for Foxglove point cloud protobuf messages.
@@ -229,35 +242,45 @@ function extractScalarFields(
   pointCount: number,
   fields: readonly PointCloudField[],
 ): readonly PointCloudScalarField[] {
-  const scalarFields: PointCloudScalarField[] = [];
-  const scalarFieldByName = new Map<string, PointCloudField>();
+  const canonicalFieldByName = new Map<string, PointCloudField>();
+  const additionalFields: PointCloudField[] = [];
+  const seenNames = new Set<string>();
 
   for (const field of fields) {
     const scalarName = normalizedFieldName(field.name);
     if (
-      !CANONICAL_SCALAR_FIELD_NAMES.has(scalarName) ||
-      scalarFieldByName.has(scalarName) ||
+      POSITION_FIELD_NAMES.has(scalarName) ||
+      COLOR_FIELD_NAMES.has(scalarName) ||
+      seenNames.has(scalarName) ||
       !canReadNumericField(field, pointStride)
     ) {
       continue;
     }
 
-    scalarFieldByName.set(scalarName, field);
-  }
-
-  for (const scalarName of CANONICAL_SCALAR_FIELDS) {
-    const field = scalarFieldByName.get(scalarName);
-    if (!field) {
-      continue;
+    seenNames.add(scalarName);
+    if (CANONICAL_SCALAR_FIELD_NAMES.has(scalarName)) {
+      canonicalFieldByName.set(scalarName, field);
+    } else {
+      additionalFields.push(field);
     }
-
-    scalarFields.push({
-      name: field.name,
-      values: extractNumericValues(data, pointStride, pointCount, field),
-    });
   }
 
-  return scalarFields;
+  // Canonical sensor-return channels first (in preference order, so the
+  // renderer's auto-color pick stays deterministic), then everything else
+  // in declaration order up to the extraction cap.
+  const orderedFields: PointCloudField[] = [];
+  for (const scalarName of CANONICAL_SCALAR_FIELDS) {
+    const field = canonicalFieldByName.get(scalarName);
+    if (field) {
+      orderedFields.push(field);
+    }
+  }
+  orderedFields.push(...additionalFields);
+
+  return orderedFields.slice(0, MAX_SCALAR_FIELDS).map((field) => ({
+    name: field.name,
+    values: extractNumericValues(data, pointStride, pointCount, field),
+  }));
 }
 
 function extractColorField(

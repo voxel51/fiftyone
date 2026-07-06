@@ -344,6 +344,78 @@ describe("Foxglove decoders", () => {
     expect(output.visualization.pointCount).toBe(2);
   });
 
+  it("extracts non-canonical numeric channels as scalar fields", () => {
+    // Two points: x,y,z, intensity, ring, vx_comp, rgb (all float32).
+    // Everything numeric that is neither a position component nor consumed
+    // as color must come out as a scalar channel — canonical channels
+    // first, the rest in declaration order.
+    const output = foxglovePointCloudDecoder.decode(
+      pointCloudMessage(
+        float32Bytes([1, 2, 3, 0.5, 7, -1.5, 0, 4, 5, 6, 7.5, 8, 2.25, 0]),
+        {
+          fields: [
+            { name: "x", offset: 0, type: 7 },
+            { name: "y", offset: 4, type: 7 },
+            { name: "z", offset: 8, type: 7 },
+            { name: "ring", offset: 16, type: 7 },
+            { name: "intensity", offset: 12, type: 7 },
+            { name: "vx_comp", offset: 20, type: 7 },
+            { name: "rgb", offset: 24, type: 7 },
+          ],
+          pointStride: 28,
+        },
+      ),
+      {
+        schemaData: POINT_CLOUD_FIXTURE.schemaData,
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POINT_CLOUD);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
+      throw new Error("Expected point cloud visualization");
+    }
+    expect(
+      output.visualization.scalarFields?.map((field) => field.name),
+    ).toEqual(["intensity", "ring", "vx_comp"]);
+    expect(
+      Array.from(output.visualization.scalarFields?.[1]?.values ?? []),
+    ).toEqual([7, 8]);
+    expect(
+      Array.from(output.visualization.scalarFields?.[2]?.values ?? []),
+    ).toEqual([-1.5, 2.25]);
+  });
+
+  it("caps scalar channel extraction on exotic layouts", () => {
+    const extraFieldCount = 20;
+    const fields = [
+      { name: "x", offset: 0, type: 7 },
+      { name: "y", offset: 4, type: 7 },
+      { name: "z", offset: 8, type: 7 },
+      ...Array.from({ length: extraFieldCount }, (_, index) => ({
+        name: `channel_${index}`,
+        offset: 12 + index * 4,
+        type: 7,
+      })),
+    ];
+    const output = foxglovePointCloudDecoder.decode(
+      pointCloudMessage(
+        float32Bytes(Array.from({ length: 3 + extraFieldCount }, () => 1)),
+        { fields, pointStride: (3 + extraFieldCount) * 4 },
+      ),
+      {
+        schemaData: POINT_CLOUD_FIXTURE.schemaData,
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POINT_CLOUD);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
+      throw new Error("Expected point cloud visualization");
+    }
+    expect(output.visualization.scalarFields).toHaveLength(16);
+    expect(output.visualization.scalarFields?.[0]?.name).toBe("channel_0");
+    expect(output.visualization.scalarFields?.[15]?.name).toBe("channel_15");
+  });
+
   it("applies point cloud pose to decoded positions", () => {
     const output = foxglovePointCloudDecoder.decode(
       pointCloudMessage(float32Bytes([1, 0, 0, 0, 2, 3]), {
