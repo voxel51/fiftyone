@@ -33,7 +33,11 @@ const McapAddTileMenu: React.FC = () => {
             text={definition.typeLabel}
             onClick={() => {
               addTile(
-                { title: definition.typeLabel, render: () => <Tile /> },
+                {
+                  render: () => <Tile />,
+                  title: definition.typeLabel,
+                  type,
+                },
                 { idPrefix: type },
               );
             }}

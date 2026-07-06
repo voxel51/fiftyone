@@ -26,8 +26,9 @@ export const DefaultAddTileMenuItems: React.FC = () => {
             onClick={() => {
               addTile(
                 {
-                  title: entry.typeLabel,
                   render: () => <TileComponent />,
+                  title: entry.typeLabel,
+                  type: entry.type,
                 },
                 { idPrefix: entry.type },
               );

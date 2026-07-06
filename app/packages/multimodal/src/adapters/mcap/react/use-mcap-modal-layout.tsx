@@ -1,5 +1,5 @@
 import { collectTileIds, useTiling, type TilingTile } from "@fiftyone/tiling";
-import { useStore } from "jotai";
+import { useStore, type Atom } from "jotai";
 import React, {
   useCallback,
   useEffect,
@@ -18,8 +18,12 @@ import {
   mcapTileTypeFromId,
   readMcapModalLayout,
   writeMcapModalLayout,
+  type McapPersistedModalLayout,
 } from "./mcap-layout-persistence";
-import { mcapPlotTileSeriesAtom } from "./mcap-plot-tile-state";
+import {
+  mcapPlotTileSeriesAtom,
+  type McapPlotSeriesConfig,
+} from "./mcap-plot-tile-state";
 import { mcapRawTileTopicAtom } from "./mcap-raw-tile-state";
 import { MCAP_TILE_TYPE } from "./mcap-tile-types";
 import {
@@ -180,8 +184,9 @@ function buildResolvedTiles(
     const Tile = definition.Tile;
     const initialSourceId = tile.initialSourceId;
     result[tile.id] = {
-      title: tile.title,
       render: () => <Tile initialSourceId={initialSourceId} />,
+      title: tile.title,
+      type: tile.tileType,
     };
   }
   return result;
@@ -250,8 +255,9 @@ function rebuildTilesFromLayout(
   const tiles: Record<string, TilingTile> = {};
   for (const id of tileIds) {
     const type = mcapTileTypeFromId(id);
+    if (!type) return null;
     // Pruning guarantees every surviving leaf maps to a definition.
-    const definition = type ? getMcapTileDefinition(type) : null;
+    const definition = getMcapTileDefinition(type);
     if (!definition) return null;
     const Tile = definition.Tile;
     const initialSourceId =
@@ -264,8 +270,9 @@ function rebuildTilesFromLayout(
       manualTileTitles[id] = restoredTitle;
     }
     tiles[id] = {
-      title,
       render: () => <Tile initialSourceId={initialSourceId} />,
+      title,
+      type,
     };
   }
   return { layout: pruned, manualTileTitles, tiles };
@@ -345,77 +352,31 @@ export function McapModalLayoutPersistence({
     seededRawKeyRef.current = JSON.stringify(store.get(mcapRawTileTopicAtom));
   }, [store]);
 
-  // This effect mirrors plot-series changes to localStorage (debounced,
-  // flushed on unmount). Restores can reference pruned tiles, so nothing
-  // is written until the atom actually diverges from the seeded state —
-  // merely viewing an incompatible sample must not erase saved series.
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    let dirty = false;
-    const currentPlotSeries = () => {
-      const value = store.get(mcapPlotTileSeriesAtom);
-      const compact = Object.fromEntries(
-        Object.entries(value).filter(([, series]) => series.length > 0),
-      );
-      return compact;
-    };
-    const unsubscribe = store.sub(mcapPlotTileSeriesAtom, () => {
-      const key = JSON.stringify(store.get(mcapPlotTileSeriesAtom));
-      if (!dirty && key === seededPlotKeyRef.current) return;
-      dirty = true;
-      if (timeout !== null) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        writeMcapModalLayout(
-          { plotSeries: currentPlotSeries() },
-          datasetIdRef.current,
-        );
-      }, 500);
-    });
-    return () => {
-      unsubscribe();
-      if (timeout !== null) {
-        clearTimeout(timeout);
-      }
-      if (dirty) {
-        writeMcapModalLayout(
-          { plotSeries: currentPlotSeries() },
-          datasetIdRef.current,
-        );
-      }
-    };
-  }, [store]);
+  const plotSeriesPatch = useCallback(
+    (value: Readonly<Record<string, readonly McapPlotSeriesConfig[]>>) => ({
+      plotSeries: compactPlotSeries(value),
+    }),
+    [],
+  );
+  useDebouncedMcapLayoutAtomMirror({
+    atom: mcapPlotTileSeriesAtom,
+    datasetIdRef,
+    patchForValue: plotSeriesPatch,
+    seededKeyRef: seededPlotKeyRef,
+    store,
+  });
 
-  // This effect mirrors raw-tile topic changes to localStorage — same
-  // debounce, dirty gate, and unmount flush as the plot series above.
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    let dirty = false;
-    const currentRawTopics = () => store.get(mcapRawTileTopicAtom);
-    const unsubscribe = store.sub(mcapRawTileTopicAtom, () => {
-      const key = JSON.stringify(store.get(mcapRawTileTopicAtom));
-      if (!dirty && key === seededRawKeyRef.current) return;
-      dirty = true;
-      if (timeout !== null) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        writeMcapModalLayout(
-          { rawTopics: currentRawTopics() },
-          datasetIdRef.current,
-        );
-      }, 500);
-    });
-    return () => {
-      unsubscribe();
-      if (timeout !== null) {
-        clearTimeout(timeout);
-      }
-      if (dirty) {
-        writeMcapModalLayout(
-          { rawTopics: currentRawTopics() },
-          datasetIdRef.current,
-        );
-      }
-    };
-  }, [store]);
+  const rawTopicsPatch = useCallback(
+    (value: Readonly<Record<string, string>>) => ({ rawTopics: value }),
+    [],
+  );
+  useDebouncedMcapLayoutAtomMirror({
+    atom: mcapRawTileTopicAtom,
+    datasetIdRef,
+    patchForValue: rawTopicsPatch,
+    seededKeyRef: seededRawKeyRef,
+    store,
+  });
 
   // Write only after the layout actually changes from what this mount
   // started with. Restores can be PRUNED views of the saved arrangement
@@ -464,7 +425,7 @@ export function McapModalLayoutPersistence({
     if (!dirtyRef.current) return undefined;
     const timeout = setTimeout(() => {
       writeMcapModalLayout({ layout }, datasetId);
-    }, 500);
+    }, MCAP_LAYOUT_WRITE_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
   }, [layout, datasetId]);
 
@@ -478,7 +439,7 @@ export function McapModalLayoutPersistence({
         { expandedTileId: expandedTileId ?? undefined },
         datasetId,
       );
-    }, 500);
+    }, MCAP_LAYOUT_WRITE_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
   }, [expandedTileId, datasetId]);
 
@@ -488,7 +449,7 @@ export function McapModalLayoutPersistence({
     if (!titleDirtyRef.current) return undefined;
     const timeout = setTimeout(() => {
       writeMcapModalLayout({ tileTitles: { ...manualTileTitles } }, datasetId);
-    }, 500);
+    }, MCAP_LAYOUT_WRITE_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
   }, [datasetId, manualTileTitles, manualTileTitlesKey]);
 
@@ -519,4 +480,64 @@ export function McapModalLayoutPersistence({
   );
 
   return null;
+}
+
+const MCAP_LAYOUT_WRITE_DEBOUNCE_MS = 500;
+
+function compactPlotSeries(
+  value: Readonly<Record<string, readonly McapPlotSeriesConfig[]>>,
+): Record<string, readonly McapPlotSeriesConfig[]> {
+  const compact: Record<string, readonly McapPlotSeriesConfig[]> = {};
+  for (const [tileId, series] of Object.entries(value)) {
+    if (series.length > 0) {
+      compact[tileId] = series;
+    }
+  }
+  return compact;
+}
+
+/**
+ * Mirrors a shell-scoped atom into persisted MCAP layout state after it
+ * diverges from its seeded value. The unmount flush keeps the final edit
+ * even when the modal closes before the debounce fires.
+ */
+function useDebouncedMcapLayoutAtomMirror<Value>({
+  atom,
+  datasetIdRef,
+  patchForValue,
+  seededKeyRef,
+  store,
+}: {
+  readonly atom: Atom<Value>;
+  readonly datasetIdRef: React.MutableRefObject<string | undefined>;
+  readonly patchForValue: (value: Value) => Partial<McapPersistedModalLayout>;
+  readonly seededKeyRef: React.MutableRefObject<string | null>;
+  readonly store: ReturnType<typeof useStore>;
+}) {
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let dirty = false;
+    const currentPatch = () => patchForValue(store.get(atom));
+    const unsubscribe = store.sub(atom, () => {
+      const key = JSON.stringify(store.get(atom));
+      if (!dirty && key === seededKeyRef.current) return;
+      dirty = true;
+      if (timeout !== null) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        writeMcapModalLayout(currentPatch(), datasetIdRef.current);
+      }, MCAP_LAYOUT_WRITE_DEBOUNCE_MS);
+    });
+    return () => {
+      unsubscribe();
+      if (timeout !== null) {
+        clearTimeout(timeout);
+      }
+      if (dirty) {
+        // Flush to the latest dataset scope; this observer intentionally
+        // follows sample navigation without resubscribing the atom.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        writeMcapModalLayout(currentPatch(), datasetIdRef.current);
+      }
+    };
+  }, [atom, datasetIdRef, patchForValue, seededKeyRef, store]);
 }

@@ -5,7 +5,6 @@ export {
   TilingProvider,
   TileIdScope,
   TileSettingsContent,
-  tileTypeFromId,
   useTiling,
   useTileId,
 } from "./lib/TilingProvider";

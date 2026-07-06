@@ -174,14 +174,15 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     (
       tile: TilingTile,
       {
-        idPrefix = "tile",
+        idPrefix = tile.type ?? "tile",
         targetId,
         focus = true,
         direction,
       }: AddTileOptions = {},
     ): string => {
       const id = `${idPrefix}-${counterRef.current++}`;
-      setTiles((prev) => ({ ...prev, [id]: tile }));
+      const tileWithType = tile.type ? tile : { ...tile, type: idPrefix };
+      setTiles((prev) => ({ ...prev, [id]: tileWithType }));
       // Resolve target from the focus ref (no nested setState inside
       // setFocusedTileId — that would violate updater purity).
       const target =
@@ -211,12 +212,12 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   );
 
   /**
-   * Fresh same-kind tile from the registry, keyed by the id's
-   * `<type>-<n>` prefix. `null` when the kind was never registered.
+   * Fresh same-kind tile from the registry, keyed by the tile entry's
+   * registered `type`. `null` when the kind was never registered.
    */
   const freshTileOfSameKind = useCallback(
     (tileId: string): { tile: TilingTile; idPrefix: string } | null => {
-      const type = tileTypeFromId(tileId);
+      const type = tilesRef.current[tileId]?.type;
       if (!type) return null;
       const entry = jotaiStore
         .get(registeredTilesAtom)
@@ -225,7 +226,11 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       const TileComponent = entry.Tile;
       return {
         idPrefix: entry.type,
-        tile: { title: entry.typeLabel, render: () => <TileComponent /> },
+        tile: {
+          render: () => <TileComponent />,
+          title: entry.typeLabel,
+          type: entry.type,
+        },
       };
     },
     [jotaiStore],
@@ -246,9 +251,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       }
       const factory = duplicatorsRef.current.get(tileId);
       if (!factory) return null;
+      const idPrefix = tilesRef.current[tileId]?.type ?? "tile";
       return addTile(factory(), {
         direction,
-        idPrefix: tileTypeFromId(tileId) ?? "tile",
+        idPrefix,
         targetId: tileId,
       });
     },
@@ -265,8 +271,9 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
           ? { ...baseTile, title: manualTitle }
           : baseTile;
       if (!tile) return null;
+      const idPrefix = tilesRef.current[tileId]?.type ?? "tile";
       const newId = addTile(tile, {
-        idPrefix: tileTypeFromId(tileId) ?? "tile",
+        idPrefix,
         targetId: tileId,
       });
       if (manualTitle) {
@@ -279,7 +286,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
 
   const changeTileType = useCallback(
     (tileId: string, type: string): string | null => {
-      if (tileTypeFromId(tileId) === type) {
+      if (tilesRef.current[tileId]?.type === type) {
         return tileId;
       }
       if (
@@ -302,8 +309,9 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         const next = { ...prev };
         delete next[tileId];
         next[id] = {
-          title: entry.typeLabel,
           render: () => <TileComponent />,
+          title: entry.typeLabel,
+          type: entry.type,
         };
         return next;
       });
@@ -434,15 +442,6 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     </JotaiProvider>
   );
 };
-
-/**
- * The `<type>` prefix of a `<type>-<n>` mosaic leaf id (`camera-2` →
- * `camera`), or `null` when the id doesn't follow the convention.
- */
-export function tileTypeFromId(tileId: string): string | null {
-  const match = /^(.+)-\d+$/.exec(tileId);
-  return match ? match[1] : null;
-}
 
 /**
  * Remove a tile id from the layout tree. If a split node ends up with

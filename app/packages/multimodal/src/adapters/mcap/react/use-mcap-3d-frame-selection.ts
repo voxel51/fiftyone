@@ -72,9 +72,9 @@ export function useMcap3dFrameSelection({
   const dataBearingFrameIds = useMemo(
     () =>
       uniqueSortedFrameIds([
-        ...frameIdsFromFrames(frames),
-        ...frameIdsFromGridFrames(gridFrames),
-        ...frameIdsFromCalibrationFrames(calibrationFrames),
+        ...frameIdsFromCoordinateFrames(frames),
+        ...frameIdsFromCoordinateFrames(gridFrames),
+        ...frameIdsFromCoordinateFrames(calibrationFrames),
         ...frameIdsFromSceneAnnotationFrames(annotationFrames),
       ]),
     [annotationFrames, calibrationFrames, frames, gridFrames],
@@ -190,38 +190,14 @@ export function mcap3dUserFrameRestoreApplies(
   return frameId !== null && frameId !== "" && frameIds.includes(frameId);
 }
 
-function frameIdsFromFrames(
-  frames: readonly (McapTopicPlaybackFrame<PointCloudVisualization> | null)[],
-): readonly string[] {
-  const frameIds: string[] = [];
+type CoordinateFrameVisualization = {
+  readonly coordinateFrameId?: string;
+};
 
-  for (const playbackFrame of frames) {
-    if (!playbackFrame) {
-      continue;
-    }
-    pushFrameId(frameIds, playbackFrame.frame.coordinateFrameId);
-  }
-
-  return frameIds;
-}
-
-function frameIdsFromGridFrames(
-  frames: readonly (McapTopicPlaybackFrame<GridVisualization> | null)[],
-): readonly string[] {
-  const frameIds: string[] = [];
-
-  for (const playbackFrame of frames) {
-    if (!playbackFrame) {
-      continue;
-    }
-    pushFrameId(frameIds, playbackFrame.frame.coordinateFrameId);
-  }
-
-  return frameIds;
-}
-
-function frameIdsFromCalibrationFrames(
-  frames: readonly (McapTopicPlaybackFrame<CameraCalibrationVisualization> | null)[],
+function frameIdsFromCoordinateFrames<
+  Frame extends CoordinateFrameVisualization,
+>(
+  frames: readonly (McapTopicPlaybackFrame<Frame> | null)[],
 ): readonly string[] {
   const frameIds: string[] = [];
 

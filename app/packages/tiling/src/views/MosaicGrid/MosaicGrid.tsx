@@ -17,7 +17,7 @@ import {
   updateTree,
 } from "react-mosaic-component";
 import "react-mosaic-component/react-mosaic-component.css";
-import { TileIdScope, tileTypeFromId } from "../../lib/TilingProvider";
+import { TileIdScope } from "../../lib/TilingProvider";
 import {
   useSetTileTitle,
   useTileTitle,
@@ -37,6 +37,7 @@ import styles from "./MosaicGrid.module.css";
  * the tile chrome is provided by the grid's toolbar.
  */
 export interface MosaicTileConfig {
+  type?: string;
   title: string;
   render: () => React.ReactNode;
 }
@@ -92,7 +93,6 @@ export interface MosaicGridProps {
 
 interface TileWindowProps {
   path: MosaicBranch[];
-  tileId: string;
   tile: MosaicTileConfig;
   isFocused: boolean;
   isFullscreen: boolean;
@@ -110,7 +110,6 @@ interface TileWindowProps {
 
 const TileWindow: React.FC<TileWindowProps> = ({
   path,
-  tileId,
   tile,
   isFocused,
   isFullscreen,
@@ -131,7 +130,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
   const title = titleOverride ?? tile.title;
   const hasSpawnActions = Boolean(onSplitRight || onSplitDown || onDuplicate);
   const hasTypeActions = Boolean(onChangeType && tileTypes.length > 0);
-  const currentType = tileTypeFromId(tileId);
+  const currentType = tile.type;
   const fullscreenLabel = isFullscreen ? "Exit fullscreen" : "Fullscreen";
   const contextMenu = (
     <>
@@ -360,7 +359,6 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
       <TileIdScope tileId={id}>
         <TileWindow
           path={path}
-          tileId={id}
           tile={tile}
           isFocused={isFocused}
           isFullscreen={isFullscreen}

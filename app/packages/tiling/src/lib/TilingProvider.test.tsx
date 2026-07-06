@@ -16,11 +16,11 @@ import {
   TilingProvider,
   TilingTile,
   useTiling,
-  tileTypeFromId,
 } from "./TilingProvider";
 
-const makeTile = (title: string): TilingTile => ({
+const makeTile = (title: string, type?: string): TilingTile => ({
   title,
+  ...(type ? { type } : {}),
   render: () => null,
 });
 
@@ -758,26 +758,14 @@ function changeTypeSetup(initialTiles: Record<string, TilingTile>) {
   });
 }
 
-describe("tileTypeFromId", () => {
-  it("returns the prefix before the numeric suffix", () => {
-    expect(tileTypeFromId("camera-2")).toBe("camera");
-    expect(tileTypeFromId("3d-1")).toBe("3d");
-    expect(tileTypeFromId("a-b-12")).toBe("a-b");
-  });
-
-  it("returns null for ids without the <type>-<n> convention", () => {
-    expect(tileTypeFromId("plain")).toBeNull();
-    expect(tileTypeFromId("-1")).toBeNull();
-    expect(tileTypeFromId("camera-")).toBeNull();
-  });
-});
-
 describe("spawn operations", () => {
   afterEach(() => cleanup());
 
   describe("splitTile", () => {
     it("spawns a fresh same-kind tile in the requested direction", () => {
-      const { result } = spawnOpsSetup({ "camera-1": makeTile("camera") });
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("camera", "camera"),
+      });
       let newId: string | null = null;
       act(() => {
         newId = result.current.splitTile("camera-1", "column");
@@ -794,7 +782,9 @@ describe("spawn operations", () => {
     });
 
     it("does not copy a manual title when spawning a fresh split", () => {
-      const { result } = spawnOpsSetup({ "camera-1": makeTile("camera") });
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("camera", "camera"),
+      });
       act(() => {
         result.current.setTileTitle("camera-1", "Front Camera");
       });
@@ -810,7 +800,9 @@ describe("spawn operations", () => {
     });
 
     it("returns null for an unknown kind with no duplicate factory", () => {
-      const { result } = spawnOpsSetup({ "mystery-1": makeTile("m") });
+      const { result } = spawnOpsSetup({
+        "mystery-1": makeTile("m", "mystery"),
+      });
       let newId: string | null = "sentinel";
       act(() => {
         newId = result.current.splitTile("mystery-1", "row");
@@ -820,11 +812,13 @@ describe("spawn operations", () => {
     });
 
     it("falls back to the duplicate factory for unregistered kinds", () => {
-      const { result } = spawnOpsSetup({ "mystery-1": makeTile("m") });
+      const { result } = spawnOpsSetup({
+        "mystery-1": makeTile("m", "mystery"),
+      });
       act(() => {
         result.current.registerTileDuplicator("mystery-1", () => ({
-          title: "m (copy)",
           render: () => null,
+          title: "m (copy)",
         }));
       });
       let newId: string | null = null;
@@ -838,7 +832,9 @@ describe("spawn operations", () => {
 
   describe("duplicateTile", () => {
     it("prefers the registered duplicate factory", () => {
-      const { result } = spawnOpsSetup({ "camera-1": makeTile("camera") });
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("camera", "camera"),
+      });
       act(() => {
         result.current.registerTileDuplicator("camera-1", () => ({
           title: "CAM_FRONT (copy)",
@@ -859,7 +855,9 @@ describe("spawn operations", () => {
     });
 
     it("falls back to a fresh same-kind tile without a factory", () => {
-      const { result } = spawnOpsSetup({ "camera-1": makeTile("camera") });
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("camera", "camera"),
+      });
       let newId: string | null = null;
       act(() => {
         newId = result.current.duplicateTile("camera-1");
@@ -869,7 +867,9 @@ describe("spawn operations", () => {
     });
 
     it("copies the source tile's manual title", () => {
-      const { result } = spawnOpsSetup({ "camera-1": makeTile("camera") });
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("camera", "camera"),
+      });
       act(() => {
         result.current.setTileTitle("camera-1", "Front Camera");
       });
@@ -895,7 +895,9 @@ describe("spawn operations", () => {
       };
       const { result } = renderHook(() => useTiling(), {
         wrapper: ({ children }: { children: React.ReactNode }) => (
-          <TilingProvider initialTiles={{ "camera-1": makeTile("camera") }}>
+          <TilingProvider
+            initialTiles={{ "camera-1": makeTile("camera", "camera") }}
+          >
             <TileIdScope tileId="camera-1">
               <DuplicatorBody />
             </TileIdScope>
@@ -934,7 +936,7 @@ describe("spawn operations", () => {
   describe("changeTileType", () => {
     it("replaces a tile in place with a fresh registered type", () => {
       const { result } = changeTypeSetup({
-        "camera-1": makeTile("camera"),
+        "camera-1": makeTile("camera", "camera"),
       });
       act(() => {
         result.current.setFocusedTileId("camera-1");
@@ -957,7 +959,7 @@ describe("spawn operations", () => {
 
     it("returns null when the requested type is not registered", () => {
       const { result } = changeTypeSetup({
-        "camera-1": makeTile("camera"),
+        "camera-1": makeTile("camera", "camera"),
       });
       let newId: string | null = "sentinel";
       act(() => {

@@ -97,6 +97,12 @@ interface PersistedStore {
 const STORAGE_KEY = "fiftyone.mcap.modal-layout";
 const VERSION = 2;
 const LEGACY_VERSION = 1;
+const DATASET_SCOPED_LAYOUT_FIELDS = [
+  "plotSeries",
+  "rawTopics",
+  "sceneUpAxis",
+  "tileTitles",
+] as const;
 
 // Cap the per-dataset table so heavy multi-dataset use can't grow the
 // payload unboundedly — localStorage is quota'd and the whole key is
@@ -372,20 +378,11 @@ export function writeMcapModalLayout(
       evictLeastRecentlyUpdated(byDataset);
     }
     // The fallback layer tracks the latest arrangement anywhere, but
-    // plot series and scene-up semantics are dataset-scoped — strip them
-    // from both the incoming patch and anything an older write left behind.
-    const {
-      plotSeries: _datasetOnlyPlotSeries,
-      rawTopics: _datasetOnlyRawTopics,
-      sceneUpAxis: _datasetOnlySceneUpAxis,
-      tileTitles: _datasetOnlyTileTitles,
-      ...fallbackPatch
-    } = patch;
-    const fallback = { ...store?.fallback, ...fallbackPatch };
-    delete fallback.plotSeries;
-    delete fallback.rawTopics;
-    delete fallback.sceneUpAxis;
-    delete fallback.tileTitles;
+    // dataset-scoped semantics must not leak between unrelated topic sets.
+    const fallback = stripDatasetScopedLayoutFields({
+      ...store?.fallback,
+      ...patch,
+    });
     const next: PersistedStore = {
       version: VERSION,
       fallback,
@@ -396,6 +393,16 @@ export function writeMcapModalLayout(
     // Quota exceeded / storage unavailable — persisting layout is a
     // nicety, never an error path.
   }
+}
+
+function stripDatasetScopedLayoutFields(
+  layout: Partial<McapPersistedModalLayout>,
+): McapPersistedModalLayout {
+  const fallback = { ...layout };
+  for (const field of DATASET_SCOPED_LAYOUT_FIELDS) {
+    delete fallback[field];
+  }
+  return fallback;
 }
 
 /** Drop the least-recently-updated entries beyond the table cap. */

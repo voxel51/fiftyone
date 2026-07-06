@@ -18,6 +18,12 @@ export interface RegisteredTile {
  * draggable toolbar; `render` returns the body content.
  */
 export interface TilingTile {
+  /**
+   * Registered tile kind. Kept on the tile entry itself so duplicate,
+   * split, and type-change operations don't have to infer behavior from
+   * generated ids.
+   */
+  type?: string;
   title: string;
   render: () => ReactNode;
 }
@@ -77,9 +83,9 @@ export interface TilingContextValue {
   autoLayout: () => void;
   /**
    * Spawn a fresh tile of the same kind beside `tileId` — `"row"` puts
-   * it to the right, `"column"` below. The kind comes from the tile
-   * registry (via the id's `<type>-<n>` prefix); unregistered kinds fall
-   * back to the tile's duplicate factory. Returns the new tile's id, or
+   * it to the right, `"column"` below. The kind comes from the tile's
+   * `type` metadata and the registry; unregistered kinds fall back to
+   * the tile's duplicate factory. Returns the new tile's id, or
    * `null` when neither can produce one.
    */
   splitTile: (tileId: string, direction: "row" | "column") => string | null;

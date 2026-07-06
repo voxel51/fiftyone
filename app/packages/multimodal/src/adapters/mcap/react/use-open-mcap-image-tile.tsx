@@ -32,7 +32,11 @@ export function useOpenMcapImageTile(): (sourceId: string) => void {
       const title =
         sources.find((source) => source.id === sourceId)?.label ?? sourceId;
       addTile(
-        { title, render: () => <Tile initialSourceId={sourceId} /> },
+        {
+          render: () => <Tile initialSourceId={sourceId} />,
+          title,
+          type: MCAP_TILE_TYPE.IMAGE,
+        },
         { idPrefix: MCAP_TILE_TYPE.IMAGE },
       );
     },
