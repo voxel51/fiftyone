@@ -55,7 +55,12 @@ const TilingProbe: React.FC = () => {
 };
 
 function probeState() {
-  return JSON.parse(screen.getByTestId("tiling-probe").textContent ?? "{}") as {
+  const probe = document.querySelector('[data-cy="tiling-probe"]');
+  if (!probe) {
+    throw new Error("Missing tiling probe");
+  }
+
+  return JSON.parse(probe.textContent ?? "{}") as {
     focusedTileId: string | null;
     titles: Record<string, string>;
   };
@@ -100,7 +105,7 @@ function renderMenu({
 }
 
 function openMenu() {
-  fireEvent.click(screen.getByTestId("open-add-tile-menu"));
+  fireEvent.click(screen.getByRole("button", { name: "open" }));
 }
 
 describe("McapAddTileMenu", () => {
@@ -110,9 +115,7 @@ describe("McapAddTileMenu", () => {
     renderMenu({ sources: [CAM_BACK, CAM_FRONT, LIDAR] });
     openMenu();
 
-    expect(screen.getByTestId("mcap-add-tile-3d").textContent).toContain(
-      "3D scene",
-    );
+    expect(screen.getByText("3D scene")).toBeTruthy();
     expect(screen.getByText("Image streams")).toBeTruthy();
     const front = screen.getByText("CAM_FRONT");
     const back = screen.getByText("CAM_BACK");
@@ -122,10 +125,34 @@ describe("McapAddTileMenu", () => {
     ).toBeTruthy();
   });
 
+  it("lists preferred image equivalents before raw siblings without hiding raw", () => {
+    const rawFront: SceneSource = {
+      id: "/cam_front/image",
+      label: "CAM_FRONT_RAW",
+      recordCount: 1_000,
+      type: MCAP_SOURCE_TYPE.IMAGE,
+    };
+    const downsampledFront: SceneSource = {
+      id: "/cam_front/image_downsampled",
+      label: "CAM_FRONT_DOWNSAMPLED",
+      recordCount: 100,
+      type: MCAP_SOURCE_TYPE.IMAGE,
+    };
+    renderMenu({ sources: [rawFront, CAM_BACK, downsampledFront] });
+    openMenu();
+
+    const downsampled = screen.getByText("CAM_FRONT_DOWNSAMPLED");
+    const raw = screen.getByText("CAM_FRONT_RAW");
+    expect(
+      downsampled.compareDocumentPosition(raw) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("hides the 3D entry when the recording has no 3D sources", () => {
     renderMenu({ sources: [CAM_FRONT] });
     openMenu();
-    expect(screen.queryByTestId("mcap-add-tile-3d")).toBeNull();
+    expect(screen.queryByText("3D scene")).toBeNull();
     expect(screen.getByText("CAM_FRONT")).toBeTruthy();
   });
 
@@ -158,7 +185,7 @@ describe("McapAddTileMenu", () => {
       initialTiles: { "3d-1": { title: "3D", render: () => null } },
     });
     openMenu();
-    fireEvent.click(screen.getByTestId("mcap-add-tile-3d"));
+    fireEvent.click(screen.getByText("3D scene"));
 
     const { focusedTileId, titles } = probeState();
     expect(Object.keys(titles)).toEqual(["3d-1"]);
@@ -168,7 +195,7 @@ describe("McapAddTileMenu", () => {
   it("adds a 3D tile when none is open", () => {
     renderMenu({ sources: [LIDAR] });
     openMenu();
-    fireEvent.click(screen.getByTestId("mcap-add-tile-3d"));
+    fireEvent.click(screen.getByText("3D scene"));
 
     const { focusedTileId, titles } = probeState();
     expect(titles["3d-1"]).toBe("3D");

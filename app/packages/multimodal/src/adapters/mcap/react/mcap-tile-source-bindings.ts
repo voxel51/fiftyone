@@ -100,9 +100,9 @@ export function useMcapImageTileHoverProps(sourceId: string): {
 /**
  * Default source for an image tile that wasn't assigned one: the best
  * ranked stream no other tile is displaying, so "split" and "add tile"
- * walk through the recording's cameras instead of piling onto the
- * densest one. When every stream is already on screen, fall back to the
- * top-ranked source (a second view of it is legitimate).
+ * walk through the recording's cameras instead of piling onto the same
+ * default. When every stream is already on screen, fall back to the top-ranked
+ * source (a second view of it is legitimate).
  */
 export function chooseNextImageTopic(
   rankedImages: readonly SceneSource[],

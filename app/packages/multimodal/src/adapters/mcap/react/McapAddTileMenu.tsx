@@ -5,15 +5,16 @@ import { useSceneInventory } from "../../../scene-inventory";
 import { mcapTileTypeFromId } from "./mcap-layout-persistence";
 import { MCAP_TILE_TYPE } from "./mcap-tile-types";
 import { useMcapImageTileBindings } from "./mcap-tile-source-bindings";
-import { rankImageSources } from "./playback-layout";
+import { orderImageSourcesForManualSelection } from "./playback-layout";
 import { useOpenMcapImageTile } from "./use-open-mcap-image-tile";
 import { getMcapTileDefinition, mcapTileTypesFor } from "./use-mcap-tiles";
 
 /**
  * Source-first add-tile menu for the MCAP modal: instead of abstract
  * tile kinds ("Image", "3D"), it lists what the recording actually
- * contains — the fused 3D scene and each camera stream by name, densest
- * first. Streams already on screen are checked; clicking one focuses
+ * contains — the fused 3D scene and each camera stream by name, with
+ * default-preferred downsampled/compressed equivalents before raw siblings.
+ * Streams already on screen are checked; clicking one focuses
  * its tile instead of duplicating it (an intentional second view of a
  * stream is one "Duplicate" away), while unchecked entries spawn a tile
  * bound to that source.
@@ -26,7 +27,10 @@ const McapAddTileMenu: React.FC = () => {
   const { addTile, setFocusedTileId, tiles } = useTiling();
   const bindings = useMcapImageTileBindings();
 
-  const rankedImages = useMemo(() => rankImageSources(sources), [sources]);
+  const rankedImages = useMemo(
+    () => orderImageSourcesForManualSelection(sources),
+    [sources],
+  );
   const has3d = useMemo(
     () =>
       mcapTileTypesFor(

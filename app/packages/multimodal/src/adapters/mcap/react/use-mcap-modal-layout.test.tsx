@@ -95,6 +95,30 @@ describe("useMcapModalLayout", () => {
     expect(renderedSourceOf(result.current.initialTiles["image-2"])).toBe("/a");
   });
 
+  it("opens default image tiles on preferred equivalents only", () => {
+    const { result } = renderLayoutHook([
+      { id: "/cam/image", type: "image", label: "raw", recordCount: 1_000 },
+      {
+        id: "/cam/image_downsampled",
+        type: "image",
+        label: "downsampled",
+        recordCount: 100,
+      },
+      { id: "/rear/image", type: "image", label: "rear", recordCount: 900 },
+    ]);
+
+    expect(Object.keys(result.current.initialTiles)).toEqual([
+      "image-1",
+      "image-2",
+    ]);
+    expect(renderedSourceOf(result.current.initialTiles["image-1"])).toBe(
+      "/cam/image_downsampled",
+    );
+    expect(renderedSourceOf(result.current.initialTiles["image-2"])).toBe(
+      "/rear/image",
+    );
+  });
+
   it("omits default tiles for types absent from the scene", () => {
     const { result } = renderLayoutHook([SCENE_SOURCES[0]]);
     expect(Object.keys(result.current.initialTiles)).toEqual(["image-1"]);
@@ -157,6 +181,33 @@ describe("useMcapModalLayout", () => {
 
     expect(renderedSourceOf(result.current.initialTiles["image-3"])).toBe("/b");
     expect(renderedSourceOf(result.current.initialTiles["image-8"])).toBe("/a");
+  });
+
+  it("rebinds restored image tiles to preferred equivalents", () => {
+    writeMcapModalLayout({
+      layout: {
+        direction: "row",
+        first: "image-3",
+        second: "image-8",
+      },
+    });
+    const { result } = renderLayoutHook([
+      { id: "/cam/image", type: "image", label: "raw", recordCount: 1_000 },
+      {
+        id: "/cam/image_downsampled",
+        type: "image",
+        label: "downsampled",
+        recordCount: 100,
+      },
+      { id: "/rear/image", type: "image", label: "rear", recordCount: 900 },
+    ]);
+
+    expect(renderedSourceOf(result.current.initialTiles["image-3"])).toBe(
+      "/cam/image_downsampled",
+    );
+    expect(renderedSourceOf(result.current.initialTiles["image-8"])).toBe(
+      "/rear/image",
+    );
   });
 
   it("prunes leaves with unknown tile types and promotes the sibling", () => {

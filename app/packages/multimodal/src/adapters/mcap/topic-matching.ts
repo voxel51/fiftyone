@@ -1,3 +1,21 @@
+const TOPIC_TOKEN_SPLIT_PATTERN = /[^a-z0-9]+/;
+
+const DEFAULT_TOPIC_PREFERENCE_MARKER_SCORES = new Map<string, number>([
+  ["downsample", 2],
+  ["downsampled", 2],
+  ["downsamp", 2],
+  ["lowres", 2],
+  ["reduced", 2],
+  ["resized", 2],
+  ["compress", 1],
+  ["compressed", 1],
+  ["compressedimage", 1],
+]);
+
+const DEFAULT_TOPIC_PREFERENCE_MARKER_TOKENS = new Set(
+  DEFAULT_TOPIC_PREFERENCE_MARKER_SCORES.keys(),
+);
+
 // Drop generic topic words before scoring image/annotation topic similarity so
 // camera-identifying tokens like "front" or "left" decide the best match.
 const IGNORED_TOPIC_TOKENS = new Set([
@@ -5,20 +23,40 @@ const IGNORED_TOPIC_TOKENS = new Set([
   "annotations",
   "cam",
   "camera",
-  "compressed",
   "image",
   "rect",
+  ...DEFAULT_TOPIC_PREFERENCE_MARKER_TOKENS,
 ]);
 
 // Strip image-format suffix segments when deriving the camera topic prefix, so
 // "/camera/front/image_rect_compressed" pairs with "/camera/front/annotations".
 const IMAGE_TOPIC_SUFFIX_TOKENS = new Set([
-  "compressed",
-  "compressedimage",
   "image",
   "raw",
   "rect",
+  ...DEFAULT_TOPIC_PREFERENCE_MARKER_TOKENS,
 ]);
+
+export interface DefaultTopicPreferenceOptions<T> {
+  /**
+   * Topic/source kind. Equivalence is scoped by kind so an image topic never
+   * suppresses a point cloud just because their paths share sensor tokens.
+   */
+  readonly getKind?: (item: T) => string;
+  readonly getTopic: (item: T) => string;
+}
+
+interface DefaultTopicCandidate<T> {
+  readonly item: T;
+  readonly markerScore: number;
+  readonly topic: string;
+}
+
+interface DefaultTopicGroup<T> {
+  readonly candidates: DefaultTopicCandidate<T>[];
+  readonly kind: string;
+  readonly tokenKeys: string[][];
+}
 
 /**
  * Chooses the annotation topic that best matches a selected camera topic.
@@ -111,6 +149,54 @@ export function chooseCalibrationTopic(
 }
 
 /**
+ * Removes raw/base topic equivalents from default activation when a sibling
+ * with downsampled/compressed markers is available. The input order decides
+ * ordinary ranking; within one equivalence group, the strongest marked topic
+ * is kept as the default representative.
+ */
+export function filterDefaultTopicEquivalents<T>(
+  items: readonly T[],
+  options: DefaultTopicPreferenceOptions<T>,
+): readonly T[] {
+  const result: T[] = [];
+  for (const group of defaultTopicGroups(items, options)) {
+    const preferred = bestDefaultTopicCandidate(group);
+    if (preferred && group.candidates.length > 1) {
+      result.push(preferred.item);
+    } else {
+      result.push(...group.candidates.map((candidate) => candidate.item));
+    }
+  }
+  return result;
+}
+
+/**
+ * Keeps every item available for manual selection, but moves the default
+ * representative of each equivalence group ahead of its raw/base siblings.
+ */
+export function orderDefaultTopicEquivalents<T>(
+  items: readonly T[],
+  options: DefaultTopicPreferenceOptions<T>,
+): readonly T[] {
+  const result: T[] = [];
+  for (const group of defaultTopicGroups(items, options)) {
+    const preferred = bestDefaultTopicCandidate(group);
+    if (!preferred || group.candidates.length <= 1) {
+      result.push(...group.candidates.map((candidate) => candidate.item));
+      continue;
+    }
+
+    result.push(preferred.item);
+    for (const candidate of group.candidates) {
+      if (candidate !== preferred) {
+        result.push(candidate.item);
+      }
+    }
+  }
+  return result;
+}
+
+/**
  * Returns the camera-like topic prefix after removing image suffix segments.
  */
 export function topicPrefix(topic: string): string {
@@ -132,11 +218,118 @@ export function topicPrefix(topic: string): string {
  */
 export function topicTokens(topic: string): Set<string> {
   return new Set(
-    topic
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((token) => token && !IGNORED_TOPIC_TOKENS.has(token)),
+    splitTopicTokens(topic).filter((token) => !IGNORED_TOPIC_TOKENS.has(token)),
   );
+}
+
+function defaultTopicGroups<T>(
+  items: readonly T[],
+  { getKind, getTopic }: DefaultTopicPreferenceOptions<T>,
+): DefaultTopicGroup<T>[] {
+  const groups: DefaultTopicGroup<T>[] = [];
+  for (const item of items) {
+    const topic = getTopic(item);
+    const kind = getKind?.(item) ?? "";
+    const tokenKey = defaultTopicTokenKey(topic, kind);
+    let group = groups.find(
+      (candidate) =>
+        candidate.kind === kind &&
+        candidate.tokenKeys.some((existingKey) =>
+          defaultTopicTokenKeysMatch(existingKey, tokenKey),
+        ),
+    );
+    if (!group) {
+      group = { candidates: [], kind, tokenKeys: [] };
+      groups.push(group);
+    }
+
+    group.tokenKeys.push(tokenKey);
+    group.candidates.push({
+      item,
+      markerScore: defaultTopicPreferenceMarkerScore(topic),
+      topic,
+    });
+  }
+  return groups;
+}
+
+function bestDefaultTopicCandidate<T>(
+  group: DefaultTopicGroup<T>,
+): DefaultTopicCandidate<T> | null {
+  let best: DefaultTopicCandidate<T> | null = null;
+  for (const candidate of group.candidates) {
+    if (candidate.markerScore <= 0) {
+      continue;
+    }
+    if (!best || candidate.markerScore > best.markerScore) {
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+function defaultTopicTokenKey(topic: string, kind: string): string[] {
+  const basis = kind === "image" ? topicPrefix(topic) || topic : topic;
+  const withoutMarkers = splitTopicTokens(basis).filter(
+    (token) => !DEFAULT_TOPIC_PREFERENCE_MARKER_TOKENS.has(token),
+  );
+  return withoutMarkers.length > 0 ? withoutMarkers : splitTopicTokens(topic);
+}
+
+function defaultTopicTokenKeysMatch(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  if (left.length === 0 || right.length === 0) {
+    return false;
+  }
+  if (topicTokenKeysEqual(left, right)) {
+    return true;
+  }
+
+  const shorter = left.length < right.length ? left : right;
+  const longer = shorter === left ? right : left;
+  return shorter.length >= 2 && containsContiguousTokens(longer, shorter);
+}
+
+function topicTokenKeysEqual(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  return (
+    left.length === right.length && left.every((token, i) => token === right[i])
+  );
+}
+
+function containsContiguousTokens(
+  longer: readonly string[],
+  shorter: readonly string[],
+): boolean {
+  const lastStart = longer.length - shorter.length;
+  for (let start = 0; start <= lastStart; start++) {
+    let matched = true;
+    for (let offset = 0; offset < shorter.length; offset++) {
+      if (longer[start + offset] !== shorter[offset]) {
+        matched = false;
+        break;
+      }
+    }
+    if (matched) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function defaultTopicPreferenceMarkerScore(topic: string): number {
+  let score = 0;
+  for (const token of splitTopicTokens(topic)) {
+    score = Math.max(
+      score,
+      DEFAULT_TOPIC_PREFERENCE_MARKER_SCORES.get(token) ?? 0,
+    );
+  }
+  return score;
 }
 
 function isTopicAtOrBelowPrefix(topic: string, prefix: string): boolean {
@@ -146,11 +339,15 @@ function isTopicAtOrBelowPrefix(topic: string, prefix: string): boolean {
 function isImageTopicSuffix(segment: string): boolean {
   const tokens = segment
     .toLowerCase()
-    .split(/[^a-z0-9]+/)
+    .split(TOPIC_TOKEN_SPLIT_PATTERN)
     .filter(Boolean);
 
   return (
     tokens.length > 0 &&
     tokens.every((token) => IMAGE_TOPIC_SUFFIX_TOKENS.has(token))
   );
+}
+
+function splitTopicTokens(topic: string): string[] {
+  return topic.toLowerCase().split(TOPIC_TOKEN_SPLIT_PATTERN).filter(Boolean);
 }

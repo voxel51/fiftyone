@@ -6,6 +6,10 @@ import {
 } from "../../../query/bytes";
 import type { SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import {
+  filterDefaultTopicEquivalents,
+  orderDefaultTopicEquivalents,
+} from "../topic-matching";
 import { MCAP_TILE_TYPE, type McapTileType } from "./mcap-tile-types";
 
 /**
@@ -129,6 +133,32 @@ export function rankImageSources(
     .map(({ source }) => source);
 }
 
+/**
+ * Image sources used for automatic activation: dense-stream ranking with
+ * raw/base equivalents suppressed when a downsampled/compressed sibling exists.
+ */
+export function rankDefaultImageSources(
+  sources: readonly SceneSource[],
+): readonly SceneSource[] {
+  return filterDefaultTopicEquivalents(rankImageSources(sources), {
+    getKind: (source) => source.type,
+    getTopic: (source) => source.id,
+  });
+}
+
+/**
+ * Image sources for manual menus: all sources remain visible, with each
+ * equivalence group's automatic default representative listed first.
+ */
+export function orderImageSourcesForManualSelection(
+  sources: readonly SceneSource[],
+): readonly SceneSource[] {
+  return orderDefaultTopicEquivalents(rankImageSources(sources), {
+    getKind: (source) => source.type,
+    getTopic: (source) => source.id,
+  });
+}
+
 function isNonColorImageSource(source: SceneSource): boolean {
   return source.id
     .toLowerCase()
@@ -138,8 +168,8 @@ function isNonColorImageSource(source: SceneSource): boolean {
 
 /**
  * Decides the default playback workspace for a scene: how many image
- * tiles to open (bound to the densest sources) next to one fused 3D
- * tile.
+ * tiles to open (bound to default-preferred sources) next to one fused
+ * 3D tile.
  *
  * Heuristic budgets, all combined with `min` and clamped to the number
  * of image sources:
@@ -163,7 +193,7 @@ export function resolvePlaybackLayout({
   readonly readProfile?: ByteSourceReadProfile;
   readonly sources: readonly SceneSource[];
 }): ResolvedPlaybackLayout {
-  const rankedImages = rankImageSources(sources);
+  const rankedImages = rankDefaultImageSources(sources);
   const has3d = sources.some(
     (source) =>
       source.type === MCAP_SOURCE_TYPE.POINT_CLOUD ||

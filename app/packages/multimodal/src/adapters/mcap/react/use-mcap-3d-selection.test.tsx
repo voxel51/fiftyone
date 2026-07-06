@@ -35,9 +35,18 @@ afterEach(() => {
 
 const lidarTop = source("/lidar/top", MCAP_SOURCE_TYPE.POINT_CLOUD);
 const lidarFront = source("/lidar/front", MCAP_SOURCE_TYPE.POINT_CLOUD);
+const lidarRaw = source("/lidar/points", MCAP_SOURCE_TYPE.POINT_CLOUD);
+const lidarDownsampled = source(
+  "/lidar/points_downsampled",
+  MCAP_SOURCE_TYPE.POINT_CLOUD,
+);
 const boxes = source("/labels/boxes", MCAP_SOURCE_TYPE.SCENE_ANNOTATION);
 const frontImage = source(
   "/camera/front/image_rect_compressed",
+  MCAP_SOURCE_TYPE.IMAGE,
+);
+const frontImageDownsampled = source(
+  "/camera/front/image_downsampled",
   MCAP_SOURCE_TYPE.IMAGE,
 );
 const frontCalibration = source(
@@ -120,6 +129,25 @@ describe("useMcap3dSelection", () => {
     );
   });
 
+  it("fresh-mount defaults enable preferred equivalents without hiding raw sources", () => {
+    const { result } = renderSelection([lidarRaw, lidarDownsampled, boxes]);
+
+    expect(result.current.enabled).toEqual(
+      new Set([lidarDownsampled.id, boxes.id]),
+    );
+    expect(result.current.pointCloudTopics).toEqual([lidarDownsampled.id]);
+
+    act(() => {
+      result.current.toggleSource(lidarRaw.id, true);
+    });
+    expect(result.current.enabled).toEqual(
+      new Set([lidarRaw.id, lidarDownsampled.id, boxes.id]),
+    );
+    expect(new Set(result.current.pointCloudTopics)).toEqual(
+      new Set([lidarRaw.id, lidarDownsampled.id]),
+    );
+  });
+
   it("pairs selected calibrations with image streams for frustum image planes", () => {
     const { result } = renderSelection([
       frontCalibration,
@@ -140,6 +168,18 @@ describe("useMcap3dSelection", () => {
     });
     expect(result.current.cameraTopics).toEqual([rearCalibration.id]);
     expect(result.current.frustumImageTopics).toEqual([""]);
+  });
+
+  it("pairs camera frustums with preferred image equivalents", () => {
+    const { result } = renderSelection([
+      frontCalibration,
+      frontImage,
+      frontImageDownsampled,
+    ]);
+
+    expect(result.current.frustumImageTopics).toEqual([
+      frontImageDownsampled.id,
+    ]);
   });
 
   it("batch-toggles the given sources without touching other 3D sources", () => {
@@ -192,6 +232,19 @@ describe("useMcap3dSelection", () => {
 
     expect(result.current.restoredSourceShapeMatches).toBe(true);
     expect(result.current.enabled).toEqual(new Set([lidarTop.id, boxes.id]));
+  });
+
+  it("strict shape-match restore can preserve an explicitly enabled raw source", () => {
+    const { result } = renderSelection([lidarRaw, lidarDownsampled], {
+      restore: viewStateSnapshot({
+        enabledSourceIds: [lidarRaw.id],
+        renderableSourceIds: [lidarRaw.id, lidarDownsampled.id],
+      }),
+    });
+
+    expect(result.current.restoredSourceShapeMatches).toBe(true);
+    expect(result.current.enabled).toEqual(new Set([lidarRaw.id]));
+    expect(result.current.pointCloudTopics).toEqual([lidarRaw.id]);
   });
 
   it("falls back to fresh-mount defaults when the source shape differs", () => {

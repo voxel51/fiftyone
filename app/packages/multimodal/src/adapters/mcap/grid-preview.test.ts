@@ -207,6 +207,69 @@ describe("MCAP grid preview", () => {
     );
   });
 
+  it("uses a preferred downsampled image stream for auto selection", async () => {
+    const readDecodedMessages = vi.fn(async function* (
+      request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
+    ) {
+      yield createImageMessage(request.topics?.[0] ?? "/camera", [7, 8], 44n);
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic("/camera/front/image"),
+        createTopic("/camera/front/image_downsampled"),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      { source: createSource() },
+    );
+
+    expect(result.state).toMatchObject({
+      streamTopic: "/camera/front/image_downsampled",
+      streamTopics: ["/camera/front/image", "/camera/front/image_downsampled"],
+      status: "ready",
+    });
+    expect(readDecodedMessages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        topics: ["/camera/front/image_downsampled"],
+      }),
+    );
+  });
+
+  it("honors an explicit raw image stream when a preferred sibling exists", async () => {
+    const readDecodedMessages = vi.fn(async function* (
+      request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
+    ) {
+      yield createImageMessage(request.topics?.[0] ?? "/camera", [3, 4], 45n);
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic("/camera/front/image"),
+        createTopic("/camera/front/image_downsampled"),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      {
+        selectedStreamTopic: "/camera/front/image",
+        source: createSource(),
+      },
+    );
+
+    expect(result.state).toMatchObject({
+      streamTopic: "/camera/front/image",
+      streamTopics: ["/camera/front/image", "/camera/front/image_downsampled"],
+      status: "ready",
+    });
+    expect(readDecodedMessages).toHaveBeenCalledWith(
+      expect.objectContaining({ topics: ["/camera/front/image"] }),
+    );
+  });
+
   it("returns unavailable when an explicit selected stream is missing", async () => {
     const readDecodedMessages = vi.fn(async function* () {
       for (const item of [] as never[]) {
@@ -269,6 +332,39 @@ describe("MCAP grid preview", () => {
     );
     expect(readDecodedMessages).toHaveBeenCalledWith(
       expect.objectContaining({ topics: ["/lidar/points"] }),
+    );
+  });
+
+  it("uses a preferred downsampled point-cloud stream for auto selection", async () => {
+    const readDecodedMessages = vi.fn(async function* (
+      request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
+    ) {
+      yield createPointCloudMessage(
+        request.topics?.[0] ?? "/lidar/points",
+        [5, 6, 7],
+        55n,
+      );
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic("/lidar/points", "foxglove.PointCloud"),
+        createTopic("/lidar/points_downsampled", "foxglove.PointCloud"),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      { source: createSource() },
+    );
+
+    expect(result.state).toMatchObject({
+      streamTopic: "/lidar/points_downsampled",
+      streamTopics: ["/lidar/points", "/lidar/points_downsampled"],
+      status: "ready",
+    });
+    expect(readDecodedMessages).toHaveBeenCalledWith(
+      expect.objectContaining({ topics: ["/lidar/points_downsampled"] }),
     );
   });
 

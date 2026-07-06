@@ -3,7 +3,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointCloudVisualization } from "../../../decoders";
 import { useSceneInventory, type SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
-import { chooseCalibrationTopic } from "../topic-matching";
+import {
+  chooseCalibrationTopic,
+  filterDefaultTopicEquivalents,
+} from "../topic-matching";
 import {
   recordMcap3dSourceSelection,
   resolveMcap3dSelectionRestore,
@@ -53,6 +56,14 @@ export function useMcap3dSelection({
     () => sources.filter(is3dRenderableSource),
     [sources],
   );
+  const defaultRenderableSources = useMemo(
+    () =>
+      filterDefaultTopicEquivalents(renderableSources, {
+        getKind: (source) => source.type,
+        getTopic: (source) => source.id,
+      }),
+    [renderableSources],
+  );
   const pointCloudSources = useMemo(
     () => renderableSources.filter(isPointCloudSource),
     [renderableSources],
@@ -73,6 +84,17 @@ export function useMcap3dSelection({
     () => renderableSources.filter(isSceneAnnotationSource),
     [renderableSources],
   );
+  const defaultImageSources = useMemo(
+    () =>
+      filterDefaultTopicEquivalents(
+        sources.filter((source) => source.type === MCAP_SOURCE_TYPE.IMAGE),
+        {
+          getKind: (source) => source.type,
+          getTopic: (source) => source.id,
+        },
+      ),
+    [sources],
+  );
   const setTileTitle = useSetTileTitle();
   // Carried-over selection state from the previous sample, resolved once at
   // mount: it applies only when the new sample's renderable source ids
@@ -90,7 +112,8 @@ export function useMcap3dSelection({
   const [enabled, setEnabled] = useState<ReadonlySet<string>>(
     () =>
       new Set(
-        selectionRestore.enabledSourceIds ?? renderableSources.map((s) => s.id),
+        selectionRestore.enabledSourceIds ??
+          defaultRenderableSources.map((s) => s.id),
       ),
   );
   const knownRenderableSourceIdsRef = useRef<ReadonlySet<string>>(
@@ -111,13 +134,14 @@ export function useMcap3dSelection({
   // disappear after the tile mounts.
   useEffect(() => {
     const currentIds = new Set(renderableSources.map((s) => s.id));
+    const defaultIds = new Set(defaultRenderableSources.map((s) => s.id));
     const previousIds = knownRenderableSourceIdsRef.current;
     setEnabled((current) => {
       const next = new Set(current);
       let changed = false;
 
       for (const id of currentIds) {
-        if (!previousIds.has(id) && !next.has(id)) {
+        if (!previousIds.has(id) && !next.has(id) && defaultIds.has(id)) {
           next.add(id);
           changed = true;
         }
@@ -132,7 +156,7 @@ export function useMcap3dSelection({
       return changed ? next : current;
     });
     knownRenderableSourceIdsRef.current = currentIds;
-  }, [renderableSources]);
+  }, [defaultRenderableSources, renderableSources]);
 
   // Prefer LiDAR-like point clouds first for initial fetch/paint. SceneUpdate
   // sources remain schema-driven labels and do not affect the provisional cloud
@@ -185,17 +209,14 @@ export function useMcap3dSelection({
   // inverted) so the frustum can show what the camera currently sees.
   const imageTopicByCalibrationTopic = useMemo(() => {
     const pairs = new Map<string, string>();
-    for (const source of sources) {
-      if (source.type !== MCAP_SOURCE_TYPE.IMAGE) {
-        continue;
-      }
+    for (const source of defaultImageSources) {
       const calibrationTopic = chooseCalibrationTopic(source.id, cameraTopics);
       if (calibrationTopic && !pairs.has(calibrationTopic)) {
         pairs.set(calibrationTopic, source.id);
       }
     }
     return pairs;
-  }, [cameraTopics, sources]);
+  }, [cameraTopics, defaultImageSources]);
   const frustumImageTopics = useMemo(
     () =>
       cameraTopics.map(

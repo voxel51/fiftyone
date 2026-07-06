@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { SceneSource } from "../../../scene-inventory";
 import {
+  orderImageSourcesForManualSelection,
+  rankDefaultImageSources,
   rankImageSources,
   resolvePlaybackLayout,
   type PlaybackDeviceCapabilities,
@@ -65,6 +67,37 @@ describe("rankImageSources", () => {
   });
 });
 
+describe("rankDefaultImageSources", () => {
+  it("suppresses raw image siblings when a preferred equivalent exists", () => {
+    const ranked = rankDefaultImageSources([
+      imageSource("/camera/front/image", 1_000),
+      imageSource("/camera/front/image_downsampled", 100),
+      imageSource("/camera/back/image", 900),
+    ]);
+
+    expect(ranked.map((s) => s.id)).toEqual([
+      "/camera/front/image_downsampled",
+      "/camera/back/image",
+    ]);
+  });
+});
+
+describe("orderImageSourcesForManualSelection", () => {
+  it("keeps raw image siblings visible after their preferred equivalent", () => {
+    const ordered = orderImageSourcesForManualSelection([
+      imageSource("/camera/front/image", 1_000),
+      imageSource("/camera/back/image", 900),
+      imageSource("/camera/front/image_downsampled", 100),
+    ]);
+
+    expect(ordered.map((s) => s.id)).toEqual([
+      "/camera/front/image_downsampled",
+      "/camera/front/image",
+      "/camera/back/image",
+    ]);
+  });
+});
+
 describe("resolvePlaybackLayout", () => {
   it("opens one tile per dense image source plus one 3d tile", () => {
     const { tiles, layout } = resolvePlaybackLayout({
@@ -94,6 +127,23 @@ describe("resolvePlaybackLayout", () => {
       second: "3d-1",
       splitPercentage: 62,
     });
+  });
+
+  it("opens default tiles on preferred image equivalents only", () => {
+    const { tiles } = resolvePlaybackLayout({
+      capabilities: STRONG_LOCAL,
+      readProfile: "local",
+      sources: [
+        imageSource("/camera/front/image", 1_000),
+        imageSource("/camera/front/image_downsampled", 100),
+        imageSource("/camera/back/image", 900),
+      ],
+    });
+
+    expect(tiles.map((tile) => tile.initialSourceId)).toEqual([
+      "/camera/front/image_downsampled",
+      "/camera/back/image",
+    ]);
   });
 
   it("caps image tiles by cpu budget on weak machines", () => {

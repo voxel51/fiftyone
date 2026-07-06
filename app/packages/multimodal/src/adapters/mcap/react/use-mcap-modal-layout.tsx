@@ -23,7 +23,7 @@ import { mcapPlotTileSeriesAtom } from "./mcap-plot-tile-state";
 import { MCAP_TILE_TYPE } from "./mcap-tile-types";
 import {
   collectPlaybackDeviceCapabilities,
-  rankImageSources,
+  rankDefaultImageSources,
   resolvePlaybackLayout,
   type PlaybackDeviceCapabilities,
   type PlaybackLayoutTile,
@@ -63,9 +63,9 @@ export interface UseMcapModalLayoutOptions {
  * Mount-time layout state for the MCAP modal: the user's persisted
  * sidebar visibility and tile arrangement when one restores cleanly
  * against the current scene, the resolver's defaults otherwise — a
- * budgeted grid of image tiles (densest sources first) beside one fused
- * 3D tile, sized to the machine, the source locality, and the viewport
- * (see `resolvePlaybackLayout`). Pair with
+ * budgeted grid of default-preferred image tiles beside one fused 3D tile,
+ * sized to the machine, the source locality, and the viewport (see
+ * `resolvePlaybackLayout`). Pair with
  * `<McapModalLayoutPersistence />` (inside the playback shell) to write
  * changes back.
  */
@@ -206,8 +206,8 @@ export function pruneMosaicLayout(
  *
  * Persistence stores the arrangement, not per-tile bindings, so
  * surviving image leaves rebind positionally (depth-first order of the
- * pruned tree) to the ranked sources of the current recording (densest
- * first) — restored multi-camera layouts open on distinct streams
+ * pruned tree) to the default-preferred sources of the current recording —
+ * restored multi-camera layouts open on distinct streams
  * instead of all defaulting to the same one.
  */
 function rebuildTilesFromLayout(
@@ -228,7 +228,7 @@ function rebuildTilesFromLayout(
   const tileIds = collectTileIds(pruned);
   if (tileIds.length === 0) return null;
 
-  const rankedImages = rankImageSources(sources);
+  const rankedImages = rankDefaultImageSources(sources);
   let imageLeafIndex = 0;
   const tiles: Record<string, TilingTile> = {};
   for (const id of tileIds) {

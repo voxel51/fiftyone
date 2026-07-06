@@ -36,7 +36,7 @@ import {
 } from "./mcap-tile-source-bindings";
 import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
 import McapSidebarGroup from "./McapSidebarGroup";
-import { rankImageSources } from "./playback-layout";
+import { rankDefaultImageSources } from "./playback-layout";
 import settingsStyles from "./McapTile.settings.module.css";
 import styles from "./McapTile.module.css";
 import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
@@ -65,8 +65,8 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const setTileTitle = useSetTileTitle();
   const jotaiStore = useStore();
   // Open on the resolver-assigned source; tiles added by hand (split
-  // buttons, add-tile menu) bind the densest stream no sibling tile is
-  // already showing — splitting repeatedly walks through the cameras.
+  // buttons, add-tile menu) bind the default-preferred stream no sibling
+  // tile is already showing — splitting repeatedly walks through cameras.
   // Read the bindings through the store, not useAtomValue: the default
   // matters only at bind time, and subscribing would re-render every
   // image tile whenever a sibling rebinds.
@@ -74,7 +74,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     () =>
       initialSourceId ??
       chooseNextImageTopic(
-        rankImageSources(images),
+        rankDefaultImageSources(images),
         jotaiStore.get(mcapImageTileBindingsAtom),
       ),
   );
@@ -85,7 +85,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     if (topic && images.some((source) => source.id === topic)) return;
 
     const nextTopic = chooseNextImageTopic(
-      rankImageSources(images),
+      rankDefaultImageSources(images),
       jotaiStore.get(mcapImageTileBindingsAtom),
     );
     if (nextTopic !== topic) setTopic(nextTopic);
