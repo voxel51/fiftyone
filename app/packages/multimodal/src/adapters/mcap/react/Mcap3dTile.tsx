@@ -57,7 +57,11 @@ import {
   useMcapSelectedObject,
 } from "./mcap-selected-object";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
-import { useMcapModalSettings } from "./mcap-modal-settings";
+import {
+  defaultMcapPointCloudColorForSource,
+  useMcapModalSettings,
+} from "./mcap-modal-settings";
+import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import type { McapTileProps } from "./mcap-tile-types";
 import styles from "./McapTile.module.css";
 import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
@@ -132,11 +136,17 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const {
     fidelityMode,
     pinholeCamera,
+    pointCloudColors,
+    pointCloudPointSize,
     referenceGrid,
     sceneBackground,
+    showPointCloudColorLegend,
     setPinholeCamera,
+    setPointCloudColor,
+    setPointCloudPointSize,
     setReferenceGrid,
     setSceneBackground,
+    setShowPointCloudColorLegend,
     temporalPolicy,
   } = useMcapModalSettings();
   const { sceneUpAxis, setSceneUpAxis } = useMcap3dViewSettings();
@@ -167,6 +177,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     useMcapTopicPlaybackFrames<EncodedImageVisualization>(frustumImageTopics);
   const frames =
     useMcapTopicPlaybackFrames<PointCloudVisualization>(pointCloudTopics);
+  const pointCloudColorCapabilities = usePointCloudColorCapabilities(
+    pointCloudTopics,
+    frames,
+  );
   const heldAnnotationFrames =
     useMcapTopicPlaybackFrames<SceneUpdateVisualization>(sceneAnnotationTopics);
   const annotationFrames = useInterpolatedSceneUpdateFrames({
@@ -268,6 +282,47 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     temporalPolicy.transformGapWarningMs,
     worldFrameId,
   ]);
+  const pointCloudSourceById = useMemo(
+    () =>
+      new Map(pointCloudSources.map((source) => [source.id, source] as const)),
+    [pointCloudSources],
+  );
+
+  // Attach each cloud's color settings outside build3dLayers so the pure
+  // layer builder stays color-agnostic; layer id = topic.
+  const coloredPointCloudLayers = useMemo(
+    () =>
+      pointCloudLayers.map((layer) => {
+        const source = pointCloudSourceById.get(layer.id) ?? {
+          id: layer.id,
+          label: layer.id,
+        };
+        const settings = {
+          ...defaultMcapPointCloudColorForSource(source, pointCloudSources),
+          ...pointCloudColors[layer.id],
+        };
+        return {
+          ...layer,
+          colorSettings: {
+            colorBy: settings.colorBy,
+            colormap: settings.colormap,
+            ...(settings.rangeMax !== null
+              ? { rangeMax: settings.rangeMax }
+              : {}),
+            ...(settings.rangeMin !== null
+              ? { rangeMin: settings.rangeMin }
+              : {}),
+            uniformColor: settings.uniformColor,
+          },
+        };
+      }),
+    [
+      pointCloudColors,
+      pointCloudLayers,
+      pointCloudSourceById,
+      pointCloudSources,
+    ],
+  );
   const sourceKey = useMcapDataStream()?.sourceKey ?? "";
   // Attach each camera's current image to its frustum layer. Done outside
   // build3dLayers so the pure layer builder stays image-agnostic; index
@@ -764,6 +819,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         mapLayerSources={mapLayerSources}
         mapLayerTopics={mapLayerTopics}
         pinholeCamera={pinholeCamera}
+        pointCloudColorCapabilities={pointCloudColorCapabilities}
+        pointCloudColors={pointCloudColors}
+        pointCloudPointSize={pointCloudPointSize}
         pointCloudSources={pointCloudSources}
         pointCloudTopics={pointCloudTopics}
         poseSources={poseSources}
@@ -773,10 +831,15 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         sceneAnnotationTopics={sceneAnnotationTopics}
         sceneBackground={sceneBackground}
         sceneUpAxis={sceneUpAxis}
+        showPointCloudColorLegend={showPointCloudColorLegend}
+        selectedPointCloudSources={selectedPointCloudSources}
         selectedPoseSources={selectedPoseSources}
         setPinholeCamera={setPinholeCamera}
+        setPointCloudColor={setPointCloudColor}
+        setPointCloudPointSize={setPointCloudPointSize}
         setReferenceGrid={setReferenceGrid}
         setSceneBackground={setSceneBackground}
+        setShowPointCloudColorLegend={setShowPointCloudColorLegend}
         setSceneUpAxis={setSceneUpAxis}
         setSourcesEnabled={setSourcesEnabled}
         setTrackingMode={setTrackingMode}
@@ -812,12 +875,14 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             frustumLayers={frustumLayers}
             hudLines={hudLines}
             gridLayers={gridLayers}
-            layers={pointCloudLayers}
+            layers={coloredPointCloudLayers}
             className={styles.panel}
             notices={panelNotices}
             onCameraPoseChange={handleCameraPoseChange}
             onRenderStats={handlePanelRenderStats}
+            pointSize={pointCloudPointSize}
             sceneUp={sceneUpAxis}
+            showColorLegend={showPointCloudColorLegend}
             worldGrid={worldGrid}
           />
           <McapTileStatusBadge topics={selectedTopics} />

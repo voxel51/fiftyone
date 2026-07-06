@@ -7,6 +7,12 @@ import React, {
   useState,
 } from "react";
 
+import {
+  DEFAULT_POINT_CLOUD_COLORMAP,
+  POINT_CLOUD_COLORMAPS,
+  normalizePointCloudColormap,
+  type PointCloudColormap,
+} from "../../../visualization/panels/point-cloud";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../../visualization/panels/style-tokens";
 
 export interface McapTemporalPolicySettings {
@@ -60,13 +66,29 @@ export interface McapSceneBackgroundSettings {
   readonly solidColor: string;
 }
 
+/**
+ * How one point-cloud topic is colored in the 3D tile. `colorBy` is either
+ * a reserved mode ("auto", "height", "rgb", "uniform") or a decoded scalar
+ * channel name; null range ends mean per-frame min/max normalization.
+ */
+export interface McapPointCloudColorSettings {
+  readonly colorBy: string;
+  readonly colormap: PointCloudColormap;
+  readonly rangeMax: number | null;
+  readonly rangeMin: number | null;
+  readonly uniformColor: string;
+}
+
 interface McapPersistedModalSettings {
   version: 2;
   fidelityMode: McapPlaybackFidelityMode;
   imageLabelTopics: Record<string, readonly string[]>;
   pinholeCamera: McapPinholeCameraSettings;
+  pointCloudColors: Record<string, McapPointCloudColorSettings>;
+  pointCloudPointSize: number;
   referenceGrid: McapReferenceGridSettings;
   sceneBackground: McapSceneBackgroundSettings;
+  showPointCloudColorLegend: boolean;
   temporalPolicy: McapTemporalPolicySettings;
 }
 
@@ -74,8 +96,11 @@ interface McapModalSettingsContextValue {
   readonly fidelityMode: McapPlaybackFidelityMode;
   readonly imageLabelTopics: Record<string, readonly string[]>;
   readonly pinholeCamera: McapPinholeCameraSettings;
+  readonly pointCloudColors: Record<string, McapPointCloudColorSettings>;
+  readonly pointCloudPointSize: number;
   readonly referenceGrid: McapReferenceGridSettings;
   readonly sceneBackground: McapSceneBackgroundSettings;
+  readonly showPointCloudColorLegend: boolean;
   readonly temporalPolicy: McapTemporalPolicySettings;
   readonly setFidelityMode: (mode: McapPlaybackFidelityMode) => void;
   readonly setImageLabelTopics: (
@@ -85,12 +110,18 @@ interface McapModalSettingsContextValue {
   readonly setPinholeCamera: (
     settings: Partial<McapPinholeCameraSettings>,
   ) => void;
+  readonly setPointCloudColor: (
+    topic: string,
+    settings: Partial<McapPointCloudColorSettings>,
+  ) => void;
+  readonly setPointCloudPointSize: (pointSize: number) => void;
   readonly setReferenceGrid: (
     settings: Partial<McapReferenceGridSettings>,
   ) => void;
   readonly setSceneBackground: (
     settings: Partial<McapSceneBackgroundSettings>,
   ) => void;
+  readonly setShowPointCloudColorLegend: (visible: boolean) => void;
   readonly resetTemporalPolicy: () => void;
   readonly setTemporalPolicy: (
     policy: Partial<McapTemporalPolicySettings>,
@@ -138,6 +169,68 @@ export const DEFAULT_MCAP_SCENE_BACKGROUND: McapSceneBackgroundSettings = {
   solidColor: VISUALIZATION_PANEL_BACKGROUND_COLOR,
 };
 
+export const DEFAULT_MCAP_POINT_CLOUD_COLOR: McapPointCloudColorSettings = {
+  colorBy: "auto",
+  colormap: DEFAULT_POINT_CLOUD_COLORMAP,
+  rangeMax: null,
+  rangeMin: null,
+  uniformColor: "#b8c2d1",
+};
+
+const POINT_CLOUD_COLORMAPS_WITHOUT_TURBO = POINT_CLOUD_COLORMAPS.filter(
+  (colormap) => colormap !== "turbo",
+);
+
+export function defaultMcapPointCloudColorForIndex(
+  index: number,
+): McapPointCloudColorSettings {
+  const safeIndex = Number.isFinite(index) ? Math.max(0, Math.floor(index)) : 0;
+  return {
+    ...DEFAULT_MCAP_POINT_CLOUD_COLOR,
+    colormap: POINT_CLOUD_COLORMAPS[safeIndex % POINT_CLOUD_COLORMAPS.length],
+  };
+}
+
+interface PointCloudSourceLike {
+  readonly id: string;
+  readonly label?: string;
+}
+
+export function defaultMcapPointCloudColorForSource(
+  source: PointCloudSourceLike,
+  sources: readonly PointCloudSourceLike[],
+): McapPointCloudColorSettings {
+  const sourceIndex = sources.findIndex(
+    (candidate) => candidate.id === source.id,
+  );
+  const safeIndex = sourceIndex >= 0 ? sourceIndex : 0;
+  const firstLidarIndex = sources.findIndex(isLidarSource);
+  if (safeIndex === firstLidarIndex) {
+    return {
+      ...DEFAULT_MCAP_POINT_CLOUD_COLOR,
+      colormap: "turbo",
+    };
+  }
+  if (firstLidarIndex < 0) {
+    return defaultMcapPointCloudColorForIndex(safeIndex);
+  }
+
+  const distributedIndex =
+    safeIndex > firstLidarIndex ? safeIndex - 1 : safeIndex;
+  const colormapIndex =
+    distributedIndex % POINT_CLOUD_COLORMAPS_WITHOUT_TURBO.length;
+  return {
+    ...DEFAULT_MCAP_POINT_CLOUD_COLOR,
+    colormap:
+      POINT_CLOUD_COLORMAPS_WITHOUT_TURBO[colormapIndex] ??
+      DEFAULT_POINT_CLOUD_COLORMAP,
+  };
+}
+
+function isLidarSource(source: PointCloudSourceLike): boolean {
+  return `${source.id} ${source.label ?? ""}`.toLowerCase().includes("lidar");
+}
+
 const SCENE_BACKGROUND_MODES: readonly McapSceneBackgroundMode[] = [
   "solid",
   "abyss",
@@ -145,14 +238,21 @@ const SCENE_BACKGROUND_MODES: readonly McapSceneBackgroundMode[] = [
 ];
 
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+export const DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE = 2;
+export const MIN_MCAP_POINT_CLOUD_POINT_SIZE = 1;
+export const MAX_MCAP_POINT_CLOUD_POINT_SIZE = 10;
+export const MCAP_POINT_CLOUD_POINT_SIZE_STEP = 0.25;
 
 const DEFAULT_SETTINGS: McapPersistedModalSettings = {
   version: VERSION,
   fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
   imageLabelTopics: {},
   pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
+  pointCloudColors: {},
+  pointCloudPointSize: DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
   referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
   sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
+  showPointCloudColorLegend: false,
   temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
 };
 
@@ -193,8 +293,16 @@ export function readMcapModalSettings(): McapPersistedModalSettings {
           : normalizeFidelityMode(candidate.fidelityMode),
       imageLabelTopics: normalizeImageLabelTopicMap(candidate.imageLabelTopics),
       pinholeCamera: normalizePinholeCamera(candidate.pinholeCamera),
+      pointCloudColors: normalizePointCloudColorMap(candidate.pointCloudColors),
+      pointCloudPointSize: normalizePointCloudPointSize(
+        candidate.pointCloudPointSize,
+      ),
       referenceGrid: normalizeReferenceGrid(candidate.referenceGrid),
       sceneBackground: normalizeSceneBackground(candidate.sceneBackground),
+      showPointCloudColorLegend:
+        typeof candidate.showPointCloudColorLegend === "boolean"
+          ? candidate.showPointCloudColorLegend
+          : false,
       temporalPolicy: normalizeTemporalPolicy(candidate.temporalPolicy),
     };
   } catch {
@@ -218,8 +326,15 @@ export function writeMcapModalSettings(
           settings.imageLabelTopics,
         ),
         pinholeCamera: normalizePinholeCamera(settings.pinholeCamera),
+        pointCloudColors: normalizePointCloudColorMap(
+          settings.pointCloudColors,
+        ),
+        pointCloudPointSize: normalizePointCloudPointSize(
+          settings.pointCloudPointSize,
+        ),
         referenceGrid: normalizeReferenceGrid(settings.referenceGrid),
         sceneBackground: normalizeSceneBackground(settings.sceneBackground),
+        showPointCloudColorLegend: settings.showPointCloudColorLegend === true,
         temporalPolicy: normalizeTemporalPolicy(settings.temporalPolicy),
       }),
     );
@@ -284,6 +399,32 @@ export const McapModalSettingsProvider: React.FC<{
       })),
     [update],
   );
+  const setPointCloudColor = useCallback(
+    (topic: string, settings: Partial<McapPointCloudColorSettings>) => {
+      const normalizedTopic = topic.trim();
+      if (!normalizedTopic) return;
+      update((current) => ({
+        ...current,
+        pointCloudColors: {
+          ...current.pointCloudColors,
+          [normalizedTopic]: normalizePointCloudColor({
+            ...(current.pointCloudColors[normalizedTopic] ??
+              DEFAULT_MCAP_POINT_CLOUD_COLOR),
+            ...settings,
+          }),
+        },
+      }));
+    },
+    [update],
+  );
+  const setPointCloudPointSize = useCallback(
+    (pointCloudPointSize: number) =>
+      update((current) => ({
+        ...current,
+        pointCloudPointSize: normalizePointCloudPointSize(pointCloudPointSize),
+      })),
+    [update],
+  );
   const setSceneBackground = useCallback(
     (settings: Partial<McapSceneBackgroundSettings>) =>
       update((current) => ({
@@ -292,6 +433,14 @@ export const McapModalSettingsProvider: React.FC<{
           ...current.sceneBackground,
           ...settings,
         }),
+      })),
+    [update],
+  );
+  const setShowPointCloudColorLegend = useCallback(
+    (showPointCloudColorLegend: boolean) =>
+      update((current) => ({
+        ...current,
+        showPointCloudColorLegend,
       })),
     [update],
   );
@@ -335,15 +484,21 @@ export const McapModalSettingsProvider: React.FC<{
       fidelityMode: settings.fidelityMode,
       imageLabelTopics: settings.imageLabelTopics,
       pinholeCamera: settings.pinholeCamera,
+      pointCloudColors: settings.pointCloudColors,
+      pointCloudPointSize: settings.pointCloudPointSize,
       referenceGrid: settings.referenceGrid,
       sceneBackground: settings.sceneBackground,
+      showPointCloudColorLegend: settings.showPointCloudColorLegend,
       temporalPolicy: settings.temporalPolicy,
       resetTemporalPolicy,
       setFidelityMode,
       setImageLabelTopics,
       setPinholeCamera,
+      setPointCloudColor,
+      setPointCloudPointSize,
       setReferenceGrid,
       setSceneBackground,
+      setShowPointCloudColorLegend,
       setTemporalPolicy,
     }),
     [
@@ -352,8 +507,11 @@ export const McapModalSettingsProvider: React.FC<{
       setFidelityMode,
       setImageLabelTopics,
       setPinholeCamera,
+      setPointCloudColor,
+      setPointCloudPointSize,
       setReferenceGrid,
       setSceneBackground,
+      setShowPointCloudColorLegend,
       setTemporalPolicy,
     ],
   );
@@ -412,6 +570,64 @@ function normalizeTopicList(value: unknown): readonly string[] {
         .filter(Boolean),
     ),
   );
+}
+
+function normalizePointCloudColorMap(
+  value: unknown,
+): Record<string, McapPointCloudColorSettings> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return {};
+  }
+
+  const result: Record<string, McapPointCloudColorSettings> = {};
+  for (const [topic, settings] of Object.entries(value)) {
+    const normalizedTopic = topic.trim();
+    if (!normalizedTopic) continue;
+    result[normalizedTopic] = normalizePointCloudColor(settings);
+  }
+  return result;
+}
+
+function normalizePointCloudColor(value: unknown): McapPointCloudColorSettings {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return DEFAULT_MCAP_POINT_CLOUD_COLOR;
+  }
+
+  const candidate = value as Partial<McapPointCloudColorSettings>;
+  return {
+    colorBy:
+      typeof candidate.colorBy === "string" && candidate.colorBy.trim()
+        ? candidate.colorBy.trim()
+        : DEFAULT_MCAP_POINT_CLOUD_COLOR.colorBy,
+    colormap: normalizePointCloudColormap(candidate.colormap),
+    // Range ends are kept independently: an inverted pair simply does not
+    // apply as a fixed range until the user finishes editing it.
+    rangeMax: finiteOrNull(candidate.rangeMax),
+    rangeMin: finiteOrNull(candidate.rangeMin),
+    uniformColor: normalizeHexColor(
+      candidate.uniformColor,
+      DEFAULT_MCAP_POINT_CLOUD_COLOR.uniformColor,
+    ),
+  };
+}
+
+function normalizePointCloudPointSize(value: unknown): number {
+  return clampNumber(
+    value,
+    MIN_MCAP_POINT_CLOUD_POINT_SIZE,
+    MAX_MCAP_POINT_CLOUD_POINT_SIZE,
+    DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
+  );
+}
+
+function finiteOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function normalizeHexColor(value: unknown, fallback: string): string {
+  return typeof value === "string" && HEX_COLOR_PATTERN.test(value)
+    ? value.toLowerCase()
+    : fallback;
 }
 
 function normalizeReferenceGrid(value: unknown): McapReferenceGridSettings {

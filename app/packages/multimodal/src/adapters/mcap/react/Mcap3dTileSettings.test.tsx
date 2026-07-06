@@ -104,7 +104,6 @@ describe("Mcap3dTileSettings", () => {
       screen.getByRole("checkbox", { name: "CAM_FRONT/camera_info" }),
     ).toBeTruthy();
     expect(screen.queryByText(/\(233\)/)).toBeNull();
-    expect(screen.queryByText(/selected/)).toBeNull();
   });
 
   it("keeps individual camera checkboxes wired to per-source toggles", () => {
@@ -135,6 +134,18 @@ describe("Mcap3dTileSettings", () => {
     expect(screen.queryByText("3D Labels")).toBeNull();
     expect(screen.queryByText("Pinhole")).toBeNull();
     expect(screen.getByText("Point Clouds")).toBeTruthy();
+  });
+
+  it("hides point cloud color settings when no point cloud sources exist", () => {
+    renderSettings({
+      enabled: new Set([CAM_FRONT.id, CAM_BACK.id]),
+      pointCloudSources: [],
+      pointCloudTopics: [],
+      selectedPointCloudSources: [],
+    });
+
+    expect(screen.queryByText("Point Clouds")).toBeNull();
+    expect(screen.queryByText("Point Clouds (Style)")).toBeNull();
   });
 
   it("collapses a group via its header and shows the selection summary", () => {
@@ -225,6 +236,372 @@ describe("Mcap3dTileSettings", () => {
     expect(props.setSceneUpAxis).toHaveBeenCalledWith("y");
   });
 
+  it("wires the point cloud color controls to the settings updater", () => {
+    const props = renderSettings();
+    expandColorSource(LIDAR.label);
+
+    const colorSelect = getVoodooCombobox(/^Color\b/);
+    openVoodooSelect(colorSelect);
+    // Observed channels slot between the reserved modes; no RGB without
+    // explicit cloud colors.
+    for (const option of ["Auto", "Height", "intensity", "ring", "Uniform"]) {
+      expect(screen.getByRole("option", { name: option })).toBeTruthy();
+    }
+    expect(screen.queryByRole("option", { name: "RGB" })).toBeNull();
+
+    selectVoodooOption(colorSelect, "ring");
+    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+      colorBy: "ring",
+      colormap: "turbo",
+      rangeMax: null,
+      rangeMin: null,
+      uniformColor: "#b8c2d1",
+    });
+
+    const colormapSelect = getVoodooCombobox(/^Colormap\b/);
+    selectVoodooOption(colormapSelect, "Turbo");
+    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+      colorBy: "auto",
+      colormap: "turbo",
+      rangeMax: null,
+      rangeMin: null,
+      uniformColor: "#b8c2d1",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+      colorBy: "auto",
+      colormap: "turbo",
+      rangeMax: null,
+      rangeMin: null,
+      uniformColor: "#b8c2d1",
+    });
+
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Range min" }), {
+      target: { value: "2" },
+    });
+    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+      colorBy: "auto",
+      colormap: "turbo",
+      rangeMax: null,
+      rangeMin: 2,
+      uniformColor: "#b8c2d1",
+    });
+
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Range max" }), {
+      target: { value: "9" },
+    });
+    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+      colorBy: "auto",
+      colormap: "turbo",
+      rangeMax: 9,
+      rangeMin: null,
+      uniformColor: "#b8c2d1",
+    });
+  });
+
+  it("wires the global point size control to the settings updater", () => {
+    const props = renderSettings();
+    const input = screen.getByRole("spinbutton", { name: "Point size" });
+
+    expect(input.getAttribute("max")).toBe("10");
+    expect(input.getAttribute("min")).toBe("1");
+    expect(input.getAttribute("step")).toBe("0.25");
+
+    fireEvent.change(input, {
+      target: { value: "4.5" },
+    });
+
+    expect(props.setPointCloudPointSize).toHaveBeenCalledWith(4.5);
+  });
+
+  it("keeps per-source default colormaps distinct", () => {
+    const radar = source("RADAR_FRONT", "RADAR_FRONT", LIDAR.type, 50);
+    renderSettings({
+      pointCloudSources: [LIDAR, radar],
+      pointCloudTopics: [LIDAR.id, radar.id],
+      selectedPointCloudSources: [LIDAR, radar],
+    });
+
+    expect(screen.getByText("Turbo")).toBeTruthy();
+    expect(screen.getByText("Cool-warm")).toBeTruthy();
+  });
+
+  it("resets a source row to that source's default colormap", () => {
+    const radar = source("RADAR_FRONT", "RADAR_FRONT", LIDAR.type, 50);
+    const props = renderSettings({
+      pointCloudColors: {
+        [radar.id]: {
+          colorBy: "height",
+          colormap: "turbo",
+          rangeMax: 7,
+          rangeMin: 1,
+          uniformColor: "#336699",
+        },
+      },
+      pointCloudSources: [LIDAR, radar],
+      pointCloudTopics: [LIDAR.id, radar.id],
+      selectedPointCloudSources: [LIDAR, radar],
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: `Reset color for ${radar.label}` }),
+    );
+
+    expect(props.setPointCloudColor).toHaveBeenCalledWith(radar.id, {
+      colorBy: "auto",
+      colormap: "coolwarm",
+      rangeMax: null,
+      rangeMin: null,
+      uniformColor: "#b8c2d1",
+    });
+  });
+
+  it("resets a source editor colormap to that source's default colormap", () => {
+    const radar = source("RADAR_FRONT", "RADAR_FRONT", LIDAR.type, 50);
+    const props = renderSettings({
+      pointCloudColors: {
+        [radar.id]: {
+          colorBy: "height",
+          colormap: "turbo",
+          rangeMax: null,
+          rangeMin: null,
+          uniformColor: "#b8c2d1",
+        },
+      },
+      pointCloudSources: [LIDAR, radar],
+      pointCloudTopics: [LIDAR.id, radar.id],
+      selectedPointCloudSources: [LIDAR, radar],
+    });
+
+    expandColorSource(radar.label);
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+
+    expect(props.setPointCloudColor).toHaveBeenCalledWith(radar.id, {
+      colorBy: "height",
+      colormap: "coolwarm",
+      rangeMax: null,
+      rangeMin: null,
+      uniformColor: "#b8c2d1",
+    });
+  });
+
+  it("preserves sibling color settings when editing one source field", () => {
+    const props = renderSettings({
+      pointCloudColors: {
+        [LIDAR.id]: {
+          colorBy: "intensity",
+          colormap: "turbo",
+          rangeMax: 9,
+          rangeMin: 2,
+          uniformColor: "#b8c2d1",
+        },
+      },
+    });
+
+    expandColorSource(LIDAR.label);
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Range min" }), {
+      target: { value: "3" },
+    });
+
+    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+      colorBy: "intensity",
+      colormap: "turbo",
+      rangeMax: 9,
+      rangeMin: 3,
+      uniformColor: "#b8c2d1",
+    });
+  });
+
+  it("wires the point cloud color legend switch to the settings updater", () => {
+    const props = renderSettings();
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Show point cloud color legend" }),
+    );
+
+    expect(props.setShowPointCloudColorLegend).toHaveBeenCalledWith(true);
+  });
+
+  it("saves custom colormap edits from the editor modal", () => {
+    const props = renderSettings();
+
+    expandColorSource(LIDAR.label);
+    fireEvent.click(screen.getByRole("button", { name: "Edit colormap" }));
+    expect(screen.getByLabelText("Number of stops")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Color stop 2 color"), {
+      target: { value: "#123456" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+      colorBy: "auto",
+      colormap: expect.objectContaining({
+        list: expect.arrayContaining([
+          expect.objectContaining({ color: "#123456" }),
+        ]),
+        name: "Turbo custom",
+      }),
+      rangeMax: null,
+      rangeMin: null,
+      uniformColor: "#b8c2d1",
+    });
+  });
+
+  it("clears a fixed range end back to auto", () => {
+    const props = renderSettings({
+      pointCloudColors: {
+        [LIDAR.id]: {
+          colorBy: "intensity",
+          colormap: "coolwarm",
+          rangeMax: 9,
+          rangeMin: 2,
+          uniformColor: "#b8c2d1",
+        },
+      },
+    });
+
+    expandColorSource(LIDAR.label);
+
+    const rangeMinInputs = screen.getAllByRole("spinbutton", {
+      name: "Range min",
+    });
+    const sourceRangeMin = rangeMinInputs[rangeMinInputs.length - 1];
+    if (!sourceRangeMin) {
+      throw new Error("Expected a source range-min input");
+    }
+    fireEvent.change(sourceRangeMin, {
+      target: { value: "" },
+    });
+    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+      colorBy: "intensity",
+      colormap: "coolwarm",
+      rangeMax: 9,
+      rangeMin: null,
+      uniformColor: "#b8c2d1",
+    });
+  });
+
+  it("offers RGB coloring only for clouds observed with colors", () => {
+    renderSettings({
+      pointCloudColorCapabilities: new Map([
+        [LIDAR.id, { hasRgb: true, scalarFields: [] }],
+      ]),
+    });
+
+    expandColorSource(LIDAR.label);
+    openVoodooSelect(getVoodooCombobox(/^Color\b/));
+
+    expect(screen.getByRole("option", { name: "RGB" })).toBeTruthy();
+  });
+
+  it("shows a swatch and hides ramp controls for uniform coloring", () => {
+    const props = renderSettings({
+      pointCloudColors: {
+        [LIDAR.id]: {
+          colorBy: "uniform",
+          colormap: "coolwarm",
+          rangeMax: null,
+          rangeMin: null,
+          uniformColor: "#336699",
+        },
+      },
+    });
+
+    expandColorSource(LIDAR.label);
+
+    expect(screen.queryByRole("combobox", { name: /^Colormap\b/ })).toBeNull();
+    expect(screen.queryByRole("spinbutton", { name: "Range min" })).toBeNull();
+    fireEvent.change(screen.getByLabelText(`Uniform color (${LIDAR.label})`), {
+      target: { value: "#ff8800" },
+    });
+    expect(props.setPointCloudColor).toHaveBeenCalledWith(LIDAR.id, {
+      colorBy: "uniform",
+      colormap: "coolwarm",
+      rangeMax: null,
+      rangeMin: null,
+      uniformColor: "#ff8800",
+    });
+  });
+
+  it("hides ramp controls for rgb coloring", () => {
+    renderSettings({
+      pointCloudColorCapabilities: new Map([
+        [LIDAR.id, { hasRgb: true, scalarFields: [] }],
+      ]),
+      pointCloudColors: {
+        [LIDAR.id]: {
+          colorBy: "rgb",
+          colormap: "coolwarm",
+          rangeMax: null,
+          rangeMin: null,
+          uniformColor: "#b8c2d1",
+        },
+      },
+    });
+
+    expandColorSource(LIDAR.label);
+
+    expect(screen.queryByRole("combobox", { name: /^Colormap\b/ })).toBeNull();
+    expect(screen.queryByRole("spinbutton", { name: "Range min" })).toBeNull();
+    expect(
+      screen.queryByLabelText(`Uniform color (${LIDAR.label})`),
+    ).toBeNull();
+  });
+
+  it("keeps an unavailable persisted channel selectable and flags inverted ranges", () => {
+    renderSettings({
+      pointCloudColors: {
+        [LIDAR.id]: {
+          colorBy: "vx_comp",
+          colormap: "viridis",
+          rangeMax: 1,
+          rangeMin: 5,
+          uniformColor: "#b8c2d1",
+        },
+      },
+    });
+
+    expandColorSource(LIDAR.label);
+
+    openVoodooSelect(getVoodooCombobox(/^Color \(LIDAR_TOP\)/));
+    expect(screen.getByRole("option", { name: "vx_comp" })).toBeTruthy();
+    expect(
+      screen.getByText("The fixed range is ignored until min is below max."),
+    ).toBeTruthy();
+  });
+
+  it("labels color controls per source when several clouds are selected", () => {
+    const radar = source("RADAR_FRONT", "RADAR_FRONT", LIDAR.type, 50);
+    renderSettings({
+      pointCloudSources: [LIDAR, radar],
+      pointCloudTopics: [LIDAR.id, radar.id],
+      selectedPointCloudSources: [LIDAR, radar],
+    });
+
+    expect(screen.getByRole("button", { name: "Edit color for LIDAR_TOP" }));
+    expect(
+      screen.getByRole("button", { name: "Edit color for RADAR_FRONT" }),
+    ).toBeTruthy();
+
+    expandColorSource(LIDAR.label);
+    expect(
+      screen.getByRole("combobox", { name: /^Color \(LIDAR_TOP\)/ }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("combobox", { name: /^Color \(RADAR_FRONT\)/ }),
+    ).toBeNull();
+
+    expandColorSource(radar.label);
+    expect(
+      screen.getByRole("combobox", { name: /^Color \(RADAR_FRONT\)/ }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("combobox", { name: /^Color \(LIDAR_TOP\)/ }),
+    ).toBeNull();
+  });
+
   it("collapses appearance controls by default", () => {
     renderSettings();
 
@@ -275,6 +652,28 @@ function expandPinhole() {
   fireEvent.click(screen.getByRole("button", { name: /Pinhole/ }));
 }
 
+function expandColorSource(label: string) {
+  fireEvent.click(
+    screen.getByRole("button", { name: `Edit color for ${label}` }),
+  );
+}
+
+function getVoodooCombobox(name: RegExp): HTMLElement {
+  return screen.getByRole("combobox", { name });
+}
+
+function openVoodooSelect(combobox: HTMLElement) {
+  fireEvent.focus(combobox);
+  fireEvent.keyDown(combobox, { key: "ArrowDown" });
+}
+
+function selectVoodooOption(combobox: HTMLElement, query: string) {
+  fireEvent.focus(combobox);
+  fireEvent.change(combobox, { target: { value: query } });
+  fireEvent.keyDown(combobox, { key: "ArrowDown" });
+  fireEvent.keyDown(combobox, { key: "Enter" });
+}
+
 function renderSettings(
   overrides: Partial<Mcap3dTileSettingsProps> = {},
 ): Mcap3dTileSettingsProps {
@@ -295,6 +694,11 @@ function settingsProps(
     mapLayerSources: [],
     mapLayerTopics: [],
     pinholeCamera: { imagePlaneDepthM: 2.75, opacityPercent: 85 },
+    pointCloudColorCapabilities: new Map([
+      [LIDAR.id, { hasRgb: false, scalarFields: ["intensity", "ring"] }],
+    ]),
+    pointCloudColors: {},
+    pointCloudPointSize: 2,
     pointCloudSources: [LIDAR],
     pointCloudTopics: [LIDAR.id],
     poseSources: [],
@@ -302,12 +706,17 @@ function settingsProps(
     referenceGrid: { enabled: true, opacityPercent: 5, spacingM: 1 },
     sceneBackground: { mode: "solid" as const, solidColor: "#050b12" },
     sceneUpAxis: "z",
+    showPointCloudColorLegend: false,
     sceneAnnotationSources: [],
     sceneAnnotationTopics: [],
+    selectedPointCloudSources: [LIDAR],
     selectedPoseSources: [],
     setPinholeCamera: vi.fn(),
+    setPointCloudColor: vi.fn(),
+    setPointCloudPointSize: vi.fn(),
     setReferenceGrid: vi.fn(),
     setSceneBackground: vi.fn(),
+    setShowPointCloudColorLegend: vi.fn(),
     setSceneUpAxis: vi.fn(),
     setSourcesEnabled: vi.fn(),
     setTrackingMode: vi.fn(),

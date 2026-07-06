@@ -1,24 +1,61 @@
+import { Dialog } from "@fiftyone/components";
 import { TileSettingsContent } from "@fiftyone/tiling";
 import {
+  Button,
   Checkbox,
+  FormField,
+  FormFieldGroup,
+  Input,
+  InputType,
+  Orientation,
+  Select,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
   Toggle,
+  Variant,
+  ZIndex,
 } from "@voxel51/voodo";
-import React from "react";
+import type { Descriptor } from "@voxel51/voodo";
+import React, { useEffect, useMemo, useState } from "react";
 import type { SceneSource } from "../../../scene-inventory";
 import {
   isFollowTrackingMode,
   type Mcap3dTrackingMode,
 } from "./mcap-3d-camera";
-import type {
-  McapPinholeCameraSettings,
-  McapReferenceGridSettings,
-  McapSceneBackgroundMode,
-  McapSceneBackgroundSettings,
+import {
+  colormapCssGradient,
+  POINT_CLOUD_COLORMAP_LABELS,
+  POINT_CLOUD_COLORMAPS,
+  DEFAULT_POINT_CLOUD_COLORMAP,
+  getGradientFromSchemeName,
+  getPointCloudColormapStops,
+  MAX_POINT_CLOUD_COLORMAP_STOPS,
+  MIN_POINT_CLOUD_COLORMAP_STOPS,
+  normalizeColorStops,
+  normalizePointCloudColormap,
+  pointCloudColormapKey,
+  pointCloudColormapLabel,
+  type PointCloudColorStop,
+  type PointCloudColormap,
+  type PointCloudColormapName,
+} from "../../../visualization/panels/point-cloud";
+import {
+  DEFAULT_MCAP_POINT_CLOUD_COLOR,
+  MAX_MCAP_POINT_CLOUD_POINT_SIZE,
+  MCAP_POINT_CLOUD_POINT_SIZE_STEP,
+  MIN_MCAP_POINT_CLOUD_POINT_SIZE,
+  defaultMcapPointCloudColorForSource,
+  type McapPinholeCameraSettings,
+  type McapPointCloudColorSettings,
+  type McapReferenceGridSettings,
+  type McapSceneBackgroundMode,
+  type McapSceneBackgroundSettings,
 } from "./mcap-modal-settings";
+import type { PointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import {
   MCAP_3D_SCENE_UP_AXES,
   type Mcap3dSceneUpAxis,
@@ -41,6 +78,12 @@ export interface Mcap3dTileSettingsProps {
   readonly mapLayerSources: readonly SceneSource[];
   readonly mapLayerTopics: readonly string[];
   readonly pinholeCamera: McapPinholeCameraSettings;
+  readonly pointCloudColorCapabilities: ReadonlyMap<
+    string,
+    PointCloudColorCapabilities
+  >;
+  readonly pointCloudColors: Record<string, McapPointCloudColorSettings>;
+  readonly pointCloudPointSize: number;
   readonly pointCloudSources: readonly SceneSource[];
   readonly pointCloudTopics: readonly string[];
   readonly poseSources: readonly SceneSource[];
@@ -50,16 +93,24 @@ export interface Mcap3dTileSettingsProps {
   readonly sceneAnnotationTopics: readonly string[];
   readonly sceneBackground: McapSceneBackgroundSettings;
   readonly sceneUpAxis: Mcap3dSceneUpAxis;
+  readonly showPointCloudColorLegend: boolean;
+  readonly selectedPointCloudSources: readonly SceneSource[];
   readonly selectedPoseSources: readonly SceneSource[];
   readonly setPinholeCamera: (
     settings: Partial<McapPinholeCameraSettings>,
   ) => void;
+  readonly setPointCloudColor: (
+    topic: string,
+    settings: Partial<McapPointCloudColorSettings>,
+  ) => void;
+  readonly setPointCloudPointSize: (pointSize: number) => void;
   readonly setReferenceGrid: (
     settings: Partial<McapReferenceGridSettings>,
   ) => void;
   readonly setSceneBackground: (
     settings: Partial<McapSceneBackgroundSettings>,
   ) => void;
+  readonly setShowPointCloudColorLegend: (visible: boolean) => void;
   readonly setSceneUpAxis: (axis: Mcap3dSceneUpAxis) => void;
   readonly setSourcesEnabled: (
     ids: readonly string[],
@@ -95,6 +146,9 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   mapLayerSources,
   mapLayerTopics,
   pinholeCamera,
+  pointCloudColorCapabilities,
+  pointCloudColors,
+  pointCloudPointSize,
   pointCloudSources,
   pointCloudTopics,
   poseSources,
@@ -104,10 +158,15 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   sceneAnnotationTopics,
   sceneBackground,
   sceneUpAxis,
+  showPointCloudColorLegend,
+  selectedPointCloudSources,
   selectedPoseSources,
   setPinholeCamera,
+  setPointCloudColor,
+  setPointCloudPointSize,
   setReferenceGrid,
   setSceneBackground,
+  setShowPointCloudColorLegend,
   setSceneUpAxis,
   setSourcesEnabled,
   setTrackingMode,
@@ -132,6 +191,20 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
           toggleAriaLabel="Toggle point clouds"
           toggleSource={toggleSource}
         />
+
+        {pointCloudSources.length > 0 ? (
+          <PointCloudStyleSection
+            pointCloudColorCapabilities={pointCloudColorCapabilities}
+            pointCloudColors={pointCloudColors}
+            pointCloudPointSize={pointCloudPointSize}
+            pointCloudSources={pointCloudSources}
+            selectedPointCloudSources={selectedPointCloudSources}
+            setPointCloudColor={setPointCloudColor}
+            setPointCloudPointSize={setPointCloudPointSize}
+            setShowPointCloudColorLegend={setShowPointCloudColorLegend}
+            showPointCloudColorLegend={showPointCloudColorLegend}
+          />
+        ) : null}
 
         <SourceGroup
           enabled={enabled}
@@ -391,6 +464,846 @@ function SourceGroup({
       </div>
       {children}
     </McapSidebarGroup>
+  );
+}
+
+function PointCloudStyleSection({
+  pointCloudColorCapabilities,
+  pointCloudColors,
+  pointCloudPointSize,
+  pointCloudSources,
+  selectedPointCloudSources,
+  setPointCloudColor,
+  setPointCloudPointSize,
+  setShowPointCloudColorLegend,
+  showPointCloudColorLegend,
+}: {
+  readonly pointCloudColorCapabilities: ReadonlyMap<
+    string,
+    PointCloudColorCapabilities
+  >;
+  readonly pointCloudColors: Record<string, McapPointCloudColorSettings>;
+  readonly pointCloudPointSize: number;
+  readonly pointCloudSources: readonly SceneSource[];
+  readonly selectedPointCloudSources: readonly SceneSource[];
+  readonly setPointCloudColor: (
+    topic: string,
+    settings: Partial<McapPointCloudColorSettings>,
+  ) => void;
+  readonly setPointCloudPointSize: (pointSize: number) => void;
+  readonly setShowPointCloudColorLegend: (visible: boolean) => void;
+  readonly showPointCloudColorLegend: boolean;
+}) {
+  const [expandedSourceId, setExpandedSourceId] = useState<string | null>(null);
+  const summary = `${pointCloudPointSize}px · ${
+    showPointCloudColorLegend ? "legend on" : "legend off"
+  } · ${selectedPointCloudSources.length} active`;
+
+  useEffect(() => {
+    if (
+      expandedSourceId &&
+      !selectedPointCloudSources.some(
+        (source) => source.id === expandedSourceId,
+      )
+    ) {
+      setExpandedSourceId(null);
+    }
+  }, [expandedSourceId, selectedPointCloudSources]);
+
+  return (
+    <McapSidebarGroup summary={summary} title="Point Clouds (Style)">
+      <SettingsNumberInput
+        label="Point size"
+        max={MAX_MCAP_POINT_CLOUD_POINT_SIZE}
+        min={MIN_MCAP_POINT_CLOUD_POINT_SIZE}
+        onChange={setPointCloudPointSize}
+        step={MCAP_POINT_CLOUD_POINT_SIZE_STEP}
+        tooltip="Global point sprite size in screen pixels for all point clouds in this 3D view."
+        value={pointCloudPointSize}
+      />
+      <div className={settingsStyles.field}>
+        <div className={settingsStyles.sectionHeader}>
+          <SettingsLabel
+            label="Show color legend"
+            tooltip="Shows the active scalar color ramps in the top-left of the 3D view."
+          />
+          <Toggle
+            aria-label="Show point cloud color legend"
+            checked={showPointCloudColorLegend}
+            onChange={setShowPointCloudColorLegend}
+            size={Size.Sm}
+            {...settingsBooleanNoSpaceToggleProps}
+          />
+        </div>
+      </div>
+      {selectedPointCloudSources.length > 0 ? (
+        <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+          <div className={settingsStyles.colorSourceList}>
+            {selectedPointCloudSources.map((source) => {
+              const defaultSettings = defaultMcapPointCloudColorForSource(
+                source,
+                pointCloudSources,
+              );
+              const settings = pointCloudColors[source.id] ?? defaultSettings;
+              const expanded = expandedSourceId === source.id;
+              const customized = !isDefaultPointCloudColorSettings(
+                settings,
+                defaultSettings,
+              );
+              return (
+                <div className={settingsStyles.colorSourceItem} key={source.id}>
+                  <div className={settingsStyles.colorSourceRow}>
+                    <button
+                      aria-expanded={expanded}
+                      aria-label={`Edit color for ${source.label}`}
+                      className={settingsStyles.colorSourceSummary}
+                      onClick={() =>
+                        setExpandedSourceId(expanded ? null : source.id)
+                      }
+                      type="button"
+                    >
+                      <span className={settingsStyles.colorSourceName}>
+                        {source.label}
+                      </span>
+                      <PointCloudColorSummary settings={settings} />
+                      <span className={settingsStyles.colorChip}>
+                        {customized ? "Override" : "Default"}
+                      </span>
+                    </button>
+                    <Button
+                      aria-label={`Reset color for ${source.label}`}
+                      disabled={!customized}
+                      onClick={() =>
+                        setPointCloudColor(source.id, defaultSettings)
+                      }
+                      size={Size.Xs}
+                      variant={Variant.Secondary}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  {expanded ? (
+                    <div className={settingsStyles.colorSourceEditor}>
+                      <PointCloudColorControls
+                        capabilities={pointCloudColorCapabilities.get(
+                          source.id,
+                        )}
+                        defaultColormap={defaultSettings.colormap}
+                        onChange={(patch) =>
+                          setPointCloudColor(source.id, {
+                            ...defaultSettings,
+                            ...settings,
+                            ...patch,
+                          })
+                        }
+                        settings={settings}
+                        sourceLabel={source.label}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </Stack>
+      ) : (
+        <span className={settingsStyles.emptyText}>
+          Select a point cloud to configure its colors.
+        </span>
+      )}
+    </McapSidebarGroup>
+  );
+}
+
+// Color-by modes with fixed meanings; every other select value is a
+// decoded scalar channel name.
+const RESERVED_COLOR_BY_MODES: ReadonlySet<string> = new Set([
+  "auto",
+  "height",
+  "rgb",
+  "uniform",
+]);
+
+const CUSTOM_COLORMAP_SELECT_VALUE = "__custom__";
+
+type SelectLabelDescriptor = Descriptor<{
+  label: string;
+  content?: React.ReactNode;
+}>;
+
+const COLORMAP_SELECT_OPTIONS: SelectLabelDescriptor[] = [
+  ...POINT_CLOUD_COLORMAPS.map((colormap) => ({
+    data: { label: POINT_CLOUD_COLORMAP_LABELS[colormap] },
+    id: colormap,
+  })),
+  {
+    data: { label: "Custom..." },
+    id: CUSTOM_COLORMAP_SELECT_VALUE,
+  },
+];
+
+const PRESET_COLORMAP_OPTIONS: SelectLabelDescriptor[] =
+  POINT_CLOUD_COLORMAPS.map((colormap) => ({
+    data: { label: POINT_CLOUD_COLORMAP_LABELS[colormap] },
+    id: colormap,
+  }));
+
+function PointCloudColorSummary({
+  settings,
+}: {
+  readonly settings: McapPointCloudColorSettings;
+}) {
+  const rampActive =
+    settings.colorBy !== "rgb" && settings.colorBy !== "uniform";
+  const rangeLabel = pointCloudRangeLabel(settings);
+
+  return (
+    <span className={settingsStyles.colorSummaryChips}>
+      <span className={settingsStyles.colorChip}>
+        {pointCloudColorByLabel(settings.colorBy)}
+      </span>
+      {settings.colorBy === "uniform" ? (
+        <span
+          aria-label="Uniform color preview"
+          className={settingsStyles.colorSourcePreview}
+          style={{ background: settings.uniformColor }}
+        />
+      ) : null}
+      {rampActive ? (
+        <>
+          <span
+            aria-label="Colormap preview"
+            className={settingsStyles.colorSourcePreview}
+            style={{
+              background: colormapCssGradient(
+                normalizePointCloudColormap(settings.colormap),
+              ),
+            }}
+          />
+          <span className={settingsStyles.colorChip}>
+            {pointCloudColormapLabel(settings.colormap)}
+          </span>
+        </>
+      ) : null}
+      {rangeLabel ? (
+        <span className={settingsStyles.colorChip}>{rangeLabel}</span>
+      ) : null}
+    </span>
+  );
+}
+
+function pointCloudColorByLabel(colorBy: string): string {
+  switch (colorBy) {
+    case "auto":
+      return "Auto";
+    case "height":
+      return "Height";
+    case "rgb":
+      return "RGB";
+    case "uniform":
+      return "Uniform";
+    default:
+      return colorBy;
+  }
+}
+
+function pointCloudRangeLabel({
+  rangeMax,
+  rangeMin,
+}: McapPointCloudColorSettings): string | null {
+  if (rangeMin === null && rangeMax === null) {
+    return null;
+  }
+
+  return `${rangeMin ?? "auto"}..${rangeMax ?? "auto"}`;
+}
+
+function isDefaultPointCloudColorSettings(
+  settings: McapPointCloudColorSettings,
+  defaultSettings = DEFAULT_MCAP_POINT_CLOUD_COLOR,
+): boolean {
+  return (
+    settings.colorBy === defaultSettings.colorBy &&
+    pointCloudColormapKey(settings.colormap) ===
+      pointCloudColormapKey(defaultSettings.colormap) &&
+    settings.rangeMax === defaultSettings.rangeMax &&
+    settings.rangeMin === defaultSettings.rangeMin &&
+    settings.uniformColor === defaultSettings.uniformColor
+  );
+}
+
+/**
+ * Per-source point-cloud color controls: channel select, colormap, and an
+ * optional fixed normalization range. Channel options are the channels the
+ * topic has actually been observed to carry; a persisted selection that no
+ * longer matches stays listed so the select reflects what is applied.
+ */
+function PointCloudColorControls({
+  capabilities,
+  defaultColormap = DEFAULT_POINT_CLOUD_COLORMAP,
+  onChange,
+  settings,
+  sourceLabel,
+}: {
+  readonly capabilities?: PointCloudColorCapabilities;
+  readonly defaultColormap?: PointCloudColormap;
+  readonly onChange: (settings: Partial<McapPointCloudColorSettings>) => void;
+  readonly settings: McapPointCloudColorSettings;
+  readonly sourceLabel?: string;
+}) {
+  const [editorOpen, setEditorOpen] = useState(false);
+  const scalarFields = capabilities?.scalarFields;
+  const fieldOptions = useMemo(() => {
+    const fields = scalarFields ?? [];
+    return !RESERVED_COLOR_BY_MODES.has(settings.colorBy) &&
+      !fields.includes(settings.colorBy)
+      ? [...fields, settings.colorBy]
+      : fields;
+  }, [scalarFields, settings.colorBy]);
+  const label = sourceLabel ? `Color (${sourceLabel})` : "Color";
+  const colorByOptions = useMemo<Descriptor<{ label: string }>[]>(
+    () => [
+      { data: { label: "Auto" }, id: "auto" },
+      { data: { label: "Height" }, id: "height" },
+      ...fieldOptions.map((field) => ({
+        data: { label: field },
+        id: field,
+      })),
+      ...(capabilities?.hasRgb ? [{ data: { label: "RGB" }, id: "rgb" }] : []),
+      { data: { label: "Uniform" }, id: "uniform" },
+    ],
+    [capabilities?.hasRgb, fieldOptions],
+  );
+  const normalizedColormap = normalizePointCloudColormap(settings.colormap);
+  const colormapSelectValue =
+    typeof normalizedColormap === "string"
+      ? normalizedColormap
+      : CUSTOM_COLORMAP_SELECT_VALUE;
+  const rampActive =
+    settings.colorBy !== "rgb" && settings.colorBy !== "uniform";
+  const uniformActive = settings.colorBy === "uniform";
+  const rangeInvalid =
+    settings.rangeMin !== null &&
+    settings.rangeMax !== null &&
+    settings.rangeMin >= settings.rangeMax;
+
+  return (
+    <div className={settingsStyles.field}>
+      <FormField
+        label={
+          <SettingsLabel
+            label={label}
+            tooltip="Per-point channel driving this cloud's colors. Auto prefers explicit RGB, then sensor-return channels like intensity, then height."
+          />
+        }
+        control={
+          <Select
+            aria-label={label}
+            exclusive
+            onChange={(value) => {
+              if (typeof value === "string") {
+                onChange({ colorBy: value });
+              }
+            }}
+            options={colorByOptions}
+            portal
+            zIndex={ZIndex.AboveModal}
+            value={settings.colorBy}
+          />
+        }
+      />
+      {uniformActive ? (
+        <FormField
+          label={
+            <SettingsLabel
+              label="Uniform color"
+              tooltip="Single color applied to every rendered point in this cloud."
+            />
+          }
+          control={
+            <input
+              aria-label={
+                sourceLabel ? `Uniform color (${sourceLabel})` : "Uniform color"
+              }
+              className={settingsStyles.select}
+              onChange={(event) =>
+                onChange({ uniformColor: event.target.value })
+              }
+              type="color"
+              value={
+                settings.uniformColor ||
+                DEFAULT_MCAP_POINT_CLOUD_COLOR.uniformColor
+              }
+            />
+          }
+        />
+      ) : null}
+      {rampActive ? (
+        <FormFieldGroup orientation={Orientation.Column} spacing={Spacing.Sm}>
+          <FormField
+            label={
+              <SettingsLabel
+                label="Colormap"
+                tooltip="Ramp mapping the selected channel's values to colors. Enable the legend to show the active ramp and range in the 3D view."
+              />
+            }
+            control={
+              <Select
+                aria-label={
+                  sourceLabel ? `Colormap (${sourceLabel})` : "Colormap"
+                }
+                exclusive
+                onChange={(value) => {
+                  if (value === CUSTOM_COLORMAP_SELECT_VALUE) {
+                    setEditorOpen(true);
+                    return;
+                  }
+                  if (typeof value === "string") {
+                    onChange({
+                      colormap: value as PointCloudColormapName,
+                    });
+                  }
+                }}
+                options={COLORMAP_SELECT_OPTIONS}
+                portal
+                zIndex={ZIndex.AboveModal}
+                value={colormapSelectValue}
+              />
+            }
+          />
+          <div
+            aria-label={`${label} colormap preview`}
+            className={settingsStyles.colorPreview}
+            style={{ background: colormapCssGradient(normalizedColormap) }}
+          />
+          <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+            <Button
+              onClick={() => setEditorOpen(true)}
+              size={Size.Xs}
+              variant={Variant.Secondary}
+            >
+              Edit colormap
+            </Button>
+            <Button
+              onClick={() => onChange({ colormap: defaultColormap })}
+              size={Size.Xs}
+              variant={Variant.Secondary}
+            >
+              Reset
+            </Button>
+          </Stack>
+          <SettingsNullableNumberInput
+            label="Range min"
+            onChange={(rangeMin) => onChange({ rangeMin })}
+            tooltip="Lower end of a fixed color range. Leave empty to normalize against each frame's own minimum."
+            value={settings.rangeMin}
+          />
+          <SettingsNullableNumberInput
+            label="Range max"
+            onChange={(rangeMax) => onChange({ rangeMax })}
+            tooltip="Upper end of a fixed color range. Leave empty to normalize against each frame's own maximum."
+            value={settings.rangeMax}
+          />
+          {rangeInvalid ? (
+            <span className={settingsStyles.emptyText}>
+              The fixed range is ignored until min is below max.
+            </span>
+          ) : null}
+          <PointCloudColormapEditor
+            colormap={normalizedColormap}
+            isOpen={editorOpen}
+            onClose={() => setEditorOpen(false)}
+            onSave={(colormap) => {
+              onChange({ colormap });
+              setEditorOpen(false);
+            }}
+            sourceLabel={sourceLabel}
+          />
+        </FormFieldGroup>
+      ) : null}
+    </div>
+  );
+}
+
+function PointCloudColormapEditor({
+  colormap,
+  isOpen,
+  onClose,
+  onSave,
+  sourceLabel,
+}: {
+  readonly colormap: PointCloudColormap;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly onSave: (colormap: PointCloudColormap) => void;
+  readonly sourceLabel?: string;
+}) {
+  const [edited, setEdited] = useState(false);
+  const [numStops, setNumStops] = useState("");
+  const [selectedPreset, setSelectedPreset] =
+    useState<PointCloudColormapName | null>(null);
+  const [stops, setStops] = useState<readonly PointCloudColorStop[]>([]);
+  const title = `Colormap${sourceLabel ? ` (${sourceLabel})` : ""}`;
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const normalized = normalizePointCloudColormap(colormap);
+    const normalizedStops = getPointCloudColormapStops(normalized);
+    setSelectedPreset(typeof normalized === "string" ? normalized : null);
+    setStops(normalizedStops);
+    setNumStops(String(normalizedStops.length));
+    setEdited(false);
+  }, [colormap, isOpen]);
+
+  const normalizedStops = normalizeColorStops(stops) ?? [
+    ...getGradientFromSchemeName(DEFAULT_POINT_CLOUD_COLORMAP),
+  ];
+  const stopCount = Number(numStops);
+  const stopCountValid =
+    Number.isInteger(stopCount) &&
+    stopCount >= MIN_POINT_CLOUD_COLORMAP_STOPS &&
+    stopCount <= MAX_POINT_CLOUD_COLORMAP_STOPS;
+
+  const handlePresetChange = (value: string | string[] | null) => {
+    if (typeof value !== "string") {
+      return;
+    }
+    const preset = value as PointCloudColormapName;
+    setSelectedPreset(preset);
+    const nextStops = getGradientFromSchemeName(preset);
+    setStops(nextStops);
+    setNumStops(String(nextStops.length));
+    setEdited(false);
+  };
+
+  const updateStop = (index: number, patch: Partial<PointCloudColorStop>) => {
+    setStops((current) =>
+      current
+        .map((stop, stopIndex) =>
+          stopIndex === index ? { ...stop, ...patch } : stop,
+        )
+        .sort((a, b) => a.value - b.value),
+    );
+    setEdited(true);
+  };
+
+  const removeStop = (index: number) => {
+    if (stops.length <= MIN_POINT_CLOUD_COLORMAP_STOPS) {
+      return;
+    }
+    setStops((current) =>
+      current.filter((_, stopIndex) => stopIndex !== index),
+    );
+    setEdited(true);
+  };
+
+  const addStop = () => {
+    const sorted = [...normalizedStops].sort((a, b) => a.value - b.value);
+    let insertIndex = 0;
+    let largestGap = -1;
+    for (let index = 0; index < sorted.length - 1; index++) {
+      const gap = sorted[index + 1].value - sorted[index].value;
+      if (gap > largestGap) {
+        largestGap = gap;
+        insertIndex = index;
+      }
+    }
+    const lower = sorted[insertIndex];
+    const upper = sorted[insertIndex + 1];
+    const value = (lower.value + upper.value) / 2;
+    const color = interpolateHexColors(lower.color, upper.color, 0.5);
+    setStops(
+      [
+        ...sorted.slice(0, insertIndex + 1),
+        { color, value },
+        ...sorted.slice(insertIndex + 1),
+      ].sort((a, b) => a.value - b.value),
+    );
+    setEdited(true);
+  };
+
+  const applyStopCount = () => {
+    if (!stopCountValid) {
+      return;
+    }
+    if (selectedPreset) {
+      setStops(getGradientFromSchemeName(selectedPreset, stopCount));
+    } else {
+      setStops(redistributeStops(normalizedStops, stopCount));
+    }
+    setEdited(true);
+  };
+
+  const save = () => {
+    const list = normalizeColorStops(stops);
+    if (!edited && selectedPreset) {
+      onSave(selectedPreset);
+      return;
+    }
+    if (list) {
+      onSave({
+        list,
+        name: selectedPreset
+          ? `${POINT_CLOUD_COLORMAP_LABELS[selectedPreset]} custom`
+          : "Custom",
+      });
+    }
+  };
+
+  return (
+    <Dialog
+      id="mcapPointCloudColormapEditor"
+      onClose={onClose}
+      open={isOpen}
+      style={{ zIndex: 2000 }}
+    >
+      <Stack
+        className={settingsStyles.colormapEditor}
+        orientation={Orientation.Column}
+        spacing={Spacing.Md}
+      >
+        <Text variant={TextVariant.Lg} color={TextColor.Primary}>
+          {title}
+        </Text>
+        <FormField
+          label="Preset"
+          control={
+            <Select
+              aria-label="Preset"
+              exclusive
+              onChange={handlePresetChange}
+              options={PRESET_COLORMAP_OPTIONS}
+              portal
+              zIndex={ZIndex.AboveModal}
+              value={selectedPreset ?? ""}
+            />
+          }
+        />
+        <div
+          aria-label="Colormap preview"
+          className={settingsStyles.colorPreviewLarge}
+          style={{ background: colormapCssGradient({ list: normalizedStops }) }}
+        />
+        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+          <Input
+            aria-label="Number of stops"
+            error={numStops !== "" && !stopCountValid}
+            max={MAX_POINT_CLOUD_COLORMAP_STOPS}
+            min={MIN_POINT_CLOUD_COLORMAP_STOPS}
+            onChange={(event) => setNumStops(event.target.value)}
+            size={Size.Sm}
+            type={InputType.Number}
+            value={numStops}
+          />
+          <Button
+            disabled={!stopCountValid}
+            onClick={applyStopCount}
+            size={Size.Xs}
+            variant={Variant.Secondary}
+          >
+            Apply
+          </Button>
+        </Stack>
+        <div className={settingsStyles.colorStopHeader}>
+          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+            Value
+          </Text>
+          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+            Color
+          </Text>
+          <span />
+          <span />
+        </div>
+        <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+          {normalizedStops.map((stop, index) => (
+            <ColorStopRow
+              index={index}
+              key={`${stop.value}-${stop.color}-${index}`}
+              onColorChange={(color) => updateStop(index, { color })}
+              onRemove={() => removeStop(index)}
+              onValueChange={(value) => updateStop(index, { value })}
+              removable={
+                index !== 0 &&
+                index !== normalizedStops.length - 1 &&
+                normalizedStops.length > MIN_POINT_CLOUD_COLORMAP_STOPS
+              }
+              stop={stop}
+            />
+          ))}
+        </Stack>
+        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+          <Button onClick={addStop} size={Size.Xs} variant={Variant.Secondary}>
+            Add stop
+          </Button>
+          <Button onClick={save} size={Size.Xs}>
+            Save
+          </Button>
+          <Button onClick={onClose} size={Size.Xs} variant={Variant.Secondary}>
+            Cancel
+          </Button>
+        </Stack>
+      </Stack>
+    </Dialog>
+  );
+}
+
+function ColorStopRow({
+  index,
+  onColorChange,
+  onRemove,
+  onValueChange,
+  removable,
+  stop,
+}: {
+  readonly index: number;
+  readonly onColorChange: (color: string) => void;
+  readonly onRemove: () => void;
+  readonly onValueChange: (value: number) => void;
+  readonly removable: boolean;
+  readonly stop: PointCloudColorStop;
+}) {
+  return (
+    <div className={settingsStyles.colorStopRow}>
+      <Input
+        aria-label={`Color stop ${index + 1} value`}
+        disabled={!removable}
+        max={1}
+        min={0}
+        onChange={(event) => {
+          const next = Number(event.target.value);
+          if (Number.isFinite(next) && next >= 0 && next <= 1) {
+            onValueChange(next);
+          }
+        }}
+        size={Size.Sm}
+        step={0.01}
+        type={InputType.Number}
+        value={stop.value}
+      />
+      <Input
+        aria-label={`Color stop ${index + 1} color`}
+        onChange={(event) => onColorChange(event.target.value)}
+        size={Size.Sm}
+        value={stop.color}
+      />
+      <input
+        aria-label={`Color stop ${index + 1} swatch`}
+        className={settingsStyles.colorSwatchInput}
+        onChange={(event) => onColorChange(event.target.value)}
+        type="color"
+        value={stop.color}
+      />
+      {removable ? (
+        <Button onClick={onRemove} size={Size.Xs} variant={Variant.Secondary}>
+          Remove
+        </Button>
+      ) : (
+        <span />
+      )}
+    </div>
+  );
+}
+
+function redistributeStops(
+  stops: readonly PointCloudColorStop[],
+  count: number,
+): readonly PointCloudColorStop[] {
+  const next: PointCloudColorStop[] = [];
+  for (let index = 0; index < count; index++) {
+    const value = index / (count - 1);
+    const [lower, upper] = boundingStops(stops, value);
+    const span = upper.value - lower.value;
+    const factor = span > 0 ? (value - lower.value) / span : 0;
+    next.push({
+      color: interpolateHexColors(lower.color, upper.color, factor),
+      value,
+    });
+  }
+  return next;
+}
+
+function boundingStops(
+  stops: readonly PointCloudColorStop[],
+  value: number,
+): readonly [PointCloudColorStop, PointCloudColorStop] {
+  for (let index = 0; index < stops.length - 1; index++) {
+    const lower = stops[index];
+    const upper = stops[index + 1];
+    if (lower.value <= value && upper.value >= value) {
+      return [lower, upper];
+    }
+  }
+  const last = stops[stops.length - 1];
+  return [last, last];
+}
+
+function interpolateHexColors(
+  low: string,
+  high: string,
+  factor: number,
+): string {
+  const lowRgb = hexToRgb(low);
+  const highRgb = hexToRgb(high);
+  return rgbToHex(
+    lowRgb.map((component, index) =>
+      Math.round(component + (highRgb[index] - component) * factor),
+    ) as [number, number, number],
+  );
+}
+
+function hexToRgb(color: string): [number, number, number] {
+  return [
+    parseInt(color.slice(1, 3), 16),
+    parseInt(color.slice(3, 5), 16),
+    parseInt(color.slice(5, 7), 16),
+  ];
+}
+
+function rgbToHex([r, g, b]: readonly [number, number, number]): string {
+  return `#${[r, g, b]
+    .map((component) =>
+      Math.max(0, Math.min(255, component)).toString(16).padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
+function SettingsNullableNumberInput({
+  label,
+  onChange,
+  tooltip,
+  value,
+}: {
+  readonly label: string;
+  readonly onChange: (value: number | null) => void;
+  readonly tooltip: string;
+  readonly value: number | null;
+}) {
+  return (
+    <FormField
+      label={<SettingsLabel label={label} tooltip={tooltip} />}
+      control={
+        <Input
+          aria-label={label}
+          onChange={(event) => {
+            if (event.target.value === "") {
+              onChange(null);
+              return;
+            }
+            const next = Number(event.target.value);
+            if (Number.isFinite(next)) {
+              onChange(next);
+            }
+          }}
+          placeholder="auto"
+          size={Size.Sm}
+          step="any"
+          type={InputType.Number}
+          value={value ?? ""}
+        />
+      }
+    />
   );
 }
 
