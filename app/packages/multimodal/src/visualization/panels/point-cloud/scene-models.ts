@@ -6,11 +6,13 @@ import type { RgbaColor } from "../../../decoders";
 import { clamp01 } from "./utils";
 
 const sceneModelLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+type SceneModelAsset = {
+  readonly cacheKey: string;
+  readonly data?: Uint8Array;
+  readonly url: string;
+};
 const sceneModelLoadCache = new Map<string, Promise<THREE.Object3D>>();
-const sceneModelDataAssetCache = new WeakMap<
-  Uint8Array,
-  { readonly cacheKey: string; readonly url: string }
->();
+const sceneModelDataAssetCache = new WeakMap<Uint8Array, SceneModelAsset>();
 let nextSceneModelDataAssetId = 0;
 const MODEL_Y_UP_TO_SCENE_Z_UP_QUATERNION =
   new THREE.Quaternion().setFromRotationMatrix(
@@ -31,7 +33,7 @@ export function modelAssetForPrimitive(model: {
   readonly data?: Uint8Array;
   readonly mediaType: string;
   readonly url: string;
-}): { readonly cacheKey: string; readonly url: string } | null {
+}): SceneModelAsset | null {
   if (model.url) {
     return { cacheKey: `url:${model.url}`, url: model.url };
   }
@@ -49,16 +51,13 @@ export function modelAssetForPrimitive(model: {
     type: model.mediaType || "model/gltf-binary",
   });
   const url = URL.createObjectURL(blob);
-  const asset = { cacheKey, url };
+  const asset = { cacheKey, data: model.data, url };
   sceneModelDataAssetCache.set(model.data, asset);
 
   return asset;
 }
 
-export function loadSceneModelAsset(asset: {
-  readonly cacheKey: string;
-  readonly url: string;
-}) {
+export function loadSceneModelAsset(asset: SceneModelAsset) {
   const cached = sceneModelLoadCache.get(asset.cacheKey);
   if (cached) {
     return cached;
@@ -71,13 +70,34 @@ export function loadSceneModelAsset(asset: {
       undefined,
       reject,
     );
-  }).catch((error) => {
-    sceneModelLoadCache.delete(asset.cacheKey);
-    throw error;
-  });
+  }).then(
+    (object) => {
+      revokeSceneModelObjectUrl(asset);
+      return object;
+    },
+    (error) => {
+      sceneModelLoadCache.delete(asset.cacheKey);
+      if (asset.data) {
+        sceneModelDataAssetCache.delete(asset.data);
+      }
+      revokeSceneModelObjectUrl(asset);
+      throw error;
+    },
+  );
   sceneModelLoadCache.set(asset.cacheKey, loadPromise);
 
   return loadPromise;
+}
+
+function revokeSceneModelObjectUrl(asset: SceneModelAsset): void {
+  if (
+    !asset.data ||
+    typeof URL === "undefined" ||
+    typeof URL.revokeObjectURL !== "function"
+  ) {
+    return;
+  }
+  URL.revokeObjectURL(asset.url);
 }
 
 export function cloneObject3D(object: THREE.Object3D) {

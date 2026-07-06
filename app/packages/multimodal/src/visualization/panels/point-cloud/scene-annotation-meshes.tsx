@@ -463,15 +463,28 @@ function createSceneTriangleRenderData(
   const colors: number[] = [];
   const usesVertexColors = triangle.colors.length >= triangle.points.length;
 
-  for (let index = 0; index < trianglePointCount; index++) {
-    const pointIndex = orderedPointIndices[index];
-    const point = triangle.points[pointIndex];
-    if (!isFinitePoint3(point)) {
+  for (let index = 0; index < trianglePointCount; index += 3) {
+    const pointIndex0 = orderedPointIndices[index];
+    const pointIndex1 = orderedPointIndices[index + 1];
+    const pointIndex2 = orderedPointIndices[index + 2];
+    const point0 = triangle.points[pointIndex0];
+    const point1 = triangle.points[pointIndex1];
+    const point2 = triangle.points[pointIndex2];
+    if (
+      !isFinitePoint3(point0) ||
+      !isFinitePoint3(point1) ||
+      !isFinitePoint3(point2)
+    ) {
       continue;
     }
-    positions.push(...point);
+
+    positions.push(...point0, ...point1, ...point2);
     if (usesVertexColors) {
-      colors.push(...rgbComponents(triangle.colors[pointIndex]));
+      colors.push(
+        ...rgbComponents(triangle.colors[pointIndex0]),
+        ...rgbComponents(triangle.colors[pointIndex1]),
+        ...rgbComponents(triangle.colors[pointIndex2]),
+      );
     }
   }
 
