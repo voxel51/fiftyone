@@ -13,7 +13,7 @@ import {
   SceneTriangleMesh,
   scenePrimitiveKey,
 } from "./scene-annotation-meshes";
-import { SceneEmphasisContext } from "./scene-emphasis";
+import { SceneEmphasisContext, type SceneEmphasis } from "./scene-emphasis";
 import { useScenePicking } from "./scene-interactivity";
 import { SceneTextSprite } from "./scene-text-sprite";
 import { pointCloudObjectTransform } from "./transforms";
@@ -80,12 +80,19 @@ function SceneAnnotationEntity({
   const interactive =
     Boolean(onSelectEntity || onHoverEntity) && pickingEnabled;
   const entityId = entity.id || String(entityIndex);
+  // Selection (or cross-tile echo) outranks hover: selected entities draw
+  // dashed, hovered ones draw solid in the emphasis color.
+  const emphasis: SceneEmphasis = highlighted
+    ? "selected"
+    : hovered && interactive
+      ? "hover"
+      : "none";
 
   // This effect repaints the demand-driven canvas when emphasis flips —
   // the material change alone doesn't schedule a frame.
   useEffect(() => {
     invalidate();
-  }, [highlighted, invalidate]);
+  }, [emphasis, invalidate]);
 
   // This effect drops a stale hover when picking is disabled mid-hover
   // (the pointer-out handler is gone by then).
@@ -137,7 +144,7 @@ function SceneAnnotationEntity({
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
     >
-      <SceneEmphasisContext.Provider value={highlighted}>
+      <SceneEmphasisContext.Provider value={emphasis}>
         {entity.arrows.map((arrow, primitiveIndex) => (
           <SceneArrowMesh
             arrow={arrow}

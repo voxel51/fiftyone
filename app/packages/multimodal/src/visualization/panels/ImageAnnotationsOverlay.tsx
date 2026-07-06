@@ -678,9 +678,9 @@ function lineWidth(thickness: number, override?: number): number {
     return Math.max(0, override);
   }
 
-  // Source thickness is conservative; bump it ~1.5x for readability while
-  // keeping the look light.
-  return Math.max(1.5, thickness * 1.5);
+  // Strokes are non-scaling (screen px); render source thickness as-is so
+  // 2D line work reads as light as the 3D scene's 1px lines.
+  return Math.max(1, thickness);
 }
 
 function rgbaToCss(color: RgbaColor | null | undefined): string | undefined {

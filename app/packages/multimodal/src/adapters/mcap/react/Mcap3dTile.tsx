@@ -351,9 +351,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         // camera's tile; hovering that tile lights the frustum up.
         const linked = imageTopic
           ? {
-              highlighted:
-                hoveredImageTopic === imageTopic ||
-                focusedImageTopic === imageTopic,
+              highlighted: hoveredImageTopic === imageTopic,
+              selected: focusedImageTopic === imageTopic,
               imageTopic,
               onSelect: ({ metaKey }: { readonly metaKey: boolean }) => {
                 if (metaKey) {

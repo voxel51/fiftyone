@@ -246,6 +246,11 @@ export interface CameraFrustumPanelLayer {
   readonly opacity?: number;
   /** Emphasize the frustum wireframe (e.g. its camera tile is hovered). */
   readonly highlighted?: boolean;
+  /**
+   * Selected-state emphasis (e.g. its camera tile is focused): renders
+   * the wireframe dashed, distinguishing it from a transient hover.
+   */
+  readonly selected?: boolean;
   /** Makes the frustum clickable — called on a non-drag click. */
   readonly onSelect?: (modifiers: { readonly metaKey: boolean }) => void;
 }

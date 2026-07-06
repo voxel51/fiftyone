@@ -13,7 +13,13 @@ import {
 import { useScenePicking } from "./scene-interactivity";
 import { pointCloudObjectTransform } from "./transforms";
 import type { CameraFrustumPanelLayer } from "./types";
-import { clamp01, isFinitePositiveNumber } from "./utils";
+import {
+  SCENE_SELECTED_DASH_SIZE,
+  SCENE_SELECTED_GAP_SIZE,
+  clamp01,
+  isFinitePositiveNumber,
+  withLineDistances,
+} from "./utils";
 
 // Camera frustum wireframes are purely presentational — depth is not data,
 // which is also why frustums never participate in camera-fit bounds.
@@ -84,7 +90,11 @@ export function CameraFrustumSceneLayer({
   const pickingEnabled = useScenePicking();
   const [hovered, setHovered] = useState(false);
   const interactive = Boolean(layer.onSelect) && pickingEnabled;
-  const emphasized = Boolean(layer.highlighted) || (hovered && interactive);
+  // Selected (linked camera tile focused) draws dashed; hover — direct
+  // or echoed from the linked tile — draws solid in the highlight color.
+  const selected = Boolean(layer.selected);
+  const emphasized =
+    selected || Boolean(layer.highlighted) || (hovered && interactive);
   const renderOpacity = emphasized
     ? CAMERA_FRUSTUM_HIGHLIGHT_OPACITY
     : baseOpacity;
@@ -176,6 +186,7 @@ export function CameraFrustumSceneLayer({
     axisGeometry,
     baseOpacity,
     emphasized,
+    selected,
     geometry,
     imageHandle,
     imagePlaneGeometry,
@@ -229,13 +240,25 @@ export function CameraFrustumSceneLayer({
     >
       <lineSegments frustumCulled={false}>
         <primitive attach="geometry" object={geometry} />
-        <lineBasicMaterial
-          color={
-            emphasized ? CAMERA_FRUSTUM_HIGHLIGHT_COLOR : CAMERA_FRUSTUM_COLOR
-          }
-          opacity={emphasized ? CAMERA_FRUSTUM_HIGHLIGHT_OPACITY : baseOpacity}
-          transparent
-        />
+        {selected ? (
+          <lineDashedMaterial
+            color={CAMERA_FRUSTUM_HIGHLIGHT_COLOR}
+            dashSize={SCENE_SELECTED_DASH_SIZE}
+            gapSize={SCENE_SELECTED_GAP_SIZE}
+            opacity={CAMERA_FRUSTUM_HIGHLIGHT_OPACITY}
+            transparent
+          />
+        ) : (
+          <lineBasicMaterial
+            color={
+              emphasized ? CAMERA_FRUSTUM_HIGHLIGHT_COLOR : CAMERA_FRUSTUM_COLOR
+            }
+            opacity={
+              emphasized ? CAMERA_FRUSTUM_HIGHLIGHT_OPACITY : baseOpacity
+            }
+            transparent
+          />
+        )}
       </lineSegments>
       <lineSegments frustumCulled={false}>
         <primitive attach="geometry" object={axisGeometry} />
@@ -328,7 +351,8 @@ function createCameraFrustumGeometry(
     new THREE.BufferAttribute(Float32Array.from(segments), 3),
   );
 
-  return geometry;
+  // Line distances for the dashed selected style; harmless otherwise.
+  return withLineDistances(geometry);
 }
 
 /**

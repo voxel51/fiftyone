@@ -28,6 +28,8 @@ import { useSceneEmphasis } from "./scene-emphasis";
 import { scenePoseObjectTransform } from "./transforms";
 import type { SceneIndexedGeometryRenderData } from "./types";
 import {
+  SCENE_SELECTED_DASH_SIZE,
+  SCENE_SELECTED_GAP_SIZE,
   isFinitePoint3,
   isFinitePositiveNumber,
   isFinitePositiveVector,
@@ -36,6 +38,7 @@ import {
   rgbComponents,
   rgbaColorKey,
   sceneMaterialProps,
+  withLineDistances,
 } from "./utils";
 
 const SCENE_CUBE_WIREFRAME_OPACITY = 0.95;
@@ -57,7 +60,8 @@ export function SceneArrowMesh({
 }: {
   readonly arrow: SceneArrowPrimitive;
 }) {
-  const emphasized = useSceneEmphasis();
+  const emphasis = useSceneEmphasis();
+  const emphasized = emphasis !== "none";
   const shaftRadius = arrow.shaftDiameter / 2;
   const headRadius = arrow.headDiameter / 2;
   const hasShaft =
@@ -115,7 +119,8 @@ export function SceneArrowMesh({
 }
 
 export function SceneCubeMesh({ cube }: { readonly cube: SceneCubePrimitive }) {
-  const emphasized = useSceneEmphasis();
+  const emphasis = useSceneEmphasis();
+  const emphasized = emphasis !== "none";
   const size = cube.size;
   if (!isFinitePositiveVector(size)) {
     return null;
@@ -130,11 +135,52 @@ export function SceneCubeMesh({ cube }: { readonly cube: SceneCubePrimitive }) {
 
   return (
     <group position={transform.position} quaternion={transform.quaternion}>
-      <mesh frustumCulled={false}>
-        <boxGeometry args={[size[0], size[1], size[2]]} />
-        <meshBasicMaterial {...material} wireframe />
-      </mesh>
+      {emphasis === "selected" ? (
+        <SceneDashedBoxEdges material={material} size={size} />
+      ) : (
+        <mesh frustumCulled={false}>
+          <boxGeometry args={[size[0], size[1], size[2]]} />
+          <meshBasicMaterial {...material} wireframe />
+        </mesh>
+      )}
     </group>
+  );
+}
+
+/**
+ * Dashed box outline for a SELECTED cube — clean 12-edge geometry (no
+ * wireframe triangulation diagonals) so the dash pattern stays legible.
+ */
+function SceneDashedBoxEdges({
+  material,
+  size,
+}: {
+  readonly material: ReturnType<typeof sceneMaterialProps>;
+  readonly size: readonly number[];
+}) {
+  const invalidate = useThree((state) => state.invalidate);
+  const [sizeX, sizeY, sizeZ] = size;
+  const geometry = useMemo(() => {
+    const box = new THREE.BoxGeometry(sizeX, sizeY, sizeZ);
+    const edges = withLineDistances(new THREE.EdgesGeometry(box));
+    box.dispose();
+    return edges;
+  }, [sizeX, sizeY, sizeZ]);
+
+  useEffect(() => {
+    invalidate();
+    return () => geometry.dispose();
+  }, [geometry, invalidate]);
+
+  return (
+    <lineSegments frustumCulled={false}>
+      <primitive attach="geometry" object={geometry} />
+      <lineDashedMaterial
+        {...material}
+        dashSize={SCENE_SELECTED_DASH_SIZE}
+        gapSize={SCENE_SELECTED_GAP_SIZE}
+      />
+    </lineSegments>
   );
 }
 
@@ -143,7 +189,8 @@ export function SceneCylinderMesh({
 }: {
   readonly cylinder: SceneCylinderPrimitive;
 }) {
-  const emphasized = useSceneEmphasis();
+  const emphasis = useSceneEmphasis();
+  const emphasized = emphasis !== "none";
   if (
     !isFinitePositiveVector(cylinder.size) ||
     (!isFinitePositiveNumber(cylinder.bottomScale) &&
@@ -181,7 +228,8 @@ export function SceneCylinderMesh({
 }
 
 export function SceneLineMesh({ line }: { readonly line: SceneLinePrimitive }) {
-  const emphasized = useSceneEmphasis();
+  const emphasis = useSceneEmphasis();
+  const emphasized = emphasis !== "none";
   const invalidate = useThree((state) => state.invalidate);
   const renderData = useMemo(() => createSceneLineRenderData(line), [line]);
 
@@ -206,11 +254,20 @@ export function SceneLineMesh({ line }: { readonly line: SceneLinePrimitive }) {
     <group position={transform.position} quaternion={transform.quaternion}>
       <lineSegments frustumCulled={false}>
         <primitive attach="geometry" object={renderData.geometry} />
-        <lineBasicMaterial
-          {...material}
-          linewidth={Math.max(1, line.thickness || 1)}
-          vertexColors={renderData.usesVertexColors && !emphasized}
-        />
+        {emphasis === "selected" ? (
+          <lineDashedMaterial
+            {...material}
+            dashSize={SCENE_SELECTED_DASH_SIZE}
+            gapSize={SCENE_SELECTED_GAP_SIZE}
+            linewidth={Math.max(1, line.thickness || 1)}
+          />
+        ) : (
+          <lineBasicMaterial
+            {...material}
+            linewidth={Math.max(1, line.thickness || 1)}
+            vertexColors={renderData.usesVertexColors && !emphasized}
+          />
+        )}
       </lineSegments>
     </group>
   );
@@ -311,7 +368,8 @@ export function SceneSphereMesh({
 }: {
   readonly sphere: SceneSpherePrimitive;
 }) {
-  const emphasized = useSceneEmphasis();
+  const emphasis = useSceneEmphasis();
+  const emphasized = emphasis !== "none";
   if (!isFinitePositiveVector(sphere.size)) {
     return null;
   }
@@ -383,6 +441,8 @@ function createSceneLineRenderData(
   }
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
+  // Line distances for the dashed selected style; harmless otherwise.
+  withLineDistances(geometry);
 
   return { geometry, usesVertexColors };
 }
@@ -448,7 +508,8 @@ export function SceneTriangleMesh({
 }: {
   readonly triangle: SceneTrianglePrimitive;
 }) {
-  const emphasized = useSceneEmphasis();
+  const emphasis = useSceneEmphasis();
+  const emphasized = emphasis !== "none";
   const invalidate = useThree((state) => state.invalidate);
   const renderData = useMemo(
     () => createSceneTriangleRenderData(triangle),

@@ -19,6 +19,25 @@ export const EMPTY_NOTICES: readonly PanelNotice[] = [];
 const SCENE_EMPHASIS_COLOR_HEX = 0xffffff;
 const SCENE_EMPHASIS_OPACITY_BOOST = 0.3;
 
+// Dash pattern (scene units, i.e. meters) for line work on SELECTED
+// entities — hover keeps solid strokes, matching the 2D overlay
+// convention where only selection dashes.
+export const SCENE_SELECTED_DASH_SIZE = 0.2;
+export const SCENE_SELECTED_GAP_SIZE = 0.12;
+
+/**
+ * Populates the `lineDistance` attribute `LineDashedMaterial` requires.
+ * Returns the same geometry for chaining.
+ */
+export function withLineDistances(
+  geometry: THREE.BufferGeometry,
+): THREE.BufferGeometry {
+  const probe = new THREE.LineSegments(geometry);
+  probe.computeLineDistances();
+  (probe.material as THREE.Material).dispose();
+  return geometry;
+}
+
 export function sceneMaterialProps(
   color: RgbaColor | null,
   maxOpacity: number,
