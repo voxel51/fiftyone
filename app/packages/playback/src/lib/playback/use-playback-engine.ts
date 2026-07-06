@@ -484,7 +484,17 @@ function streamHasStartupCoverage(
     ranges,
     time,
     Math.min(duration, time + startupSeconds),
+    startupCoverageStartTolerance(stream),
   );
+}
+
+function startupCoverageStartTolerance(stream: PlaybackStream): number {
+  const nativeStep = stream.nativeStepSeconds;
+  return nativeStep !== undefined &&
+    Number.isFinite(nativeStep) &&
+    nativeStep > 0
+    ? nativeStep / 2
+    : 0;
 }
 
 function startupPrefetchEnd(
@@ -503,11 +513,12 @@ function rangesCoverInterval(
   ranges: ReturnType<NonNullable<PlaybackStream["bufferedRanges"]>>,
   start: number,
   end: number,
+  startTolerance = 0,
 ): boolean {
   if (end <= start) return true;
 
   for (const [rangeStart, rangeEnd] of ranges) {
-    if (rangeStart <= start && rangeEnd >= end) return true;
+    if (rangeStart <= start + startTolerance && rangeEnd >= end) return true;
     if (rangeStart > start) return false;
   }
 

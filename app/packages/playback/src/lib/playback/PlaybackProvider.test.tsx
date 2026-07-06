@@ -320,6 +320,43 @@ describe("PlaybackProvider engine actions", () => {
       expect(prefetch).not.toHaveBeenCalled();
     });
 
+    it("starts when a ticked stream's buffered range begins just after the seek time", () => {
+      const nativeStep = 1 / 30;
+      const seekTime = 10.26;
+      const firstBufferedTick = 10 + 8 * nativeStep;
+      const startupSeconds = 0.3;
+      const ranges: Array<[number, number]> = [
+        [firstBufferedTick, seekTime + startupSeconds],
+      ];
+      const prefetch = vi.fn();
+      const { result } = renderEngine({ duration: 20 });
+
+      act(() => {
+        result.current.api.registerStream({
+          id: "mcap",
+          blocking: true,
+          nativeStepSeconds: nativeStep,
+          lookaheadSeconds: startupSeconds,
+          startupBufferSeconds: startupSeconds,
+          bufferState: (time) =>
+            time >= firstBufferedTick - nativeStep / 2 && time < ranges[0][1]
+              ? "ready"
+              : "missing",
+          bufferedRanges: () => ranges,
+          prefetch,
+        });
+        result.current.api.subscribeStream("mcap");
+      });
+
+      act(() => result.current.api.seek(seekTime));
+      act(() => result.current.api.play());
+
+      expect(result.current.isPlaying).toBe(true);
+      expect(result.current.isPlayPending).toBe(false);
+      expect(result.current.isBuffering).toBe(false);
+      expect(prefetch).not.toHaveBeenCalled();
+    });
+
     it("queues play when no duration or active stream is known yet", () => {
       const { result } = renderEngine({ duration: 0 });
 
