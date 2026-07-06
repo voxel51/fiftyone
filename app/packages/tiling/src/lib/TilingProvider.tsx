@@ -16,7 +16,12 @@ import {
   collectTileIds,
 } from "../views/MosaicGrid/MosaicGrid";
 import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
-import type { AddTileOptions, TilingContextValue, TilingTile } from "./types";
+import type {
+  AddTileOptions,
+  SetTileTitleOptions,
+  TilingContextValue,
+  TilingTile,
+} from "./types";
 
 export type { AddTileOptions, TilingContextValue, TilingTile } from "./types";
 
@@ -28,6 +33,8 @@ const TileIdContext = createContext<string | null>(null);
 export interface TilingProviderProps {
   /** Initial tile entries keyed by id. */
   initialTiles?: Record<string, TilingTile>;
+  /** Initial user-authored titles keyed by tile id. */
+  initialManualTileTitles?: Record<string, string>;
   /** Initial layout tree. If omitted, auto-laid out from `initialTiles`. */
   initialLayout?: MosaicNode<string> | null;
   /** Tile id that should initially render expanded to fullscreen. */
@@ -48,6 +55,7 @@ export interface TilingProviderProps {
  */
 export const TilingProvider: React.FC<TilingProviderProps> = ({
   initialTiles = {},
+  initialManualTileTitles = {},
   initialLayout,
   initialExpandedTileId,
   children,
@@ -57,6 +65,9 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       ? autoLayoutFn(Object.keys(initialTiles))
       : initialLayout;
   const [tiles, setTiles] = useState<Record<string, TilingTile>>(initialTiles);
+  const [manualTileTitles, setManualTileTitles] = useState<
+    Record<string, string>
+  >(() => filterManualTitles(initialManualTileTitles, initialTiles));
   const [layout, setLayoutState] = useState<MosaicNode<string> | null>(
     initialLayoutValue,
   );
@@ -67,6 +78,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       : null,
   );
   const [focusedTileId, setFocusedTileId] = useState<string | null>(null);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
   // Mirror `focusedTileId` in a ref so `addTile` can resolve the target
   // tile without nesting a `setLayoutState` inside the `setFocusedTileId`
   // updater (state updaters must remain pure; nested setState calls
@@ -98,6 +111,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   // stale captures in useMemo dependency-suppressed consumers (TilingHeader).
   const tilesRef = useRef(tiles);
   tilesRef.current = tiles;
+  const manualTileTitlesRef = useRef(manualTileTitles);
+  manualTileTitlesRef.current = manualTileTitles;
 
   /**
    * Layout setter that also reconciles the entries map (drops orphans
@@ -120,10 +135,12 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
           for (const id of idsToRemove) delete filtered[id];
           return filtered;
         });
+        setManualTileTitles((prev) => omitKeys(prev, idsToRemove));
         // Free per-tile atomFamily entries so dynamic tile ids don't
         // accumulate in the store across long sessions.
         for (const id of idsToRemove) {
           tileSelectionAtom.remove(id);
+          duplicatorsRef.current.delete(id);
         }
       }
       setFocusedTileId((current) =>
@@ -224,14 +241,64 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   const duplicateTile = useCallback(
     (tileId: string): string | null => {
       const factory = duplicatorsRef.current.get(tileId);
-      const tile = factory ? factory() : freshTileOfSameKind(tileId)?.tile;
+      const manualTitle = manualTileTitlesRef.current[tileId];
+      const baseTile = factory ? factory() : freshTileOfSameKind(tileId)?.tile;
+      const tile =
+        baseTile && manualTitle
+          ? { ...baseTile, title: manualTitle }
+          : baseTile;
       if (!tile) return null;
-      return addTile(tile, {
+      const newId = addTile(tile, {
         idPrefix: tileTypeFromId(tileId) ?? "tile",
         targetId: tileId,
       });
+      if (manualTitle) {
+        setManualTileTitles((prev) => ({ ...prev, [newId]: manualTitle }));
+      }
+      return newId;
     },
     [addTile, freshTileOfSameKind],
+  );
+
+  const changeTileType = useCallback(
+    (tileId: string, type: string): string | null => {
+      if (tileTypeFromId(tileId) === type) {
+        return tileId;
+      }
+      if (
+        !tilesRef.current[tileId] ||
+        !collectTileIds(layoutRef.current).includes(tileId)
+      ) {
+        return null;
+      }
+      const entry = jotaiStore
+        .get(registeredTilesAtom)
+        .find((registered) => registered.type === type);
+      if (!entry) {
+        return null;
+      }
+
+      const id = `${entry.type}-${counterRef.current++}`;
+      const TileComponent = entry.Tile;
+      setTiles((prev) => {
+        if (!(tileId in prev)) return prev;
+        const next = { ...prev };
+        delete next[tileId];
+        next[id] = {
+          title: entry.typeLabel,
+          render: () => <TileComponent />,
+        };
+        return next;
+      });
+      setManualTileTitles((prev) => omitKeys(prev, [tileId]));
+      setLayoutState((prev) => (prev ? replaceTileId(prev, tileId, id) : prev));
+      setFocusedTileId(id);
+      setExpandedTileId((current) => (current === tileId ? id : current));
+      tileSelectionAtom.remove(tileId);
+      duplicatorsRef.current.delete(tileId);
+      return id;
+    },
+    [jotaiStore],
   );
 
   const closeOtherTiles = useCallback(
@@ -261,18 +328,34 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     });
     setFocusedTileId((current) => (current === id ? null : current));
     setExpandedTileId((current) => (current === id ? null : current));
+    setManualTileTitles((prev) => omitKeys(prev, [id]));
     // Release the per-tile atomFamily entry so the store doesn't
     // grow unbounded across long sessions.
     tileSelectionAtom.remove(id);
+    duplicatorsRef.current.delete(id);
   }, []);
 
-  const setTileTitle = useCallback((tileId: string, title: string) => {
-    setTiles((prev) => {
-      const tile = prev[tileId];
-      if (!tile || tile.title === title) return prev;
-      return { ...prev, [tileId]: { ...tile, title } };
-    });
-  }, []);
+  const setTileTitle = useCallback(
+    (
+      tileId: string,
+      title: string,
+      { source = "manual" }: SetTileTitleOptions = {},
+    ) => {
+      if (!tilesRef.current[tileId]) return;
+      if (source === "auto" && manualTileTitlesRef.current[tileId]) return;
+      setTiles((prev) => {
+        const tile = prev[tileId];
+        if (!tile || tile.title === title) return prev;
+        return { ...prev, [tileId]: { ...tile, title } };
+      });
+      if (source === "manual") {
+        setManualTileTitles((prev) =>
+          prev[tileId] === title ? prev : { ...prev, [tileId]: title },
+        );
+      }
+    },
+    [],
+  );
 
   const autoLayout = useCallback(() => {
     // Derive from the tiles map, not from the layout tree — a tile
@@ -299,10 +382,12 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       autoLayout,
       splitTile,
       duplicateTile,
+      changeTileType,
       closeOtherTiles,
       registerTileDuplicator,
       settingsSlotEl,
       setSettingsSlotEl,
+      manualTileTitles,
       setTileTitle,
     }),
     [
@@ -316,9 +401,11 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       autoLayout,
       splitTile,
       duplicateTile,
+      changeTileType,
       closeOtherTiles,
       registerTileDuplicator,
       settingsSlotEl,
+      manualTileTitles,
       setTileTitle,
     ],
   );
@@ -354,6 +441,52 @@ function stripTile(
   if (first === null) return second;
   if (second === null) return first;
   return { ...node, first, second };
+}
+
+function replaceTileId(
+  node: MosaicNode<string>,
+  oldId: string,
+  newId: string,
+): MosaicNode<string> {
+  if (typeof node === "string") {
+    return node === oldId ? newId : node;
+  }
+  return {
+    ...node,
+    first: replaceTileId(node.first, oldId, newId),
+    second: replaceTileId(node.second, oldId, newId),
+  };
+}
+
+function filterManualTitles(
+  titles: Record<string, string>,
+  tiles: Record<string, TilingTile>,
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [id, title] of Object.entries(titles)) {
+    if (tiles[id] && title.length > 0) {
+      result[id] = title;
+    }
+  }
+  return result;
+}
+
+function omitKeys<T>(
+  source: Readonly<Record<string, T>>,
+  keys: readonly string[],
+): Record<string, T> {
+  if (keys.length === 0) {
+    return source as Record<string, T>;
+  }
+  let changed = false;
+  const next = { ...source };
+  for (const key of keys) {
+    if (key in next) {
+      delete next[key];
+      changed = true;
+    }
+  }
+  return changed ? next : (source as Record<string, T>);
 }
 
 /** Reads the tiling context. Throws if used outside a `TilingProvider`. */

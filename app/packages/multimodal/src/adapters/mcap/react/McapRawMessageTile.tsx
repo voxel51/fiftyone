@@ -1,4 +1,5 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
+import { useSetTileTitle } from "@fiftyone/tiling";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { rawNodeToJson } from "../resources/raw-record-prune";
 import type { McapRawMessageRecordResult } from "../types";
@@ -24,6 +25,7 @@ const COPY_FEEDBACK_MS = 1200;
  */
 const McapRawMessageTile: React.FC<McapTileProps> = () => {
   const topic = useMcapRawTileTopic();
+  const setTileTitle = useSetTileTitle();
   const { recordsByTopic, subscribeRecord } = useMcapRawMessageContext();
 
   // This effect declares interest in the selected topic while the tile
@@ -34,6 +36,10 @@ const McapRawMessageTile: React.FC<McapTileProps> = () => {
     }
     return subscribeRecord(topic);
   }, [subscribeRecord, topic]);
+
+  useEffect(() => {
+    setTileTitle(topic ?? "Message", { source: "auto" });
+  }, [setTileTitle, topic]);
 
   const state = topic ? recordsByTopic.get(topic) : undefined;
   const result = state?.result;

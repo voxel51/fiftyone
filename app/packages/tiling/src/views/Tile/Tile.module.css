@@ -27,6 +27,23 @@
   font-size: 0.8125rem;
 }
 
+.titleInput {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  border: 1px solid var(--color-content-border-default);
+  border-radius: 4px;
+  background: var(--color-content-bg-card-1);
+  color: var(--color-content-text-primary);
+  font-size: 0.8125rem;
+  outline: none;
+  padding: 0 4px;
+}
+
+.titleInput:focus {
+  border-color: var(--color-brand-primary);
+}
+
 .actions {
   display: flex;
   align-items: center;

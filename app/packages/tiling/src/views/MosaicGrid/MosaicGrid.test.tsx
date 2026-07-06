@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TilingProvider } from "../../lib/TilingProvider";
+import { TilingProvider, useTiling } from "../../lib/TilingProvider";
+import { useTileRegistry } from "../../lib/use-tile-registry";
 import MosaicGrid, {
   addTileToLayout,
   autoLayout,
@@ -12,6 +13,63 @@ import MosaicGrid, {
 function renderGrid(grid: React.ReactElement) {
   return render(<TilingProvider>{grid}</TilingProvider>);
 }
+
+const CameraTile: React.FC = () => <div />;
+const LidarTile: React.FC = () => <div />;
+
+const RegisterTileKinds: React.FC = () => {
+  const { registerTile } = useTileRegistry();
+  React.useEffect(() => {
+    const cleanupCamera = registerTile({
+      type: "cam",
+      typeLabel: "Camera",
+      icon: null,
+      Tile: CameraTile,
+    });
+    const cleanupLidar = registerTile({
+      type: "lidar",
+      typeLabel: "Lidar",
+      icon: null,
+      Tile: LidarTile,
+    });
+    return () => {
+      cleanupCamera();
+      cleanupLidar();
+    };
+  }, [registerTile]);
+  return null;
+};
+
+const EditableGridHarness: React.FC = () => {
+  const {
+    layout,
+    tiles,
+    setLayout,
+    focusedTileId,
+    setFocusedTileId,
+    splitTile,
+    duplicateTile,
+    closeOtherTiles,
+    changeTileType,
+    expandedTileId,
+    setExpandedTileId,
+  } = useTiling();
+  return (
+    <MosaicGrid
+      tiles={tiles}
+      value={layout}
+      onChange={setLayout}
+      focusedTileId={focusedTileId}
+      onFocusTile={(id) => setFocusedTileId(id)}
+      onSplitTile={splitTile}
+      onDuplicateTile={duplicateTile}
+      onChangeTileType={changeTileType}
+      onCloseOtherTiles={closeOtherTiles}
+      expandedTileId={expandedTileId}
+      onExpandedTileIdChange={setExpandedTileId}
+    />
+  );
+};
 
 const noop = () => undefined;
 
@@ -181,6 +239,41 @@ describe("MosaicGrid component", () => {
       expect(screen.queryByTestId("tile-header-split-down")).toBeNull();
     });
 
+    it("commits a double-click title edit with Enter", () => {
+      render(
+        <TilingProvider initialTiles={tiles}>
+          <EditableGridHarness />
+        </TilingProvider>,
+      );
+
+      fireEvent.doubleClick(screen.getByTestId("tile-header-title"));
+      const input = screen.getByTestId("tile-header-title-input");
+      fireEvent.change(input, { target: { value: "Front Camera" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      expect(screen.getByTestId("tile-header-title").textContent).toBe(
+        "Front Camera",
+      );
+    });
+
+    it("cancels a title edit with Escape", () => {
+      render(
+        <TilingProvider initialTiles={tiles}>
+          <EditableGridHarness />
+        </TilingProvider>,
+      );
+
+      fireEvent.doubleClick(screen.getByTestId("tile-header-title"));
+      const input = screen.getByTestId("tile-header-title-input");
+      fireEvent.change(input, { target: { value: "Front Camera" } });
+      fireEvent.keyDown(input, { key: "Escape" });
+
+      expect(screen.getByTestId("tile-header-title").textContent).toBe(
+        "CAM_FRONT",
+      );
+      expect(screen.queryByText("Front Camera")).toBeNull();
+    });
+
     it("offers duplicate and close-others in the header context menu", () => {
       const onDuplicateTile = vi.fn();
       const onCloseOtherTiles = vi.fn();
@@ -202,6 +295,36 @@ describe("MosaicGrid component", () => {
       fireEvent.contextMenu(screen.getByTestId("tile-header"));
       fireEvent.click(screen.getByText("Close others"));
       expect(onCloseOtherTiles).toHaveBeenCalledWith("cam-1");
+    });
+
+    it("offers rename in the header context menu", () => {
+      renderGrid(<MosaicGrid tiles={tiles} value="cam-1" onChange={noop} />);
+
+      fireEvent.contextMenu(screen.getByTestId("tile-header"));
+      fireEvent.click(screen.getByText("Rename"));
+
+      expect(screen.getByTestId("tile-header-title-input")).toBeTruthy();
+    });
+
+    it("offers panel type changes in the header context menu", () => {
+      const onChangeTileType = vi.fn();
+      render(
+        <TilingProvider>
+          <RegisterTileKinds />
+          <MosaicGrid
+            tiles={tiles}
+            value="cam-1"
+            onChange={noop}
+            onChangeTileType={onChangeTileType}
+          />
+        </TilingProvider>,
+      );
+
+      fireEvent.contextMenu(screen.getByTestId("tile-header"));
+      expect(screen.getByText("Change panel type")).toBeTruthy();
+      fireEvent.click(screen.getByText("Lidar"));
+
+      expect(onChangeTileType).toHaveBeenCalledWith("cam-1", "lidar");
     });
 
     it("omits spawn items from the context menu when handlers are absent", () => {

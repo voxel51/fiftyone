@@ -150,6 +150,30 @@ describe("useMcapModalLayout", () => {
     expect(result.current.initialTiles["3d-7"].title).toBe("3D");
   });
 
+  it("restores manual tile titles for surviving leaves", () => {
+    writeMcapModalLayout(
+      {
+        layout: {
+          direction: "row",
+          first: "image-default",
+          second: "3d-7",
+        },
+        tileTitles: { "image-default": "Front Camera", "radar-1": "Radar" },
+      },
+      "dataset-a",
+    );
+
+    const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-a");
+
+    expect(result.current.initialTiles["image-default"].title).toBe(
+      "Front Camera",
+    );
+    expect(result.current.initialTiles["3d-7"].title).toBe("3D");
+    expect(result.current.initialManualTileTitles).toEqual({
+      "image-default": "Front Camera",
+    });
+  });
+
   it("restores expanded tile state when the tile survives layout restore", () => {
     writeMcapModalLayout({
       expandedTileId: "3d-7",
@@ -497,6 +521,20 @@ describe("McapModalLayoutPersistence", () => {
     return null;
   }
 
+  function TitleDriver({
+    tileId,
+    title,
+  }: {
+    readonly tileId: string;
+    readonly title: string;
+  }) {
+    const { setTileTitle } = useTiling();
+    useEffect(() => {
+      setTileTitle(tileId, title);
+    }, [setTileTitle, tileId, title]);
+    return null;
+  }
+
   // Two tiles so the provider's derived initial layout differs from the
   // single-leaf arrangement the driver applies — persistence only writes
   // once the layout changes from what the mount started with.
@@ -561,6 +599,22 @@ describe("McapModalLayoutPersistence", () => {
       "camera-default",
     );
     expect(readMcapModalLayout("dataset-a")?.layout).toBeUndefined();
+  });
+
+  it("writes manual title changes after the debounce window", () => {
+    render(
+      <TilingProvider initialTiles={TWO_TILES}>
+        <TitleDriver tileId="camera-default" title="Front Camera" />
+        <McapModalLayoutPersistence datasetId="dataset-a" />
+      </TilingProvider>,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(readMcapModalLayout("dataset-a")?.tileTitles).toEqual({
+      "camera-default": "Front Camera",
+    });
   });
 
   it("flushes expanded tile changes on unmount even when the debounce is pending", () => {

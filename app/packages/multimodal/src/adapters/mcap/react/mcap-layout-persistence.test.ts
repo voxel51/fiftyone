@@ -5,6 +5,7 @@ import {
   readMcapModalLayout,
   sanitizePlotSeries,
   sanitizeRawTopics,
+  sanitizeTileTitles,
   writeMcapModalLayout,
 } from "./mcap-layout-persistence";
 
@@ -388,6 +389,53 @@ describe("mcap-layout-persistence", () => {
       expect(sanitizeRawTopics([])).toBeUndefined();
       expect(sanitizeRawTopics("x")).toBeUndefined();
       expect(sanitizeRawTopics({})).toBeUndefined();
+    });
+  });
+
+  describe("tileTitles", () => {
+    it("round-trips per-dataset manual tile titles", () => {
+      writeMcapModalLayout(
+        { tileTitles: { "image-1": "Front Camera" } },
+        "ds-a",
+      );
+      expect(readMcapModalLayout("ds-a")?.tileTitles).toEqual({
+        "image-1": "Front Camera",
+      });
+    });
+
+    it("never leaks tile titles through the browser-wide fallback", () => {
+      writeMcapModalLayout(
+        { layout: "image-1", tileTitles: { "image-1": "Front Camera" } },
+        "ds-a",
+      );
+
+      const other = readMcapModalLayout("ds-b");
+      expect(other?.layout).toBe("image-1");
+      expect(other?.tileTitles).toBeUndefined();
+    });
+
+    it("drops rows with invalid tile ids or titles", () => {
+      writeMcapModalLayout(
+        {
+          tileTitles: {
+            "image-1": "  Front Camera  ",
+            nosuffix: "No suffix",
+            "plot-1": "",
+            "raw-1": 7,
+          } as never,
+        },
+        "ds-a",
+      );
+      expect(readMcapModalLayout("ds-a")?.tileTitles).toEqual({
+        "image-1": "Front Camera",
+      });
+    });
+
+    it("sanitizeTileTitles rejects non-object payloads", () => {
+      expect(sanitizeTileTitles(null)).toBeUndefined();
+      expect(sanitizeTileTitles([])).toBeUndefined();
+      expect(sanitizeTileTitles("x")).toBeUndefined();
+      expect(sanitizeTileTitles({})).toBeUndefined();
     });
   });
 

@@ -2,7 +2,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
 import { useTileId, useTiling } from "./TilingProvider";
-import type { RegisteredTile, TilingTile } from "./types";
+import type { RegisteredTile, SetTileTitleOptions, TilingTile } from "./types";
 
 // Stable placeholder for use outside a TileIdScope; writes no-op.
 const NO_TILE = "__no-tile__";
@@ -42,13 +42,16 @@ export function useTileTitleFor(tileId: string | null): string | null {
   return tileId ? (tiles[tileId]?.title ?? null) : null;
 }
 
-export function useSetTileTitle(): (title: string) => void {
+export function useSetTileTitle(): (
+  title: string,
+  options?: SetTileTitleOptions,
+) => void {
   const tileId = useTileId();
   const { setTileTitle } = useTiling();
   return useCallback(
-    (title: string) => {
+    (title: string, options?: SetTileTitleOptions) => {
       if (!tileId) return;
-      setTileTitle(tileId, title);
+      setTileTitle(tileId, title, options);
     },
     [tileId, setTileTitle],
   );

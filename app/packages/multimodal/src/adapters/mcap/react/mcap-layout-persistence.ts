@@ -48,6 +48,12 @@ export interface McapPersistedModalLayout {
    */
   rawTopics?: Record<string, string>;
   /**
+   * User-authored panel titles per tile id. Dataset-scoped only: names
+   * are layout semantics for this recording family, not reusable fallback
+   * chrome across unrelated topic sets.
+   */
+  tileTitles?: Record<string, string>;
+  /**
    * World axis treated as up by the 3D MCAP scene. Dataset-scoped only:
    * coordinate conventions belong to the dataset, not the browser fallback.
    */
@@ -72,6 +78,8 @@ const MAX_PLOT_TILES = 32;
 const MAX_PLOT_SERIES_PER_TILE = 64;
 const MAX_RAW_TILES = 32;
 const MAX_RAW_TOPIC_LENGTH = 512;
+const MAX_TILE_TITLES = 64;
+const MAX_TILE_TITLE_LENGTH = 160;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 interface PersistedDatasetEntry extends McapPersistedModalLayout {
@@ -135,6 +143,7 @@ function sanitizeEntry(raw: unknown): McapPersistedModalLayout | undefined {
       candidate.sidebarWidthPx > 0
         ? candidate.sidebarWidthPx
         : undefined,
+    tileTitles: sanitizeTileTitles(candidate.tileTitles),
   };
 }
 
@@ -226,6 +235,35 @@ export function sanitizeRawTopics(
 }
 
 /**
+ * Structural validation of user-authored tile titles. Unknown tile-id
+ * shapes and empty/overlong titles drop individually.
+ */
+export function sanitizeTileTitles(
+  raw: unknown,
+): Record<string, string> | undefined {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const result: Record<string, string> = {};
+  let titleCount = 0;
+  for (const [tileId, title] of Object.entries(raw)) {
+    if (titleCount >= MAX_TILE_TITLES) break;
+    if (mcapTileTypeFromId(tileId) === null || typeof title !== "string") {
+      continue;
+    }
+    const trimmed = title.trim();
+    if (trimmed.length === 0 || trimmed.length > MAX_TILE_TITLE_LENGTH) {
+      continue;
+    }
+    result[tileId] = trimmed;
+    titleCount += 1;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/**
  * Parse and sanitize whatever is in storage into the v2 store shape.
  * v1 payloads are read as the fallback layer (their single entry was
  * browser-wide, which is exactly what `fallback` means now).
@@ -297,6 +335,8 @@ export function readMcapModalLayout(
     plotSeries: entry?.plotSeries,
     // Dataset-scoped for the same reason as plotSeries.
     rawTopics: entry?.rawTopics,
+    // Dataset-scoped for the same reason as plotSeries/rawTopics.
+    tileTitles: entry?.tileTitles,
     // Dataset-scoped on purpose: world-up conventions are recording-family
     // semantics, not reusable browser chrome.
     sceneUpAxis: entry?.sceneUpAxis,
@@ -338,12 +378,14 @@ export function writeMcapModalLayout(
       plotSeries: _datasetOnlyPlotSeries,
       rawTopics: _datasetOnlyRawTopics,
       sceneUpAxis: _datasetOnlySceneUpAxis,
+      tileTitles: _datasetOnlyTileTitles,
       ...fallbackPatch
     } = patch;
     const fallback = { ...store?.fallback, ...fallbackPatch };
     delete fallback.plotSeries;
     delete fallback.rawTopics;
     delete fallback.sceneUpAxis;
+    delete fallback.tileTitles;
     const next: PersistedStore = {
       version: VERSION,
       fallback,

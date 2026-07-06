@@ -2,6 +2,7 @@ import {
   ContextMenu,
   IconName,
   MenuIconTextItem,
+  MenuSectionTitle,
   MenuSeparator,
 } from "@voxel51/voodo";
 import clsx from "clsx";
@@ -16,8 +17,12 @@ import {
   updateTree,
 } from "react-mosaic-component";
 import "react-mosaic-component/react-mosaic-component.css";
-import { TileIdScope } from "../../lib/TilingProvider";
-import { useTileTitle } from "../../lib/use-tile-state";
+import { TileIdScope, tileTypeFromId } from "../../lib/TilingProvider";
+import {
+  useSetTileTitle,
+  useTileTitle,
+  useTileTypes,
+} from "../../lib/use-tile-state";
 import { TileHeader } from "../Tile/Tile";
 import {
   FullscreenExitIcon,
@@ -63,6 +68,11 @@ export interface MosaicGridProps {
    */
   onDuplicateTile?: (id: string) => void;
   /**
+   * Replace tile `id` with a fresh tile of another registered kind.
+   * Enables the "Change panel type" context-menu section.
+   */
+  onChangeTileType?: (id: string, type: string) => void;
+  /**
    * Close every tile except `id`. Enables the "Close others"
    * context-menu item — pass `useTiling().closeOtherTiles`.
    */
@@ -82,6 +92,7 @@ export interface MosaicGridProps {
 
 interface TileWindowProps {
   path: MosaicBranch[];
+  tileId: string;
   tile: MosaicTileConfig;
   isFocused: boolean;
   isFullscreen: boolean;
@@ -93,11 +104,13 @@ interface TileWindowProps {
   onSplitRight?: () => void;
   onSplitDown?: () => void;
   onDuplicate?: () => void;
+  onChangeType?: (type: string) => void;
   onCloseOthers?: () => void;
 }
 
 const TileWindow: React.FC<TileWindowProps> = ({
   path,
+  tileId,
   tile,
   isFocused,
   isFullscreen,
@@ -108,14 +121,26 @@ const TileWindow: React.FC<TileWindowProps> = ({
   onSplitRight,
   onSplitDown,
   onDuplicate,
+  onChangeType,
   onCloseOthers,
 }) => {
   const titleOverride = useTileTitle();
+  const setTileTitle = useSetTileTitle();
+  const tileTypes = useTileTypes();
+  const [renameRequest, setRenameRequest] = useState(0);
   const title = titleOverride ?? tile.title;
   const hasSpawnActions = Boolean(onSplitRight || onSplitDown || onDuplicate);
+  const hasTypeActions = Boolean(onChangeType && tileTypes.length > 0);
+  const currentType = tileTypeFromId(tileId);
   const fullscreenLabel = isFullscreen ? "Exit fullscreen" : "Fullscreen";
   const contextMenu = (
     <>
+      <MenuIconTextItem
+        icon={IconName.Edit}
+        text="Rename"
+        onClick={() => setRenameRequest((current) => current + 1)}
+      />
+      <MenuSeparator />
       {onSplitRight && (
         <MenuIconTextItem
           icon={<SplitRightIcon />}
@@ -138,6 +163,26 @@ const TileWindow: React.FC<TileWindowProps> = ({
         />
       )}
       {hasSpawnActions && <MenuSeparator />}
+      {hasTypeActions ? (
+        <>
+          <MenuSectionTitle>Change panel type</MenuSectionTitle>
+          {tileTypes.map((entry) => {
+            const isCurrent = entry.type === currentType;
+            return (
+              <MenuIconTextItem
+                key={entry.type}
+                disabled={isCurrent}
+                icon={entry.icon}
+                text={entry.typeLabel}
+                onClick={
+                  isCurrent ? undefined : () => onChangeType?.(entry.type)
+                }
+              />
+            );
+          })}
+          <MenuSeparator />
+        </>
+      ) : null}
       <MenuIconTextItem
         icon={isFullscreen ? <FullscreenExitIcon /> : IconName.Fullscreen}
         text={fullscreenLabel}
@@ -183,6 +228,8 @@ const TileWindow: React.FC<TileWindowProps> = ({
               isFullscreen={isFullscreen}
               onSplitRight={onSplitRight}
               onSplitDown={onSplitDown}
+              onTitleChange={(nextTitle) => setTileTitle(nextTitle)}
+              renameRequest={renameRequest}
               onSelect={onFocus}
             />
           </ContextMenu>
@@ -216,6 +263,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
   onFocusTile,
   onSplitTile,
   onDuplicateTile,
+  onChangeTileType,
   onCloseOtherTiles,
   expandedTileId,
   onExpandedTileIdChange,
@@ -292,6 +340,9 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
     const handleDuplicate = onDuplicateTile
       ? () => onDuplicateTile(id)
       : undefined;
+    const handleChangeType = onChangeTileType
+      ? (type: string) => onChangeTileType(id, type)
+      : undefined;
     const handleCloseOthers = onCloseOtherTiles
       ? () => onCloseOtherTiles(id)
       : undefined;
@@ -300,6 +351,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
       <TileIdScope tileId={id}>
         <TileWindow
           path={path}
+          tileId={id}
           tile={tile}
           isFocused={isFocused}
           isFullscreen={isFullscreen}
@@ -310,6 +362,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
           onSplitRight={handleSplitRight}
           onSplitDown={handleSplitDown}
           onDuplicate={handleDuplicate}
+          onChangeType={handleChangeType}
           onCloseOthers={handleCloseOthers}
         />
       </TileIdScope>

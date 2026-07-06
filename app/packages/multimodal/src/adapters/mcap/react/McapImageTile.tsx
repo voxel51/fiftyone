@@ -106,7 +106,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   // This effect syncs the tile title with the selected image source.
   useEffect(() => {
     const label = images.find((s) => s.id === topic)?.label;
-    if (label) setTileTitle(label);
+    if (label) setTileTitle(label, { source: "auto" });
   }, [topic, images, setTileTitle]);
 
   // This effect resets image dimensions when the selected source changes.
@@ -209,7 +209,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   key={s.id}
                   onClick={() => {
                     setTopic(s.id);
-                    setTileTitle(s.label);
+                    setTileTitle(s.label, { source: "auto" });
                   }}
                 >
                   {s.label}

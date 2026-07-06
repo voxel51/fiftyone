@@ -234,6 +234,48 @@ describe("TilingProvider", () => {
         result.current.setTileTitle("cam-1", "Front Camera");
       });
       expect(result.current.tiles["cam-1"].title).toBe("Front Camera");
+      expect(result.current.manualTileTitles).toEqual({
+        "cam-1": "Front Camera",
+      });
+    });
+
+    it("does not let an auto title override a manual title", () => {
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={{ "cam-1": makeTile("Camera") }}>
+            {children}
+          </Wrapper>
+        ),
+      });
+      act(() => {
+        result.current.setTileTitle("cam-1", "Front Camera");
+      });
+      act(() => {
+        result.current.setTileTitle("cam-1", "Auto Camera", {
+          source: "auto",
+        });
+      });
+      expect(result.current.tiles["cam-1"].title).toBe("Front Camera");
+      expect(result.current.manualTileTitles).toEqual({
+        "cam-1": "Front Camera",
+      });
+    });
+
+    it("accepts auto titles before the tile has a manual title", () => {
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={{ "cam-1": makeTile("Camera") }}>
+            {children}
+          </Wrapper>
+        ),
+      });
+      act(() => {
+        result.current.setTileTitle("cam-1", "Auto Camera", {
+          source: "auto",
+        });
+      });
+      expect(result.current.tiles["cam-1"].title).toBe("Auto Camera");
+      expect(result.current.manualTileTitles).toEqual({});
     });
 
     it("is a no-op when the title is unchanged", () => {
@@ -283,10 +325,14 @@ describe("TilingProvider", () => {
         ),
       });
       act(() => {
+        result.current.setTileTitle("camera-1", "Manual Camera");
+      });
+      act(() => {
         result.current.removeTile("camera-1");
       });
       expect(result.current.tiles).toEqual({});
       expect(result.current.layout).toBeNull();
+      expect(result.current.manualTileTitles).toEqual({});
     });
 
     it("clears focus when the focused tile is removed", () => {
@@ -399,9 +445,13 @@ describe("TilingProvider", () => {
       });
       // Replace layout with only "b-1" — "a-1" should be reaped.
       act(() => {
+        result.current.setTileTitle("a-1", "Manual A");
+      });
+      act(() => {
         result.current.setLayout("b-1");
       });
       expect(result.current.tiles).toEqual({ "b-1": initialTiles["b-1"] });
+      expect(result.current.manualTileTitles).toEqual({});
     });
 
     it("clears focus if the focused tile was orphaned by the new layout", () => {
@@ -605,11 +655,41 @@ function RegisterCameraKind() {
   return null;
 }
 
+function RegisterLidarKind() {
+  const { registerTile } = useTileRegistry();
+  useEffect(
+    () =>
+      registerTile({
+        type: "lidar",
+        typeLabel: "Lidar",
+        icon: null,
+        Tile: KindTile,
+      }),
+    [registerTile],
+  );
+  return null;
+}
+
 function spawnOpsSetup(initialTiles: Record<string, TilingTile>) {
   return renderHook(() => useTiling(), {
     wrapper: ({ children }: { children: React.ReactNode }) => (
       <TilingProvider initialTiles={initialTiles}>
         <RegisterCameraKind />
+        {children}
+      </TilingProvider>
+    ),
+  });
+}
+
+function changeTypeSetup(initialTiles: Record<string, TilingTile>) {
+  return renderHook(() => useTiling(), {
+    wrapper: ({ children }: { children: React.ReactNode }) => (
+      <TilingProvider
+        initialTiles={initialTiles}
+        initialExpandedTileId="camera-1"
+      >
+        <RegisterCameraKind />
+        <RegisterLidarKind />
         {children}
       </TilingProvider>
     ),
@@ -649,6 +729,22 @@ describe("spawn operations", () => {
       });
       expect(result.current.tiles["camera-2"].title).toBe("Camera");
       expect(result.current.focusedTileId).toBe("camera-2");
+    });
+
+    it("does not copy a manual title when spawning a fresh split", () => {
+      const { result } = spawnOpsSetup({ "camera-1": makeTile("camera") });
+      act(() => {
+        result.current.setTileTitle("camera-1", "Front Camera");
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.splitTile("camera-1", "row");
+      });
+      expect(newId).toBe("camera-2");
+      expect(result.current.tiles["camera-2"].title).toBe("Camera");
+      expect(result.current.manualTileTitles).toEqual({
+        "camera-1": "Front Camera",
+      });
     });
 
     it("returns null for an unknown kind with no duplicate factory", () => {
@@ -710,6 +806,23 @@ describe("spawn operations", () => {
       expect(result.current.tiles["camera-2"].title).toBe("Camera");
     });
 
+    it("copies the source tile's manual title", () => {
+      const { result } = spawnOpsSetup({ "camera-1": makeTile("camera") });
+      act(() => {
+        result.current.setTileTitle("camera-1", "Front Camera");
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.duplicateTile("camera-1");
+      });
+      expect(newId).toBe("camera-2");
+      expect(result.current.tiles["camera-2"].title).toBe("Front Camera");
+      expect(result.current.manualTileTitles).toEqual({
+        "camera-1": "Front Camera",
+        "camera-2": "Front Camera",
+      });
+    });
+
     it("uses the tile body's useTileDuplicator registration", () => {
       const DuplicatorBody: React.FC = () => {
         useTileDuplicator(() => ({
@@ -734,6 +847,44 @@ describe("spawn operations", () => {
       });
       expect(newId).toBe("camera-2");
       expect(result.current.tiles["camera-2"].title).toBe("live copy");
+    });
+  });
+
+  describe("changeTileType", () => {
+    it("replaces a tile in place with a fresh registered type", () => {
+      const { result } = changeTypeSetup({
+        "camera-1": makeTile("camera"),
+      });
+      act(() => {
+        result.current.setFocusedTileId("camera-1");
+      });
+      act(() => {
+        result.current.setTileTitle("camera-1", "Front Camera");
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.changeTileType("camera-1", "lidar");
+      });
+      expect(newId).toBe("lidar-2");
+      expect(result.current.layout).toBe("lidar-2");
+      expect(result.current.tiles["camera-1"]).toBeUndefined();
+      expect(result.current.tiles["lidar-2"].title).toBe("Lidar");
+      expect(result.current.focusedTileId).toBe("lidar-2");
+      expect(result.current.expandedTileId).toBe("lidar-2");
+      expect(result.current.manualTileTitles).toEqual({});
+    });
+
+    it("returns null when the requested type is not registered", () => {
+      const { result } = changeTypeSetup({
+        "camera-1": makeTile("camera"),
+      });
+      let newId: string | null = "sentinel";
+      act(() => {
+        newId = result.current.changeTileType("camera-1", "missing");
+      });
+      expect(newId).toBeNull();
+      expect(result.current.layout).toBe("camera-1");
+      expect(result.current.tiles["camera-1"]).toBeDefined();
     });
   });
 

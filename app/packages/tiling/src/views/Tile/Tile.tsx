@@ -8,7 +8,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   FullscreenExitIcon,
   SplitDownIcon,
@@ -27,6 +27,10 @@ export interface TileHeaderProps {
   onSplitRight?: () => void;
   /** Spawn a sibling tile below. Omit to hide the button. */
   onSplitDown?: () => void;
+  /** Commit a user-authored title from the inline title editor. */
+  onTitleChange?: (title: string) => void;
+  /** Incrementing token that requests the inline title editor. */
+  renameRequest?: number;
   /**
    * Fired when the header itself is clicked — clicks on the header's
    * buttons are excluded, since those manage focus through their own
@@ -53,6 +57,8 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
   isFullscreen = false,
   onSplitRight,
   onSplitDown,
+  onTitleChange,
+  renameRequest = 0,
   onSelect,
   className,
 }) => {
@@ -60,6 +66,62 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
   const fullscreenIcon = isFullscreen
     ? FullscreenExitIcon
     : IconName.Fullscreen;
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(title);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const lastRenameRequestRef = useRef(renameRequest);
+
+  useEffect(() => {
+    if (!editing) {
+      setDraftTitle(title);
+      return;
+    }
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [editing, title]);
+
+  useEffect(() => {
+    if (
+      renameRequest === lastRenameRequestRef.current ||
+      renameRequest <= 0 ||
+      !onTitleChange
+    ) {
+      return;
+    }
+    lastRenameRequestRef.current = renameRequest;
+    setDraftTitle(title);
+    setEditing(true);
+  }, [onTitleChange, renameRequest, title]);
+
+  const beginEditing = () => {
+    if (!onTitleChange) return;
+    setDraftTitle(title);
+    setEditing(true);
+  };
+
+  const startEditing = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    beginEditing();
+  };
+
+  const commitTitle = () => {
+    if (!editing) return;
+    const nextTitle = draftTitle.trim();
+    setEditing(false);
+    setDraftTitle(title);
+    if (nextTitle.length > 0 && nextTitle !== title) {
+      onTitleChange(nextTitle);
+    }
+  };
+
+  const cancelTitleEdit = () => {
+    setEditing(false);
+    setDraftTitle(title);
+  };
+
+  const stopTitleEditPropagation = (event: React.SyntheticEvent) => {
+    event.stopPropagation();
+  };
 
   return (
     // onClick (not pointerdown — a focus re-render between pointerdown and
@@ -73,19 +135,46 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
         onSelect
           ? (event) => {
               if ((event.target as HTMLElement).closest("button")) return;
+              if ((event.target as HTMLElement).closest("input")) return;
               onSelect();
             }
           : undefined
       }
     >
-      <Text
-        variant={TextVariant.Xs}
-        color={TextColor.Secondary}
-        className={styles.title}
-        title={title}
-      >
-        {title}
-      </Text>
+      {editing ? (
+        <input
+          aria-label="Panel title"
+          className={styles.titleInput}
+          data-cy="tile-header-title-input"
+          onBlur={commitTitle}
+          onChange={(event) => setDraftTitle(event.target.value)}
+          onClick={stopTitleEditPropagation}
+          onDoubleClick={stopTitleEditPropagation}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+            if (event.key === "Enter") {
+              commitTitle();
+            } else if (event.key === "Escape") {
+              cancelTitleEdit();
+            }
+          }}
+          onPointerDown={stopTitleEditPropagation}
+          ref={inputRef}
+          type="text"
+          value={draftTitle}
+        />
+      ) : (
+        <Text
+          variant={TextVariant.Xs}
+          color={TextColor.Secondary}
+          className={styles.title}
+          data-cy="tile-header-title"
+          onDoubleClick={startEditing}
+          title={title}
+        >
+          {title}
+        </Text>
+      )}
       <div className={styles.actions}>
         {(onSplitRight || onSplitDown) && (
           <>

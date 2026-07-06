@@ -73,6 +73,8 @@ export interface MultiModalPlaybackProps {
 
   /** Initial tile entries seeded into the embedded TilingProvider. */
   initialTiles?: Record<string, TilingTile>;
+  /** Initial user-authored tile titles keyed by tile id. */
+  initialManualTileTitles?: Record<string, string>;
 
   /**
    * Initial mosaic tree seeded into the embedded TilingProvider. Leave
@@ -186,6 +188,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   tracks,
   defaultPinnedTrackIds,
   initialTiles,
+  initialManualTileTitles,
   initialLayout,
   initialExpandedTileId,
   sceneSources = EMPTY_SOURCES,
@@ -212,6 +215,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
         <SceneInventoryProvider sources={sceneSources}>
           <TilingProvider
             initialTiles={initialTiles}
+            initialManualTileTitles={initialManualTileTitles}
             initialLayout={initialLayout}
             initialExpandedTileId={initialExpandedTileId}
           >
@@ -292,6 +296,7 @@ function Layout({
     splitTile,
     duplicateTile,
     closeOtherTiles,
+    changeTileType,
     expandedTileId,
     setExpandedTileId,
   } = useTiling();
@@ -413,6 +418,7 @@ function Layout({
             onFocusTile={handleFocusTile}
             onSplitTile={splitTile}
             onDuplicateTile={duplicateTile}
+            onChangeTileType={changeTileType}
             onCloseOtherTiles={closeOtherTiles}
             expandedTileId={expandedTileId}
             onExpandedTileIdChange={setExpandedTileId}

@@ -127,6 +127,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   );
   const {
     initialTiles,
+    initialManualTileTitles,
     initialLayout,
     initialExpandedTileId,
     defaultLeftOpen,
@@ -199,6 +200,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                     sceneSources={sources}
                     deselectFocusedTileOnRepeatSelect={false}
                     initialTiles={initialTiles}
+                    initialManualTileTitles={initialManualTileTitles}
                     initialLayout={initialLayout}
                     initialExpandedTileId={initialExpandedTileId}
                     tracks={

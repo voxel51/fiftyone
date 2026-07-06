@@ -7,6 +7,7 @@ import {
   usePlayback,
   usePlaybackStore,
 } from "@fiftyone/playback";
+import { useSetTileTitle } from "@fiftyone/tiling";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { AlignedData } from "uplot";
 import TimeseriesChart, {
@@ -33,6 +34,7 @@ import styles from "./McapTile.module.css";
  */
 const McapPlotTile: React.FC<McapTileProps> = () => {
   const seriesConfigs = useMcapPlotTileSeries();
+  const setTileTitle = useSetTileTitle();
   const { ensureEnumeration, seriesByKey, subscribeSeries } =
     useMcapNumericSeriesContext();
   const dataStream = useMcapDataStream();
@@ -45,6 +47,10 @@ const McapPlotTile: React.FC<McapTileProps> = () => {
   useEffect(() => {
     ensureEnumeration();
   }, [ensureEnumeration]);
+
+  useEffect(() => {
+    setTileTitle(plotTileTitle(seriesConfigs), { source: "auto" });
+  }, [seriesConfigs, setTileTitle]);
 
   // This effect declares interest in every enabled series while the tile
   // shows it; the bridge fetches playhead windows for interested signals
@@ -191,5 +197,21 @@ const McapPlotTile: React.FC<McapTileProps> = () => {
     </>
   );
 };
+
+function plotTileTitle(
+  seriesConfigs: readonly {
+    readonly fieldPath: string;
+    readonly topic: string;
+  }[],
+): string {
+  if (seriesConfigs.length === 0) {
+    return "Plot";
+  }
+  if (seriesConfigs.length === 1) {
+    const [{ fieldPath, topic }] = seriesConfigs;
+    return `${topic}.${fieldPath}`;
+  }
+  return `Plot (${seriesConfigs.length})`;
+}
 
 export default McapPlotTile;

@@ -1,6 +1,6 @@
 import { useTileRegistry } from "@fiftyone/tiling";
 import { IconName } from "@voxel51/voodo";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import Mcap3dTile from "./Mcap3dTile";
 import McapImageTile from "./McapImageTile";
@@ -62,7 +62,7 @@ const TILE_BY_TYPE: Record<
   // scene inventory can't render, so it is offered whenever the modal
   // has any source at all; its settings sidebar lists every topic.
   [MCAP_TILE_TYPE.RAW]: {
-    typeLabel: "Raw messages",
+    typeLabel: "Message",
     icon: IconName.JSON,
     Tile: McapRawMessageTile,
     sourceTypes: Object.values(MCAP_SOURCE_TYPE),
@@ -81,6 +81,7 @@ function isKnownTileType(type: string): type is McapTileType {
  * a build with more tile kinds).
  */
 export function getMcapTileDefinition(type: string): {
+  icon: IconName;
   typeLabel: string;
   Tile: React.ComponentType<McapTileProps>;
 } | null {
@@ -112,12 +113,11 @@ export interface UseMcapTilesOptions {
  * tile" menu shows one item per kind (Image, 3D, …); each new instance
  * discovers its sources through the scene inventory.
  */
-export function useMcapTiles({ presentTypes }: UseMcapTilesOptions): void {
+export function useMcapTiles(_options: UseMcapTilesOptions): void {
   const { registerTile } = useTileRegistry();
-  const tileTypes = useMemo(
-    () => mcapTileTypesFor(presentTypes),
-    [presentTypes],
-  );
+  // Register every archetype so Add tile and Change panel type stay
+  // type-first. Individual tile settings handle empty/missing sources.
+  const tileTypes = TILE_TYPES;
 
   useEffect(() => {
     const cleanups = tileTypes.map((type) => {

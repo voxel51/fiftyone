@@ -257,7 +257,7 @@ export function useMcap3dSelection({
       selectedTopics.length === 1
         ? renderableSources.find((s) => s.id === selectedTopics[0])?.label
         : null;
-    setTileTitle(label ?? TILE_TYPE_LABEL);
+    setTileTitle(label ?? TILE_TYPE_LABEL, { source: "auto" });
   }, [selectedTopics, renderableSources, setTileTitle]);
 
   const toggleSource = useCallback((id: string, checked: boolean) => {

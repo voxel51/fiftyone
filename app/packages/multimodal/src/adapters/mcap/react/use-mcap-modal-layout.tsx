@@ -33,6 +33,8 @@ import { getMcapTileDefinition, mcapTileTypesFor } from "./use-mcap-tiles";
 
 export interface McapModalLayout {
   initialTiles: Record<string, TilingTile>;
+  /** User-authored titles to seed into the TilingProvider. */
+  initialManualTileTitles: Record<string, string>;
   /** `undefined` lets the TilingProvider auto-lay-out `initialTiles`. */
   initialLayout: MosaicNode<string> | undefined;
   /** Tile id that should initially render expanded to fullscreen. */
@@ -103,7 +105,13 @@ export function useMcapModalLayout({
   );
 
   const restored = useMemo(
-    () => rebuildTilesFromLayout(persisted?.layout, presentTypes, sources),
+    () =>
+      rebuildTilesFromLayout(
+        persisted?.layout,
+        presentTypes,
+        sources,
+        persisted?.tileTitles,
+      ),
     [persisted, presentTypes, sources],
   );
   const restoredTileIds = useMemo(
@@ -145,6 +153,7 @@ export function useMcapModalLayout({
 
   return {
     initialTiles: restored?.tiles ?? defaultTiles,
+    initialManualTileTitles: restored?.manualTileTitles ?? {},
     initialLayout: restored?.layout ?? resolved.layout,
     initialExpandedTileId,
     defaultLeftOpen: persisted?.leftSidebarOpen ?? true,
@@ -215,7 +224,12 @@ function rebuildTilesFromLayout(
   layout: MosaicNode<string> | null | undefined,
   presentTypes: readonly string[],
   sources: readonly SceneSource[],
-): { layout: MosaicNode<string>; tiles: Record<string, TilingTile> } | null {
+  tileTitles?: Readonly<Record<string, string>>,
+): {
+  layout: MosaicNode<string>;
+  manualTileTitles: Record<string, string>;
+  tiles: Record<string, TilingTile>;
+} | null {
   if (layout === null || layout === undefined) return null;
 
   const availableTypes = new Set<string>(mcapTileTypesFor(presentTypes));
@@ -231,6 +245,7 @@ function rebuildTilesFromLayout(
 
   const rankedImages = rankDefaultImageSources(sources);
   let imageLeafIndex = 0;
+  const manualTileTitles: Record<string, string> = {};
   const tiles: Record<string, TilingTile> = {};
   for (const id of tileIds) {
     const type = mcapTileTypeFromId(id);
@@ -242,12 +257,17 @@ function rebuildTilesFromLayout(
       type === MCAP_TILE_TYPE.IMAGE
         ? rankedImages[imageLeafIndex++]?.id
         : undefined;
+    const restoredTitle = tileTitles?.[id];
+    const title = restoredTitle ?? definition.typeLabel;
+    if (restoredTitle) {
+      manualTileTitles[id] = restoredTitle;
+    }
     tiles[id] = {
-      title: definition.typeLabel,
+      title,
       render: () => <Tile initialSourceId={initialSourceId} />,
     };
   }
-  return { layout: pruned, tiles };
+  return { layout: pruned, manualTileTitles, tiles };
 }
 
 export interface McapModalLayoutPersistenceProps {
@@ -267,9 +287,11 @@ export interface McapModalLayoutPersistenceProps {
 export function McapModalLayoutPersistence({
   datasetId,
 }: McapModalLayoutPersistenceProps): React.ReactElement | null {
-  const { expandedTileId, layout, tiles } = useTiling();
+  const { expandedTileId, layout, manualTileTitles, tiles } = useTiling();
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
+  const manualTileTitlesRef = useRef(manualTileTitles);
+  manualTileTitlesRef.current = manualTileTitles;
   const expandedTileIdRef = useRef(expandedTileId);
   expandedTileIdRef.current = expandedTileId;
   const datasetIdRef = useRef(datasetId);
@@ -422,6 +444,18 @@ export function McapModalLayoutPersistence({
   ) {
     expandedDirtyRef.current = true;
   }
+  const manualTileTitlesKey = JSON.stringify(manualTileTitles);
+  const initialManualTileTitlesKeyRef = useRef<string | null>(null);
+  if (initialManualTileTitlesKeyRef.current === null) {
+    initialManualTileTitlesKeyRef.current = manualTileTitlesKey;
+  }
+  const titleDirtyRef = useRef(false);
+  if (
+    !titleDirtyRef.current &&
+    manualTileTitlesKey !== initialManualTileTitlesKeyRef.current
+  ) {
+    titleDirtyRef.current = true;
+  }
 
   // This effect syncs the mosaic layout to localStorage (debounced) —
   // persistence is an external system, so an effect is the right tool.
@@ -447,6 +481,16 @@ export function McapModalLayoutPersistence({
     return () => clearTimeout(timeout);
   }, [expandedTileId, datasetId]);
 
+  // This effect syncs user-authored tile titles to dataset-scoped
+  // storage. Heuristic auto titles are intentionally omitted.
+  useEffect(() => {
+    if (!titleDirtyRef.current) return undefined;
+    const timeout = setTimeout(() => {
+      writeMcapModalLayout({ tileTitles: { ...manualTileTitles } }, datasetId);
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [datasetId, manualTileTitles, manualTileTitlesKey]);
+
   // This effect flushes the latest layout on unmount so a pending
   // debounce can't drop the user's final arrangement.
   useEffect(
@@ -460,6 +504,12 @@ export function McapModalLayoutPersistence({
       if (expandedDirtyRef.current) {
         writeMcapModalLayout(
           { expandedTileId: expandedTileIdRef.current ?? undefined },
+          datasetIdRef.current,
+        );
+      }
+      if (titleDirtyRef.current) {
+        writeMcapModalLayout(
+          { tileTitles: { ...manualTileTitlesRef.current } },
           datasetIdRef.current,
         );
       }
