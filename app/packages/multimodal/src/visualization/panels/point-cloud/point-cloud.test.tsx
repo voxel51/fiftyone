@@ -14,7 +14,12 @@ import {
   imageTextureCacheStats,
   resetImageTextureCacheForTests,
 } from "../image-texture-cache";
-import { PointCloudPanel } from "./index";
+import {
+  PointCloudPanel,
+  sampleColormap,
+  type PointCloudColorSettings,
+} from "./index";
+import { POINT_CLOUD_POINTS_MATERIAL_PROPS } from "./PointCloudSceneLayer";
 
 vi.mock("@react-three/fiber", () => ({
   useFrame: vi.fn(),
@@ -188,6 +193,31 @@ describe("PointCloudPanel", () => {
     expect(Array.from(positionAttribute.array.slice(0, 6))).toEqual([
       4, 5, 6, 7, 8, 9,
     ]);
+  });
+
+  it("keeps point size screen-space while updating the material size", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const layers = [
+      {
+        frame: {
+          fields: [],
+          kind: VISUALIZATION_KIND.POINT_CLOUD,
+          pointCount: 1,
+          positions: new Float32Array([1, 2, 3]),
+        },
+        id: "/points",
+      },
+    ];
+
+    const { container, rerender } = render(
+      <PointCloudPanel layers={layers} pointSize={2} showHud={false} />,
+    );
+
+    rerender(<PointCloudPanel layers={layers} pointSize={6} showHud={false} />);
+
+    const material = container.querySelector("pointsMaterial");
+    expect(POINT_CLOUD_POINTS_MATERIAL_PROPS.sizeAttenuation).toBe(false);
+    expect(material?.getAttribute("size")).toBe("6");
   });
 
   it("can hide the scene gizmo for compact previews", () => {
@@ -821,6 +851,7 @@ describe("PointCloudPanel", () => {
             severity: "info",
           },
         ]}
+        showColorLegend
       />,
     );
 
@@ -1093,15 +1124,219 @@ describe("PointCloudPanel", () => {
       [0.72, 0.76, 0.82, 0.72, 0.76, 0.82],
     );
   });
+
+  it("uses the requested uniform color for explicit uniform coloring", () => {
+    expectArrayCloseTo(
+      renderPointCloudColors({
+        colorSettings: { colorBy: "uniform", uniformColor: "#336699" },
+        positions: new Float32Array([0, 0, 3, 1, 1, 3]),
+      }),
+      [0.2, 0.4, 0.6, 0.2, 0.4, 0.6],
+    );
+  });
+
+  it("colors by any requested scalar channel through layer settings", () => {
+    // "ring" is not a canonical sensor-return channel; selecting it by
+    // name (case/punctuation-insensitive) drives the ramp.
+    expectArrayCloseTo(
+      renderPointCloudColors({
+        colorSettings: { colorBy: "Ring" },
+        positions: new Float32Array([0, 0, 0, 0, 0, 10]),
+        scalarFields: [
+          { name: "intensity", values: new Float32Array([5, 5]) },
+          { name: "ring", values: new Float32Array([0, 31]) },
+        ],
+      }),
+      [0.25, 0.55, 1, 1, 0.9, 0.52],
+    );
+  });
+
+  it("applies the requested colormap to the ramp", () => {
+    const [lowR, lowG, lowB] = sampleColormap("viridis", 0);
+    const [highR, highG, highB] = sampleColormap("viridis", 1);
+    expectArrayCloseTo(
+      renderPointCloudColors({
+        colorSettings: { colorBy: "height", colormap: "viridis" },
+        positions: new Float32Array([0, 0, 0, 0, 0, 10]),
+      }),
+      [lowR, lowG, lowB, highR, highG, highB],
+    );
+  });
+
+  it("normalizes against a fixed range and clamps values outside it", () => {
+    // Range 0..5: the 2.5 value sits mid-ramp, the 10 value clamps to the
+    // top even though the frame's own max is 10.
+    const [midR, midG, midB] = sampleColormap("coolwarm", 0.5);
+    const [highR, highG, highB] = sampleColormap("coolwarm", 1);
+    expectArrayCloseTo(
+      renderPointCloudColors({
+        colorSettings: { colorBy: "intensity", rangeMax: 5, rangeMin: 0 },
+        positions: new Float32Array([0, 0, 0, 0, 0, 1]),
+        scalarFields: [
+          { name: "intensity", values: new Float32Array([2.5, 10]) },
+        ],
+      }),
+      [midR, midG, midB, highR, highG, highB],
+    );
+  });
+
+  it("lets a constant-valued channel ramp under a fixed range", () => {
+    // Without the fixed range a zero-spread channel falls back to neutral;
+    // the explicit range anchors it on the ramp instead.
+    const [r, g, b] = sampleColormap("coolwarm", 0.5);
+    expectArrayCloseTo(
+      renderPointCloudColors({
+        colorSettings: { colorBy: "intensity", rangeMax: 10, rangeMin: 0 },
+        positions: new Float32Array([0, 0, 0, 0, 0, 1]),
+        scalarFields: [{ name: "intensity", values: new Float32Array([5, 5]) }],
+      }),
+      [r, g, b, r, g, b],
+    );
+  });
+
+  it("shows a legend for active ramps and dedupes identical ones", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    render(
+      <PointCloudPanel
+        layers={[
+          pointCloudLayer("/lidar/a", {
+            scalarFields: [
+              { name: "intensity", values: new Float32Array([0, 100]) },
+            ],
+          }),
+          pointCloudLayer("/lidar/b", {
+            scalarFields: [
+              { name: "intensity", values: new Float32Array([0, 100]) },
+            ],
+          }),
+          pointCloudLayer("/radar", {
+            colorSettings: { colorBy: "vx", colormap: "turbo" },
+            scalarFields: [{ name: "vx", values: new Float32Array([-8, 8]) }],
+          }),
+        ]}
+        showColorLegend
+      />,
+    );
+
+    const legend = screen.getByTestId("point-cloud-color-legend");
+    // The twin lidar ramps collapse into one entry; the radar ramp stays.
+    expect(legend.textContent).toContain("intensity");
+    expect(legend.textContent).toContain("vx");
+    expect(legend.textContent).toContain("100");
+    expect(legend.textContent).toContain("-8");
+    expect(
+      Array.from(legend.children).filter((child) =>
+        child.textContent?.includes("intensity"),
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("shows no legend for uniform or rgb coloring", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    render(
+      <PointCloudPanel
+        layers={[
+          pointCloudLayer("/rgb", {
+            colors: new Float32Array([1, 0, 0, 0, 1, 0]),
+          }),
+          pointCloudLayer("/uniform", {
+            colorSettings: { colorBy: "uniform" },
+          }),
+        ]}
+        showColorLegend
+      />,
+    );
+
+    expect(screen.queryByTestId("point-cloud-color-legend")).toBeNull();
+  });
+
+  it("hides the legend by default", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    render(
+      <PointCloudPanel
+        layers={[
+          pointCloudLayer("/lidar", {
+            scalarFields: [
+              { name: "intensity", values: new Float32Array([0, 100]) },
+            ],
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.queryByTestId("point-cloud-color-legend")).toBeNull();
+  });
+
+  it("can show the legend while the telemetry hud is off", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    render(
+      <PointCloudPanel
+        layers={[
+          pointCloudLayer("/lidar", {
+            scalarFields: [
+              { name: "intensity", values: new Float32Array([0, 100]) },
+            ],
+          }),
+        ]}
+        showColorLegend
+        showHud={false}
+      />,
+    );
+
+    expect(screen.getByTestId("point-cloud-color-legend")).toBeTruthy();
+  });
+
+  it("prefers layer color settings over the panel-level colorBy", () => {
+    expectArrayCloseTo(
+      renderPointCloudColors({
+        colorBy: "height",
+        colorSettings: { colorBy: "uniform" },
+        positions: new Float32Array([0, 0, 0, 0, 0, 10]),
+      }),
+      [0.72, 0.76, 0.82, 0.72, 0.76, 0.82],
+    );
+  });
 });
+
+function pointCloudLayer(
+  id: string,
+  {
+    colorSettings,
+    colors,
+    scalarFields,
+  }: {
+    readonly colorSettings?: PointCloudColorSettings;
+    readonly colors?: Float32Array;
+    readonly scalarFields?: readonly {
+      readonly name: string;
+      readonly values: Float32Array;
+    }[];
+  } = {},
+) {
+  const positions = new Float32Array([0, 0, 0, 1, 1, 1]);
+  return {
+    ...(colorSettings ? { colorSettings } : {}),
+    frame: {
+      ...(colors ? { colors } : {}),
+      ...(scalarFields ? { scalarFields } : {}),
+      fields: [],
+      kind: VISUALIZATION_KIND.POINT_CLOUD,
+      pointCount: Math.floor(positions.length / 3),
+      positions,
+    },
+    id,
+  };
+}
 
 function renderPointCloudColors({
   colorBy,
+  colorSettings,
   colors,
   positions,
   scalarFields,
 }: {
   readonly colorBy?: "height";
+  readonly colorSettings?: PointCloudColorSettings;
   readonly colors?: Float32Array;
   readonly positions: Float32Array;
   readonly scalarFields?: readonly {
@@ -1117,6 +1352,7 @@ function renderPointCloudColors({
       colorBy={colorBy}
       layers={[
         {
+          ...(colorSettings ? { colorSettings } : {}),
           frame: {
             ...(colors ? { colors } : {}),
             ...(scalarFields ? { scalarFields } : {}),

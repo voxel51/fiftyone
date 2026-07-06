@@ -14,6 +14,7 @@ import type {
   ThreeSceneBackground,
   ThreeSceneUpAxis,
 } from "../base-3d-scene";
+import type { PointCloudColormap } from "./colormaps";
 
 export type PanelNoticeSeverity = "error" | "info" | "warning";
 
@@ -35,20 +36,53 @@ export interface PanelNotice {
 }
 
 /**
- * Supported point-cloud colouring modes.
+ * Point-cloud colouring modes. Besides the reserved modes ("auto",
+ * "height", "rgb", "uniform"), any decoded per-point scalar channel name
+ * (e.g. "intensity", "ring", "vx_comp") selects that channel's ramp;
+ * matching is case- and punctuation-insensitive.
  */
 export type PointCloudColorBy =
   | "auto"
   | "height"
-  | "intensity"
-  | "rcs"
-  | "reflectance"
-  | "reflectivity"
   | "rgb"
-  | "uniform";
+  | "uniform"
+  // Intersection keeps the literal modes in autocomplete while accepting
+  // arbitrary channel names.
+  | (string & NonNullable<unknown>);
+
+/**
+ * Per-layer colour configuration. All fields optional: omitted fields
+ * fall back to auto channel selection, the default colormap, and
+ * per-frame min/max normalization.
+ */
+export interface PointCloudColorSettings {
+  readonly colorBy?: PointCloudColorBy;
+  readonly colormap?: PointCloudColormap;
+  /** Hex color (#rrggbb) used when `colorBy` is "uniform". */
+  readonly uniformColor?: string;
+  /**
+   * Fixed normalization range. Applied only when both ends are finite
+   * and min < max; values outside clamp to the ramp ends.
+   */
+  readonly rangeMax?: number;
+  readonly rangeMin?: number;
+}
+
+/**
+ * The scalar ramp a rendered cloud actually used, for legend display.
+ * Null on the render data when the cloud drew RGB/uniform colors.
+ */
+export interface PointCloudColorRamp {
+  readonly colormap: PointCloudColormap;
+  /** Channel driving the ramp: a scalar field's name, or "height". */
+  readonly fieldLabel: string;
+  readonly maxValue: number;
+  readonly minValue: number;
+}
 
 export interface PointCloudRenderData {
   readonly bounds: THREE.Box3;
+  readonly colorRamp: PointCloudColorRamp | null;
   readonly colors: Float32Array;
   readonly finitePointCount: number;
   readonly positions: Float32Array;
@@ -127,6 +161,11 @@ export interface WorldGridPanelConfig {
  * counting — use the source's topic/stream id.
  */
 export interface PointCloudPanelLayer {
+  /**
+   * Layer-specific colour configuration; overrides the panel-level
+   * `colorBy` prop for this cloud only.
+   */
+  readonly colorSettings?: PointCloudColorSettings;
   readonly frame: PointCloudVisualization;
   readonly frameTransform?: PointCloudFrameTransform;
   readonly id: string;
@@ -278,6 +317,11 @@ export interface PointCloudPanelProps {
   /** World axis treated as up by the shared 3D scene. @default "z" */
   readonly sceneUp?: ThreeSceneUpAxis;
   readonly showGizmo?: boolean;
+  /**
+   * Whether to render the scalar-ramp legend in the top-left corner.
+   * Defaults off; callers opt in from their own settings surface.
+   */
+  readonly showColorLegend?: boolean;
   readonly showHud?: boolean;
   /**
    * Renders an adaptive reference grid on the world ground plane when

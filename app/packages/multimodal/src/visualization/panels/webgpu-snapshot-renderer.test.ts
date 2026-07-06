@@ -179,12 +179,18 @@ describe("renderPointCloudSnapshot", () => {
 
     const capture = fake.captures[0];
     const points = findPoints(capture.scene);
+    const sprite = findSprite(capture.scene);
     const geometryDisposed = vi.fn();
     const materialDisposed = vi.fn();
+    const spriteMaterialDisposed = vi.fn();
     points.geometry.addEventListener("dispose", geometryDisposed);
     (points.material as THREE.Material).addEventListener(
       "dispose",
       materialDisposed,
+    );
+    (sprite.material as THREE.Material).addEventListener(
+      "dispose",
+      spriteMaterialDisposed,
     );
 
     capture.resolve(fakeBitmap());
@@ -192,6 +198,8 @@ describe("renderPointCloudSnapshot", () => {
 
     expect(geometryDisposed).toHaveBeenCalledTimes(1);
     expect(materialDisposed).toHaveBeenCalledTimes(1);
+    expect(sprite.count).toBe(pointCloudFrame().pointCount);
+    expect(spriteMaterialDisposed).toHaveBeenCalledTimes(1);
   });
 
   it("builds the scene with the live panel's builders and honors an explicit pose", async () => {
@@ -391,6 +399,19 @@ function findPoints(scene: THREE.Scene): THREE.Points {
   });
   if (!found) {
     throw new Error("no Points object in snapshot scene");
+  }
+  return found;
+}
+
+function findSprite(scene: THREE.Scene): THREE.Sprite {
+  let found: THREE.Sprite | null = null;
+  scene.traverse((object) => {
+    if ((object as THREE.Sprite).isSprite) {
+      found = object as THREE.Sprite;
+    }
+  });
+  if (!found) {
+    throw new Error("no Sprite object in snapshot scene");
   }
   return found;
 }

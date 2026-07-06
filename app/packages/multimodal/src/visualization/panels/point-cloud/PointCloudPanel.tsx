@@ -30,10 +30,12 @@ import {
 import { SceneAnnotationLayer } from "./SceneAnnotationLayer";
 import { ScenePickingContext } from "./scene-interactivity";
 import { WorldGridLayer } from "./WorldGridLayer";
+import { colormapCssGradient, pointCloudColormapKey } from "./colormaps";
 import type {
   PanelNotice,
   PanelNoticeSeverity,
   PointCloudCameraPose,
+  PointCloudColorRamp,
   PointCloudPanelProps,
 } from "./types";
 import { EMPTY_NOTICES, annotationPrimitiveSummaryForLayers } from "./utils";
@@ -63,6 +65,7 @@ export function PointCloudPanel({
   pointSize = DEFAULT_POINT_SIZE,
   sceneUp = "z",
   showGizmo = true,
+  showColorLegend = false,
   showControls = true,
   showHud = true,
   style,
@@ -76,15 +79,35 @@ export function PointCloudPanel({
           layer.frame.positions,
           maxRenderedPoints,
           {
-            colorBy,
+            colorBy: layer.colorSettings?.colorBy ?? colorBy,
+            colormap: layer.colorSettings?.colormap,
             colors: layer.frame.colors,
+            rangeMax: layer.colorSettings?.rangeMax,
+            rangeMin: layer.colorSettings?.rangeMin,
             scalarFields: layer.frame.scalarFields,
+            uniformColor: layer.colorSettings?.uniformColor,
           },
         ),
         layer,
       })),
     [colorBy, layers, maxRenderedPoints],
   );
+  // Legend entries for every distinct active ramp. Ramp bounds churn with
+  // playback (per-frame min/max), so identity is the rendered content key —
+  // two sensors sharing a field/colormap/range collapse into one entry.
+  const colorRamps = useMemo(() => {
+    const seen = new Set<string>();
+    const ramps: PointCloudColorRamp[] = [];
+    for (const { data } of renderLayers) {
+      const ramp = data.colorRamp;
+      if (!ramp) continue;
+      const key = colorRampKey(ramp);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      ramps.push(ramp);
+    }
+    return ramps;
+  }, [renderLayers]);
 
   const frameFitPose = useMemo(
     () =>
@@ -314,6 +337,9 @@ export function PointCloudPanel({
           ))}
         </div>
       ) : null}
+      {!canvasError && showColorLegend && colorRamps.length > 0 ? (
+        <ColorRampLegend ramps={colorRamps} />
+      ) : null}
       {showControls && !canvasError && frameFitPose ? (
         <button
           aria-label="Recenter view"
@@ -349,6 +375,60 @@ export function PointCloudPanel({
         </div>
       ) : null}
       <PanelNotices notices={notices} />
+    </div>
+  );
+}
+
+function colorRampKey(ramp: PointCloudColorRamp): string {
+  return [
+    ramp.fieldLabel,
+    pointCloudColormapKey(ramp.colormap),
+    formatColorRampValue(ramp.minValue),
+    formatColorRampValue(ramp.maxValue),
+  ].join("|");
+}
+
+/** Compact ramp-bound readout: three significant digits, no exponent noise. */
+function formatColorRampValue(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "–";
+  }
+  if (Math.abs(value) >= 1000) {
+    return Math.round(value).toString();
+  }
+  return Number(value.toPrecision(3)).toString();
+}
+
+/**
+ * Corner chip mapping each active scalar ramp (field → colormap gradient →
+ * value range) so ramp colors are readable as data, not decoration.
+ */
+function ColorRampLegend({
+  ramps,
+}: {
+  readonly ramps: readonly PointCloudColorRamp[];
+}) {
+  return (
+    <div
+      aria-label="Point cloud color legend"
+      data-cy="point-cloud-color-legend"
+      style={styles.legend}
+    >
+      {ramps.map((ramp) => (
+        <div key={colorRampKey(ramp)} style={styles.legendEntry}>
+          <div style={styles.legendLabel}>{ramp.fieldLabel}</div>
+          <div
+            style={{
+              ...styles.legendBar,
+              background: colormapCssGradient(ramp.colormap),
+            }}
+          />
+          <div style={styles.legendRange}>
+            <span>{formatColorRampValue(ramp.minValue)}</span>
+            <span>{formatColorRampValue(ramp.maxValue)}</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

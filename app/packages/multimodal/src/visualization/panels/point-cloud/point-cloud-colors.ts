@@ -1,7 +1,18 @@
 import * as THREE from "three";
 
 import type { PointCloudScalarField } from "../../../decoders";
-import type { PointCloudColorBy, PointCloudRenderData } from "./types";
+import {
+  createPointCloudColormapLookup,
+  DEFAULT_POINT_CLOUD_COLORMAP,
+  type PointCloudColormap,
+  type PointCloudColormapLookup,
+  writeColormapLookupColor,
+} from "./colormaps";
+import type {
+  PointCloudColorBy,
+  PointCloudColorRamp,
+  PointCloudRenderData,
+} from "./types";
 import { clamp01 } from "./utils";
 
 // Render budget: beyond ~120k points the GPU cost outweighs the visual gain
@@ -11,25 +22,13 @@ export const DEFAULT_MAX_RENDERED_POINTS = 120_000;
 // (e.g. a single point), so the camera has a non-zero target to frame.
 export const EMPTY_POINT_CLOUD_BOUNDS_SIZE = 1;
 const MIN_POINT_SAMPLE_COUNT = 1;
-const NORMALIZED_HEIGHT_MIN = 0;
-const NORMALIZED_HEIGHT_MAX = 1;
 export const POINT_COMPONENT_COUNT = 3;
 export const COLOR_COMPONENT_COUNT = 3;
 const X_COMPONENT_INDEX = 0;
 const Y_COMPONENT_INDEX = 1;
 const Z_COMPONENT_INDEX = 2;
-// Height-to-colour mapping: points at the midpoint of the normalised height
-// range blend between the cool (blue) and warm (red/green) colour anchors.
-const HEIGHT_COLOR_MIDPOINT = 0.5;
-// Scale factor applied to the normalised height before the colour ramp lookup.
-const HEIGHT_COLOR_SCALE = 2;
-const HEIGHT_COLOR_RED_BASE = 0.25;
-const HEIGHT_COLOR_RED_RANGE = 0.75;
-const HEIGHT_COLOR_GREEN_BASE = 0.55;
-const HEIGHT_COLOR_GREEN_RANGE = 0.35;
-const HEIGHT_COLOR_BLUE_BASE = NORMALIZED_HEIGHT_MAX;
-const HEIGHT_COLOR_BLUE_WARM_RANGE = 0.48;
 const HEIGHT_NORMALIZATION_EPSILON = 0.000001;
+const HEIGHT_FIELD_LABEL = "height";
 const CANONICAL_SCALAR_COLOR_FIELDS = [
   "intensity",
   "reflectivity",
@@ -37,15 +36,27 @@ const CANONICAL_SCALAR_COLOR_FIELDS = [
   "rcs",
 ] as const;
 const NEUTRAL_POINT_COLOR = [0.72, 0.76, 0.82] as const;
+const HEX_COLOR_PATTERN = /^#?([0-9a-f]{6})$/i;
+
+export interface PointCloudColorOptions {
+  readonly colorBy?: PointCloudColorBy;
+  readonly colormap?: PointCloudColormap;
+  readonly colors?: Float32Array;
+  /**
+   * Fixed normalization range for scalar/height ramps. Used only when
+   * both ends are finite and min < max; out-of-range values clamp.
+   */
+  readonly rangeMax?: number;
+  readonly rangeMin?: number;
+  readonly scalarFields?: readonly PointCloudScalarField[];
+  /** Hex color (#rrggbb) used only when explicitly coloring uniformly. */
+  readonly uniformColor?: string;
+}
 
 export function buildPointCloudRenderData(
   sourcePositions: Float32Array,
   maxRenderedPoints: number,
-  colorOptions: {
-    readonly colorBy?: PointCloudColorBy;
-    readonly colors?: Float32Array;
-    readonly scalarFields?: readonly PointCloudScalarField[];
-  },
+  colorOptions: PointCloudColorOptions,
 ): PointCloudRenderData {
   const sourcePointCount = Math.floor(
     sourcePositions.length / POINT_COMPONENT_COUNT,
@@ -63,8 +74,12 @@ export function buildPointCloudRenderData(
   const positions = new Float32Array(maxSampleCount * POINT_COMPONENT_COUNT);
   const colors = new Float32Array(maxSampleCount * COLOR_COMPONENT_COUNT);
   const heightBounds = computeSourceHeightBounds(sourcePositions);
+  const colormapLookup = createPointCloudColormapLookup(
+    colorOptions.colormap ?? DEFAULT_POINT_CLOUD_COLORMAP,
+  );
   const colorSource = resolvePointCloudColorSource({
     ...colorOptions,
+    fixedRange: resolveFixedRange(colorOptions),
     heightBounds,
     sourcePointCount,
     sourcePositions,
@@ -95,7 +110,14 @@ export function buildPointCloudRenderData(
     positions[targetOffset + X_COMPONENT_INDEX] = x;
     positions[targetOffset + Y_COMPONENT_INDEX] = y;
     positions[targetOffset + Z_COMPONENT_INDEX] = z;
-    writePointColor(colors, targetOffset, colorSource, sourcePointIndex, z);
+    writePointColor(
+      colors,
+      targetOffset,
+      colorSource,
+      colormapLookup,
+      sourcePointIndex,
+      z,
+    );
     tmpVec.set(
       positions[targetOffset + X_COMPONENT_INDEX],
       positions[targetOffset + Y_COMPONENT_INDEX],
@@ -120,6 +142,11 @@ export function buildPointCloudRenderData(
 
   return {
     bounds,
+    colorRamp: colorRampForSource(
+      colorSource,
+      colormapLookup.colormap,
+      renderedPointCount,
+    ),
     colors,
     finitePointCount: heightBounds.finitePointCount,
     positions,
@@ -138,40 +165,96 @@ type PointCloudColorSource =
       readonly kind: "rgb";
     }
   | {
+      readonly fieldLabel: string;
       readonly kind: "scalar";
       readonly maxValue: number;
       readonly minValue: number;
       readonly values: Float32Array;
     }
   | {
+      readonly color: readonly [number, number, number];
       readonly kind: "uniform";
     };
+
+type FixedRange = readonly [number, number] | null;
+
+function resolveFixedRange({
+  rangeMax,
+  rangeMin,
+}: {
+  readonly rangeMax?: number;
+  readonly rangeMin?: number;
+}): FixedRange {
+  return typeof rangeMin === "number" &&
+    typeof rangeMax === "number" &&
+    Number.isFinite(rangeMin) &&
+    Number.isFinite(rangeMax) &&
+    rangeMin < rangeMax
+    ? [rangeMin, rangeMax]
+    : null;
+}
+
+function colorRampForSource(
+  colorSource: PointCloudColorSource,
+  colormap: PointCloudColormap,
+  renderedPointCount: number,
+): PointCloudColorRamp | null {
+  if (renderedPointCount === 0) {
+    return null;
+  }
+
+  if (colorSource.kind === "height") {
+    return {
+      colormap,
+      fieldLabel: HEIGHT_FIELD_LABEL,
+      maxValue: colorSource.maxValue,
+      minValue: colorSource.minValue,
+    };
+  }
+
+  if (colorSource.kind === "scalar") {
+    return {
+      colormap,
+      fieldLabel: colorSource.fieldLabel,
+      maxValue: colorSource.maxValue,
+      minValue: colorSource.minValue,
+    };
+  }
+
+  return null;
+}
 
 function resolvePointCloudColorSource({
   colorBy,
   colors,
+  fixedRange,
   heightBounds,
   scalarFields,
   sourcePointCount,
   sourcePositions,
+  uniformColor,
 }: {
   readonly colorBy?: PointCloudColorBy;
   readonly colors?: Float32Array;
+  readonly fixedRange: FixedRange;
   readonly heightBounds: ReturnType<typeof computeSourceHeightBounds>;
   readonly scalarFields?: readonly PointCloudScalarField[];
   readonly sourcePointCount: number;
   readonly sourcePositions: Float32Array;
+  readonly uniformColor?: string;
 }): PointCloudColorSource {
   if (colorBy && colorBy !== "auto") {
     return (
       requestedColorSource({
         colorBy,
         colors,
+        fixedRange,
         heightBounds,
         scalarFields,
         sourcePointCount,
         sourcePositions,
-      }) ?? { kind: "uniform" }
+        uniformColor,
+      }) ?? neutralColorSource()
     );
   }
 
@@ -186,36 +269,44 @@ function resolvePointCloudColorSource({
       sourcePointCount,
       scalarFields,
       fieldName,
+      fixedRange,
     );
     if (scalarSource) {
       return scalarSource;
     }
   }
 
-  return heightColorSource(heightBounds) ?? { kind: "uniform" };
+  return heightColorSource(heightBounds, fixedRange) ?? neutralColorSource();
 }
 
 function requestedColorSource({
   colorBy,
   colors,
+  fixedRange,
   heightBounds,
   scalarFields,
   sourcePointCount,
   sourcePositions,
+  uniformColor,
 }: {
   readonly colorBy: Exclude<PointCloudColorBy, "auto">;
   readonly colors?: Float32Array;
+  readonly fixedRange: FixedRange;
   readonly heightBounds: ReturnType<typeof computeSourceHeightBounds>;
   readonly scalarFields?: readonly PointCloudScalarField[];
   readonly sourcePointCount: number;
   readonly sourcePositions: Float32Array;
+  readonly uniformColor?: string;
 }): PointCloudColorSource | null {
   if (colorBy === "uniform") {
-    return { kind: "uniform" };
+    return {
+      color: hexToRgbColor(uniformColor) ?? NEUTRAL_POINT_COLOR,
+      kind: "uniform",
+    };
   }
 
   if (colorBy === "height") {
-    return heightColorSource(heightBounds);
+    return heightColorSource(heightBounds, fixedRange);
   }
 
   if (colorBy === "rgb") {
@@ -227,7 +318,12 @@ function requestedColorSource({
     sourcePointCount,
     scalarFields,
     colorBy,
+    fixedRange,
   );
+}
+
+function neutralColorSource(): PointCloudColorSource {
+  return { color: NEUTRAL_POINT_COLOR, kind: "uniform" };
 }
 
 function rgbColorSource(
@@ -244,12 +340,24 @@ function scalarColorSource(
   sourcePointCount: number,
   scalarFields: readonly PointCloudScalarField[] | undefined,
   fieldName: string,
+  fixedRange: FixedRange,
 ): PointCloudColorSource | null {
+  const requestedName = normalizedFieldName(fieldName);
   const scalarField = scalarFields?.find(
-    (field) => normalizedFieldName(field.name) === fieldName,
+    (field) => normalizedFieldName(field.name) === requestedName,
   );
   if (!scalarField || scalarField.values.length < sourcePointCount) {
     return null;
+  }
+
+  if (fixedRange) {
+    return {
+      fieldLabel: scalarField.name,
+      kind: "scalar",
+      maxValue: fixedRange[1],
+      minValue: fixedRange[0],
+      values: scalarField.values,
+    };
   }
 
   const bounds = computeScalarBounds(sourcePositions, scalarField.values);
@@ -258,6 +366,7 @@ function scalarColorSource(
   }
 
   return {
+    fieldLabel: scalarField.name,
     kind: "scalar",
     maxValue: bounds.maxValue,
     minValue: bounds.minValue,
@@ -267,7 +376,16 @@ function scalarColorSource(
 
 function heightColorSource(
   heightBounds: ReturnType<typeof computeSourceHeightBounds>,
+  fixedRange: FixedRange,
 ): PointCloudColorSource | null {
+  if (heightBounds.finitePointCount === 0) {
+    return null;
+  }
+
+  if (fixedRange) {
+    return { kind: "height", maxValue: fixedRange[1], minValue: fixedRange[0] };
+  }
+
   return hasUsefulRange({
     finitePointCount: heightBounds.finitePointCount,
     maxValue: heightBounds.maxHeight,
@@ -285,6 +403,7 @@ function writePointColor(
   target: Float32Array,
   targetOffset: number,
   colorSource: PointCloudColorSource,
+  colormapLookup: PointCloudColormapLookup,
   sourcePointIndex: number,
   z: number,
 ) {
@@ -297,9 +416,10 @@ function writePointColor(
   }
 
   if (colorSource.kind === "height") {
-    writeHeightColor(
+    writeColormapLookupColor(
       target,
       targetOffset,
+      colormapLookup,
       normalizeValue(z, colorSource.minValue, colorSource.maxValue),
     );
     return;
@@ -308,16 +428,19 @@ function writePointColor(
   if (colorSource.kind === "scalar") {
     const value = colorSource.values[sourcePointIndex];
     if (Number.isFinite(value)) {
-      writeHeightColor(
+      writeColormapLookupColor(
         target,
         targetOffset,
+        colormapLookup,
         normalizeValue(value, colorSource.minValue, colorSource.maxValue),
       );
       return;
     }
+    writeUniformColor(target, targetOffset, NEUTRAL_POINT_COLOR);
+    return;
   }
 
-  writeNeutralColor(target, targetOffset);
+  writeUniformColor(target, targetOffset, colorSource.color);
 }
 
 function computeScalarBounds(
@@ -405,32 +528,14 @@ function computeSourceHeightBounds(sourcePositions: Float32Array) {
   };
 }
 
-function writeHeightColor(target: Float32Array, offset: number, value: number) {
-  const clamped = Math.max(
-    NORMALIZED_HEIGHT_MIN,
-    Math.min(NORMALIZED_HEIGHT_MAX, value),
-  );
-  const warm =
-    clamped > HEIGHT_COLOR_MIDPOINT
-      ? (clamped - HEIGHT_COLOR_MIDPOINT) * HEIGHT_COLOR_SCALE
-      : NORMALIZED_HEIGHT_MIN;
-  const cool =
-    clamped < HEIGHT_COLOR_MIDPOINT
-      ? clamped * HEIGHT_COLOR_SCALE
-      : NORMALIZED_HEIGHT_MAX;
-
-  target[offset + X_COMPONENT_INDEX] =
-    HEIGHT_COLOR_RED_BASE + warm * HEIGHT_COLOR_RED_RANGE;
-  target[offset + Y_COMPONENT_INDEX] =
-    HEIGHT_COLOR_GREEN_BASE + cool * HEIGHT_COLOR_GREEN_RANGE;
-  target[offset + Z_COMPONENT_INDEX] =
-    HEIGHT_COLOR_BLUE_BASE - warm * HEIGHT_COLOR_BLUE_WARM_RANGE;
-}
-
-function writeNeutralColor(target: Float32Array, offset: number) {
-  target[offset] = NEUTRAL_POINT_COLOR[0];
-  target[offset + 1] = NEUTRAL_POINT_COLOR[1];
-  target[offset + 2] = NEUTRAL_POINT_COLOR[2];
+function writeUniformColor(
+  target: Float32Array,
+  offset: number,
+  color: readonly [number, number, number],
+) {
+  target[offset] = color[0];
+  target[offset + 1] = color[1];
+  target[offset + 2] = color[2];
 }
 
 function normalizeValue(value: number, min: number, max: number) {
@@ -441,4 +546,19 @@ function normalizeValue(value: number, min: number, max: number) {
 
 function normalizedFieldName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function hexToRgbColor(
+  value: string | undefined,
+): readonly [number, number, number] | null {
+  const match = value?.trim().match(HEX_COLOR_PATTERN);
+  if (!match) {
+    return null;
+  }
+
+  return [
+    parseInt(match[1].slice(0, 2), 16) / 255,
+    parseInt(match[1].slice(2, 4), 16) / 255,
+    parseInt(match[1].slice(4, 6), 16) / 255,
+  ];
 }

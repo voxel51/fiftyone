@@ -41,8 +41,13 @@ import {
 } from "./point-cloud/point-cloud-colors";
 import {
   DEFAULT_POINT_SIZE,
+  POINT_CLOUD_POINTS_MATERIAL_PROPS,
+  WEBGPU_POINT_PRIMITIVE_SIZE_PX,
+  applyPointCloudInstanceData,
   applyPointCloudData,
   createPointCloudGeometry,
+  createPointCloudInstanceAttributes,
+  createPointCloudSpriteMaterial,
 } from "./point-cloud/PointCloudSceneLayer";
 import { pointCloudObjectTransform } from "./point-cloud/transforms";
 import type {
@@ -408,12 +413,12 @@ function buildSnapshotScene(
     );
     const geometry = createPointCloudGeometry(capacityPoints);
     applyPointCloudData(geometry, data);
+    const pointSize = job.pointSize ?? DEFAULT_POINT_SIZE;
     // Same material parameters as PointCloudSceneLayer's <pointsMaterial>.
     // No lights in the scene on purpose: PointsMaterial is unlit.
     const material = new THREE.PointsMaterial({
-      size: job.pointSize ?? DEFAULT_POINT_SIZE,
-      sizeAttenuation: false,
-      vertexColors: true,
+      ...POINT_CLOUD_POINTS_MATERIAL_PROPS,
+      size: pointSize,
     });
     const points = new THREE.Points(geometry, material);
     points.frustumCulled = false;
@@ -423,6 +428,21 @@ function buildSnapshotScene(
     group.position.set(...transform.position);
     group.quaternion.set(...transform.quaternion);
     group.add(points);
+    if (pointSize > WEBGPU_POINT_PRIMITIVE_SIZE_PX) {
+      const attributes = createPointCloudInstanceAttributes(capacityPoints);
+      applyPointCloudInstanceData(attributes, data);
+      const spriteMaterial = createPointCloudSpriteMaterial(
+        attributes,
+        pointSize,
+      );
+      const sprite = new THREE.Sprite(
+        spriteMaterial as unknown as THREE.SpriteMaterial,
+      );
+      sprite.count = data.renderedPointCount;
+      sprite.frustumCulled = false;
+      group.add(sprite);
+      disposables.push(spriteMaterial);
+    }
     scene.add(group);
     disposables.push(geometry, material);
   }

@@ -4,7 +4,7 @@
 // intentionally narrow so it only covers the surface we import until the
 // upstream types expose it.
 declare module "three/webgpu" {
-  import type { MeshBasicMaterial } from "three";
+  import type { MeshBasicMaterial, PointsMaterial } from "three";
   import type { Node } from "three/tsl";
 
   export * from "three";
@@ -40,6 +40,17 @@ declare module "three/webgpu" {
     opacityNode: Node | null;
     positionNode: Node | null;
   }
+
+  /**
+   * Minimal node-material surface consumed by sized point-cloud sprites.
+   * The runtime class extends SpriteNodeMaterial, but it intentionally
+   * mirrors PointsMaterial's size controls.
+   */
+  export class PointsNodeMaterial extends PointsMaterial {
+    colorNode: Node | null;
+    positionNode: Node | null;
+    sizeNode: Node | null;
+  }
 }
 
 declare module "three/tsl" {
@@ -64,6 +75,16 @@ declare module "three/tsl" {
   export const positionGeometry: Node;
   export const positionWorld: Node;
   export const screenUV: Node;
+
+  export function instancedBufferAttribute(
+    array:
+      | import("three").BufferAttribute
+      | import("three").InterleavedBuffer
+      | ArrayLike<number>,
+    type?: string | null,
+    stride?: number,
+    offset?: number,
+  ): Node;
 
   export function abs(value: Node | number): Node;
   export function clamp(

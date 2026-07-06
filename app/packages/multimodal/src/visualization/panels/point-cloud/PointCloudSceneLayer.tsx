@@ -2,6 +2,8 @@
 import { useThree } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { instancedBufferAttribute } from "three/tsl";
+import { PointsNodeMaterial } from "three/webgpu";
 
 import { POINT_COMPONENT_COUNT } from "./point-cloud-colors";
 import { pointCloudObjectTransform } from "./transforms";
@@ -11,6 +13,18 @@ import type { PointCloudPanelLayer, PointCloudRenderData } from "./types";
 // the offscreen snapshot renderer can share it without importing the
 // panel's WebGPU canvas dependency graph.
 export const DEFAULT_POINT_SIZE = 2;
+export const POINT_CLOUD_POINTS_MATERIAL_PROPS = {
+  sizeAttenuation: false,
+  vertexColors: true,
+} as const;
+
+export const WEBGPU_POINT_PRIMITIVE_SIZE_PX = 1;
+const NOOP_RAYCAST = () => undefined;
+
+export interface PointCloudInstanceAttributes {
+  readonly color: THREE.InstancedBufferAttribute;
+  readonly position: THREE.InstancedBufferAttribute;
+}
 
 export function PointCloudSceneLayer({
   data,
@@ -93,9 +107,72 @@ function PointCloudPoints({
   return (
     <points key={capacity} frustumCulled={false}>
       <primitive attach="geometry" object={geometry} />
-      <pointsMaterial size={pointSize} sizeAttenuation={false} vertexColors />
+      <pointsMaterial {...POINT_CLOUD_POINTS_MATERIAL_PROPS} size={pointSize} />
+      {pointSize > WEBGPU_POINT_PRIMITIVE_SIZE_PX ? (
+        <PointCloudSizedSprites
+          capacity={capacity}
+          data={data}
+          pointSize={pointSize}
+        />
+      ) : null}
     </points>
   );
+}
+
+function PointCloudSizedSprites({
+  capacity,
+  data,
+  pointSize,
+}: {
+  readonly capacity: number;
+  readonly data: PointCloudRenderData;
+  readonly pointSize: number;
+}) {
+  const invalidate = useThree((state) => state.invalidate);
+  const attributes = useMemo(
+    () => createPointCloudInstanceAttributes(capacity),
+    [capacity],
+  );
+  const material = useMemo(
+    () => createPointCloudSpriteMaterial(attributes, pointSize),
+    [attributes, pointSize],
+  );
+  const sprite = useMemo(() => {
+    const instanceSprite = new THREE.Sprite(
+      material as unknown as THREE.SpriteMaterial,
+    );
+    instanceSprite.frustumCulled = false;
+    instanceSprite.raycast = NOOP_RAYCAST;
+    return instanceSprite;
+  }, [material]);
+
+  useLayoutEffect(() => {
+    applyPointCloudInstanceData(attributes, data);
+    sprite.count = data.renderedPointCount;
+    invalidate();
+  }, [attributes, data, invalidate, sprite]);
+
+  useEffect(
+    () => () => {
+      material.dispose();
+    },
+    [material],
+  );
+
+  return <primitive key={capacity} object={sprite} />;
+}
+
+export function createPointCloudSpriteMaterial(
+  attributes: PointCloudInstanceAttributes,
+  pointSize: number,
+) {
+  const material = new PointsNodeMaterial({
+    size: pointSize,
+    sizeAttenuation: false,
+  });
+  material.colorNode = instancedBufferAttribute(attributes.color, "vec3");
+  material.positionNode = instancedBufferAttribute(attributes.position, "vec3");
+  return material;
 }
 
 /**
@@ -123,6 +200,21 @@ export function createPointCloudGeometry(capacityPoints: number) {
   return geometry;
 }
 
+export function createPointCloudInstanceAttributes(
+  capacityPoints: number,
+): PointCloudInstanceAttributes {
+  return {
+    color: new THREE.InstancedBufferAttribute(
+      new Float32Array(capacityPoints * POINT_COMPONENT_COUNT),
+      POINT_COMPONENT_COUNT,
+    ),
+    position: new THREE.InstancedBufferAttribute(
+      new Float32Array(capacityPoints * POINT_COMPONENT_COUNT),
+      POINT_COMPONENT_COUNT,
+    ),
+  };
+}
+
 /**
  * Copies one frame's render data into the persistent geometry (in-place
  * writes, update ranges, draw range, bounds). Shared with the snapshot
@@ -141,6 +233,16 @@ export function applyPointCloudData(
   geometry.setDrawRange(0, data.renderedPointCount);
   geometry.boundingBox = data.bounds.clone();
   geometry.boundingSphere = data.bounds.getBoundingSphere(new THREE.Sphere());
+}
+
+export function applyPointCloudInstanceData(
+  attributes: PointCloudInstanceAttributes,
+  data: PointCloudRenderData,
+) {
+  (attributes.position.array as Float32Array).set(data.positions);
+  (attributes.color.array as Float32Array).set(data.colors);
+  markAttributeUpdated(attributes.position, data.positions.length);
+  markAttributeUpdated(attributes.color, data.colors.length);
 }
 
 function markAttributeUpdated(
