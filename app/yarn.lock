@@ -1713,6 +1713,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@date-fns/tz@npm:^1.5.0":
+  version: 1.5.0
+  resolution: "@date-fns/tz@npm:1.5.0"
+  checksum: 10/a629879b1f307429e0a00a92dea71e19f63398ba304ee0f58f4d141d50c3058d678c4095b25962f7e5fda508c70502811dd565e58df99e5632dc16097da184a8
+  languageName: node
+  linkType: hard
+
 "@dimforge/rapier3d-compat@npm:^0.12.0, @dimforge/rapier3d-compat@npm:~0.12.0":
   version: 0.12.0
   resolution: "@dimforge/rapier3d-compat@npm:0.12.0"
@@ -3193,6 +3200,7 @@ __metadata:
   resolution: "@fiftyone/multimodal@workspace:packages/multimodal"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.11.0"
+    "@date-fns/tz": "npm:^1.5.0"
     "@fiftyone/components": "npm:*"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/state": "npm:*"
@@ -3205,6 +3213,8 @@ __metadata:
     "@types/three": "npm:^0.182.0"
     "@voxel51/voodo": "npm:^0.0.35"
     buffer: "npm:^6.0.3"
+    colormap: "npm:^2.3.2"
+    date-fns: "npm:^4.1.0"
     lru-cache: "npm:^11.0.1"
     meshoptimizer: "npm:^0.22.0"
     protobufjs: "npm:^7.6.4"

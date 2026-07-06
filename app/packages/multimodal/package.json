@@ -64,6 +64,7 @@
     },
     "dependencies": {
         "@bufbuild/protobuf": "^2.11.0",
+        "@date-fns/tz": "^1.5.0",
         "@fiftyone/components": "*",
         "@fiftyone/plugins": "*",
         "@fiftyone/state": "*",
@@ -76,6 +77,7 @@
         "@voxel51/voodo": "^0.0.35",
         "buffer": "^6.0.3",
         "colormap": "^2.3.2",
+        "date-fns": "^4.1.0",
         "lru-cache": "^11.0.1",
         "meshoptimizer": "^0.22.0",
         "protobufjs": "^7.6.4",

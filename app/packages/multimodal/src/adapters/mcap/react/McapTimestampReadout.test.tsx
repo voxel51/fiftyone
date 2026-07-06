@@ -4,7 +4,7 @@ import {
   cleanup,
   fireEvent,
   render,
-  screen,
+  waitFor,
 } from "@testing-library/react";
 import React, { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -16,8 +16,14 @@ import {
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import McapTimestampReadout, {
   formatMcapTimestampCopyText,
+  formatMcapTimeZoneOption,
   formatMcapWallClock,
+  getMcapInferredTimeZone,
+  getMcapTimeZoneFromPath,
+  getMcapTimeZoneOptions,
+  getMcapTimeZonePath,
   isPlausibleEpochNs,
+  searchMcapTimeZones,
 } from "./McapTimestampReadout";
 
 // 2019-09-18T14:03:22.123456789Z — a nuScenes-era epoch timestamp.
@@ -35,6 +41,37 @@ describe("timestamp formatting helpers", () => {
 
   it("formats a compact UTC wall clock", () => {
     expect(formatMcapWallClock(EPOCH_START_NS)).toBe("14:03:22.123 UTC");
+  });
+
+  it("formats the same instant in a selected timezone", () => {
+    expect(formatMcapWallClock(EPOCH_START_NS, "America/Los_Angeles")).toBe(
+      "07:03:22.123 America/Los_Angeles",
+    );
+  });
+
+  it("exposes searchable timezone options with the inferred timezone first", () => {
+    expect(getMcapTimeZoneOptions()[0]).toBe(getMcapInferredTimeZone());
+    expect(searchMcapTimeZones("utc")).toContain("UTC");
+    expect(searchMcapTimeZones("los angeles")).toContain("America/Los_Angeles");
+  });
+
+  it("formats timezone options with GMT offsets", () => {
+    expect(formatMcapTimeZoneOption("UTC", EPOCH_START_NS)).toBe(
+      "UTC (GMT+00:00)",
+    );
+    expect(
+      formatMcapTimeZoneOption("America/Los_Angeles", EPOCH_START_NS),
+    ).toBe("America/Los_Angeles (GMT-07:00)");
+  });
+
+  it("round-trips Voodo timezone selection paths", () => {
+    const targetTimeZone = "Africa/Addis_Ababa";
+    const path = getMcapTimeZonePath(targetTimeZone, EPOCH_START_NS);
+
+    expect(path).toEqual(["timezones", targetTimeZone]);
+    expect(getMcapTimeZoneFromPath(path ?? null, EPOCH_START_NS)).toBe(
+      targetTimeZone,
+    );
   });
 
   it("copies full nanosecond precision in both ISO and raw forms", () => {
@@ -91,6 +128,21 @@ function renderReadout(startTimeNs: bigint) {
   );
 }
 
+function getByCy(container: HTMLElement, cy: string): HTMLElement {
+  const element = container.querySelector<HTMLElement>(`[data-cy="${cy}"]`);
+  expect(element).toBeTruthy();
+  return element as HTMLElement;
+}
+
+function getTimezoneTrigger(container: HTMLElement): HTMLInputElement {
+  const picker = getByCy(container, "mcap-timezone-picker");
+  const input = picker.querySelector<HTMLInputElement>(
+    'input[role="combobox"]',
+  );
+  expect(input).toBeTruthy();
+  return input as HTMLInputElement;
+}
+
 describe("McapTimestampReadout", () => {
   afterEach(() => {
     cleanup();
@@ -99,15 +151,48 @@ describe("McapTimestampReadout", () => {
   });
 
   it("shows the recording wall clock at the playhead", () => {
-    renderReadout(EPOCH_START_NS);
-    expect(screen.getByTestId("mcap-timestamp-readout").textContent).toBe(
-      "14:03:22.123 UTC",
+    const { container } = renderReadout(EPOCH_START_NS);
+    const readout = getByCy(container, "mcap-timestamp-readout");
+
+    expect(getByCy(container, "mcap-timestamp-copy").textContent).toBe(
+      "14:03:22.123",
+    );
+    expect(
+      readout.querySelector<HTMLInputElement>(
+        '[data-cy="mcap-timezone-picker"] input[role="combobox"]',
+      )?.value,
+    ).toBe("UTC");
+  });
+
+  it("opens the Voodo timezone picker with focused search", async () => {
+    const { container } = renderReadout(EPOCH_START_NS);
+    fireEvent.click(getTimezoneTrigger(container));
+
+    const searchInput = container.querySelector<HTMLInputElement>(
+      'input[aria-label="Search tree"]',
+    );
+
+    expect(searchInput).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(searchInput));
+  });
+
+  it("updates the timezone token and wall-clock value for a selected timezone", () => {
+    const targetTimeZone = "Africa/Addis_Ababa";
+    const path = getMcapTimeZonePath(targetTimeZone, EPOCH_START_NS);
+
+    expect(getMcapTimeZoneFromPath(path ?? null, EPOCH_START_NS)).toBe(
+      targetTimeZone,
+    );
+    expect(formatMcapWallClock(EPOCH_START_NS, targetTimeZone)).toBe(
+      "17:03:22.123 Africa/Addis_Ababa",
     );
   });
 
   it("renders nothing for sim-time recordings", () => {
-    renderReadout(0n);
-    expect(screen.queryByTestId("mcap-timestamp-readout")).toBeNull();
+    const { container } = renderReadout(0n);
+    expect(container.querySelector('[data-cy="mcap-timestamp-readout"]')).toBe(
+      null,
+    );
   });
 
   it("copies the full-precision timestamp and flashes feedback", () => {
@@ -115,32 +200,30 @@ describe("McapTimestampReadout", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
 
-    renderReadout(EPOCH_START_NS);
-    fireEvent.click(screen.getByTestId("mcap-timestamp-readout"));
+    const { container } = renderReadout(EPOCH_START_NS);
+    fireEvent.click(getByCy(container, "mcap-timestamp-copy"));
 
     expect(writeText).toHaveBeenCalledWith(
       "2019-09-18T14:03:22.123456789Z (1568815402123456789 ns)",
     );
-    expect(screen.getByTestId("mcap-timestamp-readout").textContent).toBe(
+    expect(getByCy(container, "mcap-timestamp-copy").textContent).toBe(
       "Copied",
     );
 
     act(() => {
       vi.advanceTimersByTime(1500);
     });
-    expect(screen.getByTestId("mcap-timestamp-readout").textContent).toBe(
-      "14:03:22.123 UTC",
+    expect(getByCy(container, "mcap-timestamp-copy").textContent).toBe(
+      "14:03:22.123",
     );
   });
 
-  it("copies via the keyboard as well", () => {
+  it("copies from the clock button without opening the timezone selector", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
 
-    renderReadout(EPOCH_START_NS);
-    fireEvent.keyDown(screen.getByTestId("mcap-timestamp-readout"), {
-      key: "Enter",
-    });
+    const { container } = renderReadout(EPOCH_START_NS);
+    fireEvent.click(getByCy(container, "mcap-timestamp-copy"));
     expect(writeText).toHaveBeenCalledTimes(1);
   });
 });
