@@ -17,6 +17,11 @@
   cursor: pointer;
 }
 
+.speed {
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
 .divider {
   width: 1px;
   height: 12px;
