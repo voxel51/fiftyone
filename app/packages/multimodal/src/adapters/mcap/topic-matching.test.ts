@@ -115,6 +115,39 @@ describe("default topic equivalents", () => {
     ).toEqual(["/camera/front/image_rect_compressed"]);
   });
 
+  it("does not collapse streams that only differ by an extra qualifier", () => {
+    expect(
+      filterDefaultTopicEquivalents(
+        [
+          "/sensors/primary/image_rect_compressed",
+          "/sensors/primary/left/image_rect_compressed",
+          "/sensors/primary/right/image_rect_compressed",
+        ],
+        { getKind: () => "image", getTopic: (topic) => topic },
+      ),
+    ).toEqual([
+      "/sensors/primary/image_rect_compressed",
+      "/sensors/primary/left/image_rect_compressed",
+      "/sensors/primary/right/image_rect_compressed",
+    ]);
+  });
+
+  it("still prefers representations only within the exact stream identity", () => {
+    expect(
+      filterDefaultTopicEquivalents(
+        [
+          "/sensors/primary/image",
+          "/sensors/primary/image_downsampled",
+          "/sensors/primary/left/image_rect_compressed",
+        ],
+        { getKind: () => "image", getTopic: (topic) => topic },
+      ),
+    ).toEqual([
+      "/sensors/primary/image_downsampled",
+      "/sensors/primary/left/image_rect_compressed",
+    ]);
+  });
+
   it("moves preferred equivalents before raw siblings without removing either", () => {
     expect(
       orderDefaultTopicEquivalents(

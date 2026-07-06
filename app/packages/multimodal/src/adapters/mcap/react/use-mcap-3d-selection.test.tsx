@@ -57,6 +57,34 @@ const rearCalibration = source(
   "/camera/rear/camera_info",
   MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
 );
+const primaryImage = source(
+  "/sensors/primary/image_rect_compressed",
+  MCAP_SOURCE_TYPE.IMAGE,
+);
+const primaryLeftImage = source(
+  "/sensors/primary/left/image_rect_compressed",
+  MCAP_SOURCE_TYPE.IMAGE,
+);
+const primaryLeftImageDownsampled = source(
+  "/sensors/primary/left/image_downsampled",
+  MCAP_SOURCE_TYPE.IMAGE,
+);
+const primaryRightImage = source(
+  "/sensors/primary/right/image_rect_compressed",
+  MCAP_SOURCE_TYPE.IMAGE,
+);
+const primaryCalibration = source(
+  "/sensors/primary/camera_info",
+  MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
+);
+const primaryLeftCalibration = source(
+  "/sensors/primary/left/camera_info",
+  MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
+);
+const primaryRightCalibration = source(
+  "/sensors/primary/right/camera_info",
+  MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
+);
 
 describe("useMcap3dSelection", () => {
   it("enables every renderable source on mount and syncs appearing/disappearing sources", () => {
@@ -179,6 +207,29 @@ describe("useMcap3dSelection", () => {
 
     expect(result.current.frustumImageTopics).toEqual([
       frontImageDownsampled.id,
+    ]);
+  });
+
+  it("pairs qualified camera streams independently for frustum images", () => {
+    const { result } = renderSelection([
+      primaryCalibration,
+      primaryLeftCalibration,
+      primaryRightCalibration,
+      primaryImage,
+      primaryLeftImage,
+      primaryLeftImageDownsampled,
+      primaryRightImage,
+    ]);
+
+    expect(result.current.cameraTopics).toEqual([
+      primaryCalibration.id,
+      primaryLeftCalibration.id,
+      primaryRightCalibration.id,
+    ]);
+    expect(result.current.frustumImageTopics).toEqual([
+      primaryImage.id,
+      primaryLeftImageDownsampled.id,
+      primaryRightImage.id,
     ]);
   });
 

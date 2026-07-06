@@ -283,13 +283,7 @@ function defaultTopicTokenKeysMatch(
   if (left.length === 0 || right.length === 0) {
     return false;
   }
-  if (topicTokenKeysEqual(left, right)) {
-    return true;
-  }
-
-  const shorter = left.length < right.length ? left : right;
-  const longer = shorter === left ? right : left;
-  return shorter.length >= 2 && containsContiguousTokens(longer, shorter);
+  return topicTokenKeysEqual(left, right);
 }
 
 function topicTokenKeysEqual(
@@ -299,26 +293,6 @@ function topicTokenKeysEqual(
   return (
     left.length === right.length && left.every((token, i) => token === right[i])
   );
-}
-
-function containsContiguousTokens(
-  longer: readonly string[],
-  shorter: readonly string[],
-): boolean {
-  const lastStart = longer.length - shorter.length;
-  for (let start = 0; start <= lastStart; start++) {
-    let matched = true;
-    for (let offset = 0; offset < shorter.length; offset++) {
-      if (longer[start + offset] !== shorter[offset]) {
-        matched = false;
-        break;
-      }
-    }
-    if (matched) {
-      return true;
-    }
-  }
-  return false;
 }
 
 function defaultTopicPreferenceMarkerScore(topic: string): number {
