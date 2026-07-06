@@ -652,6 +652,12 @@ const PRESET_COLORMAP_OPTIONS: SelectLabelDescriptor[] =
     id: colormap,
   }));
 
+type EditablePointCloudColorStop = PointCloudColorStop & {
+  readonly id: string;
+};
+
+let nextPointCloudColorStopId = 0;
+
 function PointCloudColorSummary({
   settings,
 }: {
@@ -946,7 +952,9 @@ function PointCloudColormapEditor({
   const [numStops, setNumStops] = useState("");
   const [selectedPreset, setSelectedPreset] =
     useState<PointCloudColormapName | null>(null);
-  const [stops, setStops] = useState<readonly PointCloudColorStop[]>([]);
+  const [stops, setStops] = useState<readonly EditablePointCloudColorStop[]>(
+    [],
+  );
   const title = `Colormap${sourceLabel ? ` (${sourceLabel})` : ""}`;
 
   useEffect(() => {
@@ -956,7 +964,7 @@ function PointCloudColormapEditor({
     const normalized = normalizePointCloudColormap(colormap);
     const normalizedStops = getPointCloudColormapStops(normalized);
     setSelectedPreset(typeof normalized === "string" ? normalized : null);
-    setStops(normalizedStops);
+    setStops(editableColorStops(normalizedStops));
     setNumStops(String(normalizedStops.length));
     setEdited(false);
   }, [colormap, isOpen]);
@@ -977,7 +985,7 @@ function PointCloudColormapEditor({
     const preset = value as PointCloudColormapName;
     setSelectedPreset(preset);
     const nextStops = getGradientFromSchemeName(preset);
-    setStops(nextStops);
+    setStops(editableColorStops(nextStops));
     setNumStops(String(nextStops.length));
     setEdited(false);
   };
@@ -1004,7 +1012,7 @@ function PointCloudColormapEditor({
   };
 
   const addStop = () => {
-    const sorted = [...normalizedStops].sort((a, b) => a.value - b.value);
+    const sorted = [...stops].sort((a, b) => a.value - b.value);
     let insertIndex = 0;
     let largestGap = -1;
     for (let index = 0; index < sorted.length - 1; index++) {
@@ -1021,7 +1029,7 @@ function PointCloudColormapEditor({
     setStops(
       [
         ...sorted.slice(0, insertIndex + 1),
-        { color, value },
+        editableColorStop({ color, value }),
         ...sorted.slice(insertIndex + 1),
       ].sort((a, b) => a.value - b.value),
     );
@@ -1033,9 +1041,15 @@ function PointCloudColormapEditor({
       return;
     }
     if (selectedPreset) {
-      setStops(getGradientFromSchemeName(selectedPreset, stopCount));
+      setStops(
+        editableColorStops(
+          getGradientFromSchemeName(selectedPreset, stopCount),
+        ),
+      );
     } else {
-      setStops(redistributeStops(normalizedStops, stopCount));
+      setStops(
+        editableColorStops(redistributeStops(normalizedStops, stopCount)),
+      );
     }
     setEdited(true);
   };
@@ -1121,17 +1135,17 @@ function PointCloudColormapEditor({
           <span />
         </div>
         <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-          {normalizedStops.map((stop, index) => (
+          {stops.map((stop, index) => (
             <ColorStopRow
               index={index}
-              key={`${stop.value}-${stop.color}-${index}`}
+              key={stop.id}
               onColorChange={(color) => updateStop(index, { color })}
               onRemove={() => removeStop(index)}
               onValueChange={(value) => updateStop(index, { value })}
               removable={
                 index !== 0 &&
-                index !== normalizedStops.length - 1 &&
-                normalizedStops.length > MIN_POINT_CLOUD_COLORMAP_STOPS
+                index !== stops.length - 1 &&
+                stops.length > MIN_POINT_CLOUD_COLORMAP_STOPS
               }
               stop={stop}
             />
@@ -1208,6 +1222,22 @@ function ColorStopRow({
       )}
     </div>
   );
+}
+
+function editableColorStops(
+  stops: readonly PointCloudColorStop[],
+): readonly EditablePointCloudColorStop[] {
+  return stops.map(editableColorStop);
+}
+
+function editableColorStop(
+  stop: PointCloudColorStop,
+): EditablePointCloudColorStop {
+  nextPointCloudColorStopId += 1;
+  return {
+    ...stop,
+    id: `point-cloud-color-stop-${nextPointCloudColorStopId}`,
+  };
 }
 
 function redistributeStops(
