@@ -1029,7 +1029,7 @@ describe("PointCloudPanel", () => {
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByTestId("measure-readout").textContent).toBe(
-      "Pick two points",
+      "Pick two grid points",
     );
 
     // Escape steps the tool back: with no measurement it disarms.

@@ -167,11 +167,12 @@ export function PointCloudPanel({
       ? "fitted"
       : "none";
 
-  // Two-click distance measurement. Armed mode suspends scene picking
-  // (annotation/frustum clicks) so a measurement click can't double as a
-  // select; orbiting stays live either way.
+  // Two-click grid-plane ruler. Armed mode suspends scene picking
+  // (annotation/frustum clicks) so a ruler click can't double as a select;
+  // orbiting stays live either way.
   const [measureArmed, setMeasureArmed] = useState(false);
   const [measurement, setMeasurement] = useState<MeasurementState | null>(null);
+  const measurePlaneUp = effectiveWorldGrid?.up ?? sceneUp;
   const handleMeasureToggle = () => {
     if (measureArmed) setMeasurement(null);
     setMeasureArmed(!measureArmed);
@@ -195,14 +196,17 @@ export function PointCloudPanel({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [measureArmed, measurement]);
-  const measuredDistance = measurementDistance(measurement);
+  useEffect(() => {
+    setMeasurement(null);
+  }, [measurePlaneUp]);
+  const measuredDistance = measurementDistance(measurement, measurePlaneUp);
   const measureReadout = !measureArmed
     ? null
     : measuredDistance !== null
       ? formatMeasurementDistance(measuredDistance)
       : measurement
-        ? "Pick the second point"
-        : "Pick two points";
+        ? "Pick the second grid point"
+        : "Pick two grid points";
 
   const finitePointCount = renderLayers.reduce(
     (sum, layer) => sum + layer.data.finitePointCount,
@@ -318,6 +322,7 @@ export function PointCloudPanel({
               armed={measureArmed}
               measurement={measurement}
               onPick={handleMeasurePick}
+              planeUp={measurePlaneUp}
             />
           </ScenePickingContext.Provider>
         </Base3DScene>
@@ -363,7 +368,7 @@ export function PointCloudPanel({
           style={
             measureArmed ? styles.measureToggleActive : styles.measureToggle
           }
-          title="Measure the distance between two points (Esc clears)"
+          title="Measure distance on the grid plane (Esc clears)"
           type="button"
         >
           <MeasureRulerIcon />

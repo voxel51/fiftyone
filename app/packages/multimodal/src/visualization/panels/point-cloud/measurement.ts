@@ -1,10 +1,11 @@
 /**
- * Pure state + math for the two-click distance measurement tool.
+ * Pure state + math for the two-click grid-plane ruler.
  * `MeasurementLayer` owns the scene interaction; `PointCloudPanel` owns
  * the mode toggle and readout.
  */
 
 export type MeasurementPoint = readonly [number, number, number];
+export type MeasurementPlaneUpAxis = "x" | "y" | "z";
 
 export interface MeasurementState {
   readonly a: MeasurementPoint;
@@ -26,40 +27,29 @@ export function nextMeasurementState(
   return { a: current.a, b: pick };
 }
 
-/** Euclidean distance of a complete measurement, else `null`. */
+const GRID_PLANE_DISTANCE_AXES: Record<
+  MeasurementPlaneUpAxis,
+  readonly [0 | 1 | 2, 0 | 1 | 2]
+> = {
+  x: [1, 2],
+  y: [0, 2],
+  z: [0, 1],
+};
+
+/** Grid-plane distance of a complete measurement, else `null`. */
 export function measurementDistance(
   measurement: MeasurementState | null,
+  planeUp: MeasurementPlaneUpAxis = "z",
 ): number | null {
   if (!measurement?.b) return null;
-  const [ax, ay, az] = measurement.a;
-  const [bx, by, bz] = measurement.b;
-  return Math.hypot(bx - ax, by - ay, bz - az);
+  const [firstAxis, secondAxis] = GRID_PLANE_DISTANCE_AXES[planeUp];
+  return Math.hypot(
+    measurement.b[firstAxis] - measurement.a[firstAxis],
+    measurement.b[secondAxis] - measurement.a[secondAxis],
+  );
 }
 
 /** `12.34 m` under 100 m, `123.4 m` above — readable at both scales. */
 export function formatMeasurementDistance(meters: number): string {
   return `${meters >= 100 ? meters.toFixed(1) : meters.toFixed(2)} m`;
-}
-
-const POINTS_PICK_THRESHOLD_MIN_M = 0.05;
-const POINTS_PICK_THRESHOLD_MAX_M = 0.8;
-const POINTS_PICK_THRESHOLD_RATIO = 0.008;
-const POINTS_PICK_THRESHOLD_DEFAULT_M = 0.25;
-
-/**
- * World-space snap radius for picking individual lidar returns, scaled
- * with viewing distance: tight up close (precise picks), generous when
- * zoomed out (points subtend fractions of a pixel).
- */
-export function pointsPickThreshold(cameraDistance: number): number {
-  if (!Number.isFinite(cameraDistance) || cameraDistance <= 0) {
-    return POINTS_PICK_THRESHOLD_DEFAULT_M;
-  }
-  return Math.min(
-    POINTS_PICK_THRESHOLD_MAX_M,
-    Math.max(
-      POINTS_PICK_THRESHOLD_MIN_M,
-      cameraDistance * POINTS_PICK_THRESHOLD_RATIO,
-    ),
-  );
 }

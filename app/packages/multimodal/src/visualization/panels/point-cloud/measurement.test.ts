@@ -4,9 +4,11 @@ import {
   formatMeasurementDistance,
   measurementDistance,
   nextMeasurementState,
-  pointsPickThreshold,
 } from "./measurement";
-import { pickScenePoint } from "./MeasurementLayer";
+import {
+  pickGridPlanePoint,
+  previewDottedLinePositions,
+} from "./MeasurementLayer";
 import type * as ThreeTypes from "three";
 
 function requireHit(hit: ThreeTypes.Vector3 | null): ThreeTypes.Vector3 {
@@ -30,7 +32,13 @@ describe("measurement state machine", () => {
   it("measures only complete pairs", () => {
     expect(measurementDistance(null)).toBeNull();
     expect(measurementDistance({ a: [0, 0, 0], b: null })).toBeNull();
-    expect(measurementDistance({ a: [1, 2, 3], b: [4, 6, 3] })).toBeCloseTo(5);
+    expect(measurementDistance({ a: [1, 2, 0], b: [4, 6, 0] })).toBeCloseTo(5);
+  });
+
+  it("ignores the configured up-axis component", () => {
+    expect(
+      measurementDistance({ a: [100, 1, 2], b: [-100, 4, 6] }, "x"),
+    ).toBeCloseTo(5);
   });
 
   it("formats with scale-appropriate precision", () => {
@@ -38,43 +46,24 @@ describe("measurement state machine", () => {
     expect(formatMeasurementDistance(12.345)).toBe("12.35 m");
     expect(formatMeasurementDistance(123.45)).toBe("123.5 m");
   });
-
-  it("scales the point snap radius with camera distance, clamped", () => {
-    expect(pointsPickThreshold(10)).toBeCloseTo(0.08);
-    expect(pointsPickThreshold(1)).toBeCloseTo(0.05);
-    expect(pointsPickThreshold(1000)).toBeCloseTo(0.8);
-    expect(pointsPickThreshold(Number.NaN)).toBeCloseTo(0.25);
-  });
 });
 
-describe("pickScenePoint", () => {
-  function lookDownScene() {
-    // Camera 20m above the origin looking straight down at a small
-    // point cloud on the ground plane.
+describe("pickGridPlanePoint", () => {
+  function lookAtOriginCamera(position: readonly [number, number, number]) {
     const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
-    camera.position.set(0, 0, 20);
+    camera.position.set(...position);
     camera.lookAt(0, 0, 0);
     camera.updateMatrixWorld();
-
-    const scene = new THREE.Scene();
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute([0, 0, 0, 5, 0, 0, 0, 5, 0], 3),
-    );
-    const points = new THREE.Points(geometry, new THREE.PointsMaterial());
-    scene.add(points);
-    scene.updateMatrixWorld(true);
-    return { camera, scene };
+    return camera;
   }
 
-  it("picks the lidar return under the ray", () => {
-    const { camera, scene } = lookDownScene();
-    const hit = pickScenePoint({
+  it("picks the z-up grid plane under the ray", () => {
+    const camera = lookAtOriginCamera([0, 0, 20]);
+    const hit = pickGridPlanePoint({
       camera,
       ndc: new THREE.Vector2(0, 0),
+      planeUp: "z",
       raycaster: new THREE.Raycaster(),
-      scene,
     });
     const point = requireHit(hit);
     expect(point.x).toBeCloseTo(0);
@@ -82,60 +71,58 @@ describe("pickScenePoint", () => {
     expect(point.z).toBeCloseTo(0);
   });
 
-  it("returns null when the ray misses everything", () => {
-    const { camera, scene } = lookDownScene();
-    const hit = pickScenePoint({
+  it("uses the configured up axis for the grid plane", () => {
+    const camera = lookAtOriginCamera([20, 0, 0]);
+    const hit = pickGridPlanePoint({
       camera,
-      ndc: new THREE.Vector2(0.9, 0.9),
+      ndc: new THREE.Vector2(0.25, -0.2),
+      planeUp: "x",
       raycaster: new THREE.Raycaster(),
-      scene,
+    });
+    const point = requireHit(hit);
+    expect(point.x).toBeCloseTo(0);
+    expect(point.y).not.toBeCloseTo(0);
+    expect(point.z).not.toBeCloseTo(0);
+  });
+
+  it("returns null when the camera ray is parallel to the grid plane", () => {
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+    camera.position.set(0, 0, 20);
+    camera.lookAt(1, 0, 20);
+    camera.updateMatrixWorld();
+    const hit = pickGridPlanePoint({
+      camera,
+      ndc: new THREE.Vector2(0, 0),
+      planeUp: "z",
+      raycaster: new THREE.Raycaster(),
     });
     expect(hit).toBeNull();
   });
 
-  it("ignores the measurement overlay's own objects", () => {
-    const { camera, scene } = lookDownScene();
-    const overlay = new THREE.Group();
-    overlay.userData.isMeasurementOverlay = true;
-    const marker = new THREE.Mesh(
-      new THREE.SphereGeometry(2, 8, 8),
-      new THREE.MeshBasicMaterial(),
-    );
-    marker.position.set(0, 0, 10);
-    overlay.add(marker);
-    scene.add(overlay);
-    scene.updateMatrixWorld(true);
-
-    const hit = pickScenePoint({
-      camera,
-      ndc: new THREE.Vector2(0, 0),
-      raycaster: new THREE.Raycaster(),
-      scene,
-    });
-    // The marker hovers between camera and cloud but must not be picked.
-    expect(requireHit(hit).z).toBeCloseTo(0);
-  });
-
-  it("picks mesh surfaces such as the ground plane", () => {
-    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
-    camera.position.set(0, 0, 20);
-    camera.lookAt(0, 0, 0);
-    camera.updateMatrixWorld();
-
-    const scene = new THREE.Scene();
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(50, 50),
-      new THREE.MeshBasicMaterial(),
-    );
-    scene.add(plane);
-    scene.updateMatrixWorld(true);
-
-    const hit = pickScenePoint({
+  it("ignores scene geometry by construction", () => {
+    const camera = lookAtOriginCamera([0, 0, 20]);
+    const hit = pickGridPlanePoint({
       camera,
       ndc: new THREE.Vector2(0.2, 0.2),
+      planeUp: "z",
       raycaster: new THREE.Raycaster(),
-      scene,
     });
+    // The helper has no scene input: clicks project to z=0 instead of
+    // snapping to point-cloud returns or annotation meshes.
     expect(requireHit(hit).z).toBeCloseTo(0);
+  });
+});
+
+describe("previewDottedLinePositions", () => {
+  it("creates dotted positions from anchor to hover point", () => {
+    const positions = previewDottedLinePositions([0, 0, 0], [2, 0, 0]);
+    expect(positions).not.toBeNull();
+    expect(Array.from(positions?.slice(0, 3) ?? [])).toEqual([0, 0, 0]);
+    expect(Array.from(positions?.slice(-3) ?? [])).toEqual([2, 0, 0]);
+    expect((positions?.length ?? 0) / 3).toBeGreaterThan(2);
+  });
+
+  it("skips degenerate preview lines", () => {
+    expect(previewDottedLinePositions([1, 1, 0], [1, 1, 0])).toBeNull();
   });
 });
