@@ -2373,19 +2373,20 @@ function fillMissingLookaheadFrom({
     policy.prefetchBatchesPerPass,
     policy.prefetchBatchesPerLookahead,
   );
+  let queued = false;
   for (let i = 0; i < batchesToQueue; i++) {
     const missing = collectMissingTicks(
       timeSec,
       endSec,
       policy.maxPrefetchBatch,
     );
-    if (missing.length === 0) return false;
+    if (missing.length === 0) return queued;
     if (!fetchBatch(missing, activeTopics, "background-lookahead")) {
-      return false;
+      return queued;
     }
-    return true;
+    queued = true;
   }
-  return false;
+  return queued;
 }
 
 function fillMissingStartupBufferFrom({

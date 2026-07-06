@@ -40,7 +40,7 @@ export function isMcapReadCancelledError(error: unknown): boolean {
   if (error instanceof Error) {
     return (
       error.name === "AbortError" ||
-      error.message.includes(MCAP_READ_CANCELLED_MESSAGE)
+      error.message === MCAP_READ_CANCELLED_MESSAGE
     );
   }
 
