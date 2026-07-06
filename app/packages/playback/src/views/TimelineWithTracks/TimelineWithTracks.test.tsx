@@ -1,15 +1,4 @@
-<<<<<<< HEAD
 import { cleanup, render, screen } from "@testing-library/react";
-=======
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
-import React from "react";
->>>>>>> main
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import { TrackProvider, type Track } from "../../lib/tracks/TrackProvider";
