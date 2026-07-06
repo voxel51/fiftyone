@@ -165,7 +165,7 @@ const MIN_PINHOLE_DEPTH_M = 0.05;
 const MAX_PINHOLE_DEPTH_M = 100;
 
 export const DEFAULT_MCAP_SCENE_BACKGROUND: McapSceneBackgroundSettings = {
-  mode: "solid",
+  mode: "abyss",
   solidColor: VISUALIZATION_PANEL_BACKGROUND_COLOR,
 };
 

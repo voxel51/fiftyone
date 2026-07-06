@@ -28,6 +28,7 @@ describe("mcap-modal-settings", () => {
   afterEach(() => cleanup());
 
   it("returns default settings when nothing is stored", () => {
+    expect(DEFAULT_MCAP_SCENE_BACKGROUND.mode).toBe("abyss");
     expect(readMcapModalSettings()).toEqual({
       version: 2,
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,

@@ -302,6 +302,7 @@ describe("Mcap3dTileSettings", () => {
 
   it("wires the global point size control to the settings updater", () => {
     const props = renderSettings();
+    ensurePointCloudStyleExpanded();
     const input = screen.getByRole("spinbutton", { name: "Point size" });
 
     expect(input.getAttribute("max")).toBe("10");
@@ -322,6 +323,7 @@ describe("Mcap3dTileSettings", () => {
       pointCloudTopics: [LIDAR.id, radar.id],
       selectedPointCloudSources: [LIDAR, radar],
     });
+    ensurePointCloudStyleExpanded();
 
     expect(screen.getByText("Turbo")).toBeTruthy();
     expect(screen.getByText("Cool-warm")).toBeTruthy();
@@ -343,6 +345,7 @@ describe("Mcap3dTileSettings", () => {
       pointCloudTopics: [LIDAR.id, radar.id],
       selectedPointCloudSources: [LIDAR, radar],
     });
+    ensurePointCloudStyleExpanded();
 
     fireEvent.click(
       screen.getByRole("button", { name: `Reset color for ${radar.label}` }),
@@ -415,6 +418,7 @@ describe("Mcap3dTileSettings", () => {
 
   it("wires the point cloud color legend switch to the settings updater", () => {
     const props = renderSettings();
+    ensurePointCloudStyleExpanded();
 
     fireEvent.click(
       screen.getByRole("switch", { name: "Show point cloud color legend" }),
@@ -579,6 +583,7 @@ describe("Mcap3dTileSettings", () => {
       pointCloudTopics: [LIDAR.id, radar.id],
       selectedPointCloudSources: [LIDAR, radar],
     });
+    ensurePointCloudStyleExpanded();
 
     expect(screen.getByRole("button", { name: "Edit color for LIDAR_TOP" }));
     expect(
@@ -611,6 +616,13 @@ describe("Mcap3dTileSettings", () => {
     expect(
       screen.queryByRole("combobox", { name: "Background style" }),
     ).toBeNull();
+  });
+
+  it("collapses point cloud style controls by default", () => {
+    renderSettings();
+
+    expect(screen.queryByRole("spinbutton", { name: "Point size" })).toBeNull();
+    expect(screen.queryByText("2px · legend off · 1 active")).toBeTruthy();
   });
 
   it("offers the color picker only for the solid background", () => {
@@ -652,7 +664,19 @@ function expandPinhole() {
   fireEvent.click(screen.getByRole("button", { name: /Pinhole/ }));
 }
 
+function ensurePointCloudStyleExpanded() {
+  const button = screen.getByRole("button", {
+    name: /Point Clouds \(Style\)/,
+  });
+  if (button.getAttribute("aria-expanded") !== "true") {
+    fireEvent.click(
+      screen.getByRole("button", { name: /Point Clouds \(Style\)/ }),
+    );
+  }
+}
+
 function expandColorSource(label: string) {
+  ensurePointCloudStyleExpanded();
   fireEvent.click(
     screen.getByRole("button", { name: `Edit color for ${label}` }),
   );

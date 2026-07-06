@@ -511,7 +511,11 @@ function PointCloudStyleSection({
   }, [expandedSourceId, selectedPointCloudSources]);
 
   return (
-    <McapSidebarGroup summary={summary} title="Point Clouds (Style)">
+    <McapSidebarGroup
+      defaultExpanded={false}
+      summary={summary}
+      title="Point Clouds (Style)"
+    >
       <SettingsNumberInput
         label="Point size"
         max={MAX_MCAP_POINT_CLOUD_POINT_SIZE}
