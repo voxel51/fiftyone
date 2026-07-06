@@ -22,8 +22,7 @@
  * | `stream:stale`                 | warning  | tile  | the displayed frame is older than the stale threshold |
  * | `stream:failed`                | error    | tile  | repeated fetch failures for a topic (sticky) |
  *
- * The network header pill is deliberately NOT part of this model — it has
- * purpose-built hysteresis in `mcap-network-health-estimator.ts`.
+ * Link-level instrumentation is deliberately not part of this model.
  */
 
 import { useEffect, useReducer, useRef } from "react";

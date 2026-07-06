@@ -905,23 +905,21 @@ export function useRegisterMcapDataStream({
       );
       if (topicsToFetch.length === 0) return false;
 
-      const latencyDebugEnabled = isMcapLatencyDebugEnabled();
-      const mcapDataRequestId = latencyDebugEnabled
+      const debugEnabled = isMcapLatencyDebugEnabled();
+      const mcapDataRequestId = debugEnabled
         ? nextMcapDataRequestId(operation)
         : undefined;
-      const batchCoverageBefore = latencyDebugEnabled
+      const batchCoverageBefore = debugEnabled
         ? batchTopicTickCoverage(caches, toFetch, topicsToFetch)
         : null;
       const batchPriority = mcapBatchReadPriority(operation);
-      const wasPlayPending = latencyDebugEnabled
-        ? getIsPlayPending(store)
-        : false;
-      const wasBuffering = latencyDebugEnabled ? getIsBuffering(store) : false;
-      const batchStartMs = latencyDebugEnabled ? mcapLatencyNowMs() : 0;
+      const wasPlayPending = debugEnabled ? getIsPlayPending(store) : false;
+      const wasBuffering = debugEnabled ? getIsBuffering(store) : false;
+      const batchStartMs = debugEnabled ? mcapLatencyNowMs() : 0;
       let batchCompletionDetail: Record<string, unknown> | null = null;
 
       markTopicsPending(keys, topicsToFetch);
-      if (latencyDebugEnabled) {
+      if (debugEnabled) {
         const requestDetail = {
           ...batchRequestDetail(toFetch, topicsToFetch),
           ...batchCoverageDetail("before", batchCoverageBefore),
@@ -986,7 +984,7 @@ export function useRegisterMcapDataStream({
               pinned: operation === "loopback-lookahead",
             });
           }
-          if (latencyDebugEnabled) {
+          if (debugEnabled) {
             const durationMs = mcapLatencyDurationMs(batchStartMs);
             const pointCloudMessages = pointCloudMessageCountInWindows(windows);
             const batchCoverageAfter = batchTopicTickCoverage(
@@ -1057,7 +1055,7 @@ export function useRegisterMcapDataStream({
           // caller's `.finally` still clears pending bookkeeping so future
           // passes can re-request them.
           if (isMcapReadCancelledError(error)) {
-            if (latencyDebugEnabled) {
+            if (debugEnabled) {
               recordMcapLatencyMetric("mcap data batch cancelled", 1, {
                 mcapDataRequestId,
                 operation,
@@ -1066,7 +1064,7 @@ export function useRegisterMcapDataStream({
             return;
           }
           handleFetchFailure(error, toFetch, topicsToFetch);
-          if (latencyDebugEnabled) {
+          if (debugEnabled) {
             markMcapLatencyEvent("mcap data batch failed", {
               ...batchRequestDetail(toFetch, topicsToFetch),
               ...batchCoverageDetail("before", batchCoverageBefore),
@@ -1082,7 +1080,7 @@ export function useRegisterMcapDataStream({
 
           clearTopicsPending(keys, topicsToFetch);
           publishStreamStatuses();
-          if (latencyDebugEnabled && batchCompletionDetail) {
+          if (debugEnabled && batchCompletionDetail) {
             const isBufferingAfter = getIsBuffering(store);
             const isPlayPendingAfter = getIsPlayPending(store);
             markMcapLatencyEvent("mcap data batch settled", {
@@ -1126,9 +1124,9 @@ export function useRegisterMcapDataStream({
       if (topicsToFetch.length === 0) return false;
 
       markTopicsPending([tickKey], topicsToFetch);
-      const latencyDebugEnabled = isMcapLatencyDebugEnabled();
-      const currentFrameStartMs = latencyDebugEnabled ? mcapLatencyNowMs() : 0;
-      if (latencyDebugEnabled) {
+      const debugEnabled = isMcapLatencyDebugEnabled();
+      const currentFrameStartMs = debugEnabled ? mcapLatencyNowMs() : 0;
+      if (debugEnabled) {
         markMcapLatencyEvent(
           "current frame request",
           {
@@ -1171,7 +1169,7 @@ export function useRegisterMcapDataStream({
           if (activeFetchedTopics.length === 0) return;
 
           distributeWindowToCaches(window, caches, activeFetchedTopics);
-          if (latencyDebugEnabled) {
+          if (debugEnabled) {
             const durationMs = mcapLatencyDurationMs(currentFrameStartMs);
             const pointCloudMessages = pointCloudMessageCount(window);
             const detail = {

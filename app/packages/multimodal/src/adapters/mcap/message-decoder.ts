@@ -1,11 +1,6 @@
 import type { McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { DecodeClient } from "../../query/decode";
-import {
-  isMcapDecodeStageMeterEnabled,
-  mcapDecodeStageNowMs,
-  recordMcapDecodeStage,
-} from "./decode-stage-meter";
 import type { McapIndexedReaderLike } from "./reader";
 import type { McapTimelineStrategy } from "./timeline";
 import type { McapDecodedMessage } from "./types";
@@ -56,7 +51,7 @@ export async function decodeMcapMessage({
         ? undefined
         : {
             decoderOptionsKey: timeline.cacheKeySuffix,
-            recordId: meteredMessageRecordId(message, topic),
+            recordId: mcapMessageRecordId(message),
             source,
             streamId: topic,
             timeNs: timelineTimeNs,
@@ -88,28 +83,6 @@ export async function decodeMcapMessage({
     timelineTimeNs,
     topic,
   };
-}
-
-/**
- * Record-id hashing walks the full payload, so it scales with message size
- * like decode itself does — meter it as its own ledger stage.
- */
-function meteredMessageRecordId(
-  message: McapTypes.TypedMcapRecords["Message"],
-  topic: string,
-): string {
-  if (!isMcapDecodeStageMeterEnabled()) return mcapMessageRecordId(message);
-
-  const startMs = mcapDecodeStageNowMs();
-  const recordId = mcapMessageRecordId(message);
-  recordMcapDecodeStage({
-    bytes: message.data.byteLength,
-    ms: mcapDecodeStageNowMs() - startMs,
-    stage: "hash",
-    topic,
-  });
-
-  return recordId;
 }
 
 /**

@@ -4,15 +4,8 @@ import {
   SAMPLE_RENDERER_GRID_SLOT,
 } from "@fiftyone/plugins";
 import McapModalRenderer from "./react/McapModalRenderer";
-import { initMcapWebGpuDeviceStatsDebugPublisher } from "./mcap-webgpu-device-stats-debug";
 import { GridRenderer, McapGridStreamSelector } from "./react";
 import { AnyMcapViewer } from "./react/any-mcap-render-plugin";
-
-// App-wide debug bridge: mirrors WebGPU device-registry stats into a DOM
-// attribute when mcap latency debug is enabled. Mounted here (not in the
-// modal renderer) because grid preview cells hold devices outside the
-// modal tree.
-initMcapWebGpuDeviceStatsDebugPublisher();
 
 registerComponent({
   name: "McapRenderer",

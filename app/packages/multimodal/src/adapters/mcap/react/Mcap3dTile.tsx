@@ -1,11 +1,5 @@
 import { useTileId, useTiling } from "@fiftyone/tiling";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import type {
   CameraCalibrationVisualization,
   EncodedImageVisualization,
@@ -21,10 +15,6 @@ import {
   type PointCloudPanelRenderStats,
   type ThreeSceneBackground,
 } from "../../../visualization/panels/point-cloud";
-import {
-  isMcapLatencyDebugEnabled,
-  markMcapLatencyEvent,
-} from "../mcap-latency-debug";
 import Mcap3dTileSettings from "./Mcap3dTileSettings";
 import { build3dLayers } from "./mcap-3d-layers";
 import { useMcap3dViewSettings } from "./mcap-3d-view-settings-context";
@@ -34,10 +24,7 @@ import {
   useStabilizedMcapNotices,
   type McapHealthNotice,
 } from "./mcap-health";
-import {
-  getMcap3dViewStateSnapshot,
-  nextMcap3dViewStateRestoreOnceKey,
-} from "./mcap-3d-view-state";
+import { getMcap3dViewStateSnapshot } from "./mcap-3d-view-state";
 import { useSetAtom } from "jotai";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import {
@@ -67,7 +54,6 @@ import styles from "./McapTile.module.css";
 import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
 import { locationHudLine, speedHudLine } from "./pose-trajectory";
 import {
-  cameraPoseDebugDetail,
   useMcap3dCameraTracking,
   type Mcap3dPlacementStatus,
 } from "./use-mcap-3d-camera-tracking";
@@ -171,8 +157,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         : null,
     [referenceGrid, sceneUpAxis],
   );
-  const latencyDebugEnabled = useMemo(() => isMcapLatencyDebugEnabled(), []);
-  const lastDebugPlacementStateRef = useRef<string | null>(null);
   const frustumImageFrames =
     useMcapTopicPlaybackFrames<EncodedImageVisualization>(frustumImageTopics);
   const frames =
@@ -527,9 +511,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     ],
   );
   const {
-    cameraTargetResolution,
     cameraTrackingNotice,
-    controlledCameraPose,
     getDisplayedCameraPose,
     handleCameraPoseChange,
     noteRenderedCameraPose,
@@ -539,7 +521,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   } = useMcap3dCameraTracking({
     cameraTargetFrameId,
     frameTransforms,
-    latencyDebugEnabled,
     placementStatus,
     playbackTimeNs,
     provisionalFrameIds,
@@ -572,240 +553,14 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   // the chip, and the returned identity is stable while content holds.
   const panelNotices = useStabilizedMcapNotices(producedNotices);
 
-  const [restoreMarkOnceKey] = useState(() =>
-    nextMcap3dViewStateRestoreOnceKey(),
-  );
-  // This effect emits a latency-debug mark for the carried-over view state
-  // fields that restored synchronously at mount. Async restores (user frames,
-  // camera pose, tracking anchor) mark themselves as they apply.
-  useEffect(() => {
-    if (!latencyDebugEnabled) {
-      return;
-    }
-
-    const fields: string[] = [];
-    if (restoredSourceShapeMatches) {
-      if (viewStateRestore.enabledSourceIds) {
-        fields.push("enabledSources");
-      }
-      if (
-        viewStateRestore.trajectoryFrameOverrides &&
-        Object.keys(viewStateRestore.trajectoryFrameOverrides).length > 0
-      ) {
-        fields.push("trajectoryFrameOverrides");
-      }
-    }
-    if (viewStateRestore.trackingMode !== null) {
-      fields.push("trackingMode");
-    }
-    if (fields.length === 0) {
-      return;
-    }
-
-    markMcapLatencyEvent(
-      "3d view state restored",
-      { fields },
-      { onceKey: `${restoreMarkOnceKey}:mount` },
-    );
-  }, [
-    latencyDebugEnabled,
-    restoredSourceShapeMatches,
-    restoreMarkOnceKey,
-    viewStateRestore,
-  ]);
-
   const handlePanelRenderStats = useCallback(
     (stats: PointCloudPanelRenderStats) => {
       if (stats.cameraPose) {
         noteRenderedCameraPose(stats.cameraPose);
       }
-      if (!latencyDebugEnabled) {
-        return;
-      }
-      const detail = {
-        ...stats,
-        ...(stats.cameraPose
-          ? { cameraPose: cameraPoseDebugDetail(stats.cameraPose) }
-          : {}),
-        placementStatus,
-        provisionalFrameIds,
-        sceneUpAxis,
-        transformedLayerCount,
-        worldFrameId,
-      };
-      markMcapLatencyEvent("point cloud panel painted", detail, {
-        onceKey: "first-point-cloud-panel-painted",
-      });
-      if (placementStatus === "provisional") {
-        markMcapLatencyEvent("provisional point cloud panel painted", detail, {
-          onceKey: "first-provisional-point-cloud-panel-painted",
-        });
-      }
-      if (placementStatus === "transformed") {
-        markMcapLatencyEvent("transformed point cloud panel painted", detail, {
-          onceKey: "first-transformed-point-cloud-panel-painted",
-        });
-      }
     },
-    [
-      latencyDebugEnabled,
-      noteRenderedCameraPose,
-      placementStatus,
-      provisionalFrameIds,
-      sceneUpAxis,
-      transformedLayerCount,
-      worldFrameId,
-    ],
+    [noteRenderedCameraPose],
   );
-
-  useEffect(() => {
-    if (
-      !latencyDebugEnabled ||
-      (pointCloudLayers.length === 0 &&
-        sceneAnnotationLayers.length === 0 &&
-        gridLayers.length === 0 &&
-        cameraFrustumLayers.length === 0)
-    ) {
-      return;
-    }
-
-    const detail = {
-      annotationLayers: sceneAnnotationLayers.length,
-      frustumLayers: cameraFrustumLayers.length,
-      gridLayers: gridLayers.length,
-      layers:
-        pointCloudLayers.length +
-        sceneAnnotationLayers.length +
-        gridLayers.length +
-        cameraFrustumLayers.length,
-      placementStatus,
-      pointCount: pointCountForLayers(pointCloudLayers),
-      pendingAnnotationFrameIds,
-      pendingFrustumFrameIds,
-      pendingGridFrameIds,
-      provisionalFrameIds,
-      sceneUpAxis,
-      transformStatus: frameTransforms.status,
-      transformedLayerCount,
-      worldFrameId,
-    };
-    markMcapLatencyEvent("3d layers ready", detail, {
-      onceKey: "first-3d-layers-ready",
-    });
-    if (placementStatus === "provisional") {
-      markMcapLatencyEvent("provisional 3d layers ready", detail, {
-        onceKey: "first-provisional-3d-layers-ready",
-      });
-    }
-    if (placementStatus === "transformed") {
-      markMcapLatencyEvent("transformed 3d layers ready", detail, {
-        onceKey: "first-transformed-3d-layers-ready",
-      });
-    }
-  }, [
-    cameraFrustumLayers.length,
-    frameTransforms.status,
-    gridLayers.length,
-    latencyDebugEnabled,
-    placementStatus,
-    pendingAnnotationFrameIds,
-    pendingFrustumFrameIds,
-    pendingGridFrameIds,
-    pointCloudLayers,
-    provisionalFrameIds,
-    sceneUpAxis,
-    sceneAnnotationLayers,
-    transformedLayerCount,
-    worldFrameId,
-  ]);
-
-  useEffect(() => {
-    if (
-      !latencyDebugEnabled ||
-      (pointCloudLayers.length === 0 &&
-        sceneAnnotationLayers.length === 0 &&
-        gridLayers.length === 0 &&
-        cameraFrustumLayers.length === 0)
-    ) {
-      return;
-    }
-
-    const debugStateKey = [
-      placementStatus,
-      pointCloudLayers.length,
-      sceneAnnotationLayers.length,
-      gridLayers.length,
-      cameraFrustumLayers.length,
-      transformedLayerCount,
-      pendingAnnotationFrameIds.join(","),
-      pendingFrustumFrameIds.join(","),
-      pendingGridFrameIds.join(","),
-      provisionalFrameIds.join(","),
-      unresolvedFrameIds.join(","),
-      worldFrameId,
-      frameTransforms.status,
-      frameTransforms.frameIds.length,
-      cameraTargetFrameId,
-      sceneUpAxis,
-      cameraTargetResolution.status,
-      trackingMode,
-      controlledCameraPose ? "controlled" : "uncontrolled",
-    ].join("|");
-    if (debugStateKey === lastDebugPlacementStateRef.current) {
-      return;
-    }
-    lastDebugPlacementStateRef.current = debugStateKey;
-
-    markMcapLatencyEvent("3d placement state changed", {
-      cameraTargetFrameId,
-      cameraTargetStatus: cameraTargetResolution.status,
-      controlledCamera: controlledCameraPose !== null,
-      frameIds: frameIds.length,
-      annotationLayers: sceneAnnotationLayers.length,
-      frustumLayers: cameraFrustumLayers.length,
-      gridLayers: gridLayers.length,
-      layers:
-        pointCloudLayers.length +
-        sceneAnnotationLayers.length +
-        gridLayers.length +
-        cameraFrustumLayers.length,
-      placementStatus,
-      pendingAnnotationFrameIds,
-      pendingFrustumFrameIds,
-      pendingGridFrameIds,
-      pointCount: pointCountForLayers(pointCloudLayers),
-      provisionalFrameIds,
-      sceneUpAxis,
-      transformFrameIds: frameTransforms.frameIds.length,
-      transformStatus: frameTransforms.status,
-      transformedLayerCount,
-      unresolvedFrameIds,
-      worldFrameId,
-      trackingMode,
-    });
-  }, [
-    cameraFrustumLayers.length,
-    cameraTargetFrameId,
-    cameraTargetResolution.status,
-    controlledCameraPose,
-    frameIds.length,
-    frameTransforms.frameIds.length,
-    frameTransforms.status,
-    gridLayers.length,
-    latencyDebugEnabled,
-    pendingAnnotationFrameIds,
-    pendingFrustumFrameIds,
-    pendingGridFrameIds,
-    placementStatus,
-    pointCloudLayers,
-    provisionalFrameIds,
-    sceneUpAxis,
-    sceneAnnotationLayers,
-    trackingMode,
-    transformedLayerCount,
-    unresolvedFrameIds,
-    worldFrameId,
-  ]);
 
   return (
     <>
@@ -893,16 +648,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     </>
   );
 };
-
-function pointCountForLayers(
-  layers: readonly {
-    readonly frame: {
-      readonly pointCount: number;
-    };
-  }[],
-): number {
-  return layers.reduce((sum, layer) => sum + layer.frame.pointCount, 0);
-}
 
 function msToNs(value: number): bigint {
   return BigInt(Math.max(0, Math.round(value))) * 1_000_000n;

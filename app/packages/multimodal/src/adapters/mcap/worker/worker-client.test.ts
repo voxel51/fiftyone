@@ -32,8 +32,6 @@ describe("worker-backed MCAP resource client", () => {
     expect(worker.messages[0]).toEqual({
       payload: {
         headers: { Authorization: "token" },
-        lane: "foreground",
-        latencyDebug: false,
         origin: "http://localhost:5151",
         pathPrefix: "/proxy",
       },
@@ -475,7 +473,9 @@ describe("worker-backed MCAP resource client", () => {
 
     expect(worker.messages[0]).toMatchObject({
       payload: {
-        lane: "bulk",
+        headers: { Authorization: "token" },
+        origin: "http://localhost:5151",
+        pathPrefix: "/proxy",
       },
       type: "init",
     });
@@ -535,7 +535,11 @@ describe("worker-backed MCAP resource client", () => {
     const recreated = workers.at(-1);
     expect(recreated).not.toBe(worker);
     expect(recreated?.messages[0]).toMatchObject({
-      payload: { lane: "bulk" },
+      payload: {
+        headers: { Authorization: "token" },
+        origin: "http://localhost:5151",
+        pathPrefix: "/proxy",
+      },
       type: "init",
     });
     const nextRequest = recreated?.messages[1];

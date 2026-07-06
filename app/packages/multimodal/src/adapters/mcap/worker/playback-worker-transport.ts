@@ -1,6 +1,5 @@
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { mcapError, mcapReadCancelledError } from "../errors";
-import type { McapPlaybackWorkerAttribution } from "./playback-worker-attribution";
 import type {
   McapPlaybackWorkerPriority,
   McapPlaybackWorkerRequest,
@@ -12,7 +11,6 @@ import type {
   McapPlaybackWorkerStreamType,
   McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
-import type { McapTransportSnapshot } from "./transport-meter";
 
 type PendingRequest<
   Type extends McapPlaybackWorkerUnaryType = McapPlaybackWorkerUnaryType,
@@ -42,10 +40,6 @@ export class McapPlaybackWorkerTransport {
 
   constructor(
     private readonly isActiveSource: (sourceKey: string) => boolean,
-    private readonly onAttribution?: (
-      attribution: McapPlaybackWorkerAttribution,
-    ) => void,
-    private readonly onTransport?: (snapshot: McapTransportSnapshot) => void,
   ) {}
 
   /**
@@ -164,13 +158,6 @@ export class McapPlaybackWorkerTransport {
    * Applies one worker response to the matching pending request or stream.
    */
   handleResponse(response: McapPlaybackWorkerResponse) {
-    if (response.debugAttribution) {
-      this.onAttribution?.(response.debugAttribution);
-    }
-    if ("transport" in response && response.transport) {
-      this.onTransport?.(response.transport);
-    }
-
     if (response.ok && "stream" in response) {
       this.handleStreamResponse(response);
       return;

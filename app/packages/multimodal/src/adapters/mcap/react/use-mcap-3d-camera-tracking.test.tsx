@@ -1,9 +1,8 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { Quaternion, Vector3 } from "three";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PointCloudVisualization } from "../../../decoders";
 import type { PointCloudCameraPose } from "../../../visualization/panels/point-cloud";
-import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import type { Mcap3dCameraTrackingAnchor } from "./mcap-3d-camera";
 import { resetMcap3dViewStateForTests } from "./mcap-3d-view-state";
 import {
@@ -14,12 +13,7 @@ import {
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
-vi.mock("../mcap-latency-debug", () => ({
-  markMcapLatencyEvent: vi.fn(),
-}));
-
 beforeEach(() => {
-  vi.mocked(markMcapLatencyEvent).mockClear();
   resetMcap3dViewStateForTests();
 });
 
@@ -211,11 +205,6 @@ describe("useMcap3dCameraTracking", () => {
       position: [11, 0, 10],
       target: [11, 0, 0],
     });
-    expect(remapEvents()).toHaveLength(1);
-    expect(remapEvents()[0]?.[1]).toMatchObject({
-      sourceFrameId: "lidar",
-      targetFrameId: "map",
-    });
 
     // Placement flip-flops back through provisional with the same content
     // time: the remap key dedupes and the pose stays put.
@@ -239,7 +228,6 @@ describe("useMcap3dCameraTracking", () => {
       }),
     );
 
-    expect(remapEvents()).toHaveLength(1);
     expect(result.current.panelCameraPose).toEqual({
       position: [11, 0, 10],
       target: [11, 0, 0],
@@ -285,7 +273,6 @@ describe("useMcap3dCameraTracking", () => {
       }),
     );
 
-    expect(remapEvents()).toHaveLength(0);
     expect(result.current.panelCameraPose).toEqual(pose(1));
   });
 });
@@ -316,11 +303,6 @@ describe("useMcap3dCameraTracking world-frame changes", () => {
       position: [11, 0, 10],
       target: [11, 0, 0],
     });
-    expect(remapEvents()).toHaveLength(1);
-    expect(remapEvents()[0]?.[1]).toMatchObject({
-      sourceFrameId: "map",
-      targetFrameId: "odom",
-    });
   });
 
   it("drops the camera pose when the old and new world frames have no path", () => {
@@ -344,7 +326,6 @@ describe("useMcap3dCameraTracking world-frame changes", () => {
     // A stale-frame pose is worse than a refit: the pose is dropped so the
     // panel falls back to fitting the re-placed scene.
     expect(result.current.panelCameraPose).toBeNull();
-    expect(remapEvents()).toHaveLength(0);
   });
 
   it("re-anchors follow modes in the new world frame from the remapped pose", () => {
@@ -433,10 +414,6 @@ describe("useMcap3dCameraTracking view-state restore", () => {
 
     // The restored pose wins and the remap never fires: no double-remap.
     expect(result.current.panelCameraPose).toEqual(pose(7));
-    expect(remapEvents()).toHaveLength(0);
-    expect(restoredEvents().map(([, detail]) => detail)).toMatchObject([
-      { field: "cameraPose", worldFrameId: "map" },
-    ]);
   });
 
   it("keeps the remap when the restored pose's world frame differs, then applies a late match without fighting", () => {
@@ -478,8 +455,6 @@ describe("useMcap3dCameraTracking view-state restore", () => {
       position: [11, 0, 10],
       target: [11, 0, 0],
     });
-    expect(remapEvents()).toHaveLength(1);
-    expect(restoredEvents()).toHaveLength(0);
 
     // The world frame later becomes the carried pose's frame (e.g. a pending
     // user world-frame adoption): the restore applies once and the remap
@@ -495,10 +470,6 @@ describe("useMcap3dCameraTracking view-state restore", () => {
       }),
     );
     expect(result.current.panelCameraPose).toEqual(pose(7));
-    expect(remapEvents()).toHaveLength(1);
-    expect(restoredEvents().map(([, detail]) => detail)).toMatchObject([
-      { field: "cameraPose", worldFrameId: "odom" },
-    ]);
   });
 
   it("abandons the pose restore when the user moves the camera first", () => {
@@ -525,7 +496,6 @@ describe("useMcap3dCameraTracking view-state restore", () => {
     );
 
     expect(result.current.panelCameraPose).toEqual(pose(3));
-    expect(restoredEvents()).toHaveLength(0);
   });
 
   it("restores the follow-mode tracking anchor when its frames match", () => {
@@ -547,9 +517,6 @@ describe("useMcap3dCameraTracking view-state restore", () => {
       position: [15, 0, 10],
       target: [15, 0, 0],
     });
-    expect(restoredEvents().map(([, detail]) => detail)).toMatchObject([
-      { field: "trackingAnchor", trackingMode: "position" },
-    ]);
   });
 
   it("does not restore an anchor whose frames differ from the effective selections", () => {
@@ -566,7 +533,6 @@ describe("useMcap3dCameraTracking view-state restore", () => {
     expect(result.current.trackingMode).toBe("position");
     expect(result.current.trackingAnchor).toBeNull();
     expect(result.current.controlledCameraPose).toBeNull();
-    expect(restoredEvents()).toHaveLength(0);
   });
 
   it("abandons a pending anchor restore when the user interacts first", () => {
@@ -587,7 +553,6 @@ describe("useMcap3dCameraTracking view-state restore", () => {
 
     // Re-anchoring from the user's pose wins; the carried anchor never lands.
     expect(result.current.panelCameraPose).toEqual(pose(1));
-    expect(restoredEvents()).toHaveLength(0);
   });
 });
 
@@ -668,18 +633,6 @@ describe("restore compatibility gates", () => {
   });
 });
 
-function remapEvents() {
-  return vi
-    .mocked(markMcapLatencyEvent)
-    .mock.calls.filter(([name]) => name === "3d camera pose remapped");
-}
-
-function restoredEvents() {
-  return vi
-    .mocked(markMcapLatencyEvent)
-    .mock.calls.filter(([name]) => name === "3d view state restored");
-}
-
 function cameraRestore(
   overrides: Partial<NonNullable<TrackingProps["restore"]>>,
 ): NonNullable<TrackingProps["restore"]> {
@@ -708,7 +661,6 @@ function trackingProps(overrides: Partial<TrackingProps> = {}): TrackingProps {
   return {
     cameraTargetFrameId: "base_link",
     frameTransforms: translationTransforms(0, 0, 0),
-    latencyDebugEnabled: true,
     placementStatus: "empty",
     playbackTimeNs: 0n,
     provisionalFrameIds: [],

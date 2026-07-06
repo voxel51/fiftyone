@@ -12,7 +12,6 @@ import type {
   PointCloudCameraPose,
   PointCloudFrameTransform,
 } from "../../../visualization/panels/point-cloud";
-import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
   cameraPoseFromTrackingAnchor,
   cameraTargetPoseFromFrameTransform,
@@ -25,7 +24,6 @@ import {
 } from "./mcap-3d-camera";
 import { buildMcapCameraTargetNotice } from "./mcap-health";
 import {
-  nextMcap3dViewStateRestoreOnceKey,
   recordMcap3dCameraView,
   recordMcap3dTrackingAnchor,
   recordMcap3dTrackingMode,
@@ -103,7 +101,6 @@ export interface Mcap3dCameraTrackingRestore {
 export function useMcap3dCameraTracking({
   cameraTargetFrameId,
   frameTransforms,
-  latencyDebugEnabled,
   placementStatus,
   playbackTimeNs,
   provisionalFrameIds,
@@ -114,7 +111,6 @@ export function useMcap3dCameraTracking({
 }: {
   readonly cameraTargetFrameId: string;
   readonly frameTransforms: McapFrameTransformsState;
-  readonly latencyDebugEnabled: boolean;
   readonly placementStatus: Mcap3dPlacementStatus;
   readonly playbackTimeNs: bigint | undefined;
   readonly provisionalFrameIds: readonly string[];
@@ -153,10 +149,6 @@ export function useMcap3dCameraTracking({
   const pendingAnchorRestoreRef = useRef<Mcap3dCameraTrackingAnchor | null>(
     restoresAnchor ? (restore?.trackingAnchor ?? null) : null,
   );
-  const restoreMarkKeyRef = useRef<string | null>(null);
-  if (restoreMarkKeyRef.current === null) {
-    restoreMarkKeyRef.current = nextMcap3dViewStateRestoreOnceKey();
-  }
   const followTrackingMode = isFollowTrackingMode(trackingMode)
     ? trackingMode
     : null;
@@ -255,19 +247,7 @@ export function useMcap3dCameraTracking({
 
     pendingAnchorRestoreRef.current = null;
     setTrackingAnchor(anchor);
-    if (latencyDebugEnabled) {
-      markMcapLatencyEvent(
-        "3d view state restored",
-        {
-          field: "trackingAnchor",
-          targetFrameId: anchor.targetFrameId,
-          trackingMode: anchor.mode,
-          worldFrameId: anchor.worldFrameId,
-        },
-        { onceKey: `${restoreMarkKeyRef.current}:trackingAnchor` },
-      );
-    }
-  }, [cameraTargetFrameId, latencyDebugEnabled, trackingMode, worldFrameId]);
+  }, [cameraTargetFrameId, trackingMode, worldFrameId]);
 
   // Re-anchor when the user changes tracking mode or target frame. During
   // normal playback the anchor remains stable and the target transform moves.
@@ -421,22 +401,7 @@ export function useMcap3dCameraTracking({
     const remappedPose = transformCameraPose(basePose, resolution.transform);
     latestCameraPoseRef.current = remappedPose;
     setCameraPose(remappedPose);
-    if (latencyDebugEnabled) {
-      markMcapLatencyEvent("3d camera pose remapped", {
-        from: cameraPoseDebugDetail(basePose),
-        sourceFrameId: previousWorldFrameId,
-        targetFrameId: worldFrameId,
-        to: cameraPoseDebugDetail(remappedPose),
-        transformKind: resolution.resolutionKind ?? "unknown",
-      });
-    }
-  }, [
-    frameTransforms,
-    latencyDebugEnabled,
-    placementStatus,
-    playbackTimeNs,
-    worldFrameId,
-  ]);
+  }, [frameTransforms, placementStatus, playbackTimeNs, worldFrameId]);
 
   // This effect applies the previous sample's carried-over camera pose once
   // placement is transformed and the effective world frame matches the frame
@@ -464,18 +429,7 @@ export function useMcap3dCameraTracking({
     hadRecentProvisionalPlacementRef.current = false;
     latestCameraPoseRef.current = pending.pose;
     setCameraPose(pending.pose);
-    if (latencyDebugEnabled) {
-      markMcapLatencyEvent(
-        "3d view state restored",
-        {
-          field: "cameraPose",
-          pose: cameraPoseDebugDetail(pending.pose),
-          worldFrameId,
-        },
-        { onceKey: `${restoreMarkKeyRef.current}:cameraPose` },
-      );
-    }
-  }, [latencyDebugEnabled, placementStatus, worldFrameId]);
+  }, [placementStatus, worldFrameId]);
 
   useLayoutEffect(() => {
     if (placementStatus === "provisional") {
@@ -520,24 +474,7 @@ export function useMcap3dCameraTracking({
     cameraPoseRemapKeyRef.current = remapKey;
     latestCameraPoseRef.current = remappedPose;
     setCameraPose(remappedPose);
-
-    if (latencyDebugEnabled) {
-      markMcapLatencyEvent("3d camera pose remapped", {
-        contentTimeNs: provisionalView.contentTimeNs.toString(),
-        from: cameraPoseDebugDetail(provisionalView.cameraPose),
-        sourceFrameId: provisionalView.sourceFrameId,
-        targetFrameId: worldFrameId,
-        to: cameraPoseDebugDetail(remappedPose),
-        transformKind: resolution.resolutionKind ?? "unknown",
-      });
-    }
-  }, [
-    controlledCameraPose,
-    frameTransforms,
-    latencyDebugEnabled,
-    placementStatus,
-    worldFrameId,
-  ]);
+  }, [controlledCameraPose, frameTransforms, placementStatus, worldFrameId]);
 
   const handleCameraPoseChange = useCallback(
     (pose: PointCloudCameraPose, source: CameraPoseChangeSource) => {
@@ -785,18 +722,4 @@ function transformCameraPosePoint(
   transformed.add(transform.translation);
 
   return [transformed.x, transformed.y, transformed.z];
-}
-
-/**
- * Rounded camera-pose detail for latency-debug events.
- */
-export function cameraPoseDebugDetail(pose: PointCloudCameraPose) {
-  return {
-    position: pose.position.map(roundDebugNumber),
-    target: pose.target.map(roundDebugNumber),
-  };
-}
-
-function roundDebugNumber(value: number): number {
-  return Number(value.toFixed(3));
 }

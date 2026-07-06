@@ -1,10 +1,5 @@
 import { LRUCache } from "lru-cache";
 import type { McapTypes } from "@mcap/core";
-import {
-  isMcapDecodeStageMeterEnabled,
-  mcapDecodeStageNowMs,
-  recordMcapDecodeStage,
-} from "../decode-stage-meter";
 
 const DEFAULT_DECOMPRESSED_CHUNK_CACHE_SIZE_BYTES = 64 * 1024 * 1024;
 
@@ -37,39 +32,12 @@ export function createCachedMcapDecompressHandlers(
         const cached = cache.get(key);
         if (cached) return cached;
 
-        const decompressed = meteredDecompress(
-          decompress,
-          compression,
-          buffer,
-          decompressedSize,
-        );
+        const decompressed = decompress(buffer, decompressedSize);
         cache.set(key, decompressed);
         return decompressed;
       },
     ]),
   );
-}
-
-function meteredDecompress(
-  decompress: McapTypes.DecompressHandlers[string],
-  compression: string,
-  buffer: Uint8Array,
-  decompressedSize: bigint,
-): Uint8Array {
-  if (!isMcapDecodeStageMeterEnabled()) {
-    return decompress(buffer, decompressedSize);
-  }
-
-  const startMs = mcapDecodeStageNowMs();
-  const decompressed = decompress(buffer, decompressedSize);
-  recordMcapDecodeStage({
-    bytes: decompressed.byteLength,
-    label: compression || "none",
-    ms: mcapDecodeStageNowMs() - startMs,
-    stage: "decompress",
-  });
-
-  return decompressed;
 }
 
 function decompressCacheKey({

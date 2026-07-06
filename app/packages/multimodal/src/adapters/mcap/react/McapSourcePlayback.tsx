@@ -21,10 +21,6 @@ import { McapDataStreamProvider } from "./mcap-data-stream-context";
 import { McapFrameTransformsProvider } from "./mcap-frame-transforms-context";
 import { McapNumericSeriesProvider } from "./mcap-numeric-series-context";
 import { McapModalSettingsProvider } from "./mcap-modal-settings";
-import {
-  McapNetworkHealthTracker,
-  McapNetworkStatusPill,
-} from "./McapNetworkStatus";
 import { McapPoseTrajectoriesProvider } from "./mcap-pose-trajectories-context";
 import { McapRawMessageProvider } from "./mcap-raw-message-context";
 import { McapSelectionHotkeys } from "./mcap-selected-object";
@@ -116,14 +112,10 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     [source?.sizeBytes, sources, topicCount],
   );
   const headerCaption = useMemo(
-    () => (
-      <>
-        {metadata.sizeLabel ? (
-          <McapHeaderCaption sizeLabel={metadata.sizeLabel} />
-        ) : null}
-        <McapNetworkStatusPill />
-      </>
-    ),
+    () =>
+      metadata.sizeLabel ? (
+        <McapHeaderCaption sizeLabel={metadata.sizeLabel} />
+      ) : null,
     [metadata.sizeLabel],
   );
   const {
@@ -220,7 +212,6 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                   >
                     <McapStreams client={client} source={source} />
                     <McapSelectionHotkeys />
-                    <McapNetworkHealthTracker client={client} />
                     {children}
                     <McapModalLayoutPersistence datasetId={layoutScopeKey} />
                   </MultiModalPlayback>

@@ -39,10 +39,6 @@ vi.mock("./McapInspectorSidebar", () => ({ default: () => null }));
 vi.mock("./McapSettingsSidebar", () => ({ default: () => null }));
 vi.mock("./McapStreams", () => ({ McapStreams: () => null }));
 vi.mock("./McapTimestampReadout", () => ({ default: () => null }));
-vi.mock("./McapNetworkStatus", () => ({
-  McapNetworkHealthTracker: () => null,
-  McapNetworkStatusPill: () => null,
-}));
 vi.mock("./use-mcap-modal-layout", () => ({
   McapModalLayoutPersistence: () => null,
   useMcapModalLayout: playbackHarness.useMcapModalLayout,

@@ -1,13 +1,7 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { recordMcapWorkerAttribution } from "../mcap-latency-debug";
 import { hydrateMcapFrameTransformSet } from "../frame-transforms";
-import { isMcapLatencyDebugEnabled } from "../mcap-debug-flags";
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
-import type {
-  McapLaneTransportSnapshot,
-  McapTransportSnapshot,
-} from "./transport-meter";
 import { workerFetchParameters } from "./worker-resource-client";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
@@ -78,31 +72,22 @@ class WorkerMcapResourceClient implements McapResourceClient {
   private activeSourceKey = "";
   private disposed = false;
   private explicitOwnership = false;
-  private readonly transportListeners = new Set<
-    (sample: McapLaneTransportSnapshot) => void
-  >();
   private readonly foregroundLane: WorkerLane = {
     name: "foreground",
     transport: new McapPlaybackWorkerTransport(
       (sourceKey) => this.activeSourceKey === sourceKey,
-      recordMcapWorkerAttribution,
-      (snapshot) => this.emitTransport("foreground", snapshot),
     ),
   };
   private readonly idleLane: WorkerLane = {
     name: "idle",
     transport: new McapPlaybackWorkerTransport(
       (sourceKey) => this.activeSourceKey === sourceKey,
-      recordMcapWorkerAttribution,
-      (snapshot) => this.emitTransport("idle", snapshot),
     ),
   };
   private readonly bulkLane: WorkerLane = {
     name: "bulk",
     transport: new McapPlaybackWorkerTransport(
       (sourceKey) => this.activeSourceKey === sourceKey,
-      recordMcapWorkerAttribution,
-      (snapshot) => this.emitTransport("bulk", snapshot),
     ),
   };
 
@@ -112,17 +97,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   dispose() {
     this.disposed = true;
-    this.transportListeners.clear();
     this.resetWorkers("MCAP worker disposed");
-  }
-
-  subscribeTransport(
-    listener: (sample: McapLaneTransportSnapshot) => void,
-  ): () => void {
-    this.transportListeners.add(listener);
-    return () => {
-      this.transportListeners.delete(listener);
-    };
   }
 
   activateSource(source: Parameters<typeof byteSourceAccessKey>[0]) {
@@ -197,16 +172,6 @@ class WorkerMcapResourceClient implements McapResourceClient {
         // The worker may already be gone; local rejection already settled
         // the caller.
       }
-    }
-  }
-
-  private emitTransport(lane: WorkerLaneName, snapshot: McapTransportSnapshot) {
-    if (this.transportListeners.size === 0) {
-      return;
-    }
-    const sample: McapLaneTransportSnapshot = { lane, snapshot };
-    for (const listener of this.transportListeners) {
-      listener(sample);
     }
   }
 
@@ -401,11 +366,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       };
 
       const initRequest: McapPlaybackWorkerRequest = {
-        payload: {
-          ...workerFetchParameters(),
-          lane: lane.name,
-          latencyDebug: isMcapLatencyDebugEnabled(),
-        },
+        payload: workerFetchParameters(),
         type: "init",
       };
       worker.postMessage(initRequest);

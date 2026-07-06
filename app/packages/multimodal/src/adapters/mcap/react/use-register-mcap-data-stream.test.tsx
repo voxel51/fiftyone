@@ -42,14 +42,6 @@ const DEFAULT_TEST_TOPICS = [TOPIC] as const;
 afterEach(() => {
   cleanup();
   window.history.replaceState(null, "", "/");
-  for (const attr of [
-    "data-mcap-latency-bandwidth",
-    "data-mcap-latency-events",
-    "data-mcap-latency-metrics",
-    "data-mcap-worker-attribution",
-  ]) {
-    document.documentElement.removeAttribute(attr);
-  }
 });
 
 describe("useRegisterMcapDataStream", () => {
@@ -250,57 +242,6 @@ describe("stream status + buffering feedback", () => {
     ]);
   });
 
-  it("bridges debug batch ids into latency events and bandwidth samples", async () => {
-    window.history.replaceState(null, "", "/?mcapLatencyDebug=1");
-    const source = createSource("source");
-    const storeCapture = capturePlaybackStore();
-    const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(async () => []),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
-    });
-
-    render(
-      <Harness
-        client={client}
-        onStore={storeCapture.onStore}
-        source={source}
-      />,
-      { wrapper: TestProviders },
-    );
-
-    await waitFor(() => {
-      expect(client.readSynchronizedMessageBatch).toHaveBeenCalled();
-    });
-
-    const request = vi.mocked(client.readSynchronizedMessageBatch).mock
-      .calls[0]?.[0];
-    expect(request?.mcapDataRequestId).toMatch(/^mcap-data:startup-lookahead:/);
-
-    await waitFor(() => {
-      const events = readDebugAttribute<
-        Array<{ detail?: Record<string, unknown>; name: string }>
-      >("data-mcap-latency-events");
-      expect(
-        events.some(
-          (event) =>
-            event.name === "mcap data batch request" &&
-            event.detail?.mcapDataRequestId === request?.mcapDataRequestId,
-        ),
-      ).toBe(true);
-    });
-
-    await waitFor(() => {
-      const bandwidth = readDebugAttribute<{
-        recent: Array<{ requestId?: string }>;
-      }>("data-mcap-latency-bandwidth");
-      expect(
-        bandwidth.recent.some(
-          (sample) => sample.requestId === request?.mcapDataRequestId,
-        ),
-      ).toBe(true);
-    });
-  });
-
   it("does not queue idle background lookahead while startup data is still in flight", async () => {
     const source = createSource("source");
     const startupBatch = deferred<readonly McapSynchronizedMessageWindow[]>();
@@ -462,7 +403,6 @@ describe("stream status + buffering feedback", () => {
   });
 
   it("warms a loop-start runway when the loop end is inside lookahead", async () => {
-    window.history.replaceState(null, "", "/?mcapLatencyDebug=1");
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
@@ -499,33 +439,19 @@ describe("stream status + buffering feedback", () => {
     await waitFor(
       () => {
         expect(
-          vi
-            .mocked(client.readSynchronizedMessageBatch)
-            .mock.calls.some(([request]) =>
-              request.mcapDataRequestId?.includes("loopback-lookahead"),
-            ),
-        ).toBe(true);
+          vi.mocked(client.readSynchronizedMessageBatch).mock.calls.length,
+        ).toBeGreaterThan(1);
       },
       { timeout: 2000 },
     );
 
     const loopbackCall = vi
       .mocked(client.readSynchronizedMessageBatch)
-      .mock.calls.find(([request]) =>
-        request.mcapDataRequestId?.includes("loopback-lookahead"),
-      );
+      .mock.calls.slice(1)
+      .find(([, options]) => options?.priority === "playback");
     expect(loopbackCall?.[1]?.priority).toBe("playback");
     expect(loopbackCall?.[0].timeNs.length).toBeGreaterThan(0);
     expect(loopbackCall?.[0].timeNs.at(-1)).toBeLessThanOrEqual(2_000_000_000n);
-
-    await waitFor(() => {
-      const events = readDebugAttribute<Array<{ name: string }>>(
-        "data-mcap-latency-events",
-      );
-      expect(
-        events.some((event) => event.name === "loopback runway request"),
-      ).toBe(true);
-    });
   });
 
   it("queues covered background lookahead as small idle batches", async () => {
@@ -1207,12 +1133,6 @@ function capturePlaybackStore() {
       return captured;
     },
   };
-}
-
-function readDebugAttribute<T>(name: string): T {
-  const value = document.documentElement.getAttribute(name);
-  if (!value) throw new Error(`Missing debug attribute: ${name}`);
-  return JSON.parse(value) as T;
 }
 
 function createClient({
