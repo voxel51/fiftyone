@@ -6,6 +6,7 @@ import {
 import McapModalRenderer from "./react/McapModalRenderer";
 import { GridRenderer, McapGridStreamSelector } from "./react";
 import { AnyMcapViewer } from "./react/any-mcap-render-plugin";
+import McapExplorerIcon from "./react/any-mcap-render-plugin/McapExplorerIcon";
 
 registerComponent({
   name: "McapRenderer",
@@ -31,10 +32,11 @@ registerComponent({
 
 registerComponent({
   name: "AnyMcapViewer",
-  label: "Any MCAP Viewer",
+  label: "MCAP Explorer",
+  Icon: McapExplorerIcon,
   component: AnyMcapViewer,
   type: PluginComponentType.Panel,
-  activator: () => true,
+  activator: (ctx) => ctx.dataset?.mediaType === "multimodal",
   panelOptions: {
     allowDuplicates: true,
     surfaces: "grid",

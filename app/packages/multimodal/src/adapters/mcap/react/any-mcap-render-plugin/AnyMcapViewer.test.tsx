@@ -40,7 +40,7 @@ describe("AnyMcapViewer", () => {
   it("starts in the empty state", () => {
     render(<AnyMcapViewer />);
 
-    expect(screen.getByText("Open an MCAP")).toBeTruthy();
+    expect(screen.getByText("Drag & drop an MCAP file")).toBeTruthy();
     expect(screen.queryByTestId("mcap-source-playback")).toBeNull();
   });
 
@@ -66,7 +66,7 @@ describe("AnyMcapViewer", () => {
         "remote-url:https://example.com/path/recording.mcap?signature=1",
       url: "https://example.com/path/recording.mcap?signature=1",
     });
-    expect(screen.queryByText("Drop a local MCAP")).toBeNull();
+    expect(screen.queryByText("Drag & drop an MCAP file")).toBeNull();
     expect(screen.queryByLabelText("Remote MCAP URL")).toBeNull();
     expect(
       screen.getByRole("button", { name: "Unmount recording" }),
@@ -105,7 +105,7 @@ describe("AnyMcapViewer", () => {
   it("opens a dropped local MCAP", () => {
     render(<AnyMcapViewer />);
 
-    fireEvent.drop(screen.getByText("Open an MCAP"), {
+    fireEvent.drop(screen.getByTestId("local-mcap-drop-zone"), {
       dataTransfer: {
         files: [
           new File(["drop"], "drop.mcap", {
@@ -156,8 +156,8 @@ describe("AnyMcapViewer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open URL" }));
     fireEvent.click(screen.getByRole("button", { name: "Unmount recording" }));
 
-    expect(screen.getByText("Open an MCAP")).toBeTruthy();
-    expect(screen.getByText("Drop a local MCAP")).toBeTruthy();
+    expect(screen.getByText("Drag & drop an MCAP file")).toBeTruthy();
+    expect(screen.getByTestId("local-mcap-drop-zone")).toBeTruthy();
     expect(screen.queryByTestId("mcap-source-playback")).toBeNull();
   });
 

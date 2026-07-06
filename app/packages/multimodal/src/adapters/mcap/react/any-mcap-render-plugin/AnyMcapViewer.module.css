@@ -8,42 +8,128 @@
   width: 100%;
 }
 
-.setup {
-  border-bottom: 1px solid var(--color-border);
-  display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(220px, 0.7fr) minmax(320px, 1fr);
-  padding: 12px;
-}
-
-.dropZone {
+.hero {
   align-items: center;
-  background: var(--color-background-primary);
-  border: 1px dashed var(--color-border);
-  border-radius: 6px;
-  cursor: default;
   display: flex;
-  min-height: 92px;
-  padding: 12px;
-  transition:
-    background 120ms ease,
-    border-color 120ms ease;
-}
-
-.dropZoneActive {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: var(--color-brand-primary);
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 32px 24px;
 }
 
 .fileInput {
   display: none;
 }
 
+.dropZone {
+  align-items: center;
+  background: color-mix(in srgb, currentColor 2%, transparent);
+  border: 2px dashed color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+  max-width: 620px;
+  min-height: 264px;
+  outline: none;
+  padding: 48px 40px;
+  text-align: center;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+  width: 100%;
+}
+
+.dropZone:hover,
+.dropZone:focus-visible {
+  background: color-mix(in srgb, currentColor 4%, transparent);
+  border-color: color-mix(
+    in srgb,
+    var(--color-brand-primary, currentColor) 70%,
+    transparent
+  );
+}
+
+.dropZone:focus-visible {
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--color-brand-primary) 30%, transparent);
+}
+
+.dropZoneActive {
+  background: color-mix(
+    in srgb,
+    var(--color-brand-primary, currentColor) 8%,
+    transparent
+  );
+  border-color: var(--color-brand-primary, currentColor);
+  transform: scale(1.01);
+}
+
+.dropZoneActive .dropZoneIcon {
+  background: color-mix(in srgb, var(--color-brand-primary) 20%, transparent);
+  color: var(--color-brand-primary);
+  transform: translateY(-2px);
+}
+
+.dropZoneIcon {
+  align-items: center;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  border-radius: 50%;
+  color: var(--color-content-text);
+  display: flex;
+  height: 64px;
+  justify-content: center;
+  margin-bottom: 12px;
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
+  width: 64px;
+}
+
+.dropZoneTitle {
+  font-weight: 600;
+}
+
+.browseLink {
+  color: var(--color-brand-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dropZoneHint {
+  margin-top: 6px;
+}
+
+.divider {
+  margin: 24px 0 16px;
+  max-width: 620px;
+  width: 100%;
+}
+
 .urlForm {
-  align-items: flex-end;
   display: grid;
   gap: 8px;
-  grid-template-columns: minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  max-width: 620px;
+  width: 100%;
+}
+
+.urlHint,
+.error {
+  margin-top: 8px;
+  max-width: 520px;
+  text-align: center;
+  width: 100%;
+}
+
+.error {
+  color: var(--color-content-text-destructive);
 }
 
 .playback {
@@ -55,31 +141,7 @@
   margin-left: 12px;
 }
 
-.empty {
-  flex: 1;
-  min-height: 280px;
-  transition:
-    background 120ms ease,
-    outline-color 120ms ease;
-}
-
-.emptyActive {
-  background: rgba(255, 255, 255, 0.03);
-  outline: 1px dashed var(--color-brand-primary);
-  outline-offset: -12px;
-}
-
-.error {
-  color: var(--color-content-text-destructive);
-  min-height: 18px;
-  padding: 0 12px 8px;
-}
-
-@media (max-width: 760px) {
-  .setup {
-    grid-template-columns: 1fr;
-  }
-
+@media (max-width: 480px) {
   .urlForm {
     grid-template-columns: 1fr;
   }

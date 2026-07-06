@@ -1,16 +1,11 @@
 import {
-  Align,
   Button,
-  EmptyState,
-  FormField,
+  Divider,
+  Icon,
   IconName,
   Input,
   InputType,
-  Justify,
-  Orientation,
   Size,
-  Spacing,
-  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -160,6 +155,8 @@ const AnyMcapViewer: React.FC = () => {
     [active, openFile],
   );
 
+  const browse = useCallback(() => fileInputRef.current?.click(), []);
+
   return (
     <div
       className={styles.root}
@@ -168,102 +165,8 @@ const AnyMcapViewer: React.FC = () => {
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      {!active ? (
-        <>
-          <div className={styles.setup}>
-            <div
-              data-testid="local-mcap-drop-zone"
-              className={`${styles.dropZone} ${
-                dragging ? styles.dropZoneActive : ""
-              }`}
-            >
-              <input
-                accept=".mcap"
-                aria-label="Choose local MCAP file"
-                className={styles.fileInput}
-                data-testid="local-mcap-input"
-                onChange={(event) => {
-                  openFile(event.target.files?.[0]);
-                  event.target.value = "";
-                }}
-                ref={fileInputRef}
-                type="file"
-              />
-              <Stack
-                orientation={Orientation.Column}
-                spacing={Spacing.Sm}
-                align={Align.Start}
-              >
-                <Text variant={TextVariant.Sm}>Drop a local MCAP</Text>
-                <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-                  Files stay in this browser session and are read directly.
-                </Text>
-                <Button
-                  leadingIcon={IconName.Add}
-                  onClick={() => fileInputRef.current?.click()}
-                  size={Size.Sm}
-                  variant={Variant.Secondary}
-                >
-                  Browse
-                </Button>
-              </Stack>
-            </div>
-
-            <form
-              className={styles.urlForm}
-              onSubmit={(event) => {
-                event.preventDefault();
-                openUrl();
-              }}
-            >
-              <FormField
-                label="Remote MCAP URL"
-                description="HTTP(S) sources must support CORS and byte-range reads."
-                error={error?.target === "url" ? error.message : undefined}
-                control={
-                  <Input
-                    aria-label="Remote MCAP URL"
-                    error={error?.target === "url"}
-                    icon={IconName.ExternalLink}
-                    onChange={(event) => {
-                      setUrlInput(event.target.value);
-                      if (error?.target === "url") {
-                        setError(null);
-                      }
-                    }}
-                    placeholder="https://example.com/recording.mcap"
-                    size={Size.Sm}
-                    type={InputType.Url}
-                    value={urlInput}
-                  />
-                }
-              />
-              <Button
-                disabled={urlInput.trim().length === 0}
-                size={Size.Sm}
-                type="submit"
-              >
-                Open URL
-              </Button>
-            </form>
-          </div>
-
-          {error?.target === "file" ? (
-            <Text className={styles.error} variant={TextVariant.Xs}>
-              {error.message}
-            </Text>
-          ) : null}
-        </>
-      ) : null}
-
-      <div
-        className={
-          active
-            ? styles.playback
-            : `${styles.empty} ${dragging ? styles.emptyActive : ""}`
-        }
-      >
-        {active ? (
+      {active ? (
+        <div className={styles.playback}>
           <McapSourcePlayback
             key={active.source.sourceId}
             client={client}
@@ -284,18 +187,111 @@ const AnyMcapViewer: React.FC = () => {
             layoutScopeKey={`any-mcap:${active.source.sourceId}`}
             source={active.source}
           />
-        ) : (
-          <EmptyState
-            icon={IconName.Unsupported}
-            title="Open an MCAP"
-            description="Drag a local recording here or paste a direct HTTP(S) URL."
-            orientation={Orientation.Column}
-            spacing={Spacing.Sm}
-            align={Align.Center}
-            justify={Justify.Center}
+        </div>
+      ) : (
+        <div className={styles.hero}>
+          <input
+            accept=".mcap"
+            aria-label="Choose local MCAP file"
+            className={styles.fileInput}
+            data-testid="local-mcap-input"
+            onChange={(event) => {
+              openFile(event.target.files?.[0]);
+              event.target.value = "";
+            }}
+            ref={fileInputRef}
+            type="file"
           />
-        )}
-      </div>
+
+          <div
+            aria-label="Drop an MCAP file or click to browse"
+            className={`${styles.dropZone} ${
+              dragging ? styles.dropZoneActive : ""
+            }`}
+            data-testid="local-mcap-drop-zone"
+            onClick={browse}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                browse();
+              }
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            <div className={styles.dropZoneIcon}>
+              <Icon name={IconName.Upload} size={Size.Lg} />
+            </div>
+            <Text className={styles.dropZoneTitle} variant={TextVariant.Lg}>
+              Drag &amp; drop an MCAP file
+            </Text>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              or <span className={styles.browseLink}>click to browse</span>
+            </Text>
+            <Text
+              className={styles.dropZoneHint}
+              variant={TextVariant.Xs}
+              color={TextColor.Secondary}
+            >
+              .mcap &middot; files stay in this browser session and are read
+              directly
+            </Text>
+          </div>
+
+          {error?.target === "file" ? (
+            <Text className={styles.error} variant={TextVariant.Xs}>
+              {error.message}
+            </Text>
+          ) : null}
+
+          <Divider className={styles.divider} label="or open from a URL" />
+
+          <form
+            className={styles.urlForm}
+            onSubmit={(event) => {
+              event.preventDefault();
+              openUrl();
+            }}
+          >
+            <Input
+              aria-label="Remote MCAP URL"
+              error={error?.target === "url"}
+              icon={IconName.ExternalLink}
+              onChange={(event) => {
+                setUrlInput(event.target.value);
+                if (error?.target === "url") {
+                  setError(null);
+                }
+              }}
+              placeholder="https://example.com/recording.mcap"
+              size={Size.Sm}
+              type={InputType.Url}
+              value={urlInput}
+            />
+            <Button
+              disabled={urlInput.trim().length === 0}
+              size={Size.Sm}
+              type="submit"
+            >
+              Open URL
+            </Button>
+          </form>
+
+          {error?.target === "url" ? (
+            <Text className={styles.error} variant={TextVariant.Xs}>
+              {error.message}
+            </Text>
+          ) : (
+            <Text
+              className={styles.urlHint}
+              variant={TextVariant.Xs}
+              color={TextColor.Secondary}
+            >
+              HTTP(S) sources must support CORS and byte-range reads.
+            </Text>
+          )}
+        </div>
+      )}
     </div>
   );
 };
