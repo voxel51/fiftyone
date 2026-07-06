@@ -1,7 +1,8 @@
-import { getProtobufMessageType } from "../decoders/foxglove/protobuf";
-import { asRecord } from "../decoders/foxglove/protobuf/records";
-import { decodeJsonRecord } from "../decoders/json/decode";
 import type { McapIndexedReaderLike } from "../reader";
+import {
+  genericRecordDecoderForChannel,
+  mcapChannelForTopic,
+} from "./generic-record-decoder";
 import type { McapTimelineStrategy } from "../timeline";
 import type {
   McapNumericSeriesField,
@@ -91,8 +92,13 @@ export async function readMcapNumericSeries({
     throw new Error("Numeric series request requires at least one field path");
   }
 
-  const channel = channelForTopic(reader, request.topic);
-  const decodeRecord = recordDecoderForChannel(reader, channel);
+  const channel = mcapChannelForTopic(reader, request.topic);
+  const decodeRecord = genericRecordDecoderForChannel(reader, channel);
+  if (!decodeRecord) {
+    throw new Error(
+      `Numeric series extraction does not support encoding '${channel.messageEncoding}'`,
+    );
+  }
   const baseTimeNs = mcapTimelineRangeFromReader(reader, timeline).startTimeNs;
   const { endTime, startTime } = timeline.messageReadRange({
     endTimeNs: request.endTimeNs,
@@ -178,40 +184,6 @@ export async function readMcapNumericSeries({
     topic: request.topic,
     truncated,
   };
-}
-
-function channelForTopic(reader: McapIndexedReaderLike, topic: string) {
-  for (const channel of reader.channelsById.values()) {
-    if (channel.topic === topic) {
-      return channel;
-    }
-  }
-
-  throw new Error(`MCAP topic '${topic}' has no channel`);
-}
-
-function recordDecoderForChannel(
-  reader: McapIndexedReaderLike,
-  channel: { readonly messageEncoding: string; readonly schemaId: number },
-): (bytes: Uint8Array) => Record<string, unknown> {
-  if (channel.messageEncoding === "json") {
-    return decodeJsonRecord;
-  }
-
-  const schema = reader.schemasById.get(channel.schemaId);
-  if (
-    channel.messageEncoding === "protobuf" &&
-    schema?.encoding === "protobuf" &&
-    schema.name &&
-    schema.data.byteLength > 0
-  ) {
-    const messageType = getProtobufMessageType(schema.data, schema.name);
-    return (bytes) => asRecord(messageType.decode(bytes));
-  }
-
-  throw new Error(
-    `Numeric series extraction does not support encoding '${channel.messageEncoding}'`,
-  );
 }
 
 function channelRecordCount(
