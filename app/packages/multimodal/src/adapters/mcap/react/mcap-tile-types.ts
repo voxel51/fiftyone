@@ -10,6 +10,7 @@
 export const MCAP_TILE_TYPE = {
   IMAGE: "image",
   PLOT: "plot",
+  RAW: "raw",
   THREE_D: "3d",
 } as const;
 

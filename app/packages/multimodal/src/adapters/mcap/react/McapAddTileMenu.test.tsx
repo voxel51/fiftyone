@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // load; the menu only stores their render closures, never mounts them.
 vi.mock("./McapImageTile", () => ({ default: () => null }));
 vi.mock("./Mcap3dTile", () => ({ default: () => null }));
+vi.mock("./McapRawMessageTile", () => ({ default: () => null }));
 import {
   SceneInventoryProvider,
   type SceneSource,
@@ -200,5 +201,20 @@ describe("McapAddTileMenu", () => {
     const { focusedTileId, titles } = probeState();
     expect(titles["3d-1"]).toBe("3D");
     expect(focusedTileId).toBe("3d-1");
+  });
+
+  it("spawns a fresh raw messages tile on every click", () => {
+    renderMenu({ sources: [LIDAR] });
+    openMenu();
+    fireEvent.click(screen.getByText("Raw messages"));
+    openMenu();
+    fireEvent.click(screen.getByText("Raw messages"));
+
+    const { titles } = probeState();
+    const rawIds = Object.keys(titles).filter((id) => id.startsWith("raw-"));
+    expect(rawIds).toHaveLength(2);
+    for (const id of rawIds) {
+      expect(titles[id]).toBe("Raw messages");
+    }
   });
 });

@@ -20,6 +20,7 @@ import {
   writeMcapModalLayout,
 } from "./mcap-layout-persistence";
 import { mcapPlotTileSeriesAtom } from "./mcap-plot-tile-state";
+import { mcapRawTileTopicAtom } from "./mcap-raw-tile-state";
 import { MCAP_TILE_TYPE } from "./mcap-tile-types";
 import {
   collectPlaybackDeviceCapabilities,
@@ -303,6 +304,24 @@ export function McapModalLayoutPersistence({
     );
   }, [store]);
 
+  // This effect seeds the raw-tile topic atom once per mount from the
+  // persisted dataset entry — same contract as the plot series above.
+  const seededRawKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const persisted = readMcapModalLayout(datasetIdRef.current)?.rawTopics;
+    if (persisted) {
+      store.set(mcapRawTileTopicAtom, (previous) => {
+        const next = { ...previous };
+        for (const [tileId, topic] of Object.entries(persisted)) {
+          if (!(tileId in tilesRef.current) || next[tileId]) continue;
+          next[tileId] = topic;
+        }
+        return next;
+      });
+    }
+    seededRawKeyRef.current = JSON.stringify(store.get(mcapRawTileTopicAtom));
+  }, [store]);
+
   // This effect mirrors plot-series changes to localStorage (debounced,
   // flushed on unmount). Restores can reference pruned tiles, so nothing
   // is written until the atom actually diverges from the seeded state —
@@ -337,6 +356,38 @@ export function McapModalLayoutPersistence({
       if (dirty) {
         writeMcapModalLayout(
           { plotSeries: currentPlotSeries() },
+          datasetIdRef.current,
+        );
+      }
+    };
+  }, [store]);
+
+  // This effect mirrors raw-tile topic changes to localStorage — same
+  // debounce, dirty gate, and unmount flush as the plot series above.
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let dirty = false;
+    const currentRawTopics = () => store.get(mcapRawTileTopicAtom);
+    const unsubscribe = store.sub(mcapRawTileTopicAtom, () => {
+      const key = JSON.stringify(store.get(mcapRawTileTopicAtom));
+      if (!dirty && key === seededRawKeyRef.current) return;
+      dirty = true;
+      if (timeout !== null) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        writeMcapModalLayout(
+          { rawTopics: currentRawTopics() },
+          datasetIdRef.current,
+        );
+      }, 500);
+    });
+    return () => {
+      unsubscribe();
+      if (timeout !== null) {
+        clearTimeout(timeout);
+      }
+      if (dirty) {
+        writeMcapModalLayout(
+          { rawTopics: currentRawTopics() },
           datasetIdRef.current,
         );
       }

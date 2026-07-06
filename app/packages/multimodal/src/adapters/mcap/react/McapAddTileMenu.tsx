@@ -65,13 +65,18 @@ const McapAddTileMenu: React.FC = () => {
   // Unlike the 3D scene, plots are additive by design — comparing two
   // field sets side by side is the point — so this entry always spawns
   // a fresh tile instead of focusing an open one.
-  const openPlotTile = () => {
-    const definition = getMcapTileDefinition(MCAP_TILE_TYPE.PLOT);
+  const openPlotTile = () => spawnTile(MCAP_TILE_TYPE.PLOT);
+  // Raw message tiles are additive for the same reason: one tile per
+  // inspected topic.
+  const openRawTile = () => spawnTile(MCAP_TILE_TYPE.RAW);
+
+  const spawnTile = (type: string) => {
+    const definition = getMcapTileDefinition(type);
     if (!definition) return;
     const Tile = definition.Tile;
     addTile(
       { title: definition.typeLabel, render: () => <Tile /> },
-      { idPrefix: MCAP_TILE_TYPE.PLOT },
+      { idPrefix: type },
     );
   };
 
@@ -93,6 +98,9 @@ const McapAddTileMenu: React.FC = () => {
       ) : null}
       <MenuTextItem data-cy="mcap-add-tile-plot" onClick={openPlotTile}>
         Plot
+      </MenuTextItem>
+      <MenuTextItem data-cy="mcap-add-tile-raw" onClick={openRawTile}>
+        Raw messages
       </MenuTextItem>
       {rankedImages.length > 0 ? (
         <>

@@ -42,6 +42,12 @@ export interface McapPersistedModalLayout {
    */
   plotSeries?: Record<string, readonly McapPersistedPlotSeries[]>;
   /**
+   * Inspected topic per raw-message tile id. Topics belong to one
+   * dataset's recordings, so this field is dataset-scoped only — like
+   * `plotSeries`, never merged into the browser-wide fallback.
+   */
+  rawTopics?: Record<string, string>;
+  /**
    * World axis treated as up by the 3D MCAP scene. Dataset-scoped only:
    * coordinate conventions belong to the dataset, not the browser fallback.
    */
@@ -64,6 +70,8 @@ export interface McapPersistedPlotSeries {
 // cannot balloon the localStorage entry parsed on every modal mount.
 const MAX_PLOT_TILES = 32;
 const MAX_PLOT_SERIES_PER_TILE = 64;
+const MAX_RAW_TILES = 32;
+const MAX_RAW_TOPIC_LENGTH = 512;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 interface PersistedDatasetEntry extends McapPersistedModalLayout {
@@ -119,6 +127,7 @@ function sanitizeEntry(raw: unknown): McapPersistedModalLayout | undefined {
       ? candidate.layout
       : undefined,
     plotSeries: sanitizePlotSeries(candidate.plotSeries),
+    rawTopics: sanitizeRawTopics(candidate.rawTopics),
     sceneUpAxis: normalizeMcap3dSceneUpAxis(candidate.sceneUpAxis),
     sidebarWidthPx:
       typeof candidate.sidebarWidthPx === "number" &&
@@ -180,6 +189,37 @@ export function sanitizePlotSeries(
       result[tileId] = series;
       tileCount += 1;
     }
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/**
+ * Structural validation of the persisted raw-topic table: keys must be
+ * raw tile ids, values non-empty bounded topic strings, table capped.
+ * Invalid rows drop individually.
+ */
+export function sanitizeRawTopics(
+  raw: unknown,
+): Record<string, string> | undefined {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const result: Record<string, string> = {};
+  let tileCount = 0;
+  for (const [tileId, topic] of Object.entries(raw)) {
+    if (
+      mcapTileTypeFromId(tileId) !== MCAP_TILE_TYPE.RAW ||
+      typeof topic !== "string" ||
+      topic.length === 0 ||
+      topic.length > MAX_RAW_TOPIC_LENGTH
+    ) {
+      continue;
+    }
+    if (tileCount >= MAX_RAW_TILES) break;
+    result[tileId] = topic;
+    tileCount += 1;
   }
 
   return Object.keys(result).length > 0 ? result : undefined;
@@ -255,6 +295,8 @@ export function readMcapModalLayout(
     // Dataset-scoped on purpose: series reference this dataset's topics,
     // so another dataset's plots must never leak in via the fallback.
     plotSeries: entry?.plotSeries,
+    // Dataset-scoped for the same reason as plotSeries.
+    rawTopics: entry?.rawTopics,
     // Dataset-scoped on purpose: world-up conventions are recording-family
     // semantics, not reusable browser chrome.
     sceneUpAxis: entry?.sceneUpAxis,
@@ -294,11 +336,13 @@ export function writeMcapModalLayout(
     // from both the incoming patch and anything an older write left behind.
     const {
       plotSeries: _datasetOnlyPlotSeries,
+      rawTopics: _datasetOnlyRawTopics,
       sceneUpAxis: _datasetOnlySceneUpAxis,
       ...fallbackPatch
     } = patch;
     const fallback = { ...store?.fallback, ...fallbackPatch };
     delete fallback.plotSeries;
+    delete fallback.rawTopics;
     delete fallback.sceneUpAxis;
     const next: PersistedStore = {
       version: VERSION,

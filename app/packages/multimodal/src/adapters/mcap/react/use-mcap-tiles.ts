@@ -5,6 +5,7 @@ import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import Mcap3dTile from "./Mcap3dTile";
 import McapImageTile from "./McapImageTile";
 import McapPlotTile from "./McapPlotTile";
+import McapRawMessageTile from "./McapRawMessageTile";
 import {
   MCAP_TILE_TYPE,
   type McapTileProps,
@@ -55,6 +56,15 @@ const TILE_BY_TYPE: Record<
     typeLabel: "Plot",
     icon: IconName.Insights,
     Tile: McapPlotTile,
+    sourceTypes: Object.values(MCAP_SOURCE_TYPE),
+  },
+  // Like the plot tile, the raw tile serves exactly the topics the
+  // scene inventory can't render, so it is offered whenever the modal
+  // has any source at all; its settings sidebar lists every topic.
+  [MCAP_TILE_TYPE.RAW]: {
+    typeLabel: "Raw messages",
+    icon: IconName.JSON,
+    Tile: McapRawMessageTile,
     sourceTypes: Object.values(MCAP_SOURCE_TYPE),
   },
 };

@@ -4,6 +4,7 @@ import {
   mcapTileTypeFromId,
   readMcapModalLayout,
   sanitizePlotSeries,
+  sanitizeRawTopics,
   writeMcapModalLayout,
 } from "./mcap-layout-persistence";
 
@@ -342,6 +343,51 @@ describe("mcap-layout-persistence", () => {
       expect(sanitizePlotSeries([])).toBeUndefined();
       expect(sanitizePlotSeries("x")).toBeUndefined();
       expect(sanitizePlotSeries({ "plot-1": [] })).toBeUndefined();
+    });
+  });
+
+  describe("rawTopics", () => {
+    it("round-trips per-dataset raw tile topics", () => {
+      writeMcapModalLayout({ rawTopics: { "raw-1": "/imu" } }, "ds-a");
+      expect(readMcapModalLayout("ds-a")?.rawTopics).toEqual({
+        "raw-1": "/imu",
+      });
+    });
+
+    it("never leaks raw topics through the browser-wide fallback", () => {
+      writeMcapModalLayout(
+        { layout: "raw-1", rawTopics: { "raw-1": "/imu" } },
+        "ds-a",
+      );
+
+      const other = readMcapModalLayout("ds-b");
+      expect(other?.layout).toBe("raw-1");
+      expect(other?.rawTopics).toBeUndefined();
+    });
+
+    it("drops rows with non-raw tile ids or invalid topics", () => {
+      writeMcapModalLayout(
+        {
+          rawTopics: {
+            "raw-1": "/imu",
+            "plot-1": "/odom",
+            "no-suffix": "/x",
+            "raw-2": "",
+            "raw-3": 7,
+          } as never,
+        },
+        "ds-a",
+      );
+      expect(readMcapModalLayout("ds-a")?.rawTopics).toEqual({
+        "raw-1": "/imu",
+      });
+    });
+
+    it("sanitizeRawTopics rejects non-object payloads", () => {
+      expect(sanitizeRawTopics(null)).toBeUndefined();
+      expect(sanitizeRawTopics([])).toBeUndefined();
+      expect(sanitizeRawTopics("x")).toBeUndefined();
+      expect(sanitizeRawTopics({})).toBeUndefined();
     });
   });
 
