@@ -984,6 +984,54 @@ describe("stream status + buffering feedback", () => {
     });
   });
 
+  it("seeks and prefetches virtual ticks beyond the old materialized tick cap", async () => {
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    const currentFrameTicks: bigint[] = [];
+    const batchTicks: bigint[] = [];
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async (request) => {
+        batchTicks.push(...request.timeNs);
+        return [];
+      }),
+      readSynchronizedMessages: vi.fn(async (request) => {
+        currentFrameTicks.push(request.timeNs);
+        return createEmptyWindow(request.timeNs);
+      }),
+      readTimelineRange: vi.fn(async () =>
+        createTimelineRange(7_200_000_000_000n),
+      ),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(currentFrameTicks.length).toBeGreaterThan(0);
+    });
+
+    act(() => api?.seek(3_600));
+
+    await waitFor(() => {
+      expect(currentFrameTicks.some((tick) => tick > 3_000_000_000_000n)).toBe(
+        true,
+      );
+    });
+    await waitFor(() => {
+      expect(batchTicks.some((tick) => tick > 3_000_000_000_000n)).toBe(true);
+    });
+  });
+
   it("clears stale buffering state when the source changes", async () => {
     const sourceA = createSource("source-a");
     const sourceB = createSource("source-b");

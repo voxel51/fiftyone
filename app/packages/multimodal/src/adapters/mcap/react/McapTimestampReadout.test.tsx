@@ -8,12 +8,13 @@ import {
 } from "@testing-library/react";
 import React, { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { MCAP_ACTIVE_TIMELINE } from "../types";
 import {
   McapDataStreamProvider,
   useSetMcapDataStream,
   type McapDataStream,
 } from "./mcap-data-stream-context";
-import type { McapTimelineIndex } from "./mcap-timeline-index";
+import { createMcapTimelineIndex } from "./mcap-timeline-index";
 import McapTimestampReadout, {
   formatMcapTimestampCopyText,
   formatMcapTimeZoneOption,
@@ -89,14 +90,11 @@ describe("timestamp formatting helpers", () => {
 
 function fakeDataStream(startTimeNs: bigint): McapDataStream {
   const endTimeNs = startTimeNs + 10_000_000_000n;
-  const index: McapTimelineIndex = {
-    durationSec: 10,
-    endTimeNs,
-    nearestTick: () => startTimeNs,
-    secToNs: (timeSec) => startTimeNs + BigInt(Math.round(timeSec * 1e9)),
+  const index = createMcapTimelineIndex({
+    activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
     startTimeNs,
-    ticks: [],
-  };
+    endTimeNs,
+  });
   return {
     getTimelineIndex: () => index,
     getTopicCache: () => undefined,

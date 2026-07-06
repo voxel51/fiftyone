@@ -373,10 +373,12 @@ export function useRegisterMcapDataStream({
     }
     if (firstMessageTimeNs === null) return;
 
-    const tick = firstTickAtOrAfter(currentIndex.ticks, firstMessageTimeNs);
+    const tick = currentIndex.tickAt(
+      currentIndex.indexAtOrAfter(firstMessageTimeNs),
+    );
     if (tick === undefined) return;
 
-    const targetSec = nsToSeconds(tick - currentIndex.startTimeNs);
+    const targetSec = currentIndex.nsToSec(tick);
     if (targetSec <= 0) return;
 
     autoSeekSourceEpochRef.current = currentEpoch;
@@ -485,7 +487,7 @@ export function useRegisterMcapDataStream({
             {
               durationMs: mcapLatencyDurationMs(timelineRangeStartMs),
               durationSec: Number(nextIndex.durationSec.toFixed(3)),
-              ticks: nextIndex.ticks.length,
+              ticks: nextIndex.tickCount,
             },
             { onceKey: "timeline-index-ready" },
           );
@@ -533,40 +535,64 @@ export function useRegisterMcapDataStream({
 
   // Contiguous [startSec, endSec] ranges where every active topic has the
   // tick cached — i.e. the stretches playback can run through without
-  // stalling. Walks the full tick index, hence the trailing throttle in
-  // `scheduleBufferedRangesPublish`.
+  // stalling. Derived from cache keys so this stays bounded by cache size,
+  // not recording duration.
   const computeBufferedRanges = useCallback((): Array<[number, number]> => {
     const currentIndex = indexRef.current;
     if (!currentIndex) return [];
     const activeTopics = getActiveBlockingTopics();
     if (activeTopics.length === 0) return [];
     const caches = topicCachesRef.current;
-    const { startTimeNs, ticks, durationSec } = currentIndex;
+    const firstCache = caches.get(activeTopics[0]);
+    if (!firstCache) return [];
+    const { durationSec } = currentIndex;
     const nominalTickSec = 1 / DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ;
 
-    const tickToSec = (tick: bigint): number => {
-      const delta = tick - startTimeNs;
-      return (
-        Number(delta / 1_000_000_000n) +
-        Number(delta % 1_000_000_000n) / 1_000_000_000
-      );
-    };
-
     const ranges: Array<[number, number]> = [];
-    let runStart: number | null = null;
-    let runEnd = 0;
-    for (const tick of ticks) {
-      const covered = activeTopics.every((t) => caches.get(t)?.has(tick));
+    const indexes: number[] = [];
+    const seenIndexes = new Set<number>();
+    for (const tick of firstCache.cachedTicks()) {
+      const tickIndex = currentIndex.indexOfTick(tick);
+      if (tickIndex === undefined || seenIndexes.has(tickIndex)) continue;
+      let covered = true;
+      for (const topic of activeTopics) {
+        if (!caches.get(topic)?.has(tick)) {
+          covered = false;
+          break;
+        }
+      }
       if (covered) {
-        const sec = tickToSec(tick);
-        if (runStart === null) runStart = sec;
-        runEnd = Math.min(sec + nominalTickSec, durationSec);
-      } else if (runStart !== null) {
-        ranges.push([runStart, runEnd]);
-        runStart = null;
+        seenIndexes.add(tickIndex);
+        indexes.push(tickIndex);
       }
     }
-    if (runStart !== null) ranges.push([runStart, runEnd]);
+    if (indexes.length === 0) return ranges;
+
+    indexes.sort((a, b) => a - b);
+
+    const pushRange = (startIndex: number, endIndex: number): void => {
+      const startTick = currentIndex.tickAt(startIndex);
+      const endTick = currentIndex.tickAt(endIndex);
+      if (startTick === undefined || endTick === undefined) return;
+      ranges.push([
+        currentIndex.nsToSec(startTick),
+        Math.min(currentIndex.nsToSec(endTick) + nominalTickSec, durationSec),
+      ]);
+    };
+
+    let runStartIndex = indexes[0];
+    let runEndIndex = runStartIndex;
+    for (let i = 1; i < indexes.length; i++) {
+      const nextIndex = indexes[i];
+      if (nextIndex === runEndIndex + 1) {
+        runEndIndex = nextIndex;
+        continue;
+      }
+      pushRange(runStartIndex, runEndIndex);
+      runStartIndex = nextIndex;
+      runEndIndex = nextIndex;
+    }
+    pushRange(runStartIndex, runEndIndex);
     return ranges;
   }, [getActiveBlockingTopics]);
 
@@ -1221,13 +1247,13 @@ export function useRegisterMcapDataStream({
       const caches = topicCachesRef.current;
       const startNs = currentIndex.secToNs(startSec);
       const endNs = currentIndex.secToNs(endSec);
-      // Binary-search to the first tick >= startNs so this runs in
-      // O(log n + window) instead of O(n) per RAF prefetch.
-      const ticks = currentIndex.ticks;
-      const startIdx = lowerBoundBigInt(ticks, startNs);
+      // Jump to the first tick >= startNs so this runs in O(window) per RAF
+      // prefetch without materializing the global tick grid.
+      const startIdx = currentIndex.indexAtOrAfter(startNs);
       const toFetch: bigint[] = [];
-      for (let i = startIdx; i < ticks.length; i++) {
-        const tick = ticks[i];
+      for (let i = startIdx; i < currentIndex.tickCount; i++) {
+        const tick = currentIndex.tickAt(i);
+        if (tick === undefined) break;
         if (tick > endNs) break;
         const tickKey = tick.toString();
         const needsFetch = topics.some(
@@ -2425,12 +2451,14 @@ function bufferWindowCoverage({
   if (startTick === undefined) return null;
 
   const endNs = index.secToNs(timeSec + lookaheadSeconds);
-  const startIdx = lowerBoundBigInt(index.ticks, startTick);
+  const startIdx = index.indexOfTick(startTick);
+  if (startIdx === undefined) return null;
   let covered = 0;
   let total = 0;
 
-  for (let i = startIdx; i < index.ticks.length && total < maxTicks; i++) {
-    const tick = index.ticks[i];
+  for (let i = startIdx; i < index.tickCount && total < maxTicks; i++) {
+    const tick = index.tickAt(i);
+    if (tick === undefined) break;
     if (tick > endNs) break;
     total += 1;
     if (activeTopics.every((topic) => caches.get(topic)?.has(tick))) {
@@ -2591,25 +2619,6 @@ function pointCloudMessageCountInWindows(
     (sum, window) => sum + pointCloudMessageCount(window),
     0,
   );
-}
-
-function lowerBoundBigInt(arr: readonly bigint[], target: bigint): number {
-  let lo = 0;
-  let hi = arr.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (arr[mid] < target) lo = mid + 1;
-    else hi = mid;
-  }
-  return lo;
-}
-
-function firstTickAtOrAfter(
-  ticks: readonly bigint[],
-  target: bigint,
-): bigint | undefined {
-  const index = lowerBoundBigInt(ticks, target);
-  return ticks[index];
 }
 
 function bufferedRangesEqual(

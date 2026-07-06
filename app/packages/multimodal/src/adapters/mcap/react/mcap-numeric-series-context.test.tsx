@@ -5,10 +5,11 @@ import { createStore } from "jotai";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
-import type {
-  McapNumericSeriesResult,
-  McapReadNumericSeriesRequest,
-  McapResourceClient,
+import {
+  MCAP_ACTIVE_TIMELINE,
+  type McapNumericSeriesResult,
+  type McapReadNumericSeriesRequest,
+  type McapResourceClient,
 } from "../types";
 import {
   McapDataStreamProvider,
@@ -22,7 +23,7 @@ import {
   useMcapNumericSeriesContext,
   type McapNumericSeriesContextValue,
 } from "./mcap-numeric-series-context";
-import type { McapTimelineIndex } from "./mcap-timeline-index";
+import { createMcapTimelineIndex } from "./mcap-timeline-index";
 
 afterEach(() => {
   cleanup();
@@ -331,14 +332,11 @@ function FakeDataStream({ durationSec }: { readonly durationSec: number }) {
   // index spans [0, durationSec] — the bridge only reads
   // getTimelineIndex().
   useEffect(() => {
-    const timeline: McapTimelineIndex = {
-      durationSec,
+    const timeline = createMcapTimelineIndex({
+      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
       endTimeNs: BigInt(durationSec) * 1_000_000_000n,
-      nearestTick: () => undefined,
-      secToNs: (sec: number) => BigInt(Math.round(sec * 1e9)),
       startTimeNs: 0n,
-      ticks: [],
-    };
+    });
     const stream: McapDataStream = {
       getTimelineIndex: () => timeline,
       getTopicCache: () => undefined,

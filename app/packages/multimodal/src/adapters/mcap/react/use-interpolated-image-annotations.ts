@@ -12,7 +12,6 @@ import type { McapDecodedMessage } from "../types";
 import {
   interpolateImageAnnotations,
   interpolationFraction,
-  lowerBoundBigInt,
   vizOf,
 } from "./interpolate-image-annotations";
 import {
@@ -317,13 +316,17 @@ export function nextDistinctCachedMessage({
   // point to the same source annotation. Walk forward only far enough to find
   // the next cached source message; if lookahead is missing, staying on the
   // current frame is cheaper and visually safer than scanning the full file.
-  const startIndex = lowerBoundBigInt(timeline.ticks, currentTick) + 1;
+  const currentIndex = timeline.indexOfTick(currentTick);
+  if (currentIndex === undefined) return null;
+  const startIndex = currentIndex + 1;
   const endIndex = Math.min(
-    timeline.ticks.length,
+    timeline.tickCount,
     startIndex + MAX_NEXT_MESSAGE_SCAN_TICKS,
   );
   for (let i = startIndex; i < endIndex; i++) {
-    const msg = cache.get(timeline.ticks[i]);
+    const tick = timeline.tickAt(i);
+    if (tick === undefined) break;
+    const msg = cache.get(tick);
     if (msg && msg.timelineTimeNs !== currentTimelineTimeNs) return msg;
   }
   return null;

@@ -77,6 +77,13 @@ export class McapTopicCache {
     return pinned ? pinned.msg : this.cache.get(key)?.msg;
   }
 
+  cachedTicks(): bigint[] {
+    const ticks: bigint[] = [];
+    for (const key of this.pinned.keys()) ticks.push(BigInt(key));
+    for (const key of this.cache.keys()) ticks.push(BigInt(key));
+    return ticks;
+  }
+
   set(
     tick: bigint,
     msg: McapDecodedMessage | null,
