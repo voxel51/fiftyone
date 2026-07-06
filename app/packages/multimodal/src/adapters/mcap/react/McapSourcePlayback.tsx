@@ -34,6 +34,7 @@ import styles from "./McapModalRenderer.module.css";
 import McapSettingsSidebar from "./McapSettingsSidebar";
 import { McapStreams } from "./McapStreams";
 import McapTimestampReadout from "./McapTimestampReadout";
+import { buildMcapAutoLayout } from "./playback-layout";
 import {
   McapModalLayoutPersistence,
   useMcapModalLayout,
@@ -201,6 +202,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                     deselectFocusedTileOnRepeatSelect={false}
                     initialTiles={initialTiles}
                     initialManualTileTitles={initialManualTileTitles}
+                    autoLayoutStrategy={buildMcapAutoLayout}
                     initialLayout={initialLayout}
                     initialExpandedTileId={initialExpandedTileId}
                     tracks={

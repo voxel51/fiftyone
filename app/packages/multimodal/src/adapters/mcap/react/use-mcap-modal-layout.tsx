@@ -66,8 +66,9 @@ export interface UseMcapModalLayoutOptions {
  * Mount-time layout state for the MCAP modal: the user's persisted
  * sidebar visibility and tile arrangement when one restores cleanly
  * against the current scene, the resolver's defaults otherwise — a
- * budgeted grid of default-preferred image tiles beside one fused 3D tile,
- * sized to the machine, the source locality, and the viewport (see
+ * budgeted set of default-preferred image tiles plus one fused 3D tile,
+ * arranged by MCAP's type-aware layout strategy and sized to the
+ * machine, the source locality, and the viewport (see
  * `resolvePlaybackLayout`). Pair with
  * `<McapModalLayoutPersistence />` (inside the playback shell) to write
  * changes back.
