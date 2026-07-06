@@ -1,3 +1,5 @@
+import { durationMsSince, monotonicNowMs } from "../../time";
+
 export function isMcapLatencyDebugEnabled(): boolean {
   return false;
 }
@@ -21,9 +23,9 @@ export function recordMcapBandwidthSample(..._args: readonly unknown[]): void {
 }
 
 export function mcapLatencyNowMs(): number {
-  return globalThis.performance?.now?.() ?? Date.now();
+  return monotonicNowMs();
 }
 
 export function mcapLatencyDurationMs(startMs: number): number {
-  return Number((mcapLatencyNowMs() - startMs).toFixed(1));
+  return durationMsSince(startMs);
 }

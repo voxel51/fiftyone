@@ -1,3 +1,4 @@
+import { monotonicNowMs } from "../../../time";
 import type { McapPlaybackWorkerPriority } from "./playback-worker-types";
 
 /**
@@ -171,5 +172,5 @@ function logWorkerSchedulerDebug(
 }
 
 function workerSchedulerNowMs(): number {
-  return globalThis.performance?.now?.() ?? Date.now();
+  return monotonicNowMs();
 }

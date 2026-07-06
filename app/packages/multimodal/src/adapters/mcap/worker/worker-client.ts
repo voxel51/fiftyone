@@ -72,24 +72,14 @@ class WorkerMcapResourceClient implements McapResourceClient {
   private activeSourceKey = "";
   private disposed = false;
   private explicitOwnership = false;
-  private readonly foregroundLane: WorkerLane = {
-    name: "foreground",
-    transport: new McapPlaybackWorkerTransport(
-      (sourceKey) => this.activeSourceKey === sourceKey,
-    ),
-  };
-  private readonly idleLane: WorkerLane = {
-    name: "idle",
-    transport: new McapPlaybackWorkerTransport(
-      (sourceKey) => this.activeSourceKey === sourceKey,
-    ),
-  };
-  private readonly bulkLane: WorkerLane = {
-    name: "bulk",
-    transport: new McapPlaybackWorkerTransport(
-      (sourceKey) => this.activeSourceKey === sourceKey,
-    ),
-  };
+  private readonly foregroundLane = this.createLane("foreground");
+  private readonly idleLane = this.createLane("idle");
+  private readonly bulkLane = this.createLane("bulk");
+  private readonly lanes = [
+    this.foregroundLane,
+    this.idleLane,
+    this.bulkLane,
+  ] as const;
 
   constructor(
     private readonly options: CreateWorkerMcapResourceClientOptions,
@@ -125,26 +115,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
   // the next read or decode boundary, so a lane frees up within one
   // boundary rather than after the full stale job.
   private cancelAllPendingReads() {
-    for (const lane of [this.foregroundLane, this.idleLane, this.bulkLane]) {
+    for (const lane of this.lanes) {
       const cancelledIds = [
         ...lane.transport.cancelPending(() => true),
         ...lane.transport.cancelStreams(),
       ];
-      const worker = lane.worker;
-      if (!worker) {
-        continue;
-      }
-      for (const id of cancelledIds) {
-        try {
-          const cancelRequest: McapPlaybackWorkerRequest = {
-            id,
-            type: "cancel",
-          };
-          worker.postMessage(cancelRequest);
-        } catch {
-          // The worker may already be gone; local rejection settled callers.
-        }
-      }
+      this.postCancelRequests(lane, cancelledIds);
     }
   }
 
@@ -157,22 +133,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
         pending.type === "readSynchronizedMessageBatch" ||
         pending.type === "readFrameTransformWindow",
     );
-    const worker = this.idleLane.worker;
-    if (!worker) {
-      return;
-    }
-    for (const id of cancelledIds) {
-      try {
-        const cancelRequest: McapPlaybackWorkerRequest = {
-          id,
-          type: "cancel",
-        };
-        worker.postMessage(cancelRequest);
-      } catch {
-        // The worker may already be gone; local rejection already settled
-        // the caller.
-      }
-    }
+    this.postCancelRequests(this.idleLane, cancelledIds);
   }
 
   async *readDecodedMessages(
@@ -395,10 +356,37 @@ class WorkerMcapResourceClient implements McapResourceClient {
     });
   }
 
+  private createLane(name: WorkerLaneName): WorkerLane {
+    return {
+      name,
+      transport: new McapPlaybackWorkerTransport(
+        (sourceKey) => this.activeSourceKey === sourceKey,
+      ),
+    };
+  }
+
+  private postCancelRequests(lane: WorkerLane, ids: readonly number[]): void {
+    const worker = lane.worker;
+    if (!worker) {
+      return;
+    }
+    for (const id of ids) {
+      try {
+        const cancelRequest: McapPlaybackWorkerRequest = {
+          id,
+          type: "cancel",
+        };
+        worker.postMessage(cancelRequest);
+      } catch {
+        // The worker may already be gone; local rejection settled callers.
+      }
+    }
+  }
+
   private resetWorkers(reason: string) {
-    this.resetLane(this.foregroundLane, reason);
-    this.resetLane(this.idleLane, reason);
-    this.resetLane(this.bulkLane, reason);
+    for (const lane of this.lanes) {
+      this.resetLane(lane, reason);
+    }
   }
 
   // Bulk work is one-shot per file: once the lane's queue drains, its worker

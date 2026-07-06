@@ -5,6 +5,7 @@ import type {
 } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { decodeProtobufMessage } from "./protobuf";
+import { decodeQuaternion, decodeVector3 } from "./protobuf/geometry";
 import { FOXGLOVE_POSE_IN_FRAME_PAYLOAD } from "./protobuf/payloads";
 import { optionalRecord, optionalString } from "./protobuf/records";
 import { timingFromContext, timestampNs } from "./protobuf/timing";
@@ -57,35 +58,3 @@ export const foxglovePoseInFrameDecoder: Decoder = {
     };
   },
 };
-
-function decodeVector3(
-  record: Record<string, unknown> | undefined,
-): readonly [number, number, number] {
-  return [
-    numberField(record, "x"),
-    numberField(record, "y"),
-    numberField(record, "z"),
-  ];
-}
-
-function decodeQuaternion(
-  record: Record<string, unknown> | undefined,
-): readonly [number, number, number, number] {
-  return [
-    numberField(record, "x"),
-    numberField(record, "y"),
-    numberField(record, "z"),
-    numberField(record, "w", 1),
-  ];
-}
-
-function numberField(
-  record: Record<string, unknown> | undefined,
-  field: string,
-  defaultValue = 0,
-): number {
-  const value = record?.[field];
-  if (typeof value === "number") return value;
-  if (typeof value === "bigint") return Number(value);
-  return defaultValue;
-}

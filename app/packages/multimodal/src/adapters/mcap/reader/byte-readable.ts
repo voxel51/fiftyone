@@ -5,6 +5,7 @@ import type {
   ByteSourceDescriptor,
 } from "../../../query/bytes";
 import { parseByteSize } from "../../../query/bytes";
+import { chunkMessageIndexRange } from "./chunk-index-ranges";
 
 export interface McapChunkReadDebugLog {
   readonly cacheResult: "coalesced" | "fetched";
@@ -278,8 +279,8 @@ function chunkReadDebugEntries({
     const messageIndexOverlap = rangeOverlapBytes(
       readStart,
       readEnd,
-      messageIndexRange.start,
-      messageIndexRange.end,
+      messageIndexRange.offset,
+      messageIndexRange.offset + messageIndexRange.length,
     );
     if (messageIndexOverlap > 0n) {
       entries.push(
@@ -297,23 +298,6 @@ function chunkReadDebugEntries({
   }
 
   return entries;
-}
-
-function chunkMessageIndexRange(
-  chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"],
-): { readonly end: bigint; readonly start: bigint } | null {
-  const offsets = [...chunkIndex.messageIndexOffsets.values()];
-  if (offsets.length === 0 || chunkIndex.messageIndexLength === 0n) {
-    return null;
-  }
-
-  const start = offsets.reduce((min, candidate) =>
-    candidate < min ? candidate : min,
-  );
-  return {
-    end: start + chunkIndex.messageIndexLength,
-    start,
-  };
 }
 
 function rangeOverlapBytes(

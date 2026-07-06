@@ -1,4 +1,5 @@
 import type { McapTypes } from "@mcap/core";
+import { chunkMessageIndexRange } from "./chunk-index-ranges";
 import { channelIdsForTopics } from "./message-index";
 
 /**
@@ -226,36 +227,6 @@ export async function prefetchMcapByteRanges(
   });
 
   await Promise.all(workers);
-}
-
-/**
- * Full message-index region for one chunk: every channel's index records
- * live contiguously in `messageIndexLength` bytes after the earliest offset.
- */
-function chunkMessageIndexRange(
-  chunkIndex: McapChunkIndex,
-): McapPrefetchByteRange | undefined {
-  if (
-    chunkIndex.messageIndexOffsets.size === 0 ||
-    chunkIndex.messageIndexLength === 0n
-  ) {
-    return undefined;
-  }
-
-  let start: bigint | undefined;
-  for (const offset of chunkIndex.messageIndexOffsets.values()) {
-    if (start === undefined || offset < start) {
-      start = offset;
-    }
-  }
-  if (start === undefined) {
-    return undefined;
-  }
-
-  return {
-    length: chunkIndex.messageIndexLength,
-    offset: start,
-  };
 }
 
 function chunkOverlapsWindow(

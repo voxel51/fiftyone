@@ -7,6 +7,7 @@ import { safeNumber } from "./bigint-utils";
 import { serializeCacheKey } from "../cache-utils";
 import { byteSourceAccessKey } from "./cache";
 import { parseByteSize } from "./byte-size";
+import { monotonicNowMs } from "../../time";
 import type {
   ByteClient,
   ByteCacheLayers,
@@ -211,7 +212,7 @@ function defaultByteReadDebugLogger(entry: ByteReadDebugLog): void {
 }
 
 function byteReadNowMs(): number {
-  return globalThis.performance?.now?.() ?? Date.now();
+  return monotonicNowMs();
 }
 
 function byteRangeAccessKey(request: ByteRangeReadRequest): string {

@@ -4,6 +4,7 @@ import {
 } from "@fiftyone/playback/src/lib/playback/store-access";
 import type { PlaybackStore } from "@fiftyone/playback/src/lib/playback/types";
 import { useCallback, useRef, type MutableRefObject } from "react";
+import { monotonicNowMs } from "../../../time";
 import type { McapDataStream } from "./mcap-data-stream-context";
 import { shouldDeferMcapIdleWorkForStore } from "./mcap-network-health";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
@@ -216,5 +217,5 @@ export function startMcapDemandBridge<THandlers extends McapDemandHandlers>({
  * Current timestamp for bridge throttles and retry backoffs.
  */
 export function nowMs(): number {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
+  return monotonicNowMs();
 }

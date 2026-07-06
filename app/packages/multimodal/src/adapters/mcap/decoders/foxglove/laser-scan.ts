@@ -2,8 +2,17 @@ import type { DecodedAttributeValue, Decoder } from "../../../../decoders";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { decodeProtobufMessage } from "./protobuf";
+import {
+  decodePose,
+  normalizedQuaternion,
+  type ProtobufPose3D,
+} from "./protobuf/geometry";
 import { FOXGLOVE_LASER_SCAN_PAYLOAD } from "./protobuf/payloads";
-import { optionalRecord, optionalString } from "./protobuf/records";
+import {
+  numberField,
+  optionalRecord,
+  optionalString,
+} from "./protobuf/records";
 import { timingFromContext, timestampNs } from "./protobuf/timing";
 
 const POINT_COMPONENT_COUNT = 3;
@@ -86,11 +95,6 @@ export const foxgloveLaserScanDecoder: Decoder = {
   },
 };
 
-interface ScanPose {
-  readonly position: readonly [number, number, number];
-  readonly quaternion: readonly [number, number, number, number];
-}
-
 interface DecodedScanPoints {
   readonly intensities?: Float32Array;
   readonly positions: Float32Array;
@@ -105,7 +109,7 @@ function scanToPoints({
 }: {
   readonly endAngle: number;
   readonly intensities?: readonly number[];
-  readonly pose: ScanPose;
+  readonly pose: ProtobufPose3D;
   readonly ranges: readonly number[];
   readonly startAngle: number;
 }): DecodedScanPoints {
@@ -165,7 +169,7 @@ type WritePoint = (
   y: number,
 ) => void;
 
-function poseTransform(pose: ScanPose): WritePoint {
+function poseTransform(pose: ProtobufPose3D): WritePoint {
   const [px, py, pz] = pose.position;
   const normalized = normalizedQuaternion(pose.quaternion);
 
@@ -189,58 +193,6 @@ function poseTransform(pose: ScanPose): WritePoint {
     positions[offset + 1] = py + y + qw * ty + qz * tx - qx * tz;
     positions[offset + 2] = pz + qw * tz + qx * ty - qy * tx;
   };
-}
-
-/**
- * Returns the unit rotation quaternion, or undefined for identity/degenerate
- * rotations (absent orientations decode as all zeros).
- */
-function normalizedQuaternion(
-  quaternion: readonly [number, number, number, number],
-): readonly [number, number, number, number] | undefined {
-  const [x, y, z, w] = quaternion;
-  if (x === 0 && y === 0 && z === 0) {
-    return undefined;
-  }
-
-  const norm = Math.hypot(x, y, z, w);
-  if (!Number.isFinite(norm) || norm === 0) {
-    return undefined;
-  }
-
-  return [x / norm, y / norm, z / norm, w / norm];
-}
-
-function decodePose(record: Record<string, unknown> | undefined): ScanPose {
-  const position = record && optionalRecord(record, "position");
-  const orientation = record && optionalRecord(record, "orientation");
-
-  return {
-    position: [
-      numberField(position, "x"),
-      numberField(position, "y"),
-      numberField(position, "z"),
-    ],
-    quaternion: [
-      numberField(orientation, "x"),
-      numberField(orientation, "y"),
-      numberField(orientation, "z"),
-      numberField(orientation, "w"),
-    ],
-  };
-}
-
-function numberField(
-  record: Record<string, unknown> | undefined,
-  field: string,
-  fallbackField?: string,
-  defaultValue = 0,
-): number {
-  const value =
-    record?.[field] ?? (fallbackField ? record?.[fallbackField] : undefined);
-  if (typeof value === "number") return value;
-  if (typeof value === "bigint") return Number(value);
-  return defaultValue;
 }
 
 function numberArrayField(

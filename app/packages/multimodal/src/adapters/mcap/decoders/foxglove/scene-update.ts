@@ -13,7 +13,6 @@ import {
   type SceneLinePrimitiveKind,
   type SceneModelPrimitive,
   type ScenePoint3D,
-  type ScenePose3D,
   type SceneSpherePrimitive,
   type SceneTextPrimitive,
   type SceneTrianglePrimitive,
@@ -21,8 +20,9 @@ import {
 } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { decodeProtobufMessage } from "./protobuf";
+import { decodePose, decodeVector3 } from "./protobuf/geometry";
 import { FOXGLOVE_SCENE_UPDATE_PAYLOAD } from "./protobuf/payloads";
-import { asRecord, optionalRecord } from "./protobuf/records";
+import { asRecord, numberField, optionalRecord } from "./protobuf/records";
 import { timingFromContext, timestampNs } from "./protobuf/timing";
 
 const NANOSECONDS_PER_SECOND = 1_000_000_000n;
@@ -257,46 +257,6 @@ function decodeTriangle(value: unknown): SceneTrianglePrimitive {
   };
 }
 
-function decodePose(record: Record<string, unknown> | undefined): ScenePose3D {
-  if (!record) {
-    return {
-      position: [0, 0, 0],
-      quaternion: [0, 0, 0, 1],
-    };
-  }
-
-  return {
-    position: decodeVector3(optionalRecord(record, "position")),
-    quaternion: decodeQuaternion(optionalRecord(record, "orientation")),
-  };
-}
-
-function decodeVector3(
-  record: Record<string, unknown> | undefined,
-  defaultValue: readonly [number, number, number] = [0, 0, 0],
-): readonly [number, number, number] {
-  if (!record) return defaultValue;
-
-  return [
-    numberField(record, "x", undefined, defaultValue[0]),
-    numberField(record, "y", undefined, defaultValue[1]),
-    numberField(record, "z", undefined, defaultValue[2]),
-  ];
-}
-
-function decodeQuaternion(
-  record: Record<string, unknown> | undefined,
-): readonly [number, number, number, number] {
-  if (!record) return [0, 0, 0, 1];
-
-  return [
-    numberField(record, "x"),
-    numberField(record, "y"),
-    numberField(record, "z"),
-    numberField(record, "w", undefined, 1),
-  ];
-}
-
 function decodeColor(
   record: Record<string, unknown> | undefined,
 ): RgbaColor | null {
@@ -425,19 +385,6 @@ function decodeIndices(values: readonly unknown[]): readonly number[] {
       (value) =>
         Number.isInteger(value) && Number.isFinite(value) && value >= 0,
     );
-}
-
-function numberField(
-  record: Record<string, unknown>,
-  field: string,
-  fallbackField?: string,
-  defaultValue = 0,
-): number {
-  const value =
-    record[field] ?? (fallbackField ? record[fallbackField] : undefined);
-  if (typeof value === "number") return value;
-  if (typeof value === "bigint") return Number(value);
-  return defaultValue;
 }
 
 function bigintField(

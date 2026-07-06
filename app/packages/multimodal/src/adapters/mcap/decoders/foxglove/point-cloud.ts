@@ -7,6 +7,11 @@ import type {
 import { resourceHintsForArrayBufferViews } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { decodeProtobufMessage } from "./protobuf";
+import {
+  decodePose,
+  normalizedQuaternion,
+  type ProtobufPose3D,
+} from "./protobuf/geometry";
 import { FOXGLOVE_POINT_CLOUD_PAYLOAD } from "./protobuf/payloads";
 import {
   asRecord,
@@ -144,11 +149,6 @@ interface DecodedPointCloudData {
   readonly colors?: Float32Array;
   readonly positions: Float32Array;
   readonly scalarFields: readonly PointCloudScalarField[];
-}
-
-interface PointCloudPose {
-  readonly position: readonly [number, number, number];
-  readonly quaternion: readonly [number, number, number, number];
 }
 
 function extractPointCloudData(
@@ -494,7 +494,7 @@ function normalizedFieldName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function applyPose(positions: Float32Array, pose: PointCloudPose) {
+function applyPose(positions: Float32Array, pose: ProtobufPose3D) {
   const [px, py, pz] = pose.position;
   const normalized = normalizedQuaternion(pose.quaternion);
 
@@ -521,58 +521,6 @@ function applyPose(positions: Float32Array, pose: PointCloudPose) {
     positions[offset + 1] = py + y + qw * ty + qz * tx - qx * tz;
     positions[offset + 2] = pz + z + qw * tz + qx * ty - qy * tx;
   }
-}
-
-/**
- * Returns the unit rotation quaternion, or undefined for identity/degenerate
- * rotations (absent orientations decode as all zeros).
- */
-function normalizedQuaternion(
-  quaternion: readonly [number, number, number, number],
-): readonly [number, number, number, number] | undefined {
-  const [x, y, z, w] = quaternion;
-  if (x === 0 && y === 0 && z === 0) {
-    return undefined;
-  }
-
-  const norm = Math.hypot(x, y, z, w);
-  if (!Number.isFinite(norm) || norm === 0) {
-    return undefined;
-  }
-
-  return [x / norm, y / norm, z / norm, w / norm];
-}
-
-function decodePose(
-  record: Record<string, unknown> | undefined,
-): PointCloudPose {
-  const position = record && optionalRecord(record, "position");
-  const orientation = record && optionalRecord(record, "orientation");
-
-  return {
-    position: [
-      numberField(position, "x"),
-      numberField(position, "y"),
-      numberField(position, "z"),
-    ],
-    quaternion: [
-      numberField(orientation, "x"),
-      numberField(orientation, "y"),
-      numberField(orientation, "z"),
-      numberField(orientation, "w"),
-    ],
-  };
-}
-
-function numberField(
-  record: Record<string, unknown> | undefined,
-  field: string,
-  defaultValue = 0,
-): number {
-  const value = record?.[field];
-  if (typeof value === "number") return value;
-  if (typeof value === "bigint") return Number(value);
-  return defaultValue;
 }
 
 function packedFields(values: readonly unknown[]): readonly PointCloudField[] {

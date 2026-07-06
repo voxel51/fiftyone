@@ -6,7 +6,11 @@ import type {
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { decodeProtobufMessage } from "./protobuf";
 import { FOXGLOVE_LOCATION_FIX_PAYLOAD } from "./protobuf/payloads";
-import { optionalRecord, optionalString } from "./protobuf/records";
+import {
+  numberField,
+  optionalRecord,
+  optionalString,
+} from "./protobuf/records";
 import { timingFromContext, timestampNs } from "./protobuf/timing";
 
 const COVARIANCE_LENGTH = 9;
@@ -76,15 +80,4 @@ function covariance(value: unknown): readonly number[] | undefined {
     typeof entry === "number" ? entry : Number.NaN,
   );
   return values.every((entry) => Number.isFinite(entry)) ? values : undefined;
-}
-
-function numberField(
-  record: Record<string, unknown>,
-  field: string,
-  defaultValue = 0,
-): number {
-  const value = record[field];
-  if (typeof value === "number") return value;
-  if (typeof value === "bigint") return Number(value);
-  return defaultValue;
 }

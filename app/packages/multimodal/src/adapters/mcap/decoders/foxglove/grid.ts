@@ -3,14 +3,15 @@ import type {
   Decoder,
   GridField,
   GridVisualization,
-  ScenePose3D,
 } from "../../../../decoders";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { decodeProtobufMessage } from "./protobuf";
+import { decodePose } from "./protobuf/geometry";
 import { FOXGLOVE_GRID_PAYLOAD } from "./protobuf/payloads";
 import {
   asRecord,
+  numberField,
   optionalRecord,
   optionalString,
   requiredArray,
@@ -381,41 +382,4 @@ function decodeCellSize(
   }
 
   return [x, y];
-}
-
-function decodePose(record: Record<string, unknown> | undefined): ScenePose3D {
-  if (!record) {
-    return {
-      position: [0, 0, 0],
-      quaternion: [0, 0, 0, 1],
-    };
-  }
-
-  const position = optionalRecord(record, "position");
-  const orientation = optionalRecord(record, "orientation");
-
-  return {
-    position: [
-      position ? numberField(position, "x") : 0,
-      position ? numberField(position, "y") : 0,
-      position ? numberField(position, "z") : 0,
-    ],
-    quaternion: [
-      orientation ? numberField(orientation, "x") : 0,
-      orientation ? numberField(orientation, "y") : 0,
-      orientation ? numberField(orientation, "z") : 0,
-      orientation ? numberField(orientation, "w", 1) : 1,
-    ],
-  };
-}
-
-function numberField(
-  record: Record<string, unknown>,
-  field: string,
-  defaultValue = 0,
-): number {
-  const value = record[field];
-  if (typeof value === "number") return value;
-  if (typeof value === "bigint") return Number(value);
-  return defaultValue;
 }
