@@ -71,9 +71,9 @@ describe("useMcapModalLayout", () => {
     ]);
     expect(result.current.initialTiles["image-1"].title).toBe("cam");
     expect(result.current.initialLayout).toMatchObject({
-      direction: "row",
-      first: "image-1",
-      second: "3d-1",
+      direction: "column",
+      first: "3d-1",
+      second: "image-1",
     });
     expect(result.current.defaultLeftOpen).toBe(true);
   });
@@ -297,8 +297,8 @@ describe("useMcapModalLayout", () => {
       "3d-1",
     ]);
     expect(result.current.initialLayout).toMatchObject({
-      first: "image-1",
-      second: "3d-1",
+      first: "3d-1",
+      second: "image-1",
     });
   });
 

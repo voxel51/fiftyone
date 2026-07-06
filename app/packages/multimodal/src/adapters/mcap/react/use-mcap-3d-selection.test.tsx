@@ -265,12 +265,16 @@ describe("useMcap3dSelection", () => {
   it("titles the tile after a single selected source, else the tile type", () => {
     const { result } = renderSelection([lidarTop, lidarFront]);
 
-    expect(setTileTitleMock).toHaveBeenLastCalledWith("3D");
+    expect(setTileTitleMock).toHaveBeenLastCalledWith("3D", {
+      source: "auto",
+    });
 
     act(() => {
       result.current.toggleSource(lidarFront.id, false);
     });
-    expect(setTileTitleMock).toHaveBeenLastCalledWith(lidarTop.label);
+    expect(setTileTitleMock).toHaveBeenLastCalledWith(lidarTop.label, {
+      source: "auto",
+    });
   });
 
   it("restores the enabled set on a strict shape match", () => {
