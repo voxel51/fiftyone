@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createCachedByteClient } from "./cached-byte-client";
 import { createMemoryByteRangeCache } from "./cache";
+import { BYTE_SOURCE_READ_PROFILE } from "./constants";
 import type {
   ByteClient,
   ByteFillLockManager,
@@ -117,16 +118,19 @@ function createGatedPersistent(inner: ByteRangeCache) {
 }
 
 function createClient({
+  blockSizeBytes,
   locks,
   persistent,
   reads,
 }: {
+  blockSizeBytes?: number;
   locks?: ByteFillLockManager | false;
   persistent?: ByteRangeCache | false;
   reads: ByteClient;
 }) {
   const logs: ByteReadDebugLog[] = [];
   const client = createCachedByteClient(reads, {
+    ...(blockSizeBytes !== undefined ? { blockSizeBytes } : {}),
     ...(locks !== undefined ? { locks } : {}),
     memory: createMemoryByteRangeCache({ maxSizeBytes: MEMORY_CACHE_BYTES }),
     onRead: (entry) => logs.push(entry),
@@ -328,5 +332,90 @@ describe("createCachedByteClient cross-context fill locking", () => {
     controlled.pending[1].resolve(fillResult(controlled.pending[1].request));
     const secondResult = await secondRead;
     expect(secondResult.bytes).toEqual(new Uint8Array(8).fill(7));
+  });
+});
+
+describe("createCachedByteClient sequential remote readahead", () => {
+  const remoteSource = () =>
+    source({
+      readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
+      sizeBytes: "48",
+    });
+
+  it("queues the successor block behind a remote block-widened fill", async () => {
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      blockSizeBytes: 16,
+      reads: controlled.reader,
+    });
+
+    const read = client.readBytes(
+      request({ range: { length: 4n, offset: 0n }, source: remoteSource() }),
+    );
+    await flushAsync();
+
+    // The widened fill [0,16) plus its speculative successor [16,32).
+    expect(controlled.pending).toHaveLength(2);
+    const ranges = controlled.pending
+      .map((entry) => entry.request.range)
+      .sort((left, right) => Number(left.offset - right.offset));
+    expect(ranges).toEqual([
+      { length: 16n, offset: 0n },
+      { length: 16n, offset: 16n },
+    ]);
+    // Readahead never carries the triggering request's abort signal.
+    const readahead = controlled.pending.find(
+      (entry) => entry.request.range.offset === 16n,
+    );
+    expect(readahead?.request.signal).toBeUndefined();
+
+    for (const entry of controlled.pending) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await read;
+    await flushAsync();
+    // The readahead fill is exactly block-shaped, so it must not cascade.
+    expect(controlled.pending).toHaveLength(2);
+  });
+
+  it("clamps the readahead block at the end of the source", async () => {
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      blockSizeBytes: 16,
+      reads: controlled.reader,
+    });
+
+    const read = client.readBytes(
+      request({ range: { length: 4n, offset: 32n }, source: remoteSource() }),
+    );
+    await flushAsync();
+
+    expect(controlled.pending).toHaveLength(1);
+    expect(controlled.pending[0].request.range).toEqual({
+      length: 16n,
+      offset: 32n,
+    });
+    controlled.pending[0].resolve(fillResult(controlled.pending[0].request));
+    await read;
+  });
+
+  it("does not queue readahead for non-remote sources", async () => {
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      blockSizeBytes: 16,
+      reads: controlled.reader,
+    });
+
+    const read = client.readBytes(
+      request({
+        range: { length: 4n, offset: 0n },
+        source: source({ sizeBytes: "48" }),
+      }),
+    );
+    await flushAsync();
+
+    expect(controlled.pending).toHaveLength(1);
+    controlled.pending[0].resolve(fillResult(controlled.pending[0].request));
+    await read;
   });
 });

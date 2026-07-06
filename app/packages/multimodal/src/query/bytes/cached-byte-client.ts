@@ -36,6 +36,16 @@ interface ByteFillOutcome {
 }
 
 /**
+ * Minimum delay before re-evaluating readahead for the same fill shape.
+ */
+const READAHEAD_RETRIGGER_MS = 2_000;
+
+/**
+ * Recent-readahead entries tracked per client before oldest-first pruning.
+ */
+const READAHEAD_TRACKED_FILLS = 64;
+
+/**
  * Wraps a byte reader with raw byte cache lookups, block fills, and request
  * coalescing.
  */
@@ -45,6 +55,14 @@ export function createCachedByteClient(
 ): ByteClient {
   const pendingByteReads = new Map<string, Promise<ByteFillOutcome>>();
   const fillLocks = caches.locks || undefined;
+  const readaheadIssuedAtMs = new Map<string, number>();
+
+  const resolveBlockSizeBytes = (
+    request: ByteRangeReadRequest,
+  ): number | undefined =>
+    typeof caches.blockSizeBytes === "function"
+      ? caches.blockSizeBytes(request)
+      : (caches.blockSizeBytes ?? defaultByteCacheBlockSizeBytes(request));
 
   const fillFromNetwork = async (
     fillRequest: ByteRangeReadRequest,
@@ -102,6 +120,118 @@ export function createCachedByteClient(
     });
   };
 
+  const queueReadaheadFill = (readahead: ByteRangeReadRequest) => {
+    void (async () => {
+      const cached = await caches.memory.get(readahead);
+      if (cached) {
+        return;
+      }
+      const fillKey = byteRangeAccessKey(readahead);
+      if (pendingByteReads.has(fillKey)) {
+        return;
+      }
+      const persistent = readahead.source.localFile
+        ? undefined
+        : caches.persistent || undefined;
+      // A persistent hit still promotes to memory: the sequential reader
+      // is about to want these bytes, so move the disk wait off its path.
+      const persistedFill = await persistent?.get(readahead);
+      if (persistedFill) {
+        await caches.memory.put(persistedFill);
+        return;
+      }
+      if (pendingByteReads.has(fillKey)) {
+        return;
+      }
+      const startMs = byteReadNowMs();
+      const fill = fillExclusive(readahead, persistent).finally(() => {
+        pendingByteReads.delete(fillKey);
+      });
+      pendingByteReads.set(fillKey, fill);
+      const outcome = await fill;
+      logByteRead(caches, {
+        cacheResult: outcome.cacheResult,
+        fillRequest: readahead,
+        request: readahead,
+        result: outcome.result,
+        startMs,
+      });
+    })().catch(() => undefined);
+  };
+
+  /**
+   * Sequential consumers (playback) march through block fills one request
+   * at a time, so on remote transports per-request latency leaves the link
+   * idle between fills. Keep the successor block in flight: every
+   * block-widened fill speculatively queues the next block through the
+   * same lock + persistent path. The chain self-sustains while access
+   * stays sequential and dies out on random access; readahead fills are
+   * exactly block-shaped, so they never widen and never cascade.
+   */
+  const maybeQueueRemoteReadahead = (
+    request: ByteRangeReadRequest,
+    fillRequest: ByteRangeReadRequest,
+  ) => {
+    if (request.source.readProfile !== BYTE_SOURCE_READ_PROFILE.REMOTE) {
+      return;
+    }
+    // Only block-widened fills imply forward locality; exact-shape reads
+    // (message indexes, one-off probes) do not.
+    if (fillRequest === request) {
+      return;
+    }
+    const sourceSize = parseByteSize(fillRequest.source.sizeBytes);
+    if (sourceSize === undefined) {
+      return;
+    }
+    const nextOffset = fillRequest.range.offset + fillRequest.range.length;
+    if (nextOffset >= sourceSize) {
+      return;
+    }
+    // Resolve the block size at the readahead's own offset: zoned block
+    // policies change shape across the file, and a chain crossing a zone
+    // boundary must adopt the new zone's fill grid, not drag its own.
+    const blockSizeBytes = resolveBlockSizeBytes({
+      ...request,
+      range: { length: 1n, offset: nextOffset },
+    });
+    if (
+      blockSizeBytes === undefined ||
+      !Number.isSafeInteger(blockSizeBytes) ||
+      blockSizeBytes <= 0
+    ) {
+      return;
+    }
+    const blockEnd = nextOffset + BigInt(blockSizeBytes);
+    const readahead: ByteRangeReadRequest = {
+      // No abort signal on purpose: the readahead belongs to the byte
+      // layer, not to the triggering request. Its cost is bounded by one
+      // block, and its bytes stay useful in the shared caches.
+      range: {
+        length: (blockEnd < sourceSize ? blockEnd : sourceSize) - nextOffset,
+        offset: nextOffset,
+      },
+      source: request.source,
+    };
+
+    const key = byteRangeAccessKey(readahead);
+    const now = byteReadNowMs();
+    const issuedAt = readaheadIssuedAtMs.get(key);
+    if (issuedAt !== undefined && now - issuedAt < READAHEAD_RETRIGGER_MS) {
+      return;
+    }
+    readaheadIssuedAtMs.delete(key);
+    readaheadIssuedAtMs.set(key, now);
+    if (readaheadIssuedAtMs.size > READAHEAD_TRACKED_FILLS) {
+      const oldest = readaheadIssuedAtMs.keys().next().value;
+      if (oldest !== undefined) {
+        readaheadIssuedAtMs.delete(oldest);
+      }
+    }
+
+    queueReadaheadFill(readahead);
+  };
+
   return {
     async stat(source) {
       return reader.stat?.(source);
@@ -112,11 +242,7 @@ export function createCachedByteClient(
       // Widen small reads to cacheable blocks when the source size is known.
       let fillRequest = request;
       if (request.cachePolicy?.blockFill !== false) {
-        const blockSizeBytes =
-          typeof caches.blockSizeBytes === "function"
-            ? caches.blockSizeBytes(request)
-            : (caches.blockSizeBytes ??
-              defaultByteCacheBlockSizeBytes(request));
+        const blockSizeBytes = resolveBlockSizeBytes(request);
 
         if (
           blockSizeBytes !== undefined &&
@@ -144,6 +270,8 @@ export function createCachedByteClient(
           }
         }
       }
+
+      maybeQueueRemoteReadahead(request, fillRequest);
 
       const cachedFill = await caches.memory.get(fillRequest);
       if (cachedFill) {

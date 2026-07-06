@@ -13,6 +13,7 @@ export {
 } from "./cached-byte-client";
 export { createDefaultByteClient } from "./default-byte-client";
 export { byteFillLockName, defaultByteFillLockManager } from "./fill-lock";
+export { createZonedRemoteBlockSize } from "./remote-block-zones";
 export { createHttpByteClient } from "./http-byte-client";
 export { createLocalFileByteClient } from "./local-file-byte-client";
 

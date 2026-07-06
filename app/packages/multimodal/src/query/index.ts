@@ -5,6 +5,7 @@ import {
   createCachedByteClient,
   createDefaultByteClient,
   createMemoryByteRangeCache,
+  createZonedRemoteBlockSize,
   DEFAULT_BYTE_CACHE_SIZE_BYTES,
   defaultByteFillLockManager,
 } from "./bytes";
@@ -27,14 +28,18 @@ export function createMultimodalQueryClient(
 ): MultimodalQueryClient {
   // Explicit block-size overrides own their policy; otherwise measured
   // small-fetch latency can promote scheme-misclassified sources (a "local"
-  // path served over a WAN) to the remote fill size.
+  // path served over a WAN) to the remote fill size, and offset zoning
+  // keeps latency-critical file-edge fills small while body fills use the
+  // large remote block.
   const adaptiveBlockSize = options.caches?.bytes?.blockSizeBytes
     ? null
     : createAdaptiveByteCacheBlockSize();
+  const zonedBlockSize = options.caches?.bytes?.blockSizeBytes
+    ? null
+    : createZonedRemoteBlockSize(adaptiveBlockSize?.blockSizeBytes);
   const byteCaches = {
     blockSizeBytes:
-      options.caches?.bytes?.blockSizeBytes ??
-      adaptiveBlockSize?.blockSizeBytes,
+      options.caches?.bytes?.blockSizeBytes ?? zonedBlockSize ?? undefined,
     debug: options.caches?.bytes?.debug,
     onRead: chainByteReadObservers(
       adaptiveBlockSize?.onRead,
