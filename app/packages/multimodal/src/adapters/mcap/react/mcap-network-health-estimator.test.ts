@@ -215,6 +215,50 @@ describe("MCAP idle-work network gate", () => {
     ).toBe(true);
   });
 
+  it("publishes material busy-throughput moves even when wall throughput holds still", () => {
+    expect(
+      shouldPublishMcapNetworkHealth(
+        {
+          busyFraction: 0.8,
+          busyThroughputBytesPerSec: 100,
+          limited: false,
+          throughputBytesPerSec: 100,
+          throughputPlannable: true,
+          updatedAtMs: 1,
+        },
+        {
+          busyFraction: 0.8,
+          busyThroughputBytesPerSec: 130,
+          limited: false,
+          throughputBytesPerSec: 100,
+          throughputPlannable: true,
+          updatedAtMs: 2,
+        },
+      ),
+    ).toBe(true);
+
+    expect(
+      shouldPublishMcapNetworkHealth(
+        {
+          busyFraction: 0.8,
+          busyThroughputBytesPerSec: 100,
+          limited: false,
+          throughputBytesPerSec: 100,
+          throughputPlannable: true,
+          updatedAtMs: 1,
+        },
+        {
+          busyFraction: 0.8,
+          busyThroughputBytesPerSec: 108,
+          limited: false,
+          throughputBytesPerSec: 100,
+          throughputPlannable: true,
+          updatedAtMs: 2,
+        },
+      ),
+    ).toBe(false);
+  });
+
   it("publishes measurement-trust flips even when throughput holds still", () => {
     expect(
       shouldPublishMcapNetworkHealth(

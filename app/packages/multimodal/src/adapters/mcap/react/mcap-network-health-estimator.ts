@@ -271,6 +271,28 @@ export function shouldPublishMcapNetworkHealth(
     return true;
   }
 
+  // The start gate plans from the busy-rate figure, and the two rates can
+  // diverge (they share bytes but not denominators: a zero-byte busy delta
+  // or window pruning moves one without the other). A held press must not
+  // re-plan from a stale atom.
+  if (
+    (previous.busyThroughputBytesPerSec === null) !==
+    (next.busyThroughputBytesPerSec === null)
+  ) {
+    return true;
+  }
+
+  if (
+    previous.busyThroughputBytesPerSec !== null &&
+    next.busyThroughputBytesPerSec !== null &&
+    throughputChangedMaterially(
+      previous.busyThroughputBytesPerSec,
+      next.busyThroughputBytesPerSec,
+    )
+  ) {
+    return true;
+  }
+
   if (!next.limited) {
     return false;
   }
