@@ -21,6 +21,7 @@ import {
   loopEndAtom,
   loopStartAtom,
   playheadAtom,
+  streamRangesVersionAtom,
   streamValueAtom,
 } from "./atoms";
 import type { BufferedRanges, PlaybackStore } from "./types";
@@ -146,6 +147,14 @@ export function setBufferedRanges(
   ranges: BufferedRanges,
 ): void {
   store.set(bufferedRangesAtom, ranges);
+}
+
+/**
+ * Wake pending playback after a stream's private `bufferedRanges()` changes
+ * without replacing the timeline-visible data ranges.
+ */
+export function bumpStreamRangesVersion(store: PlaybackStore): void {
+  store.set(streamRangesVersionAtom, store.get(streamRangesVersionAtom) + 1);
 }
 
 /** Non-reactive read of a stream's current committed value. */

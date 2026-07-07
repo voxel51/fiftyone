@@ -13,6 +13,7 @@ import {
   seekEventAtom,
   speedAtom,
   stepIntervalAtom,
+  streamRangesVersionAtom,
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
@@ -320,7 +321,18 @@ export function usePlaybackEngine({
   }, [clearPendingPlay, evaluatePlaybackStart, startPlayback, store]);
 
   useEffect(() => {
-    return store.sub(bufferedRangesAtom, tryStartPendingPlayback);
+    const unsubscribeBufferedRanges = store.sub(
+      bufferedRangesAtom,
+      tryStartPendingPlayback,
+    );
+    const unsubscribeStreamRanges = store.sub(
+      streamRangesVersionAtom,
+      tryStartPendingPlayback,
+    );
+    return () => {
+      unsubscribeBufferedRanges();
+      unsubscribeStreamRanges();
+    };
   }, [store, tryStartPendingPlayback]);
 
   /**

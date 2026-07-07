@@ -2,6 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { useAtomValue } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  bufferedRangesAtom,
   currentTimeAtom,
   durationAtom,
   isBufferingAtom,
@@ -20,7 +21,7 @@ import {
   usePlayback,
   usePlaybackStore,
 } from "./PlaybackProvider";
-import { setBufferedRanges } from "./store-access";
+import { bumpStreamRangesVersion, setBufferedRanges } from "./store-access";
 import type { PlaybackStream } from "./types";
 
 interface RenderOpts {
@@ -290,6 +291,43 @@ describe("PlaybackProvider engine actions", () => {
       expect(result.current.isPlaying).toBe(true);
       expect(result.current.isPlayPending).toBe(false);
       expect(result.current.isBuffering).toBe(false);
+    });
+
+    it("retries queued play when a private stream range changes", () => {
+      let placementRanges: Array<[number, number]> = [[0, 0.05]];
+      const dataRanges: Array<[number, number]> = [[0, 10]];
+      const { result } = renderEngine({ duration: 10 });
+
+      act(() => {
+        result.current.api.registerStream({
+          id: "data",
+          blocking: true,
+          bufferState: () => "ready",
+          bufferedRanges: () => dataRanges,
+        });
+        result.current.api.registerStream({
+          id: "placement",
+          blocking: true,
+          startupBufferSeconds: 0.3,
+          bufferState: () => "ready",
+          bufferedRanges: () => placementRanges,
+        });
+        result.current.api.subscribeStream("data");
+        result.current.api.subscribeStream("placement");
+        setBufferedRanges(result.current.store, dataRanges);
+      });
+
+      act(() => result.current.api.play());
+      expect(result.current.isPlaying).toBe(false);
+      expect(result.current.isPlayPending).toBe(true);
+
+      act(() => {
+        placementRanges = [[0, 0.3]];
+        bumpStreamRangesVersion(result.current.store);
+      });
+      expect(result.current.isPlaying).toBe(true);
+      expect(result.current.isPlayPending).toBe(false);
+      expect(result.current.store.get(bufferedRangesAtom)).toBe(dataRanges);
     });
 
     it("starts immediately when the startup buffer window is already covered", () => {

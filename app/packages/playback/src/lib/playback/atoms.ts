@@ -107,6 +107,13 @@ export const bufferingDetailAtom = atom<string | null>(null) as PrimitiveAtom<
  */
 export const bufferedRangesAtom = atom<BufferedRanges>([]);
 
+/**
+ * Monotonic wake-up signal for streams whose own `bufferedRanges()` affects
+ * startup readiness, but should not overwrite the timeline-visible
+ * `bufferedRangesAtom`. Bumped by streams through store-access.
+ */
+export const streamRangesVersionAtom = atom(0);
+
 // View window (the visible time range in the ruler/track area)
 export const viewStartAtom = atom(0);
 export const viewEndAtom = atom(0); // initialised to duration by PlaybackProvider
