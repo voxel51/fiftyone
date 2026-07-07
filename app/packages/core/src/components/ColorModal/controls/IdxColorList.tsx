@@ -164,7 +164,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
 
   return (
     <div style={style}>
-      {input?.map((v, index) => (
+      {input?.map((_v, index) => (
         <RowContainer key={index}>
           <NumberInput
             placeholder="integer"

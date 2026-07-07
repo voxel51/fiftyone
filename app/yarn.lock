@@ -1713,6 +1713,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@date-fns/tz@npm:^1.5.0":
+  version: 1.5.0
+  resolution: "@date-fns/tz@npm:1.5.0"
+  checksum: 10/a629879b1f307429e0a00a92dea71e19f63398ba304ee0f58f4d141d50c3058d678c4095b25962f7e5fda508c70502811dd565e58df99e5632dc16097da184a8
+  languageName: node
+  linkType: hard
+
 "@dimforge/rapier3d-compat@npm:^0.12.0, @dimforge/rapier3d-compat@npm:~0.12.0":
   version: 0.12.0
   resolution: "@dimforge/rapier3d-compat@npm:0.12.0"
@@ -3126,7 +3133,7 @@ __metadata:
     react-color: "npm:^2.19.3"
     rollup-plugin-external-globals: "npm:^0.6.1"
     styled-components: "npm:^6.1.18"
-    three: "npm:^0.182.0"
+    three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
     tunnel-rat: "npm:^0.1.2"
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
@@ -3197,6 +3204,7 @@ __metadata:
   resolution: "@fiftyone/multimodal@workspace:packages/multimodal"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.11.0"
+    "@date-fns/tz": "npm:^1.5.0"
     "@fiftyone/components": "npm:*"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/state": "npm:*"
@@ -3209,9 +3217,15 @@ __metadata:
     "@types/three": "npm:^0.182.0"
     "@voxel51/voodo": "npm:^0.0.37"
     buffer: "npm:^6.0.3"
+    colormap: "npm:^2.3.2"
+    date-fns: "npm:^4.1.0"
+    jotai: "npm:^2.9.3"
     lru-cache: "npm:^11.0.1"
+    meshoptimizer: "npm:^0.22.0"
     protobufjs: "npm:^7.6.4"
-    three: "npm:^0.182.0"
+    three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
+    uplot: "npm:^1.6.32"
+    vite-plugin-relay: "npm:^2.0.0"
   languageName: unknown
   linkType: soft
 
@@ -16805,17 +16819,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"meshoptimizer@npm:^0.22.0, meshoptimizer@npm:~0.22.0":
+  version: 0.22.0
+  resolution: "meshoptimizer@npm:0.22.0"
+  checksum: 10/6def62fe70181f69a2ff2088cfb8aa8137b5cd6a1a952100957f819b2dba42c1cc8afcb7de41e1e1619c8146ef0612f5f71e1ceab1f9b224567ff285af0080e8
+  languageName: node
+  linkType: hard
+
 "meshoptimizer@npm:~0.18.1":
   version: 0.18.1
   resolution: "meshoptimizer@npm:0.18.1"
   checksum: 10/5cfef6918562b8363a51e92b6eafe81a684fe7b9e31de1c19a6e2068ca8edab745b3e8ef2f0190ecbcc2065134b5dc1de97e4514eb2157914762356c07f93b9f
-  languageName: node
-  linkType: hard
-
-"meshoptimizer@npm:~0.22.0":
-  version: 0.22.0
-  resolution: "meshoptimizer@npm:0.22.0"
-  checksum: 10/6def62fe70181f69a2ff2088cfb8aa8137b5cd6a1a952100957f819b2dba42c1cc8afcb7de41e1e1619c8146ef0612f5f71e1ceab1f9b224567ff285af0080e8
   languageName: node
   linkType: hard
 
@@ -21652,6 +21666,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"three@npm:0.185.1":
+  version: 0.185.1
+  resolution: "three@npm:0.185.1"
+  checksum: 10/517c6f82ef9e8f10a114bbd349066d65ac55a97e8d9e4cd52c7da4014c646c3d0a335718d69c84d80c7e209769b3cff0cc68de922e2c207c227ca17733b72323
+  languageName: node
+  linkType: hard
+
 "three@npm:^0.170.0":
   version: 0.170.0
   resolution: "three@npm:0.170.0"
@@ -21659,10 +21680,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three@npm:^0.182.0":
-  version: 0.182.0
-  resolution: "three@npm:0.182.0"
-  checksum: 10/37bbc10cea96e001ca7485cfe120e1bc8bcff0c448c492140ce9db8bd113efb6972d6cc71f8426a257eb569bf9aa136fd8887f803435d057ea963c815fe9248a
+"three@patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch":
+  version: 0.185.1
+  resolution: "three@patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch::version=0.185.1&hash=0f2236"
+  checksum: 10/54aa1abaef58c01ddd408f4def9bfa3e51844fadfe3102e904c090c4f6b6833eccd4752fc44d9a760b6dfd99a19252bb9364b952a62f15b78cb037f73f48b8b7
   languageName: node
   linkType: hard
 
@@ -22682,6 +22703,13 @@ __metadata:
   version: 1.1.0
   resolution: "update-diff@npm:1.1.0"
   checksum: 10/45f2993ad0d424138763394e9ad527fe726ab6b9d205f7a9326790d28d0ed9d86d57c7b460ed53fa23a683cc078eec9ecb9ff965d4b56712126314deba5bed2f
+  languageName: node
+  linkType: hard
+
+"uplot@npm:^1.6.32":
+  version: 1.6.32
+  resolution: "uplot@npm:1.6.32"
+  checksum: 10/78a4ea0cf46ee1ea2814304b3c24002d52b7e98995dfc5fe9dcf05ce4873b62d26f81f03613dbb8b63e451cbfe369e314591c4fe8113f8453860ca71b8dc7430
   languageName: node
   linkType: hard
 

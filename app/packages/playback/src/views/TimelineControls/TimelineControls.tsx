@@ -8,10 +8,14 @@ import clsx from "clsx";
 import React, { type ReactNode } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { usePlaybackStore } from "../../lib/playback/playback-store-context";
-import { getIsPlaying } from "../../lib/playback/store-access";
+import {
+  getIsPlayPending,
+  getIsPlaying,
+} from "../../lib/playback/store-access";
 import {
   useBufferingDetail,
   useIsBuffering,
+  useIsPlayPending,
   useIsPlaying,
 } from "../../lib/playback/use-playback-state";
 import LoopBounds from "../Loop/LoopBounds";
@@ -46,6 +50,8 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
   extraActions,
 }) => {
   const isPlaying = useIsPlaying();
+  const isPlayPending = useIsPlayPending();
+  const hasPlayIntent = isPlaying || isPlayPending;
   const { play, pause, stepBack, stepForward } = usePlayback();
   const store = usePlaybackStore();
 
@@ -60,7 +66,8 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       // Read isPlaying from the store, not the render closure — the
       // command must observe the engine's current state even if a
       // re-render hasn't committed yet.
-      handler: () => (getIsPlaying(store) ? pause() : play()),
+      handler: () =>
+        getIsPlaying(store) || getIsPlayPending(store) ? pause() : play(),
       label: "Play / Pause",
       description: "Toggle playback",
     },
@@ -86,7 +93,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
     ? (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
         const interactive = target.closest(
-          'button, [role="button"], a, input, select, textarea',
+          'button, [role="button"], a, input, select, textarea'
         );
         if (interactive && interactive !== e.currentTarget) return;
         onToggle();
@@ -127,10 +134,10 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         variant={Variant.Icon}
         size={Size.Xs}
         data-testid="timeline-controls-play-pause"
-        leadingIcon={isPlaying ? PauseIcon : PlayIcon}
-        aria-label={isPlaying ? "Pause" : "Play"}
-        aria-pressed={isPlaying}
-        onClick={isPlaying ? pause : play}
+        leadingIcon={hasPlayIntent ? PauseIcon : PlayIcon}
+        aria-label={hasPlayIntent ? "Pause" : "Play"}
+        aria-pressed={hasPlayIntent}
+        onClick={hasPlayIntent ? pause : play}
       />
       <Button
         variant={Variant.Icon}
@@ -173,9 +180,10 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
  */
 function BufferingIndicator() {
   const isBuffering = useIsBuffering();
+  const isPlayPending = useIsPlayPending();
   const detail = useBufferingDetail();
 
-  if (!isBuffering) return null;
+  if (!isBuffering && !isPlayPending) return null;
 
   return (
     <span

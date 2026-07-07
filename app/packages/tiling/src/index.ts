@@ -12,6 +12,9 @@ export type { TilingProviderProps } from "./lib/TilingProvider";
 export type {
   TilingTile,
   AddTileOptions,
+  TilingAutoLayoutStrategy,
+  SetTileTitleOptions,
+  TileTitleSource,
   TilingContextValue,
   RegisteredTile,
 } from "./lib/types";
@@ -21,6 +24,7 @@ export { registeredTilesAtom, tileSelectionAtom } from "./lib/atoms";
 export {
   useSetTileSelection,
   useSetTileTitle,
+  useTileDuplicator,
   useTileSelection,
   useTileSelectionFor,
   useTileTitle,
@@ -51,6 +55,11 @@ export type {
   TilingHeaderCaptionContext,
   TilingHeaderProps,
 } from "./views/TilingHeader/TilingHeader";
+
+export { DefaultAddTileMenuItems } from "./views/AddTileMenu/DefaultAddTileMenuItems";
+
+export { default as TilingZeroState } from "./views/TilingZeroState/TilingZeroState";
+export type { TilingZeroStateProps } from "./views/TilingZeroState/TilingZeroState";
 
 export { default as SidebarPanel } from "./views/SidebarPanel/SidebarPanel";
 export type { SidebarPanelProps } from "./views/SidebarPanel/SidebarPanel";

@@ -1,9 +1,11 @@
 import { useTileRegistry } from "@fiftyone/tiling";
 import { IconName } from "@voxel51/voodo";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import Mcap3dTile from "./Mcap3dTile";
 import McapImageTile from "./McapImageTile";
+import McapPlotTile from "./McapPlotTile";
+import McapRawMessageTile from "./McapRawMessageTile";
 import {
   MCAP_TILE_TYPE,
   type McapTileProps,
@@ -17,8 +19,8 @@ export type { McapTileProps, McapTileType } from "./mcap-tile-types";
  * Tile catalog for the MCAP adapter, keyed by tile type. A tile kind is
  * named for what it renders ("Image", "3D"), not for the sensor behind
  * it; `sourceTypes` lists the scene-source types the tile can display,
- * which gates when the kind is offered. (Annotation sources have no
- * tile of their own; they render as overlays inside image tiles.)
+ * which gates when the kind is offered. Annotation sources render inside the
+ * image or 3D tile that matches their dimensionality.
  */
 const TILE_BY_TYPE: Record<
   McapTileType,
@@ -39,7 +41,31 @@ const TILE_BY_TYPE: Record<
     typeLabel: "3D",
     icon: IconName.Embeddings,
     Tile: Mcap3dTile,
-    sourceTypes: [MCAP_SOURCE_TYPE.POINT_CLOUD],
+    sourceTypes: [
+      MCAP_SOURCE_TYPE.MAP_LAYER,
+      MCAP_SOURCE_TYPE.POINT_CLOUD,
+      MCAP_SOURCE_TYPE.POSE,
+      MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
+    ],
+  },
+  // Plottable topics are exactly the ones the scene inventory omits
+  // (telemetry has no visualization), so the plot tile is offered
+  // whenever the modal has any source at all; its settings sidebar
+  // enumerates numeric fields independently of scene sources.
+  [MCAP_TILE_TYPE.PLOT]: {
+    typeLabel: "Plot",
+    icon: IconName.Insights,
+    Tile: McapPlotTile,
+    sourceTypes: Object.values(MCAP_SOURCE_TYPE),
+  },
+  // Like the plot tile, the raw tile serves exactly the topics the
+  // scene inventory can't render, so it is offered whenever the modal
+  // has any source at all; its settings sidebar lists every topic.
+  [MCAP_TILE_TYPE.RAW]: {
+    typeLabel: "Message",
+    icon: IconName.JSON,
+    Tile: McapRawMessageTile,
+    sourceTypes: Object.values(MCAP_SOURCE_TYPE),
   },
 };
 
@@ -55,6 +81,7 @@ function isKnownTileType(type: string): type is McapTileType {
  * a build with more tile kinds).
  */
 export function getMcapTileDefinition(type: string): {
+  icon: IconName;
   typeLabel: string;
   Tile: React.ComponentType<McapTileProps>;
 } | null {
@@ -86,12 +113,11 @@ export interface UseMcapTilesOptions {
  * tile" menu shows one item per kind (Image, 3D, …); each new instance
  * discovers its sources through the scene inventory.
  */
-export function useMcapTiles({ presentTypes }: UseMcapTilesOptions): void {
+export function useMcapTiles(_options: UseMcapTilesOptions): void {
   const { registerTile } = useTileRegistry();
-  const tileTypes = useMemo(
-    () => mcapTileTypesFor(presentTypes),
-    [presentTypes],
-  );
+  // Register every archetype so Add tile and Change panel type stay
+  // type-first. Individual tile settings handle empty/missing sources.
+  const tileTypes = TILE_TYPES;
 
   useEffect(() => {
     const cleanups = tileTypes.map((type) => {

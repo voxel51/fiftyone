@@ -61,7 +61,7 @@ export interface TimelineWithTracksProps {
    */
   decorateTrack?: (
     track: Track,
-    pinned: boolean,
+    pinned: boolean
   ) => Partial<TimelineTrackProps>;
 }
 
@@ -101,7 +101,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   // {@link partitionTracksByPin}.
   const { pinned, unpinned } = useMemo(
     () => partitionTracksByPin(tracks, pinnedIds),
-    [tracks, pinnedIds],
+    [tracks, pinnedIds]
   );
 
   const renderPinnedTrack = (track: Track) => (
@@ -122,10 +122,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
 
   if (tracks.length === 0) {
     return (
-      <div
-        ref={containerRef}
-        className={clsx(styles.root, styles.noTracks, className)}
-      >
+      <div ref={containerRef} className={clsx(styles.root, className)}>
         <TimelineHeader
           labelWidth={labelWidth}
           zoomRef={containerRef}

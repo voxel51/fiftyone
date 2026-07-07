@@ -116,6 +116,15 @@ export interface PlaybackStream {
   lookaheadSeconds?: number;
 
   /**
+   * Minimum contiguous buffered time required before a user-initiated play
+   * request becomes active playback. Keep this small: it protects the first
+   * interaction from immediately stalling without forcing long startup waits.
+   * Streams that omit it preserve the historical "current time only" start
+   * behavior.
+   */
+  startupBufferSeconds?: number;
+
+  /**
    * How this stream resolves the best cached entry for a given time. Used
    * both in bufferState (to determine readiness) and in onCommit (to pick
    * the data to push to the reactive atom). Use resolveAtTime() from

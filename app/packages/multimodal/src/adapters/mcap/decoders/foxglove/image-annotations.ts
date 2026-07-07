@@ -11,7 +11,7 @@ import {
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { decodeProtobufMessage } from "./protobuf";
 import { FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD } from "./protobuf/payloads";
-import { asRecord, optionalRecord } from "./protobuf/records";
+import { asRecord, numberField, optionalRecord } from "./protobuf/records";
 import { timingFromContext, timestampNs } from "./protobuf/timing";
 
 const POINTS_KIND_BY_ENUM: Readonly<Record<number, ImageAnnotationPointsKind>> =
@@ -166,18 +166,6 @@ function optionalArray(
     throw new Error(`Field '${field}' is not an array`);
   }
   return value;
-}
-
-function numberField(
-  record: Record<string, unknown>,
-  field: string,
-  fallbackField?: string,
-): number {
-  const value =
-    record[field] ?? (fallbackField ? record[fallbackField] : undefined);
-  if (typeof value === "number") return value;
-  if (typeof value === "bigint") return Number(value);
-  return 0;
 }
 
 function stringField(record: Record<string, unknown>, field: string): string {

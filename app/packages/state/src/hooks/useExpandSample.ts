@@ -83,11 +83,29 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           };
         };
 
+        // Soft cursor walks resolve the target id (loading pages on the
+        // way) without committing focus, so peeking never navigates. The
+        // store maps ids to paginated sample nodes ({ sample, urls, ... }).
+        const peek = async (offset: number) => {
+          const id = await cursor.next(offset, true);
+          if (!id) {
+            return null;
+          }
+
+          const node = store.get(id);
+          if (!node) {
+            return null;
+          }
+
+          return { id: id.description, sample: node };
+        };
+
         const hasNext = Boolean(await cursor.next(1, true));
         const hasPrevious = Boolean(await cursor.next(-1, true));
 
         setModalState({
           next,
+          peek,
           previous,
         })
           .then(() => iter(Promise.resolve(item.id)))

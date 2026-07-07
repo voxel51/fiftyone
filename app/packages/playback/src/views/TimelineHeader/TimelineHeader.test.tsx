@@ -102,7 +102,7 @@ describe("TimelineHeader", () => {
     render(
       <HeaderHarness
         rulerOverlay={<div data-testid="my-overlay">overlay</div>}
-      />,
+      />
     );
     const ruler = screen.getByTestId("timeline-ruler");
     expect(ruler.querySelector('[data-testid="my-overlay"]')).not.toBeNull();
@@ -122,7 +122,7 @@ describe("TimelineHeader", () => {
     render(
       <HeaderHarness>
         <div data-testid="pinned-section">pinned tracks</div>
-      </HeaderHarness>,
+      </HeaderHarness>
     );
     expect(screen.getByTestId("pinned-section")).toBeTruthy();
     // The root should gain a third child (the belowRuler wrapper).
@@ -136,7 +136,7 @@ describe("TimelineHeader", () => {
     expect(root.children).toHaveLength(2);
   });
 
-  describe("buffered-ranges strip", () => {
+  describe("buffered-ranges shading", () => {
     function SetBufferedRanges({
       ranges,
     }: {
@@ -165,11 +165,13 @@ describe("TimelineHeader", () => {
               [6, 8],
             ]}
           />
-        </HeaderHarness>,
+        </HeaderHarness>
       );
       const strip = screen.getByTestId("buffered-ranges-strip");
-      // Lane starts after the label column, like the ruler and playhead.
-      expect(strip.getAttribute("style") ?? "").toContain("left: 100px");
+      // Rendered inside the ruler's tick lane (which carries the label
+      // offset), directly on the bar users scrub.
+      const ruler = screen.getByTestId("timeline-ruler");
+      expect(ruler.contains(strip)).toBe(true);
       const segments = Array.from(strip.children) as HTMLElement[];
       expect(segments).toHaveLength(2);
       // View window is [0, 10] → [2,4] maps to left 20% / width 20%.
@@ -184,7 +186,7 @@ describe("TimelineHeader", () => {
       render(
         <HeaderHarness duration={10}>
           <SetBufferedRanges ranges={[[-2, 25]]} />
-        </HeaderHarness>,
+        </HeaderHarness>
       );
       const strip = screen.getByTestId("buffered-ranges-strip");
       const segment = strip.children[0] as HTMLElement;

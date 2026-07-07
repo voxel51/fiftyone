@@ -49,6 +49,19 @@ export const streamValueAtom = atomFamily(
 export const playheadAtom = atom(0);
 
 /**
+ * Timeline time (seconds) the pointer is currently inspecting, or null
+ * when nothing is hovered. Hover-capable surfaces (the timeline ruler,
+ * plot panels) both publish into and render from this atom, so a shared
+ * caret lets users correlate one moment across every time-axis surface.
+ * Purely visual: it never drives data fetches or the engine clock.
+ */
+// Same overload quirk as streamValueAtom above: a bare `null` initial
+// value narrows to a read-only Atom; the cast preserves writability.
+export const hoverTimeAtom = atom<number | null>(null) as PrimitiveAtom<
+  number | null
+>;
+
+/**
  * The last time the engine confirmed all blocking streams were ready and
  * advanced the playhead. This is the authoritative "what should I render"
  * time for data-driven consumers. Lags behind `playheadAtom` when streams
@@ -57,6 +70,14 @@ export const playheadAtom = atom(0);
 export const currentTimeAtom = atom(0);
 
 export const isPlayingAtom = atom(false);
+
+/**
+ * True after the user has requested playback but before the engine has enough
+ * startup buffer to advance without immediately stalling. This represents
+ * intent, not active clock movement; `isPlayingAtom` remains the source of
+ * truth for actual playback.
+ */
+export const isPlayPendingAtom = atom(false);
 
 /**
  * True when at least one blocking stream is not ready at the next target
@@ -85,6 +106,13 @@ export const bufferingDetailAtom = atom<string | null>(null) as PrimitiveAtom<
  * far ahead playback can run.
  */
 export const bufferedRangesAtom = atom<BufferedRanges>([]);
+
+/**
+ * Monotonic wake-up signal for streams whose own `bufferedRanges()` affects
+ * startup readiness, but should not overwrite the timeline-visible
+ * `bufferedRangesAtom`. Bumped by streams through store-access.
+ */
+export const streamRangesVersionAtom = atom(0);
 
 // View window (the visible time range in the ruler/track area)
 export const viewStartAtom = atom(0);

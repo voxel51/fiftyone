@@ -105,7 +105,11 @@ export class McapGridPreviewWorkerPool {
       };
 
       const initRequest: McapGridPreviewWorkerRequest = {
-        payload: workerFetchParameters(),
+        payload: {
+          ...workerFetchParameters(),
+          // Grid previews are ambient work: never the reserved fill slot.
+          fillSlotClass: "background",
+        },
         type: "init",
       };
       worker.postMessage(initRequest);

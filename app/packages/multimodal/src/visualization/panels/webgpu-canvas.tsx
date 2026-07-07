@@ -5,6 +5,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three/webgpu";
 
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
+import {
+  registerWebGpuRenderer,
+  type WebGpuRendererRegistration,
+} from "./webgpu-device-registry";
 
 type WebGpuRootState = RootState & {
   readonly gl: THREE.WebGPURenderer;
@@ -17,17 +21,26 @@ type RendererWithDreiCompat = THREE.WebGPURenderer & {
   }>;
 };
 
+type RendererWithSetSize = {
+  setSize: (width: number, height: number, updateStyle?: boolean) => void;
+};
+
 // Playback canvases redraw frequently; default to CSS pixel density and let
 // inspection surfaces opt into higher DPR explicitly when they need it.
 const DEFAULT_DPR: Dpr = 1;
 const OPAQUE_CLEAR_ALPHA = 1;
 const DEFAULT_MAX_ANISOTROPY = 1;
+const DEFAULT_SURFACE = "unknown";
 
 const styles: Record<string, CSSProperties> = {
   root: {
     height: "100%",
-    minHeight: 0,
-    minWidth: 0,
+    // A canvas measured at 0x0 mid-relayout makes the WebGPU backend
+    // configure a zero-size swapchain/depth texture, which poisons every
+    // command buffer until the next resize. Keep the drawing surface at
+    // least 1px so intermediate collapsed layouts can never hit that path.
+    minHeight: 1,
+    minWidth: 1,
     overflow: "hidden",
     position: "relative",
     width: "100%",
@@ -47,6 +60,13 @@ export interface WebGpuCanvasProps {
   readonly orthographic?: boolean;
   readonly role?: string;
   readonly style?: CSSProperties;
+  /**
+   * Device-registry surface tag ("modal-3d", "grid-preview", ...) for the
+   * renderer this canvas constructs. Bookkeeping only — it never affects
+   * rendering. Sampled when the renderer is created; later prop changes
+   * do not retag an already-live renderer.
+   */
+  readonly surface?: string;
   readonly onError?: (error: string | null) => void;
   readonly onReady?: (state: WebGpuRootState) => void;
 }
@@ -66,6 +86,7 @@ export function WebGpuCanvas({
   orthographic,
   role,
   style,
+  surface = DEFAULT_SURFACE,
 }: WebGpuCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasStateRef = useRef<WebGpuRootState | null>(null);
@@ -73,9 +94,18 @@ export function WebGpuCanvas({
   const mountedRef = useRef(true);
   const onErrorRef = useRef(onError);
   const onReadyRef = useRef(onReady);
+  // Device-registry bookkeeping, keyed by renderer instance so each
+  // registration is released exactly once no matter which dispose site
+  // (unmount, failed init, superseded init) retires the renderer — or
+  // whether more than one fires for the same instance.
+  const registrationsRef = useRef(
+    new Map<THREE.WebGPURenderer, WebGpuRendererRegistration>(),
+  );
   const rendererReadyRef = useRef(false);
   const rendererRef = useRef<THREE.WebGPURenderer | null>(null);
   const readyNotifiedRef = useRef(false);
+  const surfaceRef = useRef(surface);
+  surfaceRef.current = surface;
 
   const [isReady, setIsReady] = useState(false);
 
@@ -106,6 +136,22 @@ export function WebGpuCanvas({
     });
     rendererRef.current = renderer;
     rendererReadyRef.current = false;
+    // Bookkeeping only: record the renderer (one GPUDevice) in the device
+    // registry. Every dispose site below releases this registration via
+    // the instance-keyed map, so counts stay balanced.
+    registrationsRef.current.set(
+      renderer,
+      registerWebGpuRenderer(surfaceRef.current),
+    );
+    // Hidden or mid-relayout hosts can measure 0x0; a zero-size setSize
+    // makes the WebGPU backend configure an empty swapchain/depth texture
+    // and every later command buffer fails validation until the next
+    // resize. Clamp the drawing surface to at least 1x1. setSize lives on
+    // the common Renderer base, which the resolved types don't surface.
+    const sizedRenderer = renderer as unknown as RendererWithSetSize;
+    const applySize = sizedRenderer.setSize.bind(renderer);
+    sizedRenderer.setSize = (width, height, updateStyle) =>
+      applySize(Math.max(1, width), Math.max(1, height), updateStyle);
     // Canvas may ask for a renderer before React rebuilds callbacks. Read the
     // color from a ref so renderer creation stays stable across color changes.
     prepareWebGpuRenderer(renderer, clearColorRef.current);
@@ -114,6 +160,7 @@ export function WebGpuCanvas({
       .init()
       .then(() => {
         if (!mountedRef.current || rendererRef.current !== renderer) {
+          releaseRendererRegistration(registrationsRef.current, renderer);
           renderer.dispose();
           return;
         }
@@ -126,6 +173,7 @@ export function WebGpuCanvas({
         if (mountedRef.current && rendererRef.current === renderer) {
           // A failed WebGPU init can leave GPU/browser resources attached to
           // the renderer object. Dispose only the current renderer instance.
+          releaseRendererRegistration(registrationsRef.current, renderer);
           renderer.dispose();
           rendererRef.current = null;
           rendererReadyRef.current = false;
@@ -151,11 +199,15 @@ export function WebGpuCanvas({
 
   // This effect disposes the WebGPU renderer and clears lifecycle refs on unmount.
   useEffect(() => {
+    // The map instance is created once per component and never replaced,
+    // so capturing it here keeps the cleanup read stable.
+    const registrations = registrationsRef.current;
     return () => {
       mountedRef.current = false;
       canvasStateRef.current = null;
       readyNotifiedRef.current = false;
       rendererReadyRef.current = false;
+      releaseRendererRegistration(registrations, rendererRef.current);
       rendererRef.current?.dispose();
       rendererRef.current = null;
     };
@@ -197,6 +249,28 @@ export function WebGpuCanvas({
       {isReady ? children : null}
     </Canvas>
   );
+}
+
+/**
+ * Releases a renderer's device-registry registration exactly once: the
+ * instance-keyed map entry is deleted on the first call, so overlapping
+ * dispose sites (e.g. unmount racing a pending init) cannot double-release.
+ */
+function releaseRendererRegistration(
+  registrations: Map<THREE.WebGPURenderer, WebGpuRendererRegistration>,
+  renderer: THREE.WebGPURenderer | null,
+): void {
+  if (!renderer) {
+    return;
+  }
+
+  const registration = registrations.get(renderer);
+  if (!registration) {
+    return;
+  }
+
+  registrations.delete(renderer);
+  registration.release();
 }
 
 function prepareWebGpuRenderer(

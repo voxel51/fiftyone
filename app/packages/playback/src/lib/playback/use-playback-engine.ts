@@ -1,9 +1,11 @@
 import { createStore } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
+  bufferedRangesAtom,
   currentTimeAtom,
   durationAtom,
   isBufferingAtom,
+  isPlayPendingAtom,
   isPlayingAtom,
   loopEndAtom,
   loopStartAtom,
@@ -11,6 +13,7 @@ import {
   seekEventAtom,
   speedAtom,
   stepIntervalAtom,
+  streamRangesVersionAtom,
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
@@ -43,7 +46,7 @@ import type {
 function frameBoundaryStep(
   time: number,
   step: number,
-  direction: "forward" | "back",
+  direction: "forward" | "back"
 ): number {
   if (!(step > 0)) {
     return direction === "forward" ? time + step : time - step;
@@ -91,6 +94,7 @@ function displayedFrameStart(time: number, step: number): number {
  * because `targetTime` comes from the source directly.
  */
 const MAX_TICK_DT_S = 0.133;
+const DEFAULT_PREFETCH_LOOKAHEAD_SECONDS = 3;
 
 export function usePlaybackEngine({
   duration = 0,
@@ -120,7 +124,7 @@ export function usePlaybackEngine({
     const rawLoopEnd = clamp(
       defaultLoopEnd ?? initialDuration,
       0,
-      initialDuration,
+      initialDuration
     );
     // Inverted / collapsed window → fall back to the full timeline so the
     // RAF wrap path isn't trapped in a zero-width loop.
@@ -149,6 +153,7 @@ export function usePlaybackEngine({
   // `read()` returns a number, the engine uses that as the next target time;
   // when `null` or `read()` returns `null`, the engine falls back to dt.
   const clockSourceRef = useRef<PlaybackClockSource | null>(null);
+  const pendingPlayRef = useRef(false);
   const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekSeqRef = useRef(0);
   // A seek/step/snap target that couldn't commit immediately because a
@@ -218,7 +223,7 @@ export function usePlaybackEngine({
         seekDebounceRef.current = setTimeout(fire, SEEK_BAR_DEBOUNCE);
       }
     },
-    [store],
+    [store]
   );
 
   const doCommit = useCallback(
@@ -229,7 +234,7 @@ export function usePlaybackEngine({
         s.onCommit?.(time, store);
       }
     },
-    [store, isActive],
+    [store, isActive]
   );
 
   /**
@@ -275,7 +280,7 @@ export function usePlaybackEngine({
 
       return !isBuffering;
     },
-    [store, isActive],
+    [store, isActive]
   );
 
   /**
@@ -348,7 +353,7 @@ export function usePlaybackEngine({
 
       rafIdRef.current = requestAnimationFrame(tick);
     },
-    [store, fireSeekEvent, doCommit, runBarrier],
+    [store, fireSeekEvent, doCommit, runBarrier]
   );
 
   useEffect(() => {
@@ -407,6 +412,96 @@ export function usePlaybackEngine({
     settleRafRef.current = requestAnimationFrame(settleTick);
   }, [store, runBarrier, doCommit]);
 
+  const evaluatePlaybackStart = useCallback(
+    (time: number, requestMissing: boolean): boolean => {
+      const duration = store.get(durationAtom);
+      let activeBlockingStreams = 0;
+      let ready = true;
+
+      for (const s of streamsRef.current.values()) {
+        if (!s.blocking) continue;
+        if (!isActive(s.id)) continue;
+        activeBlockingStreams += 1;
+
+        const state = s.bufferState(time);
+        const currentReady = state === "ready";
+        const startupReady =
+          currentReady && streamHasStartupCoverage(s, time, duration);
+
+        if (currentReady && startupReady) continue;
+
+        ready = false;
+        if (requestMissing) {
+          s.prefetch?.([time, startupPrefetchEnd(s, time, duration)]);
+        }
+      }
+
+      if (activeBlockingStreams === 0 && duration <= 0) return false;
+
+      return ready;
+    },
+    [isActive, store]
+  );
+
+  const clearPendingPlay = useCallback(
+    (clearBuffering = false) => {
+      pendingPlayRef.current = false;
+      store.set(isPlayPendingAtom, false);
+      if (clearBuffering) store.set(isBufferingAtom, false);
+    },
+    [store]
+  );
+
+  const startPlayback = useCallback(() => {
+    clearPendingPlay(true);
+    store.set(isPlayingAtom, true);
+  }, [clearPendingPlay, store]);
+
+  const requestOrStartPlayback = useCallback(
+    (time: number) => {
+      if (evaluatePlaybackStart(time, true)) {
+        startPlayback();
+        return;
+      }
+
+      pendingPlayRef.current = true;
+      store.set(isPlayPendingAtom, true);
+      store.set(isBufferingAtom, true);
+    },
+    [evaluatePlaybackStart, startPlayback, store]
+  );
+
+  const tryStartPendingPlayback = useCallback(() => {
+    if (!pendingPlayRef.current) return;
+    if (store.get(isPlayingAtom)) {
+      clearPendingPlay();
+      return;
+    }
+
+    const time = store.get(playheadAtom);
+    if (evaluatePlaybackStart(time, false)) {
+      startPlayback();
+      return;
+    }
+
+    evaluatePlaybackStart(time, true);
+  }, [clearPendingPlay, evaluatePlaybackStart, startPlayback, store]);
+
+  useEffect(() => {
+    const unsubscribeBufferedRanges = store.sub(
+      bufferedRangesAtom,
+      tryStartPendingPlayback
+    );
+    const unsubscribeStreamRanges = store.sub(
+      streamRangesVersionAtom,
+      tryStartPendingPlayback
+    );
+    return () => {
+      unsubscribeBufferedRanges();
+      unsubscribeStreamRanges();
+    };
+  }, [store, tryStartPendingPlayback]);
+
   /**
    * Commit `time` now if the barrier is satisfied, else remember it and
    * let {@link settleTick} commit it once streams finish buffering.
@@ -425,7 +520,7 @@ export function usePlaybackEngine({
         settleRafRef.current = requestAnimationFrame(settleTick);
       }
     },
-    [runBarrier, doCommit, settleTick],
+    [runBarrier, doCommit, settleTick]
   );
 
   const actions = useMemo(() => {
@@ -448,7 +543,7 @@ export function usePlaybackEngine({
       const snapped = clamp(
         displayedFrameStart(current, step),
         0,
-        store.get(durationAtom),
+        store.get(durationAtom)
       );
 
       if (Math.abs(snapped - current) < step * 1e-6) {
@@ -467,6 +562,7 @@ export function usePlaybackEngine({
         store.set(playheadAtom, clamped);
         fireSeekEvent(clamped);
         commitWhenReady(clamped);
+        if (pendingPlayRef.current) requestOrStartPlayback(clamped);
       },
       // Snapping companion to `seek`. Quantizes `time` onto the displayed-
       // frame start when the provider has opted into `snapToFrameOnSettle`;
@@ -485,6 +581,7 @@ export function usePlaybackEngine({
           store.set(playheadAtom, clamped);
           fireSeekEvent(clamped);
           commitWhenReady(clamped);
+          if (pendingPlayRef.current) requestOrStartPlayback(clamped);
           return;
         }
 
@@ -514,18 +611,22 @@ export function usePlaybackEngine({
         store.set(playheadAtom, snapped);
         fireSeekEvent(snapped);
         commitWhenReady(snapped);
+        if (pendingPlayRef.current) requestOrStartPlayback(snapped);
       },
       play: () => {
-        const current = store.get(playheadAtom);
+        let current = store.get(playheadAtom);
         const ls = store.get(loopStartAtom);
         const le = store.get(loopEndAtom);
         if (current < ls || current >= le) {
-          store.set(playheadAtom, ls);
-          fireSeekEvent(ls, true);
+          current = ls;
+          store.set(playheadAtom, current);
+          fireSeekEvent(current, true);
         }
-        store.set(isPlayingAtom, true);
+        requestOrStartPlayback(current);
       },
       pause: () => {
+        const wasPending = pendingPlayRef.current;
+        clearPendingPlay(wasPending);
         store.set(isPlayingAtom, false);
         snapPlayheadToFrame();
       },
@@ -534,34 +635,36 @@ export function usePlaybackEngine({
           frameBoundaryStep(
             store.get(playheadAtom),
             store.get(stepIntervalAtom),
-            "back",
+            "back"
           ),
           0,
-          store.get(durationAtom),
+          store.get(durationAtom)
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
         commitWhenReady(next);
+        if (pendingPlayRef.current) requestOrStartPlayback(next);
       },
       stepForward: () => {
         const next = clamp(
           frameBoundaryStep(
             store.get(playheadAtom),
             store.get(stepIntervalAtom),
-            "forward",
+            "forward"
           ),
           0,
-          store.get(durationAtom),
+          store.get(durationAtom)
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
         commitWhenReady(next);
+        if (pendingPlayRef.current) requestOrStartPlayback(next);
       },
       setView: (start: number, end: number) => {
         const bounds = clampAndValidateBounds(
           start,
           end,
-          store.get(durationAtom),
+          store.get(durationAtom)
         );
         if (!bounds) return;
         store.set(viewStartAtom, bounds.start);
@@ -571,7 +674,7 @@ export function usePlaybackEngine({
         const bounds = clampAndValidateBounds(
           start,
           end,
-          store.get(durationAtom),
+          store.get(durationAtom)
         );
         if (!bounds) return;
         store.set(loopStartAtom, bounds.start);
@@ -604,8 +707,9 @@ export function usePlaybackEngine({
       subscribeStream: (id: string) => {
         subscribersRef.current.set(
           id,
-          (subscribersRef.current.get(id) ?? 0) + 1,
+          (subscribersRef.current.get(id) ?? 0) + 1
         );
+        tryStartPendingPlayback();
         // One-shot cleanup. StrictMode's setup→cleanup→setup cycle (and
         // any consumer that retains a stale cleanup) would otherwise
         // double-decrement and drop a still-mounted stream.
@@ -640,16 +744,74 @@ export function usePlaybackEngine({
   }, [
     store,
     fireSeekEvent,
-    doCommit,
+    clearPendingPlay,
     commitWhenReady,
     recomputeDuration,
     recomputeStepInterval,
+    requestOrStartPlayback,
+    tryStartPendingPlayback,
   ]);
 
   const contextValue = useMemo<PlaybackContextValue>(
     () => ({ duration, stepInterval, ...actions }),
-    [duration, stepInterval, actions],
+    [duration, stepInterval, actions]
   );
 
   return { store, contextValue };
+}
+
+function streamHasStartupCoverage(
+  stream: PlaybackStream,
+  time: number,
+  duration: number
+): boolean {
+  const startupSeconds = stream.startupBufferSeconds ?? 0;
+  if (startupSeconds <= 0) return true;
+
+  const ranges = stream.bufferedRanges?.();
+  if (!ranges) return true;
+
+  return rangesCoverInterval(
+    ranges,
+    time,
+    Math.min(duration, time + startupSeconds),
+    startupCoverageStartTolerance(stream)
+  );
+}
+
+function startupCoverageStartTolerance(stream: PlaybackStream): number {
+  const nativeStep = stream.nativeStepSeconds;
+  return nativeStep !== undefined &&
+    Number.isFinite(nativeStep) &&
+    nativeStep > 0
+    ? nativeStep / 2
+    : 0;
+}
+
+function startupPrefetchEnd(
+  stream: PlaybackStream,
+  time: number,
+  duration: number
+): number {
+  const lookaheadSeconds = Math.max(
+    stream.startupBufferSeconds ?? 0,
+    stream.lookaheadSeconds ?? DEFAULT_PREFETCH_LOOKAHEAD_SECONDS
+  );
+  return Math.min(duration, time + lookaheadSeconds);
+}
+
+function rangesCoverInterval(
+  ranges: ReturnType<NonNullable<PlaybackStream["bufferedRanges"]>>,
+  start: number,
+  end: number,
+  startTolerance = 0
+): boolean {
+  if (end <= start) return true;
+
+  for (const [rangeStart, rangeEnd] of ranges) {
+    if (rangeStart <= start + startTolerance && rangeEnd >= end) return true;
+    if (rangeStart > start) return false;
+  }
+
+  return false;
 }

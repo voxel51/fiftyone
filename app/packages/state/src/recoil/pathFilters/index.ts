@@ -83,7 +83,7 @@ const primitiveFilter = selectorFamily<
         return get(listNumber({ modal, path }));
       }
 
-      return (value) => true;
+      return (_value) => true;
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
