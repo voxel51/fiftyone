@@ -131,12 +131,16 @@ class EmbeddingsV2RunInfo(HTTPEndpoint):
 class EmbeddingsV2Geometry(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> Response:
-        """The full run's coordinates as planar Float32 columns, wire order."""
+        """The run's coordinates as planar Float32 columns, wire order.
+
+        Optional ``offset``/``limit`` select a wire-order slice for
+        progressive loading; the header's ``n`` is the slice length.
+        """
         return await run_sync_task(self._post_sync, data)
 
     def _post_sync(self, data):
         _, results = _load_results(data)
-        points = results.points
+        points = _slice(results.points, data)
         n, width = points.shape
 
         columns = [
@@ -168,6 +172,7 @@ class EmbeddingsV2Ids(HTTPEndpoint):
         else:
             ids = results.sample_ids
 
+        ids = _slice(ids, data)
         payload = bytes.fromhex("".join(_as_list(ids)))
         return _column_response(DTYPE_BYTES12, 1, len(ids), payload)
 
@@ -476,6 +481,18 @@ def _load_results(data):
         )
 
     return dataset, results
+
+
+def _slice(array, data):
+    """Applies a request's optional wire-order ``offset``/``limit``."""
+    offset = data.get("offset", None)
+    limit = data.get("limit", None)
+    if offset is None and limit is None:
+        return array
+
+    start = int(offset or 0)
+    stop = start + int(limit) if limit is not None else None
+    return array[start:stop]
 
 
 def _column_response(dtype, width, n, payload, flags=0):

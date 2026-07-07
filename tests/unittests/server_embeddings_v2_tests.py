@@ -123,6 +123,37 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         np.testing.assert_allclose(ys, points[:, 1].astype("f4"))
 
     @drop_datasets
+    def test_column_slicing(self):
+        dataset, points = _make_samples_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz"}
+        results = dataset.load_brain_results("viz")
+
+        dtype, width, n, _, payload = _parse(
+            v2.EmbeddingsV2Geometry._post_sync(
+                None, {**base, "offset": 5, "limit": 7}
+            )
+        )
+        self.assertEqual(n, 7)
+        xs = np.frombuffer(payload[: 4 * n], dtype="<f4")
+        np.testing.assert_allclose(xs, points[5:12, 0].astype("f4"))
+
+        _, _, n, _, payload = _parse(
+            v2.EmbeddingsV2Ids._post_sync(
+                None, {**base, "offset": 5, "limit": 7}
+            )
+        )
+        self.assertEqual(n, 7)
+        self.assertEqual(payload[:12].hex(), str(results.sample_ids[5]))
+
+        # A limit past the end clamps
+        _, _, n, _, _ = _parse(
+            v2.EmbeddingsV2Geometry._post_sync(
+                None, {**base, "offset": 15, "limit": 100}
+            )
+        )
+        self.assertEqual(n, 5)
+
+    @drop_datasets
     def test_ids_column(self):
         dataset, points = _make_samples_run()
         base = {"datasetName": dataset.name, "brainKey": "viz"}
