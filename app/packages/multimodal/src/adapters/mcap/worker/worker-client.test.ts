@@ -53,6 +53,47 @@ describe("worker-backed MCAP resource client", () => {
     await expect(range).resolves.toEqual(createTimelineRange(1n, 2n));
   });
 
+  it("emits worker transport progress by lane", async () => {
+    const { client, workers } = createClientHarness();
+    const onTransport = vi.fn();
+    const unsubscribe = client.subscribeTransport?.(onTransport);
+    const range = client.readTimelineRange(createTimelineRequest());
+    const worker = workers[0];
+    const snapshot = {
+      busyMs: 100,
+      capturedAtMs: 200,
+      fetchedBytes: 1_000,
+      reads: 1,
+    };
+
+    worker.respond({
+      ok: true,
+      transport: snapshot,
+      type: "transport",
+    });
+
+    expect(onTransport).toHaveBeenCalledWith({
+      lane: "foreground",
+      snapshot,
+    });
+
+    worker.respond({ id: 1, ok: true, result: createTimelineRange(1n, 2n) });
+    await expect(range).resolves.toEqual(createTimelineRange(1n, 2n));
+
+    unsubscribe?.();
+    worker.respond({
+      ok: true,
+      transport: {
+        busyMs: 200,
+        capturedAtMs: 300,
+        fetchedBytes: 2_000,
+        reads: 2,
+      },
+      type: "transport",
+    });
+    expect(onTransport).toHaveBeenCalledTimes(1);
+  });
+
   it("sends topic reads at idle-prefetch priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {

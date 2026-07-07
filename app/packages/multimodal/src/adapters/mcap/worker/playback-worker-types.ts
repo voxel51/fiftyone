@@ -1,4 +1,5 @@
 import type { McapFrameTransformSetWire } from "../frame-transform-types";
+import type { McapTransportSnapshot } from "./transport-meter";
 import type {
   McapDecodedMessage,
   McapEnumerateNumericFieldsRequest,
@@ -170,6 +171,7 @@ export type McapPlaybackWorkerUnaryResponse = {
   readonly id: number;
   readonly ok: true;
   readonly result: McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType];
+  readonly transport?: McapTransportSnapshot;
 };
 
 /**
@@ -188,6 +190,7 @@ export type McapPlaybackWorkerStreamResponse =
       readonly id: number;
       readonly ok: true;
       readonly stream: true;
+      readonly transport?: McapTransportSnapshot;
     };
 
 /**
@@ -197,6 +200,17 @@ export type McapPlaybackWorkerErrorResponse = {
   readonly error: string;
   readonly id: number;
   readonly ok: false;
+  readonly transport?: McapTransportSnapshot;
+};
+
+/**
+ * Progress-only transport counters. These messages do not settle an RPC; they
+ * let the UI attribute buffering while a long worker request is still running.
+ */
+export type McapPlaybackWorkerTransportResponse = {
+  readonly ok: true;
+  readonly transport: McapTransportSnapshot;
+  readonly type: "transport";
 };
 
 /**
@@ -205,4 +219,5 @@ export type McapPlaybackWorkerErrorResponse = {
 export type McapPlaybackWorkerResponse =
   | McapPlaybackWorkerUnaryResponse
   | McapPlaybackWorkerStreamResponse
-  | McapPlaybackWorkerErrorResponse;
+  | McapPlaybackWorkerErrorResponse
+  | McapPlaybackWorkerTransportResponse;

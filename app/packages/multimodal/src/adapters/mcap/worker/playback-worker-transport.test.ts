@@ -3,6 +3,43 @@ import { MCAP_READ_CANCELLED_MESSAGE } from "../errors";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 
 describe("MCAP playback worker transport", () => {
+  it("forwards transport progress without settling pending requests", async () => {
+    const worker = createWorker();
+    const onTransport = vi.fn();
+    const transport = new McapPlaybackWorkerTransport(() => true, onTransport);
+    const request = transport.request(worker, "source:1", "readTimelineRange", {
+      source: createSource(),
+    });
+    const snapshot = {
+      busyMs: 100,
+      capturedAtMs: 200,
+      fetchedBytes: 1_000,
+      reads: 1,
+    };
+
+    transport.handleResponse({
+      ok: true,
+      transport: snapshot,
+      type: "transport",
+    });
+
+    expect(onTransport).toHaveBeenCalledWith(snapshot);
+    transport.handleResponse({
+      id: 1,
+      ok: true,
+      result: {
+        activeTimeline: "log",
+        endTimeNs: 2n,
+        startTimeNs: 1n,
+      },
+    });
+    await expect(request).resolves.toEqual({
+      activeTimeline: "log",
+      endTimeNs: 2n,
+      startTimeNs: 1n,
+    });
+  });
+
   it("cancels matching pending unary requests locally", async () => {
     const worker = createWorker();
     const transport = new McapPlaybackWorkerTransport(() => true);

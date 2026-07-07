@@ -9,8 +9,10 @@ import type {
   McapPlaybackWorkerRpcRequest,
   McapPlaybackWorkerStreamItemByType,
   McapPlaybackWorkerStreamType,
+  McapPlaybackWorkerTransportResponse,
   McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
+import type { McapTransportSnapshot } from "./transport-meter";
 
 type PendingRequest<
   Type extends McapPlaybackWorkerUnaryType = McapPlaybackWorkerUnaryType,
@@ -40,6 +42,7 @@ export class McapPlaybackWorkerTransport {
 
   constructor(
     private readonly isActiveSource: (sourceKey: string) => boolean,
+    private readonly onTransport?: (snapshot: McapTransportSnapshot) => void,
   ) {}
 
   /**
@@ -158,6 +161,15 @@ export class McapPlaybackWorkerTransport {
    * Applies one worker response to the matching pending request or stream.
    */
   handleResponse(response: McapPlaybackWorkerResponse) {
+    if (isTransportResponse(response)) {
+      this.onTransport?.(response.transport);
+      return;
+    }
+
+    if ("transport" in response && response.transport) {
+      this.onTransport?.(response.transport);
+    }
+
     if (response.ok && "stream" in response) {
       this.handleStreamResponse(response);
       return;
@@ -251,6 +263,12 @@ export class McapPlaybackWorkerTransport {
     this.streams.delete(id);
     rejectStream(stream, error);
   }
+}
+
+function isTransportResponse(
+  response: McapPlaybackWorkerResponse,
+): response is McapPlaybackWorkerTransportResponse {
+  return "type" in response && response.type === "transport";
 }
 
 function createRpcRequest<Type extends McapPlaybackWorkerUnaryType>(

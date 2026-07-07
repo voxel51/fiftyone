@@ -26,6 +26,10 @@ import { McapSelectionHotkeys } from "./mcap-selected-object";
 import McapAddTileMenu from "./McapAddTileMenu";
 import McapInspectorSidebar from "./McapInspectorSidebar";
 import styles from "./McapModalRenderer.module.css";
+import {
+  McapNetworkHealthTracker,
+  McapNetworkStatusPill,
+} from "./McapNetworkStatus";
 import McapSettingsSidebar from "./McapSettingsSidebar";
 import { McapStreams } from "./McapStreams";
 import McapTimestampReadout from "./McapTimestampReadout";
@@ -186,7 +190,9 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                   <MultiModalPlayback
                     fileName={fileName}
                     headerCaption={headerCaption}
-                    headerActions={headerActions}
+                    headerActions={
+                      <McapHeaderActions actions={headerActions} />
+                    }
                     addTileMenu={<McapAddTileMenu />}
                     timelineExtraActions={<McapTimestampReadout />}
                     sceneSources={sources}
@@ -210,6 +216,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                     onTagCreate={onTagCreate}
                   >
                     <McapStreams client={client} source={source} />
+                    <McapNetworkHealthTracker client={client} />
                     <McapSelectionHotkeys />
                     {children}
                     <McapModalLayoutPersistence datasetId={layoutScopeKey} />
@@ -223,6 +230,19 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     </React.Fragment>
   );
 };
+
+function McapHeaderActions({
+  actions,
+}: {
+  readonly actions?: React.ReactNode;
+}) {
+  return (
+    <>
+      <McapNetworkStatusPill />
+      {actions}
+    </>
+  );
+}
 
 function McapPlaybackState({
   text,

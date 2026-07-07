@@ -9,12 +9,15 @@ import {
   McapPlaybackWorkerScheduler,
   type McapPlaybackWorkerRunContext,
 } from "./playback-worker-scheduler";
+import type { ByteReadDebugLog } from "../../../query/bytes";
+import { createMcapTransportMeter } from "./transport-meter";
 import { transferablesForMcapResult } from "./playback-worker-transfer";
 import type {
   McapPlaybackWorkerRequest,
   McapPlaybackWorkerResponse,
   McapPlaybackWorkerRpcRequest,
   McapPlaybackWorkerStreamType,
+  McapPlaybackWorkerTransportResponse,
 } from "./playback-worker-types";
 import { createWorkerResourceClient } from "./worker-resource-client";
 
@@ -29,10 +32,13 @@ type McapPlaybackWorkerScope = {
 
 const workerScope = self as unknown as McapPlaybackWorkerScope;
 const scheduler = new McapPlaybackWorkerScheduler();
+const transportMeter = createMcapTransportMeter();
+const TRANSPORT_PROGRESS_INTERVAL_MS = 500;
 // This lane runs one request at a time, so one slot scopes byte reads to
 // the active request's abort signal without threading it through the
 // reader stack (@mcap/core reads carry no signal parameter).
 const activeReadSignal: { current: AbortSignal | null } = { current: null };
+let lastTransportProgressAtMs = -Infinity;
 
 let activeSourceKey = "";
 let mcap = createMcapClient();
@@ -91,6 +97,7 @@ async function runAndRespond(
         id: message.id,
         ok: true,
         result,
+        transport: transportMeter.snapshot(),
       },
       transferables,
     );
@@ -104,6 +111,7 @@ async function runAndRespond(
       error: errorMessage,
       id: message.id,
       ok: false,
+      transport: transportMeter.snapshot(),
     });
   } finally {
     activeReadSignal.current = null;
@@ -132,6 +140,7 @@ async function streamRequest(
     id: message.id,
     ok: true,
     stream: true,
+    transport: transportMeter.snapshot(),
   });
 }
 
@@ -180,7 +189,27 @@ function disposeAllClients() {
 
 function createMcapClient() {
   return createWorkerResourceClient({
+    onByteRead: handleByteRead,
     readSignal: activeReadSignal,
+  });
+}
+
+function handleByteRead(entry: ByteReadDebugLog) {
+  transportMeter.onByteRead(entry);
+  maybePostTransportProgress();
+}
+
+function maybePostTransportProgress() {
+  const now = workerNowMs();
+  if (now - lastTransportProgressAtMs < TRANSPORT_PROGRESS_INTERVAL_MS) {
+    return;
+  }
+
+  lastTransportProgressAtMs = now;
+  postResponse({
+    ok: true,
+    transport: transportMeter.snapshot(),
+    type: "transport",
   });
 }
 
@@ -192,6 +221,10 @@ function postResponse(
 }
 
 function transferablesForResponse(response: McapPlaybackWorkerResponse) {
+  if (isTransportResponse(response)) {
+    return [];
+  }
+
   if (!response.ok) {
     return [];
   }
@@ -201,4 +234,14 @@ function transferablesForResponse(response: McapPlaybackWorkerResponse) {
   }
 
   return transferablesForMcapResult(response.result);
+}
+
+function workerNowMs(): number {
+  return globalThis.performance?.now?.() ?? Date.now();
+}
+
+function isTransportResponse(
+  response: McapPlaybackWorkerResponse,
+): response is McapPlaybackWorkerTransportResponse {
+  return "type" in response && response.type === "transport";
 }

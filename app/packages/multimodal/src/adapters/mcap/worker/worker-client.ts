@@ -2,6 +2,10 @@ import { byteSourceAccessKey } from "../../../query/bytes";
 import { hydrateMcapFrameTransformSet } from "../frame-transforms";
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
+import type {
+  McapLaneTransportSnapshot,
+  McapTransportSnapshot,
+} from "./transport-meter";
 import { workerFetchParameters } from "./worker-resource-client";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
@@ -72,6 +76,9 @@ class WorkerMcapResourceClient implements McapResourceClient {
   private activeSourceKey = "";
   private disposed = false;
   private explicitOwnership = false;
+  private readonly transportListeners = new Set<
+    (sample: McapLaneTransportSnapshot) => void
+  >();
   private readonly foregroundLane = this.createLane("foreground");
   private readonly idleLane = this.createLane("idle");
   private readonly bulkLane = this.createLane("bulk");
@@ -87,7 +94,17 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   dispose() {
     this.disposed = true;
+    this.transportListeners.clear();
     this.resetWorkers("MCAP worker disposed");
+  }
+
+  subscribeTransport(
+    listener: (sample: McapLaneTransportSnapshot) => void,
+  ): () => void {
+    this.transportListeners.add(listener);
+    return () => {
+      this.transportListeners.delete(listener);
+    };
   }
 
   activateSource(source: Parameters<typeof byteSourceAccessKey>[0]) {
@@ -361,8 +378,23 @@ class WorkerMcapResourceClient implements McapResourceClient {
       name,
       transport: new McapPlaybackWorkerTransport(
         (sourceKey) => this.activeSourceKey === sourceKey,
+        (snapshot) => this.emitTransport(name, snapshot),
       ),
     };
+  }
+
+  private emitTransport(
+    lane: WorkerLaneName,
+    snapshot: McapTransportSnapshot,
+  ): void {
+    if (this.transportListeners.size === 0) {
+      return;
+    }
+
+    const sample: McapLaneTransportSnapshot = { lane, snapshot };
+    for (const listener of this.transportListeners) {
+      listener(sample);
+    }
   }
 
   private postCancelRequests(lane: WorkerLane, ids: readonly number[]): void {
