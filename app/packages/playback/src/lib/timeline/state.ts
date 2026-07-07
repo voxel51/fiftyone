@@ -300,8 +300,6 @@ export const addSubscriberAtom = atom(
       return next;
     });
   },
-<<<<<<< HEAD
-=======
 );
 
 export const removeSubscriberAtom = atom(
@@ -318,7 +316,6 @@ export const removeSubscriberAtom = atom(
       return next;
     });
   },
->>>>>>> main
 );
 
 export const setFrameNumberAtom = atom(

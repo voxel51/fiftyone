@@ -150,21 +150,14 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       />
       <PlayheadTime />
       <LoopBounds />
-<<<<<<< HEAD
       <BufferingIndicator />
-=======
->>>>>>> main
       {extraActions ? (
         <>
           <span
             className={styles.divider}
             data-testid="timeline-controls-divider"
             aria-hidden
-<<<<<<< HEAD
-          />{" "}
-=======
           />
->>>>>>> main
           {extraActions}
         </>
       ) : null}

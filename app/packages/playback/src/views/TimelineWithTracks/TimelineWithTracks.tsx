@@ -15,15 +15,10 @@ import LoopOverlays from "../Loop/LoopOverlays";
 import PlayheadLine from "../Playhead/PlayheadLine";
 import TimelineHeader from "../TimelineHeader/TimelineHeader";
 import TimelineTrack, {
-<<<<<<< HEAD
-  type NormalizedEvent,
-} from "../TimelineTrack/TimelineTrack";
-=======
   type TimelineTrackProps,
   type TrackEventMenuItem,
 } from "../TimelineTrack/TimelineTrack";
 import { partitionTracksByPin } from "./partitionTracksByPin";
->>>>>>> main
 import styles from "./TimelineWithTracks.module.css";
 
 export interface TimelineWithTracksProps {

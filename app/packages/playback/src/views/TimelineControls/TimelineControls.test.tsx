@@ -130,7 +130,6 @@ describe("TimelineControls", () => {
     expect(() => fireEvent.click(row)).not.toThrow();
   });
 
-<<<<<<< HEAD
   describe("keyboard playback shortcuts", () => {
     // Bindings dispatch through the CommandContextManager singleton's
     // document-level keydown listener, so events are fired on document
@@ -203,18 +202,11 @@ describe("TimelineControls", () => {
     });
   });
 
-  describe("extraActions", () => {
-    it("renders extra action content when provided", () => {
-      render(
-        <PlaybackProvider duration={10} stepInterval={1 / 30}>
-          <TimelineControls extraActions={<button>Custom Action</button>} />
-=======
   describe("extraControls", () => {
     it("renders slotted content when provided", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
           <TimelineControls extraControls={<button>Custom Action</button>} />
->>>>>>> main
         </PlaybackProvider>,
       );
       expect(
@@ -226,11 +218,7 @@ describe("TimelineControls", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
           <TimelineControls
-<<<<<<< HEAD
-            extraActions={<span data-testid="extra">hi</span>}
-=======
             extraControls={<span data-testid="slot">hi</span>}
->>>>>>> main
           />
         </PlaybackProvider>,
       );

@@ -128,15 +128,8 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   // becomes non-empty we mark all IDs as seen without pinning them (they
   // are pre-existing tags the user hasn't explicitly pinned). Any ID that
   // appears after that initial hydration is a new creation and gets pinned.
-<<<<<<< HEAD
-  const hydratedRef = useRef(initialTracks.length > 0);
-  const seenTrackIdsRef = useRef<Set<string>>(
-    new Set(initialTracks.map((t) => t.id)),
-  );
-=======
   const hydratedRef = useRef(tracks.length > 0);
   const seenTrackIdsRef = useRef<Set<string>>(new Set(tracks.map((t) => t.id)));
->>>>>>> main
   useEffect(() => {
     // Opt-out: the surface drives all pinning explicitly, so a new track must
     // not pin itself.
@@ -193,11 +186,7 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
       togglePin,
       setPinned,
     }),
-<<<<<<< HEAD
-    [initialTracks, pinnedIds, togglePin, setPinned],
-=======
     [tracks, pinnedIds, togglePin, setPinned],
->>>>>>> main
   );
 
   return (

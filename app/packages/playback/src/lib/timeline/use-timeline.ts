@@ -131,8 +131,6 @@ export const useTimeline = (name?: TimelineName) => {
       subscribeImpl({ name: timelineName, subscription });
     },
     [subscribeImpl, timelineName],
-<<<<<<< HEAD
-=======
   );
 
   const unsubscribe = useCallback(
@@ -140,7 +138,6 @@ export const useTimeline = (name?: TimelineName) => {
       unsubscribeImpl({ name: timelineName, id });
     },
     [unsubscribeImpl, timelineName],
->>>>>>> main
   );
 
   return {
