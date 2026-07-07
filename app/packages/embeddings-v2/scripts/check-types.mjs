@@ -3,10 +3,10 @@ import { fileURLToPath } from "node:url";
 
 import { bin } from "./process.mjs";
 
-console.log("Checking types for embeddings-renderer");
+console.log("Checking types for embeddings-v2");
 
 const localDiagnosticPattern =
-  /^(packages[\\/]embeddings-renderer|node_modules[\\/]@fiftyone[\\/]embeddings-renderer)[\\/]/;
+  /^(packages[\\/]embeddings-v2|node_modules[\\/]@fiftyone[\\/]embeddings-v2)[\\/]/;
 const appRoot = fileURLToPath(new URL("../../..", import.meta.url));
 
 let output = "";
@@ -19,7 +19,7 @@ try {
       "tsc",
       "--noEmit",
       "-p",
-      "packages/embeddings-renderer/tsconfig.json",
+      "packages/embeddings-v2/tsconfig.json",
       "--pretty",
       "false",
     ],
@@ -41,7 +41,7 @@ try {
 const localDiagnostics = output
   .split("\n")
   // Workspace source dependencies still surface in this package check, so only
-  // fail diagnostics owned by the embeddings-renderer package boundary.
+  // fail diagnostics owned by the embeddings-v2 package boundary.
   .filter((line) => localDiagnosticPattern.test(line));
 
 if (localDiagnostics.length) {
@@ -51,6 +51,6 @@ if (localDiagnostics.length) {
 
 if (output) {
   console.log(
-    "No type issues in packages/embeddings-renderer 🚀. TypeScript reported diagnostics outside packages/embeddings-renderer; ignoring them for this package-local check.",
+    "No type issues in packages/embeddings-v2 🚀. TypeScript reported diagnostics outside packages/embeddings-v2; ignoring them for this package-local check.",
   );
 }

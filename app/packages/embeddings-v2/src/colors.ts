@@ -2,7 +2,7 @@
  * Maps v2 color columns to the renderer's flat rgb triplets. Temporary
  * palettes — the real panel maps classes through the App's colorScheme.
  */
-import { PALETTE } from "@fiftyone/embeddings-renderer";
+import { PALETTE } from "./renderer";
 import type { ColorValues } from "./protocol";
 
 export const MISSING_CATEGORY = 0xffff;

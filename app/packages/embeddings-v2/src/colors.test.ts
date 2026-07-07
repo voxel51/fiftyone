@@ -1,4 +1,4 @@
-import { PALETTE } from "@fiftyone/embeddings-renderer";
+import { PALETTE } from "./renderer";
 import { describe, expect, it } from "vitest";
 import { buildColors, MISSING_CATEGORY } from "./colors";
 

@@ -2971,27 +2971,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/embeddings-renderer@npm:*, @fiftyone/embeddings-renderer@workspace:packages/embeddings-renderer":
-  version: 0.0.0-use.local
-  resolution: "@fiftyone/embeddings-renderer@workspace:packages/embeddings-renderer"
-  dependencies:
-    "@types/three": "npm:^0.182.0"
-    three: "npm:^0.182.0"
-    vitest: "npm:^3.2.6"
-  peerDependencies:
-    react: "*"
-  languageName: unknown
-  linkType: soft
-
 "@fiftyone/embeddings-v2@workspace:packages/embeddings-v2":
   version: 0.0.0-use.local
   resolution: "@fiftyone/embeddings-v2@workspace:packages/embeddings-v2"
   dependencies:
-    "@fiftyone/embeddings-renderer": "npm:*"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/spaces": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
+    "@types/three": "npm:^0.182.0"
+    three: "npm:^0.182.0"
     vitest: "npm:^3.2.6"
   peerDependencies:
     react: "*"

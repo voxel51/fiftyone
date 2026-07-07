@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { bin } from "./process.mjs";
 
-console.log("Checking dependencies integrity for embeddings-renderer");
+console.log("Running lint for embeddings-v2");
 
 const appRoot = fileURLToPath(new URL("../../..", import.meta.url));
 
@@ -11,10 +11,13 @@ execFileSync(
   bin("yarn"),
   [
     "exec",
-    "depcruise",
+    "eslint",
+    // Top level eslint has too-liberal rules and plugins like "only-warn"
+    // that we want to supersede
+    "--no-eslintrc",
     "--config",
-    "packages/embeddings-renderer/.dependency-cruiser.cjs",
-    "packages/embeddings-renderer",
+    "packages/embeddings-v2/.eslintrc.js",
+    "packages/embeddings-v2/src/**/*.{ts,tsx}",
   ],
   {
     cwd: appRoot,

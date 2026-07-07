@@ -3,7 +3,7 @@
  * hovered point. Renders nothing until the image has loaded (or the
  * sample has no hover media) — an empty box must never appear.
  */
-import type { HoverHit } from "@fiftyone/embeddings-renderer";
+import type { HoverHit } from "./renderer";
 import { useEffect, useState } from "react";
 
 export interface HoverContent {

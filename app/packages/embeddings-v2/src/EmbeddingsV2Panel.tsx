@@ -1,7 +1,7 @@
 /**
  * Development skeleton for the greenfield embeddings panel: pick a
  * visualization run, fetch its columns over the v2 protocol, render
- * with @fiftyone/embeddings-renderer. Deliberately unstyled — the real
+ * with the in-package renderer. Deliberately unstyled — the real
  * UI comes later; this exists to exercise the renderer + protocol
  * end-to-end in the App.
  *
@@ -17,7 +17,7 @@ import {
   type EmbeddingPoint,
   type EmbeddingsViewHandle,
   type HoverHit,
-} from "@fiftyone/embeddings-renderer";
+} from "./renderer";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useEffect, useMemo, useRef, useState } from "react";

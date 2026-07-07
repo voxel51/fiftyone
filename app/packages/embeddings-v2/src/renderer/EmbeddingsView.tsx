@@ -60,7 +60,7 @@ export interface EmbeddingsViewHandle {
  *
  * The chart module (and with it all of three.js) loads lazily on first
  * mount — importing this wrapper costs no WebGL code. Imperative hosts
- * that want the chart eagerly import "@fiftyone/embeddings-renderer/chart"
+ * that want the chart eagerly import "./EmbeddingsChart" directly
  * instead.
  */
 export const EmbeddingsView = forwardRef<

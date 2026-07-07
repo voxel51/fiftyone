@@ -1,4 +1,4 @@
-# @fiftyone/embeddings-renderer
+# The embeddings renderer (`src/renderer/`)
 
 A high-performance Three.js renderer for embeddings scatter plots: one
 `gl.POINTS` draw call over typed arrays in data space, custom GLSL for styling
@@ -9,17 +9,18 @@ The core (`EmbeddingsChart`) is vanilla Three.js + DOM with no React
 dependency; `EmbeddingsView` is a thin React wrapper. All rendering is
 on-demand — there is no animation loop.
 
-**Three.js loads lazily.** The package index is three.js-free at runtime;
-`EmbeddingsView` dynamically imports the chart (and with it all WebGL code) on
-first mount, so consumers pay nothing at startup. Imperative hosts that want
-the chart eagerly import the `./chart` subpath. Note for bundling: this split
-survives only in output formats that support code-splitting — a single-file UMD
-build inlines it.
+**Three.js loads lazily.** The renderer barrel (`index.ts`) is three.js-free at
+runtime; `EmbeddingsView` dynamically imports the chart (and with it all WebGL
+code) on first mount, so consumers pay nothing at startup. A depcruise rule
+keeps panel imports on the barrel — an eager, imperative host would import
+`./EmbeddingsChart` directly. Note for bundling: this split survives only in
+output formats that support code-splitting — a single-file UMD build inlines
+it.
 
 ## API
 
 ```tsx
-import { EmbeddingsView } from "@fiftyone/embeddings-renderer";
+import { EmbeddingsView } from "./renderer";
 
 <EmbeddingsView
     points={points} // { id, x, y, z?, label }[]
@@ -36,7 +37,7 @@ import { EmbeddingsView } from "@fiftyone/embeddings-renderer";
 Or imperatively (eager three.js):
 
 ```ts
-import { EmbeddingsChart } from "@fiftyone/embeddings-renderer/chart";
+import { EmbeddingsChart } from "./renderer/EmbeddingsChart";
 
 const chart = new EmbeddingsChart(container, callbacks, options);
 // setData / setColors / setVisible / setSelected / setRenderSettings / destroy
@@ -55,8 +56,9 @@ one, `z` is ignored and the data renders flat with the planar camera.
 ## Checks
 
 Strict TypeScript, package-local eslint, and dependency-cruiser layering rules
-(the React-free core, the purity of `math.ts`/`columns.ts`, and the
-core-three-only import boundary are machine-enforced):
+(the React-free core, the purity of `math.ts`/`columns.ts`, the core-three-only
+import boundary, and the panel/renderer boundary are machine-enforced; run from
+the `embeddings-v2` package root):
 
 ```sh
 yarn check          # check:lint + check:deps + check:types
