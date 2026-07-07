@@ -58,6 +58,13 @@ export interface CameraAdapter {
   reset(): void;
   /** True when this pointer-down should draw a lasso, not move the camera */
   isLassoStart(event: PointerEvent): boolean;
+  /**
+   * Converts a screen-space polygon (CSS px) to data-space vertices,
+   * when the projection makes that well-defined — hosts send the tiny
+   * data polygon to a server instead of materializing selection ids.
+   * Adapters without an exact mapping return null.
+   */
+  toDataPolygon?(polygon: Polygon): Array<[number, number]> | null;
   destroy(): void;
 }
 

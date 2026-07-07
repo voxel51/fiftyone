@@ -9,7 +9,7 @@ import {
   zoomRect,
   type Rect,
 } from "../math";
-import type { Bounds, CameraAdapter } from "../types";
+import type { Bounds, CameraAdapter, Polygon } from "../types";
 
 /**
  * 2D camera: an orthographic frustum window over the data, driven by our
@@ -61,6 +61,13 @@ export class PlanarCamera implements CameraAdapter {
   /** Plain left-drag draws the lasso; pans need shift or middle button */
   isLassoStart(event: PointerEvent): boolean {
     return event.button === 0 && !event.shiftKey;
+  }
+
+  /** Orthographic window: screen -> data is exact rectangle algebra */
+  toDataPolygon(polygon: Polygon): Array<[number, number]> {
+    return polygon.map(([x, y]) =>
+      pxToData(this.rect, this.width, this.height, x, y),
+    );
   }
 
   setBounds(bounds: Bounds, width: number, height: number): void {

@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { ChartTooltip, type TooltipState } from "./ChartTooltip";
 import "./embeddings.css";
 // Type-only: erased at runtime, so three.js stays out of this chunk
@@ -21,15 +27,31 @@ export interface EmbeddingsViewProps {
   settings?: RenderSettings;
   /** Tooltip image URL per point index; omit for text-only tooltips */
   thumbUrl?: (index: number) => string;
-  /** Lasso selections as point indices (empty = cleared) */
-  onSelection?: (indices: number[]) => void;
+  /** Lasso selections: point indices (empty = cleared) + the data-space
+   * polygon when the camera adapter can provide one */
+  onSelection?: (
+    indices: number[],
+    dataPolygon?: Array<[number, number]> | null,
+  ) => void;
   /** A plain click on a point; the host owns click semantics */
   onPointClick?: (hit: HoverHit) => void;
+  /** Debounced hover hit, or null the moment hovering breaks */
+  onHover?: (hit: HoverHit | null) => void;
+  /** Render the built-in tooltip (default). Hosts with their own hover
+   * card pass false and drive it from onHover. */
+  tooltip?: boolean;
   /**
    * Camera adapter for z-carrying data; without it z is ignored and the
    * data renders flat. Fixed for the lifetime of the view.
    */
   zCamera?: CameraAdapterFactory;
+}
+
+/** Imperative escape hatch for host chrome (e.g. a reset-view button) */
+export interface EmbeddingsViewHandle {
+  resetCamera(): void;
+  /** Clears the chart's local selection dimming (lasso state) */
+  clearSelection(): void;
 }
 
 /**
@@ -41,29 +63,48 @@ export interface EmbeddingsViewProps {
  * that want the chart eagerly import "@fiftyone/embeddings-renderer/chart"
  * instead.
  */
-export function EmbeddingsView({
-  points,
-  colors = null,
-  visible = null,
-  selected = null,
-  settings,
-  thumbUrl,
-  onSelection,
-  onPointClick,
-  zCamera,
-}: EmbeddingsViewProps) {
+export const EmbeddingsView = forwardRef<
+  EmbeddingsViewHandle,
+  EmbeddingsViewProps
+>(function EmbeddingsView(
+  {
+    points,
+    colors = null,
+    visible = null,
+    selected = null,
+    settings,
+    thumbUrl,
+    onSelection,
+    onPointClick,
+    onHover,
+    tooltip = true,
+    zCamera,
+  }: EmbeddingsViewProps,
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onSelectionRef = useRef(onSelection);
   const onPointClickRef = useRef(onPointClick);
+  const onHoverRef = useRef(onHover);
   // Captured once: the chart is constructed a single time per mount
   const zCameraRef = useRef(zCamera);
   const [chart, setChart] = useState<EmbeddingsChart | null>(null);
-  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [tooltipState, setTooltipState] = useState<TooltipState | null>(null);
 
   useEffect(() => {
     onSelectionRef.current = onSelection;
     onPointClickRef.current = onPointClick;
-  }, [onSelection, onPointClick]);
+    onHoverRef.current = onHover;
+  }, [onSelection, onPointClick, onHover]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      resetCamera: () => chart?.resetCamera(),
+      clearSelection: () => chart?.setSelected(null),
+    }),
+    [chart],
+  );
 
   // One chart per mount, created as soon as the lazy chunk lands; props
   // flow in through the effects below, which re-fire when it does
@@ -78,10 +119,12 @@ export function EmbeddingsView({
         instance = new EmbeddingsChart(
           host,
           {
-            onSelection: (indices) => onSelectionRef.current?.(indices),
+            onSelection: (indices, dataPolygon) =>
+              onSelectionRef.current?.(indices, dataPolygon),
             onPointClick: (hit) => onPointClickRef.current?.(hit),
             onHover: (hit) => {
-              setTooltip(
+              onHoverRef.current?.(hit);
+              setTooltipState(
                 hit && {
                   hit,
                   flipX: hit.x > host.clientWidth / 2,
@@ -141,7 +184,9 @@ export function EmbeddingsView({
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
-      {tooltip && <ChartTooltip state={tooltip} thumbUrl={thumbUrl} />}
+      {tooltip && tooltipState && (
+        <ChartTooltip state={tooltipState} thumbUrl={thumbUrl} />
+      )}
     </div>
   );
-}
+});

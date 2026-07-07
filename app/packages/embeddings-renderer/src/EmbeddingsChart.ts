@@ -38,10 +38,16 @@ import type {
 
 export interface EmbeddingsChartCallbacks {
   /**
-   * Point indices selected by the lasso (empty = cleared). External
-   * selections applied via setSelected() do NOT echo through this.
+   * Point indices selected by the lasso (empty = cleared), plus the
+   * lasso polygon in data space when the active camera adapter can
+   * provide one — hosts resolve selections server-side from the tiny
+   * polygon instead of materializing id lists. External selections
+   * applied via setSelected() do NOT echo through this.
    */
-  onSelection?: (indices: number[]) => void;
+  onSelection?: (
+    indices: number[],
+    dataPolygon?: Array<[number, number]> | null,
+  ) => void;
   /** Debounced hover hit, or null the moment hovering breaks */
   onHover?: (hit: HoverHit | null) => void;
   /**
@@ -66,7 +72,9 @@ export interface EmbeddingsChartOptions {
  * The embeddings renderer: one gl.POINTS draw call of typed arrays in
  * data space, custom GLSL for styling and density, and a pluggable
  * camera adapter (built-in planar by default). All vanilla three.js and
- * DOM, no React, so it stays snapshot-testable.
+ * DOM, no React — any host can drive it directly. (The snapshot harness
+ * this was developed against lives in the prototype repo, which remains
+ * the visual test bed.)
  *
  * Host API: setData / setColors / setVisible / setSelected /
  * setRenderSettings. Selection is one mechanism: the lasso and the host
@@ -312,6 +320,12 @@ export class EmbeddingsChart {
     this.requestRender();
   }
 
+  /** Snap the camera back to its home framing */
+  resetCamera(): void {
+    this.adapter?.reset();
+    this.requestRender();
+  }
+
   /** Compositing mode + tone map parameters, applied live */
   setRenderSettings(settings: RenderSettings): void {
     this.settings = settings;
@@ -410,7 +424,10 @@ export class EmbeddingsChart {
       this.visibleMask,
     );
     this.setSelected(indices.length > 0 ? indices : null);
-    this.callbacks.onSelection?.(indices);
+    this.callbacks.onSelection?.(
+      indices,
+      this.adapter?.toDataPolygon?.(polygon) ?? null,
+    );
   }
 
   /** Point hit → the host decides; empty space → clear, as ever */

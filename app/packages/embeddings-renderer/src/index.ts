@@ -9,7 +9,11 @@ export type {
   EmbeddingsChartCallbacks,
   EmbeddingsChartOptions,
 } from "./EmbeddingsChart";
-export { EmbeddingsView, type EmbeddingsViewProps } from "./EmbeddingsView";
+export {
+  EmbeddingsView,
+  type EmbeddingsViewHandle,
+  type EmbeddingsViewProps,
+} from "./EmbeddingsView";
 export type {
   Bounds,
   CameraAdapter,

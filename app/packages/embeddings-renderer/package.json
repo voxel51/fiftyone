@@ -30,7 +30,7 @@
     },
     "devDependencies": {
         "@types/three": "^0.182.0",
-        "vitest": "^1.6.0"
+        "vitest": "^3.2.6"
     },
     "peerDependencies": {
         "react": "*"
