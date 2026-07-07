@@ -5,11 +5,18 @@ import { Quaternion, Vector3 } from "three";
 import { decodeProtobufMessage } from "../decoders/foxglove/protobuf";
 import {
   asRecord,
+  optionalBigInt,
   optionalRecord,
   optionalString,
   requiredArray,
   requiredNumber,
 } from "../decoders/foxglove/protobuf/records";
+import {
+  rosMessageDefinitionsForChannel,
+  rosRecordDecoderForChannel,
+  rootRosMessageDefinition,
+  type RosMessageDefinition,
+} from "../decoders/ros/wire";
 import { protobufFromBinaryDescriptor } from "../mcap-support";
 import { timestampNs } from "../decoders/foxglove/protobuf/timing";
 import type { McapIndexedReaderLike } from "../reader";
@@ -27,17 +34,28 @@ import type { McapReadFrameTransformWindowRequest } from "../types";
 
 const PROTOBUF_ENCODING = "protobuf";
 const FOXGLOVE_FRAME_TRANSFORMS_SCHEMA = "foxglove.FrameTransforms";
+const TF_MESSAGE_BATCH_FIELD = "transforms";
 
 const SUPPORTED_TRANSFORM_SCHEMAS: ReadonlySet<string> = new Set([
   "foxglove.FrameTransform",
   FOXGLOVE_FRAME_TRANSFORMS_SCHEMA,
 ]);
+const ROS_TF_MESSAGE_SCHEMAS: ReadonlySet<string> = new Set([
+  "tf2_msgs/TFMessage",
+  "tf2_msgs/msg/TFMessage",
+]);
+const ROS_TRANSFORM_STAMPED_SCHEMAS: ReadonlySet<string> = new Set([
+  "geometry_msgs/TransformStamped",
+  "geometry_msgs/msg/TransformStamped",
+]);
 
 type FrameTransformSchemaMatch =
   | {
+      readonly format: "foxglove";
       readonly kind: "single";
     }
   | {
+      readonly format: "foxglove" | "ros-tf-message";
       readonly kind: "batch";
       readonly repeatedFieldName: string;
     };
@@ -58,13 +76,14 @@ const STATIC_TRANSFORM_TOPIC_SEGMENTS: ReadonlySet<string> = new Set([
 ]);
 
 type McapChannel = McapTypes.TypedMcapRecords["Channel"];
+type McapMessage = McapTypes.TypedMcapRecords["Message"];
 type McapSchema = McapTypes.TypedMcapRecords["Schema"];
 
 interface FrameTransformChannel {
   readonly channel: McapChannel;
+  readonly decodeRecord: (message: McapMessage) => Record<string, unknown>;
   readonly match: FrameTransformSchemaMatch;
   readonly messageCount: bigint | undefined;
-  readonly schema: McapSchema;
 }
 
 interface FrameTransformReadStats {
@@ -77,34 +96,81 @@ interface FrameTransformReadStats {
 /**
  * Discovers transform-capable channels from MCAP summary metadata. Footer-only;
  * does not read messages. A channel qualifies when its schema is a known
- * Foxglove frame transform schema and both channel and schema encodings are
- * decodable today.
+ * Foxglove frame transform schema or a ROS tf2_msgs/TFMessage schema and both
+ * channel and schema encodings are decodable today.
  */
 function discoverFrameTransformChannels(
   reader: McapIndexedReaderLike,
 ): readonly FrameTransformChannel[] {
   const channels: FrameTransformChannel[] = [];
   for (const channel of reader.channelsById.values()) {
-    if (channel.messageEncoding !== PROTOBUF_ENCODING) {
-      continue;
-    }
     const schema = reader.schemasById.get(channel.schemaId);
-    if (!schema || schema.encoding !== PROTOBUF_ENCODING) {
+    if (!schema) {
       continue;
     }
-    const match = classifyFrameTransformSchema(schema);
-    if (!match) {
+    const decoder = frameTransformDecoderForChannel(reader, channel, schema);
+    if (!decoder) {
       continue;
     }
     channels.push({
       channel,
-      match,
+      ...decoder,
       messageCount: reader.statistics?.channelMessageCounts.get(channel.id),
-      schema,
     });
   }
 
   return channels;
+}
+
+function frameTransformDecoderForChannel(
+  reader: McapIndexedReaderLike,
+  channel: McapChannel,
+  schema: McapSchema,
+): Pick<FrameTransformChannel, "decodeRecord" | "match"> | null {
+  if (
+    channel.messageEncoding === PROTOBUF_ENCODING &&
+    schema.encoding === PROTOBUF_ENCODING
+  ) {
+    const match = classifyProtobufFrameTransformSchema(schema);
+    if (!match) {
+      return null;
+    }
+
+    return {
+      decodeRecord: (message) =>
+        decodeProtobufMessage(
+          message.data,
+          {
+            encoding: channel.messageEncoding,
+            schema: schema.name,
+            schemaEncoding: schema.encoding,
+          },
+          {
+            schemaData: schema.data,
+            sourceTimestamps: {
+              logTime: message.logTime,
+              publishTime: message.publishTime,
+            },
+            streamId: channel.topic,
+          },
+        ),
+      match,
+    };
+  }
+
+  const match = classifyRosFrameTransformSchema(reader, channel, schema);
+  if (!match) {
+    return null;
+  }
+  const decodeRosRecord = rosRecordDecoderForChannel(reader, channel);
+  if (!decodeRosRecord) {
+    return null;
+  }
+
+  return {
+    decodeRecord: (message) => decodeRosRecord(message.data),
+    match,
+  };
 }
 
 /**
@@ -143,10 +209,8 @@ export async function readMcapFrameTransformBootstrap(
     recordFrameTransformMessage(readStats, entry.channel.topic, message);
     try {
       for (const sample of normalizeFrameTransformMessage({
-        channel: entry.channel,
-        match: entry.match,
+        entry,
         message,
-        schema: entry.schema,
       })) {
         if (sample.timeNs === undefined) {
           samples.push(sample);
@@ -189,10 +253,8 @@ async function firstTransformMessageHasStaticSample(
     }
     try {
       return normalizeFrameTransformMessage({
-        channel: entry.channel,
-        match: entry.match,
+        entry,
         message,
-        schema: entry.schema,
       }).some((sample) => sample.timeNs === undefined);
     } catch {
       return false;
@@ -282,10 +344,8 @@ export async function readMcapFrameTransformWindow({
     recordFrameTransformMessage(readStats, entry.channel.topic, message);
     try {
       for (const sample of normalizeFrameTransformMessage({
-        channel: entry.channel,
-        match: entry.match,
+        entry,
         message,
-        schema: entry.schema,
       })) {
         if (sample.timeNs === undefined) {
           samples.push(sample);
@@ -342,45 +402,47 @@ function indexByChannelId(entries: readonly FrameTransformChannel[]) {
 }
 
 function normalizeFrameTransformMessage({
-  channel,
-  match,
+  entry,
   message,
-  schema,
 }: {
-  readonly channel: McapChannel;
-  readonly match: FrameTransformSchemaMatch;
-  readonly message: McapTypes.TypedMcapRecords["Message"];
-  readonly schema: McapSchema;
+  readonly entry: FrameTransformChannel;
+  readonly message: McapMessage;
 }): readonly McapFrameTransformSample[] {
-  const record = decodeProtobufMessage(
-    message.data,
-    {
-      encoding: channel.messageEncoding,
-      schema: schema.name,
-      schemaEncoding: schema.encoding,
-    },
-    {
-      schemaData: schema.data,
-      sourceTimestamps: {
-        logTime: message.logTime,
-        publishTime: message.publishTime,
-      },
-      streamId: channel.topic,
-    },
-  );
+  const record = entry.decodeRecord(message);
+  const staticTopic = isStaticTransformBootstrapTopic(entry.channel.topic);
 
-  if (match.kind === "batch") {
-    return requiredArray(record, match.repeatedFieldName).map((transform) =>
-      normalizeFrameTransformRecord(asRecord(transform)),
+  if (entry.match.kind === "batch") {
+    return requiredArray(record, entry.match.repeatedFieldName).map(
+      (transform) =>
+        normalizeFrameTransformRecord(asRecord(transform), {
+          format: entry.match.format,
+          staticTopic,
+        }),
     );
   }
 
-  return [normalizeFrameTransformRecord(record)];
+  return [
+    normalizeFrameTransformRecord(record, {
+      format: entry.match.format,
+      staticTopic,
+    }),
+  ];
 }
 
 function normalizeFrameTransformRecord(
   record: Record<string, unknown>,
+  {
+    format,
+    staticTopic,
+  }: {
+    readonly format: FrameTransformSchemaMatch["format"];
+    readonly staticTopic: boolean;
+  },
 ): McapFrameTransformSample {
+  if (format === "ros-tf-message") {
+    return normalizeRosTransformStampedRecord(record, staticTopic);
+  }
+
   const parentFrameId = optionalString(
     record,
     "parentFrameId",
@@ -422,7 +484,76 @@ function normalizeFrameTransformRecord(
   };
 }
 
-function classifyFrameTransformSchema(
+function normalizeRosTransformStampedRecord(
+  record: Record<string, unknown>,
+  staticTopic: boolean,
+): McapFrameTransformSample {
+  const header = optionalRecord(record, "header");
+  const transform = optionalRecord(record, "transform");
+  const parentFrameId = header
+    ? optionalString(header, "frame_id", "frameId")
+    : undefined;
+  const childFrameId = optionalString(record, "child_frame_id", "childFrameId");
+  const translation = transform
+    ? optionalRecord(transform, "translation")
+    : undefined;
+  const rotation = transform
+    ? optionalRecord(transform, "rotation")
+    : undefined;
+  const transformTimeNs = staticTopic
+    ? undefined
+    : rosTimestampNs(header ? optionalRecord(header, "stamp") : undefined);
+
+  if (!parentFrameId) {
+    throw new Error("TransformStamped header.frame_id is missing");
+  }
+  if (!childFrameId) {
+    throw new Error("TransformStamped child_frame_id is missing");
+  }
+  if (!translation) {
+    throw new Error("TransformStamped translation is missing");
+  }
+  if (!rotation) {
+    throw new Error("TransformStamped rotation is missing");
+  }
+
+  return {
+    childFrameId,
+    parentFrameId,
+    rotation: new Quaternion(
+      requiredNumber(rotation, "x"),
+      requiredNumber(rotation, "y"),
+      requiredNumber(rotation, "z"),
+      requiredNumber(rotation, "w"),
+    ).normalize(),
+    ...(transformTimeNs !== undefined ? { timeNs: transformTimeNs } : {}),
+    translation: new Vector3(
+      requiredNumber(translation, "x"),
+      requiredNumber(translation, "y"),
+      requiredNumber(translation, "z"),
+    ),
+  };
+}
+
+function rosTimestampNs(timestamp: Record<string, unknown> | undefined) {
+  if (!timestamp) {
+    return undefined;
+  }
+
+  const seconds =
+    optionalBigInt(timestamp, "sec") ??
+    optionalBigInt(timestamp, "seconds") ??
+    0n;
+  const nanos =
+    optionalBigInt(timestamp, "nsec") ??
+    optionalBigInt(timestamp, "nanosec") ??
+    optionalBigInt(timestamp, "nanos") ??
+    0n;
+
+  return seconds * 1_000_000_000n + nanos;
+}
+
+function classifyProtobufFrameTransformSchema(
   schema: McapSchema,
 ): FrameTransformSchemaMatch | null {
   if (schema.encoding !== PROTOBUF_ENCODING) {
@@ -431,12 +562,14 @@ function classifyFrameTransformSchema(
 
   if (schema.name === FOXGLOVE_FRAME_TRANSFORMS_SCHEMA) {
     return {
+      format: "foxglove",
       kind: "batch",
       repeatedFieldName: "transforms",
     };
   }
   if (SUPPORTED_TRANSFORM_SCHEMAS.has(schema.name)) {
     return {
+      format: "foxglove",
       kind: "single",
     };
   }
@@ -447,6 +580,7 @@ function classifyFrameTransformSchema(
     type.resolveAll();
     if (isFrameTransformType(type)) {
       return {
+        format: "foxglove",
         kind: "single",
       };
     }
@@ -459,6 +593,7 @@ function classifyFrameTransformSchema(
     );
     if (repeatedTransformField) {
       return {
+        format: "foxglove",
         kind: "batch",
         repeatedFieldName: repeatedTransformField.name,
       };
@@ -468,6 +603,45 @@ function classifyFrameTransformSchema(
   }
 
   return null;
+}
+
+function classifyRosFrameTransformSchema(
+  reader: McapIndexedReaderLike,
+  channel: McapChannel,
+  schema: McapSchema,
+): FrameTransformSchemaMatch | null {
+  const definitions = rosMessageDefinitionsForChannel(reader, channel);
+  const root = definitions ? rootRosMessageDefinition(definitions) : undefined;
+  if (!root || !isRosTfMessageSchema(schema, root)) {
+    return null;
+  }
+  const transformsField = root.definitions.find(
+    (field) => field.name === TF_MESSAGE_BATCH_FIELD,
+  );
+  if (
+    !transformsField?.isArray ||
+    !transformsField.isComplex ||
+    !ROS_TRANSFORM_STAMPED_SCHEMAS.has(transformsField.type)
+  ) {
+    return null;
+  }
+
+  return {
+    format: "ros-tf-message",
+    kind: "batch",
+    repeatedFieldName: TF_MESSAGE_BATCH_FIELD,
+  };
+}
+
+function isRosTfMessageSchema(
+  schema: McapSchema,
+  definition: RosMessageDefinition,
+): boolean {
+  return (
+    ROS_TF_MESSAGE_SCHEMAS.has(schema.name) ||
+    (definition.name !== undefined &&
+      ROS_TF_MESSAGE_SCHEMAS.has(definition.name))
+  );
 }
 
 function isFrameTransformType(type: Type): boolean {
