@@ -15,7 +15,7 @@ import {
 } from "./protobuf/records";
 import { timingFromContext, timestampNs } from "./protobuf/timing";
 
-const POINT_COMPONENT_COUNT = 3;
+export const LASER_SCAN_POINT_COMPONENT_COUNT = 3;
 
 // Canonical scalar-channel name shared with the point-cloud decoder so
 // auto-coloring and future color-by-field pick up scan intensities.
@@ -56,7 +56,8 @@ export const foxgloveLaserScanDecoder: Decoder = {
       ranges,
       startAngle,
     });
-    const pointCount = decoded.positions.length / POINT_COMPONENT_COUNT;
+    const pointCount =
+      decoded.positions.length / LASER_SCAN_POINT_COMPONENT_COUNT;
 
     const attributes: Record<string, DecodedAttributeValue> = {
       endAngle,
@@ -95,12 +96,12 @@ export const foxgloveLaserScanDecoder: Decoder = {
   },
 };
 
-interface DecodedScanPoints {
+export interface DecodedScanPoints {
   readonly intensities?: Float32Array;
   readonly positions: Float32Array;
 }
 
-function scanToPoints({
+export function scanToPoints({
   endAngle,
   intensities,
   pose,
@@ -117,7 +118,9 @@ function scanToPoints({
   const angleStep =
     ranges.length > 1 ? (endAngle - startAngle) / (ranges.length - 1) : 0;
   const transform = poseTransform(pose);
-  const positions = new Float32Array(ranges.length * POINT_COMPONENT_COUNT);
+  const positions = new Float32Array(
+    ranges.length * LASER_SCAN_POINT_COMPONENT_COUNT,
+  );
   const scanIntensities = intensities
     ? new Float32Array(ranges.length)
     : undefined;
@@ -132,7 +135,7 @@ function scanToPoints({
     }
 
     const angle = startAngle + angleStep * index;
-    const offset = pointCount * POINT_COMPONENT_COUNT;
+    const offset = pointCount * LASER_SCAN_POINT_COMPONENT_COUNT;
     transform(
       positions,
       offset,
@@ -158,7 +161,10 @@ function scanToPoints({
     ...(scanIntensities
       ? { intensities: scanIntensities.slice(0, pointCount) }
       : {}),
-    positions: positions.slice(0, pointCount * POINT_COMPONENT_COUNT),
+    positions: positions.slice(
+      0,
+      pointCount * LASER_SCAN_POINT_COMPONENT_COUNT,
+    ),
   };
 }
 

@@ -43,7 +43,7 @@ const INT32_MAX_VALUE = 2_147_483_647;
 
 const FLOAT32_BYTE_WIDTH = 4;
 
-const POINT_COMPONENT_COUNT = 3;
+export const POINT_COMPONENT_COUNT = 3;
 const COLOR_COMPONENT_COUNT = 3;
 
 const X_COMPONENT_INDEX = 0;
@@ -145,13 +145,13 @@ export const foxglovePointCloudDecoder: Decoder = {
   },
 };
 
-interface DecodedPointCloudData {
+export interface DecodedPointCloudData {
   readonly colors?: Float32Array;
   readonly positions: Float32Array;
   readonly scalarFields: readonly PointCloudScalarField[];
 }
 
-function extractPointCloudData(
+export function extractPointCloudData(
   data: Uint8Array,
   pointStride: number,
   fields: readonly PointCloudField[],

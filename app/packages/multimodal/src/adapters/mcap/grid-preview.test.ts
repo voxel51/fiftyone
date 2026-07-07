@@ -428,7 +428,7 @@ describe("MCAP grid preview", () => {
         createTopic(
           "/radar/points",
           "sensor_msgs/msg/PointCloud2",
-          "cdr",
+          "protobuf",
           "ros2msg",
         ),
         createTopic("/radar/custom", "example.RadarPointCloud"),

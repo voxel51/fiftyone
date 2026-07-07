@@ -3,11 +3,13 @@ import { parseRos2idl } from "@foxglove/ros2idl-parser";
 import { MessageReader as Ros1MessageReader } from "@foxglove/rosmsg-serialization";
 import { MessageReader as Ros2MessageReader } from "@foxglove/rosmsg2-serialization";
 import type { McapTypes } from "@mcap/core";
+import type { PayloadDescriptor } from "../../../../decoders";
 
 const TEXT_DECODER = new TextDecoder();
 
 type McapChannel = McapTypes.TypedMcapRecords["Channel"];
 type McapSchema = McapTypes.TypedMcapRecords["Schema"];
+type RosSchemaLike = Pick<McapSchema, "data" | "encoding" | "name">;
 
 export type RosMessageDefinition = ReturnType<
   typeof parseRosMessageDefinition
@@ -17,8 +19,8 @@ interface McapRosSchemaReader {
   readonly schemasById: ReadonlyMap<number, McapSchema>;
 }
 
-type RosMessageEncoding = "ros1" | "cdr";
-type RosSchemaEncoding = "ros1msg" | "ros2msg" | "ros2idl";
+export type RosMessageEncoding = "ros1" | "cdr";
+export type RosSchemaEncoding = "ros1msg" | "ros2msg" | "ros2idl";
 
 interface ParsedRosChannelSchema {
   readonly definitions: readonly RosMessageDefinition[];
@@ -41,6 +43,32 @@ export function rosRecordDecoderForChannel(
   channel: Pick<McapChannel, "messageEncoding" | "schemaId">,
 ): ((bytes: Uint8Array) => Record<string, unknown>) | null {
   const parsed = parsedRosSchemaForChannel(reader, channel);
+  if (!parsed) {
+    return null;
+  }
+
+  return (bytes) => asRecord(parsed.reader.readMessage(bytes));
+}
+
+/**
+ * Returns a generic ROS record decoder for one exact payload descriptor and
+ * schema byte blob. This is the registry-decoder counterpart to
+ * `rosRecordDecoderForChannel`; both share the same parse cache and reader
+ * construction path.
+ */
+export function rosRecordDecoderForPayload(
+  payload: PayloadDescriptor,
+  schemaData: Uint8Array | undefined,
+): ((bytes: Uint8Array) => Record<string, unknown>) | null {
+  if (!schemaData || schemaData.byteLength === 0 || !payload.schema) {
+    return null;
+  }
+
+  const parsed = parsedRosSchema(payload.encoding, {
+    data: schemaData,
+    encoding: payload.schemaEncoding ?? "",
+    name: payload.schema,
+  });
   if (!parsed) {
     return null;
   }
@@ -85,12 +113,19 @@ function parsedRosSchemaForChannel(
     return null;
   }
 
-  const match = rosEncodingMatch(channel.messageEncoding, schema.encoding);
+  return parsedRosSchema(channel.messageEncoding, schema);
+}
+
+function parsedRosSchema(
+  messageEncoding: string,
+  schema: RosSchemaLike,
+): ParsedRosChannelSchema | null {
+  const match = rosEncodingMatch(messageEncoding, schema.encoding);
   if (!match) {
     return null;
   }
 
-  const cacheKey = rosSchemaCacheKey(channel.messageEncoding, schema);
+  const cacheKey = rosSchemaCacheKey(messageEncoding, schema);
   if (parsedSchemaCache.has(cacheKey)) {
     return parsedSchemaCache.get(cacheKey) ?? null;
   }
@@ -131,7 +166,7 @@ function rosEncodingMatch(
 }
 
 function parseRosSchema(
-  schema: McapSchema,
+  schema: RosSchemaLike,
   schemaEncoding: RosSchemaEncoding,
 ): RosMessageDefinition[] {
   const schemaText = TEXT_DECODER.decode(schema.data);
@@ -153,7 +188,7 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function rosSchemaCacheKey(
   messageEncoding: string,
-  schema: McapSchema,
+  schema: RosSchemaLike,
 ): string {
   return [
     messageEncoding,
