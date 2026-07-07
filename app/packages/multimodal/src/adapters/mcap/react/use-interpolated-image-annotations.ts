@@ -12,7 +12,6 @@ import type { McapDecodedMessage } from "../types";
 import {
   interpolateImageAnnotations,
   interpolationFraction,
-  lowerBoundBigInt,
   vizOf,
 } from "./interpolate-image-annotations";
 import {
@@ -144,7 +143,6 @@ function annotationSetsFromCaches({
 }[] {
   if (!dataStream || !timeline) return [];
 
-<<<<<<< HEAD
   const sets: {
     frame: ImageAnnotationsVisualization;
     topic: string;
@@ -161,64 +159,6 @@ function annotationSetsFromCaches({
       : null;
     if (frame) {
       sets.push({ frame, topic });
-=======
-type Point2 = readonly [number, number];
-
-const MATCH_DISTANCE_PX = 200;
-const MIN_MATCH_IOU = 0.15;
-
-function interpolateImageAnnotations(
-  prev: ImageAnnotationsVisualization,
-  next: ImageAnnotationsVisualization,
-  f: number,
-): ImageAnnotationsVisualization {
-  return {
-    kind: prev.kind,
-    circles: interpolateCircles(prev.circles, next.circles, f),
-    points: interpolatePointsArray(prev, next, f),
-    texts: interpolateTexts(prev.texts, next.texts, f),
-  };
-}
-
-function interpolateCircles(
-  prev: readonly ImageAnnotationCircle[],
-  next: readonly ImageAnnotationCircle[],
-  f: number,
-): readonly ImageAnnotationCircle[] {
-  // Index matching is acceptable for circles — they're rare in this data
-  // and tend to stay in order; if counts differ we just keep prev.
-  if (prev.length !== next.length) return prev;
-  return prev.map((p, i) => {
-    const n = next[i];
-    return {
-      ...p,
-      position: lerpPoint(p.position, n.position, f),
-      diameter: lerp(p.diameter, n.diameter, f),
-    };
-  });
-}
-
-function interpolateTexts(
-  prev: readonly ImageAnnotationText[],
-  next: readonly ImageAnnotationText[],
-  f: number,
-): readonly ImageAnnotationText[] {
-  // Match texts by `text` content + nearest position, greedy per content.
-  const out: ImageAnnotationText[] = [];
-  const usedNext = new Set<number>();
-  for (const p of prev) {
-    let bestIdx = -1;
-    let bestDist = Infinity;
-    for (let j = 0; j < next.length; j++) {
-      if (usedNext.has(j)) continue;
-      const n = next[j];
-      if (n.text !== p.text) continue;
-      const d = squaredDistance(p.position, n.position);
-      if (d < bestDist) {
-        bestDist = d;
-        bestIdx = j;
-      }
->>>>>>> main
     }
   }
   return sets;
@@ -230,7 +170,6 @@ function interpolateTexts(
  * array each render without re-triggering the subscription effects or the
  * `useSyncExternalStore` snapshot below.
  */
-<<<<<<< HEAD
 function useStableTopics(topics: readonly string[]): readonly string[] {
   // Memoize on the joined contents rather than array identity, so callers can
   // pass a fresh array every render without churning the downstream memo and
@@ -248,8 +187,9 @@ function useStableTopics(topics: readonly string[]): readonly string[] {
  * returns a `"topic:revision|"` digest string. The digest changes whenever a
  * watched cache bumps its revision (frames arrive, change, or are cleared),
  * which is what drives the hook to re-derive annotation frames as data streams in.
+ * Shared with `use-interpolated-scene-updates`.
  */
-function useTopicCacheSnapshot(
+export function useTopicCacheSnapshot(
   dataStream: McapDataStream | null,
   topics: readonly string[],
 ): string {
@@ -273,70 +213,6 @@ function useTopicCacheSnapshot(
       };
     },
     [dataStream, topics],
-=======
-function interpolatePointsArray(
-  prev: ImageAnnotationsVisualization,
-  next: ImageAnnotationsVisualization,
-  f: number,
-): readonly ImageAnnotationPoints[] {
-  if (prev.points.length !== next.points.length) return prev.points;
-  return prev.points.map((pp, idx) => {
-    const np = next.points[idx];
-    if (pp.type !== np.type) return pp;
-    if (pp.type === "line-list") {
-      return interpolateLineList(pp, np, prev.texts, next.texts, f);
-    }
-    if (pp.points.length !== np.points.length) return pp;
-    return {
-      ...pp,
-      points: pp.points.map((pt, j) => lerpPoint(pt, np.points[j], f)),
-    };
-  });
-}
-
-function interpolateLineList(
-  prevPrim: ImageAnnotationPoints,
-  nextPrim: ImageAnnotationPoints,
-  prevTexts: readonly ImageAnnotationText[],
-  nextTexts: readonly ImageAnnotationText[],
-  f: number,
-): ImageAnnotationPoints {
-  const prevGroups = groupLineList(prevPrim.points, prevTexts);
-  const nextGroups = groupLineList(nextPrim.points, nextTexts);
-
-  // Per-prev candidate selection:
-  //   1. Same label class (hard).
-  //   2. Centroid within MATCH_DISTANCE_PX (coarse position filter).
-  //   3. AABB IoU above MIN_IOU (rejects gross size mismatches —
-  //      e.g. a parked truck near a passing sedan).
-  //   4. Among survivors, pick the lowest symmetric Chamfer distance
-  //      over the cuboid's unique vertices (shape similarity tiebreak).
-  // Greedy: first prev to claim a next wins.
-  const usedNext = new Set<number>();
-  const matchedPairs: { prev: Group; next: Group | null }[] = prevGroups.map(
-    (pg) => {
-      let bestIdx = -1;
-      let bestScore = Infinity;
-      const distSqThreshold = MATCH_DISTANCE_PX * MATCH_DISTANCE_PX;
-      for (let j = 0; j < nextGroups.length; j++) {
-        if (usedNext.has(j)) continue;
-        const ng = nextGroups[j];
-        if (ng.label !== pg.label) continue;
-        if (squaredDistance(pg.centroid, ng.centroid) > distSqThreshold) {
-          continue;
-        }
-        if (aabbIoU(pg.bounds, ng.bounds) < MIN_MATCH_IOU) continue;
-        const score = chamferDistance(pg.vertices, ng.vertices);
-        if (score < bestScore) {
-          bestScore = score;
-          bestIdx = j;
-        }
-      }
-      if (bestIdx === -1) return { prev: pg, next: null };
-      usedNext.add(bestIdx);
-      return { prev: pg, next: nextGroups[bestIdx] };
-    },
->>>>>>> main
   );
 
   const getSnapshot = useCallback(
@@ -360,54 +236,9 @@ function topicCacheSnapshot(
   return snapshot;
 }
 
-<<<<<<< HEAD
 function normalizeTopics(topics: readonly string[]): readonly string[] {
   if (topics.length === 0) return EMPTY_TOPICS;
   const normalized: string[] = [];
-=======
-// ---------------------------------------------------------------------------
-// Connected-component grouping (mirror of the overlay's render path)
-// ---------------------------------------------------------------------------
-
-interface Group {
-  readonly segments: readonly [Point2, Point2][];
-  readonly centroid: Point2;
-  readonly bounds: Bounds;
-  readonly vertices: readonly Point2[];
-  readonly label: string | null;
-}
-
-function groupLineList(
-  points: readonly Point2[],
-  texts: readonly ImageAnnotationText[],
-): readonly Group[] {
-  return groupLineSegmentsByLabel(points, texts).map(({ label, segments }) =>
-    makeGroup(segments, label),
-  );
-}
-
-function makeGroup(
-  segments: readonly [Point2, Point2][],
-  label: string | null,
-): Group {
-  const bounds = segmentsBounds(segments);
-  const centroid: Point2 = [
-    (bounds.minX + bounds.maxX) / 2,
-    (bounds.minY + bounds.maxY) / 2,
-  ];
-  return {
-    segments,
-    centroid,
-    bounds,
-    vertices: uniqueVertices(segments),
-    label,
-  };
-}
-
-function uniqueVertices(
-  segments: readonly [Point2, Point2][],
-): readonly Point2[] {
->>>>>>> main
   const seen = new Set<string>();
   let changed = false;
   for (const topic of topics) {
@@ -445,7 +276,7 @@ function currentAnnotationFrame({
   if (!currentViz) return null;
   if (!interpolate) return currentViz;
 
-  const nextMsg = nextDistinctAnnotationMessage({
+  const nextMsg = nextDistinctCachedMessage({
     cache,
     currentTick,
     currentTimelineTimeNs: currentMsg.timelineTimeNs,
@@ -465,7 +296,12 @@ function currentAnnotationFrame({
   return interpolateImageAnnotations(currentViz, nextViz, f);
 }
 
-function nextDistinctAnnotationMessage({
+/**
+ * Finds the next cached source message strictly after `currentTick` whose
+ * timeline time differs from the current message's. Decoder-agnostic; shared
+ * by the 2D image-annotation and 3D scene-update interpolation hooks.
+ */
+export function nextDistinctCachedMessage({
   cache,
   currentTick,
   currentTimelineTimeNs,
@@ -480,13 +316,17 @@ function nextDistinctAnnotationMessage({
   // point to the same source annotation. Walk forward only far enough to find
   // the next cached source message; if lookahead is missing, staying on the
   // current frame is cheaper and visually safer than scanning the full file.
-  const startIndex = lowerBoundBigInt(timeline.ticks, currentTick) + 1;
+  const currentIndex = timeline.indexOfTick(currentTick);
+  if (currentIndex === undefined) return null;
+  const startIndex = currentIndex + 1;
   const endIndex = Math.min(
-    timeline.ticks.length,
+    timeline.tickCount,
     startIndex + MAX_NEXT_MESSAGE_SCAN_TICKS,
   );
   for (let i = startIndex; i < endIndex; i++) {
-    const msg = cache.get(timeline.ticks[i]);
+    const tick = timeline.tickAt(i);
+    if (tick === undefined) break;
+    const msg = cache.get(tick);
     if (msg && msg.timelineTimeNs !== currentTimelineTimeNs) return msg;
   }
   return null;

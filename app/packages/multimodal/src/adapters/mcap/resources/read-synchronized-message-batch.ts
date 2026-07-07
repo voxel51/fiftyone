@@ -9,6 +9,7 @@ import {
   minBigInt,
   selectCandidatesForTopic,
 } from "../sync";
+import { mcapReadCancelledError } from "../errors";
 import { decodeMcapMessage, mcapMessageRecordId } from "../message-decoder";
 import type { McapIndexedMessageTime, McapIndexedReaderLike } from "../reader";
 import type { McapTimelineStrategy } from "../timeline";
@@ -49,12 +50,14 @@ export async function readMcapSynchronizedMessageBatch({
   decodeClient,
   predecessorStore,
   reader,
+  readSignal,
   request,
   timeline,
 }: {
   readonly decodeClient: DecodeClient;
   readonly predecessorStore?: McapPredecessorStore;
   readonly reader: McapIndexedReaderLike;
+  readonly readSignal?: { readonly current: AbortSignal | null };
   readonly request: McapReadSynchronizedMessageBatchRequest;
   readonly timeline: McapTimelineStrategy;
 }): Promise<readonly McapSynchronizedMessageWindow[]> {
@@ -75,13 +78,9 @@ export async function readMcapSynchronizedMessageBatch({
   // tolerances) and the open lookback is served by the predecessor probe.
   const startTimeNs = minBigInt(
     windowBounds.flatMap((bounds) =>
-<<<<<<< HEAD
       Object.values(bounds.streamPolicies).map(
         (policy) => policy.startTimeNs ?? bounds.timeNs,
       ),
-=======
-      Object.values(bounds.streamPolicies).map((policy) => policy.startTimeNs),
->>>>>>> main
     ),
   );
   const endTimeNs = maxBigInt(
@@ -118,6 +117,14 @@ export async function readMcapSynchronizedMessageBatch({
 
     return decodeWindowsFromCandidates({
       candidates: indexedCandidates,
+      // Decode dominates warm batches, and a worker lane is serial: without
+      // decode-boundary aborts a cancelled batch would keep the lane busy
+      // for seconds before the next sample's reads run.
+      throwIfAborted: () => {
+        if (readSignal?.current?.aborted) {
+          throw mcapReadCancelledError();
+        }
+      },
       decodeCandidate: (candidate) =>
         decodeIndexedCandidate({
           candidate,
@@ -128,6 +135,14 @@ export async function readMcapSynchronizedMessageBatch({
           reader,
           source: request.source,
           timeline,
+        }),
+      // Selected candidates name their chunks exactly, so the byte layer can
+      // pipeline those chunk fetches while decoding walks them serially.
+      onCandidatesSelected: (selected) =>
+        void reader.prefetchChunkData?.({
+          chunkStartOffsets: selected.map(
+            (candidate) => candidate.chunkStartOffset,
+          ),
         }),
       selectTieBreaker: compareIndexedCandidateTieBreaker,
       timeline,
@@ -377,7 +392,9 @@ async function decodeWindowsFromCandidates<
 >({
   candidates,
   decodeCandidate,
+  onCandidatesSelected,
   selectTieBreaker,
+  throwIfAborted,
   timeline,
   topics,
   windowBounds,
@@ -386,7 +403,9 @@ async function decodeWindowsFromCandidates<
   readonly decodeCandidate: (
     candidate: Candidate,
   ) => Promise<McapDecodedMessage>;
+  readonly onCandidatesSelected?: (selected: readonly Candidate[]) => void;
   readonly selectTieBreaker: (left: Candidate, right: Candidate) => number;
+  readonly throwIfAborted?: () => void;
   readonly timeline: McapTimelineStrategy;
   readonly topics: readonly string[];
   readonly windowBounds: readonly {
@@ -394,18 +413,51 @@ async function decodeWindowsFromCandidates<
     readonly streamPolicies: McapSynchronizedMessageWindow["streamPolicies"];
   }[];
 }): Promise<readonly McapSynchronizedMessageWindow[]> {
+  // Selection is synchronous, so resolve every window's candidate set before
+  // any decode read starts: the union names exactly which messages (and
+  // therefore chunks) this batch touches.
+  const selections = windowBounds.map(({ timeNs, streamPolicies }) => ({
+    selectedByTopic: topics.map(
+      (topic) =>
+        [
+          topic,
+          selectCandidatesForTopic(
+            candidates.get(topic) ?? [],
+            timeNs,
+            streamPolicies[topic],
+            selectTieBreaker,
+          ),
+        ] as const,
+    ),
+    streamPolicies,
+    timeNs,
+  }));
+
+  if (onCandidatesSelected) {
+    const seen = new Set<Candidate>();
+    const union: Candidate[] = [];
+    for (const selection of selections) {
+      for (const [, selected] of selection.selectedByTopic) {
+        for (const candidate of selected) {
+          if (!seen.has(candidate)) {
+            seen.add(candidate);
+            union.push(candidate);
+          }
+        }
+      }
+    }
+    if (union.length > 0) {
+      onCandidatesSelected(union);
+    }
+  }
+
   return Promise.all(
-    windowBounds.map(async ({ timeNs, streamPolicies }) => {
+    selections.map(async ({ selectedByTopic, streamPolicies, timeNs }) => {
       const messagesByTopic: Record<string, readonly McapDecodedMessage[]> = {};
       const messages: McapDecodedMessage[] = [];
 
-      for (const topic of topics) {
-        const selected = selectCandidatesForTopic(
-          candidates.get(topic) ?? [],
-          timeNs,
-          streamPolicies[topic],
-          selectTieBreaker,
-        );
+      for (const [topic, selected] of selectedByTopic) {
+        throwIfAborted?.();
         const decoded = await Promise.all(selected.map(decodeCandidate));
         messagesByTopic[topic] = decoded;
         messages.push(...decoded);
@@ -421,13 +473,9 @@ async function decodeWindowsFromCandidates<
         messages,
         messagesByTopic,
         startTimeNs: minBigInt(
-<<<<<<< HEAD
           Object.values(streamPolicies).map(
             (policy) => policy.startTimeNs ?? 0n,
           ),
-=======
-          Object.values(streamPolicies).map((policy) => policy.startTimeNs),
->>>>>>> main
         ),
         streamPolicies,
         timeNs,
@@ -467,6 +515,16 @@ async function collectIndexedCandidates({
     endTimeNs,
     startTimeNs,
     topics,
+  });
+
+  // The index scan reads one small exact range per (chunk, channel),
+  // serially — a line of round trips on remote transports. Awaiting the
+  // pipelined region warm-up first turns those reads into cache hits.
+  await reader.prefetchWindow?.({
+    endTimeNs: indexedRequest.endTimeNs,
+    includeChunkData: false,
+    startTimeNs: indexedRequest.startTimeNs,
+    topics: indexedRequest.topics,
   });
 
   for await (const message of reader.readIndexedMessageTimes(indexedRequest)) {
@@ -628,18 +686,6 @@ async function resolveRawCandidateForIndexedMessage({
       `Missing MCAP message for indexed ${candidate.topic} entry with channel ${
         candidate.channelId
       } at ${candidate.logTimeNs.toString()}`,
-<<<<<<< HEAD
-=======
-    );
-  }
-  if (matches.length > 1) {
-    throw new Error(
-      `Ambiguous MCAP indexed-to-raw match for ${
-        candidate.topic
-      } entry with channel ${
-        candidate.channelId
-      } at ${candidate.logTimeNs.toString()}`,
->>>>>>> main
     );
   }
 
