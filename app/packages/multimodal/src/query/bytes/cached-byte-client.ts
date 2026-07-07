@@ -6,7 +6,12 @@ import {
 import { safeNumber } from "./bigint-utils";
 import { serializeCacheKey } from "../cache-utils";
 import { byteSourceAccessKey } from "./cache";
-import { byteFillLockName } from "./fill-lock";
+import {
+  acquireByteFillSlot,
+  byteFillLockName,
+  byteFillSlotFloor,
+  tryAcquireByteFillSlot,
+} from "./fill-lock";
 import { parseByteSize } from "./byte-size";
 import { monotonicNowMs } from "../../time";
 import type {
@@ -55,6 +60,7 @@ export function createCachedByteClient(
 ): ByteClient {
   const pendingByteReads = new Map<string, Promise<ByteFillOutcome>>();
   const fillLocks = caches.locks || undefined;
+  const fillSlotFloor = byteFillSlotFloor(caches.fillSlotClass);
   const readaheadIssuedAtMs = new Map<string, number>();
 
   const resolveBlockSizeBytes = (
@@ -107,7 +113,25 @@ export function createCachedByteClient(
               return;
             }
 
-            const outcome = await fillFromNetwork(fillRequest);
+            // Remote fetches are metered through the source's fill slots:
+            // waiting here (in grant order) keeps block arrival aligned
+            // with need order when the link saturates, instead of every
+            // in-flight fill splitting bandwidth and finishing late.
+            const releaseSlot =
+              fillRequest.source.readProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
+                ? await acquireByteFillSlot(
+                    fillLocks,
+                    fillRequest.source,
+                    fillRequest.signal,
+                    fillSlotFloor,
+                  )
+                : undefined;
+            let outcome: ByteFillOutcome;
+            try {
+              outcome = await fillFromNetwork(fillRequest);
+            } finally {
+              releaseSlot?.();
+            }
             resolve(outcome);
             // Waiters are released only after the persistent entry lands —
             // holding the lock through the put is what turns their fetches
@@ -143,19 +167,116 @@ export function createCachedByteClient(
       if (pendingByteReads.has(fillKey)) {
         return;
       }
-      const startMs = byteReadNowMs();
-      const fill = fillExclusive(readahead, persistent).finally(() => {
-        pendingByteReads.delete(fillKey);
-      });
-      pendingByteReads.set(fillKey, fill);
-      const outcome = await fill;
-      logByteRead(caches, {
-        cacheResult: outcome.cacheResult,
-        fillRequest: readahead,
-        request: readahead,
-        result: outcome.result,
-        startMs,
-      });
+
+      if (!fillLocks || !persistent) {
+        // Single-context path (no cross-context locks means no slots to
+        // meter with): plain speculative fetch, as before.
+        const startMs = byteReadNowMs();
+        const fill = fillFromNetwork(readahead).finally(() => {
+          pendingByteReads.delete(fillKey);
+        });
+        pendingByteReads.set(fillKey, fill);
+        const outcome = await fill;
+        void persistent?.put(outcome.result).catch(() => undefined);
+        logByteRead(caches, {
+          cacheResult: outcome.cacheResult,
+          fillRequest: readahead,
+          request: readahead,
+          result: outcome.result,
+          startMs,
+        });
+        return;
+      }
+
+      // Speculation runs strictly in the link's spare capacity: no free
+      // fill slot (demand owns the link) or the block already filling in
+      // another context → skip without waiting on anything. Never holding
+      // a slot while blocked is what makes slot waits deadlock-free, and
+      // the retrigger TTL revisits skipped shapes once the link clears.
+      // Readahead is background by definition — the reserved priority
+      // slot is never its to take, whatever this client's class.
+      const releaseSlot = await tryAcquireByteFillSlot(
+        fillLocks,
+        readahead.source,
+        byteFillSlotFloor("background"),
+      );
+      if (!releaseSlot) {
+        return;
+      }
+      try {
+        await new Promise<void>((resolveDone, rejectDone) => {
+          fillLocks
+            .request(
+              byteFillLockName(readahead),
+              { ifAvailable: true, mode: "exclusive" },
+              async (lock) => {
+                if (!lock) {
+                  resolveDone();
+                  return;
+                }
+                // Register in the in-flight map only now that this context
+                // is definitely the filler: a skipped readahead must never
+                // poison a coalesced demand read, while demand arriving
+                // during the fetch still shares the in-memory result.
+                const startMs = byteReadNowMs();
+                let resolveOutcome!: (outcome: ByteFillOutcome) => void;
+                let rejectOutcome!: (error: unknown) => void;
+                const registered = new Promise<ByteFillOutcome>(
+                  (resolveFill, rejectFill) => {
+                    resolveOutcome = resolveFill;
+                    rejectOutcome = rejectFill;
+                  },
+                );
+                // The rejection is for coalesced demand readers; without
+                // any, it must not surface as an unhandled rejection.
+                registered.catch(() => undefined);
+                pendingByteReads.set(fillKey, registered);
+                try {
+                  // Re-check the persistent layer under the lock, exactly
+                  // like the demand path.
+                  const persisted = await persistent.get(readahead);
+                  let outcome: ByteFillOutcome;
+                  if (persisted) {
+                    await caches.memory.put(persisted);
+                    outcome = {
+                      cacheResult: "persistent-hit",
+                      result: persisted,
+                    };
+                  } else {
+                    try {
+                      outcome = await fillFromNetwork(readahead);
+                    } finally {
+                      // The network part is done — free the slot before
+                      // the persistent put so it never gates the link.
+                      releaseSlot();
+                    }
+                  }
+                  resolveOutcome(outcome);
+                  logByteRead(caches, {
+                    cacheResult: outcome.cacheResult,
+                    fillRequest: readahead,
+                    request: readahead,
+                    result: outcome.result,
+                    startMs,
+                  });
+                  if (outcome.cacheResult === "fetched") {
+                    // Lock held through the put: waiters land as disk hits.
+                    await persistent.put(outcome.result).catch(() => undefined);
+                  }
+                  resolveDone();
+                } catch (error) {
+                  rejectOutcome(error);
+                  rejectDone(error);
+                } finally {
+                  pendingByteReads.delete(fillKey);
+                }
+              },
+            )
+            .catch(rejectDone);
+        });
+      } finally {
+        releaseSlot();
+      }
     })().catch(() => undefined);
   };
 

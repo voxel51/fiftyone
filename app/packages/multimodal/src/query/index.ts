@@ -41,6 +41,9 @@ export function createMultimodalQueryClient(
     blockSizeBytes:
       options.caches?.bytes?.blockSizeBytes ?? zonedBlockSize ?? undefined,
     debug: options.caches?.bytes?.debug,
+    ...(options.caches?.bytes?.fillSlotClass
+      ? { fillSlotClass: options.caches.bytes.fillSlotClass }
+      : {}),
     onRead: chainByteReadObservers(
       adaptiveBlockSize?.onRead,
       options.caches?.bytes?.onRead,

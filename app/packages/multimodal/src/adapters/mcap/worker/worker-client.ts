@@ -344,7 +344,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
       };
 
       const initRequest: McapPlaybackWorkerRequest = {
-        payload: workerFetchParameters(),
+        payload: {
+          ...workerFetchParameters(),
+          // Only the foreground lane serves playback-critical reads; the
+          // idle and bulk lanes must never occupy the reserved fill slot.
+          fillSlotClass: lane.name === "foreground" ? "priority" : "background",
+        },
         type: "init",
       };
       worker.postMessage(initRequest);

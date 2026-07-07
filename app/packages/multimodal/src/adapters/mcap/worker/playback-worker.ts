@@ -41,6 +41,7 @@ const activeReadSignal: { current: AbortSignal | null } = { current: null };
 let lastTransportProgressAtMs = -Infinity;
 
 let activeSourceKey = "";
+let fillSlotClass: "background" | "priority" | undefined;
 let mcap = createMcapClient();
 
 workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
@@ -52,6 +53,12 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
       message.payload.headers,
       message.payload.pathPrefix,
     );
+    // Init always precedes the first read, so rebuilding the client here
+    // gives every byte read this lane's declared fill-slot class.
+    if (message.payload.fillSlotClass) {
+      fillSlotClass = message.payload.fillSlotClass;
+      mcap = createMcapClient();
+    }
     scheduler.setDebug(false);
     return;
   }
@@ -189,6 +196,7 @@ function disposeAllClients() {
 
 function createMcapClient() {
   return createWorkerResourceClient({
+    ...(fillSlotClass ? { fillSlotClass } : {}),
     onByteRead: handleByteRead,
     readSignal: activeReadSignal,
   });

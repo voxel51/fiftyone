@@ -34,6 +34,7 @@ describe("MCAP grid preview worker pool", () => {
     expect(workers).toHaveLength(1);
     expect(workers[0].messages[0]).toEqual({
       payload: {
+        fillSlotClass: "background",
         headers: { Authorization: "token" },
         origin: "http://localhost:5151",
         pathPrefix: "/proxy",

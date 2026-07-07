@@ -31,6 +31,7 @@ describe("worker-backed MCAP resource client", () => {
 
     expect(worker.messages[0]).toEqual({
       payload: {
+        fillSlotClass: "priority",
         headers: { Authorization: "token" },
         origin: "http://localhost:5151",
         pathPrefix: "/proxy",

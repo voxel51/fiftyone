@@ -26,6 +26,7 @@ type McapGridPreviewWorkerScope = {
 
 const workerScope = self as unknown as McapGridPreviewWorkerScope;
 const scheduler = new McapPlaybackWorkerScheduler();
+let fillSlotClass: "background" | "priority" | undefined;
 // Each grid preview slot serves many sources (one per visible grid cell), so
 // keep a bounded per-source cache of readers and stream selections.
 const entries = new LRUCache<string, McapGridPreviewEntry>({
@@ -44,6 +45,7 @@ workerScope.onmessage = (event: MessageEvent<McapGridPreviewWorkerRequest>) => {
       message.payload.headers,
       message.payload.pathPrefix,
     );
+    fillSlotClass = message.payload.fillSlotClass;
     return;
   }
 
@@ -94,7 +96,9 @@ function entryForSource(sourceKey: string): McapGridPreviewEntry {
     return cached;
   }
 
-  const entry = { client: createWorkerResourceClient() };
+  const entry = {
+    client: createWorkerResourceClient(fillSlotClass ? { fillSlotClass } : {}),
+  };
   entries.set(sourceKey, entry);
 
   return entry;

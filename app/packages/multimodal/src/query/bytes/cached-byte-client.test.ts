@@ -5,6 +5,7 @@ import { BYTE_SOURCE_READ_PROFILE } from "./constants";
 import type {
   ByteClient,
   ByteFillLockManager,
+  ByteFillSlotClass,
   ByteRangeCache,
   ByteRangeReadRequest,
   ByteRangeReadResult,
@@ -46,18 +47,28 @@ function fillResult(forRequest: ByteRangeReadRequest): ByteRangeReadResult {
 
 /**
  * FIFO exclusive lock fake: requests for one name run strictly in arrival
- * order, and the lock is held until the granted callback settles.
+ * order, the lock is held until the granted callback settles, `ifAvailable`
+ * invokes the callback with `null` instead of queueing (matching the Web
+ * Locks API), and aborting a queued request removes it from its queue.
  */
 function createFakeLockManager() {
   const tails = new Map<string, Promise<void>>();
+  const queueDepth = new Map<string, number>();
   const granted: string[] = [];
+  const abortError = () => {
+    const error = new Error("The lock request was aborted.");
+    error.name = "AbortError";
+    return error;
+  };
   const manager: ByteFillLockManager = {
     async request(name, options, callback) {
       if (options.signal?.aborted) {
-        const error = new Error("The lock request was aborted.");
-        error.name = "AbortError";
-        throw error;
+        throw abortError();
       }
+      if (options.ifAvailable && (queueDepth.get(name) ?? 0) > 0) {
+        return await callback(null);
+      }
+      queueDepth.set(name, (queueDepth.get(name) ?? 0) + 1);
       const previous = tails.get(name) ?? Promise.resolve();
       let release!: () => void;
       const held = new Promise<void>((resolve) => {
@@ -67,12 +78,35 @@ function createFakeLockManager() {
         name,
         previous.then(() => held),
       );
-      await previous;
+      const leaveQueue = () => {
+        queueDepth.set(name, (queueDepth.get(name) ?? 1) - 1);
+        release();
+      };
+      try {
+        if (options.signal) {
+          const signal = options.signal;
+          await Promise.race([
+            previous,
+            new Promise<never>((_, rejectAborted) => {
+              signal.addEventListener(
+                "abort",
+                () => rejectAborted(abortError()),
+                { once: true },
+              );
+            }),
+          ]);
+        } else {
+          await previous;
+        }
+      } catch (error) {
+        leaveQueue();
+        throw error;
+      }
       granted.push(name);
       try {
-        return await callback();
+        return await callback({ name });
       } finally {
-        release();
+        leaveQueue();
       }
     },
   };
@@ -119,11 +153,13 @@ function createGatedPersistent(inner: ByteRangeCache) {
 
 function createClient({
   blockSizeBytes,
+  fillSlotClass,
   locks,
   persistent,
   reads,
 }: {
   blockSizeBytes?: number;
+  fillSlotClass?: ByteFillSlotClass;
   locks?: ByteFillLockManager | false;
   persistent?: ByteRangeCache | false;
   reads: ByteClient;
@@ -131,6 +167,7 @@ function createClient({
   const logs: ByteReadDebugLog[] = [];
   const client = createCachedByteClient(reads, {
     ...(blockSizeBytes !== undefined ? { blockSizeBytes } : {}),
+    ...(fillSlotClass !== undefined ? { fillSlotClass } : {}),
     ...(locks !== undefined ? { locks } : {}),
     memory: createMemoryByteRangeCache({ maxSizeBytes: MEMORY_CACHE_BYTES }),
     onRead: (entry) => logs.push(entry),
@@ -417,5 +454,326 @@ describe("createCachedByteClient sequential remote readahead", () => {
     expect(controlled.pending).toHaveLength(1);
     controlled.pending[0].resolve(fillResult(controlled.pending[0].request));
     await read;
+  });
+});
+
+describe("createCachedByteClient remote fill slots", () => {
+  // No sizeBytes: reads stay exact-shape, so these tests exercise slot
+  // metering without block-widening or readahead in the way.
+  const remoteSource = () =>
+    source({ readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE });
+
+  const remoteRead = (offset: bigint) =>
+    request({ range: { length: 8n, offset }, source: remoteSource() });
+
+  it("caps concurrent remote fills at the slot count, in need order", async () => {
+    const { manager } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+
+    const reads = [0n, 8n, 16n, 24n, 32n].map((offset) =>
+      client.readBytes(remoteRead(offset)),
+    );
+    await flushAsync();
+
+    // Three slots → three fetches on the wire; the rest wait their turn.
+    expect(controlled.pending).toHaveLength(3);
+    expect(
+      controlled.pending.map((entry) => entry.request.range.offset),
+    ).toEqual([0n, 8n, 16n]);
+
+    controlled.pending[0].resolve(fillResult(controlled.pending[0].request));
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(4);
+    expect(controlled.pending[3].request.range.offset).toBe(24n);
+
+    controlled.pending[1].resolve(fillResult(controlled.pending[1].request));
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(5);
+    expect(controlled.pending[4].request.range.offset).toBe(32n);
+
+    for (const entry of controlled.pending.slice(2)) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await Promise.all(reads);
+  });
+
+  it("does not meter local-profile fills through slots", async () => {
+    const { manager } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+
+    const reads = [0n, 8n, 16n, 24n, 32n].map((offset) =>
+      client.readBytes(request({ range: { length: 8n, offset } })),
+    );
+    await flushAsync();
+
+    expect(controlled.pending).toHaveLength(5);
+    for (const entry of controlled.pending) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await Promise.all(reads);
+  });
+
+  it("skips readahead while demand holds every slot", async () => {
+    const { manager } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      blockSizeBytes: 16,
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const sized = () =>
+      source({ readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE, sizeBytes: "96" });
+
+    // Exact block-sized reads never widen, so they occupy slots without
+    // spawning readahead of their own.
+    const occupying = [32n, 48n, 64n].map((offset) =>
+      client.readBytes(
+        request({ range: { length: 16n, offset }, source: sized() }),
+      ),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(3);
+
+    // This read widens to [0,16) and would normally queue readahead for
+    // [16,32) — with every slot busy, both wait/skip respectively.
+    const widened = client.readBytes(
+      request({ range: { length: 4n, offset: 0n }, source: sized() }),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(3);
+
+    for (const entry of controlled.pending.slice(0, 3)) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await Promise.all(occupying);
+    await flushAsync();
+
+    // The demand fill proceeds once a slot frees; the skipped readahead
+    // does not come back on its own.
+    expect(controlled.pending).toHaveLength(4);
+    expect(controlled.pending[3].request.range.offset).toBe(0n);
+    controlled.pending[3].resolve(fillResult(controlled.pending[3].request));
+    await widened;
+    await flushAsync();
+    expect(
+      controlled.pending.some((entry) => entry.request.range.offset === 16n),
+    ).toBe(false);
+  });
+
+  it("runs readahead in spare slots and hands its bytes to other contexts", async () => {
+    const { manager } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const first = createClient({
+      blockSizeBytes: 16,
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const second = createClient({
+      blockSizeBytes: 16,
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const sized = () =>
+      source({ readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE, sizeBytes: "48" });
+
+    const read = first.client.readBytes(
+      request({ range: { length: 4n, offset: 0n }, source: sized() }),
+    );
+    await flushAsync();
+
+    // Slots were free: the widened fill and its readahead both fetch.
+    expect(controlled.pending).toHaveLength(2);
+    for (const entry of controlled.pending) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await read;
+    await flushAsync();
+
+    // Another context wants the readahead block: served from the
+    // persistent handoff, never the network.
+    const handoff = await second.client.readBytes(
+      request({ range: { length: 4n, offset: 16n }, source: sized() }),
+    );
+    expect(handoff.bytes).toEqual(new Uint8Array(4).fill(7));
+    expect(controlled.pending).toHaveLength(2);
+    expect(second.logs.map((entry) => entry.cacheResult)).toEqual([
+      "persistent-hit",
+    ]);
+  });
+
+  it("coalesces demand onto an in-flight readahead fill", async () => {
+    const { manager } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const { client, logs } = createClient({
+      blockSizeBytes: 16,
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    // Two blocks exactly, so the demand read below cannot spawn a
+    // successor readahead of its own past the end of the source.
+    const sized = () =>
+      source({ readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE, sizeBytes: "32" });
+
+    const read = client.readBytes(
+      request({ range: { length: 4n, offset: 0n }, source: sized() }),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(2);
+
+    // Demand for the readahead's block while it is still in flight: no
+    // third network request.
+    const demand = client.readBytes(
+      request({ range: { length: 4n, offset: 16n }, source: sized() }),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(2);
+
+    for (const entry of controlled.pending) {
+      entry.resolve(fillResult(entry.request));
+    }
+    const [, demandResult] = await Promise.all([read, demand]);
+    expect(demandResult.bytes).toEqual(new Uint8Array(4).fill(7));
+    expect(logs.map((entry) => entry.cacheResult).includes("coalesced")).toBe(
+      true,
+    );
+  });
+
+  it("frees the slot queue position when a waiting fill aborts", async () => {
+    const { manager } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+
+    const occupying = [0n, 8n, 16n].map((offset) =>
+      client.readBytes(remoteRead(offset)),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(3);
+
+    const controller = new AbortController();
+    const waiting = client.readBytes({
+      ...remoteRead(24n),
+      signal: controller.signal,
+    });
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(3);
+
+    controller.abort();
+    await expect(waiting).rejects.toMatchObject({ name: "AbortError" });
+
+    for (const entry of controlled.pending) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await Promise.all(occupying);
+    await flushAsync();
+    // The aborted fill left the slot queues: nothing fetches for it.
+    expect(controlled.pending).toHaveLength(3);
+  });
+
+  it("keeps the reserved slot open for priority fills past background queues", async () => {
+    const { manager } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const background = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const priority = createClient({
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+
+    // Background never takes the reserved slot: four fills, only two on
+    // the wire.
+    const backgroundReads = [0n, 8n, 16n, 24n].map((offset) =>
+      background.client.readBytes(remoteRead(offset)),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(2);
+
+    // A priority fill lands immediately on the reserved slot.
+    const priorityRead = priority.client.readBytes(remoteRead(64n));
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(3);
+    expect(controlled.pending[2].request.range.offset).toBe(64n);
+
+    for (const entry of controlled.pending) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await priorityRead;
+    await flushAsync();
+    for (const entry of controlled.pending.slice(3)) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await Promise.all(backgroundReads);
+  });
+
+  it("passes a freed slot to the next waiter when a fetch fails", async () => {
+    const { manager } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+
+    const reads = [0n, 8n, 16n, 24n].map((offset) =>
+      client.readBytes(remoteRead(offset)),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(3);
+
+    controlled.pending[0].reject(new Error("network down"));
+    await expect(reads[0]).rejects.toThrow("network down");
+    await flushAsync();
+
+    expect(controlled.pending).toHaveLength(4);
+    for (const entry of controlled.pending.slice(1)) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await Promise.all(reads.slice(1));
   });
 });

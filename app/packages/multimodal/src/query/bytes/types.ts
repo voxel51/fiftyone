@@ -163,15 +163,22 @@ export interface ByteClient {
 
 /**
  * Minimal cross-context exclusive-lock surface used to single-flight
- * identical network block fills. Structurally compatible with the Web
- * Locks API (`navigator.locks`), which shares the Cache API's origin
- * scope — together they make one context's fetch every context's bytes.
+ * identical network block fills and to meter fill concurrency. It is
+ * structurally compatible with the Web Locks API (`navigator.locks`),
+ * which shares the Cache API's origin scope — together they make one
+ * context's fetch every context's bytes. With `ifAvailable`, an
+ * ungranted request invokes the callback with a falsy lock instead of
+ * waiting, exactly like the Web Locks API.
  */
 export interface ByteFillLockManager {
   request<T>(
     name: string,
-    options: { readonly mode: "exclusive"; readonly signal?: AbortSignal },
-    callback: () => Promise<T> | T,
+    options: {
+      readonly ifAvailable?: boolean;
+      readonly mode: "exclusive";
+      readonly signal?: AbortSignal;
+    },
+    callback: (lock: unknown) => Promise<T> | T,
   ): Promise<T>;
 }
 
@@ -194,6 +201,14 @@ export interface ByteRangeCache {
    */
   clear(): Promise<void>;
 }
+
+/**
+ * Slot class for a client's network block fills. "priority" fills may use
+ * every fill slot including the reserved first one; "background" fills
+ * (idle lookahead, bulk history scans) never take the reserved slot, so a
+ * playback-critical fill always has one immediately available.
+ */
+export type ByteFillSlotClass = "background" | "priority";
 
 /**
  * Byte cache tiers used by byte query clients.
@@ -229,6 +244,13 @@ export interface ByteCacheLayers {
    * Cache API layer; omitting it lets clients construct the default.
    */
   readonly persistent?: ByteRangeCache | false;
+
+  /**
+   * Slot class this client's remote fills are metered under. Defaults to
+   * "priority"; execution contexts that only do speculative or bulk work
+   * declare "background" so they can never occupy the reserved slot.
+   */
+  readonly fillSlotClass?: ByteFillSlotClass;
 
   /**
    * Cross-context lock manager that single-flights identical block fills

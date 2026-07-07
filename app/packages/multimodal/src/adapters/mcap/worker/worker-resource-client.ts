@@ -1,6 +1,6 @@
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import { createMultimodalQueryClient } from "../../../query";
-import type { ByteReadDebugLog } from "../../../query/bytes";
+import type { ByteFillSlotClass, ByteReadDebugLog } from "../../../query/bytes";
 import type { DecodedOutputCache } from "../../../query/decode";
 import {
   createDecodeClient,
@@ -28,6 +28,7 @@ const transferSafeNoopDecodedOutputCache: DecodedOutputCache = {
 };
 
 export interface CreateWorkerResourceClientOptions {
+  readonly fillSlotClass?: ByteFillSlotClass;
   readonly onByteRead?: (entry: ByteReadDebugLog) => void;
   readonly readSignal?: { readonly current: AbortSignal | null };
 }
@@ -36,11 +37,17 @@ export interface CreateWorkerResourceClientOptions {
  * Creates an inline MCAP resource client for code running inside a worker.
  */
 export function createWorkerResourceClient({
+  fillSlotClass,
   onByteRead,
   readSignal,
 }: CreateWorkerResourceClientOptions = {}): McapResourceClient {
   const query = createMultimodalQueryClient({
-    caches: { bytes: { onRead: onByteRead } },
+    caches: {
+      bytes: {
+        ...(fillSlotClass ? { fillSlotClass } : {}),
+        onRead: onByteRead,
+      },
+    },
   });
 
   return createInlineMcapResourceClient({
