@@ -5,7 +5,8 @@ import styles from "./TemporalTag.module.css";
 
 /**
  * Toggle button for entering/exiting temporal tag selection mode.
- * Also registers the `T` hotkey (unless an input is focused).
+ * Also registers the `Shift+T` hotkey (unless an input is focused) — plain
+ * `T` belongs to the 3D tile's trained top-view shortcut.
  * Renders nothing when the temporal-tag context is absent.
  */
 const TemporalTagButton: React.FC = () => {
@@ -17,7 +18,13 @@ const TemporalTagButton: React.FC = () => {
       // Ignore when focus is inside a text input.
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if (e.key === "t" || e.key === "T") {
+      if (
+        (e.key === "t" || e.key === "T") &&
+        e.shiftKey &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey
+      ) {
         if (ctx.state.phase === "idle") {
           ctx.actions.enterTagMode();
         } else {
@@ -42,13 +49,13 @@ const TemporalTagButton: React.FC = () => {
       size={Size.Xs}
       data-testid="temporal-tag-mode-button"
       leadingIcon={IconName.Tag}
-      aria-label={active ? "Exit tag mode" : "Enter tag mode (T)"}
+      aria-label={active ? "Exit tag mode" : "Enter tag mode (Shift+T)"}
       aria-pressed={active}
       className={active ? styles.tagButtonActive : undefined}
       onClick={() =>
         active ? ctx.actions.exitTagMode() : ctx.actions.enterTagMode()
       }
-      title={active ? "Exit tag mode (T)" : "Add temporal tag (T)"}
+      title={active ? "Exit tag mode (Shift+T)" : "Add temporal tag (Shift+T)"}
     />
   );
 };

@@ -236,6 +236,37 @@ describe("ImageAnnotationsOverlay", () => {
     );
   });
 
+  it("applies the image view transform to the SVG display rect", () => {
+    const { container } = render(
+      <ImageAnnotationsOverlay
+        annotations={[
+          {
+            ...emptySet(),
+            circles: [
+              {
+                position: [100, 50],
+                diameter: 20,
+                thickness: 1,
+                outlineColor: RED,
+                fillColor: null,
+              },
+            ],
+          },
+        ]}
+        imageWidth={200}
+        imageHeight={100}
+        fit="contain"
+        viewTransform={{ scale: 2, translateX: 25, translateY: -10 }}
+      />,
+    );
+
+    const svg = requireElement<SVGSVGElement>(container, "svg");
+    expect(svg.style.left).toBe("-175px");
+    expect(svg.style.top).toBe("-60px");
+    expect(svg.style.width).toBe("800px");
+    expect(svg.style.height).toBe("400px");
+  });
+
   // -------------------------------------------------------------------------
   // Circles
   // -------------------------------------------------------------------------
@@ -510,5 +541,95 @@ describe("ImageAnnotationsOverlay", () => {
     ]);
 
     expect(container.querySelectorAll("circle")).toHaveLength(4);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Selection + cross-view label echo
+// ---------------------------------------------------------------------------
+
+import styles from "./image-annotations-overlay.module.css";
+
+describe("selection highlighting", () => {
+  function labeledCirclesSet(): ImageAnnotationsVisualization {
+    return {
+      ...emptySet(),
+      circles: [
+        {
+          position: [20, 20],
+          diameter: 8,
+          thickness: 1,
+          outlineColor: RED,
+          fillColor: null,
+        },
+        {
+          position: [150, 60],
+          diameter: 8,
+          thickness: 1,
+          outlineColor: GREEN,
+          fillColor: null,
+        },
+      ],
+      texts: [
+        {
+          position: [22, 22],
+          text: "car",
+          fontSize: 4,
+          textColor: WHITE,
+          backgroundColor: BLACK,
+        },
+        {
+          position: [152, 62],
+          text: "truck",
+          fontSize: 4,
+          textColor: WHITE,
+          backgroundColor: BLACK,
+        },
+      ],
+    };
+  }
+
+  function renderWithHighlight(props: {
+    selectedKey?: string | null;
+    highlightLabel?: string | null;
+  }) {
+    return render(
+      <ImageAnnotationsOverlay
+        annotations={[labeledCirclesSet()]}
+        imageWidth={200}
+        imageHeight={100}
+        fit="contain"
+        selectedKey={props.selectedKey}
+        highlightLabel={props.highlightLabel}
+      />,
+    );
+  }
+
+  function circleGroups(container: HTMLElement): HTMLElement[] {
+    return Array.from(
+      container.querySelectorAll<HTMLElement>(`g.${styles.primitive}`),
+    );
+  }
+
+  it("marks the exact primitive selected by key", () => {
+    const { container } = renderWithHighlight({ selectedKey: "c-0-0" });
+    const groups = circleGroups(container);
+    expect(groups.length).toBeGreaterThanOrEqual(2);
+    expect(groups[0].classList.contains(styles.selected)).toBe(true);
+    expect(groups[1].classList.contains(styles.selected)).toBe(false);
+  });
+
+  it("echoes a cross-view selection by label", () => {
+    const { container } = renderWithHighlight({ highlightLabel: "truck" });
+    const groups = circleGroups(container);
+    expect(groups[0].classList.contains(styles.selected)).toBe(false);
+    expect(groups[1].classList.contains(styles.selected)).toBe(true);
+  });
+
+  it("highlights nothing when the echo label matches no shape", () => {
+    const { container } = renderWithHighlight({ highlightLabel: "bicycle" });
+    for (const group of circleGroups(container)) {
+      expect(group.classList.contains(styles.selected)).toBe(false);
+    }
   });
 });

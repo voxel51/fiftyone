@@ -1,10 +1,11 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
-import { Checkbox } from "@voxel51/voodo";
+import { Checkbox, Toggle } from "@voxel51/voodo";
 import { useState, type KeyboardEvent } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   checkboxNoSpaceToggleProps,
   preventSettingsCheckboxSpaceToggle,
+  settingsBooleanNoSpaceToggleProps,
 } from "./mcap-settings-keyboard";
 
 function keyboardEvent(key: string, code?: string): KeyboardEvent<HTMLElement> {
@@ -121,5 +122,89 @@ describe("checkboxNoSpaceToggleProps on a voodo Checkbox", () => {
     pressEnter(checkbox);
 
     expect(checkbox.getAttribute("aria-checked")).toBe("true");
+  });
+});
+
+// Same guard on voodo Toggle switches: the camera master toggle uses this path.
+describe("settingsBooleanNoSpaceToggleProps on a voodo Toggle", () => {
+  afterEach(() => cleanup());
+
+  function renderToggle(extraProps: Record<string, unknown>) {
+    const onChange = vi.fn();
+    const { getByRole } = render(
+      <Toggle
+        aria-label="option"
+        checked={false}
+        onChange={onChange}
+        {...extraProps}
+      />,
+    );
+    const toggle = getByRole("switch");
+    toggle.focus();
+    return { onChange, toggle };
+  }
+
+  function StatefulToggle({
+    extraProps,
+  }: {
+    readonly extraProps: Record<string, unknown>;
+  }) {
+    const [checked, setChecked] = useState(false);
+    return (
+      <Toggle
+        aria-label="option"
+        checked={checked}
+        onChange={setChecked}
+        {...extraProps}
+      />
+    );
+  }
+
+  function renderStatefulToggle(extraProps: Record<string, unknown>) {
+    const { getByRole } = render(<StatefulToggle extraProps={extraProps} />);
+    const toggle = getByRole("switch");
+    toggle.focus();
+    return { toggle };
+  }
+
+  function pressSpace(el: HTMLElement) {
+    fireEvent.keyDown(el, { key: " ", code: "Space" });
+    fireEvent.keyUp(el, { key: " ", code: "Space" });
+  }
+
+  function pressEnter(el: HTMLElement) {
+    fireEvent.keyDown(el, { key: "Enter", code: "Enter" });
+    fireEvent.keyUp(el, { key: "Enter", code: "Enter" });
+  }
+
+  it("toggles on Space without the guard props", () => {
+    const { onChange, toggle } = renderToggle({});
+    pressSpace(toggle);
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it("does not toggle on Space with the guard props", () => {
+    const { onChange, toggle } = renderToggle(
+      settingsBooleanNoSpaceToggleProps,
+    );
+    pressSpace(toggle);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("still toggles on pointer click with the guard props", () => {
+    const { onChange, toggle } = renderToggle(
+      settingsBooleanNoSpaceToggleProps,
+    );
+    fireEvent.click(toggle);
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it("still toggles on Enter with the guard props", () => {
+    const { toggle } = renderStatefulToggle(settingsBooleanNoSpaceToggleProps);
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+
+    pressEnter(toggle);
+
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
   });
 });

@@ -23,6 +23,12 @@ const FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP = bytes(
 const FRAME_TRANSFORMS_MESSAGE_WITHOUT_TIMESTAMP = bytes(
   "ClMSA21hcBoJYmFzZV9saW5rIhsJAAAAAAAA8D8RAAAAAAAAAAAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPwpVEgliYXNlX2xpbmsaBWxpZGFyIhsJAAAAAAAAAAARAAAAAAAAAEAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw==",
 );
+const CUSTOM_TRANSFORM_BUNDLE_SCHEMA_DATA = bytes(
+  "CrECCgxjdXN0b20ucHJvdG8SBmN1c3RvbSInCgRWZWMzEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBIjIKBFF1YXQSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAESCQoBdxgEIAEoASJ6ChRDYWxpYnJhdGlvblRyYW5zZm9ybRIXCg9wYXJlbnRfZnJhbWVfaWQYASABKAkSFgoOY2hpbGRfZnJhbWVfaWQYAiABKAkSGQoLdHJhbnNsYXRpb24YAyABKAsyBFZlYzMSFgoIcm90YXRpb24YBCABKAsyBFF1YXQiOAoRQ2FsaWJyYXRpb25CdW5kbGUSIwoFcG9zZXMYASADKAsyFENhbGlicmF0aW9uVHJhbnNmb3JtYgZwcm90bzM=",
+);
+const CUSTOM_TRANSFORM_BUNDLE_MESSAGE = bytes(
+  "ClYKA21hcBIMY3VzdG9tX2xpZGFyGhsJAAAAAAAAEEARAAAAAAAAFEAZAAAAAAAAGEAiJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw==",
+);
 
 describe("MCAP resources", () => {
   it("reads topic inventory from summary channels without scanning messages", async () => {
@@ -270,7 +276,56 @@ describe("MCAP resources", () => {
     expect(readMessages).not.toHaveBeenCalled();
   });
 
-  it("discovers foxglove.FrameTransform channels by schema regardless of topic name", async () => {
+  it("skips non-static transform topics during bootstrap", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/sensor_calibration",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledOnce();
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/sensor_calibration"],
+    });
+    expect(set.samples).toEqual([]);
+  });
+
+  it("bootstraps ambiguous transform topics when the first decoded message is static", async () => {
     const readMessages = vi.fn(async function* () {
       yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
         channelId: 10,
@@ -312,8 +367,62 @@ describe("MCAP resources", () => {
       source: createMcapSourceDescriptor(),
     });
 
-    expect(readMessages).toHaveBeenCalledWith({
+    expect(readMessages).toHaveBeenCalledTimes(2);
+    expect(readMessages).toHaveBeenLastCalledWith({
       topics: ["/sensor_calibration"],
+    });
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+    });
+    expect(set.samples[0]?.timeNs).toBeUndefined();
+  });
+
+  it("discovers static foxglove.FrameTransform channels by schema", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/robot/tf_static",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/robot/tf_static"],
     });
     expect(set.samples).toHaveLength(1);
     expect(set.samples[0]).toMatchObject({
@@ -323,6 +432,60 @@ describe("MCAP resources", () => {
     expect(set.samples[0]?.timeNs).toBeUndefined();
     expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
     expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("discovers transform-like protobuf schemas without Foxglove schema names", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(CUSTOM_TRANSFORM_BUNDLE_MESSAGE, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/static_transforms",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(CUSTOM_TRANSFORM_BUNDLE_SCHEMA_DATA, {
+                id: 10,
+                name: "custom.CalibrationBundle",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/static_transforms"],
+    });
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "custom_lidar",
+      parentFrameId: "map",
+    });
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(set.samples[0]?.translation.toArray()).toEqual([4, 5, 6]);
   });
 
   it("includes bootstrap transform channels when summary stats are unavailable", async () => {
@@ -392,7 +555,7 @@ describe("MCAP resources", () => {
               createChannel({
                 id: 10,
                 schemaId: 10,
-                topic: "/calibration_bundle",
+                topic: "/tf_static",
               }),
             ],
           ]),
@@ -649,7 +812,7 @@ describe("MCAP resources", () => {
     expect(readMessages).not.toHaveBeenCalled();
   });
 
-  it("defers bootstrap scans of channels with message counts above the cap", async () => {
+  it("defers bootstrap scans of static channels with message counts above the cap", async () => {
     const readMessages = vi.fn(async function* () {
       for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
         yield message;
@@ -666,7 +829,7 @@ describe("MCAP resources", () => {
               createChannel({
                 id: 10,
                 schemaId: 10,
-                topic: "/dense_tf",
+                topic: "/tf_static",
               }),
             ],
           ]),
@@ -1476,6 +1639,18 @@ describe("MCAP resources", () => {
       }),
     ).resolves.toEqual({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      byteTimeline: [
+        {
+          cumulativeCompressedBytes: 256,
+          endTimeNs: 250n,
+          startOffsetBytes: 1_000n,
+        },
+        {
+          cumulativeCompressedBytes: 512,
+          endTimeNs: 450n,
+          startOffsetBytes: 1_000n,
+        },
+      ],
       endTimeNs: 450n,
       startTimeNs: 100n,
     });
@@ -1534,6 +1709,13 @@ describe("MCAP resources", () => {
     );
     await expect(client.readTimelineRange(request)).resolves.toEqual({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      byteTimeline: [
+        {
+          cumulativeCompressedBytes: 256,
+          endTimeNs: 20n,
+          startOffsetBytes: 1_000n,
+        },
+      ],
       endTimeNs: 20n,
       startTimeNs: 10n,
     });

@@ -6,7 +6,10 @@ import type {
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import { PlaybackSyncMode } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
-import { chooseAnnotationTopic } from "./topic-matching";
+import {
+  chooseAnnotationTopic,
+  filterDefaultTopicEquivalents,
+} from "./topic-matching";
 import { streamTopics, type McapPreviewTopics } from "./stream-topics";
 import type {
   McapDecodedMessage,
@@ -271,7 +274,10 @@ function chooseAutoSelection(
 export function chooseCameraSelection(
   topics: McapGridTopics,
 ): McapGridCameraSelection | null {
-  const imageTopic = topics.image[0];
+  const imageTopic = filterDefaultTopicEquivalents(topics.image, {
+    getKind: () => "image",
+    getTopic: (topic) => topic,
+  })[0];
   if (!imageTopic) {
     return null;
   }
@@ -286,7 +292,10 @@ export function chooseCameraSelection(
 function choosePointCloudSelection(
   topics: McapGridTopics,
 ): McapGridPointCloudSelection | null {
-  const pointCloudTopic = topics.pointCloud[0];
+  const pointCloudTopic = filterDefaultTopicEquivalents(topics.pointCloud, {
+    getKind: () => "point-cloud",
+    getTopic: (topic) => topic,
+  })[0];
   return pointCloudTopic
     ? {
         kind: "point-cloud",

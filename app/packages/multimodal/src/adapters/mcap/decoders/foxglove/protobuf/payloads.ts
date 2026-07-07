@@ -29,3 +29,57 @@ export const FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD: PayloadDescriptor = {
   schema: "foxglove.ImageAnnotations",
   schemaEncoding: "protobuf",
 };
+
+/**
+ * Payload identity for foxglove.LaserScan messages.
+ */
+export const FOXGLOVE_LASER_SCAN_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.LaserScan",
+  schemaEncoding: "protobuf",
+};
+
+/**
+ * Payload identity for foxglove.SceneUpdate messages.
+ */
+export const FOXGLOVE_SCENE_UPDATE_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.SceneUpdate",
+  schemaEncoding: "protobuf",
+};
+
+/**
+ * Payload identity for foxglove.Grid messages.
+ */
+export const FOXGLOVE_GRID_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.Grid",
+  schemaEncoding: "protobuf",
+};
+
+/**
+ * Payload identity for foxglove.CameraCalibration messages.
+ */
+export const FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.CameraCalibration",
+  schemaEncoding: "protobuf",
+};
+
+/**
+ * Payload identity for foxglove.PoseInFrame messages.
+ */
+export const FOXGLOVE_POSE_IN_FRAME_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.PoseInFrame",
+  schemaEncoding: "protobuf",
+};
+
+/**
+ * Payload identity for foxglove.LocationFix messages.
+ */
+export const FOXGLOVE_LOCATION_FIX_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.LocationFix",
+  schemaEncoding: "protobuf",
+};

@@ -10,12 +10,22 @@ import type {
   RgbaColor,
 } from "../../decoders";
 import { groupLineSegmentsByLabel } from "../../utils/line-segment-grouping";
+import {
+  imageDisplayRect,
+  transformedImageDisplayRect,
+  type ImageViewTransform,
+} from "./base-2d-scene";
 import styles from "./image-annotations-overlay.module.css";
 
 export type ImageAnnotationPrimitive =
   | { readonly kind: "circle"; readonly value: ImageAnnotationCircle }
   | { readonly kind: "points"; readonly value: ImageAnnotationPoints }
   | { readonly kind: "text"; readonly value: ImageAnnotationText };
+
+export type ImageAnnotationSelectHandler = (
+  picked: ImageAnnotationPickedPrimitive,
+  modifiers: { readonly shiftKey: boolean },
+) => void;
 
 export interface ImageAnnotationPickedPrimitive {
   readonly key: string;
@@ -33,7 +43,14 @@ export interface ImageAnnotationsOverlayProps {
   readonly fit: "contain" | "cover";
   readonly strokeWidth?: number;
   readonly selectedKey?: string | null;
-  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  /**
+   * Cross-view echo: shapes whose derived label equals this are drawn in
+   * the selected style even when `selectedKey` points elsewhere (or at a
+   * 3D object). Best-effort — 2D annotations carry no object ids.
+   */
+  readonly highlightLabel?: string | null;
+  readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
+  readonly viewTransform?: ImageViewTransform;
 }
 
 /**
@@ -54,7 +71,9 @@ export function ImageAnnotationsOverlay({
   fit,
   strokeWidth,
   selectedKey,
+  highlightLabel,
   onSelectPrimitive,
+  viewTransform,
 }: ImageAnnotationsOverlayProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerSize, setContainerSize] = useState<{
@@ -80,7 +99,14 @@ export function ImageAnnotationsOverlay({
   }
 
   const rect = containerSize
-    ? displayRect(containerSize, imageWidth, imageHeight, fit)
+    ? transformedImageDisplayRect(
+        imageDisplayRect(
+          containerSize,
+          { height: imageHeight, width: imageWidth },
+          fit,
+        ),
+        viewTransform,
+      )
     : null;
 
   return (
@@ -105,6 +131,7 @@ export function ImageAnnotationsOverlay({
                 setIndex={i}
                 strokeWidth={strokeWidth}
                 selectedKey={selectedKey ?? null}
+                highlightLabel={highlightLabel ?? null}
                 onSelectPrimitive={onSelectPrimitive}
               />
             </Fragment>
@@ -120,7 +147,8 @@ interface SetPrimitivesProps {
   readonly setIndex: number;
   readonly strokeWidth?: number;
   readonly selectedKey: string | null;
-  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  readonly highlightLabel: string | null;
+  readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
 }
 
 function SetPrimitives({
@@ -128,6 +156,7 @@ function SetPrimitives({
   setIndex,
   strokeWidth,
   selectedKey,
+  highlightLabel,
   onSelectPrimitive,
 }: SetPrimitivesProps) {
   return (
@@ -142,6 +171,7 @@ function SetPrimitives({
             texts={set.texts}
             strokeWidth={strokeWidth}
             selectedKey={selectedKey}
+            highlightLabel={highlightLabel}
             onSelectPrimitive={onSelectPrimitive}
           />
         ) : (
@@ -153,6 +183,7 @@ function SetPrimitives({
             texts={set.texts}
             strokeWidth={strokeWidth}
             selectedKey={selectedKey}
+            highlightLabel={highlightLabel}
             onSelectPrimitive={onSelectPrimitive}
           />
         ),
@@ -166,6 +197,7 @@ function SetPrimitives({
           texts={set.texts}
           strokeWidth={strokeWidth}
           selectedKey={selectedKey}
+          highlightLabel={highlightLabel}
           onSelectPrimitive={onSelectPrimitive}
         />
       ))}
@@ -176,6 +208,7 @@ function SetPrimitives({
           primitiveIndex={j}
           setIndex={setIndex}
           selectedKey={selectedKey}
+          highlightLabel={highlightLabel}
           onSelectPrimitive={onSelectPrimitive}
         />
       ))}
@@ -190,7 +223,8 @@ interface CirclePrimitiveProps {
   readonly texts: readonly ImageAnnotationText[];
   readonly strokeWidth?: number;
   readonly selectedKey: string | null;
-  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  readonly highlightLabel: string | null;
+  readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
 }
 
 function CirclePrimitive({
@@ -200,6 +234,7 @@ function CirclePrimitive({
   texts,
   strokeWidth,
   selectedKey,
+  highlightLabel,
   onSelectPrimitive,
 }: CirclePrimitiveProps) {
   const [x, y] = primitive.position;
@@ -215,7 +250,9 @@ function CirclePrimitive({
     color,
     label,
   });
-  const isSelected = selectedKey === key;
+  const isSelected =
+    selectedKey === key ||
+    (highlightLabel !== null && label === highlightLabel);
   return (
     <g
       className={clsx(
@@ -246,7 +283,8 @@ interface PolylinePrimitiveProps {
   readonly texts: readonly ImageAnnotationText[];
   readonly strokeWidth?: number;
   readonly selectedKey: string | null;
-  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  readonly highlightLabel: string | null;
+  readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
 }
 
 function PolylinePrimitive({
@@ -256,6 +294,7 @@ function PolylinePrimitive({
   texts,
   strokeWidth,
   selectedKey,
+  highlightLabel,
   onSelectPrimitive,
 }: PolylinePrimitiveProps) {
   const thickness = lineWidth(primitive.thickness, strokeWidth);
@@ -271,7 +310,9 @@ function PolylinePrimitive({
     color,
     label,
   });
-  const isSelected = selectedKey === key;
+  const isSelected =
+    selectedKey === key ||
+    (highlightLabel !== null && label === highlightLabel);
 
   if (primitive.type === "points") {
     return (
@@ -342,7 +383,8 @@ interface LineListGroupsProps {
   readonly texts: readonly ImageAnnotationText[];
   readonly strokeWidth?: number;
   readonly selectedKey: string | null;
-  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  readonly highlightLabel: string | null;
+  readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
 }
 
 function LineListGroups({
@@ -352,6 +394,7 @@ function LineListGroups({
   texts,
   strokeWidth,
   selectedKey,
+  highlightLabel,
   onSelectPrimitive,
 }: LineListGroupsProps) {
   const thickness = lineWidth(primitive.thickness, strokeWidth);
@@ -378,7 +421,9 @@ function LineListGroups({
           color,
           label: group.label,
         });
-        const isSelected = selectedKey === key;
+        const isSelected =
+          selectedKey === key ||
+          (highlightLabel !== null && group.label === highlightLabel);
         const b = group.bounds;
         return (
           <g
@@ -422,7 +467,8 @@ interface TextPrimitiveProps {
   readonly primitiveIndex: number;
   readonly setIndex: number;
   readonly selectedKey: string | null;
-  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  readonly highlightLabel: string | null;
+  readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
 }
 
 function TextPrimitive({
@@ -430,6 +476,7 @@ function TextPrimitive({
   primitiveIndex,
   setIndex,
   selectedKey,
+  highlightLabel,
   onSelectPrimitive,
 }: TextPrimitiveProps) {
   const [x, y] = primitive.position;
@@ -446,7 +493,9 @@ function TextPrimitive({
     color,
     label,
   });
-  const isSelected = selectedKey === key;
+  const isSelected =
+    selectedKey === key ||
+    (highlightLabel !== null && label === highlightLabel);
 
   return (
     <g
@@ -483,13 +532,6 @@ function TextPrimitive({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-interface Rect {
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-}
 
 interface Bounds {
   readonly minX: number;
@@ -621,15 +663,13 @@ function primitiveStyle(
 }
 
 function pickHandler(
-  onSelectPrimitive:
-    | ((picked: ImageAnnotationPickedPrimitive) => void)
-    | undefined,
+  onSelectPrimitive: ImageAnnotationSelectHandler | undefined,
   picked: ImageAnnotationPickedPrimitive,
 ): ((e: React.MouseEvent) => void) | undefined {
   if (!onSelectPrimitive) return undefined;
   return (e) => {
     e.stopPropagation();
-    onSelectPrimitive(picked);
+    onSelectPrimitive(picked, { shiftKey: e.shiftKey });
   };
 }
 
@@ -638,33 +678,9 @@ function lineWidth(thickness: number, override?: number): number {
     return Math.max(0, override);
   }
 
-  // Source thickness is conservative; bump it ~1.5x for readability while
-  // keeping the look light.
-  return Math.max(1.5, thickness * 1.5);
-}
-
-function displayRect(
-  container: { width: number; height: number },
-  imageWidth: number,
-  imageHeight: number,
-  fit: "contain" | "cover",
-): Rect {
-  const containerAspect = container.width / Math.max(1, container.height);
-  const imageAspect = imageWidth / Math.max(1, imageHeight);
-  const imageIsWider = imageAspect > containerAspect;
-  const constrainByWidth = fit === "contain" ? imageIsWider : !imageIsWider;
-  const width = constrainByWidth
-    ? container.width
-    : container.height * imageAspect;
-  const height = constrainByWidth
-    ? container.width / imageAspect
-    : container.height;
-  return {
-    x: (container.width - width) / 2,
-    y: (container.height - height) / 2,
-    width,
-    height,
-  };
+  // Strokes are non-scaling (screen px); render source thickness as-is so
+  // 2D line work reads as light as the 3D scene's 1px lines.
+  return Math.max(1, thickness);
 }
 
 function rgbaToCss(color: RgbaColor | null | undefined): string | undefined {

@@ -31,7 +31,7 @@ describe("MCAP frame transform store", () => {
     });
   });
 
-  it("uses the latest dynamic sample at or before playback time", () => {
+  it("interpolates dynamic samples around playback time", () => {
     const store = createStore({
       dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
       dynamicSamples: [
@@ -48,14 +48,145 @@ describe("MCAP frame transform store", () => {
         timeNs: 250n,
       }),
     ).toMatchObject({
+      maxInterpolationGapNs: 100n,
       status: "resolved",
       transform: {
-        translation: { x: 2, y: 0, z: 0 },
+        maxInterpolationGapNs: 100n,
+        resolutionKind: "interpolated",
+        translation: { x: 2.5, y: 0, z: 0 },
       },
     });
   });
 
-  it("does not use future dynamic samples", () => {
+  it("holds the latest at-or-before sample in hold-last mode", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n),
+        sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n),
+      ],
+    });
+
+    expect(
+      store.resolve({
+        policy: {
+          boundaryClampNs: 50n,
+          maxInterpolationGapNs: 0n,
+          resolutionMode: "hold-last",
+        },
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 250n,
+      }),
+    ).toMatchObject({
+      resolutionKind: "held",
+      status: "resolved",
+      transform: {
+        resolutionKind: "held",
+        translation: { x: 1, y: 0, z: 0 },
+      },
+    });
+  });
+
+  it("still resolves exact samples and start clamps in hold-last mode", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n),
+        sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n),
+      ],
+    });
+    const policy = {
+      boundaryClampNs: 50n,
+      maxInterpolationGapNs: 0n,
+      resolutionMode: "hold-last",
+    } as const;
+
+    expect(
+      store.resolve({
+        policy,
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 100n,
+      }),
+    ).toMatchObject({
+      resolutionKind: "exact",
+      status: "resolved",
+      transform: { translation: { x: 1, y: 0, z: 0 } },
+    });
+
+    expect(
+      store.resolve({
+        policy,
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 60n,
+      }),
+    ).toMatchObject({
+      resolutionKind: "clamped",
+      status: "resolved",
+      transform: { translation: { x: 1, y: 0, z: 0 } },
+    });
+  });
+
+  it("carries the largest interpolation gap through composed paths", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n),
+        sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n),
+      ],
+      staticSamples: [sample("base_link", "lidar", { x: 0, y: 2, z: 0 })],
+    });
+
+    expect(
+      store.resolve({
+        sourceFrameId: "lidar",
+        targetFrameId: "map",
+        timeNs: 200n,
+      }),
+    ).toMatchObject({
+      maxInterpolationGapNs: 200n,
+      status: "resolved",
+      transform: {
+        maxInterpolationGapNs: 200n,
+        translation: { x: 2, y: 2, z: 0 },
+      },
+    });
+  });
+
+  it("slerps dynamic rotations around playback time", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", undefined, 100n, new Quaternion()),
+        sample(
+          "map",
+          "base_link",
+          undefined,
+          300n,
+          new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI),
+        ),
+      ],
+    });
+
+    const resolution = store.resolve({
+      sourceFrameId: "base_link",
+      targetFrameId: "map",
+      timeNs: 200n,
+    });
+    if (resolution.status !== "resolved") {
+      throw new Error("Expected resolved transform");
+    }
+
+    const rotated = new Vector3(1, 0, 0).applyQuaternion(
+      resolution.transform.rotation,
+    );
+    expect(rotated.x).toBeCloseTo(0);
+    expect(rotated.y).toBeCloseTo(1);
+  });
+
+  it("clamps the start boundary within tolerance", () => {
     const store = createStore({
       dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
       dynamicSamples: [sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n)],
@@ -66,6 +197,55 @@ describe("MCAP frame transform store", () => {
         sourceFrameId: "base_link",
         targetFrameId: "map",
         timeNs: 250n,
+      }),
+    ).toMatchObject({
+      resolutionKind: "clamped",
+      status: "resolved",
+      transform: {
+        translation: { x: 3, y: 0, z: 0 },
+      },
+    });
+  });
+
+  it("reports missing beyond the boundary clamp tolerance", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n)],
+    });
+
+    expect(
+      store.resolve({
+        policy: {
+          boundaryClampNs: 10n,
+          maxInterpolationGapNs: 250n,
+        },
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 250n,
+      }),
+    ).toMatchObject({
+      status: "missing",
+    });
+  });
+
+  it("reports missing across interpolation gaps larger than the policy allows", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 1000n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n),
+        sample("map", "base_link", { x: 10, y: 0, z: 0 }, 1000n),
+      ],
+    });
+
+    expect(
+      store.resolve({
+        policy: {
+          boundaryClampNs: 50n,
+          maxInterpolationGapNs: 100n,
+        },
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 500n,
       }),
     ).toMatchObject({
       status: "missing",
@@ -149,6 +329,18 @@ describe("MCAP frame transform store", () => {
     });
   });
 
+  it("exposes merged indexed dynamic ranges", () => {
+    const store = new McapFrameTransformStore();
+    store.addDynamic([], { endTimeNs: 20n, startTimeNs: 10n });
+    store.addDynamic([], { endTimeNs: 40n, startTimeNs: 20n });
+    store.addDynamic([], { endTimeNs: 70n, startTimeNs: 60n });
+
+    expect(store.indexedRanges()).toEqual([
+      { endTimeNs: 40n, startTimeNs: 10n },
+      { endTimeNs: 70n, startTimeNs: 60n },
+    ]);
+  });
+
   it("tracks known frame ids from loaded samples", () => {
     const store = createStore({
       dynamicRange: { endTimeNs: 20n, startTimeNs: 0n },
@@ -160,6 +352,152 @@ describe("MCAP frame transform store", () => {
     });
 
     expect(store.frameIds()).toEqual(["base_link", "camera", "lidar", "map"]);
+  });
+
+  it("summarizes a single tree root and directed reachability", () => {
+    const store = createStore({
+      staticSamples: [
+        sample("map", "base_link"),
+        sample("base_link", "camera"),
+        sample("base_link", "lidar"),
+      ],
+    });
+
+    const summary = store.summarizeGraph(new Set(["camera", "lidar"]));
+
+    expect(summary.roots).toEqual(["map"]);
+    expect(summary.tfConnectedFrameIds).toEqual([
+      "base_link",
+      "camera",
+      "lidar",
+      "map",
+    ]);
+    expect(counts(summary.reachableCountsByFrameId)).toEqual({
+      base_link: 3,
+      camera: 1,
+      lidar: 1,
+      map: 4,
+    });
+    expect(counts(summary.dataBearingReachableCountsByFrameId)).toEqual({
+      base_link: 2,
+      camera: 1,
+      lidar: 1,
+      map: 2,
+    });
+  });
+
+  it("summarizes forest roots independently", () => {
+    const store = createStore({
+      staticSamples: [sample("map", "base_link"), sample("odom", "wheel")],
+    });
+
+    const summary = store.summarizeGraph(new Set(["base_link", "wheel"]));
+
+    expect(summary.roots).toEqual(["map", "odom"]);
+    expect(summary.tfConnectedFrameIds).toEqual([
+      "base_link",
+      "map",
+      "odom",
+      "wheel",
+    ]);
+    expect(counts(summary.dataBearingReachableCountsByFrameId)).toEqual({
+      base_link: 1,
+      map: 1,
+      odom: 1,
+      wheel: 1,
+    });
+  });
+
+  it("falls back deterministically when every frame is in a cycle", () => {
+    const store = createStore({
+      staticSamples: [
+        sample("cycle_b", "cycle_c"),
+        sample("cycle_c", "cycle_a"),
+        sample("cycle_a", "cycle_b"),
+      ],
+    });
+
+    const summary = store.summarizeGraph(new Set(["cycle_c"]));
+
+    expect(summary.roots).toEqual([]);
+    expect(summary.tfConnectedFrameIds).toEqual([
+      "cycle_a",
+      "cycle_b",
+      "cycle_c",
+    ]);
+    expect(counts(summary.reachableCountsByFrameId)).toEqual({
+      cycle_a: 3,
+      cycle_b: 3,
+      cycle_c: 3,
+    });
+  });
+
+  it("summarizes dynamic-only edges", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 30n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("world", "base_link", undefined, 10n),
+        sample("base_link", "lidar", undefined, 20n),
+      ],
+    });
+
+    const summary = store.summarizeGraph(new Set(["lidar"]));
+
+    expect(summary.roots).toEqual(["world"]);
+    expect(summary.tfConnectedFrameIds).toEqual([
+      "base_link",
+      "lidar",
+      "world",
+    ]);
+    expect(counts(summary.dataBearingReachableCountsByFrameId)).toMatchObject({
+      base_link: 1,
+      world: 1,
+    });
+  });
+
+  it("counts data-bearing reachability for root ranking", () => {
+    const store = createStore({
+      staticSamples: [
+        sample("map", "base_link"),
+        sample("base_link", "camera"),
+        sample("base_link", "lidar"),
+        sample("odom", "wheel"),
+      ],
+    });
+
+    const summary = store.summarizeGraph(new Set(["camera", "lidar", "wheel"]));
+
+    expect(summary.roots).toEqual(["map", "odom"]);
+    expect(counts(summary.dataBearingReachableCountsByFrameId)).toMatchObject({
+      map: 2,
+      odom: 1,
+    });
+    expect(counts(summary.reachableCountsByFrameId)).toMatchObject({
+      map: 4,
+      odom: 2,
+    });
+  });
+
+  it("sorts graph summary ids by codepoint for deterministic tie-breaks", () => {
+    const store = createStore({
+      staticSamples: [
+        sample("z_root", "z_child"),
+        sample("A_root", "A_child"),
+        sample("a_root", "a_child"),
+      ],
+    });
+
+    const summary = store.summarizeGraph(new Set());
+
+    expect(summary.roots).toEqual(["A_root", "a_root", "z_root"]);
+    expect(summary.tfConnectedFrameIds).toEqual([
+      "A_child",
+      "A_root",
+      "a_child",
+      "a_root",
+      "z_child",
+      "z_root",
+    ]);
   });
 });
 
@@ -262,15 +600,20 @@ function sample(
         readonly z: number;
       } = new Vector3(),
   timeNs?: bigint,
+  rotation = new Quaternion(),
 ): McapFrameTransformSample {
   return {
     childFrameId,
     parentFrameId,
-    rotation: new Quaternion(),
+    rotation,
     ...(timeNs !== undefined ? { timeNs } : {}),
     translation:
       translation instanceof Vector3
         ? translation
         : new Vector3(translation.x, translation.y, translation.z),
   };
+}
+
+function counts(countsByFrameId: ReadonlyMap<string, number>) {
+  return Object.fromEntries([...countsByFrameId.entries()]);
 }

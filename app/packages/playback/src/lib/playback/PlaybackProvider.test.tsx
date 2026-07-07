@@ -2,9 +2,11 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { useAtomValue } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  bufferedRangesAtom,
   currentTimeAtom,
   durationAtom,
   isBufferingAtom,
+  isPlayPendingAtom,
   isPlayingAtom,
   loopEndAtom,
   loopStartAtom,
@@ -19,6 +21,7 @@ import {
   usePlayback,
   usePlaybackStore,
 } from "./PlaybackProvider";
+import { bumpStreamRangesVersion, setBufferedRanges } from "./store-access";
 import type { PlaybackStream } from "./types";
 
 interface RenderOpts {
@@ -41,6 +44,7 @@ function renderEngine(opts: RenderOpts = {}) {
         playhead: useAtomValue(playheadAtom, { store }),
         currentTime: useAtomValue(currentTimeAtom, { store }),
         isPlaying: useAtomValue(isPlayingAtom, { store }),
+        isPlayPending: useAtomValue(isPlayPendingAtom, { store }),
         isBuffering: useAtomValue(isBufferingAtom, { store }),
       };
     },
@@ -251,6 +255,197 @@ describe("PlaybackProvider engine actions", () => {
       act(() => result.current.api.seek(5));
       act(() => result.current.api.play());
       expect(result.current.playhead).toBe(5);
+    });
+
+    it("queues play until a stream's startup buffer window is covered", () => {
+      let ranges: Array<[number, number]> = [[0, 0.05]];
+      const prefetch = vi.fn();
+      const { result } = renderEngine({ duration: 10 });
+
+      act(() => {
+        result.current.api.registerStream({
+          id: "mcap",
+          blocking: true,
+          lookaheadSeconds: 0.3,
+          startupBufferSeconds: 0.3,
+          bufferState: (time) =>
+            ranges.some(([start, end]) => time >= start && time < end)
+              ? "ready"
+              : "missing",
+          bufferedRanges: () => ranges,
+          prefetch,
+        });
+        result.current.api.subscribeStream("mcap");
+      });
+
+      act(() => result.current.api.play());
+      expect(result.current.isPlaying).toBe(false);
+      expect(result.current.isPlayPending).toBe(true);
+      expect(result.current.isBuffering).toBe(true);
+      expect(prefetch).toHaveBeenCalledWith([0, 0.3]);
+
+      act(() => {
+        ranges = [[0, 0.3]];
+        setBufferedRanges(result.current.store, ranges);
+      });
+      expect(result.current.isPlaying).toBe(true);
+      expect(result.current.isPlayPending).toBe(false);
+      expect(result.current.isBuffering).toBe(false);
+    });
+
+    it("retries queued play when a private stream range changes", () => {
+      let placementRanges: Array<[number, number]> = [[0, 0.05]];
+      const dataRanges: Array<[number, number]> = [[0, 10]];
+      const { result } = renderEngine({ duration: 10 });
+
+      act(() => {
+        result.current.api.registerStream({
+          id: "data",
+          blocking: true,
+          bufferState: () => "ready",
+          bufferedRanges: () => dataRanges,
+        });
+        result.current.api.registerStream({
+          id: "placement",
+          blocking: true,
+          startupBufferSeconds: 0.3,
+          bufferState: () => "ready",
+          bufferedRanges: () => placementRanges,
+        });
+        result.current.api.subscribeStream("data");
+        result.current.api.subscribeStream("placement");
+        setBufferedRanges(result.current.store, dataRanges);
+      });
+
+      act(() => result.current.api.play());
+      expect(result.current.isPlaying).toBe(false);
+      expect(result.current.isPlayPending).toBe(true);
+
+      act(() => {
+        placementRanges = [[0, 0.3]];
+        bumpStreamRangesVersion(result.current.store);
+      });
+      expect(result.current.isPlaying).toBe(true);
+      expect(result.current.isPlayPending).toBe(false);
+      expect(result.current.store.get(bufferedRangesAtom)).toBe(dataRanges);
+    });
+
+    it("starts immediately when the startup buffer window is already covered", () => {
+      const ranges: Array<[number, number]> = [[0, 0.3]];
+      const prefetch = vi.fn();
+      const { result } = renderEngine({ duration: 10 });
+
+      act(() => {
+        result.current.api.registerStream({
+          id: "mcap",
+          blocking: true,
+          lookaheadSeconds: 0.3,
+          startupBufferSeconds: 0.3,
+          bufferState: (time) =>
+            ranges.some(([start, end]) => time >= start && time < end)
+              ? "ready"
+              : "missing",
+          bufferedRanges: () => ranges,
+          prefetch,
+        });
+        result.current.api.subscribeStream("mcap");
+      });
+
+      act(() => result.current.api.play());
+      expect(result.current.isPlaying).toBe(true);
+      expect(result.current.isPlayPending).toBe(false);
+      expect(result.current.isBuffering).toBe(false);
+      expect(prefetch).not.toHaveBeenCalled();
+    });
+
+    it("starts when a ticked stream's buffered range begins just after the seek time", () => {
+      const nativeStep = 1 / 30;
+      const seekTime = 10.26;
+      const firstBufferedTick = 10 + 8 * nativeStep;
+      const startupSeconds = 0.3;
+      const ranges: Array<[number, number]> = [
+        [firstBufferedTick, seekTime + startupSeconds],
+      ];
+      const prefetch = vi.fn();
+      const { result } = renderEngine({ duration: 20 });
+
+      act(() => {
+        result.current.api.registerStream({
+          id: "mcap",
+          blocking: true,
+          nativeStepSeconds: nativeStep,
+          lookaheadSeconds: startupSeconds,
+          startupBufferSeconds: startupSeconds,
+          bufferState: (time) =>
+            time >= firstBufferedTick - nativeStep / 2 && time < ranges[0][1]
+              ? "ready"
+              : "missing",
+          bufferedRanges: () => ranges,
+          prefetch,
+        });
+        result.current.api.subscribeStream("mcap");
+      });
+
+      act(() => result.current.api.seek(seekTime));
+      act(() => result.current.api.play());
+
+      expect(result.current.isPlaying).toBe(true);
+      expect(result.current.isPlayPending).toBe(false);
+      expect(result.current.isBuffering).toBe(false);
+      expect(prefetch).not.toHaveBeenCalled();
+    });
+
+    it("queues play when no duration or active stream is known yet", () => {
+      const { result } = renderEngine({ duration: 0 });
+
+      act(() => result.current.api.play());
+      expect(result.current.isPlaying).toBe(false);
+      expect(result.current.isPlayPending).toBe(true);
+      expect(result.current.isBuffering).toBe(true);
+
+      act(() => {
+        result.current.api.registerStream({
+          id: "mcap",
+          blocking: true,
+          duration: 10,
+          bufferState: () => "ready",
+        });
+      });
+      expect(result.current.isPlaying).toBe(false);
+      expect(result.current.isPlayPending).toBe(true);
+
+      act(() => result.current.api.subscribeStream("mcap"));
+      expect(result.current.isPlaying).toBe(true);
+      expect(result.current.isPlayPending).toBe(false);
+      expect(result.current.isBuffering).toBe(false);
+    });
+
+    it("pause cancels a queued play request before playback starts", () => {
+      const ranges: Array<[number, number]> = [[0, 0.05]];
+      const { result } = renderEngine({ duration: 10 });
+
+      act(() => {
+        result.current.api.registerStream({
+          id: "mcap",
+          blocking: true,
+          lookaheadSeconds: 0.3,
+          startupBufferSeconds: 0.3,
+          bufferState: (time) =>
+            ranges.some(([start, end]) => time >= start && time < end)
+              ? "ready"
+              : "missing",
+          bufferedRanges: () => ranges,
+        });
+        result.current.api.subscribeStream("mcap");
+      });
+
+      act(() => result.current.api.play());
+      expect(result.current.isPlayPending).toBe(true);
+
+      act(() => result.current.api.pause());
+      expect(result.current.isPlaying).toBe(false);
+      expect(result.current.isPlayPending).toBe(false);
+      expect(result.current.isBuffering).toBe(false);
     });
   });
 

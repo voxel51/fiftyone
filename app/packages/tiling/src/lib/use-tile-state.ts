@@ -1,8 +1,8 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
 import { useTileId, useTiling } from "./TilingProvider";
-import type { RegisteredTile } from "./types";
+import type { RegisteredTile, SetTileTitleOptions, TilingTile } from "./types";
 
 // Stable placeholder for use outside a TileIdScope; writes no-op.
 const NO_TILE = "__no-tile__";
@@ -42,13 +42,16 @@ export function useTileTitleFor(tileId: string | null): string | null {
   return tileId ? (tiles[tileId]?.title ?? null) : null;
 }
 
-export function useSetTileTitle(): (title: string) => void {
+export function useSetTileTitle(): (
+  title: string,
+  options?: SetTileTitleOptions,
+) => void {
   const tileId = useTileId();
   const { setTileTitle } = useTiling();
   return useCallback(
-    (title: string) => {
+    (title: string, options?: SetTileTitleOptions) => {
       if (!tileId) return;
-      setTileTitle(tileId, title);
+      setTileTitle(tileId, title, options);
     },
     [tileId, setTileTitle],
   );
@@ -56,4 +59,26 @@ export function useSetTileTitle(): (title: string) => void {
 
 export function useTileTypes(): RegisteredTile[] {
   return useAtomValue(registeredTilesAtom);
+}
+
+/**
+ * Register how to clone the surrounding tile. The factory should
+ * capture the tile's *current* state (e.g. its bound source) so
+ * "Duplicate" produces an exact copy, not a fresh default instance.
+ * Call it on every render with a plain closure — the latest one is
+ * used when the duplicate happens.
+ */
+export function useTileDuplicator(factory: () => TilingTile): void {
+  const tileId = useTileId();
+  const { registerTileDuplicator } = useTiling();
+  // Latest-closure ref so the registration below survives re-renders
+  // without re-registering, while duplicates still see current state.
+  const factoryRef = useRef(factory);
+  factoryRef.current = factory;
+  // This effect registers the duplicate factory with the provider for
+  // the lifetime of the tile.
+  useEffect(() => {
+    if (!tileId) return undefined;
+    return registerTileDuplicator(tileId, () => factoryRef.current());
+  }, [tileId, registerTileDuplicator]);
 }

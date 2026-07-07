@@ -42,13 +42,20 @@ export async function decodeMcapMessage({
   const timelineTimeNs = timeline.messageTimeNs(message);
   const decoded = await decodeClient.decode({
     bytes: message.data,
-    cache: {
-      decoderOptionsKey: timeline.cacheKeySuffix,
-      recordId: mcapMessageRecordId(message),
-      source,
-      streamId: topic,
-      timeNs: timelineTimeNs,
-    },
+    // Cache identity costs a full-payload record-id hash per message; a
+    // client with a declared-noop cache (the playback worker: decoded
+    // buffers are transferred, so worker-side reuse is impossible) never
+    // reads it — skip building it.
+    cache:
+      decodeClient.cachesDecodedOutput === false
+        ? undefined
+        : {
+            decoderOptionsKey: timeline.cacheKeySuffix,
+            recordId: mcapMessageRecordId(message),
+            source,
+            streamId: topic,
+            timeNs: timelineTimeNs,
+          },
     context: {
       schemaData: resolvedSchema?.data,
       sourceTimestamps: {
@@ -69,6 +76,7 @@ export async function decodeMcapMessage({
     activeTimeline: timeline.id,
     channelId: message.channelId,
     decoded,
+    encodedPayloadBytes: message.data.byteLength,
     logTimeNs: message.logTime,
     publishTimeNs: message.publishTime,
     sequence: message.sequence,

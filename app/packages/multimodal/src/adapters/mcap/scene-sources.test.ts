@@ -11,7 +11,15 @@ describe("mcapSceneSources", () => {
     const sources = mcapSceneSources([
       createTopic("/CAM_FRONT/image_rect_compressed"),
       createTopic("/LIDAR_TOP", "foxglove.PointCloud"),
+      createTopic("/scan", "foxglove.LaserScan"),
       createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
+      createTopic("/markers/annotations", "foxglove.SceneUpdate"),
+      createTopic("/map", "foxglove.Grid"),
+      createTopic("/drivable_area", "foxglove.Grid"),
+      createTopic("/CAM_FRONT/camera_info", "foxglove.CameraCalibration"),
+      createTopic("/pose", "foxglove.PoseInFrame"),
+      createTopic("/odom", "Pose", "json", "jsonschema"),
+      createTopic("/gps", "foxglove.LocationFix"),
       createTopic("/tf", "foxglove.FrameTransform"),
       createTopic("/diagnostics", "diagnostic_msgs/DiagnosticArray", "ros1"),
     ]);
@@ -28,9 +36,49 @@ describe("mcapSceneSources", () => {
         label: "LIDAR_TOP",
       },
       {
+        id: "/scan",
+        type: MCAP_SOURCE_TYPE.POINT_CLOUD,
+        label: "scan",
+      },
+      {
         id: "/CAM_FRONT/annotations",
         type: MCAP_SOURCE_TYPE.IMAGE_ANNOTATION,
         label: "CAM_FRONT/annotations",
+      },
+      {
+        id: "/markers/annotations",
+        type: MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
+        label: "markers/annotations",
+      },
+      {
+        id: "/map",
+        type: MCAP_SOURCE_TYPE.MAP_LAYER,
+        label: "map",
+      },
+      {
+        id: "/drivable_area",
+        type: MCAP_SOURCE_TYPE.MAP_LAYER,
+        label: "drivable_area",
+      },
+      {
+        id: "/CAM_FRONT/camera_info",
+        type: MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
+        label: "CAM_FRONT/camera_info",
+      },
+      {
+        id: "/pose",
+        type: MCAP_SOURCE_TYPE.POSE,
+        label: "pose",
+      },
+      {
+        id: "/odom",
+        type: MCAP_SOURCE_TYPE.POSE,
+        label: "odom",
+      },
+      {
+        id: "/gps",
+        type: MCAP_SOURCE_TYPE.LOCATION,
+        label: "gps",
       },
     ]);
   });
@@ -88,7 +136,9 @@ describe("mcapStreamPolicies", () => {
       mcapSceneSources([
         createTopic("/cam/image_rect_compressed"),
         createTopic("/cam/annotations", "foxglove.ImageAnnotations"),
+        createTopic("/markers/annotations", "foxglove.SceneUpdate"),
         createTopic("/lidar", "foxglove.PointCloud"),
+        createTopic("/map", "foxglove.Grid"),
       ]),
     );
 
@@ -100,8 +150,28 @@ describe("mcapStreamPolicies", () => {
     expect(policies["/cam/annotations"]).toEqual({
       mode: PlaybackSyncMode.LATEST,
     });
+    expect(policies["/markers/annotations"]).toEqual({
+      mode: PlaybackSyncMode.LATEST,
+    });
     expect(policies["/lidar"]).toEqual({
       mode: PlaybackSyncMode.LATEST,
+    });
+    // A one-shot static /map stays resolvable for the whole run through the
+    // same unbounded lookback.
+    expect(policies["/map"]).toEqual({
+      mode: PlaybackSyncMode.LATEST,
+    });
+  });
+
+  it("leaves latest lookback unbounded", () => {
+    const sources = mcapSceneSources([
+      createTopic("/cam/image_rect_compressed"),
+    ]);
+
+    expect(mcapStreamPolicies(sources)).toEqual({
+      "/cam/image_rect_compressed": {
+        mode: PlaybackSyncMode.LATEST,
+      },
     });
   });
 

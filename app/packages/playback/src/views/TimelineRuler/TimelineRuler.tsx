@@ -2,7 +2,10 @@ import { useDragDelta } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { type ReactNode, useEffect, useRef } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
+import { usePlaybackStore } from "../../lib/playback/playback-store-context";
+import { setHoverTime } from "../../lib/playback/store-access";
 import {
+  useHoverTime,
   useLoopEnd,
   useLoopStart,
   usePlayhead,
@@ -10,6 +13,7 @@ import {
   useViewStart,
 } from "../../lib/playback/use-playback-state";
 import { clamp } from "../../lib/playback/utils";
+import BufferedLaneShading from "./BufferedLaneShading";
 import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;
@@ -45,9 +49,49 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const viewEnd = useViewEnd();
   const loopStart = useLoopStart();
   const loopEnd = useLoopEnd();
+  const hoverTime = useHoverTime();
   const { duration, seek, setView, setLoop } = usePlayback();
+  const store = usePlaybackStore();
 
   const rulerRef = useRef<HTMLDivElement>(null);
+
+  // Publish the timeline time under the pointer so every hover-capable
+  // surface (plot panels, this ruler) can render one shared caret.
+  const publishHover = (clientX: number) => {
+    const el = rulerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const laneWidth = rect.width - labelWidth;
+    const laneX = clientX - rect.left - labelWidth;
+    // The NaN guard matters: a pointer event without coordinates must
+    // clear rather than publish NaN.
+    if (
+      !Number.isFinite(laneX) ||
+      laneWidth <= 0 ||
+      laneX < 0 ||
+      laneX > laneWidth
+    ) {
+      setHoverTime(store, null);
+      return;
+    }
+    setHoverTime(
+      store,
+      clamp(
+        viewStart + (laneX / laneWidth) * (viewEnd - viewStart),
+        0,
+        duration,
+      ),
+    );
+  };
+
+  // This effect clears a hover this ruler may still be publishing when it
+  // unmounts, so no stale caret survives in sibling surfaces.
+  useEffect(
+    () => () => {
+      setHoverTime(store, null);
+    },
+    [store],
+  );
 
   // Capture state at drag-start so onDelta can compute against it without
   // racing with state updates during the drag.
@@ -243,7 +287,11 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
     },
     onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
       dragRef.current.lastPointerX = e.clientX;
+      publishHover(e.clientX);
       laneDrag.handleProps.onPointerMove(e);
+    },
+    onPointerLeave: () => {
+      setHoverTime(store, null);
     },
   };
 
@@ -270,6 +318,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       )}
 
       <div className={styles.lane}>
+        <BufferedLaneShading />
         {ticks.map((t) => (
           <span
             key={t}
@@ -313,6 +362,18 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
           loopEndDrag.handleProps.onPointerUp();
         }}
       />
+
+      {hoverTime !== null &&
+      hoverTime >= viewStart - 1e-9 &&
+      hoverTime <= viewEnd + 1e-9 ? (
+        <div
+          className={styles.hoverCaret}
+          data-testid="timeline-hover-caret"
+          style={{
+            left: laneLeft(clamp((hoverTime - viewStart) / viewDuration, 0, 1)),
+          }}
+        />
+      ) : null}
 
       {/* Playhead handle + line share one translated wrapper. translate3d
           on the wrapper is composited (no layout on every tick); the

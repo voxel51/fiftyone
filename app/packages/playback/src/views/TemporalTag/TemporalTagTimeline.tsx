@@ -25,6 +25,8 @@ export interface TemporalTagTimelineProps extends TimelineWithTracksProps {
 const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
   onTagCreate,
   labelWidth: requestedLabelWidth = TIMELINE_LABEL_WIDTH,
+  rulerOverlay,
+  extraActions,
   ...timelineProps
 }) => {
   const tracks = useTracks();
@@ -47,8 +49,21 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
       <TimelineWithTracks
         {...timelineProps}
         labelWidth={requestedLabelWidth}
-        rulerOverlay={<TemporalTagRangeOverlay labelWidth={labelWidth} />}
-        extraActions={<TemporalTagButton />}
+        // Compose caller-provided slot content with the tag UI instead of
+        // replacing it — hosts inject their own controls (e.g. a timestamp
+        // readout) through the same slots.
+        rulerOverlay={
+          <>
+            {rulerOverlay}
+            <TemporalTagRangeOverlay labelWidth={labelWidth} />
+          </>
+        }
+        extraActions={
+          <>
+            {extraActions}
+            <TemporalTagButton />
+          </>
+        }
       />
       <TemporalTagPopup />
     </TemporalTagProvider>
