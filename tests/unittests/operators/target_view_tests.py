@@ -272,10 +272,10 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
 
     def test_active_media_type_follows_active_slice(self):
         self.assertEqual(
-            self._ctx(group_slice="left")._active_media_type, "image"
+            self._ctx(group_slice="left").active_media_type, "image"
         )
         self.assertEqual(
-            self._ctx(group_slice="lidar")._active_media_type, "point-cloud"
+            self._ctx(group_slice="lidar").active_media_type, "point-cloud"
         )
 
     def test_default_target_is_scoped_to_active_slice(self):
@@ -300,6 +300,36 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
         ctx.params["view_target"] = foo.constants.ViewTarget.DATASET
 
         self.assertEqual(ctx.target_view(require_flat=True), self.dataset)
+
+    def test_base_view_target_is_not_scoped(self):
+        ctx = self._ctx(
+            group_slice="left",
+            view=[
+                {
+                    "_cls": "fiftyone.core.stages.Limit",
+                    "kwargs": [["limit", 1]],
+                }
+            ],
+        )
+        ctx.params["view_target"] = foo.constants.ViewTarget.BASE_VIEW
+
+        target = ctx.target_view(require_flat=True)
+        self.assertEqual(target.media_type, "group")
+        self.assertEqual(len(target), 2)
+
+    def test_custom_view_target_is_not_scoped(self):
+        ctx = self._ctx(group_slice="left")
+        ctx.params["view_target"] = foo.constants.ViewTarget.CUSTOM_VIEW_TARGET
+        ctx.params["custom_view_target"] = [
+            {
+                "_cls": "fiftyone.core.stages.Limit",
+                "kwargs": [["limit", 1]],
+            }
+        ]
+
+        target = ctx.target_view(require_flat=True)
+        self.assertEqual(target.media_type, "group")
+        self.assertEqual(len(target), 1)
 
     def test_applied_view_is_scoped_to_active_slice(self):
         ctx = self._ctx(

@@ -961,6 +961,20 @@ class ExecutionContext(contextlib.AbstractContextManager):
         return self.request_params.get("active_fields", [])
 
     @property
+    def active_media_type(self):
+        """The media type being processed, accounting for the active group
+        slice of grouped datasets.
+        """
+        dataset = self.dataset
+        if dataset is None:
+            return None
+
+        if dataset.media_type == fom.GROUP:
+            return dataset.group_media_types.get(dataset.group_slice)
+
+        return dataset.media_type
+
+    @property
     def user_id(self):
         """The ID of the user executing the operation, if known."""
         return self.user.id if self.user else None
@@ -1036,19 +1050,6 @@ class ExecutionContext(contextlib.AbstractContextManager):
     def group_slice(self):
         """The current group slice of the view (if any)."""
         return self.request_params.get("group_slice", None)
-
-    @property
-    def _active_media_type(self):
-        # the media type being processed, accounting for the active group
-        # slice of grouped datasets
-        dataset = self.dataset
-        if dataset is None:
-            return None
-
-        if dataset.media_type == fom.GROUP:
-            return dataset.group_media_types.get(dataset.group_slice)
-
-        return dataset.media_type
 
     @property
     def num_distributed_tasks(self):
