@@ -22,6 +22,7 @@ import {
   setMcapNetworkHealth,
   useMcapNetworkHealth,
 } from "./mcap-network-health";
+import { useMcapStartupCushionState } from "./mcap-startup-cushion-state";
 import styles from "./McapNetworkStatus.module.css";
 
 const HEALTH_HEARTBEAT_MS = 1_000;
@@ -104,6 +105,8 @@ export const McapNetworkHealthTracker: React.FC<{
  */
 export const McapNetworkStatusPill: React.FC = () => {
   const health = useMcapNetworkHealth();
+  const playPending = useIsPlayPending();
+  const startupCushion = useMcapStartupCushionState();
   const throughputLabel =
     health.throughputBytesPerSec !== null && health.throughputBytesPerSec > 0
       ? `${humanReadableBytes(Math.round(health.throughputBytesPerSec))}/s`
@@ -112,6 +115,14 @@ export const McapNetworkStatusPill: React.FC = () => {
     return null;
   }
 
+  // The bandwidth-aware start gate is holding this play press: name the
+  // wait so it reads as deliberate buffering, not a hang.
+  const bufferingLabel =
+    playPending &&
+    startupCushion !== null &&
+    startupCushion.estimatedWaitSeconds >= 1
+      ? `buffering ~${Math.round(startupCushion.estimatedWaitSeconds)}s`
+      : null;
   const label = health.limited ? "Slow network" : "Bandwidth";
 
   return (
@@ -127,6 +138,9 @@ export const McapNetworkStatusPill: React.FC = () => {
       <span className={styles.dot} aria-hidden="true" />
       {label}
       <span className={styles.throughput}>{throughputLabel}</span>
+      {bufferingLabel ? (
+        <span className={styles.throughput}>{bufferingLabel}</span>
+      ) : null}
     </span>
   );
 };

@@ -15,6 +15,8 @@ import {
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { useEffect, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { setMcapNetworkHealth } from "./mcap-network-health";
+import { getMcapStartupCushionState } from "./mcap-startup-cushion-state";
 import { getMcapTopicStatus } from "./mcap-stream-status-state";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { VISUALIZATION_KIND } from "../../../visualization";
@@ -1041,6 +1043,204 @@ describe("stream status + buffering feedback", () => {
       expect(getPlayhead(store)).toBeCloseTo(1 / 30, 6);
     });
     expect(client.readTopicTimeBounds).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("bandwidth-aware startup cushion + stall rendering", () => {
+  const IMAGE_VISUALIZATION = {
+    bytes: new Uint8Array([1, 2, 3]),
+    kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+  } as const;
+
+  it("drops held frames on seek so an uncovered target shows loading", async () => {
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const client = createClient({
+      // Batches seed nothing: the only real frame arrives through the
+      // current-frame lane at tick 0, so the held-value transitions stay
+      // deterministic.
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readSynchronizedMessages: vi.fn((request) =>
+        request.timeNs === 0n
+          ? Promise.resolve(
+              createWindow({
+                timeNs: 0n,
+                visualization: IMAGE_VISUALIZATION,
+              }),
+            )
+          : new Promise<McapSynchronizedMessageWindow>(() => undefined),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    await waitFor(() => {
+      expect(getStreamValue(store, TOPIC)).not.toBeNull();
+    });
+
+    act(() => {
+      api?.seek(0.9);
+    });
+
+    // The debounced seek event clears held frames; the uncovered target
+    // renders its explicit loading state instead of the pre-seek frame.
+    await waitFor(() => {
+      expect(getStreamValue(store, TOPIC)).toBeNull();
+    });
+  });
+
+  it("gates a pending play press behind the bandwidth cushion and reports progress", async () => {
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const cushionFill = deferred<void>();
+    const client = createClient({
+      // The static startup floor fills immediately; fills past it (the
+      // bandwidth cushion) are held until the test releases them.
+      readSynchronizedMessageBatch: vi.fn(async (request) => {
+        const windows = request.timeNs.map((tick: bigint) =>
+          createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
+        );
+        if ((request.timeNs[0] ?? 0n) > 500_000_000n) {
+          await cushionFill.promise;
+        }
+        return windows;
+      }),
+      readSynchronizedMessages: vi.fn(async (request) =>
+        createWindow({
+          timeNs: request.timeNs,
+          visualization: IMAGE_VISUALIZATION,
+        }),
+      ),
+      readTimelineRange: vi.fn(async () => ({
+        ...createTimelineRange(),
+        // 100 bytes over one second, uniform.
+        byteTimeline: [
+          { cumulativeCompressedBytes: 50, endTimeNs: 500_000_000n },
+          { cumulativeCompressedBytes: 100, endTimeNs: 1_000_000_000n },
+        ],
+      })),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    await waitFor(() => {
+      expect(getBufferedRanges(store).length).toBeGreaterThan(0);
+    });
+
+    // A measured link at ~40% of the content bitrate: the full-smoothness
+    // cushion is the entire remaining second, well past the 0.5s floor.
+    act(() => {
+      setMcapNetworkHealth(store, {
+        busyFraction: 1,
+        limited: true,
+        throughputBytesPerSec: 40 / 0.85,
+        updatedAtMs: 1,
+      });
+    });
+    act(() => {
+      api?.play();
+    });
+
+    expect(getIsPlaying(store)).toBe(false);
+    expect(getIsPlayPending(store)).toBe(true);
+    await waitFor(() => {
+      expect(getMcapStartupCushionState(store)?.targetSeconds).toBe(1);
+    });
+
+    // Releasing the cushion fill opens the gate.
+    await act(async () => {
+      cushionFill.resolve();
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(getIsPlaying(store)).toBe(true);
+      expect(getIsPlayPending(store)).toBe(false);
+    });
+    await waitFor(() => {
+      expect(getMcapStartupCushionState(store)).toBeNull();
+    });
+  });
+
+  it("starts at the static floor when the recording has no byte curve", async () => {
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async (request) =>
+        request.timeNs.map((tick: bigint) =>
+          createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
+        ),
+      ),
+      readSynchronizedMessages: vi.fn(async (request) =>
+        createWindow({
+          timeNs: request.timeNs,
+          visualization: IMAGE_VISUALIZATION,
+        }),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    await waitFor(() => {
+      expect(getBufferedRanges(store).length).toBeGreaterThan(0);
+    });
+
+    // The same constrained link, but no byte curve to size a cushion
+    // from: the gate stays at the static floor and play starts as soon
+    // as it is covered.
+    act(() => {
+      setMcapNetworkHealth(store, {
+        busyFraction: 1,
+        limited: true,
+        throughputBytesPerSec: 40 / 0.85,
+        updatedAtMs: 1,
+      });
+    });
+    act(() => {
+      api?.play();
+    });
+
+    await waitFor(() => {
+      expect(getIsPlaying(store)).toBe(true);
+    });
+    expect(getMcapStartupCushionState(store)).toBeNull();
   });
 });
 

@@ -2,7 +2,7 @@ import type { McapTypes } from "@mcap/core";
 import { maxBigInt, minBigInt } from "../sync";
 import type { McapIndexedReaderLike } from "../reader";
 import type { McapTimelineStrategy } from "../timeline";
-import type { McapTimelineRange } from "../types";
+import type { McapByteTimelinePoint, McapTimelineRange } from "../types";
 
 /**
  * Resolves the playable MCAP timeline bounds from indexed chunk metadata.
@@ -20,6 +20,7 @@ export function mcapTimelineRangeFromReader(
 
   return {
     activeTimeline: timeline.id,
+    byteTimeline: mcapByteTimelineFromChunkIndexes(chunkIndexes, timeline),
     endTimeNs: maxBigInt(
       chunkIndexes.map((chunkIndex) => timeline.chunkEndTimeNs(chunkIndex)),
     ),
@@ -27,4 +28,30 @@ export function mcapTimelineRangeFromReader(
       chunkIndexes.map((chunkIndex) => timeline.chunkStartTimeNs(chunkIndex)),
     ),
   };
+}
+
+/**
+ * Cumulative compressed chunk bytes in chunk-end-time order. Chunk bodies
+ * dominate what playback fetches (message indexes and headers ride inside
+ * the same block fills), so `chunkLength` alone is an honest byte cost for
+ * "play through this chunk's window".
+ */
+function mcapByteTimelineFromChunkIndexes(
+  chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
+  timeline: McapTimelineStrategy,
+): readonly McapByteTimelinePoint[] {
+  const ordered = [...chunkIndexes].sort((a, b) => {
+    const aEnd = timeline.chunkEndTimeNs(a);
+    const bEnd = timeline.chunkEndTimeNs(b);
+    return aEnd < bEnd ? -1 : aEnd > bEnd ? 1 : 0;
+  });
+
+  let cumulativeCompressedBytes = 0;
+  return ordered.map((chunkIndex) => {
+    cumulativeCompressedBytes += Number(chunkIndex.chunkLength);
+    return {
+      cumulativeCompressedBytes,
+      endTimeNs: timeline.chunkEndTimeNs(chunkIndex),
+    };
+  });
 }

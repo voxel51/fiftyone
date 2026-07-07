@@ -90,6 +90,17 @@ export function getIsPlayPending(store: PlaybackStore): boolean {
   return store.get(isPlayPendingAtom);
 }
 
+/**
+ * Watch queued-play-intent flips — a press waiting on startup coverage
+ * and the moment it starts or is abandoned. Returns the unsubscribe.
+ */
+export function subscribeIsPlayPending(
+  store: PlaybackStore,
+  callback: () => void,
+): () => void {
+  return store.sub(isPlayPendingAtom, callback);
+}
+
 /** Non-reactive read of the engine buffering flag. */
 export function getIsBuffering(store: PlaybackStore): boolean {
   return store.get(isBufferingAtom);

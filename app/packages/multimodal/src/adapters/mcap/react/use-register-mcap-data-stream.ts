@@ -7,11 +7,11 @@ import {
   getLoopEnd,
   getLoopStart,
   getPlayhead,
-  getStreamValue,
   setBufferedRanges,
   setBufferingDetail,
   setIsBuffering,
   setStreamValue,
+  subscribeIsPlayPending,
   subscribePlayhead,
   useIsPlaying,
   usePlayback,
@@ -35,6 +35,7 @@ import {
 } from "../../../query/bytes";
 import { DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ } from "../timeline";
 import type {
+  McapByteTimelinePoint,
   McapDecodedMessage,
   McapResourceClient,
   McapStreamSyncPolicies,
@@ -50,8 +51,20 @@ import {
   mcapLatencyNowMs,
   recordMcapLatencyMetric,
 } from "../mcap-latency-debug";
-import { shouldDeferMcapIdleWorkForStore } from "./mcap-network-health";
+import {
+  getMcapNetworkHealth,
+  shouldDeferMcapIdleWorkForStore,
+} from "./mcap-network-health";
 import { resetMcapPlaybackBuffering } from "./mcap-playback-buffering";
+import { pushTickToStore } from "./mcap-playback-frame-push";
+import {
+  computeMcapStartupCushion,
+  type McapStartupCushion,
+} from "./mcap-startup-cushion";
+import {
+  resetMcapStartupCushionState,
+  setMcapStartupCushionState,
+} from "./mcap-startup-cushion-state";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import { createMcapTimelineIndex } from "./mcap-timeline-index";
 import { McapTopicCache } from "./mcap-topic-cache";
@@ -192,6 +205,16 @@ const PLAYBACK_COMMIT_GAP_WARNING_MS = 250;
 const PLAYBACK_STALL_MEASUREMENT_SECONDS = 10;
 
 const PLAYBACK_POLICY = deriveMcapPlaybackPolicy(DEFAULT_MCAP_PLAYBACK_POLICY);
+
+/**
+ * Batches one engine prefetch call may enqueue. The engine widens its
+ * pending-start prefetch window to the bandwidth cushion, and the fill
+ * must be able to pipeline the whole window — pacing it one batch per
+ * buffered-ranges publish would bound filling at ~1 content-second per
+ * wall second no matter how fast the link is.
+ */
+const MAX_ENGINE_PREFETCH_BATCHES_PER_CALL = 8;
+
 let mcapDataRequestCounter = 0;
 
 const noop = (): void => undefined;
@@ -290,6 +313,7 @@ export function useRegisterMcapDataStream({
   const lastObservedPlayheadSecRef = useRef<number | null>(null);
   const loopRunwayStartTickKeyRef = useRef<string | null>(null);
   const indexRef = useRef<McapTimelineIndex | null>(null);
+  const byteTimelineRef = useRef<readonly McapByteTimelinePoint[] | null>(null);
   const sourceEpochRef = useRef(0);
   indexRef.current = index;
   // Hold the most recent `allTopics` / `streamPolicies` in refs so the
@@ -346,6 +370,36 @@ export function useRegisterMcapDataStream({
     clearTimeout(pausedIdleWarmupTimerRef.current);
     pausedIdleWarmupTimerRef.current = null;
   }, []);
+
+  // Bandwidth-aware start gate: how much blocking-topic runway this play
+  // press must cover before the engine may start. On links that outrun the
+  // content bitrate (and whenever throughput or the byte curve is unknown)
+  // this is exactly the static policy floor; on slower links it grows to
+  // the smallest cushion that plays through to the horizon without
+  // draining, so one honest buffering wait replaces repeated mid-play
+  // freezes.
+  const resolveStartupCushion = useCallback((): McapStartupCushion => {
+    const currentIndex = indexRef.current;
+    if (!currentIndex) {
+      return {
+        cushionSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+        estimatedWaitSeconds: 0,
+      };
+    }
+    const loopStartSec = getLoopStart(store);
+    const loopEndSec = getLoopEnd(store);
+    return computeMcapStartupCushion({
+      byteTimeline: byteTimelineRef.current,
+      horizonSec:
+        loopEndSec > loopStartSec
+          ? Math.min(currentIndex.durationSec, loopEndSec)
+          : currentIndex.durationSec,
+      minimumSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+      playheadSec: getPlayhead(store),
+      startTimeNs: currentIndex.startTimeNs,
+      throughputBytesPerSec: getMcapNetworkHealth(store).throughputBytesPerSec,
+    });
+  }, [store]);
 
   // If a recording's selected renderable topics begin just after the MCAP
   // timeline start, land the initial playhead on the first sampled tick that
@@ -442,6 +496,7 @@ export function useRegisterMcapDataStream({
     sourceEpochRef.current += 1;
     const sourceEpoch = sourceEpochRef.current;
     setIndex(null);
+    byteTimelineRef.current = null;
     pendingTicksRef.current.clear();
     lastFrameRef.current.clear();
     failureStreakRef.current.clear();
@@ -462,6 +517,7 @@ export function useRegisterMcapDataStream({
       setMcapTopicStartTimeSec(store, topic, null);
     }
     resetMcapPlaybackBuffering(store);
+    resetMcapStartupCushionState(store);
     if (bufferedRangesTimerRef.current !== null) {
       clearTimeout(bufferedRangesTimerRef.current);
       bufferedRangesTimerRef.current = null;
@@ -481,6 +537,7 @@ export function useRegisterMcapDataStream({
     rangeRead
       .then((range) => {
         if (!cancelled && sourceEpochRef.current === sourceEpoch) {
+          byteTimelineRef.current = range.byteTimeline ?? null;
           const nextIndex = createMcapTimelineIndex(range);
           markMcapLatencyEvent(
             "timeline index ready",
@@ -739,6 +796,17 @@ export function useRegisterMcapDataStream({
       getIsBuffering(store)
     ) {
       setIsBuffering(store, false);
+      // The stall is over — re-push the playhead tick so values held
+      // through it re-resolve, and a fetched tick with genuinely no
+      // message settles to its honest empty state.
+      pushTickToStore(
+        activeTopics,
+        tick,
+        caches,
+        lastFrameRef.current,
+        store,
+        failed,
+      );
     }
 
     const playheadSec = getPlayhead(store);
@@ -756,6 +824,16 @@ export function useRegisterMcapDataStream({
     const startupReady =
       !!startupCoverage?.total &&
       startupCoverage.covered === startupCoverage.total;
+
+    publishStartupCushionProgress({
+      activeBlockingTopics,
+      caches,
+      index: indexRef.current,
+      playheadSec,
+      resolveStartupCushion,
+      store,
+      tick,
+    });
 
     if (isMcapLatencyDebugEnabled() && tick !== null && blockingTotal > 0) {
       if (blockingCovered === blockingTotal) {
@@ -817,6 +895,7 @@ export function useRegisterMcapDataStream({
     getActiveTopics,
     getActiveBlockingTopics,
     publishBufferedRangesNow,
+    resolveStartupCushion,
     scheduleBufferedRangesPublish,
     store,
   ]);
@@ -1045,6 +1124,7 @@ export function useRegisterMcapDataStream({
               caches,
               lastFrameRef.current,
               store,
+              failedTopicsRef.current,
             );
           }
         })
@@ -1204,6 +1284,7 @@ export function useRegisterMcapDataStream({
             caches,
             lastFrameRef.current,
             store,
+            failedTopicsRef.current,
           );
         })
         .catch((error) => {
@@ -1558,6 +1639,7 @@ export function useRegisterMcapDataStream({
           topicCachesRef.current,
           lastFrameRef.current,
           store,
+          failedTopicsRef.current,
         );
         if (overlayTopics.length > 0) {
           fetchCurrentFrame(tick, overlayTopics);
@@ -1609,8 +1691,16 @@ export function useRegisterMcapDataStream({
       blocking: true,
       duration: index.durationSec,
       nativeStepSeconds: nativeStep,
-      lookaheadSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
-      startupBufferSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+      // Bandwidth-aware start gate: the engine reads these on every pending
+      // evaluation, so the getters keep the required runway (and the window
+      // its pending prefetches fill) sized to live link throughput. On
+      // healthy links both resolve to the static policy floor.
+      get lookaheadSeconds() {
+        return resolveStartupCushion().cushionSeconds;
+      },
+      get startupBufferSeconds() {
+        return resolveStartupCushion().cushionSeconds;
+      },
       bufferedRanges: computeBufferedRanges,
 
       bufferState: (timeSec) => {
@@ -1718,27 +1808,34 @@ export function useRegisterMcapDataStream({
         const tick = index.nearestTick(startSec);
         // Explicit undefined check — `0n` is falsy but a valid tick.
         if (tick !== undefined) fetchCurrentFrame(tick, activeTopics);
-        const missing = collectMissingTicksForTopics(
-          startSec,
-          endSec,
-          PLAYBACK_POLICY.startupMaxPrefetchBatch,
-          activeTopics,
-        );
+        // Fill the whole requested window in bounded batches: with the
+        // bandwidth cushion the engine can ask for several seconds here,
+        // and the batches must be in flight together to pipeline the
+        // link. Pending-tick bookkeeping keeps repeat calls idempotent.
+        let missingTicks = 0;
+        for (let i = 0; i < MAX_ENGINE_PREFETCH_BATCHES_PER_CALL; i++) {
+          const missing = collectMissingTicksForTopics(
+            startSec,
+            endSec,
+            PLAYBACK_POLICY.maxPrefetchBatch,
+            activeTopics,
+          );
+          if (missing.length === 0) break;
+          missingTicks += missing.length;
+          if (!fetchBatch(missing, activeTopics, "playback-prefetch")) break;
+        }
         if (isMcapLatencyDebugEnabled()) {
           const detail = {
             activeTopics: activeTopics.length,
             blockingTopics: activeBlockingTopics.length,
             endSec: Number(endSec.toFixed(3)),
-            missingTicks: missing.length,
+            missingTicks,
             startSec: Number(startSec.toFixed(3)),
           };
           markMcapLatencyEvent("playback prefetch requested", detail, {
             onceKey: "first-playback-prefetch-requested",
           });
           recordMcapLatencyMetric("playback prefetch calls", 1, detail);
-        }
-        if (missing.length > 0) {
-          fetchBatch(missing, activeTopics, "playback-prefetch");
         }
         // Mid-playback stall: keep per-topic statuses and the "N/M
         // streams" detail fresh while the engine waits. Same-value
@@ -1754,7 +1851,14 @@ export function useRegisterMcapDataStream({
         if (lastCommittedTickKey === tickKey) return;
         lastCommittedTickKey = tickKey;
         const activeTopics = getActiveTopics();
-        pushTickToStore(activeTopics, tick, caches, lastFrame, commitStore);
+        pushTickToStore(
+          activeTopics,
+          tick,
+          caches,
+          lastFrame,
+          commitStore,
+          failedTopicsRef.current,
+        );
         if (isMcapLatencyDebugEnabled()) {
           const nowMs = mcapLatencyNowMs();
           const detail = {
@@ -1802,6 +1906,14 @@ export function useRegisterMcapDataStream({
     // Keep the stream permanently active — subscriber count is managed
     // per-topic via McapTopicCache, not at the engine stream level.
     const unsubscribe = subscribeStream(STREAM_ID);
+
+    // Pending-play flips re-evaluate statuses immediately: the gated-start
+    // progress (chip ETA) appears with the press and clears the moment
+    // playback starts, instead of waiting for the next fetch to settle.
+    const unsubPlayPending = subscribeIsPlayPending(
+      store,
+      publishStreamStatuses,
+    );
 
     // Proactive lookahead: fill the buffer ahead of the playhead in larger
     // chunks instead of creating one tiny worker request per source tick.
@@ -1959,6 +2071,7 @@ export function useRegisterMcapDataStream({
     return () => {
       unregister();
       unsubscribe();
+      unsubPlayPending();
       unsubPlayhead();
     };
   }, [
@@ -1974,6 +2087,7 @@ export function useRegisterMcapDataStream({
     getActiveBlockingTopics,
     getActiveTopics,
     publishStreamStatuses,
+    resolveStartupCushion,
     warmLoopStartRunway,
   ]);
 
@@ -1985,6 +2099,11 @@ export function useRegisterMcapDataStream({
       // it immediately from speculative transfers already in flight.
       lastSeekAtMsRef.current = mcapLatencyNowMs();
       client?.cancelIdleReads?.();
+      // A seek is a time jump: frames held over from the previous position
+      // would render wrong-time sensor data as if current. Drop them so an
+      // uncovered target shows its explicit loading state until real data
+      // lands (a covered target repaints from cache immediately).
+      lastFrameRef.current.clear();
       prefetchLookaheadFrom(seekEvent.time);
     }
   }, [client, seekEvent, prefetchLookaheadFrom]);
@@ -2429,6 +2548,67 @@ function fillMissingStartupBufferFrom({
   return fetchBatch(missing, activeTopics, "startup-lookahead");
 }
 
+/**
+ * Publishes gated-start progress for modal chrome while a play press waits
+ * on the bandwidth cushion: the runway target and a wall-clock estimate
+ * that shrinks as coverage fills. Cleared whenever no press is pending or
+ * the cushion is just the static floor.
+ */
+function publishStartupCushionProgress({
+  activeBlockingTopics,
+  caches,
+  index,
+  playheadSec,
+  resolveStartupCushion,
+  store,
+  tick,
+}: {
+  readonly activeBlockingTopics: readonly string[];
+  readonly caches: Map<string, McapTopicCache>;
+  readonly index: McapTimelineIndex | null;
+  readonly playheadSec: number;
+  readonly resolveStartupCushion: () => McapStartupCushion;
+  readonly store: PlaybackStore;
+  readonly tick: bigint | null;
+}): void {
+  if (
+    !getIsPlayPending(store) ||
+    tick === null ||
+    activeBlockingTopics.length === 0
+  ) {
+    setMcapStartupCushionState(store, null);
+    return;
+  }
+
+  const cushion = resolveStartupCushion();
+  if (
+    cushion.cushionSeconds <= PLAYBACK_POLICY.startupLookaheadSeconds ||
+    cushion.estimatedWaitSeconds <= 0
+  ) {
+    setMcapStartupCushionState(store, null);
+    return;
+  }
+
+  const coverage = bufferWindowCoverage({
+    activeTopics: activeBlockingTopics,
+    caches,
+    index,
+    lookaheadSeconds: cushion.cushionSeconds,
+    maxTicks: Math.max(
+      PLAYBACK_POLICY.startupMinTicks,
+      Math.ceil(DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ * cushion.cushionSeconds),
+    ),
+    timeSec: playheadSec,
+  });
+  const missingFraction = coverage?.total
+    ? (coverage.total - coverage.covered) / coverage.total
+    : 1;
+  setMcapStartupCushionState(store, {
+    estimatedWaitSeconds: cushion.estimatedWaitSeconds * missingFraction,
+    targetSeconds: cushion.cushionSeconds,
+  });
+}
+
 function bufferWindowCoverage({
   activeTopics,
   caches,
@@ -2505,38 +2685,6 @@ function distributeWindowToCaches(
   for (const topic of requestedTopics) {
     const msgs = window.messagesByTopic[topic];
     caches.get(topic)?.set(window.timeNs, msgs?.[0] ?? null, options);
-  }
-}
-
-function pushTickToStore(
-  activeTopics: string[],
-  tick: bigint,
-  caches: Map<string, McapTopicCache>,
-  lastFrame: Map<string, McapTopicPlaybackFrame<unknown>>,
-  store: PlaybackStore,
-): void {
-  for (const topic of activeTopics) {
-    const cache = caches.get(topic);
-    if (!cache) continue;
-    const msg = cache.get(tick);
-    const viz = msg?.decoded.output.visualization ?? null;
-    let toWrite: McapTopicPlaybackFrame<unknown> | null;
-    if (msg === undefined) {
-      toWrite = lastFrame.get(topic) ?? null;
-    } else if (msg && viz !== null) {
-      toWrite = {
-        ageNs: tick >= msg.timelineTimeNs ? tick - msg.timelineTimeNs : 0n,
-        contentTimeNs: msg.timelineTimeNs,
-        frame: viz,
-        requestedTimeNs: tick,
-      };
-      lastFrame.set(topic, toWrite);
-    } else {
-      toWrite = null;
-      lastFrame.delete(topic);
-    }
-    if (getStreamValue(store, topic) === toWrite) continue;
-    setStreamValue(store, topic, toWrite);
   }
 }
 

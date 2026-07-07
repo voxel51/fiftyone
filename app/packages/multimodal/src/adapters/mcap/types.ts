@@ -522,6 +522,23 @@ export interface McapReadFrameTransformWindowRequest {
 }
 
 /**
+ * One point of the cumulative compressed-byte curve over a timeline: after
+ * `endTimeNs`, playback from the file start has consumed
+ * `cumulativeCompressedBytes` of chunk data.
+ */
+export interface McapByteTimelinePoint {
+  /**
+   * Compressed chunk bytes accumulated through this chunk, in time order.
+   */
+  readonly cumulativeCompressedBytes: number;
+
+  /**
+   * Inclusive timeline end of the chunk contributing the bytes.
+   */
+  readonly endTimeNs: bigint;
+}
+
+/**
  * Playable time range for one MCAP timeline.
  */
 export interface McapTimelineRange {
@@ -529,6 +546,13 @@ export interface McapTimelineRange {
    * Timeline used for the returned range.
    */
   readonly activeTimeline: McapActiveTimeline;
+
+  /**
+   * Cumulative compressed chunk bytes by chunk end time, ascending.
+   * Consumers estimate "bytes needed to play [t0, t1]" from deltas —
+   * the bandwidth-aware startup gate sizes its cushion with this.
+   */
+  readonly byteTimeline?: readonly McapByteTimelinePoint[];
 
   /**
    * Inclusive upper timeline bound.
