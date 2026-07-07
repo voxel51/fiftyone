@@ -1,0 +1,35 @@
+/* Slow opacity pulse for the in-flight state. A local keyframe until a shared
+ * animation token lands in voodo. */
+@keyframes saveStatusPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+/* Subtle glow. Colour is omitted so drop-shadow falls back to the icon's
+ * `currentColor`, which voodo sets to the health colour. */
+.glow {
+  filter: drop-shadow(0 0 3px);
+}
+
+.pulsing {
+  animation: saveStatusPulse 1.6s ease-in-out infinite;
+}
+
+/* Respect users who opt out of motion — hold the icon steady. */
+@media (prefers-reduced-motion: reduce) {
+  .pulsing {
+    animation: none;
+  }
+}
