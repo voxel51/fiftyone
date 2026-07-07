@@ -1,4 +1,11 @@
+import {
+  PlaybackProvider,
+  setIsBuffering,
+  usePlaybackStore,
+  type PlaybackStore,
+} from "@fiftyone/playback";
 import { act, cleanup, render, screen } from "@testing-library/react";
+import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type { McapDecodedMessage, McapResourceClient } from "../types";
@@ -7,6 +14,7 @@ import {
   McapFrameTransformsProvider,
   useSetMcapFrameTransformsContext,
 } from "./mcap-frame-transforms-context";
+import { setMcapNetworkHealth } from "./mcap-network-health";
 import {
   McapPoseTrajectoriesBridge,
   McapPoseTrajectoriesProvider,
@@ -135,6 +143,76 @@ describe("McapPoseTrajectoriesStartupGate", () => {
   });
 });
 
+describe("starved-playback stand-down", () => {
+  it("aborts a running read when starvation appears mid-stream and retries after it clears", async () => {
+    vi.useFakeTimers();
+    const source = createSource("pose");
+    const storeCapture = capturePlaybackStore();
+    let releaseSecondMessage = () => undefined as void;
+    const secondMessageGate = new Promise<void>((resolve) => {
+      releaseSecondMessage = resolve;
+    });
+    let generatorFinalized = false;
+    const client = createClient(async function* () {
+      try {
+        yield poseMessage(10n, [1, 2, 0], "map");
+        await secondMessageGate;
+        yield poseMessage(20n, [3, 4, 0]);
+      } finally {
+        generatorFinalized = true;
+      }
+    });
+
+    render(
+      <PlaybackProvider duration={1}>
+        <PlaybackStoreProbe onStore={storeCapture.onStore} />
+        <Harness client={client} enabled source={source} />
+      </PlaybackProvider>,
+    );
+    const store = storeCapture.store();
+
+    // The read starts on a healthy link and consumes its first message.
+    await advanceTimers(1_500);
+    expect(client.readDecodedMessages).toHaveBeenCalledTimes(1);
+
+    // Starvation appears mid-read: network-limited while playback waits.
+    act(() => {
+      setMcapNetworkHealth(store, {
+        busyFraction: 1,
+        limited: true,
+        throughputBytesPerSec: 1_000,
+        updatedAtMs: 1,
+      });
+      setIsBuffering(store, true);
+    });
+    await act(async () => {
+      releaseSecondMessage();
+      await Promise.resolve();
+    });
+
+    // The consumer bailed (cancelling the worker job) without publishing
+    // a partial or error state.
+    expect(generatorFinalized).toBe(true);
+    expect(screen.getByTestId("trajectories").textContent).toBe(
+      "/pose:loading:0:",
+    );
+
+    // Still starved at the retry cadence: no new read is launched.
+    await advanceTimers(2_000);
+    expect(client.readDecodedMessages).toHaveBeenCalledTimes(1);
+
+    // Starvation clears; the next retry re-reads the topic end to end.
+    act(() => {
+      setIsBuffering(store, false);
+    });
+    await advanceTimers(2_000);
+    expect(client.readDecodedMessages).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId("trajectories").textContent).toBe(
+      "/pose:ready:2:map",
+    );
+  });
+});
+
 function Harness({
   client,
   enabled,
@@ -200,6 +278,33 @@ function FrameTransformsStatusDriver() {
       <button data-testid="set-error" onClick={() => publish("error")} />
     </>
   );
+}
+
+function PlaybackStoreProbe({
+  onStore,
+}: {
+  readonly onStore: (store: PlaybackStore) => void;
+}) {
+  const store = usePlaybackStore();
+  useEffect(() => {
+    onStore(store);
+  }, [onStore, store]);
+  return null;
+}
+
+function capturePlaybackStore() {
+  let captured: PlaybackStore | undefined;
+  return {
+    onStore: (store: PlaybackStore) => {
+      captured = store;
+    },
+    store: (): PlaybackStore => {
+      if (!captured) {
+        throw new Error("PlaybackStore was not captured");
+      }
+      return captured;
+    },
+  };
 }
 
 function TrajectoriesProbe() {

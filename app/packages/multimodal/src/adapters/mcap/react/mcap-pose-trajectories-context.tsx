@@ -161,7 +161,7 @@ export function McapPoseTrajectoriesBridge({
     }
 
     let cancelled = false;
-    let startTimeout: ReturnType<typeof setTimeout> | null = null;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
     const commit = (topic: string, state: McapPoseTrajectoryState) => {
       if (cancelled) {
         return;
@@ -170,19 +170,29 @@ export function McapPoseTrajectoriesBridge({
       setTrajectories(new Map(trajectoriesRef.current));
     };
 
+    // A near-full-file scan on a starved link would fight foreground
+    // catch-up for bandwidth (lanes are separate workers, not separate
+    // links). While the user is actively waiting on a limited network,
+    // stand down and re-check.
+    const shouldStandDown = (): boolean =>
+      !!playbackStore && shouldDeferMcapIdleWorkForStore(playbackStore, null);
+
+    const scheduleRetry = (delayMs: number) => {
+      if (cancelled || retryTimeout !== null) {
+        return;
+      }
+      retryTimeout = setTimeout(() => {
+        retryTimeout = null;
+        start();
+      }, delayMs);
+    };
+
     const start = () => {
       if (cancelled) {
         return;
       }
-      // A near-full-file scan on a starved link would fight foreground
-      // catch-up for bandwidth (lanes are separate workers, not separate
-      // links). While the user is actively waiting on a limited network,
-      // stand down and re-check.
-      if (
-        playbackStore &&
-        shouldDeferMcapIdleWorkForStore(playbackStore, null)
-      ) {
-        startTimeout = setTimeout(start, TRAJECTORY_DEFERRED_RETRY_MS);
+      if (shouldStandDown()) {
+        scheduleRetry(TRAJECTORY_DEFERRED_RETRY_MS);
         return;
       }
 
@@ -207,6 +217,17 @@ export function McapPoseTrajectoriesBridge({
               { priority: "bulk" },
             )) {
               if (cancelled) {
+                return;
+              }
+              // The "limited" verdict trails the stall that raises it, so
+              // the pre-start gate alone still races a cold play press.
+              // Re-check per message and stand down mid-read: breaking out
+              // of the stream cancels the worker job at its next read
+              // boundary, and the bytes already banked make the retry
+              // cheaper than the abandoned attempt.
+              if (shouldStandDown()) {
+                fetchedTopicsRef.current.delete(topic);
+                scheduleRetry(TRAJECTORY_DEFERRED_RETRY_MS);
                 return;
               }
               const visualization = message.decoded.output.visualization;
@@ -234,12 +255,12 @@ export function McapPoseTrajectoriesBridge({
       }
     };
 
-    startTimeout = setTimeout(start, TRAJECTORY_START_DELAY_MS);
+    scheduleRetry(TRAJECTORY_START_DELAY_MS);
 
     return () => {
       cancelled = true;
-      if (startTimeout !== null) {
-        clearTimeout(startTimeout);
+      if (retryTimeout !== null) {
+        clearTimeout(retryTimeout);
       }
     };
     // `poseTopics` identity is derived from the scene inventory, so this
