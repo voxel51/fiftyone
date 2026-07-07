@@ -24,6 +24,7 @@ import useExit from "./useExit";
 import { useDetectionMode } from "./useDetectionMode";
 import { useSegmentationMode } from "./useSegmentationMode";
 import {
+  AnnotationSaveIndicator,
   useAnnotationController,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
@@ -207,7 +208,8 @@ const Header = () => {
       </ItemLeft>
       {currentFieldIsReadOnly && <span>Read-only</span>}
       <ItemRight>
-        <Stack direction="row" alignItems="center">
+        <Stack direction="row" alignItems="center" gap={1}>
+          <AnnotationSaveIndicator />
           {annotationContext.selected?.label != null && <LabelHamburgerMenu />}
         </Stack>
       </ItemRight>

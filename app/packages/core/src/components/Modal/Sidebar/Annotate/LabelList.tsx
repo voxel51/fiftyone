@@ -1,11 +1,16 @@
 import {
+  Align,
   Button,
+  Orientation,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
+import { AnnotationSaveIndicator } from "@fiftyone/annotation";
 import { EntryKind, isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -49,9 +54,16 @@ export default function AnnotateSidebar() {
   return (
     <>
       <div style={headerStyle}>
-        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-          Click labels to edit
-        </Text>
+        <Stack
+          orientation={Orientation.Row}
+          align={Align.Center}
+          spacing={Spacing.Sm}
+        >
+          <AnnotationSaveIndicator />
+          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+            Click labels to edit
+          </Text>
+        </Stack>
         {canManage && (
           <Button
             variant={Variant.Borderless}
