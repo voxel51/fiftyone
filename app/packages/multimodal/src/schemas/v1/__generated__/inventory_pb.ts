@@ -4,15 +4,23 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { PayloadDescriptor, SourceFingerprint, TimeTrack } from "./common_pb";
+import type {
+  PayloadDescriptor,
+  SourceFingerprint,
+  TimeTrack,
+} from "./common_pb";
 import { file_common } from "./common_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file inventory.proto.
  */
-export const file_inventory: GenFile = /*@__PURE__*/
-  fileDesc("Cg9pbnZlbnRvcnkucHJvdG8SHmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MSLGAgoPU3RyZWFtSW52ZW50b3J5EhEKCXN0cmVhbV9pZBgBIAEoCRJCCgdwYXlsb2FkGAIgASgLMjEuZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlBheWxvYWREZXNjcmlwdG9yEh0KDHJlY29yZF9jb3VudBgDIAEoBEICMAFIAIgBARIZCgxkaXNwbGF5X25hbWUYBCABKAlIAYgBARJPCghtZXRhZGF0YRgFIAMoCzI9LmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5TdHJlYW1JbnZlbnRvcnkuTWV0YWRhdGFFbnRyeRovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCDwoNX3JlY29yZF9jb3VudEIPCg1fZGlzcGxheV9uYW1lImYKGVN0YXRpY0Nvb3JkaW5hdGVGcmFtZUVkZ2USFwoPcGFyZW50X2ZyYW1lX2lkGAEgASgJEhYKDmNoaWxkX2ZyYW1lX2lkGAIgASgJEhgKEHNvdXJjZV9zdHJlYW1faWQYAyABKAkiyAQKDlNjZW5lSW52ZW50b3J5EhQKDGludmVudG9yeV9pZBgBIAEoCRIQCghzY2VuZV9pZBgCIAEoCRIVCg1zb3VyY2VfZm9ybWF0GAMgASgJEk0KEnNvdXJjZV9maW5nZXJwcmludBgEIAEoCzIxLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5Tb3VyY2VGaW5nZXJwcmludBIZChFpbnZlbnRvcnlfdmVyc2lvbhgFIAEoCRI+Cgt0aW1lX3RyYWNrcxgGIAMoCzIpLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5UaW1lVHJhY2sSQAoHc3RyZWFtcxgHIAMoCzIvLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5TdHJlYW1JbnZlbnRvcnkSYAodc3RhdGljX2Nvb3JkaW5hdGVfZnJhbWVfZWRnZXMYCCADKAsyOS5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuU3RhdGljQ29vcmRpbmF0ZUZyYW1lRWRnZRJOCghtZXRhZGF0YRgJIAMoCzI8LmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5TY2VuZUludmVudG9yeS5NZXRhZGF0YUVudHJ5EhMKC3Byb2R1Y2VkX2F0GAogASgJEhMKC3Byb2R1Y2VkX2J5GAsgASgJGi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4AWIGcHJvdG8z", [file_common]);
+export const file_inventory: GenFile =
+  /*@__PURE__*/
+  fileDesc(
+    "Cg9pbnZlbnRvcnkucHJvdG8SHmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MSLGAgoPU3RyZWFtSW52ZW50b3J5EhEKCXN0cmVhbV9pZBgBIAEoCRJCCgdwYXlsb2FkGAIgASgLMjEuZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlBheWxvYWREZXNjcmlwdG9yEh0KDHJlY29yZF9jb3VudBgDIAEoBEICMAFIAIgBARIZCgxkaXNwbGF5X25hbWUYBCABKAlIAYgBARJPCghtZXRhZGF0YRgFIAMoCzI9LmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5TdHJlYW1JbnZlbnRvcnkuTWV0YWRhdGFFbnRyeRovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCDwoNX3JlY29yZF9jb3VudEIPCg1fZGlzcGxheV9uYW1lImYKGVN0YXRpY0Nvb3JkaW5hdGVGcmFtZUVkZ2USFwoPcGFyZW50X2ZyYW1lX2lkGAEgASgJEhYKDmNoaWxkX2ZyYW1lX2lkGAIgASgJEhgKEHNvdXJjZV9zdHJlYW1faWQYAyABKAkiyAQKDlNjZW5lSW52ZW50b3J5EhQKDGludmVudG9yeV9pZBgBIAEoCRIQCghzY2VuZV9pZBgCIAEoCRIVCg1zb3VyY2VfZm9ybWF0GAMgASgJEk0KEnNvdXJjZV9maW5nZXJwcmludBgEIAEoCzIxLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5Tb3VyY2VGaW5nZXJwcmludBIZChFpbnZlbnRvcnlfdmVyc2lvbhgFIAEoCRI+Cgt0aW1lX3RyYWNrcxgGIAMoCzIpLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5UaW1lVHJhY2sSQAoHc3RyZWFtcxgHIAMoCzIvLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5TdHJlYW1JbnZlbnRvcnkSYAodc3RhdGljX2Nvb3JkaW5hdGVfZnJhbWVfZWRnZXMYCCADKAsyOS5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuU3RhdGljQ29vcmRpbmF0ZUZyYW1lRWRnZRJOCghtZXRhZGF0YRgJIAMoCzI8LmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5TY2VuZUludmVudG9yeS5NZXRhZGF0YUVudHJ5EhMKC3Byb2R1Y2VkX2F0GAogASgJEhMKC3Byb2R1Y2VkX2J5GAsgASgJGi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4AWIGcHJvdG8z",
+    [file_common],
+  );
 
 /**
  * Source-fact entry describing a single multimodal stream discovered during
@@ -20,50 +28,52 @@ export const file_inventory: GenFile = /*@__PURE__*/
  *
  * @generated from message fiftyone.multimodal.schemas.v1.StreamInventory
  */
-export type StreamInventory = Message<"fiftyone.multimodal.schemas.v1.StreamInventory"> & {
-  /**
-   * Stable stream identifier within the scene inventory.
-   *
-   * @generated from field: string stream_id = 1;
-   */
-  streamId: string;
+export type StreamInventory =
+  Message<"fiftyone.multimodal.schemas.v1.StreamInventory"> & {
+    /**
+     * Stable stream identifier within the scene inventory.
+     *
+     * @generated from field: string stream_id = 1;
+     */
+    streamId: string;
 
-  /**
-   * Descriptor used to route encoded payloads to compatible decoders.
-   *
-   * @generated from field: fiftyone.multimodal.schemas.v1.PayloadDescriptor payload = 2;
-   */
-  payload?: PayloadDescriptor;
+    /**
+     * Descriptor used to route encoded payloads to compatible decoders.
+     *
+     * @generated from field: fiftyone.multimodal.schemas.v1.PayloadDescriptor payload = 2;
+     */
+    payload?: PayloadDescriptor;
 
-  /**
-   * Optional number of records in the stream.
-   *
-   * @generated from field: optional uint64 record_count = 3 [jstype = JS_STRING];
-   */
-  recordCount?: string;
+    /**
+     * Optional number of records in the stream.
+     *
+     * @generated from field: optional uint64 record_count = 3 [jstype = JS_STRING];
+     */
+    recordCount?: string;
 
-  /**
-   * Optional human-readable stream label for default panel titles.
-   *
-   * @generated from field: optional string display_name = 4;
-   */
-  displayName?: string;
+    /**
+     * Optional human-readable stream label for default panel titles.
+     *
+     * @generated from field: optional string display_name = 4;
+     */
+    displayName?: string;
 
-  /**
-   * Adapter-provided stream metadata, such as topic, channel, column, shard,
-   * schema name, or source path. Scene-level metadata belongs on
-   * SceneInventory.metadata.
-   *
-   * @generated from field: map<string, string> metadata = 5;
-   */
-  metadata: { [key: string]: string };
-};
+    /**
+     * Adapter-provided stream metadata, such as topic, channel, column, shard,
+     * schema name, or source path. Scene-level metadata belongs on
+     * SceneInventory.metadata.
+     *
+     * @generated from field: map<string, string> metadata = 5;
+     */
+    metadata: { [key: string]: string };
+  };
 
 /**
  * Describes the message fiftyone.multimodal.schemas.v1.StreamInventory.
  * Use `create(StreamInventorySchema)` to create a new message.
  */
-export const StreamInventorySchema: GenMessage<StreamInventory> = /*@__PURE__*/
+export const StreamInventorySchema: GenMessage<StreamInventory> =
+  /*@__PURE__*/
   messageDesc(file_inventory, 0);
 
 /**
@@ -74,34 +84,36 @@ export const StreamInventorySchema: GenMessage<StreamInventory> = /*@__PURE__*/
  *
  * @generated from message fiftyone.multimodal.schemas.v1.StaticCoordinateFrameEdge
  */
-export type StaticCoordinateFrameEdge = Message<"fiftyone.multimodal.schemas.v1.StaticCoordinateFrameEdge"> & {
-  /**
-   * Parent coordinate frame identifier.
-   *
-   * @generated from field: string parent_frame_id = 1;
-   */
-  parentFrameId: string;
+export type StaticCoordinateFrameEdge =
+  Message<"fiftyone.multimodal.schemas.v1.StaticCoordinateFrameEdge"> & {
+    /**
+     * Parent coordinate frame identifier.
+     *
+     * @generated from field: string parent_frame_id = 1;
+     */
+    parentFrameId: string;
 
-  /**
-   * Child coordinate frame identifier.
-   *
-   * @generated from field: string child_frame_id = 2;
-   */
-  childFrameId: string;
+    /**
+     * Child coordinate frame identifier.
+     *
+     * @generated from field: string child_frame_id = 2;
+     */
+    childFrameId: string;
 
-  /**
-   * Stream that declared this static relationship.
-   *
-   * @generated from field: string source_stream_id = 3;
-   */
-  sourceStreamId: string;
-};
+    /**
+     * Stream that declared this static relationship.
+     *
+     * @generated from field: string source_stream_id = 3;
+     */
+    sourceStreamId: string;
+  };
 
 /**
  * Describes the message fiftyone.multimodal.schemas.v1.StaticCoordinateFrameEdge.
  * Use `create(StaticCoordinateFrameEdgeSchema)` to create a new message.
  */
-export const StaticCoordinateFrameEdgeSchema: GenMessage<StaticCoordinateFrameEdge> = /*@__PURE__*/
+export const StaticCoordinateFrameEdgeSchema: GenMessage<StaticCoordinateFrameEdge> =
+  /*@__PURE__*/
   messageDesc(file_inventory, 1);
 
 /**
@@ -109,98 +121,99 @@ export const StaticCoordinateFrameEdgeSchema: GenMessage<StaticCoordinateFrameEd
  *
  * @generated from message fiftyone.multimodal.schemas.v1.SceneInventory
  */
-export type SceneInventory = Message<"fiftyone.multimodal.schemas.v1.SceneInventory"> & {
-  /**
-   * Stable immutable identifier for this ingest-produced inventory artifact.
-   *
-   * @generated from field: string inventory_id = 1;
-   */
-  inventoryId: string;
+export type SceneInventory =
+  Message<"fiftyone.multimodal.schemas.v1.SceneInventory"> & {
+    /**
+     * Stable immutable identifier for this ingest-produced inventory artifact.
+     *
+     * @generated from field: string inventory_id = 1;
+     */
+    inventoryId: string;
 
-  /**
-   * Stable scene identifier used across multimodal subsystems.
-   *
-   * @generated from field: string scene_id = 2;
-   */
-  sceneId: string;
+    /**
+     * Stable scene identifier used across multimodal subsystems.
+     *
+     * @generated from field: string scene_id = 2;
+     */
+    sceneId: string;
 
-  /**
-   * Adapter-level source format identifier.
-   *
-   * @generated from field: string source_format = 3;
-   */
-  sourceFormat: string;
+    /**
+     * Adapter-level source format identifier.
+     *
+     * @generated from field: string source_format = 3;
+     */
+    sourceFormat: string;
 
-  /**
-   * Optional because not every scene is backed by one stable source file.
-   * File-backed adapters should set it for OPFS cache keys and idempotent
-   * re-ingest.
-   *
-   * @generated from field: fiftyone.multimodal.schemas.v1.SourceFingerprint source_fingerprint = 4;
-   */
-  sourceFingerprint?: SourceFingerprint;
+    /**
+     * Optional because not every scene is backed by one stable source file.
+     * File-backed adapters should set it for OPFS cache keys and idempotent
+     * re-ingest.
+     *
+     * @generated from field: fiftyone.multimodal.schemas.v1.SourceFingerprint source_fingerprint = 4;
+     */
+    sourceFingerprint?: SourceFingerprint;
 
-  /**
-   * Semantic version of this inventory contract. This is for contract
-   * compatibility, not the source dataset or adapter version.
-   *
-   * @generated from field: string inventory_version = 5;
-   */
-  inventoryVersion: string;
+    /**
+     * Semantic version of this inventory contract. This is for contract
+     * compatibility, not the source dataset or adapter version.
+     *
+     * @generated from field: string inventory_version = 5;
+     */
+    inventoryVersion: string;
 
-  /**
-   * Time tracks discovered during ingest.
-   *
-   * @generated from field: repeated fiftyone.multimodal.schemas.v1.TimeTrack time_tracks = 6;
-   */
-  timeTracks: TimeTrack[];
+    /**
+     * Time tracks discovered during ingest.
+     *
+     * @generated from field: repeated fiftyone.multimodal.schemas.v1.TimeTrack time_tracks = 6;
+     */
+    timeTracks: TimeTrack[];
 
-  /**
-   * Streams discovered in the source scene.
-   *
-   * @generated from field: repeated fiftyone.multimodal.schemas.v1.StreamInventory streams = 7;
-   */
-  streams: StreamInventory[];
+    /**
+     * Streams discovered in the source scene.
+     *
+     * @generated from field: repeated fiftyone.multimodal.schemas.v1.StreamInventory streams = 7;
+     */
+    streams: StreamInventory[];
 
-  /**
-   * Static coordinate-frame edges discovered during inventory. Time-varying
-   * transforms remain stream data.
-   *
-   * @generated from field: repeated fiftyone.multimodal.schemas.v1.StaticCoordinateFrameEdge static_coordinate_frame_edges = 8;
-   */
-  staticCoordinateFrameEdges: StaticCoordinateFrameEdge[];
+    /**
+     * Static coordinate-frame edges discovered during inventory. Time-varying
+     * transforms remain stream data.
+     *
+     * @generated from field: repeated fiftyone.multimodal.schemas.v1.StaticCoordinateFrameEdge static_coordinate_frame_edges = 8;
+     */
+    staticCoordinateFrameEdges: StaticCoordinateFrameEdge[];
 
-  /**
-   * Adapter-provided scene metadata, such as dataset, directory, shard group,
-   * episode, or source-level labels. Stream-specific details belong on
-   * StreamInventory.metadata.
-   *
-   * @generated from field: map<string, string> metadata = 9;
-   */
-  metadata: { [key: string]: string };
+    /**
+     * Adapter-provided scene metadata, such as dataset, directory, shard group,
+     * episode, or source-level labels. Stream-specific details belong on
+     * StreamInventory.metadata.
+     *
+     * @generated from field: map<string, string> metadata = 9;
+     */
+    metadata: { [key: string]: string };
 
-  /**
-   * RFC 3339 timestamp string. We intentionally avoid protobuf Timestamp here
-   * (and other places)
-   * because some language runtimes deserialize timestamps into native types
-   * like JavaScript Date and lose nanosecond precision.
-   *
-   * @generated from field: string produced_at = 10;
-   */
-  producedAt: string;
+    /**
+     * RFC 3339 timestamp string. We intentionally avoid protobuf Timestamp here
+     * (and other places)
+     * because some language runtimes deserialize timestamps into native types
+     * like JavaScript Date and lose nanosecond precision.
+     *
+     * @generated from field: string produced_at = 10;
+     */
+    producedAt: string;
 
-  /**
-   * Adapter name and version that produced this inventory.
-   *
-   * @generated from field: string produced_by = 11;
-   */
-  producedBy: string;
-};
+    /**
+     * Adapter name and version that produced this inventory.
+     *
+     * @generated from field: string produced_by = 11;
+     */
+    producedBy: string;
+  };
 
 /**
  * Describes the message fiftyone.multimodal.schemas.v1.SceneInventory.
  * Use `create(SceneInventorySchema)` to create a new message.
  */
-export const SceneInventorySchema: GenMessage<SceneInventory> = /*@__PURE__*/
+export const SceneInventorySchema: GenMessage<SceneInventory> =
+  /*@__PURE__*/
   messageDesc(file_inventory, 2);
-

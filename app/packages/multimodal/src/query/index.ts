@@ -1,11 +1,15 @@
 import { defaultDecoderRegistry } from "../decoders";
 import {
+  createAdaptiveByteCacheBlockSize,
+  createCacheApiByteRangeCache,
   createCachedByteClient,
-  createHttpByteClient,
+  createDefaultByteClient,
   createMemoryByteRangeCache,
+  createZonedRemoteBlockSize,
   DEFAULT_BYTE_CACHE_SIZE_BYTES,
-  defaultByteCacheBlockSizeBytes,
+  defaultByteFillLockManager,
 } from "./bytes";
+import type { ByteReadDebugLog } from "./bytes";
 import {
   createDecodeClient,
   createMemoryDecodedOutputCache,
@@ -22,14 +26,40 @@ import type {
 export function createMultimodalQueryClient(
   options: CreateMultimodalQueryClientOptions = {},
 ): MultimodalQueryClient {
+  // Explicit block-size overrides own their policy; otherwise measured
+  // small-fetch latency can promote scheme-misclassified sources (a "local"
+  // path served over a WAN) to the remote fill size, and offset zoning
+  // keeps latency-critical file-edge fills small while body fills use the
+  // large remote block.
+  const adaptiveBlockSize = options.caches?.bytes?.blockSizeBytes
+    ? null
+    : createAdaptiveByteCacheBlockSize();
+  const zonedBlockSize = options.caches?.bytes?.blockSizeBytes
+    ? null
+    : createZonedRemoteBlockSize(adaptiveBlockSize?.blockSizeBytes);
   const byteCaches = {
     blockSizeBytes:
-      options.caches?.bytes?.blockSizeBytes ?? defaultByteCacheBlockSizeBytes,
+      options.caches?.bytes?.blockSizeBytes ?? zonedBlockSize ?? undefined,
+    debug: options.caches?.bytes?.debug,
+    ...(options.caches?.bytes?.fillSlotClass
+      ? { fillSlotClass: options.caches.bytes.fillSlotClass }
+      : {}),
+    onRead: chainByteReadObservers(
+      adaptiveBlockSize?.onRead,
+      options.caches?.bytes?.onRead,
+    ),
     memory:
       options.caches?.bytes?.memory ??
       createMemoryByteRangeCache({
         maxSizeBytes: DEFAULT_BYTE_CACHE_SIZE_BYTES,
       }),
+    // Shared across workers and page loads; feature-detected, and `false`
+    // opts a client out entirely.
+    persistent:
+      options.caches?.bytes?.persistent ?? createCacheApiByteRangeCache(),
+    // Single-flights identical block fills across worker lanes (and tabs),
+    // with the persistent layer above as the handoff medium.
+    locks: options.caches?.bytes?.locks ?? defaultByteFillLockManager(),
   };
   const decodedCache =
     options.caches?.decoded ??
@@ -41,7 +71,8 @@ export function createMultimodalQueryClient(
     decoded: decodedCache,
   };
   const bytes =
-    options.bytes ?? createCachedByteClient(createHttpByteClient(), byteCaches);
+    options.bytes ??
+    createCachedByteClient(createDefaultByteClient(), byteCaches);
   const decode =
     options.decode ??
     createDecodeClient({
@@ -54,6 +85,27 @@ export function createMultimodalQueryClient(
     bytes,
     caches,
     decode,
+  };
+}
+
+function chainByteReadObservers(
+  ...observers: readonly (((entry: ByteReadDebugLog) => void) | undefined)[]
+): ((entry: ByteReadDebugLog) => void) | undefined {
+  const active = observers.filter(
+    (observer): observer is (entry: ByteReadDebugLog) => void =>
+      typeof observer === "function",
+  );
+  if (active.length === 0) {
+    return undefined;
+  }
+  if (active.length === 1) {
+    return active[0];
+  }
+
+  return (entry) => {
+    for (const observer of active) {
+      observer(entry);
+    }
   };
 }
 

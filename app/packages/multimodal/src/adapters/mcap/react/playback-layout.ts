@@ -6,6 +6,11 @@ import {
 } from "../../../query/bytes";
 import type { SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import {
+  filterDefaultTopicEquivalents,
+  orderDefaultTopicEquivalents,
+} from "../topic-matching";
+import { mcapTileTypeFromId } from "./mcap-layout-persistence";
 import { MCAP_TILE_TYPE, type McapTileType } from "./mcap-tile-types";
 
 /**
@@ -26,9 +31,10 @@ const DEFAULT_CPU_CORES = 4;
 const DEFAULT_VIEWPORT_WIDTH_PX = 1280;
 const DEFAULT_VIEWPORT_HEIGHT_PX = 800;
 
-// Share of the modal width the image grid keeps when a 3D tile sits
-// beside it.
-const IMAGE_REGION_SPLIT_PERCENTAGE = 62;
+const THREE_D_TOP_SPLIT_PERCENTAGE = 100 * (2 / 3);
+const MESSAGE_RAIL_SPLIT_PERCENTAGE = 75;
+const VISUAL_WITH_PLOTS_SPLIT_PERCENTAGE = 70;
+const CONTEXT_SHELF_IMAGE_SPLIT_PERCENTAGE = 65;
 
 // Mosaic leaf id of the single default 3D tile.
 const THREE_D_TILE_ID = `${MCAP_TILE_TYPE.THREE_D}-1`;
@@ -129,6 +135,32 @@ export function rankImageSources(
     .map(({ source }) => source);
 }
 
+/**
+ * Image sources used for automatic activation: dense-stream ranking with
+ * raw/base equivalents suppressed when a downsampled/compressed sibling exists.
+ */
+export function rankDefaultImageSources(
+  sources: readonly SceneSource[],
+): readonly SceneSource[] {
+  return filterDefaultTopicEquivalents(rankImageSources(sources), {
+    getKind: (source) => source.type,
+    getTopic: (source) => source.id,
+  });
+}
+
+/**
+ * Image sources for manual menus: all sources remain visible, with each
+ * equivalence group's automatic default representative listed first.
+ */
+export function orderImageSourcesForManualSelection(
+  sources: readonly SceneSource[],
+): readonly SceneSource[] {
+  return orderDefaultTopicEquivalents(rankImageSources(sources), {
+    getKind: (source) => source.type,
+    getTopic: (source) => source.id,
+  });
+}
+
 function isNonColorImageSource(source: SceneSource): boolean {
   return source.id
     .toLowerCase()
@@ -138,8 +170,8 @@ function isNonColorImageSource(source: SceneSource): boolean {
 
 /**
  * Decides the default playback workspace for a scene: how many image
- * tiles to open (bound to the densest sources) next to one fused 3D
- * tile.
+ * tiles to open (bound to default-preferred sources) next to one fused
+ * 3D tile.
  *
  * Heuristic budgets, all combined with `min` and clamped to the number
  * of image sources:
@@ -163,9 +195,13 @@ export function resolvePlaybackLayout({
   readonly readProfile?: ByteSourceReadProfile;
   readonly sources: readonly SceneSource[];
 }): ResolvedPlaybackLayout {
-  const rankedImages = rankImageSources(sources);
+  const rankedImages = rankDefaultImageSources(sources);
   const has3d = sources.some(
-    (source) => source.type === MCAP_SOURCE_TYPE.POINT_CLOUD,
+    (source) =>
+      source.type === MCAP_SOURCE_TYPE.POINT_CLOUD ||
+      source.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION ||
+      source.type === MCAP_SOURCE_TYPE.MAP_LAYER ||
+      source.type === MCAP_SOURCE_TYPE.POSE,
   );
 
   const imageTileCount =
@@ -193,7 +229,7 @@ export function resolvePlaybackLayout({
   }
 
   return {
-    layout: buildLayoutTree({ has3d, tiles }),
+    layout: buildLayoutTree(tiles),
     tiles,
   };
 }
@@ -230,16 +266,14 @@ function imageTileBudget({
       ? remoteNetworkBudget(capabilities.networkDownlinkMbps)
       : MAX_DEFAULT_IMAGE_TILES;
 
-  const imageRegionWidth =
-    capabilities.viewportWidth *
-    (has3d ? IMAGE_REGION_SPLIT_PERCENTAGE / 100 : 1);
+  const imageRegionWidth = capabilities.viewportWidth;
+  const imageRegionHeight =
+    capabilities.viewportHeight *
+    (has3d ? 1 - THREE_D_TOP_SPLIT_PERCENTAGE / 100 : 1);
   const viewportBudget = Math.max(
     1,
     Math.floor(imageRegionWidth / MIN_IMAGE_TILE_WIDTH_PX) *
-      Math.max(
-        1,
-        Math.floor(capabilities.viewportHeight / MIN_IMAGE_TILE_HEIGHT_PX),
-      ),
+      Math.max(1, Math.floor(imageRegionHeight / MIN_IMAGE_TILE_HEIGHT_PX)),
   );
 
   return Math.max(
@@ -268,34 +302,181 @@ function remoteNetworkBudget(downlinkMbps: number | null): number {
 }
 
 /**
- * Deliberate arrangement: image tiles in a balanced grid, the 3D tile
- * as a full-height column beside them.
+ * Customer-oriented MCAP arrangement:
+ *
+ * - images stay co-located as a camera bank
+ * - 3D tiles span a full-width top region when present
+ * - plots stack as time-series diagnostics
+ * - raw/message tiles stack as a right inspection rail
+ * - unknown tile ids fall into diagnostics after known groups
  */
-function buildLayoutTree({
-  has3d,
-  tiles,
-}: {
-  readonly has3d: boolean;
-  readonly tiles: readonly PlaybackLayoutTile[];
-}): MosaicNode<string> | undefined {
-  const imageGrid = autoLayout(
-    tiles
-      .filter((tile) => tile.tileType === MCAP_TILE_TYPE.IMAGE)
-      .map((tile) => tile.id),
-  );
+export function buildMcapAutoLayout(
+  tileIds: readonly string[],
+): MosaicNode<string> | null {
+  const images: string[] = [];
+  const threeD: string[] = [];
+  const plots: string[] = [];
+  const messages: string[] = [];
+  const unknown: string[] = [];
 
-  if (!has3d) {
-    return imageGrid ?? undefined;
+  for (const tileId of tileIds) {
+    switch (mcapTileTypeFromId(tileId)) {
+      case MCAP_TILE_TYPE.IMAGE:
+        images.push(tileId);
+        break;
+      case MCAP_TILE_TYPE.THREE_D:
+        threeD.push(tileId);
+        break;
+      case MCAP_TILE_TYPE.PLOT:
+        plots.push(tileId);
+        break;
+      case MCAP_TILE_TYPE.RAW:
+        messages.push(tileId);
+        break;
+      default:
+        unknown.push(tileId);
+        break;
+    }
   }
-  if (imageGrid === null) {
-    return THREE_D_TILE_ID;
+
+  const threeDRegion = autoLayout(threeD);
+  const supportingRegion = threeDRegion
+    ? buildContextShelf(images, plots, messages, unknown)
+    : buildNon3dLayout(images, plots, messages, unknown);
+
+  if (threeDRegion) {
+    if (!supportingRegion) {
+      return threeDRegion;
+    }
+
+    return {
+      direction: "column",
+      first: threeDRegion,
+      second: supportingRegion,
+      splitPercentage: THREE_D_TOP_SPLIT_PERCENTAGE,
+    };
+  }
+
+  return supportingRegion;
+}
+
+function buildNon3dLayout(
+  images: readonly string[],
+  plots: readonly string[],
+  messages: readonly string[],
+  unknown: readonly string[],
+): MosaicNode<string> | null {
+  const imageBank = autoLayout([...images]);
+  const diagnostics = buildDiagnosticsStack(plots, unknown);
+  const left = stackNodes([imageBank, diagnostics], {
+    direction: "column",
+    splitPercentage: VISUAL_WITH_PLOTS_SPLIT_PERCENTAGE,
+  });
+  const messageRail = stackTiles(messages, "column");
+
+  if (!messageRail) {
+    return left;
+  }
+  if (!left) {
+    return messageRail;
   }
 
   return {
     direction: "row",
-    first: imageGrid,
-    second: THREE_D_TILE_ID,
-    splitPercentage: IMAGE_REGION_SPLIT_PERCENTAGE,
+    first: left,
+    second: messageRail,
+    splitPercentage: MESSAGE_RAIL_SPLIT_PERCENTAGE,
+  };
+}
+
+function buildContextShelf(
+  images: readonly string[],
+  plots: readonly string[],
+  messages: readonly string[],
+  unknown: readonly string[],
+): MosaicNode<string> | null {
+  const imageBank = autoLayout([...images]);
+  const diagnostics = buildDiagnosticsStack(plots, unknown);
+  const left = stackNodes([imageBank, diagnostics], {
+    direction: "row",
+    splitPercentage: CONTEXT_SHELF_IMAGE_SPLIT_PERCENTAGE,
+  });
+  const messageRail = stackTiles(messages, "column");
+
+  if (!messageRail) {
+    return left;
+  }
+  if (!left) {
+    return messageRail;
+  }
+
+  return {
+    direction: "row",
+    first: left,
+    second: messageRail,
+    splitPercentage: MESSAGE_RAIL_SPLIT_PERCENTAGE,
+  };
+}
+
+function buildLayoutTree(
+  tiles: readonly PlaybackLayoutTile[],
+): MosaicNode<string> | undefined {
+  return buildMcapAutoLayout(tiles.map((tile) => tile.id)) ?? undefined;
+}
+
+function buildDiagnosticsStack(
+  plots: readonly string[],
+  unknown: readonly string[],
+): MosaicNode<string> | null {
+  return stackNodes([
+    stackTiles(plots, "column"),
+    stackTiles(unknown, "column"),
+  ]);
+}
+
+function stackTiles(
+  tileIds: readonly string[],
+  direction: "row" | "column",
+): MosaicNode<string> | null {
+  if (tileIds.length === 0) return null;
+  if (tileIds.length === 1) return tileIds[0];
+
+  const [first, ...rest] = tileIds;
+  return {
+    direction,
+    first,
+    second: stackTiles(rest, direction) as MosaicNode<string>,
+    splitPercentage: 100 / tileIds.length,
+  };
+}
+
+function stackNodes(
+  nodes: readonly (MosaicNode<string> | null)[],
+  options?: {
+    readonly direction: "row" | "column";
+    readonly splitPercentage: number;
+  },
+): MosaicNode<string> | null {
+  const present = nodes.filter(
+    (node): node is MosaicNode<string> => node !== null,
+  );
+  if (present.length === 0) return null;
+  if (present.length === 1) return present[0];
+
+  if (options && present.length === 2) {
+    return {
+      direction: options.direction,
+      first: present[0],
+      second: present[1],
+      splitPercentage: options.splitPercentage,
+    };
+  }
+
+  return {
+    direction: "column",
+    first: present[0],
+    second: stackNodes(present.slice(1)) as MosaicNode<string>,
+    splitPercentage: 100 / present.length,
   };
 }
 

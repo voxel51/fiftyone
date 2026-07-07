@@ -1,9 +1,16 @@
 import type { PayloadDescriptor } from "../../decoders";
 import type { StreamInventory } from "../../schemas/v1";
+import { JSON_POSE_PAYLOAD } from "./decoders/json/payloads";
 import {
+  FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD,
   FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
+  FOXGLOVE_GRID_PAYLOAD,
+  FOXGLOVE_LASER_SCAN_PAYLOAD,
+  FOXGLOVE_LOCATION_FIX_PAYLOAD,
+  FOXGLOVE_POSE_IN_FRAME_PAYLOAD,
   FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
   FOXGLOVE_POINT_CLOUD_PAYLOAD,
+  FOXGLOVE_SCENE_UPDATE_PAYLOAD,
 } from "./decoders/foxglove/protobuf/payloads";
 
 /**
@@ -14,6 +21,7 @@ export interface McapPreviewTopics {
   readonly image: readonly string[];
   readonly pointCloud: readonly string[];
   readonly previewable: readonly string[];
+  readonly sceneUpdates: readonly string[];
 }
 
 /**
@@ -25,6 +33,7 @@ export function streamTopics(
   const image: string[] = [];
   const annotations: string[] = [];
   const pointCloud: string[] = [];
+  const sceneUpdates: string[] = [];
 
   for (const topic of topics) {
     const name = topicName(topic);
@@ -38,6 +47,8 @@ export function streamTopics(
       pointCloud.push(name);
     } else if (isImageAnnotationsStream(topic)) {
       annotations.push(name);
+    } else if (isSceneUpdateStream(topic)) {
+      sceneUpdates.push(name);
     }
   }
 
@@ -46,6 +57,7 @@ export function streamTopics(
     image,
     pointCloud,
     previewable: [...image, ...pointCloud],
+    sceneUpdates,
   };
 }
 
@@ -71,10 +83,55 @@ export function isImageAnnotationsStream(topic: StreamInventory): boolean {
 }
 
 /**
- * Returns whether a stream inventory item is a supported Foxglove point-cloud stream.
+ * Returns whether a stream inventory item is a supported point-cloud-kind
+ * stream: Foxglove PointCloud, or LaserScan (decoded into cartesian points).
  */
 export function isPointCloudStream(topic: StreamInventory): boolean {
-  return hasPayload(topic, FOXGLOVE_POINT_CLOUD_PAYLOAD);
+  return (
+    hasPayload(topic, FOXGLOVE_POINT_CLOUD_PAYLOAD) ||
+    hasPayload(topic, FOXGLOVE_LASER_SCAN_PAYLOAD)
+  );
+}
+
+/**
+ * Returns whether a stream inventory item is a supported Foxglove SceneUpdate stream.
+ */
+export function isSceneUpdateStream(topic: StreamInventory): boolean {
+  return hasPayload(topic, FOXGLOVE_SCENE_UPDATE_PAYLOAD);
+}
+
+/**
+ * Returns whether a stream inventory item is a supported Foxglove Grid stream.
+ */
+export function isGridStream(topic: StreamInventory): boolean {
+  return hasPayload(topic, FOXGLOVE_GRID_PAYLOAD);
+}
+
+/**
+ * Returns whether a stream inventory item is a supported Foxglove
+ * CameraCalibration stream.
+ */
+export function isCameraCalibrationStream(topic: StreamInventory): boolean {
+  return hasPayload(topic, FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD);
+}
+
+/**
+ * Returns whether a stream inventory item is a supported pose stream:
+ * Foxglove PoseInFrame or an odometry-style JSON `Pose` export.
+ */
+export function isPoseStream(topic: StreamInventory): boolean {
+  return (
+    hasPayload(topic, FOXGLOVE_POSE_IN_FRAME_PAYLOAD) ||
+    hasPayload(topic, JSON_POSE_PAYLOAD)
+  );
+}
+
+/**
+ * Returns whether a stream inventory item is a supported Foxglove
+ * LocationFix stream.
+ */
+export function isLocationFixStream(topic: StreamInventory): boolean {
+  return hasPayload(topic, FOXGLOVE_LOCATION_FIX_PAYLOAD);
 }
 
 /**

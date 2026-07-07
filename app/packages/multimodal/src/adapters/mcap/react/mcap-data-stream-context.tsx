@@ -9,6 +9,12 @@ import type { McapTopicCache } from "./mcap-topic-cache";
  * tiles read it via `useMcapDataStream()`.
  */
 export interface McapDataStream {
+  /** Stable access key of the byte source backing this stream (empty
+   *  until a source is bound). Bakes per-recording identity into
+   *  cross-tile cache keys — e.g. the shared image-texture cache — so
+   *  entries can never collide across recordings. */
+  readonly sourceKey: string;
+
   /** Mark this topic active. The returned cleanup decrements the
    *  subscriber count; the topic's cache + held last-frame are
    *  released when the count reaches zero. */

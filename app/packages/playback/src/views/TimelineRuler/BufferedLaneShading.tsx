@@ -5,23 +5,17 @@ import {
   useViewStart,
 } from "../../lib/playback/use-playback-state";
 import { clamp } from "../../lib/playback/utils";
-import styles from "./TimelineHeader.module.css";
-
-export interface BufferedRangesStripProps {
-  /** Width of the label column shared between ruler and tracks. */
-  labelWidth: number;
-}
+import styles from "./TimelineRuler.module.css";
 
 /**
- * Thin shading along the timeline's top edge marking the window ranges
- * that are buffered and ready to play (the data layer publishes them via
- * `setBufferedRanges`). Same time→x mapping as the ruler and playhead:
- * the lane starts after the label column and spans the current view
- * window.
+ * Buffered-ranges wash rendered behind the ruler's ticks — the
+ * YouTube-style "loaded" bar, directly on the lane users scrub. The data
+ * layer publishes ranges via `setBufferedRanges`; segments map through
+ * the same view-window math as the ticks and playhead. Mounted inside
+ * the ruler's tick lane, so the label-column offset, overflow clipping,
+ * and pointer-events opt-out all come for free.
  */
-const BufferedRangesStrip: React.FC<BufferedRangesStripProps> = ({
-  labelWidth,
-}) => {
+const BufferedLaneShading: React.FC = () => {
   const ranges = useBufferedRanges();
   const viewStart = useViewStart();
   const viewEnd = useViewEnd();
@@ -31,8 +25,7 @@ const BufferedRangesStrip: React.FC<BufferedRangesStripProps> = ({
 
   return (
     <div
-      className={styles.bufferStrip}
-      style={{ left: labelWidth, width: `calc(100% - ${labelWidth}px)` }}
+      className={styles.bufferedShading}
       data-testid="buffered-ranges-strip"
       aria-hidden
     >
@@ -45,7 +38,7 @@ const BufferedRangesStrip: React.FC<BufferedRangesStripProps> = ({
             // Ranges are ascending and non-overlapping; index is stable
             // enough for a presentational list that fully re-renders.
             key={i}
-            className={styles.bufferSegment}
+            className={styles.bufferedSegment}
             style={{
               left: `${left * 100}%`,
               width: `${(right - left) * 100}%`,
@@ -57,4 +50,4 @@ const BufferedRangesStrip: React.FC<BufferedRangesStripProps> = ({
   );
 };
 
-export default BufferedRangesStrip;
+export default BufferedLaneShading;

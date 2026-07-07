@@ -32,12 +32,21 @@ export function decodeProtobufMessage(
     throw new Error("Payload schema is required for protobuf decode");
   }
 
-  const messageType = getMessageType(schemaData, payload.schema);
+  const messageType = getProtobufMessageType(schemaData, payload.schema);
 
   return asRecord(messageType.decode(bytes));
 }
 
-function getMessageType(schemaData: Uint8Array, schemaName: string): Type {
+/**
+ * Resolves a protobufjs message type from MCAP binary schema data,
+ * cached per schema-data identity. Shared with the numeric-series
+ * extractor, which decodes telemetry topics outside the decoder
+ * registry.
+ */
+export function getProtobufMessageType(
+  schemaData: Uint8Array,
+  schemaName: string,
+): Type {
   let typesBySchema = messageTypeCache.get(schemaData);
   if (!typesBySchema) {
     typesBySchema = new Map();

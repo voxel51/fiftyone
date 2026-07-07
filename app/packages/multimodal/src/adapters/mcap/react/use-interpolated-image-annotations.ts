@@ -12,7 +12,6 @@ import type { McapDecodedMessage } from "../types";
 import {
   interpolateImageAnnotations,
   interpolationFraction,
-  lowerBoundBigInt,
   vizOf,
 } from "./interpolate-image-annotations";
 import {
@@ -188,8 +187,9 @@ function useStableTopics(topics: readonly string[]): readonly string[] {
  * returns a `"topic:revision|"` digest string. The digest changes whenever a
  * watched cache bumps its revision (frames arrive, change, or are cleared),
  * which is what drives the hook to re-derive annotation frames as data streams in.
+ * Shared with `use-interpolated-scene-updates`.
  */
-function useTopicCacheSnapshot(
+export function useTopicCacheSnapshot(
   dataStream: McapDataStream | null,
   topics: readonly string[],
 ): string {
@@ -276,7 +276,7 @@ function currentAnnotationFrame({
   if (!currentViz) return null;
   if (!interpolate) return currentViz;
 
-  const nextMsg = nextDistinctAnnotationMessage({
+  const nextMsg = nextDistinctCachedMessage({
     cache,
     currentTick,
     currentTimelineTimeNs: currentMsg.timelineTimeNs,
@@ -296,7 +296,12 @@ function currentAnnotationFrame({
   return interpolateImageAnnotations(currentViz, nextViz, f);
 }
 
-function nextDistinctAnnotationMessage({
+/**
+ * Finds the next cached source message strictly after `currentTick` whose
+ * timeline time differs from the current message's. Decoder-agnostic; shared
+ * by the 2D image-annotation and 3D scene-update interpolation hooks.
+ */
+export function nextDistinctCachedMessage({
   cache,
   currentTick,
   currentTimelineTimeNs,
@@ -311,13 +316,17 @@ function nextDistinctAnnotationMessage({
   // point to the same source annotation. Walk forward only far enough to find
   // the next cached source message; if lookahead is missing, staying on the
   // current frame is cheaper and visually safer than scanning the full file.
-  const startIndex = lowerBoundBigInt(timeline.ticks, currentTick) + 1;
+  const currentIndex = timeline.indexOfTick(currentTick);
+  if (currentIndex === undefined) return null;
+  const startIndex = currentIndex + 1;
   const endIndex = Math.min(
-    timeline.ticks.length,
+    timeline.tickCount,
     startIndex + MAX_NEXT_MESSAGE_SCAN_TICKS,
   );
   for (let i = startIndex; i < endIndex; i++) {
-    const msg = cache.get(timeline.ticks[i]);
+    const tick = timeline.tickAt(i);
+    if (tick === undefined) break;
+    const msg = cache.get(tick);
     if (msg && msg.timelineTimeNs !== currentTimelineTimeNs) return msg;
   }
   return null;
