@@ -8,8 +8,10 @@ import { getModalSampleFrameRate } from "../utils/modalSample";
 import {
   labelSchemaData,
   useTemporalDetectionFieldPaths,
+  useVisibleLabelSchemas,
 } from "../state/accessors";
 import {
+  useSelectedTemporalDetectionField,
   useSelectedTrackIds,
   useSelectionIsInstanceTrack,
   useSelectionIsKeyframeable,
@@ -66,15 +68,27 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const selected = useSelectedTrackIds();
   const modalSample = useModalSample();
 
-  // Resolve from the dataset schema
+  // Resolve from the dataset schema, narrowed to the schema-active set.
   const tdFieldPaths = useTemporalDetectionFieldPaths();
+  const visible = useVisibleLabelSchemas();
+  const selectedTdField = useSelectedTemporalDetectionField();
 
-  const tdFieldPath = useMemo(
+  const tdFieldPath = useMemo(() => {
     // Sample-level only — temporal detections are video-level; the create
-    // command targets a top-level field path.
-    () => tdFieldPaths.find((p) => !p.startsWith("frames.")) ?? null,
-    [tdFieldPaths],
-  );
+    // command targets a top-level field path. Honor schema activity so a
+    // deactivated field isn't a create target, matching the detection path.
+    const active = tdFieldPaths.filter(
+      (p) => !p.startsWith("frames.") && visible.has(p),
+    );
+
+    // Prefer the field of the TD the user is editing;
+    // else the first active field.
+    if (selectedTdField && active.includes(selectedTdField)) {
+      return selectedTdField;
+    }
+
+    return active[0] ?? null;
+  }, [tdFieldPaths, visible, selectedTdField]);
   const fps = getModalSampleFrameRate(modalSample);
   const canCreateTd =
     !!tdFieldPath && Number.isFinite(fps) && fps !== undefined && fps > 0;
