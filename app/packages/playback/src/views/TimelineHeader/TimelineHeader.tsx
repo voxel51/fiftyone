@@ -62,16 +62,12 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
 }) => {
   return (
     <div className={styles.root} data-testid="timeline-header-root">
-<<<<<<< HEAD
       <BufferedRangesStrip labelWidth={labelWidth} />
-      <TimelineControls onToggle={onToggle} extraActions={extraActions} />
-=======
       <TimelineControls
         onToggle={onToggle}
         extraControls={extraControls}
         extraActions={extraActions}
       />
->>>>>>> main
       <TimelineRuler
         labelWidth={labelWidth}
         zoomRef={zoomRef}
