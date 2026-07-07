@@ -218,16 +218,9 @@ describe("useFo3dCameraInitialization", () => {
       }),
     );
 
-<<<<<<< HEAD
-    const initialAnimatedCalls = setLookAt.mock.calls.filter(
-      (call) => call[6] === true,
-    );
-    expect(initialAnimatedCalls).toHaveLength(0);
-=======
     expect(cameraRef.current?.position.toArray()).toEqual([1, 2, 3]);
     expect(cameraControlsRef.current?.target.toArray()).toEqual([0, 0, 0]);
     const updateCallsAfterInit = update.mock.calls.length;
->>>>>>> main
 
     mockRecoilState.overriddenCameraPosition = [4, 5, 6];
     rerender();

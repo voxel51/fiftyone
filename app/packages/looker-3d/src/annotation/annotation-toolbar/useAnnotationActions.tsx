@@ -137,16 +137,12 @@ export const useAnnotationActions = () => {
 
       setTransformMode(mode);
     },
-<<<<<<< HEAD
-    [setTransformMode],
-=======
     [
       currentArchetypeSelectedForTransform,
       transformActionArchetype,
       setCurrentArchetypeSelectedForTransform,
       setTransformMode,
     ],
->>>>>>> main
   );
 
   const canUseTransformShortcut = useCallback(

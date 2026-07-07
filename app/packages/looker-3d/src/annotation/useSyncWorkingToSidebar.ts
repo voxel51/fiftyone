@@ -31,35 +31,6 @@ export function useSyncWorkingToSidebar() {
   >(null);
 
   useEffect(() => {
-<<<<<<< HEAD
-    // Check if we need to restore previously cleared editing state (redo case)
-    if (clearedEditingRef.current) {
-      const { labelId, editingAtomRef, editingData } =
-        clearedEditingRef.current;
-      // Label was un-deleted (redo) - restore editing state
-      if (
-        workingDoc.labelsById[labelId] &&
-        !workingDoc.deletedIds.has(labelId)
-      ) {
-        // Sync latest data from working store
-        const workingLabel = workingDoc.labelsById[labelId];
-        const restoredEditing = {
-          ...editingData,
-          data: { ...editingData.data, ...workingLabel },
-        } as AnnotationLabel;
-        store.set(
-          editingAtomRef as unknown as PrimitiveAtom<AnnotationLabel | null>,
-          restoredEditing,
-        );
-        select(editingAtomRef as unknown as PrimitiveAtom<AnnotationLabel>);
-        clearedEditingRef.current = null;
-        lastSyncedWorkingLabelRef.current = workingLabel;
-        return;
-      }
-    }
-
-=======
->>>>>>> main
     // Only sync for 3D editing atoms
     const editingCuboid = isEditingAtom(
       currentEditingCuboidAtom as unknown as PrimitiveAtom<AnnotationLabel>,

@@ -319,12 +319,7 @@ export function useWorkingLabel(
 export function useWorkingDetections(): ReconciledDetection3D[] {
   const doc = useWorkingDoc();
   return Object.values(doc.labelsById).filter(
-<<<<<<< HEAD
-    (label): label is ReconciledDetection3D =>
-      isDetection(label) && !doc.deletedIds.has(label._id),
-=======
     (label): label is ReconciledDetection3D => isDetection(label),
->>>>>>> main
   );
 }
 
@@ -334,12 +329,7 @@ export function useWorkingDetections(): ReconciledDetection3D[] {
 export function useWorkingPolylines(): ReconciledPolyline3D[] {
   const doc = useWorkingDoc();
   return Object.values(doc.labelsById).filter(
-<<<<<<< HEAD
-    (label): label is ReconciledPolyline3D =>
-      isPolyline(label) && !doc.deletedIds.has(label._id),
-=======
     (label): label is ReconciledPolyline3D => isPolyline(label),
->>>>>>> main
   );
 }
 
@@ -486,32 +476,5 @@ export function useRemoveWorkingLabel() {
         });
       },
     [],
-<<<<<<< HEAD
-  );
-}
-
-/**
- * Hook that returns a callback to restore a deleted label.
- */
-export function useRestoreWorkingLabel() {
-  return useRecoilCallback(
-    ({ set }) =>
-      (labelId: LabelId) => {
-        set(workingAtom, (prev) => {
-          const newDeletedIds = new Set(prev.doc.deletedIds);
-          newDeletedIds.delete(labelId);
-
-          return {
-            ...prev,
-            doc: {
-              ...prev.doc,
-              deletedIds: newDeletedIds,
-            },
-          };
-        });
-      },
-    [],
-=======
->>>>>>> main
   );
 }

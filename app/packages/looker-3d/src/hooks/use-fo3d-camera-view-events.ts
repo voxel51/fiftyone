@@ -66,19 +66,6 @@ export const useFo3dCameraViewEvents = ({
       foScene,
       settings,
     ],
-<<<<<<< HEAD
-  );
-
-  const onChangeView = useCallback(
-    (
-      view: "pov" | "top",
-      { useAnimation = true }: { useAnimation?: boolean } = {},
-    ) => {
-      return applyLookAt(buildViewLookAt(view, useAnimation));
-    },
-    [buildViewLookAt, applyLookAt],
-=======
->>>>>>> main
   );
 
   const handleViewChangeEvent = useCallback(
@@ -100,17 +87,7 @@ export const useFo3dCameraViewEvents = ({
 
       applyLookAt(buildViewLookAt(view));
     },
-<<<<<<< HEAD
-    [
-      onChangeView,
-      sceneBoundingBox,
-      recomputeBounds,
-      buildViewLookAt,
-      applyLookAt,
-    ],
-=======
     [sceneBoundingBox, recomputeBounds, buildViewLookAt, applyLookAt],
->>>>>>> main
   );
 
   // This effect clears any remaining timeouts

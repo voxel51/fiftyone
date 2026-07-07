@@ -90,24 +90,9 @@ export const ThreeDLabels = ({
   const onSelectLabel = fos.useOnSelectLabel();
   const pathFilter = usePathFilter();
   const colorScheme = useRecoilValue(fos.colorScheme);
-<<<<<<< HEAD
-  const [cuboidLineWidth, setCuboidLineWidth] = useRecoilState(
-    cuboidLabelLineWidthAtom,
-  );
-  const [polylineWidth, setPolylineWidth] = useRecoilState(
-    polylineLabelLineWidthAtom,
-  );
-  const selectedLabels = useRecoilValue(fos.selectedLabelMap);
-  const labelAlpha = globalOpacity ?? colorScheme.opacity;
-
-  const selectedLabelForAnnotation = useRecoilValue(
-    selectedLabelForAnnotationAtom,
-  );
-=======
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
   const hoverSource = panelId ?? (isMainPanel ? PANEL_ID_MAIN : undefined);
->>>>>>> main
   const onExit = useExit();
 
   const select3DLabelForAnnotation = useSelect3DLabelForAnnotation();
@@ -293,21 +278,6 @@ export const ThreeDLabels = ({
   }, [mode, isWorkingInitialized, renderModel, rawOverlays]);
 
   const getOverlayColor = useCallback(
-<<<<<<< HEAD
-    (overlay: ReconciledDetection3D | ReconciledPolyline3D) =>
-      overlay.isNew
-        ? getLabelColor({
-            coloring,
-            path: overlay.path,
-            isTagged: false,
-            labelTagColors,
-            customizeColorSetting,
-            label: overlay,
-            embeddedDocType: overlay._cls,
-          })
-        : overlay.color,
-    [coloring, labelTagColors, customizeColorSetting],
-=======
     (overlay: ReconciledDetection3D | ReconciledPolyline3D) => {
       if (overlay.isNew) {
         return getLabelColor({
@@ -370,7 +340,6 @@ export const ThreeDLabels = ({
       return effectiveUnfocusedLabelOpacity ?? labelAlpha;
     },
     [effectiveUnfocusedLabelOpacity, focusedLabelIds, labelAlpha],
->>>>>>> main
   );
 
   // Detections render model -> JSX
@@ -414,10 +383,7 @@ export const ThreeDLabels = ({
       handleSelect,
       settings,
       getOverlayColor,
-<<<<<<< HEAD
-=======
       showCuboidOrientation,
->>>>>>> main
     ],
   );
 

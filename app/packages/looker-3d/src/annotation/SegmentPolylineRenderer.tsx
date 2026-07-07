@@ -186,10 +186,7 @@ export const SegmentPolylineRenderer = ({
       currentSampleId,
       createPolyline,
       updatePolylinePoints,
-<<<<<<< HEAD
-=======
       selectForAnnotation,
->>>>>>> main
     ],
   );
 

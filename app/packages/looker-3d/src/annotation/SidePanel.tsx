@@ -104,240 +104,6 @@ const ViewSelectorWrapper = styled.div`
 `;
 
 /**
-<<<<<<< HEAD
- * Calculate camera position for different side panel views based on upVector and lookAt point
- */
-const calculateCameraPositionForSidePanel = (
-  sidePanelViewType: SidePanelViewType,
-  upVector: Vector3,
-  lookAt: Vector3,
-  sceneBoundingBox: Box3 | null,
-): Vector3 => {
-  if (!sceneBoundingBox) {
-    // Fallback to default positions if no bounding box
-    const defaultPositions = {
-      Top: [0, 10, 0] as [number, number, number],
-      Bottom: [0, -10, 0] as [number, number, number],
-      Left: [-10, 0, 0] as [number, number, number],
-      Right: [10, 0, 0] as [number, number, number],
-      Back: [0, 0, -10] as [number, number, number],
-      Front: [0, 0, 10] as [number, number, number],
-    };
-    const position = defaultPositions[sidePanelViewType];
-    return position ? new Vector3(...position) : new Vector3(0, 10, 0);
-  }
-
-  const size = new Vector3();
-  sceneBoundingBox.getSize(size);
-  const maxSize = Math.max(size.x, size.y, size.z);
-  const distance = maxSize * 2.5;
-
-  const upDir = upVector.clone().normalize();
-  const center = lookAt.clone();
-
-  // Create orthogonal vectors for different views
-  let direction: Vector3;
-
-  switch (sidePanelViewType) {
-    case VIEW_TYPE_TOP:
-      direction = upDir.clone();
-      break;
-    case VIEW_TYPE_BOTTOM:
-      direction = upDir.clone().negate();
-      break;
-    case VIEW_TYPE_LEFT:
-      // Create a vector perpendicular to up vector
-      if (Math.abs(upDir.y) > 0.9) {
-        // If up is mostly Y, use negative X axis for left
-        direction = new Vector3(-1, 0, 0);
-      } else {
-        const right = new Vector3(0, 1, 0).cross(upDir).normalize();
-        direction = right.negate();
-      }
-      break;
-    case VIEW_TYPE_RIGHT:
-      // Opposite of Left
-      if (Math.abs(upDir.y) > 0.9) {
-        direction = new Vector3(1, 0, 0);
-      } else {
-        direction = new Vector3(0, 1, 0).cross(upDir).normalize();
-      }
-      break;
-    case VIEW_TYPE_FRONT:
-      // Create a vector perpendicular to both up and left
-      if (Math.abs(upDir.y) > 0.9) {
-        direction = new Vector3(0, 0, 1);
-      } else {
-        const left = new Vector3(0, -1, 0).cross(upDir).normalize();
-        direction = upDir.clone().cross(left).normalize();
-      }
-      break;
-    case VIEW_TYPE_BACK:
-      // Opposite of Front
-      if (Math.abs(upDir.y) > 0.9) {
-        direction = new Vector3(0, 0, -1);
-      } else {
-        const left = new Vector3(0, 1, 0).cross(upDir).normalize();
-        direction = upDir.clone().cross(left).normalize();
-      }
-      break;
-    default:
-      direction = upDir.clone();
-  }
-
-  return center.clone().add(direction.multiplyScalar(distance));
-};
-
-/**
- * Calculate camera "up" vector for different side panel views to ensure proper axis alignment
- */
-const calculateCameraUpForSidePanel = (
-  sidePanelViewType: SidePanelViewType,
-  upVector: Vector3,
-): Vector3 => {
-  const upDir = upVector.clone().normalize();
-
-  switch (sidePanelViewType) {
-    case VIEW_TYPE_TOP: {
-      // For Top view, camera is looking down along upDir
-      // Camera's "up" must be perpendicular to the viewing direction
-      // Find a horizontal vector perpendicular to upDir
-      // Match the convention used by Front/Back views for consistency
-
-      let candidate: Vector3;
-
-      // If upDir is mostly aligned with Y axis (Y-up scene)
-      // Front view looks along +Z, so camera up should be along +Z
-      if (Math.abs(upDir.y) > 0.9) {
-        candidate = new Vector3(0, 0, 1);
-      }
-      // If upDir is mostly aligned with Z axis (Z-up scene)
-      // Camera up should be along +Y
-      else if (Math.abs(upDir.z) > 0.9) {
-        candidate = new Vector3(0, 1, 0);
-      }
-      // If upDir is mostly aligned with X axis (X-up scene)
-      // Use Y axis as candidate
-      else if (Math.abs(upDir.x) > 0.9) {
-        candidate = new Vector3(0, 1, 0);
-      }
-      // General case: use a vector perpendicular to upDir
-      else {
-        // Find a vector perpendicular to upDir using cross product
-        const temp = new Vector3(0, 1, 0);
-        if (Math.abs(upDir.dot(temp)) > 0.9) {
-          temp.set(1, 0, 0);
-        }
-        candidate = new Vector3().crossVectors(temp, upDir).normalize();
-      }
-
-      // Project candidate onto plane perpendicular to upDir
-      // This gives us a vector perpendicular to upDir
-      const projection = candidate
-        .clone()
-        .sub(upDir.clone().multiplyScalar(candidate.dot(upDir)))
-        .normalize();
-
-      // If projection is too small (nearly parallel), try another axis
-      if (projection.length() < 0.1) {
-        // Try different axes as fallback
-        const fallback =
-          Math.abs(upDir.y) > 0.9
-            ? new Vector3(1, 0, 0) // For Y-up, try X
-            : new Vector3(0, 0, 1); // Otherwise try Z
-        const fallbackProjection = fallback
-          .clone()
-          .sub(upDir.clone().multiplyScalar(fallback.dot(upDir)))
-          .normalize();
-        return fallbackProjection.length() > 0.1
-          ? fallbackProjection
-          : new Vector3(0, 0, 1);
-      }
-
-      return projection;
-    }
-    case VIEW_TYPE_BOTTOM: {
-      // For Bottom view, camera is looking up along -upDir
-      // Camera's "up" must be perpendicular to the viewing direction
-      // Use similar logic to Top but apply cross product to maintain correct orientation
-
-      let candidate: Vector3;
-
-      // Match Top view logic for candidate selection
-      // If upDir is mostly aligned with Y axis (Y-up scene)
-      // Front view looks along +Z, so camera up should be along +Z
-      if (Math.abs(upDir.y) > 0.9) {
-        candidate = new Vector3(0, 0, 1);
-      }
-      // If upDir is mostly aligned with Z axis (Z-up scene)
-      // Camera up should be along +Y
-      else if (Math.abs(upDir.z) > 0.9) {
-        candidate = new Vector3(0, 1, 0);
-      }
-      // If upDir is mostly aligned with X axis (X-up scene)
-      // Use Y axis as candidate
-      else if (Math.abs(upDir.x) > 0.9) {
-        candidate = new Vector3(0, 1, 0);
-      }
-      // General case: use a vector perpendicular to upDir
-      else {
-        const temp = new Vector3(0, 1, 0);
-        if (Math.abs(upDir.dot(temp)) > 0.9) {
-          temp.set(1, 0, 0);
-        }
-        candidate = new Vector3().crossVectors(temp, upDir).normalize();
-      }
-
-      const projection = candidate
-        .clone()
-        .sub(upDir.clone().multiplyScalar(candidate.dot(upDir)))
-        .normalize();
-
-      if (projection.length() < 0.1) {
-        const fallback =
-          Math.abs(upDir.y) > 0.9 ? new Vector3(1, 0, 0) : new Vector3(0, 0, 1);
-        const fallbackProjection = fallback
-          .clone()
-          .sub(upDir.clone().multiplyScalar(fallback.dot(upDir)))
-          .normalize();
-        if (fallbackProjection.length() > 0.1) {
-          // Apply cross product for Bottom view orientation
-          const right = new Vector3()
-            .crossVectors(fallbackProjection, upDir)
-            .normalize();
-          const bottomUp = new Vector3()
-            .crossVectors(right, upDir.clone().negate())
-            .normalize();
-          return bottomUp.length() > 0.1 ? bottomUp : fallbackProjection;
-        }
-        return new Vector3(0, 0, 1);
-      }
-
-      // For Bottom view, use cross product to get correct orientation
-      // Cross product with upDir to get a right vector, then use that to determine orientation
-      const right = new Vector3().crossVectors(projection, upDir).normalize();
-      // Use the right vector crossed with the viewing direction (-upDir) to get the proper up
-      const bottomUp = new Vector3()
-        .crossVectors(right, upDir.clone().negate())
-        .normalize();
-
-      return bottomUp.length() > 0.1 ? bottomUp : projection;
-    }
-    case VIEW_TYPE_LEFT:
-    case VIEW_TYPE_RIGHT:
-    case VIEW_TYPE_FRONT:
-    case VIEW_TYPE_BACK:
-      // For these views, camera is looking perpendicular to upDir
-      // Camera's "up" should be along upDir (or its appropriate orientation)
-      return upDir.clone();
-    default:
-      return upDir.clone();
-  }
-};
-
-/**
-=======
->>>>>>> main
  * Returns a dropdown value that is guaranteed to exist in the current side-panel
  * options.
  *
@@ -428,25 +194,6 @@ export const SidePanel = ({
 
   const sidePanelCameraFrame = useMemo(
     () =>
-<<<<<<< HEAD
-      upVector && lookAt
-        ? calculateCameraPositionForSidePanel(
-            safeSelectValue,
-            upVector,
-            lookAt,
-            sceneBoundingBox,
-          )
-        : new Vector3(0, 10, 0),
-    [safeSelectValue, upVector, lookAt, sceneBoundingBox],
-  );
-
-  const cameraUp = useMemo(
-    () =>
-      upVector
-        ? calculateCameraUpForSidePanel(safeSelectValue, upVector)
-        : new Vector3(0, 1, 0),
-    [safeSelectValue, upVector],
-=======
       deriveSidePanelCameraFrame({
         sceneBoundingBox,
         target: lookAt ?? new Vector3(0, 0, 0),
@@ -454,7 +201,6 @@ export const SidePanel = ({
         viewType: safeSelectValue,
       }),
     [safeSelectValue, upVector, lookAt, sceneBoundingBox],
->>>>>>> main
   );
 
   const theme = useTheme();
@@ -622,23 +368,6 @@ export const SidePanel = ({
   );
 };
 
-<<<<<<< HEAD
-function findByUserData(
-  scene: THREE.Scene,
-  key: (typeof FO_USER_DATA)[keyof typeof FO_USER_DATA],
-  value: unknown,
-): THREE.Object3D | null {
-  let result: THREE.Object3D | null = null;
-  scene.traverse((o) => {
-    if (o.userData?.[key] === value) {
-      result = o as THREE.Object3D;
-    }
-  });
-  return result;
-}
-
-=======
->>>>>>> main
 const DEFAULT_CUBOID_CREATION_MARGIN = 50;
 const DEFAULT_POLYLINE_VERTEX_FOCUS_SIZE = 5;
 const MIN_POLYLINE_VERTEX_FOCUS_SIZE = 1;
@@ -1093,31 +822,7 @@ const BoundsSideEffectsComponent = ({
       const objectBox = new Box3().setFromObject(object);
 
       if (!objectBox.isEmpty()) {
-<<<<<<< HEAD
-        const expandedBox = expandBoundingBox(objectBox, 2.5);
-
-        const expandedSize = expandedBox.getSize(new Vector3());
-        const expandedCenter = expandedBox.getCenter(new Vector3());
-        const boxGeometry = new THREE.BoxGeometry(
-          expandedSize.x,
-          expandedSize.y,
-          expandedSize.z,
-        );
-        const helperMesh = new THREE.Mesh(boxGeometry);
-        helperMesh.position.copy(expandedCenter);
-        helperMesh.visible = false;
-        scene.add(helperMesh);
-
-        api.refresh(helperMesh).reset().fit();
-
-        // Remove helper mesh after a short delay to ensure the bounds are updated
-        setTimeout(() => {
-          scene.remove(helperMesh);
-          boxGeometry.dispose();
-        }, 0);
-=======
         fitToBox(expandBoundingBox(objectBox, 2.5), frame);
->>>>>>> main
       } else {
         fitBoundsWithSidePanelFrame(
           object,
@@ -1131,56 +836,13 @@ const BoundsSideEffectsComponent = ({
 
   // Focus camera on cuboid creation location when user starts creating
   useAnnotationEventHandler("annotation:cuboidCreationStarted", (payload) => {
-<<<<<<< HEAD
-    const { position } = payload;
-
-    const boxGeometry = new THREE.BoxGeometry(
-      DEFAULT_CUBOID_CREATION_MARGIN,
-      DEFAULT_CUBOID_CREATION_MARGIN,
-      DEFAULT_CUBOID_CREATION_MARGIN,
-    );
-    const helperMesh = new THREE.Mesh(boxGeometry);
-    helperMesh.position.set(position[0], position[1], position[2]);
-    helperMesh.visible = false;
-    scene.add(helperMesh);
-
-    api.refresh(helperMesh).reset().fit();
-
-    setTimeout(() => {
-      scene.remove(helperMesh);
-      boxGeometry.dispose();
-    }, 0);
-=======
     fitToCenteredBox(payload.position, DEFAULT_CUBOID_CREATION_MARGIN);
->>>>>>> main
   });
 
   useAnnotationEventHandler(
     "annotation:3dPolylineVertexSelected",
     (payload) => {
-<<<<<<< HEAD
-      const { position } = payload;
-      const focusBoxSize = getVertexFocusBoxSize();
-
-      const boxGeometry = new THREE.BoxGeometry(
-        focusBoxSize,
-        focusBoxSize,
-        focusBoxSize,
-      );
-      const helperMesh = new THREE.Mesh(boxGeometry);
-      helperMesh.position.set(position[0], position[1], position[2]);
-      helperMesh.visible = false;
-      scene.add(helperMesh);
-
-      api.refresh(helperMesh).reset().fit();
-
-      setTimeout(() => {
-        scene.remove(helperMesh);
-        boxGeometry.dispose();
-      }, 0);
-=======
       fitToCenteredBox(payload.position, getVertexFocusBoxSize());
->>>>>>> main
     },
   );
 

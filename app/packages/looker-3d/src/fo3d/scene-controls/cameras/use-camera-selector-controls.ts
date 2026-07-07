@@ -96,24 +96,12 @@ export const useCameraSelectorControls = ({
           fallbackTarget,
         });
 
-<<<<<<< HEAD
-        cameraControlsRef.current.setLookAt(
-          translation[0],
-          translation[1],
-          translation[2],
-          target.x,
-          target.y,
-          target.z,
-          true,
-        );
-=======
         setCameraControlsLookAt({
           camera: cameraControlsRef.current.object as PerspectiveCamera,
           controls: cameraControlsRef.current,
           position: translation,
           target,
         });
->>>>>>> main
       }
     },
     [cameraOptions, cameraControlsRef, lookAt, setCameraPosition],

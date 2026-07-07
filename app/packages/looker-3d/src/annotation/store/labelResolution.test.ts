@@ -28,14 +28,7 @@ function makeDetection(
   };
 }
 
-<<<<<<< HEAD
-function makeDoc(
-  labels: ReconciledDetection3D[],
-  deletedIds: string[] = [],
-): WorkingDoc {
-=======
 function makeDoc(labels: ReconciledDetection3D[]): WorkingDoc {
->>>>>>> main
   const labelsById: WorkingDoc["labelsById"] = {};
   for (const l of labels) labelsById[l._id] = l;
   return { labelsById };
@@ -86,21 +79,6 @@ describe("getDefaultLabel", () => {
     expect(getDefaultLabel("predictions", doc)).toBe("car");
   });
 
-<<<<<<< HEAD
-  it("ignores deleted labels", () => {
-    const doc = makeDoc(
-      [
-        makeDetection("1", { label: "car" }),
-        makeDetection("2", { label: "car" }),
-        makeDetection("3", { label: "person" }),
-      ],
-      ["1", "2"],
-    );
-    expect(getDefaultLabel("predictions", doc)).toBe("person");
-  });
-
-=======
->>>>>>> main
   it("ignores labels from other fields", () => {
     const doc = makeDoc([
       makeDetection("1", { label: "car", path: "other_field" }),

@@ -67,11 +67,8 @@ export const Pcd = ({
     defaultMaterial,
     pcdContainerRef,
     quaternion,
-<<<<<<< HEAD
-=======
     false,
     pointCloudCrop,
->>>>>>> main
   );
 
   const { currentHoveredPoint } = usePointCloudHoverFromRaycast({

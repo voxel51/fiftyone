@@ -76,27 +76,7 @@ export function getCuboidWorldCorners(
     new Vector3(-hw, +hh, +hd),
   ];
 
-<<<<<<< HEAD
-  let q: Quaternion;
-
-  if (quaternion) {
-    q = new Quaternion(
-      quaternion[0],
-      quaternion[1],
-      quaternion[2],
-      quaternion[3],
-    );
-  } else if (rotation) {
-    q = new Quaternion().setFromEuler(
-      new Euler(rotation[0], rotation[1], rotation[2]),
-    );
-  } else {
-    q = new Quaternion();
-  }
-
-=======
   const q = getCuboidQuaternion(rotation, quaternion);
->>>>>>> main
   const center = new Vector3(location[0], location[1], location[2]);
 
   return corners.map((c) => {
@@ -178,10 +158,7 @@ function computeCuboidOrientationProjection(
 export function computeCuboidProjection(
   label: CuboidTransformData,
   frustumData: FrustumData,
-<<<<<<< HEAD
-=======
   upVector?: Vector3 | null,
->>>>>>> main
 ): CuboidProjectionData | null {
   if (!frustumData.intrinsics || !frustumData.staticTransform) return null;
 

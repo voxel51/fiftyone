@@ -123,9 +123,6 @@ export const RaycastService = ({
         timestamp: Date.now(),
       });
     },
-<<<<<<< HEAD
-    [activeCursorPanel, panelId, camera, raycaster, scene],
-=======
     [
       activeCursorPanel,
       panelId,
@@ -136,7 +133,6 @@ export const RaycastService = ({
       pointCloudCrop,
       setRaycastResult,
     ],
->>>>>>> main
   );
 
   // This effect clears stale raycast result when the cursor leaves all panels

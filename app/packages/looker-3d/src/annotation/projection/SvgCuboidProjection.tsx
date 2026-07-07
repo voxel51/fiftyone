@@ -89,8 +89,6 @@ export function SvgCuboidProjection({
             vectorEffect="non-scaling-stroke"
           />
         ) : null,
-<<<<<<< HEAD
-=======
       )}
       {showOrientation && data.orientation && (
         <line
@@ -106,7 +104,6 @@ export function SvgCuboidProjection({
       )}
       {orientationArrowHead && (
         <polygon points={orientationArrowHead} fill={orientationColor} />
->>>>>>> main
       )}
     </g>
   );

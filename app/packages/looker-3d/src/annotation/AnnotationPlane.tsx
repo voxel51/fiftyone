@@ -215,14 +215,6 @@ export const AnnotationPlane = ({
       event.stopPropagation();
 
       if (!isDragging) {
-<<<<<<< HEAD
-        setCurrentArchetypeSelectedForTransform((prev) =>
-          prev === "annotation-plane" ? null : "annotation-plane",
-        );
-      }
-    },
-    [showTransformControls, isDragging, isSegmenting],
-=======
         if (isSelected) {
           setCurrentArchetypeSelectedForTransform(null);
           setTransformMode("scale");
@@ -240,7 +232,6 @@ export const AnnotationPlane = ({
       setCurrentArchetypeSelectedForTransform,
       setTransformMode,
     ],
->>>>>>> main
   );
 
   const handleTransformStart = useCallback(() => {

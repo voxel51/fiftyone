@@ -102,11 +102,7 @@ export function useCuboidOperations() {
 
         createPushAndExec(`cuboid-update-${labelId}`, execFn, undoFn);
       },
-<<<<<<< HEAD
-    [createPushAndExec, updateLabel],
-=======
     [createPushAndExec, updateLabel, commit],
->>>>>>> main
   );
 
   /**
@@ -206,11 +202,7 @@ export function useCuboidOperations() {
 
       createPushAndExec(`create-cuboid-${labelId}`, execFn, undoFn);
     },
-<<<<<<< HEAD
-    [createPushAndExec, addLabel, deleteLabel, currentSampleId],
-=======
     [createPushAndExec, addLabel, currentSampleId, commit, remove],
->>>>>>> main
   );
 
   /**
@@ -226,13 +218,6 @@ export function useCuboidOperations() {
           return;
         }
 
-<<<<<<< HEAD
-        const sidebarLabel = getSidebarLabels().find(
-          (l) => l.data._id === labelId,
-        );
-
-=======
->>>>>>> main
         const execFn = () => {
           remove({ path: existingLabel.path, instanceId: labelId });
         };
@@ -244,18 +229,7 @@ export function useCuboidOperations() {
 
         createPushAndExec(`delete-cuboid-${labelId}`, execFn, undoFn);
       },
-<<<<<<< HEAD
-    [
-      createPushAndExec,
-      deleteLabel,
-      restoreLabel,
-      removeLabelFromSidebar,
-      addLabelToSidebar,
-      getSidebarLabels,
-    ],
-=======
     [createPushAndExec, addLabel, commit, remove],
->>>>>>> main
   );
 
   return {
@@ -332,11 +306,7 @@ export function usePolylineOperations() {
 
         createPushAndExec(`polyline-update-${labelId}`, execFn, undoFn);
       },
-<<<<<<< HEAD
-    [createPushAndExec, updateLabel],
-=======
     [createPushAndExec, updateLabel, commit],
->>>>>>> main
   );
 
   /**
@@ -446,11 +416,7 @@ export function usePolylineOperations() {
 
       createPushAndExec(`create-polyline-${labelId}`, execFn, undoFn);
     },
-<<<<<<< HEAD
-    [createPushAndExec, addLabel, deleteLabel, currentSampleId],
-=======
     [createPushAndExec, addLabel, currentSampleId, commit, remove],
->>>>>>> main
   );
 
   /**
@@ -466,13 +432,6 @@ export function usePolylineOperations() {
           return;
         }
 
-<<<<<<< HEAD
-        const sidebarLabel = getSidebarLabels().find(
-          (l) => l.data._id === labelId,
-        );
-
-=======
->>>>>>> main
         const execFn = () => {
           remove({ path: existingLabel.path, instanceId: labelId });
         };
@@ -484,18 +443,7 @@ export function usePolylineOperations() {
 
         createPushAndExec(`delete-polyline-${labelId}`, execFn, undoFn);
       },
-<<<<<<< HEAD
-    [
-      createPushAndExec,
-      deleteLabel,
-      restoreLabel,
-      removeLabelFromSidebar,
-      addLabelToSidebar,
-      getSidebarLabels,
-    ],
-=======
     [createPushAndExec, addLabel, commit, remove],
->>>>>>> main
   );
 
   return {

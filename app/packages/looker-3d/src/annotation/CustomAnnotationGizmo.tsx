@@ -123,80 +123,12 @@ const projectAxis = (
     .clone()
     .applyQuaternion(inverseCameraQuaternion);
 
-<<<<<<< HEAD
-const Context = /* @__PURE__ */ React.createContext<GizmoHelperContext>(
-  {} as GizmoHelperContext,
-);
-
-const useGizmoContext = () => {
-  return React.useContext<GizmoHelperContext>(Context);
-};
-
-const turnRate = 2 * Math.PI; // turn rate in angles per second
-const dummy = /* @__PURE__ */ new Object3D();
-const matrix = /* @__PURE__ */ new Matrix4();
-const [q1, q2] = [
-  /* @__PURE__ */ new Quaternion(),
-  /* @__PURE__ */ new Quaternion(),
-];
-const targetPosition = /* @__PURE__ */ new Vector3();
-
-type ControlsProto = { update(delta?: number): void; target: Vector3 };
-
-type GizmoHelperProps = ThreeElements["group"] & {
-  margin?: [number, number];
-  renderPriority?: number;
-  autoClear?: boolean;
-  onUpdate?: () => void; // update controls during animation
-  // TODO: in a new major state.controls should be the only means of consuming controls, the
-  // onTarget prop can then be removed!
-  onTarget?: () => Vector3; // return the target to rotate around
-};
-
-const isOrbitControls = (
-  controls: ControlsProto,
-): controls is OrbitControlsType => {
-  return "minPolarAngle" in (controls as OrbitControlsType);
-};
-
-const isCameraControls = (
-  controls: CameraControlsType | ControlsProto,
-): controls is CameraControlsType => {
-  return "getTarget" in (controls as CameraControlsType);
-};
-
-const AnnotationGizmoHelper = ({
-  margin = [80, 80],
-  renderPriority = 1,
-  onUpdate,
-  onTarget,
-  children,
-  externalCameraState,
-  onCameraTween,
-}: GizmoHelperProps & {
-  externalCameraState?: {
-    position: Vector3;
-    quaternion: Quaternion;
-    target: Vector3;
-  };
-  onCameraTween?: (direction: Vector3) => void;
-}): any => {
-  const size = useThree((state) => state.size);
-  const mainCamera = useThree((state) => state.camera);
-  const defaultControls = useThree(
-    (state) => state.controls,
-  ) as unknown as ControlsProto | null;
-  const invalidate = useThree((state) => state.invalidate);
-  const gizmoRef = React.useRef<Group>(null!);
-  const virtualCam = React.useRef<OrthographicCameraImpl>(null!);
-=======
   return {
     depth: cameraSpaceDirection.z,
     x: GIZMO_CENTER + cameraSpaceDirection.x * length,
     y: GIZMO_CENTER - cameraSpaceDirection.y * length,
   };
 };
->>>>>>> main
 
 const getAxisRenderState = (
   cameraQuaternion: THREE.Quaternion,
@@ -246,102 +178,6 @@ const getAxisRenderState = (
   }).sort((a, b) => a.depth - b.depth);
 };
 
-<<<<<<< HEAD
-      // Original tween logic for local camera
-      animating.current = true;
-      if (defaultControls || onTarget) {
-        focusPoint.current =
-          onTarget?.() ||
-          (isCameraControls(defaultControls)
-            ? defaultControls.getTarget(focusPoint.current)
-            : defaultControls?.target || new Vector3(0, 0, 0));
-      }
-      radius.current = cameraState.position.distanceTo(cameraState.target);
-
-      // Rotate from current camera orientation
-      q1.copy(cameraState.quaternion);
-
-      // To new current camera orientation
-      targetPosition
-        .copy(direction)
-        .multiplyScalar(radius.current)
-        .add(cameraState.target);
-
-      dummy.lookAt(targetPosition);
-
-      q2.copy(dummy.quaternion);
-
-      invalidate();
-    },
-    [defaultControls, cameraState, onTarget, invalidate, onCameraTween],
-  );
-
-  useFrame((_, delta) => {
-    if (virtualCam.current && gizmoRef.current) {
-      // Animate step
-      if (animating.current && !onCameraTween) {
-        if (q1.angleTo(q2) < 0.01) {
-          animating.current = false;
-          // Orbit controls uses UP vector as the orbit axes,
-          // so we need to reset it after the animation is done
-          // moving it around for the controls to work correctly
-          if (isOrbitControls(defaultControls)) {
-            mainCamera.up.copy(defaultUp.current);
-          }
-        } else {
-          const step = delta * turnRate;
-          // animate position by doing a slerp and then scaling the position on the unit sphere
-          q1.rotateTowards(q2, step);
-          // animate orientation
-          mainCamera.position
-            .set(0, 0, 1)
-            .applyQuaternion(q1)
-            .multiplyScalar(radius.current)
-            .add(focusPoint.current);
-          mainCamera.up.set(0, 1, 0).applyQuaternion(q1).normalize();
-          mainCamera.quaternion.copy(q1);
-
-          if (isCameraControls(defaultControls))
-            defaultControls.setPosition(
-              mainCamera.position.x,
-              mainCamera.position.y,
-              mainCamera.position.z,
-            );
-
-          if (onUpdate) onUpdate();
-          else if (defaultControls) defaultControls.update(delta);
-          invalidate();
-        }
-      }
-
-      // Sync Gizmo with camera orientation
-      if (externalCameraState) {
-        // Use external camera state
-        matrix.makeRotationFromQuaternion(cameraState.quaternion).invert();
-        gizmoRef.current?.quaternion.setFromRotationMatrix(matrix);
-      } else {
-        // Use local camera
-        matrix.copy(mainCamera.matrix).invert();
-        gizmoRef.current?.quaternion.setFromRotationMatrix(matrix);
-      }
-    }
-  });
-
-  const gizmoHelperContext = React.useMemo(
-    () => ({ tweenCamera }),
-    [tweenCamera],
-  );
-
-  // Position gizmo component within scene (hardcoded for top-left alignment)
-  const [marginX, marginY] = margin;
-  const x = -size.width / 2 + marginX;
-  const y = size.height / 2 - marginY;
-
-  // For external camera state, adjust positioning to be more centered
-  const adjustedX = externalCameraState ? x * 0.5 : x;
-  const adjustedY = externalCameraState ? y * 0.5 : y;
-
-=======
 const AnnotationOrientationGizmoSvg = ({
   cameraQuaternion,
   onAxisPointerDown,
@@ -354,7 +190,6 @@ const AnnotationOrientationGizmoSvg = ({
     [cameraQuaternion],
   );
 
->>>>>>> main
   return (
     <svg
       aria-label="3D orientation gizmo"
@@ -504,24 +339,11 @@ const AnnotationOrientationGizmo = ({
       const target = mainCameraState.target.clone();
       const radius = mainCameraState.position.distanceTo(target);
 
-<<<<<<< HEAD
-      // Calculate new position based on direction
-      const newPosition = direction.clone().multiplyScalar(radius).add(target);
-
-      // Set the new camera position
-      cameraControlsRef.current.setPosition(
-        newPosition.x,
-        newPosition.y,
-        newPosition.z,
-        true, // animate
-      );
-=======
       setCameraControlsPosition({
         camera: mainCamera.current,
         controls: cameraControlsRef.current,
         position: direction.clone().multiplyScalar(radius).add(target),
       });
->>>>>>> main
     },
     [mainCamera, cameraControlsRef, mainCameraState],
   );

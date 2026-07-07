@@ -1151,11 +1151,7 @@ export const Cuboid = ({
   );
 
   const complementaryColor = useMemo(
-<<<<<<< HEAD
-    () => chroma(strokeAndFillColor).set("hsl.h", "+180").hex(),
-=======
     () => getComplementaryColor(strokeAndFillColor),
->>>>>>> main
     [strokeAndFillColor],
   );
   const shouldShowWireframe = isSelectedForAnnotation || isHovered;

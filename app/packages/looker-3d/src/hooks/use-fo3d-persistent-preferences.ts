@@ -30,11 +30,6 @@ export const useFo3dPersistentPreferences = () => {
       DEFAULT_POINT_CLOUD_SETTINGS,
     );
 
-<<<<<<< HEAD
-  const [raycastPrecision, setRaycastPrecision] = useBrowserStorage(
-    "fo3d-raycastingPrecision",
-    DEFAULT_RAYCAST_PRECISION,
-=======
   const pointCloudSettings = useMemo(
     () => normalizePointCloudSettings(storedPointCloudSettings),
     [storedPointCloudSettings],
@@ -51,7 +46,6 @@ export const useFo3dPersistentPreferences = () => {
       });
     },
     [setStoredPointCloudSettings],
->>>>>>> main
   );
 
   return {

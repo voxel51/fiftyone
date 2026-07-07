@@ -89,10 +89,7 @@ const PlyWithPointsMaterial = ({
     pointsContainerRef,
     quaternion,
     vertexColorsAvailable,
-<<<<<<< HEAD
-=======
     pointCloudCrop,
->>>>>>> main
   );
 
   const mesh = useMemo(() => new Points(geometry), [geometry]);

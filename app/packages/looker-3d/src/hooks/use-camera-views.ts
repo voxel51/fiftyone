@@ -216,35 +216,19 @@ export const useCameraViews = ({
         return;
       }
 
-<<<<<<< HEAD
-      cameraControlsRef.current.setLookAt(
-        cameraPosition.x,
-        cameraPosition.y,
-        cameraPosition.z,
-        target.x,
-        target.y,
-        target.z,
-        true,
-      );
-=======
       setCameraControlsLookAt({
         camera: cameraRef.current,
         controls: cameraControlsRef.current,
         position: cameraPosition,
         target,
       });
->>>>>>> main
 
       setCameraViewStatus({
         viewName,
         timestamp: Date.now(),
       });
     },
-<<<<<<< HEAD
-    [cameraControlsRef, setCameraViewStatus],
-=======
     [cameraRef, cameraControlsRef, setCameraViewStatus],
->>>>>>> main
   );
 
   const setCameraView = useCallback(

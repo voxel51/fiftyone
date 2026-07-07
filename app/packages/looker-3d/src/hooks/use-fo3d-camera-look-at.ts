@@ -30,27 +30,12 @@ export const useFo3dCameraLookAt = ({
         return false;
       }
 
-<<<<<<< HEAD
-      const [positionX, positionY, positionZ] = toVectorTuple(lookAt.position);
-      const [targetX, targetY, targetZ] = toVectorTuple(lookAt.target);
-
-      cameraControlsRef.current.setLookAt(
-        positionX,
-        positionY,
-        positionZ,
-        targetX,
-        targetY,
-        targetZ,
-        lookAt.animate,
-      );
-=======
       setCameraControlsLookAt({
         camera: cameraRef.current,
         controls: cameraControlsRef.current,
         position: lookAt.position,
         target: lookAt.target,
       });
->>>>>>> main
 
       return true;
     },

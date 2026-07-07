@@ -67,10 +67,7 @@ export const usePcdMaterial = (
   pcdContainerRef: React.RefObject<any>,
   quaternion?: Quaternion,
   vertexColorsAvailable: boolean = false,
-<<<<<<< HEAD
-=======
   pointCloudCrop?: PointCloudCrop | null,
->>>>>>> main
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
 

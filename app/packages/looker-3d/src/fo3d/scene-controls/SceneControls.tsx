@@ -78,11 +78,7 @@ export const SceneControls = ({
       saveCameraState(
         datasetName,
         state.camera.position.toArray(),
-<<<<<<< HEAD
-        cameraControls.getTarget(new Vector3()).toArray(),
-=======
         getCameraControlsTarget(cameraControls).toArray(),
->>>>>>> main
       );
       lastCameraUpdateRef.current = now;
     }
@@ -157,15 +153,11 @@ export const SceneControls = ({
         },
       }),
     }),
-<<<<<<< HEAD
-    [pointCloudSettings.enableTooltip],
-=======
     [
       pointCloudSettings.enableTooltip,
       selectedCuboidCropMargin,
       setPointCloudSettings,
     ],
->>>>>>> main
   );
 
   return <Lights lights={scene?.lights} />;

@@ -151,11 +151,7 @@ export const useFo3dCameraControlsConfig = ({
       );
       updateCameraControlsConfig();
     },
-<<<<<<< HEAD
-    [updateCameraControlsConfig],
-=======
     [setPointCropModifierPressed, updateCameraControlsConfig],
->>>>>>> main
   );
 
   const resetModifierState = useCallback(() => {

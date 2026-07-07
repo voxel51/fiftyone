@@ -14,10 +14,7 @@ import type { CuboidProjectionData } from "./types";
 export function useProjectedCuboid(
   cuboid: CuboidTransformData | null | undefined,
   frustumData: FrustumData,
-<<<<<<< HEAD
-=======
   upVector?: Vector3 | null,
->>>>>>> main
 ): CuboidProjectionData | null {
   return useMemo(() => {
     if (!cuboid) return null;
