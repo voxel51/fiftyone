@@ -300,11 +300,171 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertEqual(res["sampleId"], str(results.sample_ids[4]))
         self.assertEqual(res["id"], res["sampleId"])
         self.assertEqual(res["value"], "c1")
-        self.assertTrue(res["mediaUrl"].startswith("/media?filepath="))
+        # Media is a filepath for the client's getSampleSrc(), not a URL
+        self.assertEqual(res["media"], res["filepath"])
 
         with self.assertRaises(ValueError):
             v2.EmbeddingsV2SampleInfo._post_sync(
                 None, {**base, "index": len(points)}
+            )
+
+    @drop_datasets
+    def test_sample_info_deleted_sample(self):
+        dataset, points = _make_samples_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz"}
+        results = dataset.load_brain_results("viz")
+
+        deleted_id = str(results.sample_ids[0])
+        dataset.delete_samples([deleted_id])
+
+        res = v2.EmbeddingsV2SampleInfo._post_sync(None, {**base, "index": 0})
+        self.assertEqual(res["sampleId"], deleted_id)
+        self.assertIsNone(res["media"])
+        self.assertIsNone(res["filepath"])
+        self.assertIsNone(res["value"])
+
+    @drop_datasets
+    def test_color_high_cardinality_strings(self):
+        # More distinct string values than MAX_CATEGORIES: must stay
+        # categorical (strings can't encode as f32), capped to the top
+        # MAX_CATEGORIES classes by count, remainder marked missing
+        n = v2.MAX_CATEGORIES + 50
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath=f"/tmp/img{i}.png", name=f"unique_{i:04d}")
+                for i in range(n)
+            ]
+        )
+        points = np.zeros((n, 2))
+        fob.compute_visualization(dataset, points=points, brain_key="viz")
+        base = {"datasetName": dataset.name, "brainKey": "viz"}
+
+        meta = v2.EmbeddingsV2ColorMeta._post_sync(
+            None, {**base, "field": "name"}
+        )
+        self.assertEqual(meta["style"], "categorical")
+        self.assertEqual(len(meta["classes"]), v2.MAX_CATEGORIES)
+        self.assertTrue(meta["truncated"])
+
+        dtype, _, _, _, payload = _parse(
+            v2.EmbeddingsV2ColorValues._post_sync(
+                None, {**base, "field": "name"}
+            )
+        )
+        self.assertEqual(dtype, v2.DTYPE_U16)
+        indices = np.frombuffer(payload, dtype="<u2")
+        missing = int((indices == v2.MISSING_CATEGORY).sum())
+        self.assertEqual(missing, n - v2.MAX_CATEGORIES)
+
+    @drop_datasets
+    def test_color_int_high_cardinality_is_continuous(self):
+        n = v2.MAX_CATEGORIES + 50
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath=f"/tmp/img{i}.png", index=i) for i in range(n)]
+        )
+        points = np.zeros((n, 2))
+        fob.compute_visualization(dataset, points=points, brain_key="viz")
+        base = {"datasetName": dataset.name, "brainKey": "viz"}
+
+        meta = v2.EmbeddingsV2ColorMeta._post_sync(
+            None, {**base, "field": "index"}
+        )
+        self.assertEqual(meta["style"], "continuous")
+        self.assertEqual(meta["max"], float(n - 1))
+
+    @drop_datasets
+    def test_color_list_field_collapses_to_first(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="/tmp/a.png", letters=["a", "b"]),
+                fo.Sample(filepath="/tmp/b.png", letters=["c"]),
+                fo.Sample(filepath="/tmp/c.png", letters=[]),
+            ]
+        )
+        points = np.zeros((3, 2))
+        fob.compute_visualization(dataset, points=points, brain_key="viz")
+        base = {"datasetName": dataset.name, "brainKey": "viz"}
+
+        meta = v2.EmbeddingsV2ColorMeta._post_sync(
+            None, {**base, "field": "letters"}
+        )
+        self.assertEqual(meta["style"], "categorical")
+        self.assertEqual({c["label"] for c in meta["classes"]}, {"a", "c"})
+
+        _, _, _, _, payload = _parse(
+            v2.EmbeddingsV2ColorValues._post_sync(
+                None, {**base, "field": "letters"}
+            )
+        )
+        indices = np.frombuffer(payload, dtype="<u2")
+        # The empty-list sample is missing
+        self.assertEqual(indices[2], v2.MISSING_CATEGORY)
+
+    @drop_datasets
+    def test_color_missing_values(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="/tmp/a.png", grade="x", score=1.0),
+                fo.Sample(filepath="/tmp/b.png"),
+            ]
+        )
+        points = np.zeros((2, 2))
+        fob.compute_visualization(dataset, points=points, brain_key="viz")
+        base = {"datasetName": dataset.name, "brainKey": "viz"}
+
+        meta = v2.EmbeddingsV2ColorMeta._post_sync(
+            None, {**base, "field": "grade"}
+        )
+        self.assertEqual(sum(c["count"] for c in meta["classes"]), 1)
+
+        _, _, _, _, payload = _parse(
+            v2.EmbeddingsV2ColorValues._post_sync(
+                None, {**base, "field": "grade"}
+            )
+        )
+        indices = np.frombuffer(payload, dtype="<u2")
+        self.assertEqual(indices[1], v2.MISSING_CATEGORY)
+
+        meta = v2.EmbeddingsV2ColorMeta._post_sync(
+            None, {**base, "field": "score"}
+        )
+        self.assertEqual((meta["min"], meta["max"]), (1.0, 1.0))
+
+        _, _, _, _, payload = _parse(
+            v2.EmbeddingsV2ColorValues._post_sync(
+                None, {**base, "field": "score"}
+            )
+        )
+        values = np.frombuffer(payload, dtype="<f4")
+        self.assertTrue(np.isnan(values[1]))
+
+    @drop_datasets
+    def test_sample_info_video_media_is_null(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(filepath="/tmp/clip.mp4"))
+        points = np.zeros((1, 2))
+        fob.compute_visualization(dataset, points=points, brain_key="viz")
+
+        res = v2.EmbeddingsV2SampleInfo._post_sync(
+            None,
+            {"datasetName": dataset.name, "brainKey": "viz", "index": 0},
+        )
+        self.assertIsNone(res["media"])
+        self.assertTrue(res["filepath"].endswith("clip.mp4"))
+
+    @drop_datasets
+    def test_unknown_brain_key_raises(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(filepath="/tmp/a.png"))
+
+        with self.assertRaises(ValueError):
+            v2.EmbeddingsV2RunInfo._post_sync(
+                None,
+                {"datasetName": dataset.name, "brainKey": "nope"},
             )
 
     def test_points_in_polygon(self):

@@ -23,7 +23,6 @@ columns are ``ceil(n / 8)`` bytes, packed little bit-order).
 
 import logging
 import struct
-from urllib.parse import quote
 
 import numpy as np
 from starlette.endpoints import HTTPEndpoint
@@ -186,15 +185,19 @@ class EmbeddingsV2ColorValues(HTTPEndpoint):
 
     def _post_sync(self, data):
         dataset, results = _load_results(data)
-        style, values, classes = _color_data(dataset, results, data["field"])
+        style, values, classes, _ = _color_data(
+            dataset, results, data["field"]
+        )
 
         n = len(values)
         if style == "categorical":
             index_by_label = {c["label"]: i for i, c in enumerate(classes)}
             column = np.full(n, MISSING_CATEGORY, dtype="<u2")
             for i, value in enumerate(values):
-                if value is not None:
-                    column[i] = index_by_label[value]
+                # Values beyond the class-list cap encode as missing
+                index = index_by_label.get(value)
+                if index is not None:
+                    column[i] = index
 
             return _column_response(DTYPE_U16, 1, n, column.tobytes())
 
@@ -216,10 +219,16 @@ class EmbeddingsV2ColorMeta(HTTPEndpoint):
 
     def _post_sync(self, data):
         dataset, results = _load_results(data)
-        style, values, classes = _color_data(dataset, results, data["field"])
+        style, values, classes, truncated = _color_data(
+            dataset, results, data["field"]
+        )
 
         if style == "categorical":
-            return {"style": style, "classes": classes}
+            return {
+                "style": style,
+                "classes": classes,
+                "truncated": truncated,
+            }
 
         present = [float(v) for v in values if v is not None]
         return {
@@ -314,7 +323,6 @@ class EmbeddingsV2LassoStage(HTTPEndpoint):
         stages = data.get("view", None)
         slices = data.get("slices", None)
         polygon = data.get("polygon", None)
-        indices = data.get("indices", None)
 
         patches_field = results.config.patches_field
         points_field = results.config.points_field
@@ -356,16 +364,7 @@ class EmbeddingsV2LassoStage(HTTPEndpoint):
                 "count": None,
             }
 
-        if polygon is not None:
-            points = results.points
-            inside = _points_in_polygon(
-                points[:, 0], points[:, 1], np.asarray(polygon, dtype=float)
-            )
-            (matched,) = np.nonzero(inside)
-        elif indices is not None:
-            matched = np.asarray(indices, dtype=int)
-        else:
-            raise ValueError("Either 'polygon' or 'indices' is required")
+        matched = _resolve_selection(data, results)
 
         if is_patches_plot:
             selected_ids = _as_list(results.label_ids[matched])
@@ -398,8 +397,11 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
     async def post(self, request: Request, data: dict) -> dict:
         """Resolves a wire-order index to its sample's hover-card data.
 
-        ``mediaUrl`` is null when hover media is unavailable for the
-        sample's media type (anything but images).
+        ``media`` is a filepath for the client to resolve through the
+        App's ``getSampleSrc()`` (which owns proxy/prefix handling), or
+        null when hover media is unavailable for the sample's media type
+        (anything but images). Samples deleted since the run was computed
+        resolve to null fields rather than an error.
         """
         return await run_sync_task(self._post_sync, data)
 
@@ -417,11 +419,17 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
         if results.config.patches_field is not None:
             point_id = str(results.label_ids[index])
 
-        sample = dataset[sample_id]
-
-        media_url = None
-        if sample.media_type == fom.IMAGE:
-            media_url = f"/media?filepath={quote(sample.filepath)}"
+        try:
+            sample = dataset[sample_id]
+        except KeyError:
+            # Deleted since the brain run was computed
+            return {
+                "id": point_id,
+                "sampleId": sample_id,
+                "filepath": None,
+                "media": None,
+                "value": None,
+            }
 
         value = None
         if color_field is not None:
@@ -434,7 +442,7 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
             "id": point_id,
             "sampleId": sample_id,
             "filepath": sample.filepath,
-            "mediaUrl": media_url,
+            "media": _hover_media(sample),
             "value": value,
         }
 
@@ -490,7 +498,17 @@ def _as_list(ids):
 
 def _color_data(dataset, results, field_path):
     """Resolves per-point color-by values (wire order) and the style
-    decision, mirroring the legacy endpoint's rules.
+    decision.
+
+    Rules follow the legacy endpoint with one correction: only numeric
+    fields can be continuous. High-cardinality non-numeric fields stay
+    categorical with the class list capped to the ``MAX_CATEGORIES``
+    most frequent values (the remainder encode as missing), reported via
+    the ``truncated`` flag. (Legacy marked those "continuous", which is
+    meaningless for strings.)
+
+    Returns:
+        a ``(style, values, classes, truncated)`` tuple
     """
     patches_field = results.config.patches_field
     is_patches = patches_field is not None
@@ -506,23 +524,25 @@ def _color_data(dataset, results, field_path):
         field = field.field
 
     if isinstance(field, fof.FloatField):
-        return "continuous", values, None
+        return "continuous", values, None, False
 
     distinct = {}
     for value in values:
         if value is not None:
             distinct[value] = distinct.get(value, 0) + 1
 
-    if len(distinct) > MAX_CATEGORIES:
-        return "continuous", values, None
+    if len(distinct) > MAX_CATEGORIES and isinstance(field, fof.IntField):
+        return "continuous", values, None, False
 
+    ranked = sorted(
+        distinct.items(), key=lambda item: (-item[1], str(item[0]))
+    )
+    truncated = len(ranked) > MAX_CATEGORIES
     classes = [
         {"label": label, "count": count}
-        for label, count in sorted(
-            distinct.items(), key=lambda item: (-item[1], str(item[0]))
-        )
+        for label, count in ranked[:MAX_CATEGORIES]
     ]
-    return "categorical", values, classes
+    return "categorical", values, classes, truncated
 
 
 def _match_mask(
@@ -575,6 +595,44 @@ def _match_mask(
     return np.fromiter(
         (str(_id) in matched_ids for _id in _as_list(ids)), bool, count=n
     )
+
+
+def _hover_media(sample):
+    """Resolves what the hover card should load for a sample: a filepath
+    the client passes through the App's ``getSampleSrc()``, or None when
+    hover media is unavailable for the sample's media type.
+
+    Deliberately a single substitution point: deployments that serve media
+    by other means (e.g., pre-signed object-store URLs the browser fetches
+    directly) replace only this function; ``getSampleSrc()`` passes fully
+    qualified URLs through untouched.
+    """
+    if sample.media_type != fom.IMAGE:
+        return None
+
+    return sample.filepath
+
+
+def _resolve_selection(data, results):
+    """Resolves a selection request to matched wire-order indices.
+
+    Deliberately a single extension point: alternative selection encodings
+    add branches here without touching the stage-building logic.
+    """
+    polygon = data.get("polygon", None)
+    if polygon is not None:
+        points = results.points
+        inside = _points_in_polygon(
+            points[:, 0], points[:, 1], np.asarray(polygon, dtype=float)
+        )
+        (matched,) = np.nonzero(inside)
+        return matched
+
+    indices = data.get("indices", None)
+    if indices is not None:
+        return np.asarray(indices, dtype=int)
+
+    raise ValueError("Either 'polygon' or 'indices' is required")
 
 
 def _points_in_polygon(xs, ys, polygon):
