@@ -18,7 +18,7 @@ from starlette.exceptions import HTTPException
 import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.multimodal.server.routes as fomr
-import fiftyone.multimodal.tags._temporal_tags as fota
+import fiftyone.core.tags as fota
 
 
 @pytest.fixture(autouse=True)

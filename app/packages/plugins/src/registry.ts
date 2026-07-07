@@ -354,14 +354,19 @@ const REQUIRED = ["name", "type", "component"];
 export class PluginComponentRegistry {
   private data = new Map<string, PluginComponentRegistration>();
   private pluginDefinitions = new Map<string, PluginDefinitionLike>();
-  private scripts = new Set<string>();
+  private scripts = new Map<string, Promise<void>>();
   private subscribers = new Set<RegistryEventHandler>();
   private version = 0;
   getVersion() {
     return this.version;
   }
-  registerScript(name: string) {
-    this.scripts.add(name);
+  // Track the in-flight load so overlapping loadPlugins() calls await the same
+  // promise instead of resolving early off a "started" flag.
+  registerScript(name: string, promise: Promise<void>) {
+    this.scripts.set(name, promise);
+  }
+  getScript(name: string) {
+    return this.scripts.get(name);
   }
   registerPluginDefinition(pluginDefinition: PluginDefinitionLike) {
     this.pluginDefinitions.set(pluginDefinition.name, pluginDefinition);
