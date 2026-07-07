@@ -4,6 +4,7 @@ import {
   usePlaybackStore,
   type PlaybackStore,
 } from "@fiftyone/playback";
+import { isPlayingAtom } from "@fiftyone/playback/src/lib/playback/atoms";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -210,6 +211,43 @@ describe("starved-playback stand-down", () => {
     expect(screen.getByTestId("trajectories").textContent).toBe(
       "/pose:ready:2:map",
     );
+  });
+
+  it("waits out active playback on a limited link even without buffering", async () => {
+    vi.useFakeTimers();
+    const source = createSource("pose");
+    const storeCapture = capturePlaybackStore();
+    const client = createClient();
+
+    render(
+      <PlaybackProvider duration={1}>
+        <PlaybackStoreProbe onStore={storeCapture.onStore} />
+        <Harness client={client} enabled source={source} />
+      </PlaybackProvider>,
+    );
+    const store = storeCapture.store();
+
+    // Smooth playback on a limited-verdict link: the whole-file scan
+    // must not launch and steal the playhead's bandwidth.
+    act(() => {
+      setMcapNetworkHealth(store, {
+        busyFraction: 1,
+        limited: true,
+        throughputBytesPerSec: 1_000,
+        updatedAtMs: 1,
+      });
+      store.set(isPlayingAtom, true);
+    });
+
+    await advanceTimers(6_000);
+    expect(client.readDecodedMessages).not.toHaveBeenCalled();
+
+    // Pausing frees the link for banking; the next retry launches.
+    act(() => {
+      store.set(isPlayingAtom, false);
+    });
+    await advanceTimers(2_000);
+    expect(client.readDecodedMessages).toHaveBeenCalledTimes(1);
   });
 });
 

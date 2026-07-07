@@ -1,7 +1,8 @@
-// Deep import on purpose: the playback package root barrel pulls view
+// Deep imports on purpose: the playback package root barrel pulls view
 // components whose relay fragments cannot evaluate under vitest, and this
 // bridge has direct unit tests.
 import { PlaybackStoreContext } from "@fiftyone/playback/src/lib/playback/playback-store-context";
+import { getIsPlaying } from "@fiftyone/playback/src/lib/playback/store-access";
 import React, {
   createContext,
   useContext,
@@ -15,7 +16,10 @@ import { byteSourceAccessKey } from "../../../query/bytes";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { MCAP_ACTIVE_TIMELINE, type McapResourceClient } from "../types";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
-import { shouldDeferMcapIdleWorkForStore } from "./mcap-network-health";
+import {
+  getMcapNetworkHealth,
+  shouldDeferMcapIdleWorkForStore,
+} from "./mcap-network-health";
 import {
   decimateTrajectory,
   type McapPoseTrajectoryPoint,
@@ -174,8 +178,23 @@ export function McapPoseTrajectoriesBridge({
     // catch-up for bandwidth (lanes are separate workers, not separate
     // links). While the user is actively waiting on a limited network,
     // stand down and re-check.
-    const shouldStandDown = (): boolean =>
-      !!playbackStore && shouldDeferMcapIdleWorkForStore(playbackStore, null);
+    const shouldStandDown = (): boolean => {
+      if (!playbackStore) {
+        return false;
+      }
+      // An actively advancing playhead on a limited link cannot spare the
+      // scan any bandwidth — worse, the single-flight fill locks let a
+      // scan-initiated block fill become the fetch the playhead later
+      // waits on (measured as multi-second mid-play freezes). Run only
+      // while paused or once the link has genuinely recovered.
+      if (
+        getIsPlaying(playbackStore) &&
+        getMcapNetworkHealth(playbackStore).limited
+      ) {
+        return true;
+      }
+      return shouldDeferMcapIdleWorkForStore(playbackStore, null);
+    };
 
     const scheduleRetry = (delayMs: number) => {
       if (cancelled || retryTimeout !== null) {
