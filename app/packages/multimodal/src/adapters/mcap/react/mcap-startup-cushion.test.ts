@@ -22,6 +22,7 @@ function uniformByteTimeline(
     points.push({
       cumulativeCompressedBytes: second * bytesPerSecond,
       endTimeNs: BigInt(second) * SECOND_NS,
+      startOffsetBytes: BigInt((second - 1) * bytesPerSecond),
     });
   }
   return points;
@@ -128,10 +129,26 @@ describe("computeMcapStartupCushion", () => {
     // 200 bytes in the first 2 seconds, then 10 B/s: the front burst is
     // the binding constraint even though the average bitrate is low.
     const byteTimeline: McapByteTimelinePoint[] = [
-      { cumulativeCompressedBytes: 100, endTimeNs: 1n * SECOND_NS },
-      { cumulativeCompressedBytes: 200, endTimeNs: 2n * SECOND_NS },
-      { cumulativeCompressedBytes: 210, endTimeNs: 3n * SECOND_NS },
-      { cumulativeCompressedBytes: 220, endTimeNs: 4n * SECOND_NS },
+      {
+        cumulativeCompressedBytes: 100,
+        endTimeNs: 1n * SECOND_NS,
+        startOffsetBytes: 0n,
+      },
+      {
+        cumulativeCompressedBytes: 200,
+        endTimeNs: 2n * SECOND_NS,
+        startOffsetBytes: 100n,
+      },
+      {
+        cumulativeCompressedBytes: 210,
+        endTimeNs: 3n * SECOND_NS,
+        startOffsetBytes: 200n,
+      },
+      {
+        cumulativeCompressedBytes: 220,
+        endTimeNs: 4n * SECOND_NS,
+        startOffsetBytes: 210n,
+      },
     ];
     const cushion = compute({
       byteTimeline,

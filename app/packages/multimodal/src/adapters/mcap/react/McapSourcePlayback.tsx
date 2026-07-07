@@ -30,6 +30,7 @@ import {
   McapNetworkHealthTracker,
   McapNetworkStatusPill,
 } from "./McapNetworkStatus";
+import { McapPausedByteBanking } from "./McapPausedByteBanking";
 import McapSettingsSidebar from "./McapSettingsSidebar";
 import { McapStreams } from "./McapStreams";
 import McapTimestampReadout from "./McapTimestampReadout";
@@ -217,6 +218,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                   >
                     <McapStreams client={client} source={source} />
                     <McapNetworkHealthTracker client={client} />
+                    <McapPausedByteBanking client={client} source={source} />
                     <McapSelectionHotkeys />
                     {children}
                     <McapModalLayoutPersistence datasetId={layoutScopeKey} />

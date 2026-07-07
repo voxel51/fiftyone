@@ -536,6 +536,13 @@ export interface McapByteTimelinePoint {
    * Inclusive timeline end of the chunk contributing the bytes.
    */
   readonly endTimeNs: bigint;
+
+  /**
+   * File offset where the chunk starts. Cumulative bytes measure volume
+   * (bitrate math); this anchors the chunk in the file for consumers that
+   * bank or prefetch real byte ranges.
+   */
+  readonly startOffsetBytes: bigint;
 }
 
 /**

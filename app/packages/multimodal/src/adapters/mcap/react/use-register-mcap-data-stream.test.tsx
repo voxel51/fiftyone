@@ -1129,8 +1129,16 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
         ...createTimelineRange(),
         // 100 bytes over one second, uniform.
         byteTimeline: [
-          { cumulativeCompressedBytes: 50, endTimeNs: 500_000_000n },
-          { cumulativeCompressedBytes: 100, endTimeNs: 1_000_000_000n },
+          {
+            cumulativeCompressedBytes: 50,
+            endTimeNs: 500_000_000n,
+            startOffsetBytes: 0n,
+          },
+          {
+            cumulativeCompressedBytes: 100,
+            endTimeNs: 1_000_000_000n,
+            startOffsetBytes: 50n,
+          },
         ],
       })),
     });

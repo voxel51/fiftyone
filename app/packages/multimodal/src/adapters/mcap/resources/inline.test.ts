@@ -1640,8 +1640,16 @@ describe("MCAP resources", () => {
     ).resolves.toEqual({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
       byteTimeline: [
-        { cumulativeCompressedBytes: 256, endTimeNs: 250n },
-        { cumulativeCompressedBytes: 512, endTimeNs: 450n },
+        {
+          cumulativeCompressedBytes: 256,
+          endTimeNs: 250n,
+          startOffsetBytes: 1_000n,
+        },
+        {
+          cumulativeCompressedBytes: 512,
+          endTimeNs: 450n,
+          startOffsetBytes: 1_000n,
+        },
       ],
       endTimeNs: 450n,
       startTimeNs: 100n,
@@ -1701,7 +1709,13 @@ describe("MCAP resources", () => {
     );
     await expect(client.readTimelineRange(request)).resolves.toEqual({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-      byteTimeline: [{ cumulativeCompressedBytes: 256, endTimeNs: 20n }],
+      byteTimeline: [
+        {
+          cumulativeCompressedBytes: 256,
+          endTimeNs: 20n,
+          startOffsetBytes: 1_000n,
+        },
+      ],
       endTimeNs: 20n,
       startTimeNs: 10n,
     });

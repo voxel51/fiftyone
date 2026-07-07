@@ -52,6 +52,7 @@ function mcapByteTimelineFromChunkIndexes(
     return {
       cumulativeCompressedBytes,
       endTimeNs: timeline.chunkEndTimeNs(chunkIndex),
+      startOffsetBytes: chunkIndex.chunkStartOffset,
     };
   });
 }
