@@ -136,6 +136,7 @@ Each guide is designed as a sequential learning experience with navigation betwe
    :maxdepth: 1
    :hidden:
 
+   FiftyOne Enterprise 🚀 <../enterprise/getting_started>
    Building Plugins with AI Agents __SUB_NEW__ <agents/index>
    Auto Labeling Guide <auto_labeling/index>
    Annotation Guide __SUB_NEW__ <annotation/index>

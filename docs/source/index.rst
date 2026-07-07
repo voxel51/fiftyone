@@ -521,26 +521,61 @@ _________
   </script>
 
 .. toctree::
+   :caption: Get Started
    :maxdepth: 1
    :hidden:
 
    Overview <self>
-   FiftyOne Enterprise 🚀 <enterprise/index>
    Installation <installation/index>
    Getting Started <getting_started/index>
-   Tutorials <tutorials/index>
-   Recipes <recipes/index>
-   Cheat Sheets <cheat_sheets/index>
-   User Guide <user_guide/index>
+   FiftyOne Enterprise 🚀 <enterprise/overview>
+
+.. toctree::
+   :caption: Workflows
+   :maxdepth: 1
+   :hidden:
+
+   Data Ingestion <workflows/ingestion>
+   Curation: Pre-Annotation <workflows/curation_pre>
+   Annotation <workflows/annotation>
+   Curation: Post-Annotation <workflows/curation_post>
+   Model Training <workflows/training>
+   Model Inference <workflows/inference>
+   Model Evaluation <workflows/evaluation>
+
+.. toctree::
+   :caption: Fundamentals
+   :maxdepth: 1
+   :hidden:
+
+   FiftyOne Concepts <user_guide/index>
+   FiftyOne App <user_guide/app>
+   FiftyOne App (Enterprise) 🚀 <enterprise/app>
+   FiftyOne Brain <brain>
+
+.. toctree::
+   :caption: Reference
+   :maxdepth: 1
+   :hidden:
+
    Dataset Zoo <dataset_zoo/index>
    Model Zoo <model_zoo/index>
-   FiftyOne Brain <brain>
    FiftyOne Labs <labs/index>
    Agents <agents/index>
    Plugins <plugins/index>
    Integrations <integrations/index>
    CLI <cli/index>
    API Reference <api/fiftyone>
+   Management SDK 🚀 <enterprise/management_sdk>
+
+.. toctree::
+   :caption: Resources
+   :maxdepth: 1
+   :hidden:
+
+   Tutorials <tutorials/index>
+   Recipes <recipes/index>
+   Cheat Sheets <cheat_sheets/index>
    Contribute <contribute/index>
    Release Notes <release-notes>
    Deprecation Notices <deprecation>
