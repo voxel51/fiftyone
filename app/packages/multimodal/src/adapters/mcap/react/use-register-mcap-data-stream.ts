@@ -206,6 +206,7 @@ const MAX_FETCH_FAILURE_STREAK = 3;
 const BUFFERED_RANGES_PUBLISH_INTERVAL_MS = 500;
 const PLAYBACK_COMMIT_GAP_WARNING_MS = 250;
 const PLAYBACK_STALL_MEASUREMENT_SECONDS = 10;
+const PROVISIONAL_REMOTE_START_COVERAGE_SECONDS = 1.5;
 
 const PLAYBACK_POLICY = deriveMcapPlaybackPolicy(DEFAULT_MCAP_PLAYBACK_POLICY);
 
@@ -239,6 +240,13 @@ interface PlaybackStallWindow {
   stallWallMs: number;
   startPlayheadSec: number;
   startWallMs: number;
+}
+
+interface RemoteStartupGateDecision {
+  readonly coverageSeconds: number;
+  readonly mode: "held" | "provisional";
+  readonly playheadSec: number;
+  readonly sourceEpoch: number;
 }
 
 export interface UseMcapDataStreamOptions {
@@ -313,6 +321,9 @@ export function useRegisterMcapDataStream({
   // Pessimistic link-rate envelope for the press currently held by the
   // start gate; null outside a pending session. See resolveStartupCushion.
   const pendingPlanThroughputFloorRef = useRef<number | null>(null);
+  const remoteStartupGateDecisionRef = useRef<RemoteStartupGateDecision | null>(
+    null,
+  );
   const nextLookaheadRefreshTimeRef = useRef(0);
   const playbackStallSessionIdRef = useRef(0);
   const playbackStallWindowRef = useRef<PlaybackStallWindow | null>(null);
@@ -418,6 +429,52 @@ export function useRegisterMcapDataStream({
       byteTimelineRef.current.length > 0 &&
       spanSeconds > PLAYBACK_POLICY.startupLookaheadSeconds
     ) {
+      const sourceEpoch = sourceEpochRef.current;
+      let decision = remoteStartupGateDecisionRef.current;
+      if (decision?.sourceEpoch !== sourceEpoch) {
+        decision = null;
+        remoteStartupGateDecisionRef.current = null;
+      }
+      if (decision === null) {
+        const coverageSeconds = contiguousBufferedSecondsFromPlayhead({
+          activeTopics: getActiveBlockingTopics(),
+          caches: topicCachesRef.current,
+          index: currentIndex,
+          maxSeconds: PROVISIONAL_REMOTE_START_COVERAGE_SECONDS,
+          timeSec: playheadSec,
+        });
+        decision = {
+          coverageSeconds,
+          mode:
+            coverageSeconds >= PROVISIONAL_REMOTE_START_COVERAGE_SECONDS
+              ? "provisional"
+              : "held",
+          playheadSec,
+          sourceEpoch,
+        };
+        remoteStartupGateDecisionRef.current = decision;
+        if (isMcapLatencyDebugEnabled()) {
+          const detail = {
+            coverageSeconds: Number(coverageSeconds.toFixed(3)),
+            mode: decision.mode,
+            playheadSec: Number(playheadSec.toFixed(3)),
+            spanSeconds: Number(spanSeconds.toFixed(3)),
+            thresholdSeconds: PROVISIONAL_REMOTE_START_COVERAGE_SECONDS,
+          };
+          markMcapLatencyEvent("remote startup gate decided", detail);
+          recordMcapLatencyMetric(
+            `remote startup gate ${decision.mode}`,
+            1,
+            detail,
+          );
+        }
+      }
+      if (decision.mode === "provisional") {
+        return {
+          cushionSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+          estimatedWaitSeconds: 0,
+        };
+      }
       return {
         cushionSeconds: Math.min(MAX_STARTUP_CUSHION_SECONDS, spanSeconds),
         estimatedWaitSeconds: UNMEASURED_LINK_NOMINAL_WAIT_SECONDS,
@@ -454,7 +511,7 @@ export function useRegisterMcapDataStream({
       startTimeNs: currentIndex.startTimeNs,
       throughputBytesPerSec: planThroughput,
     });
-  }, [sourceReadProfile, store]);
+  }, [getActiveBlockingTopics, sourceReadProfile, store]);
 
   // If a recording's selected renderable topics begin just after the MCAP
   // timeline start, land the initial playhead on the first sampled tick that
@@ -558,6 +615,8 @@ export function useRegisterMcapDataStream({
     failedTopicsRef.current.clear();
     topicStartTimesNsRef.current.clear();
     autoSeekSourceEpochRef.current = null;
+    pendingPlanThroughputFloorRef.current = null;
+    remoteStartupGateDecisionRef.current = null;
     nextLookaheadRefreshTimeRef.current = 0;
     lastObservedPlayheadSecRef.current = null;
     loopRunwayStartTickKeyRef.current = null;
@@ -750,6 +809,11 @@ export function useRegisterMcapDataStream({
   );
 
   useEffect(() => {
+    if (isPlaying) {
+      pendingPlanThroughputFloorRef.current = null;
+      remoteStartupGateDecisionRef.current = null;
+    }
+
     if (!isMcapLatencyDebugEnabled()) {
       finishPlaybackStallWindow(
         playbackStallWindowRef.current,
@@ -1971,6 +2035,7 @@ export function useRegisterMcapDataStream({
     const unsubPlayPending = subscribeIsPlayPending(store, () => {
       if (!getIsPlayPending(store)) {
         pendingPlanThroughputFloorRef.current = null;
+        remoteStartupGateDecisionRef.current = null;
       }
       publishStreamStatuses();
     });
@@ -2003,6 +2068,7 @@ export function useRegisterMcapDataStream({
       // reset can miss); stale envelopes must not pin future presses.
       if (getIsPlaying(store)) {
         pendingPlanThroughputFloorRef.current = null;
+        remoteStartupGateDecisionRef.current = null;
       }
       if (
         didLoopback &&
@@ -2175,6 +2241,8 @@ export function useRegisterMcapDataStream({
       // the foreground catch-up fetch owns a constrained link, and reclaim
       // it immediately from speculative transfers already in flight.
       lastSeekAtMsRef.current = mcapLatencyNowMs();
+      pendingPlanThroughputFloorRef.current = null;
+      remoteStartupGateDecisionRef.current = null;
       client?.cancelIdleReads?.();
       // A seek is a time jump: frames held over from the previous position
       // would render wrong-time sensor data as if current. Drop them so an
@@ -2724,6 +2792,45 @@ function bufferWindowCoverage({
   }
 
   return { covered, total };
+}
+
+function contiguousBufferedSecondsFromPlayhead({
+  activeTopics,
+  caches,
+  index,
+  maxSeconds,
+  timeSec,
+}: {
+  readonly activeTopics: readonly string[];
+  readonly caches: Map<string, McapTopicCache>;
+  readonly index: McapTimelineIndex | null;
+  readonly maxSeconds: number;
+  readonly timeSec: number;
+}): number {
+  if (!index || activeTopics.length === 0 || maxSeconds <= 0) return 0;
+
+  const startTick = index.nearestTick(timeSec);
+  if (startTick === undefined) return 0;
+
+  const startIdx = index.indexOfTick(startTick);
+  if (startIdx === undefined) return 0;
+
+  const endNs = index.secToNs(timeSec + maxSeconds);
+  const nominalTickSec = 1 / DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ;
+  let lastCoveredTick: bigint | null = null;
+
+  for (let i = startIdx; i < index.tickCount; i++) {
+    const tick = index.tickAt(i);
+    if (tick === undefined || tick > endNs) break;
+    if (!activeTopics.every((topic) => caches.get(topic)?.has(tick))) break;
+    lastCoveredTick = tick;
+  }
+
+  if (lastCoveredTick === null) return 0;
+  return Math.min(
+    maxSeconds,
+    Math.max(0, index.nsToSec(lastCoveredTick) - timeSec + nominalTickSec),
+  );
 }
 
 function activeTopicsInCaches(

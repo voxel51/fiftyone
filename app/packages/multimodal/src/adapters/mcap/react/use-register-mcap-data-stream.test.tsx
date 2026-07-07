@@ -1258,6 +1258,87 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     expect(getMcapStartupCushionState(store)).toBeNull();
   });
 
+  it("starts provisionally from banked remote runway and resets the one-shot decision", async () => {
+    const source = createSource("source", BYTE_SOURCE_READ_PROFILE.REMOTE);
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const uncoveredFill = deferred<void>();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async (request) => {
+        const windows = request.timeNs.map((tick: bigint) =>
+          createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
+        );
+        const firstSec = Number(request.timeNs[0] ?? 0n) / 1_000_000_000;
+        if (firstSec > 1.5) {
+          await uncoveredFill.promise;
+        }
+        return windows;
+      }),
+      readSynchronizedMessages: vi.fn(async (request) =>
+        createWindow({
+          timeNs: request.timeNs,
+          visualization: IMAGE_VISUALIZATION,
+        }),
+      ),
+      readTimelineRange: vi.fn(async () => ({
+        ...createTimelineRange(8_000_000_000n),
+        byteTimeline: Array.from({ length: 8 }, (_, i) => ({
+          cumulativeCompressedBytes: (i + 1) * 100,
+          endTimeNs: BigInt(i + 1) * 1_000_000_000n,
+          startOffsetBytes: BigInt(i) * 100n,
+        })),
+      })),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    await waitFor(
+      () => {
+        const range = getBufferedRanges(store)[0];
+        expect(range?.[0]).toBe(0);
+        expect(range?.[1] ?? 0).toBeGreaterThanOrEqual(1.5);
+      },
+      { timeout: 3000 },
+    );
+
+    // The link is still unmeasured, but the user already has real blocking
+    // runway banked. Start at the floor instead of refusing to spend it.
+    act(() => {
+      api?.play();
+    });
+    await waitFor(() => {
+      expect(getIsPlaying(store)).toBe(true);
+      expect(getIsPlayPending(store)).toBe(false);
+    });
+    expect(getMcapStartupCushionState(store)).toBeNull();
+
+    act(() => {
+      api?.pause();
+      api?.seek(1.7);
+      api?.play();
+    });
+
+    // The previous provisional decision was one-shot. A later uncovered
+    // remote press still holds at the unmeasured-link ceiling while its
+    // pending prefetch is in flight.
+    expect(getIsPlaying(store)).toBe(false);
+    expect(getIsPlayPending(store)).toBe(true);
+    await waitFor(() => {
+      expect(getMcapStartupCushionState(store)?.targetSeconds).toBe(6);
+    });
+  });
+
   it("does not release a held press when a burst re-reads the link as fast", async () => {
     const source = createSource("source", BYTE_SOURCE_READ_PROFILE.REMOTE);
     const storeCapture = capturePlaybackStore();
