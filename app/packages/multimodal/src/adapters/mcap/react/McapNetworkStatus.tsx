@@ -2,6 +2,7 @@
 // components whose relay fragments cannot evaluate under vitest.
 import { usePlaybackStore } from "@fiftyone/playback/src/lib/playback/playback-store-context";
 import {
+  useBufferingDetail,
   useIsBuffering,
   useIsPlayPending,
 } from "@fiftyone/playback/src/lib/playback/use-playback-state";
@@ -23,6 +24,7 @@ import {
   useMcapNetworkHealth,
 } from "./mcap-network-health";
 import { useMcapStartupCushionState } from "./mcap-startup-cushion-state";
+import { MCAP_3D_PLACEMENT_BUFFERING_DETAIL } from "./use-mcap-3d-placement-stream";
 import styles from "./McapNetworkStatus.module.css";
 
 const HEALTH_HEARTBEAT_MS = 1_000;
@@ -106,12 +108,15 @@ export const McapNetworkHealthTracker: React.FC<{
 export const McapNetworkStatusPill: React.FC = () => {
   const health = useMcapNetworkHealth();
   const playPending = useIsPlayPending();
+  const bufferingDetail = useBufferingDetail();
   const startupCushion = useMcapStartupCushionState();
   const throughputLabel =
     health.throughputBytesPerSec !== null && health.throughputBytesPerSec > 0
       ? `${humanReadableBytes(Math.round(health.throughputBytesPerSec))}/s`
       : null;
-  if (!throughputLabel) {
+  const placementPending =
+    playPending && bufferingDetail === MCAP_3D_PLACEMENT_BUFFERING_DETAIL;
+  if (!throughputLabel && !placementPending) {
     return null;
   }
 
@@ -123,19 +128,27 @@ export const McapNetworkStatusPill: React.FC = () => {
     startupCushion.estimatedWaitSeconds >= 1
       ? startupCushion
       : null;
-  const bufferingLabel = gatedStart
-    ? `buffering ~${Math.round(gatedStart.estimatedWaitSeconds)}s`
-    : null;
-  const label = health.limited ? "Slow network" : "Bandwidth";
+  const bufferingLabel = placementPending
+    ? "waiting for transforms"
+    : gatedStart
+      ? `buffering ~${Math.round(gatedStart.estimatedWaitSeconds)}s`
+      : null;
+  const label = placementPending
+    ? "Placement"
+    : health.limited
+      ? "Slow network"
+      : "Bandwidth";
 
   return (
     <span
       className={`${styles.pill} ${health.limited ? "" : styles.neutral}`}
       data-cy="mcap-network-status-pill"
       title={
-        health.limited
-          ? "Playback is buffering because the network cannot keep up with this recording's data rate."
-          : "Observed MCAP transfer throughput."
+        placementPending
+          ? "Playback is waiting for frame transforms needed to place the 3D point cloud."
+          : health.limited
+            ? "Playback is buffering because the network cannot keep up with this recording's data rate."
+            : "Observed MCAP transfer throughput."
       }
     >
       {gatedStart ? (
@@ -154,7 +167,9 @@ export const McapNetworkStatusPill: React.FC = () => {
         <span className={styles.dot} aria-hidden="true" />
       )}
       {label}
-      <span className={styles.throughput}>{throughputLabel}</span>
+      {throughputLabel ? (
+        <span className={styles.throughput}>{throughputLabel}</span>
+      ) : null}
       {bufferingLabel ? (
         <span className={styles.throughput}>{bufferingLabel}</span>
       ) : null}

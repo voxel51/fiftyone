@@ -1,5 +1,12 @@
 import { useTileId, useTiling } from "@fiftyone/tiling";
-import React, { useCallback, useMemo, useState } from "react";
+import { useSeekEvent } from "@fiftyone/playback/src/lib/playback/use-playback-state";
+import React, {
+  type SetStateAction,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type {
   CameraCalibrationVisualization,
   EncodedImageVisualization,
@@ -11,8 +18,12 @@ import type {
 } from "../../../decoders";
 import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
 import {
+  type CameraFrustumPanelLayer,
+  type GridPanelLayer,
   PointCloudPanel,
+  type PointCloudPanelLayer,
   type PointCloudPanelRenderStats,
+  type SceneAnnotationPanelLayer,
   type ThreeSceneBackground,
 } from "../../../visualization/panels/point-cloud";
 import Mcap3dTileSettings from "./Mcap3dTileSettings";
@@ -25,7 +36,7 @@ import {
   type McapHealthNotice,
 } from "./mcap-health";
 import { getMcap3dViewStateSnapshot } from "./mcap-3d-view-state";
-import { useSetAtom } from "jotai";
+import { type PrimitiveAtom, useStore } from "jotai";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import {
   useMcapHoveredImageTopic,
@@ -64,6 +75,7 @@ import {
 } from "./use-mcap-3d-camera-tracking";
 import { useMcap3dFrameSelection } from "./use-mcap-3d-frame-selection";
 import { useMcap3dPoseTrajectories } from "./use-mcap-3d-pose-trajectories";
+import { useMcap3dPlacementStream } from "./use-mcap-3d-placement-stream";
 import { useMcap3dViewShortcuts } from "./use-mcap-3d-view-shortcuts";
 import {
   playbackFrameForTopic,
@@ -132,6 +144,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const { referenceGrid } = useMcapReferenceGridSettings();
   const { sceneBackground } = useMcapSceneBackgroundSettings();
   const { sceneUpAxis, setSceneUpAxis } = useMcap3dViewSettings();
+  const tileId = useTileId();
+  const { focusedTileId } = useTiling();
+  const seekEvent = useSeekEvent();
+  const sceneSnapshotRef = useRef<HeldMcap3dSceneSnapshot | null>(null);
   const panelBackground = useMemo<ThreeSceneBackground>(() => {
     switch (sceneBackground.mode) {
       case "abyss":
@@ -262,6 +278,22 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     temporalPolicy.transformGapWarningMs,
     worldFrameId,
   ]);
+  const sourceKey = useMcapDataStream()?.sourceKey ?? "";
+  const pointCloudPlacementFrameIds = useMemo(
+    () =>
+      frames
+        .map((frame) => frame?.frame.coordinateFrameId)
+        .filter((frameId): frameId is string => Boolean(frameId)),
+    [frames],
+  );
+  const placementReadiness = useMcap3dPlacementStream({
+    active: pointCloudTopics.length > 0,
+    frameIds: pointCloudPlacementFrameIds,
+    frameTransforms,
+    playbackTimeNs,
+    streamId: `mcap-3d-placement:${tileId ?? "default"}`,
+    worldFrameId,
+  });
   const pointCloudSourceById = useMemo(
     () =>
       new Map(pointCloudSources.map((source) => [source.id, source] as const)),
@@ -303,7 +335,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       pointCloudSources,
     ],
   );
-  const sourceKey = useMcapDataStream()?.sourceKey ?? "";
   // Attach each camera's current image to its frustum layer. Done outside
   // build3dLayers so the pure layer builder stays image-agnostic; index
   // alignment with cameraTopics mirrors the playback-frames arrays. The
@@ -312,8 +343,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   // texture through the image-texture cache.
   const openImageTile = useOpenMcapImageTile();
   const hoveredImageTopic = useMcapHoveredImageTopic();
-  const tileId = useTileId();
-  const { focusedTileId } = useTiling();
   const imageTileBindings = useMcapImageTileBindings();
   // The stream shown by the focused (active) tile, if it's an image tile.
   const focusedImageTopic = focusedTileId
@@ -384,7 +413,17 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   // label-match echo of one) and how to toggle itself selected. Kept out
   // of build3dLayers so the pure layer builder stays selection-agnostic.
   const selectedObject = useMcapSelectedObject();
-  const setSelectedObject = useSetAtom(mcapSelectedObjectAtom);
+  const jotaiStore = useStore();
+  type SelectedObjectState = ReturnType<typeof useMcapSelectedObject>;
+  const setSelectedObject = useCallback(
+    (update: SetStateAction<SelectedObjectState>) => {
+      jotaiStore.set(
+        mcapSelectedObjectAtom as PrimitiveAtom<SelectedObjectState>,
+        update,
+      );
+    },
+    [jotaiStore],
+  );
   const {
     containerProps: hoverTooltipContainerProps,
     onHoverEntity,
@@ -549,6 +588,45 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   // per-tick condition flips around transform boundaries must not blink
   // the chip, and the returned identity is stable while content holds.
   const panelNotices = useStabilizedMcapNotices(producedNotices);
+  const sceneSnapshotKey = useMemo(
+    () =>
+      JSON.stringify([
+        sourceKey,
+        selectedTopicsKey,
+        worldFrameId,
+        fidelityMode,
+        seekEvent?.seq ?? 0,
+      ]),
+    [fidelityMode, seekEvent?.seq, selectedTopicsKey, sourceKey, worldFrameId],
+  );
+  const currentSceneSnapshot = useMemo<Mcap3dSceneSnapshot>(
+    () => ({
+      annotationLayers,
+      frustumLayers,
+      gridLayers,
+      notices: panelNotices,
+      placementStatus,
+      pointCloudLayers: coloredPointCloudLayers,
+    }),
+    [
+      annotationLayers,
+      coloredPointCloudLayers,
+      frustumLayers,
+      gridLayers,
+      panelNotices,
+      placementStatus,
+    ],
+  );
+  const sceneSnapshotSelection = selectMcap3dSceneSnapshot({
+    current: currentSceneSnapshot,
+    held: sceneSnapshotRef.current,
+    key: sceneSnapshotKey,
+    shouldCommit:
+      placementReadiness.status === "ready" ||
+      placementReadiness.status === "definitiveMissing",
+  });
+  sceneSnapshotRef.current = sceneSnapshotSelection.nextHeld;
+  const displayedScene = sceneSnapshotSelection.snapshot;
 
   const handlePanelRenderStats = useCallback(
     (stats: PointCloudPanelRenderStats) => {
@@ -611,24 +689,24 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       // the panel (and its GL canvas) mounted even while the stabilizer's
       // appearance floor still hides it from the chip — otherwise short
       // transform dropouts would flash the empty state and churn the canvas.
-      pointCloudLayers.length > 0 ||
-        sceneAnnotationLayers.length > 0 ||
-        gridLayers.length > 0 ||
-        cameraFrustumLayers.length > 0 ||
+      displayedScene.pointCloudLayers.length > 0 ||
+        displayedScene.annotationLayers.length > 0 ||
+        displayedScene.gridLayers.length > 0 ||
+        displayedScene.frustumLayers.length > 0 ||
         producedNotices.length > 0 ? (
         <div className={styles.panelStack} {...hoverTooltipContainerProps}>
           <PointCloudPanel
-            annotationLayers={annotationLayers}
+            annotationLayers={displayedScene.annotationLayers}
             background={panelBackground}
             cameraPose={panelCameraPose}
             canvasSurface="modal-3d"
             fitResetKey={`${worldFrameId}:${sceneUpAxis}`}
-            frustumLayers={frustumLayers}
+            frustumLayers={displayedScene.frustumLayers}
             hudLines={hudLines}
-            gridLayers={gridLayers}
-            layers={coloredPointCloudLayers}
+            gridLayers={displayedScene.gridLayers}
+            layers={displayedScene.pointCloudLayers}
             className={styles.panel}
-            notices={panelNotices}
+            notices={displayedScene.notices}
             onCameraPoseChange={handleCameraPoseChange}
             onRenderStats={handlePanelRenderStats}
             pointSize={pointCloudPointSize}
@@ -648,6 +726,65 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
 
 function msToNs(value: number): bigint {
   return BigInt(Math.max(0, Math.round(value))) * 1_000_000n;
+}
+
+interface Mcap3dSceneSnapshot {
+  readonly annotationLayers: readonly SceneAnnotationPanelLayer[];
+  readonly frustumLayers: readonly CameraFrustumPanelLayer[];
+  readonly gridLayers: readonly GridPanelLayer[];
+  readonly notices: readonly McapHealthNotice[];
+  readonly placementStatus: Mcap3dPlacementStatus;
+  readonly pointCloudLayers: readonly PointCloudPanelLayer[];
+}
+
+interface HeldMcap3dSceneSnapshot {
+  readonly key: string;
+  readonly snapshot: Mcap3dSceneSnapshot;
+}
+
+function selectMcap3dSceneSnapshot({
+  current,
+  held,
+  key,
+  shouldCommit,
+}: {
+  readonly current: Mcap3dSceneSnapshot;
+  readonly held: HeldMcap3dSceneSnapshot | null;
+  readonly key: string;
+  readonly shouldCommit: boolean;
+}): {
+  readonly nextHeld: HeldMcap3dSceneSnapshot | null;
+  readonly snapshot: Mcap3dSceneSnapshot;
+} {
+  if (shouldCommit) {
+    return {
+      nextHeld: { key, snapshot: current },
+      snapshot: current,
+    };
+  }
+  if (held?.key === key) {
+    return {
+      nextHeld: held,
+      snapshot: held.snapshot,
+    };
+  }
+  return {
+    nextHeld: null,
+    snapshot: emptyMcap3dSceneSnapshot(current.placementStatus),
+  };
+}
+
+function emptyMcap3dSceneSnapshot(
+  placementStatus: Mcap3dPlacementStatus,
+): Mcap3dSceneSnapshot {
+  return {
+    annotationLayers: [],
+    frustumLayers: [],
+    gridLayers: [],
+    notices: [],
+    placementStatus,
+    pointCloudLayers: [],
+  };
 }
 
 export default Mcap3dTile;
