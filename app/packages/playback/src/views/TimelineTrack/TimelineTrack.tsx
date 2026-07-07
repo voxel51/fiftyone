@@ -256,8 +256,6 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   // CSS values and break layout for every bar/marker below.
   if (viewDuration <= 0) return null;
   const pct = (t: number) => `${((t - viewStart) / viewDuration) * 100}%`;
-<<<<<<< HEAD
-=======
 
   const snap = (t: number): number => {
     if (!snapStepSec || snapStepSec <= 0 || !Number.isFinite(snapStepSec)) {
@@ -374,7 +372,6 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   };
->>>>>>> main
 
   // Background bar is rendered only when both start/end are provided.
   const hasBackground = start !== undefined && end !== undefined;
@@ -552,13 +549,6 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           />
         )}
         {events
-<<<<<<< HEAD
-          .map(normalizeEvent)
-          .filter((e) =>
-            e.endSec !== undefined
-              ? e.endSec >= viewStart && e.startSec <= viewEnd
-              : e.startSec >= viewStart && e.startSec <= viewEnd,
-=======
           .map((event, originalIndex) => ({
             event: normalizeEvent(event),
             originalIndex,
@@ -567,7 +557,6 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
             event.endSec !== undefined
               ? event.endSec >= viewStart && event.startSec <= viewEnd
               : event.startSec >= viewStart && event.startSec <= viewEnd,
->>>>>>> main
           )
           .map(({ event, originalIndex }) => {
             const handleClick = (ev: React.MouseEvent) => {
@@ -677,12 +666,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               const left = pct(Math.max(displayStart, viewStart));
               const right = Math.min(displayEnd, viewEnd);
               const width = `${
-<<<<<<< HEAD
-                ((right - Math.max(e.startSec, viewStart)) / viewDuration) * 100
-=======
                 ((right - Math.max(displayStart, viewStart)) / viewDuration) *
                 100
->>>>>>> main
               }%`;
               return (
                 <ContextMenu key={originalIndex} menu={menu}>

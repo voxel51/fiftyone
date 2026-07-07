@@ -314,14 +314,7 @@ export function usePlaybackEngine({
         return;
       }
 
-<<<<<<< HEAD
-      const dt =
-        ((timestamp - lastTimestampRef.current) / 1000) * store.get(speedAtom);
-      lastTimestampRef.current = timestamp;
-
-=======
       const speed = store.get(speedAtom);
->>>>>>> main
       const currentTime = store.get(playheadAtom);
       const loopStart = store.get(loopStartAtom);
       const loopEnd = store.get(loopEndAtom);
@@ -345,31 +338,7 @@ export function usePlaybackEngine({
       const willWrap = rawNext >= loopEnd;
       const targetTime = willWrap ? loopStart : rawNext;
 
-<<<<<<< HEAD
-      const duration = store.get(durationAtom);
-      let isBuffering = false;
-
-      for (const s of streamsRef.current.values()) {
-        if (!s.blocking) continue;
-        if (!isActive(s.id)) continue; // dormant — no subscribers
-        const state = s.bufferState(targetTime);
-        if (state === "ready") continue;
-        isBuffering = true;
-        // "loading" means fetch already in flight — don't re-request.
-        if (state === "missing") {
-          s.prefetch?.([
-            targetTime,
-            Math.min(duration, targetTime + (s.lookaheadSeconds ?? 3)),
-          ]);
-        }
-      }
-
-      store.set(isBufferingAtom, isBuffering);
-
-      if (!isBuffering) {
-=======
       if (runBarrier(targetTime)) {
->>>>>>> main
         store.set(playheadAtom, targetTime);
         doCommit(targetTime);
         // Loop-wrap is a discontinuous jump — fire immediately so
@@ -379,11 +348,7 @@ export function usePlaybackEngine({
 
       rafIdRef.current = requestAnimationFrame(tick);
     },
-<<<<<<< HEAD
-    [store, fireSeekEvent, doCommit, isActive],
-=======
     [store, fireSeekEvent, doCommit, runBarrier],
->>>>>>> main
   );
 
   useEffect(() => {
@@ -460,28 +425,7 @@ export function usePlaybackEngine({
         settleRafRef.current = requestAnimationFrame(settleTick);
       }
     },
-<<<<<<< HEAD
-    [isActive],
-  );
-
-  /**
-   * Commit `time` if every blocking stream is ready, and mirror the
-   * readiness into `isBufferingAtom` so paused seeks/steps surface the
-   * same "catching up" signal the RAF loop provides during playback.
-   * While paused nothing re-evaluates readiness, so the stream that
-   * fulfils the missing data is responsible for clearing the flag (the
-   * MCAP data stream does this when the playhead tick becomes covered).
-   */
-  const commitIfReady = useCallback(
-    (time: number) => {
-      const ready = checkAllReady(time);
-      store.set(isBufferingAtom, !ready);
-      if (ready) doCommit(time);
-    },
-    [checkAllReady, doCommit, store],
-=======
     [runBarrier, doCommit, settleTick],
->>>>>>> main
   );
 
   const actions = useMemo(() => {
@@ -522,9 +466,6 @@ export function usePlaybackEngine({
         const clamped = clamp(time, 0, store.get(durationAtom));
         store.set(playheadAtom, clamped);
         fireSeekEvent(clamped);
-<<<<<<< HEAD
-        commitIfReady(clamped);
-=======
         commitWhenReady(clamped);
       },
       // Snapping companion to `seek`. Quantizes `time` onto the displayed-
@@ -573,7 +514,6 @@ export function usePlaybackEngine({
         store.set(playheadAtom, snapped);
         fireSeekEvent(snapped);
         commitWhenReady(snapped);
->>>>>>> main
       },
       play: () => {
         const current = store.get(playheadAtom);
@@ -601,11 +541,7 @@ export function usePlaybackEngine({
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
-<<<<<<< HEAD
-        commitIfReady(next);
-=======
         commitWhenReady(next);
->>>>>>> main
       },
       stepForward: () => {
         const next = clamp(
@@ -619,11 +555,7 @@ export function usePlaybackEngine({
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
-<<<<<<< HEAD
-        commitIfReady(next);
-=======
         commitWhenReady(next);
->>>>>>> main
       },
       setView: (start: number, end: number) => {
         const bounds = clampAndValidateBounds(
@@ -689,17 +621,6 @@ export function usePlaybackEngine({
           }
         };
       },
-<<<<<<< HEAD
-    }),
-    [
-      store,
-      fireSeekEvent,
-      commitIfReady,
-      recomputeDuration,
-      recomputeStepInterval,
-    ],
-  );
-=======
       setClockSource: (source: PlaybackClockSource | null) => {
         clockSourceRef.current = source;
         // Reset the dt anchor so a switch back to wallclock mode
@@ -724,7 +645,6 @@ export function usePlaybackEngine({
     recomputeDuration,
     recomputeStepInterval,
   ]);
->>>>>>> main
 
   const contextValue = useMemo<PlaybackContextValue>(
     () => ({ duration, stepInterval, ...actions }),

@@ -150,49 +150,6 @@ describe("PlaybackProvider engine actions", () => {
     });
   });
 
-<<<<<<< HEAD
-  describe("buffering flag on paused seek / step", () => {
-    it("seek into not-ready data raises isBuffering; seek into ready data clears it", () => {
-      let ready = false;
-      const { result } = renderEngine({ duration: 10 });
-      act(() => {
-        result.current.api.registerStream({
-          id: "cam",
-          blocking: true,
-          bufferState: () => (ready ? "ready" : "loading"),
-        });
-        result.current.api.subscribeStream("cam");
-      });
-
-      act(() => result.current.api.seek(4));
-      expect(result.current.isBuffering).toBe(true);
-      expect(result.current.currentTime).toBe(0);
-
-      ready = true;
-      act(() => result.current.api.seek(5));
-      expect(result.current.isBuffering).toBe(false);
-      expect(result.current.currentTime).toBe(5);
-    });
-
-    it("stepForward / stepBack mirror readiness into isBuffering", () => {
-      let ready = false;
-      const { result } = renderEngine({ duration: 10 });
-      act(() => {
-        result.current.api.registerStream({
-          id: "cam",
-          blocking: true,
-          bufferState: () => (ready ? "ready" : "loading"),
-        });
-        result.current.api.subscribeStream("cam");
-      });
-
-      act(() => result.current.api.stepForward());
-      expect(result.current.isBuffering).toBe(true);
-
-      ready = true;
-      act(() => result.current.api.stepBack());
-      expect(result.current.isBuffering).toBe(false);
-=======
   describe("paused settle loop", () => {
     // Drive requestAnimationFrame manually so the settle loop is
     // deterministic. flushFrame() runs whatever the engine has queued.
@@ -219,16 +176,15 @@ describe("PlaybackProvider engine actions", () => {
       }
     }
 
-    it("commits a paused seek once a buffering stream becomes ready (no play needed)", () => {
+    it("raises isBuffering and commits a paused seek once a stream becomes ready", () => {
       withManualRaf((flushFrame) => {
         const { result } = renderEngine({ duration: 10 });
-        let state: "missing" | "ready" = "missing";
+        let state: "loading" | "ready" = "loading";
         act(() => {
           result.current.api.registerStream({
             id: "cam",
             blocking: true,
             bufferState: () => state,
-            prefetch: () => {},
           });
           result.current.api.subscribeStream("cam");
         });
@@ -239,16 +195,19 @@ describe("PlaybackProvider engine actions", () => {
         expect(result.current.playhead).toBe(4);
         expect(result.current.currentTime).toBe(0);
         expect(result.current.isPlaying).toBe(false);
+        expect(result.current.isBuffering).toBe(true);
 
-        // Settle loop keeps polling while the stream is still missing.
+        // Settle loop keeps polling while the stream is still loading.
         flushFrame();
         expect(result.current.currentTime).toBe(0);
+        expect(result.current.isBuffering).toBe(true);
 
         // Stream finishes buffering → the next settle frame commits,
         // without the user ever hitting play.
         state = "ready";
         flushFrame();
         expect(result.current.currentTime).toBe(4);
+        expect(result.current.isBuffering).toBe(false);
       });
     });
 
@@ -271,12 +230,32 @@ describe("PlaybackProvider engine actions", () => {
         // would never load the seeked frame until play.
         act(() => result.current.api.seek(4));
         expect(prefetch).toHaveBeenCalled();
+        expect(result.current.isBuffering).toBe(true);
 
         prefetch.mockClear();
         flushFrame();
         expect(prefetch).toHaveBeenCalled();
       });
->>>>>>> main
+    });
+
+    it("stepForward / stepBack mirror readiness into isBuffering", () => {
+      let ready = false;
+      const { result } = renderEngine({ duration: 10 });
+      act(() => {
+        result.current.api.registerStream({
+          id: "cam",
+          blocking: true,
+          bufferState: () => (ready ? "ready" : "loading"),
+        });
+        result.current.api.subscribeStream("cam");
+      });
+
+      act(() => result.current.api.stepForward());
+      expect(result.current.isBuffering).toBe(true);
+
+      ready = true;
+      act(() => result.current.api.stepBack());
+      expect(result.current.isBuffering).toBe(false);
     });
   });
 

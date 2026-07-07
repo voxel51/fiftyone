@@ -2,11 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-<<<<<<< HEAD
-import { currentTimeAtom, isPlayingAtom, playheadAtom } from "./atoms";
-=======
 import { isPlayingAtom, seekEventAtom } from "./atoms";
->>>>>>> main
 import { PlaybackProvider, usePlaybackStore } from "./PlaybackProvider";
 import { useVideoSync } from "./use-video-sync";
 
@@ -163,13 +159,6 @@ describe("useVideoSync", () => {
       act(() => unmount());
 
       expect(video.removeEventListener).toHaveBeenCalledWith(
-<<<<<<< HEAD
-        "timeupdate",
-        expect.any(Function),
-      );
-      expect(video.removeEventListener).toHaveBeenCalledWith(
-=======
->>>>>>> main
         "ended",
         expect.any(Function),
       );
