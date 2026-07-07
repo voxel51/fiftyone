@@ -18,7 +18,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { setMcapNetworkHealth } from "./mcap-network-health";
 import { getMcapStartupCushionState } from "./mcap-startup-cushion-state";
 import { getMcapTopicStatus } from "./mcap-stream-status-state";
-import type { ByteSourceDescriptor } from "../../../query/bytes";
+import {
+  BYTE_SOURCE_READ_PROFILE,
+  type ByteSourceDescriptor,
+} from "../../../query/bytes";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type {
   McapDecodedMessage,
@@ -1165,8 +1168,10 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     act(() => {
       setMcapNetworkHealth(store, {
         busyFraction: 1,
+        busyThroughputBytesPerSec: null,
         limited: true,
         throughputBytesPerSec: 40 / 0.85,
+        throughputPlannable: true,
         updatedAtMs: 1,
       });
     });
@@ -1236,8 +1241,10 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     act(() => {
       setMcapNetworkHealth(store, {
         busyFraction: 1,
+        busyThroughputBytesPerSec: null,
         limited: true,
         throughputBytesPerSec: 40 / 0.85,
+        throughputPlannable: true,
         updatedAtMs: 1,
       });
     });
@@ -1249,6 +1256,204 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
       expect(getIsPlaying(store)).toBe(true);
     });
     expect(getMcapStartupCushionState(store)).toBeNull();
+  });
+
+  it("does not release a held press when a burst re-reads the link as fast", async () => {
+    const source = createSource("source", BYTE_SOURCE_READ_PROFILE.REMOTE);
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const gatedFills: Array<() => void> = [];
+    const client = createClient({
+      // The static floor fills immediately; cushion fills park until the
+      // test releases them one at a time to drive status publishes.
+      readSynchronizedMessageBatch: vi.fn(async (request) => {
+        const windows = request.timeNs.map((tick: bigint) =>
+          createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
+        );
+        if ((request.timeNs[0] ?? 0n) > 500_000_000n) {
+          await new Promise<void>((resolve) => {
+            gatedFills.push(resolve);
+          });
+        }
+        return windows;
+      }),
+      readSynchronizedMessages: vi.fn(async (request) =>
+        createWindow({
+          timeNs: request.timeNs,
+          visualization: IMAGE_VISUALIZATION,
+        }),
+      ),
+      readTimelineRange: vi.fn(async () => ({
+        ...createTimelineRange(8_000_000_000n),
+        // Uniform 100 bytes per content second across 8 seconds.
+        byteTimeline: Array.from({ length: 8 }, (_, i) => ({
+          cumulativeCompressedBytes: (i + 1) * 100,
+          endTimeNs: BigInt(i + 1) * 1_000_000_000n,
+          startOffsetBytes: BigInt(i) * 100n,
+        })),
+      })),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    await waitFor(() => {
+      expect(getBufferedRanges(store).length).toBeGreaterThan(0);
+    });
+
+    // A measured link at ~half the content bitrate: the plan wants a 4s
+    // cushion (400 bytes banked covers the worst 8s deficit).
+    act(() => {
+      setMcapNetworkHealth(store, {
+        busyFraction: 1,
+        busyThroughputBytesPerSec: 60 / 0.85,
+        limited: true,
+        throughputBytesPerSec: 60 / 0.85,
+        throughputPlannable: true,
+        updatedAtMs: 1,
+      });
+    });
+    act(() => {
+      api?.play();
+    });
+
+    expect(getIsPlayPending(store)).toBe(true);
+    await waitFor(() => {
+      expect(getMcapStartupCushionState(store)?.targetSeconds).toBe(4);
+    });
+
+    // Mid-hold the rolling window turns over and briefly reads the link
+    // as effectively infinite. The pending session's pessimistic envelope
+    // must keep the 4s requirement instead of collapsing to the floor
+    // and starting into the known deficit.
+    act(() => {
+      setMcapNetworkHealth(store, {
+        busyFraction: 0.2,
+        busyThroughputBytesPerSec: 1_000_000_000,
+        limited: false,
+        throughputBytesPerSec: 1_000_000_000,
+        throughputPlannable: true,
+        updatedAtMs: 2,
+      });
+    });
+    await act(async () => {
+      gatedFills.shift()?.();
+      await Promise.resolve();
+    });
+
+    expect(getIsPlaying(store)).toBe(false);
+    expect(getIsPlayPending(store)).toBe(true);
+    await waitFor(() => {
+      expect(getMcapStartupCushionState(store)?.targetSeconds).toBe(4);
+    });
+  });
+
+  it("holds a remote press at the ceiling until throughput is planning-grade", async () => {
+    const source = createSource("source", BYTE_SOURCE_READ_PROFILE.REMOTE);
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const gateFill = deferred<void>();
+    const client = createClient({
+      // The static floor fills immediately; everything past it (the held
+      // press's pending prefetch) stays in flight until released.
+      readSynchronizedMessageBatch: vi.fn(async (request) => {
+        const windows = request.timeNs.map((tick: bigint) =>
+          createWindow({ timeNs: tick, visualization: IMAGE_VISUALIZATION }),
+        );
+        if ((request.timeNs[0] ?? 0n) > 500_000_000n) {
+          await gateFill.promise;
+        }
+        return windows;
+      }),
+      readSynchronizedMessages: vi.fn(async (request) =>
+        createWindow({
+          timeNs: request.timeNs,
+          visualization: IMAGE_VISUALIZATION,
+        }),
+      ),
+      readTimelineRange: vi.fn(async () => ({
+        ...createTimelineRange(8_000_000_000n),
+        byteTimeline: [
+          {
+            cumulativeCompressedBytes: 400,
+            endTimeNs: 4_000_000_000n,
+            startOffsetBytes: 0n,
+          },
+          {
+            cumulativeCompressedBytes: 800,
+            endTimeNs: 8_000_000_000n,
+            startOffsetBytes: 400n,
+          },
+        ],
+      })),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    await waitFor(() => {
+      expect(getBufferedRanges(store).length).toBeGreaterThan(0);
+    });
+
+    // No transport samples yet: with nothing planning-grade measured, a
+    // remote press must hold at the cushion ceiling instead of collapsing
+    // to the floor and starting into an unknown link.
+    act(() => {
+      api?.play();
+    });
+
+    expect(getIsPlaying(store)).toBe(false);
+    expect(getIsPlayPending(store)).toBe(true);
+    await waitFor(() => {
+      expect(getMcapStartupCushionState(store)?.targetSeconds).toBe(6);
+    });
+    expect(getIsPlaying(store)).toBe(false);
+
+    // The pending prefetch produced real samples; the link measures far
+    // above the content bitrate, so the plan re-resolves to the floor and
+    // the already-covered window releases the press.
+    act(() => {
+      setMcapNetworkHealth(store, {
+        busyFraction: 0.2,
+        busyThroughputBytesPerSec: null,
+        limited: false,
+        throughputBytesPerSec: 1_000_000_000,
+        throughputPlannable: true,
+        updatedAtMs: 1,
+      });
+    });
+    await act(async () => {
+      gateFill.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(getIsPlaying(store)).toBe(true);
+      expect(getIsPlayPending(store)).toBe(false);
+    });
+    await waitFor(() => {
+      expect(getMcapStartupCushionState(store)).toBeNull();
+    });
   });
 });
 
@@ -1385,8 +1590,12 @@ function createClient({
   };
 }
 
-function createSource(sourceId: string): ByteSourceDescriptor {
+function createSource(
+  sourceId: string,
+  readProfile?: ByteSourceDescriptor["readProfile"],
+): ByteSourceDescriptor {
   return {
+    readProfile,
     sourceId,
     url: `memory://${sourceId}.mcap`,
   };

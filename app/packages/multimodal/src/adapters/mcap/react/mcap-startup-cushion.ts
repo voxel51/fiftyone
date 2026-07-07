@@ -22,6 +22,14 @@ export const MAX_STARTUP_CUSHION_SECONDS = 6;
  */
 export const MAX_STARTUP_CUSHION_WAIT_SECONDS = 8;
 
+/**
+ * Nominal wall estimate shown while a remote press is held on an
+ * unmeasured link. The pending prefetch the hold triggers produces real
+ * samples within a fetch round-trip, after which the plan (and the chip
+ * copy) re-resolve from measured throughput.
+ */
+export const UNMEASURED_LINK_NOMINAL_WAIT_SECONDS = 3;
+
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
 
 export interface McapStartupCushionInputs {

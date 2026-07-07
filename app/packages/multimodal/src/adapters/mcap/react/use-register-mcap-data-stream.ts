@@ -30,6 +30,7 @@ import {
   type McapTopicStatus,
 } from "./mcap-stream-status-state";
 import {
+  BYTE_SOURCE_READ_PROFILE,
   byteSourceAccessKey,
   type ByteSourceDescriptor,
 } from "../../../query/bytes";
@@ -59,6 +60,8 @@ import { resetMcapPlaybackBuffering } from "./mcap-playback-buffering";
 import { pushTickToStore } from "./mcap-playback-frame-push";
 import {
   computeMcapStartupCushion,
+  MAX_STARTUP_CUSHION_SECONDS,
+  UNMEASURED_LINK_NOMINAL_WAIT_SECONDS,
   type McapStartupCushion,
 } from "./mcap-startup-cushion";
 import {
@@ -307,6 +310,9 @@ export function useRegisterMcapDataStream({
   const topicStartTimesNsRef = useRef<Map<string, bigint | null>>(new Map());
   const autoSeekSourceEpochRef = useRef<number | null>(null);
   const lastSeekAtMsRef = useRef<number | null>(null);
+  // Pessimistic link-rate envelope for the press currently held by the
+  // start gate; null outside a pending session. See resolveStartupCushion.
+  const pendingPlanThroughputFloorRef = useRef<number | null>(null);
   const nextLookaheadRefreshTimeRef = useRef(0);
   const playbackStallSessionIdRef = useRef(0);
   const playbackStallWindowRef = useRef<PlaybackStallWindow | null>(null);
@@ -378,6 +384,7 @@ export function useRegisterMcapDataStream({
   // the smallest cushion that plays through to the horizon without
   // draining, so one honest buffering wait replaces repeated mid-play
   // freezes.
+  const sourceReadProfile = source?.readProfile;
   const resolveStartupCushion = useCallback((): McapStartupCushion => {
     const currentIndex = indexRef.current;
     if (!currentIndex) {
@@ -388,18 +395,66 @@ export function useRegisterMcapDataStream({
     }
     const loopStartSec = getLoopStart(store);
     const loopEndSec = getLoopEnd(store);
+    const horizonSec =
+      loopEndSec > loopStartSec
+        ? Math.min(currentIndex.durationSec, loopEndSec)
+        : currentIndex.durationSec;
+    const playheadSec = getPlayhead(store);
+    const health = getMcapNetworkHealth(store);
+
+    // A remote press with no planning-grade measurement must not resolve
+    // to the floor: the estimator at press time reads idle spans and first
+    // bursts, and both a stale-low figure (wall-cap walk-down) and a
+    // burst-high one (no-deficit) collapse the gate before the link is
+    // known. Hold at the ceiling instead — the pending prefetch this
+    // triggers delivers real samples within a fetch round-trip, and the
+    // live getter re-resolves to the measured plan (fast links: the
+    // floor; coverage already banked clears the gate untouched).
+    const spanSeconds = horizonSec - playheadSec;
+    if (
+      sourceReadProfile === BYTE_SOURCE_READ_PROFILE.REMOTE &&
+      !health.throughputPlannable &&
+      byteTimelineRef.current !== null &&
+      byteTimelineRef.current.length > 0 &&
+      spanSeconds > PLAYBACK_POLICY.startupLookaheadSeconds
+    ) {
+      return {
+        cushionSeconds: Math.min(MAX_STARTUP_CUSHION_SECONDS, spanSeconds),
+        estimatedWaitSeconds: UNMEASURED_LINK_NOMINAL_WAIT_SECONDS,
+      };
+    }
+
+    // Plan from transfer-busy throughput: the wall-window figure decays
+    // across idle spans and would walk the cushion down on a link that
+    // was merely quiet, not slow.
+    let planThroughput =
+      health.busyThroughputBytesPerSec ?? health.throughputBytesPerSec;
+    // Until the press commits, the link estimate may only ratchet down:
+    // the estimator re-reads bursts as the window turns over, and one
+    // 48ms-optimistic evaluation would otherwise release a gate that the
+    // previous evaluation had sized seconds of coverage for. The envelope
+    // must capture the press-time evaluation too — it runs before the
+    // pending flag flips — so it tracks every non-playing evaluation and
+    // resets when the pending session ends. Pipelined pending fills load
+    // the link exactly like playback will, so the pessimistic envelope
+    // converges to the sustainable rate.
+    if (planThroughput !== null && !getIsPlaying(store)) {
+      planThroughput = Math.min(
+        pendingPlanThroughputFloorRef.current ?? planThroughput,
+        planThroughput,
+      );
+      pendingPlanThroughputFloorRef.current = planThroughput;
+    }
+
     return computeMcapStartupCushion({
       byteTimeline: byteTimelineRef.current,
-      horizonSec:
-        loopEndSec > loopStartSec
-          ? Math.min(currentIndex.durationSec, loopEndSec)
-          : currentIndex.durationSec,
+      horizonSec,
       minimumSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
-      playheadSec: getPlayhead(store),
+      playheadSec,
       startTimeNs: currentIndex.startTimeNs,
-      throughputBytesPerSec: getMcapNetworkHealth(store).throughputBytesPerSec,
+      throughputBytesPerSec: planThroughput,
     });
-  }, [store]);
+  }, [sourceReadProfile, store]);
 
   // If a recording's selected renderable topics begin just after the MCAP
   // timeline start, land the initial playhead on the first sampled tick that
@@ -1910,10 +1965,15 @@ export function useRegisterMcapDataStream({
     // Pending-play flips re-evaluate statuses immediately: the gated-start
     // progress (chip ETA) appears with the press and clears the moment
     // playback starts, instead of waiting for the next fetch to settle.
-    const unsubPlayPending = subscribeIsPlayPending(
-      store,
-      publishStreamStatuses,
-    );
+    // A session end (press committed or cancelled) also closes the plan's
+    // pessimistic link-rate envelope; the next press re-seeds it from its
+    // own press-time evaluation.
+    const unsubPlayPending = subscribeIsPlayPending(store, () => {
+      if (!getIsPlayPending(store)) {
+        pendingPlanThroughputFloorRef.current = null;
+      }
+      publishStreamStatuses();
+    });
 
     // Proactive lookahead: fill the buffer ahead of the playhead in larger
     // chunks instead of creating one tiny worker request per source tick.
@@ -1937,6 +1997,12 @@ export function useRegisterMcapDataStream({
       lastObservedPlayheadSecRef.current = timeSec;
       if (movedBackward) {
         nextLookaheadRefreshTimeRef.current = 0;
+      }
+      // A committed frame while playing means any held press has resolved
+      // (instant starts never flip the pending flag, so the falling-edge
+      // reset can miss); stale envelopes must not pin future presses.
+      if (getIsPlaying(store)) {
+        pendingPlanThroughputFloorRef.current = null;
       }
       if (
         didLoopback &&
@@ -2007,16 +2073,27 @@ export function useRegisterMcapDataStream({
           policy: PLAYBACK_POLICY,
           timeSec,
         });
-        if (isMcapLatencyDebugEnabled()) {
-          recordMcapLatencyMetric("background lookahead deferred", 1, {
-            activeTopics: activeTopics.length,
-            blockingTopics: activeBlockingTopics.length,
-            coveredTicks: startupCoverage.covered,
-            startupTicks: startupCoverage.total,
-            timeSec: Number(timeSec.toFixed(3)),
-          });
+        // While the clock runs on an unconstrained link, keep building the
+        // runway in this same pass: the hole just means an in-flight batch
+        // hasn't landed, and returning would strand playback at zero margin
+        // (each pass fills only the window the playhead is about to eat, so
+        // every late batch stalls the clock). Stand down when a limited
+        // link makes lookahead bytes compete with the playhead-critical
+        // fill, and outside committed playback (paused seeks land here via
+        // playhead writes; their runway comes from the seek prefetch and
+        // the paused idle warmup, not this pass).
+        if (!getIsPlaying(store) || getMcapNetworkHealth(store).limited) {
+          if (isMcapLatencyDebugEnabled()) {
+            recordMcapLatencyMetric("background lookahead deferred", 1, {
+              activeTopics: activeTopics.length,
+              blockingTopics: activeBlockingTopics.length,
+              coveredTicks: startupCoverage.covered,
+              startupTicks: startupCoverage.total,
+              timeSec: Number(timeSec.toFixed(3)),
+            });
+          }
+          return;
         }
-        return;
       }
 
       // The startup fill above is playback-critical and never yields; the

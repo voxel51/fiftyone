@@ -14,8 +14,10 @@ import {
 
 const IDLE_NETWORK_HEALTH: McapNetworkHealth = {
   busyFraction: 0,
+  busyThroughputBytesPerSec: null,
   limited: false,
   throughputBytesPerSec: null,
+  throughputPlannable: false,
   updatedAtMs: 0,
 };
 

@@ -180,8 +180,10 @@ describe("starved-playback stand-down", () => {
     act(() => {
       setMcapNetworkHealth(store, {
         busyFraction: 1,
+        busyThroughputBytesPerSec: null,
         limited: true,
         throughputBytesPerSec: 1_000,
+        throughputPlannable: true,
         updatedAtMs: 1,
       });
       setIsBuffering(store, true);
@@ -232,8 +234,10 @@ describe("starved-playback stand-down", () => {
     act(() => {
       setMcapNetworkHealth(store, {
         busyFraction: 1,
+        busyThroughputBytesPerSec: null,
         limited: true,
         throughputBytesPerSec: 1_000,
+        throughputPlannable: true,
         updatedAtMs: 1,
       });
       store.set(isPlayingAtom, true);
