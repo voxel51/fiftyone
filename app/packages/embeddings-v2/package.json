@@ -1,0 +1,27 @@
+{
+    "name": "@fiftyone/embeddings-v2",
+    "author": "Voxel51, Inc.",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Embeddings panel v2 (development skeleton)",
+    "license": "Apache-2.0",
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
+    "scripts": {
+        "test": "vitest"
+    },
+    "dependencies": {
+        "@fiftyone/embeddings-renderer": "*",
+        "@fiftyone/plugins": "*",
+        "@fiftyone/spaces": "*",
+        "@fiftyone/state": "*",
+        "@fiftyone/utilities": "*"
+    },
+    "devDependencies": {
+        "vitest": "^3.2.6"
+    },
+    "peerDependencies": {
+        "react": "*",
+        "recoil": "*"
+    }
+}
