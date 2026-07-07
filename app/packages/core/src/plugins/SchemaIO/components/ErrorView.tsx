@@ -1,9 +1,8 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import PopoutButton from "./PopoutButton";
-import { Error } from "@mui/icons-material";
 import { getComponentProps } from "../utils";
-import { scrollable } from "@fiftyone/components";
+import { scrollable, MuiErrorIcon as Error } from "@fiftyone/components";
 
 export default function ErrorView(props) {
   const { schema, data } = props;

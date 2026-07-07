@@ -1,5 +1,5 @@
 import { SvgIcon, SvgIconProps } from "@mui/material";
-import { Info as InfoIcon } from "@mui/icons-material";
+import { MuiInfoIcon as InfoIcon } from "./MuiIcons";
 
 import ExternalLink from "../ExternalLink";
 
@@ -201,6 +201,9 @@ export function RedoIcon(props: SvgIconProps = {}) {
   );
 }
 
-export { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
+export {
+  MuiKeyboardArrowDownIcon as KeyboardArrowDown,
+  MuiKeyboardArrowUpIcon as KeyboardArrowUp,
+} from "./MuiIcons";
 export { IconButton } from "@mui/material";
 export { InfoIcon };

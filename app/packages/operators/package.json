@@ -28,7 +28,6 @@
         "vitest": "^3.2.6"
     },
     "peerDependencies": {
-        "@mui/icons-material": "*",
         "@mui/material": "*"
     }
 }

@@ -19,7 +19,6 @@
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
         "@monaco-editor/react": "^4.5.0",
-        "@mui/icons-material": "^5.16.7",
         "@mui/material": "^5.9.0",
         "@react-spring/web": "^9.4.3",
         "@use-gesture/react": "^10.3.0",
@@ -81,7 +80,6 @@
     },
     "peerDependencies": {
         "@fiftyone/annotation": "*",
-        "@mui/icons-material": "*",
         "@mui/material": "*",
         "@react-spring/web": "*",
         "react": "18.2.0",

@@ -1,7 +1,11 @@
-import { LoadingDots, useTheme } from "@fiftyone/components";
+import {
+  LoadingDots,
+  useTheme,
+  MuiAppsIcon as Apps,
+  MuiImageAspectRatioIcon as ImageAspectRatio,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
-import { Apps, ImageAspectRatio } from "@mui/icons-material";
 import { Suspense, useMemo } from "react";
 import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
 import { Slider } from "../../Common/RangeSlider";

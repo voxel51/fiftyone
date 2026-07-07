@@ -1,5 +1,5 @@
 import { escapeKeyHandlerIdsAtom, useKeyDown } from "@fiftyone/state";
-import { ExpandMore } from "@mui/icons-material";
+import { MuiExpandMoreIcon as ExpandMore } from "../Icons";
 import type { BoxProps } from "@mui/material";
 import { Box } from "@mui/material";
 import { throttle } from "lodash";

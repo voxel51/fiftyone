@@ -1,6 +1,8 @@
-import { Tooltip } from "@fiftyone/components";
-import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
+import {
+  Tooltip,
+  MuiKeyboardArrowDownIcon as KeyboardArrowDown,
+  MuiKeyboardArrowUpIcon as KeyboardArrowUp,
+} from "@fiftyone/components";
 import type { RecoilState } from "recoil";
 import { useRecoilState } from "recoil";
 import { useTheme } from "styled-components";

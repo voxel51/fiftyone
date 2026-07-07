@@ -1,6 +1,6 @@
 import { ColorscaleListInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { MuiInfoOutlinedIcon as InfoOutlinedIcon } from "@fiftyone/components";
 import { isEmpty } from "lodash";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue } from "recoil";

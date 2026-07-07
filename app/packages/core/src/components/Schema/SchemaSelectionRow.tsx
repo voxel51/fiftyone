@@ -2,9 +2,11 @@ import { useCallback } from "react";
 import { Box, Typography } from "@mui/material";
 
 import Checkbox from "@mui/material/Checkbox";
-import { useTheme } from "@fiftyone/components";
+import {
+  useTheme,
+  MuiExpandMoreIcon as ExpandMore,
+} from "@fiftyone/components";
 import { useSchemaSettings } from "@fiftyone/state";
-import { ExpandMore } from "@mui/icons-material";
 import styled from "styled-components";
 
 const InfoCell = styled(Box)`

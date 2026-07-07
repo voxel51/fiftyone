@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { SettingsBackupRestore } from "@mui/icons-material";
+import { MuiSettingsBackupRestoreIcon as SettingsBackupRestore } from "@fiftyone/components";
 import { Divider, Slider, Typography } from "@mui/material";
 import { useRecoilState } from "recoil";
 import Checkbox from "../Common/Checkbox";

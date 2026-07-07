@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Box, Chip, TextField, IconButton } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import { MuiAddIcon as AddIcon } from "../Icons";
 
 // Define the props interface for the DisplayTags component
 interface DisplayTagsProps {

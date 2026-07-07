@@ -1,7 +1,7 @@
 import { Box, Chip, Typography } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { FileDrop as ReactFileDrop } from "react-file-drop";
-import { CloudUpload } from "@mui/icons-material";
+import { MuiCloudUploadIcon as CloudUpload } from "@fiftyone/components";
 import autoFocus from "../utils/auto-focus";
 
 type FileDropProps = {

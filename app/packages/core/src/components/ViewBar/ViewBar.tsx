@@ -1,4 +1,3 @@
-import { Close, Help } from "@mui/icons-material";
 import { useMachine } from "@xstate/react";
 import Color from "color";
 import React, { useCallback, useEffect, useRef } from "react";
@@ -12,7 +11,11 @@ import { ExternalLink } from "../../utils/generic";
 import viewBarMachine from "./viewBarMachine";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 
-import { useTheme } from "@fiftyone/components";
+import {
+  useTheme,
+  MuiCloseIcon as Close,
+  MuiHelpIcon as Help,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 
 const ViewBarDiv = styled.div`

@@ -1,8 +1,12 @@
 import { useTrackEvent } from "@fiftyone/analytics";
-import { EditableLabel } from "@fiftyone/components";
+import {
+  EditableLabel,
+  MuiArrowBackIcon as ArrowBack,
+  MuiCloseIcon as Close,
+  MuiExpandMoreIcon as ExpandMore,
+} from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useMutation } from "@fiftyone/state";
-import { ArrowBack, Close, ExpandMore } from "@mui/icons-material";
 import {
   Box,
   CircularProgress,

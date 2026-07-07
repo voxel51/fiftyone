@@ -1,6 +1,8 @@
 import { useUnboundState } from "@fiftyone/state";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import {
+  MuiChevronRightIcon as ChevronRightIcon,
+  MuiExpandMoreIcon as ExpandMoreIcon,
+} from "@fiftyone/components";
 import { Box, Checkbox, FormControlLabel, IconButton } from "@mui/material";
 import React, { useEffect } from "react";
 import { getComponentProps } from "../utils";

@@ -1,5 +1,7 @@
-import { useTheme } from "@fiftyone/components";
-import { DisplaySettings } from "@mui/icons-material";
+import {
+  useTheme,
+  MuiDisplaySettingsIcon as DisplaySettings,
+} from "@fiftyone/components";
 import React from "react";
 import { useRecoilState } from "recoil";
 import { ACTION_VIEW_JSON } from "../constants";

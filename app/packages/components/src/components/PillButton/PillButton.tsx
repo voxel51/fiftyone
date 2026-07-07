@@ -1,5 +1,8 @@
 import { Tooltip, useTheme } from "@fiftyone/components";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
+import {
+  MuiKeyboardArrowDownIcon as KeyboardArrowDown,
+  MuiKeyboardArrowUpIcon as KeyboardArrowUp,
+} from "../Icons";
 import { TooltipProps } from "@mui/material";
 import { animated, useSpring } from "@react-spring/web";
 import React from "react";

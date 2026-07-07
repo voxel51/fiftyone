@@ -1,5 +1,4 @@
-import { MuiIconFont } from "@fiftyone/components";
-import { MoreVert } from "@mui/icons-material";
+import { MuiIconFont, MuiMoreVertIcon as MoreVert } from "@fiftyone/components";
 import {
   Box,
   Button,

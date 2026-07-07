@@ -1,4 +1,7 @@
-import { ArrowDropDown, ArrowDropUp } from "@mui/icons-material";
+import {
+  MuiArrowDropDownIcon as ArrowDropDown,
+  MuiArrowDropUpIcon as ArrowDropUp,
+} from "@fiftyone/components";
 import { Box, Stack, Typography, useTheme } from "@mui/material";
 import { getNumericDifference } from "../utils";
 

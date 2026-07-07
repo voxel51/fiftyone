@@ -1,11 +1,17 @@
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import useExit from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
-import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
-import AddBoxIcon from "@mui/icons-material/AddBox";
-import RectangleIcon from "@mui/icons-material/Rectangle";
-import RestartAltIcon from "@mui/icons-material/RestartAlt";
-import ThreeSixtyIcon from "@mui/icons-material/ThreeSixty";
-import PolylineIcon from "@mui/icons-material/Timeline";
+import {
+  MuiAddBoxIcon as AddBoxIcon,
+  MuiRectangleIcon as RectangleIcon,
+  MuiRestartAltIcon as RestartAltIcon,
+  MuiThreeSixtyIcon as ThreeSixtyIcon,
+  MuiTimelineIcon as PolylineIcon,
+  MuiCloseIcon as Close,
+  MuiDeleteIcon as Delete,
+  MuiEditIcon as Edit,
+  MuiOpenWithIcon as OpenWith,
+  MuiStraightenIcon as Straighten,
+} from "@fiftyone/components";
 import { Typography } from "@mui/material";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";

@@ -1,7 +1,12 @@
-import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
+import {
+  Button,
+  ExternalLink,
+  InfoIcon,
+  useTheme,
+  MuiCloseIcon as CloseIcon,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
-import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
 import { Fragment, useCallback, useRef } from "react";
 import { useResetRecoilState } from "recoil";

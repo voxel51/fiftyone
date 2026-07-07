@@ -1,5 +1,9 @@
 import { formatValueAsNumber } from "@fiftyone/utilities";
-import { ArrowDropDown, ArrowDropUp, GridView } from "@mui/icons-material";
+import {
+  MuiArrowDropDownIcon as ArrowDropDown,
+  MuiArrowDropUpIcon as ArrowDropUp,
+  MuiGridViewIcon as GridView,
+} from "@fiftyone/components";
 import {
   IconButton,
   Stack,

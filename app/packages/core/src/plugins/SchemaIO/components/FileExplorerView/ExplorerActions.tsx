@@ -6,11 +6,13 @@ import {
   Tooltip,
   CircularProgress,
 } from "@mui/material";
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import FilterDramaIcon from "@mui/icons-material/FilterDrama";
-import Error from "@mui/icons-material/Error";
-import { Cancel } from "@mui/icons-material";
+import {
+  MuiArrowUpwardIcon as ArrowUpwardIcon,
+  MuiRefreshIcon as RefreshIcon,
+  MuiFilterDramaIcon as FilterDramaIcon,
+  MuiErrorIcon as Error,
+  MuiCancelIcon as Cancel,
+} from "@fiftyone/components";
 
 function ExplorerActions({
   onPathChange,

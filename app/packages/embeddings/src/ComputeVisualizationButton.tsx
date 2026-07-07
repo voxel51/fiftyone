@@ -1,6 +1,5 @@
 import { Button } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import { useTheme } from "@fiftyone/components";
+import { useTheme, MuiAddIcon as AddIcon } from "@fiftyone/components";
 
 export default function ComputeVisualizationButton({
   variant,

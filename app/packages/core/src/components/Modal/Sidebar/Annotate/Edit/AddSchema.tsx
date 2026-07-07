@@ -1,10 +1,10 @@
-import { MuiButton } from "@fiftyone/components";
 import {
-  LabelOutlined as Classification,
-  CropSquare as Detection,
-  InfoOutlined,
-  Polyline,
-} from "@mui/icons-material";
+  MuiButton,
+  MuiLabelOutlinedIcon as Classification,
+  MuiCropSquareIcon as Detection,
+  MuiInfoOutlinedIcon as InfoOutlined,
+  MuiPolylineIcon as Polyline,
+} from "@fiftyone/components";
 import { Alert, Typography } from "@mui/material";
 import { useSetAtom } from "jotai";
 import styled from "styled-components";

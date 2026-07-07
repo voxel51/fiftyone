@@ -21,3 +21,4 @@ export {
   SelectIcon,
   UndoIcon,
 } from "./Icons";
+export * from "./MuiIcons";

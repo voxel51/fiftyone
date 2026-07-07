@@ -1,4 +1,7 @@
-import { Close, Warning } from "@mui/icons-material";
+import {
+  MuiCloseIcon as Close,
+  MuiWarningIcon as Warning,
+} from "@fiftyone/components";
 import {
   WarningsContainer,
   WarningClose,

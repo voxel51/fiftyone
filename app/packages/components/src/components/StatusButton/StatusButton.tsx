@@ -6,8 +6,10 @@ import {
   Tooltip,
   ButtonProps,
 } from "@mui/material";
-import SettingsIcon from "@mui/icons-material/Settings";
-import CircleIcon from "@mui/icons-material/FiberManualRecord";
+import {
+  MuiSettingsIcon as SettingsIcon,
+  MuiFiberManualRecordIcon as CircleIcon,
+} from "../Icons";
 import { useTheme } from "../";
 import _ from "lodash";
 

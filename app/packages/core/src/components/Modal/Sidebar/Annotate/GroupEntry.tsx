@@ -1,5 +1,8 @@
-import { LoadingDots } from "@fiftyone/components";
-import { Add, Remove } from "@mui/icons-material";
+import {
+  LoadingDots,
+  MuiAddIcon as Add,
+  MuiRemoveIcon as Remove,
+} from "@fiftyone/components";
 import { atom, useAtom, useAtomValue } from "jotai";
 import React from "react";
 import styled, { useTheme } from "styled-components";

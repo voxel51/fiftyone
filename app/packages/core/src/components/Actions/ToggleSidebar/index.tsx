@@ -1,6 +1,9 @@
-import { PillButton } from "@fiftyone/components";
+import {
+  PillButton,
+  MuiKeyboardArrowLeftIcon as KeyboardArrowLeft,
+  MuiKeyboardArrowRightIcon as KeyboardArrowRight,
+} from "@fiftyone/components";
 import { sidebarVisible } from "@fiftyone/state";
-import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
 import React from "react";
 import { useRecoilState } from "recoil";
 import type { ActionProps } from "../types";

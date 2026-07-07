@@ -1,6 +1,9 @@
-import { HelpTooltip, IconButton } from "@fiftyone/components";
+import {
+  HelpTooltip,
+  IconButton,
+  MuiCloseIcon as Close,
+} from "@fiftyone/components";
 import { useTimeout } from "@fiftyone/state";
-import { Close } from "@mui/icons-material";
 import { CircularProgress, Grid, Skeleton, Typography } from "@mui/material";
 import { useCallback } from "react";
 import { PANEL_LOADING_TIMEOUT } from "../constants";

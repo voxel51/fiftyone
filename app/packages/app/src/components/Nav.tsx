@@ -10,12 +10,13 @@ import {
   Header,
   IconButton,
   iconContainer,
+  MuiDarkModeIcon as DarkMode,
+  MuiLightModeIcon as LightMode,
 } from "@fiftyone/components";
 import { ViewBar } from "@fiftyone/core";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
-import { DarkMode, LightMode } from "@mui/icons-material";
 import { Box, useColorScheme } from "@mui/material";
 import React, { Suspense, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";

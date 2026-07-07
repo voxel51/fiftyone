@@ -1,5 +1,8 @@
-import { ExternalLink, useTheme } from "@fiftyone/components";
-import Launch from "@mui/icons-material/Launch";
+import {
+  ExternalLink,
+  useTheme,
+  MuiLaunchIcon as Launch,
+} from "@fiftyone/components";
 
 export default ({ href, text }: { href: string; text: string }) => {
   const theme = useTheme();

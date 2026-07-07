@@ -1,12 +1,15 @@
-import { IconButton, Tooltip } from "@fiftyone/components";
+import {
+  IconButton,
+  Tooltip,
+  MuiCloseIcon as CloseIcon,
+  MuiKeyboardArrowDownOutlinedIcon as ArrowDropDownIcon,
+  MuiKeyboardArrowUpOutlinedIcon as ArrowUpIcon,
+  MuiVisibilityIcon as VisibilityIcon,
+  MuiVisibilityOffIcon as VisibilityOffIcon,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { ModalMode, useModalMode } from "@fiftyone/state";
 import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
-import CloseIcon from "@mui/icons-material/Close";
-import ArrowDropDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
-import ArrowUpIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { Typography } from "@mui/material";
 import { animated, useSpring } from "@react-spring/web";
 import { Orientation, Spacing, Stack } from "@voxel51/voodo";

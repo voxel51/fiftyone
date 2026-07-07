@@ -1,6 +1,5 @@
-import { PillButton } from "@fiftyone/components";
+import { PillButton, MuiSettingsIcon as Settings } from "@fiftyone/components";
 import { useOutsideClick } from "@fiftyone/state";
-import { Settings } from "@mui/icons-material";
 import { useRef, useState } from "react";
 import type { ActionProps } from "../types";
 import { ActionDiv, getStringAndNumberProps } from "../utils";

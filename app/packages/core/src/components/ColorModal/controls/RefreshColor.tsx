@@ -4,7 +4,7 @@ import {
   jotaiStore,
   numConcurrentRenderingLabels,
 } from "@fiftyone/state/src/jotai";
-import { Autorenew } from "@mui/icons-material";
+import { MuiAutorenewIcon as Autorenew } from "@fiftyone/components";
 import React, { useEffect, useState } from "react";
 import { useSetRecoilState } from "recoil";
 import { Button } from "../../utils";

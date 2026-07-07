@@ -1,6 +1,11 @@
-import { ColoredDot, Popout, scrollable } from "@fiftyone/components";
+import {
+  ColoredDot,
+  Popout,
+  scrollable,
+  MuiAddIcon as Add,
+  MuiAutoAwesomeMosaicOutlinedIcon as AutoAwesomeMosaicOutlined,
+} from "@fiftyone/components";
 import { canEditWorkspaces, sessionSpaces } from "@fiftyone/state";
-import { Add, AutoAwesomeMosaicOutlined } from "@mui/icons-material";
 import {
   Box,
   Button,

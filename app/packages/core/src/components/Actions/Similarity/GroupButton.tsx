@@ -1,7 +1,10 @@
-import { IconButton, Tooltip } from "@fiftyone/components";
-import InfoIcon from "@mui/icons-material/Info";
-import SearchIcon from "@mui/icons-material/Search";
-import SettingsIcon from "@mui/icons-material/Settings";
+import {
+  IconButton,
+  Tooltip,
+  MuiInfoIcon as InfoIcon,
+  MuiSearchIcon as SearchIcon,
+  MuiSettingsIcon as SettingsIcon,
+} from "@fiftyone/components";
 import CircularProgress from "@mui/material/CircularProgress";
 import type { CSSProperties } from "react";
 import styled from "styled-components";

@@ -4,7 +4,7 @@ import {
   registerComponent,
 } from "@fiftyone/plugins";
 import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
-import { BarChart } from "@mui/icons-material";
+import { MuiBarChartIcon as BarChart } from "@fiftyone/components";
 import { lazy } from "react";
 
 const Plots = lazy(() => import("./HistogramsPanel"));

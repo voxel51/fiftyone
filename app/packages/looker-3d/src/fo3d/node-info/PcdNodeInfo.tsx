@@ -1,5 +1,4 @@
-import { IconButton } from "@fiftyone/components";
-import CloseIcon from "@mui/icons-material/Close";
+import { IconButton, MuiCloseIcon as CloseIcon } from "@fiftyone/components";
 import { Typography } from "@mui/material";
 import { useSetRecoilState } from "recoil";
 import type { FoSceneNode } from "../../hooks";

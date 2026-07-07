@@ -28,7 +28,6 @@
     },
     "packageManager": "yarn@4.9.1",
     "peerDependencies": {
-        "@mui/icons-material": "*",
         "react-error-boundary": "*",
         "recoil": "*"
     }

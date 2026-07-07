@@ -1,7 +1,9 @@
-import { useTheme } from "@fiftyone/components";
+import {
+  useTheme,
+  MuiExpandLessIcon as ExpandLess,
+  MuiExpandMoreIcon as ExpandMore,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import ExpandLess from "@mui/icons-material/ExpandLess";
-import ExpandMore from "@mui/icons-material/ExpandMore";
 import Collapse from "@mui/material/Collapse";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";

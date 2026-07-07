@@ -1,4 +1,9 @@
-import { Button } from "@fiftyone/components";
+import {
+  Button,
+  MuiCloseIcon as Close,
+  MuiFolderIcon as Folder,
+  MuiFolderOffIcon as FolderOff,
+} from "@fiftyone/components";
 import ExplorerActions from "./ExplorerActions";
 import FileTable from "./FileTable";
 import VolumeSelector from "./VolumeSelector";
@@ -14,8 +19,6 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useAvailableFileSystems, useFileExplorer } from "./state";
-import Close from "@mui/icons-material/Close";
-import { Folder, FolderOff } from "@mui/icons-material";
 
 const ModalContent = styled.div`
   max-width: 90vw;

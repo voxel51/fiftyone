@@ -1,7 +1,9 @@
 import { IconButton, useTheme, ColoredDot } from "@fiftyone/components";
 import { DEFAULT_SELECTED, constants } from "@fiftyone/state";
-import { CloseRounded } from "@mui/icons-material";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import {
+  MuiArrowDropDownIcon as ArrowDropDownIcon,
+  MuiCloseRoundedIcon as CloseRounded,
+} from "../Icons";
 import { ListSubheader, MenuItem, Select, Typography } from "@mui/material";
 import { debounce } from "lodash";
 import React, { useCallback, useState, useRef } from "react";

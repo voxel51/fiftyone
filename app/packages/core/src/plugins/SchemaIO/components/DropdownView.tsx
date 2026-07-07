@@ -1,3 +1,4 @@
+import { MuiMoreVertIcon, MuiSettingsIcon } from "@fiftyone/components";
 import { IconButton, MenuItem, Select, Tooltip } from "@mui/material";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AutocompleteView } from ".";
@@ -13,8 +14,8 @@ import FieldWrapper from "./FieldWrapper";
 const iconImports: {
   [key: string]: () => Promise<{ default: React.ComponentType<any> }>;
 } = {
-  MoreVertIcon: () => import("@mui/icons-material/MoreVert"),
-  SettingsIcon: () => import("@mui/icons-material/Settings"),
+  MoreVertIcon: () => Promise.resolve({ default: MuiMoreVertIcon }),
+  SettingsIcon: () => Promise.resolve({ default: MuiSettingsIcon }),
 };
 
 const MULTI_SELECT_TYPES = ["string", "array"];

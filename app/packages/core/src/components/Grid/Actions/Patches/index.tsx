@@ -1,6 +1,8 @@
-import { PillButton } from "@fiftyone/components";
+import {
+  PillButton,
+  MuiFlipToBackIcon as FlipToBack,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { FlipToBack } from "@mui/icons-material";
 import { useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import Loading from "../../../Actions/Loading";

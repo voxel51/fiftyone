@@ -13,7 +13,7 @@ import {
   ButtonProps,
   Box,
 } from "@mui/material";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import { MuiArrowDropDownIcon as ArrowDropDownIcon } from "@fiftyone/components";
 import { onEnter } from "./utils";
 import ExecutionOptionItem from "./ExecutionOptionItem";
 

@@ -7,7 +7,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import * as icons from "./icons/index";
-import FolderIcon from "@mui/icons-material/Folder";
+import { MuiFolderIcon as FolderIcon } from "@fiftyone/components";
 import { useAvailableFileSystems } from "./state";
 
 export default function VolumeSelector({ onOpenPath }) {

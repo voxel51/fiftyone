@@ -1,6 +1,8 @@
 import * as fos from "@fiftyone/state";
-import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
+import {
+  MuiAddIcon as AddIcon,
+  MuiDeleteIcon as DeleteIcon,
+} from "@fiftyone/components";
 import React, { useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
 import { selector, useRecoilValue } from "recoil";

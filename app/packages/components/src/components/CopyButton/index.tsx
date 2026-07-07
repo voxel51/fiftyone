@@ -1,4 +1,7 @@
-import { ContentCopy, DoneOutlined } from "@mui/icons-material";
+import {
+  MuiContentCopyIcon as ContentCopy,
+  MuiDoneOutlinedIcon as DoneOutlined,
+} from "../Icons";
 import { Button, ButtonProps } from "@mui/material";
 import { useEffect, useState } from "react";
 

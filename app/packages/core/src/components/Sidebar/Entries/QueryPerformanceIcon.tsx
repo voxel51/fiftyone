@@ -1,7 +1,6 @@
-import { useTheme } from "@fiftyone/components";
+import { useTheme, MuiBoltIcon as Bolt } from "@fiftyone/components";
 import { OPTIMIZING_QUERY_PERFORMANCE } from "../../../utils/links";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
-import { Bolt } from "@mui/icons-material";
 import { Box, Button, Tooltip } from "@mui/material";
 import { atom, useRecoilState } from "recoil";
 import styled from "styled-components";

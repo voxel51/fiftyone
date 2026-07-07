@@ -1,4 +1,4 @@
-import ArrowForwardIosSharpIcon from "@mui/icons-material/ArrowForwardIosSharp";
+import { MuiArrowForwardIosSharpIcon as ArrowForwardIosSharpIcon } from "@fiftyone/components";
 import {
   AccordionProps,
   AccordionSummaryProps,

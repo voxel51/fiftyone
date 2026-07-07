@@ -1,4 +1,4 @@
-import CloseIcon from "@mui/icons-material/Close";
+import { MuiCloseIcon as CloseIcon } from "@fiftyone/components";
 import React, { useCallback, useMemo } from "react";
 import styled from "styled-components";
 import { useFo3dContext } from "./context";

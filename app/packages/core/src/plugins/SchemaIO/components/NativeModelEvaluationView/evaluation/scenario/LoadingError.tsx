@@ -1,5 +1,8 @@
-import { CodeBlock, TooltipProvider } from "@fiftyone/components";
-import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
+import {
+  CodeBlock,
+  TooltipProvider,
+  MuiErrorOutlineOutlinedIcon as ErrorOutlineOutlinedIcon,
+} from "@fiftyone/components";
 import { Box, Stack, Typography } from "@mui/material";
 import Button from "../../../Button";
 import { scenarioCardStyles } from "../../styles";

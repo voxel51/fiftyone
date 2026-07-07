@@ -1,5 +1,8 @@
-import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
-import PointSizeIcon from "@mui/icons-material/ScatterPlot";
+import {
+  PopoutSectionTitle,
+  useTheme,
+  MuiScatterPlotIcon as PointSizeIcon,
+} from "@fiftyone/components";
 import { Checkbox, FormControlLabel } from "@mui/material";
 import Slider from "@mui/material/Slider";
 import { useCallback, useMemo, useState } from "react";

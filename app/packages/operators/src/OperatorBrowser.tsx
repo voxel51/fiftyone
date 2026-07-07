@@ -1,5 +1,10 @@
-import { useTheme } from "@fiftyone/components";
-import { Close, Extension, Help, Lock } from "@mui/icons-material";
+import {
+  useTheme,
+  MuiCloseIcon as Close,
+  MuiExtensionIcon as Extension,
+  MuiHelpIcon as Help,
+  MuiLockIcon as Lock,
+} from "@fiftyone/components";
 import { Link } from "@mui/material";
 import { createPortal } from "react-dom";
 import styled from "styled-components";

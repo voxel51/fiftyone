@@ -1,4 +1,8 @@
-import { MuiIconFont, TooltipProvider } from "@fiftyone/components";
+import {
+  MuiIconFont,
+  TooltipProvider,
+  MuiExpandMoreIcon as ExpandMoreIcon,
+} from "@fiftyone/components";
 import { OperatorExecutionButton, usePanelEvent } from "@fiftyone/operators";
 import { OperatorResult } from "@fiftyone/operators/src/operators";
 import { OperatorExecutionOption } from "@fiftyone/operators/src/state";
@@ -8,7 +12,6 @@ import {
 } from "@fiftyone/operators/src/types-internal";
 import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { Box, ButtonProps, Typography } from "@mui/material";
 import { getColorByCode, getComponentProps, getDisabledColors } from "../utils";
 import { ViewPropsType } from "../utils/types";

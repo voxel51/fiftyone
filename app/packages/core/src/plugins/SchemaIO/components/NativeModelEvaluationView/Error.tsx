@@ -1,4 +1,4 @@
-import { West } from "@mui/icons-material";
+import { MuiWestIcon as West } from "@fiftyone/components";
 import { Box, Button, Card, Stack, Typography } from "@mui/material";
 import ErrorIcon from "./ErrorIcon";
 

@@ -26,10 +26,7 @@ vi.mock("@mui/material", () => ({
     React.createElement("button", { onClick }, children),
   Stack: ({ children }: StackProps) =>
     React.createElement("div", null, children),
-}));
-
-vi.mock("@mui/icons-material/Close", () => ({
-  default: () => React.createElement("span", null, "Close"),
+  SvgIcon: () => React.createElement("span", null, "Close"),
 }));
 
 type EnqueueOptions = OptionsObject & { message?: SnackbarMessage };

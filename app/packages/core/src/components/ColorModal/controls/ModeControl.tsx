@@ -1,7 +1,10 @@
-import { PopoutDiv, useTheme } from "@fiftyone/components";
+import {
+  PopoutDiv,
+  useTheme,
+  MuiKeyboardArrowDownOutlinedIcon as KeyboardArrowDownOutlinedIcon,
+  MuiKeyboardArrowUpOutlinedIcon as KeyboardArrowUpOutlinedIcon,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
-import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";

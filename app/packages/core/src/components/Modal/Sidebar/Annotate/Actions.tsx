@@ -6,6 +6,8 @@ import {
   SegmentationIcon,
   SelectIcon,
   UndoIcon,
+  MuiTimelineIcon as PolylineIcon,
+  MuiViewInArIcon as CuboidIcon,
 } from "@fiftyone/components";
 import { use3dAnnotationFields } from "@fiftyone/looker-3d/src/annotation/use3dAnnotationFields";
 import {
@@ -23,8 +25,6 @@ import {
   POLYLINE,
   POLYLINES,
 } from "@fiftyone/utilities";
-import PolylineIcon from "@mui/icons-material/Timeline";
-import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { Anchor, Text, Tooltip } from "@voxel51/voodo";
 import { createContext, useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";

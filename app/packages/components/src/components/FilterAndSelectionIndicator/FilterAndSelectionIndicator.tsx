@@ -1,5 +1,8 @@
 import { PillButton } from "@fiftyone/components";
-import { Check, FilterList } from "@mui/icons-material";
+import {
+  MuiCheckIcon as Check,
+  MuiFilterListIcon as FilterList,
+} from "../Icons";
 
 const commonStyles = {
   height: "1.5rem",

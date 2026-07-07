@@ -1,5 +1,8 @@
-import { HelpTooltip, Markdown } from "@fiftyone/components";
-import { Help } from "@mui/icons-material";
+import {
+  HelpTooltip,
+  Markdown,
+  MuiHelpIcon as Help,
+} from "@fiftyone/components";
 import { Box, Link, Stack, StackProps, Typography } from "@mui/material";
 import { ErrorView } from ".";
 import { getComponentProps } from "../utils";

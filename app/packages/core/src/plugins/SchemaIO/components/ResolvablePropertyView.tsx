@@ -1,11 +1,14 @@
-import { MuiButton } from "@fiftyone/components";
+import {
+  MuiButton,
+  MuiKeyboardArrowDownIcon as KeyboardArrowDown,
+  MuiRefreshIcon as Refresh,
+} from "@fiftyone/components";
 import {
   executeOperator,
   types,
   validate as validateProperty,
 } from "@fiftyone/operators";
 import { useUnboundStateRef } from "@fiftyone/state";
-import { KeyboardArrowDown, Refresh } from "@mui/icons-material";
 import {
   Alert,
   AlertTitle,

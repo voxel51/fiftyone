@@ -1,5 +1,7 @@
-import { Markdown } from "@fiftyone/components";
-import { ArrowDownward } from "@mui/icons-material";
+import {
+  Markdown,
+  MuiArrowDownwardIcon as ArrowDownward,
+} from "@fiftyone/components";
 import { Box, Button, Typography, useTheme } from "@mui/material";
 import React, { useCallback, useEffect, useLayoutEffect } from "react";
 

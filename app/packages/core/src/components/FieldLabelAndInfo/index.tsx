@@ -1,8 +1,11 @@
-import { InfoIcon, useTheme } from "@fiftyone/components";
+import {
+  InfoIcon,
+  useTheme,
+  MuiPaletteIcon as PaletteIcon,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { coloring } from "@fiftyone/state";
 import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
-import PaletteIcon from "@mui/icons-material/Palette";
 import React, {
   MutableRefObject,
   useEffect,

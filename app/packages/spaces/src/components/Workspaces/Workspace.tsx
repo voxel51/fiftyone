@@ -1,6 +1,5 @@
-import { ColoredDot } from "@fiftyone/components";
+import { ColoredDot, MuiEditIcon as Edit } from "@fiftyone/components";
 import { canEditWorkspaces } from "@fiftyone/state";
-import { Edit } from "@mui/icons-material";
 import {
   IconButton,
   ListItem,

@@ -1,5 +1,7 @@
-import DoneIcon from "@mui/icons-material/Done";
-import FeedbackIcon from "@mui/icons-material/Feedback";
+import {
+  MuiDoneIcon as DoneIcon,
+  MuiFeedbackIcon as FeedbackIcon,
+} from "@fiftyone/components";
 import { CircularProgress, Typography } from "@mui/material";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";

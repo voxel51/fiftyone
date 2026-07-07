@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import DeleteIcon from "@mui/icons-material/Delete";
+import { MuiDeleteIcon as DeleteIcon } from "@fiftyone/components";
 
 export const ModalWrapper = styled.div`
   position: fixed;

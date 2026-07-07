@@ -3,10 +3,10 @@ import {
   ErrorBoundary,
   Link,
   PillButton,
+  MuiExtensionIcon as Extension,
 } from "@fiftyone/components";
 import { withSuspense } from "@fiftyone/state";
 import { isPrimitiveString } from "@fiftyone/utilities";
-import { Extension } from "@mui/icons-material";
 import { Box, IconButton, Tooltip } from "@mui/material";
 import styled from "styled-components";
 import { types } from ".";

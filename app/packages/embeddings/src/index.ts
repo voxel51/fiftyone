@@ -3,7 +3,7 @@ import {
   PluginComponentType,
   registerComponent,
 } from "@fiftyone/plugins";
-import WorkspacesIcon from "@mui/icons-material/Workspaces";
+import { MuiWorkspacesIcon as WorkspacesIcon } from "@fiftyone/components";
 import { lazy } from "react";
 import EmbeddingsTabIndicator from "./EmbeddingsTabIndicator";
 import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";

@@ -1,6 +1,5 @@
-import { PillButton } from "@fiftyone/components";
+import { PillButton, MuiListIcon as List } from "@fiftyone/components";
 import { useOperatorBrowser } from "@fiftyone/operators";
-import { List } from "@mui/icons-material";
 import type { ActionProps } from "../types";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 

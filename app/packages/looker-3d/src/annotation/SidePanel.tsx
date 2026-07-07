@@ -1,8 +1,10 @@
 import { useAnnotationEventHandler } from "@fiftyone/annotation";
-import { useTheme } from "@fiftyone/components";
+import {
+  useTheme,
+  MuiFitScreenIcon as FitScreenIcon,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { ModalSample } from "@fiftyone/state";
-import FitScreenIcon from "@mui/icons-material/FitScreen";
 import { IconButton, MenuItem, Select } from "@mui/material";
 import {
   Bounds,

@@ -1,11 +1,16 @@
-import { IconButton, Popout, scrollable, useTheme } from "@fiftyone/components";
+import {
+  IconButton,
+  Popout,
+  scrollable,
+  useTheme,
+  MuiAddIcon as Add,
+} from "@fiftyone/components";
 import {
   getCategoryForPanel,
   getCategoryLabel,
   PluginComponentRegistration,
 } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { Add } from "@mui/icons-material";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { usePanels, useSpaceNodes } from "../hooks";

@@ -1,10 +1,12 @@
-import { Tooltip } from "@fiftyone/components";
-import FilterAltIcon from "@mui/icons-material/FilterAlt";
-import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
-import HideImageIcon from "@mui/icons-material/HideImage";
-import ImageIcon from "@mui/icons-material/Image";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import {
+  Tooltip,
+  MuiFilterAltIcon as FilterAltIcon,
+  MuiFilterAltOffIcon as FilterAltOffIcon,
+  MuiHideImageIcon as HideImageIcon,
+  MuiImageIcon as ImageIcon,
+  MuiVisibilityIcon as VisibilityIcon,
+  MuiVisibilityOffIcon as VisibilityOffIcon,
+} from "@fiftyone/components";
 import IconButton from "@mui/material/IconButton";
 import type { ForwardedRef } from "react";
 import React from "react";

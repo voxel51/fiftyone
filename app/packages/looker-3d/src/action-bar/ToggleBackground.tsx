@@ -1,5 +1,7 @@
-import { useTheme } from "@fiftyone/components";
-import WallpaperIcon from "@mui/icons-material/Wallpaper";
+import {
+  useTheme,
+  MuiWallpaperIcon as WallpaperIcon,
+} from "@fiftyone/components";
 import * as recoil from "recoil";
 import { ActionItem } from "../containers";
 import { isFo3dBackgroundOnAtom } from "../state";

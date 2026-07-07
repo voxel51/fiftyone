@@ -2803,7 +2803,6 @@ __metadata:
     vite-plugin-svgr: "npm:^4.2.0"
     vite-plugin-wasm: "npm:^3.6.0"
   peerDependencies:
-    "@mui/icons-material": "*"
     "@react-spring/web": "*"
   languageName: unknown
   linkType: soft
@@ -2854,7 +2853,6 @@ __metadata:
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@mdx-js/react": "npm:^1.6.22"
-    "@mui/icons-material": "npm:^5.16.7"
     "@mui/material": "npm:^5.9.0"
     "@react-spring/web": "npm:^9.7.3"
     "@storybook/addon-essentials": "npm:^8"
@@ -2904,7 +2902,6 @@ __metadata:
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@monaco-editor/react": "npm:^4.5.0"
-    "@mui/icons-material": "npm:^5.16.7"
     "@mui/material": "npm:^5.9.0"
     "@react-spring/web": "npm:^9.4.3"
     "@types/lodash": "npm:^4.14.182"
@@ -2963,7 +2960,6 @@ __metadata:
     xstate: "npm:^4.14.0"
   peerDependencies:
     "@fiftyone/annotation": "*"
-    "@mui/icons-material": "*"
     "@mui/material": "*"
     "@react-spring/web": "*"
     react: 18.2.0
@@ -2984,7 +2980,6 @@ __metadata:
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
-    "@mui/icons-material": "*"
     react-error-boundary: "*"
     recoil: "*"
   languageName: unknown
@@ -3127,7 +3122,6 @@ __metadata:
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
-    "@mui/icons-material": "*"
     "@mui/material": "*"
     "@react-spring/web": "*"
     recoil: "*"
@@ -3182,7 +3176,6 @@ __metadata:
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
-    "@mui/icons-material": "*"
     react-error-boundary: "*"
     recoil: "*"
   languageName: unknown
@@ -3223,7 +3216,6 @@ __metadata:
     vite: "npm:^7.3.2"
     vitest: "npm:^3.2.6"
   peerDependencies:
-    "@mui/icons-material": "*"
     "@mui/material": "*"
   languageName: unknown
   linkType: soft
@@ -3291,7 +3283,6 @@ __metadata:
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
-    "@mui/icons-material": "*"
     jotai: "*"
     recoil: "*"
   languageName: unknown
@@ -3307,7 +3298,6 @@ __metadata:
     sortablejs: "npm:^1.15.0"
     vite: "npm:^7.3.2"
   peerDependencies:
-    "@mui/icons-material": "*"
     "@mui/material": "*"
     "@react-spring/web": "*"
     react: "*"
@@ -4569,22 +4559,6 @@ __metadata:
   version: 5.15.14
   resolution: "@mui/core-downloads-tracker@npm:5.15.14"
   checksum: 10/0a1c63d906af594d0a7fb63d1d574482b3916351ea8908e8621c8bfa16ac38cf4edb5a334f0e28084f583ac928b587cab6e031f992195e0a590186faba13b9a5
-  languageName: node
-  linkType: hard
-
-"@mui/icons-material@npm:^5.16.7":
-  version: 5.16.7
-  resolution: "@mui/icons-material@npm:5.16.7"
-  dependencies:
-    "@babel/runtime": "npm:^7.23.9"
-  peerDependencies:
-    "@mui/material": ^5.0.0
-    "@types/react": ^17.0.0 || ^18.0.0
-    react: ^17.0.0 || ^18.0.0
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-  checksum: 10/39bd989f566951e8898e955309506b4f37eeed50bc3631869b5967ecb143c19372ea13e49994504f6c0e3969e8b73ad17cdc6cfc4eaff1201a852231539b83df
   languageName: node
   linkType: hard
 

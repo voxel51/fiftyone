@@ -1,7 +1,9 @@
-import { useTheme } from "@fiftyone/components";
+import {
+  useTheme,
+  MuiAccountTreeIcon as AccountTree,
+} from "@fiftyone/components";
 import type { useJSONPanel } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { AccountTree } from "@mui/icons-material";
 import { useCallback, useRef, useState } from "react";
 import { ACTION_VIEW_JSON } from "../constants";
 import { ActionItem } from "../containers";

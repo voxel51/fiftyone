@@ -1,5 +1,7 @@
-import { useTheme } from "@fiftyone/components";
-import VideocamIcon from "@mui/icons-material/Videocam";
+import {
+  useTheme,
+  MuiVideocamIcon as VideocamIcon,
+} from "@fiftyone/components";
 import type { MouseEvent } from "react";
 import { ActionItem } from "../containers";
 import { useFrustumActions, useFrustums } from "../frustum";

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import CircleIcon from "@mui/icons-material/Circle";
+import { MuiCircleIcon as CircleIcon } from "../Icons";
 import { Chip, FormControl, MenuItem, Select, Tooltip } from "@mui/material";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";

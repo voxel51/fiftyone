@@ -1,11 +1,14 @@
-import { Close, Help } from "@mui/icons-material";
 import { animated, config, useSpring } from "@react-spring/web";
 import { useService } from "@xstate/react";
 import React, { useEffect, useRef, useState } from "react";
 import AuosizeInput from "react-input-autosize";
 import styled from "styled-components";
 
-import { useTheme } from "@fiftyone/components";
+import {
+  useTheme,
+  MuiCloseIcon as Close,
+  MuiHelpIcon as Help,
+} from "@fiftyone/components";
 import { theme as themeState } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { ExternalLink } from "../../../utils/generic";

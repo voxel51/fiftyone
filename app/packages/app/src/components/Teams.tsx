@@ -2,8 +2,12 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Button, ExternalLink, useTheme } from "@fiftyone/components";
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import {
+  Button,
+  ExternalLink,
+  useTheme,
+  MuiAutoAwesomeIcon as AutoAwesomeIcon,
+} from "@fiftyone/components";
 import {
   Box,
   Button as MuiButton,

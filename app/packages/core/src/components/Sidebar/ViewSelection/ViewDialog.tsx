@@ -1,9 +1,13 @@
-import { DatasetViewOption, Selection, useTheme } from "@fiftyone/components";
+import {
+  DatasetViewOption,
+  Selection,
+  useTheme,
+  MuiCloseIcon as CloseIcon,
+  MuiDeleteIcon as DeleteIcon,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { extendedStages } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
-import CloseIcon from "@mui/icons-material/Close";
-import DeleteIcon from "@mui/icons-material/Delete";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";

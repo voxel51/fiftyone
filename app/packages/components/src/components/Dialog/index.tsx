@@ -1,4 +1,4 @@
-import { Close } from "@mui/icons-material";
+import { MuiCloseIcon as Close } from "../Icons";
 import {
   IconButton,
   Dialog as MuiDialog,

@@ -1,5 +1,7 @@
-import { useTheme } from "@fiftyone/components";
-import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
+import {
+  useTheme,
+  MuiClearOutlinedIcon as ClearOutlinedIcon,
+} from "@fiftyone/components";
 
 type Props = {
   onClose: () => void;

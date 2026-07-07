@@ -1,6 +1,10 @@
-import { ExternalLink, Toast, useTheme } from "@fiftyone/components";
+import {
+  ExternalLink,
+  Toast,
+  useTheme,
+  MuiLaunchIcon as Launch,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Launch } from "@mui/icons-material";
 import { Button } from "@mui/material";
 import { SnackbarProvider } from "notistack";
 import { useRecoilState } from "recoil";

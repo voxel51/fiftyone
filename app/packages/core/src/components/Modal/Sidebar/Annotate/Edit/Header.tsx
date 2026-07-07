@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { Round } from "../Actions";
 
 import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
-import { West as Back } from "@mui/icons-material";
+import { MuiWestIcon as Back } from "@fiftyone/components";
 import { Box, Menu, MenuItem, Stack } from "@mui/material";
 import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
 import { DETECTION } from "@fiftyone/utilities";

@@ -19,7 +19,6 @@ export default defineConfig(({ mode }) => {
         "@fiftyone/state": "__fos__",
         "@fiftyone/components": "__foc__",
         "@fiftyone/plugins": "__fop__",
-        "@mui/icons-material": "__muiim__",
         "re-resizable": "ReResizable",
         "styled-components": "StyledComponents",
         typescript: "Typescript",

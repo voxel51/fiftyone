@@ -1,6 +1,5 @@
-import { Tooltip } from "@fiftyone/components";
+import { Tooltip, MuiBoltIcon as Bolt } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Bolt } from "@mui/icons-material";
 import React, { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";

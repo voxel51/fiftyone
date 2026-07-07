@@ -1,5 +1,7 @@
-import { useTheme } from "@fiftyone/components";
-import { InfoOutlined } from "@mui/icons-material";
+import {
+  useTheme,
+  MuiInfoOutlinedIcon as InfoOutlined,
+} from "@fiftyone/components";
 import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
 

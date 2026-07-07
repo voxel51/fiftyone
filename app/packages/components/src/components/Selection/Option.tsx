@@ -2,7 +2,7 @@ import React, { MouseEventHandler } from "react";
 
 import { IconButton, useTheme } from "@fiftyone/components";
 import { useHover } from "@fiftyone/state";
-import { Check, Edit } from "@mui/icons-material";
+import { MuiCheckIcon as Check, MuiEditIcon as Edit } from "../Icons";
 import {
   EditBox,
   RowLabelContainer,

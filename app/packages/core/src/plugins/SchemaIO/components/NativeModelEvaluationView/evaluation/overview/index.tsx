@@ -1,9 +1,12 @@
 import { useTrackEvent } from "@fiftyone/analytics";
-import { Dialog } from "@fiftyone/components";
+import {
+  Dialog,
+  MuiEditNoteIcon as EditNote,
+  MuiExpandMoreIcon as ExpandMore,
+} from "@fiftyone/components";
 import { useTriggerPanelEvent } from "@fiftyone/operators";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { editingFieldAtom, useMutation } from "@fiftyone/state";
-import { EditNote, ExpandMore } from "@mui/icons-material";
 import {
   Accordion,
   AccordionDetails,

@@ -1,9 +1,8 @@
 import { useTrackEvent } from "@fiftyone/analytics";
-import { TooltipProvider } from "@fiftyone/components";
+import { TooltipProvider, MuiAddIcon as Add } from "@fiftyone/components";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { useMutation } from "@fiftyone/state";
-import Add from "@mui/icons-material/Add";
 import { Button } from "@mui/material";
 export default function CreateScenario(props: CreateScenarioPropsType) {
   const {

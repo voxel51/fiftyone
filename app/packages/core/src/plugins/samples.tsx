@@ -1,8 +1,10 @@
-import { FilterAndSelectionIndicator } from "@fiftyone/components";
+import {
+  FilterAndSelectionIndicator,
+  MuiAppsIcon as AppsIcon,
+} from "@fiftyone/components";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
-import AppsIcon from "@mui/icons-material/Apps";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import Grid from "../components/Grid";

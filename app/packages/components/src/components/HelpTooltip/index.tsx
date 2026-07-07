@@ -1,4 +1,4 @@
-import { Help } from "@mui/icons-material";
+import { MuiHelpIcon as Help } from "../Icons";
 import {
   Tooltip as MUITooltip,
   TooltipProps as MUITooltipProps,

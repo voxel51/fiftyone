@@ -1,4 +1,4 @@
-import ExtensionIcon from "@mui/icons-material/Extension";
+import { MuiExtensionIcon as ExtensionIcon } from "@fiftyone/components";
 import { usePanel } from "../hooks";
 import { PanelIconProps } from "../types";
 import { warnPanelNotFound } from "../utils";

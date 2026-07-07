@@ -1,11 +1,14 @@
-import { ExternalLink, useTheme } from "@fiftyone/components";
+import {
+  ExternalLink,
+  useTheme,
+  MuiLaunchIcon as Launch,
+} from "@fiftyone/components";
 import {
   datasetSampleCount,
   pathHasIndexes,
   queryPerformance,
   queryPerformanceMaxSearch,
 } from "@fiftyone/state";
-import { Launch } from "@mui/icons-material";
 import { useRecoilValue } from "recoil";
 import { QUERY_PERFORMANCE_RESULTS } from "../../utils/links";
 

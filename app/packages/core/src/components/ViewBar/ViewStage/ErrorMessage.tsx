@@ -1,9 +1,11 @@
-import { ReportProblem } from "@mui/icons-material";
 import { animated, config, useSpring } from "@react-spring/web";
 import { useService } from "@xstate/react";
 import styled from "styled-components";
 import { useFollow, useOutsideClick } from "@fiftyone/state";
-import { useTheme } from "@fiftyone/components";
+import {
+  useTheme,
+  MuiReportProblemIcon as ReportProblem,
+} from "@fiftyone/components";
 import React, { useEffect, useRef, useState } from "react";
 
 const ErrorMessageDiv = animated(styled.div`

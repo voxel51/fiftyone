@@ -1,11 +1,14 @@
-import { ArrowDropDown, ArrowDropUp } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
 import { useService } from "@xstate/react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import AutosizeInput from "react-input-autosize";
 import styled, { ThemeContext } from "styled-components";
 
-import { useTheme } from "@fiftyone/components";
+import {
+  useTheme,
+  MuiArrowDropDownIcon as ArrowDropDown,
+  MuiArrowDropUpIcon as ArrowDropUp,
+} from "@fiftyone/components";
 import {
   theme as themeState,
   useEventHandler,

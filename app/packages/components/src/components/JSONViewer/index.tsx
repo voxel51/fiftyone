@@ -1,4 +1,4 @@
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import { MuiCloseRoundedIcon as CloseRoundedIcon } from "../Icons";
 import { useColorScheme } from "@mui/material";
 import { JsonViewer, JsonViewerProps } from "@textea/json-viewer";
 import React, { useEffect, useMemo, useState } from "react";

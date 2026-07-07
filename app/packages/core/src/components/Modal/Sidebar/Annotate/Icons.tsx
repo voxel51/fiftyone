@@ -1,11 +1,11 @@
-import { useTheme } from "@fiftyone/components";
 import {
-  LockOpenOutlined,
-  LockOutlined,
-  TimelineOutlined as PolylineOutlined,
-  VisibilityOffOutlined,
-  VisibilityOutlined,
-} from "@mui/icons-material";
+  useTheme,
+  MuiLockOpenOutlinedIcon as LockOpenOutlined,
+  MuiLockOutlinedIcon as LockOutlined,
+  MuiTimelineOutlinedIcon as PolylineOutlined,
+  MuiVisibilityOffOutlinedIcon as VisibilityOffOutlined,
+  MuiVisibilityOutlinedIcon as VisibilityOutlined,
+} from "@fiftyone/components";
 import styled from "styled-components";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 

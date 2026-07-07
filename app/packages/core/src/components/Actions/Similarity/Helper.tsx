@@ -1,6 +1,8 @@
-import { PopoutSectionTitle } from "@fiftyone/components";
+import {
+  PopoutSectionTitle,
+  MuiSettingsIcon as SettingsIcon,
+} from "@fiftyone/components";
 import { executeOperator } from "@fiftyone/operators";
-import SettingsIcon from "@mui/icons-material/Settings";
 import { useCallback } from "react";
 import styled from "styled-components";
 import { PANEL_NAME } from "./constants";

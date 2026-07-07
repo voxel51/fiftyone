@@ -1,15 +1,19 @@
-import { IconButton, InfoIcon, useTheme } from "@fiftyone/components";
+import {
+  IconButton,
+  InfoIcon,
+  useTheme,
+  MuiBubbleChartIcon as BubbleChartIcon,
+  MuiCallSplitIcon as CallSplitIcon,
+  MuiCodeIcon as CodeIcon,
+  MuiInfoOutlinedIcon as InfoOutlinedIcon,
+  MuiLayersIcon as LayersIcon,
+  MuiSpeedIcon as SpeedIcon,
+  MuiTextureIcon as TextureIcon,
+  MuiTimelineIcon as TimelineIcon,
+  MuiVideocamIcon as CameraIcon,
+  MuiCloseIcon as Close,
+} from "@fiftyone/components";
 import { isInMultiPanelViewAtom } from "@fiftyone/state";
-import { Close } from "@mui/icons-material";
-import BubbleChartIcon from "@mui/icons-material/BubbleChart";
-import CallSplitIcon from "@mui/icons-material/CallSplit";
-import CodeIcon from "@mui/icons-material/Code";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import LayersIcon from "@mui/icons-material/Layers";
-import SpeedIcon from "@mui/icons-material/Speed";
-import TextureIcon from "@mui/icons-material/Texture";
-import TimelineIcon from "@mui/icons-material/Timeline";
-import CameraIcon from "@mui/icons-material/Videocam";
 import Text from "@mui/material/Typography";
 import { animated, useSpring } from "@react-spring/web";
 import { PerfHeadless, getPerf } from "r3f-perf";

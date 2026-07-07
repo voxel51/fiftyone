@@ -1,5 +1,8 @@
 import { NumberKeyObjectType } from "@fiftyone/utilities";
-import { Add, Delete } from "@mui/icons-material";
+import {
+  MuiAddIcon as Add,
+  MuiDeleteIcon as Delete,
+} from "@fiftyone/components";
 import { Avatar, Box, Grid, IconButton } from "@mui/material";
 import { cloneDeep, set, throttle } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";

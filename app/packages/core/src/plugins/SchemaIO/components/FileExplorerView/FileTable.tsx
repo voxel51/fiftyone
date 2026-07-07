@@ -8,9 +8,11 @@ import {
   Paper,
   Box,
 } from "@mui/material";
-import { Button } from "@fiftyone/components";
-import FolderIcon from "@mui/icons-material/Folder";
-import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import {
+  Button,
+  MuiFolderIcon as FolderIcon,
+  MuiInsertDriveFileIcon as InsertDriveFileIcon,
+} from "@fiftyone/components";
 import { DateTime } from "luxon";
 import { scrollable } from "@fiftyone/components";
 import { humanReadableBytes } from "@fiftyone/utilities";

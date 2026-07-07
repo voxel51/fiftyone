@@ -1,16 +1,17 @@
-import { Selector, useTheme } from "@fiftyone/components";
+import {
+  Selector,
+  useTheme,
+  MuiAddIcon as Add,
+  MuiCenterFocusWeakIcon as CenterFocusWeak,
+  MuiCloseIcon as Close,
+  MuiHelpIcon as Help,
+  MuiHighlightAltIcon as HighlightAlt,
+  MuiOpenWithIcon as OpenWith,
+  MuiWarningIcon as Warning,
+} from "@fiftyone/components";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import { usePanelStatePartial, useSetPanelCloseEffect } from "@fiftyone/spaces";
 import { constants, useExternalLink } from "@fiftyone/utilities";
-import {
-  Add,
-  CenterFocusWeak,
-  Close,
-  Help,
-  HighlightAlt,
-  OpenWith,
-  Warning,
-} from "@mui/icons-material";
 import { Fragment, useEffect, useRef, useState } from "react";
 import EmbeddingsCTA from "./EmbeddingsCTA";
 import { EmbeddingsPlot } from "./EmbeddingsPlot";

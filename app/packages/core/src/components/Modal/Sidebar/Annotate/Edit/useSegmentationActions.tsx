@@ -2,22 +2,22 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { SelectIcon } from "@fiftyone/components";
+import {
+  SelectIcon,
+  MuiAddIcon as Add,
+  MuiArrowDropDownIcon as ArrowDropDown,
+  MuiArrowDropUpIcon as ArrowDropUp,
+  MuiAutoAwesomeIcon as AutoAwesome,
+  MuiBrushIcon as Brush,
+  MuiCallMergeIcon as CallMerge,
+  MuiCircleOutlinedIcon as CircleOutlined,
+  MuiCloseIcon as Close,
+  MuiCropSquareIcon as CropSquare,
+  MuiRemoveIcon as Remove,
+  MuiTimelineIcon as Timeline,
+} from "@fiftyone/components";
 import { KnownContexts, useKeyBindings } from "@fiftyone/commands";
 import { buildBrushCursor } from "@fiftyone/lighter";
-import {
-  Add,
-  ArrowDropDown,
-  ArrowDropUp,
-  AutoAwesome,
-  Brush,
-  CallMerge,
-  CircleOutlined,
-  Close,
-  CropSquare,
-  Remove,
-  Timeline,
-} from "@mui/icons-material";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
 import { useAnnotationContext } from "./useAnnotationContext";

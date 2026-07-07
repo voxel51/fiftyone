@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Box, Typography } from "@mui/material";
-import { Tooltip, useTheme } from "@fiftyone/components";
+import { Tooltip, useTheme, MuiClearIcon as Clear } from "@fiftyone/components";
 import { SchemaSelection } from "./SchemaSelection";
 import { useSchemaSettings, useSearchSchemaFields } from "@fiftyone/state";
-import { Clear } from "@mui/icons-material";
 
 interface Props {
   searchTerm?: string;

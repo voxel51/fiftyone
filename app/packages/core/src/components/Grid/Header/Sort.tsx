@@ -1,11 +1,14 @@
-import { Selector } from "@fiftyone/components";
+import {
+  Selector,
+  MuiArrowDownwardIcon as ArrowDownward,
+  MuiArrowUpwardIcon as ArrowUpward,
+} from "@fiftyone/components";
 import {
   gridSortBy,
   gridSortFields,
   queryPerformance,
   similarityParameters,
 } from "@fiftyone/state";
-import { ArrowDownward, ArrowUpward } from "@mui/icons-material";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { ActionOption } from "../../Actions/Common";
 import { SORT_BY_INDEXED_FIELDS } from "../../../utils/links";

@@ -1,9 +1,11 @@
-import { TooltipProvider } from "@fiftyone/components";
-import CallSplitOutlinedIcon from "@mui/icons-material/CallSplitOutlined";
-import CrisisAlertOutlinedIcon from "@mui/icons-material/CrisisAlertOutlined";
-import Layers from "@mui/icons-material/Layers";
-import PieChartOutlinedIcon from "@mui/icons-material/PieChartOutlined";
-import ShowChartOutlinedIcon from "@mui/icons-material/ShowChartOutlined";
+import {
+  TooltipProvider,
+  MuiCallSplitOutlinedIcon as CallSplitOutlinedIcon,
+  MuiCrisisAlertOutlinedIcon as CrisisAlertOutlinedIcon,
+  MuiLayersIcon as Layers,
+  MuiPieChartOutlinedIcon as PieChartOutlinedIcon,
+  MuiShowChartOutlinedIcon as ShowChartOutlinedIcon,
+} from "@fiftyone/components";
 import { Box } from "@mui/material";
 import { capitalize } from "lodash";
 import { ConcreteEvaluationType } from "./Types";

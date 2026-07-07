@@ -1,7 +1,13 @@
 import styles from "./Options.module.css";
 
-import { Link, Selector, useTheme } from "@fiftyone/components";
-import { CenterFocusWeak, Close, Help } from "@mui/icons-material";
+import {
+  Link,
+  Selector,
+  useTheme,
+  MuiCenterFocusWeakIcon as CenterFocusWeak,
+  MuiCloseIcon as Close,
+  MuiHelpIcon as Help,
+} from "@fiftyone/components";
 import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import {

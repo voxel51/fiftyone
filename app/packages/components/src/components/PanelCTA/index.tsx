@@ -1,5 +1,5 @@
 import { constants } from "@fiftyone/utilities";
-import { OpenInNew, West } from "@mui/icons-material";
+import { MuiOpenInNewIcon as OpenInNew, MuiWestIcon as West } from "../Icons";
 import {
   Box,
   Button,

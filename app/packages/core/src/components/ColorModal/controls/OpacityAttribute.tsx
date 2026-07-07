@@ -2,8 +2,10 @@ import { Popout, Tooltip, useTheme } from "@fiftyone/components/src/components";
 import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
-import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
-import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
+import {
+  MuiKeyboardArrowDownOutlinedIcon as KeyboardArrowDownOutlinedIcon,
+  MuiKeyboardArrowUpOutlinedIcon as KeyboardArrowUpOutlinedIcon,
+} from "@fiftyone/components";
 import React from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";

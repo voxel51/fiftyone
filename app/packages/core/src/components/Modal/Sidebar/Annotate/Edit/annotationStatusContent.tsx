@@ -1,8 +1,10 @@
-import { DetectionIcon } from "@fiftyone/components";
-import ErrorOutline from "@mui/icons-material/ErrorOutline";
-import Brush from "@mui/icons-material/Brush";
-import CallMerge from "@mui/icons-material/CallMerge";
-import Timeline from "@mui/icons-material/Timeline";
+import {
+  DetectionIcon,
+  MuiErrorOutlineIcon as ErrorOutline,
+  MuiBrushIcon as Brush,
+  MuiCallMergeIcon as CallMerge,
+  MuiTimelineIcon as Timeline,
+} from "@fiftyone/components";
 import {
   Align,
   Orientation,

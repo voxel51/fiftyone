@@ -1,4 +1,7 @@
-import { Replay, Save } from "@mui/icons-material";
+import {
+  MuiReplayIcon as Replay,
+  MuiSaveIcon as Save,
+} from "@fiftyone/components";
 import { Box, IconButton, Stack } from "@mui/material";
 import { merge } from "lodash";
 import { useCallback, useState } from "react";

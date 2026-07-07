@@ -1,4 +1,4 @@
-import Folder from "@mui/icons-material/Folder";
+import { MuiFolderIcon as Folder } from "@fiftyone/components";
 import { TextField } from "@mui/material";
 import FieldWrapper from "../FieldWrapper";
 import FileExplorer from "./FileExplorer";

@@ -1,6 +1,8 @@
-import { PillButton } from "@fiftyone/components";
+import {
+  PillButton,
+  MuiVisibilityOffIcon as VisibilityOff,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { VisibilityOff } from "@mui/icons-material";
 import React, { Suspense, useState } from "react";
 import {
   DefaultValue,

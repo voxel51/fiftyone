@@ -1,15 +1,18 @@
 import React, { useEffect } from "react";
-import { ThemeProvider, useTheme } from "@fiftyone/components";
+import {
+  ThemeProvider,
+  useTheme,
+  MuiCheckIcon as CheckIcon,
+  MuiCloseIcon as CloseIcon,
+  MuiEditIcon as EditIcon,
+  MuiContentCopyIcon as ContentCopyIcon,
+  MuiFileCopyIcon as FileCopyIcon,
+} from "@fiftyone/components";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot } from "recoil";
 import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
 import { usePanelId, usePanelState } from "@fiftyone/spaces";
 import useNotification from "@fiftyone/state/src/hooks/useNotification";
-import CheckIcon from "@mui/icons-material/Check";
-import CloseIcon from "@mui/icons-material/Close";
-import EditIcon from "@mui/icons-material/Edit";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import FileCopyIcon from "@mui/icons-material/FileCopy";
 import {
   Alert,
   Box,

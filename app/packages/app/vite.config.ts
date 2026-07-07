@@ -82,6 +82,13 @@ async function loadConfig() {
     resolve: {
       alias: {
         path: "path-browserify",
+        // @rjsf/mui imports a handful of @mui/icons-material modules at
+        // runtime (peer dependency). The package is no longer installed;
+        // serve those imports from voodo-backed compat icons instead.
+        "@mui/icons-material": path.resolve(
+          __dirname,
+          "src/shims/mui-icons-material",
+        ),
       },
       dedupe: ["react", "react-dom", "react/jsx-runtime"],
     },

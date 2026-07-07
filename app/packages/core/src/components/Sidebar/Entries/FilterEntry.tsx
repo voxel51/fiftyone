@@ -1,7 +1,12 @@
-import { Tooltip, useTheme } from "@fiftyone/components";
+import {
+  Tooltip,
+  useTheme,
+  MuiVisibilityIcon as VisibilityIcon,
+  MuiFilterListIcon as FilterList,
+  MuiSettingsIcon as Settings,
+  MuiVisibilityOffIcon as VisibilityOff,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { FilterList, Settings, VisibilityOff } from "@mui/icons-material";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
 import React from "react";
 import {

@@ -1,4 +1,4 @@
-import { Add } from "@mui/icons-material";
+import { MuiAddIcon as Add } from "@fiftyone/components";
 import styled from "styled-components";
 
 export const Box = styled.div`

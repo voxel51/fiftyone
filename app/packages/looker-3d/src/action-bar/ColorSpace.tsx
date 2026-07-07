@@ -1,6 +1,9 @@
-import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
+import {
+  PopoutSectionTitle,
+  TabOption,
+  MuiColorLensIcon as ColorLensIcon,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import ColorLensIcon from "@mui/icons-material/ColorLens";
 import { animated, useSpring } from "@react-spring/web";
 import { useCallback, useState } from "react";
 import { ChromePicker } from "react-color";

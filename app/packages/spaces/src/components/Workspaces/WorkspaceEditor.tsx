@@ -1,7 +1,12 @@
-import { Dialog, MuiButton, Selection, TextField } from "@fiftyone/components";
+import {
+  Dialog,
+  MuiButton,
+  Selection,
+  TextField,
+  MuiDeleteIcon as Delete,
+} from "@fiftyone/components";
 import { executeOperator } from "@fiftyone/operators";
 import { sessionSpaces, constants } from "@fiftyone/state";
-import { Delete } from "@mui/icons-material";
 import {
   Box,
   DialogActions,

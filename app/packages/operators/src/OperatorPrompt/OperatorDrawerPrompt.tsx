@@ -1,5 +1,8 @@
-import { Resizable, scrollable } from "@fiftyone/components";
-import { Close } from "@mui/icons-material";
+import {
+  Resizable,
+  scrollable,
+  MuiCloseIcon as Close,
+} from "@fiftyone/components";
 import { Box, IconButton, Stack } from "@mui/material";
 import { useState } from "react";
 import OperatorPromptBody from "../components/OperatorPromptBody";

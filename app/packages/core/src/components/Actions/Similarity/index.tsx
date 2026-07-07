@@ -1,7 +1,10 @@
-import { PillButton } from "@fiftyone/components";
+import {
+  PillButton,
+  MuiSearchIcon as Search,
+  MuiWallpaperIcon as Wallpaper,
+} from "@fiftyone/components";
 import { executeOperator } from "@fiftyone/operators";
 import { useOutsideClick, useSimilarityType } from "@fiftyone/state";
-import { Search, Wallpaper } from "@mui/icons-material";
 import { useCallback, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import Loading from "../Loading";

@@ -1,7 +1,10 @@
 import { Plot } from "@fiftyone/components/src/components/Plot";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { formatValueAsNumber } from "@fiftyone/utilities";
-import { InsertChartOutlined, TableChartOutlined } from "@mui/icons-material";
+import {
+  MuiInsertChartOutlinedIcon as InsertChartOutlined,
+  MuiTableChartOutlinedIcon as TableChartOutlined,
+} from "@fiftyone/components";
 import {
   Stack,
   TableBody,

@@ -1,4 +1,7 @@
-import { West as BackIcon, Close as CloseIcon } from "@mui/icons-material";
+import {
+  MuiWestIcon as BackIcon,
+  MuiCloseIcon as CloseIcon,
+} from "@fiftyone/components";
 import { Box, Typography } from "@mui/material";
 import styled from "styled-components";
 

@@ -1,4 +1,14 @@
-import { PillButton, useTheme } from "@fiftyone/components";
+import {
+  PillButton,
+  useTheme,
+  MuiVisibilityIcon as VisibilityIcon,
+  MuiAddIcon as Add,
+  MuiCheckIcon as Check,
+  MuiCloseIcon as Close,
+  MuiEditIcon as Edit,
+  MuiFilterListIcon as FilterList,
+  MuiRemoveIcon as Remove,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
   useClearActive,
@@ -12,15 +22,6 @@ import {
   numGroupFieldsFiltered,
   numGroupFieldsVisible,
 } from "@fiftyone/state/src/recoil/groupEntries";
-import {
-  Add,
-  Check,
-  Close,
-  Edit,
-  FilterList,
-  Remove,
-} from "@mui/icons-material";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import React, { useRef, useState } from "react";
 import {
   SetterOrUpdater,

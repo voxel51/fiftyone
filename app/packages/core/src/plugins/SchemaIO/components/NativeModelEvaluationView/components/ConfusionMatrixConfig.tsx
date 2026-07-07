@@ -1,5 +1,4 @@
-import { Dialog } from "@fiftyone/components";
-import { Settings } from "@mui/icons-material";
+import { Dialog, MuiSettingsIcon as Settings } from "@fiftyone/components";
 import {
   Autocomplete,
   Button,

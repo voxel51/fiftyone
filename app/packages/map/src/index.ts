@@ -1,6 +1,6 @@
 import { registerComponent, PluginComponentType } from "@fiftyone/plugins";
 import { BUILT_IN_PANEL_PRIORITY_CONST, Schema } from "@fiftyone/utilities";
-import MapIcon from "@mui/icons-material/Map";
+import { MuiMapIcon as MapIcon } from "@fiftyone/components";
 import { lazy } from "react";
 import MapTabIndicator from "./MapTabIndicator";
 

@@ -1,5 +1,7 @@
-import { IconButton } from "@fiftyone/components";
-import { Splitscreen } from "@mui/icons-material";
+import {
+  IconButton,
+  MuiSplitscreenIcon as Splitscreen,
+} from "@fiftyone/components";
 import { Layout } from "../enums";
 import { useSpaces } from "../hooks";
 import { SplitPanelButtonProps } from "../types";

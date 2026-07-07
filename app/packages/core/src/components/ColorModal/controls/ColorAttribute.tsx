@@ -8,8 +8,10 @@ import {
   LIST_FIELD,
   STRING_FIELD,
 } from "@fiftyone/utilities";
-import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
-import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
+import {
+  MuiKeyboardArrowDownOutlinedIcon as KeyboardArrowDownOutlinedIcon,
+  MuiKeyboardArrowUpOutlinedIcon as KeyboardArrowUpOutlinedIcon,
+} from "@fiftyone/components";
 import { cloneDeep } from "lodash";
 import React from "react";
 import { useRecoilValue } from "recoil";

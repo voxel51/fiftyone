@@ -1,4 +1,9 @@
-import { LoadingDots, useTheme } from "@fiftyone/components";
+import {
+  LoadingDots,
+  useTheme,
+  MuiKeyboardArrowDownIcon as KeyboardArrowDown,
+  MuiKeyboardArrowUpIcon as KeyboardArrowUp,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import type { Primitive, Schema } from "@fiftyone/utilities";
 import {
@@ -6,7 +11,6 @@ import {
   formatPrimitive,
   makePseudoField,
 } from "@fiftyone/utilities";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 import React, { Suspense, useMemo, useState } from "react";
 import {

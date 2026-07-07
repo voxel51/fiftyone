@@ -1,7 +1,10 @@
-import { TooltipProvider } from "@fiftyone/components";
+import {
+  TooltipProvider,
+  MuiMoreVertIcon as MoreVertIcon,
+  MuiDeleteOutlineIcon as DeleteOutline,
+  MuiEditOutlinedIcon as EditOutlined,
+} from "@fiftyone/components";
 import { useMutation } from "@fiftyone/state";
-import { DeleteOutline, EditOutlined } from "@mui/icons-material";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
 import {
   IconButton,
   ListItemIcon,

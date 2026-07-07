@@ -1,16 +1,16 @@
 import { useTrackEvent } from "@fiftyone/analytics";
-import { ErrorBoundary } from "@fiftyone/components";
+import {
+  ErrorBoundary,
+  MuiAutorenewIcon as Autorenew,
+  MuiDragHandleIcon as DragHandle,
+  MuiInsertChartOutlinedIcon as InsertChartOutlined,
+  MuiPercentIcon as Percent,
+  MuiTableChartOutlinedIcon as TableChartOutlined,
+} from "@fiftyone/components";
 import { Plot } from "@fiftyone/components/src/components/Plot";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId, usePanelStatePartial } from "@fiftyone/spaces";
 import { formatValueAsNumber, isNullish } from "@fiftyone/utilities";
-import {
-  Autorenew,
-  DragHandle,
-  InsertChartOutlined,
-  Percent,
-  TableChartOutlined,
-} from "@mui/icons-material";
 import {
   Box,
   Button,

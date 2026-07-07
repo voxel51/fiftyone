@@ -1,12 +1,12 @@
-import { Dialog } from "@fiftyone/components";
+import {
+  Dialog,
+  MuiInsertChartOutlinedIcon as InsertChartOutlined,
+  MuiSettingsIcon as Settings,
+  MuiTableChartOutlinedIcon as TableChartOutlined,
+} from "@fiftyone/components";
 import { Plot } from "@fiftyone/components/src/components/Plot";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { formatValueAsNumber } from "@fiftyone/utilities";
-import {
-  InsertChartOutlined,
-  Settings,
-  TableChartOutlined,
-} from "@mui/icons-material";
 import {
   Button,
   IconButton,

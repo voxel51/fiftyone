@@ -1,6 +1,5 @@
-import { PillButton } from "@fiftyone/components";
+import { PillButton, MuiCheckIcon as Check } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Check } from "@mui/icons-material";
 import type { MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";

@@ -18,6 +18,8 @@ vi.mock("@fiftyone/components", () => ({
     <button onClick={onClick}>{children}</button>
   ),
   scrollable: "mock-scrollable",
+  MuiFolderIcon: () => <span>folder-icon</span>,
+  MuiInsertDriveFileIcon: () => <span>file-icon</span>,
 }));
 
 vi.mock("@fiftyone/utilities", () => ({

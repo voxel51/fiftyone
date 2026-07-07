@@ -1,8 +1,8 @@
 import {
-  CancelOutlined,
-  EditOutlined,
-  SaveOutlined,
-} from "@mui/icons-material";
+  MuiCancelOutlinedIcon as CancelOutlined,
+  MuiEditOutlinedIcon as EditOutlined,
+  MuiSaveOutlinedIcon as SaveOutlined,
+} from "../Icons";
 import {
   CircularProgress,
   IconButton,

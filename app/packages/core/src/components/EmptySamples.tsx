@@ -1,6 +1,9 @@
-import { Button, useTheme } from "@fiftyone/components";
+import {
+  Button,
+  useTheme,
+  MuiClearAllIcon as ClearAll,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import ClearAll from "@mui/icons-material/ClearAll";
 import { Typography } from "@mui/material";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";

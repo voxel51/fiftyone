@@ -25,7 +25,6 @@
         "sortablejs": "^1.15.0"
     },
     "peerDependencies": {
-        "@mui/icons-material": "*",
         "@mui/material": "*",
         "@react-spring/web": "*",
         "react": "*",

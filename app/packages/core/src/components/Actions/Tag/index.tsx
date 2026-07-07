@@ -1,7 +1,9 @@
-import { PillButton } from "@fiftyone/components";
+import {
+  PillButton,
+  MuiLocalOfferIcon as LocalOffer,
+} from "@fiftyone/components";
 import type { Lookers } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { LocalOffer } from "@mui/icons-material";
 import type { MutableRefObject } from "react";
 import { useRef, useState } from "react";
 import { useRecoilValue } from "recoil";

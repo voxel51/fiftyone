@@ -8,7 +8,7 @@ import {
   PanelEventError,
   ServerError,
 } from "@fiftyone/utilities";
-import { Clear } from "@mui/icons-material";
+import { MuiClearIcon as Clear } from "../Icons";
 import classnames from "classnames";
 import React, {
   ComponentType,

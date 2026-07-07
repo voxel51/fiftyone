@@ -1,6 +1,8 @@
-import { useTheme } from "@fiftyone/components";
+import {
+  useTheme,
+  MuiDragIndicatorIcon as DragIndicator,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { DragIndicator } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";

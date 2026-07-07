@@ -4,9 +4,9 @@ import {
   scrollable,
   scrollableSm,
   useTheme,
+  MuiCloseIcon as CloseIcon,
 } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import CloseIcon from "@mui/icons-material/Close";
 import Typography from "@mui/material/Typography";
 import { Resizable } from "re-resizable";
 import React, { Fragment, useCallback, useRef, useState } from "react";

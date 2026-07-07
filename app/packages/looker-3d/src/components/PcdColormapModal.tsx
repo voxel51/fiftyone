@@ -1,11 +1,14 @@
-import { Button, Dialog } from "@fiftyone/components";
+import {
+  Button,
+  Dialog,
+  MuiDeleteOutlineIcon as DeleteOutlineIcon,
+} from "@fiftyone/components";
 import Selector from "@fiftyone/components/src/components/Selector/Selector";
 import { getRGBColorFromPool } from "@fiftyone/core/src/components/ColorModal/utils";
 import Input from "@fiftyone/core/src/components/Common/Input";
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { interpolateColorsHex, rgbStringToHex } from "@fiftyone/utilities";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import IconButton from "@mui/material/IconButton";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
