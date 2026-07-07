@@ -51,14 +51,44 @@ describe("fitRect", () => {
     expect(rect.y1).toBeCloseTo(9);
   });
 
-  it("gives degenerate extents a nonzero span", () => {
-    // The unit-span guard reaches the rect through the margin inset, so
-    // it needs margin > 0 — which MARGIN always is in the renderer
-    const rect = fitRect({ xMin: 5, xMax: 5, yMin: 5, yMax: 5 }, 100, 100, 10);
-    expect(rect.x1 - rect.x0).toBeGreaterThan(0);
-    expect(rect.y1 - rect.y0).toBeGreaterThan(0);
-    // Centered on the point
-    expect((rect.x0 + rect.x1) / 2).toBeCloseTo(5);
+  it("keeps one data-per-px scale in a wide viewport (contain-fit)", () => {
+    const rect = fitRect({ xMin: 0, xMax: 8, yMin: 0, yMax: 8 }, 200, 100, 10);
+    // Height is the tight axis: 80 usable px -> 0.1 data/px everywhere
+    expect((rect.y1 - rect.y0) / 100).toBeCloseTo(0.1);
+    expect((rect.x1 - rect.x0) / 200).toBeCloseTo(0.1);
+    // The slack axis centers the data
+    expect(rect.x0).toBeCloseTo(-6);
+    expect(rect.x1).toBeCloseTo(14);
+    expect(rect.y0).toBeCloseTo(-1);
+    expect(rect.y1).toBeCloseTo(9);
+  });
+
+  it("keeps wide data fully in view in a tall viewport", () => {
+    const bounds = { xMin: 0, xMax: 16, yMin: 0, yMax: 4 };
+    const rect = fitRect(bounds, 100, 200, 10);
+    // Width is the tight axis: 80 usable px -> 0.2 data/px
+    const perPx = (rect.x1 - rect.x0) / 100;
+    expect(perPx).toBeCloseTo(0.2);
+    expect((rect.y1 - rect.y0) / 200).toBeCloseTo(perPx);
+    // The whole extent sits inside the rect with at least the margin
+    expect((bounds.xMin - rect.x0) / perPx).toBeCloseTo(10);
+    expect((rect.y1 - bounds.yMax) / perPx).toBeGreaterThanOrEqual(10);
+  });
+
+  it("gives degenerate extents a nonzero span, margin or not", () => {
+    for (const margin of [0, 10]) {
+      const rect = fitRect(
+        { xMin: 5, xMax: 5, yMin: 5, yMax: 5 },
+        100,
+        100,
+        margin,
+      );
+      expect(rect.x1 - rect.x0).toBeGreaterThan(0);
+      expect(rect.y1 - rect.y0).toBeGreaterThan(0);
+      // Centered on the point
+      expect((rect.x0 + rect.x1) / 2).toBeCloseTo(5);
+      expect((rect.y0 + rect.y1) / 2).toBeCloseTo(5);
+    }
   });
 });
 

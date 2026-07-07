@@ -14,10 +14,12 @@ export interface Rect {
 }
 
 /**
- * Home view for the planar camera: the data extent mapped so it occupies
- * the viewport inset by `margin` px on every side. Axes scale
- * independently (embeddings have no meaningful aspect ratio). Degenerate
- * extents (single point) get a unit span so the math stays finite.
+ * Home view for the planar camera: the data extent contain-fit in the
+ * viewport, inset by `margin` px on every side. One shared data-per-px
+ * scale serves both axes, so the plot keeps its shape at any viewport
+ * size — the axis with slack gets centered padding instead of a
+ * stretch. Degenerate extents (single point) get a unit span so the
+ * math stays finite.
  */
 export function fitRect(
   bounds: Pick<Bounds, "xMin" | "xMax" | "yMin" | "yMax">,
@@ -30,14 +32,13 @@ export function fitRect(
   // Guard tiny viewports: never let the usable area hit zero
   const usableX = Math.max(width - 2 * margin, 1);
   const usableY = Math.max(height - 2 * margin, 1);
-  const perPxX = spanX / usableX;
-  const perPxY = spanY / usableY;
-  return {
-    x0: bounds.xMin - margin * perPxX,
-    x1: bounds.xMax + margin * perPxX,
-    y0: bounds.yMin - margin * perPxY,
-    y1: bounds.yMax + margin * perPxY,
-  };
+  // The tighter axis picks the scale, so the data always fits whole
+  const perPx = Math.max(spanX / usableX, spanY / usableY);
+  const cx = (bounds.xMin + bounds.xMax) / 2;
+  const cy = (bounds.yMin + bounds.yMax) / 2;
+  const halfX = (width * perPx) / 2;
+  const halfY = (height * perPx) / 2;
+  return { x0: cx - halfX, x1: cx + halfX, y0: cy - halfY, y1: cy + halfY };
 }
 
 /** Zoom level of a rect relative to home (1 = home, bigger = closer) */
