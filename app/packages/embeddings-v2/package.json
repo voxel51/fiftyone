@@ -23,6 +23,7 @@
         "three": "^0.182.0"
     },
     "devDependencies": {
+        "@testing-library/react": "^14.0.0",
         "@types/three": "^0.182.0",
         "vitest": "^3.2.6"
     },
