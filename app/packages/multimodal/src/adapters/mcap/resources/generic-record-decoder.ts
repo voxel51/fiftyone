@@ -1,6 +1,7 @@
 import { getProtobufMessageType } from "../decoders/foxglove/protobuf";
 import { asRecord } from "../decoders/foxglove/protobuf/records";
 import { decodeJsonRecord } from "../decoders/json/decode";
+import { rosRecordDecoderForChannel } from "../decoders/ros/wire";
 import type { McapIndexedReaderLike } from "../reader";
 
 /**
@@ -15,8 +16,9 @@ export interface McapGenericDecodableChannel {
  * Resolves a schema-shaped record decoder for one channel, independent
  * of the visualization decoder registry: protobuf channels decode
  * through the cached descriptor type, JSON channels through
- * `JSON.parse`. Returns null for encodings with no generic decode path
- * yet (e.g. cbor, ros1) so callers choose their own degrade.
+ * `JSON.parse`, and ROS channels through cached message readers. Returns
+ * null for encodings with no generic decode path yet (e.g. cbor) so
+ * callers choose their own degrade.
  */
 export function genericRecordDecoderForChannel(
   reader: McapIndexedReaderLike,
@@ -24,6 +26,11 @@ export function genericRecordDecoderForChannel(
 ): ((bytes: Uint8Array) => Record<string, unknown>) | null {
   if (channel.messageEncoding === "json") {
     return decodeJsonRecord;
+  }
+
+  const rosDecoder = rosRecordDecoderForChannel(reader, channel);
+  if (rosDecoder) {
+    return rosDecoder;
   }
 
   const schema = reader.schemasById.get(channel.schemaId);

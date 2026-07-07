@@ -1,5 +1,11 @@
 import { Enum, Type } from "protobufjs";
 import { decodeJsonRecord } from "../decoders/json/decode";
+import {
+  isRosMessageEncoding,
+  rosMessageDefinitionsForChannel,
+  rootRosMessageDefinition,
+  type RosMessageDefinition,
+} from "../decoders/ros/wire";
 import { protobufFromBinaryDescriptor } from "../mcap-support";
 import type { McapIndexedReaderLike } from "../reader";
 import type {
@@ -38,6 +44,25 @@ const PROTOBUF_NUMERIC_SCALAR_TYPES: ReadonlySet<string> = new Set([
   "bool",
 ]);
 
+const ROS_NUMERIC_SCALAR_TYPES: ReadonlySet<string> = new Set([
+  "byte",
+  "char",
+  "bool",
+  "boolean",
+  "int8",
+  "uint8",
+  "int16",
+  "uint16",
+  "int32",
+  "uint32",
+  "int64",
+  "uint64",
+  "float32",
+  "float64",
+  "float",
+  "double",
+]);
+
 /**
  * Enumerates numeric leaf field paths of a protobufjs message type in
  * declaration order. Repeated and map fields are skipped (v1 plots
@@ -50,6 +75,68 @@ export function walkProtobufNumericFields(
   const fields: McapNumericFieldDescriptor[] = [];
   walkProtobufType(type, "", new Set([type.fullName]), fields);
   return fields;
+}
+
+/**
+ * Enumerates numeric leaf field paths of parsed ROS message definitions.
+ * Arrays are skipped to match the v1 scalar-only plot contract; nested
+ * complex fields recurse up to `MAX_FIELD_DEPTH` with a cycle guard.
+ */
+export function walkRosNumericFields(
+  definitions: readonly RosMessageDefinition[],
+): readonly McapNumericFieldDescriptor[] {
+  const root = rootRosMessageDefinition(definitions);
+  if (!root) {
+    return [];
+  }
+  const definitionsByName = new Map(
+    definitions
+      .filter((definition) => definition.name)
+      .map((definition) => [definition.name ?? "", definition] as const),
+  );
+  const fields: McapNumericFieldDescriptor[] = [];
+  const visited = new Set(root.name ? [root.name] : []);
+  walkRosDefinition(root, definitionsByName, "", visited, fields);
+  return fields;
+}
+
+function walkRosDefinition(
+  definition: RosMessageDefinition,
+  definitionsByName: ReadonlyMap<string, RosMessageDefinition>,
+  prefix: string,
+  visited: Set<string>,
+  out: McapNumericFieldDescriptor[],
+): void {
+  if (visited.size > MAX_FIELD_DEPTH) {
+    return;
+  }
+
+  for (const field of definition.definitions) {
+    if (field.isConstant || field.isArray) {
+      continue;
+    }
+
+    const path = prefix ? `${prefix}.${field.name}` : field.name;
+    if (field.enumType) {
+      out.push({ path, valueType: "enum" });
+      continue;
+    }
+
+    if (field.isComplex) {
+      const nested = definitionsByName.get(field.type);
+      if (!nested || visited.has(field.type)) {
+        continue;
+      }
+      visited.add(field.type);
+      walkRosDefinition(nested, definitionsByName, path, visited, out);
+      visited.delete(field.type);
+      continue;
+    }
+
+    if (ROS_NUMERIC_SCALAR_TYPES.has(field.type)) {
+      out.push({ path, valueType: field.type });
+    }
+  }
 }
 
 function walkProtobufType(
@@ -138,11 +225,12 @@ function walkJsonRecord(
 
 /**
  * Enumerates plottable numeric fields for every requested topic.
- * Protobuf channels walk their binary descriptor (zero message reads);
- * JSON channels sample a few decoded messages; other encodings return
- * an explicit `unsupported` entry. Never throws per-topic — schema
- * parse or sampling failures degrade to an empty field list so one bad
- * channel cannot hide the rest.
+ * Protobuf channels walk their binary descriptor, ROS channels walk their
+ * parsed message definitions (both zero message reads), JSON channels
+ * sample a few decoded messages, and other encodings return an explicit
+ * `unsupported` entry. Never throws per topic; schema parse or sampling
+ * failures degrade to an empty field list so one bad channel cannot hide
+ * the rest.
  */
 export async function enumerateMcapNumericFields(
   reader: McapIndexedReaderLike,
@@ -189,10 +277,31 @@ export async function enumerateMcapNumericFields(
       continue;
     }
 
+    if (isRosMessageEncoding(channel.messageEncoding)) {
+      results.push({
+        encoding: channel.messageEncoding,
+        fields: rosFieldsForChannel(reader, channel),
+        topic,
+      });
+      continue;
+    }
+
     results.push({ encoding: "unsupported", fields: [], topic });
   }
 
   return results.sort((a, b) => a.topic.localeCompare(b.topic));
+}
+
+function rosFieldsForChannel(
+  reader: McapIndexedReaderLike,
+  channel: { readonly messageEncoding: string; readonly schemaId: number },
+): readonly McapNumericFieldDescriptor[] {
+  try {
+    const definitions = rosMessageDefinitionsForChannel(reader, channel);
+    return definitions ? walkRosNumericFields(definitions) : [];
+  } catch {
+    return [];
+  }
 }
 
 function protobufFieldsForSchema(

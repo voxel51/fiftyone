@@ -200,12 +200,11 @@ export interface McapNumericFieldDescriptor {
 /**
  * Plottable numeric fields for one topic. `encoding: "unsupported"`
  * marks topics whose message encoding has no numeric extraction path
- * yet (e.g. cbor, ros1) — surfaced so gaps stay legible instead of
- * silently absent.
+ * yet (e.g. cbor); surfaced so gaps stay legible instead of silently absent.
  */
 export interface McapTopicNumericFields {
   readonly topic: string;
-  readonly encoding: "protobuf" | "json" | "unsupported";
+  readonly encoding: "protobuf" | "json" | "ros1" | "cdr" | "unsupported";
 
   /**
    * True when fields were derived by sampling decoded messages (JSON

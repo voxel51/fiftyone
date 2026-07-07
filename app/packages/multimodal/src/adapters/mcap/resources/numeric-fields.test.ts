@@ -1,3 +1,5 @@
+import { parse as parseRosMessageDefinition } from "@foxglove/rosmsg";
+import { parseRos2idl } from "@foxglove/ros2idl-parser";
 import type { McapTypes } from "@mcap/core";
 import { Root, type INamespace } from "protobufjs";
 import { describe, expect, it, vi } from "vitest";
@@ -5,7 +7,30 @@ import {
   enumerateMcapNumericFields,
   jsonNumericFieldsFromSamples,
   walkProtobufNumericFields,
+  walkRosNumericFields,
 } from "./numeric-fields";
+
+const ROS_TELEMETRY_SCHEMA = `float64 speed
+bool armed
+geometry_msgs/Vector3 linear
+float32[] ranges
+string label
+===
+MSG: geometry_msgs/Vector3
+float64 x
+float64 y
+float64 z`;
+const ROS2_IDL_TELEMETRY_SCHEMA = `
+module test_msgs {
+  module msg {
+    struct Telemetry {
+      double speed;
+      boolean armed;
+      sequence<float> ranges;
+    };
+  };
+};
+`;
 
 describe("walkProtobufNumericFields", () => {
   it("collects numeric scalar leaves through nested messages", () => {
@@ -133,6 +158,29 @@ describe("jsonNumericFieldsFromSamples", () => {
   });
 });
 
+describe("walkRosNumericFields", () => {
+  it("collects numeric scalar leaves through nested ROS message definitions", () => {
+    expect(
+      walkRosNumericFields(parseRosMessageDefinition(ROS_TELEMETRY_SCHEMA)),
+    ).toEqual([
+      { path: "speed", valueType: "float64" },
+      { path: "armed", valueType: "bool" },
+      { path: "linear.x", valueType: "float64" },
+      { path: "linear.y", valueType: "float64" },
+      { path: "linear.z", valueType: "float64" },
+    ]);
+  });
+
+  it("collects numeric scalar leaves from ROS2 IDL definitions", () => {
+    expect(
+      walkRosNumericFields(parseRos2idl(ROS2_IDL_TELEMETRY_SCHEMA)),
+    ).toEqual([
+      { path: "speed", valueType: "float64" },
+      { path: "armed", valueType: "bool" },
+    ]);
+  });
+});
+
 describe("enumerateMcapNumericFields", () => {
   it("classifies json, and unsupported channels; samples json messages", async () => {
     const reader = createReader({
@@ -216,6 +264,125 @@ describe("enumerateMcapNumericFields", () => {
 
     expect(await enumerateMcapNumericFields(reader)).toEqual([
       { encoding: "protobuf", fields: [], topic: "/bad" },
+    ]);
+  });
+
+  it("walks ROS schemas without reading messages", async () => {
+    const readMessages = vi.fn(
+      (): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> => {
+        throw new Error("ROS schema enumeration should not sample messages");
+      },
+    );
+    const reader = createReader({
+      channelsById: new Map([
+        [
+          1,
+          createChannel({
+            id: 1,
+            messageEncoding: "ros1",
+            topic: "/ros1",
+          }),
+        ],
+        [
+          2,
+          createChannel({
+            id: 2,
+            messageEncoding: "cdr",
+            schemaId: 4,
+            topic: "/ros2",
+          }),
+        ],
+        [
+          3,
+          createChannel({
+            id: 3,
+            messageEncoding: "cdr",
+            schemaId: 5,
+            topic: "/idl",
+          }),
+        ],
+      ]),
+      readMessages,
+      schemasById: new Map([
+        [
+          3,
+          createSchema(new TextEncoder().encode(ROS_TELEMETRY_SCHEMA), {
+            encoding: "ros1msg",
+            name: "test_msgs/Telemetry",
+          }),
+        ],
+        [
+          4,
+          createSchema(new TextEncoder().encode(ROS_TELEMETRY_SCHEMA), {
+            encoding: "ros2msg",
+            id: 4,
+            name: "test_msgs/msg/Telemetry",
+          }),
+        ],
+        [
+          5,
+          createSchema(new TextEncoder().encode(ROS2_IDL_TELEMETRY_SCHEMA), {
+            encoding: "ros2idl",
+            id: 5,
+            name: "test_msgs/msg/Telemetry",
+          }),
+        ],
+      ]),
+    });
+
+    expect(await enumerateMcapNumericFields(reader)).toEqual([
+      {
+        encoding: "cdr",
+        fields: [
+          { path: "speed", valueType: "float64" },
+          { path: "armed", valueType: "bool" },
+        ],
+        topic: "/idl",
+      },
+      {
+        encoding: "ros1",
+        fields: [
+          { path: "speed", valueType: "float64" },
+          { path: "armed", valueType: "bool" },
+          { path: "linear.x", valueType: "float64" },
+          { path: "linear.y", valueType: "float64" },
+          { path: "linear.z", valueType: "float64" },
+        ],
+        topic: "/ros1",
+      },
+      {
+        encoding: "cdr",
+        fields: [
+          { path: "speed", valueType: "float64" },
+          { path: "armed", valueType: "bool" },
+          { path: "linear.x", valueType: "float64" },
+          { path: "linear.y", valueType: "float64" },
+          { path: "linear.z", valueType: "float64" },
+        ],
+        topic: "/ros2",
+      },
+    ]);
+    expect(readMessages).not.toHaveBeenCalled();
+  });
+
+  it("degrades an unparseable ROS schema to no fields", async () => {
+    const reader = createReader({
+      channelsById: new Map([
+        [1, createChannel({ id: 1, messageEncoding: "ros1", topic: "/bad" })],
+      ]),
+      schemasById: new Map([
+        [
+          3,
+          createSchema(new TextEncoder().encode("not a schema"), {
+            encoding: "ros1msg",
+            name: "broken/Message",
+          }),
+        ],
+      ]),
+    });
+
+    expect(await enumerateMcapNumericFields(reader)).toEqual([
+      { encoding: "ros1", fields: [], topic: "/bad" },
     ]);
   });
 });
