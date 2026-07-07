@@ -352,6 +352,9 @@ function transforms(edges: readonly TransformEdge[]): McapFrameTransformsState {
   return {
     error: null,
     frameIds,
+    getPlacementReadiness: () => ({ frameIds: [], status: "ready" }),
+    indexedDynamicRanges: () => [],
+    prefetchPlacement: () => undefined,
     resolve: (sourceFrameId, targetFrameId) => ({
       sourceFrameId,
       status: "missing",

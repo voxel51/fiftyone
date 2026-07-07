@@ -304,6 +304,12 @@ function FrameTransformsStatusDriver() {
     setFrameTransforms({
       error: status === "error" ? "bootstrap failed" : null,
       frameIds: [],
+      getPlacementReadiness: () => ({
+        frameIds: [],
+        status: status === "loading" ? "loading" : "ready",
+      }),
+      indexedDynamicRanges: () => [],
+      prefetchPlacement: () => undefined,
       resolve: (sourceFrameId, targetFrameId) => ({
         sourceFrameId,
         status: "missing",

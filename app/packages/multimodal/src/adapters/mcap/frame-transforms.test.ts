@@ -329,6 +329,18 @@ describe("MCAP frame transform store", () => {
     });
   });
 
+  it("exposes merged indexed dynamic ranges", () => {
+    const store = new McapFrameTransformStore();
+    store.addDynamic([], { endTimeNs: 20n, startTimeNs: 10n });
+    store.addDynamic([], { endTimeNs: 40n, startTimeNs: 20n });
+    store.addDynamic([], { endTimeNs: 70n, startTimeNs: 60n });
+
+    expect(store.indexedRanges()).toEqual([
+      { endTimeNs: 40n, startTimeNs: 10n },
+      { endTimeNs: 70n, startTimeNs: 60n },
+    ]);
+  });
+
   it("tracks known frame ids from loaded samples", () => {
     const store = createStore({
       dynamicRange: { endTimeNs: 20n, startTimeNs: 0n },

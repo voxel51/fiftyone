@@ -140,6 +140,9 @@ function transformsState(
   return {
     error: null,
     frameIds: [],
+    getPlacementReadiness: () => ({ frameIds: [], status: "ready" }),
+    indexedDynamicRanges: () => [],
+    prefetchPlacement: () => undefined,
     resolve,
     status: "ready",
     summarizeGraph: () => EMPTY_MCAP_FRAME_GRAPH_SUMMARY,

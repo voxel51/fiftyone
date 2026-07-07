@@ -124,6 +124,10 @@ export class McapFrameTransformStore {
     return range?.endTimeNs ?? null;
   }
 
+  indexedRanges(): readonly McapFrameTransformTimeRange[] {
+    return this.dynamicRanges;
+  }
+
   frameIds(): readonly string[] {
     return [...this.frameIdsById].sort(compareStrings);
   }

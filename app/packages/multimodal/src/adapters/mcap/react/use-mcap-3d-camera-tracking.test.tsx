@@ -720,6 +720,9 @@ function translationTransforms(
   return {
     error: null,
     frameIds: ["base_link", "lidar", "map"],
+    getPlacementReadiness: () => ({ frameIds: [], status: "ready" }),
+    indexedDynamicRanges: () => [],
+    prefetchPlacement: () => undefined,
     resolve: (sourceFrameId, targetFrameId) => ({
       sourceFrameId,
       status: "resolved",
@@ -740,6 +743,9 @@ function pendingTransforms(): McapFrameTransformsState {
   return {
     error: null,
     frameIds: ["base_link", "lidar", "map"],
+    getPlacementReadiness: () => ({ frameIds: ["lidar"], status: "loading" }),
+    indexedDynamicRanges: () => [],
+    prefetchPlacement: () => undefined,
     resolve: (sourceFrameId, targetFrameId) => ({
       sourceFrameId,
       status: "pending",
@@ -754,6 +760,12 @@ function missingTransforms(): McapFrameTransformsState {
   return {
     error: null,
     frameIds: [],
+    getPlacementReadiness: () => ({
+      frameIds: ["lidar"],
+      status: "definitiveMissing",
+    }),
+    indexedDynamicRanges: () => [],
+    prefetchPlacement: () => undefined,
     resolve: (sourceFrameId, targetFrameId) => ({
       sourceFrameId,
       status: "missing",

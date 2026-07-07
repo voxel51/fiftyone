@@ -14,6 +14,9 @@ const missingResolve: McapFrameTransformsState["resolve"] = (
 const IDLE_FRAME_TRANSFORMS: McapFrameTransformsState = {
   error: null,
   frameIds: [],
+  getPlacementReadiness: () => ({ frameIds: [], status: "ready" }),
+  indexedDynamicRanges: () => [],
+  prefetchPlacement: () => undefined,
   resolve: missingResolve,
   status: "idle",
   summarizeGraph: () => EMPTY_MCAP_FRAME_GRAPH_SUMMARY,

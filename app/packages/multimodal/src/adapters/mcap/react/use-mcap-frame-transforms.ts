@@ -2,6 +2,7 @@
 // components whose relay fragments cannot evaluate under vitest, and this
 // hook has direct unit tests.
 import { PlaybackStoreContext } from "@fiftyone/playback/src/lib/playback/playback-store-context";
+import { seekEventAtom } from "@fiftyone/playback/src/lib/playback/atoms";
 import {
   useCallback,
   useContext,
@@ -60,9 +61,35 @@ export type McapFrameGraphSummarizer = (
   dataBearingFrameIds: ReadonlySet<string>,
 ) => McapFrameGraphSummary;
 
+export type McapFramePlacementReadinessStatus =
+  | "ready"
+  | "loading"
+  | "needsFetch"
+  | "definitiveMissing";
+
+export interface McapFramePlacementReadiness {
+  readonly frameIds: readonly string[];
+  readonly status: McapFramePlacementReadinessStatus;
+}
+
+export type McapFramePlacementReadinessGetter = ({
+  frameIds,
+  targetFrameId,
+  timeNs,
+}: {
+  readonly frameIds: readonly string[];
+  readonly targetFrameId: string;
+  readonly timeNs?: bigint;
+}) => McapFramePlacementReadiness;
+
+export type McapFramePlacementPrefetcher = (timeNs: bigint) => void;
+
 export interface McapFrameTransformsState {
   readonly error: string | null;
   readonly frameIds: readonly string[];
+  readonly getPlacementReadiness: McapFramePlacementReadinessGetter;
+  readonly indexedDynamicRanges: () => readonly McapFrameTransformTimeRange[];
+  readonly prefetchPlacement: McapFramePlacementPrefetcher;
   readonly resolve: McapFrameTransformResolver;
   readonly status: McapFrameTransformsStatus;
   readonly summarizeGraph: McapFrameGraphSummarizer;
@@ -113,6 +140,9 @@ export function useMcapFrameTransforms({
   const inFlightPlacementRangesRef = useRef<
     readonly McapFrameTransformTimeRange[]
   >([]);
+  const surrenderedPlacementRangesRef = useRef<
+    readonly McapFrameTransformTimeRange[]
+  >([]);
   const inFlightRunwayRangesRef = useRef<
     readonly McapFrameTransformTimeRange[]
   >([]);
@@ -140,6 +170,7 @@ export function useMcapFrameTransforms({
     clearRetryTimeouts(retryTimeouts);
     runwayRangeKeyRef.current = null;
     inFlightPlacementRangesRef.current = [];
+    surrenderedPlacementRangesRef.current = [];
     inFlightRunwayRangesRef.current = [];
     retryCountRef.current.clear();
     sourceGenerationRef.current += 1;
@@ -151,7 +182,7 @@ export function useMcapFrameTransforms({
         ...IDLE_FRAME_TRANSFORMS_STATE,
         version: sourceGeneration,
       });
-      return;
+      return undefined;
     }
 
     if (dynamicRangeMode === "pending") {
@@ -160,7 +191,7 @@ export function useMcapFrameTransforms({
         status: "loading",
         version: sourceGeneration,
       });
-      return;
+      return undefined;
     }
 
     const store = new McapFrameTransformStore();
@@ -233,6 +264,148 @@ export function useMcapFrameTransforms({
       clearRetryTimeouts(retryTimeouts);
     };
   }, [activeTimeline, client, dynamicRangeMode, source]);
+
+  useEffect(() => {
+    if (!playbackStore) {
+      return undefined;
+    }
+    return playbackStore.sub(seekEventAtom, () => {
+      if (surrenderedPlacementRangesRef.current.length === 0) {
+        return;
+      }
+      surrenderedPlacementRangesRef.current = [];
+      setState((current) => ({
+        ...current,
+        version: current.version + 1,
+      }));
+    });
+  }, [playbackStore]);
+
+  const requestPlacementRangeForTime = useCallback(
+    (requestTimeNs: bigint) => {
+      const store = storeRef.current;
+      if (dynamicRangeMode === "pending") {
+        return;
+      }
+      if (!source || !store || state.status !== "ready") {
+        return;
+      }
+
+      if (
+        store.isTimeIndexed(requestTimeNs) ||
+        isTimeInRanges(inFlightPlacementRangesRef.current, requestTimeNs) ||
+        isTimeInRanges(surrenderedPlacementRangesRef.current, requestTimeNs)
+      ) {
+        return;
+      }
+
+      const requestedRange = dynamicPlacementRangeForTime(requestTimeNs);
+      const requestedRangeKey = frameTransformRangeKey(requestedRange);
+      const sourceGeneration = sourceGenerationRef.current;
+      const requestedRangeStartMs = mcapLatencyNowMs();
+      inFlightPlacementRangesRef.current = [
+        ...inFlightPlacementRangesRef.current,
+        requestedRange,
+      ];
+      markMcapLatencyEvent(
+        "frame transform current window request",
+        {
+          endTimeNs: requestedRange.endTimeNs,
+          startTimeNs: requestedRange.startTimeNs,
+        },
+        { onceKey: "first-frame-transform-current-window-request" },
+      );
+
+      client
+        .readFrameTransformWindow({
+          activeTimeline,
+          endTimeNs: requestedRange.endTimeNs,
+          source,
+          startTimeNs: requestedRange.startTimeNs,
+        })
+        .then((set) => {
+          if (sourceGeneration !== sourceGenerationRef.current) {
+            return;
+          }
+
+          storeRef.current?.addDynamic(set.samples, requestedRange);
+          recordMcapFrameTransformBandwidth({
+            operation: "transform-current-window",
+            set,
+          });
+          markMcapLatencyEvent(
+            "frame transform current window ready",
+            {
+              durationMs: mcapLatencyDurationMs(requestedRangeStartMs),
+              samples: set.samples.length,
+            },
+            { onceKey: "first-frame-transform-current-window-ready" },
+          );
+          retryCountRef.current.delete(requestedRangeKey);
+          inFlightPlacementRangesRef.current =
+            inFlightPlacementRangesRef.current.filter(
+              (candidate) => candidate !== requestedRange,
+            );
+          setState((current) => ({
+            ...current,
+            error: null,
+            version: current.version + 1,
+          }));
+        })
+        .catch((caughtError) => {
+          if (sourceGeneration !== sourceGenerationRef.current) {
+            return;
+          }
+
+          const retryCount = retryCountRef.current.get(requestedRangeKey) ?? 0;
+          setState((current) => ({
+            ...current,
+            error: mcapErrorMessage(caughtError),
+          }));
+          if (retryCount >= DYNAMIC_TRANSFORM_WINDOW_MAX_RETRIES) {
+            retryCountRef.current.delete(requestedRangeKey);
+            inFlightPlacementRangesRef.current =
+              inFlightPlacementRangesRef.current.filter(
+                (candidate) => candidate !== requestedRange,
+              );
+            surrenderedPlacementRangesRef.current = mergeTransformRanges([
+              ...surrenderedPlacementRangesRef.current,
+              requestedRange,
+            ]);
+            setState((current) => ({
+              ...current,
+              version: current.version + 1,
+            }));
+            return;
+          }
+
+          const nextRetryCount = retryCount + 1;
+          retryCountRef.current.set(requestedRangeKey, nextRetryCount);
+          const existingTimeout =
+            retryTimeoutsRef.current.get(requestedRangeKey);
+          if (existingTimeout) {
+            clearTimeout(existingTimeout);
+          }
+          const timeout = setTimeout(() => {
+            retryTimeoutsRef.current.delete(requestedRangeKey);
+            if (sourceGeneration !== sourceGenerationRef.current) {
+              return;
+            }
+
+            inFlightPlacementRangesRef.current =
+              inFlightPlacementRangesRef.current.filter(
+                (candidate) => candidate !== requestedRange,
+              );
+            setState((current) => ({
+              ...current,
+              version: current.version + 1,
+            }));
+          }, dynamicTransformRetryDelayMs(nextRetryCount));
+          retryTimeoutsRef.current.set(requestedRangeKey, timeout);
+        });
+    },
+    [activeTimeline, client, dynamicRangeMode, source, state.status],
+  );
 
   // Warm a short transform runway on the idle lane. This is intentionally
   // separate from the foreground placement window: if playback outruns the
@@ -373,127 +546,12 @@ export function useMcapFrameTransforms({
   // playback time when the resolver has not already indexed that time for the
   // current source.
   useLayoutEffect(() => {
-    const store = storeRef.current;
-    if (dynamicRangeMode === "pending") {
-      return;
+    if (timeNs !== undefined) {
+      requestPlacementRangeForTime(timeNs);
     }
-    if (!source || !store || state.status !== "ready" || timeNs === undefined) {
-      return;
-    }
-
-    if (
-      store.isTimeIndexed(timeNs) ||
-      isTimeInRanges(inFlightPlacementRangesRef.current, timeNs)
-    ) {
-      return;
-    }
-
-    const requestedRange = dynamicPlacementRangeForTime(timeNs);
-    const requestedRangeKey = frameTransformRangeKey(requestedRange);
-    const sourceGeneration = sourceGenerationRef.current;
-    const requestedRangeStartMs = mcapLatencyNowMs();
-    inFlightPlacementRangesRef.current = [
-      ...inFlightPlacementRangesRef.current,
-      requestedRange,
-    ];
-    markMcapLatencyEvent(
-      "frame transform current window request",
-      {
-        endTimeNs: requestedRange.endTimeNs,
-        startTimeNs: requestedRange.startTimeNs,
-      },
-      { onceKey: "first-frame-transform-current-window-request" },
-    );
-
-    client
-      .readFrameTransformWindow({
-        activeTimeline,
-        endTimeNs: requestedRange.endTimeNs,
-        source,
-        startTimeNs: requestedRange.startTimeNs,
-      })
-      .then((set) => {
-        if (sourceGeneration !== sourceGenerationRef.current) {
-          return;
-        }
-
-        storeRef.current?.addDynamic(set.samples, requestedRange);
-        recordMcapFrameTransformBandwidth({
-          operation: "transform-current-window",
-          set,
-        });
-        markMcapLatencyEvent(
-          "frame transform current window ready",
-          {
-            durationMs: mcapLatencyDurationMs(requestedRangeStartMs),
-            samples: set.samples.length,
-          },
-          { onceKey: "first-frame-transform-current-window-ready" },
-        );
-        retryCountRef.current.delete(requestedRangeKey);
-        inFlightPlacementRangesRef.current =
-          inFlightPlacementRangesRef.current.filter(
-            (candidate) => candidate !== requestedRange,
-          );
-        setState((current) => ({
-          ...current,
-          error: null,
-          version: current.version + 1,
-        }));
-      })
-      .catch((caughtError) => {
-        if (sourceGeneration !== sourceGenerationRef.current) {
-          return;
-        }
-
-        const retryCount = retryCountRef.current.get(requestedRangeKey) ?? 0;
-        setState((current) => ({
-          ...current,
-          error: mcapErrorMessage(caughtError),
-        }));
-        if (retryCount >= DYNAMIC_TRANSFORM_WINDOW_MAX_RETRIES) {
-          retryCountRef.current.delete(requestedRangeKey);
-          inFlightPlacementRangesRef.current =
-            inFlightPlacementRangesRef.current.filter(
-              (candidate) => candidate !== requestedRange,
-            );
-          return;
-        }
-
-        const nextRetryCount = retryCount + 1;
-        retryCountRef.current.set(requestedRangeKey, nextRetryCount);
-        const existingTimeout = retryTimeoutsRef.current.get(requestedRangeKey);
-        if (existingTimeout) {
-          clearTimeout(existingTimeout);
-        }
-        const timeout = setTimeout(() => {
-          retryTimeoutsRef.current.delete(requestedRangeKey);
-          if (sourceGeneration !== sourceGenerationRef.current) {
-            return;
-          }
-
-          inFlightPlacementRangesRef.current =
-            inFlightPlacementRangesRef.current.filter(
-              (candidate) => candidate !== requestedRange,
-            );
-          setState((current) => ({
-            ...current,
-            version: current.version + 1,
-          }));
-        }, dynamicTransformRetryDelayMs(nextRetryCount));
-        retryTimeoutsRef.current.set(requestedRangeKey, timeout);
-      });
 
     return undefined;
-  }, [
-    activeTimeline,
-    client,
-    dynamicRangeMode,
-    source,
-    state.status,
-    state.version,
-    timeNs,
-  ]);
+  }, [requestPlacementRangeForTime, state.version, timeNs]);
 
   // The store is mutated in place; `state.version` is the cache-busting signal
   // that tells memoized consumers (frameIds, resolve, downstream renderers) to
@@ -523,6 +581,90 @@ export function useMcapFrameTransforms({
       state.version,
     ],
   );
+  const getPlacementReadiness = useCallback<McapFramePlacementReadinessGetter>(
+    ({ frameIds: requestedFrameIds, targetFrameId, timeNs: requestTimeNs }) => {
+      const frameIds = uniqueNonEmptySortedFrameIds(requestedFrameIds).filter(
+        (frameId) => frameId !== targetFrameId,
+      );
+      if (
+        frameIds.length === 0 ||
+        !targetFrameId ||
+        requestTimeNs === undefined
+      ) {
+        return { frameIds: [], status: "ready" };
+      }
+
+      if (state.status === "loading" || dynamicRangeMode === "pending") {
+        return { frameIds, status: "loading" };
+      }
+
+      const store = storeRef.current;
+      if (!store || state.status === "error" || state.status === "idle") {
+        return { frameIds, status: "definitiveMissing" };
+      }
+
+      const pendingFrameIds: string[] = [];
+      const missingFrameIds: string[] = [];
+      for (const frameId of frameIds) {
+        const resolution = store.resolve({
+          ...(policy ? { policy } : {}),
+          sourceFrameId: frameId,
+          targetFrameId,
+          timeNs: requestTimeNs,
+        });
+        if (resolution.status === "resolved") {
+          continue;
+        }
+        if (resolution.status === "pending") {
+          pendingFrameIds.push(frameId);
+        } else {
+          missingFrameIds.push(frameId);
+        }
+      }
+
+      if (missingFrameIds.length > 0) {
+        return {
+          frameIds: missingFrameIds.sort(compareStrings),
+          status: "definitiveMissing",
+        };
+      }
+      if (pendingFrameIds.length === 0) {
+        return { frameIds: [], status: "ready" };
+      }
+      if (
+        isTimeInRanges(surrenderedPlacementRangesRef.current, requestTimeNs)
+      ) {
+        return {
+          frameIds: pendingFrameIds.sort(compareStrings),
+          status: "definitiveMissing",
+        };
+      }
+      if (isTimeInRanges(inFlightPlacementRangesRef.current, requestTimeNs)) {
+        return {
+          frameIds: pendingFrameIds.sort(compareStrings),
+          status: "loading",
+        };
+      }
+      return {
+        frameIds: pendingFrameIds.sort(compareStrings),
+        status: "needsFetch",
+      };
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      dynamicRangeMode,
+      policy?.boundaryClampNs,
+      policy?.maxInterpolationGapNs,
+      policy?.resolutionMode,
+      state.status,
+      state.version,
+    ],
+  );
+  const indexedDynamicRanges = useCallback(
+    () => storeRef.current?.indexedRanges() ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.version],
+  );
   const summarizeGraph = useCallback<McapFrameGraphSummarizer>(
     (dataBearingFrameIds) =>
       storeRef.current?.summarizeGraph(dataBearingFrameIds) ??
@@ -534,11 +676,23 @@ export function useMcapFrameTransforms({
     () => ({
       error: state.error,
       frameIds,
+      getPlacementReadiness,
+      indexedDynamicRanges,
+      prefetchPlacement: requestPlacementRangeForTime,
       resolve,
       status: state.status,
       summarizeGraph,
     }),
-    [frameIds, resolve, state.error, state.status, summarizeGraph],
+    [
+      frameIds,
+      getPlacementReadiness,
+      indexedDynamicRanges,
+      requestPlacementRangeForTime,
+      resolve,
+      state.error,
+      state.status,
+      summarizeGraph,
+    ],
   );
 }
 
@@ -639,6 +793,43 @@ function isTimeInRanges(
   return ranges.some(
     (range) => range.startTimeNs <= timeNs && timeNs <= range.endTimeNs,
   );
+}
+
+function uniqueNonEmptySortedFrameIds(
+  frameIds: readonly string[],
+): readonly string[] {
+  return [...new Set(frameIds.filter((frameId) => frameId.length > 0))].sort(
+    compareStrings,
+  );
+}
+
+function mergeTransformRanges(
+  ranges: readonly McapFrameTransformTimeRange[],
+): readonly McapFrameTransformTimeRange[] {
+  const sorted = [...ranges].sort((left, right) =>
+    compareBigInt(left.startTimeNs, right.startTimeNs),
+  );
+  const merged: McapFrameTransformTimeRange[] = [];
+  for (const range of sorted) {
+    const previous = merged.at(-1);
+    if (previous && range.startTimeNs <= previous.endTimeNs) {
+      merged[merged.length - 1] = {
+        endTimeNs: maxBigInt(previous.endTimeNs, range.endTimeNs),
+        startTimeNs: previous.startTimeNs,
+      };
+    } else {
+      merged.push(range);
+    }
+  }
+  return merged;
+}
+
+function compareStrings(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function compareBigInt(left: bigint, right: bigint): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function minBigInt(left: bigint, right: bigint): bigint {
