@@ -117,12 +117,15 @@ export const McapNetworkStatusPill: React.FC = () => {
 
   // The bandwidth-aware start gate is holding this play press: name the
   // wait so it reads as deliberate buffering, not a hang.
-  const bufferingLabel =
+  const gatedStart =
     playPending &&
     startupCushion !== null &&
     startupCushion.estimatedWaitSeconds >= 1
-      ? `buffering ~${Math.round(startupCushion.estimatedWaitSeconds)}s`
+      ? startupCushion
       : null;
+  const bufferingLabel = gatedStart
+    ? `buffering ~${Math.round(gatedStart.estimatedWaitSeconds)}s`
+    : null;
   const label = health.limited ? "Slow network" : "Bandwidth";
 
   return (
@@ -135,7 +138,21 @@ export const McapNetworkStatusPill: React.FC = () => {
           : "Observed MCAP transfer throughput."
       }
     >
-      <span className={styles.dot} aria-hidden="true" />
+      {gatedStart ? (
+        // The vessel fills with the runway actually buffered so far.
+        <span aria-hidden="true" className={styles.gauge}>
+          <span
+            className={styles.gaugeFill}
+            style={{
+              height: `${Math.round(
+                Math.min(1, Math.max(0, gatedStart.progressFraction)) * 100,
+              )}%`,
+            }}
+          />
+        </span>
+      ) : (
+        <span className={styles.dot} aria-hidden="true" />
+      )}
       {label}
       <span className={styles.throughput}>{throughputLabel}</span>
       {bufferingLabel ? (

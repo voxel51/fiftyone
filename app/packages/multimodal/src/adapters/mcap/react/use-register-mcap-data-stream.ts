@@ -2605,6 +2605,7 @@ function publishStartupCushionProgress({
     : 1;
   setMcapStartupCushionState(store, {
     estimatedWaitSeconds: cushion.estimatedWaitSeconds * missingFraction,
+    progressFraction: 1 - missingFraction,
     targetSeconds: cushion.cushionSeconds,
   });
 }

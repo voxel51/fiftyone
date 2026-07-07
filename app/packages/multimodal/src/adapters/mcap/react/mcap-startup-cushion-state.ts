@@ -18,6 +18,12 @@ export interface McapStartupCushionState {
   readonly estimatedWaitSeconds: number;
 
   /**
+   * Fraction of the required runway already covered, 0..1 — the honest
+   * fill level for gauge-style progress chrome.
+   */
+  readonly progressFraction: number;
+
+  /**
    * Content seconds of runway the gate requires for this start.
    */
   readonly targetSeconds: number;
@@ -46,15 +52,17 @@ export function setMcapStartupCushionState(
   if (previous === state) {
     return;
   }
-  // Integer-second display granularity: skip writes that can't change
-  // what the chip renders (statuses republish at RAF-adjacent rates
-  // during exactly the window this atom is populated).
+  // Display granularity (whole seconds, 2% fill steps): skip writes that
+  // can't change what the chip renders (statuses republish at
+  // RAF-adjacent rates during exactly the window this atom is populated).
   if (
     previous !== null &&
     state !== null &&
     previous.targetSeconds === state.targetSeconds &&
     Math.round(previous.estimatedWaitSeconds) ===
-      Math.round(state.estimatedWaitSeconds)
+      Math.round(state.estimatedWaitSeconds) &&
+    Math.round(previous.progressFraction * 50) ===
+      Math.round(state.progressFraction * 50)
   ) {
     return;
   }
