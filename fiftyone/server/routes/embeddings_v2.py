@@ -1,0 +1,602 @@
+"""
+FiftyOne Server ``/embeddings/v2`` routes.
+
+The v2 embeddings protocol is column-oriented: every per-point datum is a
+column in a single canonical order (the "wire order" — the row order of the
+brain run's points array), and a point's position in that order is its key.
+Geometry ships once per run as binary Float32 columns; view and filter
+changes ship compact bitmasks; per-point identity is resolved lazily (the
+raw id column, or index lookups server-side). See ``/embeddings`` for the
+legacy JSON protocol this replaces.
+
+Binary responses share a 16-byte little-endian header::
+
+    u32 magic "FOE1" | u16 version | u8 dtype | u8 width | u32 n | u32 flags
+
+followed by ``width`` contiguous columns of ``n`` values each (bitmask
+columns are ``ceil(n / 8)`` bytes, packed little bit-order).
+
+| Copyright 2017-2026, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+import logging
+import struct
+from urllib.parse import quote
+
+import numpy as np
+from starlette.endpoints import HTTPEndpoint
+from starlette.requests import Request
+from starlette.responses import Response
+
+import fiftyone.core.fields as fof
+import fiftyone.core.media as fom
+import fiftyone.core.stages as fos
+from fiftyone.core.utils import run_sync_task
+
+from fiftyone.server.decorators import route
+import fiftyone.server.utils as fosu
+import fiftyone.server.view as fosv
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
+
+logger = logging.getLogger(__name__)
+
+MAGIC = 0x464F4531  # "FOE1"
+VERSION = 1
+
+DTYPE_F32 = 1
+DTYPE_U16 = 2
+DTYPE_BITMASK = 3
+DTYPE_BYTES12 = 4
+
+# Header flags (masks responses)
+FLAG_ALL_VISIBLE = 1
+FLAG_ALL_MATCH = 2
+
+MAX_CATEGORIES = 100
+MISSING_CATEGORY = 0xFFFF
+
+# Lasso selections at or below this size become explicit id stages
+SELECT_STAGE_MAX = 10000
+
+_HEADER_FORMAT = "<IHBBII"
+
+_VISUALIZATION_CLS = "fiftyone.brain.visualization."
+
+
+def get_sample_filter(slices):
+    if slices:
+        return SampleFilter(group=GroupElementFilter(id=None, slices=slices))
+
+
+class EmbeddingsV2Runs(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        """Lists the dataset's visualization runs (cheap; run docs only)."""
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        dataset_name = data["datasetName"]
+        dataset = fosu.load_and_cache_dataset(dataset_name)
+
+        runs = []
+        for brain_key in dataset.list_brain_runs():
+            info = dataset.get_brain_info(brain_key)
+            config = info.config
+            if not config.cls.startswith(_VISUALIZATION_CLS):
+                continue
+
+            runs.append(
+                {
+                    "brainKey": brain_key,
+                    "method": getattr(config, "method", None),
+                    "dims": getattr(config, "num_dims", None),
+                    "patchesField": getattr(config, "patches_field", None),
+                    "pointsField": getattr(config, "points_field", None),
+                    "model": getattr(config, "model", None),
+                    "timestamp": _timestamp(info),
+                }
+            )
+
+        return {"runs": runs}
+
+
+class EmbeddingsV2RunInfo(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        """Loads a run's results and reports its column metadata.
+
+        The returned ``timestamp`` is the cache key for all column payloads
+        of this run.
+        """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        dataset, results = _load_results(data)
+        info = dataset.get_brain_info(data["brainKey"])
+        config = results.config
+
+        return {
+            "brainKey": data["brainKey"],
+            "n": len(results.points),
+            "dims": int(results.points.shape[1]),
+            "patchesField": config.patches_field,
+            "pointsField": config.points_field,
+            "method": getattr(config, "method", None),
+            "model": getattr(config, "model", None),
+            "timestamp": _timestamp(info),
+        }
+
+
+class EmbeddingsV2Geometry(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> Response:
+        """The full run's coordinates as planar Float32 columns, wire order."""
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        _, results = _load_results(data)
+        points = results.points
+        n, width = points.shape
+
+        columns = [
+            np.ascontiguousarray(points[:, i], dtype="<f4").tobytes()
+            for i in range(width)
+        ]
+        return _column_response(DTYPE_F32, width, n, b"".join(columns))
+
+
+class EmbeddingsV2Ids(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> Response:
+        """The run's ids as raw 12-byte ObjectIds, wire order.
+
+        ``kind="points"`` (default) returns each point's identity: label ids
+        for patches runs, sample ids otherwise. ``kind="samples"`` returns
+        the owning sample ids (only distinct from ``"points"`` for patches
+        runs).
+        """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        _, results = _load_results(data)
+        kind = data.get("kind", "points")
+
+        is_patches = results.config.patches_field is not None
+        if kind == "points" and is_patches:
+            ids = results.label_ids
+        else:
+            ids = results.sample_ids
+
+        payload = bytes.fromhex("".join(_as_list(ids)))
+        return _column_response(DTYPE_BYTES12, 1, len(ids), payload)
+
+
+class EmbeddingsV2ColorValues(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> Response:
+        """Per-point values for a color-by field, wire order.
+
+        Categorical fields encode as u16 class indices into the class list
+        reported by ``/embeddings/v2/color-meta`` (``0xFFFF`` = missing);
+        continuous fields encode as Float32 (``NaN`` = missing).
+        """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        dataset, results = _load_results(data)
+        style, values, classes = _color_data(dataset, results, data["field"])
+
+        n = len(values)
+        if style == "categorical":
+            index_by_label = {c["label"]: i for i, c in enumerate(classes)}
+            column = np.full(n, MISSING_CATEGORY, dtype="<u2")
+            for i, value in enumerate(values):
+                if value is not None:
+                    column[i] = index_by_label[value]
+
+            return _column_response(DTYPE_U16, 1, n, column.tobytes())
+
+        column = np.array(
+            [float(v) if v is not None else np.nan for v in values],
+            dtype="<f4",
+        )
+        return _column_response(DTYPE_F32, 1, n, column.tobytes())
+
+
+class EmbeddingsV2ColorMeta(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        """Legend metadata for a color-by field.
+
+        Class order matches the u16 indices in ``/embeddings/v2/color-values``.
+        """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        dataset, results = _load_results(data)
+        style, values, classes = _color_data(dataset, results, data["field"])
+
+        if style == "categorical":
+            return {"style": style, "classes": classes}
+
+        present = [float(v) for v in values if v is not None]
+        return {
+            "style": style,
+            "min": min(present) if present else None,
+            "max": max(present) if present else None,
+        }
+
+
+class EmbeddingsV2Masks(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> Response:
+        """Two bitmasks over the run, wire order.
+
+        ``visible``: the point's sample/patch is in the current view (view
+        stages) — drives rendering visibility. ``match``: the point survives
+        the sidebar filters / extended stages / extended selection — drives
+        dimming. Header flags: bit 0 = all visible, bit 1 = all match (the
+        corresponding column is all ones and may be skipped client-side).
+        """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        dataset, results = _load_results(data)
+        dataset_name = data["datasetName"]
+        stages = data.get("view", None)
+        filters = data.get("filters", None)
+        slices = data.get("slices", None)
+        extended_stages = data.get("extended", None)
+        extended_selection = data.get("extendedSelection", None)
+
+        n = len(results.points)
+        flags = 0
+
+        # Visible: membership in the view (stages only, no filters)
+        if stages:
+            view = fosv.get_view(
+                dataset,
+                stages=stages,
+                sample_filter=get_sample_filter(slices),
+            )
+            if view.view() != results.view.view():
+                results.use_view(view, allow_missing=True)
+
+            keep_inds = results._curr_keep_inds
+            if keep_inds is None:
+                visible = np.ones(n, dtype=bool)
+                flags |= FLAG_ALL_VISIBLE
+            else:
+                visible = np.zeros(n, dtype=bool)
+                visible[keep_inds] = True
+        else:
+            visible = np.ones(n, dtype=bool)
+            flags |= FLAG_ALL_VISIBLE
+
+        # Match: membership in the filtered/extended view
+        if filters or extended_stages or extended_selection:
+            match = _match_mask(
+                dataset_name,
+                results,
+                stages,
+                filters,
+                slices,
+                extended_stages,
+                extended_selection,
+            )
+        else:
+            match = np.ones(n, dtype=bool)
+            flags |= FLAG_ALL_MATCH
+
+        payload = np.packbits(visible, bitorder="little").tobytes()
+        payload += np.packbits(match, bitorder="little").tobytes()
+        return _column_response(DTYPE_BITMASK, 2, n, payload, flags=flags)
+
+
+class EmbeddingsV2LassoStage(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        """Resolves a lasso selection into a serialized view stage.
+
+        The selection arrives as either ``polygon`` (data-space vertices,
+        resolved against the run's points server-side) or ``indices``
+        (wire-order point indices). When a spatial index exists and the
+        view/plot sources match, polygon selections compile to a constant
+        size ``$geoWithin`` stage; otherwise an id-based stage is returned.
+        """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        dataset, results = _load_results(data)
+        dataset_name = data["datasetName"]
+        stages = data.get("view", None)
+        slices = data.get("slices", None)
+        polygon = data.get("polygon", None)
+        indices = data.get("indices", None)
+
+        patches_field = results.config.patches_field
+        points_field = results.config.points_field
+
+        view = fosv.get_view(
+            dataset_name,
+            stages=stages,
+            sample_filter=get_sample_filter(slices),
+        )
+
+        is_patches_view = view._is_patches
+        is_patches_plot = patches_field is not None
+        sources_equal = is_patches_view == is_patches_plot
+
+        if polygon is not None and points_field is not None and sources_equal:
+            # Constant-size spatial stage; no ids on the wire.
+            # $geoWithin can't filter nested arrays, so patches plots
+            # require a patches view here (sources_equal guarantees it)
+            if patches_field is not None:
+                _, points_field = view._get_label_field_path(
+                    patches_field, points_field
+                )
+
+            stage = fos.Mongo(
+                [
+                    {
+                        "$match": {
+                            points_field: {
+                                "$geoWithin": {"$polygon": list(polygon)}
+                            }
+                        }
+                    }
+                ]
+            )
+            d = stage._serialize(include_uuid=False)
+            return {
+                "_cls": d["_cls"],
+                "kwargs": dict(d["kwargs"]),
+                "count": None,
+            }
+
+        if polygon is not None:
+            points = results.points
+            inside = _points_in_polygon(
+                points[:, 0], points[:, 1], np.asarray(polygon, dtype=float)
+            )
+            (matched,) = np.nonzero(inside)
+        elif indices is not None:
+            matched = np.asarray(indices, dtype=int)
+        else:
+            raise ValueError("Either 'polygon' or 'indices' is required")
+
+        if is_patches_plot:
+            selected_ids = _as_list(results.label_ids[matched])
+        else:
+            selected_ids = _as_list(results.sample_ids[matched])
+
+        count = len(selected_ids)
+        if count > SELECT_STAGE_MAX:
+            logger.warning(
+                "Lasso selection of %d ids exceeds SELECT_STAGE_MAX (%d); "
+                "returning an id stage anyway",
+                count,
+                SELECT_STAGE_MAX,
+            )
+
+        if is_patches_view == is_patches_plot:
+            # Patch ids equal sample ids in a matching patches view
+            stage = fos.Select(selected_ids)
+        elif is_patches_plot:
+            stage = fos.MatchLabels(fields=[patches_field], ids=selected_ids)
+        else:
+            stage = fos.SelectBy("sample_id", selected_ids)
+
+        d = stage._serialize(include_uuid=False)
+        return {"_cls": d["_cls"], "kwargs": dict(d["kwargs"]), "count": count}
+
+
+class EmbeddingsV2SampleInfo(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        """Resolves a wire-order index to its sample's hover-card data.
+
+        ``mediaUrl`` is null when hover media is unavailable for the
+        sample's media type (anything but images).
+        """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        dataset, results = _load_results(data)
+        index = data["index"]
+        color_field = data.get("field", None)
+
+        n = len(results.points)
+        if not 0 <= index < n:
+            raise ValueError(f"Index {index} out of range [0, {n})")
+
+        sample_id = str(results.sample_ids[index])
+        point_id = sample_id
+        if results.config.patches_field is not None:
+            point_id = str(results.label_ids[index])
+
+        sample = dataset[sample_id]
+
+        media_url = None
+        if sample.media_type == fom.IMAGE:
+            media_url = f"/media?filepath={quote(sample.filepath)}"
+
+        value = None
+        if color_field is not None:
+            try:
+                value = sample.get_field(color_field)
+            except (AttributeError, KeyError, ValueError):
+                value = None
+
+        return {
+            "id": point_id,
+            "sampleId": sample_id,
+            "filepath": sample.filepath,
+            "mediaUrl": media_url,
+            "value": value,
+        }
+
+
+EmbeddingsV2Routes = [
+    ("/embeddings/v2/runs", EmbeddingsV2Runs),
+    ("/embeddings/v2/run-info", EmbeddingsV2RunInfo),
+    ("/embeddings/v2/geometry", EmbeddingsV2Geometry),
+    ("/embeddings/v2/ids", EmbeddingsV2Ids),
+    ("/embeddings/v2/color-values", EmbeddingsV2ColorValues),
+    ("/embeddings/v2/color-meta", EmbeddingsV2ColorMeta),
+    ("/embeddings/v2/masks", EmbeddingsV2Masks),
+    ("/embeddings/v2/lasso-stage", EmbeddingsV2LassoStage),
+    ("/embeddings/v2/sample-info", EmbeddingsV2SampleInfo),
+]
+
+
+def _load_results(data):
+    """Loads (dataset, results) for a request, with legacy-equivalent
+    caching (dataset TTL cache + per-dataset brain results cache).
+    """
+    dataset_name = data["datasetName"]
+    brain_key = data["brainKey"]
+
+    dataset = fosu.load_and_cache_dataset(dataset_name)
+    results = dataset.load_brain_results(brain_key)
+    if results is None:
+        raise ValueError(
+            f"Results for brain run with key '{brain_key}' are not yet "
+            "available"
+        )
+
+    return dataset, results
+
+
+def _column_response(dtype, width, n, payload, flags=0):
+    header = struct.pack(
+        _HEADER_FORMAT, MAGIC, VERSION, dtype, width, n, flags
+    )
+    return Response(
+        content=header + payload, media_type="application/octet-stream"
+    )
+
+
+def _timestamp(info):
+    timestamp = getattr(info, "timestamp", None)
+    return timestamp.isoformat() if timestamp is not None else None
+
+
+def _as_list(ids):
+    return ids.tolist() if isinstance(ids, np.ndarray) else list(ids)
+
+
+def _color_data(dataset, results, field_path):
+    """Resolves per-point color-by values (wire order) and the style
+    decision, mirroring the legacy endpoint's rules.
+    """
+    patches_field = results.config.patches_field
+    is_patches = patches_field is not None
+
+    ids = results.label_ids if is_patches else results.sample_ids
+    values = dataset._get_values_by_id(
+        field_path, _as_list(ids), link_field=patches_field
+    )
+
+    field = dataset.get_field(field_path)
+    if isinstance(field, fof.ListField):
+        values = [v[0] if v else None for v in values]
+        field = field.field
+
+    if isinstance(field, fof.FloatField):
+        return "continuous", values, None
+
+    distinct = {}
+    for value in values:
+        if value is not None:
+            distinct[value] = distinct.get(value, 0) + 1
+
+    if len(distinct) > MAX_CATEGORIES:
+        return "continuous", values, None
+
+    classes = [
+        {"label": label, "count": count}
+        for label, count in sorted(
+            distinct.items(), key=lambda item: (-item[1], str(item[0]))
+        )
+    ]
+    return "categorical", values, classes
+
+
+def _match_mask(
+    dataset_name,
+    results,
+    stages,
+    filters,
+    slices,
+    extended_stages,
+    extended_selection,
+):
+    """Membership of each run point in the filtered/extended view."""
+    patches_field = results.config.patches_field
+    is_patches_plot = patches_field is not None
+    ids = results.label_ids if is_patches_plot else results.sample_ids
+
+    matched_ids = None
+    if filters or extended_stages:
+        extended_view = fosv.get_view(
+            dataset_name,
+            stages=stages,
+            filters=filters,
+            extended_stages=extended_stages,
+            sample_filter=get_sample_filter(slices),
+        )
+        is_patches_view = extended_view._is_patches
+
+        if is_patches_plot and not is_patches_view:
+            _, id_path = extended_view._get_label_field_path(
+                patches_field, "id"
+            )
+            extended_ids = extended_view.values(id_path, unwind=True)
+        elif is_patches_view and not is_patches_plot:
+            extended_ids = extended_view.values("sample_id")
+        else:
+            extended_ids = extended_view.values("id")
+
+        matched_ids = set(extended_ids)
+
+    if extended_selection is not None:
+        selection = set(extended_selection)
+        matched_ids = (
+            matched_ids & selection if matched_ids is not None else selection
+        )
+
+    n = len(ids)
+    if matched_ids is None:
+        return np.ones(n, dtype=bool)
+
+    return np.fromiter(
+        (str(_id) in matched_ids for _id in _as_list(ids)), bool, count=n
+    )
+
+
+def _points_in_polygon(xs, ys, polygon):
+    """Vectorized ray-casting point-in-polygon test.
+
+    A horizontal ray from each point crosses polygon edges; an odd crossing
+    count means inside. Handles concave polygons.
+    """
+    inside = np.zeros(len(xs), dtype=bool)
+    px = polygon[:, 0]
+    py = polygon[:, 1]
+    j = len(polygon) - 1
+    # Horizontal edges (yi == yj) can't satisfy the crossing condition,
+    # but the division still evaluates — suppress the harmless warnings
+    with np.errstate(divide="ignore", invalid="ignore"):
+        for i in range(len(polygon)):
+            xi, yi = px[i], py[i]
+            xj, yj = px[j], py[j]
+            crosses = ((yi > ys) != (yj > ys)) & (
+                xs < (xj - xi) * (ys - yi) / (yj - yi) + xi
+            )
+            inside ^= crosses
+            j = i
+
+    return inside
