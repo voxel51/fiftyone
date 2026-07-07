@@ -60,7 +60,7 @@ export class KeyManager {
             //If there are no more sequences to match, return the command
             if (index === sequences.length - 1) {
               command = commands.find(({ command: cmd }) =>
-                cmd.isEnabled(),
+                cmd.isEnabled()
               )?.command;
               break;
             }
@@ -102,18 +102,10 @@ export class KeyManager {
     const command = this.commandRegistry.getCommand(commandId);
     if (!command) {
       throw new Error(
-        `The command id ${commandId} is not registered for binding ${sequence}`,
+        `The command id ${commandId} is not registered for binding ${sequence}`
       );
     }
 
-<<<<<<< HEAD
-    if (this.isKeyBound(keySequences)) {
-      throw new Error(
-        `The binding ${sequence} is already bound in this context`,
-      );
-    }
-    this.bindings.set(this.normalizeBinding(keySequences), command);
-=======
     const binding = this.normalizeBinding(keySequences);
     const commands = this.bindings.get(binding) ?? [];
     this.bindings.set(
@@ -125,9 +117,8 @@ export class KeyManager {
           priority,
           order: this.bindingOrder++,
         },
-      ].sort((a, b) => b.priority - a.priority || a.order - b.order),
+      ].sort((a, b) => b.priority - a.priority || a.order - b.order)
     );
->>>>>>> main
   }
 
   private normalizeBinding(sequences: KeySequence[]) {
@@ -138,11 +129,6 @@ export class KeyManager {
     return strings.join(",");
   }
 
-<<<<<<< HEAD
-  public unbindKey(sequence: string) {
-    this.bindings.delete(
-      this.normalizeBinding(KeyParser.parseBinding(sequence)),
-=======
   public unbindKey(sequence: string, commandId?: string) {
     const binding = this.normalizeBinding(KeyParser.parseBinding(sequence));
 
@@ -157,8 +143,7 @@ export class KeyManager {
     }
 
     const remainingCommands = commands.filter(
-      ({ command }) => command.id !== commandId,
->>>>>>> main
+      ({ command }) => command.id !== commandId
     );
     if (remainingCommands.length === 0) {
       this.bindings.delete(binding);
