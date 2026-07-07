@@ -195,6 +195,7 @@ html_theme_options = {
     "navbar_persistent": [],
     "footer_start": ["copyright"],
     "footer_end": ["footer-links"],
+    "show_nav_level": 0,
 }
 
 html_sidebars = {"**": ["algolia.html", "sidebar-nav"]}
