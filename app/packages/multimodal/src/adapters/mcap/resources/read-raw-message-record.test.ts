@@ -321,7 +321,7 @@ describe("readMcapRawMessageRecord", () => {
     expect(result.validUntilNs).toBe(9_000_000_000n);
   });
 
-  it("degrades to metadata for unsupported or schema-less encodings", async () => {
+  it("degrades to metadata when a ROS schema is unavailable", async () => {
     const reader = createReader({
       channel: createChannel({ messageEncoding: "ros1", topic: "/imu" }),
       messages: [
@@ -347,10 +347,66 @@ describe("readMcapRawMessageRecord", () => {
     });
 
     expect(result.status).toBe("unsupported");
+    expect(result.decodeUnavailableReason).toBe("schema-unavailable");
     expect(result.messageEncoding).toBe("ros1");
     expect(result.schemaName).toBe("sensor_msgs/Imu");
     expect(result.sequence).toBe(7);
     expect(result.encodedPayloadBytes).toBe(3);
+    expect(result.root).toBeUndefined();
+  });
+
+  it("degrades to metadata when protobuf schema resolution fails", async () => {
+    const reader = createReader({
+      messages: [
+        createMessage(new Uint8Array([1, 2, 3]), {
+          logTime: 1_000_000_000n,
+        }),
+      ],
+      schema: createSchema(new Uint8Array([1, 2, 3]), {
+        encoding: "protobuf",
+        name: "broken.Message",
+      }),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 1_000_000_000n,
+        topic: "/telemetry",
+      },
+      timeline,
+    });
+
+    expect(result.status).toBe("unsupported");
+    expect(result.decodeUnavailableReason).toBe("schema-unavailable");
+    expect(result.messageEncoding).toBe("protobuf");
+    expect(result.root).toBeUndefined();
+  });
+
+  it("degrades to metadata for unsupported encodings", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "cbor", topic: "/binary" }),
+      messages: [
+        createMessage(new Uint8Array([1, 2, 3]), {
+          logTime: 1_000_000_000n,
+        }),
+      ],
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 1_000_000_000n,
+        topic: "/binary",
+      },
+      timeline,
+    });
+
+    expect(result.status).toBe("unsupported");
+    expect(result.decodeUnavailableReason).toBe("unsupported-encoding");
+    expect(result.messageEncoding).toBe("cbor");
     expect(result.root).toBeUndefined();
   });
 

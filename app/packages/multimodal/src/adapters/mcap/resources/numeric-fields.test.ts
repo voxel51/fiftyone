@@ -2,6 +2,7 @@ import { parse as parseRosMessageDefinition } from "@foxglove/rosmsg";
 import { parseRos2idl } from "@foxglove/ros2idl-parser";
 import type { McapTypes } from "@mcap/core";
 import { Root, type INamespace } from "protobufjs";
+import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it, vi } from "vitest";
 import {
   enumerateMcapNumericFields,
@@ -215,8 +216,14 @@ describe("enumerateMcapNumericFields", () => {
 
     const topics = await enumerateMcapNumericFields(reader);
     expect(topics).toEqual([
-      { encoding: "unsupported", fields: [], topic: "/exotic" },
       {
+        availability: "unsupported-encoding",
+        encoding: "unsupported",
+        fields: [],
+        topic: "/exotic",
+      },
+      {
+        availability: "ready",
         encoding: "json",
         fields: [
           { path: "speed", valueType: "number" },
@@ -263,7 +270,80 @@ describe("enumerateMcapNumericFields", () => {
     });
 
     expect(await enumerateMcapNumericFields(reader)).toEqual([
-      { encoding: "protobuf", fields: [], topic: "/bad" },
+      {
+        availability: "schema-unavailable",
+        encoding: "protobuf",
+        fields: [],
+        topic: "/bad",
+      },
+    ]);
+  });
+
+  it("marks decodable schemas with no numeric leaves", async () => {
+    const reader = createReader({
+      channelsById: new Map([
+        [
+          1,
+          createChannel({
+            id: 1,
+            messageEncoding: "protobuf",
+            topic: "/proto-text",
+          }),
+        ],
+        [
+          2,
+          createChannel({
+            id: 2,
+            messageEncoding: "ros1",
+            schemaId: 4,
+            topic: "/ros-text",
+          }),
+        ],
+      ]),
+      schemasById: new Map([
+        [
+          3,
+          createSchema(
+            protobufDescriptorData(
+              Root.fromJSON({
+                nested: {
+                  test: {
+                    nested: {
+                      TextOnly: {
+                        fields: { label: { id: 1, type: "string" } },
+                      },
+                    },
+                  },
+                },
+              }),
+            ),
+            { name: "test.TextOnly" },
+          ),
+        ],
+        [
+          4,
+          createSchema(new TextEncoder().encode("string label"), {
+            encoding: "ros1msg",
+            id: 4,
+            name: "test_msgs/TextOnly",
+          }),
+        ],
+      ]),
+    });
+
+    expect(await enumerateMcapNumericFields(reader)).toEqual([
+      {
+        availability: "no-numeric-fields",
+        encoding: "protobuf",
+        fields: [],
+        topic: "/proto-text",
+      },
+      {
+        availability: "no-numeric-fields",
+        encoding: "ros1",
+        fields: [],
+        topic: "/ros-text",
+      },
     ]);
   });
 
@@ -332,6 +412,7 @@ describe("enumerateMcapNumericFields", () => {
 
     expect(await enumerateMcapNumericFields(reader)).toEqual([
       {
+        availability: "ready",
         encoding: "cdr",
         fields: [
           { path: "speed", valueType: "float64" },
@@ -340,6 +421,7 @@ describe("enumerateMcapNumericFields", () => {
         topic: "/idl",
       },
       {
+        availability: "ready",
         encoding: "ros1",
         fields: [
           { path: "speed", valueType: "float64" },
@@ -351,6 +433,7 @@ describe("enumerateMcapNumericFields", () => {
         topic: "/ros1",
       },
       {
+        availability: "ready",
         encoding: "cdr",
         fields: [
           { path: "speed", valueType: "float64" },
@@ -382,10 +465,60 @@ describe("enumerateMcapNumericFields", () => {
     });
 
     expect(await enumerateMcapNumericFields(reader)).toEqual([
-      { encoding: "ros1", fields: [], topic: "/bad" },
+      {
+        availability: "schema-unavailable",
+        encoding: "ros1",
+        fields: [],
+        topic: "/bad",
+      },
+    ]);
+  });
+
+  it("marks sampled JSON topics with no numeric values", async () => {
+    const reader = createReader({
+      channelsById: new Map([
+        [
+          1,
+          createChannel({
+            id: 1,
+            messageEncoding: "json",
+            topic: "/labels",
+          }),
+        ],
+      ]),
+      readMessages: vi.fn(async function* (args?: {
+        readonly topics?: readonly string[];
+      }) {
+        if (args?.topics?.includes("/labels")) {
+          yield createMessage(jsonBytes({ label: "idle" }), { channelId: 1 });
+        }
+      }),
+      schemasById: new Map(),
+    });
+
+    expect(await enumerateMcapNumericFields(reader)).toEqual([
+      {
+        availability: "no-numeric-fields",
+        encoding: "json",
+        fields: [],
+        sampled: true,
+        topic: "/labels",
+      },
     ]);
   });
 });
+
+function protobufDescriptorData(root: Root): Uint8Array {
+  return descriptor.FileDescriptorSet.encode(
+    (
+      root as unknown as {
+        toDescriptor(
+          version: string,
+        ): Parameters<typeof descriptor.FileDescriptorSet.encode>[0];
+      }
+    ).toDescriptor("proto3"),
+  ).finish();
+}
 
 function createReader({
   channelsById,

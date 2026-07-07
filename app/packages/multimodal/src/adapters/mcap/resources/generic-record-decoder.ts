@@ -1,8 +1,12 @@
 import { getProtobufMessageType } from "../decoders/foxglove/protobuf";
 import { asRecord } from "../decoders/foxglove/protobuf/records";
 import { decodeJsonRecord } from "../decoders/json/decode";
-import { rosRecordDecoderForChannel } from "../decoders/ros/wire";
+import {
+  isRosMessageEncoding,
+  rosRecordDecoderForChannel,
+} from "../decoders/ros/wire";
 import type { McapIndexedReaderLike } from "../reader";
+import type { McapDecodeUnavailableReason } from "../types";
 
 /**
  * Channel summary fields needed to resolve a generic record decoder.
@@ -12,39 +16,76 @@ export interface McapGenericDecodableChannel {
   readonly schemaId: number;
 }
 
+export type McapGenericRecordDecoderResolution =
+  | {
+      readonly decodeRecord: (bytes: Uint8Array) => Record<string, unknown>;
+      readonly status: "ok";
+    }
+  | {
+      readonly reason: McapDecodeUnavailableReason;
+      readonly status: "unavailable";
+    };
+
 /**
  * Resolves a schema-shaped record decoder for one channel, independent
  * of the visualization decoder registry: protobuf channels decode
  * through the cached descriptor type, JSON channels through
  * `JSON.parse`, and ROS channels through cached message readers. Returns
- * null for encodings with no generic decode path yet (e.g. cbor) so
- * callers choose their own degrade.
+ * null when the decoder is unavailable; callers needing the reason should
+ * use `genericRecordDecoderResolutionForChannel`.
  */
 export function genericRecordDecoderForChannel(
   reader: McapIndexedReaderLike,
   channel: McapGenericDecodableChannel,
 ): ((bytes: Uint8Array) => Record<string, unknown>) | null {
+  const resolution = genericRecordDecoderResolutionForChannel(reader, channel);
+  return resolution.status === "ok" ? resolution.decodeRecord : null;
+}
+
+/**
+ * Resolves a generic record decoder and, when unavailable, explains
+ * whether the blocker is the message encoding itself or an unusable schema.
+ */
+export function genericRecordDecoderResolutionForChannel(
+  reader: McapIndexedReaderLike,
+  channel: McapGenericDecodableChannel,
+): McapGenericRecordDecoderResolution {
   if (channel.messageEncoding === "json") {
-    return decodeJsonRecord;
+    return { decodeRecord: decodeJsonRecord, status: "ok" };
   }
 
   const rosDecoder = rosRecordDecoderForChannel(reader, channel);
   if (rosDecoder) {
-    return rosDecoder;
+    return { decodeRecord: rosDecoder, status: "ok" };
+  }
+  if (isRosMessageEncoding(channel.messageEncoding)) {
+    return { reason: "schema-unavailable", status: "unavailable" };
   }
 
   const schema = reader.schemasById.get(channel.schemaId);
-  if (
-    channel.messageEncoding === "protobuf" &&
-    schema?.encoding === "protobuf" &&
-    schema.name &&
-    schema.data.byteLength > 0
-  ) {
-    const messageType = getProtobufMessageType(schema.data, schema.name);
-    return (bytes) => asRecord(messageType.decode(bytes));
+  if (channel.messageEncoding === "protobuf") {
+    if (
+      schema?.encoding !== "protobuf" ||
+      !schema.name ||
+      schema.data.byteLength === 0
+    ) {
+      return { reason: "schema-unavailable", status: "unavailable" };
+    }
+
+    let messageType: ReturnType<typeof getProtobufMessageType>;
+    try {
+      messageType = getProtobufMessageType(schema.data, schema.name);
+    } catch {
+      return { reason: "schema-unavailable", status: "unavailable" };
+    }
+
+    return {
+      decodeRecord: (bytes) => asRecord(messageType.decode(bytes)),
+      status: "ok",
+    };
   }
 
-  return null;
+  return { reason: "unsupported-encoding", status: "unavailable" };
 }
 
 /**

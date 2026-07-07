@@ -16,10 +16,10 @@ import settingsStyles from "./McapTile.settings.module.css";
 /**
  * Settings sidebar for the plot tile: every topic with numeric leaf
  * fields, one checkbox per field, enabled series carrying their color
- * swatch. Topics whose encoding has no extraction path yet are listed
- * disabled — a legible gap beats silent absence. Renders through the
- * tiling settings portal, so it only appears while this tile is
- * focused.
+ * swatch. Topics without plottable fields are listed disabled with an
+ * availability reason — a legible gap beats silent absence. Renders
+ * through the tiling settings portal, so it only appears while this tile
+ * is focused.
  */
 const McapPlotTileSettings: React.FC = () => {
   const { enumeration } = useMcapNumericSeriesContext();
@@ -97,22 +97,30 @@ function PlotTopicGroup({
     return byPath;
   }, [seriesConfigs, topic.topic]);
 
-  if (topic.encoding === "unsupported") {
+  if (topic.availability !== "ready") {
+    const copy = unavailableTopicCopy(topic.availability);
     return (
       <McapSidebarGroup
         defaultExpanded={false}
-        summary="not supported"
+        summary={copy.summary}
         title={topic.topic}
       >
-        <span className={settingsStyles.emptyText}>
-          This topic&apos;s message encoding is not plottable yet
-        </span>
+        <span className={settingsStyles.emptyText}>{copy.message}</span>
       </McapSidebarGroup>
     );
   }
 
   if (topic.fields.length === 0) {
-    return null;
+    const copy = unavailableTopicCopy("no-numeric-fields");
+    return (
+      <McapSidebarGroup
+        defaultExpanded={false}
+        summary={copy.summary}
+        title={topic.topic}
+      >
+        <span className={settingsStyles.emptyText}>{copy.message}</span>
+      </McapSidebarGroup>
+    );
   }
 
   return (
@@ -154,6 +162,30 @@ function PlotTopicGroup({
       </div>
     </McapSidebarGroup>
   );
+}
+
+function unavailableTopicCopy(
+  availability: Exclude<McapTopicNumericFields["availability"], "ready">,
+): { readonly message: string; readonly summary: string } {
+  switch (availability) {
+    case "schema-unavailable":
+      return {
+        message:
+          "This topic's schema could not be read, so numeric fields cannot be listed",
+        summary: "schema unavailable",
+      };
+    case "unsupported-encoding":
+      return {
+        message: "This topic's message encoding is not plottable yet",
+        summary: "encoding unsupported",
+      };
+    case "no-numeric-fields":
+      return {
+        message:
+          "This topic decodes, but its schema has no scalar numeric fields to plot",
+        summary: "no numeric fields",
+      };
+  }
 }
 
 /**

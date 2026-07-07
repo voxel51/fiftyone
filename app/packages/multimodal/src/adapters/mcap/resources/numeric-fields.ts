@@ -11,6 +11,7 @@ import type { McapIndexedReaderLike } from "../reader";
 import type {
   McapEnumerateNumericFieldsRequest,
   McapNumericFieldDescriptor,
+  McapNumericFieldAvailability,
   McapTopicNumericFields,
 } from "../types";
 
@@ -228,9 +229,9 @@ function walkJsonRecord(
  * Protobuf channels walk their binary descriptor, ROS channels walk their
  * parsed message definitions (both zero message reads), JSON channels
  * sample a few decoded messages, and other encodings return an explicit
- * `unsupported` entry. Never throws per topic; schema parse or sampling
- * failures degrade to an empty field list so one bad channel cannot hide
- * the rest.
+ * unsupported-encoding entry. Never throws per topic; schema parse or
+ * sampling failures degrade to an empty field list with an availability
+ * reason so one bad channel cannot hide the rest.
  */
 export async function enumerateMcapNumericFields(
   reader: McapIndexedReaderLike,
@@ -259,18 +260,34 @@ export async function enumerateMcapNumericFields(
       schema.name &&
       schema.data.byteLength > 0
     ) {
+      const { availability, fields } = protobufFieldsForSchema(
+        schema.data,
+        schema.name,
+      );
       results.push({
+        availability,
         encoding: "protobuf",
-        fields: protobufFieldsForSchema(schema.data, schema.name),
+        fields,
+        topic,
+      });
+      continue;
+    }
+    if (channel.messageEncoding === "protobuf") {
+      results.push({
+        availability: "schema-unavailable",
+        encoding: "protobuf",
+        fields: [],
         topic,
       });
       continue;
     }
 
     if (channel.messageEncoding === "json") {
+      const fields = await jsonFieldsForTopic(reader, topic);
       results.push({
+        availability: availabilityForFields(fields),
         encoding: "json",
-        fields: await jsonFieldsForTopic(reader, topic),
+        fields,
         sampled: true,
         topic,
       });
@@ -278,15 +295,22 @@ export async function enumerateMcapNumericFields(
     }
 
     if (isRosMessageEncoding(channel.messageEncoding)) {
+      const { availability, fields } = rosFieldsForChannel(reader, channel);
       results.push({
+        availability,
         encoding: channel.messageEncoding,
-        fields: rosFieldsForChannel(reader, channel),
+        fields,
         topic,
       });
       continue;
     }
 
-    results.push({ encoding: "unsupported", fields: [], topic });
+    results.push({
+      availability: "unsupported-encoding",
+      encoding: "unsupported",
+      fields: [],
+      topic,
+    });
   }
 
   return results.sort((a, b) => a.topic.localeCompare(b.topic));
@@ -295,27 +319,44 @@ export async function enumerateMcapNumericFields(
 function rosFieldsForChannel(
   reader: McapIndexedReaderLike,
   channel: { readonly messageEncoding: string; readonly schemaId: number },
-): readonly McapNumericFieldDescriptor[] {
+): {
+  readonly availability: McapNumericFieldAvailability;
+  readonly fields: readonly McapNumericFieldDescriptor[];
+} {
   try {
     const definitions = rosMessageDefinitionsForChannel(reader, channel);
-    return definitions ? walkRosNumericFields(definitions) : [];
+    if (!definitions) {
+      return { availability: "schema-unavailable", fields: [] };
+    }
+    const fields = walkRosNumericFields(definitions);
+    return { availability: availabilityForFields(fields), fields };
   } catch {
-    return [];
+    return { availability: "schema-unavailable", fields: [] };
   }
 }
 
 function protobufFieldsForSchema(
   schemaData: Uint8Array,
   schemaName: string,
-): readonly McapNumericFieldDescriptor[] {
+): {
+  readonly availability: McapNumericFieldAvailability;
+  readonly fields: readonly McapNumericFieldDescriptor[];
+} {
   try {
     const root = protobufFromBinaryDescriptor(schemaData);
-    return walkProtobufNumericFields(root.lookupType(schemaName));
+    const fields = walkProtobufNumericFields(root.lookupType(schemaName));
+    return { availability: availabilityForFields(fields), fields };
   } catch {
     // Unparseable descriptor — list the topic without fields rather
     // than failing the whole enumeration.
-    return [];
+    return { availability: "schema-unavailable", fields: [] };
   }
+}
+
+function availabilityForFields(
+  fields: readonly McapNumericFieldDescriptor[],
+): McapNumericFieldAvailability {
+  return fields.length > 0 ? "ready" : "no-numeric-fields";
 }
 
 async function jsonFieldsForTopic(
