@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MCAP_PLOT_SERIES_PALETTE,
+  addMcapPlotSeriesToTile,
   nextPlotSeriesColor,
 } from "./mcap-plot-tile-state";
 
@@ -45,6 +46,61 @@ describe("nextPlotSeriesColor", () => {
       MCAP_PLOT_SERIES_PALETTE[
         current.length % MCAP_PLOT_SERIES_PALETTE.length
       ],
+    );
+  });
+});
+
+describe("addMcapPlotSeriesToTile", () => {
+  it("adds a new series to an empty tile", () => {
+    expect(addMcapPlotSeriesToTile({}, "plot-1", "/odom", "speed")).toEqual({
+      "plot-1": [
+        {
+          color: MCAP_PLOT_SERIES_PALETTE[0],
+          fieldPath: "speed",
+          topic: "/odom",
+        },
+      ],
+    });
+  });
+
+  it("keeps existing series and assigns the next available color", () => {
+    const previous = {
+      "plot-1": [
+        {
+          color: MCAP_PLOT_SERIES_PALETTE[2],
+          fieldPath: "speed",
+          topic: "/odom",
+        },
+      ],
+    };
+
+    expect(
+      addMcapPlotSeriesToTile(previous, "plot-1", "/odom", "accel"),
+    ).toEqual({
+      "plot-1": [
+        previous["plot-1"][0],
+        {
+          color: MCAP_PLOT_SERIES_PALETTE[0],
+          fieldPath: "accel",
+          topic: "/odom",
+        },
+      ],
+    });
+  });
+
+  it("does not duplicate an existing topic and field path", () => {
+    const previous = {
+      "plot-1": [
+        {
+          color: MCAP_PLOT_SERIES_PALETTE[0],
+          fieldPath: "speed",
+          topic: "/odom",
+        },
+      ],
+    };
+
+    expect(addMcapPlotSeriesToTile(previous, "plot-1", "/odom", "speed")).toBe(
+      previous,
     );
   });
 });
