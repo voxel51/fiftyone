@@ -23,6 +23,15 @@ const Probe: React.FC = () => {
       >
         add x
       </button>
+      <button
+        onClick={() => {
+          addFieldToPlot("/odom", "twist.linear.x");
+          addFieldToPlot("/odom", "twist.linear.x");
+        }}
+        type="button"
+      >
+        add x twice
+      </button>
       <span data-testid="probe">
         {JSON.stringify({
           focusedTileId,
@@ -92,6 +101,27 @@ describe("useAddMcapFieldToPlot", () => {
     renderProbe();
 
     fireEvent.click(screen.getByRole("button", { name: "add x" }));
+
+    expect(probeState()).toMatchObject({
+      focusedTileId: "plot-1",
+      series: {
+        "plot-1": [
+          {
+            fieldPath: "twist.linear.x",
+            topic: "/odom",
+          },
+        ],
+      },
+      types: {
+        "plot-1": MCAP_TILE_TYPE.PLOT,
+      },
+    });
+  });
+
+  it("reuses a freshly created plot tile across same-tick calls", () => {
+    renderProbe();
+
+    fireEvent.click(screen.getByRole("button", { name: "add x twice" }));
 
     expect(probeState()).toMatchObject({
       focusedTileId: "plot-1",

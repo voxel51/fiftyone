@@ -88,6 +88,44 @@ describe("mcap-layout-persistence", () => {
     expect(readMcapModalLayout()).toBeNull();
   });
 
+  it("migrates pre-versioned fallback layouts", () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        layout: "image-1",
+        leftSidebarOpen: true,
+        rawTopics: { "raw-1": "/imu" },
+        sceneUpAxis: "y",
+        tileTitles: { "image-1": "Front Camera" },
+      }),
+    );
+
+    expect(readMcapModalLayout()).toEqual({
+      layout: "image-1",
+      leftSidebarOpen: true,
+    });
+  });
+
+  it("strips dataset-scoped fields from fallback reads", () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        fallback: {
+          leftSidebarOpen: true,
+          plotSeries: {
+            "plot-1": [{ color: "#3987e5", fieldPath: "x", topic: "/odom" }],
+          },
+          rawTopics: { "raw-1": "/imu" },
+          sceneUpAxis: "z",
+          tileTitles: { "image-1": "Front Camera" },
+        },
+      }),
+    );
+
+    expect(readMcapModalLayout()).toEqual({ leftSidebarOpen: true });
+  });
+
   it("drops structurally invalid layouts but keeps valid fields", () => {
     localStorage.setItem(
       STORAGE_KEY,
@@ -269,11 +307,14 @@ describe("mcap-layout-persistence", () => {
     });
 
     it("never leaks plot config to another dataset", () => {
+      writeMcapModalLayout({ leftSidebarOpen: true }, "ds-b");
       writeMcapModalLayout(
         { layout: "plot-1", plotSeries: { "plot-1": SERIES } },
         "ds-a",
       );
-      expect(readMcapModalLayout("ds-b")).toBeNull();
+
+      expect(readMcapModalLayout("ds-b")).toEqual({ leftSidebarOpen: true });
+      expect(readMcapModalLayout("ds-b")?.plotSeries).toBeUndefined();
     });
 
     it("sanitizes malformed plot series rows individually", () => {
@@ -314,12 +355,14 @@ describe("mcap-layout-persistence", () => {
     });
 
     it("never leaks raw topic config to another dataset", () => {
+      writeMcapModalLayout({ leftSidebarOpen: true }, "ds-b");
       writeMcapModalLayout(
         { layout: "raw-1", rawTopics: { "raw-1": "/imu" } },
         "ds-a",
       );
 
-      expect(readMcapModalLayout("ds-b")).toBeNull();
+      expect(readMcapModalLayout("ds-b")).toEqual({ leftSidebarOpen: true });
+      expect(readMcapModalLayout("ds-b")?.rawTopics).toBeUndefined();
     });
 
     it("drops rows with non-raw tile ids or invalid topics", () => {
@@ -360,12 +403,14 @@ describe("mcap-layout-persistence", () => {
     });
 
     it("never leaks tile titles to another dataset", () => {
+      writeMcapModalLayout({ leftSidebarOpen: true }, "ds-b");
       writeMcapModalLayout(
         { layout: "image-1", tileTitles: { "image-1": "Front Camera" } },
         "ds-a",
       );
 
-      expect(readMcapModalLayout("ds-b")).toBeNull();
+      expect(readMcapModalLayout("ds-b")).toEqual({ leftSidebarOpen: true });
+      expect(readMcapModalLayout("ds-b")?.tileTitles).toBeUndefined();
     });
 
     it("drops rows with invalid tile ids or titles", () => {
@@ -400,9 +445,11 @@ describe("mcap-layout-persistence", () => {
     });
 
     it("never leaks scene up-axis to another dataset", () => {
+      writeMcapModalLayout({ leftSidebarOpen: true }, "ds-b");
       writeMcapModalLayout({ layout: "3d-1", sceneUpAxis: "x" }, "ds-a");
 
-      expect(readMcapModalLayout("ds-b")).toBeNull();
+      expect(readMcapModalLayout("ds-b")).toEqual({ leftSidebarOpen: true });
+      expect(readMcapModalLayout("ds-b")?.sceneUpAxis).toBeUndefined();
     });
 
     it("drops invalid scene up-axis values but keeps valid fields", () => {

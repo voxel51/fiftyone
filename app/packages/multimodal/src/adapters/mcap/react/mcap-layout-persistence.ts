@@ -274,7 +274,15 @@ function readStore(): {
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return null;
     const version = (parsed as { version?: unknown }).version;
-    if (version !== STORAGE_VERSION) return null;
+    if (version !== STORAGE_VERSION) {
+      if (version === undefined) {
+        const legacyFallback = sanitizedFallbackLayout(parsed);
+        return legacyFallback
+          ? { fallback: legacyFallback, byDataset: {} }
+          : null;
+      }
+      return null;
+    }
     const store = parsed as { fallback?: unknown; byDataset?: unknown };
     const byDataset: Record<string, PersistedDatasetEntry> = {};
     if (typeof store.byDataset === "object" && store.byDataset !== null) {
@@ -291,11 +299,12 @@ function readStore(): {
         };
       }
     }
+    const fallback =
+      store.fallback === undefined
+        ? undefined
+        : sanitizedFallbackLayout(store.fallback);
     return {
-      fallback:
-        store.fallback === undefined
-          ? undefined
-          : sanitizeEntry(store.fallback),
+      fallback,
       byDataset,
     };
   } catch {
@@ -370,16 +379,8 @@ export function writeMcapModalLayout(
 function layoutFromDatasetEntry(
   entry: PersistedDatasetEntry,
 ): McapPersistedModalLayout {
-  return {
-    expandedTileId: entry.expandedTileId,
-    leftSidebarOpen: entry.leftSidebarOpen,
-    layout: entry.layout,
-    plotSeries: entry.plotSeries,
-    rawTopics: entry.rawTopics,
-    sceneUpAxis: entry.sceneUpAxis,
-    sidebarWidthPx: entry.sidebarWidthPx,
-    tileTitles: entry.tileTitles,
-  };
+  const { updatedAtMs: _updatedAtMs, ...layout } = entry;
+  return layout;
 }
 
 function stripDatasetScopedLayoutFields(
@@ -390,6 +391,19 @@ function stripDatasetScopedLayoutFields(
     delete fallback[field];
   }
   return fallback;
+}
+
+function sanitizedFallbackLayout(
+  raw: unknown,
+): McapPersistedModalLayout | undefined {
+  const entry = sanitizeEntry(raw);
+  if (!entry) {
+    return undefined;
+  }
+  const fallback = stripDatasetScopedLayoutFields(entry);
+  return Object.values(fallback).some((value) => value !== undefined)
+    ? fallback
+    : undefined;
 }
 
 /** Drop the least-recently-updated entries beyond the table cap. */
