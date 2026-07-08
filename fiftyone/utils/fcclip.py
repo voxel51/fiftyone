@@ -20,6 +20,9 @@ class FCCLIPModelConfig(fout.TorchImageModelConfig, HasZooModel):
         name_or_path (None): HF repo or local path to the FC-CLIP model
             uploaded with ``trust_remote_code=True``
         confidence_thresh (0.8): minimum panoptic segment confidence to keep
+        task ("panoptic"): segmentation task — ``"instance"`` keeps only
+            "thing" segments, ``"panoptic"`` keeps both "thing" and "stuff"
+            segments
     """
 
     def __init__(self, d):
@@ -29,21 +32,33 @@ class FCCLIPModelConfig(fout.TorchImageModelConfig, HasZooModel):
         self.confidence_thresh = self.parse_number(
             d, "confidence_thresh", default=0.8
         )
+        self.task = self.parse_string(d, "task", default="panoptic")
         self.validate_config()
 
     def validate_config(self):
         if not 0 <= self.confidence_thresh <= 1:
             raise ValueError("confidence_thresh must be between 0 and 1")
 
+        if self.task not in ("instance", "panoptic"):
+            raise ValueError(
+                "task must be 'instance' or 'panoptic'; found '%s'" % self.task
+            )
+
 
 class FCCLIPOutputProcessor(fout.OutputProcessor):
     """Converts FC-CLIP panoptic segmentation outputs to
     :class:`fiftyone.core.labels.Detections`.
+
+    Args:
+        classes (None): the list of class labels for the model
+        task ("panoptic"): ``"instance"`` keeps only "thing" segments;
+            ``"panoptic"`` keeps both "thing" and "stuff" segments
     """
 
-    def __init__(self, classes=None, **kwargs):
+    def __init__(self, classes=None, task="panoptic", **kwargs):
         super().__init__(classes=classes, **kwargs)
         self.classes = classes
+        self.task = task
 
     def __call__(
         self,
@@ -54,13 +69,28 @@ class FCCLIPOutputProcessor(fout.OutputProcessor):
         **kwargs,
     ):
         return [
-            self._parse_output(panoptic_seg, segments_info, classes)
+            self._parse_output(
+                panoptic_seg, segments_info, confidence_thresh, classes
+            )
             for panoptic_seg, segments_info in output
         ]
 
-    def _parse_output(self, panoptic_seg, segments_info, classes):
+    def _parse_output(
+        self, panoptic_seg, segments_info, confidence_thresh, classes
+    ):
         detections = []
         for seg in segments_info:
+            if self.task == "instance" and not seg["isthing"]:
+                continue
+
+            score = seg.get("score")
+            if (
+                confidence_thresh is not None
+                and score is not None
+                and score < confidence_thresh
+            ):
+                continue
+
             cat_id = seg["category_id"]
             mask = (panoptic_seg == seg["id"]).numpy().astype(bool)
             if not mask.any():
@@ -72,7 +102,13 @@ class FCCLIPOutputProcessor(fout.OutputProcessor):
             )
             if classes is not None and label not in classes:
                 continue
-            detections.append(fol.Detection.from_mask(mask=mask, label=label))
+            detections.append(
+                fol.Detection.from_mask(
+                    mask=mask,
+                    label=label,
+                    confidence=score,
+                )
+            )
         return fol.Detections(detections=detections)
 
 
@@ -116,7 +152,7 @@ class FCCLIPModel(fout.TorchImageModel):
         import fiftyone.zoo as foz
 
         dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
-        model = foz.load_zoo_model("fc-clip-coco-torch")
+        model = foz.load_zoo_model("fc-clip-coco-panoptic-torch")
         dataset.apply_model(model, label_field="panoptic")
         session = fo.launch_app(dataset)
 
@@ -199,7 +235,7 @@ class FCCLIPModel(fout.TorchImageModel):
         return {"pixel_values": pixel_values, "sizes": sizes}
 
     def _build_output_processor(self, config):
-        return FCCLIPOutputProcessor(classes=self._classes)
+        return FCCLIPOutputProcessor(classes=self._classes, task=config.task)
 
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:
