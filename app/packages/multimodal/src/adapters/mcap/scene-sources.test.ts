@@ -11,6 +11,13 @@ describe("mcapSceneSources", () => {
     const sources = mcapSceneSources([
       createTopic("/CAM_FRONT/image_rect_compressed"),
       createTopic("/CAM_REAR/image", "sensor_msgs/msg/Image", "cdr", "ros2msg"),
+      createTopic("/CAM_VIDEO", "foxglove.CompressedVideo"),
+      createTopic(
+        "/CAM_VIDEO_CDR",
+        "foxglove_msgs/msg/CompressedVideo",
+        "cdr",
+        "ros2msg",
+      ),
       createTopic("/LIDAR_TOP", "foxglove.PointCloud"),
       createTopic("/scan", "foxglove.LaserScan"),
       createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
@@ -35,6 +42,16 @@ describe("mcapSceneSources", () => {
         id: "/CAM_REAR/image",
         type: MCAP_SOURCE_TYPE.IMAGE,
         label: "CAM_REAR",
+      },
+      {
+        id: "/CAM_VIDEO",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "CAM_VIDEO",
+      },
+      {
+        id: "/CAM_VIDEO_CDR",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "CAM_VIDEO_CDR",
       },
       {
         id: "/LIDAR_TOP",

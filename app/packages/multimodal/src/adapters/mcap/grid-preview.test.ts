@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type {
   EncodedImageVisualization,
+  EncodedVideoVisualization,
   ImageAnnotationsVisualization,
   PointCloudVisualization,
 } from "../../decoders";
@@ -96,6 +97,35 @@ describe("MCAP grid preview", () => {
       throw new Error("Expected raw image preview");
     }
     expect(Array.from(image.rgba)).toEqual([255, 0, 0, 255]);
+  });
+
+  it("reads encoded video frames as image previews", async () => {
+    const readDecodedMessages = vi.fn(async function* (
+      request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
+    ) {
+      yield createVideoMessage(request.topics?.[0] ?? "/camera/video", 12n);
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic(
+          "/camera/video",
+          "sensor_msgs/msg/CompressedImage",
+          "cdr",
+          "ros2msg",
+        ),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      { source: createSource() },
+    );
+    const image = imageFrame(result.state.frame)?.image;
+
+    expect(result.state.status).toBe("ready");
+    expect(image?.kind).toBe(VISUALIZATION_KIND.ENCODED_VIDEO);
+    expect(result.nextStartTimeNs).toBe(13n);
   });
 
   it("pairs exact camera annotations with a nearby image frame", async () => {
@@ -600,6 +630,31 @@ function createRawImageMessage(
       sourceEncoding: "rgb8",
       width: 1,
     },
+  });
+}
+
+function createVideoMessage(
+  topic: string,
+  timelineTimeNs = 10n,
+): McapDecodedMessage {
+  const visualization: EncodedVideoVisualization = {
+    bytes: Uint8Array.of(0, 0, 1, 0x65),
+    codec: "h264",
+    format: "h264",
+    h264: {
+      codecString: "avc1.4D001F",
+      hasFrame: true,
+      pps: Uint8Array.of(0x68, 0xce),
+      sps: Uint8Array.of(0x67, 0x4d, 0x00, 0x1f),
+    },
+    keyframe: true,
+    kind: VISUALIZATION_KIND.ENCODED_VIDEO,
+    timestampNs: timelineTimeNs,
+  };
+
+  return createDecodedMessage(topic, "sensor_msgs/msg/CompressedImage", {
+    timelineTimeNs,
+    visualization,
   });
 }
 

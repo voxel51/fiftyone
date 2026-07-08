@@ -1,7 +1,10 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { RawImageVisualization } from "../../decoders";
+import type {
+  EncodedVideoVisualization,
+  RawImageVisualization,
+} from "../../decoders";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import { imageDisplayRect } from "./base-2d-scene";
 import {
@@ -10,9 +13,11 @@ import {
   BitmapImageView,
   bitmapDrawRect,
 } from "./bitmap-image-view";
+import { resetVideoTextureDecodersForTests } from "./video-texture";
 
 afterEach(() => {
   cleanup();
+  resetVideoTextureDecodersForTests();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -266,6 +271,54 @@ describe("BitmapImageView", () => {
   });
 });
 
+describe("BitmapImageFrameView", () => {
+  it("decodes encoded video frames and draws them into the grid canvas", async () => {
+    stubVideoDecoder();
+    stubElementSize(100, 50);
+    const context = sharedMockContext();
+    const drawImage = vi.spyOn(context, "drawImage");
+    const onImageLoaded = vi.fn();
+
+    render(
+      <BitmapImageFrameView
+        frame={videoFrame()}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
+
+    await waitFor(() => expect(onImageLoaded).toHaveBeenCalledWith(640, 480));
+
+    expect(drawImage).toHaveBeenCalledTimes(2);
+    expect(drawImage.mock.calls[0]?.[0]).toMatchObject({
+      displayHeight: 480,
+      displayWidth: 640,
+    });
+    expect(drawImage.mock.calls[1]?.[0]).toBeInstanceOf(HTMLCanvasElement);
+    expect(drawImage.mock.calls[1]?.slice(1)).toEqual([0, -12.5, 100, 75]);
+  });
+
+  it("reports encoded video preview decode failures", async () => {
+    vi.stubGlobal("EncodedVideoChunk", undefined);
+    vi.stubGlobal("VideoDecoder", undefined);
+    const onError = vi.fn();
+    const onImageLoaded = vi.fn();
+
+    render(
+      <BitmapImageFrameView
+        frame={videoFrame()}
+        onError={onError}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
+
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+    expect(onError.mock.calls[0]?.[0]).toEqual(
+      new Error("WebCodecs video decoding is unavailable"),
+    );
+    expect(onImageLoaded).not.toHaveBeenCalled();
+  });
+});
+
 describe("BitmapCanvasHost", () => {
   it("draws a ready bitmap 1:1 when it matches the container size", () => {
     stubElementSize(100, 50);
@@ -341,6 +394,63 @@ function rawFrame(rgba: readonly number[]): RawImageVisualization {
     sourceEncoding: "rgb8",
     width: 2,
   };
+}
+
+function videoFrame(): EncodedVideoVisualization {
+  return {
+    bytes: Uint8Array.of(0, 0, 1, 0x65),
+    codec: "h264",
+    format: "h264",
+    h264: {
+      codecString: "avc1.4D001F",
+      hasFrame: true,
+      pps: Uint8Array.of(0x68, 0xce),
+      sps: Uint8Array.of(0x67, 0x4d, 0x00, 0x1f),
+    },
+    keyframe: true,
+    kind: VISUALIZATION_KIND.ENCODED_VIDEO,
+    timestampNs: 1000n,
+  };
+}
+
+function stubVideoDecoder() {
+  class FakeEncodedVideoChunk {
+    constructor(readonly init: unknown) {}
+  }
+
+  class FakeVideoDecoder {
+    static isConfigSupported = vi.fn(async () => ({ supported: true }));
+
+    constructor(
+      private readonly init: {
+        readonly output: (frame: unknown) => void;
+      },
+    ) {}
+
+    close(): void {
+      // no-op in the fake
+    }
+
+    configure(): void {
+      // no-op in the fake
+    }
+
+    decode(): void {
+      this.init.output({
+        close: vi.fn(),
+        displayHeight: 480,
+        displayWidth: 640,
+      });
+    }
+
+    reset(): void {
+      // no-op in the fake
+    }
+  }
+
+  vi.stubGlobal("EncodedVideoChunk", FakeEncodedVideoChunk);
+  vi.stubGlobal("VideoDecoder", FakeVideoDecoder);
+  vi.stubGlobal("isSecureContext", true);
 }
 
 /**

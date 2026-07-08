@@ -79,7 +79,11 @@ export function ImagePanel({
   viewTransform,
 }: ImagePanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
-  const { handle: textureHandle, status } = useImageTextureLease({
+  const {
+    errorMessage,
+    handle: textureHandle,
+    status,
+  } = useImageTextureLease({
     disabledStatus: "error",
     enabled: hasImageData(frame),
     frame,
@@ -118,7 +122,9 @@ export function ImagePanel({
       {canvasError || status !== "loaded" ? (
         <div style={styles.status}>
           {canvasError ??
-            (status === "error" ? "Image unavailable" : "Loading image")}
+            (status === "error"
+              ? (errorMessage ?? "Image unavailable")
+              : "Loading image")}
         </div>
       ) : null}
       {!canvasError && status === "loaded" && onResetView ? (
