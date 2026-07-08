@@ -69,9 +69,10 @@ export function decodeFoxgloveLogRecord(
 function logOutputAttributes(
   row: McapDecodedLogRow,
 ): Record<string, DecodedAttributeValue> {
+  const rows = logRowsAttribute([row]);
   return {
-    ...logRowsAttribute([row])[0],
-    [MCAP_LOG_ATTRIBUTE_ROWS]: logRowsAttribute([row]),
+    ...rows[0],
+    [MCAP_LOG_ATTRIBUTE_ROWS]: rows,
   };
 }
 

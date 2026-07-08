@@ -135,10 +135,11 @@ function logOutputAttributes(
   row: McapDecodedLogRow,
   base: Record<string, DecodedAttributeValue> = {},
 ): Record<string, DecodedAttributeValue> {
+  const rows = logRowsAttribute([row]);
   return {
     ...base,
-    ...logRowsAttribute([row])[0],
-    [MCAP_LOG_ATTRIBUTE_ROWS]: logRowsAttribute([row]),
+    ...rows[0],
+    [MCAP_LOG_ATTRIBUTE_ROWS]: rows,
   };
 }
 
@@ -146,7 +147,7 @@ function diagnosticStatusRow(
   status: Record<string, unknown>,
   timestampNs: bigint | undefined,
 ): McapDecodedLogRow {
-  const levelNumber = numberField(status, "level", undefined, 0);
+  const levelNumber = numberValue(status.level);
   const statusName = diagnosticStatusName(levelNumber);
   const name = optionalString(status, "name");
   const message = optionalString(status, "message") ?? statusName;
@@ -157,11 +158,11 @@ function diagnosticStatusRow(
     hardwareId,
     kind: "diagnostic",
     level: diagnosticLogLevel(levelNumber),
-    levelNumber,
     message,
     name,
     status: statusName,
     timestampNs,
+    ...(levelNumber !== undefined ? { levelNumber } : {}),
   };
 }
 
@@ -223,14 +224,14 @@ function rclLogLevel(level: number) {
   return MCAP_LOG_LEVEL.UNKNOWN;
 }
 
-function diagnosticLogLevel(level: number) {
+function diagnosticLogLevel(level: number | undefined) {
   if (level === 2) return MCAP_LOG_LEVEL.ERROR;
   if (level === 1 || level === 3) return MCAP_LOG_LEVEL.WARN;
   if (level === 0) return MCAP_LOG_LEVEL.INFO;
   return MCAP_LOG_LEVEL.UNKNOWN;
 }
 
-function diagnosticStatusName(level: number): string {
+function diagnosticStatusName(level: number | undefined): string {
   switch (level) {
     case 0:
       return "OK";

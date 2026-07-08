@@ -956,9 +956,12 @@ describe("Foxglove decoders", () => {
     expect(protobuf.timing?.sourceTimestamps?.messageTime).toBe(8_000_000_009n);
     expect(cdr.attributes?.logRows).toEqual([
       expect.objectContaining({
+        file: "controller.cpp",
         level: "warn",
         levelNumber: 3,
+        line: 10,
         message: "tracking degraded",
+        name: "controller",
         timestampNs: 5_000_000_004n,
       }),
     ]);

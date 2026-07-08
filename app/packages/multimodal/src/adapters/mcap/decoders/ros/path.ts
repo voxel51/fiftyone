@@ -110,15 +110,16 @@ export function decodeRosPoseArrayRecord(
   const header = rosHeader(message);
   const frameId = rosHeaderFrameId(header);
   const timestampNs = rosHeaderTimestampNs(header);
-  const poses = poseArrayPoses(message);
-  const renderedPoses = poses.slice(0, MAX_POSE_ARRAY_ARROWS);
+  const poseRecords = arrayRecords(message, "poses");
+  const renderedPoseRecords = poseRecords.slice(0, MAX_POSE_ARRAY_ARROWS);
+  const renderedPoses = poseArrayPoses(renderedPoseRecords);
   const attributes: Record<string, DecodedAttributeValue> = {
     ...rosHeaderAttributes(header),
-    poseCount: poses.length,
+    poseCount: poseRecords.length,
     renderedPoseCount: renderedPoses.length,
   };
-  if (poses.length > renderedPoses.length) {
-    attributes.truncatedPoseCount = poses.length - renderedPoses.length;
+  if (poseRecords.length > renderedPoses.length) {
+    attributes.truncatedPoseCount = poseRecords.length - renderedPoses.length;
   }
   const entities =
     renderedPoses.length > 0
@@ -128,7 +129,7 @@ export function decodeRosPoseArrayRecord(
             frameId,
             id: `${context.streamId ?? "pose-array"}:pose-array`,
             metadata: {
-              poseCount: String(poses.length),
+              poseCount: String(poseRecords.length),
               renderedPoseCount: String(renderedPoses.length),
               source: "geometry_msgs/PoseArray",
             },
@@ -158,9 +159,9 @@ function pathPoints(message: Record<string, unknown>): readonly ScenePoint3D[] {
 }
 
 function poseArrayPoses(
-  message: Record<string, unknown>,
+  poses: readonly Record<string, unknown>[],
 ): readonly ScenePose3D[] {
-  return arrayRecords(message, "poses").map((pose) => {
+  return poses.map((pose) => {
     const decoded = decodePose(pose);
     return {
       position: decoded.position,
@@ -237,9 +238,13 @@ function arrayRecords(
   record: Record<string, unknown>,
   field: string,
 ): readonly Record<string, unknown>[] {
-  return arrayField(record, field).map(
-    (value) => recordField({ value }, "value") ?? {},
+  return arrayField(record, field).map((value) =>
+    isRecord(value) ? value : {},
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function identityPose(): ScenePose3D {

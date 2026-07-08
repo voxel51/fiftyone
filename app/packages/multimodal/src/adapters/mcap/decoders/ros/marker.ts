@@ -441,14 +441,15 @@ function markerArrows({
     totalLength,
     positiveOr(scale[2], totalLength * DEFAULT_ARROW_HEAD_FRACTION),
   );
+  const headDiameter = positiveOr(scale[1], 0.2);
 
   return [
     {
       color,
-      headDiameter: positiveOr(scale[1], 0.2),
+      headDiameter,
       headLength,
       pose,
-      shaftDiameter: positiveOr(scale[1], 0.1),
+      shaftDiameter: headDiameter * 0.5,
       shaftLength: Math.max(0, totalLength - headLength),
     },
   ];

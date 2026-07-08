@@ -1,7 +1,7 @@
 import { useTiling } from "@fiftyone/tiling";
 import { Input, InputType, Size } from "@voxel51/voodo";
 import React, { useCallback, useMemo, useState } from "react";
-import { useSceneInventory } from "../../../scene-inventory";
+import { useSceneInventory } from "../../../scene-inventory/SceneInventoryProvider";
 import type { StreamInventory } from "../../../schemas/v1";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import {

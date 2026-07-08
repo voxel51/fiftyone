@@ -59,7 +59,11 @@ export function decodeFoxgloveLocationFixRecord(
     throw new Error("Location fix has no finite latitude/longitude");
   }
 
-  const altitude = numberField(message, "altitude");
+  const hasAltitude =
+    message.altitude !== undefined && message.altitude !== null;
+  const altitude = hasAltitude
+    ? numberField(message, "altitude", undefined, Number.NaN)
+    : undefined;
   const frameId = optionalString(message, "frameId", "frame_id");
   const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
   const positionCovariance = covariance(
@@ -75,7 +79,9 @@ export function decodeFoxgloveLocationFixRecord(
   }
 
   const visualization: LocationVisualization = {
-    ...(altitude !== 0 ? { altitude } : {}),
+    ...(altitude !== undefined && Number.isFinite(altitude)
+      ? { altitude }
+      : {}),
     ...(frameId ? { coordinateFrameId: frameId } : {}),
     kind: VISUALIZATION_KIND.LOCATION,
     latitude,

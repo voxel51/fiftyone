@@ -76,14 +76,13 @@ export function decodeRosDetection2DArrayRecord(
 ): DecodedOutput {
   const header = rosHeader(message);
   const detections = detectionRecords(message);
+  const labels = detections.map(detectionLabel);
   const detectionBoxes = detections.map(detection2DBox);
   const boxes = detectionBoxes.filter(isPresent);
-  const labels = detections
-    .map((detection, index) =>
-      detection2DText(detection, detectionBoxes[index]),
-    )
+  const textLabels = labels
+    .map((label, index) => detection2DText(label, detectionBoxes[index]))
     .filter(isPresent);
-  const classIds = uniqueClassIds(detections);
+  const classIds = uniqueClassIds(labels);
 
   return {
     attributes: detectionAttributes({
@@ -91,14 +90,14 @@ export function decodeRosDetection2DArrayRecord(
       classIds,
       detectionCount: detections.length,
       header,
-      textCount: labels.length,
+      textCount: textLabels.length,
     }),
     timing: timingFromRosHeader(context, header),
     visualization: {
       circles: [],
       kind: VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
       points: boxes,
-      texts: labels,
+      texts: textLabels,
     },
   };
 }
@@ -115,6 +114,7 @@ export function decodeRosDetection3DArrayRecord(
   const frameId = rosHeaderFrameId(header);
   const timestampNs = rosHeaderTimestampNs(header);
   const detections = detectionRecords(message);
+  const labels = detections.map(detectionLabel);
   const entities = detections
     .map((detection, index) =>
       detection3DEntity({
@@ -122,11 +122,12 @@ export function decodeRosDetection3DArrayRecord(
         detection,
         frameId,
         index,
+        label: labels[index] ?? null,
         timestampNs,
       }),
     )
     .filter(isPresent);
-  const classIds = uniqueClassIds(detections);
+  const classIds = uniqueClassIds(labels);
   const deletions: readonly SceneEntityDeletionVisualization[] =
     timestampNs !== undefined
       ? [{ id: "", timestampNs, type: "all" }]
@@ -178,10 +179,9 @@ function detection2DBox(
 }
 
 function detection2DText(
-  detection: Record<string, unknown>,
+  label: DetectionLabel | null | undefined,
   box: ImageAnnotationPoints | null | undefined,
 ): ImageAnnotationText | null {
-  const label = detectionLabel(detection);
   if (!label || !box || box.points.length === 0) {
     return null;
   }
@@ -202,12 +202,14 @@ function detection3DEntity({
   detection,
   frameId,
   index,
+  label,
   timestampNs,
 }: {
   readonly context: DecodeContext;
   readonly detection: Record<string, unknown>;
   readonly frameId: string | undefined;
   readonly index: number;
+  readonly label: DetectionLabel | null;
   readonly timestampNs: bigint | undefined;
 }): SceneEntityVisualization | null {
   const bbox = recordField(detection, "bbox");
@@ -220,7 +222,6 @@ function detection3DEntity({
     pose: decodePose(recordField(bbox, "center")),
     size,
   };
-  const label = detectionLabel(detection);
   const texts = label ? [detection3DText(cube.pose, size, label.text)] : [];
   const id = detectionId(detection) ?? String(index);
 
@@ -338,12 +339,12 @@ function detectionMetadata(
 }
 
 function uniqueClassIds(
-  detections: readonly Record<string, unknown>[],
+  labels: readonly (DetectionLabel | null)[],
 ): readonly string[] {
   return [
     ...new Set(
-      detections
-        .map((detection) => detectionLabel(detection)?.classId)
+      labels
+        .map((label) => label?.classId)
         .filter((classId): classId is string => Boolean(classId)),
     ),
   ].sort();
@@ -442,9 +443,13 @@ function arrayRecords(
   record: Record<string, unknown>,
   field: string,
 ): readonly Record<string, unknown>[] {
-  return arrayField(record, field).map(
-    (value) => recordField({ value }, "value") ?? {},
+  return arrayField(record, field).map((value) =>
+    isRecord(value) ? value : {},
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function stringFromValue(value: unknown): string | undefined {
