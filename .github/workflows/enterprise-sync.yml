@@ -54,10 +54,9 @@ jobs:
             // own back-merge. Skip the sync; mark the gate green so the OSS
             // back-merge isn't blocked. Two conventions:
             //  - `merge/<ref>` — opened by the develop-back-merge workflow
-            //  - `main-to-develop` — opened by hand when conflicts need
-            //    resolving (the merge/* ruleset blocks human pushes). Head
-            //    branches live in this repo (see job if), so these are
-            //    member-created.
+            //  - `main-to-develop` — opened by hand at the end of a release
+            //    (the merge/* ruleset blocks human pushes). Head branches
+            //    live in this repo (see job if), so these are member-created.
             const isBackMerge =
               (pr.head.ref.startsWith('merge/') && pr.user.login === 'voxel51-bot') ||
               pr.head.ref === 'main-to-develop';
