@@ -11,7 +11,9 @@ import {
   JSON_ROS_NAV_SAT_FIX_PAYLOADS,
   JSON_ROS_OCCUPANCY_GRID_PAYLOADS,
   JSON_ROS_ODOMETRY_PAYLOADS,
+  JSON_ROS_PATH_PAYLOADS,
   JSON_ROS_POINT_CLOUD2_PAYLOADS,
+  JSON_ROS_POSE_ARRAY_PAYLOADS,
   JSON_ROS_POSE_STAMPED_PAYLOADS,
 } from "./decoders/json/payloads";
 import {
@@ -46,7 +48,9 @@ import {
   ROS_NAV_SAT_FIX_PAYLOADS,
   ROS_OCCUPANCY_GRID_PAYLOADS,
   ROS_ODOMETRY_PAYLOADS,
+  ROS_PATH_PAYLOADS,
   ROS_POINT_CLOUD2_PAYLOADS,
+  ROS_POSE_ARRAY_PAYLOADS,
   ROS_POSE_STAMPED_PAYLOADS,
 } from "./decoders/ros/payloads";
 
@@ -169,8 +173,12 @@ export function isSceneUpdateStream(topic: StreamInventory): boolean {
     hasAnyPayload(topic, FOXGLOVE_SCENE_UPDATE_CDR_PAYLOADS) ||
     hasAnyPayload(topic, JSON_ROS_MARKER_PAYLOADS) ||
     hasAnyPayload(topic, JSON_ROS_MARKER_ARRAY_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_PATH_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_POSE_ARRAY_PAYLOADS) ||
     hasAnyPayload(topic, ROS_MARKER_PAYLOADS) ||
-    hasAnyPayload(topic, ROS_MARKER_ARRAY_PAYLOADS)
+    hasAnyPayload(topic, ROS_MARKER_ARRAY_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_PATH_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_POSE_ARRAY_PAYLOADS)
   );
 }
 

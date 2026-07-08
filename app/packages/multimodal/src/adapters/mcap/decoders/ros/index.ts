@@ -7,6 +7,7 @@ import { rosMarkerArrayDecoders, rosMarkerDecoders } from "./marker";
 import { rosNavSatFixDecoders } from "./nav-sat-fix";
 import { rosOccupancyGridDecoders } from "./occupancy-grid";
 import { rosOdometryDecoders, rosPoseStampedDecoders } from "./pose";
+import { rosPathDecoders, rosPoseArrayDecoders } from "./path";
 import { rosPointCloud2Decoders } from "./point-cloud2";
 
 export { rosCameraInfoDecoders } from "./camera-info";
@@ -17,6 +18,7 @@ export { rosMarkerArrayDecoders, rosMarkerDecoders } from "./marker";
 export { rosNavSatFixDecoders } from "./nav-sat-fix";
 export { rosOccupancyGridDecoders } from "./occupancy-grid";
 export { rosOdometryDecoders, rosPoseStampedDecoders } from "./pose";
+export { rosPathDecoders, rosPoseArrayDecoders } from "./path";
 export { rosPointCloud2Decoders } from "./point-cloud2";
 export * from "./payloads";
 
@@ -33,6 +35,8 @@ export const rosDecoders: readonly Decoder[] = [
   ...rosNavSatFixDecoders,
   ...rosOccupancyGridDecoders,
   ...rosOdometryDecoders,
+  ...rosPathDecoders,
+  ...rosPoseArrayDecoders,
   ...rosPoseStampedDecoders,
   ...rosPointCloud2Decoders,
 ];

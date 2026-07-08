@@ -9,6 +9,7 @@ import {
 } from "../ros/marker";
 import { decodeRosNavSatFixRecord } from "../ros/nav-sat-fix";
 import { decodeRosOccupancyGridRecord } from "../ros/occupancy-grid";
+import { decodeRosPathRecord, decodeRosPoseArrayRecord } from "../ros/path";
 import { decodeRosPointCloud2Record } from "../ros/point-cloud2";
 import {
   decodeRosOdometryRecord,
@@ -25,7 +26,9 @@ import {
   JSON_ROS_NAV_SAT_FIX_PAYLOADS,
   JSON_ROS_OCCUPANCY_GRID_PAYLOADS,
   JSON_ROS_ODOMETRY_PAYLOADS,
+  JSON_ROS_PATH_PAYLOADS,
   JSON_ROS_POINT_CLOUD2_PAYLOADS,
+  JSON_ROS_POSE_ARRAY_PAYLOADS,
   JSON_ROS_POSE_STAMPED_PAYLOADS,
 } from "./payloads";
 
@@ -129,6 +132,24 @@ export const jsonRosOdometryDecoders = jsonDecodersForPayloads({
 });
 
 /**
+ * JSON-schema decoders for ROS Path records.
+ */
+export const jsonRosPathDecoders = jsonDecodersForPayloads({
+  id: "json.ros.path",
+  map: decodeRosPathRecord,
+  payloads: JSON_ROS_PATH_PAYLOADS,
+});
+
+/**
+ * JSON-schema decoders for ROS PoseArray records.
+ */
+export const jsonRosPoseArrayDecoders = jsonDecodersForPayloads({
+  id: "json.ros.pose-array",
+  map: decodeRosPoseArrayRecord,
+  payloads: JSON_ROS_POSE_ARRAY_PAYLOADS,
+});
+
+/**
  * Built-in JSON-schema decoders for supported ROS message families.
  */
 export const jsonRosDecoders: readonly Decoder[] = [
@@ -143,4 +164,6 @@ export const jsonRosDecoders: readonly Decoder[] = [
   ...jsonRosOccupancyGridDecoders,
   ...jsonRosPoseStampedDecoders,
   ...jsonRosOdometryDecoders,
+  ...jsonRosPathDecoders,
+  ...jsonRosPoseArrayDecoders,
 ];

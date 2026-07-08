@@ -15,6 +15,7 @@ import {
   isLocationFixStream,
   isPointCloudStream,
   isPoseStream,
+  isSceneUpdateStream,
   streamTopics,
 } from "../../stream-topics";
 import {
@@ -25,7 +26,9 @@ import {
   JSON_ROS_NAV_SAT_FIX_PAYLOADS,
   JSON_ROS_OCCUPANCY_GRID_PAYLOADS,
   JSON_ROS_ODOMETRY_PAYLOADS,
+  JSON_ROS_PATH_PAYLOADS,
   JSON_ROS_POINT_CLOUD2_PAYLOADS,
+  JSON_ROS_POSE_ARRAY_PAYLOADS,
   JSON_ROS_POSE_STAMPED_PAYLOADS,
 } from "./payloads";
 import {
@@ -36,7 +39,9 @@ import {
   jsonRosNavSatFixDecoders,
   jsonRosOccupancyGridDecoders,
   jsonRosOdometryDecoders,
+  jsonRosPathDecoders,
   jsonRosPointCloud2Decoders,
+  jsonRosPoseArrayDecoders,
   jsonRosPoseStampedDecoders,
 } from "./ros";
 
@@ -74,7 +79,9 @@ describe("JSON-schema ROS MCAP decoders", () => {
       ...JSON_ROS_NAV_SAT_FIX_PAYLOADS,
       ...JSON_ROS_OCCUPANCY_GRID_PAYLOADS,
       ...JSON_ROS_ODOMETRY_PAYLOADS,
+      ...JSON_ROS_PATH_PAYLOADS,
       ...JSON_ROS_POINT_CLOUD2_PAYLOADS,
+      ...JSON_ROS_POSE_ARRAY_PAYLOADS,
       ...JSON_ROS_POSE_STAMPED_PAYLOADS,
     ];
 
@@ -381,6 +388,68 @@ describe("JSON-schema ROS MCAP decoders", () => {
     expect(odometry.attributes).toMatchObject({ childFrameId: "base_link" });
   });
 
+  it("decodes JSON Path and PoseArray records into scene-update overlays", () => {
+    const path = decoderForSchema(
+      jsonRosPathDecoders,
+      "nav_msgs/msg/Path",
+    ).decode(
+      jsonMessage({
+        header: headerRecord("map", 13, 14),
+        poses: [
+          {
+            header: headerRecord("map", 1, 1),
+            pose: poseRecord([1, 2, 0], [0, 0, 0, 1]),
+          },
+          {
+            header: headerRecord("map", 1, 2),
+            pose: poseRecord([3, 4, 0], [0, 0, 0, 1]),
+          },
+        ],
+      }),
+      { streamId: "/planned_path" },
+    );
+    const poseArray = decoderForSchema(
+      jsonRosPoseArrayDecoders,
+      "geometry_msgs/PoseArray",
+    ).decode(
+      jsonMessage({
+        header: headerRecord("map", 15, 16),
+        poses: [
+          poseRecord([5, 6, 0], [0, 0, 0, 1]),
+          poseRecord([7, 8, 0], [0, 0, 1, 0]),
+        ],
+      }),
+      { streamId: "/pose_hypotheses" },
+    );
+
+    expect(path.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    expect(poseArray.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    if (
+      path.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE ||
+      poseArray.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE
+    ) {
+      throw new Error("Expected scene update visualizations");
+    }
+    expect(path.visualization.entities[0]?.lines[0]?.points).toEqual([
+      [1, 2, 0],
+      [3, 4, 0],
+    ]);
+    expect(path.visualization.entities[0]).toMatchObject({
+      frameId: "map",
+      id: "/planned_path:path",
+      timestampNs: 13_000_000_014n,
+    });
+    expect(poseArray.visualization.entities[0]).toMatchObject({
+      arrowCount: 2,
+      frameId: "map",
+      id: "/pose_hypotheses:pose-array",
+      timestampNs: 15_000_000_016n,
+    });
+    expect(
+      poseArray.visualization.entities[0]?.arrows[0]?.pose.position,
+    ).toEqual([5, 6, 0]);
+  });
+
   it("degrades invalid JSON and malformed JSON records without throwing", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const decoder = decoderForSchema(
@@ -413,6 +482,11 @@ describe("JSON-schema ROS MCAP decoders", () => {
     const rawImage = createTopic("/camera/image", JSON_ROS_IMAGE_PAYLOADS[1]);
     const cloud = createTopic("/points", JSON_ROS_POINT_CLOUD2_PAYLOADS[0]);
     const scan = createTopic("/scan", JSON_ROS_LASER_SCAN_PAYLOADS[1]);
+    const path = createTopic("/planned_path", JSON_ROS_PATH_PAYLOADS[1]);
+    const poseArray = createTopic(
+      "/pose_hypotheses",
+      JSON_ROS_POSE_ARRAY_PAYLOADS[0],
+    );
 
     expect(isCompressedImageStream(compressed)).toBe(true);
     expect(isCompressedImageStream(rawImage)).toBe(false);
@@ -439,10 +513,15 @@ describe("JSON-schema ROS MCAP decoders", () => {
     expect(
       isGridStream(createTopic("/map", JSON_ROS_OCCUPANCY_GRID_PAYLOADS[1])),
     ).toBe(true);
-    expect(streamTopics([compressed, rawImage, cloud, scan])).toMatchObject({
+    expect(isSceneUpdateStream(path)).toBe(true);
+    expect(isSceneUpdateStream(poseArray)).toBe(true);
+    expect(
+      streamTopics([compressed, rawImage, cloud, scan, path, poseArray]),
+    ).toMatchObject({
       image: ["/camera/compressed", "/camera/image"],
       pointCloud: ["/points", "/scan"],
       previewable: ["/camera/compressed", "/camera/image", "/points", "/scan"],
+      sceneUpdates: ["/planned_path", "/pose_hypotheses"],
     });
   });
 });

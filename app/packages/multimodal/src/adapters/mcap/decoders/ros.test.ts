@@ -31,7 +31,9 @@ import {
   ROS_NAV_SAT_FIX_PAYLOADS,
   ROS_OCCUPANCY_GRID_PAYLOADS,
   ROS_ODOMETRY_PAYLOADS,
+  ROS_PATH_PAYLOADS,
   ROS_POINT_CLOUD2_PAYLOADS,
+  ROS_POSE_ARRAY_PAYLOADS,
   ROS_POSE_STAMPED_PAYLOADS,
   rosCameraInfoDecoders,
   rosCompressedImageDecoders,
@@ -41,7 +43,9 @@ import {
   rosNavSatFixDecoders,
   rosOccupancyGridDecoders,
   rosOdometryDecoders,
+  rosPathDecoders,
   rosPointCloud2Decoders,
+  rosPoseArrayDecoders,
   rosPoseStampedDecoders,
 } from "./ros";
 
@@ -139,6 +143,48 @@ ${ROS2_HEADER_DEFINITIONS}`;
 
 const ROS2_POSE_STAMPED_SCHEMA = `std_msgs/Header header
 geometry_msgs/Pose pose
+${ROS2_HEADER_DEFINITIONS}
+===
+MSG: geometry_msgs/Pose
+geometry_msgs/Point position
+geometry_msgs/Quaternion orientation
+===
+MSG: geometry_msgs/Point
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w`;
+
+const ROS2_PATH_SCHEMA = `std_msgs/Header header
+geometry_msgs/PoseStamped[] poses
+${ROS2_HEADER_DEFINITIONS}
+===
+MSG: geometry_msgs/PoseStamped
+std_msgs/Header header
+geometry_msgs/Pose pose
+===
+MSG: geometry_msgs/Pose
+geometry_msgs/Point position
+geometry_msgs/Quaternion orientation
+===
+MSG: geometry_msgs/Point
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w`;
+
+const ROS2_POSE_ARRAY_SCHEMA = `std_msgs/Header header
+geometry_msgs/Pose[] poses
 ${ROS2_HEADER_DEFINITIONS}
 ===
 MSG: geometry_msgs/Pose
@@ -390,7 +436,9 @@ describe("ROS MCAP decoders", () => {
       ...ROS_NAV_SAT_FIX_PAYLOADS,
       ...ROS_OCCUPANCY_GRID_PAYLOADS,
       ...ROS_ODOMETRY_PAYLOADS,
+      ...ROS_PATH_PAYLOADS,
       ...ROS_POINT_CLOUD2_PAYLOADS,
+      ...ROS_POSE_ARRAY_PAYLOADS,
       ...ROS_POSE_STAMPED_PAYLOADS,
     ];
 
@@ -985,6 +1033,79 @@ describe("ROS MCAP decoders", () => {
     expect(odometry.attributes).toMatchObject({ childFrameId: "base_link" });
   });
 
+  it("decodes ros2 Path and PoseArray into scene-update overlays", () => {
+    const path = decoderForSchemaEncoding(rosPathDecoders, "ros2msg").decode(
+      ros2Message(ROS2_PATH_SCHEMA, {
+        header: ros2Header({ frameId: "map", nanosec: 14, sec: 13 }),
+        poses: [
+          {
+            header: ros2Header({ frameId: "map", nanosec: 1, sec: 1 }),
+            pose: poseRecord([1, 2, 0], [0, 0, 0, 1]),
+          },
+          {
+            header: ros2Header({ frameId: "map", nanosec: 2, sec: 1 }),
+            pose: poseRecord([3, 4, 0], [0, 0, 0, 1]),
+          },
+        ],
+      }),
+      { schemaData: schemaData(ROS2_PATH_SCHEMA), streamId: "/planned_path" },
+    );
+    const poseArray = decoderForSchemaEncoding(
+      rosPoseArrayDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_POSE_ARRAY_SCHEMA, {
+        header: ros2Header({ frameId: "map", nanosec: 16, sec: 15 }),
+        poses: [
+          poseRecord([5, 6, 0], [0, 0, 0, 1]),
+          poseRecord([7, 8, 0], [0, 0, 1, 0]),
+        ],
+      }),
+      {
+        schemaData: schemaData(ROS2_POSE_ARRAY_SCHEMA),
+        streamId: "/pose_hypotheses",
+      },
+    );
+
+    expect(path.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    expect(poseArray.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    if (
+      path.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE ||
+      poseArray.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE
+    ) {
+      throw new Error("Expected scene update visualizations");
+    }
+    expect(path.visualization.entities[0]).toMatchObject({
+      frameId: "map",
+      id: "/planned_path:path",
+      lineCount: 1,
+      timestampNs: 13_000_000_014n,
+    });
+    expect(path.visualization.entities[0]?.lines[0]?.points).toEqual([
+      [1, 2, 0],
+      [3, 4, 0],
+    ]);
+    expect(path.attributes).toMatchObject({
+      frameId: "map",
+      pointCount: 2,
+      poseCount: 2,
+    });
+    expect(poseArray.visualization.entities[0]).toMatchObject({
+      arrowCount: 2,
+      frameId: "map",
+      id: "/pose_hypotheses:pose-array",
+      timestampNs: 15_000_000_016n,
+    });
+    expect(
+      poseArray.visualization.entities[0]?.arrows[0]?.pose.position,
+    ).toEqual([5, 6, 0]);
+    expect(poseArray.attributes).toMatchObject({
+      frameId: "map",
+      poseCount: 2,
+      renderedPoseCount: 2,
+    });
+  });
+
   it("decodes ros2 MarkerArray into scene-update entities and deletions", () => {
     const output = decoderForSchemaEncoding(
       rosMarkerArrayDecoders,
@@ -1216,6 +1337,11 @@ describe("ROS MCAP decoders", () => {
       schemaEncoding: "ros2msg",
     });
     const markers = createTopic("/markers", ROS_MARKER_ARRAY_PAYLOADS[1]);
+    const path = createTopic("/planned_path", ROS_PATH_PAYLOADS[1]);
+    const poseArray = createTopic(
+      "/pose_hypotheses",
+      ROS_POSE_ARRAY_PAYLOADS[1],
+    );
 
     expect(isCompressedImageStream(compressed)).toBe(true);
     expect(isCompressedImageStream(rawImage)).toBe(false);
@@ -1241,13 +1367,23 @@ describe("ROS MCAP decoders", () => {
       isGridStream(createTopic("/map", ROS_OCCUPANCY_GRID_PAYLOADS[0])),
     ).toBe(true);
     expect(isSceneUpdateStream(markers)).toBe(true);
+    expect(isSceneUpdateStream(path)).toBe(true);
+    expect(isSceneUpdateStream(poseArray)).toBe(true);
     expect(
-      streamTopics([compressed, rawImage, cloud, scan, markers]),
+      streamTopics([
+        compressed,
+        rawImage,
+        cloud,
+        scan,
+        markers,
+        path,
+        poseArray,
+      ]),
     ).toMatchObject({
       image: ["/camera/compressed", "/camera/image"],
       pointCloud: ["/points", "/scan"],
       previewable: ["/camera/compressed", "/camera/image", "/points", "/scan"],
-      sceneUpdates: ["/markers"],
+      sceneUpdates: ["/markers", "/planned_path", "/pose_hypotheses"],
     });
   });
 });
