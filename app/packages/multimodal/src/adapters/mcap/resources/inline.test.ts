@@ -274,6 +274,64 @@ describe("MCAP resources", () => {
     );
   });
 
+  it("annotates generic decode availability in topic inventory", async () => {
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              7,
+              createChannel({
+                id: 7,
+                messageEncoding: "json",
+                schemaId: 0,
+                topic: "/state",
+              }),
+            ],
+            [
+              8,
+              createChannel({
+                id: 8,
+                messageEncoding: "ros1",
+                schemaId: 4,
+                topic: "/imu",
+              }),
+            ],
+            [
+              9,
+              createChannel({
+                id: 9,
+                messageEncoding: "cbor",
+                schemaId: 0,
+                topic: "/binary",
+              }),
+            ],
+          ]),
+          schemasById: new Map([
+            [
+              4,
+              createSchema(new Uint8Array(), {
+                encoding: "ros1msg",
+                id: 4,
+                name: "sensor_msgs/Imu",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const topics = await client.readTopics({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(
+      topics.map((topic) => topic.metadata["mcap.generic_decode_status"]),
+    ).toEqual(["decodable", "schema-unavailable", "unsupported-encoding"]);
+  });
+
   it("caches topic reads by source", async () => {
     const source = createMcapSourceDescriptor();
     const client = createInlineMcapResourceClient({

@@ -14,6 +14,9 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useSceneInventory } from "../../../scene-inventory";
+import type { StreamInventory } from "../../../schemas/v1";
+import { topicName } from "../stream-topics";
 import {
   type McapPlaybackFidelityMode,
   type McapTemporalPolicySettings,
@@ -30,7 +33,9 @@ type ActiveSettingsTab = "scene" | "panel";
  * scene-wide settings are available without stealing focus from the active
  * panel.
  */
-const McapSettingsSidebar: React.FC = () => {
+const McapSettingsSidebar: React.FC<{
+  readonly topics?: readonly StreamInventory[];
+}> = ({ topics = [] }) => {
   const { focusedTileId, setSettingsSlotEl, tiles } = useTiling();
   const focusedTile =
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId] : null;
@@ -58,7 +63,7 @@ const McapSettingsSidebar: React.FC = () => {
         id: "scene",
         data: {
           label: "Scene",
-          content: <GlobalSceneSettings />,
+          content: <GlobalSceneSettings topics={topics} />,
         },
       },
     ];
@@ -74,7 +79,7 @@ const McapSettingsSidebar: React.FC = () => {
     }
 
     return nextTabs;
-  }, [focusedTileTitle, slotRef]);
+  }, [focusedTileTitle, slotRef, topics]);
   const defaultIndex = activeTab === "panel" && hasPanelTab ? 1 : 0;
   const handleTabChange = useCallback(
     (index: number) => {
@@ -109,13 +114,120 @@ function PanelSettingsContent({
   );
 }
 
-function GlobalSceneSettings() {
+function GlobalSceneSettings({
+  topics,
+}: {
+  readonly topics: readonly StreamInventory[];
+}) {
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
+      <OtherTopicsSettings topics={topics} />
       <PlaybackFidelitySettings />
       <TimeResolutionSettings />
     </div>
   );
+}
+
+interface OtherTopicRow {
+  readonly countLabel: string;
+  readonly encoding: string;
+  readonly schemaName: string;
+  readonly statusLabel: string;
+  readonly topic: string;
+}
+
+function OtherTopicsSettings({
+  topics,
+}: {
+  readonly topics: readonly StreamInventory[];
+}) {
+  const sceneSources = useSceneInventory();
+  const rows = useMemo(
+    () =>
+      otherTopicRows(
+        topics,
+        sceneSources.map((source) => source.id),
+      ),
+    [sceneSources, topics],
+  );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <McapSidebarGroup
+      defaultExpanded={false}
+      summary={`${rows.length} not rendered`}
+      title="Other topics"
+    >
+      <div className={styles.topicList}>
+        {rows.map((row) => (
+          <div className={styles.topicRow} key={row.topic}>
+            <Text variant={TextVariant.Xs} color={TextColor.Primary}>
+              {row.topic}
+            </Text>
+            <span className={styles.topicMeta}>
+              {row.schemaName} · {row.encoding} · {row.countLabel}
+            </span>
+            <span className={styles.topicStatus}>{row.statusLabel}</span>
+          </div>
+        ))}
+      </div>
+    </McapSidebarGroup>
+  );
+}
+
+function otherTopicRows(
+  topics: readonly StreamInventory[],
+  renderedTopicIds: readonly string[],
+): readonly OtherTopicRow[] {
+  const rendered = new Set(renderedTopicIds);
+  return topics
+    .map((topic) => {
+      const name = topicName(topic);
+      if (!name || rendered.has(name)) {
+        return null;
+      }
+      return {
+        countLabel: messageCountLabel(topic.recordCount),
+        encoding:
+          topic.metadata["mcap.message_encoding"] ??
+          topic.payload?.encoding ??
+          "unknown",
+        schemaName:
+          topic.metadata["mcap.schema_name"] ??
+          topic.payload?.schema ??
+          "no schema",
+        statusLabel: genericDecodeStatusLabel(
+          topic.metadata["mcap.generic_decode_status"],
+        ),
+        topic: name,
+      };
+    })
+    .filter((row): row is OtherTopicRow => row !== null)
+    .sort((left, right) => left.topic.localeCompare(right.topic));
+}
+
+function genericDecodeStatusLabel(status: string | undefined): string {
+  switch (status) {
+    case "decodable":
+      return "Inspectable in Message";
+    case "schema-unavailable":
+      return "Schema unavailable";
+    case "unsupported-encoding":
+      return "Encoding unsupported";
+    default:
+      return "Raw status unknown";
+  }
+}
+
+function messageCountLabel(recordCount: string | undefined): string {
+  const count = recordCount === undefined ? Number.NaN : Number(recordCount);
+  if (!Number.isFinite(count) || count < 0) {
+    return "unknown msgs";
+  }
+  return `${count.toLocaleString()} ${count === 1 ? "msg" : "msgs"}`;
 }
 
 const FIDELITY_OPTIONS: readonly {
