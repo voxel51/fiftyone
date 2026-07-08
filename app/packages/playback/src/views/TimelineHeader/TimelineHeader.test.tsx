@@ -102,7 +102,7 @@ describe("TimelineHeader", () => {
     render(
       <HeaderHarness
         rulerOverlay={<div data-testid="my-overlay">overlay</div>}
-      />
+      />,
     );
     const ruler = screen.getByTestId("timeline-ruler");
     expect(ruler.querySelector('[data-testid="my-overlay"]')).not.toBeNull();
@@ -122,7 +122,7 @@ describe("TimelineHeader", () => {
     render(
       <HeaderHarness>
         <div data-testid="pinned-section">pinned tracks</div>
-      </HeaderHarness>
+      </HeaderHarness>,
     );
     expect(screen.getByTestId("pinned-section")).toBeTruthy();
     // The root should gain a third child (the belowRuler wrapper).
@@ -165,7 +165,7 @@ describe("TimelineHeader", () => {
               [6, 8],
             ]}
           />
-        </HeaderHarness>
+        </HeaderHarness>,
       );
       const strip = screen.getByTestId("buffered-ranges-strip");
       // Rendered inside the ruler's tick lane (which carries the label
@@ -186,7 +186,7 @@ describe("TimelineHeader", () => {
       render(
         <HeaderHarness duration={10}>
           <SetBufferedRanges ranges={[[-2, 25]]} />
-        </HeaderHarness>
+        </HeaderHarness>,
       );
       const strip = screen.getByTestId("buffered-ranges-strip");
       const segment = strip.children[0] as HTMLElement;
