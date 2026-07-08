@@ -24,6 +24,7 @@ import {
   foxgloveLocationFixCdrDecoders,
   foxgloveLocationFixDecoder,
 } from "./location-fix";
+import { foxgloveLogCdrDecoders, foxgloveLogDecoder } from "./log";
 import {
   foxglovePointCloudCdrDecoders,
   foxglovePointCloudDecoder,
@@ -99,6 +100,11 @@ export {
 } from "./location-fix";
 
 /**
+ * Foxglove Log decoder export.
+ */
+export { foxgloveLogCdrDecoders, foxgloveLogDecoder } from "./log";
+
+/**
  * Foxglove PoseInFrame decoder export.
  */
 export {
@@ -137,6 +143,8 @@ export const foxgloveDecoders: readonly Decoder[] = [
   ...foxgloveLaserScanCdrDecoders,
   foxgloveLocationFixDecoder,
   ...foxgloveLocationFixCdrDecoders,
+  foxgloveLogDecoder,
+  ...foxgloveLogCdrDecoders,
   foxglovePointCloudDecoder,
   ...foxglovePointCloudCdrDecoders,
   foxglovePoseInFrameDecoder,

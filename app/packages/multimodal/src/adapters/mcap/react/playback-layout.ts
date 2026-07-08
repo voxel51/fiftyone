@@ -38,6 +38,7 @@ const CONTEXT_SHELF_IMAGE_SPLIT_PERCENTAGE = 65;
 
 // Mosaic leaf id of the single default 3D tile.
 const THREE_D_TILE_ID = `${MCAP_TILE_TYPE.THREE_D}-1`;
+const LOG_TILE_ID = `${MCAP_TILE_TYPE.LOG}-1`;
 
 /**
  * Device/runtime signals the layout resolver weighs. Collected once per
@@ -203,6 +204,9 @@ export function resolvePlaybackLayout({
       source.type === MCAP_SOURCE_TYPE.MAP_LAYER ||
       source.type === MCAP_SOURCE_TYPE.POSE,
   );
+  const hasLogs = sources.some(
+    (source) => source.type === MCAP_SOURCE_TYPE.LOG,
+  );
 
   const imageTileCount =
     rankedImages.length === 0
@@ -225,6 +229,13 @@ export function resolvePlaybackLayout({
       id: THREE_D_TILE_ID,
       tileType: MCAP_TILE_TYPE.THREE_D,
       title: "3D",
+    });
+  }
+  if (hasLogs) {
+    tiles.push({
+      id: LOG_TILE_ID,
+      tileType: MCAP_TILE_TYPE.LOG,
+      title: "Logs",
     });
   }
 
@@ -316,6 +327,7 @@ export function buildMcapAutoLayout(
   const images: string[] = [];
   const threeD: string[] = [];
   const plots: string[] = [];
+  const logs: string[] = [];
   const messages: string[] = [];
   const unknown: string[] = [];
 
@@ -330,6 +342,9 @@ export function buildMcapAutoLayout(
       case MCAP_TILE_TYPE.PLOT:
         plots.push(tileId);
         break;
+      case MCAP_TILE_TYPE.LOG:
+        logs.push(tileId);
+        break;
       case MCAP_TILE_TYPE.RAW:
         messages.push(tileId);
         break;
@@ -341,8 +356,8 @@ export function buildMcapAutoLayout(
 
   const threeDRegion = autoLayout(threeD);
   const supportingRegion = threeDRegion
-    ? buildContextShelf(images, plots, messages, unknown)
-    : buildNon3dLayout(images, plots, messages, unknown);
+    ? buildContextShelf(images, plots, logs, messages, unknown)
+    : buildNon3dLayout(images, plots, logs, messages, unknown);
 
   if (threeDRegion) {
     if (!supportingRegion) {
@@ -363,11 +378,12 @@ export function buildMcapAutoLayout(
 function buildNon3dLayout(
   images: readonly string[],
   plots: readonly string[],
+  logs: readonly string[],
   messages: readonly string[],
   unknown: readonly string[],
 ): MosaicNode<string> | null {
   const imageBank = autoLayout([...images]);
-  const diagnostics = buildDiagnosticsStack(plots, unknown);
+  const diagnostics = buildDiagnosticsStack(plots, logs, unknown);
   const left = stackNodes([imageBank, diagnostics], {
     direction: "column",
     splitPercentage: VISUAL_WITH_PLOTS_SPLIT_PERCENTAGE,
@@ -392,11 +408,12 @@ function buildNon3dLayout(
 function buildContextShelf(
   images: readonly string[],
   plots: readonly string[],
+  logs: readonly string[],
   messages: readonly string[],
   unknown: readonly string[],
 ): MosaicNode<string> | null {
   const imageBank = autoLayout([...images]);
-  const diagnostics = buildDiagnosticsStack(plots, unknown);
+  const diagnostics = buildDiagnosticsStack(plots, logs, unknown);
   const left = stackNodes([imageBank, diagnostics], {
     direction: "row",
     splitPercentage: CONTEXT_SHELF_IMAGE_SPLIT_PERCENTAGE,
@@ -426,10 +443,12 @@ function buildLayoutTree(
 
 function buildDiagnosticsStack(
   plots: readonly string[],
+  logs: readonly string[],
   unknown: readonly string[],
 ): MosaicNode<string> | null {
   return stackNodes([
     stackTiles(plots, "column"),
+    stackTiles(logs, "column"),
     stackTiles(unknown, "column"),
   ]);
 }

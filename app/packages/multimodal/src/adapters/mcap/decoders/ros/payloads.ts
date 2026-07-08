@@ -104,6 +104,41 @@ export const ROS_NAV_SAT_FIX_PAYLOADS = rosPayloads(
 );
 
 /**
+ * Payload descriptors for ROS rosgraph Log messages.
+ */
+export const ROS_ROSGRAPH_LOG_PAYLOADS: readonly PayloadDescriptor[] = [
+  {
+    encoding: "ros1",
+    schema: "rosgraph_msgs/Log",
+    schemaEncoding: "ros1msg",
+  },
+];
+
+/**
+ * Payload descriptors for ROS 2 rcl_interfaces Log messages.
+ */
+export const ROS_RCL_LOG_PAYLOADS: readonly PayloadDescriptor[] = [
+  {
+    encoding: "cdr",
+    schema: "rcl_interfaces/msg/Log",
+    schemaEncoding: "ros2msg",
+  },
+  {
+    encoding: "cdr",
+    schema: "rcl_interfaces/msg/Log",
+    schemaEncoding: "ros2idl",
+  },
+];
+
+/**
+ * Payload descriptors for ROS DiagnosticArray messages.
+ */
+export const ROS_DIAGNOSTIC_ARRAY_PAYLOADS = rosPayloads(
+  "diagnostic_msgs/DiagnosticArray",
+  "diagnostic_msgs/msg/DiagnosticArray",
+);
+
+/**
  * Payload descriptors for ROS OccupancyGrid messages.
  */
 export const ROS_OCCUPANCY_GRID_PAYLOADS = rosPayloads(

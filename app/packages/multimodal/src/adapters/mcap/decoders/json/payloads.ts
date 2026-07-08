@@ -114,6 +114,36 @@ export const JSON_ROS_NAV_SAT_FIX_PAYLOADS = jsonRosPayloads(
 );
 
 /**
+ * Payload descriptors for JSON-schema ROS rosgraph Log messages.
+ */
+export const JSON_ROS_ROSGRAPH_LOG_PAYLOADS: readonly PayloadDescriptor[] = [
+  {
+    encoding: "json",
+    schema: "rosgraph_msgs/Log",
+    schemaEncoding: "jsonschema",
+  },
+];
+
+/**
+ * Payload descriptors for JSON-schema ROS 2 rcl_interfaces Log messages.
+ */
+export const JSON_ROS_RCL_LOG_PAYLOADS: readonly PayloadDescriptor[] = [
+  {
+    encoding: "json",
+    schema: "rcl_interfaces/msg/Log",
+    schemaEncoding: "jsonschema",
+  },
+];
+
+/**
+ * Payload descriptors for JSON-schema ROS DiagnosticArray messages.
+ */
+export const JSON_ROS_DIAGNOSTIC_ARRAY_PAYLOADS = jsonRosPayloads(
+  "diagnostic_msgs/DiagnosticArray",
+  "diagnostic_msgs/msg/DiagnosticArray",
+);
+
+/**
  * Payload descriptors for JSON-schema ROS OccupancyGrid messages.
  */
 export const JSON_ROS_OCCUPANCY_GRID_PAYLOADS = jsonRosPayloads(

@@ -6,6 +6,7 @@ import {
   JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
   JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS,
   JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS,
+  JSON_ROS_DIAGNOSTIC_ARRAY_PAYLOADS,
   JSON_ROS_IMAGE_PAYLOADS,
   JSON_ROS_LASER_SCAN_PAYLOADS,
   JSON_ROS_MARKER_ARRAY_PAYLOADS,
@@ -17,6 +18,8 @@ import {
   JSON_ROS_POINT_CLOUD2_PAYLOADS,
   JSON_ROS_POSE_ARRAY_PAYLOADS,
   JSON_ROS_POSE_STAMPED_PAYLOADS,
+  JSON_ROS_RCL_LOG_PAYLOADS,
+  JSON_ROS_ROSGRAPH_LOG_PAYLOADS,
 } from "./decoders/json/payloads";
 import {
   FOXGLOVE_CAMERA_CALIBRATION_CDR_PAYLOADS,
@@ -32,6 +35,8 @@ import {
   FOXGLOVE_LASER_SCAN_PAYLOAD,
   FOXGLOVE_LOCATION_FIX_CDR_PAYLOADS,
   FOXGLOVE_LOCATION_FIX_PAYLOAD,
+  FOXGLOVE_LOG_CDR_PAYLOADS,
+  FOXGLOVE_LOG_PAYLOAD,
   FOXGLOVE_POINT_CLOUD_CDR_PAYLOADS,
   FOXGLOVE_POSE_IN_FRAME_CDR_PAYLOADS,
   FOXGLOVE_POSE_IN_FRAME_PAYLOAD,
@@ -45,6 +50,7 @@ import {
   ROS_COMPRESSED_IMAGE_PAYLOADS,
   ROS_DETECTION_2D_ARRAY_PAYLOADS,
   ROS_DETECTION_3D_ARRAY_PAYLOADS,
+  ROS_DIAGNOSTIC_ARRAY_PAYLOADS,
   ROS_IMAGE_PAYLOADS,
   ROS_LASER_SCAN_PAYLOADS,
   ROS_MARKER_ARRAY_PAYLOADS,
@@ -56,6 +62,8 @@ import {
   ROS_POINT_CLOUD2_PAYLOADS,
   ROS_POSE_ARRAY_PAYLOADS,
   ROS_POSE_STAMPED_PAYLOADS,
+  ROS_RCL_LOG_PAYLOADS,
+  ROS_ROSGRAPH_LOG_PAYLOADS,
 } from "./decoders/ros/payloads";
 
 /**
@@ -64,6 +72,7 @@ import {
 export interface McapPreviewTopics {
   readonly annotations: readonly string[];
   readonly image: readonly string[];
+  readonly logs: readonly string[];
   readonly pointCloud: readonly string[];
   readonly previewable: readonly string[];
   readonly sceneUpdates: readonly string[];
@@ -77,6 +86,7 @@ export function streamTopics(
 ): McapPreviewTopics {
   const image: string[] = [];
   const annotations: string[] = [];
+  const logs: string[] = [];
   const pointCloud: string[] = [];
   const sceneUpdates: string[] = [];
 
@@ -94,14 +104,17 @@ export function streamTopics(
       annotations.push(name);
     } else if (isSceneUpdateStream(topic)) {
       sceneUpdates.push(name);
+    } else if (isLogStream(topic)) {
+      logs.push(name);
     }
   }
 
   return {
     annotations,
     image,
+    logs,
     pointCloud,
-    previewable: [...image, ...pointCloud],
+    previewable: [...image, ...pointCloud, ...logs],
     sceneUpdates,
   };
 }
@@ -241,6 +254,22 @@ export function isLocationFixStream(topic: StreamInventory): boolean {
     hasAnyPayload(topic, FOXGLOVE_LOCATION_FIX_CDR_PAYLOADS) ||
     hasAnyPayload(topic, JSON_ROS_NAV_SAT_FIX_PAYLOADS) ||
     hasAnyPayload(topic, ROS_NAV_SAT_FIX_PAYLOADS)
+  );
+}
+
+/**
+ * Returns whether a stream inventory item is a supported log/diagnostic stream.
+ */
+export function isLogStream(topic: StreamInventory): boolean {
+  return (
+    hasPayload(topic, FOXGLOVE_LOG_PAYLOAD) ||
+    hasAnyPayload(topic, FOXGLOVE_LOG_CDR_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_ROSGRAPH_LOG_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_RCL_LOG_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_DIAGNOSTIC_ARRAY_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_ROSGRAPH_LOG_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_RCL_LOG_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_DIAGNOSTIC_ARRAY_PAYLOADS)
   );
 }
 

@@ -29,7 +29,12 @@ describe("mcapSceneSources", () => {
       createTopic("/odom", "Pose", "json", "jsonschema"),
       createTopic("/gps", "foxglove.LocationFix"),
       createTopic("/tf", "foxglove.FrameTransform"),
-      createTopic("/diagnostics", "diagnostic_msgs/DiagnosticArray", "ros1"),
+      createTopic(
+        "/diagnostics",
+        "diagnostic_msgs/DiagnosticArray",
+        "ros1",
+        "ros1msg",
+      ),
     ]);
 
     expect(sources).toEqual([
@@ -102,6 +107,11 @@ describe("mcapSceneSources", () => {
         id: "/gps",
         type: MCAP_SOURCE_TYPE.LOCATION,
         label: "gps",
+      },
+      {
+        id: "/diagnostics",
+        type: MCAP_SOURCE_TYPE.LOG,
+        label: "diagnostics",
       },
     ]);
   });
@@ -225,6 +235,12 @@ describe("mcapStreamPolicies", () => {
         createTopic("/markers/annotations", "foxglove.SceneUpdate"),
         createTopic("/lidar", "foxglove.PointCloud"),
         createTopic("/map", "foxglove.Grid"),
+        createTopic(
+          "/diagnostics",
+          "diagnostic_msgs/DiagnosticArray",
+          "ros1",
+          "ros1msg",
+        ),
       ]),
     );
 
@@ -245,6 +261,9 @@ describe("mcapStreamPolicies", () => {
     // A one-shot static /map stays resolvable for the whole run through the
     // same unbounded lookback.
     expect(policies["/map"]).toEqual({
+      mode: PlaybackSyncMode.LATEST,
+    });
+    expect(policies["/diagnostics"]).toEqual({
       mode: PlaybackSyncMode.LATEST,
     });
   });

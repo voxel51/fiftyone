@@ -14,6 +14,7 @@ import {
   isImageAnnotationsStream,
   isImageStream,
   isLocationFixStream,
+  isLogStream,
   isPointCloudStream,
   isPoseStream,
   isSceneUpdateStream,
@@ -27,6 +28,7 @@ import {
   FOXGLOVE_IMAGE_ANNOTATIONS_CDR_PAYLOADS,
   FOXGLOVE_LASER_SCAN_CDR_PAYLOADS,
   FOXGLOVE_LOCATION_FIX_CDR_PAYLOADS,
+  FOXGLOVE_LOG_CDR_PAYLOADS,
   FOXGLOVE_POINT_CLOUD_CDR_PAYLOADS,
   FOXGLOVE_POSE_IN_FRAME_CDR_PAYLOADS,
   FOXGLOVE_SCENE_UPDATE_CDR_PAYLOADS,
@@ -44,6 +46,8 @@ import {
   foxgloveLaserScanDecoder,
   foxgloveLocationFixCdrDecoders,
   foxgloveLocationFixDecoder,
+  foxgloveLogCdrDecoders,
+  foxgloveLogDecoder,
   foxglovePointCloudCdrDecoders,
   foxglovePointCloudDecoder,
   foxglovePoseInFrameCdrDecoders,
@@ -119,6 +123,10 @@ describe("Foxglove decoders", () => {
       foxgloveLocationFixDecoder,
     );
     for (const decoder of foxgloveLocationFixCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
+    expect(registry.find(foxgloveLogDecoder.payload)).toBe(foxgloveLogDecoder);
+    for (const decoder of foxgloveLogCdrDecoders) {
       expect(registry.find(decoder.payload)).toBe(decoder);
     }
     for (const decoder of foxgloveImageAnnotationsCdrDecoders) {
@@ -905,6 +913,57 @@ describe("Foxglove decoders", () => {
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(4_000_000_005n);
   });
 
+  it("decodes Foxglove Log protobuf and CDR payloads into console rows", () => {
+    const Log = LOG_ROOT.lookupType("foxglove.Log");
+    const protobuf = foxgloveLogDecoder.decode(
+      Log.encode(
+        Log.create({
+          file: "planner.cpp",
+          level: 4,
+          line: 42,
+          message: "planner failed",
+          name: "planner",
+          timestamp: { nanos: 9, seconds: 8 },
+        }),
+      ).finish(),
+      { schemaData: LOG_SCHEMA_DATA },
+    );
+    const cdr = decoderForSchemaEncoding(
+      foxgloveLogCdrDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_LOG_SCHEMA, {
+        file: "controller.cpp",
+        level: 3,
+        line: 10,
+        message: "tracking degraded",
+        name: "controller",
+        timestamp: { nanosec: 4, sec: 5 },
+      }),
+      { schemaData: schemaData(ROS2_LOG_SCHEMA) },
+    );
+
+    expect(protobuf.attributes?.logRows).toEqual([
+      expect.objectContaining({
+        file: "planner.cpp",
+        level: "error",
+        line: 42,
+        message: "planner failed",
+        name: "planner",
+        timestampNs: 8_000_000_009n,
+      }),
+    ]);
+    expect(protobuf.timing?.sourceTimestamps?.messageTime).toBe(8_000_000_009n);
+    expect(cdr.attributes?.logRows).toEqual([
+      expect.objectContaining({
+        level: "warn",
+        levelNumber: 3,
+        message: "tracking degraded",
+        timestampNs: 5_000_000_004n,
+      }),
+    ]);
+  });
+
   it("decodes protobuf scalar grid payloads into translucent masks", () => {
     const output = foxgloveGridDecoder.decode(
       gridWireMessage({
@@ -963,6 +1022,7 @@ describe("Foxglove decoders", () => {
       "/scene",
       FOXGLOVE_SCENE_UPDATE_CDR_PAYLOADS[0],
     );
+    const log = createTopic("/logs", FOXGLOVE_LOG_CDR_PAYLOADS[0]);
 
     expect(isCompressedImageStream(compressedImage)).toBe(true);
     expect(isImageStream(compressedImage)).toBe(true);
@@ -991,6 +1051,7 @@ describe("Foxglove decoders", () => {
         createTopic("/gps", FOXGLOVE_LOCATION_FIX_CDR_PAYLOADS[0]),
       ),
     ).toBe(true);
+    expect(isLogStream(log)).toBe(true);
     expect(
       streamTopics([
         compressedImage,
@@ -998,12 +1059,14 @@ describe("Foxglove decoders", () => {
         laserScan,
         annotations,
         sceneUpdate,
+        log,
       ]),
     ).toMatchObject({
       annotations: ["/camera/annotations"],
       image: ["/camera/compressed"],
+      logs: ["/logs"],
       pointCloud: ["/points", "/scan"],
-      previewable: ["/camera/compressed", "/points", "/scan"],
+      previewable: ["/camera/compressed", "/points", "/scan", "/logs"],
       sceneUpdates: ["/scene"],
     });
   });
@@ -1443,6 +1506,52 @@ bool frame_locked
 MSG: builtin_interfaces/Time
 int32 sec
 uint32 nanosec`;
+
+const ROS2_LOG_SCHEMA = `builtin_interfaces/Time timestamp
+uint8 level
+string message
+string name
+string file
+uint32 line
+================================================================================
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec`;
+
+const LOG_ROOT = Root.fromJSON({
+  nested: {
+    foxglove: {
+      nested: {
+        Log: {
+          fields: {
+            file: { id: 5, type: "string" },
+            level: { id: 2, type: "uint32" },
+            line: { id: 6, type: "uint32" },
+            message: { id: 3, type: "string" },
+            name: { id: 4, type: "string" },
+            timestamp: { id: 1, type: "google.protobuf.Timestamp" },
+          },
+        },
+      },
+    },
+    google: {
+      nested: {
+        protobuf: {
+          nested: {
+            Timestamp: {
+              fields: {
+                nanos: { id: 2, type: "int32" },
+                seconds: { id: 1, type: "int64" },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+});
+
+const LOG_SCHEMA_DATA = protobufDescriptorData(LOG_ROOT);
 
 function decoderForSchemaEncoding(
   decoders: readonly Decoder[],

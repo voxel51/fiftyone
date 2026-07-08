@@ -66,6 +66,12 @@ export const FOXGLOVE_LOCATION_FIX_CDR_PAYLOADS =
   foxgloveCdrPayloads("LocationFix");
 
 /**
+ * Payload identities for foxglove_msgs/msg/Log messages carried over ROS 2
+ * CDR encodings.
+ */
+export const FOXGLOVE_LOG_CDR_PAYLOADS = foxgloveCdrPayloads("Log");
+
+/**
  * Payload identities for foxglove_msgs/msg/PointCloud messages carried over
  * ROS 2 CDR encodings.
  */
