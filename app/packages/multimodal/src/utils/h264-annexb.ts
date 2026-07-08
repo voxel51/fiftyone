@@ -16,6 +16,7 @@ const H264_NAL_TYPE_CODED_SLICE_NON_IDR = 1;
 const H264_NAL_TYPE_CODED_SLICE_IDR = 5;
 const H264_NAL_TYPE_SPS = 7;
 const H264_NAL_TYPE_PPS = 8;
+const MAX_SLICE_HEADER_PREFIX_BYTES = 32;
 
 /**
  * Lightweight Annex-B H.264 access-unit inspection. This is deliberately not a
@@ -188,12 +189,16 @@ function codecStringFromSps(sps: Uint8Array): string | undefined {
 }
 
 function hexByte(value: number): string {
-  return value.toString(16).padStart(2, "0").toUpperCase();
+  return value.toString(16).padStart(2, "0");
 }
 
 function isBFrameSlice(nal: Uint8Array): boolean {
   try {
-    const rbsp = removeEmulationPreventionBytes(nal.subarray(1));
+    const headerPrefix = nal.subarray(
+      1,
+      Math.min(nal.byteLength, 1 + MAX_SLICE_HEADER_PREFIX_BYTES),
+    );
+    const rbsp = removeEmulationPreventionBytes(headerPrefix);
     const reader = new BitReader(rbsp);
     reader.readUnsignedExpGolomb(); // first_mb_in_slice
     const sliceType = reader.readUnsignedExpGolomb();
@@ -248,7 +253,7 @@ class BitReader {
     let leadingZeros = 0;
     while (this.readBit() === 0) {
       leadingZeros += 1;
-      if (leadingZeros > 31) {
+      if (leadingZeros >= 31) {
         throw new Error("Exp-Golomb code is too large");
       }
     }

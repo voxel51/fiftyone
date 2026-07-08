@@ -21,8 +21,8 @@ import {
 } from "./protobuf/records";
 import { timingFromContext } from "./protobuf/timing";
 import {
+  unsupportedVideoFormatReason,
   videoCodecFromFormat,
-  videoRenderingUnsupportedReason,
 } from "../video-format";
 
 /**
@@ -41,7 +41,7 @@ export const foxgloveCompressedVideoDecoder: Decoder = {
     );
     return compressedVideoOutput({
       data: requiredBytes(message, "data"),
-      format: optionalString(message, "format") ?? "unknown",
+      format: optionalString(message, "format"),
       frameId: optionalString(message, "frameId", "frame_id"),
       messageTimestamp: rosTimestampNs(optionalRecord(message, "timestamp")),
       source: "Foxglove CompressedVideo",
@@ -58,7 +58,7 @@ export const foxgloveCompressedVideoCdrDecoders = rosDecodersForPayloads({
   map(message, context) {
     return compressedVideoOutput({
       data: bytesField(message, "data"),
-      format: optionalString(message, "format") ?? "unknown",
+      format: optionalString(message, "format"),
       frameId: optionalString(message, "frame_id", "frameId"),
       messageTimestamp: rosTimestampNs(recordField(message, "timestamp")),
       source: "Foxglove CompressedVideo",
@@ -77,53 +77,54 @@ function compressedVideoOutput({
   timingContext,
 }: {
   readonly data: Uint8Array;
-  readonly format: string;
+  readonly format?: string;
   readonly frameId?: string;
   readonly messageTimestamp?: bigint;
   readonly source: string;
   readonly timingContext: Parameters<typeof timingFromContext>[0];
 }): DecodedOutput {
+  const rawFormatForReason = format ?? "";
+  const displayFormat = format?.trim() ? format : "unknown";
   const attributes: Record<string, DecodedAttributeValue> = {
     byteLength: data.byteLength,
-    format,
+    format: displayFormat,
   };
-  const codec = videoCodecFromFormat(format);
+  const codec = videoCodecFromFormat(rawFormatForReason);
 
   if (frameId) {
     attributes.frameId = frameId;
   }
 
-  if (codec !== "h264") {
-    attributes.unsupportedReason = unsupportedCompressedVideoReason(
-      source,
-      format,
-    );
+  const metadataOnlyOutput = (reason: string): DecodedOutput => {
+    attributes.unsupportedReason = reason;
     return {
       attributes,
       resourceHints: resourceHintsForArrayBufferViews(data),
       timing: timingFromContext(timingContext, messageTimestamp),
     };
+  };
+
+  if (codec !== "h264") {
+    // Keep missing raw formats available to unsupportedSourceFormatReason while
+    // attributes use a display fallback.
+    return metadataOnlyOutput(
+      unsupportedVideoFormatReason(source, rawFormatForReason),
+    );
   }
 
   const h264 = analyzeH264AnnexBAccessUnit(data);
   if (!h264.hasStartCodes) {
-    attributes.unsupportedReason =
-      "H.264 video requires Annex-B NAL start codes";
-    return {
-      attributes,
-      resourceHints: resourceHintsForArrayBufferViews(data),
-      timing: timingFromContext(timingContext, messageTimestamp),
-    };
+    return metadataOnlyOutput("H.264 video requires Annex-B NAL start codes");
+  }
+
+  if (!h264.hasFrame) {
+    return metadataOnlyOutput("H.264 video requires frame NAL units");
   }
 
   if (h264.hasBFrames) {
-    attributes.unsupportedReason =
-      "H.264 video streams with B-frames are unsupported";
-    return {
-      attributes,
-      resourceHints: resourceHintsForArrayBufferViews(data),
-      timing: timingFromContext(timingContext, messageTimestamp),
-    };
+    return metadataOnlyOutput(
+      "H.264 video streams with B-frames are unsupported",
+    );
   }
 
   attributes.codec = "h264";
@@ -136,7 +137,7 @@ function compressedVideoOutput({
     bytes: data,
     codec: "h264",
     ...(frameId ? { coordinateFrameId: frameId } : {}),
-    format,
+    format: displayFormat,
     h264: {
       ...(h264.codecString ? { codecString: h264.codecString } : {}),
       hasFrame: h264.hasFrame,
@@ -156,13 +157,4 @@ function compressedVideoOutput({
     timing: timingFromContext(timingContext, messageTimestamp),
     visualization,
   };
-}
-
-function unsupportedCompressedVideoReason(source: string, format: string) {
-  return (
-    videoRenderingUnsupportedReason(format) ??
-    (format.trim()
-      ? `${source} format '${format}' is unsupported`
-      : `${source} format is missing`)
-  );
 }

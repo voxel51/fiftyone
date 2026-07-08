@@ -6,7 +6,7 @@ import type { ImageTextureHandle } from "./base-2d-scene";
 
 const VIDEO_DECODE_SESSION_CAP = 6;
 const VIDEO_DECODE_TIMEOUT_MS = 3000;
-const MICROSECONDS_PER_NANOSECOND = 1000n;
+const NANOSECONDS_PER_MICROSECOND = 1000n;
 
 type EncodedVideoChunkType = "key" | "delta";
 
@@ -29,9 +29,6 @@ interface VideoFrameLike {
 }
 
 interface VideoDecoderConfigLike {
-  readonly avc?: {
-    readonly format: "annexb";
-  };
   readonly codec: string;
   readonly hardwareAcceleration?: "no-preference" | "prefer-hardware";
   readonly optimizeForLatency?: boolean;
@@ -107,6 +104,20 @@ export function resetVideoTextureDecodersForTests(): void {
   }
   sessions.clear();
   syntheticTimestampUs = 0;
+}
+
+export function releaseEncodedVideoSession(
+  frame: EncodedVideoVisualization,
+  textureKey: string | undefined,
+): void {
+  const sessionKey = videoSessionKey(textureKey, frame);
+  const session = sessions.get(sessionKey);
+  if (!session) {
+    return;
+  }
+
+  session.close();
+  sessions.delete(sessionKey);
 }
 
 function videoDecodeSessionForKey(sessionKey: string): H264VideoDecodeSession {
@@ -216,8 +227,7 @@ class H264VideoDecodeSession {
     }
 
     const Decoder = videoDecoderConstructor();
-    const Chunk = encodedVideoChunkConstructor();
-    if (!Decoder || !Chunk) {
+    if (!Decoder) {
       throw new Error("WebCodecs video decoding is unavailable");
     }
     if (globalThis.isSecureContext === false) {
@@ -225,7 +235,6 @@ class H264VideoDecodeSession {
     }
 
     const config: VideoDecoderConfigLike = {
-      avc: { format: "annexb" },
       codec: codecString,
       hardwareAcceleration: "no-preference",
       optimizeForLatency: true,
@@ -233,6 +242,10 @@ class H264VideoDecodeSession {
     const supported = await Decoder.isConfigSupported?.(config);
     if (!supported?.supported) {
       throw new Error(`H.264 codec '${codecString}' is unsupported`);
+    }
+
+    if (this.decoder) {
+      return this.decoder;
     }
 
     this.codecString = codecString;
@@ -284,6 +297,7 @@ class H264VideoDecodeSession {
         resolve,
         timeout: setTimeout(() => {
           this.pending = this.pending.filter((entry) => entry !== pending);
+          this.resetDecoder();
           reject(new Error("Timed out waiting for H.264 frame decode"));
         }, VIDEO_DECODE_TIMEOUT_MS),
       };
@@ -394,7 +408,7 @@ function timestampMicros(timestampNs: bigint | undefined): number {
     return syntheticTimestampUs;
   }
 
-  return Number(timestampNs / MICROSECONDS_PER_NANOSECOND);
+  return Number(timestampNs / NANOSECONDS_PER_MICROSECOND);
 }
 
 function videoDecoderConstructor(): VideoDecoderConstructor | undefined {

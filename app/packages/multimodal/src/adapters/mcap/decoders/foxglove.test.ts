@@ -169,6 +169,42 @@ describe("Foxglove decoders", () => {
     });
   });
 
+  it("reports non-H.264 compressed image video formats with video reasons", () => {
+    const output = foxgloveCompressedImageDecoder.decode(
+      compressedImageMessage("vp9"),
+      {
+        schemaData: COMPRESSED_IMAGE_FIXTURE.schemaData,
+      },
+    );
+
+    expect(output.visualization).toBeUndefined();
+    expect(output.attributes).toMatchObject({
+      byteLength: 9,
+      format: "vp9",
+      unsupportedReason: "VP9 video rendering not yet supported",
+    });
+  });
+
+  it("keeps compressed images with missing formats previewable", () => {
+    const output = foxgloveCompressedImageDecoder.decode(
+      compressedImageMessage(),
+      {
+        schemaData: COMPRESSED_IMAGE_FIXTURE.schemaData,
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.ENCODED_IMAGE);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.ENCODED_IMAGE) {
+      throw new Error("Expected encoded image visualization");
+    }
+    expect(output.visualization.mimeType).toBeUndefined();
+    expect(output.attributes).toMatchObject({
+      byteLength: 9,
+      format: "unknown",
+    });
+    expect(output.attributes?.unsupportedReason).toBeUndefined();
+  });
+
   it("normalizes whitespace and unknown compressed image formats", () => {
     const jpeg = foxgloveCompressedImageDecoder.decode(
       compressedImageMessage(" JPG "),
@@ -195,7 +231,7 @@ describe("Foxglove decoders", () => {
 
   it("decodes protobuf compressed video messages into encoded video", () => {
     const output = foxgloveCompressedVideoDecoder.decode(
-      compressedVideoMessage("h264"),
+      compressedVideoMessage("avc1.4D001F"),
       {
         schemaData: COMPRESSED_VIDEO_SCHEMA_DATA,
         sourceTimestamps: {
@@ -214,19 +250,19 @@ describe("Foxglove decoders", () => {
     expect(output.visualization).toMatchObject({
       codec: "h264",
       coordinateFrameId: "CAM_VIDEO",
-      format: "h264",
+      format: "avc1.4D001F",
       keyframe: true,
       timestampNs: 123456000000000n,
     });
     expect(output.visualization.h264).toMatchObject({
-      codecString: "avc1.4D001F",
+      codecString: "avc1.4d001f",
       hasFrame: true,
     });
     expect(output.attributes).toMatchObject({
       byteLength: H264_KEYFRAME_BYTES.byteLength,
       codec: "h264",
-      codecString: "avc1.4D001F",
-      format: "h264",
+      codecString: "avc1.4d001f",
+      format: "avc1.4D001F",
       frameId: "CAM_VIDEO",
       keyframe: true,
     });
@@ -289,6 +325,37 @@ describe("Foxglove decoders", () => {
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(3_000_000_004n);
   });
 
+  it("reports missing compressed video formats without masking the reason", () => {
+    const protobuf = foxgloveCompressedVideoDecoder.decode(
+      compressedVideoMessage(),
+      {
+        schemaData: COMPRESSED_VIDEO_SCHEMA_DATA,
+      },
+    );
+    const cdr = decoderForSchemaEncoding(
+      foxgloveCompressedVideoCdrDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_COMPRESSED_VIDEO_SCHEMA, {
+        data: Array.from(H264_KEYFRAME_BYTES),
+        frame_id: "CAM_VIDEO",
+        timestamp: { nanosec: 4, sec: 3 },
+      }),
+      { schemaData: schemaData(ROS2_COMPRESSED_VIDEO_SCHEMA) },
+    );
+
+    expect(protobuf.visualization).toBeUndefined();
+    expect(protobuf.attributes).toMatchObject({
+      format: "unknown",
+      unsupportedReason: "Foxglove CompressedVideo format is missing",
+    });
+    expect(cdr.visualization).toBeUndefined();
+    expect(cdr.attributes).toMatchObject({
+      format: "unknown",
+      unsupportedReason: "Foxglove CompressedVideo format is missing",
+    });
+  });
+
   it("registers compressed video cdr payloads for both ROS 2 schema spellings", () => {
     const output = decoderForSchemaEncoding(
       foxgloveCompressedVideoCdrDecoders,
@@ -298,6 +365,7 @@ describe("Foxglove decoders", () => {
         data: [1, 2, 3],
         format: "av1",
         frame_id: "CAM_IDL",
+        // @foxglove/ros2idl-parser exposes builtin_interfaces/Time as nsec.
         timestamp: { nsec: 6, sec: 5 },
       }),
       { schemaData: schemaData(ROS2_IDL_COMPRESSED_VIDEO_SCHEMA) },
@@ -755,20 +823,26 @@ function text(data: Uint8Array): string {
   return new TextDecoder().decode(data);
 }
 
-function compressedImageMessage(format: string): Uint8Array {
-  return concatProtobufFields(
-    protobufBytesField(2, new TextEncoder().encode("fake-jpeg")),
-    protobufBytesField(3, new TextEncoder().encode(format)),
-  );
+function compressedImageMessage(format?: string): Uint8Array {
+  const fields = [protobufBytesField(2, new TextEncoder().encode("fake-jpeg"))];
+  if (format !== undefined) {
+    fields.push(protobufBytesField(3, new TextEncoder().encode(format)));
+  }
+
+  return concatProtobufFields(...fields);
 }
 
-function compressedVideoMessage(format: string): Uint8Array {
-  return concatProtobufFields(
+function compressedVideoMessage(format?: string): Uint8Array {
+  const fields = [
     protobufBytesField(1, concatProtobufFields(protobufVarintField(1, 123456))),
     protobufBytesField(2, new TextEncoder().encode("CAM_VIDEO")),
     protobufBytesField(3, H264_KEYFRAME_BYTES),
-    protobufBytesField(4, new TextEncoder().encode(format)),
-  );
+  ];
+  if (format !== undefined) {
+    fields.push(protobufBytesField(4, new TextEncoder().encode(format)));
+  }
+
+  return concatProtobufFields(...fields);
 }
 
 const H264_KEYFRAME_BYTES = Uint8Array.of(

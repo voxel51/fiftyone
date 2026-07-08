@@ -17,6 +17,7 @@ export type {
   DecodedTiming,
   DecodedVisualization,
   Decoder,
+  EncodedH264VideoVisualization,
   EncodedImageVisualization,
   EncodedVideoVisualization,
   ImageVisualization,

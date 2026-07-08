@@ -31,6 +31,7 @@ export const rosCompressedImageDecoders = rosDecodersForPayloads({
     const header = rosHeader(message);
     const data = bytesField(message, "data");
     const format = stringField(message, "format", "unknown");
+    const timing = timingFromRosHeader(context, header);
     const attributes: Record<string, DecodedAttributeValue> = {
       ...rosHeaderAttributes(header),
       byteLength: data.byteLength,
@@ -47,22 +48,22 @@ export const rosCompressedImageDecoders = rosDecodersForPayloads({
           format,
           frameId: rosHeaderFrameId(header),
           timestampNs: rosHeaderTimestampNs(header),
-          timing: timingFromRosHeader(context, header),
+          timing,
         });
       }
 
-      attributes.unsupportedReason = unsupportedCompressedImageReason(format);
-      return {
+      return unsupportedCompressedImageOutput({
         attributes,
-        resourceHints: resourceHintsForArrayBufferViews(data),
-        timing: timingFromRosHeader(context, header),
-      };
+        data,
+        reason: unsupportedCompressedImageReason(format),
+        timing,
+      });
     }
 
     return {
       attributes,
       resourceHints: resourceHintsForArrayBufferViews(data),
-      timing: timingFromRosHeader(context, header),
+      timing,
       visualization: {
         bytes: data,
         kind: VISUALIZATION_KIND.ENCODED_IMAGE,
@@ -90,23 +91,30 @@ function h264CompressedImageOutput({
 }): DecodedOutput {
   const h264 = analyzeH264AnnexBAccessUnit(data);
   if (!h264.hasStartCodes) {
-    attributes.unsupportedReason =
-      "H.264 video requires Annex-B NAL start codes";
-    return {
+    return unsupportedCompressedImageOutput({
       attributes,
-      resourceHints: resourceHintsForArrayBufferViews(data),
+      data,
+      reason: "H.264 video requires Annex-B NAL start codes",
       timing,
-    };
+    });
+  }
+
+  if (!h264.hasFrame) {
+    return unsupportedCompressedImageOutput({
+      attributes,
+      data,
+      reason: "H.264 video requires frame NAL units",
+      timing,
+    });
   }
 
   if (h264.hasBFrames) {
-    attributes.unsupportedReason =
-      "H.264 video streams with B-frames are unsupported";
-    return {
+    return unsupportedCompressedImageOutput({
       attributes,
-      resourceHints: resourceHintsForArrayBufferViews(data),
+      data,
+      reason: "H.264 video streams with B-frames are unsupported",
       timing,
-    };
+    });
   }
 
   attributes.codec = "h264";
@@ -136,6 +144,25 @@ function h264CompressedImageOutput({
     resourceHints: resourceHintsForArrayBufferViews(data),
     timing,
     visualization,
+  };
+}
+
+function unsupportedCompressedImageOutput({
+  attributes,
+  data,
+  reason,
+  timing,
+}: {
+  readonly attributes: Record<string, DecodedAttributeValue>;
+  readonly data: Uint8Array;
+  readonly reason: string;
+  readonly timing: ReturnType<typeof timingFromRosHeader>;
+}): DecodedOutput {
+  attributes.unsupportedReason = reason;
+  return {
+    attributes,
+    resourceHints: resourceHintsForArrayBufferViews(data),
+    timing,
   };
 }
 

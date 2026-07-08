@@ -22,14 +22,17 @@
  * cancellation, or on unmount).
  */
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef } from "react";
 
 import type {
   EncodedVideoVisualization,
   ImageVisualization,
   RawImageVisualization,
 } from "../../decoders";
-import { createEncodedVideoCanvas } from "./video-texture";
+import {
+  createEncodedVideoCanvas,
+  releaseEncodedVideoSession,
+} from "./video-texture";
 
 const DEFAULT_MIME_TYPE = "image/jpeg";
 
@@ -369,13 +372,15 @@ function BitmapEncodedVideoView({
   onErrorRef.current = onError;
   const onImageLoadedRef = useRef(onImageLoaded);
   onImageLoadedRef.current = onImageLoaded;
+  const previewTextureKey = useId();
 
   useEffect(() => {
     let cancelled = false;
 
-    createEncodedVideoCanvas(frame, undefined)
+    createEncodedVideoCanvas(frame, previewTextureKey)
       .then((source) => {
         if (cancelled) {
+          closeDrawable(source);
           return;
         }
 
@@ -390,8 +395,9 @@ function BitmapEncodedVideoView({
 
     return () => {
       cancelled = true;
+      releaseEncodedVideoSession(frame, previewTextureKey);
     };
-  }, [commit, frame]);
+  }, [commit, frame, previewTextureKey]);
 
   return (
     <canvas

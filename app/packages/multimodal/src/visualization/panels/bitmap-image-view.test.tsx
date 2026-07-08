@@ -296,6 +296,27 @@ describe("BitmapImageFrameView", () => {
     expect(drawImage.mock.calls[1]?.[0]).toBeInstanceOf(HTMLCanvasElement);
     expect(drawImage.mock.calls[1]?.slice(1)).toEqual([0, -12.5, 100, 75]);
   });
+
+  it("reports encoded video preview decode failures", async () => {
+    vi.stubGlobal("EncodedVideoChunk", undefined);
+    vi.stubGlobal("VideoDecoder", undefined);
+    const onError = vi.fn();
+    const onImageLoaded = vi.fn();
+
+    render(
+      <BitmapImageFrameView
+        frame={videoFrame()}
+        onError={onError}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
+
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+    expect(onError.mock.calls[0]?.[0]).toEqual(
+      new Error("WebCodecs video decoding is unavailable"),
+    );
+    expect(onImageLoaded).not.toHaveBeenCalled();
+  });
 });
 
 describe("BitmapCanvasHost", () => {

@@ -32,7 +32,7 @@ describe("H.264 Annex-B access unit inspection", () => {
     );
 
     expect(info).toMatchObject({
-      codecString: "avc1.4D001F",
+      codecString: "avc1.4d001f",
       hasBFrames: false,
       hasFrame: true,
       hasStartCodes: true,
@@ -47,13 +47,23 @@ describe("H.264 Annex-B access unit inspection", () => {
     const bFrame = analyzeH264AnnexBAccessUnit(
       Uint8Array.of(0, 0, 1, 0x41, 0xa0),
     );
+    const bFrameWithEmulationPrevention = analyzeH264AnnexBAccessUnit(
+      Uint8Array.of(0, 0, 1, 0x41, 0xa0, 0, 0, 0x03, 1),
+    );
     const pFrame = analyzeH264AnnexBAccessUnit(
       Uint8Array.of(0, 0, 1, 0x41, 0xc0),
+    );
+    const pFrameWithEmulationPrevention = analyzeH264AnnexBAccessUnit(
+      Uint8Array.of(0, 0, 1, 0x41, 0xc0, 0, 0, 0x03, 1),
     );
 
     expect(bFrame.hasBFrames).toBe(true);
     expect(bFrame.hasFrame).toBe(true);
+    expect(bFrameWithEmulationPrevention.hasBFrames).toBe(true);
+    expect(bFrameWithEmulationPrevention.hasFrame).toBe(true);
     expect(pFrame.hasBFrames).toBe(false);
+    expect(pFrameWithEmulationPrevention.hasBFrames).toBe(false);
+    expect(pFrameWithEmulationPrevention.hasFrame).toBe(true);
   });
 
   it("reports non-Annex-B bytes without throwing", () => {

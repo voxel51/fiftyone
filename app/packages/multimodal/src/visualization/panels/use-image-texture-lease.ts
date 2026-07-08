@@ -171,5 +171,20 @@ function errorMessageFromUnknown(error: unknown): string {
   if (typeof error === "string" && error) {
     return error;
   }
+  if (hasStringMessage(error)) {
+    return error.message;
+  }
   return "Image unavailable";
+}
+
+function hasStringMessage(
+  error: unknown,
+): error is { readonly message: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.length > 0
+  );
 }

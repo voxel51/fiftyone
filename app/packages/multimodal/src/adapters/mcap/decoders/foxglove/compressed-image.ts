@@ -13,8 +13,9 @@ import {
 } from "./protobuf/records";
 import { timingFromContext, timestampNs } from "./protobuf/timing";
 import {
+  unsupportedSourceFormatReason,
+  unsupportedVideoFormatReason,
   videoCodecFromFormat,
-  videoRenderingUnsupportedReason,
 } from "../video-format";
 
 /**
@@ -92,12 +93,11 @@ function mimeTypeFromFormat(format: string): string | null | undefined {
 }
 
 function unsupportedImageReason(format: string): string {
+  // Keep Foxglove CompressedImage H.264 as image-only metadata; H.264 rendering
+  // is handled by video-specific message types with different expectations.
   if (videoCodecFromFormat(format) === "h264") {
-    return `Foxglove CompressedImage format '${format}' is unsupported`;
+    return unsupportedSourceFormatReason("Foxglove CompressedImage", format);
   }
 
-  return (
-    videoRenderingUnsupportedReason(format) ??
-    `Foxglove CompressedImage format '${format}' is unsupported`
-  );
+  return unsupportedVideoFormatReason("Foxglove CompressedImage", format);
 }

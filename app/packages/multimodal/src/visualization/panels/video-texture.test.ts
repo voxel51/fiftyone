@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EncodedVideoVisualization } from "../../decoders";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import {
+  createEncodedVideoCanvas,
   createEncodedVideoTexture,
   resetVideoTextureDecodersForTests,
 } from "./video-texture";
@@ -24,7 +25,8 @@ const fakeDecoderInstances: FakeVideoDecoder[] = [];
 beforeEach(() => {
   resetVideoTextureDecodersForTests();
   fakeDecoderInstances.length = 0;
-  FakeVideoDecoder.isConfigSupported.mockClear();
+  FakeVideoDecoder.decodeBehavior = "output";
+  FakeVideoDecoder.isConfigSupported = vi.fn(async () => ({ supported: true }));
   vi.stubGlobal("EncodedVideoChunk", FakeEncodedVideoChunk);
   vi.stubGlobal("VideoDecoder", FakeVideoDecoder);
   vi.stubGlobal("isSecureContext", true);
@@ -33,6 +35,8 @@ beforeEach(() => {
 afterEach(() => {
   resetVideoTextureDecodersForTests();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe("createEncodedVideoTexture", () => {
@@ -46,7 +50,6 @@ describe("createEncodedVideoTexture", () => {
     expect(handle.imageHeight).toBe(480);
     expect(fakeDecoderInstances).toHaveLength(1);
     expect(FakeVideoDecoder.isConfigSupported).toHaveBeenCalledWith({
-      avc: { format: "annexb" },
       codec: "avc1.4D001F",
       hardwareAcceleration: "no-preference",
       optimizeForLatency: true,
@@ -147,7 +150,92 @@ describe("createEncodedVideoTexture", () => {
     first.dispose();
     second.dispose();
   });
+
+  it("rejects pending textures when the decoder reports an error", async () => {
+    FakeVideoDecoder.decodeBehavior = "hold";
+
+    const texture = createEncodedVideoTexture(
+      h264Frame({ keyframe: true, timestampNs: 1000n }),
+      "rec\n/camera/video\n1000",
+    );
+    await vi.waitFor(() => {
+      expect(fakeDecoderInstances[0]?.decodeCalls).toHaveLength(1);
+    });
+
+    const expectation = expect(texture).rejects.toThrow("decoder failed");
+    fakeDecoderInstances[0].fail(new Error("decoder failed"));
+
+    await expectation;
+    expect(fakeDecoderInstances[0].resetCalls).toBe(1);
+    expect(fakeDecoderInstances[0].closeCalls).toBe(1);
+  });
+
+  it("rejects pending textures and resets the decoder on decode timeout", async () => {
+    vi.useFakeTimers();
+    FakeVideoDecoder.decodeBehavior = "hold";
+
+    const texture = createEncodedVideoTexture(
+      h264Frame({ keyframe: true, timestampNs: 1000n }),
+      "rec\n/camera/video\n1000",
+    );
+    await Promise.resolve();
+
+    const expectation = expect(texture).rejects.toThrow(
+      "Timed out waiting for H.264 frame decode",
+    );
+    await vi.advanceTimersByTimeAsync(3000);
+
+    await expectation;
+    expect(fakeDecoderInstances[0].resetCalls).toBe(1);
+    expect(fakeDecoderInstances[0].closeCalls).toBe(1);
+  });
 });
+
+describe("createEncodedVideoCanvas", () => {
+  it("decodes H.264 keyframes into canvases and closes decoded frames", async () => {
+    const context = stubVideoCanvasContext();
+    const drawImage = vi
+      .spyOn(context, "drawImage")
+      .mockImplementation(() => undefined);
+
+    const canvas = await createEncodedVideoCanvas(
+      h264Frame({ keyframe: true, timestampNs: 1000n }),
+      "rec\n/camera/video\n1000",
+    );
+
+    const frame = fakeDecoderInstances[0].outputFrames[0];
+    expect(canvas.width).toBe(640);
+    expect(canvas.height).toBe(480);
+    expect(drawImage).toHaveBeenCalledWith(frame, 0, 0, 640, 480);
+    expect(frame?.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("evicts least-recently-used decoder sessions from canvas previews", async () => {
+    stubVideoCanvasContext();
+
+    for (let index = 0; index < 7; index += 1) {
+      await createEncodedVideoCanvas(
+        h264Frame({ keyframe: true, timestampNs: BigInt(index + 1) }),
+        `rec\n/camera/${index}\n${index}`,
+      );
+    }
+
+    expect(fakeDecoderInstances).toHaveLength(7);
+    expect(fakeDecoderInstances[0].closeCalls).toBe(1);
+    expect(fakeDecoderInstances[1].closeCalls).toBe(0);
+  });
+});
+
+function stubVideoCanvasContext(): CanvasRenderingContext2D {
+  const context = document.createElement("canvas").getContext("2d");
+  if (!context) {
+    throw new Error("shared canvas 2d mock missing");
+  }
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+    context as never,
+  );
+  return context;
+}
 
 function h264Frame({
   bytes = Uint8Array.of(
@@ -213,9 +301,11 @@ class FakeEncodedVideoChunk {
 
 class FakeVideoDecoder {
   static isConfigSupported = vi.fn(async () => ({ supported: true }));
+  static decodeBehavior: "hold" | "output" = "output";
 
   readonly decodeCalls: FakeChunk[] = [];
   readonly outputFrames: FakeFrame[] = [];
+  closeCalls = 0;
   configuredCodec: string | null = null;
   resetCalls = 0;
 
@@ -229,7 +319,7 @@ class FakeVideoDecoder {
   }
 
   close(): void {
-    // no-op in the fake
+    this.closeCalls += 1;
   }
 
   configure(config: { readonly codec: string }): void {
@@ -238,6 +328,10 @@ class FakeVideoDecoder {
 
   decode(chunk: FakeChunk): void {
     this.decodeCalls.push(chunk);
+    if (FakeVideoDecoder.decodeBehavior === "hold") {
+      return;
+    }
+
     const frame = {
       close: vi.fn(),
       displayHeight: 480,
@@ -249,5 +343,9 @@ class FakeVideoDecoder {
 
   reset(): void {
     this.resetCalls += 1;
+  }
+
+  fail(error: Error): void {
+    this.init.error(error);
   }
 }

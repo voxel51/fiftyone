@@ -24,26 +24,39 @@ export interface EncodedImageVisualization {
   readonly mimeType?: string;
 }
 
-/**
- * Encoded video access unit decoded from one message. The contract lets MCAP
- * topics be classified as image-family streams while decoders and renderers
- * stay source-format agnostic.
- */
-export interface EncodedVideoVisualization {
+interface BaseEncodedVideoVisualization {
   readonly kind: typeof VISUALIZATION_KIND.ENCODED_VIDEO;
   readonly bytes: Uint8Array;
-  readonly codec: "av1" | "h264" | "h265" | "vp9";
   readonly coordinateFrameId?: string;
   readonly format: string;
-  readonly h264?: {
+  readonly keyframe?: boolean;
+  readonly timestampNs?: bigint;
+}
+
+/**
+ * Encoded H.264 access unit decoded from one message.
+ */
+export interface EncodedH264VideoVisualization extends BaseEncodedVideoVisualization {
+  readonly codec: "h264";
+  readonly h264: {
     readonly codecString?: string;
     readonly hasFrame?: boolean;
     readonly pps?: Uint8Array;
     readonly sps?: Uint8Array;
   };
-  readonly keyframe?: boolean;
-  readonly timestampNs?: bigint;
 }
+
+/**
+ * Encoded video access unit decoded from one message. The contract lets MCAP
+ * topics be classified as image-family streams while keeping codec metadata
+ * aligned with the selected codec.
+ */
+export type EncodedVideoVisualization =
+  | EncodedH264VideoVisualization
+  | (BaseEncodedVideoVisualization & {
+      readonly codec: "av1" | "h265" | "vp9";
+      readonly h264?: never;
+    });
 
 /**
  * Raw image pixels normalized by a decoder into display-ready RGBA.
