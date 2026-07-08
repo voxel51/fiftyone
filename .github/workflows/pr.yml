@@ -14,8 +14,8 @@ concurrency:
   # displace the suite run before it starts.
   group: >-
     ${{ github.workflow }}-${{ github.ref }}-${{
-      (github.event.action == 'edited' && github.event.changes.base == null)
-      && 'noop' || 'ci' }}
+    (github.event.action == 'edited' && github.event.changes.base == null)
+    && 'noop' || 'ci' }}
   cancel-in-progress: true
 
 permissions:
