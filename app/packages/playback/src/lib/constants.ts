@@ -1,6 +1,16 @@
 export const DEFAULT_FRAME_NUMBER = 1;
 export const DEFAULT_LOOP = false;
 export const DEFAULT_SPEED = 1;
+/**
+ * Playback speed is a rate multiplier valid on `(0, MAX_SPEED]` — any positive
+ * value up to the ceiling. The ceiling is a UX guardrail, not the real limit:
+ * decode/buffer throughput is what actually caps sustained playback, and the
+ * engine's buffering already stalls when it can't keep up. There is no policy
+ * floor; `MIN_SPEED` is only the smallest value the 2-decimal display can show
+ * without rounding to 0.
+ */
+export const MAX_SPEED = 8;
+export const MIN_SPEED = 0.01;
 export const DEFAULT_TARGET_FRAME_RATE = 30;
 export const DEFAULT_USE_TIME_INDICATOR = false;
 export const GLOBAL_TIMELINE_ID = "fo-timeline-global";

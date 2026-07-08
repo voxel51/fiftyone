@@ -22,6 +22,32 @@
   margin-left: 2px;
 }
 
+/* Scrubbable speed field: ns-resize hints the vertical drag; a subtle border
+   appears on hover and turns into a focus ring while typing. Fixed width so
+   the row doesn't jitter as the value changes (0.1×…8×). */
+.speedInput {
+  width: 42px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-content-text-secondary);
+  font-size: 12px;
+  text-align: center;
+  cursor: ns-resize;
+}
+
+.speedInput:hover {
+  border-color: var(--color-content-border-default);
+}
+
+.speedInput:focus {
+  border-color: var(--color-brand-primary);
+  color: var(--color-content-text-primary);
+  cursor: text;
+  outline: none;
+}
+
 .divider {
   width: 1px;
   height: 12px;

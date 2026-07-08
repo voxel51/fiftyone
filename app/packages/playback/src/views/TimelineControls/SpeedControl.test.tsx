@@ -1,7 +1,11 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { MAX_SPEED } from "../../lib/constants";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
-import SpeedControl, { SPEED_PRESETS } from "./SpeedControl";
+import SpeedControl from "./SpeedControl";
+
+// Kept in sync with the component; drag math is asserted in terms of it.
+const PX_PER_DOUBLING = 130;
 
 function renderSpeed(defaultSpeed?: number) {
   return render(
@@ -11,50 +15,148 @@ function renderSpeed(defaultSpeed?: number) {
       defaultSpeed={defaultSpeed}
     >
       <SpeedControl />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
-const trigger = () => screen.getByTestId("timeline-controls-speed");
+const field = () =>
+  screen.getByTestId("timeline-controls-speed") as HTMLInputElement;
+
+// Enter edit mode the way a user does: a pointer-down/up that doesn't move.
+// pointer-up is dispatched on window because that's where the drag listens.
+function clickToEdit() {
+  fireEvent.pointerDown(field());
+  fireEvent.pointerUp(window);
+}
+
+// Simulate a vertical scrub of `dy` pixels (negative = up = faster). jsdom
+// drops `movementY` from fireEvent init, so dispatch an event with it defined.
+function scrub(dy: number) {
+  fireEvent.pointerDown(field());
+  const move = new MouseEvent("pointermove", { bubbles: true });
+  Object.defineProperty(move, "movementY", { value: dy, configurable: true });
+  // Wrap the native dispatch so the setSpeed it triggers is flushed by React.
+  act(() => {
+    window.dispatchEvent(move);
+  });
+  fireEvent.pointerUp(window);
+}
 
 describe("SpeedControl", () => {
   afterEach(() => cleanup());
 
   it("shows 1× by default", () => {
     renderSpeed();
-    expect(trigger().textContent).toContain("1×");
+    expect(field().value).toBe("1×");
   });
 
   it("reflects a non-default initial speed", () => {
     renderSpeed(2);
-    expect(trigger().textContent).toContain("2×");
+    expect(field().value).toBe("2×");
   });
 
-  it("opens a menu with every preset speed", () => {
+  it("is read-only until clicked, then editable", () => {
     renderSpeed();
-    fireEvent.click(trigger());
-    for (const n of SPEED_PRESETS) {
-      expect(
-        screen.getByTestId(`timeline-controls-speed-option-${n}`)
-      ).toBeTruthy();
-    }
+    expect(field().readOnly).toBe(true);
+    clickToEdit();
+    expect(field().readOnly).toBe(false);
+    // Editing shows the bare number so the × doesn't get in the way.
+    expect(field().value).toBe("1");
   });
 
-  it("selecting a preset updates the active speed", () => {
+  it("commits a typed value on Enter", () => {
     renderSpeed();
-    fireEvent.click(trigger());
-    fireEvent.click(screen.getByTestId("timeline-controls-speed-option-2"));
-    expect(trigger().textContent).toContain("2×");
+    clickToEdit();
+    fireEvent.change(field(), { target: { value: "2.5" } });
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(field().value).toBe("2.5×");
+    expect(field().readOnly).toBe(true);
   });
 
-  it("supports the fractional 0.25× preset", () => {
+  it("commits on blur", () => {
     renderSpeed();
-    fireEvent.click(trigger());
-    fireEvent.click(screen.getByTestId("timeline-controls-speed-option-0.25"));
-    expect(trigger().textContent).toContain("0.25×");
+    clickToEdit();
+    fireEvent.change(field(), { target: { value: "3" } });
+    fireEvent.blur(field());
+    expect(field().value).toBe("3×");
   });
 
-  it("offers exactly the documented presets", () => {
-    expect([...SPEED_PRESETS]).toEqual([0.25, 0.5, 1, 1.5, 2, 3]);
+  it("reverts to the committed value on Escape", () => {
+    renderSpeed(2);
+    clickToEdit();
+    fireEvent.change(field(), { target: { value: "5" } });
+    fireEvent.keyDown(field(), { key: "Escape" });
+    expect(field().value).toBe("2×");
+  });
+
+  it("parses a value with a trailing × or x", () => {
+    renderSpeed();
+    clickToEdit();
+    fireEvent.change(field(), { target: { value: "4x" } });
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(field().value).toBe("4×");
+  });
+
+  it("reverts when the typed value is invalid", () => {
+    renderSpeed(2);
+    clickToEdit();
+    fireEvent.change(field(), { target: { value: "abc" } });
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(field().value).toBe("2×");
+  });
+
+  it("clamps a value above MAX_SPEED down to the ceiling", () => {
+    renderSpeed();
+    clickToEdit();
+    fireEvent.change(field(), { target: { value: "50" } });
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(field().value).toBe(`${MAX_SPEED}×`);
+  });
+
+  it("allows any small positive value (no 0.1 floor)", () => {
+    renderSpeed();
+    clickToEdit();
+    fireEvent.change(field(), { target: { value: "0.05" } });
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(field().value).toBe("0.05×");
+  });
+
+  it("scrubbing up increases speed multiplicatively", () => {
+    renderSpeed(1);
+    // One doubling's worth of upward travel → 2×.
+    scrub(-PX_PER_DOUBLING);
+    expect(field().value).toBe("2×");
+  });
+
+  it("scrubbing down decreases speed and does not enter edit mode", () => {
+    renderSpeed(2);
+    // One doubling's worth of downward travel → 1×.
+    scrub(PX_PER_DOUBLING);
+    expect(field().value).toBe("1×");
+    expect(field().readOnly).toBe(true);
+  });
+
+  it("double-click resets to 1×", () => {
+    renderSpeed(3);
+    fireEvent.doubleClick(field());
+    expect(field().value).toBe("1×");
+  });
+
+  it("arrow keys nudge the committed speed", () => {
+    renderSpeed(1);
+    fireEvent.keyDown(field(), { key: "ArrowUp" });
+    // 1 × 1.1 = 1.1
+    expect(field().value).toBe("1.1×");
+    fireEvent.keyDown(field(), { key: "ArrowDown" });
+    // 1.1 × 1.1^-1 = 1 (rounded to 2dp)
+    expect(field().value).toBe("1×");
+  });
+
+  it("exposes spinbutton semantics for accessibility", () => {
+    renderSpeed(2);
+    const el = field();
+    expect(el.getAttribute("role")).toBe("spinbutton");
+    expect(el.getAttribute("aria-valuenow")).toBe("2");
+    expect(el.getAttribute("aria-valuemax")).toBe(String(MAX_SPEED));
   });
 });
