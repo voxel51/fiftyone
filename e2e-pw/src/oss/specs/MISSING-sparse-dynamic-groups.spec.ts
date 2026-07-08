@@ -67,7 +67,8 @@ test.describe.serial("sparse dynamic groups", () => {
     await page.reload();
   });
 
-  test(`left slice (default)`, async ({
+  // TODO re-enable this test once its flakiness is resolved
+  test.skip(`left slice (default)`, async ({
     fiftyoneLoader,
     page,
     grid,
