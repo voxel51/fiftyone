@@ -3544,6 +3544,10 @@ class GroupBy(ViewStage):
         self._create_index = create_index
         self._sort_stage = None
         self._order_by_key = order_by_key
+        # emit a per-group `_group_count`
+        self._include_count = False
+        # emit `_group` (the dynamic-group value) on each doc.
+        self._include_group = False
 
     @property
     def outputs_dynamic_groups(self):
@@ -3604,6 +3608,11 @@ class GroupBy(ViewStage):
 
         return self._make_grouped_pipeline(sample_collection)
 
+    def _group_field_stage(self, sample_collection):
+        # shared `$addFields` so every read labels docs with `_group` identically
+        group_expr, _ = self._get_group_expr(sample_collection)
+        return {"$addFields": {"_group": group_expr}}
+
     def _make_flat_pipeline(self, sample_collection):
         group_expr, _ = self._get_group_expr(sample_collection)
         match_expr = self._get_mongo_match_expr()
@@ -3635,16 +3644,21 @@ class GroupBy(ViewStage):
             [
                 {"$unwind": "$docs"},
                 {"$replaceRoot": {"newRoot": "$docs"}},
-                {"$addFields": {"_group": group_expr}},
             ]
         )
+
+        if self._include_group:
+            pipeline.append(self._group_field_stage(sample_collection))
 
         return pipeline
 
     def _make_grouped_pipeline(self, sample_collection):
         if self._order_by_key is not None:
             order_by = sample_collection._handle_db_field(self._order_by)
-            return [{"$match": {order_by: self._order_by_key}}]
+            pipeline = [{"$match": {order_by: self._order_by_key}}]
+            if self._include_group:
+                pipeline.append(self._group_field_stage(sample_collection))
+            return pipeline
 
         group_expr, _ = self._get_group_expr(sample_collection)
         pipeline = []
@@ -3653,12 +3667,44 @@ class GroupBy(ViewStage):
         if self._sort_stage is not None:
             pipeline.extend(self._sort_stage.to_mongo(sample_collection))
 
-        pipeline.extend(
-            [
-                {"$group": {"_id": group_expr, "doc": {"$first": "$$ROOT"}}},
-                {"$replaceRoot": {"newRoot": "$doc"}},
-            ]
-        )
+        if self._include_count:
+            pipeline.extend(
+                [
+                    {
+                        "$group": {
+                            "_id": group_expr,
+                            "doc": {"$first": "$$ROOT"},
+                            "_group_count": {"$sum": 1},
+                        }
+                    },
+                    {
+                        "$replaceRoot": {
+                            "newRoot": {
+                                "$mergeObjects": [
+                                    "$doc",
+                                    {"_group_count": "$_group_count"},
+                                ]
+                            }
+                        }
+                    },
+                ]
+            )
+        else:
+            pipeline.extend(
+                [
+                    {
+                        "$group": {
+                            "_id": group_expr,
+                            "doc": {"$first": "$$ROOT"},
+                        }
+                    },
+                    {"$replaceRoot": {"newRoot": "$doc"}},
+                ]
+            )
+
+        # re-label `_group`; the `$group`/`$replaceRoot` above drops it
+        if self._include_group:
+            pipeline.append(self._group_field_stage(sample_collection))
 
         # add a sort stage so that we return a stable ordering of groups
         # sort by _id to preserve insertion order

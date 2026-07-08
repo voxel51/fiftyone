@@ -26,6 +26,7 @@ from .ontology import OntologyAttributes, OntologyTaxonomy, Ontologies
 from .plugins import Plugins
 from .runtime_assets import RuntimeAssetRoutes
 from .sample import SampleRoutes
+from .samples import SamplesRoutes
 from .screenshot import Screenshot
 from .sort import Sort
 from .tag import Tag
@@ -46,6 +47,7 @@ routes = (
     + multimodal_routes
     + OperatorRoutes
     + RuntimeAssetRoutes
+    + SamplesRoutes
     + SampleRoutes
     + [
         ("/aggregate", Aggregate),
