@@ -1,6 +1,10 @@
 import type { Decoder } from "../../../../decoders";
 import { foxgloveCameraCalibrationDecoder } from "./camera-calibration";
 import { foxgloveCompressedImageDecoder } from "./compressed-image";
+import {
+  foxgloveCompressedVideoCdrDecoders,
+  foxgloveCompressedVideoDecoder,
+} from "./compressed-video";
 import { foxgloveGridDecoder } from "./grid";
 import { foxgloveImageAnnotationsDecoder } from "./image-annotations";
 import { foxgloveLaserScanDecoder } from "./laser-scan";
@@ -18,6 +22,14 @@ export { foxgloveCameraCalibrationDecoder } from "./camera-calibration";
  * Foxglove compressed image decoder export.
  */
 export { foxgloveCompressedImageDecoder } from "./compressed-image";
+
+/**
+ * Foxglove compressed video decoder export.
+ */
+export {
+  foxgloveCompressedVideoCdrDecoders,
+  foxgloveCompressedVideoDecoder,
+} from "./compressed-video";
 
 /**
  * Foxglove Grid decoder export.
@@ -55,11 +67,18 @@ export { foxglovePoseInFrameDecoder } from "./pose-in-frame";
 export { foxgloveSceneUpdateDecoder } from "./scene-update";
 
 /**
+ * Foxglove payload descriptor exports.
+ */
+export * from "./payloads";
+
+/**
  * Built-in Foxglove decoders for the MCAP adapter.
  */
 export const foxgloveDecoders: readonly Decoder[] = [
   foxgloveCameraCalibrationDecoder,
   foxgloveCompressedImageDecoder,
+  foxgloveCompressedVideoDecoder,
+  ...foxgloveCompressedVideoCdrDecoders,
   foxgloveGridDecoder,
   foxgloveImageAnnotationsDecoder,
   foxgloveLaserScanDecoder,

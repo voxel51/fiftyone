@@ -25,6 +25,21 @@ export interface EncodedImageVisualization {
 }
 
 /**
+ * Encoded video access unit decoded from one message. Layer 1 defines the
+ * contract so MCAP topics can be classified as image-family streams; concrete
+ * decoders start emitting it once the WebCodecs playback layer is available.
+ */
+export interface EncodedVideoVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.ENCODED_VIDEO;
+  readonly bytes: Uint8Array;
+  readonly codec: "av1" | "h264" | "h265" | "vp9";
+  readonly coordinateFrameId?: string;
+  readonly format: string;
+  readonly keyframe?: boolean;
+  readonly timestampNs?: bigint;
+}
+
+/**
  * Raw image pixels normalized by a decoder into display-ready RGBA.
  * `rgba` is row-major from the source image's top-left pixel.
  */

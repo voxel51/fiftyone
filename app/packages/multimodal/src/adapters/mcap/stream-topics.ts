@@ -4,6 +4,8 @@ import { JSON_POSE_PAYLOAD } from "./decoders/json/payloads";
 import {
   FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD,
   FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
+  FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS,
+  FOXGLOVE_COMPRESSED_VIDEO_PAYLOAD,
   FOXGLOVE_GRID_PAYLOAD,
   FOXGLOVE_LASER_SCAN_PAYLOAD,
   FOXGLOVE_LOCATION_FIX_PAYLOAD,
@@ -11,7 +13,7 @@ import {
   FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
   FOXGLOVE_POINT_CLOUD_PAYLOAD,
   FOXGLOVE_SCENE_UPDATE_PAYLOAD,
-} from "./decoders/foxglove/protobuf/payloads";
+} from "./decoders/foxglove/payloads";
 import {
   ROS_CAMERA_INFO_PAYLOADS,
   ROS_COMPRESSED_IMAGE_PAYLOADS,
@@ -85,6 +87,8 @@ export function topicName(topic: StreamInventory): string {
 export function isImageStream(topic: StreamInventory): boolean {
   return (
     hasPayload(topic, FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD) ||
+    hasPayload(topic, FOXGLOVE_COMPRESSED_VIDEO_PAYLOAD) ||
+    hasAnyPayload(topic, FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS) ||
     hasAnyPayload(topic, ROS_COMPRESSED_IMAGE_PAYLOADS) ||
     hasAnyPayload(topic, ROS_IMAGE_PAYLOADS)
   );

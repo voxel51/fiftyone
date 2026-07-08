@@ -12,6 +12,7 @@ import {
 } from "./common";
 import { rosDecodersForPayloads } from "./factory";
 import { ROS_COMPRESSED_IMAGE_PAYLOADS } from "./payloads";
+import { videoRenderingUnsupportedReason } from "../video-format";
 
 /**
  * Decoders for ROS CompressedImage messages.
@@ -27,6 +28,16 @@ export const rosCompressedImageDecoders = rosDecodersForPayloads({
       byteLength: data.byteLength,
       format,
     };
+    const mimeType = mimeTypeFromRosCompressedImageFormat(format);
+
+    if (!mimeType) {
+      attributes.unsupportedReason = unsupportedCompressedImageReason(format);
+      return {
+        attributes,
+        resourceHints: resourceHintsForArrayBufferViews(data),
+        timing: timingFromRosHeader(context, header),
+      };
+    }
 
     return {
       attributes,
@@ -35,7 +46,7 @@ export const rosCompressedImageDecoders = rosDecodersForPayloads({
       visualization: {
         bytes: data,
         kind: VISUALIZATION_KIND.ENCODED_IMAGE,
-        mimeType: mimeTypeFromRosCompressedImageFormat(format),
+        mimeType,
       },
     };
   },
@@ -65,4 +76,11 @@ function mimeTypeFromRosCompressedImageFormat(
   }
 
   return undefined;
+}
+
+function unsupportedCompressedImageReason(format: string): string {
+  return (
+    videoRenderingUnsupportedReason(format) ??
+    `ROS CompressedImage format '${format}' is unsupported`
+  );
 }

@@ -253,6 +253,11 @@ module builtin_interfaces {
   };
 };`;
 
+const ROS2_COMPRESSED_IMAGE_SCHEMA = `std_msgs/Header header
+string format
+uint8[] data
+${ROS2_HEADER_DEFINITIONS}`;
+
 const ROS1_IMAGE_SCHEMA = `std_msgs/Header header
 uint32 height
 uint32 width
@@ -447,6 +452,32 @@ describe("ROS MCAP decoders", () => {
       byteLength: 9,
       format: "jpeg",
       frameId: "camera",
+    });
+    expect(output.timing?.sourceTimestamps?.messageTime).toBe(3_000_000_004n);
+  });
+
+  it("degrades ROS CompressedImage video formats without throwing", () => {
+    const output = decoderForSchemaEncoding(
+      rosCompressedImageDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_COMPRESSED_IMAGE_SCHEMA, {
+        data: [0, 0, 0, 1, 0x67, 0x4d, 0x0c, 0x33],
+        format: "h264",
+        header: {
+          frame_id: "camera",
+          stamp: { nanosec: 4, sec: 3 },
+        },
+      }),
+      { schemaData: schemaData(ROS2_COMPRESSED_IMAGE_SCHEMA) },
+    );
+
+    expect(output.visualization).toBeUndefined();
+    expect(output.attributes).toMatchObject({
+      byteLength: 8,
+      format: "h264",
+      frameId: "camera",
+      unsupportedReason: "H.264 video rendering not yet supported",
     });
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(3_000_000_004n);
   });
