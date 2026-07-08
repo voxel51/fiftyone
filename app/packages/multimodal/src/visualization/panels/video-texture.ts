@@ -63,6 +63,9 @@ interface PendingVideoFrame {
 const sessions = new Map<string, H264VideoDecodeSession>();
 let syntheticTimestampUs = 0;
 
+/**
+ * Decodes an encoded video visualization into a disposable Three texture.
+ */
 export async function createEncodedVideoTexture(
   frame: EncodedVideoVisualization,
   textureKey: string | undefined,
@@ -75,6 +78,9 @@ export async function createEncodedVideoTexture(
   return session.decode(frame);
 }
 
+/**
+ * Decodes an encoded video visualization into a canvas for GPU-free previews.
+ */
 export async function createEncodedVideoCanvas(
   frame: EncodedVideoVisualization,
   textureKey: string | undefined,
@@ -92,6 +98,9 @@ export async function createEncodedVideoCanvas(
   }
 }
 
+/**
+ * Clears shared WebCodecs sessions and synthetic timestamps between tests.
+ */
 export function resetVideoTextureDecodersForTests(): void {
   for (const session of sessions.values()) {
     session.close();

@@ -25,9 +25,9 @@ export interface EncodedImageVisualization {
 }
 
 /**
- * Encoded video access unit decoded from one message. Layer 1 defines the
- * contract so MCAP topics can be classified as image-family streams; concrete
- * decoders start emitting it once the WebCodecs playback layer is available.
+ * Encoded video access unit decoded from one message. The contract lets MCAP
+ * topics be classified as image-family streams while decoders and renderers
+ * stay source-format agnostic.
  */
 export interface EncodedVideoVisualization {
   readonly kind: typeof VISUALIZATION_KIND.ENCODED_VIDEO;

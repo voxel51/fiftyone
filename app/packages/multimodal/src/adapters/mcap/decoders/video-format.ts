@@ -8,7 +8,7 @@ const VIDEO_FORMAT_LABELS = Object.freeze({
 type SupportedVideoFormat = keyof typeof VIDEO_FORMAT_LABELS;
 
 /**
- * Returns a legible Layer-1 reason for known video codecs.
+ * Returns a legible unsupported-rendering reason for known video codecs.
  */
 export function videoRenderingUnsupportedReason(
   format: string,
@@ -19,6 +19,10 @@ export function videoRenderingUnsupportedReason(
     : undefined;
 }
 
+/**
+ * Normalizes source format strings into the video codecs the adapter can
+ * reason about.
+ */
 export function videoCodecFromFormat(
   format: string,
 ): SupportedVideoFormat | null {

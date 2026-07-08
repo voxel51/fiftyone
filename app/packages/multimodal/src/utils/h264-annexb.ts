@@ -1,3 +1,6 @@
+/**
+ * Lightweight facts extracted from one Annex-B H.264 access unit.
+ */
 export interface H264AnnexBAccessUnitInfo {
   readonly codecString?: string;
   readonly hasBFrames: boolean;
@@ -63,6 +66,9 @@ export function analyzeH264AnnexBAccessUnit(
   };
 }
 
+/**
+ * Prepends remembered SPS/PPS parameter sets when a delta frame omits them.
+ */
 export function h264AccessUnitWithParameterSets({
   bytes,
   pps,
