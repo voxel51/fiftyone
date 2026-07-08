@@ -1,5 +1,7 @@
 import { useTiling } from "@fiftyone/tiling";
 import {
+  Input,
+  InputType,
   Size,
   Text,
   TextColor,
@@ -27,6 +29,8 @@ import McapSidebarGroup from "./McapSidebarGroup";
 import styles from "./McapSettingsSidebar.module.css";
 
 type ActiveSettingsTab = "scene" | "panel";
+
+const OTHER_TOPICS_SEARCH_THRESHOLD = 5;
 
 /**
  * MCAP-specific left sidebar. Panel settings stay on an explicit tab while
@@ -142,6 +146,7 @@ function OtherTopicsSettings({
   readonly topics: readonly StreamInventory[];
 }) {
   const sceneSources = useSceneInventory();
+  const [search, setSearch] = useState("");
   const rows = useMemo(
     () =>
       otherTopicRows(
@@ -149,6 +154,11 @@ function OtherTopicsSettings({
         sceneSources.map((source) => source.id),
       ),
     [sceneSources, topics],
+  );
+  const showSearch = rows.length > OTHER_TOPICS_SEARCH_THRESHOLD;
+  const filteredRows = useMemo(
+    () => (showSearch ? filterOtherTopicRows(rows, search) : rows),
+    [rows, search, showSearch],
   );
 
   if (rows.length === 0) {
@@ -161,8 +171,19 @@ function OtherTopicsSettings({
       summary={`${rows.length} not rendered`}
       title="Other topics"
     >
+      {showSearch ? (
+        <Input
+          aria-label="Search other topics"
+          className={styles.topicSearchInput}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search topics"
+          size={Size.Sm}
+          type={InputType.Search}
+          value={search}
+        />
+      ) : null}
       <div className={styles.topicList}>
-        {rows.map((row) => (
+        {filteredRows.map((row) => (
           <div className={styles.topicRow} key={row.topic}>
             <Text variant={TextVariant.Xs} color={TextColor.Primary}>
               {row.topic}
@@ -173,8 +194,29 @@ function OtherTopicsSettings({
             <span className={styles.topicStatus}>{row.statusLabel}</span>
           </div>
         ))}
+        {filteredRows.length === 0 ? (
+          <span className={styles.topicEmpty}>
+            No other topics match &quot;{search}&quot;
+          </span>
+        ) : null}
       </div>
     </McapSidebarGroup>
+  );
+}
+
+function filterOtherTopicRows(
+  rows: readonly OtherTopicRow[],
+  search: string,
+): readonly OtherTopicRow[] {
+  const needle = search.trim().toLowerCase();
+  if (!needle) {
+    return rows;
+  }
+
+  return rows.filter((row) =>
+    [row.topic, row.schemaName, row.encoding, row.statusLabel].some((value) =>
+      value.toLowerCase().includes(needle),
+    ),
   );
 }
 

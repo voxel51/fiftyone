@@ -179,12 +179,80 @@ describe("McapSettingsSidebar", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Other topics/ }));
 
+    expect(screen.queryByLabelText("Search other topics")).toBeNull();
     expect(screen.queryByText("/lidar/top")).toBeNull();
     expect(screen.getByText("/imu")).toBeTruthy();
     expect(screen.getByText("sensor_msgs/Imu · ros1 · 8 msgs")).toBeTruthy();
     expect(screen.getByText("Inspectable in Message")).toBeTruthy();
     expect(screen.getByText("Schema unavailable")).toBeTruthy();
     expect(screen.getByText("Encoding unsupported")).toBeTruthy();
+  });
+
+  it("searches long other topic lists", () => {
+    renderSidebar({
+      topics: [
+        topic("/alpha", {
+          count: "1",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "example_msgs/Alpha",
+        }),
+        topic("/beta", {
+          count: "2",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "example_msgs/Beta",
+        }),
+        topic("/camera/front", {
+          count: "3",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "sensor_msgs/Image",
+        }),
+        topic("/diagnostics", {
+          count: "4",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "diagnostic_msgs/DiagnosticArray",
+        }),
+        topic("/gps", {
+          count: "5",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "sensor_msgs/NavSatFix",
+        }),
+        topic("/imu", {
+          count: "6",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "sensor_msgs/Imu",
+        }),
+        topic("/tf_static", {
+          count: "7",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "tf2_msgs/TFMessage",
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Other topics/ }));
+
+    const search = screen.getByLabelText(
+      "Search other topics",
+    ) as HTMLInputElement;
+    expect(search).toBeTruthy();
+    expect(screen.queryByText("/camera/front")).toBeNull();
+
+    fireEvent.change(search, { target: { value: "navsat" } });
+
+    expect(screen.getByText("/gps")).toBeTruthy();
+    expect(screen.queryByText("/alpha")).toBeNull();
+    expect(screen.queryByText("/imu")).toBeNull();
+
+    fireEvent.change(search, { target: { value: "nothing" } });
+
+    expect(screen.getByText('No other topics match "nothing"')).toBeTruthy();
   });
 
   it("switches to the panel tab when a panel tab first appears", () => {
