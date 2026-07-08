@@ -10,7 +10,13 @@ import {
 export interface NativeVideoFrameStreamOptions extends FrameBitmapStreamOptions {
   /** Resolved media URL for the source video (e.g. `getSampleSrc(...)`). */
   videoSrc: string;
-  /** Extra headers for the media fetch (auth); usually none for presigned. */
+  /**
+   * Optional headers for the worker's media fetch. Empty by default: the worker
+   * fetches `videoSrc` with `<video src>` semantics (cors, default credentials,
+   * no custom headers) — the same way `framesWorker` fetches image bytes — so
+   * native decode works wherever the `<video>` tile does (presigned URL or
+   * same-origin cookies).
+   */
   headers?: Record<string, string>;
   /** Worker-side frame-exactness instrumentation (dev only). */
   debug?: boolean;

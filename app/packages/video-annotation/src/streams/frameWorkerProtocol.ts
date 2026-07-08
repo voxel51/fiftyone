@@ -62,7 +62,23 @@ export interface ChunkFailedMessage {
   error: string;
 }
 
+/**
+ * worker → main: the verdict of a `probeOnly` init — whether the source video
+ * is decodable via WebCodecs. Emitted only by the WebCodecs worker's probe
+ * branch (the decode-strategy resolver awaits it); the full-decode init and the
+ * `/frames` worker never send it.
+ */
+export interface CapabilityMessage {
+  type: "capability";
+  decodable: boolean;
+  /** Demuxed codec string when known (absent on fetch/demux failure). */
+  codec?: string;
+  /** Human-readable reason when not decodable (diagnostics). */
+  reason?: string;
+}
+
 export type FrameWorkerOutbound =
   | FrameReadyMessage
   | ChunkDoneMessage
-  | ChunkFailedMessage;
+  | ChunkFailedMessage
+  | CapabilityMessage;
