@@ -170,6 +170,32 @@ describe("useSelectionBridge", () => {
     expect(result.current.selectedIndices).toBeNull();
   });
 
+  it("tracks the lasso's point count for chrome, until cleared", async () => {
+    vi.mocked(fetchLassoStage).mockClear().mockResolvedValue({
+      _cls: "fiftyone.core.stages.GeoWithin",
+      kwargs: {},
+      count: 42,
+    });
+    const opts = options();
+    const { result } = renderHook(() => useSelectionBridge(opts));
+    expect(result.current.selectionCount).toBeNull();
+
+    act(() =>
+      result.current.handleSelection(
+        [0, 1],
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+        ],
+      ),
+    );
+    await waitFor(() => expect(result.current.selectionCount).toBe(42));
+
+    act(() => result.current.clearAll());
+    expect(result.current.selectionCount).toBeNull();
+  });
+
   it("clears every selection layer on Escape", () => {
     const opts = options();
     renderHook(() => useSelectionBridge(opts));

@@ -19,47 +19,23 @@ const run = (brainKey: string): VisualizationRun => ({
 const RUNS = [run("umap"), run("tsne")];
 
 describe("useVisualizationRuns", () => {
-  it("loads runs and defaults the key to the first run", async () => {
+  it("resets to loading when the dataset changes", async () => {
     vi.mocked(fetchRuns).mockResolvedValue(RUNS);
-    const setBrainKey = vi.fn();
     const { result, rerender } = renderHook(
-      ({ brainKey }: { brainKey: string | null }) =>
-        useVisualizationRuns("ds", brainKey, setBrainKey),
-      { initialProps: { brainKey: null as string | null } },
+      ({ dataset }: { dataset: string }) => useVisualizationRuns(dataset),
+      { initialProps: { dataset: "ds" } },
     );
-
     await waitFor(() => expect(result.current.runs).toEqual(RUNS));
-    expect(setBrainKey).toHaveBeenCalledWith("umap");
 
-    // The caller owns the key; once it lands, the run resolves
-    rerender({ brainKey: "umap" });
-    expect(result.current.run).toEqual(RUNS[0]);
-  });
-
-  it("keeps an existing valid key", async () => {
-    vi.mocked(fetchRuns).mockResolvedValue(RUNS);
-    const setBrainKey = vi.fn();
-    const { result } = renderHook(() =>
-      useVisualizationRuns("ds", "tsne", setBrainKey),
-    );
-
-    await waitFor(() => expect(result.current.run).toEqual(RUNS[1]));
-    expect(setBrainKey).not.toHaveBeenCalled();
-  });
-
-  it("re-defaults a key that is not in the list", async () => {
-    vi.mocked(fetchRuns).mockResolvedValue(RUNS);
-    const setBrainKey = vi.fn();
-    renderHook(() => useVisualizationRuns("ds", "deleted_run", setBrainKey));
-
-    await waitFor(() => expect(setBrainKey).toHaveBeenCalledWith("umap"));
+    vi.mocked(fetchRuns).mockResolvedValue([]);
+    rerender({ dataset: "other" });
+    expect(result.current.runs).toBeNull();
+    await waitFor(() => expect(result.current.runs).toEqual([]));
   });
 
   it("reports fetch failures", async () => {
     vi.mocked(fetchRuns).mockRejectedValue(new Error("boom"));
-    const { result } = renderHook(() =>
-      useVisualizationRuns("ds", null, vi.fn()),
-    );
+    const { result } = renderHook(() => useVisualizationRuns("ds"));
 
     await waitFor(() => expect(result.current.error).toMatch("boom"));
     expect(result.current.runs).toBeNull();
@@ -67,9 +43,7 @@ describe("useVisualizationRuns", () => {
 
   it("does nothing without a dataset", () => {
     vi.mocked(fetchRuns).mockClear();
-    const { result } = renderHook(() =>
-      useVisualizationRuns(null, null, vi.fn()),
-    );
+    const { result } = renderHook(() => useVisualizationRuns(null));
 
     expect(fetchRuns).not.toHaveBeenCalled();
     expect(result.current.runs).toBeNull();

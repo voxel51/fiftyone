@@ -1,6 +1,6 @@
 import { PALETTE } from "./renderer";
 import { describe, expect, it } from "vitest";
-import { buildColors, MISSING_CATEGORY } from "./colors";
+import { buildColors, categoryHex, MISSING_CATEGORY } from "./colors";
 
 const rgbAt = (colors: Float32Array, i: number) => [
   colors[i * 3],
@@ -15,6 +15,20 @@ const hexToRgb = (hex: string) => [
 ];
 
 describe("buildColors categorical", () => {
+  it("gives legend swatches the exact color the points get", () => {
+    // The drift guard: categoryHex (legend) and buildColors (points)
+    // must agree for every class index, including past the palette wrap
+    const count = PALETTE.length + 2;
+    const indices = new Uint16Array(count).map((_, i) => i);
+    const colors = buildColors({ style: "categorical", indices });
+
+    for (let i = 0; i < count; i++) {
+      hexToRgb(categoryHex(i)).forEach((channel, c) => {
+        expect(rgbAt(colors, i)[c]).toBeCloseTo(channel, 6);
+      });
+    }
+  });
+
   it("maps class indices through the palette, cycling past its length", () => {
     const count = PALETTE.length + 1;
     const indices = new Uint16Array(count).map((_, i) => i);

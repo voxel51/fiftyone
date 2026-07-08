@@ -20,6 +20,14 @@ const hexToRgb = (hex: string): [number, number, number] => [
 
 const PALETTE_RGB = PALETTE.map(hexToRgb);
 
+/**
+ * The CSS color a categorical class index maps to. The single source
+ * for legend swatches, so they cannot drift from the point colors
+ * buildColors assigns.
+ */
+export const categoryHex = (index: number): string =>
+  PALETTE[index % PALETTE.length];
+
 /** Expands a color column into Float32Array(n*3) rgb for the renderer */
 export function buildColors(
   column: ColorValues,

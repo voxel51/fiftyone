@@ -20,6 +20,7 @@
         "@fiftyone/spaces": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
+        "@voxel51/voodo": "^0.0.35",
         "three": "^0.182.0"
     },
     "devDependencies": {

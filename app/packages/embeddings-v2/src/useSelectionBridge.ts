@@ -50,6 +50,8 @@ export function useSelectionBridge({
   setSelectedSamples,
 }: SelectionBridgeOptions): {
   selectedIndices: number[] | null;
+  /** Points in the last lasso selection, for chrome (null = none) */
+  selectionCount: number | null;
   handleSelection: (
     indices: number[],
     polygon?: Array<[number, number]> | null,
@@ -59,11 +61,13 @@ export function useSelectionBridge({
   error: string | null;
 } {
   const [error, setError] = useState<string | null>(null);
+  const [selectionCount, setSelectionCount] = useState<number | null>(null);
 
   // Stable because the Esc effect below depends on it
   const clearAll = useCallback(() => {
     resetExtended();
     setSelectedSamples(new Map());
+    setSelectionCount(null);
     chart.current?.clearSelection();
   }, [resetExtended, setSelectedSamples, chart]);
 
@@ -109,11 +113,15 @@ export function useSelectionBridge({
     if (!datasetName || !brainKey) return;
     if (!indices.length) {
       resetExtended();
+      setSelectionCount(null);
       return;
     }
     const selection = polygon?.length ? { polygon } : { indices };
     fetchLassoStage(datasetName, brainKey, view, selection)
-      .then((stage) => setOverrideStage({ [stage._cls]: stage.kwargs }))
+      .then((stage) => {
+        setOverrideStage({ [stage._cls]: stage.kwargs });
+        setSelectionCount(stage.count ?? indices.length);
+      })
       .catch((e) => setError(String(e)));
   };
 
@@ -145,6 +153,7 @@ export function useSelectionBridge({
 
   return {
     selectedIndices,
+    selectionCount,
     handleSelection,
     handlePointClick,
     clearAll,
