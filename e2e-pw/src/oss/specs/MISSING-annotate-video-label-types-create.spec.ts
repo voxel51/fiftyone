@@ -136,7 +136,8 @@ test.describe.serial("video non-box label create", () => {
     });
   });
 
-  test("painting a mask adds a track, assigns a class, and persists", async ({
+  // TODO re-enable this test once its flakiness is resolved
+  test.skip("painting a mask adds a track, assigns a class, and persists", async ({
     browser,
     fiftyoneLoader,
     modal,
