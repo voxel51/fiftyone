@@ -82,11 +82,27 @@ export const JSON_ROS_POSE_STAMPED_PAYLOADS = jsonRosPayloads(
 );
 
 /**
+ * Payload descriptors for JSON-schema ROS PoseArray messages.
+ */
+export const JSON_ROS_POSE_ARRAY_PAYLOADS = jsonRosPayloads(
+  "geometry_msgs/PoseArray",
+  "geometry_msgs/msg/PoseArray",
+);
+
+/**
  * Payload descriptors for JSON-schema ROS Odometry messages.
  */
 export const JSON_ROS_ODOMETRY_PAYLOADS = jsonRosPayloads(
   "nav_msgs/Odometry",
   "nav_msgs/msg/Odometry",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS Path messages.
+ */
+export const JSON_ROS_PATH_PAYLOADS = jsonRosPayloads(
+  "nav_msgs/Path",
+  "nav_msgs/msg/Path",
 );
 
 /**
