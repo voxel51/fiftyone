@@ -780,15 +780,12 @@
                 }
             },
             "tags": [
-                "segmentation",
-                "open-vocabulary",
+                "instances",
+                "panoptic",
                 "zero-shot",
                 "torch",
                 "transformers",
-                "clip",
-                "coco",
-                "panoptic",
-                "instance"
+                "official"
             ],
             "training_data": [
                 {
