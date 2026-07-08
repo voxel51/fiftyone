@@ -81,6 +81,11 @@ export function usePointerLockDrag({
       // own the interaction until release.
       e.preventDefault();
 
+      // Tear down any in-flight drag before starting a new one, so a
+      // re-entrant pointerdown (multi-touch, programmatic dispatch) can't leak
+      // the previous interaction's window listeners.
+      teardownRef.current?.();
+
       const target = e.currentTarget;
       let accum = 0; // signed movement along `axis` since start
       let moved = 0; // total travel, for the click-vs-drag decision
@@ -98,12 +103,29 @@ export function usePointerLockDrag({
           // Engage Pointer Lock only once it's a real drag, so a plain click
           // never hides the cursor. Best-effort: unlocked movement deltas
           // still work until the cursor reaches a screen edge.
+          // Chromium returns a Promise here; older browsers return void. Mark
+          // as locked only once the request succeeds, and swallow a rejection
+          // (lock denied) so it doesn't surface as an unhandled rejection.
           try {
-            target.requestPointerLock?.();
+            // DOM lib types this as `void`, but Chromium returns a Promise.
+            const request = target.requestPointerLock?.() as unknown as
+              | Promise<void>
+              | undefined;
+            if (request?.then) {
+              request.then(
+                () => {
+                  locked = true;
+                },
+                () => {
+                  /* lock denied — keep dragging unlocked */
+                },
+              );
+            } else {
+              locked = true;
+            }
           } catch {
             /* Pointer Lock unavailable — keep dragging unlocked. */
           }
-          locked = true;
           cbRef.current.onDragStart?.();
         }
         cbRef.current.onDelta(accum);
@@ -112,6 +134,7 @@ export function usePointerLockDrag({
       const teardown = () => {
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
         if (locked) document.exitPointerLock?.();
         teardownRef.current = null;
       };
@@ -130,6 +153,7 @@ export function usePointerLockDrag({
       teardownRef.current = teardown;
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
     },
     [axis, clickThreshold],
   );

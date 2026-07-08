@@ -45,6 +45,10 @@
   border-color: var(--color-brand-primary);
   color: var(--color-content-text-primary);
   cursor: text;
+}
+
+/* Drop the ring only for pointer focus; keyboard focus keeps the native ring. */
+.speedInput:focus:not(:focus-visible) {
   outline: none;
 }
 
