@@ -14,6 +14,7 @@ import {
   isImageAnnotationsStream,
   isImageStream,
   isLocationFixStream,
+  isLogStream,
   isPointCloudStream,
   isPoseStream,
   isSceneUpdateStream,
@@ -24,6 +25,7 @@ import {
   JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
   JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS,
   JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS,
+  JSON_ROS_DIAGNOSTIC_ARRAY_PAYLOADS,
   JSON_ROS_IMAGE_PAYLOADS,
   JSON_ROS_LASER_SCAN_PAYLOADS,
   JSON_ROS_NAV_SAT_FIX_PAYLOADS,
@@ -33,10 +35,13 @@ import {
   JSON_ROS_POINT_CLOUD2_PAYLOADS,
   JSON_ROS_POSE_ARRAY_PAYLOADS,
   JSON_ROS_POSE_STAMPED_PAYLOADS,
+  JSON_ROS_RCL_LOG_PAYLOADS,
+  JSON_ROS_ROSGRAPH_LOG_PAYLOADS,
 } from "./payloads";
 import {
   jsonRosCameraInfoDecoders,
   jsonRosCompressedImageDecoders,
+  jsonRosDiagnosticArrayDecoders,
   jsonRosDetection2DArrayDecoders,
   jsonRosDetection3DArrayDecoders,
   jsonRosImageDecoders,
@@ -48,6 +53,8 @@ import {
   jsonRosPointCloud2Decoders,
   jsonRosPoseArrayDecoders,
   jsonRosPoseStampedDecoders,
+  jsonRosRclLogDecoders,
+  jsonRosRosgraphLogDecoders,
 } from "./ros";
 
 const TEXT_ENCODER = new TextEncoder();
@@ -81,6 +88,7 @@ describe("JSON-schema ROS MCAP decoders", () => {
       ...JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
       ...JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS,
       ...JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS,
+      ...JSON_ROS_DIAGNOSTIC_ARRAY_PAYLOADS,
       ...JSON_ROS_IMAGE_PAYLOADS,
       ...JSON_ROS_LASER_SCAN_PAYLOADS,
       ...JSON_ROS_NAV_SAT_FIX_PAYLOADS,
@@ -90,6 +98,8 @@ describe("JSON-schema ROS MCAP decoders", () => {
       ...JSON_ROS_POINT_CLOUD2_PAYLOADS,
       ...JSON_ROS_POSE_ARRAY_PAYLOADS,
       ...JSON_ROS_POSE_STAMPED_PAYLOADS,
+      ...JSON_ROS_RCL_LOG_PAYLOADS,
+      ...JSON_ROS_ROSGRAPH_LOG_PAYLOADS,
     ];
 
     for (const payload of payloads) {
@@ -211,6 +221,85 @@ describe("JSON-schema ROS MCAP decoders", () => {
       latitude: 37.77,
       longitude: -122.42,
     });
+  });
+
+  it("decodes JSON ROS logs and diagnostics into console rows", () => {
+    const rosgraph = decoderForSchema(
+      jsonRosRosgraphLogDecoders,
+      "rosgraph_msgs/Log",
+    ).decode(
+      jsonMessage({
+        file: "planner.cpp",
+        function: "tick",
+        header: headerRecord("rosout", 7, 8),
+        level: 8,
+        line: 42,
+        msg: "planner failed",
+        name: "planner",
+        topics: ["/plan"],
+      }),
+      {},
+    );
+    const rcl = decoderForSchema(
+      jsonRosRclLogDecoders,
+      "rcl_interfaces/msg/Log",
+    ).decode(
+      jsonMessage({
+        file: "controller.cpp",
+        function: "update",
+        level: 30,
+        line: 10,
+        msg: "tracking degraded",
+        name: "controller",
+        stamp: { nanosec: 4, sec: 5 },
+      }),
+      {},
+    );
+    const diagnostics = decoderForSchema(
+      jsonRosDiagnosticArrayDecoders,
+      "diagnostic_msgs/msg/DiagnosticArray",
+    ).decode(
+      jsonMessage({
+        header: headerRecord("base", 6, 9),
+        status: [
+          {
+            hardware_id: "lidar-top",
+            level: 2,
+            message: "packet drops",
+            name: "driver",
+            values: [{ key: "drop_rate", value: "0.2" }],
+          },
+        ],
+      }),
+      {},
+    );
+
+    expect(rosgraph.attributes?.logRows).toEqual([
+      expect.objectContaining({
+        level: "error",
+        message: "planner failed",
+        timestampNs: 7_000_000_008n,
+      }),
+    ]);
+    expect(rcl.attributes?.logRows).toEqual([
+      expect.objectContaining({
+        level: "warn",
+        levelNumber: 30,
+        message: "tracking degraded",
+        timestampNs: 5_000_000_004n,
+      }),
+    ]);
+    expect(diagnostics.attributes?.logRows).toEqual([
+      expect.objectContaining({
+        details: [{ key: "drop_rate", value: "0.2" }],
+        hardwareId: "lidar-top",
+        kind: "diagnostic",
+        level: "error",
+        message: "packet drops",
+        name: "driver",
+        status: "ERROR",
+      }),
+    ]);
   });
 
   it("decodes JSON CameraInfo records into calibration visualizations", () => {
@@ -577,6 +666,11 @@ describe("JSON-schema ROS MCAP decoders", () => {
       "/detections3d",
       JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS[0],
     );
+    const logs = createTopic("/rosout", JSON_ROS_RCL_LOG_PAYLOADS[0]);
+    const diagnostics = createTopic(
+      "/diagnostics",
+      JSON_ROS_DIAGNOSTIC_ARRAY_PAYLOADS[1],
+    );
 
     expect(isCompressedImageStream(compressed)).toBe(true);
     expect(isCompressedImageStream(rawImage)).toBe(false);
@@ -607,6 +701,8 @@ describe("JSON-schema ROS MCAP decoders", () => {
     expect(isSceneUpdateStream(poseArray)).toBe(true);
     expect(isImageAnnotationsStream(detections2d)).toBe(true);
     expect(isSceneUpdateStream(detections3d)).toBe(true);
+    expect(isLogStream(logs)).toBe(true);
+    expect(isLogStream(diagnostics)).toBe(true);
     expect(
       streamTopics([
         compressed,
@@ -617,12 +713,22 @@ describe("JSON-schema ROS MCAP decoders", () => {
         poseArray,
         detections2d,
         detections3d,
+        logs,
+        diagnostics,
       ]),
     ).toMatchObject({
       annotations: ["/detections2d"],
       image: ["/camera/compressed", "/camera/image"],
+      logs: ["/rosout", "/diagnostics"],
       pointCloud: ["/points", "/scan"],
-      previewable: ["/camera/compressed", "/camera/image", "/points", "/scan"],
+      previewable: [
+        "/camera/compressed",
+        "/camera/image",
+        "/points",
+        "/scan",
+        "/rosout",
+        "/diagnostics",
+      ],
       sceneUpdates: ["/planned_path", "/pose_hypotheses", "/detections3d"],
     });
   });

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import Mcap3dTile from "./Mcap3dTile";
 import McapImageTile from "./McapImageTile";
+import McapLogConsoleTile from "./McapLogConsoleTile";
 import McapPlotTile from "./McapPlotTile";
 import McapRawMessageTile from "./McapRawMessageTile";
 import {
@@ -36,6 +37,12 @@ const TILE_BY_TYPE: Record<
     icon: IconName.GridView,
     Tile: McapImageTile,
     sourceTypes: [MCAP_SOURCE_TYPE.IMAGE],
+  },
+  [MCAP_TILE_TYPE.LOG]: {
+    typeLabel: "Logs",
+    icon: IconName.Logs,
+    Tile: McapLogConsoleTile,
+    sourceTypes: [MCAP_SOURCE_TYPE.LOG],
   },
   [MCAP_TILE_TYPE.THREE_D]: {
     typeLabel: "3D",

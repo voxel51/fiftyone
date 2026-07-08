@@ -92,3 +92,12 @@ export const FOXGLOVE_LOCATION_FIX_PAYLOAD: PayloadDescriptor = {
   schema: "foxglove.LocationFix",
   schemaEncoding: "protobuf",
 };
+
+/**
+ * Payload identity for foxglove.Log messages.
+ */
+export const FOXGLOVE_LOG_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.Log",
+  schemaEncoding: "protobuf",
+};

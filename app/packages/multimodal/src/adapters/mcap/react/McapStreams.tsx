@@ -77,7 +77,8 @@ export function McapStreams({ client, source }: McapStreamsProps) {
             s.type !== MCAP_SOURCE_TYPE.MAP_LAYER &&
             s.type !== MCAP_SOURCE_TYPE.CAMERA_CALIBRATION &&
             s.type !== MCAP_SOURCE_TYPE.POSE &&
-            s.type !== MCAP_SOURCE_TYPE.LOCATION,
+            s.type !== MCAP_SOURCE_TYPE.LOCATION &&
+            s.type !== MCAP_SOURCE_TYPE.LOG,
         )
         .map((s) => s.id),
     [sources],

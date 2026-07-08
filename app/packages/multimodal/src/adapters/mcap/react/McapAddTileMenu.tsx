@@ -7,6 +7,7 @@ import { getMcapTileDefinition } from "./use-mcap-tiles";
 const MCAP_ADD_TILE_TYPES: readonly McapTileType[] = [
   MCAP_TILE_TYPE.IMAGE,
   MCAP_TILE_TYPE.THREE_D,
+  MCAP_TILE_TYPE.LOG,
   MCAP_TILE_TYPE.PLOT,
   MCAP_TILE_TYPE.RAW,
 ];

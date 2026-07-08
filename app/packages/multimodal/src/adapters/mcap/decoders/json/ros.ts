@@ -4,6 +4,11 @@ import { decodeRosCompressedImageRecord } from "../ros/compressed-image";
 import { decodeRosImageRecord } from "../ros/image";
 import { decodeRosLaserScanRecord } from "../ros/laser-scan";
 import {
+  decodeDiagnosticArrayRecord,
+  decodeRclLogRecord,
+  decodeRosgraphLogRecord,
+} from "../ros/log";
+import {
   decodeRosMarkerArrayRecord,
   decodeRosMarkerRecord,
 } from "../ros/marker";
@@ -25,6 +30,7 @@ import {
   JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
   JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS,
   JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS,
+  JSON_ROS_DIAGNOSTIC_ARRAY_PAYLOADS,
   JSON_ROS_IMAGE_PAYLOADS,
   JSON_ROS_LASER_SCAN_PAYLOADS,
   JSON_ROS_MARKER_ARRAY_PAYLOADS,
@@ -36,6 +42,8 @@ import {
   JSON_ROS_POINT_CLOUD2_PAYLOADS,
   JSON_ROS_POSE_ARRAY_PAYLOADS,
   JSON_ROS_POSE_STAMPED_PAYLOADS,
+  JSON_ROS_RCL_LOG_PAYLOADS,
+  JSON_ROS_ROSGRAPH_LOG_PAYLOADS,
 } from "./payloads";
 
 /**
@@ -72,6 +80,33 @@ export const jsonRosLaserScanDecoders = jsonDecodersForPayloads({
   id: "json.ros.laser-scan",
   map: decodeRosLaserScanRecord,
   payloads: JSON_ROS_LASER_SCAN_PAYLOADS,
+});
+
+/**
+ * JSON-schema decoders for ROS rosgraph Log records.
+ */
+export const jsonRosRosgraphLogDecoders = jsonDecodersForPayloads({
+  id: "json.ros.rosgraph-log",
+  map: decodeRosgraphLogRecord,
+  payloads: JSON_ROS_ROSGRAPH_LOG_PAYLOADS,
+});
+
+/**
+ * JSON-schema decoders for ROS 2 rcl_interfaces Log records.
+ */
+export const jsonRosRclLogDecoders = jsonDecodersForPayloads({
+  id: "json.ros.rcl-log",
+  map: decodeRclLogRecord,
+  payloads: JSON_ROS_RCL_LOG_PAYLOADS,
+});
+
+/**
+ * JSON-schema decoders for ROS DiagnosticArray records.
+ */
+export const jsonRosDiagnosticArrayDecoders = jsonDecodersForPayloads({
+  id: "json.ros.diagnostic-array",
+  map: decodeDiagnosticArrayRecord,
+  payloads: JSON_ROS_DIAGNOSTIC_ARRAY_PAYLOADS,
 });
 
 /**
@@ -181,6 +216,9 @@ export const jsonRosDecoders: readonly Decoder[] = [
   ...jsonRosImageDecoders,
   ...jsonRosPointCloud2Decoders,
   ...jsonRosLaserScanDecoders,
+  ...jsonRosRosgraphLogDecoders,
+  ...jsonRosRclLogDecoders,
+  ...jsonRosDiagnosticArrayDecoders,
   ...jsonRosMarkerDecoders,
   ...jsonRosMarkerArrayDecoders,
   ...jsonRosCameraInfoDecoders,
