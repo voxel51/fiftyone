@@ -18,6 +18,7 @@ import {
   isLocationFixStream,
   isPointCloudStream,
   isPoseStream,
+  isSceneUpdateStream,
   streamTopics,
 } from "../stream-topics";
 import { createMcapDecoderRegistry } from ".";
@@ -26,6 +27,7 @@ import {
   ROS_COMPRESSED_IMAGE_PAYLOADS,
   ROS_IMAGE_PAYLOADS,
   ROS_LASER_SCAN_PAYLOADS,
+  ROS_MARKER_ARRAY_PAYLOADS,
   ROS_NAV_SAT_FIX_PAYLOADS,
   ROS_OCCUPANCY_GRID_PAYLOADS,
   ROS_ODOMETRY_PAYLOADS,
@@ -35,6 +37,7 @@ import {
   rosCompressedImageDecoders,
   rosImageDecoders,
   rosLaserScanDecoders,
+  rosMarkerArrayDecoders,
   rosNavSatFixDecoders,
   rosOccupancyGridDecoders,
   rosOdometryDecoders,
@@ -190,6 +193,52 @@ float64 x
 float64 y
 float64 z
 float64 w`;
+
+const ROS2_MARKER_ARRAY_SCHEMA = `visualization_msgs/Marker[] markers
+===
+MSG: visualization_msgs/Marker
+std_msgs/Header header
+string ns
+int32 id
+int32 type
+int32 action
+geometry_msgs/Pose pose
+geometry_msgs/Vector3 scale
+std_msgs/ColorRGBA color
+builtin_interfaces/Duration lifetime
+bool frame_locked
+geometry_msgs/Point[] points
+std_msgs/ColorRGBA[] colors
+string text
+string mesh_resource
+bool mesh_use_embedded_materials
+${ROS2_HEADER_DEFINITIONS}
+===
+MSG: geometry_msgs/Pose
+geometry_msgs/Point position
+geometry_msgs/Quaternion orientation
+===
+MSG: geometry_msgs/Point
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w
+===
+MSG: std_msgs/ColorRGBA
+float32 r
+float32 g
+float32 b
+float32 a`;
 
 const ROS1_NAV_SAT_FIX_SCHEMA = `std_msgs/Header header
 sensor_msgs/NavSatStatus status
@@ -936,6 +985,113 @@ describe("ROS MCAP decoders", () => {
     expect(odometry.attributes).toMatchObject({ childFrameId: "base_link" });
   });
 
+  it("decodes ros2 MarkerArray into scene-update entities and deletions", () => {
+    const output = decoderForSchemaEncoding(
+      rosMarkerArrayDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_MARKER_ARRAY_SCHEMA, {
+        markers: [
+          markerRecord({
+            color: colorRecord([1, 0, 0, 0.5]),
+            frameLocked: true,
+            id: 7,
+            lifetime: { nanosec: 4, sec: 3 },
+            ns: "boxes",
+            pose: poseRecord([1, 2, 3], [0, 0, 0, 1]),
+            scale: vectorRecord([4, 5, 6]),
+            type: 1,
+          }),
+          markerRecord({
+            color: colorRecord([0, 1, 0, 1]),
+            id: 2,
+            ns: "plan",
+            points: [
+              vectorRecord([0, 0, 0]),
+              vectorRecord([1, 0, 0]),
+              vectorRecord([1, 1, 0]),
+            ],
+            scale: vectorRecord([2, 1, 1]),
+            type: 4,
+          }),
+          markerRecord({
+            color: colorRecord([0, 0, 1, 1]),
+            id: 3,
+            ns: "labels",
+            pose: poseRecord([0, 0, 2], [0, 0, 0, 1]),
+            scale: vectorRecord([1, 1, 1.5]),
+            text: "car",
+            type: 9,
+          }),
+          markerRecord({ action: 2, id: 8, ns: "boxes", type: 1 }),
+          markerRecord({ action: 3, id: 0, ns: "ignored", type: 1 }),
+        ],
+      }),
+      {
+        schemaData: schemaData(ROS2_MARKER_ARRAY_SCHEMA),
+        streamId: "/markers",
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE) {
+      throw new Error("Expected scene update visualization");
+    }
+
+    expect(output.attributes).toMatchObject({
+      deletionCount: 2,
+      entityCount: 3,
+      markerCount: 5,
+      transparentMarkerCount: 0,
+      unsupportedMarkerCount: 0,
+    });
+    expect(output.visualization.entities[0]).toMatchObject({
+      cubeCount: 1,
+      frameId: "map",
+      frameLocked: true,
+      id: "/markers:boxes:7",
+      lifetimeNs: 3_000_000_004n,
+      metadata: {
+        id: "7",
+        namespace: "boxes",
+        source: "visualization_msgs/Marker",
+        type: "CUBE",
+      },
+      timestampNs: 21_000_000_022n,
+    });
+    expect(output.visualization.entities[0]?.cubes[0]).toMatchObject({
+      color: [1, 0, 0, 0.5],
+      pose: { position: [1, 2, 3], quaternion: [0, 0, 0, 1] },
+      size: [4, 5, 6],
+    });
+    expect(output.visualization.entities[1]?.lines[0]).toMatchObject({
+      points: [
+        [0, 0, 0],
+        [1, 0, 0],
+        [1, 1, 0],
+      ],
+      thickness: 2,
+      type: "line-strip",
+    });
+    expect(output.visualization.entities[2]?.texts[0]).toMatchObject({
+      billboard: true,
+      fontSize: 1.5,
+      text: "car",
+    });
+    expect(output.visualization.deletions).toEqual([
+      {
+        id: "/markers:boxes:8",
+        timestampNs: 21_000_000_022n,
+        type: "matching-id",
+      },
+      {
+        id: "",
+        timestampNs: 21_000_000_022n,
+        type: "all",
+      },
+    ]);
+  });
+
   it("decodes ros1 NavSatFix into a location visualization", () => {
     const output = decoderForSchemaEncoding(
       rosNavSatFixDecoders,
@@ -1059,6 +1215,7 @@ describe("ROS MCAP decoders", () => {
       schema: "sensor_msgs/msg/LaserScan",
       schemaEncoding: "ros2msg",
     });
+    const markers = createTopic("/markers", ROS_MARKER_ARRAY_PAYLOADS[1]);
 
     expect(isCompressedImageStream(compressed)).toBe(true);
     expect(isCompressedImageStream(rawImage)).toBe(false);
@@ -1083,10 +1240,14 @@ describe("ROS MCAP decoders", () => {
     expect(
       isGridStream(createTopic("/map", ROS_OCCUPANCY_GRID_PAYLOADS[0])),
     ).toBe(true);
-    expect(streamTopics([compressed, rawImage, cloud, scan])).toMatchObject({
+    expect(isSceneUpdateStream(markers)).toBe(true);
+    expect(
+      streamTopics([compressed, rawImage, cloud, scan, markers]),
+    ).toMatchObject({
       image: ["/camera/compressed", "/camera/image"],
       pointCloud: ["/points", "/scan"],
       previewable: ["/camera/compressed", "/camera/image", "/points", "/scan"],
+      sceneUpdates: ["/markers"],
     });
   });
 });
@@ -1343,6 +1504,65 @@ function vectorRecord(vector: readonly [number, number, number]) {
     x: vector[0],
     y: vector[1],
     z: vector[2],
+  };
+}
+
+function markerRecord({
+  action = 0,
+  color = colorRecord([1, 1, 1, 1]),
+  colors = [],
+  frameLocked = false,
+  id,
+  lifetime = { nanosec: 0, sec: 0 },
+  meshResource = "",
+  meshUseEmbeddedMaterials = false,
+  ns,
+  points = [],
+  pose = poseRecord([0, 0, 0], [0, 0, 0, 1]),
+  scale = vectorRecord([1, 1, 1]),
+  text = "",
+  type,
+}: {
+  readonly action?: number;
+  readonly color?: ReturnType<typeof colorRecord>;
+  readonly colors?: readonly ReturnType<typeof colorRecord>[];
+  readonly frameLocked?: boolean;
+  readonly id: number;
+  readonly lifetime?: { readonly nanosec: number; readonly sec: number };
+  readonly meshResource?: string;
+  readonly meshUseEmbeddedMaterials?: boolean;
+  readonly ns: string;
+  readonly points?: readonly ReturnType<typeof vectorRecord>[];
+  readonly pose?: ReturnType<typeof poseRecord>;
+  readonly scale?: ReturnType<typeof vectorRecord>;
+  readonly text?: string;
+  readonly type: number;
+}) {
+  return {
+    action,
+    color,
+    colors,
+    frame_locked: frameLocked,
+    header: ros2Header({ frameId: "map", nanosec: 22, sec: 21 }),
+    id,
+    lifetime,
+    mesh_resource: meshResource,
+    mesh_use_embedded_materials: meshUseEmbeddedMaterials,
+    ns,
+    points,
+    pose,
+    scale,
+    text,
+    type,
+  };
+}
+
+function colorRecord(color: readonly [number, number, number, number]) {
+  return {
+    a: color[3],
+    b: color[2],
+    g: color[1],
+    r: color[0],
   };
 }
 

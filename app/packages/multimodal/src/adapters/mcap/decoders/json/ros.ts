@@ -3,6 +3,10 @@ import { decodeRosCameraInfoRecord } from "../ros/camera-info";
 import { decodeRosCompressedImageRecord } from "../ros/compressed-image";
 import { decodeRosImageRecord } from "../ros/image";
 import { decodeRosLaserScanRecord } from "../ros/laser-scan";
+import {
+  decodeRosMarkerArrayRecord,
+  decodeRosMarkerRecord,
+} from "../ros/marker";
 import { decodeRosNavSatFixRecord } from "../ros/nav-sat-fix";
 import { decodeRosOccupancyGridRecord } from "../ros/occupancy-grid";
 import { decodeRosPointCloud2Record } from "../ros/point-cloud2";
@@ -16,6 +20,8 @@ import {
   JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
   JSON_ROS_IMAGE_PAYLOADS,
   JSON_ROS_LASER_SCAN_PAYLOADS,
+  JSON_ROS_MARKER_ARRAY_PAYLOADS,
+  JSON_ROS_MARKER_PAYLOADS,
   JSON_ROS_NAV_SAT_FIX_PAYLOADS,
   JSON_ROS_OCCUPANCY_GRID_PAYLOADS,
   JSON_ROS_ODOMETRY_PAYLOADS,
@@ -57,6 +63,24 @@ export const jsonRosLaserScanDecoders = jsonDecodersForPayloads({
   id: "json.ros.laser-scan",
   map: decodeRosLaserScanRecord,
   payloads: JSON_ROS_LASER_SCAN_PAYLOADS,
+});
+
+/**
+ * JSON-schema decoders for ROS Marker records.
+ */
+export const jsonRosMarkerDecoders = jsonDecodersForPayloads({
+  id: "json.ros.marker",
+  map: decodeRosMarkerRecord,
+  payloads: JSON_ROS_MARKER_PAYLOADS,
+});
+
+/**
+ * JSON-schema decoders for ROS MarkerArray records.
+ */
+export const jsonRosMarkerArrayDecoders = jsonDecodersForPayloads({
+  id: "json.ros.marker-array",
+  map: decodeRosMarkerArrayRecord,
+  payloads: JSON_ROS_MARKER_ARRAY_PAYLOADS,
 });
 
 /**
@@ -112,6 +136,8 @@ export const jsonRosDecoders: readonly Decoder[] = [
   ...jsonRosImageDecoders,
   ...jsonRosPointCloud2Decoders,
   ...jsonRosLaserScanDecoders,
+  ...jsonRosMarkerDecoders,
+  ...jsonRosMarkerArrayDecoders,
   ...jsonRosCameraInfoDecoders,
   ...jsonRosNavSatFixDecoders,
   ...jsonRosOccupancyGridDecoders,

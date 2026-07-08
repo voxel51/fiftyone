@@ -6,6 +6,8 @@ import {
   JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
   JSON_ROS_IMAGE_PAYLOADS,
   JSON_ROS_LASER_SCAN_PAYLOADS,
+  JSON_ROS_MARKER_ARRAY_PAYLOADS,
+  JSON_ROS_MARKER_PAYLOADS,
   JSON_ROS_NAV_SAT_FIX_PAYLOADS,
   JSON_ROS_OCCUPANCY_GRID_PAYLOADS,
   JSON_ROS_ODOMETRY_PAYLOADS,
@@ -30,6 +32,8 @@ import {
   ROS_COMPRESSED_IMAGE_PAYLOADS,
   ROS_IMAGE_PAYLOADS,
   ROS_LASER_SCAN_PAYLOADS,
+  ROS_MARKER_ARRAY_PAYLOADS,
+  ROS_MARKER_PAYLOADS,
   ROS_NAV_SAT_FIX_PAYLOADS,
   ROS_OCCUPANCY_GRID_PAYLOADS,
   ROS_ODOMETRY_PAYLOADS,
@@ -144,7 +148,13 @@ export function isPointCloudStream(topic: StreamInventory): boolean {
  * Returns whether a stream inventory item is a supported Foxglove SceneUpdate stream.
  */
 export function isSceneUpdateStream(topic: StreamInventory): boolean {
-  return hasPayload(topic, FOXGLOVE_SCENE_UPDATE_PAYLOAD);
+  return (
+    hasPayload(topic, FOXGLOVE_SCENE_UPDATE_PAYLOAD) ||
+    hasAnyPayload(topic, JSON_ROS_MARKER_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_MARKER_ARRAY_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_MARKER_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_MARKER_ARRAY_PAYLOADS)
+  );
 }
 
 /**

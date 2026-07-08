@@ -3,6 +3,7 @@ import { rosCameraInfoDecoders } from "./camera-info";
 import { rosCompressedImageDecoders } from "./compressed-image";
 import { rosImageDecoders } from "./image";
 import { rosLaserScanDecoders } from "./laser-scan";
+import { rosMarkerArrayDecoders, rosMarkerDecoders } from "./marker";
 import { rosNavSatFixDecoders } from "./nav-sat-fix";
 import { rosOccupancyGridDecoders } from "./occupancy-grid";
 import { rosOdometryDecoders, rosPoseStampedDecoders } from "./pose";
@@ -12,6 +13,7 @@ export { rosCameraInfoDecoders } from "./camera-info";
 export { rosCompressedImageDecoders } from "./compressed-image";
 export { rosImageDecoders } from "./image";
 export { rosLaserScanDecoders } from "./laser-scan";
+export { rosMarkerArrayDecoders, rosMarkerDecoders } from "./marker";
 export { rosNavSatFixDecoders } from "./nav-sat-fix";
 export { rosOccupancyGridDecoders } from "./occupancy-grid";
 export { rosOdometryDecoders, rosPoseStampedDecoders } from "./pose";
@@ -26,6 +28,8 @@ export const rosDecoders: readonly Decoder[] = [
   ...rosCompressedImageDecoders,
   ...rosImageDecoders,
   ...rosLaserScanDecoders,
+  ...rosMarkerDecoders,
+  ...rosMarkerArrayDecoders,
   ...rosNavSatFixDecoders,
   ...rosOccupancyGridDecoders,
   ...rosOdometryDecoders,
