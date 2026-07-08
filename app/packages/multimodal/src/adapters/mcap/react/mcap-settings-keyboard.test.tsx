@@ -23,14 +23,14 @@ describe("preventSettingsCheckboxSpaceToggle", () => {
     expect(event.preventDefault).toHaveBeenCalledTimes(1);
   });
 
-  it("handles legacy and code-based space events", () => {
-    const legacyEvent = keyboardEvent("Spacebar");
+  it("handles key and code-based space events", () => {
+    const keyEvent = keyboardEvent("Spacebar");
     const codeEvent = keyboardEvent("Unidentified", "Space");
 
-    preventSettingsCheckboxSpaceToggle(legacyEvent);
+    preventSettingsCheckboxSpaceToggle(keyEvent);
     preventSettingsCheckboxSpaceToggle(codeEvent);
 
-    expect(legacyEvent.preventDefault).toHaveBeenCalledTimes(1);
+    expect(keyEvent.preventDefault).toHaveBeenCalledTimes(1);
     expect(codeEvent.preventDefault).toHaveBeenCalledTimes(1);
   });
 
