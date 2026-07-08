@@ -44,6 +44,15 @@ import type {
   FrameWorkerOutbound,
   InitMessage,
 } from "./frameWorkerProtocol";
+import {
+  ByteRangeCache,
+  type ByteRange,
+  classifyRangeResponse,
+  parseContentRangeStart,
+  rangeRequestHeader,
+  sliceSampleBytes,
+  spanByteRange,
+} from "./videoByteRange";
 
 interface NativeInitMessage extends InitMessage {
   /** Resolved media URL for the source video. */
@@ -66,7 +75,11 @@ interface NativeChunkRequest {
   numFrames: number;
 }
 
-/** A demuxed sample, enriched with the mappings decode needs. */
+/**
+ * A demuxed sample, enriched with the mappings decode needs. Carries the
+ * sample's byte location (from the `moov`), not its bytes — the encoded data is
+ * range-fetched on demand when a chunk decodes.
+ */
 interface DemuxedSample {
   /** 1-indexed presentation-order frame number. */
   frameNumber: number;
@@ -77,7 +90,10 @@ interface DemuxedSample {
   /** Sample duration in microseconds. */
   durMicros: number;
   isSync: boolean;
-  data: Uint8Array;
+  /** Absolute byte offset of the sample in the source file. */
+  offset: number;
+  /** Encoded byte length of the sample. */
+  size: number;
 }
 
 let debug = false;
@@ -92,6 +108,22 @@ let keyframeIndices: number[] = [];
 const microsToFrame = new Map<number, number>();
 let config: VideoDecoderConfig | null = null;
 let totalFrames = 0;
+
+/** Resolved media URL + fetch headers for the source video (set on init). */
+let videoSrc = "";
+let mediaHeaders: Record<string, string> | undefined;
+
+/** Cap on cached encoded byte ranges — small next to the decoded-bitmap LRU. */
+const RANGE_CACHE_BUDGET_BYTES = 64 * 1024 * 1024;
+const rangeCache = new ByteRangeCache(RANGE_CACHE_BUDGET_BYTES);
+/**
+ * Set once a server proves it won't honor `Range` (returned `200`, or the
+ * ranged request failed CORS/preflight). From then on we serve every chunk
+ * from `wholeFileBuffer` instead of retrying ranges.
+ */
+let rangeFetchDisabled = false;
+/** The whole file, held only when we fell back to a non-ranged fetch. */
+let wholeFileBuffer: ArrayBuffer | null = null;
 
 let ready = false;
 let unsupportedReason: string | null = null;
@@ -137,9 +169,11 @@ async function handleInit(msg: NativeInitMessage): Promise<void> {
     return;
   }
 
+  videoSrc = msg.videoSrc;
+  mediaHeaders = msg.headers;
+
   try {
-    const bytes = await fetchVideoBytes(msg.videoSrc, msg.headers);
-    await demux(bytes);
+    await initSampleTable(msg.videoSrc, msg.headers);
   } catch (error) {
     // Demux/fetch failure is terminal for this source: fail everything queued
     // so the stream marks those frames failed and (later) falls back.
@@ -154,161 +188,18 @@ async function handleInit(msg: NativeInitMessage): Promise<void> {
   drainPending();
 }
 
-async function fetchVideoBytes(
-  videoSrc: string,
+/**
+ * Parse the source's `moov` (streaming just far enough — see {@link streamMoov})
+ * and build the data-less sample table + `VideoDecoderConfig` decode works from.
+ * No `mdat` is fetched here; each sample's bytes are range-fetched on demand.
+ */
+async function initSampleTable(
+  src: string,
   headers?: Record<string, string>,
-): Promise<ArrayBuffer> {
-  // Match `<video src>` semantics: default credentials, cors. Whole-file fetch
-  // for now — mp4box parses progressively, so byte-range streaming is a later
-  // optimization (see design §5).
-  const resp = await fetch(videoSrc, { mode: "cors", headers });
-  if (!resp.ok) {
-    throw new Error(`video fetch failed: ${resp.status}`);
-  }
+): Promise<void> {
+  const { file, track } = await streamMoov(src, headers);
 
-  return resp.arrayBuffer();
-}
-
-/**
- * Capability probe: stream just enough of the source to demux its `moov`,
- * build a `VideoDecoderConfig`, and ask `isConfigSupported`. Posts a single
- * `capability` verdict and does no decode — the resolver terminates this worker
- * once it has the answer.
- */
-async function handleProbe(msg: NativeInitMessage): Promise<void> {
-  try {
-    const cfg = await demuxHeaderConfig(msg.videoSrc, msg.headers);
-    const support = await VideoDecoder.isConfigSupported(cfg);
-    postCapability(
-      Boolean(support.supported),
-      cfg.codec,
-      support.supported ? undefined : `codec unsupported: ${cfg.codec}`,
-    );
-  } catch (error) {
-    postCapability(false, undefined, errorMessage(error));
-  }
-}
-
-/**
- * Stream `videoSrc` through mp4box only until it parses the `moov` (the header
- * carrying codec + sample-description boxes), then stop — so a decodability
- * check costs a few hundred KB, not the whole clip. Faststart files resolve on
- * the first read; a trailing `moov` (non-faststart) degrades to reading the
- * whole stream, same as decode would.
- */
-async function demuxHeaderConfig(
-  videoSrc: string,
-  headers?: Record<string, string>,
-): Promise<VideoDecoderConfig> {
-  const resp = await fetch(videoSrc, { mode: "cors", headers });
-  if (!resp.ok) {
-    throw new Error(`video fetch failed: ${resp.status}`);
-  }
-
-  const file = createFile();
-  let headerConfig: VideoDecoderConfig | null = null;
-  let headerError: string | null = null;
-
-  file.onError = (error: string) => {
-    headerError = error;
-  };
-
-  file.onReady = (info: Movie) => {
-    const track = info.videoTracks[0];
-    if (!track) {
-      headerError = "no video track";
-      return;
-    }
-
-    headerConfig = buildDecoderConfig(file, track);
-  };
-
-  // No streaming body (some environments): fall back to a whole-file demux.
-  if (!resp.body) {
-    const bytes = await resp.arrayBuffer();
-    file.appendBuffer(MP4BoxBuffer.fromArrayBuffer(bytes, 0));
-  } else {
-    const reader = resp.body.getReader();
-    let offset = 0;
-
-    while (!headerConfig && !headerError) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-
-      const chunk = value.buffer.slice(
-        value.byteOffset,
-        value.byteOffset + value.byteLength,
-      );
-      file.appendBuffer(MP4BoxBuffer.fromArrayBuffer(chunk, offset));
-      offset += value.byteLength;
-    }
-
-    // We have (or failed to get) the header — don't drain the rest.
-    void reader.cancel().catch(() => {});
-  }
-
-  if (headerError) {
-    throw new Error(headerError);
-  }
-
-  if (!headerConfig) {
-    throw new Error("demux produced no decoder config");
-  }
-
-  return headerConfig;
-}
-
-/**
- * Demux `bytes` into a sample table + a `VideoDecoderConfig`. Builds the
- * presentation-order frame numbering and the µs→frame map decode assigns by.
- */
-async function demux(bytes: ArrayBuffer): Promise<void> {
-  const file = createFile();
-  const collected: Sample[] = [];
-  let videoTrack: Movie["videoTracks"][number] | null = null;
-  let readyError: string | null = null;
-
-  file.onError = (error: string) => {
-    readyError = error;
-  };
-
-  file.onReady = (info: Movie) => {
-    const track = info.videoTracks[0];
-    if (!track) {
-      readyError = "no video track";
-      return;
-    }
-
-    videoTrack = track;
-    config = buildDecoderConfig(file, track);
-    // Request every sample in one shot; `flush` forces delivery of the tail.
-    file.setExtractionOptions(track.id, null, { nbSamples: track.nb_samples });
-    file.start();
-  };
-
-  file.onSamples = (_id: number, _user: unknown, samples: Sample[]) => {
-    for (const s of samples) {
-      collected.push(s);
-    }
-  };
-
-  const mbuf = MP4BoxBuffer.fromArrayBuffer(bytes, 0);
-  file.appendBuffer(mbuf, true);
-  file.flush();
-
-  if (readyError) {
-    throw new Error(readyError);
-  }
-
-  if (!videoTrack || !config) {
-    throw new Error("demux produced no video track / decoder config");
-  }
-
-  if (collected.length === 0) {
-    throw new Error("demux produced no samples");
-  }
+  config = buildDecoderConfig(file, track);
 
   if (debug) {
     const d = config.description as Uint8Array | undefined;
@@ -327,10 +218,109 @@ async function demux(bytes: ArrayBuffer): Promise<void> {
     throw new Error(`codec unsupported: ${config.codec}`);
   }
 
-  buildSampleTable(
-    collected,
-    (videoTrack as Movie["videoTracks"][number]).timescale,
-  );
+  // The sample table (offset/size/cts/is_sync per sample) comes straight from
+  // the `moov`'s `stbl` — no `mdat` needed.
+  const samples = file.getTrackSamplesInfo(track.id);
+  if (!samples || samples.length === 0) {
+    throw new Error("demux produced no samples");
+  }
+
+  buildSampleTable(samples, track.timescale);
+}
+
+/**
+ * Capability probe: stream just enough of the source to demux its `moov`,
+ * build a `VideoDecoderConfig`, and ask `isConfigSupported`. Posts a single
+ * `capability` verdict and does no decode — the resolver terminates this worker
+ * once it has the answer.
+ */
+async function handleProbe(msg: NativeInitMessage): Promise<void> {
+  try {
+    const { file, track } = await streamMoov(msg.videoSrc, msg.headers);
+    const cfg = buildDecoderConfig(file, track);
+    const support = await VideoDecoder.isConfigSupported(cfg);
+    postCapability(
+      Boolean(support.supported),
+      cfg.codec,
+      support.supported ? undefined : `codec unsupported: ${cfg.codec}`,
+    );
+  } catch (error) {
+    postCapability(false, undefined, errorMessage(error));
+  }
+}
+
+/**
+ * Stream `src` through mp4box only until it parses the `moov` (the header
+ * carrying codec, sample-description boxes, and the sample table), then stop —
+ * so both the decodability probe and decode-init cost a few hundred KB, not the
+ * whole clip. Faststart files resolve on the first read; a trailing `moov`
+ * (non-faststart) degrades to reading the whole stream. Shared by the probe and
+ * decode-init; the returned `file` has its sample table ready
+ * (`getTrackSamplesInfo`).
+ */
+async function streamMoov(
+  src: string,
+  headers?: Record<string, string>,
+): Promise<{ file: ISOFile; track: Movie["videoTracks"][number] }> {
+  // `<video src>` semantics: cors, default credentials, no custom auth headers.
+  const resp = await fetch(src, { mode: "cors", headers });
+  if (!resp.ok) {
+    throw new Error(`video fetch failed: ${resp.status}`);
+  }
+
+  const file = createFile();
+  let videoTrack: Movie["videoTracks"][number] | null = null;
+  let readyError: string | null = null;
+
+  file.onError = (error: string) => {
+    readyError = error;
+  };
+
+  file.onReady = (info: Movie) => {
+    const track = info.videoTracks[0];
+    if (!track) {
+      readyError = "no video track";
+      return;
+    }
+
+    videoTrack = track;
+  };
+
+  // No streaming body (some environments): fall back to a whole-file append.
+  if (!resp.body) {
+    const bytes = await resp.arrayBuffer();
+    file.appendBuffer(MP4BoxBuffer.fromArrayBuffer(bytes, 0), true);
+  } else {
+    const reader = resp.body.getReader();
+    let offset = 0;
+
+    while (!videoTrack && !readyError) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      const chunk = value.buffer.slice(
+        value.byteOffset,
+        value.byteOffset + value.byteLength,
+      );
+      file.appendBuffer(MP4BoxBuffer.fromArrayBuffer(chunk, offset));
+      offset += value.byteLength;
+    }
+
+    // We have (or failed to get) the header — don't drain the rest.
+    void reader.cancel().catch(() => {});
+  }
+
+  if (readyError) {
+    throw new Error(readyError);
+  }
+
+  if (!videoTrack) {
+    throw new Error("demux produced no video track");
+  }
+
+  return { file, track: videoTrack };
 }
 
 /**
@@ -345,7 +335,8 @@ function buildSampleTable(samples: Sample[], timescale: number): void {
     tsMicros: Math.round((s.cts * 1e6) / timescale),
     durMicros: Math.round((s.duration * 1e6) / timescale),
     isSync: Boolean(s.is_sync),
-    data: (s.data ?? new Uint8Array(0)) as Uint8Array,
+    offset: s.offset,
+    size: s.size,
   }));
 
   // Presentation order = ascending composition timestamp. 1-indexed frame
@@ -470,6 +461,19 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
 
   const t0 = debug ? performance.now() : 0;
 
+  // Fetch just the bytes for this GOP span (keyframe → last needed sample).
+  const range = spanByteRange(decodeOrder, kf, dEnd);
+  if (!range) {
+    post({
+      type: "chunkDone",
+      reqId: msg.reqId,
+      range: [startFrame, endFrame],
+    });
+    return;
+  }
+
+  const span = await fetchSpanBuffer(range);
+
   const dec = ensureDecoder();
   dec.configure(config as VideoDecoderConfig);
 
@@ -489,7 +493,7 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
         type: s.isSync ? "key" : "delta",
         timestamp: s.tsMicros,
         duration: s.durMicros,
-        data: s.data,
+        data: sliceSampleBytes(span.buffer, span.fileStart, s),
       }),
     );
   }
@@ -499,15 +503,105 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
 
   if (debug) {
     const dt = (performance.now() - t0).toFixed(1);
+    const bytes = range.end - range.start;
     log(
       `chunk req=${msg.reqId} frames[${startFrame}..${endFrame}] ` +
         `kf-snap=${decodeOrder[kf]?.frameNumber} lead-in=${dStart - kf} ` +
+        `bytes=${bytes} fileStart=${span.fileStart} ` +
         `decoded=${currentJob.pending.length} in ${dt}ms`,
     );
   }
 
   post({ type: "chunkDone", reqId: msg.reqId, range: [startFrame, endFrame] });
   currentJob = null;
+}
+
+/** A slice of the source file plus the absolute offset its byte 0 maps to. */
+interface SpanBuffer {
+  buffer: ArrayBuffer;
+  /** Absolute file offset of `buffer[0]` (`0` for a whole-file buffer). */
+  fileStart: number;
+}
+
+/**
+ * Fetch the encoded bytes covering `range`, preferring an HTTP `Range` request
+ * so decode streams on demand rather than downloading the whole clip. Degrades
+ * gracefully:
+ *
+ * - `206` — the body is exactly the range; cache it and slice at `range.start`.
+ * - `200` — the server ignored `Range` and sent the whole file; keep it and
+ *   serve every future chunk from it (no more network).
+ * - ranged request rejected / failed (`416`, CORS preflight on a bucket without
+ *   `OPTIONS`, …) — fall back once to a plain (no-`Range`) whole-file fetch,
+ *   matching `<video src>` semantics, and latch off ranges.
+ *
+ * Never fabricates bytes: a hard fetch failure throws, failing the chunk.
+ */
+async function fetchSpanBuffer(range: ByteRange): Promise<SpanBuffer> {
+  // Server already proved it won't range-serve — everything lives in memory.
+  if (rangeFetchDisabled && wholeFileBuffer) {
+    return { buffer: wholeFileBuffer, fileStart: 0 };
+  }
+
+  const cached = rangeCache.get(range);
+  if (cached) {
+    return { buffer: cached, fileStart: range.start };
+  }
+
+  if (!rangeFetchDisabled) {
+    try {
+      const resp = await fetch(videoSrc, {
+        mode: "cors",
+        headers: { ...mediaHeaders, Range: rangeRequestHeader(range) },
+      });
+      const kind = classifyRangeResponse(resp.status);
+
+      if (kind === "range") {
+        const buffer = await resp.arrayBuffer();
+        const fileStart =
+          parseContentRangeStart(resp.headers.get("Content-Range")) ??
+          range.start;
+        rangeCache.set(range, buffer);
+        return { buffer, fileStart };
+      }
+
+      if (kind === "whole") {
+        // Ranges ignored — take the whole file we were handed and stop asking.
+        rangeFetchDisabled = true;
+        wholeFileBuffer = await resp.arrayBuffer();
+        return { buffer: wholeFileBuffer, fileStart: 0 };
+      }
+
+      // Unexpected status (e.g. 416): abandon ranges, fall through to whole.
+      rangeFetchDisabled = true;
+    } catch (error) {
+      // Network / CORS-preflight failure on the ranged request — abandon
+      // ranges and fall through to a plain whole-file fetch.
+      rangeFetchDisabled = true;
+      if (debug) {
+        log(
+          `range fetch failed, falling back to whole-file: ${errorMessage(error)}`,
+        );
+      }
+    }
+  }
+
+  return { buffer: await fetchWholeFile(), fileStart: 0 };
+}
+
+/** Plain (no-`Range`) whole-file fetch; the result is memoized for reuse. */
+async function fetchWholeFile(): Promise<ArrayBuffer> {
+  if (wholeFileBuffer) {
+    return wholeFileBuffer;
+  }
+
+  const resp = await fetch(videoSrc, { mode: "cors", headers: mediaHeaders });
+  if (!resp.ok) {
+    throw new Error(`video fetch failed: ${resp.status}`);
+  }
+
+  wholeFileBuffer = await resp.arrayBuffer();
+  return wholeFileBuffer;
 }
 
 function ensureDecoder(): VideoDecoder {

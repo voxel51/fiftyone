@@ -25,6 +25,8 @@ declare module "mp4box" {
     data?: Uint8Array;
     /** Sample number (decode order, 1-indexed). */
     number: number;
+    /** Absolute byte offset of the sample in the file (from `stbl`, moov-only). */
+    offset: number;
     size: number;
     timescale: number;
     track_id: number;
@@ -63,6 +65,12 @@ declare module "mp4box" {
     flush(): void;
     appendBuffer(data: MP4BoxBuffer, last?: boolean): number;
     getTrackById(id: number): unknown;
+    /**
+     * The full sample table for a track (offset/size/cts/dts/is_sync per
+     * sample), computed from the `moov`'s `stbl` — available after `onReady`
+     * without the `mdat` bytes. This is what lets decode range-fetch samples.
+     */
+    getTrackSamplesInfo(id: number): Sample[];
   }
 
   export function createFile(keepMdatData?: boolean): ISOFile;
