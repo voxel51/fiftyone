@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { MAX_SPEED, MIN_SPEED } from "../../lib/constants";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { useSpeed } from "../../lib/playback/use-playback-state";
+import { usePointerLockDrag } from "../../utils/usePointerLockDrag";
 import styles from "./TimelineControls.module.css";
 
 // A drag this small counts as a click (open for typing) rather than a scrub.
@@ -40,11 +41,10 @@ const parseSpeed = (raw: string): number | null => {
  * - click to type an exact value (Enter / blur commits, Escape reverts),
  * - double-click to reset to 1×.
  *
- * The scrub engages the Pointer Lock API once a real drag starts, so movement
- * deltas keep flowing even when the cursor would otherwise hit the bottom of
- * the screen — the controls sit near the modal's bottom edge, where a plain
- * pointer-capture drag runs out of runway. Falls back to unlocked movement
- * deltas where Pointer Lock is unavailable.
+ * The scrub uses {@link usePointerLockDrag}, so movement deltas keep flowing
+ * even when the cursor would otherwise hit the bottom of the screen — the
+ * controls sit near the modal's bottom edge, where a position-based drag runs
+ * out of runway.
  */
 const SpeedControl: React.FC = () => {
   const speed = useSpeed();
@@ -54,15 +54,11 @@ const SpeedControl: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
 
-  // Latest speed, readable from the drag's native listeners without re-binding
-  // them each render.
+  // Latest speed, readable from the drag callbacks without re-binding them each
+  // render; also the speed captured when a scrub begins.
   const speedRef = useRef(speed);
   speedRef.current = speed;
-
-  // Teardown for an in-flight drag, invoked on pointer-up and on unmount so a
-  // drag interrupted by an unmount doesn't leak window listeners / a lock.
-  const endDragRef = useRef<(() => void) | null>(null);
-  useEffect(() => () => endDragRef.current?.(), []);
+  const dragStartSpeedRef = useRef(speed);
 
   // Focus + select-all once the input flips to editable, so typing overwrites.
   useEffect(() => {
@@ -91,56 +87,21 @@ const SpeedControl: React.FC = () => {
     setSpeed(next);
   };
 
-  const onScrubStart = (e: React.PointerEvent<HTMLInputElement>) => {
-    // While already editing, leave pointer handling to the text field so caret
-    // placement / selection work normally.
-    if (editing) return;
-    // Suppress the focus + caret a pointer-down on an input would trigger; we
-    // decide click-vs-scrub on pointer-up and focus manually if it was a click.
-    e.preventDefault();
-
-    const target = e.currentTarget;
-    const startSpeed = speedRef.current;
-    let accum = 0; // signed movement since start (negative = up = faster)
-    let moved = 0; // total travel, for the click-vs-scrub decision
-    let locked = false;
-
-    const onMove = (ev: PointerEvent) => {
-      const dy = ev.movementY || 0;
-      accum += dy;
-      moved += Math.abs(dy);
-      if (moved < CLICK_PX_THRESHOLD) return;
-      if (!locked) {
-        // Engage Pointer Lock only once we know it's a real drag, so a plain
-        // click never hides the cursor. Best-effort: unlocked deltas still work
-        // until the cursor reaches a screen edge.
-        try {
-          target.requestPointerLock?.();
-        } catch {
-          /* Pointer Lock unavailable — keep dragging unlocked. */
-        }
-        locked = true;
-      }
-      setSpeed(roundSpeed(startSpeed * 2 ** (-accum / PX_PER_DOUBLING)));
-    };
-
-    const end = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", end);
-      if (locked) document.exitPointerLock?.();
-      endDragRef.current = null;
-    };
-
-    const onUp = () => {
-      end();
-      // A pointer-up that never moved far is a click → open for typing.
-      if (moved < CLICK_PX_THRESHOLD) beginEdit();
-    };
-
-    endDragRef.current = end;
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp, { once: true });
-  };
+  const scrub = usePointerLockDrag({
+    axis: "vertical",
+    clickThreshold: CLICK_PX_THRESHOLD,
+    onDragStart: () => {
+      dragStartSpeedRef.current = speedRef.current;
+    },
+    onDelta: (delta) => {
+      // delta is positive downward, so negate: dragging up speeds up.
+      setSpeed(
+        roundSpeed(dragStartSpeedRef.current * 2 ** (-delta / PX_PER_DOUBLING)),
+      );
+    },
+    // A press that never became a drag is a click → open for typing.
+    onClick: beginEdit,
+  });
 
   return (
     <input
@@ -157,7 +118,11 @@ const SpeedControl: React.FC = () => {
       readOnly={!editing}
       value={editing ? draft : fmtSpeed(speed)}
       onChange={(e) => setDraft(e.target.value)}
-      onPointerDown={onScrubStart}
+      onPointerDown={(e) => {
+        // While already editing, leave pointer handling to the text field so
+        // caret placement / selection work normally.
+        if (!editing) scrub.handleProps.onPointerDown(e);
+      }}
       onDoubleClick={() => {
         setEditing(false);
         setSpeed(1);
