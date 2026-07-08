@@ -129,6 +129,7 @@ describe("McapSettingsSidebar", () => {
     renderSidebar();
 
     expect(screen.getByRole("tab", { name: "Scene" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Topics" })).toBeTruthy();
     expect(screen.queryByRole("tab", { name: "Camera" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
     expect(screen.getByText("Advanced timing")).toBeTruthy();
@@ -173,7 +174,7 @@ describe("McapSettingsSidebar", () => {
     expect(screen.getByText("Reset to defaults")).toBeTruthy();
   });
 
-  it("lists non-renderable topics in scene settings", () => {
+  it("lists all topics by category in the topics tab", () => {
     renderSidebar({
       topics: [
         topic("/lidar/top", {
@@ -187,6 +188,12 @@ describe("McapSettingsSidebar", () => {
           decodeStatus: "decodable",
           encoding: "ros1",
           schema: "sensor_msgs/Imu",
+        }),
+        topic("/tf_static", {
+          count: "2",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "tf2_msgs/TFMessage",
         }),
         topic("/broken", {
           count: "3",
@@ -203,18 +210,41 @@ describe("McapSettingsSidebar", () => {
       ],
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Other topics/ }));
+    expect(screen.queryByRole("button", { name: /Other topics/ })).toBeNull();
 
-    expect(screen.queryByLabelText("Search other topics")).toBeNull();
-    expect(screen.queryByText("/lidar/top")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Topics" }));
+
+    expect(screen.queryByLabelText("Search topics")).toBeNull();
+    expect(screen.getByRole("button", { name: /Sensors/ })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Transforms & Poses/ }),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Telemetry/ })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Custom \/ Unknown/ }),
+    ).toBeTruthy();
+    expect(screen.getByText("/lidar/top")).toBeTruthy();
     expect(screen.getByText("/imu")).toBeTruthy();
-    expect(screen.getByText("sensor_msgs/Imu · ros1 · 8 msgs")).toBeTruthy();
+    expect(screen.getByText("8 msgs · Plot · Raw")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Inspect /imu" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "3D /lidar/top" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Inspect /tf_static" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Open 3D/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Open / })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Inspect /broken" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Inspect /binary" }),
+    ).toBeTruthy();
+    expect(screen.queryByText("Inspectable")).toBeNull();
     expect(screen.getByText("Schema unavailable")).toBeTruthy();
     expect(screen.getByText("Encoding unsupported")).toBeTruthy();
   });
 
-  it("opens decodable other topics in a Message panel", () => {
+  it("opens decodable topics in a Message panel without leaving Topics", () => {
     const { probeState } = renderSidebar({
       topics: [
         topic("/imu", {
@@ -226,16 +256,19 @@ describe("McapSettingsSidebar", () => {
       ],
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Other topics/ }));
+    fireEvent.click(screen.getByRole("tab", { name: "Topics" }));
     fireEvent.click(screen.getByRole("button", { name: "Inspect /imu" }));
 
     const focusedTileId = probeState.current?.focusedTileId;
     expect(focusedTileId?.startsWith("raw-")).toBe(true);
     expect(probeState.current?.titles[focusedTileId ?? ""]).toBe("/imu");
     expect(probeState.current?.topicsByTile[focusedTileId ?? ""]).toBe("/imu");
+    expect(
+      screen.getByRole("tab", { name: "Topics" }).getAttribute("aria-selected"),
+    ).toBe("true");
   });
 
-  it("searches long other topic lists", () => {
+  it("searches long topic lists", () => {
     renderSidebar({
       topics: [
         topic("/alpha", {
@@ -283,13 +316,17 @@ describe("McapSettingsSidebar", () => {
       ],
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Other topics/ }));
+    fireEvent.click(screen.getByRole("tab", { name: "Topics" }));
 
-    const search = screen.getByLabelText(
-      "Search other topics",
-    ) as HTMLInputElement;
+    const search = screen.getByLabelText("Search topics") as HTMLInputElement;
     expect(search).toBeTruthy();
-    expect(screen.getByText("/alpha")).toBeTruthy();
+    expect(screen.getByText("/camera/front")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Image /camera/front" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Inspect /camera/front" }),
+    ).toBeTruthy();
 
     fireEvent.change(search, { target: { value: "navsat" } });
 
@@ -299,7 +336,7 @@ describe("McapSettingsSidebar", () => {
 
     fireEvent.change(search, { target: { value: "nothing" } });
 
-    expect(screen.getByText('No other topics match "nothing"')).toBeTruthy();
+    expect(screen.getByText('No topics match "nothing"')).toBeTruthy();
   });
 
   it("switches to the panel tab when a panel tab first appears", () => {
