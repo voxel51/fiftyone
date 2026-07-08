@@ -11,6 +11,29 @@ const BOUNDS = {
   zMax: 0,
 };
 
+describe("PlanarCamera.isLassoStart", () => {
+  // jsdom has no PointerEvent constructor; the method reads two fields
+  const down = (init: { button?: number; shiftKey?: boolean }) =>
+    ({ button: 0, shiftKey: false, ...init }) as PointerEvent;
+
+  it("gives plain drags to the lasso in select mode only", () => {
+    const element = document.createElement("div");
+    const camera = new PlanarCamera(element, vi.fn());
+
+    // Default mode is select: plain drag lassos, shift-drag pans
+    expect(camera.isLassoStart(down({}))).toBe(true);
+    expect(camera.isLassoStart(down({ shiftKey: true }))).toBe(false);
+
+    camera.setMode("explore");
+    expect(camera.isLassoStart(down({}))).toBe(false);
+
+    camera.setMode("select");
+    expect(camera.isLassoStart(down({}))).toBe(true);
+
+    camera.destroy();
+  });
+});
+
 describe("PlanarCamera.toDataPolygon", () => {
   it("maps screen vertices into the data window", () => {
     const element = document.createElement("div");

@@ -32,6 +32,7 @@ import type {
   CameraAdapterFactory,
   EmbeddingPoint,
   HoverHit,
+  InteractionMode,
   Polygon,
   RenderSettings,
 } from "./types";
@@ -110,6 +111,7 @@ export class EmbeddingsChart {
   private visibleMask: Uint8Array | null = null;
   private visibleAttribute: BufferAttribute | null = null;
   private settings: RenderSettings = DEFAULT_SETTINGS;
+  private interactionMode: InteractionMode = "select";
   private width = 0;
   private height = 0;
   private renderQueued = false;
@@ -326,6 +328,13 @@ export class EmbeddingsChart {
     this.requestRender();
   }
 
+  /** Hand plain drags to the lasso ("select") or the camera ("explore") */
+  setInteractionMode(mode: InteractionMode): void {
+    this.interactionMode = mode;
+    this.adapter?.setMode?.(mode);
+    this.applyCursor();
+  }
+
   /** Compositing mode + tone map parameters, applied live */
   setRenderSettings(settings: RenderSettings): void {
     this.settings = settings;
@@ -373,10 +382,22 @@ export class EmbeddingsChart {
       hasZ && this.zCamera
         ? this.zCamera(this.container, onChange)
         : new PlanarCamera(this.container, onChange);
+    this.adapter.setMode?.(this.interactionMode);
     this.adapterHasZ = hasZ;
-    // Crosshair advertises the plain-drag lasso; adapters that keep
-    // plain drags for the camera keep the default cursor
-    this.container.style.cursor = hasZ ? "" : "crosshair";
+    this.applyCursor();
+  }
+
+  /**
+   * Crosshair advertises the plain-drag lasso, grab the plain-drag pan;
+   * injected adapters without modes keep the default cursor.
+   */
+  private applyCursor(): void {
+    if (!this.adapter?.setMode) {
+      this.container.style.cursor = "";
+      return;
+    }
+    this.container.style.cursor =
+      this.interactionMode === "select" ? "crosshair" : "grab";
   }
 
   /** The vertex shader's projection, for CPU-side hit-testing */

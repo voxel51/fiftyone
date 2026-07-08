@@ -13,6 +13,7 @@ import type {
   CameraAdapterFactory,
   EmbeddingPoint,
   HoverHit,
+  InteractionMode,
   RenderSettings,
 } from "./types";
 
@@ -40,6 +41,8 @@ export interface EmbeddingsViewProps {
   /** Render the built-in tooltip (default). Hosts with their own hover
    * card pass false and drive it from onHover. */
   tooltip?: boolean;
+  /** Plain-drag owner: "select" lassos (default), "explore" pans */
+  mode?: InteractionMode;
   /**
    * Camera adapter for z-carrying data; without it z is ignored and the
    * data renders flat. Fixed for the lifetime of the view.
@@ -78,6 +81,7 @@ export const EmbeddingsView = forwardRef<
     onPointClick,
     onHover,
     tooltip = true,
+    mode,
     zCamera,
   }: EmbeddingsViewProps,
   ref,
@@ -153,6 +157,10 @@ export const EmbeddingsView = forwardRef<
     // resets its hover picker, which fires the callback
     chart?.setData(points);
   }, [chart, points]);
+
+  useEffect(() => {
+    if (mode) chart?.setInteractionMode(mode);
+  }, [chart, mode]);
 
   useEffect(() => {
     // Stale colors for a previous dataset are dropped, not an error —

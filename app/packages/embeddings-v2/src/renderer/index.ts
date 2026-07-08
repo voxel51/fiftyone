@@ -20,6 +20,7 @@ export type {
   CameraAdapterFactory,
   EmbeddingPoint,
   HoverHit,
+  InteractionMode,
   Polygon,
   RenderSettings,
 } from "./types";

@@ -46,6 +46,13 @@ export interface HoverHit {
 export type Polygon = Array<[number, number]>;
 
 /**
+ * Who owns a plain drag: "select" draws the lasso (the default),
+ * "explore" gives it to the camera. Modified gestures (wheel zoom,
+ * shift/middle-drag pan) work in both modes.
+ */
+export type InteractionMode = "explore" | "select";
+
+/**
  * Everything the chart needs from a camera: a three.js camera kept
  * current, framing/reset driven by data bounds, and the gesture split
  * (which pointer-down starts a lasso vs. a camera drag).
@@ -58,6 +65,8 @@ export interface CameraAdapter {
   reset(): void;
   /** True when this pointer-down should draw a lasso, not move the camera */
   isLassoStart(event: PointerEvent): boolean;
+  /** Adopt an interaction mode; adapters without modes may omit this */
+  setMode?(mode: InteractionMode): void;
   /**
    * Converts a screen-space polygon (CSS px) to data-space vertices,
    * when the projection makes that well-defined — hosts send the tiny

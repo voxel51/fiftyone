@@ -9,7 +9,7 @@ import {
   zoomRect,
   type Rect,
 } from "../math";
-import type { Bounds, CameraAdapter, Polygon } from "../types";
+import type { Bounds, CameraAdapter, InteractionMode, Polygon } from "../types";
 
 /**
  * 2D camera: an orthographic frustum window over the data, driven by our
@@ -32,6 +32,7 @@ export class PlanarCamera implements CameraAdapter {
   private height = 1;
   private panPointer: number | null = null;
   private panLast: [number, number] = [0, 0];
+  private mode: InteractionMode = "select";
 
   constructor(element: HTMLElement, onChange: () => void) {
     this.element = element;
@@ -58,9 +59,17 @@ export class PlanarCamera implements CameraAdapter {
     }
   }
 
-  /** Plain left-drag draws the lasso; pans need shift or middle button */
+  /**
+   * In select mode a plain left-drag draws the lasso and pans need
+   * shift or middle button; in explore mode the camera owns plain drags
+   * and no gesture lassos.
+   */
   isLassoStart(event: PointerEvent): boolean {
-    return event.button === 0 && !event.shiftKey;
+    return this.mode === "select" && event.button === 0 && !event.shiftKey;
+  }
+
+  setMode(mode: InteractionMode): void {
+    this.mode = mode;
   }
 
   /** Orthographic window: screen -> data is exact rectangle algebra */
@@ -135,7 +144,9 @@ export class PlanarCamera implements CameraAdapter {
   }
 
   private handlePanStart(event: PointerEvent): void {
-    const pan = event.button === 1 || (event.button === 0 && event.shiftKey);
+    const pan =
+      event.button === 1 ||
+      (event.button === 0 && (event.shiftKey || this.mode === "explore"));
     if (!pan) return;
     event.preventDefault();
     this.panPointer = event.pointerId;

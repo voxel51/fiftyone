@@ -13,6 +13,7 @@ class MockChart {
   setVisible = vi.fn();
   setSelected = vi.fn();
   setRenderSettings = vi.fn();
+  setInteractionMode = vi.fn();
   resetCamera = vi.fn();
   destroy = vi.fn();
   constructor() {
@@ -78,6 +79,22 @@ describe("EmbeddingsView prop plumbing", () => {
 
     ref.current?.clearSelection();
     expect(chart.setSelected).toHaveBeenLastCalledWith(null);
+  });
+
+  it("forwards mode changes to the chart", async () => {
+    const { rerender } = render(
+      <EmbeddingsView points={POINTS} mode="explore" />,
+    );
+    await waitFor(() => expect(instances.length).toBeGreaterThan(0));
+    const chart = instances[instances.length - 1];
+
+    await waitFor(() =>
+      expect(chart.setInteractionMode).toHaveBeenLastCalledWith("explore"),
+    );
+    rerender(<EmbeddingsView points={POINTS} mode="select" />);
+    await waitFor(() =>
+      expect(chart.setInteractionMode).toHaveBeenLastCalledWith("select"),
+    );
   });
 
   it("drops a stale mask whose length mismatches the points", async () => {
