@@ -60,7 +60,7 @@ export class KeyManager {
             //If there are no more sequences to match, return the command
             if (index === sequences.length - 1) {
               command = commands.find(({ command: cmd }) =>
-                cmd.isEnabled()
+                cmd.isEnabled(),
               )?.command;
               break;
             }
@@ -102,7 +102,7 @@ export class KeyManager {
     const command = this.commandRegistry.getCommand(commandId);
     if (!command) {
       throw new Error(
-        `The command id ${commandId} is not registered for binding ${sequence}`
+        `The command id ${commandId} is not registered for binding ${sequence}`,
       );
     }
 
@@ -117,7 +117,7 @@ export class KeyManager {
           priority,
           order: this.bindingOrder++,
         },
-      ].sort((a, b) => b.priority - a.priority || a.order - b.order)
+      ].sort((a, b) => b.priority - a.priority || a.order - b.order),
     );
   }
 
@@ -143,7 +143,7 @@ export class KeyManager {
     }
 
     const remainingCommands = commands.filter(
-      ({ command }) => command.id !== commandId
+      ({ command }) => command.id !== commandId,
     );
     if (remainingCommands.length === 0) {
       this.bindings.delete(binding);
