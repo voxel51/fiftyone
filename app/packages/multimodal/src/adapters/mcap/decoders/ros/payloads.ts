@@ -126,3 +126,19 @@ export const ROS_MARKER_ARRAY_PAYLOADS = rosPayloads(
   "visualization_msgs/MarkerArray",
   "visualization_msgs/msg/MarkerArray",
 );
+
+/**
+ * Payload descriptors for ROS vision Detection2DArray messages.
+ */
+export const ROS_DETECTION_2D_ARRAY_PAYLOADS = rosPayloads(
+  "vision_msgs/Detection2DArray",
+  "vision_msgs/msg/Detection2DArray",
+);
+
+/**
+ * Payload descriptors for ROS vision Detection3DArray messages.
+ */
+export const ROS_DETECTION_3D_ARRAY_PAYLOADS = rosPayloads(
+  "vision_msgs/Detection3DArray",
+  "vision_msgs/msg/Detection3DArray",
+);

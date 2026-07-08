@@ -14,6 +14,7 @@ import {
   isCameraCalibrationStream,
   isCompressedImageStream,
   isGridStream,
+  isImageAnnotationsStream,
   isImageStream,
   isLocationFixStream,
   isPointCloudStream,
@@ -25,6 +26,8 @@ import { createMcapDecoderRegistry } from ".";
 import {
   ROS_CAMERA_INFO_PAYLOADS,
   ROS_COMPRESSED_IMAGE_PAYLOADS,
+  ROS_DETECTION_2D_ARRAY_PAYLOADS,
+  ROS_DETECTION_3D_ARRAY_PAYLOADS,
   ROS_IMAGE_PAYLOADS,
   ROS_LASER_SCAN_PAYLOADS,
   ROS_MARKER_ARRAY_PAYLOADS,
@@ -37,6 +40,8 @@ import {
   ROS_POSE_STAMPED_PAYLOADS,
   rosCameraInfoDecoders,
   rosCompressedImageDecoders,
+  rosDetection2DArrayDecoders,
+  rosDetection3DArrayDecoders,
   rosImageDecoders,
   rosLaserScanDecoders,
   rosMarkerArrayDecoders,
@@ -192,6 +197,75 @@ geometry_msgs/Point position
 geometry_msgs/Quaternion orientation
 ===
 MSG: geometry_msgs/Point
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w`;
+
+const ROS2_DETECTION_2D_ARRAY_SCHEMA = `std_msgs/Header header
+vision_msgs/Detection2D[] detections
+${ROS2_HEADER_DEFINITIONS}
+===
+MSG: vision_msgs/Detection2D
+vision_msgs/ObjectHypothesisWithPose[] results
+vision_msgs/BoundingBox2D bbox
+string id
+===
+MSG: vision_msgs/ObjectHypothesisWithPose
+vision_msgs/ObjectHypothesis hypothesis
+===
+MSG: vision_msgs/ObjectHypothesis
+string class_id
+float64 score
+===
+MSG: vision_msgs/BoundingBox2D
+vision_msgs/Pose2D center
+float64 size_x
+float64 size_y
+===
+MSG: vision_msgs/Pose2D
+vision_msgs/Point2D position
+float64 theta
+===
+MSG: vision_msgs/Point2D
+float64 x
+float64 y`;
+
+const ROS2_DETECTION_3D_ARRAY_SCHEMA = `std_msgs/Header header
+vision_msgs/Detection3D[] detections
+${ROS2_HEADER_DEFINITIONS}
+===
+MSG: vision_msgs/Detection3D
+vision_msgs/ObjectHypothesisWithPose[] results
+vision_msgs/BoundingBox3D bbox
+string id
+===
+MSG: vision_msgs/ObjectHypothesisWithPose
+vision_msgs/ObjectHypothesis hypothesis
+===
+MSG: vision_msgs/ObjectHypothesis
+string class_id
+float64 score
+===
+MSG: vision_msgs/BoundingBox3D
+geometry_msgs/Pose center
+geometry_msgs/Vector3 size
+===
+MSG: geometry_msgs/Pose
+geometry_msgs/Point position
+geometry_msgs/Quaternion orientation
+===
+MSG: geometry_msgs/Point
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Vector3
 float64 x
 float64 y
 float64 z
@@ -431,6 +505,8 @@ describe("ROS MCAP decoders", () => {
     const payloads = [
       ...ROS_CAMERA_INFO_PAYLOADS,
       ...ROS_COMPRESSED_IMAGE_PAYLOADS,
+      ...ROS_DETECTION_2D_ARRAY_PAYLOADS,
+      ...ROS_DETECTION_3D_ARRAY_PAYLOADS,
       ...ROS_IMAGE_PAYLOADS,
       ...ROS_LASER_SCAN_PAYLOADS,
       ...ROS_NAV_SAT_FIX_PAYLOADS,
@@ -1106,6 +1182,99 @@ describe("ROS MCAP decoders", () => {
     });
   });
 
+  it("decodes ros2 vision detections into transient viewer overlays", () => {
+    const detections2d = decoderForSchemaEncoding(
+      rosDetection2DArrayDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_DETECTION_2D_ARRAY_SCHEMA, {
+        detections: [
+          detection2DRecord({
+            classId: "car",
+            id: "track-1",
+            score: 0.93,
+            x: 50,
+            y: 40,
+          }),
+        ],
+        header: ros2Header({ frameId: "camera", nanosec: 18, sec: 17 }),
+      }),
+      { schemaData: schemaData(ROS2_DETECTION_2D_ARRAY_SCHEMA) },
+    );
+    const detections3d = decoderForSchemaEncoding(
+      rosDetection3DArrayDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_DETECTION_3D_ARRAY_SCHEMA, {
+        detections: [
+          detection3DRecord({
+            classId: "pedestrian",
+            id: "track-9",
+            score: 0.81,
+          }),
+        ],
+        header: ros2Header({ frameId: "map", nanosec: 20, sec: 19 }),
+      }),
+      {
+        schemaData: schemaData(ROS2_DETECTION_3D_ARRAY_SCHEMA),
+        streamId: "/detections3d",
+      },
+    );
+
+    expect(detections2d.visualization?.kind).toBe(
+      VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
+    );
+    expect(detections3d.visualization?.kind).toBe(
+      VISUALIZATION_KIND.SCENE_UPDATE,
+    );
+    if (
+      detections2d.visualization?.kind !==
+        VISUALIZATION_KIND.IMAGE_ANNOTATIONS ||
+      detections3d.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE
+    ) {
+      throw new Error("Expected detection visualizations");
+    }
+    expect(detections2d.visualization.points[0]).toMatchObject({
+      points: [
+        [40, 30],
+        [60, 30],
+        [60, 50],
+        [40, 50],
+      ],
+      type: "line-loop",
+    });
+    expect(detections2d.visualization.texts[0]).toMatchObject({
+      position: [40, 16],
+      text: "car 0.93",
+    });
+    expect(detections2d.attributes).toMatchObject({
+      boxCount: 1,
+      classIds: ["car"],
+      detectionCount: 1,
+      frameId: "camera",
+      textCount: 1,
+    });
+    expect(detections3d.visualization.deletions).toEqual([
+      { id: "", timestampNs: 19_000_000_020n, type: "all" },
+    ]);
+    expect(detections3d.visualization.entities[0]).toMatchObject({
+      cubeCount: 1,
+      frameId: "map",
+      id: "/detections3d:detection3d:track-9",
+      metadata: {
+        classId: "pedestrian",
+        id: "track-9",
+        score: "0.8100",
+        source: "vision_msgs",
+      },
+      textCount: 1,
+      timestampNs: 19_000_000_020n,
+    });
+    expect(detections3d.visualization.entities[0]?.cubes[0]?.size).toEqual([
+      2, 1, 1.5,
+    ]);
+  });
+
   it("decodes ros2 MarkerArray into scene-update entities and deletions", () => {
     const output = decoderForSchemaEncoding(
       rosMarkerArrayDecoders,
@@ -1342,6 +1511,14 @@ describe("ROS MCAP decoders", () => {
       "/pose_hypotheses",
       ROS_POSE_ARRAY_PAYLOADS[1],
     );
+    const detections2d = createTopic(
+      "/detections2d",
+      ROS_DETECTION_2D_ARRAY_PAYLOADS[1],
+    );
+    const detections3d = createTopic(
+      "/detections3d",
+      ROS_DETECTION_3D_ARRAY_PAYLOADS[1],
+    );
 
     expect(isCompressedImageStream(compressed)).toBe(true);
     expect(isCompressedImageStream(rawImage)).toBe(false);
@@ -1369,6 +1546,8 @@ describe("ROS MCAP decoders", () => {
     expect(isSceneUpdateStream(markers)).toBe(true);
     expect(isSceneUpdateStream(path)).toBe(true);
     expect(isSceneUpdateStream(poseArray)).toBe(true);
+    expect(isImageAnnotationsStream(detections2d)).toBe(true);
+    expect(isSceneUpdateStream(detections3d)).toBe(true);
     expect(
       streamTopics([
         compressed,
@@ -1378,12 +1557,20 @@ describe("ROS MCAP decoders", () => {
         markers,
         path,
         poseArray,
+        detections2d,
+        detections3d,
       ]),
     ).toMatchObject({
+      annotations: ["/detections2d"],
       image: ["/camera/compressed", "/camera/image"],
       pointCloud: ["/points", "/scan"],
       previewable: ["/camera/compressed", "/camera/image", "/points", "/scan"],
-      sceneUpdates: ["/markers", "/planned_path", "/pose_hypotheses"],
+      sceneUpdates: [
+        "/markers",
+        "/planned_path",
+        "/pose_hypotheses",
+        "/detections3d",
+      ],
     });
   });
 });
@@ -1640,6 +1827,61 @@ function vectorRecord(vector: readonly [number, number, number]) {
     x: vector[0],
     y: vector[1],
     z: vector[2],
+  };
+}
+
+function detection2DRecord({
+  classId,
+  id,
+  score,
+  x,
+  y,
+}: {
+  readonly classId: string;
+  readonly id: string;
+  readonly score: number;
+  readonly x: number;
+  readonly y: number;
+}) {
+  return {
+    bbox: {
+      center: {
+        position: { x, y },
+        theta: 0,
+      },
+      size_x: 20,
+      size_y: 20,
+    },
+    id,
+    results: [detectionResult(classId, score)],
+  };
+}
+
+function detection3DRecord({
+  classId,
+  id,
+  score,
+}: {
+  readonly classId: string;
+  readonly id: string;
+  readonly score: number;
+}) {
+  return {
+    bbox: {
+      center: poseRecord([1, 2, 3], [0, 0, 0, 1]),
+      size: vectorRecord([2, 1, 1.5]),
+    },
+    id,
+    results: [detectionResult(classId, score)],
+  };
+}
+
+function detectionResult(classId: string, score: number) {
+  return {
+    hypothesis: {
+      class_id: classId,
+      score,
+    },
   };
 }
 

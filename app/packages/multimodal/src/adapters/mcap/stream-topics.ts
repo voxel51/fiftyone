@@ -4,6 +4,8 @@ import {
   JSON_POSE_PAYLOAD,
   JSON_ROS_CAMERA_INFO_PAYLOADS,
   JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
+  JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS,
+  JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS,
   JSON_ROS_IMAGE_PAYLOADS,
   JSON_ROS_LASER_SCAN_PAYLOADS,
   JSON_ROS_MARKER_ARRAY_PAYLOADS,
@@ -41,6 +43,8 @@ import {
 import {
   ROS_CAMERA_INFO_PAYLOADS,
   ROS_COMPRESSED_IMAGE_PAYLOADS,
+  ROS_DETECTION_2D_ARRAY_PAYLOADS,
+  ROS_DETECTION_3D_ARRAY_PAYLOADS,
   ROS_IMAGE_PAYLOADS,
   ROS_LASER_SCAN_PAYLOADS,
   ROS_MARKER_ARRAY_PAYLOADS,
@@ -143,7 +147,9 @@ export function isCompressedImageStream(topic: StreamInventory): boolean {
 export function isImageAnnotationsStream(topic: StreamInventory): boolean {
   return (
     hasPayload(topic, FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD) ||
-    hasAnyPayload(topic, FOXGLOVE_IMAGE_ANNOTATIONS_CDR_PAYLOADS)
+    hasAnyPayload(topic, FOXGLOVE_IMAGE_ANNOTATIONS_CDR_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_DETECTION_2D_ARRAY_PAYLOADS)
   );
 }
 
@@ -175,10 +181,12 @@ export function isSceneUpdateStream(topic: StreamInventory): boolean {
     hasAnyPayload(topic, JSON_ROS_MARKER_ARRAY_PAYLOADS) ||
     hasAnyPayload(topic, JSON_ROS_PATH_PAYLOADS) ||
     hasAnyPayload(topic, JSON_ROS_POSE_ARRAY_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS) ||
     hasAnyPayload(topic, ROS_MARKER_PAYLOADS) ||
     hasAnyPayload(topic, ROS_MARKER_ARRAY_PAYLOADS) ||
     hasAnyPayload(topic, ROS_PATH_PAYLOADS) ||
-    hasAnyPayload(topic, ROS_POSE_ARRAY_PAYLOADS)
+    hasAnyPayload(topic, ROS_POSE_ARRAY_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_DETECTION_3D_ARRAY_PAYLOADS)
   );
 }
 

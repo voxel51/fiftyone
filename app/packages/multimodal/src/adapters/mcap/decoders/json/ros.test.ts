@@ -11,6 +11,7 @@ import {
   isCameraCalibrationStream,
   isCompressedImageStream,
   isGridStream,
+  isImageAnnotationsStream,
   isImageStream,
   isLocationFixStream,
   isPointCloudStream,
@@ -21,6 +22,8 @@ import {
 import {
   JSON_ROS_CAMERA_INFO_PAYLOADS,
   JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
+  JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS,
+  JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS,
   JSON_ROS_IMAGE_PAYLOADS,
   JSON_ROS_LASER_SCAN_PAYLOADS,
   JSON_ROS_NAV_SAT_FIX_PAYLOADS,
@@ -34,6 +37,8 @@ import {
 import {
   jsonRosCameraInfoDecoders,
   jsonRosCompressedImageDecoders,
+  jsonRosDetection2DArrayDecoders,
+  jsonRosDetection3DArrayDecoders,
   jsonRosImageDecoders,
   jsonRosLaserScanDecoders,
   jsonRosNavSatFixDecoders,
@@ -74,6 +79,8 @@ describe("JSON-schema ROS MCAP decoders", () => {
     const payloads = [
       ...JSON_ROS_CAMERA_INFO_PAYLOADS,
       ...JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
+      ...JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS,
+      ...JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS,
       ...JSON_ROS_IMAGE_PAYLOADS,
       ...JSON_ROS_LASER_SCAN_PAYLOADS,
       ...JSON_ROS_NAV_SAT_FIX_PAYLOADS,
@@ -450,6 +457,81 @@ describe("JSON-schema ROS MCAP decoders", () => {
     ).toEqual([5, 6, 0]);
   });
 
+  it("decodes JSON vision detections into transient viewer overlays", () => {
+    const detections2d = decoderForSchema(
+      jsonRosDetection2DArrayDecoders,
+      "vision_msgs/msg/Detection2DArray",
+    ).decode(
+      jsonMessage({
+        detections: [
+          detection2DRecord({
+            classId: "car",
+            id: "track-1",
+            score: 0.93,
+            x: 50,
+            y: 40,
+          }),
+        ],
+        header: headerRecord("camera", 17, 18),
+      }),
+      {},
+    );
+    const detections3d = decoderForSchema(
+      jsonRosDetection3DArrayDecoders,
+      "vision_msgs/Detection3DArray",
+    ).decode(
+      jsonMessage({
+        detections: [
+          detection3DRecord({
+            classId: "pedestrian",
+            id: "track-9",
+            score: 0.81,
+          }),
+        ],
+        header: headerRecord("map", 19, 20),
+      }),
+      { streamId: "/detections3d" },
+    );
+
+    expect(detections2d.visualization?.kind).toBe(
+      VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
+    );
+    expect(detections3d.visualization?.kind).toBe(
+      VISUALIZATION_KIND.SCENE_UPDATE,
+    );
+    if (
+      detections2d.visualization?.kind !==
+        VISUALIZATION_KIND.IMAGE_ANNOTATIONS ||
+      detections3d.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE
+    ) {
+      throw new Error("Expected detection visualizations");
+    }
+    expect(detections2d.visualization.points[0]?.points).toEqual([
+      [40, 30],
+      [60, 30],
+      [60, 50],
+      [40, 50],
+    ]);
+    expect(detections2d.visualization.texts[0]).toMatchObject({
+      position: [40, 16],
+      text: "car 0.93",
+    });
+    expect(detections3d.visualization.deletions).toEqual([
+      { id: "", timestampNs: 19_000_000_020n, type: "all" },
+    ]);
+    expect(detections3d.visualization.entities[0]).toMatchObject({
+      cubeCount: 1,
+      frameId: "map",
+      id: "/detections3d:detection3d:track-9",
+      metadata: {
+        classId: "pedestrian",
+        id: "track-9",
+        score: "0.8100",
+        source: "vision_msgs",
+      },
+    });
+  });
+
   it("degrades invalid JSON and malformed JSON records without throwing", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const decoder = decoderForSchema(
@@ -487,6 +569,14 @@ describe("JSON-schema ROS MCAP decoders", () => {
       "/pose_hypotheses",
       JSON_ROS_POSE_ARRAY_PAYLOADS[0],
     );
+    const detections2d = createTopic(
+      "/detections2d",
+      JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS[1],
+    );
+    const detections3d = createTopic(
+      "/detections3d",
+      JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS[0],
+    );
 
     expect(isCompressedImageStream(compressed)).toBe(true);
     expect(isCompressedImageStream(rawImage)).toBe(false);
@@ -515,13 +605,25 @@ describe("JSON-schema ROS MCAP decoders", () => {
     ).toBe(true);
     expect(isSceneUpdateStream(path)).toBe(true);
     expect(isSceneUpdateStream(poseArray)).toBe(true);
+    expect(isImageAnnotationsStream(detections2d)).toBe(true);
+    expect(isSceneUpdateStream(detections3d)).toBe(true);
     expect(
-      streamTopics([compressed, rawImage, cloud, scan, path, poseArray]),
+      streamTopics([
+        compressed,
+        rawImage,
+        cloud,
+        scan,
+        path,
+        poseArray,
+        detections2d,
+        detections3d,
+      ]),
     ).toMatchObject({
+      annotations: ["/detections2d"],
       image: ["/camera/compressed", "/camera/image"],
       pointCloud: ["/points", "/scan"],
       previewable: ["/camera/compressed", "/camera/image", "/points", "/scan"],
-      sceneUpdates: ["/planned_path", "/pose_hypotheses"],
+      sceneUpdates: ["/planned_path", "/pose_hypotheses", "/detections3d"],
     });
   });
 });
@@ -604,6 +706,61 @@ function vectorRecord(vector: readonly [number, number, number]) {
     x: vector[0],
     y: vector[1],
     z: vector[2],
+  };
+}
+
+function detection2DRecord({
+  classId,
+  id,
+  score,
+  x,
+  y,
+}: {
+  readonly classId: string;
+  readonly id: string;
+  readonly score: number;
+  readonly x: number;
+  readonly y: number;
+}) {
+  return {
+    bbox: {
+      center: {
+        position: { x, y },
+        theta: 0,
+      },
+      size_x: 20,
+      size_y: 20,
+    },
+    id,
+    results: [detectionResult(classId, score)],
+  };
+}
+
+function detection3DRecord({
+  classId,
+  id,
+  score,
+}: {
+  readonly classId: string;
+  readonly id: string;
+  readonly score: number;
+}) {
+  return {
+    bbox: {
+      center: poseRecord([1, 2, 3], [0, 0, 0, 1]),
+      size: vectorRecord([2, 1, 1.5]),
+    },
+    id,
+    results: [detectionResult(classId, score)],
+  };
+}
+
+function detectionResult(classId: string, score: number) {
+  return {
+    hypothesis: {
+      class_id: classId,
+      score,
+    },
   };
 }
 
