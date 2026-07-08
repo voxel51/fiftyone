@@ -1,7 +1,5 @@
 import { useTiling } from "@fiftyone/tiling";
 import {
-  Input,
-  InputType,
   Size,
   Text,
   TextColor,
@@ -16,9 +14,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useSceneInventory } from "../../../scene-inventory/SceneInventoryProvider";
 import type { StreamInventory } from "../../../schemas/v1";
-import { topicName } from "../stream-topics";
 import {
   type McapPlaybackFidelityMode,
   type McapTemporalPolicySettings,
@@ -27,11 +23,9 @@ import {
 } from "./mcap-modal-settings";
 import McapSidebarGroup from "./McapSidebarGroup";
 import styles from "./McapSettingsSidebar.module.css";
-import { useOpenMcapRawMessageTile } from "./use-open-mcap-raw-message-tile";
+import McapTopicsSettings from "./McapTopicsSettings";
 
-type ActiveSettingsTab = "scene" | "panel";
-
-const OTHER_TOPICS_SEARCH_THRESHOLD = 5;
+type ActiveSettingsTab = "panel" | "scene" | "topics";
 
 /**
  * MCAP-specific left sidebar. Panel settings stay on an explicit tab while
@@ -48,19 +42,27 @@ const McapSettingsSidebar: React.FC<{
   const hasPanelTab = focusedTileTitle !== null;
   const [activeTab, setActiveTab] = useState<ActiveSettingsTab>("scene");
   const hadPanelTabRef = useRef(false);
+  const suppressNextPanelAutoSwitchRef = useRef(false);
   const slotRef = useCallback(
     (el: HTMLDivElement | null) => setSettingsSlotEl(el),
     [setSettingsSlotEl],
   );
+  const suppressNextPanelAutoSwitch = useCallback(() => {
+    suppressNextPanelAutoSwitchRef.current = true;
+  }, []);
 
   useLayoutEffect(() => {
     if (hasPanelTab && !hadPanelTabRef.current) {
-      setActiveTab("panel");
-    } else if (!hasPanelTab) {
+      if (suppressNextPanelAutoSwitchRef.current) {
+        suppressNextPanelAutoSwitchRef.current = false;
+      } else {
+        setActiveTab("panel");
+      }
+    } else if (!hasPanelTab && activeTab === "panel") {
       setActiveTab("scene");
     }
     hadPanelTabRef.current = hasPanelTab;
-  }, [hasPanelTab]);
+  }, [activeTab, hasPanelTab]);
 
   const tabs = useMemo<Descriptor<ToggleSwitchTab>[]>(() => {
     const nextTabs: Descriptor<ToggleSwitchTab>[] = [
@@ -68,7 +70,19 @@ const McapSettingsSidebar: React.FC<{
         id: "scene",
         data: {
           label: "Scene",
-          content: <GlobalSceneSettings topics={topics} />,
+          content: <GlobalSceneSettings />,
+        },
+      },
+      {
+        id: "topics",
+        data: {
+          label: "Topics",
+          content: (
+            <McapTopicsSettings
+              onTopicActionStart={suppressNextPanelAutoSwitch}
+              topics={topics}
+            />
+          ),
         },
       },
     ];
@@ -84,13 +98,18 @@ const McapSettingsSidebar: React.FC<{
     }
 
     return nextTabs;
-  }, [focusedTileTitle, slotRef, topics]);
-  const defaultIndex = activeTab === "panel" && hasPanelTab ? 1 : 0;
+  }, [focusedTileTitle, slotRef, suppressNextPanelAutoSwitch, topics]);
+  const defaultIndex = Math.max(
+    0,
+    tabs.findIndex((tab) => tab.id === activeTab),
+  );
   const handleTabChange = useCallback(
     (index: number) => {
-      setActiveTab(index === 1 && hasPanelTab ? "panel" : "scene");
+      setActiveTab(
+        (tabs[index]?.id as ActiveSettingsTab | undefined) ?? "scene",
+      );
     },
-    [hasPanelTab],
+    [tabs],
   );
 
   return (
@@ -119,176 +138,13 @@ function PanelSettingsContent({
   );
 }
 
-function GlobalSceneSettings({
-  topics,
-}: {
-  readonly topics: readonly StreamInventory[];
-}) {
+function GlobalSceneSettings() {
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
-      <OtherTopicsSettings topics={topics} />
       <PlaybackFidelitySettings />
       <TimeResolutionSettings />
     </div>
   );
-}
-
-interface OtherTopicRow {
-  readonly canInspect: boolean;
-  readonly countLabel: string;
-  readonly encoding: string;
-  readonly schemaName: string;
-  readonly statusLabel: string;
-  readonly topic: string;
-}
-
-function OtherTopicsSettings({
-  topics,
-}: {
-  readonly topics: readonly StreamInventory[];
-}) {
-  const sceneSources = useSceneInventory();
-  const openRawMessageTile = useOpenMcapRawMessageTile();
-  const [search, setSearch] = useState("");
-  const rows = useMemo(
-    () =>
-      otherTopicRows(
-        topics,
-        sceneSources.map((source) => source.id),
-      ),
-    [sceneSources, topics],
-  );
-  const showSearch = rows.length > OTHER_TOPICS_SEARCH_THRESHOLD;
-  const filteredRows = useMemo(
-    () => (showSearch ? filterOtherTopicRows(rows, search) : rows),
-    [rows, search, showSearch],
-  );
-
-  if (rows.length === 0) {
-    return null;
-  }
-
-  return (
-    <McapSidebarGroup
-      defaultExpanded={false}
-      summary={`${rows.length} not rendered`}
-      title="Other topics"
-    >
-      {showSearch ? (
-        <Input
-          aria-label="Search other topics"
-          className={styles.topicSearchInput}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search topics"
-          size={Size.Sm}
-          type={InputType.Search}
-          value={search}
-        />
-      ) : null}
-      <div className={styles.topicList}>
-        {filteredRows.map((row) => (
-          <div className={styles.topicRow} key={row.topic}>
-            <Text variant={TextVariant.Xs} color={TextColor.Primary}>
-              {row.topic}
-            </Text>
-            <span className={styles.topicMeta}>
-              {row.schemaName} · {row.encoding} · {row.countLabel}
-            </span>
-            {row.canInspect ? (
-              <button
-                aria-label={`Inspect ${row.topic}`}
-                className={styles.topicInspectButton}
-                onClick={() => openRawMessageTile(row.topic)}
-                type="button"
-              >
-                {row.statusLabel}
-              </button>
-            ) : (
-              <span className={styles.topicStatus}>{row.statusLabel}</span>
-            )}
-          </div>
-        ))}
-        {filteredRows.length === 0 ? (
-          <span className={styles.topicEmpty}>
-            No other topics match &quot;{search}&quot;
-          </span>
-        ) : null}
-      </div>
-    </McapSidebarGroup>
-  );
-}
-
-function filterOtherTopicRows(
-  rows: readonly OtherTopicRow[],
-  search: string,
-): readonly OtherTopicRow[] {
-  const needle = search.trim().toLowerCase();
-  if (!needle) {
-    return rows;
-  }
-
-  return rows.filter((row) =>
-    [row.topic, row.schemaName, row.encoding, row.statusLabel].some((value) =>
-      value.toLowerCase().includes(needle),
-    ),
-  );
-}
-
-function otherTopicRows(
-  topics: readonly StreamInventory[],
-  renderedTopicIds: readonly string[],
-): readonly OtherTopicRow[] {
-  const rendered = new Set(renderedTopicIds);
-  return topics
-    .map((topic) => {
-      const name = topicName(topic);
-      if (!name || rendered.has(name)) {
-        return null;
-      }
-      const decodeStatus = genericDecodeStatus(
-        topic.metadata["mcap.generic_decode_status"],
-      );
-      return {
-        canInspect: decodeStatus.canInspect,
-        countLabel: messageCountLabel(topic.recordCount),
-        encoding:
-          topic.metadata["mcap.message_encoding"] ??
-          topic.payload?.encoding ??
-          "unknown",
-        schemaName:
-          topic.metadata["mcap.schema_name"] ??
-          topic.payload?.schema ??
-          "no schema",
-        statusLabel: decodeStatus.label,
-        topic: name,
-      };
-    })
-    .filter((row): row is OtherTopicRow => row !== null)
-    .sort((left, right) => left.topic.localeCompare(right.topic));
-}
-
-function genericDecodeStatus(status: string | undefined): {
-  readonly canInspect: boolean;
-  readonly label: string;
-} {
-  switch (status) {
-    case "decodable":
-      return { canInspect: true, label: "Inspect" };
-    case "schema-unavailable":
-      return { canInspect: false, label: "Schema unavailable" };
-    case "unsupported-encoding":
-      return { canInspect: false, label: "Encoding unsupported" };
-    default:
-      return { canInspect: false, label: "Raw status unknown" };
-  }
-}
-
-function messageCountLabel(recordCount: string | undefined): string {
-  const count = recordCount === undefined ? Number.NaN : Number(recordCount);
-  if (!Number.isFinite(count) || count < 0) {
-    return "unknown msgs";
-  }
-  return `${count.toLocaleString()} ${count === 1 ? "msg" : "msgs"}`;
 }
 
 const FIDELITY_OPTIONS: readonly {

@@ -92,7 +92,7 @@ export function mcapSceneSources(
     if (!id) {
       continue;
     }
-    const type = sourceTypeFor(topic);
+    const type = mcapSourceTypeForTopic(topic);
     if (!type) {
       continue;
     }
@@ -144,7 +144,9 @@ export function mcapStreamPolicies(
   return policies;
 }
 
-function sourceTypeFor(topic: StreamInventory): McapSourceType | null {
+export function mcapSourceTypeForTopic(
+  topic: StreamInventory,
+): McapSourceType | null {
   if (isImageStream(topic)) {
     return MCAP_SOURCE_TYPE.IMAGE;
   }
