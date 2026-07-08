@@ -47,14 +47,22 @@ jobs:
             // Bases mirrored into Enterprise.
             const isSyncBase = (b) => b === 'develop' || b.startsWith('release/');
 
-            // Back-merge PRs (`merge/<ref> → develop`, opened by the
-            // develop-back-merge workflow as voxel51-bot) are *vertical*
-            // reconciliation, handled independently by each repo's own
-            // back-merge. Mirroring one would be a diagonal whole-branch merge
-            // that re-surfaces the entire OSS↔Enterprise divergence and
-            // duplicates the Enterprise repo's own back-merge. Skip the sync;
-            // mark the gate green so the OSS back-merge isn't blocked.
-            if (pr.head.ref.startsWith('merge/') && pr.user.login === 'voxel51-bot') {
+            // Back-merge PRs are *vertical* reconciliation, handled
+            // independently by each repo's own back-merge. Mirroring one would
+            // be a diagonal whole-branch merge that re-surfaces the entire
+            // OSS↔Enterprise divergence and duplicates the Enterprise repo's
+            // own back-merge. Skip the sync; mark the gate green so the OSS
+            // back-merge isn't blocked. Two conventions:
+            //  - `merge/<ref>` — opened by the develop-back-merge workflow
+            //  - `main-to-develop` / `release/v*-to-develop` — opened by hand
+            //    when conflicts need resolving (the merge/* ruleset blocks
+            //    human pushes). Head branches live in this repo (see job if),
+            //    so these are member-created.
+            const isBackMerge =
+              (pr.head.ref.startsWith('merge/') && pr.user.login === 'voxel51-bot') ||
+              pr.head.ref === 'main-to-develop' ||
+              /^release\/v[\d.]+-to-develop$/.test(pr.head.ref);
+            if (isBackMerge) {
               if (action !== 'closed') {
                 await github.rest.repos.createCommitStatus({
                   owner: context.repo.owner,
