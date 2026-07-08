@@ -1,14 +1,17 @@
 import type {
+  DecodeContext,
   DecodedAttributeValue,
+  DecodedOutput,
   Decoder,
   GridField,
   GridVisualization,
 } from "../../../../decoders";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
+import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
 import { decodePose } from "./protobuf/geometry";
-import { FOXGLOVE_GRID_PAYLOAD } from "./protobuf/payloads";
+import { FOXGLOVE_GRID_CDR_PAYLOADS, FOXGLOVE_GRID_PAYLOAD } from "./payloads";
 import {
   asRecord,
   numberField,
@@ -56,68 +59,84 @@ export const foxgloveGridDecoder: Decoder = {
       FOXGLOVE_GRID_PAYLOAD,
       context,
     );
-    const data = requiredBytes(message, "data");
-    const cellSize = decodeCellSize(
-      optionalRecord(message, "cellSize", "cell_size"),
-    );
-    const cellStride = requiredNumber(message, "cellStride", "cell_stride");
-    const columnCount = requiredNumber(message, "columnCount", "column_count");
-    const rowStride = requiredNumber(message, "rowStride", "row_stride");
-    const fields = gridFields(requiredArray(message, "fields"));
-    const frameId = optionalString(message, "frameId", "frame_id");
-    const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
-    const pose = decodePose(optionalRecord(message, "pose"));
-
-    validateGridLayout({ cellStride, columnCount, rowStride });
-    const rowCount = deriveRowCount(data, rowStride);
-    const { colorMode, rgba } = extractGridRgba({
-      cellStride,
-      columnCount,
-      data,
-      fields,
-      rowCount,
-      rowStride,
-    });
-
-    const fieldMetadata = fields.map((field) => ({
-      name: field.name,
-      offset: field.offset,
-      type: field.type,
-    }));
-    const attributes: Record<string, DecodedAttributeValue> = {
-      cellSize: [cellSize[0], cellSize[1]],
-      cellStride,
-      colorMode,
-      columnCount,
-      fields: fieldMetadata,
-      rowCount,
-      rowStride,
-    };
-    if (frameId) {
-      attributes.frameId = frameId;
-    }
-
-    const visualization: GridVisualization = {
-      ...(frameId ? { coordinateFrameId: frameId } : {}),
-      cellSize,
-      columnCount,
-      kind: VISUALIZATION_KIND.GRID,
-      pose,
-      rgba,
-      rowCount,
-      ...(messageTimestamp !== undefined
-        ? { timestampNs: messageTimestamp }
-        : {}),
-    };
-
-    return {
-      attributes,
-      resourceHints: resourceHintsForArrayBufferViews(rgba),
-      timing: timingFromContext(context, messageTimestamp),
-      visualization,
-    };
+    return decodeFoxgloveGridRecord(message, context);
   },
 };
+
+/**
+ * Decoders for Foxglove Grid messages carried over ROS 2 CDR.
+ */
+export const foxgloveGridCdrDecoders = rosDecodersForPayloads({
+  id: "foxglove.grid.cdr",
+  map: decodeFoxgloveGridRecord,
+  payloads: FOXGLOVE_GRID_CDR_PAYLOADS,
+});
+
+export function decodeFoxgloveGridRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const data = requiredBytes(message, "data");
+  const cellSize = decodeCellSize(
+    optionalRecord(message, "cellSize", "cell_size"),
+  );
+  const cellStride = requiredNumber(message, "cellStride", "cell_stride");
+  const columnCount = requiredNumber(message, "columnCount", "column_count");
+  const rowStride = requiredNumber(message, "rowStride", "row_stride");
+  const fields = gridFields(requiredArray(message, "fields"));
+  const frameId = optionalString(message, "frameId", "frame_id");
+  const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
+  const pose = decodePose(optionalRecord(message, "pose"));
+
+  validateGridLayout({ cellStride, columnCount, rowStride });
+  const rowCount = deriveRowCount(data, rowStride);
+  const { colorMode, rgba } = extractGridRgba({
+    cellStride,
+    columnCount,
+    data,
+    fields,
+    rowCount,
+    rowStride,
+  });
+
+  const fieldMetadata = fields.map((field) => ({
+    name: field.name,
+    offset: field.offset,
+    type: field.type,
+  }));
+  const attributes: Record<string, DecodedAttributeValue> = {
+    cellSize: [cellSize[0], cellSize[1]],
+    cellStride,
+    colorMode,
+    columnCount,
+    fields: fieldMetadata,
+    rowCount,
+    rowStride,
+  };
+  if (frameId) {
+    attributes.frameId = frameId;
+  }
+
+  const visualization: GridVisualization = {
+    ...(frameId ? { coordinateFrameId: frameId } : {}),
+    cellSize,
+    columnCount,
+    kind: VISUALIZATION_KIND.GRID,
+    pose,
+    rgba,
+    rowCount,
+    ...(messageTimestamp !== undefined
+      ? { timestampNs: messageTimestamp }
+      : {}),
+  };
+
+  return {
+    attributes,
+    resourceHints: resourceHintsForArrayBufferViews(rgba),
+    timing: timingFromContext(context, messageTimestamp),
+    visualization,
+  };
+}
 
 function validateGridLayout({
   cellStride,

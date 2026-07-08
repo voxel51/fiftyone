@@ -4,19 +4,51 @@ import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serializat
 import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it } from "vitest";
-import type { Decoder } from "../../../decoders";
+import type { Decoder, PayloadDescriptor } from "../../../decoders";
+import type { StreamInventory } from "../../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../../visualization";
+import {
+  isCameraCalibrationStream,
+  isCompressedImageStream,
+  isGridStream,
+  isImageAnnotationsStream,
+  isImageStream,
+  isLocationFixStream,
+  isPointCloudStream,
+  isPoseStream,
+  isSceneUpdateStream,
+  streamTopics,
+} from "../stream-topics";
 import { createMcapDecoderRegistry } from ".";
 import {
+  FOXGLOVE_CAMERA_CALIBRATION_CDR_PAYLOADS,
+  FOXGLOVE_COMPRESSED_IMAGE_CDR_PAYLOADS,
+  FOXGLOVE_GRID_CDR_PAYLOADS,
+  FOXGLOVE_IMAGE_ANNOTATIONS_CDR_PAYLOADS,
+  FOXGLOVE_LASER_SCAN_CDR_PAYLOADS,
+  FOXGLOVE_LOCATION_FIX_CDR_PAYLOADS,
+  FOXGLOVE_POINT_CLOUD_CDR_PAYLOADS,
+  FOXGLOVE_POSE_IN_FRAME_CDR_PAYLOADS,
+  FOXGLOVE_SCENE_UPDATE_CDR_PAYLOADS,
+  foxgloveCameraCalibrationCdrDecoders,
   foxgloveCameraCalibrationDecoder,
+  foxgloveCompressedImageCdrDecoders,
   foxgloveCompressedImageDecoder,
   foxgloveCompressedVideoCdrDecoders,
   foxgloveCompressedVideoDecoder,
+  foxgloveGridCdrDecoders,
   foxgloveGridDecoder,
+  foxgloveImageAnnotationsCdrDecoders,
+  foxgloveImageAnnotationsDecoder,
+  foxgloveLaserScanCdrDecoders,
   foxgloveLaserScanDecoder,
+  foxgloveLocationFixCdrDecoders,
   foxgloveLocationFixDecoder,
+  foxglovePointCloudCdrDecoders,
   foxglovePointCloudDecoder,
+  foxglovePoseInFrameCdrDecoders,
   foxglovePoseInFrameDecoder,
+  foxgloveSceneUpdateCdrDecoders,
   foxgloveSceneUpdateDecoder,
 } from "./foxglove";
 import { jsonPoseDecoder } from "./json";
@@ -37,6 +69,9 @@ describe("Foxglove decoders", () => {
     expect(registry.find(foxgloveCompressedImageDecoder.payload)).toBe(
       foxgloveCompressedImageDecoder,
     );
+    for (const decoder of foxgloveCompressedImageCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
     expect(registry.find(foxgloveCompressedVideoDecoder.payload)).toBe(
       foxgloveCompressedVideoDecoder,
     );
@@ -46,24 +81,51 @@ describe("Foxglove decoders", () => {
     expect(registry.find(foxglovePointCloudDecoder.payload)).toBe(
       foxglovePointCloudDecoder,
     );
+    for (const decoder of foxglovePointCloudCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
     expect(registry.find(foxgloveLaserScanDecoder.payload)).toBe(
       foxgloveLaserScanDecoder,
     );
+    for (const decoder of foxgloveLaserScanCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
     expect(registry.find(foxgloveSceneUpdateDecoder.payload)).toBe(
       foxgloveSceneUpdateDecoder,
     );
+    for (const decoder of foxgloveSceneUpdateCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
     expect(registry.find(foxgloveGridDecoder.payload)).toBe(
       foxgloveGridDecoder,
     );
+    for (const decoder of foxgloveGridCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
     expect(registry.find(foxgloveCameraCalibrationDecoder.payload)).toBe(
       foxgloveCameraCalibrationDecoder,
     );
+    for (const decoder of foxgloveCameraCalibrationCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
     expect(registry.find(foxglovePoseInFrameDecoder.payload)).toBe(
       foxglovePoseInFrameDecoder,
     );
+    for (const decoder of foxglovePoseInFrameCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
     expect(registry.find(jsonPoseDecoder.payload)).toBe(jsonPoseDecoder);
     expect(registry.find(foxgloveLocationFixDecoder.payload)).toBe(
       foxgloveLocationFixDecoder,
+    );
+    for (const decoder of foxgloveLocationFixCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
+    for (const decoder of foxgloveImageAnnotationsCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
+    expect(registry.find(foxgloveImageAnnotationsDecoder.payload)).toBe(
+      foxgloveImageAnnotationsDecoder,
     );
   });
 
@@ -135,6 +197,34 @@ describe("Foxglove decoders", () => {
     });
     expect(output.timing?.timeRange?.startNs).toBe(10n);
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(123456000000n);
+  });
+
+  it("decodes cdr compressed image messages with Foxglove ROS2 schemas", () => {
+    const output = decoderForSchemaEncoding(
+      foxgloveCompressedImageCdrDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_COMPRESSED_IMAGE_SCHEMA, {
+        data: Array.from(new TextEncoder().encode("fake-png")),
+        format: "png",
+        frame_id: "CAM_CDR",
+        timestamp: { nanosec: 4, sec: 3 },
+      }),
+      { schemaData: schemaData(ROS2_COMPRESSED_IMAGE_SCHEMA) },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.ENCODED_IMAGE);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.ENCODED_IMAGE) {
+      throw new Error("Expected encoded image visualization");
+    }
+    expect(text(output.visualization.bytes)).toBe("fake-png");
+    expect(output.visualization.mimeType).toBe("image/png");
+    expect(output.attributes).toMatchObject({
+      byteLength: 8,
+      format: "png",
+      frameId: "CAM_CDR",
+    });
+    expect(output.timing?.sourceTimestamps?.messageTime).toBe(3_000_000_004n);
   });
 
   it("normalizes uppercase compressed image MIME formats", () => {
@@ -778,6 +868,43 @@ describe("Foxglove decoders", () => {
     expect(output.timing?.timeRange?.startNs).toBe(10n);
   });
 
+  it("decodes cdr scene update messages with Foxglove ROS2 schemas", () => {
+    const output = decoderForSchemaEncoding(
+      foxgloveSceneUpdateCdrDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_SCENE_UPDATE_SCHEMA, {
+        deletions: [],
+        entities: [
+          {
+            frame_id: "map",
+            frame_locked: true,
+            id: "debug/ego",
+            timestamp: { nanosec: 5, sec: 4 },
+          },
+        ],
+      }),
+      { schemaData: schemaData(ROS2_SCENE_UPDATE_SCHEMA) },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE) {
+      throw new Error("Expected scene update visualization");
+    }
+    expect(output.visualization.entities).toHaveLength(1);
+    expect(output.visualization.entities[0]).toMatchObject({
+      frameId: "map",
+      frameLocked: true,
+      id: "debug/ego",
+      timestampNs: 4_000_000_005n,
+    });
+    expect(output.attributes).toMatchObject({
+      deletionCount: 0,
+      entityCount: 1,
+    });
+    expect(output.timing?.sourceTimestamps?.messageTime).toBe(4_000_000_005n);
+  });
+
   it("decodes protobuf scalar grid payloads into translucent masks", () => {
     const output = foxgloveGridDecoder.decode(
       gridWireMessage({
@@ -816,6 +943,69 @@ describe("Foxglove decoders", () => {
         },
       ),
     ).toThrow("Point cloud data length is not aligned to point stride");
+  });
+
+  it("classifies Foxglove ROS2 CDR streams with the same payload descriptors the registry uses", () => {
+    const compressedImage = createTopic(
+      "/camera/compressed",
+      FOXGLOVE_COMPRESSED_IMAGE_CDR_PAYLOADS[1],
+    );
+    const pointCloud = createTopic(
+      "/points",
+      FOXGLOVE_POINT_CLOUD_CDR_PAYLOADS[0],
+    );
+    const laserScan = createTopic("/scan", FOXGLOVE_LASER_SCAN_CDR_PAYLOADS[0]);
+    const annotations = createTopic(
+      "/camera/annotations",
+      FOXGLOVE_IMAGE_ANNOTATIONS_CDR_PAYLOADS[1],
+    );
+    const sceneUpdate = createTopic(
+      "/scene",
+      FOXGLOVE_SCENE_UPDATE_CDR_PAYLOADS[0],
+    );
+
+    expect(isCompressedImageStream(compressedImage)).toBe(true);
+    expect(isImageStream(compressedImage)).toBe(true);
+    expect(isPointCloudStream(pointCloud)).toBe(true);
+    expect(isPointCloudStream(laserScan)).toBe(true);
+    expect(isImageAnnotationsStream(annotations)).toBe(true);
+    expect(isSceneUpdateStream(sceneUpdate)).toBe(true);
+    expect(
+      isGridStream(createTopic("/grid", FOXGLOVE_GRID_CDR_PAYLOADS[0])),
+    ).toBe(true);
+    expect(
+      isCameraCalibrationStream(
+        createTopic(
+          "/camera/info",
+          FOXGLOVE_CAMERA_CALIBRATION_CDR_PAYLOADS[0],
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      isPoseStream(
+        createTopic("/pose", FOXGLOVE_POSE_IN_FRAME_CDR_PAYLOADS[1]),
+      ),
+    ).toBe(true);
+    expect(
+      isLocationFixStream(
+        createTopic("/gps", FOXGLOVE_LOCATION_FIX_CDR_PAYLOADS[0]),
+      ),
+    ).toBe(true);
+    expect(
+      streamTopics([
+        compressedImage,
+        pointCloud,
+        laserScan,
+        annotations,
+        sceneUpdate,
+      ]),
+    ).toMatchObject({
+      annotations: ["/camera/annotations"],
+      image: ["/camera/compressed"],
+      pointCloud: ["/points", "/scan"],
+      previewable: ["/camera/compressed", "/points", "/scan"],
+      sceneUpdates: ["/scene"],
+    });
   });
 });
 
@@ -1196,6 +1386,15 @@ const COMPRESSED_VIDEO_SCHEMA_DATA = protobufDescriptorData(
   COMPRESSED_VIDEO_ROOT,
 );
 
+const ROS2_COMPRESSED_IMAGE_SCHEMA = `builtin_interfaces/Time timestamp
+string frame_id
+uint8[] data
+string format
+================================================================================
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec`;
+
 const ROS2_COMPRESSED_VIDEO_SCHEMA = `builtin_interfaces/Time timestamp
 string frame_id
 uint8[] data
@@ -1226,6 +1425,24 @@ module builtin_interfaces {
   };
 };
 `;
+
+const ROS2_SCENE_UPDATE_SCHEMA = `foxglove_msgs/SceneEntityDeletion[] deletions
+foxglove_msgs/SceneEntity[] entities
+================================================================================
+MSG: foxglove_msgs/SceneEntityDeletion
+builtin_interfaces/Time timestamp
+string id
+uint8 type
+================================================================================
+MSG: foxglove_msgs/SceneEntity
+builtin_interfaces/Time timestamp
+string frame_id
+string id
+bool frame_locked
+================================================================================
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec`;
 
 function decoderForSchemaEncoding(
   decoders: readonly Decoder[],
@@ -1275,4 +1492,25 @@ function protobufDescriptorData(root: Root): Uint8Array {
       ).toDescriptor("proto3"),
     ).finish(),
   );
+}
+
+function createTopic(
+  topic: string,
+  payload: PayloadDescriptor,
+): StreamInventory {
+  return {
+    $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory",
+    displayName: topic,
+    metadata: {
+      "mcap.schema_name": payload.schema ?? "",
+      "mcap.topic": topic,
+    },
+    payload: {
+      $typeName: "fiftyone.multimodal.schemas.v1.PayloadDescriptor",
+      encoding: payload.encoding,
+      schema: payload.schema,
+      schemaEncoding: payload.schemaEncoding,
+    },
+    streamId: topic,
+  };
 }

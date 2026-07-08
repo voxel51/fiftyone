@@ -1,11 +1,17 @@
 import type {
+  DecodeContext,
   DecodedAttributeValue,
+  DecodedOutput,
   Decoder,
   LocationVisualization,
 } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
+import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
-import { FOXGLOVE_LOCATION_FIX_PAYLOAD } from "./protobuf/payloads";
+import {
+  FOXGLOVE_LOCATION_FIX_CDR_PAYLOADS,
+  FOXGLOVE_LOCATION_FIX_PAYLOAD,
+} from "./payloads";
 import {
   numberField,
   optionalRecord,
@@ -30,46 +36,62 @@ export const foxgloveLocationFixDecoder: Decoder = {
       FOXGLOVE_LOCATION_FIX_PAYLOAD,
       context,
     );
-    const latitude = numberField(message, "latitude");
-    const longitude = numberField(message, "longitude");
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      throw new Error("Location fix has no finite latitude/longitude");
-    }
-
-    const altitude = numberField(message, "altitude");
-    const frameId = optionalString(message, "frameId", "frame_id");
-    const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
-    const positionCovariance = covariance(
-      message["positionCovariance"] ?? message["position_covariance"],
-    );
-
-    const attributes: Record<string, DecodedAttributeValue> = {
-      latitude,
-      longitude,
-    };
-    if (frameId) {
-      attributes.frameId = frameId;
-    }
-
-    const visualization: LocationVisualization = {
-      ...(altitude !== 0 ? { altitude } : {}),
-      ...(frameId ? { coordinateFrameId: frameId } : {}),
-      kind: VISUALIZATION_KIND.LOCATION,
-      latitude,
-      longitude,
-      ...(positionCovariance ? { positionCovariance } : {}),
-      ...(messageTimestamp !== undefined
-        ? { timestampNs: messageTimestamp }
-        : {}),
-    };
-
-    return {
-      attributes,
-      timing: timingFromContext(context, messageTimestamp),
-      visualization,
-    };
+    return decodeFoxgloveLocationFixRecord(message, context);
   },
 };
+
+/**
+ * Decoders for Foxglove LocationFix messages carried over ROS 2 CDR.
+ */
+export const foxgloveLocationFixCdrDecoders = rosDecodersForPayloads({
+  id: "foxglove.location-fix.cdr",
+  map: decodeFoxgloveLocationFixRecord,
+  payloads: FOXGLOVE_LOCATION_FIX_CDR_PAYLOADS,
+});
+
+export function decodeFoxgloveLocationFixRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const latitude = numberField(message, "latitude");
+  const longitude = numberField(message, "longitude");
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    throw new Error("Location fix has no finite latitude/longitude");
+  }
+
+  const altitude = numberField(message, "altitude");
+  const frameId = optionalString(message, "frameId", "frame_id");
+  const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
+  const positionCovariance = covariance(
+    message["positionCovariance"] ?? message["position_covariance"],
+  );
+
+  const attributes: Record<string, DecodedAttributeValue> = {
+    latitude,
+    longitude,
+  };
+  if (frameId) {
+    attributes.frameId = frameId;
+  }
+
+  const visualization: LocationVisualization = {
+    ...(altitude !== 0 ? { altitude } : {}),
+    ...(frameId ? { coordinateFrameId: frameId } : {}),
+    kind: VISUALIZATION_KIND.LOCATION,
+    latitude,
+    longitude,
+    ...(positionCovariance ? { positionCovariance } : {}),
+    ...(messageTimestamp !== undefined
+      ? { timestampNs: messageTimestamp }
+      : {}),
+  };
+
+  return {
+    attributes,
+    timing: timingFromContext(context, messageTimestamp),
+    visualization,
+  };
+}
 
 function covariance(value: unknown): readonly number[] | undefined {
   if (!Array.isArray(value) || value.length !== COVARIANCE_LENGTH) {
