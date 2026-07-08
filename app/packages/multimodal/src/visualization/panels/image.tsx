@@ -2,7 +2,7 @@ import { Icon, IconName, Size } from "@voxel51/voodo";
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 
-import type { EncodedImageVisualization } from "../../decoders";
+import type { ImageVisualization } from "../../decoders";
 import {
   Base2DScene,
   ImageTexturePlane,
@@ -15,7 +15,11 @@ import {
   VISUALIZATION_PANEL_BACKGROUND_COLOR,
   VISUALIZATION_STATUS_TEXT_COLOR,
 } from "./style-tokens";
-import { useImageTextureLease } from "./use-image-texture-lease";
+import {
+  hasImageData,
+  imageIdentity,
+  useImageTextureLease,
+} from "./use-image-texture-lease";
 import { WebGpuCanvas } from "./webgpu-canvas";
 
 const HUD_BORDER_RADIUS_PX = 4;
@@ -31,7 +35,7 @@ const ORTHOGRAPHIC_IMAGE_CAMERA = {
 };
 
 /**
- * Props for rendering one decoded encoded-image visualization frame.
+ * Props for rendering one decoded image visualization frame.
  */
 export interface ImagePanelProps {
   readonly alt?: string;
@@ -42,7 +46,7 @@ export interface ImagePanelProps {
   readonly canvasSurface?: string;
   readonly className?: string;
   readonly fit?: "contain" | "cover";
-  readonly frame: EncodedImageVisualization;
+  readonly frame: ImageVisualization;
   readonly onImageLoaded?: (width: number, height: number) => void;
   readonly onResetView?: () => void;
   readonly style?: CSSProperties;
@@ -52,9 +56,8 @@ export interface ImagePanelProps {
    * the decode goes through the shared cache — surfaces showing the same
    * frame (e.g. a 3D frustum image plane) share one decode while receiving
    * separate texture leases, and batch re-delivery of the same message in a
-   * fresh bytes wrapper does not re-decode. When absent, each new
-   * `frame.bytes` identity decodes privately (grid previews carry no message
-   * identity).
+   * fresh wrapper does not re-decode. When absent, each new frame data
+   * identity decodes privately (grid previews carry no message identity).
    */
   readonly textureKey?: string;
   readonly viewTransform?: ImageViewTransform;
@@ -76,12 +79,15 @@ export function ImagePanel({
   viewTransform,
 }: ImagePanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
-  const { handle: textureHandle, status } = useImageTextureLease({
-    bytes: frame.bytes,
+  const {
+    errorMessage,
+    handle: textureHandle,
+    status,
+  } = useImageTextureLease({
     disabledStatus: "error",
-    enabled: frame.bytes.byteLength > 0,
-    identity: textureKey ?? frame.bytes,
-    mimeType: frame.mimeType,
+    enabled: hasImageData(frame),
+    frame,
+    identity: textureKey ?? imageIdentity(frame),
     onLoaded: (handle) => {
       onImageLoaded?.(handle.imageWidth, handle.imageHeight);
     },
@@ -116,7 +122,9 @@ export function ImagePanel({
       {canvasError || status !== "loaded" ? (
         <div style={styles.status}>
           {canvasError ??
-            (status === "error" ? "Image unavailable" : "Loading image")}
+            (status === "error"
+              ? (errorMessage ?? "Image unavailable")
+              : "Loading image")}
         </div>
       ) : null}
       {!canvasError && status === "loaded" && onResetView ? (

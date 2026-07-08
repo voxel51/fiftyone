@@ -14,6 +14,7 @@ import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
   DETECTION,
+  type LabelData,
   objectId,
   POLYLINE,
 } from "@fiftyone/utilities";
@@ -32,7 +33,7 @@ export function createNewLabel(
   options: CreateOptions | undefined,
   deps: CreateDeps,
 ): AnnotationLabel | null {
-  const { scene, addOverlay, overlayFactory } = deps;
+  const { scene, addOverlay, overlayFactory, engine, sample } = deps;
   const store = getDefaultStore();
   const id = options?.id ?? objectId();
 
@@ -56,6 +57,22 @@ export function createNewLabel(
     });
     addOverlay(overlay);
     scene?.selectOverlay(id, { ignoreSideEffects: true });
+
+    // Persist the new Classification through to the engine immediately.
+    // Classification has no draw gesture — there is no
+    // `lighter:overlay-establish` to commit on, and the bridge is disabled on
+    // video — so without this write the label would live only in the sidebar's
+    // jotai draft (no engine row, no labels-list entry, no sample-document
+    // mutation). Sample-level only by design (the toolbar's field picker
+    // filters frame-level paths out, and the engine routes a sample-level path
+    // to the sample-level store on video too).
+    if (sample) {
+      engine.updateLabel(
+        { sample, path: field, instanceId: id },
+        data as Partial<LabelData>,
+      );
+    }
+
     return { data, overlay, path: field, type } as AnnotationLabel;
   }
 

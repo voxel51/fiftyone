@@ -5,6 +5,7 @@ import {
   type StreamInventory,
 } from "../../../schemas/v1";
 import type { McapIndexedReaderLike } from "../reader";
+import { genericRecordDecoderResolutionForChannel } from "./generic-record-decoder";
 
 const MCAP_METADATA_PREFIX = "mcap.";
 const MCAP_CHANNEL_METADATA_PREFIX = `${MCAP_METADATA_PREFIX}channel_metadata.`;
@@ -20,7 +21,7 @@ export function readMcapTopics(
 
     return create(StreamInventorySchema, {
       displayName: channel.topic,
-      metadata: channelMetadata(channelId, channel, schema),
+      metadata: channelMetadata(channelId, channel, reader, schema),
       payload: payloadForChannel(channel, schema),
       recordCount: recordCountForChannel(channelId, reader),
       streamId: channelId.toString(),
@@ -31,6 +32,7 @@ export function readMcapTopics(
 function channelMetadata(
   channelId: number,
   channel: McapTypes.TypedMcapRecords["Channel"],
+  reader: McapIndexedReaderLike,
   schema: McapTypes.TypedMcapRecords["Schema"] | undefined,
 ): Record<string, string> {
   const metadata = Object.fromEntries(channel.metadata.entries());
@@ -43,6 +45,11 @@ function channelMetadata(
     channel.messageEncoding,
   );
   putDerivedMetadata(metadata, "mcap.schema_id", channel.schemaId.toString());
+  putDerivedMetadata(
+    metadata,
+    "mcap.generic_decode_status",
+    genericDecodeStatusForChannel(reader, channel),
+  );
 
   if (schema) {
     putDerivedMetadata(metadata, "mcap.schema_encoding", schema.encoding);
@@ -58,6 +65,17 @@ function channelMetadata(
   }
 
   return metadata;
+}
+
+function genericDecodeStatusForChannel(
+  reader: McapIndexedReaderLike,
+  channel: Pick<
+    McapTypes.TypedMcapRecords["Channel"],
+    "messageEncoding" | "schemaId"
+  >,
+): "decodable" | "schema-unavailable" | "unsupported-encoding" {
+  const resolution = genericRecordDecoderResolutionForChannel(reader, channel);
+  return resolution.status === "ok" ? "decodable" : resolution.reason;
 }
 
 function payloadForChannel(

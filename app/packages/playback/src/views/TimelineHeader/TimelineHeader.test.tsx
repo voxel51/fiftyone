@@ -15,6 +15,7 @@ function HeaderHarness({
   labelWidth = 100,
   duration = 10,
   rulerOverlay,
+  extraControls,
   extraActions,
   children,
 }: {
@@ -22,6 +23,7 @@ function HeaderHarness({
   labelWidth?: number;
   duration?: number;
   rulerOverlay?: React.ReactNode;
+  extraControls?: React.ReactNode;
   extraActions?: React.ReactNode;
   children?: React.ReactNode;
 }) {
@@ -34,6 +36,7 @@ function HeaderHarness({
           zoomRef={zoomRef}
           onToggle={onToggle}
           rulerOverlay={rulerOverlay}
+          extraControls={extraControls}
           extraActions={extraActions}
         >
           {children}
@@ -103,6 +106,11 @@ describe("TimelineHeader", () => {
     );
     const ruler = screen.getByTestId("timeline-ruler");
     expect(ruler.querySelector('[data-testid="my-overlay"]')).not.toBeNull();
+  });
+
+  it("forwards extraControls to the controls row", () => {
+    render(<HeaderHarness extraControls={<button>Toolbar</button>} />);
+    expect(screen.getByRole("button", { name: "Toolbar" })).toBeTruthy();
   });
 
   it("forwards extraActions to the controls row", () => {

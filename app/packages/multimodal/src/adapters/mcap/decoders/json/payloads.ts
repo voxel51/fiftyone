@@ -14,3 +14,93 @@ export const JSON_POSE_PAYLOAD: PayloadDescriptor = {
   schema: "Pose",
   schemaEncoding: "jsonschema",
 };
+
+function jsonRosPayloads(
+  ros1Schema: string,
+  ros2Schema: string,
+): readonly PayloadDescriptor[] {
+  return [
+    {
+      encoding: "json",
+      schema: ros1Schema,
+      schemaEncoding: "jsonschema",
+    },
+    {
+      encoding: "json",
+      schema: ros2Schema,
+      schemaEncoding: "jsonschema",
+    },
+  ];
+}
+
+/**
+ * Payload descriptors for JSON-schema ROS PointCloud2 messages.
+ */
+export const JSON_ROS_POINT_CLOUD2_PAYLOADS = jsonRosPayloads(
+  "sensor_msgs/PointCloud2",
+  "sensor_msgs/msg/PointCloud2",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS CompressedImage messages.
+ */
+export const JSON_ROS_COMPRESSED_IMAGE_PAYLOADS = jsonRosPayloads(
+  "sensor_msgs/CompressedImage",
+  "sensor_msgs/msg/CompressedImage",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS Image messages.
+ */
+export const JSON_ROS_IMAGE_PAYLOADS = jsonRosPayloads(
+  "sensor_msgs/Image",
+  "sensor_msgs/msg/Image",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS CameraInfo messages.
+ */
+export const JSON_ROS_CAMERA_INFO_PAYLOADS = jsonRosPayloads(
+  "sensor_msgs/CameraInfo",
+  "sensor_msgs/msg/CameraInfo",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS LaserScan messages.
+ */
+export const JSON_ROS_LASER_SCAN_PAYLOADS = jsonRosPayloads(
+  "sensor_msgs/LaserScan",
+  "sensor_msgs/msg/LaserScan",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS PoseStamped messages.
+ */
+export const JSON_ROS_POSE_STAMPED_PAYLOADS = jsonRosPayloads(
+  "geometry_msgs/PoseStamped",
+  "geometry_msgs/msg/PoseStamped",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS Odometry messages.
+ */
+export const JSON_ROS_ODOMETRY_PAYLOADS = jsonRosPayloads(
+  "nav_msgs/Odometry",
+  "nav_msgs/msg/Odometry",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS NavSatFix messages.
+ */
+export const JSON_ROS_NAV_SAT_FIX_PAYLOADS = jsonRosPayloads(
+  "sensor_msgs/NavSatFix",
+  "sensor_msgs/msg/NavSatFix",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS OccupancyGrid messages.
+ */
+export const JSON_ROS_OCCUPANCY_GRID_PAYLOADS = jsonRosPayloads(
+  "nav_msgs/OccupancyGrid",
+  "nav_msgs/msg/OccupancyGrid",
+);

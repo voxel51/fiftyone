@@ -73,11 +73,11 @@ export function projectNumericField(
 /**
  * Extracts a packed numeric time series for one topic's field paths in
  * a single indexed-read pass. Decodes generically — protobuf channels
- * through the cached descriptor type, JSON channels through
- * `JSON.parse` — independent of the decoder registry, since telemetry
- * topics usually have no registered visualization decoder. Messages
- * that fail to decode contribute NaN gap points rather than aborting
- * the series.
+ * through the cached descriptor type, JSON channels through `JSON.parse`,
+ * and ROS channels through cached schema readers — independent of the
+ * decoder registry, since telemetry topics usually have no registered
+ * visualization decoder. Messages that fail to decode contribute NaN gap
+ * points rather than aborting the series.
  */
 export async function readMcapNumericSeries({
   reader,

@@ -24,6 +24,7 @@ const playbackHarness = vi.hoisted(() => ({
     error: null,
     sources: [],
     status: "ready",
+    topics: [],
     topicCount: 3,
   })),
 }));

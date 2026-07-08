@@ -1,3 +1,7 @@
+import { parse as parseRosMessageDefinition } from "@foxglove/rosmsg";
+import { parseRos2idl } from "@foxglove/ros2idl-parser";
+import { MessageWriter as Ros1MessageWriter } from "@foxglove/rosmsg-serialization";
+import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serialization";
 import type { McapTypes } from "@mcap/core";
 import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
@@ -25,6 +29,24 @@ const TELEMETRY_ROOT = Root.fromJSON({
 });
 
 const TELEMETRY_TYPE = TELEMETRY_ROOT.lookupType("test.Telemetry");
+const ROS_TELEMETRY_SCHEMA = `float64 speed
+bool armed
+geometry_msgs/Vector3 linear
+===
+MSG: geometry_msgs/Vector3
+float64 x
+float64 y
+float64 z`;
+const ROS2_IDL_TELEMETRY_SCHEMA = `
+module test_msgs {
+  module msg {
+    struct Telemetry {
+      double speed;
+      boolean armed;
+    };
+  };
+};
+`;
 
 const TELEMETRY_SCHEMA_DATA: Uint8Array = descriptor.FileDescriptorSet.encode(
   (
@@ -83,6 +105,114 @@ describe("readMcapRawMessageRecord", () => {
     expect(result.schemaName).toBe("test.Telemetry");
     expect(result.encodedPayloadBytes).toBeGreaterThan(0);
     expect(rawNodeToJson(rootOf(result))).toEqual({ label: "ego", speed: 3.5 });
+  });
+
+  it("decodes ros1 messages through embedded message definitions", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "ros1", topic: "/telemetry" }),
+      messages: [
+        createMessage(
+          ros1TelemetryMessage({
+            armed: true,
+            linear: { x: 1, y: 2, z: 3 },
+            speed: 3.5,
+          }),
+          { logTime: 1_000_000_000n },
+        ),
+      ],
+      schema: createSchema(new TextEncoder().encode(ROS_TELEMETRY_SCHEMA), {
+        encoding: "ros1msg",
+        name: "test_msgs/Telemetry",
+      }),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 1_000_000_000n,
+        topic: "/telemetry",
+      },
+      timeline,
+    });
+
+    expect(result.status).toBe("ok");
+    expect(rawNodeToJson(rootOf(result))).toEqual({
+      armed: true,
+      linear: { x: 1, y: 2, z: 3 },
+      speed: 3.5,
+    });
+  });
+
+  it("decodes ros2 cdr messages through embedded message definitions", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "cdr", topic: "/telemetry" }),
+      messages: [
+        createMessage(
+          ros2TelemetryMessage({
+            armed: false,
+            linear: { x: 10, y: 20, z: 30 },
+            speed: 9.25,
+          }),
+          { logTime: 1_000_000_000n },
+        ),
+      ],
+      schema: createSchema(new TextEncoder().encode(ROS_TELEMETRY_SCHEMA), {
+        encoding: "ros2msg",
+        name: "test_msgs/msg/Telemetry",
+      }),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 1_000_000_000n,
+        topic: "/telemetry",
+      },
+      timeline,
+    });
+
+    expect(result.status).toBe("ok");
+    expect(rawNodeToJson(rootOf(result))).toEqual({
+      armed: false,
+      linear: { x: 10, y: 20, z: 30 },
+      speed: 9.25,
+    });
+  });
+
+  it("decodes ros2 idl cdr messages through embedded IDL definitions", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "cdr", topic: "/telemetry" }),
+      messages: [
+        createMessage(ros2IdlTelemetryMessage({ armed: true, speed: 4.75 }), {
+          logTime: 1_000_000_000n,
+        }),
+      ],
+      schema: createSchema(
+        new TextEncoder().encode(ROS2_IDL_TELEMETRY_SCHEMA),
+        {
+          encoding: "ros2idl",
+          name: "test_msgs/msg/Telemetry",
+        },
+      ),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 1_000_000_000n,
+        topic: "/telemetry",
+      },
+      timeline,
+    });
+
+    expect(result.status).toBe("ok");
+    expect(rawNodeToJson(rootOf(result))).toEqual({
+      armed: true,
+      speed: 4.75,
+    });
   });
 
   it("uses the index predecessor walk when the reader supports it", async () => {
@@ -191,7 +321,7 @@ describe("readMcapRawMessageRecord", () => {
     expect(result.validUntilNs).toBe(9_000_000_000n);
   });
 
-  it("degrades to metadata for encodings without a generic decoder", async () => {
+  it("degrades to metadata when a ROS schema is unavailable", async () => {
     const reader = createReader({
       channel: createChannel({ messageEncoding: "ros1", topic: "/imu" }),
       messages: [
@@ -217,10 +347,95 @@ describe("readMcapRawMessageRecord", () => {
     });
 
     expect(result.status).toBe("unsupported");
+    expect(result.decodeUnavailableReason).toBe("schema-unavailable");
     expect(result.messageEncoding).toBe("ros1");
     expect(result.schemaName).toBe("sensor_msgs/Imu");
     expect(result.sequence).toBe(7);
     expect(result.encodedPayloadBytes).toBe(3);
+    expect(result.root).toBeUndefined();
+  });
+
+  it("degrades to metadata when protobuf schema resolution fails", async () => {
+    const reader = createReader({
+      messages: [
+        createMessage(new Uint8Array([1, 2, 3]), {
+          logTime: 1_000_000_000n,
+        }),
+      ],
+      schema: createSchema(new Uint8Array([1, 2, 3]), {
+        encoding: "protobuf",
+        name: "broken.Message",
+      }),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 1_000_000_000n,
+        topic: "/telemetry",
+      },
+      timeline,
+    });
+
+    expect(result.status).toBe("unsupported");
+    expect(result.decodeUnavailableReason).toBe("schema-unavailable");
+    expect(result.messageEncoding).toBe("protobuf");
+    expect(result.root).toBeUndefined();
+  });
+
+  it("degrades to metadata for unsupported encodings", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "cbor", topic: "/binary" }),
+      messages: [
+        createMessage(new Uint8Array([1, 2, 3]), {
+          logTime: 1_000_000_000n,
+        }),
+      ],
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 1_000_000_000n,
+        topic: "/binary",
+      },
+      timeline,
+    });
+
+    expect(result.status).toBe("unsupported");
+    expect(result.decodeUnavailableReason).toBe("unsupported-encoding");
+    expect(result.messageEncoding).toBe("cbor");
+    expect(result.root).toBeUndefined();
+  });
+
+  it("reports ROS decode errors without failing the read", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "ros1", topic: "/telemetry" }),
+      messages: [
+        createMessage(new Uint8Array([1, 2, 3]), {
+          logTime: 1_000_000_000n,
+        }),
+      ],
+      schema: createSchema(new TextEncoder().encode(ROS_TELEMETRY_SCHEMA), {
+        encoding: "ros1msg",
+        name: "test_msgs/Telemetry",
+      }),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 1_000_000_000n,
+        topic: "/telemetry",
+      },
+      timeline,
+    });
+
+    expect(result.status).toBe("decode-error");
+    expect(result.decodeError).toBeTruthy();
     expect(result.root).toBeUndefined();
   });
 
@@ -307,6 +522,25 @@ function jsonMessage(
   return createMessage(new TextEncoder().encode(JSON.stringify(record)), {
     logTime,
   });
+}
+
+function ros1TelemetryMessage(record: Record<string, unknown>): Uint8Array {
+  const writer = new Ros1MessageWriter(
+    parseRosMessageDefinition(ROS_TELEMETRY_SCHEMA),
+  );
+  return writer.writeMessage(record);
+}
+
+function ros2TelemetryMessage(record: Record<string, unknown>): Uint8Array {
+  const writer = new Ros2MessageWriter(
+    parseRosMessageDefinition(ROS_TELEMETRY_SCHEMA, { ros2: true }),
+  );
+  return writer.writeMessage(record);
+}
+
+function ros2IdlTelemetryMessage(record: Record<string, unknown>): Uint8Array {
+  const writer = new Ros2MessageWriter(parseRos2idl(ROS2_IDL_TELEMETRY_SCHEMA));
+  return writer.writeMessage(record);
 }
 
 function createReader({

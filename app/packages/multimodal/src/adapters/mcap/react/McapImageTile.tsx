@@ -14,7 +14,7 @@ import { useStore } from "jotai";
 import React, { useEffect, useMemo, useState } from "react";
 import type {
   CameraCalibrationVisualization,
-  EncodedImageVisualization,
+  ImageVisualization,
 } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
@@ -123,8 +123,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
 
   // Keep the playback wrapper: `contentTimeNs` is the message identity the
   // shared image-texture cache key needs (bytes identity churns per batch).
-  const playbackFrame =
-    useMcapTopicPlaybackFrame<EncodedImageVisualization>(topic);
+  const playbackFrame = useMcapTopicPlaybackFrame<ImageVisualization>(topic);
   const frame = playbackFrame?.frame ?? null;
   const sourceKey = useMcapDataStream()?.sourceKey ?? "";
   // Shared texture key per (recording, topic, frame). The 3D tile's

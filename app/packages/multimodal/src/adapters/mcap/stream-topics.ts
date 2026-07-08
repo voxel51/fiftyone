@@ -1,9 +1,22 @@
 import type { PayloadDescriptor } from "../../decoders";
 import type { StreamInventory } from "../../schemas/v1";
-import { JSON_POSE_PAYLOAD } from "./decoders/json/payloads";
+import {
+  JSON_POSE_PAYLOAD,
+  JSON_ROS_CAMERA_INFO_PAYLOADS,
+  JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
+  JSON_ROS_IMAGE_PAYLOADS,
+  JSON_ROS_LASER_SCAN_PAYLOADS,
+  JSON_ROS_NAV_SAT_FIX_PAYLOADS,
+  JSON_ROS_OCCUPANCY_GRID_PAYLOADS,
+  JSON_ROS_ODOMETRY_PAYLOADS,
+  JSON_ROS_POINT_CLOUD2_PAYLOADS,
+  JSON_ROS_POSE_STAMPED_PAYLOADS,
+} from "./decoders/json/payloads";
 import {
   FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD,
   FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
+  FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS,
+  FOXGLOVE_COMPRESSED_VIDEO_PAYLOAD,
   FOXGLOVE_GRID_PAYLOAD,
   FOXGLOVE_LASER_SCAN_PAYLOAD,
   FOXGLOVE_LOCATION_FIX_PAYLOAD,
@@ -11,7 +24,18 @@ import {
   FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
   FOXGLOVE_POINT_CLOUD_PAYLOAD,
   FOXGLOVE_SCENE_UPDATE_PAYLOAD,
-} from "./decoders/foxglove/protobuf/payloads";
+} from "./decoders/foxglove/payloads";
+import {
+  ROS_CAMERA_INFO_PAYLOADS,
+  ROS_COMPRESSED_IMAGE_PAYLOADS,
+  ROS_IMAGE_PAYLOADS,
+  ROS_LASER_SCAN_PAYLOADS,
+  ROS_NAV_SAT_FIX_PAYLOADS,
+  ROS_OCCUPANCY_GRID_PAYLOADS,
+  ROS_ODOMETRY_PAYLOADS,
+  ROS_POINT_CLOUD2_PAYLOADS,
+  ROS_POSE_STAMPED_PAYLOADS,
+} from "./decoders/ros/payloads";
 
 /**
  * Supported MCAP topics that the adapter can preview or pair.
@@ -41,7 +65,7 @@ export function streamTopics(
       continue;
     }
 
-    if (isCompressedImageStream(topic)) {
+    if (isImageStream(topic)) {
       image.push(name);
     } else if (isPointCloudStream(topic)) {
       pointCloud.push(name);
@@ -69,10 +93,29 @@ export function topicName(topic: StreamInventory): string {
 }
 
 /**
- * Returns whether a stream inventory item is a supported Foxglove compressed image.
+ * Returns whether a stream inventory item is a supported image stream.
+ */
+export function isImageStream(topic: StreamInventory): boolean {
+  return (
+    hasPayload(topic, FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD) ||
+    hasPayload(topic, FOXGLOVE_COMPRESSED_VIDEO_PAYLOAD) ||
+    hasAnyPayload(topic, FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_COMPRESSED_IMAGE_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_IMAGE_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_COMPRESSED_IMAGE_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_IMAGE_PAYLOADS)
+  );
+}
+
+/**
+ * Returns whether a stream inventory item is a supported compressed image.
  */
 export function isCompressedImageStream(topic: StreamInventory): boolean {
-  return hasPayload(topic, FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD);
+  return (
+    hasPayload(topic, FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD) ||
+    hasAnyPayload(topic, JSON_ROS_COMPRESSED_IMAGE_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_COMPRESSED_IMAGE_PAYLOADS)
+  );
 }
 
 /**
@@ -89,7 +132,11 @@ export function isImageAnnotationsStream(topic: StreamInventory): boolean {
 export function isPointCloudStream(topic: StreamInventory): boolean {
   return (
     hasPayload(topic, FOXGLOVE_POINT_CLOUD_PAYLOAD) ||
-    hasPayload(topic, FOXGLOVE_LASER_SCAN_PAYLOAD)
+    hasPayload(topic, FOXGLOVE_LASER_SCAN_PAYLOAD) ||
+    hasAnyPayload(topic, JSON_ROS_POINT_CLOUD2_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_LASER_SCAN_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_POINT_CLOUD2_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_LASER_SCAN_PAYLOADS)
   );
 }
 
@@ -104,7 +151,11 @@ export function isSceneUpdateStream(topic: StreamInventory): boolean {
  * Returns whether a stream inventory item is a supported Foxglove Grid stream.
  */
 export function isGridStream(topic: StreamInventory): boolean {
-  return hasPayload(topic, FOXGLOVE_GRID_PAYLOAD);
+  return (
+    hasPayload(topic, FOXGLOVE_GRID_PAYLOAD) ||
+    hasAnyPayload(topic, JSON_ROS_OCCUPANCY_GRID_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_OCCUPANCY_GRID_PAYLOADS)
+  );
 }
 
 /**
@@ -112,7 +163,11 @@ export function isGridStream(topic: StreamInventory): boolean {
  * CameraCalibration stream.
  */
 export function isCameraCalibrationStream(topic: StreamInventory): boolean {
-  return hasPayload(topic, FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD);
+  return (
+    hasPayload(topic, FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD) ||
+    hasAnyPayload(topic, JSON_ROS_CAMERA_INFO_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_CAMERA_INFO_PAYLOADS)
+  );
 }
 
 /**
@@ -122,7 +177,11 @@ export function isCameraCalibrationStream(topic: StreamInventory): boolean {
 export function isPoseStream(topic: StreamInventory): boolean {
   return (
     hasPayload(topic, FOXGLOVE_POSE_IN_FRAME_PAYLOAD) ||
-    hasPayload(topic, JSON_POSE_PAYLOAD)
+    hasPayload(topic, JSON_POSE_PAYLOAD) ||
+    hasAnyPayload(topic, JSON_ROS_POSE_STAMPED_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_ODOMETRY_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_POSE_STAMPED_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_ODOMETRY_PAYLOADS)
   );
 }
 
@@ -131,7 +190,11 @@ export function isPoseStream(topic: StreamInventory): boolean {
  * LocationFix stream.
  */
 export function isLocationFixStream(topic: StreamInventory): boolean {
-  return hasPayload(topic, FOXGLOVE_LOCATION_FIX_PAYLOAD);
+  return (
+    hasPayload(topic, FOXGLOVE_LOCATION_FIX_PAYLOAD) ||
+    hasAnyPayload(topic, JSON_ROS_NAV_SAT_FIX_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_NAV_SAT_FIX_PAYLOADS)
+  );
 }
 
 /**
@@ -151,4 +214,11 @@ export function hasPayload(
     topicPayload.schema === payload.schema &&
     topicPayload.schemaEncoding === payload.schemaEncoding
   );
+}
+
+function hasAnyPayload(
+  topic: StreamInventory,
+  payloads: readonly PayloadDescriptor[],
+): boolean {
+  return payloads.some((payload) => hasPayload(topic, payload));
 }

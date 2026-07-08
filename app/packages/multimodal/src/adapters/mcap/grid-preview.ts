@@ -1,5 +1,5 @@
 import type {
-  EncodedImageVisualization,
+  ImageVisualization,
   ImageAnnotationsVisualization,
   PointCloudVisualization,
 } from "../../decoders";
@@ -83,7 +83,7 @@ export type McapGridPreviewSelection =
  */
 export interface McapGridImagePreviewFrame {
   readonly annotations: ImageAnnotationsVisualization | null;
-  readonly image: EncodedImageVisualization;
+  readonly image: ImageVisualization;
   readonly kind: "image";
 }
 
@@ -483,7 +483,7 @@ async function readImageFrameNear({
   readonly source: ByteSourceDescriptor;
   readonly timeNs: bigint;
   readonly topic: string;
-}): Promise<EncodedImageVisualization | null> {
+}): Promise<ImageVisualization | null> {
   const window = await client.readSynchronizedMessages({
     source,
     streamPolicies: {
@@ -496,11 +496,11 @@ async function readImageFrameNear({
   return message ? imageFrame(message) : null;
 }
 
-function imageFrame(
-  message: McapDecodedMessage,
-): EncodedImageVisualization | null {
+function imageFrame(message: McapDecodedMessage): ImageVisualization | null {
   const visualization = message.decoded.output.visualization;
-  return visualization?.kind === VISUALIZATION_KIND.ENCODED_IMAGE
+  return visualization?.kind === VISUALIZATION_KIND.ENCODED_IMAGE ||
+    visualization?.kind === VISUALIZATION_KIND.ENCODED_VIDEO ||
+    visualization?.kind === VISUALIZATION_KIND.RAW_IMAGE
     ? visualization
     : null;
 }

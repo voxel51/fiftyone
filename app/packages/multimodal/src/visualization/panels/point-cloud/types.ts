@@ -3,8 +3,8 @@ import * as THREE from "three";
 
 import type {
   CameraCalibrationVisualization,
-  EncodedImageVisualization,
   GridVisualization,
+  ImageVisualization,
   PointCloudVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
@@ -225,7 +225,7 @@ export interface CameraFrustumPanelLayer {
   readonly frame: CameraCalibrationVisualization;
   readonly frameTransform?: PointCloudFrameTransform;
   readonly id: string;
-  readonly image?: EncodedImageVisualization;
+  readonly image?: ImageVisualization;
   readonly imageContentTimeNs?: bigint;
   /**
    * Presentational distance from optical center to image plane, in scene

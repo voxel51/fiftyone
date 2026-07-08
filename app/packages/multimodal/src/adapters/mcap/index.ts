@@ -24,6 +24,7 @@ export {
   hasPayload,
   isCompressedImageStream,
   isImageAnnotationsStream,
+  isImageStream,
   isPointCloudStream,
   isSceneUpdateStream,
   streamTopics,

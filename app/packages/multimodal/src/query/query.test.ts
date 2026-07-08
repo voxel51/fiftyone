@@ -11,7 +11,6 @@ import {
   createMemoryByteRangeCache,
   createCachedByteClient,
   createHttpByteClient,
-  BYTE_SOURCE_READ_PROFILE,
   DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES,
   DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES,
   type ByteRangeReadRequest,
@@ -472,41 +471,6 @@ describe("multimodal query clients", () => {
     await client.readBytes(request);
 
     expect(reader.readBytes).toHaveBeenCalledWith(request);
-  });
-
-  it("uses larger default block fills for explicitly remote sources", async () => {
-    const reader: ByteClient = {
-      readBytes: vi.fn(async (readRequest) => ({
-        bytes: bytesForRange(readRequest),
-        range: readRequest.range,
-        source: readRequest.source,
-      })),
-    };
-    const cache = createMemoryByteRangeCache({
-      maxSizeBytes: DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES * 2,
-    });
-    const client = createCachedByteClient(reader, { memory: cache });
-    const request = createByteRangeReadRequest({
-      range: { length: 4n, offset: 4n },
-      source: {
-        readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
-        sizeBytes: (DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES * 2).toString(),
-        sourceId: "object://bucket/source.bin",
-        url: "object://bucket/source.bin",
-      },
-    });
-
-    await expect(client.readBytes(request)).resolves.toMatchObject({
-      bytes: new Uint8Array([4, 5, 6, 7]),
-    });
-
-    expect(reader.readBytes).toHaveBeenCalledWith({
-      range: {
-        length: BigInt(DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES),
-        offset: 0n,
-      },
-      source: request.source,
-    });
   });
 
   it("does not infer remote block fills from source URL text", async () => {

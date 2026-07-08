@@ -155,8 +155,14 @@ function messageBandwidthKey(message: McapDecodedMessage): string {
 
 function categoryForMessage(message: McapDecodedMessage): string {
   const kind = message.decoded.output.visualization?.kind;
-  if (kind === VISUALIZATION_KIND.ENCODED_IMAGE) {
+  if (
+    kind === VISUALIZATION_KIND.ENCODED_IMAGE ||
+    kind === VISUALIZATION_KIND.RAW_IMAGE
+  ) {
     return "image";
+  }
+  if (kind === VISUALIZATION_KIND.ENCODED_VIDEO) {
+    return "video";
   }
   if (kind === VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
     return "image-annotations";

@@ -8,13 +8,18 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { EncodedImageVisualization } from "../../decoders";
+import type {
+  EncodedImageVisualization,
+  EncodedVideoVisualization,
+  RawImageVisualization,
+} from "../../decoders";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import { ImagePanel } from "./image";
 import {
   imageTextureCacheStats,
   resetImageTextureCacheForTests,
 } from "./image-texture-cache";
+import { resetVideoTextureDecodersForTests } from "./video-texture";
 
 vi.mock("./base-2d-scene", () => ({
   Base2DScene: ({ children }: { readonly children?: ReactNode }) => (
@@ -31,10 +36,12 @@ vi.mock("./webgpu-canvas", () => ({
 
 beforeEach(() => {
   resetImageTextureCacheForTests();
+  resetVideoTextureDecodersForTests();
 });
 
 afterEach(() => {
   cleanup();
+  resetVideoTextureDecodersForTests();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -102,6 +109,37 @@ describe("ImagePanel", () => {
 
     expect(createBitmap).toHaveBeenCalledTimes(2);
   });
+
+  it("renders raw RGBA frames through the shared image panel", async () => {
+    const onImageLoaded = vi.fn();
+
+    render(<ImagePanel frame={rawFrame()} onImageLoaded={onImageLoaded} />);
+
+    await waitFor(() => expect(onImageLoaded).toHaveBeenCalledWith(2, 1));
+    expect(screen.queryByText("Loading image")).toBeNull();
+    expect(screen.getByTestId("image-texture-plane")).toBeTruthy();
+  });
+
+  it("shares one raw texture decode between panels rendering the same texture key", async () => {
+    render(
+      <>
+        <ImagePanel frame={rawFrame()} textureKey="rec|/cam/raw|100" />
+        <ImagePanel frame={rawFrame()} textureKey="rec|/cam/raw|100" />
+      </>,
+    );
+
+    await waitFor(() =>
+      expect(screen.queryAllByText("Loading image")).toHaveLength(0),
+    );
+
+    expect(imageTextureCacheStats().decodeCount).toBe(1);
+  });
+
+  it("surfaces video keyframe wait states from the shared image panel", async () => {
+    render(<ImagePanel frame={deltaVideoFrame()} />);
+
+    expect(await screen.findByText("Waiting for H.264 keyframe")).toBeTruthy();
+  });
 });
 
 function loadedFrame(): EncodedImageVisualization {
@@ -119,4 +157,26 @@ function mockImageBitmap() {
   }));
   vi.stubGlobal("createImageBitmap", createBitmap);
   return createBitmap;
+}
+
+function rawFrame(): RawImageVisualization {
+  return {
+    height: 1,
+    kind: VISUALIZATION_KIND.RAW_IMAGE,
+    rgba: new Uint8Array([255, 0, 0, 255, 0, 0, 255, 255]),
+    sourceEncoding: "rgb8",
+    width: 2,
+  };
+}
+
+function deltaVideoFrame(): EncodedVideoVisualization {
+  return {
+    bytes: Uint8Array.of(0, 0, 1, 0x41, 0xc0),
+    codec: "h264",
+    format: "h264",
+    h264: { hasFrame: true },
+    keyframe: false,
+    kind: VISUALIZATION_KIND.ENCODED_VIDEO,
+    timestampNs: 1000n,
+  };
 }

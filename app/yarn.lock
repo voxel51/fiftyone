@@ -2737,16 +2737,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/annotation@workspace:packages/annotation":
+"@fiftyone/annotation@workspace:*, @fiftyone/annotation@workspace:packages/annotation":
   version: 0.0.0-use.local
   resolution: "@fiftyone/annotation@workspace:packages/annotation"
   dependencies:
     "@testing-library/dom": "npm:^10.4.0"
     "@testing-library/react": "npm:^16.2.0"
+    "@types/lodash": "npm:^4.14.182"
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
     eslint: "npm:^8.0.0"
     jsdom: "npm:^26.0.0"
+    lodash: "npm:^4.18.1"
     onnxruntime-web: "npm:^1.24.3"
     uuid: "npm:^14.0.0"
     vite: "npm:^7.3.2"
@@ -2774,6 +2776,7 @@ __metadata:
     "@fiftyone/relay": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
+    "@fiftyone/video-annotation": "workspace:*"
     "@material-ui/core": "npm:4.12.4"
     "@types/lodash": "npm:^4.14.182"
     "@types/mime": "npm:^2.0.3"
@@ -2815,7 +2818,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/command-bus@workspace:packages/command-bus":
+"@fiftyone/command-bus@workspace:*, @fiftyone/command-bus@workspace:packages/command-bus":
   version: 0.0.0-use.local
   resolution: "@fiftyone/command-bus@workspace:packages/command-bus"
   dependencies:
@@ -2833,7 +2836,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/commands@workspace:^, @fiftyone/commands@workspace:packages/commands":
+"@fiftyone/commands@workspace:*, @fiftyone/commands@workspace:^, @fiftyone/commands@workspace:packages/commands":
   version: 0.0.0-use.local
   resolution: "@fiftyone/commands@workspace:packages/commands"
   dependencies:
@@ -2851,7 +2854,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/components@npm:*, @fiftyone/components@workspace:packages/components":
+"@fiftyone/components@npm:*, @fiftyone/components@workspace:*, @fiftyone/components@workspace:packages/components":
   version: 0.0.0-use.local
   resolution: "@fiftyone/components@workspace:packages/components"
   dependencies:
@@ -2872,7 +2875,7 @@ __metadata:
     "@textea/json-viewer": "npm:^3.4.1"
     "@types/react-input-autosize": "npm:^2.2.1"
     "@types/react-syntax-highlighter": "npm:^15.5.6"
-    "@voxel51/voodo": "npm:^0.0.35"
+    "@voxel51/voodo": "npm:^0.0.37"
     classnames: "npm:^2.3.1"
     framer-motion: "npm:^6.2.7"
     material-icons: "npm:^1.13.12"
@@ -2925,7 +2928,7 @@ __metadata:
     "@types/styled-components": "npm:^5.1.23"
     "@use-gesture/react": "npm:^10.3.0"
     "@vitejs/plugin-react-refresh": "npm:^1.3.3"
-    "@voxel51/voodo": "npm:^0.0.35"
+    "@voxel51/voodo": "npm:^0.0.37"
     "@xstate/react": "npm:1.3.3"
     classnames: "npm:^2.2.6"
     color: "npm:^4.2.3"
@@ -2970,6 +2973,7 @@ __metadata:
     xstate: "npm:^4.14.0"
   peerDependencies:
     "@fiftyone/annotation": "*"
+    "@fiftyone/video-annotation": "*"
     "@mui/icons-material": "*"
     "@mui/material": "*"
     "@react-spring/web": "*"
@@ -3091,7 +3095,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/lighter@workspace:packages/lighter":
+"@fiftyone/lighter@workspace:*, @fiftyone/lighter@workspace:packages/lighter":
   version: 0.0.0-use.local
   resolution: "@fiftyone/lighter@workspace:packages/lighter"
   dependencies:
@@ -3206,12 +3210,16 @@ __metadata:
     "@fiftyone/state": "npm:*"
     "@fiftyone/tiling": "npm:*"
     "@fiftyone/utilities": "npm:*"
+    "@foxglove/ros2idl-parser": "npm:^0.3.6"
+    "@foxglove/rosmsg": "npm:^5.0.5"
+    "@foxglove/rosmsg-serialization": "npm:^2.1.2"
+    "@foxglove/rosmsg2-serialization": "npm:^3.1.2"
     "@mcap/core": "npm:^2.2.1"
     "@mcap/support": "npm:^1.1.0"
     "@react-three/drei": "npm:9.105.4"
     "@react-three/fiber": "npm:^8.18.0"
     "@types/three": "npm:^0.182.0"
-    "@voxel51/voodo": "npm:^0.0.35"
+    "@voxel51/voodo": "npm:^0.0.37"
     buffer: "npm:^6.0.3"
     colormap: "npm:^2.3.2"
     date-fns: "npm:^4.1.0"
@@ -3242,14 +3250,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/playback@workspace:packages/playback":
+"@fiftyone/playback@workspace:*, @fiftyone/playback@workspace:packages/playback":
   version: 0.0.0-use.local
   resolution: "@fiftyone/playback@workspace:packages/playback"
   dependencies:
     "@eslint/compat": "npm:^1.1.1"
     "@fiftyone/commands": "workspace:^"
     "@fiftyone/tiling": "npm:*"
-    "@voxel51/voodo": "npm:^0.0.35"
+    "@voxel51/voodo": "npm:^0.0.37"
     eslint: "npm:9.7.0"
     eslint-plugin-react: "npm:^7.35.0"
     eslint-plugin-react-hooks: "npm:rc"
@@ -3301,7 +3309,7 @@ __metadata:
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/spaces": "npm:*"
     "@fiftyone/state": "npm:*"
-    "@voxel51/voodo": "npm:^0.0.35"
+    "@voxel51/voodo": "npm:^0.0.37"
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
@@ -3339,7 +3347,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/state@npm:*, @fiftyone/state@workspace:packages/state":
+"@fiftyone/state@npm:*, @fiftyone/state@workspace:*, @fiftyone/state@workspace:packages/state":
   version: 0.0.0-use.local
   resolution: "@fiftyone/state@workspace:packages/state"
   dependencies:
@@ -3348,7 +3356,7 @@ __metadata:
     "@fiftyone/utilities": "npm:*"
     "@microsoft/fetch-event-source": "npm:^2.0.1"
     "@testing-library/react-hooks": "npm:latest"
-    "@voxel51/voodo": "npm:^0.0.35"
+    "@voxel51/voodo": "npm:^0.0.37"
     babel-plugin-relay: "npm:^14.1.0"
     html2canvas: "npm:1.0.0-rc.7"
     lodash: "npm:^4.18.1"
@@ -3363,11 +3371,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/tiling@npm:*, @fiftyone/tiling@workspace:packages/tiling":
+"@fiftyone/tiling@npm:*, @fiftyone/tiling@workspace:*, @fiftyone/tiling@workspace:packages/tiling":
   version: 0.0.0-use.local
   resolution: "@fiftyone/tiling@workspace:packages/tiling"
   dependencies:
-    "@voxel51/voodo": "npm:^0.0.35"
+    "@voxel51/voodo": "npm:^0.0.37"
     clsx: "npm:^2.1.1"
     jotai: "npm:^2.9.3"
     react-mosaic-component: "npm:^6.1.1"
@@ -3377,12 +3385,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/utilities@npm:*, @fiftyone/utilities@workspace:^, @fiftyone/utilities@workspace:packages/utilities":
+"@fiftyone/utilities@npm:*, @fiftyone/utilities@workspace:*, @fiftyone/utilities@workspace:^, @fiftyone/utilities@workspace:packages/utilities":
   version: 0.0.0-use.local
   resolution: "@fiftyone/utilities@workspace:packages/utilities"
   dependencies:
     "@chainner/node-path": "npm:^0.1.1"
     "@microsoft/fetch-event-source": "npm:^2.0.1"
+    fast-json-patch: "npm:^3.1.1"
     fetch-retry: "npm:^5.0.3"
     lodash: "npm:^4.18.1"
     lru-cache: "npm:^11.0.1"
@@ -3393,6 +3402,33 @@ __metadata:
     vite: "npm:^7.3.2"
   peerDependencies:
     react: "*"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/video-annotation@workspace:*, @fiftyone/video-annotation@workspace:packages/video-annotation":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/video-annotation@workspace:packages/video-annotation"
+  dependencies:
+    "@eslint/compat": "npm:^1.1.1"
+    "@fiftyone/annotation": "workspace:*"
+    "@fiftyone/command-bus": "workspace:*"
+    "@fiftyone/commands": "workspace:*"
+    "@fiftyone/components": "workspace:*"
+    "@fiftyone/lighter": "workspace:*"
+    "@fiftyone/playback": "workspace:*"
+    "@fiftyone/state": "workspace:*"
+    "@fiftyone/tiling": "workspace:*"
+    "@fiftyone/utilities": "workspace:*"
+    "@voxel51/voodo": "npm:^0.0.37"
+    clsx: "npm:^2.1.0"
+    eslint: "npm:9.7.0"
+    eslint-plugin-react: "npm:^7.35.0"
+    eslint-plugin-react-hooks: "npm:rc"
+    globals: "npm:^15.8.0"
+    jotai: "npm:^2.9.3"
+    lru-cache: "npm:^11.0.1"
+    typescript-eslint: "npm:^7.17.0"
+    vite: "npm:^7.3.2"
   languageName: unknown
   linkType: soft
 
@@ -3581,10 +3617,81 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@foxglove/cdr@npm:^3.5.1":
+  version: 3.5.1
+  resolution: "@foxglove/cdr@npm:3.5.1"
+  checksum: 10/1b8faf9a30310ce29fcbc25702146b8966779e651b228b018d6881c5d1a17087eed60c514621056dabc4fe49b65d8f11c53ffc288098bd9615579d5ef3ef0e86
+  languageName: node
+  linkType: hard
+
 "@foxglove/crc@npm:^0.0.3":
   version: 0.0.3
   resolution: "@foxglove/crc@npm:0.0.3"
   checksum: 10/53e2f78fb001884ed4baeb1cb4dd510e1d67d9389e0457c57c4d4eb6ada346528310a7e5e486f93cfcf131657ed8e4a57cc3ba6d0e7a564742c0a51498504065
+  languageName: node
+  linkType: hard
+
+"@foxglove/message-definition@npm:0.5.0, @foxglove/message-definition@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "@foxglove/message-definition@npm:0.5.0"
+  checksum: 10/679ecc3416a153f4aee969e4031fdd4ccf0c63b04c46da74e9c8c78e72284a83dd2d4a3ee9786962f0394711635256dfc1bc69330206da7fec224447b2c7ff09
+  languageName: node
+  linkType: hard
+
+"@foxglove/omgidl-parser@npm:1.2.2":
+  version: 1.2.2
+  resolution: "@foxglove/omgidl-parser@npm:1.2.2"
+  dependencies:
+    tslib: "npm:^2"
+  checksum: 10/97f8511cf6a82410d39998c94ce4d2042a6119bd23d2ba7d57a740cc0b6da60fce82f617e3f0eb631591577c4a52b6e975c731f5ba6cfa4f36e9b30561cd4b51
+  languageName: node
+  linkType: hard
+
+"@foxglove/ros2idl-parser@npm:^0.3.6":
+  version: 0.3.6
+  resolution: "@foxglove/ros2idl-parser@npm:0.3.6"
+  dependencies:
+    "@foxglove/message-definition": "npm:^0.5.0"
+    "@foxglove/omgidl-parser": "npm:1.2.2"
+    md5-typescript: "npm:^1.0.5"
+  checksum: 10/5df7a40316d079e5d00491bccd7b988f0a802c05a4be6b2770945af044f9b1d761653b3b16290d8efb845334b51f5dc31974960046a495e4aee674dacb435673
+  languageName: node
+  linkType: hard
+
+"@foxglove/rosmsg-serialization@npm:^2.1.2":
+  version: 2.1.2
+  resolution: "@foxglove/rosmsg-serialization@npm:2.1.2"
+  dependencies:
+    "@foxglove/message-definition": "npm:0.5.0"
+  checksum: 10/e69b95f2505ce52090e8469fa27ae04410799220212edb55b2a013596585e91928218933495d713334f1c1423a02b52206bd33251045d065d04c55dcac77f278
+  languageName: node
+  linkType: hard
+
+"@foxglove/rosmsg2-serialization@npm:^3.1.2":
+  version: 3.1.2
+  resolution: "@foxglove/rosmsg2-serialization@npm:3.1.2"
+  dependencies:
+    "@foxglove/cdr": "npm:^3.5.1"
+    "@foxglove/message-definition": "npm:0.5.0"
+    "@foxglove/rostime": "npm:^1.1.3"
+  checksum: 10/16913883617b56e7b313dd9fe5990cf61d96779dc114bf4c2c6f91ab8dd8ba0abf081f805aca8be17d213f60714067cc7935a6ea8f79c9f530a099c2a49c8c42
+  languageName: node
+  linkType: hard
+
+"@foxglove/rosmsg@npm:^5.0.5":
+  version: 5.0.5
+  resolution: "@foxglove/rosmsg@npm:5.0.5"
+  dependencies:
+    "@foxglove/message-definition": "npm:0.5.0"
+    md5-typescript: "npm:^1.0.5"
+  checksum: 10/c5980ec59749525d79a8aed26c0e1de6bf315644490f2b8cb8df9055bbac1176a8f738c8a029d7c0911385a620839d88fc9a82224d57c8fd01fa7888a4979b1a
+  languageName: node
+  linkType: hard
+
+"@foxglove/rostime@npm:^1.1.3":
+  version: 1.1.3
+  resolution: "@foxglove/rostime@npm:1.1.3"
+  checksum: 10/056bb9b4df45aa04e9486f074915f4cb440288d9b981d15a73d76b7cd084a03dc6853b3f69ab05ac24a7d5cd31b758a341c61f8b5b065f0da62db9dc24be7c6f
   languageName: node
   linkType: hard
 
@@ -8563,9 +8670,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^0.0.35":
-  version: 0.0.35
-  resolution: "@voxel51/voodo@npm:0.0.35"
+"@voxel51/voodo@npm:^0.0.37":
+  version: 0.0.37
+  resolution: "@voxel51/voodo@npm:0.0.37"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -8582,7 +8689,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/a2cc59ae1a6f2842b494363c1c918349b165cb65dbc3a2c6c6c1cb8ff6cd74336d76ebd0df455c8bbc8a8b32100461e5ea2ecd7bcc89b8684bfe66315522b09e
+  checksum: 10/18186cb2a4e07e77e77e24782372f19fcc7b6d018119aa070a3f6a9cd348bcfee1e80f6c294bb31458119614ab3140ecca3414c99072f0a1a0624998d4ea0eae
   languageName: node
   linkType: hard
 
@@ -16544,6 +16651,13 @@ __metadata:
   version: 1.0.1
   resolution: "math-log2@npm:1.0.1"
   checksum: 10/b9a9c746ec0b28157865b5b9e9bdba25d04b77112f45ec65eb129b07ae42b0f017d59919d21e409fb6bb6587da28e5c40b4e49e80b917fa00a74f7ea5446932e
+  languageName: node
+  linkType: hard
+
+"md5-typescript@npm:^1.0.5":
+  version: 1.0.5
+  resolution: "md5-typescript@npm:1.0.5"
+  checksum: 10/eb909a106bf830848e5f43bb7cffa6a9d100cf51964294e67753573feef6023761b4ca7fa8c0478c09b145bab698bf4fb8864369a37fe079f0ce810f70384a4a
   languageName: node
   linkType: hard
 

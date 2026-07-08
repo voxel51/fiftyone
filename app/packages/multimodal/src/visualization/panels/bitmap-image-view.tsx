@@ -6,7 +6,8 @@
  * Two entry points share one canvas lifecycle (`useBitmapCanvas`):
  *
  * - `BitmapImageView` decodes encoded image bytes with `createImageBitmap`
- *   and paints the result (image preview cells).
+ *   and paints the result (image preview cells). Encoded video frames use
+ *   WebCodecs for one-frame decode, then share the same canvas paint path.
  * - `BitmapCanvasHost` paints a ready `ImageBitmap` handed in as a prop
  *   (point-cloud preview cells at rest, fed by the shared snapshot
  *   renderer). The host OWNS every bitmap it is handed: it closes the
@@ -21,7 +22,17 @@
  * cancellation, or on unmount).
  */
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef } from "react";
+
+import type {
+  EncodedVideoVisualization,
+  ImageVisualization,
+  RawImageVisualization,
+} from "../../decoders";
+import {
+  createEncodedVideoCanvas,
+  releaseEncodedVideoSession,
+} from "./video-texture";
 
 const DEFAULT_MIME_TYPE = "image/jpeg";
 
@@ -75,6 +86,28 @@ export interface BitmapCanvasHostProps {
 }
 
 /**
+ * Props for rendering any image visualization without a GPU device.
+ */
+export interface BitmapImageFrameViewProps {
+  readonly className?: string;
+  readonly fit?: "contain" | "cover";
+  readonly frame: ImageVisualization;
+  /**
+   * Reports a decode or canvas-paint failure. The previously committed frame
+   * stays visible — errors never blank the canvas.
+   */
+  readonly onError?: (error: unknown) => void;
+  readonly onImageLoaded?: (width: number, height: number) => void;
+  readonly style?: CSSProperties;
+}
+
+type CanvasDrawable = (HTMLCanvasElement | ImageBitmap) & {
+  readonly height: number;
+  readonly width: number;
+  close?: () => void;
+};
+
+/**
  * Destination rect for drawing an image of `image` size into `container`,
  * center-aligned. Identical math to `imageDisplayRect` in
  * `base-2d-scene.tsx` (the WebGPU `ImagePanel` path) — "cover" fills the
@@ -115,7 +148,7 @@ function useBitmapCanvas(fit: "contain" | "cover") {
   // The committed bitmap — stays drawn until the NEXT commit lands, so
   // frame advances and errors never flash an empty canvas (the behavior
   // ImagePanel gets from hasVisibleImageRef).
-  const bitmapRef = useRef<ImageBitmap | null>(null);
+  const bitmapRef = useRef<CanvasDrawable | null>(null);
   const fitRef = useRef(fit);
   fitRef.current = fit;
 
@@ -160,12 +193,15 @@ function useBitmapCanvas(fit: "contain" | "cover") {
   }, []);
 
   const commit = useCallback(
-    (bitmap: ImageBitmap | null) => {
+    (bitmap: CanvasDrawable | null) => {
       if (bitmapRef.current === bitmap) {
+        if (bitmap) {
+          draw();
+        }
         return;
       }
 
-      bitmapRef.current?.close();
+      closeDrawable(bitmapRef.current);
       bitmapRef.current = bitmap;
       draw();
     },
@@ -176,7 +212,7 @@ function useBitmapCanvas(fit: "contain" | "cover") {
   // producers close their own bitmaps via their cancellation guards).
   useEffect(() => {
     return () => {
-      bitmapRef.current?.close();
+      closeDrawable(bitmapRef.current);
       bitmapRef.current = null;
     };
   }, []);
@@ -208,6 +244,10 @@ function useBitmapCanvas(fit: "contain" | "cover") {
   }, [draw, fit]);
 
   return { canvasRef, commit };
+}
+
+function closeDrawable(drawable: CanvasDrawable | null): void {
+  drawable?.close?.();
 }
 
 /**
@@ -269,6 +309,170 @@ export function BitmapImageView({
       style={{ ...styles.canvas, ...style }}
     />
   );
+}
+
+/**
+ * Renders any decoded image visualization into the GPU-free bitmap canvas path.
+ */
+export function BitmapImageFrameView({
+  className,
+  fit = "cover",
+  frame,
+  onError,
+  onImageLoaded,
+  style,
+}: BitmapImageFrameViewProps) {
+  if (frame.kind === "encoded-video") {
+    return (
+      <BitmapEncodedVideoView
+        className={className}
+        frame={frame}
+        fit={fit}
+        onError={onError}
+        onImageLoaded={onImageLoaded}
+        style={style}
+      />
+    );
+  }
+
+  return frame.kind === "raw-image" ? (
+    <BitmapRawImageView
+      className={className}
+      fit={fit}
+      frame={frame}
+      onError={onError}
+      onImageLoaded={onImageLoaded}
+      style={style}
+    />
+  ) : (
+    <BitmapImageView
+      bytes={frame.bytes}
+      className={className}
+      fit={fit}
+      mimeType={frame.mimeType}
+      onError={onError}
+      onImageLoaded={onImageLoaded}
+      style={style}
+    />
+  );
+}
+
+function BitmapEncodedVideoView({
+  className,
+  frame,
+  fit = "cover",
+  onError,
+  onImageLoaded,
+  style,
+}: Omit<BitmapImageFrameViewProps, "frame"> & {
+  readonly frame: EncodedVideoVisualization;
+}) {
+  const { canvasRef, commit } = useBitmapCanvas(fit);
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  const onImageLoadedRef = useRef(onImageLoaded);
+  onImageLoadedRef.current = onImageLoaded;
+  const previewTextureKey = useId();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    createEncodedVideoCanvas(frame, previewTextureKey)
+      .then((source) => {
+        if (cancelled) {
+          closeDrawable(source);
+          return;
+        }
+
+        commit(source);
+        onImageLoadedRef.current?.(source.width, source.height);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          onErrorRef.current?.(error);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      releaseEncodedVideoSession(frame, previewTextureKey);
+    };
+  }, [commit, frame, previewTextureKey]);
+
+  return (
+    <canvas
+      className={className}
+      ref={canvasRef}
+      role="img"
+      style={{ ...styles.canvas, ...style }}
+    />
+  );
+}
+
+function BitmapRawImageView({
+  className,
+  fit = "cover",
+  frame,
+  onError,
+  onImageLoaded,
+  style,
+}: Omit<BitmapImageFrameViewProps, "frame"> & {
+  readonly frame: RawImageVisualization;
+}) {
+  const { canvasRef, commit } = useBitmapCanvas(fit);
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  const onImageLoadedRef = useRef(onImageLoaded);
+  onImageLoadedRef.current = onImageLoaded;
+  const sourceCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    try {
+      let source = sourceCanvasRef.current;
+      if (!source) {
+        source = document.createElement("canvas");
+        sourceCanvasRef.current = source;
+      }
+      canvasFromRawImage(frame, source);
+      commit(source);
+      onImageLoadedRef.current?.(frame.width, frame.height);
+    } catch (error) {
+      onErrorRef.current?.(error);
+    }
+  }, [commit, frame]);
+
+  return (
+    <canvas
+      className={className}
+      ref={canvasRef}
+      role="img"
+      style={{ ...styles.canvas, ...style }}
+    />
+  );
+}
+
+function canvasFromRawImage(
+  frame: RawImageVisualization,
+  canvas: HTMLCanvasElement,
+): void {
+  if (frame.rgba.byteLength < frame.width * frame.height * 4) {
+    throw new Error("Raw image frame has too few RGBA bytes");
+  }
+
+  if (canvas.width !== frame.width) {
+    canvas.width = frame.width;
+  }
+  if (canvas.height !== frame.height) {
+    canvas.height = frame.height;
+  }
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Unable to create raw image canvas context");
+  }
+
+  const imageData = context.createImageData(frame.width, frame.height);
+  imageData.data.set(frame.rgba.subarray(0, frame.width * frame.height * 4));
+  context.putImageData(imageData, 0, 0);
 }
 
 /**
