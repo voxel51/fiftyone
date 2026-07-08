@@ -211,9 +211,14 @@ export default <T extends AbstractLooker<BaseState>>(
         }
 
         if (create === ImaVidLooker) {
-          const totalFrameCountPromise = getPromise(
-            dynamicGroupsElementCount({ value: sample._group }),
-          );
+          // the group length rides on the poster's `_group_count` (already
+          // computed by the grid page query); only aggregate when absent
+          const posterGroupCount = (sample as { _group_count?: number })
+            ._group_count;
+          const totalFrameCountPromise =
+            posterGroupCount != null
+              ? Promise.resolve(posterGroupCount)
+              : getPromise(dynamicGroupsElementCount({ value: sample._group }));
           const page = snapshot
             .getLoadable(
               dynamicGroupAtoms.dynamicGroupPageSelector({

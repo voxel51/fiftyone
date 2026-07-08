@@ -2,6 +2,7 @@ import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
 import { aggregationQuery } from "../aggregations";
 import { groupByFieldValue } from "../dynamicGroups";
+import { modalSample } from "../modal";
 
 export const dynamicGroupsElementCount = selectorFamily({
   key: "dynamicGroupsElementCount",
@@ -14,6 +15,17 @@ export const dynamicGroupsElementCount = selectorFamily({
       modal: boolean;
     }) =>
     ({ get }) => {
+      // in the modal, the group size rides on the poster's `_group_count`
+      // when available, avoiding a redundant count aggregation
+      if (modal) {
+        const sample = get(modalSample)?.sample as
+          | { _group_count?: number }
+          | undefined;
+        if (typeof sample?._group_count === "number") {
+          return sample._group_count;
+        }
+      }
+
       return (
         get(
           aggregationQuery({

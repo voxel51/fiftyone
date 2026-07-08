@@ -60,6 +60,7 @@ async def get_metadata(
     url_cache: t.Dict[str, str],
     *,
     additional_media_fields: t.Optional[t.Tuple] = None,
+    skip_dimensions: bool = False,
 ):
     """Gets the metadata for the given local media file.
 
@@ -77,11 +78,11 @@ async def get_metadata(
     filepath = sample["filepath"]
     metadata = sample.get("metadata", None)
 
-    (
-        opm_field,
-        detections_fields,
-        additional_fields,
-    ) = additional_media_fields if additional_media_fields is not None else _get_additional_media_fields(collection)
+    (opm_field, detections_fields, additional_fields,) = (
+        additional_media_fields
+        if additional_media_fields is not None
+        else _get_additional_media_fields(collection)
+    )
 
     filepath_result, filepath_source, urls = _create_media_urls(
         collection,
@@ -119,22 +120,33 @@ async def get_metadata(
                 )
 
     if filepath not in metadata_cache:
-        try:
-            # Retrieve media metadata from disk
-            metadata_cache[filepath] = await read_metadata(
-                filepath_source, is_video
+        if skip_dimensions:
+            # caller opted out of dimensions; use a placeholder aspect ratio (plus
+            # a frame_rate placeholder for video, matching the fallback path)
+            metadata_cache[filepath] = (
+                dict(aspect_ratio=1.0, frame_rate=30)
+                if is_video
+                else dict(aspect_ratio=1.0)
             )
-        except Exception as exc:
-            # Immediately fail so the user knows they should install FFmpeg
-            if isinstance(exc, FFmpegNotFoundException):
-                raise exc
+        else:
+            try:
+                # Retrieve media metadata from disk
+                metadata_cache[filepath] = await read_metadata(
+                    filepath_source, is_video
+                )
+            except Exception as exc:
+                # Immediately fail so the user knows they should install FFmpeg
+                if isinstance(exc, FFmpegNotFoundException):
+                    raise exc
 
-            # Something went wrong (ie non-existent file), so we gracefully
-            # return some placeholder metadata so the App grid can be rendered
-            if is_video:
-                metadata_cache[filepath] = dict(aspect_ratio=1, frame_rate=30)
-            else:
-                metadata_cache[filepath] = dict(aspect_ratio=1)
+                # Something went wrong (ie non-existent file), so we gracefully
+                # return some placeholder metadata so the App grid can be rendered
+                if is_video:
+                    metadata_cache[filepath] = dict(
+                        aspect_ratio=1, frame_rate=30
+                    )
+                else:
+                    metadata_cache[filepath] = dict(aspect_ratio=1)
 
     return dict(urls=urls, **metadata_cache[filepath])
 

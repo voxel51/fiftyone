@@ -12,7 +12,7 @@ import {
   hasGroupSlices,
   modalGroupSlice,
 } from "./groups";
-import { groupSampleAtMainSlice, modalLooker } from "./modal";
+import { groupSampleAtMainSlice, modalLooker, modalSample } from "./modal";
 import { dynamicGroupsViewMode, selectedMediaField } from "./options";
 import { fieldPaths } from "./schema";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
@@ -82,6 +82,8 @@ export const dynamicGroupPageSelector = selectorFamily<
         view: get(view),
         dynamicGroup: value,
         filter: { group: { slice } },
+        // a group's frames inherit the poster's aspect ratio — never fetch metadata
+        skipMetadata: true,
       };
 
       if (get(hasGroupSlices)) {
@@ -138,9 +140,14 @@ export const imaVidLookerState = atomFamily<any, string>({
 export const groupByFieldValue = selector({
   key: "groupByFieldValue",
   get: ({ get }) => {
-    // Always read from the sample on the main groupSlice, independent of
-    // which slice the modal is currently displaying. See
-    // {@link groupSampleAtMainSlice}.
+    // a non-nested dynamic group isn't sliced, so its `_group` is on the modal
+    // sample already; reading it there avoids a redundant `mainSample` query
+    if (get(isNonNestedDynamicGroup)) {
+      const fromModal = get(modalSample)?.sample?._group;
+      if (fromModal != null) {
+        return fromModal;
+      }
+    }
     return get(groupSampleAtMainSlice)?.sample?._group ?? null;
   },
 });
