@@ -6,8 +6,10 @@ FiftyOne Server ``/embeddings/v2`` route tests.
 |
 """
 
+import json
 import struct
 import unittest
+from unittest import mock
 
 import numpy as np
 
@@ -27,6 +29,15 @@ def _parse(response):
     assert magic == v2.MAGIC
     assert version == v2.VERSION
     return dtype, width, n, flags, body[16:]
+
+
+def _parse_color(response):
+    """Splits a /v2/color body into (dtype, n, column bytes, meta dict)."""
+    dtype, _, n, _, payload = _parse(response)
+    itemsize = 2 if dtype == v2.DTYPE_U16 else 4
+    column = payload[: n * itemsize]
+    meta = json.loads(payload[n * itemsize :].decode("utf-8"))
+    return dtype, n, column, meta
 
 
 def _unpack_masks(payload, n):
@@ -176,21 +187,16 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         dataset, points = _make_samples_run()
         base = {"datasetName": dataset.name, "brainKey": "viz"}
 
-        meta = v2.EmbeddingsV2ColorMeta._post_sync(
-            None, {**base, "field": "cluster"}
+        dtype, n, column, meta = _parse_color(
+            v2.EmbeddingsV2Color._post_sync(None, {**base, "field": "cluster"})
         )
+        self.assertEqual(dtype, v2.DTYPE_U16)
+        self.assertEqual(n, len(points))
         self.assertEqual(meta["style"], "categorical")
         self.assertEqual(len(meta["classes"]), 3)
         self.assertEqual(sum(c["count"] for c in meta["classes"]), len(points))
 
-        dtype, _, n, _, payload = _parse(
-            v2.EmbeddingsV2ColorValues._post_sync(
-                None, {**base, "field": "cluster"}
-            )
-        )
-        self.assertEqual(dtype, v2.DTYPE_U16)
-
-        indices = np.frombuffer(payload, dtype="<u2")
+        indices = np.frombuffer(column, dtype="<u2")
         labels = [meta["classes"][i]["label"] for i in indices]
         self.assertEqual(labels, dataset.values("cluster"))
 
@@ -199,22 +205,45 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         dataset, points = _make_samples_run()
         base = {"datasetName": dataset.name, "brainKey": "viz"}
 
-        meta = v2.EmbeddingsV2ColorMeta._post_sync(
-            None, {**base, "field": "score"}
+        dtype, _, column, meta = _parse_color(
+            v2.EmbeddingsV2Color._post_sync(None, {**base, "field": "score"})
         )
+        self.assertEqual(dtype, v2.DTYPE_F32)
         self.assertEqual(meta["style"], "continuous")
         self.assertEqual(meta["min"], 0.0)
         self.assertEqual(meta["max"], float(len(points) - 1))
 
-        dtype, _, n, _, payload = _parse(
-            v2.EmbeddingsV2ColorValues._post_sync(
-                None, {**base, "field": "score"}
-            )
-        )
-        self.assertEqual(dtype, v2.DTYPE_F32)
-
-        values = np.frombuffer(payload, dtype="<f4")
+        values = np.frombuffer(column, dtype="<f4")
         np.testing.assert_allclose(values, dataset.values("score"))
+
+    @drop_datasets
+    def test_color_aggregates_once_and_caches(self):
+        dataset, _ = _make_samples_run()
+        base = {
+            "datasetName": dataset.name,
+            "brainKey": "viz",
+            "field": "cluster",
+        }
+        v2._color_cache.clear()
+
+        # The whole point of the merged endpoint: one values aggregation
+        # per (run, field), and the cache absorbs repeat selections
+        with mock.patch.object(
+            v2, "_color_data", wraps=v2._color_data
+        ) as color_data:
+            first = v2.EmbeddingsV2Color._post_sync(None, base)
+            second = v2.EmbeddingsV2Color._post_sync(None, base)
+
+        self.assertEqual(color_data.call_count, 1)
+        self.assertEqual(first.body, second.body)
+
+        # A different field is a different cache entry
+        with mock.patch.object(
+            v2, "_color_data", wraps=v2._color_data
+        ) as color_data:
+            v2.EmbeddingsV2Color._post_sync(None, {**base, "field": "score"})
+
+        self.assertEqual(color_data.call_count, 1)
 
     @drop_datasets
     def test_masks(self):
@@ -371,20 +400,15 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         fob.compute_visualization(dataset, points=points, brain_key="viz")
         base = {"datasetName": dataset.name, "brainKey": "viz"}
 
-        meta = v2.EmbeddingsV2ColorMeta._post_sync(
-            None, {**base, "field": "name"}
+        dtype, _, column, meta = _parse_color(
+            v2.EmbeddingsV2Color._post_sync(None, {**base, "field": "name"})
         )
         self.assertEqual(meta["style"], "categorical")
         self.assertEqual(len(meta["classes"]), v2.MAX_CATEGORIES)
         self.assertTrue(meta["truncated"])
 
-        dtype, _, _, _, payload = _parse(
-            v2.EmbeddingsV2ColorValues._post_sync(
-                None, {**base, "field": "name"}
-            )
-        )
         self.assertEqual(dtype, v2.DTYPE_U16)
-        indices = np.frombuffer(payload, dtype="<u2")
+        indices = np.frombuffer(column, dtype="<u2")
         missing = int((indices == v2.MISSING_CATEGORY).sum())
         self.assertEqual(missing, n - v2.MAX_CATEGORIES)
 
@@ -399,8 +423,8 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         fob.compute_visualization(dataset, points=points, brain_key="viz")
         base = {"datasetName": dataset.name, "brainKey": "viz"}
 
-        meta = v2.EmbeddingsV2ColorMeta._post_sync(
-            None, {**base, "field": "index"}
+        _, _, _, meta = _parse_color(
+            v2.EmbeddingsV2Color._post_sync(None, {**base, "field": "index"})
         )
         self.assertEqual(meta["style"], "continuous")
         self.assertEqual(meta["max"], float(n - 1))
@@ -419,18 +443,13 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         fob.compute_visualization(dataset, points=points, brain_key="viz")
         base = {"datasetName": dataset.name, "brainKey": "viz"}
 
-        meta = v2.EmbeddingsV2ColorMeta._post_sync(
-            None, {**base, "field": "letters"}
+        _, _, column, meta = _parse_color(
+            v2.EmbeddingsV2Color._post_sync(None, {**base, "field": "letters"})
         )
         self.assertEqual(meta["style"], "categorical")
         self.assertEqual({c["label"] for c in meta["classes"]}, {"a", "c"})
 
-        _, _, _, _, payload = _parse(
-            v2.EmbeddingsV2ColorValues._post_sync(
-                None, {**base, "field": "letters"}
-            )
-        )
-        indices = np.frombuffer(payload, dtype="<u2")
+        indices = np.frombuffer(column, dtype="<u2")
         # The empty-list sample is missing
         self.assertEqual(indices[2], v2.MISSING_CATEGORY)
 
@@ -447,30 +466,20 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         fob.compute_visualization(dataset, points=points, brain_key="viz")
         base = {"datasetName": dataset.name, "brainKey": "viz"}
 
-        meta = v2.EmbeddingsV2ColorMeta._post_sync(
-            None, {**base, "field": "grade"}
+        _, _, column, meta = _parse_color(
+            v2.EmbeddingsV2Color._post_sync(None, {**base, "field": "grade"})
         )
         self.assertEqual(sum(c["count"] for c in meta["classes"]), 1)
 
-        _, _, _, _, payload = _parse(
-            v2.EmbeddingsV2ColorValues._post_sync(
-                None, {**base, "field": "grade"}
-            )
-        )
-        indices = np.frombuffer(payload, dtype="<u2")
+        indices = np.frombuffer(column, dtype="<u2")
         self.assertEqual(indices[1], v2.MISSING_CATEGORY)
 
-        meta = v2.EmbeddingsV2ColorMeta._post_sync(
-            None, {**base, "field": "score"}
+        _, _, column, meta = _parse_color(
+            v2.EmbeddingsV2Color._post_sync(None, {**base, "field": "score"})
         )
         self.assertEqual((meta["min"], meta["max"]), (1.0, 1.0))
 
-        _, _, _, _, payload = _parse(
-            v2.EmbeddingsV2ColorValues._post_sync(
-                None, {**base, "field": "score"}
-            )
-        )
-        values = np.frombuffer(payload, dtype="<f4")
+        values = np.frombuffer(column, dtype="<f4")
         self.assertTrue(np.isnan(values[1]))
 
     @drop_datasets

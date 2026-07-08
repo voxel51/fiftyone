@@ -181,42 +181,50 @@ export async function fetchColorByChoices(
   return response.fields;
 }
 
-export async function fetchColorMeta(
-  datasetName: string,
-  brainKey: string,
-  field: string,
-): Promise<ColorMeta> {
-  return getFetchFunction()<Record<string, unknown>, ColorMeta>(
-    "POST",
-    "/embeddings/v2/color-meta",
-    { datasetName, brainKey, field },
-  );
+export interface ColorResponse {
+  values: ColorValues;
+  meta: ColorMeta;
 }
 
-export async function fetchColorValues(
+/**
+ * The color-by column and its legend meta in one response: the header
+ * determines the column's extent, and every byte after it is a UTF-8
+ * JSON tail. One request, one server-side values aggregation — the
+ * split values/meta endpoints this replaces each paid that aggregation.
+ */
+export async function fetchColor(
   datasetName: string,
   brainKey: string,
   field: string,
-): Promise<ColorValues> {
-  const buffer = await fetchColumn("/embeddings/v2/color-values", {
+): Promise<ColorResponse> {
+  const buffer = await fetchColumn("/embeddings/v2/color", {
     datasetName,
     brainKey,
     field,
   });
   const header = parseHeader(buffer);
-  if (header.dtype === DTYPE_U16) {
-    return {
-      style: "categorical",
-      indices: new Uint16Array(buffer, HEADER_BYTES, header.n),
-    };
+  const bytesPerValue =
+    header.dtype === DTYPE_U16 ? 2 : header.dtype === DTYPE_F32 ? 4 : null;
+  if (bytesPerValue === null) {
+    throw new Error(`Unexpected color dtype ${header.dtype}`);
   }
-  if (header.dtype === DTYPE_F32) {
-    return {
-      style: "continuous",
-      values: new Float32Array(buffer, HEADER_BYTES, header.n),
-    };
-  }
-  throw new Error(`Unexpected color dtype ${header.dtype}`);
+
+  const tailStart = HEADER_BYTES + header.n * bytesPerValue;
+  const meta = JSON.parse(
+    new TextDecoder().decode(new Uint8Array(buffer, tailStart)),
+  ) as ColorMeta;
+
+  const values: ColorValues =
+    header.dtype === DTYPE_U16
+      ? {
+          style: "categorical",
+          indices: new Uint16Array(buffer, HEADER_BYTES, header.n),
+        }
+      : {
+          style: "continuous",
+          values: new Float32Array(buffer, HEADER_BYTES, header.n),
+        };
+  return { values, meta };
 }
 
 export const FLAG_ALL_VISIBLE = 1;

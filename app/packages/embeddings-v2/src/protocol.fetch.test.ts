@@ -17,7 +17,7 @@ import {
   FLAG_ALL_VISIBLE,
   HEADER_BYTES,
   MAGIC,
-  fetchColorValues,
+  fetchColor,
   fetchGeometry,
   fetchMasks,
 } from "./protocol";
@@ -91,28 +91,54 @@ describe("fetchMasks", () => {
   });
 });
 
-describe("fetchColorValues", () => {
-  it("discriminates categorical (u16) responses", async () => {
-    const payload = new Uint8Array(6);
-    new Uint16Array(payload.buffer).set([0, 2, 0xffff]);
-    fetchMock.mockResolvedValue(makeColumn(DTYPE_U16, 1, 3, payload));
+/** Column bytes + a JSON tail, as /v2/color responds */
+const withTail = (column: Uint8Array, meta: object): Uint8Array => {
+  const tail = new TextEncoder().encode(JSON.stringify(meta));
+  const combined = new Uint8Array(column.byteLength + tail.byteLength);
+  combined.set(column);
+  combined.set(tail, column.byteLength);
+  return combined;
+};
 
-    const values = await fetchColorValues("d", "k", "f");
-    expect(values.style).toBe("categorical");
-    if (values.style === "categorical") {
-      expect(Array.from(values.indices)).toEqual([0, 2, 0xffff]);
+describe("fetchColor", () => {
+  it("splits a categorical response at the header-determined boundary", async () => {
+    const column = new Uint8Array(6);
+    new Uint16Array(column.buffer).set([0, 2, 0xffff]);
+    const meta = {
+      style: "categorical",
+      classes: [{ label: "cat", count: 2 }],
+      truncated: false,
+    };
+    fetchMock.mockResolvedValue(
+      makeColumn(DTYPE_U16, 1, 3, withTail(column, meta)),
+    );
+
+    const response = await fetchColor("d", "k", "f");
+    expect(response.values.style).toBe("categorical");
+    if (response.values.style === "categorical") {
+      expect(Array.from(response.values.indices)).toEqual([0, 2, 0xffff]);
     }
+    expect(response.meta).toEqual(meta);
   });
 
-  it("discriminates continuous (f32) responses", async () => {
-    const payload = new Uint8Array(8);
-    new Float32Array(payload.buffer).set([0.5, 2.5]);
-    fetchMock.mockResolvedValue(makeColumn(DTYPE_F32, 1, 2, payload));
+  it("splits a continuous response and its min/max tail", async () => {
+    const column = new Uint8Array(8);
+    new Float32Array(column.buffer).set([0.5, 2.5]);
+    fetchMock.mockResolvedValue(
+      makeColumn(
+        DTYPE_F32,
+        1,
+        2,
+        withTail(column, { style: "continuous", min: 0.5, max: 2.5 }),
+      ),
+    );
 
-    const values = await fetchColorValues("d", "k", "f");
-    expect(values.style).toBe("continuous");
-    if (values.style === "continuous") {
-      expect(Array.from(values.values)).toEqual([0.5, 2.5]);
+    const response = await fetchColor("d", "k", "f");
+    expect(response.values.style).toBe("continuous");
+    if (response.values.style === "continuous") {
+      expect(Array.from(response.values.values)).toEqual([0.5, 2.5]);
     }
+    expect(response.meta.min).toBe(0.5);
+    expect(response.meta.max).toBe(2.5);
   });
 });

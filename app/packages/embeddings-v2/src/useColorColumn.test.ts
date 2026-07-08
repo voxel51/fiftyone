@@ -2,19 +2,16 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
+  fetchColor,
   fetchColorByChoices,
-  fetchColorMeta,
-  fetchColorValues,
-  type ColorMeta,
-  type ColorValues,
+  type ColorResponse,
   type VisualizationRun,
 } from "./protocol";
 import { useColorColumn } from "./useColorColumn";
 
 vi.mock("./protocol", () => ({
   fetchColorByChoices: vi.fn(),
-  fetchColorMeta: vi.fn(),
-  fetchColorValues: vi.fn(),
+  fetchColor: vi.fn(),
 }));
 
 const RUN: VisualizationRun = {
@@ -27,11 +24,10 @@ const RUN: VisualizationRun = {
   timestamp: null,
 };
 
-const CATEGORICAL: ColorValues = {
-  style: "categorical",
-  indices: new Uint16Array([0, 1, 0]),
+const RESPONSE: ColorResponse = {
+  values: { style: "categorical", indices: new Uint16Array([0, 1, 0]) },
+  meta: { style: "categorical" },
 };
-const META: ColorMeta = { style: "categorical" };
 
 describe("useColorColumn", () => {
   it("loads field choices for the run", async () => {
@@ -40,7 +36,7 @@ describe("useColorColumn", () => {
 
     await waitFor(() => expect(result.current.choices).toEqual(["a", "b"]));
     expect(result.current.colors).toBeNull();
-    expect(fetchColorValues).not.toHaveBeenCalled();
+    expect(fetchColor).not.toHaveBeenCalled();
   });
 
   it("falls back to no choices when the endpoint fails", async () => {
@@ -60,8 +56,7 @@ describe("useColorColumn", () => {
 
   it("builds the rgb column for the selected field", async () => {
     vi.mocked(fetchColorByChoices).mockResolvedValue(["label"]);
-    vi.mocked(fetchColorValues).mockResolvedValue(CATEGORICAL);
-    vi.mocked(fetchColorMeta).mockResolvedValue(META);
+    vi.mocked(fetchColor).mockResolvedValue(RESPONSE);
     const { result } = renderHook(() =>
       useColorColumn("ds", "viz", RUN, "label"),
     );
@@ -75,8 +70,7 @@ describe("useColorColumn", () => {
 
   it("clears the column immediately when the field changes", async () => {
     vi.mocked(fetchColorByChoices).mockResolvedValue(["a", "b"]);
-    vi.mocked(fetchColorMeta).mockResolvedValue(META);
-    vi.mocked(fetchColorValues).mockResolvedValueOnce(CATEGORICAL);
+    vi.mocked(fetchColor).mockResolvedValueOnce(RESPONSE);
     const { result, rerender } = renderHook(
       ({ field }: { field: string | null }) =>
         useColorColumn("ds", "viz", RUN, field),
@@ -85,8 +79,8 @@ describe("useColorColumn", () => {
     await waitFor(() => expect(result.current.colors).not.toBeNull());
 
     // The next fetch never resolves; a stale column must not linger
-    vi.mocked(fetchColorValues).mockImplementationOnce(
-      () => new Promise<ColorValues>(() => undefined),
+    vi.mocked(fetchColor).mockImplementationOnce(
+      () => new Promise<ColorResponse>(() => undefined),
     );
     rerender({ field: "b" });
     expect(result.current.colors).toBeNull();
@@ -98,8 +92,7 @@ describe("useColorColumn", () => {
 
   it("reports color fetch failures", async () => {
     vi.mocked(fetchColorByChoices).mockResolvedValue(["a"]);
-    vi.mocked(fetchColorValues).mockRejectedValue(new Error("boom"));
-    vi.mocked(fetchColorMeta).mockResolvedValue(META);
+    vi.mocked(fetchColor).mockRejectedValue(new Error("boom"));
     const { result } = renderHook(() => useColorColumn("ds", "viz", RUN, "a"));
 
     await waitFor(() => expect(result.current.error).toMatch("boom"));

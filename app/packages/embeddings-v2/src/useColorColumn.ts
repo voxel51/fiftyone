@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import { buildColors } from "./colors";
 import {
+  fetchColor,
   fetchColorByChoices,
-  fetchColorMeta,
-  fetchColorValues,
+  type ColorMeta,
   type VisualizationRun,
 } from "./protocol";
 
 /**
- * Color-by support: the run-dependent field choices and the built rgb
- * column for the selected field. `colors` is null while no field is
- * selected or a fetch is in flight — the column clears immediately on
- * any input change so a stale column never colors another run's points.
+ * Color-by support: the run-dependent field choices, the built rgb
+ * column for the selected field, and the field's meta (classes/counts
+ * for the legend). `colors`/`meta` are null while no field is selected
+ * or a fetch is in flight — both clear immediately on any input change
+ * so a stale column never colors another run's points.
  */
 export function useColorColumn(
   datasetName: string | null,
@@ -21,10 +22,12 @@ export function useColorColumn(
 ): {
   choices: string[];
   colors: Float32Array | null;
+  meta: ColorMeta | null;
   error: string | null;
 } {
   const [choices, setChoices] = useState<string[]>([]);
   const [colors, setColors] = useState<Float32Array | null>(null);
+  const [meta, setMeta] = useState<ColorMeta | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Color-by field choices depend on the run (patches vs samples)
@@ -41,17 +44,19 @@ export function useColorColumn(
 
   useEffect(() => {
     setColors(null);
+    setMeta(null);
     if (!datasetName || !brainKey || !colorField) return undefined;
     let stale = false;
-    Promise.all([
-      fetchColorValues(datasetName, brainKey, colorField),
-      fetchColorMeta(datasetName, brainKey, colorField),
-    ])
-      .then(([values, meta]) => {
+    fetchColor(datasetName, brainKey, colorField)
+      .then(({ values, meta: fieldMeta }) => {
         if (stale) return;
         setColors(
-          buildColors(values, { min: meta.min ?? null, max: meta.max ?? null }),
+          buildColors(values, {
+            min: fieldMeta.min ?? null,
+            max: fieldMeta.max ?? null,
+          }),
         );
+        setMeta(fieldMeta);
       })
       .catch((e) => !stale && setError(String(e)));
     return () => {
@@ -59,5 +64,5 @@ export function useColorColumn(
     };
   }, [datasetName, brainKey, colorField]);
 
-  return { choices, colors, error };
+  return { choices, colors, meta, error };
 }

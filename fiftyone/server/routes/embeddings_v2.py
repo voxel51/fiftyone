@@ -14,15 +14,19 @@ Binary responses share a 16-byte little-endian header::
     u32 magic "FOE1" | u16 version | u8 dtype | u8 width | u32 n | u32 flags
 
 followed by ``width`` contiguous columns of ``n`` values each (bitmask
-columns are ``ceil(n / 8)`` bytes, packed little bit-order).
+columns are ``ceil(n / 8)`` bytes, packed little bit-order). The color
+response appends a UTF-8 JSON meta tail after its column — the header
+determines where the column ends, so no delimiter is needed.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
+import json
 import logging
 import struct
+from collections import OrderedDict
 
 import numpy as np
 from starlette.endpoints import HTTPEndpoint
@@ -177,70 +181,44 @@ class EmbeddingsV2Ids(HTTPEndpoint):
         return _column_response(DTYPE_BYTES12, 1, len(ids), payload)
 
 
-class EmbeddingsV2ColorValues(HTTPEndpoint):
+class EmbeddingsV2Color(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> Response:
-        """Per-point values for a color-by field, wire order.
+        """Everything color-by in one response: the per-point value column
+        (wire order) followed by a UTF-8 JSON meta tail.
 
-        Categorical fields encode as u16 class indices into the class list
-        reported by ``/embeddings/v2/color-meta`` (``0xFFFF`` = missing);
-        continuous fields encode as Float32 (``NaN`` = missing).
+        The 16-byte header fully determines the column's extent (``n``
+        values of the dtype's width); every remaining body byte is the
+        meta tail. Categorical fields encode as u16 class indices into the
+        tail's ``classes`` list (``0xFFFF`` = missing) with a ``truncated``
+        flag; continuous fields encode as Float32 (``NaN`` = missing) with
+        ``min``/``max`` in the tail.
+
+        One response means the values aggregation — the expensive step —
+        runs once per (run, field), where the split values/meta endpoints
+        this replaces each ran it. Bodies are cached in a small LRU keyed
+        by the run's identity (dataset, brain key, run timestamp, field),
+        so re-selecting a recent field skips the aggregation entirely.
         """
         return await run_sync_task(self._post_sync, data)
 
     def _post_sync(self, data):
         dataset, results = _load_results(data)
-        style, values, classes, _ = _color_data(
-            dataset, results, data["field"]
+        field_path = data["field"]
+
+        info = dataset.get_brain_info(data["brainKey"])
+        key = (
+            data["datasetName"],
+            data["brainKey"],
+            _timestamp(info),
+            field_path,
         )
+        body = _color_cache_get(key)
+        if body is None:
+            body = _build_color_body(dataset, results, field_path)
+            _color_cache_put(key, body)
 
-        n = len(values)
-        if style == "categorical":
-            index_by_label = {c["label"]: i for i, c in enumerate(classes)}
-            column = np.full(n, MISSING_CATEGORY, dtype="<u2")
-            for i, value in enumerate(values):
-                # Values beyond the class-list cap encode as missing
-                index = index_by_label.get(value)
-                if index is not None:
-                    column[i] = index
-
-            return _column_response(DTYPE_U16, 1, n, column.tobytes())
-
-        column = np.array(
-            [float(v) if v is not None else np.nan for v in values],
-            dtype="<f4",
-        )
-        return _column_response(DTYPE_F32, 1, n, column.tobytes())
-
-
-class EmbeddingsV2ColorMeta(HTTPEndpoint):
-    @route
-    async def post(self, request: Request, data: dict) -> dict:
-        """Legend metadata for a color-by field.
-
-        Class order matches the u16 indices in ``/embeddings/v2/color-values``.
-        """
-        return await run_sync_task(self._post_sync, data)
-
-    def _post_sync(self, data):
-        dataset, results = _load_results(data)
-        style, values, classes, truncated = _color_data(
-            dataset, results, data["field"]
-        )
-
-        if style == "categorical":
-            return {
-                "style": style,
-                "classes": classes,
-                "truncated": truncated,
-            }
-
-        present = [float(v) for v in values if v is not None]
-        return {
-            "style": style,
-            "min": min(present) if present else None,
-            "max": max(present) if present else None,
-        }
+        return Response(content=body, media_type="application/octet-stream")
 
 
 class EmbeddingsV2Masks(HTTPEndpoint):
@@ -457,12 +435,67 @@ EmbeddingsV2Routes = [
     ("/embeddings/v2/run-info", EmbeddingsV2RunInfo),
     ("/embeddings/v2/geometry", EmbeddingsV2Geometry),
     ("/embeddings/v2/ids", EmbeddingsV2Ids),
-    ("/embeddings/v2/color-values", EmbeddingsV2ColorValues),
-    ("/embeddings/v2/color-meta", EmbeddingsV2ColorMeta),
+    ("/embeddings/v2/color", EmbeddingsV2Color),
     ("/embeddings/v2/masks", EmbeddingsV2Masks),
     ("/embeddings/v2/lasso-stage", EmbeddingsV2LassoStage),
     ("/embeddings/v2/sample-info", EmbeddingsV2SampleInfo),
 ]
+
+# Color bodies are ~1-2 MB at 500K points and a session of color-by
+# switching revisits few fields, so a small cap covers it
+_COLOR_CACHE_MAX = 8
+_color_cache = OrderedDict()
+
+
+def _color_cache_get(key):
+    body = _color_cache.get(key)
+    if body is not None:
+        _color_cache.move_to_end(key)
+
+    return body
+
+
+def _color_cache_put(key, body):
+    _color_cache[key] = body
+    while len(_color_cache) > _COLOR_CACHE_MAX:
+        _color_cache.popitem(last=False)
+
+
+def _build_color_body(dataset, results, field_path):
+    """Builds a complete ``/v2/color`` response body: header, value
+    column, JSON meta tail. Immutable bytes, safe to cache and share.
+    """
+    style, values, classes, truncated = _color_data(
+        dataset, results, field_path
+    )
+    n = len(values)
+
+    if style == "categorical":
+        index_by_label = {c["label"]: i for i, c in enumerate(classes)}
+        column = np.full(n, MISSING_CATEGORY, dtype="<u2")
+        for i, value in enumerate(values):
+            # Values beyond the class-list cap encode as missing
+            index = index_by_label.get(value)
+            if index is not None:
+                column[i] = index
+
+        dtype = DTYPE_U16
+        meta = {"style": style, "classes": classes, "truncated": truncated}
+    else:
+        column = np.array(
+            [float(v) if v is not None else np.nan for v in values],
+            dtype="<f4",
+        )
+        present = [float(v) for v in values if v is not None]
+        dtype = DTYPE_F32
+        meta = {
+            "style": style,
+            "min": min(present) if present else None,
+            "max": max(present) if present else None,
+        }
+
+    header = struct.pack(_HEADER_FORMAT, MAGIC, VERSION, dtype, 1, n, 0)
+    return header + column.tobytes() + json.dumps(meta).encode("utf-8")
 
 
 def _load_results(data):
