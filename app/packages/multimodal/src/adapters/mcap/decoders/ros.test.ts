@@ -43,6 +43,26 @@ import {
 } from "./ros";
 
 const TEXT_ENCODER = new TextEncoder();
+const H264_KEYFRAME_BYTES = Uint8Array.of(
+  0,
+  0,
+  0,
+  1,
+  0x67,
+  0x4d,
+  0x00,
+  0x1f,
+  0,
+  0,
+  1,
+  0x68,
+  0xce,
+  0,
+  0,
+  1,
+  0x65,
+  0xb0,
+);
 
 const ROS2_HEADER_DEFINITIONS = `===
 MSG: std_msgs/Header
@@ -456,13 +476,55 @@ describe("ROS MCAP decoders", () => {
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(3_000_000_004n);
   });
 
-  it("degrades ROS CompressedImage video formats without throwing", () => {
+  it("decodes ROS CompressedImage H.264 into encoded video", () => {
     const output = decoderForSchemaEncoding(
       rosCompressedImageDecoders,
       "ros2msg",
     ).decode(
       ros2Message(ROS2_COMPRESSED_IMAGE_SCHEMA, {
-        data: [0, 0, 0, 1, 0x67, 0x4d, 0x0c, 0x33],
+        data: Array.from(H264_KEYFRAME_BYTES),
+        format: "h264",
+        header: {
+          frame_id: "camera",
+          stamp: { nanosec: 4, sec: 3 },
+        },
+      }),
+      { schemaData: schemaData(ROS2_COMPRESSED_IMAGE_SCHEMA) },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.ENCODED_VIDEO);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.ENCODED_VIDEO) {
+      throw new Error("Expected encoded video visualization");
+    }
+    expect(output.visualization).toMatchObject({
+      codec: "h264",
+      coordinateFrameId: "camera",
+      format: "h264",
+      keyframe: true,
+      timestampNs: 3_000_000_004n,
+    });
+    expect(output.visualization.h264).toMatchObject({
+      codecString: "avc1.4D001F",
+      hasFrame: true,
+    });
+    expect(output.attributes).toMatchObject({
+      byteLength: H264_KEYFRAME_BYTES.byteLength,
+      codec: "h264",
+      codecString: "avc1.4D001F",
+      format: "h264",
+      frameId: "camera",
+      keyframe: true,
+    });
+    expect(output.timing?.sourceTimestamps?.messageTime).toBe(3_000_000_004n);
+  });
+
+  it("degrades ROS CompressedImage B-frame H.264 without throwing", () => {
+    const output = decoderForSchemaEncoding(
+      rosCompressedImageDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_COMPRESSED_IMAGE_SCHEMA, {
+        data: [0, 0, 1, 0x41, 0xa0],
         format: "h264",
         header: {
           frame_id: "camera",
@@ -474,12 +536,11 @@ describe("ROS MCAP decoders", () => {
 
     expect(output.visualization).toBeUndefined();
     expect(output.attributes).toMatchObject({
-      byteLength: 8,
+      byteLength: 5,
       format: "h264",
       frameId: "camera",
-      unsupportedReason: "H.264 video rendering not yet supported",
+      unsupportedReason: "H.264 video streams with B-frames are unsupported",
     });
-    expect(output.timing?.sourceTimestamps?.messageTime).toBe(3_000_000_004n);
   });
 
   it("decodes ros1 Image RGB/BGR rows with padding into raw RGBA", () => {

@@ -3,9 +3,12 @@ import {
   type DecodedAttributeValue,
   type DecodedOutput,
   type Decoder,
+  type EncodedVideoVisualization,
 } from "../../../../decoders";
+import { VISUALIZATION_KIND } from "../../../../visualization";
 import { bytesField, recordField, rosTimestampNs } from "../ros/common";
 import { rosDecodersForPayloads } from "../ros/factory";
+import { analyzeH264AnnexBAccessUnit } from "../../../../utils/h264-annexb";
 import { decodeProtobufMessage } from "./protobuf";
 import {
   FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS,
@@ -17,12 +20,13 @@ import {
   requiredBytes,
 } from "./protobuf/records";
 import { timingFromContext } from "./protobuf/timing";
-import { videoRenderingUnsupportedReason } from "../video-format";
+import {
+  videoCodecFromFormat,
+  videoRenderingUnsupportedReason,
+} from "../video-format";
 
 /**
- * Decoder for Foxglove compressed video protobuf messages. Layer 1 makes
- * these topics visible and inspectable, but does not emit renderable video
- * visualizations until the WebCodecs playback layer exists.
+ * Decoder for Foxglove compressed video protobuf messages.
  */
 export const foxgloveCompressedVideoDecoder: Decoder = {
   id: "foxglove.compressed-video",
@@ -82,17 +86,75 @@ function compressedVideoOutput({
   const attributes: Record<string, DecodedAttributeValue> = {
     byteLength: data.byteLength,
     format,
-    unsupportedReason: unsupportedCompressedVideoReason(source, format),
   };
+  const codec = videoCodecFromFormat(format);
 
   if (frameId) {
     attributes.frameId = frameId;
   }
 
+  if (codec !== "h264") {
+    attributes.unsupportedReason = unsupportedCompressedVideoReason(
+      source,
+      format,
+    );
+    return {
+      attributes,
+      resourceHints: resourceHintsForArrayBufferViews(data),
+      timing: timingFromContext(timingContext, messageTimestamp),
+    };
+  }
+
+  const h264 = analyzeH264AnnexBAccessUnit(data);
+  if (!h264.hasStartCodes) {
+    attributes.unsupportedReason =
+      "H.264 video requires Annex-B NAL start codes";
+    return {
+      attributes,
+      resourceHints: resourceHintsForArrayBufferViews(data),
+      timing: timingFromContext(timingContext, messageTimestamp),
+    };
+  }
+
+  if (h264.hasBFrames) {
+    attributes.unsupportedReason =
+      "H.264 video streams with B-frames are unsupported";
+    return {
+      attributes,
+      resourceHints: resourceHintsForArrayBufferViews(data),
+      timing: timingFromContext(timingContext, messageTimestamp),
+    };
+  }
+
+  attributes.codec = "h264";
+  attributes.keyframe = h264.keyframe;
+  if (h264.codecString) {
+    attributes.codecString = h264.codecString;
+  }
+
+  const visualization = {
+    bytes: data,
+    codec: "h264",
+    ...(frameId ? { coordinateFrameId: frameId } : {}),
+    format,
+    h264: {
+      ...(h264.codecString ? { codecString: h264.codecString } : {}),
+      hasFrame: h264.hasFrame,
+      ...(h264.pps ? { pps: h264.pps } : {}),
+      ...(h264.sps ? { sps: h264.sps } : {}),
+    },
+    keyframe: h264.keyframe,
+    kind: VISUALIZATION_KIND.ENCODED_VIDEO,
+    ...(messageTimestamp !== undefined
+      ? { timestampNs: messageTimestamp }
+      : {}),
+  } satisfies EncodedVideoVisualization;
+
   return {
     attributes,
     resourceHints: resourceHintsForArrayBufferViews(data),
     timing: timingFromContext(timingContext, messageTimestamp),
+    visualization,
   };
 }
 

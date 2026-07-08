@@ -152,7 +152,7 @@ describe("Foxglove decoders", () => {
     expect(output.visualization.mimeType).toBe("image/jpeg");
   });
 
-  it("degrades compressed image video formats without throwing", () => {
+  it("keeps compressed image video formats metadata-only", () => {
     const output = foxgloveCompressedImageDecoder.decode(
       compressedImageMessage("h264"),
       {
@@ -164,7 +164,8 @@ describe("Foxglove decoders", () => {
     expect(output.attributes).toMatchObject({
       byteLength: 9,
       format: "h264",
-      unsupportedReason: "H.264 video rendering not yet supported",
+      unsupportedReason:
+        "Foxglove CompressedImage format 'h264' is unsupported",
     });
   });
 
@@ -192,7 +193,7 @@ describe("Foxglove decoders", () => {
     expect(unknown.visualization.mimeType).toBeUndefined();
   });
 
-  it("degrades protobuf compressed video messages to metadata-only", () => {
+  it("decodes protobuf compressed video messages into encoded video", () => {
     const output = foxgloveCompressedVideoDecoder.decode(
       compressedVideoMessage("h264"),
       {
@@ -206,15 +207,62 @@ describe("Foxglove decoders", () => {
       },
     );
 
-    expect(output.visualization).toBeUndefined();
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.ENCODED_VIDEO);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.ENCODED_VIDEO) {
+      throw new Error("Expected encoded video visualization");
+    }
+    expect(output.visualization).toMatchObject({
+      codec: "h264",
+      coordinateFrameId: "CAM_VIDEO",
+      format: "h264",
+      keyframe: true,
+      timestampNs: 123456000000000n,
+    });
+    expect(output.visualization.h264).toMatchObject({
+      codecString: "avc1.4D001F",
+      hasFrame: true,
+    });
     expect(output.attributes).toMatchObject({
-      byteLength: 8,
+      byteLength: H264_KEYFRAME_BYTES.byteLength,
+      codec: "h264",
+      codecString: "avc1.4D001F",
       format: "h264",
       frameId: "CAM_VIDEO",
-      unsupportedReason: "H.264 video rendering not yet supported",
+      keyframe: true,
     });
     expect(output.timing?.timeRange?.startNs).toBe(10n);
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(123456000000000n);
+  });
+
+  it("decodes cdr compressed video H.264 messages into encoded video", () => {
+    const output = decoderForSchemaEncoding(
+      foxgloveCompressedVideoCdrDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_COMPRESSED_VIDEO_SCHEMA, {
+        data: Array.from(H264_KEYFRAME_BYTES),
+        format: "h264",
+        frame_id: "CAM_VIDEO",
+        timestamp: { nanosec: 4, sec: 3 },
+      }),
+      { schemaData: schemaData(ROS2_COMPRESSED_VIDEO_SCHEMA) },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.ENCODED_VIDEO);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.ENCODED_VIDEO) {
+      throw new Error("Expected encoded video visualization");
+    }
+    expect(output.visualization).toMatchObject({
+      codec: "h264",
+      coordinateFrameId: "CAM_VIDEO",
+      keyframe: true,
+      timestampNs: 3_000_000_004n,
+    });
+    expect(output.attributes).toMatchObject({
+      codec: "h264",
+      frameId: "CAM_VIDEO",
+      keyframe: true,
+    });
   });
 
   it("degrades cdr compressed video messages to metadata-only", () => {
@@ -718,10 +766,31 @@ function compressedVideoMessage(format: string): Uint8Array {
   return concatProtobufFields(
     protobufBytesField(1, concatProtobufFields(protobufVarintField(1, 123456))),
     protobufBytesField(2, new TextEncoder().encode("CAM_VIDEO")),
-    protobufBytesField(3, Uint8Array.of(0, 0, 0, 1, 0x67, 0x4d, 0x0c, 0x33)),
+    protobufBytesField(3, H264_KEYFRAME_BYTES),
     protobufBytesField(4, new TextEncoder().encode(format)),
   );
 }
+
+const H264_KEYFRAME_BYTES = Uint8Array.of(
+  0,
+  0,
+  0,
+  1,
+  0x67,
+  0x4d,
+  0x00,
+  0x1f,
+  0,
+  0,
+  1,
+  0x68,
+  0xce,
+  0,
+  0,
+  1,
+  0x65,
+  0xb0,
+);
 
 interface TestPointCloudField {
   readonly name: string;

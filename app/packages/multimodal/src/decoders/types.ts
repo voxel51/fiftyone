@@ -35,6 +35,12 @@ export interface EncodedVideoVisualization {
   readonly codec: "av1" | "h264" | "h265" | "vp9";
   readonly coordinateFrameId?: string;
   readonly format: string;
+  readonly h264?: {
+    readonly codecString?: string;
+    readonly hasFrame?: boolean;
+    readonly pps?: Uint8Array;
+    readonly sps?: Uint8Array;
+  };
   readonly keyframe?: boolean;
   readonly timestampNs?: bigint;
 }
@@ -60,6 +66,7 @@ export interface RawImageVisualization {
  * Image-like visualizations rendered by the multimodal image panel.
  */
 export type ImageVisualization =
+  | EncodedVideoVisualization
   | EncodedImageVisualization
   | RawImageVisualization;
 

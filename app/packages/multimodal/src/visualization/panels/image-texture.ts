@@ -11,16 +11,22 @@ import type {
   RawImageVisualization,
 } from "../../decoders";
 import type { ImageTextureHandle } from "./base-2d-scene";
+import { createEncodedVideoTexture } from "./video-texture";
 
 /**
  * Decodes an image visualization into a disposable texture handle.
  */
 export async function createImageTexture(
   frame: ImageVisualization,
+  textureKey?: string,
 ): Promise<ImageTextureHandle> {
-  return frame.kind === "raw-image"
-    ? createRawImageTexture(frame)
-    : createEncodedImageTexture(frame);
+  if (frame.kind === "raw-image") {
+    return createRawImageTexture(frame);
+  }
+  if (frame.kind === "encoded-video") {
+    return createEncodedVideoTexture(frame, textureKey);
+  }
+  return createEncodedImageTexture(frame);
 }
 
 /**

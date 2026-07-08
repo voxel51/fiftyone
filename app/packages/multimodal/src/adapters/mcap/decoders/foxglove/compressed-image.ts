@@ -12,7 +12,10 @@ import {
   requiredBytes,
 } from "./protobuf/records";
 import { timingFromContext, timestampNs } from "./protobuf/timing";
-import { videoRenderingUnsupportedReason } from "../video-format";
+import {
+  videoCodecFromFormat,
+  videoRenderingUnsupportedReason,
+} from "../video-format";
 
 /**
  * Decoder for Foxglove compressed image protobuf messages.
@@ -89,6 +92,10 @@ function mimeTypeFromFormat(format: string): string | null | undefined {
 }
 
 function unsupportedImageReason(format: string): string {
+  if (videoCodecFromFormat(format) === "h264") {
+    return `Foxglove CompressedImage format '${format}' is unsupported`;
+  }
+
   return (
     videoRenderingUnsupportedReason(format) ??
     `Foxglove CompressedImage format '${format}' is unsupported`

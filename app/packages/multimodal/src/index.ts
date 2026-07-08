@@ -18,6 +18,7 @@ export type {
   DecodedVisualization,
   Decoder,
   EncodedImageVisualization,
+  EncodedVideoVisualization,
   ImageVisualization,
   PayloadDescriptor,
   PointCloudField,

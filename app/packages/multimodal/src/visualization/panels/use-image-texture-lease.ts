@@ -38,6 +38,7 @@ export function useImageTextureLease({
   onLoaded,
   textureKey,
 }: UseImageTextureLeaseOptions): {
+  readonly errorMessage: string | null;
   readonly handle: ImageTextureHandle | null;
   readonly status: ImageTextureLeaseStatus;
 } {
@@ -45,6 +46,7 @@ export function useImageTextureLease({
   const hasVisibleTextureRef = useRef(false);
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [handle, setHandle] = useState<ImageTextureHandle | null>(null);
   const [status, setStatus] = useState<ImageTextureLeaseStatus>(() =>
     enabled && hasImageData(frame) ? "loading" : disabledStatus,
@@ -70,17 +72,19 @@ export function useImageTextureLease({
     if (!enabled || !hasImageData(frame)) {
       hasVisibleTextureRef.current = false;
       replaceHeldTexture(null, heldTextureRef, setHandle);
+      setErrorMessage(null);
       setStatus(disabledStatus);
       return undefined;
     }
 
     let cancelled = false;
     if (!hasVisibleTextureRef.current) {
+      setErrorMessage(null);
       setStatus("loading");
     }
 
     const lease = acquireImageTexture(textureKey, () =>
-      createImageTexture(frame),
+      createImageTexture(frame, textureKey),
     );
     lease.promise
       .then((decodedHandle) => {
@@ -95,10 +99,11 @@ export function useImageTextureLease({
           setHandle,
         );
         hasVisibleTextureRef.current = true;
+        setErrorMessage(null);
         setStatus("loaded");
         onLoadedRef.current?.(decodedHandle);
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         lease.release();
         if (cancelled) {
           return;
@@ -106,6 +111,7 @@ export function useImageTextureLease({
 
         hasVisibleTextureRef.current = false;
         replaceHeldTexture(null, heldTextureRef, setHandle);
+        setErrorMessage(errorMessageFromUnknown(error));
         setStatus("error");
       });
 
@@ -117,7 +123,7 @@ export function useImageTextureLease({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disabledStatus, enabled, identity, textureKey]);
 
-  return { handle, status };
+  return { errorMessage, handle, status };
 }
 
 export function hasImageData(
@@ -129,6 +135,9 @@ export function hasImageData(
   if (frame.kind === "encoded-image") {
     return frame.bytes.byteLength > 0;
   }
+  if (frame.kind === "encoded-video") {
+    return frame.bytes.byteLength > 0;
+  }
   return frame.rgba.byteLength > 0 && frame.width > 0 && frame.height > 0;
 }
 
@@ -138,7 +147,7 @@ export function imageIdentity(
   if (!frame) {
     return frame;
   }
-  return frame.kind === "encoded-image" ? frame.bytes : frame.rgba;
+  return frame.kind === "raw-image" ? frame.rgba : frame.bytes;
 }
 
 function replaceHeldTexture(
@@ -153,4 +162,14 @@ function replaceHeldTexture(
 
   heldRef.current = next;
   setHandle(next?.handle ?? null);
+}
+
+function errorMessageFromUnknown(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (typeof error === "string" && error) {
+    return error;
+  }
+  return "Image unavailable";
 }

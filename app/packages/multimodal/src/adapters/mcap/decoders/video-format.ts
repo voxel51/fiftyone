@@ -13,13 +13,15 @@ type SupportedVideoFormat = keyof typeof VIDEO_FORMAT_LABELS;
 export function videoRenderingUnsupportedReason(
   format: string,
 ): string | undefined {
-  const videoFormat = normalizedVideoFormat(format);
+  const videoFormat = videoCodecFromFormat(format);
   return videoFormat
     ? `${VIDEO_FORMAT_LABELS[videoFormat]} video rendering not yet supported`
     : undefined;
 }
 
-function normalizedVideoFormat(format: string): SupportedVideoFormat | null {
+export function videoCodecFromFormat(
+  format: string,
+): SupportedVideoFormat | null {
   switch (format.trim().toLowerCase()) {
     case "av1":
       return "av1";
