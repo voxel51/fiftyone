@@ -14,7 +14,7 @@ import {
   setContainsPointCloud,
 } from "./media";
 
-const pointCloudTypes = ["point-cloud", "point_cloud"];
+const pointCloudTypes = ["pcd", "point-cloud", "point_cloud"];
 const fo3dTypes = ["3d", "three_d"];
 const otherTypes = ["image", "video", "other", undefined];
 
@@ -65,6 +65,16 @@ describe("media utils", () => {
   });
 
   describe("isNativeMediaType", () => {
+    it("should return true for native media types", () => {
+      [null, undefined, "image", "video", "group"].forEach((mt) =>
+        expect(isNativeMediaType(mt)).toBeTruthy(),
+      );
+      fo3dTypes.forEach((mt) => expect(isNativeMediaType(mt)).toBeTruthy());
+      pointCloudTypes.forEach((mt) =>
+        expect(isNativeMediaType(mt)).toBeTruthy(),
+      );
+    });
+
     it("should return false for multimodal media types", () => {
       expect(isNativeMediaType("multimodal")).toBeFalsy();
     });

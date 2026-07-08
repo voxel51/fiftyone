@@ -727,6 +727,12 @@ class MediaTypeTests(unittest.TestCase):
         self.assertEqual(self.vid_sample.media_type, fom.VIDEO)
         self.assertEqual(self.vid_dataset.media_type, fom.VIDEO)
 
+    def test_3d_types(self):
+        self.assertEqual(fom.get_media_type("scene.pcd"), fom.POINT_CLOUD)
+        self.assertEqual(fom.get_media_type("scene.PCD"), fom.POINT_CLOUD)
+        self.assertEqual(fom.get_media_type("scene.fo3d"), fom.THREE_D)
+        self.assertEqual(fom.get_media_type("scene.FO3D"), fom.THREE_D)
+
     def test_multimodal_types(self):
         for ext in fom.MULTIMODAL_EXTENSIONS:
             self.assertEqual(

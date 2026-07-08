@@ -41,7 +41,7 @@ def get_media_type(filepath):
     if etav.is_video_mime_type(filepath):
         return VIDEO
 
-    ext = os.path.splitext(filepath)[1]
+    ext = os.path.splitext(filepath)[1].lower()
 
     if ext == ".pcd":
         return POINT_CLOUD
@@ -49,7 +49,7 @@ def get_media_type(filepath):
     if ext == ".fo3d":
         return THREE_D
 
-    if ext.lower() in MULTIMODAL_EXTENSIONS:
+    if ext in MULTIMODAL_EXTENSIONS:
         return MULTIMODAL
 
     return UNKNOWN
