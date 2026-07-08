@@ -53,8 +53,8 @@ export function decodeFoxgloveLocationFixRecord(
   message: Record<string, unknown>,
   context: DecodeContext,
 ): DecodedOutput {
-  const latitude = numberField(message, "latitude");
-  const longitude = numberField(message, "longitude");
+  const latitude = numberField(message, "latitude", undefined, Number.NaN);
+  const longitude = numberField(message, "longitude", undefined, Number.NaN);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     throw new Error("Location fix has no finite latitude/longitude");
   }

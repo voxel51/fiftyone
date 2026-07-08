@@ -101,7 +101,12 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
   );
 
   useEffect(() => {
-    if (!source || centerTimeNs === undefined || selectedTopics.length === 0) {
+    if (
+      !source ||
+      centerTimeNs === undefined ||
+      selectedTopics.length === 0 ||
+      selectedLevels.length === 0
+    ) {
       setState(INITIAL_ROWS);
       return undefined;
     }
@@ -156,7 +161,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     return () => {
       cancelled = true;
     };
-  }, [centerTimeNs, client, selectedTopics, source]);
+  }, [centerTimeNs, client, selectedLevels.length, selectedTopics, source]);
 
   const handleRowClick = useCallback(
     (row: McapLogConsoleRow) => {
@@ -300,7 +305,9 @@ function formatWindowOffset(timeNs: bigint, windowStartNs: bigint): string {
 
 function rowTitle(row: McapLogConsoleRow): string {
   const location =
-    row.file && row.line ? `${row.file}:${row.line}` : (row.file ?? null);
+    row.file && row.line !== undefined
+      ? `${row.file}:${row.line}`
+      : (row.file ?? null);
   const details =
     row.details.length > 0
       ? row.details.map((entry) => `${entry.key}=${entry.value}`).join(", ")

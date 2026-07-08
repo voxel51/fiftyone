@@ -223,7 +223,9 @@ function detection3DEntity({
     size,
   };
   const texts = label ? [detection3DText(cube.pose, size, label.text)] : [];
-  const id = detectionId(detection) ?? String(index);
+  const id =
+    detectionId(detection) ??
+    detectionFallbackId({ context, index, timestampNs });
 
   return sceneEntity({
     cubes: [cube],
@@ -315,6 +317,24 @@ function detectionId(detection: Record<string, unknown>): string | undefined {
     stringFromValue(detection["tracking_id"]) ??
     stringFromValue(detection["trackingId"])
   );
+}
+
+function detectionFallbackId({
+  context,
+  index,
+  timestampNs,
+}: {
+  readonly context: DecodeContext;
+  readonly index: number;
+  readonly timestampNs: bigint | undefined;
+}): string {
+  const messageSalt =
+    timestampNs?.toString() ??
+    context.sourceTimestamps?.messageTime?.toString() ??
+    context.timeRangeStartNs?.toString() ??
+    context.streamId ??
+    "message";
+  return `${messageSalt}:${index}`;
 }
 
 function detectionMetadata(

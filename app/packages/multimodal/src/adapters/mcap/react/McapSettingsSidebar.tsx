@@ -52,15 +52,15 @@ const McapSettingsSidebar: React.FC<{
   }, []);
 
   useLayoutEffect(() => {
+    const suppressPanelAutoSwitch = suppressNextPanelAutoSwitchRef.current;
     if (hasPanelTab && !hadPanelTabRef.current) {
-      if (suppressNextPanelAutoSwitchRef.current) {
-        suppressNextPanelAutoSwitchRef.current = false;
-      } else {
+      if (!suppressPanelAutoSwitch) {
         setActiveTab("panel");
       }
     } else if (!hasPanelTab && activeTab === "panel") {
       setActiveTab("scene");
     }
+    suppressNextPanelAutoSwitchRef.current = false;
     hadPanelTabRef.current = hasPanelTab;
   }, [activeTab, hasPanelTab]);
 

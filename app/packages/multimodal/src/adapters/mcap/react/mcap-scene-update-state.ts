@@ -14,6 +14,11 @@ interface SceneEntityRecord {
   readonly updatedAtNs: bigint;
 }
 
+const SORTED_DELTAS_CACHE = new WeakMap<
+  readonly McapSceneUpdateDelta[],
+  readonly McapSceneUpdateDelta[]
+>();
+
 /**
  * Folds scene-update deltas into a render snapshot at one playhead time.
  *
@@ -36,7 +41,7 @@ export function sceneUpdateSnapshotAt(
 ): SceneUpdateVisualization {
   const state = new Map<string, SceneEntityRecord>();
 
-  for (const delta of [...deltas].sort(compareSceneUpdateDeltas)) {
+  for (const delta of sortedSceneUpdateDeltas(deltas)) {
     if (delta.timeNs > timeNs) {
       break;
     }
@@ -49,6 +54,35 @@ export function sceneUpdateSnapshotAt(
     entities: [...state.values()].map((record) => record.entity),
     kind: VISUALIZATION_KIND.SCENE_UPDATE,
   };
+}
+
+function sortedSceneUpdateDeltas(
+  deltas: readonly McapSceneUpdateDelta[],
+): readonly McapSceneUpdateDelta[] {
+  const cached = SORTED_DELTAS_CACHE.get(deltas);
+  if (cached) {
+    return cached;
+  }
+
+  const sorted = isSortedByTime(deltas)
+    ? deltas
+    : [...deltas].sort(compareSceneUpdateDeltas);
+  SORTED_DELTAS_CACHE.set(deltas, sorted);
+  return sorted;
+}
+
+function isSortedByTime(deltas: readonly McapSceneUpdateDelta[]): boolean {
+  for (let index = 1; index < deltas.length; index++) {
+    const previous = deltas[index - 1];
+    const current = deltas[index];
+    if (!previous || !current) {
+      continue;
+    }
+    if (previous.timeNs > current.timeNs) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function applySceneUpdateDelta(

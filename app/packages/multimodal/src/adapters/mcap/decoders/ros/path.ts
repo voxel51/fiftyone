@@ -30,6 +30,7 @@ import { ROS_PATH_PAYLOADS, ROS_POSE_ARRAY_PAYLOADS } from "./payloads";
 
 const PATH_COLOR: RgbaColor = [0.2, 0.72, 1, 1];
 const PATH_THICKNESS = 2;
+const MAX_PATH_POINTS = 4_096;
 const POSE_ARRAY_COLOR: RgbaColor = [1, 0.62, 0.18, 1];
 const POSE_ARROW_SHAFT_LENGTH = 0.35;
 const POSE_ARROW_SHAFT_DIAMETER = 0.04;
@@ -150,12 +151,14 @@ export function decodeRosPoseArrayRecord(
 }
 
 function pathPoints(message: Record<string, unknown>): readonly ScenePoint3D[] {
-  return arrayRecords(message, "poses").map((poseStamped) =>
-    decodeVector3(
-      recordField(recordField(poseStamped, "pose"), "position"),
-      ZERO_VECTOR3,
-    ),
-  );
+  return arrayRecords(message, "poses")
+    .slice(0, MAX_PATH_POINTS)
+    .map((poseStamped) =>
+      decodeVector3(
+        recordField(recordField(poseStamped, "pose"), "position"),
+        ZERO_VECTOR3,
+      ),
+    );
 }
 
 function poseArrayPoses(
