@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/commands";
 import { Button, IconName, Size, Spinner, Variant } from "@voxel51/voodo";
 import clsx from "clsx";
-import React from "react";
+import React, { type ReactNode } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import {
@@ -30,11 +30,23 @@ export interface TimelineControlsProps {
    * acts as a "show / hide tracks" affordance.
    */
   onToggle?: () => void;
-  extraActions?: React.ReactNode;
+  /**
+   * Optional content rendered inline between the playback control buttons and
+   * the playhead time display, with no divider. Feature toolbars slot here —
+   * e.g. the video annotation surface's Mark Keyframe / Propagate actions.
+   */
+  extraControls?: ReactNode;
+  /**
+   * Optional content rendered far-right, after the playhead time / loop
+   * bounds, preceded by its own divider. Use for trailing actions that read
+   * as a separate group — e.g. the temporal tag-mode button.
+   */
+  extraActions?: ReactNode;
 }
 
 const TimelineControls: React.FC<TimelineControlsProps> = ({
   onToggle,
+  extraControls,
   extraActions,
 }) => {
   const isPlaying = useIsPlaying();
@@ -81,7 +93,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
     ? (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
         const interactive = target.closest(
-          'button, [role="button"], a, input, select, textarea',
+          'button, [role="button"], a, input, select, textarea'
         );
         if (interactive && interactive !== e.currentTarget) return;
         onToggle();
@@ -136,6 +148,8 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         onClick={stepForward}
       />
 
+      {extraControls}
+
       <span
         className={styles.divider}
         data-testid="timeline-controls-divider"
@@ -150,7 +164,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
             className={styles.divider}
             data-testid="timeline-controls-divider"
             aria-hidden
-          />{" "}
+          />
           {extraActions}
         </>
       ) : null}

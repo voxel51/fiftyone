@@ -16,28 +16,82 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import styles from "./TimelineTrack.module.css";
 
 /**
  * One event on a track. A `number` is shorthand for a point at that
  * time; an object with an `endSec` renders as an interval bar, without
- * one as a point.
+ * one as a point. Object events with `endSec` may opt into in-place edit via
+ * `resizable: true`; combined with {@link TimelineTrackProps.onEventEdit}
+ * the bar renders left/right drag handles and a draggable body.
  */
 export type TimelineTrackEvent =
   | number
-  | { startSec: number; endSec?: number; label?: string; data?: unknown };
+  | {
+      startSec: number;
+      endSec?: number;
+      label?: string;
+      /** Per-event color override; falls back to the track color. */
+      color?: string;
+      /** Free-form payload — anything the source produced about this event. */
+      data?: unknown;
+      /**
+       * Opt into interval edit (drag handles + draggable body). Only
+       * meaningful on interval events (`endSec` set) and only when
+       * the parent track provides
+       * {@link TimelineTrackProps.onEventEdit}.
+       */
+      resizable?: boolean;
+    };
 
 export interface NormalizedEvent {
   startSec: number;
   endSec?: number;
   label?: string;
+  color?: string;
   data?: unknown;
+  resizable?: boolean;
+}
+
+/** A custom action contributed to a track event's context menu. */
+export interface TrackEventMenuItem {
+  /** Menu text, e.g. "Delete track" or "Split at playhead". */
+  label: string;
+  /** Render in the destructive (red) style. */
+  destructive?: boolean;
+  /** Grey out and ignore clicks (e.g. "Merge into…" with no candidates). */
+  disabled?: boolean;
+  /** Receives the event the menu was opened on. */
+  onSelect: (event: NormalizedEvent) => void;
 }
 
 function normalizeEvent(e: TimelineTrackEvent): NormalizedEvent {
   return typeof e === "number" ? { startSec: e } : e;
 }
+
+/**
+ * Drag mode for an in-progress interval edit. `move` shifts both start
+ * and end by the same delta; `resize-start` / `resize-end` move only
+ * one boundary. Reported to {@link TimelineTrackProps.onEventEdit} so
+ * consumers can react differently per mode (e.g. extend vs. shift a
+ * tracked object).
+ */
+export type DragMode = "resize-start" | "resize-end" | "move";
+
+interface DragState {
+  index: number;
+  initialClientX: number;
+  laneWidth: number;
+  origStart: number;
+  origEnd: number;
+  mode: DragMode;
+  moved: boolean;
+  latestStart: number;
+  latestEnd: number;
+}
+
+const DRAG_THRESHOLD_PX = 3;
 
 export interface TimelineTrackProps {
   id: string;
@@ -58,8 +112,14 @@ export interface TimelineTrackProps {
   events?: TimelineTrackEvent[];
   /** Fired when an event marker / bar is clicked. Typically seeks. */
   onEventClick?: (event: NormalizedEvent) => void;
-  /** Fired when the user chooses "Delete" from the event context menu. */
-  onEventDelete?: (event: NormalizedEvent) => void;
+  /**
+   * Custom items appended (below a separator) to an event's context menu.
+   * Each `onSelect` receives the event the menu was opened on — the handler
+   * decides whether that means the single event or the whole track. Supply
+   * per-row via `decorateTrack` or uniformly via
+   * {@link TimelineWithTracksProps.eventMenuItems}. Empty/omitted adds nothing.
+   */
+  eventMenuItems?: TrackEventMenuItem[];
   /** Override the label column text. Defaults to `id`. */
   label?: string;
   height?: number;
@@ -68,7 +128,63 @@ export interface TimelineTrackProps {
   onPinClick?: () => void;
   onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
   className?: string;
+  /** Fired on the row root. Used for cross-component hover linking. */
+  onMouseEnter?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /** Fired on the row root. Used for cross-component hover linking. */
+  onMouseLeave?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /**
+   * Fired when the track row is clicked anywhere except the pin button
+   * or an event marker / interval bar. Lane clicks still seek.
+   * `onTrackClick` runs alongside the seek, not in place of it.
+   */
+  onTrackClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /**
+   * Fires on pointer-up after a drag has crossed{@link DRAG_THRESHOLD_PX},
+   * never during the drag itself. Receives the event's index in the
+   * {@link events} array, the final clamped + snapped `[start, end]`
+   * (seconds), and the {@link DragMode} that produced the edit (so a
+   * consumer can tell an edge extend/trim from a whole-bar move).
+   *
+   * Only events with `resizable: true` participate; without this prop
+   * the resizable flag is a no-op and the bar renders as before.
+   */
+  onEventEdit?: (
+    eventIndex: number,
+    newStartSec: number,
+    newEndSec: number,
+    mode: DragMode,
+  ) => void;
+  /**
+   * Snap step (seconds) for drag-driven edits. Typically `1 / fps`,
+   * so interval edges land on frame boundaries. Omit for free-time
+   * drags.
+   */
+  snapStepSec?: number;
+  /**
+   * Nesting depth. `0` is a top-level row; `1` indents the label as a child
+   * (e.g. a dynamic-attribute sub-track under its object track).
+   */
+  depth?: number;
+  /** Render as a child row: a connector rail instead of a color dot, dimmed. */
+  isChild?: boolean;
+  /**
+   * Reserve the left gutter for an expand chevron so rows with and without
+   * children keep their labels aligned. The chevron itself only renders when
+   * {@link expandable} is set.
+   */
+  expansionGutter?: boolean;
+  /** This row has collapsible children — render an expand/collapse chevron. */
+  expandable?: boolean;
+  /** Whether this row's children are currently shown. */
+  expanded?: boolean;
+  /** Toggle this row's children. */
+  onToggleExpand?: () => void;
 }
+
+/** Pixels of label indent per nesting {@link TimelineTrackProps.depth}. */
+const DEPTH_INDENT_PX = 14;
+/** Base left padding of the label column (matches the CSS). */
+const LABEL_BASE_PADDING_PX = 10;
 
 const TimelineTrack: React.FC<TimelineTrackProps> = ({
   id,
@@ -78,7 +194,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   end,
   events = [],
   onEventClick,
-  onEventDelete,
+  eventMenuItems,
   label,
   height = 28,
   labelWidth = 0,
@@ -86,6 +202,17 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   onPinClick,
   onContextMenu,
   className,
+  onMouseEnter,
+  onMouseLeave,
+  onTrackClick,
+  onEventEdit,
+  snapStepSec,
+  depth = 0,
+  isChild = false,
+  expansionGutter = false,
+  expandable = false,
+  expanded = false,
+  onToggleExpand,
 }) => {
   const viewStart = useViewStart();
   const viewEnd = useViewEnd();
@@ -93,11 +220,158 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
 
   const laneRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * In-progress drag state. Mirrored in a ref because the document-
+   * level pointermove / pointerup handlers must read the latest values
+   * without re-binding on every render.
+   */
+  const dragRef = useRef<DragState | null>(null);
+
+  /**
+   * Local visual override applied while the user is dragging an
+   * interval bar. `null` when not dragging; cleared on pointerup.
+   * Render reads this so the bar tracks the cursor without committing
+   * anything until the user lets go. `mode` + the original bounds let a
+   * `move` drag also offset the point events (e.g. keyframe diamonds)
+   * sitting inside the bar, so they stay attached to it during the drag.
+   */
+  const [dragOverride, setDragOverride] = useState<{
+    index: number;
+    startSec: number;
+    endSec: number;
+    mode: DragMode;
+    origStartSec: number;
+    origEndSec: number;
+  } | null>(null);
+
+  /**
+   * Flag set in pointerup-after-drag so the synthetic click event the
+   * browser fires immediately after can be suppressed (otherwise the
+   * lane's lane-click handler would seek to the drop point).
+   */
+  const justDraggedRef = useRef(false);
+
   const viewDuration = viewEnd - viewStart;
   // Degenerate view (zero/negative width) — would produce NaN/Infinity
   // CSS values and break layout for every bar/marker below.
   if (viewDuration <= 0) return null;
   const pct = (t: number) => `${((t - viewStart) / viewDuration) * 100}%`;
+
+  const snap = (t: number): number => {
+    if (!snapStepSec || snapStepSec <= 0 || !Number.isFinite(snapStepSec)) {
+      return t;
+    }
+    return Math.round(t / snapStepSec) * snapStepSec;
+  };
+
+  const beginIntervalDrag = (
+    mouseEvent: React.MouseEvent<HTMLDivElement>,
+    eventIndex: number,
+    origStart: number,
+    origEnd: number,
+    mode: DragMode,
+  ): void => {
+    if (!onEventEdit) return;
+
+    // Only respond to the primary button. Right-click should fall
+    // through to the existing ContextMenu wrapper, not begin a drag.
+    if (mouseEvent.button !== 0) return;
+
+    const lane = laneRef.current;
+    if (!lane) return;
+
+    mouseEvent.preventDefault();
+    mouseEvent.stopPropagation();
+
+    const rect = lane.getBoundingClientRect();
+    const initialClientX = mouseEvent.clientX;
+
+    dragRef.current = {
+      index: eventIndex,
+      initialClientX,
+      laneWidth: rect.width,
+      origStart,
+      origEnd,
+      mode,
+      moved: false,
+      latestStart: origStart,
+      latestEnd: origEnd,
+    };
+
+    const onMove = (moveEv: MouseEvent) => {
+      const drag = dragRef.current;
+      if (!drag || drag.laneWidth <= 0) {
+        return;
+      }
+
+      const dx = moveEv.clientX - drag.initialClientX;
+      if (!drag.moved && Math.abs(dx) < DRAG_THRESHOLD_PX) {
+        return;
+      }
+      drag.moved = true;
+
+      const dSec = (dx / drag.laneWidth) * viewDuration;
+      // Minimum interval width is the snap step (so an interval can't
+      // collapse to zero seconds via resize). Without a snap step, we
+      // still enforce a tiny floor to avoid `start === end` intervals.
+      const minDuration = snapStepSec ?? 1e-6;
+
+      let newStart = drag.origStart;
+      let newEnd = drag.origEnd;
+
+      if (drag.mode === "resize-start") {
+        newStart = snap(drag.origStart + dSec);
+        if (newStart > drag.origEnd - minDuration) {
+          newStart = drag.origEnd - minDuration;
+        }
+        newEnd = drag.origEnd;
+      } else if (drag.mode === "resize-end") {
+        newEnd = snap(drag.origEnd + dSec);
+        if (newEnd < drag.origStart + minDuration) {
+          newEnd = drag.origStart + minDuration;
+        }
+        newStart = drag.origStart;
+      } else {
+        const width = drag.origEnd - drag.origStart;
+        newStart = snap(drag.origStart + dSec);
+        newEnd = newStart + width;
+      }
+
+      drag.latestStart = newStart;
+      drag.latestEnd = newEnd;
+      setDragOverride({
+        index: drag.index,
+        startSec: newStart,
+        endSec: newEnd,
+        mode: drag.mode,
+        origStartSec: drag.origStart,
+        origEndSec: drag.origEnd,
+      });
+    };
+
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+
+      const drag = dragRef.current;
+      dragRef.current = null;
+
+      if (drag && drag.moved) {
+        justDraggedRef.current = true;
+        // Cleared on the next event-loop turn so the synthetic click
+        // that pointerup fires can read it and bail.
+        setTimeout(() => {
+          justDraggedRef.current = false;
+        }, 0);
+        onEventEdit(drag.index, drag.latestStart, drag.latestEnd, drag.mode);
+      }
+
+      setDragOverride(null);
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
 
   // Background bar is rendered only when both start/end are provided.
   const hasBackground = start !== undefined && end !== undefined;
@@ -107,23 +381,101 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
 
   const labelText = label ?? id;
 
+  // While moving an interval, point events (e.g. keyframe diamonds) that
+  // live inside the dragged bar's *original* span should travel with it.
+  // The bar follows the cursor via `dragOverride`; mirror the same offset
+  // onto those points so they stay attached until drag-end commits the
+  // shift. Resize drags don't move points (extend adds filler, trim
+  // deletes frames) — so this only applies to `move`.
+  const movePointShift =
+    dragOverride && dragOverride.mode === "move"
+      ? {
+          delta: dragOverride.startSec - dragOverride.origStartSec,
+          fromSec: dragOverride.origStartSec,
+          toSec: dragOverride.origEndSec,
+        }
+      : null;
+
   return (
     <div
-      className={clsx(styles.root, className)}
-      style={{ height }}
+      className={clsx(styles.root, { [styles.childRow]: isChild }, className)}
+      style={{
+        height,
+        ...(onTrackClick ? { cursor: "pointer" } : null),
+      }}
       onContextMenu={onContextMenu}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onClick={(e) => {
+        // Only the primary button drives row-level click behavior. A
+        // right-mouse-up can synthesize a follow-up click through the
+        // ContextMenu portal (or browser quirks), which would otherwise
+        // ride down into consumers that seek the playhead. The native
+        // contextmenu event still fires on `onContextMenu` regardless,
+        // so right-click → menu UX is unaffected.
+        if (e.button !== 0) return;
+        // voodo's ContextMenu opens by calling `HTMLElement.click()` on a
+        // hidden anchor (its menu trigger). That programmatic click
+        // dispatches a real click event with `button === 0` AND
+        // `detail === 0` — the button gate above does NOT catch it,
+        // because every synthetic click reports button 0 regardless of
+        // which physical button opened the menu. The `detail` count is
+        // the reliable discriminator: real user clicks have detail >= 1
+        // (the consecutive-click counter), HTMLElement.click() sets 0.
+        // Without this gate, right-clicking a track event (which is
+        // wrapped in <ContextMenu>) bubbles the synthetic anchor click
+        // up to the row root, calling onTrackClick → selectTrack →
+        // setActive — which downstream of the video tile's onLoadedData
+        // re-seek manifested as a playhead jump to 0.
+        if (e.detail === 0) return;
+        onTrackClick?.(e);
+      }}
+      data-track-id={id}
     >
       {labelWidth > 0 && (
-        <div className={styles.label} style={{ width: labelWidth }}>
-          <div className={styles.dot} style={{ background: color }} />
+        <div
+          className={styles.label}
+          style={{
+            width: labelWidth,
+            paddingLeft: LABEL_BASE_PADDING_PX + depth * DEPTH_INDENT_PX,
+          }}
+        >
+          {(expansionGutter || expandable) && (
+            <div className={styles.chevronSlot}>
+              {expandable && (
+                <Button
+                  variant={Variant.Icon}
+                  size={Size.Xs}
+                  data-testid={`timeline-track-expand-${id}`}
+                  leadingIcon={
+                    expanded ? IconName.ChevronBottom : IconName.ChevronRight
+                  }
+                  aria-label={
+                    expanded ? "Collapse sub-tracks" : "Expand sub-tracks"
+                  }
+                  aria-expanded={expanded}
+                  className={styles.chevron}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleExpand?.();
+                  }}
+                />
+              )}
+            </div>
+          )}
+          {isChild ? (
+            <div className={styles.rail} />
+          ) : (
+            <div className={styles.dot} style={{ background: color }} />
+          )}
           <Text
             variant={TextVariant.Xs}
-            color={TextColor.Primary}
+            color={isChild ? TextColor.Secondary : TextColor.Primary}
             className={styles.labelText}
           >
             {labelText}
           </Text>
-          {onPinClick && (
+          {onPinClick && !isChild && (
             <Button
               variant={Variant.Icon}
               size={Size.Xs}
@@ -147,17 +499,37 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
         ref={laneRef}
         className={styles.lane}
         onClick={(e) => {
+          // Right-click opens the context menu via a separate handler.
+          // Don't seek the playhead as a side-effect.
+          if (e.button !== 0) return;
+
+          // voodo's ContextMenu opens by calling `HTMLElement.click()`
+          // on a hidden anchor that sits inside this lane's DOM subtree
+          // (so the DOM-containment check below can't reject it). That
+          // programmatic click has `detail === 0`; real user clicks
+          // always have `detail >= 1`. Skip the synthetic case so
+          // right-clicking an event doesn't seek to that x-position as
+          // a side-effect of opening its menu.
+          if (e.detail === 0) return;
+
+          // Suppress the synthetic click the browser fires immediately
+          // after a real drag so the drop point doesn't double as a seek.
+          if (justDraggedRef.current) return;
+
           // Portal-rendered context-menu items bubble through the React tree
           // but live outside this element's DOM subtree — ignore them so
           // dismissing the menu doesn't fire an unintended seek.
           if (!e.currentTarget.contains(e.target as Node)) return;
+
           const target = e.target as HTMLElement;
           // Event markers / bars own their own click — don't seek twice.
           if (
             target.classList.contains(styles.event) ||
-            target.classList.contains(styles.intervalBar)
+            target.classList.contains(styles.intervalBar) ||
+            target.classList.contains(styles.resizeHandle)
           )
             return;
+
           const rect = e.currentTarget.getBoundingClientRect();
           seek(
             viewStart +
@@ -177,15 +549,41 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           />
         )}
         {events
-          .map(normalizeEvent)
-          .filter((e) =>
-            e.endSec !== undefined
-              ? e.endSec >= viewStart && e.startSec <= viewEnd
-              : e.startSec >= viewStart && e.startSec <= viewEnd,
+          .map((event, originalIndex) => ({
+            event: normalizeEvent(event),
+            originalIndex,
+          }))
+          .filter(({ event }) =>
+            event.endSec !== undefined
+              ? event.endSec >= viewStart && event.startSec <= viewEnd
+              : event.startSec >= viewStart && event.startSec <= viewEnd,
           )
-          .map((e, i) => {
+          .map(({ event, originalIndex }) => {
             const handleClick = (ev: React.MouseEvent) => {
-              ev.stopPropagation();
+              // Only left-button clicks should move the playhead.
+              // Right-click is reserved for the context menu; without
+              // this gate the synthetic click that some browsers /
+              // ContextMenu portals dispatch on right-mouse-up would
+              // seek the playhead as a side-effect of opening the menu.
+              if (ev.button !== 0) return;
+
+              // Synthetic clicks dispatched by `HTMLElement.click()`
+              // (e.g. voodo's ContextMenu opening its menu) report
+              // `button === 0` like every programmatic click. The
+              // `detail` count is the reliable signal: real user clicks
+              // are always >= 1, programmatic clicks are 0. Skip those
+              // so opening an event's context menu doesn't also seek.
+              if (ev.detail === 0) return;
+
+              // Suppress the synthetic click that pointerup fires
+              // right after a resize / move drag — otherwise the drop
+              // point seeks unexpectedly.
+              if (justDraggedRef.current) return;
+
+              // Deliberately no stopPropagation. The click bubbles to
+              // the row root so `onTrackClick` fires for marker / interval-bar
+              // clicks too. The lane's onClick filters by target class so seek
+              // doesn't double-fire.
               const lane = laneRef.current;
               if (lane) {
                 const rect = lane.getBoundingClientRect();
@@ -198,72 +596,178 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                     viewDuration;
                 seek(t);
               }
-              onEventClick?.(e);
+              onEventClick?.(event);
             };
-            const isInterval = e.endSec !== undefined;
+            const isInterval = event.endSec !== undefined;
+            const isResizable = Boolean(
+              isInterval && event.resizable && onEventEdit,
+            );
+            // Per-event override (value-segmented sub-tracks) or track color.
+            const eventColor = event.color ?? color;
+
+            // While a drag is in progress, render with the override
+            // position so the bar tracks the cursor. Outside of drag,
+            // use the event's own start / end.
+            const override =
+              dragOverride && dragOverride.index === originalIndex
+                ? dragOverride
+                : null;
+            const displayStart = override ? override.startSec : event.startSec;
+            const displayEnd = override
+              ? override.endSec
+              : (event.endSec as number);
+
             const menu = (
               <>
-                <MenuTextItem onClick={() => seek(e.startSec)}>
+                <MenuTextItem onClick={() => seek(event.startSec)}>
                   Move to start
                 </MenuTextItem>
                 <MenuTextItem
                   disabled={!isInterval}
-                  onClick={() => isInterval && seek(e.endSec!)}
+                  onClick={() => isInterval && seek(event.endSec!)}
                 >
                   Move to end
                 </MenuTextItem>
                 <MenuSeparator />
                 <MenuTextItem
                   disabled={!isInterval}
-                  onClick={() => isInterval && setLoop(e.startSec, e.endSec!)}
+                  onClick={() =>
+                    isInterval && setLoop(event.startSec, event.endSec!)
+                  }
                 >
                   Shrink window to fit
                 </MenuTextItem>
-                {onEventDelete && (
+                {eventMenuItems && eventMenuItems.length > 0 && (
                   <>
                     <MenuSeparator />
-                    <MenuTextItem onClick={() => onEventDelete(e)}>
-                      Delete tag
-                    </MenuTextItem>
+                    {eventMenuItems.map((item, i) => (
+                      <MenuTextItem
+                        key={i}
+                        destructive={item.destructive}
+                        disabled={item.disabled}
+                        onClick={(ev) => {
+                          // Stop the click bubbling to the row's `onClick`
+                          // (`onTrackClick`).
+                          ev.stopPropagation();
+
+                          if (!item.disabled) {
+                            item.onSelect(event);
+                          }
+                        }}
+                      >
+                        {item.label}
+                      </MenuTextItem>
+                    ))}
                   </>
                 )}
               </>
             );
             if (isInterval) {
-              const left = pct(Math.max(e.startSec, viewStart));
-              const right = Math.min(e.endSec!, viewEnd);
+              const left = pct(Math.max(displayStart, viewStart));
+              const right = Math.min(displayEnd, viewEnd);
               const width = `${
-                ((right - Math.max(e.startSec, viewStart)) / viewDuration) * 100
+                ((right - Math.max(displayStart, viewStart)) / viewDuration) *
+                100
               }%`;
               return (
-                <ContextMenu key={i} menu={menu}>
+                <ContextMenu key={originalIndex} menu={menu}>
                   <div
                     className={styles.intervalBar}
+                    data-event-index={originalIndex}
                     style={{
                       left,
                       width,
-                      background: `${color}99`,
-                      border: `1px solid ${color}`,
+                      background: `${eventColor}99`,
+                      border: `1px solid ${eventColor}`,
+                      cursor: isResizable ? "grab" : "pointer",
                     }}
                     title={
-                      e.label
-                        ? `${e.label}  (${e.startSec.toFixed(2)}–${e.endSec!.toFixed(2)}s)`
-                        : `${labelText}  (${e.startSec.toFixed(2)}–${e.endSec!.toFixed(2)}s)`
+                      event.label
+                        ? `${event.label}  (${displayStart.toFixed(
+                            2,
+                          )}-${displayEnd.toFixed(2)}s)`
+                        : `${labelText}  (${displayStart.toFixed(
+                            2,
+                          )}-${displayEnd.toFixed(2)}s)`
                     }
                     onClick={handleClick}
-                  />
+                    onMouseDown={
+                      isResizable
+                        ? (ev) =>
+                            beginIntervalDrag(
+                              ev,
+                              originalIndex,
+                              event.startSec,
+                              event.endSec!,
+                              "move",
+                            )
+                        : undefined
+                    }
+                  >
+                    {isResizable && (
+                      <>
+                        <div
+                          className={clsx(
+                            styles.resizeHandle,
+                            styles.resizeHandleStart,
+                          )}
+                          data-event-index={originalIndex}
+                          data-resize-handle="start"
+                          aria-label="Resize interval start"
+                          onClick={(ev) => ev.stopPropagation()}
+                          onMouseDown={(ev) =>
+                            beginIntervalDrag(
+                              ev,
+                              originalIndex,
+                              event.startSec,
+                              event.endSec!,
+                              "resize-start",
+                            )
+                          }
+                        />
+                        <div
+                          className={clsx(
+                            styles.resizeHandle,
+                            styles.resizeHandleEnd,
+                          )}
+                          data-event-index={originalIndex}
+                          data-resize-handle="end"
+                          aria-label="Resize interval end"
+                          onClick={(ev) => ev.stopPropagation()}
+                          onMouseDown={(ev) =>
+                            beginIntervalDrag(
+                              ev,
+                              originalIndex,
+                              event.startSec,
+                              event.endSec!,
+                              "resize-end",
+                            )
+                          }
+                        />
+                      </>
+                    )}
+                  </div>
                 </ContextMenu>
               );
             }
+            // Offset points inside the dragged bar's original span by the
+            // live move delta so they track the bar. `1e-6` absorbs float
+            // drift; original event/interval bounds are otherwise exact.
+            const pointSec =
+              movePointShift &&
+              event.startSec >= movePointShift.fromSec - 1e-6 &&
+              event.startSec <= movePointShift.toSec + 1e-6
+                ? event.startSec + movePointShift.delta
+                : event.startSec;
             return (
-              <ContextMenu key={i} menu={menu}>
+              <ContextMenu key={originalIndex} menu={menu}>
                 <div
                   className={styles.event}
-                  style={{ left: pct(e.startSec), background: color }}
+                  style={{ left: pct(pointSec), background: eventColor }}
                   title={
-                    e.label
-                      ? `${e.label}  @ ${e.startSec.toFixed(3)}s`
-                      : `${labelText} @ ${e.startSec.toFixed(3)}s`
+                    event.label
+                      ? `${event.label}  @ ${event.startSec.toFixed(3)}s`
+                      : `${labelText} @ ${event.startSec.toFixed(3)}s`
                   }
                   onClick={handleClick}
                 />

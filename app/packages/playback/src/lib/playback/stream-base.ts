@@ -1,4 +1,4 @@
-import { streamValueAtom } from "./atoms";
+import { currentTimeAtom, streamValueAtom } from "./atoms";
 import type {
   BufferReadiness,
   PlaybackStore,
@@ -91,7 +91,29 @@ export abstract class PlaybackStreamBase<T> implements PlaybackStream {
    * Override only if you need to write to multiple atoms or do extra work.
    */
   onCommit(time: number, store: PlaybackStore): void {
-    store.set(streamValueAtom(this.id), this.getValue(time));
+    this.publish(store, this.getValue(time));
+  }
+
+  /**
+   * Read this stream's last-published value from `store`. Subclasses use this
+   * instead of touching `streamValueAtom` directly, keeping the jotai atoms
+   * internal to the playback lib.
+   */
+  protected readPublished(store: PlaybackStore): T | null {
+    return store.get(streamValueAtom(this.id)) as T | null;
+  }
+
+  /** Publish `value` as this stream's current value into `store`. */
+  protected publish(store: PlaybackStore, value: T | null): void {
+    store.set(streamValueAtom(this.id), value);
+  }
+
+  /**
+   * The engine's authoritative data-time from `store` (lags the visual
+   * playhead while streams buffer).
+   */
+  protected readCurrentTime(store: PlaybackStore): number {
+    return store.get(currentTimeAtom);
   }
 
   /**

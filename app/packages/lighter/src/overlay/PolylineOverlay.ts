@@ -147,9 +147,9 @@ export class PolylineOverlay extends KeypointOverlay {
     return "PolylineOverlay";
   }
 
-  override updateLabel(label: PolylineLabel): void {
-    super.updateLabel(label as unknown as KeypointLabel);
-
+  override applyLabel(label: PolylineLabel): void {
+    // Apply polyline-specific state (`closed`/`filled`/points) before the base
+    // label set so the overlay's derived getters are current.
     const { flatPoints, connections, segmentBoundaries } =
       flattenPolylinePoints(label.points ?? []);
 
@@ -160,6 +160,8 @@ export class PolylineOverlay extends KeypointOverlay {
     this.setRelativePoints(flatPoints);
     this.setConnections(connections);
     this.setClosed(this.polylineClosed);
+
+    super.applyLabel(label as unknown as KeypointLabel);
   }
 
   override getSelectionPriority(): number {

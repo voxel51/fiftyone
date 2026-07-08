@@ -41,6 +41,7 @@ import type {
   FrustumGeometry,
   StaticTransform,
 } from "./types";
+import { useFrustumTextureUrl } from "./use-frustum-texture-url";
 
 // Module-level axis vectors
 // These are module-scoped and are stable across renders
@@ -367,7 +368,8 @@ function TexturedFrustum({
   intrinsics: CameraIntrinsics;
   staticTransform: StaticTransform;
 }) {
-  const texture = useFoLoaderNoSuspense(TextureLoader, imageUrl);
+  const textureUrl = useFrustumTextureUrl(imageUrl);
+  const texture = useFoLoaderNoSuspense(TextureLoader, textureUrl);
   const textureDimensions = useMemo(
     () => getTextureDimensions(texture),
     [texture],

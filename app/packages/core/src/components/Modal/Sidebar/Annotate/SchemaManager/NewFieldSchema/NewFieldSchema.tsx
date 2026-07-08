@@ -94,16 +94,23 @@ const NewFieldSchema = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [is3dMedia]);
 
-  // Get label type options based on media type
+  // A "frames." prefix targets the frame schema (video only), which changes
+  // both the valid name pattern and the available label types.
+  const isFrameField = useMemo(
+    () => fieldName.trim().startsWith("frames."),
+    [fieldName],
+  );
+
+  // Get label type options based on media type and field scope
   const labelTypeOptions = useMemo(
-    () => getLabelTypeOptions(currentMediaType),
-    [currentMediaType],
+    () => getLabelTypeOptions(currentMediaType, isFrameField),
+    [currentMediaType, isFrameField],
   );
 
   // Validate field name
   const fieldNameError = useMemo(
-    () => validateFieldName(fieldName, schemasData),
-    [fieldName, schemasData],
+    () => validateFieldName(fieldName, schemasData, currentMediaType),
+    [fieldName, schemasData, currentMediaType],
   );
 
   const canCreate = fieldName.trim() !== "" && !fieldNameError && !isCreating;
@@ -121,6 +128,16 @@ const NewFieldSchema = () => {
     },
     [is3dMedia],
   );
+
+  // Keep the selected label type within the options available for the current
+  // field scope — e.g. switching to a "frames." field drops the clip-level
+  // types, so a stale selection must fall back to a valid one.
+  useEffect(() => {
+    const ids = labelTypeOptions.map((option) => option.id);
+    if (category === "label" && !ids.includes(labelType)) {
+      handleLabelTypeChange(labelTypeOptions[0].id);
+    }
+  }, [category, labelType, labelTypeOptions, handleLabelTypeChange]);
 
   const handlePrimitiveTypeChange = useCallback((newType: string) => {
     setPrimitiveType(newType);
@@ -300,7 +317,11 @@ const NewFieldSchema = () => {
               <Input
                 value={fieldName}
                 onChange={(e) => setFieldName(e.target.value)}
-                placeholder="Enter field name"
+                placeholder={
+                  currentMediaType === "video"
+                    ? "Enter field name (e.g. frames.detections)"
+                    : "Enter field name"
+                }
                 error={!!fieldNameError}
                 autoFocus
               />

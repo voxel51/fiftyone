@@ -1743,8 +1743,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def active_label_schemas(self, fields):
         fields = _as_str_list(fields)
 
+        label_schemas = self.label_schemas
         for field in fields:
-            if field not in self._doc.label_schemas:
+            if field not in label_schemas:
                 raise ValueError(
                     f"field '{field}' does not have a label schema"
                 )
@@ -1764,7 +1765,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the dataset's label schemas ``dict``
         """
-        return copy.deepcopy(self._doc.label_schemas) or {}
+        return copy.deepcopy(self._doc.all_stored_label_schemas()) or {}
 
     def set_label_schemas(self, label_schemas):
         """Set the dataset's :ref:`label schemas <annotation-label-schema>`
@@ -1798,7 +1799,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_schemas = {}
 
         foa.validate_label_schemas(self, label_schemas)
-        self._doc.label_schemas = label_schemas
+        self._doc.set_all_stored_label_schemas(label_schemas)
         self._doc.active_label_schemas = [
             field
             for field in self.active_label_schemas
@@ -1845,9 +1846,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             allow_new_fields=allow_new_fields,
             fields=field,
         )
-        label_schemas = self.label_schemas
-        label_schemas[field] = copy.deepcopy(label_schema)
-        self._doc.label_schemas = label_schemas
+        self._doc.set_stored_label_schema(field, copy.deepcopy(label_schema))
         self.save()
 
     def delete_label_schemas(self, fields=None):
@@ -1893,9 +1892,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         fields = _as_str_list(fields)
 
+        label_schemas = self.label_schemas
         result = self.active_label_schemas
         for field in fields:
-            if field not in self._doc.label_schemas:
+            if field not in label_schemas:
                 raise ValueError(f"field '{field}' is not in the label schema")
 
             if field not in result:
@@ -1924,9 +1924,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         fields = _as_str_list(fields)
 
+        label_schemas = self.label_schemas
         result = self.active_label_schemas
         for field in fields:
-            if field not in self._doc.label_schemas:
+            if field not in label_schemas:
                 raise ValueError(
                     f"field '{field}' does not have a label schema"
                 )

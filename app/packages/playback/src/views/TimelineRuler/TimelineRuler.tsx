@@ -49,8 +49,9 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const viewEnd = useViewEnd();
   const loopStart = useLoopStart();
   const loopEnd = useLoopEnd();
+  const { duration, seekSnapped, setView, setLoop, snapPlayheadToFrame } =
+    usePlayback();
   const hoverTime = useHoverTime();
-  const { duration, seek, setView, setLoop } = usePlayback();
   const store = usePlaybackStore();
 
   const rulerRef = useRef<HTMLDivElement>(null);
@@ -79,8 +80,8 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       clamp(
         viewStart + (laneX / laneWidth) * (viewEnd - viewStart),
         0,
-        duration,
-      ),
+        duration
+      )
     );
   };
 
@@ -90,7 +91,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
     () => () => {
       setHoverTime(store, null);
     },
-    [store],
+    [store]
   );
 
   // Capture state at drag-start so onDelta can compute against it without
@@ -127,10 +128,20 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const vd = startVe - startVs;
       dragRef.current.maxAbsDelta = Math.max(
         dragRef.current.maxAbsDelta,
-        Math.abs(delta),
+        Math.abs(delta)
       );
-      seek(clamp(startValue + (delta / laneWidth) * vd, 0, duration));
+      // `seekSnapped` quantizes to the displayed-frame start when the
+      // provider opted into snap-to-frame; otherwise it's a plain seek. The
+      // playhead now tracks discrete frame numbers continuously during the
+      // drag, matching the frame-indexed mental model the annotation surface
+      // uses elsewhere.
+      seekSnapped(clamp(startValue + (delta / laneWidth) * vd, 0, duration));
     },
+    // Redundant when `seekSnapped` already landed each mid-drag tick on a
+    // frame boundary — kept as a belt-and-suspenders settle (cheap no-op
+    // when the playhead is already aligned, thanks to the equality guard
+    // inside `snapPlayheadToFrame`).
+    onDragEnd: () => snapPlayheadToFrame(),
   });
 
   const loopStartDrag = useDragDelta({
@@ -145,7 +156,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const t = clamp(
         startValue + (delta / laneWidth) * vd,
         0,
-        loopEnd - 1 / 60,
+        loopEnd - 1 / 60
       );
       setLoop(t, loopEnd);
     },
@@ -163,7 +174,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const t = clamp(
         startValue + (delta / laneWidth) * vd,
         loopStart + 1 / 60,
-        duration,
+        duration
       );
       setLoop(loopStart, t);
     },
@@ -180,7 +191,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const { startVs, startVe, laneWidth } = dragRef.current;
       dragRef.current.maxAbsDelta = Math.max(
         dragRef.current.maxAbsDelta,
-        Math.abs(delta),
+        Math.abs(delta)
       );
       const vd = startVe - startVs;
       const dt = (delta / laneWidth) * vd;
@@ -200,7 +211,9 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       if (laneX < 0 || laneX > laneWidth) return;
       const vs = dragRef.current.startVs;
       const ve = dragRef.current.startVe;
-      seek(clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration));
+      // `seekSnapped` lands the click on a frame boundary in one step when
+      // snapping is enabled; falls back to a continuous seek otherwise.
+      seekSnapped(clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration));
     },
   });
 
@@ -234,7 +247,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         const ratio = clamp(
           (e.clientX - rect.left - labelWidth) / laneWidth,
           0,
-          1,
+          1
         );
         const pivotTime = vs + ratio * (ve - vs);
         const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
@@ -242,7 +255,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         const newStart = clamp(
           pivotTime - ratio * newDuration,
           0,
-          duration - newDuration,
+          duration - newDuration
         );
         setViewRef.current(newStart, newStart + newDuration);
       } else if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
@@ -298,8 +311,8 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const cursor = playheadDrag.isDragging
     ? "grabbing"
     : loopStartDrag.isDragging || loopEndDrag.isDragging
-      ? "ew-resize"
-      : undefined;
+    ? "ew-resize"
+    : undefined;
 
   return (
     <div

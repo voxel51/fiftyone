@@ -8,12 +8,31 @@ import { AgentTaskType } from "../types";
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
-const hoisted = vi.hoisted(() => ({
-  useLighterSpy: vi.fn(),
-}));
+const hoisted = vi.hoisted(() => {
+  class FakeDetectionOverlay {
+    id = "overlay-id";
+    field = "frames.detections";
+    label: Record<string, unknown> = {};
+    bounds = { x: 0, y: 0, width: 1, height: 1 };
+    applyLabel = vi.fn();
+    updateLabel = vi.fn();
+  }
+
+  return {
+    useLighterSpy: vi.fn(),
+    dispatchSpy: vi.fn(),
+    FakeDetectionOverlay,
+  };
+});
 
 vi.mock("@fiftyone/lighter", () => ({
   useLighter: () => hoisted.useLighterSpy(),
+  useLighterEventBus: () => ({ dispatch: hoisted.dispatchSpy }),
+  UNDEFINED_LIGHTER_SCENE_ID: "undefined-scene",
+  DetectionOverlay: hoisted.FakeDetectionOverlay,
+  InteractiveDetectionHandler: class {
+    constructor(_overlay: unknown) {}
+  },
 }));
 
 // `useApplyInferenceResult` takes `createDetection` as an argument, so the
@@ -44,7 +63,10 @@ const setLighter = (opts: {
     .mockReturnValue(opts.getOverlayResult ?? undefined);
   // Distinguish "key omitted" (use fake scene) from "key present but
   // undefined" (caller is asserting on the no-scene branch).
-  const scene = "scene" in opts ? opts.scene : { id: "scene-1" };
+  const scene =
+    "scene" in opts
+      ? opts.scene
+      : { id: "scene-1", getEventChannel: () => "channel-1" };
   hoisted.useLighterSpy.mockReturnValue({ scene, getOverlay });
   return { getOverlay };
 };
@@ -115,6 +137,32 @@ describe("useApplyInferenceResult", () => {
     expect(newOverlay.updateLabel.mock.calls[0][0].bounding_box).toEqual([
       0, 0, 1, 1,
     ]);
+  });
+
+  it("emits overlay-establish for a newly created detection overlay", () => {
+    const newOverlay = new hoisted.FakeDetectionOverlay();
+    const createDetection = vi.fn().mockReturnValue({ overlay: newOverlay });
+    setLighter({ getOverlayResult: null });
+
+    const apply = renderHandler(createDetection);
+
+    apply(segmentResult("new-det", [0.1, 0.2, 0.3, 0.4], new Uint8Array([1])));
+
+    expect(hoisted.dispatchSpy).toHaveBeenCalledWith(
+      "lighter:overlay-establish",
+      expect.objectContaining({ overlayId: newOverlay.id }),
+    );
+  });
+
+  it("does not emit overlay-establish when updating an existing overlay", () => {
+    const overlay = new hoisted.FakeDetectionOverlay();
+    setLighter({ getOverlayResult: overlay });
+
+    const apply = renderHandler(() => null);
+
+    apply(segmentResult(overlay.id, [0, 0, 1, 1], new Uint8Array([1])));
+
+    expect(hoisted.dispatchSpy).not.toHaveBeenCalled();
   });
 
   it("warns and skips the update when createDetection returns null", () => {

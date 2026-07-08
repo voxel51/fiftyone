@@ -30,10 +30,10 @@ function renderTimeline(opts: RenderOpts = {}) {
 
   return render(
     <PlaybackProvider duration={duration} stepInterval={1 / 30}>
-      <TrackProvider initialTracks={tracks} initialPinnedIds={pinnedIds}>
+      <TrackProvider tracks={tracks} initialPinnedIds={pinnedIds}>
         <TimelineWithTracks labelWidth={labelWidth} />
       </TrackProvider>
-    </PlaybackProvider>,
+    </PlaybackProvider>
   );
 }
 
@@ -67,14 +67,13 @@ describe("TimelineWithTracks", () => {
       expect(screen.getByText("Track A")).toBeTruthy();
     });
 
-    it("renders all tracks in the drawer body when open", () => {
+    it("renders rows for both pinned and unpinned tracks", () => {
       renderTimeline({
         tracks: [TRACK_A, TRACK_B],
         pinnedIds: ["track-a"],
       });
-      // Both labels should be visible in the default open state
-      expect(screen.getByText("Track A")).toBeTruthy();
-      expect(screen.getByText("Track B")).toBeTruthy();
+      expect(screen.getAllByText("Track A").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Track B").length).toBeGreaterThan(0);
     });
   });
 

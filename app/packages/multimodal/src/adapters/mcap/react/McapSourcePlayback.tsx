@@ -50,7 +50,9 @@ export interface McapSourcePlaybackProps {
   readonly latencySourceKey?: string;
   readonly layoutScopeKey?: string;
   readonly onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
-  readonly onTagDelete?: TemporalTagTimelineProps["onEventDelete"];
+  readonly onTagDelete?: NonNullable<
+    TemporalTagTimelineProps["eventMenuItems"]
+  >[number]["onSelect"];
   readonly source: ByteSourceDescriptor | null;
   readonly tracks?: readonly Track[];
 }
