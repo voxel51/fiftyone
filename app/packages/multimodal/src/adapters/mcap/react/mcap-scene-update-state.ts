@@ -11,7 +11,6 @@ export interface McapSceneUpdateDelta {
 
 interface SceneEntityRecord {
   readonly entity: SceneEntityVisualization;
-  readonly expiresAtNs?: bigint;
   readonly updatedAtNs: bigint;
 }
 
@@ -42,10 +41,8 @@ export function sceneUpdateSnapshotAt(
       break;
     }
 
-    expireEntities(state, timeNs);
     applySceneUpdateDelta(state, delta, timeNs);
   }
-  expireEntities(state, timeNs);
 
   return {
     deletions: [],
@@ -87,23 +84,8 @@ function applySceneUpdateDelta(
 
     state.set(entity.id, {
       entity,
-      ...(expiresAtNs !== undefined ? { expiresAtNs } : {}),
       updatedAtNs,
     });
-  }
-}
-
-function expireEntities(
-  state: Map<string, SceneEntityRecord>,
-  targetTimeNs: bigint,
-): void {
-  for (const [id, record] of state) {
-    if (
-      record.expiresAtNs !== undefined &&
-      record.expiresAtNs <= targetTimeNs
-    ) {
-      state.delete(id);
-    }
   }
 }
 

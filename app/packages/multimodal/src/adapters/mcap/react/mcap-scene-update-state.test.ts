@@ -43,6 +43,25 @@ describe("sceneUpdateSnapshotAt", () => {
     expect(snapshot.entities.map((e) => e.id)).toEqual(["replacement"]);
   });
 
+  it("skips deletions whose own timestamp is after the playhead", () => {
+    const snapshot = sceneUpdateSnapshotAt(
+      [
+        updateDelta(10n, [entity("kept")]),
+        {
+          timeNs: 20n,
+          update: {
+            deletions: [{ id: "kept", timestampNs: 30n, type: "matching-id" }],
+            entities: [],
+            kind: VISUALIZATION_KIND.SCENE_UPDATE,
+          },
+        },
+      ],
+      20n,
+    );
+
+    expect(snapshot.entities.map((e) => e.id)).toEqual(["kept"]);
+  });
+
   it("expires entity lifetimes relative to entity timestamps", () => {
     const beforeExpiry = sceneUpdateSnapshotAt(
       [updateDelta(10n, [entity("short", {}, 10n, 5n)])],

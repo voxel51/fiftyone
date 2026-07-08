@@ -48,8 +48,8 @@ export function useInterpolatedSceneUpdateFrames({
   // lerp even while the playhead is paused mid-gap.
   const cacheSnapshot = useTopicCacheSnapshot(dataStream, topics);
 
-  return useMemo(() => {
-    const resolvedFrames = frames.map((playbackFrame, index) => {
+  const resolvedFrames = useMemo(() => {
+    return frames.map((playbackFrame, index) => {
       const topic = topics[index];
       if (!playbackFrame || !topic) {
         return playbackFrame;
@@ -72,7 +72,10 @@ export function useInterpolatedSceneUpdateFrames({
         frame: sceneUpdateSnapshotAt(deltas, playbackFrame.requestedTimeNs),
       };
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cacheSnapshot is the caches' change digest
+  }, [cacheSnapshot, dataStream, frames, history, topics]);
 
+  return useMemo(() => {
     if (!interpolate || !dataStream || !timeline) {
       return resolvedFrames;
     }
@@ -143,15 +146,13 @@ export function useInterpolatedSceneUpdateFrames({
       };
     });
 
-    return changed ? interpolated : frames;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- cacheSnapshot is the caches' change digest
+    return changed ? interpolated : resolvedFrames;
   }, [
-    cacheSnapshot,
     dataStream,
-    frames,
     history,
     interpolate,
     playhead,
+    resolvedFrames,
     timeline,
     topics,
   ]);

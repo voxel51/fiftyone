@@ -35,7 +35,7 @@ export const FOXGLOVE_COMPRESSED_IMAGE_CDR_PAYLOADS =
  * Payload identities for foxglove_msgs/msg/CompressedVideo messages carried
  * over ROS 2 CDR encodings.
  */
-export const FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS: readonly PayloadDescriptor[] =
+export const FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS =
   foxgloveCdrPayloads("CompressedVideo");
 
 /**

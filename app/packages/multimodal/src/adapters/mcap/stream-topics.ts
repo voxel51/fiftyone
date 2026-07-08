@@ -29,7 +29,9 @@ import {
   FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS,
   FOXGLOVE_COMPRESSED_VIDEO_PAYLOAD,
   FOXGLOVE_FRAME_TRANSFORM_CDR_PAYLOADS,
+  FOXGLOVE_FRAME_TRANSFORM_PAYLOAD,
   FOXGLOVE_FRAME_TRANSFORMS_CDR_PAYLOADS,
+  FOXGLOVE_FRAME_TRANSFORMS_PAYLOAD,
   FOXGLOVE_GRID_CDR_PAYLOADS,
   FOXGLOVE_GRID_PAYLOAD,
   FOXGLOVE_IMAGE_ANNOTATIONS_CDR_PAYLOADS,
@@ -66,56 +68,9 @@ import {
   ROS_POSE_STAMPED_PAYLOADS,
   ROS_RCL_LOG_PAYLOADS,
   ROS_ROSGRAPH_LOG_PAYLOADS,
+  ROS_TF_MESSAGE_PAYLOADS,
+  ROS_TRANSFORM_STAMPED_PAYLOADS,
 } from "./decoders/ros/payloads";
-
-const FOXGLOVE_FRAME_TRANSFORM_PAYLOADS: readonly PayloadDescriptor[] = [
-  {
-    encoding: "protobuf",
-    schema: "foxglove.FrameTransform",
-    schemaEncoding: "protobuf",
-  },
-  {
-    encoding: "protobuf",
-    schema: "foxglove.FrameTransforms",
-    schemaEncoding: "protobuf",
-  },
-];
-
-const ROS_TF_MESSAGE_PAYLOADS: readonly PayloadDescriptor[] = [
-  {
-    encoding: "ros1",
-    schema: "tf2_msgs/TFMessage",
-    schemaEncoding: "ros1msg",
-  },
-  {
-    encoding: "cdr",
-    schema: "tf2_msgs/msg/TFMessage",
-    schemaEncoding: "ros2msg",
-  },
-  {
-    encoding: "cdr",
-    schema: "tf2_msgs/msg/TFMessage",
-    schemaEncoding: "ros2idl",
-  },
-];
-
-const ROS_TRANSFORM_STAMPED_PAYLOADS: readonly PayloadDescriptor[] = [
-  {
-    encoding: "ros1",
-    schema: "geometry_msgs/TransformStamped",
-    schemaEncoding: "ros1msg",
-  },
-  {
-    encoding: "cdr",
-    schema: "geometry_msgs/msg/TransformStamped",
-    schemaEncoding: "ros2msg",
-  },
-  {
-    encoding: "cdr",
-    schema: "geometry_msgs/msg/TransformStamped",
-    schemaEncoding: "ros2idl",
-  },
-];
 
 /**
  * Supported MCAP topics that the adapter can preview or pair.
@@ -331,7 +286,8 @@ export function isLogStream(topic: StreamInventory): boolean {
  */
 export function isFrameTransformStream(topic: StreamInventory): boolean {
   return (
-    hasAnyPayload(topic, FOXGLOVE_FRAME_TRANSFORM_PAYLOADS) ||
+    hasPayload(topic, FOXGLOVE_FRAME_TRANSFORM_PAYLOAD) ||
+    hasPayload(topic, FOXGLOVE_FRAME_TRANSFORMS_PAYLOAD) ||
     hasAnyPayload(topic, FOXGLOVE_FRAME_TRANSFORM_CDR_PAYLOADS) ||
     hasAnyPayload(topic, FOXGLOVE_FRAME_TRANSFORMS_CDR_PAYLOADS) ||
     hasAnyPayload(topic, ROS_TF_MESSAGE_PAYLOADS) ||

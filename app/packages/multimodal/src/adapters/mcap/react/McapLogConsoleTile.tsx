@@ -8,7 +8,7 @@ import { useSetTileTitle } from "@fiftyone/tiling";
 import { Checkbox } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useSceneSourcesByType } from "../../../scene-inventory";
+import { useSceneSourcesByType } from "../../../scene-inventory/SceneInventoryProvider";
 import { MCAP_LOG_LEVELS, type McapLogLevel } from "../log-records";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { useMcapDataStream } from "./mcap-data-stream-context";
@@ -30,11 +30,11 @@ const LOG_READ_LIMIT = 600;
 
 interface LogRowsState {
   readonly error?: string;
-  readonly rows: readonly McapLogConsoleRow[];
+  readonly rawRows: readonly McapLogConsoleRow[];
   readonly status: "idle" | "loading" | "ready" | "error";
 }
 
-const INITIAL_ROWS: LogRowsState = { rows: [], status: "idle" };
+const INITIAL_ROWS: LogRowsState = { rawRows: [], status: "idle" };
 
 const McapLogConsoleTile: React.FC<McapTileProps> = () => {
   const logSources = useSceneSourcesByType(MCAP_SOURCE_TYPE.LOG);
@@ -92,6 +92,13 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     () => new Set(selectedLevels),
     [selectedLevels],
   );
+  const rows = useMemo(
+    () =>
+      state.rawRows
+        .filter((row) => selectedLevelSet.has(row.level))
+        .sort((left, right) => compareBigInt(left.timeNs, right.timeNs)),
+    [selectedLevelSet, state.rawRows],
+  );
 
   useEffect(() => {
     if (!source || centerTimeNs === undefined || selectedTopics.length === 0) {
@@ -110,7 +117,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
 
     void (async () => {
       try {
-        const rows: McapLogConsoleRow[] = [];
+        const fetchedRows: McapLogConsoleRow[] = [];
         for await (const message of client.readDecodedMessages(
           {
             endTimeNs,
@@ -121,7 +128,10 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
           },
           { priority: "current" },
         )) {
-          rows.push(...logConsoleRowsFromDecodedMessage(message));
+          if (cancelled) {
+            break;
+          }
+          fetchedRows.push(...logConsoleRowsFromDecodedMessage(message));
         }
 
         if (cancelled) {
@@ -129,16 +139,14 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
         }
 
         setState({
-          rows: rows
-            .filter((row) => selectedLevelSet.has(row.level))
-            .sort((left, right) => compareBigInt(left.timeNs, right.timeNs)),
+          rawRows: fetchedRows,
           status: "ready",
         });
       } catch (error) {
         if (!cancelled) {
           setState({
             error: error instanceof Error ? error.message : String(error),
-            rows: [],
+            rawRows: [],
             status: "error",
           });
         }
@@ -148,7 +156,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     return () => {
       cancelled = true;
     };
-  }, [centerTimeNs, client, selectedLevelSet, selectedTopics, source]);
+  }, [centerTimeNs, client, selectedTopics, source]);
 
   const handleRowClick = useCallback(
     (row: McapLogConsoleRow) => {
@@ -227,7 +235,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
           </div>
         ) : null}
         <span className={styles.meta}>
-          {state.status === "loading" ? "loading" : state.rows.length} ·{" "}
+          {state.status === "loading" ? "loading" : rows.length} ·{" "}
           {LOG_WINDOW_LABEL}
         </span>
       </div>
@@ -237,7 +245,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
             Could not read logs{state.error ? `: ${state.error}` : ""}
           </span>
         </div>
-      ) : state.rows.length === 0 ? (
+      ) : rows.length === 0 ? (
         <div className={styles.empty}>
           {selectedTopics.length === 0 || selectedLevels.length === 0
             ? "No filters selected"
@@ -245,7 +253,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
         </div>
       ) : (
         <div className={styles.scroll}>
-          {state.rows.map((row) => (
+          {rows.map((row) => (
             <button
               key={row.id}
               className={styles.row}

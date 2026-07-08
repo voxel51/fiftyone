@@ -143,6 +143,7 @@ export function McapSceneUpdateHistoryBridge({
 
         void (async () => {
           const deltas: McapSceneUpdateDelta[] = [];
+          let messageCount = 0;
           try {
             for await (const message of client.readDecodedMessages(
               {
@@ -161,6 +162,7 @@ export function McapSceneUpdateHistoryBridge({
                 scheduleRetry(SCENE_UPDATE_HISTORY_DEFERRED_RETRY_MS);
                 return;
               }
+              messageCount += 1;
               const visualization = message.decoded.output.visualization;
               if (visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE) {
                 continue;
@@ -174,7 +176,7 @@ export function McapSceneUpdateHistoryBridge({
             commit(topic, {
               deltas,
               status: "ready",
-              ...(deltas.length >= SCENE_UPDATE_HISTORY_READ_LIMIT
+              ...(messageCount >= SCENE_UPDATE_HISTORY_READ_LIMIT
                 ? { truncated: true }
                 : {}),
             });

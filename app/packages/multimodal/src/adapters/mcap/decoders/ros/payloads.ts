@@ -177,3 +177,16 @@ export const ROS_DETECTION_3D_ARRAY_PAYLOADS = rosPayloads(
   "vision_msgs/Detection3DArray",
   "vision_msgs/msg/Detection3DArray",
 );
+
+/**
+ * Payload descriptors for ROS TF transform messages.
+ */
+export const ROS_TF_MESSAGE_PAYLOADS = rosPayloads(
+  "tf2_msgs/TFMessage",
+  "tf2_msgs/msg/TFMessage",
+);
+
+export const ROS_TRANSFORM_STAMPED_PAYLOADS = rosPayloads(
+  "geometry_msgs/TransformStamped",
+  "geometry_msgs/msg/TransformStamped",
+);
