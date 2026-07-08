@@ -42,7 +42,8 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
     const totalFrames = frameStoreController.totalFrameCount;
     const storeBuffer = frameStoreController.storeBufferManager;
 
-    if (totalFrames === 0) {
+    // hide the seek bar until the stream reveals the group's length.
+    if (!totalFrames) {
       this.element.style.display = "none";
       return this.element;
     }

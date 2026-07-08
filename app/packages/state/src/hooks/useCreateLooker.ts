@@ -24,13 +24,17 @@ import {
 } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
 import { sampleSelectionStyle, selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
+import { filters } from "../recoil/filters";
 import * as schemaAtoms from "../recoil/schema";
-import { datasetName, dynamicGroupsTargetFrameRate } from "../recoil/selectors";
+import {
+  datasetId,
+  datasetName,
+  dynamicGroupsTargetFrameRate,
+} from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc, resolveSelectionIcon } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
@@ -45,7 +49,6 @@ export default <T extends AbstractLooker<BaseState>>(
   enableTimeline?: boolean,
 ) => {
   const abortControllerRef = useRef(new AbortController());
-  const environment = useRelayEnvironment();
   const selected = useRecoilValue(selectedSamples);
   const style = useRecoilValue(sampleSelectionStyle);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
@@ -73,19 +76,18 @@ export default <T extends AbstractLooker<BaseState>>(
     dynamicGroupsTargetFrameRate,
   );
 
-  // callback to get the latest promise inside another recoil callback
-  // gets around the limitation of the fact that snapshot inside callback refs to the committed state at the time
+  useEffect(() => {
+    return () => {
+      return abortControllerRef.current.abort();
+    };
+  }, []);
+
+  // fresh-snapshot getter so a promise resolved inside the create callback reflects
+  // current state, not the callback's committed snapshot
   const getPromise = useRecoilCallback(
     ({ snapshot: { getPromise } }) => getPromise,
     [],
   );
-
-  useEffect(() => {
-    return () => {
-      // sending abort signal to clean up all event handlers
-      return abortControllerRef.current.abort();
-    };
-  }, []);
 
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();
 
@@ -107,12 +109,11 @@ export default <T extends AbstractLooker<BaseState>>(
 
         const mimeType = getMimeType(sample);
 
-        // sometimes the urls are an array of objects, sometimes they are just an object
-        // this is a workaround to make sure we can handle both cases
+        // urls may be an array of objects or a single object; normalize both
         // todo: investigate why this is the case
         const urls = getNormalizedUrls(rawUrls);
 
-        // split("?")[0] is to remove query params, if any, from signed urls
+        // strip query params from signed urls
         const filePath =
           urls.filepath?.split("?")[0] ?? (sample.filepath as string);
         const mediaFieldPath = urls[mediaField];
@@ -211,58 +212,77 @@ export default <T extends AbstractLooker<BaseState>>(
         }
 
         if (create === ImaVidLooker) {
-          // the group length rides on the poster's `_group_count` (already
-          // computed by the grid page query); only aggregate when absent
-          const posterGroupCount = (sample as { _group_count?: number })
-            ._group_count;
-          const totalFrameCountPromise =
-            posterGroupCount != null
-              ? Promise.resolve(posterGroupCount)
-              : getPromise(dynamicGroupsElementCount({ value: sample._group }));
-          const page = snapshot
-            .getLoadable(
-              dynamicGroupAtoms.dynamicGroupPageSelector({
-                value: sample._group,
-                modal: isModal,
-              }),
-            )
-            .valueMaybe();
-
           const firstFrameNumber = isModal
             ? (snapshot
                 .getLoadable(dynamicGroupAtoms.dynamicGroupCurrentElementIndex)
                 .valueMaybe() ?? 1)
             : 1;
 
-          const imavidKey = snapshot
-            .getLoadable(
-              dynamicGroupAtoms.imaVidStoreKey({
-                groupByFieldValue: sample._group,
-                modal: isModal,
-              }),
-            )
-            .valueOrThrow();
-
           const thisSampleId = sample._id as string;
-          const imavidPartitionKey = `${thisSampleId}-${mediaField}`;
-          if (!ImaVidFramesControllerStore.has(imavidPartitionKey)) {
-            ImaVidFramesControllerStore.set(
-              imavidPartitionKey,
-              new ImaVidFramesController({
-                environment,
+          // sample-level caches key on the bare sample `_id` — no media-field or
+          // grid/modal suffix — so grid hover and the modal resolve the SAME
+          // controller and the modal reuses the frames the grid already buffered
+          const imavidPartitionKey = thisSampleId;
+          let controller = ImaVidFramesControllerStore.get(imavidPartitionKey);
+          if (!controller) {
+            controller = new ImaVidFramesController({
+              firstFrameNumber,
+              targetFrameRate: dynamicGroupsTargetFrameRateValue,
+              datasetId: snapshot.getLoadable(datasetId).valueMaybe() ?? "",
+              groupValue: sample._group as string,
+              view,
+              filters: snapshot.getLoadable(filters).valueMaybe() ?? {},
+              fields: [],
+              sharedSamples: new Map(),
+            });
+
+            // seed the poster frame from already-loaded grid data so the looker
+            // renders without a sample fetch; the rest streams on play/hover
+            if (!controller.store.frameIndex.has(firstFrameNumber)) {
+              controller.store.samples.set(thisSampleId, {
+                id: thisSampleId,
+                sample,
+                urls: rawUrls,
+                image: null,
+              } as never);
+              controller.store.frameIndex.set(firstFrameNumber, thisSampleId);
+              controller.store.reverseFrameIndex.set(
+                thisSampleId,
                 firstFrameNumber,
-                page,
-                targetFrameRate: dynamicGroupsTargetFrameRateValue,
-                totalFrameCountPromise,
-                key: imavidKey,
-              }),
-            );
+              );
+              void controller.store.fetchImageForSample(
+                thisSampleId,
+                rawUrls,
+                mediaField,
+              );
+            }
+
+            ImaVidFramesControllerStore.set(imavidPartitionKey, controller);
+          }
+
+          // narrowed so the count closure below is type-safe
+          const frameStoreController = controller;
+
+          // seed the group length from the poster's `_group_count` so the timeline shows
+          // the real total immediately; a cold modal lacking the field fetches it once
+          if (frameStoreController.totalFrameCount == null) {
+            const posterGroupCount = (sample as { _group_count?: number })
+              ._group_count;
+            if (posterGroupCount != null) {
+              frameStoreController.setTotalFrameCount(posterGroupCount);
+            } else if (isModal) {
+              getPromise(
+                dynamicGroupsElementCount({
+                  value: sample._group,
+                  modal: true,
+                }),
+              ).then((count) => frameStoreController.setTotalFrameCount(count));
+            }
           }
 
           config = {
             ...config,
-            frameStoreController:
-              ImaVidFramesControllerStore.get(imavidPartitionKey),
+            frameStoreController,
             frameRate: dynamicGroupsTargetFrameRateValue,
             firstFrameNumber: isModal
               ? (snapshot

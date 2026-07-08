@@ -6,14 +6,9 @@ import {
   LIST_FIELD,
 } from "@fiftyone/utilities";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
-import {
-  currentSlice,
-  groupSlice,
-  hasGroupSlices,
-  modalGroupSlice,
-} from "./groups";
+import { groupSlice, hasGroupSlices, modalGroupSlice } from "./groups";
 import { groupSampleAtMainSlice, modalLooker, modalSample } from "./modal";
-import { dynamicGroupsViewMode, selectedMediaField } from "./options";
+import { dynamicGroupsViewMode } from "./options";
 import { fieldPaths } from "./schema";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
 import { State } from "./types";
@@ -108,13 +103,8 @@ export const imaVidLookerState = atomFamily<any, string>({
       let unsubscribe;
 
       onSet((_newValue) => {
-        // note: resetRecoilState is not triggering `onSet` in effect,
-        // see https://github.com/facebookexperimental/Recoil/issues/2183
-        // replace with `useResetRecoileState` when fixed
-
-        // if (!isReset) {
-        //   throw new Error("cannot set ima-vid state directly");
-        // }
+        // resetRecoilState does not trigger `onSet` in effect:
+        // https://github.com/facebookexperimental/Recoil/issues/2183
         unsubscribe?.();
 
         getPromise(modalLooker)
@@ -150,23 +140,6 @@ export const groupByFieldValue = selector({
     }
     return get(groupSampleAtMainSlice)?.sample?._group ?? null;
   },
-});
-
-export const imaVidStoreKey = selectorFamily<
-  string,
-  { modal: boolean; groupByFieldValue: string }
->({
-  key: "imaVidStoreKey",
-  get:
-    ({ modal, groupByFieldValue }) =>
-    ({ get }) => {
-      const slice = get(currentSlice(modal)) ?? "UNSLICED";
-      const mediaField = get(selectedMediaField(modal));
-
-      return `${JSON.stringify(
-        get(view),
-      )}-${groupByFieldValue}-${slice}-${mediaField}`;
-    },
 });
 
 export const isDynamicGroup = selector<boolean>({

@@ -40,7 +40,6 @@ const escape: Control = {
         if (showHelp) {
           dispatchEvent("panels", { showHelp: "close" });
           return {};
-          // return { options: {showHelp: false} };
         }
 
         if (showOptions) {
@@ -111,7 +110,6 @@ export const toggleOverlays: Control = {
           return {};
         }
 
-        // don't hide overlays if we're hovering over a label with an instance config
         if (isHoveringAnyLabelWithInstanceConfig()) {
           return {};
         }
@@ -123,7 +121,6 @@ export const toggleOverlays: Control = {
           return;
         }
 
-        // don't hide overlays if we're hovering over a label with an instance config
         if (!isHoveringAnyLabelWithInstanceConfig()) {
           dispatchEvent("showOverlays", false);
           dispatchEvent("tooltip", null);
@@ -537,6 +534,10 @@ const seekTo: Control<VideoState | ImaVidState> = {
           },
           currentFrameNumber,
         } = state as ImaVidState;
+        // length not yet revealed by the stream — can't seek by percentage.
+        if (!totalFrameCount) {
+          return {};
+        }
         total = totalFrameCount;
         base = currentFrameNumber < totalFrameCount ? currentFrameNumber : 1;
       } else {

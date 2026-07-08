@@ -197,6 +197,10 @@ export class BufferManager {
    */
   public reset() {
     this.buffers = [];
+    // metadata is keyed by range index; keeping it after the ranges are gone
+    // permanently marks whatever range lands at that index next (e.g. a
+    // "fetching" flag that wedges the imavid fetch loop)
+    this.bufferMetadata = {};
   }
 
   /**

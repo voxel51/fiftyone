@@ -15,17 +15,18 @@ export const dynamicGroupsElementCount = selectorFamily({
       modal: boolean;
     }) =>
     ({ get }) => {
-      // in the modal, the group size rides on the poster's `_group_count`
-      // when available, avoiding a redundant count aggregation
+      // in the modal, the group size rides on the poster's `_group_count`; absent
+      // it, 0 puts the imavid timeline in streaming mode (the stream reveals length)
       if (modal) {
         const sample = get(modalSample)?.sample as
           | { _group_count?: number }
           | undefined;
-        if (typeof sample?._group_count === "number") {
-          return sample._group_count;
-        }
+        return typeof sample?._group_count === "number"
+          ? sample._group_count
+          : 0;
       }
 
+      // grid context only (page-load / view-change sidebar) may aggregate
       return (
         get(
           aggregationQuery({

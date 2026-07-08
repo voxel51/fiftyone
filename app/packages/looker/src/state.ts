@@ -441,6 +441,11 @@ export interface ImaVidState extends BaseState {
    * true if the seek bar is being hovered
    */
   seekBarHovering: boolean;
+  /**
+   * true once the pointer has moved over this looker (a deliberate hover, not a
+   * scroll-by); gates the per-group frame-stream fetch.
+   */
+  hoverProbed: boolean;
 }
 
 export interface ThreeDState extends BaseState {

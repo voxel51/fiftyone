@@ -31,19 +31,17 @@ const DEFAULT_SCALE = 1;
 const FIRST_FRAME = 1;
 
 /**
- * Looker for image samples in an ordered dynamic group that are to be rendered as a video.
- *
+ * Looker for image samples in an ordered dynamic group rendered as a video.
  */
 export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   private unsubscribe: ReturnType<typeof this.subscribeToState>;
 
   init() {
-    // we have other mechanism for the modal
+    // the modal uses a different mechanism
     if (!this.state.config.thumbnail) {
       return;
     }
 
-    // subscribe to frame number and update sample when frame number changes
     this.unsubscribe = getSubscription({
       id: this.uuid,
       looker: this,
@@ -129,6 +127,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       buffering: false,
       bufferManager: new BufferManager([[FIRST_FRAME, FIRST_FRAME]]),
       seekBarHovering: false,
+      hoverProbed: false,
       SHORTCUTS: IMAVID_SHORTCUTS,
     };
   }
@@ -243,7 +242,6 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
 
   refreshSample(renderLabels: string[] | null = null, frameNumber?: number) {
     if (!this.sample) {
-      // looker not initialized yet
       return;
     }
 
@@ -257,7 +255,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
 
     let sample: Sample;
 
-    // if sampleIdFromFramesStore is not found, it means we're in grid thumbnail view
+    // missing sampleIdFromFramesStore means grid thumbnail view
     if (sampleIdFromFramesStore) {
       const { image: _cachedImage, ...sampleWithoutImage } =
         this.frameStoreController.store.samples.get(sampleIdFromFramesStore);
@@ -285,7 +283,6 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
             sample,
           );
         } else {
-          // get current sample from frame number and update it
           const sampleId = this.frameStoreController.store.frameIndex.get(
             this.frameNumber,
           );
@@ -298,7 +295,6 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
         this.state.options.coloring = coloring;
         this.loadOverlays(sample);
 
-        // to run looker reconciliation
         this.updater({
           overlaysPrepared: true,
         });
