@@ -16,7 +16,7 @@ import {
 } from "./AnnotatePrerequisiteNotice";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
-import { RegisterImaVidImage } from "./RegisterImaVidImage";
+import { RegisterImaVidImage, type DecodeMode } from "./RegisterImaVidImage";
 import {
   RegisterSyntheticLabels,
   SyntheticTrackTimeline,
@@ -73,6 +73,24 @@ function useTileMode(): TileMode {
   return mode;
 }
 
+/**
+ * Bitmap source for the ImaVid tile: `frames` (default, `/frames` over
+ * `to_frames` data) or `native` (`?decode=native`, on-demand WebCodecs decode
+ * of the source video — no `to_frames`). Read once at mount.
+ */
+function useDecodeMode(): DecodeMode {
+  const [mode] = useState<DecodeMode>(() => {
+    if (typeof window === "undefined") {
+      return "frames";
+    }
+
+    const param = new URLSearchParams(window.location.search).get("decode");
+    return param === "native" ? "native" : "frames";
+  });
+
+  return mode;
+}
+
 export interface VideoAnnotationSurfaceProps {
   sample: ModalSample;
 }
@@ -95,20 +113,18 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 }) => {
   const labelsMode = useLabelsMode();
   const tileMode = useTileMode();
+  const decodeMode = useDecodeMode();
   const prerequisites = useAnnotatePrerequisites(sample);
 
-  // The native-video tile binds to a single top-level URL. The ImaVid
-  // tile resolves a per-frame URL through the image stream, so it does
-  // not need (and ignores) this value. Computed before the prerequisite
-  // gate so hook order stays stable across the checking → ready transition.
+  // Resolved top-level media URL. The native-`<video>` tile binds to it, and
+  // the ImaVid tile's native-decode source (`?decode=native`) fetches it in a
+  // worker. The `/frames` ImaVid source resolves per-frame URLs instead and
+  // ignores this. Computed before the prerequisite gate so hook order stays
+  // stable across the checking → ready transition.
   const videoSrc = useMemo(() => {
-    if (tileMode !== "video") {
-      return null;
-    }
-
     const url = sample.urls?.[0]?.url;
     return url ? getSampleSrc(url) : null;
-  }, [sample, tileMode]);
+  }, [sample]);
 
   // Annotation needs computed metadata (frame count + fps) and sampled frame
   // images. When a prerequisite is missing, show an actionable prompt instead
@@ -173,6 +189,8 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
       <RegisterImaVidImage
         frameCount={prerequisites.frameCount}
         frameRate={prerequisites.frameRate}
+        decodeMode={decodeMode}
+        videoSrc={videoSrc}
       >
         {labels}
       </RegisterImaVidImage>
