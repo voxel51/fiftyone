@@ -29,6 +29,7 @@ import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
 import { sampleSelectionStyle, selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import { filters } from "../recoil/filters";
+import { groupSlice, hasGroupSlices, modalGroupSlice } from "../recoil/groups";
 import * as schemaAtoms from "../recoil/schema";
 import {
   datasetId,
@@ -225,6 +226,23 @@ export default <T extends AbstractLooker<BaseState>>(
           const imavidPartitionKey = thisSampleId;
           let controller = ImaVidFramesControllerStore.get(imavidPartitionKey);
           if (!controller) {
+            // a nested dynamic group's frames span slices; scope the stream to
+            // the poster's slice like the relay pager did
+            const slice = snapshot
+              .getLoadable(isModal ? modalGroupSlice : groupSlice)
+              .valueMaybe();
+            const sliceFilter =
+              slice != null
+                ? {
+                    group: {
+                      slice,
+                      ...(snapshot.getLoadable(hasGroupSlices).valueMaybe()
+                        ? { slices: [slice] }
+                        : {}),
+                    },
+                  }
+                : undefined;
+
             controller = new ImaVidFramesController({
               firstFrameNumber,
               targetFrameRate: dynamicGroupsTargetFrameRateValue,
@@ -232,8 +250,7 @@ export default <T extends AbstractLooker<BaseState>>(
               groupValue: sample._group as string,
               view,
               filters: snapshot.getLoadable(filters).valueMaybe() ?? {},
-              fields: [],
-              sharedSamples: new Map(),
+              filter: sliceFilter,
             });
 
             // seed the poster frame from already-loaded grid data so the looker

@@ -277,12 +277,8 @@ export const modalSampleAggregations = selectorFamily<
 
       return params.paths.map((path) => {
         const field = get(schemaAtoms.field(path));
-        // TEMPORARY (removed when modal fetches exclude vectors): vectors are
-        // never aggregated; flattening one would count its elements
-        if (
-          field?.ftype === VECTOR_FIELD ||
-          field?.subfield === VECTOR_FIELD
-        ) {
+        // vectors are never aggregated; flattening one would count its elements
+        if (field?.ftype === VECTOR_FIELD || field?.subfield === VECTOR_FIELD) {
           return {
             __typename: "DataAggregation",
             path,

@@ -36,19 +36,16 @@ export class ImaVidFramesController {
       groupValue: string;
       view: unknown;
       filters?: unknown;
-      fields: string[];
-      // shared sample cache (keyed by `_id`) the grid and modal both use
-      sharedSamples: Map<string, ModalSample>;
+      // group slice filter (e.g. {group: {slice}}) scoping a nested dynamic
+      // group's frame stream to one slice
+      filter?: unknown;
     },
   ) {
     this.storeBufferManager = new BufferManager([
       [config.firstFrameNumber, config.firstFrameNumber],
     ]);
     this.targetFrameRate = config.targetFrameRate;
-    this.frameSamples = new ImaVidFrameSamples(
-      this.storeBufferManager,
-      config.sharedSamples,
-    );
+    this.frameSamples = new ImaVidFrameSamples(this.storeBufferManager);
   }
 
   public setImaVidStateUpdater(updater: StateUpdate<ImaVidState>) {
@@ -237,10 +234,9 @@ export class ImaVidFramesController {
         dynamicGroup: this.config.groupValue,
         after: chunkCursor > 0 ? chunkCursor : undefined,
         count: chunkCount,
-        // masks are fetched inline; decoupling them needs the backend to store masks as fetchable blobs
-        fields: this.config.fields,
         view: this.config.view,
         filters: this.config.filters,
+        filter: this.config.filter,
         // frames inherit the poster's aspect ratio — never open each frame's media
         skipMetadata: true,
       });
@@ -265,7 +261,7 @@ export class ImaVidFramesController {
             sample: row.fields,
             urls: row.urls,
             image: null,
-          } as ModalSample & { image: HTMLImageElement | null });
+          } as unknown as ModalSample & { image: HTMLImageElement | null });
           imageFetchPromisesMap.set(
             frameNumber,
             this.store.fetchImageForSample(sampleId, row.urls, this.mediaField),

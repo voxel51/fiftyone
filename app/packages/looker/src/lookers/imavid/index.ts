@@ -334,7 +334,9 @@ export const getSampleWithResettedMasks = (
       if (value._cls === DETECTIONS) {
         newSample[field] = {
           ...value,
-          detections: value.detections.map(getFieldWithMaskResetted),
+          detections: (
+            value as { detections: Record<string, unknown>[] }
+          ).detections.map(getFieldWithMaskResetted),
         };
       } else if (
         (value._cls === DETECTION ||

@@ -70,16 +70,9 @@ export class ImaVidFrameSamples {
   // controller's future fetches get a live signal
   private abortController: AbortController;
 
-  // read-through for posters populated by the grid/modal looker stores
-  private readonly sharedSamples?: Map<SampleId, ModalSample>;
-
-  constructor(
-    storeBufferManager: BufferManager,
-    sharedSamples?: Map<SampleId, ModalSample>,
-  ) {
+  constructor(storeBufferManager: BufferManager) {
     this.storeBufferManager = storeBufferManager;
     this.abortController = new AbortController();
-    this.sharedSamples = sharedSamples;
 
     this.samples = ImaVidSampleStore;
 
@@ -109,18 +102,7 @@ export class ImaVidFrameSamples {
       return undefined;
     }
 
-    const local = this.samples.get(sampleId);
-    if (local) {
-      return local;
-    }
-
-    // read through to the shared cache so a grid-fetched frame is reused; image fills in lazily
-    const shared = this.sharedSamples?.get(sampleId);
-    if (shared) {
-      return { ...shared, image: null } as ModalSampleExtendedWithImage;
-    }
-
-    return undefined;
+    return this.samples.get(sampleId);
   }
 
   /**
@@ -286,7 +268,10 @@ export class ImaVidFrameSamples {
     for (const [_field, value] of Object.entries(sample.sample)) {
       if (typeof value === "object" && value !== null && "_cls" in value) {
         if (value._cls === DETECTIONS) {
-          for (const detection of value.detections) {
+          const { detections } = value as {
+            detections: Record<string, unknown>[];
+          };
+          for (const detection of detections) {
             if (checkMask(detection)) {
               return true;
             }

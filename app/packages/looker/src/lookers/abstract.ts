@@ -126,6 +126,9 @@ export abstract class AbstractLooker<
   /** @internal */
   state: State;
 
+  // the looker's current sample data; assigned by loadSample and label repaints
+  sample: S;
+
   sampleOverlays: Overlay<State>[];
   pluckedOverlays: Overlay<State>[];
 
@@ -700,7 +703,7 @@ export abstract class AbstractLooker<
         labels: renderLabels,
       })
       .then(({ sample, coloring }) => {
-        this.sample = sample;
+        this.sample = sample as S;
         this.loadOverlays(sample);
 
         // to run looker reconciliation
