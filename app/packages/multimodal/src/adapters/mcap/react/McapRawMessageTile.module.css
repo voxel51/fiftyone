@@ -1,0 +1,165 @@
+/* Raw message tile: monospace record tree over the shared dark tile
+   surface, with a metadata strip pinned above the scrollable tree. */
+
+.body {
+  background: var(--plot-surface, #050b12);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  width: 100%;
+}
+
+.meta {
+  align-items: center;
+  border-bottom: 1px solid var(--color-content-border-default, #383835);
+  color: var(--color-content-text-secondary);
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  gap: 4px 10px;
+  line-height: 1.4;
+  padding: 6px 10px;
+}
+
+.metaTopic {
+  color: var(--color-content-text-primary);
+  font-weight: 600;
+}
+
+.metaBadge {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 18%,
+    transparent
+  );
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+
+.copyMessageButton {
+  background: transparent;
+  border: 1px solid var(--color-content-border-default, #383835);
+  border-radius: 4px;
+  color: var(--color-content-text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  margin-left: auto;
+  padding: 2px 8px;
+}
+
+.copyMessageButton:hover {
+  color: var(--color-content-text-primary);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 10px;
+}
+
+.tree {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.row {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.row:hover {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 8%,
+    transparent
+  );
+}
+
+.rowMain {
+  align-items: baseline;
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chevron {
+  background: transparent;
+  border: none;
+  color: var(--color-content-text-secondary);
+  cursor: pointer;
+  flex: none;
+  font-size: 10px;
+  padding: 0;
+  width: 12px;
+}
+
+.chevronSpacer {
+  flex: none;
+  width: 12px;
+}
+
+.key {
+  color: var(--color-content-text-secondary);
+  flex: none;
+}
+
+.key::after {
+  content: ":";
+}
+
+.valueNumber {
+  color: var(--color-content-text-primary);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.valueString {
+  color: var(--color-voxel-secondary, #ff8d00);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.valueSummary {
+  color: var(--color-content-text-secondary);
+  font-style: italic;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.truncatedText {
+  color: var(--color-content-text-secondary);
+  font-style: italic;
+}
+
+/* Per-row copy affordance: present in layout (keyboard reachable) but
+   only visible while the row is hovered or the button is focused. */
+.copyButton {
+  background: transparent;
+  border: none;
+  color: var(--color-content-text-secondary);
+  cursor: pointer;
+  flex: none;
+  font-size: 10px;
+  opacity: 0;
+  padding: 0 4px;
+}
+
+.row:hover .copyButton,
+.copyButton:focus-visible {
+  opacity: 1;
+}
+
+.notice {
+  color: var(--color-content-text-secondary);
+  font-size: 12px;
+  max-width: 44ch;
+  text-align: center;
+}

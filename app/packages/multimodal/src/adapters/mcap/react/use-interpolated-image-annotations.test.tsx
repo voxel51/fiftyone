@@ -50,12 +50,33 @@ function absBig(n: bigint): bigint {
 
 function makeTimeline(ticks: readonly bigint[]): McapTimelineIndex {
   const startTimeNs = ticks[0] ?? 0n;
+  const stepNs =
+    ticks.length > 1 ? (ticks[1] as bigint) - startTimeNs : 1_000_000n;
   const toNs = (sec: number) =>
     startTimeNs + BigInt(Math.round((Number.isFinite(sec) ? sec : 0) * 1e9));
+  const lowerBound = (target: bigint): number => {
+    let lo = 0;
+    let hi = ticks.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if ((ticks[mid] as bigint) < target) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  };
   return {
-    ticks,
     durationSec: 1,
+    endTimeNs: ticks.at(-1) ?? startTimeNs,
+    indexAtOrAfter: lowerBound,
+    indexOfTick: (tick) => {
+      const index = ticks.indexOf(tick);
+      return index === -1 ? undefined : index;
+    },
+    nsToSec: (timeNs) => Number(timeNs - startTimeNs) / 1e9,
     startTimeNs,
+    stepNs,
+    tickAt: (index) => ticks[index],
+    tickCount: ticks.length,
     secToNs: toNs,
     nearestTick: (sec) => {
       if (ticks.length === 0) return undefined;
@@ -92,6 +113,7 @@ function makeStream(
     };
   });
   const stream: McapDataStream = {
+    sourceKey: "test-source",
     subscribeToTopic,
     getTopicCache: (topic) => caches.get(topic),
     getTimelineIndex: () => timeline,

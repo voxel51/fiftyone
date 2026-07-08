@@ -73,7 +73,7 @@ describe("TemporalTagButton", () => {
     expect(screen.getByTestId("temporal-tag-mode-button")).toBeTruthy();
   });
 
-  it("shows 'Enter tag mode (T)' aria-label when idle", () => {
+  it("shows 'Enter tag mode (Shift+T)' aria-label when idle", () => {
     const ctx: TemporalTagContextValue = {
       state: idleState,
       actions: makeActions(),
@@ -81,7 +81,7 @@ describe("TemporalTagButton", () => {
     };
     renderButton(ctx);
     expect(
-      screen.getByRole("button", { name: "Enter tag mode (T)" }),
+      screen.getByRole("button", { name: "Enter tag mode (Shift+T)" }),
     ).toBeTruthy();
   });
 
@@ -121,8 +121,8 @@ describe("TemporalTagButton", () => {
     expect(actions.exitTagMode).toHaveBeenCalledTimes(1);
   });
 
-  describe("T hotkey", () => {
-    it("does NOT register T hotkey when onTagCreate is absent", () => {
+  describe("Shift+T hotkey", () => {
+    it("does NOT register the Shift+T hotkey when onTagCreate is absent", () => {
       const actions = makeActions();
       const ctx: TemporalTagContextValue = {
         state: idleState,
@@ -130,11 +130,35 @@ describe("TemporalTagButton", () => {
         // no onTagCreate
       };
       renderButton(ctx);
-      fireEvent.keyDown(window, { key: "t" });
+      fireEvent.keyDown(window, { key: "T", shiftKey: true });
       expect(actions.enterTagMode).not.toHaveBeenCalled();
     });
 
-    it("calls enterTagMode on T keydown when idle", () => {
+    it("calls enterTagMode on Shift+T keydown when idle", () => {
+      const actions = makeActions();
+      const ctx: TemporalTagContextValue = {
+        state: idleState,
+        actions,
+        onTagCreate: vi.fn(),
+      };
+      renderButton(ctx);
+      fireEvent.keyDown(window, { key: "T", shiftKey: true });
+      expect(actions.enterTagMode).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls exitTagMode on Shift+T keydown when active", () => {
+      const actions = makeActions();
+      const ctx: TemporalTagContextValue = {
+        state: readyState,
+        actions,
+        onTagCreate: vi.fn(),
+      };
+      renderButton(ctx);
+      fireEvent.keyDown(window, { key: "T", shiftKey: true });
+      expect(actions.exitTagMode).toHaveBeenCalledTimes(1);
+    });
+
+    it("ignores plain T keydown, which belongs to the 3D top-view shortcut", () => {
       const actions = makeActions();
       const ctx: TemporalTagContextValue = {
         state: idleState,
@@ -143,22 +167,10 @@ describe("TemporalTagButton", () => {
       };
       renderButton(ctx);
       fireEvent.keyDown(window, { key: "t" });
-      expect(actions.enterTagMode).toHaveBeenCalledTimes(1);
+      expect(actions.enterTagMode).not.toHaveBeenCalled();
     });
 
-    it("calls exitTagMode on T keydown when active", () => {
-      const actions = makeActions();
-      const ctx: TemporalTagContextValue = {
-        state: readyState,
-        actions,
-        onTagCreate: vi.fn(),
-      };
-      renderButton(ctx);
-      fireEvent.keyDown(window, { key: "T" });
-      expect(actions.exitTagMode).toHaveBeenCalledTimes(1);
-    });
-
-    it("ignores T keydown when focus is inside an input", () => {
+    it("ignores Shift+T keydown when focus is inside an input", () => {
       const actions = makeActions();
       const ctx: TemporalTagContextValue = {
         state: idleState,
@@ -172,7 +184,7 @@ describe("TemporalTagButton", () => {
         </TemporalTagProvider>,
       );
       const input = screen.getByTestId("text-input");
-      fireEvent.keyDown(input, { key: "t" });
+      fireEvent.keyDown(input, { key: "T", shiftKey: true });
       expect(actions.enterTagMode).not.toHaveBeenCalled();
     });
 

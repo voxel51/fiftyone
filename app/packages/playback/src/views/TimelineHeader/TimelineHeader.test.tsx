@@ -128,7 +128,7 @@ describe("TimelineHeader", () => {
     expect(root.children).toHaveLength(2);
   });
 
-  describe("buffered-ranges strip", () => {
+  describe("buffered-ranges shading", () => {
     function SetBufferedRanges({
       ranges,
     }: {
@@ -160,8 +160,10 @@ describe("TimelineHeader", () => {
         </HeaderHarness>,
       );
       const strip = screen.getByTestId("buffered-ranges-strip");
-      // Lane starts after the label column, like the ruler and playhead.
-      expect(strip.getAttribute("style") ?? "").toContain("left: 100px");
+      // Rendered inside the ruler's tick lane (which carries the label
+      // offset), directly on the bar users scrub.
+      const ruler = screen.getByTestId("timeline-ruler");
+      expect(ruler.contains(strip)).toBe(true);
       const segments = Array.from(strip.children) as HTMLElement[];
       expect(segments).toHaveLength(2);
       // View window is [0, 10] → [2,4] maps to left 20% / width 20%.

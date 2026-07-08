@@ -1,82 +1,16 @@
 import { Size, Spinner } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useMemo } from "react";
-import styles from "./McapTile.module.css";
 import {
-  McapTopicStatus,
+  buildMcapTileEmptyStateModel,
+  buildMcapTileStreamNotice,
+} from "./mcap-health";
+import {
   useMcapTopicStartTimes,
+  useMcapTopicStaleAges,
   useMcapTopicStatuses,
 } from "./mcap-stream-status-state";
-
-interface StatusSummary {
-  /** Number of topics currently in `status`. */
-  readonly affected: number;
-  readonly status: Exclude<McapTopicStatus, "ready">;
-  readonly total: number;
-}
-
-/**
- * Worst non-ready status across the tile's topics, severity-ordered: a
- * sticky failure outranks transient buffering, which outranks a
- * pre-start gap, which outranks a stale-but-rendering frame. `null`
- * when every topic is current.
- */
-function summarizeStatuses(
-  statuses: readonly McapTopicStatus[],
-): StatusSummary | null {
-  for (const status of ["failed", "loading", "gap", "stale"] as const) {
-    const affected = statuses.filter((s) => s === status).length;
-    if (affected > 0) {
-      return { affected, status, total: statuses.length };
-    }
-  }
-  return null;
-}
-
-/** `(k/n)` suffix so a multi-source tile says how much of it is behind. */
-function affectedSuffix({ affected, total }: StatusSummary): string {
-  return total > 1 ? ` (${affected}/${total})` : "";
-}
-
-/**
- * Timeline seconds → `m:ss.cs` for "No data until" copy — the same
- * shape as the playhead readout, so sub-second starts don't collapse
- * into a nonsensical "until 0:00" while the playhead sits at 0:00.
- */
-function formatStartTime(sec: number): string {
-  const safe = Number.isFinite(sec) && sec > 0 ? sec : 0;
-  const totalCs = Math.ceil(safe * 100);
-  const m = Math.floor(totalCs / 6000);
-  const s = Math.floor((totalCs % 6000) / 100);
-  const cs = totalCs % 100;
-  return `${m}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
-}
-
-/**
- * Earliest known first-message time among the topics currently in
- * "gap", or null when none is known. With latest-at-or-before
- * selection, a gap means the playhead is before the topic's first
- * message — the earliest start is when the tile gets content.
- */
-function earliestGapStartSec(
-  statuses: readonly McapTopicStatus[],
-  startTimes: readonly (number | null)[],
-): number | null {
-  let earliest: number | null = null;
-  statuses.forEach((status, index) => {
-    if (status !== "gap") return;
-    const start = startTimes[index];
-    if (start === null || start === undefined) return;
-    if (earliest === null || start < earliest) earliest = start;
-  });
-  return earliest;
-}
-
-function gapCopy(startSec: number | null): string {
-  return startSec !== null
-    ? `No data until ${formatStartTime(startSec)}`
-    : "No data at this time";
-}
+import styles from "./McapTile.module.css";
 
 /**
  * Drops empty entries and keeps the array referentially stable by
@@ -95,6 +29,9 @@ function useStableTopics(topics: readonly string[]): readonly string[] {
  * or still-loading data reads as "this stream is behind", not "the
  * modal is broken". Renders nothing while every stream is current.
  *
+ * Copy and status ordering come from the unified health model in
+ * `mcap-health.ts` (`buildMcapTileStreamNotice`).
+ *
  * The parent container must be `position: relative`.
  */
 export const McapTileStatusBadge: React.FC<{
@@ -103,32 +40,22 @@ export const McapTileStatusBadge: React.FC<{
   const stableTopics = useStableTopics(topics);
   const statuses = useMcapTopicStatuses(stableTopics);
   const startTimes = useMcapTopicStartTimes(stableTopics);
-  const summary = summarizeStatuses(statuses);
+  const staleAges = useMcapTopicStaleAges(stableTopics);
+  const notice = buildMcapTileStreamNotice({ staleAges, startTimes, statuses });
 
-  if (!summary) return null;
+  if (!notice) return null;
 
   return (
     <span
       className={clsx(styles.statusBadge, {
-        [styles.statusBadgeError]: summary.status === "failed",
+        [styles.statusBadgeError]: notice.status === "failed",
       })}
       data-testid="mcap-tile-status-badge"
-      data-status={summary.status}
+      data-status={notice.status}
       role="status"
     >
-      {summary.status === "loading" && (
-        <>
-          <Spinner size={Size.Xs} />
-          {`Buffering${affectedSuffix(summary)}`}
-        </>
-      )}
-      {summary.status === "gap" &&
-        `${gapCopy(earliestGapStartSec(statuses, startTimes))}${affectedSuffix(
-          summary,
-        )}`}
-      {summary.status === "stale" && `No new data${affectedSuffix(summary)}`}
-      {summary.status === "failed" &&
-        `Failed to load${affectedSuffix(summary)}`}
+      {notice.status === "loading" && <Spinner size={Size.Xs} />}
+      {notice.message}
     </span>
   );
 };
@@ -166,22 +93,18 @@ const McapTileEmptyStateForTopics: React.FC<{
 }> = ({ topics }) => {
   const statuses = useMcapTopicStatuses(topics);
   const startTimes = useMcapTopicStartTimes(topics);
-  const allFailed =
-    statuses.length > 0 && statuses.every((s) => s === "failed");
-  const anyLoading = statuses.some((s) => s === "loading");
+  const model = buildMcapTileEmptyStateModel({ startTimes, statuses });
 
   return (
     <div className={styles.loading} data-testid="mcap-tile-empty-state">
-      {allFailed ? (
+      {model.kind === "failed" ? (
         <span className={clsx(styles.emptyText, styles.emptyTextError)}>
-          Failed to load stream data
+          {model.message}
         </span>
-      ) : anyLoading ? (
+      ) : model.kind === "loading" ? (
         <Spinner size={Size.Lg} />
       ) : (
-        <span className={styles.emptyText}>
-          {gapCopy(earliestGapStartSec(statuses, startTimes))}
-        </span>
+        <span className={styles.emptyText}>{model.message}</span>
       )}
     </div>
   );

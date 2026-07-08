@@ -1,0 +1,41 @@
+/* Plot tile body: chart surface matches sibling visualization panels. */
+.body {
+  background: var(--plot-surface, #050b12);
+  height: 100%;
+  position: relative;
+  width: 100%;
+}
+
+/* Settings rows: checkbox + color swatch per plottable field. */
+.fieldRow {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.fieldRow > :first-child {
+  min-width: 0;
+}
+
+.swatch {
+  border-radius: 2px;
+  flex: none;
+  height: 10px;
+  width: 10px;
+}
+
+.filterInput {
+  background: transparent;
+  border: 1px solid var(--color-content-border-default, #383835);
+  border-radius: 4px;
+  color: var(--color-content-text-primary);
+  font-size: 12px;
+  padding: 4px 8px;
+  width: 100%;
+}
+
+.filterInput::placeholder {
+  color: var(--color-content-text-secondary);
+}
