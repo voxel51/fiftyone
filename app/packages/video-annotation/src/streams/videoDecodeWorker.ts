@@ -38,6 +38,7 @@
 import { createFile, DataStream, MP4BoxBuffer } from "mp4box";
 import type { ISOFile, Movie, Sample } from "mp4box";
 import type {
+  CapabilityMessage,
   FetchChunkMessage,
   FrameWorkerInbound,
   FrameWorkerOutbound,
@@ -51,6 +52,12 @@ interface NativeInitMessage extends InitMessage {
   headers?: Record<string, string>;
   /** Phase-1 frame-exactness instrumentation. */
   debug?: boolean;
+  /**
+   * Capability probe only: stream just far enough to demux the `moov` +
+   * `isConfigSupported`, post a `capability` verdict, and stop — no decode.
+   * Drives the decode-strategy resolver (which then terminates this worker).
+   */
+  probeOnly?: boolean;
 }
 
 /** The `request` payload the native stream's `buildChunkRequest` produces. */
@@ -124,6 +131,12 @@ self.addEventListener("message", (event: MessageEvent<FrameWorkerInbound>) => {
 async function handleInit(msg: NativeInitMessage): Promise<void> {
   debug = msg.debug ?? false;
 
+  // Capability probe: demux the header only, report a verdict, and stop.
+  if (msg.probeOnly) {
+    await handleProbe(msg);
+    return;
+  }
+
   try {
     const bytes = await fetchVideoBytes(msg.videoSrc, msg.headers);
     await demux(bytes);
@@ -154,6 +167,97 @@ async function fetchVideoBytes(
   }
 
   return resp.arrayBuffer();
+}
+
+/**
+ * Capability probe: stream just enough of the source to demux its `moov`,
+ * build a `VideoDecoderConfig`, and ask `isConfigSupported`. Posts a single
+ * `capability` verdict and does no decode — the resolver terminates this worker
+ * once it has the answer.
+ */
+async function handleProbe(msg: NativeInitMessage): Promise<void> {
+  try {
+    const cfg = await demuxHeaderConfig(msg.videoSrc, msg.headers);
+    const support = await VideoDecoder.isConfigSupported(cfg);
+    postCapability(
+      Boolean(support.supported),
+      cfg.codec,
+      support.supported ? undefined : `codec unsupported: ${cfg.codec}`,
+    );
+  } catch (error) {
+    postCapability(false, undefined, errorMessage(error));
+  }
+}
+
+/**
+ * Stream `videoSrc` through mp4box only until it parses the `moov` (the header
+ * carrying codec + sample-description boxes), then stop — so a decodability
+ * check costs a few hundred KB, not the whole clip. Faststart files resolve on
+ * the first read; a trailing `moov` (non-faststart) degrades to reading the
+ * whole stream, same as decode would.
+ */
+async function demuxHeaderConfig(
+  videoSrc: string,
+  headers?: Record<string, string>,
+): Promise<VideoDecoderConfig> {
+  const resp = await fetch(videoSrc, { mode: "cors", headers });
+  if (!resp.ok) {
+    throw new Error(`video fetch failed: ${resp.status}`);
+  }
+
+  const file = createFile();
+  let headerConfig: VideoDecoderConfig | null = null;
+  let headerError: string | null = null;
+
+  file.onError = (error: string) => {
+    headerError = error;
+  };
+
+  file.onReady = (info: Movie) => {
+    const track = info.videoTracks[0];
+    if (!track) {
+      headerError = "no video track";
+      return;
+    }
+
+    headerConfig = buildDecoderConfig(file, track);
+  };
+
+  // No streaming body (some environments): fall back to a whole-file demux.
+  if (!resp.body) {
+    const bytes = await resp.arrayBuffer();
+    file.appendBuffer(MP4BoxBuffer.fromArrayBuffer(bytes, 0));
+  } else {
+    const reader = resp.body.getReader();
+    let offset = 0;
+
+    while (!headerConfig && !headerError) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      const chunk = value.buffer.slice(
+        value.byteOffset,
+        value.byteOffset + value.byteLength,
+      );
+      file.appendBuffer(MP4BoxBuffer.fromArrayBuffer(chunk, offset));
+      offset += value.byteLength;
+    }
+
+    // We have (or failed to get) the header — don't drain the rest.
+    void reader.cancel().catch(() => {});
+  }
+
+  if (headerError) {
+    throw new Error(headerError);
+  }
+
+  if (!headerConfig) {
+    throw new Error("demux produced no decoder config");
+  }
+
+  return headerConfig;
 }
 
 /**
@@ -491,6 +595,20 @@ function post(msg: FrameWorkerOutbound, transfer?: Transferable[]): void {
 
 function postFailed(reqId: number, error: string): void {
   post({ type: "chunkFailed", reqId, error });
+}
+
+function postCapability(
+  decodable: boolean,
+  codec?: string,
+  reason?: string,
+): void {
+  const msg: CapabilityMessage = {
+    type: "capability",
+    decodable,
+    codec,
+    reason,
+  };
+  post(msg);
 }
 
 function log(message: string): void {

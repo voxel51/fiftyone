@@ -14,40 +14,35 @@ import { ImaVidImageStream } from "../streams/ImaVidImageStream";
 import { NativeVideoFrameStream } from "../streams/NativeVideoFrameStream";
 import { usePublishImaVidImageStream } from "../streams/imaVidImageStreamHandle";
 
-/** How the per-frame bitmaps are sourced for the ImaVid tile. */
-export type DecodeMode = "frames" | "native";
+/**
+ * The two ImaVid-tile-backed bitmap sources. Which one is chosen is decided
+ * upstream by {@link useDecodeStrategy} — this registrar just constructs it.
+ *
+ * - `fetch` — `POST /frames` over `to_frames(sample_frames=True)` images.
+ * - `extract` — on-demand WebCodecs decode of the source video (no `to_frames`).
+ */
+export type ImaVidSource = "fetch" | "extract";
 
 /**
  * Construct and register the ImaVid-tile frame stream as soon as the sample's
  * params resolve. The stream contributes `duration = frameCount/fps` back to
  * the engine, which unblocks `RegisterFrameLabels` downstream.
  *
- * Two bitmap sources, same tile + engine-clock lock-step (see
- * {@link FrameBitmapStream}):
- * - `frames` (default): `POST /frames` over `to_frames(sample_frames=True)`.
- * - `native`: on-demand WebCodecs decode of the source video (no `to_frames`),
- *   used when `?decode=native` AND the browser has `VideoDecoder` AND a video
- *   URL resolved; otherwise falls back to `frames`.
- *
+ * Both sources feed the same tile + engine-clock lock-step (see
+ * {@link FrameBitmapStream}); `extract` additionally needs a `videoSrc`.
  * `frameCount` / `frameRate` are resolved + validated upstream by
  * `useAnnotatePrerequisites`, so they arrive as positive finite numbers.
  *
- * Re-keys on any identity change (incl. decode mode) so a fresh stream replaces
+ * Re-keys on any identity change (incl. `source`) so a fresh stream replaces
  * the old one via `usePlaybackStream`'s standard cleanup.
  */
 export const RegisterImaVidImage: React.FC<{
+  source: ImaVidSource;
   frameCount: number;
   frameRate: number;
-  decodeMode?: DecodeMode;
   videoSrc?: string | null;
   children: React.ReactNode;
-}> = ({
-  frameCount,
-  frameRate,
-  decodeMode = "frames",
-  videoSrc = null,
-  children,
-}) => {
+}> = ({ source, frameCount, frameRate, videoSrc = null, children }) => {
   const dataset = useDatasetName();
   const view = useView();
   const slice = useGroupSlice();
@@ -57,10 +52,6 @@ export const RegisterImaVidImage: React.FC<{
   if (!ready) {
     return <>{children}</>;
   }
-
-  const useNative =
-    decodeMode === "native" && !!videoSrc && nativeDecodeSupported();
-  const source: DecodeMode = useNative ? "native" : "frames";
 
   const key = `${source}|${sampleId}|${dataset}|${
     slice ?? ""
@@ -84,7 +75,7 @@ export const RegisterImaVidImage: React.FC<{
 };
 
 interface ImaVidImageRegistrationProps {
-  source: DecodeMode;
+  source: ImaVidSource;
   sampleId: string;
   dataset: string;
   view: Stage[];
@@ -102,7 +93,7 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
   const streamRef = useRef<FrameBitmapStream | null>(null);
   if (streamRef.current === null) {
     streamRef.current =
-      props.source === "native" && props.videoSrc
+      props.source === "extract" && props.videoSrc
         ? new NativeVideoFrameStream({
             id: IMAVID_STREAM_ID,
             sampleId: props.sampleId,
@@ -145,8 +136,3 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
 
   return <>{children}</>;
 };
-
-/** WebCodecs presence gate. Codec support is confirmed later, worker-side. */
-function nativeDecodeSupported(): boolean {
-  return typeof window !== "undefined" && "VideoDecoder" in window;
-}
