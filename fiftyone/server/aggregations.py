@@ -243,13 +243,22 @@ def _resolve_path_aggregation(
     query_performance: bool,
     hint: t.Optional[str] = None,
 ) -> AggregateResult:
-    aggregations: t.List[foa.Aggregation] = [
-        foa.Count(
-            path if path and path != "" else None,
-            _optimize=query_performance,
-            _hint=hint if query_performance else None,
+    # Get full collection counts from collection metadata (O(1)) instead of a
+    # full `$count` scan. Must skip groups because we need to apply the slice
+    # filter that isn't declared in the view.
+    estimate_root = (
+        not path and view._dataset.media_type != fom.GROUP and not view._stages
+    )
+
+    aggregations: t.List[foa.Aggregation] = []
+    if path or not estimate_root:
+        aggregations.append(
+            foa.Count(
+                path if path else None,
+                _optimize=query_performance,
+                _hint=hint if query_performance else None,
+            )
         )
-    ]
     field = view.get_field(path)
 
     while isinstance(field, fof.ListField):
@@ -283,6 +292,10 @@ def _resolve_path_aggregation(
             aggregations.append(foa.CountValues(path, _first=LIST_LIMIT))
 
     data = {"path": path}
+    if estimate_root:
+        est = view._dataset._sample_collection.estimated_document_count()
+        data["count"] = est
+        data["exists"] = est
 
     def from_results(results):
         for aggregation, result in zip(aggregations, results):
