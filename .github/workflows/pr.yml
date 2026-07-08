@@ -183,6 +183,9 @@ jobs:
                 repo: context.repo.repo,
                 ref: context.payload.pull_request.head.sha,
                 check_name: 'all-tests',
+                // `latest` (the default) returns only the newest run per name —
+                // this job's own in_progress run — hiding the completed verdict.
+                filter: 'all',
                 per_page: 100,
               });
               const prior = data.check_runs
