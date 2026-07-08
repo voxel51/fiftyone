@@ -110,6 +110,7 @@ export const toggleOverlays: Control = {
           return {};
         }
 
+        // don't hide overlays if we're hovering over a label with an instance config
         if (isHoveringAnyLabelWithInstanceConfig()) {
           return {};
         }
@@ -121,6 +122,7 @@ export const toggleOverlays: Control = {
           return;
         }
 
+        // don't hide overlays if we're hovering over a label with an instance config
         if (!isHoveringAnyLabelWithInstanceConfig()) {
           dispatchEvent("showOverlays", false);
           dispatchEvent("tooltip", null);

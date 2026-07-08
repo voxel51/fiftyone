@@ -77,18 +77,19 @@ export default <T extends AbstractLooker<BaseState>>(
     dynamicGroupsTargetFrameRate,
   );
 
-  useEffect(() => {
-    return () => {
-      return abortControllerRef.current.abort();
-    };
-  }, []);
-
-  // fresh-snapshot getter so a promise resolved inside the create callback reflects
-  // current state, not the callback's committed snapshot
+  // callback to get the latest promise inside another recoil callback
+  // gets around the limitation of the fact that snapshot inside callback refs to the committed state at the time
   const getPromise = useRecoilCallback(
     ({ snapshot: { getPromise } }) => getPromise,
     [],
   );
+
+  useEffect(() => {
+    return () => {
+      // sending abort signal to clean up all event handlers
+      return abortControllerRef.current.abort();
+    };
+  }, []);
 
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();
 
@@ -110,11 +111,12 @@ export default <T extends AbstractLooker<BaseState>>(
 
         const mimeType = getMimeType(sample);
 
-        // urls may be an array of objects or a single object; normalize both
+        // sometimes the urls are an array of objects, sometimes they are just an object
+        // this is a workaround to make sure we can handle both cases
         // todo: investigate why this is the case
         const urls = getNormalizedUrls(rawUrls);
 
-        // strip query params from signed urls
+        // split("?")[0] is to remove query params, if any, from signed urls
         const filePath =
           urls.filepath?.split("?")[0] ?? (sample.filepath as string);
         const mediaFieldPath = urls[mediaField];

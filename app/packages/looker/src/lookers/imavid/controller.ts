@@ -269,10 +269,17 @@ export class ImaVidFramesController {
         }
 
         // mark each frame drawable as its image resolves
+        const evictedFrames: number[] = [];
         const perFramePromises: Promise<void>[] = [];
         for (const [frameNumber, imagePromise] of imageFetchPromisesMap) {
           perFramePromises.push(
             imagePromise.then((sampleId) => {
+              if (!this.store.samples.has(sampleId)) {
+                // evicted while its image was in flight; leave it unbuffered so
+                // the look-ahead refetches it instead of indexing a hole
+                evictedFrames.push(frameNumber);
+                return;
+              }
               this.store.frameIndex.set(frameNumber, sampleId);
               this.store.reverseFrameIndex.set(sampleId, frameNumber);
             }),
@@ -284,6 +291,9 @@ export class ImaVidFramesController {
           chunkCursor + 1,
           chunkCursor + rows.length,
         ] as BufferRange);
+        for (const frameNumber of evictedFrames) {
+          this.storeBufferManager.removeBufferValue(frameNumber);
+        }
 
         // publish this chunk so the looker plays it while the next chunk fetches
         window.dispatchEvent(
