@@ -40,7 +40,7 @@ export const SIDEBAR_MAX_WIDTH_PX = 560;
 export function clampSidebarWidth(px: number): number {
   return Math.min(
     SIDEBAR_MAX_WIDTH_PX,
-    Math.max(SIDEBAR_MIN_WIDTH_PX, Math.round(px))
+    Math.max(SIDEBAR_MIN_WIDTH_PX, Math.round(px)),
   );
 }
 
@@ -314,7 +314,7 @@ function Layout({
   // full-height sidebar), so driving `maxSize` from state gives us both
   // restore and live drag-resize without forking voodo.
   const [leftWidth, setLeftWidth] = useState(() =>
-    clampSidebarWidth(leftSidebarWidth ?? SIDEBAR_SIZE_PX)
+    clampSidebarWidth(leftSidebarWidth ?? SIDEBAR_SIZE_PX),
   );
   const leftWidthRef = useRef(leftWidth);
   leftWidthRef.current = leftWidth;
@@ -346,7 +346,7 @@ function Layout({
     const drag = dragRef.current;
     if (!drag) return;
     setLeftWidth(
-      clampSidebarWidth(drag.startWidth + event.clientX - drag.startX)
+      clampSidebarWidth(drag.startWidth + event.clientX - drag.startX),
     );
   };
   const handleResizeEnd = () => {
@@ -364,7 +364,7 @@ function Layout({
         focusedTileId === id;
       setFocusedTileId(shouldDeselect ? null : id);
     },
-    [deselectFocusedTileOnRepeatSelect, focusedTileId, setFocusedTileId]
+    [deselectFocusedTileOnRepeatSelect, focusedTileId, setFocusedTileId],
   );
 
   return (
