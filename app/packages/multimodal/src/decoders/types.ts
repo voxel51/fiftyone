@@ -25,6 +25,27 @@ export interface EncodedImageVisualization {
 }
 
 /**
+ * Raw image pixels normalized by a decoder into display-ready RGBA.
+ * `rgba` is row-major from the source image's top-left pixel.
+ */
+export interface RawImageVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.RAW_IMAGE;
+  /**
+   * Per-message source coordinate frame decoded from the image header.
+   */
+  readonly coordinateFrameId?: string;
+  readonly height: number;
+  readonly rgba: Uint8Array;
+  readonly sourceEncoding: string;
+  readonly timestampNs?: bigint;
+  readonly width: number;
+}
+
+export type ImageVisualization =
+  | EncodedImageVisualization
+  | RawImageVisualization;
+
+/**
  * Structured metadata for one source field packed into a point cloud message.
  */
 export interface PointCloudField {
@@ -388,7 +409,7 @@ export interface ImageAnnotationsVisualization {
  */
 export type DecodedVisualization =
   | CameraCalibrationVisualization
-  | EncodedImageVisualization
+  | ImageVisualization
   | GridVisualization
   | ImageAnnotationsVisualization
   | LocationVisualization

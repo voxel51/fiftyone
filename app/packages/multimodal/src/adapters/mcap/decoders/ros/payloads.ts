@@ -33,6 +33,11 @@ export const ROS_COMPRESSED_IMAGE_PAYLOADS = rosPayloads(
   "sensor_msgs/msg/CompressedImage",
 );
 
+export const ROS_IMAGE_PAYLOADS = rosPayloads(
+  "sensor_msgs/Image",
+  "sensor_msgs/msg/Image",
+);
+
 export const ROS_CAMERA_INFO_PAYLOADS = rosPayloads(
   "sensor_msgs/CameraInfo",
   "sensor_msgs/msg/CameraInfo",

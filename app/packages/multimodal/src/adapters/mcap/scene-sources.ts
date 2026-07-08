@@ -2,9 +2,9 @@ import type { SceneSource } from "../../scene-inventory";
 import { PlaybackSyncMode, type StreamInventory } from "../../schemas/v1";
 import {
   isCameraCalibrationStream,
-  isCompressedImageStream,
   isGridStream,
   isImageAnnotationsStream,
+  isImageStream,
   isLocationFixStream,
   isPointCloudStream,
   isPoseStream,
@@ -70,7 +70,7 @@ const SYNC_POLICY_BY_TYPE: Record<McapSourceType, McapStreamSyncPolicy> = {
 
 /**
  * Derives the scene inventory from MCAP topic metadata. Topics are
- * classified by payload identity (Foxglove compressed image, point
+ * classified by payload identity (image, point
  * cloud, image annotations); unsupported topics are omitted. Inventory
  * order is preserved so source pickers and "first source of a type"
  * defaults stay deterministic per file.
@@ -141,7 +141,7 @@ export function mcapStreamPolicies(
 }
 
 function sourceTypeFor(topic: StreamInventory): McapSourceType | null {
-  if (isCompressedImageStream(topic)) {
+  if (isImageStream(topic)) {
     return MCAP_SOURCE_TYPE.IMAGE;
   }
   if (isPointCloudStream(topic)) {

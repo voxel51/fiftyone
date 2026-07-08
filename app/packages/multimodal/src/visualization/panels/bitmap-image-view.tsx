@@ -23,6 +23,8 @@
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
+import type { ImageVisualization, RawImageVisualization } from "../../decoders";
+
 const DEFAULT_MIME_TYPE = "image/jpeg";
 
 /**
@@ -75,6 +77,28 @@ export interface BitmapCanvasHostProps {
 }
 
 /**
+ * Props for rendering any image visualization without a GPU device.
+ */
+export interface BitmapImageFrameViewProps {
+  readonly className?: string;
+  readonly fit?: "contain" | "cover";
+  readonly frame: ImageVisualization;
+  /**
+   * Reports a decode or canvas-paint failure. The previously committed frame
+   * stays visible — errors never blank the canvas.
+   */
+  readonly onError?: (error: unknown) => void;
+  readonly onImageLoaded?: (width: number, height: number) => void;
+  readonly style?: CSSProperties;
+}
+
+type CanvasDrawable = (HTMLCanvasElement | ImageBitmap) & {
+  readonly height: number;
+  readonly width: number;
+  close?: () => void;
+};
+
+/**
  * Destination rect for drawing an image of `image` size into `container`,
  * center-aligned. Identical math to `imageDisplayRect` in
  * `base-2d-scene.tsx` (the WebGPU `ImagePanel` path) — "cover" fills the
@@ -115,7 +139,7 @@ function useBitmapCanvas(fit: "contain" | "cover") {
   // The committed bitmap — stays drawn until the NEXT commit lands, so
   // frame advances and errors never flash an empty canvas (the behavior
   // ImagePanel gets from hasVisibleImageRef).
-  const bitmapRef = useRef<ImageBitmap | null>(null);
+  const bitmapRef = useRef<CanvasDrawable | null>(null);
   const fitRef = useRef(fit);
   fitRef.current = fit;
 
@@ -160,12 +184,12 @@ function useBitmapCanvas(fit: "contain" | "cover") {
   }, []);
 
   const commit = useCallback(
-    (bitmap: ImageBitmap | null) => {
+    (bitmap: CanvasDrawable | null) => {
       if (bitmapRef.current === bitmap) {
         return;
       }
 
-      bitmapRef.current?.close();
+      closeDrawable(bitmapRef.current);
       bitmapRef.current = bitmap;
       draw();
     },
@@ -176,7 +200,7 @@ function useBitmapCanvas(fit: "contain" | "cover") {
   // producers close their own bitmaps via their cancellation guards).
   useEffect(() => {
     return () => {
-      bitmapRef.current?.close();
+      closeDrawable(bitmapRef.current);
       bitmapRef.current = null;
     };
   }, []);
@@ -208,6 +232,10 @@ function useBitmapCanvas(fit: "contain" | "cover") {
   }, [draw, fit]);
 
   return { canvasRef, commit };
+}
+
+function closeDrawable(drawable: CanvasDrawable | null): void {
+  drawable?.close?.();
 }
 
 /**
@@ -269,6 +297,91 @@ export function BitmapImageView({
       style={{ ...styles.canvas, ...style }}
     />
   );
+}
+
+export function BitmapImageFrameView({
+  className,
+  fit = "cover",
+  frame,
+  onError,
+  onImageLoaded,
+  style,
+}: BitmapImageFrameViewProps) {
+  return frame.kind === "raw-image" ? (
+    <BitmapRawImageView
+      className={className}
+      fit={fit}
+      frame={frame}
+      onError={onError}
+      onImageLoaded={onImageLoaded}
+      style={style}
+    />
+  ) : (
+    <BitmapImageView
+      bytes={frame.bytes}
+      className={className}
+      fit={fit}
+      mimeType={frame.mimeType}
+      onError={onError}
+      onImageLoaded={onImageLoaded}
+      style={style}
+    />
+  );
+}
+
+function BitmapRawImageView({
+  className,
+  fit = "cover",
+  frame,
+  onError,
+  onImageLoaded,
+  style,
+}: Omit<BitmapImageFrameViewProps, "frame"> & {
+  readonly frame: RawImageVisualization;
+}) {
+  const { canvasRef, commit } = useBitmapCanvas(fit);
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  const onImageLoadedRef = useRef(onImageLoaded);
+  onImageLoadedRef.current = onImageLoaded;
+
+  useEffect(() => {
+    try {
+      const source = canvasFromRawImage(frame);
+      commit(source);
+      onImageLoadedRef.current?.(frame.width, frame.height);
+    } catch (error) {
+      onErrorRef.current?.(error);
+    }
+  }, [commit, frame]);
+
+  return (
+    <canvas
+      className={className}
+      ref={canvasRef}
+      role="img"
+      style={{ ...styles.canvas, ...style }}
+    />
+  );
+}
+
+function canvasFromRawImage(frame: RawImageVisualization): HTMLCanvasElement {
+  if (frame.rgba.byteLength < frame.width * frame.height * 4) {
+    throw new Error("Raw image frame has too few RGBA bytes");
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = frame.width;
+  canvas.height = frame.height;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Unable to create raw image canvas context");
+  }
+
+  const imageData = context.createImageData(frame.width, frame.height);
+  imageData.data.set(frame.rgba.subarray(0, frame.width * frame.height * 4));
+  context.putImageData(imageData, 0, 0);
+  return canvas;
 }
 
 /**

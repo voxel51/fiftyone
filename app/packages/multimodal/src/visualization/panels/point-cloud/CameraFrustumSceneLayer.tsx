@@ -95,10 +95,9 @@ export function CameraFrustumSceneLayer({
   const imageIdentity =
     layer.imageTextureKey ?? layer.imageContentTimeNs ?? image;
   const { handle: imageHandle } = useImageTextureLease({
-    bytes: image?.bytes,
-    enabled: Boolean(image && image.bytes.byteLength > 0),
+    enabled: Boolean(image),
+    frame: image,
     identity: imageIdentity,
-    mimeType: image?.mimeType,
     onLoaded: () => invalidate(),
     textureKey: layer.imageTextureKey,
   });

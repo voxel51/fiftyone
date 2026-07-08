@@ -131,9 +131,7 @@ describe("useMcapGridPreview", () => {
     await waitFor(() => {
       expect(latestState.current?.status).toBe("ready");
     });
-    expect(imageFrame(latestState.current?.frame ?? null)?.image.bytes[0]).toBe(
-      1,
-    );
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
 
     act(() => {
       latestState.current?.play();
@@ -150,9 +148,7 @@ describe("useMcapGridPreview", () => {
     hover.resolve(readyResult({ bytes: [9, 8, 7], nextStartTimeNs: 20n }));
 
     await waitFor(() => {
-      expect(
-        imageFrame(latestState.current?.frame ?? null)?.image.bytes[0],
-      ).toBe(9);
+      expect(firstImageByte(latestState.current?.frame ?? null)).toBe(9);
     });
 
     act(() => {
@@ -329,6 +325,15 @@ function imageFrame(
   frame: McapGridPreviewFrame | null,
 ): Extract<McapGridPreviewFrame, { kind: "image" }> | null {
   return frame?.kind === "image" ? frame : null;
+}
+
+function firstImageByte(
+  frame: McapGridPreviewFrame | null,
+): number | undefined {
+  const image = imageFrame(frame)?.image;
+  return image?.kind === VISUALIZATION_KIND.ENCODED_IMAGE
+    ? image.bytes[0]
+    : undefined;
 }
 
 const SOURCES_BY_ID = new Map<string, ByteSourceDescriptor>();

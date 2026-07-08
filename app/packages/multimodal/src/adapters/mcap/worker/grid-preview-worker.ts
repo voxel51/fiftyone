@@ -117,7 +117,9 @@ function transferablesForResponse(
 
   const frame = response.result.state.frame;
   if (frame?.kind === "image") {
-    return transferableBuffers(frame.image.bytes);
+    return transferableBuffers(
+      frame.image.kind === "raw-image" ? frame.image.rgba : frame.image.bytes,
+    );
   }
 
   if (frame?.kind === "point-cloud") {

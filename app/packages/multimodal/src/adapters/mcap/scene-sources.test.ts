@@ -10,6 +10,7 @@ describe("mcapSceneSources", () => {
   it("classifies supported payloads and omits unsupported topics", () => {
     const sources = mcapSceneSources([
       createTopic("/CAM_FRONT/image_rect_compressed"),
+      createTopic("/CAM_REAR/image", "sensor_msgs/msg/Image", "cdr", "ros2msg"),
       createTopic("/LIDAR_TOP", "foxglove.PointCloud"),
       createTopic("/scan", "foxglove.LaserScan"),
       createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
@@ -29,6 +30,11 @@ describe("mcapSceneSources", () => {
         id: "/CAM_FRONT/image_rect_compressed",
         type: MCAP_SOURCE_TYPE.IMAGE,
         label: "CAM_FRONT",
+      },
+      {
+        id: "/CAM_REAR/image",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "CAM_REAR",
       },
       {
         id: "/LIDAR_TOP",

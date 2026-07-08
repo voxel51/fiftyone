@@ -3,13 +3,18 @@ import { parseRos2idl } from "@foxglove/ros2idl-parser";
 import { MessageWriter as Ros1MessageWriter } from "@foxglove/rosmsg-serialization";
 import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serialization";
 import { describe, expect, it } from "vitest";
-import type { Decoder, PayloadDescriptor } from "../../../decoders";
+import type {
+  DecodedOutput,
+  Decoder,
+  PayloadDescriptor,
+} from "../../../decoders";
 import type { StreamInventory } from "../../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import {
   isCameraCalibrationStream,
   isCompressedImageStream,
   isGridStream,
+  isImageStream,
   isLocationFixStream,
   isPointCloudStream,
   isPoseStream,
@@ -19,6 +24,7 @@ import { createMcapDecoderRegistry } from ".";
 import {
   ROS_CAMERA_INFO_PAYLOADS,
   ROS_COMPRESSED_IMAGE_PAYLOADS,
+  ROS_IMAGE_PAYLOADS,
   ROS_LASER_SCAN_PAYLOADS,
   ROS_NAV_SAT_FIX_PAYLOADS,
   ROS_OCCUPANCY_GRID_PAYLOADS,
@@ -27,6 +33,7 @@ import {
   ROS_POSE_STAMPED_PAYLOADS,
   rosCameraInfoDecoders,
   rosCompressedImageDecoders,
+  rosImageDecoders,
   rosLaserScanDecoders,
   rosNavSatFixDecoders,
   rosOccupancyGridDecoders,
@@ -246,12 +253,65 @@ module builtin_interfaces {
   };
 };`;
 
+const ROS1_IMAGE_SCHEMA = `std_msgs/Header header
+uint32 height
+uint32 width
+string encoding
+uint8 is_bigendian
+uint32 step
+uint8[] data
+===
+MSG: std_msgs/Header
+uint32 seq
+time stamp
+string frame_id`;
+
+const ROS2_IMAGE_SCHEMA = `std_msgs/Header header
+uint32 height
+uint32 width
+string encoding
+uint8 is_bigendian
+uint32 step
+uint8[] data
+${ROS2_HEADER_DEFINITIONS}`;
+
+const ROS2_IDL_IMAGE_SCHEMA = `module sensor_msgs {
+  module msg {
+    struct Image {
+      std_msgs::msg::Header header;
+      unsigned long height;
+      unsigned long width;
+      string encoding;
+      octet is_bigendian;
+      unsigned long step;
+      sequence<octet> data;
+    };
+  };
+};
+module std_msgs {
+  module msg {
+    struct Header {
+      builtin_interfaces::msg::Time stamp;
+      string frame_id;
+    };
+  };
+};
+module builtin_interfaces {
+  module msg {
+    struct Time {
+      long sec;
+      unsigned long nanosec;
+    };
+  };
+};`;
+
 describe("ROS MCAP decoders", () => {
   it("registers every ROS payload with the MCAP decoder registry", () => {
     const registry = createMcapDecoderRegistry();
     const payloads = [
       ...ROS_CAMERA_INFO_PAYLOADS,
       ...ROS_COMPRESSED_IMAGE_PAYLOADS,
+      ...ROS_IMAGE_PAYLOADS,
       ...ROS_LASER_SCAN_PAYLOADS,
       ...ROS_NAV_SAT_FIX_PAYLOADS,
       ...ROS_OCCUPANCY_GRID_PAYLOADS,
@@ -389,6 +449,188 @@ describe("ROS MCAP decoders", () => {
       frameId: "camera",
     });
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(3_000_000_004n);
+  });
+
+  it("decodes ros1 Image RGB/BGR rows with padding into raw RGBA", () => {
+    const rgb = decoderForSchemaEncoding(rosImageDecoders, "ros1msg").decode(
+      ros1ImageMessage({
+        data: [1, 2, 3, 4, 5, 6, 99, 99, 7, 8, 9, 10, 11, 12, 88, 88],
+        encoding: "rgb8",
+        height: 2,
+        step: 8,
+        width: 2,
+      }),
+      { schemaData: schemaData(ROS1_IMAGE_SCHEMA) },
+    );
+    const bgr = decoderForSchemaEncoding(rosImageDecoders, "ros1msg").decode(
+      ros1ImageMessage({
+        data: [10, 20, 30, 1, 2, 3],
+        encoding: "bgr8",
+        height: 1,
+        step: 6,
+        width: 2,
+      }),
+      { schemaData: schemaData(ROS1_IMAGE_SCHEMA) },
+    );
+
+    expect(rgb.visualization?.kind).toBe(VISUALIZATION_KIND.RAW_IMAGE);
+    if (rgb.visualization?.kind !== VISUALIZATION_KIND.RAW_IMAGE) {
+      throw new Error("Expected raw image visualization");
+    }
+    expect(Array.from(rgb.visualization.rgba)).toEqual([
+      1, 2, 3, 255, 4, 5, 6, 255, 7, 8, 9, 255, 10, 11, 12, 255,
+    ]);
+    expect(rgb.visualization).toMatchObject({
+      coordinateFrameId: "camera",
+      height: 2,
+      sourceEncoding: "rgb8",
+      timestampNs: 1_000_000_002n,
+      width: 2,
+    });
+    expect(rgb.attributes).toMatchObject({
+      byteLength: 16,
+      encoding: "rgb8",
+      frameId: "camera",
+      step: 8,
+    });
+
+    expect(bgr.visualization?.kind).toBe(VISUALIZATION_KIND.RAW_IMAGE);
+    if (bgr.visualization?.kind !== VISUALIZATION_KIND.RAW_IMAGE) {
+      throw new Error("Expected raw image visualization");
+    }
+    expect(Array.from(bgr.visualization.rgba)).toEqual([
+      30, 20, 10, 255, 3, 2, 1, 255,
+    ]);
+  });
+
+  it("decodes mono Image encodings and numeric big-endian data", () => {
+    const mono8 = decoderForSchemaEncoding(rosImageDecoders, "ros2msg").decode(
+      ros2ImageMessage({
+        data: [0, 128, 255],
+        encoding: "mono8",
+        height: 1,
+        step: 3,
+        width: 3,
+      }),
+      { schemaData: schemaData(ROS2_IMAGE_SCHEMA) },
+    );
+    const mono16BigEndian = decoderForSchemaEncoding(
+      rosImageDecoders,
+      "ros2msg",
+    ).decode(
+      ros2ImageMessage({
+        data: [0, 0, 128, 0, 255, 255],
+        encoding: "mono16",
+        height: 1,
+        isBigEndian: true,
+        step: 6,
+        width: 3,
+      }),
+      { schemaData: schemaData(ROS2_IMAGE_SCHEMA) },
+    );
+
+    expect(rawRgba(mono8)).toEqual([
+      0, 0, 0, 255, 128, 128, 128, 255, 255, 255, 255, 255,
+    ]);
+    expect(rawRgba(mono16BigEndian)).toEqual([
+      0, 0, 0, 255, 128, 128, 128, 255, 255, 255, 255, 255,
+    ]);
+    expect(mono16BigEndian.attributes).toMatchObject({ bigEndian: true });
+  });
+
+  it("decodes depth Image encodings with per-frame normalization", () => {
+    const depth16 = decoderForSchemaEncoding(
+      rosImageDecoders,
+      "ros2msg",
+    ).decode(
+      ros2ImageMessage({
+        data: uint16Bytes([0, 1000, 2000, 1000]),
+        encoding: "16UC1",
+        height: 1,
+        step: 8,
+        width: 4,
+      }),
+      { schemaData: schemaData(ROS2_IMAGE_SCHEMA) },
+    );
+    const depth32 = decoderForSchemaEncoding(
+      rosImageDecoders,
+      "ros2msg",
+    ).decode(
+      ros2ImageMessage({
+        data: float32Bytes([Number.NaN, 1.5, 3]),
+        encoding: "32FC1",
+        height: 1,
+        step: 12,
+        width: 3,
+      }),
+      { schemaData: schemaData(ROS2_IMAGE_SCHEMA) },
+    );
+
+    expect(rawRgba(depth16)).toEqual([
+      0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 255,
+    ]);
+    expect(depth16.attributes).toMatchObject({
+      depthMax: 2000,
+      depthMin: 1000,
+    });
+    expect(rawRgba(depth32)).toEqual([
+      0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255,
+    ]);
+    expect(depth32.attributes).toMatchObject({
+      depthMax: 3,
+      depthMin: 1.5,
+    });
+  });
+
+  it("decodes ros2 idl Bayer Image with deterministic demosaic", () => {
+    const output = decoderForSchemaEncoding(rosImageDecoders, "ros2idl").decode(
+      ros2IdlImageMessage({
+        data: [100, 50, 60, 10],
+        encoding: "bayer_rggb8",
+        height: 2,
+        step: 2,
+        width: 2,
+      }),
+      { schemaData: schemaData(ROS2_IDL_IMAGE_SCHEMA) },
+    );
+
+    expect(rawRgba(output)).toEqual([
+      100, 55, 10, 255, 100, 50, 10, 255, 100, 60, 10, 255, 100, 55, 10, 255,
+    ]);
+  });
+
+  it("degrades unsupported or malformed Image frames without throwing", () => {
+    const decoder = decoderForSchemaEncoding(rosImageDecoders, "ros1msg");
+    const unsupported = decoder.decode(
+      ros1ImageMessage({
+        data: [1, 2],
+        encoding: "yuv422",
+        height: 1,
+        step: 2,
+        width: 1,
+      }),
+      { schemaData: schemaData(ROS1_IMAGE_SCHEMA) },
+    );
+    const malformed = decoder.decode(
+      ros1ImageMessage({
+        data: [1, 2, 3],
+        encoding: "rgb8",
+        height: 1,
+        step: 2,
+        width: 1,
+      }),
+      { schemaData: schemaData(ROS1_IMAGE_SCHEMA) },
+    );
+
+    expect(unsupported.visualization).toBeUndefined();
+    expect(unsupported.attributes).toMatchObject({
+      encoding: "yuv422",
+      unsupportedReason: "ROS Image encoding 'yuv422' is unsupported",
+    });
+    expect(malformed.visualization).toBeUndefined();
+    expect(malformed.attributes?.unsupportedReason).toContain(
+      "Image step 2 cannot hold 1 pixels of 3 bytes",
+    );
   });
 
   it("decodes ros2 CameraInfo lowercase calibration fields", () => {
@@ -608,6 +850,11 @@ describe("ROS MCAP decoders", () => {
       schema: "sensor_msgs/msg/CompressedImage",
       schemaEncoding: "ros2idl",
     });
+    const rawImage = createTopic("/camera/image", {
+      encoding: "cdr",
+      schema: "sensor_msgs/msg/Image",
+      schemaEncoding: "ros2msg",
+    });
     const cloud = createTopic("/points", {
       encoding: "ros1",
       schema: "sensor_msgs/PointCloud2",
@@ -620,6 +867,9 @@ describe("ROS MCAP decoders", () => {
     });
 
     expect(isCompressedImageStream(compressed)).toBe(true);
+    expect(isCompressedImageStream(rawImage)).toBe(false);
+    expect(isImageStream(compressed)).toBe(true);
+    expect(isImageStream(rawImage)).toBe(true);
     expect(isPointCloudStream(cloud)).toBe(true);
     expect(isPointCloudStream(scan)).toBe(true);
     expect(
@@ -639,10 +889,10 @@ describe("ROS MCAP decoders", () => {
     expect(
       isGridStream(createTopic("/map", ROS_OCCUPANCY_GRID_PAYLOADS[0])),
     ).toBe(true);
-    expect(streamTopics([compressed, cloud, scan])).toMatchObject({
-      image: ["/camera/compressed"],
+    expect(streamTopics([compressed, rawImage, cloud, scan])).toMatchObject({
+      image: ["/camera/compressed", "/camera/image"],
       pointCloud: ["/points", "/scan"],
-      previewable: ["/camera/compressed", "/points", "/scan"],
+      previewable: ["/camera/compressed", "/camera/image", "/points", "/scan"],
     });
   });
 });
@@ -689,6 +939,96 @@ function ros2IdlMessage(
 ): Uint8Array {
   const writer = new Ros2MessageWriter(parseRos2idl(schema));
   return writer.writeMessage(record);
+}
+
+function ros1ImageMessage({
+  data,
+  encoding,
+  height,
+  isBigEndian = false,
+  step,
+  width,
+}: {
+  readonly data: readonly number[];
+  readonly encoding: string;
+  readonly height: number;
+  readonly isBigEndian?: boolean;
+  readonly step: number;
+  readonly width: number;
+}): Uint8Array {
+  return ros1Message(ROS1_IMAGE_SCHEMA, {
+    data,
+    encoding,
+    header: ros1Header({ frameId: "camera", nsec: 2, sec: 1, seq: 9 }),
+    height,
+    is_bigendian: isBigEndian ? 1 : 0,
+    step,
+    width,
+  });
+}
+
+function ros2ImageMessage({
+  data,
+  encoding,
+  height,
+  isBigEndian = false,
+  step,
+  width,
+}: {
+  readonly data: readonly number[];
+  readonly encoding: string;
+  readonly height: number;
+  readonly isBigEndian?: boolean;
+  readonly step: number;
+  readonly width: number;
+}): Uint8Array {
+  return ros2Message(ROS2_IMAGE_SCHEMA, {
+    data,
+    encoding,
+    header: ros2Header({ frameId: "camera", nanosec: 2, sec: 1 }),
+    height,
+    is_bigendian: isBigEndian ? 1 : 0,
+    step,
+    width,
+  });
+}
+
+function ros2IdlImageMessage({
+  data,
+  encoding,
+  height,
+  isBigEndian = false,
+  step,
+  width,
+}: {
+  readonly data: readonly number[];
+  readonly encoding: string;
+  readonly height: number;
+  readonly isBigEndian?: boolean;
+  readonly step: number;
+  readonly width: number;
+}): Uint8Array {
+  return ros2IdlMessage(ROS2_IDL_IMAGE_SCHEMA, {
+    data,
+    encoding,
+    header: {
+      frame_id: "camera",
+      stamp: { nanosec: 2, sec: 1 },
+    },
+    height,
+    is_bigendian: isBigEndian ? 1 : 0,
+    step,
+    width,
+  });
+}
+
+function rawRgba(output: DecodedOutput): readonly number[] {
+  expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.RAW_IMAGE);
+  if (output.visualization?.kind !== VISUALIZATION_KIND.RAW_IMAGE) {
+    throw new Error("Expected raw image visualization");
+  }
+
+  return Array.from(output.visualization.rgba);
 }
 
 function ros1Header({
@@ -766,6 +1106,27 @@ function pointCloud2Data({
   });
 
   return data;
+}
+
+function uint16Bytes(values: readonly number[], littleEndian = true): number[] {
+  const data = new Uint8Array(values.length * 2);
+  const view = new DataView(data.buffer);
+  values.forEach((value, index) => {
+    view.setUint16(index * 2, value, littleEndian);
+  });
+  return Array.from(data);
+}
+
+function float32Bytes(
+  values: readonly number[],
+  littleEndian = true,
+): number[] {
+  const data = new Uint8Array(values.length * 4);
+  const view = new DataView(data.buffer);
+  values.forEach((value, index) => {
+    view.setFloat32(index * 4, value, littleEndian);
+  });
+  return Array.from(data);
 }
 
 function poseRecord(

@@ -15,6 +15,7 @@ import {
 import {
   ROS_CAMERA_INFO_PAYLOADS,
   ROS_COMPRESSED_IMAGE_PAYLOADS,
+  ROS_IMAGE_PAYLOADS,
   ROS_LASER_SCAN_PAYLOADS,
   ROS_NAV_SAT_FIX_PAYLOADS,
   ROS_OCCUPANCY_GRID_PAYLOADS,
@@ -51,7 +52,7 @@ export function streamTopics(
       continue;
     }
 
-    if (isCompressedImageStream(topic)) {
+    if (isImageStream(topic)) {
       image.push(name);
     } else if (isPointCloudStream(topic)) {
       pointCloud.push(name);
@@ -79,7 +80,18 @@ export function topicName(topic: StreamInventory): string {
 }
 
 /**
- * Returns whether a stream inventory item is a supported Foxglove compressed image.
+ * Returns whether a stream inventory item is a supported image stream.
+ */
+export function isImageStream(topic: StreamInventory): boolean {
+  return (
+    hasPayload(topic, FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD) ||
+    hasAnyPayload(topic, ROS_COMPRESSED_IMAGE_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_IMAGE_PAYLOADS)
+  );
+}
+
+/**
+ * Returns whether a stream inventory item is a supported compressed image.
  */
 export function isCompressedImageStream(topic: StreamInventory): boolean {
   return (

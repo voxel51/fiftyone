@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 
+import type { ImageVisualization } from "../../decoders";
 import type { ImageTextureHandle } from "./base-2d-scene";
 import { createImageTexture } from "./image-texture";
 import {
@@ -17,11 +18,10 @@ interface HeldImageTexture {
 
 /** Inputs for `useImageTextureLease`, including cache identity and decode data. */
 export interface UseImageTextureLeaseOptions {
-  readonly bytes: Uint8Array | null | undefined;
   readonly disabledStatus?: ImageTextureLeaseStatus;
   readonly enabled?: boolean;
+  readonly frame: ImageVisualization | null | undefined;
   readonly identity: unknown;
-  readonly mimeType: string | null | undefined;
   readonly onLoaded?: (handle: ImageTextureHandle) => void;
   readonly textureKey?: string;
 }
@@ -31,11 +31,10 @@ export interface UseImageTextureLeaseOptions {
  * releases the previous lease when the requested image changes.
  */
 export function useImageTextureLease({
-  bytes,
   disabledStatus = "idle",
   enabled = true,
+  frame,
   identity,
-  mimeType,
   onLoaded,
   textureKey,
 }: UseImageTextureLeaseOptions): {
@@ -48,7 +47,7 @@ export function useImageTextureLease({
   onLoadedRef.current = onLoaded;
   const [handle, setHandle] = useState<ImageTextureHandle | null>(null);
   const [status, setStatus] = useState<ImageTextureLeaseStatus>(() =>
-    enabled && bytes && bytes.byteLength > 0 ? "loading" : disabledStatus,
+    enabled && hasImageData(frame) ? "loading" : disabledStatus,
   );
 
   // This effect releases the held texture lease on unmount — release, not
@@ -68,7 +67,7 @@ export function useImageTextureLease({
   // this effect nor re-decodes. The previous texture stays visible until the
   // next lease resolves to avoid loading flashes during playback.
   useEffect(() => {
-    if (!enabled || !bytes || bytes.byteLength === 0) {
+    if (!enabled || !hasImageData(frame)) {
       hasVisibleTextureRef.current = false;
       replaceHeldTexture(null, heldTextureRef, setHandle);
       setStatus(disabledStatus);
@@ -81,7 +80,7 @@ export function useImageTextureLease({
     }
 
     const lease = acquireImageTexture(textureKey, () =>
-      createImageTexture(bytes, mimeType ?? undefined),
+      createImageTexture(frame),
     );
     lease.promise
       .then((decodedHandle) => {
@@ -113,12 +112,24 @@ export function useImageTextureLease({
     return () => {
       cancelled = true;
     };
-    // `identity`, not `bytes`, is the requested lifecycle key. Keyed MCAP
-    // callers deliberately keep identity stable across fresh bytes wrappers.
+    // `identity`, not the frame object, is the requested lifecycle key. Keyed
+    // MCAP callers deliberately keep identity stable across fresh wrappers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disabledStatus, enabled, identity, mimeType, textureKey]);
+  }, [disabledStatus, enabled, identity, textureKey]);
 
   return { handle, status };
+}
+
+function hasImageData(
+  frame: ImageVisualization | null | undefined,
+): frame is ImageVisualization {
+  if (!frame) {
+    return false;
+  }
+  if (frame.kind === "encoded-image") {
+    return frame.bytes.byteLength > 0;
+  }
+  return frame.rgba.byteLength > 0 && frame.width > 0 && frame.height > 0;
 }
 
 function replaceHeldTexture(
