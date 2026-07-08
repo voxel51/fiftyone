@@ -130,6 +130,26 @@
   line-height: 1.2;
 }
 
+.topicInspectButton {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  color: var(--color-content-text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 0;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.topicInspectButton:focus-visible {
+  outline: 1px solid var(--color-border);
+  outline-offset: 2px;
+}
+
 .topicEmpty {
   color: var(--color-content-text-muted);
   font-size: 11px;

@@ -27,6 +27,7 @@ import {
 } from "./mcap-modal-settings";
 import McapSidebarGroup from "./McapSidebarGroup";
 import styles from "./McapSettingsSidebar.module.css";
+import { useOpenMcapRawMessageTile } from "./use-open-mcap-raw-message-tile";
 
 type ActiveSettingsTab = "scene" | "panel";
 
@@ -133,6 +134,7 @@ function GlobalSceneSettings({
 }
 
 interface OtherTopicRow {
+  readonly canInspect: boolean;
   readonly countLabel: string;
   readonly encoding: string;
   readonly schemaName: string;
@@ -146,6 +148,7 @@ function OtherTopicsSettings({
   readonly topics: readonly StreamInventory[];
 }) {
   const sceneSources = useSceneInventory();
+  const openRawMessageTile = useOpenMcapRawMessageTile();
   const [search, setSearch] = useState("");
   const rows = useMemo(
     () =>
@@ -191,7 +194,17 @@ function OtherTopicsSettings({
             <span className={styles.topicMeta}>
               {row.schemaName} · {row.encoding} · {row.countLabel}
             </span>
-            <span className={styles.topicStatus}>{row.statusLabel}</span>
+            {row.canInspect ? (
+              <button
+                className={styles.topicInspectButton}
+                onClick={() => openRawMessageTile(row.topic)}
+                type="button"
+              >
+                {row.statusLabel}
+              </button>
+            ) : (
+              <span className={styles.topicStatus}>{row.statusLabel}</span>
+            )}
           </div>
         ))}
         {filteredRows.length === 0 ? (
@@ -231,7 +244,11 @@ function otherTopicRows(
       if (!name || rendered.has(name)) {
         return null;
       }
+      const decodeStatus = genericDecodeStatus(
+        topic.metadata["mcap.generic_decode_status"],
+      );
       return {
+        canInspect: decodeStatus.canInspect,
         countLabel: messageCountLabel(topic.recordCount),
         encoding:
           topic.metadata["mcap.message_encoding"] ??
@@ -241,9 +258,7 @@ function otherTopicRows(
           topic.metadata["mcap.schema_name"] ??
           topic.payload?.schema ??
           "no schema",
-        statusLabel: genericDecodeStatusLabel(
-          topic.metadata["mcap.generic_decode_status"],
-        ),
+        statusLabel: decodeStatus.label,
         topic: name,
       };
     })
@@ -251,16 +266,19 @@ function otherTopicRows(
     .sort((left, right) => left.topic.localeCompare(right.topic));
 }
 
-function genericDecodeStatusLabel(status: string | undefined): string {
+function genericDecodeStatus(status: string | undefined): {
+  readonly canInspect: boolean;
+  readonly label: string;
+} {
   switch (status) {
     case "decodable":
-      return "Inspectable in Message";
+      return { canInspect: true, label: "Inspect" };
     case "schema-unavailable":
-      return "Schema unavailable";
+      return { canInspect: false, label: "Schema unavailable" };
     case "unsupported-encoding":
-      return "Encoding unsupported";
+      return { canInspect: false, label: "Encoding unsupported" };
     default:
-      return "Raw status unknown";
+      return { canInspect: false, label: "Raw status unknown" };
   }
 }
 

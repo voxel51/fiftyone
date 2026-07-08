@@ -6,6 +6,7 @@ import {
   useTiling,
   type TilingTile,
 } from "@fiftyone/tiling";
+import { useAtomValue } from "jotai";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -14,6 +15,7 @@ import {
 } from "../../../scene-inventory";
 import type { StreamInventory } from "../../../schemas/v1";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import { mcapRawTileTopicAtom } from "./mcap-raw-tile-state";
 import { __resetMcapModalSettingsForTests } from "./mcap-modal-settings";
 import McapSettingsSidebar from "./McapSettingsSidebar";
 
@@ -69,14 +71,37 @@ const FocusButton: React.FC<{ id: string; testId: string }> = ({
   );
 };
 
+interface TilingProbeState {
+  readonly focusedTileId: string | null;
+  readonly titles: Readonly<Record<string, string>>;
+  readonly topicsByTile: Readonly<Record<string, string>>;
+}
+
+const TilingStateProbe: React.FC<{
+  readonly stateRef: { current: TilingProbeState | null };
+}> = ({ stateRef }) => {
+  const { focusedTileId, tiles } = useTiling();
+  const topicsByTile = useAtomValue(mcapRawTileTopicAtom);
+  stateRef.current = {
+    focusedTileId,
+    titles: Object.fromEntries(
+      Object.entries(tiles).map(([id, tile]) => [id, tile.title]),
+    ),
+    topicsByTile,
+  };
+  return null;
+};
+
 function renderSidebar({
   topics = [],
 }: {
   readonly topics?: readonly StreamInventory[];
 } = {}) {
-  return render(
+  const probeState: { current: TilingProbeState | null } = { current: null };
+  const result = render(
     <SceneInventoryProvider sources={SOURCES}>
       <TilingProvider initialTiles={INITIAL_TILES}>
+        <TilingStateProbe stateRef={probeState} />
         <TileIdScope tileId={CAMERA_TILE_ID}>
           <TileBody label="camera" />
         </TileIdScope>
@@ -89,6 +114,7 @@ function renderSidebar({
       </TilingProvider>
     </SceneInventoryProvider>,
   );
+  return { ...result, probeState };
 }
 
 describe("McapSettingsSidebar", () => {
@@ -183,9 +209,30 @@ describe("McapSettingsSidebar", () => {
     expect(screen.queryByText("/lidar/top")).toBeNull();
     expect(screen.getByText("/imu")).toBeTruthy();
     expect(screen.getByText("sensor_msgs/Imu · ros1 · 8 msgs")).toBeTruthy();
-    expect(screen.getByText("Inspectable in Message")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Inspect" })).toBeTruthy();
     expect(screen.getByText("Schema unavailable")).toBeTruthy();
     expect(screen.getByText("Encoding unsupported")).toBeTruthy();
+  });
+
+  it("opens decodable other topics in a Message panel", () => {
+    const { probeState } = renderSidebar({
+      topics: [
+        topic("/imu", {
+          count: "8",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "sensor_msgs/Imu",
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Other topics/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
+
+    const focusedTileId = probeState.current?.focusedTileId;
+    expect(focusedTileId?.startsWith("raw-")).toBe(true);
+    expect(probeState.current?.titles[focusedTileId ?? ""]).toBe("/imu");
+    expect(probeState.current?.topicsByTile[focusedTileId ?? ""]).toBe("/imu");
   });
 
   it("searches long other topic lists", () => {
