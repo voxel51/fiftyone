@@ -51,6 +51,12 @@ on your data quickly and easily.
     :button_link: groups.html
 
 .. customcalloutitem::
+    :header: FiftyOne Multimodal __SUB_NEW__
+    :description: Visualize, play back, and index time-synchronized multimodal sensor data stored in MCAP files.
+    :button_text: Learn more about multimodal support
+    :button_link: multimodal.html
+
+.. customcalloutitem::
     :header: Annotating datasets __SUB_NEW__
     :description: Use builtin or custom integrations to add or edit labels on your FiftyOne datasets.
     :button_text: Learn more about annotations

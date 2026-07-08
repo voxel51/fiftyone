@@ -552,6 +552,7 @@ _________
    FiftyOne App <user_guide/app>
    FiftyOne Enterprise 🚀 <enterprise/index>
    FiftyOne Brain <brain>
+   FiftyOne Multimodal __SUB_NEW__ <user_guide/multimodal>
 
 .. toctree::
    :caption: FiftyOne Ecosystem
