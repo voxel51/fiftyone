@@ -21,6 +21,19 @@ describe("sceneUpdateSnapshotAt", () => {
     expect(snapshot.entities[0]?.metadata.label).toBe("new");
   });
 
+  it("sorts deltas before folding", () => {
+    const snapshot = sceneUpdateSnapshotAt(
+      [
+        updateDelta(20n, [entity("box", { label: "new" })]),
+        updateDelta(10n, [entity("box", { label: "old" })]),
+      ],
+      20n,
+    );
+
+    expect(snapshot.entities).toHaveLength(1);
+    expect(snapshot.entities[0]?.metadata.label).toBe("new");
+  });
+
   it("applies matching and all-entity deletions before upserts", () => {
     const snapshot = sceneUpdateSnapshotAt(
       [

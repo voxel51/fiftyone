@@ -61,6 +61,17 @@ describe("logConsoleRowsFromDecodedMessage", () => {
       }),
     ]);
   });
+
+  it("returns no rows when logRows is empty and no fallback message exists", () => {
+    const rows = logConsoleRowsFromDecodedMessage(
+      decodedMessage({
+        attributes: {},
+        topic: "/empty",
+      }),
+    );
+
+    expect(rows).toEqual([]);
+  });
 });
 
 function decodedMessage({
