@@ -105,7 +105,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     };
   }, []);
 
-  const { status, error, sources, topicCount } = useMcapSceneInventory({
+  const { status, error, sources, topics, topicCount } = useMcapSceneInventory({
     client,
     source,
   });
@@ -209,7 +209,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                       tracks && tracks.length > 0 ? [...tracks] : undefined
                     }
                     onTagDelete={onTagDelete}
-                    leftSidebar={<McapSettingsSidebar />}
+                    leftSidebar={<McapSettingsSidebar topics={topics} />}
                     rightSidebar={<McapInspectorSidebar />}
                     defaultRightOpen={false}
                     defaultLeftOpen={defaultLeftOpen}

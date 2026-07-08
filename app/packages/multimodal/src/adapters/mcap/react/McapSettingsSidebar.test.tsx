@@ -12,6 +12,7 @@ import {
   SceneInventoryProvider,
   type SceneSource,
 } from "../../../scene-inventory";
+import type { StreamInventory } from "../../../schemas/v1";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { __resetMcapModalSettingsForTests } from "./mcap-modal-settings";
 import McapSettingsSidebar from "./McapSettingsSidebar";
@@ -68,7 +69,11 @@ const FocusButton: React.FC<{ id: string; testId: string }> = ({
   );
 };
 
-function renderSidebar() {
+function renderSidebar({
+  topics = [],
+}: {
+  readonly topics?: readonly StreamInventory[];
+} = {}) {
   return render(
     <SceneInventoryProvider sources={SOURCES}>
       <TilingProvider initialTiles={INITIAL_TILES}>
@@ -80,7 +85,7 @@ function renderSidebar() {
         </TileIdScope>
         <FocusButton id={CAMERA_TILE_ID} testId="focus-camera" />
         <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
-        <McapSettingsSidebar />
+        <McapSettingsSidebar topics={topics} />
       </TilingProvider>
     </SceneInventoryProvider>,
   );
@@ -142,6 +147,46 @@ describe("McapSettingsSidebar", () => {
     expect(screen.getByText("Reset to defaults")).toBeTruthy();
   });
 
+  it("lists non-renderable topics in scene settings", () => {
+    renderSidebar({
+      topics: [
+        topic("/lidar/top", {
+          count: "12",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "sensor_msgs/PointCloud2",
+        }),
+        topic("/imu", {
+          count: "8",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "sensor_msgs/Imu",
+        }),
+        topic("/broken", {
+          count: "3",
+          decodeStatus: "schema-unavailable",
+          encoding: "cdr",
+          schema: "vendor_msgs/msg/Broken",
+        }),
+        topic("/binary", {
+          count: "1",
+          decodeStatus: "unsupported-encoding",
+          encoding: "cbor",
+          schema: "vendor.Binary",
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Other topics/ }));
+
+    expect(screen.queryByText("/lidar/top")).toBeNull();
+    expect(screen.getByText("/imu")).toBeTruthy();
+    expect(screen.getByText("sensor_msgs/Imu · ros1 · 8 msgs")).toBeTruthy();
+    expect(screen.getByText("Inspectable in Message")).toBeTruthy();
+    expect(screen.getByText("Schema unavailable")).toBeTruthy();
+    expect(screen.getByText("Encoding unsupported")).toBeTruthy();
+  });
+
   it("switches to the panel tab when a panel tab first appears", () => {
     renderSidebar();
 
@@ -183,3 +228,37 @@ describe("McapSettingsSidebar", () => {
     );
   });
 });
+
+function topic(
+  name: string,
+  {
+    count,
+    decodeStatus,
+    encoding,
+    schema,
+  }: {
+    readonly count: string;
+    readonly decodeStatus: string;
+    readonly encoding: string;
+    readonly schema: string;
+  },
+): StreamInventory {
+  return {
+    $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory",
+    displayName: name,
+    metadata: {
+      "mcap.generic_decode_status": decodeStatus,
+      "mcap.message_encoding": encoding,
+      "mcap.schema_name": schema,
+      "mcap.topic": name,
+    },
+    payload: {
+      $typeName: "fiftyone.multimodal.schemas.v1.PayloadDescriptor",
+      encoding,
+      schema,
+      schemaEncoding: encoding === "ros1" ? "ros1msg" : "protobuf",
+    },
+    recordCount: count,
+    streamId: name,
+  };
+}

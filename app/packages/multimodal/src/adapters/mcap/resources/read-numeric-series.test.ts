@@ -1,3 +1,6 @@
+import { parse as parseRosMessageDefinition } from "@foxglove/rosmsg";
+import { MessageWriter as Ros1MessageWriter } from "@foxglove/rosmsg-serialization";
+import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serialization";
 import type { McapTypes } from "@mcap/core";
 import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
@@ -31,6 +34,14 @@ const TELEMETRY_ROOT = Root.fromJSON({
 });
 
 const TELEMETRY_TYPE = TELEMETRY_ROOT.lookupType("test.Telemetry");
+const ROS_TELEMETRY_SCHEMA = `float64 speed
+bool armed
+geometry_msgs/Vector3 linear
+===
+MSG: geometry_msgs/Vector3
+float64 x
+float64 y
+float64 z`;
 
 const TELEMETRY_SCHEMA_DATA: Uint8Array = descriptor.FileDescriptorSet.encode(
   (
@@ -137,6 +148,90 @@ describe("readMcapNumericSeries", () => {
     expect([...result.fields[1].values]).toEqual([0, 1]);
   });
 
+  it("extracts from ros1 messages", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "ros1", topic: "/telemetry" }),
+      messages: [
+        createMessage(
+          ros1TelemetryMessage({
+            armed: true,
+            linear: { x: 10, y: 0, z: 0 },
+            speed: 1,
+          }),
+          { logTime: 1_000_000_000n },
+        ),
+        createMessage(
+          ros1TelemetryMessage({
+            armed: false,
+            linear: { x: 20, y: 0, z: 0 },
+            speed: 2,
+          }),
+          { logTime: 2_000_000_000n },
+        ),
+      ],
+      schema: createSchema(new TextEncoder().encode(ROS_TELEMETRY_SCHEMA), {
+        encoding: "ros1msg",
+        name: "test_msgs/Telemetry",
+      }),
+    });
+
+    const result = await readMcapNumericSeries({
+      reader,
+      request: {
+        fieldPaths: ["speed", "armed", "linear.x"],
+        source: createSource(),
+        topic: "/telemetry",
+      },
+      timeline,
+    });
+
+    expect([...result.fields[0].values]).toEqual([1, 2]);
+    expect([...result.fields[1].values]).toEqual([1, 0]);
+    expect([...result.fields[2].values]).toEqual([10, 20]);
+  });
+
+  it("extracts from ros2 cdr messages", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "cdr", topic: "/telemetry" }),
+      messages: [
+        createMessage(
+          ros2TelemetryMessage({
+            armed: true,
+            linear: { x: 3, y: 0, z: 0 },
+            speed: 3.5,
+          }),
+          { logTime: 1_000_000_000n },
+        ),
+        createMessage(
+          ros2TelemetryMessage({
+            armed: false,
+            linear: { x: 4, y: 0, z: 0 },
+            speed: 4.5,
+          }),
+          { logTime: 2_000_000_000n },
+        ),
+      ],
+      schema: createSchema(new TextEncoder().encode(ROS_TELEMETRY_SCHEMA), {
+        encoding: "ros2msg",
+        name: "test_msgs/msg/Telemetry",
+      }),
+    });
+
+    const result = await readMcapNumericSeries({
+      reader,
+      request: {
+        fieldPaths: ["speed", "armed", "linear.x"],
+        source: createSource(),
+        topic: "/telemetry",
+      },
+      timeline,
+    });
+
+    expect([...result.fields[0].values]).toEqual([3.5, 4.5]);
+    expect([...result.fields[1].values]).toEqual([1, 0]);
+    expect([...result.fields[2].values]).toEqual([3, 4]);
+  });
+
   it("keeps NaN gap points for undecodable messages", async () => {
     const reader = createReader({
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),
@@ -155,6 +250,48 @@ describe("readMcapNumericSeries", () => {
         fieldPaths: ["battery"],
         source: createSource(),
         topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(result.messageCount).toBe(3);
+    expect(result.fields[0].values[0]).toBe(90);
+    expect(Number.isNaN(result.fields[0].values[1])).toBe(true);
+    expect(result.fields[0].values[2]).toBe(70);
+  });
+
+  it("keeps NaN gap points for undecodable ROS messages", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "ros1", topic: "/telemetry" }),
+      messages: [
+        createMessage(
+          ros1TelemetryMessage({ linear: { x: 0, y: 0, z: 0 }, speed: 90 }),
+          {
+            logTime: 1_000_000_000n,
+          },
+        ),
+        createMessage(new Uint8Array([1, 2, 3]), {
+          logTime: 2_000_000_000n,
+        }),
+        createMessage(
+          ros1TelemetryMessage({ linear: { x: 0, y: 0, z: 0 }, speed: 70 }),
+          {
+            logTime: 3_000_000_000n,
+          },
+        ),
+      ],
+      schema: createSchema(new TextEncoder().encode(ROS_TELEMETRY_SCHEMA), {
+        encoding: "ros1msg",
+        name: "test_msgs/Telemetry",
+      }),
+    });
+
+    const result = await readMcapNumericSeries({
+      reader,
+      request: {
+        fieldPaths: ["speed"],
+        source: createSource(),
+        topic: "/telemetry",
       },
       timeline,
     });
@@ -247,6 +384,20 @@ function telemetryMessage(
   );
 }
 
+function ros1TelemetryMessage(record: Record<string, unknown>): Uint8Array {
+  const writer = new Ros1MessageWriter(
+    parseRosMessageDefinition(ROS_TELEMETRY_SCHEMA),
+  );
+  return writer.writeMessage(record);
+}
+
+function ros2TelemetryMessage(record: Record<string, unknown>): Uint8Array {
+  const writer = new Ros2MessageWriter(
+    parseRosMessageDefinition(ROS_TELEMETRY_SCHEMA, { ros2: true }),
+  );
+  return writer.writeMessage(record);
+}
+
 function jsonMessage(
   record: Record<string, unknown>,
   logTime: bigint,
@@ -259,10 +410,12 @@ function jsonMessage(
 function createReader({
   channel = createChannel({ messageEncoding: "protobuf", topic: "/telemetry" }),
   messages = [],
+  schema = createSchema(TELEMETRY_SCHEMA_DATA),
   statistics,
 }: {
   readonly channel?: McapTypes.TypedMcapRecords["Channel"];
   readonly messages?: readonly McapTypes.TypedMcapRecords["Message"][];
+  readonly schema?: McapTypes.TypedMcapRecords["Schema"];
   readonly statistics?: McapTypes.TypedMcapRecords["Statistics"];
 }) {
   return {
@@ -273,7 +426,7 @@ function createReader({
         yield message;
       }
     }),
-    schemasById: new Map([[3, createSchema(TELEMETRY_SCHEMA_DATA)]]),
+    schemasById: new Map([[schema.id, schema]]),
     statistics,
   };
 }
@@ -291,12 +444,15 @@ function createChannel(
   };
 }
 
-function createSchema(data: Uint8Array): McapTypes.TypedMcapRecords["Schema"] {
+function createSchema(
+  data: Uint8Array,
+  options: Partial<McapTypes.TypedMcapRecords["Schema"]> = {},
+): McapTypes.TypedMcapRecords["Schema"] {
   return {
     data,
-    encoding: "protobuf",
-    id: 3,
-    name: "test.Telemetry",
+    encoding: options.encoding ?? "protobuf",
+    id: options.id ?? 3,
+    name: options.name ?? "test.Telemetry",
     type: "Schema",
   };
 }

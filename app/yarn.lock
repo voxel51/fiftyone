@@ -3210,6 +3210,10 @@ __metadata:
     "@fiftyone/state": "npm:*"
     "@fiftyone/tiling": "npm:*"
     "@fiftyone/utilities": "npm:*"
+    "@foxglove/ros2idl-parser": "npm:^0.3.6"
+    "@foxglove/rosmsg": "npm:^5.0.5"
+    "@foxglove/rosmsg-serialization": "npm:^2.1.2"
+    "@foxglove/rosmsg2-serialization": "npm:^3.1.2"
     "@mcap/core": "npm:^2.2.1"
     "@mcap/support": "npm:^1.1.0"
     "@react-three/drei": "npm:9.105.4"
@@ -3613,10 +3617,81 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@foxglove/cdr@npm:^3.5.1":
+  version: 3.5.1
+  resolution: "@foxglove/cdr@npm:3.5.1"
+  checksum: 10/1b8faf9a30310ce29fcbc25702146b8966779e651b228b018d6881c5d1a17087eed60c514621056dabc4fe49b65d8f11c53ffc288098bd9615579d5ef3ef0e86
+  languageName: node
+  linkType: hard
+
 "@foxglove/crc@npm:^0.0.3":
   version: 0.0.3
   resolution: "@foxglove/crc@npm:0.0.3"
   checksum: 10/53e2f78fb001884ed4baeb1cb4dd510e1d67d9389e0457c57c4d4eb6ada346528310a7e5e486f93cfcf131657ed8e4a57cc3ba6d0e7a564742c0a51498504065
+  languageName: node
+  linkType: hard
+
+"@foxglove/message-definition@npm:0.5.0, @foxglove/message-definition@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "@foxglove/message-definition@npm:0.5.0"
+  checksum: 10/679ecc3416a153f4aee969e4031fdd4ccf0c63b04c46da74e9c8c78e72284a83dd2d4a3ee9786962f0394711635256dfc1bc69330206da7fec224447b2c7ff09
+  languageName: node
+  linkType: hard
+
+"@foxglove/omgidl-parser@npm:1.2.2":
+  version: 1.2.2
+  resolution: "@foxglove/omgidl-parser@npm:1.2.2"
+  dependencies:
+    tslib: "npm:^2"
+  checksum: 10/97f8511cf6a82410d39998c94ce4d2042a6119bd23d2ba7d57a740cc0b6da60fce82f617e3f0eb631591577c4a52b6e975c731f5ba6cfa4f36e9b30561cd4b51
+  languageName: node
+  linkType: hard
+
+"@foxglove/ros2idl-parser@npm:^0.3.6":
+  version: 0.3.6
+  resolution: "@foxglove/ros2idl-parser@npm:0.3.6"
+  dependencies:
+    "@foxglove/message-definition": "npm:^0.5.0"
+    "@foxglove/omgidl-parser": "npm:1.2.2"
+    md5-typescript: "npm:^1.0.5"
+  checksum: 10/5df7a40316d079e5d00491bccd7b988f0a802c05a4be6b2770945af044f9b1d761653b3b16290d8efb845334b51f5dc31974960046a495e4aee674dacb435673
+  languageName: node
+  linkType: hard
+
+"@foxglove/rosmsg-serialization@npm:^2.1.2":
+  version: 2.1.2
+  resolution: "@foxglove/rosmsg-serialization@npm:2.1.2"
+  dependencies:
+    "@foxglove/message-definition": "npm:0.5.0"
+  checksum: 10/e69b95f2505ce52090e8469fa27ae04410799220212edb55b2a013596585e91928218933495d713334f1c1423a02b52206bd33251045d065d04c55dcac77f278
+  languageName: node
+  linkType: hard
+
+"@foxglove/rosmsg2-serialization@npm:^3.1.2":
+  version: 3.1.2
+  resolution: "@foxglove/rosmsg2-serialization@npm:3.1.2"
+  dependencies:
+    "@foxglove/cdr": "npm:^3.5.1"
+    "@foxglove/message-definition": "npm:0.5.0"
+    "@foxglove/rostime": "npm:^1.1.3"
+  checksum: 10/16913883617b56e7b313dd9fe5990cf61d96779dc114bf4c2c6f91ab8dd8ba0abf081f805aca8be17d213f60714067cc7935a6ea8f79c9f530a099c2a49c8c42
+  languageName: node
+  linkType: hard
+
+"@foxglove/rosmsg@npm:^5.0.5":
+  version: 5.0.5
+  resolution: "@foxglove/rosmsg@npm:5.0.5"
+  dependencies:
+    "@foxglove/message-definition": "npm:0.5.0"
+    md5-typescript: "npm:^1.0.5"
+  checksum: 10/c5980ec59749525d79a8aed26c0e1de6bf315644490f2b8cb8df9055bbac1176a8f738c8a029d7c0911385a620839d88fc9a82224d57c8fd01fa7888a4979b1a
+  languageName: node
+  linkType: hard
+
+"@foxglove/rostime@npm:^1.1.3":
+  version: 1.1.3
+  resolution: "@foxglove/rostime@npm:1.1.3"
+  checksum: 10/056bb9b4df45aa04e9486f074915f4cb440288d9b981d15a73d76b7cd084a03dc6853b3f69ab05ac24a7d5cd31b758a341c61f8b5b065f0da62db9dc24be7c6f
   languageName: node
   linkType: hard
 
@@ -16576,6 +16651,13 @@ __metadata:
   version: 1.0.1
   resolution: "math-log2@npm:1.0.1"
   checksum: 10/b9a9c746ec0b28157865b5b9e9bdba25d04b77112f45ec65eb129b07ae42b0f017d59919d21e409fb6bb6587da28e5c40b4e49e80b917fa00a74f7ea5446932e
+  languageName: node
+  linkType: hard
+
+"md5-typescript@npm:^1.0.5":
+  version: 1.0.5
+  resolution: "md5-typescript@npm:1.0.5"
+  checksum: 10/eb909a106bf830848e5f43bb7cffa6a9d100cf51964294e67753573feef6023761b4ca7fa8c0478c09b145bab698bf4fb8864369a37fe079f0ce810f70384a4a
   languageName: node
   linkType: hard
 

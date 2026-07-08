@@ -10,7 +10,7 @@ import {
 import { ImageAnnotationsOverlay } from "../../../visualization/panels/ImageAnnotationsOverlay";
 import {
   BitmapCanvasHost,
-  BitmapImageView,
+  BitmapImageFrameView,
 } from "../../../visualization/panels/bitmap-image-view";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
 import { acquireGridLiveLease } from "../../../visualization/panels/webgpu-live-lease";
@@ -370,11 +370,10 @@ function ImagePreviewFrame({
     <>
       {/* GPU-free bitmap path: image preview cells hold zero WebGPU
           devices (the modal's ImagePanel is untouched). */}
-      <BitmapImageView
-        bytes={frame.image.bytes}
+      <BitmapImageFrameView
         className={classes.imagePanel}
         fit={IMAGE_FIT}
-        mimeType={frame.image.mimeType}
+        frame={frame.image}
         onImageLoaded={(width, height) =>
           setImageDims((prev) =>
             prev?.width === width && prev?.height === height

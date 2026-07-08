@@ -96,6 +96,35 @@
   width: 100%;
 }
 
+.topicList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.topicRow {
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-left: 8px;
+}
+
+.topicMeta {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.topicStatus {
+  align-self: flex-start;
+  color: var(--color-content-text-muted);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
 .resetButton {
   align-self: flex-start;
   background: transparent;

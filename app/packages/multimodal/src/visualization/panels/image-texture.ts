@@ -5,17 +5,33 @@
  */
 import * as THREE from "three";
 
+import type {
+  EncodedImageVisualization,
+  ImageVisualization,
+  RawImageVisualization,
+} from "../../decoders";
 import type { ImageTextureHandle } from "./base-2d-scene";
+
+/**
+ * Decodes an image visualization into a disposable texture handle.
+ */
+export async function createImageTexture(
+  frame: ImageVisualization,
+): Promise<ImageTextureHandle> {
+  return frame.kind === "raw-image"
+    ? createRawImageTexture(frame)
+    : createEncodedImageTexture(frame);
+}
 
 /**
  * Decodes encoded image bytes (JPEG/PNG/...) into a disposable texture
  * handle. Prefers `createImageBitmap` and falls back to an HTML image
  * element where the API is unavailable (some test environments).
  */
-export async function createImageTexture(
-  bytes: Uint8Array,
-  mimeType: string | undefined,
+async function createEncodedImageTexture(
+  frame: EncodedImageVisualization,
 ): Promise<ImageTextureHandle> {
+  const { bytes, mimeType } = frame;
   const blob = new Blob([bytes as BlobPart], {
     type: mimeType ?? "image/jpeg",
   });
@@ -43,6 +59,37 @@ export async function createImageTexture(
     aspectRatio: image.naturalWidth / Math.max(1, image.naturalHeight),
     imageWidth: image.naturalWidth,
     imageHeight: image.naturalHeight,
+    dispose: () => texture.dispose(),
+    texture,
+  };
+}
+
+function createRawImageTexture(
+  frame: RawImageVisualization,
+): ImageTextureHandle {
+  const expectedByteLength = frame.width * frame.height * 4;
+  if (frame.rgba.byteLength < expectedByteLength) {
+    throw new Error("Raw image frame has too few RGBA bytes");
+  }
+
+  const texture = new THREE.DataTexture(
+    frame.rgba,
+    frame.width,
+    frame.height,
+    THREE.RGBAFormat,
+    THREE.UnsignedByteType,
+  );
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.flipY = true;
+  texture.generateMipmaps = false;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+
+  return {
+    aspectRatio: frame.width / Math.max(1, frame.height),
+    imageWidth: frame.width,
+    imageHeight: frame.height,
     dispose: () => texture.dispose(),
     texture,
   };

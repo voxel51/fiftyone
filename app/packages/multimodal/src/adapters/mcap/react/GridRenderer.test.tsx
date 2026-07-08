@@ -35,9 +35,8 @@ const previewHarness = vi.hoisted(() => ({
 
 const bitmapViewHarness = vi.hoisted(() => ({
   lastProps: null as {
-    bytes: Uint8Array;
     fit?: string;
-    mimeType?: string;
+    frame: Extract<McapGridPreviewFrame, { kind: "image" }>["image"];
     onImageLoaded?: (width: number, height: number) => void;
   } | null,
 }));
@@ -124,10 +123,9 @@ vi.mock("../../../visualization/panels/bitmap-image-view", async () => {
         />
       );
     },
-    BitmapImageView: (props: {
-      readonly bytes: Uint8Array;
+    BitmapImageFrameView: (props: {
       readonly fit?: string;
-      readonly mimeType?: string;
+      readonly frame: Extract<McapGridPreviewFrame, { kind: "image" }>["image"];
       readonly onImageLoaded?: (width: number, height: number) => void;
     }) => {
       bitmapViewHarness.lastProps = props;
@@ -191,9 +189,13 @@ describe("GridRenderer", () => {
     // stays modal-only.
     expect(screen.queryByTestId("image-panel")).toBeNull();
 
-    expect(bitmapViewHarness.lastProps?.bytes).toBe(bytes);
+    expect(bitmapViewHarness.lastProps?.frame.kind).toBe("encoded-image");
+    if (bitmapViewHarness.lastProps?.frame.kind !== "encoded-image") {
+      throw new Error("Expected encoded image preview");
+    }
+    expect(bitmapViewHarness.lastProps.frame.bytes).toBe(bytes);
     expect(bitmapViewHarness.lastProps?.fit).toBe("cover");
-    expect(bitmapViewHarness.lastProps?.mimeType).toBe("image/jpeg");
+    expect(bitmapViewHarness.lastProps.frame.mimeType).toBe("image/jpeg");
 
     // The DOM annotations overlay still receives the decoded dims the
     // bitmap view reports via onImageLoaded.
@@ -522,7 +524,7 @@ function pointCloudCells(): HTMLElement[] {
 function imageFrame(bytes: Uint8Array): McapGridPreviewFrame {
   return {
     annotations: {},
-    image: { bytes, mimeType: "image/jpeg" },
+    image: { bytes, kind: "encoded-image", mimeType: "image/jpeg" },
     kind: "image",
   } as unknown as McapGridPreviewFrame;
 }

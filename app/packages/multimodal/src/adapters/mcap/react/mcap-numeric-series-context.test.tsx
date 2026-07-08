@@ -397,6 +397,7 @@ function createClient(
     dispose: vi.fn(),
     enumerateNumericFields: vi.fn(async () => [
       {
+        availability: "ready" as const,
         encoding: "protobuf" as const,
         fields: [{ path: "speed", valueType: "double" }],
         topic: "/odom",

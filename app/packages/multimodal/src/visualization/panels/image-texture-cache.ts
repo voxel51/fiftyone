@@ -253,6 +253,17 @@ function createLeasedImageTextureHandle(
   handle: ImageTextureHandle,
 ): ImageTextureHandle {
   const template = handle.texture;
+  if (template instanceof THREE.DataTexture) {
+    const texture = cloneDataTexture(template);
+    return {
+      aspectRatio: handle.aspectRatio,
+      imageHeight: handle.imageHeight,
+      imageWidth: handle.imageWidth,
+      dispose: () => texture.dispose(),
+      texture,
+    };
+  }
+
   // Three.Texture.clone() shares its Source, which can share renderer
   // bookkeeping across independent canvases. Each lease needs its own Source.
   const texture = new THREE.Texture(
@@ -291,6 +302,43 @@ function createLeasedImageTextureHandle(
     dispose: () => texture.dispose(),
     texture,
   };
+}
+
+function cloneDataTexture(template: THREE.DataTexture): THREE.DataTexture {
+  const image = template.image as {
+    readonly data: THREE.TypedArray | null;
+    readonly height: number;
+    readonly width: number;
+  };
+  const texture = new THREE.DataTexture(
+    image.data,
+    image.width,
+    image.height,
+    template.format as THREE.PixelFormat,
+    template.type,
+    template.mapping as THREE.Mapping,
+    template.wrapS,
+    template.wrapT,
+    template.magFilter,
+    template.minFilter,
+    template.anisotropy,
+    template.colorSpace,
+  );
+  texture.name = template.name;
+  texture.channel = template.channel;
+  texture.internalFormat = template.internalFormat;
+  texture.offset.copy(template.offset);
+  texture.repeat.copy(template.repeat);
+  texture.center.copy(template.center);
+  texture.rotation = template.rotation;
+  texture.matrixAutoUpdate = template.matrixAutoUpdate;
+  texture.matrix.copy(template.matrix);
+  texture.generateMipmaps = template.generateMipmaps;
+  texture.premultiplyAlpha = template.premultiplyAlpha;
+  texture.flipY = template.flipY;
+  texture.unpackAlignment = template.unpackAlignment;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 /**

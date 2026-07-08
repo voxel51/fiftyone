@@ -13,6 +13,7 @@ import {
   decodeGridPreview,
   type McapGridPreviewFrame,
 } from "./grid-preview";
+import { firstImageByte, imageFrame } from "./grid-preview-test-utils";
 import { chooseAnnotationTopic } from "./topic-matching";
 import { streamTopics } from "./stream-topics";
 import type {
@@ -60,7 +61,7 @@ describe("MCAP grid preview", () => {
     });
 
     expect(first.state.status).toBe("ready");
-    expect(imageFrame(first.state.frame)?.image.bytes[0]).toBe(1);
+    expect(firstImageByte(first.state.frame)).toBe(1);
     expect(first.nextStartTimeNs).toBe(8n);
     expect(second.state.status).toBe("ready");
     expect(client.readTopics).toHaveBeenCalledTimes(1);
@@ -68,6 +69,33 @@ describe("MCAP grid preview", () => {
       startTimeNs: 8n,
       topics: ["/camera/front"],
     });
+  });
+
+  it("reads raw image frames as image previews", async () => {
+    const readDecodedMessages = vi.fn(async function* (
+      request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
+    ) {
+      yield createRawImageMessage(request.topics?.[0] ?? "/camera/image", 11n);
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic("/camera/image", "sensor_msgs/msg/Image", "cdr", "ros2msg"),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      { source: createSource() },
+    );
+    const image = imageFrame(result.state.frame)?.image;
+
+    expect(result.state.status).toBe("ready");
+    expect(image?.kind).toBe(VISUALIZATION_KIND.RAW_IMAGE);
+    if (image?.kind !== VISUALIZATION_KIND.RAW_IMAGE) {
+      throw new Error("Expected raw image preview");
+    }
+    expect(Array.from(image.rgba)).toEqual([255, 0, 0, 255]);
   });
 
   it("pairs exact camera annotations with a nearby image frame", async () => {
@@ -105,7 +133,7 @@ describe("MCAP grid preview", () => {
     expect(imageFrame(result.state.frame)?.annotations?.texts[0]?.text).toBe(
       "car",
     );
-    expect(imageFrame(result.state.frame)?.image.bytes[0]).toBe(1);
+    expect(firstImageByte(result.state.frame)).toBe(1);
     expect(readSynchronizedMessages).toHaveBeenCalledWith(
       expect.objectContaining({
         timeNs: 20n,
@@ -141,7 +169,7 @@ describe("MCAP grid preview", () => {
 
     expect(result.state.status).toBe("ready");
     expect(imageFrame(result.state.frame)?.annotations).toBeNull();
-    expect(imageFrame(result.state.frame)?.image.bytes[0]).toBe(4);
+    expect(firstImageByte(result.state.frame)).toBe(4);
     expect(result.nextStartTimeNs).toBe(31n);
     expect(
       readDecodedMessages.mock.calls.map(([request]) => request.topics),
@@ -201,7 +229,7 @@ describe("MCAP grid preview", () => {
       streamTopics: ["/camera/front", "/camera/back"],
       status: "ready",
     });
-    expect(imageFrame(result.state.frame)?.image.bytes[0]).toBe(8);
+    expect(firstImageByte(result.state.frame)).toBe(8);
     expect(readDecodedMessages).toHaveBeenCalledWith(
       expect.objectContaining({ topics: ["/camera/back"] }),
     );
@@ -428,7 +456,7 @@ describe("MCAP grid preview", () => {
         createTopic(
           "/radar/points",
           "sensor_msgs/msg/PointCloud2",
-          "cdr",
+          "protobuf",
           "ros2msg",
         ),
         createTopic("/radar/custom", "example.RadarPointCloud"),
@@ -559,6 +587,22 @@ function createImageMessage(
   });
 }
 
+function createRawImageMessage(
+  topic: string,
+  timelineTimeNs = 10n,
+): McapDecodedMessage {
+  return createDecodedMessage(topic, "sensor_msgs/msg/Image", {
+    timelineTimeNs,
+    visualization: {
+      height: 1,
+      kind: VISUALIZATION_KIND.RAW_IMAGE,
+      rgba: new Uint8Array([255, 0, 0, 255]),
+      sourceEncoding: "rgb8",
+      width: 1,
+    },
+  });
+}
+
 function createAnnotationMessage(
   topic: string,
   timelineTimeNs = 10n,
@@ -600,12 +644,6 @@ function createPointCloudMessage(
     visualization,
     timelineTimeNs,
   });
-}
-
-function imageFrame(
-  frame: McapGridPreviewFrame | null,
-): Extract<McapGridPreviewFrame, { kind: "image" }> | null {
-  return frame?.kind === "image" ? frame : null;
 }
 
 function pointCloudFrame(

@@ -17,7 +17,7 @@ import { useCopyFeedback } from "./use-copy-feedback";
  * Raw message tile: the escape hatch that makes every topic at least
  * inspectable. Shows the selected topic's newest message at the
  * playhead as a collapsible record tree; topics without a generic
- * decode path (cbor, ros1) degrade to legible metadata instead of
+ * decode path or usable schema degrade to legible metadata instead of
  * silence. Topic selection lives in the per-tile raw state and the
  * settings sidebar; records come from the shared raw-message cache
  * (playhead-anchored, idle lane).
@@ -178,6 +178,9 @@ function noticeText(result: McapRawMessageRecordResult): string {
     case "empty":
       return "No message at or before the playhead on this topic";
     case "unsupported":
+      if (result.decodeUnavailableReason === "schema-unavailable") {
+        return `'${result.messageEncoding}' messages need a readable schema to decode — showing message metadata only`;
+      }
       return `'${result.messageEncoding}' messages can't be decoded yet — showing message metadata only`;
     case "decode-error":
       return `This message failed to decode${

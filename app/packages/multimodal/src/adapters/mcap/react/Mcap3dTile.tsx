@@ -9,8 +9,8 @@ import React, {
 } from "react";
 import type {
   CameraCalibrationVisualization,
-  EncodedImageVisualization,
   GridVisualization,
+  ImageVisualization,
   LocationVisualization,
   PointCloudVisualization,
   PoseVisualization,
@@ -170,7 +170,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     [referenceGrid, sceneUpAxis],
   );
   const frustumImageFrames =
-    useMcapTopicPlaybackFrames<EncodedImageVisualization>(frustumImageTopics);
+    useMcapTopicPlaybackFrames<ImageVisualization>(frustumImageTopics);
   const frames =
     useMcapTopicPlaybackFrames<PointCloudVisualization>(pointCloudTopics);
   const pointCloudColorCapabilities = usePointCloudColorCapabilities(

@@ -6,7 +6,7 @@ import type {
   McapReadRawMessageRecordRequest,
 } from "../types";
 import {
-  genericRecordDecoderForChannel,
+  genericRecordDecoderResolutionForChannel,
   mcapChannelForTopic,
 } from "./generic-record-decoder";
 import { pruneRawRecord } from "./raw-record-prune";
@@ -37,9 +37,10 @@ type McapRawMessage = McapTypes.TypedMcapRecords["Message"];
 /**
  * Reads the newest message at or before a playback time on one topic
  * and returns its schema-shaped record, pruned to bounded size.
- * Decoding is generic (protobuf descriptor / JSON) and independent of
- * the visualization decoder registry; encodings without a generic
- * decode path degrade to metadata-only results instead of failing.
+ * Decoding is generic (protobuf descriptor / JSON / ROS schema readers)
+ * and independent of the visualization decoder registry; channels without
+ * a usable generic decode path degrade to metadata-only results instead
+ * of failing.
  */
 export async function readMcapRawMessageRecord({
   reader,
@@ -105,14 +106,21 @@ export async function readMcapRawMessageRecord({
     validUntilNs,
   };
 
-  const decodeRecord = genericRecordDecoderForChannel(reader, channel);
-  if (!decodeRecord) {
-    return { ...metadata, status: "unsupported" };
+  const decoderResolution = genericRecordDecoderResolutionForChannel(
+    reader,
+    channel,
+  );
+  if (decoderResolution.status === "unavailable") {
+    return {
+      ...metadata,
+      decodeUnavailableReason: decoderResolution.reason,
+      status: "unsupported",
+    };
   }
 
   let record: Record<string, unknown>;
   try {
-    record = decodeRecord(message.data);
+    record = decoderResolution.decodeRecord(message.data);
   } catch (error) {
     return {
       ...metadata,

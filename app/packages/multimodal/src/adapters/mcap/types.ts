@@ -198,14 +198,32 @@ export interface McapNumericFieldDescriptor {
 }
 
 /**
- * Plottable numeric fields for one topic. `encoding: "unsupported"`
- * marks topics whose message encoding has no numeric extraction path
- * yet (e.g. cbor, ros1) — surfaced so gaps stay legible instead of
+ * Why a generic schema-shaped decode path is unavailable for a topic.
+ */
+export type McapDecodeUnavailableReason =
+  | "schema-unavailable"
+  | "unsupported-encoding";
+
+/**
+ * Numeric field availability for one topic. Empty-field topics are
+ * surfaced with a reason so the plot picker can distinguish unsupported
+ * encodings, unreadable schemas, and decodable schemas with nothing scalar
+ * to plot.
+ */
+export type McapNumericFieldAvailability =
+  | "no-numeric-fields"
+  | "ready"
+  | McapDecodeUnavailableReason;
+
+/**
+ * Plottable numeric fields for one topic. `availability` explains empty
+ * field lists so unsupported/degraded topics stay legible instead of
  * silently absent.
  */
 export interface McapTopicNumericFields {
   readonly topic: string;
-  readonly encoding: "protobuf" | "json" | "unsupported";
+  readonly encoding: "protobuf" | "json" | "ros1" | "cdr" | "unsupported";
+  readonly availability: McapNumericFieldAvailability;
 
   /**
    * True when fields were derived by sampling decoded messages (JSON
@@ -432,10 +450,9 @@ export interface McapReadRawMessageRecordRequest {
 
 /**
  * Raw record read outcome: `ok` carries a pruned record tree;
- * `unsupported` carries message metadata for encodings with no generic
- * decode path yet (cbor, ros1); `decode-error` marks a corrupt or
- * schema-mismatched payload; `empty` means the topic has no message at
- * or before the requested time.
+ * `unsupported` carries message metadata when a generic decode path is
+ * unavailable; `decode-error` marks a corrupt or schema-mismatched payload;
+ * `empty` means the topic has no message at or before the requested time.
  */
 export type McapRawMessageRecordStatus =
   | "decode-error"
@@ -469,6 +486,7 @@ export interface McapRawMessageRecordResult {
   readonly publishTimeNs?: bigint;
   readonly sequence?: number;
   readonly encodedPayloadBytes?: number;
+  readonly decodeUnavailableReason?: McapDecodeUnavailableReason;
 
   /**
    * Pruned record tree; present only when `ok`.
@@ -633,6 +651,9 @@ export interface McapReadSynchronizedMessageBatchRequest extends Omit<
  */
 export type McapResourceReadPriority = "bulk" | "current" | "idle" | "playback";
 
+/**
+ * Optional scheduling hints for MCAP resource reads.
+ */
 export interface McapResourceReadOptions {
   readonly priority?: McapResourceReadPriority;
 }
