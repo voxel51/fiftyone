@@ -50,7 +50,7 @@ export const VISUALIZATION_PANEL_REGISTRY: Readonly<
   [VISUALIZATION_KIND.ENCODED_VIDEO]: PANEL_TYPE.IMAGE,
   [VISUALIZATION_KIND.GRID]: PANEL_TYPE.THREE_D,
   [VISUALIZATION_KIND.IMAGE_ANNOTATIONS]: PANEL_TYPE.IMAGE,
-  // No MAP panel exists yet; v1 surfaces locations as a 3D-tile HUD
+  // No MAP panel exists yet; locations currently surface as a 3D-tile HUD
   // readout. The mapping records the natural home for the data.
   [VISUALIZATION_KIND.LOCATION]: PANEL_TYPE.MAP,
   [VISUALIZATION_KIND.POINT_CLOUD]: PANEL_TYPE.THREE_D,

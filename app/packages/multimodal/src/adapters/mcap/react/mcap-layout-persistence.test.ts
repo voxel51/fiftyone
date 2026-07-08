@@ -93,8 +93,10 @@ describe("mcap-layout-persistence", () => {
       STORAGE_KEY,
       JSON.stringify({
         version: 1,
-        leftSidebarOpen: true,
-        layout: { direction: "diagonal", first: "a", second: "b" },
+        fallback: {
+          leftSidebarOpen: true,
+          layout: { direction: "diagonal", first: "a", second: "b" },
+        },
       }),
     );
     const read = readMcapModalLayout();
@@ -106,7 +108,7 @@ describe("mcap-layout-persistence", () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        version: 2,
+        version: 1,
         fallback: { expandedTileId: "", leftSidebarOpen: true },
       }),
     );
@@ -123,59 +125,19 @@ describe("mcap-layout-persistence", () => {
       expect(readMcapModalLayout("dataset-b")?.layout).toBe("3d-1");
     });
 
-    it("falls back to the latest write anywhere for a never-seen dataset", () => {
+    it("does not restore another dataset's arrangement for a never-seen dataset", () => {
       writeMcapModalLayout({ layout: "image-1" }, "dataset-a");
       writeMcapModalLayout({ layout: "3d-1" }, "dataset-b");
-      expect(readMcapModalLayout("dataset-never-seen")?.layout).toBe("3d-1");
-      expect(readMcapModalLayout()?.layout).toBe("3d-1");
+      expect(readMcapModalLayout("dataset-never-seen")).toBeNull();
+      expect(readMcapModalLayout()).toBeNull();
     });
 
-    it("resolves each field independently between entry and fallback", () => {
+    it("does not fill missing fields from another dataset", () => {
       writeMcapModalLayout({ leftSidebarOpen: false }, "dataset-a");
       writeMcapModalLayout({ layout: "image-1" }, "dataset-b");
       const read = readMcapModalLayout("dataset-a");
-      // Own entry wins where present…
       expect(read?.leftSidebarOpen).toBe(false);
-      // …and the fallback fills the fields it doesn't have.
-      expect(read?.layout).toBe("image-1");
-    });
-  });
-
-  describe("v1 migration", () => {
-    it("reads a v1 payload as the fallback layer", () => {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          version: 1,
-          leftSidebarOpen: false,
-          layout: "image-1",
-        }),
-      );
-      const read = readMcapModalLayout("dataset-never-seen");
-      expect(read?.leftSidebarOpen).toBe(false);
-      expect(read?.layout).toBe("image-1");
-    });
-
-    it("migrates v1 fields into the v2 fallback on the first write", () => {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          version: 1,
-          leftSidebarOpen: false,
-          layout: "image-1",
-        }),
-      );
-      writeMcapModalLayout({ sidebarWidthPx: 400 }, "dataset-a");
-      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
-      expect(raw.version).toBe(2);
-      expect(raw.fallback).toMatchObject({
-        leftSidebarOpen: false,
-        layout: "image-1",
-        sidebarWidthPx: 400,
-      });
-      expect(readMcapModalLayout("dataset-a")?.sidebarWidthPx).toBe(400);
-      // The pre-migration fields survived for other datasets too.
-      expect(readMcapModalLayout("dataset-b")?.layout).toBe("image-1");
+      expect(read?.layout).toBeUndefined();
     });
   });
 
@@ -188,13 +150,13 @@ describe("mcap-layout-persistence", () => {
     it("drops non-numeric or non-positive widths but keeps valid fields", () => {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ version: 2, fallback: { sidebarWidthPx: "wide" } }),
+        JSON.stringify({ version: 1, fallback: { sidebarWidthPx: "wide" } }),
       );
       expect(readMcapModalLayout()?.sidebarWidthPx).toBeUndefined();
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          version: 2,
+          version: 1,
           fallback: { sidebarWidthPx: -5, leftSidebarOpen: true },
         }),
       );
@@ -226,8 +188,8 @@ describe("mcap-layout-persistence", () => {
       expect(keys).not.toContain("dataset-1");
       expect(keys).toContain("dataset-0");
       expect(keys).toContain("dataset-20");
-      // The evicted dataset resolves from the fallback from now on.
-      expect(readMcapModalLayout("dataset-1")?.layout).toBe("image-20");
+      // The evicted dataset starts from defaults from now on.
+      expect(readMcapModalLayout("dataset-1")).toBeNull();
     });
   });
 
@@ -306,16 +268,12 @@ describe("mcap-layout-persistence", () => {
       });
     });
 
-    it("never leaks plot series through the browser-wide fallback", () => {
+    it("never leaks plot config to another dataset", () => {
       writeMcapModalLayout(
         { layout: "plot-1", plotSeries: { "plot-1": SERIES } },
         "ds-a",
       );
-      // Another dataset inherits the layout via the fallback but not
-      // the dataset-scoped series.
-      const other = readMcapModalLayout("ds-b");
-      expect(other?.layout).toBe("plot-1");
-      expect(other?.plotSeries).toBeUndefined();
+      expect(readMcapModalLayout("ds-b")).toBeNull();
     });
 
     it("sanitizes malformed plot series rows individually", () => {
@@ -355,15 +313,13 @@ describe("mcap-layout-persistence", () => {
       });
     });
 
-    it("never leaks raw topics through the browser-wide fallback", () => {
+    it("never leaks raw topic config to another dataset", () => {
       writeMcapModalLayout(
         { layout: "raw-1", rawTopics: { "raw-1": "/imu" } },
         "ds-a",
       );
 
-      const other = readMcapModalLayout("ds-b");
-      expect(other?.layout).toBe("raw-1");
-      expect(other?.rawTopics).toBeUndefined();
+      expect(readMcapModalLayout("ds-b")).toBeNull();
     });
 
     it("drops rows with non-raw tile ids or invalid topics", () => {
@@ -403,15 +359,13 @@ describe("mcap-layout-persistence", () => {
       });
     });
 
-    it("never leaks tile titles through the browser-wide fallback", () => {
+    it("never leaks tile titles to another dataset", () => {
       writeMcapModalLayout(
         { layout: "image-1", tileTitles: { "image-1": "Front Camera" } },
         "ds-a",
       );
 
-      const other = readMcapModalLayout("ds-b");
-      expect(other?.layout).toBe("image-1");
-      expect(other?.tileTitles).toBeUndefined();
+      expect(readMcapModalLayout("ds-b")).toBeNull();
     });
 
     it("drops rows with invalid tile ids or titles", () => {
@@ -445,19 +399,17 @@ describe("mcap-layout-persistence", () => {
       expect(readMcapModalLayout("ds-a")?.sceneUpAxis).toBe("y");
     });
 
-    it("never leaks scene up-axis through the browser-wide fallback", () => {
+    it("never leaks scene up-axis to another dataset", () => {
       writeMcapModalLayout({ layout: "3d-1", sceneUpAxis: "x" }, "ds-a");
 
-      const other = readMcapModalLayout("ds-b");
-      expect(other?.layout).toBe("3d-1");
-      expect(other?.sceneUpAxis).toBeUndefined();
+      expect(readMcapModalLayout("ds-b")).toBeNull();
     });
 
     it("drops invalid scene up-axis values but keeps valid fields", () => {
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          version: 2,
+          version: 1,
           byDataset: {
             "ds-a": {
               leftSidebarOpen: true,

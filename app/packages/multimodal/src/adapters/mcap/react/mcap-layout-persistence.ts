@@ -9,25 +9,20 @@ import { MCAP_TILE_TYPE } from "./mcap-tile-types";
  * Persistence for the MCAP modal's chrome: sidebar visibility, sidebar
  * width, the mosaic tile arrangement, and the currently expanded tile.
  *
- * One localStorage key holding per-dataset entries plus a browser-wide
- * fallback. Samples in a dataset are typically different recordings with
- * the same topic structure, so the arrangement a user settles on should
- * follow them from sample to sample — and datasets with different topic
- * shapes should each keep their own. Every write also updates the
- * fallback, which tracks the latest arrangement anywhere, so a
- * never-seen dataset opens with the same continuity the old
- * browser-wide key provided. Legacy v1 payloads (one browser-wide
- * entry) are read as that fallback layer, so upgrading loses nothing;
- * the first v2 write migrates them into `fallback` for good.
+ * One localStorage key holding scoped entries plus a browser-wide fallback
+ * for callers that do not provide a scope. Samples in a dataset are
+ * typically different recordings with the same topic structure, so the
+ * sample renderer scopes by dataset; the standalone MCAP explorer scopes by
+ * source. A scoped read intentionally restores only that exact scope, so a
+ * new dataset or new explorer MCAP starts from the built-in defaults.
  *
  * Restore is best-effort: anything unreadable or structurally invalid
  * falls back to the built-in defaults (see `use-mcap-modal-layout`).
  */
 
 /**
- * Per-scope persisted fields. Every field is optional — callers fall
- * back per-field, and a dataset entry falls back to the shared
- * `fallback` entry per-field on read.
+ * Per-scope persisted fields. Every field is optional — callers fall back to
+ * built-in defaults per-field.
  */
 export interface McapPersistedModalLayout {
   /** Tile id rendered expanded over the saved layout, when any. */
@@ -88,16 +83,15 @@ interface PersistedDatasetEntry extends McapPersistedModalLayout {
 }
 
 interface PersistedStore {
-  version: typeof VERSION;
-  /** Latest arrangement written anywhere — the never-seen-dataset layer. */
+  version: typeof STORAGE_VERSION;
+  /** Browser-wide layer used only by unscoped callers. */
   fallback?: McapPersistedModalLayout;
   byDataset?: Record<string, PersistedDatasetEntry>;
 }
 
 const STORAGE_KEY = "fiftyone.mcap.modal-layout";
-const VERSION = 2;
-const LEGACY_VERSION = 1;
-const DATASET_SCOPED_LAYOUT_FIELDS = [
+const STORAGE_VERSION = 1;
+const FALLBACK_OMITTED_FIELDS = [
   "plotSeries",
   "rawTopics",
   "sceneUpAxis",
@@ -108,7 +102,7 @@ const DATASET_SCOPED_LAYOUT_FIELDS = [
 // payload unboundedly — localStorage is quota'd and the whole key is
 // parsed on every modal mount. 20 comfortably covers a user's active
 // datasets; least-recently-updated entries beyond that are evicted and
-// simply fall back to the shared entry on their next open.
+// simply use defaults on their next open.
 const MAX_DATASET_ENTRIES = 20;
 
 /** True when the value is a structurally valid mosaic tree of tile ids. */
@@ -269,11 +263,7 @@ export function sanitizeTileTitles(
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
-/**
- * Parse and sanitize whatever is in storage into the v2 store shape.
- * v1 payloads are read as the fallback layer (their single entry was
- * browser-wide, which is exactly what `fallback` means now).
- */
+/** Parse and sanitize whatever is in storage into the current store shape. */
 function readStore(): {
   fallback?: McapPersistedModalLayout;
   byDataset: Record<string, PersistedDatasetEntry>;
@@ -284,10 +274,7 @@ function readStore(): {
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return null;
     const version = (parsed as { version?: unknown }).version;
-    if (version === LEGACY_VERSION) {
-      return { fallback: sanitizeEntry(parsed), byDataset: {} };
-    }
-    if (version !== VERSION) return null;
+    if (version !== STORAGE_VERSION) return null;
     const store = parsed as { fallback?: unknown; byDataset?: unknown };
     const byDataset: Record<string, PersistedDatasetEntry> = {};
     if (typeof store.byDataset === "object" && store.byDataset !== null) {
@@ -320,34 +307,21 @@ function readStore(): {
 
 /**
  * Read the persisted modal layout for `datasetKey`, or `null` when
- * nothing valid is stored. Each field resolves from the dataset's entry
- * first and the browser-wide fallback second; individual fields remain
- * optional — callers fall back per-field.
+ * nothing valid is stored. Scoped reads restore only the exact entry; a
+ * missing entry means the caller should use built-in defaults. Unscoped reads
+ * use the browser-wide fallback.
  */
 export function readMcapModalLayout(
   datasetKey?: string,
 ): McapPersistedModalLayout | null {
   const store = readStore();
   if (!store) return null;
-  const entry = datasetKey ? store.byDataset[datasetKey] : undefined;
-  const fallback = store.fallback;
-  if (!entry && !fallback) return null;
-  return {
-    expandedTileId: entry?.expandedTileId ?? fallback?.expandedTileId,
-    leftSidebarOpen: entry?.leftSidebarOpen ?? fallback?.leftSidebarOpen,
-    layout: entry?.layout ?? fallback?.layout,
-    // Dataset-scoped on purpose: series reference this dataset's topics,
-    // so another dataset's plots must never leak in via the fallback.
-    plotSeries: entry?.plotSeries,
-    // Dataset-scoped for the same reason as plotSeries.
-    rawTopics: entry?.rawTopics,
-    // Dataset-scoped for the same reason as plotSeries/rawTopics.
-    tileTitles: entry?.tileTitles,
-    // Dataset-scoped on purpose: world-up conventions are recording-family
-    // semantics, not reusable browser chrome.
-    sceneUpAxis: entry?.sceneUpAxis,
-    sidebarWidthPx: entry?.sidebarWidthPx ?? fallback?.sidebarWidthPx,
-  };
+  if (datasetKey) {
+    const entry = store.byDataset[datasetKey];
+    return entry ? layoutFromDatasetEntry(entry) : null;
+  }
+
+  return store.fallback ?? null;
 }
 
 /**
@@ -355,10 +329,8 @@ export function readMcapModalLayout(
  * toggles, the width observer, and the layout observer write
  * independently.
  *
- * Writes update both the dataset's entry and the browser-wide fallback:
- * the fallback tracks the latest arrangement anywhere, so a dataset the
- * user has never opened before starts from their most recent
- * arrangement instead of the built-in defaults.
+ * Scoped writes update only the scoped entry. Unscoped writes update the
+ * browser-wide fallback.
  */
 export function writeMcapModalLayout(
   patch: Partial<McapPersistedModalLayout>,
@@ -369,6 +341,7 @@ export function writeMcapModalLayout(
     if (!storage) return;
     const store = readStore();
     const byDataset = { ...store?.byDataset };
+    let fallback = store?.fallback;
     if (datasetKey) {
       byDataset[datasetKey] = {
         ...byDataset[datasetKey],
@@ -376,15 +349,14 @@ export function writeMcapModalLayout(
         updatedAtMs: Date.now(),
       };
       evictLeastRecentlyUpdated(byDataset);
+    } else {
+      fallback = stripDatasetScopedLayoutFields({
+        ...fallback,
+        ...patch,
+      });
     }
-    // The fallback layer tracks the latest arrangement anywhere, but
-    // dataset-scoped semantics must not leak between unrelated topic sets.
-    const fallback = stripDatasetScopedLayoutFields({
-      ...store?.fallback,
-      ...patch,
-    });
     const next: PersistedStore = {
-      version: VERSION,
+      version: STORAGE_VERSION,
       fallback,
       byDataset,
     };
@@ -395,11 +367,26 @@ export function writeMcapModalLayout(
   }
 }
 
+function layoutFromDatasetEntry(
+  entry: PersistedDatasetEntry,
+): McapPersistedModalLayout {
+  return {
+    expandedTileId: entry.expandedTileId,
+    leftSidebarOpen: entry.leftSidebarOpen,
+    layout: entry.layout,
+    plotSeries: entry.plotSeries,
+    rawTopics: entry.rawTopics,
+    sceneUpAxis: entry.sceneUpAxis,
+    sidebarWidthPx: entry.sidebarWidthPx,
+    tileTitles: entry.tileTitles,
+  };
+}
+
 function stripDatasetScopedLayoutFields(
   layout: Partial<McapPersistedModalLayout>,
 ): McapPersistedModalLayout {
   const fallback = { ...layout };
-  for (const field of DATASET_SCOPED_LAYOUT_FIELDS) {
+  for (const field of FALLBACK_OMITTED_FIELDS) {
     delete fallback[field];
   }
   return fallback;

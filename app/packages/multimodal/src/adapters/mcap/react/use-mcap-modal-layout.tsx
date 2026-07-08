@@ -56,8 +56,9 @@ export interface UseMcapModalLayoutOptions {
   sources: readonly SceneSource[];
   /**
    * Persistence scope — `ctx.dataset.datasetId` (stable across dataset
-   * renames, unlike the name). Absent, reads/writes hit only the
-   * browser-wide fallback entry.
+   * renames, unlike the name) for the sample renderer, or an MCAP source key
+   * for the explorer. Absent, reads/writes hit only the browser-wide fallback
+   * entry.
    */
   datasetId?: string;
   /** Source locality hint; tightens the default tile budget when remote. */

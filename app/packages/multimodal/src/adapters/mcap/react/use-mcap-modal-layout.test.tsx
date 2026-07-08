@@ -358,6 +358,29 @@ describe("useMcapModalLayout", () => {
     });
   });
 
+  it("uses resolver defaults for a never-seen dataset", () => {
+    writeMcapModalLayout(
+      {
+        layout: {
+          direction: "row",
+          first: "image-1",
+          second: "3d-1",
+          splitPercentage: 20,
+        },
+      },
+      "dataset-a",
+    );
+
+    const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-b");
+
+    expect(result.current.initialLayout).toMatchObject({
+      direction: "column",
+      first: "3d-1",
+      second: "image-1",
+    });
+    expect(result.current.defaultLeftOpen).toBe(true);
+  });
+
   it("restores the persisted sidebar width", () => {
     writeMcapModalLayout({ sidebarWidthPx: 480 }, "dataset-a");
     const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-a");

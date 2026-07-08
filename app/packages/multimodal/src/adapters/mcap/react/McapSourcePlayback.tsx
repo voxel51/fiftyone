@@ -109,6 +109,8 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     client,
     source,
   });
+  const effectiveLayoutScopeKey =
+    layoutScopeKey ?? (source ? `mcap-source:${source.sourceId}` : undefined);
   const metadata = useMemo(
     () => ({
       sizeLabel: sourceSizeLabel(source?.sizeBytes),
@@ -136,7 +138,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     sceneUpAxis,
     onSceneUpAxisChange,
   } = useMcapModalLayout({
-    datasetId: layoutScopeKey,
+    datasetId: effectiveLayoutScopeKey,
     readProfile: source?.readProfile,
     sources,
   });
@@ -223,7 +225,9 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                     <McapPausedByteBanking client={client} source={source} />
                     <McapSelectionHotkeys />
                     {children}
-                    <McapModalLayoutPersistence datasetId={layoutScopeKey} />
+                    <McapModalLayoutPersistence
+                      datasetId={effectiveLayoutScopeKey}
+                    />
                   </MultiModalPlayback>
                 </Mcap3dViewSettingsProvider>
               </McapDataStreamProvider>
