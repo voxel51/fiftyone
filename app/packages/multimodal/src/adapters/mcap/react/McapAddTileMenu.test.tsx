@@ -9,6 +9,7 @@ import McapAddTileMenu from "./McapAddTileMenu";
 // bodies.
 vi.mock("./McapImageTile", () => ({ default: () => null }));
 vi.mock("./Mcap3dTile", () => ({ default: () => null }));
+vi.mock("./McapLogConsoleTile", () => ({ default: () => null }));
 vi.mock("./McapPlotTile", () => ({ default: () => null }));
 vi.mock("./McapRawMessageTile", () => ({ default: () => null }));
 
@@ -64,6 +65,7 @@ describe("McapAddTileMenu", () => {
 
     expect(screen.getByText("Image")).toBeTruthy();
     expect(screen.getByText("3D")).toBeTruthy();
+    expect(screen.getByText("Logs")).toBeTruthy();
     expect(screen.getByText("Plot")).toBeTruthy();
     expect(screen.getByText("Message")).toBeTruthy();
     expect(screen.queryByText("Image streams")).toBeNull();
@@ -93,6 +95,21 @@ describe("McapAddTileMenu", () => {
     expect(rawIds).toEqual(["raw-1", "raw-2"]);
     for (const id of rawIds) {
       expect(titles[id]).toBe("Message");
+    }
+  });
+
+  it("spawns additive log tiles", () => {
+    renderMenu();
+    openMenu();
+    fireEvent.click(screen.getByText("Logs"));
+    openMenu();
+    fireEvent.click(screen.getByText("Logs"));
+
+    const { titles } = probeState();
+    const logIds = Object.keys(titles).filter((id) => id.startsWith("log-"));
+    expect(logIds).toEqual(["log-1", "log-2"]);
+    for (const id of logIds) {
+      expect(titles[id]).toBe("Logs");
     }
   });
 });

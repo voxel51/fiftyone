@@ -10,6 +10,7 @@ import {
 import { McapNumericSeriesBridge } from "./mcap-numeric-series-context";
 import { McapPoseTrajectoriesStartupGate } from "./mcap-pose-trajectories-context";
 import { McapRawMessageBridge } from "./mcap-raw-message-context";
+import { McapSceneUpdateHistoryBridge } from "./mcap-scene-update-history-context";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
@@ -76,7 +77,8 @@ export function McapStreams({ client, source }: McapStreamsProps) {
             s.type !== MCAP_SOURCE_TYPE.MAP_LAYER &&
             s.type !== MCAP_SOURCE_TYPE.CAMERA_CALIBRATION &&
             s.type !== MCAP_SOURCE_TYPE.POSE &&
-            s.type !== MCAP_SOURCE_TYPE.LOCATION,
+            s.type !== MCAP_SOURCE_TYPE.LOCATION &&
+            s.type !== MCAP_SOURCE_TYPE.LOG,
         )
         .map((s) => s.id),
     [sources],
@@ -100,6 +102,13 @@ export function McapStreams({ client, source }: McapStreamsProps) {
   const poseTopics = useMemo(
     () =>
       sources.filter((s) => s.type === MCAP_SOURCE_TYPE.POSE).map((s) => s.id),
+    [sources],
+  );
+  const sceneAnnotationTopics = useMemo(
+    () =>
+      sources
+        .filter((s) => s.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION)
+        .map((s) => s.id),
     [sources],
   );
 
@@ -126,6 +135,11 @@ export function McapStreams({ client, source }: McapStreamsProps) {
       <McapPoseTrajectoriesStartupGate
         client={client}
         poseTopics={poseTopics}
+        source={source}
+      />
+      <McapSceneUpdateHistoryBridge
+        client={client}
+        sceneAnnotationTopics={sceneAnnotationTopics}
         source={source}
       />
       <McapNumericSeriesBridge client={client} source={source} />

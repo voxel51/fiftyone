@@ -28,6 +28,15 @@ function imageSource(id: string, recordCount?: number): SceneSource {
   };
 }
 
+function logSource(id: string, recordCount?: number): SceneSource {
+  return {
+    id,
+    label: id.replace(/^\//, ""),
+    type: "log",
+    ...(recordCount !== undefined ? { recordCount } : {}),
+  };
+}
+
 const POINT_CLOUD: SceneSource = {
   id: "/points",
   label: "points",
@@ -259,6 +268,23 @@ describe("resolvePlaybackLayout", () => {
     expect(layout).toBe("3d-1");
   });
 
+  it("opens a log tile for logs-only scenes", () => {
+    const { tiles, layout } = resolvePlaybackLayout({
+      capabilities: STRONG_LOCAL,
+      readProfile: "local",
+      sources: [logSource("/diagnostics", 12)],
+    });
+
+    expect(tiles).toEqual([
+      {
+        id: "log-1",
+        tileType: "log",
+        title: "Logs",
+      },
+    ]);
+    expect(layout).toBe("log-1");
+  });
+
   it("returns no tiles for scenes without renderable sources", () => {
     const { tiles, layout } = resolvePlaybackLayout({
       capabilities: STRONG_LOCAL,
@@ -339,6 +365,15 @@ describe("buildMcapAutoLayout", () => {
         splitPercentage: 50,
       },
       splitPercentage: 100 / 3,
+    });
+  });
+
+  it("stacks log tiles vertically", () => {
+    expect(buildMcapAutoLayout(["log-1", "log-2"])).toEqual({
+      direction: "column",
+      first: "log-1",
+      second: "log-2",
+      splitPercentage: 50,
     });
   });
 

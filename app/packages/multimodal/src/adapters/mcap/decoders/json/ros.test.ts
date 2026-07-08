@@ -11,33 +11,50 @@ import {
   isCameraCalibrationStream,
   isCompressedImageStream,
   isGridStream,
+  isImageAnnotationsStream,
   isImageStream,
   isLocationFixStream,
+  isLogStream,
   isPointCloudStream,
   isPoseStream,
+  isSceneUpdateStream,
   streamTopics,
 } from "../../stream-topics";
 import {
   JSON_ROS_CAMERA_INFO_PAYLOADS,
   JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
+  JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS,
+  JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS,
+  JSON_ROS_DIAGNOSTIC_ARRAY_PAYLOADS,
   JSON_ROS_IMAGE_PAYLOADS,
   JSON_ROS_LASER_SCAN_PAYLOADS,
   JSON_ROS_NAV_SAT_FIX_PAYLOADS,
   JSON_ROS_OCCUPANCY_GRID_PAYLOADS,
   JSON_ROS_ODOMETRY_PAYLOADS,
+  JSON_ROS_PATH_PAYLOADS,
   JSON_ROS_POINT_CLOUD2_PAYLOADS,
+  JSON_ROS_POSE_ARRAY_PAYLOADS,
   JSON_ROS_POSE_STAMPED_PAYLOADS,
+  JSON_ROS_RCL_LOG_PAYLOADS,
+  JSON_ROS_ROSGRAPH_LOG_PAYLOADS,
 } from "./payloads";
 import {
   jsonRosCameraInfoDecoders,
   jsonRosCompressedImageDecoders,
+  jsonRosDiagnosticArrayDecoders,
+  jsonRosDetection2DArrayDecoders,
+  jsonRosDetection3DArrayDecoders,
   jsonRosImageDecoders,
   jsonRosLaserScanDecoders,
   jsonRosNavSatFixDecoders,
   jsonRosOccupancyGridDecoders,
   jsonRosOdometryDecoders,
+  jsonRosPathDecoders,
   jsonRosPointCloud2Decoders,
+  jsonRosPoseArrayDecoders,
   jsonRosPoseStampedDecoders,
+  jsonRosRclLogDecoders,
+  jsonRosRosgraphLogDecoders,
 } from "./ros";
 
 const TEXT_ENCODER = new TextEncoder();
@@ -69,13 +86,20 @@ describe("JSON-schema ROS MCAP decoders", () => {
     const payloads = [
       ...JSON_ROS_CAMERA_INFO_PAYLOADS,
       ...JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
+      ...JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS,
+      ...JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS,
+      ...JSON_ROS_DIAGNOSTIC_ARRAY_PAYLOADS,
       ...JSON_ROS_IMAGE_PAYLOADS,
       ...JSON_ROS_LASER_SCAN_PAYLOADS,
       ...JSON_ROS_NAV_SAT_FIX_PAYLOADS,
       ...JSON_ROS_OCCUPANCY_GRID_PAYLOADS,
       ...JSON_ROS_ODOMETRY_PAYLOADS,
+      ...JSON_ROS_PATH_PAYLOADS,
       ...JSON_ROS_POINT_CLOUD2_PAYLOADS,
+      ...JSON_ROS_POSE_ARRAY_PAYLOADS,
       ...JSON_ROS_POSE_STAMPED_PAYLOADS,
+      ...JSON_ROS_RCL_LOG_PAYLOADS,
+      ...JSON_ROS_ROSGRAPH_LOG_PAYLOADS,
     ];
 
     for (const payload of payloads) {
@@ -197,6 +221,85 @@ describe("JSON-schema ROS MCAP decoders", () => {
       latitude: 37.77,
       longitude: -122.42,
     });
+  });
+
+  it("decodes JSON ROS logs and diagnostics into console rows", () => {
+    const rosgraph = decoderForSchema(
+      jsonRosRosgraphLogDecoders,
+      "rosgraph_msgs/Log",
+    ).decode(
+      jsonMessage({
+        file: "planner.cpp",
+        function: "tick",
+        header: headerRecord("rosout", 7, 8),
+        level: 8,
+        line: 42,
+        msg: "planner failed",
+        name: "planner",
+        topics: ["/plan"],
+      }),
+      {},
+    );
+    const rcl = decoderForSchema(
+      jsonRosRclLogDecoders,
+      "rcl_interfaces/msg/Log",
+    ).decode(
+      jsonMessage({
+        file: "controller.cpp",
+        function: "update",
+        level: 30,
+        line: 10,
+        msg: "tracking degraded",
+        name: "controller",
+        stamp: { nanosec: 4, sec: 5 },
+      }),
+      {},
+    );
+    const diagnostics = decoderForSchema(
+      jsonRosDiagnosticArrayDecoders,
+      "diagnostic_msgs/msg/DiagnosticArray",
+    ).decode(
+      jsonMessage({
+        header: headerRecord("base", 6, 9),
+        status: [
+          {
+            hardware_id: "lidar-top",
+            level: 2,
+            message: "packet drops",
+            name: "driver",
+            values: [{ key: "drop_rate", value: "0.2" }],
+          },
+        ],
+      }),
+      {},
+    );
+
+    expect(rosgraph.attributes?.logRows).toEqual([
+      expect.objectContaining({
+        level: "error",
+        message: "planner failed",
+        timestampNs: 7_000_000_008n,
+      }),
+    ]);
+    expect(rcl.attributes?.logRows).toEqual([
+      expect.objectContaining({
+        level: "warn",
+        levelNumber: 30,
+        message: "tracking degraded",
+        timestampNs: 5_000_000_004n,
+      }),
+    ]);
+    expect(diagnostics.attributes?.logRows).toEqual([
+      expect.objectContaining({
+        details: [{ key: "drop_rate", value: "0.2" }],
+        hardwareId: "lidar-top",
+        kind: "diagnostic",
+        level: "error",
+        message: "packet drops",
+        name: "driver",
+        status: "ERROR",
+      }),
+    ]);
   });
 
   it("decodes JSON CameraInfo records into calibration visualizations", () => {
@@ -381,6 +484,143 @@ describe("JSON-schema ROS MCAP decoders", () => {
     expect(odometry.attributes).toMatchObject({ childFrameId: "base_link" });
   });
 
+  it("decodes JSON Path and PoseArray records into scene-update overlays", () => {
+    const path = decoderForSchema(
+      jsonRosPathDecoders,
+      "nav_msgs/msg/Path",
+    ).decode(
+      jsonMessage({
+        header: headerRecord("map", 13, 14),
+        poses: [
+          {
+            header: headerRecord("map", 1, 1),
+            pose: poseRecord([1, 2, 0], [0, 0, 0, 1]),
+          },
+          {
+            header: headerRecord("map", 1, 2),
+            pose: poseRecord([3, 4, 0], [0, 0, 0, 1]),
+          },
+        ],
+      }),
+      { streamId: "/planned_path" },
+    );
+    const poseArray = decoderForSchema(
+      jsonRosPoseArrayDecoders,
+      "geometry_msgs/PoseArray",
+    ).decode(
+      jsonMessage({
+        header: headerRecord("map", 15, 16),
+        poses: [
+          poseRecord([5, 6, 0], [0, 0, 0, 1]),
+          poseRecord([7, 8, 0], [0, 0, 1, 0]),
+        ],
+      }),
+      { streamId: "/pose_hypotheses" },
+    );
+
+    expect(path.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    expect(poseArray.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    if (
+      path.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE ||
+      poseArray.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE
+    ) {
+      throw new Error("Expected scene update visualizations");
+    }
+    expect(path.visualization.entities[0]?.lines[0]?.points).toEqual([
+      [1, 2, 0],
+      [3, 4, 0],
+    ]);
+    expect(path.visualization.entities[0]).toMatchObject({
+      frameId: "map",
+      id: "/planned_path:path",
+      timestampNs: 13_000_000_014n,
+    });
+    expect(poseArray.visualization.entities[0]).toMatchObject({
+      arrowCount: 2,
+      frameId: "map",
+      id: "/pose_hypotheses:pose-array",
+      timestampNs: 15_000_000_016n,
+    });
+    expect(
+      poseArray.visualization.entities[0]?.arrows[0]?.pose.position,
+    ).toEqual([5, 6, 0]);
+  });
+
+  it("decodes JSON vision detections into transient viewer overlays", () => {
+    const detections2d = decoderForSchema(
+      jsonRosDetection2DArrayDecoders,
+      "vision_msgs/msg/Detection2DArray",
+    ).decode(
+      jsonMessage({
+        detections: [
+          detection2DRecord({
+            classId: "car",
+            id: "track-1",
+            score: 0.93,
+            x: 50,
+            y: 40,
+          }),
+        ],
+        header: headerRecord("camera", 17, 18),
+      }),
+      {},
+    );
+    const detections3d = decoderForSchema(
+      jsonRosDetection3DArrayDecoders,
+      "vision_msgs/Detection3DArray",
+    ).decode(
+      jsonMessage({
+        detections: [
+          detection3DRecord({
+            classId: "pedestrian",
+            id: "track-9",
+            score: 0.81,
+          }),
+        ],
+        header: headerRecord("map", 19, 20),
+      }),
+      { streamId: "/detections3d" },
+    );
+
+    expect(detections2d.visualization?.kind).toBe(
+      VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
+    );
+    expect(detections3d.visualization?.kind).toBe(
+      VISUALIZATION_KIND.SCENE_UPDATE,
+    );
+    if (
+      detections2d.visualization?.kind !==
+        VISUALIZATION_KIND.IMAGE_ANNOTATIONS ||
+      detections3d.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE
+    ) {
+      throw new Error("Expected detection visualizations");
+    }
+    expect(detections2d.visualization.points[0]?.points).toEqual([
+      [40, 30],
+      [60, 30],
+      [60, 50],
+      [40, 50],
+    ]);
+    expect(detections2d.visualization.texts[0]).toMatchObject({
+      position: [40, 16],
+      text: "car 0.93",
+    });
+    expect(detections3d.visualization.deletions).toEqual([
+      { id: "", timestampNs: 19_000_000_020n, type: "all" },
+    ]);
+    expect(detections3d.visualization.entities[0]).toMatchObject({
+      cubeCount: 1,
+      frameId: "map",
+      id: "/detections3d:detection3d:track-9",
+      metadata: {
+        classId: "pedestrian",
+        id: "track-9",
+        score: "0.8100",
+        source: "vision_msgs",
+      },
+    });
+  });
+
   it("degrades invalid JSON and malformed JSON records without throwing", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const decoder = decoderForSchema(
@@ -413,6 +653,24 @@ describe("JSON-schema ROS MCAP decoders", () => {
     const rawImage = createTopic("/camera/image", JSON_ROS_IMAGE_PAYLOADS[1]);
     const cloud = createTopic("/points", JSON_ROS_POINT_CLOUD2_PAYLOADS[0]);
     const scan = createTopic("/scan", JSON_ROS_LASER_SCAN_PAYLOADS[1]);
+    const path = createTopic("/planned_path", JSON_ROS_PATH_PAYLOADS[1]);
+    const poseArray = createTopic(
+      "/pose_hypotheses",
+      JSON_ROS_POSE_ARRAY_PAYLOADS[0],
+    );
+    const detections2d = createTopic(
+      "/detections2d",
+      JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS[1],
+    );
+    const detections3d = createTopic(
+      "/detections3d",
+      JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS[0],
+    );
+    const logs = createTopic("/rosout", JSON_ROS_RCL_LOG_PAYLOADS[0]);
+    const diagnostics = createTopic(
+      "/diagnostics",
+      JSON_ROS_DIAGNOSTIC_ARRAY_PAYLOADS[1],
+    );
 
     expect(isCompressedImageStream(compressed)).toBe(true);
     expect(isCompressedImageStream(rawImage)).toBe(false);
@@ -439,10 +697,39 @@ describe("JSON-schema ROS MCAP decoders", () => {
     expect(
       isGridStream(createTopic("/map", JSON_ROS_OCCUPANCY_GRID_PAYLOADS[1])),
     ).toBe(true);
-    expect(streamTopics([compressed, rawImage, cloud, scan])).toMatchObject({
+    expect(isSceneUpdateStream(path)).toBe(true);
+    expect(isSceneUpdateStream(poseArray)).toBe(true);
+    expect(isImageAnnotationsStream(detections2d)).toBe(true);
+    expect(isSceneUpdateStream(detections3d)).toBe(true);
+    expect(isLogStream(logs)).toBe(true);
+    expect(isLogStream(diagnostics)).toBe(true);
+    expect(
+      streamTopics([
+        compressed,
+        rawImage,
+        cloud,
+        scan,
+        path,
+        poseArray,
+        detections2d,
+        detections3d,
+        logs,
+        diagnostics,
+      ]),
+    ).toMatchObject({
+      annotations: ["/detections2d"],
       image: ["/camera/compressed", "/camera/image"],
+      logs: ["/rosout", "/diagnostics"],
       pointCloud: ["/points", "/scan"],
-      previewable: ["/camera/compressed", "/camera/image", "/points", "/scan"],
+      previewable: [
+        "/camera/compressed",
+        "/camera/image",
+        "/points",
+        "/scan",
+        "/rosout",
+        "/diagnostics",
+      ],
+      sceneUpdates: ["/planned_path", "/pose_hypotheses", "/detections3d"],
     });
   });
 });
@@ -525,6 +812,61 @@ function vectorRecord(vector: readonly [number, number, number]) {
     x: vector[0],
     y: vector[1],
     z: vector[2],
+  };
+}
+
+function detection2DRecord({
+  classId,
+  id,
+  score,
+  x,
+  y,
+}: {
+  readonly classId: string;
+  readonly id: string;
+  readonly score: number;
+  readonly x: number;
+  readonly y: number;
+}) {
+  return {
+    bbox: {
+      center: {
+        position: { x, y },
+        theta: 0,
+      },
+      size_x: 20,
+      size_y: 20,
+    },
+    id,
+    results: [detectionResult(classId, score)],
+  };
+}
+
+function detection3DRecord({
+  classId,
+  id,
+  score,
+}: {
+  readonly classId: string;
+  readonly id: string;
+  readonly score: number;
+}) {
+  return {
+    bbox: {
+      center: poseRecord([1, 2, 3], [0, 0, 0, 1]),
+      size: vectorRecord([2, 1, 1.5]),
+    },
+    id,
+    results: [detectionResult(classId, score)],
+  };
+}
+
+function detectionResult(classId: string, score: number) {
+  return {
+    hypothesis: {
+      class_id: classId,
+      score,
+    },
   };
 }
 
