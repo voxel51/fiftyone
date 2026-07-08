@@ -1,5 +1,6 @@
 import {
   resourceHintsForArrayBufferViews,
+  type DecodeContext,
   type DecodedAttributeValue,
   type DecodedOutput,
   type EncodedVideoVisualization,
@@ -27,52 +28,60 @@ import {
  */
 export const rosCompressedImageDecoders = rosDecodersForPayloads({
   id: "ros.compressed-image",
-  map(message, context) {
-    const header = rosHeader(message);
-    const data = bytesField(message, "data");
-    const format = stringField(message, "format", "unknown");
-    const timing = timingFromRosHeader(context, header);
-    const attributes: Record<string, DecodedAttributeValue> = {
-      ...rosHeaderAttributes(header),
-      byteLength: data.byteLength,
-      format,
-    };
-    const mimeType = mimeTypeFromRosCompressedImageFormat(format);
+  map: decodeRosCompressedImageRecord,
+  payloads: ROS_COMPRESSED_IMAGE_PAYLOADS,
+});
 
-    if (!mimeType) {
-      const codec = videoCodecFromFormat(format);
-      if (codec === "h264") {
-        return h264CompressedImageOutput({
-          attributes,
-          data,
-          format,
-          frameId: rosHeaderFrameId(header),
-          timestampNs: rosHeaderTimestampNs(header),
-          timing,
-        });
-      }
+/**
+ * Normalizes a decoded ROS CompressedImage record into image/video output.
+ */
+export function decodeRosCompressedImageRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const header = rosHeader(message);
+  const data = bytesField(message, "data");
+  const format = stringField(message, "format", "unknown");
+  const timing = timingFromRosHeader(context, header);
+  const attributes: Record<string, DecodedAttributeValue> = {
+    ...rosHeaderAttributes(header),
+    byteLength: data.byteLength,
+    format,
+  };
+  const mimeType = mimeTypeFromRosCompressedImageFormat(format);
 
-      return unsupportedCompressedImageOutput({
+  if (!mimeType) {
+    const codec = videoCodecFromFormat(format);
+    if (codec === "h264") {
+      return h264CompressedImageOutput({
         attributes,
         data,
-        reason: unsupportedCompressedImageReason(format),
+        format,
+        frameId: rosHeaderFrameId(header),
+        timestampNs: rosHeaderTimestampNs(header),
         timing,
       });
     }
 
-    return {
+    return unsupportedCompressedImageOutput({
       attributes,
-      resourceHints: resourceHintsForArrayBufferViews(data),
+      data,
+      reason: unsupportedCompressedImageReason(format),
       timing,
-      visualization: {
-        bytes: data,
-        kind: VISUALIZATION_KIND.ENCODED_IMAGE,
-        mimeType,
-      },
-    };
-  },
-  payloads: ROS_COMPRESSED_IMAGE_PAYLOADS,
-});
+    });
+  }
+
+  return {
+    attributes,
+    resourceHints: resourceHintsForArrayBufferViews(data),
+    timing,
+    visualization: {
+      bytes: data,
+      kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+      mimeType,
+    },
+  };
+}
 
 function h264CompressedImageOutput({
   attributes,

@@ -1,4 +1,8 @@
-import type { DecodedAttributeValue } from "../../../../decoders";
+import type {
+  DecodeContext,
+  DecodedAttributeValue,
+  DecodedOutput,
+} from "../../../../decoders";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import {
@@ -41,68 +45,76 @@ interface DecodeImageResult {
  */
 export const rosImageDecoders = rosDecodersForPayloads({
   id: "ros.image",
-  map(message, context) {
-    const header = rosHeader(message);
-    const frameId = rosHeaderFrameId(header);
-    const messageTimestamp = rosHeaderTimestampNs(header);
-    const width = integerField(message, "width");
-    const height = integerField(message, "height");
-    const step = integerField(message, "step");
-    const encoding = stringField(message, "encoding", "unknown");
-    const data = bytesField(message, "data");
-    const bigEndian = booleanLikeField(message, "is_bigendian");
-    const baseAttributes: Record<string, DecodedAttributeValue> = {
-      ...rosHeaderAttributes(header),
-      bigEndian,
-      byteLength: data.byteLength,
-      encoding,
-      height,
-      step,
-      width,
-    };
-    const timing = timingFromRosHeader(context, header);
-    const result = decodeImageRgba({
-      bigEndian,
-      data,
-      encoding,
-      height,
-      step,
-      width,
-    });
-    const attributes = {
-      ...baseAttributes,
-      ...result.attributes,
-      ...(result.unsupportedReason
-        ? { unsupportedReason: result.unsupportedReason }
-        : {}),
-    };
-
-    if (!result.rgba) {
-      return {
-        attributes,
-        timing,
-      };
-    }
-
-    return {
-      attributes,
-      resourceHints: resourceHintsForArrayBufferViews(result.rgba),
-      timing,
-      visualization: {
-        ...(frameId ? { coordinateFrameId: frameId } : {}),
-        height,
-        kind: VISUALIZATION_KIND.RAW_IMAGE,
-        rgba: result.rgba,
-        sourceEncoding: encoding,
-        ...(messageTimestamp !== undefined
-          ? { timestampNs: messageTimestamp }
-          : {}),
-        width,
-      },
-    };
-  },
+  map: decodeRosImageRecord,
   payloads: ROS_IMAGE_PAYLOADS,
 });
+
+/**
+ * Normalizes a decoded ROS Image record into raw image output.
+ */
+export function decodeRosImageRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const header = rosHeader(message);
+  const frameId = rosHeaderFrameId(header);
+  const messageTimestamp = rosHeaderTimestampNs(header);
+  const width = integerField(message, "width");
+  const height = integerField(message, "height");
+  const step = integerField(message, "step");
+  const encoding = stringField(message, "encoding", "unknown");
+  const data = bytesField(message, "data");
+  const bigEndian = booleanLikeField(message, "is_bigendian");
+  const baseAttributes: Record<string, DecodedAttributeValue> = {
+    ...rosHeaderAttributes(header),
+    bigEndian,
+    byteLength: data.byteLength,
+    encoding,
+    height,
+    step,
+    width,
+  };
+  const timing = timingFromRosHeader(context, header);
+  const result = decodeImageRgba({
+    bigEndian,
+    data,
+    encoding,
+    height,
+    step,
+    width,
+  });
+  const attributes = {
+    ...baseAttributes,
+    ...result.attributes,
+    ...(result.unsupportedReason
+      ? { unsupportedReason: result.unsupportedReason }
+      : {}),
+  };
+
+  if (!result.rgba) {
+    return {
+      attributes,
+      timing,
+    };
+  }
+
+  return {
+    attributes,
+    resourceHints: resourceHintsForArrayBufferViews(result.rgba),
+    timing,
+    visualization: {
+      ...(frameId ? { coordinateFrameId: frameId } : {}),
+      height,
+      kind: VISUALIZATION_KIND.RAW_IMAGE,
+      rgba: result.rgba,
+      sourceEncoding: encoding,
+      ...(messageTimestamp !== undefined
+        ? { timestampNs: messageTimestamp }
+        : {}),
+      width,
+    },
+  };
+}
 
 function decodeImageRgba({
   bigEndian,

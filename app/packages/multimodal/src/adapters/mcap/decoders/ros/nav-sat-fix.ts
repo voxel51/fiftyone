@@ -1,5 +1,7 @@
 import type {
+  DecodeContext,
   DecodedAttributeValue,
+  DecodedOutput,
   LocationVisualization,
 } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
@@ -24,64 +26,72 @@ const COVARIANCE_TYPE_UNKNOWN = 0;
  */
 export const rosNavSatFixDecoders = rosDecodersForPayloads({
   id: "ros.nav-sat-fix",
-  map(message, context) {
-    const header = rosHeader(message);
-    const frameId = rosHeaderFrameId(header);
-    const messageTimestamp = rosHeaderTimestampNs(header);
-    const latitude = numberField(message, "latitude", undefined, Number.NaN);
-    const longitude = numberField(message, "longitude", undefined, Number.NaN);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      throw new Error("NavSatFix has no finite latitude/longitude");
-    }
-
-    const altitude = numberField(message, "altitude", undefined, Number.NaN);
-    const attributes: Record<string, DecodedAttributeValue> = {
-      ...rosHeaderAttributes(header),
-      latitude,
-      longitude,
-    };
-    const covarianceType = numberField(
-      message,
-      "position_covariance_type",
-      undefined,
-      Number.NaN,
-    );
-    if (Number.isFinite(covarianceType)) {
-      attributes.positionCovarianceType = covarianceType;
-    }
-    const positionCovariance =
-      Number.isFinite(covarianceType) &&
-      covarianceType !== COVARIANCE_TYPE_UNKNOWN
-        ? covariance(message)
-        : undefined;
-
-    const status = statusAttributes(recordField(message, "status"));
-    if (status) {
-      attributes.status = status;
-    }
-
-    // Match the Foxglove LocationFix heuristic: many drivers emit altitude 0
-    // when altitude is unknown, even though true sea-level fixes are valid.
-    const visualization: LocationVisualization = {
-      ...(Number.isFinite(altitude) && altitude !== 0 ? { altitude } : {}),
-      ...(frameId ? { coordinateFrameId: frameId } : {}),
-      kind: VISUALIZATION_KIND.LOCATION,
-      latitude,
-      longitude,
-      ...(positionCovariance ? { positionCovariance } : {}),
-      ...(messageTimestamp !== undefined
-        ? { timestampNs: messageTimestamp }
-        : {}),
-    };
-
-    return {
-      attributes,
-      timing: timingFromRosHeader(context, header),
-      visualization,
-    };
-  },
+  map: decodeRosNavSatFixRecord,
   payloads: ROS_NAV_SAT_FIX_PAYLOADS,
 });
+
+/**
+ * Normalizes a decoded ROS NavSatFix record into location output.
+ */
+export function decodeRosNavSatFixRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const header = rosHeader(message);
+  const frameId = rosHeaderFrameId(header);
+  const messageTimestamp = rosHeaderTimestampNs(header);
+  const latitude = numberField(message, "latitude", undefined, Number.NaN);
+  const longitude = numberField(message, "longitude", undefined, Number.NaN);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    throw new Error("NavSatFix has no finite latitude/longitude");
+  }
+
+  const altitude = numberField(message, "altitude", undefined, Number.NaN);
+  const attributes: Record<string, DecodedAttributeValue> = {
+    ...rosHeaderAttributes(header),
+    latitude,
+    longitude,
+  };
+  const covarianceType = numberField(
+    message,
+    "position_covariance_type",
+    undefined,
+    Number.NaN,
+  );
+  if (Number.isFinite(covarianceType)) {
+    attributes.positionCovarianceType = covarianceType;
+  }
+  const positionCovariance =
+    Number.isFinite(covarianceType) &&
+    covarianceType !== COVARIANCE_TYPE_UNKNOWN
+      ? covariance(message)
+      : undefined;
+
+  const status = statusAttributes(recordField(message, "status"));
+  if (status) {
+    attributes.status = status;
+  }
+
+  // Match the Foxglove LocationFix heuristic: many drivers emit altitude 0
+  // when altitude is unknown, even though true sea-level fixes are valid.
+  const visualization: LocationVisualization = {
+    ...(Number.isFinite(altitude) && altitude !== 0 ? { altitude } : {}),
+    ...(frameId ? { coordinateFrameId: frameId } : {}),
+    kind: VISUALIZATION_KIND.LOCATION,
+    latitude,
+    longitude,
+    ...(positionCovariance ? { positionCovariance } : {}),
+    ...(messageTimestamp !== undefined
+      ? { timestampNs: messageTimestamp }
+      : {}),
+  };
+
+  return {
+    attributes,
+    timing: timingFromRosHeader(context, header),
+    visualization,
+  };
+}
 
 function covariance(
   record: Record<string, unknown>,

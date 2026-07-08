@@ -118,6 +118,69 @@ describe("mcapSceneSources", () => {
     ]);
   });
 
+  it("classifies JSON-schema ROS topics from Test1-style MCAPs", () => {
+    const sources = mcapSceneSources([
+      createTopic(
+        "IMG1_ltm_pyr_L1",
+        "sensor_msgs/CompressedImage",
+        "json",
+        "jsonschema",
+      ),
+      createTopic(
+        "IMG1_ltm_pyr_L1_left",
+        "sensor_msgs/CompressedImage",
+        "json",
+        "jsonschema",
+      ),
+      createTopic(
+        "IMG1_ltm_pyr_L1_right",
+        "sensor_msgs/CompressedImage",
+        "json",
+        "jsonschema",
+      ),
+      createTopic(
+        "IMG1_ltm_pyr_L1_wide",
+        "sensor_msgs/CompressedImage",
+        "json",
+        "jsonschema",
+      ),
+      createTopic(
+        "GNSS_Position",
+        "sensor_msgs/NavSatFix",
+        "json",
+        "jsonschema",
+      ),
+    ]);
+
+    expect(sources).toEqual([
+      {
+        id: "IMG1_ltm_pyr_L1",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "IMG1_ltm_pyr_L1",
+      },
+      {
+        id: "IMG1_ltm_pyr_L1_left",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "IMG1_ltm_pyr_L1_left",
+      },
+      {
+        id: "IMG1_ltm_pyr_L1_right",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "IMG1_ltm_pyr_L1_right",
+      },
+      {
+        id: "IMG1_ltm_pyr_L1_wide",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "IMG1_ltm_pyr_L1_wide",
+      },
+      {
+        id: "GNSS_Position",
+        type: MCAP_SOURCE_TYPE.LOCATION,
+        label: "GNSS_Position",
+      },
+    ]);
+  });
+
   it("falls back to the full topic when short labels collide", () => {
     const sources = mcapSceneSources([
       createTopic("/camera/front/image_raw"),

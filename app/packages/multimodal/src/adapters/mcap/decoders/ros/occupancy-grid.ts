@@ -1,5 +1,7 @@
 import type {
+  DecodeContext,
   DecodedAttributeValue,
+  DecodedOutput,
   GridVisualization,
 } from "../../../../decoders";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders";
@@ -29,63 +31,71 @@ const UINT8_MAX = 255;
  */
 export const rosOccupancyGridDecoders = rosDecodersForPayloads({
   id: "ros.occupancy-grid",
-  map(message, context) {
-    const header = rosHeader(message);
-    const frameId = rosHeaderFrameId(header);
-    const messageTimestamp = rosHeaderTimestampNs(header);
-    const info = recordField(message, "info");
-    if (!info) {
-      throw new Error("OccupancyGrid is missing map metadata");
-    }
-
-    const width = integerField(info, "width");
-    const height = integerField(info, "height");
-    const resolution = numberField(info, "resolution", undefined, Number.NaN);
-    validateMapInfo({ height, resolution, width });
-
-    const data = int8ArrayField(message, "data");
-    const cellCount = width * height;
-    if (data.length < cellCount) {
-      throw new Error(
-        `OccupancyGrid has ${data.length} cells, expected at least ${cellCount}`,
-      );
-    }
-
-    const rgba = occupancyRgba(data, cellCount);
-    const mapLoadTimeNs = rosTimestampNs(recordField(info, "map_load_time"));
-    const attributes: Record<string, DecodedAttributeValue> = {
-      ...rosHeaderAttributes(header),
-      cellCount,
-      height,
-      resolution,
-      width,
-    };
-    if (mapLoadTimeNs !== undefined) {
-      attributes.mapLoadTimeNs = mapLoadTimeNs;
-    }
-
-    const visualization: GridVisualization = {
-      ...(frameId ? { coordinateFrameId: frameId } : {}),
-      cellSize: [resolution, resolution],
-      columnCount: width,
-      kind: VISUALIZATION_KIND.GRID,
-      pose: decodePose(recordField(info, "origin")),
-      rgba,
-      rowCount: height,
-      ...(messageTimestamp !== undefined
-        ? { timestampNs: messageTimestamp }
-        : {}),
-    };
-
-    return {
-      attributes,
-      resourceHints: resourceHintsForArrayBufferViews(rgba),
-      timing: timingFromRosHeader(context, header),
-      visualization,
-    };
-  },
+  map: decodeRosOccupancyGridRecord,
   payloads: ROS_OCCUPANCY_GRID_PAYLOADS,
 });
+
+/**
+ * Normalizes a decoded ROS OccupancyGrid record into grid output.
+ */
+export function decodeRosOccupancyGridRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const header = rosHeader(message);
+  const frameId = rosHeaderFrameId(header);
+  const messageTimestamp = rosHeaderTimestampNs(header);
+  const info = recordField(message, "info");
+  if (!info) {
+    throw new Error("OccupancyGrid is missing map metadata");
+  }
+
+  const width = integerField(info, "width");
+  const height = integerField(info, "height");
+  const resolution = numberField(info, "resolution", undefined, Number.NaN);
+  validateMapInfo({ height, resolution, width });
+
+  const data = int8ArrayField(message, "data");
+  const cellCount = width * height;
+  if (data.length < cellCount) {
+    throw new Error(
+      `OccupancyGrid has ${data.length} cells, expected at least ${cellCount}`,
+    );
+  }
+
+  const rgba = occupancyRgba(data, cellCount);
+  const mapLoadTimeNs = rosTimestampNs(recordField(info, "map_load_time"));
+  const attributes: Record<string, DecodedAttributeValue> = {
+    ...rosHeaderAttributes(header),
+    cellCount,
+    height,
+    resolution,
+    width,
+  };
+  if (mapLoadTimeNs !== undefined) {
+    attributes.mapLoadTimeNs = mapLoadTimeNs;
+  }
+
+  const visualization: GridVisualization = {
+    ...(frameId ? { coordinateFrameId: frameId } : {}),
+    cellSize: [resolution, resolution],
+    columnCount: width,
+    kind: VISUALIZATION_KIND.GRID,
+    pose: decodePose(recordField(info, "origin")),
+    rgba,
+    rowCount: height,
+    ...(messageTimestamp !== undefined
+      ? { timestampNs: messageTimestamp }
+      : {}),
+  };
+
+  return {
+    attributes,
+    resourceHints: resourceHintsForArrayBufferViews(rgba),
+    timing: timingFromRosHeader(context, header),
+    visualization,
+  };
+}
 
 function validateMapInfo({
   height,
