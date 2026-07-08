@@ -41,6 +41,9 @@ export interface RawImageVisualization {
   readonly width: number;
 }
 
+/**
+ * Image-like visualizations rendered by the multimodal image panel.
+ */
 export type ImageVisualization =
   | EncodedImageVisualization
   | RawImageVisualization;

@@ -11,6 +11,9 @@ type RosMapper = (
   context: DecodeContext,
 ) => DecodedOutput;
 
+/**
+ * Builds one ROS decoder per supported payload descriptor for a message family.
+ */
 export function rosDecodersForPayloads({
   id,
   map,

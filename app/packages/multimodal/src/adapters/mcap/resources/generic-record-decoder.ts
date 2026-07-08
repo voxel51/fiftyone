@@ -16,6 +16,9 @@ export interface McapGenericDecodableChannel {
   readonly schemaId: number;
 }
 
+/**
+ * Result of resolving a generic per-message record decoder for an MCAP channel.
+ */
 export type McapGenericRecordDecoderResolution =
   | {
       readonly decodeRecord: (bytes: Uint8Array) => Record<string, unknown>;

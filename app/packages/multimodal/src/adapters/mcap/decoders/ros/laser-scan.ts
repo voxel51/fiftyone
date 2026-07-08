@@ -27,6 +27,9 @@ const IDENTITY_POSE: ProtobufPose3D = {
   quaternion: IDENTITY_QUATERNION,
 };
 
+/**
+ * Decoders for ROS LaserScan messages.
+ */
 export const rosLaserScanDecoders = rosDecodersForPayloads({
   id: "ros.laser-scan",
   map(message, context) {

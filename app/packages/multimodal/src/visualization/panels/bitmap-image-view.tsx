@@ -299,6 +299,9 @@ export function BitmapImageView({
   );
 }
 
+/**
+ * Renders any decoded image visualization into the GPU-free bitmap canvas path.
+ */
 export function BitmapImageFrameView({
   className,
   fit = "cover",

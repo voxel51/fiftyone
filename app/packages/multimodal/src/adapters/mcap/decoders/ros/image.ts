@@ -35,6 +35,9 @@ interface DecodeImageResult {
   readonly unsupportedReason?: string;
 }
 
+/**
+ * Decoders for ROS Image messages.
+ */
 export const rosImageDecoders = rosDecodersForPayloads({
   id: "ros.image",
   map(message, context) {

@@ -43,6 +43,9 @@ const INT32_MAX_VALUE = 2_147_483_647;
 
 const FLOAT32_BYTE_WIDTH = 4;
 
+/**
+ * Number of float components stored per decoded point position.
+ */
 export const POINT_COMPONENT_COUNT = 3;
 const COLOR_COMPONENT_COUNT = 3;
 
@@ -145,12 +148,19 @@ export const foxglovePointCloudDecoder: Decoder = {
   },
 };
 
+/**
+ * Normalized point cloud buffers shared by Foxglove and ROS decoders.
+ */
 export interface DecodedPointCloudData {
   readonly colors?: Float32Array;
   readonly positions: Float32Array;
   readonly scalarFields: readonly PointCloudScalarField[];
 }
 
+/**
+ * Extracts positions, optional RGB colors, and scalar channels from packed
+ * point data using the supplied field layout.
+ */
 export function extractPointCloudData(
   data: Uint8Array,
   pointStride: number,

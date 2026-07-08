@@ -15,6 +15,9 @@ import {
 } from "./protobuf/records";
 import { timingFromContext, timestampNs } from "./protobuf/timing";
 
+/**
+ * Number of float components stored per decoded scan point.
+ */
 export const LASER_SCAN_POINT_COMPONENT_COUNT = 3;
 
 // Canonical scalar-channel name shared with the point-cloud decoder so
@@ -96,11 +99,17 @@ export const foxgloveLaserScanDecoder: Decoder = {
   },
 };
 
+/**
+ * Cartesian points produced from a polar laser scan.
+ */
 export interface DecodedScanPoints {
   readonly intensities?: Float32Array;
   readonly positions: Float32Array;
 }
 
+/**
+ * Projects finite polar scan ranges into cartesian point-cloud buffers.
+ */
 export function scanToPoints({
   endAngle,
   intensities,

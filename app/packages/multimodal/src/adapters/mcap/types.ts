@@ -652,6 +652,9 @@ export interface McapReadSynchronizedMessageBatchRequest extends Omit<
  */
 export type McapResourceReadPriority = "bulk" | "current" | "idle" | "playback";
 
+/**
+ * Optional scheduling hints for MCAP resource reads.
+ */
 export interface McapResourceReadOptions {
   readonly priority?: McapResourceReadPriority;
 }

@@ -18,6 +18,9 @@ import { ROS_NAV_SAT_FIX_PAYLOADS } from "./payloads";
 
 const COVARIANCE_LENGTH = 9;
 
+/**
+ * Decoders for ROS NavSatFix messages.
+ */
 export const rosNavSatFixDecoders = rosDecodersForPayloads({
   id: "ros.nav-sat-fix",
   map(message, context) {

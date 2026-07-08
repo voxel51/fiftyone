@@ -21,6 +21,9 @@ import {
 import { rosDecodersForPayloads } from "./factory";
 import { ROS_ODOMETRY_PAYLOADS, ROS_POSE_STAMPED_PAYLOADS } from "./payloads";
 
+/**
+ * Decoders for ROS PoseStamped messages.
+ */
 export const rosPoseStampedDecoders = rosDecodersForPayloads({
   id: "ros.pose-stamped",
   map(message, context) {
@@ -37,6 +40,9 @@ export const rosPoseStampedDecoders = rosDecodersForPayloads({
   payloads: ROS_POSE_STAMPED_PAYLOADS,
 });
 
+/**
+ * Decoders for ROS Odometry messages.
+ */
 export const rosOdometryDecoders = rosDecodersForPayloads({
   id: "ros.odometry",
   map(message, context) {

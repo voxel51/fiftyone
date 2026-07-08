@@ -55,6 +55,9 @@ const ROS_TO_FOXGLOVE_FIELD_TYPE = new Map<number, number>([
   [ROS_FLOAT64_FIELD_TYPE, FOXGLOVE_FLOAT64_FIELD_TYPE],
 ]);
 
+/**
+ * Decoders for ROS PointCloud2 messages.
+ */
 export const rosPointCloud2Decoders = rosDecodersForPayloads({
   id: "ros.point-cloud2",
   map(message, context) {

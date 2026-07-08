@@ -18,6 +18,9 @@ export { rosOdometryDecoders, rosPoseStampedDecoders } from "./pose";
 export { rosPointCloud2Decoders } from "./point-cloud2";
 export * from "./payloads";
 
+/**
+ * All ROS decoder registrations supported by the MCAP adapter.
+ */
 export const rosDecoders: readonly Decoder[] = [
   ...rosCameraInfoDecoders,
   ...rosCompressedImageDecoders,

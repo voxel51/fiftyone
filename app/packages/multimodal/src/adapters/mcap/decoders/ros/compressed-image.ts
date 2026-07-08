@@ -13,6 +13,9 @@ import {
 import { rosDecodersForPayloads } from "./factory";
 import { ROS_COMPRESSED_IMAGE_PAYLOADS } from "./payloads";
 
+/**
+ * Decoders for ROS CompressedImage messages.
+ */
 export const rosCompressedImageDecoders = rosDecodersForPayloads({
   id: "ros.compressed-image",
   map(message, context) {

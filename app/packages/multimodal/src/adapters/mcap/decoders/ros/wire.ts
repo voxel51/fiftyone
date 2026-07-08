@@ -11,6 +11,9 @@ type McapChannel = McapTypes.TypedMcapRecords["Channel"];
 type McapSchema = McapTypes.TypedMcapRecords["Schema"];
 type RosSchemaLike = Pick<McapSchema, "data" | "encoding" | "name">;
 
+/**
+ * Parsed ROS message definition returned by the ROS schema parsers.
+ */
 export type RosMessageDefinition = ReturnType<
   typeof parseRosMessageDefinition
 >[number];
@@ -19,7 +22,14 @@ interface McapRosSchemaReader {
   readonly schemasById: ReadonlyMap<number, McapSchema>;
 }
 
+/**
+ * ROS message encodings currently decoded from MCAP channels.
+ */
 export type RosMessageEncoding = "ros1" | "cdr";
+
+/**
+ * ROS schema encodings currently parsed from MCAP schemas.
+ */
 export type RosSchemaEncoding = "ros1msg" | "ros2msg" | "ros2idl";
 
 interface ParsedRosChannelSchema {
@@ -78,7 +88,7 @@ export function rosRecordDecoderForPayload(
 
 /**
  * Returns parsed ROS message definitions for one MCAP channel, when its
- * channel/schema encoding pair is supported by the Layer-1 ROS bridge.
+ * channel/schema encoding pair is supported by the ROS decoder bridge.
  */
 export function rosMessageDefinitionsForChannel(
   reader: McapRosSchemaReader,
@@ -87,12 +97,18 @@ export function rosMessageDefinitionsForChannel(
   return parsedRosSchemaForChannel(reader, channel)?.definitions ?? null;
 }
 
+/**
+ * Returns whether an MCAP message encoding is a supported ROS encoding.
+ */
 export function isRosMessageEncoding(
   encoding: string,
 ): encoding is RosMessageEncoding {
   return encoding === "ros1" || encoding === "cdr";
 }
 
+/**
+ * Selects the top-level message definition from a parsed ROS schema bundle.
+ */
 export function rootRosMessageDefinition(
   definitions: readonly RosMessageDefinition[],
 ): RosMessageDefinition | undefined {

@@ -23,6 +23,9 @@ const RGBA_COMPONENT_COUNT = 4;
 const MAX_OCCUPANCY = 100;
 const UINT8_MAX = 255;
 
+/**
+ * Decoders for ROS OccupancyGrid messages.
+ */
 export const rosOccupancyGridDecoders = rosDecodersForPayloads({
   id: "ros.occupancy-grid",
   map(message, context) {

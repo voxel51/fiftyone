@@ -20,6 +20,9 @@ const INTRINSIC_MATRIX_LENGTH = 9;
 const RECTIFICATION_MATRIX_LENGTH = 9;
 const PROJECTION_MATRIX_LENGTH = 12;
 
+/**
+ * Decoders for ROS CameraInfo messages.
+ */
 export const rosCameraInfoDecoders = rosDecodersForPayloads({
   id: "ros.camera-info",
   map(message, context) {
