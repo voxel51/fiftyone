@@ -3,7 +3,6 @@ import {
   isGroup as isGroupAtom,
   parentMediaTypeSelector,
 } from "@fiftyone/state";
-import React from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import TimedOut from "./Common/TimedOut";

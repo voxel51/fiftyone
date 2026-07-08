@@ -1,4 +1,3 @@
-import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import type {
   CuboidTransformData,
   PolylinePointTransformData,
@@ -25,7 +24,6 @@ export function reconcileDetection(
 /**
  * Reconciles a raw polyline overlay with staged transform data.
  * Staged segments override the original points3d.
- * Also coerces string booleans from misc data.
  */
 export function reconcilePolyline(
   overlay: OverlayLabel & { points3d: [number, number, number][][] },
@@ -43,7 +41,7 @@ export function reconcilePolyline(
 
   return {
     ...overlay,
-    ...coerceStringBooleans(stagedTransform?.misc ?? {}),
+    ...(stagedTransform?.misc ?? {}),
     points3d: finalPoints3d,
   } as ReconciledPolyline3D;
 }
@@ -63,7 +61,7 @@ export function createNewDetection(
     _cls: "Detection",
     type: "Detection",
     path,
-    ...coerceStringBooleans(transformData ?? {}),
+    ...(transformData ?? {}),
     location: transformData.location,
     dimensions: transformData.dimensions,
     rotation: transformData.rotation ?? [0, 0, 0],
@@ -106,7 +104,7 @@ export function createNewPolyline(
     sampleId: currentSampleId,
     tags: [],
     points3d: validPoints3d,
-    ...coerceStringBooleans(transformData.misc ?? {}),
+    ...(transformData.misc ?? {}),
     isNew: true,
   } as ReconciledPolyline3D;
 }

@@ -2,7 +2,7 @@ import type { Lookers } from "@fiftyone/looker";
 import { VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject } from "react";
-import React, { useCallback, useLayoutEffect } from "react";
+import { useCallback, useLayoutEffect } from "react";
 import { useRecoilValue } from "recoil";
 import type { ActionOptionProps } from "../Common";
 import { ActionOption } from "../Common";

@@ -1,5 +1,10 @@
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import useExit from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
+import {
+  KnownContexts,
+  useKeyBindings,
+  type KeyBinding,
+} from "@fiftyone/commands";
 import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
 import AddBoxIcon from "@mui/icons-material/AddBox";
 import RectangleIcon from "@mui/icons-material/Rectangle";
@@ -33,6 +38,10 @@ import {
   usePolylineOperations,
   useWorkingDoc,
 } from "../store";
+import {
+  canTransformArchetypeUseMode,
+  getSelectedTransformArchetype,
+} from "../transform-archetype";
 import type { ToolbarActionGroup, TransformMode } from "../types";
 import { AnnotationPlaneTooltip } from "./AnnotationPlaneTooltip";
 import {
@@ -57,6 +66,22 @@ const createCoordinateAction = (customComponent: React.ReactNode) => ({
     },
   ],
 });
+
+// Several of these shortcuts share a key with non-annotation bindings, so each
+// one carries an explicit priority and an enablement guard and the command bus
+// runs the highest-priority *enabled* command for that key.
+//
+// The transform keys (t = translate, r = rotate, s = scale) double as viewer
+// shortcuts — `t` also frames the top view and `s` also toggles the sidebar —
+// so they sit just above the default priority and win only while a transform
+// target is selected; otherwise they fall through to the viewer shortcuts.
+const TRANSFORM_SHORTCUT_PRIORITY = 100;
+// Escape is claimed by several handlers at once, so its priorities form a
+// ladder from most- to least-specific: cancel an in-progress segment/cuboid
+// first, else deselect a polyline vertex, else exit edit mode and deselect.
+const ACTIVE_ESCAPE_SHORTCUT_PRIORITY = 300;
+const SELECTED_VERTEX_ESCAPE_SHORTCUT_PRIORITY = 200;
+const EXIT_EDIT_ESCAPE_SHORTCUT_PRIORITY = 100;
 
 export const useAnnotationActions = () => {
   const selectedLabelForAnnotation = useRecoilValue(
@@ -93,12 +118,80 @@ export const useAnnotationActions = () => {
   const workingDoc = useWorkingDoc();
   const resetSelectedLabel = useResetSelected3dAnnotationLabel();
 
+  const transformActionArchetype = getSelectedTransformArchetype({
+    currentArchetypeSelectedForTransform,
+    isAnnotationPlaneEnabled: annotationPlane.enabled,
+    selectedLabelForAnnotation,
+    selectedPoint,
+  });
+
   const handleTransformModeChange = useCallback(
     (mode: TransformMode) => {
+      if (!canTransformArchetypeUseMode(transformActionArchetype, mode)) {
+        return;
+      }
+
+      if (currentArchetypeSelectedForTransform !== transformActionArchetype) {
+        setCurrentArchetypeSelectedForTransform(transformActionArchetype);
+      }
+
       setTransformMode(mode);
     },
-    [setTransformMode],
+    [
+      currentArchetypeSelectedForTransform,
+      transformActionArchetype,
+      setCurrentArchetypeSelectedForTransform,
+      setTransformMode,
+    ],
   );
+
+  const canUseTransformShortcut = useCallback(
+    (mode: TransformMode) => {
+      return (
+        canTransformArchetypeUseMode(transformActionArchetype, mode) &&
+        !isActivelySegmenting &&
+        !isCreatingCuboid
+      );
+    },
+    [transformActionArchetype, isActivelySegmenting, isCreatingCuboid],
+  );
+
+  const transformKeyBindings = useMemo<KeyBinding[]>(
+    () => [
+      {
+        commandId: "looker-3d.annotation.transform.translate",
+        sequence: "t",
+        handler: () => handleTransformModeChange("translate"),
+        label: "Translate selected 3D object",
+        description: "Switch selected 3D object to translate mode.",
+        enablement: () => canUseTransformShortcut("translate"),
+        priority: TRANSFORM_SHORTCUT_PRIORITY,
+      },
+      {
+        commandId: "looker-3d.annotation.transform.scale",
+        sequence: "s",
+        handler: () => handleTransformModeChange("scale"),
+        label: "Scale selected 3D object",
+        description: "Switch selected 3D object to scale mode.",
+        enablement: () => canUseTransformShortcut("scale"),
+        priority: TRANSFORM_SHORTCUT_PRIORITY,
+      },
+      {
+        commandId: "looker-3d.annotation.transform.rotate",
+        sequence: "r",
+        handler: () => handleTransformModeChange("rotate"),
+        label: "Rotate selected 3D object",
+        description: "Switch selected 3D object to rotate mode.",
+        enablement: () => canUseTransformShortcut("rotate"),
+        priority: TRANSFORM_SHORTCUT_PRIORITY,
+      },
+    ],
+    [canUseTransformShortcut, handleTransformModeChange],
+  );
+
+  useKeyBindings(KnownContexts.ModalAnnotate, transformKeyBindings, [
+    transformKeyBindings,
+  ]);
 
   const handleStartSegmentPolyline = useCallback(() => {
     setSegmentState({
@@ -117,6 +210,86 @@ export const useAnnotationActions = () => {
       isClosed: false,
     });
   }, [setSegmentState]);
+
+  const handleCancelCreateCuboid = useCallback(() => {
+    setIsCreatingCuboid(false);
+  }, [setIsCreatingCuboid]);
+
+  const handleClearSelectedPoint = useCallback(() => {
+    setSelectedPoint(null);
+    setCurrentArchetypeSelectedForTransform(null);
+  }, [setCurrentArchetypeSelectedForTransform, setSelectedPoint]);
+
+  const canExitEditModeWithEscape = useCallback(() => {
+    return (
+      !isActivelySegmenting &&
+      !isCreatingCuboid &&
+      selectedPoint === null &&
+      (selectedLabelForAnnotation !== null || editing)
+    );
+  }, [
+    editing,
+    isActivelySegmenting,
+    isCreatingCuboid,
+    selectedLabelForAnnotation,
+    selectedPoint,
+  ]);
+
+  const onExit = useExit();
+
+  const escapeKeyBindings = useMemo<KeyBinding[]>(
+    () => [
+      {
+        commandId: "looker-3d.annotation.escape.cancel-segment",
+        sequence: "escape",
+        handler: handleCancelSegmentPolyline,
+        label: "Cancel polyline segment",
+        enablement: () => isPolylineAnnotateActive && isActivelySegmenting,
+        priority: ACTIVE_ESCAPE_SHORTCUT_PRIORITY,
+      },
+      {
+        commandId: "looker-3d.annotation.escape.cancel-cuboid-create",
+        sequence: "escape",
+        handler: handleCancelCreateCuboid,
+        label: "Cancel cuboid creation",
+        enablement: () => isCuboidAnnotateActive && isCreatingCuboid,
+        priority: ACTIVE_ESCAPE_SHORTCUT_PRIORITY,
+      },
+      {
+        commandId: "looker-3d.annotation.escape.clear-selected-vertex",
+        sequence: "escape",
+        handler: handleClearSelectedPoint,
+        label: "Deselect polyline vertex",
+        enablement: () =>
+          !isActivelySegmenting && !isCreatingCuboid && selectedPoint !== null,
+        priority: SELECTED_VERTEX_ESCAPE_SHORTCUT_PRIORITY,
+      },
+      {
+        commandId: "looker-3d.annotation.escape.exit-edit-mode",
+        sequence: "escape",
+        handler: onExit,
+        label: "Exit edit mode and deselect label",
+        enablement: canExitEditModeWithEscape,
+        priority: EXIT_EDIT_ESCAPE_SHORTCUT_PRIORITY,
+      },
+    ],
+    [
+      canExitEditModeWithEscape,
+      handleCancelCreateCuboid,
+      handleCancelSegmentPolyline,
+      handleClearSelectedPoint,
+      isActivelySegmenting,
+      isCreatingCuboid,
+      isCuboidAnnotateActive,
+      isPolylineAnnotateActive,
+      onExit,
+      selectedPoint,
+    ],
+  );
+
+  useKeyBindings(KnownContexts.ModalAnnotate, escapeKeyBindings, [
+    escapeKeyBindings,
+  ]);
 
   const handleDeleteSelectedPoint = useCallback(() => {
     if (!selectedPoint) return;
@@ -262,7 +435,24 @@ export const useAnnotationActions = () => {
     setIsCreatingCuboid(!isCreatingCuboid);
   }, [isCreatingCuboid, setIsCreatingCuboid]);
 
-  const onExit = useExit();
+  const createCuboidKeyBindings = useMemo<KeyBinding[]>(
+    () => [
+      {
+        commandId: "looker-3d.annotation.cuboid.toggle-create",
+        sequence: "c",
+        handler: handleToggleCreateCuboid,
+        label: "Toggle cuboid create mode",
+        description: "Enter or exit cuboid create mode.",
+        enablement: () => isCuboidAnnotateActive,
+        priority: TRANSFORM_SHORTCUT_PRIORITY,
+      },
+    ],
+    [handleToggleCreateCuboid, isCuboidAnnotateActive],
+  );
+
+  useKeyBindings(KnownContexts.ModalAnnotate, createCuboidKeyBindings, [
+    createCuboidKeyBindings,
+  ]);
 
   const actions: ToolbarActionGroup[] = useMemo(() => {
     const baseActions: ToolbarActionGroup[] = [
@@ -341,9 +531,10 @@ export const useAnnotationActions = () => {
             id: "create-cuboid",
             label: "Create Cuboid",
             icon: <AddBoxIcon />,
+            shortcut: "C",
             tooltip: isCreatingCuboid
-              ? "Exit create mode"
-              : "First click to set the center position, then click again to set the orientation point, and finally click again to commit the width",
+              ? "Exit create mode (C)"
+              : "Create a cuboid (C): first click to set the first corner, click again to set the orientation point, then click again to commit the width",
             isActive: isCreatingCuboid,
             onClick: handleToggleCreateCuboid,
           },
@@ -381,38 +572,47 @@ export const useAnnotationActions = () => {
       {
         id: "transform-actions",
         label: "Transform",
-        isHidden: !currentArchetypeSelectedForTransform,
+        isHidden: !transformActionArchetype,
         actions: [
+          {
+            id: "scale",
+            label: "Scale",
+            icon: <Straighten />,
+            shortcut: "S",
+            tooltip: "Scale object (S)",
+            isActive: transformMode === "scale",
+            isVisible: canTransformArchetypeUseMode(
+              transformActionArchetype,
+              "scale",
+            ),
+            onClick: () => handleTransformModeChange("scale"),
+          },
           {
             id: "translate",
             label: "Translate",
             icon: <OpenWith />,
-            tooltip: "Translate or move object",
+            shortcut: "T",
+            tooltip: "Translate or move object (T)",
             isActive:
-              !!currentArchetypeSelectedForTransform &&
-              transformMode === "translate",
-            isDisabled: !currentArchetypeSelectedForTransform,
+              !!transformActionArchetype && transformMode === "translate",
+            isDisabled: !canTransformArchetypeUseMode(
+              transformActionArchetype,
+              "translate",
+            ),
             onClick: () => handleTransformModeChange("translate"),
           },
           {
             id: "rotate",
             label: "Rotate",
             icon: <ThreeSixtyIcon />,
-            tooltip: "Rotate object",
-            isVisible:
-              currentArchetypeSelectedForTransform === "annotation-plane" ||
-              currentArchetypeSelectedForTransform === "cuboid",
+            shortcut: "R",
+            tooltip: "Rotate object (R)",
+            isVisible: canTransformArchetypeUseMode(
+              transformActionArchetype,
+              "rotate",
+            ),
             isActive: transformMode === "rotate",
             onClick: () => handleTransformModeChange("rotate"),
-          },
-          {
-            id: "scale",
-            label: "Scale",
-            icon: <Straighten />,
-            tooltip: "Scale object",
-            isActive: transformMode === "scale",
-            isVisible: currentArchetypeSelectedForTransform === "cuboid",
-            onClick: () => handleTransformModeChange("scale"),
           },
         ],
       },
@@ -431,6 +631,7 @@ export const useAnnotationActions = () => {
   }, [
     transformMode,
     currentArchetypeSelectedForTransform,
+    transformActionArchetype,
     handleTransformModeChange,
     handleContextualDelete,
     selectedLabelForAnnotation,

@@ -1,8 +1,7 @@
 import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
 import { MaskColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { cloneDeep } from "lodash";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import Checkbox from "../../Common/Checkbox";
 import { fieldColorSetting } from "../FieldSetting";

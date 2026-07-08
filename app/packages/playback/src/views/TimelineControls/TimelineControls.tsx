@@ -5,13 +5,17 @@ import {
 } from "@fiftyone/commands";
 import { Button, IconName, Size, Spinner, Variant } from "@voxel51/voodo";
 import clsx from "clsx";
-import React from "react";
+import React, { type ReactNode } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { usePlaybackStore } from "../../lib/playback/playback-store-context";
-import { getIsPlaying } from "../../lib/playback/store-access";
+import {
+  getIsPlayPending,
+  getIsPlaying,
+} from "../../lib/playback/store-access";
 import {
   useBufferingDetail,
   useIsBuffering,
+  useIsPlayPending,
   useIsPlaying,
 } from "../../lib/playback/use-playback-state";
 import LoopBounds from "../Loop/LoopBounds";
@@ -26,14 +30,28 @@ export interface TimelineControlsProps {
    * acts as a "show / hide tracks" affordance.
    */
   onToggle?: () => void;
-  extraActions?: React.ReactNode;
+  /**
+   * Optional content rendered inline between the playback control buttons and
+   * the playhead time display, with no divider. Feature toolbars slot here —
+   * e.g. the video annotation surface's Mark Keyframe / Propagate actions.
+   */
+  extraControls?: ReactNode;
+  /**
+   * Optional content rendered far-right, after the playhead time / loop
+   * bounds, preceded by its own divider. Use for trailing actions that read
+   * as a separate group — e.g. the temporal tag-mode button.
+   */
+  extraActions?: ReactNode;
 }
 
 const TimelineControls: React.FC<TimelineControlsProps> = ({
   onToggle,
+  extraControls,
   extraActions,
 }) => {
   const isPlaying = useIsPlaying();
+  const isPlayPending = useIsPlayPending();
+  const hasPlayIntent = isPlaying || isPlayPending;
   const { play, pause, stepBack, stepForward } = usePlayback();
   const store = usePlaybackStore();
 
@@ -48,7 +66,8 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       // Read isPlaying from the store, not the render closure — the
       // command must observe the engine's current state even if a
       // re-render hasn't committed yet.
-      handler: () => (getIsPlaying(store) ? pause() : play()),
+      handler: () =>
+        getIsPlaying(store) || getIsPlayPending(store) ? pause() : play(),
       label: "Play / Pause",
       description: "Toggle playback",
     },
@@ -115,10 +134,10 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         variant={Variant.Icon}
         size={Size.Xs}
         data-testid="timeline-controls-play-pause"
-        leadingIcon={isPlaying ? PauseIcon : PlayIcon}
-        aria-label={isPlaying ? "Pause" : "Play"}
-        aria-pressed={isPlaying}
-        onClick={isPlaying ? pause : play}
+        leadingIcon={hasPlayIntent ? PauseIcon : PlayIcon}
+        aria-label={hasPlayIntent ? "Pause" : "Play"}
+        aria-pressed={hasPlayIntent}
+        onClick={hasPlayIntent ? pause : play}
       />
       <Button
         variant={Variant.Icon}
@@ -128,6 +147,8 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         aria-label="Step forward"
         onClick={stepForward}
       />
+
+      {extraControls}
 
       <span
         className={styles.divider}
@@ -143,7 +164,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
             className={styles.divider}
             data-testid="timeline-controls-divider"
             aria-hidden
-          />{" "}
+          />
           {extraActions}
         </>
       ) : null}
@@ -159,9 +180,10 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
  */
 function BufferingIndicator() {
   const isBuffering = useIsBuffering();
+  const isPlayPending = useIsPlayPending();
   const detail = useBufferingDetail();
 
-  if (!isBuffering) return null;
+  if (!isBuffering && !isPlayPending) return null;
 
   return (
     <span

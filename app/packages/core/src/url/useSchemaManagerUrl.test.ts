@@ -21,7 +21,6 @@ import {
   SCHEMA_MANAGER_QUERY_VALUE,
   useSchemaManagerUrl,
 } from "./useSchemaManagerUrl";
-import { URL_CHANGED_EVENT } from "./useUrlSearchSubscription";
 
 const setSearch = (qs: string) => {
   // jsdom lets us pushState; we go through it so subscribers fire.

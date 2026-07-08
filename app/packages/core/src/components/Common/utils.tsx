@@ -6,7 +6,6 @@ import {
   INT_FIELD,
 } from "@fiftyone/utilities";
 import numeral from "numeral";
-import React from "react";
 
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 

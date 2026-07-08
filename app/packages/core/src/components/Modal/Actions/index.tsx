@@ -1,7 +1,7 @@
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import Draggable from "react-draggable";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";

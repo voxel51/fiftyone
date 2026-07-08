@@ -136,7 +136,7 @@ export default function Overview(props) {
       >
         <Accordion
           expanded={expanded === "summary"}
-          onChange={(e, expanded) => {
+          onChange={(_e, expanded) => {
             setExpanded(expanded ? "summary" : "");
             trackEvent("evaluation_card_click", {
               name: "summary",
@@ -163,7 +163,7 @@ export default function Overview(props) {
         </Accordion>
         <Accordion
           expanded={expanded === "metric"}
-          onChange={(e, expanded) => {
+          onChange={(_e, expanded) => {
             setExpanded(expanded ? "metric" : "");
             trackEvent("evaluation_card_click", {
               name: "metric",
@@ -189,7 +189,7 @@ export default function Overview(props) {
         </Accordion>
         <Accordion
           expanded={expanded === "class"}
-          onChange={(e, expanded) => {
+          onChange={(_e, expanded) => {
             setExpanded(expanded ? "class" : "");
             trackEvent("evaluation_card_click", {
               name: "class",
@@ -216,7 +216,7 @@ export default function Overview(props) {
         </Accordion>
         <Accordion
           expanded={expanded === "matrices"}
-          onChange={(e, expanded) => {
+          onChange={(_e, expanded) => {
             setExpanded(expanded ? "matrices" : "");
             trackEvent("evaluation_card_click", {
               name: "matrices",

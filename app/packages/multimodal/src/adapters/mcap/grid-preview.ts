@@ -1,12 +1,15 @@
 import type {
-  EncodedImageVisualization,
+  ImageVisualization,
   ImageAnnotationsVisualization,
   PointCloudVisualization,
 } from "../../decoders";
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import { PlaybackSyncMode } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
-import { chooseAnnotationTopic } from "./topic-matching";
+import {
+  chooseAnnotationTopic,
+  filterDefaultTopicEquivalents,
+} from "./topic-matching";
 import { streamTopics, type McapPreviewTopics } from "./stream-topics";
 import type {
   McapDecodedMessage,
@@ -80,7 +83,7 @@ export type McapGridPreviewSelection =
  */
 export interface McapGridImagePreviewFrame {
   readonly annotations: ImageAnnotationsVisualization | null;
-  readonly image: EncodedImageVisualization;
+  readonly image: ImageVisualization;
   readonly kind: "image";
 }
 
@@ -271,7 +274,10 @@ function chooseAutoSelection(
 export function chooseCameraSelection(
   topics: McapGridTopics,
 ): McapGridCameraSelection | null {
-  const imageTopic = topics.image[0];
+  const imageTopic = filterDefaultTopicEquivalents(topics.image, {
+    getKind: () => "image",
+    getTopic: (topic) => topic,
+  })[0];
   if (!imageTopic) {
     return null;
   }
@@ -286,7 +292,10 @@ export function chooseCameraSelection(
 function choosePointCloudSelection(
   topics: McapGridTopics,
 ): McapGridPointCloudSelection | null {
-  const pointCloudTopic = topics.pointCloud[0];
+  const pointCloudTopic = filterDefaultTopicEquivalents(topics.pointCloud, {
+    getKind: () => "point-cloud",
+    getTopic: (topic) => topic,
+  })[0];
   return pointCloudTopic
     ? {
         kind: "point-cloud",
@@ -474,7 +483,7 @@ async function readImageFrameNear({
   readonly source: ByteSourceDescriptor;
   readonly timeNs: bigint;
   readonly topic: string;
-}): Promise<EncodedImageVisualization | null> {
+}): Promise<ImageVisualization | null> {
   const window = await client.readSynchronizedMessages({
     source,
     streamPolicies: {
@@ -487,11 +496,10 @@ async function readImageFrameNear({
   return message ? imageFrame(message) : null;
 }
 
-function imageFrame(
-  message: McapDecodedMessage,
-): EncodedImageVisualization | null {
+function imageFrame(message: McapDecodedMessage): ImageVisualization | null {
   const visualization = message.decoded.output.visualization;
-  return visualization?.kind === VISUALIZATION_KIND.ENCODED_IMAGE
+  return visualization?.kind === VISUALIZATION_KIND.ENCODED_IMAGE ||
+    visualization?.kind === VISUALIZATION_KIND.RAW_IMAGE
     ? visualization
     : null;
 }

@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject } from "react";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { ActionOption } from "../Common";
 import Popout from "../Popout";

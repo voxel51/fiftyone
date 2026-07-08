@@ -2,6 +2,7 @@ import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { DecodeResult } from "../../query/decode";
 import type { PlaybackSyncMode, StreamInventory } from "../../schemas/v1";
 import type { McapFrameTransformSet } from "./frame-transform-types";
+import type { McapLaneTransportSnapshot } from "./worker/transport-meter";
 
 /**
  * MCAP timeline selected as the playback clock/time track.
@@ -167,6 +168,343 @@ export interface McapTopicTimeBounds {
 }
 
 /**
+ * Request for enumerating plottable numeric leaf fields per topic.
+ */
+export interface McapEnumerateNumericFieldsRequest {
+  /**
+   * MCAP source to inspect for channel schemas.
+   */
+  readonly source: ByteSourceDescriptor;
+
+  /**
+   * Optional MCAP topics to include. Undefined means all topics.
+   */
+  readonly topics?: readonly string[];
+}
+
+/**
+ * One numeric leaf field of a topic's message schema, addressed by a
+ * dotted path (e.g. `twist.linear.x`).
+ */
+export interface McapNumericFieldDescriptor {
+  readonly path: string;
+
+  /**
+   * Schema-level value type ("double", "int64", "bool", "enum", …).
+   * Informational: 64-bit integer types lose precision beyond 2^53
+   * when projected to chart values.
+   */
+  readonly valueType: string;
+}
+
+/**
+ * Why a generic schema-shaped decode path is unavailable for a topic.
+ */
+export type McapDecodeUnavailableReason =
+  | "schema-unavailable"
+  | "unsupported-encoding";
+
+/**
+ * Numeric field availability for one topic. Empty-field topics are
+ * surfaced with a reason so the plot picker can distinguish unsupported
+ * encodings, unreadable schemas, and decodable schemas with nothing scalar
+ * to plot.
+ */
+export type McapNumericFieldAvailability =
+  | "no-numeric-fields"
+  | "ready"
+  | McapDecodeUnavailableReason;
+
+/**
+ * Plottable numeric fields for one topic. `availability` explains empty
+ * field lists so unsupported/degraded topics stay legible instead of
+ * silently absent.
+ */
+export interface McapTopicNumericFields {
+  readonly topic: string;
+  readonly encoding: "protobuf" | "json" | "ros1" | "cdr" | "unsupported";
+  readonly availability: McapNumericFieldAvailability;
+
+  /**
+   * True when fields were derived by sampling decoded messages (JSON
+   * channels carry no walkable schema); fields appearing only later in
+   * the recording may be missing.
+   */
+  readonly sampled?: boolean;
+  readonly fields: readonly McapNumericFieldDescriptor[];
+}
+
+/**
+ * Request for a packed numeric time series of one topic's field paths.
+ */
+export interface McapReadNumericSeriesRequest {
+  /**
+   * Timeline used to interpret request bounds; defaults to MCAP log time.
+   */
+  readonly activeTimeline?: McapActiveTimeline;
+
+  /**
+   * Optional inclusive upper time bound in the active timeline.
+   */
+  readonly endTimeNs?: bigint;
+
+  /**
+   * Dotted numeric leaf paths to project from each decoded message.
+   */
+  readonly fieldPaths: readonly string[];
+
+  /**
+   * Post-decimation cap per field. Defaults to
+   * `DEFAULT_NUMERIC_SERIES_MAX_POINTS`.
+   */
+  readonly maxPointsPerField?: number;
+
+  /**
+   * MCAP source to read through the shared byte query layer.
+   */
+  readonly source: ByteSourceDescriptor;
+
+  /**
+   * Optional inclusive lower time bound in the active timeline.
+   */
+  readonly startTimeNs?: bigint;
+
+  /**
+   * MCAP topic to extract from.
+   */
+  readonly topic: string;
+}
+
+/**
+ * Packed series for one requested field path. Parallel arrays; times
+ * are seconds relative to the result's `baseTimeNs`. `NaN` values mark
+ * messages where the field was missing or non-numeric so charts can
+ * render gaps.
+ */
+export interface McapNumericSeriesField {
+  readonly path: string;
+  readonly timesSec: Float64Array;
+  readonly values: Float64Array;
+}
+
+/**
+ * Numeric series extraction result for one topic.
+ */
+export interface McapNumericSeriesResult {
+  /**
+   * Timeline range start the per-field times are relative to.
+   */
+  readonly baseTimeNs: bigint;
+  readonly fields: readonly McapNumericSeriesField[];
+
+  /**
+   * Messages decoded (post-stride, pre-decimation).
+   */
+  readonly messageCount: number;
+  readonly topic: string;
+
+  /**
+   * True when not every message is represented (scan cap or stride).
+   */
+  readonly truncated: boolean;
+}
+
+/**
+ * Budgets bounding how much of a decoded message record crosses the
+ * worker boundary. Every budget has a conservative default; callers
+ * only override for special views.
+ */
+export interface McapRawPruneBudgets {
+  /**
+   * Maximum elements kept per array (plain or typed).
+   */
+  readonly maxArrayLength?: number;
+
+  /**
+   * Maximum nesting depth before subtrees collapse to a truncation
+   * marker.
+   */
+  readonly maxDepth?: number;
+
+  /**
+   * Maximum characters kept per string value.
+   */
+  readonly maxStringLength?: number;
+
+  /**
+   * Maximum total nodes in the pruned tree.
+   */
+  readonly maxTotalNodes?: number;
+}
+
+/**
+ * Pruned, structured-clone-safe rendering of one decoded message value.
+ * The worker walks the full decoded record but only this bounded tree
+ * crosses the thread boundary — an 18 MB occupancy grid stays put.
+ */
+export type McapRawValueNode =
+  | McapRawScalarNode
+  | McapRawBytesNode
+  | McapRawObjectNode
+  | McapRawArrayNode
+  | McapRawTruncatedNode;
+
+/**
+ * Leaf value, pre-stringified so 64-bit and non-finite values render
+ * (and copy) without further coercion decisions in the UI.
+ */
+export interface McapRawScalarNode {
+  readonly kind: "scalar";
+
+  /**
+   * Display-ready rendering of the value.
+   */
+  readonly value: string;
+  readonly valueType:
+    | "bigint"
+    | "boolean"
+    | "null"
+    | "number"
+    | "string"
+    | "undefined";
+
+  /**
+   * True when a string value was cut at the string budget.
+   */
+  readonly truncated?: boolean;
+}
+
+/**
+ * Byte payloads (protobuf `bytes` fields) summarize instead of listing
+ * elements — a hex preview of the first bytes plus the true length.
+ */
+export interface McapRawBytesNode {
+  readonly kind: "bytes";
+  readonly byteLength: number;
+
+  /**
+   * Space-separated hex of the leading bytes.
+   */
+  readonly preview: string;
+}
+
+export interface McapRawObjectNode {
+  readonly kind: "object";
+  readonly entries: readonly (readonly [string, McapRawValueNode])[];
+
+  /**
+   * Keys dropped by the total-node budget.
+   */
+  readonly droppedEntries?: number;
+}
+
+export interface McapRawArrayNode {
+  readonly kind: "array";
+  readonly items: readonly McapRawValueNode[];
+
+  /**
+   * Real element count; greater than `items.length` when pruned.
+   */
+  readonly totalLength: number;
+}
+
+/**
+ * Subtree collapsed by the depth or total-node budget.
+ */
+export interface McapRawTruncatedNode {
+  readonly kind: "truncated";
+  readonly reason: "depth" | "nodes";
+}
+
+/**
+ * Request for one topic's schema-shaped message record at a playback
+ * time.
+ */
+export interface McapReadRawMessageRecordRequest {
+  /**
+   * Timeline used to interpret `timeNs`; defaults to MCAP log time.
+   */
+  readonly activeTimeline?: McapActiveTimeline;
+
+  /**
+   * Optional overrides for the worker-side prune budgets.
+   */
+  readonly prune?: McapRawPruneBudgets;
+
+  /**
+   * MCAP source to read through the shared byte query layer.
+   */
+  readonly source: ByteSourceDescriptor;
+
+  /**
+   * Playback timeline time; the newest message at or before it is
+   * selected, however far back.
+   */
+  readonly timeNs: bigint;
+
+  /**
+   * MCAP topic to read.
+   */
+  readonly topic: string;
+}
+
+/**
+ * Raw record read outcome: `ok` carries a pruned record tree;
+ * `unsupported` carries message metadata when a generic decode path is
+ * unavailable; `decode-error` marks a corrupt or schema-mismatched payload;
+ * `empty` means the topic has no message at or before the requested time.
+ */
+export type McapRawMessageRecordStatus =
+  | "decode-error"
+  | "empty"
+  | "ok"
+  | "unsupported";
+
+/**
+ * One topic's message record (or its degrade) at a playback time.
+ */
+export interface McapRawMessageRecordResult {
+  readonly status: McapRawMessageRecordStatus;
+  readonly topic: string;
+  readonly messageEncoding: string;
+  readonly schemaName: string | null;
+
+  /**
+   * Validity window in the active timeline: any request time in
+   * `[validFromNs, validUntilNs)` selects this same result, so callers
+   * skip refetching inside it. `validUntilNs` is a safe lower bound —
+   * probing stops at a bounded horizon, and a request past it simply
+   * re-selects and extends.
+   */
+  readonly validFromNs: bigint;
+  readonly validUntilNs: bigint;
+
+  /**
+   * Selected message identity/metadata; absent when `empty`.
+   */
+  readonly logTimeNs?: bigint;
+  readonly publishTimeNs?: bigint;
+  readonly sequence?: number;
+  readonly encodedPayloadBytes?: number;
+  readonly decodeUnavailableReason?: McapDecodeUnavailableReason;
+
+  /**
+   * Pruned record tree; present only when `ok`.
+   */
+  readonly root?: McapRawObjectNode;
+
+  /**
+   * True when any prune budget cut the tree.
+   */
+  readonly truncated?: boolean;
+
+  /**
+   * Decoder failure detail; present only when `decode-error`.
+   */
+  readonly decodeError?: string;
+}
+
+/**
  * Request for frame transforms needed before a 3D panel can render.
  */
 export interface McapReadFrameTransformBootstrapRequest {
@@ -202,6 +540,30 @@ export interface McapReadFrameTransformWindowRequest {
 }
 
 /**
+ * One point of the cumulative compressed-byte curve over a timeline: after
+ * `endTimeNs`, playback from the file start has consumed
+ * `cumulativeCompressedBytes` of chunk data.
+ */
+export interface McapByteTimelinePoint {
+  /**
+   * Compressed chunk bytes accumulated through this chunk, in time order.
+   */
+  readonly cumulativeCompressedBytes: number;
+
+  /**
+   * Inclusive timeline end of the chunk contributing the bytes.
+   */
+  readonly endTimeNs: bigint;
+
+  /**
+   * File offset where the chunk starts. Cumulative bytes measure volume
+   * (bitrate math); this anchors the chunk in the file for consumers that
+   * bank or prefetch real byte ranges.
+   */
+  readonly startOffsetBytes: bigint;
+}
+
+/**
  * Playable time range for one MCAP timeline.
  */
 export interface McapTimelineRange {
@@ -209,6 +571,13 @@ export interface McapTimelineRange {
    * Timeline used for the returned range.
    */
   readonly activeTimeline: McapActiveTimeline;
+
+  /**
+   * Cumulative compressed chunk bytes by chunk end time, ascending.
+   * Consumers estimate "bytes needed to play [t0, t1]" from deltas —
+   * the bandwidth-aware startup gate sizes its cushion with this.
+   */
+  readonly byteTimeline?: readonly McapByteTimelinePoint[];
 
   /**
    * Inclusive upper timeline bound.
@@ -265,9 +634,28 @@ export interface McapReadSynchronizedMessageBatchRequest extends Omit<
   "timeNs"
 > {
   /**
+   * Optional caller-owned id used only for correlating debug instrumentation
+   * across stream fetches, worker attribution, and bandwidth samples.
+   */
+  readonly mcapDataRequestId?: string;
+
+  /**
    * Playback times to resolve against the same source/topic/policy request.
    */
   readonly timeNs: readonly bigint[];
+}
+
+/**
+ * Scheduling priority for resource reads where callers know whether the work
+ * is immediately user-visible or opportunistic.
+ */
+export type McapResourceReadPriority = "bulk" | "current" | "idle" | "playback";
+
+/**
+ * Optional scheduling hints for MCAP resource reads.
+ */
+export interface McapResourceReadOptions {
+  readonly priority?: McapResourceReadPriority;
 }
 
 /**
@@ -283,6 +671,11 @@ export interface McapDecodedMessage {
    * Decoder output for the message payload.
    */
   readonly decoded: DecodeResult;
+
+  /**
+   * Encoded MCAP message payload size before adapter decoding.
+   */
+  readonly encodedPayloadBytes?: number;
 
   /**
    * MCAP message log time.
@@ -369,10 +762,40 @@ export interface McapResourceClient {
   dispose(): void;
 
   /**
+   * Declares which source the owning renderer is presenting. Worker-backed
+   * clients switch ownership here (cancelling the previous source's pending
+   * reads while keeping the worker fleet warm); reads for non-active
+   * sources then fail fast with the cancelled error. Callers that never
+   * activate keep legacy request-driven switching.
+   */
+  activateSource?(source: ByteSourceDescriptor): void;
+
+  /**
+   * Cancels queued and in-flight speculative idle-lane reads (background
+   * lookahead batches, transform runway windows). Called on seek so a
+   * constrained link goes to foreground catch-up instead of finishing
+   * transfers nobody needs. Cancelled reads reject with the canonical
+   * cancelled error; consumers treat those as benign.
+   */
+  cancelIdleReads?(): void;
+
+  /**
+   * Subscribes to cumulative network-transport snapshots from worker-backed
+   * read lanes. Inline clients omit this; network-health consumers treat it as
+   * optional.
+   */
+  subscribeTransport?(
+    listener: (sample: McapLaneTransportSnapshot) => void,
+  ): () => void;
+
+  /**
    * Streams decoded messages for the requested topics and time bounds.
+   * Pass a bulk priority for full-history context reads (e.g. trajectories)
+   * so they never serialize current-frame, playback, or placement work.
    */
   readDecodedMessages(
     request: McapReadDecodedMessagesRequest,
+    options?: McapResourceReadOptions,
   ): AsyncGenerator<McapDecodedMessage, void, void>;
 
   /**
@@ -398,6 +821,34 @@ export interface McapResourceClient {
   ): Promise<readonly McapTopicTimeBounds[]>;
 
   /**
+   * Enumerates plottable numeric leaf fields per topic from channel
+   * schemas (protobuf) or sampled messages (JSON). Independent of the
+   * decoder registry — covers telemetry topics with no visualization.
+   */
+  enumerateNumericFields(
+    request: McapEnumerateNumericFieldsRequest,
+  ): Promise<readonly McapTopicNumericFields[]>;
+
+  /**
+   * Extracts a packed numeric time series for one topic's field paths.
+   * Pass a bulk priority so full-history extraction never serializes
+   * current-frame, playback, or placement work.
+   */
+  readNumericSeries(
+    request: McapReadNumericSeriesRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapNumericSeriesResult>;
+
+  /**
+   * Reads one topic's schema-shaped message record at a playback time,
+   * pruned worker-side to bounded size. Rides the idle lane so a large
+   * decode never stalls current-frame or playback reads.
+   */
+  readRawMessageRecord(
+    request: McapReadRawMessageRecordRequest,
+  ): Promise<McapRawMessageRecordResult>;
+
+  /**
    * Reads eager frame transforms needed for initial 3D placement.
    */
   readFrameTransformBootstrap(
@@ -409,6 +860,7 @@ export interface McapResourceClient {
    */
   readFrameTransformWindow(
     request: McapReadFrameTransformWindowRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapFrameTransformSet>;
 
   /**
@@ -423,5 +875,6 @@ export interface McapResourceClient {
    */
   readSynchronizedMessageBatch(
     request: McapReadSynchronizedMessageBatchRequest,
+    options?: McapResourceReadOptions,
   ): Promise<readonly McapSynchronizedMessageWindow[]>;
 }

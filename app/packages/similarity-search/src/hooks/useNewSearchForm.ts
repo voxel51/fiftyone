@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrainKeyConfig, CloneConfig, QueryType, SearchScope } from "../types";
-import { SCOPE_VIEW, SCOPE_DATASET } from "../constants";
+import { SCOPE_DATASET } from "../constants";
 import { UploadedImage } from "../utils";
 import { useSearchSelection } from "./useSearchSelection";
 import { useSearchSubmission } from "./useSearchSubmission";

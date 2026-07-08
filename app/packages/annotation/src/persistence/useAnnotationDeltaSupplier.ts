@@ -1,30 +1,32 @@
-import type { DeltaSupplier } from "./deltaSupplier";
-import { useLighterDeltaSupplier } from "./useLighterDeltaSupplier";
+import { isPatchesView } from "@fiftyone/state";
 import { useCallback } from "react";
-import { useSidebarDeltaSupplier } from "./useSidebarDeltaSupplier";
-import { use3dDeltaSupplier } from "./use3dDeltaSupplier";
+import { useRecoilValue } from "recoil";
+import { useSampleInstance } from "../state";
+import type { DeltaSupplier } from "./deltaSupplier";
 
 /**
- * Hook which provides a {@link DeltaSupplier} containing an aggregation of
- * deltas from all annotation sources.
+ * Hook which provides a {@link DeltaSupplier} for all annotation sources.
+ *
+ * Sidebar, Lighter (2D), and 3D edits are all tracked on the shared
+ * {@link Sample} instance (via `useSyncModalSample` / the engine's Lighter and
+ * looker-3d bridges) and emitted through `sample.getJsonPatch()`.
+ *
+ * For generated (patches) views the patch is emitted as a single-element diff
+ * and routed via `sample.firstEditedLabel()` metadata.
  */
 export const useAnnotationDeltaSupplier = (): DeltaSupplier => {
-  const supply3dDeltas = use3dDeltaSupplier();
-  const supplyLighterDeltas = useLighterDeltaSupplier();
-  const supplySidebarDeltas = useSidebarDeltaSupplier();
+  const sample = useSampleInstance();
+  const isGenerated = useRecoilValue(isPatchesView);
 
   return useCallback(() => {
-    const result3d = supply3dDeltas();
-    const resultLighter = supplyLighterDeltas();
-    const resultSidebar = supplySidebarDeltas();
+    const deltas = sample.getJsonPatch({ isGenerated });
 
-    const deltas = [
-      ...result3d.deltas,
-      ...resultLighter.deltas,
-      ...resultSidebar.deltas,
-    ];
+    // Generated views require label metadata so the backend can update the
+    // source sample; it comes from the first edited label on the Sample.
+    const metadata = isGenerated
+      ? sample.firstEditedLabel({ isGenerated: true })
+      : undefined;
 
-    // Metadata for generated views only comes from Lighter
-    return { deltas, metadata: resultLighter.metadata };
-  }, [supply3dDeltas, supplyLighterDeltas, supplySidebarDeltas]);
+    return { deltas, metadata };
+  }, [isGenerated, sample]);
 };

@@ -1,0 +1,12 @@
+/* Inline cluster sitting in the controls row, between the playback
+   buttons and the playhead time display. */
+.root {
+  margin: 0 6px;
+}
+
+/* Tooltip anchors to this wrapper so the tip still shows while the inner
+   button is disabled (a disabled <button> swallows its own pointer
+   events). */
+.slot {
+  display: inline-flex;
+}

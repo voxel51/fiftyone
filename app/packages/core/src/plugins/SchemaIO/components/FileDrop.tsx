@@ -1,4 +1,3 @@
-import React from "react";
 import { Box, Chip, Typography } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { FileDrop as ReactFileDrop } from "react-file-drop";
@@ -71,7 +70,7 @@ export default function FileDrop({
         onTargetClick={() => {
           fileInputRef.current.click();
         }}
-        onDrop={(files, e) => {
+        onDrop={(files) => {
           addUniqueFiles(files);
           if (active) setActive(false);
         }}

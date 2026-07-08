@@ -1,9 +1,14 @@
 import type { SceneSource } from "../../scene-inventory";
 import { PlaybackSyncMode, type StreamInventory } from "../../schemas/v1";
 import {
-  isCompressedImageStream,
+  isCameraCalibrationStream,
+  isGridStream,
   isImageAnnotationsStream,
+  isImageStream,
+  isLocationFixStream,
   isPointCloudStream,
+  isPoseStream,
+  isSceneUpdateStream,
   topicName,
 } from "./stream-topics";
 import { topicPrefix } from "./topic-matching";
@@ -17,9 +22,25 @@ import type { McapStreamSyncPolicies, McapStreamSyncPolicy } from "./types";
  * the tile catalog maps them to the tile kinds that can render them.
  */
 export const MCAP_SOURCE_TYPE = {
+  // Foxglove CameraCalibration topics: camera intrinsics/projection.
+  // Paired with image streams by topic prefix and rendered as frustums
+  // in the 3D scene; never a standalone tile.
+  CAMERA_CALIBRATION: "camera-calibration",
   IMAGE: "image",
   IMAGE_ANNOTATION: "image-annotation",
+  // Foxglove LocationFix topics: geographic fixes surfaced as telemetry
+  // readouts (and, later, map panels); never a standalone tile.
+  LOCATION: "location",
+  // Foxglove Grid topics: 2D data grids rendered as textured ground/map
+  // planes in the 3D scene. Named "map-layer" rather than "grid" because
+  // "grid" already means the FiftyOne sample grid throughout the app.
+  MAP_LAYER: "map-layer",
   POINT_CLOUD: "point-cloud",
+  // Ego/robot pose streams (Foxglove PoseInFrame, JSON odometry exports):
+  // normalized pose samples rendered as trajectories and telemetry in the
+  // 3D scene.
+  POSE: "pose",
+  SCENE_ANNOTATION: "scene-annotation",
 } as const;
 
 export type McapSourceType =
@@ -35,14 +56,21 @@ const LATEST_SYNC_POLICY: McapStreamSyncPolicy = {
 };
 
 const SYNC_POLICY_BY_TYPE: Record<McapSourceType, McapStreamSyncPolicy> = {
+  [MCAP_SOURCE_TYPE.CAMERA_CALIBRATION]: LATEST_SYNC_POLICY,
   [MCAP_SOURCE_TYPE.IMAGE]: LATEST_SYNC_POLICY,
   [MCAP_SOURCE_TYPE.IMAGE_ANNOTATION]: LATEST_SYNC_POLICY,
+  [MCAP_SOURCE_TYPE.LOCATION]: LATEST_SYNC_POLICY,
+  // Unbounded lookback is what makes static maps work: a one-shot /map
+  // message published at file start stays resolvable for the whole run.
+  [MCAP_SOURCE_TYPE.MAP_LAYER]: LATEST_SYNC_POLICY,
   [MCAP_SOURCE_TYPE.POINT_CLOUD]: LATEST_SYNC_POLICY,
+  [MCAP_SOURCE_TYPE.POSE]: LATEST_SYNC_POLICY,
+  [MCAP_SOURCE_TYPE.SCENE_ANNOTATION]: LATEST_SYNC_POLICY,
 };
 
 /**
  * Derives the scene inventory from MCAP topic metadata. Topics are
- * classified by payload identity (Foxglove compressed image, point
+ * classified by payload identity (image, point
  * cloud, image annotations); unsupported topics are omitted. Inventory
  * order is preserved so source pickers and "first source of a type"
  * defaults stay deterministic per file.
@@ -113,7 +141,7 @@ export function mcapStreamPolicies(
 }
 
 function sourceTypeFor(topic: StreamInventory): McapSourceType | null {
-  if (isCompressedImageStream(topic)) {
+  if (isImageStream(topic)) {
     return MCAP_SOURCE_TYPE.IMAGE;
   }
   if (isPointCloudStream(topic)) {
@@ -121,6 +149,21 @@ function sourceTypeFor(topic: StreamInventory): McapSourceType | null {
   }
   if (isImageAnnotationsStream(topic)) {
     return MCAP_SOURCE_TYPE.IMAGE_ANNOTATION;
+  }
+  if (isSceneUpdateStream(topic)) {
+    return MCAP_SOURCE_TYPE.SCENE_ANNOTATION;
+  }
+  if (isGridStream(topic)) {
+    return MCAP_SOURCE_TYPE.MAP_LAYER;
+  }
+  if (isCameraCalibrationStream(topic)) {
+    return MCAP_SOURCE_TYPE.CAMERA_CALIBRATION;
+  }
+  if (isPoseStream(topic)) {
+    return MCAP_SOURCE_TYPE.POSE;
+  }
+  if (isLocationFixStream(topic)) {
+    return MCAP_SOURCE_TYPE.LOCATION;
   }
   return null;
 }

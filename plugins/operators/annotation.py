@@ -21,6 +21,22 @@ import fiftyone.operators as foo
 import fiftyone.operators.types as types
 
 
+_FRAMES_PREFIX = "frames."
+
+
+def _strip_frames_prefix(field_name, is_frame_field):
+    """Returns the frame-local field name, dropping the ``frames.`` prefix.
+
+    ``add_frame_field`` operates on the frame schema and expects the bare field
+    name, whereas the label-schema store keys frame schemas by the full
+    ``frames.<field>`` path.
+    """
+    if is_frame_field:
+        return field_name[len(_FRAMES_PREFIX) :]
+
+    return field_name
+
+
 class ActivateLabelSchemas(foo.Operator):
     @property
     def config(self):
@@ -95,13 +111,22 @@ class GenerateLabelSchemas(foo.Operator):
     def execute(self, ctx):
         field = ctx.params.get("field", None)
         limit = ctx.params.get("limit", None)
+        scan_samples = ctx.params.get("scan_samples", True)
+
+        # Backfill legacy `index`-based tracks into `instance` so they're
+        # recognized as tracks. Runs on the full dataset (not the scan's
+        # limited view) and only fills fields that have indexes but no
+        # instances yet, so existing tracks are never clobbered.
+        if scan_samples:
+            foau.backfill_instances_from_index(ctx.dataset, field)
+
         if limit:
             view = ctx.dataset.limit(limit)
         else:
             view = ctx.dataset
         return {
             "label_schema": view.generate_label_schemas(
-                fields=field, scan_samples=ctx.params.get("scan_samples", True)
+                fields=field, scan_samples=scan_samples
             )
         }
 
@@ -118,9 +143,14 @@ class GetLabelSchemas(foo.Operator):
 
     def execute(self, ctx):
         label_schemas = ctx.dataset.label_schemas
-        fields = foau.list_valid_annotation_fields(ctx.dataset, flatten=True)
+        fields = foau.list_valid_annotation_fields(
+            ctx.dataset, flatten=True, include_frames=True
+        )
         supported_fields = foau.list_valid_annotation_fields(
-            ctx.dataset, require_app_support=True, flatten=True
+            ctx.dataset,
+            require_app_support=True,
+            flatten=True,
+            include_frames=True,
         )
         result = {}
 
@@ -248,14 +278,19 @@ class CreateAndActivateField(foo.Operator):
         field_type = ctx.params.get("field_type")
         read_only = ctx.params.get("read_only", False)
 
+        # A "frames." prefix targets the frame schema (video only). The full
+        # path is kept for the label-schema store, which keys frame schemas by
+        # "frames.<field>".
+        is_frame_field = field_name.startswith(_FRAMES_PREFIX)
+
         try:
             if field_category == "label":
                 label_schema = self._create_label_field(
-                    ctx, field_name, field_type, read_only
+                    ctx, field_name, field_type, read_only, is_frame_field
                 )
             else:
                 label_schema = self._create_primitive_field(
-                    ctx, field_name, field_type, read_only
+                    ctx, field_name, field_type, read_only, is_frame_field
                 )
 
             # Set the label schema
@@ -277,14 +312,21 @@ class CreateAndActivateField(foo.Operator):
             ctx.ops.notify(str(e), variant="error")
             return {"error": str(e)}
 
-    def _create_label_field(self, ctx, field_name, field_type, read_only):
+    def _create_label_field(
+        self, ctx, field_name, field_type, read_only, is_frame_field=False
+    ):
         """Create a label field and return its schema."""
         label_cls = foac.LABEL_TYPE_TO_CLASS.get(field_type)
         if label_cls is None:
             raise ValueError(f"Unknown label type: {field_type}")
 
-        ctx.dataset.add_sample_field(
-            field_name,
+        add_field = (
+            ctx.dataset.add_frame_field
+            if is_frame_field
+            else ctx.dataset.add_sample_field
+        )
+        add_field(
+            _strip_frames_prefix(field_name, is_frame_field),
             fof.EmbeddedDocumentField,
             embedded_doc_type=label_cls,
             read_only=read_only,
@@ -311,23 +353,32 @@ class CreateAndActivateField(foo.Operator):
             **({"classes": classes} if classes else {}),
         }
 
-    def _create_primitive_field(self, ctx, field_name, field_type, read_only):
+    def _create_primitive_field(
+        self, ctx, field_name, field_type, read_only, is_frame_field=False
+    ):
         """Create a primitive field and return its schema."""
         ftype = foac.TYPE_TO_FIELD.get(field_type)
         if ftype is None:
             raise ValueError(f"Unknown primitive type: {field_type}")
 
+        add_field = (
+            ctx.dataset.add_frame_field
+            if is_frame_field
+            else ctx.dataset.add_sample_field
+        )
+        local_name = _strip_frames_prefix(field_name, is_frame_field)
+
         # List types need ListField wrapper with subfield
         if field_type.startswith("list<"):
-            ctx.dataset.add_sample_field(
-                field_name,
+            add_field(
+                local_name,
                 fof.ListField,
                 subfield=ftype(),
                 read_only=read_only,
             )
         else:
-            ctx.dataset.add_sample_field(
-                field_name,
+            add_field(
+                local_name,
                 ftype,
                 read_only=read_only,
             )
@@ -360,7 +411,10 @@ class ListValidAnnotationFields(foo.Operator):
         require_app_support = ctx.params.get("require_app_support", True)
 
         valid_fields = foau.list_valid_annotation_fields(
-            ctx.dataset, require_app_support=require_app_support, flatten=True
+            ctx.dataset,
+            require_app_support=require_app_support,
+            flatten=True,
+            include_frames=True,
         )
 
         return {"valid_fields": valid_fields}

@@ -1,5 +1,5 @@
 import { Box, Grid, Slider, TextField, Typography } from "@mui/material";
-import { isNumber, isEqual } from "lodash";
+import { isNumber } from "lodash";
 import React, { useEffect, useRef, useState } from "react";
 import { useKey } from "../hooks";
 import { autoFocus, getComponentProps } from "../utils";
@@ -89,7 +89,7 @@ export default function SliderView(props: ViewPropsType) {
     isNumber(viewMax) ? viewMax : isNumber(schemaMax) ? schemaMax : 100,
   ];
 
-  const [key, setUserChanged] = useKey(path, schema, data, true);
+  const [key] = useKey(path, schema, data, true);
   const [fieldsRevision, setFieldsRevision] = useState(0);
 
   const computedMultipleOf = isNumber(multipleOf)

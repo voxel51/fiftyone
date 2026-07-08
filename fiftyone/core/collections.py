@@ -52,6 +52,7 @@ from fiftyone.internal.docs import hide_from_docs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
+fota = fou.lazy_import("fiftyone.core.tags")
 fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -374,8 +375,6 @@ class SampleCollection(object):
     @hide_from_docs
     def temporal_tags(self):
         """The multimodal temporal tags for this collection."""
-        import fiftyone.multimodal.tags._temporal_tags as fota
-
         return fota.TemporalTags(self)
 
     @property
@@ -7225,8 +7224,6 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        import fiftyone.multimodal.tags._temporal_tags as fota
-
         tag_filter = fota.TemporalTagFilter(
             tags=tags,
             anchors=anchors,

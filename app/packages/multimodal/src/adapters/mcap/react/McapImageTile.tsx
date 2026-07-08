@@ -1,29 +1,55 @@
-import { TileSettingsContent, useSetTileTitle } from "@fiftyone/tiling";
+import {
+  TileSettingsContent,
+  useSetTileTitle,
+  useTileDuplicator,
+} from "@fiftyone/tiling";
 import {
   Checkbox,
   Dropdown,
   DropdownAnchor,
   DropdownTrigger,
   MenuTextItem,
-  Text,
-  TextColor,
-  TextVariant,
 } from "@voxel51/voodo";
+import { useStore } from "jotai";
 import React, { useEffect, useMemo, useState } from "react";
-import type { EncodedImageVisualization } from "../../../decoders";
+import type {
+  CameraCalibrationVisualization,
+  ImageVisualization,
+} from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
-import { chooseAnnotationTopic } from "../topic-matching";
+import {
+  chooseAnnotationTopic,
+  chooseCalibrationTopic,
+} from "../topic-matching";
 import { ImagePanel } from "../../../visualization/panels/image";
-import { useMcapModalSettings } from "./mcap-modal-settings";
+import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
+import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
+import { useMcapDataStream } from "./mcap-data-stream-context";
+import {
+  useMcapImageLabelTopics,
+  useMcapPlaybackSettings,
+} from "./mcap-modal-settings";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
+import {
+  chooseNextImageTopic,
+  mcapImageTileBindingsAtom,
+  useMcapImageTileHoverProps,
+  usePublishMcapImageTileBinding,
+} from "./mcap-tile-source-bindings";
 import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
-import { rankImageSources } from "./playback-layout";
+import McapSidebarGroup from "./McapSidebarGroup";
+import { rankDefaultImageSources } from "./playback-layout";
 import settingsStyles from "./McapTile.settings.module.css";
 import styles from "./McapTile.module.css";
 import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
 import type { McapTileProps } from "./mcap-tile-types";
-import { useMcapTopicStream } from "./use-mcap-topic-stream";
+import {
+  useMcapTopicPlaybackFrame,
+  useMcapTopicStream,
+} from "./use-mcap-topic-stream";
+
+const IMAGE_FIT = "contain";
 
 const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const [imageDims, setImageDims] = useState<{
@@ -34,27 +60,60 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const annotationSources = useSceneSourcesByType(
     MCAP_SOURCE_TYPE.IMAGE_ANNOTATION,
   );
-  const { imageLabelTopics, interpolate2dAnnotations, setImageLabelTopics } =
-    useMcapModalSettings();
-  const setTileTitle = useSetTileTitle();
-  // Open on the resolver-assigned source; tiles added by hand bind the
-  // densest stream instead of whatever happens to be first in the file.
-  const [topic, setTopic] = useState<string>(
-    () => initialSourceId ?? rankImageSources(images)[0]?.id ?? "",
+  const calibrationSources = useSceneSourcesByType(
+    MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
   );
+  const { fidelityMode } = useMcapPlaybackSettings();
+  const setTileTitle = useSetTileTitle();
+  const jotaiStore = useStore();
+  // Open on the resolver-assigned source; tiles added by hand (split
+  // buttons, add-tile menu) bind the default-preferred stream no sibling
+  // tile is already showing — splitting repeatedly walks through cameras.
+  // Read the bindings through the store, not useAtomValue: the default
+  // matters only at bind time, and subscribing would re-render every
+  // image tile whenever a sibling rebinds.
+  const [topic, setTopic] = useState<string>(
+    () =>
+      initialSourceId ??
+      chooseNextImageTopic(
+        rankDefaultImageSources(images),
+        jotaiStore.get(mcapImageTileBindingsAtom),
+      ),
+  );
+  const {
+    hasExplicitLabelTopics,
+    labelTopics: storedLabelTopics,
+    setLabelTopics,
+  } = useMcapImageLabelTopics(topic);
 
-  // This effect binds the pane to the best image source once sources resolve.
+  // This effect binds the pane to the best undisplayed image source once
+  // sources resolve.
   useEffect(() => {
     if (topic && images.some((source) => source.id === topic)) return;
 
-    const nextTopic = rankImageSources(images)[0]?.id ?? "";
+    const nextTopic = chooseNextImageTopic(
+      rankDefaultImageSources(images),
+      jotaiStore.get(mcapImageTileBindingsAtom),
+    );
     if (nextTopic !== topic) setTopic(nextTopic);
-  }, [images, topic]);
+  }, [images, jotaiStore, topic]);
+
+  // Advertise this tile's stream so spawn points know what's on screen.
+  usePublishMcapImageTileBinding(topic);
+  // Hovering this tile lights up its camera frustum in the 3D scene.
+  const hoverProps = useMcapImageTileHoverProps(topic);
+
+  // How "Duplicate" clones this tile: same source, same title — unlike a
+  // split, which spawns a fresh tile on the next undisplayed stream.
+  useTileDuplicator(() => ({
+    render: () => <McapImageTile initialSourceId={topic} />,
+    title: images.find((s) => s.id === topic)?.label ?? "Image",
+  }));
 
   // This effect syncs the tile title with the selected image source.
   useEffect(() => {
     const label = images.find((s) => s.id === topic)?.label;
-    if (label) setTileTitle(label);
+    if (label) setTileTitle(label, { source: "auto" });
   }, [topic, images, setTileTitle]);
 
   // This effect resets image dimensions when the selected source changes.
@@ -62,29 +121,76 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     setImageDims(null);
   }, [topic]);
 
-  const frame = useMcapTopicStream<EncodedImageVisualization>(topic);
+  // Keep the playback wrapper: `contentTimeNs` is the message identity the
+  // shared image-texture cache key needs (bytes identity churns per batch).
+  const playbackFrame = useMcapTopicPlaybackFrame<ImageVisualization>(topic);
+  const frame = playbackFrame?.frame ?? null;
+  const sourceKey = useMcapDataStream()?.sourceKey ?? "";
+  // Shared texture key per (recording, topic, frame). The 3D tile's
+  // frustum image planes form the same key, so both surfaces share one
+  // decode and one GPU texture for the same camera frame.
+  const textureKey =
+    playbackFrame && sourceKey
+      ? imageTextureCacheKey(sourceKey, topic, playbackFrame.contentTimeNs)
+      : undefined;
   const annotationTopics = useMemo(
     () => annotationSources.map((s) => s.id),
     [annotationSources],
   );
+  const calibrationTopic = useMemo(
+    () =>
+      topic
+        ? chooseCalibrationTopic(
+            topic,
+            calibrationSources.map((s) => s.id),
+          )
+        : null,
+    [calibrationSources, topic],
+  );
+  const calibration = useMcapTopicStream<CameraCalibrationVisualization>(
+    calibrationTopic ?? "",
+  );
+  // Calibration supplies authoritative dimensions before the first image
+  // decodes, so annotation overlays and pan/zoom get the right aspect
+  // immediately; the loaded image stays authoritative afterwards.
+  const effectiveImageDims = useMemo(() => {
+    if (imageDims) {
+      return imageDims;
+    }
+    if (calibration && calibration.width > 0 && calibration.height > 0) {
+      return { height: calibration.height, width: calibration.width };
+    }
+    return null;
+  }, [calibration, imageDims]);
   const inferredAnnotationTopic = useMemo(
     () => (topic ? chooseAnnotationTopic(topic, annotationTopics) : null),
     [topic, annotationTopics],
   );
   const selectedLabelTopics = useMemo(() => {
     if (!topic) return [];
-    if (Object.hasOwn(imageLabelTopics, topic)) {
+    if (hasExplicitLabelTopics) {
       const available = new Set(annotationTopics);
-      return imageLabelTopics[topic].filter((labelTopic) =>
+      return storedLabelTopics.filter((labelTopic) =>
         available.has(labelTopic),
       );
     }
     return inferredAnnotationTopic ? [inferredAnnotationTopic] : [];
-  }, [annotationTopics, imageLabelTopics, inferredAnnotationTopic, topic]);
+  }, [
+    annotationTopics,
+    hasExplicitLabelTopics,
+    inferredAnnotationTopic,
+    storedLabelTopics,
+    topic,
+  ]);
   const activeTopics = useMemo(
     () => (topic ? [topic, ...selectedLabelTopics] : []),
     [selectedLabelTopics, topic],
   );
+  const imagePanZoom = useImagePanZoom({
+    fit: IMAGE_FIT,
+    imageSize: effectiveImageDims,
+    resetKey: topic,
+  });
   const currentLabel =
     images.find((s) => s.id === topic)?.label ?? "Select source";
   const toggleLabelTopic = (labelTopic: string, checked: boolean) => {
@@ -95,8 +201,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     } else {
       next.delete(labelTopic);
     }
-    setImageLabelTopics(
-      topic,
+    setLabelTopics(
       annotationTopics.filter((availableTopic) => next.has(availableTopic)),
     );
   };
@@ -105,10 +210,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     <>
       <TileSettingsContent>
         <div className={settingsStyles.root}>
-          <div className={settingsStyles.field}>
-            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-              Source
-            </Text>
+          <McapSidebarGroup title="Source">
             <Dropdown
               anchor={DropdownAnchor.BottomStart}
               trigger={<DropdownTrigger>{currentLabel}</DropdownTrigger>}
@@ -118,46 +220,58 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   key={s.id}
                   onClick={() => {
                     setTopic(s.id);
-                    setTileTitle(s.label);
+                    setTileTitle(s.label, { source: "auto" });
                   }}
                 >
                   {s.label}
                 </MenuTextItem>
               ))}
             </Dropdown>
-            <div className={settingsStyles.metaText}>
-              {sourceDetails(images.find((s) => s.id === topic))}
-            </div>
-          </div>
-          <div className={settingsStyles.field}>
-            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-              Labels
-            </Text>
-            {annotationSources.length > 0 ? (
+          </McapSidebarGroup>
+          {annotationSources.length > 0 ? (
+            <McapSidebarGroup
+              summary={`${selectedLabelTopics.length} of ${annotationSources.length} on`}
+              title="Labels"
+              toggle={{
+                ariaLabel: "Toggle labels",
+                checked: selectedLabelTopics.length > 0,
+                onChange: (checked) => {
+                  if (!topic) return;
+                  setLabelTopics(checked ? [...annotationTopics] : []);
+                },
+              }}
+            >
               <div className={settingsStyles.optionStack}>
                 {annotationSources.map((s) => (
                   <Checkbox
                     key={s.id}
-                    label={labelWithCount(s.label, s.recordCount)}
+                    label={s.label}
                     checked={selectedLabelTopics.includes(s.id)}
                     onChange={(checked) => toggleLabelTopic(s.id, checked)}
                     {...checkboxNoSpaceToggleProps}
                   />
                 ))}
               </div>
-            ) : (
-              <span className={settingsStyles.emptyText}>
-                No label topics available
-              </span>
-            )}
-          </div>
+            </McapSidebarGroup>
+          ) : null}
         </div>
       </TileSettingsContent>
       {frame ? (
-        <div className={styles.imageStack}>
+        <div
+          className={styles.imageStack}
+          {...hoverProps}
+          onPointerCancel={imagePanZoom.onPointerCancel}
+          onPointerDown={imagePanZoom.onPointerDown}
+          onPointerMove={imagePanZoom.onPointerMove}
+          onPointerUp={imagePanZoom.onPointerUp}
+          ref={imagePanZoom.surfaceRef}
+          style={imagePanZoom.surfaceStyle}
+        >
           <ImagePanel
+            canvasSurface="modal-image"
             frame={frame}
             className={styles.panel}
+            fit={IMAGE_FIT}
             onImageLoaded={(width, height) =>
               setImageDims((prev) =>
                 prev?.width === width && prev?.height === height
@@ -165,13 +279,18 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   : { width, height },
               )
             }
+            onResetView={imagePanZoom.resetView}
+            textureKey={textureKey}
+            viewTransform={imagePanZoom.viewTransform}
           />
-          {imageDims && selectedLabelTopics.length > 0 ? (
+          {effectiveImageDims && selectedLabelTopics.length > 0 ? (
             <McapImageAnnotationOverlay
-              imageWidth={imageDims.width}
-              imageHeight={imageDims.height}
-              interpolate={interpolate2dAnnotations}
+              fit={IMAGE_FIT}
+              imageWidth={effectiveImageDims.width}
+              imageHeight={effectiveImageDims.height}
+              interpolate={fidelityMode === "smooth"}
               topics={selectedLabelTopics}
+              viewTransform={imagePanZoom.viewTransform}
             />
           ) : null}
           <McapTileStatusBadge topics={activeTopics} />
@@ -182,16 +301,5 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     </>
   );
 };
-
-function labelWithCount(label: string, count: number | undefined): string {
-  return count !== undefined ? `${label} (${count.toLocaleString()})` : label;
-}
-
-function sourceDetails(source: { recordCount?: number } | undefined): string {
-  const count = source?.recordCount;
-  return count !== undefined
-    ? `${count.toLocaleString()} messages`
-    : "Message count unavailable";
-}
 
 export default McapImageTile;

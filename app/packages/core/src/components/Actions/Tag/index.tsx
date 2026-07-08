@@ -3,7 +3,7 @@ import type { Lookers } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { LocalOffer } from "@mui/icons-material";
 import type { MutableRefObject } from "react";
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import Loading from "../Loading";
 import type { ActionProps } from "../types";

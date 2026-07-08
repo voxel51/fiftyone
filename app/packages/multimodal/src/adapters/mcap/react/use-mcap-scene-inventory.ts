@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { LoadStatus } from "../../../load-status";
 import type { SceneSource } from "../../../scene-inventory";
+import type { StreamInventory } from "../../../schemas/v1";
 import { mcapSceneSources } from "../scene-sources";
 import { useMcapTopics, type UseMcapTopicsOptions } from "./use-mcap-topics";
 
@@ -10,6 +11,7 @@ export interface McapSceneInventoryState {
   readonly error: string | null;
   readonly status: McapSceneInventoryStatus;
   readonly sources: readonly SceneSource[];
+  readonly topics: readonly StreamInventory[];
   readonly topicCount: number;
 }
 
@@ -25,7 +27,7 @@ export function useMcapSceneInventory(
   const sources = useMemo(() => mcapSceneSources(topics), [topics]);
 
   return useMemo(
-    () => ({ error, sources, status, topicCount: topics.length }),
-    [error, sources, status, topics.length],
+    () => ({ error, sources, status, topics, topicCount: topics.length }),
+    [error, sources, status, topics],
   );
 }

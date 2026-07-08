@@ -250,58 +250,99 @@ def build_sam_datapoint_transform():
 
 
 class SAM3ConceptSegmenterOutputProcessor(fout.OutputProcessor):
-    """Converts SAM model outputs to FiftyOne format.
+    """Converts SAM3 concept model outputs to intermediate format for processing.
+
+    Each detected mask is associated with the label of the text query that
+    produced it, passed forward as ``detection_labels`` for the output
+    processor.
 
     Args:
-        classes (None): the list of class labels for the model. Not used in SAM output processor.
-        mask_thresh (0.5): Threshold for converting float masks to boolean masks
+        classes (None): ordered list of text prompts used as queries
+        mask_thresh (0.5): threshold for pre-filtering detections by confidence
     """
 
     def __init__(self, classes=None, mask_thresh=0.5):
         self.classes = None
         self.mask_thresh = mask_thresh
 
-    def __call__(
-        self,
-        output,
-        frame_size,
-    ):
-        """Returns processed model output in FiftyOne format.
+    def __call__(self, output, frame_size, query_texts=None):
+        """Returns intermediate model output dicts with per-detection text labels.
 
         Args:
-            output: a list of model output per sample
-            frame_size: a list of tuple containing original image height and width
+            output: a list of model output per sample, each with ``pred_logits``
+                ``[N, M, 1]``, ``pred_masks`` ``[N, M, H, W]``, and
+                ``presence_logit_dec`` ``[N, M]`` where N = num find queries
+            frame_size: a list of ``(H, W)`` tuples for each sample
+            query_texts (None): a list (one per sample) of query text strings in
+                the same order as the find_queries built during collation
 
         Returns:
-            a list of :class:`fiftyone.core.labels.Detections` instances
+            a list of dicts with keys ``masks`` ``[K, 1, H, W]``,
+            ``iou_predictions`` ``[K, 1]``, and ``detection_labels`` (list of K
+            label strings), suitable for ``SAMSegmenterOutputProcessor``
         """
         proc_output = []
         for idx, out in enumerate(output):
             out_logits = out["pred_logits"]
             out_masks = out["pred_masks"]
             out_probs = out_logits.sigmoid()
-            presence_score = out["presence_logit_dec"].sigmoid().unsqueeze(1)
+            presence_score = out["presence_logit_dec"].sigmoid().unsqueeze(-1)
             out_probs = (out_probs * presence_score).squeeze(-1)
 
-            keep = out_probs > self.mask_thresh
-            out_probs = out_probs[keep]
-            out_masks = out_masks[keep]
+            img_h, img_w = frame_size[idx]
+            n_queries = out_probs.shape[0]
 
-            img_h = frame_size[idx][0]
-            img_w = frame_size[idx][1]
-
-            out_masks = sam3.model.data_misc.interpolate(
-                out_masks.unsqueeze(1),
-                (img_h, img_w),
-                mode="bilinear",
-                align_corners=False,
-            ).sigmoid()
-            proc_output.append(
-                {
-                    "masks": out_masks.float(),
-                    "iou_predictions": out_probs.unsqueeze(1).float(),
-                }
+            sample_query_texts = (
+                query_texts[idx]
+                if query_texts and idx < len(query_texts)
+                else []
             )
+
+            all_masks = []
+            all_probs = []
+            all_labels = []
+            for query_idx in range(n_queries):
+                label = (
+                    sample_query_texts[query_idx]
+                    if query_idx < len(sample_query_texts)
+                    else None
+                )
+                keep = out_probs[query_idx] > self.mask_thresh
+                if not keep.any():
+                    continue
+
+                q_masks = out_masks[query_idx][keep]
+                q_probs = out_probs[query_idx][keep]
+
+                q_masks_up = sam3.model.data_misc.interpolate(
+                    q_masks.unsqueeze(1),
+                    (img_h, img_w),
+                    mode="bilinear",
+                    align_corners=False,
+                ).sigmoid()
+
+                all_masks.append(q_masks_up.float())
+                all_probs.append(q_probs.float())
+                all_labels.extend([label] * keep.sum().item())
+
+            if all_masks:
+                proc_output.append(
+                    {
+                        "masks": torch.cat(all_masks, dim=0),
+                        "iou_predictions": torch.cat(all_probs).unsqueeze(1),
+                        "detection_labels": all_labels,
+                    }
+                )
+            else:
+                # Placeholder for generating empty detections
+                proc_output.append(
+                    {
+                        "masks": torch.zeros(0, 1, img_h, img_w),
+                        "iou_predictions": torch.zeros(0, 1),
+                        "detection_labels": [],
+                    }
+                )
+
         return proc_output
 
 
@@ -425,6 +466,7 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
         # For "concept" mode, the collated output needs to be in Datapoint.
         transform = build_sam_datapoint_transform()
         datapoints = []
+        per_sample_query_texts = []
         for img_idx in range(len(results["image"])):
             datapoint = sam3ds.Datapoint(find_queries=[], images=[])
             datapoint.images = [
@@ -466,37 +508,60 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
                 else None
             )
             if box_prompts is not None:
-                datapoint.find_queries.append(
-                    sam3ds.FindQueryLoaded(
-                        query_text="visual",
-                        image_id=0,
-                        object_ids_output=[],  # unused for inference
-                        is_exhaustive=True,  # unused for inference
-                        query_processing_order=0,
-                        input_bbox=torch.tensor(
-                            box_prompts, dtype=torch.float
-                        ),
-                        input_bbox_label=torch.tensor(
-                            results["boxes_labels"][img_idx], dtype=torch.bool
-                        ),
-                        inference_metadata=sam3ds.InferenceMetadata(
-                            original_image_id=img_idx,
-                            original_size=results["original_size"][img_idx][
-                                ::-1
-                            ],
-                            # dummy values
-                            coco_image_id=img_idx,
-                            original_category_id=1,
-                            object_id=0,
-                            frame_index=0,
-                        ),
+                box_classes = results["classes"][img_idx]
+                box_labels = results["boxes_labels"][img_idx]
+
+                # Group boxes by class label
+                class_groups = {}
+                for box, cls, lbl in zip(box_prompts, box_classes, box_labels):
+                    query_text = (
+                        cls
+                        if (cls is not None and cls in text_prompts)
+                        else "visual"
                     )
-                )
+                    if query_text not in class_groups:
+                        class_groups[query_text] = {"boxes": [], "labels": []}
+                    class_groups[query_text]["boxes"].append(box)
+                    class_groups[query_text]["labels"].append(
+                        lbl
+                    )  # positive / negative
+
+                for query_text, group in class_groups.items():
+                    datapoint.find_queries.append(
+                        sam3ds.FindQueryLoaded(
+                            query_text=query_text,
+                            image_id=0,
+                            object_ids_output=[],  # unused for inference
+                            is_exhaustive=True,  # unused for inference
+                            query_processing_order=0,
+                            input_bbox=torch.tensor(
+                                np.array(group["boxes"]), dtype=torch.float
+                            ),
+                            input_bbox_label=torch.tensor(
+                                group["labels"], dtype=torch.bool
+                            ),
+                            inference_metadata=sam3ds.InferenceMetadata(
+                                original_image_id=img_idx,
+                                original_size=results["original_size"][
+                                    img_idx
+                                ][::-1],
+                                # dummy values
+                                coco_image_id=img_idx,
+                                original_category_id=1,
+                                object_id=0,
+                                frame_index=0,
+                            ),
+                        )
+                    )
+            per_sample_query_texts.append(
+                [q.query_text for q in datapoint.find_queries]
+            )
             datapoints.append(transform(datapoint))
         batched_dps = sam3coll.collate_fn_api(
             datapoints, dict_key="datapoints"
         )
         results["datapoints"] = batched_dps["datapoints"]
+        results["query_texts"] = per_sample_query_texts
         return results
 
     def build_get_item(self, field_mapping=None):
@@ -540,7 +605,6 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
             if prompt_type in ["box_only", "box_point_combo"]
             else None
         )
-        # TODO: Add classes to concept mode by adding tracking for which detection came from which prompt.
         labels = args.get("classes") if "datapoints" not in args else None
 
         if "datapoints" in args:
@@ -552,8 +616,11 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
             output = self._forward_pass_concept(args)
             if self._concept_output_processor is not None:
                 output = self._concept_output_processor(
-                    output, orig_image_sizes
+                    output,
+                    orig_image_sizes,
+                    query_texts=args.get("query_texts"),
                 )
+                labels = [out["detection_labels"] for out in output]
         elif prompt_type == "auto":
             return self._forward_pass_auto(args)
         else:

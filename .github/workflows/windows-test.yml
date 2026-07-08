@@ -1,6 +1,12 @@
 name: Windows Tests
 
-on: workflow_call
+on:
+  workflow_call:
+    inputs:
+      python-versions:
+        description: JSON array of Python versions for the Windows test matrix
+        type: string
+        default: '["3.10", "3.11", "3.12"]'
 
 jobs:
   test-python:
@@ -15,10 +21,7 @@ jobs:
       matrix:
         os:
           - windows-latest
-        python:
-          - "3.10"
-          - "3.11"
-          - "3.12"
+        python: ${{ fromJSON(inputs.python-versions) }}
     defaults:
       run:
         shell: bash

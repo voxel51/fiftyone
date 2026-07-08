@@ -27,11 +27,64 @@
   font-size: 0.8125rem;
 }
 
+.titleInput {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  border: 1px solid var(--color-content-border-default);
+  border-radius: 4px;
+  background: var(--color-content-bg-card-1);
+  color: var(--color-content-text-primary);
+  font-size: 0.8125rem;
+  outline: none;
+  padding: 0 4px;
+}
+
+.titleInput:focus {
+  border-color: var(--color-brand-primary);
+}
+
 .actions {
   display: flex;
   align-items: center;
   gap: 1px;
   flex-shrink: 0;
+}
+
+/* Split affordance: at rest a single direction-neutral glyph advertises
+   the action; hovering the header (or focusing into it) swaps it for
+   the real split-right / split-down pair. */
+.splitHint {
+  color: var(--color-content-text-muted);
+  pointer-events: none;
+}
+
+.header:hover .splitHint,
+.header:focus-within .splitHint {
+  display: none;
+}
+
+/* Collapsed via max-width + overflow (not display) so the buttons stay
+   keyboard-focusable at rest — tabbing into one triggers the header's
+   :focus-within and expands the pair. */
+.splitActions {
+  align-items: center;
+  display: flex;
+  gap: 1px;
+  max-width: 0;
+  overflow: hidden;
+  transition: max-width 120ms ease;
+}
+
+.header:hover .splitActions,
+.header:focus-within .splitActions {
+  max-width: 64px;
+}
+
+/* Voodoo's borderless button owns its text color class; paint the SVG
+   directly so the pressed fullscreen toggle reads as state, not decoration. */
+.fullscreenActive svg {
+  color: var(--color-brand-primary);
 }
 
 .content {

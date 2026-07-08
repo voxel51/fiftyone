@@ -7,7 +7,7 @@ import {
 } from "@fiftyone/operators";
 import { useItemsWithOrderPersistence } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import BrowseOperationsAction from "../../Actions/BrowseOperations";
 import ColorSchemeAction from "../../Actions/ColorScheme";
 import OptionsAction from "../../Actions/Options";

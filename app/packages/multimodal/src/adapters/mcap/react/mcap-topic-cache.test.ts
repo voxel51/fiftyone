@@ -92,4 +92,21 @@ describe("McapTopicCache", () => {
     releaseB();
     expect(cache.isActive).toBe(false);
   });
+
+  it("keeps pinned runway entries outside normal LRU churn", () => {
+    const cache = new McapTopicCache(2);
+
+    cache.set(0n, null, { pinned: true });
+    cache.set(1n, null);
+    cache.set(2n, null);
+    cache.set(3n, null);
+
+    expect(cache.has(0n)).toBe(true);
+    expect(cache.get(0n)).toBeNull();
+    expect(cache.has(1n)).toBe(false);
+
+    cache.clearPinned();
+
+    expect(cache.has(0n)).toBe(false);
+  });
 });

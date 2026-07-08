@@ -18,7 +18,9 @@ import {
   bufferingDetailAtom,
   currentTimeAtom,
   durationAtom,
+  hoverTimeAtom,
   isBufferingAtom,
+  isPlayPendingAtom,
   isPlayingAtom,
   loopEndAtom,
   loopStartAtom,
@@ -39,6 +41,16 @@ export function usePlayhead(): number {
 }
 
 /**
+ * Timeline time the pointer is inspecting across hover-capable surfaces
+ * (ruler, plot panels), or null when nothing is hovered. Render-only —
+ * surfaces publish it via `setHoverTime` in store-access.
+ */
+export function useHoverTime(): number | null {
+  const store = usePlaybackStore();
+  return useAtomValue(hoverTimeAtom, { store });
+}
+
+/**
  * Last time the engine confirmed all blocking streams were ready. Lags
  * `usePlayhead()` while buffering — use this to drive data, not visuals.
  */
@@ -50,6 +62,11 @@ export function useCurrentTime(): number {
 export function useIsPlaying(): boolean {
   const store = usePlaybackStore();
   return useAtomValue(isPlayingAtom, { store });
+}
+
+export function useIsPlayPending(): boolean {
+  const store = usePlaybackStore();
+  return useAtomValue(isPlayPendingAtom, { store });
 }
 
 export function useIsBuffering(): boolean {

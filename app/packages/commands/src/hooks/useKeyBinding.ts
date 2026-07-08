@@ -34,7 +34,7 @@ export const useKeyBinding = (
     }
     return () => {
       if (cmd) {
-        resolvedCtx.context.unbindKey(binding);
+        resolvedCtx.context.unbindKey(binding, cmd.id);
       }
     };
   }, [resolvedCtx, command, binding]);

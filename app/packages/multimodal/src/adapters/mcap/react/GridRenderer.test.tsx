@@ -1,18 +1,68 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GridRenderer } from "./GridRenderer";
+import {
+  WEBGPU_DEVICE_BUDGET,
+  registerWebGpuRenderer,
+  resetWebGpuDeviceRegistryForTests,
+} from "../../../visualization/panels/webgpu-device-registry";
+import {
+  acquireGridLiveLease,
+  gridLiveLeaseStats,
+  resetGridLiveLeasesForTests,
+} from "../../../visualization/panels/webgpu-live-lease";
+import type { McapGridPreviewFrame } from "../grid-preview";
+import { GridRenderer, HOVER_INTENT_DELAY_MS } from "./GridRenderer";
 
 const previewHarness = vi.hoisted(() => ({
   preview: {
-    error: null,
-    frame: null,
+    error: null as string | null,
+    frame: null as McapGridPreviewFrame | null,
     hasPreviewTopics: false,
     pause: vi.fn(),
     play: vi.fn(),
-    streamTopic: null,
-    streamTopics: [],
+    streamTopic: null as string | null,
+    streamTopics: [] as readonly string[],
     status: "idle",
   },
+}));
+
+const bitmapViewHarness = vi.hoisted(() => ({
+  lastProps: null as {
+    fit?: string;
+    frame: Extract<McapGridPreviewFrame, { kind: "image" }>["image"];
+    onImageLoaded?: (width: number, height: number) => void;
+  } | null,
+}));
+
+const bitmapHostHarness = vi.hoisted(() => ({
+  lastBitmap: null as ImageBitmap | null,
+}));
+
+interface SnapshotRequest {
+  readonly job: {
+    readonly cameraPose?: unknown;
+    readonly height: number;
+    readonly layers: ReadonlyArray<{ readonly frame: unknown }>;
+    readonly signal?: AbortSignal;
+    readonly width: number;
+  };
+  readonly resolve: (bitmap: ImageBitmap | null) => void;
+}
+
+const snapshotHarness = vi.hoisted(() => ({
+  requests: [] as SnapshotRequest[],
+}));
+
+const cameraPoseHarness = vi.hoisted(() => ({
+  pose: null as unknown,
+  setPose: vi.fn(),
 }));
 
 vi.mock("./use-stable-mcap-source", () => ({
@@ -24,7 +74,19 @@ vi.mock("./use-mcap-grid-preview", () => ({
 }));
 
 vi.mock("./mcap-grid-camera-state", () => ({
-  useMcapGridCameraPose: vi.fn(() => [null, vi.fn()]),
+  useMcapGridCameraPose: vi.fn(() => [
+    cameraPoseHarness.pose,
+    cameraPoseHarness.setPose,
+  ]),
+}));
+
+vi.mock("../../../visualization/panels/webgpu-snapshot-renderer", () => ({
+  renderPointCloudSnapshot: vi.fn(
+    (job: SnapshotRequest["job"]) =>
+      new Promise<ImageBitmap | null>((resolve) => {
+        snapshotHarness.requests.push({ job, resolve });
+      }),
+  ),
 }));
 
 vi.mock("./mcap-grid-stream-state", () => ({
@@ -34,9 +96,52 @@ vi.mock("./mcap-grid-stream-state", () => ({
 }));
 
 vi.mock("../../../visualization/panels/ImageAnnotationsOverlay", () => ({
-  ImageAnnotationsOverlay: () => <div data-testid="annotations-overlay" />,
+  ImageAnnotationsOverlay: ({
+    imageHeight,
+    imageWidth,
+  }: {
+    readonly imageHeight: number;
+    readonly imageWidth: number;
+  }) => (
+    <div
+      data-image-height={imageHeight}
+      data-image-width={imageWidth}
+      data-testid="annotations-overlay"
+    />
+  ),
 }));
 
+vi.mock("../../../visualization/panels/bitmap-image-view", async () => {
+  const { useEffect } = await import("react");
+  return {
+    BitmapCanvasHost: ({ bitmap }: { readonly bitmap: ImageBitmap | null }) => {
+      bitmapHostHarness.lastBitmap = bitmap;
+      return (
+        <div
+          data-committed={bitmap ? "true" : "false"}
+          data-testid="bitmap-canvas-host"
+        />
+      );
+    },
+    BitmapImageFrameView: (props: {
+      readonly fit?: string;
+      readonly frame: Extract<McapGridPreviewFrame, { kind: "image" }>["image"];
+      readonly onImageLoaded?: (width: number, height: number) => void;
+    }) => {
+      bitmapViewHarness.lastProps = props;
+      const { onImageLoaded } = props;
+      // This effect reports decoded natural dims like the real view does.
+      useEffect(() => {
+        onImageLoaded?.(640, 480);
+      }, [onImageLoaded]);
+      return <div data-testid="bitmap-image-view" />;
+    },
+  };
+});
+
+// Regression tripwire: GridRenderer no longer imports the WebGPU-backed
+// ImagePanel for image cells; if it ever comes back, the testid reappears
+// and the image-frame test below fails.
 vi.mock("../../../visualization/panels/image", () => ({
   ImagePanel: () => <div data-testid="image-panel" />,
 }));
@@ -47,6 +152,17 @@ vi.mock("../../../visualization/panels/point-cloud", () => ({
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
+  resetGridLiveLeasesForTests();
+  resetWebGpuDeviceRegistryForTests();
+  bitmapHostHarness.lastBitmap = null;
+  bitmapViewHarness.lastProps = null;
+  cameraPoseHarness.pose = null;
+  previewHarness.preview.frame = null;
+  previewHarness.preview.hasPreviewTopics = false;
+  previewHarness.preview.status = "idle";
+  previewHarness.preview.streamTopic = null;
+  snapshotHarness.requests.length = 0;
 });
 
 describe("GridRenderer", () => {
@@ -54,18 +170,377 @@ describe("GridRenderer", () => {
     previewHarness.preview.status = "idle";
     previewHarness.preview.hasPreviewTopics = false;
 
-    render(
-      <GridRenderer
-        ctx={
-          {
-            dataset: { name: "dataset" },
-            sample: { sample: { id: "1" } },
-          } as never
-        }
-      />,
-    );
+    render(<GridRenderer ctx={rendererCtx()} />);
 
     expect(screen.getByText("No preview streams")).toBeTruthy();
     expect(screen.queryByTestId("mcap-loading-ascii")).toBeNull();
   });
+
+  it("renders image frames through the GPU-free bitmap view", async () => {
+    const bytes = new Uint8Array([9, 9, 9]);
+    previewHarness.preview.frame = imageFrame(bytes);
+    previewHarness.preview.status = "ready";
+    previewHarness.preview.streamTopic = "/cam/image";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(screen.getByTestId("bitmap-image-view")).toBeTruthy();
+    // Image cells must mount ZERO WebGpuCanvas — the WebGPU ImagePanel
+    // stays modal-only.
+    expect(screen.queryByTestId("image-panel")).toBeNull();
+
+    expect(bitmapViewHarness.lastProps?.frame.kind).toBe("encoded-image");
+    if (bitmapViewHarness.lastProps?.frame.kind !== "encoded-image") {
+      throw new Error("Expected encoded image preview");
+    }
+    expect(bitmapViewHarness.lastProps.frame.bytes).toBe(bytes);
+    expect(bitmapViewHarness.lastProps?.fit).toBe("cover");
+    expect(bitmapViewHarness.lastProps.frame.mimeType).toBe("image/jpeg");
+
+    // The DOM annotations overlay still receives the decoded dims the
+    // bitmap view reports via onImageLoaded.
+    const overlay = await screen.findByTestId("annotations-overlay");
+    expect(overlay.getAttribute("data-image-width")).toBe("640");
+    expect(overlay.getAttribute("data-image-height")).toBe("480");
+  });
+
+  it("renders point-cloud cells as a snapshot bitmap at rest with NO live panel", async () => {
+    const frame = pointCloudFrame();
+    previewHarness.preview.frame = frame;
+    previewHarness.preview.status = "ready";
+    previewHarness.preview.streamTopic = "/lidar/points";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    // At rest: bitmap host mounted, zero WebGpuCanvas (the live panel —
+    // and with it surface "grid-preview" — must not exist at rest).
+    expect(screen.getByTestId("bitmap-canvas-host")).toBeTruthy();
+    expect(screen.queryByTestId("point-cloud-panel")).toBeNull();
+
+    // Exactly one snapshot request: auto-fit pose (shared pose unset) and
+    // the cell's preview cloud.
+    expect(snapshotHarness.requests.length).toBe(1);
+    const request = snapshotHarness.requests[0];
+    expect(request.job.cameraPose).toBeNull();
+    expect(request.job.layers).toHaveLength(1);
+    expect(request.job.layers[0].frame).toBe(
+      (frame as { pointCloud: unknown }).pointCloud,
+    );
+
+    const bitmap = fakeSnapshotBitmap();
+    request.resolve(bitmap);
+    await waitFor(() => expect(bitmapHostHarness.lastBitmap).toBe(bitmap));
+    expect(
+      screen.getByTestId("bitmap-canvas-host").getAttribute("data-committed"),
+    ).toBe("true");
+  });
+
+  it("never goes live when the hover ends before the intent delay", () => {
+    vi.useFakeTimers();
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+    const cell = pointCloudCells()[0];
+
+    // A scroll-past: enter, dwell for less than the intent delay, leave.
+    fireEvent.pointerOver(cell);
+    act(() => {
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS - 1);
+    });
+    expect(screen.queryByTestId("point-cloud-panel")).toBeNull();
+    fireEvent.pointerOut(cell);
+
+    // Even long after, the cancelled intent never fires: no live panel,
+    // no lease traffic, and no extra snapshot request (the snapshot was
+    // never invalidated).
+    act(() => {
+      vi.advanceTimersByTime(10 * HOVER_INTENT_DELAY_MS);
+    });
+    expect(screen.queryByTestId("point-cloud-panel")).toBeNull();
+    expect(gridLiveLeaseStats()).toMatchObject({ active: 0, granted: 0 });
+    expect(snapshotHarness.requests.length).toBe(1);
+  });
+
+  it("mounts the live panel after the intent delay and releases on unhover", async () => {
+    vi.useFakeTimers();
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+    const bitmap = fakeSnapshotBitmap();
+    await act(async () => {
+      snapshotHarness.requests[0].resolve(bitmap);
+    });
+    expect(bitmapHostHarness.lastBitmap).toBe(bitmap);
+
+    const cell = pointCloudCells()[0];
+    // React synthesizes onPointerEnter/Leave from pointerover/pointerout.
+    fireEvent.pointerOver(cell);
+    // Before the intent delay fires the cell stays snapshot-only.
+    expect(screen.queryByTestId("point-cloud-panel")).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS);
+    });
+
+    // Intent held: lease granted, live panel mounted OVER the
+    // still-mounted snapshot host.
+    expect(screen.getByTestId("point-cloud-panel")).toBeTruthy();
+    expect(screen.getByTestId("bitmap-canvas-host")).toBeTruthy();
+    expect(gridLiveLeaseStats()).toMatchObject({ active: 1, granted: 1 });
+    // Going live does not request a snapshot.
+    expect(snapshotHarness.requests.length).toBe(1);
+
+    fireEvent.pointerOut(cell);
+
+    // Back at rest: live panel gone, lease released, and a fresh snapshot
+    // was requested at the current shared pose.
+    expect(screen.queryByTestId("point-cloud-panel")).toBeNull();
+    expect(gridLiveLeaseStats().active).toBe(0);
+    expect(snapshotHarness.requests.length).toBe(2);
+
+    const fresh = fakeSnapshotBitmap();
+    await act(async () => {
+      snapshotHarness.requests[1].resolve(fresh);
+    });
+    expect(bitmapHostHarness.lastBitmap).toBe(fresh);
+  });
+
+  it("falls back to the snapshot when its lease is stolen", () => {
+    vi.useFakeTimers();
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+    const cell = pointCloudCells()[0];
+    fireEvent.pointerOver(cell);
+    act(() => {
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS);
+    });
+    expect(screen.getByTestId("point-cloud-panel")).toBeTruthy();
+    expect(snapshotHarness.requests.length).toBe(1);
+
+    // Drive the pool directly: two more holders fill the cap and then
+    // steal the cell's lease (it is the oldest holder).
+    act(() => {
+      acquireGridLiveLease("test-holder-1", vi.fn());
+    });
+    expect(screen.getByTestId("point-cloud-panel")).toBeTruthy();
+    act(() => {
+      acquireGridLiveLease("test-holder-2", vi.fn());
+    });
+
+    // Revoked: live panel unmounted immediately, snapshot host still
+    // there, and a fresh snapshot requested at the current shared pose.
+    expect(screen.queryByTestId("point-cloud-panel")).toBeNull();
+    expect(screen.getByTestId("bitmap-canvas-host")).toBeTruthy();
+    expect(snapshotHarness.requests.length).toBe(2);
+    expect(gridLiveLeaseStats()).toMatchObject({ active: 2, revoked: 1 });
+  });
+
+  it("stays on the snapshot when the device budget denies going live", () => {
+    vi.useFakeTimers();
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    // The page is already at the device budget before the hover (say, a
+    // heavy modal layout owns every slot).
+    for (let i = 0; i < WEBGPU_DEVICE_BUDGET; i += 1) {
+      registerWebGpuRenderer("modal-3d");
+    }
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+    const cell = pointCloudCells()[0];
+    fireEvent.pointerOver(cell);
+    act(() => {
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS);
+    });
+
+    // Intent fired but the lease was denied: no live panel, the snapshot
+    // host stays up, and nothing was granted or stolen.
+    expect(screen.queryByTestId("point-cloud-panel")).toBeNull();
+    expect(screen.getByTestId("bitmap-canvas-host")).toBeTruthy();
+    expect(gridLiveLeaseStats()).toMatchObject({
+      active: 0,
+      denied: 1,
+      granted: 0,
+      revoked: 0,
+    });
+    // Denial does not re-request the snapshot — the existing one stands.
+    expect(snapshotHarness.requests.length).toBe(1);
+  });
+
+  it("releases its lease when the cell unmounts", () => {
+    vi.useFakeTimers();
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    const { unmount } = render(<GridRenderer ctx={rendererCtx()} />);
+    fireEvent.pointerOver(pointCloudCells()[0]);
+    act(() => {
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS);
+    });
+    expect(gridLiveLeaseStats().active).toBe(1);
+
+    // Cell scrolled away: the lease effect's cleanup releases the slot.
+    unmount();
+    expect(gridLiveLeaseStats().active).toBe(0);
+  });
+
+  it("holds exactly one lease per cell under StrictMode", async () => {
+    const { StrictMode } = await import("react");
+    vi.useFakeTimers();
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    // StrictMode double-mounts the cell and double-invokes its effects;
+    // the per-mount holderId plus cleanup-release keeps the pool at one
+    // slot and one live panel.
+    render(
+      <StrictMode>
+        <GridRenderer ctx={rendererCtx()} />
+      </StrictMode>,
+    );
+    fireEvent.pointerOver(pointCloudCells()[0]);
+    act(() => {
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS);
+    });
+
+    expect(screen.getAllByTestId("point-cloud-panel")).toHaveLength(1);
+    expect(gridLiveLeaseStats().active).toBe(1);
+  });
+
+  it("keeps at most two cells live across a three-cell hover sweep", () => {
+    vi.useFakeTimers();
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    render(
+      <>
+        <GridRenderer ctx={rendererCtx()} />
+        <GridRenderer ctx={rendererCtx()} />
+        <GridRenderer ctx={rendererCtx()} />
+      </>,
+    );
+    const cells = pointCloudCells();
+    expect(cells).toHaveLength(3);
+    expect(snapshotHarness.requests.length).toBe(3);
+
+    // Hover each cell past the intent delay WITHOUT unhovering the
+    // previous ones — the worst case the cap exists for.
+    for (const cell of cells) {
+      fireEvent.pointerOver(cell);
+      act(() => {
+        vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS);
+      });
+      expect(
+        screen.getAllByTestId("point-cloud-panel").length,
+      ).toBeLessThanOrEqual(2);
+    }
+
+    // The invariant this phase exists for: cap-2 live panels, the oldest
+    // cell stolen back to a (freshly re-requested) snapshot.
+    expect(screen.getAllByTestId("point-cloud-panel")).toHaveLength(2);
+    expect(gridLiveLeaseStats()).toMatchObject({
+      active: 2,
+      granted: 3,
+      revoked: 1,
+    });
+    expect(snapshotHarness.requests.length).toBe(4);
+  });
+
+  it("aborts a superseded snapshot request and never commits its bitmap", async () => {
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+    expect(snapshotHarness.requests.length).toBe(1);
+    const stale = snapshotHarness.requests[0];
+
+    // A new preview frame arrives before the first snapshot settles.
+    previewHarness.preview.frame = pointCloudFrame();
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+    expect(snapshotHarness.requests.length).toBe(2);
+    expect(stale.job.signal?.aborted).toBe(true);
+
+    // If the superseded job still resolves a bitmap (abort raced the
+    // render), the cell closes it instead of committing it.
+    const staleBitmap = fakeSnapshotBitmap();
+    stale.resolve(staleBitmap);
+    await waitFor(() =>
+      expect(
+        (staleBitmap as unknown as { close: ReturnType<typeof vi.fn> }).close,
+      ).toHaveBeenCalledTimes(1),
+    );
+    expect(bitmapHostHarness.lastBitmap).toBeNull();
+
+    const current = fakeSnapshotBitmap();
+    snapshotHarness.requests[1].resolve(current);
+    await waitFor(() => expect(bitmapHostHarness.lastBitmap).toBe(current));
+  });
+
+  it("re-snapshots after the shared camera pose settles (debounced)", async () => {
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+    snapshotHarness.requests[0].resolve(fakeSnapshotBitmap());
+    await waitFor(() => expect(bitmapHostHarness.lastBitmap).not.toBeNull());
+
+    // Another cell orbits: the shared pose atom updates.
+    const pose = { position: [1, 2, 3], target: [0, 0, 0] };
+    cameraPoseHarness.pose = pose;
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+
+    // Debounced: no immediate request.
+    expect(snapshotHarness.requests.length).toBe(1);
+    await waitFor(() => expect(snapshotHarness.requests.length).toBe(2), {
+      timeout: 2_000,
+    });
+    expect(snapshotHarness.requests[1].job.cameraPose).toBe(pose);
+
+    snapshotHarness.requests[1].resolve(fakeSnapshotBitmap());
+  });
 });
+
+function rendererCtx() {
+  return {
+    dataset: { name: "dataset" },
+    sample: { sample: { id: "1" } },
+  } as never;
+}
+
+/**
+ * The point-cloud cell roots (the elements carrying the hover-intent
+ * pointer handlers): each one is the parent of its snapshot bitmap host.
+ */
+function pointCloudCells(): HTMLElement[] {
+  return screen
+    .getAllByTestId("bitmap-canvas-host")
+    .map((host) => host.parentElement as HTMLElement);
+}
+
+function imageFrame(bytes: Uint8Array): McapGridPreviewFrame {
+  return {
+    annotations: {},
+    image: { bytes, kind: "encoded-image", mimeType: "image/jpeg" },
+    kind: "image",
+  } as unknown as McapGridPreviewFrame;
+}
+
+function pointCloudFrame(): McapGridPreviewFrame {
+  return {
+    kind: "point-cloud",
+    pointCloud: {
+      fields: [],
+      kind: "point-cloud",
+      pointCount: 1,
+      positions: new Float32Array([0, 0, 0]),
+    },
+  } as unknown as McapGridPreviewFrame;
+}
+
+function fakeSnapshotBitmap(): ImageBitmap {
+  return { close: vi.fn(), height: 4, width: 4 } as unknown as ImageBitmap;
+}

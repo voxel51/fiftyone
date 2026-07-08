@@ -1,6 +1,5 @@
 import { useRecoilTransactionObserver_UNSTABLE, useRecoilValue } from "recoil";
-import React, { useEffect, useState, useCallback } from "react";
-import { viewAtom, extendedStagesAtom, countAtom } from "./atoms"; // Replace with actual atom imports
+import { useEffect, useState, useCallback } from "react";
 import * as fos from "@fiftyone/state";
 import { analyticsInfo, useTrackEvent } from "@fiftyone/analytics";
 
@@ -77,7 +76,7 @@ function getExtendedStageNames(stages: { [key: string]: any }) {
 function getFilterNames(filters: { [path: string]: any }) {
   const names = [];
   filters = filters || {};
-  for (const [path, filter] of Object.entries(filters)) {
+  for (const [, filter] of Object.entries(filters)) {
     if (filter.values) {
       names.push("values");
     }

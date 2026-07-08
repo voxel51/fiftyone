@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { selectorFamily, useRecoilValue } from "recoil";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 

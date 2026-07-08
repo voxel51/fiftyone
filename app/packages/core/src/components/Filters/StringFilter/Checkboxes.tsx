@@ -1,6 +1,5 @@
 import { LoadingDots } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import React from "react";
 import type { RecoilState } from "recoil";
 import {
   selectorFamily,
