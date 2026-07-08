@@ -51,11 +51,17 @@ const McapRawMessageTree: React.FC<McapRawMessageTreeProps> = ({
 
   const addToPlot = useCallback(
     (path: string) => {
-      onAddNumericFieldToPlot?.(path);
+      if (!onAddNumericFieldToPlot) {
+        return;
+      }
+      onAddNumericFieldToPlot(path);
       showPlottedPath(path);
     },
     [onAddNumericFieldToPlot, showPlottedPath],
   );
+  const effectivePlottableFieldPaths = onAddNumericFieldToPlot
+    ? plottableFieldPaths
+    : undefined;
 
   return (
     <div className={styles.tree} data-testid="mcap-raw-tree">
@@ -70,7 +76,7 @@ const McapRawMessageTree: React.FC<McapRawMessageTreeProps> = ({
           label={key}
           node={node}
           path={key}
-          plottableFieldPaths={plottableFieldPaths}
+          plottableFieldPaths={effectivePlottableFieldPaths}
           plottedPath={plottedPath}
           toggle={toggle}
           withinArray={false}
@@ -122,6 +128,8 @@ function TreeRow({
   const indent = { paddingLeft: `${depth * 14}px` };
   const canAddToPlot =
     !withinArray && isPlottableScalar(node) && plottableFieldPaths?.has(path);
+  const addToPlotLabel =
+    plottedPath === path ? `${path} plotted` : `Add ${path} to plot`;
 
   return (
     <>
@@ -148,7 +156,7 @@ function TreeRow({
         </div>
         {canAddToPlot ? (
           <button
-            aria-label={`Add ${path} to plot`}
+            aria-label={addToPlotLabel}
             className={styles.copyButton}
             data-testid={`mcap-raw-plot-${path}`}
             onClick={() => addToPlot(path)}

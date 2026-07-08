@@ -196,6 +196,7 @@ function OtherTopicsSettings({
             </span>
             {row.canInspect ? (
               <button
+                aria-label={`Inspect ${row.topic}`}
                 className={styles.topicInspectButton}
                 onClick={() => openRawMessageTile(row.topic)}
                 type="button"

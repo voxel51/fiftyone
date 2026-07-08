@@ -209,7 +209,7 @@ describe("McapSettingsSidebar", () => {
     expect(screen.queryByText("/lidar/top")).toBeNull();
     expect(screen.getByText("/imu")).toBeTruthy();
     expect(screen.getByText("sensor_msgs/Imu · ros1 · 8 msgs")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Inspect" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Inspect /imu" })).toBeTruthy();
     expect(screen.getByText("Schema unavailable")).toBeTruthy();
     expect(screen.getByText("Encoding unsupported")).toBeTruthy();
   });
@@ -227,7 +227,7 @@ describe("McapSettingsSidebar", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: /Other topics/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect /imu" }));
 
     const focusedTileId = probeState.current?.focusedTileId;
     expect(focusedTileId?.startsWith("raw-")).toBe(true);
@@ -289,7 +289,7 @@ describe("McapSettingsSidebar", () => {
       "Search other topics",
     ) as HTMLInputElement;
     expect(search).toBeTruthy();
-    expect(screen.queryByText("/camera/front")).toBeNull();
+    expect(screen.getByText("/alpha")).toBeTruthy();
 
     fireEvent.change(search, { target: { value: "navsat" } });
 
