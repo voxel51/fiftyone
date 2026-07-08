@@ -15,10 +15,16 @@ import {
   decodeRosOdometryRecord,
   decodeRosPoseStampedRecord,
 } from "../ros/pose";
+import {
+  decodeRosDetection2DArrayRecord,
+  decodeRosDetection3DArrayRecord,
+} from "../ros/vision";
 import { jsonDecodersForPayloads } from "./factory";
 import {
   JSON_ROS_CAMERA_INFO_PAYLOADS,
   JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
+  JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS,
+  JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS,
   JSON_ROS_IMAGE_PAYLOADS,
   JSON_ROS_LASER_SCAN_PAYLOADS,
   JSON_ROS_MARKER_ARRAY_PAYLOADS,
@@ -150,6 +156,24 @@ export const jsonRosPoseArrayDecoders = jsonDecodersForPayloads({
 });
 
 /**
+ * JSON-schema decoders for ROS Detection2DArray records.
+ */
+export const jsonRosDetection2DArrayDecoders = jsonDecodersForPayloads({
+  id: "json.ros.detection-2d-array",
+  map: decodeRosDetection2DArrayRecord,
+  payloads: JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS,
+});
+
+/**
+ * JSON-schema decoders for ROS Detection3DArray records.
+ */
+export const jsonRosDetection3DArrayDecoders = jsonDecodersForPayloads({
+  id: "json.ros.detection-3d-array",
+  map: decodeRosDetection3DArrayRecord,
+  payloads: JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS,
+});
+
+/**
  * Built-in JSON-schema decoders for supported ROS message families.
  */
 export const jsonRosDecoders: readonly Decoder[] = [
@@ -166,4 +190,6 @@ export const jsonRosDecoders: readonly Decoder[] = [
   ...jsonRosOdometryDecoders,
   ...jsonRosPathDecoders,
   ...jsonRosPoseArrayDecoders,
+  ...jsonRosDetection2DArrayDecoders,
+  ...jsonRosDetection3DArrayDecoders,
 ];

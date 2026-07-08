@@ -9,6 +9,10 @@ import { rosOccupancyGridDecoders } from "./occupancy-grid";
 import { rosOdometryDecoders, rosPoseStampedDecoders } from "./pose";
 import { rosPathDecoders, rosPoseArrayDecoders } from "./path";
 import { rosPointCloud2Decoders } from "./point-cloud2";
+import {
+  rosDetection2DArrayDecoders,
+  rosDetection3DArrayDecoders,
+} from "./vision";
 
 export { rosCameraInfoDecoders } from "./camera-info";
 export { rosCompressedImageDecoders } from "./compressed-image";
@@ -20,6 +24,10 @@ export { rosOccupancyGridDecoders } from "./occupancy-grid";
 export { rosOdometryDecoders, rosPoseStampedDecoders } from "./pose";
 export { rosPathDecoders, rosPoseArrayDecoders } from "./path";
 export { rosPointCloud2Decoders } from "./point-cloud2";
+export {
+  rosDetection2DArrayDecoders,
+  rosDetection3DArrayDecoders,
+} from "./vision";
 export * from "./payloads";
 
 /**
@@ -39,4 +47,6 @@ export const rosDecoders: readonly Decoder[] = [
   ...rosPoseArrayDecoders,
   ...rosPoseStampedDecoders,
   ...rosPointCloud2Decoders,
+  ...rosDetection2DArrayDecoders,
+  ...rosDetection3DArrayDecoders,
 ];
