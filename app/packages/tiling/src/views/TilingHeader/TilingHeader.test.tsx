@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { IconName } from "@voxel51/voodo";
+import { IconName, MenuTextItem } from "@voxel51/voodo";
 import React, { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -53,6 +53,22 @@ describe("TilingHeader", () => {
     );
     expect(screen.getByText("session.fo")).toBeTruthy();
     expect(screen.queryByTestId("tiling-header-add-tile")).toBeNull();
+  });
+
+  it("renders compact header actions beside the filename stack", () => {
+    render(
+      <TilingProvider>
+        <TilingHeader
+          fileName="session.fo"
+          headerActions={<button type="button">Unmount recording</button>}
+        />
+      </TilingProvider>,
+    );
+
+    expect(screen.getByText("session.fo")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Unmount recording" }),
+    ).toBeTruthy();
   });
 
   it("does not render sidebar toggles when no handlers are wired", () => {
@@ -146,5 +162,48 @@ describe("TilingHeader", () => {
     fireEvent.click(screen.getByText("Camera"));
 
     expect(screen.getByTestId("tile-count").textContent).toBe("1");
+  });
+
+  it("renders custom addTileMenu content instead of the kind items", () => {
+    render(
+      <TilingProvider>
+        <RegisterTiles
+          entries={[
+            {
+              type: "camera",
+              typeLabel: "Camera",
+              icon: IconName.GridView,
+              Tile: CameraTile,
+            },
+          ]}
+        />
+        <TilingHeader
+          fileName="x"
+          addTileMenu={
+            <MenuTextItem onClick={() => undefined}>CAM_FRONT</MenuTextItem>
+          }
+        />
+      </TilingProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId("tiling-header-add-tile"));
+    expect(screen.getByText("CAM_FRONT")).toBeTruthy();
+    expect(screen.queryByText("Camera")).toBeNull();
+    // The layout action stays appended below any custom catalog.
+    expect(screen.getByText("Auto Layout")).toBeTruthy();
+  });
+
+  it("offers the add-tile menu for a custom menu even with no registered kinds", () => {
+    render(
+      <TilingProvider>
+        <TilingHeader
+          fileName="x"
+          addTileMenu={
+            <MenuTextItem onClick={() => undefined}>CAM_FRONT</MenuTextItem>
+          }
+        />
+      </TilingProvider>,
+    );
+    expect(screen.getByTestId("tiling-header-add-tile")).toBeTruthy();
   });
 });

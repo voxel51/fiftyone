@@ -1,0 +1,112 @@
+import * as THREE from "three";
+import type { CuboidCreationState } from "../types";
+import type { AnnotationPlaneState, CuboidTransformData } from "./types";
+
+const MIN_DIMENSION = 0.1;
+const DEFAULT_HEIGHT = 1;
+const MIN_PERPENDICULAR_LENGTH = 0.001;
+
+const computeYawQuaternion = (
+  directionVector: THREE.Vector3,
+  localX: THREE.Vector3,
+  localY: THREE.Vector3,
+  normal: THREE.Vector3,
+  planeQuaternion: THREE.Quaternion,
+): THREE.Quaternion => {
+  const localDirection = new THREE.Vector2(
+    directionVector.dot(localX),
+    directionVector.dot(localY),
+  );
+  // Forward (the box's local +X) points opposite the drag direction, so the
+  // front face is on the far side of the heading rather than toward it.
+  const yaw = Math.atan2(localDirection.y, localDirection.x) + Math.PI;
+  const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(normal, yaw);
+  return yawQuaternion.multiply(planeQuaternion);
+};
+
+export const getCuboidCreationPreview = (
+  creationState: CuboidCreationState,
+  annotationPlane: AnnotationPlaneState,
+): CuboidTransformData | null => {
+  const { step, centerPosition, orientationPoint, currentPosition } =
+    creationState;
+
+  if (!centerPosition || !currentPosition) {
+    return null;
+  }
+
+  const center = new THREE.Vector3(...centerPosition);
+  const current = new THREE.Vector3(...currentPosition);
+  const planeQuaternion = new THREE.Quaternion(...annotationPlane.quaternion);
+  const localX = new THREE.Vector3(1, 0, 0).applyQuaternion(planeQuaternion);
+  const localY = new THREE.Vector3(0, 1, 0).applyQuaternion(planeQuaternion);
+  const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(planeQuaternion);
+
+  // Both steps anchor the box at the first click and grow it toward a target
+  // (the cursor in step 1, the committed orientation point in step 2): the
+  // length axis runs center -> target, so the far edge tracks the target
+  // instead of ballooning out both ways.
+  const deriveHeading = (target: THREE.Vector3) => {
+    const direction = target.clone().sub(center);
+    const directionLength = direction.length();
+    const lengthDirection =
+      directionLength > MIN_PERPENDICULAR_LENGTH
+        ? direction.clone().normalize()
+        : localX.clone();
+
+    return {
+      length: Math.max(directionLength, MIN_DIMENSION),
+      lengthDirection,
+      quaternion: computeYawQuaternion(
+        lengthDirection,
+        localX,
+        localY,
+        normal,
+        planeQuaternion,
+      ),
+    };
+  };
+
+  if (step === 1) {
+    const { length, lengthDirection, quaternion } = deriveHeading(current);
+    const cuboidCenter = center
+      .clone()
+      .addScaledVector(lengthDirection, length / 2);
+
+    return {
+      location: cuboidCenter.toArray() as THREE.Vector3Tuple,
+      dimensions: [length, MIN_DIMENSION, DEFAULT_HEIGHT],
+      quaternion: quaternion.toArray() as [number, number, number, number],
+    };
+  }
+
+  if (step === 2 && orientationPoint) {
+    const { length, lengthDirection, quaternion } = deriveHeading(
+      new THREE.Vector3(...orientationPoint),
+    );
+    const cuboidCenter = center
+      .clone()
+      .addScaledVector(lengthDirection, length / 2);
+
+    // Width grows from the length axis toward the cursor side only, so the
+    // anchored edge stays put while the opposite face tracks the cursor.
+    const perpendicular = current
+      .clone()
+      .sub(center)
+      .projectOnPlane(lengthDirection);
+    const perpendicularLength = perpendicular.length();
+    const width = Math.max(perpendicularLength, MIN_DIMENSION);
+
+    if (perpendicularLength > MIN_PERPENDICULAR_LENGTH) {
+      cuboidCenter.addScaledVector(perpendicular.normalize(), width / 2);
+    }
+
+    return {
+      location: cuboidCenter.toArray() as THREE.Vector3Tuple,
+      dimensions: [length, width, DEFAULT_HEIGHT],
+      quaternion: quaternion.toArray() as [number, number, number, number],
+    };
+  }
+
+  return null;
+};

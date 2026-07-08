@@ -1,4 +1,6 @@
 import type { McapTypes } from "@mcap/core";
+import { mcapReadCancelledError } from "../errors";
+import type { Type } from "protobufjs";
 import { Quaternion, Vector3 } from "three";
 import { decodeProtobufMessage } from "../decoders/foxglove/protobuf";
 import {
@@ -8,12 +10,14 @@ import {
   requiredArray,
   requiredNumber,
 } from "../decoders/foxglove/protobuf/records";
+import { protobufFromBinaryDescriptor } from "../mcap-support";
 import { timestampNs } from "../decoders/foxglove/protobuf/timing";
 import type { McapIndexedReaderLike } from "../reader";
 import type { McapTimelineStrategy } from "../timeline";
 import type {
   McapFrameTransformSample,
   McapFrameTransformSet,
+  McapFrameTransformTopicStats,
 } from "../frame-transform-types";
 import {
   compareFrameTransformSamplesByTime,
@@ -24,30 +28,50 @@ import type { McapReadFrameTransformWindowRequest } from "../types";
 const PROTOBUF_ENCODING = "protobuf";
 const FOXGLOVE_FRAME_TRANSFORMS_SCHEMA = "foxglove.FrameTransforms";
 
-// TODO: Also accept tf2_msgs/msg/TFMessage (ROS) and CDR-encoded
-// foxglove.FrameTransform once a CDR decoder lands. Schema discovery will
-// pick those channels up automatically — only the wire decoder is missing.
 const SUPPORTED_TRANSFORM_SCHEMAS: ReadonlySet<string> = new Set([
   "foxglove.FrameTransform",
   FOXGLOVE_FRAME_TRANSFORMS_SCHEMA,
 ]);
 
+type FrameTransformSchemaMatch =
+  | {
+      readonly kind: "single";
+    }
+  | {
+      readonly kind: "batch";
+      readonly repeatedFieldName: string;
+    };
+
 /**
- * Bootstrap scans schema-discovered channels with at most this many messages
- * each. Static transform channels publish on the order of one message per
- * child frame (a few dozen at most); dynamic channels publish at sensor rate
- * (thousands+). Channels above the cap are deferred to window reads, which
- * also recover any rare no-timestamp samples on dynamic channels.
+ * Bootstrap only scans channels that are likely static, and only when they
+ * are small. Topic conventions such as `/tf_static` are accepted directly;
+ * ambiguous low-count channels are first classified by decoding one transform
+ * message. Dynamic channels are left to bounded window reads instead of
+ * blocking first playback.
  */
 const BOOTSTRAP_CHANNEL_MESSAGE_CAP = 256n;
+const STATIC_TRANSFORM_TOPIC_SEGMENTS: ReadonlySet<string> = new Set([
+  "static_tf",
+  "static_transform",
+  "static_transforms",
+  "tf_static",
+]);
 
 type McapChannel = McapTypes.TypedMcapRecords["Channel"];
 type McapSchema = McapTypes.TypedMcapRecords["Schema"];
 
 interface FrameTransformChannel {
   readonly channel: McapChannel;
+  readonly match: FrameTransformSchemaMatch;
   readonly messageCount: bigint | undefined;
   readonly schema: McapSchema;
+}
+
+interface FrameTransformReadStats {
+  encodedPayloadBytes: number;
+  messageCount: number;
+  topicStats: Map<string, McapFrameTransformTopicStats>;
+  topics: readonly string[];
 }
 
 /**
@@ -68,11 +92,13 @@ function discoverFrameTransformChannels(
     if (!schema || schema.encoding !== PROTOBUF_ENCODING) {
       continue;
     }
-    if (!SUPPORTED_TRANSFORM_SCHEMAS.has(schema.name)) {
+    const match = classifyFrameTransformSchema(schema);
+    if (!match) {
       continue;
     }
     channels.push({
       channel,
+      match,
       messageCount: reader.statistics?.channelMessageCounts.get(channel.id),
       schema,
     });
@@ -83,24 +109,28 @@ function discoverFrameTransformChannels(
 
 /**
  * Reads eager static frame transforms by schema discovery. A channel is
- * scanned in bootstrap only if its summary message count is at or below the
- * bootstrap cap, keeping bootstrap fast for files with chatty dynamic
- * transform channels. A sample is emitted as static when the decoded
- * transform message has no `timestamp` (Foxglove convention for
- * "always valid").
+ * scanned in bootstrap only if it is below the bootstrap cap and either has a
+ * known static-transform topic convention or an ambiguous first decoded sample
+ * with no timestamp. This keeps bootstrap off broad dynamic transform channels.
+ * A sample is emitted as static when the decoded transform message has no
+ * `timestamp` (Foxglove convention for "always valid").
  */
 export async function readMcapFrameTransformBootstrap(
   reader: McapIndexedReaderLike,
 ): Promise<McapFrameTransformSet> {
-  const bootstrapChannels = discoverFrameTransformChannels(reader).filter(
-    (entry) =>
-      entry.messageCount === undefined ||
-      entry.messageCount <= BOOTSTRAP_CHANNEL_MESSAGE_CAP,
-  );
+  const bootstrapChannels: FrameTransformChannel[] = [];
+  for (const entry of discoverFrameTransformChannels(reader)) {
+    if (await shouldBootstrapFrameTransformChannel(reader, entry)) {
+      bootstrapChannels.push(entry);
+    }
+  }
   if (bootstrapChannels.length === 0) {
     return createMcapFrameTransformSet({ samples: [] });
   }
   const channelsById = indexByChannelId(bootstrapChannels);
+  const readStats = createFrameTransformReadStats(
+    bootstrapChannels.map((entry) => entry.channel.topic),
+  );
 
   const samples: McapFrameTransformSample[] = [];
   for await (const message of reader.readMessages({
@@ -110,9 +140,11 @@ export async function readMcapFrameTransformBootstrap(
     if (!entry) {
       continue;
     }
+    recordFrameTransformMessage(readStats, entry.channel.topic, message);
     try {
       for (const sample of normalizeFrameTransformMessage({
         channel: entry.channel,
+        match: entry.match,
         message,
         schema: entry.schema,
       })) {
@@ -125,7 +157,72 @@ export async function readMcapFrameTransformBootstrap(
     }
   }
 
-  return createMcapFrameTransformSet({ samples });
+  return createMcapFrameTransformSet({ readStats, samples });
+}
+
+async function shouldBootstrapFrameTransformChannel(
+  reader: McapIndexedReaderLike,
+  entry: FrameTransformChannel,
+): Promise<boolean> {
+  if (
+    entry.messageCount !== undefined &&
+    entry.messageCount > BOOTSTRAP_CHANNEL_MESSAGE_CAP
+  ) {
+    return false;
+  }
+  if (isStaticTransformBootstrapTopic(entry.channel.topic)) {
+    return true;
+  }
+
+  return firstTransformMessageHasStaticSample(reader, entry);
+}
+
+async function firstTransformMessageHasStaticSample(
+  reader: McapIndexedReaderLike,
+  entry: FrameTransformChannel,
+): Promise<boolean> {
+  for await (const message of reader.readMessages({
+    topics: [entry.channel.topic],
+  })) {
+    if (message.channelId !== entry.channel.id) {
+      continue;
+    }
+    try {
+      return normalizeFrameTransformMessage({
+        channel: entry.channel,
+        match: entry.match,
+        message,
+        schema: entry.schema,
+      }).some((sample) => sample.timeNs === undefined);
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+function isStaticTransformBootstrapTopic(topic: string): boolean {
+  const segments = topic
+    .toLowerCase()
+    .split(/[/.:-]+/)
+    .filter(Boolean);
+  if (
+    segments.some((segment) => STATIC_TRANSFORM_TOPIC_SEGMENTS.has(segment))
+  ) {
+    return true;
+  }
+
+  return segments.some((segment, index) => {
+    const nextSegment = segments[index + 1];
+    return (
+      (segment === "tf" && nextSegment === "static") ||
+      (segment === "static" &&
+        (nextSegment === "tf" ||
+          nextSegment === "transform" ||
+          nextSegment === "transforms"))
+    );
+  });
 }
 
 /**
@@ -137,10 +234,12 @@ export async function readMcapFrameTransformBootstrap(
  */
 export async function readMcapFrameTransformWindow({
   reader,
+  readSignal,
   request,
   timeline,
 }: {
   readonly reader: McapIndexedReaderLike;
+  readonly readSignal?: { readonly current: AbortSignal | null };
   readonly request: McapReadFrameTransformWindowRequest;
   readonly timeline: McapTimelineStrategy;
 }): Promise<McapFrameTransformSet> {
@@ -149,24 +248,42 @@ export async function readMcapFrameTransformWindow({
     return createMcapFrameTransformSet({ samples: [] });
   }
   const channelsById = indexByChannelId(transformChannels);
+  const readStats = createFrameTransformReadStats(
+    transformChannels.map((entry) => entry.channel.topic),
+  );
   const { endTime, startTime } = timeline.messageReadRange({
     endTimeNs: request.endTimeNs,
     startTimeNs: request.startTimeNs,
+  });
+
+  const transformTopics = transformChannels.map((entry) => entry.channel.topic);
+  // Transform payloads are tiny but interleaved into mixed chunks, so the
+  // serial read loop below otherwise pays one round trip per chunk touch on
+  // remote transports. Racing reads coalesce on shared byte-cache fill keys.
+  void reader.prefetchWindow?.({
+    endTimeNs: endTime,
+    startTimeNs: startTime,
+    topics: transformTopics,
   });
 
   const samples: McapFrameTransformSample[] = [];
   for await (const message of reader.readMessages({
     endTime,
     startTime,
-    topics: transformChannels.map((entry) => entry.channel.topic),
+    topics: transformTopics,
   })) {
+    if (readSignal?.current?.aborted) {
+      throw mcapReadCancelledError();
+    }
     const entry = channelsById.get(message.channelId);
     if (!entry) {
       continue;
     }
+    recordFrameTransformMessage(readStats, entry.channel.topic, message);
     try {
       for (const sample of normalizeFrameTransformMessage({
         channel: entry.channel,
+        match: entry.match,
         message,
         schema: entry.schema,
       })) {
@@ -186,7 +303,38 @@ export async function readMcapFrameTransformWindow({
     }
   }
 
-  return createMcapFrameTransformSet({ samples });
+  return createMcapFrameTransformSet({ readStats, samples });
+}
+
+function createFrameTransformReadStats(
+  topics: readonly string[],
+): FrameTransformReadStats {
+  return {
+    encodedPayloadBytes: 0,
+    messageCount: 0,
+    topicStats: new Map(),
+    topics,
+  };
+}
+
+function recordFrameTransformMessage(
+  stats: FrameTransformReadStats,
+  topic: string,
+  message: McapTypes.TypedMcapRecords["Message"],
+): void {
+  stats.encodedPayloadBytes += message.data.byteLength;
+  stats.messageCount += 1;
+  const topicStats = stats.topicStats.get(topic) ?? {
+    encodedPayloadBytes: 0,
+    messageCount: 0,
+    topic,
+  };
+  stats.topicStats.set(topic, {
+    ...topicStats,
+    encodedPayloadBytes:
+      topicStats.encodedPayloadBytes + message.data.byteLength,
+    messageCount: topicStats.messageCount + 1,
+  });
 }
 
 function indexByChannelId(entries: readonly FrameTransformChannel[]) {
@@ -195,10 +343,12 @@ function indexByChannelId(entries: readonly FrameTransformChannel[]) {
 
 function normalizeFrameTransformMessage({
   channel,
+  match,
   message,
   schema,
 }: {
   readonly channel: McapChannel;
+  readonly match: FrameTransformSchemaMatch;
   readonly message: McapTypes.TypedMcapRecords["Message"];
   readonly schema: McapSchema;
 }): readonly McapFrameTransformSample[] {
@@ -219,8 +369,8 @@ function normalizeFrameTransformMessage({
     },
   );
 
-  if (schema.name === FOXGLOVE_FRAME_TRANSFORMS_SCHEMA) {
-    return requiredArray(record, "transforms").map((transform) =>
+  if (match.kind === "batch") {
+    return requiredArray(record, match.repeatedFieldName).map((transform) =>
       normalizeFrameTransformRecord(asRecord(transform)),
     );
   }
@@ -272,14 +422,121 @@ function normalizeFrameTransformRecord(
   };
 }
 
+function classifyFrameTransformSchema(
+  schema: McapSchema,
+): FrameTransformSchemaMatch | null {
+  if (schema.encoding !== PROTOBUF_ENCODING) {
+    return null;
+  }
+
+  if (schema.name === FOXGLOVE_FRAME_TRANSFORMS_SCHEMA) {
+    return {
+      kind: "batch",
+      repeatedFieldName: "transforms",
+    };
+  }
+  if (SUPPORTED_TRANSFORM_SCHEMAS.has(schema.name)) {
+    return {
+      kind: "single",
+    };
+  }
+
+  try {
+    const root = protobufFromBinaryDescriptor(schema.data);
+    const type = root.lookupType(schema.name);
+    type.resolveAll();
+    if (isFrameTransformType(type)) {
+      return {
+        kind: "single",
+      };
+    }
+
+    const repeatedTransformField = type.fieldsArray.find(
+      (field) =>
+        field.repeated &&
+        field.resolvedType &&
+        isFrameTransformType(field.resolvedType as Type),
+    );
+    if (repeatedTransformField) {
+      return {
+        kind: "batch",
+        repeatedFieldName: repeatedTransformField.name,
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function isFrameTransformType(type: Type): boolean {
+  const parentField = fieldByName(type, "parentFrameId", "parent_frame_id");
+  const childField = fieldByName(type, "childFrameId", "child_frame_id");
+  const translationField = fieldByName(type, "translation");
+  const rotationField = fieldByName(type, "rotation");
+
+  return (
+    parentField?.type === "string" &&
+    childField?.type === "string" &&
+    isVector3Type(translationField?.resolvedType as Type | null | undefined) &&
+    isQuaternionType(rotationField?.resolvedType as Type | null | undefined)
+  );
+}
+
+function isVector3Type(type: Type | null | undefined): boolean {
+  return Boolean(
+    type &&
+    numericField(type, "x") &&
+    numericField(type, "y") &&
+    numericField(type, "z"),
+  );
+}
+
+function isQuaternionType(type: Type | null | undefined): boolean {
+  return Boolean(
+    type &&
+    numericField(type, "x") &&
+    numericField(type, "y") &&
+    numericField(type, "z") &&
+    numericField(type, "w"),
+  );
+}
+
+function numericField(type: Type, name: string): boolean {
+  const field = fieldByName(type, name);
+  return field?.type === "double" || field?.type === "float";
+}
+
+function fieldByName(type: Type, ...names: string[]) {
+  for (const name of names) {
+    const field = type.fields[name];
+    if (field) {
+      return field;
+    }
+  }
+
+  return undefined;
+}
+
 function createMcapFrameTransformSet({
+  readStats,
   samples,
 }: {
+  readonly readStats?: FrameTransformReadStats;
   readonly samples: readonly McapFrameTransformSample[];
 }): McapFrameTransformSet {
   const sortedSamples = [...samples].sort(compareFrameTransformSamples);
 
   return {
+    ...(readStats?.messageCount
+      ? {
+          encodedPayloadBytes: readStats.encodedPayloadBytes,
+          messageCount: readStats.messageCount,
+          topicStats: [...readStats.topicStats.values()],
+          topics: readStats.topics,
+        }
+      : {}),
     samples: sortedSamples,
   };
 }

@@ -23,7 +23,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
-    colorscale: Colorscale,
+    _colorscale: Colorscale,
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[],
   ) => {
@@ -183,8 +183,8 @@ export const PainterFactory = (requestColor) => ({
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
     colorscale: Colorscale,
-    selectedLabelTags: string[],
-    labelTagColors: LabelTagColor,
+    _selectedLabelTags: string[],
+    _labelTagColors: LabelTagColor,
   ) => {
     if (!label?.map) {
       return;
@@ -260,9 +260,9 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring,
     customizeColorSetting: CustomizeColor[],
-    colorscale: Colorscale,
-    selectedLabelsTags: string[],
-    labelTagColors: LabelTagColor,
+    _colorscale: Colorscale,
+    _selectedLabelsTags: string[],
+    _labelTagColors: LabelTagColor,
   ) => {
     if (!label?.mask) {
       return;

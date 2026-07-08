@@ -1,8 +1,26 @@
-import { useRecoilValue, useResetRecoilState, useSetRecoilState } from "recoil";
 import {
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
+import {
+  activeCursorPanelAtom,
+  cuboidLabelLineWidthAtom,
   current3dAnnotationModeAtom,
+  currentArchetypeSelectedForTransformAtom,
+  fo3dPerformanceStatsAtom,
   hoveredLabelAtom,
+  isActivelySegmentingSelector,
+  isCreatingCuboidAtom,
+  isFo3dMainPanelPointerDownAtom,
+  mainPanelPanSyncIntentAtom,
+  mainPanelZoomSyncIntentAtom,
+  polylineLabelLineWidthAtom,
+  raycastResultAtom,
   selectedLabelForAnnotationAtom,
+  showCuboidOrientationAtom,
+  transformModeAtom,
 } from "./recoil";
 
 /**
@@ -65,4 +83,102 @@ export const useResetSelected3dAnnotationLabel = () => {
  */
 export const useHoveredLabel3d = () => {
   return useRecoilValue(hoveredLabelAtom);
+};
+
+export const useFo3dPerformanceStats = () => {
+  return useRecoilValue(fo3dPerformanceStatsAtom);
+};
+
+export const useSetFo3dPerformanceStats = () => {
+  return useSetRecoilState(fo3dPerformanceStatsAtom);
+};
+
+export const useCuboidOrientation = () => {
+  return useRecoilValue(showCuboidOrientationAtom);
+};
+
+export const useCuboidOrientationState = () => {
+  return useRecoilState(showCuboidOrientationAtom);
+};
+
+export const useActiveCursorPanel = () => {
+  return useRecoilValue(activeCursorPanelAtom);
+};
+
+export const useSetActiveCursorPanel = () => {
+  return useSetRecoilState(activeCursorPanelAtom);
+};
+
+export const useFo3dMainPanelPointerDown = () => {
+  return useRecoilValue(isFo3dMainPanelPointerDownAtom);
+};
+
+export const useSetFo3dMainPanelPointerDown = () => {
+  return useSetRecoilState(isFo3dMainPanelPointerDownAtom);
+};
+
+export const useGlobalCursorCoordinatorActions = () => {
+  return {
+    setActiveCursorPanel: useSetActiveCursorPanel(),
+    setIsMainPanelPointerDown: useSetFo3dMainPanelPointerDown(),
+  };
+};
+
+export const useRaycastResult = () => {
+  return useRecoilValue(raycastResultAtom);
+};
+
+export const useSetRaycastResult = () => {
+  return useSetRecoilState(raycastResultAtom);
+};
+
+export const useMainPanelNavigationSyncIntents = () => {
+  return {
+    mainPanelPanSyncIntent: useRecoilValue(mainPanelPanSyncIntentAtom),
+    mainPanelZoomSyncIntent: useRecoilValue(mainPanelZoomSyncIntentAtom),
+  };
+};
+
+export const useMainPanelNavigationSyncEmitterState = () => {
+  return {
+    activeCursorPanel: useRecoilValue(activeCursorPanelAtom),
+    raycastResult: useRecoilValue(raycastResultAtom),
+    setMainPanelPanSyncIntent: useSetRecoilState(mainPanelPanSyncIntentAtom),
+    setMainPanelZoomSyncIntent: useSetRecoilState(mainPanelZoomSyncIntentAtom),
+  };
+};
+
+export const useCuboidTransformCommands = () => {
+  const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
+    currentArchetypeSelectedForTransformAtom,
+  );
+  const setTransformMode = useSetRecoilState(transformModeAtom);
+
+  return {
+    selectNewCuboidForTransform: () => {
+      setCurrentArchetypeSelectedForTransform("cuboid");
+    },
+    setTransformMode,
+  };
+};
+
+export const useThreeDLabelState = () => {
+  const [cuboidLineWidth, setCuboidLineWidth] = useRecoilState(
+    cuboidLabelLineWidthAtom,
+  );
+  const [polylineWidth, setPolylineWidth] = useRecoilState(
+    polylineLabelLineWidthAtom,
+  );
+
+  return {
+    cuboidLineWidth,
+    hoveredLabel: useHoveredLabel3d(),
+    isCreatingCuboid: useRecoilValue(isCreatingCuboidAtom),
+    isSegmenting: useRecoilValue(isActivelySegmentingSelector),
+    polylineWidth,
+    selectedLabelForAnnotation: useCurrentSelected3dAnnotationLabel(),
+    setCuboidLineWidth,
+    setPolylineWidth,
+    showCuboidOrientation: useCuboidOrientation(),
+  };
 };

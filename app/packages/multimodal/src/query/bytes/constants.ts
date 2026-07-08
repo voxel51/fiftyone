@@ -14,7 +14,7 @@ export const DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES = 2 * BYTES_PER_MEGABYTE;
  * Default block size for remote/object-storage read-through byte cache fills.
  */
 export const DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES =
-  8 * BYTES_PER_MEGABYTE;
+  32 * BYTES_PER_MEGABYTE;
 
 /**
  * Explicit source profile for byte-cache fill policy.

@@ -25,7 +25,7 @@ const SpinnerContainer = styled(Box)`
 `;
 
 export function CustomPanel(props: CustomPanelProps) {
-  const { panelId, dimensions, panelName, panelLabel, isModalPanel } = props;
+  const { panelId, dimensions, panelName, isModalPanel } = props;
   const { height, width } = dimensions?.bounds || {};
   const { count } = useActivePanelEventsCount(panelId);
   const [_, setLoading] = usePanelLoading(panelId);
