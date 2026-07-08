@@ -94,3 +94,19 @@ export const ROS_OCCUPANCY_GRID_PAYLOADS = rosPayloads(
   "nav_msgs/OccupancyGrid",
   "nav_msgs/msg/OccupancyGrid",
 );
+
+/**
+ * Payload descriptors for ROS visualization Marker messages.
+ */
+export const ROS_MARKER_PAYLOADS = rosPayloads(
+  "visualization_msgs/Marker",
+  "visualization_msgs/msg/Marker",
+);
+
+/**
+ * Payload descriptors for ROS visualization MarkerArray messages.
+ */
+export const ROS_MARKER_ARRAY_PAYLOADS = rosPayloads(
+  "visualization_msgs/MarkerArray",
+  "visualization_msgs/msg/MarkerArray",
+);

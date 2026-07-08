@@ -104,3 +104,19 @@ export const JSON_ROS_OCCUPANCY_GRID_PAYLOADS = jsonRosPayloads(
   "nav_msgs/OccupancyGrid",
   "nav_msgs/msg/OccupancyGrid",
 );
+
+/**
+ * Payload descriptors for JSON-schema ROS visualization Marker messages.
+ */
+export const JSON_ROS_MARKER_PAYLOADS = jsonRosPayloads(
+  "visualization_msgs/Marker",
+  "visualization_msgs/msg/Marker",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS visualization MarkerArray messages.
+ */
+export const JSON_ROS_MARKER_ARRAY_PAYLOADS = jsonRosPayloads(
+  "visualization_msgs/MarkerArray",
+  "visualization_msgs/msg/MarkerArray",
+);
