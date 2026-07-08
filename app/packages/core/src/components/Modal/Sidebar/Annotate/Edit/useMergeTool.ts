@@ -125,13 +125,7 @@ export const useMergeTool = (): MergeTool => {
         // persist state stay in sync. The engine's value-based undo stack owns
         // reverting the merge (target commits + the source delete).
         try {
-<<<<<<< HEAD
-          await commandBus.execute(
-            new DeleteAnnotationCommand(sourceLabel, schema),
-          );
-=======
           await deleteAnnotation(sourceLabel, { gestureId });
->>>>>>> main
         } catch (err) {
           targetOverlay.restoreMaskSnapshot(
             paintData.beforeSnapshot,
@@ -140,38 +134,6 @@ export const useMergeTool = (): MergeTool => {
           console.error("Merge tool: failed to delete source detection", err);
           return;
         }
-<<<<<<< HEAD
-        removeLabelFromSidebar(overlay.id);
-        removeOverlay(overlay.id, false);
-
-        // 3. Push composite undoable. `execute` (= redo) re-applies the
-        // merged mask and re-deletes; `undo` restores the pre-merge mask
-        // and re-adds the source overlay/label.
-        const command = new MergeDetectionsCommand(
-          targetOverlay,
-          paintData,
-          {
-            deleteSource: async () => {
-              await commandBus.execute(
-                new DeleteAnnotationCommand(sourceLabel, schema),
-              );
-              removeLabelFromSidebar(overlay.id);
-              removeOverlay(overlay.id, false);
-            },
-            restoreSource: () => {
-              scene.addOverlay(overlay);
-              addLabelToSidebar(sourceLabel);
-            },
-          },
-          targetOverlay.id,
-          overlay.id,
-        );
-
-        CommandContextManager.instance()
-          .getActiveContext()
-          .pushUndoable(command);
-=======
->>>>>>> main
 
         scene.selectOverlay(targetOverlay.id);
       })();

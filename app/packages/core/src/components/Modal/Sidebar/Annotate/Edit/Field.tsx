@@ -136,42 +136,10 @@ const Field = () => {
 
       return new DelegatingUndoable(
         `update-${labelId}-field-action`,
-<<<<<<< HEAD
-        // stage mutation on execute
-        async () => {
-          const currentLabel = currentLabelRef.current;
-          const fieldSchema = getFieldSchema(modalSampleSchema, currentField);
-          if (!currentLabel || !fieldSchema) return;
-          await commandBus.execute(
-            new DeleteAnnotationCommand(currentLabel, fieldSchema),
-          );
-          setCurrentField(newField);
-        },
-        // restore original value on undo
-        async () => {
-          const currentLabel = currentLabelRef.current;
-          const fieldSchema = getFieldSchema(modalSampleSchema, newField);
-          if (!currentLabel || !fieldSchema) return;
-          await commandBus.execute(
-            new DeleteAnnotationCommand(currentLabel, fieldSchema),
-          );
-          setCurrentField(currentField);
-        },
-      );
-    }, [
-      modalSampleSchema,
-      currentLabelRef,
-      commandBus,
-      setCurrentField,
-      labelId,
-      currentFieldValue,
-    ]),
-=======
         () => move(oldField, newField),
         () => move(newField, oldField),
       );
     }, [currentLabelRef, engine, setCurrentField, labelId, currentFieldValue]),
->>>>>>> main
     () => true,
   );
 

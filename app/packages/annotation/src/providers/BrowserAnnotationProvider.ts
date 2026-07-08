@@ -148,11 +148,7 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     this.worker.onmessage = (e: MessageEvent<WorkerOutbound>) => {
       const msg = e.data;
 
-<<<<<<< HEAD
-      if (type === "ready") return;
-=======
       if (msg.type === "ready") return;
->>>>>>> main
 
       if (msg.type === "status") {
         this.onStatus?.(msg.result);
@@ -174,16 +170,6 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
         return;
       }
 
-<<<<<<< HEAD
-      const entry = this.pending.get(id);
-      if (!entry) return;
-
-      this.pending.delete(id);
-
-      success
-        ? entry.resolve(result)
-        : entry.reject(new Error(error ?? "Worker error"));
-=======
       const entry = this.pending.get(msg.id);
       if (!entry) return;
 
@@ -195,7 +181,6 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
       }
 
       entry.resolve(msg.result);
->>>>>>> main
     };
 
     this.worker.onerror = (e: ErrorEvent) => {

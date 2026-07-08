@@ -104,10 +104,6 @@ export const useApplyInferenceResult = (
         console.warn(`Unsupported result type: ${result.type}`);
       }
     },
-<<<<<<< HEAD
-    [createDetection, getOverlay, scene],
-=======
     [createDetection, eventBus, getOverlay, scene],
->>>>>>> main
   );
 };

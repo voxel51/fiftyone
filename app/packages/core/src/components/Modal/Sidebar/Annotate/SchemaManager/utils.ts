@@ -726,10 +726,7 @@ export const getLabelTypeOptions = (
 export const validateFieldName = (
   fieldName: string,
   existingFields: Record<string, unknown> | null,
-<<<<<<< HEAD
-=======
   mediaType?: string | null,
->>>>>>> main
 ): string | null => {
   const trimmed = fieldName.trim();
   if (!trimmed) return null;

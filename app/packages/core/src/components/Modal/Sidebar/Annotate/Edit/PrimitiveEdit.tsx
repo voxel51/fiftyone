@@ -80,15 +80,6 @@ export default function PrimitiveEdit({
             oldValueSerialized = serializeDatabaseDateValue(oldValue);
           }
 
-<<<<<<< HEAD
-          sampleMutationManager.stageMutation(path, {
-            data: oldValueSerialized,
-            op: isAddOperation && !hasOldValue ? "delete" : "mutate",
-          });
-        },
-      );
-    }, [path, sampleMutationManager, type, value]),
-=======
           if (isAddOperation && !hasOldValue) {
             sample.deleteField(path);
           } else {
@@ -97,7 +88,6 @@ export default function PrimitiveEdit({
         },
       );
     }, [path, sample, type, value]),
->>>>>>> main
     () => true,
   );
 

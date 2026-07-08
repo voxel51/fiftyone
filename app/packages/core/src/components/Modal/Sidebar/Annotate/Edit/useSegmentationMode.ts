@@ -258,23 +258,6 @@ export const useSegmentationMode = () => {
 
     if (newLabel?.overlay instanceof DetectionOverlay) {
       newLabel.overlay.initMask();
-<<<<<<< HEAD
-
-      // Pen tool: the `overlay-establish` event that normally pushes
-      // `AddOverlayCommand` doesn't fire because `onPenPointerDown` doesn't
-      // seed the moveStart state. Push it explicitly so the new detection
-      // can be undone after the user finishes (or abandons) the polygon.
-      // Brush tool reaches establish through the bbox-style drag and pushes
-      // the command itself, so we skip it there.
-      if (manualMode.tool === SegmentationTool.Pen) {
-        CommandContextManager.instance()
-          .getActiveContext()
-          .pushUndoable(
-            new AddOverlayCommand(sceneRef.current!, newLabel.overlay),
-          );
-      }
-=======
->>>>>>> main
     }
   }, [closeOpenLabel, createNew, manualMode.tool]);
 

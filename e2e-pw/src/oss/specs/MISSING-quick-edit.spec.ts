@@ -248,21 +248,6 @@ test.describe.serial("quick edit", () => {
     const assertPosition = async function ({ x, y, width, height }: Box) {
       await modal.sidebar.edit.assert.verifyFieldValue(
         "position.x",
-<<<<<<< HEAD
-        (x * IMAGE_WIDTH).toString(),
-      );
-      await modal.sidebar.edit.assert.verifyFieldValue(
-        "position.y",
-        (y * IMAGE_HEIGHT).toString(),
-      );
-      await modal.sidebar.edit.assert.verifyFieldValue(
-        "dimensions.width",
-        (width * IMAGE_WIDTH).toString(),
-      );
-      await modal.sidebar.edit.assert.verifyFieldValue(
-        "dimensions.height",
-        (height * IMAGE_HEIGHT).toString(),
-=======
         x.toString(),
       );
       await modal.sidebar.edit.assert.verifyFieldValue(
@@ -276,7 +261,6 @@ test.describe.serial("quick edit", () => {
       await modal.sidebar.edit.assert.verifyFieldValue(
         "dimensions.height",
         height.toString(),
->>>>>>> main
       );
     };
 

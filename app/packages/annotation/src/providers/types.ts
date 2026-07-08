@@ -96,8 +96,6 @@ export type WorkerRequest<T extends WorkerMessageType> =
   WorkerMessages[T]["request"];
 export type WorkerResponse<T extends WorkerMessageType> =
   WorkerMessages[T]["response"];
-<<<<<<< HEAD
-=======
 
 /** Main-thread fetch params replayed to the worker so it routes the same way. */
 export interface WorkerInitPayload {
@@ -141,7 +139,6 @@ export type WorkerOutbound =
   | WorkerOutboundNotification
   | WorkerOutboundResponse
   | { id: number; type: WorkerMessageType; success: false; error: string };
->>>>>>> main
 
 /** Status events emitted during the provider lifecycle. */
 export type ProviderStatus = "loading" | "encoding" | "ready" | "failure";

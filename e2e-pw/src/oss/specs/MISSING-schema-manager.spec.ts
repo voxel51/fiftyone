@@ -218,23 +218,6 @@ test.describe.serial("schema manager", () => {
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
     await schemaManager.assert.isEnabled();
-<<<<<<< HEAD
-
-    // Switch to video dataset
-    await modal.close();
-    await fiftyoneLoader.waitUntilGridVisible(page, videoDatasetName, {
-      searchParams: new URLSearchParams({ id: videoId }),
-    });
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-
-    // Annotation should be disabled for video datasets
-    await modal.sidebar.assert.hasDisabledMessage(
-      "isn\u2019t supported for video datasets",
-    );
-    await schemaManager.assert.isDisabled();
-=======
->>>>>>> main
   });
 
   test("patches view required field prompt activates schema and enters edit mode", async ({

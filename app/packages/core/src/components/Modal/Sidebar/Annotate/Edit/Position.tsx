@@ -63,40 +63,6 @@ export default function Position({ readOnly = false }: PositionProps) {
   const sample = useActiveAnnotationSampleId();
   const dataset = useCurrentDatasetId() ?? "";
 
-<<<<<<< HEAD
-  const { scene } = useLighter();
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
-  );
-
-  const toImagePixels = useCallback(
-    (relative: Parameters<typeof relativeToImagePixels>[0]) => {
-      const dims = scene?.getCanonicalMedia()?.getOriginalDimensions() ?? {
-        width: 1,
-        height: 1,
-      };
-      return relativeToImagePixels(relative, dims);
-    },
-    [scene],
-  );
-
-  const toCanvasPixels = useCallback(
-    (imageRect: Parameters<typeof imagePixelsToCanvasPixels>[0]) => {
-      const canonicalMedia = scene?.getCanonicalMedia();
-      const dims = canonicalMedia?.getOriginalDimensions() ?? {
-        width: 1,
-        height: 1,
-      };
-      const rendered = canonicalMedia?.getRenderedBounds() ?? {
-        x: 0,
-        y: 0,
-        width: 1,
-        height: 1,
-      };
-      return imagePixelsToCanvasPixels(imageRect, dims, rendered);
-    },
-    [scene],
-=======
   // address the box by its engine ref — the anchor's full ref (carries the
   // video frame + track instanceId + frames.<field> path) when the form was
   // opened from a surface; falls back to the schema-field + overlay id, which is
@@ -117,7 +83,6 @@ export default function Position({ readOnly = false }: PositionProps) {
   // arbitrary and drift through the round-trip.
   const committedBounds = useEngineSelector(engine, (e) =>
     ref ? (e.getLabel(ref)?.bounding_box as number[] | undefined) : undefined,
->>>>>>> main
   );
 
   useEffect(() => {
@@ -132,38 +97,12 @@ export default function Position({ readOnly = false }: PositionProps) {
     });
   }, [committedBounds]);
 
-<<<<<<< HEAD
-  const handleBoundsChange = useCallback(
-    (payload: { id: string }) => {
-      if (
-        !(overlay instanceof DetectionOverlay) ||
-        !overlay.hasValidBounds() ||
-        payload.id !== data?._id
-      ) {
-        return;
-      }
-
-      const rect = toImagePixels(overlay.relativeBounds);
-
-      setState({
-        position: { x: rect.x, y: rect.y },
-        dimensions: { width: rect.width, height: rect.height },
-      });
-
-      const relative = overlay.relativeBounds;
-      setData({
-        bounding_box: [relative.x, relative.y, relative.width, relative.height],
-      });
-    },
-    [data?._id, overlay, toImagePixels, setData],
-=======
   // LIVE geometry from the engine — the 2D scene publishes mid-drag relative
   // bounds; we render them directly, never touching Lighter. Render-only: the
   // committed write happens on drag-end through the bridge.
   const key = useMemo(
     () => (ref ? encodeEntityId(dataset, ref) : null),
     [dataset, ref],
->>>>>>> main
   );
 
   const live = useSignalValue<GeometrySignal | null>(
@@ -257,24 +196,6 @@ export default function Position({ readOnly = false }: PositionProps) {
             return;
           }
 
-<<<<<<< HEAD
-          const oldBounds = overlay.bounds;
-          const currentImagePixels = toImagePixels(overlay.relativeBounds);
-          const newImagePixels = {
-            ...currentImagePixels,
-            ...data.dimensions,
-            ...data.position,
-          };
-          const newCanvasBounds = toCanvasPixels(newImagePixels);
-          scene?.executeCommand(
-            new TransformOverlayCommand(
-              overlay,
-              overlay.id,
-              oldBounds,
-              newCanvasBounds,
-            ),
-          );
-=======
           // immediate display of the typed value
           setState({
             position: { x: merged.x, y: merged.y },
@@ -291,7 +212,6 @@ export default function Position({ readOnly = false }: PositionProps) {
           engine.updateLabel(ref, {
             bounding_box: next,
           } as Partial<LabelData>);
->>>>>>> main
         }}
       />
     </div>

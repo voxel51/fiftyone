@@ -173,11 +173,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       contextManager,
       modalSampleId,
       setActiveFields,
-<<<<<<< HEAD
-      setActiveLabelId,
-=======
       setEntranceLabel,
->>>>>>> main
     ],
   );
 
@@ -195,10 +191,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       enter,
       exit,
     }),
-<<<<<<< HEAD
-    [activateField, activeLabelId, enter, exit, setActiveLabelId],
-=======
     [activateField, enter, exit],
->>>>>>> main
   );
 };

@@ -213,27 +213,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       // owner-change rules (clear stale value or seed a new default).
       for (const name of uniqueConditionalNames) {
         if (!name) continue;
-<<<<<<< HEAD
-
-        const prevOwner = resolveVisibleAttribute(
-          name,
-          allAttributes,
-          (data ?? {}) as Record<string, unknown>,
-        );
-        const currentOwner = resolveVisibleAttribute(
-          name,
-          allAttributes,
-          value,
-        );
-
-        if (!currentOwner || prevOwner !== currentOwner) {
-          // null, not `delete`: the auto-save delta must carry an explicit
-          // unset, otherwise the existing-detection merge resurrects the value.
-          value[name] = null;
-        }
-=======
         applyConditionalOwnerChange(name, allAttributes, data ?? {}, value);
->>>>>>> main
       }
 
       if (isEqual(value, data)) return;
@@ -329,11 +309,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         } as NonNullable<typeof live>);
       }
     },
-<<<<<<< HEAD
-    [eventBus, parseFieldValue, readOnly],
-=======
     [engine, parseFieldValue, readOnly, setCurrentLabel],
->>>>>>> main
   );
 };
 

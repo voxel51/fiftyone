@@ -221,8 +221,6 @@ export default function useAttributeForm({
       onFormStateChange({ ...formState, read_only: readOnly });
     },
     [formState, onFormStateChange],
-<<<<<<< HEAD
-=======
   );
 
   const handleDynamicChange = useCallback(
@@ -230,7 +228,6 @@ export default function useAttributeForm({
       onFormStateChange({ ...formState, dynamic });
     },
     [formState, onFormStateChange],
->>>>>>> main
   );
 
   const handleValuesModeChange = useCallback(

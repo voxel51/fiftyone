@@ -79,23 +79,5 @@ export const useRegisterAnnotationEventHandlers = () => {
       },
       [retryController.isUnhealthy, setConfig],
     ),
-<<<<<<< HEAD
-  );
-
-  useAnnotationEventHandler(
-    "annotation:canvasDetectionOverlayEstablish",
-    useCallback(
-      (payload) => {
-        addLabelToSidebar({
-          data: payload.overlay.label as DetectionLabel,
-          overlay: payload.overlay,
-          path: payload.overlay.field,
-          type: "Detection",
-        });
-      },
-      [addLabelToSidebar],
-    ),
-=======
->>>>>>> main
   );
 };

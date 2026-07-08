@@ -225,25 +225,6 @@ export const useAnnotationContext = (): AnnotationContext => {
   );
 
   const selectExisting = useAtomCallback(
-<<<<<<< HEAD
-    useCallback((get, set, labelAtom: PrimitiveAtom<AnnotationLabel>) => {
-      const label = get(labelAtom);
-      const data = label.data;
-      set(savedLabel, data);
-      set(savedLabelPath, label.path ?? null);
-      set(editingLabelAtom, labelAtom);
-      set(pendingNewTypeAtom, null);
-      // Seed mask flag from committed data — no lighter event has fired yet.
-      const maskFields = data as { mask?: unknown; mask_path?: unknown };
-      set(
-        currentEditingMaskAtom,
-        Boolean(maskFields.mask || maskFields.mask_path),
-      );
-    }, []),
-  );
-  const select = useCallback<AnnotationContext["select"]>(
-    (labelAtom) => selectExisting(labelAtom),
-=======
     useCallback(
       (
         get,
@@ -270,7 +251,6 @@ export const useAnnotationContext = (): AnnotationContext => {
   );
   const select = useCallback<AnnotationContext["select"]>(
     (labelAtom, ref) => selectExisting(labelAtom, ref ?? null),
->>>>>>> main
     [selectExisting],
   );
 
@@ -324,11 +304,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       const built = createNewLabel(
         createType,
         { ...overrides, field: resolvedField, labelValue: resolvedLabelValue },
-<<<<<<< HEAD
-        { scene, addOverlay, overlayFactory },
-=======
         { scene, addOverlay, overlayFactory, engine, sample },
->>>>>>> main
       );
 
       if (built) {

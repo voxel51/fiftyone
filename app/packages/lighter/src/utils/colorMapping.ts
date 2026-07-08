@@ -34,14 +34,9 @@ export interface StrokeStyles {
  * Use this when you need to color a UI element by the same rules the
  * overlay would use but don't have a {@link BaseOverlay} instance.
  */
-<<<<<<< HEAD
-export function getOverlayColor(
-  overlay: BaseOverlay,
-=======
 export function getLabelColorFromContext(
   path: string,
   label: unknown,
->>>>>>> main
   context: ColorMappingContext,
 ): string {
   // Convert ColorSchemeInput to Coloring interface

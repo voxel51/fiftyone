@@ -23,12 +23,6 @@ export default function useDelete() {
   const { scene, removeOverlay } = useLighter();
   const { selected } = useAnnotationContext();
   const label = selected?.label;
-<<<<<<< HEAD
-  const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
-  );
-  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
-=======
   // engine identity from the anchor — carries the track instanceId + frame +
   // `frames.<field>` path a video frame label needs; null for sample-level
   const ref = selected?.ref ?? undefined;
@@ -41,7 +35,6 @@ export default function useDelete() {
   // label. `fullSchema` nests the frame fields under a synthetic `frames` field
   // so `getFieldSchema` resolves both sample- and frame-level paths.
   const schema = useRecoilValue(fos.fullSchema);
->>>>>>> main
 
   const exit = useExit();
   const setNotification = fos.useNotification();
@@ -55,81 +48,6 @@ export default function useDelete() {
       return;
     }
 
-<<<<<<< HEAD
-        if (label.isNew) {
-          if (scene && !scene.isDestroyed && scene.renderLoopActive) {
-            scene?.exitInteractiveMode();
-            removeOverlay(label?.data._id, true);
-          }
-
-          exit();
-          return;
-        }
-
-        try {
-          const fieldSchema = getFieldSchema(schema, label?.path);
-
-          if (!fieldSchema) {
-            setNotification({
-              msg: `Unable to delete label: field schema not found for path "${
-                label?.path ?? "unknown"
-              }".`,
-              variant: "error",
-            });
-            return;
-          }
-
-          await commandBus.execute(
-            new DeleteAnnotationCommand(label, fieldSchema),
-          );
-
-          removeLabelFromSidebar(label.data._id);
-          removeOverlay(label.overlay.id, false);
-          setNotification({
-            msg: `Label "${label.data.label}" successfully deleted.`,
-            variant: "success",
-          });
-
-          exit();
-        } catch (error) {
-          console.error(error);
-          setNotification({
-            msg: `Label "${
-              label.data.label ?? "Label"
-            }" not successfully deleted. Try again.`,
-            variant: "error",
-          });
-        }
-      },
-      async () => {
-        if (label) {
-          try {
-            const fieldSchema = getFieldSchema(schema, label?.path);
-            if (!fieldSchema) {
-              setNotification({
-                msg: `Error restoring deleted label. "${
-                  label?.path ?? "unknown"
-                }".`,
-                variant: "error",
-              });
-              return;
-            }
-
-            scene?.addOverlay(label.overlay);
-            addLabelToSidebar(label);
-          } catch (error) {
-            console.error(error);
-            setNotification({
-              msg: `Label "${
-                label.data.label ?? "Label"
-              }" not restored during undo. Try again.`,
-              variant: "error",
-            });
-          }
-        }
-      },
-    );
-=======
     if (label.isNew) {
       // a label still being drawn lives in interactive mode — leave it and
       // tear down its in-progress overlay
@@ -178,7 +96,6 @@ export default function useDelete() {
       // don't show a duplicate legacy toast here.
       console.error(error);
     }
->>>>>>> main
   }, [
     deleteAnnotation,
     engine,
@@ -219,10 +136,6 @@ export default function useDelete() {
         description: "Delete label",
       },
     ],
-<<<<<<< HEAD
-    [undoable, isGenerated],
-=======
     [performDelete, isGenerated],
->>>>>>> main
   );
 }

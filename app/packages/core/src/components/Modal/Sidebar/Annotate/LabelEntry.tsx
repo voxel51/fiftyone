@@ -6,21 +6,13 @@ import {
 } from "@fiftyone/annotation";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
-<<<<<<< HEAD
-import { type PrimitiveAtom, getDefaultStore, useAtomValue } from "jotai";
-=======
 import { useAtomValue } from "jotai";
->>>>>>> main
 import { useMemo } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
 import { ICONS } from "./Icons";
 import { fieldType } from "./state";
 import useColor from "./useColor";
-<<<<<<< HEAD
-import { useIsLabelHovering } from "./useHover";
-=======
->>>>>>> main
 
 const Container = animated(styled.div`
   display: flex;
@@ -74,11 +66,6 @@ const LabelEntry = ({
   const sample = useActiveAnnotationSampleId();
   const type = useAtomValue(fieldType(path ?? ""));
   const Icon = ICONS[type] ?? (() => null);
-<<<<<<< HEAD
-  const { scene } = useLighter();
-
-  const isHovering = useIsLabelHovering(label.overlay.id);
-=======
 
   // read the label declaratively by ref — the engine is the source of truth.
   // `frame` is set for video frame labels (the playhead occurrence the row was
@@ -87,7 +74,6 @@ const LabelEntry = ({
     sample ? e.getLabel({ sample, path, instanceId: id, frame }) : undefined,
   );
   const labelText = data?.label as string | undefined;
->>>>>>> main
 
   // the sidebar reflects the selected slice; refs carry its id (from modal
   // state, so it's correct before the engine registers a store and stays

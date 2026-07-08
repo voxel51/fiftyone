@@ -44,40 +44,6 @@ const useDefaultAgent = () => {
 };
 
 /**
-<<<<<<< HEAD
- * Helper hook which resets state when the label selection changes.
- *
- * @param isActive Flag indicating whether AI annotation mode is active
- * @param reset Callback invoked when label selection state changes
- */
-const useLabelReset = (isActive: boolean, reset: () => void) => {
-  const { selected } = useAnnotationContext();
-  const previousSelectedLabelIdRef = useRef<string | null>(
-    selected?.label?.overlay?.id ?? null,
-  );
-
-  // When the selected label changes,
-  // reset state to ensure a clean starting point for the next label
-  useEffect(() => {
-    if (!isActive) {
-      previousSelectedLabelIdRef.current = selected?.label?.overlay?.id ?? null;
-      return;
-    }
-
-    const previousId = previousSelectedLabelIdRef.current;
-    const currentId = selected?.label?.overlay?.id ?? null;
-
-    if (previousId && previousId !== currentId) {
-      reset();
-    }
-
-    previousSelectedLabelIdRef.current = currentId;
-  }, [selected?.label]);
-};
-
-/**
-=======
->>>>>>> main
  * Hook which provides control over activation/deactivation of AI annotation mode.
  */
 export const useAIAnnotationMode = (): AIAnnotationMode => {

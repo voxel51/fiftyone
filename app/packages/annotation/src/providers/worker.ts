@@ -53,11 +53,7 @@ function postResponse<T extends WorkerMessageType>(
   id: number,
   type: T,
   result: WorkerResponse<T>,
-<<<<<<< HEAD
-  transfer?: Transferable[],
-=======
   transfer: Transferable[] = [],
->>>>>>> main
 ): void {
   self.postMessage({ id, type, success: true, result }, transfer);
 }
@@ -222,11 +218,6 @@ function preprocessImage(imageData: ImageData): ProcessedImage {
  * Posts progress and warning notifications back to the main thread during download.
  */
 async function loadModel(): Promise<void> {
-<<<<<<< HEAD
-  const opts: ort.InferenceSession.SessionOptions = {
-    executionProviders: ["wasm"],
-  };
-=======
   // Prefer WebGPU when available, but fall back to WASM per-session: the
   // runtime-optimized `.ort` encoder may refuse the GPU EP, while the plain
   // `.onnx` decoder is portable. Ordering an EP list as ["webgpu", "wasm"]
@@ -234,7 +225,6 @@ async function loadModel(): Promise<void> {
   // as separate create() attempts and report which one stuck.
   const epCandidates: ort.InferenceSession.SessionOptions["executionProviders"][] =
     WEBGPU_AVAILABLE ? [["webgpu"], ["wasm"]] : [["wasm"]];
->>>>>>> main
 
   async function loadSession(
     family: string,
@@ -261,17 +251,6 @@ async function loadModel(): Promise<void> {
       });
       throw err;
     }
-<<<<<<< HEAD
-    try {
-      return await ort.InferenceSession.create(buf, opts);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      postErrorNotification({
-        kind: failureKind,
-        message: `${name} init failed: ${msg}`,
-      });
-      throw err;
-=======
 
     let lastErr: unknown;
     for (const executionProviders of epCandidates) {
@@ -315,7 +294,6 @@ async function loadModel(): Promise<void> {
           );
         }
       }
->>>>>>> main
     }
 
     const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
@@ -343,8 +321,6 @@ async function loadModel(): Promise<void> {
       "decoder",
       "decoder_failure",
     );
-<<<<<<< HEAD
-=======
 
   if (WEBGPU_AVAILABLE) await prewarmSessions();
 }
@@ -403,7 +379,6 @@ function bitmapToImageData(bitmap: ImageBitmap): ImageData {
   if (!ctx) throw new Error("Failed to get 2d context");
   ctx.drawImage(bitmap, 0, 0);
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
->>>>>>> main
 }
 
 /**
@@ -417,9 +392,6 @@ async function embedAndDecode(
   imageUrl: string,
   points: PromptPoint[],
 ): Promise<InferenceResult> {
-<<<<<<< HEAD
-  if (!encoderSession || !decoderSession) throw new Error("Model not loaded");
-=======
   const imageData = await loadImageData(imageUrl);
   return embedAndDecodeFromImageData(
     imageData,
@@ -427,7 +399,6 @@ async function embedAndDecode(
     points,
   );
 }
->>>>>>> main
 
 /**
  * SAM2 against an already-decoded frame bitmap. Mirrors {@link embedAndDecode}
@@ -474,31 +445,6 @@ async function encodeBitmap(
 
   const fullKey = CACHE_PREFIX + cacheKey;
 
-<<<<<<< HEAD
-  if (cached) {
-    try {
-      encResults = {
-        image_embed: new ort.Tensor(
-          "float32",
-          cached.imageEmbed.data,
-          cached.imageEmbed.dims,
-        ),
-        high_res_feats_0: new ort.Tensor(
-          "float32",
-          cached.highResFeats0.data,
-          cached.highResFeats0.dims,
-        ),
-        high_res_feats_1: new ort.Tensor(
-          "float32",
-          cached.highResFeats1.data,
-          cached.highResFeats1.dims,
-        ),
-      };
-      geometry = cached.processedImage;
-      cacheHit = true;
-    } catch {
-      postWarningNotification("Corrupt embedding cache entry, re-encoding");
-=======
   // Skip if already encoded (mem-LRU or IDB).
   const cached = await getEmbedding(fullKey, postWarningNotification);
   if (cached) return;
@@ -616,7 +562,6 @@ async function resolveEmbedding(
       } catch {
         postWarningNotification("Corrupt embedding cache entry, re-encoding");
       }
->>>>>>> main
     }
   }
 
@@ -625,44 +570,6 @@ async function resolveEmbedding(
   const processed = preprocessImage(imageData);
   const preprocessMs = performance.now() - tPreprocess;
 
-<<<<<<< HEAD
-    encResults = await encoderSession.run({
-      image: new ort.Tensor("float32", processed.tensor, [
-        1,
-        3,
-        SAM2_INPUT_SIZE,
-        SAM2_INPUT_SIZE,
-      ]),
-    });
-
-    // Fire-and-forget: IDB write runs in background while decoder proceeds.
-    // Memory LRU is updated synchronously inside putEmbedding before the first await.
-    putEmbedding(
-      cacheKey,
-      {
-        // Key names are defined by the ONNX model and must match exactly.
-        // Encode — input: "image"; outputs: "image_embed", "high_res_feats_0", "high_res_feats_1"
-        imageEmbed: {
-          data: encResults["image_embed"].data as Float32Array,
-          dims: [...encResults["image_embed"].dims],
-        },
-        highResFeats0: {
-          data: encResults["high_res_feats_0"].data as Float32Array,
-          dims: [...encResults["high_res_feats_0"].dims],
-        },
-        highResFeats1: {
-          data: encResults["high_res_feats_1"].data as Float32Array,
-          dims: [...encResults["high_res_feats_1"].dims],
-        },
-        processedImage: {
-          originalWidth: geometry.originalWidth,
-          originalHeight: geometry.originalHeight,
-        },
-      },
-      postWarningNotification,
-    );
-  }
-=======
   const tEncode = performance.now();
   const encResults = await encoderSession.run({
     image: new ort.Tensor("float32", processed.tensor, [
@@ -764,7 +671,6 @@ async function decodeToMask(
   points: PromptPoint[],
 ): Promise<{ result: InferenceResult; marks: DecodeMarks }> {
   if (!decoderSession) throw new Error("Model not loaded");
->>>>>>> main
 
   const n = points.length;
   const coords = new Float32Array(n * 2);
@@ -819,15 +725,8 @@ function bestMaskResult(
 
   if (!bbox) throw new Error("Model returned an empty mask");
 
-<<<<<<< HEAD
-  const finalMask = postprocessMask(bestMask, geometry, bbox);
-
-  return {
-    mask: finalMask,
-=======
   return {
     mask: postprocessMask(bestMask, geometry, bbox),
->>>>>>> main
     maskWidth: bbox.w,
     maskHeight: bbox.h,
     bbox: normalizeBbox(bbox, geometry),
@@ -910,10 +809,6 @@ self.onmessage = async (e: MessageEvent<WorkerInbound>) => {
       postResponse(id, "embedAndDecode", result, [
         result.mask.buffer as ArrayBuffer,
       ]);
-<<<<<<< HEAD
-    } else {
-      postError(id, type, `Unknown message type: ${type}`);
-=======
     } else if (msg.type === "embedAndDecodeBitmap") {
       const result = await embedAndDecodeBitmap(
         msg.payload.bitmap,
@@ -928,7 +823,6 @@ self.onmessage = async (e: MessageEvent<WorkerInbound>) => {
     } else if (msg.type === "encodeBitmap") {
       await encodeBitmap(msg.payload.bitmap, msg.payload.cacheKey);
       postResponse(id, "encodeBitmap", undefined as void);
->>>>>>> main
     }
   } catch (err) {
     if (type === "embedAndDecode" || type === "embedAndDecodeBitmap") {

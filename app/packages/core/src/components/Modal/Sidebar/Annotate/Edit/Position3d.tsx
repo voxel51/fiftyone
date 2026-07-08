@@ -86,36 +86,11 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
   );
 
   useEffect(() => {
-<<<<<<< HEAD
-    let baseLocation: Vector3Tuple | undefined;
-    let baseDimensions: Vector3Tuple | undefined;
-    let baseRotation: Vector3Tuple | undefined;
-    let baseQuaternion: [number, number, number, number] | undefined;
-
-    if (workingLabel && workingLabel._cls === DETECTION) {
-      baseLocation = workingLabel.location;
-      baseDimensions = workingLabel.dimensions;
-      baseRotation = workingLabel.rotation;
-      baseQuaternion = workingLabel.quaternion;
-    } else if (data?.location && data?.dimensions) {
-      // This shouldn't really happen but is here for a fallback
-      console.warn(
-        "[Position3d] Using fallback data path - workingLabel not available for label:",
-        data._id,
-      );
-      baseLocation = data.location;
-      baseDimensions = data.dimensions;
-      baseRotation = data.rotation;
-    }
-
-    if (!baseLocation || !baseDimensions) {
-=======
     if (
       committed?._cls !== DETECTION ||
       !committed.location ||
       !committed.dimensions
     ) {
->>>>>>> main
       return;
     }
 
@@ -237,11 +212,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
         rotation: newRotation,
       });
     },
-<<<<<<< HEAD
-    [data, transformState, overlay, eventBus, readOnly],
-=======
     [data, transformState, updateCuboid, readOnly],
->>>>>>> main
   );
 
   return (

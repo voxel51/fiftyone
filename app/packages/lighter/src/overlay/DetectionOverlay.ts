@@ -1378,8 +1378,6 @@ export class DetectionOverlay
       this.bounds,
       (encoded) => {
         this.maskSource = encoded;
-<<<<<<< HEAD
-=======
         // Mask encoding is async: `pendingMask` only becomes available here,
         // after the synchronous `overlay-commit-requested` dispatch below has
         // already run (and read an empty pending mask). Re-emit so the
@@ -1393,7 +1391,6 @@ export class DetectionOverlay
           hasMask: this.hasMask(),
           gestureId,
         });
->>>>>>> main
       },
     );
 

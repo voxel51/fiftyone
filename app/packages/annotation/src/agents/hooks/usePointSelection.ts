@@ -119,17 +119,12 @@ export const usePointSelection = (): PointSelection => {
   // a positive seed for the NEW mask — not a negative point on the old one.
   const resolveVariant = useCallback(
     (relativePoint: Point, ctx: ClickEventModifiers): PointSelectionVariant =>
-<<<<<<< HEAD
-      resolvePointVariant(relativePoint, ctx, selectedLabelRef.current),
-    [],
-=======
       resolvePointVariant(
         relativePoint,
         ctx,
         shouldSeedNew() ? null : selectedLabelRef.current,
       ),
     [shouldSeedNew],
->>>>>>> main
   );
 
   // Guards read fresh from the jotai store so a deactivate→activate pair
@@ -150,15 +145,12 @@ export const usePointSelection = (): PointSelection => {
           label: { label: "", points: [] },
           field: "",
           variantStyles: POINT_SELECTION_VARIANT_STYLES,
-<<<<<<< HEAD
-=======
           // Pure UI scaffolding — keep it out of the SelectionManager so it
           // never competes for the single-selection slot. Under the engine's
           // unified active set, a selectable tool overlay would steal scene
           // selection from the inferred detection, clear its engine anchor, and
           // make form-follows-anchor tear the edit down each cycle.
           selectable: false,
->>>>>>> main
         },
       );
       // UI scaffolding; exclude from persistence

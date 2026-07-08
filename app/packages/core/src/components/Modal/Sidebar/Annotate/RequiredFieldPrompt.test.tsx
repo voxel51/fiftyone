@@ -24,18 +24,6 @@ vi.mock("./useDeactivateAllModes", () => ({
   useDeactivateAllModes: () => vi.fn(),
 }));
 
-<<<<<<< HEAD
-vi.mock("./useAnnotationContextManager", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("./useAnnotationContextManager")>();
-  return {
-    ...actual,
-    useAnnotationContextManager: vi.fn(() => ({
-      activateField: mockActivateField,
-    })),
-  };
-});
-=======
 // no importOriginal here: the real module's import graph cycles back into
 // this mock (useSave → @fiftyone/annotation → useAnnotationController →
 // this module), and awaiting the original inside the factory deadlocks
@@ -51,7 +39,6 @@ vi.mock("./useAnnotationContextManager", () => ({
     activateField: mockActivateField,
   })),
 }));
->>>>>>> main
 
 vi.mock("@fiftyone/state", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@fiftyone/state")>();

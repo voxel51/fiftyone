@@ -188,10 +188,6 @@ export const useCreateAnnotationLabel = () => {
 
       throw new Error(`unable to create label of type '${type}'`);
     },
-<<<<<<< HEAD
-    [getSkeletonForField, overlayFactory],
-=======
     [getSkeletonForField, overlayFactory, scene],
->>>>>>> main
   );
 };

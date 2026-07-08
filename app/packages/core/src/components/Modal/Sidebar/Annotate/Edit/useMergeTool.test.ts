@@ -36,34 +36,6 @@ class MockDetectionOverlay {
   }
 }
 
-<<<<<<< HEAD
-class MockDeleteAnnotationCommand {
-  constructor(
-    public label: unknown,
-    public schema: unknown,
-  ) {}
-}
-
-class MockMergeDetectionsCommand {
-  public id: string;
-  constructor(
-    public target: unknown,
-    public paintData: unknown,
-    public deps: {
-      deleteSource: () => Promise<void>;
-      restoreSource: () => void;
-    },
-    public targetId: string,
-    public sourceId: string,
-  ) {
-    this.id = `merge-${targetId}-${sourceId}-x`;
-  }
-  execute = vi.fn();
-  undo = vi.fn();
-}
-
-=======
->>>>>>> main
 vi.mock("@fiftyone/annotation", () => ({
   getFieldSchema: (...args: unknown[]) => mockGetFieldSchema(...args),
   useAnnotationEventBus: () => ({ dispatch: mockDispatchAnnotationEvent }),
@@ -178,18 +150,6 @@ describe("useMergeTool", () => {
     // whole merge coalesces into one undo unit
     expect(target.mergeFrom).toHaveBeenCalledWith(source, "gesture:1");
     expect(target.getPaintStrokeData).toHaveBeenCalledTimes(1);
-<<<<<<< HEAD
-    expect(mockExecuteCommand).toHaveBeenCalledTimes(1);
-    expect(mockExecuteCommand.mock.calls[0][0]).toBeInstanceOf(
-      MockDeleteAnnotationCommand,
-    );
-    expect(mockRemoveLabelFromSidebar).toHaveBeenCalledWith("source");
-    expect(mockRemoveOverlay).toHaveBeenCalledWith("source", false);
-    expect(mockPushUndoable).toHaveBeenCalledTimes(1);
-    expect(mockPushUndoable.mock.calls[0][0]).toBeInstanceOf(
-      MockMergeDetectionsCommand,
-    );
-=======
     expect(mockDeleteAnnotation).toHaveBeenCalledTimes(1);
     // the gesture id is carried through to the delete so the whole merge
     // coalesces into one undo unit
@@ -202,7 +162,6 @@ describe("useMergeTool", () => {
     expect(mockRemoveOverlay).not.toHaveBeenCalled();
     // no command-context undoable is pushed — the engine's value-based undo
     // stack owns reverting the merge
->>>>>>> main
     expect(mockSelectOverlay).toHaveBeenCalledWith("target");
     // Target stays as the merge target across a successful merge.
     expect(result.current.mergeTargetId).toBe("target");

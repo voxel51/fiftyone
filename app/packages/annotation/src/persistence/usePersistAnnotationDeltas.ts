@@ -120,20 +120,9 @@ export const usePersistAnnotationDeltas =
 
       eventBus.dispatch("annotation:persistenceInFlight");
 
-<<<<<<< HEAD
-      if (isGenerated) {
-        if (!metadata) {
-          console.warn(
-            "Generated view persistence requires label metadata but none was provided.",
-            { deltaCount: deltas.length, deltas },
-          );
-          return false;
-        }
-=======
       // snapshot the pre-persist transient so the reconcile after each await
       // keeps any field edited while the patch is in flight
       engine.captureBaseline();
->>>>>>> main
 
       let success = true;
       for (const entry of patches) {

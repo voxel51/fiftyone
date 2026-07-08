@@ -103,24 +103,14 @@ const NewFieldSchema = () => {
 
   // Get label type options based on media type and field scope
   const labelTypeOptions = useMemo(
-<<<<<<< HEAD
-    () => getLabelTypeOptions(currentMediaType),
-    [currentMediaType],
-=======
     () => getLabelTypeOptions(currentMediaType, isFrameField),
     [currentMediaType, isFrameField],
->>>>>>> main
   );
 
   // Validate field name
   const fieldNameError = useMemo(
-<<<<<<< HEAD
-    () => validateFieldName(fieldName, schemasData),
-    [fieldName, schemasData],
-=======
     () => validateFieldName(fieldName, schemasData, currentMediaType),
     [fieldName, schemasData, currentMediaType],
->>>>>>> main
   );
 
   const canCreate = fieldName.trim() !== "" && !fieldNameError && !isCreating;
