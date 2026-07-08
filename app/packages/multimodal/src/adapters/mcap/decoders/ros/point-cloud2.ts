@@ -12,6 +12,7 @@ import {
 import {
   arrayField,
   bytesField,
+  integerField,
   numberField,
   optionalBoolean,
   recordField,
@@ -154,15 +155,6 @@ interface RosPointField {
   readonly datatype: number;
   readonly name: string;
   readonly offset: number;
-}
-
-function integerField(record: Record<string, unknown>, field: string): number {
-  const value = numberField(record, field, undefined, Number.NaN);
-  if (!Number.isInteger(value)) {
-    throw new Error(`Field '${field}' is not an integer`);
-  }
-
-  return value;
 }
 
 function validateLayout({

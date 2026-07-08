@@ -13,6 +13,7 @@ import {
   decodeGridPreview,
   type McapGridPreviewFrame,
 } from "./grid-preview";
+import { firstImageByte, imageFrame } from "./grid-preview-test-utils";
 import { chooseAnnotationTopic } from "./topic-matching";
 import { streamTopics } from "./stream-topics";
 import type {
@@ -643,21 +644,6 @@ function createPointCloudMessage(
     visualization,
     timelineTimeNs,
   });
-}
-
-function imageFrame(
-  frame: McapGridPreviewFrame | null,
-): Extract<McapGridPreviewFrame, { kind: "image" }> | null {
-  return frame?.kind === "image" ? frame : null;
-}
-
-function firstImageByte(
-  frame: McapGridPreviewFrame | null,
-): number | undefined {
-  const image = imageFrame(frame)?.image;
-  return image?.kind === VISUALIZATION_KIND.ENCODED_IMAGE
-    ? image.bytes[0]
-    : undefined;
 }
 
 function pointCloudFrame(

@@ -17,6 +17,7 @@ import { rosDecodersForPayloads } from "./factory";
 import { ROS_NAV_SAT_FIX_PAYLOADS } from "./payloads";
 
 const COVARIANCE_LENGTH = 9;
+const COVARIANCE_TYPE_UNKNOWN = 0;
 
 /**
  * Decoders for ROS NavSatFix messages.
@@ -34,7 +35,6 @@ export const rosNavSatFixDecoders = rosDecodersForPayloads({
     }
 
     const altitude = numberField(message, "altitude", undefined, Number.NaN);
-    const positionCovariance = covariance(message);
     const attributes: Record<string, DecodedAttributeValue> = {
       ...rosHeaderAttributes(header),
       latitude,
@@ -49,6 +49,11 @@ export const rosNavSatFixDecoders = rosDecodersForPayloads({
     if (Number.isFinite(covarianceType)) {
       attributes.positionCovarianceType = covarianceType;
     }
+    const positionCovariance =
+      Number.isFinite(covarianceType) &&
+      covarianceType !== COVARIANCE_TYPE_UNKNOWN
+        ? covariance(message)
+        : undefined;
 
     const status = statusAttributes(recordField(message, "status"));
     if (status) {

@@ -57,11 +57,11 @@ export function genericRecordDecoderResolutionForChannel(
     return { decodeRecord: decodeJsonRecord, status: "ok" };
   }
 
-  const rosDecoder = rosRecordDecoderForChannel(reader, channel);
-  if (rosDecoder) {
-    return { decodeRecord: rosDecoder, status: "ok" };
-  }
   if (isRosMessageEncoding(channel.messageEncoding)) {
+    const rosDecoder = rosRecordDecoderForChannel(reader, channel);
+    if (rosDecoder) {
+      return { decodeRecord: rosDecoder, status: "ok" };
+    }
     return { reason: "schema-unavailable", status: "unavailable" };
   }
 

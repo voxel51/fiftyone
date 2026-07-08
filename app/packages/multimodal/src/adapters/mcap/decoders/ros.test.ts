@@ -519,7 +519,7 @@ describe("ROS MCAP decoders", () => {
       "ros2msg",
     ).decode(
       ros2ImageMessage({
-        data: [0, 0, 128, 0, 255, 255],
+        data: uint16Bytes([0, 1000, 2000], false),
         encoding: "mono16",
         height: 1,
         isBigEndian: true,
@@ -802,6 +802,33 @@ describe("ROS MCAP decoders", () => {
       positionCovarianceType: 2,
       sequence: 2,
       status: { service: 1, status: 0 },
+    });
+  });
+
+  it("drops NavSatFix covariance when covariance type is unknown", () => {
+    const output = decoderForSchemaEncoding(
+      rosNavSatFixDecoders,
+      "ros1msg",
+    ).decode(
+      ros1Message(ROS1_NAV_SAT_FIX_SCHEMA, {
+        altitude: 0,
+        header: ros1Header({ frameId: "gps", nsec: 14, sec: 13 }),
+        latitude: 37.77,
+        longitude: -122.42,
+        position_covariance: [1, 0, 0, 0, 2, 0, 0, 0, 3],
+        position_covariance_type: 0,
+        status: { service: 1, status: 0 },
+      }),
+      { schemaData: schemaData(ROS1_NAV_SAT_FIX_SCHEMA) },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.LOCATION);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.LOCATION) {
+      throw new Error("Expected location visualization");
+    }
+    expect(output.visualization.positionCovariance).toBeUndefined();
+    expect(output.attributes).toMatchObject({
+      positionCovarianceType: 0,
     });
   });
 

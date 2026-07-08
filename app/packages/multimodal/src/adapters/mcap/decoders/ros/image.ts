@@ -3,6 +3,7 @@ import { resourceHintsForArrayBufferViews } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import {
   bytesField,
+  integerField,
   numberField,
   optionalBoolean,
   rosHeader,
@@ -155,9 +156,7 @@ function decodeImageRgba({
     case "8uc1":
       return { rgba: mono8Rgba({ data, height, step, width }) };
     case "mono16":
-      return {
-        rgba: mono16Rgba({ data, height, littleEndian, step, width }),
-      };
+      return mono16Rgba({ data, height, littleEndian, step, width });
     case "16uc1":
       return depth16Rgba({ data, height, littleEndian, step, width });
     case "32fc1":
@@ -308,17 +307,35 @@ function mono16Rgba({
   width,
 }: ImageLayout & {
   readonly littleEndian: boolean;
-}): Uint8Array {
-  const rgba = new Uint8Array(width * height * RGBA_CHANNEL_COUNT);
+}): DecodeImageResult {
+  const pixelCount = width * height;
+  const values = new Uint16Array(pixelCount);
   const view = dataView(data);
+  let min = UINT16_MAX;
+  let max = 0;
+
   for (let y = 0; y < height; y++) {
     const rowOffset = y * step;
     for (let x = 0; x < width; x++) {
+      const pixelIndex = y * width + x;
       const value = view.getUint16(rowOffset + x * 2, littleEndian);
-      writeGray(rgba, y * width + x, uint16ToUint8(value), UINT8_MAX);
+      values[pixelIndex] = value;
+      min = Math.min(min, value);
+      max = Math.max(max, value);
     }
   }
-  return rgba;
+
+  const rgba = new Uint8Array(pixelCount * RGBA_CHANNEL_COUNT);
+  for (let index = 0; index < pixelCount; index++) {
+    const value = values[index] ?? 0;
+    const shade =
+      min === max
+        ? uint16ToUint8(value)
+        : ((value - min) / (max - min)) * UINT8_MAX;
+    writeGray(rgba, index, clampUint8(shade), UINT8_MAX);
+  }
+
+  return { rgba };
 }
 
 function depth16Rgba({
@@ -562,15 +579,6 @@ function writeGray(
   rgba[offset + 1] = gray;
   rgba[offset + 2] = gray;
   rgba[offset + 3] = alpha;
-}
-
-function integerField(record: Record<string, unknown>, field: string): number {
-  const value = numberField(record, field, undefined, Number.NaN);
-  if (!Number.isInteger(value)) {
-    throw new Error(`Field '${field}' is not an integer`);
-  }
-
-  return value;
 }
 
 function booleanLikeField(

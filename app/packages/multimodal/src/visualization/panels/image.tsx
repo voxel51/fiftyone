@@ -15,7 +15,11 @@ import {
   VISUALIZATION_PANEL_BACKGROUND_COLOR,
   VISUALIZATION_STATUS_TEXT_COLOR,
 } from "./style-tokens";
-import { useImageTextureLease } from "./use-image-texture-lease";
+import {
+  hasImageData,
+  imageIdentity,
+  useImageTextureLease,
+} from "./use-image-texture-lease";
 import { WebGpuCanvas } from "./webgpu-canvas";
 
 const HUD_BORDER_RADIUS_PX = 4;
@@ -137,17 +141,6 @@ export function ImagePanel({
       ) : null}
     </div>
   );
-}
-
-function hasImageData(frame: ImageVisualization): boolean {
-  if (frame.kind === "encoded-image") {
-    return frame.bytes.byteLength > 0;
-  }
-  return frame.rgba.byteLength > 0 && frame.width > 0 && frame.height > 0;
-}
-
-function imageIdentity(frame: ImageVisualization): unknown {
-  return frame.kind === "encoded-image" ? frame.bytes : frame.rgba;
 }
 
 const styles: Record<string, CSSProperties> = {

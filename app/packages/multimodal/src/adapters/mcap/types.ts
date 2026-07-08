@@ -213,8 +213,7 @@ export type McapDecodeUnavailableReason =
 export type McapNumericFieldAvailability =
   | "no-numeric-fields"
   | "ready"
-  | "schema-unavailable"
-  | "unsupported-encoding";
+  | McapDecodeUnavailableReason;
 
 /**
  * Plottable numeric fields for one topic. `availability` explains empty

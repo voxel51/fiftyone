@@ -186,6 +186,9 @@ function useBitmapCanvas(fit: "contain" | "cover") {
   const commit = useCallback(
     (bitmap: CanvasDrawable | null) => {
       if (bitmapRef.current === bitmap) {
+        if (bitmap) {
+          draw();
+        }
         return;
       }
 
@@ -347,10 +350,16 @@ function BitmapRawImageView({
   onErrorRef.current = onError;
   const onImageLoadedRef = useRef(onImageLoaded);
   onImageLoadedRef.current = onImageLoaded;
+  const sourceCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     try {
-      const source = canvasFromRawImage(frame);
+      let source = sourceCanvasRef.current;
+      if (!source) {
+        source = document.createElement("canvas");
+        sourceCanvasRef.current = source;
+      }
+      canvasFromRawImage(frame, source);
       commit(source);
       onImageLoadedRef.current?.(frame.width, frame.height);
     } catch (error) {
@@ -368,14 +377,20 @@ function BitmapRawImageView({
   );
 }
 
-function canvasFromRawImage(frame: RawImageVisualization): HTMLCanvasElement {
+function canvasFromRawImage(
+  frame: RawImageVisualization,
+  canvas: HTMLCanvasElement,
+): void {
   if (frame.rgba.byteLength < frame.width * frame.height * 4) {
     throw new Error("Raw image frame has too few RGBA bytes");
   }
 
-  const canvas = document.createElement("canvas");
-  canvas.width = frame.width;
-  canvas.height = frame.height;
+  if (canvas.width !== frame.width) {
+    canvas.width = frame.width;
+  }
+  if (canvas.height !== frame.height) {
+    canvas.height = frame.height;
+  }
   const context = canvas.getContext("2d");
   if (!context) {
     throw new Error("Unable to create raw image canvas context");
@@ -384,7 +399,6 @@ function canvasFromRawImage(frame: RawImageVisualization): HTMLCanvasElement {
   const imageData = context.createImageData(frame.width, frame.height);
   imageData.data.set(frame.rgba.subarray(0, frame.width * frame.height * 4));
   context.putImageData(imageData, 0, 0);
-  return canvas;
 }
 
 /**

@@ -14,7 +14,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useSceneInventory } from "../../../scene-inventory";
+import { useSceneInventory } from "../../../scene-inventory/SceneInventoryProvider";
 import type { StreamInventory } from "../../../schemas/v1";
 import { topicName } from "../stream-topics";
 import {

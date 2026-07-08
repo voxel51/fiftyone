@@ -67,6 +67,11 @@ async function createEncodedImageTexture(
 function createRawImageTexture(
   frame: RawImageVisualization,
 ): ImageTextureHandle {
+  const expectedByteLength = frame.width * frame.height * 4;
+  if (frame.rgba.byteLength < expectedByteLength) {
+    throw new Error("Raw image frame has too few RGBA bytes");
+  }
+
   const texture = new THREE.DataTexture(
     frame.rgba,
     frame.width,

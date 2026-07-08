@@ -6,6 +6,7 @@ import type { McapTypes } from "@mcap/core";
 import type { PayloadDescriptor } from "../../../../decoders";
 
 const TEXT_DECODER = new TextDecoder();
+const MAX_PARSED_SCHEMA_CACHE_ENTRIES = 256;
 
 type McapChannel = McapTypes.TypedMcapRecords["Channel"];
 type McapSchema = McapTypes.TypedMcapRecords["Schema"];
@@ -143,7 +144,10 @@ function parsedRosSchema(
 
   const cacheKey = rosSchemaCacheKey(messageEncoding, schema);
   if (parsedSchemaCache.has(cacheKey)) {
-    return parsedSchemaCache.get(cacheKey) ?? null;
+    const parsed = parsedSchemaCache.get(cacheKey) ?? null;
+    parsedSchemaCache.delete(cacheKey);
+    parsedSchemaCache.set(cacheKey, parsed);
+    return parsed;
   }
 
   let parsed: ParsedRosChannelSchema | null = null;
@@ -159,6 +163,12 @@ function parsedRosSchema(
   }
 
   parsedSchemaCache.set(cacheKey, parsed);
+  if (parsedSchemaCache.size > MAX_PARSED_SCHEMA_CACHE_ENTRIES) {
+    const oldestKey = parsedSchemaCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      parsedSchemaCache.delete(oldestKey);
+    }
+  }
   return parsed;
 }
 

@@ -120,7 +120,7 @@ export function useImageTextureLease({
   return { handle, status };
 }
 
-function hasImageData(
+export function hasImageData(
   frame: ImageVisualization | null | undefined,
 ): frame is ImageVisualization {
   if (!frame) {
@@ -130,6 +130,15 @@ function hasImageData(
     return frame.bytes.byteLength > 0;
   }
   return frame.rgba.byteLength > 0 && frame.width > 0 && frame.height > 0;
+}
+
+export function imageIdentity(
+  frame: ImageVisualization | null | undefined,
+): unknown {
+  if (!frame) {
+    return frame;
+  }
+  return frame.kind === "encoded-image" ? frame.bytes : frame.rgba;
 }
 
 function replaceHeldTexture(

@@ -181,6 +181,21 @@ export function numberField(
 }
 
 /**
+ * Reads an integer field or throws when it is missing/invalid.
+ */
+export function integerField(
+  record: Record<string, unknown> | undefined,
+  field: string,
+): number {
+  const value = numberField(record, field, undefined, Number.NaN);
+  if (!Number.isInteger(value)) {
+    throw new Error(`Field '${field}' is not an integer`);
+  }
+
+  return value;
+}
+
+/**
  * Reads a finite numeric field or throws when it is missing/invalid.
  */
 export function requiredFiniteNumber(

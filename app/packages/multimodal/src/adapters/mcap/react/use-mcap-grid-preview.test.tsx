@@ -4,10 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EncodedImageVisualization } from "../../../decoders";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { VISUALIZATION_KIND } from "../../../visualization";
-import type {
-  McapGridPreviewFrame,
-  McapGridPreviewResult,
-} from "../grid-preview";
+import type { McapGridPreviewResult } from "../grid-preview";
+import { firstImageByte } from "../grid-preview-test-utils";
 import {
   useMcapGridPreview,
   type McapGridPreviewState,
@@ -319,21 +317,6 @@ function createImage(bytes: readonly number[]): EncodedImageVisualization {
     bytes: new Uint8Array(bytes),
     kind: VISUALIZATION_KIND.ENCODED_IMAGE,
   };
-}
-
-function imageFrame(
-  frame: McapGridPreviewFrame | null,
-): Extract<McapGridPreviewFrame, { kind: "image" }> | null {
-  return frame?.kind === "image" ? frame : null;
-}
-
-function firstImageByte(
-  frame: McapGridPreviewFrame | null,
-): number | undefined {
-  const image = imageFrame(frame)?.image;
-  return image?.kind === VISUALIZATION_KIND.ENCODED_IMAGE
-    ? image.bytes[0]
-    : undefined;
 }
 
 const SOURCES_BY_ID = new Map<string, ByteSourceDescriptor>();

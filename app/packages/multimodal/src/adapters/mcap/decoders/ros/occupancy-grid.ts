@@ -6,6 +6,7 @@ import { resourceHintsForArrayBufferViews } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { decodePose } from "../foxglove/protobuf/geometry";
 import {
+  integerField,
   int8ArrayField,
   numberField,
   recordField,
@@ -85,15 +86,6 @@ export const rosOccupancyGridDecoders = rosDecodersForPayloads({
   },
   payloads: ROS_OCCUPANCY_GRID_PAYLOADS,
 });
-
-function integerField(record: Record<string, unknown>, field: string): number {
-  const value = numberField(record, field, undefined, Number.NaN);
-  if (!Number.isInteger(value)) {
-    throw new Error(`Field '${field}' is not an integer`);
-  }
-
-  return value;
-}
 
 function validateMapInfo({
   height,

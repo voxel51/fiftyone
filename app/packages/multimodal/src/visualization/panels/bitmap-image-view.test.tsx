@@ -1,9 +1,12 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { RawImageVisualization } from "../../decoders";
+import { VISUALIZATION_KIND } from "../visualization-registry";
 import { imageDisplayRect } from "./base-2d-scene";
 import {
   BitmapCanvasHost,
+  BitmapImageFrameView,
   BitmapImageView,
   bitmapDrawRect,
 } from "./bitmap-image-view";
@@ -78,6 +81,38 @@ describe("bitmapDrawRect", () => {
         );
       }
     }
+  });
+});
+
+describe("BitmapImageFrameView", () => {
+  it("reuses the raw-image source canvas across frame updates", async () => {
+    stubElementSize(100, 50);
+    const context = sharedMockContext();
+    const drawImage = vi.spyOn(context, "drawImage");
+    vi.spyOn(context, "createImageData").mockReturnValue({
+      data: new Uint8ClampedArray(8),
+      height: 1,
+      width: 2,
+    } as ImageData);
+    vi.spyOn(context, "putImageData").mockImplementation(() => undefined);
+
+    const { rerender } = render(
+      <BitmapImageFrameView
+        frame={rawFrame([255, 0, 0, 255, 0, 0, 255, 255])}
+      />,
+    );
+
+    await waitFor(() => expect(drawImage).toHaveBeenCalledTimes(1));
+    const source = drawImage.mock.calls[0]?.[0];
+
+    rerender(
+      <BitmapImageFrameView
+        frame={rawFrame([0, 255, 0, 255, 0, 0, 255, 255])}
+      />,
+    );
+
+    await waitFor(() => expect(drawImage).toHaveBeenCalledTimes(2));
+    expect(drawImage.mock.calls[1]?.[0]).toBe(source);
   });
 });
 
@@ -296,6 +331,16 @@ interface FakeBitmap extends ImageBitmap {
 
 function fakeBitmap(width: number, height: number): FakeBitmap {
   return { close: vi.fn(), height, width } as unknown as FakeBitmap;
+}
+
+function rawFrame(rgba: readonly number[]): RawImageVisualization {
+  return {
+    height: 1,
+    kind: VISUALIZATION_KIND.RAW_IMAGE,
+    rgba: new Uint8Array(rgba),
+    sourceEncoding: "rgb8",
+    width: 2,
+  };
 }
 
 /**
