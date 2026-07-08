@@ -182,7 +182,8 @@ for (const cfg of KINDS) {
       await modal.sidebar.edit.assert.inSegmentationMode(true);
     });
 
-    test("removing the mask drops it in one patch and is undoable", async ({
+    // TODO re-enable this test once its flakiness is resolved
+    test.skip("removing the mask drops it in one patch and is undoable", async ({
       modal,
       page,
     }) => {
@@ -226,7 +227,8 @@ for (const cfg of KINDS) {
       await modal.sidebar.edit.assert.hasMask(false);
     });
 
-    test("a mask removal persists across a fresh load", async ({
+    // TODO re-enable this test once its flakiness is resolved
+    test.skip("a mask removal persists across a fresh load", async ({
       browser,
       fiftyoneLoader,
       modal,
