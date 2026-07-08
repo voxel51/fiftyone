@@ -1,5 +1,12 @@
 name: Develop Back-Merge
 
+# On every push to `main` or a release branch, merge it into the long-lived
+# `merge/<branch>` branch behind the AUTOMATED MERGE PR to `develop`. When a
+# merge conflicts, don't fail silently and let conflicts pile up into a giant
+# end-of-release back-merge: replay the outstanding commits per source PR,
+# open a conflict-resolution PR (targeting the merge branch) assigned to that
+# PR's author, and post it to #release-coordination.
+
 on:
   push:
     branches:
@@ -10,9 +17,22 @@ on:
       ref_name:
         type: string
 
+concurrency:
+  group: develop-back-merge-${{ inputs.ref_name || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   pr:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_RELEASE_COORDINATION_WEBHOOK_URL }}
+      REPO: ${{ github.repository }}
+      REF_NAME: ${{ inputs.ref_name || github.ref_name }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -20,20 +40,146 @@ jobs:
           fetch-depth: 0
           # Push as voxel51-bot, which can bypass the merge/* branch ruleset.
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
-      - run: |
+      - name: Merge into merge branch, itemizing conflicts per source PR
+        run: |
+          set -euo pipefail
           git config user.name 'voxel51-bot'
           git config user.email 'bot@voxel51.com'
-          git checkout merge/${{ inputs.ref_name || github.ref_name }} \
-          || git checkout -b merge/${{ inputs.ref_name || github.ref_name }}
-          git push -u origin merge/${{ inputs.ref_name || github.ref_name }}
-          git checkout develop
-          git pull origin merge/${{ inputs.ref_name || github.ref_name }} --no-rebase
-          git pull origin ${{ inputs.ref_name || github.ref_name }} --no-rebase
-      - uses: peter-evans/create-pull-request@v8
-        with:
-          author: voxel51-bot <bot@voxel51.com>
-          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
-          base: develop
-          body: AUTOMATED MERGE `${{ inputs.ref_name || github.ref_name }}` to `develop`
-          branch: merge/${{ inputs.ref_name || github.ref_name }}
-          title: AUTOMATED MERGE `${{ inputs.ref_name || github.ref_name }}` to `develop`
+
+          MERGE_BRANCH="merge/$REF_NAME"
+          git fetch origin develop "$REF_NAME"
+          git checkout "$MERGE_BRANCH" 2>/dev/null \
+            || git checkout -b "$MERGE_BRANCH" origin/develop
+          # Push early so the branch can serve as the base of conflict PRs.
+          git push -u origin "$MERGE_BRANCH"
+
+          BLOCKED=""
+          SLACK_MISSING=""
+
+          notify() {
+            if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+              echo "::error::SLACK_RELEASE_COORDINATION_WEBHOOK_URL not set; cannot notify #release-coordination."
+              SLACK_MISSING=1
+              return 0
+            fi
+            jq -nc --arg text "$1" '{text: $text}' \
+              | curl -sS -X POST -H 'Content-type: application/json' --data @- "$SLACK_WEBHOOK_URL"
+          }
+
+          # Called with the merge of $1 conflicted in the working tree: open a
+          # resolution PR against the merge branch for the source PR's author
+          # and post it to #release-coordination.
+          report_conflict() {
+            local sha="$1"
+            local files pr_json pr_num author pr_url slug ref branch existing url bullets
+            files="$(git diff --name-only --diff-filter=U)"
+            pr_json="$(gh api "repos/$REPO/commits/$sha/pulls" --jq '.[0] // empty' || true)"
+            pr_num="$(jq -r '.number // empty' <<<"$pr_json")"
+            author="$(jq -r '.user.login // empty' <<<"$pr_json")"
+            pr_url="$(jq -r '.html_url // empty' <<<"$pr_json")"
+            slug="${pr_num:+pr-$pr_num}"; slug="${slug:-${sha:0:12}}"
+            ref="${pr_num:+#$pr_num}"; ref="${ref:-\`${sha:0:12}\`}"
+            branch="conflict/$REF_NAME/$slug"
+            BLOCKED="$slug"
+
+            existing="$(gh pr list --repo "$REPO" --head "$branch" --base "$MERGE_BRANCH" \
+              --state open --json url --jq '.[0].url // empty')"
+            if [ -n "$existing" ]; then
+              # Already reported; don't clobber the author's resolution work.
+              git merge --abort
+              echo "Back-merge still blocked by $ref — resolution PR already open: $existing" \
+                | tee -a "$GITHUB_STEP_SUMMARY"
+              return 0
+            fi
+
+            # Commit the conflicted merge with the markers in place so the
+            # resolution PR has a reviewable diff, then restore the tip.
+            git add -A
+            git commit --no-verify -m "conflict: merging $sha into $MERGE_BRANCH"
+            git push -f origin "HEAD:refs/heads/$branch"
+            git reset --hard HEAD^
+
+            {
+              echo "Back-merging \`$REF_NAME\` into \`develop\` hit conflicts in the changes from $ref."
+              echo
+              echo "This branch is \`$MERGE_BRANCH\` plus the conflicted merge of \`$sha\`, committed **with the conflict markers in place** — the diff shows exactly what needs resolving."
+              echo
+              echo '```'
+              echo "git fetch origin && git checkout $branch"
+              echo "# resolve the markers in the files below, then"
+              echo "git commit -am 'resolve back-merge conflicts from $ref' && git push"
+              echo '```'
+              echo
+              echo "Merging this PR (into \`$MERGE_BRANCH\`) unblocks the automated \`$REF_NAME\` → \`develop\` back-merge — commits behind $ref are queued until then."
+              echo
+              echo "Conflicted files:"
+              printf '%s\n' "$files" | sed 's/^/- `/; s/$/`/'
+            } > /tmp/conflict-body.md
+
+            url="$(gh pr create --repo "$REPO" --base "$MERGE_BRANCH" --head "$branch" \
+              --title "BACK-MERGE CONFLICT: resolve \`$REF_NAME\` conflicts from $ref" \
+              --body-file /tmp/conflict-body.md)"
+            [ -n "$author" ] && gh pr edit "$url" --repo "$REPO" --add-assignee "$author" || true
+
+            {
+              echo "### 🚨 Back-merge of \`$REF_NAME\` blocked by $ref"
+              echo
+              echo "Resolution PR: $url"
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            bullets="$(printf '%s\n' "$files" | sed 's/^/• `/; s/$/`/')"
+            notify "$(printf '%s\n' \
+              ":rotating_light: \`$REPO\`: the \`$REF_NAME\` → \`develop\` back-merge is blocked by conflicts from ${pr_url:+<$pr_url|$ref>}${pr_url:-$ref}${author:+ (\`$author\`)}." \
+              "" \
+              "Please resolve: <$url|$branch>" \
+              "" \
+              "Conflicted files:" \
+              "$bullets")"
+          }
+
+          # Merge $1 into the merge branch. On conflict, replay the outstanding
+          # first-parent commits one at a time so the conflict is attributed to
+          # the source PR that introduced it, then stop — commits behind it
+          # need the resolved state first.
+          merge_from() {
+            local src="$1" c
+            if git merge --no-edit "$src"; then
+              return 0
+            fi
+            git merge --abort 2>/dev/null || true
+            for c in $(git rev-list --reverse --first-parent "HEAD..$src"); do
+              if git merge --no-edit "$c"; then
+                continue
+              fi
+              report_conflict "$c"
+              return 0
+            done
+          }
+
+          # Catch up with develop first — attributing develop-side conflicts to
+          # the develop PR that introduced them — then take the release side.
+          merge_from origin/develop
+          if [ -z "$BLOCKED" ]; then
+            merge_from "origin/$REF_NAME"
+          fi
+
+          git push origin "$MERGE_BRANCH"
+
+          # (Re)open the AUTOMATED MERGE PR when the merge branch has content.
+          if ! git diff --quiet origin/develop HEAD; then
+            number="$(gh pr list --repo "$REPO" --head "$MERGE_BRANCH" --base develop \
+              --state open --json number --jq '.[0].number // empty')"
+            if [ -z "$number" ]; then
+              gh pr create --repo "$REPO" --head "$MERGE_BRANCH" --base develop \
+                --title "AUTOMATED MERGE \`$REF_NAME\` to \`develop\`" \
+                --body "AUTOMATED MERGE \`$REF_NAME\` to \`develop\`"
+            fi
+          fi
+
+          if [ -z "$BLOCKED" ]; then
+            echo "✅ \`$REF_NAME\` merged into \`$MERGE_BRANCH\` with no conflicts." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+          # A missing webhook is a misconfiguration to surface — but only after
+          # the merge automation itself has finished.
+          [ -z "$SLACK_MISSING" ]
