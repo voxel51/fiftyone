@@ -11,7 +11,6 @@ import {
   createMemoryByteRangeCache,
   createCachedByteClient,
   createHttpByteClient,
-  BYTE_SOURCE_READ_PROFILE,
   DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES,
   DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES,
   type ByteRangeReadRequest,

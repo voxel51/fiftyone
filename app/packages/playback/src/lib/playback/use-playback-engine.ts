@@ -46,7 +46,7 @@ import type {
 function frameBoundaryStep(
   time: number,
   step: number,
-  direction: "forward" | "back"
+  direction: "forward" | "back",
 ): number {
   if (!(step > 0)) {
     return direction === "forward" ? time + step : time - step;
@@ -124,7 +124,7 @@ export function usePlaybackEngine({
     const rawLoopEnd = clamp(
       defaultLoopEnd ?? initialDuration,
       0,
-      initialDuration
+      initialDuration,
     );
     // Inverted / collapsed window → fall back to the full timeline so the
     // RAF wrap path isn't trapped in a zero-width loop.
@@ -223,7 +223,7 @@ export function usePlaybackEngine({
         seekDebounceRef.current = setTimeout(fire, SEEK_BAR_DEBOUNCE);
       }
     },
-    [store]
+    [store],
   );
 
   const doCommit = useCallback(
@@ -234,7 +234,7 @@ export function usePlaybackEngine({
         s.onCommit?.(time, store);
       }
     },
-    [store, isActive]
+    [store, isActive],
   );
 
   /**
@@ -280,7 +280,7 @@ export function usePlaybackEngine({
 
       return !isBuffering;
     },
-    [store, isActive]
+    [store, isActive],
   );
 
   /**
@@ -353,7 +353,7 @@ export function usePlaybackEngine({
 
       rafIdRef.current = requestAnimationFrame(tick);
     },
-    [store, fireSeekEvent, doCommit, runBarrier]
+    [store, fireSeekEvent, doCommit, runBarrier],
   );
 
   useEffect(() => {
@@ -440,7 +440,7 @@ export function usePlaybackEngine({
 
       return ready;
     },
-    [isActive, store]
+    [isActive, store],
   );
 
   const clearPendingPlay = useCallback(
@@ -449,7 +449,7 @@ export function usePlaybackEngine({
       store.set(isPlayPendingAtom, false);
       if (clearBuffering) store.set(isBufferingAtom, false);
     },
-    [store]
+    [store],
   );
 
   const startPlayback = useCallback(() => {
@@ -468,7 +468,7 @@ export function usePlaybackEngine({
       store.set(isPlayPendingAtom, true);
       store.set(isBufferingAtom, true);
     },
-    [evaluatePlaybackStart, startPlayback, store]
+    [evaluatePlaybackStart, startPlayback, store],
   );
 
   const tryStartPendingPlayback = useCallback(() => {
@@ -490,11 +490,11 @@ export function usePlaybackEngine({
   useEffect(() => {
     const unsubscribeBufferedRanges = store.sub(
       bufferedRangesAtom,
-      tryStartPendingPlayback
+      tryStartPendingPlayback,
     );
     const unsubscribeStreamRanges = store.sub(
       streamRangesVersionAtom,
-      tryStartPendingPlayback
+      tryStartPendingPlayback,
     );
     return () => {
       unsubscribeBufferedRanges();
@@ -520,7 +520,7 @@ export function usePlaybackEngine({
         settleRafRef.current = requestAnimationFrame(settleTick);
       }
     },
-    [runBarrier, doCommit, settleTick]
+    [runBarrier, doCommit, settleTick],
   );
 
   const actions = useMemo(() => {
@@ -543,7 +543,7 @@ export function usePlaybackEngine({
       const snapped = clamp(
         displayedFrameStart(current, step),
         0,
-        store.get(durationAtom)
+        store.get(durationAtom),
       );
 
       if (Math.abs(snapped - current) < step * 1e-6) {
@@ -635,10 +635,10 @@ export function usePlaybackEngine({
           frameBoundaryStep(
             store.get(playheadAtom),
             store.get(stepIntervalAtom),
-            "back"
+            "back",
           ),
           0,
-          store.get(durationAtom)
+          store.get(durationAtom),
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
@@ -650,10 +650,10 @@ export function usePlaybackEngine({
           frameBoundaryStep(
             store.get(playheadAtom),
             store.get(stepIntervalAtom),
-            "forward"
+            "forward",
           ),
           0,
-          store.get(durationAtom)
+          store.get(durationAtom),
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
@@ -664,7 +664,7 @@ export function usePlaybackEngine({
         const bounds = clampAndValidateBounds(
           start,
           end,
-          store.get(durationAtom)
+          store.get(durationAtom),
         );
         if (!bounds) return;
         store.set(viewStartAtom, bounds.start);
@@ -674,7 +674,7 @@ export function usePlaybackEngine({
         const bounds = clampAndValidateBounds(
           start,
           end,
-          store.get(durationAtom)
+          store.get(durationAtom),
         );
         if (!bounds) return;
         store.set(loopStartAtom, bounds.start);
@@ -707,7 +707,7 @@ export function usePlaybackEngine({
       subscribeStream: (id: string) => {
         subscribersRef.current.set(
           id,
-          (subscribersRef.current.get(id) ?? 0) + 1
+          (subscribersRef.current.get(id) ?? 0) + 1,
         );
         tryStartPendingPlayback();
         // One-shot cleanup. StrictMode's setup→cleanup→setup cycle (and
@@ -754,7 +754,7 @@ export function usePlaybackEngine({
 
   const contextValue = useMemo<PlaybackContextValue>(
     () => ({ duration, stepInterval, ...actions }),
-    [duration, stepInterval, actions]
+    [duration, stepInterval, actions],
   );
 
   return { store, contextValue };
@@ -763,7 +763,7 @@ export function usePlaybackEngine({
 function streamHasStartupCoverage(
   stream: PlaybackStream,
   time: number,
-  duration: number
+  duration: number,
 ): boolean {
   const startupSeconds = stream.startupBufferSeconds ?? 0;
   if (startupSeconds <= 0) return true;
@@ -775,7 +775,7 @@ function streamHasStartupCoverage(
     ranges,
     time,
     Math.min(duration, time + startupSeconds),
-    startupCoverageStartTolerance(stream)
+    startupCoverageStartTolerance(stream),
   );
 }
 
@@ -791,11 +791,11 @@ function startupCoverageStartTolerance(stream: PlaybackStream): number {
 function startupPrefetchEnd(
   stream: PlaybackStream,
   time: number,
-  duration: number
+  duration: number,
 ): number {
   const lookaheadSeconds = Math.max(
     stream.startupBufferSeconds ?? 0,
-    stream.lookaheadSeconds ?? DEFAULT_PREFETCH_LOOKAHEAD_SECONDS
+    stream.lookaheadSeconds ?? DEFAULT_PREFETCH_LOOKAHEAD_SECONDS,
   );
   return Math.min(duration, time + lookaheadSeconds);
 }
@@ -804,7 +804,7 @@ function rangesCoverInterval(
   ranges: ReturnType<NonNullable<PlaybackStream["bufferedRanges"]>>,
   start: number,
   end: number,
-  startTolerance = 0
+  startTolerance = 0,
 ): boolean {
   if (end <= start) return true;
 
