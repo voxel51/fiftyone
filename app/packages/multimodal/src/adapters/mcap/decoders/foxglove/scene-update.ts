@@ -1,5 +1,7 @@
 import {
+  type DecodeContext,
   type DecodedAttributeValue,
+  type DecodedOutput,
   type Decoder,
   type RgbaColor,
   resourceHintsForArrayBufferViews,
@@ -19,9 +21,13 @@ import {
   type SceneUpdateVisualization,
 } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
+import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
 import { decodePose, decodeVector3 } from "./protobuf/geometry";
-import { FOXGLOVE_SCENE_UPDATE_PAYLOAD } from "./protobuf/payloads";
+import {
+  FOXGLOVE_SCENE_UPDATE_CDR_PAYLOADS,
+  FOXGLOVE_SCENE_UPDATE_PAYLOAD,
+} from "./payloads";
 import { asRecord, numberField, optionalRecord } from "./protobuf/records";
 import { timingFromContext, timestampNs } from "./protobuf/timing";
 
@@ -62,44 +68,60 @@ export const foxgloveSceneUpdateDecoder: Decoder = {
       FOXGLOVE_SCENE_UPDATE_PAYLOAD,
       context,
     );
-
-    const rawDeletions = optionalArray(message, "deletions");
-    const rawEntities = optionalArray(message, "entities");
-    const deletions = rawDeletions.map(decodeDeletion);
-    const entities = rawEntities.map(decodeEntity);
-    const primitiveCounts = primitiveCountsForEntities(entities);
-    const modelDataHints = resourceHintsForArrayBufferViews(
-      ...modelDataViewsForEntities(entities),
-    );
-
-    const visualization: SceneUpdateVisualization = {
-      kind: VISUALIZATION_KIND.SCENE_UPDATE,
-      deletions,
-      entities,
-    };
-    const attributes: Record<string, DecodedAttributeValue> = {
-      deletionCount: deletions.length,
-      entityCount: entities.length,
-      ...primitiveCounts,
-      unsupportedPrimitiveCount: 0,
-    };
-
-    return {
-      attributes,
-      resourceHints: {
-        sizeBytes: bytes.byteLength + (modelDataHints.sizeBytes ?? 0),
-        ...(modelDataHints.transferables?.length
-          ? { transferables: modelDataHints.transferables }
-          : {}),
-      },
-      timing: timingFromContext(
-        context,
-        firstSceneUpdateTimestamp(entities, deletions),
-      ),
-      visualization,
-    };
+    return decodeFoxgloveSceneUpdateRecord(message, context, bytes);
   },
 };
+
+/**
+ * Decoders for Foxglove SceneUpdate messages carried over ROS 2 CDR.
+ */
+export const foxgloveSceneUpdateCdrDecoders = rosDecodersForPayloads({
+  id: "foxglove.scene-update.cdr",
+  map: decodeFoxgloveSceneUpdateRecord,
+  payloads: FOXGLOVE_SCENE_UPDATE_CDR_PAYLOADS,
+});
+
+export function decodeFoxgloveSceneUpdateRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+  bytes?: Uint8Array,
+): DecodedOutput {
+  const rawDeletions = optionalArray(message, "deletions");
+  const rawEntities = optionalArray(message, "entities");
+  const deletions = rawDeletions.map(decodeDeletion);
+  const entities = rawEntities.map(decodeEntity);
+  const primitiveCounts = primitiveCountsForEntities(entities);
+  const modelDataHints = resourceHintsForArrayBufferViews(
+    ...modelDataViewsForEntities(entities),
+  );
+
+  const visualization: SceneUpdateVisualization = {
+    kind: VISUALIZATION_KIND.SCENE_UPDATE,
+    deletions,
+    entities,
+  };
+  const attributes: Record<string, DecodedAttributeValue> = {
+    deletionCount: deletions.length,
+    entityCount: entities.length,
+    ...primitiveCounts,
+    unsupportedPrimitiveCount: 0,
+  };
+
+  return {
+    attributes,
+    resourceHints: {
+      sizeBytes: (bytes?.byteLength ?? 0) + (modelDataHints.sizeBytes ?? 0),
+      ...(modelDataHints.transferables?.length
+        ? { transferables: modelDataHints.transferables }
+        : {}),
+    },
+    timing: timingFromContext(
+      context,
+      firstSceneUpdateTimestamp(entities, deletions),
+    ),
+    visualization,
+  };
+}
 
 function decodeEntity(value: unknown): SceneEntityVisualization {
   const record = asRecord(value);
