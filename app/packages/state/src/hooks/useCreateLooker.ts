@@ -12,6 +12,7 @@ import {
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
+import type { ModalSampleExtendedWithImage } from "@fiftyone/looker/src/lookers/imavid/ima-vid-frame-samples";
 import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
@@ -222,6 +223,10 @@ export default <T extends AbstractLooker<BaseState>>(
             : 1;
 
           const thisSampleId = sample._id as string;
+          // the dynamic-group value carried on the poster scopes the frame
+          // stream; guard rather than assert so a missing field can't silently
+          // build the controller from `undefined`
+          const groupValue = (sample._group ?? "") as string;
           // sample-level caches key on the bare sample `_id` — no media-field or
           // grid/modal suffix — so grid hover and the modal resolve the SAME
           // controller and the modal reuses the frames the grid already buffered
@@ -259,7 +264,7 @@ export default <T extends AbstractLooker<BaseState>>(
               firstFrameNumber,
               targetFrameRate: dynamicGroupsTargetFrameRateValue,
               datasetId: snapshot.getLoadable(datasetId).valueMaybe() ?? "",
-              groupValue: sample._group as string,
+              groupValue,
               view,
               filters: snapshot.getLoadable(filters).valueMaybe() ?? {},
               filter: sliceFilter,
@@ -271,12 +276,19 @@ export default <T extends AbstractLooker<BaseState>>(
             // tile's own <img> on load (never re-downloaded), the rest streams
             // on play/hover
             if (!controller.store.frameIndex.has(firstFrameNumber)) {
-              controller.store.samples.set(thisSampleId, {
+              // synthetic poster seed from grid data: type-check the fields we
+              // populate, then assert the full store shape (aspectRatio/typename
+              // are absent here and unused by the frame store's consumers)
+              const posterSeed: Partial<ModalSampleExtendedWithImage> = {
                 id: thisSampleId,
                 sample,
                 urls: rawUrls,
                 image: null,
-              } as never);
+              };
+              controller.store.samples.set(
+                thisSampleId,
+                posterSeed as ModalSampleExtendedWithImage,
+              );
               controller.store.frameIndex.set(firstFrameNumber, thisSampleId);
               controller.store.reverseFrameIndex.set(
                 thisSampleId,
@@ -307,7 +319,7 @@ export default <T extends AbstractLooker<BaseState>>(
             } else if (isModal) {
               getPromise(
                 dynamicGroupsElementCount({
-                  value: sample._group,
+                  value: groupValue,
                   modal: true,
                 }),
               ).then((count) => frameStoreController.setTotalFrameCount(count));

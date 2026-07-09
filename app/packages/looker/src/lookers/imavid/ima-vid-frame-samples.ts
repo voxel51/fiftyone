@@ -20,7 +20,7 @@ const BASE64_BLACK_IMAGE =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAABNJREFUCB1jZGBg+A/EDEwgAgQADigBA//q6GsAAAAASUVORK5CYII=";
 
 export type ModalSampleExtendedWithImage = ModalSample & {
-  image: HTMLImageElement;
+  image: HTMLImageElement | null;
 };
 
 // every live frame-samples instance, so an eviction from the shared store below

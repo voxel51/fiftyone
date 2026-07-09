@@ -180,7 +180,7 @@ export class ImaVidFramesController {
         return;
       }
 
-      this.updateImaVidState({ buffering: true });
+      this.updateImaVidState?.({ buffering: true });
 
       const work: Promise<unknown>[] = toPost.map((range) => {
         this.requestedBufferManager.addNewRange(range);
@@ -415,10 +415,12 @@ export class ImaVidFramesController {
   /** Full teardown (view/filter/dataset change): buffers are re-keyed, drop everything. */
   public destroy() {
     this.pauseFetch();
-    // cancel in-flight image downloads (settles their promises); the signal is
-    // re-armed, so a revived controller's future fetches are unaffected
+    // clear indexes and unregister from the shared eviction fanout (also aborts
+    // in-flight image loads, settling their promises) — otherwise this dead
+    // instance lingers in frameSampleInstances and grows the eviction cost
+    this.frameSamples.reset();
+    // re-arm the abort signal so a revived controller's future fetches still work
     this.frameSamples.abortInFlightImages();
-    this.storeBufferManager.reset();
     this.fetchBufferManager.reset();
     this.requestedBufferManager.reset();
   }

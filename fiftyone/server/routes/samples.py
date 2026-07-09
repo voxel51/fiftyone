@@ -68,7 +68,12 @@ def _projection(
     if exclude:
         # exclusion never drops the identifiers the response is built from
         keep = set(_ALWAYS) | set(extra or [])
-        project = {path: False for path in exclude if path not in keep}
+        paths = set(exclude) - keep
+        project = {
+            path: False
+            for path in paths
+            if not any(parent in paths for parent in _ancestors(path))
+        }
         # an empty $project is a Mongo error, not a no-op
         if not project:
             return None

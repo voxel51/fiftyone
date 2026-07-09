@@ -208,16 +208,19 @@ const ImaVidFrameRate = () => {
         padding: "0.25rem 0.5rem",
       }}
     >
-      <span style={{ fontSize: "0.9rem" }}>Playback frame rate (fps)</span>
+      <label htmlFor="imavid-fps-input" style={{ fontSize: "0.9rem" }}>
+        Playback frame rate (fps)
+      </label>
       <input
+        id="imavid-fps-input"
         type="number"
         min={1}
         max={60}
         value={fps}
         onChange={(e) => {
           const value = Number(e.target.value);
-          if (value >= 1 && value <= 60) {
-            setFps(value);
+          if (Number.isFinite(value)) {
+            setFps(Math.min(60, Math.max(1, value)));
           }
         }}
         style={{

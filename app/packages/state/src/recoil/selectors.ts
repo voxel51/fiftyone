@@ -183,8 +183,9 @@ const dynamicGroupsFrameRateStore = atomFamily<number | null, string>({
       }
       const k = `fiftyone-imavid-fps-${storageKey}`;
       const saved = localStorage.getItem(k);
-      if (saved != null && saved !== "") {
-        setSelf(Number(saved));
+      const parsed = saved != null ? Number(saved) : NaN;
+      if (Number.isFinite(parsed)) {
+        setSelf(parsed);
       }
       onSet((newValue) => {
         if (newValue == null) {

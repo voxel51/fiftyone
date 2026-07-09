@@ -122,11 +122,29 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     return {
       load: () => {
         // adopt the already-loaded poster into the frame store: frame 1 must be
-        // drawable without re-downloading the tile's own image
+        // drawable without re-downloading. Snapshot into a private Image rather
+        // than storing `this.element` — the grid rebinds that element to other
+        // samples on tile recycle, which would swap this poster to the wrong one.
         this.update(({ config: { sampleId } }) => {
-          const seeded = this.framesController?.store?.samples?.get(sampleId);
-          if (seeded && !seeded.image) {
-            seeded.image = this.element;
+          const store = this.framesController?.store;
+          const seeded = store?.samples?.get(sampleId);
+          if (store && seeded && !seeded.image) {
+            const poster = new Image();
+            poster.addEventListener(
+              "load",
+              () => {
+                const current = store.samples.get(sampleId);
+                if (!current || current.image) {
+                  return;
+                }
+                current.image = poster;
+                // re-set so the LRU byte budget counts the poster
+                store.samples.set(sampleId, current);
+              },
+              { once: true },
+            );
+            // served from cache (the element just loaded this url) — no network
+            poster.src = this.element.currentSrc || this.element.src;
           }
           return {};
         });

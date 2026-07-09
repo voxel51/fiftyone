@@ -160,6 +160,14 @@ export const ImaVidLookerReact = React.memo(
       );
     }, [ref]);
 
+    const mountedRef = useRef(true);
+    useEffect(() => {
+      mountedRef.current = true;
+      return () => {
+        mountedRef.current = false;
+      };
+    }, []);
+
     const loadRange = React.useCallback(
       async (range: Readonly<BufferRange>) => {
         const storeBufferManager =
@@ -196,6 +204,14 @@ export const ImaVidLookerReact = React.memo(
             : unprocessedBufferRange[1],
         ];
         while (!controller.storeBufferManager.containsRange(target)) {
+          // bail if the modal unmounted or the looker was reset/swapped out —
+          // otherwise this polls a dead controller forever
+          if (
+            !mountedRef.current ||
+            imaVidLookerRef.current?.frameStoreController !== controller
+          ) {
+            return;
+          }
           // self-heal a stranded queue while waiting
           controller.resumeFetch();
           await new Promise((resolve) => setTimeout(resolve, 250));
@@ -233,7 +249,11 @@ export const ImaVidLookerReact = React.memo(
         totalFrames: totalFrameCount ?? 1,
         streaming,
       } as FoTimelineConfig;
-    }, [totalFrameCount, (looker as ImaVidLooker).options.loop]);
+    }, [
+      totalFrameCount,
+      dynamicGroupsTargetFrameRate,
+      (looker as ImaVidLooker).options.loop,
+    ]);
 
     const readyWhen = useCallback(async () => {
       // resolve immediately — controls must not wait on the group's length.
