@@ -187,10 +187,11 @@ export interface ColorResponse {
 }
 
 /**
- * The color-by column and its legend meta in one response: the header
- * determines the column's extent, and every byte after it is a UTF-8
- * JSON tail. One request, one server-side values aggregation — the
- * split values/meta endpoints this replaces each paid that aggregation.
+ * The color-by column and its legend meta in one response. The 16-byte
+ * header determines the column's extent (`n` values of the dtype's
+ * width), and every byte after the column is a UTF-8 JSON tail — no
+ * delimiter is needed. One request drives one server-side values
+ * aggregation, which produces both the column and the meta.
  */
 export async function fetchColor(
   datasetName: string,

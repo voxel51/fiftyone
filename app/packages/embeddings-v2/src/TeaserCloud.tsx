@@ -1,17 +1,15 @@
 /**
- * Decorative spinning point cloud for the upsell aside — a vanilla-three
- * port of the lovable prototype's mini preview (same clusters, palette,
- * round sprites, and camera). Deliberately NOT the renderer: no cameras
- * adapters, no picking, no data. three.js is already this package's
- * dependency and loads lazily here, so the runs page's initial chunk
- * stays WebGL-free; without a GL context (tests, headless) the tinted
- * well simply stays empty.
+ * Decorative spinning point cloud for the upsell banner: a fixed
+ * synthetic cluster scene with no controls, picking, or data
+ * dependencies. three.js is imported dynamically, so rendering the
+ * runs page loads no WebGL code up front; if a WebGL context is
+ * unavailable (tests, headless browsers), the tinted well renders
+ * empty.
  */
 import { useEffect, useRef } from "react";
 import "./panel.css";
 
-// Data-viz palette + layout lifted from the lovable mock (decorative,
-// palette-exempt like chart classes)
+// Scatter-class colors and cluster layout for the synthetic scene
 const PALETTE = [
   "#FF6D04",
   "#86B5F6",
@@ -65,8 +63,8 @@ export function TeaserCloud() {
       camera.position.set(14, 12, 16);
       camera.lookAt(0, 0, 0);
 
-      // ~420 points in 6 clusters; ~12% get a "wrong" class color for
-      // the speckle real predictions have
+      // ~420 points across 6 clusters; ~12% receive another cluster's
+      // color, mimicking the class overlap of real prediction data
       const rand = makeRand(987654321);
       const positions: number[] = [];
       const colorChannels: number[] = [];

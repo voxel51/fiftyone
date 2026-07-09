@@ -18,7 +18,7 @@ const hit = (index: number): HoverHit => ({
 const info = (index: number): SampleInfo => ({
   id: `id${index}`,
   sampleId: `sample${index}`,
-  filepath: null,
+  filepath: `/data/nested/img${index}.jpg`,
   media: `media${index}.jpg`,
   value: `value${index}`,
 });
@@ -29,14 +29,20 @@ describe("useHoverInfo", () => {
   it("resolves sample info into hover content", async () => {
     vi.mocked(fetchSampleInfo).mockResolvedValue(info(1));
     const { result } = renderHook(() =>
-      useHoverInfo("ds", "viz", "label", mediaUrl),
+      useHoverInfo("ds", "viz", "label", mediaUrl, () => "#abcdef"),
     );
 
     act(() => result.current.handleHover(hit(1)));
 
     await waitFor(() => expect(result.current.hover).not.toBeNull());
     expect(result.current.hover?.src).toBe("url:media1.jpg");
-    expect(result.current.hover?.lines).toEqual(["value1", "sample1"]);
+    // Value pairs with the point's rendered color; the filename is the
+    // basename; ids never surface
+    expect(result.current.hover?.value).toEqual({
+      label: "value1",
+      swatch: "#abcdef",
+    });
+    expect(result.current.hover?.filename).toBe("img1.jpg");
   });
 
   it("serves repeat hovers from the cache", async () => {

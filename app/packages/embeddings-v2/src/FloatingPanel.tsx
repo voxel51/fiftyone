@@ -1,11 +1,10 @@
 /**
- * Generic floating, draggable, collapsible panel — the shell of the
- * lovable legend, and an upstream candidate for VOODO (Toolbar's drag
- * handle is a fixed strip with double-click collapse; this puts the
- * grip inline in a header row with an explicit chevron and a footer
- * slot). Anchors top-right until first dragged, then follows the
- * pointer, clamped inside its positioned parent by useDraggable (the
- * VOODO util, vendored until the library exports it).
+ * Generic floating, draggable, collapsible panel: a header row with a
+ * drag grip, title, and collapse chevron; a body; and an optional
+ * footer under a hairline. Anchored top-right until first dragged,
+ * then positioned in pixels, clamped inside the nearest positioned
+ * ancestor (via useDraggable, vendored from @voxel51/voodo). Kept
+ * intentionally generic so it can graduate to the design system.
  */
 import {
   BackgroundColor,
@@ -29,6 +28,7 @@ import { useDraggable } from "./useDraggable";
 
 const TOKEN_VARS = {
   "--emb-card-bg": `var(${getColorCssVar(BackgroundColor.Card2)})`,
+  "--emb-card-elevated": `var(${getColorCssVar(BackgroundColor.CardElevated)})`,
   "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
   "--emb-icon-muted": `var(${getColorCssVar(IconColor.Muted)})`,
 } as CSSProperties;

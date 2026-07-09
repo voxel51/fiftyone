@@ -1,6 +1,7 @@
 /**
- * Maps v2 color columns to the renderer's flat rgb triplets. Temporary
- * palettes — the real panel maps classes through the App's colorScheme.
+ * Maps v2 color columns to the renderer's flat rgb triplets. The
+ * palettes are placeholders pending integration with the App's
+ * configurable color scheme.
  */
 import { PALETTE } from "./renderer";
 import type { ColorValues } from "./protocol";
@@ -27,6 +28,20 @@ const PALETTE_RGB = PALETTE.map(hexToRgb);
  */
 export const categoryHex = (index: number): string =>
   PALETTE[index % PALETTE.length];
+
+/** Wire-order indices of every point in a categorical class (legend
+ * click-to-highlight) */
+export function classIndices(
+  column: ColorValues,
+  classIndex: number,
+): number[] {
+  if (column.style !== "categorical") return [];
+  const indices: number[] = [];
+  for (let i = 0; i < column.indices.length; i++) {
+    if (column.indices[i] === classIndex) indices.push(i);
+  }
+  return indices;
+}
 
 /** Expands a color column into Float32Array(n*3) rgb for the renderer */
 export function buildColors(

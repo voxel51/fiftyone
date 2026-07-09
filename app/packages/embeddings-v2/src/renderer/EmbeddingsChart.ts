@@ -73,9 +73,7 @@ export interface EmbeddingsChartOptions {
  * The embeddings renderer: one gl.POINTS draw call of typed arrays in
  * data space, custom GLSL for styling and density, and a pluggable
  * camera adapter (built-in planar by default). All vanilla three.js and
- * DOM, no React — any host can drive it directly. (The snapshot harness
- * this was developed against lives in the prototype repo, which remains
- * the visual test bed.)
+ * DOM, no React — any host can drive it directly.
  *
  * Host API: setData / setColors / setVisible / setSelected /
  * setRenderSettings. Selection is one mechanism: the lasso and the host

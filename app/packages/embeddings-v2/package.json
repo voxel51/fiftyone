@@ -16,10 +16,13 @@
         "test": "vitest"
     },
     "dependencies": {
+        "@fiftyone/operators": "*",
         "@fiftyone/plugins": "*",
         "@fiftyone/spaces": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
+        "@mui/icons-material": "*",
+        "@mui/material": "*",
         "@voxel51/voodo": "^0.0.35",
         "three": "^0.182.0"
     },

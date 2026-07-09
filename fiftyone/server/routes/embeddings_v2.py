@@ -195,10 +195,10 @@ class EmbeddingsV2Color(HTTPEndpoint):
         ``min``/``max`` in the tail.
 
         One response means the values aggregation — the expensive step —
-        runs once per (run, field), where the split values/meta endpoints
-        this replaces each ran it. Bodies are cached in a small LRU keyed
-        by the run's identity (dataset, brain key, run timestamp, field),
-        so re-selecting a recent field skips the aggregation entirely.
+        runs once per (run, field). Bodies are cached in a small LRU
+        keyed by the run's identity (dataset, brain key, run timestamp,
+        field), so re-selecting a recent field skips the aggregation
+        entirely.
         """
         return await run_sync_task(self._post_sync, data)
 

@@ -1,15 +1,16 @@
 /**
- * The plot view for one visualization run: fetch its columns over the
- * v2 protocol, render with the in-package renderer. Chrome follows the
- * lovable viewer: back + title on the left; color-by, the
- * Explore/Select mode toggle, and reset-view on the right; a mode hint
- * or "N selected" chip overlays the scene's top-left corner.
+ * The plot view for one visualization run: fetches the run's columns
+ * over the v2 protocol and renders them with the in-package renderer.
+ * Header: back, title, color-by, the explore/select mode toggle, and
+ * camera reset. Overlays: a mode hint or selection-count chip
+ * (top-left), the color legend (top-right), and a load-progress
+ * counter (bottom-left).
  *
  * The component is hook composition: each concern lives in its own
  * use* module beside this file, provider-free so it renderHook-tests
  * without Recoil. Only this component touches App state — atom values
- * in, setters out — and it owns the precedence between layers (a grid
- * selection dims over filter matches).
+ * in, setters out — and it owns the precedence between selection
+ * layers (grid selection, then class highlight, then filter dimming).
  */
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
@@ -28,9 +29,21 @@ import {
   Tooltip,
   Variant,
 } from "@voxel51/voodo";
-import { useMemo, useRef, useState, type CSSProperties } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
 import { ColorLegend } from "./ColorLegend";
+import { categoryHex, classIndices, MISSING_CATEGORY } from "./colors";
 import HoverCard from "./HoverCard";
 import "./panel.css";
 import type { VisualizationRun } from "./protocol";
@@ -80,7 +93,7 @@ function ModeSegment({
         color={active ? TextColor.Fg : TextColor.Secondary}
       />
       <Text
-        variant={TextVariant.Sm}
+        variant={TextVariant.Md}
         color={active ? TextColor.Fg : TextColor.Secondary}
       >
         {label}
@@ -126,6 +139,7 @@ export default function PlotView({
   const {
     choices,
     colors,
+    values: colorValues,
     meta: colorMeta,
     error: colorError,
   } = useColorColumn(datasetName, brainKey, run, colorField);
@@ -141,11 +155,20 @@ export default function PlotView({
     filters,
     loaded?.points.length ?? 0,
   );
+  // The hover card's swatch mirrors the point's rendered color, which
+  // buildColors derives from the same class column
+  const pointSwatch = (index: number): string | null => {
+    if (colorValues?.style !== "categorical") return null;
+    const classIndex = colorValues.indices[index];
+    return classIndex === MISSING_CATEGORY ? null : categoryHex(classIndex);
+  };
+
   const { hover, handleHover } = useHoverInfo(
     datasetName,
     brainKey,
     colorField,
     fos.getSampleSrc,
+    pointSwatch,
   );
   const {
     selectedIndices,
@@ -169,6 +192,47 @@ export default function PlotView({
 
   const [mode, setMode] = useState<InteractionMode>("explore");
 
+  // Legend click-to-highlight: a class index, resolved to wire-order
+  // indices client-side (the raw column is already here). Cleared when
+  // the field or run changes — the class indices mean nothing there.
+  const [highlightClass, setHighlightClass] = useState<number | null>(null);
+  useEffect(() => {
+    setHighlightClass(null);
+  }, [brainKey, colorField]);
+
+  const highlightIndices = useMemo(
+    () =>
+      highlightClass !== null && colorValues
+        ? classIndices(colorValues, highlightClass)
+        : null,
+    [colorValues, highlightClass],
+  );
+
+  // Shift-click filters the grid through the App's sidebar filter for
+  // the field — the masks endpoint consumes the same fos.filters, so
+  // the plot dims to match. String classes only: the sidebar's numeric
+  // filters are range-shaped, not value lists
+  const [fieldFilter, setFieldFilter] = useRecoilState(
+    fos.filter({ path: colorField ?? "", modal: false }),
+  );
+  const resetFieldFilter = useResetRecoilState(
+    fos.filter({ path: colorField ?? "", modal: false }),
+  );
+  const handleClassClick = (index: number, shiftKey: boolean) => {
+    const label = colorMeta?.classes?.[index]?.label;
+    if (shiftKey && colorField && typeof label === "string") {
+      const values = (fieldFilter as { values?: unknown[] } | null)?.values;
+      const active = values?.length === 1 && values[0] === label;
+      if (active) {
+        resetFieldFilter();
+      } else {
+        setFieldFilter({ values: [label], exclude: false });
+      }
+      return;
+    }
+    setHighlightClass((current) => (current === index ? null : index));
+  };
+
   const error = loadError ?? colorError ?? masksError ?? selectionError;
 
   const colorOptions = useMemo(
@@ -183,8 +247,8 @@ export default function PlotView({
     [choices, run.pointsField],
   );
 
-  // A completed lasso hands gestures back to the camera (lovable
-  // behavior: select, then immediately explore the result)
+  // A completed lasso returns gestures to the camera, so the
+  // selection can be explored immediately without switching modes
   const handleLasso = (
     indices: number[],
     polygon?: Array<[number, number]> | null,
@@ -209,16 +273,16 @@ export default function PlotView({
           onClick={onBack}
         />
         <div className="emb-plot-title">
-          <Text variant={TextVariant.Sm} color={TextColor.Fg}>
+          <Text variant={TextVariant.Md} color={TextColor.Fg}>
             {run.brainKey}
           </Text>
-          <Text variant={TextVariant.Caption} color={TextColor.Tertiary}>
+          <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
             {subtitle}
           </Text>
         </div>
         <div className="emb-plot-controls">
           <Text
-            variant={TextVariant.Sm}
+            variant={TextVariant.Md}
             color={TextColor.Secondary}
             className="emb-nowrap"
           >
@@ -267,7 +331,7 @@ export default function PlotView({
       </div>
       {error && (
         <div className="emb-plot-error">
-          <Text variant={TextVariant.Caption} color={TextColor.Destructive}>
+          <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
             {error}
           </Text>
         </div>
@@ -279,7 +343,7 @@ export default function PlotView({
             points={loaded.points}
             colors={colors}
             visible={visibleMask}
-            selected={selectedIndices ?? matchIndices}
+            selected={selectedIndices ?? highlightIndices ?? matchIndices}
             tooltip={false}
             mode={mode}
             onSelection={handleLasso}
@@ -295,7 +359,12 @@ export default function PlotView({
           />
         )}
         {colorField && colorMeta && (
-          <ColorLegend field={colorField} meta={colorMeta} />
+          <ColorLegend
+            field={colorField}
+            meta={colorMeta}
+            activeClass={highlightClass}
+            onClassClick={handleClassClick}
+          />
         )}
         {chipCount ? (
           <div className="emb-plot-overlay emb-plot-chip">
@@ -304,7 +373,7 @@ export default function PlotView({
               size={Size.Xs}
               color={TextColor.Success}
             />
-            <Text variant={TextVariant.Caption} color={TextColor.Secondary}>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
               <strong>{chipCount.toLocaleString()}</strong> selected
             </Text>
             <Button
@@ -317,7 +386,7 @@ export default function PlotView({
           </div>
         ) : (
           <div className="emb-plot-overlay emb-plot-hint">
-            <Text variant={TextVariant.Caption} color={TextColor.Secondary}>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
               {mode === "explore"
                 ? "Drag to pan · scroll to zoom"
                 : "Drag to lasso · click points to toggle"}
@@ -326,7 +395,7 @@ export default function PlotView({
         )}
         {loaded && (
           <div className="emb-plot-overlay emb-plot-counter">
-            <Text variant={TextVariant.Caption} color={TextColor.Tertiary}>
+            <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
               {loaded.points.length.toLocaleString()}
               {loaded.points.length < loaded.total &&
                 ` / ${loaded.total.toLocaleString()}`}{" "}

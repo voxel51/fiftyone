@@ -2975,6 +2975,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/embeddings-v2@workspace:packages/embeddings-v2"
   dependencies:
+    "@fiftyone/operators": "npm:*"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/spaces": "npm:*"
     "@fiftyone/state": "npm:*"

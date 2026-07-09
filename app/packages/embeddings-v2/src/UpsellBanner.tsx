@@ -1,7 +1,6 @@
 /**
- * The OSS upsell for Enterprise 3D exploration, shown at the top of the
- * runs page. The aside is a decorative spinning point cloud — see
- * TeaserCloud for why that isn't "shipping a 3D renderer".
+ * Banner promoting FiftyOne Enterprise's 3D embeddings exploration,
+ * shown at the top of the runs page with a decorative animated aside.
  */
 import { Button, IconName, Size, Variant } from "@voxel51/voodo";
 import "./panel.css";

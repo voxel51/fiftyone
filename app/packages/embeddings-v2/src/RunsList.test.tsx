@@ -22,9 +22,8 @@ const run = (
 afterEach(cleanup);
 
 describe("RunsList", () => {
-  // Product rule (deliberately diverges from the lovable prototype,
-  // which filters them): 3D runs stay listed in OSS — users view them
-  // in 2D. This is the regression guard for that decision.
+  // Runs with 3D points are listed and open in the 2D plot; guards
+  // against filtering them out of the list
   it("lists 3D runs and opens runs on click", () => {
     const onOpen = vi.fn();
     render(
@@ -32,6 +31,7 @@ describe("RunsList", () => {
         runs={[run("clip_umap"), run("viz3d", { dims: 3 })]}
         error={null}
         onOpen={onOpen}
+        onDelete={vi.fn()}
       />,
     );
 
@@ -43,7 +43,12 @@ describe("RunsList", () => {
 
   it("shows the upsell until dismissed", () => {
     render(
-      <RunsList runs={[run("clip_umap")]} error={null} onOpen={vi.fn()} />,
+      <RunsList
+        runs={[run("clip_umap")]}
+        error={null}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
     );
 
     expect(
@@ -54,5 +59,33 @@ describe("RunsList", () => {
     expect(
       screen.queryByText("Explore clusters in three dimensions"),
     ).toBeNull();
+  });
+
+  it("deletes only through the armed confirm step", () => {
+    const onDelete = vi.fn();
+    const onOpen = vi.fn();
+    render(
+      <RunsList
+        runs={[run("clip_umap")]}
+        error={null}
+        onOpen={onOpen}
+        onDelete={onDelete}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Run actions"));
+    fireEvent.click(screen.getByText("Delete"));
+    expect(onDelete).not.toHaveBeenCalled();
+
+    // Cancel disarms
+    fireEvent.click(screen.getByText("Cancel"));
+    expect(screen.queryByText("Delete run")).toBeNull();
+
+    // Arm again and confirm; the card click must not fire either way
+    fireEvent.click(screen.getByLabelText("Run actions"));
+    fireEvent.click(screen.getByText("Delete"));
+    fireEvent.click(screen.getByText("Delete run"));
+    expect(onDelete).toHaveBeenCalledWith("clip_umap");
+    expect(onOpen).not.toHaveBeenCalled();
   });
 });

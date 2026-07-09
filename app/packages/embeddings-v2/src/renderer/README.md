@@ -65,11 +65,8 @@ yarn check          # check:lint + check:deps + check:types
 yarn test           # vitest over the pure modules
 ```
 
-## Provenance
+## Testing
 
-Ported from the stress-tested prototype at `vis-examples/embeddings-demo`
-(`src/embeddings`), which remains the experimentation test bed for new shaders
-and rendering techniques. Additions over the prototype: the per-point `visible`
-mask, click-to-pick, the pluggable camera seam, and the lazy three.js boundary.
-The Playwright harness was intentionally not ported; the pure modules are
-covered by vitest here.
+The pure modules (`math.ts`, `columns.ts`, the interaction helpers) are covered
+by vitest; `EmbeddingsView`'s prop plumbing is tested against a mocked chart.
+The chart itself requires a real WebGL context and is exercised in the App.

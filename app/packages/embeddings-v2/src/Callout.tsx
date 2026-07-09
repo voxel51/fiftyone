@@ -1,9 +1,9 @@
 /**
- * Generic inline callout/banner — VOODO has no banner-family component
- * (Toast is transient/anchored), so this is a deliberate upstream
- * candidate. Prop API follows VOODO conventions (IconName, enum-driven
- * tokens); styling resolves token enums to CSS vars, to be swapped for
- * Tailwind utilities if admitted to the library.
+ * Generic inline callout: icon + title + description, an optional
+ * actions row, and an optional leading aside (media, animation).
+ * Colors resolve through design-system token enums via CSS custom
+ * properties (see panel.css). Kept intentionally generic so it can
+ * graduate to @voxel51/voodo.
  */
 import {
   BackgroundColor,
@@ -55,12 +55,12 @@ export function Callout({
           {icon && (
             <Icon name={icon} size={Size.Sm} color={BrandColor.Primary} />
           )}
-          <Text variant={TextVariant.Sm} color={TextColor.Fg}>
+          <Text variant={TextVariant.Md} color={TextColor.Fg}>
             {title}
           </Text>
         </div>
         {description && (
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+          <Text variant={TextVariant.Md} color={TextColor.Secondary}>
             {description}
           </Text>
         )}

@@ -4,15 +4,18 @@ import {
   fetchColor,
   fetchColorByChoices,
   type ColorMeta,
+  type ColorValues,
   type VisualizationRun,
 } from "./protocol";
 
 /**
  * Color-by support: the run-dependent field choices, the built rgb
- * column for the selected field, and the field's meta (classes/counts
- * for the legend). `colors`/`meta` are null while no field is selected
- * or a fetch is in flight — both clear immediately on any input change
- * so a stale column never colors another run's points.
+ * column for the selected field, the raw value column (`values` — the
+ * legend's click-to-highlight scans it), and the field's meta
+ * (classes/counts for the legend). All of `colors`/`values`/`meta` are
+ * null while no field is selected or a fetch is in flight — they clear
+ * immediately on any input change so a stale column never colors
+ * another run's points.
  */
 export function useColorColumn(
   datasetName: string | null,
@@ -22,11 +25,13 @@ export function useColorColumn(
 ): {
   choices: string[];
   colors: Float32Array | null;
+  values: ColorValues | null;
   meta: ColorMeta | null;
   error: string | null;
 } {
   const [choices, setChoices] = useState<string[]>([]);
   const [colors, setColors] = useState<Float32Array | null>(null);
+  const [values, setValues] = useState<ColorValues | null>(null);
   const [meta, setMeta] = useState<ColorMeta | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,18 +49,20 @@ export function useColorColumn(
 
   useEffect(() => {
     setColors(null);
+    setValues(null);
     setMeta(null);
     if (!datasetName || !brainKey || !colorField) return undefined;
     let stale = false;
     fetchColor(datasetName, brainKey, colorField)
-      .then(({ values, meta: fieldMeta }) => {
+      .then(({ values: column, meta: fieldMeta }) => {
         if (stale) return;
         setColors(
-          buildColors(values, {
+          buildColors(column, {
             min: fieldMeta.min ?? null,
             max: fieldMeta.max ?? null,
           }),
         );
+        setValues(column);
         setMeta(fieldMeta);
       })
       .catch((e) => !stale && setError(String(e)));
@@ -64,5 +71,5 @@ export function useColorColumn(
     };
   }, [datasetName, brainKey, colorField]);
 
-  return { choices, colors, meta, error };
+  return { choices, colors, values, meta, error };
 }

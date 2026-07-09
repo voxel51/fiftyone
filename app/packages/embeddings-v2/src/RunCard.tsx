@@ -1,9 +1,10 @@
 /**
- * Generic run/entity card — an upstream candidate for VOODO (RichCard
- * has no status slot, no metadata row, and no hover state, so this
- * fills that gap). Prop API follows VOODO conventions; styling resolves
- * token enums to CSS vars, to be swapped for Tailwind utilities if
- * admitted to the library.
+ * Generic card for a run-like entity: icon well, title, small keyed
+ * badge, status pill, dot-separated metadata line, and a trailing
+ * actions cluster whose clicks do not activate the card. Colors
+ * resolve through design-system token enums via CSS custom properties
+ * (see panel.css). Kept intentionally generic so it can graduate to
+ * @voxel51/voodo.
  */
 import {
   BackgroundColor,
@@ -89,7 +90,7 @@ export function RunCard({
             </div>
           )}
           <span className="emb-run-card-title">
-            <Text variant={TextVariant.Md} color={TextColor.Fg}>
+            <Text variant={TextVariant.Lg} color={TextColor.Fg}>
               {title}
             </Text>
           </span>
@@ -124,7 +125,7 @@ export function RunCard({
           {meta.map((item, index) => (
             <Fragment key={index}>
               {index > 0 && <span className="emb-run-card-meta-dot" />}
-              <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
+              <Text variant={TextVariant.Md} color={TextColor.Tertiary}>
                 {item}
               </Text>
             </Fragment>

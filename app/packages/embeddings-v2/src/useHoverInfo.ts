@@ -7,12 +7,15 @@ import type { HoverHit } from "./renderer";
  * Hover -> lazy sample info, cached per run/field/index. `mediaUrl`
  * maps a server media path to a browser URL (the App's getSampleSrc)
  * — injected because URL resolution is deployment-specific.
+ * `pointSwatch` resolves a wire-order index to the point's rendered
+ * color, so the card's value line matches the plot exactly.
  */
 export function useHoverInfo(
   datasetName: string | null,
   brainKey: string | null,
   colorField: string | null,
   mediaUrl: (media: string) => string,
+  pointSwatch?: (index: number) => string | null,
 ): {
   hover: HoverContent | null;
   handleHover: (hit: HoverHit | null) => void;
@@ -37,15 +40,24 @@ export function useHoverInfo(
     const apply = (info: SampleInfo) => {
       // The pointer may have moved on while the info resolved
       if (hoverIndexRef.current !== hit.index) return;
-      const lines = [];
+
+      let value: HoverContent["value"] = null;
       if (info.value !== null && info.value !== undefined) {
-        lines.push(String(info.value));
+        const raw = info.value;
+        const label =
+          typeof raw === "number"
+            ? String(Number(raw.toFixed(4)))
+            : String(raw);
+        value = { label, swatch: pointSwatch?.(hit.index) ?? null };
       }
-      lines.push(info.sampleId);
+
       setHover({
         hit,
         src: info.media ? mediaUrl(info.media) : null,
-        lines,
+        value,
+        filename: info.filepath
+          ? (info.filepath.split(/[\\/]/).pop() ?? null)
+          : null,
       });
     };
 
