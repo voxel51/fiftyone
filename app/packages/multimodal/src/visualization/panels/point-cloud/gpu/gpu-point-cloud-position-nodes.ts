@@ -1,10 +1,12 @@
 import * as THREE from "three";
 import * as TSL from "three/tsl";
 
-import { POINT_COMPONENT_COUNT } from "./point-cloud-colors";
+import { POINT_COMPONENT_COUNT } from "../point-cloud-colors";
 
+/** Storage layout used by a point-cloud position buffer. */
 export type GpuPointCloudPositionLayout = "flat" | "vec3";
 
+/** TSL node shape used by point-cloud position and sampling helpers. */
 export interface GpuPointCloudNode extends TSL.Node {
   readonly x: GpuPointCloudNode;
   readonly y: GpuPointCloudNode;

@@ -77,7 +77,7 @@ vi.mock("../base-3d-scene", () => ({
   ),
 }));
 
-vi.mock("../webgpu-canvas", () => ({
+vi.mock("../gpu/webgpu-canvas", () => ({
   WebGpuCanvas: ({ children }: { readonly children?: ReactNode }) => (
     <div>{children}</div>
   ),

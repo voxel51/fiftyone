@@ -28,6 +28,7 @@ export interface McapProjectionRotation {
   readonly z: number;
 }
 
+/** Sensor-to-camera translation in metres. */
 export interface McapProjectionTranslation {
   readonly x: number;
   readonly y: number;

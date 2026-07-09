@@ -40,12 +40,14 @@ interface WebGpuViewStageContextValue {
 const WebGpuViewStageContext =
   createContext<WebGpuViewStageContextValue | null>(null);
 
+/** Public readiness and invalidation state for the shared WebGPU stage. */
 export interface WebGpuViewStageState {
   readonly error: string | null;
   readonly invalidate: () => void;
   readonly ready: boolean;
 }
 
+/** Props for the shared DOM-tracked WebGPU stage. */
 export interface WebGpuViewStageProps {
   readonly children: ReactNode;
   readonly className?: string;
@@ -225,6 +227,7 @@ export function updateWebGpuViewNodes(
   return next;
 }
 
+/** Props for one DOM view rendered through the shared WebGPU stage. */
 export interface WebGpuViewProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   "children"
@@ -460,6 +463,7 @@ interface SharedStageRenderer {
   setViewport(x: number, y: number, width: number, height: number): void;
 }
 
+/** Logical viewport and scissor bounds for one tracked WebGPU view. */
 export interface WebGpuViewBounds {
   readonly height: number;
   readonly scissorHeight: number;

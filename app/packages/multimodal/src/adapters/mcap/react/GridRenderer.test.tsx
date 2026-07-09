@@ -11,12 +11,12 @@ import {
   WEBGPU_DEVICE_BUDGET,
   registerWebGpuRenderer,
   resetWebGpuDeviceRegistryForTests,
-} from "../../../visualization/panels/webgpu-device-registry";
+} from "../../../visualization/panels/gpu/webgpu-device-registry";
 import {
   acquireGridLiveLease,
   gridLiveLeaseStats,
   resetGridLiveLeasesForTests,
-} from "../../../visualization/panels/webgpu-live-lease";
+} from "../../../visualization/panels/gpu/webgpu-live-lease";
 import type { McapGridPreviewFrame } from "../grid-preview";
 import { GridRenderer, HOVER_INTENT_DELAY_MS } from "./GridRenderer";
 
@@ -80,7 +80,7 @@ vi.mock("./mcap-grid-camera-state", () => ({
   ]),
 }));
 
-vi.mock("../../../visualization/panels/webgpu-snapshot-renderer", () => ({
+vi.mock("../../../visualization/panels/gpu/webgpu-snapshot-renderer", () => ({
   renderPointCloudSnapshot: vi.fn(
     (job: SnapshotRequest["job"]) =>
       new Promise<ImageBitmap | null>((resolve) => {

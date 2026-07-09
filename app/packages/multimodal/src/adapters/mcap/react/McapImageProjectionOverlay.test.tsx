@@ -8,8 +8,8 @@ import {
 } from "../../../decoders";
 import { VISUALIZATION_KIND } from "../../../visualization/visualization-registry";
 import type { PointerDwellOptions } from "../../../visualization/panels/pointer-dwell";
-import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu-point-cloud-projection-picker";
-import { gpuPointCloudProjectionResourceKey } from "../../../visualization/panels/gpu-point-cloud-projection";
+import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-picker";
+import { gpuPointCloudProjectionResourceKey } from "../../../visualization/panels/gpu/gpu-point-cloud-projection";
 import McapImageProjectionOverlay from "./McapImageProjectionOverlay";
 import type { McapImageProjectionLayer } from "./use-mcap-image-projection-layers";
 

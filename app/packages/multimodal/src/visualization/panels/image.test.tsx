@@ -42,13 +42,13 @@ vi.mock("./base-2d-scene", () => ({
   ),
 }));
 
-vi.mock("./webgpu-canvas", () => ({
+vi.mock("./gpu/webgpu-canvas", () => ({
   WebGpuCanvas: ({ children }: { readonly children?: ReactNode }) => (
     <div data-testid="webgpu-canvas">{children}</div>
   ),
 }));
 
-vi.mock("./webgpu-view-stage", () => ({
+vi.mock("./gpu/webgpu-view-stage", () => ({
   useWebGpuViewStage: () => sharedStageMock.current,
   WebGpuView: ({ children }: { readonly children?: ReactNode }) => (
     <div data-testid="webgpu-view">{children}</div>

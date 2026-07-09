@@ -28,7 +28,7 @@ import {
 import { ImagePanel } from "../../../visualization/panels/image";
 import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
 import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
-import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu-point-cloud-projection-picker";
+import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-picker";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import {
   MAX_MCAP_POINT_CLOUD_POINT_SIZE,

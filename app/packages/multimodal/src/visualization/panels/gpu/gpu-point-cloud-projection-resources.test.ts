@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildPointCloudRenderPayload } from "../../decoders";
+import { buildPointCloudRenderPayload } from "../../../decoders";
 import {
   getGpuPointCloudProjectionResource,
   GPU_PROJECTION_RESOURCE_RETENTION_CAP,

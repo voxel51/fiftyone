@@ -6,20 +6,20 @@ import {
   type CameraCalibrationVisualization,
 } from "../../../decoders";
 import type { ImageViewTransform } from "../../../visualization/panels/base-2d-scene";
-import GpuPointCloudProjectionLayer from "../../../visualization/panels/GpuPointCloudProjectionLayer";
+import GpuPointCloudProjectionLayer from "../../../visualization/panels/gpu/GpuPointCloudProjectionLayer";
 import {
   gpuPointCloudProjectionResourceKey,
   gpuPointCloudProjectionStreamKey,
   sensorToImageProjectionMatrix,
-} from "../../../visualization/panels/gpu-point-cloud-projection";
+} from "../../../visualization/panels/gpu/gpu-point-cloud-projection";
 import {
   GpuPointCloudProjectionPicker,
   type GpuPointCloudProjectionPickerHandle,
-} from "../../../visualization/panels/gpu-point-cloud-projection-picker";
+} from "../../../visualization/panels/gpu/gpu-point-cloud-projection-picker";
 import {
   getGpuPointCloudProjectionResource,
   type GpuPointCloudProjectionResource,
-} from "../../../visualization/panels/gpu-point-cloud-projection-resources";
+} from "../../../visualization/panels/gpu/gpu-point-cloud-projection-resources";
 import {
   complementaryRgbUnit,
   DEFAULT_POINT_CLOUD_COLORMAP,
@@ -29,6 +29,7 @@ import {
 import type { McapHoverEcho } from "./mcap-hover-echo";
 import type { McapImageProjectionLayer } from "./use-mcap-image-projection-layers";
 
+/** Inputs required to render and inspect projected point clouds for one image. */
 export interface McapImageProjectionSceneProps {
   readonly calibration: CameraCalibrationVisualization;
   readonly fit: "contain" | "cover";

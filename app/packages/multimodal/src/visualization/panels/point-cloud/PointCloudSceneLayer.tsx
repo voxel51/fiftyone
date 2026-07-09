@@ -12,19 +12,19 @@ import {
   gpuPointCloudColorNodeKey,
   updateGpuPointCloudColorUniforms,
   type GpuPointCloudColorUniforms,
-} from "./gpu-point-cloud-color-nodes";
-import type { ResolvedGpuPointCloudColor } from "./gpu-point-cloud-color";
+} from "./gpu/gpu-point-cloud-color-nodes";
+import type { ResolvedGpuPointCloudColor } from "./gpu/gpu-point-cloud-color";
 import {
   gpuPointCloudPositionNode,
   gpuPointCloudSampleIndexFromStrideNode,
   gpuPointCloudScalarNode,
   type GpuPointCloudNode,
-} from "./gpu-point-cloud-position-nodes";
+} from "./gpu/gpu-point-cloud-position-nodes";
 import { POINT_COMPONENT_COUNT } from "./point-cloud-colors";
 import {
   GpuPointCloud3dPickerRegistryContext,
   type GpuPointCloud3dPickLayer,
-} from "./gpu-point-cloud-3d-picker";
+} from "./gpu/gpu-point-cloud-3d-picker";
 import { pointCloudObjectTransform } from "./transforms";
 import type {
   PointCloudHoveredPointMarker,
