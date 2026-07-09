@@ -11,6 +11,7 @@ import {
   isPointPickBlocked,
   pointPickWorldThreshold,
   pointsLayerIdForObject,
+  pointsVertexColor,
   pointsVertexWorldPosition,
   resolvePointPick,
 } from "./point-picking";
@@ -223,10 +224,29 @@ describe("resolvePointPick", () => {
     );
 
     expect(pick).toEqual({
+      color: null,
       layerId: "/lidar",
       renderedIndex: 1,
       worldPosition: [11, 2, 3],
     });
+  });
+
+  it("reads the rendered vertex color when the geometry carries one", () => {
+    const points = pickablePoints("/lidar");
+    points.geometry.setAttribute(
+      "color",
+      new THREE.BufferAttribute(Float32Array.from([1, 0, 0, 0.2, 0.4, 0.6]), 3),
+    );
+
+    expect(pointsVertexColor(points, 1)).toEqual([
+      Math.fround(0.2),
+      Math.fround(0.4),
+      Math.fround(0.6),
+    ]);
+    expect(pointsVertexColor(points, 5)).toBeNull();
+
+    const pick = resolvePointPick([intersection(points, 0, 4)], () => 0, 6);
+    expect(pick?.color).toEqual([1, 0, 0]);
   });
 
   it("skips candidates whose vertex re-projects too far from the pointer", () => {
@@ -242,6 +262,7 @@ describe("resolvePointPick", () => {
     );
 
     expect(pick).toEqual({
+      color: null,
       layerId: "/lidar",
       renderedIndex: 0,
       worldPosition: [10, 0, 0],

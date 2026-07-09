@@ -22,8 +22,8 @@ export {
   type PointCloudColorStop,
   type PointCloudCustomColormap,
 } from "./colormaps";
-/** Hex color interpolation helper used by MCAP point-cloud settings UI. */
-export { interpolateHexColors } from "./utils";
+/** Color helpers shared with MCAP settings UI and hover emphasis. */
+export { complementaryRgbUnit, interpolateHexColors } from "./utils";
 export type { ThreeSceneBackground } from "../base-3d-scene";
 export type {
   CameraFrustumPanelLayer,
@@ -35,6 +35,7 @@ export type {
   PointCloudColorRamp,
   PointCloudColorSettings,
   PointCloudFrameTransform,
+  PointCloudHoveredPointMarker,
   PointCloudPanelLayer,
   PointCloudPanelProps,
   PointCloudPanelRenderStats,

@@ -3,6 +3,11 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
 import {
+  POINT_HOVER_DWELL_MS,
+  POINT_HOVER_MOVE_TOLERANCE_PX,
+} from "../hover-inspect";
+import { attachPointerDwell } from "../pointer-dwell";
+import {
   POINT_PICK_LAYER_ID_KEY,
   POINT_PICK_RADIUS_PX,
   pointPickWorldThreshold,
@@ -11,12 +16,6 @@ import {
 import { sourcePointIndexForRenderedIndex } from "./point-cloud-colors";
 import { useScenePicking } from "./scene-interactivity";
 import type { PointCloudPanelLayer } from "./types";
-
-// Pointer must rest this long before the raycast fires — points are too
-// dense for enter/leave hovering, so inspection is dwell-driven.
-const POINT_HOVER_DWELL_MS = 150;
-// Movement beyond this while a tooltip shows re-arms the dwell.
-const POINT_HOVER_MOVE_TOLERANCE_PX = 4;
 
 /**
  * Scene half of point-level inspect. Points deliberately carry no r3f
@@ -59,17 +58,8 @@ export function PointCloudPickingLayer({
     if (!active || !element || !camera || !raycaster || !scene) {
       return undefined;
     }
-    let dwellTimer: ReturnType<typeof setTimeout> | null = null;
     let hoveredLayerId: string | null = null;
-    let shownAtX = 0;
-    let shownAtY = 0;
 
-    const clearTimer = () => {
-      if (dwellTimer !== null) {
-        clearTimeout(dwellTimer);
-        dwellTimer = null;
-      }
-    };
     const clearHover = () => {
       if (hoveredLayerId === null) return;
       const layer = layersRef.current.find(
@@ -161,50 +151,19 @@ export function PointCloudPickingLayer({
         clearHover();
       }
       hoveredLayerId = pick.layerId;
-      shownAtX = clientX;
-      shownAtY = clientY;
-      layer.onHoverPoint({ pointIndex, worldPosition: pick.worldPosition });
+      layer.onHoverPoint({
+        color: pick.color,
+        pointIndex,
+        worldPosition: pick.worldPosition,
+      });
     };
 
-    const handlePointerMove = (event: PointerEvent) => {
-      clearTimer();
-      if (event.buttons !== 0) {
-        // Orbiting/panning — never inspect mid-drag.
-        clearHover();
-        return;
-      }
-      if (
-        hoveredLayerId !== null &&
-        Math.hypot(event.clientX - shownAtX, event.clientY - shownAtY) >
-          POINT_HOVER_MOVE_TOLERANCE_PX
-      ) {
-        clearHover();
-      }
-      const { clientX, clientY } = event;
-      dwellTimer = setTimeout(() => {
-        dwellTimer = null;
-        raycastAt(clientX, clientY);
-      }, POINT_HOVER_DWELL_MS);
-    };
-    const handlePointerEnd = () => {
-      clearTimer();
-      clearHover();
-    };
-
-    element.addEventListener("pointermove", handlePointerMove);
-    element.addEventListener("pointerdown", handlePointerEnd);
-    element.addEventListener("pointerleave", handlePointerEnd);
-    // Wheel zoom shifts the scene under a resting cursor; the shown point
-    // would no longer be the one under the pointer.
-    element.addEventListener("wheel", handlePointerEnd, { passive: true });
-    return () => {
-      element.removeEventListener("pointermove", handlePointerMove);
-      element.removeEventListener("pointerdown", handlePointerEnd);
-      element.removeEventListener("pointerleave", handlePointerEnd);
-      element.removeEventListener("wheel", handlePointerEnd);
-      clearTimer();
-      clearHover();
-    };
+    return attachPointerDwell(element, {
+      dwellMs: POINT_HOVER_DWELL_MS,
+      moveTolerancePx: POINT_HOVER_MOVE_TOLERANCE_PX,
+      onCancel: clearHover,
+      onDwell: raycastAt,
+    });
   }, [active, camera, gl, raycaster, scene]);
 
   return null;

@@ -56,6 +56,7 @@ import {
   useMcapSelectedObject,
 } from "./mcap-selected-object";
 import { mcapHoveredPointForFrame } from "./mcap-point-hover";
+import { mcapHoverEchoAtom, useMcapHoverEcho } from "./mcap-hover-echo";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
   defaultMcapPointCloudColorForSource,
@@ -481,8 +482,12 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
   // Wire the point clouds into the hover tooltip: once the pointer rests
   // over a bare point (entities and frustums keep picking precedence),
-  // that point's decoded fields show in a tooltip at the cursor. The
-  // payload closes over the exact frame being displayed.
+  // that point's decoded fields show in a tooltip at the cursor, the
+  // point itself gets in-scene emphasis, and the modal-wide hover-echo
+  // atom carries the point to every other pane displaying it — including
+  // hovers that originate in a 2D projection overlay, which light up the
+  // point here. The payload closes over the exact frame being displayed.
+  const hoverEcho = useMcapHoverEcho();
   const hoverablePointCloudLayers = useMemo(
     () =>
       coloredPointCloudLayers.map((layer) => {
@@ -490,16 +495,31 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         const frame = layer.frame;
         return {
           ...layer,
+          hoveredPoint:
+            hoverEcho?.kind === "point" && hoverEcho.topic === topic
+              ? { color: hoverEcho.color, position: hoverEcho.position }
+              : null,
           onHoverPoint: (pick: PointCloudPointPick | null) => {
-            onHoverPoint(
-              pick
-                ? mcapHoveredPointForFrame(topic, frame, pick.pointIndex)
+            const payload = pick
+              ? mcapHoveredPointForFrame(topic, frame, pick.pointIndex)
+              : null;
+            onHoverPoint(payload);
+            jotaiStore.set(
+              mcapHoverEchoAtom,
+              payload && pick
+                ? {
+                    color: pick.color,
+                    kind: "point",
+                    pointIndex: payload.pointIndex,
+                    position: payload.position,
+                    topic,
+                  }
                 : null,
             );
           },
         };
       }),
-    [coloredPointCloudLayers, onHoverPoint],
+    [coloredPointCloudLayers, hoverEcho, jotaiStore, onHoverPoint],
   );
   // Schema-driven telemetry: speed from the first enabled pose stream whose
   // latest sample carries velocity, coordinates from the first LocationFix

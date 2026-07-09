@@ -161,10 +161,23 @@ export interface WorldGridPanelConfig {
  * downsampled and compacted, so rendered indexes are never exposed).
  */
 export interface PointCloudPointPick {
+  /** The point's rendered (colormapped) color, normalized RGB. */
+  readonly color: readonly [number, number, number] | null;
   /** Index into the layer frame's positions/scalarFields arrays. */
   readonly pointIndex: number;
   /** Picked vertex in the panel's fixed (world) frame. */
   readonly worldPosition: readonly [number, number, number];
+}
+
+/**
+ * Emphasis marker for the hovered cloud point: rendered over the point
+ * in its complementary color, slightly enlarged.
+ */
+export interface PointCloudHoveredPointMarker {
+  /** The point's rendered color the emphasis complements. */
+  readonly color: readonly [number, number, number] | null;
+  /** Sensor-frame coordinates of the hovered point. */
+  readonly position: readonly [number, number, number];
 }
 
 /**
@@ -188,6 +201,8 @@ export interface PointCloudPanelLayer {
    * and with null when the pointer moves on.
    */
   readonly onHoverPoint?: (pick: PointCloudPointPick | null) => void;
+  /** Hovered-point emphasis to render over this cloud, if any. */
+  readonly hoveredPoint?: PointCloudHoveredPointMarker | null;
 }
 
 /**

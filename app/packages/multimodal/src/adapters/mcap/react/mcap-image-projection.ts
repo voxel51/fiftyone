@@ -79,10 +79,10 @@ export function projectPointCloudToImage({
   readonly rotation: McapProjectionRotation;
   readonly translation: McapProjectionTranslation;
 }): McapProjectedPoints | null {
-  const projection = projectionRows(calibration);
+  const basis = projectionBasis({ calibration, rotation, translation });
   const width = calibration.width;
   const height = calibration.height;
-  if (!projection || !(width > 0) || !(height > 0)) {
+  if (!basis) {
     return null;
   }
 
@@ -95,33 +95,32 @@ export function projectPointCloudToImage({
   const uv = new Float32Array(capacity * UV_COMPONENT_COUNT);
   const values = new Float32Array(capacity);
 
-  // Rotation matrix from the (normalized) quaternion, unrolled for the
-  // per-point hot loop.
-  const rotationLength = Math.hypot(
-    rotation.x,
-    rotation.y,
-    rotation.z,
-    rotation.w,
-  );
-  const qs = rotationLength > 1e-9 ? 1 / rotationLength : 0;
-  const qx = rotation.x * qs;
-  const qy = rotation.y * qs;
-  const qz = rotation.z * qs;
-  const qw = rotationLength > 1e-9 ? rotation.w * qs : 1;
-  const r00 = 1 - 2 * (qy * qy + qz * qz);
-  const r01 = 2 * (qx * qy - qz * qw);
-  const r02 = 2 * (qx * qz + qy * qw);
-  const r10 = 2 * (qx * qy + qz * qw);
-  const r11 = 1 - 2 * (qx * qx + qz * qz);
-  const r12 = 2 * (qy * qz - qx * qw);
-  const r20 = 2 * (qx * qz - qy * qw);
-  const r21 = 2 * (qy * qz + qx * qw);
-  const r22 = 1 - 2 * (qx * qx + qy * qy);
-  const tx = translation.x;
-  const ty = translation.y;
-  const tz = translation.z;
-  const [p00, p01, p02, p03, p10, p11, p12, p13, p20, p21, p22, p23] =
-    projection;
+  const {
+    p00,
+    p01,
+    p02,
+    p03,
+    p10,
+    p11,
+    p12,
+    p13,
+    p20,
+    p21,
+    p22,
+    p23,
+    r00,
+    r01,
+    r02,
+    r10,
+    r11,
+    r12,
+    r20,
+    r21,
+    r22,
+    tx,
+    ty,
+    tz,
+  } = basis;
 
   let count = 0;
   let minValue = Number.POSITIVE_INFINITY;
@@ -170,6 +169,120 @@ export function projectPointCloudToImage({
   }
 
   return { count, maxValue, minValue, uv, values };
+}
+
+/** One projected point picked by a dwell hit test, in decoded index space. */
+export interface ProjectedPointPick {
+  /** Squared distance from the target, in calibration pixels. */
+  readonly distanceSq: number;
+  /** Index into the cloud's decoded per-point arrays. */
+  readonly pointIndex: number;
+  /** Projected position in calibration pixels. */
+  readonly u: number;
+  readonly v: number;
+}
+
+/**
+ * Hit-tests the projected cloud against a target position in calibration
+ * pixels, returning the nearest point within `radiusPx`. Walks the exact
+ * stride and culls of {@link projectPointCloudToImage}, so only points
+ * that can be drawn are pickable, and — mirroring the 3D side — the walk
+ * runs only on dwell instead of shipping an index map on every tick.
+ */
+export function pickProjectedPoint({
+  calibration,
+  maxPoints = MCAP_PROJECTION_MAX_POINTS,
+  positions,
+  radiusPx,
+  rotation,
+  targetU,
+  targetV,
+  translation,
+}: {
+  readonly calibration: Pick<
+    CameraCalibrationVisualization,
+    "K" | "P" | "height" | "width"
+  >;
+  readonly maxPoints?: number;
+  readonly positions: Float32Array;
+  readonly radiusPx: number;
+  readonly rotation: McapProjectionRotation;
+  readonly targetU: number;
+  readonly targetV: number;
+  readonly translation: McapProjectionTranslation;
+}): ProjectedPointPick | null {
+  const basis = projectionBasis({ calibration, rotation, translation });
+  const width = calibration.width;
+  const height = calibration.height;
+  if (!basis || !(radiusPx > 0)) {
+    return null;
+  }
+
+  const pointCount = Math.floor(positions.length / POINT_COMPONENT_COUNT);
+  const stride = Math.max(1, Math.ceil(pointCount / Math.max(1, maxPoints)));
+  const radiusSq = radiusPx * radiusPx;
+  const {
+    p00,
+    p01,
+    p02,
+    p03,
+    p10,
+    p11,
+    p12,
+    p13,
+    p20,
+    p21,
+    p22,
+    p23,
+    r00,
+    r01,
+    r02,
+    r10,
+    r11,
+    r12,
+    r20,
+    r21,
+    r22,
+    tx,
+    ty,
+    tz,
+  } = basis;
+
+  let best: ProjectedPointPick | null = null;
+  for (let pointIndex = 0; pointIndex < pointCount; pointIndex += stride) {
+    const offset = pointIndex * POINT_COMPONENT_COUNT;
+    const px = positions[offset];
+    const py = positions[offset + 1];
+    const pz = positions[offset + 2];
+    if (!Number.isFinite(px) || !Number.isFinite(py) || !Number.isFinite(pz)) {
+      continue;
+    }
+
+    const cx = r00 * px + r01 * py + r02 * pz + tx;
+    const cy = r10 * px + r11 * py + r12 * pz + ty;
+    const cz = r20 * px + r21 * py + r22 * pz + tz;
+    const w = p20 * cx + p21 * cy + p22 * cz + p23;
+    if (!(w > 0)) {
+      continue;
+    }
+    const u = (p00 * cx + p01 * cy + p02 * cz + p03) / w;
+    const v = (p10 * cx + p11 * cy + p12 * cz + p13) / w;
+    if (!(u >= 0) || !(v >= 0) || u > width || v > height) {
+      continue;
+    }
+
+    const du = u - targetU;
+    const dv = v - targetV;
+    const distanceSq = du * du + dv * dv;
+    if (distanceSq > radiusSq) {
+      continue;
+    }
+    if (!best || distanceSq < best.distanceSq) {
+      best = { distanceSq, pointIndex, u, v };
+    }
+  }
+
+  return best;
 }
 
 /**
@@ -252,6 +365,97 @@ export function drawProjectedPoints(
       );
     }
   }
+}
+
+interface ProjectionBasis {
+  readonly p00: number;
+  readonly p01: number;
+  readonly p02: number;
+  readonly p03: number;
+  readonly p10: number;
+  readonly p11: number;
+  readonly p12: number;
+  readonly p13: number;
+  readonly p20: number;
+  readonly p21: number;
+  readonly p22: number;
+  readonly p23: number;
+  readonly r00: number;
+  readonly r01: number;
+  readonly r02: number;
+  readonly r10: number;
+  readonly r11: number;
+  readonly r12: number;
+  readonly r20: number;
+  readonly r21: number;
+  readonly r22: number;
+  readonly tx: number;
+  readonly ty: number;
+  readonly tz: number;
+}
+
+/**
+ * Unrolled sensor→pixel basis shared by the draw and pick walks: the
+ * rotation matrix from the (normalized) quaternion plus the projection
+ * rows. Null when the calibration cannot project.
+ */
+function projectionBasis({
+  calibration,
+  rotation,
+  translation,
+}: {
+  readonly calibration: Pick<
+    CameraCalibrationVisualization,
+    "K" | "P" | "height" | "width"
+  >;
+  readonly rotation: McapProjectionRotation;
+  readonly translation: McapProjectionTranslation;
+}): ProjectionBasis | null {
+  const projection = projectionRows(calibration);
+  if (!projection || !(calibration.width > 0) || !(calibration.height > 0)) {
+    return null;
+  }
+
+  const rotationLength = Math.hypot(
+    rotation.x,
+    rotation.y,
+    rotation.z,
+    rotation.w,
+  );
+  const qs = rotationLength > 1e-9 ? 1 / rotationLength : 0;
+  const qx = rotation.x * qs;
+  const qy = rotation.y * qs;
+  const qz = rotation.z * qs;
+  const qw = rotationLength > 1e-9 ? rotation.w * qs : 1;
+  const [p00, p01, p02, p03, p10, p11, p12, p13, p20, p21, p22, p23] =
+    projection;
+
+  return {
+    p00,
+    p01,
+    p02,
+    p03,
+    p10,
+    p11,
+    p12,
+    p13,
+    p20,
+    p21,
+    p22,
+    p23,
+    r00: 1 - 2 * (qy * qy + qz * qz),
+    r01: 2 * (qx * qy - qz * qw),
+    r02: 2 * (qx * qz + qy * qw),
+    r10: 2 * (qx * qy + qz * qw),
+    r11: 1 - 2 * (qx * qx + qz * qz),
+    r12: 2 * (qy * qz - qx * qw),
+    r20: 2 * (qx * qz - qy * qw),
+    r21: 2 * (qy * qz + qx * qw),
+    r22: 1 - 2 * (qx * qx + qy * qy),
+    tx: translation.x,
+    ty: translation.y,
+    tz: translation.z,
+  };
 }
 
 /** Row-major 3x4 projection rows from P (preferred) or pinhole K. */
