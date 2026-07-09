@@ -128,8 +128,7 @@ test.describe.serial("annotation cross-surface undo", () => {
       .toBeCloseTo(before, 4);
   });
 
-  // TODO re-enable this test once its flakiness is resolved
-  test.skip("a canvas drag commits through the engine and is undoable", async ({
+  test("a canvas drag commits through the engine and is undoable", async ({
     modal,
   }) => {
     // select the seeded box (opens the form + selects the overlay for dragging)
@@ -173,8 +172,7 @@ test.describe.serial("annotation cross-surface undo", () => {
       .toBeCloseTo(before, 3);
   });
 
-  // TODO re-enable this test once its flakiness is resolved
-  test.skip("a canvas draw and a sidebar edit share one LIFO undo stack", async ({
+  test("a canvas draw and a sidebar edit share one LIFO undo stack", async ({
     modal,
   }) => {
     const before = await modal.sidebar.annotate.getActiveLabelsCount();

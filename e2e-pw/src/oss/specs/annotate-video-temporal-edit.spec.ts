@@ -87,8 +87,7 @@ const trackIdForLabel = async (
 };
 
 test.describe.serial("video annotation temporal detection edit", () => {
-  // TODO re-enable this test once its flakiness is resolved
-  test.skip("dragging a TD interval end updates the timeline and does not snap back", async ({
+  test("dragging a TD interval end updates the timeline and does not snap back", async ({
     browser,
     fiftyoneLoader,
     modal,

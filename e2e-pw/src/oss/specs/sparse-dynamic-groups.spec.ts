@@ -67,8 +67,7 @@ test.describe.serial("sparse dynamic groups", () => {
     await page.reload();
   });
 
-  // TODO re-enable this test once its flakiness is resolved
-  test.skip(`left slice (default)`, async ({
+  test(`left slice (default)`, async ({
     fiftyoneLoader,
     page,
     grid,
@@ -99,8 +98,7 @@ test.describe.serial("sparse dynamic groups", () => {
     });
   });
 
-  // TODO re-enable this test once its flakiness is resolved
-  test.skip(`right slice`, async ({ fiftyoneLoader, page, grid, modal }) => {
+  test(`right slice`, async ({ fiftyoneLoader, page, grid, modal }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ view: "group" }),
     });

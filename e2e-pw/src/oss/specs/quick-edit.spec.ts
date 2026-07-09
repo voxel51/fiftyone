@@ -209,8 +209,7 @@ test.describe.serial("quick edit", () => {
    * resize and move behavior including undo/redo for each handle. Also
    * validates that setting the `confidence` field updates the canvas.
    */
-  // TODO re-enable this test once its flakiness is resolved
-  test.skip("detections via tooltip", async ({ modal }) => {
+  test("detections via tooltip", async ({ modal }) => {
     // Init
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasCursor("default");
