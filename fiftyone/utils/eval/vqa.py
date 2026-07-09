@@ -342,12 +342,8 @@ class VQAEvaluation(BaseEvaluationMethod):
                 confs.append(_pred.confidence if _pred is not None else None)
 
                 ref = _gt if _gt is not None else _pred
-                question_types.append(
-                    ref.question_type if ref is not None else None
-                )
-                answer_types.append(
-                    ref.answer_type if ref is not None else None
-                )
+                question_types.append(ref.question_type)
+                answer_types.append(ref.answer_type)
 
                 for a, b in ((_gt, _pred), (_pred, _gt)):
                     if a is not None:
