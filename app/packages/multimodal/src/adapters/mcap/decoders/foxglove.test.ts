@@ -695,6 +695,37 @@ describe("Foxglove decoders", () => {
     expect(
       Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
     ).toEqual([10, 20]);
+    const renderPayload = output.visualization.renderPayload;
+    if (!renderPayload) {
+      throw new Error("Expected point cloud render payload");
+    }
+    if (!renderPayload.colors) {
+      throw new Error("Expected sampled point cloud colors");
+    }
+    expect(renderPayload).toMatchObject({
+      bounds: { max: [4, 5, 6], min: [1, 2, 3] },
+      capacity: 1_024,
+      finitePointCount: 2,
+      heightRange: { max: 6, min: 3 },
+      sampledPointCount: 2,
+    });
+    expect(Array.from(renderPayload.positions.slice(0, 6))).toEqual([
+      1, 2, 3, 4, 5, 6,
+    ]);
+    expect(Array.from(renderPayload.sourceIndices.slice(0, 2))).toEqual([0, 1]);
+    expect(renderPayload.scalarFields[0]).toMatchObject({
+      finiteValueCount: 2,
+      name: "rcs",
+      range: { max: 20, min: 10 },
+    });
+    expect(output.resourceHints?.transferables).toEqual(
+      expect.arrayContaining([
+        renderPayload.positions.buffer,
+        renderPayload.colors.buffer,
+        renderPayload.sourceIndices.buffer,
+        renderPayload.scalarFields[0].values.buffer,
+      ]),
+    );
   });
 
   it("decodes strided lidar layouts with trailing scalar fields", () => {

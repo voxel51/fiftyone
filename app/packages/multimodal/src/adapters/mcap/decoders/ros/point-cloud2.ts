@@ -4,7 +4,10 @@ import type {
   DecodedOutput,
   PointCloudField,
 } from "../../../../decoders";
-import { resourceHintsForArrayBufferViews } from "../../../../decoders";
+import {
+  buildPointCloudRenderPayload,
+  resourceHintsForArrayBufferViews,
+} from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import {
   type DecodedPointCloudData,
@@ -135,12 +138,17 @@ export function decodeRosPointCloud2Record(
     offset: field.offset,
     type: field.type,
   }));
+  const renderPayload = buildPointCloudRenderPayload(decodedPoints);
 
   const transferableViews = [
     decodedPoints.positions,
     decodedPoints.colors,
     ...decodedPoints.scalarFields.map((field) => field.values),
-  ].filter((view): view is Float32Array => view !== undefined);
+    renderPayload.positions,
+    renderPayload.colors,
+    ...renderPayload.scalarFields.map((field) => field.values),
+    renderPayload.sourceIndices,
+  ].filter((view): view is Float32Array | Uint32Array => view !== undefined);
 
   return {
     attributes,
@@ -156,6 +164,7 @@ export function decodeRosPointCloud2Record(
       kind: VISUALIZATION_KIND.POINT_CLOUD,
       pointCount,
       positions: decodedPoints.positions,
+      renderPayload,
     },
   };
 }

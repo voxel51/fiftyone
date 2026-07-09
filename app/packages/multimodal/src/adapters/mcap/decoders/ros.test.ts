@@ -636,6 +636,42 @@ describe("ROS MCAP decoders", () => {
     expect(
       Array.from(output.visualization.scalarFields?.[1]?.values ?? []),
     ).toEqual([50_000, 60_000, 65_535]);
+    const renderPayload = output.visualization.renderPayload;
+    if (!renderPayload) {
+      throw new Error("Expected point cloud render payload");
+    }
+    expect(renderPayload).toMatchObject({
+      bounds: { max: [9, 10, 11], min: [1, 2, 3] },
+      capacity: 1_024,
+      finitePointCount: 3,
+      heightRange: { max: 11, min: 3 },
+      sampledPointCount: 3,
+    });
+    expect(Array.from(renderPayload.sourceIndices.slice(0, 3))).toEqual([
+      0, 1, 2,
+    ]);
+    expect(renderPayload.scalarFields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          finiteValueCount: 3,
+          name: "intensity",
+          range: { max: 40, min: 10 },
+        }),
+        expect.objectContaining({
+          finiteValueCount: 3,
+          name: "ring",
+          range: { max: 65_535, min: 50_000 },
+        }),
+      ]),
+    );
+    expect(output.resourceHints?.transferables).toEqual(
+      expect.arrayContaining([
+        renderPayload.positions.buffer,
+        renderPayload.sourceIndices.buffer,
+        renderPayload.scalarFields[0].values.buffer,
+        renderPayload.scalarFields[1].values.buffer,
+      ]),
+    );
     expect(output.attributes).toMatchObject({
       frameId: "lidar",
       height: 2,
@@ -1196,6 +1232,29 @@ describe("ROS MCAP decoders", () => {
     expect(
       Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
     ).toEqual([5, 7]);
+    const renderPayload = output.visualization.renderPayload;
+    if (!renderPayload) {
+      throw new Error("Expected point cloud render payload");
+    }
+    expect(renderPayload).toMatchObject({
+      capacity: 1_024,
+      finitePointCount: 2,
+      sampledPointCount: 2,
+    });
+    expect(renderPayload.bounds?.min[0]).toBeCloseTo(-1);
+    expect(renderPayload.bounds?.max[0]).toBeCloseTo(1);
+    expect(renderPayload.bounds?.min[1]).toBeCloseTo(0);
+    expect(renderPayload.bounds?.max[1]).toBeCloseTo(0);
+    expect(
+      Array.from(renderPayload.scalarFields[0].values.slice(0, 2)),
+    ).toEqual([5, 7]);
+    expect(output.resourceHints?.transferables).toEqual(
+      expect.arrayContaining([
+        renderPayload.positions.buffer,
+        renderPayload.sourceIndices.buffer,
+        renderPayload.scalarFields[0].values.buffer,
+      ]),
+    );
   });
 
   it("decodes ros2 PoseStamped and Odometry into pose visualizations", () => {
