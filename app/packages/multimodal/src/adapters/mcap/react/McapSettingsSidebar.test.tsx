@@ -173,6 +173,25 @@ describe("McapSettingsSidebar", () => {
     expect(screen.getByText("Showing 150,000 of 275,000 points.")).toBeTruthy();
   });
 
+  it("opens live performance diagnostics from the scene tab", () => {
+    renderSidebar();
+
+    expect(screen.queryByText("Performance diagnostics")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Stats" }));
+
+    expect(screen.getByText("Performance diagnostics")).toBeTruthy();
+    expect(screen.getAllByText("Playback")).toHaveLength(2);
+    expect(screen.getByText("Rendering")).toBeTruthy();
+    expect(screen.getByText("WebGPU")).toBeTruthy();
+    expect(screen.getByText("Grid & snapshots")).toBeTruthy();
+    expect(screen.getByText("GPU resources")).toBeTruthy();
+    expect(screen.getByText("Browser")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide stats" }));
+    expect(screen.queryByText("Performance diagnostics")).toBeNull();
+  });
+
   it("persists fidelity mode changes through the select", () => {
     renderSidebar();
 
