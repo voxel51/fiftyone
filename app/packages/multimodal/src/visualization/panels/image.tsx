@@ -1,5 +1,6 @@
 import { Icon, IconName, Size } from "@voxel51/voodo";
-import type { CSSProperties } from "react";
+import { OrthographicCamera } from "@react-three/drei";
+import type { CSSProperties, ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import type { ImageVisualization } from "../../decoders";
@@ -21,6 +22,7 @@ import {
   useImageTextureLease,
 } from "./use-image-texture-lease";
 import { WebGpuCanvas } from "./webgpu-canvas";
+import { useWebGpuViewStage, WebGpuView } from "./webgpu-view-stage";
 
 const HUD_BORDER_RADIUS_PX = 4;
 const HUD_OFFSET_PX = 8;
@@ -49,6 +51,8 @@ export interface ImagePanelProps {
   readonly frame: ImageVisualization;
   readonly onImageLoaded?: (width: number, height: number) => void;
   readonly onResetView?: () => void;
+  /** R3F scene content rendered in normalized image coordinates. */
+  readonly sceneChildren?: ReactNode;
   readonly style?: CSSProperties;
   /**
    * Opaque shared image-texture cache key for `frame` (callers with
@@ -67,18 +71,21 @@ export interface ImagePanelProps {
  * Production image visualization panel backed by a stable Three.js canvas.
  */
 export function ImagePanel({
-  alt: _alt = "Image",
+  alt = "Image",
   canvasSurface,
   className,
   fit = "contain",
   frame,
   onImageLoaded,
   onResetView,
+  sceneChildren,
   style,
   textureKey,
   viewTransform,
 }: ImagePanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
+  const sharedStage = useWebGpuViewStage();
+  const useSharedView = sharedStage !== null && sharedStage.error === null;
   const {
     errorMessage,
     handle: textureHandle,
@@ -95,29 +102,51 @@ export function ImagePanel({
   });
   const scene = useMemo(
     () => (
-      <Base2DScene>
+      <Base2DScene background={!useSharedView}>
         <ImageTexturePlane
           fit={fit}
           textureHandle={textureHandle}
           viewTransform={viewTransform}
-        />
+        >
+          {sceneChildren}
+        </ImageTexturePlane>
       </Base2DScene>
     ),
-    [fit, textureHandle, viewTransform],
+    [fit, sceneChildren, textureHandle, useSharedView, viewTransform],
   );
 
   return (
-    <div className={className} style={{ ...styles.panel, ...style }}>
-      <WebGpuCanvas
-        camera={ORTHOGRAPHIC_IMAGE_CAMERA}
-        onError={setCanvasError}
-        orthographic
-        role="img"
-        style={styles.canvas}
-        surface={canvasSurface}
-      >
-        {scene}
-      </WebGpuCanvas>
+    <div
+      className={className}
+      style={{
+        ...styles.panel,
+        ...(useSharedView ? styles.sharedPanel : null),
+        ...style,
+      }}
+    >
+      {useSharedView ? (
+        <WebGpuView aria-label={alt} role="img" style={styles.canvas}>
+          <OrthographicCamera
+            far={ORTHOGRAPHIC_IMAGE_CAMERA.far}
+            makeDefault
+            near={ORTHOGRAPHIC_IMAGE_CAMERA.near}
+            position={ORTHOGRAPHIC_IMAGE_CAMERA.position}
+            zoom={ORTHOGRAPHIC_IMAGE_CAMERA.zoom}
+          />
+          {scene}
+        </WebGpuView>
+      ) : (
+        <WebGpuCanvas
+          camera={ORTHOGRAPHIC_IMAGE_CAMERA}
+          onError={setCanvasError}
+          orthographic
+          role="img"
+          style={styles.canvas}
+          surface={canvasSurface}
+        >
+          {scene}
+        </WebGpuCanvas>
+      )}
 
       {canvasError || status !== "loaded" ? (
         <div style={styles.status}>
@@ -182,6 +211,9 @@ const styles: Record<string, CSSProperties> = {
     flex: "0 0 auto",
     height: 13,
     width: 13,
+  },
+  sharedPanel: {
+    background: "transparent",
   },
   // Mirrors the 3D panel's recenter control (bottom-right, 24×24,
   // Fullscreen glyph) so every tile shares one recenter interface.

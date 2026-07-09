@@ -25,6 +25,16 @@ type RendererWithSetSize = {
   setSize: (width: number, height: number, updateStyle?: boolean) => void;
 };
 
+interface WebGpuDeviceLossInfo {
+  readonly api?: string;
+  readonly message?: string;
+  readonly reason?: string | null;
+}
+
+type RendererWithDeviceLoss = {
+  onDeviceLost?: (info: WebGpuDeviceLossInfo) => void;
+};
+
 // Playback canvases redraw frequently; default to CSS pixel density and let
 // inspection surfaces opt into higher DPR explicitly when they need it.
 const DEFAULT_DPR: Dpr = 1;
@@ -152,6 +162,25 @@ export function WebGpuCanvas({
     const applySize = sizedRenderer.setSize.bind(renderer);
     sizedRenderer.setSize = (width, height, updateStyle) =>
       applySize(Math.max(1, width), Math.max(1, height), updateStyle);
+    const rendererWithDeviceLoss =
+      renderer as unknown as RendererWithDeviceLoss;
+    const defaultDeviceLoss =
+      rendererWithDeviceLoss.onDeviceLost?.bind(renderer);
+    rendererWithDeviceLoss.onDeviceLost = (info) => {
+      defaultDeviceLoss?.(info);
+      if (!mountedRef.current || rendererRef.current !== renderer) {
+        return;
+      }
+      rendererReadyRef.current = false;
+      releaseRendererRegistration(registrationsRef.current, renderer);
+      setIsReady(false);
+      const reason = info.reason ? ` (${info.reason})` : "";
+      onErrorRef.current?.(
+        `${info.api ?? "WebGPU"} device lost${reason}: ${
+          info.message ?? "unknown reason"
+        }`,
+      );
+    };
     // Canvas may ask for a renderer before React rebuilds callbacks. Read the
     // color from a ref so renderer creation stays stable across color changes.
     prepareWebGpuRenderer(renderer, clearColorRef.current);
@@ -233,6 +262,7 @@ export function WebGpuCanvas({
     <Canvas
       camera={camera}
       className={className}
+      data-webgpu-surface={surface}
       dpr={dpr}
       flat
       frameloop={isReady ? frameloop : "never"}
