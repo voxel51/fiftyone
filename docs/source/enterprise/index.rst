@@ -1,5 +1,3 @@
-:orphan:
-
 .. _fiftyone-enterprise:
 
 FiftyOne Enterprise
@@ -180,4 +178,18 @@ pages on this site apply to Enterprise deployments as well.
     Look interesting?
     `Schedule a demo <https://voxel51.com/book-a-demo>`_ to get
     started with FiftyOne Enterprise
+
+.. toctree::
+    :maxdepth: 1
+    :hidden:
+
+    Overview <overview>
+    Installation <installation>
+    Getting Started <getting_started>
+    API connection <api_connection>
+    App <app>
+    Secrets <secrets>
+    Management SDK <management_sdk>
+    Migrations <migrations>
+    Pluggable Auth <pluggable_auth>
 

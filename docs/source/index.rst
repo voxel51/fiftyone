@@ -528,7 +528,6 @@ _________
    Overview <self>
    Installation <installation/index>
    Getting Started <getting_started/index>
-   FiftyOne Enterprise 🚀 <enterprise/overview>
 
 .. toctree::
    :caption: Workflows
@@ -549,12 +548,14 @@ _________
    :hidden:
 
    FiftyOne Concepts <user_guide/index>
+   Using datasets <user_guide/using_datasets>
    FiftyOne App <user_guide/app>
-   FiftyOne App (Enterprise) 🚀 <enterprise/app>
+   FiftyOne Enterprise 🚀 <enterprise/index>
    FiftyOne Brain <brain>
+   FiftyOne Multimodal <user_guide/groups>
 
 .. toctree::
-   :caption: Reference
+   :caption: FiftyOne Ecosystem
    :maxdepth: 1
    :hidden:
 
@@ -564,9 +565,6 @@ _________
    Agents <agents/index>
    Plugins <plugins/index>
    Integrations <integrations/index>
-   CLI <cli/index>
-   API Reference <api/fiftyone>
-   Management SDK 🚀 <enterprise/management_sdk>
 
 .. toctree::
    :caption: Resources
@@ -576,6 +574,8 @@ _________
    Tutorials <tutorials/index>
    Recipes <recipes/index>
    Cheat Sheets <cheat_sheets/index>
+   CLI <cli/index>
+   API Reference <api/fiftyone>
    Contribute <contribute/index>
    Release Notes <release-notes>
    Deprecation Notices <deprecation>

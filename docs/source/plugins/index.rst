@@ -92,7 +92,6 @@ will transform FiftyOne into your bespoke visual AI development workbench.
    Developing plugins <developing_plugins>
    Contributing plugins <contributing_plugins>
    Enterprise plugins 🚀 <../enterprise/plugins>
-   Secrets 🚀 <../enterprise/secrets>
    API reference <api/plugins>
    TypeScript API reference <ts-api>
    plugins_ecosystem/*

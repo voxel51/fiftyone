@@ -112,9 +112,7 @@ on your data quickly and easily.
     :hidden:
 
     FiftyOne basics <basics>
-    Using datasets <using_datasets>
     Dataset views <using_views>
-    Grouped datasets <groups>
     Using aggregations <using_aggregations>
     Interactive plots <plots>
     Exporting datasets <export_datasets>

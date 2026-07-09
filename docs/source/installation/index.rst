@@ -280,7 +280,3 @@ FiftyOne and all of its subpackages can be uninstalled with:
    Python venvs <virtualenv>
    Upgrading MongoDB <upgrading-mongodb>
    Troubleshooting <troubleshooting>
-   FiftyOne Enterprise 🚀 <../enterprise/installation>
-   Enterprise API connection 🚀 <../enterprise/api_connection>
-   Enterprise migrations 🚀 <../enterprise/migrations>
-   Pluggable Auth 🚀 <../enterprise/pluggable_auth>
