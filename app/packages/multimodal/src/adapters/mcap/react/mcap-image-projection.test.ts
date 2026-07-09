@@ -1,11 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
-  drawProjectedPoints,
-  hasNonTrivialDistortion,
   pickProjectedPoint,
   projectPointCloudToImage,
 } from "./mcap-image-projection";
+import { hasNonTrivialDistortion } from "./mcap-image-calibration";
 
 const IDENTITY_ROTATION = { w: 1, x: 0, y: 0, z: 0 };
 const ZERO_TRANSLATION = { x: 0, y: 0, z: 0 };
@@ -292,57 +291,5 @@ describe("hasNonTrivialDistortion", () => {
         distortionModel: "plumb_bob",
       }),
     ).toBe(true);
-  });
-});
-
-describe("drawProjectedPoints", () => {
-  it("draws every point while batching fill-style changes by colour", () => {
-    const count = 500;
-    const uv = new Float32Array(count * 2);
-    const colors = new Float32Array(count * 3);
-    for (let index = 0; index < count; index++) {
-      uv[index * 2] = index % 100;
-      uv[index * 2 + 1] = Math.floor(index / 100);
-      // Two distinct colours alternating point by point.
-      colors[index * 3] = index % 2 === 0 ? 1 : 0;
-      colors[index * 3 + 2] = index % 2 === 0 ? 0 : 1;
-    }
-
-    const fillStyles: string[] = [];
-    const fillRect = vi.fn();
-    const context = {
-      fillRect,
-      set fillStyle(value: string) {
-        fillStyles.push(value);
-      },
-    } as unknown as CanvasRenderingContext2D;
-
-    drawProjectedPoints(context, { colors, count, uv }, { dotSize: 3 });
-
-    expect(fillRect).toHaveBeenCalledTimes(count);
-    expect(fillStyles).toEqual(["rgb(0, 0, 255)", "rgb(255, 0, 0)"]);
-    // Dots center on the projected pixel.
-    expect(fillRect.mock.calls[0]).toHaveLength(4);
-    expect(fillRect.mock.calls[0][2]).toBe(3);
-  });
-
-  it("collapses uniformly coloured clouds into one style", () => {
-    const fillStyles: string[] = [];
-    const context = {
-      fillRect: vi.fn(),
-      set fillStyle(value: string) {
-        fillStyles.push(value);
-      },
-    } as unknown as CanvasRenderingContext2D;
-
-    const colors = new Float32Array(9);
-    colors.fill(0.5);
-    drawProjectedPoints(
-      context,
-      { colors, count: 3, uv: Float32Array.from([1, 1, 2, 2, 3, 3]) },
-      { dotSize: 2 },
-    );
-
-    expect(fillStyles).toHaveLength(1);
   });
 });
