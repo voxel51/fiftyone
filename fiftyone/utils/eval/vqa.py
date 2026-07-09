@@ -640,9 +640,6 @@ class MultipleChoiceEvaluation(VQAEvaluation):
     _LABEL_SCORE_FIELD = fof.BooleanField
 
     def _score_pair(self, gt, pred):
-        if gt is None or pred is None or pred.answer is None:
-            return 0.0
-
         if gt.answer is None:
             return 0.0
 
@@ -709,9 +706,6 @@ class ANLSEvaluation(VQAEvaluation):
     """
 
     def _score_pair(self, gt, pred):
-        if gt is None or pred is None or pred.answer is None:
-            return 0.0
-
         refs = _get_references(gt)
         if not refs:
             return 0.0
@@ -760,9 +754,6 @@ class TokenF1Evaluation(VQAEvaluation):
     """
 
     def _score_pair(self, gt, pred):
-        if gt is None or pred is None or pred.answer is None:
-            return 0.0
-
         refs = _get_references(gt)
         if not refs:
             return 0.0
@@ -822,9 +813,6 @@ class ContainsEvaluation(VQAEvaluation):
     _LABEL_SCORE_FIELD = fof.BooleanField
 
     def _score_pair(self, gt, pred):
-        if gt is None or pred is None or pred.answer is None:
-            return 0.0
-
         pred_answer = _normalize_answer(pred.answer)
         for ref in _get_references(gt):
             ref = _normalize_answer(ref)
