@@ -14,10 +14,9 @@ images, LIDAR point clouds, IMU readings, GPS fixes, coordinate frame
 transforms, diagnostics, and more — and FiftyOne lets you visualize, play
 back, tag, and query all of them in lockstep.
 
-.. Placeholder: hero gif showing synchronized multimodal playback
-.. .. image:: /images/multimodal/multimodal-sizzle.gif
-..    :alt: multimodal-sizzle
-..    :align: center
+.. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/mcap-playback.webp
+   :alt: multimodal-playback
+   :align: center
 
 .. note::
 
@@ -59,21 +58,175 @@ is automatically inferred as `"multimodal"`:
 When you open a multimodal sample in the App, FiftyOne reads the MCAP file
 directly via efficient byte-range reads — no server-side conversion is
 required — discovers its channels and schemas, decodes the messages it knows
-how to interpret, and renders them in a configurable, multi-panel viewer with
-a shared playback clock.
+how to interpret, and renders them in a configurable, tiled viewer with a
+shared playback clock.
 
 Key concepts:
 
+-   **Episodes**: each sample in a multimodal dataset is an episode — one
+    MCAP recording
 -   **Streams**: each MCAP channel (topic) becomes a stream that can be bound
-    to one or more panels in the viewer
+    to one or more tiles in the viewer
 -   **Time tracks**: every message carries timestamps (log time, publish
     time, or a decoded header stamp) that drive synchronized playback across
-    all panels
--   **Decoders**: pluggable components that translate raw message payloads
-    for :ref:`supported schemas <multimodal-schemas>` into renderable
-    visualizations such as images, point clouds, poses, and numeric series
--   **Coordinate frames**: transform messages (e.g. ROS TF) define the frame
-    graph used to place sensors and geometry in a common 3D world
+    all tiles
+
+.. _multimodal-tiles:
+
+Tiles
+_____
+
+Multimodal samples open in a configurable, mosaic-style viewer composed of
+**tiles**. You can add, remove, resize, and rearrange tiles, and bind each
+tile to any compatible stream in the recording. All tiles share a common
+playback clock, so scrubbing the timeline updates every tile in sync.
+
+.. Placeholder: gif showing the tiled viewer layout + timeline scrubbing
+.. .. image:: /images/multimodal/multimodal-viewer.gif
+..    :alt: multimodal-viewer
+..    :align: center
+
+The following tile types are available.
+
+.. _multimodal-image-tile:
+
+Image tile
+----------
+
+Image tiles render camera streams, including raw and compressed images from
+ROS and Foxglove schemas. Image annotations (e.g. `foxglove.ImageAnnotations`)
+can be overlaid on their corresponding camera stream, and when camera
+calibration data is available, hovering over an image tile highlights that
+camera's frustum in the 3D tile.
+
+.. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/image-panel.webp
+   :alt: multimodal-image-tile
+   :align: center
+
+.. _multimodal-3d-tile:
+
+3D tile
+-------
+
+The 3D tile renders the spatial content of your recording in a shared world
+frame: point clouds (with configurable colormaps and color-by fields such as
+intensity), laser scans, occupancy grids, scene-update primitives, pose
+trajectories, and camera frustums. Coordinate frame transforms from the
+recording are used to place everything correctly, and you can select the
+reference frame, track a moving frame with the camera, measure distances, and
+inspect points via hover tooltips.
+
+.. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/3d-panel.webp
+   :alt: multimodal-3d-tile
+   :align: center
+
+.. _multimodal-plot-tile:
+
+Plot tile
+---------
+
+Plot tiles chart numeric series extracted from any topic and field path in
+the recording — IMU rates, vehicle speed, steering angle, diagnostics values,
+etc. — over the full duration of the recording. A playhead marks the current
+playback position, and clicking anywhere in the plot seeks the shared clock
+to that time.
+
+.. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/plot-panel.webp
+   :alt: multimodal-plot-tile
+   :align: center
+
+.. _multimodal-message-tile:
+
+Message tile
+------------
+
+The message tile is the escape hatch for any channel, decoded or not: it
+displays the most recent message on a selected topic at the current playhead
+as a collapsible record tree, so you can inspect exact field values as you
+scrub through the recording.
+
+.. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/message-panel.webp
+   :alt: multimodal-message-tile
+   :align: center
+
+.. _multimodal-settings-sidebar:
+
+Configuring tiles
+-----------------
+
+The **left sidebar** of the sample modal is where you configure what each
+tile is showing. It contains two tabs:
+
+-   **Scene**: settings that apply to the whole recording:
+
+    -   **Playback**: choose how signals behave between recorded samples —
+        `Smooth` interpolates continuous signals (transforms and 2D/3D label
+        geometry) for fluid playback, while `As recorded` never synthesizes
+        values and holds each signal at its latest recorded sample
+    -   **Advanced timing**: fine-grained control over how messages are
+        matched to the playback clock
+    -   **Other topics**: a list of the channels present in the file that are
+        not currently rendered in the scene, along with their schema,
+        encoding, message count, and whether they can be inspected in a
+        message tile
+
+-   **Tile settings**: when you focus a tile, a second tab named for that
+    tile appears with its specific options — for example, which streams and
+    overlays an image tile displays, the 3D tile's colormaps and camera
+    behavior, the topic/field series charted by a plot tile, or the topic
+    shown in a message tile
+
+.. Placeholder: gif showing the left settings sidebar (scene + tile tabs)
+.. .. image:: /images/multimodal/multimodal-settings-sidebar.gif
+..    :alt: multimodal-settings-sidebar
+..    :align: center
+
+.. _multimodal-inspector-sidebar:
+
+Inspecting objects
+------------------
+
+The **right sidebar** of the sample modal is an inspector for objects in the
+scene. Click any object in any tile — a 3D box in the 3D tile or an
+annotation in an image tile — to view its details:
+
+-   For 3D scene objects: the object's label, entity ID, topic, coordinate
+    frame, and any metadata attached to the object
+-   For image annotations: the object's label, primitive kind, topic, and
+    exact geometry
+
+Any fields not covered by the structured view are shown as raw JSON. Press
+`Esc` or click `Clear selection` to clear the current selection.
+
+.. Placeholder: gif showing the right inspector sidebar with a selected object
+.. .. image:: /images/multimodal/multimodal-inspector-sidebar.gif
+..    :alt: multimodal-inspector-sidebar
+..    :align: center
+
+Grid previews
+-------------
+
+In the App's sample grid, each multimodal sample displays a preview rendered
+from one of its streams, and you can use the stream selector to choose which
+stream is used for grid previews.
+
+.. Placeholder: gif showing grid previews + stream selector
+.. .. image:: /images/multimodal/multimodal-grid.gif
+..    :alt: multimodal-grid
+..    :align: center
+
+MCAP Explorer
+-------------
+
+FiftyOne also includes a standalone **MCAP Explorer** panel that lets you
+open an arbitrary local `.mcap` file (via drag-and-drop or file browser) or a
+remote URL without creating a dataset first. Local files stay in your browser
+session and are read directly — nothing is uploaded.
+
+.. Placeholder: gif showing the MCAP Explorer panel
+.. .. image:: /images/multimodal/mcap-explorer.gif
+..    :alt: mcap-explorer
+..    :align: center
 
 .. _multimodal-schemas:
 
@@ -82,7 +235,7 @@ _________________
 
 FiftyOne ships with built-in decoders for the message schemas below. Any
 channel whose schema is not recognized remains fully accessible via the
-:ref:`Raw messages panel <multimodal-raw-panel>`, so you can always inspect
+:ref:`Message tile <multimodal-message-tile>`, so you can always inspect
 your data even before a dedicated decoder exists.
 
 ROS 2
@@ -104,7 +257,7 @@ schemas:
       - Compressed (e.g. JPEG/PNG) camera images
     * - `sensor_msgs/msg/CameraInfo`
       - Camera intrinsics and distortion parameters, rendered as camera
-        frustums in the 3D panel
+        frustums in the 3D tile
     * - `sensor_msgs/msg/PointCloud2`
       - LIDAR and other point clouds, with support for per-point scalar
         fields such as intensity
@@ -171,174 +324,6 @@ schemas:
       - JSON-encoded pose/odometry data
     * - `Diagnostics`
       - JSON-encoded diagnostics/telemetry key-value payloads
-
-.. note::
-
-    Decoders are registered in an extensible registry, so support for
-    additional schemas can be added by registering custom
-    :class:`MultimodalDecoder <fiftyone.multimodal.decoders.base.MultimodalDecoder>`
-    implementations.
-
-.. _multimodal-panels:
-
-Panels
-______
-
-Multimodal samples open in a configurable, mosaic-style viewer composed of
-**panels** (tiles). You can add, remove, resize, and rearrange panels, and
-bind each panel to any compatible stream in the recording. All panels share a
-common playback clock, so scrubbing the timeline updates every panel in sync.
-
-.. Placeholder: gif showing the multi-panel viewer layout + timeline scrubbing
-.. .. image:: /images/multimodal/multimodal-viewer.gif
-..    :alt: multimodal-viewer
-..    :align: center
-
-The following panel types are available.
-
-.. _multimodal-image-panel:
-
-Image panel
------------
-
-Image panels render camera streams, including raw and compressed images from
-ROS and Foxglove schemas. Image annotations (e.g. `foxglove.ImageAnnotations`)
-can be overlaid on their corresponding camera stream, and when camera
-calibration data is available, hovering over an image panel highlights that
-camera's frustum in the 3D panel.
-
-.. Placeholder: gif showing the image panel with annotation overlays
-.. .. image:: /images/multimodal/multimodal-image-panel.gif
-..    :alt: multimodal-image-panel
-..    :align: center
-
-.. _multimodal-3d-panel:
-
-3D panel
---------
-
-The 3D panel renders the spatial content of your recording in a shared world
-frame: point clouds (with configurable colormaps and color-by fields such as
-intensity), laser scans, occupancy grids, scene-update primitives, pose
-trajectories, and camera frustums. Coordinate frame transforms from the
-recording are used to place everything correctly, and you can select the
-reference frame, track a moving frame with the camera, measure distances, and
-inspect points via hover tooltips.
-
-.. Placeholder: gif showing the 3D panel with point clouds + frustums
-.. .. image:: /images/multimodal/multimodal-3d-panel.gif
-..    :alt: multimodal-3d-panel
-..    :align: center
-
-.. _multimodal-plot-panel:
-
-Plot panel
-----------
-
-Plot panels chart numeric series extracted from any topic and field path in
-the recording — IMU rates, vehicle speed, steering angle, diagnostics values,
-etc. — over the full duration of the recording. A playhead marks the current
-playback position, and clicking anywhere in the plot seeks the shared clock
-to that time.
-
-.. Placeholder: gif showing the plot panel with playhead + click-to-seek
-.. .. image:: /images/multimodal/multimodal-plot-panel.gif
-..    :alt: multimodal-plot-panel
-..    :align: center
-
-.. _multimodal-raw-panel:
-
-Raw messages panel
-------------------
-
-The raw messages panel is the escape hatch for any channel, decoded or not:
-it displays the most recent message on a selected topic at the current
-playhead as a collapsible record tree, so you can inspect exact field values
-as you scrub through the recording.
-
-.. Placeholder: gif showing the raw messages panel record tree
-.. .. image:: /images/multimodal/multimodal-raw-panel.gif
-..    :alt: multimodal-raw-panel
-..    :align: center
-
-.. _multimodal-settings-sidebar:
-
-Configuring panels
-------------------
-
-The **left sidebar** of the sample modal is where you configure what each
-panel is showing. It contains two tabs:
-
--   **Scene**: settings that apply to the whole recording:
-
-    -   **Playback**: choose how signals behave between recorded samples —
-        `Smooth` interpolates continuous signals (transforms and 2D/3D label
-        geometry) for fluid playback, while `As recorded` never synthesizes
-        values and holds each signal at its latest recorded sample
-    -   **Advanced timing**: fine-grained control over how messages are
-        matched to the playback clock
-    -   **Other topics**: a list of the channels present in the file that are
-        not currently rendered in the scene, along with their schema,
-        encoding, message count, and whether they can be inspected in a raw
-        messages panel
-
--   **Panel settings**: when you focus a panel, a second tab named for that
-    panel appears with its specific options — for example, which streams and
-    overlays an image panel displays, the 3D panel's colormaps and camera
-    behavior, the topic/field series charted by a plot panel, or the topic
-    shown in a raw messages panel
-
-.. Placeholder: gif showing the left settings sidebar (scene + panel tabs)
-.. .. image:: /images/multimodal/multimodal-settings-sidebar.gif
-..    :alt: multimodal-settings-sidebar
-..    :align: center
-
-.. _multimodal-inspector-sidebar:
-
-Inspecting objects
-------------------
-
-The **right sidebar** of the sample modal is an inspector for objects in the
-scene. Click any object in any panel — a 3D box in the 3D panel or an
-annotation in an image panel — to view its details:
-
--   For 3D scene objects: the object's label, entity ID, topic, coordinate
-    frame, and any metadata attached to the object
--   For image annotations: the object's label, primitive kind, topic, and
-    exact geometry
-
-Any fields not covered by the structured view are shown as raw JSON. Press
-`Esc` or click `Clear selection` to clear the current selection.
-
-.. Placeholder: gif showing the right inspector sidebar with a selected object
-.. .. image:: /images/multimodal/multimodal-inspector-sidebar.gif
-..    :alt: multimodal-inspector-sidebar
-..    :align: center
-
-Grid previews
--------------
-
-In the App's sample grid, each multimodal sample displays a preview rendered
-from one of its streams, and you can use the stream selector to choose which
-stream is used for grid previews.
-
-.. Placeholder: gif showing grid previews + stream selector
-.. .. image:: /images/multimodal/multimodal-grid.gif
-..    :alt: multimodal-grid
-..    :align: center
-
-MCAP Explorer
--------------
-
-FiftyOne also includes a standalone **MCAP Explorer** panel that lets you
-open an arbitrary local `.mcap` file (via drag-and-drop or file browser) or a
-remote URL without creating a dataset first. Local files stay in your browser
-session and are read directly — nothing is uploaded.
-
-.. Placeholder: gif showing the MCAP Explorer panel
-.. .. image:: /images/multimodal/mcap-explorer.gif
-..    :alt: mcap-explorer
-..    :align: center
 
 .. _multimodal-temporal-tags:
 
