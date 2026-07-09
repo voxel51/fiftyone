@@ -26,6 +26,8 @@ export const POINT_PICK_LAYER_ID_KEY = "mcapPointsLayerId";
 
 /** One resolved point pick, still in rendered-geometry index space. */
 export interface ResolvedPointPick {
+  /** Rendered color of the picked vertex, when the geometry carries one. */
+  readonly color: readonly [number, number, number] | null;
   readonly layerId: string;
   readonly renderedIndex: number;
   readonly worldPosition: readonly [number, number, number];
@@ -88,6 +90,27 @@ export function pointsVertexWorldPosition(
 
   target.fromBufferAttribute(attribute, index);
   return object.localToWorld(target);
+}
+
+/**
+ * Reads the rendered (colormapped) color of one vertex of a points
+ * object, so hover emphasis can complement what's actually on screen.
+ */
+export function pointsVertexColor(
+  object: THREE.Object3D,
+  index: number,
+): readonly [number, number, number] | null {
+  const geometry = (object as THREE.Points).geometry as
+    | THREE.BufferGeometry
+    | undefined;
+  const attribute = geometry?.getAttribute("color") as
+    | THREE.BufferAttribute
+    | undefined;
+  if (!attribute || index < 0 || index >= attribute.count) {
+    return null;
+  }
+
+  return [attribute.getX(index), attribute.getY(index), attribute.getZ(index)];
 }
 
 /** Walks up the parent chain for the pick-blocking tag. */
@@ -159,6 +182,7 @@ export function resolvePointPick(
       continue;
     }
     return {
+      color: pointsVertexColor(intersection.object, intersection.index),
       layerId,
       renderedIndex: intersection.index,
       worldPosition: [worldVertex.x, worldVertex.y, worldVertex.z],

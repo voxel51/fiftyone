@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   drawProjectedPoints,
   hasNonTrivialDistortion,
+  pickProjectedPoint,
   projectPointCloudToImage,
 } from "./mcap-image-projection";
 
@@ -153,6 +154,75 @@ describe("projectPointCloudToImage", () => {
         translation: ZERO_TRANSLATION,
       }),
     ).toBeNull();
+  });
+});
+
+describe("pickProjectedPoint", () => {
+  it("returns the nearest projected point within the pick radius", () => {
+    // Projects to (50, 50), (60, 70), and (40, 50).
+    const positions = Float32Array.from([0, 0, 10, 1, 2, 10, -1, 0, 10]);
+
+    const pick = pickProjectedPoint({
+      calibration: PINHOLE_K,
+      positions,
+      radiusPx: 8,
+      rotation: IDENTITY_ROTATION,
+      targetU: 44,
+      targetV: 50,
+      translation: ZERO_TRANSLATION,
+    });
+
+    expect(pick).toMatchObject({ pointIndex: 2, u: 40, v: 50 });
+    expect(pick?.distanceSq).toBe(16);
+  });
+
+  it("misses when nothing projects within the radius", () => {
+    expect(
+      pickProjectedPoint({
+        calibration: PINHOLE_K,
+        positions: Float32Array.from([0, 0, 10]),
+        radiusPx: 4,
+        rotation: IDENTITY_ROTATION,
+        targetU: 80,
+        targetV: 80,
+        translation: ZERO_TRANSLATION,
+      }),
+    ).toBeNull();
+  });
+
+  it("never picks culled points", () => {
+    // Behind the camera and off-frame candidates sit "near" the target
+    // numerically but must stay unpickable, like they are undrawable.
+    expect(
+      pickProjectedPoint({
+        calibration: PINHOLE_K,
+        positions: Float32Array.from([0, 0, -10, 20, 0, 10]),
+        radiusPx: 1_000,
+        rotation: IDENTITY_ROTATION,
+        targetU: 50,
+        targetV: 50,
+        translation: ZERO_TRANSLATION,
+      }),
+    ).toBeNull();
+  });
+
+  it("honors the draw stride so only drawable points are pickable", () => {
+    // Two points at the same pixel; with maxPoints 1 only index 0 is
+    // drawn, so the pick must resolve to it.
+    const positions = Float32Array.from([0, 0, 10, 0.001, 0, 10]);
+
+    const pick = pickProjectedPoint({
+      calibration: PINHOLE_K,
+      maxPoints: 1,
+      positions,
+      radiusPx: 5,
+      rotation: IDENTITY_ROTATION,
+      targetU: 50,
+      targetV: 50,
+      translation: ZERO_TRANSLATION,
+    });
+
+    expect(pick?.pointIndex).toBe(0);
   });
 });
 
