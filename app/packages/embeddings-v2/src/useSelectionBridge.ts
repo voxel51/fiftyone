@@ -101,7 +101,12 @@ export function useSelectionBridge({
       const index = idIndexRef.current.map.get(id);
       if (index !== undefined) indices.push(index);
     }
-    return indices;
+    // No id resolving means the selection is not representable in this
+    // plot's id space (sample selections against a patches run, whose
+    // wire ids are label ids). That is "no selection" (null) — an empty
+    // selection would dim every point and outrank the filter-match
+    // layer in the host's precedence
+    return indices.length ? indices : null;
   }, [loaded, selectedSamples]);
 
   // Lasso -> data-space polygon -> server-resolved view stage -> the

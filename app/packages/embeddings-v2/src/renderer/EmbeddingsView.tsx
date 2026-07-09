@@ -44,10 +44,12 @@ export interface EmbeddingsViewProps {
   /** Plain-drag owner: "select" lassos (default), "explore" pans */
   mode?: InteractionMode;
   /**
-   * Camera adapter for z-carrying data; without it z is ignored and the
-   * data renders flat. Fixed for the lifetime of the view.
+   * Loads a camera adapter for z-carrying data; without one z is
+   * ignored and the data renders flat. Async so the camera's module
+   * can ship in the lazily loaded WebGL chunk instead of the host's.
+   * Fixed for the lifetime of the view.
    */
-  zCamera?: CameraAdapterFactory;
+  zCamera?: () => Promise<CameraAdapterFactory>;
 }
 
 /** Imperative escape hatch for host chrome (e.g. a reset-view button) */
@@ -117,8 +119,8 @@ export const EmbeddingsView = forwardRef<
     if (!host) return undefined;
     let disposed = false;
     let instance: EmbeddingsChart | null = null;
-    import("./EmbeddingsChart")
-      .then(({ EmbeddingsChart }) => {
+    Promise.all([import("./EmbeddingsChart"), zCameraRef.current?.()])
+      .then(([{ EmbeddingsChart }, zCamera]) => {
         if (disposed) return;
         instance = new EmbeddingsChart(
           host,
@@ -137,7 +139,7 @@ export const EmbeddingsView = forwardRef<
               );
             },
           },
-          { zCamera: zCameraRef.current },
+          { zCamera },
         );
         setChart(instance);
       })

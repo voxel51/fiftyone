@@ -1,10 +1,11 @@
 /**
  * The panel's landing view: one card per visualization run on the
- * dataset. Runs with 3D points are listed too and open in the 2D plot
- * (the client renders the first two coordinates). Deleting a run is a
- * two-step confirmation handled inline on the card.
+ * dataset. Every run is listed and viewable regardless of its
+ * dimensionality — the plot renders with whatever camera the build
+ * provides. Deleting a run is a two-step confirmation handled inline
+ * on the card.
  */
-import { DeleteOutline, MoreHoriz } from "@mui/icons-material";
+import { DeleteOutlined, MoreHoriz } from "@mui/icons-material";
 import {
   IconButton,
   ListItemIcon,
@@ -41,6 +42,7 @@ export default function RunsList({
   runs,
   error,
   actionError = null,
+  showUpsell = true,
   onOpen,
   onDelete,
 }: {
@@ -48,6 +50,8 @@ export default function RunsList({
   error: string | null;
   /** A failed mutation (e.g. delete); shown without replacing the list */
   actionError?: string | null;
+  /** Advertise capabilities this build lacks; off where they exist */
+  showUpsell?: boolean;
   onOpen: (brainKey: string) => void;
   onDelete: (brainKey: string) => void;
 }) {
@@ -94,7 +98,9 @@ export default function RunsList({
         </div>
       )}
       <div className="emb-runs-scroll">
-        {!dismissed && <UpsellBanner onDismiss={() => setDismissed(true)} />}
+        {showUpsell && !dismissed && (
+          <UpsellBanner onDismiss={() => setDismissed(true)} />
+        )}
         {actionError && (
           <div className="emb-runs-action-error">
             <Text variant={TextVariant.Md} color={TextColor.Destructive}>
@@ -103,7 +109,7 @@ export default function RunsList({
           </div>
         )}
         {runs.length === 0 ? (
-          <div className="emb-runs-center">
+          <div className="emb-runs-center emb-runs-overlay">
             <EmptyState
               icon={IconName.Embeddings}
               title="Visualize your embeddings"
@@ -199,7 +205,7 @@ export default function RunsList({
             }}
           >
             <ListItemIcon>
-              <DeleteOutline fontSize="small" />
+              <DeleteOutlined fontSize="small" />
             </ListItemIcon>
             <ListItemText>Delete</ListItemText>
           </MenuItem>

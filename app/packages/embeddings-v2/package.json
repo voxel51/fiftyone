@@ -16,6 +16,7 @@
         "test": "vitest"
     },
     "dependencies": {
+        "@fiftyone/components": "*",
         "@fiftyone/operators": "*",
         "@fiftyone/plugins": "*",
         "@fiftyone/spaces": "*",

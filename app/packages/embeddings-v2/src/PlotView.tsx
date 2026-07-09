@@ -49,9 +49,11 @@ import "./panel.css";
 import type { VisualizationRun } from "./protocol";
 import {
   EmbeddingsView,
+  type CameraAdapterFactory,
   type EmbeddingsViewHandle,
   type InteractionMode,
 } from "./renderer";
+import { clearSelectionNonceState, selectionCountState } from "./state";
 import { useColorColumn } from "./useColorColumn";
 import { useHoverInfo } from "./useHoverInfo";
 import { useMasks } from "./useMasks";
@@ -106,10 +108,13 @@ export default function PlotView({
   datasetName,
   run,
   onBack,
+  zCamera,
 }: {
   datasetName: string | null;
   run: VisualizationRun;
   onBack: () => void;
+  /** Loads a camera for runs whose points carry a third coordinate */
+  zCamera?: () => Promise<CameraAdapterFactory>;
 }) {
   const view = useRecoilValue(fos.view) as unknown[];
   const filters = useRecoilValue(fos.filters);
@@ -228,6 +233,9 @@ export default function PlotView({
       } else {
         setFieldFilter({ values: [label], exclude: false });
       }
+      // The filter's dimming should show; a class highlight outranks
+      // it in the selection precedence and would mask it
+      setHighlightClass(null);
       return;
     }
     setHighlightClass((current) => (current === index ? null : index));
@@ -258,6 +266,25 @@ export default function PlotView({
   };
 
   const chipCount = selectionCount ?? (selectedSamples.size || null);
+
+  // The panel tab's selection pill lives outside this tree; it mirrors
+  // the chip's count through the package atom and requests clears back
+  // through a nonce
+  const publishCount = useSetRecoilState(selectionCountState);
+  useEffect(() => {
+    publishCount(chipCount);
+    return () => publishCount(null);
+  }, [chipCount, publishCount]);
+
+  const clearNonce = useRecoilValue(clearSelectionNonceState);
+  const seenClearNonce = useRef(clearNonce);
+  useEffect(() => {
+    if (clearNonce !== seenClearNonce.current) {
+      seenClearNonce.current = clearNonce;
+      clearAll();
+    }
+  }, [clearAll, clearNonce]);
+
   const subtitle = `${run.method ?? "visualization"}${
     run.dims ? ` (${run.dims}D)` : ""
   }`;
@@ -318,7 +345,8 @@ export default function PlotView({
               onClick={() => setMode("select")}
             />
           </div>
-          <Tooltip content="Reset view">
+          {/* portal: inline rendering clips against the panel chrome */}
+          <Tooltip content="Reset view" portal>
             <Button
               variant={Variant.Icon}
               size={Size.Sm}
@@ -346,6 +374,7 @@ export default function PlotView({
             selected={selectedIndices ?? highlightIndices ?? matchIndices}
             tooltip={false}
             mode={mode}
+            zCamera={zCamera}
             onSelection={handleLasso}
             onPointClick={mode === "select" ? handlePointClick : undefined}
             onHover={handleHover}

@@ -170,6 +170,19 @@ describe("useSelectionBridge", () => {
     expect(result.current.selectedIndices).toBeNull();
   });
 
+  it("treats a selection that maps to nothing as no selection", () => {
+    // Sample ids never resolve against a patches run's label-id wire
+    // order. An empty array here would dim the whole plot and outrank
+    // the filter-match layer in the host's precedence chain
+    const selected = new Map<string, SelectionType>([
+      ["not-in-this-run", "default"],
+    ]);
+    const opts = options({ selectedSamples: selected });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    expect(result.current.selectedIndices).toBeNull();
+  });
+
   it("tracks the lasso's point count for chrome, until cleared", async () => {
     vi.mocked(fetchLassoStage).mockClear().mockResolvedValue({
       _cls: "fiftyone.core.stages.GeoWithin",

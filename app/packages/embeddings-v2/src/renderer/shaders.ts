@@ -1,14 +1,14 @@
 // All GLSL lives here — the shaders ARE the renderer; the host library
 // is a commodity. This file is the swap point for visual experiments.
-import { BASE_ALPHA, DIM_ALPHA } from "./constants";
+import { BASE_ALPHA, DIM_ALPHA, DIM_DESATURATION, DIM_TINT } from "./constants";
 
 // One vertex shader for every camera adapter: projectionMatrix ·
 // modelViewMatrix covers any projection (three.js binds both for
-// RawShaderMaterial when declared). Selection never recolors or
-// resizes — emphasized points
-// keep their exact style, everything else dims via vWeight. Visibility
-// is a separate mechanism: visible=0 points (view-stage subsetting)
-// clip out entirely, costing only a vertex shader run.
+// RawShaderMaterial when declared). Selection never restyles the
+// emphasized points — they keep their exact color and size; everything
+// else recedes (weight cut + desaturation toward gray). Visibility is
+// a separate mechanism: visible=0 points (view-stage subsetting) clip
+// out entirely, costing only a vertex shader run.
 export const POINTS_VERTEX = /* glsl */ `
   precision highp float;
 
@@ -26,8 +26,13 @@ export const POINTS_VERTEX = /* glsl */ `
   varying float vWeight;
 
   void main() {
-    vColor = color;
-    vWeight = mix(1.0, mix(${DIM_ALPHA}, 1.0, emphasis), uHasSelection);
+    // dim = 1 for a non-selected point while a selection is active.
+    // Dimming cuts the point's weight AND desaturates it toward gray:
+    // the weight cut fades isolated points, the desaturation is what
+    // survives density accumulation in deep piles (see constants.ts)
+    float dim = uHasSelection * (1.0 - emphasis);
+    vColor = mix(color, vec3(${DIM_TINT}), dim * ${DIM_DESATURATION});
+    vWeight = mix(1.0, ${DIM_ALPHA}, dim);
     if (visible < 0.5) {
       // Outside the clip volume (z > w): never rasterized
       gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
@@ -72,6 +77,56 @@ export const POINTS_FRAGMENT = /* glsl */ `
         uMode
       );
     }
+  }
+`;
+
+// Selection overlay pass: only emphasized points survive; everything
+// else clips out exactly like visible=0 does in the main pass. Drawn
+// AFTER the density/tone-map composite, straight onto the canvas —
+// inside the accumulation a lone selected point is averaged against
+// every overlapping neighbor and disappears into deep piles; on top it
+// cannot lose. Same attributes, so the geometry is shared verbatim.
+export const EMPHASIS_VERTEX = /* glsl */ `
+  precision highp float;
+
+  attribute vec3 position;
+  attribute vec3 color;
+  attribute float emphasis;
+  attribute float visible;
+
+  uniform mat4 projectionMatrix;
+  uniform mat4 modelViewMatrix;
+  uniform float uPointSize;
+
+  varying vec3 vColor;
+
+  void main() {
+    vColor = color;
+    if (emphasis < 0.5 || visible < 0.5) {
+      // Outside the clip volume (z > w): never rasterized
+      gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+      gl_PointSize = 0.0;
+      return;
+    }
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = uPointSize;
+  }
+`;
+
+// A plain disc of the point's own color at full opacity, slightly
+// larger than the base marker (EMPHASIS_SIZE_PX). Full opacity over
+// the finished composite IS the emphasis — deliberately no extra
+// ornament, so a thousands-deep lasso selection stays calm.
+export const EMPHASIS_FRAGMENT = /* glsl */ `
+  precision highp float;
+
+  varying vec3 vColor;
+
+  void main() {
+    float dist = length(gl_PointCoord - 0.5);
+    float edge = 1.0 - smoothstep(0.44, 0.5, dist);
+    if (edge == 0.0) discard;
+    gl_FragColor = vec4(vColor, edge);
   }
 `;
 

@@ -36,6 +36,7 @@ from starlette.responses import Response
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.stages as fos
+import fiftyone.core.storage as fost
 from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server.decorators import route
@@ -652,15 +653,25 @@ def _hover_media(sample):
     the client passes through the App's ``getSampleSrc()``, or None when
     hover media is unavailable for the sample's media type.
 
-    Deliberately a single substitution point: deployments that serve media
-    by other means (e.g., pre-signed object-store URLs the browser fetches
-    directly) replace only this function; ``getSampleSrc()`` passes fully
-    qualified URLs through untouched.
+    When the installed storage layer can mint URLs for the path (e.g.
+    pre-signed object-store URLs), the browser fetches the media
+    directly; ``getSampleSrc()`` passes fully qualified URLs through
+    untouched. Local paths — and installs whose storage layer has no
+    URL support — fall through to the raw filepath, which the App
+    serves via its ``/media`` endpoint.
     """
     if sample.media_type != fom.IMAGE:
         return None
 
-    return sample.filepath
+    filepath = sample.filepath
+    get_url = getattr(fost, "get_url", None)
+    if get_url is not None:
+        try:
+            return get_url(filepath)
+        except Exception:
+            pass
+
+    return filepath
 
 
 def _resolve_selection(data, results):

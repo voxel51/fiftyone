@@ -14,6 +14,25 @@ export const POINT_SIZE = 6;
 /** Weight of non-selected points while a selection is active */
 export const DIM_ALPHA = 0.15;
 
+/**
+ * How far non-selected points desaturate toward neutral gray while a
+ * selection is active (0 = keep hue, 1 = fully gray). Weight alone
+ * cannot carry the dimming: density accumulation sums weights, so a
+ * deep pile of weight-cut points re-saturates to full opacity. Color
+ * survives accumulation — the tone map averages it — so gray piles
+ * stay visibly "not selected" at any depth.
+ */
+export const DIM_DESATURATION = 0.7;
+
+/** The neutral the dimmed points desaturate toward (works on dark bg) */
+export const DIM_TINT = 0.4;
+
+/**
+ * Extra diameter (CSS px) of the selection overlay's markers over the
+ * base point size. Subjective — tune freely.
+ */
+export const EMPHASIS_SIZE_PX = 4;
+
 /** Per-point alpha in "alpha" compositing mode */
 export const BASE_ALPHA = 0.85;
 

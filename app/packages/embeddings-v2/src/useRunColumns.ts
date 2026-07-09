@@ -59,12 +59,15 @@ export function useRunColumns(
         if (stale) return;
 
         ids.set(sliceIds, offset * 12);
-        const [xs, ys] = geometry.columns;
+        // Runs may carry a third coordinate; it rides along on the
+        // point and the renderer decides whether it has a camera for it
+        const [xs, ys, zs] = geometry.columns;
         for (let i = 0; i < geometry.n; i++) {
           points.push({
             id: idAt(ids, offset + i),
             x: xs[i],
             y: ys[i],
+            ...(zs ? { z: zs[i] } : null),
             label: null,
           });
         }

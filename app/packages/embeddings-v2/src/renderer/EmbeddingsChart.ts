@@ -17,6 +17,7 @@ import { PlanarCamera } from "./cameras/PlanarCamera";
 import { buildColumns, colorsFromLabels, type Columns } from "./columns";
 import {
   DEFAULT_SETTINGS,
+  EMPHASIS_SIZE_PX,
   HOVER_RADIUS_PX,
   PALETTE,
   POINT_SIZE,
@@ -26,7 +27,12 @@ import { HoverPicker } from "./interaction/HoverPicker";
 import { LassoOverlay } from "./interaction/LassoOverlay";
 import { nearestPoint, selectInPolygon } from "./math";
 import { DensityPipeline } from "./pipeline";
-import { POINTS_FRAGMENT, POINTS_VERTEX } from "./shaders";
+import {
+  EMPHASIS_FRAGMENT,
+  EMPHASIS_VERTEX,
+  POINTS_FRAGMENT,
+  POINTS_VERTEX,
+} from "./shaders";
 import type {
   CameraAdapter,
   CameraAdapterFactory,
@@ -77,10 +83,11 @@ export interface EmbeddingsChartOptions {
  *
  * Host API: setData / setColors / setVisible / setSelected /
  * setRenderSettings. Selection is one mechanism: the lasso and the host
- * both call setSelected, and its only visual effect is dimming
- * non-members — colors and sizes never change. Visibility is a second,
- * independent mechanism (view-stage subsetting): hidden points don't
- * render and can't be hovered, clicked, or lassoed.
+ * both call setSelected. Non-members recede (dim + desaturate) and the
+ * selected points redraw at full opacity in an overlay pass above the
+ * composite, where blending cannot swallow them. Visibility is a
+ * second, independent mechanism (view-stage subsetting): hidden points
+ * don't render and can't be hovered, clicked, or lassoed.
  */
 export class EmbeddingsChart {
   private readonly container: HTMLElement;
@@ -91,6 +98,12 @@ export class EmbeddingsChart {
   private readonly scene = new Scene();
   private readonly points: Points;
   private readonly material: RawShaderMaterial;
+  // Selected points draw a second time, over the composite (own scene:
+  // they must not join the density accumulation)
+  private readonly overlayScene = new Scene();
+  private readonly emphasisPoints: Points;
+  private readonly emphasisMaterial: RawShaderMaterial;
+  private hasSelection = false;
   private readonly pipeline = new DensityPipeline();
   private readonly lasso: LassoOverlay;
   private readonly picker: HoverPicker;
@@ -172,6 +185,29 @@ export class EmbeddingsChart {
     this.points.frustumCulled = false;
     this.scene.add(this.points);
 
+    this.emphasisMaterial = new RawShaderMaterial({
+      vertexShader: EMPHASIS_VERTEX,
+      fragmentShader: EMPHASIS_FRAGMENT,
+      uniforms: {
+        uPointSize: {
+          value:
+            (POINT_SIZE + EMPHASIS_SIZE_PX) * (window.devicePixelRatio || 1),
+        },
+      },
+      // Plain alpha compositing over the finished frame, no depth
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+    // The geometry is shared with the main pass — the emphasis shader
+    // clips out everything that isn't selected
+    this.emphasisPoints = new Points(
+      this.points.geometry,
+      this.emphasisMaterial,
+    );
+    this.emphasisPoints.frustumCulled = false;
+    this.overlayScene.add(this.emphasisPoints);
+
     this.lasso = new LassoOverlay(container, {
       shouldStart: (event) => this.adapter?.isLassoStart(event) ?? false,
       onComplete: (polygon, x, y) => this.handleLasso(polygon, x, y),
@@ -244,7 +280,9 @@ export class EmbeddingsChart {
     // time (the camera adapters own all framing anyway)
     geometry.boundingSphere = new Sphere(new Vector3(0, 0, 0), 1);
     this.points.geometry = geometry;
+    this.emphasisPoints.geometry = geometry;
     this.material.uniforms.uHasSelection.value = 0;
+    this.hasSelection = false;
 
     this.ensureAdapter(cols.hasZ);
     this.adapter?.setBounds(cols, this.width, this.height);
@@ -315,7 +353,8 @@ export class EmbeddingsChart {
         if (index >= 0 && index < cols.n) this.emphasisMask[index] = 1;
       }
     }
-    this.material.uniforms.uHasSelection.value = indices ? 1 : 0;
+    this.hasSelection = indices !== null;
+    this.material.uniforms.uHasSelection.value = this.hasSelection ? 1 : 0;
     emphasisAttribute.needsUpdate = true;
     this.requestRender();
   }
@@ -362,6 +401,7 @@ export class EmbeddingsChart {
     this.resizeObserver.disconnect();
     this.points.geometry.dispose();
     this.material.dispose();
+    this.emphasisMaterial.dispose();
     this.pipeline.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
@@ -493,5 +533,11 @@ export class EmbeddingsChart {
       camera,
       this.settings.mode === "density",
     );
+    if (this.hasSelection) {
+      // Composite the selection markers over the finished frame
+      this.renderer.autoClear = false;
+      this.renderer.render(this.overlayScene, camera);
+      this.renderer.autoClear = true;
+    }
   }
 }
