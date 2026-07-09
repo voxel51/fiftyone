@@ -231,7 +231,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
       ),
     });
   };
-  const canProjectLidar =
+  const canProjectPointClouds =
     pointCloudSources.length > 0 && calibrationTopic !== null;
 
   return (
@@ -282,18 +282,25 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               </div>
             </McapSidebarGroup>
           ) : null}
-          {canProjectLidar ? (
+          {canProjectPointClouds ? (
             <McapSidebarGroup
               summary={
                 projection.enabled
                   ? `${selectedProjectionTopics.length} of ${pointCloudSources.length} on`
                   : undefined
               }
-              title="Lidar overlay"
+              title="Pointcloud overlay"
               toggle={{
-                ariaLabel: "Toggle lidar overlay",
+                ariaLabel: "Toggle pointcloud overlay",
                 checked: projection.enabled,
-                onChange: (checked) => setProjection({ enabled: checked }),
+                // Master toggle drives the children: on selects every
+                // cloud, off unchecks them all.
+                onChange: (checked) =>
+                  setProjection(
+                    checked
+                      ? { enabled: true, topics: null }
+                      : { enabled: false, topics: [] },
+                  ),
               }}
             >
               <div className={settingsStyles.optionStack}>
