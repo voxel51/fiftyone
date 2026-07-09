@@ -1,12 +1,6 @@
 import type { PointCloudVisualization } from "../../../decoders";
 import type { Mcap3dHoveredPoint } from "./use-mcap-3d-hover-tooltip";
 
-/**
- * Bridges dwell-time point picks to the hover tooltip: snapshots the
- * decoded per-point values (position + every scalar channel) for the
- * point the pointer is resting on.
- */
-
 const POINT_COMPONENT_COUNT = 3;
 
 /** Builds the hovered-point payload for a picked decoded index. */

@@ -56,7 +56,11 @@ import {
   useMcapSelectedObject,
 } from "./mcap-selected-object";
 import { mcapHoveredPointForFrame } from "./mcap-point-hover";
-import { mcapHoverEchoAtom, useMcapHoverEcho } from "./mcap-hover-echo";
+import {
+  mcapHoverEchoAtom,
+  useMcapHoverEcho,
+  type McapHoverEcho,
+} from "./mcap-hover-echo";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
   defaultMcapPointCloudColorForSource,
@@ -480,14 +484,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       }),
     [onHoverEntity, sceneAnnotationLayers, selectedObject, setSelectedObject],
   );
-  // Wire the point clouds into the hover tooltip: once the pointer rests
-  // over a bare point (entities and frustums keep picking precedence),
-  // that point's decoded fields show in a tooltip at the cursor, the
-  // point itself gets in-scene emphasis, and the modal-wide hover-echo
-  // atom carries the point to every other pane displaying it — including
-  // hovers that originate in a 2D projection overlay, which light up the
-  // point here. The payload closes over the exact frame being displayed.
+  // Share point hovers between the 3D scene and image projections.
   const hoverEcho = useMcapHoverEcho();
+  const publishedPointHoverRef = useRef<McapHoverEcho | null>(null);
   const hoverablePointCloudLayers = useMemo(
     () =>
       coloredPointCloudLayers.map((layer) => {
@@ -504,18 +503,26 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
               ? mcapHoveredPointForFrame(topic, frame, pick.pointIndex)
               : null;
             onHoverPoint(payload);
-            jotaiStore.set(
-              mcapHoverEchoAtom,
-              payload && pick
-                ? {
-                    color: pick.color,
-                    kind: "point",
-                    pointIndex: payload.pointIndex,
-                    position: payload.position,
-                    topic,
-                  }
-                : null,
-            );
+            if (payload && pick) {
+              const hover: McapHoverEcho = {
+                color: pick.color,
+                kind: "point",
+                pointIndex: payload.pointIndex,
+                position: payload.position,
+                topic,
+              };
+              publishedPointHoverRef.current = hover;
+              jotaiStore.set(mcapHoverEchoAtom, hover);
+              return;
+            }
+
+            const published = publishedPointHoverRef.current;
+            publishedPointHoverRef.current = null;
+            if (published) {
+              jotaiStore.set(mcapHoverEchoAtom, (current) =>
+                current === published ? null : current,
+              );
+            }
           },
         };
       }),

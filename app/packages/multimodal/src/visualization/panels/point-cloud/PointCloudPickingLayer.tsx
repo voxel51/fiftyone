@@ -51,27 +51,27 @@ export function PointCloudPickingLayer({
   const maxRenderedPointsRef = useRef(maxRenderedPoints);
   maxRenderedPointsRef.current = maxRenderedPoints;
 
-  // This effect binds the dwell-hover listeners to the canvas while any
-  // layer is inspectable and scene picking isn't suspended (measure mode).
   useEffect(() => {
     const element = gl?.domElement as HTMLCanvasElement | undefined;
     if (!active || !element || !camera || !raycaster || !scene) {
       return undefined;
     }
     let hoveredLayerId: string | null = null;
+    let clearHoveredPoint: (() => void) | null = null;
 
     const clearHover = () => {
-      if (hoveredLayerId === null) return;
-      const layer = layersRef.current.find(
-        (candidate) => candidate.id === hoveredLayerId,
-      );
+      const clear = clearHoveredPoint;
       hoveredLayerId = null;
-      layer?.onHoverPoint?.(null);
+      clearHoveredPoint = null;
+      clear?.();
     };
 
     const raycastAt = (clientX: number, clientY: number) => {
       const rect = element.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
+      if (rect.width <= 0 || rect.height <= 0) {
+        clearHover();
+        return;
+      }
 
       // Casts, not types: fiber's bundled three types are out of sync
       // with the app's pinned three version — see MeasurementLayer.
@@ -80,7 +80,10 @@ export function PointCloudPickingLayer({
       const threeScene = scene as unknown as THREE.Scene;
 
       const pointsObjects = collectPickablePoints(threeScene);
-      if (pointsObjects.length === 0) return;
+      if (pointsObjects.length === 0) {
+        clearHover();
+        return;
+      }
 
       const pickRadiusPx = Math.max(POINT_PICK_RADIUS_PX, pointSizeRef.current);
       const threshold = worldThresholdForObjects({
@@ -89,7 +92,10 @@ export function PointCloudPickingLayer({
         pointsObjects,
         viewportHeightPx: rect.height,
       });
-      if (threshold <= 0) return;
+      if (threshold <= 0) {
+        clearHover();
+        return;
+      }
 
       const pointerX = clientX - rect.left;
       const pointerY = clientY - rect.top;
@@ -151,6 +157,7 @@ export function PointCloudPickingLayer({
         clearHover();
       }
       hoveredLayerId = pick.layerId;
+      clearHoveredPoint = () => layer.onHoverPoint?.(null);
       layer.onHoverPoint({
         color: pick.color,
         pointIndex,

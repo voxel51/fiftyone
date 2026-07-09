@@ -41,7 +41,11 @@ import {
   projectPointCloudToImage,
 } from "./mcap-image-projection";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
-import { mcapHoverEchoAtom, useMcapHoverEcho } from "./mcap-hover-echo";
+import {
+  mcapHoverEchoAtom,
+  useMcapHoverEcho,
+  type McapHoverEcho,
+} from "./mcap-hover-echo";
 import { mcapHoveredPointForFrame } from "./mcap-point-hover";
 import {
   defaultMcapPointCloudColorForSource,
@@ -175,12 +179,8 @@ const McapImageProjectionOverlay: React.FC<{
   pointSizeRef.current = pointSize;
   // Identity of the echo this overlay published, so canceling never
   // clobbers a hover another pane owns.
-  const publishedHoverRef = useRef<{
-    pointIndex: number;
-    topic: string;
-  } | null>(null);
+  const publishedHoverRef = useRef<McapHoverEcho | null>(null);
 
-  // This effect tracks the overlay container's size for display-rect math.
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return undefined;
@@ -194,13 +194,7 @@ const McapImageProjectionOverlay: React.FC<{
     return () => observer.disconnect();
   }, []);
 
-  // This effect binds dwell-hover inspection to the image surface (the
-  // overlay itself is pointer-transparent, so listeners go on its
-  // parent): resting the pointer over a projected dot publishes that
-  // point into the modal-wide hover echo — the same channel 3D hovers
-  // use — so the 3D scene and sibling overlays light it up too. Pans
-  // never hijack inspection: pressed buttons suppress the dwell and it
-  // re-arms as soon as the pointer rests again.
+  // Listen on the parent because the overlay itself is pointer-transparent.
   useEffect(() => {
     const surface = containerRef.current?.parentElement;
     if (!surface) {
@@ -213,13 +207,7 @@ const McapImageProjectionOverlay: React.FC<{
         return;
       }
       publishedHoverRef.current = null;
-      setSharedHover((current) =>
-        current?.kind === "point" &&
-        current.topic === published.topic &&
-        current.pointIndex === published.pointIndex
-          ? null
-          : current,
-      );
+      setSharedHover((current) => (current === published ? null : current));
     };
     const pickAt = (clientX: number, clientY: number) => {
       const container = containerRef.current;
@@ -315,14 +303,8 @@ const McapImageProjectionOverlay: React.FC<{
         clearOwnHover();
         return;
       }
-      publishedHoverRef.current = {
-        pointIndex: payload.pointIndex,
-        topic: best.topic,
-      };
       setDwellTooltip({ ...payload, x: pointerX, y: pointerY });
-      // Colour the echo with the dot's own rendered colour: rebuild the
-      // cloud's writer for this one point — dwell-time only, same cost
-      // class as the pick walk itself.
+      // Use the dot's rendered color for matching emphasis across panes.
       const scratch = new Float32Array(3);
       createPointCloudColorWriter(best.frame.positions, {
         ...colorOptionsRef.current.get(best.topic),
@@ -334,13 +316,15 @@ const McapImageProjectionOverlay: React.FC<{
         best.pointIndex,
         best.frame.positions[best.pointIndex * 3 + 2],
       );
-      setSharedHover({
+      const hover: McapHoverEcho = {
         color: [scratch[0], scratch[1], scratch[2]],
         kind: "point",
         pointIndex: payload.pointIndex,
         position: payload.position,
         topic: best.topic,
-      });
+      };
+      publishedHoverRef.current = hover;
+      setSharedHover(hover);
     };
 
     return attachPointerDwell(surface, {
@@ -351,9 +335,7 @@ const McapImageProjectionOverlay: React.FC<{
     });
   }, [setSharedHover]);
 
-  // This effect re-projects the clouds and redraws the offscreen scene
-  // when a lidar frame, the calibration, transforms, or the colour source
-  // change — the expensive half of the overlay, at lidar frame rate.
+  // Projection redraws only when scene data or styling changes.
   useEffect(() => {
     const cameraFrameId = calibration.coordinateFrameId;
     if (
@@ -361,6 +343,8 @@ const McapImageProjectionOverlay: React.FC<{
       !(calibration.width > 0) ||
       !(calibration.height > 0)
     ) {
+      offscreenRef.current = null;
+      setSceneVersion((version) => version + 1);
       return;
     }
     const offscreenScale = Math.min(
@@ -434,9 +418,7 @@ const McapImageProjectionOverlay: React.FC<{
     setSceneVersion((version) => version + 1);
   }, [calibration, colorOptionsByTopic, frames, pointSize, resolve, topics]);
 
-  // This effect projects the 3D-hovered point (if it belongs to one of
-  // the drawn clouds) so the blit can echo it — one point, so it stays
-  // out of the full reprojection above.
+  // Project hover emphasis separately from the full cloud.
   useEffect(() => {
     const cameraFrameId = calibration.coordinateFrameId;
     const topicIndex = hoveredPoint ? topics.indexOf(hoveredPoint.topic) : -1;
@@ -492,8 +474,6 @@ const McapImageProjectionOverlay: React.FC<{
     });
   }, [calibration, frames, hoveredPoint, pointSize, resolve, topics]);
 
-  // This effect eases the echo's grow-in whenever the hovered point
-  // changes, re-blitting each animation frame.
   useEffect(() => {
     if (!hoverEcho) {
       return undefined;
@@ -516,9 +496,7 @@ const McapImageProjectionOverlay: React.FC<{
     return () => cancelAnimationFrame(rafHandle);
   }, [hoverEcho]);
 
-  // This effect blits the offscreen scene onto the visible canvas when
-  // the scene, the container geometry, or the pan/zoom transform change —
-  // the cheap half, a single drawImage.
+  // Pan, zoom, and resize only blit the cached projection.
   useEffect(() => {
     const canvas = canvasRef.current;
     const offscreen = offscreenRef.current;

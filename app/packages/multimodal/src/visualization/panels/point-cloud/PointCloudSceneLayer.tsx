@@ -77,8 +77,7 @@ function PointCloudPoints({
   pointSize,
 }: {
   readonly data: PointCloudRenderData;
-  /** Set only when the layer is pickable — tags the points object for
-   * the click-time raycast in PointCloudPickingLayer. */
+  /** Set only when the layer is pickable. */
   readonly layerId?: string;
   readonly pointSize: number;
 }) {

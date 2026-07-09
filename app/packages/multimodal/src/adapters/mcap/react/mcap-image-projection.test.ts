@@ -61,6 +61,28 @@ describe("projectPointCloudToImage", () => {
     expect(Array.from(projection?.uv?.slice(0, 2) ?? [])).toEqual([50, 50]);
   });
 
+  it("culls points on the exclusive right and bottom image edges", () => {
+    const projection = projectPointCloudToImage({
+      calibration: PINHOLE_K,
+      positions: Float32Array.from([
+        5,
+        0,
+        10, // u = width
+        0,
+        5,
+        10, // v = height
+        0,
+        0,
+        10, // survivor
+      ]),
+      rotation: IDENTITY_ROTATION,
+      translation: ZERO_TRANSLATION,
+    });
+
+    expect(projection?.count).toBe(1);
+    expect(Array.from(projection?.uv.slice(0, 2) ?? [])).toEqual([50, 50]);
+  });
+
   it("applies the frame transform before projecting", () => {
     // 90° about +Y maps sensor -X onto camera +Z (forward).
     const halfSqrt2 = Math.SQRT1_2;

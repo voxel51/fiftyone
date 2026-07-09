@@ -9,10 +9,8 @@ import type { PointCloudColorWriter } from "../../../visualization/panels/point-
  * their colours from the cloud's own colour writer, so a cloud looks
  * identical projected and in 3D.
  *
- * V1 is rectified-only by design: when the calibration carries a
- * non-trivial distortion model the overlay still projects via `P`/`K`
- * but the host shows a "assumes rectified images" notice instead of
- * silently drawing wrong pixels (see `hasNonTrivialDistortion`).
+ * When the calibration carries a non-trivial distortion model, the overlay
+ * still projects via `P`/`K`; the host warns that images must be rectified.
  */
 
 /** Projection budget: dense lidar frames are stride-sampled beyond this. */
@@ -148,7 +146,7 @@ export function projectPointCloudToImage({
     }
     const u = (p00 * cx + p01 * cy + p02 * cz + p03) / w;
     const v = (p10 * cx + p11 * cy + p12 * cz + p13) / w;
-    if (!(u >= 0) || !(v >= 0) || u > width || v > height) {
+    if (!(u >= 0) || !(v >= 0) || u >= width || v >= height) {
       continue;
     }
 
@@ -264,7 +262,7 @@ export function pickProjectedPoint({
     }
     const u = (p00 * cx + p01 * cy + p02 * cz + p03) / w;
     const v = (p10 * cx + p11 * cy + p12 * cz + p13) / w;
-    if (!(u >= 0) || !(v >= 0) || u > width || v > height) {
+    if (!(u >= 0) || !(v >= 0) || u >= width || v >= height) {
       continue;
     }
 
