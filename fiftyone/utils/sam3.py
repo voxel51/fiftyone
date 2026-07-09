@@ -1050,9 +1050,10 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                     rx, ry, rw, rh = det.bounding_box
                     sam_label = det.get_field("sam_label")
                     polarity = int(sam_label) if sam_label is not None else 1
+                    label = det.label if det.label is not None else "object"
                     frame_entry = prompts.setdefault(frame_idx, {})
                     label_entry = frame_entry.setdefault(
-                        det.label, {"boxes": [], "polarity": []}
+                        label, {"boxes": [], "polarity": []}
                     )
                     label_entry["boxes"].append([rx, ry, rw, rh])
                     label_entry["polarity"].append(polarity)
@@ -1154,8 +1155,10 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         }
 
         try:
-            # Each add_prompt call resets model state, so we run a separate
-            # propagation pass per (text_prompt, frame) and accumulate results.
+            # add_prompt resets session state, so we do exactly ONE propagation
+            # pass per label.  When exemplar boxes exist on multiple frames for
+            # the same label we pick a single anchor frame (most boxes; earliest
+            # frame on tie) to avoid accumulating duplicate detections.
             if self.config.classes:
                 text_frame = self._get_text_frame_idx()
 
@@ -1168,35 +1171,57 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                     }
 
                     if matching_frames:
-                        # One combined text + exemplar-box call per frame.
-                        for fi, label_data in sorted(matching_frames.items()):
-                            prompt_response = (
-                                self.concept_predictor.handle_request(
-                                    request=dict(
-                                        type="add_prompt",
-                                        session_id=session_id,
-                                        frame_index=fi,
-                                        text=text_prompt,
-                                        bounding_boxes=label_data["boxes"],
-                                        bounding_box_labels=label_data[
-                                            "polarity"
-                                        ],
-                                    )
+                        # Pick the single best anchor: most boxes, then earliest.
+                        anchor_fi = min(
+                            matching_frames,
+                            key=lambda fi: (
+                                -len(matching_frames[fi]["boxes"]),
+                                fi,
+                            ),
+                        )
+                        if len(matching_frames) > 1:
+                            other_frames = sorted(
+                                fi + 1
+                                for fi in matching_frames
+                                if fi != anchor_fi
+                            )
+                            logger.warning(
+                                "Concept prompt %r has exemplar boxes on "
+                                "multiple frames %s. Anchoring to frame %d "
+                                "(%d boxes). Boxes on frames %s will be "
+                                "ignored.",
+                                text_prompt,
+                                sorted(fi + 1 for fi in matching_frames),
+                                anchor_fi + 1,
+                                len(matching_frames[anchor_fi]["boxes"]),
+                                other_frames,
+                            )
+                        label_data = matching_frames[anchor_fi]
+                        prompt_response = (
+                            self.concept_predictor.handle_request(
+                                request=dict(
+                                    type="add_prompt",
+                                    session_id=session_id,
+                                    frame_index=anchor_fi,
+                                    text=text_prompt,
+                                    bounding_boxes=label_data["boxes"],
+                                    bounding_box_labels=label_data["polarity"],
                                 )
                             )
-                            outputs = prompt_response.get(
-                                "outputs", prompt_response
-                            )
-                            label_map = {
-                                oid: text_prompt
-                                for oid in outputs.get("out_obj_ids", [])
-                            }
-                            self._accumulate_concept_propagation(
-                                session_id,
-                                label_map,
-                                text_prompt,
-                                sample_detections,
-                            )
+                        )
+                        outputs = prompt_response.get(
+                            "outputs", prompt_response
+                        )
+                        label_map = {
+                            oid: text_prompt
+                            for oid in outputs.get("out_obj_ids", [])
+                        }
+                        self._accumulate_concept_propagation(
+                            session_id,
+                            label_map,
+                            text_prompt,
+                            sample_detections,
+                        )
                     else:
                         # Text-only at anchor frame.
                         prompt_response = (
@@ -1236,6 +1261,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                                     type="add_prompt",
                                     session_id=session_id,
                                     frame_index=fi,
+                                    text=label,
                                     bounding_boxes=label_data["boxes"],
                                     bounding_box_labels=label_data["polarity"],
                                 )
