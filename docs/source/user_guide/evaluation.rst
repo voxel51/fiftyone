@@ -2142,6 +2142,50 @@ answers are normalized only when the references disagree:
     print(results.accuracy)
     # 0.6
 
+Additional methods
+------------------
+
+The following additional deterministic protocols are available via the
+``method`` parameter:
+
+-   ``"multiple_choice"``: accuracy over the selected choices for
+    multiple-choice datasets whose ground truth labels populate
+    :attr:`choices <fiftyone.core.labels.VQA.choices>`. Answers are matched
+    to choices by normalized text; unmatched answers are interpreted as
+    choice letters (``"B"``, ``"(b)"``) or 0-based integer indexes when
+    possible. The confusion matrix methods inherited by |VQAResults|
+    operate over the choice space
+-   ``"anls"``: average normalized Levenshtein similarity, the DocVQA-family
+    protocol. Each prediction scores the maximum over the reference answers
+    of ``1 - NL(pred, ref)``, where similarities with normalized Levenshtein
+    distance at or above the configurable ``threshold`` (default 0.5)
+    score 0
+-   ``"token_f1"``: the maximum over the reference answers of the F1 score
+    of the token overlap between the normalized prediction and reference
+-   ``"contains"``: a prediction is correct if any normalized reference
+    answer appears as a substring of the normalized prediction, for relaxed
+    scoring of verbose model responses
+
+.. code-block:: python
+    :linenos:
+
+    # Multiple-choice evaluation
+    results = dataset.evaluate_vqa(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval_mc",
+        method="multiple_choice",
+    )
+
+    # ANLS with a custom threshold
+    results = dataset.evaluate_vqa(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval_anls",
+        method="anls",
+        threshold=0.5,
+    )
+
 .. note::
 
     The :ref:`Model Evaluation panel <app-model-evaluation-panel>` does not
