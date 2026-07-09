@@ -20,6 +20,7 @@ import {
 } from "../../lib/playback/use-playback-state";
 import LoopBounds from "../Loop/LoopBounds";
 import PlayheadTime from "../Playhead/PlayheadTime";
+import SpeedControl from "./SpeedControl";
 import { PauseIcon, PlayIcon } from "./timeline-controls-icons";
 import styles from "./TimelineControls.module.css";
 
@@ -147,6 +148,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         aria-label="Step forward"
         onClick={stepForward}
       />
+      <SpeedControl />
 
       {extraControls}
 
