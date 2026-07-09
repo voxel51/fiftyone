@@ -457,6 +457,9 @@ function McapMapLibreSurface({
     fitKeyRef.current = null;
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
+    let webglCanvas: HTMLCanvasElement | null = null;
+    let handleWebglContextLost: ((event: Event) => void) | null = null;
+    let handleWebglContextRestored: (() => void) | null = null;
 
     void loadMapLibre()
       .then((maplibregl) => {
@@ -534,9 +537,25 @@ function McapMapLibreSurface({
         map.on("mouseout", () => {
           setMeasurementHover(null);
         });
-        map.getCanvas().addEventListener("webglcontextlost", () => {
-          setFailed(true);
-        });
+        webglCanvas = map.getCanvas();
+        handleWebglContextLost = (event: Event) => {
+          event.preventDefault();
+          setLoaded(false);
+        };
+        handleWebglContextRestored = () => {
+          setFailed(false);
+          setLoaded(loadedRef.current);
+          map.resize();
+          map.triggerRepaint();
+        };
+        webglCanvas.addEventListener(
+          "webglcontextlost",
+          handleWebglContextLost,
+        );
+        webglCanvas.addEventListener(
+          "webglcontextrestored",
+          handleWebglContextRestored,
+        );
 
         if (typeof ResizeObserver !== "undefined") {
           resizeObserver = new ResizeObserver(() => map.resize());
@@ -548,6 +567,18 @@ function McapMapLibreSurface({
     return () => {
       cancelled = true;
       resizeObserver?.disconnect();
+      if (webglCanvas && handleWebglContextLost) {
+        webglCanvas.removeEventListener(
+          "webglcontextlost",
+          handleWebglContextLost,
+        );
+      }
+      if (webglCanvas && handleWebglContextRestored) {
+        webglCanvas.removeEventListener(
+          "webglcontextrestored",
+          handleWebglContextRestored,
+        );
+      }
       const map = mapRef.current;
       if (map) {
         map.remove();

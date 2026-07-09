@@ -159,6 +159,7 @@ export function McapLocationTracksBridge({
 
         void (async () => {
           const points: McapLocationTrackPoint[] = [];
+          let messageCount = 0;
           try {
             for await (const message of client.readDecodedMessages(
               {
@@ -172,6 +173,7 @@ export function McapLocationTracksBridge({
               if (cancelled) {
                 return;
               }
+              messageCount += 1;
               if (shouldStandDown()) {
                 fetchedTopicsRef.current.delete(topic);
                 scheduleRetry(LOCATION_TRACK_DEFERRED_RETRY_MS);
@@ -192,7 +194,9 @@ export function McapLocationTracksBridge({
             const result = decimateLocationTrackSegments(
               segmentLocationTrack(points),
             );
-            if (result.truncated) {
+            const truncated =
+              result.truncated || messageCount >= LOCATION_TRACK_READ_LIMIT;
+            if (truncated) {
               markMcapLatencyEvent("location track downsampled", {
                 points: result.pointCount,
                 topic,
@@ -203,7 +207,7 @@ export function McapLocationTracksBridge({
               pointCount: result.pointCount,
               segments: result.segments,
               status: "ready",
-              ...(result.truncated ? { truncated: true } : {}),
+              ...(truncated ? { truncated: true } : {}),
             });
           } catch {
             commit(topic, { ...baseState, status: "error" });

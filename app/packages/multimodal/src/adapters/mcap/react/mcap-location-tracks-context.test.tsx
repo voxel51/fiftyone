@@ -1,4 +1,7 @@
+import { isPlayingAtom } from "@fiftyone/playback/src/lib/playback/atoms";
+import { PlaybackStoreContext } from "@fiftyone/playback/src/lib/playback/playback-store-context";
 import { act, cleanup, render, screen } from "@testing-library/react";
+import { createStore } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type { SceneSource } from "../../../scene-inventory";
@@ -9,6 +12,7 @@ import {
   McapLocationTracksProvider,
   useMcapLocationTracksContext,
 } from "./mcap-location-tracks-context";
+import { setMcapNetworkHealth } from "./mcap-network-health";
 
 afterEach(() => {
   cleanup();
@@ -48,7 +52,95 @@ describe("McapLocationTracksBridge", () => {
       { priority: "bulk" },
     );
     expect(screen.getByTestId("location-tracks").textContent).toBe(
-      "/gps:ready:2:2",
+      "/gps:ready:2:2:full",
+    );
+  });
+
+  it("marks topics as error when the bulk read rejects", async () => {
+    vi.useFakeTimers();
+    const source = createSource("drive");
+    const locationSources = [locationSource("/gps")];
+    const client = createClient(async function* () {
+      throw new Error("boom");
+      yield locationMessage(0n, 0, 0, 0);
+    });
+
+    render(
+      <Harness
+        client={client}
+        locationSources={locationSources}
+        source={source}
+      />,
+    );
+
+    await advanceTimers(1_500);
+
+    expect(screen.getByTestId("location-tracks").textContent).toBe(
+      "/gps:error:0:0:full",
+    );
+  });
+
+  it("retries deferred track reads after playback pressure stands down", async () => {
+    vi.useFakeTimers();
+    const source = createSource("drive");
+    const store = createStore();
+    store.set(isPlayingAtom, true);
+    setMcapNetworkHealth(store, {
+      busyFraction: 1,
+      busyThroughputBytesPerSec: 1,
+      limited: true,
+      throughputBytesPerSec: 1,
+      throughputPlannable: true,
+      updatedAtMs: 0,
+    });
+    const client = createClient(async function* () {
+      yield locationMessage(1_000_000_000n, 37, -122, 0);
+    });
+
+    render(
+      <Harness
+        client={client}
+        locationSources={[locationSource("/gps")]}
+        source={source}
+        store={store}
+      />,
+    );
+
+    await advanceTimers(1_500);
+    expect(client.readDecodedMessages).not.toHaveBeenCalled();
+
+    store.set(isPlayingAtom, false);
+    await advanceTimers(1_999);
+    expect(client.readDecodedMessages).not.toHaveBeenCalled();
+
+    await advanceTimers(1);
+    expect(client.readDecodedMessages).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("location-tracks").textContent).toBe(
+      "/gps:ready:1:1:full",
+    );
+  });
+
+  it("marks the track truncated when the read limit is reached before usable fixes", async () => {
+    vi.useFakeTimers();
+    const source = createSource("drive");
+    const client = createClient(async function* () {
+      for (let index = 0; index < 25_000; index += 1) {
+        yield nonLocationMessage(BigInt(index));
+      }
+    });
+
+    render(
+      <Harness
+        client={client}
+        locationSources={[locationSource("/gps")]}
+        source={source}
+      />,
+    );
+
+    await advanceTimers(1_500);
+
+    expect(screen.getByTestId("location-tracks").textContent).toBe(
+      "/gps:ready:0:0:truncated",
     );
   });
 });
@@ -57,12 +149,14 @@ function Harness({
   client,
   locationSources,
   source,
+  store,
 }: {
   readonly client: McapResourceClient;
   readonly locationSources: readonly SceneSource[];
   readonly source: ByteSourceDescriptor;
+  readonly store?: ReturnType<typeof createStore>;
 }) {
-  return (
+  const body = (
     <McapLocationTracksProvider>
       <McapLocationTracksBridge
         client={client}
@@ -71,6 +165,13 @@ function Harness({
       />
       <LocationTracksProbe />
     </McapLocationTracksProvider>
+  );
+  return store ? (
+    <PlaybackStoreContext.Provider value={store}>
+      {body}
+    </PlaybackStoreContext.Provider>
+  ) : (
+    body
   );
 }
 
@@ -81,7 +182,9 @@ function LocationTracksProbe() {
       {[...tracks.entries()]
         .map(
           ([topic, state]) =>
-            `${topic}:${state.status}:${state.pointCount}:${state.segments.length}`,
+            `${topic}:${state.status}:${state.pointCount}:${state.segments.length}:${
+              state.truncated ? "truncated" : "full"
+            }`,
         )
         .join("|")}
     </div>
@@ -142,6 +245,17 @@ function locationMessage(
           latitude,
           longitude,
         },
+      },
+    },
+    timelineTimeNs,
+  } as unknown as McapDecodedMessage;
+}
+
+function nonLocationMessage(timelineTimeNs: bigint): McapDecodedMessage {
+  return {
+    decoded: {
+      output: {
+        visualization: { kind: VISUALIZATION_KIND.POSE },
       },
     },
     timelineTimeNs,

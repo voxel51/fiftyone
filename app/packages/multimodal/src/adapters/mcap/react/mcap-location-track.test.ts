@@ -66,6 +66,27 @@ describe("decimateLocationTrackSegments", () => {
     expect(result.segments[0].points[0]).toBe(segments[0].points[0]);
     expect(result.segments[0].points[10]).toBe(segments[0].points[100]);
   });
+
+  it("keeps the returned segments under the requested render cap", () => {
+    const segments = Array.from({ length: 20 }, (_, segmentIndex) => ({
+      points: [point(segmentIndex * 2), point(segmentIndex * 2 + 1)],
+    }));
+
+    const result = decimateLocationTrackSegments(segments, 10);
+
+    expect(result.truncated).toBe(true);
+    expect(result.pointCount).toBe(40);
+    expect(
+      result.segments.reduce(
+        (count, segment) => count + segment.points.length,
+        0,
+      ),
+    ).toBeLessThanOrEqual(10);
+    expect(result.segments[0].points[0]).toBe(segments[0].points[0]);
+    expect(result.segments[result.segments.length - 1].points.at(-1)).toBe(
+      segments[segments.length - 1].points[1],
+    );
+  });
 });
 
 describe("interpolateLocationAtTime", () => {

@@ -160,12 +160,11 @@ export function decimateLocationTrackSegments(
     return { pointCount, segments, truncated: false };
   }
 
-  const stride = Math.max(1, Math.ceil(pointCount / maxPoints));
-  const decimated = segments
-    .map((segment) => ({
-      points: decimateSegmentByStride(segment.points, stride),
-    }))
-    .filter((segment) => segment.points.length > 0);
+  const decimated = decimateSegmentsByGlobalIndex(
+    segments,
+    pointCount,
+    maxPoints,
+  );
 
   return { pointCount, segments: decimated, truncated: true };
 }
@@ -363,15 +362,38 @@ function lastLocationPoint(
   return null;
 }
 
-function decimateSegmentByStride(
-  points: readonly McapLocationTrackPoint[],
-  stride: number,
-): readonly McapLocationTrackPoint[] {
-  if (points.length <= 2 || stride <= 1) return points;
-  const decimated: McapLocationTrackPoint[] = [];
-  for (let index = 0; index < points.length; index += 1) {
-    if (index % stride === 0 || index === points.length - 1) {
-      decimated.push(points[index]);
+function decimateSegmentsByGlobalIndex(
+  segments: readonly McapLocationTrackSegment[],
+  pointCount: number,
+  maxPoints: number,
+): readonly McapLocationTrackSegment[] {
+  if (maxPoints <= 0) {
+    return [];
+  }
+
+  const wantedIndices = new Set<number>();
+  if (maxPoints === 1) {
+    wantedIndices.add(0);
+  } else {
+    for (let sampleIndex = 0; sampleIndex < maxPoints; sampleIndex += 1) {
+      wantedIndices.add(
+        Math.round((sampleIndex * (pointCount - 1)) / (maxPoints - 1)),
+      );
+    }
+  }
+
+  let globalIndex = 0;
+  const decimated: McapLocationTrackSegment[] = [];
+  for (const segment of segments) {
+    const points: McapLocationTrackPoint[] = [];
+    for (const point of segment.points) {
+      if (wantedIndices.has(globalIndex)) {
+        points.push(point);
+      }
+      globalIndex += 1;
+    }
+    if (points.length > 0) {
+      decimated.push({ points });
     }
   }
   return decimated;
