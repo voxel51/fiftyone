@@ -467,7 +467,9 @@ export const createWorker = (
   worker.addEventListener(
     "error",
     (error) => {
-      dispatchEvent("error", error);
+      // pooled workers are created without a dispatcher; a worker crash must
+      // surface in the console, not throw inside this listener
+      dispatchEvent ? dispatchEvent("error", error) : console.error(error);
     },
     signal,
   );
@@ -479,7 +481,9 @@ export const createWorker = (
         const error = !ERRORS[data.error.cls]
           ? new Error(data.error.message)
           : new ERRORS[data.error.cls](data.error.data, data.error.message);
-        dispatchEvent("error", new ErrorEvent("error", { error }));
+        dispatchEvent
+          ? dispatchEvent("error", new ErrorEvent("error", { error }))
+          : console.error(error);
       }
     },
     signal,

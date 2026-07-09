@@ -104,10 +104,16 @@ class Samples(HTTPEndpoint):
     @decorators.route
     async def post(self, request: Request, data: dict) -> JSONResponse:
         dataset_id = request.path_params["dataset_id"]
+        # a windowed read must state its size; the server never invents,
+        # defaults, or unbounds a page
+        if data.get("count") is None:
+            return JSONResponse(
+                {"error": "'count' is required"}, status_code=400
+            )
         try:
             after = data.get("after")
             after = int(after) if after is not None else None
-            count = int(data.get("count") or 0)
+            count = int(data["count"])
         except (TypeError, ValueError):
             return JSONResponse(
                 {"error": "'after' and 'count' must be integers"},
@@ -130,6 +136,7 @@ class Samples(HTTPEndpoint):
             )
             if after is not None:
                 view = view.skip(after)
+            # honored verbatim: exactly ``count``, 0 reads nothing
             return view.limit(count)
 
         view = await run_sync_task(_build)

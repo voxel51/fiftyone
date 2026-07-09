@@ -160,8 +160,18 @@ class TestSamplesRoute:
     async def test_unknown_dataset_is_404(
         self, samples_endpoint, make_request
     ):
-        request = make_request({"view": []}, dataset_id_override="0" * 24)
+        request = make_request(
+            {"view": [], "count": 1}, dataset_id_override="0" * 24
+        )
         with pytest.raises(HTTPException) as exc:
             await samples_endpoint.post(request)
 
         assert exc.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_missing_count_is_400(self, samples_endpoint, make_request):
+        """A windowed read must state its size; nothing is invented for it."""
+        request = make_request({"view": []})
+        response = await samples_endpoint.post(request)
+
+        assert response.status_code == 400
