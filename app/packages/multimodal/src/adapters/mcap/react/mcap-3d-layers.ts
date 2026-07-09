@@ -131,9 +131,14 @@ export function build3dLayers({
     }
 
     const frame = playbackFrame.frame;
+    const layerBase = {
+      contentTimeNs: playbackFrame.contentTimeNs,
+      frame,
+      id: topic,
+    };
     if (!frame.coordinateFrameId) {
       // Frameless cloud: nothing to transform, render at the scene origin.
-      pointCloudLayers.push({ frame, id: topic });
+      pointCloudLayers.push(layerBase);
       transformedLayerCount += 1;
       return;
     }
@@ -159,10 +164,9 @@ export function build3dLayers({
     }
 
     pointCloudLayers.push({
-      frame,
+      ...layerBase,
       frameTransform:
         resolution.status === "resolved" ? resolution.transform : undefined,
-      id: topic,
     });
   });
 

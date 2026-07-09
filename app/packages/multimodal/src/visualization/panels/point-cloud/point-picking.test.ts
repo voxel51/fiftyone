@@ -1,10 +1,15 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 
+import { VISUALIZATION_KIND } from "../../visualization-registry";
 import {
   buildPointCloudRenderData,
   sourcePointIndexForRenderedIndex,
 } from "./point-cloud-colors";
+import {
+  gpuPointCloudDrawCount,
+  gpuPointCloudSampleIndex,
+} from "./gpu-point-cloud-sampling";
 import {
   POINT_PICK_BLOCKING_USER_DATA,
   POINT_PICK_LAYER_ID_KEY,
@@ -14,6 +19,7 @@ import {
   pointsVertexColor,
   pointsVertexWorldPosition,
   resolvePointPick,
+  sourcePointIndexForLayerRenderedIndex,
 } from "./point-picking";
 
 describe("sourcePointIndexForRenderedIndex", () => {
@@ -111,6 +117,83 @@ describe("sourcePointIndexForRenderedIndex", () => {
     ).toBeNull();
     expect(sourcePointIndexForRenderedIndex(positions, 100, -1)).toBeNull();
     expect(sourcePointIndexForRenderedIndex(positions, 100, 1.5)).toBeNull();
+  });
+});
+
+describe("sourcePointIndexForLayerRenderedIndex", () => {
+  it("uses the decoder source-index table without replaying the render walk", () => {
+    const positions = new Float32Array(6 * 3);
+    const layer = {
+      frame: {
+        fields: [],
+        kind: VISUALIZATION_KIND.POINT_CLOUD,
+        pointCount: 6,
+        positions,
+        renderPayload: {
+          bounds: { max: [5, 5, 5], min: [0, 0, 0] },
+          capacity: 2,
+          finitePointCount: 6,
+          heightRange: { max: 5, min: 0 },
+          positions: Float32Array.from([5, 5, 5, 2, 2, 2]),
+          sampledPointCount: 2,
+          scalarFields: [],
+          sourceIndices: Uint32Array.from([5, 2]),
+        },
+      },
+      id: "/points",
+    } as const;
+
+    // A legacy budget of one would map the first sample to source 0. The
+    // payload's exact mapping wins and returns the decoder-selected source 5.
+    expect(sourcePointIndexForLayerRenderedIndex(layer, 1, 0)).toBe(5);
+    expect(sourcePointIndexForLayerRenderedIndex(layer, 1, 1)).toBeNull();
+    expect(sourcePointIndexForLayerRenderedIndex(layer, 2, 1)).toBe(2);
+    expect(sourcePointIndexForLayerRenderedIndex(layer, 2, 2)).toBeNull();
+    expect(sourcePointIndexForLayerRenderedIndex(layer, 1, -1)).toBeNull();
+  });
+
+  it("rejects a payload source index outside the full decoded arrays", () => {
+    const layer = {
+      frame: {
+        fields: [],
+        kind: VISUALIZATION_KIND.POINT_CLOUD,
+        pointCount: 1,
+        positions: Float32Array.from([0, 0, 0]),
+        renderPayload: {
+          bounds: { max: [0, 0, 0], min: [0, 0, 0] },
+          capacity: 1,
+          finitePointCount: 1,
+          heightRange: null,
+          positions: Float32Array.from([0, 0, 0]),
+          sampledPointCount: 1,
+          scalarFields: [],
+          sourceIndices: Uint32Array.from([9]),
+        },
+      },
+      id: "/points",
+    } as const;
+
+    expect(sourcePointIndexForLayerRenderedIndex(layer, 100, 0)).toBeNull();
+  });
+});
+
+describe("GPU canonical sample mapping", () => {
+  it("honors the local draw budget with an even deterministic selection", () => {
+    expect(gpuPointCloudDrawCount(150_000, 120_000)).toBe(120_000);
+    expect(gpuPointCloudDrawCount(10, 100)).toBe(10);
+    expect(gpuPointCloudDrawCount(10, 0)).toBe(1);
+
+    expect(
+      Array.from({ length: 6 }, (_, index) =>
+        gpuPointCloudSampleIndex(10, 6, index),
+      ),
+    ).toEqual([0, 1, 3, 5, 6, 8]);
+  });
+
+  it("keeps identity draws exact and rejects invalid indexes", () => {
+    expect(gpuPointCloudSampleIndex(10, 10, 9)).toBe(9);
+    expect(gpuPointCloudSampleIndex(10, 6, 6)).toBeNull();
+    expect(gpuPointCloudSampleIndex(0, 0, 0)).toBeNull();
   });
 });
 

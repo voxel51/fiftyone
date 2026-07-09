@@ -192,6 +192,58 @@ describe("PointCloudPanel", () => {
     ]);
   });
 
+  it("binds decoder render arrays directly and reuses them by content time", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const setAttribute = vi.spyOn(
+      THREE.BufferGeometry.prototype,
+      "setAttribute",
+    );
+    const firstSample = Float32Array.from([1, 2, 3, 4, 5, 6]);
+    const redeliveredSample = Float32Array.from([7, 8, 9, 10, 11, 12]);
+
+    const { rerender } = render(
+      <PointCloudPanel
+        layers={[gpuPointCloudLayer("/points", 10n, firstSample)]}
+        maxRenderedPoints={1}
+        showHud={false}
+      />,
+    );
+
+    const directPositionAttribute = setAttribute.mock.calls.find(
+      ([name, attribute]) =>
+        name === "pointPosition" &&
+        (attribute as THREE.BufferAttribute).array === firstSample,
+    )?.[1] as THREE.BufferAttribute | undefined;
+    expect(directPositionAttribute?.array).toBe(firstSample);
+    // The local budget selects from the canonical payload in the shader;
+    // it must not trigger a second sampling/copy pass.
+    const attributeCallsAfterMount = setAttribute.mock.calls.length;
+    const versionAfterMount = directPositionAttribute?.version;
+
+    rerender(
+      <PointCloudPanel
+        layers={[gpuPointCloudLayer("/points", 10n, redeliveredSample)]}
+        maxRenderedPoints={1}
+        showHud={false}
+      />,
+    );
+    expect(directPositionAttribute?.array).toBe(firstSample);
+    expect(directPositionAttribute?.version).toBe(versionAfterMount);
+
+    rerender(
+      <PointCloudPanel
+        layers={[gpuPointCloudLayer("/points", 11n, redeliveredSample)]}
+        maxRenderedPoints={1}
+        showHud={false}
+      />,
+    );
+    expect(setAttribute.mock.calls.length).toBe(attributeCallsAfterMount);
+    expect(directPositionAttribute?.array).toBe(redeliveredSample);
+    expect(directPositionAttribute?.version).toBeGreaterThan(
+      versionAfterMount ?? 0,
+    );
+  });
+
   it("keeps point size screen-space while updating the material size", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const layers = [
@@ -1320,6 +1372,52 @@ function pointCloudLayer(
       kind: VISUALIZATION_KIND.POINT_CLOUD,
       pointCount: Math.floor(positions.length / 3),
       positions,
+    },
+    id,
+  };
+}
+
+function gpuPointCloudLayer(
+  id: string,
+  contentTimeNs: bigint,
+  sampledPositions: Float32Array,
+) {
+  const pointCount = Math.floor(sampledPositions.length / 3);
+  return {
+    contentTimeNs,
+    frame: {
+      fields: [],
+      kind: VISUALIZATION_KIND.POINT_CLOUD,
+      pointCount,
+      positions: sampledPositions,
+      renderPayload: {
+        bounds: {
+          max: [
+            sampledPositions[3] ?? sampledPositions[0],
+            sampledPositions[4] ?? sampledPositions[1],
+            sampledPositions[5] ?? sampledPositions[2],
+          ] as const,
+          min: [
+            sampledPositions[0],
+            sampledPositions[1],
+            sampledPositions[2],
+          ] as const,
+        },
+        capacity: pointCount,
+        colors: Float32Array.from([1, 0, 0, 0, 1, 0]),
+        finitePointCount: pointCount,
+        heightRange: {
+          max: sampledPositions[5] ?? sampledPositions[2],
+          min: sampledPositions[2],
+        },
+        positions: sampledPositions,
+        sampledPointCount: pointCount,
+        scalarFields: [],
+        sourceIndices: Uint32Array.from(
+          { length: pointCount },
+          (_, index) => index,
+        ),
+      },
     },
     id,
   };
