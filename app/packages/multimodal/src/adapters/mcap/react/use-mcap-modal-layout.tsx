@@ -21,6 +21,11 @@ import {
   type McapPersistedModalLayout,
 } from "./mcap-layout-persistence";
 import {
+  DEFAULT_MCAP_MAP_TILE_SETTINGS,
+  mcapMapTileSettingsAtom,
+  type McapMapTileSettings,
+} from "./mcap-map-tile-state";
+import {
   mcapPlotTileSeriesAtom,
   type McapPlotSeriesConfig,
 } from "./mcap-plot-tile-state";
@@ -379,6 +384,38 @@ export function McapModalLayoutPersistence({
     store,
   });
 
+  const seededMapKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const persisted = readMcapModalLayout(datasetIdRef.current)?.mapSettings;
+    if (persisted) {
+      store.set(mcapMapTileSettingsAtom, (previous) => {
+        const next = { ...previous };
+        for (const [tileId, settings] of Object.entries(persisted)) {
+          if (!(tileId in tilesRef.current) || next[tileId]) continue;
+          next[tileId] = settings;
+        }
+        return next;
+      });
+    }
+    seededMapKeyRef.current = JSON.stringify(
+      store.get(mcapMapTileSettingsAtom),
+    );
+  }, [store]);
+
+  const mapSettingsPatch = useCallback(
+    (value: Readonly<Record<string, McapMapTileSettings>>) => ({
+      mapSettings: compactMapSettings(value),
+    }),
+    [],
+  );
+  useDebouncedMcapLayoutAtomMirror({
+    atom: mcapMapTileSettingsAtom,
+    datasetIdRef,
+    patchForValue: mapSettingsPatch,
+    seededKeyRef: seededMapKeyRef,
+    store,
+  });
+
   // Write only after the layout actually changes from what this mount
   // started with. Restores can be PRUNED views of the saved arrangement
   // (e.g. an image-only sample drops the 3D leaf); persisting one without
@@ -495,6 +532,31 @@ function compactPlotSeries(
     }
   }
   return compact;
+}
+
+function compactMapSettings(
+  value: Readonly<Record<string, McapMapTileSettings>>,
+): Record<string, McapMapTileSettings> | undefined {
+  const compact: Record<string, McapMapTileSettings> = {};
+  for (const [tileId, settings] of Object.entries(value)) {
+    const baseLayer =
+      settings.baseLayer ?? DEFAULT_MCAP_MAP_TILE_SETTINGS.baseLayer;
+    const isDefault =
+      baseLayer === DEFAULT_MCAP_MAP_TILE_SETTINGS.baseLayer &&
+      settings.followEgo === DEFAULT_MCAP_MAP_TILE_SETTINGS.followEgo &&
+      settings.enabledTopics === undefined;
+    if (isDefault) {
+      continue;
+    }
+    compact[tileId] = {
+      baseLayer,
+      followEgo: settings.followEgo,
+      ...(settings.enabledTopics !== undefined
+        ? { enabledTopics: settings.enabledTopics }
+        : {}),
+    };
+  }
+  return Object.keys(compact).length > 0 ? compact : undefined;
 }
 
 /**

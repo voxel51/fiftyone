@@ -7,6 +7,7 @@ import {
   idleMcapFrameTransformsState,
   useSetMcapFrameTransformsContext,
 } from "./mcap-frame-transforms-context";
+import { McapLocationTracksBridge } from "./mcap-location-tracks-context";
 import { McapNumericSeriesBridge } from "./mcap-numeric-series-context";
 import { McapPoseTrajectoriesStartupGate } from "./mcap-pose-trajectories-context";
 import { McapRawMessageBridge } from "./mcap-raw-message-context";
@@ -104,6 +105,10 @@ export function McapStreams({ client, source }: McapStreamsProps) {
       sources.filter((s) => s.type === MCAP_SOURCE_TYPE.POSE).map((s) => s.id),
     [sources],
   );
+  const locationSources = useMemo(
+    () => sources.filter((s) => s.type === MCAP_SOURCE_TYPE.LOCATION),
+    [sources],
+  );
   const sceneAnnotationTopics = useMemo(
     () =>
       sources
@@ -135,6 +140,11 @@ export function McapStreams({ client, source }: McapStreamsProps) {
       <McapPoseTrajectoriesStartupGate
         client={client}
         poseTopics={poseTopics}
+        source={source}
+      />
+      <McapLocationTracksBridge
+        client={client}
+        locationSources={locationSources}
         source={source}
       />
       <McapSceneUpdateHistoryBridge

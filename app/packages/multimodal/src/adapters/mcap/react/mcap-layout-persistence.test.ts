@@ -3,6 +3,7 @@ import {
   isValidMosaicLayout,
   mcapTileTypeFromId,
   readMcapModalLayout,
+  sanitizeMapSettings,
   sanitizePlotSeries,
   sanitizeRawTopics,
   sanitizeTileTitles,
@@ -94,6 +95,7 @@ describe("mcap-layout-persistence", () => {
       JSON.stringify({
         layout: "image-1",
         leftSidebarOpen: true,
+        mapSettings: { "map-1": { enabledTopics: ["/gps"], followEgo: true } },
         rawTopics: { "raw-1": "/imu" },
         sceneUpAxis: "y",
         tileTitles: { "image-1": "Front Camera" },
@@ -115,6 +117,9 @@ describe("mcap-layout-persistence", () => {
           leftSidebarOpen: true,
           plotSeries: {
             "plot-1": [{ color: "#3987e5", fieldPath: "x", topic: "/odom" }],
+          },
+          mapSettings: {
+            "map-1": { enabledTopics: ["/gps"], followEgo: false },
           },
           rawTopics: { "raw-1": "/imu" },
           sceneUpAxis: "z",
@@ -388,6 +393,78 @@ describe("mcap-layout-persistence", () => {
       expect(sanitizeRawTopics([])).toBeUndefined();
       expect(sanitizeRawTopics("x")).toBeUndefined();
       expect(sanitizeRawTopics({})).toBeUndefined();
+    });
+  });
+
+  describe("mapSettings", () => {
+    const SETTINGS = {
+      "map-1": {
+        baseLayer: "none" as const,
+        enabledTopics: ["/gps/front", "/gps/rear"],
+        followEgo: false,
+      },
+    };
+
+    it("round-trips per-dataset map tile settings", () => {
+      writeMcapModalLayout({ mapSettings: SETTINGS }, "ds-a");
+      expect(readMcapModalLayout("ds-a")?.mapSettings).toEqual(SETTINGS);
+    });
+
+    it("never leaks map settings to another dataset", () => {
+      writeMcapModalLayout({ leftSidebarOpen: true }, "ds-b");
+      writeMcapModalLayout({ layout: "map-1", mapSettings: SETTINGS }, "ds-a");
+
+      expect(readMcapModalLayout("ds-b")).toEqual({ leftSidebarOpen: true });
+      expect(readMcapModalLayout("ds-b")?.mapSettings).toBeUndefined();
+    });
+
+    it("sanitizes malformed map settings rows individually", () => {
+      writeMcapModalLayout(
+        {
+          mapSettings: {
+            "map-1": {
+              baseLayer: "none",
+              enabledTopics: ["/gps", "", "/gps", 5],
+              followEgo: false,
+              styleUrl: "https://tiles.example.test/style.json",
+            },
+            "image-1": {
+              enabledTopics: ["/camera"],
+              followEgo: true,
+            },
+            "map-2": {
+              baseLayer: "surprise",
+              enabledTopics: [],
+              followEgo: "yes",
+            },
+            "no-suffix": {
+              enabledTopics: ["/gps"],
+              followEgo: true,
+            },
+          } as never,
+        },
+        "ds-a",
+      );
+
+      expect(readMcapModalLayout("ds-a")?.mapSettings).toEqual({
+        "map-1": {
+          baseLayer: "none",
+          enabledTopics: ["/gps"],
+          followEgo: false,
+        },
+        "map-2": {
+          baseLayer: "default",
+          enabledTopics: [],
+          followEgo: true,
+        },
+      });
+    });
+
+    it("sanitizeMapSettings rejects non-object payloads", () => {
+      expect(sanitizeMapSettings(null)).toBeUndefined();
+      expect(sanitizeMapSettings([])).toBeUndefined();
+      expect(sanitizeMapSettings("x")).toBeUndefined();
+      expect(sanitizeMapSettings({})).toBeUndefined();
     });
   });
 

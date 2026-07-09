@@ -32,12 +32,14 @@ const DEFAULT_VIEWPORT_WIDTH_PX = 1280;
 const DEFAULT_VIEWPORT_HEIGHT_PX = 800;
 
 const THREE_D_TOP_SPLIT_PERCENTAGE = 100 * (2 / 3);
+const THREE_D_WITH_MAP_SPLIT_PERCENTAGE = 70;
 const MESSAGE_RAIL_SPLIT_PERCENTAGE = 75;
 const VISUAL_WITH_PLOTS_SPLIT_PERCENTAGE = 70;
 const CONTEXT_SHELF_IMAGE_SPLIT_PERCENTAGE = 65;
 
 // Mosaic leaf id of the single default 3D tile.
 const THREE_D_TILE_ID = `${MCAP_TILE_TYPE.THREE_D}-1`;
+const MAP_TILE_ID = `${MCAP_TILE_TYPE.MAP}-1`;
 const LOG_TILE_ID = `${MCAP_TILE_TYPE.LOG}-1`;
 
 /**
@@ -207,6 +209,9 @@ export function resolvePlaybackLayout({
   const hasLogs = sources.some(
     (source) => source.type === MCAP_SOURCE_TYPE.LOG,
   );
+  const hasMap = sources.some(
+    (source) => source.type === MCAP_SOURCE_TYPE.LOCATION,
+  );
 
   const imageTileCount =
     rankedImages.length === 0
@@ -229,6 +234,13 @@ export function resolvePlaybackLayout({
       id: THREE_D_TILE_ID,
       tileType: MCAP_TILE_TYPE.THREE_D,
       title: "3D",
+    });
+  }
+  if (hasMap) {
+    tiles.push({
+      id: MAP_TILE_ID,
+      tileType: MCAP_TILE_TYPE.MAP,
+      title: "Map",
     });
   }
   if (hasLogs) {
@@ -316,7 +328,7 @@ function remoteNetworkBudget(downlinkMbps: number | null): number {
  * Customer-oriented MCAP arrangement:
  *
  * - images stay co-located as a camera bank
- * - 3D tiles span a full-width top region when present
+ * - 3D and map tiles share the top visual region when both are present
  * - plots stack as time-series diagnostics
  * - raw/message tiles stack as a right inspection rail
  * - unknown tile ids fall into diagnostics after known groups
@@ -326,6 +338,7 @@ export function buildMcapAutoLayout(
 ): MosaicNode<string> | null {
   const images: string[] = [];
   const threeD: string[] = [];
+  const maps: string[] = [];
   const plots: string[] = [];
   const logs: string[] = [];
   const messages: string[] = [];
@@ -338,6 +351,9 @@ export function buildMcapAutoLayout(
         break;
       case MCAP_TILE_TYPE.THREE_D:
         threeD.push(tileId);
+        break;
+      case MCAP_TILE_TYPE.MAP:
+        maps.push(tileId);
         break;
       case MCAP_TILE_TYPE.PLOT:
         plots.push(tileId);
@@ -354,19 +370,20 @@ export function buildMcapAutoLayout(
     }
   }
 
-  const threeDRegion = autoLayout(threeD);
-  const supportingRegion = threeDRegion
+  const topVisualRegion =
+    threeD.length > 0 ? buildTopVisualRegion(threeD, maps) : null;
+  const supportingRegion = topVisualRegion
     ? buildContextShelf(images, plots, logs, messages, unknown)
-    : buildNon3dLayout(images, plots, logs, messages, unknown);
+    : buildNon3dLayout(images, maps, plots, logs, messages, unknown);
 
-  if (threeDRegion) {
+  if (topVisualRegion) {
     if (!supportingRegion) {
-      return threeDRegion;
+      return topVisualRegion;
     }
 
     return {
       direction: "column",
-      first: threeDRegion,
+      first: topVisualRegion,
       second: supportingRegion,
       splitPercentage: THREE_D_TOP_SPLIT_PERCENTAGE,
     };
@@ -377,14 +394,20 @@ export function buildMcapAutoLayout(
 
 function buildNon3dLayout(
   images: readonly string[],
+  maps: readonly string[],
   plots: readonly string[],
   logs: readonly string[],
   messages: readonly string[],
   unknown: readonly string[],
 ): MosaicNode<string> | null {
   const imageBank = autoLayout([...images]);
+  const mapBank = autoLayout([...maps]);
+  const visualBank = stackNodes([imageBank, mapBank], {
+    direction: "row",
+    splitPercentage: CONTEXT_SHELF_IMAGE_SPLIT_PERCENTAGE,
+  });
   const diagnostics = buildDiagnosticsStack(plots, logs, unknown);
-  const left = stackNodes([imageBank, diagnostics], {
+  const left = stackNodes([visualBank, diagnostics], {
     direction: "column",
     splitPercentage: VISUAL_WITH_PLOTS_SPLIT_PERCENTAGE,
   });
@@ -403,6 +426,16 @@ function buildNon3dLayout(
     second: messageRail,
     splitPercentage: MESSAGE_RAIL_SPLIT_PERCENTAGE,
   };
+}
+
+function buildTopVisualRegion(
+  threeD: readonly string[],
+  maps: readonly string[],
+): MosaicNode<string> | null {
+  return stackNodes([autoLayout([...threeD]), autoLayout([...maps])], {
+    direction: "row",
+    splitPercentage: THREE_D_WITH_MAP_SPLIT_PERCENTAGE,
+  });
 }
 
 function buildContextShelf(
