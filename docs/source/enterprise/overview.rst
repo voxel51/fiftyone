@@ -210,7 +210,7 @@ links in each row for details.
     <td><div class="check-icon"><img alt="Included" src="/_static/images/icons/checkmark.svg" /></div></td>
     </tr>
     <tr>
-    <th class="stub"><p><a href="../brain.html">Embeddings &amp; similarity</a></p></th>
+    <th class="stub"><p><a href="../brain/index.html">Embeddings &amp; similarity</a></p></th>
     <td><div class="check-icon"><img alt="Included" src="/_static/images/icons/checkmark.svg" /></div></td>
     <td><div class="check-icon"><img alt="Included" src="/_static/images/icons/checkmark.svg" /></div></td>
     </tr>
