@@ -371,7 +371,7 @@ export const DEFAULT_MCAP_PROJECTION_POINT_SIZE =
 export const DEFAULT_MCAP_IMAGE_PROJECTION: McapImageProjectionSettings = {
   enabled: false,
   pointSize: DEFAULT_MCAP_PROJECTION_POINT_SIZE,
-  topics: null,
+  topics: [],
 };
 
 /**
@@ -404,18 +404,21 @@ export function normalizeMcapImageProjection(
   }
 
   const candidate = value as Partial<McapImageProjectionSettings>;
+  const topics =
+    candidate.topics === null || candidate.topics === undefined
+      ? null
+      : normalizeMcapTopicList(candidate.topics);
+  const enabled =
+    candidate.enabled === true && (topics === null || topics.length > 0);
   return {
-    enabled: candidate.enabled === true,
+    enabled,
     pointSize: clampNumber(
       candidate.pointSize,
       MIN_MCAP_POINT_CLOUD_POINT_SIZE,
       MAX_MCAP_POINT_CLOUD_POINT_SIZE,
       DEFAULT_MCAP_PROJECTION_POINT_SIZE,
     ),
-    topics:
-      candidate.topics === null || candidate.topics === undefined
-        ? null
-        : normalizeMcapTopicList(candidate.topics),
+    topics: enabled ? topics : [],
   };
 }
 
