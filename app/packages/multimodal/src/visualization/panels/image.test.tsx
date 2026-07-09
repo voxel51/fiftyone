@@ -21,11 +21,25 @@ import {
 } from "./image-texture-cache";
 import { resetVideoTextureDecodersForTests } from "./video-texture";
 
+const sharedStageMock = vi.hoisted(() => ({
+  current: null as null | {
+    error: string | null;
+    invalidate: () => void;
+    ready: boolean;
+  },
+}));
+
+vi.mock("@react-three/drei", () => ({
+  OrthographicCamera: () => <div data-testid="orthographic-camera" />,
+}));
+
 vi.mock("./base-2d-scene", () => ({
   Base2DScene: ({ children }: { readonly children?: ReactNode }) => (
     <div data-testid="base-2d-scene">{children}</div>
   ),
-  ImageTexturePlane: () => <div data-testid="image-texture-plane" />,
+  ImageTexturePlane: ({ children }: { readonly children?: ReactNode }) => (
+    <div data-testid="image-texture-plane">{children}</div>
+  ),
 }));
 
 vi.mock("./webgpu-canvas", () => ({
@@ -34,7 +48,15 @@ vi.mock("./webgpu-canvas", () => ({
   ),
 }));
 
+vi.mock("./webgpu-view-stage", () => ({
+  useWebGpuViewStage: () => sharedStageMock.current,
+  WebGpuView: ({ children }: { readonly children?: ReactNode }) => (
+    <div data-testid="webgpu-view">{children}</div>
+  ),
+}));
+
 beforeEach(() => {
+  sharedStageMock.current = null;
   resetImageTextureCacheForTests();
   resetVideoTextureDecodersForTests();
 });
@@ -47,6 +69,50 @@ afterEach(() => {
 });
 
 describe("ImagePanel", () => {
+  it("uses the shared WebGPU view when a healthy stage is available", () => {
+    sharedStageMock.current = {
+      error: null,
+      invalidate: vi.fn(),
+      ready: true,
+    };
+
+    render(<ImagePanel frame={loadedFrame()} />);
+
+    expect(screen.getByTestId("webgpu-view")).toBeTruthy();
+    expect(screen.queryByTestId("webgpu-canvas")).toBeNull();
+  });
+
+  it("falls back to a local WebGPU canvas after a shared-stage error", () => {
+    sharedStageMock.current = {
+      error: "shared device failed",
+      invalidate: vi.fn(),
+      ready: false,
+    };
+
+    render(<ImagePanel frame={loadedFrame()} />);
+
+    expect(screen.getByTestId("webgpu-canvas")).toBeTruthy();
+    expect(screen.queryByTestId("webgpu-view")).toBeNull();
+  });
+
+  it("renders image-aligned scene content inside the texture transform", async () => {
+    mockImageBitmap();
+
+    render(
+      <ImagePanel
+        frame={loadedFrame()}
+        sceneChildren={<div data-testid="image-scene-layer" />}
+      />,
+    );
+
+    expect(await screen.findByTestId("image-scene-layer")).toBeTruthy();
+    expect(
+      screen
+        .getByTestId("image-texture-plane")
+        .contains(screen.getByTestId("image-scene-layer")),
+    ).toBe(true);
+  });
+
   it("renders a recenter control when a reset handler is provided", async () => {
     const onResetView = vi.fn();
     mockImageBitmap();
