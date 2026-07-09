@@ -1,3 +1,4 @@
+import type { DynamicGroupPoster } from "@fiftyone/looker";
 import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
 import { aggregationQuery } from "../aggregations";
@@ -19,7 +20,7 @@ export const dynamicGroupsElementCount = selectorFamily({
       // it, 0 puts the imavid timeline in streaming mode (the stream reveals length)
       if (modal) {
         const sample = get(modalSample)?.sample as
-          | { _group_count?: number }
+          | DynamicGroupPoster
           | undefined;
         return typeof sample?._group_count === "number"
           ? sample._group_count

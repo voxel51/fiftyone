@@ -1,5 +1,6 @@
 import {
   AbstractLooker,
+  type DynamicGroupPoster,
   FO_LABEL_TOGGLED_EVENT,
   FrameLooker,
   ImaVidLooker,
@@ -223,10 +224,12 @@ export default <T extends AbstractLooker<BaseState>>(
             : 1;
 
           const thisSampleId = sample._id as string;
-          // the dynamic-group value carried on the poster scopes the frame
-          // stream; guard rather than assert so a missing field can't silently
-          // build the controller from `undefined`
-          const groupValue = (sample._group ?? "") as string;
+          // dynamic-group fields (_group value, _group_count) ride on the poster;
+          // view it through the shared type instead of ad-hoc inline casts
+          const poster = sample as Sample & DynamicGroupPoster;
+          // guard rather than assert so a missing field can't silently build the
+          // controller from `undefined`
+          const groupValue = poster._group ?? "";
           // sample-level caches key on the bare sample `_id` — no media-field or
           // grid/modal suffix — so grid hover and the modal resolve the SAME
           // controller and the modal reuses the frames the grid already buffered
@@ -305,12 +308,11 @@ export default <T extends AbstractLooker<BaseState>>(
           // seed the group length from the poster's `_group_count` so the timeline shows
           // the real total immediately; a cold modal lacking the field fetches it once
           if (frameStoreController.totalFrameCount == null) {
-            const posterGroupCount = (sample as { _group_count?: number })
-              ._group_count;
+            const posterGroupCount = poster._group_count;
             (window as { __foImavidDebug?: boolean }).__foImavidDebug &&
               console.debug("[imavid] poster seed", {
                 sampleId: thisSampleId,
-                group: sample._group,
+                group: poster._group,
                 posterGroupCount,
                 hasGroupCountField: "_group_count" in (sample as object),
               });
