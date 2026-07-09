@@ -37,6 +37,7 @@ import {
   useMcapTemporalPolicySettings,
 } from "./mcap-modal-settings";
 import McapSidebarGroup from "./McapSidebarGroup";
+import McapPerformanceStats from "./McapPerformanceStats";
 import styles from "./McapSettingsSidebar.module.css";
 import McapTopicsSettings from "./McapTopicsSettings";
 
@@ -197,6 +198,7 @@ function GlobalSceneSettings({
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
       <PointCloudSamplingWarning sampling={sampling} />
+      <McapPerformanceStats sampling={sampling} />
       <PlaybackFidelitySettings />
       <TimeResolutionSettings />
     </div>
