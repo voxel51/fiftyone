@@ -8,9 +8,11 @@ import {
 import { useCallback, useMemo } from "react";
 
 import {
+  DEFAULT_MCAP_IMAGE_PROJECTION,
   DEFAULT_MCAP_POINT_CLOUD_COLOR,
   DEFAULT_MCAP_TEMPORAL_POLICY,
   normalizeMcapFidelityMode,
+  normalizeMcapImageProjection,
   normalizeMcapPinholeCamera,
   normalizeMcapPointCloudColor,
   normalizeMcapPointCloudPointSize,
@@ -20,6 +22,7 @@ import {
   normalizeMcapTopicList,
   readMcapModalSettings,
   writeMcapModalSettings,
+  type McapImageProjectionSettings,
   type McapPersistedModalSettings,
   type McapPinholeCameraSettings,
   type McapPlaybackFidelityMode,
@@ -31,6 +34,7 @@ import {
 
 export {
   DEFAULT_MCAP_FIDELITY_MODE,
+  DEFAULT_MCAP_IMAGE_PROJECTION,
   DEFAULT_MCAP_MODAL_SETTINGS,
   DEFAULT_MCAP_PINHOLE_CAMERA,
   DEFAULT_MCAP_POINT_CLOUD_COLOR,
@@ -45,6 +49,8 @@ export {
   defaultMcapPointCloudColorForSource,
   readMcapModalSettings,
   writeMcapModalSettings,
+  type McapImageProjectionColorBy,
+  type McapImageProjectionSettings,
   type McapPersistedModalSettings,
   type McapPinholeCameraSettings,
   type McapPlaybackFidelityMode,
@@ -203,6 +209,36 @@ const imageLabelTopicsAtom = atom(
       imageLabelTopics: {
         ...current.imageLabelTopics,
         [normalizedImageTopic]: normalizedLabelTopics,
+      },
+    }));
+  },
+);
+
+const imageProjectionAtom = atom(
+  (get) => get(mcapModalSettingsAtom).imageProjection,
+  (
+    _get,
+    set,
+    {
+      imageTopic,
+      settings,
+    }: {
+      readonly imageTopic: string;
+      readonly settings: Partial<McapImageProjectionSettings>;
+    },
+  ) => {
+    const normalizedImageTopic = imageTopic.trim();
+    if (!normalizedImageTopic) return;
+
+    updateModalSettings(set, (current) => ({
+      ...current,
+      imageProjection: {
+        ...current.imageProjection,
+        [normalizedImageTopic]: normalizeMcapImageProjection({
+          ...(current.imageProjection[normalizedImageTopic] ??
+            DEFAULT_MCAP_IMAGE_PROJECTION),
+          ...settings,
+        }),
       },
     }));
   },
@@ -413,6 +449,42 @@ export function useMcapImageLabelTopics(imageTopic: string | null | undefined) {
   return useMemo(
     () => ({ hasExplicitLabelTopics, labelTopics, setLabelTopics }),
     [hasExplicitLabelTopics, labelTopics, setLabelTopics],
+  );
+}
+
+/**
+ * Reads and updates the lidar projection overlay settings for one image
+ * topic.
+ */
+export function useMcapImageProjection(imageTopic: string | null | undefined) {
+  const normalizedImageTopic = imageTopic?.trim() ?? "";
+  const projectionValueAtom = useMemo(
+    () =>
+      atom((get) =>
+        normalizedImageTopic
+          ? (get(imageProjectionAtom)[normalizedImageTopic] ??
+            DEFAULT_MCAP_IMAGE_PROJECTION)
+          : DEFAULT_MCAP_IMAGE_PROJECTION,
+      ),
+    [normalizedImageTopic],
+  );
+  const projection = useAtomValue(projectionValueAtom, {
+    store: mcapModalSettingsStore,
+  });
+  const setStoredProjection = useSetAtom(imageProjectionAtom, {
+    store: mcapModalSettingsStore,
+  });
+  const setProjection = useCallback(
+    (settings: Partial<McapImageProjectionSettings>) => {
+      if (!normalizedImageTopic) return;
+      setStoredProjection({ imageTopic: normalizedImageTopic, settings });
+    },
+    [normalizedImageTopic, setStoredProjection],
+  );
+
+  return useMemo(
+    () => ({ projection, setProjection }),
+    [projection, setProjection],
   );
 }
 

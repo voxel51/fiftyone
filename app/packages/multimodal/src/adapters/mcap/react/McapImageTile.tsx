@@ -28,6 +28,7 @@ import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoo
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import {
   useMcapImageLabelTopics,
+  useMcapImageProjection,
   useMcapPlaybackSettings,
 } from "./mcap-modal-settings";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
@@ -38,6 +39,7 @@ import {
   usePublishMcapImageTileBinding,
 } from "./mcap-tile-source-bindings";
 import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
+import McapImageProjectionOverlay from "./McapImageProjectionOverlay";
 import McapSidebarGroup from "./McapSidebarGroup";
 import { rankDefaultImageSources } from "./playback-layout";
 import settingsStyles from "./McapTile.settings.module.css";
@@ -63,6 +65,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const calibrationSources = useSceneSourcesByType(
     MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
   );
+  const pointCloudSources = useSceneSourcesByType(MCAP_SOURCE_TYPE.POINT_CLOUD);
   const { fidelityMode } = useMcapPlaybackSettings();
   const setTileTitle = useSetTileTitle();
   const jotaiStore = useStore();
@@ -205,6 +208,31 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
       annotationTopics.filter((availableTopic) => next.has(availableTopic)),
     );
   };
+  const { projection, setProjection } = useMcapImageProjection(topic);
+  const pointCloudTopics = useMemo(
+    () => pointCloudSources.map((s) => s.id),
+    [pointCloudSources],
+  );
+  const selectedProjectionTopics = useMemo(() => {
+    if (projection.topics === null) return pointCloudTopics;
+    const available = new Set(pointCloudTopics);
+    return projection.topics.filter((cloudTopic) => available.has(cloudTopic));
+  }, [pointCloudTopics, projection.topics]);
+  const toggleProjectionTopic = (cloudTopic: string, checked: boolean) => {
+    const next = new Set(selectedProjectionTopics);
+    if (checked) {
+      next.add(cloudTopic);
+    } else {
+      next.delete(cloudTopic);
+    }
+    setProjection({
+      topics: pointCloudTopics.filter((availableTopic) =>
+        next.has(availableTopic),
+      ),
+    });
+  };
+  const canProjectLidar =
+    pointCloudSources.length > 0 && calibrationTopic !== null;
 
   return (
     <>
@@ -254,6 +282,54 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               </div>
             </McapSidebarGroup>
           ) : null}
+          {canProjectLidar ? (
+            <McapSidebarGroup
+              summary={
+                projection.enabled
+                  ? `${selectedProjectionTopics.length} of ${pointCloudSources.length} on`
+                  : undefined
+              }
+              title="Lidar overlay"
+              toggle={{
+                ariaLabel: "Toggle lidar overlay",
+                checked: projection.enabled,
+                onChange: (checked) => setProjection({ enabled: checked }),
+              }}
+            >
+              <div className={settingsStyles.optionStack}>
+                {pointCloudSources.map((s) => (
+                  <Checkbox
+                    key={s.id}
+                    label={s.label}
+                    checked={selectedProjectionTopics.includes(s.id)}
+                    onChange={(checked) => toggleProjectionTopic(s.id, checked)}
+                    {...checkboxNoSpaceToggleProps}
+                  />
+                ))}
+              </div>
+              <Dropdown
+                anchor={DropdownAnchor.BottomStart}
+                trigger={
+                  <DropdownTrigger>
+                    {projection.colorBy === "intensity"
+                      ? "Color by intensity"
+                      : "Color by depth"}
+                  </DropdownTrigger>
+                }
+              >
+                <MenuTextItem
+                  onClick={() => setProjection({ colorBy: "depth" })}
+                >
+                  Depth
+                </MenuTextItem>
+                <MenuTextItem
+                  onClick={() => setProjection({ colorBy: "intensity" })}
+                >
+                  Intensity
+                </MenuTextItem>
+              </Dropdown>
+            </McapSidebarGroup>
+          ) : null}
         </div>
       </TileSettingsContent>
       {frame ? (
@@ -283,6 +359,20 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
             textureKey={textureKey}
             viewTransform={imagePanZoom.viewTransform}
           />
+          {effectiveImageDims &&
+          projection.enabled &&
+          calibration &&
+          selectedProjectionTopics.length > 0 ? (
+            <McapImageProjectionOverlay
+              calibration={calibration}
+              colorBy={projection.colorBy}
+              fit={IMAGE_FIT}
+              imageHeight={effectiveImageDims.height}
+              imageWidth={effectiveImageDims.width}
+              topics={selectedProjectionTopics}
+              viewTransform={imagePanZoom.viewTransform}
+            />
+          ) : null}
           {effectiveImageDims && selectedLabelTopics.length > 0 ? (
             <McapImageAnnotationOverlay
               fit={IMAGE_FIT}
