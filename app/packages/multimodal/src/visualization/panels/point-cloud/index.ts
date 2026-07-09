@@ -38,6 +38,7 @@ export type {
   PointCloudPanelLayer,
   PointCloudPanelProps,
   PointCloudPanelRenderStats,
+  PointCloudPointPick,
   SceneAnnotationPanelLayer,
   WorldGridPanelConfig,
 } from "./types";

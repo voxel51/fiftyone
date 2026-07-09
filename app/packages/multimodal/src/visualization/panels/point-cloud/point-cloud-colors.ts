@@ -157,6 +157,56 @@ export function buildPointCloudRenderData(
   };
 }
 
+/**
+ * Recovers the source (decoded-array) index of the n-th rendered point.
+ * Replays the exact sampling walk of {@link buildPointCloudRenderData}
+ * (uniform stride + non-finite drop), so a raycast hit on the rendered
+ * geometry maps back to decoded per-point fields without materializing an
+ * index map on every playback tick — the walk runs only on click.
+ */
+export function sourcePointIndexForRenderedIndex(
+  sourcePositions: Float32Array,
+  maxRenderedPoints: number,
+  renderedIndex: number,
+): number | null {
+  if (!Number.isInteger(renderedIndex) || renderedIndex < 0) {
+    return null;
+  }
+
+  const sourcePointCount = Math.floor(
+    sourcePositions.length / POINT_COMPONENT_COUNT,
+  );
+  const sampleEvery = Math.max(
+    MIN_POINT_SAMPLE_COUNT,
+    Math.ceil(
+      sourcePointCount / Math.max(MIN_POINT_SAMPLE_COUNT, maxRenderedPoints),
+    ),
+  );
+  let renderedPointCount = 0;
+
+  for (
+    let sourcePointIndex = 0;
+    sourcePointIndex < sourcePointCount;
+    sourcePointIndex += sampleEvery
+  ) {
+    const sourceOffset = sourcePointIndex * POINT_COMPONENT_COUNT;
+    const x = sourcePositions[sourceOffset];
+    const y = sourcePositions[sourceOffset + Y_COMPONENT_INDEX];
+    const z = sourcePositions[sourceOffset + Z_COMPONENT_INDEX];
+
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+      continue;
+    }
+
+    if (renderedPointCount === renderedIndex) {
+      return sourcePointIndex;
+    }
+    renderedPointCount++;
+  }
+
+  return null;
+}
+
 type PointCloudColorSource =
   | {
       readonly kind: "height";

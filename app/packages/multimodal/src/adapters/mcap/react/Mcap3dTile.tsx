@@ -23,6 +23,7 @@ import {
   PointCloudPanel,
   type PointCloudPanelLayer,
   type PointCloudPanelRenderStats,
+  type PointCloudPointPick,
   type SceneAnnotationPanelLayer,
   type ThreeSceneBackground,
 } from "../../../visualization/panels/point-cloud";
@@ -54,6 +55,7 @@ import {
   mcapSelectedObjectAtom,
   useMcapSelectedObject,
 } from "./mcap-selected-object";
+import { mcapHoveredPointForFrame } from "./mcap-point-hover";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
   defaultMcapPointCloudColorForSource,
@@ -427,6 +429,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const {
     containerProps: hoverTooltipContainerProps,
     onHoverEntity,
+    onHoverPoint,
     tooltip: hoverTooltip,
   } = useMcap3dHoverTooltip();
   const annotationLayers = useMemo(
@@ -446,7 +449,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
           ...layer,
           highlighted: isSelected || isMcapLabelEcho(selectedObject, label),
           onHoverEntity: (hoveredId: string | null) =>
-            onHoverEntity(hoveredId ? { entityId, label, topic } : null),
+            onHoverEntity(
+              hoveredId ? { entityId, kind: "entity", label, topic } : null,
+            ),
           onSelectEntity: (
             _entityId: string,
             modifiers: { readonly shiftKey: boolean },
@@ -473,6 +478,28 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         };
       }),
     [onHoverEntity, sceneAnnotationLayers, selectedObject, setSelectedObject],
+  );
+  // Wire the point clouds into the hover tooltip: once the pointer rests
+  // over a bare point (entities and frustums keep picking precedence),
+  // that point's decoded fields show in a tooltip at the cursor. The
+  // payload closes over the exact frame being displayed.
+  const hoverablePointCloudLayers = useMemo(
+    () =>
+      coloredPointCloudLayers.map((layer) => {
+        const topic = layer.id;
+        const frame = layer.frame;
+        return {
+          ...layer,
+          onHoverPoint: (pick: PointCloudPointPick | null) => {
+            onHoverPoint(
+              pick
+                ? mcapHoveredPointForFrame(topic, frame, pick.pointIndex)
+                : null,
+            );
+          },
+        };
+      }),
+    [coloredPointCloudLayers, onHoverPoint],
   );
   // Schema-driven telemetry: speed from the first enabled pose stream whose
   // latest sample carries velocity, coordinates from the first LocationFix
@@ -606,11 +633,11 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       gridLayers,
       notices: panelNotices,
       placementStatus,
-      pointCloudLayers: coloredPointCloudLayers,
+      pointCloudLayers: hoverablePointCloudLayers,
     }),
     [
       annotationLayers,
-      coloredPointCloudLayers,
+      hoverablePointCloudLayers,
       frustumLayers,
       gridLayers,
       panelNotices,

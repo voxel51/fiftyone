@@ -6,6 +6,7 @@ import { instancedBufferAttribute } from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
 
 import { POINT_COMPONENT_COUNT } from "./point-cloud-colors";
+import { POINT_PICK_LAYER_ID_KEY } from "./point-picking";
 import { pointCloudObjectTransform } from "./transforms";
 import type { PointCloudPanelLayer, PointCloudRenderData } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
@@ -49,7 +50,11 @@ export function PointCloudSceneLayer({
       position={objectTransform.position}
       quaternion={objectTransform.quaternion}
     >
-      <PointCloudPoints data={data} pointSize={pointSize} />
+      <PointCloudPoints
+        data={data}
+        layerId={layer.onHoverPoint ? layer.id : undefined}
+        pointSize={pointSize}
+      />
     </group>
   );
 }
@@ -60,9 +65,13 @@ const MIN_POINT_CAPACITY = 1_024;
 
 function PointCloudPoints({
   data,
+  layerId,
   pointSize,
 }: {
   readonly data: PointCloudRenderData;
+  /** Set only when the layer is pickable — tags the points object for
+   * the click-time raycast in PointCloudPickingLayer. */
+  readonly layerId?: string;
   readonly pointSize: number;
 }) {
   const invalidate = useThree((state) => state.invalidate);
@@ -98,10 +107,18 @@ function PointCloudPoints({
   // This effect disposes the GPU geometry when capacity grows or on unmount.
   useEffect(() => () => geometry.dispose(), [geometry]);
 
+  const pickUserData = useMemo(
+    () =>
+      layerId === undefined
+        ? undefined
+        : { [POINT_PICK_LAYER_ID_KEY]: layerId },
+    [layerId],
+  );
+
   // Keying by capacity retires the points object together with its
   // geometry, so a geometry is never swapped into a live three object.
   return (
-    <points key={capacity} frustumCulled={false}>
+    <points key={capacity} frustumCulled={false} userData={pickUserData}>
       <primitive attach="geometry" object={geometry} />
       <pointsMaterial {...POINT_CLOUD_POINTS_MATERIAL_PROPS} size={pointSize} />
       {pointSize > WEBGPU_POINT_PRIMITIVE_SIZE_PX ? (

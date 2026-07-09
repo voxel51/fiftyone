@@ -20,6 +20,7 @@ import {
   DEFAULT_POINT_SIZE,
   PointCloudSceneLayer,
 } from "./PointCloudSceneLayer";
+import { PointCloudPickingLayer } from "./PointCloudPickingLayer";
 import { MeasurementLayer } from "./MeasurementLayer";
 import {
   formatMeasurementDistance,
@@ -319,6 +320,11 @@ export function PointCloudPanel({
             {frustumLayers.map((layer) => (
               <CameraFrustumSceneLayer key={layer.id} layer={layer} />
             ))}
+            <PointCloudPickingLayer
+              layers={layers}
+              maxRenderedPoints={maxRenderedPoints}
+              pointSize={pointSize}
+            />
             <MeasurementLayer
               armed={measureArmed}
               measurement={measurement}
