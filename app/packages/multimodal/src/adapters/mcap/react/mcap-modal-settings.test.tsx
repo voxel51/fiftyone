@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   __resetMcapModalSettingsForTests,
   DEFAULT_MCAP_FIDELITY_MODE,
+  DEFAULT_MCAP_IMAGE_PROJECTION,
   DEFAULT_MCAP_PINHOLE_CAMERA,
   DEFAULT_MCAP_POINT_CLOUD_COLOR,
   DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
@@ -21,6 +22,7 @@ import {
   defaultMcapPointCloudColorForSource,
   readMcapModalSettings,
   useMcapImageLabelTopics,
+  useMcapImageProjection,
   useMcapPinholeCameraSettings,
   useMcapPlaybackSettings,
   useMcapPointCloudStyleSettings,
@@ -43,6 +45,7 @@ describe("mcap-modal-settings", () => {
     expect(readMcapModalSettings()).toEqual({
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
+      imageProjection: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       pointCloudColors: {},
       pointCloudPointSize: DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
@@ -58,6 +61,13 @@ describe("mcap-modal-settings", () => {
       fidelityMode: "as-recorded",
       imageLabelTopics: {
         "/camera/front": ["/labels/front", "/labels/all"],
+      },
+      imageProjection: {
+        "/camera/front": {
+          colorBy: "intensity",
+          enabled: true,
+          topics: ["/lidar/points"],
+        },
       },
       pinholeCamera: { imagePlaneDepthM: 4, opacityPercent: 45 },
       pointCloudColors: {},
@@ -78,6 +88,13 @@ describe("mcap-modal-settings", () => {
       imageLabelTopics: {
         "/camera/front": ["/labels/front", "/labels/all"],
       },
+      imageProjection: {
+        "/camera/front": {
+          colorBy: "intensity",
+          enabled: true,
+          topics: ["/lidar/points"],
+        },
+      },
       pinholeCamera: { imagePlaneDepthM: 4, opacityPercent: 45 },
       pointCloudColors: {},
       pointCloudPointSize: 4,
@@ -97,6 +114,7 @@ describe("mcap-modal-settings", () => {
     writeMcapModalSettings({
       fidelityMode: "plaid" as never,
       imageLabelTopics: {},
+      imageProjection: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       pointCloudColors: {},
       pointCloudPointSize: DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
@@ -115,6 +133,7 @@ describe("mcap-modal-settings", () => {
     writeMcapModalSettings({
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
+      imageProjection: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       pointCloudColors: {},
       pointCloudPointSize: DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
@@ -139,6 +158,7 @@ describe("mcap-modal-settings", () => {
     writeMcapModalSettings({
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
+      imageProjection: {},
       pinholeCamera: {
         imagePlaneDepthM: -2,
         opacityPercent: 250,
@@ -161,6 +181,7 @@ describe("mcap-modal-settings", () => {
     writeMcapModalSettings({
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
+      imageProjection: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       pointCloudColors: {},
       pointCloudPointSize: DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
@@ -182,6 +203,7 @@ describe("mcap-modal-settings", () => {
     writeMcapModalSettings({
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
+      imageProjection: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       pointCloudColors: {
         "/lidar/points": {
@@ -228,6 +250,7 @@ describe("mcap-modal-settings", () => {
     writeMcapModalSettings({
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
+      imageProjection: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       pointCloudColors: {
         "  ": {
@@ -308,6 +331,7 @@ describe("mcap-modal-settings", () => {
       imageLabelTopics: {
         "/camera/front": [],
       },
+      imageProjection: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       pointCloudColors: {},
       pointCloudPointSize: DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
@@ -503,6 +527,7 @@ describe("mcap-modal-settings", () => {
     writeMcapModalSettings({
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
+      imageProjection: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       pointCloudColors: {},
       pointCloudPointSize: 42,
@@ -521,6 +546,7 @@ describe("mcap-modal-settings", () => {
     writeMcapModalSettings({
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
+      imageProjection: {},
       pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
       pointCloudColors: {},
       pointCloudPointSize: Number.POSITIVE_INFINITY,
@@ -543,6 +569,65 @@ describe("mcap-modal-settings", () => {
         staleMediaWarningMs: DEFAULT_MCAP_TEMPORAL_POLICY.staleMediaWarningMs,
         transformGapWarningMs:
           DEFAULT_MCAP_TEMPORAL_POLICY.transformGapWarningMs,
+      },
+    });
+  });
+
+  it("sanitizes invalid lidar projection settings", () => {
+    writeMcapModalSettings({
+      fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
+      imageLabelTopics: {},
+      imageProjection: {
+        "  ": { colorBy: "depth", enabled: true, topics: null },
+        "/camera/front": {
+          colorBy: "plasma" as never,
+          enabled: "yes" as never,
+          topics: ["/lidar", "", "/lidar", 42 as never],
+        },
+      },
+      pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
+      pointCloudColors: {},
+      pointCloudPointSize: DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
+      referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
+      sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
+      showPointCloudColorLegend: false,
+      temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
+    });
+
+    expect(readMcapModalSettings().imageProjection).toEqual({
+      "/camera/front": {
+        colorBy: "depth",
+        enabled: false,
+        topics: ["/lidar"],
+      },
+    });
+  });
+
+  it("updates lidar projection per image topic through the hook", () => {
+    const { result } = renderHook(() =>
+      useMcapImageProjection("/camera/front"),
+    );
+
+    expect(result.current.projection).toEqual(DEFAULT_MCAP_IMAGE_PROJECTION);
+
+    act(() => {
+      result.current.setProjection({ colorBy: "intensity", enabled: true });
+    });
+    expect(result.current.projection).toEqual({
+      colorBy: "intensity",
+      enabled: true,
+      topics: null,
+    });
+
+    act(() => {
+      result.current.setProjection({ topics: ["/lidar/points"] });
+    });
+    expect(result.current.projection.topics).toEqual(["/lidar/points"]);
+    expect(readMcapModalSettings().imageProjection).toEqual({
+      "/camera/front": {
+        colorBy: "intensity",
+        enabled: true,
+        topics: ["/lidar/points"],
       },
     });
   });
