@@ -6,6 +6,7 @@ import * as THREE from "three";
 import type { CameraCalibrationVisualization } from "../../../decoders";
 import { CLICK_DRAG_TOLERANCE_PX } from "../interaction";
 import { useImageTextureLease } from "../use-image-texture-lease";
+import { POINT_PICK_BLOCKING_USER_DATA } from "./point-picking";
 import { useScenePicking } from "./scene-interactivity";
 import { pointCloudObjectTransform } from "./transforms";
 import type { CameraFrustumPanelLayer } from "./types";
@@ -158,6 +159,7 @@ export function CameraFrustumSceneLayer({
           : undefined
       }
       onPointerOut={interactive ? () => setHovered(false) : undefined}
+      userData={interactive ? POINT_PICK_BLOCKING_USER_DATA : undefined}
     >
       <lineSegments frustumCulled={false}>
         <primitive attach="geometry" object={geometry} />
