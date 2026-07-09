@@ -255,6 +255,46 @@ describe("TimelineRuler", () => {
       expect(inlineStyle(ticks[0])).toContain("left: 0%");
       expect(inlineStyle(ticks[ticks.length - 1])).toContain("left: 100%");
     });
+
+    it("widens the interval on long files so ticks stay uncramped", () => {
+      // A 60s file zoomed all the way out used to render one label per second
+      // (61 ticks). It now scales up to a nicer interval.
+      const { container } = renderRuler({
+        duration: 60,
+        viewStart: 0,
+        viewEnd: 60,
+      });
+      const ticks = container.querySelectorAll(`.${styles.tick}`);
+      // 10s spacing → 7 ticks (0..60), well under the old crush.
+      expect(ticks).toHaveLength(7);
+    });
+
+    it("keeps a bounded tick count regardless of duration", () => {
+      const { container } = renderRuler({
+        duration: 300,
+        viewStart: 0,
+        viewEnd: 300,
+      });
+      const ticks = container.querySelectorAll(`.${styles.tick}`);
+      // 30s spacing → 11 ticks (0..300), never hundreds.
+      expect(ticks.length).toBeLessThanOrEqual(12);
+    });
+
+    it("labels ticks past a minute as m:ss", () => {
+      const { container } = renderRuler({
+        duration: 120,
+        viewStart: 0,
+        viewEnd: 120,
+      });
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
+      // Sub-minute ticks stay in seconds; minute+ ticks read as m:ss.
+      expect(labels).toContain("30s");
+      expect(labels).toContain("1:00");
+      expect(labels).toContain("1:30");
+      expect(labels).toContain("2:00");
+    });
   });
 
   describe("playhead positioning", () => {

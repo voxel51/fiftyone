@@ -28,6 +28,24 @@ function imageSource(id: string, recordCount?: number): SceneSource {
   };
 }
 
+function logSource(id: string, recordCount?: number): SceneSource {
+  return {
+    id,
+    label: id.replace(/^\//, ""),
+    type: "log",
+    ...(recordCount !== undefined ? { recordCount } : {}),
+  };
+}
+
+function locationSource(id: string, recordCount?: number): SceneSource {
+  return {
+    id,
+    label: id.replace(/^\//, ""),
+    type: "location",
+    ...(recordCount !== undefined ? { recordCount } : {}),
+  };
+}
+
 const POINT_CLOUD: SceneSource = {
   id: "/points",
   label: "points",
@@ -259,6 +277,56 @@ describe("resolvePlaybackLayout", () => {
     expect(layout).toBe("3d-1");
   });
 
+  it("opens a map tile for location-only scenes", () => {
+    const { tiles, layout } = resolvePlaybackLayout({
+      capabilities: STRONG_LOCAL,
+      readProfile: "local",
+      sources: [locationSource("/gps/fix", 1_000)],
+    });
+
+    expect(tiles).toEqual([
+      {
+        id: "map-1",
+        tileType: "map",
+        title: "Map",
+      },
+    ]);
+    expect(layout).toBe("map-1");
+  });
+
+  it("places location maps beside the 3d view", () => {
+    const { tiles, layout } = resolvePlaybackLayout({
+      capabilities: STRONG_LOCAL,
+      readProfile: "local",
+      sources: [POINT_CLOUD, locationSource("/gps/fix", 1_000)],
+    });
+
+    expect(tiles.map((tile) => tile.id)).toEqual(["3d-1", "map-1"]);
+    expect(layout).toEqual({
+      direction: "row",
+      first: "3d-1",
+      second: "map-1",
+      splitPercentage: 70,
+    });
+  });
+
+  it("opens a log tile for logs-only scenes", () => {
+    const { tiles, layout } = resolvePlaybackLayout({
+      capabilities: STRONG_LOCAL,
+      readProfile: "local",
+      sources: [logSource("/diagnostics", 12)],
+    });
+
+    expect(tiles).toEqual([
+      {
+        id: "log-1",
+        tileType: "log",
+        title: "Logs",
+      },
+    ]);
+    expect(layout).toBe("log-1");
+  });
+
   it("returns no tiles for scenes without renderable sources", () => {
     const { tiles, layout } = resolvePlaybackLayout({
       capabilities: STRONG_LOCAL,
@@ -314,6 +382,20 @@ describe("buildMcapAutoLayout", () => {
     });
   });
 
+  it("places map tiles beside 3d tiles in the top visual region", () => {
+    expect(buildMcapAutoLayout(["image-1", "3d-1", "map-1"])).toEqual({
+      direction: "column",
+      first: {
+        direction: "row",
+        first: "3d-1",
+        second: "map-1",
+        splitPercentage: 70,
+      },
+      second: "image-1",
+      splitPercentage: THREE_D_TOP_SPLIT_PERCENTAGE,
+    });
+  });
+
   it("keeps image tiles co-located in a visual bank", () => {
     expect(buildMcapAutoLayout(["image-1", "image-2", "image-3"])).toEqual({
       direction: "row",
@@ -328,6 +410,15 @@ describe("buildMcapAutoLayout", () => {
     });
   });
 
+  it("co-locates maps with images when no 3d tile is present", () => {
+    expect(buildMcapAutoLayout(["image-1", "map-1"])).toEqual({
+      direction: "row",
+      first: "image-1",
+      second: "map-1",
+      splitPercentage: 65,
+    });
+  });
+
   it("stacks plot tiles vertically", () => {
     expect(buildMcapAutoLayout(["plot-1", "plot-2", "plot-3"])).toEqual({
       direction: "column",
@@ -339,6 +430,15 @@ describe("buildMcapAutoLayout", () => {
         splitPercentage: 50,
       },
       splitPercentage: 100 / 3,
+    });
+  });
+
+  it("stacks log tiles vertically", () => {
+    expect(buildMcapAutoLayout(["log-1", "log-2"])).toEqual({
+      direction: "column",
+      first: "log-1",
+      second: "log-2",
+      splitPercentage: 50,
     });
   });
 

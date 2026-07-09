@@ -67,9 +67,9 @@ export function decodeRosNavSatFixRecord(
       ? covariance(message)
       : undefined;
 
-  const status = statusAttributes(recordField(message, "status"));
-  if (status) {
-    attributes.status = status;
+  const navSatStatus = navSatStatusValues(recordField(message, "status"));
+  if (navSatStatus.attributes) {
+    attributes.status = navSatStatus.attributes;
   }
 
   // Match the Foxglove LocationFix heuristic: many drivers emit altitude 0
@@ -78,6 +78,12 @@ export function decodeRosNavSatFixRecord(
     ...(Number.isFinite(altitude) && altitude !== 0 ? { altitude } : {}),
     ...(frameId ? { coordinateFrameId: frameId } : {}),
     kind: VISUALIZATION_KIND.LOCATION,
+    ...(navSatStatus.fixService !== undefined
+      ? { fixService: navSatStatus.fixService }
+      : {}),
+    ...(navSatStatus.fixStatus !== undefined
+      ? { fixStatus: navSatStatus.fixStatus }
+      : {}),
     latitude,
     longitude,
     ...(positionCovariance ? { positionCovariance } : {}),
@@ -100,22 +106,31 @@ function covariance(
   return values.length === COVARIANCE_LENGTH ? values : undefined;
 }
 
-function statusAttributes(
-  status: Record<string, unknown> | undefined,
-): DecodedAttributeValue | undefined {
+function navSatStatusValues(status: Record<string, unknown> | undefined): {
+  readonly attributes?: DecodedAttributeValue;
+  readonly fixService?: number;
+  readonly fixStatus?: number;
+} {
   if (!status) {
-    return undefined;
+    return {};
   }
 
-  const result: Record<string, DecodedAttributeValue> = {};
   const statusValue = numberField(status, "status", undefined, Number.NaN);
   const service = numberField(status, "service", undefined, Number.NaN);
-  if (Number.isFinite(statusValue)) {
-    result.status = statusValue;
+  const fixStatus = Number.isFinite(statusValue) ? statusValue : undefined;
+  const fixService = Number.isFinite(service) ? service : undefined;
+
+  const result: Record<string, DecodedAttributeValue> = {};
+  if (fixStatus !== undefined) {
+    result.status = fixStatus;
   }
-  if (Number.isFinite(service)) {
-    result.service = service;
+  if (fixService !== undefined) {
+    result.service = fixService;
   }
 
-  return Object.keys(result).length > 0 ? result : undefined;
+  return {
+    attributes: Object.keys(result).length > 0 ? result : undefined,
+    fixService,
+    fixStatus,
+  };
 }

@@ -14,9 +14,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useSceneInventory } from "../../../scene-inventory/SceneInventoryProvider";
 import type { StreamInventory } from "../../../schemas/v1";
-import { topicName } from "../stream-topics";
 import {
   type McapPlaybackFidelityMode,
   type McapTemporalPolicySettings,
@@ -25,8 +23,9 @@ import {
 } from "./mcap-modal-settings";
 import McapSidebarGroup from "./McapSidebarGroup";
 import styles from "./McapSettingsSidebar.module.css";
+import McapTopicsSettings from "./McapTopicsSettings";
 
-type ActiveSettingsTab = "scene" | "panel";
+type ActiveSettingsTab = "panel" | "scene" | "topics";
 
 /**
  * MCAP-specific left sidebar. Panel settings stay on an explicit tab while
@@ -43,19 +42,27 @@ const McapSettingsSidebar: React.FC<{
   const hasPanelTab = focusedTileTitle !== null;
   const [activeTab, setActiveTab] = useState<ActiveSettingsTab>("scene");
   const hadPanelTabRef = useRef(false);
+  const suppressNextPanelAutoSwitchRef = useRef(false);
   const slotRef = useCallback(
     (el: HTMLDivElement | null) => setSettingsSlotEl(el),
     [setSettingsSlotEl],
   );
+  const suppressNextPanelAutoSwitch = useCallback(() => {
+    suppressNextPanelAutoSwitchRef.current = true;
+  }, []);
 
   useLayoutEffect(() => {
+    const suppressPanelAutoSwitch = suppressNextPanelAutoSwitchRef.current;
     if (hasPanelTab && !hadPanelTabRef.current) {
-      setActiveTab("panel");
-    } else if (!hasPanelTab) {
+      if (!suppressPanelAutoSwitch) {
+        setActiveTab("panel");
+      }
+    } else if (!hasPanelTab && activeTab === "panel") {
       setActiveTab("scene");
     }
+    suppressNextPanelAutoSwitchRef.current = false;
     hadPanelTabRef.current = hasPanelTab;
-  }, [hasPanelTab]);
+  }, [activeTab, hasPanelTab]);
 
   const tabs = useMemo<Descriptor<ToggleSwitchTab>[]>(() => {
     const nextTabs: Descriptor<ToggleSwitchTab>[] = [
@@ -63,7 +70,19 @@ const McapSettingsSidebar: React.FC<{
         id: "scene",
         data: {
           label: "Scene",
-          content: <GlobalSceneSettings topics={topics} />,
+          content: <GlobalSceneSettings />,
+        },
+      },
+      {
+        id: "topics",
+        data: {
+          label: "Topics",
+          content: (
+            <McapTopicsSettings
+              onTopicActionStart={suppressNextPanelAutoSwitch}
+              topics={topics}
+            />
+          ),
         },
       },
     ];
@@ -79,19 +98,30 @@ const McapSettingsSidebar: React.FC<{
     }
 
     return nextTabs;
-  }, [focusedTileTitle, slotRef, topics]);
-  const defaultIndex = activeTab === "panel" && hasPanelTab ? 1 : 0;
+  }, [focusedTileTitle, slotRef, suppressNextPanelAutoSwitch, topics]);
+  const selectedTab =
+    hasPanelTab &&
+    !hadPanelTabRef.current &&
+    !suppressNextPanelAutoSwitchRef.current
+      ? "panel"
+      : activeTab;
+  const defaultIndex = Math.max(
+    0,
+    tabs.findIndex((tab) => tab.id === selectedTab),
+  );
   const handleTabChange = useCallback(
     (index: number) => {
-      setActiveTab(index === 1 && hasPanelTab ? "panel" : "scene");
+      setActiveTab(
+        (tabs[index]?.id as ActiveSettingsTab | undefined) ?? "scene",
+      );
     },
-    [hasPanelTab],
+    [tabs],
   );
 
   return (
     <div className={styles.sidebarRoot}>
       <ToggleSwitch
-        key={`${hasPanelTab ? "with-panel" : "scene-only"}-${defaultIndex}`}
+        key={hasPanelTab ? "with-panel" : "scene-only"}
         defaultIndex={defaultIndex}
         fullWidth
         onChange={handleTabChange}
@@ -114,120 +144,13 @@ function PanelSettingsContent({
   );
 }
 
-function GlobalSceneSettings({
-  topics,
-}: {
-  readonly topics: readonly StreamInventory[];
-}) {
+function GlobalSceneSettings() {
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
-      <OtherTopicsSettings topics={topics} />
       <PlaybackFidelitySettings />
       <TimeResolutionSettings />
     </div>
   );
-}
-
-interface OtherTopicRow {
-  readonly countLabel: string;
-  readonly encoding: string;
-  readonly schemaName: string;
-  readonly statusLabel: string;
-  readonly topic: string;
-}
-
-function OtherTopicsSettings({
-  topics,
-}: {
-  readonly topics: readonly StreamInventory[];
-}) {
-  const sceneSources = useSceneInventory();
-  const rows = useMemo(
-    () =>
-      otherTopicRows(
-        topics,
-        sceneSources.map((source) => source.id),
-      ),
-    [sceneSources, topics],
-  );
-
-  if (rows.length === 0) {
-    return null;
-  }
-
-  return (
-    <McapSidebarGroup
-      defaultExpanded={false}
-      summary={`${rows.length} not rendered`}
-      title="Other topics"
-    >
-      <div className={styles.topicList}>
-        {rows.map((row) => (
-          <div className={styles.topicRow} key={row.topic}>
-            <Text variant={TextVariant.Xs} color={TextColor.Primary}>
-              {row.topic}
-            </Text>
-            <span className={styles.topicMeta}>
-              {row.schemaName} · {row.encoding} · {row.countLabel}
-            </span>
-            <span className={styles.topicStatus}>{row.statusLabel}</span>
-          </div>
-        ))}
-      </div>
-    </McapSidebarGroup>
-  );
-}
-
-function otherTopicRows(
-  topics: readonly StreamInventory[],
-  renderedTopicIds: readonly string[],
-): readonly OtherTopicRow[] {
-  const rendered = new Set(renderedTopicIds);
-  return topics
-    .map((topic) => {
-      const name = topicName(topic);
-      if (!name || rendered.has(name)) {
-        return null;
-      }
-      return {
-        countLabel: messageCountLabel(topic.recordCount),
-        encoding:
-          topic.metadata["mcap.message_encoding"] ??
-          topic.payload?.encoding ??
-          "unknown",
-        schemaName:
-          topic.metadata["mcap.schema_name"] ??
-          topic.payload?.schema ??
-          "no schema",
-        statusLabel: genericDecodeStatusLabel(
-          topic.metadata["mcap.generic_decode_status"],
-        ),
-        topic: name,
-      };
-    })
-    .filter((row): row is OtherTopicRow => row !== null)
-    .sort((left, right) => left.topic.localeCompare(right.topic));
-}
-
-function genericDecodeStatusLabel(status: string | undefined): string {
-  switch (status) {
-    case "decodable":
-      return "Inspectable in Message";
-    case "schema-unavailable":
-      return "Schema unavailable";
-    case "unsupported-encoding":
-      return "Encoding unsupported";
-    default:
-      return "Raw status unknown";
-  }
-}
-
-function messageCountLabel(recordCount: string | undefined): string {
-  const count = recordCount === undefined ? Number.NaN : Number(recordCount);
-  if (!Number.isFinite(count) || count < 0) {
-    return "unknown msgs";
-  }
-  return `${count.toLocaleString()} ${count === 1 ? "msg" : "msgs"}`;
 }
 
 const FIDELITY_OPTIONS: readonly {

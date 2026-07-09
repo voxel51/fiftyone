@@ -1,9 +1,11 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
 import { useSetTileTitle } from "@fiftyone/tiling";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { rawNodeToJson } from "../resources/raw-record-prune";
 import type { McapRawMessageRecordResult } from "../types";
+import { useAddMcapFieldToPlot } from "./use-add-mcap-field-to-plot";
 import { useMcapDataStream } from "./mcap-data-stream-context";
+import { useMcapNumericSeriesContext } from "./mcap-numeric-series-context";
 import { useMcapRawMessageContext } from "./mcap-raw-message-context";
 import { useMcapRawTileTopic } from "./mcap-raw-tile-state";
 import type { McapTileProps } from "./mcap-tile-types";
@@ -26,6 +28,8 @@ const McapRawMessageTile: React.FC<McapTileProps> = () => {
   const topic = useMcapRawTileTopic();
   const setTileTitle = useSetTileTitle();
   const { recordsByTopic, subscribeRecord } = useMcapRawMessageContext();
+  const { ensureEnumeration, enumeration } = useMcapNumericSeriesContext();
+  const addFieldToPlot = useAddMcapFieldToPlot();
 
   // This effect declares interest in the selected topic while the tile
   // shows it; the bridge follows the playhead for interested topics.
@@ -36,12 +40,41 @@ const McapRawMessageTile: React.FC<McapTileProps> = () => {
     return subscribeRecord(topic);
   }, [subscribeRecord, topic]);
 
+  // The raw tree only shows "plot" on fields confirmed by the numeric
+  // catalog. While the catalog is idle/loading/error, no affordance is shown.
+  useEffect(() => {
+    if (topic) {
+      ensureEnumeration();
+    }
+  }, [ensureEnumeration, topic]);
+
   useEffect(() => {
     setTileTitle(topic ?? "Message", { source: "auto" });
   }, [setTileTitle, topic]);
 
   const state = topic ? recordsByTopic.get(topic) : undefined;
   const result = state?.result;
+  const plottableFieldPaths = useMemo(() => {
+    if (!topic || enumeration.status !== "ready") {
+      return undefined;
+    }
+    const topicFields = enumeration.topics.find(
+      (entry) => entry.topic === topic && entry.availability === "ready",
+    );
+    if (!topicFields || topicFields.fields.length === 0) {
+      return undefined;
+    }
+    return new Set(topicFields.fields.map((field) => field.path));
+  }, [enumeration, topic]);
+
+  const handleAddFieldToPlot = useCallback(
+    (fieldPath: string) => {
+      if (topic) {
+        addFieldToPlot(topic, fieldPath);
+      }
+    },
+    [addFieldToPlot, topic],
+  );
 
   return (
     <>
@@ -70,7 +103,11 @@ const McapRawMessageTile: React.FC<McapTileProps> = () => {
         ) : (
           <>
             <MetaRow result={result} topic={topic} />
-            <RecordBody result={result} />
+            <RecordBody
+              onAddNumericFieldToPlot={handleAddFieldToPlot}
+              plottableFieldPaths={plottableFieldPaths}
+              result={result}
+            />
           </>
         )}
       </div>
@@ -152,14 +189,22 @@ function MetaRow({
 }
 
 function RecordBody({
+  onAddNumericFieldToPlot,
+  plottableFieldPaths,
   result,
 }: {
+  readonly onAddNumericFieldToPlot: (path: string) => void;
+  readonly plottableFieldPaths?: ReadonlySet<string>;
   readonly result: McapRawMessageRecordResult;
 }) {
   if (result.status === "ok" && result.root) {
     return (
       <div className={rawStyles.scroll}>
-        <McapRawMessageTree root={result.root} />
+        <McapRawMessageTree
+          onAddNumericFieldToPlot={onAddNumericFieldToPlot}
+          plottableFieldPaths={plottableFieldPaths}
+          root={result.root}
+        />
       </div>
     );
   }

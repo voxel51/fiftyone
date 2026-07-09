@@ -203,6 +203,10 @@ export interface LocationVisualization {
    * Per-message source coordinate frame of the reporting sensor.
    */
   readonly coordinateFrameId?: string;
+  /** ROS NavSatStatus.status when present; -1 means no fix. */
+  readonly fixStatus?: number;
+  /** ROS NavSatStatus.service bitmask when present. */
+  readonly fixService?: number;
   readonly latitude: number;
   readonly longitude: number;
   readonly altitude?: number;

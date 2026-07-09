@@ -82,11 +82,27 @@ export const JSON_ROS_POSE_STAMPED_PAYLOADS = jsonRosPayloads(
 );
 
 /**
+ * Payload descriptors for JSON-schema ROS PoseArray messages.
+ */
+export const JSON_ROS_POSE_ARRAY_PAYLOADS = jsonRosPayloads(
+  "geometry_msgs/PoseArray",
+  "geometry_msgs/msg/PoseArray",
+);
+
+/**
  * Payload descriptors for JSON-schema ROS Odometry messages.
  */
 export const JSON_ROS_ODOMETRY_PAYLOADS = jsonRosPayloads(
   "nav_msgs/Odometry",
   "nav_msgs/msg/Odometry",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS Path messages.
+ */
+export const JSON_ROS_PATH_PAYLOADS = jsonRosPayloads(
+  "nav_msgs/Path",
+  "nav_msgs/msg/Path",
 );
 
 /**
@@ -98,9 +114,71 @@ export const JSON_ROS_NAV_SAT_FIX_PAYLOADS = jsonRosPayloads(
 );
 
 /**
+ * Payload descriptors for JSON-schema ROS rosgraph Log messages.
+ */
+export const JSON_ROS_ROSGRAPH_LOG_PAYLOADS: readonly PayloadDescriptor[] = [
+  {
+    encoding: "json",
+    schema: "rosgraph_msgs/Log",
+    schemaEncoding: "jsonschema",
+  },
+];
+
+/**
+ * Payload descriptors for JSON-schema ROS 2 rcl_interfaces Log messages.
+ */
+export const JSON_ROS_RCL_LOG_PAYLOADS: readonly PayloadDescriptor[] = [
+  {
+    encoding: "json",
+    schema: "rcl_interfaces/msg/Log",
+    schemaEncoding: "jsonschema",
+  },
+];
+
+/**
+ * Payload descriptors for JSON-schema ROS DiagnosticArray messages.
+ */
+export const JSON_ROS_DIAGNOSTIC_ARRAY_PAYLOADS = jsonRosPayloads(
+  "diagnostic_msgs/DiagnosticArray",
+  "diagnostic_msgs/msg/DiagnosticArray",
+);
+
+/**
  * Payload descriptors for JSON-schema ROS OccupancyGrid messages.
  */
 export const JSON_ROS_OCCUPANCY_GRID_PAYLOADS = jsonRosPayloads(
   "nav_msgs/OccupancyGrid",
   "nav_msgs/msg/OccupancyGrid",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS visualization Marker messages.
+ */
+export const JSON_ROS_MARKER_PAYLOADS = jsonRosPayloads(
+  "visualization_msgs/Marker",
+  "visualization_msgs/msg/Marker",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS visualization MarkerArray messages.
+ */
+export const JSON_ROS_MARKER_ARRAY_PAYLOADS = jsonRosPayloads(
+  "visualization_msgs/MarkerArray",
+  "visualization_msgs/msg/MarkerArray",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS vision Detection2DArray messages.
+ */
+export const JSON_ROS_DETECTION_2D_ARRAY_PAYLOADS = jsonRosPayloads(
+  "vision_msgs/Detection2DArray",
+  "vision_msgs/msg/Detection2DArray",
+);
+
+/**
+ * Payload descriptors for JSON-schema ROS vision Detection3DArray messages.
+ */
+export const JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS = jsonRosPayloads(
+  "vision_msgs/Detection3DArray",
+  "vision_msgs/msg/Detection3DArray",
 );

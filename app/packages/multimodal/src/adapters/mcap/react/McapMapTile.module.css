@@ -1,0 +1,228 @@
+/*
+ * Overlay chrome is keyed to the map imagery (and the fixed-dark no-tile
+ * canvas), not the app theme, so the glass palette is intentionally
+ * literal — but defined once here. The accent is the one theme-sourced
+ * color: Voxel51 primary, matching the ego puck and comet trail drawn in
+ * GL (which resolve the same variable at runtime).
+ */
+.body {
+  --map-surface: #06101a;
+  --map-accent: var(--fo-palette-primary-plainColor, #ff6d04);
+  --map-chrome-bg: rgb(4 12 22 / 76%);
+  --map-chrome-border: rgb(148 163 184 / 28%);
+  --map-chrome-border-subtle: rgb(148 163 184 / 22%);
+  --map-chrome-shadow: 0 8px 20px rgb(0 0 0 / 24%);
+  --map-measure: #22d3ee;
+  --map-text: #e2e8f0;
+  --map-text-muted: #94a3b8;
+
+  background: var(--map-surface);
+  color: var(--map-text);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.map {
+  height: 100%;
+  width: 100%;
+}
+
+.map :global(.maplibregl-ctrl-group) {
+  backdrop-filter: blur(10px);
+  background: var(--map-chrome-bg);
+  border: 1px solid var(--map-chrome-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.map :global(.maplibregl-ctrl-group:not(:empty)) {
+  box-shadow: var(--map-chrome-shadow);
+}
+
+.map :global(.maplibregl-ctrl-group button) {
+  height: 28px;
+  width: 28px;
+}
+
+.map :global(.maplibregl-ctrl-group button + button) {
+  border-top: 1px solid var(--map-chrome-border-subtle);
+}
+
+.map :global(.maplibregl-ctrl-group button:not(:disabled):hover) {
+  background-color: rgb(56 189 248 / 16%);
+}
+
+.map :global(.maplibregl-ctrl-group button .maplibregl-ctrl-icon) {
+  filter: invert(96%) sepia(7%) saturate(489%) hue-rotate(177deg)
+    brightness(96%) contrast(88%);
+}
+
+.fallback {
+  height: 100%;
+  inset: 0;
+  position: absolute;
+  width: 100%;
+}
+
+.fallback svg {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.overlay {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  left: 10px;
+  max-width: calc(100% - 20px);
+  pointer-events: none;
+  position: absolute;
+  top: 10px;
+  z-index: 2;
+}
+
+.statusBadge,
+.controlButton {
+  backdrop-filter: blur(10px);
+  background: var(--map-chrome-bg);
+  border: 1px solid var(--map-chrome-border);
+  border-radius: 6px;
+  box-shadow: var(--map-chrome-shadow);
+  color: var(--map-text);
+  font-size: 11px;
+  line-height: 1.2;
+  min-height: 28px;
+  padding: 6px 8px;
+}
+
+.statusBadge {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.controlButton {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.controlButton:hover {
+  border-color: var(--map-accent);
+}
+
+.toolOverlay {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  position: absolute;
+  right: 10px;
+  top: 78px;
+  z-index: 2;
+}
+
+.iconControlButton,
+.iconControlButtonActive,
+.measureReadout {
+  backdrop-filter: blur(10px);
+  background: var(--map-chrome-bg);
+  border: 1px solid var(--map-chrome-border);
+  border-radius: 6px;
+  box-shadow: var(--map-chrome-shadow);
+  color: var(--map-text);
+}
+
+.iconControlButton,
+.iconControlButtonActive {
+  align-items: center;
+  cursor: pointer;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  padding: 0;
+  pointer-events: auto;
+  width: 28px;
+}
+
+.iconControlButtonActive {
+  border-color: var(--map-measure);
+  color: var(--map-measure);
+}
+
+.iconControlButton:hover,
+.iconControlButtonActive:hover {
+  border-color: var(--map-accent);
+}
+
+.measureReadout {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  max-width: min(220px, calc(100vw - 40px));
+  padding: 6px 8px;
+  pointer-events: none;
+  text-align: right;
+}
+
+.legend {
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  left: 10px;
+  max-width: min(360px, calc(100% - 20px));
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.legendRow {
+  align-items: center;
+  backdrop-filter: blur(10px);
+  background: var(--map-chrome-bg);
+  border: 1px solid var(--map-chrome-border-subtle);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  min-height: 24px;
+  padding: 4px 7px;
+}
+
+.legendSwatch {
+  border-radius: 50%;
+  height: 8px;
+  width: 8px;
+}
+
+.legendLabel,
+.legendMeta {
+  font-size: 11px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legendMeta {
+  color: var(--map-text-muted);
+}
+
+.emptyState {
+  align-items: center;
+  color: var(--map-text-muted);
+  display: flex;
+  font-size: 12px;
+  inset: 0;
+  justify-content: center;
+  line-height: 1.35;
+  padding: 16px;
+  position: absolute;
+  text-align: center;
+  z-index: 1;
+}

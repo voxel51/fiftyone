@@ -81,6 +81,11 @@ describe("McapSourcePlayback", () => {
         "No previewable streams in this recording (3 topics found)",
       ),
     ).toBeTruthy();
+    expect(playbackHarness.useMcapModalLayout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        datasetId: "mcap-source:local-file:unsupported.mcap:12:1",
+      }),
+    );
     expect(document.querySelector('[data-testid="playback-shell"]')).toBeNull();
   });
 });

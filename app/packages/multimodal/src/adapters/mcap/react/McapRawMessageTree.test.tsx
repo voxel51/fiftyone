@@ -4,9 +4,11 @@ import type { McapRawObjectNode } from "../types";
 import McapRawMessageTree from "./McapRawMessageTree";
 
 const writeText = vi.fn(async (_text: string) => undefined);
+const addToPlot = vi.fn();
 
 beforeEach(() => {
   writeText.mockClear();
+  addToPlot.mockClear();
   Object.assign(navigator, { clipboard: { writeText } });
 });
 
@@ -17,7 +19,13 @@ afterEach(() => {
 const ROOT: McapRawObjectNode = {
   entries: [
     ["speed", { kind: "scalar", value: "3.5", valueType: "number" }],
+    [
+      "sequence",
+      { kind: "scalar", value: "9007199254740993", valueType: "bigint" },
+    ],
     ["label", { kind: "scalar", value: "ego", valueType: "string" }],
+    ["enabled", { kind: "scalar", value: "true", valueType: "boolean" }],
+    ["unlisted", { kind: "scalar", value: "9", valueType: "number" }],
     [
       "pose",
       {
@@ -107,5 +115,54 @@ describe("McapRawMessageTree", () => {
       "… 499 more items",
     ]);
     expect(screen.getByTestId("mcap-raw-copy-data").textContent).toBe("copied");
+  });
+
+  it("shows add-to-plot actions only for plottable scalar numeric leaves", () => {
+    render(
+      <McapRawMessageTree
+        onAddNumericFieldToPlot={addToPlot}
+        plottableFieldPaths={
+          new Set(["speed", "sequence", "enabled", "pose.position.x", "data.0"])
+        }
+        root={ROOT}
+      />,
+    );
+
+    expect(screen.getByTestId("mcap-raw-plot-speed")).toBeTruthy();
+    expect(screen.getByTestId("mcap-raw-plot-sequence")).toBeTruthy();
+    expect(screen.getByTestId("mcap-raw-plot-pose.position.x")).toBeTruthy();
+    expect(screen.queryByTestId("mcap-raw-plot-label")).toBeNull();
+    expect(screen.queryByTestId("mcap-raw-plot-enabled")).toBeNull();
+    expect(screen.queryByTestId("mcap-raw-plot-unlisted")).toBeNull();
+    expect(screen.queryByTestId("mcap-raw-plot-data.0")).toBeNull();
+  });
+
+  it("hides add-to-plot actions when no handler is available", () => {
+    render(
+      <McapRawMessageTree
+        plottableFieldPaths={new Set(["speed"])}
+        root={ROOT}
+      />,
+    );
+
+    expect(screen.queryByTestId("mcap-raw-plot-speed")).toBeNull();
+  });
+
+  it("emits the dotted field path when a plottable row is added", () => {
+    render(
+      <McapRawMessageTree
+        onAddNumericFieldToPlot={addToPlot}
+        plottableFieldPaths={new Set(["pose.position.x"])}
+        root={ROOT}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("mcap-raw-plot-pose.position.x"));
+
+    expect(addToPlot).toHaveBeenCalledTimes(1);
+    expect(addToPlot).toHaveBeenCalledWith("pose.position.x");
+    expect(
+      screen.getByTestId("mcap-raw-plot-pose.position.x").textContent,
+    ).toBe("plotted");
   });
 });

@@ -19,9 +19,33 @@ import styles from "./TimelineRuler.module.css";
 const MIN_VIEW = 0.25;
 const CLICK_PX_THRESHOLD = 3;
 
+// Nice tick spacings in seconds, ascending. We pick the smallest one that
+// keeps the visible tick count at or below TARGET_TICK_DIVISIONS. Without
+// this the interval capped at 1s, so a long file zoomed out crammed a label
+// into every single second.
+const TICK_INTERVALS = [
+  0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600,
+];
+const TARGET_TICK_DIVISIONS = 10;
+
+function chooseTickInterval(viewDuration: number): number {
+  for (const interval of TICK_INTERVALS) {
+    if (viewDuration / interval <= TARGET_TICK_DIVISIONS) return interval;
+  }
+  return TICK_INTERVALS[TICK_INTERVALS.length - 1];
+}
+
 function tickLabel(t: number): string {
   const s = Math.floor(t);
   const frac = Math.round((t - s) * 10) / 10;
+  // Past a minute, seconds-only labels ("150s") get hard to read on long
+  // files; switch to m:ss. Intervals at this scale are whole seconds, so the
+  // fractional branch below only matters for sub-minute zoomed-in views.
+  if (t >= 60) {
+    const minutes = Math.floor(s / 60);
+    const seconds = s - minutes * 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  }
   return frac === 0 ? `${s}s` : `${(s + frac).toFixed(1)}s`;
 }
 
@@ -276,7 +300,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const loopStartRatio = clamp((loopStart - viewStart) / viewDuration, 0, 1);
   const loopEndRatio = clamp((loopEnd - viewStart) / viewDuration, 0, 1);
 
-  const tickInterval = viewDuration <= 1 ? 0.1 : viewDuration <= 3 ? 0.5 : 1;
+  const tickInterval = chooseTickInterval(viewDuration);
   const ticks: number[] = [];
   const firstTick = Math.ceil(viewStart / tickInterval - 1e-9) * tickInterval;
   for (

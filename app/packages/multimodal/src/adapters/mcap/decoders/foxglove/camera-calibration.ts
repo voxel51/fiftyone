@@ -1,11 +1,17 @@
 import type {
   CameraCalibrationVisualization,
+  DecodeContext,
   DecodedAttributeValue,
+  DecodedOutput,
   Decoder,
 } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
+import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
-import { FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD } from "./protobuf/payloads";
+import {
+  FOXGLOVE_CAMERA_CALIBRATION_CDR_PAYLOADS,
+  FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD,
+} from "./payloads";
 import {
   optionalRecord,
   optionalString,
@@ -34,66 +40,82 @@ export const foxgloveCameraCalibrationDecoder: Decoder = {
       FOXGLOVE_CAMERA_CALIBRATION_PAYLOAD,
       context,
     );
-    const width = requiredNumber(message, "width");
-    const height = requiredNumber(message, "height");
-    const frameId = optionalString(message, "frameId", "frame_id");
-    const distortionModel = optionalString(
-      message,
-      "distortionModel",
-      "distortion_model",
-    );
-    const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
-
-    if (!Number.isInteger(width) || width <= 0) {
-      throw new Error(`Invalid camera calibration width ${width}`);
-    }
-    if (!Number.isInteger(height) || height <= 0) {
-      throw new Error(`Invalid camera calibration height ${height}`);
-    }
-
-    const K = numberArray(message, "K");
-    if (K.length !== INTRINSIC_MATRIX_LENGTH) {
-      throw new Error(
-        `Camera calibration K must have ${INTRINSIC_MATRIX_LENGTH} values, got ${K.length}`,
-      );
-    }
-    const R = matrixOrUndefined(message, "R", RECTIFICATION_MATRIX_LENGTH);
-    const P = matrixOrUndefined(message, "P", PROJECTION_MATRIX_LENGTH);
-    const D = numberArray(message, "D");
-
-    const attributes: Record<string, DecodedAttributeValue> = {
-      height,
-      width,
-    };
-    if (frameId) {
-      attributes.frameId = frameId;
-    }
-    if (distortionModel) {
-      attributes.distortionModel = distortionModel;
-    }
-
-    const visualization: CameraCalibrationVisualization = {
-      ...(frameId ? { coordinateFrameId: frameId } : {}),
-      ...(D.length > 0 ? { D } : {}),
-      ...(distortionModel ? { distortionModel } : {}),
-      height,
-      K,
-      kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
-      ...(P ? { P } : {}),
-      ...(R ? { R } : {}),
-      ...(messageTimestamp !== undefined
-        ? { timestampNs: messageTimestamp }
-        : {}),
-      width,
-    };
-
-    return {
-      attributes,
-      timing: timingFromContext(context, messageTimestamp),
-      visualization,
-    };
+    return decodeFoxgloveCameraCalibrationRecord(message, context);
   },
 };
+
+/**
+ * Decoders for Foxglove CameraCalibration messages carried over ROS 2 CDR.
+ */
+export const foxgloveCameraCalibrationCdrDecoders = rosDecodersForPayloads({
+  id: "foxglove.camera-calibration.cdr",
+  map: decodeFoxgloveCameraCalibrationRecord,
+  payloads: FOXGLOVE_CAMERA_CALIBRATION_CDR_PAYLOADS,
+});
+
+export function decodeFoxgloveCameraCalibrationRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const width = requiredNumber(message, "width");
+  const height = requiredNumber(message, "height");
+  const frameId = optionalString(message, "frameId", "frame_id");
+  const distortionModel = optionalString(
+    message,
+    "distortionModel",
+    "distortion_model",
+  );
+  const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
+
+  if (!Number.isInteger(width) || width <= 0) {
+    throw new Error(`Invalid camera calibration width ${width}`);
+  }
+  if (!Number.isInteger(height) || height <= 0) {
+    throw new Error(`Invalid camera calibration height ${height}`);
+  }
+
+  const K = numberArray(message, "K");
+  if (K.length !== INTRINSIC_MATRIX_LENGTH) {
+    throw new Error(
+      `Camera calibration K must have ${INTRINSIC_MATRIX_LENGTH} values, got ${K.length}`,
+    );
+  }
+  const R = matrixOrUndefined(message, "R", RECTIFICATION_MATRIX_LENGTH);
+  const P = matrixOrUndefined(message, "P", PROJECTION_MATRIX_LENGTH);
+  const D = numberArray(message, "D");
+
+  const attributes: Record<string, DecodedAttributeValue> = {
+    height,
+    width,
+  };
+  if (frameId) {
+    attributes.frameId = frameId;
+  }
+  if (distortionModel) {
+    attributes.distortionModel = distortionModel;
+  }
+
+  const visualization: CameraCalibrationVisualization = {
+    ...(frameId ? { coordinateFrameId: frameId } : {}),
+    ...(D.length > 0 ? { D } : {}),
+    ...(distortionModel ? { distortionModel } : {}),
+    height,
+    K,
+    kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
+    ...(P ? { P } : {}),
+    ...(R ? { R } : {}),
+    ...(messageTimestamp !== undefined
+      ? { timestampNs: messageTimestamp }
+      : {}),
+    width,
+  };
+
+  return {
+    attributes,
+    timing: timingFromContext(context, messageTimestamp),
+    visualization,
+  };
+}
 
 function matrixOrUndefined(
   record: Record<string, unknown>,
