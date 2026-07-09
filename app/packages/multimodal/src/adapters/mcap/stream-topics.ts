@@ -141,11 +141,11 @@ export function isImageStream(topic: StreamInventory): boolean {
   return (
     hasPayload(topic, FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD) ||
     hasAnyPayload(topic, FOXGLOVE_COMPRESSED_IMAGE_CDR_PAYLOADS) ||
-      hasPayload(topic, FOXGLOVE_COMPRESSED_VIDEO_PAYLOAD) ||
-      hasAnyPayload(topic, FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS) ||
-      hasPayload(topic, FOXGLOVE_RAW_IMAGE_PAYLOAD) ||
-      hasAnyPayload(topic, FOXGLOVE_RAW_IMAGE_CDR_PAYLOADS) ||
-      hasAnyPayload(topic, JSON_ROS_COMPRESSED_IMAGE_PAYLOADS) ||
+    hasPayload(topic, FOXGLOVE_COMPRESSED_VIDEO_PAYLOAD) ||
+    hasAnyPayload(topic, FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS) ||
+    hasPayload(topic, FOXGLOVE_RAW_IMAGE_PAYLOAD) ||
+    hasAnyPayload(topic, FOXGLOVE_RAW_IMAGE_CDR_PAYLOADS) ||
+    hasAnyPayload(topic, JSON_ROS_COMPRESSED_IMAGE_PAYLOADS) ||
     hasAnyPayload(topic, JSON_ROS_IMAGE_PAYLOADS) ||
     hasAnyPayload(topic, ROS_COMPRESSED_IMAGE_PAYLOADS) ||
     hasAnyPayload(topic, ROS_IMAGE_PAYLOADS)

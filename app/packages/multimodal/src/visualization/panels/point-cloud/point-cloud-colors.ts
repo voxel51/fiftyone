@@ -83,7 +83,18 @@ export function createPointCloudColorWriter(
   sourcePositions: Float32Array,
   colorOptions: PointCloudColorOptions,
 ): PointCloudColorWriter {
-  const heightBounds = computeSourceHeightBounds(sourcePositions);
+  return createPointCloudColorWriterWithBounds(
+    sourcePositions,
+    colorOptions,
+    computeSourceHeightBounds(sourcePositions),
+  );
+}
+
+function createPointCloudColorWriterWithBounds(
+  sourcePositions: Float32Array,
+  colorOptions: PointCloudColorOptions,
+  heightBounds: ReturnType<typeof computeSourceHeightBounds>,
+): PointCloudColorWriter {
   const colormapLookup = createPointCloudColormapLookup(
     colorOptions.colormap ?? DEFAULT_POINT_CLOUD_COLORMAP,
   );
@@ -131,11 +142,12 @@ export function buildPointCloudRenderData(
   );
   const positions = new Float32Array(maxSampleCount * POINT_COMPONENT_COUNT);
   const colors = new Float32Array(maxSampleCount * COLOR_COMPONENT_COUNT);
-  const colorWriter = createPointCloudColorWriter(
+  const heightBounds = computeSourceHeightBounds(sourcePositions);
+  const colorWriter = createPointCloudColorWriterWithBounds(
     sourcePositions,
     colorOptions,
+    heightBounds,
   );
-  const heightBounds = computeSourceHeightBounds(sourcePositions);
   const bounds = new THREE.Box3();
   // Bounds are updated per rendered point; reuse one vector to avoid a large
   // allocation burst on dense point clouds.
@@ -200,7 +212,7 @@ export function buildPointCloudRenderData(
  * Replays the exact sampling walk of {@link buildPointCloudRenderData}
  * (uniform stride + non-finite drop), so a raycast hit on the rendered
  * geometry maps back to decoded per-point fields without materializing an
- * index map on every playback tick — the walk runs only on click.
+ * index map on every playback tick — the walk runs only when picking.
  */
 export function sourcePointIndexForRenderedIndex(
   sourcePositions: Float32Array,

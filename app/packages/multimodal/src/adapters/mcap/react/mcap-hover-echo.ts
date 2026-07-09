@@ -1,4 +1,4 @@
-import { atom, useAtomValue } from "jotai";
+import { atom, useAtomValue, type PrimitiveAtom } from "jotai";
 
 /**
  * Cross-pane hover echo for the MCAP modal: whatever the pointer is
@@ -6,10 +6,7 @@ import { atom, useAtomValue } from "jotai";
  * cloud point hovered in the 3D scene lights up its projected dot in
  * image tiles, and vice versa.
  *
- * A discriminated union on purpose: future hoverable kinds (scene
- * entities, trajectory samples, …) join the same channel with a new
- * `kind` instead of a new atom. Lives in the tiling shell's per-instance
- * Jotai store, like the object selection.
+ * The atom lives in the tiling shell's per-instance Jotai store.
  */
 export interface McapHoveredPointEcho {
   readonly kind: "point";
@@ -24,7 +21,9 @@ export interface McapHoveredPointEcho {
 
 export type McapHoverEcho = McapHoveredPointEcho;
 
-export const mcapHoverEchoAtom = atom<McapHoverEcho | null>(null);
+export const mcapHoverEchoAtom = atom<McapHoverEcho | null>(
+  null,
+) as PrimitiveAtom<McapHoverEcho | null>;
 
 export function useMcapHoverEcho(): McapHoverEcho | null {
   return useAtomValue(mcapHoverEchoAtom);

@@ -14,8 +14,8 @@ export interface PointerDwellOptions {
   readonly dwellMs: number;
   /**
    * Movement beyond this (CSS px) from where a dwell fired invalidates
-   * it; smaller movements just re-arm the timer, so micro-jitter neither
-   * dismisses a shown result nor re-fires it.
+   * it; smaller movements retain the shown result and re-arm the timer so
+   * dynamic content can refresh after the pointer rests again.
    */
   readonly moveTolerancePx: number;
   /**

@@ -69,7 +69,7 @@ describe("attachPointerDwell", () => {
     vi.advanceTimersByTime(DWELL_MS);
     expect(onDwell).toHaveBeenCalledTimes(1);
 
-    // Within tolerance: no cancel; the timer re-arms and re-fires there.
+    // Within tolerance: retain the current result and refresh after a dwell.
     pointerMove(element, 102, 101);
     expect(onCancel).not.toHaveBeenCalled();
     vi.advanceTimersByTime(DWELL_MS);
