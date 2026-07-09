@@ -270,8 +270,10 @@ class VQAEvaluation(BaseEvaluationMethod):
     _LABEL_SCORE_FIELD = fof.FloatField
 
     def _score_pair(self, gt, pred):
-        """Returns a score in ``[0, 1]`` for the given ``(gt, pred)`` pair,
-        either of which may be ``None``.
+        """Returns a score in ``[0, 1]`` for the given ``(gt, pred)`` pair.
+
+        Both labels are guaranteed to be non-``None`` and ``pred.answer`` is
+        guaranteed to be set; the ``None`` cases are handled by the caller.
         """
         raise NotImplementedError("subclass must implement _score_pair()")
 
@@ -319,7 +321,11 @@ class VQAEvaluation(BaseEvaluationMethod):
             pair_scores = []
 
             for _gt, _pred in pairs:
-                score = self._score_pair(_gt, _pred)
+                if _gt is None or _pred is None or _pred.answer is None:
+                    score = 0.0
+                else:
+                    score = self._score_pair(_gt, _pred)
+
                 pair_scores.append(score)
 
                 scores.append(score)
@@ -517,9 +523,6 @@ class ExactMatchEvaluation(VQAEvaluation):
     _LABEL_SCORE_FIELD = fof.BooleanField
 
     def _score_pair(self, gt, pred):
-        if gt is None or pred is None or pred.answer is None:
-            return 0.0
-
         if gt.answer is not None:
             refs = [gt.answer]
         else:
@@ -570,9 +573,6 @@ class VQAAccuracyEvaluation(VQAEvaluation):
     """
 
     def _score_pair(self, gt, pred):
-        if gt is None or pred is None or pred.answer is None:
-            return 0.0
-
         if gt.answers:
             refs = list(gt.answers)
         elif gt.answer is not None:
