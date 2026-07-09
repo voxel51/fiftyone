@@ -17,9 +17,9 @@ import fiftyone.utils.torch as fout
 
 
 def build_sam_transform(
-    sam_pixel_mean,
-    sam_pixel_std,
-    sam_image_size,
+    sam_pixel_mean=(123.675, 116.280, 103.530),
+    sam_pixel_std=(58.395, 57.120, 57.375),
+    sam_image_size=1024,
     **_kwargs,
 ):
     """Build the SAM2 preprocessing pipeline used by OpenWorldSAM.
@@ -28,9 +28,11 @@ def build_sam_transform(
     normalization after bilinear resize.
 
     Args:
-        sam_pixel_mean: per-channel mean in ``[0, 255]``
-        sam_pixel_std: per-channel std in ``[0, 255]``
-        sam_image_size: the square input size
+        sam_pixel_mean: per-channel mean in ``[0, 255]``. Defaults to the
+            standard SAM2 pixel mean
+        sam_pixel_std: per-channel std in ``[0, 255]``. Defaults to the
+            standard SAM2 pixel std
+        sam_image_size (1024): the square input size
     """
     pixel_mean = torch.tensor(sam_pixel_mean)
     pixel_std = torch.tensor(sam_pixel_std)
@@ -90,18 +92,17 @@ class OpenWorldSAMTransform:
     This dict is the per-image unit passed through the DataLoader and into
     :meth:`OpenWorldSAMModel._predict_all`.
 
+    Tensors are left on CPU here; ``OpenWorldSAMModel._forward_pass`` moves
+    them to the model's device. This transform runs inside forked DataLoader
+    worker processes, and CUDA cannot be re-initialized in a forked
+    subprocess.
+
     Args:
-        device: the :class:`torch:torch.device` to move tensors to
         sam_transform: SAM2 branch preprocessing transform
         beit_transform: BEiT-3 branch preprocessing transform
-        using_half_precision (False): whether to cast tensors to fp16
     """
 
-    def __init__(
-        self, device, sam_transform, beit_transform, using_half_precision=False
-    ):
-        self._device = device
-        self._using_half_precision = using_half_precision
+    def __init__(self, sam_transform, beit_transform):
         self._sam_transform = sam_transform
         self._beit_transform = beit_transform
 
@@ -109,13 +110,8 @@ class OpenWorldSAMTransform:
         w, h = pil.size
         arr = np.array(pil)
 
-        sam_tensor = self._sam_transform(arr).to(self._device)
-        if self._using_half_precision:
-            sam_tensor = sam_tensor.half()
-
-        beit_tensor = self._beit_transform(pil).to(self._device)
-        if self._using_half_precision:
-            beit_tensor = beit_tensor.half()
+        sam_tensor = self._sam_transform(arr)
+        beit_tensor = self._beit_transform(pil)
 
         return {
             "image": sam_tensor,
@@ -282,19 +278,23 @@ class OpenWorldSAMModel(fout.TorchImageModel):
         if config.classes is not None:
             return list(config.classes)
 
-        import sys, importlib
+        # Load constants.py directly by file path rather than importing the
+        # `utils` package. `utils/__init__.py` does `from .visualizer import
+        # *`, and visualizer.py unconditionally imports detectron2, which
+        # isn't a dependency of this model.
+        import importlib.util
+        import os
 
-        if self._local_hf_dir not in sys.path:
-            sys.path.insert(0, self._local_hf_dir)
+        constants_path = os.path.join(
+            self._local_hf_dir, "utils", "constants.py"
+        )
+        spec = importlib.util.spec_from_file_location(
+            "openworld_sam_constants", constants_path
+        )
+        constants = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(constants)
 
-        try:
-            default_classes = list(
-                importlib.import_module("utils.constants").ADE_PANOPTIC_CLASSES
-            )
-        finally:
-            sys.path.remove(self._local_hf_dir)
-
-        return default_classes
+        return list(constants.ADE_PANOPTIC_CLASSES)
 
     def _download_model(self, config):
         pass  # HF Hub handles download automatically on first load
@@ -312,7 +312,8 @@ class OpenWorldSAMModel(fout.TorchImageModel):
             ignore_patterns=["*.pt", "*.pth"],
         )
 
-        if self._local_hf_dir not in sys.path:
+        inserted = self._local_hf_dir not in sys.path
+        if inserted:
             sys.path.insert(0, self._local_hf_dir)
 
         try:
@@ -323,7 +324,8 @@ class OpenWorldSAMModel(fout.TorchImageModel):
                 "modeling_openworld_sam"
             ).OpenWorldSAMModel
         finally:
-            sys.path.remove(self._local_hf_dir)
+            if inserted:
+                sys.path.remove(self._local_hf_dir)
 
         hf_config = OpenWorldSAMConfig(
             nms_thresh=config.nms_thresh,
@@ -353,10 +355,8 @@ class OpenWorldSAMModel(fout.TorchImageModel):
 
     def _build_transforms(self, config):
         transform = OpenWorldSAMTransform(
-            device=self._device,
             sam_transform=self._load_sam_transform(config),
             beit_transform=self._load_transforms(config),
-            using_half_precision=bool(self._using_half_precision),
         )
         # ragged_batches=True: items are dicts, not uniform tensors, so the
         # DataLoader must not attempt to torch.stack them
@@ -370,8 +370,22 @@ class OpenWorldSAMModel(fout.TorchImageModel):
         # Assign sequential integer IDs; class labels in output index into this list
         category_ids = list(range(len(prompts)))
 
-        batch_input = [
-            {**d, "prompt": prompts, "unique_categories": category_ids}
-            for d in imgs
-        ]
+        batch_input = []
+        for d in imgs:
+            image = d["image"].to(self._device)
+            evf_image = d["evf_image"].to(self._device)
+            if self._using_half_precision:
+                image = image.half()
+                evf_image = evf_image.half()
+
+            batch_input.append(
+                {
+                    **d,
+                    "image": image,
+                    "evf_image": evf_image,
+                    "prompt": prompts,
+                    "unique_categories": category_ids,
+                }
+            )
+
         return self._model(batch_input)
