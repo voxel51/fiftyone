@@ -1593,6 +1593,8 @@ describe("ROS MCAP decoders", () => {
     expect(output.visualization).toMatchObject({
       altitude: 12.5,
       coordinateFrameId: "gps",
+      fixService: 1,
+      fixStatus: 0,
       latitude: 37.77,
       longitude: -122.42,
       positionCovariance: [1, 0, 0, 0, 2, 0, 0, 0, 3],
