@@ -20,6 +20,7 @@ import {
   isSceneUpdateStream,
   streamTopics,
 } from "../../stream-topics";
+import { detection2DRecord, detection3DRecord } from "../ros.test-fixtures";
 import {
   JSON_ROS_CAMERA_INFO_PAYLOADS,
   JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
@@ -812,61 +813,6 @@ function vectorRecord(vector: readonly [number, number, number]) {
     x: vector[0],
     y: vector[1],
     z: vector[2],
-  };
-}
-
-function detection2DRecord({
-  classId,
-  id,
-  score,
-  x,
-  y,
-}: {
-  readonly classId: string;
-  readonly id: string;
-  readonly score: number;
-  readonly x: number;
-  readonly y: number;
-}) {
-  return {
-    bbox: {
-      center: {
-        position: { x, y },
-        theta: 0,
-      },
-      size_x: 20,
-      size_y: 20,
-    },
-    id,
-    results: [detectionResult(classId, score)],
-  };
-}
-
-function detection3DRecord({
-  classId,
-  id,
-  score,
-}: {
-  readonly classId: string;
-  readonly id: string;
-  readonly score: number;
-}) {
-  return {
-    bbox: {
-      center: poseRecord([1, 2, 3], [0, 0, 0, 1]),
-      size: vectorRecord([2, 1, 1.5]),
-    },
-    id,
-    results: [detectionResult(classId, score)],
-  };
-}
-
-function detectionResult(classId: string, score: number) {
-  return {
-    hypothesis: {
-      class_id: classId,
-      score,
-    },
   };
 }
 

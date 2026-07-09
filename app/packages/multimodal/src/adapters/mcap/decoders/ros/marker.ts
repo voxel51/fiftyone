@@ -36,6 +36,7 @@ import {
   rosHeaderFrameId,
   rosHeaderTimestampNs,
   rosTimestampNs,
+  sceneEntityVisualization,
   stringField,
   timingFromRosHeader,
 } from "./common";
@@ -276,22 +277,30 @@ function entityForMarker(
       );
       break;
     case MARKER_TYPE.CUBE_LIST:
-      base.cubes.push(
-        ...points.map((point, index) => ({
-          color: colors[index] ?? color,
-          pose: composeMarkerPointPose(pose, point),
-          size: scale,
-        })),
-      );
+      if (points.length <= MAX_POINT_MARKER_SPHERES) {
+        base.cubes.push(
+          ...points.map((point, index) => ({
+            color: colors[index] ?? color,
+            pose: composeMarkerPointPose(pose, point),
+            size: scale,
+          })),
+        );
+      } else {
+        unsupportedType = `CUBE_LIST(${points.length})`;
+      }
       break;
     case MARKER_TYPE.SPHERE_LIST:
-      base.spheres.push(
-        ...points.map((point, index) => ({
-          color: colors[index] ?? color,
-          pose: composeMarkerPointPose(pose, point),
-          size: scale,
-        })),
-      );
+      if (points.length <= MAX_POINT_MARKER_SPHERES) {
+        base.spheres.push(
+          ...points.map((point, index) => ({
+            color: colors[index] ?? color,
+            pose: composeMarkerPointPose(pose, point),
+            size: scale,
+          })),
+        );
+      } else {
+        unsupportedType = `SPHERE_LIST(${points.length})`;
+      }
       break;
     case MARKER_TYPE.POINTS:
       if (points.length <= MAX_POINT_MARKER_SPHERES) {
@@ -357,30 +366,22 @@ function entityForMarker(
   const lifetimeNs = rosTimestampNs(recordField(marker, "lifetime"));
   const timestampNs = markerTimestampNs(marker);
 
-  const entity: SceneEntityVisualization = {
-    arrowCount: base.arrows.length,
+  const entity = sceneEntityVisualization({
     arrows: base.arrows,
-    cubeCount: base.cubes.length,
     cubes: base.cubes,
-    cylinderCount: base.cylinders.length,
     cylinders: base.cylinders,
-    ...(frameId ? { frameId } : {}),
     frameLocked: booleanField(marker, "frame_locked", "frameLocked"),
+    frameId,
     id: markerEntityId(marker, context),
-    lineCount: base.lines.length,
-    lines: base.lines,
-    ...(lifetimeNs !== undefined ? { lifetimeNs } : {}),
+    lifetimeNs,
     metadata,
-    modelCount: base.models.length,
+    lines: base.lines,
     models: base.models,
-    sphereCount: base.spheres.length,
     spheres: base.spheres,
-    textCount: base.texts.length,
     texts: base.texts,
-    ...(timestampNs !== undefined ? { timestampNs } : {}),
-    triangleCount: base.triangles.length,
+    timestampNs,
     triangles: base.triangles,
-  };
+  });
 
   return {
     entity,

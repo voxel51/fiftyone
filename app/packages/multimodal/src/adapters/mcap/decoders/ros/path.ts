@@ -4,7 +4,6 @@ import type {
   DecodedOutput,
   RgbaColor,
   SceneArrowPrimitive,
-  SceneEntityVisualization,
   SceneLinePrimitive,
   ScenePoint3D,
   ScenePose3D,
@@ -17,12 +16,13 @@ import {
   ZERO_VECTOR3,
 } from "../foxglove/protobuf/geometry";
 import {
-  arrayField,
+  arrayRecords,
   recordField,
   rosHeader,
   rosHeaderAttributes,
   rosHeaderFrameId,
   rosHeaderTimestampNs,
+  sceneEntityVisualization,
   timingFromRosHeader,
 } from "./common";
 import { rosDecodersForPayloads } from "./factory";
@@ -75,7 +75,7 @@ export function decodeRosPathRecord(
   const entities =
     points.length > 0
       ? [
-          sceneEntity({
+          sceneEntityVisualization({
             frameId,
             id: `${context.streamId ?? "path"}:path`,
             lines: [pathLine(points)],
@@ -125,7 +125,7 @@ export function decodeRosPoseArrayRecord(
   const entities =
     renderedPoses.length > 0
       ? [
-          sceneEntity({
+          sceneEntityVisualization({
             arrows: renderedPoses.map(poseArrow),
             frameId,
             id: `${context.streamId ?? "pose-array"}:pose-array`,
@@ -195,59 +195,6 @@ function poseArrow(pose: ScenePose3D): SceneArrowPrimitive {
     shaftDiameter: POSE_ARROW_SHAFT_DIAMETER,
     shaftLength: POSE_ARROW_SHAFT_LENGTH,
   };
-}
-
-function sceneEntity({
-  arrows = [],
-  frameId,
-  id,
-  lines = [],
-  metadata,
-  timestampNs,
-}: {
-  readonly arrows?: readonly SceneArrowPrimitive[];
-  readonly frameId: string | undefined;
-  readonly id: string;
-  readonly lines?: readonly SceneLinePrimitive[];
-  readonly metadata: Readonly<Record<string, string>>;
-  readonly timestampNs: bigint | undefined;
-}): SceneEntityVisualization {
-  return {
-    arrowCount: arrows.length,
-    arrows,
-    cubeCount: 0,
-    cubes: [],
-    cylinderCount: 0,
-    cylinders: [],
-    ...(frameId ? { frameId } : {}),
-    frameLocked: false,
-    id,
-    lineCount: lines.length,
-    lines,
-    metadata,
-    modelCount: 0,
-    models: [],
-    sphereCount: 0,
-    spheres: [],
-    textCount: 0,
-    texts: [],
-    ...(timestampNs !== undefined ? { timestampNs } : {}),
-    triangleCount: 0,
-    triangles: [],
-  };
-}
-
-function arrayRecords(
-  record: Record<string, unknown>,
-  field: string,
-): readonly Record<string, unknown>[] {
-  return arrayField(record, field).map((value) =>
-    isRecord(value) ? value : {},
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function identityPose(): ScenePose3D {

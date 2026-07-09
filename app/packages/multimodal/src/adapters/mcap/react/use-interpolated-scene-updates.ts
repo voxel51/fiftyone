@@ -55,12 +55,13 @@ export function useInterpolatedSceneUpdateFrames({
         return playbackFrame;
       }
       const cache = dataStream?.getTopicCache(topic) ?? null;
+      const historyTopic = history.get(topic);
       const deltas = sceneUpdateDeltasForTopic({
         cache,
         fallbackFrame: playbackFrame.frame,
         fallbackTimeNs: playbackFrame.contentTimeNs,
-        historyDeltas: history.get(topic)?.deltas,
-        historyReady: history.get(topic)?.status === "ready",
+        historyDeltas: historyTopic?.deltas,
+        historyReady: historyTopic?.status === "ready",
         targetTimeNs: playbackFrame.requestedTimeNs,
       });
       if (deltas.length === 0) {
@@ -110,12 +111,13 @@ export function useInterpolatedSceneUpdateFrames({
       if (!nextViz) {
         return playbackFrame;
       }
+      const historyTopic = history.get(topic);
       const nextDeltas = sceneUpdateDeltasForTopic({
         cache,
         fallbackFrame: nextViz,
         fallbackTimeNs: nextMsg.timelineTimeNs,
-        historyDeltas: history.get(topic)?.deltas,
-        historyReady: history.get(topic)?.status === "ready",
+        historyDeltas: historyTopic?.deltas,
+        historyReady: historyTopic?.status === "ready",
         targetTimeNs: nextMsg.timelineTimeNs,
       });
       const nextFrame =

@@ -101,13 +101,16 @@ export function useToggleMcapPlotSeries(): (
         if (enabled === exists) {
           return previous;
         }
-        const next = enabled
-          ? addMcapPlotSeriesToTile(previous, tileId, topic, fieldPath)[tileId]
-          : current.filter(
-              (series) =>
-                series.topic !== topic || series.fieldPath !== fieldPath,
-            );
-        return { ...previous, [tileId]: next };
+        if (enabled) {
+          return addMcapPlotSeriesToTile(previous, tileId, topic, fieldPath);
+        }
+        return {
+          ...previous,
+          [tileId]: current.filter(
+            (series) =>
+              series.topic !== topic || series.fieldPath !== fieldPath,
+          ),
+        };
       });
     },
     [store, tileId],
