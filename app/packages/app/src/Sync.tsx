@@ -10,8 +10,6 @@ import {
   type setDatasetMutation,
   setGroupSlice,
   type setGroupSliceMutation,
-  setSample,
-  type setSampleMutation,
   setSpaces,
   type setSpacesMutation,
   setView,
@@ -43,6 +41,7 @@ import useEventSource from "./useEventSource";
 import { AppReadyState } from "./useEvents/registerEvent";
 import useSetters from "./useSetters";
 import useWriters from "./useWriters";
+import { commitSetSampleIfChanged } from "./useWriters/onSetSample";
 
 export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
 
@@ -128,13 +127,10 @@ const dispatchSideEffect = ({
     if (nextEntry.state.event !== "modal") {
       session.selectedLabels = [];
     }
-    commitMutation<setSampleMutation>(environment, {
-      mutation: setSample,
-      variables: {
-        groupId: nextEntry.state.modalSelector?.groupId,
-        id: nextEntry.state.modalSelector?.id,
-        subscription,
-      },
+    commitSetSampleIfChanged(environment, {
+      groupId: nextEntry.state.modalSelector?.groupId,
+      id: nextEntry.state.modalSelector?.id,
+      subscription,
     });
     return;
   }

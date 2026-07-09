@@ -270,7 +270,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       if (total != null && frameNumberToDraw > total) {
         return;
       }
-      this.checkFetchBufferManager();
+      this.checkFetchBufferManager(frameNumberToDraw);
       await new Promise((resolve) =>
         setTimeout(resolve, BUFFERING_PAUSE_TIMEOUT),
       );
@@ -458,6 +458,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     const store = controller.storeBufferManager;
 
     const debug = (action: string, extra: Record<string, unknown> = {}) =>
+      (window as { __foImavidDebug?: boolean }).__foImavidDebug &&
       console.debug(
         `[imavid] lookAhead ${action}`,
         {
@@ -576,10 +577,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   /**
    * Starts fetch if there are buffers in the fetch buffer manager
    */
-  public checkFetchBufferManager() {
+  public checkFetchBufferManager(targetFrame?: number) {
     // same runway-gated, one-batch-at-a-time refill as the grid; bounds how far
-    // ahead the modal reads so a single group can't be swept end-to-end
-    this.enqueueLookAheadFetch(this.frameNumber || 1);
+    // ahead the modal reads so a single group can't be swept end-to-end. A seek
+    // past the buffer passes its target — the playhead's runway is irrelevant there
+    this.enqueueLookAheadFetch(targetFrame ?? this.frameNumber ?? 1);
 
     if (this.framesController.fetchBufferManager.buffers.length > 0) {
       this.framesController.resumeFetch();

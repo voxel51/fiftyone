@@ -81,6 +81,10 @@ export class ImaVidFrameSamples {
   // controller's future fetches get a live signal
   private abortController: AbortController;
 
+  // one download per sample at a time — a refill pass racing the original
+  // fetch must join it, not issue a second media request
+  private readonly inFlightImageFetches = new Map<SampleId, Promise<string>>();
+
   constructor(storeBufferManager: BufferManager) {
     this.storeBufferManager = storeBufferManager;
     this.abortController = new AbortController();
@@ -131,12 +135,20 @@ export class ImaVidFrameSamples {
     urls: ModalSample["urls"],
     mediaField: string,
   ): Promise<string> {
+    if (this.samples.get(sampleId)?.image) {
+      return sampleId;
+    }
+    const inFlight = this.inFlightImageFetches.get(sampleId);
+    if (inFlight) {
+      return inFlight;
+    }
+
     const normalizedUrls = getNormalizedUrls(urls);
     const image = new Image();
     const source = getSampleSrc(normalizedUrls[mediaField]);
     const signal = this.abortController.signal;
 
-    return new Promise((resolve) => {
+    const promise = new Promise<string>((resolve) => {
       // teardown: cancel the download and settle so no fetch loop ever awaits
       // a dead image
       signal.addEventListener(
@@ -194,6 +206,12 @@ export class ImaVidFrameSamples {
 
       image.src = source;
     });
+
+    const tracked = promise.finally(() => {
+      this.inFlightImageFetches.delete(sampleId);
+    });
+    this.inFlightImageFetches.set(sampleId, tracked);
+    return tracked;
   }
 
   /**

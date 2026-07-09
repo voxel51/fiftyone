@@ -404,6 +404,7 @@ export const useCreateTimeline = (
         setFrameNumber({
           name: timelineName,
           newFrameNumber: Math.max(frameNumberRef.current - 1, 1),
+          immediate: true,
         });
         e.stopPropagation();
       } else if (key === ".") {
@@ -414,6 +415,7 @@ export const useCreateTimeline = (
             frameNumberRef.current + 1,
             configRef.current.totalFrames,
           ),
+          immediate: true,
         });
         e.stopPropagation();
       }
@@ -441,6 +443,7 @@ export const useCreateTimeline = (
       setFrameNumber({
         name: timelineName,
         newFrameNumber: e.detail.frameNumber,
+        immediate: true,
       });
     },
     [timelineName, pause, setFrameNumber],

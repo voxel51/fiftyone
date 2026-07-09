@@ -182,11 +182,24 @@ export const ImaVidLookerReact = React.memo(
           return;
         }
 
-        // background fetch of the missing range; never gates controls or playback.
-        imaVidLookerRef.current.frameStoreController.enqueueFetch(
-          unprocessedBufferRange,
-        );
-        imaVidLookerRef.current.frameStoreController.resumeFetch();
+        const controller = imaVidLookerRef.current.frameStoreController;
+        controller.enqueueFetch(unprocessedBufferRange);
+        controller.resumeFetch();
+
+        // the timeline gates its playhead on this promise: resolving before the
+        // frames are drawable advances the frame counter over a frozen canvas
+        const total = controller.totalFrameCount;
+        const target: BufferRange = [
+          unprocessedBufferRange[0],
+          total != null
+            ? Math.min(unprocessedBufferRange[1], total)
+            : unprocessedBufferRange[1],
+        ];
+        while (!controller.storeBufferManager.containsRange(target)) {
+          // self-heal a stranded queue while waiting
+          controller.resumeFetch();
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
       },
       [],
     );

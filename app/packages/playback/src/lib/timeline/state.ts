@@ -334,9 +334,14 @@ export const setFrameNumberAtom = atom(
     {
       name,
       newFrameNumber,
+      immediate,
     }: {
       name: TimelineName;
       newFrameNumber: FrameNumber;
+      // seek semantics: move the playhead/counter to the target NOW and let
+      // the canvas catch up when its data lands; playback advancement omits
+      // this so the counter never runs ahead of a frozen canvas
+      immediate?: boolean;
     },
   ) => {
     const subscribers = get(_subscribers(name));
@@ -344,6 +349,10 @@ export const setFrameNumberAtom = atom(
     if (!subscribers || subscribers.size === 0) {
       set(_frameNumbers(name), newFrameNumber);
       return;
+    }
+
+    if (immediate) {
+      set(_frameNumbers(name), newFrameNumber);
     }
 
     // verify that the frame number is valid, and is ready to be streamed
@@ -375,6 +384,11 @@ export const setFrameNumberAtom = atom(
         await allPromisesSettled;
         bufferManager.addNewRange(newLoadRange);
         set(_currentBufferingRange(name), [0, 0]);
+
+        if (immediate && get(_frameNumbers(name)) !== newFrameNumber) {
+          // superseded by a newer seek while buffering — don't repaint stale
+          return;
+        }
       } else {
         allPromisesSettled.then(() => {
           bufferManager.addNewRange(newLoadRange);

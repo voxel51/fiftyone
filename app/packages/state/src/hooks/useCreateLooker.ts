@@ -284,15 +284,13 @@ export default <T extends AbstractLooker<BaseState>>(
           if (frameStoreController.totalFrameCount == null) {
             const posterGroupCount = (sample as { _group_count?: number })
               ._group_count;
-            console.debug("[imavid] poster seed", {
-              sampleId: thisSampleId,
-              group: sample._group,
-              posterGroupCount,
-              hasGroupCountField: "_group_count" in (sample as object),
-              sampleKeys: Object.keys(sample as object).filter((k) =>
-                k.startsWith("_"),
-              ),
-            });
+            (window as { __foImavidDebug?: boolean }).__foImavidDebug &&
+              console.debug("[imavid] poster seed", {
+                sampleId: thisSampleId,
+                group: sample._group,
+                posterGroupCount,
+                hasGroupCountField: "_group_count" in (sample as object),
+              });
             if (posterGroupCount != null) {
               frameStoreController.setTotalFrameCount(posterGroupCount);
             } else if (isModal) {
