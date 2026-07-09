@@ -22,6 +22,7 @@ export class ImaVidFramesController {
   public isFetching = false;
   // synchronous re-entrancy guard: executeFetch's render synchronously calls back into resumeFetch, which would recurse to a stack overflow
   private executing = false;
+  private streamEpoch = 0;
   public storeBufferManager: BufferManager;
   // undefined until the group's length is known, revealed by the stream or seeded via setTotalFrameCount
   public totalFrameCount: number | undefined;
@@ -88,6 +89,9 @@ export class ImaVidFramesController {
   }
 
   public pauseFetch(updateBuffering = true) {
+    // cancels in-flight fetchMore loops between chunks — an abandoned hover
+    // must stop streaming instead of running its whole range to completion
+    this.streamEpoch += 1;
     window.clearTimeout(this.timeoutId);
     this.fetchBufferManager.reset();
     this.isFetching = false;
@@ -276,6 +280,7 @@ export class ImaVidFramesController {
     // deliberately small: fast first paint, while the rest of the range keeps
     // streaming in the same request (no serial second fetch to wait on)
     const pendingImageBatches: Promise<unknown>[] = [];
+    const epoch = this.streamEpoch;
     let offset = 0;
     while (offset < count) {
       let chunkCount = Math.min(
@@ -319,6 +324,11 @@ export class ImaVidFramesController {
         }
       }
 
+      // pause cancels the stream between chunks: rows that already arrived are
+      // kept (re-POSTing them would be a duplicate) with their images deferred
+      // to the refill pass on the next enqueue, and no further chunks POST
+      const cancelled = epoch !== this.streamEpoch;
+
       if (rows.length) {
         const imageFetchPromisesMap = new Map<number, Promise<string>>();
         for (let i = 0; i < rows.length; ++i) {
@@ -336,10 +346,16 @@ export class ImaVidFramesController {
           // storeBufferManager)
           this.store.frameIndex.set(frameNumber, sampleId);
           this.store.reverseFrameIndex.set(sampleId, frameNumber);
-          imageFetchPromisesMap.set(
-            frameNumber,
-            this.store.fetchImageForSample(sampleId, row.urls, this.mediaField),
-          );
+          if (!cancelled) {
+            imageFetchPromisesMap.set(
+              frameNumber,
+              this.store.fetchImageForSample(
+                sampleId,
+                row.urls,
+                this.mediaField,
+              ),
+            );
+          }
         }
 
         // mark each frame drawable as its image resolves; do NOT await here —
@@ -375,7 +391,7 @@ export class ImaVidFramesController {
       }
 
       // a short page is the group's end
-      if (rows.length < chunkCount) {
+      if (cancelled || rows.length < chunkCount) {
         break;
       }
     }
