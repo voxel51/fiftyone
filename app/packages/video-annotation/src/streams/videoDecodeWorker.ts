@@ -59,8 +59,6 @@ interface NativeInitMessage extends InitMessage {
   videoSrc: string;
   /** Extra headers for the media fetch (auth); usually none for presigned. */
   headers?: Record<string, string>;
-  /** Phase-1 frame-exactness instrumentation. */
-  debug?: boolean;
   /**
    * Capability probe only: stream just far enough to demux the `moov` +
    * `isConfigSupported`, post a `capability` verdict, and stop — no decode.
@@ -95,8 +93,6 @@ interface DemuxedSample {
   /** Encoded byte length of the sample. */
   size: number;
 }
-
-let debug = false;
 
 /** Samples in decode order (as delivered by the demuxer). */
 let decodeOrder: DemuxedSample[] = [];
@@ -161,8 +157,6 @@ self.addEventListener("message", (event: MessageEvent<FrameWorkerInbound>) => {
 });
 
 async function handleInit(msg: NativeInitMessage): Promise<void> {
-  debug = msg.debug ?? false;
-
   // Capability probe: demux the header only, report a verdict, and stop.
   if (msg.probeOnly) {
     await handleProbe(msg);
@@ -201,19 +195,7 @@ async function initSampleTable(
 
   config = buildDecoderConfig(file, track);
 
-  if (debug) {
-    const d = config.description as Uint8Array | undefined;
-    const head = d ? Array.from(d.slice(0, 6)) : null;
-    log(
-      `config: codec=${config.codec} ${config.codedWidth}x${config.codedHeight} ` +
-        `descLen=${d?.byteLength ?? "none"} descHead=${JSON.stringify(head)}`,
-    );
-  }
-
   const support = await VideoDecoder.isConfigSupported(config);
-  if (debug) {
-    log(`isConfigSupported => ${JSON.stringify(support?.supported)}`);
-  }
   if (!support.supported) {
     throw new Error(`codec unsupported: ${config.codec}`);
   }
@@ -352,13 +334,6 @@ function buildSampleTable(samples: Sample[], timescale: number): void {
     .map((s) => s.decodeIndex);
 
   totalFrames = decodeOrder.length;
-
-  if (debug) {
-    log(
-      `demux ok: ${totalFrames} frames, ${keyframeIndices.length} keyframes, ` +
-        `codec=${config?.codec}`,
-    );
-  }
 }
 
 /**
@@ -459,8 +434,6 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
 
   const kf = keyframeAtOrBefore(dStart);
 
-  const t0 = debug ? performance.now() : 0;
-
   // Fetch just the bytes for this GOP span (keyframe → last needed sample).
   const range = spanByteRange(decodeOrder, kf, dEnd);
   if (!range) {
@@ -500,17 +473,6 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
 
   await dec.flush();
   await Promise.all(currentJob.pending);
-
-  if (debug) {
-    const dt = (performance.now() - t0).toFixed(1);
-    const bytes = range.end - range.start;
-    log(
-      `chunk req=${msg.reqId} frames[${startFrame}..${endFrame}] ` +
-        `kf-snap=${decodeOrder[kf]?.frameNumber} lead-in=${dStart - kf} ` +
-        `bytes=${bytes} fileStart=${span.fileStart} ` +
-        `decoded=${currentJob.pending.length} in ${dt}ms`,
-    );
-  }
 
   post({ type: "chunkDone", reqId: msg.reqId, range: [startFrame, endFrame] });
   currentJob = null;
@@ -574,15 +536,10 @@ async function fetchSpanBuffer(range: ByteRange): Promise<SpanBuffer> {
 
       // Unexpected status (e.g. 416): abandon ranges, fall through to whole.
       rangeFetchDisabled = true;
-    } catch (error) {
+    } catch {
       // Network / CORS-preflight failure on the ranged request — abandon
       // ranges and fall through to a plain whole-file fetch.
       rangeFetchDisabled = true;
-      if (debug) {
-        log(
-          `range fetch failed, falling back to whole-file: ${errorMessage(error)}`,
-        );
-      }
     }
   }
 
@@ -611,11 +568,9 @@ function ensureDecoder(): VideoDecoder {
 
   decoder = new VideoDecoder({
     output: onDecoderOutput,
-    error: (error: DOMException) => {
-      if (debug) {
-        log(`decoder error: ${error.message}`);
-      }
-    },
+    // A decoder error fails the current chunk; the base re-requests it on the
+    // next prefetch, so there is nothing to recover here.
+    error: () => {},
   });
 
   return decoder;
@@ -651,10 +606,6 @@ function onDecoderOutput(frame: VideoFrame): void {
         },
         [bitmap],
       );
-
-      if (debug) {
-        log(`  frame ${frameNumber} decoded (ts=${timestamp})`);
-      }
     })
     .catch(() => {
       // Skip a single bad frame — the stream re-requests on the next prefetch.
@@ -703,10 +654,6 @@ function postCapability(
     reason,
   };
   post(msg);
-}
-
-function log(message: string): void {
-  console.log(`[native-decode] ${message}`);
 }
 
 function errorMessage(error: unknown): string {
