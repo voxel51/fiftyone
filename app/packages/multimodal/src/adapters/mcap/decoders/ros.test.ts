@@ -60,6 +60,7 @@ import {
   rosRclLogDecoders,
   rosRosgraphLogDecoders,
 } from "./ros";
+import { detection2DRecord, detection3DRecord } from "./ros.test-fixtures";
 
 const TEXT_ENCODER = new TextEncoder();
 const H264_KEYFRAME_BYTES = Uint8Array.of(
@@ -1521,6 +1522,48 @@ describe("ROS MCAP decoders", () => {
     ]);
   });
 
+  it("marks oversized ros2 marker point lists as unsupported", () => {
+    const points = Array.from({ length: 513 }, (_, index) =>
+      vectorRecord([index, 0, 0]),
+    );
+    const output = decoderForSchemaEncoding(
+      rosMarkerArrayDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_MARKER_ARRAY_SCHEMA, {
+        markers: [
+          markerRecord({
+            id: 10,
+            ns: "too-many-cubes",
+            points,
+            type: 6,
+          }),
+          markerRecord({
+            id: 11,
+            ns: "too-many-spheres",
+            points,
+            type: 7,
+          }),
+        ],
+      }),
+      {
+        schemaData: schemaData(ROS2_MARKER_ARRAY_SCHEMA),
+        streamId: "/markers",
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE) {
+      throw new Error("Expected scene update visualization");
+    }
+    expect(output.visualization.entities).toEqual([]);
+    expect(output.attributes).toMatchObject({
+      entityCount: 0,
+      unsupportedMarkerCount: 2,
+      unsupportedMarkerTypes: ["CUBE_LIST(513)", "SPHERE_LIST(513)"],
+    });
+  });
+
   it("decodes ros1 NavSatFix into a location visualization", () => {
     const output = decoderForSchemaEncoding(
       rosNavSatFixDecoders,
@@ -1983,61 +2026,6 @@ function vectorRecord(vector: readonly [number, number, number]) {
     x: vector[0],
     y: vector[1],
     z: vector[2],
-  };
-}
-
-function detection2DRecord({
-  classId,
-  id,
-  score,
-  x,
-  y,
-}: {
-  readonly classId: string;
-  readonly id: string;
-  readonly score: number;
-  readonly x: number;
-  readonly y: number;
-}) {
-  return {
-    bbox: {
-      center: {
-        position: { x, y },
-        theta: 0,
-      },
-      size_x: 20,
-      size_y: 20,
-    },
-    id,
-    results: [detectionResult(classId, score)],
-  };
-}
-
-function detection3DRecord({
-  classId,
-  id,
-  score,
-}: {
-  readonly classId: string;
-  readonly id: string;
-  readonly score: number;
-}) {
-  return {
-    bbox: {
-      center: poseRecord([1, 2, 3], [0, 0, 0, 1]),
-      size: vectorRecord([2, 1, 1.5]),
-    },
-    id,
-    results: [detectionResult(classId, score)],
-  };
-}
-
-function detectionResult(classId: string, score: number) {
-  return {
-    hypothesis: {
-      class_id: classId,
-      score,
-    },
   };
 }
 

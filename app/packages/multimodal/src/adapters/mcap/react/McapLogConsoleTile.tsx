@@ -7,7 +7,14 @@ import {
 import { useSetTileTitle } from "@fiftyone/tiling";
 import { Checkbox } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { byteSourceAccessKey } from "../../../query/bytes";
 import { useSceneSourcesByType } from "../../../scene-inventory/SceneInventoryProvider";
 import { MCAP_LOG_LEVELS, type McapLogLevel } from "../log-records";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
@@ -34,6 +41,19 @@ interface LogRowsState {
   readonly status: "idle" | "loading" | "ready" | "error";
 }
 
+interface LogRowsCacheWindow {
+  readonly client: unknown;
+  readonly endTimeNs: bigint;
+  readonly sourceKey: string;
+  readonly startTimeNs: bigint;
+  readonly topicsKey: string;
+}
+
+interface LogReadRange {
+  readonly endTimeNs: bigint;
+  readonly startTimeNs: bigint;
+}
+
 const INITIAL_ROWS: LogRowsState = { rawRows: [], status: "idle" };
 
 const McapLogConsoleTile: React.FC<McapTileProps> = () => {
@@ -50,6 +70,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
   const [selectedLevels, setSelectedLevels] =
     useState<readonly McapLogLevel[]>(MCAP_LOG_LEVELS);
   const [state, setState] = useState<LogRowsState>(INITIAL_ROWS);
+  const fetchedWindowRef = useRef<LogRowsCacheWindow | null>(null);
 
   useEffect(() => {
     setTileTitle("Logs", { source: "auto" });
@@ -92,68 +113,128 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     () => new Set(selectedLevels),
     [selectedLevels],
   );
+  const selectedTopicsKey = useMemo(
+    () => [...selectedTopics].sort().join("\0"),
+    [selectedTopics],
+  );
+  const sourceKey = source ? byteSourceAccessKey(source) : null;
+  const windowStartNs =
+    centerTimeNs !== undefined ? logWindowStartNs(centerTimeNs) : 0n;
+  const windowEndNs =
+    centerTimeNs !== undefined ? centerTimeNs + LOG_WINDOW_AFTER_NS : undefined;
   const rows = useMemo(
     () =>
       state.rawRows
-        .filter((row) => selectedLevelSet.has(row.level))
+        .filter(
+          (row) =>
+            selectedLevelSet.has(row.level) &&
+            (windowEndNs === undefined ||
+              (row.timeNs >= windowStartNs && row.timeNs <= windowEndNs)),
+        )
         .sort((left, right) => compareBigInt(left.timeNs, right.timeNs)),
-    [selectedLevelSet, state.rawRows],
+    [selectedLevelSet, state.rawRows, windowEndNs, windowStartNs],
   );
 
   useEffect(() => {
     if (
       !source ||
+      !sourceKey ||
       centerTimeNs === undefined ||
-      selectedTopics.length === 0 ||
-      selectedLevels.length === 0
+      selectedTopics.length === 0
     ) {
+      fetchedWindowRef.current = null;
       setState(INITIAL_ROWS);
+      return undefined;
+    }
+    if (selectedLevels.length === 0) {
+      setState((current) =>
+        current.status === "loading"
+          ? { ...current, error: undefined, status: "ready" }
+          : current,
+      );
       return undefined;
     }
 
     let cancelled = false;
-    setState((current) => ({ ...current, status: "loading" }));
-
-    const startTimeNs =
-      centerTimeNs > LOG_WINDOW_BEFORE_NS
-        ? centerTimeNs - LOG_WINDOW_BEFORE_NS
-        : 0n;
+    const startTimeNs = logWindowStartNs(centerTimeNs);
     const endTimeNs = centerTimeNs + LOG_WINDOW_AFTER_NS;
+    const cachedWindow = fetchedWindowRef.current;
+    const reusableWindow =
+      cachedWindow?.client === client &&
+      cachedWindow.sourceKey === sourceKey &&
+      cachedWindow.topicsKey === selectedTopicsKey
+        ? cachedWindow
+        : null;
+    const ranges = missingLogReadRanges(reusableWindow, startTimeNs, endTimeNs);
+
+    if (ranges.length === 0) {
+      setState((current) =>
+        current.status === "ready"
+          ? current
+          : { ...current, error: undefined, status: "ready" },
+      );
+      return undefined;
+    }
+
+    if (!reusableWindow) {
+      fetchedWindowRef.current = null;
+      setState({ rawRows: [], status: "loading" });
+    } else {
+      setState((current) => ({
+        ...current,
+        error: undefined,
+        status: "loading",
+      }));
+    }
 
     void (async () => {
       try {
         const fetchedRows: McapLogConsoleRow[] = [];
-        for await (const message of client.readDecodedMessages(
-          {
-            endTimeNs,
-            limit: LOG_READ_LIMIT,
-            source,
-            startTimeNs,
-            topics: selectedTopics,
-          },
-          { priority: "current" },
-        )) {
+        for (const range of ranges) {
+          for await (const message of client.readDecodedMessages(
+            {
+              endTimeNs: range.endTimeNs,
+              limit: LOG_READ_LIMIT,
+              source,
+              startTimeNs: range.startTimeNs,
+              topics: selectedTopics,
+            },
+            { priority: "current" },
+          )) {
+            if (cancelled) {
+              break;
+            }
+            fetchedRows.push(...logConsoleRowsFromDecodedMessage(message));
+          }
           if (cancelled) {
             break;
           }
-          fetchedRows.push(...logConsoleRowsFromDecodedMessage(message));
         }
 
         if (cancelled) {
           return;
         }
 
-        setState({
-          rawRows: fetchedRows,
+        fetchedWindowRef.current = {
+          client,
+          endTimeNs: maxBigInt(reusableWindow?.endTimeNs, endTimeNs),
+          sourceKey,
+          startTimeNs: minBigInt(reusableWindow?.startTimeNs, startTimeNs),
+          topicsKey: selectedTopicsKey,
+        };
+        setState((current) => ({
+          rawRows: reusableWindow
+            ? mergeLogRows(current.rawRows, fetchedRows)
+            : fetchedRows,
           status: "ready",
-        });
+        }));
       } catch (error) {
         if (!cancelled) {
-          setState({
+          setState((current) => ({
             error: error instanceof Error ? error.message : String(error),
-            rawRows: [],
+            rawRows: reusableWindow ? current.rawRows : [],
             status: "error",
-          });
+          }));
         }
       }
     })();
@@ -161,7 +242,15 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     return () => {
       cancelled = true;
     };
-  }, [centerTimeNs, client, selectedLevels.length, selectedTopics, source]);
+  }, [
+    centerTimeNs,
+    client,
+    selectedLevels.length,
+    selectedTopics,
+    selectedTopicsKey,
+    source,
+    sourceKey,
+  ]);
 
   const handleRowClick = useCallback(
     (row: McapLogConsoleRow) => {
@@ -190,10 +279,6 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     );
   }, []);
 
-  const windowStartNs =
-    centerTimeNs !== undefined && centerTimeNs > LOG_WINDOW_BEFORE_NS
-      ? centerTimeNs - LOG_WINDOW_BEFORE_NS
-      : 0n;
   const timeOriginNs = timelineIndex?.startTimeNs;
 
   if (logSources.length === 0) {
@@ -285,6 +370,73 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     </div>
   );
 };
+
+function logWindowStartNs(centerTimeNs: bigint): bigint {
+  return centerTimeNs > LOG_WINDOW_BEFORE_NS
+    ? centerTimeNs - LOG_WINDOW_BEFORE_NS
+    : 0n;
+}
+
+function missingLogReadRanges(
+  cachedWindow: LogRowsCacheWindow | null,
+  startTimeNs: bigint,
+  endTimeNs: bigint,
+): readonly LogReadRange[] {
+  if (!cachedWindow) {
+    return [{ endTimeNs, startTimeNs }];
+  }
+
+  const ranges: LogReadRange[] = [];
+  if (startTimeNs < cachedWindow.startTimeNs) {
+    ranges.push({ endTimeNs: cachedWindow.startTimeNs, startTimeNs });
+  }
+  if (endTimeNs > cachedWindow.endTimeNs) {
+    ranges.push({ endTimeNs, startTimeNs: cachedWindow.endTimeNs });
+  }
+
+  return ranges;
+}
+
+function mergeLogRows(
+  current: readonly McapLogConsoleRow[],
+  incoming: readonly McapLogConsoleRow[],
+): readonly McapLogConsoleRow[] {
+  if (incoming.length === 0) {
+    return current;
+  }
+
+  const rowsById = new Map(current.map((row) => [row.id, row]));
+  for (const row of incoming) {
+    rowsById.set(row.id, row);
+  }
+  return Array.from(rowsById.values());
+}
+
+function minBigInt(
+  left: bigint | undefined,
+  right: bigint | undefined,
+): bigint {
+  if (left === undefined) {
+    return right ?? 0n;
+  }
+  if (right === undefined) {
+    return left;
+  }
+  return left < right ? left : right;
+}
+
+function maxBigInt(
+  left: bigint | undefined,
+  right: bigint | undefined,
+): bigint {
+  if (left === undefined) {
+    return right ?? 0n;
+  }
+  if (right === undefined) {
+    return left;
+  }
+  return left > right ? left : right;
+}
 
 function compareBigInt(left: bigint, right: bigint): number {
   return left < right ? -1 : left > right ? 1 : 0;

@@ -99,9 +99,15 @@ const McapSettingsSidebar: React.FC<{
 
     return nextTabs;
   }, [focusedTileTitle, slotRef, suppressNextPanelAutoSwitch, topics]);
+  const selectedTab =
+    hasPanelTab &&
+    !hadPanelTabRef.current &&
+    !suppressNextPanelAutoSwitchRef.current
+      ? "panel"
+      : activeTab;
   const defaultIndex = Math.max(
     0,
-    tabs.findIndex((tab) => tab.id === activeTab),
+    tabs.findIndex((tab) => tab.id === selectedTab),
   );
   const handleTabChange = useCallback(
     (index: number) => {
@@ -115,7 +121,7 @@ const McapSettingsSidebar: React.FC<{
   return (
     <div className={styles.sidebarRoot}>
       <ToggleSwitch
-        key={`${hasPanelTab ? "with-panel" : "scene-only"}-${defaultIndex}`}
+        key={hasPanelTab ? "with-panel" : "scene-only"}
         defaultIndex={defaultIndex}
         fullWidth
         onChange={handleTabChange}

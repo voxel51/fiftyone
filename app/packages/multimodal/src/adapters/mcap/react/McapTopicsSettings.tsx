@@ -1,6 +1,6 @@
 import { useTiling } from "@fiftyone/tiling";
 import { Input, InputType, Size } from "@voxel51/voodo";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useSceneInventory } from "../../../scene-inventory/SceneInventoryProvider";
 import type { StreamInventory } from "../../../schemas/v1";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
@@ -43,14 +43,25 @@ const McapTopicsSettings: React.FC<{
     () => (showSearch ? filterMcapTopicInventoryRows(rows, search) : rows),
     [rows, search, showSearch],
   );
-  const groups = useMemo(
-    () =>
-      MCAP_TOPIC_CATEGORY_ORDER.map((category) => ({
-        category,
-        rows: filteredRows.filter((row) => row.category === category),
-      })).filter((group) => group.rows.length > 0),
-    [filteredRows],
-  );
+  const groups = useMemo(() => {
+    const rowsByCategory = new Map<
+      McapTopicInventoryRow["category"],
+      McapTopicInventoryRow[]
+    >();
+    for (const row of filteredRows) {
+      const categoryRows = rowsByCategory.get(row.category);
+      if (categoryRows) {
+        categoryRows.push(row);
+      } else {
+        rowsByCategory.set(row.category, [row]);
+      }
+    }
+
+    return MCAP_TOPIC_CATEGORY_ORDER.map((category) => ({
+      category,
+      rows: rowsByCategory.get(category) ?? [],
+    })).filter((group) => group.rows.length > 0);
+  }, [filteredRows]);
   const actionHandlers = useMemo(
     () => ({
       open3dTile,
@@ -230,10 +241,13 @@ function visibleTopicStatusLabel(row: McapTopicInventoryRow): string | null {
 
 function useOpenMcapPanelTile(type: McapTileType): () => void {
   const { addTile, setFocusedTileId, tiles } = useTiling();
+  const tilesRef = useRef(tiles);
+  tilesRef.current = tiles;
 
   return useCallback(() => {
-    const existingTileId = Object.keys(tiles).find(
-      (tileId) => tiles[tileId]?.type === type,
+    const currentTiles = tilesRef.current;
+    const existingTileId = Object.keys(currentTiles).find(
+      (tileId) => currentTiles[tileId]?.type === type,
     );
     if (existingTileId) {
       setFocusedTileId(existingTileId);
@@ -245,15 +259,14 @@ function useOpenMcapPanelTile(type: McapTileType): () => void {
       return;
     }
     const Tile = definition.Tile;
-    addTile(
-      {
-        render: () => <Tile />,
-        title: definition.typeLabel,
-        type,
-      },
-      { idPrefix: type },
-    );
-  }, [addTile, setFocusedTileId, tiles, type]);
+    const tile = {
+      render: () => <Tile />,
+      title: definition.typeLabel,
+      type,
+    };
+    const tileId = addTile(tile, { idPrefix: type });
+    tilesRef.current = { ...currentTiles, [tileId]: tile };
+  }, [addTile, setFocusedTileId, type]);
 }
 
 function topicDetails(row: McapTopicInventoryRow): string {

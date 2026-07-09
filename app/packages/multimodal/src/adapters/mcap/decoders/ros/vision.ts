@@ -18,13 +18,14 @@ import {
   IDENTITY_QUATERNION,
 } from "../foxglove/protobuf/geometry";
 import {
-  arrayField,
+  arrayRecords,
   numberField,
   recordField,
   rosHeader,
   rosHeaderAttributes,
   rosHeaderFrameId,
   rosHeaderTimestampNs,
+  sceneEntityVisualization,
   timingFromRosHeader,
 } from "./common";
 import { rosDecodersForPayloads } from "./factory";
@@ -227,7 +228,7 @@ function detection3DEntity({
     detectionId(detection) ??
     detectionFallbackId({ context, index, timestampNs });
 
-  return sceneEntity({
+  return sceneEntityVisualization({
     cubes: [cube],
     frameId,
     id: `${context.streamId ?? "detections3d"}:detection3d:${id}`,
@@ -417,59 +418,6 @@ function rotatedBoxCorners({
     center[0] + x * cos - y * sin,
     center[1] + x * sin + y * cos,
   ]);
-}
-
-function sceneEntity({
-  cubes,
-  frameId,
-  id,
-  metadata,
-  texts,
-  timestampNs,
-}: {
-  readonly cubes: readonly SceneCubePrimitive[];
-  readonly frameId: string | undefined;
-  readonly id: string;
-  readonly metadata: Readonly<Record<string, string>>;
-  readonly texts: readonly SceneTextPrimitive[];
-  readonly timestampNs: bigint | undefined;
-}): SceneEntityVisualization {
-  return {
-    arrowCount: 0,
-    arrows: [],
-    cubeCount: cubes.length,
-    cubes,
-    cylinderCount: 0,
-    cylinders: [],
-    ...(frameId ? { frameId } : {}),
-    frameLocked: false,
-    id,
-    lineCount: 0,
-    lines: [],
-    metadata,
-    modelCount: 0,
-    models: [],
-    sphereCount: 0,
-    spheres: [],
-    textCount: texts.length,
-    texts,
-    ...(timestampNs !== undefined ? { timestampNs } : {}),
-    triangleCount: 0,
-    triangles: [],
-  };
-}
-
-function arrayRecords(
-  record: Record<string, unknown>,
-  field: string,
-): readonly Record<string, unknown>[] {
-  return arrayField(record, field).map((value) =>
-    isRecord(value) ? value : {},
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function stringFromValue(value: unknown): string | undefined {

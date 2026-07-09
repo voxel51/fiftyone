@@ -25,7 +25,7 @@ const SCENE_UPDATE_HISTORY_DEFERRED_RETRY_MS = 2_000;
 
 export interface McapSceneUpdateHistoryTopic {
   readonly deltas: readonly McapSceneUpdateDelta[];
-  readonly status: "error" | "loading" | "ready";
+  readonly status: "error" | "loading" | "ready" | "truncated";
   readonly truncated?: boolean;
 }
 
@@ -173,12 +173,11 @@ export function McapSceneUpdateHistoryBridge({
               });
             }
 
+            const truncated = messageCount >= SCENE_UPDATE_HISTORY_READ_LIMIT;
             commit(topic, {
               deltas,
-              status: "ready",
-              ...(messageCount >= SCENE_UPDATE_HISTORY_READ_LIMIT
-                ? { truncated: true }
-                : {}),
+              status: truncated ? "truncated" : "ready",
+              ...(truncated ? { truncated: true } : {}),
             });
           } catch {
             commit(topic, { deltas: [], status: "error" });
