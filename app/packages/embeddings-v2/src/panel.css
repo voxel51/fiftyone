@@ -172,6 +172,11 @@
   padding: 0.625rem 1rem;
   flex-shrink: 0;
   min-width: 0;
+  /* Above the scene's overlays (hint/chip/legend/hover card), which
+     follow in the DOM: anything opening out of the header (the
+     color-by dropdown) must cover them */
+  position: relative;
+  z-index: 10;
 }
 
 .emb-plot-title {
@@ -276,6 +281,16 @@
 .emb-plot-hint {
   left: 0.75rem;
   top: 0.75rem;
+  pointer-events: none;
+}
+
+/* Centered while the run's columns stream in */
+.emb-plot-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   pointer-events: none;
 }
 

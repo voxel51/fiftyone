@@ -20,6 +20,7 @@ import {
   Button,
   getColorCssVar,
   Icon,
+  IconColor,
   IconName,
   Select,
   Size,
@@ -365,6 +366,15 @@ export default function PlotView({
         </div>
       )}
       <div ref={plotRef} className="emb-plot-scene">
+        {!loaded && !error && (
+          <div className="emb-plot-loading">
+            <Icon
+              name={IconName.Spinner}
+              size={Size.Lg}
+              color={IconColor.Decorative}
+            />
+          </div>
+        )}
         {loaded && (
           <EmbeddingsView
             ref={viewRef}
