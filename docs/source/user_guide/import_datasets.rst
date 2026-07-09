@@ -780,6 +780,9 @@ refer to the corresponding dataset format when reading the dataset from disk.
     | :ref:`BDD <BDDDataset-import>`                                                        | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                                       | saved in `Berkeley DeepDrive (BDD) format <http://bdd-data.berkeley.edu>`_.        |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`VQA <VQADataset-import>`                                                        | A labeled dataset consisting of images and their associated visual question        |
+    |                                                                                       | answering (VQA) labels stored in a simple JSON format.                             |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`CSV <CSVDataset-import>`                                                        | A labeled dataset consisting of images or videos and their associated field values |
     |                                                                                       | stored as columns of a CSV file.                                                   |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -4633,6 +4636,90 @@ directory containing the corresponding media files by providing the
 
     If the `name` key of your labels contains absolute paths to the source
     media, then you can omit the `data_path` parameter from the example above.
+
+.. _VQADataset-import:
+
+VQA
+___
+
+The :class:`fiftyone.types.VQADataset` type represents a labeled dataset
+consisting of images and their associated
+:ref:`visual question answering (VQA) <vqa>` labels stored in a simple JSON
+format.
+
+Datasets of this type are read in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+        labels.json
+
+where `labels.json` is a JSON file in the following format:
+
+.. code-block:: text
+
+    {
+        "questions": [
+            {
+                "image": <filename1>,
+                "question": "...",
+                "question_id": "...",
+                "answer": "...",
+                "answers": ["...", ...],
+                "choices": ["...", ...],
+                "answer_index": 0,
+                "question_type": "...",
+                "answer_type": "...",
+                "confidence": 0.9
+            },
+            ...
+        ]
+    }
+
+Each entry describes one question about one image, referenced by its filename
+in ``data/`` (or an absolute path). All keys other than ``image`` and
+``question`` are optional.
+
+By default, one sample is created per image, with all of its questions
+grouped into a |VQAs| field; pass ``group_questions=False`` to instead
+faithfully create one sample per question with a single |VQA| field.
+
+For multiple-choice sources that provide a correct index rather than an
+answer string, the importer sets the answer to ``choices[answer_index]``
+and stores the provided ``answer_index`` as a dynamic attribute.
+
+.. note::
+
+    See :class:`VQADatasetImporter <fiftyone.utils.vqa.VQADatasetImporter>`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
+You can create a FiftyOne dataset from a VQA dataset stored in the above
+format as follows:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    name = "my-dataset"
+    dataset_dir = "/path/to/vqa-dataset"
+
+    # Create the dataset
+    dataset = fo.Dataset.from_dir(
+        dataset_dir=dataset_dir,
+        dataset_type=fo.types.VQADataset,
+        label_field="questions",
+        name=name,
+    )
+
+    # View summary info about the dataset
+    print(dataset)
 
 .. _CSVDataset-import:
 
