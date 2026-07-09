@@ -5,9 +5,8 @@ import type { PointCloudColorWriter } from "../../../visualization/panels/point-
  * Pure math for the pointcloud→camera projection overlay: transforms
  * decoded sensor-frame points into the camera frame, projects through
  * the rectified projection matrix (`P` when present, pinhole `K`
- * otherwise), and rasterizes the survivors on a 2D canvas. Dots take
- * their colours from the cloud's own colour writer, so a cloud looks
- * identical projected and in 3D.
+ * otherwise). The GPU renderer owns the production path; these helpers
+ * remain as deterministic test oracles for projection and picking math.
  *
  * When the calibration carries a non-trivial distortion model, the overlay
  * still projects via `P`/`K`; the host warns that images must be rectified.
@@ -18,11 +17,6 @@ export const MCAP_PROJECTION_MAX_POINTS = 150_000;
 
 const POINT_COMPONENT_COUNT = 3;
 const UV_COMPONENT_COUNT = 2;
-// Colour quantization for fillStyle batching: 4 bits per channel bounds
-// a draw at 4096 style switches while staying invisible at dot scale.
-const COLOR_QUANT_BITS = 4;
-const COLOR_QUANT_LEVELS = 1 << COLOR_QUANT_BITS;
-const COLOR_BUCKET_COUNT = COLOR_QUANT_LEVELS ** 3;
 // Neutral dot channel when no colour writer is supplied.
 const NEUTRAL_PROJECTION_CHANNEL = 0.75;
 
@@ -278,102 +272,6 @@ export function pickProjectedPoint({
   }
 
   return best;
-}
-
-/**
- * Whether the calibration declares a distortion model with any non-zero
- * coefficient — the trigger for the "assumes rectified images" notice.
- */
-export function hasNonTrivialDistortion(
-  calibration: Pick<CameraCalibrationVisualization, "D" | "distortionModel">,
-): boolean {
-  if (!calibration.distortionModel?.trim() || !calibration.D) {
-    return false;
-  }
-  return calibration.D.some((coefficient) => Math.abs(coefficient) > 1e-9);
-}
-
-/**
- * Rasterizes projected points as square dots in their per-point colours.
- * Points are bucketed by quantized rgb with a counting sort so the
- * canvas sees at most {@link COLOR_BUCKET_COUNT} fillStyle changes per
- * frame instead of one per point.
- */
-export function drawProjectedPoints(
-  context: CanvasRenderingContext2D,
-  projection: McapProjectedPoints,
-  {
-    dotSize,
-  }: {
-    /** Dot edge length in canvas pixels. */
-    readonly dotSize: number;
-  },
-): void {
-  const { colors, count, uv } = projection;
-
-  const bucketOf = new Uint16Array(count);
-  const bucketCounts = new Uint32Array(COLOR_BUCKET_COUNT);
-  for (let index = 0; index < count; index++) {
-    const colorOffset = index * POINT_COMPONENT_COUNT;
-    const bucket =
-      (quantizeChannel(colors[colorOffset]) << (COLOR_QUANT_BITS * 2)) |
-      (quantizeChannel(colors[colorOffset + 1]) << COLOR_QUANT_BITS) |
-      quantizeChannel(colors[colorOffset + 2]);
-    bucketOf[index] = bucket;
-    bucketCounts[bucket]++;
-  }
-
-  const bucketOffsets = new Uint32Array(COLOR_BUCKET_COUNT);
-  let offset = 0;
-  for (let bucket = 0; bucket < COLOR_BUCKET_COUNT; bucket++) {
-    bucketOffsets[bucket] = offset;
-    offset += bucketCounts[bucket];
-  }
-  const ordered = new Uint32Array(count);
-  const cursor = bucketOffsets.slice();
-  for (let index = 0; index < count; index++) {
-    ordered[cursor[bucketOf[index]]++] = index;
-  }
-
-  const half = dotSize / 2;
-  for (let bucket = 0; bucket < COLOR_BUCKET_COUNT; bucket++) {
-    const bucketCount = bucketCounts[bucket];
-    if (bucketCount === 0) continue;
-    // Style with the bucket's first point's exact colour — within a
-    // bucket, colours differ by less than the quantization step.
-    const start = bucketOffsets[bucket];
-    const firstColorOffset = ordered[start] * POINT_COMPONENT_COUNT;
-    context.fillStyle = cssColor(
-      colors[firstColorOffset],
-      colors[firstColorOffset + 1],
-      colors[firstColorOffset + 2],
-    );
-    for (let position = 0; position < bucketCount; position++) {
-      const pointIndex = ordered[start + position];
-      const uvOffset = pointIndex * UV_COMPONENT_COUNT;
-      context.fillRect(
-        uv[uvOffset] - half,
-        uv[uvOffset + 1] - half,
-        dotSize,
-        dotSize,
-      );
-    }
-  }
-}
-
-function quantizeChannel(value: number): number {
-  const level = Math.floor(value * COLOR_QUANT_LEVELS);
-  return level < 0
-    ? 0
-    : level >= COLOR_QUANT_LEVELS
-      ? COLOR_QUANT_LEVELS - 1
-      : level;
-}
-
-function cssColor(r: number, g: number, b: number): string {
-  return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(
-    b * 255,
-  )})`;
 }
 
 interface ProjectionBasis {
