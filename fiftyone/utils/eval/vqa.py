@@ -651,7 +651,7 @@ class VQAResults(BaseClassificationResults):
             custom_metrics=custom_metrics,
             backend=backend,
         )
-        self.scores = np.asarray(scores) if scores is not None else np.zeros(0)
+        self.scores = np.asarray(scores if scores is not None else [])
         self.question_types = (
             np.asarray(question_types) if question_types is not None else None
         )
