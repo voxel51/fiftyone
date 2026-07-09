@@ -314,10 +314,8 @@ class VQAEvaluation(BaseEvaluationMethod):
 
             pairs = _match_vqas(gt_labels, pred_labels)
 
-            gt_scores = {}
-            gt_match_ids = {}
-            pred_scores = {}
-            pred_match_ids = {}
+            score_map = {}
+            match_map = {}
             pair_scores = []
 
             for _gt, _pred in pairs:
@@ -351,21 +349,17 @@ class VQAEvaluation(BaseEvaluationMethod):
                     ref.answer_type if ref is not None else None
                 )
 
-                if _gt is not None:
-                    gt_scores[_gt.id] = score
-                    if _pred is not None:
-                        gt_match_ids[_gt.id] = _pred.id
-
-                if _pred is not None:
-                    pred_scores[_pred.id] = score
-                    if _gt is not None:
-                        pred_match_ids[_pred.id] = _gt.id
+                for a, b in ((_gt, _pred), (_pred, _gt)):
+                    if a is not None:
+                        score_map[a.id] = score
+                        if b is not None:
+                            match_map[a.id] = b.id
 
             sample_accs.append(
                 sum(pair_scores) / len(pair_scores) if pair_scores else None
             )
-            gt_values.append((gt_labels, gt_scores, gt_match_ids))
-            pred_values.append((pred_labels, pred_scores, pred_match_ids))
+            gt_values.append((gt_labels, score_map, match_map))
+            pred_values.append((pred_labels, score_map, match_map))
 
         results = VQAResults(
             samples,
