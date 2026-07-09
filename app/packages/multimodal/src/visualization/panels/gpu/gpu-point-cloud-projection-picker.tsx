@@ -69,6 +69,7 @@ const pickTsl = TSL as unknown as {
   vec4(...values: readonly (PickNode | number)[]): PickNode;
 };
 
+/** GPU buffers and transform needed to pick one projected cloud layer. */
 export interface GpuPointCloudProjectionPickLayer {
   readonly positionAttribute: THREE.InstancedBufferAttribute;
   readonly projectionMatrix: THREE.Matrix4;
@@ -77,18 +78,21 @@ export interface GpuPointCloudProjectionPickLayer {
   readonly sourceIndexAttribute: THREE.InstancedBufferAttribute;
 }
 
+/** Current camera calibration and layers visible to the projection picker. */
 export interface GpuPointCloudProjectionPickerScene {
   readonly calibrationHeight: number;
   readonly calibrationWidth: number;
   readonly layers: readonly GpuPointCloudProjectionPickLayer[];
 }
 
+/** Image-space dwell target and hit radius for a projection pick. */
 export interface GpuPointCloudProjectionPickRequest {
   readonly radiusPx: number;
   readonly targetU: number;
   readonly targetV: number;
 }
 
+/** Winning projected point returned by the GPU pick pass. */
 export interface GpuPointCloudProjectionPickResult {
   /** Original index in the picker scene's layer array. */
   readonly layerIndex: number;
@@ -99,6 +103,7 @@ export interface GpuPointCloudProjectionPickResult {
   readonly sourceIndex: number;
 }
 
+/** Imperative projection-picking API exposed to image overlays. */
 export interface GpuPointCloudProjectionPickerHandle {
   /** Cancels any pending readback without destroying reusable GPU state. */
   invalidate(): void;
@@ -107,11 +112,13 @@ export interface GpuPointCloudProjectionPickerHandle {
   ): Promise<GpuPointCloudProjectionPickResult | null>;
 }
 
+/** Stateful picker handle with scene updates and explicit disposal. */
 export interface GpuPointCloudProjectionPickerController extends GpuPointCloudProjectionPickerHandle {
   dispose(): void;
   setScene(scene: GpuPointCloudProjectionPickerScene): void;
 }
 
+/** React props accepted by the projection-picker bridge. */
 export type GpuPointCloudProjectionPickerProps =
   GpuPointCloudProjectionPickerScene;
 
@@ -414,6 +421,7 @@ function createProjectionPickPass(
   };
 }
 
+/** Builds the integer-output material for one projected-point pick layer. */
 export function createProjectionPickMaterial({
   activeLayerIndex,
   calibrationHeight,

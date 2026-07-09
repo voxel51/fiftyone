@@ -11,7 +11,7 @@ export {
   resolveGpuPointCloudColor,
   type GpuPointCloudColorSource,
   type ResolvedGpuPointCloudColor,
-} from "./gpu-point-cloud-color";
+} from "./gpu/gpu-point-cloud-color";
 export {
   colormapCssGradient,
   createPointCloudColormapLookup,

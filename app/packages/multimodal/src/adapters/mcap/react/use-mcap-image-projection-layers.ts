@@ -15,6 +15,7 @@ import {
 } from "./mcap-modal-settings";
 import { useMcapTopicPlaybackFrames } from "./use-mcap-topic-stream";
 
+/** One point-cloud frame prepared for projection into an MCAP image tile. */
 export interface McapImageProjectionLayer {
   readonly colorOptions: PointCloudColorOptions;
   readonly contentTimeNs: bigint;

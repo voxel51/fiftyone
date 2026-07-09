@@ -5,7 +5,7 @@ import * as THREE from "three";
 import MeasureRulerIcon from "../../../components/MeasureRulerIcon";
 import type { PointCloudBounds } from "../../../decoders";
 import { Base3DScene } from "../base-3d-scene";
-import { WebGpuCanvas } from "../webgpu-canvas";
+import { WebGpuCanvas } from "../gpu/webgpu-canvas";
 import {
   PERSPECTIVE_POINT_CAMERA,
   cameraPoseForBounds,
@@ -20,12 +20,12 @@ import {
   buildPointCloudRenderData,
   type PointCloudColorOptions,
 } from "./point-cloud-colors";
-import { resolveGpuPointCloudColor } from "./gpu-point-cloud-color";
+import { resolveGpuPointCloudColor } from "./gpu/gpu-point-cloud-color";
 import {
   createGpuPointCloud3dPickerRegistry,
   GpuPointCloud3dPickerRegistryContext,
-} from "./gpu-point-cloud-3d-picker";
-import { gpuPointCloudDrawCount } from "./gpu-point-cloud-sampling";
+} from "./gpu/gpu-point-cloud-3d-picker";
+import { gpuPointCloudDrawCount } from "./gpu/gpu-point-cloud-sampling";
 import {
   DEFAULT_POINT_SIZE,
   PointCloudSceneLayer,

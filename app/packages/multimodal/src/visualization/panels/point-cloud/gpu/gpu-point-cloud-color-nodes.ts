@@ -6,7 +6,7 @@ import {
   type ResolvedGpuPointCloudColor,
 } from "./gpu-point-cloud-color";
 import { getGpuPointCloudColormapTexture } from "./gpu-point-cloud-colormap-texture";
-import { pointCloudColormapKey } from "./colormaps";
+import { pointCloudColormapKey } from "../colormaps";
 
 const RANGE_EPSILON = 1e-6;
 const MAX_FINITE_FLOAT32 = 3.4e38;
@@ -49,6 +49,7 @@ const colorTsl = TSL as unknown as {
   vec3(...values: readonly (GpuColorNode | number)[]): GpuColorNode;
 };
 
+/** GPU attributes or caller-provided nodes available to point-color shaders. */
 export interface GpuPointCloudColorNodeAttributes {
   readonly color: THREE.InstancedBufferAttribute | null;
   /** Caller-indexed RGB node; overrides the implicit instance attribute. */
@@ -59,6 +60,7 @@ export interface GpuPointCloudColorNodeAttributes {
   readonly scalarNodes?: ReadonlyMap<string, TSL.Node>;
 }
 
+/** Mutable uniforms shared by a GPU point-color shader graph. */
 export interface GpuPointCloudColorUniforms {
   readonly color: GpuColorUniformNode<THREE.Vector3>;
   readonly minValue: GpuColorUniformNode<number>;
@@ -75,6 +77,7 @@ export function gpuPointCloudColorNodeKey(
   return `${source.kind}:${field}:${pointCloudColormapKey(color.colormap)}`;
 }
 
+/** Creates and initializes uniforms for a resolved point-cloud color policy. */
 export function createGpuPointCloudColorUniforms(
   color: ResolvedGpuPointCloudColor,
 ): GpuPointCloudColorUniforms {
@@ -87,6 +90,7 @@ export function createGpuPointCloudColorUniforms(
   return uniforms;
 }
 
+/** Updates frame-varying values without rebuilding the shader graph. */
 export function updateGpuPointCloudColorUniforms(
   uniforms: GpuPointCloudColorUniforms,
   color: ResolvedGpuPointCloudColor,

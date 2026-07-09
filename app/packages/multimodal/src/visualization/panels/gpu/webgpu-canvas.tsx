@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three/webgpu";
 
-import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
+import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../style-tokens";
 import {
   registerWebGpuRenderer,
   type WebGpuRendererRegistration,

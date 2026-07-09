@@ -11,7 +11,7 @@ import { attachPointerDwell } from "../pointer-dwell";
 import {
   createGpuPointCloud3dPickerController,
   GpuPointCloud3dPickerRegistryContext,
-} from "./gpu-point-cloud-3d-picker";
+} from "./gpu/gpu-point-cloud-3d-picker";
 import {
   POINT_PICK_RADIUS_PX,
   collectPointPickBlockingRoots,
@@ -20,7 +20,7 @@ import {
 import {
   gpuPointCloudColorAtSample,
   type ResolvedGpuPointCloudColor,
-} from "./gpu-point-cloud-color";
+} from "./gpu/gpu-point-cloud-color";
 import { useScenePicking } from "./scene-interactivity";
 import type { PointCloudPanelLayer } from "./types";
 

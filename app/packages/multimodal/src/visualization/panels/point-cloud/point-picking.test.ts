@@ -9,7 +9,7 @@ import {
 import {
   gpuPointCloudDrawCount,
   gpuPointCloudSampleIndex,
-} from "./gpu-point-cloud-sampling";
+} from "./gpu/gpu-point-cloud-sampling";
 import {
   POINT_PICK_BLOCKING_USER_DATA,
   POINT_PICK_LAYER_ID_KEY,

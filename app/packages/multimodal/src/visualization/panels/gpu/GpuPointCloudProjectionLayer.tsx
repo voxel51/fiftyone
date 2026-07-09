@@ -5,7 +5,7 @@ import * as THREE from "three";
 import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
 
-import type { ImageViewTransform } from "./base-2d-scene";
+import type { ImageViewTransform } from "../base-2d-scene";
 import {
   gpuProjectionImagePlaneSize,
   gpuProjectionViewportRect,
@@ -20,9 +20,9 @@ import {
   gpuPointCloudColorNodeKey,
   updateGpuPointCloudColorUniforms,
   type GpuPointCloudColorUniforms,
-} from "./point-cloud/gpu-point-cloud-color-nodes";
-import type { ResolvedGpuPointCloudColor } from "./point-cloud/gpu-point-cloud-color";
-import { DEFAULT_POINT_SIZE } from "./point-cloud/PointCloudSceneLayer";
+} from "../point-cloud/gpu/gpu-point-cloud-color-nodes";
+import type { ResolvedGpuPointCloudColor } from "../point-cloud/gpu/gpu-point-cloud-color";
+import { DEFAULT_POINT_SIZE } from "../point-cloud/PointCloudSceneLayer";
 
 const MIN_PROJECTABLE_DEPTH = 1e-6;
 const CULLED_POSITION = 1e9;
@@ -80,6 +80,7 @@ type ProjectionPointsMaterial = PointsNodeMaterial & {
   scaleNode: ProjectionNode | null;
 };
 
+/** Rendering inputs for one GPU-projected point-cloud layer. */
 export interface GpuPointCloudProjectionLayerProps {
   readonly calibrationHeight: number;
   readonly calibrationWidth: number;
@@ -232,6 +233,7 @@ export function GpuPointCloudProjectionLayer({
   return <primitive object={sprite} />;
 }
 
+/** Shader material and mutable uniforms used by a projection layer. */
 export interface GpuPointCloudProjectionMaterial {
   readonly colorUniforms: GpuPointCloudColorUniforms;
   readonly dimensions: ProjectionUniformNode<THREE.Vector2>;

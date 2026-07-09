@@ -21,8 +21,8 @@ import {
   imageIdentity,
   useImageTextureLease,
 } from "./use-image-texture-lease";
-import { WebGpuCanvas } from "./webgpu-canvas";
-import { useWebGpuViewStage, WebGpuView } from "./webgpu-view-stage";
+import { WebGpuCanvas } from "./gpu/webgpu-canvas";
+import { useWebGpuViewStage, WebGpuView } from "./gpu/webgpu-view-stage";
 
 const HUD_BORDER_RADIUS_PX = 4;
 const HUD_OFFSET_PX = 8;

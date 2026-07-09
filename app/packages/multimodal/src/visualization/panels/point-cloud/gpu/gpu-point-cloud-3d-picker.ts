@@ -6,12 +6,12 @@ import { PointsNodeMaterial } from "three/webgpu";
 import {
   acquireGpuPickReadbackPool,
   type GpuPickReadbackLease,
-} from "../gpu-pick-readback-pool";
+} from "../../gpu/gpu-pick-readback-pool";
 import {
   GpuPickRenderTarget,
   isGpuPickRenderer,
   type GpuPickRenderer,
-} from "../gpu-pick-render-target";
+} from "../../gpu/gpu-pick-render-target";
 import {
   gpuPointCloudPositionNode,
   gpuPointCloudSampleIndexFromStrideNode,
@@ -85,6 +85,7 @@ export interface GpuPointCloud3dPickLayer {
   sampledPointCount: number;
 }
 
+/** Canvas-local registry of live point-cloud layers available for picking. */
 export interface GpuPointCloud3dPickerRegistry {
   notify(): void;
   register(layer: GpuPointCloud3dPickLayer): () => void;
@@ -92,6 +93,7 @@ export interface GpuPointCloud3dPickerRegistry {
   subscribe(listener: () => void): () => void;
 }
 
+/** React context publishing the picker registry for one 3D canvas. */
 export const GpuPointCloud3dPickerRegistryContext =
   createContext<GpuPointCloud3dPickerRegistry | null>(null);
 
@@ -130,6 +132,7 @@ export function createGpuPointCloud3dPickerRegistry(): GpuPointCloud3dPickerRegi
   };
 }
 
+/** Camera, ray, and viewport state for one 3D GPU pick. */
 export interface GpuPointCloud3dPickRequest {
   readonly camera: THREE.Camera;
   readonly far: number;
@@ -143,6 +146,7 @@ export interface GpuPointCloud3dPickRequest {
   readonly viewportWidthPx: number;
 }
 
+/** Winning 3D cloud point returned by the GPU pick pass. */
 export interface GpuPointCloud3dPickResult {
   readonly color: readonly [number, number, number] | null;
   readonly layerId: string;
@@ -152,6 +156,7 @@ export interface GpuPointCloud3dPickResult {
   readonly worldPosition: readonly [number, number, number];
 }
 
+/** Imperative lifecycle and picking API for the 3D point picker. */
 export interface GpuPointCloud3dPickerController {
   dispose(): void;
   invalidate(): void;
@@ -457,6 +462,7 @@ function activePickLayers(sourceLayers: readonly GpuPointCloud3dPickLayer[]): {
   return active;
 }
 
+/** Builds the integer-output material for one 3D point-cloud pick layer. */
 export function createPointCloud3dPickMaterial({
   activeLayerIndex,
   far,

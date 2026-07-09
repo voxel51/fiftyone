@@ -51,27 +51,29 @@ export const foxgloveRawImageDecoder: Decoder = {
       width: numberField(message, "width"),
     });
   },
-};
+} as const;
 
 /**
  * Decoders for Foxglove RawImage messages carried over ROS 2 CDR.
  */
-export const foxgloveRawImageCdrDecoders = rosDecodersForPayloads({
-  id: "foxglove.raw-image.cdr",
-  map(message, context) {
-    return rawImageOutput({
-      data: bytesField(message, "data"),
-      encoding: stringField(message, "encoding", "unknown"),
-      frameId: stringField(message, "frame_id") || undefined,
-      height: integerField(message, "height"),
-      messageTimestamp: rosTimestampNs(recordField(message, "timestamp")),
-      step: integerField(message, "step"),
-      timingContext: context,
-      width: integerField(message, "width"),
-    });
-  },
-  payloads: FOXGLOVE_RAW_IMAGE_CDR_PAYLOADS,
-});
+export const foxgloveRawImageCdrDecoders = Object.freeze(
+  rosDecodersForPayloads({
+    id: "foxglove.raw-image.cdr",
+    map(message, context) {
+      return rawImageOutput({
+        data: bytesField(message, "data"),
+        encoding: stringField(message, "encoding", "unknown"),
+        frameId: stringField(message, "frame_id") || undefined,
+        height: integerField(message, "height"),
+        messageTimestamp: rosTimestampNs(recordField(message, "timestamp")),
+        step: integerField(message, "step"),
+        timingContext: context,
+        width: integerField(message, "width"),
+      });
+    },
+    payloads: FOXGLOVE_RAW_IMAGE_CDR_PAYLOADS,
+  }),
+);
 
 function rawImageOutput({
   data,

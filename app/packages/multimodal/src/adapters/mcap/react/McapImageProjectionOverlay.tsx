@@ -7,8 +7,8 @@ import {
   transformedImageDisplayRect,
   type ImageViewTransform,
 } from "../../../visualization/panels/base-2d-scene";
-import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu-point-cloud-projection-picker";
-import { gpuPointCloudProjectionResourceKey } from "../../../visualization/panels/gpu-point-cloud-projection";
+import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-picker";
+import { gpuPointCloudProjectionResourceKey } from "../../../visualization/panels/gpu/gpu-point-cloud-projection";
 import {
   POINT_HOVER_DWELL_MS,
   POINT_HOVER_MOVE_TOLERANCE_PX,

@@ -4,7 +4,7 @@ import {
   createPointCloudColormapLookup,
   pointCloudColormapKey,
   type PointCloudColormap,
-} from "./colormaps";
+} from "../colormaps";
 
 const LUT_SIZE = 256;
 const RGB_COMPONENT_COUNT = 3;
@@ -56,6 +56,7 @@ export function releaseGpuPointCloudColormapTextures(): void {
   textures.clear();
 }
 
+/** Returns the number of cached GPU colormap textures. */
 export function gpuPointCloudColormapTextureStats(): {
   readonly entryCount: number;
 } {

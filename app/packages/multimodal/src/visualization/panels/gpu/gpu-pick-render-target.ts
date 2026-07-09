@@ -88,6 +88,7 @@ export class GpuPickRenderTarget {
   }
 }
 
+/** Returns whether a renderer exposes the WebGPU state required for picking. */
 export function isGpuPickRenderer(
   renderer: unknown,
 ): renderer is GpuPickRenderer {

@@ -12,8 +12,8 @@ import { releaseRetainedImageTextures } from "../../../visualization/panels/imag
 import {
   releaseGpuPointCloudProjectionResources,
   releaseGpuPointCloudProjectionResourcesForSource,
-} from "../../../visualization/panels/gpu-point-cloud-projection-resources";
-import { releaseGpuPointCloudColormapTextures } from "../../../visualization/panels/point-cloud/gpu-point-cloud-colormap-texture";
+} from "../../../visualization/panels/gpu/gpu-point-cloud-projection-resources";
+import { releaseGpuPointCloudColormapTextures } from "../../../visualization/panels/point-cloud/gpu/gpu-point-cloud-colormap-texture";
 import {
   markMcapLatencyEvent,
   startMcapLatencyDebugSession,

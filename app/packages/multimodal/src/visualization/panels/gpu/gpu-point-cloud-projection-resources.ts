@@ -1,12 +1,13 @@
 import * as THREE from "three";
 
-import type { PointCloudRenderPayload } from "../../decoders";
+import type { PointCloudRenderPayload } from "../../../decoders";
 
 const POINT_COMPONENT_COUNT = 3;
 
 /** Typical modal: lidar + five radars, with room for duplicated topics. */
 export const GPU_PROJECTION_RESOURCE_RETENTION_CAP = 12;
 
+/** Identity and decoded payload used to acquire a reusable projection resource. */
 export interface GpuPointCloudProjectionResourceInput {
   /** Immutable frame identity. Re-delivery of the same content is ignored. */
   readonly contentKey: string;
@@ -15,6 +16,7 @@ export interface GpuPointCloudProjectionResourceInput {
   readonly streamKey: string;
 }
 
+/** Grow-only GPU attributes shared by every view of one point-cloud topic. */
 export interface GpuPointCloudProjectionResource {
   colorAttribute: THREE.InstancedBufferAttribute | null;
   /** Immutable frame identity currently resident in the reusable buffers. */
@@ -111,6 +113,7 @@ export function retainGpuPointCloudProjectionResource(
   };
 }
 
+/** Returns allocation and retention counters for projection resources. */
 export function gpuPointCloudProjectionResourceStats(): {
   readonly activeCount: number;
   readonly entryCount: number;
@@ -154,6 +157,7 @@ export function releaseGpuPointCloudProjectionResourcesForSource(
   scheduleRetiredDisposal();
 }
 
+/** Clears projection resources and counters between tests. */
 export function resetGpuPointCloudProjectionResourcesForTests(): void {
   releaseGpuPointCloudProjectionResources();
   totalFrameUpdates = 0;

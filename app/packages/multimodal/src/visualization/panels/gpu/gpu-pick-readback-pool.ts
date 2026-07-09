@@ -18,6 +18,7 @@ interface PickReadbackRenderer {
   ): Promise<ArrayBufferView>;
 }
 
+/** Exclusive lease for reading one-texel GPU picking results. */
 export interface GpuPickReadbackLease {
   read(renderTarget: THREE.RenderTarget): Promise<ArrayBufferView>;
   release(): void;

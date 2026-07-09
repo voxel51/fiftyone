@@ -4,7 +4,7 @@ import { sourcePointIndexForRenderedIndex } from "./point-cloud-colors";
 import {
   gpuPointCloudDrawCount,
   gpuPointCloudSampleIndex,
-} from "./gpu-point-cloud-sampling";
+} from "./gpu/gpu-point-cloud-sampling";
 import type { PointCloudPanelLayer } from "./types";
 
 /**
