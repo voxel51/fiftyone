@@ -269,6 +269,10 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               onTagDelete={onTagDelete}
               sharedImageWebGpuViews={sharedImageWebGpuViews}
               className={className}
+              // The multimodal playback modal always starts with the timeline
+              // drawer closed, so only pinned tracks (e.g. those auto-pinned
+              // from a temporal-tag grid filter) show until the user opens it.
+              timelineDrawerDefaultOpen={false}
             />
           </TilingProvider>
         </SceneInventoryProvider>
@@ -296,6 +300,8 @@ interface LayoutProps {
   onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
   sharedImageWebGpuViews: boolean;
   className?: string;
+  /** Initial open state for the timeline drawer. */
+  timelineDrawerDefaultOpen: boolean;
 }
 
 function Layout({
@@ -317,6 +323,7 @@ function Layout({
   onTagDelete,
   sharedImageWebGpuViews,
   className,
+  timelineDrawerDefaultOpen,
 }: LayoutProps) {
   const {
     layout,
@@ -488,6 +495,10 @@ function Layout({
       </div>
 
       <TemporalTagTimeline
+        // Computed by the parent from `defaultPinnedTrackIds`: closed when
+        // opened from a temporal-tag grid filter so only the pinned (filtered)
+        // tracks show, open otherwise.
+        defaultDrawerOpen={timelineDrawerDefaultOpen}
         extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}
         eventMenuItems={

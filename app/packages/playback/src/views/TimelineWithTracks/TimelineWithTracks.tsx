@@ -35,6 +35,14 @@ export interface TimelineWithTracksProps {
    */
   maxSize?: number;
   className?: string;
+  /**
+   * Whether the drawer starts open. Mount-time only — user toggles thereafter
+   * persist until the next remount. Defaults to `true` so the annotation
+   * surface shows the timeline immediately; the mcap modal passes `false` when
+   * opened from a temporal-tag filter so only the pinned (filtered) tracks show.
+   * @default true
+   */
+  defaultDrawerOpen?: boolean;
   /** Overlay rendered on top of the ruler row in each TimelineHeader. */
   rulerOverlay?: React.ReactNode;
   /**
@@ -78,6 +86,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   labelWidth: requestedLabelWidth = TIMELINE_LABEL_WIDTH,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
+  defaultDrawerOpen = true,
   rulerOverlay,
   eventMenuItems,
   extraControls,
@@ -88,11 +97,13 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   const tracks = useTracks();
   const { pinnedIds, togglePin } = useTrackPinning();
   const { seekSnapped } = usePlayback();
-  // Drawer starts open: the annotation surface remounts on each entry to
-  // annotate mode (sample change / mode toggle), so an initial-`true` covers
-  // the "make the timeline visible immediately" case without a tracks-length
-  // effect. User-initiated collapses persist until the next remount.
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  // Drawer starts open by default: the annotation surface remounts on each
+  // entry to annotate mode (sample change / mode toggle), so an initial-`true`
+  // covers the "make the timeline visible immediately" case without a
+  // tracks-length effect. Callers opened from a temporal-tag filter pass
+  // `defaultDrawerOpen={false}` so only the pinned (filtered) tracks show.
+  // User-initiated collapses/expands persist until the next remount.
+  const [drawerOpen, setDrawerOpen] = useState(defaultDrawerOpen);
 
   const labelWidth = tracks.length === 0 ? 0 : requestedLabelWidth;
 
