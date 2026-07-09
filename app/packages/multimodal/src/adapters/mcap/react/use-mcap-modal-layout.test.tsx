@@ -22,6 +22,7 @@ vi.mock("./McapImageTile", () => ({
   ),
 }));
 vi.mock("./Mcap3dTile", () => ({ default: () => null }));
+vi.mock("./McapMapTile", () => ({ default: () => null }));
 
 const SCENE_SOURCES: readonly SceneSource[] = [
   { id: "/cam/image_rect_compressed", type: "image", label: "cam" },

@@ -10,6 +10,7 @@ import McapAddTileMenu from "./McapAddTileMenu";
 vi.mock("./McapImageTile", () => ({ default: () => null }));
 vi.mock("./Mcap3dTile", () => ({ default: () => null }));
 vi.mock("./McapLogConsoleTile", () => ({ default: () => null }));
+vi.mock("./McapMapTile", () => ({ default: () => null }));
 vi.mock("./McapPlotTile", () => ({ default: () => null }));
 vi.mock("./McapRawMessageTile", () => ({ default: () => null }));
 
@@ -65,6 +66,7 @@ describe("McapAddTileMenu", () => {
 
     expect(screen.getByText("Image")).toBeTruthy();
     expect(screen.getByText("3D")).toBeTruthy();
+    expect(screen.getByText("Map")).toBeTruthy();
     expect(screen.getByText("Logs")).toBeTruthy();
     expect(screen.getByText("Plot")).toBeTruthy();
     expect(screen.getByText("Message")).toBeTruthy();

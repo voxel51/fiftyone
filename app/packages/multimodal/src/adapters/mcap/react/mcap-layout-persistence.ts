@@ -3,6 +3,11 @@ import {
   normalizeMcap3dSceneUpAxis,
   type Mcap3dSceneUpAxis,
 } from "./mcap-3d-scene-up";
+import {
+  DEFAULT_MCAP_MAP_TILE_SETTINGS,
+  normalizeMcapMapBaseLayer,
+  type McapMapTileSettings,
+} from "./mcap-map-tile-state";
 import { MCAP_TILE_TYPE } from "./mcap-tile-types";
 
 /**
@@ -37,6 +42,11 @@ export interface McapPersistedModalLayout {
    */
   plotSeries?: Record<string, readonly McapPersistedPlotSeries[]>;
   /**
+   * Map tile topic visibility and follow/basemap preferences. Dataset-scoped:
+   * topic names belong to one recording family.
+   */
+  mapSettings?: Record<string, McapPersistedMapSettings>;
+  /**
    * Inspected topic per raw-message tile id. Topics belong to one
    * dataset's recordings, so this field is dataset-scoped only — like
    * `plotSeries`, never merged into the browser-wide fallback.
@@ -67,12 +77,17 @@ export interface McapPersistedPlotSeries {
   readonly topic: string;
 }
 
+export type McapPersistedMapSettings = McapMapTileSettings;
+
 // Bound the persisted plot config so a corrupt or adversarial payload
 // cannot balloon the localStorage entry parsed on every modal mount.
 const MAX_PLOT_TILES = 32;
 const MAX_PLOT_SERIES_PER_TILE = 64;
 const MAX_RAW_TILES = 32;
 const MAX_RAW_TOPIC_LENGTH = 512;
+const MAX_MAP_TILES = 16;
+const MAX_MAP_TOPICS_PER_TILE = 64;
+const MAX_MAP_TOPIC_LENGTH = 512;
 const MAX_TILE_TITLES = 64;
 const MAX_TILE_TITLE_LENGTH = 160;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
@@ -92,6 +107,7 @@ interface PersistedStore {
 const STORAGE_KEY = "fiftyone.mcap.modal-layout";
 const STORAGE_VERSION = 1;
 const FALLBACK_OMITTED_FIELDS = [
+  "mapSettings",
   "plotSeries",
   "rawTopics",
   "sceneUpAxis",
@@ -134,6 +150,7 @@ function sanitizeEntry(raw: unknown): McapPersistedModalLayout | undefined {
     layout: isValidMosaicLayout(candidate.layout)
       ? candidate.layout
       : undefined,
+    mapSettings: sanitizeMapSettings(candidate.mapSettings),
     plotSeries: sanitizePlotSeries(candidate.plotSeries),
     rawTopics: sanitizeRawTopics(candidate.rawTopics),
     sceneUpAxis: normalizeMcap3dSceneUpAxis(candidate.sceneUpAxis),
@@ -232,6 +249,74 @@ export function sanitizeRawTopics(
   }
 
   return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/**
+ * Structural validation of per-map tile settings. Topic arrays are allowed
+ * to be empty (the user may hide every GPS topic), topic strings are bounded,
+ * and only map tile ids are restored.
+ */
+export function sanitizeMapSettings(
+  raw: unknown,
+): Record<string, McapPersistedMapSettings> | undefined {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const result: Record<string, McapPersistedMapSettings> = {};
+  let tileCount = 0;
+  for (const [tileId, settings] of Object.entries(raw)) {
+    if (
+      tileCount >= MAX_MAP_TILES ||
+      mcapTileTypeFromId(tileId) !== MCAP_TILE_TYPE.MAP ||
+      typeof settings !== "object" ||
+      settings === null ||
+      Array.isArray(settings)
+    ) {
+      continue;
+    }
+
+    const record = settings as Record<string, unknown>;
+    const baseLayer =
+      normalizeMcapMapBaseLayer(record.baseLayer) ??
+      DEFAULT_MCAP_MAP_TILE_SETTINGS.baseLayer;
+    const enabledTopics = sanitizeMapTopicList(record.enabledTopics);
+    const followEgo =
+      typeof record.followEgo === "boolean"
+        ? record.followEgo
+        : DEFAULT_MCAP_MAP_TILE_SETTINGS.followEgo;
+
+    result[tileId] = {
+      baseLayer,
+      followEgo,
+      ...(enabledTopics !== undefined ? { enabledTopics } : {}),
+    };
+    tileCount += 1;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function sanitizeMapTopicList(raw: unknown): readonly string[] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+  const topics: string[] = [];
+  const seen = new Set<string>();
+  for (const value of raw) {
+    if (topics.length >= MAX_MAP_TOPICS_PER_TILE) break;
+    if (
+      typeof value !== "string" ||
+      value.length === 0 ||
+      value.length > MAX_MAP_TOPIC_LENGTH ||
+      seen.has(value)
+    ) {
+      continue;
+    }
+    seen.add(value);
+    topics.push(value);
+  }
+  return topics;
 }
 
 /**
