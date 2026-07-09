@@ -53,7 +53,7 @@ export function detectionResult(classId: string, score: number) {
   };
 }
 
-function poseRecord(
+export function poseRecord(
   position: readonly [number, number, number],
   quaternion: readonly [number, number, number, number],
 ) {
@@ -68,7 +68,7 @@ function poseRecord(
   };
 }
 
-function vectorRecord(vector: readonly [number, number, number]) {
+export function vectorRecord(vector: readonly [number, number, number]) {
   return {
     x: vector[0],
     y: vector[1],

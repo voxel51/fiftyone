@@ -60,7 +60,12 @@ import {
   rosRclLogDecoders,
   rosRosgraphLogDecoders,
 } from "./ros";
-import { detection2DRecord, detection3DRecord } from "./ros.test-fixtures";
+import {
+  detection2DRecord,
+  detection3DRecord,
+  poseRecord,
+  vectorRecord,
+} from "./ros.test-fixtures";
 
 const TEXT_ENCODER = new TextEncoder();
 const H264_KEYFRAME_BYTES = Uint8Array.of(
@@ -2004,29 +2009,6 @@ function float32Bytes(
     view.setFloat32(index * 4, value, littleEndian);
   });
   return Array.from(data);
-}
-
-function poseRecord(
-  position: readonly [number, number, number],
-  quaternion: readonly [number, number, number, number],
-) {
-  return {
-    orientation: {
-      w: quaternion[3],
-      x: quaternion[0],
-      y: quaternion[1],
-      z: quaternion[2],
-    },
-    position: vectorRecord(position),
-  };
-}
-
-function vectorRecord(vector: readonly [number, number, number]) {
-  return {
-    x: vector[0],
-    y: vector[1],
-    z: vector[2],
-  };
 }
 
 function markerRecord({

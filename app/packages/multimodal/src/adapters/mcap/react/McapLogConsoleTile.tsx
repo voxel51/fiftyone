@@ -43,9 +43,8 @@ interface LogRowsState {
 
 interface LogRowsCacheWindow {
   readonly client: unknown;
-  readonly endTimeNs: bigint;
+  readonly ranges: readonly LogReadRange[];
   readonly sourceKey: string;
-  readonly startTimeNs: bigint;
   readonly topicsKey: string;
 }
 
@@ -146,33 +145,37 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
       setState(INITIAL_ROWS);
       return undefined;
     }
-    if (selectedLevels.length === 0) {
-      setState((current) =>
-        current.status === "loading"
-          ? { ...current, error: undefined, status: "ready" }
-          : current,
-      );
-      return undefined;
-    }
 
     let cancelled = false;
-    const startTimeNs = logWindowStartNs(centerTimeNs);
-    const endTimeNs = centerTimeNs + LOG_WINDOW_AFTER_NS;
+    const activeWindow = logWindowForCenter(centerTimeNs);
     const cachedWindow = fetchedWindowRef.current;
     const reusableWindow =
       cachedWindow?.client === client &&
       cachedWindow.sourceKey === sourceKey &&
       cachedWindow.topicsKey === selectedTopicsKey
-        ? cachedWindow
+        ? clipLogCacheWindow(cachedWindow, activeWindow)
         : null;
-    const ranges = missingLogReadRanges(reusableWindow, startTimeNs, endTimeNs);
+    fetchedWindowRef.current = reusableWindow;
+
+    if (selectedLevels.length === 0) {
+      setState((current) => ({
+        ...current,
+        error: undefined,
+        rawRows: pruneLogRows(current.rawRows, activeWindow),
+        status: "ready",
+      }));
+      return undefined;
+    }
+
+    const ranges = missingLogReadRanges(reusableWindow, activeWindow);
 
     if (ranges.length === 0) {
-      setState((current) =>
-        current.status === "ready"
+      setState((current) => {
+        const rawRows = pruneLogRows(current.rawRows, activeWindow);
+        return current.status === "ready" && rawRows === current.rawRows
           ? current
-          : { ...current, error: undefined, status: "ready" },
-      );
+          : { ...current, error: undefined, rawRows, status: "ready" };
+      });
       return undefined;
     }
 
@@ -183,14 +186,20 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
       setState((current) => ({
         ...current,
         error: undefined,
+        rawRows: pruneLogRows(current.rawRows, activeWindow),
         status: "loading",
       }));
     }
 
     void (async () => {
       try {
+        const coveredRanges: LogReadRange[] = reusableWindow
+          ? [...reusableWindow.ranges]
+          : [];
         const fetchedRows: McapLogConsoleRow[] = [];
         for (const range of ranges) {
+          let messageCount = 0;
+          let lastMessageTimeNs: bigint | undefined;
           for await (const message of client.readDecodedMessages(
             {
               endTimeNs: range.endTimeNs,
@@ -204,11 +213,16 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
             if (cancelled) {
               break;
             }
+            messageCount += 1;
+            lastMessageTimeNs = message.timelineTimeNs;
             fetchedRows.push(...logConsoleRowsFromDecodedMessage(message));
           }
           if (cancelled) {
             break;
           }
+          coveredRanges.push(
+            coveredLogReadRange(range, messageCount, lastMessageTimeNs),
+          );
         }
 
         if (cancelled) {
@@ -217,22 +231,21 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
 
         fetchedWindowRef.current = {
           client,
-          endTimeNs: maxBigInt(reusableWindow?.endTimeNs, endTimeNs),
+          ranges: mergeLogReadRanges(coveredRanges, activeWindow),
           sourceKey,
-          startTimeNs: minBigInt(reusableWindow?.startTimeNs, startTimeNs),
           topicsKey: selectedTopicsKey,
         };
         setState((current) => ({
-          rawRows: reusableWindow
-            ? mergeLogRows(current.rawRows, fetchedRows)
-            : fetchedRows,
+          rawRows: mergeLogRows(current.rawRows, fetchedRows, activeWindow),
           status: "ready",
         }));
       } catch (error) {
         if (!cancelled) {
           setState((current) => ({
             error: error instanceof Error ? error.message : String(error),
-            rawRows: reusableWindow ? current.rawRows : [],
+            rawRows: reusableWindow
+              ? pruneLogRows(current.rawRows, activeWindow)
+              : [],
             status: "error",
           }));
         }
@@ -377,64 +390,140 @@ function logWindowStartNs(centerTimeNs: bigint): bigint {
     : 0n;
 }
 
+function logWindowForCenter(centerTimeNs: bigint): LogReadRange {
+  return {
+    endTimeNs: centerTimeNs + LOG_WINDOW_AFTER_NS,
+    startTimeNs: logWindowStartNs(centerTimeNs),
+  };
+}
+
+function clipLogCacheWindow(
+  cachedWindow: LogRowsCacheWindow,
+  activeWindow: LogReadRange,
+): LogRowsCacheWindow | null {
+  const ranges = mergeLogReadRanges(cachedWindow.ranges, activeWindow);
+  return ranges.length > 0 ? { ...cachedWindow, ranges } : null;
+}
+
 function missingLogReadRanges(
   cachedWindow: LogRowsCacheWindow | null,
-  startTimeNs: bigint,
-  endTimeNs: bigint,
+  activeWindow: LogReadRange,
 ): readonly LogReadRange[] {
   if (!cachedWindow) {
-    return [{ endTimeNs, startTimeNs }];
+    return [activeWindow];
   }
 
   const ranges: LogReadRange[] = [];
-  if (startTimeNs < cachedWindow.startTimeNs) {
-    ranges.push({ endTimeNs: cachedWindow.startTimeNs, startTimeNs });
+  let cursor = activeWindow.startTimeNs;
+  for (const covered of cachedWindow.ranges) {
+    if (covered.startTimeNs > cursor) {
+      ranges.push({ endTimeNs: covered.startTimeNs, startTimeNs: cursor });
+    }
+    if (covered.endTimeNs > cursor) {
+      cursor = covered.endTimeNs;
+    }
+    if (cursor >= activeWindow.endTimeNs) {
+      break;
+    }
   }
-  if (endTimeNs > cachedWindow.endTimeNs) {
-    ranges.push({ endTimeNs, startTimeNs: cachedWindow.endTimeNs });
+  if (cursor < activeWindow.endTimeNs) {
+    ranges.push({ endTimeNs: activeWindow.endTimeNs, startTimeNs: cursor });
   }
 
   return ranges;
 }
 
+function coveredLogReadRange(
+  range: LogReadRange,
+  messageCount: number,
+  lastMessageTimeNs: bigint | undefined,
+): LogReadRange {
+  if (messageCount >= LOG_READ_LIMIT && lastMessageTimeNs !== undefined) {
+    return {
+      endTimeNs: minBigInt(lastMessageTimeNs, range.endTimeNs),
+      startTimeNs: range.startTimeNs,
+    };
+  }
+
+  return range;
+}
+
+function mergeLogReadRanges(
+  ranges: readonly LogReadRange[],
+  activeWindow: LogReadRange,
+): readonly LogReadRange[] {
+  const clippedRanges: LogReadRange[] = [];
+  for (const range of ranges) {
+    const startTimeNs = maxBigInt(range.startTimeNs, activeWindow.startTimeNs);
+    const endTimeNs = minBigInt(range.endTimeNs, activeWindow.endTimeNs);
+    if (startTimeNs <= endTimeNs) {
+      clippedRanges.push({ endTimeNs, startTimeNs });
+    }
+  }
+  clippedRanges.sort((left, right) =>
+    compareBigInt(left.startTimeNs, right.startTimeNs),
+  );
+
+  const merged: LogReadRange[] = [];
+  for (const range of clippedRanges) {
+    const previous = merged[merged.length - 1];
+    if (!previous || range.startTimeNs > previous.endTimeNs) {
+      merged.push(range);
+      continue;
+    }
+    if (range.endTimeNs > previous.endTimeNs) {
+      merged[merged.length - 1] = {
+        ...previous,
+        endTimeNs: range.endTimeNs,
+      };
+    }
+  }
+
+  return merged;
+}
+
 function mergeLogRows(
   current: readonly McapLogConsoleRow[],
   incoming: readonly McapLogConsoleRow[],
+  activeWindow: LogReadRange,
 ): readonly McapLogConsoleRow[] {
+  const retainedRows = pruneLogRows(current, activeWindow);
   if (incoming.length === 0) {
-    return current;
+    return retainedRows;
   }
 
-  const rowsById = new Map(current.map((row) => [row.id, row]));
+  const rowsById = new Map(retainedRows.map((row) => [row.id, row]));
   for (const row of incoming) {
-    rowsById.set(row.id, row);
+    if (logRowInWindow(row, activeWindow)) {
+      rowsById.set(row.id, row);
+    }
   }
   return Array.from(rowsById.values());
 }
 
-function minBigInt(
-  left: bigint | undefined,
-  right: bigint | undefined,
-): bigint {
-  if (left === undefined) {
-    return right ?? 0n;
-  }
-  if (right === undefined) {
-    return left;
-  }
+function pruneLogRows(
+  rows: readonly McapLogConsoleRow[],
+  activeWindow: LogReadRange,
+): readonly McapLogConsoleRow[] {
+  const retainedRows = rows.filter((row) => logRowInWindow(row, activeWindow));
+  return retainedRows.length === rows.length ? rows : retainedRows;
+}
+
+function logRowInWindow(
+  row: McapLogConsoleRow,
+  activeWindow: LogReadRange,
+): boolean {
+  return (
+    row.timeNs >= activeWindow.startTimeNs &&
+    row.timeNs <= activeWindow.endTimeNs
+  );
+}
+
+function minBigInt(left: bigint, right: bigint): bigint {
   return left < right ? left : right;
 }
 
-function maxBigInt(
-  left: bigint | undefined,
-  right: bigint | undefined,
-): bigint {
-  if (left === undefined) {
-    return right ?? 0n;
-  }
-  if (right === undefined) {
-    return left;
-  }
+function maxBigInt(left: bigint, right: bigint): bigint {
   return left > right ? left : right;
 }
 

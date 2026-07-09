@@ -20,7 +20,12 @@ import {
   isSceneUpdateStream,
   streamTopics,
 } from "../../stream-topics";
-import { detection2DRecord, detection3DRecord } from "../ros.test-fixtures";
+import {
+  detection2DRecord,
+  detection3DRecord,
+  poseRecord,
+  vectorRecord,
+} from "../ros.test-fixtures";
 import {
   JSON_ROS_CAMERA_INFO_PAYLOADS,
   JSON_ROS_COMPRESSED_IMAGE_PAYLOADS,
@@ -791,29 +796,6 @@ function pointCloud2Data(
   });
 
   return Array.from(data);
-}
-
-function poseRecord(
-  position: readonly [number, number, number],
-  quaternion: readonly [number, number, number, number],
-) {
-  return {
-    orientation: {
-      w: quaternion[3],
-      x: quaternion[0],
-      y: quaternion[1],
-      z: quaternion[2],
-    },
-    position: vectorRecord(position),
-  };
-}
-
-function vectorRecord(vector: readonly [number, number, number]) {
-  return {
-    x: vector[0],
-    y: vector[1],
-    z: vector[2],
-  };
 }
 
 function createTopic(
