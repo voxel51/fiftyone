@@ -61,6 +61,33 @@ describe("RunsList", () => {
     ).toBeNull();
   });
 
+  // The create affordance is capability-gated by the host: no onCreate
+  // (builds that can't compute) must mean no button anywhere
+  it("renders the create button only when the host provides onCreate", () => {
+    const { rerender } = render(
+      <RunsList
+        runs={[run("clip_umap")]}
+        error={null}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("New visualization")).toBeNull();
+
+    const onCreate = vi.fn();
+    rerender(
+      <RunsList
+        runs={[run("clip_umap")]}
+        error={null}
+        onCreate={onCreate}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText("New visualization"));
+    expect(onCreate).toHaveBeenCalled();
+  });
+
   it("deletes only through the armed confirm step", () => {
     const onDelete = vi.fn();
     const onOpen = vi.fn();

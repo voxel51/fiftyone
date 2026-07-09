@@ -43,6 +43,7 @@ export default function RunsList({
   error,
   actionError = null,
   showUpsell = true,
+  onCreate,
   onOpen,
   onDelete,
 }: {
@@ -52,6 +53,12 @@ export default function RunsList({
   actionError?: string | null;
   /** Advertise capabilities this build lacks; off where they exist */
   showUpsell?: boolean;
+  /**
+   * Launches the compute-visualization flow. Only builds that can
+   * compute (operator present, user permitted) pass this; without it
+   * no create affordance renders.
+   */
+  onCreate?: () => void;
   onOpen: (brainKey: string) => void;
   onDelete: (brainKey: string) => void;
 }) {
@@ -95,6 +102,15 @@ export default function RunsList({
           <Text variant={TextVariant.Md} color={TextColor.Secondary}>
             {runs.length} visualization{runs.length === 1 ? "" : "s"}
           </Text>
+          {onCreate && (
+            <Button
+              size={Size.Sm}
+              leadingIcon={IconName.Add}
+              onClick={onCreate}
+            >
+              New visualization
+            </Button>
+          )}
         </div>
       )}
       <div className="emb-runs-scroll">
@@ -115,11 +131,21 @@ export default function RunsList({
               title="Visualize your embeddings"
               description="Compute a visualization to explore your dataset in a low-dimensional embedding space."
             />
-            <Text variant={TextVariant.Sm} color={TextColor.Muted}>
-              <code>
-                {'fob.compute_visualization(dataset, brain_key="viz")'}
-              </code>
-            </Text>
+            {onCreate ? (
+              <Button
+                size={Size.Sm}
+                leadingIcon={IconName.Add}
+                onClick={onCreate}
+              >
+                New visualization
+              </Button>
+            ) : (
+              <Text variant={TextVariant.Sm} color={TextColor.Muted}>
+                <code>
+                  {'fob.compute_visualization(dataset, brain_key="viz")'}
+                </code>
+              </Text>
+            )}
           </div>
         ) : (
           <div className="emb-runs-stack" style={{ marginTop: "1rem" }}>
