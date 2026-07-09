@@ -84,6 +84,7 @@
         "date-fns": "^4.1.0",
         "jotai": "^2.9.3",
         "lru-cache": "^11.0.1",
+        "maplibre-gl": "^4.7.1",
         "meshoptimizer": "^0.22.0",
         "protobufjs": "^7.6.4",
         "three": "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch",
