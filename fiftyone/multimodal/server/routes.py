@@ -159,10 +159,15 @@ class TagCountsEndpoint(HTTPEndpoint):
 
         dataset = _get_dataset_from_request(request)
         tag_filter = _temporal_tag_filter_from_query(request)
+        by_sample = (
+            request.query_params.get("by_sample", "").lower() == "true"
+        )
 
         return {
             "counts": _handle_temporal_tag_errors(
-                lambda: fota.count_temporal_tags(dataset, filter=tag_filter)
+                lambda: fota.count_temporal_tags(
+                    dataset, filter=tag_filter, by_sample=by_sample
+                )
             )
         }
 
