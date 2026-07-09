@@ -101,7 +101,7 @@ class TestSamplesRoute:
         samples = _parse(await samples_endpoint.post(request))
 
         assert len(samples) == 3
-        fields = [json.loads(s["fields"]) for s in samples]
+        fields = [s["fields"] for s in samples]
         assert [f["scene"] for f in fields] == ["scene-a"] * 3
         assert [f["frame_index"] for f in fields] == [1, 2, 3]
         assert all(
@@ -114,7 +114,7 @@ class TestSamplesRoute:
         """Only requested + identifier paths leave the database."""
         request = make_request({"view": [], "count": 1, "fields": ["scene"]})
         (sample,) = _parse(await samples_endpoint.post(request))
-        fields = json.loads(sample["fields"])
+        fields = sample["fields"]
 
         assert "scene" in fields
         assert "filepath" in fields
@@ -131,7 +131,7 @@ class TestSamplesRoute:
             }
         )
         (sample,) = _parse(await samples_endpoint.post(request))
-        fields = json.loads(sample["fields"])
+        fields = sample["fields"]
 
         assert "frame_index" not in fields
         assert "filepath" in fields
