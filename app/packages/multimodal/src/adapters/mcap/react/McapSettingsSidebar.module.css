@@ -11,6 +11,21 @@
   padding: 12px 16px;
 }
 
+.stickyTabList {
+  isolation: isolate;
+  position: sticky;
+  top: 8px;
+  z-index: 2;
+}
+
+.stickyTabList::before {
+  background: var(--color-content-bg-background);
+  content: "";
+  inset: -20px -16px -8px;
+  position: absolute;
+  z-index: -1;
+}
+
 .tabContent {
   margin-top: 12px;
 }
@@ -111,6 +126,21 @@
 .topicSearchInput {
   min-width: 0;
   width: 100%;
+}
+
+.stickyTopicSearch {
+  isolation: isolate;
+  position: sticky;
+  top: 52px;
+  z-index: 1;
+}
+
+.stickyTopicSearch::before {
+  background: var(--color-content-bg-background);
+  content: "";
+  inset: -8px 0;
+  position: absolute;
+  z-index: -1;
 }
 
 .topicRow {
