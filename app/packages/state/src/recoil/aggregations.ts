@@ -4,6 +4,7 @@ import {
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
   INT_FIELD,
+  LABELS,
   LIST_FIELD,
   OBJECT_ID_FIELD,
   STRING_FIELD,
@@ -26,6 +27,7 @@ import {
   groupStatistics,
 } from "./groups";
 import { sidebarSampleId } from "./modal";
+import { pathFilter } from "./pathFilters";
 import { activeIndex, queryPerformance } from "./queryPerformance";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -147,6 +149,34 @@ const collectLeafValues = (obj: unknown, segments: string[]): unknown[] => {
   );
 };
 
+// Copy-on-write prune of the label value(s) at a dotted path, descending
+// through arrays (e.g. frames); single-label fields prune to null.
+const pruneAtPath = (
+  value: unknown,
+  segments: string[],
+  prune: (labels: unknown[]) => unknown[],
+): unknown => {
+  if (value === null || value === undefined) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => pruneAtPath(item, segments, prune));
+  }
+  const obj = value as Record<string, unknown>;
+  const [head, ...rest] = segments;
+  if (!(head in obj)) {
+    return value;
+  }
+  const child = obj[head];
+  if (rest.length) {
+    return { ...obj, [head]: pruneAtPath(child, rest, prune) };
+  }
+  return {
+    ...obj,
+    [head]: Array.isArray(child) ? prune(child) : (prune([child])[0] ?? null),
+  };
+};
+
 // Compute one path's aggregation for a single sample, matching the server's per-type result shapes.
 const computeSampleAggregation = (
   ftype: string | undefined,
@@ -255,7 +285,7 @@ const computeSampleAggregation = (
 /** Modal sidebar aggregations computed client-side from the cached sample JSON. */
 export const modalSampleAggregations = selectorFamily<
   Aggregation[],
-  { paths: string[]; mixed?: boolean }
+  { paths: string[]; mixed?: boolean; extended?: boolean }
 >({
   key: "modalSampleAggregations",
   get:
@@ -275,6 +305,41 @@ export const modalSampleAggregations = selectorFamily<
         return [];
       }
 
+      // extended: prune the sample the way the server's extended pipeline
+      // rewrites label lists — drop labels failing the modal filters (the SAME
+      // predicate the looker renders with) — then aggregate the pruned sample.
+      // NEVER a server aggregation: the predicate is pure client filter state
+      let source = sample;
+      if (params.extended) {
+        const filterFn = get(pathFilter(true));
+        const filterKeys = Object.keys(get(filterAtoms.modalFilters) ?? {});
+        const hasTagsFilter = filterKeys.includes("_label_tags");
+
+        for (const activePath of get(
+          schemaAtoms.activeFields({ modal: true }),
+        )) {
+          const field = get(schemaAtoms.field(activePath));
+          if (!field || !LABELS.includes(field.embeddedDocType)) {
+            continue;
+          }
+          const expanded = get(schemaAtoms.expandPath(activePath));
+          const scoped =
+            hasTagsFilter ||
+            filterKeys.some(
+              (key) =>
+                key === activePath ||
+                key.startsWith(`${activePath}.`) ||
+                key.startsWith(`${expanded}.`),
+            );
+          if (!scoped) {
+            continue;
+          }
+          source = pruneAtPath(source, expanded.split("."), (labels) =>
+            labels.filter((label) => filterFn(activePath, label)),
+          ) as Record<string, unknown>;
+        }
+      }
+
       return params.paths.map((path) => {
         const field = get(schemaAtoms.field(path));
         // vectors are never aggregated; flattening one would count its elements
@@ -289,7 +354,7 @@ export const modalSampleAggregations = selectorFamily<
           field?.ftype,
           field?.subfield ?? undefined,
           path,
-          sample,
+          source,
         );
       });
     },
@@ -308,13 +373,14 @@ export const aggregations = selectorFamily({
     ({ get }) => {
       if (params) {
         // the modal sidebar derives ONLY from the cached sample JSON — modal
-        // interactions never trigger a server aggregation (extended subcounts
-        // mirror unfiltered counts until client-side filtering lands)
+        // interactions never trigger a server aggregation; extended subcounts
+        // apply the active modal filters client-side
         if (params.modal) {
           return get(
             modalSampleAggregations({
               paths: params.paths,
               mixed: params.mixed,
+              extended: params.extended && get(filterAtoms.hasFilters(true)),
             }),
           );
         }
