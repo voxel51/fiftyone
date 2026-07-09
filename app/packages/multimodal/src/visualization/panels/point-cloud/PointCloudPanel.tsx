@@ -1,6 +1,7 @@
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import MeasureRulerIcon from "../../../components/MeasureRulerIcon";
 import { Base3DScene } from "../base-3d-scene";
 import { WebGpuCanvas } from "../webgpu-canvas";
 import {
@@ -435,27 +436,6 @@ function ColorRampLegend({
         </div>
       ))}
     </div>
-  );
-}
-
-/** Diagonal ruler glyph for the measure toggle — IconName has none. */
-function MeasureRulerIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 17 17 3l4 4L7 21z" />
-      <path d="m8 12 2 2" />
-      <path d="m11 9 2 2" />
-      <path d="m14 6 2 2" />
-    </svg>
   );
 }
 

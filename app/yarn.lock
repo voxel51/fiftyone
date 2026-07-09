@@ -3225,6 +3225,7 @@ __metadata:
     date-fns: "npm:^4.1.0"
     jotai: "npm:^2.9.3"
     lru-cache: "npm:^11.0.1"
+    maplibre-gl: "npm:^4.7.1"
     meshoptimizer: "npm:^0.22.0"
     protobufjs: "npm:^7.6.4"
     three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
