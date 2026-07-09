@@ -296,9 +296,9 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   ? `${selectedProjectionTopics.length} of ${pointCloudSources.length} on`
                   : undefined
               }
-              title="Pointcloud overlay"
+              title="Pointcloud projections"
               toggle={{
-                ariaLabel: "Toggle pointcloud overlay",
+                ariaLabel: "Toggle pointcloud projections",
                 checked: projection.enabled,
                 // Master toggle drives the children: on selects every
                 // cloud, off unchecks them all.
@@ -321,27 +321,6 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   />
                 ))}
               </div>
-              <Dropdown
-                anchor={DropdownAnchor.BottomStart}
-                trigger={
-                  <DropdownTrigger>
-                    {projection.colorBy === "intensity"
-                      ? "Color by intensity"
-                      : "Color by depth"}
-                  </DropdownTrigger>
-                }
-              >
-                <MenuTextItem
-                  onClick={() => setProjection({ colorBy: "depth" })}
-                >
-                  Depth
-                </MenuTextItem>
-                <MenuTextItem
-                  onClick={() => setProjection({ colorBy: "intensity" })}
-                >
-                  Intensity
-                </MenuTextItem>
-              </Dropdown>
             </McapSidebarGroup>
           ) : null}
         </div>
@@ -379,7 +358,6 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
           selectedProjectionTopics.length > 0 ? (
             <McapImageProjectionOverlay
               calibration={calibration}
-              colorBy={projection.colorBy}
               fit={IMAGE_FIT}
               imageHeight={effectiveImageDims.height}
               imageWidth={effectiveImageDims.width}

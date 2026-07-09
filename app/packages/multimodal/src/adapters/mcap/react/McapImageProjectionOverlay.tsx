@@ -1,10 +1,17 @@
 import { useSetAtom } from "jotai";
-import React, { useEffect, useRef, useState, type CSSProperties } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 import type {
   CameraCalibrationVisualization,
   PointCloudVisualization,
 } from "../../../decoders";
+import { useSceneSourcesByType } from "../../../scene-inventory";
 import {
   imageDisplayRect,
   transformedImageDisplayRect,
@@ -22,8 +29,11 @@ import {
 } from "../../../visualization/panels/style-tokens";
 import {
   complementaryRgbUnit,
-  sampleColormap,
+  createPointCloudColorWriter,
+  DEFAULT_POINT_SIZE,
+  type PointCloudColorOptions,
 } from "../../../visualization/panels/point-cloud";
+import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import {
   drawProjectedPoints,
   hasNonTrivialDistortion,
@@ -33,7 +43,10 @@ import {
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import { mcapHoverEchoAtom, useMcapHoverEcho } from "./mcap-hover-echo";
 import { mcapHoveredPointForFrame } from "./mcap-point-hover";
-import type { McapImageProjectionColorBy } from "./mcap-modal-settings";
+import {
+  defaultMcapPointCloudColorForSource,
+  useMcapPointCloudStyleSettings,
+} from "./mcap-modal-settings";
 import {
   Mcap3dHoverTooltip,
   type Mcap3dHoverTooltipState,
@@ -46,7 +59,6 @@ import { useMcapTopicPlaybackFrames } from "./use-mcap-topic-stream";
 const MAX_OFFSCREEN_DIMENSION_PX = 2_048;
 // Backing-store DPR cap for the visible canvas.
 const MAX_CANVAS_DPR = 2;
-const PROJECTION_COLORMAP = "turbo";
 // Hover echo: the projected dot of the 3D-hovered point grows by 10% in
 // its complementary color, easing in over a short beat. Sized in screen
 // pixels with a floor so the intersected dot reads clearly at any zoom.
@@ -67,47 +79,60 @@ interface ProjectionHoverEcho {
 }
 
 /**
- * Lidar→camera projection overlay for image tiles: projects the selected
- * point clouds through /tf into the camera frame, applies the rectified
- * projection (`P`, falling back to pinhole `K`), and draws the surviving
- * points as colormapped dots between the image and its annotation layer.
+ * Pointcloud projections for image tiles: projects the selected clouds
+ * through /tf into the camera frame, applies the rectified projection
+ * (`P`, falling back to pinhole `K`), and draws the surviving points
+ * between the image and its annotation layer. Projections carry no
+ * styling of their own — every cloud renders with its 3D colour
+ * settings and point size, so both views read identically.
  *
  * Structured as project-once + blit-many: point projection re-runs only
- * when a lidar frame, the calibration, the transform state, or the
- * colour source changes; pan/zoom/resize just re-blit the offscreen
+ * when a cloud frame, the calibration, the transform state, or the
+ * cloud styling changes; pan/zoom/resize just re-blit the offscreen
  * scene. Cloud subscriptions live here, so an unmounted (toggled-off)
  * overlay costs zero reads.
  */
 const McapImageProjectionOverlay: React.FC<{
   readonly calibration: CameraCalibrationVisualization;
-  readonly colorBy: McapImageProjectionColorBy;
   readonly fit: "contain" | "cover";
   readonly imageHeight: number;
   readonly imageWidth: number;
   readonly topics: readonly string[];
   readonly viewTransform?: ImageViewTransform;
-}> = ({
-  calibration,
-  colorBy,
-  fit,
-  imageHeight,
-  imageWidth,
-  topics,
-  viewTransform,
-}) => {
+}> = ({ calibration, fit, imageHeight, imageWidth, topics, viewTransform }) => {
   const frames = useMcapTopicPlaybackFrames<PointCloudVisualization>(topics);
   const { resolve } = useMcapFrameTransformsContext();
   const sharedHover = useMcapHoverEcho();
   const hoveredPoint = sharedHover?.kind === "point" ? sharedHover : null;
   const setSharedHover = useSetAtom(mcapHoverEchoAtom);
+  const pointCloudSources = useSceneSourcesByType(MCAP_SOURCE_TYPE.POINT_CLOUD);
+  const { pointCloudColors, pointCloudPointSize } =
+    useMcapPointCloudStyleSettings();
+  // Per-topic colour options resolved exactly like the 3D tile resolves
+  // them: per-source defaults overlaid with the user's stored choices.
+  const colorOptionsByTopic = useMemo(() => {
+    const optionsByTopic = new Map<string, PointCloudColorOptions>();
+    for (const topic of topics) {
+      const source = pointCloudSources.find(
+        (candidate) => candidate.id === topic,
+      ) ?? { id: topic, label: topic };
+      const settings = {
+        ...defaultMcapPointCloudColorForSource(source, pointCloudSources),
+        ...pointCloudColors[topic],
+      };
+      optionsByTopic.set(topic, {
+        colorBy: settings.colorBy,
+        colormap: settings.colormap,
+        ...(settings.rangeMax !== null ? { rangeMax: settings.rangeMax } : {}),
+        ...(settings.rangeMin !== null ? { rangeMin: settings.rangeMin } : {}),
+        uniformColor: settings.uniformColor,
+      });
+    }
+    return optionsByTopic;
+  }, [pointCloudColors, pointCloudSources, topics]);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const offscreenRef = useRef<HTMLCanvasElement | null>(null);
-  // Per-topic ramp bounds from the last offscreen draw, so the hover
-  // echo can reproduce the exact colour its dot rendered with.
-  const rampStatsRef = useRef(
-    new Map<string, { minValue: number; maxValue: number }>(),
-  );
   const [containerSize, setContainerSize] = useState<{
     width: number;
     height: number;
@@ -135,6 +160,10 @@ const McapImageProjectionOverlay: React.FC<{
   imageDimsRef.current = { height: imageHeight, width: imageWidth };
   const fitRef = useRef(fit);
   fitRef.current = fit;
+  const colorOptionsRef = useRef(colorOptionsByTopic);
+  colorOptionsRef.current = colorOptionsByTopic;
+  const pointSizeRef = useRef(pointCloudPointSize);
+  pointSizeRef.current = pointCloudPointSize;
   // Identity of the echo this overlay published, so canceling never
   // clobbers a hover another pane owns.
   const publishedHoverRef = useRef<{
@@ -215,7 +244,7 @@ const McapImageProjectionOverlay: React.FC<{
       const targetV = ((pointerY - rect.y) / rect.height) * calib.height;
       // Pick radius in screen px (at least the drawn dot's screen size),
       // converted into calibration pixels for the hit test.
-      const dotSizeCalib = Math.max(2, Math.round(calib.width / 400));
+      const dotSizeCalib = projectionDotSize(calib.width, pointSizeRef.current);
       const screenPxPerCalibPx = rect.width / calib.width;
       const radiusPx =
         Math.max(
@@ -282,8 +311,22 @@ const McapImageProjectionOverlay: React.FC<{
         topic: best.topic,
       };
       setDwellTooltip({ ...payload, x: pointerX, y: pointerY });
+      // Colour the echo with the dot's own rendered colour: rebuild the
+      // cloud's writer for this one point — dwell-time only, same cost
+      // class as the pick walk itself.
+      const scratch = new Float32Array(3);
+      createPointCloudColorWriter(best.frame.positions, {
+        ...colorOptionsRef.current.get(best.topic),
+        colors: best.frame.colors,
+        scalarFields: best.frame.scalarFields,
+      }).write(
+        scratch,
+        0,
+        best.pointIndex,
+        best.frame.positions[best.pointIndex * 3 + 2],
+      );
       setSharedHover({
-        color: null,
+        color: [scratch[0], scratch[1], scratch[2]],
         kind: "point",
         pointIndex: payload.pointIndex,
         position: payload.position,
@@ -339,17 +382,15 @@ const McapImageProjectionOverlay: React.FC<{
     }
 
     context.clearRect(0, 0, offscreen.width, offscreen.height);
-    rampStatsRef.current.clear();
-    // Dots stay proportional to the source image so the blit keeps them
-    // visually stable across camera resolutions.
-    const dotSize = Math.max(2, Math.round(calibration.width / 400));
+    const dotSize = projectionDotSize(calibration.width, pointCloudPointSize);
     for (const [topicIndex, playbackFrame] of frames.entries()) {
       const frame = playbackFrame?.frame;
       const lidarFrameId = frame?.coordinateFrameId;
-      if (!frame || !lidarFrameId) {
+      const topic = topics[topicIndex];
+      if (!frame || !lidarFrameId || !topic) {
         continue;
       }
-      // Resolve at the lidar message's capture time — the moment the
+      // Resolve at the cloud message's capture time — the moment the
       // points were measured — matching the 3D scene's placement policy.
       const resolution = resolve(
         lidarFrameId,
@@ -363,7 +404,12 @@ const McapImageProjectionOverlay: React.FC<{
       }
       const projection = projectPointCloudToImage({
         calibration,
-        colorValues: colorBy === "intensity" ? intensityChannel(frame) : null,
+        // The cloud's own 3D styling colours its projected dots.
+        colorWriter: createPointCloudColorWriter(frame.positions, {
+          ...colorOptionsByTopic.get(topic),
+          colors: frame.colors,
+          scalarFields: frame.scalarFields,
+        }),
         positions: frame.positions,
         rotation: resolution.transform.rotation,
         translation: resolution.transform.translation,
@@ -371,25 +417,20 @@ const McapImageProjectionOverlay: React.FC<{
       if (!projection) {
         continue;
       }
-      const topic = topics[topicIndex];
-      if (topic) {
-        rampStatsRef.current.set(topic, {
-          maxValue: projection.maxValue,
-          minValue: projection.minValue,
-        });
-      }
       context.save();
       context.scale(offscreenScale, offscreenScale);
-      drawProjectedPoints(context, projection, {
-        colormap: PROJECTION_COLORMAP,
-        dotSize,
-        // Near returns read warmest — the conventional lidar-overlay look.
-        invert: colorBy === "depth",
-      });
+      drawProjectedPoints(context, projection, { dotSize });
       context.restore();
     }
     setSceneVersion((version) => version + 1);
-  }, [calibration, colorBy, frames, resolve, topics]);
+  }, [
+    calibration,
+    colorOptionsByTopic,
+    frames,
+    pointCloudPointSize,
+    resolve,
+    topics,
+  ]);
 
   // This effect projects the 3D-hovered point (if it belongs to one of
   // the drawn clouds) so the blit can echo it — one point, so it stays
@@ -423,12 +464,8 @@ const McapImageProjectionOverlay: React.FC<{
       setHoverEcho(null);
       return;
     }
-    const channel = colorBy === "intensity" ? intensityChannel(frame) : null;
-    const channelValue = channel?.[hoveredPoint.pointIndex];
     const projection = projectPointCloudToImage({
       calibration,
-      colorValues:
-        channelValue !== undefined ? Float32Array.of(channelValue) : null,
       positions: Float32Array.from(hoveredPoint.position),
       rotation: resolution.transform.rotation,
       translation: resolution.transform.translation,
@@ -437,22 +474,12 @@ const McapImageProjectionOverlay: React.FC<{
       setHoverEcho(null);
       return;
     }
-    // Reproduce the dot's own ramp colour from the last full draw's
-    // bounds, then flip it to its complement.
-    const stats = rampStatsRef.current.get(hoveredPoint.topic);
-    const span = stats ? stats.maxValue - stats.minValue : 0;
-    const normalized =
-      stats && span > 1e-9
-        ? Math.max(
-            0,
-            Math.min(1, (projection.values[0] - stats.minValue) / span),
-          )
-        : 0.5;
-    const rampPosition = colorBy === "depth" ? 1 - normalized : normalized;
-    const [r, g, b] = complementaryRgbUnit(
-      sampleColormap(PROJECTION_COLORMAP, rampPosition),
-    );
-    const dotSize = Math.max(2, Math.round(calibration.width / 400));
+    // The echo complements the point's rendered colour, carried on the
+    // hover itself (both the 3D raycast and the 2D pick publish it).
+    const [r, g, b] = hoveredPoint.color
+      ? complementaryRgbUnit(hoveredPoint.color)
+      : [1, 1, 1];
+    const dotSize = projectionDotSize(calibration.width, pointCloudPointSize);
     setHoverEcho({
       color: `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(
         b * 255,
@@ -461,15 +488,7 @@ const McapImageProjectionOverlay: React.FC<{
       x: projection.uv[0] / calibration.width,
       y: projection.uv[1] / calibration.height,
     });
-  }, [
-    calibration,
-    colorBy,
-    frames,
-    hoveredPoint,
-    resolve,
-    sceneVersion,
-    topics,
-  ]);
+  }, [calibration, frames, hoveredPoint, pointCloudPointSize, resolve, topics]);
 
   // This effect eases the echo's grow-in whenever the hovered point
   // changes, re-blitting each animation frame.
@@ -575,20 +594,35 @@ const McapImageProjectionOverlay: React.FC<{
       {dwellTooltip ? <Mcap3dHoverTooltip tooltip={dwellTooltip} /> : null}
       {hasNonTrivialDistortion(calibration) ? (
         <div style={noticeStyle}>
-          Pointcloud overlay assumes rectified images
+          Pointcloud projections assume rectified images
         </div>
       ) : null}
     </div>
   );
 };
 
-function intensityChannel(frame: PointCloudVisualization): Float32Array | null {
-  for (const scalarField of frame.scalarFields ?? []) {
-    if (scalarField.name.trim().toLowerCase() === "intensity") {
-      return scalarField.values;
-    }
-  }
-  return null;
+// Projected dots render 3× the 3D point size: an image dot competes
+// with photographic detail behind it, not a dark void.
+const PROJECTION_POINT_SIZE_SCALE = 3;
+
+/**
+ * Dot size in calibration pixels: proportional to the image so blits
+ * stay valid across zoom, scaled by the shared 3D point-size setting
+ * (times {@link PROJECTION_POINT_SIZE_SCALE}) so bigger 3D points
+ * project bigger dots.
+ */
+function projectionDotSize(
+  calibrationWidth: number,
+  pointSize: number,
+): number {
+  return Math.max(
+    2,
+    Math.round(
+      (calibrationWidth / 400) *
+        PROJECTION_POINT_SIZE_SCALE *
+        (pointSize / DEFAULT_POINT_SIZE),
+    ),
+  );
 }
 
 const containerStyle: CSSProperties = {

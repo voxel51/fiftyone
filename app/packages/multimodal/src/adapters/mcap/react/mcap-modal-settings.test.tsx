@@ -64,7 +64,6 @@ describe("mcap-modal-settings", () => {
       },
       imageProjection: {
         "/camera/front": {
-          colorBy: "intensity",
           enabled: true,
           topics: ["/lidar/points"],
         },
@@ -90,7 +89,6 @@ describe("mcap-modal-settings", () => {
       },
       imageProjection: {
         "/camera/front": {
-          colorBy: "intensity",
           enabled: true,
           topics: ["/lidar/points"],
         },
@@ -578,9 +576,8 @@ describe("mcap-modal-settings", () => {
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       imageProjection: {
-        "  ": { colorBy: "depth", enabled: true, topics: null },
+        "  ": { enabled: true, topics: null },
         "/camera/front": {
-          colorBy: "plasma" as never,
           enabled: "yes" as never,
           topics: ["/lidar", "", "/lidar", 42 as never],
         },
@@ -596,7 +593,6 @@ describe("mcap-modal-settings", () => {
 
     expect(readMcapModalSettings().imageProjection).toEqual({
       "/camera/front": {
-        colorBy: "depth",
         enabled: false,
         topics: ["/lidar"],
       },
@@ -611,10 +607,9 @@ describe("mcap-modal-settings", () => {
     expect(result.current.projection).toEqual(DEFAULT_MCAP_IMAGE_PROJECTION);
 
     act(() => {
-      result.current.setProjection({ colorBy: "intensity", enabled: true });
+      result.current.setProjection({ enabled: true });
     });
     expect(result.current.projection).toEqual({
-      colorBy: "intensity",
       enabled: true,
       topics: null,
     });
@@ -625,7 +620,6 @@ describe("mcap-modal-settings", () => {
     expect(result.current.projection.topics).toEqual(["/lidar/points"]);
     expect(readMcapModalSettings().imageProjection).toEqual({
       "/camera/front": {
-        colorBy: "intensity",
         enabled: true,
         topics: ["/lidar/points"],
       },

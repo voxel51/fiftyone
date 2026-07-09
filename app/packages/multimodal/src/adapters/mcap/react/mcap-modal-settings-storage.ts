@@ -68,15 +68,11 @@ export interface McapPointCloudColorSettings {
 }
 
 /**
- * Colour source for the lidar→camera projection overlay on image tiles.
- */
-export type McapImageProjectionColorBy = "depth" | "intensity";
-
-/**
- * Per-image-topic lidar projection overlay preferences.
+ * Per-image-topic pointcloud projection preferences. Projections carry
+ * no styling of their own — dots inherit each cloud's 3D colour
+ * settings and point size.
  */
 export interface McapImageProjectionSettings {
-  readonly colorBy: McapImageProjectionColorBy;
   readonly enabled: boolean;
   /** Explicit cloud topics to project; null projects every cloud. */
   readonly topics: readonly string[] | null;
@@ -360,16 +356,15 @@ export function normalizeMcapFidelityMode(
 }
 
 /**
- * Default lidar projection overlay settings for one image topic.
+ * Default pointcloud projection settings for one image topic.
  */
 export const DEFAULT_MCAP_IMAGE_PROJECTION: McapImageProjectionSettings = {
-  colorBy: "depth",
   enabled: false,
   topics: null,
 };
 
 /**
- * Normalizes persisted per-image-topic lidar projection settings.
+ * Normalizes persisted per-image-topic pointcloud projection settings.
  */
 export function normalizeMcapImageProjectionMap(
   value: unknown,
@@ -388,7 +383,7 @@ export function normalizeMcapImageProjectionMap(
 }
 
 /**
- * Normalizes one lidar projection settings entry.
+ * Normalizes one pointcloud projection settings entry.
  */
 export function normalizeMcapImageProjection(
   value: unknown,
@@ -399,7 +394,6 @@ export function normalizeMcapImageProjection(
 
   const candidate = value as Partial<McapImageProjectionSettings>;
   return {
-    colorBy: candidate.colorBy === "intensity" ? "intensity" : "depth",
     enabled: candidate.enabled === true,
     topics:
       candidate.topics === null || candidate.topics === undefined
