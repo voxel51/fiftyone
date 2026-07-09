@@ -153,6 +153,22 @@ describe("foxgloveRawImageDecoder", () => {
     expect(malformed.attributes?.unsupportedReason).toContain(
       "Image step 2 cannot hold 1 pixels of 3 bytes",
     );
+
+    mockDecode.mockReturnValue(
+      rawImageMessage({
+        data: Uint8Array.of(128, 16, 128, 235, 128, 16),
+        encoding: "uyvy",
+        height: 1,
+        step: 6,
+        width: 3,
+      }),
+    );
+    const oddWidthYuv = foxgloveRawImageDecoder.decode(EMPTY_BYTES, {});
+
+    expect(oddWidthYuv.visualization).toBeUndefined();
+    expect(oddWidthYuv.attributes?.unsupportedReason).toContain(
+      "requires an even image width",
+    );
   });
 
   it("registers CDR decoders for both ROS 2 schema spellings", () => {

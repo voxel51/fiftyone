@@ -1,4 +1,4 @@
-import { atom, useAtomValue, type PrimitiveAtom } from "jotai";
+import { atom, useAtomValue, useSetAtom, type PrimitiveAtom } from "jotai";
 
 /**
  * Cross-pane hover echo for the MCAP modal: whatever the pointer is
@@ -27,4 +27,8 @@ export const mcapHoverEchoAtom = atom<McapHoverEcho | null>(
 
 export function useMcapHoverEcho(): McapHoverEcho | null {
   return useAtomValue(mcapHoverEchoAtom);
+}
+
+export function useSetMcapHoverEcho() {
+  return useSetAtom(mcapHoverEchoAtom);
 }

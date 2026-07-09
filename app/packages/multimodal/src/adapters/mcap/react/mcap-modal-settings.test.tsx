@@ -579,6 +579,7 @@ describe("mcap-modal-settings", () => {
       imageLabelTopics: {},
       imageProjection: {
         "  ": { enabled: true, pointSize: 6, topics: null },
+        "/camera/array": [] as never,
         "/camera/front": {
           enabled: "yes" as never,
           pointSize: 900,
@@ -595,6 +596,7 @@ describe("mcap-modal-settings", () => {
     });
 
     expect(readMcapModalSettings().imageProjection).toEqual({
+      "/camera/array": DEFAULT_MCAP_IMAGE_PROJECTION,
       "/camera/front": {
         enabled: false,
         pointSize: MAX_MCAP_POINT_CLOUD_POINT_SIZE,
