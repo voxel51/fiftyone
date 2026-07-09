@@ -16,6 +16,7 @@ import { QuickEditEntry } from "../../../Modal/Sidebar/Annotate";
 const PATH_OVERRIDES = {
   tags: "sample tags",
   _label_tags: "label tags",
+  _temporal_tags: "temporal tags",
 };
 
 const hiddenPathLabels = selectorFamily<string[], string>({

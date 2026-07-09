@@ -47,6 +47,8 @@ import { useMcapSceneInventory } from "./use-mcap-scene-inventory";
 export interface McapSourcePlaybackProps {
   readonly children?: React.ReactNode;
   readonly client: McapResourceClient;
+  /** Track ids to start pinned to the timeline (e.g. from a grid tag filter). */
+  readonly defaultPinnedTrackIds?: readonly string[];
   readonly fileName: string;
   readonly headerActions?: React.ReactNode;
   readonly latencyLabel?: string;
@@ -68,6 +70,7 @@ export interface McapSourcePlaybackProps {
 export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   children,
   client,
+  defaultPinnedTrackIds,
   fileName,
   headerActions,
   latencyLabel = "mcap modal",
@@ -216,6 +219,12 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                           tracks={
                             tracks && tracks.length > 0
                               ? [...tracks]
+                              : undefined
+                          }
+                          defaultPinnedTrackIds={
+                            defaultPinnedTrackIds &&
+                            defaultPinnedTrackIds.length > 0
+                              ? [...defaultPinnedTrackIds]
                               : undefined
                           }
                           onTagDelete={onTagDelete}
