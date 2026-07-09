@@ -42,6 +42,8 @@ export class ImaVidFramesController {
       // group slice filter (e.g. {group: {slice}}) scoping a nested dynamic
       // group's frame stream to one slice
       filter?: unknown;
+      // playback renders only media + overlays; stream just these paths
+      fields?: string[];
     },
   ) {
     this.storeBufferManager = new BufferManager([
@@ -303,6 +305,7 @@ export class ImaVidFramesController {
         view: this.config.view,
         filters: this.config.filters,
         filter: this.config.filter,
+        fields: this.config.fields,
         // frames inherit the poster's aspect ratio — never open each frame's media
         skipMetadata: true,
       });

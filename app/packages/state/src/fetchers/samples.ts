@@ -17,6 +17,9 @@ export interface SamplesRequest {
   datasetId: string;
   after?: number;
   count?: number;
+  // include-mode projection: only these paths (plus server-kept identifiers
+  // and media fields) leave the database
+  fields?: string[];
   view: unknown;
   filters?: unknown;
   // group slice / sample filter (e.g. {group: {slice}})

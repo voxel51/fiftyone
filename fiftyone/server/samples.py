@@ -119,9 +119,6 @@ async def paginate_samples(
     if after is None:
         after = "-1"
 
-    maxTimeMS = max_query_time * 1000 if max_query_time else None
-    coll = foo.get_async_db_conn()[view._dataset._sample_collection_name]
-
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
@@ -131,39 +128,23 @@ async def paginate_samples(
             if isinstance(stage, fos.GroupBy):
                 stage._include_count = True
 
-    pipeline = await get_samples_pipeline(view, sample_filter)
-
-    samples = await foo.aggregate(
-        coll,
-        pipeline,
-        hint,
-        maxTimeMS=maxTimeMS,
-    ).to_list(first + 1)
+    maxTimeMS = max_query_time * 1000 if max_query_time else None
+    samples = await aggregate_sample_docs(
+        view, sample_filter, first + 1, hint=hint, max_time_ms=maxTimeMS
+    )
 
     more = False
     if len(samples) > first:
         samples = samples[:first]
         more = True
 
-    metadata_cache = {}
-    url_cache = {}
-    additional_media_fields = (
-        fosm._get_additional_media_fields(view) if samples else None
+    metadatas = await resolve_samples_metadata(
+        view, samples, skip_dimensions=skip_metadata
     )
-    nodes = await asyncio.gather(
-        *[
-            _create_sample_item(
-                view,
-                sample,
-                metadata_cache,
-                url_cache,
-                pagination_data,
-                additional_media_fields=additional_media_fields,
-                skip_dimensions=skip_metadata,
-            )
-            for sample in samples
-        ]
-    )
+    nodes = [
+        _create_sample_item(sample, metadata, pagination_data)
+        for sample, metadata in zip(samples, metadatas)
+    ]
 
     edges = []
     for idx, node in enumerate(nodes):
@@ -185,28 +166,63 @@ async def paginate_samples(
     )
 
 
-async def _create_sample_item(
-    dataset: SampleCollection,
-    sample: t.Dict,
-    metadata_cache: t.Dict[str, t.Dict],
-    url_cache: t.Dict[str, str],
-    pagination_data: bool,
+async def aggregate_sample_docs(
+    view: SampleCollection,
+    sample_filter: t.Optional[SampleFilter],
+    limit: int,
+    hint: t.Optional[str] = None,
+    max_time_ms: t.Optional[int] = None,
+    projection: t.Optional[t.Dict] = None,
+) -> t.List[t.Dict]:
+    """Run the samples pipeline for ``view`` and read up to ``limit`` docs,
+    optionally appending a ``$project`` stage."""
+    pipeline = await get_samples_pipeline(view, sample_filter)
+    if projection is not None:
+        pipeline.append(projection)
+    return await foo.aggregate(
+        foo.get_async_db_conn()[view._dataset._sample_collection_name],
+        pipeline,
+        hint,
+        maxTimeMS=max_time_ms,
+    ).to_list(limit)
+
+
+async def resolve_samples_metadata(
+    view: SampleCollection,
+    docs: t.List[t.Dict],
     *,
-    additional_media_fields: t.Optional[t.Tuple] = None,
     skip_dimensions: bool = False,
+) -> t.List[t.Dict]:
+    """Resolve media urls (+ dimensions unless skipped) for each doc, sharing
+    per-filepath caches across the batch."""
+    metadata_cache: t.Dict[str, t.Dict] = {}
+    url_cache: t.Dict[str, str] = {}
+    additional_media_fields = (
+        fosm._get_additional_media_fields(view) if docs else None
+    )
+    return await asyncio.gather(
+        *[
+            fosm.get_metadata(
+                view,
+                doc,
+                fom.get_media_type(doc["filepath"]),
+                metadata_cache,
+                url_cache,
+                additional_media_fields=additional_media_fields,
+                skip_dimensions=skip_dimensions,
+            )
+            for doc in docs
+        ]
+    )
+
+
+def _create_sample_item(
+    sample: t.Dict,
+    metadata: t.Dict,
+    pagination_data: bool,
 ) -> SampleItem:
     media_type = fom.get_media_type(sample["filepath"])
     cls = MEDIA_TYPES[media_type]
-
-    metadata = await fosm.get_metadata(
-        dataset,
-        sample,
-        media_type,
-        metadata_cache,
-        url_cache,
-        additional_media_fields=additional_media_fields,
-        skip_dimensions=skip_dimensions,
-    )
 
     if cls == VideoSample:
         metadata = dict(**metadata, frame_number=sample.get("frame_number", 1))

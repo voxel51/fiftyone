@@ -245,6 +245,16 @@ export default <T extends AbstractLooker<BaseState>>(
                   }
                 : undefined;
 
+            // playback draws only media + overlays (sidebar values render on
+            // settle from the modal's own sample); stream just those paths
+            const streamFields = [
+              ...(snapshot
+                .getLoadable(schemaAtoms.labelPaths({ expanded: false }))
+                .valueMaybe() ?? []),
+              "tags",
+              mediaField,
+            ];
+
             controller = new ImaVidFramesController({
               firstFrameNumber,
               targetFrameRate: dynamicGroupsTargetFrameRateValue,
@@ -253,6 +263,7 @@ export default <T extends AbstractLooker<BaseState>>(
               view,
               filters: snapshot.getLoadable(filters).valueMaybe() ?? {},
               filter: sliceFilter,
+              fields: streamFields,
             });
 
             // seed the poster frame from already-loaded grid data so the looker

@@ -10,6 +10,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from starlette.exceptions import HTTPException
 
 import fiftyone as fo
 import fiftyone.server.routes.samples as fors
@@ -109,6 +110,34 @@ class TestSamplesRoute:
         )
 
     @pytest.mark.asyncio
+    async def test_fields_projection(self, samples_endpoint, make_request):
+        """Only requested + identifier paths leave the database."""
+        request = make_request({"view": [], "count": 1, "fields": ["scene"]})
+        (sample,) = _parse(await samples_endpoint.post(request))
+        fields = json.loads(sample["fields"])
+
+        assert "scene" in fields
+        assert "filepath" in fields
+        assert "frame_index" not in fields
+
+    @pytest.mark.asyncio
+    async def test_exclude_projection(self, samples_endpoint, make_request):
+        """Excluded paths are dropped; identifiers survive exclusion."""
+        request = make_request(
+            {
+                "view": [],
+                "count": 1,
+                "exclude": ["frame_index", "filepath"],
+            }
+        )
+        (sample,) = _parse(await samples_endpoint.post(request))
+        fields = json.loads(sample["fields"])
+
+        assert "frame_index" not in fields
+        assert "filepath" in fields
+        assert "scene" in fields
+
+    @pytest.mark.asyncio
     async def test_skip_metadata_controls_aspect_ratio(
         self, samples_endpoint, make_request
     ):
@@ -132,6 +161,7 @@ class TestSamplesRoute:
         self, samples_endpoint, make_request
     ):
         request = make_request({"view": []}, dataset_id_override="0" * 24)
-        response = await samples_endpoint.post(request)
+        with pytest.raises(HTTPException) as exc:
+            await samples_endpoint.post(request)
 
-        assert response.status_code == 404
+        assert exc.value.status_code == 404

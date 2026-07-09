@@ -2,44 +2,85 @@
 FiftyOne Server samples route.
 
 ``POST /dataset/{id}/samples`` — reads a window of samples (``after``/``count``)
-over a view, and resolves media urls. Serves the imavid frame stream, which
-needs lean, relay-free reads of a dynamic group's ordered frames.
+over a view, projects the client's ``fields`` (or ``exclude``), and resolves
+media urls. Serves the imavid frame stream, which renders only media and
+overlays while playing — so unlike ``paginate_samples``, a windowed read never
+pulls fields the stream won't draw.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import fiftyone.core.json as foj
-import fiftyone.core.media as fom
-import fiftyone.core.odm as foo
 from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server import decorators
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.metadata as fosm
-from fiftyone.server.samples import get_samples_pipeline
+from fiftyone.server.samples import (
+    aggregate_sample_docs,
+    resolve_samples_metadata,
+)
+from fiftyone.server.utils.datasets import get_dataset
 from fiftyone.server.utils.json.encoder import JSONResponse
 import fiftyone.server.view as fosv
 
 logger = logging.getLogger(__name__)
 
-# hard cap on one read; an omitted/oversized ``count`` must not pull the
-# entire view into memory
-MAX_SAMPLES_PAGE = 1000
+# always projected: needed for media-type dispatch, url resolution, and the id
+# key, plus `_group`/`_group_count`, which the GroupBy stage emits for grouped
+# reads
+_ALWAYS = ("_id", "filepath", "_media_type", "_group", "_group_count")
 
 
-def _sample_filter(
+def _ancestors(path: str) -> List[str]:
+    parts = path.split(".")
+    return [".".join(parts[:i]) for i in range(1, len(parts))]
+
+
+def _projection(
+    fields: Optional[List[str]],
+    exclude: Optional[List[str]],
+    extra: Optional[List[str]] = None,
+) -> Optional[Dict[str, Any]]:
+    """A Mongo ``$project`` from the requested include/exclude field list.
+
+    ``extra`` paths (e.g. ``metadata`` for aspect ratio, configured media
+    fields for URL resolution) are always kept even when the client didn't
+    request them.
+    """
+    if fields:
+        paths = set(fields) | set(_ALWAYS) | set(extra or [])
+        # Mongo rejects ancestor/descendant path collisions; the ancestor wins
+        project = {
+            path: True
+            for path in paths
+            if not any(parent in paths for parent in _ancestors(path))
+        }
+        return {"$project": project}
+    if exclude:
+        # exclusion never drops the identifiers the response is built from
+        keep = set(_ALWAYS) | set(extra or [])
+        project = {path: False for path in exclude if path not in keep}
+        # an empty $project is a Mongo error, not a no-op
+        if not project:
+            return None
+        return {"$project": project}
+    return None
+
+
+def _parse_group_slice_filter(
     filter_arg: Optional[Dict[str, Any]]
 ) -> Optional[SampleFilter]:
-    """Build a ``SampleFilter`` (group slice) from the client ``filter`` param."""
+    """Build the group-slice scoping (``SampleFilter``) from the client
+    ``filter`` param."""
     if not filter_arg:
         return None
     group = filter_arg.get("group")
@@ -57,48 +98,8 @@ def _sample_filter(
     )
 
 
-def _load_dataset(dataset_id: str):
-    """Load a dataset by id, or ``None`` if it does not exist."""
-    try:
-        return foo.database.load_dataset(id=dataset_id)
-    except ValueError:
-        # unknown dataset id raises rather than returning None
-        return None
-
-
-async def _build_item(
-    view, doc, metadata_cache, url_cache, additional, skip_dimensions
-):
-    """Assemble one response item: media urls (+ aspect ratio) for the doc.
-
-    ``fields`` is attached by the caller OFF the event loop — stringifying
-    heavy label payloads here starves every concurrent request.
-    """
-    media_type = fom.get_media_type(doc["filepath"])
-    metadata = await fosm.get_metadata(
-        view,
-        doc,
-        media_type,
-        metadata_cache,
-        url_cache,
-        additional_media_fields=additional,
-        skip_dimensions=skip_dimensions,
-    )
-
-    item = {
-        "id": str(doc["_id"]),
-        "urls": metadata.get("urls"),
-    }
-
-    # only available when dimensions were read (skip_dimensions=False)
-    if not skip_dimensions:
-        item["aspectRatio"] = metadata.get("aspect_ratio")
-
-    return item
-
-
 class Samples(HTTPEndpoint):
-    """Windowed samples reader."""
+    """Field-projecting windowed samples reader."""
 
     @decorators.route
     async def post(self, request: Request, data: dict) -> JSONResponse:
@@ -113,15 +114,12 @@ class Samples(HTTPEndpoint):
                 status_code=400,
             )
 
-        # bound every read; a window read must never stream the whole view
-        count = min(count or MAX_SAMPLES_PAGE, MAX_SAMPLES_PAGE)
-
-        sample_filter = _sample_filter(data.get("filter"))
+        dataset = await run_sync_task(get_dataset, dataset_id)
+        sample_filter = _parse_group_slice_filter(data.get("filter"))
 
         def _build():
-            dataset = _load_dataset(dataset_id)
-            if dataset is None:
-                return None
+            # pagination_data=False: the projection below is the only field
+            # selection
             view = fosv.get_view(
                 dataset,
                 stages=data.get("view") or [],
@@ -135,33 +133,41 @@ class Samples(HTTPEndpoint):
             return view.limit(count)
 
         view = await run_sync_task(_build)
-        if view is None:
-            return JSONResponse(
-                {"error": "dataset not found"}, status_code=404
-            )
 
-        pipeline = await get_samples_pipeline(view, sample_filter)
-
-        coll = foo.get_async_db_conn()[view._dataset._sample_collection_name]
-        docs = await foo.aggregate(coll, pipeline).to_list(count)
-
-        skip_dimensions = bool(data.get("skipMetadata"))
-        additional = fosm._get_additional_media_fields(view) if docs else None
-        metadata_cache: Dict[str, Any] = {}
-        url_cache: Dict[str, str] = {}
-        samples = await asyncio.gather(
-            *[
-                _build_item(
-                    view,
-                    doc,
-                    metadata_cache,
-                    url_cache,
-                    additional,
-                    skip_dimensions,
-                )
-                for doc in docs
-            ]
+        skip_metadata = bool(data.get("skipMetadata"))
+        # keep `metadata` so the aspect ratio comes from stored dims, not a
+        # disk read, plus every configured media field so url resolution still
+        # sees them through an include-mode projection
+        extra = [] if skip_metadata else ["metadata"]
+        extra.extend(view._dataset.app_config.media_fields or [])
+        opm_field, _, additional_media = fosm._get_additional_media_fields(
+            view
         )
+        if opm_field:
+            extra.append(opm_field)
+        extra.extend(additional_media)
+        projection = _projection(
+            data.get("fields"), data.get("exclude"), extra
+        )
+
+        docs = await aggregate_sample_docs(
+            view, sample_filter, count, projection=projection
+        )
+
+        metadatas = await resolve_samples_metadata(
+            view, docs, skip_dimensions=skip_metadata
+        )
+
+        samples = []
+        for doc, metadata in zip(docs, metadatas):
+            item = {
+                "id": str(doc["_id"]),
+                "urls": metadata.get("urls"),
+            }
+            # a skipped read yields a placeholder ratio; omit it instead
+            if not skip_metadata:
+                item["aspectRatio"] = metadata.get("aspect_ratio")
+            samples.append(item)
 
         # heavy label payloads: serialize OFF the event loop so concurrent
         # streaming reads never starve behind CPU-bound stringify

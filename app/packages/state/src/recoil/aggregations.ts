@@ -293,14 +293,16 @@ export const modalSampleAggregations = selectorFamily<
     ({ get }) => {
       // null while playing/seeking an ImaVid (settles on pause), or not yet
       // loaded on first open. Aggregate an empty sample so every requested path
-      // still yields a zero-count result of the right type — returning a short
-      // array here makes downstream `.find(path)` undefined and crashes callers.
+      // still yields a result of the right shape — returning a short array
+      // makes downstream `.find(path)` undefined and crashes callers — but
+      // report its counts as null (renders "...") rather than a fake 0
       const raw =
         get(sidebarSampleId) === null
           ? undefined
           : (get(activeModalSidebarSample) as
               | Record<string, unknown>
               | undefined);
+      const pending = raw == null;
       // ImaVid frames yield a wrapper; normalize to the inner field dict either way
       const sample = (raw?.sample as Record<string, unknown>) ?? raw ?? {};
 
@@ -349,12 +351,15 @@ export const modalSampleAggregations = selectorFamily<
             count: 0,
           } as unknown as Aggregation;
         }
-        return computeSampleAggregation(
+        const result = computeSampleAggregation(
           field?.ftype,
           field?.subfield ?? undefined,
           path,
           source,
         );
+        return pending
+          ? ({ ...result, count: null } as unknown as Aggregation)
+          : result;
       });
     },
 });

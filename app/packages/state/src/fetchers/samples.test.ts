@@ -48,6 +48,8 @@ describe("fetchSamples", () => {
   it("returns an empty list when the response carries no samples", async () => {
     stubFetch({});
 
-    expect(await fetchSamples({ datasetId: "d", view: [] })).toEqual([]);
+    expect(await fetchSamples({ datasetId: "d", view: [], count: 1 })).toEqual(
+      [],
+    );
   });
 });
