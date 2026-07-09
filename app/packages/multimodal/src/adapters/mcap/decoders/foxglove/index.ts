@@ -34,6 +34,10 @@ import {
   foxglovePoseInFrameDecoder,
 } from "./pose-in-frame";
 import {
+  foxgloveRawImageCdrDecoders,
+  foxgloveRawImageDecoder,
+} from "./raw-image";
+import {
   foxgloveSceneUpdateCdrDecoders,
   foxgloveSceneUpdateDecoder,
 } from "./scene-update";
@@ -113,6 +117,14 @@ export {
 } from "./pose-in-frame";
 
 /**
+ * Foxglove RawImage decoder exports.
+ */
+export {
+  foxgloveRawImageCdrDecoders,
+  foxgloveRawImageDecoder,
+} from "./raw-image";
+
+/**
  * Foxglove SceneUpdate decoder export.
  */
 export {
@@ -149,6 +161,8 @@ export const foxgloveDecoders: readonly Decoder[] = [
   ...foxglovePointCloudCdrDecoders,
   foxglovePoseInFrameDecoder,
   ...foxglovePoseInFrameCdrDecoders,
+  foxgloveRawImageDecoder,
+  ...foxgloveRawImageCdrDecoders,
   foxgloveSceneUpdateDecoder,
   ...foxgloveSceneUpdateCdrDecoders,
 ];
