@@ -65,6 +65,7 @@ describe("mcap-modal-settings", () => {
       imageProjection: {
         "/camera/front": {
           enabled: true,
+          pointSize: 4,
           topics: ["/lidar/points"],
         },
       },
@@ -90,6 +91,7 @@ describe("mcap-modal-settings", () => {
       imageProjection: {
         "/camera/front": {
           enabled: true,
+          pointSize: 4,
           topics: ["/lidar/points"],
         },
       },
@@ -576,9 +578,10 @@ describe("mcap-modal-settings", () => {
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       imageProjection: {
-        "  ": { enabled: true, topics: null },
+        "  ": { enabled: true, pointSize: 6, topics: null },
         "/camera/front": {
           enabled: "yes" as never,
+          pointSize: 900,
           topics: ["/lidar", "", "/lidar", 42 as never],
         },
       },
@@ -594,6 +597,7 @@ describe("mcap-modal-settings", () => {
     expect(readMcapModalSettings().imageProjection).toEqual({
       "/camera/front": {
         enabled: false,
+        pointSize: MAX_MCAP_POINT_CLOUD_POINT_SIZE,
         topics: ["/lidar"],
       },
     });
@@ -607,10 +611,11 @@ describe("mcap-modal-settings", () => {
     expect(result.current.projection).toEqual(DEFAULT_MCAP_IMAGE_PROJECTION);
 
     act(() => {
-      result.current.setProjection({ enabled: true });
+      result.current.setProjection({ enabled: true, pointSize: 8 });
     });
     expect(result.current.projection).toEqual({
       enabled: true,
+      pointSize: 8,
       topics: null,
     });
 
@@ -621,6 +626,7 @@ describe("mcap-modal-settings", () => {
     expect(readMcapModalSettings().imageProjection).toEqual({
       "/camera/front": {
         enabled: true,
+        pointSize: 8,
         topics: ["/lidar/points"],
       },
     });

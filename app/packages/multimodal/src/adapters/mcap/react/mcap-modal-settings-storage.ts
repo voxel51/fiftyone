@@ -68,12 +68,15 @@ export interface McapPointCloudColorSettings {
 }
 
 /**
- * Per-image-topic pointcloud projection preferences. Projections carry
- * no styling of their own — dots inherit each cloud's 3D colour
- * settings and point size.
+ * Per-image-topic pointcloud projection preferences. Projected dots
+ * inherit each cloud's 3D colour settings; point size is the
+ * projection's own knob because dots compete with photographic detail,
+ * not a dark void.
  */
 export interface McapImageProjectionSettings {
   readonly enabled: boolean;
+  /** Dot size, on the same scale as the 3D point size. */
+  readonly pointSize: number;
   /** Explicit cloud topics to project; null projects every cloud. */
   readonly topics: readonly string[] | null;
 }
@@ -356,10 +359,18 @@ export function normalizeMcapFidelityMode(
 }
 
 /**
+ * Default projected-dot size: 3× the default 3D point size, so dots
+ * stay legible over imagery out of the box.
+ */
+export const DEFAULT_MCAP_PROJECTION_POINT_SIZE =
+  3 * DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE;
+
+/**
  * Default pointcloud projection settings for one image topic.
  */
 export const DEFAULT_MCAP_IMAGE_PROJECTION: McapImageProjectionSettings = {
   enabled: false,
+  pointSize: DEFAULT_MCAP_PROJECTION_POINT_SIZE,
   topics: null,
 };
 
@@ -395,6 +406,12 @@ export function normalizeMcapImageProjection(
   const candidate = value as Partial<McapImageProjectionSettings>;
   return {
     enabled: candidate.enabled === true,
+    pointSize: clampNumber(
+      candidate.pointSize,
+      MIN_MCAP_POINT_CLOUD_POINT_SIZE,
+      MAX_MCAP_POINT_CLOUD_POINT_SIZE,
+      DEFAULT_MCAP_PROJECTION_POINT_SIZE,
+    ),
     topics:
       candidate.topics === null || candidate.topics === undefined
         ? null
