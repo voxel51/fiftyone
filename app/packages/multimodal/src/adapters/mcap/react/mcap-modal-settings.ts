@@ -49,7 +49,6 @@ export {
   defaultMcapPointCloudColorForSource,
   readMcapModalSettings,
   writeMcapModalSettings,
-  type McapImageProjectionColorBy,
   type McapImageProjectionSettings,
   type McapPersistedModalSettings,
   type McapPinholeCameraSettings,

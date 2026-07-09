@@ -1,15 +1,13 @@
 import type { CameraCalibrationVisualization } from "../../../decoders";
-import {
-  createPointCloudColormapLookup,
-  sampleColormap,
-  type PointCloudColormap,
-} from "../../../visualization/panels/point-cloud";
+import type { PointCloudColorWriter } from "../../../visualization/panels/point-cloud";
 
 /**
- * Pure math for the lidar→camera projection overlay: transforms decoded
- * sensor-frame points into the camera frame, projects through the
- * rectified projection matrix (`P` when present, pinhole `K` otherwise),
- * and rasterizes the survivors as colormapped dots on a 2D canvas.
+ * Pure math for the pointcloud→camera projection overlay: transforms
+ * decoded sensor-frame points into the camera frame, projects through
+ * the rectified projection matrix (`P` when present, pinhole `K`
+ * otherwise), and rasterizes the survivors on a 2D canvas. Dots take
+ * their colours from the cloud's own colour writer, so a cloud looks
+ * identical projected and in 3D.
  *
  * V1 is rectified-only by design: when the calibration carries a
  * non-trivial distortion model the overlay still projects via `P`/`K`
@@ -22,7 +20,13 @@ export const MCAP_PROJECTION_MAX_POINTS = 150_000;
 
 const POINT_COMPONENT_COUNT = 3;
 const UV_COMPONENT_COUNT = 2;
-const COLOR_BUCKET_COUNT = 64;
+// Colour quantization for fillStyle batching: 4 bits per channel bounds
+// a draw at 4096 style switches while staying invisible at dot scale.
+const COLOR_QUANT_BITS = 4;
+const COLOR_QUANT_LEVELS = 1 << COLOR_QUANT_BITS;
+const COLOR_BUCKET_COUNT = COLOR_QUANT_LEVELS ** 3;
+// Neutral dot channel when no colour writer is supplied.
+const NEUTRAL_PROJECTION_CHANNEL = 0.75;
 
 /** Unit quaternion, xyzw. */
 export interface McapProjectionRotation {
@@ -40,17 +44,14 @@ export interface McapProjectionTranslation {
 
 /**
  * Points projected into calibration-pixel space, compacted to the ones
- * that landed inside the image with positive depth. `values` carries the
- * colour-driving quantity per point (camera-frame depth in meters, or
- * the selected scalar channel).
+ * that landed inside the image with positive depth. `colors` carries
+ * the interleaved rgb (normalized channels) each dot renders with.
  */
 export interface McapProjectedPoints {
+  readonly colors: Float32Array;
   readonly count: number;
-  readonly maxValue: number;
-  readonly minValue: number;
   /** Interleaved xy in calibration pixels. */
   readonly uv: Float32Array;
-  readonly values: Float32Array;
 }
 
 /**
@@ -59,7 +60,7 @@ export interface McapProjectedPoints {
  */
 export function projectPointCloudToImage({
   calibration,
-  colorValues,
+  colorWriter,
   maxPoints = MCAP_PROJECTION_MAX_POINTS,
   positions,
   rotation,
@@ -70,10 +71,10 @@ export function projectPointCloudToImage({
     "K" | "P" | "height" | "width"
   >;
   /**
-   * Optional per-point channel driving colour (aligned with positions);
-   * omitted → camera-frame depth drives colour.
+   * The cloud's resolved colour writer; omitted → neutral dots (used by
+   * callers that only need the projected geometry).
    */
-  readonly colorValues?: Float32Array | null;
+  readonly colorWriter?: PointCloudColorWriter | null;
   readonly maxPoints?: number;
   readonly positions: Float32Array;
   readonly rotation: McapProjectionRotation;
@@ -93,7 +94,10 @@ export function projectPointCloudToImage({
   const stride = Math.max(1, Math.ceil(pointCount / Math.max(1, maxPoints)));
   const capacity = Math.ceil(pointCount / stride);
   const uv = new Float32Array(capacity * UV_COMPONENT_COUNT);
-  const values = new Float32Array(capacity);
+  const colors = new Float32Array(capacity * POINT_COMPONENT_COUNT);
+  if (!colorWriter) {
+    colors.fill(NEUTRAL_PROJECTION_CHANNEL);
+  }
 
   const {
     p00,
@@ -123,8 +127,6 @@ export function projectPointCloudToImage({
   } = basis;
 
   let count = 0;
-  let minValue = Number.POSITIVE_INFINITY;
-  let maxValue = Number.NEGATIVE_INFINITY;
 
   for (let pointIndex = 0; pointIndex < pointCount; pointIndex += stride) {
     const offset = pointIndex * POINT_COMPONENT_COUNT;
@@ -150,17 +152,12 @@ export function projectPointCloudToImage({
       continue;
     }
 
-    const value = colorValues ? (colorValues[pointIndex] ?? cz) : cz;
-    if (!Number.isFinite(value)) {
-      continue;
-    }
-
     const target = count * UV_COMPONENT_COUNT;
     uv[target] = u;
     uv[target + 1] = v;
-    values[count] = value;
-    if (value < minValue) minValue = value;
-    if (value > maxValue) maxValue = value;
+    // Colour by the point's sensor-frame values, exactly like the 3D
+    // renderer colours the same source index.
+    colorWriter?.write(colors, count * POINT_COMPONENT_COUNT, pointIndex, pz);
     count++;
   }
 
@@ -168,7 +165,7 @@ export function projectPointCloudToImage({
     return null;
   }
 
-  return { count, maxValue, minValue, uv, values };
+  return { colors, count, uv };
 }
 
 /** One projected point picked by a dwell hit test, in decoded index space. */
@@ -299,38 +296,31 @@ export function hasNonTrivialDistortion(
 }
 
 /**
- * Rasterizes projected points as colormapped square dots. Points are
- * bucketed by ramp position with a counting sort so the canvas sees at
- * most {@link COLOR_BUCKET_COUNT} fillStyle changes per frame instead of
- * one per point.
+ * Rasterizes projected points as square dots in their per-point colours.
+ * Points are bucketed by quantized rgb with a counting sort so the
+ * canvas sees at most {@link COLOR_BUCKET_COUNT} fillStyle changes per
+ * frame instead of one per point.
  */
 export function drawProjectedPoints(
   context: CanvasRenderingContext2D,
   projection: McapProjectedPoints,
   {
-    colormap,
     dotSize,
-    invert = false,
   }: {
-    readonly colormap: PointCloudColormap;
     /** Dot edge length in canvas pixels. */
     readonly dotSize: number;
-    /** Flip the ramp (used for depth: near = warm reads best). */
-    readonly invert?: boolean;
   },
 ): void {
-  const { count, maxValue, minValue, uv, values } = projection;
-  const span = maxValue - minValue;
-  const scale = span > 1e-9 ? 1 / span : 0;
+  const { colors, count, uv } = projection;
 
-  const bucketOf = new Uint8Array(count);
+  const bucketOf = new Uint16Array(count);
   const bucketCounts = new Uint32Array(COLOR_BUCKET_COUNT);
   for (let index = 0; index < count; index++) {
-    let t = scale > 0 ? (values[index] - minValue) * scale : 0.5;
-    if (invert) t = 1 - t;
-    let bucket = Math.floor(t * COLOR_BUCKET_COUNT);
-    if (bucket < 0) bucket = 0;
-    if (bucket >= COLOR_BUCKET_COUNT) bucket = COLOR_BUCKET_COUNT - 1;
+    const colorOffset = index * POINT_COMPONENT_COUNT;
+    const bucket =
+      (quantizeChannel(colors[colorOffset]) << (COLOR_QUANT_BITS * 2)) |
+      (quantizeChannel(colors[colorOffset + 1]) << COLOR_QUANT_BITS) |
+      quantizeChannel(colors[colorOffset + 2]);
     bucketOf[index] = bucket;
     bucketCounts[bucket]++;
   }
@@ -347,13 +337,19 @@ export function drawProjectedPoints(
     ordered[cursor[bucketOf[index]]++] = index;
   }
 
-  const styles = colormapBucketStyles(colormap);
   const half = dotSize / 2;
   for (let bucket = 0; bucket < COLOR_BUCKET_COUNT; bucket++) {
     const bucketCount = bucketCounts[bucket];
     if (bucketCount === 0) continue;
-    context.fillStyle = styles[bucket];
+    // Style with the bucket's first point's exact colour — within a
+    // bucket, colours differ by less than the quantization step.
     const start = bucketOffsets[bucket];
+    const firstColorOffset = ordered[start] * POINT_COMPONENT_COUNT;
+    context.fillStyle = cssColor(
+      colors[firstColorOffset],
+      colors[firstColorOffset + 1],
+      colors[firstColorOffset + 2],
+    );
     for (let position = 0; position < bucketCount; position++) {
       const pointIndex = ordered[start + position];
       const uvOffset = pointIndex * UV_COMPONENT_COUNT;
@@ -365,6 +361,21 @@ export function drawProjectedPoints(
       );
     }
   }
+}
+
+function quantizeChannel(value: number): number {
+  const level = Math.floor(value * COLOR_QUANT_LEVELS);
+  return level < 0
+    ? 0
+    : level >= COLOR_QUANT_LEVELS
+      ? COLOR_QUANT_LEVELS - 1
+      : level;
+}
+
+function cssColor(r: number, g: number, b: number): string {
+  return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(
+    b * 255,
+  )})`;
 }
 
 interface ProjectionBasis {
@@ -477,33 +488,4 @@ function projectionRows(
 
 function hasUsableFocals(fx: number, fy: number): boolean {
   return Number.isFinite(fx) && Number.isFinite(fy) && fx !== 0 && fy !== 0;
-}
-
-const bucketStyleCache = new Map<string, readonly string[]>();
-
-function colormapBucketStyles(colormap: PointCloudColormap): readonly string[] {
-  const key =
-    typeof colormap === "string" ? colormap : JSON.stringify(colormap);
-  const cached = bucketStyleCache.get(key);
-  if (cached) {
-    return cached;
-  }
-
-  // Force materialization through the shared lookup so custom colormaps
-  // resolve identically to the 3D ramps.
-  createPointCloudColormapLookup(colormap);
-  const styles: string[] = [];
-  for (let bucket = 0; bucket < COLOR_BUCKET_COUNT; bucket++) {
-    const [r, g, b] = sampleColormap(
-      colormap,
-      (bucket + 0.5) / COLOR_BUCKET_COUNT,
-    );
-    styles.push(
-      `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(
-        b * 255,
-      )})`,
-    );
-  }
-  bucketStyleCache.set(key, styles);
-  return styles;
 }

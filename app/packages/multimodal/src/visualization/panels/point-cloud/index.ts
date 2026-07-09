@@ -1,4 +1,10 @@
 export { PointCloudPanel } from "./PointCloudPanel";
+export { DEFAULT_POINT_SIZE } from "./PointCloudSceneLayer";
+export {
+  createPointCloudColorWriter,
+  type PointCloudColorOptions,
+  type PointCloudColorWriter,
+} from "./point-cloud-colors";
 export {
   colormapCssGradient,
   createPointCloudColormapLookup,

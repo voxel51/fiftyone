@@ -34,10 +34,6 @@ describe("projectPointCloudToImage", () => {
     expect(projection).not.toBeNull();
     expect(projection?.count).toBe(2);
     expect(Array.from(projection?.uv ?? [])).toEqual([50, 50, 60, 70]);
-    // Depth drives colour by default.
-    expect(Array.from(projection?.values ?? [])).toEqual([10, 10]);
-    expect(projection?.minValue).toBe(10);
-    expect(projection?.maxValue).toBe(10);
   });
 
   it("culls behind-camera, out-of-frame, and non-finite points", () => {
@@ -78,7 +74,6 @@ describe("projectPointCloudToImage", () => {
     expect(projection?.count).toBe(1);
     expect(projection?.uv[0]).toBeCloseTo(50);
     expect(projection?.uv[1]).toBeCloseTo(50);
-    expect(projection?.values[0]).toBeCloseTo(12);
   });
 
   it("prefers the rectified P matrix over K", () => {
@@ -96,18 +91,52 @@ describe("projectPointCloudToImage", () => {
     expect(projection?.uv[0]).toBeCloseTo(70);
   });
 
-  it("carries a scalar channel when supplied and tracks its range", () => {
+  it("colours surviving points through the writer by source index", () => {
     const projection = projectPointCloudToImage({
       calibration: PINHOLE_K,
-      colorValues: Float32Array.from([7, 21]),
-      positions: Float32Array.from([0, 0, 10, 0.1, 0, 5]),
+      // Writes the decoded (source) index into the red channel, proving
+      // culled points don't shift colour alignment.
+      colorWriter: {
+        colorRamp: null,
+        write: (target, offset, sourceIndex, z) => {
+          target[offset] = sourceIndex;
+          target[offset + 2] = z;
+        },
+      },
+      positions: Float32Array.from([
+        0,
+        0,
+        -5, // culled: behind the camera
+        0,
+        0,
+        10,
+        1,
+        0,
+        5,
+      ]),
       rotation: IDENTITY_ROTATION,
       translation: ZERO_TRANSLATION,
     });
 
-    expect(Array.from(projection?.values ?? [])).toEqual([7, 21]);
-    expect(projection?.minValue).toBe(7);
-    expect(projection?.maxValue).toBe(21);
+    expect(projection?.count).toBe(2);
+    // Survivors are source indexes 1 and 2, coloured with their own z.
+    expect(projection?.colors[0]).toBe(1);
+    expect(projection?.colors[2]).toBe(10);
+    expect(projection?.colors[3]).toBe(2);
+    expect(projection?.colors[5]).toBe(5);
+  });
+
+  it("falls back to neutral dots without a colour writer", () => {
+    const projection = projectPointCloudToImage({
+      calibration: PINHOLE_K,
+      positions: Float32Array.from([0, 0, 10]),
+      rotation: IDENTITY_ROTATION,
+      translation: ZERO_TRANSLATION,
+    });
+
+    expect(projection?.colors[0]).toBeCloseTo(0.75);
+    expect(projection?.colors[1]).toBeCloseTo(0.75);
+    expect(projection?.colors[2]).toBeCloseTo(0.75);
   });
 
   it("stride-samples dense clouds down to the point budget", () => {
@@ -245,14 +274,16 @@ describe("hasNonTrivialDistortion", () => {
 });
 
 describe("drawProjectedPoints", () => {
-  it("draws every point while batching fill-style changes by ramp bucket", () => {
+  it("draws every point while batching fill-style changes by colour", () => {
     const count = 500;
     const uv = new Float32Array(count * 2);
-    const values = new Float32Array(count);
+    const colors = new Float32Array(count * 3);
     for (let index = 0; index < count; index++) {
       uv[index * 2] = index % 100;
       uv[index * 2 + 1] = Math.floor(index / 100);
-      values[index] = index;
+      // Two distinct colours alternating point by point.
+      colors[index * 3] = index % 2 === 0 ? 1 : 0;
+      colors[index * 3 + 2] = index % 2 === 0 ? 0 : 1;
     }
 
     const fillStyles: string[] = [];
@@ -264,21 +295,16 @@ describe("drawProjectedPoints", () => {
       },
     } as unknown as CanvasRenderingContext2D;
 
-    drawProjectedPoints(
-      context,
-      { count, maxValue: count - 1, minValue: 0, uv, values },
-      { colormap: "turbo", dotSize: 3 },
-    );
+    drawProjectedPoints(context, { colors, count, uv }, { dotSize: 3 });
 
     expect(fillRect).toHaveBeenCalledTimes(count);
-    expect(fillStyles.length).toBeLessThanOrEqual(64);
-    expect(new Set(fillStyles).size).toBe(fillStyles.length);
+    expect(fillStyles).toEqual(["rgb(0, 0, 255)", "rgb(255, 0, 0)"]);
     // Dots center on the projected pixel.
     expect(fillRect.mock.calls[0]).toHaveLength(4);
     expect(fillRect.mock.calls[0][2]).toBe(3);
   });
 
-  it("collapses constant-valued clouds into one mid-ramp bucket", () => {
+  it("collapses uniformly coloured clouds into one style", () => {
     const fillStyles: string[] = [];
     const context = {
       fillRect: vi.fn(),
@@ -287,16 +313,12 @@ describe("drawProjectedPoints", () => {
       },
     } as unknown as CanvasRenderingContext2D;
 
+    const colors = new Float32Array(9);
+    colors.fill(0.5);
     drawProjectedPoints(
       context,
-      {
-        count: 3,
-        maxValue: 5,
-        minValue: 5,
-        uv: Float32Array.from([1, 1, 2, 2, 3, 3]),
-        values: Float32Array.from([5, 5, 5]),
-      },
-      { colormap: "turbo", dotSize: 2 },
+      { colors, count: 3, uv: Float32Array.from([1, 1, 2, 2, 3, 3]) },
+      { dotSize: 2 },
     );
 
     expect(fillStyles).toHaveLength(1);
