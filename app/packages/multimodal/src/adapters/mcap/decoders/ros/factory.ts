@@ -9,6 +9,7 @@ import { decodeRosMessage } from "./common";
 type RosMapper = (
   record: Record<string, unknown>,
   context: DecodeContext,
+  bytes: Uint8Array,
 ) => DecodedOutput;
 
 /**
@@ -28,7 +29,7 @@ export function rosDecodersForPayloads({
     payload,
     version: "1",
     decode(bytes, context) {
-      return map(decodeRosMessage(bytes, payload, context), context);
+      return map(decodeRosMessage(bytes, payload, context), context, bytes);
     },
   }));
 }

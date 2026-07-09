@@ -88,6 +88,49 @@ float64 x
 float64 y
 float64 z
 float64 w`;
+const FOXGLOVE_ROS2_FRAME_TRANSFORM_SCHEMA = `builtin_interfaces/Time timestamp
+string parent_frame_id
+string child_frame_id
+foxglove_msgs/Vector3 translation
+foxglove_msgs/Quaternion rotation
+===
+MSG: foxglove_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: foxglove_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w
+===
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec`;
+const FOXGLOVE_ROS2_FRAME_TRANSFORMS_SCHEMA = `foxglove_msgs/FrameTransform[] transforms
+===
+MSG: foxglove_msgs/FrameTransform
+builtin_interfaces/Time timestamp
+string parent_frame_id
+string child_frame_id
+foxglove_msgs/Vector3 translation
+foxglove_msgs/Quaternion rotation
+===
+MSG: foxglove_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: foxglove_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w
+===
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec`;
 const ROS2_IDL_TF_MESSAGE_SCHEMA = `module tf2_msgs {
   module msg {
     struct TFMessage {
@@ -986,6 +1029,142 @@ describe("MCAP resources", () => {
       parentFrameId: "base_link",
       timeNs: 9_000_000_030n,
     });
+    expect(set.samples[0]?.translation.toArray()).toEqual([4, 5, 6]);
+  });
+
+  it("reads foxglove_msgs cdr FrameTransforms samples from dynamic frame transform windows", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(
+        foxgloveRos2FrameTransforms({
+          transforms: [
+            {
+              child_frame_id: "lidar",
+              parent_frame_id: "map",
+              rotation: { w: 1, x: 0, y: 0, z: 0 },
+              timestamp: { nanosec: 40, sec: 8 },
+              translation: { x: 1, y: 2, z: 3 },
+            },
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 8_000_000_040n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "cdr",
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(
+                new TextEncoder().encode(FOXGLOVE_ROS2_FRAME_TRANSFORMS_SCHEMA),
+                {
+                  encoding: "ros2msg",
+                  id: 10,
+                  name: "foxglove_msgs/msg/FrameTransforms",
+                },
+              ),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 8_000_000_040n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 8_000_000_040n,
+    });
+
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+      timeNs: 8_000_000_040n,
+    });
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("reads foxglove_msgs cdr FrameTransform samples from dynamic frame transform windows", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(
+        foxgloveRos2FrameTransform({
+          child_frame_id: "camera",
+          parent_frame_id: "map",
+          rotation: { w: 1, x: 0, y: 0, z: 0 },
+          timestamp: { nanosec: 50, sec: 8 },
+          translation: { x: 4, y: 5, z: 6 },
+        }),
+        {
+          channelId: 10,
+          logTime: 8_000_000_050n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "cdr",
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(
+                new TextEncoder().encode(FOXGLOVE_ROS2_FRAME_TRANSFORM_SCHEMA),
+                {
+                  encoding: "ros2msg",
+                  id: 10,
+                  name: "foxglove_msgs/msg/FrameTransform",
+                },
+              ),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 8_000_000_050n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 8_000_000_050n,
+    });
+
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "camera",
+      parentFrameId: "map",
+      timeNs: 8_000_000_050n,
+    });
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
     expect(set.samples[0]?.translation.toArray()).toEqual([4, 5, 6]);
   });
 
@@ -2214,6 +2393,28 @@ function ros1TfMessage(record: Record<string, unknown>): Uint8Array {
 function ros2TfMessage(record: Record<string, unknown>): Uint8Array {
   const writer = new Ros2MessageWriter(
     parseRosMessageDefinition(ROS2_TF_MESSAGE_SCHEMA, { ros2: true }),
+  );
+  return writer.writeMessage(record);
+}
+
+function foxgloveRos2FrameTransforms(
+  record: Record<string, unknown>,
+): Uint8Array {
+  const writer = new Ros2MessageWriter(
+    parseRosMessageDefinition(FOXGLOVE_ROS2_FRAME_TRANSFORMS_SCHEMA, {
+      ros2: true,
+    }),
+  );
+  return writer.writeMessage(record);
+}
+
+function foxgloveRos2FrameTransform(
+  record: Record<string, unknown>,
+): Uint8Array {
+  const writer = new Ros2MessageWriter(
+    parseRosMessageDefinition(FOXGLOVE_ROS2_FRAME_TRANSFORM_SCHEMA, {
+      ros2: true,
+    }),
   );
   return writer.writeMessage(record);
 }

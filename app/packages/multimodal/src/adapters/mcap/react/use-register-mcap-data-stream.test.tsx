@@ -346,6 +346,46 @@ describe("stream status + buffering feedback", () => {
     });
   });
 
+  it("starts playback without buffering when no playback topics are active", async () => {
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <PlaybackProvider duration={0}>
+        <McapDataStreamProvider>
+          <Harness
+            client={client}
+            onApi={(value) => {
+              api = value;
+            }}
+            onStore={storeCapture.onStore}
+            source={source}
+            subscribe={false}
+          />
+        </McapDataStreamProvider>
+      </PlaybackProvider>,
+    );
+    const store = storeCapture.store();
+
+    act(() => {
+      api?.play();
+    });
+    expect(getIsPlaying(store)).toBe(false);
+    expect(getIsPlayPending(store)).toBe(true);
+
+    await waitFor(() => {
+      expect(getIsPlaying(store)).toBe(true);
+      expect(getIsPlayPending(store)).toBe(false);
+      expect(getIsBuffering(store)).toBe(false);
+    });
+    expect(client.readSynchronizedMessageBatch).not.toHaveBeenCalled();
+  });
+
   it("warms paused lookahead after the startup window is covered", async () => {
     const source = createSource("source");
     const startupBatch = deferred<readonly McapSynchronizedMessageWindow[]>();

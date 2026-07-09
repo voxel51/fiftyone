@@ -1,5 +1,5 @@
 import { collectTileIds, useTiling, type TilingTile } from "@fiftyone/tiling";
-import { useStore, type Atom } from "jotai";
+import { useStore, type Atom, type PrimitiveAtom } from "jotai";
 import React, {
   useCallback,
   useEffect,
@@ -20,6 +20,11 @@ import {
   writeMcapModalLayout,
   type McapPersistedModalLayout,
 } from "./mcap-layout-persistence";
+import {
+  DEFAULT_MCAP_MAP_TILE_SETTINGS,
+  mcapMapTileSettingsAtom,
+  type McapMapTileSettings,
+} from "./mcap-map-tile-state";
 import {
   mcapPlotTileSeriesAtom,
   type McapPlotSeriesConfig,
@@ -56,8 +61,9 @@ export interface UseMcapModalLayoutOptions {
   sources: readonly SceneSource[];
   /**
    * Persistence scope — `ctx.dataset.datasetId` (stable across dataset
-   * renames, unlike the name). Absent, reads/writes hit only the
-   * browser-wide fallback entry.
+   * renames, unlike the name) for the sample renderer, or an MCAP source key
+   * for the explorer. Absent, reads/writes hit only the browser-wide fallback
+   * entry.
    */
   datasetId?: string;
   /** Source locality hint; tightens the default tile budget when remote. */
@@ -315,42 +321,24 @@ export function McapModalLayoutPersistence({
   const tilesRef = useRef(tiles);
   tilesRef.current = tiles;
 
-  // This effect seeds the plot-series atom once per mount from the
-  // persisted dataset entry — persistence is an external system.
-  useEffect(() => {
-    const persisted = readMcapModalLayout(datasetIdRef.current)?.plotSeries;
-    if (persisted) {
-      store.set(mcapPlotTileSeriesAtom, (previous) => {
-        const next = { ...previous };
-        for (const [tileId, series] of Object.entries(persisted)) {
-          if (!(tileId in tilesRef.current) || next[tileId]) continue;
-          next[tileId] = series;
-        }
-        return next;
-      });
-    }
-    seededPlotKeyRef.current = JSON.stringify(
-      store.get(mcapPlotTileSeriesAtom),
-    );
-  }, [store]);
+  useSeedPersistedTileAtom({
+    atom: mcapPlotTileSeriesAtom,
+    datasetIdRef,
+    field: "plotSeries",
+    seededKeyRef: seededPlotKeyRef,
+    store,
+    tilesRef,
+  });
 
-  // This effect seeds the raw-tile topic atom once per mount from the
-  // persisted dataset entry — same contract as the plot series above.
   const seededRawKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    const persisted = readMcapModalLayout(datasetIdRef.current)?.rawTopics;
-    if (persisted) {
-      store.set(mcapRawTileTopicAtom, (previous) => {
-        const next = { ...previous };
-        for (const [tileId, topic] of Object.entries(persisted)) {
-          if (!(tileId in tilesRef.current) || next[tileId]) continue;
-          next[tileId] = topic;
-        }
-        return next;
-      });
-    }
-    seededRawKeyRef.current = JSON.stringify(store.get(mcapRawTileTopicAtom));
-  }, [store]);
+  useSeedPersistedTileAtom({
+    atom: mcapRawTileTopicAtom,
+    datasetIdRef,
+    field: "rawTopics",
+    seededKeyRef: seededRawKeyRef,
+    store,
+    tilesRef,
+  });
 
   const plotSeriesPatch = useCallback(
     (value: Readonly<Record<string, readonly McapPlotSeriesConfig[]>>) => ({
@@ -375,6 +363,30 @@ export function McapModalLayoutPersistence({
     datasetIdRef,
     patchForValue: rawTopicsPatch,
     seededKeyRef: seededRawKeyRef,
+    store,
+  });
+
+  const seededMapKeyRef = useRef<string | null>(null);
+  useSeedPersistedTileAtom({
+    atom: mcapMapTileSettingsAtom,
+    datasetIdRef,
+    field: "mapSettings",
+    seededKeyRef: seededMapKeyRef,
+    store,
+    tilesRef,
+  });
+
+  const mapSettingsPatch = useCallback(
+    (value: Readonly<Record<string, McapMapTileSettings>>) => ({
+      mapSettings: compactMapSettings(value),
+    }),
+    [],
+  );
+  useDebouncedMcapLayoutAtomMirror({
+    atom: mcapMapTileSettingsAtom,
+    datasetIdRef,
+    patchForValue: mapSettingsPatch,
+    seededKeyRef: seededMapKeyRef,
     store,
   });
 
@@ -494,6 +506,74 @@ function compactPlotSeries(
     }
   }
   return compact;
+}
+
+function compactMapSettings(
+  value: Readonly<Record<string, McapMapTileSettings>>,
+): Record<string, McapMapTileSettings> | undefined {
+  const compact: Record<string, McapMapTileSettings> = {};
+  for (const [tileId, settings] of Object.entries(value)) {
+    const baseLayer =
+      settings.baseLayer ?? DEFAULT_MCAP_MAP_TILE_SETTINGS.baseLayer;
+    const isDefault =
+      baseLayer === DEFAULT_MCAP_MAP_TILE_SETTINGS.baseLayer &&
+      settings.followEgo === DEFAULT_MCAP_MAP_TILE_SETTINGS.followEgo &&
+      settings.enabledTopics === undefined;
+    if (isDefault) {
+      continue;
+    }
+    compact[tileId] = {
+      baseLayer,
+      followEgo: settings.followEgo,
+      ...(settings.enabledTopics !== undefined
+        ? { enabledTopics: settings.enabledTopics }
+        : {}),
+    };
+  }
+  return Object.keys(compact).length > 0 ? compact : undefined;
+}
+
+type PersistedTileAtomField = "mapSettings" | "plotSeries" | "rawTopics";
+
+/**
+ * Seeds tile-scoped atoms from the dataset entry once per modal mount.
+ * Persistence is external state, so the effect intentionally owns the
+ * read/seed boundary while callers provide the field-specific atom.
+ */
+function useSeedPersistedTileAtom<TileValue>({
+  atom,
+  datasetIdRef,
+  field,
+  seededKeyRef,
+  store,
+  tilesRef,
+}: {
+  readonly atom: PrimitiveAtom<Readonly<Record<string, TileValue>>>;
+  readonly datasetIdRef: React.MutableRefObject<string | undefined>;
+  readonly field: PersistedTileAtomField;
+  readonly seededKeyRef: React.MutableRefObject<string | null>;
+  readonly store: ReturnType<typeof useStore>;
+  readonly tilesRef: React.MutableRefObject<Record<string, TilingTile>>;
+}) {
+  useEffect(() => {
+    const persisted = readMcapModalLayout(datasetIdRef.current)?.[field] as
+      | Readonly<Record<string, TileValue>>
+      | undefined;
+    if (persisted) {
+      store.set(atom, (previous) => {
+        const next = { ...previous };
+        for (const [tileId, value] of Object.entries(persisted) as [
+          string,
+          TileValue,
+        ][]) {
+          if (!(tileId in tilesRef.current) || next[tileId]) continue;
+          next[tileId] = value;
+        }
+        return next;
+      });
+    }
+    seededKeyRef.current = JSON.stringify(store.get(atom));
+  }, [atom, datasetIdRef, field, seededKeyRef, store, tilesRef]);
 }
 
 /**
