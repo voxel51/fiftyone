@@ -18,8 +18,6 @@ export interface NativeVideoFrameStreamOptions extends FrameBitmapStreamOptions 
    * same-origin cookies).
    */
   headers?: Record<string, string>;
-  /** Worker-side frame-exactness instrumentation (dev only). */
-  debug?: boolean;
 }
 
 /**
@@ -38,13 +36,11 @@ export class NativeVideoFrameStream extends FrameBitmapStream<{
 }> {
   private readonly videoSrc: string;
   private readonly headers: Record<string, string>;
-  private readonly debug: boolean;
 
   constructor(opts: NativeVideoFrameStreamOptions) {
     super(opts);
     this.videoSrc = opts.videoSrc;
     this.headers = opts.headers ?? {};
-    this.debug = opts.debug ?? false;
   }
 
   protected createWorker(): Worker {
@@ -58,7 +54,6 @@ export class NativeVideoFrameStream extends FrameBitmapStream<{
       type: "init",
       videoSrc: this.videoSrc,
       headers: this.headers,
-      debug: this.debug,
     });
   }
 
