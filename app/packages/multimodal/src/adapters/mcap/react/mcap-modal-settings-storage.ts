@@ -399,7 +399,7 @@ export function normalizeMcapImageProjectionMap(
 export function normalizeMcapImageProjection(
   value: unknown,
 ): McapImageProjectionSettings {
-  if (typeof value !== "object" || value === null) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return DEFAULT_MCAP_IMAGE_PROJECTION;
   }
 

@@ -205,15 +205,18 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     const available = new Set(pointCloudTopics);
     return projection.topics.filter((cloudTopic) => available.has(cloudTopic));
   }, [pointCloudTopics, projection.topics]);
-  const projectionInspectActive =
+  const activeProjection =
+    effectiveImageDims &&
     projection.enabled &&
-    calibration !== null &&
-    selectedProjectionTopics.length > 0;
+    calibration &&
+    selectedProjectionTopics.length > 0
+      ? { calibration, imageDims: effectiveImageDims }
+      : null;
   const imagePanZoom = useImagePanZoom({
     fit: IMAGE_FIT,
     // The resting hand cursor would occlude the very dot a dwell hover
     // inspects; a crosshair pinpoints it. Dragging still shows "grabbing".
-    idleCursor: projectionInspectActive ? "crosshair" : undefined,
+    idleCursor: activeProjection ? "crosshair" : undefined,
     imageSize: effectiveImageDims,
     resetKey: topic,
   });
@@ -378,15 +381,12 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
             textureKey={textureKey}
             viewTransform={imagePanZoom.viewTransform}
           />
-          {effectiveImageDims &&
-          projection.enabled &&
-          calibration &&
-          selectedProjectionTopics.length > 0 ? (
+          {activeProjection ? (
             <McapImageProjectionOverlay
-              calibration={calibration}
+              calibration={activeProjection.calibration}
               fit={IMAGE_FIT}
-              imageHeight={effectiveImageDims.height}
-              imageWidth={effectiveImageDims.width}
+              imageHeight={activeProjection.imageDims.height}
+              imageWidth={activeProjection.imageDims.width}
               pointSize={projection.pointSize}
               topics={selectedProjectionTopics}
               viewTransform={imagePanZoom.viewTransform}

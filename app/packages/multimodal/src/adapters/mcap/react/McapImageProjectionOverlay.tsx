@@ -1,4 +1,3 @@
-import { useSetAtom } from "jotai";
 import React, {
   useEffect,
   useMemo,
@@ -42,8 +41,8 @@ import {
 } from "./mcap-image-projection";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
-  mcapHoverEchoAtom,
   useMcapHoverEcho,
+  useSetMcapHoverEcho,
   type McapHoverEcho,
 } from "./mcap-hover-echo";
 import { mcapHoveredPointForFrame } from "./mcap-point-hover";
@@ -118,7 +117,7 @@ const McapImageProjectionOverlay: React.FC<{
   const { resolve } = useMcapFrameTransformsContext();
   const sharedHover = useMcapHoverEcho();
   const hoveredPoint = sharedHover?.kind === "point" ? sharedHover : null;
-  const setSharedHover = useSetAtom(mcapHoverEchoAtom);
+  const setSharedHover = useSetMcapHoverEcho();
   const pointCloudSources = useSceneSourcesByType(MCAP_SOURCE_TYPE.POINT_CLOUD);
   const { pointCloudColors } = useMcapPointCloudStyleSettings();
   // Per-topic colour options resolved exactly like the 3D tile resolves

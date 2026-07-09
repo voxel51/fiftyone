@@ -96,10 +96,20 @@ export function decodeImageRgba({
       return depth32Rgba({ data, height, littleEndian, step, width });
     case "uyvy":
     case "yuv422":
-      return { rgba: yuv422Rgba({ data, height, order: "uyvy", step, width }) };
+      return yuv422Result(
+        { data, height, step, width },
+        "uyvy",
+        sourceLabel,
+        encoding,
+      );
     case "yuyv":
     case "yuv422_yuy2":
-      return { rgba: yuv422Rgba({ data, height, order: "yuyv", step, width }) };
+      return yuv422Result(
+        { data, height, step, width },
+        "yuyv",
+        sourceLabel,
+        encoding,
+      );
     default:
       if (!bayerMatch) {
         return {
@@ -118,6 +128,20 @@ export function decodeImageRgba({
         }),
       };
   }
+}
+
+function yuv422Result(
+  layout: ImageLayout,
+  order: "uyvy" | "yuyv",
+  sourceLabel: string,
+  encoding: string,
+): DecodeImageResult {
+  if (layout.width % 2 !== 0) {
+    return {
+      unsupportedReason: `${sourceLabel} encoding '${encoding}' requires an even image width`,
+    };
+  }
+  return { rgba: yuv422Rgba({ ...layout, order }) };
 }
 
 function bytesPerPixelForEncoding(

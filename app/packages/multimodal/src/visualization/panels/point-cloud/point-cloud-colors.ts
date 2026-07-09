@@ -130,12 +130,7 @@ export function buildPointCloudRenderData(
   const sourcePointCount = Math.floor(
     sourcePositions.length / POINT_COMPONENT_COUNT,
   );
-  const sampleEvery = Math.max(
-    MIN_POINT_SAMPLE_COUNT,
-    Math.ceil(
-      sourcePointCount / Math.max(MIN_POINT_SAMPLE_COUNT, maxRenderedPoints),
-    ),
-  );
+  const sampleEvery = pointSampleStride(sourcePointCount, maxRenderedPoints);
   const maxSampleCount = Math.max(
     MIN_POINT_SAMPLE_COUNT,
     Math.ceil(sourcePointCount / sampleEvery),
@@ -166,7 +161,7 @@ export function buildPointCloudRenderData(
     const y = sourcePositions[sourceOffset + Y_COMPONENT_INDEX];
     const z = sourcePositions[sourceOffset + Z_COMPONENT_INDEX];
 
-    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+    if (!isFinitePosition(x, y, z)) {
       continue;
     }
 
@@ -226,12 +221,7 @@ export function sourcePointIndexForRenderedIndex(
   const sourcePointCount = Math.floor(
     sourcePositions.length / POINT_COMPONENT_COUNT,
   );
-  const sampleEvery = Math.max(
-    MIN_POINT_SAMPLE_COUNT,
-    Math.ceil(
-      sourcePointCount / Math.max(MIN_POINT_SAMPLE_COUNT, maxRenderedPoints),
-    ),
-  );
+  const sampleEvery = pointSampleStride(sourcePointCount, maxRenderedPoints);
   let renderedPointCount = 0;
 
   for (
@@ -244,7 +234,7 @@ export function sourcePointIndexForRenderedIndex(
     const y = sourcePositions[sourceOffset + Y_COMPONENT_INDEX];
     const z = sourcePositions[sourceOffset + Z_COMPONENT_INDEX];
 
-    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+    if (!isFinitePosition(x, y, z)) {
       continue;
     }
 
@@ -255,6 +245,20 @@ export function sourcePointIndexForRenderedIndex(
   }
 
   return null;
+}
+
+function pointSampleStride(
+  pointCount: number,
+  maxRenderedPoints: number,
+): number {
+  return Math.max(
+    MIN_POINT_SAMPLE_COUNT,
+    Math.ceil(pointCount / Math.max(MIN_POINT_SAMPLE_COUNT, maxRenderedPoints)),
+  );
+}
+
+function isFinitePosition(x: number, y: number, z: number): boolean {
+  return Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z);
 }
 
 type PointCloudColorSource =
