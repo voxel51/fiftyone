@@ -9,6 +9,9 @@ import {
   DropdownAnchor,
   DropdownTrigger,
   MenuTextItem,
+  Text,
+  TextColor,
+  TextVariant,
 } from "@voxel51/voodo";
 import { useStore } from "jotai";
 import React, { useEffect, useMemo, useState } from "react";
@@ -27,6 +30,9 @@ import { imageTextureCacheKey } from "../../../visualization/panels/image-textur
 import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import {
+  MAX_MCAP_POINT_CLOUD_POINT_SIZE,
+  MCAP_POINT_CLOUD_POINT_SIZE_STEP,
+  MIN_MCAP_POINT_CLOUD_POINT_SIZE,
   useMcapImageLabelTopics,
   useMcapImageProjection,
   useMcapPlaybackSettings,
@@ -321,6 +327,26 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   />
                 ))}
               </div>
+              <label className={settingsStyles.field}>
+                <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+                  Point size
+                </Text>
+                <input
+                  aria-label="Projection point size"
+                  className={settingsStyles.select}
+                  max={MAX_MCAP_POINT_CLOUD_POINT_SIZE}
+                  min={MIN_MCAP_POINT_CLOUD_POINT_SIZE}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    if (Number.isFinite(next)) {
+                      setProjection({ pointSize: next });
+                    }
+                  }}
+                  step={MCAP_POINT_CLOUD_POINT_SIZE_STEP}
+                  type="number"
+                  value={projection.pointSize}
+                />
+              </label>
             </McapSidebarGroup>
           ) : null}
         </div>
@@ -361,6 +387,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               fit={IMAGE_FIT}
               imageHeight={effectiveImageDims.height}
               imageWidth={effectiveImageDims.width}
+              pointSize={projection.pointSize}
               topics={selectedProjectionTopics}
               viewTransform={imagePanZoom.viewTransform}
             />
