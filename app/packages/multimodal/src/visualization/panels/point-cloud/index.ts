@@ -6,6 +6,13 @@ export {
   type PointCloudColorWriter,
 } from "./point-cloud-colors";
 export {
+  gpuPointCloudColorAtSample,
+  NEUTRAL_GPU_POINT_COLOR,
+  resolveGpuPointCloudColor,
+  type GpuPointCloudColorSource,
+  type ResolvedGpuPointCloudColor,
+} from "./gpu-point-cloud-color";
+export {
   colormapCssGradient,
   createPointCloudColormapLookup,
   DEFAULT_POINT_CLOUD_COLORMAP,
