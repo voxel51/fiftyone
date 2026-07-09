@@ -189,8 +189,25 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     () => (topic ? [topic, ...selectedLabelTopics] : []),
     [selectedLabelTopics, topic],
   );
+  const { projection, setProjection } = useMcapImageProjection(topic);
+  const pointCloudTopics = useMemo(
+    () => pointCloudSources.map((s) => s.id),
+    [pointCloudSources],
+  );
+  const selectedProjectionTopics = useMemo(() => {
+    if (projection.topics === null) return pointCloudTopics;
+    const available = new Set(pointCloudTopics);
+    return projection.topics.filter((cloudTopic) => available.has(cloudTopic));
+  }, [pointCloudTopics, projection.topics]);
+  const projectionInspectActive =
+    projection.enabled &&
+    calibration !== null &&
+    selectedProjectionTopics.length > 0;
   const imagePanZoom = useImagePanZoom({
     fit: IMAGE_FIT,
+    // The resting hand cursor would occlude the very dot a dwell hover
+    // inspects; a crosshair pinpoints it. Dragging still shows "grabbing".
+    idleCursor: projectionInspectActive ? "crosshair" : undefined,
     imageSize: effectiveImageDims,
     resetKey: topic,
   });
@@ -208,16 +225,6 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
       annotationTopics.filter((availableTopic) => next.has(availableTopic)),
     );
   };
-  const { projection, setProjection } = useMcapImageProjection(topic);
-  const pointCloudTopics = useMemo(
-    () => pointCloudSources.map((s) => s.id),
-    [pointCloudSources],
-  );
-  const selectedProjectionTopics = useMemo(() => {
-    if (projection.topics === null) return pointCloudTopics;
-    const available = new Set(pointCloudTopics);
-    return projection.topics.filter((cloudTopic) => available.has(cloudTopic));
-  }, [pointCloudTopics, projection.topics]);
   const toggleProjectionTopic = (cloudTopic: string, checked: boolean) => {
     const next = new Set(selectedProjectionTopics);
     if (checked) {
