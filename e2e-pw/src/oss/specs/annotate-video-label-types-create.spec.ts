@@ -11,7 +11,7 @@
  * `usePolylineModeInstaller` creation handler; a brush stroke with nothing
  * selected fires `lighter:overlay-create`, which opens a fresh masked detection
  * (segmentation mode) on the engine frame path. Detection-box draw is covered
- * separately (`MISSING-annotate-video-draw.spec.ts`).
+ * separately (`annotate-video-draw.spec.ts`).
  */
 import { Browser, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";

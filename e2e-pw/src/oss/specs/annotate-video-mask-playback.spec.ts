@@ -11,7 +11,7 @@
  * selected label's live overlay reports `hasMask()`, so its presence on the
  * keyframe and absence on a filler frame proves the overlay paints/clears the
  * mask with the playhead. Detection-box draw + auto-extend are covered in
- * `MISSING-annotate-video-auto-extend.spec.ts`.
+ * `annotate-video-auto-extend.spec.ts`.
  */
 import { expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";

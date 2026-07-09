@@ -31,9 +31,7 @@
 ### Spec Organization
 
 All specs live directly in `e2e-pw/src/oss/specs/` with no subdirectories and
-are named `<ticket>-<short-description>.spec.ts`, e.g.
-`FOEPD-1234-my-regression-test.spec.ts`. Specs without a known ticket use
-`MISSING` as the placeholder.
+are named `<short-description>.spec.ts`, e.g. `my-regression-test.spec.ts`.
 
 ### Patterns
 

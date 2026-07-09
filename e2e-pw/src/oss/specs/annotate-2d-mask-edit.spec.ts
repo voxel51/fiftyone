@@ -18,7 +18,7 @@
  *
  * SEED THE MASK VIA `fo.Detection`, not the factory JSON: the server's mask
  * encoder only converts an embedded numpy `mask` to the zlib-base64 the app
- * decodes when the label's `_cls` is a mask class (see MISSING-annotate-2d-mask).
+ * decodes when the label's `_cls` is a mask class (see annotate-2d-mask).
  */
 import { expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";

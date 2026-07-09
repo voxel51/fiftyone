@@ -5,7 +5,7 @@
  * write to ONE shared command stack through the annotation engine, so undo/redo
  * unwinds actions in LIFO order regardless of which surface produced them.
  *
- * Complements MISSING-annotate-edit.spec.ts (single-surface attribute edit) by
+ * Complements annotate-edit.spec.ts (single-surface attribute edit) by
  * exercising the engine-routed geometry edit path (Position.tsx → createPushAndExec)
  * and interleaving it with a canvas draw. Semantic assertions (field values, the
  * engine-derived Labels count, undo/redo enabled state) — no screenshots.
