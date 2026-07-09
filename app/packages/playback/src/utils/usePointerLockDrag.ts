@@ -106,12 +106,16 @@ export function usePointerLockDrag({
           // Chromium returns a Promise here; older browsers return void. Mark
           // as locked only once the request succeeds, and swallow a rejection
           // (lock denied) so it doesn't surface as an unhandled rejection.
+          // The DOM lib types requestPointerLock as returning `void`, but
+          // Chromium returns a Promise (older browsers return undefined).
+          const requestLock = target.requestPointerLock as
+            | (() => Promise<void> | undefined)
+            | undefined;
           try {
-            // DOM lib types this as `void`, but Chromium returns a Promise.
-            const request = target.requestPointerLock?.() as unknown as
-              | Promise<void>
-              | undefined;
-            if (request?.then) {
+            const request = requestLock?.call(target);
+            if (request) {
+              // Mark locked only once the lock resolves; swallow a rejection
+              // (denied) so it isn't an unhandled promise rejection.
               request.then(
                 () => {
                   locked = true;
@@ -121,6 +125,7 @@ export function usePointerLockDrag({
                 },
               );
             } else {
+              // Older browsers: synchronous / event-based, assume locked.
               locked = true;
             }
           } catch {
