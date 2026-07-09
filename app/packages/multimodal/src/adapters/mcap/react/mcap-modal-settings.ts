@@ -230,17 +230,33 @@ const imageProjectionAtom = atom(
     const normalizedImageTopic = imageTopic.trim();
     if (!normalizedImageTopic) return;
 
-    updateModalSettings(set, (current) => ({
-      ...current,
-      imageProjection: {
-        ...current.imageProjection,
-        [normalizedImageTopic]: normalizeMcapImageProjection({
-          ...(current.imageProjection[normalizedImageTopic] ??
-            DEFAULT_MCAP_IMAGE_PROJECTION),
-          ...settings,
-        }),
-      },
-    }));
+    updateModalSettings(set, (current) => {
+      const previous =
+        current.imageProjection[normalizedImageTopic] ??
+        DEFAULT_MCAP_IMAGE_PROJECTION;
+      let topics =
+        settings.topics !== undefined ? settings.topics : previous.topics;
+      if (settings.enabled === false) {
+        topics = [];
+      } else if (
+        settings.enabled === true &&
+        settings.topics === undefined &&
+        !previous.enabled
+      ) {
+        topics = null;
+      }
+      return {
+        ...current,
+        imageProjection: {
+          ...current.imageProjection,
+          [normalizedImageTopic]: normalizeMcapImageProjection({
+            ...previous,
+            ...settings,
+            topics,
+          }),
+        },
+      };
+    });
   },
 );
 

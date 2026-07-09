@@ -600,7 +600,7 @@ describe("mcap-modal-settings", () => {
       "/camera/front": {
         enabled: false,
         pointSize: MAX_MCAP_POINT_CLOUD_POINT_SIZE,
-        topics: ["/lidar"],
+        topics: [],
       },
     });
   });
@@ -631,6 +631,15 @@ describe("mcap-modal-settings", () => {
         pointSize: 8,
         topics: ["/lidar/points"],
       },
+    });
+
+    act(() => {
+      result.current.setProjection({ enabled: false });
+    });
+    expect(result.current.projection).toEqual({
+      enabled: false,
+      pointSize: 8,
+      topics: [],
     });
   });
 });

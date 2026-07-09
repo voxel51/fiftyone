@@ -201,10 +201,11 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     [pointCloudSources],
   );
   const selectedProjectionTopics = useMemo(() => {
+    if (!projection.enabled) return [];
     if (projection.topics === null) return pointCloudTopics;
     const available = new Set(pointCloudTopics);
     return projection.topics.filter((cloudTopic) => available.has(cloudTopic));
-  }, [pointCloudTopics, projection.topics]);
+  }, [pointCloudTopics, projection.enabled, projection.topics]);
   const activeProjection =
     effectiveImageDims &&
     projection.enabled &&
@@ -241,11 +242,10 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     } else {
       next.delete(cloudTopic);
     }
-    setProjection({
-      topics: pointCloudTopics.filter((availableTopic) =>
-        next.has(availableTopic),
-      ),
-    });
+    const topics = pointCloudTopics.filter((availableTopic) =>
+      next.has(availableTopic),
+    );
+    setProjection({ enabled: topics.length > 0, topics });
   };
   const canProjectPointClouds =
     pointCloudSources.length > 0 && calibrationTopic !== null;
@@ -300,15 +300,11 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
           ) : null}
           {canProjectPointClouds ? (
             <McapSidebarGroup
-              summary={
-                projection.enabled
-                  ? `${selectedProjectionTopics.length} of ${pointCloudSources.length} on`
-                  : undefined
-              }
+              summary={`${selectedProjectionTopics.length} of ${pointCloudSources.length} on`}
               title="Pointcloud projections"
               toggle={{
                 ariaLabel: "Toggle pointcloud projections",
-                checked: projection.enabled,
+                checked: selectedProjectionTopics.length > 0,
                 // Master toggle drives the children: on selects every
                 // cloud, off unchecks them all.
                 onChange: (checked) =>
@@ -319,23 +315,12 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   ),
               }}
             >
-              <div className={settingsStyles.optionStack}>
-                {pointCloudSources.map((s) => (
-                  <Checkbox
-                    key={s.id}
-                    label={s.label}
-                    checked={selectedProjectionTopics.includes(s.id)}
-                    onChange={(checked) => toggleProjectionTopic(s.id, checked)}
-                    {...checkboxNoSpaceToggleProps}
-                  />
-                ))}
-              </div>
               <label className={settingsStyles.field}>
                 <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
                   Point size
                 </Text>
                 <input
-                  aria-label="Projection point size"
+                  aria-label="Point size"
                   className={settingsStyles.select}
                   max={MAX_MCAP_POINT_CLOUD_POINT_SIZE}
                   min={MIN_MCAP_POINT_CLOUD_POINT_SIZE}
@@ -350,6 +335,17 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   value={projection.pointSize}
                 />
               </label>
+              <div className={settingsStyles.optionStack}>
+                {pointCloudSources.map((s) => (
+                  <Checkbox
+                    key={s.id}
+                    label={s.label}
+                    checked={selectedProjectionTopics.includes(s.id)}
+                    onChange={(checked) => toggleProjectionTopic(s.id, checked)}
+                    {...checkboxNoSpaceToggleProps}
+                  />
+                ))}
+              </div>
             </McapSidebarGroup>
           ) : null}
         </div>
