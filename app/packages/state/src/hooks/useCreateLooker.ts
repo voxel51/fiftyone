@@ -256,7 +256,9 @@ export default <T extends AbstractLooker<BaseState>>(
             });
 
             // seed the poster frame from already-loaded grid data so the looker
-            // renders without a sample fetch; the rest streams on play/hover
+            // renders without a sample fetch; the image is adopted from the
+            // tile's own <img> on load (never re-downloaded), the rest streams
+            // on play/hover
             if (!controller.store.frameIndex.has(firstFrameNumber)) {
               controller.store.samples.set(thisSampleId, {
                 id: thisSampleId,
@@ -268,11 +270,6 @@ export default <T extends AbstractLooker<BaseState>>(
               controller.store.reverseFrameIndex.set(
                 thisSampleId,
                 firstFrameNumber,
-              );
-              void controller.store.fetchImageForSample(
-                thisSampleId,
-                rawUrls,
-                mediaField,
               );
             }
 
@@ -287,6 +284,15 @@ export default <T extends AbstractLooker<BaseState>>(
           if (frameStoreController.totalFrameCount == null) {
             const posterGroupCount = (sample as { _group_count?: number })
               ._group_count;
+            console.debug("[imavid] poster seed", {
+              sampleId: thisSampleId,
+              group: sample._group,
+              posterGroupCount,
+              hasGroupCountField: "_group_count" in (sample as object),
+              sampleKeys: Object.keys(sample as object).filter((k) =>
+                k.startsWith("_"),
+              ),
+            });
             if (posterGroupCount != null) {
               frameStoreController.setTotalFrameCount(posterGroupCount);
             } else if (isModal) {

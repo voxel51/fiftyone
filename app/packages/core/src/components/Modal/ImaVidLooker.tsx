@@ -306,22 +306,24 @@ export const ImaVidLookerReact = React.memo(
             setTotalFrameCount(real);
             totalFrameCountRef.current = real;
           }
-          const done = bufferedMax >= real;
-          setIsBuffering(!done);
-          if (done) {
-            clearInterval(intervalId);
-          }
-        } else {
+        } else if (bufferedMax && bufferedMax !== lastTarget) {
           // length unknown — grow the bar with buffered frames until the stream reveals it.
-          setIsBuffering(true);
-          if (bufferedMax && bufferedMax !== lastTarget) {
-            lastTarget = bufferedMax;
-            jotaiStore.set(updateTimelineConfigAtom, {
-              name: timelineName,
-              configDelta: { totalFrames: bufferedMax },
-            });
-          }
+          lastTarget = bufferedMax;
+          jotaiStore.set(updateTimelineConfigAtom, {
+            name: timelineName,
+            configDelta: { totalFrames: bufferedMax },
+          });
         }
+
+        // buffering means the playhead is genuinely stalled waiting on the
+        // current frame — NOT that the whole group is cached. Windowed
+        // look-ahead never caches the whole group, so the old `bufferedMax >=
+        // real` test pinned the bar on forever with no fetch behind it.
+        const playhead =
+          imaVidLookerRef.current?.state?.currentFrameNumber ?? 1;
+        const stalled =
+          controller.storeBufferManager.getRangeIndexForFrame(playhead) === -1;
+        setIsBuffering(stalled);
       }, 100);
 
       return () => clearInterval(intervalId);

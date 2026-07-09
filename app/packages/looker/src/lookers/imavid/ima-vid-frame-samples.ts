@@ -38,7 +38,18 @@ export const ImaVidSampleStore = new LRUCache<
   max: MAX_FRAME_STREAM_SIZE,
   maxSize: MAX_FRAME_STREAM_SIZE_BYTES,
   noDisposeOnSet: true,
-  sizeCalculation: (data) => sizeBytesEstimate(data.sample),
+  // count the image too (encoded JPEG ≈ w*h/8); entries are re-set after the
+  // image attaches so the byte budget tracks real memory, not just field JSON
+  sizeCalculation: (data) =>
+    Math.max(
+      1,
+      Math.ceil(
+        sizeBytesEstimate(data.sample) +
+          (data.image?.naturalWidth
+            ? (data.image.naturalWidth * data.image.naturalHeight) / 8
+            : 0),
+      ),
+    ),
   dispose: (_data, sampleId, reason) => {
     if (reason === "evict") {
       // real LRU pressure (count or byte budget) — sustained streams of these
@@ -156,6 +167,8 @@ export class ImaVidFrameSamples {
           }
 
           sample.image = image;
+          // re-set so the LRU's byte accounting includes the image
+          this.samples.set(sampleId, sample);
           resolve(sampleId);
         },
         { signal: this.abortController?.signal },

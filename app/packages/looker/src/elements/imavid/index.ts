@@ -8,6 +8,7 @@ import {
   HOVER_FETCH_INTENT_MS,
   INITIAL_LOOK_AHEAD_FRAMES,
   LOOK_AHEAD_MULTIPLIER,
+  REBUFFER_RUNWAY_FRAMES,
   STREAM_BATCH_FRAMES,
 } from "../../lookers/imavid/constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
@@ -105,6 +106,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private isLoop: boolean;
   private waitingToPause = false;
   private isAnimationActive = false;
+  // bumped whenever playback stops/tears down; in-flight retry chains compare
+  // their captured epoch and die instead of polling/fetching in the background
+  private liveEpoch = 0;
+  // once the buffer drains, playback holds until this frame is buffered
+  private resumeAtFrame: number | null = null;
   // pending sustained-hover timer before a thumbnail's first stream fetch starts
   private hoverFetchTimer?: number;
 
@@ -115,6 +121,16 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   getEvents(): Events<ImaVidState> {
     return {
       load: () => {
+        // adopt the already-loaded poster into the frame store: frame 1 must be
+        // drawable without re-downloading the tile's own image
+        this.update(({ config: { sampleId } }) => {
+          const seeded = this.framesController?.store?.samples?.get(sampleId);
+          if (seeded && !seeded.image) {
+            seeded.image = this.element;
+          }
+          return {};
+        });
+
         // assign value for looker's canvas
         this.canvas = document.createElement("canvas");
         this.canvas.style.imageRendering = "pixelated";
@@ -196,6 +212,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 
   pause(shouldUpdatePlaying = true) {
+    this.liveEpoch++;
     this.isAnimationActive = false;
     if (shouldUpdatePlaying) {
       this.update(({ playing }) => {
@@ -223,8 +240,13 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 
   async skipAndTryAgain(frameNumberToDraw: number, animate: boolean) {
+    const epoch = this.liveEpoch;
     setTimeout(() => {
       requestAnimationFrame(() => {
+        if (epoch !== this.liveEpoch) {
+          // playback stopped/tore down since this retry was scheduled
+          return undefined;
+        }
         if (animate) {
           return this.drawFrame(frameNumberToDraw);
         }
@@ -236,8 +258,13 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   async drawFrameNoAnimation(frameNumberToDraw: number) {
     let image = this.getCurrentFrameImage(frameNumberToDraw);
 
+    const epoch = this.liveEpoch;
     // block until the frame is drawable; the modal timeline gates its playhead on this.
     while (!image) {
+      if (epoch !== this.liveEpoch) {
+        // superseded/stopped — never poll or fetch from the background
+        return;
+      }
       const total = this.framesController.totalFrameCount;
       // past the known end → nothing to draw (don't hang).
       if (total != null && frameNumberToDraw > total) {
@@ -286,6 +313,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       // the stream has revealed the end and we're genuinely past it (frame
       // numbers are 1-based, so frame === total is the valid last frame).
       if (total == null || frameNumberToDraw <= total) {
+        // resume only once real runway is rebuffered; resuming per-frame
+        // stutters along the buffered edge
+        this.resumeAtFrame ??= Math.min(
+          frameNumberToDraw + REBUFFER_RUNWAY_FRAMES,
+          total ?? Number.MAX_SAFE_INTEGER,
+        );
         // a stalled draw loop stops firing renderSelf/ensureBuffers, so this
         // nudge is the ONLY fetch driver left — it must always fire for a real
         // hover (hoverProbed = actual mousemove, never a scroll-past
@@ -300,6 +333,24 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         return;
       }
     }
+    // rebuffer hysteresis: the frame is drawable, but hold until the runway
+    // target is buffered (or the group end) so playback resumes smoothly
+    if (this.resumeAtFrame != null) {
+      const store = this.framesController.storeBufferManager;
+      const idx = store.getRangeIndexForFrame(frameNumberToDraw);
+      const edge = idx !== -1 ? store.buffers[idx][1] : 0;
+      const total = this.framesController.totalFrameCount;
+      const target = Math.min(
+        this.resumeAtFrame,
+        total ?? Number.MAX_SAFE_INTEGER,
+      );
+      if (edge < target && animate) {
+        this.skipAndTryAgain(frameNumberToDraw, true);
+        return;
+      }
+      this.resumeAtFrame = null;
+    }
+
     const image = currentFrameImage;
     if (this.isPlaying || this.isSeeking) {
       this.paintImageOnCanvas(image);
@@ -404,12 +455,37 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    */
   private enqueueLookAheadFetch(currentFrameNumber: number) {
     const controller = this.framesController;
+    const store = controller.storeBufferManager;
+
+    const debug = (action: string, extra: Record<string, unknown> = {}) =>
+      console.debug(
+        `[imavid] lookAhead ${action}`,
+        {
+          group: controller.key,
+          currentFrameNumber,
+          isFetching: controller.isFetching,
+          queue: JSON.stringify(controller.fetchBufferManager.buffers),
+          buffered: JSON.stringify(store.buffers),
+          total: controller.totalFrameCount,
+          ...extra,
+        },
+        new Error("call site").stack,
+      );
 
     // one batch in flight at a time
     if (
       controller.isFetching ||
       controller.fetchBufferManager.buffers.length > 0
     ) {
+      if (currentFrameNumber % 30 === 0) {
+        debug("skip: batch in flight");
+      }
+      // self-heal: a queued range with no active pass (e.g. a pause landed
+      // between enqueue and drain) would otherwise strand forever — resumeFetch
+      // is a no-op while a pass is executing
+      if (!controller.isFetching) {
+        controller.resumeFetch();
+      }
       return;
     }
 
@@ -417,29 +493,41 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     const total = controller.totalFrameCount;
 
     // furthest contiguous buffered frame ahead of the playhead
-    const store = controller.storeBufferManager;
     const idx = store.getRangeIndexForFrame(currentFrameNumber);
     const bufferedEdge =
       idx !== -1 ? store.buffers[idx][1] : currentFrameNumber - 1;
 
-    // enough runway already buffered ahead — nothing to fetch
+    // enough runway already buffered ahead — nothing to fetch (the healthy
+    // per-frame no-op; sampled so the console stays readable)
     if (bufferedEdge - currentFrameNumber >= lookAhead) {
+      if (currentFrameNumber % 30 === 0) {
+        debug("skip: runway sufficient", { bufferedEdge, lookAhead });
+      }
       return;
     }
 
     const start = bufferedEdge + 1;
     if (total != null && start > total) {
+      debug("skip: past total", { bufferedEdge, lookAhead, start });
       return;
     }
 
-    let end = currentFrameNumber + lookAhead;
+    // refill in FULL batches: `playhead + lookAhead` alone lands one frame past
+    // the buffer at the runway edge, degenerating into a 1-frame request per
+    // rendered frame
+    let end = Math.max(
+      currentFrameNumber + lookAhead,
+      start + STREAM_BATCH_FRAMES - 1,
+    );
     if (total != null) {
       end = Math.min(end, total);
     }
     if (end < start) {
+      debug("skip: empty window", { bufferedEdge, lookAhead, start, end });
       return;
     }
 
+    debug("enqueue", { bufferedEdge, lookAhead, start, end });
     controller.enqueueFetch([start, end] as const);
     controller.resumeFetch();
   }
@@ -501,7 +589,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   renderSelf(state: Readonly<ImaVidState>) {
     const {
       options: { playbackRate, loop },
-      config: { thumbnail, src: thumbnailSrc, frameRate },
+      config: { thumbnail, src: thumbnailSrc, frameRate, sampleId },
       currentFrameNumber,
       seeking,
       hovering,
@@ -512,7 +600,30 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     // todo: move this to `createHtmlElement` unless src is something that isn't stable between renders
     if (this.thumbnailSrc !== thumbnailSrc) {
       this.thumbnailSrc = thumbnailSrc;
-      this.element.setAttribute("src", thumbnailSrc);
+      // the poster is usually already in memory (shared store, adopted from
+      // the grid tile) — paint straight from it so opening the modal issues
+      // NO media load; a cold looker (deep link) falls back to the url
+      const seeded =
+        this.framesController?.store?.samples?.get(sampleId)?.image;
+      if (!this.canvas && seeded?.complete && seeded.naturalWidth > 0) {
+        this.canvas = document.createElement("canvas");
+        this.canvas.style.imageRendering = "pixelated";
+        this.canvas.width = seeded.naturalWidth;
+        this.canvas.height = seeded.naturalHeight;
+        this.ctx = this.canvas.getContext("2d");
+        this.ctx.imageSmoothingEnabled = false;
+        this.ctx.drawImage(seeded, 0, 0);
+        this.imageSource = this.canvas;
+        // the `load` event will never fire (no src); settle state off-render
+        setTimeout(() =>
+          this.update({
+            loaded: true,
+            dimensions: [seeded.naturalWidth, seeded.naturalHeight],
+          }),
+        );
+      } else {
+        this.element.setAttribute("src", thumbnailSrc);
+      }
     }
 
     if (!loaded) {
@@ -534,9 +645,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       );
     }
 
-    // `destroyed` is called when looker is reset
+    // `destroyed` fires on grid detach/recycle: suspend fetching but KEEP the
+    // shared buffers so re-hover/modal replay never refetch from frame 1
     if (destroyed) {
-      this.framesController.destroy();
+      this.liveEpoch++;
+      this.framesController.suspend();
     }
 
     if (this.isThumbnail) {

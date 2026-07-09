@@ -291,19 +291,18 @@ export const modalSampleAggregations = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      // null while playing/seeking an ImaVid; the sidebar settles on pause
-      if (get(sidebarSampleId) === null) {
-        return [];
-      }
-
-      const raw = get(activeModalSidebarSample) as
-        | Record<string, unknown>
-        | undefined;
+      // null while playing/seeking an ImaVid (settles on pause), or not yet
+      // loaded on first open. Aggregate an empty sample so every requested path
+      // still yields a zero-count result of the right type — returning a short
+      // array here makes downstream `.find(path)` undefined and crashes callers.
+      const raw =
+        get(sidebarSampleId) === null
+          ? undefined
+          : (get(activeModalSidebarSample) as
+              | Record<string, unknown>
+              | undefined);
       // ImaVid frames yield a wrapper; normalize to the inner field dict either way
-      const sample = (raw?.sample as Record<string, unknown>) ?? raw;
-      if (!sample) {
-        return [];
-      }
+      const sample = (raw?.sample as Record<string, unknown>) ?? raw ?? {};
 
       // extended: prune the sample the way the server's extended pipeline
       // rewrites label lists — drop labels failing the modal filters (the SAME

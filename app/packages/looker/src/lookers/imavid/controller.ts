@@ -54,7 +54,18 @@ export class ImaVidFramesController {
 
   // seed the group's length from a count the client already has; never overwrites a known count
   public setTotalFrameCount(count: number) {
-    if (count && this.totalFrameCount == null) {
+    const accepted = Boolean(count && this.totalFrameCount == null);
+    console.debug(
+      "[imavid] setTotalFrameCount",
+      {
+        group: this.key,
+        offered: count,
+        current: this.totalFrameCount,
+        accepted,
+      },
+      new Error("call site").stack,
+    );
+    if (accepted) {
       this.totalFrameCount = count;
       this.updateImaVidState?.({ totalFrames: count });
     }
@@ -85,7 +96,12 @@ export class ImaVidFramesController {
   }
 
   public enqueueFetch(frameRange: Readonly<BufferRange>) {
-    this.fetchBufferManager.addNewRange(frameRange);
+    // frame numbers are integral; fractional ranges corrupt the frame index
+    // (fractional keys never match the integer playhead) and the REST payload
+    this.fetchBufferManager.addNewRange([
+      Math.floor(frameRange[0]),
+      Math.ceil(frameRange[1]),
+    ] as BufferRange);
   }
 
   private async executeFetch() {
@@ -216,19 +232,34 @@ export class ImaVidFramesController {
   }
 
   public async fetchMore(cursor: number, count: number) {
+    // integral windows only; see enqueueFetch
+    cursor = Math.floor(cursor);
+    count = Math.ceil(count);
     // stream the range in chunks, publishing each before fetching the next so
     // playback starts as soon as the first frames arrive. The first chunk is
     // deliberately small: fast first paint, while the rest of the range keeps
     // streaming in the same request (no serial second fetch to wait on)
+    const pendingImageBatches: Promise<unknown>[] = [];
     let offset = 0;
     while (offset < count) {
-      const chunkCount = Math.min(
+      let chunkCount = Math.min(
         offset === 0 ? INITIAL_LOOK_AHEAD_FRAMES : STREAM_BATCH_FRAMES,
         count - offset,
       );
+      // absorb a tiny remainder into this chunk instead of a follow-up sliver request
+      if (count - offset - chunkCount < 10) {
+        chunkCount = count - offset;
+      }
       const chunkCursor = cursor + offset;
       offset += chunkCount;
 
+      console.debug("[imavid] fetchMore chunk", {
+        group: this.key,
+        after: chunkCursor,
+        count: chunkCount,
+        requestedRange: `[${cursor + 1}, ${cursor + count}]`,
+        totalFrameCount: this.totalFrameCount,
+      });
       const rows = await fetchSamples({
         datasetId: this.config.datasetId,
         dynamicGroup: this.config.groupValue,
@@ -268,38 +299,37 @@ export class ImaVidFramesController {
           );
         }
 
-        // mark each frame drawable as its image resolves
-        const evictedFrames: number[] = [];
+        // mark each frame drawable as its image resolves; do NOT await here —
+        // the next chunk's POST runs concurrently with this chunk's image
+        // downloads, roughly doubling stream throughput
         const perFramePromises: Promise<void>[] = [];
         for (const [frameNumber, imagePromise] of imageFetchPromisesMap) {
           perFramePromises.push(
             imagePromise.then((sampleId) => {
-              if (!this.store.samples.has(sampleId)) {
-                // evicted while its image was in flight; leave it unbuffered so
-                // the look-ahead refetches it instead of indexing a hole
-                evictedFrames.push(frameNumber);
+              const sample = this.store.samples.get(sampleId);
+              if (!sample?.image) {
+                // evicted, or its image load was aborted mid-flight (detach);
+                // leave it unbuffered so the look-ahead refetches it instead
+                // of indexing a hole the playhead can never draw
                 return;
               }
               this.store.frameIndex.set(frameNumber, sampleId);
               this.store.reverseFrameIndex.set(sampleId, frameNumber);
+              // buffered the moment THIS frame is drawable — the loader bar and
+              // runway math track reality instead of jumping per chunk
+              this.storeBufferManager.addNewRange([frameNumber, frameNumber]);
             }),
           );
         }
-        await Promise.all(perFramePromises);
-
-        this.storeBufferManager.addNewRange([
-          chunkCursor + 1,
-          chunkCursor + rows.length,
-        ] as BufferRange);
-        for (const frameNumber of evictedFrames) {
-          this.storeBufferManager.removeBufferValue(frameNumber);
-        }
-
-        // publish this chunk so the looker plays it while the next chunk fetches
-        window.dispatchEvent(
-          new CustomEvent("fetchMore", {
-            detail: { id: this.key },
-            bubbles: false,
+        pendingImageBatches.push(
+          Promise.all(perFramePromises).then(() => {
+            // publish this chunk so the looker repaints/resumes from it
+            window.dispatchEvent(
+              new CustomEvent("fetchMore", {
+                detail: { id: this.key },
+                bubbles: false,
+              }),
+            );
           }),
         );
       }
@@ -309,8 +339,24 @@ export class ImaVidFramesController {
         break;
       }
     }
+
+    // settle before resolving so executeFetch's queue lifecycle stays correct
+    await Promise.allSettled(pendingImageBatches);
   }
 
+  /**
+   * Detach (tile hidden/recycled by the grid): stop fetching and settle
+   * in-flight image loads, but KEEP buffered frames — this controller is
+   * shared by grid hover and the modal (keyed by sample `_id`), so re-attach
+   * must replay from buffer, never refetch from frame 1.
+   */
+  public suspend() {
+    this.pauseFetch(false);
+    this.frameSamples.abortInFlightImages();
+    this.fetchBufferManager.reset();
+  }
+
+  /** Full teardown (view/filter/dataset change): buffers are re-keyed, drop everything. */
   public destroy() {
     this.pauseFetch();
     // cancel in-flight image downloads (settles their promises); the signal is
