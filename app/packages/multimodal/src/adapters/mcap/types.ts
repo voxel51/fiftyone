@@ -766,7 +766,7 @@ export interface McapResourceClient {
    * clients switch ownership here (cancelling the previous source's pending
    * reads while keeping the worker fleet warm); reads for non-active
    * sources then fail fast with the cancelled error. Callers that never
-   * activate keep legacy request-driven switching.
+   * activate keep request-driven switching.
    */
   activateSource?(source: ByteSourceDescriptor): void;
 

@@ -161,6 +161,9 @@ function categoryForMessage(message: McapDecodedMessage): string {
   ) {
     return "image";
   }
+  if (kind === VISUALIZATION_KIND.ENCODED_VIDEO) {
+    return "video";
+  }
   if (kind === VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
     return "image-annotations";
   }

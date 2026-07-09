@@ -22,6 +22,7 @@ vi.mock("./McapImageTile", () => ({
   ),
 }));
 vi.mock("./Mcap3dTile", () => ({ default: () => null }));
+vi.mock("./McapMapTile", () => ({ default: () => null }));
 
 const SCENE_SOURCES: readonly SceneSource[] = [
   { id: "/cam/image_rect_compressed", type: "image", label: "cam" },
@@ -356,6 +357,29 @@ describe("useMcapModalLayout", () => {
       direction: "column",
       splitPercentage: 80,
     });
+  });
+
+  it("uses resolver defaults for a never-seen dataset", () => {
+    writeMcapModalLayout(
+      {
+        layout: {
+          direction: "row",
+          first: "image-1",
+          second: "3d-1",
+          splitPercentage: 20,
+        },
+      },
+      "dataset-a",
+    );
+
+    const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-b");
+
+    expect(result.current.initialLayout).toMatchObject({
+      direction: "column",
+      first: "3d-1",
+      second: "image-1",
+    });
+    expect(result.current.defaultLeftOpen).toBe(true);
   });
 
   it("restores the persisted sidebar width", () => {

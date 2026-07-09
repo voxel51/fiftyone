@@ -1814,10 +1814,14 @@ export function useRegisterMcapDataStream({
       // evaluation, so the getters keep the required runway (and the window
       // its pending prefetches fill) sized to live link throughput. On
       // healthy links both resolve to the static policy floor.
+      // Message-only layouts have no playback-topic caches to warm, so
+      // report zero runway instead of waiting on empty buffered ranges.
       get lookaheadSeconds() {
+        if (getActiveBlockingTopics().length === 0) return 0;
         return resolveStartupCushion().cushionSeconds;
       },
       get startupBufferSeconds() {
+        if (getActiveBlockingTopics().length === 0) return 0;
         return resolveStartupCushion().cushionSeconds;
       },
       bufferedRanges: computeBufferedRanges,

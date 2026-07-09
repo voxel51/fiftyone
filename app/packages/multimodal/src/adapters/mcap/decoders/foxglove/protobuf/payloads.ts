@@ -13,6 +13,15 @@ export const FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD: PayloadDescriptor = {
 };
 
 /**
+ * Payload identity for foxglove.CompressedVideo messages.
+ */
+export const FOXGLOVE_COMPRESSED_VIDEO_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.CompressedVideo",
+  schemaEncoding: "protobuf",
+};
+
+/**
  * Payload identity for foxglove.PointCloud messages.
  */
 export const FOXGLOVE_POINT_CLOUD_PAYLOAD: PayloadDescriptor = {
@@ -81,5 +90,29 @@ export const FOXGLOVE_POSE_IN_FRAME_PAYLOAD: PayloadDescriptor = {
 export const FOXGLOVE_LOCATION_FIX_PAYLOAD: PayloadDescriptor = {
   encoding: "protobuf",
   schema: "foxglove.LocationFix",
+  schemaEncoding: "protobuf",
+};
+
+/**
+ * Payload identity for foxglove.Log messages.
+ */
+export const FOXGLOVE_LOG_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.Log",
+  schemaEncoding: "protobuf",
+};
+
+/**
+ * Payload identities for Foxglove frame transform protobuf messages.
+ */
+export const FOXGLOVE_FRAME_TRANSFORM_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.FrameTransform",
+  schemaEncoding: "protobuf",
+};
+
+export const FOXGLOVE_FRAME_TRANSFORMS_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.FrameTransforms",
   schemaEncoding: "protobuf",
 };

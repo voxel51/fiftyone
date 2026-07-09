@@ -4,8 +4,10 @@ on:
   pull_request:
     # `edited` catches base changes — notably GitHub auto-retargeting a stacked
     # PR to develop when the PR below it merges — so the heavy suite runs before
-    # it can land (no `synchronize` fires on an auto-retarget).
-    types: [opened, synchronize, reopened, closed, edited]
+    # it can land (no `synchronize` fires on an auto-retarget). No `closed`:
+    # nothing here runs on it, and its no-op run races the suite still testing
+    # the just-merged SHA, leaving a spurious red X on the merged PR.
+    types: [opened, synchronize, reopened, edited]
 
 concurrency:
   # A PR title/body edit is a no-op run (run-ci=false). It gets its own group:
@@ -101,7 +103,6 @@ jobs:
   build:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.heavy == 'true' && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true')
@@ -110,7 +111,6 @@ jobs:
   e2e:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.heavy == 'true' && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.e2e-changes == 'true' ||
@@ -123,7 +123,6 @@ jobs:
   lint:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.run-ci == 'true' && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true' ||
@@ -133,7 +132,6 @@ jobs:
   test:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.heavy == 'true' && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true')
@@ -147,7 +145,6 @@ jobs:
   test-windows:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.heavy == 'true' &&
       needs.modified-files.outputs.fiftyone-changes == 'true'
     uses: ./.github/workflows/windows-test.yml
@@ -162,13 +159,12 @@ jobs:
     needs: [modified-files, build, lint, test, e2e]
     if: always()
     env:
-      # A run that skipped the suite (no-op body edit, `closed`, or a failed
-      # gate) must not aggregate its skipped needs into a vacuous green that
+      # A run that skipped the suite (a no-op body edit, or a failed gate)
+      # must not aggregate its skipped needs into a vacuous green that
       # becomes the latest `all-tests` for a SHA whose real suite failed.
       NO_OP: >-
         ${{ needs.modified-files.result == 'success' &&
-        (needs.modified-files.outputs.run-ci != 'true' ||
-        github.event.action == 'closed') }}
+        needs.modified-files.outputs.run-ci != 'true' }}
     steps:
       - name: Fail when the CI gate did not complete
         if: needs.modified-files.result != 'success'
@@ -178,22 +174,40 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            const { data } = await github.rest.checks.listForRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: context.payload.pull_request.head.sha,
-              check_name: 'all-tests',
-              per_page: 100,
-            });
-            const prior = data.check_runs
-              .filter((c) => c.status === 'completed')
-              .sort((a, b) => new Date(b.started_at) - new Date(a.started_at))[0];
-            if (!prior) {
-              core.setFailed('No completed all-tests for this commit yet — deferring to the run testing it.');
-            } else if (prior.conclusion === 'success') {
-              core.info('Mirroring the previous all-tests result: success');
-            } else {
-              core.setFailed(`Mirroring the previous all-tests result: ${prior.conclusion}`);
+            // A no-op edit usually lands while the run actually testing this
+            // SHA is still in flight (this job's own check run is in_progress,
+            // so it never matches the completed filter). Poll for that run's
+            // verdict rather than failing on the gap — a vacuous green here
+            // could merge the PR before its suite finishes.
+            const deadline = Date.now() + 45 * 60 * 1000;
+            for (;;) {
+              const { data } = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: context.payload.pull_request.head.sha,
+                check_name: 'all-tests',
+                // `latest` (the default) returns only the newest run per name —
+                // this job's own in_progress run — hiding the completed verdict.
+                filter: 'all',
+                per_page: 100,
+              });
+              const prior = data.check_runs
+                .filter((c) => c.status === 'completed')
+                .sort((a, b) => new Date(b.started_at) - new Date(a.started_at))[0];
+              if (prior) {
+                if (prior.conclusion === 'success') {
+                  core.info('Mirroring the previous all-tests result: success');
+                } else {
+                  core.setFailed(`Mirroring the previous all-tests result: ${prior.conclusion}`);
+                }
+                return;
+              }
+              if (Date.now() >= deadline) {
+                core.setFailed('No completed all-tests for this commit after 45 minutes — deferring to the run testing it.');
+                return;
+              }
+              core.info('No completed all-tests for this commit yet — waiting for the run testing it.');
+              await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
             }
       - name: Aggregate suite results
         if: env.NO_OP != 'true'

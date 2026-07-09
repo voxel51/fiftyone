@@ -73,7 +73,9 @@ jobs:
           number="$(gh pr list --repo "$REPO" --head community --base develop \
             --state open --json number --jq '.[0].number // empty')"
           if [ -n "$number" ]; then
-            gh pr edit "$number" --repo "$REPO" --body "$body"
+            # REST, not `gh pr edit`: edit's GraphQL metadata prefetch needs
+            # read:org, which the PAT doesn't have.
+            gh api --silent -X PATCH "repos/$REPO/pulls/$number" -f body="$body"
             action="updated"
           else
             gh pr create --repo "$REPO" --head community --base develop \

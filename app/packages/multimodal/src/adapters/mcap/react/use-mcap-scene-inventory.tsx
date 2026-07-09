@@ -1,9 +1,6 @@
-import type { TilingTile } from "@fiftyone/tiling";
 import type { SceneSource } from "../../../scene-inventory";
 import { PlaybackSyncMode } from "../../../schemas/v1";
 import type { McapStreamSyncPolicies } from "../types";
-import McapCameraTile from "./McapCameraTile";
-import McapLidarTile from "./McapLidarTile";
 
 // ---------------------------------------------------------------------------
 // Mock NuScenes scene metadata. Eventually these hooks will parse the MCAP
@@ -107,17 +104,6 @@ const NUSCENES_STREAM_POLICIES: McapStreamSyncPolicies = {
   },
 };
 
-const NUSCENES_INITIAL_TILES: Record<string, TilingTile> = {
-  "camera-default": {
-    title: "Camera",
-    render: () => <McapCameraTile />,
-  },
-  "lidar-default": {
-    title: "Lidar",
-    render: () => <McapLidarTile />,
-  },
-};
-
 /** Discoverable data sources in the scene. POC: fixed NuScenes set. */
 export function useMcapSceneInventory(
   _fileName: string,
@@ -130,14 +116,4 @@ export function useMcapStreamPolicies(
   _fileName: string,
 ): McapStreamSyncPolicies {
   return NUSCENES_STREAM_POLICIES;
-}
-
-/**
- * Default tile layout for a freshly-opened MCAP file. Each tile
- * auto-binds to the first source of its type in the scene inventory.
- */
-export function useMcapInitialTiles(
-  _fileName: string,
-): Record<string, TilingTile> {
-  return NUSCENES_INITIAL_TILES;
 }
