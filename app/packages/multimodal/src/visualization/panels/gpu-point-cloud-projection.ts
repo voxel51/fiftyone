@@ -203,7 +203,8 @@ function projectionRows(
     projection.length >= 12 &&
     hasUsableFocals(projection[0], projection[5])
   ) {
-    return projection.slice(0, 12);
+    const row = projection.slice(0, 12);
+    if (isFiniteRow(row)) return row;
   }
 
   const intrinsic = calibration.K;
@@ -212,7 +213,7 @@ function projectionRows(
     intrinsic.length >= 9 &&
     hasUsableFocals(intrinsic[0], intrinsic[4])
   ) {
-    return [
+    const row = [
       intrinsic[0],
       intrinsic[1],
       intrinsic[2],
@@ -226,9 +227,14 @@ function projectionRows(
       intrinsic[8],
       0,
     ];
+    if (isFiniteRow(row)) return row;
   }
 
   return null;
+}
+
+function isFiniteRow(row: readonly number[]): boolean {
+  return row.every(Number.isFinite);
 }
 
 function hasUsableFocals(fx: number, fy: number): boolean {

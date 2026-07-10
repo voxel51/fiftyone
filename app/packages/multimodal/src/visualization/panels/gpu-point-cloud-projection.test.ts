@@ -70,6 +70,26 @@ describe("GPU pointcloud projection math", () => {
     expect(homogeneous.z).toBe(10);
   });
 
+  it("falls back to finite intrinsics when P contains invalid entries", () => {
+    const matrix = sensorToImageProjectionMatrix({
+      calibration: {
+        K: [2, 0, 10, 0, 3, 20, 0, 0, 1],
+        P: [4, 0, Number.NaN, 0, 0, 5, 30, 0, 0, 0, 1, 0],
+        height: 100,
+        width: 100,
+      },
+      rotation: IDENTITY_ROTATION,
+      translation: ZERO_TRANSLATION,
+    });
+
+    const homogeneous = new THREE.Vector4(1, 2, 10, 1).applyMatrix4(
+      requireMatrix(matrix),
+    );
+    expect(homogeneous.x).toBe(102);
+    expect(homogeneous.y).toBe(206);
+    expect(homogeneous.z).toBe(10);
+  });
+
   it("rejects unusable calibration", () => {
     expect(
       sensorToImageProjectionMatrix({
@@ -83,6 +103,17 @@ describe("GPU pointcloud projection math", () => {
         calibration: {
           K: [1, 0, 0, 0, 1, 0, 0, 0, 1],
           height: 0,
+          width: 640,
+        },
+        rotation: IDENTITY_ROTATION,
+        translation: ZERO_TRANSLATION,
+      }),
+    ).toBeNull();
+    expect(
+      sensorToImageProjectionMatrix({
+        calibration: {
+          K: [1, 0, Number.POSITIVE_INFINITY, 0, 1, 0, 0, 0, 1],
+          height: 480,
           width: 640,
         },
         rotation: IDENTITY_ROTATION,

@@ -229,9 +229,20 @@ function updateResource(
     } else {
       replaceAttributeArray(resource.colorAttribute, payload.colors);
     }
+  } else if (resource.colorAttribute) {
+    resource.geometry.deleteAttribute("projectionColor");
+    resource.colorAttribute = null;
   }
 
-  let addedScalar = false;
+  const previousScalarCount = resource.scalarAttributes.size;
+  const currentScalarNames = new Set(
+    payload.scalarFields.map((field) => field.name),
+  );
+  for (const name of resource.scalarAttributes.keys()) {
+    if (!currentScalarNames.has(name)) {
+      resource.scalarAttributes.delete(name);
+    }
+  }
   for (const field of payload.scalarFields) {
     const attribute = resource.scalarAttributes.get(field.name);
     if (attribute) {
@@ -241,12 +252,16 @@ function updateResource(
         field.name,
         new THREE.InstancedBufferAttribute(field.values, 1),
       );
-      addedScalar = true;
     }
   }
-  if (addedScalar) {
-    attachScalarAttributes(resource.geometry, resource.scalarAttributes);
+  for (
+    let index = 0;
+    index < Math.max(previousScalarCount, resource.scalarAttributes.size);
+    index++
+  ) {
+    resource.geometry.deleteAttribute(`projectionScalar${index}`);
   }
+  attachScalarAttributes(resource.geometry, resource.scalarAttributes);
 
   resource.contentKey = contentKey;
   resource.sampledPointCount = normalizedSampleCount(payload);

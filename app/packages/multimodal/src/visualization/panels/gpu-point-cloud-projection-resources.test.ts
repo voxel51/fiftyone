@@ -85,6 +85,30 @@ describe("GPU pointcloud projection resources", () => {
     });
   });
 
+  it("removes optional attributes omitted by a replacement frame", () => {
+    const resource = getGpuPointCloudProjectionResource({
+      contentKey: "frame-1",
+      payload: buildPointCloudRenderPayload({
+        colors: new Float32Array([1, 0, 0]),
+        positions: new Float32Array([1, 2, 3]),
+        scalarFields: [{ name: "intensity", values: new Float32Array([0.25]) }],
+      }),
+      streamKey: "points",
+    });
+
+    const updated = getGpuPointCloudProjectionResource({
+      contentKey: "frame-2",
+      payload: onePointPayload(2),
+      streamKey: "points",
+    });
+
+    expect(updated).toBe(resource);
+    expect(resource.colorAttribute).toBeNull();
+    expect(resource.geometry.getAttribute("projectionColor")).toBeUndefined();
+    expect(resource.scalarAttributes.size).toBe(0);
+    expect(resource.geometry.getAttribute("projectionScalar0")).toBeUndefined();
+  });
+
   it("draws only authoritative samples from capacity-padded arrays", () => {
     const payload = buildPointCloudRenderPayload({
       positions: new Float32Array([1, 2, 3]),
