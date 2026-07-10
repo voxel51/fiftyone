@@ -17,6 +17,7 @@ import unittest
 
 import fiftyone as fo
 import fiftyone.zoo as foz
+from fiftyone import ViewField as F
 from fiftyone.core.labels import Detections, Keypoint, Keypoints
 
 SAM3_VIDEO_MODEL_NAME = "segment-anything-3-video-torch"
@@ -109,6 +110,31 @@ class TestSAM3VideoConceptApplyModel(unittest.TestCase):
                         f"Detection missing mask on frame {frame_number} "
                         f"of sample {sample.id}",
                     )
+
+    def test_concept_text_and_exemplar_prompt(self):
+        """Text + exemplar mode: first detection on frame 1 seeds propagation."""
+        prompt_field = "frames.sam3_exemplar_prompt"
+        view = self.dataset.match_frames(F("frame_number") == 1).filter_labels(
+            "frames.detections", F("label") == "vehicle"
+        )
+        for sample in view.iter_samples(progress=False, autosave=True):
+            frame = sample.frames[1]
+            detections = frame.get_field("detections")
+            if detections is None or not detections.detections:
+                continue
+            first_det = detections.detections[0]
+            frame["sam3_exemplar_prompt"] = fo.Detections(
+                detections=[first_det.copy()]
+            )
+        model = foz.load_zoo_model(
+            SAM3_VIDEO_MODEL_NAME,
+            classes=["vehicle"],
+            operation_mode="concept",
+            prompt_field=prompt_field,
+        )
+        field = "sam3v_concept_text_exemplar"
+        self.dataset.apply_model(model, label_field=field)
+        _assert_video_field_populated(self, self.dataset, field)
 
     def test_concept_propagation_forward(self):
         """Forward propagation fills every frame (not just the first)."""

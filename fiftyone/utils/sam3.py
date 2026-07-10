@@ -1292,7 +1292,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             propagation_direction=self.config.propagation_direction,
         )
         if start_frame_index is not None:
-            request["start_frame_idx"] = start_frame_index
+            request["start_frame_index"] = start_frame_index
         for frame_result in self.concept_predictor.handle_stream_request(
             request=request
         ):
