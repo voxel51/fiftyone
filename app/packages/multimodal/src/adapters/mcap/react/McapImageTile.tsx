@@ -27,6 +27,7 @@ import { imageTextureCacheKey } from "../../../visualization/panels/image-textur
 import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
 import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-picker";
 import { useMcapDataStream } from "./mcap-data-stream-context";
+import { usePublishMcapImageAspectRatio } from "./mcap-image-aspect-ratios";
 import {
   MAX_MCAP_POINT_CLOUD_POINT_SIZE,
   MCAP_POINT_CLOUD_POINT_SIZE_STEP,
@@ -292,6 +293,11 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     imageDims,
     rectifiedViewActive,
   ]);
+  usePublishMcapImageAspectRatio(
+    effectiveImageDims
+      ? effectiveImageDims.width / effectiveImageDims.height
+      : null,
+  );
   const inferredAnnotationTopic = useMemo(
     () => (topic ? chooseAnnotationTopic(topic, annotationTopics) : null),
     [topic, annotationTopics],
