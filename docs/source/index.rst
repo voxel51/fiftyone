@@ -534,8 +534,7 @@ _________
    User Guide <user_guide/index>
    Dataset Zoo <dataset_zoo/index>
    Model Zoo <model_zoo/index>
-   FiftyOne Brain <brain>
-   FiftyOne Labs <labs/index>
+   FiftyOne Brain <brain/index>
    Agents <agents/index>
    Plugins <plugins/index>
    Integrations <integrations/index>
