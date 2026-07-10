@@ -5,47 +5,66 @@ import type { TemporalTag } from "../../../temporal-tags";
 import { useSampleRendererTemporalTags } from "../../../temporal-tags";
 import styles from "./TemporalTagGridOverlay.module.css";
 
-/** Most tag rows the bar renders; extras are summarized in the label. */
-const MAX_ROWS = 3;
+/** Cap the stacked levels so the bar stays compact on a small grid tile. */
+const MAX_LEVELS = 3;
 
-interface OverlayInterval {
-  readonly start: number;
-  readonly end: number;
+/** Per-tag color palette — mirrors `use-mcap-temporal-tags` so a tag shows the
+ *  same color in the grid overlay and the modal timeline. */
+const TAG_COLORS = [
+  "#f97316",
+  "#3b82f6",
+  "#10b981",
+  "#8b5cf6",
+  "#f43f5e",
+  "#f59e0b",
+  "#06b6d4",
+  "#ec4899",
+];
+
+function hashLabel(label: string): number {
+  let hash = 0;
+  for (let i = 0; i < label.length; i++) {
+    hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
+  }
+  return hash;
 }
 
-interface OverlayRow {
-  readonly tag: string;
-  readonly intervals: readonly OverlayInterval[];
+function tagColor(tag: string): string {
+  return TAG_COLORS[hashLabel(tag) % TAG_COLORS.length];
+}
+
+interface OverlayMark {
+  readonly start: number;
+  readonly end: number;
+  readonly color: string;
+  readonly level: number;
 }
 
 interface OverlayModel {
-  readonly rows: readonly OverlayRow[];
-  /** Distinct filtered tags present in this sample (may exceed MAX_ROWS). */
-  readonly presentCount: number;
-  /** Earliest interval start across all present filtered tags (ns). */
-  readonly domainStart: number;
-  /** Time span the bar maps left->right (ns); never zero. */
+  readonly marks: readonly OverlayMark[];
+  readonly levelCount: number;
+  /** Time span the lane maps left->right (ns); never zero. */
   readonly domainSpan: number;
 }
 
 /**
- * Builds the overlay model from a sample's temporal tags and the active
- * filter values. Rows follow active-filter order and are capped at
- * {@link MAX_ROWS}; the time axis spans the earliest start to the latest end
- * across every present filtered interval, so all rows share one axis.
- *
- * NB: normalizing to the filtered tags' own span (not the full recording
- * duration) is a deliberate first pass — the recording range isn't available
- * per grid tile without decoding the MCAP. Positions are therefore relative
- * to each other, not to the whole recording.
+ * Builds a single packed lane from a sample's temporal tags and the active
+ * filter values: every filtered tag's intervals share one lane, colored per
+ * tag, and overlapping intervals bump up into stacked levels (capped at
+ * {@link MAX_LEVELS}). The time axis runs from 0 (recording start) to the
+ * latest end across ALL of the sample's tags.
  */
 function buildOverlayModel(
   temporalTags: readonly TemporalTag[],
   activeValues: readonly string[],
 ): OverlayModel | null {
   const active = new Set(activeValues);
-  const byTag = new Map<string, OverlayInterval[]>();
+  const byTag = new Map<string, { start: number; end: number }[]>();
+  let domainEnd = 0;
   for (const tag of temporalTags) {
+    if (tag.end > domainEnd) {
+      domainEnd = tag.end;
+    }
     if (!active.has(tag.tag)) {
       continue;
     }
@@ -54,42 +73,69 @@ function buildOverlayModel(
     byTag.set(tag.tag, intervals);
   }
 
-  // Present tags in active-filter order (stable, predictable which 3 show).
-  const presentTags = activeValues.filter((value) => byTag.has(value));
-  if (presentTags.length === 0) {
+  // Flatten every filtered tag's intervals into one list, colored per tag,
+  // in active-filter order (stable).
+  const flat: { start: number; end: number; color: string }[] = [];
+  for (const value of activeValues) {
+    const intervals = byTag.get(value);
+    if (!intervals) {
+      continue;
+    }
+    const color = tagColor(value);
+    for (const interval of intervals) {
+      flat.push({ ...interval, color });
+    }
+  }
+  if (flat.length === 0) {
     return null;
   }
 
-  let domainStart = Infinity;
-  let domainEnd = -Infinity;
-  for (const tag of presentTags) {
-    for (const interval of byTag.get(tag) ?? []) {
-      if (interval.start < domainStart) {
-        domainStart = interval.start;
+  // Greedy interval packing: assign each interval (earliest first) to the
+  // lowest level free at its start; overflow past MAX_LEVELS stacks onto the
+  // top level rather than growing the bar unbounded.
+  const order = flat
+    .map((_, index) => index)
+    .sort((a, b) => flat[a].start - flat[b].start || flat[a].end - flat[b].end);
+  const levelEnds: number[] = [];
+  const levels = new Array<number>(flat.length);
+  for (const index of order) {
+    const interval = flat[index];
+    let assigned = levelEnds.findIndex((end) => end <= interval.start);
+    if (assigned === -1) {
+      if (levelEnds.length < MAX_LEVELS) {
+        assigned = levelEnds.length;
+        levelEnds.push(interval.end);
+      } else {
+        assigned = MAX_LEVELS - 1;
+        levelEnds[assigned] = Math.max(levelEnds[assigned], interval.end);
       }
-      if (interval.end > domainEnd) {
-        domainEnd = interval.end;
-      }
+    } else {
+      levelEnds[assigned] = interval.end;
     }
+    levels[index] = assigned;
   }
 
-  const rows = presentTags.slice(0, MAX_ROWS).map((tag) => ({
-    tag,
-    intervals: byTag.get(tag) ?? [],
+  const marks = flat.map((interval, index) => ({
+    start: interval.start,
+    end: interval.end,
+    color: interval.color,
+    level: levels[index],
   }));
 
   return {
-    rows,
-    presentCount: presentTags.length,
-    domainStart,
-    // Guard the divisor: a single instantaneous tag has zero span.
-    domainSpan: Math.max(domainEnd - domainStart, 1),
+    marks,
+    levelCount: Math.max(levelEnds.length, 1),
+    domainSpan: Math.max(domainEnd, 1),
   };
 }
 
+/** Vertical pixels per stacked level, and the mark height. */
+const LEVEL_STEP = 6;
+const MARK_HEIGHT = 4;
+
 /**
- * Fetches the sample's temporal tags and renders the overlay. Split from the
- * gate below so the fetch only runs when a temporal-tag filter is active.
+ * Fetches the sample's temporal tags and renders the packed lane. Split from
+ * the gate below so the fetch only runs when a temporal-tag filter is active.
  */
 function TemporalTagGridOverlayInner({
   ctx,
@@ -109,45 +155,37 @@ function TemporalTagGridOverlayInner({
     return null;
   }
 
-  const { rows, presentCount, domainStart, domainSpan } = model;
+  const { marks, levelCount, domainSpan } = model;
 
   return (
     <div className={styles.bar} data-testid="temporal-tag-grid-overlay">
-      {rows.map((row) => (
-        <div
-          key={row.tag}
-          className={styles.row}
-          title={row.tag}
-          data-testid="temporal-tag-grid-overlay-row"
-        >
-          {row.intervals.map((interval, index) => (
-            <div
-              // Intervals for one tag have no stable id here; index is stable
-              // for a given fetched list.
-              key={index}
-              className={styles.mark}
-              style={{
-                left: `${((interval.start - domainStart) / domainSpan) * 100}%`,
-                width: `${((interval.end - interval.start) / domainSpan) * 100}%`,
-              }}
-            />
-          ))}
-        </div>
-      ))}
-      {presentCount > MAX_ROWS ? (
-        <div className={styles.label}>
-          Showing {MAX_ROWS} of {presentCount} filters
-        </div>
-      ) : null}
+      <div
+        className={styles.lane}
+        style={{ height: (levelCount - 1) * LEVEL_STEP + MARK_HEIGHT }}
+      >
+        {marks.map((mark, index) => (
+          <div
+            key={index}
+            className={styles.mark}
+            data-testid="temporal-tag-grid-overlay-mark"
+            style={{
+              left: `${(mark.start / domainSpan) * 100}%`,
+              width: `${((mark.end - mark.start) / domainSpan) * 100}%`,
+              bottom: mark.level * LEVEL_STEP,
+              background: mark.color,
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
 /**
  * Bottom-of-tile overlay for MCAP grid previews: when a temporal-tag filter is
- * active, shows up to {@link MAX_ROWS} rows of orange marks indicating when the
- * filtered tags occur in the sample. Renders nothing (and does no fetch) when
- * no temporal-tag filter is active.
+ * active, packs the filtered tags' intervals onto a single color-coded lane
+ * (one color per tag; overlapping intervals bump up). Renders nothing (and
+ * does no fetch) when no temporal-tag filter is active.
  */
 export function TemporalTagGridOverlay({ ctx }: SampleRendererProps) {
   const activeValues = useActiveTemporalTagFilterValues();

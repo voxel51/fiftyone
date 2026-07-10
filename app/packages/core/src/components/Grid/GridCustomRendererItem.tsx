@@ -5,6 +5,7 @@ import {
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import { TemporalTagGridOverlay } from "@fiftyone/multimodal";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import { Checkbox } from "@mui/material";
 import React from "react";
@@ -95,6 +96,20 @@ const OPEN_MODAL_BUTTON_STYLES: React.CSSProperties = {
   padding: 0,
   cursor: "pointer",
   zIndex: 20,
+};
+
+// Bottom chrome for a tile: stacks the tag bubbles and (for multimodal) the
+// temporal-tag overlay in a column so they don't overlap. Anchored to the
+// bottom; children flow (bubbles on top, overlay beneath).
+const FOOTER_STYLES: React.CSSProperties = {
+  position: "absolute",
+  left: 0,
+  right: 0,
+  bottom: 0,
+  display: "flex",
+  flexDirection: "column",
+  pointerEvents: "none",
+  zIndex: 10,
 };
 
 const SELECT_SAMPLE_BUTTON_STYLES: React.CSSProperties = {
@@ -292,7 +307,12 @@ export class GridCustomRendererItem {
             onSelect={this.handleSelectSampleClick}
           >
             <Renderer ctx={ctx} />
-            <GridTagBubbles sample={sample} />
+            <div style={FOOTER_STYLES}>
+              <GridTagBubbles sample={sample} />
+              {ctx.media?.mediaType === MEDIA_TYPE_MULTIMODAL ? (
+                <TemporalTagGridOverlay ctx={ctx} />
+              ) : null}
+            </div>
           </GridCustomRendererWrapper>
         </GridCustomRendererErrorBoundary>
       </RecoilBridge>,
