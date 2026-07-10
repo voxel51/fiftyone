@@ -85,8 +85,10 @@ export function PointCloudPickingLayer({
 
     let hoveredLayerId: string | null = null;
     let clearHoveredPoint: (() => void) | null = null;
+    let requestGeneration = 0;
 
     const clearHover = () => {
+      requestGeneration += 1;
       controller.invalidate();
       const clear = clearHoveredPoint;
       hoveredLayerId = null;
@@ -124,6 +126,7 @@ export function PointCloudPickingLayer({
       }
 
       const pickRadiusPx = Math.max(POINT_PICK_RADIUS_PX, pointSizeRef.current);
+      const generation = ++requestGeneration;
       void controller
         .pick({
           camera: threeCamera,
@@ -138,6 +141,9 @@ export function PointCloudPickingLayer({
           viewportWidthPx: rect.width,
         })
         .then((pick) => {
+          if (generation !== requestGeneration) {
+            return;
+          }
           if (!pick) {
             clearHover();
             return;
@@ -195,7 +201,11 @@ export function PointCloudPickingLayer({
             worldPosition: pick.worldPosition,
           });
         })
-        .catch(clearHover);
+        .catch(() => {
+          if (generation === requestGeneration) {
+            clearHover();
+          }
+        });
     };
 
     const detachDwell = attachPointerDwell(element, {
