@@ -1,7 +1,7 @@
 .. _workflows-ingestion:
 
-Data Ingestion
-==============
+Data I/O
+========
 
 The first step in any FiftyOne workflow is loading your data into a
 :ref:`FiftyOne dataset <importing-datasets>`. FiftyOne natively supports
@@ -27,5 +27,6 @@ an annotation tool, or another team — you can :ref:`export datasets
    :hidden:
 
    Importing data <../user_guide/import_datasets>
+   Exporting datasets <../user_guide/export_datasets>
    Data Lens 🚀 <../enterprise/data_lens>
    Cloud-backed media 🚀 <../enterprise/cloud_media>

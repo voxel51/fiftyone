@@ -534,7 +534,7 @@ _________
    :maxdepth: 1
    :hidden:
 
-   Data Ingestion <workflows/ingestion>
+   Data I/O <workflows/ingestion>
    Curation: Pre-Annotation <workflows/curation_pre>
    Annotation <workflows/annotation>
    Curation: Post-Annotation <workflows/curation_post>
