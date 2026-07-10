@@ -18,10 +18,15 @@ In FiftyOne Enterprise, you can also query your data lake directly with
 Data Lens 🚀 and work with cloud-backed media 🚀 stored in S3, GCS, MinIO, or
 Azure.
 
+And when you're ready to move data out of FiftyOne — to a training pipeline,
+an annotation tool, or another team — you can :ref:`export datasets
+<exporting-datasets>` in dozens of standard or custom formats.
+
 .. toctree::
    :maxdepth: 1
    :hidden:
 
    Importing data <../user_guide/import_datasets>
+   Exporting datasets <../user_guide/export_datasets>
    Data Lens 🚀 <../enterprise/data_lens>
    Cloud-backed media 🚀 <../enterprise/cloud_media>

@@ -115,7 +115,6 @@ on your data quickly and easily.
     Dataset views <using_views>
     Using aggregations <using_aggregations>
     Interactive plots <plots>
-    Exporting datasets <export_datasets>
     Drawing labels on samples <draw_labels>
     Using sample parsers <sample_parsers>
     Configuring FiftyOne <config>
