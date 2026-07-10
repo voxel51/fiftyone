@@ -71,6 +71,20 @@ Key concepts:
     time, or a decoded header stamp) that drive synchronized playback across
     all tiles
 
+.. _multimodal-grid-previews:
+
+Grid previews
+_____________
+
+In the App's sample grid, each multimodal sample displays a preview rendered
+from one of its streams, and you can use the stream selector to choose which
+stream is used for grid previews.
+
+.. Placeholder: gif showing grid previews + stream selector
+.. .. image:: /images/multimodal/multimodal-grid.gif
+..    :alt: multimodal-grid
+..    :align: center
+
 .. _multimodal-tiles:
 
 Tiles
@@ -85,8 +99,6 @@ playback clock, so scrubbing the timeline updates every tile in sync.
 .. .. image:: /images/multimodal/multimodal-viewer.gif
 ..    :alt: multimodal-viewer
 ..    :align: center
-
-The following tile types are available.
 
 .. _multimodal-image-tile:
 
@@ -154,7 +166,12 @@ scrub through the recording.
 Configuring tiles
 -----------------
 
-The **left sidebar** of the sample modal is where you configure what each
+To add a new tile to the viewer, click the **Add tile** button (the grid
+icon) in the viewer's header and choose the tile type you want — Image, 3D,
+Plot, or Message. The same menu also offers **Auto Layout**, which
+automatically arranges your tiles.
+
+The **left sidebar** of the viewer is where you configure what each
 tile is showing. It contains two tabs:
 
 -   **Scene**: settings that apply to the whole recording:
@@ -186,7 +203,7 @@ tile is showing. It contains two tabs:
 Inspecting objects
 ------------------
 
-The **right sidebar** of the sample modal is an inspector for objects in the
+The **right sidebar** of the viewer is an inspector for objects in the
 scene. Click any object in any tile — a 3D box in the 3D tile or an
 annotation in an image tile — to view its details:
 
@@ -203,20 +220,10 @@ Any fields not covered by the structured view are shown as raw JSON. Press
 ..    :alt: multimodal-inspector-sidebar
 ..    :align: center
 
-Grid previews
--------------
-
-In the App's sample grid, each multimodal sample displays a preview rendered
-from one of its streams, and you can use the stream selector to choose which
-stream is used for grid previews.
-
-.. Placeholder: gif showing grid previews + stream selector
-.. .. image:: /images/multimodal/multimodal-grid.gif
-..    :alt: multimodal-grid
-..    :align: center
+.. _multimodal-mcap-explorer:
 
 MCAP Explorer
--------------
+_____________
 
 FiftyOne also includes a standalone **MCAP Explorer** panel that lets you
 open an arbitrary local `.mcap` file (via drag-and-drop or file browser) or a
@@ -227,6 +234,65 @@ session and are read directly — nothing is uploaded.
 .. .. image:: /images/multimodal/mcap-explorer.gif
 ..    :alt: mcap-explorer
 ..    :align: center
+
+.. _multimodal-temporal-tags:
+
+Temporal tags
+_____________
+
+Multimodal samples span long time ranges, so FiftyOne supports **temporal
+tags**: tags attached to a time interval within a sample rather than to the
+whole sample. Temporal tags are ideal for marking events of interest —
+interventions, near-misses, sensor dropouts, interesting maneuvers.
+
+You can create temporal tags interactively in the App, or programmatically
+via the SDK.
+
+Tagging in the App
+------------------
+
+To create a temporal tag in the App, **Shift + click and drag** along the
+playback timeline to select the interval of interest, then enter the tag.
+Existing tags appear on the timeline, where you can review and delete them.
+
+.. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/temporal-tag.webp
+   :alt: multimodal-temporal-tags
+   :align: center
+
+Tagging via the SDK
+-------------------
+
+You can create and read temporal tags programmatically:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.core.tags as fota
+
+    sample = dataset.first()
+
+    # Tag the interval [start, end) on a sample, expressed in nanoseconds
+    # elapsed since the start of the recording
+    dataset.temporal_tags.add(
+        fota.TemporalTag(
+            sample.id,
+            start=4_000_000_000,  # 4s, inclusive
+            end=6_000_000_000,  # 6s, exclusive
+            tag="gripper closed",
+        )
+    )
+
+    # Retrieve the collection's temporal tags
+    print(dataset.temporal_tags)
+
+You can also filter your dataset to samples whose temporal tags match given
+criteria:
+
+.. code-block:: python
+    :linenos:
+
+    # Samples containing at least one "gripper closed" temporal tag
+    view = dataset.match_temporal_tags(tags="gripper closed")
 
 .. _multimodal-schemas:
 
@@ -324,46 +390,6 @@ schemas:
       - JSON-encoded pose/odometry data
     * - `Diagnostics`
       - JSON-encoded diagnostics/telemetry key-value payloads
-
-.. _multimodal-temporal-tags:
-
-Temporal tags
-_____________
-
-Multimodal samples span long time ranges, so FiftyOne supports **temporal
-tags**: tags attached to a time interval within a sample rather than to the
-whole sample. Temporal tags are ideal for marking events of interest —
-interventions, near-misses, sensor dropouts, interesting maneuvers — directly
-on the playback timeline in the App or programmatically via the SDK:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone.core.tags as fota
-
-    sample = dataset.first()
-
-    # Tag the interval [start, end) on a sample
-    dataset.temporal_tags.add(
-        fota.TemporalTag(
-            sample.id,
-            start=1723551000000000000,  # ns, inclusive
-            end=1723551005000000000,  # ns, exclusive
-            tag="hard-braking",
-        )
-    )
-
-    # Retrieve the collection's temporal tags
-    print(dataset.temporal_tags)
-
-You can also filter your dataset to samples whose temporal tags match given
-criteria:
-
-.. code-block:: python
-    :linenos:
-
-    # Samples containing at least one "hard-braking" temporal tag
-    view = dataset.match_temporal_tags(tags="hard-braking")
 
 .. _multimodal-indexing:
 
