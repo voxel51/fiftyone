@@ -576,6 +576,15 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
 
+  // Persist pin state per video (dataset + sample) so reopening the same
+  // sample restores which tracks the user pinned to the timeline.
+  const dataset = useDatasetName();
+  const sampleId = useModalSampleId();
+  const persistKey =
+    dataset && sampleId
+      ? `fo-va-pinned-tracks:${dataset}:${sampleId}`
+      : undefined;
+
   // Dynamic attributes are declared per field, so resolve them per-path when
   // building tracks — a single primary-field lookup leaks one field's dynamic
   // attributes onto every other field's tracks.
@@ -637,6 +646,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
       key={ready ? "ready" : "init"}
       tracks={visibleTracks}
       autoPinNewTracks={false}
+      persistKey={persistKey}
     >
       <TimelineWithTracks
         decorateTrack={decorateTrack}
