@@ -23,6 +23,7 @@ import {
   PointCloudPanel,
   type PointCloudPanelLayer,
   type PointCloudPanelRenderStats,
+  type PointCloudPointPick,
   type SceneAnnotationPanelLayer,
   type ThreeSceneBackground,
 } from "../../../visualization/panels/point-cloud";
@@ -54,6 +55,12 @@ import {
   mcapSelectedObjectAtom,
   useMcapSelectedObject,
 } from "./mcap-selected-object";
+import { mcapHoveredPointForFrame } from "./mcap-point-hover";
+import {
+  mcapHoverEchoAtom,
+  useMcapHoverEcho,
+  type McapHoverEcho,
+} from "./mcap-hover-echo";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
   defaultMcapPointCloudColorForSource,
@@ -427,6 +434,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const {
     containerProps: hoverTooltipContainerProps,
     onHoverEntity,
+    onHoverPoint,
     tooltip: hoverTooltip,
   } = useMcap3dHoverTooltip();
   const annotationLayers = useMemo(
@@ -446,7 +454,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
           ...layer,
           highlighted: isSelected || isMcapLabelEcho(selectedObject, label),
           onHoverEntity: (hoveredId: string | null) =>
-            onHoverEntity(hoveredId ? { entityId, label, topic } : null),
+            onHoverEntity(
+              hoveredId ? { entityId, kind: "entity", label, topic } : null,
+            ),
           onSelectEntity: (
             _entityId: string,
             modifiers: { readonly shiftKey: boolean },
@@ -473,6 +483,50 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         };
       }),
     [onHoverEntity, sceneAnnotationLayers, selectedObject, setSelectedObject],
+  );
+  // Share point hovers between the 3D scene and image projections.
+  const hoverEcho = useMcapHoverEcho();
+  const publishedPointHoverRefs = useRef(new Map<string, McapHoverEcho>());
+  const hoverablePointCloudLayers = useMemo(
+    () =>
+      coloredPointCloudLayers.map((layer) => {
+        const topic = layer.id;
+        const frame = layer.frame;
+        return {
+          ...layer,
+          hoveredPoint:
+            hoverEcho?.kind === "point" && hoverEcho.topic === topic
+              ? { color: hoverEcho.color, position: hoverEcho.position }
+              : null,
+          onHoverPoint: (pick: PointCloudPointPick | null) => {
+            const payload = pick
+              ? mcapHoveredPointForFrame(topic, frame, pick.pointIndex)
+              : null;
+            onHoverPoint(payload);
+            if (payload && pick) {
+              const hover: McapHoverEcho = {
+                color: pick.color,
+                kind: "point",
+                pointIndex: payload.pointIndex,
+                position: payload.position,
+                topic,
+              };
+              publishedPointHoverRefs.current.set(topic, hover);
+              jotaiStore.set(mcapHoverEchoAtom, hover);
+              return;
+            }
+
+            const published = publishedPointHoverRefs.current.get(topic);
+            publishedPointHoverRefs.current.delete(topic);
+            if (published) {
+              jotaiStore.set(mcapHoverEchoAtom, (current) =>
+                current === published ? null : current,
+              );
+            }
+          },
+        };
+      }),
+    [coloredPointCloudLayers, hoverEcho, jotaiStore, onHoverPoint],
   );
   // Schema-driven telemetry: speed from the first enabled pose stream whose
   // latest sample carries velocity, coordinates from the first LocationFix
@@ -606,11 +660,11 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       gridLayers,
       notices: panelNotices,
       placementStatus,
-      pointCloudLayers: coloredPointCloudLayers,
+      pointCloudLayers: hoverablePointCloudLayers,
     }),
     [
       annotationLayers,
-      coloredPointCloudLayers,
+      hoverablePointCloudLayers,
       frustumLayers,
       gridLayers,
       panelNotices,

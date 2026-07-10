@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import * as THREE from "three";
 
 import {
   clampImageViewTransform,
   imageDisplayRect,
+  replaceImageMaterialTexture,
   transformedImageDisplayRect,
 } from "./base-2d-scene";
 
@@ -92,5 +94,21 @@ describe("2D image view helpers", () => {
         },
       ),
     ).toEqual({ scale: 0.8, translateX: 40, translateY: -30 });
+  });
+
+  it("invalidates WebGPU material bindings when an image texture changes", () => {
+    const material = new THREE.MeshBasicMaterial();
+    const first = new THREE.Texture();
+    const second = new THREE.Texture();
+
+    replaceImageMaterialTexture(material, first);
+    const firstVersion = material.version;
+    replaceImageMaterialTexture(material, second);
+
+    expect(material.map).toBe(second);
+    expect(material.version).toBe(firstVersion + 1);
+
+    replaceImageMaterialTexture(material, second);
+    expect(material.version).toBe(firstVersion + 1);
   });
 });

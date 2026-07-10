@@ -9,29 +9,40 @@ import {
   useView,
 } from "../state/accessors";
 import { IMAVID_STREAM_ID } from "../utils/ids";
+import type { FrameBitmapStream } from "../streams/frameBitmapStream";
 import { ImaVidImageStream } from "../streams/ImaVidImageStream";
+import { NativeVideoFrameStream } from "../streams/NativeVideoFrameStream";
 import { usePublishImaVidImageStream } from "../streams/imaVidImageStreamHandle";
 
 /**
- * Construct and register `ImaVidImageStream` as soon as the sample's
- * params resolve. The image stream contributes `duration = frameCount/fps`
- * back to the engine, which is what unblocks `RegisterFrameLabels`
- * downstream — in the native-video tile the `<video>` element plays
- * this role via `useVideoStream`.
+ * The two ImaVid-tile-backed bitmap sources. Which one is chosen is decided
+ * upstream by {@link useDecodeStrategy} — this registrar just constructs it.
  *
- * `frameCount` and `frameRate` are resolved + validated upstream by
- * `useAnnotatePrerequisites` (which gates this component behind a
- * "compute metadata" prompt when they're absent), so they arrive as
- * positive finite numbers — no resolution or throwing here.
+ * - `fetch` — `POST /frames` over `to_frames(sample_frames=True)` images.
+ * - `extract` — on-demand WebCodecs decode of the source video (no `to_frames`).
+ */
+export type ImaVidSource = "fetch" | "extract";
+
+/**
+ * Construct and register the ImaVid-tile frame stream as soon as the sample's
+ * params resolve. The stream contributes `duration = frameCount/fps` back to
+ * the engine, which unblocks `RegisterFrameLabels` downstream.
  *
- * Re-keys on any identity change so a fresh stream replaces the old
- * one via `usePlaybackStream`'s standard cleanup.
+ * Both sources feed the same tile + engine-clock lock-step (see
+ * {@link FrameBitmapStream}); `extract` additionally needs a `videoSrc`.
+ * `frameCount` / `frameRate` are resolved + validated upstream by
+ * `useAnnotatePrerequisites`, so they arrive as positive finite numbers.
+ *
+ * Re-keys on any identity change (incl. `source`) so a fresh stream replaces
+ * the old one via `usePlaybackStream`'s standard cleanup.
  */
 export const RegisterImaVidImage: React.FC<{
+  source: ImaVidSource;
   frameCount: number;
   frameRate: number;
+  videoSrc?: string | null;
   children: React.ReactNode;
-}> = ({ frameCount, frameRate, children }) => {
+}> = ({ source, frameCount, frameRate, videoSrc = null, children }) => {
   const dataset = useDatasetName();
   const view = useView();
   const slice = useGroupSlice();
@@ -42,19 +53,21 @@ export const RegisterImaVidImage: React.FC<{
     return <>{children}</>;
   }
 
-  const key = `${sampleId}|${dataset}|${
+  const key = `${source}|${sampleId}|${dataset}|${
     slice ?? ""
   }|${frameRate}|${frameCount}`;
 
   return (
     <ImaVidImageRegistration
       key={key}
+      source={source}
       sampleId={sampleId}
       dataset={dataset}
       view={view}
       groupSlice={slice ?? null}
       frameCount={frameCount}
       frameRate={frameRate}
+      videoSrc={videoSrc}
     >
       {children}
     </ImaVidImageRegistration>
@@ -62,12 +75,14 @@ export const RegisterImaVidImage: React.FC<{
 };
 
 interface ImaVidImageRegistrationProps {
+  source: ImaVidSource;
   sampleId: string;
   dataset: string;
   view: Stage[];
   groupSlice: string | null;
   frameCount: number;
   frameRate: number;
+  videoSrc: string | null;
   children: React.ReactNode;
 }
 
@@ -75,23 +90,32 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
   children,
   ...props
 }) => {
-  const streamRef = useRef<ImaVidImageStream | null>(null);
+  const streamRef = useRef<FrameBitmapStream | null>(null);
   if (streamRef.current === null) {
-    streamRef.current = new ImaVidImageStream({
-      id: IMAVID_STREAM_ID,
-      sampleId: props.sampleId,
-      dataset: props.dataset,
-      view: props.view,
-      groupSlice: props.groupSlice,
-      frameCount: props.frameCount,
-      frameRate: props.frameRate,
-    });
+    streamRef.current =
+      props.source === "extract" && props.videoSrc
+        ? new NativeVideoFrameStream({
+            id: IMAVID_STREAM_ID,
+            sampleId: props.sampleId,
+            frameCount: props.frameCount,
+            frameRate: props.frameRate,
+            videoSrc: props.videoSrc,
+          })
+        : new ImaVidImageStream({
+            id: IMAVID_STREAM_ID,
+            sampleId: props.sampleId,
+            dataset: props.dataset,
+            view: props.view,
+            groupSlice: props.groupSlice,
+            frameCount: props.frameCount,
+            frameRate: props.frameRate,
+          });
   }
 
   // Tear down the worker on unmount. The effect is declared BEFORE
   // `usePlaybackStream` so React runs its cleanup AFTER the playback
-  // registration's cleanup (LIFO order): the engine unregisters the
-  // stream first, then we terminate the worker.
+  // registration's cleanup (LIFO): the engine unregisters the stream first,
+  // then we terminate the worker.
   useEffect(() => {
     const stream = streamRef.current;
 
@@ -102,12 +126,12 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
 
   usePlaybackStream(streamRef.current);
 
-  // Publish the stream instance so off-tile consumers
-  // can pull arbitrary frame bitmaps by index via warmup/getValue.
+  // Publish the stream instance so off-tile consumers can pull arbitrary frame
+  // bitmaps by index via warmup/getValue.
   usePublishImaVidImageStream(streamRef.current);
 
-  // Pre-warm the first chunk and seek to t=0 so the first paint isn't
-  // a blank tile waiting on the network + decode.
+  // Pre-warm the first chunk and seek to t=0 so the first paint isn't a blank
+  // tile waiting on the network + decode.
   useWarmupThenSeek(streamRef.current);
 
   return <>{children}</>;

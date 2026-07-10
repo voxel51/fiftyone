@@ -102,6 +102,53 @@ export interface PointCloudScalarField {
 }
 
 /**
+ * Inclusive numeric range computed from finite point-cloud values.
+ */
+export interface PointCloudNumericRange {
+  readonly max: number;
+  readonly min: number;
+}
+
+/**
+ * Axis-aligned bounds computed from every finite point in a decoded cloud.
+ */
+export interface PointCloudBounds {
+  readonly max: readonly [number, number, number];
+  readonly min: readonly [number, number, number];
+}
+
+/**
+ * Sampled values and full-cloud statistics for one decoded scalar channel.
+ * Values belonging to non-finite positions are excluded from the range so it
+ * describes renderable points.
+ */
+export interface PointCloudRenderScalarField {
+  readonly finiteValueCount: number;
+  readonly name: string;
+  readonly range: PointCloudNumericRange | null;
+  /** Capacity-sized values aligned with the sampled render positions. */
+  readonly values: Float32Array;
+}
+
+/**
+ * Decoder-prepared point data shared by point-cloud renderers. The first
+ * `sampledPointCount` entries contain only finite positions; `sourceIndices`
+ * maps each sample back to the corresponding point in the full decoded arrays.
+ */
+export interface PointCloudRenderPayload {
+  readonly bounds: PointCloudBounds | null;
+  /** Allocated point capacity shared by every typed array in this payload. */
+  readonly capacity: number;
+  readonly colors?: Float32Array;
+  readonly finitePointCount: number;
+  readonly heightRange: PointCloudNumericRange | null;
+  readonly positions: Float32Array;
+  readonly sampledPointCount: number;
+  readonly scalarFields: readonly PointCloudRenderScalarField[];
+  readonly sourceIndices: Uint32Array;
+}
+
+/**
  * Positions extracted from a point cloud into an interleaved x/y/z array.
  */
 export interface PointCloudVisualization {
@@ -118,6 +165,12 @@ export interface PointCloudVisualization {
   readonly fields: readonly PointCloudField[];
   readonly pointCount: number;
   readonly positions: Float32Array;
+  /**
+   * Optional bounded, finite render data and full-cloud statistics prepared by
+   * the decoder. Full arrays remain available above for inspection and other
+   * consumers that require every decoded point.
+   */
+  readonly renderPayload?: PointCloudRenderPayload;
   /**
    * Optional canonical per-point sensor-return channels such as intensity/RCS.
    * Each scalar field's values array must have length equal to pointCount.

@@ -52,6 +52,8 @@ import {
   foxglovePointCloudDecoder,
   foxglovePoseInFrameCdrDecoders,
   foxglovePoseInFrameDecoder,
+  foxgloveRawImageCdrDecoders,
+  foxgloveRawImageDecoder,
   foxgloveSceneUpdateCdrDecoders,
   foxgloveSceneUpdateDecoder,
 } from "./foxglove";
@@ -80,6 +82,12 @@ describe("Foxglove decoders", () => {
       foxgloveCompressedVideoDecoder,
     );
     for (const decoder of foxgloveCompressedVideoCdrDecoders) {
+      expect(registry.find(decoder.payload)).toBe(decoder);
+    }
+    expect(registry.find(foxgloveRawImageDecoder.payload)).toBe(
+      foxgloveRawImageDecoder,
+    );
+    for (const decoder of foxgloveRawImageCdrDecoders) {
       expect(registry.find(decoder.payload)).toBe(decoder);
     }
     expect(registry.find(foxglovePointCloudDecoder.payload)).toBe(
@@ -479,6 +487,66 @@ describe("Foxglove decoders", () => {
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(5_000_000_006n);
   });
 
+  it("decodes protobuf raw image wire messages into raw RGBA", () => {
+    const output = foxgloveRawImageDecoder.decode(rawImageWireMessage(), {
+      schemaData: RAW_IMAGE_SCHEMA_DATA,
+    });
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.RAW_IMAGE);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.RAW_IMAGE) {
+      throw new Error("Expected raw image visualization");
+    }
+    expect(output.visualization).toMatchObject({
+      coordinateFrameId: "CAM_RAW",
+      height: 1,
+      sourceEncoding: "rgb8",
+      timestampNs: 12_000_000_034n,
+      width: 2,
+    });
+    expect(Array.from(output.visualization.rgba)).toEqual([
+      255, 0, 0, 255, 0, 255, 0, 255,
+    ]);
+    expect(output.attributes).toMatchObject({
+      byteLength: 6,
+      encoding: "rgb8",
+      frameId: "CAM_RAW",
+      height: 1,
+      step: 6,
+      width: 2,
+    });
+  });
+
+  it("decodes cdr raw image messages into raw RGBA", () => {
+    const output = decoderForSchemaEncoding(
+      foxgloveRawImageCdrDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_RAW_IMAGE_SCHEMA, {
+        data: [0, 0, 255, 0, 255, 0],
+        encoding: "bgr8",
+        frame_id: "CAM_RAW",
+        height: 1,
+        step: 6,
+        timestamp: { nanosec: 4, sec: 3 },
+        width: 2,
+      }),
+      { schemaData: schemaData(ROS2_RAW_IMAGE_SCHEMA) },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.RAW_IMAGE);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.RAW_IMAGE) {
+      throw new Error("Expected raw image visualization");
+    }
+    expect(output.visualization).toMatchObject({
+      coordinateFrameId: "CAM_RAW",
+      sourceEncoding: "bgr8",
+      timestampNs: 3_000_000_004n,
+    });
+    expect(Array.from(output.visualization.rgba)).toEqual([
+      255, 0, 0, 255, 0, 255, 0, 255,
+    ]);
+  });
+
   it("treats invalid optional bigint protobuf fields as absent", () => {
     expect(optionalBigInt({ seconds: "not-a-number" }, "seconds")).toBe(
       undefined,
@@ -627,6 +695,37 @@ describe("Foxglove decoders", () => {
     expect(
       Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
     ).toEqual([10, 20]);
+    const renderPayload = output.visualization.renderPayload;
+    if (!renderPayload) {
+      throw new Error("Expected point cloud render payload");
+    }
+    if (!renderPayload.colors) {
+      throw new Error("Expected sampled point cloud colors");
+    }
+    expect(renderPayload).toMatchObject({
+      bounds: { max: [4, 5, 6], min: [1, 2, 3] },
+      capacity: 1_024,
+      finitePointCount: 2,
+      heightRange: { max: 6, min: 3 },
+      sampledPointCount: 2,
+    });
+    expect(Array.from(renderPayload.positions.slice(0, 6))).toEqual([
+      1, 2, 3, 4, 5, 6,
+    ]);
+    expect(Array.from(renderPayload.sourceIndices.slice(0, 2))).toEqual([0, 1]);
+    expect(renderPayload.scalarFields[0]).toMatchObject({
+      finiteValueCount: 2,
+      name: "rcs",
+      range: { max: 20, min: 10 },
+    });
+    expect(output.resourceHints?.transferables).toEqual(
+      expect.arrayContaining([
+        renderPayload.positions.buffer,
+        renderPayload.colors.buffer,
+        renderPayload.sourceIndices.buffer,
+        renderPayload.scalarFields[0].values.buffer,
+      ]),
+    );
   });
 
   it("decodes strided lidar layouts with trailing scalar fields", () => {
@@ -1451,6 +1550,72 @@ const COMPRESSED_VIDEO_ROOT = Root.fromJSON({
 const COMPRESSED_VIDEO_SCHEMA_DATA = protobufDescriptorData(
   COMPRESSED_VIDEO_ROOT,
 );
+
+const RAW_IMAGE_ROOT = Root.fromJSON({
+  nested: {
+    foxglove: {
+      nested: {
+        RawImage: {
+          fields: {
+            data: { id: 6, type: "bytes" },
+            encoding: { id: 4, type: "string" },
+            frameId: { id: 7, type: "string" },
+            height: { id: 3, type: "fixed32" },
+            step: { id: 5, type: "fixed32" },
+            timestamp: { id: 1, type: "google.protobuf.Timestamp" },
+            width: { id: 2, type: "fixed32" },
+          },
+        },
+      },
+    },
+    google: {
+      nested: {
+        protobuf: {
+          nested: {
+            Timestamp: {
+              fields: {
+                nanos: { id: 2, type: "int32" },
+                seconds: { id: 1, type: "int64" },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+});
+
+const RAW_IMAGE_SCHEMA_DATA = protobufDescriptorData(RAW_IMAGE_ROOT);
+
+function rawImageWireMessage(): Uint8Array {
+  return concatProtobufFields(
+    protobufBytesField(
+      1,
+      concatProtobufFields(
+        protobufVarintField(1, 12),
+        protobufVarintField(2, 34),
+      ),
+    ),
+    protobufFixed32Field(2, 2),
+    protobufFixed32Field(3, 1),
+    protobufBytesField(4, new TextEncoder().encode("rgb8")),
+    protobufFixed32Field(5, 6),
+    protobufBytesField(6, Uint8Array.of(255, 0, 0, 0, 255, 0)),
+    protobufBytesField(7, new TextEncoder().encode("CAM_RAW")),
+  );
+}
+
+const ROS2_RAW_IMAGE_SCHEMA = `builtin_interfaces/Time timestamp
+string frame_id
+uint32 width
+uint32 height
+string encoding
+uint32 step
+uint8[] data
+================================================================================
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec`;
 
 const ROS2_COMPRESSED_IMAGE_SCHEMA = `builtin_interfaces/Time timestamp
 string frame_id

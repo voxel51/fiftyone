@@ -37,26 +37,11 @@ const COPY: Record<
     title: "Computed metadata required",
     description: (
       <>
-        This video's frame count is unknown.{" "}
+        This video&apos;s frame count is unknown.{" "}
         <DocsLink href="https://docs.voxel51.com/enterprise/getting_started.html#compute-metadata">
           Compute metadata
         </DocsLink>{" "}
         to annotate it or switch to Explore to view the sample.
-      </>
-    ),
-  },
-  frames: {
-    icon: "image_search",
-    title: "Frames not sampled",
-    description: (
-      <>
-        This video's frames haven't been sampled to images, which annotation
-        requires.{" "}
-        <DocsLink href="https://docs.voxel51.com/user_guide/using_views.html#frame-views">
-          Run dataset.to_frames(sample_frames=True) or populate filepaths to
-          existing frame images
-        </DocsLink>{" "}
-        to annotate it.
       </>
     ),
   },
@@ -72,9 +57,9 @@ const center: React.CSSProperties = {
 
 /**
  * Media-region takeover shown when the video annotation surface can't mount
- * its playback stream because a prerequisite is missing. Replaces the old
- * hard throw in `RegisterImaVidImage` (which crashed the whole modal) and the
- * silent blank when frames aren't sampled.
+ * any media path because a prerequisite is missing (currently only computed
+ * metadata) — an actionable prompt in the media region instead of a stream
+ * that would throw.
  */
 export const AnnotatePrerequisiteNotice: React.FC<{
   blocker: AnnotateBlocker;
@@ -102,7 +87,7 @@ export const AnnotatePrerequisiteNotice: React.FC<{
   );
 };
 
-/** Shown while a prerequisite (e.g. the sampled-frames probe) is resolving. */
+/** Shown while the decode strategy is resolving (frames / native-decode probe). */
 export const AnnotatePrerequisiteChecking: React.FC = () => (
   <div data-cy="video-annotate-prerequisite-checking" style={center}>
     <Spinner size={Size.Lg} />

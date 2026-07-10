@@ -10,6 +10,11 @@ import {
 } from "../../../query/bytes";
 import { releaseRetainedImageTextures } from "../../../visualization/panels/image-texture-cache";
 import {
+  releaseGpuPointCloudProjectionResources,
+  releaseGpuPointCloudProjectionResourcesForSource,
+} from "../../../visualization/panels/gpu/gpu-point-cloud-projection-resources";
+import { releaseGpuPointCloudColormapTextures } from "../../../visualization/panels/point-cloud/gpu/gpu-point-cloud-colormap-texture";
+import {
   markMcapLatencyEvent,
   startMcapLatencyDebugSession,
 } from "../mcap-latency-debug";
@@ -17,7 +22,10 @@ import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import type { McapResourceClient } from "../types";
 import { clearMcap3dViewState } from "./mcap-3d-view-state";
 import { Mcap3dViewSettingsProvider } from "./mcap-3d-view-settings-context";
-import { McapDataStreamProvider } from "./mcap-data-stream-context";
+import {
+  McapDataStreamProvider,
+  useMcapDataStream,
+} from "./mcap-data-stream-context";
 import { McapFrameTransformsProvider } from "./mcap-frame-transforms-context";
 import { McapLogConsoleProvider } from "./mcap-log-console-context";
 import { McapLocationTracksProvider } from "./mcap-location-tracks-context";
@@ -104,6 +112,8 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   useEffect(() => {
     return () => {
       clearMcap3dViewState();
+      releaseGpuPointCloudColormapTextures();
+      releaseGpuPointCloudProjectionResources();
       releaseRetainedImageTextures();
     };
   }, []);
@@ -194,6 +204,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                 <McapRawMessageProvider>
                   <McapLogConsoleProvider client={client} source={source}>
                     <McapDataStreamProvider>
+                      <McapProjectionResourceBoundary />
                       <Mcap3dViewSettingsProvider
                         sceneUpAxis={sceneUpAxis}
                         setSceneUpAxis={onSceneUpAxisChange}
@@ -221,6 +232,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                           onTagDelete={onTagDelete}
                           leftSidebar={<McapSettingsSidebar topics={topics} />}
                           rightSidebar={<McapInspectorSidebar />}
+                          sharedImageWebGpuViews
                           defaultRightOpen={false}
                           defaultLeftOpen={defaultLeftOpen}
                           onLeftOpenChange={onLeftOpenChange}
@@ -252,6 +264,20 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     </React.Fragment>
   );
 };
+
+/** Retires only the previous recording's GPU buffers on an in-place swap. */
+function McapProjectionResourceBoundary() {
+  const sourceKey = useMcapDataStream()?.sourceKey;
+  useEffect(
+    () => () => {
+      if (sourceKey) {
+        releaseGpuPointCloudProjectionResourcesForSource(sourceKey);
+      }
+    },
+    [sourceKey],
+  );
+  return null;
+}
 
 function McapHeaderActions({
   actions,

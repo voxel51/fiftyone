@@ -64,6 +64,30 @@ vi.mock("@fiftyone/tiling", async () => {
   };
 });
 
+// The shell only owns the opt-in wrapper boundary; the stage's renderer and
+// registration lifecycle have focused tests in webgpu-view-stage.test.tsx.
+vi.mock("../../visualization/panels/gpu/webgpu-view-stage", async () => {
+  const react = await vi.importActual<typeof import("react")>("react");
+  return {
+    WebGpuViewStage: ({
+      children,
+      className,
+    }: {
+      readonly children: React.ReactNode;
+      readonly className?: string;
+    }) =>
+      react.createElement(
+        "div",
+        { className, "data-testid": "webgpu-view-stage" },
+        react.createElement(
+          "div",
+          { "data-testid": "webgpu-view-stage-content" },
+          children,
+        ),
+      ),
+  };
+});
+
 import MultiModalPlayback, {
   clampSidebarWidth,
   SIDEBAR_MAX_WIDTH_PX,
@@ -76,6 +100,26 @@ describe("MultiModalPlayback shell", () => {
   it("renders the filename in the header", () => {
     render(<MultiModalPlayback fileName="session.fo" />);
     expect(screen.getByText("session.fo")).toBeTruthy();
+  });
+
+  it("hosts the mosaic inside the shared WebGPU view stage when enabled", () => {
+    render(<MultiModalPlayback fileName="session.fo" sharedImageWebGpuViews />);
+
+    expect(
+      screen
+        .getByTestId("webgpu-view-stage-content")
+        .contains(screen.getByTestId("mosaic-stub")),
+    ).toBe(true);
+    expect(screen.getByTestId("webgpu-view-stage").className).toContain(
+      "sharedViewStage",
+    );
+  });
+
+  it("does not mount the shared WebGPU view stage by default", () => {
+    render(<MultiModalPlayback fileName="session.fo" />);
+
+    expect(screen.queryByTestId("webgpu-view-stage")).toBeNull();
+    expect(screen.getByTestId("mosaic-stub")).toBeTruthy();
   });
 
   it("renders header actions beside the filename", () => {

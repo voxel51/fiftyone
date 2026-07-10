@@ -156,9 +156,35 @@ export interface WorldGridPanelConfig {
 }
 
 /**
- * One point cloud rendered into the shared panel scene. `id` is the
- * stable identity used for React reconciliation and per-layer point
- * counting — use the source's topic/stream id.
+ * One picked cloud point, reported in the layer's decoded index space
+ * (see `sourcePointIndexForRenderedIndex` — rendered geometry is
+ * downsampled and compacted, so rendered indexes are never exposed).
+ */
+export interface PointCloudPointPick {
+  /** The point's rendered (colormapped) color, normalized RGB. */
+  readonly color: readonly [number, number, number] | null;
+  /** Index into the layer frame's positions/scalarFields arrays. */
+  readonly pointIndex: number;
+  /** Picked vertex in the panel's fixed (world) frame. */
+  readonly worldPosition: readonly [number, number, number];
+}
+
+/**
+ * Emphasis marker for the hovered cloud point: rendered over the point
+ * in its complementary color, slightly enlarged.
+ */
+export interface PointCloudHoveredPointMarker {
+  /** The point's rendered color the emphasis complements. */
+  readonly color: readonly [number, number, number] | null;
+  /** Sensor-frame coordinates of the hovered point. */
+  readonly position: readonly [number, number, number];
+}
+
+/**
+ * One point cloud rendered into the shared panel scene. `id` is the stable
+ * source identity used for React reconciliation and per-layer point counting;
+ * `contentTimeNs` identifies the current source message so GPU resources can
+ * survive playback re-delivering it in a fresh wrapper object.
  */
 export interface PointCloudPanelLayer {
   /**
@@ -166,9 +192,19 @@ export interface PointCloudPanelLayer {
    * `colorBy` prop for this cloud only.
    */
   readonly colorSettings?: PointCloudColorSettings;
+  readonly contentTimeNs?: bigint;
   readonly frame: PointCloudVisualization;
   readonly frameTransform?: PointCloudFrameTransform;
   readonly id: string;
+  /**
+   * Makes the cloud's points inspectable on hover: called with the
+   * dwelled-on point once the pointer rests over it (entities and
+   * frustums take precedence; measure mode suspends picking entirely),
+   * and with null when the pointer moves on.
+   */
+  readonly onHoverPoint?: (pick: PointCloudPointPick | null) => void;
+  /** Hovered-point emphasis to render over this cloud, if any. */
+  readonly hoveredPoint?: PointCloudHoveredPointMarker | null;
 }
 
 /**
