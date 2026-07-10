@@ -113,6 +113,7 @@ on your data quickly and easily.
 
     FiftyOne basics <basics>
     Dataset views <using_views>
+    Grouped datasets <groups>
     Using aggregations <using_aggregations>
     Interactive plots <plots>
     Drawing labels on samples <draw_labels>
