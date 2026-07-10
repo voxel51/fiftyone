@@ -1586,8 +1586,8 @@ def _ensure_kind(kind):
         try:
             return TagKind(kind)
         except ValueError as e:
-            raise ValueError("Invalid temporal tag kind: %r" % kind) from e
-    raise ValueError("Invalid temporal tag kind: %r" % kind)
+            raise ValueError("Invalid tag kind: %r" % kind) from e
+    raise ValueError("Invalid tag kind: %r" % kind)
 
 
 __all__ = [
