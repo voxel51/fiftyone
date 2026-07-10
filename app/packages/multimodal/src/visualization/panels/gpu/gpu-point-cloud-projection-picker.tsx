@@ -23,6 +23,14 @@ import {
 const MIN_PROJECTABLE_DEPTH = 1e-6;
 const CULLED_POSITION = 1e9;
 
+// Projection picking is a reduction performed by rasterization:
+//
+//   sampled sensor point -> calibration pixel -> pointer-relative sprite
+//   -> depth test by squared pixel distance -> one RGBA32Uint identity texel
+//
+// No projected UV array is materialized. The pass reads the same prepared
+// point/source-index buffers as the visible camera layers.
+
 interface PickNode {
   readonly w: PickNode;
   readonly x: PickNode;
@@ -198,6 +206,9 @@ class ProjectionPickerController implements GpuPointCloudProjectionPickerControl
       return;
     }
     this.invalidate();
+    // Preserve compiled node materials while only matrices, counts, or frame
+    // identities change. A buffer-identity/calibration-shape change rebuilds
+    // the pass because TSL storage attributes are part of shader topology.
     if (this.renderPass?.updateScene(scene)) {
       return;
     }
@@ -211,12 +222,16 @@ class ProjectionPickerController implements GpuPointCloudProjectionPickerControl
   }
 
   invalidate(): void {
+    // GPU readback is asynchronous. Callers invalidate on pointer, frame, TF,
+    // calibration, or lifecycle changes so an older texel cannot publish a
+    // hover against newer scene state.
     this.generation += 1;
   }
 
   async pick(
     request: GpuPointCloudProjectionPickRequest,
   ): Promise<GpuPointCloudProjectionPickResult | null> {
+    // A new request supersedes any previous request from this controller.
     const generation = ++this.generation;
     const renderPass = this.renderPass;
     if (
@@ -263,6 +278,8 @@ class ProjectionPickerController implements GpuPointCloudProjectionPickerControl
       throw new Error("GPU projection picker returned a non-integer texel");
     }
 
+    // Zero is the cleared target/no-hit sentinel. Valid zero-based indices are
+    // stored as index + 1 so every channel can use the same sentinel.
     const encodedLayerIndex = pixels[0];
     const encodedSourceIndex = pixels[1];
     const encodedSampleIndex = pixels[2];
@@ -340,6 +357,9 @@ function createProjectionPickPass(
   };
 
   try {
+    // One Sprite draw per cloud layer. Sprite.count drives instancing; the
+    // custom node material ignores Sprite transforms and fetches positions by
+    // instanceIndex from the shared storage attributes.
     for (const {
       layer,
       layerIndex,
@@ -391,6 +411,8 @@ function createProjectionPickPass(
       radius.value = request.radiusPx;
     },
     updateScene: (nextScene) => {
+      // Uniform values and instance counts are cheap to mutate. Attribute
+      // identity is not: it is captured by the compiled TSL graph.
       if (
         nextScene.calibrationWidth !== sceneConfig.calibrationWidth ||
         nextScene.calibrationHeight !== sceneConfig.calibrationHeight
@@ -505,6 +527,8 @@ function createProjectionPickMaterialNode({
     "uint",
   ) as unknown as PickNode;
   const homogeneous = matrix.mul(pickTsl.vec4(sensorPosition, 1));
+  // The matrix yields [u*z, v*z, z, 1]. Divide by camera depth to recover
+  // calibration-pixel coordinates without writing an intermediate UV buffer.
   const cameraDepth = homogeneous.z;
   const u = homogeneous.x.div(cameraDepth);
   const v = homogeneous.y.div(cameraDepth);
@@ -519,6 +543,9 @@ function createProjectionPickMaterialNode({
     pickTsl.lessThan(v, dimensions.y),
     pickTsl.lessThanEqual(distanceSq, radiusSq),
   );
+  // Recenter every candidate around the 1x1 pick camera. Points outside the
+  // radius are moved beyond clip space and scaled to zero; candidates inside
+  // it cover the texel and compete via depth below.
   const pickPosition = pickTsl.vec3(du.div(radius), dv.div(radius).mul(-1), 0);
   material.positionNode = pickTsl.select(
     visible,
@@ -530,11 +557,15 @@ function createProjectionPickMaterialNode({
     pickTsl.vec2(1, 1),
     pickTsl.vec2(0, 0),
   );
+  // Normalized squared screen distance makes the closest projected center win
+  // independent of sensor depth, matching the original 2D hover semantics.
   material.depthNode = pickTsl.clamp(
     distanceSq.div(radiusSq),
     0,
     1,
   ) as unknown as TSL.Node;
+  // RGBA32Uint payload: active-layer, decoded-source, sampled-array, marker.
+  // Every identity is +1 encoded because target clear writes all zeros.
   material.fragmentNode = pickTsl.uvec4(
     pickTsl.uint(activeLayerIndex + 1),
     sourceIndex.add(1),
@@ -562,6 +593,9 @@ function activeProjectionPickLayers(
     if (layer.sourceIndexAttribute.itemSize !== 1) {
       throw new Error("GPU projection picker source indices must be scalars");
     }
+    // Trust only the intersection of declared samples and actual buffer
+    // lengths. This prevents an inconsistent transferred payload from letting
+    // instanceIndex read past either storage attribute.
     const sampledPointCount = Math.min(
       layer.positionAttribute.count,
       layer.sourceIndexAttribute.count,
@@ -587,6 +621,8 @@ function validPickRequest({
   );
 }
 
+// The pick material emits pointer-relative clip-space positions directly, so
+// this camera is intentionally fixed and carries no scene semantics.
 const PICK_CAMERA = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2);
 PICK_CAMERA.position.set(0, 0, 1);
 PICK_CAMERA.updateProjectionMatrix();

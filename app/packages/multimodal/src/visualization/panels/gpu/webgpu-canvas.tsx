@@ -171,6 +171,9 @@ export function WebGpuCanvas({
       if (!mountedRef.current || rendererRef.current !== renderer) {
         return;
       }
+      // A lost device makes this renderer permanently unusable. Clear the
+      // identity before surfacing the error so later effects cannot prepare or
+      // invalidate it as though it were still the active backend.
       rendererRef.current = null;
       rendererReadyRef.current = false;
       releaseRendererRegistration(registrationsRef.current, renderer);

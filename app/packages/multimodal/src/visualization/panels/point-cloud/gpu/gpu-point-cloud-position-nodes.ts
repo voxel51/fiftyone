@@ -46,6 +46,8 @@ export function gpuPointCloudSampleIndexNode(
   if (renderedPointCount <= 0 || renderedPointCount === sampledPointCount) {
     return pointCloudTsl.instanceIndex;
   }
+  // Match float32/WGSL arithmetic exactly. CPU hover mapping uses the same
+  // fround sequence, so a drawn instance always resolves to the same sample.
   const stride = Math.fround(sampledPointCount / renderedPointCount);
   return pointCloudTsl
     .float(pointCloudTsl.instanceIndex)
@@ -78,6 +80,8 @@ export function gpuPointCloudPositionNode(
       .element(sampleIndex);
   }
 
+  // Flat float storage is intentional for decoder payloads: Three otherwise
+  // pads vec3 storage elements to vec4 on the main thread before upload.
   const values = pointCloudTsl
     .storage(attribute, "float", attribute.count)
     .toReadOnly();

@@ -4,6 +4,10 @@ const COPY_BYTES_PER_ROW = 256;
 const PICK_TEXEL_BYTES = 4 * Uint32Array.BYTES_PER_ELEMENT;
 const READBACK_SLOT_COUNT = 3;
 
+// WebGPU requires bytesPerRow to be 256-byte aligned even though the pick
+// target contains only one RGBA32Uint texel (16 useful bytes). The pool keeps
+// the aligned allocation and maps only the useful prefix.
+
 interface PickReadbackRenderer {
   readonly backend?: {
     readonly device?: GPUDevice;
@@ -65,6 +69,9 @@ class GpuPickReadbackPool {
   ) {}
 
   acquire(): GpuPickReadbackLease {
+    // A renderer can host many camera views and both picker types. Leases keep
+    // their shared pool alive until the last controller using that renderer is
+    // disposed; individual reads reserve slots separately below.
     this.leaseCount += 1;
     let released = false;
     return {
@@ -90,6 +97,9 @@ class GpuPickReadbackPool {
       return this.fallbackRead(renderTarget);
     }
 
+    // mapAsync may remain pending across multiple frames. Rotating three
+    // buffers avoids serializing a new dwell behind the previous GPU copy
+    // without allocating a mapped buffer for every request.
     const slot = await this.reserveSlot(backend.device);
     let mapped = false;
     try {
@@ -108,6 +118,8 @@ class GpuPickReadbackPool {
       backend.device.queue.submit([encoder.finish()]);
       await slot.buffer.mapAsync(GPUMapMode.READ, 0, PICK_TEXEL_BYTES);
       mapped = true;
+      // Copy before unmap: a mapped range is invalid as soon as the GPUBuffer
+      // is unmapped in finally.
       const bytes = slot.buffer.getMappedRange(0, PICK_TEXEL_BYTES).slice(0);
       return new Uint32Array(bytes);
     } catch {
@@ -128,6 +140,8 @@ class GpuPickReadbackPool {
   }
 
   private async reserveSlot(device: GPUDevice): Promise<ReadbackSlot> {
+    // Search from the rotating cursor so one hot caller does not repeatedly
+    // claim slot zero while other camera views wait.
     for (let offset = 0; offset < this.slots.length; offset++) {
       const index = (this.nextSlotIndex + offset) % this.slots.length;
       const slot = this.slots[index];
@@ -152,6 +166,8 @@ class GpuPickReadbackPool {
       return slot;
     }
 
+    // All slots are in flight. The released slot is handed directly to the
+    // oldest waiter and deliberately remains marked busy during the handoff.
     return new Promise<ReadbackSlot>((resolve) => this.waiters.push(resolve));
   }
 
@@ -166,6 +182,9 @@ class GpuPickReadbackPool {
   }
 
   private disposeIfIdle(): void {
+    // Releasing the final controller is not enough to destroy buffers: an
+    // already-submitted copy/map must finish first. The last releaseSlot call
+    // performs the deferred destruction.
     if (
       !this.disposeRequested ||
       this.waiters.length > 0 ||
@@ -182,6 +201,9 @@ function directReadbackBackend(
   renderer: PickReadbackRenderer,
   renderTarget: THREE.RenderTarget,
 ): { readonly device: GPUDevice; readonly texture: GPUTexture } | null {
+  // This is a guarded optimization over Three r185 internals. Any missing or
+  // changed backend shape returns null and uses the public (allocating)
+  // readRenderTargetPixelsAsync path instead of breaking picking.
   if (
     typeof GPUBufferUsage === "undefined" ||
     typeof GPUMapMode === "undefined"

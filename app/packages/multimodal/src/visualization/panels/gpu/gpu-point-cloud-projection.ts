@@ -75,6 +75,9 @@ export function sensorToImageProjectionMatrix({
   const [p00, p01, p02, p03, p10, p11, p12, p13, p20, p21, p22, p23] =
     projection;
 
+  // Precompose P * [R | t] once per layer/frame. Matrix4.set accepts rows;
+  // Three stores them column-major internally and the TSL multiply below sees
+  // the intended homogeneous transform.
   return new THREE.Matrix4().set(
     p00 * r00 + p01 * r10 + p02 * r20,
     p00 * r01 + p01 * r11 + p02 * r21,
@@ -202,6 +205,9 @@ function projectionRows(
   calibration: Pick<GpuProjectionCalibration, "K" | "P">,
 ): readonly number[] | null {
   const projection = calibration.P;
+  // Prefer the rectified 3x4 projection matrix when usable: it may encode
+  // principal-point and baseline terms not present in K. Fall back to K as a
+  // zero-translation 3x4 matrix for producers that omit P.
   if (
     projection &&
     projection.length >= 12 &&

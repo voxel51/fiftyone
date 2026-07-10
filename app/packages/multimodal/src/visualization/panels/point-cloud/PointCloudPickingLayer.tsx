@@ -78,6 +78,9 @@ export function PointCloudPickingLayer({
       return undefined;
     }
 
+    // The controller owns GPU objects; React owns only its lifetime. Rendered
+    // point layers register their live storage attributes through context so
+    // this interaction layer never reaches into sibling component refs.
     const controller = createGpuPointCloud3dPickerController(gl);
     const syncScene = () => controller.setScene(registry.snapshot());
     const unsubscribeRegistry = registry.subscribe(syncScene);
@@ -88,6 +91,8 @@ export function PointCloudPickingLayer({
     let requestGeneration = 0;
 
     const clearHover = () => {
+      // Invalidate both promise layers: the local token protects callbacks in
+      // this effect, while the controller token protects its readback decode.
       requestGeneration += 1;
       controller.invalidate();
       const clear = clearHoveredPoint;
@@ -116,6 +121,9 @@ export function PointCloudPickingLayer({
       );
       threeRaycaster.setFromCamera(pointerNdc, threeCamera);
 
+      // Keep CPU raycasting only for sparse semantic objects that must win over
+      // points (annotations/frustums). Raycasting millions of cloud vertices
+      // is the O(N) path this GPU picker replaces.
       const blockers = collectPointPickBlockingRoots(threeScene);
       if (
         blockers.length > 0 &&
@@ -157,10 +165,15 @@ export function PointCloudPickingLayer({
             return;
           }
 
+          // A GPU hit identifies a canonical sampled point. Convert that into
+          // the decoded frame's source index before publishing the existing
+          // hover API; legacy layers retain their older rendered-index map.
           const gpu = gpuPickDataRef.current.get(pick.layerId);
           let pointIndex: number | null;
           let color: readonly [number, number, number] | null;
           if (gpu) {
+            // Playback may advance between command submission and mapAsync.
+            // Never interpret an old sample index against the new frame.
             if (gpu.resourceKey !== pick.resourceKey) {
               clearHover();
               return;
@@ -239,6 +252,8 @@ function sourcePointIndexForGpuSample(
   ) {
     return null;
   }
+  // sourceIndices is the worker-built identity bridge from the bounded GPU
+  // sample back to the full decoded channel arrays used by tooltip code.
   const sourceIndex = payload.sourceIndices[sampleIndex];
   const decodedPointCount = Math.min(
     layer.frame.pointCount,

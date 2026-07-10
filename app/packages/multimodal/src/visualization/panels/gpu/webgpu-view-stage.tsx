@@ -29,6 +29,10 @@ const LazyWebGpuCanvas = lazy(async () => {
 
 const SHARED_VIEW_SURFACE = "modal-images";
 
+// Image tiles share one demand-rendered device because playback invalidates
+// them together. The interactive 3D scene intentionally keeps its own canvas:
+// orbit/hover invalidations should not redraw every camera tile.
+
 interface WebGpuViewStageContextValue {
   readonly error: string | null;
   readonly invalidate: () => void;
@@ -104,6 +108,9 @@ export function WebGpuViewStage({
   }, [invalidate]);
 
   const updateView = useCallback((id: string, node: ReactNode | null) => {
+    // Stable IDs are load-bearing. Positional portal ownership can attach one
+    // camera's stateful texture/scene to another camera's DOM rectangle when
+    // sibling tiles update at different times.
     setViewNodes((current) => updateWebGpuViewNodes(current, id, node));
   }, []);
 
@@ -391,6 +398,9 @@ function SharedViewRenderer({
       return;
     }
 
+    // DOM measurement is the source of truth for a tile. The portal owns an
+    // independent scene/camera, while this callback maps it onto one region of
+    // the shared physical canvas.
     const bounds = webGpuViewBounds(canvasSize, rect);
     if (!bounds) {
       return;
@@ -420,6 +430,8 @@ function SharedViewRenderer({
     const renderer = state.gl as unknown as SharedStageRenderer;
     const autoClear = renderer.autoClear;
     renderer.autoClear = false;
+    // WebGPURenderer currently accepts the DOM-style top-left logical
+    // coordinates produced below; DPR scaling remains renderer-owned.
     renderer.setViewport(
       bounds.viewportX,
       bounds.viewportY,
@@ -446,6 +458,8 @@ function SharedViewRenderer({
 
 /** Clears once before the independently-scissored image scenes render. */
 function SharedStageFrame() {
+  // Individual views disable autoClear so later scissored views do not erase
+  // earlier ones. Clear the shared target exactly once at render priority 0.
   useFrame(({ gl }) => {
     const renderer = gl as unknown as SharedStageRenderer;
     renderer.setScissorTest(false);

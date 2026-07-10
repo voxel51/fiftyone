@@ -96,6 +96,9 @@ export function gpuPointCloudColorAtSample(
   payload: PointCloudRenderPayload,
   sampleIndex: number,
 ): readonly [number, number, number] | null {
+  // Hover readback names exactly one canonical sample. Re-evaluate the same
+  // color policy on that one value instead of reading rendered pixels or
+  // expanding the full cloud's colors on the CPU.
   if (
     !Number.isInteger(sampleIndex) ||
     sampleIndex < 0 ||
@@ -262,6 +265,9 @@ function normalizeValue(value: number, min: number, max: number): number {
 }
 
 const colormapLookups = new Map<string, PointCloudColormapLookup>();
+
+// CPU hover reconstruction uses the same normalized LUT data as the GPU
+// texture. Cache by semantic colormap key so custom ramps retain parity too.
 
 function colormapLookup(
   colormap: PointCloudColormap,

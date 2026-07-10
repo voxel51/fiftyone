@@ -78,6 +78,9 @@ export const McapImageProjectionScene = forwardRef<
   const preparedLayers = useMemo(
     () =>
       layers.flatMap((layer): readonly PreparedProjectionLayer[] => {
+        // Projection is direct in the vertex graph. Preparing a layer means
+        // composing one matrix and acquiring shared buffers, not projecting
+        // or colorizing every point for this camera on the CPU.
         const payload = layer.payload;
         const projectionMatrix = sensorToImageProjectionMatrix({
           calibration,
@@ -88,6 +91,9 @@ export const McapImageProjectionScene = forwardRef<
           return [];
         }
 
+        // streamKey owns reusable topic buffers; resourceKey names the frame
+        // currently stored in them. Camera count is intentionally absent from
+        // both keys so all image tiles share one upload.
         const resourceKey = gpuPointCloudProjectionResourceKey(
           sourceKey,
           layer.topic,
@@ -115,6 +121,9 @@ export const McapImageProjectionScene = forwardRef<
   );
   const pickLayers = useMemo(
     () =>
+      // Visible and pick passes bind the exact same attributes/matrices. This
+      // prevents a separate projection representation from drifting from what
+      // the user sees.
       preparedLayers.map(({ projectionMatrix, resource, resourceKey }) => ({
         positionAttribute: resource.positionAttribute,
         projectionMatrix,
@@ -185,6 +194,9 @@ function ProjectedHoverMarker({
   const prepared = pointHover
     ? preparedLayers.find(({ layer }) => layer.topic === pointHover.topic)
     : undefined;
+  // Reuse the production projection layer for hover emphasis. A one-point
+  // payload keeps marker projection/fit semantics identical to cloud points
+  // instead of maintaining a parallel DOM/canvas coordinate path.
   const markerPayload = useMemo(
     () =>
       pointHover
@@ -209,6 +221,9 @@ function ProjectedHoverMarker({
   }, [pointHover?.color]);
   const markerResource = useMemo(() => {
     if (!pointHover || !prepared || !markerPayload) return null;
+    // Isolate the marker stream from the main grow-only topic resource: its
+    // tiny capacity and frame cadence should never resize or overwrite the
+    // cloud buffers shared by camera tiles.
     return getGpuPointCloudProjectionResource({
       contentKey: `${prepared.resourceKey}\nhover:${pointHover.pointIndex}`,
       payload: markerPayload,
@@ -230,6 +245,8 @@ function ProjectedHoverMarker({
     const t = Math.min(1, elapsed / HOVER_ECHO_ANIMATION_MS);
     const eased = 1 - (1 - t) ** 3;
     const nextScale = 1 + (HOVER_ECHO_GROWTH - 1) * eased;
+    // The shared image stage uses a demand frameloop. Updating state and
+    // invalidating explicitly advances this short animation, then goes idle.
     setPointSizeScale((current) =>
       Math.abs(current - nextScale) > 0.0001 ? nextScale : current,
     );

@@ -91,6 +91,9 @@ export function useMcapImageProjectionLayers(
         continue;
       }
 
+      // Resolve sensor -> camera at the point frame's content time. The matrix
+      // is therefore a snapshot paired with this payload/resource identity;
+      // later TF updates produce a new immutable layer model.
       const resolution = resolve(
         sourceFrameId,
         cameraFrameId,
@@ -124,12 +127,17 @@ function pointCloudProjectionPayload(
   frame: PointCloudVisualization,
 ): PointCloudRenderPayload {
   if (frame.renderPayload) {
+    // Built-in MCAP decoders create and transfer this bounded canonical sample
+    // in the playback worker, keeping O(N) preparation off the main thread.
     return frame.renderPayload;
   }
   const cached = legacyProjectionPayloads.get(frame);
   if (cached) {
     return cached;
   }
+  // Non-MCAP/custom producers may not implement renderPayload yet. Build once
+  // per frame object and cache weakly so compatibility does not become
+  // per-camera or per-render CPU work.
   const payload = buildPointCloudRenderPayload({
     colors: frame.colors,
     positions: frame.positions,

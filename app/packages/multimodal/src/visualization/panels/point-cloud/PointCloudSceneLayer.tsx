@@ -152,6 +152,8 @@ function GpuPointCloudPoints({
   const invalidate = useThree((state) => state.invalidate);
   const pickerRegistry = useContext(GpuPointCloud3dPickerRegistryContext);
   const capacityRef = useRef(0);
+  // Capacity is monotonic for this mounted layer. Smaller later frames reuse
+  // the existing GPU allocation; only a larger worker bucket replaces it.
   if (gpu.payload.capacity > capacityRef.current) {
     capacityRef.current = gpu.payload.capacity;
   }
@@ -162,8 +164,13 @@ function GpuPointCloudPoints({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [capacity],
   );
+  // Fields may appear after the first frame. Schema growth must happen before
+  // material construction because TSL storage bindings define shader topology.
   ensureGpuPointCloud3dSchema(resource, gpu.payload);
   const colorNodeKey = gpuPointCloudColorNodeKey(gpu.color);
+  // Rebuild only when the chosen color source changes graph shape (for
+  // example uniform -> scalar field). Ranges, ramps, and per-frame values are
+  // uniforms or replacement attribute arrays applied below.
   const shader = useMemo(
     () => createGpuPointCloud3dMaterial(resource, gpu.color),
     // Frame values and point size are mutable uniforms/properties.
@@ -201,6 +208,8 @@ function GpuPointCloudPoints({
   );
 
   useLayoutEffect(() => {
+    // Layout timing is intentional: swap typed-array views and uniforms after
+    // React commits this scene but before R3F can submit its next frame.
     const contentIdentity = gpu.resourceKey ?? gpu.payload;
     if (appliedContentRef.current !== contentIdentity) {
       updateGpuPointCloud3dResource(resource, gpu.payload);
@@ -216,6 +225,8 @@ function GpuPointCloudPoints({
     shader.material.size = pointSize;
     updateGpuPointCloudColorUniforms(shader.colorUniforms, gpu.color);
     if (pickLayer) {
+      // The picker holds the same position BufferAttribute object. Notify it
+      // after counts/frame identity change so pending reads are invalidated.
       pickLayer.renderedPointCount = gpu.renderedPointCount;
       pickLayer.resourceKey = gpu.resourceKey ?? pickLayer.layerId;
       pickLayer.sampledPointCount = gpu.payload.sampledPointCount;
@@ -263,6 +274,9 @@ function createGpuPointCloud3dResource(
   for (const field of payload.scalarFields) {
     scalar.set(field.name, new THREE.BufferAttribute(field.values, 1));
   }
+  // PointsNodeMaterial on WebGPU renders instanced screen-aligned quads. A
+  // one-quad geometry supplies ownership/lifetime; point data comes from node
+  // storage attributes rather than the quad's vertex positions.
   const spriteGeometry = new THREE.PlaneGeometry(1, 1);
   // Three's WebGPU renderer releases node-owned buffers through geometry
   // disposal, so every prepared attribute is attached under a private name.
@@ -294,6 +308,8 @@ function createGpuPointCloud3dMaterial(
     size: DEFAULT_POINT_SIZE,
     sizeAttenuation: false,
   });
+  // instanceIndex spans renderedPointCount. The stride maps it evenly into
+  // sampledPointCount, allowing runtime point budgets without new CPU arrays.
   const sampleStride = sceneTsl.uniform(1);
   const sampleIndex = gpuPointCloudSampleIndexFromStrideNode(sampleStride);
   const positionNode = gpuPointCloudPositionNode(
@@ -329,6 +345,9 @@ function ensureGpuPointCloud3dSchema(
   resource: GpuPointCloud3dResource,
   payload: PointCloudRenderPayload,
 ): void {
+  // Schema is grow-only within one capacity resource. Removing an optional
+  // channel does not invalidate its binding; the active color policy decides
+  // whether the compiled material reads it.
   if (payload.colors && !resource.color) {
     resource.color = new THREE.BufferAttribute(payload.colors, 1);
     resource.spriteGeometry.setAttribute("pointColor", resource.color);
@@ -346,6 +365,8 @@ function updateGpuPointCloud3dResource(
   resource: GpuPointCloud3dResource,
   payload: PointCloudRenderPayload,
 ): void {
+  // Replace transferred ArrayBuffer views instead of copying point data on the
+  // main thread. needsUpdate below tells Three to upload the new view once.
   replaceGpuPointCloud3dArray(resource.position, payload.positions);
   if (payload.colors && resource.color) {
     replaceGpuPointCloud3dArray(resource.color, payload.colors);

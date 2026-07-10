@@ -24,6 +24,11 @@ const CULLED_POSITION = 1e9;
 const MAX_PICK_DISTANCE = 1e30;
 const MIN_CLIP_W = 1e-6;
 
+// The 3D picker uses the visible renderer's sampling expression and storage
+// buffers, but replaces visible shading with a 1x1 integer reduction pass.
+// Screen-space distance decides eligibility; distance along the pointer ray
+// is written as depth so the front-most eligible sample wins.
+
 interface PickNode extends TSL.Node {
   readonly w: PickNode;
   readonly x: PickNode;
@@ -99,6 +104,9 @@ export const GpuPointCloud3dPickerRegistryContext =
 
 /** Mutable canvas-local registry; updates invalidate in-flight readbacks. */
 export function createGpuPointCloud3dPickerRegistry(): GpuPointCloud3dPickerRegistry {
+  // This registry is canvas-local rather than global: object matrices,
+  // renderer-owned attributes, and layer visibility are meaningful only in
+  // the R3F root that created them.
   const layers = new Map<string, GpuPointCloud3dPickLayer>();
   const listeners = new Set<() => void>();
   const publish = () => {
@@ -193,6 +201,9 @@ class PointCloud3dPickerController implements GpuPointCloud3dPickerController {
       return;
     }
     this.invalidate();
+    // Keep pipelines/materials hot across playback when the same storage
+    // attributes remain bound. Capacity growth replaces those attributes and
+    // forces a safe pass rebuild.
     if (this.renderPass?.updateScene(layers)) {
       return;
     }
@@ -206,6 +217,8 @@ class PointCloud3dPickerController implements GpuPointCloud3dPickerController {
   }
 
   invalidate(): void {
+    // A generation token is cheaper than trying to cancel mapAsync. Results
+    // from superseded frame/camera/pointer state are simply ignored.
     this.generation += 1;
   }
 
@@ -244,6 +257,7 @@ class PointCloud3dPickerController implements GpuPointCloud3dPickerController {
       throw new Error("GPU 3D point picker returned a non-integer texel");
     }
 
+    // The clear texel is [0, 0, 0, 0]; valid zero-based IDs are +1 encoded.
     const encodedLayerIndex = pixels[0];
     const encodedSampleIndex = pixels[1];
     if (encodedLayerIndex === 0 || encodedSampleIndex === 0) {
@@ -254,6 +268,9 @@ class PointCloud3dPickerController implements GpuPointCloud3dPickerController {
     if (!activeLayer || sampleIndex >= activeLayer.sampledPointCount) {
       return null;
     }
+    // Readback names one sample, then CPU reconstruction touches only that
+    // sample. The matrix snapshot must match the submitted pass, not whatever
+    // transform the live object may have when mapAsync resolves.
     const worldPosition = pointCloud3dPickWorldPosition(
       activeLayer.source,
       sampleIndex,
@@ -328,6 +345,9 @@ function createPointCloud3dPickPass(
   };
 
   try {
+    // Each Sprite is an instanced dispatch over one cloud. The same stride
+    // expression used by visible rendering maps rendered instances into the
+    // canonical worker-prepared sample, keeping LOD and picking identical.
     for (const {
       renderedPointCount,
       sampledPointCount,
@@ -383,6 +403,8 @@ function createPointCloud3dPickPass(
     scene,
     updateScene: (nextSourceLayers) => {
       const nextLayers = activePickLayers(nextSourceLayers);
+      // Counts, resource identity, and transforms are mutable pass data.
+      // Position storage/layout are shader bindings and require rebuilding.
       if (
         nextLayers.length !== layers.length ||
         nextLayers.some(
@@ -408,6 +430,8 @@ function createPointCloud3dPickPass(
       return true;
     },
     updateRequest: (request) => {
+      // Freeze all camera/object matrices and visibility for this submission.
+      // mapAsync may finish after the live scene has advanced another frame.
       request.camera.updateWorldMatrix(true, false);
       cameraWorldInverse.copy(request.camera.matrixWorld).invert();
       viewProjection.value.multiplyMatrices(
@@ -451,6 +475,8 @@ function activePickLayers(sourceLayers: readonly GpuPointCloud3dPickLayer[]): {
       availablePointCount,
       normalizedCount(source.sampledPointCount),
     );
+    // renderedPointCount may impose a tighter per-panel budget than the
+    // canonical payload. The shader samples evenly from sampledPointCount.
     const renderedPointCount = Math.min(
       sampledPointCount,
       normalizedCount(source.renderedPointCount),
@@ -567,12 +593,16 @@ function createPointCloud3dPickMaterialNode({
   ) as unknown as PickNode;
   const worldPosition = worldMatrix.mul(pickTsl.vec4(localPosition, 1));
   const clipPosition = viewProjection.mul(worldPosition);
+  // Convert NDC deltas back to CSS pixels so pick radius is stable across
+  // camera projection, viewport aspect, and display resolution.
   const ndcX = clipPosition.x.div(clipPosition.w);
   const ndcY = clipPosition.y.div(clipPosition.w);
   const dx = ndcX.sub(pointerNdc.x).mul(viewport.x).mul(0.5);
   const dy = ndcY.sub(pointerNdc.y).mul(viewport.y).mul(0.5);
   const distanceSq = dx.mul(dx).add(dy.mul(dy));
   const radiusSq = radius.mul(radius);
+  // Dotting against the normalized pointer ray orders candidates along the
+  // ray rather than by radial Euclidean distance from the camera.
   const rayDistance = worldPosition.xyz.sub(rayOrigin).dot(rayDirection);
   const pickable = pickTsl.and(
     pickTsl.greaterThan(visible, 0.5),
@@ -582,6 +612,8 @@ function createPointCloud3dPickMaterialNode({
     pickTsl.lessThanEqual(distanceSq, radiusSq),
   );
 
+  // All eligible points are collapsed onto the single pick texel. Ineligible
+  // points leave clip space and have zero scale so they cannot write IDs.
   material.positionNode = pickTsl.select(
     pickable,
     pickTsl.vec3(0, 0, 0),
@@ -592,11 +624,15 @@ function createPointCloud3dPickMaterialNode({
     pickTsl.vec2(1, 1),
     pickTsl.vec2(0, 0),
   );
+  // d/(d+1) monotonically maps non-negative ray distance into [0, 1), letting
+  // the ordinary depth test perform the nearest-hit reduction.
   material.depthNode = pickTsl.clamp(
     rayDistance.div(rayDistance.add(1)),
     0,
     1,
   ) as unknown as TSL.Node;
+  // Integer payload: active layer and canonical sample, both +1 encoded so
+  // the cleared zero texel remains an unambiguous miss.
   material.fragmentNode = pickTsl.uvec4(
     pickTsl.uint(activeLayerIndex + 1),
     sampleIndex.add(1) as unknown as PickNode,
@@ -617,6 +653,8 @@ export function pointCloud3dPickWorldPosition(
     return null;
   }
   const position = new THREE.Vector3();
+  // Decoder payloads use flat scalar storage to avoid Three's vec3-to-vec4
+  // WebGPU padding pass; legacy geometry uses ordinary vec3 attributes.
   if (layer.positionLayout === "flat") {
     const offset = sampleIndex * 3;
     position.set(
@@ -692,6 +730,8 @@ function normalizedFar(value: number, near: number): number {
   return Number.isFinite(value) ? Math.max(near, value) : MAX_PICK_DISTANCE;
 }
 
+// Materials emit clip-space positions directly; the fixed camera exists only
+// to satisfy Three's render(scene, camera) contract.
 const PICK_CAMERA = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2);
 PICK_CAMERA.position.set(0, 0, 1);
 PICK_CAMERA.updateProjectionMatrix();

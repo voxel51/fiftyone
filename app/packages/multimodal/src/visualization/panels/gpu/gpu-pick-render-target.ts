@@ -28,7 +28,13 @@ export interface GpuPickRenderer {
   setRenderTarget(renderTarget: THREE.RenderTarget | null): void;
 }
 
-/** One reusable 1x1 integer target with renderer-state preservation. */
+/**
+ * One reusable 1x1 integer target with renderer-state preservation.
+ *
+ * Pick materials encode identities into RGBA32Uint and reserve zero as the
+ * clear/no-hit sentinel. Depth testing selects one fragment before the single
+ * integer texel is copied back to the CPU.
+ */
 export class GpuPickRenderTarget {
   private readonly clearColor = new THREE.Color();
   private readonly target = new THREE.RenderTarget(
@@ -57,6 +63,9 @@ export class GpuPickRenderTarget {
     readback: GpuPickReadbackLease,
   ): Promise<ArrayBufferView> {
     const renderer = this.renderer;
+    // Picking runs inside a live R3F renderer. Snapshot every global renderer
+    // knob touched by the private pass so the next visible view inherits
+    // exactly the state it had before the dwell request.
     const previousRenderTarget = renderer.getRenderTarget();
     const previousMrt = renderer.getMRT();
     const previousClearColor = renderer.getClearColor(this.clearColor);
@@ -75,6 +84,8 @@ export class GpuPickRenderTarget {
       renderer.autoClearDepth = true;
       renderer.autoClearStencil = false;
       renderer.render(scene, camera);
+      // render() submits the pass synchronously. The returned mapping promise
+      // may resolve later, after the visible render target/state is restored.
       return readback.read(this.target);
     } finally {
       renderer.setRenderTarget(previousRenderTarget);

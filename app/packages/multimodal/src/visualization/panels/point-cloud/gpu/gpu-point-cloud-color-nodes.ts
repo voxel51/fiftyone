@@ -71,6 +71,8 @@ export interface GpuPointCloudColorUniforms {
 export function gpuPointCloudColorNodeKey(
   color: ResolvedGpuPointCloudColor,
 ): string {
+  // Only choices that change storage access or LUT sampling belong in this
+  // key. Per-frame ranges and uniform values update existing uniforms.
   const source = color.source;
   if (source.kind === "uniform" || source.kind === "rgb") return source.kind;
   const field = source.kind === "height" ? "height" : source.field.name;
@@ -147,6 +149,8 @@ export function createGpuPointCloudColorNode(
     0,
     1,
   );
+  // Sample texel centers (i + 0.5) so the linear filter interpolates adjacent
+  // LUT entries instead of blending against texture-edge behavior.
   const sampled = colorTsl.texture(
     getGpuPointCloudColormapTexture(color.colormap),
     colorTsl.vec2(
@@ -154,6 +158,9 @@ export function createGpuPointCloudColorNode(
       0.5,
     ),
   ).rgb;
+  // WGSL has no portable Number.isFinite node in this pinned TSL surface.
+  // NaN fails value == value; magnitudes beyond float32 finite range catch
+  // infinities before they can produce an undefined texture coordinate.
   const finite = colorTsl.and(
     colorTsl.equal(value, value),
     colorTsl.lessThanEqual(colorTsl.abs(value), MAX_FINITE_FLOAT32),

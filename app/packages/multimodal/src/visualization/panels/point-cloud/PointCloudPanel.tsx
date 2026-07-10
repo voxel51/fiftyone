@@ -99,6 +99,8 @@ export function PointCloudPanel({
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
   const pointPickerRegistry = useMemo(
+    // The 3D canvas is its own invalidation/device domain. Keep its picker
+    // registry local rather than sharing resources with the modal image stage.
     () => createGpuPointCloud3dPickerRegistry(),
     [],
   );
@@ -108,6 +110,9 @@ export function PointCloudPanel({
         const colorOptions = pointCloudColorOptions(layer, colorBy);
         const payload = layer.frame.renderPayload;
         if (!payload) {
+          // Compatibility path for custom/legacy producers. Built-in MCAP
+          // frames take the worker-prepared branch below and never expand
+          // positions/colors on the main thread.
           return {
             data: buildPointCloudRenderData(
               layer.frame.positions,
@@ -150,6 +155,8 @@ export function PointCloudPanel({
     [colorBy, layers, maxRenderedPoints],
   );
   const gpuPickData = useMemo(() => {
+    // CPU metadata only. GPU buffers are registered by mounted scene layers;
+    // this map translates the winning sampled ID back to decoded hover data.
     const byLayerId = new Map<string, GpuPointCloudPickData>();
     for (const { gpu, layer } of renderLayers) {
       if (gpu) {
@@ -368,6 +375,9 @@ export function PointCloudPanel({
             <GpuPointCloud3dPickerRegistryContext.Provider
               value={pointPickerRegistry}
             >
+              {/* Visible cloud layers publish live storage bindings into this
+                  canvas-local registry; the picking layer consumes the
+                  registry after all scene children have committed. */}
               {effectiveWorldGrid ? (
                 <WorldGridLayer {...effectiveWorldGrid} />
               ) : null}

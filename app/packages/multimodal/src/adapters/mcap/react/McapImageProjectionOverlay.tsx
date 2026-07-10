@@ -91,6 +91,8 @@ const McapImageProjectionOverlay = ({
     }
 
     const clearOwnHover = () => {
+      // Pointer cancellation cannot cancel mapAsync itself. Bump both the DOM
+      // generation and controller generation so a late integer texel is inert.
       requestGenerationRef.current += 1;
       pickerRef.current?.invalidate();
       setDwellTooltip(null);
@@ -131,9 +133,13 @@ const McapImageProjectionOverlay = ({
 
       const pointerX = clientX - bounds.left;
       const pointerY = clientY - bounds.top;
+      // The picker shader operates in calibration pixels, not CSS pixels or
+      // normalized device coordinates. Undo contain/cover plus pan/zoom here.
       const targetU = ((pointerX - rect.x) / rect.width) * calib.width;
       const targetV = ((pointerY - rect.y) / rect.height) * calib.height;
       const screenPxPerCalibrationPx = rect.width / calib.width;
+      // Convert the screen-space interaction radius back into calibration
+      // pixels so hit behavior remains stable as the image is fitted/zoomed.
       const radiusPx =
         Math.max(
           PROJECTION_PICK_RADIUS_SCREEN_PX,
@@ -153,6 +159,8 @@ const McapImageProjectionOverlay = ({
             return;
           }
 
+          // Resolve by immutable resource identity rather than array position:
+          // topic order or playback content may change while readback waits.
           const currentLayers = layersRef.current;
           const layer = currentLayers.find(
             (candidate) =>
@@ -172,6 +180,9 @@ const McapImageProjectionOverlay = ({
             clearOwnHover();
             return;
           }
+          // The GPU writes both sampled and decoded identities. sampledPoint
+          // drives GPU color lookup; sourceIndex drives the public tooltip from
+          // the full decoded frame without scanning for the original point.
           const pointIndex = pick.sourceIndex;
           const tooltip = mcapHoveredPointForFrame(
             layer.topic,

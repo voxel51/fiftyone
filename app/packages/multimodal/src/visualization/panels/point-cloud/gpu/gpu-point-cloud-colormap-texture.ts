@@ -12,6 +12,10 @@ const RGBA_COMPONENT_COUNT = 4;
 
 const textures = new Map<string, THREE.DataTexture>();
 
+// Materials across 3D and projection scenes reuse these immutable LUTs. They
+// are session-scoped rather than material-owned so disposing one material
+// cannot invalidate another material's texture binding.
+
 /** Shared 256x1 GPU lookup texture for a normalized pointcloud colormap. */
 export function getGpuPointCloudColormapTexture(
   colormap: PointCloudColormap,
