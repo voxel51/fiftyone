@@ -116,13 +116,13 @@ export function useMcap3dHoverTooltip(): {
 
   const onHoverPoint = useCallback(
     (hovered: Mcap3dHoveredPoint | null) => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
       if (!hovered) {
         setTooltip((current) => (current?.kind === "point" ? null : current));
         return;
+      }
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
       }
       setTooltip({ ...hovered, ...pointerPosition() });
     },

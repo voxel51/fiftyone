@@ -138,6 +138,20 @@ describe("useMcap3dHoverTooltip", () => {
     expect(result.current.tooltip).toMatchObject(HOVERED_POINT);
   });
 
+  it("preserves a pending entity dwell when point hover misses", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useMcap3dHoverTooltip());
+
+    act(() => {
+      result.current.onHoverEntity(HOVERED);
+      vi.advanceTimersByTime(50);
+      result.current.onHoverPoint(null);
+      vi.advanceTimersByTime(70);
+    });
+
+    expect(result.current.tooltip).toMatchObject(HOVERED);
+  });
+
   it("only clears tooltips of its own kind", () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useMcap3dHoverTooltip());
