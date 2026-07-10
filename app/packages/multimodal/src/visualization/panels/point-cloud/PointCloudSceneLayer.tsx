@@ -264,7 +264,7 @@ function createGpuPointCloud3dResource(
   payload: PointCloudRenderPayload,
   capacity: number,
 ): GpuPointCloud3dResource {
-  // Flat float storage avoids Three r185's main-thread vec3→vec4 padding
+  // Flat float storage avoids Three's main-thread vec3→vec4 padding
   // pass for WebGPU storage buffers. The shader reconstructs vec3 values.
   const position = new THREE.BufferAttribute(payload.positions, 1);
   const color = payload.colors

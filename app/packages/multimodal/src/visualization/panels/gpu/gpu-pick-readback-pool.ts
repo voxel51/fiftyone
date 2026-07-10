@@ -36,8 +36,8 @@ interface ReadbackSlot {
 const pools = new WeakMap<object, GpuPickReadbackPool>();
 
 /**
- * Leases the renderer-local one-texel readback pool. Three r185's public
- * readback path allocates and destroys a mapped GPUBuffer for every call;
+ * Leases the renderer-local one-texel readback pool. Three's public readback
+ * path allocates and destroys a mapped GPUBuffer for every call;
  * this direct path keeps three 256-byte aligned buffers rotating across all
  * projection views sharing the same renderer.
  */
@@ -201,7 +201,7 @@ function directReadbackBackend(
   renderer: PickReadbackRenderer,
   renderTarget: THREE.RenderTarget,
 ): { readonly device: GPUDevice; readonly texture: GPUTexture } | null {
-  // This is a guarded optimization over Three r185 internals. Any missing or
+  // This is a guarded optimization over Three internals. Any missing or
   // changed backend shape returns null and uses the public (allocating)
   // readRenderTargetPixelsAsync path instead of breaking picking.
   if (

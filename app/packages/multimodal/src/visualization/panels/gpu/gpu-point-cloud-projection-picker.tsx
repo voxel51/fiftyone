@@ -52,8 +52,8 @@ interface PickPointsMaterial extends PointsNodeMaterial {
   scaleNode: PickNode | null;
 }
 
-// The installed Three runtime exposes these WebGPU/TSL APIs, while its pinned
-// declaration surface intentionally covers only the nodes used by live panels.
+// Three exposes these WebGPU/TSL APIs at runtime, while the available
+// declaration surface covers only the nodes used by live panels.
 const pickTsl = TSL as unknown as {
   and(...conditions: readonly PickNode[]): PickNode;
   clamp(value: PickNode, min: number, max: number): PickNode;

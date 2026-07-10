@@ -108,7 +108,7 @@ export function PointCloudPickingLayer({
         return;
       }
 
-      // Fiber and the app's pinned Three runtime have distinct declaration
+      // Fiber and the Three runtime have distinct declaration
       // identities even though these are the same runtime objects.
       const threeCamera = camera as unknown as THREE.Camera;
       const threeRaycaster = raycaster as unknown as THREE.Raycaster;

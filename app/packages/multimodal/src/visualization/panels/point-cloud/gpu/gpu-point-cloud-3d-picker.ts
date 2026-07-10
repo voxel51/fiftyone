@@ -55,8 +55,8 @@ interface PickPointsMaterial extends PointsNodeMaterial {
   scaleNode: PickNode | null;
 }
 
-// Three r185 ships these WebGPU/TSL nodes at runtime, while Fiber's bundled
-// declarations expose only a subset of them.
+// Three exposes these WebGPU/TSL nodes at runtime, while Fiber's bundled
+// declarations expose only a subset.
 const pickTsl = TSL as unknown as {
   and(...conditions: readonly PickNode[]): PickNode;
   clamp(value: PickNode, min: number, max: number): PickNode;
