@@ -105,7 +105,11 @@ export const ImaVidLighterTile: React.FC = () => {
 
   return (
     <div className={styles.body}>
-      <canvas ref={frameCanvasRef} className={styles.frame} />
+      <canvas
+        ref={frameCanvasRef}
+        className={styles.frame}
+        data-cy="imavid-frame-canvas"
+      />
       <div ref={lighterHostRef} className={styles.lighterHost} />
     </div>
   );
