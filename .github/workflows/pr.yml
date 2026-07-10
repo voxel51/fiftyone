@@ -10,12 +10,15 @@ on:
     types: [opened, synchronize, reopened, edited]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # Only cancel an in-progress run when the new run will actually run CI.
-  # A PR title/body edit fires an `edited` event (no base change) that skips
-  # every heavy job; letting it cancel the running suite would leave the PR
-  # falsely green, since `all-tests` treats skipped jobs as a pass.
-  cancel-in-progress: ${{ github.event.action != 'edited' || github.event.changes.base != null }}
+  # A PR title/body edit is a no-op run (run-ci=false). It gets its own group:
+  # `cancel-in-progress: false` can't protect a *queued* real run — GitHub
+  # allows only one queued run per group — so a shared group lets an edit
+  # displace the suite run before it starts.
+  group: >-
+    ${{ github.workflow }}-${{ github.ref }}-${{
+    (github.event.action == 'edited' && github.event.changes.base == null)
+    && 'noop' || 'ci' }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

@@ -36,6 +36,7 @@ const mockActions = {
     path: "events",
     instanceId: "new-td",
   })),
+  setActive: vi.fn(),
 };
 
 const mockBus = { dispatch: vi.fn() };
@@ -439,6 +440,10 @@ describe("temporal-detection ops", () => {
       tags: [],
       label: "speaking",
     });
+    // the fresh TD becomes the selection, replacing any prior one
+    expect(mockActions.setActive).toHaveBeenCalledWith([
+      { sample: SAMPLE, path: "events", instanceId: "new-td" },
+    ]);
   });
 
   it("editTemporalDetection updates by id with no frame", () => {
