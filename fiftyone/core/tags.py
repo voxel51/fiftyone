@@ -69,7 +69,34 @@ class TagKind(str, enum.Enum):
     TEMPORAL = "temporal"
 
 
-class TemporalTag(object):
+class Tag(object):
+    """Base class for tags."""
+
+    def __init__(
+        self,
+        *,
+        created_at=None,
+        created_by=None,
+        id=None,
+        kind=None,
+        last_modified_at=None,
+        last_modified_by=None,
+        sample_id=None,
+        tag=None,
+    ):
+        self.created_at = _coerce_optional_datetime(created_at, "created_at")
+        self.created_by = created_by
+        self.id = id
+        self.kind = _ensure_kind(kind)
+        self.last_modified_at = _coerce_optional_datetime(
+            last_modified_at, "last_modified_at"
+        )
+        self.last_modified_by = last_modified_by
+        self.sample_id = sample_id
+        self.tag = tag
+
+
+class TemporalTag(Tag):
     """A temporal tag interval on one multimodal sample.
 
     Args:
@@ -102,26 +129,25 @@ class TemporalTag(object):
         created_at=None,
         last_modified_at=None,
         id=None,
-        kind=TagKind.TEMPORAL,
     ):
-        self.sample_id = sample_id
+        super().__init__(
+            created_at=created_at,
+            created_by=created_by,
+            id=id,
+            kind=TagKind.TEMPORAL,
+            last_modified_at=last_modified_at,
+            last_modified_by=last_modified_by,
+            sample_id=sample_id,
+            tag=tag,
+        )
         self.start = start
         self.end = end
-        self.tag = tag
         self.index_type = (
             index_type
             if index_type is not None
             else foms.TimeTrackType.TIME_TRACK_TYPE_DURATION_NS
         )
         self.anchor = anchor
-        self.created_by = created_by
-        self.last_modified_by = last_modified_by
-        self.created_at = _coerce_optional_datetime(created_at, "created_at")
-        self.last_modified_at = _coerce_optional_datetime(
-            last_modified_at, "last_modified_at"
-        )
-        self.id = id
-        self.kind = _ensure_kind(kind)
 
     def __repr__(self):
         return (
@@ -164,7 +190,6 @@ class TemporalTag(object):
             created_at=self.created_at,
             last_modified_at=self.last_modified_at,
             id=self.id,
-            kind=self.kind,
         )
 
     def to_dict(self):
@@ -1114,19 +1139,23 @@ def _build_update_fields(
 
 
 def _from_storage_doc(doc) -> TemporalTag:
-    return TemporalTag(
-        id=str(doc["_id"]),
-        kind=TagKind(doc.get("kind", TagKind.TEMPORAL)),
-        sample_id=str(doc["_sample_id"]),
-        index_type=doc["index_type"],
-        anchor=doc.get("anchor", None),
-        start=doc["start"],
-        end=doc["end"],
-        tag=doc["tag"],
-        created_by=doc.get("created_by", None),
-        last_modified_by=doc.get("last_modified_by", None),
-        created_at=doc.get("created_at", None),
-        last_modified_at=doc.get("last_modified_at", None),
+    kind = TagKind(doc.get("kind", TagKind.TEMPORAL))
+    if kind == TagKind.TEMPORAL:
+        return TemporalTag(
+            id=str(doc["_id"]),
+            sample_id=str(doc["_sample_id"]),
+            index_type=doc["index_type"],
+            anchor=doc.get("anchor", None),
+            start=doc["start"],
+            end=doc["end"],
+            tag=doc["tag"],
+            created_by=doc.get("created_by", None),
+            last_modified_by=doc.get("last_modified_by", None),
+            created_at=doc.get("created_at", None),
+            last_modified_at=doc.get("last_modified_at", None),
+        )
+    raise ValueError(
+        "Expected a temporal tag document, but found kind=%s" % kind
     )
 
 
@@ -1166,18 +1195,22 @@ def _to_export_doc(doc):
 
 def _from_export_doc(doc) -> TemporalTag:
     kind = doc.get("kind", None)
-    return TemporalTag(
-        sample_id=doc.get("sample_id", None),
-        index_type=doc.get("index_type", None),
-        start=doc.get("start", None),
-        end=doc.get("end", None),
-        tag=doc.get("tag", None),
-        anchor=doc.get("anchor", None),
-        kind=TagKind.TEMPORAL if kind is None else TagKind(kind),
-        created_by=doc.get("created_by", None),
-        last_modified_by=doc.get("last_modified_by", None),
-        created_at=doc.get("created_at", None),
-        last_modified_at=doc.get("last_modified_at", None),
+    tag_kind = TagKind.TEMPORAL if kind is None else TagKind(kind)
+    if tag_kind == TagKind.TEMPORAL:
+        return TemporalTag(
+            sample_id=doc.get("sample_id", None),
+            index_type=doc.get("index_type", None),
+            start=doc.get("start", None),
+            end=doc.get("end", None),
+            tag=doc.get("tag", None),
+            anchor=doc.get("anchor", None),
+            created_by=doc.get("created_by", None),
+            last_modified_by=doc.get("last_modified_by", None),
+            created_at=doc.get("created_at", None),
+            last_modified_at=doc.get("last_modified_at", None),
+        )
+    raise ValueError(
+        "Expected a temporal tag document, but found kind=%s" % kind
     )
 
 

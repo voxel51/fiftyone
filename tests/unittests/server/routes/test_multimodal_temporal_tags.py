@@ -222,22 +222,18 @@ class TestTagsRoute:
         fota.add_temporal_tags(
             dataset,
             [
-                fota.TemporalTag(
-                    sample_ids[0], 0, 10, "clip", kind=fota.TagKind.TEMPORAL
-                ),
+                fota.TemporalTag(sample_ids[0], 0, 10, "clip"),
                 fota.TemporalTag(
                     sample_ids[0],
                     30,
                     40,
                     "outside",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
                     5,
                     15,
                     "other-sample",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -271,7 +267,6 @@ class TestTagsRoute:
                 10,
                 "review",
                 created_by="alice",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
         before_patch = _modified_timestamps(dataset, sample_ids[0])
@@ -329,21 +324,18 @@ class TestTagsRoute:
                     0,
                     10,
                     "clip",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
                     10,
                     20,
                     "clip",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[2],
                     30,
                     40,
                     "outside",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -390,28 +382,24 @@ class TestTagsRoute:
                     0,
                     10,
                     "candidate",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
                     10,
                     20,
                     "candidate",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[2],
                     20,
                     30,
                     "review",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[2],
                     30,
                     40,
                     "other",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -507,21 +495,18 @@ class TestTagsRoute:
                     0,
                     10,
                     "first",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[0],
                     10,
                     20,
                     "second",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
                     0,
                     10,
                     "other",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -557,7 +542,6 @@ class TestTagsRoute:
                 0,
                 10,
                 "review",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
         cases = [
@@ -729,7 +713,6 @@ class TestTagsRoute:
                 0,
                 10,
                 "review",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
 

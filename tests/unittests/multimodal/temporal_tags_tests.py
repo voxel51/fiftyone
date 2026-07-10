@@ -42,7 +42,6 @@ class TemporalTagTests(unittest.TestCase):
                 0,
                 1,
                 "review",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )
 
@@ -84,35 +83,30 @@ class TemporalTagTests(unittest.TestCase):
                 0,
                 1,
                 "missing",
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
                 1,
                 1,
                 "same",
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
                 2,
                 1,
                 "backwards",
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
                 0.5,
                 1,
                 "fractional",
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
                 0,
                 1,
                 "",
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
@@ -120,7 +114,6 @@ class TemporalTagTests(unittest.TestCase):
                 1,
                 "empty-anchor",
                 anchor="",
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
@@ -128,7 +121,6 @@ class TemporalTagTests(unittest.TestCase):
                 1,
                 "blank-anchor",
                 anchor="   ",
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
@@ -136,7 +128,6 @@ class TemporalTagTests(unittest.TestCase):
                 1,
                 "bad-anchor",
                 anchor=3,
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
@@ -144,7 +135,6 @@ class TemporalTagTests(unittest.TestCase):
                 1,
                 "bool-anchor",
                 anchor=False,
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
@@ -152,7 +142,6 @@ class TemporalTagTests(unittest.TestCase):
                 1,
                 "empty-created-by",
                 created_by="",
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
@@ -160,7 +149,6 @@ class TemporalTagTests(unittest.TestCase):
                 1,
                 "blank-last-modified-by",
                 last_modified_by="   ",
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
@@ -168,7 +156,6 @@ class TemporalTagTests(unittest.TestCase):
                 1,
                 "bad-created-by",
                 created_by=3,
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
@@ -176,7 +163,6 @@ class TemporalTagTests(unittest.TestCase):
                 1,
                 "bool-last-modified-by",
                 last_modified_by=False,
-                kind=fota.TagKind.TEMPORAL,
             ),
             fota.TemporalTag(
                 sample_id,
@@ -184,7 +170,6 @@ class TemporalTagTests(unittest.TestCase):
                 1,
                 "unsupported",
                 index_type=foms.TimeTrackType.TIME_TRACK_TYPE_UNSPECIFIED,
-                kind=fota.TagKind.TEMPORAL,
             ),
         ]
 
@@ -212,7 +197,6 @@ class TemporalTagTests(unittest.TestCase):
                 10,
                 "review",
                 created_by="alice",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
 
@@ -236,7 +220,6 @@ class TemporalTagTests(unittest.TestCase):
                 10,
                 "review",
                 created_by="bob",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
 
@@ -257,7 +240,6 @@ class TemporalTagTests(unittest.TestCase):
                 10,
                 "review",
                 last_modified_by="carol",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
 
@@ -278,7 +260,6 @@ class TemporalTagTests(unittest.TestCase):
                 "manual",
                 created_at="2026-01-01T00:00:00Z",
                 last_modified_at="2026-01-02T00:00:00+00:00",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
 
@@ -304,7 +285,6 @@ class TemporalTagTests(unittest.TestCase):
                 0,
                 10,
                 "review",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
         after_add_dataset, after_add_first = _modified_timestamps(
@@ -324,7 +304,6 @@ class TemporalTagTests(unittest.TestCase):
                 0,
                 10,
                 "review",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
         after_repeat_dataset, after_repeat_first = _modified_timestamps(
@@ -370,14 +349,12 @@ class TemporalTagTests(unittest.TestCase):
                     20,
                     30,
                     "clear",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     second_id,
                     20,
                     30,
                     "clear",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -411,7 +388,6 @@ class TemporalTagTests(unittest.TestCase):
                 10,
                 "review",
                 created_by="alice",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
         fota.add_temporal_tags(
@@ -421,7 +397,6 @@ class TemporalTagTests(unittest.TestCase):
                 0,
                 10,
                 "other",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )
         before_dataset, before_first = _modified_timestamps(dataset, first_id)
@@ -481,7 +456,6 @@ class TemporalTagTests(unittest.TestCase):
                 0,
                 10,
                 "review",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
         second = fota.add_temporal_tags(
@@ -491,7 +465,6 @@ class TemporalTagTests(unittest.TestCase):
                 20,
                 30,
                 "other",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
 
@@ -533,7 +506,6 @@ class TemporalTagTests(unittest.TestCase):
             0,
             10,
             "review",
-            kind=fota.TagKind.TEMPORAL,
         )
 
         inserted = fota.add_temporal_tags(dataset, first)
@@ -550,14 +522,12 @@ class TemporalTagTests(unittest.TestCase):
                     5,
                     15,
                     "review",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[0],
                     0,
                     10,
                     "keep",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
@@ -565,7 +535,6 @@ class TemporalTagTests(unittest.TestCase):
                     1,
                     "review",
                     index_type=foms.TimeTrackType.TIME_TRACK_TYPE_SEQUENCE,
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -642,7 +611,6 @@ class TemporalTagTests(unittest.TestCase):
             0,
             10,
             "review",
-            kind=fota.TagKind.TEMPORAL,
         )
         camera = fota.TemporalTag(
             sample_id,
@@ -650,7 +618,6 @@ class TemporalTagTests(unittest.TestCase):
             10,
             "review",
             anchor="camera_front",
-            kind=fota.TagKind.TEMPORAL,
         )
         lidar = fota.TemporalTag(
             sample_id,
@@ -658,7 +625,6 @@ class TemporalTagTests(unittest.TestCase):
             10,
             "review",
             anchor="lidar_top",
-            kind=fota.TagKind.TEMPORAL,
         )
 
         inserted = fota.add_temporal_tags(dataset, [unanchored, camera, lidar])
@@ -715,7 +681,6 @@ class TemporalTagTests(unittest.TestCase):
                 10,
                 "review",
                 anchor="camera_front",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )
 
@@ -754,21 +719,18 @@ class TemporalTagTests(unittest.TestCase):
                     0,
                     10,
                     "shared",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
                     0,
                     10,
                     "shared",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[2],
                     0,
                     10,
                     "other",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -802,7 +764,6 @@ class TemporalTagTests(unittest.TestCase):
                 10,
                 20,
                 "view",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )
         with self.assertRaises(ValueError):
@@ -813,7 +774,6 @@ class TemporalTagTests(unittest.TestCase):
                     10,
                     20,
                     "missing",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             )
 
@@ -873,14 +833,12 @@ class TemporalTagTests(unittest.TestCase):
                     0,
                     10,
                     "shared",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
                     10,
                     20,
                     "shared",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ]
         )
@@ -914,7 +872,6 @@ class TemporalTagTests(unittest.TestCase):
                     20,
                     30,
                     "outside",
-                    kind=fota.TagKind.TEMPORAL,
                 )
             )
 
@@ -934,7 +891,6 @@ class TemporalTagTests(unittest.TestCase):
                     10,
                     "review",
                     anchor="camera_front",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
@@ -942,14 +898,12 @@ class TemporalTagTests(unittest.TestCase):
                     15,
                     "review",
                     anchor="lidar_top",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[2],
                     20,
                     30,
                     "other",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -1019,7 +973,6 @@ class TemporalTagTests(unittest.TestCase):
                 0,
                 1,
                 "patch",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )
 
@@ -1039,7 +992,6 @@ class TemporalTagTests(unittest.TestCase):
                     10,
                     "first",
                     anchor="camera_front",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
@@ -1047,14 +999,12 @@ class TemporalTagTests(unittest.TestCase):
                     20,
                     "second",
                     anchor="lidar_top",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[2],
                     20,
                     30,
                     "third",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -1086,7 +1036,6 @@ class TemporalTagTests(unittest.TestCase):
                     "first",
                     anchor="camera_front",
                     created_by="alice",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
@@ -1094,7 +1043,6 @@ class TemporalTagTests(unittest.TestCase):
                     20,
                     "second",
                     last_modified_by="bob",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -1140,14 +1088,12 @@ class TemporalTagTests(unittest.TestCase):
                     10,
                     "first",
                     anchor="camera_front",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
                     10,
                     20,
                     "second",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -1184,7 +1130,6 @@ class TemporalTagTests(unittest.TestCase):
                 10,
                 "orphan",
                 anchor="camera_front",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )
         fota.add_temporal_tags(
@@ -1195,7 +1140,6 @@ class TemporalTagTests(unittest.TestCase):
                 10,
                 "active",
                 anchor="lidar_top",
-                kind=fota.TagKind.TEMPORAL,
             ),
         )
 
