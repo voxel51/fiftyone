@@ -1255,7 +1255,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                     self._curr_exemplar_prompts.items()
                 ):
                     for label, label_data in frame_data.items():
-                        text_label = label if label is not "visual" else None
+                        text_label = label if (label != "visual") else None
                         prompt_response = (
                             self.concept_predictor.handle_request(
                                 request=dict(
