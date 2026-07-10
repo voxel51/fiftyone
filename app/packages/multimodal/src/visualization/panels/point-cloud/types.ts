@@ -248,6 +248,16 @@ export interface GridPanelLayer {
   readonly id: string;
 }
 
+/** Stable calibrated pixel-to-camera-ray contract for 3D camera geometry. */
+export interface CameraImageRayModel {
+  readonly height: number;
+  readonly rayForPixel: (
+    u: number,
+    v: number,
+  ) => readonly [number, number, number] | null;
+  readonly width: number;
+}
+
 /**
  * One camera calibration rendered as a wireframe frustum in the shared
  * scene, optionally carrying the camera's current encoded image to
@@ -257,6 +267,10 @@ export interface GridPanelLayer {
  * objects.
  */
 export interface CameraFrustumPanelLayer {
+  /** Exact model used for ray-derived boundaries and the textured ray surface. */
+  readonly cameraRayModel?: CameraImageRayModel;
+  /** Withhold the frustum instead of falling back to a pinhole approximation. */
+  readonly requireCameraRayModel?: boolean;
   readonly contentTimeNs?: bigint;
   readonly frame: CameraCalibrationVisualization;
   readonly frameTransform?: PointCloudFrameTransform;

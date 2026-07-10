@@ -5,6 +5,10 @@ import {
   type PointCloudColormap,
 } from "../../../visualization/panels/point-cloud";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../../visualization/panels/style-tokens";
+import type {
+  McapImageDisplayMode,
+  McapImageGeometryMode,
+} from "./camera-geometry/mcap-camera-model";
 
 /**
  * Timing tolerances and warning thresholds for synchronized MCAP playback.
@@ -74,7 +78,13 @@ export interface McapPointCloudColorSettings {
  * not a dark void.
  */
 export interface McapImageProjectionSettings {
+  /** Explicit calibration topic; null uses the scene-inventory association. */
+  readonly calibrationTopic: string | null;
+  /** Presentation of the recorded pixels; rectified is an explicit remap. */
+  readonly display: McapImageDisplayMode;
   readonly enabled: boolean;
+  /** Recorded image pixel geometry; Auto blocks materially ambiguous models. */
+  readonly geometry: McapImageGeometryMode;
   /** Dot size, on the same scale as the 3D point size. */
   readonly pointSize: number;
   /** Explicit cloud topics to project; null projects every cloud. */
@@ -369,7 +379,10 @@ export const DEFAULT_MCAP_PROJECTION_POINT_SIZE =
  * Default pointcloud projection settings for one image topic.
  */
 export const DEFAULT_MCAP_IMAGE_PROJECTION: McapImageProjectionSettings = {
+  calibrationTopic: null,
+  display: "recorded",
   enabled: false,
+  geometry: "auto",
   pointSize: DEFAULT_MCAP_PROJECTION_POINT_SIZE,
   topics: [],
 } as const;
@@ -411,7 +424,10 @@ export function normalizeMcapImageProjection(
   const enabled =
     candidate.enabled === true && (topics === null || topics.length > 0);
   return {
+    calibrationTopic: normalizeOptionalTopic(candidate.calibrationTopic),
+    display: normalizeMcapImageDisplay(candidate.display),
     enabled,
+    geometry: normalizeMcapImageGeometry(candidate.geometry),
     pointSize: clampNumber(
       candidate.pointSize,
       MIN_MCAP_POINT_CLOUD_POINT_SIZE,
@@ -420,6 +436,20 @@ export function normalizeMcapImageProjection(
     ),
     topics: enabled ? topics : [],
   };
+}
+
+/** Returns a supported image presentation mode or the recorded pixels. */
+export function normalizeMcapImageDisplay(
+  value: unknown,
+): McapImageDisplayMode {
+  return value === "rectified" ? value : "recorded";
+}
+
+/** Returns a supported image-geometry mode or Auto. */
+export function normalizeMcapImageGeometry(
+  value: unknown,
+): McapImageGeometryMode {
+  return value === "original" || value === "rectified" ? value : "auto";
 }
 
 /**
@@ -456,6 +486,13 @@ export function normalizeMcapTopicList(value: unknown): readonly string[] {
         .filter(Boolean),
     ),
   );
+}
+
+function normalizeOptionalTopic(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  return value.trim() || null;
 }
 
 /**

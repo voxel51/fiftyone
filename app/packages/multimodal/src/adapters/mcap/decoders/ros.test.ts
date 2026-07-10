@@ -1189,11 +1189,20 @@ describe("ROS MCAP decoders", () => {
       throw new Error("Expected camera calibration visualization");
     }
     expect(output.visualization).toMatchObject({
+      binningX: 0,
+      binningY: 0,
       coordinateFrameId: "camera_optical",
       D: [0.1, -0.2, 0, 0, 0],
       distortionModel: "plumb_bob",
       height: 480,
       K,
+      roi: {
+        doRectify: false,
+        height: 0,
+        width: 0,
+        xOffset: 0,
+        yOffset: 0,
+      },
       timestampNs: 5_000_000_006n,
       width: 640,
     });

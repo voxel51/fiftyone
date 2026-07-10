@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   buildPointCloudRenderPayload,
-  type CameraCalibrationVisualization,
   type PointCloudVisualization,
 } from "../../../decoders";
 import { VISUALIZATION_KIND } from "../../../visualization/visualization-registry";
@@ -12,6 +11,7 @@ import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization
 import { gpuPointCloudProjectionResourceKey } from "../../../visualization/panels/gpu/gpu-point-cloud-projection";
 import McapImageProjectionOverlay from "./McapImageProjectionOverlay";
 import type { McapImageProjectionLayer } from "./use-mcap-image-projection-layers";
+import type { McapCameraModel } from "./camera-geometry/mcap-camera-model";
 
 const mocks = vi.hoisted(() => ({
   dwell: null as PointerDwellOptions | null,
@@ -116,11 +116,10 @@ function renderOverlay(
   layer: McapImageProjectionLayer,
   picker: GpuPointCloudProjectionPickerHandle,
 ) {
-  const calibration = cameraCalibration();
   return render(
     <div>
       <McapImageProjectionOverlay
-        calibration={calibration}
+        cameraModel={cameraModel()}
         fit="contain"
         imageHeight={300}
         imageWidth={400}
@@ -194,15 +193,13 @@ function projectionLayer(): McapImageProjectionLayer {
   };
 }
 
-function cameraCalibration(): CameraCalibrationVisualization {
+function cameraModel(): McapCameraModel {
   return {
-    D: [],
-    K: [1, 0, 0, 0, 1, 0, 0, 0, 1],
-    P: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
-    coordinateFrameId: "camera",
-    distortionModel: "",
     height: 300,
-    kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
+    kind: "pinhole",
+    projection: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
+    rectification: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+    space: "original",
     width: 400,
   };
 }

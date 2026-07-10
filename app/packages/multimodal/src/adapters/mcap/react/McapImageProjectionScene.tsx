@@ -1,17 +1,14 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  buildPointCloudRenderPayload,
-  type CameraCalibrationVisualization,
-} from "../../../decoders";
+import { buildPointCloudRenderPayload } from "../../../decoders";
 import type { ImageViewTransform } from "../../../visualization/panels/base-2d-scene";
 import GpuPointCloudProjectionLayer from "../../../visualization/panels/gpu/GpuPointCloudProjectionLayer";
 import {
   gpuPointCloudProjectionResourceKey,
   gpuPointCloudProjectionStreamKey,
-  sensorToImageProjectionMatrix,
 } from "../../../visualization/panels/gpu/gpu-point-cloud-projection";
+import type { GpuCameraProjection } from "../../../visualization/panels/gpu/gpu-camera-projection";
 import {
   GpuPointCloudProjectionPicker,
   type GpuPointCloudProjectionPickerHandle,
@@ -27,11 +24,13 @@ import {
   type ResolvedGpuPointCloudColor,
 } from "../../../visualization/panels/point-cloud";
 import type { McapHoverEcho } from "./mcap-hover-echo";
+import type { McapCameraModel } from "./camera-geometry/mcap-camera-model";
+import { mcapGpuCameraProjection } from "./camera-geometry/mcap-gpu-camera-projection";
 import type { McapImageProjectionLayer } from "./use-mcap-image-projection-layers";
 
 /** Inputs required to render and inspect projected point clouds for one image. */
 export interface McapImageProjectionSceneProps {
-  readonly calibration: CameraCalibrationVisualization;
+  readonly cameraModel: McapCameraModel;
   readonly fit: "contain" | "cover";
   readonly imageHeight: number;
   readonly imageWidth: number;
@@ -45,9 +44,7 @@ export interface McapImageProjectionSceneProps {
 interface PreparedProjectionLayer {
   readonly color: ResolvedGpuPointCloudColor;
   readonly layer: McapImageProjectionLayer;
-  readonly projectionMatrix: NonNullable<
-    ReturnType<typeof sensorToImageProjectionMatrix>
-  >;
+  readonly projection: GpuCameraProjection;
   readonly resource: GpuPointCloudProjectionResource;
   readonly resourceKey: string;
 }
@@ -63,7 +60,7 @@ export const McapImageProjectionScene = forwardRef<
   McapImageProjectionSceneProps
 >(function McapImageProjectionScene(
   {
-    calibration,
+    cameraModel,
     fit,
     imageHeight,
     imageWidth,
@@ -82,12 +79,12 @@ export const McapImageProjectionScene = forwardRef<
         // composing one matrix and acquiring shared buffers, not projecting
         // or colorizing every point for this camera on the CPU.
         const payload = layer.payload;
-        const projectionMatrix = sensorToImageProjectionMatrix({
-          calibration,
+        const projection = mcapGpuCameraProjection({
+          model: cameraModel,
           rotation: layer.rotation,
           translation: layer.translation,
         });
-        if (!projectionMatrix || payload.sampledPointCount === 0) {
+        if (!projection || payload.sampledPointCount === 0) {
           return [];
         }
 
@@ -107,7 +104,7 @@ export const McapImageProjectionScene = forwardRef<
           {
             color: resolveGpuPointCloudColor(payload, layer.colorOptions),
             layer,
-            projectionMatrix,
+            projection,
             resource: getGpuPointCloudProjectionResource({
               contentKey: resourceKey,
               payload,
@@ -117,16 +114,16 @@ export const McapImageProjectionScene = forwardRef<
           },
         ];
       }),
-    [calibration, layers, sourceKey],
+    [cameraModel, layers, sourceKey],
   );
   const pickLayers = useMemo(
     () =>
       // Visible and pick passes bind the exact same attributes/matrices. This
       // prevents a separate projection representation from drifting from what
       // the user sees.
-      preparedLayers.map(({ projectionMatrix, resource, resourceKey }) => ({
+      preparedLayers.map(({ projection, resource, resourceKey }) => ({
         positionAttribute: resource.positionAttribute,
-        projectionMatrix,
+        projection,
         resourceKey,
         sampledPointCount: resource.sampledPointCount,
         sourceIndexAttribute: resource.sourceIndexAttribute,
@@ -136,29 +133,29 @@ export const McapImageProjectionScene = forwardRef<
 
   return (
     <>
-      {preparedLayers.map(({ color, layer, projectionMatrix, resource }) => (
+      {preparedLayers.map(({ color, layer, projection, resource }) => (
         <GpuPointCloudProjectionLayer
-          calibrationHeight={calibration.height}
-          calibrationWidth={calibration.width}
+          calibrationHeight={cameraModel.height}
+          calibrationWidth={cameraModel.width}
           color={color}
           fit={fit}
           imageHeight={imageHeight}
           imageWidth={imageWidth}
           key={layer.topic}
           pointSize={pointSize}
-          projectionMatrix={projectionMatrix}
+          projection={projection}
           resource={resource}
           viewTransform={viewTransform}
         />
       ))}
       <GpuPointCloudProjectionPicker
-        calibrationHeight={calibration.height}
-        calibrationWidth={calibration.width}
+        calibrationHeight={cameraModel.height}
+        calibrationWidth={cameraModel.width}
         layers={pickLayers}
         ref={pickerRef}
       />
       <ProjectedHoverMarker
-        calibration={calibration}
+        cameraModel={cameraModel}
         fit={fit}
         hoveredPoint={hoveredPoint}
         imageHeight={imageHeight}
@@ -172,7 +169,7 @@ export const McapImageProjectionScene = forwardRef<
 });
 
 function ProjectedHoverMarker({
-  calibration,
+  cameraModel,
   fit,
   hoveredPoint,
   imageHeight,
@@ -231,6 +228,7 @@ function ProjectedHoverMarker({
     });
   }, [markerPayload, pointHover, prepared]);
 
+  // This effect restarts the hover-marker animation for each hovered point.
   useEffect(() => {
     animationStartRef.current = performance.now();
     setPointSizeScale(1);
@@ -261,8 +259,8 @@ function ProjectedHoverMarker({
 
   return (
     <GpuPointCloudProjectionLayer
-      calibrationHeight={calibration.height}
-      calibrationWidth={calibration.width}
+      calibrationHeight={cameraModel.height}
+      calibrationWidth={cameraModel.width}
       color={markerColor}
       fit={fit}
       imageHeight={imageHeight}
@@ -270,7 +268,7 @@ function ProjectedHoverMarker({
       minScreenPointSize={HOVER_ECHO_MIN_SCREEN_PX}
       pointSize={pointSize}
       pointSizeScale={pointSizeScale}
-      projectionMatrix={prepared.projectionMatrix}
+      projection={prepared.projection}
       renderOrder={HOVER_ECHO_RENDER_ORDER}
       resource={markerResource}
       viewTransform={viewTransform}

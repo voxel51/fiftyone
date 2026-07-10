@@ -7,6 +7,12 @@ import { PointsNodeMaterial } from "three/webgpu";
 
 import type { ImageViewTransform } from "../base-2d-scene";
 import {
+  createGpuCameraProjectionNodes,
+  updateGpuCameraProjectionBindings,
+  type GpuCameraProjection,
+  type GpuCameraProjectionBindings,
+} from "./gpu-camera-projection";
+import {
   gpuProjectionImagePlaneSize,
   gpuProjectionViewportRect,
 } from "./gpu-point-cloud-projection";
@@ -24,8 +30,8 @@ import {
 import type { ResolvedGpuPointCloudColor } from "../point-cloud/gpu/gpu-point-cloud-color";
 import { DEFAULT_POINT_SIZE } from "../point-cloud/PointCloudSceneLayer";
 
-const MIN_PROJECTABLE_DEPTH = 1e-6;
 const CULLED_POSITION = 1e9;
+const MIN_VIEW_SCALE = 1e-6;
 const PROJECTION_Z = 0.1;
 const DEFAULT_RENDER_ORDER = 10;
 const NOOP_RAYCAST = () => undefined;
@@ -95,8 +101,8 @@ export interface GpuPointCloudProjectionLayerProps {
   readonly pointSize: number;
   /** Additional screen-space scale used by hover emphasis animation. */
   readonly pointSizeScale?: number;
-  /** Homogeneous sensor-to-calibration-pixel matrix. */
-  readonly projectionMatrix: THREE.Matrix4;
+  /** Camera-model projection shared with the integer picker. */
+  readonly projection: GpuCameraProjection;
   /** Grow-only source-topic buffers shared by every camera view. */
   readonly resource: GpuPointCloudProjectionResource;
   readonly renderOrder?: number;
@@ -119,7 +125,7 @@ export function GpuPointCloudProjectionLayer({
   minScreenPointSize = 1,
   pointSize,
   pointSizeScale = 1,
-  projectionMatrix,
+  projection,
   renderOrder = DEFAULT_RENDER_ORDER,
   resource,
   viewTransform,
@@ -156,13 +162,13 @@ export function GpuPointCloudProjectionLayer({
         calibrationHeight: 1,
         calibrationWidth: 1,
         color,
-        projectionMatrix: new THREE.Matrix4(),
+        projection,
         resource,
       }),
     // Matrix, viewport, point size, and color ranges update mutable uniforms
     // below. Only resource/color-source topology rebuilds the TSL graph.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [colorNodeKey, resource],
+    [colorNodeKey, projection.kind, resource],
   );
   const sprite = useMemo(() => {
     const next = new THREE.Sprite(
@@ -176,18 +182,18 @@ export function GpuPointCloudProjectionLayer({
     return next;
   }, [renderOrder, resource.geometry, shader.material]);
 
+  // This layout effect retains topic attributes while the scene references
+  // them, so retired geometry survives until every camera view releases it.
   useLayoutEffect(
-    // A camera view leases topic attributes for as long as its committed scene
-    // references them. Capacity replacement may retire the resource, but its
-    // geometry cannot be disposed until every old camera view releases.
     () => retainGpuPointCloudProjectionResource(resource),
     [resource],
   );
 
+  // This layout effect binds projection uniforms before the frame is rendered.
   useLayoutEffect(() => {
     sprite.count = resource.sampledPointCount;
     updateGpuPointCloudColorUniforms(shader.colorUniforms, color);
-    shader.projectionMatrix.value.copy(projectionMatrix);
+    updateGpuCameraProjectionBindings(shader.cameraProjection, projection);
     shader.dimensions.value.set(calibrationWidth, calibrationHeight);
     shader.imageRect.value.set(
       imageRect.left,
@@ -202,7 +208,7 @@ export function GpuPointCloudProjectionLayer({
       Math.round((calibrationWidth / 400) * (pointSize / DEFAULT_POINT_SIZE)),
     );
     const viewScale = Number.isFinite(viewTransform?.scale)
-      ? Math.max(MIN_PROJECTABLE_DEPTH, viewTransform?.scale ?? 1)
+      ? Math.max(MIN_VIEW_SCALE, viewTransform?.scale ?? 1)
       : 1;
     shader.material.size =
       Math.max(
@@ -225,13 +231,14 @@ export function GpuPointCloudProjectionLayer({
     minScreenPointSize,
     pointSize,
     pointSizeScale,
-    projectionMatrix,
+    projection,
     resource,
     shader,
     sprite,
     viewTransform?.scale,
   ]);
 
+  // This effect disposes the projection material when it is replaced.
   useEffect(() => () => shader.material.dispose(), [shader.material]);
 
   return <primitive object={sprite} />;
@@ -239,11 +246,11 @@ export function GpuPointCloudProjectionLayer({
 
 /** Shader material and mutable uniforms used by a projection layer. */
 export interface GpuPointCloudProjectionMaterial {
+  readonly cameraProjection: GpuCameraProjectionBindings;
   readonly colorUniforms: GpuPointCloudColorUniforms;
   readonly dimensions: ProjectionUniformNode<THREE.Vector2>;
   readonly imageRect: ProjectionUniformNode<THREE.Vector4>;
   readonly material: ProjectionPointsMaterial;
-  readonly projectionMatrix: ProjectionUniformNode<THREE.Matrix4>;
 }
 
 /** Exported to keep shader construction directly testable without a GPU. */
@@ -252,14 +259,14 @@ export function createGpuPointCloudProjectionMaterial({
   calibrationWidth,
   color,
   imageRect = new THREE.Vector4(0, 0, 1, 1),
-  projectionMatrix,
+  projection,
   resource,
 }: {
   readonly calibrationHeight: number;
   readonly calibrationWidth: number;
   readonly color: ResolvedGpuPointCloudColor;
   readonly imageRect?: THREE.Vector4;
-  readonly projectionMatrix: THREE.Matrix4;
+  readonly projection: GpuCameraProjection;
   readonly resource: GpuPointCloudProjectionResource;
 }): GpuPointCloudProjectionMaterial {
   const material = new PointsNodeMaterial({
@@ -269,7 +276,6 @@ export function createGpuPointCloudProjectionMaterial({
   material.depthWrite = false;
   material.toneMapped = false;
 
-  const matrixUniform = projectionTsl.uniform(projectionMatrix.clone());
   const dimensionsUniform = projectionTsl.uniform(
     new THREE.Vector2(calibrationWidth, calibrationHeight),
   );
@@ -280,13 +286,15 @@ export function createGpuPointCloudProjectionMaterial({
     "vec3",
   ) as unknown as ProjectionNode;
   // Direct vertex projection avoids a per-camera compute pass and UV buffer.
-  // The precomposed matrix returns [u*z, v*z, z, 1] in calibration pixels.
-  const homogeneous = matrixUniform.mul(projectionTsl.vec4(sensorPosition, 1));
-  const depth = homogeneous.z;
-  const u = homogeneous.x.div(depth);
-  const v = homogeneous.y.div(depth);
+  // The shared camera-model graph returns calibration-pixel coordinates.
+  const projected = createGpuCameraProjectionNodes(
+    sensorPosition as unknown as TSL.Node,
+    projection,
+  );
+  const u = projected.u as unknown as ProjectionNode;
+  const v = projected.v as unknown as ProjectionNode;
   const visible = projectionTsl.and(
-    projectionTsl.greaterThan(depth, MIN_PROJECTABLE_DEPTH),
+    projected.valid as unknown as ProjectionNode,
     projectionTsl.greaterThanEqual(u, 0),
     projectionTsl.greaterThanEqual(v, 0),
     projectionTsl.lessThan(u, dimensionsUniform.x),
@@ -334,11 +342,11 @@ export function createGpuPointCloudProjectionMaterial({
   })() as unknown as TSL.Node;
 
   return {
+    cameraProjection: projected.bindings,
     colorUniforms,
     dimensions: dimensionsUniform,
     imageRect: imageRectUniform,
     material,
-    projectionMatrix: matrixUniform,
   };
 }
 

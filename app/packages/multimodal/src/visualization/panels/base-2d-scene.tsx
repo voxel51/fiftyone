@@ -48,6 +48,17 @@ export interface ImageTextureHandle {
   readonly texture: THREE.Texture;
 }
 
+/** Cached unit-plane mesh that remaps displayed pixels into source texture UVs. */
+export interface ImageTextureMesh {
+  readonly displayHeight: number;
+  readonly displayWidth: number;
+  readonly indices: Uint32Array;
+  /** Interleaved xyz positions in normalized image-plane coordinates. */
+  readonly positions: Float32Array;
+  /** Interleaved source-texture UV coordinates. */
+  readonly uvs: Float32Array;
+}
+
 /**
  * Props for the shared 2D visualization scene shell.
  */
@@ -67,6 +78,7 @@ export interface ImageTexturePlaneProps {
    */
   readonly children?: ReactNode;
   readonly fit: "contain" | "cover";
+  readonly textureMesh?: ImageTextureMesh | null;
   readonly textureHandle: ImageTextureHandle | null;
   readonly viewTransform?: ImageViewTransform;
 }
@@ -104,6 +116,7 @@ export function Base2DScene({ background = true, children }: Base2DSceneProps) {
 export function ImageTexturePlane({
   children,
   fit,
+  textureMesh,
   textureHandle,
   viewTransform,
 }: ImageTexturePlaneProps) {
@@ -113,18 +126,27 @@ export function ImageTexturePlane({
     materialRef.current = material as THREE.MeshBasicMaterial | null;
   }, []);
   const size = useThree((state) => state.size);
+  const remapGeometry = useMemo(
+    () => (textureMesh ? imageTextureMeshGeometry(textureMesh) : null),
+    [textureMesh],
+  );
+  // This effect disposes the texture-remap mesh when it is replaced.
+  useEffect(() => () => remapGeometry?.dispose(), [remapGeometry]);
   const planeScale = useMemo(
     () =>
       imagePlaneScale(
-        textureHandle?.aspectRatio ?? 1,
+        textureMesh
+          ? textureMesh.displayWidth / Math.max(1, textureMesh.displayHeight)
+          : (textureHandle?.aspectRatio ?? 1),
         size.width,
         size.height,
         fit,
       ),
-    [fit, size.height, size.width, textureHandle?.aspectRatio],
+    [fit, size.height, size.width, textureHandle?.aspectRatio, textureMesh],
   );
   const normalizedViewTransform = normalizeImageViewTransform(viewTransform);
 
+  // This effect invalidates the demand-rendered scene when its view changes.
   useEffect(() => {
     invalidate();
   }, [
@@ -136,6 +158,7 @@ export function ImageTexturePlane({
     normalizedViewTransform.translateY,
   ]);
 
+  // This layout effect binds the decoded texture before the browser paints.
   useLayoutEffect(() => {
     const material = materialRef.current;
     const texture = textureHandle?.texture ?? null;
@@ -162,7 +185,11 @@ export function ImageTexturePlane({
     >
       <group scale={planeScale}>
         <mesh frustumCulled={false}>
-          <planeGeometry args={[1, 1]} />
+          {remapGeometry ? (
+            <primitive attach="geometry" object={remapGeometry} />
+          ) : (
+            <planeGeometry args={[1, 1]} />
+          )}
           <meshBasicMaterial
             depthTest={false}
             depthWrite={false}
@@ -175,6 +202,20 @@ export function ImageTexturePlane({
       </group>
     </group>
   );
+}
+
+/** Converts a renderer-neutral cached mesh into one renderer-owned geometry. */
+export function imageTextureMeshGeometry(
+  mesh: ImageTextureMesh,
+): THREE.BufferGeometry {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(mesh.positions, 3),
+  );
+  geometry.setAttribute("uv", new THREE.BufferAttribute(mesh.uvs, 2));
+  geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
+  return geometry;
 }
 
 /** Rebinds a decoded frame and invalidates Three's WebGPU bind-group cache. */

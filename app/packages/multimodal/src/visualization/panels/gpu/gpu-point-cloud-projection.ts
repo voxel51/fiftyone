@@ -8,6 +8,7 @@ const QUATERNION_EPSILON = 1e-9;
 export interface GpuProjectionCalibration {
   readonly K?: readonly number[] | null;
   readonly P?: readonly number[] | null;
+  readonly R?: readonly number[] | null;
   readonly height: number;
   readonly width: number;
 }
@@ -50,27 +51,35 @@ export function sensorToImageProjectionMatrix({
     return null;
   }
 
-  const rotationLength = Math.hypot(
-    rotation.x,
-    rotation.y,
-    rotation.z,
-    rotation.w,
-  );
-  const scale = rotationLength > QUATERNION_EPSILON ? 1 / rotationLength : 0;
-  const qx = rotation.x * scale;
-  const qy = rotation.y * scale;
-  const qz = rotation.z * scale;
-  const qw = rotationLength > QUATERNION_EPSILON ? rotation.w * scale : 1;
-
-  const r00 = 1 - 2 * (qy * qy + qz * qz);
-  const r01 = 2 * (qx * qy - qz * qw);
-  const r02 = 2 * (qx * qz + qy * qw);
-  const r10 = 2 * (qx * qy + qz * qw);
-  const r11 = 1 - 2 * (qx * qx + qz * qz);
-  const r12 = 2 * (qy * qz - qx * qw);
-  const r20 = 2 * (qx * qz - qy * qw);
-  const r21 = 2 * (qy * qz + qx * qw);
-  const r22 = 1 - 2 * (qx * qx + qy * qy);
+  const sensor = sensorTransformRows(rotation, translation);
+  const rectification = finiteRectification(calibration.R);
+  const [c00, c01, c02, c10, c11, c12, c20, c21, c22] = rectification;
+  const {
+    r00: s00,
+    r01: s01,
+    r02: s02,
+    r10: s10,
+    r11: s11,
+    r12: s12,
+    r20: s20,
+    r21: s21,
+    r22: s22,
+    tx: stx,
+    ty: sty,
+    tz: stz,
+  } = sensor;
+  const r00 = c00 * s00 + c01 * s10 + c02 * s20;
+  const r01 = c00 * s01 + c01 * s11 + c02 * s21;
+  const r02 = c00 * s02 + c01 * s12 + c02 * s22;
+  const r10 = c10 * s00 + c11 * s10 + c12 * s20;
+  const r11 = c10 * s01 + c11 * s11 + c12 * s21;
+  const r12 = c10 * s02 + c11 * s12 + c12 * s22;
+  const r20 = c20 * s00 + c21 * s10 + c22 * s20;
+  const r21 = c20 * s01 + c21 * s11 + c22 * s21;
+  const r22 = c20 * s02 + c21 * s12 + c22 * s22;
+  const tx = c00 * stx + c01 * sty + c02 * stz;
+  const ty = c10 * stx + c11 * sty + c12 * stz;
+  const tz = c20 * stx + c21 * sty + c22 * stz;
 
   const [p00, p01, p02, p03, p10, p11, p12, p13, p20, p21, p22, p23] =
     projection;
@@ -82,15 +91,44 @@ export function sensorToImageProjectionMatrix({
     p00 * r00 + p01 * r10 + p02 * r20,
     p00 * r01 + p01 * r11 + p02 * r21,
     p00 * r02 + p01 * r12 + p02 * r22,
-    p00 * translation.x + p01 * translation.y + p02 * translation.z + p03,
+    p00 * tx + p01 * ty + p02 * tz + p03,
     p10 * r00 + p11 * r10 + p12 * r20,
     p10 * r01 + p11 * r11 + p12 * r21,
     p10 * r02 + p11 * r12 + p12 * r22,
-    p10 * translation.x + p11 * translation.y + p12 * translation.z + p13,
+    p10 * tx + p11 * ty + p12 * tz + p13,
     p20 * r00 + p21 * r10 + p22 * r20,
     p20 * r01 + p21 * r11 + p22 * r21,
     p20 * r02 + p21 * r12 + p22 * r22,
-    p20 * translation.x + p21 * translation.y + p22 * translation.z + p23,
+    p20 * tx + p21 * ty + p22 * tz + p23,
+    0,
+    0,
+    0,
+    1,
+  );
+}
+
+/** Builds a homogeneous sensor-to-camera transform for distorted models. */
+export function sensorToCameraMatrix({
+  rotation,
+  translation,
+}: {
+  readonly rotation: GpuProjectionRotation;
+  readonly translation: GpuProjectionTranslation;
+}): THREE.Matrix4 {
+  const transform = sensorTransformRows(rotation, translation);
+  return new THREE.Matrix4().set(
+    transform.r00,
+    transform.r01,
+    transform.r02,
+    transform.tx,
+    transform.r10,
+    transform.r11,
+    transform.r12,
+    transform.ty,
+    transform.r20,
+    transform.r21,
+    transform.r22,
+    transform.tz,
     0,
     0,
     0,
@@ -199,6 +237,65 @@ export function gpuPointCloudProjectionStreamKey(
   topic: string,
 ): string {
   return `${sourceKey}\n${topic}`;
+}
+
+interface SensorTransformRows {
+  readonly r00: number;
+  readonly r01: number;
+  readonly r02: number;
+  readonly r10: number;
+  readonly r11: number;
+  readonly r12: number;
+  readonly r20: number;
+  readonly r21: number;
+  readonly r22: number;
+  readonly tx: number;
+  readonly ty: number;
+  readonly tz: number;
+}
+
+function sensorTransformRows(
+  rotation: GpuProjectionRotation,
+  translation: GpuProjectionTranslation,
+): SensorTransformRows {
+  const rotationLength = Math.hypot(
+    rotation.x,
+    rotation.y,
+    rotation.z,
+    rotation.w,
+  );
+  const scale = rotationLength > QUATERNION_EPSILON ? 1 / rotationLength : 0;
+  const qx = rotation.x * scale;
+  const qy = rotation.y * scale;
+  const qz = rotation.z * scale;
+  const qw = rotationLength > QUATERNION_EPSILON ? rotation.w * scale : 1;
+  return {
+    r00: 1 - 2 * (qy * qy + qz * qz),
+    r01: 2 * (qx * qy - qz * qw),
+    r02: 2 * (qx * qz + qy * qw),
+    r10: 2 * (qx * qy + qz * qw),
+    r11: 1 - 2 * (qx * qx + qz * qz),
+    r12: 2 * (qy * qz - qx * qw),
+    r20: 2 * (qx * qz - qy * qw),
+    r21: 2 * (qy * qz + qx * qw),
+    r22: 1 - 2 * (qx * qx + qy * qy),
+    tx: translation.x,
+    ty: translation.y,
+    tz: translation.z,
+  };
+}
+
+function finiteRectification(
+  rectification: readonly number[] | null | undefined,
+): readonly number[] {
+  if (
+    rectification &&
+    rectification.length >= 9 &&
+    rectification.slice(0, 9).every(Number.isFinite)
+  ) {
+    return rectification;
+  }
+  return [1, 0, 0, 0, 1, 0, 0, 0, 1];
 }
 
 function projectionRows(

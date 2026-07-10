@@ -63,7 +63,9 @@ import {
 } from "./mcap-hover-echo";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
+  DEFAULT_MCAP_IMAGE_PROJECTION,
   defaultMcapPointCloudColorForSource,
+  useMcapImageProjectionSettingsByTopic,
   useMcapPinholeCameraSettings,
   useMcapPlaybackSettings,
   useMcapPointCloudStyleSettings,
@@ -71,6 +73,9 @@ import {
   useMcapSceneBackgroundSettings,
   useMcapTemporalPolicySettings,
 } from "./mcap-modal-settings";
+import { resolveMcapCameraModel } from "./camera-geometry/mcap-camera-model";
+import { mcapCameraRayModel } from "./camera-geometry/mcap-camera-ray-model";
+import { resolveMcapFrustumImageTopics } from "./camera-geometry/mcap-camera-association";
 import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import type { McapTileProps } from "./mcap-tile-types";
 import styles from "./McapTile.module.css";
@@ -146,6 +151,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const { fidelityMode } = useMcapPlaybackSettings();
   const { temporalPolicy } = useMcapTemporalPolicySettings();
   const { pinholeCamera } = useMcapPinholeCameraSettings();
+  const imageProjectionSettings = useMcapImageProjectionSettingsByTopic();
   const { pointCloudColors, pointCloudPointSize, showPointCloudColorLegend } =
     useMcapPointCloudStyleSettings();
   const { referenceGrid } = useMcapReferenceGridSettings();
@@ -176,8 +182,16 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         : null,
     [referenceGrid, sceneUpAxis],
   );
-  const frustumImageFrames =
-    useMcapTopicPlaybackFrames<ImageVisualization>(frustumImageTopics);
+  const resolvedFrustumImageTopics = useMemo(() => {
+    return resolveMcapFrustumImageTopics({
+      cameraTopics,
+      inventoryImageTopics: frustumImageTopics,
+      settingsByImageTopic: imageProjectionSettings,
+    });
+  }, [cameraTopics, frustumImageTopics, imageProjectionSettings]);
+  const frustumImageFrames = useMcapTopicPlaybackFrames<ImageVisualization>(
+    resolvedFrustumImageTopics,
+  );
   const frames =
     useMcapTopicPlaybackFrames<PointCloudVisualization>(pointCloudTopics);
   const pointCloudColorCapabilities = usePointCloudColorCapabilities(
@@ -362,9 +376,34 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       cameraFrustumLayers.map((layer) => {
         const index = cameraTopics.indexOf(layer.id);
         const imageFrame = index >= 0 ? frustumImageFrames[index] : null;
-        const imageTopic = index >= 0 ? (frustumImageTopics[index] ?? "") : "";
-        // Frustum ↔ tile link: Cmd-clicking the frustum opens/focuses its
-        // camera's tile; hovering that tile lights the frustum up.
+        const imageTopic =
+          index >= 0 ? (resolvedFrustumImageTopics[index] ?? "") : "";
+        const geometry = imageTopic
+          ? (
+              imageProjectionSettings[imageTopic] ??
+              DEFAULT_MCAP_IMAGE_PROJECTION
+            ).geometry
+          : "original";
+        const cameraModelResolution = resolveMcapCameraModel({
+          calibration: layer.frame,
+          geometry,
+          imageTopic,
+        });
+        const rayCameraModelResolution =
+          cameraModelResolution.status === "ready"
+            ? cameraModelResolution
+            : resolveMcapCameraModel({
+                calibration: layer.frame,
+                geometry: "original",
+                imageTopic,
+              });
+        const cameraRayModel =
+          rayCameraModelResolution.status === "ready"
+            ? mcapCameraRayModel(rayCameraModelResolution.model)
+            : undefined;
+        const imageGeometryReady = cameraModelResolution.status === "ready";
+        // Cmd-clicking a frustum opens its image tile; hovering or focusing
+        // the tile highlights the frustum.
         const linked = imageTopic
           ? {
               highlighted: hoveredImageTopic === imageTopic,
@@ -377,17 +416,20 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
               },
             }
           : {};
-        if (!imageFrame) {
+        if (!imageFrame || !imageGeometryReady) {
           return {
             ...layer,
             ...linked,
+            cameraRayModel,
             imagePlaneDepthM: pinholeImagePlaneDepthM,
             opacity: pinholeOpacity,
+            requireCameraRayModel: true,
           };
         }
         return {
           ...layer,
           ...linked,
+          cameraRayModel,
           image: imageFrame.frame,
           imageContentTimeNs: imageFrame.contentTimeNs,
           imagePlaneDepthM: pinholeImagePlaneDepthM,
@@ -400,6 +442,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
                 )
               : undefined,
           opacity: pinholeOpacity,
+          requireCameraRayModel: true,
         };
       }),
     [
@@ -407,11 +450,12 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       cameraTopics,
       frustumImageFrames,
       focusedImageTopic,
-      frustumImageTopics,
       hoveredImageTopic,
+      imageProjectionSettings,
       openImageTile,
       pinholeImagePlaneDepthM,
       pinholeOpacity,
+      resolvedFrustumImageTopics,
       sourceKey,
     ],
   );
