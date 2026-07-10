@@ -26,15 +26,28 @@ import styles from "./TemporalTag.module.css";
 const NUDGE_STEP = 0.1;
 const NEW_TAG_SENTINEL = "__new__";
 
+/** Gap (px) between the anchor point and the popup — enough to clear a track
+ *  row so an edit popup doesn't sit on top of the clicked interval. */
+const POPUP_GAP = 32;
+
 function pickTopLeft(
   anchor: { x: number; y: number },
   size: { width: number; height: number },
+  preferAbove = false,
 ) {
   const vp = { width: window.innerWidth, height: window.innerHeight };
-  const top =
-    anchor.y + size.height > vp.height
-      ? anchor.y - size.height - 8
-      : anchor.y + 8;
+  const above = anchor.y - size.height - POPUP_GAP;
+  const below = anchor.y + POPUP_GAP;
+  // Edit opens above the clicked row when there's room (falling back below);
+  // create keeps its below-unless-it-overflows behavior.
+  let top: number;
+  if (preferAbove) {
+    top = above >= 8 ? above : below;
+  } else {
+    top = anchor.y + size.height > vp.height ? above : below;
+  }
+  // Keep the popup fully on-screen regardless of where the row sits.
+  top = Math.max(8, Math.min(top, vp.height - size.height - 8));
   const left =
     anchor.x + size.width > vp.width ? anchor.x - size.width : anchor.x;
   return { top, left };
@@ -136,7 +149,7 @@ const TemporalTagPopup: React.FC = () => {
   const { anchor, selection, pendingLabel } = state;
   const isEdit = state.mode === "edit";
   const popupSize = { width: 260, height: hasExisting ? 240 : 200 };
-  const { top, left } = pickTopLeft(anchor, popupSize);
+  const { top, left } = pickTopLeft(anchor, popupSize, isEdit);
 
   const nudgeStart = (delta: number) => {
     if (!selection) return;

@@ -1,7 +1,8 @@
 import { getFetchFunctionExtended } from "@fiftyone/utilities";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, selector, useRecoilValue, useSetRecoilState } from "recoil";
 import { filters } from "./filters";
+import { isModalActive } from "./modal";
 import { datasetId } from "./selectors";
 import { TEMPORAL_TAGS_FIELD } from "./sidebar";
 
@@ -77,8 +78,10 @@ export const fetchTemporalTagResults = async (
 export const useSyncTemporalTagResults = (): void => {
   const currentDatasetId = useRecoilValue(datasetId);
   const setResults = useSetRecoilState(temporalTagResultsAtom);
+  const modalActive = useRecoilValue(isModalActive);
+  const wasModalActive = useRef(modalActive);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!currentDatasetId) {
       // No active dataset — clear any stale results from a prior one.
       setResults({ results: [], count: null });
@@ -101,9 +104,20 @@ export const useSyncTemporalTagResults = (): void => {
     return () => {
       cancelled = true;
     };
-    // `setResults` is a stable Recoil setter; re-run only when the dataset changes.
+    // `setResults` is a stable Recoil setter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDatasetId]);
+
+  // Initial load and on dataset change.
+  useEffect(() => load(), [load]);
+
+  // Re-fetch when the modal closes: a tag may have been created / edited /
+  // deleted in the modal, so the grid's tag list is stale until we refresh.
+  useEffect(() => {
+    const closed = wasModalActive.current && !modalActive;
+    wasModalActive.current = modalActive;
+    return closed ? load() : undefined;
+  }, [modalActive, load]);
 };
 
 const NO_VALUES: string[] = [];
