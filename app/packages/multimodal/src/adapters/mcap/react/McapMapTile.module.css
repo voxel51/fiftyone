@@ -116,13 +116,13 @@
 
 .toolOverlay {
   align-items: flex-end;
+  bottom: 78px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   pointer-events: none;
   position: absolute;
   right: 10px;
-  top: 78px;
   z-index: 2;
 }
 
