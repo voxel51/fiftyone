@@ -69,6 +69,19 @@ class TagKind(str, enum.Enum):
     TEMPORAL = "temporal"
 
 
+def _ensure_kind(kind):
+    if kind is None:
+        raise ValueError("Tag kind must be specified")
+    elif isinstance(kind, TagKind):
+        return kind
+    elif isinstance(kind, str):
+        try:
+            return TagKind(kind)
+        except ValueError as e:
+            raise ValueError("Invalid tag kind: %r" % kind) from e
+    raise ValueError("Invalid tag kind: %r" % kind)
+
+
 class Tag(object):
     """A tag.
 
@@ -1609,19 +1622,6 @@ def _ensure_indexes(collection) -> None:
         ],
         name="temporal_tag_counts",
     )
-
-
-def _ensure_kind(kind):
-    if kind is None:
-        return TagKind.TEMPORAL
-    elif isinstance(kind, TagKind):
-        return kind
-    elif isinstance(kind, str):
-        try:
-            return TagKind(kind)
-        except ValueError as e:
-            raise ValueError("Invalid tag kind: %r" % kind) from e
-    raise ValueError("Invalid tag kind: %r" % kind)
 
 
 __all__ = [
