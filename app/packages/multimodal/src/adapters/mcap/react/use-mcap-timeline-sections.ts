@@ -124,13 +124,15 @@ export function useMcapTimelineSections({
         // Pinned rows render raw in the pinned area, away from their header and
         // never hidden by collapse. Unpinned rows indent under their header and
         // drop out when the section is collapsed. Use `depth` (not `isChild`)
-        // so the row stays individually pinnable — `isChild` hides the pin.
+        // so the row stays individually pinnable — `isChild` hides the pin. No
+        // `expansionGutter`: reserving the empty chevron column ate ~24px of
+        // the narrow label column and truncated labels; the `depth` indent +
+        // color dot are enough of a nesting cue.
         if (pinned) {
           return {};
         }
         return {
           depth: 1,
-          expansionGutter: true,
           hidden: collapsed.has(sectionId),
         };
       }

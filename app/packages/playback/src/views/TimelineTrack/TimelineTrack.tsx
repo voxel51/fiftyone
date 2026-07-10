@@ -191,7 +191,7 @@ export interface TimelineTrackProps {
 }
 
 /** Pixels of label indent per nesting {@link TimelineTrackProps.depth}. */
-const DEPTH_INDENT_PX = 14;
+const DEPTH_INDENT_PX = 12;
 /** Base left padding of the label column (matches the CSS). */
 const LABEL_BASE_PADDING_PX = 10;
 
