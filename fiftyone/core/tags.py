@@ -70,7 +70,17 @@ class TagKind(str, enum.Enum):
 
 
 class Tag(object):
-    """Base class for tags."""
+    """A tag.
+
+    Args:
+        sample_id: the sample ID this tag applies to
+        tag: the tag value
+        created_by (None): an optional actor that created the tag
+        last_modified_by (None): an optional actor that last modified the tag
+        created_at (None): the creation timestamp, when available
+        last_modified_at (None): the last-modified timestamp, when available
+        id: the persisted tag ID, when available
+    """
 
     def __init__(
         self,
