@@ -43,6 +43,7 @@ export function useImageTextureLease({
   readonly status: ImageTextureLeaseStatus;
 } {
   const heldTextureRef = useRef<HeldImageTexture | null>(null);
+  const retiredTexturesRef = useRef<HeldImageTexture[]>([]);
   const hasVisibleTextureRef = useRef(false);
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
@@ -59,9 +60,21 @@ export function useImageTextureLease({
     () => () => {
       heldTextureRef.current?.release();
       heldTextureRef.current = null;
+      releaseRetiredTextures(retiredTexturesRef);
     },
     [],
   );
+
+  // A replacement first has to commit through the image scene before its old
+  // GPU texture can be destroyed. Releasing from the promise callback races
+  // the shared WebGPU stage: it can still encode the previous portal while
+  // React is committing the new handle. This effect runs on the following
+  // committed render, after the scene has stopped referring to each retired
+  // texture. It intentionally precedes the request effect so a synchronous
+  // disable/error transition cannot retire and release in one effect flush.
+  useEffect(() => {
+    releaseRetiredTextures(retiredTexturesRef);
+  });
 
   // This effect resolves the current encoded image into a leased texture.
   // With a `textureKey`, callers can use stable message identity as
@@ -71,7 +84,7 @@ export function useImageTextureLease({
   useEffect(() => {
     if (!enabled || !hasImageData(frame)) {
       hasVisibleTextureRef.current = false;
-      replaceHeldTexture(null, heldTextureRef, setHandle);
+      replaceHeldTexture(null, heldTextureRef, retiredTexturesRef, setHandle);
       setErrorMessage(null);
       setStatus(disabledStatus);
       return undefined;
@@ -96,6 +109,7 @@ export function useImageTextureLease({
         replaceHeldTexture(
           { handle: decodedHandle, release: lease.release },
           heldTextureRef,
+          retiredTexturesRef,
           setHandle,
         );
         hasVisibleTextureRef.current = true;
@@ -110,7 +124,7 @@ export function useImageTextureLease({
         }
 
         hasVisibleTextureRef.current = false;
-        replaceHeldTexture(null, heldTextureRef, setHandle);
+        replaceHeldTexture(null, heldTextureRef, retiredTexturesRef, setHandle);
         setErrorMessage(errorMessageFromUnknown(error));
         setStatus("error");
       });
@@ -153,15 +167,30 @@ export function imageIdentity(
 function replaceHeldTexture(
   next: HeldImageTexture | null,
   heldRef: MutableRefObject<HeldImageTexture | null>,
+  retiredRef: MutableRefObject<HeldImageTexture[]>,
   setHandle: (handle: ImageTextureHandle | null) => void,
 ) {
   const previous = heldRef.current;
   if (previous && previous !== next) {
-    previous.release();
+    retiredRef.current.push(previous);
   }
 
   heldRef.current = next;
   setHandle(next?.handle ?? null);
+}
+
+function releaseRetiredTextures(
+  retiredRef: MutableRefObject<HeldImageTexture[]>,
+): void {
+  const retired = retiredRef.current;
+  if (retired.length === 0) {
+    return;
+  }
+
+  retiredRef.current = [];
+  for (const texture of retired) {
+    texture.release();
+  }
 }
 
 function errorMessageFromUnknown(error: unknown): string {

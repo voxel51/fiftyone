@@ -21,6 +21,7 @@ const HOVER_TOOLTIP_OFFSET_PX = 12;
 // At most this many decoded channels render in a point tooltip.
 const POINT_TOOLTIP_MAX_FIELDS = 6;
 
+/** Scene entity reported by the MCAP 3D hover surface. */
 export interface Mcap3dHoveredEntity {
   readonly kind: "entity";
   readonly topic: string;

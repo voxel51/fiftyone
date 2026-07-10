@@ -372,7 +372,7 @@ export const DEFAULT_MCAP_IMAGE_PROJECTION: McapImageProjectionSettings = {
   enabled: false,
   pointSize: DEFAULT_MCAP_PROJECTION_POINT_SIZE,
   topics: [],
-};
+} as const;
 
 /**
  * Normalizes persisted per-image-topic pointcloud projection settings.

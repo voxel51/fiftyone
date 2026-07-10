@@ -42,7 +42,9 @@ export const FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS =
  * Payload identities for foxglove_msgs/msg/RawImage messages carried over
  * ROS 2 CDR encodings.
  */
-export const FOXGLOVE_RAW_IMAGE_CDR_PAYLOADS = foxgloveCdrPayloads("RawImage");
+export const FOXGLOVE_RAW_IMAGE_CDR_PAYLOADS = Object.freeze(
+  foxgloveCdrPayloads("RawImage"),
+);
 
 /**
  * Payload identities for foxglove_msgs/msg/Grid messages carried over ROS 2

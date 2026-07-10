@@ -19,16 +19,20 @@ export interface McapHoveredPointEcho {
   readonly topic: string;
 }
 
+/** Hover payload echoed between MCAP panes. */
 export type McapHoverEcho = McapHoveredPointEcho;
 
+/** Modal-local atom containing the point currently echoed across panes. */
 export const mcapHoverEchoAtom = atom<McapHoverEcho | null>(
   null,
 ) as PrimitiveAtom<McapHoverEcho | null>;
 
+/** Reads the point currently echoed across MCAP panes. */
 export function useMcapHoverEcho(): McapHoverEcho | null {
   return useAtomValue(mcapHoverEchoAtom);
 }
 
+/** Returns the setter for the modal-local hover echo. */
 export function useSetMcapHoverEcho() {
   return useSetAtom(mcapHoverEchoAtom);
 }

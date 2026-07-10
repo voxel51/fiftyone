@@ -1,7 +1,13 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree } from "@react-three/fiber";
 import type { ReactNode } from "react";
-import { useEffect, useMemo } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import * as THREE from "three";
 
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
@@ -46,6 +52,8 @@ export interface ImageTextureHandle {
  * Props for the shared 2D visualization scene shell.
  */
 export interface Base2DSceneProps {
+  /** Set false when a shared stage clears the render target once per frame. */
+  readonly background?: boolean;
   readonly children?: ReactNode;
 }
 
@@ -53,6 +61,11 @@ export interface Base2DSceneProps {
  * Props for rendering an image texture into the 2D scene.
  */
 export interface ImageTexturePlaneProps {
+  /**
+   * Scene layers aligned to the image. Coordinates are normalized image
+   * coordinates: x/y in [-0.5, 0.5], +x right, +y up.
+   */
+  readonly children?: ReactNode;
   readonly fit: "contain" | "cover";
   readonly textureHandle: ImageTextureHandle | null;
   readonly viewTransform?: ImageViewTransform;
@@ -71,13 +84,15 @@ const VIEW_TRANSFORM_EPSILON = 0.000001;
 /**
  * Base 2D R3F scene for image-like renderables.
  */
-export function Base2DScene({ children }: Base2DSceneProps) {
+export function Base2DScene({ background = true, children }: Base2DSceneProps) {
   return (
     <>
-      <color
-        args={[VISUALIZATION_PANEL_BACKGROUND_COLOR]}
-        attach="background"
-      />
+      {background ? (
+        <color
+          args={[VISUALIZATION_PANEL_BACKGROUND_COLOR]}
+          attach="background"
+        />
+      ) : null}
       {children}
     </>
   );
@@ -87,11 +102,16 @@ export function Base2DScene({ children }: Base2DSceneProps) {
  * Image attachment point for the base 2D scene.
  */
 export function ImageTexturePlane({
+  children,
   fit,
   textureHandle,
   viewTransform,
 }: ImageTexturePlaneProps) {
   const invalidate = useThree((state) => state.invalidate);
+  const materialRef = useRef<THREE.MeshBasicMaterial | null>(null);
+  const bindMaterial = useCallback((material: unknown) => {
+    materialRef.current = material as THREE.MeshBasicMaterial | null;
+  }, []);
   const size = useThree((state) => state.size);
   const planeScale = useMemo(
     () =>
@@ -116,6 +136,17 @@ export function ImageTexturePlane({
     normalizedViewTransform.translateY,
   ]);
 
+  useLayoutEffect(() => {
+    const material = materialRef.current;
+    const texture = textureHandle?.texture ?? null;
+    if (!material || !texture) {
+      return;
+    }
+
+    replaceImageMaterialTexture(material, texture);
+    invalidate();
+  }, [invalidate, textureHandle?.texture]);
+
   if (!textureHandle) {
     return null;
   }
@@ -129,19 +160,34 @@ export function ImageTexturePlane({
       ]}
       scale={[normalizedViewTransform.scale, normalizedViewTransform.scale, 1]}
     >
-      <mesh frustumCulled={false} scale={planeScale}>
-        <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial
-          depthTest={false}
-          depthWrite={false}
-          toneMapped={false}
-          transparent
-        >
-          <primitive attach="map" object={textureHandle.texture} />
-        </meshBasicMaterial>
-      </mesh>
+      <group scale={planeScale}>
+        <mesh frustumCulled={false}>
+          <planeGeometry args={[1, 1]} />
+          <meshBasicMaterial
+            depthTest={false}
+            depthWrite={false}
+            ref={bindMaterial}
+            toneMapped={false}
+            transparent
+          />
+        </mesh>
+        {children}
+      </group>
     </group>
   );
+}
+
+/** Rebinds a decoded frame and invalidates Three's WebGPU bind-group cache. */
+export function replaceImageMaterialTexture(
+  material: THREE.MeshBasicMaterial,
+  texture: THREE.Texture,
+): void {
+  if (material.map === texture) {
+    return;
+  }
+
+  material.map = texture;
+  material.needsUpdate = true;
 }
 
 export function imageDisplayRect(

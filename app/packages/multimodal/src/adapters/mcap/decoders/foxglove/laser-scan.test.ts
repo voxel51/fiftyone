@@ -47,6 +47,24 @@ describe("foxgloveLaserScanDecoder", () => {
       [Math.SQRT1_2, Math.SQRT1_2, 0],
       [0, 1, 0],
     ]);
+    const renderPayload = cloud.renderPayload;
+    if (!renderPayload) {
+      throw new Error("Expected point cloud render payload");
+    }
+    expect(renderPayload).toMatchObject({
+      capacity: 1_024,
+      finitePointCount: 3,
+      sampledPointCount: 3,
+    });
+    expectPositionsCloseTo(renderPayload.positions.subarray(0, 9), [
+      [1, 0, 0],
+      [Math.SQRT1_2, Math.SQRT1_2, 0],
+      [0, 1, 0],
+    ]);
+    expect(renderPayload.bounds?.min[0]).toBeCloseTo(0);
+    expect(renderPayload.bounds?.min[1]).toBeCloseTo(0);
+    expect(renderPayload.bounds?.max[0]).toBeCloseTo(1);
+    expect(renderPayload.bounds?.max[1]).toBeCloseTo(1);
     expect(attributes).toMatchObject({
       endAngle: Math.PI / 2,
       frameId: "SCAN_TEST",
@@ -55,6 +73,12 @@ describe("foxgloveLaserScanDecoder", () => {
       startAngle: 0,
     });
     expect(resourceHints?.transferables).toContain(cloud.positions.buffer);
+    expect(resourceHints?.transferables).toEqual(
+      expect.arrayContaining([
+        renderPayload.positions.buffer,
+        renderPayload.sourceIndices.buffer,
+      ]),
+    );
     expect(timing?.sourceTimestamps?.messageTime).toBe(12_000_000_034n);
     expect(timing?.timeRange?.startNs).toBe(12_000_000_034n);
   });
