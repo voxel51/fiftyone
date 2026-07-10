@@ -538,6 +538,9 @@ const makeTemporalDetectionOps = (actions: SurfaceActions) => {
       ...(label !== undefined ? { label } : {}),
     });
 
+    // Select the fresh TD so it becomes the editing target
+    actions.setActive([ref]);
+
     return ref.instanceId;
   };
 
