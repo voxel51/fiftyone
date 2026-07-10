@@ -58,13 +58,13 @@ describe("buildMcapTopicInventoryRows", () => {
 
     expect(rows.map((row) => row.topic)).toEqual([
       "/camera/front",
+      "/imu",
       "/lidar/top",
       "/markers",
       "/plan",
       "/odom",
       "/tf_static",
       "/diagnostics",
-      "/imu",
       "/binary",
       "/broken",
       "/vendor/raw",
@@ -91,7 +91,7 @@ describe("buildMcapTopicInventoryRows", () => {
       capabilities: [MCAP_TOPIC_CAPABILITY.LOGS, MCAP_TOPIC_CAPABILITY.RAW],
     });
     expect(row(rows, "/imu")).toMatchObject({
-      category: MCAP_TOPIC_CATEGORY.TELEMETRY,
+      category: MCAP_TOPIC_CATEGORY.SENSORS,
       supportStatus: "inspectable",
       capabilities: [MCAP_TOPIC_CAPABILITY.PLOT, MCAP_TOPIC_CAPABILITY.RAW],
     });
@@ -110,6 +110,18 @@ describe("buildMcapTopicInventoryRows", () => {
     });
   });
 
+  it("classifies topics containing imu as sensors", () => {
+    const topics = [
+      topic("/vehicle/IMU/data", "vendor_msgs/Widget", "cdr", "ros2msg", "3"),
+    ];
+
+    const rows = buildMcapTopicInventoryRows({ sceneSources: [], topics });
+
+    expect(row(rows, "/vehicle/IMU/data").category).toBe(
+      MCAP_TOPIC_CATEGORY.SENSORS,
+    );
+  });
+
   it("searches topic names, schema names, categories, support, and capabilities", () => {
     const rows = buildMcapTopicInventoryRows({
       sceneSources: [],
@@ -120,7 +132,7 @@ describe("buildMcapTopicInventoryRows", () => {
     });
 
     expect(
-      filterMcapTopicInventoryRows(rows, "telemetry").map(topicName),
+      filterMcapTopicInventoryRows(rows, "sensors").map(topicName),
     ).toEqual(["/imu"]);
     expect(filterMcapTopicInventoryRows(rows, "Widget").map(topicName)).toEqual(
       ["/vendor/raw"],
