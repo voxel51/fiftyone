@@ -1,7 +1,7 @@
 import type {
   PointCloudRenderPayload,
   PointCloudRenderScalarField,
-} from "../../../decoders";
+} from "../../../../decoders";
 import {
   createPointCloudColormapLookup,
   DEFAULT_POINT_CLOUD_COLORMAP,
@@ -9,10 +9,10 @@ import {
   writeColormapLookupColor,
   type PointCloudColormap,
   type PointCloudColormapLookup,
-} from "./colormaps";
-import type { PointCloudColorOptions } from "./point-cloud-colors";
-import type { PointCloudColorRamp } from "./types";
-import { clamp01, hexToRgbUnit, normalizeIdentifierName } from "./utils";
+} from "../colormaps";
+import type { PointCloudColorOptions } from "../point-cloud-colors";
+import type { PointCloudColorRamp } from "../types";
+import { clamp01, hexToRgbUnit, normalizeIdentifierName } from "../utils";
 
 const HEIGHT_RANGE_EPSILON = 0.000001;
 const HEIGHT_FIELD_LABEL = "height";
@@ -23,8 +23,10 @@ const CANONICAL_SCALAR_COLOR_FIELDS = [
   "reflectance",
   "rcs",
 ] as const;
+/** Default normalized RGB used when a point cloud has no color channel. */
 export const NEUTRAL_GPU_POINT_COLOR = [0.72, 0.76, 0.82] as const;
 
+/** Decoder-backed color source selected for GPU point rendering. */
 export type GpuPointCloudColorSource =
   | {
       readonly colors: Float32Array;
@@ -46,6 +48,7 @@ export type GpuPointCloudColorSource =
       readonly kind: "uniform";
     };
 
+/** Fully resolved point-cloud color policy consumed by GPU renderers. */
 export interface ResolvedGpuPointCloudColor {
   readonly colorRamp: PointCloudColorRamp | null;
   readonly colormap: PointCloudColormap;
@@ -93,6 +96,9 @@ export function gpuPointCloudColorAtSample(
   payload: PointCloudRenderPayload,
   sampleIndex: number,
 ): readonly [number, number, number] | null {
+  // Hover readback names exactly one canonical sample. Re-evaluate the same
+  // color policy on that one value instead of reading rendered pixels or
+  // expanding the full cloud's colors on the CPU.
   if (
     !Number.isInteger(sampleIndex) ||
     sampleIndex < 0 ||
@@ -259,6 +265,9 @@ function normalizeValue(value: number, min: number, max: number): number {
 }
 
 const colormapLookups = new Map<string, PointCloudColormapLookup>();
+
+// CPU hover reconstruction uses the same normalized LUT data as the GPU
+// texture. Cache by semantic colormap key so custom ramps retain parity too.
 
 function colormapLookup(
   colormap: PointCloudColormap,

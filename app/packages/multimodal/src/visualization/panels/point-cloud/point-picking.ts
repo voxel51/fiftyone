@@ -1,5 +1,12 @@
 import * as THREE from "three";
 
+import { sourcePointIndexForRenderedIndex } from "./point-cloud-colors";
+import {
+  gpuPointCloudDrawCount,
+  gpuPointCloudSampleIndex,
+} from "./gpu/gpu-point-cloud-sampling";
+import type { PointCloudPanelLayer } from "./types";
+
 /**
  * Pure math for dwell-time point picking. Points carry no r3f handlers on
  * purpose — hover-driven raycasts against 100k+ vertices on every pointer
@@ -31,6 +38,43 @@ export interface ResolvedPointPick {
   readonly layerId: string;
   readonly renderedIndex: number;
   readonly worldPosition: readonly [number, number, number];
+}
+
+/**
+ * Maps a rendered vertex to the full decoded arrays. Decoder-prepared frames
+ * carry the exact mapping; legacy frames retain the sampling-walk fallback.
+ */
+export function sourcePointIndexForLayerRenderedIndex(
+  layer: PointCloudPanelLayer,
+  maxRenderedPoints: number,
+  renderedIndex: number,
+): number | null {
+  const payload = layer.frame.renderPayload;
+  if (!payload) {
+    return sourcePointIndexForRenderedIndex(
+      layer.frame.positions,
+      maxRenderedPoints,
+      renderedIndex,
+    );
+  }
+  const renderedPointCount = gpuPointCloudDrawCount(
+    payload.sampledPointCount,
+    maxRenderedPoints,
+  );
+  const sampleIndex = gpuPointCloudSampleIndex(
+    payload.sampledPointCount,
+    renderedPointCount,
+    renderedIndex,
+  );
+  if (sampleIndex === null || sampleIndex >= payload.sourceIndices.length) {
+    return null;
+  }
+  const sourceIndex = payload.sourceIndices[sampleIndex];
+  const decodedPointCount = Math.min(
+    layer.frame.pointCount,
+    Math.floor(layer.frame.positions.length / 3),
+  );
+  return sourceIndex < decodedPointCount ? sourceIndex : null;
 }
 
 /**
@@ -123,6 +167,28 @@ export function isPointPickBlocked(object: THREE.Object3D | null): boolean {
     current = current.parent;
   }
   return false;
+}
+
+/**
+ * Finds the outermost tagged roots for the blocker-only dwell raycast.
+ * Descendants of a tagged root are intentionally not added again because
+ * `Raycaster.intersectObjects(..., true)` will already visit them.
+ */
+export function collectPointPickBlockingRoots(
+  scene: THREE.Object3D,
+): THREE.Object3D[] {
+  const roots: THREE.Object3D[] = [];
+  const visit = (object: THREE.Object3D) => {
+    if (object.userData?.[POINT_PICK_BLOCKING_KEY]) {
+      roots.push(object);
+      return;
+    }
+    for (const child of object.children) {
+      visit(child);
+    }
+  };
+  visit(scene);
+  return roots;
 }
 
 /** Layer (topic) id of the pickable points object owning `object`, if any. */

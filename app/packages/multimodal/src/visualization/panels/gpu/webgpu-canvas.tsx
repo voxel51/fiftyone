@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three/webgpu";
 
-import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
+import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../style-tokens";
 import {
   registerWebGpuRenderer,
   type WebGpuRendererRegistration,
@@ -171,6 +171,9 @@ export function WebGpuCanvas({
       if (!mountedRef.current || rendererRef.current !== renderer) {
         return;
       }
+      // A lost device makes this renderer permanently unusable. Clear the
+      // identity before surfacing the error so later effects cannot prepare or
+      // invalidate it as though it were still the active backend.
       rendererRef.current = null;
       rendererReadyRef.current = false;
       releaseRendererRegistration(registrationsRef.current, renderer);

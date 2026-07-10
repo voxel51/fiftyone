@@ -181,9 +181,10 @@ export interface PointCloudHoveredPointMarker {
 }
 
 /**
- * One point cloud rendered into the shared panel scene. `id` is the
- * stable identity used for React reconciliation and per-layer point
- * counting — use the source's topic/stream id.
+ * One point cloud rendered into the shared panel scene. `id` is the stable
+ * source identity used for React reconciliation and per-layer point counting;
+ * `contentTimeNs` identifies the current source message so GPU resources can
+ * survive playback re-delivering it in a fresh wrapper object.
  */
 export interface PointCloudPanelLayer {
   /**
@@ -191,6 +192,7 @@ export interface PointCloudPanelLayer {
    * `colorBy` prop for this cloud only.
    */
   readonly colorSettings?: PointCloudColorSettings;
+  readonly contentTimeNs?: bigint;
   readonly frame: PointCloudVisualization;
   readonly frameTransform?: PointCloudFrameTransform;
   readonly id: string;

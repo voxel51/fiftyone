@@ -1,36 +1,54 @@
 import { useThree } from "@react-three/fiber";
-import { useEffect, useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
 import * as THREE from "three";
 
+import type { PointCloudRenderPayload } from "../../../decoders";
 import {
   POINT_HOVER_DWELL_MS,
   POINT_HOVER_MOVE_TOLERANCE_PX,
 } from "../hover-inspect";
 import { attachPointerDwell } from "../pointer-dwell";
 import {
-  POINT_PICK_LAYER_ID_KEY,
+  createGpuPointCloud3dPickerController,
+  GpuPointCloud3dPickerRegistryContext,
+} from "./gpu/gpu-point-cloud-3d-picker";
+import {
   POINT_PICK_RADIUS_PX,
-  pointPickWorldThreshold,
-  resolvePointPick,
+  collectPointPickBlockingRoots,
+  sourcePointIndexForLayerRenderedIndex,
 } from "./point-picking";
-import { sourcePointIndexForRenderedIndex } from "./point-cloud-colors";
+import {
+  gpuPointCloudColorAtSample,
+  type ResolvedGpuPointCloudColor,
+} from "./gpu/gpu-point-cloud-color";
 import { useScenePicking } from "./scene-interactivity";
 import type { PointCloudPanelLayer } from "./types";
 
+/** Decoder metadata used to resolve one GPU-named sample in O(1). */
+export interface GpuPointCloudPickData {
+  readonly color: ResolvedGpuPointCloudColor;
+  readonly payload: PointCloudRenderPayload;
+  readonly renderedPointCount: number;
+  readonly resourceKey: string;
+}
+
+const EMPTY_GPU_PICK_DATA: ReadonlyMap<string, GpuPointCloudPickData> =
+  new Map();
+
 /**
- * Scene half of point-level inspect. Points deliberately carry no r3f
- * pointer handlers (that would raycast the whole cloud on every pointer
- * move), so this layer watches for the pointer resting over the canvas
- * and raycasts once per dwell. Precedence and screen-radius filtering
- * live in `point-picking.ts`; index mapping back to the decoded arrays
- * replays the render-data sampling walk
- * (`sourcePointIndexForRenderedIndex`).
+ * Dwell-time point inspection. A 1x1 integer WebGPU pass selects the nearest
+ * point across every registered cloud, sharing the visible flat-storage
+ * buffers and exact LOD index expression. The only CPU raycast is against
+ * tagged annotation/frustum roots so their interaction precedence remains
+ * unchanged without scanning point vertices.
  */
 export function PointCloudPickingLayer({
+  gpuPickData = EMPTY_GPU_PICK_DATA,
   layers,
   maxRenderedPoints,
   pointSize,
 }: {
+  readonly gpuPickData?: ReadonlyMap<string, GpuPointCloudPickData>;
   readonly layers: readonly PointCloudPanelLayer[];
   readonly maxRenderedPoints: number;
   readonly pointSize: number;
@@ -39,186 +57,207 @@ export function PointCloudPickingLayer({
   const gl = useThree((state) => state.gl);
   const raycaster = useThree((state) => state.raycaster);
   const scene = useThree((state) => state.scene);
+  const registry = useContext(GpuPointCloud3dPickerRegistryContext);
   const pickingEnabled = useScenePicking();
   const active = pickingEnabled && layers.some((layer) => layer.onHoverPoint);
 
-  // Latest-callback refs so the pointer listeners bind once per active
-  // session instead of rebinding per render (MeasurementLayer pattern).
+  // Pointer listeners and GPU state are stable for the active session; only
+  // the current callbacks and frame metadata flow through these refs.
   const layersRef = useRef(layers);
   layersRef.current = layers;
   const pointSizeRef = useRef(pointSize);
   pointSizeRef.current = pointSize;
   const maxRenderedPointsRef = useRef(maxRenderedPoints);
   maxRenderedPointsRef.current = maxRenderedPoints;
+  const gpuPickDataRef = useRef(gpuPickData);
+  gpuPickDataRef.current = gpuPickData;
 
   useEffect(() => {
     const element = gl?.domElement as HTMLCanvasElement | undefined;
-    if (!active || !element || !camera || !raycaster || !scene) {
+    if (!active || !element || !camera || !raycaster || !registry || !scene) {
       return undefined;
     }
+
+    // The controller owns GPU objects; React owns only its lifetime. Rendered
+    // point layers register their live storage attributes through context so
+    // this interaction layer never reaches into sibling component refs.
+    const controller = createGpuPointCloud3dPickerController(gl);
+    const syncScene = () => controller.setScene(registry.snapshot());
+    const unsubscribeRegistry = registry.subscribe(syncScene);
+    syncScene();
+
     let hoveredLayerId: string | null = null;
     let clearHoveredPoint: (() => void) | null = null;
+    let requestGeneration = 0;
 
     const clearHover = () => {
+      // Invalidate both promise layers: the local token protects callbacks in
+      // this effect, while the controller token protects its readback decode.
+      requestGeneration += 1;
+      controller.invalidate();
       const clear = clearHoveredPoint;
       hoveredLayerId = null;
       clearHoveredPoint = null;
       clear?.();
     };
 
-    const raycastAt = (clientX: number, clientY: number) => {
+    const pickAt = (clientX: number, clientY: number) => {
       const rect = element.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) {
         clearHover();
         return;
       }
 
-      // Casts, not types: fiber's bundled three types are out of sync
-      // with the app's pinned three version — see MeasurementLayer.
+      // Fiber and the Three runtime have distinct declaration
+      // identities even though these are the same runtime objects.
       const threeCamera = camera as unknown as THREE.Camera;
       const threeRaycaster = raycaster as unknown as THREE.Raycaster;
       const threeScene = scene as unknown as THREE.Scene;
+      const pointerX = clientX - rect.left;
+      const pointerY = clientY - rect.top;
+      const pointerNdc = new THREE.Vector2(
+        (pointerX / rect.width) * 2 - 1,
+        -((pointerY / rect.height) * 2 - 1),
+      );
+      threeRaycaster.setFromCamera(pointerNdc, threeCamera);
 
-      const pointsObjects = collectPickablePoints(threeScene);
-      if (pointsObjects.length === 0) {
+      // Keep CPU raycasting only for sparse semantic objects that must win over
+      // points (annotations/frustums). Raycasting millions of cloud vertices
+      // is the O(N) path this GPU picker replaces.
+      const blockers = collectPointPickBlockingRoots(threeScene);
+      if (
+        blockers.length > 0 &&
+        threeRaycaster.intersectObjects(blockers, true).length > 0
+      ) {
         clearHover();
         return;
       }
 
       const pickRadiusPx = Math.max(POINT_PICK_RADIUS_PX, pointSizeRef.current);
-      const threshold = worldThresholdForObjects({
-        camera: threeCamera,
-        pickRadiusPx,
-        pointsObjects,
-        viewportHeightPx: rect.height,
-      });
-      if (threshold <= 0) {
-        clearHover();
-        return;
-      }
+      const generation = ++requestGeneration;
+      void controller
+        .pick({
+          camera: threeCamera,
+          far: threeRaycaster.far,
+          near: threeRaycaster.near,
+          pointerNdc,
+          radiusPx: pickRadiusPx,
+          rayDirection: threeRaycaster.ray.direction,
+          rayOrigin: threeRaycaster.ray.origin,
+          raycasterLayers: threeRaycaster.layers,
+          viewportHeightPx: rect.height,
+          viewportWidthPx: rect.width,
+        })
+        .then((pick) => {
+          if (generation !== requestGeneration) {
+            return;
+          }
+          if (!pick) {
+            clearHover();
+            return;
+          }
 
-      const pointerX = clientX - rect.left;
-      const pointerY = clientY - rect.top;
-      const ndc = new THREE.Vector2(
-        (pointerX / rect.width) * 2 - 1,
-        -((pointerY / rect.height) * 2 - 1),
-      );
-      threeRaycaster.setFromCamera(ndc, threeCamera);
+          const layer = layersRef.current.find(
+            (candidate) => candidate.id === pick.layerId,
+          );
+          if (!layer?.onHoverPoint) {
+            clearHover();
+            return;
+          }
 
-      // The raycaster is shared with r3f's own event system — restore
-      // its Points threshold after this one-off scan.
-      const pointsParams = threeRaycaster.params.Points ?? { threshold: 1 };
-      threeRaycaster.params.Points = pointsParams;
-      const previousThreshold = pointsParams.threshold;
-      pointsParams.threshold = threshold;
-      let intersections: THREE.Intersection[];
-      try {
-        intersections = threeRaycaster.intersectObjects(
-          threeScene.children,
-          true,
-        );
-      } finally {
-        pointsParams.threshold = previousThreshold;
-      }
+          // A GPU hit identifies a canonical sampled point. Convert that into
+          // the decoded frame's source index before publishing the existing
+          // hover API; legacy layers retain their older rendered-index map.
+          const gpu = gpuPickDataRef.current.get(pick.layerId);
+          let pointIndex: number | null;
+          let color: readonly [number, number, number] | null;
+          if (gpu) {
+            // Playback may advance between command submission and mapAsync.
+            // Never interpret an old sample index against the new frame.
+            if (gpu.resourceKey !== pick.resourceKey) {
+              clearHover();
+              return;
+            }
+            pointIndex = sourcePointIndexForGpuSample(
+              layer,
+              gpu.payload,
+              pick.sampleIndex,
+            );
+            color = gpuPointCloudColorAtSample(
+              gpu.color,
+              gpu.payload,
+              pick.sampleIndex,
+            );
+          } else {
+            pointIndex = sourcePointIndexForLayerRenderedIndex(
+              layer,
+              maxRenderedPointsRef.current,
+              pick.sampleIndex,
+            );
+            color = pick.color;
+          }
+          if (pointIndex === null) {
+            clearHover();
+            return;
+          }
 
-      const projected = new THREE.Vector3();
-      const pick = resolvePointPick(
-        intersections,
-        (worldPoint) => {
-          projected.copy(worldPoint).project(threeCamera);
-          const screenX = ((projected.x + 1) / 2) * rect.width;
-          const screenY = ((1 - projected.y) / 2) * rect.height;
-          return Math.hypot(screenX - pointerX, screenY - pointerY);
-        },
-        pickRadiusPx,
-      );
-      if (!pick) {
-        clearHover();
-        return;
-      }
-
-      const layer = layersRef.current.find(
-        (candidate) => candidate.id === pick.layerId,
-      );
-      if (!layer?.onHoverPoint) {
-        clearHover();
-        return;
-      }
-      const pointIndex = sourcePointIndexForRenderedIndex(
-        layer.frame.positions,
-        maxRenderedPointsRef.current,
-        pick.renderedIndex,
-      );
-      if (pointIndex === null) {
-        clearHover();
-        return;
-      }
-      if (hoveredLayerId !== null && hoveredLayerId !== pick.layerId) {
-        clearHover();
-      }
-      hoveredLayerId = pick.layerId;
-      clearHoveredPoint = () => layer.onHoverPoint?.(null);
-      layer.onHoverPoint({
-        color: pick.color,
-        pointIndex,
-        worldPosition: pick.worldPosition,
-      });
+          if (hoveredLayerId !== null && hoveredLayerId !== pick.layerId) {
+            const clear = clearHoveredPoint;
+            clearHoveredPoint = null;
+            clear?.();
+          }
+          hoveredLayerId = pick.layerId;
+          clearHoveredPoint = () => layer.onHoverPoint?.(null);
+          layer.onHoverPoint({
+            color,
+            pointIndex,
+            worldPosition: pick.worldPosition,
+          });
+        })
+        .catch(() => {
+          if (generation === requestGeneration) {
+            clearHover();
+          }
+        });
     };
 
-    return attachPointerDwell(element, {
+    const detachDwell = attachPointerDwell(element, {
       dwellMs: POINT_HOVER_DWELL_MS,
       moveTolerancePx: POINT_HOVER_MOVE_TOLERANCE_PX,
       onCancel: clearHover,
-      onDwell: raycastAt,
+      onDwell: pickAt,
     });
-  }, [active, camera, gl, raycaster, scene]);
+
+    return () => {
+      detachDwell();
+      unsubscribeRegistry();
+      clearHover();
+      controller.dispose();
+    };
+  }, [active, camera, gl, raycaster, registry, scene]);
 
   return null;
 }
 
-function collectPickablePoints(scene: THREE.Scene): THREE.Points[] {
-  const pointsObjects: THREE.Points[] = [];
-  scene.traverse((object) => {
-    if (
-      (object as THREE.Points).isPoints &&
-      typeof object.userData?.[POINT_PICK_LAYER_ID_KEY] === "string"
-    ) {
-      pointsObjects.push(object as THREE.Points);
-    }
-  });
-  return pointsObjects;
-}
-
-/**
- * One generous world threshold covering the pick radius at every pickable
- * cloud's distance; the screen-space filter tightens the final answer.
- */
-function worldThresholdForObjects({
-  camera,
-  pickRadiusPx,
-  pointsObjects,
-  viewportHeightPx,
-}: {
-  readonly camera: THREE.Camera;
-  readonly pickRadiusPx: number;
-  readonly pointsObjects: readonly THREE.Points[];
-  readonly viewportHeightPx: number;
-}): number {
-  const center = new THREE.Vector3();
-  let threshold = 0;
-  for (const object of pointsObjects) {
-    const sphere = object.geometry?.boundingSphere;
-    if (!sphere) continue;
-    center.copy(sphere.center).applyMatrix4(object.matrixWorld);
-    threshold = Math.max(
-      threshold,
-      pointPickWorldThreshold({
-        camera,
-        pickRadiusPx,
-        referenceDistance: camera.position.distanceTo(center),
-        viewportHeightPx,
-      }),
-    );
+function sourcePointIndexForGpuSample(
+  layer: PointCloudPanelLayer,
+  payload: PointCloudRenderPayload,
+  sampleIndex: number,
+): number | null {
+  if (
+    !Number.isInteger(sampleIndex) ||
+    sampleIndex < 0 ||
+    sampleIndex >= payload.sampledPointCount ||
+    sampleIndex >= payload.sourceIndices.length
+  ) {
+    return null;
   }
-  return threshold;
+  // sourceIndices is the worker-built identity bridge from the bounded GPU
+  // sample back to the full decoded channel arrays used by tooltip code.
+  const sourceIndex = payload.sourceIndices[sampleIndex];
+  const decodedPointCount = Math.min(
+    layer.frame.pointCount,
+    Math.floor(layer.frame.positions.length / 3),
+  );
+  return sourceIndex < decodedPointCount ? sourceIndex : null;
 }

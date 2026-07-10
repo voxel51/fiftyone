@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { PointCloudVisualization } from "../../decoders";
+import type { PointCloudVisualization } from "../../../decoders";
 
 // The snapshot module reuses PointCloudSceneLayer's pure geometry builders,
 // whose module (like scene-text-sprite in the fit-math chain) also exports
@@ -16,12 +16,12 @@ import {
   PERSPECTIVE_POINT_CAMERA,
   cameraPoseForBounds,
   sceneBoundsForLayers,
-} from "./point-cloud/camera-fit-bounds";
+} from "../point-cloud/camera-fit-bounds";
 import {
   DEFAULT_MAX_RENDERED_POINTS,
   buildPointCloudRenderData,
-} from "./point-cloud/point-cloud-colors";
-import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
+} from "../point-cloud/point-cloud-colors";
+import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../style-tokens";
 import {
   resetWebGpuDeviceRegistryForTests,
   webGpuDeviceStats,

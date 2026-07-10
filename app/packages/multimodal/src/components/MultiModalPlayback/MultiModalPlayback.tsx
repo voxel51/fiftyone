@@ -25,7 +25,7 @@ import {
   SceneInventoryProvider,
   type SceneSource,
 } from "../../scene-inventory";
-import { WebGpuViewStage } from "../../visualization/panels/webgpu-view-stage";
+import { WebGpuViewStage } from "../../visualization/panels/gpu/webgpu-view-stage";
 import styles from "./MultiModalPlayback.module.css";
 
 const EMPTY_SOURCES: readonly SceneSource[] = [];

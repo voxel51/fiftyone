@@ -79,15 +79,17 @@ const McapTopicsSettings: React.FC<{
       ) : (
         <>
           {showSearch ? (
-            <Input
-              aria-label="Search topics"
-              className={styles.topicSearchInput}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search topics"
-              size={Size.Sm}
-              type={InputType.Search}
-              value={search}
-            />
+            <div className={styles.stickyTopicSearch}>
+              <Input
+                aria-label="Search topics"
+                className={styles.topicSearchInput}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search topics"
+                size={Size.Sm}
+                type={InputType.Search}
+                value={search}
+              />
+            </div>
           ) : null}
           <div className={styles.topicGroups}>
             {groups.map((group) => (

@@ -6,7 +6,7 @@ import {
   type ResolvedGpuPointCloudColor,
 } from "./gpu-point-cloud-color";
 import { getGpuPointCloudColormapTexture } from "./gpu-point-cloud-colormap-texture";
-import { pointCloudColormapKey } from "./colormaps";
+import { pointCloudColormapKey } from "../colormaps";
 
 const RANGE_EPSILON = 1e-6;
 const MAX_FINITE_FLOAT32 = 3.4e38;
@@ -49,6 +49,7 @@ const colorTsl = TSL as unknown as {
   vec3(...values: readonly (GpuColorNode | number)[]): GpuColorNode;
 };
 
+/** GPU attributes or caller-provided nodes available to point-color shaders. */
 export interface GpuPointCloudColorNodeAttributes {
   readonly color: THREE.InstancedBufferAttribute | null;
   /** Caller-indexed RGB node; overrides the implicit instance attribute. */
@@ -59,6 +60,7 @@ export interface GpuPointCloudColorNodeAttributes {
   readonly scalarNodes?: ReadonlyMap<string, TSL.Node>;
 }
 
+/** Mutable uniforms shared by a GPU point-color shader graph. */
 export interface GpuPointCloudColorUniforms {
   readonly color: GpuColorUniformNode<THREE.Vector3>;
   readonly minValue: GpuColorUniformNode<number>;
@@ -69,12 +71,15 @@ export interface GpuPointCloudColorUniforms {
 export function gpuPointCloudColorNodeKey(
   color: ResolvedGpuPointCloudColor,
 ): string {
+  // Only choices that change storage access or LUT sampling belong in this
+  // key. Per-frame ranges and uniform values update existing uniforms.
   const source = color.source;
   if (source.kind === "uniform" || source.kind === "rgb") return source.kind;
   const field = source.kind === "height" ? "height" : source.field.name;
   return `${source.kind}:${field}:${pointCloudColormapKey(color.colormap)}`;
 }
 
+/** Creates and initializes uniforms for a resolved point-cloud color policy. */
 export function createGpuPointCloudColorUniforms(
   color: ResolvedGpuPointCloudColor,
 ): GpuPointCloudColorUniforms {
@@ -87,6 +92,7 @@ export function createGpuPointCloudColorUniforms(
   return uniforms;
 }
 
+/** Updates frame-varying values without rebuilding the shader graph. */
 export function updateGpuPointCloudColorUniforms(
   uniforms: GpuPointCloudColorUniforms,
   color: ResolvedGpuPointCloudColor,
@@ -143,6 +149,8 @@ export function createGpuPointCloudColorNode(
     0,
     1,
   );
+  // Sample texel centers (i + 0.5) so the linear filter interpolates adjacent
+  // LUT entries instead of blending against texture-edge behavior.
   const sampled = colorTsl.texture(
     getGpuPointCloudColormapTexture(color.colormap),
     colorTsl.vec2(
@@ -150,6 +158,9 @@ export function createGpuPointCloudColorNode(
       0.5,
     ),
   ).rgb;
+  // WGSL has no portable Number.isFinite node in this pinned TSL surface.
+  // NaN fails value == value; magnitudes beyond float32 finite range catch
+  // infinities before they can produce an undefined texture coordinate.
   const finite = colorTsl.and(
     colorTsl.equal(value, value),
     colorTsl.lessThanEqual(colorTsl.abs(value), MAX_FINITE_FLOAT32),

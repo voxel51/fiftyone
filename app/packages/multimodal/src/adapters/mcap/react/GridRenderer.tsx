@@ -13,8 +13,8 @@ import {
   BitmapImageFrameView,
 } from "../../../visualization/panels/bitmap-image-view";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
-import { acquireGridLiveLease } from "../../../visualization/panels/webgpu-live-lease";
-import { renderPointCloudSnapshot } from "../../../visualization/panels/webgpu-snapshot-renderer";
+import { acquireGridLiveLease } from "../../../visualization/panels/gpu/webgpu-live-lease";
+import { renderPointCloudSnapshot } from "../../../visualization/panels/gpu/webgpu-snapshot-renderer";
 import type { McapGridPreviewFrame } from "../grid-preview";
 import classes from "./GridRenderer.module.css";
 import { McapLoadingAscii } from "./McapLoadingAscii";

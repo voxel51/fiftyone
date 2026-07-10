@@ -1,12 +1,13 @@
 import * as THREE from "three";
 
-import type { PointCloudRenderPayload } from "../../decoders";
+import type { PointCloudRenderPayload } from "../../../decoders";
 
 const POINT_COMPONENT_COUNT = 3;
 
 /** Typical modal: lidar + five radars, with room for duplicated topics. */
 export const GPU_PROJECTION_RESOURCE_RETENTION_CAP = 12;
 
+/** Identity and decoded payload used to acquire a reusable projection resource. */
 export interface GpuPointCloudProjectionResourceInput {
   /** Immutable frame identity. Re-delivery of the same content is ignored. */
   readonly contentKey: string;
@@ -15,6 +16,7 @@ export interface GpuPointCloudProjectionResourceInput {
   readonly streamKey: string;
 }
 
+/** Grow-only GPU attributes shared by every view of one point-cloud topic. */
 export interface GpuPointCloudProjectionResource {
   colorAttribute: THREE.InstancedBufferAttribute | null;
   /** Immutable frame identity currently resident in the reusable buffers. */
@@ -44,6 +46,10 @@ interface ProjectionResourceEntry {
 
 const entries = new Map<string, ProjectionResourceEntry>();
 const retiredResources = new Set<InternalProjectionResource>();
+
+// This registry belongs to the shared image renderer's module lifetime. One
+// entry is reusable frame storage for (recording, topic); camera views hold
+// leases on the same entry and own only their matrices/material uniforms.
 let evictionScheduled = false;
 let totalFrameUpdates = 0;
 let totalResourceAllocations = 0;
@@ -70,6 +76,9 @@ export function getGpuPointCloudProjectionResource({
   touchEntry(streamKey, entry);
   let resource = entry.resource;
   if (payload.capacity > resource.capacity) {
+    // Buffer growth changes storage identity captured by TSL materials. Publish
+    // the replacement immediately, but keep the old attributes alive for any
+    // camera scene that still references its committed resource.
     resource.retired = true;
     retiredResources.add(resource);
     resource = createResource(streamKey, contentKey, payload);
@@ -111,6 +120,7 @@ export function retainGpuPointCloudProjectionResource(
   };
 }
 
+/** Returns allocation and retention counters for projection resources. */
 export function gpuPointCloudProjectionResourceStats(): {
   readonly activeCount: number;
   readonly entryCount: number;
@@ -154,6 +164,7 @@ export function releaseGpuPointCloudProjectionResourcesForSource(
   scheduleRetiredDisposal();
 }
 
+/** Clears projection resources and counters between tests. */
 export function resetGpuPointCloudProjectionResourcesForTests(): void {
   releaseGpuPointCloudProjectionResources();
   totalFrameUpdates = 0;
@@ -182,6 +193,8 @@ function createResource(
     payload.sourceIndices,
     1,
   );
+  // Geometry is the disposal owner for node/storage attributes in Three's
+  // WebGPU backend. The quad itself is merely the instanced point primitive.
   const geometry = new THREE.PlaneGeometry(1, 1);
   geometry.setAttribute("projectionPosition", positionAttribute);
   if (colorAttribute) geometry.setAttribute("projectionColor", colorAttribute);
@@ -212,6 +225,9 @@ function updateResource(
   contentKey: string,
   payload: PointCloudRenderPayload,
 ): void {
+  // Swap transferred views rather than copying them. Because every camera
+  // shares this BufferAttribute object, needsUpdate produces one upload for
+  // the new frame instead of one CPU projection/upload per camera.
   replaceAttributeArray(resource.positionAttribute, payload.positions);
   replaceAttributeArray(resource.sourceIndexAttribute, payload.sourceIndices);
   resource.sourceIndices = payload.sourceIndices;
@@ -234,6 +250,9 @@ function updateResource(
     resource.colorAttribute = null;
   }
 
+  // Scalar attribute slot numbers are derived from Map iteration order. Clear
+  // every old slot before reattaching so removed/reordered fields cannot leave
+  // a stale geometry binding at projectionScalarN.
   const previousScalarCount = resource.scalarAttributes.size;
   const currentScalarNames = new Set(
     payload.scalarFields.map((field) => field.name),
@@ -309,6 +328,8 @@ function scheduleEviction(): void {
     return;
   }
   evictionScheduled = true;
+  // Defer LRU eviction until React layout effects have had a chance to retain
+  // resources created during the current commit.
   queueMicrotask(() => {
     evictionScheduled = false;
     while (entries.size > GPU_PROJECTION_RESOURCE_RETENTION_CAP) {
@@ -326,6 +347,8 @@ function scheduleEviction(): void {
 }
 
 function scheduleRetiredDisposal(): void {
+  // Retirement and final lease release can occur in either order. A microtask
+  // coalesces both and disposes only resources no committed scene still pins.
   queueMicrotask(() => {
     for (const resource of retiredResources) {
       if (resource.retainCount !== 0) continue;

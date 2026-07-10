@@ -14,7 +14,7 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import { useStore } from "jotai";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type {
   CameraCalibrationVisualization,
   ImageVisualization,
@@ -28,6 +28,7 @@ import {
 import { ImagePanel } from "../../../visualization/panels/image";
 import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
 import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
+import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-picker";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import {
   MAX_MCAP_POINT_CLOUD_POINT_SIZE,
@@ -46,6 +47,8 @@ import {
 } from "./mcap-tile-source-bindings";
 import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
 import McapImageProjectionOverlay from "./McapImageProjectionOverlay";
+import McapImageProjectionScene from "./McapImageProjectionScene";
+import { useMcapHoverEcho } from "./mcap-hover-echo";
 import McapSidebarGroup from "./McapSidebarGroup";
 import { rankDefaultImageSources } from "./playback-layout";
 import settingsStyles from "./McapTile.settings.module.css";
@@ -56,14 +59,19 @@ import {
   useMcapTopicPlaybackFrame,
   useMcapTopicStream,
 } from "./use-mcap-topic-stream";
+import { useMcapImageProjectionLayers } from "./use-mcap-image-projection-layers";
 
 const IMAGE_FIT = "contain";
+const EMPTY_PROJECTION_TOPICS: readonly string[] = [];
 
 const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const [imageDims, setImageDims] = useState<{
     width: number;
     height: number;
   } | null>(null);
+  const projectionPickerRef =
+    useRef<GpuPointCloudProjectionPickerHandle | null>(null);
+  const sharedHover = useMcapHoverEcho();
   const images = useSceneSourcesByType(MCAP_SOURCE_TYPE.IMAGE);
   const annotationSources = useSceneSourcesByType(
     MCAP_SOURCE_TYPE.IMAGE_ANNOTATION,
@@ -213,6 +221,10 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     selectedProjectionTopics.length > 0
       ? { calibration, imageDims: effectiveImageDims }
       : null;
+  const projectionLayers = useMcapImageProjectionLayers(
+    activeProjection ? selectedProjectionTopics : EMPTY_PROJECTION_TOPICS,
+    activeProjection?.calibration.coordinateFrameId,
+  );
   const imagePanZoom = useImagePanZoom({
     fit: IMAGE_FIT,
     // The resting hand cursor would occlude the very dot a dwell hover
@@ -379,6 +391,22 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               )
             }
             onResetView={imagePanZoom.resetView}
+            sceneChildren={
+              activeProjection ? (
+                <McapImageProjectionScene
+                  calibration={activeProjection.calibration}
+                  fit={IMAGE_FIT}
+                  imageHeight={activeProjection.imageDims.height}
+                  imageWidth={activeProjection.imageDims.width}
+                  hoveredPoint={sharedHover}
+                  layers={projectionLayers}
+                  pointSize={projection.pointSize}
+                  ref={projectionPickerRef}
+                  sourceKey={sourceKey || "mcap-session"}
+                  viewTransform={imagePanZoom.viewTransform}
+                />
+              ) : undefined
+            }
             textureKey={textureKey}
             viewTransform={imagePanZoom.viewTransform}
           />
@@ -388,8 +416,10 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               fit={IMAGE_FIT}
               imageHeight={activeProjection.imageDims.height}
               imageWidth={activeProjection.imageDims.width}
+              layers={projectionLayers}
+              pickerRef={projectionPickerRef}
               pointSize={projection.pointSize}
-              topics={selectedProjectionTopics}
+              sourceKey={sourceKey || "mcap-session"}
               viewTransform={imagePanZoom.viewTransform}
             />
           ) : null}

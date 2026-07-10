@@ -5,7 +5,7 @@ import * as THREE from "three";
 import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
 
-import type { ImageViewTransform } from "./base-2d-scene";
+import type { ImageViewTransform } from "../base-2d-scene";
 import {
   gpuProjectionImagePlaneSize,
   gpuProjectionViewportRect,
@@ -20,9 +20,9 @@ import {
   gpuPointCloudColorNodeKey,
   updateGpuPointCloudColorUniforms,
   type GpuPointCloudColorUniforms,
-} from "./point-cloud/gpu-point-cloud-color-nodes";
-import type { ResolvedGpuPointCloudColor } from "./point-cloud/gpu-point-cloud-color";
-import { DEFAULT_POINT_SIZE } from "./point-cloud/PointCloudSceneLayer";
+} from "../point-cloud/gpu/gpu-point-cloud-color-nodes";
+import type { ResolvedGpuPointCloudColor } from "../point-cloud/gpu/gpu-point-cloud-color";
+import { DEFAULT_POINT_SIZE } from "../point-cloud/PointCloudSceneLayer";
 
 const MIN_PROJECTABLE_DEPTH = 1e-6;
 const CULLED_POSITION = 1e9;
@@ -80,6 +80,7 @@ type ProjectionPointsMaterial = PointsNodeMaterial & {
   scaleNode: ProjectionNode | null;
 };
 
+/** Rendering inputs for one GPU-projected point-cloud layer. */
 export interface GpuPointCloudProjectionLayerProps {
   readonly calibrationHeight: number;
   readonly calibrationWidth: number;
@@ -158,7 +159,8 @@ export function GpuPointCloudProjectionLayer({
         projectionMatrix: new THREE.Matrix4(),
         resource,
       }),
-    // Frame values update mutable uniforms below; topology changes rebuild.
+    // Matrix, viewport, point size, and color ranges update mutable uniforms
+    // below. Only resource/color-source topology rebuilds the TSL graph.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [colorNodeKey, resource],
   );
@@ -175,6 +177,9 @@ export function GpuPointCloudProjectionLayer({
   }, [renderOrder, resource.geometry, shader.material]);
 
   useLayoutEffect(
+    // A camera view leases topic attributes for as long as its committed scene
+    // references them. Capacity replacement may retire the resource, but its
+    // geometry cannot be disposed until every old camera view releases.
     () => retainGpuPointCloudProjectionResource(resource),
     [resource],
   );
@@ -232,6 +237,7 @@ export function GpuPointCloudProjectionLayer({
   return <primitive object={sprite} />;
 }
 
+/** Shader material and mutable uniforms used by a projection layer. */
 export interface GpuPointCloudProjectionMaterial {
   readonly colorUniforms: GpuPointCloudColorUniforms;
   readonly dimensions: ProjectionUniformNode<THREE.Vector2>;
@@ -273,6 +279,8 @@ export function createGpuPointCloudProjectionMaterial({
     resource.positionAttribute,
     "vec3",
   ) as unknown as ProjectionNode;
+  // Direct vertex projection avoids a per-camera compute pass and UV buffer.
+  // The precomposed matrix returns [u*z, v*z, z, 1] in calibration pixels.
   const homogeneous = matrixUniform.mul(projectionTsl.vec4(sensorPosition, 1));
   const depth = homogeneous.z;
   const u = homogeneous.x.div(depth);
@@ -284,6 +292,8 @@ export function createGpuPointCloudProjectionMaterial({
     projectionTsl.lessThan(u, dimensionsUniform.x),
     projectionTsl.lessThan(v, dimensionsUniform.y),
   );
+  // Base2DScene's orthographic plane spans [-0.5, 0.5]. Convert calibration
+  // pixels into that local space; its parent applies contain/cover and pan/zoom.
   const projectedPosition = projectionTsl.vec3(
     u.div(dimensionsUniform.x).sub(0.5),
     v.div(dimensionsUniform.y).sub(0.5).mul(-1),
@@ -309,6 +319,9 @@ export function createGpuPointCloudProjectionMaterial({
     colorUniforms,
   );
   material.colorNode = colorNode;
+  // Sprite quads can straddle the fitted image edge even when their centers
+  // are valid. Fragment clipping prevents dots from bleeding into letterbox
+  // or neighboring scissored camera views.
   const outsideImage = projectionTsl.or(
     projectionTsl.lessThan(projectionTsl.viewportUV.x, imageRectUniform.x),
     projectionTsl.lessThan(projectionTsl.viewportUV.y, imageRectUniform.y),

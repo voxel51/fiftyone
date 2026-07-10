@@ -1,14 +1,14 @@
 import * as THREE from "three";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildPointCloudRenderPayload } from "../../decoders";
+import { buildPointCloudRenderPayload } from "../../../decoders";
 import { createGpuPointCloudProjectionMaterial } from "./GpuPointCloudProjectionLayer";
 import {
   getGpuPointCloudProjectionResource,
   resetGpuPointCloudProjectionResourcesForTests,
 } from "./gpu-point-cloud-projection-resources";
-import { resolveGpuPointCloudColor } from "./point-cloud/gpu-point-cloud-color";
-import { releaseGpuPointCloudColormapTextures } from "./point-cloud/gpu-point-cloud-colormap-texture";
+import { resolveGpuPointCloudColor } from "../point-cloud/gpu/gpu-point-cloud-color";
+import { releaseGpuPointCloudColormapTextures } from "../point-cloud/gpu/gpu-point-cloud-colormap-texture";
 
 afterEach(() => {
   resetGpuPointCloudProjectionResourcesForTests();
