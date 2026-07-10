@@ -6,6 +6,7 @@ import {
   useTiling,
   type TilingTile,
 } from "@fiftyone/tiling";
+import { useAtomValue } from "jotai";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -14,6 +15,7 @@ import {
 } from "../../../scene-inventory";
 import type { StreamInventory } from "../../../schemas/v1";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import { mcapRawTileTopicAtom } from "./mcap-raw-tile-state";
 import { __resetMcapModalSettingsForTests } from "./mcap-modal-settings";
 import McapSettingsSidebar from "./McapSettingsSidebar";
 
@@ -69,14 +71,37 @@ const FocusButton: React.FC<{ id: string; testId: string }> = ({
   );
 };
 
+interface TilingProbeState {
+  readonly focusedTileId: string | null;
+  readonly titles: Readonly<Record<string, string>>;
+  readonly topicsByTile: Readonly<Record<string, string>>;
+}
+
+const TilingStateProbe: React.FC<{
+  readonly stateRef: { current: TilingProbeState | null };
+}> = ({ stateRef }) => {
+  const { focusedTileId, tiles } = useTiling();
+  const topicsByTile = useAtomValue(mcapRawTileTopicAtom);
+  stateRef.current = {
+    focusedTileId,
+    titles: Object.fromEntries(
+      Object.entries(tiles).map(([id, tile]) => [id, tile.title]),
+    ),
+    topicsByTile,
+  };
+  return null;
+};
+
 function renderSidebar({
   topics = [],
 }: {
   readonly topics?: readonly StreamInventory[];
 } = {}) {
-  return render(
+  const probeState: { current: TilingProbeState | null } = { current: null };
+  const result = render(
     <SceneInventoryProvider sources={SOURCES}>
       <TilingProvider initialTiles={INITIAL_TILES}>
+        <TilingStateProbe stateRef={probeState} />
         <TileIdScope tileId={CAMERA_TILE_ID}>
           <TileBody label="camera" />
         </TileIdScope>
@@ -89,6 +114,7 @@ function renderSidebar({
       </TilingProvider>
     </SceneInventoryProvider>,
   );
+  return { ...result, probeState };
 }
 
 describe("McapSettingsSidebar", () => {
@@ -103,6 +129,7 @@ describe("McapSettingsSidebar", () => {
     renderSidebar();
 
     expect(screen.getByRole("tab", { name: "Scene" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Topics" })).toBeTruthy();
     expect(screen.queryByRole("tab", { name: "Camera" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
     expect(screen.getByText("Advanced timing")).toBeTruthy();
@@ -147,7 +174,7 @@ describe("McapSettingsSidebar", () => {
     expect(screen.getByText("Reset to defaults")).toBeTruthy();
   });
 
-  it("lists non-renderable topics in scene settings", () => {
+  it("lists all topics by category in the topics tab", () => {
     renderSidebar({
       topics: [
         topic("/lidar/top", {
@@ -161,6 +188,12 @@ describe("McapSettingsSidebar", () => {
           decodeStatus: "decodable",
           encoding: "ros1",
           schema: "sensor_msgs/Imu",
+        }),
+        topic("/tf_static", {
+          count: "2",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "tf2_msgs/TFMessage",
         }),
         topic("/broken", {
           count: "3",
@@ -177,14 +210,133 @@ describe("McapSettingsSidebar", () => {
       ],
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Other topics/ }));
+    expect(screen.queryByRole("button", { name: /Other topics/ })).toBeNull();
 
-    expect(screen.queryByText("/lidar/top")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Topics" }));
+
+    expect(screen.queryByLabelText("Search topics")).toBeNull();
+    expect(screen.getByRole("button", { name: /Sensors/ })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Transforms & Poses/ }),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Telemetry/ })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Custom \/ Unknown/ }),
+    ).toBeTruthy();
+    expect(screen.getByText("/lidar/top")).toBeTruthy();
     expect(screen.getByText("/imu")).toBeTruthy();
-    expect(screen.getByText("sensor_msgs/Imu · ros1 · 8 msgs")).toBeTruthy();
-    expect(screen.getByText("Inspectable in Message")).toBeTruthy();
+    expect(screen.getByText("8 msgs · Plot · Raw")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Inspect /imu" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "3D /lidar/top" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Inspect /tf_static" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Open 3D/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Open / })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Inspect /broken" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Inspect /binary" }),
+    ).toBeTruthy();
+    expect(screen.queryByText("Inspectable")).toBeNull();
     expect(screen.getByText("Schema unavailable")).toBeTruthy();
     expect(screen.getByText("Encoding unsupported")).toBeTruthy();
+  });
+
+  it("opens decodable topics in a Message panel without leaving Topics", () => {
+    const { probeState } = renderSidebar({
+      topics: [
+        topic("/imu", {
+          count: "8",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "sensor_msgs/Imu",
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Topics" }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect /imu" }));
+
+    const focusedTileId = probeState.current?.focusedTileId;
+    expect(focusedTileId?.startsWith("raw-")).toBe(true);
+    expect(probeState.current?.titles[focusedTileId ?? ""]).toBe("/imu");
+    expect(probeState.current?.topicsByTile[focusedTileId ?? ""]).toBe("/imu");
+    expect(
+      screen.getByRole("tab", { name: "Topics" }).getAttribute("aria-selected"),
+    ).toBe("true");
+  });
+
+  it("searches long topic lists", () => {
+    renderSidebar({
+      topics: [
+        topic("/alpha", {
+          count: "1",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "example_msgs/Alpha",
+        }),
+        topic("/beta", {
+          count: "2",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "example_msgs/Beta",
+        }),
+        topic("/camera/front", {
+          count: "3",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "sensor_msgs/Image",
+        }),
+        topic("/diagnostics", {
+          count: "4",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "diagnostic_msgs/DiagnosticArray",
+        }),
+        topic("/gps", {
+          count: "5",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "sensor_msgs/NavSatFix",
+        }),
+        topic("/imu", {
+          count: "6",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "sensor_msgs/Imu",
+        }),
+        topic("/tf_static", {
+          count: "7",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "tf2_msgs/TFMessage",
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Topics" }));
+
+    const search = screen.getByLabelText("Search topics") as HTMLInputElement;
+    expect(search).toBeTruthy();
+    expect(screen.getByText("/camera/front")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Image /camera/front" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Inspect /camera/front" }),
+    ).toBeTruthy();
+
+    fireEvent.change(search, { target: { value: "navsat" } });
+
+    expect(screen.getByText("/gps")).toBeTruthy();
+    expect(screen.queryByText("/alpha")).toBeNull();
+    expect(screen.queryByText("/imu")).toBeNull();
+
+    fireEvent.change(search, { target: { value: "nothing" } });
+
+    expect(screen.getByText('No topics match "nothing"')).toBeTruthy();
   });
 
   it("switches to the panel tab when a panel tab first appears", () => {

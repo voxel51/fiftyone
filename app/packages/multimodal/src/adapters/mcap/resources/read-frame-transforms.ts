@@ -33,6 +33,9 @@ import {
 import type { McapReadFrameTransformWindowRequest } from "../types";
 
 const PROTOBUF_ENCODING = "protobuf";
+const FOXGLOVE_FRAME_TRANSFORM_CDR_SCHEMA = "foxglove_msgs/msg/FrameTransform";
+const FOXGLOVE_FRAME_TRANSFORMS_CDR_SCHEMA =
+  "foxglove_msgs/msg/FrameTransforms";
 const FOXGLOVE_FRAME_TRANSFORMS_SCHEMA = "foxglove.FrameTransforms";
 const TF_MESSAGE_BATCH_FIELD = "transforms";
 
@@ -47,6 +50,12 @@ const ROS_TF_MESSAGE_SCHEMAS: ReadonlySet<string> = new Set([
 const ROS_TRANSFORM_STAMPED_SCHEMAS: ReadonlySet<string> = new Set([
   "geometry_msgs/TransformStamped",
   "geometry_msgs/msg/TransformStamped",
+]);
+const FOXGLOVE_CDR_TRANSFORM_SCHEMAS: ReadonlySet<string> = new Set([
+  FOXGLOVE_FRAME_TRANSFORM_CDR_SCHEMA,
+]);
+const FOXGLOVE_CDR_TRANSFORMS_SCHEMAS: ReadonlySet<string> = new Set([
+  FOXGLOVE_FRAME_TRANSFORMS_CDR_SCHEMA,
 ]);
 
 type FrameTransformSchemaMatch =
@@ -612,9 +621,29 @@ function classifyRosFrameTransformSchema(
 ): FrameTransformSchemaMatch | null {
   const definitions = rosMessageDefinitionsForChannel(reader, channel);
   const root = definitions ? rootRosMessageDefinition(definitions) : undefined;
-  if (!root || !isRosTfMessageSchema(schema, root)) {
+  if (!root) {
     return null;
   }
+
+  if (isFoxgloveCdrFrameTransformSchema(schema, root)) {
+    return {
+      format: "foxglove",
+      kind: "single",
+    };
+  }
+
+  if (isFoxgloveCdrFrameTransformsSchema(schema, root)) {
+    return {
+      format: "foxglove",
+      kind: "batch",
+      repeatedFieldName: "transforms",
+    };
+  }
+
+  if (!isRosTfMessageSchema(schema, root)) {
+    return null;
+  }
+
   const transformsField = root.definitions.find(
     (field) => field.name === TF_MESSAGE_BATCH_FIELD,
   );
@@ -641,6 +670,28 @@ function isRosTfMessageSchema(
     ROS_TF_MESSAGE_SCHEMAS.has(schema.name) ||
     (definition.name !== undefined &&
       ROS_TF_MESSAGE_SCHEMAS.has(definition.name))
+  );
+}
+
+function isFoxgloveCdrFrameTransformSchema(
+  schema: McapSchema,
+  definition: RosMessageDefinition,
+): boolean {
+  return (
+    FOXGLOVE_CDR_TRANSFORM_SCHEMAS.has(schema.name) ||
+    (definition.name !== undefined &&
+      FOXGLOVE_CDR_TRANSFORM_SCHEMAS.has(definition.name))
+  );
+}
+
+function isFoxgloveCdrFrameTransformsSchema(
+  schema: McapSchema,
+  definition: RosMessageDefinition,
+): boolean {
+  return (
+    FOXGLOVE_CDR_TRANSFORMS_SCHEMAS.has(schema.name) ||
+    (definition.name !== undefined &&
+      FOXGLOVE_CDR_TRANSFORMS_SCHEMAS.has(definition.name))
   );
 }
 

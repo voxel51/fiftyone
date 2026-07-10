@@ -1,0 +1,140 @@
+.body {
+  background: var(--plot-surface, #050b12);
+  color: var(--color-content-text-primary);
+  display: flex;
+  flex-direction: column;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.toolbar {
+  align-items: center;
+  border-bottom: 1px solid var(--color-content-border-default, #383835);
+  color: var(--color-content-text-secondary);
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  font-size: 11px;
+  gap: 8px 12px;
+  min-height: 34px;
+  padding: 6px 10px;
+}
+
+.controlGroup {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.meta {
+  color: var(--color-content-text-secondary);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.row {
+  align-items: baseline;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid
+    color-mix(
+      in srgb,
+      var(--color-content-border-default, #383835) 45%,
+      transparent
+    );
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  grid-template-columns: 74px 54px minmax(120px, 0.28fr) minmax(0, 1fr);
+  gap: 10px;
+  line-height: 1.45;
+  min-height: 30px;
+  padding: 5px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.row:hover,
+.row:focus-visible {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 8%,
+    transparent
+  );
+  outline: none;
+}
+
+.time,
+.source,
+.message,
+.level {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time {
+  color: var(--color-content-text-secondary);
+}
+
+.source {
+  color: var(--color-content-text-secondary);
+}
+
+.message {
+  color: var(--color-content-text-primary);
+}
+
+.level {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.debug {
+  color: #7eb6ff;
+}
+
+.info {
+  color: #86d88f;
+}
+
+.warn {
+  color: #f1c75b;
+}
+
+.error {
+  color: #ff837a;
+}
+
+.fatal {
+  color: #ff5ea8;
+}
+
+.unknown {
+  color: var(--color-content-text-secondary);
+}
+
+.empty {
+  align-items: center;
+  color: var(--color-content-text-secondary);
+  display: flex;
+  flex: 1;
+  font-size: 12px;
+  justify-content: center;
+  min-height: 0;
+  padding: 16px;
+  text-align: center;
+}

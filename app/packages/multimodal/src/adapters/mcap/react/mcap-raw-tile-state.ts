@@ -8,7 +8,9 @@ import { useCallback } from "react";
  * modal and vanishes with it; layout persistence snapshots it per
  * dataset.
  */
-export const mcapRawTileTopicAtom = atom<Readonly<Record<string, string>>>({});
+export type McapRawTileTopics = Readonly<Record<string, string>>;
+
+export const mcapRawTileTopicAtom = atom<McapRawTileTopics>({});
 
 /** Subscribe to the surrounding raw-message tile's inspected topic. */
 export function useMcapRawTileTopic(): string | null {

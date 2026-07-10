@@ -23,6 +23,7 @@ import {
 } from "./PlaybackProvider";
 import { bumpStreamRangesVersion, setBufferedRanges } from "./store-access";
 import type { PlaybackStream } from "./types";
+import { MAX_SPEED } from "../constants";
 
 interface RenderOpts {
   duration?: number;
@@ -765,6 +766,12 @@ describe("PlaybackProvider engine actions", () => {
       act(() => result.current.api.setSpeed(0));
       act(() => result.current.api.setSpeed(-1));
       expect(result.current.store.get(speedAtom)).toBe(before);
+    });
+
+    it("setSpeed clamps values above MAX_SPEED to the ceiling", () => {
+      const { result } = renderEngine({ duration: 10 });
+      act(() => result.current.api.setSpeed(MAX_SPEED + 100));
+      expect(result.current.store.get(speedAtom)).toBe(MAX_SPEED);
     });
   });
 
