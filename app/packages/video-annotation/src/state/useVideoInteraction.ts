@@ -4,6 +4,7 @@
 
 import {
   type ScopedRef,
+  useActiveSampleId,
   useAnnotationEngine,
   useInteraction,
   useSurfaceActions,
@@ -130,7 +131,8 @@ export const useHoveredTrackIds = (): ReadonlySet<string> => {
 /** The full select / hover seam for timeline rows. */
 export const useVideoInteraction = (): VideoInteraction => {
   const engine = useAnnotationEngine();
-  const actions = useSurfaceActions(engine, SURFACE);
+  const sampleId = useActiveSampleId();
+  const actions = useSurfaceActions(engine, SURFACE, sampleId);
   const getFrame = useCurrentFrameGetter();
 
   const selectedTrackIds = useSelectedTrackIds();

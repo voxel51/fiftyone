@@ -74,7 +74,7 @@ export const useAutoInterpolate = (): void => {
   const sampleId = useActiveSampleId();
   const stream = useFrameLabelsStream();
   const propagate = useVideoPropagate();
-  const actions = useSurfaceActions(engine, SURFACE);
+  const actions = useSurfaceActions(engine, SURFACE, sampleId);
 
   // The presence/keyframe baseline for every active frame field. `keyframes`
   // rides the index for free, so no dynamic-attribute projection is needed.
