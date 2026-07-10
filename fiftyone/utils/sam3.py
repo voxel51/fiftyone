@@ -1050,7 +1050,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                     rx, ry, rw, rh = det.bounding_box
                     sam_label = det.get_field("sam_label")
                     polarity = int(sam_label) if sam_label is not None else 1
-                    label = det.label if det.label is not None else "object"
+                    label = det.label if det.label is not None else "visual"
                     frame_entry = prompts.setdefault(frame_idx, {})
                     label_entry = frame_entry.setdefault(
                         label, {"boxes": [], "polarity": []}
@@ -1255,13 +1255,14 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                     self._curr_exemplar_prompts.items()
                 ):
                     for label, label_data in frame_data.items():
+                        text_label = label if label is not "visual" else None
                         prompt_response = (
                             self.concept_predictor.handle_request(
                                 request=dict(
                                     type="add_prompt",
                                     session_id=session_id,
                                     frame_index=fi,
-                                    text=label,
+                                    text=text_label,
                                     bounding_boxes=label_data["boxes"],
                                     bounding_box_labels=label_data["polarity"],
                                 )
