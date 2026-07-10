@@ -9,7 +9,7 @@ import {
 import { GraphQLTaggedNode, OperationType } from "relay-runtime";
 import { KeyType } from "relay-runtime/lib/store/readInlineData";
 import { selectorWithEffect } from "./selectorWithEffect";
-import { loadContext } from "./utils";
+import { loadContext, resolveFragmentChain } from "./utils";
 import { getPageQuery, PageQuery, registerPageSync } from "./Writer";
 
 export type GraphQLSyncFragmentAtomOptions<K> = Omit<AtomOptions<K>, "default">;
@@ -86,32 +86,29 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
           transactionInterface?: TransactionInterface_UNSTABLE,
         ): Disposable | undefined => {
           const preloadedQuery = page.preloadedQuery;
-          let data = page.data;
           try {
-            for (let i = 0; i < fragmentOptions.fragments.length; i++) {
-              const fragment = fragmentOptions.fragments[i];
+            const resolved = resolveFragmentChain(
+              page.data,
+              fragmentOptions.fragments,
+              fragmentOptions.keys,
+              preloadedQuery.environment,
+            );
+            ctx = resolved.context ?? ctx;
+            parent = resolved.parent ?? parent;
 
-              if (fragmentOptions.keys && fragmentOptions.keys[i]) {
-                // @ts-ignore
-                data = data[fragmentOptions.keys[i]];
-              }
-
-              if (!data) {
-                const unlisten = ctx.FragmentResource.subscribe(
-                  ctx.result,
-                  () => {
-                    run(page);
-                    unlisten();
-                  },
-                );
-              }
-
-              // @ts-ignore
-              ctx = loadContext(fragment, preloadedQuery.environment, data);
-              parent = data;
-              data = ctx.result.data;
+            if (resolved.missing) {
+              const unlisten = ctx.FragmentResource.subscribe(
+                ctx.result,
+                () => {
+                  run(page);
+                  unlisten();
+                },
+              );
+              setter(null, transactionInterface);
+              return undefined;
             }
-            setter(data, transactionInterface);
+
+            setter(resolved.data as null | T[" $data"], transactionInterface);
             disposable?.dispose();
 
             return ctx.FragmentResource.subscribe(ctx.result, () => {
@@ -169,37 +166,22 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
         previousPageData = null;
       };
 
-      let data: unknown = page.data;
       try {
-        for (let i = 0; i < fragmentOptions.fragments.length; i++) {
-          // `keys[i]` descends from the current operation/fragment result to the
-          // fragment reference consumed at this level. For example, "dataset"
-          // moves from the query response to its Dataset fragment reference.
-          const key = fragmentOptions.keys?.[i];
-          if (key) {
-            data =
-              typeof data === "object" && data !== null
-                ? (data as Record<string, unknown>)[key]
-                : null;
-          }
+        const resolved = resolveFragmentChain(
+          page.data,
+          fragmentOptions.fragments,
+          fragmentOptions.keys,
+          page.preloadedQuery.environment,
+        );
 
-          // A missing parent belongs to the new page. Reset immediately instead
-          // of leaving a valid-looking value from the previous dataset in Recoil.
-          if (!data) {
-            reset();
-            return;
-          }
-
-          // Relay masks fragment data. Resolve the current fragment reference,
-          // then feed its unmasked result into the next fragment in the chain.
-          data = loadContext(
-            fragmentOptions.fragments[i],
-            page.preloadedQuery.environment,
-            data,
-          ).result.data;
+        // A missing parent belongs to the new page. Reset immediately instead
+        // of leaving a valid-looking value from the previous dataset in Recoil.
+        if (resolved.missing) {
+          reset();
+          return;
         }
 
-        const fragmentData = data as T[" $data"];
+        const fragmentData = resolved.data as T[" $data"];
 
         // Keep an independent history for the eager path. Some `read` functions
         // compare dataset IDs with their previous fragment to reset local state;
