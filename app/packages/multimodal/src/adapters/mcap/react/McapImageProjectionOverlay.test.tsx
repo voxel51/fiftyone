@@ -134,7 +134,9 @@ function renderOverlay(
 }
 
 function mockOverlayBounds(container: HTMLElement) {
-  const overlay = container.querySelector("[aria-hidden]");
+  const overlay = container.querySelector(
+    "[data-mcap-image-projection-overlay]",
+  );
   if (!(overlay instanceof HTMLElement)) {
     throw new Error("Expected projection interaction overlay");
   }

@@ -61,6 +61,7 @@ export default function McapPerformanceStats({
   return (
     <div className={styles.statsDisclosure}>
       <Button
+        aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
         size={Size.Sm}
         variant={Variant.Secondary}

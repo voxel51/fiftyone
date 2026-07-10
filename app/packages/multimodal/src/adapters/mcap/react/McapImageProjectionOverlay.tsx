@@ -106,12 +106,7 @@ const McapImageProjectionOverlay = ({
       const container = containerRef.current;
       const picker = pickerRef.current;
       const calib = calibrationRef.current;
-      if (
-        !container ||
-        !picker ||
-        !(calib.width > 0) ||
-        !(calib.height > 0)
-      ) {
+      if (!container || !picker || !(calib.width > 0) || !(calib.height > 0)) {
         clearOwnHover();
         return;
       }
@@ -224,7 +219,11 @@ const McapImageProjectionOverlay = ({
   }, [pickerRef, setSharedHover]);
 
   return (
-    <div ref={containerRef} style={containerStyle}>
+    <div
+      data-mcap-image-projection-overlay
+      ref={containerRef}
+      style={containerStyle}
+    >
       {dwellTooltip ? <Mcap3dHoverTooltip tooltip={dwellTooltip} /> : null}
       {hasNonTrivialDistortion(calibration) ? (
         <div style={noticeStyle}>

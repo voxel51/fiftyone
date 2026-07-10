@@ -177,9 +177,19 @@ describe("McapSettingsSidebar", () => {
     renderSidebar();
 
     expect(screen.queryByText("Performance diagnostics")).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Stats" })
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
 
     fireEvent.click(screen.getByRole("button", { name: "Stats" }));
 
+    expect(
+      screen
+        .getByRole("button", { name: "Hide stats" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
     expect(screen.getByText("Performance diagnostics")).toBeTruthy();
     expect(screen.getAllByText("Playback")).toHaveLength(2);
     expect(screen.getByText("Rendering")).toBeTruthy();
