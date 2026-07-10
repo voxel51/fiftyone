@@ -28,7 +28,6 @@ import {
   useMcapGridPreview,
   type McapGridPreviewStatus,
 } from "./use-mcap-grid-preview";
-import { TemporalTagGridOverlay } from "./TemporalTagGridOverlay";
 import { useStableMcapSource } from "./use-stable-mcap-source";
 
 const IMAGE_FIT = "cover";
@@ -94,7 +93,6 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
           status={preview.status}
         />
       )}
-      <TemporalTagGridOverlay ctx={ctx} />
     </div>
   );
 }
