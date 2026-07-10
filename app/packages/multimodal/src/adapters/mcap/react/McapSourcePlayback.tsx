@@ -76,6 +76,7 @@ export interface McapSourcePlaybackProps {
   readonly latencySourceKey?: string;
   readonly layoutScopeKey?: string;
   readonly onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
+  readonly onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   readonly onTagDelete?: NonNullable<
     TemporalTagTimelineProps["eventMenuItems"]
   >[number]["onSelect"];
@@ -98,6 +99,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   latencySourceKey,
   layoutScopeKey,
   onTagCreate,
+  onTagUpdate,
   onTagDelete,
   source,
   tracks,
@@ -293,6 +295,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                             leftSidebarWidth={defaultLeftSidebarWidth}
                             onLeftSidebarWidthChange={onLeftSidebarWidthChange}
                             onTagCreate={onTagCreate}
+                            onTagUpdate={onTagUpdate}
                           >
                             <McapStreams client={client} source={source} />
                             <McapNetworkHealthTracker client={client} />

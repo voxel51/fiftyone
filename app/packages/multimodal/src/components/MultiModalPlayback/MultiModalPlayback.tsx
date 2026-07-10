@@ -152,6 +152,7 @@ export interface MultiModalPlaybackProps {
    * hotkey, Shift+drag).
    */
   onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
+  onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   /** Callback that deletes an existing temporal tag by its backend id. */
   onTagDelete?: NonNullable<
     TemporalTagTimelineProps["eventMenuItems"]
@@ -228,13 +229,21 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   leftSidebarWidth,
   onLeftSidebarWidthChange,
   onTagCreate,
+  onTagUpdate,
   onTagDelete,
   children,
   className,
 }) => {
   return (
     <PlaybackProvider>
-      <TrackProvider tracks={tracks} initialPinnedIds={defaultPinnedTrackIds}>
+      {/* Only the grid-filtered tags (initialPinnedIds) start pinned. Auto-pin
+          is off so tracks arriving in async batches don't each pin themselves,
+          which would pin everything as the batches land. */}
+      <TrackProvider
+        tracks={tracks}
+        initialPinnedIds={defaultPinnedTrackIds}
+        autoPinNewTracks={false}
+      >
         <SceneInventoryProvider sources={sceneSources}>
           <TilingProvider
             initialTiles={initialTiles}
@@ -266,6 +275,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               leftSidebarWidth={leftSidebarWidth}
               onLeftSidebarWidthChange={onLeftSidebarWidthChange}
               onTagCreate={onTagCreate}
+              onTagUpdate={onTagUpdate}
               onTagDelete={onTagDelete}
               sharedImageWebGpuViews={sharedImageWebGpuViews}
               className={className}
@@ -297,6 +307,7 @@ interface LayoutProps {
   leftSidebarWidth?: number;
   onLeftSidebarWidthChange?: (px: number) => void;
   onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
+  onTagUpdate?: MultiModalPlaybackProps["onTagUpdate"];
   onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
   sharedImageWebGpuViews: boolean;
   className?: string;
@@ -320,6 +331,7 @@ function Layout({
   leftSidebarWidth,
   onLeftSidebarWidthChange,
   onTagCreate,
+  onTagUpdate,
   onTagDelete,
   sharedImageWebGpuViews,
   className,
@@ -501,6 +513,7 @@ function Layout({
         defaultDrawerOpen={timelineDrawerDefaultOpen}
         extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}
+        onTagUpdate={onTagUpdate}
         eventMenuItems={
           onTagDelete
             ? [

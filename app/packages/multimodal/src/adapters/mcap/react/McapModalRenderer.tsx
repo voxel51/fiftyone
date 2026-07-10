@@ -19,7 +19,8 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const source = useStableMcapSource(ctx);
   const fileName = fileNameFromPath(ctx.media.path) ?? "recording.mcap";
   const datasetId = ctx.dataset.datasetId;
-  const { tracks, onTagCreate, onTagDelete } = useMcapTemporalTags(ctx);
+  const { tracks, onTagCreate, onTagUpdate, onTagDelete } =
+    useMcapTemporalTags(ctx);
   // Auto-pin the timeline tracks for the temporal tags the grid was filtered
   // by, so opening a filtered sample surfaces the relevant tags immediately.
   const defaultPinnedTrackIds = useFilteredTemporalTagPinnedIds();
@@ -35,6 +36,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
       }
       layoutScopeKey={datasetId}
       onTagCreate={onTagCreate}
+      onTagUpdate={onTagUpdate}
       onTagDelete={onTagDelete}
       source={source}
       tracks={tracks}
