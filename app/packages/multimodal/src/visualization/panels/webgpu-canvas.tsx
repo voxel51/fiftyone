@@ -171,6 +171,7 @@ export function WebGpuCanvas({
       if (!mountedRef.current || rendererRef.current !== renderer) {
         return;
       }
+      rendererRef.current = null;
       rendererReadyRef.current = false;
       releaseRendererRegistration(registrationsRef.current, renderer);
       setIsReady(false);

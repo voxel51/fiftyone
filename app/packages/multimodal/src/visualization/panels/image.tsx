@@ -137,6 +137,7 @@ export function ImagePanel({
         </WebGpuView>
       ) : (
         <WebGpuCanvas
+          aria-label={alt}
           camera={ORTHOGRAPHIC_IMAGE_CAMERA}
           onError={setCanvasError}
           orthographic
