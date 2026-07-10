@@ -61,8 +61,6 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
           return undefined;
         }
         const { pageQuery, subscribe } = getPageQuery();
-        let ctx: ReturnType<typeof loadContext>;
-        let parent: unknown;
         let disposable: Disposable | undefined = undefined;
         let previous: null | T[" $data"] = null;
         const setter = (
@@ -93,17 +91,31 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
               fragmentOptions.keys,
               preloadedQuery.environment,
             );
-            ctx = resolved.context ?? ctx;
-            parent = resolved.parent ?? parent;
 
             if (resolved.missing) {
-              const unlisten = ctx.FragmentResource.subscribe(
-                ctx.result,
+              setter(null, transactionInterface);
+              if (!resolved.context) {
+                return undefined;
+              }
+
+              // `subscribe` may invoke its callback before returning, so this
+              // cannot be initialized as a const before the callback closes over it.
+              let retry: Disposable | undefined;
+              let resumed: Disposable | undefined;
+              // eslint-disable-next-line prefer-const
+              retry = resolved.context.FragmentResource.subscribe(
+                resolved.context.result,
                 () => {
-                  run(page);
-                  unlisten();
+                  retry?.dispose();
+                  resumed = run(page);
+                  disposable = resumed;
                 },
               );
+              return resumed ?? retry;
+            }
+
+            const ctx = resolved.context;
+            if (!ctx) {
               setter(null, transactionInterface);
               return undefined;
             }
@@ -115,10 +127,12 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
               const update = loadContext(
                 fragmentOptions.fragments[fragmentOptions.fragments.length - 1],
                 preloadedQuery.environment,
-                parent,
+                resolved.parent,
               ).result.data;
               setter(update);
-              !update && run(page);
+              if (!update) {
+                disposable = run(page);
+              }
             });
           } catch (e) {
             setter(null, transactionInterface);

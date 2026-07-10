@@ -1,9 +1,13 @@
+import { cleanup, render } from "@testing-library/react";
+import { createElement } from "react";
+import { RecoilRoot, useRecoilValue } from "recoil";
 import type { TransactionInterface_UNSTABLE } from "recoil";
 import type { GraphQLTaggedNode, OperationType } from "relay-runtime";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { PageQuery } from "./Writer";
 
 const mocks = vi.hoisted(() => ({
+  getPageQuery: vi.fn(),
   loadContext: vi.fn(),
   registerPageSync: vi.fn(),
   resolveFragmentChain: vi.fn(),
@@ -15,7 +19,7 @@ vi.mock("./utils", () => ({
 }));
 
 vi.mock("./Writer", () => ({
-  getPageQuery: vi.fn(),
+  getPageQuery: mocks.getPageQuery,
   registerPageSync: mocks.registerPageSync,
 }));
 
@@ -47,16 +51,80 @@ const createPageSync = async (
   return { subscriber, value };
 };
 
+const mountAtomEffect = async (key: string) => {
+  const subscribe = vi.fn(() => vi.fn());
+  mocks.getPageQuery.mockReturnValue({ pageQuery: page, subscribe });
+  const { graphQLSyncFragmentAtom } = await import("./graphQLSyncFragmentAtom");
+  const value = graphQLSyncFragmentAtom(
+    { default: null, fragments: [fragment], keys: ["dataset"] },
+    { key },
+  );
+  const Reader = () => {
+    useRecoilValue(value);
+    return null;
+  };
+
+  return render(createElement(RecoilRoot, null, createElement(Reader)));
+};
+
 beforeEach(() => {
   vi.resetModules();
   vi.stubEnv("MODE", "development");
+  mocks.getPageQuery.mockReset();
   mocks.loadContext.mockReset();
   mocks.registerPageSync.mockReset();
   mocks.resolveFragmentChain.mockReset();
 });
 
 afterEach(() => {
+  cleanup();
   vi.unstubAllEnvs();
+});
+
+describe("graphQLSyncFragmentAtom effect retries", () => {
+  test("does not subscribe without a resolved fragment context", async () => {
+    mocks.resolveFragmentChain.mockReturnValue({ missing: true });
+
+    const { unmount } = await mountAtomEffect("effect-missing-context");
+
+    unmount();
+  });
+
+  test("tracks the live subscription created by a retry", async () => {
+    const retryDispose = vi.fn();
+    const liveDispose = vi.fn();
+    let retryCallback: (() => void) | undefined;
+    const retryContext = {
+      FragmentResource: {
+        subscribe: vi.fn((_result, callback) => {
+          retryCallback = callback;
+          return { dispose: retryDispose };
+        }),
+      },
+      result: {},
+    };
+    const liveContext = {
+      FragmentResource: {
+        subscribe: vi.fn(() => ({ dispose: liveDispose })),
+      },
+      result: {},
+    };
+    mocks.resolveFragmentChain
+      .mockReturnValueOnce({ context: retryContext, missing: true })
+      .mockReturnValueOnce({
+        context: liveContext,
+        data: { id: "resolved" },
+        missing: false,
+        parent: {},
+      });
+
+    const { unmount } = await mountAtomEffect("effect-retry-subscription");
+    retryCallback?.();
+    unmount();
+
+    expect(retryDispose).toHaveBeenCalled();
+    expect(liveDispose).toHaveBeenCalled();
+  });
 });
 
 describe("graphQLSyncFragmentAtom page synchronization", () => {
@@ -117,5 +185,28 @@ describe("graphQLSyncFragmentAtom page synchronization", () => {
       current: second,
       previous: first,
     });
+  });
+
+  test("clears previous fragment data before resuming after a reset", async () => {
+    const first = { id: "first" };
+    const second = { id: "second" };
+    const read = vi.fn((current, previous) => ({ current, previous }));
+    const { subscriber } = await createPageSync("page-sync-reset-resume", {
+      default: null,
+      read,
+    });
+    const transaction = {
+      set: vi.fn(),
+    } as unknown as TransactionInterface_UNSTABLE;
+    mocks.resolveFragmentChain
+      .mockReturnValueOnce({ data: first, missing: false })
+      .mockReturnValueOnce({ missing: true })
+      .mockReturnValueOnce({ data: second, missing: false });
+
+    subscriber(page, transaction);
+    subscriber(page, transaction);
+    subscriber(page, transaction);
+
+    expect(read).toHaveBeenLastCalledWith(second, null);
   });
 });
