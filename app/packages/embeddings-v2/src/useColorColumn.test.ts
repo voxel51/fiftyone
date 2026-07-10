@@ -96,5 +96,30 @@ describe("useColorColumn", () => {
     const { result } = renderHook(() => useColorColumn("ds", "viz", RUN, "a"));
 
     await waitFor(() => expect(result.current.error).toMatch("boom"));
+    // Failure also ends the loading state, or the spinner never leaves
+    expect(result.current.loading).toBe(false);
+  });
+
+  // Column fetches take seconds at scale; hosts need a progress signal
+  it("reports loading while a column fetch is in flight", async () => {
+    vi.mocked(fetchColorByChoices).mockResolvedValue(["a"]);
+    let resolve: (response: ColorResponse) => void = () => undefined;
+    vi.mocked(fetchColor).mockImplementationOnce(
+      () => new Promise<ColorResponse>((r) => (resolve = r)),
+    );
+    const { result, rerender } = renderHook(
+      ({ field }: { field: string | null }) =>
+        useColorColumn("ds", "viz", RUN, field),
+      { initialProps: { field: "a" as string | null } },
+    );
+
+    expect(result.current.loading).toBe(true);
+    resolve(RESPONSE);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.colors).not.toBeNull();
+
+    // Deselecting the field never enters a loading state
+    rerender({ field: null });
+    expect(result.current.loading).toBe(false);
   });
 });

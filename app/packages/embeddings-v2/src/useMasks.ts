@@ -3,11 +3,10 @@ import { fetchMasks, type Masks } from "./protocol";
 
 /**
  * The run's view/filter masks, shaped for the renderer: view stages
- * hide points (`visibleMask`), sidebar filters dim them
- * (`matchIndices`, via the renderer's selection mechanism). Masks
- * cover the run's full wire order; during a progressive load the
- * loaded prefix is valid by construction, so `visibleMask` is sliced
- * to `loadedCount`.
+ * and sidebar filters both scope the plot, so their masks combine into
+ * one `visibleMask` that hides non-members. Masks cover the run's full
+ * wire order; during a progressive load the loaded prefix is valid by
+ * construction, so `visibleMask` is sliced to `loadedCount`.
  */
 export function useMasks(
   datasetName: string | null,
@@ -17,7 +16,6 @@ export function useMasks(
   loadedCount: number,
 ): {
   visibleMask: Uint8Array | null;
-  matchIndices: number[] | null;
   visibleCount: number | null;
   error: string | null;
 } {
@@ -38,32 +36,34 @@ export function useMasks(
     };
   }, [datasetName, brainKey, view, filters]);
 
-  const visibleMask = useMemo(() => {
-    if (!masks?.visible || !loadedCount) return null;
-    return masks.visible.length === loadedCount
-      ? masks.visible
-      : masks.visible.subarray(0, loadedCount);
-  }, [masks, loadedCount]);
-
-  // Filter matches dim via the renderer's selection mechanism; an actual
-  // grid selection takes precedence over filter dimming (caller's call)
-  const matchIndices = useMemo(() => {
-    if (!masks?.match) return null;
-    const indices: number[] = [];
-    for (let i = 0; i < masks.match.length; i++) {
-      if (masks.match[i]) indices.push(i);
+  // The endpoint early-outs each mask to null when its inputs are empty
+  // (no view stages / no filters), so combining only pays when both exist
+  const combined = useMemo(() => {
+    const visible = masks?.visible ?? null;
+    const match = masks?.match ?? null;
+    if (!visible || !match) return visible ?? match;
+    const out = new Uint8Array(visible.length);
+    for (let i = 0; i < out.length; i++) {
+      out[i] = visible[i] && match[i] ? 1 : 0;
     }
-    return indices;
+    return out;
   }, [masks]);
+
+  const visibleMask = useMemo(() => {
+    if (!combined || !loadedCount) return null;
+    return combined.length === loadedCount
+      ? combined
+      : combined.subarray(0, loadedCount);
+  }, [combined, loadedCount]);
 
   const visibleCount = useMemo(() => {
-    if (!masks?.visible) return null;
+    if (!combined) return null;
     let count = 0;
-    for (let i = 0; i < masks.visible.length; i++) {
-      count += masks.visible[i];
+    for (let i = 0; i < combined.length; i++) {
+      count += combined[i];
     }
     return count;
-  }, [masks]);
+  }, [combined]);
 
-  return { visibleMask, matchIndices, visibleCount, error };
+  return { visibleMask, visibleCount, error };
 }

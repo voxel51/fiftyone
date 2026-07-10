@@ -29,20 +29,6 @@ const PALETTE_RGB = PALETTE.map(hexToRgb);
 export const categoryHex = (index: number): string =>
   PALETTE[index % PALETTE.length];
 
-/** Wire-order indices of every point in a categorical class (legend
- * click-to-highlight) */
-export function classIndices(
-  column: ColorValues,
-  classIndex: number,
-): number[] {
-  if (column.style !== "categorical") return [];
-  const indices: number[] = [];
-  for (let i = 0; i < column.indices.length; i++) {
-    if (column.indices[i] === classIndex) indices.push(i);
-  }
-  return indices;
-}
-
 /** Expands a color column into Float32Array(n*3) rgb for the renderer */
 export function buildColors(
   column: ColorValues,

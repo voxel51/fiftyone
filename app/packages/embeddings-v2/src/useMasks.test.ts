@@ -19,7 +19,6 @@ describe("useMasks", () => {
 
     await waitFor(() => expect(fetchMasks).toHaveBeenCalled());
     expect(result.current.visibleMask).toBeNull();
-    expect(result.current.matchIndices).toBeNull();
     expect(result.current.visibleCount).toBeNull();
   });
 
@@ -42,13 +41,34 @@ describe("useMasks", () => {
     expect(result.current.visibleMask?.length).toBe(4);
   });
 
-  it("converts the match mask to renderer indices", async () => {
+  // Sidebar filters scope the plot: the match mask hides non-matching
+  // points rather than dimming them
+  it("folds the filter match mask into visibility", async () => {
+    vi.mocked(fetchMasks).mockResolvedValue(
+      masks({
+        visible: new Uint8Array([1, 1, 0, 1]),
+        match: new Uint8Array([0, 1, 0, 1]),
+      }),
+    );
+    const { result } = renderHook(() => useMasks("ds", "viz", [], null, 4));
+
+    await waitFor(() => expect(result.current.visibleMask).not.toBeNull());
+    expect([...(result.current.visibleMask as Uint8Array)]).toEqual([
+      0, 1, 0, 1,
+    ]);
+    expect(result.current.visibleCount).toBe(2);
+  });
+
+  it("hides by the match mask alone when no view stages exist", async () => {
     vi.mocked(fetchMasks).mockResolvedValue(
       masks({ match: new Uint8Array([0, 1, 0, 1]) }),
     );
     const { result } = renderHook(() => useMasks("ds", "viz", [], null, 4));
 
-    await waitFor(() => expect(result.current.matchIndices).toEqual([1, 3]));
+    await waitFor(() => expect(result.current.visibleMask).not.toBeNull());
+    expect([...(result.current.visibleMask as Uint8Array)]).toEqual([
+      0, 1, 0, 1,
+    ]);
   });
 
   it("clears masks when no run is selected", async () => {
@@ -57,7 +77,6 @@ describe("useMasks", () => {
 
     expect(fetchMasks).not.toHaveBeenCalled();
     expect(result.current.visibleMask).toBeNull();
-    expect(result.current.matchIndices).toBeNull();
   });
 
   it("reports mask fetch failures", async () => {

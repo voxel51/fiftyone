@@ -305,6 +305,13 @@
   pointer-events: none;
 }
 
+/* Color-by column fetch in flight */
+.emb-plot-color-loading {
+  right: 0.75rem;
+  bottom: 0.75rem;
+  pointer-events: none;
+}
+
 /* --- FloatingPanel (generic; VOODO candidate) -------------------------- */
 
 .emb-floating-panel {
@@ -371,8 +378,8 @@
   max-height: 14rem;
   overflow-y: auto;
   /* overflow-y forces horizontal clipping at the padding box; the rows
-     bleed 0.25rem outside it (hover background) and the active swatch
-     ring adds 2px — widen the padding box so neither gets cut */
+     bleed 0.25rem outside it (hover background) — widen the padding
+     box so it doesn't get cut */
   margin: 0 -0.375rem;
   padding: 0 0.375rem;
 }
@@ -390,6 +397,12 @@
   cursor: pointer;
   text-align: left;
   transition: background-color 0.15s ease;
+  /* Double-click isolates a class; without this it also selects text */
+  user-select: none;
+}
+
+.emb-legend-row:disabled {
+  cursor: default;
 }
 
 .emb-legend-row:focus {
@@ -402,13 +415,13 @@
   outline: 1px solid var(--emb-border-strong);
 }
 
-.emb-legend-row:hover,
-.emb-legend-row[data-active="true"] {
+.emb-legend-row:hover:enabled {
   background: var(--emb-card-elevated);
 }
 
-.emb-legend-row[data-active="true"] .emb-legend-swatch {
-  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent);
+/* A class the field's filter hides */
+.emb-legend-row[data-off="true"] {
+  opacity: 0.4;
 }
 
 .emb-legend-swatch {

@@ -97,6 +97,22 @@ describe("EmbeddingsView prop plumbing", () => {
     );
   });
 
+  // Color-by None must not leave the previous field's colors on the GPU
+  it("restores the default palette when colors clear", async () => {
+    const colors = new Float32Array(POINTS.length * 3);
+    const { rerender } = render(
+      <EmbeddingsView points={POINTS} colors={colors} />,
+    );
+    await waitFor(() => expect(instances.length).toBeGreaterThan(0));
+    const chart = instances[instances.length - 1];
+    await waitFor(() =>
+      expect(chart.setColors).toHaveBeenLastCalledWith(colors),
+    );
+
+    rerender(<EmbeddingsView points={POINTS} colors={null} />);
+    await waitFor(() => expect(chart.setColors).toHaveBeenLastCalledWith(null));
+  });
+
   it("drops a stale mask whose length mismatches the points", async () => {
     const { rerender } = render(<EmbeddingsView points={POINTS} />);
     await waitFor(() => expect(instances.length).toBeGreaterThan(0));

@@ -9,8 +9,10 @@
  * The component is hook composition: each concern lives in its own
  * use* module beside this file, provider-free so it renderHook-tests
  * without Recoil. Only this component touches App state — atom values
- * in, setters out — and it owns the precedence between selection
- * layers (grid selection, then class highlight, then filter dimming).
+ * in, setters out. Two layers of point treatment: view stages and
+ * sidebar filters HIDE points (scope); grid selections EMPHASIZE them
+ * (focus). The legend is a view over the sidebar filter for the
+ * color-by field — see legendFilter.ts for the click semantics.
  */
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
@@ -44,8 +46,14 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { ColorLegend } from "./ColorLegend";
-import { categoryHex, classIndices, MISSING_CATEGORY } from "./colors";
+import { categoryHex, MISSING_CATEGORY } from "./colors";
 import HoverCard from "./HoverCard";
+import {
+  onLabels,
+  soloLabel,
+  toggleLabel,
+  type CategoricalFilter,
+} from "./legendFilter";
 import "./panel.css";
 import type { VisualizationRun } from "./protocol";
 import {
@@ -147,11 +155,11 @@ export default function PlotView({
     colors,
     values: colorValues,
     meta: colorMeta,
+    loading: colorLoading,
     error: colorError,
   } = useColorColumn(datasetName, brainKey, run, colorField);
   const {
     visibleMask,
-    matchIndices,
     visibleCount,
     error: masksError,
   } = useMasks(
@@ -198,48 +206,54 @@ export default function PlotView({
 
   const [mode, setMode] = useState<InteractionMode>("explore");
 
-  // Legend click-to-highlight: a class index, resolved to wire-order
-  // indices client-side (the raw column is already here). Cleared when
-  // the field or run changes — the class indices mean nothing there.
-  const [highlightClass, setHighlightClass] = useState<number | null>(null);
-  useEffect(() => {
-    setHighlightClass(null);
-  }, [brainKey, colorField]);
-
-  const highlightIndices = useMemo(
-    () =>
-      highlightClass !== null && colorValues
-        ? classIndices(colorValues, highlightClass)
-        : null,
-    [colorValues, highlightClass],
-  );
-
-  // Shift-click filters the grid through the App's sidebar filter for
-  // the field — the masks endpoint consumes the same fos.filters, so
-  // the plot dims to match. String classes only: the sidebar's numeric
-  // filters are range-shaped, not value lists
+  // The legend has no state of its own: which classes are on derives
+  // from the App's sidebar filter for the color-by field, and clicks
+  // write the next filter back. The masks endpoint consumes the same
+  // fos.filters, so the plot and grid scope together. String classes
+  // only: the sidebar's numeric filters are range-shaped, not value
+  // lists, so numeric-class legends render inert
   const [fieldFilter, setFieldFilter] = useRecoilState(
     fos.filter({ path: colorField ?? "", modal: false }),
   );
   const resetFieldFilter = useResetRecoilState(
     fos.filter({ path: colorField ?? "", modal: false }),
   );
-  const handleClassClick = (index: number, shiftKey: boolean) => {
-    const label = colorMeta?.classes?.[index]?.label;
-    if (shiftKey && colorField && typeof label === "string") {
-      const values = (fieldFilter as { values?: unknown[] } | null)?.values;
-      const active = values?.length === 1 && values[0] === label;
-      if (active) {
-        resetFieldFilter();
-      } else {
-        setFieldFilter({ values: [label], exclude: false });
-      }
-      // The filter's dimming should show; a class highlight outranks
-      // it in the selection precedence and would mask it
-      setHighlightClass(null);
-      return;
+  const legendFilter = (fieldFilter ?? null) as CategoricalFilter | null;
+
+  const classLabels = useMemo(() => {
+    const classes =
+      colorMeta?.style === "categorical" ? colorMeta.classes : undefined;
+    if (!classes?.length) return null;
+    const labels = classes.map((cls) => cls.label);
+    return labels.every((label): label is string => typeof label === "string")
+      ? labels
+      : null;
+  }, [colorMeta]);
+
+  const offLabels = useMemo(() => {
+    if (!classLabels) return null;
+    const on = onLabels(legendFilter, classLabels);
+    return new Set(classLabels.filter((label) => !on.has(label)));
+  }, [classLabels, legendFilter]);
+
+  const applyLegendFilter = (next: CategoricalFilter | null) => {
+    if (next) {
+      setFieldFilter(next);
+    } else {
+      resetFieldFilter();
     }
-    setHighlightClass((current) => (current === index ? null : index));
+  };
+  // A dblclick arrives as click-click-dblclick; the two toggles cancel
+  // (toggle is its own inverse), then the solo lands — no click timers
+  const handleLegendToggle = (label: string) => {
+    if (classLabels) {
+      applyLegendFilter(toggleLabel(legendFilter, classLabels, label));
+    }
+  };
+  const handleLegendSolo = (label: string) => {
+    if (classLabels) {
+      applyLegendFilter(soloLabel(legendFilter, classLabels, label));
+    }
   };
 
   const error = loadError ?? colorError ?? masksError ?? selectionError;
@@ -267,6 +281,18 @@ export default function PlotView({
   };
 
   const chipCount = selectionCount ?? (selectedSamples.size || null);
+
+  // Background clicks clear in stages, topmost layer first: an existing
+  // selection (focus) on the first click, the color-by filter (scope)
+  // on the next. chipCount is the pre-click value — the chart clears
+  // its own lasso layer before this fires
+  const handleBackgroundClick = () => {
+    if (chipCount) {
+      clearAll();
+      return;
+    }
+    if (legendFilter) resetFieldFilter();
+  };
 
   // The panel tab's selection pill lives outside this tree; it mirrors
   // the chip's count through the package atom and requests clears back
@@ -381,12 +407,13 @@ export default function PlotView({
             points={loaded.points}
             colors={colors}
             visible={visibleMask}
-            selected={selectedIndices ?? highlightIndices ?? matchIndices}
+            selected={selectedIndices}
             tooltip={false}
             mode={mode}
             zCamera={zCamera}
             onSelection={handleLasso}
             onPointClick={mode === "select" ? handlePointClick : undefined}
+            onBackgroundClick={handleBackgroundClick}
             onHover={handleHover}
           />
         )}
@@ -401,8 +428,9 @@ export default function PlotView({
           <ColorLegend
             field={colorField}
             meta={colorMeta}
-            activeClass={highlightClass}
-            onClassClick={handleClassClick}
+            offLabels={offLabels}
+            onToggle={handleLegendToggle}
+            onSolo={handleLegendSolo}
           />
         )}
         {chipCount ? (
@@ -441,6 +469,18 @@ export default function PlotView({
               points
               {visibleCount !== null &&
                 ` · ${visibleCount.toLocaleString()} in view`}
+            </Text>
+          </div>
+        )}
+        {colorLoading && (
+          <div className="emb-plot-overlay emb-plot-color-loading">
+            <Icon
+              name={IconName.Spinner}
+              size={Size.Xs}
+              color={IconColor.Decorative}
+            />
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              Loading colors
             </Text>
           </div>
         )}

@@ -36,6 +36,9 @@ export interface EmbeddingsViewProps {
   ) => void;
   /** A plain click on a point; the host owns click semantics */
   onPointClick?: (hit: HoverHit) => void;
+  /** A plain click on empty space, after the chart clears its selection
+   * — for hosts with layers of their own to clear */
+  onBackgroundClick?: () => void;
   /** Debounced hover hit, or null the moment hovering breaks */
   onHover?: (hit: HoverHit | null) => void;
   /** Render the built-in tooltip (default). Hosts with their own hover
@@ -81,6 +84,7 @@ export const EmbeddingsView = forwardRef<
     thumbUrl,
     onSelection,
     onPointClick,
+    onBackgroundClick,
     onHover,
     tooltip = true,
     mode,
@@ -91,6 +95,7 @@ export const EmbeddingsView = forwardRef<
   const containerRef = useRef<HTMLDivElement>(null);
   const onSelectionRef = useRef(onSelection);
   const onPointClickRef = useRef(onPointClick);
+  const onBackgroundClickRef = useRef(onBackgroundClick);
   const onHoverRef = useRef(onHover);
   // Captured once: the chart is constructed a single time per mount
   const zCameraRef = useRef(zCamera);
@@ -100,8 +105,9 @@ export const EmbeddingsView = forwardRef<
   useEffect(() => {
     onSelectionRef.current = onSelection;
     onPointClickRef.current = onPointClick;
+    onBackgroundClickRef.current = onBackgroundClick;
     onHoverRef.current = onHover;
-  }, [onSelection, onPointClick, onHover]);
+  }, [onSelection, onPointClick, onBackgroundClick, onHover]);
 
   useImperativeHandle(
     ref,
@@ -128,6 +134,7 @@ export const EmbeddingsView = forwardRef<
             onSelection: (indices, dataPolygon) =>
               onSelectionRef.current?.(indices, dataPolygon),
             onPointClick: (hit) => onPointClickRef.current?.(hit),
+            onBackgroundClick: () => onBackgroundClickRef.current?.(),
             onHover: (hit) => {
               onHoverRef.current?.(hit);
               setTooltipState(
@@ -166,8 +173,12 @@ export const EmbeddingsView = forwardRef<
 
   useEffect(() => {
     // Stale colors for a previous dataset are dropped, not an error —
-    // the matching colors prop lands with the host's next render
-    if (colors && colors.length === points.length * 3) {
+    // the matching colors prop lands with the host's next render. Null
+    // restores the default palette (color-by None, or a column fetch
+    // in flight)
+    if (!colors) {
+      chart?.setColors(null);
+    } else if (colors.length === points.length * 3) {
       chart?.setColors(colors);
     }
   }, [chart, colors, points]);

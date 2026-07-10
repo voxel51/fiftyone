@@ -64,6 +64,12 @@ export interface EmbeddingsChartCallbacks {
    * as before.
    */
   onPointClick?: (hit: HoverHit) => void;
+  /**
+   * A plain click landed on empty space, after the chart cleared its
+   * selection and echoed onSelection([]) — for hosts that clear their
+   * own layers (filters, chrome) beyond the selection.
+   */
+  onBackgroundClick?: () => void;
 }
 
 export interface EmbeddingsChartOptions {
@@ -294,16 +300,18 @@ export class EmbeddingsChart {
   /**
    * Per-point colors as flat rgb triplets in [0, 1] — class palettes,
    * scalar colormaps, anything; the shader has no concept of labels.
+   * Null restores the default label palette (the uncolored state).
    */
-  setColors(colors: Float32Array): void {
+  setColors(colors: Float32Array | null): void {
     const { cols, colorAttribute } = this;
     if (!cols || !colorAttribute) return;
-    if (colors.length !== cols.n * 3) {
+    const next = colors ?? colorsFromLabels(cols, PALETTE);
+    if (next.length !== cols.n * 3) {
       throw new Error(
-        `setColors expects ${cols.n * 3} floats (n·rgb), got ${colors.length}`,
+        `setColors expects ${cols.n * 3} floats (n·rgb), got ${next.length}`,
       );
     }
-    (colorAttribute.array as Float32Array).set(colors);
+    (colorAttribute.array as Float32Array).set(next);
     colorAttribute.needsUpdate = true;
     this.requestRender();
   }
@@ -498,6 +506,9 @@ export class EmbeddingsChart {
     }
     this.setSelected(null);
     this.callbacks.onSelection?.([]);
+    // A point hit with no onPointClick host falls through to the clear
+    // above, but it is not a background click
+    if (!hit) this.callbacks.onBackgroundClick?.();
   }
 
   private resize(): void {
