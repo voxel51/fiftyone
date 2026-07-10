@@ -14,6 +14,7 @@ import {
   SceneTriangleMesh,
   scenePrimitiveKey,
 } from "./scene-annotation-meshes";
+import { POINT_PICK_BLOCKING_USER_DATA } from "./point-picking";
 import { SceneEmphasisContext, type SceneEmphasis } from "./scene-emphasis";
 import { useScenePicking } from "./scene-interactivity";
 import { SceneTextSprite } from "./scene-text-sprite";
@@ -133,6 +134,7 @@ function SceneAnnotationEntity({
       onClick={handleClick}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
+      userData={interactive ? POINT_PICK_BLOCKING_USER_DATA : undefined}
     >
       <SceneEmphasisContext.Provider value={emphasis}>
         {entity.arrows.map((arrow, primitiveIndex) => (

@@ -1,9 +1,27 @@
 import { act, renderHook } from "@testing-library/react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useMcap3dHoverTooltip } from "./use-mcap-3d-hover-tooltip";
+import {
+  useMcap3dHoverTooltip,
+  type Mcap3dHoveredEntity,
+  type Mcap3dHoveredPoint,
+} from "./use-mcap-3d-hover-tooltip";
 
-const HOVERED = { entityId: "veh-12", label: "car", topic: "/markers" };
+const HOVERED: Mcap3dHoveredEntity = {
+  entityId: "veh-12",
+  kind: "entity",
+  label: "car",
+  topic: "/markers",
+};
+
+const HOVERED_POINT: Mcap3dHoveredPoint = {
+  fields: { intensity: 0.5, ring: 7 },
+  frameId: "LIDAR_TOP",
+  kind: "point",
+  pointIndex: 42,
+  position: [1, 2, 3],
+  topic: "/lidar",
+};
 
 function pointerAt(x: number, y: number) {
   return { clientX: x, clientY: y } as React.PointerEvent;
@@ -72,6 +90,7 @@ describe("useMcap3dHoverTooltip", () => {
       vi.advanceTimersByTime(50);
       result.current.onHoverEntity({
         entityId: "ped-3",
+        kind: "entity",
         label: "pedestrian",
         topic: "/markers",
       });
@@ -84,5 +103,74 @@ describe("useMcap3dHoverTooltip", () => {
       vi.advanceTimersByTime(30);
     });
     expect(result.current.tooltip).toMatchObject({ entityId: "ped-3" });
+  });
+
+  it("shows point payloads immediately — their dwell already elapsed", () => {
+    const { result } = renderHook(() => useMcap3dHoverTooltip());
+
+    act(() => {
+      result.current.containerProps.onPointerMove(pointerAt(40, 60));
+      result.current.onHoverPoint(HOVERED_POINT);
+    });
+    expect(result.current.tooltip).toMatchObject({
+      ...HOVERED_POINT,
+      x: 40,
+      y: 60,
+    });
+
+    act(() => {
+      result.current.onHoverPoint(null);
+    });
+    expect(result.current.tooltip).toBeNull();
+  });
+
+  it("does not let a pending entity replace a newer point tooltip", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useMcap3dHoverTooltip());
+
+    act(() => {
+      result.current.onHoverEntity(HOVERED);
+      vi.advanceTimersByTime(50);
+      result.current.onHoverPoint(HOVERED_POINT);
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(result.current.tooltip).toMatchObject(HOVERED_POINT);
+  });
+
+  it("preserves a pending entity dwell when point hover misses", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useMcap3dHoverTooltip());
+
+    act(() => {
+      result.current.onHoverEntity(HOVERED);
+      vi.advanceTimersByTime(50);
+      result.current.onHoverPoint(null);
+      vi.advanceTimersByTime(70);
+    });
+
+    expect(result.current.tooltip).toMatchObject(HOVERED);
+  });
+
+  it("only clears tooltips of its own kind", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useMcap3dHoverTooltip());
+
+    act(() => {
+      result.current.onHoverEntity(HOVERED);
+      vi.advanceTimersByTime(120);
+    });
+    act(() => {
+      result.current.onHoverPoint(null);
+    });
+    expect(result.current.tooltip).toMatchObject({ entityId: "veh-12" });
+
+    act(() => {
+      result.current.onHoverPoint(HOVERED_POINT);
+    });
+    act(() => {
+      result.current.onHoverEntity(null);
+    });
+    expect(result.current.tooltip).toMatchObject({ pointIndex: 42 });
   });
 });

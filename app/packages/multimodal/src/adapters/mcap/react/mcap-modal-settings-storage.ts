@@ -68,11 +68,26 @@ export interface McapPointCloudColorSettings {
 }
 
 /**
+ * Per-image-topic pointcloud projection preferences. Projected dots
+ * inherit each cloud's 3D colour settings; point size is the
+ * projection's own knob because dots compete with photographic detail,
+ * not a dark void.
+ */
+export interface McapImageProjectionSettings {
+  readonly enabled: boolean;
+  /** Dot size, on the same scale as the 3D point size. */
+  readonly pointSize: number;
+  /** Explicit cloud topics to project; null projects every cloud. */
+  readonly topics: readonly string[] | null;
+}
+
+/**
  * Full localStorage payload for browser-wide MCAP modal preferences.
  */
 export interface McapPersistedModalSettings {
   readonly fidelityMode: McapPlaybackFidelityMode;
   readonly imageLabelTopics: Record<string, readonly string[]>;
+  readonly imageProjection: Record<string, McapImageProjectionSettings>;
   readonly pinholeCamera: McapPinholeCameraSettings;
   readonly pointCloudColors: Record<string, McapPointCloudColorSettings>;
   readonly pointCloudPointSize: number;
@@ -238,6 +253,7 @@ export const MCAP_POINT_CLOUD_POINT_SIZE_STEP = 0.25;
 export const DEFAULT_MCAP_MODAL_SETTINGS: McapPersistedModalSettings = {
   fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
   imageLabelTopics: {},
+  imageProjection: {},
   pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
   pointCloudColors: {},
   pointCloudPointSize: DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
@@ -264,6 +280,9 @@ export function readMcapModalSettings(): McapPersistedModalSettings {
       fidelityMode: normalizeMcapFidelityMode(candidate.fidelityMode),
       imageLabelTopics: normalizeMcapImageLabelTopicMap(
         candidate.imageLabelTopics,
+      ),
+      imageProjection: normalizeMcapImageProjectionMap(
+        candidate.imageProjection,
       ),
       pinholeCamera: normalizeMcapPinholeCamera(candidate.pinholeCamera),
       pointCloudColors: normalizeMcapPointCloudColorMap(
@@ -313,6 +332,7 @@ export function normalizeMcapModalSettings(
     imageLabelTopics: normalizeMcapImageLabelTopicMap(
       settings.imageLabelTopics,
     ),
+    imageProjection: normalizeMcapImageProjectionMap(settings.imageProjection),
     pinholeCamera: normalizeMcapPinholeCamera(settings.pinholeCamera),
     pointCloudColors: normalizeMcapPointCloudColorMap(
       settings.pointCloudColors,
@@ -336,6 +356,70 @@ export function normalizeMcapFidelityMode(
   return FIDELITY_MODES.includes(value as McapPlaybackFidelityMode)
     ? (value as McapPlaybackFidelityMode)
     : DEFAULT_MCAP_FIDELITY_MODE;
+}
+
+/**
+ * Default projected-dot size: 3× the default 3D point size, so dots
+ * stay legible over imagery out of the box.
+ */
+export const DEFAULT_MCAP_PROJECTION_POINT_SIZE =
+  3 * DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE;
+
+/**
+ * Default pointcloud projection settings for one image topic.
+ */
+export const DEFAULT_MCAP_IMAGE_PROJECTION: McapImageProjectionSettings = {
+  enabled: false,
+  pointSize: DEFAULT_MCAP_PROJECTION_POINT_SIZE,
+  topics: [],
+};
+
+/**
+ * Normalizes persisted per-image-topic pointcloud projection settings.
+ */
+export function normalizeMcapImageProjectionMap(
+  value: unknown,
+): Record<string, McapImageProjectionSettings> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return {};
+  }
+
+  const result: Record<string, McapImageProjectionSettings> = {};
+  for (const [imageTopic, settings] of Object.entries(value)) {
+    const normalizedImageTopic = imageTopic.trim();
+    if (!normalizedImageTopic) continue;
+    result[normalizedImageTopic] = normalizeMcapImageProjection(settings);
+  }
+  return result;
+}
+
+/**
+ * Normalizes one pointcloud projection settings entry.
+ */
+export function normalizeMcapImageProjection(
+  value: unknown,
+): McapImageProjectionSettings {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return DEFAULT_MCAP_IMAGE_PROJECTION;
+  }
+
+  const candidate = value as Partial<McapImageProjectionSettings>;
+  const topics =
+    candidate.topics === null || candidate.topics === undefined
+      ? null
+      : normalizeMcapTopicList(candidate.topics);
+  const enabled =
+    candidate.enabled === true && (topics === null || topics.length > 0);
+  return {
+    enabled,
+    pointSize: clampNumber(
+      candidate.pointSize,
+      MIN_MCAP_POINT_CLOUD_POINT_SIZE,
+      MAX_MCAP_POINT_CLOUD_POINT_SIZE,
+      DEFAULT_MCAP_PROJECTION_POINT_SIZE,
+    ),
+    topics: enabled ? topics : [],
+  };
 }
 
 /**

@@ -1089,7 +1089,7 @@ describe("ROS MCAP decoders", () => {
     const unsupported = decoder.decode(
       ros1ImageMessage({
         data: [1, 2],
-        encoding: "yuv422",
+        encoding: "nv12",
         height: 1,
         step: 2,
         width: 1,
@@ -1109,8 +1109,8 @@ describe("ROS MCAP decoders", () => {
 
     expect(unsupported.visualization).toBeUndefined();
     expect(unsupported.attributes).toMatchObject({
-      encoding: "yuv422",
-      unsupportedReason: "ROS Image encoding 'yuv422' is unsupported",
+      encoding: "nv12",
+      unsupportedReason: "ROS Image encoding 'nv12' is unsupported",
     });
     expect(malformed.visualization).toBeUndefined();
     expect(malformed.attributes?.unsupportedReason).toContain(

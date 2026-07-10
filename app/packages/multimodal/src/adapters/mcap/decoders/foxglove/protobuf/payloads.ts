@@ -22,6 +22,15 @@ export const FOXGLOVE_COMPRESSED_VIDEO_PAYLOAD: PayloadDescriptor = {
 };
 
 /**
+ * Payload identity for foxglove.RawImage messages.
+ */
+export const FOXGLOVE_RAW_IMAGE_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.RawImage",
+  schemaEncoding: "protobuf",
+};
+
+/**
  * Payload identity for foxglove.PointCloud messages.
  */
 export const FOXGLOVE_POINT_CLOUD_PAYLOAD: PayloadDescriptor = {

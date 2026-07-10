@@ -46,6 +46,8 @@ import {
   FOXGLOVE_POSE_IN_FRAME_PAYLOAD,
   FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
   FOXGLOVE_POINT_CLOUD_PAYLOAD,
+  FOXGLOVE_RAW_IMAGE_CDR_PAYLOADS,
+  FOXGLOVE_RAW_IMAGE_PAYLOAD,
   FOXGLOVE_SCENE_UPDATE_CDR_PAYLOADS,
   FOXGLOVE_SCENE_UPDATE_PAYLOAD,
 } from "./decoders/foxglove/payloads";
@@ -141,6 +143,8 @@ export function isImageStream(topic: StreamInventory): boolean {
     hasAnyPayload(topic, FOXGLOVE_COMPRESSED_IMAGE_CDR_PAYLOADS) ||
     hasPayload(topic, FOXGLOVE_COMPRESSED_VIDEO_PAYLOAD) ||
     hasAnyPayload(topic, FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS) ||
+    hasPayload(topic, FOXGLOVE_RAW_IMAGE_PAYLOAD) ||
+    hasAnyPayload(topic, FOXGLOVE_RAW_IMAGE_CDR_PAYLOADS) ||
     hasAnyPayload(topic, JSON_ROS_COMPRESSED_IMAGE_PAYLOADS) ||
     hasAnyPayload(topic, JSON_ROS_IMAGE_PAYLOADS) ||
     hasAnyPayload(topic, ROS_COMPRESSED_IMAGE_PAYLOADS) ||
