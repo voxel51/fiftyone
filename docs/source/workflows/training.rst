@@ -14,6 +14,7 @@ end-to-end fine-tuning on FiftyOne datasets.
    :maxdepth: 1
    :hidden:
 
+   Exporting datasets <../user_guide/export_datasets>
    Data Loading with Torch Datasets <../recipes/fiftyone_torch_dataloader.ipynb>
    Torch dataset basics <../recipes/torch-dataset-examples/basic_example.ipynb>
    Training on MNIST with Torch <../recipes/torch-dataset-examples/simple_training_example.ipynb>

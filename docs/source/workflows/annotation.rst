@@ -22,5 +22,3 @@ Auto-Labeling 🚀 to generate high-quality labels automatically.
    Annotation Workflows 🚀 __SUB_NEW__ <../enterprise/workflows>
    Auto-Labeling 🚀 <../enterprise/verified_auto_labeling>
    Building Annotation Workflows and Ontologies __SUB_NEW__ <../tutorials/fiftyone_annotation_workflows.ipynb>
-   Annotating with CVAT <../tutorials/cvat_annotation.ipynb>
-   Annotating with Labelbox <../tutorials/labelbox_annotation.ipynb>
