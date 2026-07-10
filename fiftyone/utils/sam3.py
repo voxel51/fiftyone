@@ -1030,7 +1030,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             frame_indices if frame_indices else sorted(sample.frames.keys())
         )
 
-        prompts: dict = {}
+        prompts = {}
 
         for frame_number in _frame_indices:
             if frame_number not in sample.frames:
@@ -1197,55 +1197,21 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                                 other_frames,
                             )
                         label_data = matching_frames[anchor_fi]
-                        prompt_response = (
-                            self.concept_predictor.handle_request(
-                                request=dict(
-                                    type="add_prompt",
-                                    session_id=session_id,
-                                    frame_index=anchor_fi,
-                                    text=text_prompt,
-                                    bounding_boxes=label_data["boxes"],
-                                    bounding_box_labels=label_data["polarity"],
-                                )
-                            )
-                        )
-                        outputs = prompt_response.get(
-                            "outputs", prompt_response
-                        )
-                        label_map = {
-                            oid: text_prompt
-                            for oid in outputs.get("out_obj_ids", [])
-                        }
-                        self._accumulate_concept_propagation(
-                            session_id,
-                            label_map,
-                            text_prompt,
-                            sample_detections,
+                        self._concept_add_and_propagate(
+                            session_id=session_id,
+                            frame_index=anchor_fi,
+                            label=text_prompt,
+                            sample_detections=sample_detections,
+                            boxes=label_data["boxes"],
+                            box_labels=label_data["polarity"],
                         )
                     else:
                         # Text-only at anchor frame.
-                        prompt_response = (
-                            self.concept_predictor.handle_request(
-                                request=dict(
-                                    type="add_prompt",
-                                    session_id=session_id,
-                                    frame_index=text_frame - 1,
-                                    text=text_prompt,
-                                )
-                            )
-                        )
-                        outputs = prompt_response.get(
-                            "outputs", prompt_response
-                        )
-                        label_map = {
-                            oid: text_prompt
-                            for oid in outputs.get("out_obj_ids", [])
-                        }
-                        self._accumulate_concept_propagation(
-                            session_id,
-                            label_map,
-                            text_prompt,
-                            sample_detections,
+                        self._concept_add_and_propagate(
+                            session_id=session_id,
+                            frame_index=text_frame - 1,
+                            label=text_prompt,
+                            sample_detections=sample_detections,
                         )
 
             else:
@@ -1255,28 +1221,14 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                     self._curr_exemplar_prompts.items()
                 ):
                     for label, label_data in frame_data.items():
-                        text_label = label if (label != "visual") else None
-                        prompt_response = (
-                            self.concept_predictor.handle_request(
-                                request=dict(
-                                    type="add_prompt",
-                                    session_id=session_id,
-                                    frame_index=fi,
-                                    text=text_label,
-                                    bounding_boxes=label_data["boxes"],
-                                    bounding_box_labels=label_data["polarity"],
-                                )
-                            )
-                        )
-                        outputs = prompt_response.get(
-                            "outputs", prompt_response
-                        )
-                        label_map = {
-                            oid: label
-                            for oid in outputs.get("out_obj_ids", [])
-                        }
-                        self._accumulate_concept_propagation(
-                            session_id, label_map, label, sample_detections
+                        self._concept_add_and_propagate(
+                            session_id=session_id,
+                            frame_index=fi,
+                            label=label,
+                            sample_detections=sample_detections,
+                            boxes=label_data["boxes"],
+                            box_labels=label_data["polarity"],
+                            start_frame_index=fi,
                         )
 
         finally:
@@ -1289,18 +1241,60 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
         return sample_detections
 
+    def _concept_add_and_propagate(
+        self,
+        session_id,
+        frame_index,
+        label,
+        sample_detections,
+        boxes=None,
+        box_labels=None,
+        start_frame_index=None,
+    ):
+        text = None if label == "visual" else label
+        request = dict(
+            type="add_prompt",
+            session_id=session_id,
+            frame_index=frame_index,
+            text=text,
+        )
+        if boxes is not None:
+            request["bounding_boxes"] = boxes
+        if box_labels is not None:
+            request["bounding_box_labels"] = box_labels
+        prompt_response = self.concept_predictor.handle_request(
+            request=request
+        )
+        outputs = prompt_response.get("outputs", prompt_response)
+        label_map = {oid: label for oid in outputs.get("out_obj_ids", [])}
+        self._accumulate_concept_propagation(
+            session_id,
+            label_map,
+            label,
+            sample_detections,
+            start_frame_index=start_frame_index,
+        )
+
     def _accumulate_concept_propagation(
-        self, session_id, label_map, default_label, sample_detections
+        self,
+        session_id,
+        label_map,
+        default_label,
+        sample_detections,
+        start_frame_index=None,
     ):
         """Propagate the current session state and merge detections into
         ``sample_detections``, using ``default_label`` for any object whose
         ID is not in ``label_map`` (e.g. newly discovered instances)."""
+        request = dict(
+            type="propagate_in_video",
+            session_id=session_id,
+            propagation_direction=self.config.propagation_direction,
+        )
+        if start_frame_index is not None:
+            request["start_frame_idx"] = start_frame_index
         for frame_result in self.concept_predictor.handle_stream_request(
-            request=dict(
-                type="propagate_in_video",
-                session_id=session_id,
-                propagation_direction=self.config.propagation_direction,
-            )
+            request=request
         ):
             out_frame_idx = frame_result.get("frame_index", 0)
             outputs = frame_result.get("outputs", frame_result)
