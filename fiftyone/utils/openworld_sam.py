@@ -330,6 +330,7 @@ class OpenWorldSAMModel(fout.TorchImageModel):
         hf_config = OpenWorldSAMConfig(
             nms_thresh=config.nms_thresh,
             iou_thresh=config.iou_thresh,
+            top_k_on=True,
             detections_per_image=config.top_k,
         )
         model = OpenWorldSAMModel.from_pretrained(
