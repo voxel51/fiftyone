@@ -71,6 +71,8 @@ export interface MultiModalPlaybackProps {
   tracks?: Track[];
   /** Track ids that should start pinned to the timeline. */
   defaultPinnedTrackIds?: string[];
+  /** Per-row timeline decoration (e.g. collapsible tag/event sections). */
+  decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
 
   /** Initial tile entries seeded into the embedded TilingProvider. */
   initialTiles?: Record<string, TilingTile>;
@@ -192,6 +194,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   timelineExtraActions,
   tracks,
   defaultPinnedTrackIds,
+  decorateTrack,
   initialTiles,
   initialManualTileTitles,
   autoLayoutStrategy,
@@ -214,7 +217,14 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
 }) => {
   return (
     <PlaybackProvider>
-      <TrackProvider tracks={tracks} initialPinnedIds={defaultPinnedTrackIds}>
+      {/* Only the grid-filtered tags (initialPinnedIds) start pinned. Auto-pin
+          is off: tracks arrive in async batches (tags vs projection events), so
+          auto-pinning "new" tracks would pin everything as each batch lands. */}
+      <TrackProvider
+        tracks={tracks}
+        initialPinnedIds={defaultPinnedTrackIds}
+        autoPinNewTracks={false}
+      >
         <SceneInventoryProvider sources={sceneSources}>
           <TilingProvider
             initialTiles={initialTiles}
@@ -244,6 +254,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               onTagCreate={onTagCreate}
               onTagDelete={onTagDelete}
               className={className}
+              decorateTrack={decorateTrack}
               // The multimodal playback modal always starts with the timeline
               // drawer closed, so only pinned tracks (e.g. those auto-pinned
               // from a temporal-tag grid filter) show until the user opens it.
@@ -274,6 +285,7 @@ interface LayoutProps {
   onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
   onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
   className?: string;
+  decorateTrack?: MultiModalPlaybackProps["decorateTrack"];
   /** Initial open state for the timeline drawer. */
   timelineDrawerDefaultOpen: boolean;
 }
@@ -296,6 +308,7 @@ function Layout({
   onTagCreate,
   onTagDelete,
   className,
+  decorateTrack,
   timelineDrawerDefaultOpen,
 }: LayoutProps) {
   const {
@@ -460,6 +473,7 @@ function Layout({
         // opened from a temporal-tag grid filter so only the pinned (filtered)
         // tracks show, open otherwise.
         defaultDrawerOpen={timelineDrawerDefaultOpen}
+        decorateTrack={decorateTrack}
         extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}
         eventMenuItems={

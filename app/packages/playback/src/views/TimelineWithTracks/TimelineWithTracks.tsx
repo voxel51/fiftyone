@@ -64,13 +64,15 @@ export interface TimelineWithTracksProps {
    */
   extraActions?: React.ReactNode;
   /**
-   * Per-row prop override. Returned partial is merged onto the props
-   * passed to each {@link TimelineTrack}.
+   * Per-row prop override. Returned partial is merged onto the props passed to
+   * each {@link TimelineTrack}. The extra `hidden` flag removes the row from
+   * the **unpinned** list only (e.g. a collapsed section's children); pinned
+   * rows always render, so pinning is never hidden by grouping.
    */
   decorateTrack?: (
     track: Track,
     pinned: boolean,
-  ) => Partial<TimelineTrackProps>;
+  ) => Partial<TimelineTrackProps> & { hidden?: boolean };
 }
 
 /**
@@ -115,21 +117,26 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     [tracks, pinnedIds],
   );
 
-  const renderPinnedTrack = (track: Track) => (
-    <TimelineTrack
-      key={track.id}
-      id={track.id}
-      label={track.label}
-      color={track.color}
-      events={track.events}
-      labelWidth={labelWidth}
-      pinned
-      onPinClick={() => togglePin(track.id)}
-      onEventClick={(e) => seekSnapped(e.startSec)}
-      eventMenuItems={eventMenuItems}
-      {...(decorateTrack ? decorateTrack(track, true) : null)}
-    />
-  );
+  const renderPinnedTrack = (track: Track) => {
+    // `hidden` only governs the unpinned list — a pinned row always renders —
+    // so strip it before spreading the rest onto the row.
+    const { hidden: _hidden, ...extra } = decorateTrack?.(track, true) ?? {};
+    return (
+      <TimelineTrack
+        key={track.id}
+        id={track.id}
+        label={track.label}
+        color={track.color}
+        events={track.events}
+        labelWidth={labelWidth}
+        pinned
+        onPinClick={() => togglePin(track.id)}
+        onEventClick={(e) => seekSnapped(e.startSec)}
+        eventMenuItems={eventMenuItems}
+        {...extra}
+      />
+    );
+  };
 
   if (tracks.length === 0) {
     return (
@@ -184,9 +191,13 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             </div>
             <div>
               {unpinned.map((track) => {
-                const extra = decorateTrack
-                  ? decorateTrack(track, false)
-                  : null;
+                const { hidden, ...extra } =
+                  decorateTrack?.(track, false) ?? {};
+                // Collapsed-section children (and any other hidden row) drop
+                // out of the browse list without affecting pin state.
+                if (hidden) {
+                  return null;
+                }
                 return (
                   <TimelineTrack
                     key={track.id}

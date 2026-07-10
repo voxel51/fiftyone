@@ -126,6 +126,8 @@ export interface TimelineTrackProps {
   labelWidth?: number;
   pinned?: boolean;
   onPinClick?: () => void;
+  /** Suppress the pin button entirely (e.g. non-pinnable section header rows). */
+  hidePin?: boolean;
   onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
   className?: string;
   /** Fired on the row root. Used for cross-component hover linking. */
@@ -200,6 +202,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   labelWidth = 0,
   pinned = false,
   onPinClick,
+  hidePin = false,
   onContextMenu,
   className,
   onMouseEnter,
@@ -475,7 +478,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           >
             {labelText}
           </Text>
-          {onPinClick && !isChild && (
+          {onPinClick && !isChild && !hidePin && (
             <Button
               variant={Variant.Icon}
               size={Size.Xs}

@@ -47,6 +47,8 @@ import { useMcapSceneInventory } from "./use-mcap-scene-inventory";
 export interface McapSourcePlaybackProps {
   readonly children?: React.ReactNode;
   readonly client: McapResourceClient;
+  /** Per-row timeline decoration (e.g. collapsible tag/event sections). */
+  readonly decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
   /** Track ids to start pinned to the timeline (e.g. from a grid tag filter). */
   readonly defaultPinnedTrackIds?: readonly string[];
   readonly fileName: string;
@@ -70,6 +72,7 @@ export interface McapSourcePlaybackProps {
 export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   children,
   client,
+  decorateTrack,
   defaultPinnedTrackIds,
   fileName,
   headerActions,
@@ -203,6 +206,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                       >
                         <MultiModalPlayback
                           fileName={fileName}
+                          decorateTrack={decorateTrack}
                           headerCaption={headerCaption}
                           headerActions={
                             <McapHeaderActions actions={headerActions} />

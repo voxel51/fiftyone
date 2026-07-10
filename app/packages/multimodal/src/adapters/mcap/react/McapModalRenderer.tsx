@@ -2,11 +2,13 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import React from "react";
 import { McapAdjacentSamplePrewarm } from "./McapAdjacentSamplePrewarm";
 import { McapSourcePlayback } from "./McapSourcePlayback";
+import { useMcapProjectionEvents } from "./use-mcap-projection-events";
 import { useMcapResourceClient } from "./use-mcap-resource-client";
 import {
   useFilteredTemporalTagPinnedIds,
   useMcapTemporalTags,
 } from "./use-mcap-temporal-tags";
+import { useMcapTimelineSections } from "./use-mcap-timeline-sections";
 import { useStableMcapSource } from "./use-stable-mcap-source";
 
 /**
@@ -19,7 +21,19 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const source = useStableMcapSource(ctx);
   const fileName = fileNameFromPath(ctx.media.path) ?? "recording.mcap";
   const datasetId = ctx.dataset.datasetId;
-  const { tracks, onTagCreate, onTagDelete } = useMcapTemporalTags(ctx);
+  const {
+    tracks: tagTracks,
+    onTagCreate,
+    onTagDelete,
+  } = useMcapTemporalTags(ctx);
+  // Read-only projection-event tracks, shown alongside temporal tags.
+  const eventTracks = useMcapProjectionEvents(ctx);
+  // Group the two kinds into collapsible "Temporal tags" / "Projection events"
+  // sections in the unpinned browse list (headers + indented child rows).
+  const { tracks, decorateTrack } = useMcapTimelineSections({
+    tagTracks,
+    eventTracks,
+  });
   // Auto-pin the timeline tracks for the temporal tags the grid was filtered
   // by, so opening a filtered sample surfaces the relevant tags immediately.
   const defaultPinnedTrackIds = useFilteredTemporalTagPinnedIds();
@@ -27,6 +41,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   return (
     <McapSourcePlayback
       client={client}
+      decorateTrack={decorateTrack}
       defaultPinnedTrackIds={defaultPinnedTrackIds}
       fileName={fileName}
       latencyLabel="mcap modal"
