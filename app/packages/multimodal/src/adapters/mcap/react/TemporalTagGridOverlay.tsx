@@ -31,13 +31,13 @@ interface OverlayModel {
 /**
  * Builds the overlay model from a sample's temporal tags and the active
  * filter values. Rows follow active-filter order and are capped at
- * {@link MAX_ROWS}; the time axis spans the earliest start to the latest end
- * across every present filtered interval, so all rows share one axis.
+ * {@link MAX_ROWS}; the time axis runs from 0 (recording start) to the latest
+ * end across ALL of the sample's tags, so all rows share one axis.
  *
- * NB: normalizing to the filtered tags' own span (not the full recording
- * duration) is a deliberate first pass — the recording range isn't available
- * per grid tile without decoding the MCAP. Positions are therefore relative
- * to each other, not to the whole recording.
+ * NB: the axis end is the sample's last tag, not the true recording duration
+ * (that isn't available per grid tile without decoding the MCAP), so a tile
+ * whose last tag ends before the recording does reads slightly compressed —
+ * but positions stay truthful and single intervals no longer fill the width.
  */
 function buildOverlayModel(
   temporalTags: readonly TemporalTag[],
@@ -60,16 +60,14 @@ function buildOverlayModel(
     return null;
   }
 
-  let domainStart = Infinity;
-  let domainEnd = -Infinity;
-  for (const tag of presentTags) {
-    for (const interval of byTag.get(tag) ?? []) {
-      if (interval.start < domainStart) {
-        domainStart = interval.start;
-      }
-      if (interval.end > domainEnd) {
-        domainEnd = interval.end;
-      }
+  // Anchor the axis at 0 (recording start) and extend to the latest end across
+  // ALL of the sample's tags — not just the shown ones. Using the shown tags'
+  // own min/max would make a single-interval tag define both edges and render
+  // full-width; anchoring at 0 with a sample-wide end keeps positions truthful.
+  let domainEnd = 0;
+  for (const tag of temporalTags) {
+    if (tag.end > domainEnd) {
+      domainEnd = tag.end;
     }
   }
 
@@ -81,9 +79,9 @@ function buildOverlayModel(
   return {
     rows,
     presentCount: presentTags.length,
-    domainStart,
-    // Guard the divisor: a single instantaneous tag has zero span.
-    domainSpan: Math.max(domainEnd - domainStart, 1),
+    domainStart: 0,
+    // Guard the divisor against a degenerate zero-length domain.
+    domainSpan: Math.max(domainEnd, 1),
   };
 }
 
