@@ -25,7 +25,10 @@ export type {
   NormalizedEvent,
   TrackEventMenuItem,
 } from "./src/views/TimelineTrack/TimelineTrack";
-export type { TemporalTagCreatePayload } from "./src/views/TemporalTag/TemporalTagContext";
+export type {
+  TemporalTagCreatePayload,
+  TemporalTagUpdatePayload,
+} from "./src/views/TemporalTag/TemporalTagContext";
 export { default as TemporalTagTimeline } from "./src/views/TemporalTag/TemporalTagTimeline";
 export type { TemporalTagTimelineProps } from "./src/views/TemporalTag/TemporalTagTimeline";
 

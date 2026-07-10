@@ -65,7 +65,8 @@ const TemporalTagPopup: React.FC = () => {
     setIsNewTag(true);
     setError(null);
     setSubmitting(false);
-    actions?.setLabel("");
+    // Preserve the pre-filled label when editing; only clear for a fresh create.
+    if (state.mode === "create") actions?.setLabel("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.phase]);
 
@@ -88,20 +89,32 @@ const TemporalTagPopup: React.FC = () => {
   }, [actions]);
 
   const handleSubmit = useCallback(async () => {
-    if (!ctx || !ctx.state.selection || !ctx.onTagCreate) return;
-    const { selection, pendingLabel } = ctx.state;
+    if (!ctx || !ctx.state.selection) return;
+    const { selection, pendingLabel, mode, editId } = ctx.state;
     if (!pendingLabel.trim()) {
       inputRef.current?.focus();
       return;
     }
+    const isEdit = mode === "edit";
+    // Bail if the needed callback isn't wired for this mode.
+    if (isEdit ? !ctx.onTagUpdate || !editId : !ctx.onTagCreate) return;
     setSubmitting(true);
     setError(null);
     try {
-      await ctx.onTagCreate({
-        start: selection.start,
-        end: selection.end,
-        tag: pendingLabel.trim(),
-      });
+      if (isEdit && ctx.onTagUpdate && editId) {
+        await ctx.onTagUpdate({
+          id: editId,
+          start: selection.start,
+          end: selection.end,
+          tag: pendingLabel.trim(),
+        });
+      } else if (ctx.onTagCreate) {
+        await ctx.onTagCreate({
+          start: selection.start,
+          end: selection.end,
+          tag: pendingLabel.trim(),
+        });
+      }
       ctx.actions.exitTagMode();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save tag.");
@@ -121,6 +134,7 @@ const TemporalTagPopup: React.FC = () => {
   if (!ctx || state?.phase !== "selected" || !state.anchor) return null;
 
   const { anchor, selection, pendingLabel } = state;
+  const isEdit = state.mode === "edit";
   const popupSize = { width: 260, height: hasExisting ? 240 : 200 };
   const { top, left } = pickTopLeft(anchor, popupSize);
 
@@ -157,7 +171,7 @@ const TemporalTagPopup: React.FC = () => {
       className={styles.popup}
       style={{ top, left }}
       role="dialog"
-      aria-label="Create temporal tag"
+      aria-label={isEdit ? "Edit temporal tag" : "Create temporal tag"}
       onPointerDown={(e) => e.stopPropagation()}
     >
       <Text
@@ -165,7 +179,7 @@ const TemporalTagPopup: React.FC = () => {
         color={TextColor.Secondary}
         className={styles.popupLabel}
       >
-        Add temporal tag
+        {isEdit ? "Edit temporal tag" : "Add temporal tag"}
       </Text>
 
       {/* Nudge controls */}
@@ -234,8 +248,8 @@ const TemporalTagPopup: React.FC = () => {
         </Button>
       </div>
 
-      {/* Existing-tag picker */}
-      {hasExisting && (
+      {/* Existing-tag picker (creation only — editing tweaks the current tag) */}
+      {hasExisting && !isEdit && (
         <Select
           exclusive
           portal
@@ -291,7 +305,7 @@ const TemporalTagPopup: React.FC = () => {
           onClick={handleSubmit}
           disabled={submitting || !pendingLabel.trim()}
         >
-          {submitting ? "Saving…" : "Accept"}
+          {submitting ? "Saving…" : isEdit ? "Save" : "Accept"}
         </Button>
       </div>
     </div>,

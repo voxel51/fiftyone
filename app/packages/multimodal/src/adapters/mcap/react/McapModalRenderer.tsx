@@ -24,6 +24,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const {
     tracks: tagTracks,
     onTagCreate,
+    onTagUpdate,
     onTagDelete,
   } = useMcapTemporalTags(ctx);
   // Read-only projection-event tracks, shown alongside temporal tags.
@@ -50,6 +51,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
       }
       layoutScopeKey={datasetId}
       onTagCreate={onTagCreate}
+      onTagUpdate={onTagUpdate}
       onTagDelete={onTagDelete}
       source={source}
       tracks={tracks}

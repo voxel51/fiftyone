@@ -3,7 +3,10 @@
  * events are surfaced in the tracks timeline but not mutated here.
  */
 export { createProjectionEventsClient } from "./client";
-export { createMockProjectionEventsClient } from "./mock";
+export {
+  createMockProjectionEventsClient,
+  createDynamicMockProjectionEventsClient,
+} from "./mock";
 export {
   useEpisodeProjectionEvents,
   useSampleRendererProjectionEvents,

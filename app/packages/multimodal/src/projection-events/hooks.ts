@@ -1,6 +1,6 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createMockProjectionEventsClient } from "./mock";
+import { createDynamicMockProjectionEventsClient } from "./mock";
 import type {
   ProjectionEvent,
   ProjectionEventFilter,
@@ -138,7 +138,9 @@ function errorMessage(error: unknown) {
  * (from `./client`) once that endpoint lands.
  */
 function getDefaultProjectionEventsClient() {
-  defaultProjectionEventsClient ??= createMockProjectionEventsClient();
+  // Dynamic mock: each sample gets a distinct, stable set of events so the
+  // demo doesn't show identical projection events on every sample.
+  defaultProjectionEventsClient ??= createDynamicMockProjectionEventsClient();
 
   return defaultProjectionEventsClient;
 }

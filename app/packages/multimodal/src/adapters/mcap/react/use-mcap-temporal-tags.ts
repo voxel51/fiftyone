@@ -1,6 +1,9 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import type { Track } from "@fiftyone/playback";
-import type { TemporalTagCreatePayload } from "@fiftyone/playback";
+import type {
+  TemporalTagCreatePayload,
+  TemporalTagUpdatePayload,
+} from "@fiftyone/playback";
 import { useActiveTemporalTagFilterValues } from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import { useSampleRendererTemporalTags } from "../../../temporal-tags";
@@ -36,6 +39,7 @@ function hashLabel(label: string): number {
 export interface McapTemporalTagsResult {
   tracks: Track[];
   onTagCreate: (tag: TemporalTagCreatePayload) => Promise<void>;
+  onTagUpdate: (tag: TemporalTagUpdatePayload) => Promise<void>;
   onTagDelete: (event: { data?: unknown }) => Promise<void>;
 }
 
@@ -44,6 +48,7 @@ export function useMcapTemporalTags(
 ): McapTemporalTagsResult {
   const {
     create,
+    update,
     delete: deleteTags,
     temporalTags,
   } = useSampleRendererTemporalTags(ctx);
@@ -66,6 +71,16 @@ export function useMcapTemporalTags(
         },
       ]).then(() => undefined),
     [create],
+  );
+
+  const onTagUpdate = useCallback(
+    (tag: TemporalTagUpdatePayload) =>
+      update(tag.id, {
+        start: Math.round(tag.start * 1_000_000_000),
+        end: Math.round(tag.end * 1_000_000_000),
+        tag: tag.tag,
+      }).then(() => undefined),
+    [update],
   );
 
   const tracks = useMemo<Track[]>(() => {
@@ -103,7 +118,7 @@ export function useMcapTemporalTags(
     }));
   }, [temporalTags]);
 
-  return { tracks, onTagCreate, onTagDelete };
+  return { tracks, onTagCreate, onTagUpdate, onTagDelete };
 }
 
 /**

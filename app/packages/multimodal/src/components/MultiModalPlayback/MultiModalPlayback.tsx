@@ -139,6 +139,7 @@ export interface MultiModalPlaybackProps {
    * hotkey, Shift+drag).
    */
   onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
+  onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   /** Callback that deletes an existing temporal tag by its backend id. */
   onTagDelete?: NonNullable<
     TemporalTagTimelineProps["eventMenuItems"]
@@ -211,6 +212,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   leftSidebarWidth,
   onLeftSidebarWidthChange,
   onTagCreate,
+  onTagUpdate,
   onTagDelete,
   children,
   className,
@@ -252,6 +254,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               leftSidebarWidth={leftSidebarWidth}
               onLeftSidebarWidthChange={onLeftSidebarWidthChange}
               onTagCreate={onTagCreate}
+              onTagUpdate={onTagUpdate}
               onTagDelete={onTagDelete}
               className={className}
               decorateTrack={decorateTrack}
@@ -283,6 +286,7 @@ interface LayoutProps {
   leftSidebarWidth?: number;
   onLeftSidebarWidthChange?: (px: number) => void;
   onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
+  onTagUpdate?: MultiModalPlaybackProps["onTagUpdate"];
   onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
   className?: string;
   decorateTrack?: MultiModalPlaybackProps["decorateTrack"];
@@ -306,6 +310,7 @@ function Layout({
   leftSidebarWidth,
   onLeftSidebarWidthChange,
   onTagCreate,
+  onTagUpdate,
   onTagDelete,
   className,
   decorateTrack,
@@ -476,6 +481,7 @@ function Layout({
         decorateTrack={decorateTrack}
         extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}
+        onTagUpdate={onTagUpdate}
         eventMenuItems={
           onTagDelete
             ? [
