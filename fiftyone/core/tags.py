@@ -105,6 +105,59 @@ class Tag(object):
         self.sample_id = sample_id
         self.tag = tag
 
+    def __repr__(self):
+        return (
+            "%s(sample_id=%r, tag=%r, created_by=%r, "
+            "last_modified_by=%r, created_at=%r, last_modified_at=%r, id=%r)"
+            % (
+                self.__class__.__name__,
+                self.sample_id,
+                self.tag,
+                self.created_by,
+                self.last_modified_by,
+                self.created_at,
+                self.last_modified_at,
+                self.id,
+            )
+        )
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self.to_dict() == other.to_dict()
+
+    def to_dict(self):
+        """Serializes the tag to a JSON dictionary."""
+        d = {
+            "sample_id": self.sample_id,
+            "tag": self.tag,
+        }
+
+        if self.created_by is not None:
+            d["created_by"] = self.created_by
+
+        if self.last_modified_by is not None:
+            d["last_modified_by"] = self.last_modified_by
+
+        if self.created_at is not None:
+            d["created_at"] = _serialize_datetime(
+                self.created_at, "created_at"
+            )
+
+        if self.last_modified_at is not None:
+            d["last_modified_at"] = _serialize_datetime(
+                self.last_modified_at, "last_modified_at"
+            )
+
+        if self.id is not None:
+            d["id"] = self.id
+
+        if self.kind is not None:
+            d["kind"] = self.kind
+
+        return d
+
 
 class TemporalTag(Tag):
     """A temporal tag interval on one multimodal sample.
@@ -180,12 +233,6 @@ class TemporalTag(Tag):
             )
         )
 
-    def __eq__(self, other):
-        if not isinstance(other, TemporalTag):
-            return False
-
-        return self.to_dict() == other.to_dict()
-
     def copy(self):
         """Returns a copy of this temporal tag."""
         return self.__class__(
@@ -204,37 +251,14 @@ class TemporalTag(Tag):
 
     def to_dict(self):
         """Serializes the temporal tag to a JSON dictionary."""
-        d = {
-            "sample_id": self.sample_id,
-            "index_type": self.index_type,
-            "start": self.start,
-            "end": self.end,
-            "tag": self.tag,
-        }
+        d = super().to_dict()
+        d.update(
+            index_type=self.index_type,
+            start=self.start,
+            end=self.end,
+        )
         if self.anchor is not None:
             d["anchor"] = self.anchor
-
-        if self.created_by is not None:
-            d["created_by"] = self.created_by
-
-        if self.last_modified_by is not None:
-            d["last_modified_by"] = self.last_modified_by
-
-        if self.created_at is not None:
-            d["created_at"] = _serialize_datetime(
-                self.created_at, "created_at"
-            )
-
-        if self.last_modified_at is not None:
-            d["last_modified_at"] = _serialize_datetime(
-                self.last_modified_at, "last_modified_at"
-            )
-
-        if self.id is not None:
-            d["id"] = self.id
-
-        if self.kind is not None:
-            d["kind"] = self.kind
 
         return d
 
