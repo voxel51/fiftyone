@@ -486,7 +486,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
   // Share point hovers between the 3D scene and image projections.
   const hoverEcho = useMcapHoverEcho();
-  const publishedPointHoverRef = useRef<McapHoverEcho | null>(null);
+  const publishedPointHoverRefs = useRef(new Map<string, McapHoverEcho>());
   const hoverablePointCloudLayers = useMemo(
     () =>
       coloredPointCloudLayers.map((layer) => {
@@ -511,13 +511,13 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
                 position: payload.position,
                 topic,
               };
-              publishedPointHoverRef.current = hover;
+              publishedPointHoverRefs.current.set(topic, hover);
               jotaiStore.set(mcapHoverEchoAtom, hover);
               return;
             }
 
-            const published = publishedPointHoverRef.current;
-            publishedPointHoverRef.current = null;
+            const published = publishedPointHoverRefs.current.get(topic);
+            publishedPointHoverRefs.current.delete(topic);
             if (published) {
               jotaiStore.set(mcapHoverEchoAtom, (current) =>
                 current === published ? null : current,

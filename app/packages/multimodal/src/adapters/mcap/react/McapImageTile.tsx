@@ -327,7 +327,12 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   onChange={(event) => {
                     const next = Number(event.target.value);
                     if (Number.isFinite(next)) {
-                      setProjection({ pointSize: next });
+                      setProjection({
+                        pointSize: Math.min(
+                          MAX_MCAP_POINT_CLOUD_POINT_SIZE,
+                          Math.max(MIN_MCAP_POINT_CLOUD_POINT_SIZE, next),
+                        ),
+                      });
                     }
                   }}
                   step={MCAP_POINT_CLOUD_POINT_SIZE_STEP}

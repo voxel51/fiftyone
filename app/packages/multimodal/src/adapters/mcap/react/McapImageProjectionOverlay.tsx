@@ -212,7 +212,12 @@ const McapImageProjectionOverlay: React.FC<{
       const container = containerRef.current;
       const calib = calibrationRef.current;
       const cameraFrameId = calib.coordinateFrameId;
-      if (!container || !cameraFrameId || !(calib.width > 0)) {
+      if (
+        !container ||
+        !cameraFrameId ||
+        !(calib.width > 0) ||
+        !(calib.height > 0)
+      ) {
         clearOwnHover();
         return;
       }
@@ -568,8 +573,8 @@ const McapImageProjectionOverlay: React.FC<{
   ]);
 
   return (
-    <div ref={containerRef} style={containerStyle} aria-hidden>
-      <canvas ref={canvasRef} style={canvasStyle} />
+    <div ref={containerRef} style={containerStyle}>
+      <canvas aria-hidden ref={canvasRef} style={canvasStyle} />
       {dwellTooltip ? <Mcap3dHoverTooltip tooltip={dwellTooltip} /> : null}
       {hasNonTrivialDistortion(calibration) ? (
         <div style={noticeStyle}>
