@@ -41,6 +41,12 @@ const SNAPSHOT_REFRESH_DEBOUNCE_MS = 250;
 // exactly what the lease pool exists to prevent). Exported for tests.
 export const HOVER_INTENT_DELAY_MS = 120;
 
+const stopGridActivationPropagation = (
+  event: React.MouseEvent<HTMLElement>,
+) => {
+  event.stopPropagation();
+};
+
 /**
  * Grid renderer for MCAP-backed multimodal samples. Shows one camera
  * preview frame and plays the stream while hovered.
@@ -63,6 +69,8 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
   });
   const registerStreamTopics = useRegisterMcapGridStreamTopics();
   const stableStreamTopics = useStableGridStreamTopics(preview.streamTopics);
+  const allowGridActivation =
+    preview.status === "ready" && preview.frame?.kind === "image";
 
   useEffect(() => {
     return registerStreamTopics({
@@ -76,6 +84,10 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
   return (
     <div
       className={classes.root}
+      onClick={allowGridActivation ? undefined : stopGridActivationPropagation}
+      onContextMenu={
+        allowGridActivation ? undefined : stopGridActivationPropagation
+      }
       onPointerEnter={preview.play}
       onPointerLeave={preview.pause}
     >

@@ -1,11 +1,13 @@
 import { buildThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import {
+  type SampleRendererGridClickBehavior,
   type SampleRendererProps,
   type SampleRendererRenderContext,
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Checkbox } from "@mui/material";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -16,6 +18,7 @@ type GridCustomRendererItemConfig = {
   Renderer: React.ComponentType<SampleRendererProps>;
   RecoilBridge: React.ComponentType<React.PropsWithChildren>;
   ctx: SampleRendererRenderContext;
+  clickBehavior?: SampleRendererGridClickBehavior;
   symbol: ID;
 };
 
@@ -90,8 +93,9 @@ const OPEN_MODAL_BUTTON_STYLES: React.CSSProperties = {
   background: "rgba(18, 18, 18, 0.72)",
   color: "#f5f5f5",
   fontSize: "14px",
-  lineHeight: "20px",
-  textAlign: "center",
+  alignItems: "center",
+  display: "flex",
+  justifyContent: "center",
   padding: 0,
   cursor: "pointer",
   zIndex: 20,
@@ -153,6 +157,7 @@ function getSourceSizeHintBytes(
 }
 
 type GridCustomRendererWrapperProps = React.PropsWithChildren<{
+  clickBehavior?: SampleRendererGridClickBehavior;
   selected: boolean;
   onOpenModal: React.MouseEventHandler<HTMLButtonElement>;
   onSelect: React.MouseEventHandler<HTMLButtonElement>;
@@ -166,12 +171,14 @@ const stopGridActivationPropagation: React.MouseEventHandler<HTMLElement> = (
 
 const GridCustomRendererWrapper = ({
   children,
+  clickBehavior = "renderer",
   selected,
   onOpenModal,
   onSelect,
 }: GridCustomRendererWrapperProps) => {
   const [hovering, setHovering] = React.useState(false);
   const showSelectionControl = hovering || selected;
+  const passThroughGridActivation = clickBehavior === "passthrough";
 
   return (
     <div
@@ -179,8 +186,12 @@ const GridCustomRendererWrapper = ({
       onMouseEnter={() => setHovering(true)}
       onMouseMove={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
-      onClick={stopGridActivationPropagation}
-      onContextMenu={stopGridActivationPropagation}
+      onClick={
+        passThroughGridActivation ? undefined : stopGridActivationPropagation
+      }
+      onContextMenu={
+        passThroughGridActivation ? undefined : stopGridActivationPropagation
+      }
     >
       {children}
       {showSelectionControl && (
@@ -192,15 +203,14 @@ const GridCustomRendererWrapper = ({
         />
       )}
       {hovering && (
-        <>
-          <button
-            title="Open sample modal"
-            onClick={onOpenModal}
-            style={OPEN_MODAL_BUTTON_STYLES}
-          >
-            ↩
-          </button>
-        </>
+        <button
+          aria-label="Open sample modal"
+          title="Open sample modal"
+          onClick={onOpenModal}
+          style={OPEN_MODAL_BUTTON_STYLES}
+        >
+          <OpenInFullIcon fontSize="inherit" />
+        </button>
       )}
     </div>
   );
@@ -287,6 +297,7 @@ export class GridCustomRendererItem {
           key={ctx.media.url ?? this.config.pluginName}
         >
           <GridCustomRendererWrapper
+            clickBehavior={this.config.clickBehavior}
             selected={this.selected}
             onOpenModal={this.handleOpenModalClick}
             onSelect={this.handleSelectSampleClick}
