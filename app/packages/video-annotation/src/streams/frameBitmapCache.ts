@@ -42,8 +42,12 @@ export class FrameBitmapCache<M = unknown> {
   private pinnedFrame: number | null = null;
   /** Strong ref to the pinned entry so it survives eviction from the LRU. */
   private pinnedEntry: CachedFrameBitmap<M> | null = null;
+  /** DEBUG: when set, {@link pin} is a no-op (reproduces the pre-fix crash). */
+  private readonly pinDisabled: boolean;
 
-  constructor(maxBytes: number = DEFAULT_MAX_BYTES) {
+  constructor(maxBytes: number = DEFAULT_MAX_BYTES, pinDisabled = false) {
+    this.pinDisabled = pinDisabled;
+
     this.cache = new LRUCache<number, CachedFrameBitmap<M>>({
       maxSize: maxBytes,
       sizeCalculation: (entry) => Math.max(1, entry.width * entry.height * 4),
@@ -92,7 +96,7 @@ export class FrameBitmapCache<M = unknown> {
    * pressure.
    */
   pin(frame: number): void {
-    if (frame === this.pinnedFrame) {
+    if (this.pinDisabled || frame === this.pinnedFrame) {
       return;
     }
 

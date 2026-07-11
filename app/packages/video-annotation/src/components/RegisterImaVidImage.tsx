@@ -9,6 +9,7 @@ import {
   useView,
 } from "../state/accessors";
 import { IMAVID_STREAM_ID } from "../utils/ids";
+import { readFrameCacheDebug } from "../utils/frameCacheDebug";
 import type { FrameBitmapStream } from "../streams/frameBitmapStream";
 import { ImaVidImageStream } from "../streams/ImaVidImageStream";
 import { NativeVideoFrameStream } from "../streams/NativeVideoFrameStream";
@@ -92,6 +93,10 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
 }) => {
   const streamRef = useRef<FrameBitmapStream | null>(null);
   if (streamRef.current === null) {
+    // DEBUG: URL overrides to force frequent eviction and/or reproduce the
+    // pre-fix detached-bitmap crash (see `frameCacheDebug`).
+    const debug = readFrameCacheDebug();
+
     streamRef.current =
       props.source === "extract" && props.videoSrc
         ? new NativeVideoFrameStream({
@@ -100,6 +105,8 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
             frameCount: props.frameCount,
             frameRate: props.frameRate,
             videoSrc: props.videoSrc,
+            maxBytes: debug.maxBytes,
+            pinDisabled: debug.unsafe,
           })
         : new ImaVidImageStream({
             id: IMAVID_STREAM_ID,
@@ -109,6 +116,8 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
             groupSlice: props.groupSlice,
             frameCount: props.frameCount,
             frameRate: props.frameRate,
+            maxBytes: debug.maxBytes,
+            pinDisabled: debug.unsafe,
           });
   }
 

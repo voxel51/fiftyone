@@ -4,7 +4,11 @@ import { useLighterTileScene } from "../hooks/useLighterTileScene";
 import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
 import { IMAVID_STREAM_ID } from "../utils/ids";
 import type { ImaVidImageFrame } from "../streams/ImaVidImageStream";
+import { readFrameCacheDebug } from "../utils/frameCacheDebug";
 import styles from "./ImaVidLighterTile.module.css";
+
+/** DEBUG: `?frame-cache-unsafe=1` bypasses the detached-bitmap draw guard. */
+const drawGuardDisabled = readFrameCacheDebug().unsafe ?? false;
 
 interface ImageDimensions {
   w: number;
@@ -42,10 +46,12 @@ function usePaintFrameToCanvas(
 
     // A closed `ImageBitmap` reports zero dimensions; drawing it throws
     // ("image source is detached"). Skip rather than crash — the current
-    // canvas contents linger until the next live frame commits.
+    // canvas contents linger until the next live frame commits. The DEBUG
+    // `?frame-cache-unsafe=1` override bypasses this guard to reproduce the
+    // pre-fix crash.
     const w = frame.bitmap.width;
     const h = frame.bitmap.height;
-    if (w === 0 || h === 0) {
+    if (!drawGuardDisabled && (w === 0 || h === 0)) {
       return;
     }
 

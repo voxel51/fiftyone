@@ -51,6 +51,8 @@ export interface FrameBitmapStreamOptions {
    * @default 1e9
    */
   maxBytes?: number;
+  /** DEBUG: disable the on-screen-frame pin (reproduces the pre-fix crash). */
+  pinDisabled?: boolean;
 }
 
 const DEFAULT_CHUNK_SIZE = 60;
@@ -120,7 +122,7 @@ export abstract class FrameBitmapStream<
     this.frameCount = opts.frameCount;
     this.frameRate = opts.frameRate;
     this.chunkSize = opts.chunkSize ?? DEFAULT_CHUNK_SIZE;
-    this.cache = new FrameBitmapCache<M>(opts.maxBytes);
+    this.cache = new FrameBitmapCache<M>(opts.maxBytes, opts.pinDisabled);
 
     // `createWorker` is field-independent (just `new Worker(url)`), so it's
     // safe to call from the base constructor before subclass fields are set.

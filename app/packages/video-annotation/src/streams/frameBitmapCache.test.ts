@@ -114,4 +114,20 @@ describe("FrameBitmapCache pinning", () => {
     expect(e1.close).toHaveBeenCalledTimes(1);
     expect(e2.close).toHaveBeenCalledTimes(1);
   });
+
+  it("with pinning disabled, closes the on-screen frame on eviction (pre-fix behaviour)", () => {
+    const cache = new FrameBitmapCache(
+      TWO_FRAME_BUDGET,
+      /* pinDisabled */ true,
+    );
+    const e1 = makeEntry();
+
+    cache.set(1, e1);
+    cache.pin(1); // no-op when disabled
+    cache.set(2, makeEntry());
+    cache.set(3, makeEntry()); // evicts frame 1 and closes it, still "on screen"
+
+    expect(e1.close).toHaveBeenCalledTimes(1);
+    expect(cache.has(1)).toBe(false);
+  });
 });
