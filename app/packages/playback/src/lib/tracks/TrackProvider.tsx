@@ -94,7 +94,41 @@ export interface TrackProviderProps {
    * explicit user action.
    */
   autoPinNewTracks?: boolean;
+  /**
+   * When set, the pinned-id set is persisted client-side under this
+   * `localStorage` key: it hydrates the initial pin state (falling back to
+   * `initialPinnedIds` when nothing is stored) and re-writes on every change.
+   * Callers own the key's scope (e.g. dataset + sample). **Read at mount** like
+   * `initialPinnedIds` — remount (re-key) to switch scopes. Omit for pure
+   * in-memory pinning.
+   */
+  persistKey?: string;
   children: React.ReactNode;
+}
+
+/** Read a persisted pinned-id set; null when absent, empty, or unparseable. */
+function readPersistedPinnedIds(key: string): Set<string> | null {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+
+    return new Set(parsed.filter((id): id is string => typeof id === "string"));
+  } catch {
+    // storage unavailable / malformed — fall back to the seeded ids.
+    return null;
+  }
+}
+
+/** Best-effort write of the pinned-id set; swallows quota / unavailable. */
+function writePersistedPinnedIds(key: string, ids: ReadonlySet<string>): void {
+  try {
+    window.localStorage.setItem(key, JSON.stringify([...ids]));
+  } catch {
+    // persistence is best-effort; ignore storage failures.
+  }
 }
 
 /**
@@ -116,11 +150,24 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   tracks = [],
   initialPinnedIds = [],
   autoPinNewTracks = true,
+  persistKey,
   children,
 }) => {
-  const [pinnedIds, setPinnedSet] = useState<Set<string>>(
-    () => new Set(initialPinnedIds),
-  );
+  const [pinnedIds, setPinnedSet] = useState<Set<string>>(() => {
+    if (persistKey) {
+      const persisted = readPersistedPinnedIds(persistKey);
+      if (persisted) return persisted;
+    }
+
+    return new Set(initialPinnedIds);
+  });
+
+  // Mirror every pin change into client storage when a key is provided.
+  useEffect(() => {
+    if (!persistKey) return;
+
+    writePersistedPinnedIds(persistKey, pinnedIds);
+  }, [persistKey, pinnedIds]);
 
   // Auto-pin tracks added one-at-a-time after the initial load (e.g. a
   // newly created temporal tag). We distinguish "initial hydration" from

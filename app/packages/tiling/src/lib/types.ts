@@ -28,8 +28,19 @@ export interface TilingTile {
   render: () => ReactNode;
 }
 
+/** Measured mosaic geometry available to host-specific layout strategies. */
+export interface TilingLayoutMetrics {
+  readonly width: number;
+  readonly height: number;
+  /** Fixed horizontal space each leaf loses to margins, borders, and chrome. */
+  readonly tileHorizontalInset: number;
+  /** Fixed vertical space each leaf loses to margins, borders, and its toolbar. */
+  readonly tileVerticalInset: number;
+}
+
 export type TilingAutoLayoutStrategy = (
   tileIds: readonly string[],
+  metrics?: TilingLayoutMetrics,
 ) => MosaicNode<string> | null;
 
 export type TileTitleSource = "auto" | "manual";
@@ -81,6 +92,10 @@ export interface TilingContextValue {
   addTile: (tile: TilingTile, options?: AddTileOptions) => string;
   removeTile: (id: string) => void;
   autoLayout: () => void;
+  /** Restore the host-defined default tiles and layout. */
+  resetLayout: () => void;
+  /** Report current mosaic geometry without triggering provider renders. */
+  setLayoutMetrics: (metrics: TilingLayoutMetrics | null) => void;
   /**
    * Spawn a fresh tile of the same kind beside `tileId` — `"row"` puts
    * it to the right, `"column"` below. The kind comes from the tile's

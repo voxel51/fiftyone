@@ -973,6 +973,12 @@ describe("Disabled field types in schema fields", () => {
       );
     });
 
+    it("getPath should return original path when dataset.mediaType is 'multimodal'", () => {
+      expect(
+        getPath(FIELDS.SAMPLE_ID_FIELD.path, "multimodal", SCHEMA),
+      ).toEqual(FIELDS.SAMPLE_ID_FIELD.path);
+    });
+
     it("getPath should return [frames.]path when dataset.mediaType is 'video'", () => {
       expect(getPath(FIELDS.SAMPLE_ID_FIELD.path, "video", SCHEMA)).toEqual(
         `frames.${FIELDS.SAMPLE_ID_FIELD.path}`,
@@ -1009,6 +1015,15 @@ describe("Disabled field types in schema fields", () => {
       ).toContain(FIELDS.METADATA_FIELD.path);
       expect(
         getSubPaths(FIELDS.METADATA_FIELD.path, SCHEMA, "image"),
+      ).toContain(FIELDS.METADATA_WIDTH_FIELD.path);
+    });
+
+    it("getSubPaths should return correct subpaths in a multimodal dataset", () => {
+      expect(
+        getSubPaths(FIELDS.METADATA_FIELD.path, SCHEMA, "multimodal"),
+      ).toContain(FIELDS.METADATA_FIELD.path);
+      expect(
+        getSubPaths(FIELDS.METADATA_FIELD.path, SCHEMA, "multimodal"),
       ).toContain(FIELDS.METADATA_WIDTH_FIELD.path);
     });
 

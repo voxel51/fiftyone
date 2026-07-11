@@ -1,7 +1,10 @@
 import { createStreamHandle } from "./createStreamHandle";
-import type { ImaVidImageStream } from "./ImaVidImageStream";
+import type { FrameBitmapStream } from "./frameBitmapStream";
 
-const { useStream, usePublishStream } = createStreamHandle<ImaVidImageStream>();
+// Typed to the base so either backing stream (the `/frames` ImaVidImageStream
+// or the WebCodecs NativeVideoFrameStream) can be published/consumed — the tile
+// and SAM2 consumers only touch base methods (getValue/warmup/fps/totalFrames).
+const { useStream, usePublishStream } = createStreamHandle<FrameBitmapStream>();
 
 /**
  * Active ImaVid image stream (decoded per-frame bitmaps). Published so

@@ -56,7 +56,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
   onToggleRightSidebar,
 }) => {
   const types = useTileTypes();
-  const { autoLayout, focusedTileId, tiles } = useTiling();
+  const { autoLayout, focusedTileId, resetLayout, tiles } = useTiling();
   const focusedTileTitle =
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId].title : null;
   const caption =
@@ -73,6 +73,11 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
         icon={IconName.Refresh}
         text="Auto Layout"
         onClick={autoLayout}
+      />
+      <MenuIconTextItem
+        icon={IconName.Undo}
+        text="Reset Layout"
+        onClick={resetLayout}
       />
     </>
   ) : null;

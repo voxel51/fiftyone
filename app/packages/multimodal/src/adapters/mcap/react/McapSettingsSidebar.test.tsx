@@ -6,9 +6,10 @@ import {
   useTiling,
   type TilingTile,
 } from "@fiftyone/tiling";
+import { PlaybackProvider } from "@fiftyone/playback";
 import { useAtomValue } from "jotai";
 import React from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   SceneInventoryProvider,
   type SceneSource,
@@ -18,6 +19,13 @@ import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { mcapRawTileTopicAtom } from "./mcap-raw-tile-state";
 import { __resetMcapModalSettingsForTests } from "./mcap-modal-settings";
 import McapSettingsSidebar from "./McapSettingsSidebar";
+
+const playbackFrames = vi.hoisted(() => ({ current: [] as unknown[] }));
+
+vi.mock("@fiftyone/playback", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@fiftyone/playback")>()),
+  useStreamValues: () => playbackFrames.current,
+}));
 
 const PANEL_SETTINGS_TEST_ID = "panel-settings";
 const CAMERA_TILE_ID = "camera-1";
@@ -99,26 +107,29 @@ function renderSidebar({
 } = {}) {
   const probeState: { current: TilingProbeState | null } = { current: null };
   const result = render(
-    <SceneInventoryProvider sources={SOURCES}>
-      <TilingProvider initialTiles={INITIAL_TILES}>
-        <TilingStateProbe stateRef={probeState} />
-        <TileIdScope tileId={CAMERA_TILE_ID}>
-          <TileBody label="camera" />
-        </TileIdScope>
-        <TileIdScope tileId={LIDAR_TILE_ID}>
-          <TileBody label="lidar" />
-        </TileIdScope>
-        <FocusButton id={CAMERA_TILE_ID} testId="focus-camera" />
-        <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
-        <McapSettingsSidebar topics={topics} />
-      </TilingProvider>
-    </SceneInventoryProvider>,
+    <PlaybackProvider duration={1}>
+      <SceneInventoryProvider sources={SOURCES}>
+        <TilingProvider initialTiles={INITIAL_TILES}>
+          <TilingStateProbe stateRef={probeState} />
+          <TileIdScope tileId={CAMERA_TILE_ID}>
+            <TileBody label="camera" />
+          </TileIdScope>
+          <TileIdScope tileId={LIDAR_TILE_ID}>
+            <TileBody label="lidar" />
+          </TileIdScope>
+          <FocusButton id={CAMERA_TILE_ID} testId="focus-camera" />
+          <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
+          <McapSettingsSidebar topics={topics} />
+        </TilingProvider>
+      </SceneInventoryProvider>
+    </PlaybackProvider>,
   );
   return { ...result, probeState };
 }
 
 describe("McapSettingsSidebar", () => {
   beforeEach(() => {
+    playbackFrames.current = [];
     localStorage.clear();
     __resetMcapModalSettingsForTests();
   });
@@ -142,6 +153,53 @@ describe("McapSettingsSidebar", () => {
     expect(screen.queryByText("3D")).toBeNull();
     expect(screen.getByLabelText("Between samples")).toBeTruthy();
     expect(screen.getByText("Advanced timing")).toBeTruthy();
+  });
+
+  it("warns when an active point cloud is sampled for display", () => {
+    playbackFrames.current = [
+      {
+        frame: {
+          renderPayload: {
+            finitePointCount: 275_000,
+            sampledPointCount: 150_000,
+          },
+        },
+      },
+    ];
+
+    renderSidebar();
+
+    expect(screen.getByText("Point cloud sampled for display")).toBeTruthy();
+    expect(screen.getByText("Showing 150,000 of 275,000 points.")).toBeTruthy();
+  });
+
+  it("opens live performance diagnostics from the scene tab", () => {
+    renderSidebar();
+
+    expect(screen.queryByText("Performance diagnostics")).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Stats" })
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Stats" }));
+
+    expect(
+      screen
+        .getByRole("button", { name: "Hide stats" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(screen.getByText("Performance diagnostics")).toBeTruthy();
+    expect(screen.getAllByText("Playback")).toHaveLength(2);
+    expect(screen.getByText("Rendering")).toBeTruthy();
+    expect(screen.getByText("WebGPU")).toBeTruthy();
+    expect(screen.getByText("Grid & snapshots")).toBeTruthy();
+    expect(screen.getByText("GPU resources")).toBeTruthy();
+    expect(screen.getByText("Browser")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide stats" }));
+    expect(screen.queryByText("Performance diagnostics")).toBeNull();
   });
 
   it("persists fidelity mode changes through the select", () => {

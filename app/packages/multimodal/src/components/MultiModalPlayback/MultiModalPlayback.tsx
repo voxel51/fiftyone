@@ -25,6 +25,7 @@ import {
   SceneInventoryProvider,
   type SceneSource,
 } from "../../scene-inventory";
+import { WebGpuViewStage } from "../../visualization/panels/gpu/webgpu-view-stage";
 import styles from "./MultiModalPlayback.module.css";
 
 const EMPTY_SOURCES: readonly SceneSource[] = [];
@@ -87,9 +88,23 @@ export interface MultiModalPlaybackProps {
   initialLayout?: MosaicNode<string> | null;
   /** Tile id that should start expanded to fullscreen. */
   initialExpandedTileId?: string | null;
+  /** Tile entries restored by the header's Reset Layout action. */
+  resetTiles?: Record<string, TilingTile>;
+  /** User-authored titles restored by Reset Layout. */
+  resetManualTileTitles?: Record<string, string>;
+  /** Mosaic tree restored by Reset Layout. */
+  resetLayout?: MosaicNode<string> | null;
+  /** Optional geometry-aware builder for Reset Layout. */
+  resetLayoutStrategy?: TilingAutoLayoutStrategy;
 
   /** Discoverable data sources for the current scene. */
   sceneSources?: readonly SceneSource[];
+
+  /**
+   * Hosts compatible image panels in one lazily-mounted WebGPU canvas.
+   * Disabled by default so playback consumers opt into the shared renderer.
+   */
+  sharedImageWebGpuViews?: boolean;
 
   /**
    * Whether selecting the already-focused tile clears focus. Defaults to the
@@ -197,7 +212,12 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   autoLayoutStrategy,
   initialLayout,
   initialExpandedTileId,
+  resetTiles,
+  resetManualTileTitles,
+  resetLayout,
+  resetLayoutStrategy,
   sceneSources = EMPTY_SOURCES,
+  sharedImageWebGpuViews = false,
   deselectFocusedTileOnRepeatSelect = true,
   leftSidebar = <TileSettingsSidebar />,
   rightSidebar = <TilingInspectorSidebar />,
@@ -222,6 +242,10 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
             autoLayoutStrategy={autoLayoutStrategy}
             initialLayout={initialLayout}
             initialExpandedTileId={initialExpandedTileId}
+            resetTiles={resetTiles}
+            resetManualTileTitles={resetManualTileTitles}
+            resetLayout={resetLayout}
+            resetLayoutStrategy={resetLayoutStrategy}
           >
             {children}
             <Layout
@@ -243,6 +267,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               onLeftSidebarWidthChange={onLeftSidebarWidthChange}
               onTagCreate={onTagCreate}
               onTagDelete={onTagDelete}
+              sharedImageWebGpuViews={sharedImageWebGpuViews}
               className={className}
             />
           </TilingProvider>
@@ -269,6 +294,7 @@ interface LayoutProps {
   onLeftSidebarWidthChange?: (px: number) => void;
   onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
   onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
+  sharedImageWebGpuViews: boolean;
   className?: string;
 }
 
@@ -289,6 +315,7 @@ function Layout({
   onLeftSidebarWidthChange,
   onTagCreate,
   onTagDelete,
+  sharedImageWebGpuViews,
   className,
 }: LayoutProps) {
   const {
@@ -303,6 +330,7 @@ function Layout({
     changeTileType,
     expandedTileId,
     setExpandedTileId,
+    setLayoutMetrics,
   } = useTiling();
   // `null` (as opposed to undefined, which picks up the default sidebar)
   // removes the region outright: no drawer and no header toggle.
@@ -367,6 +395,24 @@ function Layout({
     [deselectFocusedTileOnRepeatSelect, focusedTileId, setFocusedTileId],
   );
 
+  const mosaic = (
+    <MosaicGrid
+      tiles={tiles}
+      value={layout}
+      onChange={setLayout}
+      focusedTileId={focusedTileId}
+      onFocusTile={handleFocusTile}
+      onSplitTile={splitTile}
+      onDuplicateTile={duplicateTile}
+      onChangeTileType={changeTileType}
+      onCloseOtherTiles={closeOtherTiles}
+      expandedTileId={expandedTileId}
+      onExpandedTileIdChange={setExpandedTileId}
+      onLayoutMetricsChange={setLayoutMetrics}
+      zeroStateView={<TilingZeroState addTileMenu={addTileMenu} />}
+    />
+  );
+
   return (
     <div className={clsx(styles.root, className)}>
       <TilingHeader
@@ -414,20 +460,13 @@ function Layout({
         </Drawer>
 
         <div className={styles.main}>
-          <MosaicGrid
-            tiles={tiles}
-            value={layout}
-            onChange={setLayout}
-            focusedTileId={focusedTileId}
-            onFocusTile={handleFocusTile}
-            onSplitTile={splitTile}
-            onDuplicateTile={duplicateTile}
-            onChangeTileType={changeTileType}
-            onCloseOtherTiles={closeOtherTiles}
-            expandedTileId={expandedTileId}
-            onExpandedTileIdChange={setExpandedTileId}
-            zeroStateView={<TilingZeroState addTileMenu={addTileMenu} />}
-          />
+          {sharedImageWebGpuViews ? (
+            <WebGpuViewStage className={styles.sharedViewStage}>
+              {mosaic}
+            </WebGpuViewStage>
+          ) : (
+            mosaic
+          )}
         </div>
 
         {hasRightSidebar ? (

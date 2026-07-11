@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { collectTileIds } from "@fiftyone/tiling";
 import type { SceneSource } from "../../../scene-inventory";
 import {
+  buildAspectAwareImageLayout,
   buildMcapAutoLayout,
   orderImageSourcesForManualSelection,
   rankDefaultImageSources,
@@ -17,7 +18,7 @@ const STRONG_LOCAL: PlaybackDeviceCapabilities = {
   viewportWidth: 2560,
   viewportHeight: 1440,
 };
-const THREE_D_TOP_SPLIT_PERCENTAGE = 100 * (2 / 3);
+const MIN_THREE_D_TOP_SPLIT_PERCENTAGE = 60;
 
 function imageSource(id: string, recordCount?: number): SceneSource {
   return {
@@ -142,11 +143,11 @@ describe("resolvePlaybackLayout", () => {
     expect(tiles[0]).toMatchObject({ initialSourceId: "/b", title: "b" });
     expect(tiles[3]).toMatchObject({ tileType: "3d", title: "3D" });
 
-    // Deliberate arrangement: 3D spans the top, images sit below.
+    // The three-image row hugs one-third of this 16:9 viewport.
     expect(layout).toMatchObject({
       direction: "column",
       first: "3d-1",
-      splitPercentage: THREE_D_TOP_SPLIT_PERCENTAGE,
+      splitPercentage: 200 / 3,
     });
   });
 
@@ -240,7 +241,7 @@ describe("resolvePlaybackLayout", () => {
     expect(tiles.filter((t) => t.tileType === "image")).toHaveLength(2);
   });
 
-  it("spans 3d across the top two-thirds when image content is present", () => {
+  it("keeps 3d larger than a single image shelf", () => {
     const { layout } = resolvePlaybackLayout({
       capabilities: STRONG_LOCAL,
       readProfile: "local",
@@ -251,7 +252,7 @@ describe("resolvePlaybackLayout", () => {
       direction: "column",
       first: "3d-1",
       second: "image-1",
-      splitPercentage: THREE_D_TOP_SPLIT_PERCENTAGE,
+      splitPercentage: MIN_THREE_D_TOP_SPLIT_PERCENTAGE,
     });
   });
 
@@ -341,16 +342,16 @@ describe("resolvePlaybackLayout", () => {
 });
 
 describe("buildMcapAutoLayout", () => {
-  it("spans 3d across the top two-thirds above one image tile", () => {
+  it("keeps 3d larger than one image tile", () => {
     expect(buildMcapAutoLayout(["image-1", "3d-1"])).toEqual({
       direction: "column",
       first: "3d-1",
       second: "image-1",
-      splitPercentage: THREE_D_TOP_SPLIT_PERCENTAGE,
+      splitPercentage: MIN_THREE_D_TOP_SPLIT_PERCENTAGE,
     });
   });
 
-  it("places three images below one full-width 3d tile", () => {
+  it("lets a three-image row hug its height below 3d", () => {
     const layout = buildMcapAutoLayout([
       "image-1",
       "image-2",
@@ -361,7 +362,7 @@ describe("buildMcapAutoLayout", () => {
     expect(layout).toMatchObject({
       direction: "column",
       first: "3d-1",
-      splitPercentage: THREE_D_TOP_SPLIT_PERCENTAGE,
+      splitPercentage: 70,
     });
     expect(
       collectTileIds(layout).filter((id) => id.startsWith("image-")),
@@ -378,7 +379,7 @@ describe("buildMcapAutoLayout", () => {
         splitPercentage: 50,
       },
       second: "image-1",
-      splitPercentage: THREE_D_TOP_SPLIT_PERCENTAGE,
+      splitPercentage: MIN_THREE_D_TOP_SPLIT_PERCENTAGE,
     });
   });
 
@@ -392,21 +393,91 @@ describe("buildMcapAutoLayout", () => {
         splitPercentage: 70,
       },
       second: "image-1",
-      splitPercentage: THREE_D_TOP_SPLIT_PERCENTAGE,
+      splitPercentage: MIN_THREE_D_TOP_SPLIT_PERCENTAGE,
     });
   });
 
-  it("keeps image tiles co-located in a visual bank", () => {
+  it("gives 3d more space as the image bank becomes shallower", () => {
+    expect(
+      buildMcapAutoLayout(["image-1", "3d-1"], { "image-1": 8 }, 1.6),
+    ).toMatchObject({
+      direction: "column",
+      first: "3d-1",
+      splitPercentage: 80,
+    });
+  });
+
+  it("keeps a readable six-camera bank in one shallow row", () => {
+    const images = Array.from(
+      { length: 6 },
+      (_, index) => `image-${index + 1}`,
+    );
+    expect(buildMcapAutoLayout([...images, "3d-1"], {}, 1.6)).toMatchObject({
+      direction: "column",
+      first: "3d-1",
+      second: { direction: "row" },
+      splitPercentage: 80,
+    });
+  });
+
+  it("accounts for measured tile chrome when sizing the image shelf", () => {
+    const images = ["image-1", "image-2", "image-3", "image-4"];
+    const metrics = {
+      width: 2048,
+      height: 1188,
+      tileHorizontalInset: 6,
+      tileVerticalInset: 34,
+    };
+    const layout = buildMcapAutoLayout([...images, "3d-1"], {}, metrics);
+    const imageBodyWidth = metrics.width - images.length * 6;
+    const idealShelfHeight = imageBodyWidth / (images.length * (16 / 9)) + 34;
+
+    expect(layout).toMatchObject({
+      direction: "column",
+      first: "3d-1",
+    });
+    if (typeof layout === "object" && layout) {
+      expect(layout.splitPercentage).toBeCloseTo(
+        100 * (1 - idealShelfHeight / metrics.height),
+      );
+    }
+  });
+
+  it("includes tile insets when weighting mixed image aspect ratios", () => {
+    const metrics = {
+      width: 1000,
+      height: 600,
+      tileHorizontalInset: 10,
+      tileVerticalInset: 30,
+    };
+    const layout = buildMcapAutoLayout(
+      ["image-1", "image-2", "3d-1"],
+      { "image-1": 2, "image-2": 1 },
+      metrics,
+    );
+    const contentHeight = (metrics.width - 2 * 10) / 3;
+    const firstOuterWidth = 2 * contentHeight + 10;
+
+    expect(layout).toMatchObject({
+      direction: "column",
+      second: {
+        direction: "row",
+        splitPercentage: (100 * firstOuterWidth) / metrics.width,
+      },
+    });
+  });
+
+  it("uses landscape-shaped rows for the image bank", () => {
     expect(buildMcapAutoLayout(["image-1", "image-2", "image-3"])).toEqual({
-      direction: "row",
-      first: {
-        direction: "column",
-        first: "image-1",
-        second: "image-2",
+      direction: "column",
+      first: "image-1",
+      second: {
+        direction: "row",
+        first: "image-2",
+        second: "image-3",
         splitPercentage: 50,
       },
-      second: "image-3",
-      splitPercentage: 50,
+      splitPercentage: 200 / 3,
     });
   });
 
@@ -485,7 +556,7 @@ describe("buildMcapAutoLayout", () => {
         },
         splitPercentage: 75,
       },
-      splitPercentage: THREE_D_TOP_SPLIT_PERCENTAGE,
+      splitPercentage: MIN_THREE_D_TOP_SPLIT_PERCENTAGE,
     });
   });
 
@@ -505,6 +576,36 @@ describe("buildMcapAutoLayout", () => {
       first: "plot-1",
       second: "custom-1",
       splitPercentage: 50,
+    });
+  });
+});
+
+describe("buildAspectAwareImageLayout", () => {
+  it("weights panes by their decoded image widths", () => {
+    expect(
+      buildAspectAwareImageLayout(
+        ["image-1", "image-2"],
+        { "image-1": 2, "image-2": 1 },
+        3,
+      ),
+    ).toEqual({
+      direction: "row",
+      first: "image-1",
+      second: "image-2",
+      splitPercentage: 200 / 3,
+    });
+  });
+
+  it("chooses different packing for landscape and portrait images", () => {
+    const ids = ["image-1", "image-2", "image-3", "image-4"];
+    const landscape = Object.fromEntries(ids.map((id) => [id, 16 / 9]));
+    const portrait = Object.fromEntries(ids.map((id) => [id, 9 / 16]));
+
+    expect(buildAspectAwareImageLayout(ids, landscape)).toMatchObject({
+      direction: "column",
+    });
+    expect(buildAspectAwareImageLayout(ids, portrait)).toMatchObject({
+      direction: "row",
     });
   });
 });

@@ -64,6 +64,30 @@ vi.mock("@fiftyone/tiling", async () => {
   };
 });
 
+// The shell only owns the opt-in wrapper boundary; the stage's renderer and
+// registration lifecycle have focused tests in webgpu-view-stage.test.tsx.
+vi.mock("../../visualization/panels/gpu/webgpu-view-stage", async () => {
+  const react = await vi.importActual<typeof import("react")>("react");
+  return {
+    WebGpuViewStage: ({
+      children,
+      className,
+    }: {
+      readonly children: React.ReactNode;
+      readonly className?: string;
+    }) =>
+      react.createElement(
+        "div",
+        { className, "data-testid": "webgpu-view-stage" },
+        react.createElement(
+          "div",
+          { "data-testid": "webgpu-view-stage-content" },
+          children,
+        ),
+      ),
+  };
+});
+
 import MultiModalPlayback, {
   clampSidebarWidth,
   SIDEBAR_MAX_WIDTH_PX,
@@ -76,6 +100,26 @@ describe("MultiModalPlayback shell", () => {
   it("renders the filename in the header", () => {
     render(<MultiModalPlayback fileName="session.fo" />);
     expect(screen.getByText("session.fo")).toBeTruthy();
+  });
+
+  it("hosts the mosaic inside the shared WebGPU view stage when enabled", () => {
+    render(<MultiModalPlayback fileName="session.fo" sharedImageWebGpuViews />);
+
+    expect(
+      screen
+        .getByTestId("webgpu-view-stage-content")
+        .contains(screen.getByTestId("mosaic-stub")),
+    ).toBe(true);
+    expect(screen.getByTestId("webgpu-view-stage").className).toContain(
+      "sharedViewStage",
+    );
+  });
+
+  it("does not mount the shared WebGPU view stage by default", () => {
+    render(<MultiModalPlayback fileName="session.fo" />);
+
+    expect(screen.queryByTestId("webgpu-view-stage")).toBeNull();
+    expect(screen.getByTestId("mosaic-stub")).toBeTruthy();
   });
 
   it("renders header actions beside the filename", () => {
@@ -151,6 +195,42 @@ describe("MultiModalPlayback shell", () => {
       JSON.stringify("lidar-1"),
     );
     expect(screen.getByTestId("mosaic-stub").dataset.expandedTileId).toBe("");
+  });
+
+  it("restores host defaults from the toolbar Reset Layout action", () => {
+    const resetLayout = {
+      direction: "row" as const,
+      first: "camera-1",
+      second: "lidar-1",
+      splitPercentage: 60,
+    };
+    render(
+      <MultiModalPlayback
+        fileName="session.fo"
+        addTileMenu={<span>Placeholder tile</span>}
+        initialTiles={{
+          "camera-9": { title: "persisted_camera", render: () => null },
+        }}
+        initialLayout="camera-9"
+        resetTiles={{
+          "camera-1": { title: "camera_front", render: () => null },
+          "lidar-1": { title: "lidar_top", render: () => null },
+        }}
+        resetLayout={resetLayout}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("tiling-header-add-tile"));
+    fireEvent.click(screen.getByText("Reset Layout"));
+
+    expect(screen.getByTestId("mosaic-stub").dataset.layout).toBe(
+      JSON.stringify(resetLayout),
+    );
+    expect(screen.getByTestId("title-camera-1").textContent).toBe(
+      "camera_front",
+    );
+    expect(screen.getByTestId("title-lidar-1").textContent).toBe("lidar_top");
+    expect(screen.queryByTestId("title-camera-9")).toBeNull();
   });
 
   it("seeds the mosaic expanded tile from initialExpandedTileId", () => {
