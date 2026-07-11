@@ -114,7 +114,7 @@ describe("TilingHeader", () => {
     expect(onRight).toHaveBeenCalledOnce();
   });
 
-  it("renders the add-tile button once tiles are registered", () => {
+  it("renders a labeled add-tile button once tiles are registered", () => {
     render(
       <TilingProvider>
         <RegisterTiles
@@ -136,7 +136,11 @@ describe("TilingHeader", () => {
         <TilingHeader fileName="x" />
       </TilingProvider>,
     );
-    expect(screen.getByTestId("tiling-header-add-tile")).toBeTruthy();
+    const button = screen.getByTestId("tiling-header-add-tile");
+    expect(button).toBeTruthy();
+    expect(button.getAttribute("aria-label")).toBe("Add Tile");
+    expect(button.textContent).toBe("Add Tile");
+    expect(button.className).toContain("border-1");
   });
 
   it("clicking a menu item calls addTile with the registered tile type", () => {

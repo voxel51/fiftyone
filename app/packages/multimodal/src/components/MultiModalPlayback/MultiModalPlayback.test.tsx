@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useTiling } from "@fiftyone/tiling";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -93,6 +94,24 @@ import MultiModalPlayback, {
   SIDEBAR_MAX_WIDTH_PX,
   SIDEBAR_MIN_WIDTH_PX,
 } from "./MultiModalPlayback";
+
+const AddCameraTileMenuItem = () => {
+  const { addTile } = useTiling();
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        addTile({
+          render: () => null,
+          title: "Camera",
+          type: "camera",
+        })
+      }
+    >
+      Camera
+    </button>
+  );
+};
 
 describe("MultiModalPlayback shell", () => {
   afterEach(() => cleanup());
@@ -267,6 +286,26 @@ describe("MultiModalPlayback shell", () => {
       />,
     );
     expect(screen.queryByTestId("drawer")).toBeNull();
+  });
+
+  it("opens the left sidebar when Add tile spawns a panel", () => {
+    const onLeftOpenChange = vi.fn();
+    render(
+      <MultiModalPlayback
+        addTileMenu={<AddCameraTileMenuItem />}
+        defaultLeftOpen={false}
+        defaultRightOpen={false}
+        fileName="x"
+        onLeftOpenChange={onLeftOpenChange}
+      />,
+    );
+
+    expect(screen.queryByTestId("drawer")).toBeNull();
+    fireEvent.click(screen.getByTestId("tiling-header-add-tile"));
+    fireEvent.click(screen.getByText("Camera"));
+
+    expect(screen.getByTestId("left-sidebar-pane")).toBeTruthy();
+    expect(onLeftOpenChange).toHaveBeenCalledWith(true);
   });
 
   it("removes the right sidebar and its toggle when rightSidebar is null", () => {

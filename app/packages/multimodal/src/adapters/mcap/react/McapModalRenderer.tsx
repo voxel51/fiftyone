@@ -2,6 +2,7 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import React from "react";
 import { McapAdjacentSamplePrewarm } from "./McapAdjacentSamplePrewarm";
 import { McapSourcePlayback } from "./McapSourcePlayback";
+import { mcapSourceDisplayName } from "./mcap-source-display-name";
 import { useMcapResourceClient } from "./use-mcap-resource-client";
 import { useMcapTemporalTags } from "./use-mcap-temporal-tags";
 import { useStableMcapSource } from "./use-stable-mcap-source";
@@ -14,7 +15,7 @@ import { useStableMcapSource } from "./use-stable-mcap-source";
 const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const client = useMcapResourceClient({ worker: true });
   const source = useStableMcapSource(ctx);
-  const fileName = fileNameFromPath(ctx.media.path) ?? "recording.mcap";
+  const fileName = mcapSourceDisplayName(ctx.media.path) ?? "recording.mcap";
   const datasetId = ctx.dataset.datasetId;
   const { tracks, onTagCreate, onTagDelete } = useMcapTemporalTags(ctx);
 
@@ -36,10 +37,5 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
     </McapSourcePlayback>
   );
 };
-
-function fileNameFromPath(path: unknown): string | null {
-  if (typeof path !== "string" || !path) return null;
-  return path.split(/[/\\]/).pop() || null;
-}
 
 export default McapModalRenderer;

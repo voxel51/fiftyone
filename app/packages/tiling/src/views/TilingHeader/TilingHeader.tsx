@@ -110,13 +110,15 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
               anchor={DropdownAnchor.BottomEnd}
               trigger={
                 <Button
-                  variant={Variant.Borderless}
+                  variant={Variant.Secondary}
                   size={Size.Xs}
                   data-testid="tiling-header-add-tile"
                   leadingIcon={IconName.GridView}
-                  aria-label="Add tile"
-                  title="Add tile"
-                />
+                  aria-label="Add Tile"
+                  title="Add Tile"
+                >
+                  Add Tile
+                </Button>
               }
             >
               {tileMenu}
