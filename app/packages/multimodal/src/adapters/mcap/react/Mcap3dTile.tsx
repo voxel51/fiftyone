@@ -27,6 +27,7 @@ import {
   type SceneAnnotationPanelLayer,
   type ThreeSceneBackground,
 } from "../../../visualization/panels/point-cloud";
+import { Mcap3dCameraRig } from "./Mcap3dCameraRig";
 import Mcap3dTileSettings from "./Mcap3dTileSettings";
 import { build3dLayers } from "./mcap-3d-layers";
 import { useMcap3dViewSettings } from "./mcap-3d-view-settings-context";
@@ -651,7 +652,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     getDisplayedCameraPose,
     handleCameraPoseChange,
     noteRenderedCameraPose,
-    panelCameraPose,
+    poseCommand,
+    rig,
     setTrackingMode,
     trackingMode,
   } = useMcap3dCameraTracking({
@@ -738,50 +740,77 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     [noteRenderedCameraPose],
   );
 
+  // The settings sidebar is a memoized subtree; its grouped props are
+  // stabilized together so playback ticks and pose-command updates don't
+  // reconcile it.
+  const settingsProps = useMemo(
+    () => ({
+      frameControls: {
+        cameraTargetFrameId,
+        frameIds,
+        updateCameraTargetFrameId,
+        updateWorldFrameId,
+        worldFrameId,
+      },
+      pointCloudInputs: {
+        colorCapabilities: pointCloudColorCapabilities,
+        selectedSources: selectedPointCloudSources,
+      },
+      poseControls: {
+        selectedSources: selectedPoseSources,
+        setTrajectoryFrameOverrides,
+        trajectories,
+        trajectoryFrameByTopic,
+      },
+      sceneControls: { sceneUpAxis, setSceneUpAxis },
+      selection: { enabled, setSourcesEnabled, toggleSource },
+      sourceGroups: {
+        camera: { sources: cameraSources, topics: cameraTopics },
+        mapLayer: { sources: mapLayerSources, topics: mapLayerTopics },
+        pointCloud: { sources: pointCloudSources, topics: pointCloudTopics },
+        pose: { sources: poseSources, topics: poseTopics },
+        sceneAnnotation: {
+          sources: sceneAnnotationSources,
+          topics: sceneAnnotationTopics,
+        },
+      },
+      trackingControls: { mode: trackingMode, setMode: setTrackingMode },
+    }),
+    [
+      cameraSources,
+      cameraTargetFrameId,
+      cameraTopics,
+      enabled,
+      frameIds,
+      mapLayerSources,
+      mapLayerTopics,
+      pointCloudColorCapabilities,
+      pointCloudSources,
+      pointCloudTopics,
+      poseSources,
+      poseTopics,
+      sceneAnnotationSources,
+      sceneAnnotationTopics,
+      sceneUpAxis,
+      selectedPointCloudSources,
+      selectedPoseSources,
+      setSceneUpAxis,
+      setSourcesEnabled,
+      setTrackingMode,
+      setTrajectoryFrameOverrides,
+      toggleSource,
+      trackingMode,
+      trajectories,
+      trajectoryFrameByTopic,
+      updateCameraTargetFrameId,
+      updateWorldFrameId,
+      worldFrameId,
+    ],
+  );
+
   return (
     <>
-      <Mcap3dTileSettings
-        frameControls={{
-          cameraTargetFrameId,
-          frameIds,
-          updateCameraTargetFrameId,
-          updateWorldFrameId,
-          worldFrameId,
-        }}
-        pointCloudInputs={{
-          colorCapabilities: pointCloudColorCapabilities,
-          selectedSources: selectedPointCloudSources,
-        }}
-        poseControls={{
-          selectedSources: selectedPoseSources,
-          setTrajectoryFrameOverrides,
-          trajectories,
-          trajectoryFrameByTopic,
-        }}
-        sceneControls={{
-          sceneUpAxis,
-          setSceneUpAxis,
-        }}
-        selection={{
-          enabled,
-          setSourcesEnabled,
-          toggleSource,
-        }}
-        sourceGroups={{
-          camera: { sources: cameraSources, topics: cameraTopics },
-          mapLayer: { sources: mapLayerSources, topics: mapLayerTopics },
-          pointCloud: { sources: pointCloudSources, topics: pointCloudTopics },
-          pose: { sources: poseSources, topics: poseTopics },
-          sceneAnnotation: {
-            sources: sceneAnnotationSources,
-            topics: sceneAnnotationTopics,
-          },
-        }}
-        trackingControls={{
-          mode: trackingMode,
-          setMode: setTrackingMode,
-        }}
-      />
+      <Mcap3dTileSettings {...settingsProps} />
       {selectedTopics.length === 0 ? (
         <div className={styles.loading}>
           <span className={styles.emptyText}>No sources selected</span>
@@ -799,7 +828,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
           <PointCloudPanel
             annotationLayers={displayedScene.annotationLayers}
             background={panelBackground}
-            cameraPose={panelCameraPose}
+            cameraPose={poseCommand}
+            cameraRig={<Mcap3dCameraRig {...rig} />}
             canvasSurface="modal-3d"
             fitResetKey={`${worldFrameId}:${sceneUpAxis}`}
             frustumLayers={displayedScene.frustumLayers}
