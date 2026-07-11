@@ -62,6 +62,12 @@ export type SampleRendererRenderContext<TSample = SampleRendererSampleLike> =
   SampleRendererMatchContext<TSample> & {
     dataset: fos.State.Dataset;
     schema: Schema;
+    /**
+     * The modal selected a new sample whose record is still resolving. A
+     * persistent renderer may keep shell state mounted, but must not present
+     * source-backed content from the retained sample.
+     */
+    transitioning?: boolean;
   };
 
 /**
