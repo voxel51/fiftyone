@@ -6,8 +6,8 @@ import { NonGroupModalSample } from "./ModalSamplePlugin";
 const harness = vi.hoisted(() => ({
   loadable: {
     contents: null as unknown,
+    getValue: vi.fn(),
     state: "hasValue" as "hasValue" | "loading" | "hasError",
-    valueOrThrow: vi.fn(),
   },
   persistenceKey: "renderer-McapRenderer" as string | null,
   retainedSample: null as null | {
@@ -60,7 +60,7 @@ vi.mock("./use-modal-sample-renderer-persistence", () => ({
       persistenceKey: harness.persistenceKey,
       sample: transitioning
         ? harness.retainedSample
-        : harness.loadable.valueOrThrow(),
+        : harness.loadable.getValue(),
       transitioning,
     };
   },
@@ -79,8 +79,8 @@ describe("NonGroupModalSample persistent routing", () => {
   beforeEach(() => {
     harness.loadable = {
       contents: sampleA,
+      getValue: vi.fn(() => sampleA),
       state: "hasValue",
-      valueOrThrow: vi.fn(() => sampleA),
     };
     harness.persistenceKey = "renderer-McapRenderer";
     harness.retainedSample = null;
@@ -95,10 +95,10 @@ describe("NonGroupModalSample persistent routing", () => {
 
     harness.loadable = {
       contents: Promise.resolve(sampleB),
-      state: "loading",
-      valueOrThrow: vi.fn(() => {
+      getValue: vi.fn(() => {
         throw new Error("should retain the resolved route");
       }),
+      state: "loading",
     };
     rerender(<NonGroupModalSample is3DMediaType={false} />);
 
@@ -111,10 +111,10 @@ describe("NonGroupModalSample persistent routing", () => {
     harness.persistenceKey = null;
     harness.loadable = {
       contents: pending,
-      state: "loading",
-      valueOrThrow: vi.fn(() => {
+      getValue: vi.fn(() => {
         throw pending;
       }),
+      state: "loading",
     };
 
     render(

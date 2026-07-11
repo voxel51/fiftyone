@@ -1,14 +1,14 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Sample2D } from "./Sample2D";
+import { Sample2D, SampleWrapper } from "./Sample2D";
 
 const harness = vi.hoisted(() => ({
   id: "sample-a",
   loadable: {
     contents: null as unknown,
+    getValue: vi.fn(),
     state: "hasValue" as "hasValue" | "loading" | "hasError",
-    valueOrThrow: vi.fn(),
   },
   persistenceKey: "renderer-McapRenderer" as string | null,
   retainedSample: null as null | { sample: { _id: string; id: string } },
@@ -69,7 +69,7 @@ vi.mock("./use-modal-sample-renderer-persistence", () => ({
       persistenceKey: harness.persistenceKey,
       sample: transitioning
         ? harness.retainedSample
-        : harness.loadable.valueOrThrow(),
+        : harness.loadable.getValue(),
       transitioning,
     };
   },
@@ -83,8 +83,8 @@ describe("Sample2D persistent renderer transitions", () => {
     harness.id = "sample-a";
     harness.loadable = {
       contents: sampleA,
+      getValue: vi.fn(() => sampleA),
       state: "hasValue",
-      valueOrThrow: vi.fn(() => sampleA),
     };
     harness.persistenceKey = "renderer-McapRenderer";
     harness.retainedSample = null;
@@ -100,10 +100,10 @@ describe("Sample2D persistent renderer transitions", () => {
     harness.id = "sample-b";
     harness.loadable = {
       contents: Promise.resolve(sampleB),
-      state: "loading",
-      valueOrThrow: vi.fn(() => {
+      getValue: vi.fn(() => {
         throw new Error("should use retained sample");
       }),
+      state: "loading",
     };
     rerender(<Sample2D />);
 
@@ -115,8 +115,8 @@ describe("Sample2D persistent renderer transitions", () => {
 
     harness.loadable = {
       contents: sampleB,
+      getValue: vi.fn(() => sampleB),
       state: "hasValue",
-      valueOrThrow: vi.fn(() => sampleB),
     };
     rerender(<Sample2D />);
 
@@ -125,5 +125,24 @@ describe("Sample2D persistent renderer transitions", () => {
       screen.getByTestId("modal-looker").dataset.transitioning,
     ).toBeUndefined();
     expect(harness.rendererMounts).toBe(1);
+  });
+
+  it("suspends while a wrapper-owned sample resolves", () => {
+    const pending = new Promise(() => undefined);
+    harness.loadable = {
+      contents: pending,
+      getValue: vi.fn(() => {
+        throw pending;
+      }),
+      state: "loading",
+    };
+
+    render(
+      <React.Suspense fallback={<div data-testid="fallback" />}>
+        <SampleWrapper>sample</SampleWrapper>
+      </React.Suspense>,
+    );
+
+    expect(screen.getByTestId("fallback")).toBeTruthy();
   });
 });

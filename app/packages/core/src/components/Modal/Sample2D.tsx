@@ -59,7 +59,7 @@ export const SampleWrapper = ({
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
   const recoilSample = useRecoilValueLoadable(sampleAtom);
-  const sample = providedSample ?? recoilSample.valueOrThrow();
+  const sample = providedSample ?? recoilSample.getValue();
   const { handlers: hoverEventHandlers } = useHoveredSample(sample.sample, {
     update,
     clear,

@@ -93,7 +93,7 @@ export function useRetainedModalSample(): {
     sampleLoadable.state === "loading" &&
     persistenceKey !== null &&
     retainedSample !== null;
-  const sample = transitioning ? retainedSample : sampleLoadable.valueOrThrow();
+  const sample = transitioning ? retainedSample : sampleLoadable.getValue();
 
   return { persistenceKey, sample, transitioning };
 }

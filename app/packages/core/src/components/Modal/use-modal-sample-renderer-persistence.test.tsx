@@ -1,4 +1,5 @@
-import { cleanup, renderHook } from "@testing-library/react";
+import { cleanup, render, renderHook, screen } from "@testing-library/react";
+import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   useModalSampleRendererPersistenceKey,
@@ -8,8 +9,8 @@ import {
 const harness = vi.hoisted(() => ({
   loadable: {
     contents: null as unknown,
+    getValue: vi.fn(),
     state: "hasValue" as "hasValue" | "loading" | "hasError",
-    valueOrThrow: vi.fn(),
   },
 }));
 
@@ -44,8 +45,8 @@ describe("useModalSampleRendererPersistenceKey", () => {
   beforeEach(() => {
     harness.loadable = {
       contents: { sample: { id: "sample-a" } },
+      getValue: vi.fn(() => ({ sample: { id: "sample-a" } })),
       state: "hasValue",
-      valueOrThrow: vi.fn(() => ({ sample: { id: "sample-a" } })),
     };
   });
 
@@ -59,8 +60,8 @@ describe("useModalSampleRendererPersistenceKey", () => {
 
     harness.loadable = {
       contents: Promise.resolve({ sample: { id: "sample-b" } }),
+      getValue: vi.fn(),
       state: "loading",
-      valueOrThrow: vi.fn(),
     };
     rerender();
 
@@ -71,8 +72,8 @@ describe("useModalSampleRendererPersistenceKey", () => {
     const sampleA = { sample: { id: "sample-a" } };
     harness.loadable = {
       contents: sampleA,
+      getValue: vi.fn(() => sampleA),
       state: "hasValue",
-      valueOrThrow: vi.fn(() => sampleA),
     };
     const { rerender, result } = renderHook(() => useRetainedModalSample());
     expect(result.current).toEqual({
@@ -83,10 +84,10 @@ describe("useModalSampleRendererPersistenceKey", () => {
 
     harness.loadable = {
       contents: new Promise(() => undefined),
-      state: "loading",
-      valueOrThrow: vi.fn(() => {
+      getValue: vi.fn(() => {
         throw new Error("persistent renderers must not suspend here");
       }),
+      state: "loading",
     };
     rerender();
 
@@ -96,4 +97,28 @@ describe("useModalSampleRendererPersistenceKey", () => {
       transitioning: true,
     });
   });
+
+  it("suspends while the first modal sample resolves", () => {
+    const pending = new Promise(() => undefined);
+    harness.loadable = {
+      contents: pending,
+      getValue: vi.fn(() => {
+        throw pending;
+      }),
+      state: "loading",
+    };
+
+    render(
+      <React.Suspense fallback={<div data-testid="fallback" />}>
+        <RetainedSampleProbe />
+      </React.Suspense>,
+    );
+
+    expect(screen.getByTestId("fallback")).toBeTruthy();
+  });
 });
+
+function RetainedSampleProbe() {
+  useRetainedModalSample();
+  return <div data-testid="sample" />;
+}
