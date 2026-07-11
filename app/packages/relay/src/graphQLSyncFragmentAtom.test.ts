@@ -64,7 +64,10 @@ const mountAtomEffect = async (key: string) => {
     return null;
   };
 
-  return render(createElement(RecoilRoot, null, createElement(Reader)));
+  return {
+    ...render(createElement(RecoilRoot, null, createElement(Reader))),
+    subscribe,
+  };
 };
 
 beforeEach(() => {
@@ -83,10 +86,28 @@ afterEach(() => {
 
 describe("graphQLSyncFragmentAtom effect retries", () => {
   test("does not subscribe without a resolved fragment context", async () => {
-    mocks.resolveFragmentChain.mockReturnValue({ missing: true });
+    const fragmentSubscribe = vi.fn(() => ({ dispose: vi.fn() }));
+    mocks.resolveFragmentChain.mockReturnValueOnce({
+      context: {
+        FragmentResource: { subscribe: fragmentSubscribe },
+        result: {},
+      },
+      data: { id: "initial" },
+      missing: false,
+      parent: {},
+    });
 
-    const { unmount } = await mountAtomEffect("effect-missing-context");
+    const { subscribe, unmount } = await mountAtomEffect(
+      "effect-missing-context",
+    );
+    const publishPage = subscribe.mock.calls[0][0] as (
+      page: PageQuery<OperationType>,
+    ) => void;
+    mocks.resolveFragmentChain.mockReturnValueOnce({ missing: true });
 
+    publishPage(page);
+
+    expect(fragmentSubscribe).toHaveBeenCalledOnce();
     unmount();
   });
 

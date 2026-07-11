@@ -129,10 +129,11 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
                 preloadedQuery.environment,
                 resolved.parent,
               ).result.data;
-              setter(update);
               if (!update) {
                 disposable = run(page);
+                return;
               }
+              setter(update);
             });
           } catch (e) {
             setter(null, transactionInterface);
