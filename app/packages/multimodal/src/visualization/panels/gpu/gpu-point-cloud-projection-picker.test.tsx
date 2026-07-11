@@ -213,7 +213,10 @@ describe("GPU pointcloud projection picker", () => {
       calibrationHeight: 480,
       calibrationWidth: 640,
       positionAttribute: layer("lidar", 1).positionAttribute,
-      projectionMatrix: new THREE.Matrix4(),
+      projection: {
+        kind: "pinhole",
+        projectionMatrix: new THREE.Matrix4(),
+      },
       request: { radiusPx: 6, targetU: 320, targetV: 240 },
       sourceIndexAttribute: layer("lidar", 1).sourceIndexAttribute,
     });
@@ -246,7 +249,10 @@ function layer(
       new Float32Array(capacity * 3),
       3,
     ),
-    projectionMatrix: new THREE.Matrix4(),
+    projection: {
+      kind: "pinhole",
+      projectionMatrix: new THREE.Matrix4(),
+    },
     resourceKey,
     sampledPointCount,
     sourceIndexAttribute: new THREE.InstancedBufferAttribute(

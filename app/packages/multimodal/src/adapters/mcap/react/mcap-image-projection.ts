@@ -4,12 +4,10 @@ import type { PointCloudColorWriter } from "../../../visualization/panels/point-
 /**
  * Pure math for the pointcloud→camera projection overlay: transforms
  * decoded sensor-frame points into the camera frame, projects through
- * the rectified projection matrix (`P` when present, pinhole `K`
- * otherwise). The GPU renderer owns the production path; these helpers
- * remain as deterministic test oracles for projection and picking math.
- *
- * When the calibration carries a non-trivial distortion model, the overlay
- * still projects via `P`/`K`; the host warns that images must be rectified.
+ * a pinhole projection matrix (`P` when present, `K` otherwise). The GPU
+ * renderer and shared camera-model module own the production path; these
+ * legacy helpers remain deterministic test oracles for pinhole sampling,
+ * color alignment, and picking behavior only.
  */
 
 /** Projection budget: dense lidar frames are stride-sampled beyond this. */

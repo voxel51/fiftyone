@@ -7,6 +7,14 @@ import React, {
   type RefObject,
 } from "react";
 import {
+  Orientation,
+  Spacing,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
+import {
   VISUALIZATION_HUD_BACKGROUND_COLOR,
   VISUALIZATION_HUD_BORDER_COLOR,
   VISUALIZATION_HUD_TEXT_COLOR,
@@ -38,6 +46,8 @@ export interface Mcap3dHoveredPoint {
   readonly position: readonly [number, number, number];
   /** Decoded scalar channels (intensity, ring, velocity…) at the index. */
   readonly fields: Readonly<Record<string, number>>;
+  /** The point's rendered linear RGB color, when available. */
+  readonly color?: readonly [number, number, number] | null;
   readonly frameId?: string;
 }
 
@@ -141,13 +151,14 @@ export function useMcap3dHoverTooltip(): {
 const tooltipStyle: CSSProperties = {
   background: VISUALIZATION_HUD_BACKGROUND_COLOR,
   border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
-  borderRadius: 4,
+  borderRadius: 8,
   color: VISUALIZATION_HUD_TEXT_COLOR,
   fontSize: 11,
   lineHeight: 1.35,
-  maxWidth: 260,
+  boxShadow: "0 6px 18px rgba(0, 0, 0, 0.28)",
+  maxWidth: 300,
   overflow: "hidden",
-  padding: "4px 7px",
+  padding: "8px 10px",
   pointerEvents: "none",
   position: "absolute",
   textOverflow: "ellipsis",
@@ -156,7 +167,32 @@ const tooltipStyle: CSSProperties = {
 };
 
 const tooltipDetailStyle: CSSProperties = {
-  opacity: 0.82,
+  display: "grid",
+  gap: "2px 12px",
+  gridTemplateColumns: "max-content minmax(0, 1fr)",
+  margin: 0,
+};
+
+const tooltipValueStyle: CSSProperties = {
+  fontVariantNumeric: "tabular-nums",
+  overflow: "hidden",
+  textAlign: "right",
+  textOverflow: "ellipsis",
+};
+
+const tooltipHeadingStyle: CSSProperties = {
+  alignItems: "center",
+  display: "flex",
+  gap: 6,
+};
+
+const colorBadgeStyle: CSSProperties = {
+  border: "1px solid rgba(255, 255, 255, 0.35)",
+  borderRadius: "50%",
+  boxShadow: "0 0 0 1px rgba(0, 0, 0, 0.25)",
+  flex: "0 0 auto",
+  height: 8,
+  width: 8,
 };
 
 /** Minimal cursor-adjacent tooltip for a hovered 3D object. */
@@ -205,25 +241,59 @@ function PointTooltipContent({
   const shownFields = fieldEntries.slice(0, POINT_TOOLTIP_MAX_FIELDS);
   const hiddenFieldCount = fieldEntries.length - shownFields.length;
   return (
-    <>
-      <div>
-        {tooltip.topic} · #{tooltip.pointIndex}
+    <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+      <div style={tooltipHeadingStyle}>
+        {tooltip.color ? (
+          <span
+            aria-label="Point color"
+            style={{
+              ...colorBadgeStyle,
+              backgroundColor: `rgb(${tooltip.color.map((channel) => Math.round(Math.min(1, Math.max(0, channel)) * 255)).join(" ")})`,
+            }}
+          />
+        ) : null}
+        <Text variant={TextVariant.Sm}>{tooltip.topic}</Text>
       </div>
       <div style={tooltipDetailStyle}>
-        {tooltip.position
-          .map((component) => formatPointTooltipValue(component))
-          .join(", ")}
-        {tooltip.frameId ? ` · ${tooltip.frameId}` : ""}
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          Point
+        </Text>
+        <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+          #{tooltip.pointIndex}
+        </Text>
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          Position
+        </Text>
+        <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+          {tooltip.position.map(formatPointTooltipValue).join(", ")}
+        </Text>
+        {tooltip.frameId ? (
+          <>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              Frame
+            </Text>
+            <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+              {tooltip.frameId}
+            </Text>
+          </>
+        ) : null}
+        {shownFields.map(([name, value]) => (
+          <React.Fragment key={name}>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              {name}
+            </Text>
+            <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+              {formatPointTooltipValue(value)}
+            </Text>
+          </React.Fragment>
+        ))}
       </div>
-      {shownFields.map(([name, value]) => (
-        <div key={name} style={tooltipDetailStyle}>
-          {name}: {formatPointTooltipValue(value)}
-        </div>
-      ))}
       {hiddenFieldCount > 0 ? (
-        <div style={tooltipDetailStyle}>+{hiddenFieldCount} more</div>
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          +{hiddenFieldCount} more fields
+        </Text>
       ) : null}
-    </>
+    </Stack>
   );
 }
 

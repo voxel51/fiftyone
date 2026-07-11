@@ -31,6 +31,10 @@ import {
   type McapSceneBackgroundSettings,
   type McapTemporalPolicySettings,
 } from "./mcap-modal-settings-storage";
+export type {
+  McapImageDisplayMode,
+  McapImageGeometryMode,
+} from "./camera-geometry/mcap-camera-model";
 
 export {
   DEFAULT_MCAP_FIDELITY_MODE,
@@ -502,6 +506,13 @@ export function useMcapImageProjection(imageTopic: string | null | undefined) {
     () => ({ projection, setProjection }),
     [projection, setProjection],
   );
+}
+
+/** Reads all per-image camera geometry settings for shared 3D consumers. */
+export function useMcapImageProjectionSettingsByTopic(): Readonly<
+  Record<string, McapImageProjectionSettings>
+> {
+  return useAtomValue(imageProjectionAtom, { store: mcapModalSettingsStore });
 }
 
 /**

@@ -544,6 +544,65 @@ describe("ImageAnnotationsOverlay", () => {
   });
 });
 
+describe("nonlinear pixel mapping", () => {
+  it("remaps circles, line work, and text into displayed pixel space", () => {
+    const { container } = render(
+      <ImageAnnotationsOverlay
+        annotations={[
+          {
+            ...emptySet(),
+            circles: [
+              {
+                position: [20, 20],
+                diameter: 10,
+                thickness: 1,
+                outlineColor: RED,
+                fillColor: null,
+              },
+            ],
+            points: [
+              {
+                fillColor: null,
+                outlineColor: RED,
+                outlineColors: [],
+                points: [
+                  [10, 10],
+                  [20, 20],
+                ],
+                thickness: 1,
+                type: "line-strip",
+              },
+            ],
+            texts: [
+              {
+                backgroundColor: null,
+                fontSize: 8,
+                position: [10, 10],
+                text: "car",
+                textColor: WHITE,
+              },
+            ],
+          },
+        ]}
+        fit="contain"
+        imageHeight={300}
+        imageWidth={400}
+        pixelTransform={(x, y) => [x * 2, y * 3]}
+      />,
+    );
+
+    expect(container.querySelector("circle")).toBeNull();
+    expect(
+      container.querySelector("polygon")?.getAttribute("points"),
+    ).toContain("50,60");
+    expect(
+      container.querySelector("polyline")?.getAttribute("points"),
+    ).toContain("20,30");
+    expect(container.querySelector("text")?.getAttribute("x")).toBe("20");
+    expect(container.querySelector("text")?.getAttribute("y")).toBe("30");
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Selection + cross-view label echo
 // ---------------------------------------------------------------------------

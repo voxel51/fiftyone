@@ -1,7 +1,6 @@
 import type { RefObject } from "react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
-import type { CameraCalibrationVisualization } from "../../../decoders";
 import {
   imageDisplayRect,
   transformedImageDisplayRect,
@@ -19,12 +18,6 @@ import {
   gpuPointCloudColorAtSample,
   resolveGpuPointCloudColor,
 } from "../../../visualization/panels/point-cloud";
-import {
-  VISUALIZATION_HUD_BACKGROUND_COLOR,
-  VISUALIZATION_HUD_BORDER_COLOR,
-  VISUALIZATION_HUD_TEXT_COLOR,
-} from "../../../visualization/panels/style-tokens";
-import { hasNonTrivialDistortion } from "./mcap-image-calibration";
 import { useSetMcapHoverEcho, type McapHoverEcho } from "./mcap-hover-echo";
 import { mcapHoveredPointForFrame } from "./mcap-point-hover";
 import {
@@ -32,6 +25,7 @@ import {
   type Mcap3dHoverTooltipState,
 } from "./use-mcap-3d-hover-tooltip";
 import type { McapImageProjectionLayer } from "./use-mcap-image-projection-layers";
+import type { McapCameraModel } from "./camera-geometry/mcap-camera-model";
 
 const PROJECTION_PICK_RADIUS_SCREEN_PX = 6;
 
@@ -41,7 +35,7 @@ const PROJECTION_PICK_RADIUS_SCREEN_PX = 6;
  * timing, coordinate conversion, tooltip UI, and cross-pane hover state.
  */
 const McapImageProjectionOverlay = ({
-  calibration,
+  cameraModel,
   fit,
   imageHeight,
   imageWidth,
@@ -51,7 +45,7 @@ const McapImageProjectionOverlay = ({
   sourceKey,
   viewTransform,
 }: {
-  readonly calibration: CameraCalibrationVisualization;
+  readonly cameraModel: McapCameraModel;
   readonly fit: "contain" | "cover";
   readonly imageHeight: number;
   readonly imageWidth: number;
@@ -69,8 +63,8 @@ const McapImageProjectionOverlay = ({
   const requestGenerationRef = useRef(0);
 
   // The pointer subscription stays stable while playback and TF data churn.
-  const calibrationRef = useRef(calibration);
-  calibrationRef.current = calibration;
+  const cameraModelRef = useRef(cameraModel);
+  cameraModelRef.current = cameraModel;
   const fitRef = useRef(fit);
   fitRef.current = fit;
   const imageDimsRef = useRef({ height: imageHeight, width: imageWidth });
@@ -84,6 +78,7 @@ const McapImageProjectionOverlay = ({
   const viewTransformRef = useRef(viewTransform);
   viewTransformRef.current = viewTransform;
 
+  // This effect owns pointer-based GPU picking for the projection overlay.
   useEffect(() => {
     const surface = containerRef.current?.parentElement;
     if (!surface) {
@@ -107,7 +102,7 @@ const McapImageProjectionOverlay = ({
     const pickAt = (clientX: number, clientY: number) => {
       const container = containerRef.current;
       const picker = pickerRef.current;
-      const calib = calibrationRef.current;
+      const calib = cameraModelRef.current;
       if (!container || !picker || !(calib.width > 0) || !(calib.height > 0)) {
         clearOwnHover();
         return;
@@ -199,7 +194,7 @@ const McapImageProjectionOverlay = ({
             return;
           }
 
-          setDwellTooltip({ ...tooltip, x: pointerX, y: pointerY });
+          setDwellTooltip({ ...tooltip, color, x: pointerX, y: pointerY });
           const hover: McapHoverEcho = {
             color,
             kind: "point",
@@ -236,11 +231,6 @@ const McapImageProjectionOverlay = ({
       style={containerStyle}
     >
       {dwellTooltip ? <Mcap3dHoverTooltip tooltip={dwellTooltip} /> : null}
-      {hasNonTrivialDistortion(calibration) ? (
-        <div style={noticeStyle}>
-          Pointcloud projections assume rectified images
-        </div>
-      ) : null}
     </div>
   );
 };
@@ -260,18 +250,6 @@ const containerStyle: CSSProperties = {
   inset: 0,
   overflow: "hidden",
   pointerEvents: "none",
-  position: "absolute",
-};
-
-const noticeStyle: CSSProperties = {
-  background: VISUALIZATION_HUD_BACKGROUND_COLOR,
-  border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
-  borderRadius: 4,
-  bottom: 8,
-  color: VISUALIZATION_HUD_TEXT_COLOR,
-  fontSize: 11,
-  left: 8,
-  padding: "4px 6px",
   position: "absolute",
 };
 

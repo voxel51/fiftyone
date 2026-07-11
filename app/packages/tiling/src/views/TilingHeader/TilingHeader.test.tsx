@@ -21,6 +21,7 @@ const RegisterTiles: React.FC<{ entries: RegisteredTile[] }> = ({
   entries,
 }) => {
   const { registerTile } = useTileRegistry();
+  // This effect registers the tile kinds supplied by the test harness.
   useEffect(() => {
     const disposes = entries.map((e) => registerTile(e));
     return () => {
@@ -191,6 +192,7 @@ describe("TilingHeader", () => {
     expect(screen.queryByText("Camera")).toBeNull();
     // The layout action stays appended below any custom catalog.
     expect(screen.getByText("Auto Layout")).toBeTruthy();
+    expect(screen.getByText("Reset Layout")).toBeTruthy();
   });
 
   it("offers the add-tile menu for a custom menu even with no registered kinds", () => {

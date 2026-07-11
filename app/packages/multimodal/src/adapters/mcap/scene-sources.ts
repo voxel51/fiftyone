@@ -12,7 +12,7 @@ import {
   isSceneUpdateStream,
   topicName,
 } from "./stream-topics";
-import { topicPrefix } from "./topic-matching";
+import { chooseCalibrationTopic, topicPrefix } from "./topic-matching";
 import type { McapStreamSyncPolicies, McapStreamSyncPolicy } from "./types";
 
 /**
@@ -48,6 +48,11 @@ export const MCAP_SOURCE_TYPE = {
 
 export type McapSourceType =
   (typeof MCAP_SOURCE_TYPE)[keyof typeof MCAP_SOURCE_TYPE];
+
+/** Static MCAP relationships published through generic scene-source metadata. */
+export const MCAP_SCENE_SOURCE_METADATA = {
+  CALIBRATION_TOPIC: "mcap.calibration_topic",
+} as const;
 
 // Latest-at-or-before with no tolerance = unbounded lookback: the read
 // layer resolves the predecessor message however sparse the stream is
@@ -112,15 +117,30 @@ export function mcapSceneSources(
     labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
   }
 
+  const calibrationTopics = classified
+    .filter(({ type }) => type === MCAP_SOURCE_TYPE.CAMERA_CALIBRATION)
+    .map(({ id }) => id);
+
   // Prefer the short prefix-derived label; topics whose prefixes collide
   // (e.g. raw and rectified streams of one camera) keep their full topic
   // so source pickers stay unambiguous.
   return classified.map(({ id, type, recordCount }) => {
     const short = shortTopicLabel(id);
+    const calibrationTopic =
+      type === MCAP_SOURCE_TYPE.IMAGE
+        ? chooseCalibrationTopic(id, calibrationTopics)
+        : null;
     return {
       id,
       type,
       label: (labelCounts.get(short) ?? 0) > 1 ? displayTopic(id) : short,
+      ...(calibrationTopic
+        ? {
+            metadata: {
+              [MCAP_SCENE_SOURCE_METADATA.CALIBRATION_TOPIC]: calibrationTopic,
+            },
+          }
+        : {}),
       ...(recordCount !== undefined ? { recordCount } : {}),
     };
   });
