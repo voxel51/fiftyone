@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree, type ThreeEvent } from "@react-three/fiber";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 
 import type { CameraCalibrationVisualization } from "../../../decoders";
@@ -32,7 +32,9 @@ const CAMERA_FRUSTUM_HIGHLIGHT_OPACITY = 1;
 const CAMERA_BOUNDARY_SEGMENTS_PER_EDGE = 16;
 const CAMERA_SURFACE_COLUMNS = 48;
 const CAMERA_SURFACE_ROWS = 32;
-export function CameraFrustumSceneLayer({
+// Memoized: hovering or focusing one linked camera tile re-renders that
+// frustum and the one losing emphasis, not every camera in the scene.
+export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   layer,
 }: {
   readonly layer: CameraFrustumPanelLayer;
@@ -222,7 +224,7 @@ export function CameraFrustumSceneLayer({
       ) : null}
     </group>
   );
-}
+});
 
 /**
  * Image-corner directions for one camera in the OpenCV/Foxglove camera

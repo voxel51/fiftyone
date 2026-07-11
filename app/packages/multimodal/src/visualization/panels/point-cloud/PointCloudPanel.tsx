@@ -6,6 +6,7 @@ import MeasureRulerIcon from "../../../components/MeasureRulerIcon";
 import type { PointCloudBounds } from "../../../decoders";
 import { Base3DScene } from "../base-3d-scene";
 import { WebGpuCanvas } from "../gpu/webgpu-canvas";
+import { useKeyedIdentityMap } from "../use-keyed-identity-map";
 import {
   PERSPECTIVE_POINT_CAMERA,
   cameraPoseForBounds,
@@ -105,56 +106,59 @@ export function PointCloudPanel({
     () => createGpuPointCloud3dPickerRegistry(),
     [],
   );
-  const renderLayers = useMemo(
-    () =>
-      layers.map((layer): PreparedPointCloudPanelLayer => {
-        const colorOptions = pointCloudColorOptions(layer, colorBy);
-        const payload = layer.frame.renderPayload;
-        if (!payload) {
-          // Compatibility path for custom/legacy producers. Built-in MCAP
-          // frames take the worker-prepared branch below and never expand
-          // positions/colors on the main thread.
-          return {
-            data: buildPointCloudRenderData(
-              layer.frame.positions,
-              maxRenderedPoints,
-              colorOptions,
-            ),
-            layer,
-          };
-        }
-
-        const gpuColor = resolveGpuPointCloudColor(payload, colorOptions);
-        const renderedPointCount = gpuPointCloudDrawCount(
-          payload.sampledPointCount,
-          maxRenderedPoints,
-        );
+  // Keyed identity: a prepared wrapper survives renders its own layer didn't
+  // cause, so the memoized scene layers below skip reconciliation (and their
+  // per-frame layout effects) for clouds whose content didn't change.
+  const renderLayers = useKeyedIdentityMap(layers, {
+    build: (layer): PreparedPointCloudPanelLayer => {
+      const colorOptions = pointCloudColorOptions(layer, colorBy);
+      const payload = layer.frame.renderPayload;
+      if (!payload) {
+        // Compatibility path for custom/legacy producers. Built-in MCAP
+        // frames take the worker-prepared branch below and never expand
+        // positions/colors on the main thread.
         return {
-          // Scene fitting, legends, and render stats consume this compact
-          // summary. The 3D layer reads typed arrays only from `gpu.payload`.
-          data: {
-            bounds: pointCloudPayloadBounds(payload.bounds),
-            colorRamp: gpuColor.colorRamp,
-            colors: EMPTY_GPU_RENDER_ARRAY,
-            finitePointCount: payload.finitePointCount,
-            positions: EMPTY_GPU_RENDER_ARRAY,
-            renderedPointCount,
-          },
-          gpu: {
-            color: gpuColor,
-            payload,
-            renderedPointCount,
-            ...(layer.contentTimeNs === undefined
-              ? {}
-              : {
-                  resourceKey: `${layer.id}\n${layer.contentTimeNs.toString()}`,
-                }),
-          },
+          data: buildPointCloudRenderData(
+            layer.frame.positions,
+            maxRenderedPoints,
+            colorOptions,
+          ),
           layer,
         };
-      }),
-    [colorBy, layers, maxRenderedPoints],
-  );
+      }
+
+      const gpuColor = resolveGpuPointCloudColor(payload, colorOptions);
+      const renderedPointCount = gpuPointCloudDrawCount(
+        payload.sampledPointCount,
+        maxRenderedPoints,
+      );
+      return {
+        // Scene fitting, legends, and render stats consume this compact
+        // summary. The 3D layer reads typed arrays only from `gpu.payload`.
+        data: {
+          bounds: pointCloudPayloadBounds(payload.bounds),
+          colorRamp: gpuColor.colorRamp,
+          colors: EMPTY_GPU_RENDER_ARRAY,
+          finitePointCount: payload.finitePointCount,
+          positions: EMPTY_GPU_RENDER_ARRAY,
+          renderedPointCount,
+        },
+        gpu: {
+          color: gpuColor,
+          payload,
+          renderedPointCount,
+          ...(layer.contentTimeNs === undefined
+            ? {}
+            : {
+                resourceKey: `${layer.id}\n${layer.contentTimeNs.toString()}`,
+              }),
+        },
+        layer,
+      };
+    },
+    inputs: (layer) => [layer, colorBy, maxRenderedPoints],
+    key: (layer) => layer.id,
+  });
   const gpuPickData = useMemo(() => {
     // CPU metadata only. GPU buffers are registered by mounted scene layers;
     // this map translates the winning sampled ID back to decoded hover data.
