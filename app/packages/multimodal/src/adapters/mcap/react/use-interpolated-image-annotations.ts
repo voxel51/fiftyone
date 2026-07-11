@@ -111,16 +111,17 @@ export function useInterpolatedImageAnnotationSets(
   const playhead = usePlayhead();
   const timeline = dataStream?.getTimelineIndex() ?? null;
   const cacheSnapshot = useTopicCacheSnapshot(dataStream, stableTopics);
-  const interpolationCache = useMemo(
-    () => createInterpolationCache(dataStream, timeline),
+  // Fresh caches whenever the stream or timeline changes so entries keyed by
+  // now-unreachable visualization objects don't linger.
+  const interpolationCache = useMemo<InterpolationCache>(
+    () => new WeakMap(),
     [dataStream, timeline],
   );
-  const nextMessageCache = useMemo(
-    () => createNextMessageCache(dataStream, timeline),
-    [dataStream, timeline],
-  );
-  const renderMetadataCache = useMemo(
-    () => createRenderMetadataCache(dataStream, timeline),
+  const nextMessageCache = useMemo<
+    WeakMap<McapTopicCache, NextMessageCacheEntry>
+  >(() => new WeakMap(), [dataStream, timeline]);
+  const renderMetadataCache = useMemo<RenderMetadataCache>(
+    () => new WeakMap(),
     [dataStream, timeline],
   );
 
@@ -378,27 +379,6 @@ function currentAnnotationFrame({
     nextViz,
   );
   return sampleImageAnnotationInterpolation(prepared, f);
-}
-
-function createInterpolationCache(
-  _dataStream: McapDataStream | null,
-  _timeline: McapTimelineIndex | null,
-): InterpolationCache {
-  return new WeakMap();
-}
-
-function createNextMessageCache(
-  _dataStream: McapDataStream | null,
-  _timeline: McapTimelineIndex | null,
-): WeakMap<McapTopicCache, NextMessageCacheEntry> {
-  return new WeakMap();
-}
-
-function createRenderMetadataCache(
-  _dataStream: McapDataStream | null,
-  _timeline: McapTimelineIndex | null,
-): RenderMetadataCache {
-  return new WeakMap();
 }
 
 function annotationFrameWithMetadata(
