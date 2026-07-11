@@ -6,6 +6,7 @@ import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type { McapGridPreviewResult } from "../grid-preview";
 import { firstImageByte } from "../grid-preview-test-utils";
+import { MCAP_PLAYBACK_WORKER_PRIORITY } from "../worker/playback-worker-types";
 import {
   useMcapGridPreview,
   type McapGridPreviewState,
@@ -58,7 +59,10 @@ describe("useMcapGridPreview", () => {
     expect(poolHarness.pool.acquire).toHaveBeenCalledTimes(1);
     expect(poolHarness.pool.request).toHaveBeenCalledWith(
       { source: sourceForId("initial") },
-      { signal: expect.any(AbortSignal) },
+      {
+        priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+        signal: expect.any(AbortSignal),
+      },
     );
 
     const signal = poolHarness.pool.request.mock.calls[0]?.[1]
@@ -142,6 +146,9 @@ describe("useMcapGridPreview", () => {
       source: sourceForId("hover"),
       startTimeNs: 10n,
     });
+    expect(poolHarness.pool.request.mock.calls[1]?.[1]).toMatchObject({
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+    });
 
     hover.resolve(readyResult({ bytes: [9, 8, 7], nextStartTimeNs: 20n }));
 
@@ -152,7 +159,7 @@ describe("useMcapGridPreview", () => {
     act(() => {
       latestState.current?.pause();
     });
-    expect(poolHarness.pool.release).not.toHaveBeenCalled();
+    expect(poolHarness.pool.release).toHaveBeenCalledTimes(1);
   });
 
   it("reloads and sends the selected stream topic when it changes", async () => {
@@ -241,20 +248,48 @@ describe("useMcapGridPreview", () => {
 
     reload.resolve(readyResult({ bytes: [2], streamTopic: "/camera/back" }));
   });
+
+  it("defers hidden cells and reuses their loaded frame on re-entry", async () => {
+    poolHarness.pool.request.mockResolvedValueOnce(
+      readyResult({ bytes: [7], nextStartTimeNs: 10n }),
+    );
+    const source = sourceForId("visibility");
+    const { rerender } = render(
+      <PreviewHarness enabled={false} id="visibility" source={source} />,
+    );
+
+    expect(poolHarness.pool.request).not.toHaveBeenCalled();
+
+    rerender(<PreviewHarness enabled id="visibility" source={source} />);
+    await waitFor(() => {
+      expect(screen.getByTestId("preview-visibility").textContent).toBe(
+        "ready:1:frame:",
+      );
+    });
+
+    rerender(
+      <PreviewHarness enabled={false} id="visibility" source={source} />,
+    );
+    rerender(<PreviewHarness enabled id="visibility" source={source} />);
+
+    expect(poolHarness.pool.request).toHaveBeenCalledTimes(1);
+  });
 });
 
 function PreviewHarness({
+  enabled,
   id,
   onState,
   selectedStreamTopic,
   source,
 }: {
+  readonly enabled?: boolean;
   readonly id: string;
   readonly onState?: (state: McapGridPreviewState) => void;
   readonly selectedStreamTopic?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }) {
-  const state = useMcapGridPreview({ selectedStreamTopic, source });
+  const state = useMcapGridPreview({ enabled, selectedStreamTopic, source });
 
   useEffect(() => {
     onState?.(state);

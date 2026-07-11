@@ -18,7 +18,11 @@ import {
   resetGridLiveLeasesForTests,
 } from "../../../visualization/panels/gpu/webgpu-live-lease";
 import type { McapGridPreviewFrame } from "../grid-preview";
-import { GridRenderer, HOVER_INTENT_DELAY_MS } from "./GridRenderer";
+import {
+  GridRenderer,
+  HOVER_INTENT_DELAY_MS,
+  PLAYBACK_HOVER_INTENT_DELAY_MS,
+} from "./GridRenderer";
 
 const previewHarness = vi.hoisted(() => ({
   preview: {
@@ -37,6 +41,7 @@ const bitmapViewHarness = vi.hoisted(() => ({
   lastProps: null as {
     fit?: string;
     frame: Extract<McapGridPreviewFrame, { kind: "image" }>["image"];
+    onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
     onImageLoaded?: (width: number, height: number) => void;
   } | null,
 }));
@@ -126,14 +131,16 @@ vi.mock("../../../visualization/panels/bitmap-image-view", async () => {
     BitmapImageFrameView: (props: {
       readonly fit?: string;
       readonly frame: Extract<McapGridPreviewFrame, { kind: "image" }>["image"];
+      readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
       readonly onImageLoaded?: (width: number, height: number) => void;
     }) => {
       bitmapViewHarness.lastProps = props;
-      const { onImageLoaded } = props;
+      const { onBitmapRetainedBytesChange, onImageLoaded } = props;
       // This effect reports decoded natural dims like the real view does.
       useEffect(() => {
         onImageLoaded?.(640, 480);
-      }, [onImageLoaded]);
+        onBitmapRetainedBytesChange?.(640 * 480 * 4);
+      }, [onBitmapRetainedBytesChange, onImageLoaded]);
       return <div data-testid="bitmap-image-view" />;
     },
   };
@@ -162,6 +169,8 @@ afterEach(() => {
   previewHarness.preview.hasPreviewTopics = false;
   previewHarness.preview.status = "idle";
   previewHarness.preview.streamTopic = null;
+  previewHarness.preview.pause.mockClear();
+  previewHarness.preview.play.mockClear();
   snapshotHarness.requests.length = 0;
 });
 
@@ -202,6 +211,26 @@ describe("GridRenderer", () => {
     const overlay = await screen.findByTestId("annotations-overlay");
     expect(overlay.getAttribute("data-image-width")).toBe("640");
     expect(overlay.getAttribute("data-image-height")).toBe("480");
+  });
+
+  it("reports retained frame and decoded bitmap bytes to the grid LRU", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    const onRetainedBytesChange = vi.fn();
+    previewHarness.preview.frame = imageFrame(bytes);
+    previewHarness.preview.status = "ready";
+
+    render(
+      <GridRenderer
+        ctx={rendererCtx()}
+        onRetainedBytesChange={onRetainedBytesChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onRetainedBytesChange).toHaveBeenLastCalledWith(
+        bytes.byteLength + 640 * 480 * 4,
+      );
+    });
   });
 
   it("allows ready image tile activation to pass through", () => {
@@ -256,6 +285,36 @@ describe("GridRenderer", () => {
 
     expect(onClick).not.toHaveBeenCalled();
     expect(onContextMenu).not.toHaveBeenCalled();
+  });
+
+  it("requires hover intent before starting playback", () => {
+    vi.useFakeTimers();
+    previewHarness.preview.frame = imageFrame(new Uint8Array([1]));
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+    const root = screen.getByTestId("bitmap-image-view").parentElement;
+    if (!root) {
+      throw new Error("Expected bitmap view to have a grid root");
+    }
+
+    fireEvent.pointerOver(root);
+    act(() => {
+      vi.advanceTimersByTime(PLAYBACK_HOVER_INTENT_DELAY_MS - 1);
+    });
+    expect(previewHarness.preview.play).not.toHaveBeenCalled();
+
+    fireEvent.pointerOut(root);
+    act(() => {
+      vi.advanceTimersByTime(PLAYBACK_HOVER_INTENT_DELAY_MS);
+    });
+    expect(previewHarness.preview.play).not.toHaveBeenCalled();
+
+    fireEvent.pointerOver(root);
+    act(() => {
+      vi.advanceTimersByTime(PLAYBACK_HOVER_INTENT_DELAY_MS);
+    });
+    expect(previewHarness.preview.play).toHaveBeenCalledTimes(1);
   });
 
   it("renders point-cloud cells as a snapshot bitmap at rest with NO live panel", async () => {
@@ -391,6 +450,43 @@ describe("GridRenderer", () => {
     expect(screen.getByTestId("bitmap-canvas-host")).toBeTruthy();
     expect(snapshotHarness.requests.length).toBe(2);
     expect(gridLiveLeaseStats()).toMatchObject({ active: 2, revoked: 1 });
+  });
+
+  it("does not snapshot changing frames underneath the live panel", () => {
+    vi.useFakeTimers();
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+    fireEvent.pointerOver(pointCloudCells()[0]);
+    act(() => {
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS);
+    });
+    expect(screen.getByTestId("point-cloud-panel")).toBeTruthy();
+    expect(snapshotHarness.requests.length).toBe(1);
+
+    previewHarness.preview.frame = pointCloudFrame();
+    rerender(<GridRenderer ctx={rendererCtx()} />);
+    expect(snapshotHarness.requests.length).toBe(1);
+
+    fireEvent.pointerOut(pointCloudCells()[0]);
+    expect(snapshotHarness.requests.length).toBe(2);
+    expect(snapshotHarness.requests[1].job.layers[0].frame).toBe(
+      (previewHarness.preview.frame as { pointCloud: unknown }).pointCloud,
+    );
+  });
+
+  it("does no snapshot work while the grid is inactive", () => {
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    const { rerender } = render(
+      <GridRenderer ctx={rendererCtx()} isGridActive={false} />,
+    );
+    expect(snapshotHarness.requests).toHaveLength(0);
+
+    rerender(<GridRenderer ctx={rendererCtx()} isGridActive />);
+    expect(snapshotHarness.requests).toHaveLength(1);
   });
 
   it("stays on the snapshot when the device budget denies going live", () => {

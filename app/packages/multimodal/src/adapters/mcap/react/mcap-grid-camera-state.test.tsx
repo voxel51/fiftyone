@@ -28,10 +28,36 @@ describe("MCAP grid camera state", () => {
     expect(screen.getByTestId("camera-a").textContent).toBe("1,2,3|4,5,6");
     expect(screen.getByTestId("camera-b").textContent).toBe("1,2,3|4,5,6");
   });
+
+  it("does not fan pose updates out to inactive cached cells", () => {
+    const { rerender } = render(
+      <>
+        <CameraHarness id="visible" key="visible" />
+        <CameraHarness enabled={false} id="hidden" key="hidden" />
+      </>,
+    );
+
+    fireEvent.click(screen.getByTestId("camera-visible"));
+    expect(screen.getByTestId("camera-hidden").textContent).toBe("empty");
+
+    rerender(
+      <>
+        <CameraHarness id="visible" key="visible" />
+        <CameraHarness enabled id="hidden" key="hidden" />
+      </>,
+    );
+    expect(screen.getByTestId("camera-hidden").textContent).toBe("1,2,3|4,5,6");
+  });
 });
 
-function CameraHarness({ id }: { readonly id: string }) {
-  const [pose, setPose] = useMcapGridCameraPose();
+function CameraHarness({
+  enabled = true,
+  id,
+}: {
+  readonly enabled?: boolean;
+  readonly id: string;
+}) {
+  const [pose, setPose] = useMcapGridCameraPose(enabled);
 
   return (
     <button

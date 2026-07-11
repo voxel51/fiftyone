@@ -6,6 +6,10 @@ import type {
   McapGridPreviewWorkerResponse,
   McapGridPreviewWorkerRpcRequest,
 } from "./grid-preview-worker-types";
+import {
+  MCAP_PLAYBACK_WORKER_PRIORITY,
+  type McapPlaybackWorkerPriority,
+} from "./playback-worker-types";
 
 const CANCELLED_ERROR_MESSAGE = "MCAP grid preview request cancelled";
 
@@ -35,7 +39,10 @@ export class McapGridPreviewTransport {
   request(
     worker: Worker,
     payload: McapGridPreviewRequestPayload,
-    options: { readonly signal?: AbortSignal } = {},
+    options: {
+      readonly priority?: McapPlaybackWorkerPriority;
+      readonly signal?: AbortSignal;
+    } = {},
   ): Promise<McapGridPreviewResult> {
     if (options.signal?.aborted) {
       return Promise.reject(new McapGridPreviewRequestCancelledError());
@@ -45,6 +52,7 @@ export class McapGridPreviewTransport {
     const message: McapGridPreviewWorkerRpcRequest = {
       id,
       payload,
+      priority: options.priority ?? MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
       sourceKey: byteSourceAccessKey(payload.source),
       type: "decodeGridPreview",
     };
@@ -93,7 +101,7 @@ export class McapGridPreviewTransport {
     }
 
     this.pending.delete(response.id);
-    if (response.ok) {
+    if (!("error" in response)) {
       pending.resolve(response.result);
     } else {
       pending.reject(new Error(response.error));
