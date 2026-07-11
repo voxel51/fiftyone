@@ -67,10 +67,7 @@ export interface TrackEventMenuItem {
    * action can anchor a popup near the menu). `anchor` may be absent if the
    * click carried no coordinates.
    */
-  onSelect: (
-    event: NormalizedEvent,
-    anchor?: { x: number; y: number },
-  ) => void;
+  onSelect: (event: NormalizedEvent, anchor?: { x: number; y: number }) => void;
 }
 
 function normalizeEvent(e: TimelineTrackEvent): NormalizedEvent {
