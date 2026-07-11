@@ -479,7 +479,7 @@ function McapMapLibreSurface({
             showCompass: false,
             showZoom: true,
           }),
-          "top-right",
+          "bottom-right",
         );
 
         map.on("load", () => {

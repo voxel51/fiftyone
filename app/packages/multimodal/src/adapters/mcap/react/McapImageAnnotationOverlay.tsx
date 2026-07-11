@@ -109,6 +109,7 @@ const McapImageAnnotationOverlay: React.FC<McapImageAnnotationOverlayProps> = ({
   return (
     <ImageAnnotationsOverlay
       annotations={annotationSets.map((set) => set.frame)}
+      renderMetadata={annotationSets.map((set) => set.renderMetadata)}
       imageWidth={imageWidth}
       imageHeight={imageHeight}
       fit={fit}

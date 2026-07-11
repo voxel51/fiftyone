@@ -410,6 +410,61 @@ describe("ImageAnnotationsOverlay", () => {
     expect(lines[0].getAttribute("y2")).toBe("10");
   });
 
+  it("renders prepared line-list groups without regrouping the raw primitive", () => {
+    const annotation = {
+      ...emptySet(),
+      points: [
+        {
+          type: "line-list" as const,
+          points: [
+            [0, 0],
+            [10, 10],
+          ] as const,
+          thickness: 2,
+          outlineColor: RED,
+          outlineColors: [],
+          fillColor: null,
+        },
+      ],
+    };
+    const { container } = render(
+      <ImageAnnotationsOverlay
+        annotations={[annotation]}
+        fit="contain"
+        imageHeight={100}
+        imageWidth={200}
+        renderMetadata={[
+          {
+            lineListGroups: [
+              [
+                {
+                  bounds: { minX: 50, minY: 20, maxX: 70, maxY: 40 },
+                  label: "car",
+                  points: [
+                    [50, 20],
+                    [70, 40],
+                  ],
+                  segments: [
+                    [
+                      [50, 20],
+                      [70, 40],
+                    ],
+                  ],
+                },
+              ],
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const line = requireElement<SVGLineElement>(container, "line");
+    expect(line.getAttribute("x1")).toBe("50");
+    expect(line.getAttribute("y1")).toBe("20");
+    expect(line.getAttribute("x2")).toBe("70");
+    expect(line.getAttribute("y2")).toBe("40");
+  });
+
   it("renders one circle per individual point", () => {
     // The interactive renderer draws a <circle> for each point; colour is
     // applied via CSS custom property, not the fill attribute.

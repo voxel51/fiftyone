@@ -1,8 +1,9 @@
 // ---------------------------------------------------------------------------
 // Imperative access to playback state for code that already holds a
 // PlaybackStore: PlaybackStream implementations (e.g. the MCAP data
-// stream), component event handlers, and tests. React components subscribe
-// through the hooks in `use-playback-state.ts` / `use-stream.ts` instead.
+// stream), component event handlers, tests, and specialized hooks that sample
+// a high-frequency value. React components normally subscribe through the
+// hooks in `use-playback-state.ts` / `use-stream.ts` instead.
 //
 // This surface is deliberately narrower than the atom set — it encodes who
 // may write what. There is no setPlayhead / setIsPlaying here: the engine
@@ -14,6 +15,7 @@
 import {
   bufferedRangesAtom,
   bufferingDetailAtom,
+  currentTimeAtom,
   hoverTimeAtom,
   isBufferingAtom,
   isPlayPendingAtom,
@@ -29,6 +31,19 @@ import type { BufferedRanges, PlaybackStore } from "./types";
 /** Non-reactive read of the visual playhead position, in seconds. */
 export function getPlayhead(store: PlaybackStore): number {
   return store.get(playheadAtom);
+}
+
+/** Non-reactive read of the latest time committed by the playback engine. */
+export function getCurrentTime(store: PlaybackStore): number {
+  return store.get(currentTimeAtom);
+}
+
+/** Watch playback commits; returns the unsubscribe function. */
+export function subscribeCurrentTime(
+  store: PlaybackStore,
+  callback: () => void,
+): () => void {
+  return store.sub(currentTimeAtom, callback);
 }
 
 /** Non-reactive read of the active loop start, in seconds. */
