@@ -75,6 +75,7 @@ export function PointCloudPanel({
   annotationLayers = [],
   background,
   cameraPose,
+  cameraRig,
   canvasSurface,
   className,
   colorBy,
@@ -371,6 +372,7 @@ export function PointCloudPanel({
           showGizmo={showGizmo}
           up={sceneUp}
         >
+          {cameraRig}
           <ScenePickingContext.Provider value={!measureArmed}>
             <GpuPointCloud3dPickerRegistryContext.Provider
               value={pointPickerRegistry}

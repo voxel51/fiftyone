@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import * as THREE from "three";
 
 import type {
@@ -331,7 +331,21 @@ export interface PointCloudPanelProps {
    * the shared dark panel color.
    */
   readonly background?: ThreeSceneBackground;
+  /**
+   * Externally supplied camera pose, applied whenever it differs from the
+   * live scene pose. Callers may drive it as a controlled pose (grid
+   * previews do) or as a rare command channel — restore/remap/preset poses
+   * only — with interactive motion owned imperatively inside the canvas via
+   * `cameraRig` (the modal 3D tile does).
+   */
   readonly cameraPose?: PointCloudCameraPose | null;
+  /**
+   * Optional camera controller mounted inside the canvas (rendered as a
+   * child of the shared 3D scene). Lets callers own camera behavior
+   * imperatively — e.g. the MCAP follow-mode rig — while the panel stays
+   * generic.
+   */
+  readonly cameraRig?: ReactNode;
   /**
    * Device-registry surface tag passed through to the WebGPU canvas
    * ("modal-3d", "grid-preview", ...). Bookkeeping only.
