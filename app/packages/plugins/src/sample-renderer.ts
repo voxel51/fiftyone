@@ -69,6 +69,10 @@ export type SampleRendererRenderContext<TSample = SampleRendererSampleLike> =
  */
 export type SampleRendererProps = {
   ctx: SampleRendererRenderContext<SampleRendererSampleLike>;
+  /** Whether a grid renderer is both mounted and unobscured by the modal. */
+  isGridActive?: boolean;
+  /** Reports renderer-owned retained bytes to the grid's hidden-item LRU. */
+  onRetainedBytesChange?: (retainedBytes: number) => void;
 };
 
 /**
