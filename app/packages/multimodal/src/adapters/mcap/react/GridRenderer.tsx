@@ -42,11 +42,9 @@ const SNAPSHOT_REFRESH_DEBOUNCE_MS = 250;
 // Hover-intent delay before a point-cloud cell requests a live-renderer
 // lease: scroll-past must not thrash leases/renderers (device churn is
 // exactly what the lease pool exists to prevent). Exported for tests.
-const GRID_HOVER_INTENT_DELAY_MS = 120;
-export const HOVER_INTENT_DELAY_MS = GRID_HOVER_INTENT_DELAY_MS;
+export const HOVER_INTENT_DELAY_MS = 120;
 /** Dwell before hover playback starts, avoiding scroll-under-cursor churn. */
-export const PLAYBACK_HOVER_INTENT_DELAY_MS = GRID_HOVER_INTENT_DELAY_MS;
-const BYTES_PER_PIXEL = 4;
+export const PLAYBACK_HOVER_INTENT_DELAY_MS = HOVER_INTENT_DELAY_MS;
 
 const stopGridActivationPropagation = (
   event: React.MouseEvent<HTMLElement>,
@@ -349,9 +347,7 @@ function PointCloudPreviewFrame({
 
       // The host adopts the bitmap and closes the one it replaces.
       setSnapshot(bitmap);
-      onSurfaceRetainedBytesChange(
-        bitmap.width * bitmap.height * BYTES_PER_PIXEL,
-      );
+      onSurfaceRetainedBytesChange(bitmap.width * bitmap.height * 4);
     });
   }, [onSurfaceRetainedBytesChange]);
 

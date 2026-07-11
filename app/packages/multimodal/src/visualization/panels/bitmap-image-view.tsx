@@ -521,13 +521,10 @@ export function bitmapDecodeOptions(
   fit: "contain" | "cover",
 ): ImageBitmapOptions {
   const rect = bitmapDrawRect(container, image, fit);
-  const resizeWidth = Math.max(
-    1,
-    Math.min(image.width, Math.ceil(Math.abs(rect.width))),
-  );
+  const resizeWidth = Math.max(1, Math.min(image.width, Math.ceil(rect.width)));
   const resizeHeight = Math.max(
     1,
-    Math.min(image.height, Math.ceil(Math.abs(rect.height))),
+    Math.min(image.height, Math.ceil(rect.height)),
   );
 
   return {

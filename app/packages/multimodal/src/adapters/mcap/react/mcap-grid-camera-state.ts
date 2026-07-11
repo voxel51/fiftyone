@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { PointCloudCameraPose } from "../../../visualization/panels/point-cloud";
 
-const mcapGridCameraPoseAtom = atom(null as PointCloudCameraPose | null);
+const mcapGridCameraPoseAtom = atom<PointCloudCameraPose | null>(null);
 
 /**
  * Shared camera pose for 3D MCAP grid previews.
