@@ -112,16 +112,20 @@ export function useInterpolatedImageAnnotationSets(
   const timeline = dataStream?.getTimelineIndex() ?? null;
   const cacheSnapshot = useTopicCacheSnapshot(dataStream, stableTopics);
   // Fresh caches whenever the stream or timeline changes so entries keyed by
-  // now-unreachable visualization objects don't linger.
+  // now-unreachable visualization objects don't linger. The deps are the
+  // reset triggers, not values the factories read — hence the lint disables.
   const interpolationCache = useMemo<InterpolationCache>(
     () => new WeakMap(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [dataStream, timeline],
   );
   const nextMessageCache = useMemo<
     WeakMap<McapTopicCache, NextMessageCacheEntry>
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   >(() => new WeakMap(), [dataStream, timeline]);
   const renderMetadataCache = useMemo<RenderMetadataCache>(
     () => new WeakMap(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [dataStream, timeline],
   );
 
