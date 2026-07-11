@@ -110,14 +110,18 @@ describe("buildMcapTopicInventoryRows", () => {
     });
   });
 
-  it("classifies topics containing imu as sensors", () => {
+  it("classifies imu path segments as sensors", () => {
     const topics = [
       topic("/vehicle/IMU/data", "vendor_msgs/Widget", "cdr", "ros2msg", "3"),
+      topic("/simulated_pose", "vendor_msgs/Widget", "cdr", "ros2msg", "3"),
     ];
 
     const rows = buildMcapTopicInventoryRows({ sceneSources: [], topics });
 
     expect(row(rows, "/vehicle/IMU/data").category).toBe(
+      MCAP_TOPIC_CATEGORY.SENSORS,
+    );
+    expect(row(rows, "/simulated_pose").category).not.toBe(
       MCAP_TOPIC_CATEGORY.SENSORS,
     );
   });
@@ -146,7 +150,9 @@ describe("buildMcapTopicInventoryRows", () => {
 
 function row(rows: readonly McapTopicInventoryRow[], topic: string) {
   const match = rows.find((candidate) => candidate.topic === topic);
-  expect(match).toBeTruthy();
+  if (!match) {
+    throw new Error(`Missing topic inventory row: ${topic}`);
+  }
   return match;
 }
 

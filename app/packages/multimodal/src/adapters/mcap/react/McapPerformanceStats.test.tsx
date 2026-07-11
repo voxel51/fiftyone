@@ -11,6 +11,8 @@ import McapPerformanceStats from "./McapPerformanceStats";
 
 type Playback = ReturnType<typeof usePlayback>;
 
+let clipboardDescriptor: PropertyDescriptor | undefined;
+
 function PlaybackProbe({
   playbackRef,
 }: {
@@ -24,11 +26,21 @@ describe("McapPerformanceStats", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    if (clipboardDescriptor) {
+      Object.defineProperty(navigator, "clipboard", clipboardDescriptor);
+    } else {
+      Reflect.deleteProperty(navigator, "clipboard");
+    }
+    clipboardDescriptor = undefined;
   });
 
   it("samples the visible playhead but copies the latest committed time", async () => {
     vi.useFakeTimers({ toFake: ["clearTimeout", "setTimeout"] });
     const writeText = vi.fn(async (_text: string) => undefined);
+    clipboardDescriptor = Object.getOwnPropertyDescriptor(
+      navigator,
+      "clipboard",
+    );
     Object.assign(navigator, { clipboard: { writeText } });
     const playbackRef: { current: Playback | null } = { current: null };
 

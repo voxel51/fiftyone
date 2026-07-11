@@ -71,6 +71,9 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
   const stableStreamTopics = useStableGridStreamTopics(preview.streamTopics);
   const allowGridActivation =
     preview.status === "ready" && preview.frame?.kind === "image";
+  const gridActivationHandler = allowGridActivation
+    ? undefined
+    : stopGridActivationPropagation;
 
   useEffect(() => {
     return registerStreamTopics({
@@ -84,10 +87,8 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
   return (
     <div
       className={classes.root}
-      onClick={allowGridActivation ? undefined : stopGridActivationPropagation}
-      onContextMenu={
-        allowGridActivation ? undefined : stopGridActivationPropagation
-      }
+      onClick={gridActivationHandler}
+      onContextMenu={gridActivationHandler}
       onPointerEnter={preview.play}
       onPointerLeave={preview.pause}
     >

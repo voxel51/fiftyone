@@ -231,7 +231,7 @@ function categoryForTopic({
   readonly telemetry: boolean;
   readonly topic: string;
 }): McapTopicCategory {
-  if (topic.toLowerCase().includes("imu")) {
+  if (/(?:^|\/)imu(?:\/|$)/i.test(topic)) {
     return MCAP_TOPIC_CATEGORY.SENSORS;
   }
   if (sourceType === MCAP_SOURCE_TYPE.LOG || isLogStream(stream)) {
