@@ -17,6 +17,7 @@ import type {
   SceneUpdateVisualization,
 } from "../../../decoders";
 import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
+import { useKeyedIdentityMap } from "../../../visualization/panels/use-keyed-identity-map";
 import {
   type CameraFrustumPanelLayer,
   type GridPanelLayer,
@@ -323,40 +324,42 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
 
   // Attach each cloud's color settings outside build3dLayers so the pure
-  // layer builder stays color-agnostic; layer id = topic.
-  const coloredPointCloudLayers = useMemo(
-    () =>
-      pointCloudLayers.map((layer) => {
-        const source = pointCloudSourceById.get(layer.id) ?? {
-          id: layer.id,
-          label: layer.id,
-        };
-        const settings = {
-          ...defaultMcapPointCloudColorForSource(source, pointCloudSources),
-          ...pointCloudColors[layer.id],
-        };
-        return {
-          ...layer,
-          colorSettings: {
-            colorBy: settings.colorBy,
-            colormap: settings.colormap,
-            ...(settings.rangeMax !== null
-              ? { rangeMax: settings.rangeMax }
-              : {}),
-            ...(settings.rangeMin !== null
-              ? { rangeMin: settings.rangeMin }
-              : {}),
-            uniformColor: settings.uniformColor,
-          },
-        };
-      }),
-    [
-      pointCloudColors,
-      pointCloudLayers,
-      pointCloudSourceById,
+  // layer builder stays color-agnostic; layer id = topic. Keyed identity:
+  // wrappers survive renders their own inputs didn't cause, so memoized
+  // scene layers skip reconciliation for untouched siblings.
+  const coloredPointCloudLayers = useKeyedIdentityMap(pointCloudLayers, {
+    build: (layer) => {
+      const source = pointCloudSourceById.get(layer.id) ?? {
+        id: layer.id,
+        label: layer.id,
+      };
+      const settings = {
+        ...defaultMcapPointCloudColorForSource(source, pointCloudSources),
+        ...pointCloudColors[layer.id],
+      };
+      return {
+        ...layer,
+        colorSettings: {
+          colorBy: settings.colorBy,
+          colormap: settings.colormap,
+          ...(settings.rangeMax !== null
+            ? { rangeMax: settings.rangeMax }
+            : {}),
+          ...(settings.rangeMin !== null
+            ? { rangeMin: settings.rangeMin }
+            : {}),
+          uniformColor: settings.uniformColor,
+        },
+      };
+    },
+    inputs: (layer) => [
+      layer,
+      pointCloudColors[layer.id],
+      pointCloudSourceById.get(layer.id),
       pointCloudSources,
     ],
-  );
+    key: (layer) => layer.id,
+  });
   // Attach each camera's current image to its frustum layer. Done outside
   // build3dLayers so the pure layer builder stays image-agnostic; index
   // alignment with cameraTopics mirrors the playback-frames arrays. The
@@ -372,94 +375,99 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     : null;
   const pinholeImagePlaneDepthM = pinholeCamera.imagePlaneDepthM;
   const pinholeOpacity = pinholeCamera.opacityPercent / 100;
-  const frustumLayers = useMemo(
-    () =>
-      cameraFrustumLayers.map((layer) => {
-        const index = cameraTopics.indexOf(layer.id);
-        const imageFrame = index >= 0 ? frustumImageFrames[index] : null;
-        const imageTopic =
-          index >= 0 ? (resolvedFrustumImageTopics[index] ?? "") : "";
-        const geometry = imageTopic
-          ? (
-              imageProjectionSettings[imageTopic] ??
-              DEFAULT_MCAP_IMAGE_PROJECTION
-            ).geometry
-          : "original";
-        const cameraModelResolution = resolveMcapCameraModel({
-          calibration: layer.frame,
-          geometry,
-          imageTopic,
-        });
-        const rayCameraModelResolution =
-          cameraModelResolution.status === "ready"
-            ? cameraModelResolution
-            : resolveMcapCameraModel({
-                calibration: layer.frame,
-                geometry: "original",
-                imageTopic,
-              });
-        const cameraRayModel =
-          rayCameraModelResolution.status === "ready"
-            ? mcapCameraRayModel(rayCameraModelResolution.model)
-            : undefined;
-        const imageGeometryReady = cameraModelResolution.status === "ready";
-        // Cmd-clicking a frustum opens its image tile; hovering or focusing
-        // the tile highlights the frustum.
-        const linked = imageTopic
-          ? {
-              highlighted: hoveredImageTopic === imageTopic,
-              selected: focusedImageTopic === imageTopic,
+  const frustumLayers = useKeyedIdentityMap(cameraFrustumLayers, {
+    build: (layer) => {
+      const index = cameraTopics.indexOf(layer.id);
+      const imageFrame = index >= 0 ? frustumImageFrames[index] : null;
+      const imageTopic =
+        index >= 0 ? (resolvedFrustumImageTopics[index] ?? "") : "";
+      const geometry = imageTopic
+        ? (imageProjectionSettings[imageTopic] ?? DEFAULT_MCAP_IMAGE_PROJECTION)
+            .geometry
+        : "original";
+      const cameraModelResolution = resolveMcapCameraModel({
+        calibration: layer.frame,
+        geometry,
+        imageTopic,
+      });
+      const rayCameraModelResolution =
+        cameraModelResolution.status === "ready"
+          ? cameraModelResolution
+          : resolveMcapCameraModel({
+              calibration: layer.frame,
+              geometry: "original",
               imageTopic,
-              onSelect: ({ metaKey }: { readonly metaKey: boolean }) => {
-                if (metaKey) {
-                  openImageTile(imageTopic);
-                }
-              },
-            }
-          : {};
-        if (!imageFrame || !imageGeometryReady) {
-          return {
-            ...layer,
-            ...linked,
-            cameraRayModel,
-            imagePlaneDepthM: pinholeImagePlaneDepthM,
-            opacity: pinholeOpacity,
-            requireCameraRayModel: true,
-          };
-        }
+            });
+      const cameraRayModel =
+        rayCameraModelResolution.status === "ready"
+          ? mcapCameraRayModel(rayCameraModelResolution.model)
+          : undefined;
+      const imageGeometryReady = cameraModelResolution.status === "ready";
+      // Cmd-clicking a frustum opens its image tile; hovering or focusing
+      // the tile highlights the frustum.
+      const linked = imageTopic
+        ? {
+            highlighted: hoveredImageTopic === imageTopic,
+            selected: focusedImageTopic === imageTopic,
+            imageTopic,
+            onSelect: ({ metaKey }: { readonly metaKey: boolean }) => {
+              if (metaKey) {
+                openImageTile(imageTopic);
+              }
+            },
+          }
+        : {};
+      if (!imageFrame || !imageGeometryReady) {
         return {
           ...layer,
           ...linked,
           cameraRayModel,
-          image: imageFrame.frame,
-          imageContentTimeNs: imageFrame.contentTimeNs,
           imagePlaneDepthM: pinholeImagePlaneDepthM,
-          imageTextureKey:
-            sourceKey && imageTopic
-              ? imageTextureCacheKey(
-                  sourceKey,
-                  imageTopic,
-                  imageFrame.contentTimeNs,
-                )
-              : undefined,
           opacity: pinholeOpacity,
           requireCameraRayModel: true,
         };
-      }),
-    [
-      cameraFrustumLayers,
-      cameraTopics,
-      frustumImageFrames,
-      focusedImageTopic,
-      hoveredImageTopic,
-      imageProjectionSettings,
-      openImageTile,
-      pinholeImagePlaneDepthM,
-      pinholeOpacity,
-      resolvedFrustumImageTopics,
-      sourceKey,
-    ],
-  );
+      }
+      return {
+        ...layer,
+        ...linked,
+        cameraRayModel,
+        image: imageFrame.frame,
+        imageContentTimeNs: imageFrame.contentTimeNs,
+        imagePlaneDepthM: pinholeImagePlaneDepthM,
+        imageTextureKey:
+          sourceKey && imageTopic
+            ? imageTextureCacheKey(
+                sourceKey,
+                imageTopic,
+                imageFrame.contentTimeNs,
+              )
+            : undefined,
+        opacity: pinholeOpacity,
+        requireCameraRayModel: true,
+      };
+    },
+    // Hover/focus enter as per-layer booleans, not the global topic values:
+    // moving the hover from one camera to another rebuilds exactly those two
+    // frustums.
+    inputs: (layer) => {
+      const index = cameraTopics.indexOf(layer.id);
+      const imageTopic =
+        index >= 0 ? (resolvedFrustumImageTopics[index] ?? "") : "";
+      return [
+        layer,
+        index >= 0 ? frustumImageFrames[index] : null,
+        imageTopic,
+        imageTopic ? imageProjectionSettings[imageTopic] : null,
+        imageTopic !== "" && hoveredImageTopic === imageTopic,
+        imageTopic !== "" && focusedImageTopic === imageTopic,
+        openImageTile,
+        pinholeImagePlaneDepthM,
+        pinholeOpacity,
+        sourceKey,
+      ];
+    },
+    key: (layer) => layer.id,
+  });
   // Wire the scene annotations into the cross-tile selection: each layer
   // (one entity each) learns whether it's the selected object (or a
   // label-match echo of one) and how to toggle itself selected. Kept out
@@ -482,59 +490,75 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     onHoverPoint,
     tooltip: hoverTooltip,
   } = useMcap3dHoverTooltip();
-  const annotationLayers = useMemo(
-    () =>
-      sceneAnnotationLayers.map((layer) => {
-        const entity = layer.frame.entities[0];
-        if (!entity) return layer;
-        const topic = layer.sourceId ?? "";
-        const entityId = entity.id || layer.id;
-        const label = mcapEntityLabel(entity);
-        const isSelected = isMcapSceneEntitySelected(
-          selectedObject,
-          topic,
-          entityId,
-        );
-        return {
-          ...layer,
-          highlighted: isSelected || isMcapLabelEcho(selectedObject, label),
-          onHoverEntity: (hoveredId: string | null) =>
-            onHoverEntity(
-              hoveredId ? { entityId, kind: "entity", label, topic } : null,
-            ),
-          onSelectEntity: (
-            _entityId: string,
-            modifiers: { readonly shiftKey: boolean },
-          ) => {
-            // Plain click = this instance only; shift-click widens to
-            // every object sharing the label. Re-clicking with the same
-            // scope toggles off; changing the modifier switches scope.
-            const scope = modifiers.shiftKey ? "label" : "instance";
-            setSelectedObject((current) =>
-              isMcapSceneEntitySelected(current, topic, entityId) &&
-              current?.scope === scope
-                ? null
-                : {
-                    entityId,
-                    frameId: entity.frameId,
-                    kind: "scene-annotation",
-                    label,
-                    metadata: entity.metadata,
-                    scope,
-                    topic,
-                  },
-            );
-          },
-        };
-      }),
-    [onHoverEntity, sceneAnnotationLayers, selectedObject, setSelectedObject],
-  );
+  const annotationLayers = useKeyedIdentityMap(sceneAnnotationLayers, {
+    build: (layer) => {
+      const entity = layer.frame.entities[0];
+      if (!entity) return layer;
+      const topic = layer.sourceId ?? "";
+      const entityId = entity.id || layer.id;
+      const label = mcapEntityLabel(entity);
+      const isSelected = isMcapSceneEntitySelected(
+        selectedObject,
+        topic,
+        entityId,
+      );
+      return {
+        ...layer,
+        highlighted: isSelected || isMcapLabelEcho(selectedObject, label),
+        onHoverEntity: (hoveredId: string | null) =>
+          onHoverEntity(
+            hoveredId ? { entityId, kind: "entity", label, topic } : null,
+          ),
+        onSelectEntity: (
+          _entityId: string,
+          modifiers: { readonly shiftKey: boolean },
+        ) => {
+          // Plain click = this instance only; shift-click widens to
+          // every object sharing the label. Re-clicking with the same
+          // scope toggles off; changing the modifier switches scope.
+          const scope = modifiers.shiftKey ? "label" : "instance";
+          setSelectedObject((current) =>
+            isMcapSceneEntitySelected(current, topic, entityId) &&
+            current?.scope === scope
+              ? null
+              : {
+                  entityId,
+                  frameId: entity.frameId,
+                  kind: "scene-annotation",
+                  label,
+                  metadata: entity.metadata,
+                  scope,
+                  topic,
+                },
+          );
+        },
+      };
+    },
+    // Selection enters as this entity's derived booleans, so a selection
+    // change rebuilds the entity gaining and the entity losing emphasis —
+    // not every annotation in the scene.
+    inputs: (layer) => {
+      const entity = layer.frame.entities[0];
+      if (!entity) return [layer];
+      const topic = layer.sourceId ?? "";
+      const entityId = entity.id || layer.id;
+      return [
+        layer,
+        isMcapSceneEntitySelected(selectedObject, topic, entityId),
+        isMcapLabelEcho(selectedObject, mcapEntityLabel(entity)),
+        onHoverEntity,
+        setSelectedObject,
+      ];
+    },
+    key: (layer) => layer.id,
+  });
   // Share point hovers between the 3D scene and image projections.
   const hoverEcho = useMcapHoverEcho();
   const publishedPointHoverRefs = useRef(new Map<string, McapHoverEcho>());
-  const hoverablePointCloudLayers = useMemo(
-    () =>
-      coloredPointCloudLayers.map((layer) => {
+  const hoverablePointCloudLayers = useKeyedIdentityMap(
+    coloredPointCloudLayers,
+    {
+      build: (layer) => {
         const topic = layer.id;
         const frame = layer.frame;
         return {
@@ -573,8 +597,19 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             }
           },
         };
-      }),
-    [coloredPointCloudLayers, hoverEcho, jotaiStore, onHoverPoint],
+      },
+      // The hover echo enters as this topic's slice (null for everyone
+      // else), so pointer movement over one cloud never rebuilds the others.
+      inputs: (layer) => [
+        layer,
+        hoverEcho?.kind === "point" && hoverEcho.topic === layer.id
+          ? hoverEcho
+          : null,
+        jotaiStore,
+        onHoverPoint,
+      ],
+      key: (layer) => layer.id,
+    },
   );
   // Schema-driven telemetry: speed from the first enabled pose stream whose
   // latest sample carries velocity, coordinates from the first LocationFix
