@@ -5,7 +5,10 @@ import {
   ImageAnnotationsVisualization,
   PointCloudVisualization,
 } from "../../decoders";
-import type { ByteSourceDescriptor } from "../../query/bytes";
+import {
+  BYTE_SOURCE_READ_PROFILE,
+  type ByteSourceDescriptor,
+} from "../../query/bytes";
 import { PlaybackSyncMode } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
 import {
@@ -42,6 +45,16 @@ export { streamTopics } from "./stream-topics";
 export const DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE = 1.5;
 
 /**
+ * Reduced playback speed for remote MCAP grid previews. Remote playback is
+ * intentionally bandwidth-first; users can still open the modal for the full
+ * playback experience.
+ */
+export const REMOTE_MCAP_GRID_PREVIEW_PLAYBACK_RATE = 0.5;
+
+/** Maximum request cadence for a remote MCAP grid preview. */
+export const REMOTE_MCAP_GRID_PREVIEW_MIN_FRAME_DELAY_MS = 250;
+
+/**
  * Default cadence for image-only MCAP grid preview playback.
  */
 export const MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS = 83;
@@ -55,6 +68,25 @@ export const MCAP_GRID_PREVIEW_POINT_CLOUD_FRAME_DELAY_MS = 83;
  * Default cadence for annotated MCAP grid preview playback.
  */
 export const MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS = 500;
+
+/**
+ * Returns the wall-clock delay between grid-preview frame requests. Local and
+ * unknown sources retain the existing cadence; explicitly remote sources use
+ * a slower rate plus a four-requests-per-second ceiling.
+ */
+export function mcapGridPreviewPlaybackDelayMs(
+  source: ByteSourceDescriptor,
+  frameDelayMs = MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS,
+): number {
+  if (source.readProfile === BYTE_SOURCE_READ_PROFILE.REMOTE) {
+    return Math.max(
+      REMOTE_MCAP_GRID_PREVIEW_MIN_FRAME_DELAY_MS,
+      frameDelayMs / REMOTE_MCAP_GRID_PREVIEW_PLAYBACK_RATE,
+    );
+  }
+
+  return Math.max(0, frameDelayMs / DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE);
+}
 
 /**
  * Supported stream topic buckets used by grid preview selection.

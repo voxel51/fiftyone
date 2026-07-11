@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { mcapErrorMessage } from "../errors";
 import {
-  DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE,
-  MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS,
+  mcapGridPreviewPlaybackDelayMs,
   type McapGridPreviewSnapshot,
   type McapGridPreviewStatus,
 } from "../grid-preview";
@@ -200,13 +199,13 @@ export function useMcapGridPreview({
 
           if (!result.state.frame) {
             nextStartTimeNsRef.current = undefined;
-            await delayMs(playbackDelayMs());
+            await delayMs(mcapGridPreviewPlaybackDelayMs(source));
             continue;
           }
 
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState(result.state);
-          await delayMs(playbackDelayMs(result.delayMs));
+          await delayMs(mcapGridPreviewPlaybackDelayMs(source, result.delayMs));
         }
       } catch (caughtError) {
         if (active && !controller.signal.aborted) {
@@ -229,12 +228,6 @@ export function useMcapGridPreview({
   }, [enabled, playing, selectedStreamTopic, source, state.status]);
 
   return { ...state, pause, play };
-}
-
-function playbackDelayMs(
-  frameDelayMs = MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS,
-): number {
-  return Math.max(0, frameDelayMs / DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE);
 }
 
 function delayMs(milliseconds: number): Promise<void> {

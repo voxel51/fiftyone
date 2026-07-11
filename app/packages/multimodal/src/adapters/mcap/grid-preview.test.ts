@@ -9,10 +9,15 @@ import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { StreamInventory } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
 import {
+  DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE,
   MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS,
+  MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS,
   MCAP_GRID_PREVIEW_MAX_POINTS,
+  REMOTE_MCAP_GRID_PREVIEW_MIN_FRAME_DELAY_MS,
+  REMOTE_MCAP_GRID_PREVIEW_PLAYBACK_RATE,
   chooseCameraSelection,
   decodeGridPreview,
+  mcapGridPreviewPlaybackDelayMs,
   mcapGridPreviewFrameRetainedBytes,
   type McapGridPreviewFrame,
 } from "./grid-preview";
@@ -24,6 +29,54 @@ import type {
   McapResourceClient,
   McapSynchronizedMessageWindow,
 } from "./types";
+
+describe("MCAP grid preview playback cadence", () => {
+  it("preserves the existing cadence for local and unknown sources", () => {
+    const expected =
+      MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS /
+      DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE;
+
+    expect(
+      mcapGridPreviewPlaybackDelayMs({
+        readProfile: "local",
+        sourceId: "local",
+        url: "/local.mcap",
+      }),
+    ).toBe(expected);
+    expect(
+      mcapGridPreviewPlaybackDelayMs({
+        sourceId: "unknown",
+        url: "/unknown.mcap",
+      }),
+    ).toBe(expected);
+  });
+
+  it("caps remote image and point-cloud previews at four requests per second", () => {
+    expect(
+      mcapGridPreviewPlaybackDelayMs({
+        readProfile: "remote",
+        sourceId: "remote",
+        url: "/proxy.mcap",
+      }),
+    ).toBe(REMOTE_MCAP_GRID_PREVIEW_MIN_FRAME_DELAY_MS);
+  });
+
+  it("slows annotated remote previews to the remote playback rate", () => {
+    expect(
+      mcapGridPreviewPlaybackDelayMs(
+        {
+          readProfile: "remote",
+          sourceId: "remote",
+          url: "/proxy.mcap",
+        },
+        MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS,
+      ),
+    ).toBe(
+      MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS /
+        REMOTE_MCAP_GRID_PREVIEW_PLAYBACK_RATE,
+    );
+  });
+});
 
 describe("MCAP grid preview", () => {
   it("returns an empty no-stream state and caches the missing selection", async () => {
