@@ -54,9 +54,7 @@ const TemporalTag: React.FC = () => {
                     {
                       value: "",
                       color:
-                        colorPool[
-                          Math.floor(Math.random() * colorPool.length)
-                        ],
+                        colorPool[Math.floor(Math.random() * colorPool.length)],
                     },
                   ],
                 };

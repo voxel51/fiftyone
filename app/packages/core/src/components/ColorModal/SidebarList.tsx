@@ -31,7 +31,11 @@ const SidebarList: React.FC = () => {
     { paths: [ACTIVE_FIELD.GLOBAL, ACTIVE_FIELD.JSON], name: "general" },
     {
       paths: isMultimodal
-        ? [{ path: "tags" }, { path: "_label_tags" }, { path: "_temporal_tags" }]
+        ? [
+            { path: "tags" },
+            { path: "_label_tags" },
+            { path: "_temporal_tags" },
+          ]
         : [{ path: "tags" }, { path: "_label_tags" }],
       name: "tags",
     },
