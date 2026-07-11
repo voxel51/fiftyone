@@ -1,5 +1,3 @@
-export { TemporalTagGridOverlay } from "./adapters/mcap/react/TemporalTagGridOverlay";
-
 /**
  * Public decoder registry and decoder authoring contracts.
  */
