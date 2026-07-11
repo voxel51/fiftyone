@@ -417,12 +417,18 @@ function PointCloudPreviewFrame({
   // This effect re-snapshots (debounced) when the SHARED grid pose
   // changes — all point-cloud cells go stale together when any one is
   // orbited, and the trailing debounce coalesces the orbit stream into
-  // one snapshot per cell once the pose settles.
+  // one snapshot per cell once the pose settles. A hidden→active
+  // transition is excluded: the mount effect above already snapshotted
+  // at the freshly re-read pose, so a debounced follow-up would render
+  // an identical duplicate.
   const previousPoseRef = useRef(cameraPose);
+  const wasActiveRef = useRef(active);
   useEffect(() => {
     const previousPose = previousPoseRef.current;
     previousPoseRef.current = cameraPose;
-    if (previousPose === cameraPose) {
+    const wasActive = wasActiveRef.current;
+    wasActiveRef.current = active;
+    if (previousPose === cameraPose || !wasActive) {
       return undefined;
     }
 

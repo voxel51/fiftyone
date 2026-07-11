@@ -652,6 +652,32 @@ describe("GridRenderer", () => {
 
     snapshotHarness.requests[1].resolve(fakeSnapshotBitmap());
   });
+
+  it("snapshots once on reactivation after the shared pose drifted", () => {
+    vi.useFakeTimers();
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+    expect(snapshotHarness.requests.length).toBe(1);
+
+    // The cell deactivates, then another cell orbits the shared pose
+    // while this one is dormant.
+    rerender(<GridRenderer ctx={rendererCtx()} isGridActive={false} />);
+    const pose = { position: [1, 2, 3], target: [0, 0, 0] };
+    cameraPoseHarness.pose = pose;
+
+    // Reactivation snapshots immediately at the freshly-read pose...
+    rerender(<GridRenderer ctx={rendererCtx()} isGridActive />);
+    expect(snapshotHarness.requests.length).toBe(2);
+    expect(snapshotHarness.requests[1].job.cameraPose).toBe(pose);
+
+    // ...and the pose-diff debounce adds no duplicate at the same pose.
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(snapshotHarness.requests.length).toBe(2);
+  });
 });
 
 function rendererCtx() {
