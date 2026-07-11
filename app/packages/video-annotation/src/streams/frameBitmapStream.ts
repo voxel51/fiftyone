@@ -279,11 +279,17 @@ export abstract class FrameBitmapStream<
       return;
     }
 
-    // Advancing to a new committed frame — proactively pull the next chunk into
-    // flight so it lands before the playhead reaches it (the engine only gives
-    // a 1-frame warning).
+    // Pin the frame we're about to publish so the LRU can't close its bitmap
+    // while the tile is still drawing it; unpin when we publish "no frame".
     if (next) {
+      this.cache.pin(next.frameNumber);
+
+      // Advancing to a new committed frame — proactively pull the next chunk
+      // into flight so it lands before the playhead reaches it (the engine
+      // only gives a 1-frame warning).
       this.prefetch([time, time + this.lookaheadSeconds]);
+    } else {
+      this.cache.unpin();
     }
 
     this.publish(store, next);
