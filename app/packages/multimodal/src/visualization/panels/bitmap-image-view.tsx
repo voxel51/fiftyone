@@ -22,7 +22,14 @@
  * cancellation, or on unmount).
  */
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type {
   EncodedVideoVisualization,
@@ -65,6 +72,8 @@ export interface BitmapImageViewProps {
    * stays visible — errors never blank the canvas.
    */
   readonly onError?: (error: unknown) => void;
+  /** Reports decoded bitmap bytes retained in addition to the host canvas. */
+  readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
   /**
    * Reports the DECODED image's natural dimensions after each committed
    * decode — the contract annotation overlays position themselves by.
@@ -97,6 +106,7 @@ export interface BitmapImageFrameViewProps {
    * stays visible — errors never blank the canvas.
    */
   readonly onError?: (error: unknown) => void;
+  readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
   readonly onImageLoaded?: (width: number, height: number) => void;
   readonly style?: CSSProperties;
 }
@@ -143,8 +153,9 @@ export function bitmapDrawRect(
  * close-on-unmount), sizes the backing store to CSS pixels, and redraws
  * on layout or fit changes.
  */
-function useBitmapCanvas(fit: "contain" | "cover") {
+function useBitmapCanvas(fit: "contain" | "cover", trackCssSize = false) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [cssSize, setCssSize] = useState<BitmapDrawSize | null>(null);
   // The committed bitmap — stays drawn until the NEXT commit lands, so
   // frame advances and errors never flash an empty canvas (the behavior
   // ImagePanel gets from hasVisibleImageRef).
@@ -155,9 +166,7 @@ function useBitmapCanvas(fit: "contain" | "cover") {
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const bitmap = bitmapRef.current;
-    // A detached (closed) bitmap reports 0x0; drawing it would throw.
-    // Skipping keeps the guard cheap and the canvas stable.
-    if (!canvas || !bitmap || bitmap.width === 0 || bitmap.height === 0) {
+    if (!canvas) {
       return;
     }
 
@@ -165,14 +174,27 @@ function useBitmapCanvas(fit: "contain" | "cover") {
     // parity with WebGpuCanvas's DEFAULT_DPR = 1; raising preview DPR is
     // a follow-up decision, not a side effect of this path. Clamped ≥1×1
     // so a not-yet-laid-out cell never creates a zero-size canvas.
-    const cssSize = canvas.getBoundingClientRect();
-    const width = Math.max(1, Math.round(cssSize.width));
-    const height = Math.max(1, Math.round(cssSize.height));
+    const layoutRect = canvas.getBoundingClientRect();
+    const width = Math.max(1, Math.round(layoutRect.width));
+    const height = Math.max(1, Math.round(layoutRect.height));
+    if (trackCssSize) {
+      setCssSize((current) =>
+        current?.width === width && current.height === height
+          ? current
+          : { height, width },
+      );
+    }
     if (canvas.width !== width) {
       canvas.width = width;
     }
     if (canvas.height !== height) {
       canvas.height = height;
+    }
+
+    // A detached (closed) bitmap reports 0x0; drawing it would throw.
+    // The backing store and tracked decode size still update without one.
+    if (!bitmap || bitmap.width === 0 || bitmap.height === 0) {
+      return;
     }
 
     const context = canvas.getContext("2d");
@@ -190,7 +212,7 @@ function useBitmapCanvas(fit: "contain" | "cover") {
     // frame's aspect never linger.
     context.clearRect(0, 0, width, height);
     context.drawImage(bitmap, rect.x, rect.y, rect.width, rect.height);
-  }, []);
+  }, [trackCssSize]);
 
   const commit = useCallback(
     (bitmap: CanvasDrawable | null) => {
@@ -219,12 +241,16 @@ function useBitmapCanvas(fit: "contain" | "cover") {
 
   // This effect redraws when the canvas's layout size changes, keeping
   // the backing store in sync with CSS pixels.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || typeof ResizeObserver === "undefined") {
+    if (!canvas) {
       return undefined;
     }
 
+    draw();
+    if (typeof ResizeObserver === "undefined") {
+      return undefined;
+    }
     const observer = new ResizeObserver(() => draw());
     observer.observe(canvas);
     return () => observer.disconnect();
@@ -243,7 +269,7 @@ function useBitmapCanvas(fit: "contain" | "cover") {
     draw();
   }, [draw, fit]);
 
-  return { canvasRef, commit };
+  return { canvasRef, commit, cssSize };
 }
 
 function closeDrawable(drawable: CanvasDrawable | null): void {
@@ -259,24 +285,36 @@ export function BitmapImageView({
   className,
   fit = "cover",
   mimeType,
+  onBitmapRetainedBytesChange,
   onError,
   onImageLoaded,
   style,
 }: BitmapImageViewProps) {
-  const { canvasRef, commit } = useBitmapCanvas(fit);
+  const { canvasRef, commit, cssSize } = useBitmapCanvas(fit, true);
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
   const onImageLoadedRef = useRef(onImageLoaded);
   onImageLoadedRef.current = onImageLoaded;
+  const onBitmapRetainedBytesChangeRef = useRef(onBitmapRetainedBytesChange);
+  onBitmapRetainedBytesChangeRef.current = onBitmapRetainedBytesChange;
 
   // This effect decodes the current bytes and commits the resulting
   // bitmap. The cleanup flag is the out-of-order guard: only the latest
   // request may commit — a superseded decode (newer bytes arrived, or
   // unmount) closes its own bitmap and leaves the previous frame drawn.
   useEffect(() => {
+    if (!cssSize) {
+      return undefined;
+    }
+
     let cancelled = false;
+    const imageSize = encodedImageDimensions(bytes);
+    const options = imageSize
+      ? bitmapDecodeOptions(cssSize, imageSize, fit)
+      : ({ colorSpaceConversion: "none" } satisfies ImageBitmapOptions);
     createImageBitmap(
       new Blob([bytes as BlobPart], { type: mimeType ?? DEFAULT_MIME_TYPE }),
+      options,
     )
       .then((bitmap) => {
         if (cancelled) {
@@ -285,7 +323,13 @@ export function BitmapImageView({
         }
 
         commit(bitmap);
-        onImageLoadedRef.current?.(bitmap.width, bitmap.height);
+        onBitmapRetainedBytesChangeRef.current?.(
+          bitmap.width * bitmap.height * 4,
+        );
+        onImageLoadedRef.current?.(
+          imageSize?.width ?? bitmap.width,
+          imageSize?.height ?? bitmap.height,
+        );
       })
       .catch((error) => {
         if (cancelled) {
@@ -299,7 +343,7 @@ export function BitmapImageView({
     return () => {
       cancelled = true;
     };
-  }, [bytes, mimeType, commit]);
+  }, [bytes, cssSize, mimeType, commit, fit]);
 
   return (
     <canvas
@@ -318,6 +362,7 @@ export function BitmapImageFrameView({
   className,
   fit = "cover",
   frame,
+  onBitmapRetainedBytesChange,
   onError,
   onImageLoaded,
   style,
@@ -329,6 +374,7 @@ export function BitmapImageFrameView({
         frame={frame}
         fit={fit}
         onError={onError}
+        onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
         onImageLoaded={onImageLoaded}
         style={style}
       />
@@ -341,6 +387,7 @@ export function BitmapImageFrameView({
       fit={fit}
       frame={frame}
       onError={onError}
+      onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
       onImageLoaded={onImageLoaded}
       style={style}
     />
@@ -351,6 +398,7 @@ export function BitmapImageFrameView({
       fit={fit}
       mimeType={frame.mimeType}
       onError={onError}
+      onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
       onImageLoaded={onImageLoaded}
       style={style}
     />
@@ -362,6 +410,7 @@ function BitmapEncodedVideoView({
   frame,
   fit = "cover",
   onError,
+  onBitmapRetainedBytesChange,
   onImageLoaded,
   style,
 }: Omit<BitmapImageFrameViewProps, "frame"> & {
@@ -372,6 +421,8 @@ function BitmapEncodedVideoView({
   onErrorRef.current = onError;
   const onImageLoadedRef = useRef(onImageLoaded);
   onImageLoadedRef.current = onImageLoaded;
+  const onBitmapRetainedBytesChangeRef = useRef(onBitmapRetainedBytesChange);
+  onBitmapRetainedBytesChangeRef.current = onBitmapRetainedBytesChange;
   const previewTextureKey = useId();
 
   useEffect(() => {
@@ -385,6 +436,9 @@ function BitmapEncodedVideoView({
         }
 
         commit(source);
+        onBitmapRetainedBytesChangeRef.current?.(
+          source.width * source.height * 4,
+        );
         onImageLoadedRef.current?.(source.width, source.height);
       })
       .catch((error) => {
@@ -414,6 +468,7 @@ function BitmapRawImageView({
   fit = "cover",
   frame,
   onError,
+  onBitmapRetainedBytesChange,
   onImageLoaded,
   style,
 }: Omit<BitmapImageFrameViewProps, "frame"> & {
@@ -424,6 +479,8 @@ function BitmapRawImageView({
   onErrorRef.current = onError;
   const onImageLoadedRef = useRef(onImageLoaded);
   onImageLoadedRef.current = onImageLoaded;
+  const onBitmapRetainedBytesChangeRef = useRef(onBitmapRetainedBytesChange);
+  onBitmapRetainedBytesChangeRef.current = onBitmapRetainedBytesChange;
   const sourceCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -435,6 +492,9 @@ function BitmapRawImageView({
       }
       canvasFromRawImage(frame, source);
       commit(source);
+      onBitmapRetainedBytesChangeRef.current?.(
+        source.width * source.height * 4,
+      );
       onImageLoadedRef.current?.(frame.width, frame.height);
     } catch (error) {
       onErrorRef.current?.(error);
@@ -449,6 +509,154 @@ function BitmapRawImageView({
       style={{ ...styles.canvas, ...style }}
     />
   );
+}
+
+/**
+ * Chooses a decode size that preserves source aspect while producing only the
+ * pixels the grid tile can display.
+ */
+export function bitmapDecodeOptions(
+  container: BitmapDrawSize,
+  image: BitmapDrawSize,
+  fit: "contain" | "cover",
+): ImageBitmapOptions {
+  const rect = bitmapDrawRect(container, image, fit);
+  const resizeWidth = Math.max(
+    1,
+    Math.min(image.width, Math.ceil(Math.abs(rect.width))),
+  );
+  const resizeHeight = Math.max(
+    1,
+    Math.min(image.height, Math.ceil(Math.abs(rect.height))),
+  );
+
+  return {
+    colorSpaceConversion: "none",
+    ...(resizeWidth < image.width || resizeHeight < image.height
+      ? { resizeHeight, resizeQuality: "high", resizeWidth }
+      : {}),
+  };
+}
+
+/** Reads intrinsic JPEG, PNG, or WebP dimensions without decoding pixels. */
+export function encodedImageDimensions(
+  bytes: Uint8Array,
+): BitmapDrawSize | null {
+  return pngDimensions(bytes) ?? jpegDimensions(bytes) ?? webpDimensions(bytes);
+}
+
+function pngDimensions(bytes: Uint8Array): BitmapDrawSize | null {
+  if (
+    bytes.length < 24 ||
+    bytes[0] !== 0x89 ||
+    bytes[1] !== 0x50 ||
+    bytes[2] !== 0x4e ||
+    bytes[3] !== 0x47 ||
+    ascii(bytes, 12, 16) !== "IHDR"
+  ) {
+    return null;
+  }
+  return validImageSize(readUint32Be(bytes, 16), readUint32Be(bytes, 20));
+}
+
+function jpegDimensions(bytes: Uint8Array): BitmapDrawSize | null {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) {
+    return null;
+  }
+
+  let offset = 2;
+  while (offset + 8 < bytes.length) {
+    while (offset < bytes.length && bytes[offset] !== 0xff) offset++;
+    while (offset < bytes.length && bytes[offset] === 0xff) offset++;
+    const marker = bytes[offset++];
+    if (marker === undefined || marker === 0xd9 || marker === 0xda) {
+      return null;
+    }
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      continue;
+    }
+    if (offset + 1 >= bytes.length) {
+      return null;
+    }
+    const segmentLength = (bytes[offset] << 8) | bytes[offset + 1];
+    if (segmentLength < 2 || offset + segmentLength > bytes.length) {
+      return null;
+    }
+    if (isJpegStartOfFrame(marker) && segmentLength >= 7) {
+      return validImageSize(
+        (bytes[offset + 5] << 8) | bytes[offset + 6],
+        (bytes[offset + 3] << 8) | bytes[offset + 4],
+      );
+    }
+    offset += segmentLength;
+  }
+  return null;
+}
+
+function isJpegStartOfFrame(marker: number): boolean {
+  return (
+    marker >= 0xc0 &&
+    marker <= 0xcf &&
+    marker !== 0xc4 &&
+    marker !== 0xc8 &&
+    marker !== 0xcc
+  );
+}
+
+function webpDimensions(bytes: Uint8Array): BitmapDrawSize | null {
+  if (
+    bytes.length < 30 ||
+    ascii(bytes, 0, 4) !== "RIFF" ||
+    ascii(bytes, 8, 12) !== "WEBP"
+  ) {
+    return null;
+  }
+
+  const chunk = ascii(bytes, 12, 16);
+  if (chunk === "VP8X") {
+    return validImageSize(
+      1 + readUint24Le(bytes, 24),
+      1 + readUint24Le(bytes, 27),
+    );
+  }
+  if (
+    chunk === "VP8 " &&
+    bytes[23] === 0x9d &&
+    bytes[24] === 0x01 &&
+    bytes[25] === 0x2a
+  ) {
+    return validImageSize(
+      ((bytes[27] << 8) | bytes[26]) & 0x3fff,
+      ((bytes[29] << 8) | bytes[28]) & 0x3fff,
+    );
+  }
+  if (chunk === "VP8L" && bytes[20] === 0x2f) {
+    const bits =
+      bytes[21] | (bytes[22] << 8) | (bytes[23] << 16) | (bytes[24] << 24);
+    return validImageSize(1 + (bits & 0x3fff), 1 + ((bits >>> 14) & 0x3fff));
+  }
+  return null;
+}
+
+function validImageSize(width: number, height: number): BitmapDrawSize | null {
+  return width > 0 && height > 0 ? { height, width } : null;
+}
+
+function ascii(bytes: Uint8Array, start: number, end: number): string {
+  return String.fromCharCode(...bytes.subarray(start, end));
+}
+
+function readUint32Be(bytes: Uint8Array, offset: number): number {
+  return (
+    bytes[offset] * 2 ** 24 +
+    bytes[offset + 1] * 2 ** 16 +
+    bytes[offset + 2] * 2 ** 8 +
+    bytes[offset + 3]
+  );
+}
+
+function readUint24Le(bytes: Uint8Array, offset: number): number {
+  return bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16);
 }
 
 function canvasFromRawImage(

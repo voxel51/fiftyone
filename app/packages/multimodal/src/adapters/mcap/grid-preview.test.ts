@@ -10,8 +10,10 @@ import type { StreamInventory } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
 import {
   MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS,
+  MCAP_GRID_PREVIEW_MAX_POINTS,
   chooseCameraSelection,
   decodeGridPreview,
+  mcapGridPreviewFrameRetainedBytes,
   type McapGridPreviewFrame,
 } from "./grid-preview";
 import { firstImageByte, imageFrame } from "./grid-preview-test-utils";
@@ -462,6 +464,37 @@ describe("MCAP grid preview", () => {
     );
   });
 
+  it("compacts dense point clouds to the grid render budget before transfer", async () => {
+    const sourcePointCount = MCAP_GRID_PREVIEW_MAX_POINTS + 10;
+    const positions = new Float32Array(sourcePointCount * 3);
+    for (let index = 0; index < sourcePointCount; index++) {
+      positions[index * 3] = index;
+    }
+    const readDecodedMessages = vi.fn(async function* () {
+      yield createPointCloudMessage("/lidar/points", positions);
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic("/lidar/points", "foxglove.PointCloud"),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      { source: createSource() },
+    );
+    const frame = pointCloudFrame(result.state.frame)?.pointCloud;
+
+    expect(frame?.pointCount).toBe(MCAP_GRID_PREVIEW_MAX_POINTS);
+    expect(frame?.positions).toBe(frame?.renderPayload?.positions);
+    expect(frame?.positions[0]).toBe(0);
+    expect(frame?.positions.at(-3)).toBe(sourcePointCount - 1);
+    expect(mcapGridPreviewFrameRetainedBytes(result.state.frame)).toBe(
+      MCAP_GRID_PREVIEW_MAX_POINTS * (3 * Float32Array.BYTES_PER_ELEMENT + 4),
+    );
+  });
+
   it("classifies image and annotation topics from schema metadata", () => {
     expect(
       streamTopics([
@@ -688,14 +721,17 @@ function createAnnotationMessage(
 
 function createPointCloudMessage(
   topic: string,
-  positions: readonly number[],
+  positions: readonly number[] | Float32Array,
   timelineTimeNs = 10n,
 ): McapDecodedMessage {
   const visualization: PointCloudVisualization = {
     fields: [],
     kind: VISUALIZATION_KIND.POINT_CLOUD,
     pointCount: Math.floor(positions.length / 3),
-    positions: new Float32Array(positions),
+    positions:
+      positions instanceof Float32Array
+        ? positions
+        : new Float32Array(positions),
   };
 
   return createDecodedMessage(topic, "foxglove.PointCloud", {

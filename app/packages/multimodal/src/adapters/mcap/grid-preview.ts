@@ -1,4 +1,6 @@
-import type {
+import {
+  buildPointCloudRenderPayload,
+  type PointCloudRenderPayload,
   ImageVisualization,
   ImageAnnotationsVisualization,
   PointCloudVisualization,
@@ -19,6 +21,11 @@ import type {
 
 const IMAGE_SYNC_TOLERANCE_NS = 120_000_000n;
 const NEXT_FRAME_STEP_NS = 1n;
+const POINT_COMPONENT_COUNT = 3;
+const COLOR_COMPONENT_COUNT = 3;
+
+/** Maximum point count retained by one MCAP grid preview frame. */
+export const MCAP_GRID_PREVIEW_MAX_POINTS = 120_000;
 
 const IMAGE_SYNC_POLICY: McapStreamSyncPolicy = {
   mode: PlaybackSyncMode.NEAREST,
@@ -518,7 +525,140 @@ function pointCloudFrame(
   message: McapDecodedMessage,
 ): PointCloudVisualization | null {
   const visualization = message.decoded.output.visualization;
-  return visualization?.kind === VISUALIZATION_KIND.POINT_CLOUD
-    ? visualization
-    : null;
+  if (visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
+    return null;
+  }
+
+  return compactGridPointCloud(visualization);
+}
+
+/**
+ * Returns the major retained binary allocation size for one grid frame.
+ */
+export function mcapGridPreviewFrameRetainedBytes(
+  frame: McapGridPreviewFrame | null,
+): number {
+  if (!frame) {
+    return 0;
+  }
+
+  const buffers = new Set<ArrayBufferLike>();
+  collectArrayBuffers(frame, buffers, new Set<object>());
+  let total = 0;
+  for (const buffer of buffers) {
+    total += buffer.byteLength;
+  }
+  return total;
+}
+
+function collectArrayBuffers(
+  value: unknown,
+  buffers: Set<ArrayBufferLike>,
+  visited: Set<object>,
+): void {
+  if (ArrayBuffer.isView(value)) {
+    buffers.add(value.buffer);
+    return;
+  }
+  if (!value || typeof value !== "object" || visited.has(value)) {
+    return;
+  }
+
+  visited.add(value);
+  for (const child of Object.values(value)) {
+    collectArrayBuffers(child, buffers, visited);
+  }
+}
+
+function compactGridPointCloud(
+  frame: PointCloudVisualization,
+): PointCloudVisualization {
+  const sourcePayload =
+    frame.renderPayload ??
+    buildPointCloudRenderPayload({
+      colors: frame.colors,
+      positions: frame.positions,
+      scalarFields: frame.scalarFields,
+    });
+  const renderPayload = compactGridRenderPayload(sourcePayload);
+  const scalarFields = renderPayload.scalarFields.map(({ name, values }) => ({
+    name,
+    values,
+  }));
+
+  return {
+    ...frame,
+    colors: renderPayload.colors,
+    pointCount: renderPayload.sampledPointCount,
+    positions: renderPayload.positions,
+    renderPayload,
+    scalarFields: scalarFields.length > 0 ? scalarFields : undefined,
+  };
+}
+
+function compactGridRenderPayload(
+  source: PointCloudRenderPayload,
+): PointCloudRenderPayload {
+  const sampledPointCount = Math.min(
+    source.sampledPointCount,
+    MCAP_GRID_PREVIEW_MAX_POINTS,
+  );
+  const capacity = Math.max(1, sampledPointCount);
+  const positions = new Float32Array(capacity * POINT_COMPONENT_COUNT);
+  const colors = source.colors
+    ? new Float32Array(capacity * COLOR_COMPONENT_COUNT)
+    : undefined;
+  const sourceIndices = new Uint32Array(capacity);
+  const scalarFields = source.scalarFields.map((field) => ({
+    ...field,
+    values: new Float32Array(capacity),
+  }));
+
+  for (let targetIndex = 0; targetIndex < sampledPointCount; targetIndex++) {
+    const sourceIndex = evenlySampledIndex(
+      targetIndex,
+      sampledPointCount,
+      source.sampledPointCount,
+    );
+    const targetOffset = targetIndex * POINT_COMPONENT_COUNT;
+    const sourceOffset = sourceIndex * POINT_COMPONENT_COUNT;
+    positions[targetOffset] = source.positions[sourceOffset];
+    positions[targetOffset + 1] = source.positions[sourceOffset + 1];
+    positions[targetOffset + 2] = source.positions[sourceOffset + 2];
+    if (colors && source.colors) {
+      colors[targetOffset] = source.colors[sourceOffset];
+      colors[targetOffset + 1] = source.colors[sourceOffset + 1];
+      colors[targetOffset + 2] = source.colors[sourceOffset + 2];
+    }
+    for (let fieldIndex = 0; fieldIndex < scalarFields.length; fieldIndex++) {
+      scalarFields[fieldIndex].values[targetIndex] =
+        source.scalarFields[fieldIndex].values[sourceIndex];
+    }
+    // The grid discards the full decoded arrays, so indices now address the
+    // compact arrays instead of the worker's original message payload.
+    sourceIndices[targetIndex] = targetIndex;
+  }
+
+  return {
+    bounds: source.bounds,
+    capacity,
+    ...(colors ? { colors } : {}),
+    finitePointCount: source.finitePointCount,
+    heightRange: source.heightRange,
+    positions,
+    sampledPointCount,
+    scalarFields,
+    sourceIndices,
+  };
+}
+
+function evenlySampledIndex(
+  targetIndex: number,
+  targetCount: number,
+  sourceCount: number,
+): number {
+  if (targetCount <= 1 || sourceCount <= 1) {
+    return 0;
+  }
+  return Math.floor((targetIndex * (sourceCount - 1)) / (targetCount - 1));
 }
