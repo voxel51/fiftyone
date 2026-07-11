@@ -4,6 +4,7 @@ import * as THREE from "three";
 import {
   clampImageViewTransform,
   imageDisplayRect,
+  imageTextureMeshGeometry,
   replaceImageMaterialTexture,
   transformedImageDisplayRect,
 } from "./base-2d-scene";
@@ -110,5 +111,20 @@ describe("2D image view helpers", () => {
 
     replaceImageMaterialTexture(material, second);
     expect(material.version).toBe(firstVersion + 1);
+  });
+
+  it("creates renderer-owned geometry from a cached texture remap mesh", () => {
+    const geometry = imageTextureMeshGeometry({
+      displayHeight: 50,
+      displayWidth: 100,
+      indices: Uint32Array.from([0, 1, 2]),
+      positions: Float32Array.from([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+      uvs: Float32Array.from([0, 0, 1, 0, 0, 1]),
+    });
+
+    expect(geometry.getAttribute("position").count).toBe(3);
+    expect(geometry.getAttribute("uv").count).toBe(3);
+    expect(geometry.getIndex()?.count).toBe(3);
+    geometry.dispose();
   });
 });

@@ -88,6 +88,14 @@ export interface MultiModalPlaybackProps {
   initialLayout?: MosaicNode<string> | null;
   /** Tile id that should start expanded to fullscreen. */
   initialExpandedTileId?: string | null;
+  /** Tile entries restored by the header's Reset Layout action. */
+  resetTiles?: Record<string, TilingTile>;
+  /** User-authored titles restored by Reset Layout. */
+  resetManualTileTitles?: Record<string, string>;
+  /** Mosaic tree restored by Reset Layout. */
+  resetLayout?: MosaicNode<string> | null;
+  /** Optional geometry-aware builder for Reset Layout. */
+  resetLayoutStrategy?: TilingAutoLayoutStrategy;
 
   /** Discoverable data sources for the current scene. */
   sceneSources?: readonly SceneSource[];
@@ -204,6 +212,10 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   autoLayoutStrategy,
   initialLayout,
   initialExpandedTileId,
+  resetTiles,
+  resetManualTileTitles,
+  resetLayout,
+  resetLayoutStrategy,
   sceneSources = EMPTY_SOURCES,
   sharedImageWebGpuViews = false,
   deselectFocusedTileOnRepeatSelect = true,
@@ -230,6 +242,10 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
             autoLayoutStrategy={autoLayoutStrategy}
             initialLayout={initialLayout}
             initialExpandedTileId={initialExpandedTileId}
+            resetTiles={resetTiles}
+            resetManualTileTitles={resetManualTileTitles}
+            resetLayout={resetLayout}
+            resetLayoutStrategy={resetLayoutStrategy}
           >
             {children}
             <Layout
@@ -314,6 +330,7 @@ function Layout({
     changeTileType,
     expandedTileId,
     setExpandedTileId,
+    setLayoutMetrics,
   } = useTiling();
   // `null` (as opposed to undefined, which picks up the default sidebar)
   // removes the region outright: no drawer and no header toggle.
@@ -391,6 +408,7 @@ function Layout({
       onCloseOtherTiles={closeOtherTiles}
       expandedTileId={expandedTileId}
       onExpandedTileIdChange={setExpandedTileId}
+      onLayoutMetricsChange={setLayoutMetrics}
       zeroStateView={<TilingZeroState addTileMenu={addTileMenu} />}
     />
   );

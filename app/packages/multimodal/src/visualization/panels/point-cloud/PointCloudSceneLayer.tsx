@@ -32,7 +32,6 @@ import type {
   PointCloudRenderData,
 } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
-import { complementaryRgbUnit } from "./utils";
 
 // Default point sprite size in pixels. Lives here (not in the panel) so
 // the offscreen snapshot renderer can share it without importing the
@@ -506,8 +505,8 @@ function PointCloudPoints({
   );
 }
 
-// Hover emphasis: the marker grows the point by 10% and flips it to its
-// complementary color, easing in over a short beat. The marker is
+// Hover emphasis: the marker grows the point by 10% in its original color,
+// easing in over a short beat. The marker is
 // screen-space sized (sizeAttenuation off) with a pixel floor, so the
 // intersected point reads clearly at any zoom or point size.
 const HOVERED_POINT_GROWTH = 1.1;
@@ -538,6 +537,7 @@ function HoveredPointMarker({
     const spriteMaterial = createPointCloudSpriteMaterial(
       attributes,
       baseSizePx,
+      true,
     );
     spriteMaterial.depthTest = false;
     spriteMaterial.depthWrite = false;
@@ -558,9 +558,7 @@ function HoveredPointMarker({
   // This layout effect repositions/recolors the marker and restarts the
   // grow-in whenever the hovered point changes.
   useLayoutEffect(() => {
-    const emphasis = marker.color
-      ? complementaryRgbUnit(marker.color)
-      : DEFAULT_HOVER_EMPHASIS;
+    const emphasis = marker.color ?? DEFAULT_HOVER_EMPHASIS;
     (attributes.position.array as Float32Array).set(marker.position);
     (attributes.color.array as Float32Array).set(emphasis);
     markAttributeUpdated(attributes.position, POINT_COMPONENT_COUNT);
@@ -633,16 +631,36 @@ function PointCloudSizedSprites({
 export function createPointCloudSpriteMaterial(
   attributes: PointCloudInstanceAttributes,
   pointSize: number,
+  circular = false,
 ) {
   const material = new PointsNodeMaterial({
     size: pointSize,
     sizeAttenuation: false,
-  });
+  }) as PointsNodeMaterial & { fragmentNode: TSL.Node | null };
   material.colorNode = TSL.instancedBufferAttribute(attributes.color, "vec3");
   material.positionNode = TSL.instancedBufferAttribute(
     attributes.position,
     "vec3",
   );
+  if (circular) {
+    type SpriteNode = TSL.Node & {
+      greaterThan(value: number): SpriteNode;
+      length(): SpriteNode;
+      sub(value: number): SpriteNode;
+    };
+    const tsl = TSL as unknown as {
+      Discard(condition: SpriteNode): void;
+      Fn(callback: () => TSL.Node): () => TSL.Node;
+      uv(): SpriteNode;
+      vec4(color: TSL.Node | null, alpha: number): TSL.Node;
+    };
+    material.fragmentNode = tsl.Fn(() => {
+      const centeredPoint = tsl.uv().sub(0.5) as SpriteNode;
+      const pointRadius = centeredPoint.length() as SpriteNode;
+      tsl.Discard(pointRadius.greaterThan(0.5));
+      return tsl.vec4(material.colorNode, 1);
+    })();
+  }
   return material;
 }
 

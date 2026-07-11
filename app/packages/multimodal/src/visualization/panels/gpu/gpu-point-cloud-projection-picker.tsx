@@ -11,6 +11,12 @@ import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
 
 import {
+  createGpuCameraProjectionNodes,
+  updateGpuCameraProjectionBindings,
+  type GpuCameraProjection,
+  type GpuCameraProjectionBindings,
+} from "./gpu-camera-projection";
+import {
   acquireGpuPickReadbackPool,
   type GpuPickReadbackLease,
 } from "./gpu-pick-readback-pool";
@@ -20,7 +26,6 @@ import {
   type GpuPickRenderer,
 } from "./gpu-pick-render-target";
 
-const MIN_PROJECTABLE_DEPTH = 1e-6;
 const CULLED_POSITION = 1e9;
 
 // Projection picking is a reduction performed by rasterization:
@@ -80,7 +85,7 @@ const pickTsl = TSL as unknown as {
 /** GPU buffers and transform needed to pick one projected cloud layer. */
 export interface GpuPointCloudProjectionPickLayer {
   readonly positionAttribute: THREE.InstancedBufferAttribute;
-  readonly projectionMatrix: THREE.Matrix4;
+  readonly projection: GpuCameraProjection;
   readonly resourceKey: string;
   readonly sampledPointCount: number;
   readonly sourceIndexAttribute: THREE.InstancedBufferAttribute;
@@ -155,6 +160,7 @@ export const GpuPointCloudProjectionPicker = forwardRef<
     [],
   );
 
+  // This layout effect owns the picker controller for the active renderer.
   useLayoutEffect(() => {
     const controller = createGpuPointCloudProjectionPickerController(gl);
     controllerRef.current = controller;
@@ -166,6 +172,7 @@ export const GpuPointCloudProjectionPicker = forwardRef<
     };
   }, [gl]);
 
+  // This layout effect synchronizes picker layers before the browser paints.
   useLayoutEffect(() => {
     controllerRef.current?.setScene({
       calibrationHeight,
@@ -325,8 +332,8 @@ interface ActivePickLayer {
 }
 
 interface PickLayerBinding {
-  readonly matrix: PickUniformNode<THREE.Matrix4>;
   readonly positionAttribute: THREE.InstancedBufferAttribute;
+  readonly projection: GpuCameraProjectionBindings;
   readonly sourceIndexAttribute: THREE.InstancedBufferAttribute;
   readonly sprite: THREE.Sprite;
 }
@@ -371,7 +378,7 @@ function createProjectionPickPass(
         calibrationHeight: sceneConfig.calibrationHeight,
         calibrationWidth: sceneConfig.calibrationWidth,
         positionAttribute: layer.positionAttribute,
-        projectionMatrix: layer.projectionMatrix,
+        projection: layer.projection,
         radius,
         sourceIndexAttribute: layer.sourceIndexAttribute,
         target,
@@ -384,8 +391,8 @@ function createProjectionPickPass(
       scene.add(points);
       materials.push(binding.material);
       bindings.push({
-        matrix: binding.matrix,
         positionAttribute: layer.positionAttribute,
+        projection: binding.projection,
         sourceIndexAttribute: layer.sourceIndexAttribute,
         sprite: points,
       });
@@ -425,14 +432,19 @@ function createProjectionPickPass(
         active.some(
           ({ layer }, index) =>
             layer.positionAttribute !== bindings[index].positionAttribute ||
-            layer.sourceIndexAttribute !== bindings[index].sourceIndexAttribute,
+            layer.sourceIndexAttribute !==
+              bindings[index].sourceIndexAttribute ||
+            layer.projection.kind !== bindings[index].projection.kind,
         )
       ) {
         return false;
       }
       for (let index = 0; index < active.length; index++) {
         const { layer, layerIndex, sampledPointCount } = active[index];
-        bindings[index].matrix.value.copy(layer.projectionMatrix);
+        updateGpuCameraProjectionBindings(
+          bindings[index].projection,
+          layer.projection,
+        );
         bindings[index].sprite.count = sampledPointCount;
         layers[index].layerIndex = layerIndex;
         layers[index].resourceKey = layer.resourceKey;
@@ -449,7 +461,7 @@ export function createProjectionPickMaterial({
   calibrationHeight,
   calibrationWidth,
   positionAttribute,
-  projectionMatrix,
+  projection,
   request,
   sourceIndexAttribute,
 }: {
@@ -457,7 +469,7 @@ export function createProjectionPickMaterial({
   readonly calibrationHeight: number;
   readonly calibrationWidth: number;
   readonly positionAttribute: THREE.InstancedBufferAttribute;
-  readonly projectionMatrix: THREE.Matrix4;
+  readonly projection: GpuCameraProjection;
   readonly request: GpuPointCloudProjectionPickRequest;
   readonly sourceIndexAttribute: THREE.InstancedBufferAttribute;
 }): PickPointsMaterial {
@@ -470,7 +482,7 @@ export function createProjectionPickMaterial({
     calibrationHeight,
     calibrationWidth,
     positionAttribute,
-    projectionMatrix,
+    projection,
     radius,
     sourceIndexAttribute,
     target,
@@ -479,7 +491,7 @@ export function createProjectionPickMaterial({
 
 interface ProjectionPickMaterialBinding {
   readonly material: PickPointsMaterial;
-  readonly matrix: PickUniformNode<THREE.Matrix4>;
+  readonly projection: GpuCameraProjectionBindings;
 }
 
 function createProjectionPickMaterialNode({
@@ -487,7 +499,7 @@ function createProjectionPickMaterialNode({
   calibrationHeight,
   calibrationWidth,
   positionAttribute,
-  projectionMatrix,
+  projection,
   radius,
   sourceIndexAttribute,
   target,
@@ -496,7 +508,7 @@ function createProjectionPickMaterialNode({
   readonly calibrationHeight: number;
   readonly calibrationWidth: number;
   readonly positionAttribute: THREE.InstancedBufferAttribute;
-  readonly projectionMatrix: THREE.Matrix4;
+  readonly projection: GpuCameraProjection;
   readonly radius: PickUniformNode<number>;
   readonly sourceIndexAttribute: THREE.InstancedBufferAttribute;
   readonly target: PickUniformNode<THREE.Vector2>;
@@ -513,7 +525,6 @@ function createProjectionPickMaterialNode({
   material.fog = false;
   material.toneMapped = false;
 
-  const matrix = pickTsl.uniform(projectionMatrix.clone());
   const dimensions = pickTsl.uniform(
     new THREE.Vector2(calibrationWidth, calibrationHeight),
   );
@@ -526,17 +537,17 @@ function createProjectionPickMaterialNode({
     sourceIndexAttribute,
     "uint",
   ) as unknown as PickNode;
-  const homogeneous = matrix.mul(pickTsl.vec4(sensorPosition, 1));
-  // The matrix yields [u*z, v*z, z, 1]. Divide by camera depth to recover
-  // calibration-pixel coordinates without writing an intermediate UV buffer.
-  const cameraDepth = homogeneous.z;
-  const u = homogeneous.x.div(cameraDepth);
-  const v = homogeneous.y.div(cameraDepth);
+  const projected = createGpuCameraProjectionNodes(
+    sensorPosition as unknown as TSL.Node,
+    projection,
+  );
+  const u = projected.u as unknown as PickNode;
+  const v = projected.v as unknown as PickNode;
   const du = u.sub(target.x);
   const dv = v.sub(target.y);
   const distanceSq = du.mul(du).add(dv.mul(dv));
   const visible = pickTsl.and(
-    pickTsl.greaterThan(cameraDepth, MIN_PROJECTABLE_DEPTH),
+    projected.valid as unknown as PickNode,
     pickTsl.greaterThanEqual(u, 0),
     pickTsl.greaterThanEqual(v, 0),
     pickTsl.lessThan(u, dimensions.x),
@@ -573,7 +584,7 @@ function createProjectionPickMaterialNode({
     pickTsl.uint(1),
   ) as unknown as TSL.Node;
 
-  return { material, matrix };
+  return { material, projection: projected.bindings };
 }
 
 function activeProjectionPickLayers(

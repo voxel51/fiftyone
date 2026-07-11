@@ -7,6 +7,7 @@ import type { ImageVisualization } from "../../decoders";
 import {
   Base2DScene,
   ImageTexturePlane,
+  type ImageTextureMesh,
   type ImageViewTransform,
 } from "./base-2d-scene";
 import {
@@ -54,6 +55,8 @@ export interface ImagePanelProps {
   /** R3F scene content rendered in normalized image coordinates. */
   readonly sceneChildren?: ReactNode;
   readonly style?: CSSProperties;
+  /** Optional cached mesh that remaps the source texture into display pixels. */
+  readonly textureMesh?: ImageTextureMesh | null;
   /**
    * Opaque shared image-texture cache key for `frame` (callers with
    * message identity form it with `imageTextureCacheKey`). When present,
@@ -80,6 +83,7 @@ export function ImagePanel({
   onResetView,
   sceneChildren,
   style,
+  textureMesh,
   textureKey,
   viewTransform,
 }: ImagePanelProps) {
@@ -105,6 +109,7 @@ export function ImagePanel({
       <Base2DScene background={!useSharedView}>
         <ImageTexturePlane
           fit={fit}
+          textureMesh={textureMesh}
           textureHandle={textureHandle}
           viewTransform={viewTransform}
         >
@@ -112,7 +117,14 @@ export function ImagePanel({
         </ImageTexturePlane>
       </Base2DScene>
     ),
-    [fit, sceneChildren, textureHandle, useSharedView, viewTransform],
+    [
+      fit,
+      sceneChildren,
+      textureHandle,
+      textureMesh,
+      useSharedView,
+      viewTransform,
+    ],
   );
 
   return (
