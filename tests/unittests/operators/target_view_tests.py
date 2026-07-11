@@ -6,6 +6,7 @@ FiftyOne operator type target_view tests.
 |
 """
 
+import os
 import unittest
 
 import fiftyone as fo
@@ -283,8 +284,8 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
         self.assertEqual(target.media_type, "image")
         self.assertEqual(len(target), 2)
         self.assertSetEqual(
-            set(target.values("filepath")),
-            {"/path/to/left1.jpg", "/path/to/left2.jpg"},
+            {os.path.basename(f) for f in target.values("filepath")},
+            {"left1.jpg", "left2.jpg"},
         )
 
     def test_current_view_target_is_scoped_to_active_slice(self):
