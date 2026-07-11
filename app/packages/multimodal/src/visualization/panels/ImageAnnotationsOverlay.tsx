@@ -1,13 +1,6 @@
 import clsx from "clsx";
 import type { CSSProperties } from "react";
-import React, {
-  Fragment,
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { Fragment, useEffect, useRef, useState } from "react";
 
 import type {
   ImageAnnotationCircle,
@@ -17,6 +10,11 @@ import type {
   RgbaColor,
 } from "../../decoders";
 import { groupLineSegmentsByLabel } from "../../utils/line-segment-grouping";
+import type {
+  ImageAnnotationBounds,
+  ImageAnnotationLineListGroup,
+  ImageAnnotationRenderMetadata,
+} from "./image-annotation-render-metadata";
 import {
   imageDisplayRect,
   transformedImageDisplayRect,
@@ -33,15 +31,6 @@ export type ImageAnnotationSelectHandler = (
   picked: ImageAnnotationPickedPrimitive,
   modifiers: { readonly shiftKey: boolean },
 ) => void;
-
-export type ImagePixelTransform = (
-  u: number,
-  v: number,
-) => readonly [number, number] | null;
-
-const ImagePixelTransformContext = createContext<ImagePixelTransform | null>(
-  null,
-);
 
 export interface ImageAnnotationPickedPrimitive {
   readonly key: string;
@@ -66,8 +55,8 @@ export interface ImageAnnotationsOverlayProps {
    */
   readonly highlightLabel?: string | null;
   readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
-  /** Optional nonlinear source-pixel to displayed-pixel mapping. */
-  readonly pixelTransform?: ImagePixelTransform;
+  /** Optional render-ready grouping prepared with interpolated geometry. */
+  readonly renderMetadata?: readonly ImageAnnotationRenderMetadata[];
   readonly viewTransform?: ImageViewTransform;
 }
 
@@ -91,7 +80,7 @@ export function ImageAnnotationsOverlay({
   selectedKey,
   highlightLabel,
   onSelectPrimitive,
-  pixelTransform,
+  renderMetadata,
   viewTransform,
 }: ImageAnnotationsOverlayProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -100,7 +89,6 @@ export function ImageAnnotationsOverlay({
     height: number;
   } | null>(null);
 
-  // This effect tracks the overlay container size for image-space transforms.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return undefined;
@@ -144,20 +132,19 @@ export function ImageAnnotationsOverlay({
             pointerEvents: "none",
           }}
         >
-          <ImagePixelTransformContext.Provider value={pixelTransform ?? null}>
-            {annotations.map((set, i) => (
-              <Fragment key={i}>
-                <SetPrimitives
-                  set={set}
-                  setIndex={i}
-                  strokeWidth={strokeWidth}
-                  selectedKey={selectedKey ?? null}
-                  highlightLabel={highlightLabel ?? null}
-                  onSelectPrimitive={onSelectPrimitive}
-                />
-              </Fragment>
-            ))}
-          </ImagePixelTransformContext.Provider>
+          {annotations.map((set, i) => (
+            <Fragment key={i}>
+              <SetPrimitives
+                set={set}
+                setIndex={i}
+                strokeWidth={strokeWidth}
+                selectedKey={selectedKey ?? null}
+                highlightLabel={highlightLabel ?? null}
+                onSelectPrimitive={onSelectPrimitive}
+                renderMetadata={renderMetadata?.[i]}
+              />
+            </Fragment>
+          ))}
         </svg>
       ) : null}
     </div>
@@ -171,6 +158,7 @@ interface SetPrimitivesProps {
   readonly selectedKey: string | null;
   readonly highlightLabel: string | null;
   readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
+  readonly renderMetadata?: ImageAnnotationRenderMetadata;
 }
 
 function SetPrimitives({
@@ -180,6 +168,7 @@ function SetPrimitives({
   selectedKey,
   highlightLabel,
   onSelectPrimitive,
+  renderMetadata,
 }: SetPrimitivesProps) {
   return (
     <>
@@ -195,6 +184,7 @@ function SetPrimitives({
             selectedKey={selectedKey}
             highlightLabel={highlightLabel}
             onSelectPrimitive={onSelectPrimitive}
+            preparedGroups={renderMetadata?.lineListGroups[j] ?? undefined}
           />
         ) : (
           <PolylinePrimitive
@@ -259,7 +249,6 @@ function CirclePrimitive({
   highlightLabel,
   onSelectPrimitive,
 }: CirclePrimitiveProps) {
-  const pixelTransform = useContext(ImagePixelTransformContext);
   const [x, y] = primitive.position;
   const radius = Math.max(0, primitive.diameter / 2);
   const label = nearestLabel(texts, [x, y]);
@@ -276,9 +265,6 @@ function CirclePrimitive({
   const isSelected =
     selectedKey === key ||
     (highlightLabel !== null && label === highlightLabel);
-  const transformedCircle = pixelTransform
-    ? transformedCirclePoints(primitive, pixelTransform)
-    : null;
   return (
     <g
       className={clsx(
@@ -289,33 +275,15 @@ function CirclePrimitive({
       style={primitiveStyle(color, INTERIOR_FILL)}
       onClick={onClick}
     >
-      {transformedCircle ? (
-        <>
-          <polygon
-            points={svgPoints(transformedCircle)}
-            className={styles.fillInterior}
-          />
-          <polygon
-            points={svgPoints(transformedCircle)}
-            strokeWidth={lineWidth(primitive.thickness, strokeWidth)}
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-            fill="none"
-          />
-        </>
-      ) : pixelTransform ? null : (
-        <>
-          <circle cx={x} cy={y} r={radius} className={styles.fillInterior} />
-          <circle
-            cx={x}
-            cy={y}
-            r={radius}
-            strokeWidth={lineWidth(primitive.thickness, strokeWidth)}
-            vectorEffect="non-scaling-stroke"
-            fill="none"
-          />
-        </>
-      )}
+      <circle cx={x} cy={y} r={radius} className={styles.fillInterior} />
+      <circle
+        cx={x}
+        cy={y}
+        r={radius}
+        strokeWidth={lineWidth(primitive.thickness, strokeWidth)}
+        vectorEffect="non-scaling-stroke"
+        fill="none"
+      />
     </g>
   );
 }
@@ -341,7 +309,6 @@ function PolylinePrimitive({
   highlightLabel,
   onSelectPrimitive,
 }: PolylinePrimitiveProps) {
-  const pixelTransform = useContext(ImagePixelTransformContext);
   const thickness = lineWidth(primitive.thickness, strokeWidth);
   const centroid = pointsCentroid(primitive.points);
   const label = centroid ? nearestLabel(texts, centroid) : null;
@@ -358,13 +325,6 @@ function PolylinePrimitive({
   const isSelected =
     selectedKey === key ||
     (highlightLabel !== null && label === highlightLabel);
-  const displayPoints = pixelTransform
-    ? transformedPrimitivePoints(primitive, pixelTransform)
-    : primitive.points;
-
-  if (displayPoints.length === 0) {
-    return null;
-  }
 
   if (primitive.type === "points") {
     return (
@@ -377,7 +337,7 @@ function PolylinePrimitive({
         style={primitiveStyle(color, undefined)}
         onClick={onClick}
       >
-        {displayPoints.map(([x, y], i) => (
+        {primitive.points.map(([x, y], i) => (
           <circle
             key={i}
             cx={x}
@@ -391,7 +351,7 @@ function PolylinePrimitive({
   }
 
   const closed = primitive.type === "line-loop";
-  const pointsAttr = svgPoints(displayPoints);
+  const pointsAttr = primitive.points.map(([x, y]) => `${x},${y}`).join(" ");
   return (
     <g
       className={clsx(
@@ -437,6 +397,7 @@ interface LineListGroupsProps {
   readonly selectedKey: string | null;
   readonly highlightLabel: string | null;
   readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
+  readonly preparedGroups?: readonly ImageAnnotationLineListGroup[];
 }
 
 function LineListGroups({
@@ -448,10 +409,11 @@ function LineListGroups({
   selectedKey,
   highlightLabel,
   onSelectPrimitive,
+  preparedGroups,
 }: LineListGroupsProps) {
-  const pixelTransform = useContext(ImagePixelTransformContext);
   const thickness = lineWidth(primitive.thickness, strokeWidth);
-  const groups = groupLineListByLabel(primitive.points, texts);
+  const groups =
+    preparedGroups ?? groupLineListByLabel(primitive.points, texts);
 
   return (
     <>
@@ -468,7 +430,7 @@ function LineListGroups({
             kind: "points",
             value: {
               ...primitive,
-              points: group.segments.flatMap((s) => [s[0], s[1]]),
+              points: group.points,
             },
           },
           color,
@@ -477,17 +439,7 @@ function LineListGroups({
         const isSelected =
           selectedKey === key ||
           (highlightLabel !== null && group.label === highlightLabel);
-        const displaySegments = group.segments
-          .map((segment) =>
-            pixelTransform
-              ? transformedSegment(segment[0], segment[1], pixelTransform)
-              : [segment[0], segment[1]],
-          )
-          .filter((segment) => segment.length >= 2);
-        if (displaySegments.length === 0) {
-          return null;
-        }
-        const b = pointsBounds(displaySegments.flat()) ?? group.bounds;
+        const b = group.bounds;
         return (
           <g
             key={gi}
@@ -506,29 +458,17 @@ function LineListGroups({
               height={b.maxY - b.minY}
               className={styles.fillInterior}
             />
-            {displaySegments.map((segment, si) => (
-              <Fragment key={si}>
-                {pixelTransform ? (
-                  <polyline
-                    points={svgPoints(segment)}
-                    strokeWidth={thickness}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    vectorEffect="non-scaling-stroke"
-                    fill="none"
-                  />
-                ) : (
-                  <line
-                    x1={segment[0][0]}
-                    y1={segment[0][1]}
-                    x2={segment[1][0]}
-                    y2={segment[1][1]}
-                    strokeWidth={thickness}
-                    strokeLinecap="round"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                )}
-              </Fragment>
+            {group.segments.map(([[x1, y1], [x2, y2]], si) => (
+              <line
+                key={si}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                strokeWidth={thickness}
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              />
             ))}
           </g>
         );
@@ -554,14 +494,7 @@ function TextPrimitive({
   highlightLabel,
   onSelectPrimitive,
 }: TextPrimitiveProps) {
-  const pixelTransform = useContext(ImagePixelTransformContext);
-  const displayPosition = pixelTransform
-    ? pixelTransform(...primitive.position)
-    : primitive.position;
-  if (!displayPosition) {
-    return null;
-  }
-  const [x, y] = displayPosition;
+  const [x, y] = primitive.position;
   const fontSize = Math.max(1, primitive.fontSize);
   const background = rgbaToCss(primitive.backgroundColor);
   const label = primitive.text || null;
@@ -615,20 +548,11 @@ function TextPrimitive({
 // Helpers
 // ---------------------------------------------------------------------------
 
-interface Bounds {
-  readonly minX: number;
-  readonly minY: number;
-  readonly maxX: number;
-  readonly maxY: number;
-}
+type Bounds = ImageAnnotationBounds;
 
 type Point2 = readonly [number, number];
 
-interface LineListGroup {
-  readonly label: string | null;
-  readonly segments: readonly [Point2, Point2][];
-  readonly bounds: Bounds;
-}
+type LineListGroup = ImageAnnotationLineListGroup;
 
 function groupLineListByLabel(
   points: readonly Point2[],
@@ -636,6 +560,7 @@ function groupLineListByLabel(
 ): readonly LineListGroup[] {
   return groupLineSegmentsByLabel(points, texts).map(({ label, segments }) => ({
     label,
+    points: segments.flatMap(([a, b]) => [a, b]),
     segments,
     bounds: segmentsBounds(segments),
   }));
@@ -697,110 +622,6 @@ function pointsCentroid(points: readonly Point2[]): Point2 | null {
     sy += y;
   }
   return [sx / points.length, sy / points.length];
-}
-
-function transformedCirclePoints(
-  circle: ImageAnnotationCircle,
-  transform: ImagePixelTransform,
-): readonly Point2[] | null {
-  const radius = Math.max(0, circle.diameter / 2);
-  const sampleCount = Math.min(
-    96,
-    Math.max(24, Math.ceil((Math.PI * Math.max(1, circle.diameter)) / 8)),
-  );
-  const points: Point2[] = [];
-  for (let index = 0; index < sampleCount; index++) {
-    const angle = (Math.PI * 2 * index) / sampleCount;
-    const point = transform(
-      circle.position[0] + Math.cos(angle) * radius,
-      circle.position[1] + Math.sin(angle) * radius,
-    );
-    if (!point) {
-      return null;
-    }
-    points.push(point);
-  }
-  return points;
-}
-
-function transformedPrimitivePoints(
-  primitive: ImageAnnotationPoints,
-  transform: ImagePixelTransform,
-): readonly Point2[] {
-  if (primitive.type === "points") {
-    return primitive.points.flatMap((point) => {
-      const transformed = transform(...point);
-      return transformed ? [transformed] : [];
-    });
-  }
-  if (primitive.points.length < 2) {
-    return primitive.points.flatMap((point) => {
-      const transformed = transform(...point);
-      return transformed ? [transformed] : [];
-    });
-  }
-
-  const output: Point2[] = [];
-  const segmentCount =
-    primitive.type === "line-loop"
-      ? primitive.points.length
-      : primitive.points.length - 1;
-  for (let index = 0; index < segmentCount; index++) {
-    const start = primitive.points[index];
-    const end = primitive.points[(index + 1) % primitive.points.length];
-    const segment = transformedSegment(start, end, transform);
-    if (segment.length === 0) {
-      // A missing sample means the source curve left the camera model's
-      // invertible domain. Withhold the whole connected primitive instead of
-      // joining the valid pieces across an untrusted gap.
-      return [];
-    }
-    output.push(...(output.length > 0 ? segment.slice(1) : segment));
-  }
-  return output;
-}
-
-function transformedSegment(
-  start: Point2,
-  end: Point2,
-  transform: ImagePixelTransform,
-): readonly Point2[] {
-  const sourceLength = Math.hypot(end[0] - start[0], end[1] - start[1]);
-  const steps = Math.min(128, Math.max(1, Math.ceil(sourceLength / 8)));
-  const output: Point2[] = [];
-  for (let step = 0; step <= steps; step++) {
-    const fraction = step / steps;
-    const point = transform(
-      start[0] + (end[0] - start[0]) * fraction,
-      start[1] + (end[1] - start[1]) * fraction,
-    );
-    if (!point) {
-      return [];
-    }
-    output.push(point);
-  }
-  return output;
-}
-
-function pointsBounds(points: readonly Point2[]): Bounds | null {
-  if (points.length === 0) {
-    return null;
-  }
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const [x, y] of points) {
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x);
-    maxY = Math.max(maxY, y);
-  }
-  return { minX, minY, maxX, maxY };
-}
-
-function svgPoints(points: readonly Point2[]): string {
-  return points.map(([x, y]) => `${x},${y}`).join(" ");
 }
 
 // Subset of `@fiftyone/utilities`' default app color pool with the orange
