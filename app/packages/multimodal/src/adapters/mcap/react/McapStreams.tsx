@@ -1,6 +1,13 @@
-import { useEffect, useMemo } from "react";
+import {
+  markModalLoadingLatencyEvent,
+  markModalLoadingLatencyEventAfterPaint,
+} from "@fiftyone/utilities";
+import { useEffect, useLayoutEffect, useMemo } from "react";
 import { useSceneInventory } from "../../../scene-inventory";
-import type { ByteSourceDescriptor } from "../../../query/bytes";
+import {
+  byteSourceAccessKey,
+  type ByteSourceDescriptor,
+} from "../../../query/bytes";
 import { MCAP_SOURCE_TYPE, mcapStreamPolicies } from "../scene-sources";
 import { MCAP_ACTIVE_TIMELINE, type McapResourceClient } from "../types";
 import {
@@ -30,6 +37,8 @@ const FRAME_TRANSFORM_RANGE_PADDING_NS = 1_000_000_000n;
 export interface McapStreamsProps {
   /** Shared adapter resource client owned by the modal renderer. */
   client: McapResourceClient;
+  /** Called after every blocking stream covers the current playhead. */
+  onPlayheadDataReady?: () => void;
   /** Byte source currently feeding the playback shell. */
   source: ByteSourceDescriptor | null;
 }
@@ -40,8 +49,14 @@ export interface McapStreamsProps {
  * sync policies from the source types, then wires the MCAP data layer
  * (single playback stream, per-topic caches, tile registry).
  */
-export function McapStreams({ client, source }: McapStreamsProps) {
+export function McapStreams({
+  client,
+  onPlayheadDataReady,
+  source,
+}: McapStreamsProps) {
   const sources = useSceneInventory();
+  const sourceKey = source ? byteSourceAccessKey(source) : "";
+  const sourceId = source?.sourceId;
   const { fidelityMode } = useMcapPlaybackSettings();
   const { temporalPolicy } = useMcapTemporalPolicySettings();
 
@@ -88,6 +103,32 @@ export function McapStreams({ client, source }: McapStreamsProps) {
     () => Array.from(new Set(sources.map((s) => s.type))),
     [sources],
   );
+  // This layout effect records shell commit and post-paint latency boundaries.
+  useLayoutEffect(() => {
+    if (!sourceId) {
+      return undefined;
+    }
+    const detail = {
+      blockingTopics: blockingTopics.length,
+      pointCloudTopics: pointCloudTopics.length,
+      sourceId,
+      topics: allTopics.length,
+    };
+    markModalLoadingLatencyEvent("mcap shell committed", detail, {
+      onceKey: "mcap-shell-committed",
+    });
+    return markModalLoadingLatencyEventAfterPaint(
+      "mcap shell painted",
+      detail,
+      { onceKey: "mcap-shell-painted" },
+    );
+  }, [
+    allTopics.length,
+    blockingTopics.length,
+    pointCloudTopics.length,
+    sourceId,
+    sourceKey,
+  ]);
   useEffect(() => {
     markMcapLatencyEvent(
       "playback shell mounted",
@@ -120,6 +161,7 @@ export function McapStreams({ client, source }: McapStreamsProps) {
   useRegisterMcapDataStream({
     blockingTopics,
     client,
+    onPlayheadDataReady,
     source,
     allTopics,
     pointCloudTopics,

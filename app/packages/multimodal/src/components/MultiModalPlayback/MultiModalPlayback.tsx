@@ -139,6 +139,11 @@ export interface MultiModalPlaybackProps {
   /** Observes right-sidebar visibility — e.g. to persist the choice. */
   onRightOpenChange?: (open: boolean) => void;
   /**
+   * Transitional content rendered over only the central mosaic viewport.
+   * The header, sidebars, and timeline remain visible during source swaps.
+   */
+  mainOverlay?: ReactNode;
+  /**
    * Starting width of the left sidebar in px, clamped to
    * {@link SIDEBAR_MIN_WIDTH_PX}–{@link SIDEBAR_MAX_WIDTH_PX}. The pane
    * is drag-resizable via its edge handle either way; this only seeds
@@ -231,6 +236,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   defaultRightOpen = true,
   onLeftOpenChange,
   onRightOpenChange,
+  mainOverlay,
   leftSidebarWidth,
   onLeftSidebarWidthChange,
   onTagCreate,
@@ -269,6 +275,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               defaultRightOpen={defaultRightOpen}
               onLeftOpenChange={onLeftOpenChange}
               onRightOpenChange={onRightOpenChange}
+              mainOverlay={mainOverlay}
               leftSidebarWidth={leftSidebarWidth}
               onLeftSidebarWidthChange={onLeftSidebarWidthChange}
               onTagCreate={onTagCreate}
@@ -296,6 +303,7 @@ interface LayoutProps {
   defaultRightOpen: boolean;
   onLeftOpenChange?: (open: boolean) => void;
   onRightOpenChange?: (open: boolean) => void;
+  mainOverlay?: ReactNode;
   leftSidebarWidth?: number;
   onLeftSidebarWidthChange?: (px: number) => void;
   onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
@@ -317,6 +325,7 @@ function Layout({
   defaultRightOpen,
   onLeftOpenChange,
   onRightOpenChange,
+  mainOverlay,
   leftSidebarWidth,
   onLeftSidebarWidthChange,
   onTagCreate,
@@ -490,6 +499,7 @@ function Layout({
           ) : (
             mosaic
           )}
+          {mainOverlay}
         </div>
 
         {hasRightSidebar ? (

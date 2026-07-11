@@ -50,9 +50,23 @@ const McapDataStreamContext = createContext<McapDataStreamContextValue>({
  */
 export const McapDataStreamProvider: React.FC<{
   children: React.ReactNode;
-}> = ({ children }) => {
+  /**
+   * When supplied, hides a previously published handle synchronously until it
+   * belongs to this source. This lets a persistent UI shell swap recordings
+   * without exposing the outgoing source for one effect tick.
+   */
+  expectedSourceKey?: string | null;
+}> = ({ children, expectedSourceKey }) => {
   const [dataStream, setDataStream] = useState<McapDataStream | null>(null);
-  const value = useMemo(() => ({ dataStream, setDataStream }), [dataStream]);
+  const visibleDataStream =
+    expectedSourceKey === undefined ||
+    dataStream?.sourceKey === expectedSourceKey
+      ? dataStream
+      : null;
+  const value = useMemo(
+    () => ({ dataStream: visibleDataStream, setDataStream }),
+    [visibleDataStream],
+  );
   return (
     <McapDataStreamContext.Provider value={value}>
       {children}

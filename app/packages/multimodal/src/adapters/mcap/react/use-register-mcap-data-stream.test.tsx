@@ -41,6 +41,7 @@ import { useRegisterMcapDataStream } from "./use-register-mcap-data-stream";
 const TOPIC = "/CAM_FRONT/image_rect_compressed";
 const IMAGE_ANNOTATION_TOPIC = "/CAM_FRONT/annotations";
 const LIDAR_TOPIC = "/LIDAR_TOP";
+const MAP_TOPIC = "/map";
 const RADAR_TOPIC = "/RADAR_FRONT";
 const DEFAULT_TEST_TOPICS = [TOPIC] as const;
 
@@ -245,6 +246,37 @@ describe("stream status + buffering feedback", () => {
       RADAR_TOPIC,
       TOPIC,
     ]);
+  });
+
+  it("queues blocking current-frame data before non-blocking map overlays", async () => {
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readSynchronizedMessages: vi.fn(
+        () => new Promise<McapSynchronizedMessageWindow>(() => undefined),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        allTopics={[MAP_TOPIC, TOPIC]}
+        blockingTopics={[TOPIC]}
+        client={client}
+        onStore={storeCapture.onStore}
+        source={source}
+        subscribedTopics={[MAP_TOPIC, TOPIC]}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(client.readSynchronizedMessages).toHaveBeenCalledTimes(2);
+    });
+    const calls = vi.mocked(client.readSynchronizedMessages).mock.calls;
+    expect(calls[0]?.[0].topics).toEqual([TOPIC]);
+    expect(calls[1]?.[0].topics).toEqual([MAP_TOPIC]);
   });
 
   it("does not queue idle background lookahead while startup data is still in flight", async () => {

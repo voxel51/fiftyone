@@ -47,6 +47,8 @@ export function McapAdjacentSamplePrewarm({
 }) {
   const store = usePlaybackStore();
   const mediaField = ctx.media.field;
+  const currentSample = ctx.sample.sample as { _id?: string; id?: string };
+  const sampleId = currentSample._id ?? currentSample.id;
 
   // This effect schedules the advisory prewarm pass for the mounted
   // source's neighbors: browser-idle callback after a settle delay,
@@ -130,7 +132,7 @@ export function McapAdjacentSamplePrewarm({
       }
       abort.abort();
     };
-  }, [store, mediaField]);
+  }, [store, mediaField, sampleId]);
 
   return null;
 }

@@ -1,6 +1,6 @@
 import { Size, Spinner } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   buildMcapTileEmptyStateModel,
   buildMcapTileStreamNotice,
@@ -11,6 +11,9 @@ import {
   useMcapTopicStatuses,
 } from "./mcap-stream-status-state";
 import styles from "./McapTile.module.css";
+
+/** Loading gaps shorter than this should read as an atomic frame swap. */
+const LOADING_INDICATOR_DELAY_MS = 200;
 
 /**
  * Drops empty entries and keeps the array referentially stable by
@@ -102,10 +105,32 @@ const McapTileEmptyStateForTopics: React.FC<{
           {model.message}
         </span>
       ) : model.kind === "loading" ? (
-        <Spinner size={Size.Lg} />
+        <DelayedLoadingIndicator />
       ) : (
         <span className={styles.emptyText}>{model.message}</span>
       )}
     </div>
   );
 };
+
+function DelayedLoadingIndicator() {
+  const [visible, setVisible] = useState(false);
+
+  // This effect suppresses loading chrome for transitions shorter than the delay.
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setVisible(true),
+      LOADING_INDICATOR_DELAY_MS,
+    );
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <span
+      data-testid="mcap-tile-loading-indicator"
+      data-visible={visible || undefined}
+    >
+      {visible ? <Spinner size={Size.Lg} /> : null}
+    </span>
+  );
+}

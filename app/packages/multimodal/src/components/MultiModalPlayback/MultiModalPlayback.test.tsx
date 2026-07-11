@@ -319,6 +319,46 @@ describe("MultiModalPlayback shell", () => {
     ).toBeTruthy();
   });
 
+  it("keeps the left sidebar mounted when a main-viewport overlay appears", () => {
+    let sidebarMounts = 0;
+    let sidebarUnmounts = 0;
+    const SidebarProbe = () => {
+      React.useEffect(() => {
+        sidebarMounts += 1;
+        return () => {
+          sidebarUnmounts += 1;
+        };
+      }, []);
+      return <div data-testid="sidebar-probe" />;
+    };
+    const { rerender } = render(
+      <MultiModalPlayback
+        fileName="sample-a"
+        leftSidebar={<SidebarProbe />}
+        rightSidebar={null}
+      />,
+    );
+
+    rerender(
+      <MultiModalPlayback
+        fileName="sample-b"
+        leftSidebar={<SidebarProbe />}
+        mainOverlay={<div data-testid="main-overlay" />}
+        rightSidebar={null}
+      />,
+    );
+
+    const overlay = screen.getByTestId("main-overlay");
+    expect(screen.getByTestId("left-sidebar-pane").contains(overlay)).toBe(
+      false,
+    );
+    expect(
+      screen.getByTestId("mosaic-stub").parentElement?.contains(overlay),
+    ).toBe(true);
+    expect(sidebarMounts).toBe(1);
+    expect(sidebarUnmounts).toBe(0);
+  });
+
   it("lets header captions react to active pane selection and deselection", () => {
     render(
       <MultiModalPlayback

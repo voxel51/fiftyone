@@ -39,7 +39,8 @@ export function useMcapTopicPlaybackFrame<T = unknown>(
     return dataStream.subscribeToTopic(topic);
   }, [topic, dataStream]);
 
-  return useStreamValue<McapTopicPlaybackFrame<T> | null>(topic);
+  const value = useStreamValue<McapTopicPlaybackFrame<T> | null>(topic);
+  return dataStream ? value : null;
 }
 
 /**
@@ -67,6 +68,7 @@ export function useMcapTopicPlaybackFrames<T = unknown>(
   topics: readonly string[],
 ): readonly (McapTopicPlaybackFrame<T> | null)[] {
   const dataStream = useMcapDataStream();
+  const values = useStreamValues<McapTopicPlaybackFrame<T> | null>(topics);
   const subscriptionsRef = useRef<Map<string, () => void>>(new Map());
   const streamRef = useRef<McapDataStream | null>(null);
 
@@ -108,5 +110,5 @@ export function useMcapTopicPlaybackFrames<T = unknown>(
     [],
   );
 
-  return useStreamValues<McapTopicPlaybackFrame<T> | null>(topics);
+  return dataStream ? values : topics.map(() => null);
 }

@@ -20,6 +20,7 @@ import {
   type PlaybackStore,
   type PlaybackStream,
 } from "@fiftyone/playback";
+import { markModalLoadingLatencyEvent } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getMcapTopicStatus,
@@ -252,6 +253,8 @@ interface RemoteStartupGateDecision {
 export interface UseMcapDataStreamOptions {
   blockingTopics: readonly string[];
   client: McapResourceClient;
+  /** Called whenever every blocking topic covers the current playhead. */
+  onPlayheadDataReady?: () => void;
   source: ByteSourceDescriptor | null;
   allTopics: readonly string[];
   pointCloudTopics: readonly string[];
@@ -276,6 +279,7 @@ export interface UseMcapDataStreamOptions {
 export function useRegisterMcapDataStream({
   blockingTopics,
   client,
+  onPlayheadDataReady,
   source,
   allTopics,
   pointCloudTopics,
@@ -348,6 +352,7 @@ export function useRegisterMcapDataStream({
     new Set(staleWarningTopics),
   );
   const streamPoliciesRef = useRef(streamPolicies);
+  const onPlayheadDataReadyRef = useRef(onPlayheadDataReady);
   useEffect(() => {
     allTopicsRef.current = allTopics;
   }, [allTopics]);
@@ -357,6 +362,10 @@ export function useRegisterMcapDataStream({
   useEffect(() => {
     pointCloudTopicsRef.current = new Set(pointCloudTopics);
   }, [pointCloudTopics]);
+  // This effect keeps the readiness callback current without rebuilding streams.
+  useEffect(() => {
+    onPlayheadDataReadyRef.current = onPlayheadDataReady;
+  }, [onPlayheadDataReady]);
   useEffect(() => {
     staleMediaWarningNsRef.current = staleMediaWarningNs;
   }, [staleMediaWarningNs]);
@@ -636,7 +645,7 @@ export function useRegisterMcapDataStream({
       clearTimeout(bufferedRangesTimerRef.current);
       bufferedRangesTimerRef.current = null;
     }
-    if (!source) return;
+    if (!source) return undefined;
     let cancelled = false;
     const timelineRangeStartMs = mcapLatencyNowMs();
     markMcapLatencyEvent(
@@ -653,15 +662,17 @@ export function useRegisterMcapDataStream({
         if (!cancelled && sourceEpochRef.current === sourceEpoch) {
           byteTimelineRef.current = range.byteTimeline ?? null;
           const nextIndex = createMcapTimelineIndex(range);
-          markMcapLatencyEvent(
-            "timeline index ready",
-            {
-              durationMs: mcapLatencyDurationMs(timelineRangeStartMs),
-              durationSec: Number(nextIndex.durationSec.toFixed(3)),
-              ticks: nextIndex.tickCount,
-            },
-            { onceKey: "timeline-index-ready" },
-          );
+          const detail = {
+            durationMs: mcapLatencyDurationMs(timelineRangeStartMs),
+            durationSec: Number(nextIndex.durationSec.toFixed(3)),
+            ticks: nextIndex.tickCount,
+          };
+          markModalLoadingLatencyEvent("mcap timeline ready", detail, {
+            onceKey: "mcap-timeline-ready",
+          });
+          markMcapLatencyEvent("timeline index ready", detail, {
+            onceKey: "timeline-index-ready",
+          });
           setIndex(nextIndex);
         }
       })
@@ -980,6 +991,37 @@ export function useRegisterMcapDataStream({
             ticks: startupCoverage.total,
           },
           { onceKey: "first-startup-buffer-ready" },
+        );
+      }
+    }
+
+    if (tick !== null && blockingTotal > 0) {
+      if (blockingCovered === blockingTotal) {
+        onPlayheadDataReadyRef.current?.();
+        markModalLoadingLatencyEvent(
+          "mcap playhead data ready",
+          {
+            playheadSec: Number(playheadSec.toFixed(3)),
+            streams: blockingTotal,
+            tickNs: tick,
+          },
+          { onceKey: "mcap-playhead-data-ready" },
+        );
+      }
+
+      if (startupReady) {
+        markModalLoadingLatencyEvent(
+          "mcap startup buffer ready",
+          {
+            lookaheadSec: Number(
+              PLAYBACK_POLICY.startupLookaheadSeconds.toFixed(3),
+            ),
+            playheadSec: Number(playheadSec.toFixed(3)),
+            streams: blockingTotal,
+            tickNs: tick,
+            ticks: startupCoverage.total,
+          },
+          { onceKey: "mcap-startup-buffer-ready" },
         );
       }
     }
@@ -1732,12 +1774,11 @@ export function useRegisterMcapDataStream({
       if (activeTopics.length === 0) return;
       nextLookaheadRefreshTimeRef.current = timeSec;
 
-      // One all-active batch monopolizes the serial worker lane, so
-      // kilobyte-scale overlays (annotations, map layers, calibration,
-      // pose, location) used to wait behind the heavy point-cloud/image
-      // payloads — and so did the transform bootstrap that gates their
-      // placement. Fetch overlays as their own small batch first; the
-      // heavy render-blocking batch follows immediately.
+      // One all-active batch monopolizes the serial worker lane. Fetch the
+      // blocking visual set first so a large non-blocking static overlay (the
+      // NuScenes /map message is ~19 MB) cannot sit in front of cameras and
+      // point clouds. Non-blocking overlays still get their own immediate
+      // request, but it queues behind the content that removes the poster.
       const blockingSet = blockingTopicsRef.current;
       const activeBlockingTopics = activeTopics.filter((topic) =>
         blockingSet.has(topic),
@@ -1760,10 +1801,10 @@ export function useRegisterMcapDataStream({
           store,
           failedTopicsRef.current,
         );
+        fetchCurrentFrame(tick, heavyTopics);
         if (overlayTopics.length > 0) {
           fetchCurrentFrame(tick, overlayTopics);
         }
-        fetchCurrentFrame(tick, heavyTopics);
       }
 
       // The startup gate measures coverage over blocking topics, so its
@@ -1794,7 +1835,7 @@ export function useRegisterMcapDataStream({
 
   // Register the single engine stream and the proactive lookahead subscription.
   useEffect(() => {
-    if (!index || !source) return;
+    if (!index || !source) return undefined;
 
     const nativeStep = 1 / DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ;
     const caches = topicCachesRef.current;

@@ -30,6 +30,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
       layoutScopeKey={datasetId}
       onTagCreate={onTagCreate}
       onTagDelete={onTagDelete}
+      navigationPending={ctx.transitioning === true}
       source={source}
       tracks={tracks}
     >
