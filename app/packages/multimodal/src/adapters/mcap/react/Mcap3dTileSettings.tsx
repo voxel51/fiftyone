@@ -1492,4 +1492,7 @@ function SceneUpAxisSelect({
   );
 }
 
-export default Mcap3dTileSettings;
+// Memoized: the host tile re-renders per playback tick, but this sidebar has
+// no per-tick inputs — the tile stabilizes the grouped props so ticks skip
+// reconciling it.
+export default React.memo(Mcap3dTileSettings);
