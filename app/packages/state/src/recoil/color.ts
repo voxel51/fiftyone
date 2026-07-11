@@ -86,6 +86,28 @@ export const colorMapRGB = selector<(val) => RGB>({
   },
 });
 
+/**
+ * Resolver for temporal-tag colors. Temporal tags are ALWAYS colored by value
+ * (the tag name), independent of the global color-by mode: each name maps to
+ * its configured color, falling back to the seeded hashed pool. Shared by the
+ * grid overlay, the timeline tracks, and the filter dots so a tag looks the
+ * same everywhere.
+ */
+export const temporalTagColor = selector<(value: string) => string>({
+  key: "temporalTagColor",
+  get: ({ get }) => {
+    const setting = get(atoms.colorScheme).temporalTags ?? {};
+    const map = get(colorMap);
+    const byValue = new Map(
+      (setting.valueColors ?? []).map((v) => [v.value, v.color]),
+    );
+    return (value: string) => byValue.get(value) ?? map(value);
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
 export const pathColor = selectorFamily<string, string>({
   key: "pathColor",
   get:
@@ -162,6 +184,12 @@ export const ensureColorScheme = (
     },
     fields: (colorScheme?.fields as ColorSchemeInput["fields"]) ?? [],
     labelTags: (colorScheme?.labelTags as ColorSchemeInput["labelTags"]) ?? {
+      fieldColor: null,
+      valueColors: [],
+    },
+    temporalTags: (colorScheme?.temporalTags as
+      | ColorSchemeInput["temporalTags"]
+      | undefined) ?? {
       fieldColor: null,
       valueColors: [],
     },

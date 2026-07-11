@@ -1,9 +1,12 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { useActiveTemporalTagFilterValues } from "@fiftyone/state";
+import {
+  temporalTagColor,
+  useActiveTemporalTagFilterValues,
+} from "@fiftyone/state";
 import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import type { TemporalTag } from "../../../temporal-tags";
 import { useSampleRendererTemporalTags } from "../../../temporal-tags";
-import { temporalTagColor } from "./mcap-temporal-tag-color";
 import styles from "./TemporalTagGridOverlay.module.css";
 
 /** Cap the stacked levels so the bar stays compact on a small grid tile. */
@@ -33,6 +36,7 @@ interface OverlayModel {
 function buildOverlayModel(
   temporalTags: readonly TemporalTag[],
   activeValues: readonly string[],
+  colorForTag: (value: string) => string,
 ): OverlayModel | null {
   const active = new Set(activeValues);
   const byTag = new Map<string, { start: number; end: number }[]>();
@@ -57,7 +61,7 @@ function buildOverlayModel(
     if (!intervals) {
       continue;
     }
-    const color = temporalTagColor(value);
+    const color = colorForTag(value);
     for (const interval of intervals) {
       flat.push({ ...interval, color });
     }
@@ -121,10 +125,11 @@ function TemporalTagGridOverlayInner({
   activeValues: readonly string[];
 }) {
   const { temporalTags } = useSampleRendererTemporalTags(ctx);
+  const colorForTag = useRecoilValue(temporalTagColor);
 
   const model = useMemo(
-    () => buildOverlayModel(temporalTags, activeValues),
-    [temporalTags, activeValues],
+    () => buildOverlayModel(temporalTags, activeValues, colorForTag),
+    [temporalTags, activeValues, colorForTag],
   );
 
   if (!model) {

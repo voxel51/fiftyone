@@ -31,6 +31,7 @@ const JSONViewer: React.FC = () => {
       showSkeletons: colorScheme?.showSkeletons,
       fields: validateJSONSetting(colorScheme.fields ?? []),
       labelTags: validateLabelTags(colorScheme?.labelTags ?? {}),
+      temporalTags: validateLabelTags(colorScheme?.temporalTags ?? {}),
       defaultMaskTargetsColors: validateMaskColor(
         colorScheme.defaultMaskTargetsColors,
       ),
@@ -103,6 +104,19 @@ const JSONViewer: React.FC = () => {
           value: pair.value,
         })),
     };
+    const validatedTemporalTags = {
+      fieldColor: isValidColor(data?.temporalTags?.fieldColor)
+        ? colorString.to.hex(
+            colorString.get(data?.temporalTags?.fieldColor as string)!.value,
+          )
+        : undefined,
+      valueColors: data?.temporalTags?.valueColors
+        ?.filter((pair) => isValidColor(pair.color))
+        .map((pair) => ({
+          color: colorString.to.hex(colorString.get(pair.color)!.value),
+          value: pair.value,
+        })),
+    };
 
     const validatedDefaultMaskTargetsColors = validateMaskColor(
       data.defaultMaskTargetsColors,
@@ -116,6 +130,7 @@ const JSONViewer: React.FC = () => {
       colorPool: validColors,
       fields: validatedSetting,
       labelTags: validatedLabelTags,
+      temporalTags: validatedTemporalTags,
       colorBy: validatedColorBy,
       multicolorKeypoints: validatedMulticolorKeypoints,
       opacity: validatedOpacity,
@@ -131,6 +146,7 @@ const JSONViewer: React.FC = () => {
       colorBy: validatedColorBy,
       fields: validatedSetting,
       labelTags: validatedLabelTags,
+      temporalTags: validatedTemporalTags,
       multicolorKeypoints: validatedMulticolorKeypoints,
       opacity: validatedOpacity,
       showSkeletons: validatedShowSkeletons,
