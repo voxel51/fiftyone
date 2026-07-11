@@ -38,7 +38,11 @@ const LOCATION_TRACK_DEFERRED_RETRY_MS = 2_000;
 const EMPTY_LOCATION_TRACKS: McapLocationTracks = new Map();
 
 interface McapLocationTracksContextValue {
-  readonly setTracks: (state: McapLocationTracks) => void;
+  readonly setTracks: (
+    sourceKey: string | null,
+    tracks: McapLocationTracks,
+  ) => void;
+  readonly sourceKey: string | null;
   readonly tracks: McapLocationTracks;
 }
 
@@ -53,10 +57,17 @@ const McapLocationTracksContext =
 export const McapLocationTracksProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
-  const [tracks, setTracks] = useState<McapLocationTracks>(
-    EMPTY_LOCATION_TRACKS,
+  const [state, setState] = useState<{
+    readonly sourceKey: string | null;
+    readonly tracks: McapLocationTracks;
+  }>({ sourceKey: null, tracks: EMPTY_LOCATION_TRACKS });
+  const setTracks = React.useCallback(
+    (sourceKey: string | null, tracks: McapLocationTracks) => {
+      setState({ sourceKey, tracks });
+    },
+    [],
   );
-  const value = useMemo(() => ({ setTracks, tracks }), [tracks]);
+  const value = useMemo(() => ({ ...state, setTracks }), [setTracks, state]);
 
   return (
     <McapLocationTracksContext.Provider value={value}>
@@ -67,6 +78,11 @@ export const McapLocationTracksProvider: React.FC<{
 
 export function useMcapLocationTracksContext(): McapLocationTracks {
   return useContextValue().tracks;
+}
+
+/** Returns the source key associated with the published location tracks. */
+export function useMcapLocationTracksSourceKey(): string | null {
+  return useContextValue().sourceKey;
 }
 
 /**
@@ -90,10 +106,11 @@ export function McapLocationTracksBridge({
   const tracksRef = useRef(new Map<string, McapLocationTrackState>());
   const playbackStore = useContext(PlaybackStoreContext);
 
+  // This effect loads and publishes location tracks for the active source.
   useEffect(() => {
     fetchedTopicsRef.current = new Set();
     tracksRef.current = new Map();
-    setTracks(EMPTY_LOCATION_TRACKS);
+    setTracks(sourceKey, EMPTY_LOCATION_TRACKS);
 
     if (!sourceKey || !source || locationSources.length === 0) {
       return undefined;
@@ -106,7 +123,7 @@ export function McapLocationTracksBridge({
         return;
       }
       tracksRef.current.set(topic, state);
-      setTracks(new Map(tracksRef.current));
+      setTracks(sourceKey, new Map(tracksRef.current));
     };
 
     const shouldStandDown = (): boolean => {
@@ -226,9 +243,10 @@ export function McapLocationTracksBridge({
     };
   }, [client, locationSources, playbackStore, setTracks, source, sourceKey]);
 
+  // This effect clears provider state when the bridge unmounts.
   useEffect(
     () => () => {
-      setTracks(EMPTY_LOCATION_TRACKS);
+      setTracks(null, EMPTY_LOCATION_TRACKS);
     },
     [setTracks],
   );
