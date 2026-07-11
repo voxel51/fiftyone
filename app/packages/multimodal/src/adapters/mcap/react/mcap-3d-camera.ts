@@ -32,10 +32,50 @@ export interface Mcap3dCameraTrackingAnchor {
   readonly worldFrameId: string;
 }
 
+/**
+ * Result of resolving the camera-target frame's pose in the world frame at
+ * the playhead. `pending` means the transform window is still loading (the
+ * camera must freeze, not fall back); `missing` means no path exists.
+ */
+export type CameraTargetResolution =
+  | {
+      readonly pose: Mcap3dCameraTargetPose;
+      readonly status: "resolved";
+    }
+  | {
+      readonly status: "missing" | "pending";
+    };
+
 export function isFollowTrackingMode(
   mode: Mcap3dTrackingMode,
 ): mode is Mcap3dFollowTrackingMode {
   return mode !== "free";
+}
+
+/**
+ * Whether an anchor was derived under exactly the given follow configuration.
+ * An anchor is only meaningful in the mode, scene-up axis, and frame pair it
+ * was captured in — any mismatch means it must be re-derived, never reused.
+ */
+export function trackingAnchorMatches({
+  anchor,
+  mode,
+  sceneUpAxis,
+  targetFrameId,
+  worldFrameId,
+}: {
+  readonly anchor: Mcap3dCameraTrackingAnchor | null;
+  readonly mode: Mcap3dFollowTrackingMode;
+  readonly sceneUpAxis: Mcap3dSceneUpAxis;
+  readonly targetFrameId: string;
+  readonly worldFrameId: string;
+}): boolean {
+  return (
+    anchor?.mode === mode &&
+    anchor.sceneUpAxis === sceneUpAxis &&
+    anchor.targetFrameId === targetFrameId &&
+    anchor.worldFrameId === worldFrameId
+  );
 }
 
 export function cameraTargetPoseFromFrameTransform(
