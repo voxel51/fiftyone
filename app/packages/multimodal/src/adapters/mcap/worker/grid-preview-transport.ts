@@ -101,7 +101,7 @@ export class McapGridPreviewTransport {
     }
 
     this.pending.delete(response.id);
-    if (response.ok) {
+    if (response.ok === true) {
       pending.resolve(response.result);
     } else {
       pending.reject(new Error(response.error));

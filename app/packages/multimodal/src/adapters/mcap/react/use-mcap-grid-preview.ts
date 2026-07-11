@@ -3,9 +3,11 @@ import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { mcapErrorMessage } from "../errors";
 import {
   mcapGridPreviewPlaybackDelayMs,
+  type McapGridPreviewResult,
   type McapGridPreviewSnapshot,
   type McapGridPreviewStatus,
 } from "../grid-preview";
+import { publishMcapSourceBootstrap } from "../source-bootstrap-cache";
 import { getMcapGridPreviewPool } from "../worker";
 import { MCAP_PLAYBACK_WORKER_PRIORITY } from "../worker/playback-worker-types";
 
@@ -82,6 +84,7 @@ export function useMcapGridPreview({
     );
   }, [selectedStreamTopic, source]);
 
+  // This effect stops hover playback whenever the grid renderer is inactive.
   useEffect(() => {
     if (!enabled) {
       setPlaying(false);
@@ -119,6 +122,7 @@ export function useMcapGridPreview({
       })
       .then((result) => {
         if (active) {
+          publishGridBootstrap(source, result);
           loadedRequestRef.current = { selectedStreamTopic, source };
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState(result.state);
@@ -197,6 +201,7 @@ export function useMcapGridPreview({
             break;
           }
 
+          publishGridBootstrap(source, result);
           if (!result.state.frame) {
             nextStartTimeNsRef.current = undefined;
             await delayMs(mcapGridPreviewPlaybackDelayMs(source));
@@ -228,6 +233,27 @@ export function useMcapGridPreview({
   }, [enabled, playing, selectedStreamTopic, source, state.status]);
 
   return { ...state, pause, play };
+}
+
+function publishGridBootstrap(
+  source: ByteSourceDescriptor,
+  result: McapGridPreviewResult,
+): void {
+  if (!result.bootstrapTopics && !result.state.frame) {
+    return;
+  }
+
+  publishMcapSourceBootstrap(source, {
+    ...(result.bootstrapTopics ? { topics: result.bootstrapTopics } : {}),
+    ...(result.state.frame
+      ? {
+          poster: result.state.frame,
+          ...(result.state.streamTopic
+            ? { posterTopic: result.state.streamTopic }
+            : {}),
+        }
+      : {}),
+  });
 }
 
 function delayMs(milliseconds: number): Promise<void> {

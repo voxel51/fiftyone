@@ -6,6 +6,10 @@ import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type { McapGridPreviewResult } from "../grid-preview";
 import { firstImageByte } from "../grid-preview-test-utils";
+import {
+  getMcapSourceBootstrap,
+  resetMcapSourceBootstrapCacheForTests,
+} from "../source-bootstrap-cache";
 import { MCAP_PLAYBACK_WORKER_PRIORITY } from "../worker/playback-worker-types";
 import {
   useMcapGridPreview,
@@ -31,6 +35,7 @@ vi.mock("../worker", () => ({
 
 afterEach(() => {
   cleanup();
+  resetMcapSourceBootstrapCacheForTests();
 });
 
 describe("useMcapGridPreview", () => {
@@ -64,6 +69,11 @@ describe("useMcapGridPreview", () => {
         signal: expect.any(AbortSignal),
       },
     );
+    expect(
+      firstImageByte(
+        getMcapSourceBootstrap(sourceForId("initial"))?.poster ?? null,
+      ),
+    ).toBe(1);
 
     const signal = poolHarness.pool.request.mock.calls[0]?.[1]
       ?.signal as AbortSignal;

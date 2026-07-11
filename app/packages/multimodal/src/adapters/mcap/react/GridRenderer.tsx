@@ -111,6 +111,7 @@ export function GridRenderer({
     [preview.frame],
   );
 
+  // This effect keeps the grid cache's retained-byte estimate current.
   useEffect(() => {
     onRetainedBytesChange?.(
       mcapGridPreviewFrameRetainedBytes(preview.frame) + surfaceRetainedBytes,
@@ -161,6 +162,7 @@ function useGridRendererVisibility(
 ): boolean {
   const [intersecting, setIntersecting] = useState(false);
 
+  // This effect tracks whether the mounted renderer is near the grid viewport.
   useEffect(() => {
     if (!element || !gridActive) {
       setIntersecting(false);
@@ -212,6 +214,7 @@ function usePlaybackHoverIntent(
     }, PLAYBACK_HOVER_INTENT_DELAY_MS);
   }, [cancel, enabled, play]);
 
+  // This effect cancels hover playback when the grid becomes inactive.
   useEffect(() => {
     if (!enabled) {
       leave();
@@ -436,6 +439,7 @@ function PointCloudPreviewFrame({
     return () => clearTimeout(timer);
   }, [active, cameraPose, live, requestSnapshot]);
 
+  // This effect releases live/snapshot work when the cell leaves the viewport.
   useEffect(() => {
     if (active) {
       return;

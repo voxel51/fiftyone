@@ -9,7 +9,7 @@ import {
   BYTE_SOURCE_READ_PROFILE,
   type ByteSourceDescriptor,
 } from "../../query/bytes";
-import { PlaybackSyncMode } from "../../schemas/v1";
+import { PlaybackSyncMode, type StreamInventory } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
 import {
   chooseAnnotationTopic,
@@ -168,6 +168,8 @@ export interface McapGridPreviewSnapshot {
  * Result returned by the grid preview worker for one high-level request.
  */
 export interface McapGridPreviewResult {
+  /** Full source inventory, handed off on initial grid reads for modal reuse. */
+  readonly bootstrapTopics?: readonly StreamInventory[];
   readonly delayMs?: number;
   readonly nextStartTimeNs?: bigint;
   readonly state: McapGridPreviewSnapshot;
@@ -179,6 +181,7 @@ export interface McapGridPreviewResult {
 export interface McapGridPreviewEntry {
   readonly client: McapResourceClient;
   autoSelection?: McapGridPreviewSelection | null;
+  inventory?: readonly StreamInventory[];
   topics?: McapGridTopics;
 }
 
@@ -199,15 +202,19 @@ export async function decodeGridPreview(
   { selectedStreamTopic, source, startTimeNs }: McapGridPreviewDecodeRequest,
 ): Promise<McapGridPreviewResult> {
   if (entry.topics === undefined) {
-    entry.topics = streamTopics(await entry.client.readTopics({ source }));
+    entry.inventory = await entry.client.readTopics({ source });
+    entry.topics = streamTopics(entry.inventory);
   }
 
   const topics = entry.topics;
+  const bootstrapTopics =
+    startTimeNs === undefined ? entry.inventory : undefined;
   const previewTopics = topics.previewable;
   const selection = chooseSelection(entry, topics, selectedStreamTopic);
 
   if (selectedStreamTopic && !selection) {
     return {
+      bootstrapTopics,
       state: {
         error: null,
         frame: null,
@@ -221,6 +228,7 @@ export async function decodeGridPreview(
 
   if (!selection) {
     return {
+      bootstrapTopics,
       state: {
         error: null,
         frame: null,
@@ -241,6 +249,7 @@ export async function decodeGridPreview(
 
   if (!result) {
     return {
+      bootstrapTopics,
       state: {
         error: null,
         frame: null,
@@ -253,6 +262,7 @@ export async function decodeGridPreview(
   }
 
   return {
+    bootstrapTopics,
     delayMs: result.delayMs,
     nextStartTimeNs: result.nextStartTimeNs,
     state: {

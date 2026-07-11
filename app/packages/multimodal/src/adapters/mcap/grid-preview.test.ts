@@ -104,9 +104,13 @@ describe("MCAP grid preview", () => {
     ) {
       yield createImageMessage(request.topics?.[0] ?? "/camera", [1, 2, 3], 7n);
     });
+    const inventory = [
+      createTopic("/camera/front"),
+      createTopic("/diagnostics", "example.Diagnostics"),
+    ];
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [createTopic("/camera/front")]),
+      readTopics: vi.fn(async () => inventory),
     });
     const entry = { client };
 
@@ -117,6 +121,8 @@ describe("MCAP grid preview", () => {
     });
 
     expect(first.state.status).toBe("ready");
+    expect(first.bootstrapTopics).toBe(inventory);
+    expect(second.bootstrapTopics).toBeUndefined();
     expect(firstImageByte(first.state.frame)).toBe(1);
     expect(first.nextStartTimeNs).toBe(8n);
     expect(second.state.status).toBe("ready");
