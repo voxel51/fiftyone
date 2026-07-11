@@ -543,8 +543,11 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
               ? { color: hoverEcho.color, position: hoverEcho.position }
               : null,
           onHoverPoint: (pick: PointCloudPointPick | null) => {
-            const payload = pick
+            const hoveredPoint = pick
               ? mcapHoveredPointForFrame(topic, frame, pick.pointIndex)
+              : null;
+            const payload = hoveredPoint
+              ? { ...hoveredPoint, color: pick?.color ?? null }
               : null;
             onHoverPoint(payload);
             if (payload && pick) {

@@ -42,6 +42,8 @@ interface ProjectionNode {
   readonly y: ProjectionNode;
   readonly z: ProjectionNode;
   div(value: ProjectionNode | number): ProjectionNode;
+  greaterThan(value: ProjectionNode | number): ProjectionNode;
+  length(): ProjectionNode;
   mul(value: ProjectionNode | number): ProjectionNode;
   sub(value: ProjectionNode | number): ProjectionNode;
 }
@@ -75,6 +77,7 @@ const projectionTsl = TSL as unknown as {
   uniform<T extends THREE.Matrix4 | THREE.Vector2 | THREE.Vector4>(
     value: T,
   ): ProjectionUniformNode<T>;
+  uv(): ProjectionNode;
   vec2(...values: readonly (ProjectionNode | number)[]): ProjectionNode;
   vec3(...values: readonly (ProjectionNode | number)[]): ProjectionNode;
   vec4(...values: readonly (ProjectionNode | number)[]): ProjectionNode;
@@ -101,6 +104,8 @@ export interface GpuPointCloudProjectionLayerProps {
   readonly pointSize: number;
   /** Additional screen-space scale used by hover emphasis animation. */
   readonly pointSizeScale?: number;
+  /** Clips each point sprite to a circle instead of its backing quad. */
+  readonly circular?: boolean;
   /** Camera-model projection shared with the integer picker. */
   readonly projection: GpuCameraProjection;
   /** Grow-only source-topic buffers shared by every camera view. */
@@ -119,6 +124,7 @@ export function GpuPointCloudProjectionLayer({
   calibrationHeight,
   calibrationWidth,
   color,
+  circular = false,
   fit,
   imageHeight,
   imageWidth,
@@ -162,13 +168,14 @@ export function GpuPointCloudProjectionLayer({
         calibrationHeight: 1,
         calibrationWidth: 1,
         color,
+        circular,
         projection,
         resource,
       }),
     // Matrix, viewport, point size, and color ranges update mutable uniforms
     // below. Only resource/color-source topology rebuilds the TSL graph.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [colorNodeKey, projection.kind, resource],
+    [circular, colorNodeKey, projection.kind, resource],
   );
   const sprite = useMemo(() => {
     const next = new THREE.Sprite(
@@ -258,6 +265,7 @@ export function createGpuPointCloudProjectionMaterial({
   calibrationHeight,
   calibrationWidth,
   color,
+  circular = false,
   imageRect = new THREE.Vector4(0, 0, 1, 1),
   projection,
   resource,
@@ -265,6 +273,7 @@ export function createGpuPointCloudProjectionMaterial({
   readonly calibrationHeight: number;
   readonly calibrationWidth: number;
   readonly color: ResolvedGpuPointCloudColor;
+  readonly circular?: boolean;
   readonly imageRect?: THREE.Vector4;
   readonly projection: GpuCameraProjection;
   readonly resource: GpuPointCloudProjectionResource;
@@ -336,8 +345,14 @@ export function createGpuPointCloudProjectionMaterial({
     projectionTsl.greaterThan(projectionTsl.viewportUV.x, imageRectUniform.z),
     projectionTsl.greaterThan(projectionTsl.viewportUV.y, imageRectUniform.w),
   );
+  const outsideCircle = projectionTsl
+    .uv()
+    .sub(0.5)
+    .length()
+    .greaterThan(0.5) as unknown as ProjectionNode;
   material.fragmentNode = projectionTsl.Fn(() => {
     projectionTsl.Discard(outsideImage);
+    if (circular) projectionTsl.Discard(outsideCircle);
     return projectionTsl.vec4(colorNode as unknown as ProjectionNode, 1);
   })() as unknown as TSL.Node;
 

@@ -194,7 +194,7 @@ const McapImageProjectionOverlay = ({
             return;
           }
 
-          setDwellTooltip({ ...tooltip, x: pointerX, y: pointerY });
+          setDwellTooltip({ ...tooltip, color, x: pointerX, y: pointerY });
           const hover: McapHoverEcho = {
             color,
             kind: "point",

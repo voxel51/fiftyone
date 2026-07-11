@@ -18,7 +18,6 @@ import {
   type GpuPointCloudProjectionResource,
 } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-resources";
 import {
-  complementaryRgbUnit,
   DEFAULT_POINT_CLOUD_COLORMAP,
   resolveGpuPointCloudColor,
   type ResolvedGpuPointCloudColor,
@@ -207,9 +206,7 @@ function ProjectedHoverMarker({
     [pointHover],
   );
   const markerColor = useMemo<ResolvedGpuPointCloudColor>(() => {
-    const color = pointHover?.color
-      ? complementaryRgbUnit(pointHover.color)
-      : ([1, 1, 1] as const);
+    const color = pointHover?.color ?? ([1, 1, 1] as const);
     return {
       colorRamp: null,
       colormap: DEFAULT_POINT_CLOUD_COLORMAP,
@@ -259,6 +256,7 @@ function ProjectedHoverMarker({
 
   return (
     <GpuPointCloudProjectionLayer
+      circular
       calibrationHeight={cameraModel.height}
       calibrationWidth={cameraModel.width}
       color={markerColor}
