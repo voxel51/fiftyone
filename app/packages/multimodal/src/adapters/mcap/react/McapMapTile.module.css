@@ -67,6 +67,13 @@
   width: 100%;
 }
 
+.cameraPending {
+  background: var(--map-surface);
+  inset: 0;
+  pointer-events: auto;
+  position: absolute;
+}
+
 .fallback svg {
   display: block;
   height: 100%;

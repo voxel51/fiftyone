@@ -19,6 +19,7 @@ import React, {
 import MeasureRulerIcon from "../../../components/MeasureRulerIcon";
 import { useSceneInventory } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
   useMcapLocationTracksContext,
   useMcapLocationTracksSourceKey,
@@ -63,6 +64,7 @@ import {
   useMcapMapViewportScope,
   writeMcapMapViewport,
 } from "./mcap-map-viewport-cache";
+import { mcapMapViewportIsNearEvidence } from "./mcap-map-viewport-proximity";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import type { McapTileProps } from "./mcap-tile-types";
 import { degreesToRadians } from "./wgs84";
@@ -224,6 +226,12 @@ const McapMapTile: React.FC<McapTileProps> = () => {
       ),
     [tracks],
   );
+  const locationEvidencePending =
+    visibleTopics.length > 0 &&
+    (!sourceKey ||
+      tracksSourceKey !== sourceKey ||
+      tracks.length < visibleTopics.length ||
+      tracks.some((track) => track.status === "loading"));
 
   useEffect(() => {
     setTileTitle(mapTileTitle(readyTracks, locationSources.length), {
@@ -345,6 +353,7 @@ const McapMapTile: React.FC<McapTileProps> = () => {
           fitRouteNonce={fitRouteNonce}
           followEgo={settings.followEgo}
           hoverLocations={hoverLocations}
+          locationEvidencePending={locationEvidencePending}
           measureArmed={measureArmed}
           measurement={measurement}
           onHoverTimeNs={onHoverTimeNs}
@@ -428,6 +437,7 @@ function McapMapLibreSurface({
   fitRouteNonce,
   followEgo,
   hoverLocations,
+  locationEvidencePending,
   measureArmed,
   measurement,
   onHoverTimeNs,
@@ -447,6 +457,7 @@ function McapMapLibreSurface({
   readonly fitRouteNonce: number;
   readonly followEgo: boolean;
   readonly hoverLocations: readonly MapLocationMarker[];
+  readonly locationEvidencePending: boolean;
   readonly measureArmed: boolean;
   readonly measurement: MapMeasurementState | null;
   readonly onHoverTimeNs: (timeNs: bigint | null) => void;
@@ -470,6 +481,7 @@ function McapMapLibreSurface({
   const recenterGuardUntilRef = useRef(0);
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const [measurementHover, setMeasurementHover] =
     useState<MapMeasurementPoint | null>(null);
   const onSeekTimeNsRef = useRef(onSeekTimeNs);
@@ -495,7 +507,9 @@ function McapMapLibreSurface({
       return undefined;
     }
     setLoaded(false);
+    setCameraReady(false);
     loadedRef.current = false;
+    warmStartEpochRef.current = null;
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
     let webglCanvas: HTMLCanvasElement | null = null;
@@ -505,17 +519,14 @@ function McapMapLibreSurface({
     void loadMapLibre()
       .then((maplibregl) => {
         if (cancelled || !containerRef.current) return;
-        const initialViewport = readMcapMapViewport(viewportScopeRef.current);
         const map = new maplibregl.Map({
           attributionControl: false,
-          center: initialViewport
-            ? [initialViewport.longitude, initialViewport.latitude]
-            : [0, 0],
+          center: [0, 0],
           container: containerRef.current,
           interactive: true,
           pitchWithRotate: false,
           style: mapStyleForBaseLayer(baseLayer),
-          zoom: initialViewport?.zoom ?? 1,
+          zoom: 1,
         });
         mapRef.current = map;
         map.addControl(
@@ -642,33 +653,18 @@ function McapMapLibreSurface({
     setFailed(false);
   }, [baseLayer]);
 
-  // This effect restores the latest dataset-scoped viewport once per source.
+  // This effect invalidates automatic camera work from the previous
+  // recording. The validated warm-start effect below makes the map visible
+  // again once real location evidence arrives.
   useEffect(() => {
     if (cameraEpochRef.current !== cameraEpoch) {
       cameraEpochRef.current = cameraEpoch;
       initialFrameEpochRef.current = null;
       warmStartEpochRef.current = null;
       userInteractedRef.current = false;
+      setCameraReady(false);
     }
-
-    const map = mapRef.current;
-    if (
-      !sourceKey ||
-      !map ||
-      !loadedRef.current ||
-      warmStartEpochRef.current === cameraEpoch
-    ) {
-      return;
-    }
-    warmStartEpochRef.current = cameraEpoch;
-    const viewport = readMcapMapViewport(viewportScope);
-    if (viewport) {
-      map.jumpTo({
-        center: [viewport.longitude, viewport.latitude],
-        zoom: viewport.zoom,
-      });
-    }
-  }, [cameraEpoch, loaded, sourceKey, viewportScope]);
+  }, [cameraEpoch]);
 
   // This effect applies each explicit fit-route request exactly once.
   useEffect(() => {
@@ -702,6 +698,77 @@ function McapMapLibreSurface({
       tracks,
     ],
   );
+
+  // This effect validates the dataset-scoped warm start before
+  // exposing the map. A cached location is useful only when the new marker or
+  // route falls within the zoom-scaled proximity window.
+  useEffect(() => {
+    const map = mapRef.current;
+    const container = containerRef.current;
+    const marker = currentLocations[0]?.location ?? null;
+    if (
+      !sourceKey ||
+      !map ||
+      !container ||
+      !loadedRef.current ||
+      warmStartEpochRef.current === cameraEpoch
+    ) {
+      return;
+    }
+    if (!marker && !bounds) {
+      if (locationEvidencePending) return;
+      warmStartEpochRef.current = cameraEpoch;
+      markMcapLatencyEvent("map viewport warm start evaluated", {
+        cameraEpoch,
+        result: "empty",
+      });
+      setCameraReady(true);
+      return;
+    }
+
+    warmStartEpochRef.current = cameraEpoch;
+    const viewport = readMcapMapViewport(viewportScope);
+    const warmStartApplies =
+      viewport !== null &&
+      mcapMapViewportIsNearEvidence({
+        bounds,
+        height: container.clientHeight,
+        marker,
+        viewport,
+        width: container.clientWidth,
+      });
+    markMcapLatencyEvent("map viewport warm start evaluated", {
+      cameraEpoch,
+      result: viewport ? (warmStartApplies ? "accepted" : "rejected") : "miss",
+    });
+    if (viewport && warmStartApplies) {
+      initialFrameEpochRef.current = cameraEpoch;
+      map.jumpTo({
+        center: [viewport.longitude, viewport.latitude],
+        zoom: viewport.zoom,
+      });
+    } else {
+      const target = playbackCameraTarget(
+        bounds,
+        currentLocations,
+        sourceData.comets,
+      );
+      if (target) {
+        initialFrameEpochRef.current = cameraEpoch;
+        applyMcapMapCameraTarget(map, target, 0);
+      }
+    }
+    setCameraReady(true);
+  }, [
+    bounds,
+    cameraEpoch,
+    currentLocations,
+    loaded,
+    locationEvidencePending,
+    sourceData.comets,
+    sourceKey,
+    viewportScope,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -787,6 +854,7 @@ function McapMapLibreSurface({
       !sourceKey ||
       !map ||
       !loadedRef.current ||
+      !cameraReady ||
       !followEgo ||
       userInteractedRef.current ||
       initialFrameEpochRef.current === cameraEpoch
@@ -805,6 +873,7 @@ function McapMapLibreSurface({
     applyMcapMapCameraTarget(map, target, 240);
   }, [
     cameraEpoch,
+    cameraReady,
     currentLocations,
     followEgo,
     loaded,
@@ -826,7 +895,7 @@ function McapMapLibreSurface({
   useEffect(() => {
     const map = mapRef.current;
     const current = currentLocations[0]?.location;
-    if (!map || !loadedRef.current || !followEgo || !current) {
+    if (!map || !loadedRef.current || !cameraReady || !followEgo || !current) {
       return;
     }
     if (performance.now() < recenterGuardUntilRef.current) {
@@ -837,11 +906,14 @@ function McapMapLibreSurface({
       duration: 120,
       essential: false,
     });
-  }, [currentLocations, followEgo, loaded]);
+  }, [cameraReady, currentLocations, followEgo, loaded]);
 
   return (
     <>
       <div className={styles.map} ref={containerRef} />
+      {!cameraReady && loaded && !failed ? (
+        <div aria-hidden className={styles.cameraPending} />
+      ) : null}
       {failed || !loaded ? (
         <div className={styles.fallback}>
           <StaticLocationMap tracks={tracks} />
