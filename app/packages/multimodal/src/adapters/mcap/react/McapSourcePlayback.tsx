@@ -58,6 +58,7 @@ import {
   McapNetworkStatusPill,
 } from "./McapNetworkStatus";
 import { McapPausedByteBanking } from "./McapPausedByteBanking";
+import { McapPanelVisibilityProvider } from "./mcap-panel-visibility";
 import McapSettingsSidebar from "./McapSettingsSidebar";
 import { McapStreams } from "./McapStreams";
 import McapTimestampReadout from "./McapTimestampReadout";
@@ -444,11 +445,13 @@ const McapPlaybackSessionStateProviders: React.FC<{
   readonly viewportScopeKey?: string;
 }> = ({ cameraViewStateScopeKey, children, viewportScopeKey }) => (
   <Mcap3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
-    <Mcap3dViewpointProvider>
-      <McapMapViewportScopeProvider scopeKey={viewportScopeKey}>
-        {children}
-      </McapMapViewportScopeProvider>
-    </Mcap3dViewpointProvider>
+    <McapPanelVisibilityProvider scopeKey={cameraViewStateScopeKey}>
+      <Mcap3dViewpointProvider>
+        <McapMapViewportScopeProvider scopeKey={viewportScopeKey}>
+          {children}
+        </McapMapViewportScopeProvider>
+      </Mcap3dViewpointProvider>
+    </McapPanelVisibilityProvider>
   </Mcap3dViewStateProvider>
 );
 

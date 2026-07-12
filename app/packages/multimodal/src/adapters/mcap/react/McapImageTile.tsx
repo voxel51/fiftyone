@@ -21,7 +21,6 @@ import type {
 } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { MCAP_SCENE_SOURCE_METADATA, MCAP_SOURCE_TYPE } from "../scene-sources";
-import { chooseAnnotationTopic } from "../topic-matching";
 import { ImagePanel } from "../../../visualization/panels/image";
 import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
 import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
@@ -32,10 +31,10 @@ import {
   MAX_MCAP_POINT_CLOUD_POINT_SIZE,
   MCAP_POINT_CLOUD_POINT_SIZE_STEP,
   MIN_MCAP_POINT_CLOUD_POINT_SIZE,
-  useMcapImageLabelTopics,
   useMcapImageProjection,
   useMcapPlaybackSettings,
 } from "./mcap-modal-settings";
+import { useMcapImageTileLabelTopics } from "./mcap-panel-visibility";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import {
   chooseNextImageTopic,
@@ -131,11 +130,8 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
         jotaiStore.get(mcapImageTileBindingsAtom),
       ),
   );
-  const {
-    hasExplicitLabelTopics,
-    labelTopics: storedLabelTopics,
-    setLabelTopics,
-  } = useMcapImageLabelTopics(topic);
+  const { labelTopics: storedLabelTopics, setLabelTopics } =
+    useMcapImageTileLabelTopics(topic);
   const { projection, setProjection } = useMcapImageProjection(topic);
 
   // This effect binds the pane to the best undisplayed image source once
@@ -298,26 +294,11 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
       ? effectiveImageDims.width / effectiveImageDims.height
       : null,
   );
-  const inferredAnnotationTopic = useMemo(
-    () => (topic ? chooseAnnotationTopic(topic, annotationTopics) : null),
-    [topic, annotationTopics],
-  );
   const selectedLabelTopics = useMemo(() => {
     if (!topic) return [];
-    if (hasExplicitLabelTopics) {
-      const available = new Set(annotationTopics);
-      return storedLabelTopics.filter((labelTopic) =>
-        available.has(labelTopic),
-      );
-    }
-    return inferredAnnotationTopic ? [inferredAnnotationTopic] : [];
-  }, [
-    annotationTopics,
-    hasExplicitLabelTopics,
-    inferredAnnotationTopic,
-    storedLabelTopics,
-    topic,
-  ]);
+    const available = new Set(annotationTopics);
+    return storedLabelTopics.filter((labelTopic) => available.has(labelTopic));
+  }, [annotationTopics, storedLabelTopics, topic]);
   const activeTopics = useMemo(
     () => (topic ? [topic, ...selectedLabelTopics] : []),
     [selectedLabelTopics, topic],
