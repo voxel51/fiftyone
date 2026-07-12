@@ -578,26 +578,48 @@ class TemporalTags(object):
         """
         return self.delete(delete_all=True)
 
-    def count(self, filter: TemporalTagFilter | None = None) -> dict[str, int]:
-        """Counts temporal tag occurrences in this collection.
+    def count(
+        self,
+        filter: TemporalTagFilter | None = None,
+        *,
+        by_sample: bool = False,
+    ) -> dict[str, int]:
+        """Counts temporal tags in this collection, grouped by tag value.
 
         Args:
             filter (None): an optional :class:`TemporalTagFilter`
+            by_sample (False): if ``True``, count the number of distinct
+                samples carrying each tag (a sample with multiple intervals of
+                the same tag counts once); if ``False``, count every tag
+                instance (interval)
 
         Returns:
             a dict mapping tag values to counts
         """
-        pipeline = [
-            {
-                "$match": _build_query(
-                    self._dataset._doc.id,
-                    filter,
-                    sample_ids=self._sample_ids,
-                )
-            },
-            {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
-            {"$sort": {"_id": 1}},
-        ]
+        match = {
+            "$match": _build_query(
+                self._dataset._doc.id,
+                filter,
+                sample_ids=self._sample_ids,
+            )
+        }
+        if by_sample:
+            # Two-stage group: first dedupe to one row per (tag, sample), then
+            # count rows per tag. Avoids building a large per-tag array (which
+            # could hit MongoDB's 16MB BSON / 100MB $addToSet limits on big
+            # tag groups).
+            pipeline = [
+                match,
+                {"$group": {"_id": {"tag": "$tag", "sample": "$_sample_id"}}},
+                {"$group": {"_id": "$_id.tag", "count": {"$sum": 1}}},
+                {"$sort": {"_id": 1}},
+            ]
+        else:
+            pipeline = [
+                match,
+                {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
+                {"$sort": {"_id": 1}},
+            ]
 
         collection = _get_existing_collection()
         if collection is None:
@@ -716,9 +738,12 @@ def update_temporal_tag(
 
 
 def count_temporal_tags(
-    dataset, filter: TemporalTagFilter | None = None
+    dataset,
+    filter: TemporalTagFilter | None = None,
+    *,
+    by_sample: bool = False,
 ) -> dict[str, int]:
-    """Counts temporal tag occurrences in a dataset.
+    """Counts temporal tags in a dataset, grouped by tag value.
 
     If a view is provided, only temporal tags linked to the view's samples are
     counted.
@@ -727,12 +752,15 @@ def count_temporal_tags(
         dataset: a :class:`fiftyone.Dataset` or
             :class:`fiftyone.core.view.DatasetView`
         filter (None): an optional :class:`TemporalTagFilter`
+        by_sample (False): if ``True``, count the number of distinct samples
+            carrying each tag (a sample with multiple intervals of the same tag
+            counts once); if ``False``, count every tag instance (interval)
 
     Returns:
         a dict mapping tag values to counts
     """
 
-    return TemporalTags(dataset).count(filter=filter)
+    return TemporalTags(dataset).count(filter=filter, by_sample=by_sample)
 
 
 def delete_for_dataset_id(dataset_id) -> int:

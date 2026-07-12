@@ -3,7 +3,10 @@ import React from "react";
 import { McapAdjacentSamplePrewarm } from "./McapAdjacentSamplePrewarm";
 import { McapSourcePlayback } from "./McapSourcePlayback";
 import { useMcapResourceClient } from "./use-mcap-resource-client";
-import { useMcapTemporalTags } from "./use-mcap-temporal-tags";
+import {
+  useFilteredTemporalTagPinnedIds,
+  useMcapTemporalTags,
+} from "./use-mcap-temporal-tags";
 import { useStableMcapSource } from "./use-stable-mcap-source";
 
 /**
@@ -16,11 +19,16 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const source = useStableMcapSource(ctx);
   const fileName = fileNameFromPath(ctx.media.path) ?? "recording.mcap";
   const datasetId = ctx.dataset.datasetId;
-  const { tracks, onTagCreate, onTagDelete } = useMcapTemporalTags(ctx);
+  const { tracks, onTagCreate, onTagUpdate, onTagDelete } =
+    useMcapTemporalTags(ctx);
+  // Auto-pin the timeline tracks for the temporal tags the grid was filtered
+  // by, so opening a filtered sample surfaces the relevant tags immediately.
+  const defaultPinnedTrackIds = useFilteredTemporalTagPinnedIds();
 
   return (
     <McapSourcePlayback
       client={client}
+      defaultPinnedTrackIds={defaultPinnedTrackIds}
       fileName={fileName}
       latencyLabel="mcap modal"
       latencySourceKey={
@@ -28,6 +36,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
       }
       layoutScopeKey={datasetId}
       onTagCreate={onTagCreate}
+      onTagUpdate={onTagUpdate}
       onTagDelete={onTagDelete}
       source={source}
       tracks={tracks}
