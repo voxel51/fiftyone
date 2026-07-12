@@ -32,7 +32,7 @@ _______________
    :header-rows: 1
    :stub-columns: 1
 
-   * - 
+   * -
      - pandas
      - FiftyOne
    * - Importing the packages
@@ -53,7 +53,7 @@ ______
    :header-rows: 1
    :stub-columns: 1
 
-   * - 
+   * -
      - pandas
      - FiftyOne
    * - First row/sample
@@ -89,15 +89,15 @@ ___________
    :header-rows: 1
    :stub-columns: 1
 
-   * - 
+   * -
      - pandas
      - FiftyOne
    * - Make a copy
      - ``df.copy()``
-     - ``ds.clone()`` 
+     - ``ds.clone()``
    * - Slice
      - ``df[start:end]``
-     - ``ds[start:end]`` 
+     - ``ds[start:end]``
    * - Random sample
      - ``df.sample(n=n)``
      - ``ds.take(n)``
@@ -123,15 +123,15 @@ ____________
    :header-rows: 1
    :stub-columns: 1
 
-   * - 
+   * -
      - pandas
      - FiftyOne
    * - Count
      - ``df[*].count()``
-     - ``ds.count(*)`` 
+     - ``ds.count(*)``
    * - Sum
      - ``df[*].sum()``
-     - ``ds.sum(*)`` 
+     - ``ds.sum(*)``
    * - Unique values
      - ``df[*].unique()``
      - ``ds.distinct(*)``
@@ -157,7 +157,7 @@ __________________
    :header-rows: 1
    :stub-columns: 1
 
-   * - 
+   * -
      - pandas
      - FiftyOne
    * - New column/field as constant value
@@ -203,7 +203,7 @@ ___________
    :header-rows: 1
    :stub-columns: 1
 
-   * - 
+   * -
      - pandas
      - FiftyOne
    * - Exact equality

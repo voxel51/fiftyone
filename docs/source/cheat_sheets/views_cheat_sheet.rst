@@ -156,14 +156,14 @@ primitive's attributes.
    :header-rows: 1
    :stub-columns: 1
 
-   * - 
+   * -
      - Match
      - Filter
      - Select
      - Exclude
    * - Samples
      - :meth:`match() <fiftyone.core.collections.SampleCollection.match>`
-     - 
+     -
      - :meth:`select() <fiftyone.core.collections.SampleCollection.select>`
      - :meth:`exclude() <fiftyone.core.collections.SampleCollection.exclude>`
    * - Labels
@@ -172,23 +172,23 @@ primitive's attributes.
      - :meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`
      - :meth:`exclude_labels() <fiftyone.core.collections.SampleCollection.exclude_labels>`
    * - Fields
-     - 
+     -
      - :meth:`filter_field() <fiftyone.core.collections.SampleCollection.filter_field>`
      - :meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`
      - :meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
    * - Tags
      - :meth:`match_tags() <fiftyone.core.collections.SampleCollection.match_tags>`
-     - 
-     - 
-     - 
+     -
+     -
+     -
    * - Frames
      - :meth:`match_frames() <fiftyone.core.collections.SampleCollection.match_frames>`
-     - 
+     -
      - :meth:`select_frames() <fiftyone.core.collections.SampleCollection.select_frames>`
      - :meth:`exclude_frames() <fiftyone.core.collections.SampleCollection.exclude_frames>`
    * - Groups
-     - 
-     - 
+     -
+     -
      - :meth:`select_groups() <fiftyone.core.collections.SampleCollection.select_groups>`
      - :meth:`exclude_groups() <fiftyone.core.collections.SampleCollection.exclude_groups>`
 
@@ -214,7 +214,7 @@ method provides all of the desired functionality.
 Labels
 ------
 
-While all of the methods in the `Labels` row are filled in, there is one 
+While all of the methods in the `Labels` row are filled in, there is one
 subtlety: filtering by ``id``.
 
 The

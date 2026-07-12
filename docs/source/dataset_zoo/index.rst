@@ -32,7 +32,7 @@ vision datasets for your research and development.
     :button_text: Learn more about the Dataset Zoo
     :button_link: overview.html
     :align: right
-    
+
 .. Dataset cards section -----------------------------------------------------
 
 .. raw:: html
@@ -47,7 +47,7 @@ vision datasets for your research and development.
                 </div>
             </div>
         </nav>
-        
+
     <hr class="tutorials-hr">
 
     <div class="row">

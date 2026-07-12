@@ -412,7 +412,7 @@ and
 Built-in filter and match functions
 ___________________________________
 
-FiftyOne has special methods for matching and filtering on specific data types. 
+FiftyOne has special methods for matching and filtering on specific data types.
 Take a look at the examples in this section to see how various operations can
 be performed via these special purpose methods, and compare that to the brute
 force implementation of the same operation that follows.
