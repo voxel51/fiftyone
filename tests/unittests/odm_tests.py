@@ -48,6 +48,12 @@ class ColorSchemeTests(unittest.TestCase):
         self.assertEqual(also_color_scheme.temporal_tags, temporal_tags)
         assert color_scheme == also_color_scheme
 
+        d = color_scheme.to_dict(extended=True)
+        also_color_scheme = fo.ColorScheme.from_dict(d, extended=True)
+
+        self.assertEqual(also_color_scheme.temporal_tags, temporal_tags)
+        assert color_scheme == also_color_scheme
+
 
 class DocumentTests(unittest.TestCase):
     def test_doc_copy_with_new_id(self):

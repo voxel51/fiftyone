@@ -19,7 +19,7 @@ import {
   hexToRgb,
   toCamelCase,
 } from "@fiftyone/utilities";
-import { selector, selectorFamily } from "recoil";
+import { selector, selectorFamily, useRecoilValue } from "recoil";
 import * as atoms from "./atoms";
 import { configData } from "./config";
 import * as schemaAtoms from "./schema";
@@ -107,6 +107,13 @@ export const temporalTagColor = selector<(value: string) => string>({
     eviction: "most-recent",
   },
 });
+
+/**
+ * Domain hook for the {@link temporalTagColor} resolver: returns a
+ * `(value: string) => string` mapping each temporal-tag name to its color.
+ * Consume this from components/hooks instead of reading the selector directly.
+ */
+export const useTemporalTagColor = () => useRecoilValue(temporalTagColor);
 
 export const pathColor = selectorFamily<string, string>({
   key: "pathColor",

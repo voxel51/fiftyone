@@ -2,12 +2,11 @@ import {
   isMatchingAtom,
   stringExcludeAtom,
   stringSelectedValuesAtom,
-  temporalTagColor,
   temporalTagResults,
   useSyncTemporalTagResults,
+  useTemporalTagColor,
 } from "@fiftyone/state";
 import React from "react";
-import { useRecoilValue } from "recoil";
 import StringFilter from "./StringFilter/StringFilter";
 
 /**
@@ -30,7 +29,7 @@ const TemporalTagsFilter = ({
   title: string;
 }) => {
   useSyncTemporalTagResults();
-  const colorForTag = useRecoilValue(temporalTagColor);
+  const colorForTag = useTemporalTagColor();
 
   return (
     <StringFilter

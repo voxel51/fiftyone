@@ -17,6 +17,18 @@ import {
   validateMaskColor,
 } from "./utils";
 
+const validateTagColors = (tags: ColorSchemeInput["labelTags"]) => ({
+  fieldColor: isValidColor(tags?.fieldColor)
+    ? colorString.to.hex(colorString.get(tags?.fieldColor as string)!.value)
+    : undefined,
+  valueColors: tags?.valueColors
+    ?.filter((pair) => isValidColor(pair.color))
+    .map((pair) => ({
+      color: colorString.to.hex(colorString.get(pair.color)!.value),
+      value: pair.value,
+    })),
+});
+
 const JSONViewer: React.FC = () => {
   const theme = useTheme();
   const colorScheme = useRecoilValue(fos.colorScheme);
@@ -91,32 +103,8 @@ const JSONViewer: React.FC = () => {
         ? data?.showSkeletons
         : colorScheme?.showSkeletons,
     );
-    const validatedLabelTags = {
-      fieldColor: isValidColor(data?.labelTags?.fieldColor)
-        ? colorString.to.hex(
-            colorString.get(data?.labelTags?.fieldColor as string)!.value,
-          )
-        : undefined,
-      valueColors: data?.labelTags?.valueColors
-        ?.filter((pair) => isValidColor(pair.color))
-        .map((pair) => ({
-          color: colorString.to.hex(colorString.get(pair.color)!.value),
-          value: pair.value,
-        })),
-    };
-    const validatedTemporalTags = {
-      fieldColor: isValidColor(data?.temporalTags?.fieldColor)
-        ? colorString.to.hex(
-            colorString.get(data?.temporalTags?.fieldColor as string)!.value,
-          )
-        : undefined,
-      valueColors: data?.temporalTags?.valueColors
-        ?.filter((pair) => isValidColor(pair.color))
-        .map((pair) => ({
-          color: colorString.to.hex(colorString.get(pair.color)!.value),
-          value: pair.value,
-        })),
-    };
+    const validatedLabelTags = validateTagColors(data?.labelTags);
+    const validatedTemporalTags = validateTagColors(data?.temporalTags);
 
     const validatedDefaultMaskTargetsColors = validateMaskColor(
       data.defaultMaskTargetsColors,

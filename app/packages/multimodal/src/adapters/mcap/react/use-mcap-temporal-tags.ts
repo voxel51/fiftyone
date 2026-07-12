@@ -5,11 +5,10 @@ import type {
   TemporalTagUpdatePayload,
 } from "@fiftyone/playback";
 import {
-  temporalTagColor,
   useActiveTemporalTagFilterValues,
+  useTemporalTagColor,
 } from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
-import { useRecoilValue } from "recoil";
 import { useSampleRendererTemporalTags } from "../../../temporal-tags";
 
 const NO_TRACKS: Track[] = [];
@@ -37,7 +36,7 @@ export function useMcapTemporalTags(
     delete: deleteTags,
     temporalTags,
   } = useSampleRendererTemporalTags(ctx);
-  const colorForTag = useRecoilValue(temporalTagColor);
+  const colorForTag = useTemporalTagColor();
 
   const onTagDelete = useCallback(
     async (event: { data?: unknown }) => {

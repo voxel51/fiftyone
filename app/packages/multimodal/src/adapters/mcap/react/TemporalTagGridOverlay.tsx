@@ -1,10 +1,9 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import {
-  temporalTagColor,
   useActiveTemporalTagFilterValues,
+  useTemporalTagColor,
 } from "@fiftyone/state";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
 import type { TemporalTag } from "../../../temporal-tags";
 import { useSampleRendererTemporalTags } from "../../../temporal-tags";
 import styles from "./TemporalTagGridOverlay.module.css";
@@ -125,7 +124,7 @@ function TemporalTagGridOverlayInner({
   activeValues: readonly string[];
 }) {
   const { temporalTags } = useSampleRendererTemporalTags(ctx);
-  const colorForTag = useRecoilValue(temporalTagColor);
+  const colorForTag = useTemporalTagColor();
 
   const model = useMemo(
     () => buildOverlayModel(temporalTags, activeValues, colorForTag),
