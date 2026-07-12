@@ -51,7 +51,7 @@ export const filterPaths = (
 ): string[] => {
   return paths
     ? paths.filter((path) => {
-        if (path === "_label_tags") return true;
+        if (path === "_label_tags" || path === "_temporal_tags") return true;
 
         const keys = path.split(".");
         let fields = schema;
@@ -113,7 +113,11 @@ export const pathIsShown = selectorFamily<boolean, string>({
   get:
     (path) =>
     ({ get }) => {
-      if (path.startsWith("tags.") || path.startsWith("_label_tags.")) {
+      if (
+        path.startsWith("tags.") ||
+        path.startsWith("_label_tags.") ||
+        path.startsWith("_temporal_tags.")
+      ) {
         return true;
       }
 

@@ -574,6 +574,13 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(
             fota.count_temporal_tags(dataset), {"keep": 1, "review": 3}
         )
+        # by_sample counts distinct samples per tag: "review" is on both
+        # samples (2), "keep" on one (1) — even though there are 3 "review"
+        # intervals total.
+        self.assertEqual(
+            fota.count_temporal_tags(dataset, by_sample=True),
+            {"keep": 1, "review": 2},
+        )
 
         sample_tags = fota.list_temporal_tags(
             dataset, fota.TemporalTagFilter(sample_ids=sample_ids[0])

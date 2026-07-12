@@ -89,12 +89,15 @@ export interface McapSourcePlaybackProps {
   readonly cameraPreferenceField?: string;
   readonly children?: React.ReactNode;
   readonly client: McapResourceClient;
+  /** Track ids to start pinned to the timeline (e.g. from a grid tag filter). */
+  readonly defaultPinnedTrackIds?: readonly string[];
   readonly fileName: string;
   readonly headerActions?: React.ReactNode;
   readonly layoutScopeKey?: string;
   /** Host selected a new sample whose media descriptor is still resolving. */
   readonly navigationPending?: boolean;
   readonly onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
+  readonly onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   readonly onTagDelete?: NonNullable<
     TemporalTagTimelineProps["eventMenuItems"]
   >[number]["onSelect"];
@@ -111,11 +114,13 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   cameraPreferenceField,
   children,
   client,
+  defaultPinnedTrackIds,
   fileName,
   headerActions,
   layoutScopeKey,
   navigationPending = false,
   onTagCreate,
+  onTagUpdate,
   onTagDelete,
   source,
   tracks,
@@ -406,6 +411,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                                 onLeftSidebarWidthChange
                               }
                               onTagCreate={onTagCreate}
+                              onTagUpdate={onTagUpdate}
                             >
                               <McapStreams
                                 client={client}

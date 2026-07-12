@@ -163,6 +163,7 @@ export interface MultiModalPlaybackProps {
    * hotkey, Shift+drag).
    */
   onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
+  onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   /** Callback that deletes an existing temporal tag by its backend id. */
   onTagDelete?: NonNullable<
     TemporalTagTimelineProps["eventMenuItems"]
@@ -240,13 +241,21 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   leftSidebarWidth,
   onLeftSidebarWidthChange,
   onTagCreate,
+  onTagUpdate,
   onTagDelete,
   children,
   className,
 }) => {
   return (
     <PlaybackProvider>
-      <TrackProvider tracks={tracks} initialPinnedIds={defaultPinnedTrackIds}>
+      {/* Only the grid-filtered tags (initialPinnedIds) start pinned. Auto-pin
+          is off so tracks arriving in async batches don't each pin themselves,
+          which would pin everything as the batches land. */}
+      <TrackProvider
+        tracks={tracks}
+        initialPinnedIds={defaultPinnedTrackIds}
+        autoPinNewTracks={false}
+      >
         <SceneInventoryProvider sources={sceneSources}>
           <TilingProvider
             initialTiles={initialTiles}
@@ -279,9 +288,14 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               leftSidebarWidth={leftSidebarWidth}
               onLeftSidebarWidthChange={onLeftSidebarWidthChange}
               onTagCreate={onTagCreate}
+              onTagUpdate={onTagUpdate}
               onTagDelete={onTagDelete}
               sharedImageWebGpuViews={sharedImageWebGpuViews}
               className={className}
+              // The multimodal playback modal always starts with the timeline
+              // drawer closed, so only pinned tracks (e.g. those auto-pinned
+              // from a temporal-tag grid filter) show until the user opens it.
+              timelineDrawerDefaultOpen={false}
             />
           </TilingProvider>
         </SceneInventoryProvider>
@@ -307,9 +321,12 @@ interface LayoutProps {
   leftSidebarWidth?: number;
   onLeftSidebarWidthChange?: (px: number) => void;
   onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
+  onTagUpdate?: MultiModalPlaybackProps["onTagUpdate"];
   onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
   sharedImageWebGpuViews: boolean;
   className?: string;
+  /** Initial open state for the timeline drawer. */
+  timelineDrawerDefaultOpen: boolean;
 }
 
 function Layout({
@@ -329,9 +346,11 @@ function Layout({
   leftSidebarWidth,
   onLeftSidebarWidthChange,
   onTagCreate,
+  onTagUpdate,
   onTagDelete,
   sharedImageWebGpuViews,
   className,
+  timelineDrawerDefaultOpen,
 }: LayoutProps) {
   const {
     layout,
@@ -521,8 +540,13 @@ function Layout({
       </div>
 
       <TemporalTagTimeline
+        // Computed by the parent from `defaultPinnedTrackIds`: closed when
+        // opened from a temporal-tag grid filter so only the pinned (filtered)
+        // tracks show, open otherwise.
+        defaultDrawerOpen={timelineDrawerDefaultOpen}
         extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}
+        onTagUpdate={onTagUpdate}
         eventMenuItems={
           onTagDelete
             ? [
