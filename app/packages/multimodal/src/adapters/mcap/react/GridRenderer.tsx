@@ -27,6 +27,7 @@ import {
   useMcapGridSelectedStreamTopic,
 } from "./mcap-grid-stream-state";
 import { useMcapGridCameraPose } from "./mcap-grid-camera-state";
+import { mcapCameraScopeKey } from "./mcap-camera-scope";
 import {
   useMcapGridPreview,
   type McapGridPreviewStatus,
@@ -62,6 +63,9 @@ export function GridRenderer({
   onRetainedBytesChange,
 }: SampleRendererProps) {
   const source = useStableMcapSource(ctx);
+  const cameraScopeKey =
+    mcapCameraScopeKey(ctx.dataset.datasetId, ctx.media?.field) ??
+    ctx.dataset.datasetId;
   const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null);
   const visible = useGridRendererVisibility(rootElement, isGridActive);
   const sampleId = useMemo(() => {
@@ -142,6 +146,7 @@ export function GridRenderer({
           // dimensions when the source or selected topic changes.
           key={`${source?.sourceId ?? ""}:${preview.streamTopic ?? ""}`}
           active={visible}
+          cameraScopeKey={cameraScopeKey}
           frame={preview.frame}
           onSurfaceRetainedBytesChange={handleSurfaceRetainedBytesChange}
         />
@@ -249,16 +254,19 @@ function useStableGridStreamTopics(topics: readonly string[]) {
 
 function PreviewFrame({
   active,
+  cameraScopeKey,
   frame,
   onSurfaceRetainedBytesChange,
 }: {
   readonly active: boolean;
+  readonly cameraScopeKey: string;
   readonly frame: McapGridPreviewFrame;
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
 }) {
   return frame.kind === "point-cloud" ? (
     <PointCloudPreviewFrame
       active={active}
+      cameraScopeKey={cameraScopeKey}
       frame={frame}
       onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
     />
@@ -278,16 +286,21 @@ function PreviewFrame({
  */
 function PointCloudPreviewFrame({
   active,
+  cameraScopeKey,
   frame,
   onSurfaceRetainedBytesChange,
 }: {
   readonly active: boolean;
+  readonly cameraScopeKey: string;
   readonly frame: Extract<McapGridPreviewFrame, { kind: "point-cloud" }>;
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
 }) {
   // Only active/visible cells subscribe to the shared pose. Hidden cached
   // roots keep their last bitmap and catch up lazily when reattached.
-  const [cameraPose, setCameraPose] = useMcapGridCameraPose(active);
+  const [cameraPose, setCameraPose] = useMcapGridCameraPose(
+    cameraScopeKey,
+    active,
+  );
   // Two-step live gate: `wantsLive` flips once the pointer has dwelled
   // past the intent delay; `live` flips only once the lease pool grants
   // this cell one of its capped live-renderer slots.
