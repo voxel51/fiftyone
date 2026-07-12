@@ -107,7 +107,14 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
             });
           }
         },
-        onNavigationStart: closePanels,
+        onNavigationStart: () => {
+          startModalLoadingLatencySession({
+            detail: { fromSampleId: modalRef.current?.id },
+            entryPath: "next",
+          });
+          markModalLoadingLatencyEvent("modal navigation requested");
+          closePanels();
+        },
         debounceTime: 150,
       }),
     [closePanels, setModal, clearUndo],
@@ -134,7 +141,14 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
             });
           }
         },
-        onNavigationStart: closePanels,
+        onNavigationStart: () => {
+          startModalLoadingLatencySession({
+            detail: { fromSampleId: modalRef.current?.id },
+            entryPath: "previous",
+          });
+          markModalLoadingLatencyEvent("modal navigation requested");
+          closePanels();
+        },
         debounceTime: 150,
       }),
     [closePanels, setModal, clearUndo],
@@ -149,22 +163,12 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const onExit = useExit();
   const onSave = useSave();
   const next = useCallback(async () => {
-    startModalLoadingLatencySession({
-      detail: { fromSampleId: modalRef.current?.id },
-      entryPath: "next",
-    });
-    markModalLoadingLatencyEvent("modal navigation requested");
     onSave();
     onExit();
     nextNavigator.navigate();
   }, [nextNavigator, onExit, onSave]);
 
   const previous = useCallback(async () => {
-    startModalLoadingLatencySession({
-      detail: { fromSampleId: modalRef.current?.id },
-      entryPath: "previous",
-    });
-    markModalLoadingLatencyEvent("modal navigation requested");
     onSave();
     onExit();
     previousNavigator.navigate();

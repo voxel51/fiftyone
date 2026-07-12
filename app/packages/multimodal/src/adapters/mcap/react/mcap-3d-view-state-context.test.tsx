@@ -1,5 +1,5 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
-import type { PropsWithChildren } from "react";
+import { act, cleanup, render, renderHook } from "@testing-library/react";
+import { useEffect, type PropsWithChildren } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   __resetMcap3dViewStateScopesForTests,
@@ -80,7 +80,62 @@ describe("Mcap3dViewStateProvider inspection scopes", () => {
     const reopened = renderScopedStore("newest");
     expect(reopened.result.current.getSnapshot().trackingMode).toBe("heading");
   });
+
+  it("retains 33 scopes mounted in one commit before evicting", () => {
+    const stores = new Map<
+      string,
+      ReturnType<typeof useMcap3dViewStateStore>
+    >();
+    const { rerender, unmount } = render(
+      <ScopedStoreGroup count={33} stores={stores} />,
+    );
+    const firstStore = stores.get("scope-0");
+    expect(firstStore).toBeDefined();
+    act(() => firstStore?.recordTrackingMode("heading"));
+
+    rerender(<ScopedStoreGroup count={32} stores={stores} />);
+    unmount();
+
+    const reopened = renderScopedStore("scope-0");
+    expect(reopened.result.current.getSnapshot().trackingMode).toBe("heading");
+  });
 });
+
+function ScopedStoreGroup({
+  count,
+  stores,
+}: {
+  readonly count: number;
+  readonly stores: Map<string, ReturnType<typeof useMcap3dViewStateStore>>;
+}) {
+  return (
+    <>
+      {Array.from({ length: count }, (_, index) => {
+        const scopeKey = `scope-${index}`;
+        return (
+          <Mcap3dViewStateProvider key={scopeKey} scopeKey={scopeKey}>
+            <StoreCapture scopeKey={scopeKey} stores={stores} />
+          </Mcap3dViewStateProvider>
+        );
+      })}
+    </>
+  );
+}
+
+function StoreCapture({
+  scopeKey,
+  stores,
+}: {
+  readonly scopeKey: string;
+  readonly stores: Map<string, ReturnType<typeof useMcap3dViewStateStore>>;
+}) {
+  const store = useMcap3dViewStateStore();
+  // This effect exposes the committed scoped store to the regression test.
+  useEffect(() => {
+    stores.set(scopeKey, store);
+  }, [scopeKey, store, stores]);
+  return null;
+}
 
 function renderScopedStore(scopeKey: string) {
   return renderHook(useMcap3dViewStateStore, {

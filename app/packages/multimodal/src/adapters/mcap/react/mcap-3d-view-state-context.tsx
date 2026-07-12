@@ -35,15 +35,39 @@ export const Mcap3dViewStateProvider: React.FC<{
   readonly store?: Mcap3dViewStateStore;
 }> = ({ children, scopeKey, store: suppliedStore }) => {
   const [ownedStore] = useState(createMcap3dViewStateStore);
-  const scopedStore = useMemo(
-    () => (scopeKey ? viewStateStoreForScope(scopeKey) : null),
-    [scopeKey],
+  const scopedStoreCandidate = useMemo(
+    () =>
+      scopeKey && !suppliedStore
+        ? (viewStateStoresByScope.get(scopeKey)?.store ??
+          createMcap3dViewStateStore())
+        : null,
+    [scopeKey, suppliedStore],
   );
+  const [resolvedScopedStore, setResolvedScopedStore] = useState<{
+    readonly scopeKey: string;
+    readonly store: Mcap3dViewStateStore;
+  } | null>(null);
+  const scopedStore =
+    resolvedScopedStore && resolvedScopedStore.scopeKey === scopeKey
+      ? resolvedScopedStore.store
+      : scopedStoreCandidate;
   const store = suppliedStore ?? scopedStore ?? ownedStore;
 
-  // This effect retains a scoped store for the provider's mounted lifetime.
+  // This effect registers and retains a scoped store only after commit.
   useEffect(() => {
     if (!scopeKey || suppliedStore || store !== scopedStore) return undefined;
+    const existing = viewStateStoresByScope.get(scopeKey);
+    if (existing && existing.store !== store) {
+      setResolvedScopedStore({ scopeKey, store: existing.store });
+      return undefined;
+    }
+    if (!existing) {
+      viewStateStoresByScope.set(scopeKey, { activeMounts: 0, store });
+    } else {
+      // Map insertion order doubles as LRU order without a second index.
+      viewStateStoresByScope.delete(scopeKey);
+      viewStateStoresByScope.set(scopeKey, existing);
+    }
     const release = retainViewStateScope(scopeKey, store);
     evictInactiveViewStateScopesToLimit(scopeKey);
     return release;
@@ -73,20 +97,6 @@ export function useMcap3dViewStateStore(
 /** Clears the inspection-session registry between tests. */
 export function __resetMcap3dViewStateScopesForTests() {
   viewStateStoresByScope.clear();
-}
-
-function viewStateStoreForScope(scopeKey: string): Mcap3dViewStateStore {
-  const existing = viewStateStoresByScope.get(scopeKey);
-  if (existing) {
-    // Map insertion order doubles as LRU order without a second index.
-    viewStateStoresByScope.delete(scopeKey);
-    viewStateStoresByScope.set(scopeKey, existing);
-    return existing.store;
-  }
-
-  const store = createMcap3dViewStateStore();
-  viewStateStoresByScope.set(scopeKey, { activeMounts: 0, store });
-  return store;
 }
 
 function retainViewStateScope(

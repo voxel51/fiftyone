@@ -6,18 +6,19 @@ import {
   useRetainedModalSample,
 } from "./use-modal-sample-renderer-persistence";
 
-const harness = vi.hoisted(() => ({
-  loadable: {
-    contents: null as unknown,
-    getValue: vi.fn(),
-    state: "hasValue" as "hasValue" | "loading" | "hasError",
+const { harness, registration } = vi.hoisted(() => ({
+  harness: {
+    loadable: {
+      contents: null as unknown,
+      getValue: vi.fn(),
+      state: "hasValue" as "hasValue" | "loading" | "hasError",
+    },
+  },
+  registration: {
+    name: "McapRenderer",
+    sampleRendererOptions: { modal: { persistAcrossSamples: true } },
   },
 }));
-
-const registration = {
-  name: "McapRenderer",
-  sampleRendererOptions: { modal: { persistAcrossSamples: true } },
-};
 
 vi.mock("@fiftyone/plugins", () => ({
   PluginComponentType: { SampleRenderer: 4 },
