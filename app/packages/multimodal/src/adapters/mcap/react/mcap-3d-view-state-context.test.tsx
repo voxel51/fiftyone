@@ -99,6 +99,50 @@ describe("Mcap3dViewStateProvider inspection scopes", () => {
     const reopened = renderScopedStore("scope-0");
     expect(reopened.result.current.getSnapshot().trackingMode).toBe("heading");
   });
+
+  it("does not reuse a reconciled store after its scope is recreated", () => {
+    const stores = new Map<
+      string,
+      ReturnType<typeof useMcap3dViewStateStore>
+    >();
+    const { rerender } = render(
+      <ReconciledStoreHarness
+        includePrimary
+        subjectScope="shared"
+        fillerCount={0}
+        stores={stores}
+      />,
+    );
+    expect(stores.get("subject")).toBe(stores.get("primary"));
+    act(() => stores.get("subject")?.recordTrackingMode("heading"));
+
+    rerender(
+      <ReconciledStoreHarness
+        includePrimary={false}
+        subjectScope="parking"
+        fillerCount={0}
+        stores={stores}
+      />,
+    );
+    rerender(
+      <ReconciledStoreHarness
+        includePrimary={false}
+        subjectScope="parking"
+        fillerCount={31}
+        stores={stores}
+      />,
+    );
+    rerender(
+      <ReconciledStoreHarness
+        includePrimary={false}
+        subjectScope="shared"
+        fillerCount={31}
+        stores={stores}
+      />,
+    );
+
+    expect(stores.get("subject")?.getSnapshot().trackingMode).toBeNull();
+  });
 });
 
 function ScopedStoreGroup({
@@ -114,7 +158,40 @@ function ScopedStoreGroup({
         const scopeKey = `scope-${index}`;
         return (
           <Mcap3dViewStateProvider key={scopeKey} scopeKey={scopeKey}>
-            <StoreCapture scopeKey={scopeKey} stores={stores} />
+            <StoreCapture captureKey={scopeKey} stores={stores} />
+          </Mcap3dViewStateProvider>
+        );
+      })}
+    </>
+  );
+}
+
+function ReconciledStoreHarness({
+  fillerCount,
+  includePrimary,
+  stores,
+  subjectScope,
+}: {
+  readonly fillerCount: number;
+  readonly includePrimary: boolean;
+  readonly stores: Map<string, ReturnType<typeof useMcap3dViewStateStore>>;
+  readonly subjectScope: string;
+}) {
+  return (
+    <>
+      {includePrimary ? (
+        <Mcap3dViewStateProvider scopeKey="shared">
+          <StoreCapture captureKey="primary" stores={stores} />
+        </Mcap3dViewStateProvider>
+      ) : null}
+      <Mcap3dViewStateProvider scopeKey={subjectScope}>
+        <StoreCapture captureKey="subject" stores={stores} />
+      </Mcap3dViewStateProvider>
+      {Array.from({ length: fillerCount }, (_, index) => {
+        const scopeKey = `filler-${index}`;
+        return (
+          <Mcap3dViewStateProvider key={scopeKey} scopeKey={scopeKey}>
+            <StoreCapture captureKey={scopeKey} stores={stores} />
           </Mcap3dViewStateProvider>
         );
       })}
@@ -123,17 +200,17 @@ function ScopedStoreGroup({
 }
 
 function StoreCapture({
-  scopeKey,
+  captureKey,
   stores,
 }: {
-  readonly scopeKey: string;
+  readonly captureKey: string;
   readonly stores: Map<string, ReturnType<typeof useMcap3dViewStateStore>>;
 }) {
   const store = useMcap3dViewStateStore();
   // This effect exposes the committed scoped store to the regression test.
   useEffect(() => {
-    stores.set(scopeKey, store);
-  }, [scopeKey, store, stores]);
+    stores.set(captureKey, store);
+  }, [captureKey, store, stores]);
   return null;
 }
 

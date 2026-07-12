@@ -44,21 +44,35 @@ export const Mcap3dViewStateProvider: React.FC<{
     [scopeKey, suppliedStore],
   );
   const [resolvedScopedStore, setResolvedScopedStore] = useState<{
+    readonly candidate: Mcap3dViewStateStore;
     readonly scopeKey: string;
     readonly store: Mcap3dViewStateStore;
   } | null>(null);
   const scopedStore =
-    resolvedScopedStore && resolvedScopedStore.scopeKey === scopeKey
+    resolvedScopedStore &&
+    resolvedScopedStore.scopeKey === scopeKey &&
+    resolvedScopedStore.candidate === scopedStoreCandidate
       ? resolvedScopedStore.store
       : scopedStoreCandidate;
   const store = suppliedStore ?? scopedStore ?? ownedStore;
 
   // This effect registers and retains a scoped store only after commit.
   useEffect(() => {
-    if (!scopeKey || suppliedStore || store !== scopedStore) return undefined;
+    if (
+      !scopeKey ||
+      suppliedStore ||
+      !scopedStoreCandidate ||
+      store !== scopedStore
+    ) {
+      return undefined;
+    }
     const existing = viewStateStoresByScope.get(scopeKey);
     if (existing && existing.store !== store) {
-      setResolvedScopedStore({ scopeKey, store: existing.store });
+      setResolvedScopedStore({
+        candidate: scopedStoreCandidate,
+        scopeKey,
+        store: existing.store,
+      });
       return undefined;
     }
     if (!existing) {
@@ -71,7 +85,7 @@ export const Mcap3dViewStateProvider: React.FC<{
     const release = retainViewStateScope(scopeKey, store);
     evictInactiveViewStateScopesToLimit(scopeKey);
     return release;
-  }, [scopeKey, scopedStore, store, suppliedStore]);
+  }, [scopeKey, scopedStore, scopedStoreCandidate, store, suppliedStore]);
 
   return (
     <Mcap3dViewStateStoreContext.Provider value={store}>
