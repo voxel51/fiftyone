@@ -106,10 +106,11 @@ Image tile
 ----------
 
 Image tiles render camera streams, including raw and compressed images from
-ROS and Foxglove schemas. Image annotations (e.g. `foxglove.ImageAnnotations`)
-can be overlaid on their corresponding camera stream, and when camera
-calibration data is available, hovering over an image tile highlights that
-camera's frustum in the 3D tile.
+ROS and Foxglove schemas as well as compressed video streams (currently
+H.264). Image annotations (e.g. `foxglove.ImageAnnotations`) can be overlaid
+on their corresponding camera stream, and when camera calibration data is
+available, hovering over an image tile highlights that camera's frustum in
+the 3D tile.
 
 .. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/image-panel.webp
    :alt: multimodal-image-tile
@@ -131,6 +132,36 @@ inspect points via hover tooltips.
 .. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/3d-panel.webp
    :alt: multimodal-3d-tile
    :align: center
+
+.. _multimodal-map-tile:
+
+Map tile
+--------
+
+The map tile plots GNSS location streams (e.g. `foxglove.LocationFix` or
+`sensor_msgs/msg/NavSatFix`) as tracks on an interactive map. The current
+position follows the playback clock, and you can hover to inspect points
+along the track and measure distances between locations.
+
+.. Placeholder: recording of the map tile
+.. .. image:: /images/multimodal/multimodal-map-tile.webp
+..    :alt: multimodal-map-tile
+..    :align: center
+
+.. _multimodal-logs-tile:
+
+Logs tile
+---------
+
+The logs tile is a console view for log topics (`foxglove.Log`,
+`rcl_interfaces/msg/Log`, `rosgraph_msgs/Log`). Log entries scroll in sync
+with the playback clock, and you can pause following to scan the history or
+seek the recording to an entry of interest.
+
+.. Placeholder: recording of the logs tile
+.. .. image:: /images/multimodal/multimodal-logs-tile.webp
+..    :alt: multimodal-logs-tile
+..    :align: center
 
 .. _multimodal-plot-tile:
 
@@ -168,11 +199,11 @@ Configuring tiles
 
 To add a new tile to the viewer, click the **Add tile** button (the grid
 icon) in the viewer's header and choose the tile type you want — Image, 3D,
-Plot, or Message. The same menu also offers **Auto Layout**, which
-automatically arranges your tiles.
+Map, Logs, Plot, or Message. The same menu also offers **Auto Layout**,
+which automatically arranges your tiles.
 
 The **left sidebar** of the viewer is where you configure what each
-tile is showing. It contains two tabs:
+tile is showing. It contains the following tabs:
 
 -   **Scene**: settings that apply to the whole recording:
 
@@ -182,12 +213,14 @@ tile is showing. It contains two tabs:
         values and holds each signal at its latest recorded sample
     -   **Advanced timing**: fine-grained control over how messages are
         matched to the playback clock
-    -   **Other topics**: a list of the channels present in the file that are
-        not currently rendered in the scene, along with their schema,
-        encoding, message count, and whether they can be inspected in a
-        message tile
 
--   **Tile settings**: when you focus a tile, a second tab named for that
+-   **Topics**: a searchable inventory of every topic in the recording,
+    grouped by category (Sensors, Annotations & Planning, Transforms &
+    Poses, Diagnostics, Telemetry, and Custom/Unknown). Each topic shows
+    how it can be visualized, and you can open a topic directly in a
+    compatible tile from here
+
+-   **Tile settings**: when you focus a tile, a tab named for that
     tile appears with its specific options — for example, which streams and
     overlays an image tile displays, the 3D tile's colormaps and camera
     behavior, the topic/field series charted by a plot tile, or the topic
@@ -304,11 +337,12 @@ channel whose schema is not recognized remains fully accessible via the
 :ref:`Message tile <multimodal-message-tile>`, so you can always inspect
 your data even before a dedicated decoder exists.
 
-ROS 2
------
+ROS
+---
 
-ROS 2 messages serialized with CDR encoding are supported for the following
-schemas:
+Both ROS 1 and ROS 2 messages are supported for the following schemas,
+listed here in their ROS 2 form (the corresponding ROS 1 schemas are also
+supported):
 
 .. list-table::
     :widths: 40 60
@@ -329,16 +363,40 @@ schemas:
         fields such as intensity
     * - `sensor_msgs/msg/LaserScan`
       - Planar laser range scans
-    * - `sensor_msgs/msg/Imu`
-      - IMU orientation, angular velocity, and linear acceleration
+    * - `sensor_msgs/msg/NavSatFix`
+      - GNSS position fixes, rendered in the map tile
+    * - `nav_msgs/msg/Odometry`
+      - Odometry poses with velocity/acceleration kinematics
+    * - `nav_msgs/msg/Path`
+      - Pose sequences such as planned or traveled paths
+    * - `nav_msgs/msg/OccupancyGrid`
+      - Occupancy grids, rendered as textured planes in 3D
+    * - `geometry_msgs/msg/PoseStamped`
+      - Single timestamped poses
+    * - `geometry_msgs/msg/PoseArray`
+      - Batches of poses
+    * - `geometry_msgs/msg/TransformStamped`
+      - Single coordinate frame transforms
     * - `tf2_msgs/msg/TFMessage`
       - Coordinate frame transforms that define the scene's frame graph
+    * - `visualization_msgs/msg/Marker` /
+        `visualization_msgs/msg/MarkerArray`
+      - Scene markers (cubes, spheres, lines, text, meshes) rendered in the
+        3D tile
+    * - `vision_msgs/msg/Detection2DArray`
+      - 2D detections overlaid on camera images
+    * - `vision_msgs/msg/Detection3DArray`
+      - 3D detections rendered in the 3D tile
+    * - `diagnostic_msgs/msg/DiagnosticArray`
+      - Diagnostics status arrays
+    * - `rcl_interfaces/msg/Log`
+      - Log messages (`rosgraph_msgs/Log` in ROS 1), shown in the logs tile
 
 Foxglove
 --------
 
 All of the core `Foxglove schemas <https://docs.foxglove.dev/docs/sdk/schemas>`_
-are supported:
+are supported, in both their protobuf and ROS (CDR) encodings:
 
 .. list-table::
     :widths: 40 60
@@ -350,6 +408,8 @@ are supported:
       - Raw camera images
     * - `foxglove.CompressedImage`
       - Compressed camera images
+    * - `foxglove.CompressedVideo`
+      - Compressed video streams (currently H.264)
     * - `foxglove.ImageAnnotations`
       - 2D annotations (points, circles, text) overlaid on camera images
     * - `foxglove.CameraCalibration`
@@ -370,7 +430,10 @@ are supported:
     * - `foxglove.PoseInFrame`
       - SE(3) poses (translation + quaternion)
     * - `foxglove.LocationFix`
-      - GNSS position fixes (latitude/longitude/altitude)
+      - GNSS position fixes (latitude/longitude/altitude), rendered in the
+        map tile
+    * - `foxglove.Log`
+      - Log messages, shown in the logs tile
 
 JSON
 ----
@@ -384,12 +447,12 @@ schemas:
 
     * - Schema
       - Description
-    * - `IMU`
-      - JSON-encoded IMU readings
     * - `Pose`
       - JSON-encoded pose/odometry data
-    * - `Diagnostics`
-      - JSON-encoded diagnostics/telemetry key-value payloads
+    * - JSON-encoded ROS schemas
+      - JSON-encoded versions of the ROS schemas above (e.g.
+        `sensor_msgs/PointCloud2`, `nav_msgs/Odometry`) are decoded just
+        like their binary counterparts
 
 .. _multimodal-indexing:
 
@@ -440,6 +503,40 @@ Indexing runs as :ref:`delegated operations <delegated-operations>` that are
 automatically scheduled and orchestrated across your deployment's compute.
 Projection tables can be written to local storage or directly to cloud
 buckets (`s3://`, `gs://`, `az://`).
+
+Enabling indexing
+-----------------
+
+To index a multimodal dataset, configure it with a
+:ref:`projection manifest <multimodal-manifests>` and enable projections:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone.multimodal import MultimodalDataset
+
+    dataset = MultimodalDataset("driving-logs")
+    dataset.add_samples(...)
+
+    # Configure the dataset with your manifest and enable indexing
+    with open("/path/to/manifest.yaml", "r") as f:
+        dataset.projections.enable(f.read())
+
+Indexing is then scheduled and executed automatically. You can check on its
+progress, disable it, or retry a stuck run at any time:
+
+.. code-block:: python
+    :linenos:
+
+    # The active run's status, including per-sample progress
+    print(dataset.projections.get_projection().status())
+
+    # Disable indexing, abandoning any active run
+    dataset.projections.disable()
+
+    # Reset a run that was interrupted (e.g. its worker crashed) so that it
+    # is automatically requeued
+    dataset.projections.retry()
 
 .. _multimodal-manifests:
 
