@@ -38,6 +38,17 @@ describe("Tile chrome", () => {
       ).toBe("true");
     });
 
+    it("leaves title emphasis unset by default", () => {
+      render(
+        <TileHeader title="camera_front" onClose={noop} onFullscreen={noop} />,
+      );
+      expect(
+        screen
+          .getByTestId("tile-header-title")
+          .getAttribute("data-highlighted"),
+      ).toBeNull();
+    });
+
     it("fires onClose when the close button is clicked", () => {
       const onClose = vi.fn();
       render(<TileHeader title="t" onClose={onClose} onFullscreen={noop} />);
