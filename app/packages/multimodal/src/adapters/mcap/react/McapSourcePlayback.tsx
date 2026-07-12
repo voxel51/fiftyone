@@ -381,6 +381,12 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                                   ? [...tracks]
                                   : undefined
                               }
+                              defaultPinnedTrackIds={
+                                defaultPinnedTrackIds &&
+                                defaultPinnedTrackIds.length > 0
+                                  ? [...defaultPinnedTrackIds]
+                                  : undefined
+                              }
                               onTagDelete={onTagDelete}
                               leftSidebar={
                                 <McapSettingsSidebar topics={shellTopics} />

@@ -3,7 +3,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -100,9 +100,9 @@ export function useMcapImageTileLabelTopics(imageTopic: string): {
   const topicsByImageRef = useRef(topicsByImage);
   topicsByImageRef.current = topicsByImage;
 
-  // This effect handles an in-place scope/tile swap without leaking topic
-  // choices; the playback shell normally remounts at a scope boundary.
-  useEffect(() => {
+  // This layout effect handles an in-place scope/tile swap before paint; the
+  // playback shell normally remounts at a scope boundary.
+  useLayoutEffect(() => {
     const next = readTileVisibility(scopeKey, tileId)?.imageLabelTopics ?? {};
     topicsByImageRef.current = next;
     setTopicsByImage(next);

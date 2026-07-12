@@ -44,7 +44,9 @@ export const Mcap3dViewStateProvider: React.FC<{
   // This effect retains a scoped store for the provider's mounted lifetime.
   useEffect(() => {
     if (!scopeKey || suppliedStore || store !== scopedStore) return undefined;
-    return retainViewStateScope(scopeKey, store);
+    const release = retainViewStateScope(scopeKey, store);
+    evictInactiveViewStateScopesToLimit(scopeKey);
+    return release;
   }, [scopeKey, scopedStore, store, suppliedStore]);
 
   return (
@@ -84,7 +86,6 @@ function viewStateStoreForScope(scopeKey: string): Mcap3dViewStateStore {
 
   const store = createMcap3dViewStateStore();
   viewStateStoresByScope.set(scopeKey, { activeMounts: 0, store });
-  evictInactiveViewStateScopesToLimit(scopeKey);
   return store;
 }
 

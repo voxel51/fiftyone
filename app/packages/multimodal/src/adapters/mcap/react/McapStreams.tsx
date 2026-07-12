@@ -3,7 +3,7 @@ import {
   markModalLoadingLatencyEventAfterPaint,
 } from "@fiftyone/utilities";
 import { useEffect, useLayoutEffect, useMemo } from "react";
-import { useSceneInventory } from "../../../scene-inventory";
+import { useSceneInventory } from "../../../scene-inventory/SceneInventoryProvider";
 import {
   byteSourceAccessKey,
   type ByteSourceDescriptor,

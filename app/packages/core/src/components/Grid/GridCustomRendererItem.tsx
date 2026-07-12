@@ -12,7 +12,6 @@ import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Checkbox } from "@mui/material";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { useRecoilValue } from "recoil";
 import GridTagBubbles from "./GridTagBubbles";
 
 type GridCustomRendererItemConfig = {
@@ -236,7 +235,7 @@ const GridCustomRenderer = ({
   readonly ctx: SampleRendererRenderContext;
   readonly onRetainedBytesChange: (retainedBytes: number) => void;
 }) => {
-  const modalActive = useRecoilValue(fos.isModalActive);
+  const modalActive = fos.useModalActive();
 
   return (
     <Renderer
