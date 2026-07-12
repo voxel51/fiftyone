@@ -668,9 +668,11 @@ function compactGridRenderPayload(
     positions[targetOffset + 1] = source.positions[sourceOffset + 1];
     positions[targetOffset + 2] = source.positions[sourceOffset + 2];
     if (colors && source.colors) {
-      colors[targetOffset] = source.colors[sourceOffset];
-      colors[targetOffset + 1] = source.colors[sourceOffset + 1];
-      colors[targetOffset + 2] = source.colors[sourceOffset + 2];
+      const targetColorOffset = targetIndex * COLOR_COMPONENT_COUNT;
+      const sourceColorOffset = sourceIndex * COLOR_COMPONENT_COUNT;
+      colors[targetColorOffset] = source.colors[sourceColorOffset];
+      colors[targetColorOffset + 1] = source.colors[sourceColorOffset + 1];
+      colors[targetColorOffset + 2] = source.colors[sourceColorOffset + 2];
     }
     for (let fieldIndex = 0; fieldIndex < scalarFields.length; fieldIndex++) {
       scalarFields[fieldIndex].values[targetIndex] =
