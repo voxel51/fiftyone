@@ -35,6 +35,7 @@ import {
   byteSourceAccessKey,
   type ByteSourceDescriptor,
 } from "../../../query/bytes";
+import { durationMsSince, monotonicNowMs } from "../../../time";
 import { DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ } from "../timeline";
 import type {
   McapByteTimelinePoint,
@@ -46,13 +47,6 @@ import type {
 import { isMcapReadCancelledError } from "../errors";
 import { MCAP_ACTIVE_TIMELINE } from "../types";
 import { useSetMcapDataStream } from "./mcap-data-stream-context";
-import {
-  isMcapLatencyDebugEnabled,
-  markMcapLatencyEvent,
-  mcapLatencyDurationMs,
-  mcapLatencyNowMs,
-  recordMcapLatencyMetric,
-} from "../mcap-latency-debug";
 import {
   getMcapNetworkHealth,
   shouldDeferMcapIdleWorkForStore,
@@ -72,15 +66,17 @@ import {
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import { createMcapTimelineIndex } from "./mcap-timeline-index";
 import { McapTopicCache } from "./mcap-topic-cache";
-import {
-  recordMcapMessageWindowBandwidth,
-  type McapBandwidthOperation,
-} from "./mcap-bandwidth-debug";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
 // One engine stream owns all MCAP topics so camera/lidar tiles stay on the
 // same synchronized timeline and fetch in shared batches.
 const STREAM_ID = "mcap-data-stream";
+
+type McapDataOperation =
+  | "background-lookahead"
+  | "loopback-lookahead"
+  | "playback-prefetch"
+  | "startup-lookahead";
 
 interface McapPlaybackPolicy {
   /**
@@ -205,8 +201,6 @@ const MAX_FETCH_FAILURE_STREAK = 3;
  * buffering stalls).
  */
 const BUFFERED_RANGES_PUBLISH_INTERVAL_MS = 500;
-const PLAYBACK_COMMIT_GAP_WARNING_MS = 250;
-const PLAYBACK_STALL_MEASUREMENT_SECONDS = 10;
 const PROVISIONAL_REMOTE_START_COVERAGE_SECONDS = 1.5;
 
 const PLAYBACK_POLICY = deriveMcapPlaybackPolicy(DEFAULT_MCAP_PLAYBACK_POLICY);
@@ -220,28 +214,7 @@ const PLAYBACK_POLICY = deriveMcapPlaybackPolicy(DEFAULT_MCAP_PLAYBACK_POLICY);
  */
 const MAX_ENGINE_PREFETCH_BATCHES_PER_CALL = 8;
 
-let mcapDataRequestCounter = 0;
-
 const noop = (): void => undefined;
-
-type PlaybackStallState = "ready" | "loading" | "missing";
-
-interface PlaybackStallWindow {
-  currentStallStartMs?: number;
-  ended: boolean;
-  endPlayheadSec: number;
-  kind: "first" | "loopback";
-  lastObservationMs?: number;
-  lastState?: PlaybackStallState;
-  loadingWallMs: number;
-  maxStallMs: number;
-  missingWallMs: number;
-  sessionId: number;
-  stallCount: number;
-  stallWallMs: number;
-  startPlayheadSec: number;
-  startWallMs: number;
-}
 
 interface RemoteStartupGateDecision {
   readonly coverageSeconds: number;
@@ -257,7 +230,6 @@ export interface UseMcapDataStreamOptions {
   onPlayheadDataReady?: () => void;
   source: ByteSourceDescriptor | null;
   allTopics: readonly string[];
-  pointCloudTopics: readonly string[];
   staleMediaWarningNs: bigint;
   staleWarningTopics: readonly string[];
   streamPolicies: McapStreamSyncPolicies;
@@ -282,7 +254,6 @@ export function useRegisterMcapDataStream({
   onPlayheadDataReady,
   source,
   allTopics,
-  pointCloudTopics,
   staleMediaWarningNs,
   staleWarningTopics,
   streamPolicies,
@@ -329,8 +300,6 @@ export function useRegisterMcapDataStream({
     null,
   );
   const nextLookaheadRefreshTimeRef = useRef(0);
-  const playbackStallSessionIdRef = useRef(0);
-  const playbackStallWindowRef = useRef<PlaybackStallWindow | null>(null);
   const lastObservedPlayheadSecRef = useRef<number | null>(null);
   const loopRunwayStartTickKeyRef = useRef<string | null>(null);
   const indexRef = useRef<McapTimelineIndex | null>(null);
@@ -344,9 +313,6 @@ export function useRegisterMcapDataStream({
   const blockingTopicsRef = useRef<ReadonlySet<string>>(
     new Set(blockingTopics),
   );
-  const pointCloudTopicsRef = useRef<ReadonlySet<string>>(
-    new Set(pointCloudTopics),
-  );
   const staleMediaWarningNsRef = useRef(staleMediaWarningNs);
   const staleWarningTopicsRef = useRef<ReadonlySet<string>>(
     new Set(staleWarningTopics),
@@ -359,9 +325,6 @@ export function useRegisterMcapDataStream({
   useEffect(() => {
     blockingTopicsRef.current = new Set(blockingTopics);
   }, [blockingTopics]);
-  useEffect(() => {
-    pointCloudTopicsRef.current = new Set(pointCloudTopics);
-  }, [pointCloudTopics]);
   // This effect keeps the readiness callback current without rebuilding streams.
   useEffect(() => {
     onPlayheadDataReadyRef.current = onPlayheadDataReady;
@@ -462,21 +425,6 @@ export function useRegisterMcapDataStream({
           sourceEpoch,
         };
         remoteStartupGateDecisionRef.current = decision;
-        if (isMcapLatencyDebugEnabled()) {
-          const detail = {
-            coverageSeconds: Number(coverageSeconds.toFixed(3)),
-            mode: decision.mode,
-            playheadSec: Number(playheadSec.toFixed(3)),
-            spanSeconds: Number(spanSeconds.toFixed(3)),
-            thresholdSeconds: PROVISIONAL_REMOTE_START_COVERAGE_SECONDS,
-          };
-          markMcapLatencyEvent("remote startup gate decided", detail);
-          recordMcapLatencyMetric(
-            `remote startup gate ${decision.mode}`,
-            1,
-            detail,
-          );
-        }
       }
       if (decision.mode === "provisional") {
         return {
@@ -608,12 +556,6 @@ export function useRegisterMcapDataStream({
   // don't run fetches/lookups against the new source with old ticks
   // or stale frames while the async range load is in flight.
   useEffect(() => {
-    finishPlaybackStallWindow(
-      playbackStallWindowRef.current,
-      "source-reset",
-      getPlayhead(store),
-    );
-    playbackStallWindowRef.current = null;
     sourceEpochRef.current += 1;
     const sourceEpoch = sourceEpochRef.current;
     setIndex(null);
@@ -647,12 +589,7 @@ export function useRegisterMcapDataStream({
     }
     if (!source) return undefined;
     let cancelled = false;
-    const timelineRangeStartMs = mcapLatencyNowMs();
-    markMcapLatencyEvent(
-      "timeline range request",
-      { topics: allTopicsRef.current.length },
-      { onceKey: "timeline-range-request" },
-    );
+    const timelineRangeStartMs = monotonicNowMs();
     const rangeRead = client.readTimelineRange({
       source,
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
@@ -663,15 +600,12 @@ export function useRegisterMcapDataStream({
           byteTimelineRef.current = range.byteTimeline ?? null;
           const nextIndex = createMcapTimelineIndex(range);
           const detail = {
-            durationMs: mcapLatencyDurationMs(timelineRangeStartMs),
+            durationMs: durationMsSince(timelineRangeStartMs),
             durationSec: Number(nextIndex.durationSec.toFixed(3)),
             ticks: nextIndex.tickCount,
           };
           markModalLoadingLatencyEvent("mcap timeline ready", detail, {
             onceKey: "mcap-timeline-ready",
-          });
-          markMcapLatencyEvent("timeline index ready", detail, {
-            onceKey: "timeline-index-ready",
           });
           setIndex(nextIndex);
         }
@@ -800,60 +734,24 @@ export function useRegisterMcapDataStream({
     }, BUFFERED_RANGES_PUBLISH_INTERVAL_MS);
   }, [computeBufferedRanges, store]);
 
-  // Clear any pending buffered-ranges timer when the hook unmounts so it
-  // can't fire against an orphaned store.
+  // This effect clears deferred range publishing and idle warmup on unmount.
   useEffect(
     () => () => {
-      finishPlaybackStallWindow(
-        playbackStallWindowRef.current,
-        "unmounted",
-        getPlayhead(store),
-      );
-      playbackStallWindowRef.current = null;
       if (bufferedRangesTimerRef.current !== null) {
         clearTimeout(bufferedRangesTimerRef.current);
         bufferedRangesTimerRef.current = null;
       }
       clearPausedIdleWarmupTimer();
     },
-    [clearPausedIdleWarmupTimer, store],
+    [clearPausedIdleWarmupTimer],
   );
 
+  // This effect retires the pending-start plan once playback begins.
   useEffect(() => {
-    if (isPlaying) {
-      pendingPlanThroughputFloorRef.current = null;
-      remoteStartupGateDecisionRef.current = null;
-    }
-
-    if (!isMcapLatencyDebugEnabled()) {
-      finishPlaybackStallWindow(
-        playbackStallWindowRef.current,
-        "debug-disabled",
-        getPlayhead(store),
-      );
-      playbackStallWindowRef.current = null;
-      return;
-    }
-
-    if (isPlaying && index && source) {
-      const active = playbackStallWindowRef.current;
-      if (active && !active.ended) return;
-      const startPlayheadSec = getPlayhead(store);
-      playbackStallWindowRef.current = createPlaybackStallWindow(
-        ++playbackStallSessionIdRef.current,
-        startPlayheadSec,
-        index.durationSec,
-      );
-      return;
-    }
-
-    finishPlaybackStallWindow(
-      playbackStallWindowRef.current,
-      "paused",
-      getPlayhead(store),
-    );
-    playbackStallWindowRef.current = null;
-  }, [index, isPlaying, source, store]);
+    if (!isPlaying) return;
+    pendingPlanThroughputFloorRef.current = null;
+    remoteStartupGateDecisionRef.current = null;
+  }, [isPlaying]);
 
   // Recompute per-topic status at the current playhead tick and the
   // aggregate buffering detail ("N/M streams"). Same-value atom writes are
@@ -905,7 +803,6 @@ export function useRegisterMcapDataStream({
       }
     }
 
-    const total = activeTopics.length;
     const blockingTotal = activeBlockingTopics.length;
     const detail =
       tick !== null && blockingTotal > 0 && blockingCovered < blockingTotal
@@ -965,36 +862,6 @@ export function useRegisterMcapDataStream({
       tick,
     });
 
-    if (isMcapLatencyDebugEnabled() && tick !== null && blockingTotal > 0) {
-      if (blockingCovered === blockingTotal) {
-        markMcapLatencyEvent(
-          "playhead buffer ready",
-          {
-            playheadSec: Number(playheadSec.toFixed(3)),
-            streams: blockingTotal,
-            tickNs: tick,
-          },
-          { onceKey: "first-playhead-buffer-ready" },
-        );
-      }
-
-      if (startupReady) {
-        markMcapLatencyEvent(
-          "startup buffer ready",
-          {
-            lookaheadSec: Number(
-              PLAYBACK_POLICY.startupLookaheadSeconds.toFixed(3),
-            ),
-            playheadSec: Number(playheadSec.toFixed(3)),
-            streams: blockingTotal,
-            tickNs: tick,
-            ticks: startupCoverage.total,
-          },
-          { onceKey: "first-startup-buffer-ready" },
-        );
-      }
-    }
-
     if (tick !== null && blockingTotal > 0) {
       if (blockingCovered === blockingTotal) {
         onPlayheadDataReadyRef.current?.();
@@ -1029,19 +896,6 @@ export function useRegisterMcapDataStream({
     // Every data-flow event that can change statuses can also change
     // coverage — refresh the timeline's buffered shading (throttled).
     if (startupReady && getIsPlayPending(store)) {
-      if (isMcapLatencyDebugEnabled()) {
-        recordMcapLatencyMetric(
-          "startup buffered ranges immediate publish",
-          1,
-          {
-            activeTopics: total,
-            blockingTopics: blockingTotal,
-            coveredTicks: startupCoverage?.covered ?? 0,
-            startupTicks: startupCoverage?.total ?? 0,
-            timeSec: Number(playheadSec.toFixed(3)),
-          },
-        );
-      }
       publishBufferedRangesNow();
     } else {
       scheduleBufferedRangesPublish();
@@ -1114,11 +968,7 @@ export function useRegisterMcapDataStream({
   // pushes any fetched frame at the current playhead to atoms so paused
   // tiles render their first frame as soon as the network resolves.
   const fetchBatch = useCallback(
-    (
-      ticks: bigint[],
-      activeTopics: string[],
-      operation: McapBandwidthOperation,
-    ) => {
+    (ticks: bigint[], activeTopics: string[], operation: McapDataOperation) => {
       if (ticks.length === 0 || activeTopics.length === 0 || !source) {
         return false;
       }
@@ -1145,61 +995,14 @@ export function useRegisterMcapDataStream({
       );
       if (topicsToFetch.length === 0) return false;
 
-      const debugEnabled = isMcapLatencyDebugEnabled();
-      const mcapDataRequestId = debugEnabled
-        ? nextMcapDataRequestId(operation)
-        : undefined;
-      const batchCoverageBefore = debugEnabled
-        ? batchTopicTickCoverage(caches, toFetch, topicsToFetch)
-        : null;
       const batchPriority = mcapBatchReadPriority(operation);
-      const wasPlayPending = debugEnabled ? getIsPlayPending(store) : false;
-      const wasBuffering = debugEnabled ? getIsBuffering(store) : false;
-      const batchStartMs = debugEnabled ? mcapLatencyNowMs() : 0;
-      let batchCompletionDetail: Record<string, unknown> | null = null;
 
       markTopicsPending(keys, topicsToFetch);
-      if (debugEnabled) {
-        const requestDetail = {
-          ...batchRequestDetail(toFetch, topicsToFetch),
-          ...batchCoverageDetail("before", batchCoverageBefore),
-          mcapDataRequestId,
-          operation,
-          priority: batchPriority,
-          wasBuffering,
-          wasPlayPending,
-        };
-        markMcapLatencyEvent("mcap data batch request", requestDetail);
-        markMcapLatencyEvent("lookahead batch request", requestDetail, {
-          onceKey: "first-lookahead-batch-request",
-        });
-        const pointCloudTopicsToFetch = topicsToFetch.filter((topic) =>
-          pointCloudTopicsRef.current.has(topic),
-        );
-        if (pointCloudTopicsToFetch.length > 0) {
-          markMcapLatencyEvent(
-            "point cloud lookahead batch request",
-            batchRequestDetail(toFetch, pointCloudTopicsToFetch),
-            { onceKey: "first-point-cloud-lookahead-batch-request" },
-          );
-        }
-        recordMcapLatencyMetric(
-          "lookahead batch requested ticks",
-          toFetch.length,
-          {
-            ...batchCoverageDetail("before", batchCoverageBefore),
-            mcapDataRequestId,
-            operation,
-            topics: topicsToFetch.length,
-          },
-        );
-      }
 
       client
         .readSynchronizedMessageBatch(
           {
             activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-            ...(mcapDataRequestId ? { mcapDataRequestId } : {}),
             source,
             streamPolicies: streamPoliciesRef.current,
             timeNs: toFetch,
@@ -1224,55 +1027,6 @@ export function useRegisterMcapDataStream({
               pinned: operation === "loopback-lookahead",
             });
           }
-          if (debugEnabled) {
-            const durationMs = mcapLatencyDurationMs(batchStartMs);
-            const pointCloudMessages = pointCloudMessageCountInWindows(windows);
-            const batchCoverageAfter = batchTopicTickCoverage(
-              caches,
-              toFetch,
-              topicsToFetch,
-            );
-            const detail = {
-              ...batchRequestDetail(toFetch, activeFetchedTopics),
-              ...batchCoverageDetail("before", batchCoverageBefore),
-              ...batchCoverageDetail("after", batchCoverageAfter),
-              activeFetchedTopics: activeFetchedTopics.length,
-              durationMs,
-              mcapDataRequestId,
-              operation,
-              pointCloudMessages,
-              requestedTopics: topicsToFetch.length,
-              windows: windows.length,
-            };
-            batchCompletionDetail = detail;
-            recordMcapLatencyMetric(
-              "lookahead batch duration ms",
-              durationMs,
-              detail,
-            );
-            recordMcapMessageWindowBandwidth({
-              operation,
-              requestId: mcapDataRequestId,
-              requestedTicks: toFetch.length,
-              requestedTopics: activeFetchedTopics.length,
-              windows,
-            });
-            recordMcapLatencyMetric(
-              "lookahead batch buffered windows",
-              windows.length,
-              detail,
-            );
-            markMcapLatencyEvent("lookahead batch buffered", detail, {
-              onceKey: "first-lookahead-batch-buffered",
-            });
-            if (pointCloudMessages > 0) {
-              markMcapLatencyEvent(
-                "point cloud lookahead batch buffered",
-                detail,
-                { onceKey: "first-point-cloud-lookahead-batch-buffered" },
-              );
-            }
-          }
           const currentIndex = indexRef.current;
           if (!currentIndex) return;
           const tick = currentIndex.nearestTick(getPlayhead(store));
@@ -1296,42 +1050,15 @@ export function useRegisterMcapDataStream({
           // caller's `.finally` still clears pending bookkeeping so future
           // passes can re-request them.
           if (isMcapReadCancelledError(error)) {
-            if (debugEnabled) {
-              recordMcapLatencyMetric("mcap data batch cancelled", 1, {
-                mcapDataRequestId,
-                operation,
-              });
-            }
             return;
           }
           handleFetchFailure(error, toFetch, topicsToFetch);
-          if (debugEnabled) {
-            markMcapLatencyEvent("mcap data batch failed", {
-              ...batchRequestDetail(toFetch, topicsToFetch),
-              ...batchCoverageDetail("before", batchCoverageBefore),
-              durationMs: mcapLatencyDurationMs(batchStartMs),
-              error: String(error),
-              mcapDataRequestId,
-              operation,
-            });
-          }
         })
         .finally(() => {
           if (sourceEpochRef.current !== sourceEpoch) return;
 
           clearTopicsPending(keys, topicsToFetch);
           publishStreamStatuses();
-          if (debugEnabled && batchCompletionDetail) {
-            const isBufferingAfter = getIsBuffering(store);
-            const isPlayPendingAfter = getIsPlayPending(store);
-            markMcapLatencyEvent("mcap data batch settled", {
-              ...batchCompletionDetail,
-              isBufferingAfter,
-              isPlayPendingAfter,
-              unblockedBuffering: wasBuffering && !isBufferingAfter,
-              unblockedPendingPlay: wasPlayPending && !isPlayPendingAfter,
-            });
-          }
         });
 
       return true;
@@ -1365,31 +1092,6 @@ export function useRegisterMcapDataStream({
       if (topicsToFetch.length === 0) return false;
 
       markTopicsPending([tickKey], topicsToFetch);
-      const debugEnabled = isMcapLatencyDebugEnabled();
-      const currentFrameStartMs = debugEnabled ? mcapLatencyNowMs() : 0;
-      if (debugEnabled) {
-        markMcapLatencyEvent(
-          "current frame request",
-          {
-            tickNs: tick,
-            topics: topicsToFetch.length,
-          },
-          { onceKey: "first-current-frame-request" },
-        );
-        const pointCloudTopicsToFetch = topicsToFetch.filter((topic) =>
-          pointCloudTopicsRef.current.has(topic),
-        );
-        if (pointCloudTopicsToFetch.length > 0) {
-          markMcapLatencyEvent(
-            "point cloud current frame request",
-            {
-              tickNs: tick,
-              topics: pointCloudTopicsToFetch.length,
-            },
-            { onceKey: "first-point-cloud-current-frame-request" },
-          );
-        }
-      }
 
       client
         .readSynchronizedMessages({
@@ -1410,35 +1112,6 @@ export function useRegisterMcapDataStream({
           if (activeFetchedTopics.length === 0) return;
 
           distributeWindowToCaches(window, caches, activeFetchedTopics);
-          if (debugEnabled) {
-            const durationMs = mcapLatencyDurationMs(currentFrameStartMs);
-            const pointCloudMessages = pointCloudMessageCount(window);
-            const detail = {
-              durationMs,
-              pointCloudMessages,
-              tickNs: tick,
-              topics: activeFetchedTopics.length,
-            };
-            recordMcapLatencyMetric(
-              "current frame duration ms",
-              durationMs,
-              detail,
-            );
-            recordMcapMessageWindowBandwidth({
-              operation: "current-frame",
-              requestedTicks: 1,
-              requestedTopics: activeFetchedTopics.length,
-              windows: [window],
-            });
-            markMcapLatencyEvent("current frame cached", detail, {
-              onceKey: "first-current-frame-cached",
-            });
-            if (pointCloudMessages > 0) {
-              markMcapLatencyEvent("point cloud current frame cached", detail, {
-                onceKey: "first-point-cloud-current-frame-cached",
-              });
-            }
-          }
           pushTickToStore(
             activeTopicsInCaches(caches, activeTopics),
             tick,
@@ -1538,14 +1211,6 @@ export function useRegisterMcapDataStream({
         }
       }
 
-      const loopRunwayCoverage = bufferWindowCoverage({
-        activeTopics,
-        caches: topicCachesRef.current,
-        index: currentIndex,
-        lookaheadSeconds: PLAYBACK_POLICY.lookaheadSeconds,
-        maxTicks: PLAYBACK_POLICY.maxPrefetchBatch,
-        timeSec: loopStartSec,
-      });
       const missing = collectMissingTicksForTopics(
         loopStartSec,
         loopStartSec + PLAYBACK_POLICY.lookaheadSeconds,
@@ -1553,52 +1218,11 @@ export function useRegisterMcapDataStream({
         activeTopics,
       );
 
-      if (isMcapLatencyDebugEnabled()) {
-        const detail = {
-          activeTopics: activeTopics.length,
-          coveredTicks: loopRunwayCoverage?.covered ?? 0,
-          loopEndSec: Number(loopEndSec.toFixed(3)),
-          loopStartSec: Number(loopStartSec.toFixed(3)),
-          missingTicks: missing.length,
-          runwayTicks: loopRunwayCoverage?.total ?? 0,
-          secondsToLoopEnd: Number(secondsToLoopEnd.toFixed(3)),
-          timeSec: Number(timeSec.toFixed(3)),
-        };
-        markMcapLatencyEvent("loopback runway checked", detail);
-        recordMcapLatencyMetric("loopback runway checks", 1, detail);
-      }
-
       if (missing.length === 0) {
-        if (isMcapLatencyDebugEnabled()) {
-          markMcapLatencyEvent("loopback runway ready", {
-            activeTopics: activeTopics.length,
-            loopStartSec: Number(loopStartSec.toFixed(3)),
-            secondsToLoopEnd: Number(secondsToLoopEnd.toFixed(3)),
-            ticks: loopRunwayCoverage?.total ?? 0,
-            timeSec: Number(timeSec.toFixed(3)),
-          });
-        }
         return false;
       }
 
-      const queued = fetchBatch(missing, activeTopics, "loopback-lookahead");
-      if (queued && isMcapLatencyDebugEnabled()) {
-        const detail = {
-          activeTopics: activeTopics.length,
-          loopStartSec: Number(loopStartSec.toFixed(3)),
-          secondsToLoopEnd: Number(secondsToLoopEnd.toFixed(3)),
-          ticks: missing.length,
-          timeSec: Number(timeSec.toFixed(3)),
-        };
-        markMcapLatencyEvent("loopback runway request", detail);
-        recordMcapLatencyMetric(
-          "loopback runway requested ticks",
-          missing.length,
-          detail,
-        );
-      }
-
-      return queued;
+      return fetchBatch(missing, activeTopics, "loopback-lookahead");
     },
     [collectMissingTicksForTopics, fetchBatch, store],
   );
@@ -1651,18 +1275,6 @@ export function useRegisterMcapDataStream({
       blockingMissing.length > 0 &&
       fetchBatch(blockingMissing, activeBlockingTopics, "background-lookahead")
     ) {
-      if (isMcapLatencyDebugEnabled()) {
-        recordMcapLatencyMetric("paused idle warmup passes", 1, {
-          activeTopics: activeTopics.length,
-          blockingTopics: activeBlockingTopics.length,
-          horizonSec: Number(
-            PLAYBACK_POLICY.pausedWarmupRunwaySeconds.toFixed(3),
-          ),
-          missingTicks: blockingMissing.length,
-          phase: "blocking",
-          timeSec: Number(timeSec.toFixed(3)),
-        });
-      }
       return true;
     }
 
@@ -1676,18 +1288,6 @@ export function useRegisterMcapDataStream({
       allMissing.length > 0 &&
       fetchBatch(allMissing, activeTopics, "background-lookahead")
     ) {
-      if (isMcapLatencyDebugEnabled()) {
-        recordMcapLatencyMetric("paused idle warmup passes", 1, {
-          activeTopics: activeTopics.length,
-          blockingTopics: activeBlockingTopics.length,
-          horizonSec: Number(
-            PLAYBACK_POLICY.pausedWarmupRunwaySeconds.toFixed(3),
-          ),
-          missingTicks: allMissing.length,
-          phase: "all",
-          timeSec: Number(timeSec.toFixed(3)),
-        });
-      }
       return true;
     }
 
@@ -1715,14 +1315,9 @@ export function useRegisterMcapDataStream({
             store,
             lastSeekAtMsRef.current === null
               ? null
-              : mcapLatencyNowMs() - lastSeekAtMsRef.current,
+              : monotonicNowMs() - lastSeekAtMsRef.current,
           )
         ) {
-          if (isMcapLatencyDebugEnabled()) {
-            recordMcapLatencyMetric("network limited idle deferrals", 1, {
-              site: "paused-warmup",
-            });
-          }
           schedulePausedIdleWarmupRef.current?.(
             PLAYBACK_POLICY.prefetchRefreshSeconds * 1000,
           );
@@ -1840,11 +1435,7 @@ export function useRegisterMcapDataStream({
     const nativeStep = 1 / DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ;
     const caches = topicCachesRef.current;
     const lastFrame = lastFrameRef.current;
-    let lastBufferStateKey: string | null = null;
-    let lastCommitGapEventMs = 0;
-    let lastCommitWallMs: number | null = null;
     let lastCommittedTickKey: string | null = null;
-    let lastLoopbackTargetStateKey: string | null = null;
 
     const stream: PlaybackStream = {
       id: STREAM_ID,
@@ -1873,37 +1464,18 @@ export function useRegisterMcapDataStream({
         // (files with relative log times start at exactly 0n, and a
         // falsy check here wedges the engine at t=0 forever).
         if (tick === undefined) {
-          if (isMcapLatencyDebugEnabled()) {
-            const detail = {
-              state: "missing",
-              timeSec: Number(timeSec.toFixed(3)),
-              reason: "no-nearest-tick",
-            };
-            markMcapLatencyEvent("playback buffer state", detail);
-            recordMcapLatencyMetric("buffer state missing", 1, {
-              reason: "no-nearest-tick",
-            });
-            if (getIsPlaying(store)) {
-              observePlaybackStallWindow(
-                playbackStallWindowRef.current,
-                "missing",
-                timeSec,
-                detail,
-              );
-            }
-          }
           return "missing";
         }
         const activeTopics = getActiveBlockingTopics();
         if (activeTopics.length === 0) return "ready";
         const tickKey = tick.toString();
-        let cachedTopics = 0;
         let missingTopics = 0;
         let pendingTopics = 0;
         for (const t of activeTopics) {
           if (caches.get(t)?.has(tick)) {
-            cachedTopics++;
-          } else if (isTopicPending(tickKey, t)) {
+            continue;
+          }
+          if (isTopicPending(tickKey, t)) {
             pendingTopics++;
           } else {
             missingTopics++;
@@ -1915,60 +1487,11 @@ export function useRegisterMcapDataStream({
             : pendingTopics > 0
               ? "loading"
               : "ready";
-        if (isMcapLatencyDebugEnabled()) {
-          const detail = {
-            activeTopics: activeTopics.length,
-            cachedTopics,
-            missingTopics,
-            pendingTopics,
-            state,
-            tickNs: tick,
-            timeSec: Number(timeSec.toFixed(3)),
-          };
-          const stateKey = `${state}:${cachedTopics}:${pendingTopics}:${missingTopics}`;
-          if (stateKey !== lastBufferStateKey) {
-            lastBufferStateKey = stateKey;
-            markMcapLatencyEvent("playback buffer state", detail);
-          }
-          const currentPlayheadSec = getPlayhead(store);
-          if (
-            isLoopbackTarget(
-              timeSec,
-              currentPlayheadSec,
-              getLoopStart(store),
-              getLoopEnd(store),
-              nativeStep,
-            )
-          ) {
-            const loopbackStateKey = `${stateKey}:${currentPlayheadSec.toFixed(
-              3,
-            )}`;
-            if (loopbackStateKey !== lastLoopbackTargetStateKey) {
-              lastLoopbackTargetStateKey = loopbackStateKey;
-              markMcapLatencyEvent("playback loopback target buffer state", {
-                ...detail,
-                currentPlayheadSec: Number(currentPlayheadSec.toFixed(3)),
-                loopEndSec: Number(getLoopEnd(store).toFixed(3)),
-                loopStartSec: Number(getLoopStart(store).toFixed(3)),
-              });
-            }
-          }
-          recordMcapLatencyMetric(`buffer state ${state}`, 1, detail);
-          if (getIsPlaying(store)) {
-            observePlaybackStallWindow(
-              playbackStallWindowRef.current,
-              state,
-              timeSec,
-              detail,
-            );
-          }
-        }
         return state;
       },
 
       prefetch: ([startSec, endSec]) => {
         const activeTopics = getActiveTopics();
-        const activeBlockingTopics = getActiveBlockingTopics();
         const tick = index.nearestTick(startSec);
         // Explicit undefined check — `0n` is falsy but a valid tick.
         if (tick !== undefined) fetchCurrentFrame(tick, activeTopics);
@@ -1976,7 +1499,6 @@ export function useRegisterMcapDataStream({
         // bandwidth cushion the engine can ask for several seconds here,
         // and the batches must be in flight together to pipeline the
         // link. Pending-tick bookkeeping keeps repeat calls idempotent.
-        let missingTicks = 0;
         for (let i = 0; i < MAX_ENGINE_PREFETCH_BATCHES_PER_CALL; i++) {
           const missing = collectMissingTicksForTopics(
             startSec,
@@ -1985,21 +1507,7 @@ export function useRegisterMcapDataStream({
             activeTopics,
           );
           if (missing.length === 0) break;
-          missingTicks += missing.length;
           if (!fetchBatch(missing, activeTopics, "playback-prefetch")) break;
-        }
-        if (isMcapLatencyDebugEnabled()) {
-          const detail = {
-            activeTopics: activeTopics.length,
-            blockingTopics: activeBlockingTopics.length,
-            endSec: Number(endSec.toFixed(3)),
-            missingTicks,
-            startSec: Number(startSec.toFixed(3)),
-          };
-          markMcapLatencyEvent("playback prefetch requested", detail, {
-            onceKey: "first-playback-prefetch-requested",
-          });
-          recordMcapLatencyMetric("playback prefetch calls", 1, detail);
         }
         // Mid-playback stall: keep per-topic statuses and the "N/M
         // streams" detail fresh while the engine waits. Same-value
@@ -2023,43 +1531,6 @@ export function useRegisterMcapDataStream({
           commitStore,
           failedTopicsRef.current,
         );
-        if (isMcapLatencyDebugEnabled()) {
-          const nowMs = mcapLatencyNowMs();
-          const detail = {
-            activeTopics: activeTopics.length,
-            tickNs: tick,
-            timeSec: Number(timeSec.toFixed(3)),
-          };
-          markMcapLatencyEvent("playback first commit", detail, {
-            onceKey: "first-playback-commit",
-          });
-          if (lastCommitWallMs !== null) {
-            const wallDeltaMs = Number((nowMs - lastCommitWallMs).toFixed(1));
-            recordMcapLatencyMetric(
-              "playback commit wall delta ms",
-              wallDeltaMs,
-              {
-                ...detail,
-                wallDeltaMs,
-              },
-            );
-            if (
-              wallDeltaMs >= PLAYBACK_COMMIT_GAP_WARNING_MS &&
-              nowMs - lastCommitGapEventMs >= PLAYBACK_COMMIT_GAP_WARNING_MS
-            ) {
-              lastCommitGapEventMs = nowMs;
-              markMcapLatencyEvent("playback commit gap", {
-                ...detail,
-                wallDeltaMs,
-              });
-            }
-          }
-          lastCommitWallMs = nowMs;
-          finishPlaybackStallWindowIfComplete(
-            playbackStallWindowRef.current,
-            timeSec,
-          );
-        }
         // The committed tick changed — gaps/ready flips happen here
         // during normal playback.
         publishStreamStatuses();
@@ -2090,20 +1561,9 @@ export function useRegisterMcapDataStream({
     const unsubPlayhead = subscribePlayhead(store, () => {
       const timeSec = getPlayhead(store);
       const previousPlayheadSec = lastObservedPlayheadSecRef.current;
-      const loopStartSec = getLoopStart(store);
-      const loopEndSec = getLoopEnd(store);
       const movedBackward =
         previousPlayheadSec !== null &&
         timeSec + nativeStep < previousPlayheadSec;
-      const didLoopback =
-        previousPlayheadSec !== null &&
-        isCommittedLoopback(
-          previousPlayheadSec,
-          timeSec,
-          loopStartSec,
-          loopEndSec,
-          nativeStep,
-        );
       lastObservedPlayheadSecRef.current = timeSec;
       if (movedBackward) {
         nextLookaheadRefreshTimeRef.current = 0;
@@ -2114,43 +1574,6 @@ export function useRegisterMcapDataStream({
       if (getIsPlaying(store)) {
         pendingPlanThroughputFloorRef.current = null;
         remoteStartupGateDecisionRef.current = null;
-      }
-      if (
-        didLoopback &&
-        previousPlayheadSec !== null &&
-        isMcapLatencyDebugEnabled()
-      ) {
-        const activeTopics = getActiveTopics();
-        const activeBlockingTopics = getActiveBlockingTopics();
-        const loopStartCoverage = bufferWindowCoverage({
-          activeTopics: activeBlockingTopics,
-          caches,
-          index,
-          lookaheadSeconds: PLAYBACK_POLICY.lookaheadSeconds,
-          maxTicks: PLAYBACK_POLICY.maxPrefetchBatch,
-          timeSec: loopStartSec,
-        });
-        markMcapLatencyEvent("playback loopback committed", {
-          activeTopics: activeTopics.length,
-          blockingTopics: activeBlockingTopics.length,
-          coveredTicks: loopStartCoverage?.covered ?? 0,
-          loopEndSec: Number(loopEndSec.toFixed(3)),
-          loopStartSec: Number(loopStartSec.toFixed(3)),
-          previousPlayheadSec: Number(previousPlayheadSec.toFixed(3)),
-          runwayTicks: loopStartCoverage?.total ?? 0,
-          timeSec: Number(timeSec.toFixed(3)),
-        });
-        finishPlaybackStallWindow(
-          playbackStallWindowRef.current,
-          "loopback-restart",
-          previousPlayheadSec,
-        );
-        playbackStallWindowRef.current = createPlaybackStallWindow(
-          ++playbackStallSessionIdRef.current,
-          timeSec,
-          index.durationSec,
-          "loopback",
-        );
       }
       if (timeSec < nextLookaheadRefreshTimeRef.current) return;
       nextLookaheadRefreshTimeRef.current =
@@ -2194,15 +1617,6 @@ export function useRegisterMcapDataStream({
         // playhead writes; their runway comes from the seek prefetch and
         // the paused idle warmup, not this pass).
         if (!getIsPlaying(store) || getMcapNetworkHealth(store).limited) {
-          if (isMcapLatencyDebugEnabled()) {
-            recordMcapLatencyMetric("background lookahead deferred", 1, {
-              activeTopics: activeTopics.length,
-              blockingTopics: activeBlockingTopics.length,
-              coveredTicks: startupCoverage.covered,
-              startupTicks: startupCoverage.total,
-              timeSec: Number(timeSec.toFixed(3)),
-            });
-          }
           return;
         }
       }
@@ -2215,24 +1629,10 @@ export function useRegisterMcapDataStream({
           store,
           lastSeekAtMsRef.current === null
             ? null
-            : mcapLatencyNowMs() - lastSeekAtMsRef.current,
+            : monotonicNowMs() - lastSeekAtMsRef.current,
         )
       ) {
-        if (isMcapLatencyDebugEnabled()) {
-          recordMcapLatencyMetric("network limited idle deferrals", 1, {
-            site: "playing-topup",
-            timeSec: Number(timeSec.toFixed(3)),
-          });
-        }
         return;
-      }
-
-      if (isMcapLatencyDebugEnabled()) {
-        recordMcapLatencyMetric("background lookahead topups", 1, {
-          activeTopics: activeTopics.length,
-          blockingTopics: activeBlockingTopics.length,
-          timeSec: Number(timeSec.toFixed(3)),
-        });
       }
 
       if (warmLoopStartRunway(timeSec, activeTopics)) {
@@ -2285,7 +1685,7 @@ export function useRegisterMcapDataStream({
       // Stamp seeks so the idle-work gate can hold speculative reads while
       // the foreground catch-up fetch owns a constrained link, and reclaim
       // it immediately from speculative transfers already in flight.
-      lastSeekAtMsRef.current = mcapLatencyNowMs();
+      lastSeekAtMsRef.current = monotonicNowMs();
       pendingPlanThroughputFloorRef.current = null;
       remoteStartupGateDecisionRef.current = null;
       client?.cancelIdleReads?.();
@@ -2360,220 +1760,6 @@ export function useRegisterMcapDataStream({
   ]);
 }
 
-// ---------------------------------------------------------------------------
-// Module-level helpers (no React dependency)
-// ---------------------------------------------------------------------------
-
-function createPlaybackStallWindow(
-  sessionId: number,
-  startPlayheadSec: number,
-  durationSec: number,
-  kind: PlaybackStallWindow["kind"] = "first",
-): PlaybackStallWindow {
-  const endPlayheadSec = Math.min(
-    startPlayheadSec + PLAYBACK_STALL_MEASUREMENT_SECONDS,
-    durationSec,
-  );
-  const window: PlaybackStallWindow = {
-    ended: false,
-    endPlayheadSec,
-    kind,
-    loadingWallMs: 0,
-    maxStallMs: 0,
-    missingWallMs: 0,
-    sessionId,
-    stallCount: 0,
-    stallWallMs: 0,
-    startPlayheadSec,
-    startWallMs: mcapLatencyNowMs(),
-  };
-
-  markMcapLatencyEvent(`${playbackStallWindowPrefix(kind)} started`, {
-    endPlayheadSec: Number(endPlayheadSec.toFixed(3)),
-    measurementSec: Number((endPlayheadSec - startPlayheadSec).toFixed(3)),
-    sessionId,
-    startPlayheadSec: Number(startPlayheadSec.toFixed(3)),
-  });
-
-  return window;
-}
-
-function observePlaybackStallWindow(
-  window: PlaybackStallWindow | null,
-  state: PlaybackStallState,
-  playheadSec: number,
-  detail?: Record<string, unknown>,
-): void {
-  if (!window || window.ended) return;
-
-  const nowMs = mcapLatencyNowMs();
-  advancePlaybackStallWindow(window, nowMs);
-
-  const previousState = window.lastState;
-  if (state !== "ready" && previousState === "ready") {
-    startPlaybackStall(window, state, playheadSec, detail, nowMs);
-  } else if (state !== "ready" && previousState === undefined) {
-    startPlaybackStall(window, state, playheadSec, detail, nowMs);
-  } else if (
-    state === "ready" &&
-    previousState !== undefined &&
-    previousState !== "ready"
-  ) {
-    endPlaybackStall(window, playheadSec, detail, nowMs);
-  }
-
-  window.lastObservationMs = nowMs;
-  window.lastState = state;
-  finishPlaybackStallWindowIfComplete(window, playheadSec, nowMs);
-}
-
-function startPlaybackStall(
-  window: PlaybackStallWindow,
-  state: Exclude<PlaybackStallState, "ready">,
-  playheadSec: number,
-  detail: Record<string, unknown> | undefined,
-  nowMs: number,
-): void {
-  window.currentStallStartMs = nowMs;
-  window.stallCount += 1;
-  markMcapLatencyEvent("playback stall started", {
-    ...detail,
-    playheadSec: Number(playheadSec.toFixed(3)),
-    sessionId: window.sessionId,
-    state,
-  });
-}
-
-function endPlaybackStall(
-  window: PlaybackStallWindow,
-  playheadSec: number,
-  detail: Record<string, unknown> | undefined,
-  nowMs: number,
-): void {
-  if (window.currentStallStartMs !== undefined) {
-    const stallMs = nowMs - window.currentStallStartMs;
-    window.maxStallMs = Math.max(window.maxStallMs, stallMs);
-  }
-  window.currentStallStartMs = undefined;
-  markMcapLatencyEvent("playback stall ended", {
-    ...detail,
-    playheadSec: Number(playheadSec.toFixed(3)),
-    sessionId: window.sessionId,
-  });
-}
-
-function advancePlaybackStallWindow(
-  window: PlaybackStallWindow,
-  nowMs: number,
-): void {
-  if (window.lastObservationMs === undefined) return;
-
-  const deltaMs = Math.max(0, nowMs - window.lastObservationMs);
-  if (window.lastState === "loading") {
-    window.loadingWallMs += deltaMs;
-    window.stallWallMs += deltaMs;
-  } else if (window.lastState === "missing") {
-    window.missingWallMs += deltaMs;
-    window.stallWallMs += deltaMs;
-  }
-}
-
-function finishPlaybackStallWindowIfComplete(
-  window: PlaybackStallWindow | null,
-  playheadSec: number,
-  nowMs = mcapLatencyNowMs(),
-): void {
-  if (!window || window.ended) return;
-  if (playheadSec < window.endPlayheadSec) return;
-  finishPlaybackStallWindow(window, "completed", playheadSec, nowMs);
-}
-
-function finishPlaybackStallWindow(
-  window: PlaybackStallWindow | null,
-  reason: string,
-  playheadSec: number,
-  nowMs = mcapLatencyNowMs(),
-): void {
-  if (!window || window.ended) return;
-
-  advancePlaybackStallWindow(window, nowMs);
-  if (window.currentStallStartMs !== undefined) {
-    window.maxStallMs = Math.max(
-      window.maxStallMs,
-      nowMs - window.currentStallStartMs,
-    );
-    window.currentStallStartMs = undefined;
-  }
-
-  window.ended = true;
-  const summary = playbackStallSummary(window, reason, playheadSec, nowMs);
-  const metricPrefix =
-    window.kind === "loopback" ? "playback loopback 10s" : "playback first 10s";
-  markMcapLatencyEvent(
-    `${playbackStallWindowPrefix(window.kind)} finished`,
-    summary,
-  );
-  recordMcapLatencyMetric(
-    `${metricPrefix} stall wall ms`,
-    summary.stallWallMs,
-    summary,
-  );
-  recordMcapLatencyMetric(
-    `${metricPrefix} max stall ms`,
-    summary.maxStallMs,
-    summary,
-  );
-  recordMcapLatencyMetric(
-    `${metricPrefix} stall count`,
-    summary.stallCount,
-    summary,
-  );
-  recordMcapLatencyMetric(
-    `${metricPrefix} stall percent`,
-    summary.stallPercent,
-    summary,
-  );
-}
-
-function playbackStallWindowPrefix(kind: PlaybackStallWindow["kind"]): string {
-  return kind === "loopback"
-    ? "playback loopback 10s stall window"
-    : "playback first 10s stall window";
-}
-
-function playbackStallSummary(
-  window: PlaybackStallWindow,
-  reason: string,
-  playheadSec: number,
-  nowMs: number,
-) {
-  const wallMs = Math.max(0, nowMs - window.startWallMs);
-  const stallWallMs = Number(window.stallWallMs.toFixed(1));
-  const loadingWallMs = Number(window.loadingWallMs.toFixed(1));
-  const missingWallMs = Number(window.missingWallMs.toFixed(1));
-  const maxStallMs = Number(window.maxStallMs.toFixed(1));
-  const stallPercent =
-    wallMs > 0 ? Number(((stallWallMs / wallMs) * 100).toFixed(1)) : 0;
-
-  return {
-    endPlayheadSec: Number(window.endPlayheadSec.toFixed(3)),
-    loadingWallMs,
-    maxStallMs,
-    measurementSec: Number(
-      (window.endPlayheadSec - window.startPlayheadSec).toFixed(3),
-    ),
-    missingWallMs,
-    playheadSec: Number(playheadSec.toFixed(3)),
-    reason,
-    sessionId: window.sessionId,
-    stallCount: window.stallCount,
-    stallPercent,
-    stallWallMs,
-    startPlayheadSec: Number(window.startPlayheadSec.toFixed(3)),
-    wallMs: Number(wallMs.toFixed(1)),
-  };
-}
-
 function deriveMcapPlaybackPolicy(
   policy: McapPlaybackPolicy,
   tickRateHz = DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ,
@@ -2613,45 +1799,8 @@ function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function isCommittedLoopback(
-  previousSec: number,
-  timeSec: number,
-  loopStartSec: number,
-  loopEndSec: number,
-  nativeStepSec: number,
-): boolean {
-  if (loopEndSec <= loopStartSec) return false;
-  const tolerance = Math.max(nativeStepSec * 2, 0.05);
-  return (
-    previousSec >= loopEndSec - tolerance &&
-    Math.abs(timeSec - loopStartSec) <= tolerance
-  );
-}
-
-function isLoopbackTarget(
-  targetSec: number,
-  currentPlayheadSec: number,
-  loopStartSec: number,
-  loopEndSec: number,
-  nativeStepSec: number,
-): boolean {
-  if (loopEndSec <= loopStartSec) return false;
-  const tolerance = Math.max(nativeStepSec * 2, 0.05);
-  return (
-    currentPlayheadSec >= loopEndSec - tolerance &&
-    Math.abs(targetSec - loopStartSec) <= tolerance
-  );
-}
-
-function nextMcapDataRequestId(operation: McapBandwidthOperation): string {
-  mcapDataRequestCounter += 1;
-  return `mcap-data:${operation}:${Date.now().toString(
-    36,
-  )}:${mcapDataRequestCounter}`;
-}
-
 function mcapBatchReadPriority(
-  operation: McapBandwidthOperation,
+  operation: McapDataOperation,
 ): "idle" | "playback" {
   return operation === "background-lookahead" ? "idle" : "playback";
 }
@@ -2672,7 +1821,7 @@ function fillMissingLookaheadFrom({
   fetchBatch: (
     ticks: bigint[],
     activeTopics: string[],
-    operation: McapBandwidthOperation,
+    operation: McapDataOperation,
   ) => boolean;
   policy: DerivedMcapPlaybackPolicy;
   timeSec: number;
@@ -2714,7 +1863,7 @@ function fillMissingStartupBufferFrom({
   fetchBatch: (
     ticks: bigint[],
     activeTopics: string[],
-    operation: McapBandwidthOperation,
+    operation: McapDataOperation,
   ) => boolean;
   policy: DerivedMcapPlaybackPolicy;
   timeSec: number;
@@ -2726,15 +1875,6 @@ function fillMissingStartupBufferFrom({
     policy.startupMaxPrefetchBatch,
   );
   if (missing.length === 0) return false;
-  markMcapLatencyEvent(
-    "startup buffer request",
-    {
-      lookaheadSec: Number(policy.startupLookaheadSeconds.toFixed(3)),
-      streams: activeTopics.length,
-      ticks: missing.length,
-    },
-    { onceKey: "first-startup-buffer-request" },
-  );
   return fetchBatch(missing, activeTopics, "startup-lookahead");
 }
 
@@ -2916,86 +2056,6 @@ function distributeWindowToCaches(
     const msgs = window.messagesByTopic[topic];
     caches.get(topic)?.set(window.timeNs, msgs?.[0] ?? null, options);
   }
-}
-
-function batchRequestDetail(
-  ticks: readonly bigint[],
-  topics: readonly string[],
-): {
-  readonly endTickNs?: bigint;
-  readonly startTickNs?: bigint;
-  readonly ticks: number;
-  readonly topics: number;
-} {
-  return {
-    ...(ticks[0] !== undefined ? { startTickNs: ticks[0] } : {}),
-    ...(ticks[ticks.length - 1] !== undefined
-      ? { endTickNs: ticks[ticks.length - 1] }
-      : {}),
-    ticks: ticks.length,
-    topics: topics.length,
-  };
-}
-
-function batchTopicTickCoverage(
-  caches: Map<string, McapTopicCache>,
-  ticks: readonly bigint[],
-  topics: readonly string[],
-): {
-  readonly cached: number;
-  readonly percent: number;
-  readonly total: number;
-} {
-  const total = ticks.length * topics.length;
-  if (total === 0) return { cached: 0, percent: 0, total: 0 };
-
-  let cached = 0;
-  for (const tick of ticks) {
-    for (const topic of topics) {
-      if (caches.get(topic)?.has(tick)) cached++;
-    }
-  }
-
-  return {
-    cached,
-    percent: Number(((cached / total) * 100).toFixed(1)),
-    total,
-  };
-}
-
-function batchCoverageDetail(
-  suffix: "after" | "before",
-  coverage: ReturnType<typeof batchTopicTickCoverage> | null,
-): Record<string, number> {
-  if (!coverage) return {};
-
-  const capitalizedSuffix = suffix === "before" ? "Before" : "After";
-  return {
-    [`cachedTopicTicks${capitalizedSuffix}`]: coverage.cached,
-    [`cacheCoveragePercent${capitalizedSuffix}`]: coverage.percent,
-    [`requestedTopicTicks${capitalizedSuffix}`]: coverage.total,
-  };
-}
-
-function pointCloudMessageCount(window: McapSynchronizedMessageWindow): number {
-  let count = 0;
-  for (const messages of Object.values(window.messagesByTopic)) {
-    for (const message of messages ?? []) {
-      if (message.decoded.output.visualization?.kind === "point-cloud") {
-        count++;
-      }
-    }
-  }
-  return count;
-}
-
-function pointCloudMessageCountInWindows(
-  windows: readonly McapSynchronizedMessageWindow[],
-): number {
-  return windows.reduce(
-    (sum, window) => sum + pointCloudMessageCount(window),
-    0,
-  );
 }
 
 function bufferedRangesEqual(

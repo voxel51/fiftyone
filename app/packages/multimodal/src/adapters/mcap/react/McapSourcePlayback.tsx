@@ -29,10 +29,6 @@ import {
 } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-resources";
 import { releaseGpuPointCloudColormapTextures } from "../../../visualization/panels/point-cloud/gpu/gpu-point-cloud-colormap-texture";
 import { BitmapImageFrameView } from "../../../visualization/panels/bitmap-image-view";
-import {
-  markMcapLatencyEvent,
-  startMcapLatencyDebugSession,
-} from "../mcap-latency-debug";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { getMcapSourceBootstrap } from "../source-bootstrap-cache";
 import type { McapResourceClient } from "../types";
@@ -94,8 +90,6 @@ export interface McapSourcePlaybackProps {
   readonly client: McapResourceClient;
   readonly fileName: string;
   readonly headerActions?: React.ReactNode;
-  readonly latencyLabel?: string;
-  readonly latencySourceKey?: string;
   readonly layoutScopeKey?: string;
   /** Host selected a new sample whose media descriptor is still resolving. */
   readonly navigationPending?: boolean;
@@ -118,8 +112,6 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   client,
   fileName,
   headerActions,
-  latencyLabel = "mcap modal",
-  latencySourceKey,
   layoutScopeKey,
   navigationPending = false,
   onTagCreate,
@@ -133,7 +125,6 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     client.activateSource?.(source);
   }
 
-  const latencySessionKey = useRef(createMcapLatencySessionKey()).current;
   const imageAspectRatiosRef = useRef<Record<string, number>>({});
   const onImageAspectRatioChange = useCallback(
     (tileId: string, aspectRatio: number | null) => {
@@ -156,25 +147,14 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     },
     [],
   );
-  // This layout effect starts latency instrumentation before the browser paints.
+  // This layout effect records the renderer mount before the browser paints.
   useLayoutEffect(() => {
     markModalLoadingLatencyEvent("mcap renderer mounted", {
       fileName,
       readProfile: source?.readProfile,
       sourceId: source?.sourceId,
     });
-    startMcapLatencyDebugSession({
-      detail: {
-        fileName,
-        readProfile: source?.readProfile,
-        rendererMountKey: latencySessionKey,
-        sizeBytes: source?.sizeBytes,
-      },
-      label: latencyLabel,
-      sessionKey: latencySessionKey,
-      sourceKey: source?.sourceId ?? latencySourceKey,
-    });
-  }, [fileName, latencyLabel, latencySessionKey, latencySourceKey, source]);
+  }, [fileName, source]);
 
   // This effect clears host-owned GPU state on unmount. The lightweight 3D
   // view snapshot intentionally outlives this host in its scoped registry.
@@ -285,14 +265,6 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
         sourceCount: sources.length,
       },
       { onceKey: "mcap-scene-inventory-ready" },
-    );
-    markMcapLatencyEvent(
-      "scene inventory ready",
-      {
-        ...metadata,
-        sourceCount: sources.length,
-      },
-      { onceKey: "scene-inventory-ready" },
     );
   }, [metadata, sources.length, status]);
 
@@ -669,10 +641,6 @@ function sourceCounts(sources: readonly { type: string }[]) {
       (s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD,
     ).length,
   };
-}
-
-function createMcapLatencySessionKey(): string {
-  return `mcap-source-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function currentViewportAspectRatio(): number {

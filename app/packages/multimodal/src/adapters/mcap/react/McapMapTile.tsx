@@ -19,7 +19,6 @@ import React, {
 import MeasureRulerIcon from "../../../components/MeasureRulerIcon";
 import { useSceneInventory } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
-import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
   useMcapLocationTracksContext,
   useMcapLocationTracksSourceKey,
@@ -718,10 +717,6 @@ function McapMapLibreSurface({
     if (!marker && !bounds) {
       if (locationEvidencePending) return;
       warmStartEpochRef.current = cameraEpoch;
-      markMcapLatencyEvent("map viewport warm start evaluated", {
-        cameraEpoch,
-        result: "empty",
-      });
       setCameraReady(true);
       return;
     }
@@ -737,10 +732,6 @@ function McapMapLibreSurface({
         viewport,
         width: container.clientWidth,
       });
-    markMcapLatencyEvent("map viewport warm start evaluated", {
-      cameraEpoch,
-      result: viewport ? (warmStartApplies ? "accepted" : "rejected") : "miss",
-    });
     if (viewport && warmStartApplies) {
       initialFrameEpochRef.current = cameraEpoch;
       map.jumpTo({

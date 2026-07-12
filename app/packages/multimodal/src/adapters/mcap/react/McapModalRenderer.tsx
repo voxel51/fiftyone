@@ -23,10 +23,6 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
     <McapSourcePlayback
       client={client}
       fileName={fileName}
-      latencyLabel="mcap modal"
-      latencySourceKey={
-        typeof ctx.media.path === "string" ? ctx.media.path : undefined
-      }
       layoutScopeKey={datasetId}
       cameraPreferenceField={ctx.media.field}
       onTagCreate={onTagCreate}

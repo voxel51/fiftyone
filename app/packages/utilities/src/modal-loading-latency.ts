@@ -46,10 +46,7 @@ export function isModalLoadingLatencyDebugEnabled(): boolean {
   for (const location of locations) {
     try {
       const value = location?.href ?? location?.search;
-      if (
-        value?.includes("mcapLatencyDebug=1") ||
-        value?.includes("modalLoadingLatencyDebug=1")
-      ) {
+      if (value?.includes("modalLoadingLatencyDebug=1")) {
         return true;
       }
     } catch {

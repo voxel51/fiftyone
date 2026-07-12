@@ -13,7 +13,6 @@ import type {
   PointCloudFrameTransform,
   PointCloudSceneBoundsSummary,
 } from "../../../visualization/panels/point-cloud";
-import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
   cameraTargetPoseFromFrameTransform,
   DEFAULT_MCAP_3D_TRACKING_MODE,
@@ -345,7 +344,6 @@ export function useMcap3dCameraTracking({
     const compositions = pendingCompositionRestoreRef.current;
     if (compositions.length === 0) return;
 
-    let rejectedReason: string | null = null;
     let resolved: Extract<
       ReturnType<typeof resolveMcap3dCameraComposition>,
       { status: "resolved" }
@@ -367,15 +365,10 @@ export function useMcap3dCameraTracking({
         break;
       }
       if (candidate.status === "pending") return;
-      rejectedReason = candidate.reason;
     }
 
     pendingCompositionRestoreRef.current = [];
     if (!resolved || !resolvedComposition) {
-      markMcapLatencyEvent("3d camera restore rejected", {
-        cameraEpoch: cameraEpochRef.current,
-        reason: rejectedReason ?? "no-compatible-candidate",
-      });
       return;
     }
 
@@ -391,10 +384,6 @@ export function useMcap3dCameraTracking({
       resolved.anchor,
       resolvedComposition.trackingMode,
     );
-    markMcapLatencyEvent("3d camera initialized", {
-      cameraEpoch: cameraEpochRef.current,
-      source: resolvedComposition.kind,
-    });
   }, [
     cameraTargetFrameId,
     cameraTargetResolution,
@@ -536,13 +525,6 @@ export function useMcap3dCameraTracking({
     latestCameraPoseRef.current = pending.pose;
     setPoseCommand(pending.pose);
     recordCameraViewIfEligible(pending.pose);
-    markMcapLatencyEvent("3d camera initialized", {
-      cameraEpoch: cameraEpochRef.current,
-      source:
-        pending.sourceKey === sourceKey
-          ? "same-source-exact"
-          : "cross-source-absolute",
-    });
   }, [
     cameraNavigationMode,
     placementStatus,

@@ -1,8 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PointCloudVisualization } from "../../../decoders";
 import type { McapFrameGraphSummary } from "../frame-transforms";
-import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
   createMcap3dViewStateStore,
   type Mcap3dViewStateStore,
@@ -11,14 +10,9 @@ import { useMcap3dFrameSelection } from "./use-mcap-3d-frame-selection";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
-vi.mock("../mcap-latency-debug", () => ({
-  markMcapLatencyEvent: vi.fn(),
-}));
-
 let viewStateStore: Mcap3dViewStateStore;
 
 beforeEach(() => {
-  vi.mocked(markMcapLatencyEvent).mockClear();
   viewStateStore = createMcap3dViewStateStore();
 });
 
@@ -252,10 +246,6 @@ describe("useMcap3dFrameSelection", () => {
     );
     expect(result.current.worldFrameId).toBe("odom");
     expect(result.current.worldFrameSelectionSource).toBe("user");
-    expect(restoredFrameEvents().map(([, detail]) => detail)).toEqual([
-      { field: "cameraTargetFrameId", frameId: "ego_vehicle" },
-      { field: "worldFrameId", frameId: "odom" },
-    ]);
   });
 
   it("never pins a carried-over frame that does not reappear", () => {
@@ -278,7 +268,6 @@ describe("useMcap3dFrameSelection", () => {
 
     expect(result.current.worldFrameId).toBe("map");
     expect(result.current.worldFrameSelectionSource).toBe("auto");
-    expect(restoredFrameEvents()).toHaveLength(0);
   });
 
   it("cancels the pending adoption when the user selects a frame first", () => {
@@ -303,7 +292,6 @@ describe("useMcap3dFrameSelection", () => {
     );
 
     expect(result.current.worldFrameId).toBe("map");
-    expect(restoredFrameEvents()).toHaveLength(0);
   });
 
   it("writes user frame selections through to the view-state store", () => {
@@ -328,12 +316,6 @@ describe("useMcap3dFrameSelection", () => {
     });
   });
 });
-
-function restoredFrameEvents() {
-  return vi
-    .mocked(markMcapLatencyEvent)
-    .mock.calls.filter(([name]) => name === "3d view state restored");
-}
 
 function selectionProps(
   overrides: Partial<FrameSelectionProps> = {},

@@ -20,7 +20,6 @@ import { McapPoseTrajectoriesStartupGate } from "./mcap-pose-trajectories-contex
 import { McapRawMessageBridge } from "./mcap-raw-message-context";
 import { McapSceneUpdateHistoryBridge } from "./mcap-scene-update-history-context";
 import { useMcapDataStream } from "./mcap-data-stream-context";
-import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
   type McapPlaybackFidelityMode,
   type McapTemporalPolicySettings,
@@ -129,18 +128,6 @@ export function McapStreams({
     sourceId,
     sourceKey,
   ]);
-  useEffect(() => {
-    markMcapLatencyEvent(
-      "playback shell mounted",
-      {
-        blockingTopics: blockingTopics.length,
-        pointCloudTopics: pointCloudTopics.length,
-        topics: allTopics.length,
-      },
-      { onceKey: "playback-shell-mounted" },
-    );
-  }, [allTopics.length, blockingTopics.length, pointCloudTopics.length]);
-
   const poseTopics = useMemo(
     () =>
       sources.filter((s) => s.type === MCAP_SOURCE_TYPE.POSE).map((s) => s.id),
@@ -164,7 +151,6 @@ export function McapStreams({
     onPlayheadDataReady,
     source,
     allTopics,
-    pointCloudTopics,
     staleMediaWarningNs: msToNs(temporalPolicy.staleMediaWarningMs),
     staleWarningTopics,
     streamPolicies,

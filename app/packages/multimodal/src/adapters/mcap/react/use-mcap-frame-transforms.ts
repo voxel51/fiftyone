@@ -26,12 +26,6 @@ import {
 } from "../frame-transforms";
 import { isMcapReadCancelledError, mcapErrorMessage } from "../errors";
 import type { McapActiveTimeline, McapResourceClient } from "../types";
-import {
-  markMcapLatencyEvent,
-  mcapLatencyDurationMs,
-  mcapLatencyNowMs,
-} from "../mcap-latency-debug";
-import { recordMcapFrameTransformBandwidth } from "./mcap-bandwidth-debug";
 import { shouldDeferMcapIdleWorkForStore } from "./mcap-network-health";
 
 // Placement reads are foreground work: keep them small so pending Play is not
@@ -203,10 +197,6 @@ export function useMcapFrameTransforms({
       version: sourceGeneration,
     });
 
-    const bootstrapStartMs = mcapLatencyNowMs();
-    markMcapLatencyEvent("frame transform bootstrap request", undefined, {
-      onceKey: "frame-transform-bootstrap-request",
-    });
     client
       .readFrameTransformBootstrap({ source })
       .then((set) => {
@@ -215,30 +205,6 @@ export function useMcapFrameTransforms({
         }
 
         store.addStatic(set.samples);
-        recordMcapFrameTransformBandwidth({
-          operation: "transform-bootstrap",
-          set,
-        });
-        markMcapLatencyEvent(
-          "frame transform bootstrap ready",
-          {
-            durationMs: mcapLatencyDurationMs(bootstrapStartMs),
-            samples: set.samples.length,
-          },
-          { onceKey: "frame-transform-bootstrap-ready" },
-        );
-        markMcapLatencyEvent(
-          "frame transforms interactive ready",
-          { frameIds: store.frameIds().length },
-          { onceKey: "frame-transforms-interactive-ready" },
-        );
-        if (dynamicRangeMode !== "range") {
-          markMcapLatencyEvent(
-            "frame transforms ready",
-            { frameIds: store.frameIds().length },
-            { onceKey: "frame-transforms-ready" },
-          );
-        }
         setState((current) => ({
           ...current,
           error: null,
@@ -302,20 +268,10 @@ export function useMcapFrameTransforms({
       const requestedRange = dynamicPlacementRangeForTime(requestTimeNs);
       const requestedRangeKey = frameTransformRangeKey(requestedRange);
       const sourceGeneration = sourceGenerationRef.current;
-      const requestedRangeStartMs = mcapLatencyNowMs();
       inFlightPlacementRangesRef.current = [
         ...inFlightPlacementRangesRef.current,
         requestedRange,
       ];
-      markMcapLatencyEvent(
-        "frame transform current window request",
-        {
-          endTimeNs: requestedRange.endTimeNs,
-          startTimeNs: requestedRange.startTimeNs,
-        },
-        { onceKey: "first-frame-transform-current-window-request" },
-      );
-
       client
         .readFrameTransformWindow({
           activeTimeline,
@@ -329,18 +285,6 @@ export function useMcapFrameTransforms({
           }
 
           storeRef.current?.addDynamic(set.samples, requestedRange);
-          recordMcapFrameTransformBandwidth({
-            operation: "transform-current-window",
-            set,
-          });
-          markMcapLatencyEvent(
-            "frame transform current window ready",
-            {
-              durationMs: mcapLatencyDurationMs(requestedRangeStartMs),
-              samples: set.samples.length,
-            },
-            { onceKey: "first-frame-transform-current-window-ready" },
-          );
           retryCountRef.current.delete(requestedRangeKey);
           inFlightPlacementRangesRef.current =
             inFlightPlacementRangesRef.current.filter(
@@ -459,15 +403,6 @@ export function useMcapFrameTransforms({
       runwayRange,
     ];
     const sourceGeneration = sourceGenerationRef.current;
-    const runwayRangeStartMs = mcapLatencyNowMs();
-    markMcapLatencyEvent(
-      "frame transform runway request",
-      {
-        endTimeNs: runwayRange.endTimeNs,
-        startTimeNs: runwayRange.startTimeNs,
-      },
-      { onceKey: "first-frame-transform-runway-request" },
-    );
 
     client
       .readFrameTransformWindow(
@@ -489,18 +424,6 @@ export function useMcapFrameTransforms({
           inFlightRunwayRangesRef.current.filter(
             (candidate) => candidate !== runwayRange,
           );
-        recordMcapFrameTransformBandwidth({
-          operation: "transform-runway",
-          set,
-        });
-        markMcapLatencyEvent(
-          "frame transform runway ready",
-          {
-            durationMs: mcapLatencyDurationMs(runwayRangeStartMs),
-            samples: set.samples.length,
-          },
-          { onceKey: "first-frame-transform-runway-ready" },
-        );
         setState((current) => ({
           ...current,
           error: null,

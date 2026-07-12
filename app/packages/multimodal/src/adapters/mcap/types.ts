@@ -634,12 +634,6 @@ export interface McapReadSynchronizedMessageBatchRequest extends Omit<
   "timeNs"
 > {
   /**
-   * Optional caller-owned id used only for correlating debug instrumentation
-   * across stream fetches, worker attribution, and bandwidth samples.
-   */
-  readonly mcapDataRequestId?: string;
-
-  /**
    * Playback times to resolve against the same source/topic/policy request.
    */
   readonly timeNs: readonly bigint[];

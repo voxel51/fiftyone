@@ -219,7 +219,6 @@ describe("stream status + buffering feedback", () => {
         blockingTopics={[LIDAR_TOPIC, RADAR_TOPIC, TOPIC]}
         client={client}
         onStore={storeCapture.onStore}
-        pointCloudTopics={[LIDAR_TOPIC, RADAR_TOPIC]}
         source={source}
         subscribedTopics={[LIDAR_TOPIC, RADAR_TOPIC, TOPIC]}
       />,
@@ -1616,7 +1615,6 @@ function Harness({
   client,
   onStore,
   onApi,
-  pointCloudTopics = [],
   source,
   staleMediaWarningNs = 0n,
   staleWarningTopics = DEFAULT_TEST_TOPICS,
@@ -1629,7 +1627,6 @@ function Harness({
   readonly client: McapResourceClient;
   readonly onStore: (store: PlaybackStore) => void;
   readonly onApi?: (api: ReturnType<typeof usePlayback>) => void;
-  readonly pointCloudTopics?: readonly string[];
   readonly source: ByteSourceDescriptor | null;
   readonly staleMediaWarningNs?: bigint;
   readonly staleWarningTopics?: readonly string[];
@@ -1644,7 +1641,6 @@ function Harness({
     allTopics,
     blockingTopics,
     client,
-    pointCloudTopics,
     source,
     staleMediaWarningNs,
     staleWarningTopics,

@@ -6,11 +6,7 @@ import type {
   SceneUpdateVisualization,
 } from "../../../decoders";
 import type { McapFrameGraphSummary } from "../frame-transforms";
-import { markMcapLatencyEvent } from "../mcap-latency-debug";
-import {
-  nextMcap3dViewStateRestoreOnceKey,
-  type Mcap3dViewStateStore,
-} from "./mcap-3d-view-state";
+import type { Mcap3dViewStateStore } from "./mcap-3d-view-state";
 import { useMcap3dViewStateStore } from "./mcap-3d-view-state-context";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
@@ -78,10 +74,6 @@ export function useMcap3dFrameSelection({
   const pendingUserCameraTargetFrameIdRef = useRef(
     restore?.userCameraTargetFrameId ?? preferredCameraTargetFrameId,
   );
-  const restoreMarkKeyRef = useRef<string | null>(null);
-  if (restoreMarkKeyRef.current === null) {
-    restoreMarkKeyRef.current = nextMcap3dViewStateRestoreOnceKey();
-  }
   const dataBearingFrameIds = useMemo(
     () =>
       uniqueSortedFrameIds([
@@ -142,11 +134,6 @@ export function useMcap3dFrameSelection({
       pendingUserWorldFrameIdRef.current = null;
       setWorldFrameSelectionSource("user");
       setWorldFrameId(pendingWorld);
-      markMcapLatencyEvent(
-        "3d view state restored",
-        { field: "worldFrameId", frameId: pendingWorld },
-        { onceKey: `${restoreMarkKeyRef.current}:worldFrameId` },
-      );
     }
 
     const pendingTarget = pendingUserCameraTargetFrameIdRef.current;
@@ -154,11 +141,6 @@ export function useMcap3dFrameSelection({
       pendingUserCameraTargetFrameIdRef.current = null;
       setCameraTargetSelectionSource("user");
       setCameraTargetFrameId(pendingTarget);
-      markMcapLatencyEvent(
-        "3d view state restored",
-        { field: "cameraTargetFrameId", frameId: pendingTarget },
-        { onceKey: `${restoreMarkKeyRef.current}:cameraTargetFrameId` },
-      );
     }
   }, [frameIds]);
 

@@ -15,7 +15,6 @@ import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { byteSourceAccessKey } from "../../../query/bytes";
 import type { SceneSource } from "../../../scene-inventory";
 import { VISUALIZATION_KIND } from "../../../visualization";
-import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import { MCAP_ACTIVE_TIMELINE, type McapResourceClient } from "../types";
 import {
   getMcapNetworkHealth,
@@ -213,12 +212,6 @@ export function McapLocationTracksBridge({
             );
             const truncated =
               result.truncated || messageCount >= LOCATION_TRACK_READ_LIMIT;
-            if (truncated) {
-              markMcapLatencyEvent("location track downsampled", {
-                points: result.pointCount,
-                topic,
-              });
-            }
             commit(topic, {
               ...baseState,
               pointCount: result.pointCount,
