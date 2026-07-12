@@ -1,6 +1,10 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
+import {
+  registeredTilesAtom,
+  tileSelectionAtom,
+  tileTitleHighlightedAtom,
+} from "./atoms";
 import { useTileId, useTiling } from "./TilingProvider";
 import type { RegisteredTile, SetTileTitleOptions, TilingTile } from "./types";
 
@@ -54,6 +58,27 @@ export function useSetTileTitle(): (
       setTileTitle(tileId, title, options);
     },
     [tileId, setTileTitle],
+  );
+}
+
+/** Whether the surrounding tile's title has transient cross-panel emphasis. */
+export function useTileTitleHighlighted(): boolean {
+  const tileId = useTileId();
+  return useAtomValue(tileTitleHighlightedAtom(tileId ?? NO_TILE));
+}
+
+/** Sets transient cross-panel emphasis on the surrounding tile's title. */
+export function useSetTileTitleHighlighted(): (highlighted: boolean) => void {
+  const tileId = useTileId();
+  const setHighlighted = useSetAtom(
+    tileTitleHighlightedAtom(tileId ?? NO_TILE),
+  );
+  return useCallback(
+    (highlighted: boolean) => {
+      if (!tileId) return;
+      setHighlighted(highlighted);
+    },
+    [setHighlighted, tileId],
   );
 }
 
