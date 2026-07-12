@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneSource } from "../../../scene-inventory";
 import {
+  readMcapCameraPreferences,
+  writeMcapCameraPreferences,
   readMcapModalLayout,
   writeMcapModalLayout,
 } from "./mcap-layout-persistence";
@@ -39,11 +41,16 @@ const STRONG_CAPABILITIES = {
   viewportHeight: 1440,
 };
 
-function renderLayoutHook(sources: readonly SceneSource[], datasetId?: string) {
+function renderLayoutHook(
+  sources: readonly SceneSource[],
+  datasetId?: string,
+  cameraPreferenceField?: string,
+) {
   return renderHook(() =>
     useMcapModalLayout({
       sources,
       datasetId,
+      cameraPreferenceField,
       capabilities: STRONG_CAPABILITIES,
     }),
   );
@@ -174,6 +181,51 @@ describe("useMcapModalLayout", () => {
     expect(result.current.initialManualTileTitles).toEqual({
       "image-default": "Front Camera",
     });
+  });
+
+  it("restores and updates camera conventions in the selected media field", () => {
+    writeMcapCameraPreferences(
+      {
+        defaultTrackingMode: "heading",
+        preferredCameraTargetFrameId: "base_link",
+        preferredWorldFrameId: "map",
+        sceneUpAxis: "y",
+      },
+      "dataset-a",
+      "mcap",
+    );
+    const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-a", "mcap");
+
+    expect(result.current.defaultTrackingMode).toBe("heading");
+    expect(result.current.preferredCameraTargetFrameId).toBe("base_link");
+    expect(result.current.preferredWorldFrameId).toBe("map");
+    expect(result.current.sceneUpAxis).toBe("y");
+
+    act(() => {
+      result.current.onDefaultTrackingModeChange("free");
+      result.current.onPreferredCameraTargetFrameIdChange("sensor_link");
+      result.current.onPreferredWorldFrameIdChange("odom");
+      result.current.onSceneUpAxisChange("z");
+    });
+
+    expect(result.current.defaultTrackingMode).toBe("free");
+    expect(result.current.preferredCameraTargetFrameId).toBe("sensor_link");
+    expect(result.current.preferredWorldFrameId).toBe("odom");
+    expect(result.current.sceneUpAxis).toBe("z");
+    expect(readMcapCameraPreferences("dataset-a", "mcap")).toMatchObject({
+      defaultTrackingMode: "free",
+      preferredCameraTargetFrameId: "sensor_link",
+      preferredWorldFrameId: "odom",
+      sceneUpAxis: "z",
+    });
+  });
+
+  it("falls back to dataset-scoped scene-axis persistence without a media field", () => {
+    const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-a");
+
+    act(() => result.current.onSceneUpAxisChange("y"));
+
+    expect(readMcapModalLayout("dataset-a")?.sceneUpAxis).toBe("y");
   });
 
   it("restores expanded tile state when the tile survives layout restore", () => {

@@ -3,6 +3,7 @@ import {
   normalizeMcap3dSceneUpAxis,
   type Mcap3dSceneUpAxis,
 } from "./mcap-3d-scene-up";
+import type { Mcap3dTrackingMode } from "./mcap-3d-camera";
 import {
   DEFAULT_MCAP_MAP_TILE_SETTINGS,
   normalizeMcapMapBaseLayer,
@@ -63,8 +64,18 @@ export interface McapPersistedModalLayout {
    * coordinate conventions belong to the dataset, not the browser fallback.
    */
   sceneUpAxis?: Mcap3dSceneUpAxis;
+  /** Durable 3D conventions, isolated by selected media field. */
+  cameraPreferences?: Record<string, McapPersistedCameraPreferences>;
   /** Left sidebar width in px; the shell clamps it on restore. */
   sidebarWidthPx?: number;
+}
+
+/** Durable 3D coordinate conventions for one dataset media field. */
+export interface McapPersistedCameraPreferences {
+  readonly defaultTrackingMode?: Mcap3dTrackingMode;
+  readonly preferredCameraTargetFrameId?: string;
+  readonly preferredWorldFrameId?: string;
+  readonly sceneUpAxis?: Mcap3dSceneUpAxis;
 }
 
 /**
@@ -90,6 +101,9 @@ const MAX_MAP_TOPICS_PER_TILE = 64;
 const MAX_MAP_TOPIC_LENGTH = 512;
 const MAX_TILE_TITLES = 64;
 const MAX_TILE_TITLE_LENGTH = 160;
+const MAX_CAMERA_PREFERENCE_FIELDS = 16;
+const MAX_CAMERA_SCOPE_LENGTH = 256;
+const MAX_FRAME_ID_LENGTH = 512;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 interface PersistedDatasetEntry extends McapPersistedModalLayout {
@@ -108,6 +122,7 @@ const STORAGE_KEY = "fiftyone.mcap.modal-layout";
 const STORAGE_VERSION = 1;
 const FALLBACK_OMITTED_FIELDS = [
   "mapSettings",
+  "cameraPreferences",
   "plotSeries",
   "rawTopics",
   "sceneUpAxis",
@@ -142,6 +157,7 @@ function sanitizeEntry(raw: unknown): McapPersistedModalLayout | undefined {
   if (typeof raw !== "object" || raw === null) return undefined;
   const candidate = raw as Record<string, unknown>;
   return {
+    cameraPreferences: sanitizeCameraPreferences(candidate.cameraPreferences),
     expandedTileId: sanitizeTileId(candidate.expandedTileId),
     leftSidebarOpen:
       typeof candidate.leftSidebarOpen === "boolean"
@@ -162,6 +178,60 @@ function sanitizeEntry(raw: unknown): McapPersistedModalLayout | undefined {
         : undefined,
     tileTitles: sanitizeTileTitles(candidate.tileTitles),
   };
+}
+
+function sanitizeCameraPreferences(
+  value: unknown,
+): Record<string, McapPersistedCameraPreferences> | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+
+  const result: Record<string, McapPersistedCameraPreferences> = {};
+  for (const [rawScope, rawPreferences] of Object.entries(value)) {
+    if (Object.keys(result).length >= MAX_CAMERA_PREFERENCE_FIELDS) break;
+    const scope = rawScope.trim();
+    if (!scope || scope.length > MAX_CAMERA_SCOPE_LENGTH) continue;
+    if (typeof rawPreferences !== "object" || rawPreferences === null) {
+      continue;
+    }
+
+    const candidate = rawPreferences as Record<string, unknown>;
+    const defaultTrackingMode = normalizeTrackingMode(
+      candidate.defaultTrackingMode,
+    );
+    const preferredCameraTargetFrameId = sanitizeFrameId(
+      candidate.preferredCameraTargetFrameId,
+    );
+    const preferredWorldFrameId = sanitizeFrameId(
+      candidate.preferredWorldFrameId,
+    );
+    const sceneUpAxis = normalizeMcap3dSceneUpAxis(candidate.sceneUpAxis);
+    const preferences: McapPersistedCameraPreferences = {
+      ...(defaultTrackingMode ? { defaultTrackingMode } : {}),
+      ...(preferredCameraTargetFrameId ? { preferredCameraTargetFrameId } : {}),
+      ...(preferredWorldFrameId ? { preferredWorldFrameId } : {}),
+      ...(sceneUpAxis ? { sceneUpAxis } : {}),
+    };
+    if (Object.keys(preferences).length > 0) {
+      result[scope] = preferences;
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function sanitizeFrameId(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const frameId = value.trim();
+  return frameId && frameId.length <= MAX_FRAME_ID_LENGTH ? frameId : undefined;
+}
+
+function normalizeTrackingMode(value: unknown): Mcap3dTrackingMode | undefined {
+  return value === "free" ||
+    value === "position" ||
+    value === "heading" ||
+    value === "pose"
+    ? value
+    : undefined;
 }
 
 function sanitizeTileId(raw: unknown): string | undefined {
@@ -459,6 +529,41 @@ export function writeMcapModalLayout(
     // Quota exceeded / storage unavailable — persisting layout is a
     // nicety, never an error path.
   }
+}
+
+/** Reads durable 3D conventions for one selected media field. */
+export function readMcapCameraPreferences(
+  datasetKey: string | undefined,
+  mediaField: string | undefined,
+): McapPersistedCameraPreferences | null {
+  const field = mediaField?.trim();
+  if (!datasetKey || !field) return null;
+  return readMcapModalLayout(datasetKey)?.cameraPreferences?.[field] ?? null;
+}
+
+/** Merges one media field's durable 3D conventions into dataset storage. */
+export function writeMcapCameraPreferences(
+  patch: Partial<McapPersistedCameraPreferences>,
+  datasetKey: string | undefined,
+  mediaField: string | undefined,
+): void {
+  const field = mediaField?.trim();
+  if (!datasetKey || !field) return;
+
+  const layout = readMcapModalLayout(datasetKey);
+  const currentByField = layout?.cameraPreferences ?? {};
+  const retainedEntries = Object.entries(currentByField)
+    .filter(([key]) => key !== field)
+    .slice(-(MAX_CAMERA_PREFERENCE_FIELDS - 1));
+  writeMcapModalLayout(
+    {
+      cameraPreferences: {
+        ...Object.fromEntries(retainedEntries),
+        [field]: { ...currentByField[field], ...patch },
+      },
+    },
+    datasetKey,
+  );
 }
 
 function layoutFromDatasetEntry(

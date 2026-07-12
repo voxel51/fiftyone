@@ -40,6 +40,7 @@ import McapSidebarGroup from "./McapSidebarGroup";
 import McapPerformanceStats from "./McapPerformanceStats";
 import styles from "./McapSettingsSidebar.module.css";
 import McapTopicsSettings from "./McapTopicsSettings";
+import McapViewpointSettings from "./McapViewpointSettings";
 
 type ActiveSettingsTab = "panel" | "scene" | "topics";
 
@@ -87,7 +88,12 @@ const McapSettingsSidebar: React.FC<{
         id: "scene",
         data: {
           label: "Scene",
-          content: <GlobalSceneSettings sampling={sampling} />,
+          content: (
+            <GlobalSceneSettings
+              preferredTileId={focusedTileId}
+              sampling={sampling}
+            />
+          ),
         },
       },
       {
@@ -120,6 +126,7 @@ const McapSettingsSidebar: React.FC<{
 
     return nextTabs;
   }, [
+    focusedTileId,
     focusedTileTitle,
     sampling,
     slotRef,
@@ -191,13 +198,16 @@ function PanelSettingsContent({
 }
 
 function GlobalSceneSettings({
+  preferredTileId,
   sampling,
 }: {
+  readonly preferredTileId?: string | null;
   readonly sampling: PointCloudSamplingState | null;
 }) {
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
       <PointCloudSamplingWarning sampling={sampling} />
+      <McapViewpointSettings preferredTileId={preferredTileId} />
       <McapPerformanceStats sampling={sampling} />
       <PlaybackFidelitySettings />
       <TimeResolutionSettings />

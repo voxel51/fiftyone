@@ -28,6 +28,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
         typeof ctx.media.path === "string" ? ctx.media.path : undefined
       }
       layoutScopeKey={datasetId}
+      cameraPreferenceField={ctx.media.field}
       onTagCreate={onTagCreate}
       onTagDelete={onTagDelete}
       navigationPending={ctx.transitioning === true}

@@ -1,9 +1,16 @@
 import React, { createContext, useContext, useMemo } from "react";
 
 import type { Mcap3dSceneUpAxis } from "./mcap-3d-scene-up";
+import type { Mcap3dTrackingMode } from "./mcap-3d-camera";
 
 interface Mcap3dViewSettingsContextValue {
+  readonly defaultTrackingMode: Mcap3dTrackingMode;
+  readonly preferredCameraTargetFrameId: string | null;
+  readonly preferredWorldFrameId: string | null;
   readonly sceneUpAxis: Mcap3dSceneUpAxis;
+  readonly setDefaultTrackingMode: (mode: Mcap3dTrackingMode) => void;
+  readonly setPreferredCameraTargetFrameId: (frameId: string) => void;
+  readonly setPreferredWorldFrameId: (frameId: string) => void;
   readonly setSceneUpAxis: (axis: Mcap3dSceneUpAxis) => void;
 }
 
@@ -12,12 +19,46 @@ const Mcap3dViewSettingsContext =
 
 export const Mcap3dViewSettingsProvider: React.FC<{
   readonly children: React.ReactNode;
+  readonly defaultTrackingMode: Mcap3dTrackingMode;
+  readonly preferredCameraTargetFrameId: string | null;
+  readonly preferredWorldFrameId: string | null;
   readonly sceneUpAxis: Mcap3dSceneUpAxis;
+  readonly setDefaultTrackingMode: (mode: Mcap3dTrackingMode) => void;
+  readonly setPreferredCameraTargetFrameId: (frameId: string) => void;
+  readonly setPreferredWorldFrameId: (frameId: string) => void;
   readonly setSceneUpAxis: (axis: Mcap3dSceneUpAxis) => void;
-}> = ({ children, sceneUpAxis, setSceneUpAxis }) => {
+}> = ({
+  children,
+  defaultTrackingMode,
+  preferredCameraTargetFrameId,
+  preferredWorldFrameId,
+  sceneUpAxis,
+  setDefaultTrackingMode,
+  setPreferredCameraTargetFrameId,
+  setPreferredWorldFrameId,
+  setSceneUpAxis,
+}) => {
   const value = useMemo(
-    () => ({ sceneUpAxis, setSceneUpAxis }),
-    [sceneUpAxis, setSceneUpAxis],
+    () => ({
+      defaultTrackingMode,
+      preferredCameraTargetFrameId,
+      preferredWorldFrameId,
+      sceneUpAxis,
+      setDefaultTrackingMode,
+      setPreferredCameraTargetFrameId,
+      setPreferredWorldFrameId,
+      setSceneUpAxis,
+    }),
+    [
+      defaultTrackingMode,
+      preferredCameraTargetFrameId,
+      preferredWorldFrameId,
+      sceneUpAxis,
+      setDefaultTrackingMode,
+      setPreferredCameraTargetFrameId,
+      setPreferredWorldFrameId,
+      setSceneUpAxis,
+    ],
   );
 
   return (

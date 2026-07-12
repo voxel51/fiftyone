@@ -5,10 +5,11 @@ import { useSceneInventory, type SceneSource } from "../../../scene-inventory";
 import { MCAP_SCENE_SOURCE_METADATA, MCAP_SOURCE_TYPE } from "../scene-sources";
 import { filterDefaultTopicEquivalents } from "../topic-matching";
 import {
-  recordMcap3dSourceSelection,
   resolveMcap3dSelectionRestore,
+  type Mcap3dViewStateStore,
   type Mcap3dViewStateSnapshot,
 } from "./mcap-3d-view-state";
+import { useMcap3dViewStateStore } from "./mcap-3d-view-state-context";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
 const TILE_TYPE_LABEL = "3D";
@@ -45,9 +46,12 @@ const PROVISIONAL_TOPIC_PENALTIES: readonly {
  */
 export function useMcap3dSelection({
   restore = null,
+  viewStateStore: suppliedViewStateStore,
 }: {
   readonly restore?: Mcap3dViewStateSnapshot | null;
+  readonly viewStateStore?: Mcap3dViewStateStore;
 } = {}) {
+  const viewStateStore = useMcap3dViewStateStore(suppliedViewStateStore);
   const sources = useSceneInventory();
   const renderableSources = useMemo(
     () => sources.filter(is3dRenderableSource),
@@ -121,11 +125,11 @@ export function useMcap3dSelection({
   // source shape it was captured against) through to the session view-state
   // store so the selection can carry across sample navigation.
   useEffect(() => {
-    recordMcap3dSourceSelection({
+    viewStateStore.recordSourceSelection({
       enabledSourceIds: [...enabled],
       renderableSourceIds: renderableSources.map((s) => s.id),
     });
-  }, [enabled, renderableSources]);
+  }, [enabled, renderableSources, viewStateStore]);
 
   // This effect keeps the enabled source set aligned as 3D sources appear or
   // disappear after the tile mounts.

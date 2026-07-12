@@ -9,9 +9,9 @@ import type { McapFrameGraphSummary } from "../frame-transforms";
 import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
   nextMcap3dViewStateRestoreOnceKey,
-  recordMcap3dUserCameraTargetFrameId,
-  recordMcap3dUserWorldFrameId,
+  type Mcap3dViewStateStore,
 } from "./mcap-3d-view-state";
+import { useMcap3dViewStateStore } from "./mcap-3d-view-state-context";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
@@ -43,15 +43,26 @@ export function useMcap3dFrameSelection({
   frames,
   frameTransforms,
   gridFrames,
+  onPreferredCameraTargetFrameIdChange,
+  onPreferredWorldFrameIdChange,
+  preferredCameraTargetFrameId = null,
+  preferredWorldFrameId = null,
   restore = null,
+  viewStateStore: suppliedViewStateStore,
 }: {
   readonly annotationFrames: readonly (McapTopicPlaybackFrame<SceneUpdateVisualization> | null)[];
   readonly calibrationFrames: readonly (McapTopicPlaybackFrame<CameraCalibrationVisualization> | null)[];
   readonly frames: readonly (McapTopicPlaybackFrame<PointCloudVisualization> | null)[];
   readonly frameTransforms: McapFrameTransformsState;
   readonly gridFrames: readonly (McapTopicPlaybackFrame<GridVisualization> | null)[];
+  readonly onPreferredCameraTargetFrameIdChange?: (frameId: string) => void;
+  readonly onPreferredWorldFrameIdChange?: (frameId: string) => void;
+  readonly preferredCameraTargetFrameId?: string | null;
+  readonly preferredWorldFrameId?: string | null;
   readonly restore?: Mcap3dFrameSelectionRestore | null;
+  readonly viewStateStore?: Mcap3dViewStateStore;
 }) {
+  const viewStateStore = useMcap3dViewStateStore(suppliedViewStateStore);
   const [worldFrameId, setWorldFrameId] = useState("");
   const [cameraTargetFrameId, setCameraTargetFrameId] = useState("");
   const [worldFrameSelectionSource, setWorldFrameSelectionSource] =
@@ -61,9 +72,11 @@ export function useMcap3dFrameSelection({
   // Pending carry-over of the previous sample's user-selected frames,
   // captured once at mount. The intent dies on adoption, on a manual
   // selection, or with the mount itself (next sample hop).
-  const pendingUserWorldFrameIdRef = useRef(restore?.userWorldFrameId ?? null);
+  const pendingUserWorldFrameIdRef = useRef(
+    restore?.userWorldFrameId ?? preferredWorldFrameId,
+  );
   const pendingUserCameraTargetFrameIdRef = useRef(
-    restore?.userCameraTargetFrameId ?? null,
+    restore?.userCameraTargetFrameId ?? preferredCameraTargetFrameId,
   );
   const restoreMarkKeyRef = useRef<string | null>(null);
   if (restoreMarkKeyRef.current === null) {
@@ -149,22 +162,30 @@ export function useMcap3dFrameSelection({
     }
   }, [frameIds]);
 
-  const updateWorldFrameId = useCallback((frameId: string) => {
-    // A manual selection supersedes any pending carried-over user frame and
-    // is written through to the session view-state store.
-    pendingUserWorldFrameIdRef.current = null;
-    recordMcap3dUserWorldFrameId(frameId);
-    setWorldFrameSelectionSource("user");
-    setWorldFrameId(frameId);
-  }, []);
-  const updateCameraTargetFrameId = useCallback((frameId: string) => {
-    // A manual selection supersedes any pending carried-over user frame and
-    // is written through to the session view-state store.
-    pendingUserCameraTargetFrameIdRef.current = null;
-    recordMcap3dUserCameraTargetFrameId(frameId);
-    setCameraTargetSelectionSource("user");
-    setCameraTargetFrameId(frameId);
-  }, []);
+  const updateWorldFrameId = useCallback(
+    (frameId: string) => {
+      // A manual selection supersedes any pending carried-over user frame and
+      // is written through to the session view-state store.
+      pendingUserWorldFrameIdRef.current = null;
+      viewStateStore.recordUserWorldFrameId(frameId);
+      onPreferredWorldFrameIdChange?.(frameId);
+      setWorldFrameSelectionSource("user");
+      setWorldFrameId(frameId);
+    },
+    [onPreferredWorldFrameIdChange, viewStateStore],
+  );
+  const updateCameraTargetFrameId = useCallback(
+    (frameId: string) => {
+      // A manual selection supersedes any pending carried-over user frame and
+      // is written through to the session view-state store.
+      pendingUserCameraTargetFrameIdRef.current = null;
+      viewStateStore.recordUserCameraTargetFrameId(frameId);
+      onPreferredCameraTargetFrameIdChange?.(frameId);
+      setCameraTargetSelectionSource("user");
+      setCameraTargetFrameId(frameId);
+    },
+    [onPreferredCameraTargetFrameIdChange, viewStateStore],
+  );
 
   return {
     cameraTargetFrameId,

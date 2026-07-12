@@ -4,8 +4,8 @@ import type { PointCloudVisualization } from "../../../decoders";
 import type { McapFrameGraphSummary } from "../frame-transforms";
 import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
-  getMcap3dViewStateSnapshot,
-  resetMcap3dViewStateForTests,
+  createMcap3dViewStateStore,
+  type Mcap3dViewStateStore,
 } from "./mcap-3d-view-state";
 import { useMcap3dFrameSelection } from "./use-mcap-3d-frame-selection";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
@@ -15,9 +15,11 @@ vi.mock("../mcap-latency-debug", () => ({
   markMcapLatencyEvent: vi.fn(),
 }));
 
+let viewStateStore: Mcap3dViewStateStore;
+
 beforeEach(() => {
   vi.mocked(markMcapLatencyEvent).mockClear();
-  resetMcap3dViewStateForTests();
+  viewStateStore = createMcap3dViewStateStore();
 });
 
 afterEach(() => {
@@ -314,13 +316,13 @@ describe("useMcap3dFrameSelection", () => {
       }),
     });
 
-    expect(getMcap3dViewStateSnapshot().userWorldFrameId).toBeNull();
+    expect(viewStateStore.getSnapshot().userWorldFrameId).toBeNull();
 
     act(() => {
       result.current.updateWorldFrameId("odom");
       result.current.updateCameraTargetFrameId("map");
     });
-    expect(getMcap3dViewStateSnapshot()).toMatchObject({
+    expect(viewStateStore.getSnapshot()).toMatchObject({
       userCameraTargetFrameId: "map",
       userWorldFrameId: "odom",
     });
@@ -342,6 +344,7 @@ function selectionProps(
     frames: [],
     frameTransforms: transforms([]),
     gridFrames: [],
+    viewStateStore,
     ...overrides,
   };
 }

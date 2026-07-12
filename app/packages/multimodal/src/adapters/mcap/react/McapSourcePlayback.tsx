@@ -36,8 +36,10 @@ import {
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { getMcapSourceBootstrap } from "../source-bootstrap-cache";
 import type { McapResourceClient } from "../types";
-import { clearMcap3dViewState } from "./mcap-3d-view-state";
+import { Mcap3dViewStateProvider } from "./mcap-3d-view-state-context";
 import { Mcap3dViewSettingsProvider } from "./mcap-3d-view-settings-context";
+import { Mcap3dViewpointProvider } from "./mcap-3d-viewpoint-context";
+import { mcapCameraScopeKey } from "./mcap-camera-scope";
 import {
   McapDataStreamProvider,
   useMcapDataStream,
@@ -87,6 +89,7 @@ type McapPosterImage = Extract<
 >;
 
 export interface McapSourcePlaybackProps {
+  readonly cameraPreferenceField?: string;
   readonly children?: React.ReactNode;
   readonly client: McapResourceClient;
   readonly fileName: string;
@@ -110,6 +113,7 @@ export interface McapSourcePlaybackProps {
  * layout persistence, and the playback chrome around the discovered streams.
  */
 export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
+  cameraPreferenceField,
   children,
   client,
   fileName,
@@ -172,10 +176,10 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     });
   }, [fileName, latencyLabel, latencySessionKey, latencySourceKey, source]);
 
-  // This effect clears session-owned view and GPU state when the host unmounts.
+  // This effect clears host-owned GPU state on unmount. The lightweight 3D
+  // view snapshot intentionally outlives this host in its scoped registry.
   useEffect(() => {
     return () => {
-      clearMcap3dViewState();
       releaseGpuPointCloudColormapTextures();
       releaseGpuPointCloudProjectionResources();
       releaseRetainedImageTextures();
@@ -228,6 +232,9 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   const playbackSource = readyInventory && !navigationPending ? source : null;
   const effectiveLayoutScopeKey =
     layoutScopeKey ?? (source ? `mcap-source:${source.sourceId}` : undefined);
+  const cameraViewStateScopeKey =
+    mcapCameraScopeKey(effectiveLayoutScopeKey, cameraPreferenceField) ??
+    effectiveLayoutScopeKey;
   const metadata = useMemo(
     () => ({
       sizeLabel: sourceSizeLabel(source?.sizeBytes),
@@ -255,7 +262,14 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     onLeftSidebarWidthChange,
     sceneUpAxis,
     onSceneUpAxisChange,
+    preferredWorldFrameId,
+    onPreferredWorldFrameIdChange,
+    preferredCameraTargetFrameId,
+    onPreferredCameraTargetFrameIdChange,
+    defaultTrackingMode,
+    onDefaultTrackingModeChange,
   } = useMcapModalLayout({
+    cameraPreferenceField,
     datasetId: effectiveLayoutScopeKey,
     readProfile: source?.readProfile,
     sources: shellSources,
@@ -329,7 +343,10 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
       data-mcap-playback-shell=""
       data-mcap-source-transitioning={transitioning || undefined}
     >
-      <McapMapViewportScopeProvider scopeKey={effectiveLayoutScopeKey}>
+      <McapPlaybackSessionStateProviders
+        cameraViewStateScopeKey={cameraViewStateScopeKey}
+        viewportScopeKey={effectiveLayoutScopeKey}
+      >
         <McapFrameTransformsProvider>
           <McapPoseTrajectoriesProvider>
             <McapLocationTracksProvider>
@@ -345,7 +362,19 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                       >
                         <McapProjectionResourceBoundary />
                         <Mcap3dViewSettingsProvider
+                          defaultTrackingMode={defaultTrackingMode}
+                          preferredCameraTargetFrameId={
+                            preferredCameraTargetFrameId
+                          }
+                          preferredWorldFrameId={preferredWorldFrameId}
                           sceneUpAxis={sceneUpAxis}
+                          setDefaultTrackingMode={onDefaultTrackingModeChange}
+                          setPreferredCameraTargetFrameId={
+                            onPreferredCameraTargetFrameIdChange
+                          }
+                          setPreferredWorldFrameId={
+                            onPreferredWorldFrameIdChange
+                          }
                           setSceneUpAxis={onSceneUpAxisChange}
                         >
                           <McapImageAspectRatioProvider
@@ -431,10 +460,25 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
             </McapLocationTracksProvider>
           </McapPoseTrajectoriesProvider>
         </McapFrameTransformsProvider>
-      </McapMapViewportScopeProvider>
+      </McapPlaybackSessionStateProviders>
     </div>
   );
 };
+
+/** State shared within the current dataset/media-field inspection session. */
+const McapPlaybackSessionStateProviders: React.FC<{
+  readonly cameraViewStateScopeKey?: string;
+  readonly children: React.ReactNode;
+  readonly viewportScopeKey?: string;
+}> = ({ cameraViewStateScopeKey, children, viewportScopeKey }) => (
+  <Mcap3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
+    <Mcap3dViewpointProvider>
+      <McapMapViewportScopeProvider scopeKey={viewportScopeKey}>
+        {children}
+      </McapMapViewportScopeProvider>
+    </Mcap3dViewpointProvider>
+  </Mcap3dViewStateProvider>
+);
 
 /** Retires only the previous recording's GPU buffers on an in-place swap. */
 function McapProjectionResourceBoundary() {

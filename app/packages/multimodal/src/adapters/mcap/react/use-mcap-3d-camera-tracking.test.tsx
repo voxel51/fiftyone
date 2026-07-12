@@ -1,24 +1,25 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { Quaternion, Vector3 } from "three";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PointCloudVisualization } from "../../../decoders";
 import type { PointCloudCameraPose } from "../../../visualization/panels/point-cloud";
 import { EMPTY_MCAP_FRAME_GRAPH_SUMMARY } from "../frame-transforms";
 import type { Mcap3dCameraTrackingAnchor } from "./mcap-3d-camera";
 import {
-  getMcap3dViewStateSnapshot,
-  resetMcap3dViewStateForTests,
+  createMcap3dViewStateStore,
+  type Mcap3dViewStateStore,
 } from "./mcap-3d-view-state";
 import {
   mcap3dCameraPoseRestoreApplies,
-  mcap3dTrackingAnchorRestoreApplies,
   useMcap3dCameraTracking,
 } from "./use-mcap-3d-camera-tracking";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
+let viewStateStore: Mcap3dViewStateStore;
+
 beforeEach(() => {
-  resetMcap3dViewStateForTests();
+  viewStateStore = createMcap3dViewStateStore();
 });
 
 afterEach(() => {
@@ -55,6 +56,20 @@ describe("useMcap3dCameraTracking", () => {
     expect(result.current.getDisplayedCameraPose()).toEqual(pose(2));
   });
 
+  it("streams live rig poses to non-React camera observers", () => {
+    const onCameraPoseSample = vi.fn();
+    const { result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({ onCameraPoseSample }),
+    });
+
+    act(() => {
+      result.current.rig.onPoseSample({ anchor: null, pose: pose(3) });
+    });
+
+    expect(onCameraPoseSample).toHaveBeenCalledWith(pose(3));
+    expect(result.current.poseCommand).toBeNull();
+  });
+
   it("commits focus poses (recenter, view presets) to the command channel", () => {
     const { result } = renderHook(useMcap3dCameraTracking, {
       initialProps: trackingProps({ placementStatus: "transformed" }),
@@ -65,10 +80,14 @@ describe("useMcap3dCameraTracking", () => {
     });
 
     expect(result.current.poseCommand).toEqual(pose(3));
-    expect(getMcap3dViewStateSnapshot().cameraView).toEqual({
+    expect(viewStateStore.getSnapshot().cameraView).toEqual({
       pose: pose(3),
+      sourceKey: "source-a",
       worldFrameId: "map",
     });
+    expect(
+      viewStateStore.getSnapshot().navigationCompositions[0]?.trackingMode,
+    ).toBe("position");
   });
 
   it("pins the fit fallback at gesture start exactly once", () => {
@@ -89,31 +108,35 @@ describe("useMcap3dCameraTracking", () => {
     expect(result.current.poseCommand).toBe(pinned);
   });
 
-  it("records pose and anchor at gesture commits, gated on placement", () => {
+  it("records pose and portable composition at transformed gesture commits", () => {
     const anchor = trackingAnchor({});
     const { rerender, result } = renderHook(useMcap3dCameraTracking, {
       initialProps: trackingProps({ placementStatus: "provisional" }),
     });
 
-    // Provisional placement: the pose is not a world-frame pose yet, but the
-    // anchor carries its own frame gates and is always safe to record.
+    // Provisional placement: neither the pose nor its composition is in the
+    // effective world frame yet, so neither is safe to carry forward.
     act(() => {
       result.current.rig.onCommit(pose(4), anchor);
     });
-    expect(getMcap3dViewStateSnapshot().cameraView).toBeNull();
-    expect(getMcap3dViewStateSnapshot().trackingAnchor).toEqual(anchor);
+    expect(viewStateStore.getSnapshot().cameraView).toBeNull();
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
 
     rerender(trackingProps({ placementStatus: "transformed" }));
     act(() => {
       result.current.rig.onCommit(pose(5), anchor);
     });
-    expect(getMcap3dViewStateSnapshot().cameraView).toEqual({
+    expect(viewStateStore.getSnapshot().cameraView).toEqual({
       pose: pose(5),
+      sourceKey: "source-a",
       worldFrameId: "map",
     });
+    expect(viewStateStore.getSnapshot().navigationCompositions[0]).toEqual(
+      targetComposition({}),
+    );
   });
 
-  it("records the final pose and anchor on unmount for mid-gesture hops", () => {
+  it("records the final pose and composition on unmount for mid-gesture hops", () => {
     const anchor = trackingAnchor({});
     const { result, unmount } = renderHook(useMcap3dCameraTracking, {
       initialProps: trackingProps({ placementStatus: "transformed" }),
@@ -123,19 +146,22 @@ describe("useMcap3dCameraTracking", () => {
     act(() => {
       result.current.rig.onPoseSample({ anchor, pose: pose(6) });
     });
-    expect(getMcap3dViewStateSnapshot().cameraView).toBeNull();
+    expect(viewStateStore.getSnapshot().cameraView).toBeNull();
 
     unmount();
-    expect(getMcap3dViewStateSnapshot().cameraView).toEqual({
+    expect(viewStateStore.getSnapshot().cameraView).toEqual({
       pose: pose(6),
+      sourceKey: "source-a",
       worldFrameId: "map",
     });
-    expect(getMcap3dViewStateSnapshot().trackingAnchor).toEqual(anchor);
+    expect(viewStateStore.getSnapshot().navigationCompositions[0]).toEqual(
+      targetComposition({}),
+    );
   });
 
   it("freezes the displayed pose into the command channel on mode switch", () => {
     const { result } = renderHook(useMcap3dCameraTracking, {
-      initialProps: trackingProps(),
+      initialProps: trackingProps({ placementStatus: "transformed" }),
     });
 
     act(() => {
@@ -147,7 +173,10 @@ describe("useMcap3dCameraTracking", () => {
 
     expect(result.current.trackingMode).toBe("free");
     expect(result.current.poseCommand).toEqual(pose(7));
-    expect(getMcap3dViewStateSnapshot().trackingMode).toBe("free");
+    expect(viewStateStore.getSnapshot().trackingMode).toBe("free");
+    expect(
+      viewStateStore.getSnapshot().navigationCompositions[0]?.trackingMode,
+    ).toBe("free");
   });
 
   it("remaps the provisional camera pose exactly once per remap key", () => {
@@ -356,7 +385,11 @@ describe("useMcap3dCameraTracking view-state restore", () => {
 
   it("restores the camera pose once transformed in its world frame, bypassing the remap", () => {
     const restore = cameraRestore({
-      cameraView: { pose: pose(7), worldFrameId: "map" },
+      cameraView: {
+        pose: pose(7),
+        sourceKey: "source-a",
+        worldFrameId: "map",
+      },
     });
     const { rerender, result } = renderHook(useMcap3dCameraTracking, {
       initialProps: trackingProps({
@@ -397,7 +430,11 @@ describe("useMcap3dCameraTracking view-state restore", () => {
 
   it("keeps the remap when the restored pose's world frame differs, then applies a late match without fighting", () => {
     const restore = cameraRestore({
-      cameraView: { pose: pose(7), worldFrameId: "odom" },
+      cameraView: {
+        pose: pose(7),
+        sourceKey: "source-a",
+        worldFrameId: "odom",
+      },
     });
     const { rerender, result } = renderHook(useMcap3dCameraTracking, {
       initialProps: trackingProps({
@@ -453,7 +490,11 @@ describe("useMcap3dCameraTracking view-state restore", () => {
 
   it("abandons the pose restore when the user grabs the camera first", () => {
     const restore = cameraRestore({
-      cameraView: { pose: pose(7), worldFrameId: "map" },
+      cameraView: {
+        pose: pose(7),
+        sourceKey: "source-a",
+        worldFrameId: "map",
+      },
     });
     const { rerender, result } = renderHook(useMcap3dCameraTracking, {
       initialProps: trackingProps({
@@ -477,13 +518,289 @@ describe("useMcap3dCameraTracking view-state restore", () => {
     expect(result.current.poseCommand).toEqual(pose(3));
   });
 
+  it("uses target-relative composition instead of raw coordinates across recordings", () => {
+    const restore = cameraRestore({
+      cameraView: {
+        pose: pose(99),
+        sourceKey: "source-a",
+        worldFrameId: "map",
+      },
+      navigationCompositions: [targetComposition({})],
+    });
+    viewStateStore.recordCameraView(restore.cameraView);
+    viewStateStore.recordNavigationCompositions(restore.navigationCompositions);
+    const { result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        restore,
+        sourceKey: "source-b",
+      }),
+    });
+
+    expect(result.current.poseCommand).toEqual({
+      position: [15, 0, 10],
+      target: [15, 0, 0],
+    });
+    expect(viewStateStore.getSnapshot().cameraView?.sourceKey).toBe("source-b");
+  });
+
+  it("preserves raw world coordinates across recordings in absolute mode", () => {
+    const absolutePose = pose(99);
+    const restore = cameraRestore({
+      cameraView: {
+        pose: absolutePose,
+        sourceKey: "source-a",
+        worldFrameId: "map",
+      },
+      navigationCompositions: [targetComposition({})],
+    });
+    viewStateStore.recordCameraView(restore.cameraView);
+    viewStateStore.recordNavigationCompositions(restore.navigationCompositions);
+
+    const { result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        cameraNavigationMode: "absolute",
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        restore,
+        sourceKey: "source-b",
+      }),
+    });
+
+    expect(result.current.poseCommand).toEqual(absolutePose);
+    expect(viewStateStore.getSnapshot().cameraView).toEqual({
+      pose: absolutePose,
+      sourceKey: "source-b",
+      worldFrameId: "map",
+    });
+  });
+
+  it("preserves raw world coordinates during a persistent-shell source hop", () => {
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        cameraNavigationMode: "absolute",
+        placementStatus: "transformed",
+      }),
+    });
+    act(() => {
+      result.current.handleCameraPoseChange(pose(7), "focus");
+    });
+
+    rerender(
+      trackingProps({
+        cameraNavigationMode: "absolute",
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        sourceKey: "source-b",
+      }),
+    );
+
+    expect(result.current.poseCommand).toEqual(pose(7));
+    expect(viewStateStore.getSnapshot().cameraView?.sourceKey).toBe("source-b");
+  });
+
+  it("starts a new camera epoch when the persistent shell changes sources", () => {
+    const anchor = trackingAnchor({});
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({ placementStatus: "transformed" }),
+    });
+
+    act(() => {
+      result.current.handleCameraPoseChange(pose(5), "focus");
+      result.current.rig.onCommit(pose(5), anchor);
+    });
+    expect(result.current.poseCommand).toEqual(pose(5));
+
+    // The shell stays mounted while B is loading. A's raw world-space command
+    // must be removed immediately rather than pointing B's canvas at A.
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "empty",
+        sourceKey: "source-b",
+      }),
+    );
+    expect(result.current.poseCommand).toBeNull();
+
+    // Once B's placement is compatible, resolve the composition relative to
+    // B's target instead of reviving A's absolute coordinates.
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        sourceKey: "source-b",
+      }),
+    );
+    expect(result.current.poseCommand).toEqual({
+      position: [15, 0, 10],
+      target: [15, 0, 0],
+    });
+    expect(viewStateStore.getSnapshot().cameraView).toEqual({
+      pose: { position: [15, 0, 10], target: [15, 0, 0] },
+      sourceKey: "source-b",
+      worldFrameId: "map",
+    });
+  });
+
+  it("flushes the latest imperative pose before a persistent-shell source hop", () => {
+    const anchor = trackingAnchor({
+      relativePosition: [6, 0, 10],
+      relativeTarget: [6, 0, 0],
+    });
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({ placementStatus: "transformed" }),
+    });
+
+    // Navigation can replace the source before OrbitControls emits its gesture
+    // commit. The latest sample must still seed B's portable composition.
+    act(() => {
+      result.current.rig.onPoseSample({ anchor, pose: pose(6) });
+    });
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "empty",
+        sourceKey: "source-b",
+      }),
+    );
+    expect(viewStateStore.getSnapshot().navigationCompositions[0]).toEqual(
+      targetComposition({
+        relativePosition: [6, 0, 10],
+        relativeTarget: [6, 0, 0],
+      }),
+    );
+
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        sourceKey: "source-b",
+      }),
+    );
+    expect(result.current.poseCommand).toEqual({
+      position: [16, 0, 10],
+      target: [16, 0, 0],
+    });
+  });
+
+  it("preserves a carried composition's tracking mode across a source hop", () => {
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps(),
+    });
+    viewStateStore.recordNavigationCompositions([
+      targetComposition({ trackingMode: "free" }),
+    ]);
+
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        sourceKey: "source-b",
+      }),
+    );
+
+    expect(result.current.trackingMode).toBe("free");
+    expect(result.current.poseCommand).toEqual({
+      position: [15, 0, 10],
+      target: [15, 0, 0],
+    });
+    expect(
+      viewStateStore.getSnapshot().navigationCompositions[0]?.trackingMode,
+    ).toBe("free");
+  });
+
+  it("falls back to bounds composition when target semantics are incompatible", () => {
+    const { result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        restore: cameraRestore({
+          navigationCompositions: [
+            targetComposition({ targetFrameId: "vehicle" }),
+            {
+              distanceInRadii: 2,
+              kind: "bounds-normalized",
+              sceneUpAxis: "z",
+              targetOffsetInRadii: [0, 0, 0],
+              trackingMode: "free",
+              viewDirection: [0, 0, 1],
+            },
+          ],
+        }),
+        sourceKey: "source-b",
+      }),
+    });
+
+    expect(result.current.poseCommand).toBeNull();
+    act(() => {
+      result.current.noteRenderedCameraPose(pose(0), {
+        center: [100, 0, 0],
+        radius: 10,
+      });
+    });
+    expect(result.current.poseCommand).toEqual({
+      position: [100, 0, 20],
+      target: [100, 0, 0],
+    });
+  });
+
+  it("rejects navigation composition when the 3D source family changed", () => {
+    const compositions = [targetComposition({})];
+    viewStateStore.recordNavigationCompositions(compositions);
+    const { result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        navigationRestoreCompatible: false,
+        placementStatus: "transformed",
+        restore: cameraRestore({
+          navigationCompositions: compositions,
+        }),
+        sourceKey: "source-b",
+      }),
+    });
+
+    expect(result.current.poseCommand).toBeNull();
+    expect(result.current.rig.adoptAnchor).toBeNull();
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+  });
+
+  it("does not let an unresolved intermediate sample replace the carried candidate", () => {
+    const carried = targetComposition({ relativePosition: [9, 0, 10] });
+    viewStateStore.recordNavigationCompositions([carried]);
+    const { result, unmount } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        cameraTargetFrameId: "",
+        placementStatus: "transformed",
+        restore: cameraRestore({ navigationCompositions: [carried] }),
+        sourceKey: "source-b",
+      }),
+    });
+
+    act(() => {
+      result.current.noteRenderedCameraPose(pose(2), {
+        center: [2, 0, 0],
+        radius: 10,
+      });
+    });
+    unmount();
+
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([
+      carried,
+    ]);
+    expect(viewStateStore.getSnapshot().cameraView).toBeNull();
+  });
+
   it("hands a matching follow-mode tracking anchor to the rig for adoption", () => {
     const anchor = trackingAnchor({});
     const { result } = renderHook(useMcap3dCameraTracking, {
       initialProps: trackingProps({
         frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
         restore: cameraRestore({
-          trackingAnchor: anchor,
+          navigationCompositions: [targetComposition({})],
           trackingMode: "position",
         }),
       }),
@@ -497,8 +814,11 @@ describe("useMcap3dCameraTracking view-state restore", () => {
     const { result } = renderHook(useMcap3dCameraTracking, {
       initialProps: trackingProps({
         frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
         restore: cameraRestore({
-          trackingAnchor: trackingAnchor({ targetFrameId: "other" }),
+          navigationCompositions: [
+            targetComposition({ targetFrameId: "other" }),
+          ],
           trackingMode: "position",
         }),
       }),
@@ -510,12 +830,16 @@ describe("useMcap3dCameraTracking view-state restore", () => {
 
   it("abandons a pending anchor restore when the user grabs the camera first", () => {
     const restore = cameraRestore({
-      trackingAnchor: trackingAnchor({}),
+      navigationCompositions: [targetComposition({})],
       trackingMode: "position",
     });
     const { rerender, result } = renderHook(useMcap3dCameraTracking, {
       // The anchor's target frame is not effective yet, so the restore pends.
-      initialProps: trackingProps({ cameraTargetFrameId: "", restore }),
+      initialProps: trackingProps({
+        cameraTargetFrameId: "",
+        placementStatus: "transformed",
+        restore,
+      }),
     });
 
     expect(result.current.rig.adoptAnchor).toBeNull();
@@ -533,88 +857,47 @@ describe("restore compatibility gates", () => {
   it("gates the camera pose on transformed placement and a world-frame match", () => {
     expect(
       mcap3dCameraPoseRestoreApplies({
+        currentSourceKey: "source-a",
         placementStatus: "transformed",
+        restoreSourceKey: "source-a",
         restoreWorldFrameId: "map",
         worldFrameId: "map",
       }),
     ).toBe(true);
     expect(
       mcap3dCameraPoseRestoreApplies({
-        placementStatus: "provisional",
+        currentSourceKey: "source-b",
+        placementStatus: "transformed",
+        restoreSourceKey: "source-a",
         restoreWorldFrameId: "map",
         worldFrameId: "map",
       }),
     ).toBe(false);
     expect(
       mcap3dCameraPoseRestoreApplies({
+        currentSourceKey: "source-a",
+        placementStatus: "provisional",
+        restoreSourceKey: "source-a",
+        restoreWorldFrameId: "map",
+        worldFrameId: "map",
+      }),
+    ).toBe(false);
+    expect(
+      mcap3dCameraPoseRestoreApplies({
+        currentSourceKey: "source-a",
         placementStatus: "transformed",
+        restoreSourceKey: "source-a",
         restoreWorldFrameId: "odom",
         worldFrameId: "map",
       }),
     ).toBe(false);
     expect(
       mcap3dCameraPoseRestoreApplies({
+        currentSourceKey: "",
         placementStatus: "transformed",
+        restoreSourceKey: "",
         restoreWorldFrameId: "",
         worldFrameId: "",
-      }),
-    ).toBe(false);
-  });
-
-  it("gates the tracking anchor on mode, scene-up, and both frame ids", () => {
-    const anchor = trackingAnchor({});
-    expect(
-      mcap3dTrackingAnchorRestoreApplies({
-        anchor,
-        cameraTargetFrameId: "base_link",
-        sceneUpAxis: "z",
-        trackingMode: "position",
-        worldFrameId: "map",
-      }),
-    ).toBe(true);
-    expect(
-      mcap3dTrackingAnchorRestoreApplies({
-        anchor,
-        cameraTargetFrameId: "base_link",
-        sceneUpAxis: "z",
-        trackingMode: "pose",
-        worldFrameId: "map",
-      }),
-    ).toBe(false);
-    expect(
-      mcap3dTrackingAnchorRestoreApplies({
-        anchor,
-        cameraTargetFrameId: "other",
-        sceneUpAxis: "z",
-        trackingMode: "position",
-        worldFrameId: "map",
-      }),
-    ).toBe(false);
-    expect(
-      mcap3dTrackingAnchorRestoreApplies({
-        anchor,
-        cameraTargetFrameId: "base_link",
-        sceneUpAxis: "z",
-        trackingMode: "position",
-        worldFrameId: "odom",
-      }),
-    ).toBe(false);
-    expect(
-      mcap3dTrackingAnchorRestoreApplies({
-        anchor,
-        cameraTargetFrameId: "base_link",
-        sceneUpAxis: "y",
-        trackingMode: "position",
-        worldFrameId: "map",
-      }),
-    ).toBe(false);
-    expect(
-      mcap3dTrackingAnchorRestoreApplies({
-        anchor,
-        cameraTargetFrameId: "base_link",
-        sceneUpAxis: "z",
-        trackingMode: "free",
-        worldFrameId: "map",
       }),
     ).toBe(false);
   });
@@ -625,7 +908,7 @@ function cameraRestore(
 ): NonNullable<TrackingProps["restore"]> {
   return {
     cameraView: null,
-    trackingAnchor: null,
+    navigationCompositions: [],
     trackingMode: null,
     ...overrides,
   };
@@ -645,6 +928,26 @@ function trackingAnchor(
   };
 }
 
+function targetComposition(
+  overrides: Partial<
+    Extract<
+      NonNullable<TrackingProps["restore"]>["navigationCompositions"][number],
+      { kind: "target-relative" }
+    >
+  >,
+) {
+  return {
+    kind: "target-relative" as const,
+    relativePosition: [5, 0, 10] as const,
+    relativeTarget: [5, 0, 0] as const,
+    rotationMode: "position" as const,
+    sceneUpAxis: "z" as const,
+    targetFrameId: "base_link",
+    trackingMode: "position" as const,
+    ...overrides,
+  };
+}
+
 function trackingProps(overrides: Partial<TrackingProps> = {}): TrackingProps {
   return {
     cameraTargetFrameId: "base_link",
@@ -655,6 +958,8 @@ function trackingProps(overrides: Partial<TrackingProps> = {}): TrackingProps {
     provisionalPlaybackFrame: null,
     sceneUpAxis: "z",
     selectedTopicsKey: "topics",
+    sourceKey: "source-a",
+    viewStateStore,
     worldFrameId: "map",
     ...overrides,
   };

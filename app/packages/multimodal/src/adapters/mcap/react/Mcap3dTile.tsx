@@ -3,6 +3,7 @@ import { useSeekEvent } from "@fiftyone/playback/src/lib/playback/use-playback-s
 import React, {
   type SetStateAction,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -19,9 +20,12 @@ import type {
 import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
 import { useKeyedIdentityMap } from "../../../visualization/panels/use-keyed-identity-map";
 import {
+  DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
   type CameraFrustumPanelLayer,
   type GridPanelLayer,
   PointCloudPanel,
+  type PointCloudCameraPose,
+  type PointCloudCameraProjection,
   type PointCloudPanelLayer,
   type PointCloudPanelRenderStats,
   type PointCloudPointPick,
@@ -38,7 +42,16 @@ import {
   useStabilizedMcapNotices,
   type McapHealthNotice,
 } from "./mcap-health";
-import { getMcap3dViewStateSnapshot } from "./mcap-3d-view-state";
+import { useMcap3dViewStateStore } from "./mcap-3d-view-state-context";
+import {
+  type Mcap3dViewpointController,
+  useRegisterMcap3dViewpoint,
+} from "./mcap-3d-viewpoint-context";
+import {
+  createMcap3dViewpointStore,
+  normalizeMcap3dCameraProjection,
+} from "./mcap-3d-viewpoint";
+import type { Mcap3dCameraNavigationMode } from "./mcap-3d-view-state";
 import { type PrimitiveAtom, useStore } from "jotai";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import {
@@ -123,10 +136,20 @@ const STUDIO_BACKGROUND: ThreeSceneBackground = {
  * sidebar offers checkboxes and panel-specific frame controls.
  */
 const Mcap3dTile: React.FC<McapTileProps> = () => {
+  const viewStateStore = useMcap3dViewStateStore();
+  const sourceKey = useMcapDataStream()?.sourceKey ?? "";
   // The previous mount's view state, read once before any write-through can
   // overwrite it. The tile remounts per sample, so this snapshot is exactly
   // the state the user left the previous sample's 3D tile in.
-  const [viewStateRestore] = useState(() => getMcap3dViewStateSnapshot());
+  const [viewStateRestore] = useState(() => viewStateStore.getSnapshot());
+  const [cameraProjection, setCameraProjection] = useState(() =>
+    normalizeMcap3dCameraProjection(
+      viewStateRestore.cameraProjection ??
+        DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
+    ),
+  );
+  const [cameraNavigationMode, setCameraNavigationMode] =
+    useState<Mcap3dCameraNavigationMode>(viewStateRestore.cameraNavigationMode);
   const {
     cameraSources,
     cameraTopics,
@@ -158,7 +181,28 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     useMcapPointCloudStyleSettings();
   const { referenceGrid } = useMcapReferenceGridSettings();
   const { sceneBackground } = useMcapSceneBackgroundSettings();
-  const { sceneUpAxis, setSceneUpAxis } = useMcap3dViewSettings();
+  const {
+    defaultTrackingMode,
+    preferredCameraTargetFrameId,
+    preferredWorldFrameId,
+    sceneUpAxis,
+    setDefaultTrackingMode,
+    setPreferredCameraTargetFrameId,
+    setPreferredWorldFrameId,
+    setSceneUpAxis,
+  } = useMcap3dViewSettings();
+  const [viewpointStore] = useState(() =>
+    createMcap3dViewpointStore({
+      cameraNavigationMode,
+      pose: null,
+      projection: cameraProjection,
+      sceneUpAxis,
+    }),
+  );
+  const publishViewpointPose = useCallback(
+    (pose: PointCloudCameraPose) => viewpointStore.publish({ pose }),
+    [viewpointStore],
+  );
   const tileId = useTileId();
   const { focusedTileId } = useTiling();
   const seekEvent = useSeekEvent();
@@ -227,6 +271,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     frames,
     frameTransforms,
     gridFrames,
+    onPreferredCameraTargetFrameIdChange: setPreferredCameraTargetFrameId,
+    onPreferredWorldFrameIdChange: setPreferredWorldFrameId,
+    preferredCameraTargetFrameId,
+    preferredWorldFrameId,
     restore: viewStateRestore,
   });
 
@@ -301,7 +349,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     temporalPolicy.transformGapWarningMs,
     worldFrameId,
   ]);
-  const sourceKey = useMcapDataStream()?.sourceKey ?? "";
   const pointCloudPlacementFrameIds = useMemo(
     () =>
       frames
@@ -693,16 +740,69 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     trackingMode,
   } = useMcap3dCameraTracking({
     cameraTargetFrameId,
+    defaultTrackingMode,
     frameTransforms,
     placementStatus,
     playbackTimeNs,
     provisionalFrameIds,
     provisionalPlaybackFrame,
+    navigationRestoreCompatible: restoredSourceShapeMatches,
+    cameraNavigationMode,
+    onCameraPoseSample: publishViewpointPose,
     restore: viewStateRestore,
     sceneUpAxis,
     selectedTopicsKey,
+    onDefaultTrackingModeChange: setDefaultTrackingMode,
+    sourceKey,
     worldFrameId,
   });
+  const updateCameraProjection = useCallback(
+    (projection: PointCloudCameraProjection) => {
+      const normalized = normalizeMcap3dCameraProjection(projection);
+      setCameraProjection(normalized);
+      viewpointStore.publish({ projection: normalized });
+      viewStateStore.recordCameraProjection(normalized);
+    },
+    [viewStateStore, viewpointStore],
+  );
+  const viewpointActionsRef = useRef<{
+    setCameraNavigationMode: (mode: Mcap3dCameraNavigationMode) => void;
+    setPose: (pose: PointCloudCameraPose) => void;
+    setProjection: (projection: PointCloudCameraProjection) => void;
+  }>({
+    setCameraNavigationMode: () => undefined,
+    setPose: () => undefined,
+    setProjection: () => undefined,
+  });
+  viewpointActionsRef.current = {
+    setCameraNavigationMode: (mode) => {
+      setCameraNavigationMode(mode);
+      viewpointStore.publish({ cameraNavigationMode: mode });
+      viewStateStore.recordCameraNavigationMode(mode);
+    },
+    setPose: (pose) => {
+      viewpointStore.publish({ pose });
+      handleCameraPoseChange(pose, "focus");
+    },
+    setProjection: updateCameraProjection,
+  };
+  const [viewpointController] = useState<Mcap3dViewpointController>(() => ({
+    ...viewpointStore,
+    setCameraNavigationMode: (mode) =>
+      viewpointActionsRef.current.setCameraNavigationMode(mode),
+    setPose: (pose) => viewpointActionsRef.current.setPose(pose),
+    setProjection: (projection) =>
+      viewpointActionsRef.current.setProjection(projection),
+  }));
+  useRegisterMcap3dViewpoint(tileId, viewpointController);
+  // This effect publishes infrequent camera settings to the sidebar store.
+  useEffect(() => {
+    viewpointStore.publish({
+      cameraNavigationMode,
+      projection: cameraProjection,
+      sceneUpAxis,
+    });
+  }, [cameraNavigationMode, cameraProjection, sceneUpAxis, viewpointStore]);
   useMcap3dViewShortcuts({
     cameraTargetFrameId,
     frameIds,
@@ -769,10 +869,11 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const handlePanelRenderStats = useCallback(
     (stats: PointCloudPanelRenderStats) => {
       if (stats.cameraPose) {
-        noteRenderedCameraPose(stats.cameraPose);
+        viewpointStore.publish({ pose: stats.cameraPose });
+        noteRenderedCameraPose(stats.cameraPose, stats.sceneBounds);
       }
     },
-    [noteRenderedCameraPose],
+    [noteRenderedCameraPose, viewpointStore],
   );
 
   // The settings sidebar is a memoized subtree; its grouped props are
@@ -864,6 +965,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             annotationLayers={displayedScene.annotationLayers}
             background={panelBackground}
             cameraPose={poseCommand}
+            cameraProjection={cameraProjection}
             cameraRig={<Mcap3dCameraRig {...rig} />}
             canvasSurface="modal-3d"
             fitResetKey={`${worldFrameId}:${sceneUpAxis}`}

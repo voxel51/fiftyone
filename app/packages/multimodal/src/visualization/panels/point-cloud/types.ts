@@ -142,6 +142,14 @@ export interface PointCloudFrameTransform {
  */
 export type PointCloudCameraPose = ThreeCameraPose;
 
+/** Perspective projection parameters for an interactive point-cloud view. */
+export interface PointCloudCameraProjection {
+  /** Vertical field of view in degrees. */
+  readonly fovDegrees: number;
+  readonly near: number;
+  readonly far: number;
+}
+
 /**
  * Appearance of the panel's world reference grid. Every field has a
  * sensible default; pass `{}` for the stock grid.
@@ -319,6 +327,13 @@ export interface PointCloudPanelRenderStats {
   readonly gridLayerCount: number;
   readonly layerCount: number;
   readonly renderedPointCount: number;
+  readonly sceneBounds?: PointCloudSceneBoundsSummary;
+}
+
+/** Compact world-space bounds exposed to camera composition callers. */
+export interface PointCloudSceneBoundsSummary {
+  readonly center: readonly [number, number, number];
+  readonly radius: number;
 }
 
 /**
@@ -339,6 +354,8 @@ export interface PointCloudPanelProps {
    * `cameraRig` (the modal 3D tile does).
    */
   readonly cameraPose?: PointCloudCameraPose | null;
+  /** Perspective projection override; defaults to the panel camera preset. */
+  readonly cameraProjection?: PointCloudCameraProjection;
   /**
    * Optional camera controller mounted inside the canvas (rendered as a
    * child of the shared 3D scene). Lets callers own camera behavior

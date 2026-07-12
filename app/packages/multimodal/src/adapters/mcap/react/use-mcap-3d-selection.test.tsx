@@ -5,8 +5,8 @@ import { MCAP_SCENE_SOURCE_METADATA, MCAP_SOURCE_TYPE } from "../scene-sources";
 import { topicPrefix } from "../topic-matching";
 import {
   EMPTY_MCAP_3D_VIEW_STATE,
-  getMcap3dViewStateSnapshot,
-  resetMcap3dViewStateForTests,
+  createMcap3dViewStateStore,
+  type Mcap3dViewStateStore,
   type Mcap3dViewStateSnapshot,
 } from "./mcap-3d-view-state";
 import { useMcap3dSelection } from "./use-mcap-3d-selection";
@@ -24,10 +24,12 @@ vi.mock("@fiftyone/tiling", () => ({
   useSetTileTitle: () => setTileTitleMock,
 }));
 
+let viewStateStore: Mcap3dViewStateStore;
+
 beforeEach(() => {
   setTileTitleMock.mockClear();
   useSceneInventoryMock.mockReset();
-  resetMcap3dViewStateForTests();
+  viewStateStore = createMcap3dViewStateStore();
 });
 
 afterEach(() => {
@@ -320,7 +322,7 @@ describe("useMcap3dSelection", () => {
   it("writes the selection state through to the view-state store", () => {
     const { result } = renderSelection([lidarTop, lidarFront]);
 
-    expect(getMcap3dViewStateSnapshot()).toMatchObject({
+    expect(viewStateStore.getSnapshot()).toMatchObject({
       enabledSourceIds: [lidarTop.id, lidarFront.id],
       renderableSourceIds: [lidarTop.id, lidarFront.id],
     });
@@ -328,10 +330,10 @@ describe("useMcap3dSelection", () => {
     act(() => {
       result.current.toggleSource(lidarFront.id, false);
     });
-    expect(getMcap3dViewStateSnapshot()).toMatchObject({
+    expect(viewStateStore.getSnapshot()).toMatchObject({
       enabledSourceIds: [lidarTop.id],
     });
-    expect(getMcap3dViewStateSnapshot()).not.toHaveProperty("showCameraImages");
+    expect(viewStateStore.getSnapshot()).not.toHaveProperty("showCameraImages");
   });
 });
 
@@ -340,7 +342,7 @@ function renderSelection(
   props: Parameters<typeof useMcap3dSelection>[0] = {},
 ) {
   useSceneInventoryMock.mockReturnValue(sources);
-  return renderHook(useMcap3dSelection, { initialProps: props });
+  return renderHook(() => useMcap3dSelection({ ...props, viewStateStore }));
 }
 
 function viewStateSnapshot(

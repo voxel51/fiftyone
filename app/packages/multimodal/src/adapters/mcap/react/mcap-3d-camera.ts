@@ -17,6 +17,8 @@ const HEADING_FORWARD_EPSILON = 0.000001;
 
 export type Mcap3dTrackingMode = "free" | "position" | "heading" | "pose";
 export type Mcap3dFollowTrackingMode = Exclude<Mcap3dTrackingMode, "free">;
+/** Default tracking policy for a newly opened 3D inspection session. */
+export const DEFAULT_MCAP_3D_TRACKING_MODE: Mcap3dTrackingMode = "position";
 
 export interface Mcap3dCameraTargetPose {
   readonly rotation: Quaternion;

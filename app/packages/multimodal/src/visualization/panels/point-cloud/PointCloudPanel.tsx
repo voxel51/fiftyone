@@ -1,5 +1,12 @@
 import { Icon, IconName, Size } from "@voxel51/voodo";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useThree } from "@react-three/fiber";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import * as THREE from "three";
 
 import MeasureRulerIcon from "../../../components/MeasureRulerIcon";
@@ -8,6 +15,7 @@ import { Base3DScene } from "../base-3d-scene";
 import { WebGpuCanvas } from "../gpu/webgpu-canvas";
 import { useKeyedIdentityMap } from "../use-keyed-identity-map";
 import {
+  DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
   PERSPECTIVE_POINT_CAMERA,
   cameraPoseForBounds,
   sceneBoundsForLayers,
@@ -52,6 +60,7 @@ import type {
   PanelNotice,
   PanelNoticeSeverity,
   PointCloudCameraPose,
+  PointCloudCameraProjection,
   PointCloudColorRamp,
   PointCloudPanelLayer,
   PointCloudPanelProps,
@@ -76,6 +85,7 @@ export function PointCloudPanel({
   annotationLayers = [],
   background,
   cameraPose,
+  cameraProjection = DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
   cameraRig,
   canvasSurface,
   className,
@@ -192,13 +202,23 @@ export function PointCloudPanel({
     return ramps;
   }, [renderLayers]);
 
-  const frameFitPose = useMemo(
-    () =>
-      cameraPoseForBounds(
-        sceneBoundsForLayers(renderLayers, annotationLayers, gridLayers),
-      ),
+  const frameFitBounds = useMemo(
+    () => sceneBoundsForLayers(renderLayers, annotationLayers, gridLayers),
     [annotationLayers, gridLayers, renderLayers],
   );
+  const frameFitPose = useMemo(
+    () => cameraPoseForBounds(frameFitBounds, cameraProjection.fovDegrees),
+    [cameraProjection.fovDegrees, frameFitBounds],
+  );
+  const sceneBoundsSummary = useMemo(() => {
+    if (!frameFitBounds) return undefined;
+    const center = frameFitBounds.getCenter(new THREE.Vector3());
+    const size = frameFitBounds.getSize(new THREE.Vector3());
+    return {
+      center: center.toArray(),
+      radius: size.length() / 2,
+    } as const;
+  }, [frameFitBounds]);
   const [initialFitPose, setInitialFitPose] =
     useState<PointCloudCameraPose | null>(null);
   const [appliedFitResetKey, setAppliedFitResetKey] = useState(fitResetKey);
@@ -335,6 +355,7 @@ export function PointCloudPanel({
           (sum, layer) => sum + layer.data.renderedPointCount,
           0,
         ),
+        ...(sceneBoundsSummary ? { sceneBounds: sceneBoundsSummary } : {}),
       });
     });
 
@@ -354,6 +375,7 @@ export function PointCloudPanel({
     layers.length,
     onRenderStats,
     renderLayers,
+    sceneBoundsSummary,
   ]);
 
   return (
@@ -369,6 +391,7 @@ export function PointCloudPanel({
         }
         surface={canvasSurface}
       >
+        <PerspectiveCameraProjection projection={cameraProjection} />
         <Base3DScene
           background={background}
           cameraPose={effectiveCameraPose}
@@ -480,6 +503,27 @@ export function PointCloudPanel({
       <PanelNotices notices={notices} />
     </div>
   );
+}
+
+function PerspectiveCameraProjection({
+  projection,
+}: {
+  readonly projection: PointCloudCameraProjection;
+}) {
+  const camera = useThree((state) => state.camera);
+  const invalidate = useThree((state) => state.invalidate);
+
+  // This layout effect updates the Three camera before the next frame paints.
+  useLayoutEffect(() => {
+    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    camera.fov = projection.fovDegrees;
+    camera.near = projection.near;
+    camera.far = projection.far;
+    camera.updateProjectionMatrix();
+    invalidate();
+  }, [camera, invalidate, projection]);
+
+  return null;
 }
 
 function pointCloudColorOptions(
