@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree, type ThreeEvent } from "@react-three/fiber";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 import type { CameraCalibrationVisualization } from "../../../decoders";
@@ -96,7 +96,12 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   );
   const pickingEnabled = useScenePicking();
   const [hovered, setHovered] = useState(false);
-  const interactive = Boolean(layer.onSelect) && pickingEnabled;
+  const interactive =
+    Boolean(layer.onHover || layer.onSelect) && pickingEnabled;
+  const hoveredRef = useRef(hovered);
+  hoveredRef.current = hovered;
+  const onHoverRef = useRef(layer.onHover);
+  onHoverRef.current = layer.onHover;
   // Selected (linked camera tile focused) draws dashed; hover — direct
   // or echoed from the linked tile — draws solid in the highlight color.
   const selected = Boolean(layer.selected);
@@ -124,6 +129,13 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   useEffect(() => () => imagePlaneGeometry?.dispose(), [imagePlaneGeometry]);
   // This effect disposes the camera-axis marker when it is replaced.
   useEffect(() => () => axisGeometry.dispose(), [axisGeometry]);
+  // This effect clears an active frustum hover when the layer unmounts.
+  useEffect(
+    () => () => {
+      if (hoveredRef.current) onHoverRef.current?.(false);
+    },
+    [],
+  );
   useInvalidateOn([
     axisGeometry,
     baseOpacity,
@@ -146,13 +158,12 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
     };
   }, [hovered, interactive]);
 
-  if (!geometry) {
-    return null;
-  }
-
   // Cast, not a type: fiber's bundled three `Texture` type is out of sync
   // with the app's pinned three version — see GridSceneLayer's textureMap.
   const imageMap = imageHandle ? (imageHandle.texture as never) : null;
+  if (!geometry || (image && (!imageMap || !imagePlaneGeometry))) {
+    return null;
+  }
 
   return (
     <group
@@ -174,10 +185,18 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
           ? (event) => {
               event.stopPropagation();
               setHovered(true);
+              layer.onHover?.(true);
             }
           : undefined
       }
-      onPointerOut={interactive ? () => setHovered(false) : undefined}
+      onPointerOut={
+        interactive
+          ? () => {
+              setHovered(false);
+              layer.onHover?.(false);
+            }
+          : undefined
+      }
       userData={interactive ? POINT_PICK_BLOCKING_USER_DATA : undefined}
     >
       <lineSegments frustumCulled={false}>

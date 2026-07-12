@@ -1,5 +1,6 @@
 import {
   TileSettingsContent,
+  useSetTileTitleHighlighted,
   useSetTileTitle,
   useTileDuplicator,
 } from "@fiftyone/tiling";
@@ -39,6 +40,7 @@ import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import {
   chooseNextImageTopic,
   mcapImageTileBindingsAtom,
+  useMcapHoveredFrustumImageTopic,
   useMcapImageTileHoverProps,
   usePublishMcapImageTileBinding,
 } from "./mcap-tile-source-bindings";
@@ -115,6 +117,8 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const pointCloudSources = useSceneSourcesByType(MCAP_SOURCE_TYPE.POINT_CLOUD);
   const { fidelityMode } = useMcapPlaybackSettings();
   const setTileTitle = useSetTileTitle();
+  const setTileTitleHighlighted = useSetTileTitleHighlighted();
+  const hoveredFrustumImageTopic = useMcapHoveredFrustumImageTopic();
   const jotaiStore = useStore();
   // Open on the resolver-assigned source; tiles added by hand (split
   // buttons, add-tile menu) bind the default-preferred stream no sibling
@@ -150,6 +154,15 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   usePublishMcapImageTileBinding(topic);
   // Hovering this tile lights up its camera frustum in the 3D scene.
   const hoverProps = useMcapImageTileHoverProps(topic);
+
+  // This effect mirrors 3D camera hover into this image pane's title.
+  useEffect(() => {
+    const highlighted = Boolean(topic && hoveredFrustumImageTopic === topic);
+    setTileTitleHighlighted(highlighted);
+    return () => {
+      if (highlighted) setTileTitleHighlighted(false);
+    };
+  }, [hoveredFrustumImageTopic, setTileTitleHighlighted, topic]);
 
   // How "Duplicate" clones this tile: same source, same title — unlike a
   // split, which spawns a fresh tile on the next undisplayed stream.

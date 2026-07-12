@@ -62,6 +62,14 @@ export function useMcapHoveredImageTopic(): string | null {
   return useAtomValue(mcapHoveredImageTopicAtom);
 }
 
+/** Image topic whose textured 3D camera frustum is currently hovered. */
+export const mcapHoveredFrustumImageTopicAtom = atom<string | null>(null);
+
+/** Subscribe to the image topic hovered from the 3D camera surface. */
+export function useMcapHoveredFrustumImageTopic(): string | null {
+  return useAtomValue(mcapHoveredFrustumImageTopicAtom);
+}
+
 /**
  * Pointer handlers an image tile spreads on its content to publish
  * hover into {@link mcapHoveredImageTopicAtom}. Cleans up after itself

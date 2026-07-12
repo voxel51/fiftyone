@@ -310,6 +310,8 @@ export interface CameraFrustumPanelLayer {
    * the wireframe dashed, distinguishing it from a transient hover.
    */
   readonly selected?: boolean;
+  /** Reports direct pointer hover over the frustum or textured image plane. */
+  readonly onHover?: (hovered: boolean) => void;
   /** Makes the frustum clickable — called on a non-drag click. */
   readonly onSelect?: (modifiers: { readonly metaKey: boolean }) => void;
 }

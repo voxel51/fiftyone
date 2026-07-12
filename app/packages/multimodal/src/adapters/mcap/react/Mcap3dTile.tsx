@@ -55,6 +55,7 @@ import type { Mcap3dCameraNavigationMode } from "./mcap-3d-view-state";
 import { type PrimitiveAtom, useStore } from "jotai";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import {
+  mcapHoveredFrustumImageTopicAtom,
   useMcapHoveredImageTopic,
   useMcapImageTileBindings,
 } from "./mcap-tile-source-bindings";
@@ -90,7 +91,6 @@ import {
 } from "./mcap-modal-settings";
 import { resolveMcapCameraModel } from "./camera-geometry/mcap-camera-model";
 import { mcapCameraRayModel } from "./camera-geometry/mcap-camera-ray-model";
-import { resolveMcapFrustumImageTopics } from "./camera-geometry/mcap-camera-association";
 import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import type { McapTileProps } from "./mcap-tile-types";
 import styles from "./McapTile.module.css";
@@ -138,6 +138,7 @@ const STUDIO_BACKGROUND: ThreeSceneBackground = {
 const Mcap3dTile: React.FC<McapTileProps> = () => {
   const viewStateStore = useMcap3dViewStateStore();
   const sourceKey = useMcapDataStream()?.sourceKey ?? "";
+  const jotaiStore = useStore();
   // The previous mount's view state, read once before any write-through can
   // overwrite it. The tile remounts per sample, so this snapshot is exactly
   // the state the user left the previous sample's 3D tile in.
@@ -228,16 +229,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         : null,
     [referenceGrid, sceneUpAxis],
   );
-  const resolvedFrustumImageTopics = useMemo(() => {
-    return resolveMcapFrustumImageTopics({
-      cameraTopics,
-      inventoryImageTopics: frustumImageTopics,
-      settingsByImageTopic: imageProjectionSettings,
-    });
-  }, [cameraTopics, frustumImageTopics, imageProjectionSettings]);
-  const frustumImageFrames = useMcapTopicPlaybackFrames<ImageVisualization>(
-    resolvedFrustumImageTopics,
-  );
+  const frustumImageFrames =
+    useMcapTopicPlaybackFrames<ImageVisualization>(frustumImageTopics);
   const frames =
     useMcapTopicPlaybackFrames<PointCloudVisualization>(pointCloudTopics);
   const pointCloudColorCapabilities = usePointCloudColorCapabilities(
@@ -416,18 +409,24 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const openImageTile = useOpenMcapImageTile();
   const hoveredImageTopic = useMcapHoveredImageTopic();
   const imageTileBindings = useMcapImageTileBindings();
+  const {
+    containerProps: hoverTooltipContainerProps,
+    onHoverCamera,
+    onHoverEntity,
+    onHoverPoint,
+    tooltip: hoverTooltip,
+  } = useMcap3dHoverTooltip();
   // The stream shown by the focused (active) tile, if it's an image tile.
   const focusedImageTopic = focusedTileId
     ? (imageTileBindings[focusedTileId] ?? null)
     : null;
   const pinholeImagePlaneDepthM = pinholeCamera.imagePlaneDepthM;
   const pinholeOpacity = pinholeCamera.opacityPercent / 100;
-  const frustumLayers = useKeyedIdentityMap(cameraFrustumLayers, {
+  const frustumLayerCandidates = useKeyedIdentityMap(cameraFrustumLayers, {
     build: (layer) => {
       const index = cameraTopics.indexOf(layer.id);
       const imageFrame = index >= 0 ? frustumImageFrames[index] : null;
-      const imageTopic =
-        index >= 0 ? (resolvedFrustumImageTopics[index] ?? "") : "";
+      const imageTopic = index >= 0 ? (frustumImageTopics[index] ?? "") : "";
       const geometry = imageTopic
         ? (imageProjectionSettings[imageTopic] ?? DEFAULT_MCAP_IMAGE_PROJECTION)
             .geometry
@@ -457,6 +456,26 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             highlighted: hoveredImageTopic === imageTopic,
             selected: focusedImageTopic === imageTopic,
             imageTopic,
+            onHover: (hovered: boolean) => {
+              if (hovered) {
+                jotaiStore.set(mcapHoveredFrustumImageTopicAtom, imageTopic);
+                onHoverCamera({
+                  calibrationTopic: layer.id,
+                  distortionModel: layer.frame.distortionModel,
+                  frameId: layer.frame.coordinateFrameId,
+                  imageTopic,
+                  kind: "camera",
+                  resolution: [layer.frame.width, layer.frame.height],
+                });
+                return;
+              }
+              if (
+                jotaiStore.get(mcapHoveredFrustumImageTopicAtom) === imageTopic
+              ) {
+                jotaiStore.set(mcapHoveredFrustumImageTopicAtom, null);
+                onHoverCamera(null);
+              }
+            },
             onSelect: ({ metaKey }: { readonly metaKey: boolean }) => {
               if (metaKey) {
                 openImageTile(imageTopic);
@@ -465,14 +484,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
           }
         : {};
       if (!imageFrame || !imageGeometryReady) {
-        return {
-          ...layer,
-          ...linked,
-          cameraRayModel,
-          imagePlaneDepthM: pinholeImagePlaneDepthM,
-          opacity: pinholeOpacity,
-          requireCameraRayModel: true,
-        };
+        return null;
       }
       return {
         ...layer,
@@ -498,8 +510,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     // frustums.
     inputs: (layer) => {
       const index = cameraTopics.indexOf(layer.id);
-      const imageTopic =
-        index >= 0 ? (resolvedFrustumImageTopics[index] ?? "") : "";
+      const imageTopic = index >= 0 ? (frustumImageTopics[index] ?? "") : "";
       return [
         layer,
         index >= 0 ? frustumImageFrames[index] : null,
@@ -508,6 +519,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         imageTopic !== "" && hoveredImageTopic === imageTopic,
         imageTopic !== "" && focusedImageTopic === imageTopic,
         openImageTile,
+        onHoverCamera,
         pinholeImagePlaneDepthM,
         pinholeOpacity,
         sourceKey,
@@ -515,12 +527,18 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     },
     key: (layer) => layer.id,
   });
+  const frustumLayers = useMemo(
+    () =>
+      frustumLayerCandidates.filter(
+        (layer): layer is NonNullable<typeof layer> => layer !== null,
+      ),
+    [frustumLayerCandidates],
+  );
   // Wire the scene annotations into the cross-tile selection: each layer
   // (one entity each) learns whether it's the selected object (or a
   // label-match echo of one) and how to toggle itself selected. Kept out
   // of build3dLayers so the pure layer builder stays selection-agnostic.
   const selectedObject = useMcapSelectedObject();
-  const jotaiStore = useStore();
   type SelectedObjectState = ReturnType<typeof useMcapSelectedObject>;
   const setSelectedObject = useCallback(
     (update: SetStateAction<SelectedObjectState>) => {
@@ -531,12 +549,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     },
     [jotaiStore],
   );
-  const {
-    containerProps: hoverTooltipContainerProps,
-    onHoverEntity,
-    onHoverPoint,
-    tooltip: hoverTooltip,
-  } = useMcap3dHoverTooltip();
   const annotationLayers = useKeyedIdentityMap(sceneAnnotationLayers, {
     build: (layer) => {
       const entity = layer.frame.entities[0];

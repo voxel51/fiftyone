@@ -1,11 +1,21 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  Mcap3dHoverTooltip,
   useMcap3dHoverTooltip,
   type Mcap3dHoveredEntity,
   type Mcap3dHoveredPoint,
 } from "./use-mcap-3d-hover-tooltip";
+
+const HOVERED_CAMERA = {
+  calibrationTopic: "/camera/front/camera_info",
+  distortionModel: "plumb_bob",
+  frameId: "camera_front",
+  imageTopic: "/camera/front/image",
+  kind: "camera" as const,
+  resolution: [1920, 1080] as const,
+};
 
 const HOVERED: Mcap3dHoveredEntity = {
   entityId: "veh-12",
@@ -122,6 +132,24 @@ describe("useMcap3dHoverTooltip", () => {
       result.current.onHoverPoint(null);
     });
     expect(result.current.tooltip).toBeNull();
+  });
+
+  it("delays camera details and renders its association metadata", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useMcap3dHoverTooltip());
+
+    act(() => {
+      result.current.onHoverCamera(HOVERED_CAMERA);
+      vi.advanceTimersByTime(120);
+    });
+    expect(result.current.tooltip).toMatchObject(HOVERED_CAMERA);
+
+    const tooltip = result.current.tooltip;
+    if (!tooltip) throw new Error("expected a camera tooltip");
+    render(<Mcap3dHoverTooltip tooltip={tooltip} />);
+    expect(screen.getByText("/camera/front/image")).toBeTruthy();
+    expect(screen.getByText("/camera/front/camera_info")).toBeTruthy();
+    expect(screen.getByText("1920 × 1080")).toBeTruthy();
   });
 
   it("does not let a pending entity replace a newer point tooltip", () => {
