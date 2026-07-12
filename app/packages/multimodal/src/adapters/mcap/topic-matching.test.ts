@@ -3,6 +3,7 @@ import {
   chooseAnnotationTopic,
   chooseCalibrationTopic,
   filterDefaultTopicEquivalents,
+  findBestMatchingAnnotationTopics,
   orderDefaultTopicEquivalents,
   topicPrefix,
 } from "./topic-matching";
@@ -51,6 +52,25 @@ describe("chooseAnnotationTopic", () => {
         "/labels/front_camera",
       ]),
     ).toBe("/labels/front_camera");
+  });
+
+  it("groups every strongest camera match without weaker siblings", () => {
+    expect(
+      findBestMatchingAnnotationTopics("/sensors/front/image_rect_compressed", [
+        "/sensors/front/detections",
+        "/sensors/back/detections",
+        "/sensors/front/segmentations",
+        "/unrelated/labels",
+      ]),
+    ).toEqual(["/sensors/front/detections", "/sensors/front/segmentations"]);
+  });
+
+  it("returns no matches when topics share no camera identity", () => {
+    expect(
+      findBestMatchingAnnotationTopics("/CAM_FRONT/image_rect", [
+        "/unrelated/labels",
+      ]),
+    ).toEqual([]);
   });
 });
 

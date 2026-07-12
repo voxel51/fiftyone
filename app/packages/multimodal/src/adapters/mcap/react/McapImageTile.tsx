@@ -22,6 +22,7 @@ import type {
 } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { MCAP_SCENE_SOURCE_METADATA, MCAP_SOURCE_TYPE } from "../scene-sources";
+import { findBestMatchingAnnotationTopics } from "../topic-matching";
 import { ImagePanel } from "../../../visualization/panels/image";
 import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
 import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
@@ -198,6 +199,19 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     () => annotationSources.map((s) => s.id),
     [annotationSources],
   );
+  const labelSourceGroups = useMemo(() => {
+    const matchingTopics = new Set(
+      topic ? findBestMatchingAnnotationTopics(topic, annotationTopics) : [],
+    );
+    return {
+      matching: annotationSources.filter((source) =>
+        matchingTopics.has(source.id),
+      ),
+      remaining: annotationSources.filter(
+        (source) => !matchingTopics.has(source.id),
+      ),
+    };
+  }, [annotationSources, annotationTopics, topic]);
   const autoCalibrationTopic =
     images.find((source) => source.id === topic)?.metadata?.[
       MCAP_SCENE_SOURCE_METADATA.CALIBRATION_TOPIC
@@ -534,16 +548,19 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                 },
               }}
             >
-              <div className={settingsStyles.optionStack}>
-                {annotationSources.map((s) => (
-                  <Checkbox
-                    key={s.id}
-                    label={s.label}
-                    checked={selectedLabelTopics.includes(s.id)}
-                    onChange={(checked) => toggleLabelTopic(s.id, checked)}
-                    {...checkboxNoSpaceToggleProps}
-                  />
-                ))}
+              <div className={settingsStyles.labelGroups}>
+                <ImageLabelSourceGroup
+                  sources={labelSourceGroups.matching}
+                  selectedTopics={selectedLabelTopics}
+                  title="Matching"
+                  toggleTopic={toggleLabelTopic}
+                />
+                <ImageLabelSourceGroup
+                  sources={labelSourceGroups.remaining}
+                  selectedTopics={selectedLabelTopics}
+                  title="Remaining"
+                  toggleTopic={toggleLabelTopic}
+                />
               </div>
             </McapSidebarGroup>
           ) : null}
@@ -689,6 +706,39 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     </>
   );
 };
+
+function ImageLabelSourceGroup({
+  selectedTopics,
+  sources,
+  title,
+  toggleTopic,
+}: {
+  readonly selectedTopics: readonly string[];
+  readonly sources: readonly { readonly id: string; readonly label: string }[];
+  readonly title: string;
+  readonly toggleTopic: (topic: string, checked: boolean) => void;
+}) {
+  if (sources.length === 0) return null;
+
+  return (
+    <div className={settingsStyles.field}>
+      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+        {title}
+      </Text>
+      <div className={settingsStyles.optionStack}>
+        {sources.map((source) => (
+          <Checkbox
+            key={source.id}
+            label={source.label}
+            checked={selectedTopics.includes(source.id)}
+            onChange={(checked) => toggleTopic(source.id, checked)}
+            {...checkboxNoSpaceToggleProps}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 type ImageDimensions = { readonly height: number; readonly width: number };
 

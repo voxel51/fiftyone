@@ -28,6 +28,12 @@
   gap: 6px;
 }
 
+.labelGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .colorPreview {
   border: 1px solid var(--color-border);
   border-radius: 4px;
