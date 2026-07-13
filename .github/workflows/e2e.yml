@@ -39,9 +39,7 @@ jobs:
         run: corepack prepare yarn@4.9.1 --activate
 
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false
+        uses: ./.github/actions/free-disk-space
 
       - name: Compute app tree hash
         id: app-tree-hash
@@ -115,7 +113,7 @@ jobs:
   test-e2e:
     needs: prepare-e2e
     timeout-minutes: 90
-    runs-on: ubuntu-latest # the standard runner's 14GB free disk space is not sufficient.  We create more free space with the `jlumbroso/free-disk-space` action as a step (below).
+    runs-on: ubuntu-latest # the standard runner's 14GB free disk space is not sufficient.  We create more free space with the `free-disk-space` action as a step (below).
     name: Test e2e (Mongo ${{ matrix.mongodb-version }}, shard ${{ matrix.shard }}/4)
     env:
       FIFTYONE_DO_NOT_TRACK: true
@@ -201,15 +199,13 @@ jobs:
         with:
           python-version: 3.10.16
           enable-cache: true
-          cache-dependency-path: |
+          cache-dependency-glob: |
             requirements/common.txt
             requirements/github.txt
             requirements/test.txt
             requirements/e2e.txt
       - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false # e2e test failed when `true`
+        uses: ./.github/actions/free-disk-space
       - name: Install requirements
         run: |
           uv pip install --system -r requirements/e2e.txt
@@ -271,5 +267,7 @@ jobs:
         with:
           name: playwright-report-mongodb-${{ matrix.mongodb-version }}-shard-${{ matrix.shard }}
           path: e2e-pw/playwright-report/
+          # no report exists when the job is cancelled before tests start
+          if-no-files-found: ignore
           # 3 days so reports from Friday/weekend runs survive into Monday.
           retention-days: 3

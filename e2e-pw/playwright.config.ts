@@ -20,6 +20,8 @@ export default defineConfig({
   retries: process.env.CI || process.env.IS_UTILITY_DOCKER ? 3 : 0,
   /* Run one worker per CI shard to keep worker-scoped server state isolated */
   workers: process.env.CI ? 1 : undefined,
+  /* Suppress "slow test file" warning annotations on the GitHub summary page */
+  reportSlowTests: null,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter:
     process.env.CI || process.env.IS_UTILITY_DOCKER

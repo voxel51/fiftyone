@@ -84,9 +84,7 @@ jobs:
             requirements/github.txt
             requirements/test.txt
       - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false # e2e test failed when `true`
+        uses: ./.github/actions/free-disk-space
       - name: Install requirements
         run: |
           uv pip install --system -U wheel setuptools
