@@ -163,14 +163,14 @@ test.describe.serial("video non-box label create", () => {
     // live masked overlay by the track's instance id, not a maskless stub
     await modal.sidebar.edit.assert.hasMaskPreview(true);
     const saved = savedSample(page);
-    await modal.sidebar.edit.selectFieldChoice("label", "vehicle");
-    await modal.sidebar.edit.assert.verifyFieldValue("label", "vehicle");
+    await modal.sidebar.edit.selectFieldChoice("label", "person");
+    await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
     await saved;
 
     // the masked detection survives a true round-trip with its mask intact
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
       await freshModal.videoAnnotate.assert.objectTrackCount(before + 1);
-      await freshModal.videoAnnotate.selectLabel("vehicle");
+      await freshModal.videoAnnotate.selectLabel("person");
       await freshModal.sidebar.edit.assert.hasMask(true);
       await freshModal.sidebar.edit.assert.hasMaskPreview(true);
     });
