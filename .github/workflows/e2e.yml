@@ -89,7 +89,9 @@ jobs:
 
   test-e2e:
     needs: prepare-e2e
-    timeout-minutes: 90
+    # Hard budget: a shard that can't finish in 20 minutes is a failure by
+    # policy, and the verdict job fails whenever a shard job does.
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     # The prebaked image (built by build-ci-images.yml) carries Python +
     # fiftyone's dependency tree, Node/Yarn, ffmpeg, and Chromium, so shard
@@ -99,6 +101,8 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+      # Chromium needs more than Docker's default 64MB /dev/shm
+      options: --shm-size=2gb
     name: Run e2e shard ${{ matrix.shard }}/8 (report-only, Mongo ${{ matrix.mongodb-version }})
     env:
       FIFTYONE_DO_NOT_TRACK: true
@@ -310,4 +314,5 @@ jobs:
         working-directory: e2e-pw
         env:
           EXPECTED_SHARDS: "8"
+          TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
         run: node scripts/enforce-verdict.mjs merged-results.json all-blob-reports

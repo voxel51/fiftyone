@@ -18,6 +18,14 @@ if (!jsonPath || !blobDir) {
 
 const failures = [];
 
+// Shard jobs are report-only for spec failures, so a red shard means infra
+// death — a timed-out or crashed shard produces partial blobs that must not
+// merge into a green verdict.
+const shardJobsResult = process.env.TEST_E2E_RESULT;
+if (shardJobsResult && shardJobsResult !== "success") {
+  failures.push(`shard jobs concluded '${shardJobsResult}'`);
+}
+
 const expectedShards = Number(process.env.EXPECTED_SHARDS ?? "0");
 const blobs = readdirSync(blobDir).filter((f) => f.endsWith(".zip")).length;
 if (expectedShards && blobs !== expectedShards) {

@@ -13,8 +13,9 @@ FROM python:3.10.16-slim-bookworm
 ENV DEBIAN_FRONTEND=noninteractive \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
+# procps: tree-kill shells out to `ps` to kill FiftyOne server process trees
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl git tar \
+    && apt-get install -y --no-install-recommends ca-certificates curl git tar procps \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
