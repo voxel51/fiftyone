@@ -305,7 +305,7 @@ describe("MultiModalPlayback shell", () => {
     fireEvent.click(screen.getByText("Camera"));
 
     expect(screen.getByTestId("left-sidebar-pane")).toBeTruthy();
-    expect(onLeftOpenChange).toHaveBeenCalledWith(true);
+    expect(onLeftOpenChange).not.toHaveBeenCalled();
   });
 
   it("removes the right sidebar and its toggle when rightSidebar is null", () => {

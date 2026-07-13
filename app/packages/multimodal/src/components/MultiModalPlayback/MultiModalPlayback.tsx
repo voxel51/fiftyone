@@ -403,10 +403,10 @@ function Layout({
   useEffect(() => {
     const tileCount = Object.keys(tiles).length;
     if (tileCount > previousTileCountRef.current && !leftOpen) {
-      updateLeftOpen(true);
+      setLeftOpen(true);
     }
     previousTileCountRef.current = tileCount;
-  }, [leftOpen, tiles, updateLeftOpen]);
+  }, [leftOpen, tiles]);
 
   const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>) => {
     // Primary button only: a right-click must not arm a drag that the
