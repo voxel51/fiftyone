@@ -348,7 +348,7 @@ function PolicyNumberInput({
   readonly value: number;
 }) {
   return (
-    <div className={styles.controlRow}>
+    <label className={styles.controlRow}>
       <ControlLabel label={label} tooltip={tooltip} />
       <McapSettingsNumberField
         ariaLabel={label}
@@ -359,7 +359,7 @@ function PolicyNumberInput({
         unit="ms"
         value={value}
       />
-    </div>
+    </label>
   );
 }
 

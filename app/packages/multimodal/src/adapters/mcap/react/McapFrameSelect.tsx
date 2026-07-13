@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import settingsStyles from "./McapTile.settings.module.css";
 import { McapSettingsLabel } from "./McapSettingsLabel";
 import { McapSettingsSelect } from "./McapSettingsSelect";
@@ -22,13 +23,18 @@ export function McapFrameSelect({
   readonly tooltip: string;
   readonly value: string;
 }) {
-  const selectOptions = [
-    ...(options.length === 0 ? [{ label: "No frames", value: "" }] : []),
-    ...(options.length > 0 && !value
-      ? [{ label: "Select frame", value: "" }]
-      : []),
-    ...options.map((frameId) => ({ label: frameId, value: frameId })),
-  ];
+  // Memoized so the select's descriptor list stays stable across the
+  // frequent parent re-renders that don't change the frame inventory.
+  const selectOptions = useMemo(
+    () => [
+      ...(options.length === 0 ? [{ label: "No frames", value: "" }] : []),
+      ...(options.length > 0 && !value
+        ? [{ label: "Select frame", value: "" }]
+        : []),
+      ...options.map((frameId) => ({ label: frameId, value: frameId })),
+    ],
+    [options, value],
+  );
 
   return (
     <label className={settingsStyles.field}>
