@@ -1,5 +1,7 @@
 import {
+  type DecodeContext,
   type DecodedAttributeValue,
+  type DecodedOutput,
   type Decoder,
   type ImageAnnotationCircle,
   type ImageAnnotationPoints,
@@ -9,9 +11,13 @@ import {
   type RgbaColor,
 } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
+import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
-import { FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD } from "./protobuf/payloads";
-import { asRecord, optionalRecord } from "./protobuf/records";
+import {
+  FOXGLOVE_IMAGE_ANNOTATIONS_CDR_PAYLOADS,
+  FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
+} from "./payloads";
+import { asRecord, numberField, optionalRecord } from "./protobuf/records";
 import { timingFromContext, timestampNs } from "./protobuf/timing";
 
 const POINTS_KIND_BY_ENUM: Readonly<Record<number, ImageAnnotationPointsKind>> =
@@ -45,42 +51,58 @@ export const foxgloveImageAnnotationsDecoder: Decoder = {
       FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD,
       context,
     );
-
-    const rawCircles = optionalArray(message, "circles");
-    const rawPoints = optionalArray(message, "points");
-    const rawTexts = optionalArray(message, "texts");
-
-    const circles = rawCircles.map(decodeCircle);
-    const points = rawPoints.map(decodePoints);
-    const texts = rawTexts.map(decodeText);
-
-    // Per Foxglove schema: top-level timestamp overrides individual annotation timestamps.
-    const topLevelTs = optionalRecord(message, "timestamp");
-    const messageTimestamp = topLevelTs
-      ? timestampNs(topLevelTs)
-      : firstAnnotationTimestamp(rawCircles, rawPoints, rawTexts);
-
-    const visualization: ImageAnnotationsVisualization = {
-      kind: VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
-      circles,
-      points,
-      texts,
-    };
-
-    const attributes: Record<string, DecodedAttributeValue> = {
-      circleCount: circles.length,
-      pointGroupCount: points.length,
-      textCount: texts.length,
-    };
-
-    return {
-      attributes,
-      resourceHints: { sizeBytes: bytes.byteLength },
-      timing: timingFromContext(context, messageTimestamp),
-      visualization,
-    };
+    return decodeFoxgloveImageAnnotationsRecord(message, context, bytes);
   },
 };
+
+/**
+ * Decoders for Foxglove ImageAnnotations messages carried over ROS 2 CDR.
+ */
+export const foxgloveImageAnnotationsCdrDecoders = rosDecodersForPayloads({
+  id: "foxglove.image-annotations.cdr",
+  map: decodeFoxgloveImageAnnotationsRecord,
+  payloads: FOXGLOVE_IMAGE_ANNOTATIONS_CDR_PAYLOADS,
+});
+
+export function decodeFoxgloveImageAnnotationsRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+  bytes?: Uint8Array,
+): DecodedOutput {
+  const rawCircles = optionalArray(message, "circles");
+  const rawPoints = optionalArray(message, "points");
+  const rawTexts = optionalArray(message, "texts");
+
+  const circles = rawCircles.map(decodeCircle);
+  const points = rawPoints.map(decodePoints);
+  const texts = rawTexts.map(decodeText);
+
+  // Per Foxglove schema: top-level timestamp overrides individual annotation timestamps.
+  const topLevelTs = optionalRecord(message, "timestamp");
+  const messageTimestamp = topLevelTs
+    ? timestampNs(topLevelTs)
+    : firstAnnotationTimestamp(rawCircles, rawPoints, rawTexts);
+
+  const visualization: ImageAnnotationsVisualization = {
+    kind: VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
+    circles,
+    points,
+    texts,
+  };
+
+  const attributes: Record<string, DecodedAttributeValue> = {
+    circleCount: circles.length,
+    pointGroupCount: points.length,
+    textCount: texts.length,
+  };
+
+  return {
+    attributes,
+    resourceHints: { sizeBytes: bytes?.byteLength ?? 0 },
+    timing: timingFromContext(context, messageTimestamp),
+    visualization,
+  };
+}
 
 function decodeCircle(value: unknown): ImageAnnotationCircle {
   const record = asRecord(value);
@@ -166,18 +188,6 @@ function optionalArray(
     throw new Error(`Field '${field}' is not an array`);
   }
   return value;
-}
-
-function numberField(
-  record: Record<string, unknown>,
-  field: string,
-  fallbackField?: string,
-): number {
-  const value =
-    record[field] ?? (fallbackField ? record[fallbackField] : undefined);
-  if (typeof value === "number") return value;
-  if (typeof value === "bigint") return Number(value);
-  return 0;
 }
 
 function stringField(record: Record<string, unknown>, field: string): string {

@@ -34,6 +34,11 @@ const hoisted = vi.hoisted(() => ({
   toolsStateSpies: {
     reset: vi.fn(),
   },
+  pointSelectionSeedSpies: {
+    markSeedNew: vi.fn(),
+    consumeSeedNew: vi.fn(() => false),
+    clearSeedNew: vi.fn(),
+  },
   selectedLabelRef: {
     value: null as null | { overlay?: { id: string } },
   },
@@ -47,6 +52,7 @@ vi.mock("@fiftyone/annotation/src/agents", () => ({
   }),
   useAgentSelector: () => hoisted.agentSelectorRef.value,
   usePointSelection: () => hoisted.pointSelectionSpies,
+  usePointSelectionSeed: () => hoisted.pointSelectionSeedSpies,
   useToolsState: () => hoisted.toolsStateSpies,
 }));
 
@@ -103,6 +109,11 @@ describe("useAIAnnotationMode", () => {
         hoisted.AgentTaskType.SEGMENT,
       );
       expect(hoisted.pointSelectionSpies.activate).toHaveBeenCalledTimes(1);
+      // A fresh session refines the selection by default — the seed-new flag
+      // (set only by a finalize) is cleared on activation.
+      expect(
+        hoisted.pointSelectionSeedSpies.clearSeedNew,
+      ).toHaveBeenCalledTimes(1);
       expect(result.current.isActive).toBe(true);
     });
 
@@ -193,45 +204,26 @@ describe("useAIAnnotationMode", () => {
     });
   });
 
-  describe("label-reset behavior", () => {
-    it("clears prompts (clearPoints + resetToolsState) when the selected label changes WHILE ACTIVE", () => {
+  describe("selection changes do not touch the point context", () => {
+    // The SAM2 point context is reset only at real session boundaries
+    // (deactivate, and the deactivate→activate cycle a finalize runs) — NOT on
+    // selection changes. An inference creating + selecting a fresh mask IS a
+    // selection change, so clearing here wiped the seed point of every mask
+    // after the first. This is the regression guard for that bug.
+    it("does NOT clear prompts when the selected label changes WHILE ACTIVE", () => {
       hoisted.selectedLabelRef.value = { overlay: { id: "label-a" } };
       const { result, rerender } = renderHook(() => useAIAnnotationMode());
 
       act(() => result.current.activate());
       vi.clearAllMocks();
 
-      // Selection switches to a different label.
-      hoisted.selectedLabelRef.value = { overlay: { id: "label-b" } };
-      rerender();
-
-      expect(hoisted.pointSelectionSpies.clearPoints).toHaveBeenCalledTimes(1);
-      expect(hoisted.toolsStateSpies.reset).toHaveBeenCalledTimes(1);
-    });
-
-    it("does NOT clear prompts when inactive", () => {
-      hoisted.selectedLabelRef.value = { overlay: { id: "label-a" } };
-      const { rerender } = renderHook(() => useAIAnnotationMode());
-
-      vi.clearAllMocks();
-
+      // Selection switches to a different label (e.g. inference just created
+      // and selected a new mask).
       hoisted.selectedLabelRef.value = { overlay: { id: "label-b" } };
       rerender();
 
       expect(hoisted.pointSelectionSpies.clearPoints).not.toHaveBeenCalled();
       expect(hoisted.toolsStateSpies.reset).not.toHaveBeenCalled();
-    });
-
-    it("does NOT clear prompts when the same label re-renders (no id change)", () => {
-      hoisted.selectedLabelRef.value = { overlay: { id: "label-a" } };
-      const { result, rerender } = renderHook(() => useAIAnnotationMode());
-
-      act(() => result.current.activate());
-      vi.clearAllMocks();
-
-      rerender();
-
-      expect(hoisted.pointSelectionSpies.clearPoints).not.toHaveBeenCalled();
     });
   });
 });

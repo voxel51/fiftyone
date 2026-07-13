@@ -112,6 +112,23 @@ export function optionalString(
 }
 
 /**
+ * Read an optional numeric field, accepting bigint values and an optional
+ * fallback field name for snake_case/camelCase protobuf runtime differences.
+ */
+export function numberField(
+  record: Record<string, unknown> | undefined,
+  field: string,
+  fallbackField?: string,
+  defaultValue = 0,
+): number {
+  const value =
+    record?.[field] ?? (fallbackField ? record?.[fallbackField] : undefined);
+  if (typeof value === "number") return value;
+  if (typeof value === "bigint") return Number(value);
+  return defaultValue;
+}
+
+/**
  * Read an optional protobuf integer-like field as bigint. Protobufjs may expose
  * timestamp components as bigint, number, string, or Long-like objects. Invalid
  * values are treated as absent.

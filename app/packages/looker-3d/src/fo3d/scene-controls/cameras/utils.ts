@@ -1,5 +1,9 @@
 import { Quaternion, Vector3 } from "three";
-import { isNumericTuple } from "../../../utils";
+import {
+  areVectorsCoLocated,
+  isFiniteVector3,
+  isNumericTuple,
+} from "../../../utils";
 
 export type SerializedStaticTransform = {
   translation: [number, number, number] | number[];
@@ -99,11 +103,6 @@ export const buildCameraControlOptionsFromTransforms = (
 const FALLBACK_TARGET_DISTANCE = 1;
 const MIN_LOOK_AT_DISTANCE_SQUARED = 1e-8;
 
-const isFiniteVector3 = (vector: Vector3) =>
-  Number.isFinite(vector.x) &&
-  Number.isFinite(vector.y) &&
-  Number.isFinite(vector.z);
-
 /**
  * Resolves the look-at target for camera selector transitions.
  * Falls back to camera-forward direction when the fallback target would place
@@ -126,8 +125,11 @@ export const resolveCameraSelectorTarget = ({
 
   if (
     isFiniteVector3(fallbackTarget) &&
-    cameraPosition.distanceToSquared(fallbackTarget) >
-      MIN_LOOK_AT_DISTANCE_SQUARED
+    !areVectorsCoLocated(
+      cameraPosition,
+      fallbackTarget,
+      MIN_LOOK_AT_DISTANCE_SQUARED,
+    )
   ) {
     return fallbackTarget.clone();
   }

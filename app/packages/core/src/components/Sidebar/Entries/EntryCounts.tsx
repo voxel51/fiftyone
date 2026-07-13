@@ -45,9 +45,13 @@ export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
   const shown = useRecoilValue(showEntryCounts({ modal, path }));
 
   // empty path means we are showing grid sample count which is always allowed
+  // Temporal tags aren't sample fields, so there's no per-sample field count
+  // to aggregate — suppress the count badge (its options come from the tag
+  // counts endpoint instead).
   return (!queryPerformance || hasFilters || path === "") &&
     shown &&
-    (path !== "_label_tags" || modal) ? (
+    (path !== "_label_tags" || modal) &&
+    path !== "_temporal_tags" ? (
     <SuspenseEntryCounts
       countAtom={queryPerformance ? undefined : getAtom(false)}
       subcountAtom={getAtom(true)}

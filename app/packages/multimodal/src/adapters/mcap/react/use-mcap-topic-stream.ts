@@ -5,6 +5,13 @@ import {
   type McapDataStream,
 } from "./mcap-data-stream-context";
 
+export interface McapTopicPlaybackFrame<T = unknown> {
+  readonly ageNs: bigint;
+  readonly contentTimeNs: bigint;
+  readonly frame: T;
+  readonly requestedTimeNs: bigint;
+}
+
 /**
  * Tile-side hook: subscribes to one MCAP topic and returns its current frame.
  *
@@ -19,6 +26,12 @@ import {
  * Returns `null` until the first frame is committed for this topic.
  */
 export function useMcapTopicStream<T = unknown>(topic: string): T | null {
+  return useMcapTopicPlaybackFrame<T>(topic)?.frame ?? null;
+}
+
+export function useMcapTopicPlaybackFrame<T = unknown>(
+  topic: string,
+): McapTopicPlaybackFrame<T> | null {
   const dataStream = useMcapDataStream();
 
   useEffect(() => {
@@ -26,7 +39,7 @@ export function useMcapTopicStream<T = unknown>(topic: string): T | null {
     return dataStream.subscribeToTopic(topic);
   }, [topic, dataStream]);
 
-  return useStreamValue<T>(topic);
+  return useStreamValue<McapTopicPlaybackFrame<T> | null>(topic);
 }
 
 /**
@@ -45,6 +58,14 @@ export function useMcapTopicStream<T = unknown>(topic: string): T | null {
 export function useMcapTopicStreams<T = unknown>(
   topics: readonly string[],
 ): readonly (T | null)[] {
+  return useMcapTopicPlaybackFrames<T>(topics).map(
+    (value) => value?.frame ?? null,
+  );
+}
+
+export function useMcapTopicPlaybackFrames<T = unknown>(
+  topics: readonly string[],
+): readonly (McapTopicPlaybackFrame<T> | null)[] {
   const dataStream = useMcapDataStream();
   const subscriptionsRef = useRef<Map<string, () => void>>(new Map());
   const streamRef = useRef<McapDataStream | null>(null);
@@ -87,5 +108,5 @@ export function useMcapTopicStreams<T = unknown>(
     [],
   );
 
-  return useStreamValues<T>(topics);
+  return useStreamValues<McapTopicPlaybackFrame<T> | null>(topics);
 }

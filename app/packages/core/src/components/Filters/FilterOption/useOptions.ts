@@ -35,7 +35,12 @@ export default function (modal: boolean, path: string) {
 
     const isLabelTag = path === "_label_tags";
     const isSampleTag = path === "tags";
-    const name = isLabelTag ? "tags" : path.split(".").slice(-1)[0];
+    const isTemporalTag = path === "_temporal_tags";
+    const name = isLabelTag
+      ? "tags"
+      : isTemporalTag
+        ? "temporal tags"
+        : path.split(".").slice(-1)[0];
     const listName = isLabelTag
       ? "labels"
       : isList

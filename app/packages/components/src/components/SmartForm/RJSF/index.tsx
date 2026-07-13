@@ -107,6 +107,7 @@ export default function RJSF(props: SmartFormProps) {
     <Form
       key={revision}
       ref={formRef}
+      formContext={formProps?.formContext}
       schema={schema as RJSFSchema}
       uiSchema={uiSchema}
       validator={validator}

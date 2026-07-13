@@ -52,9 +52,9 @@ To add a provider, fill in the following fields:
 - **API key**: your provider's API key
 - **Models**: select one or more models to make available
 - **Custom model names** (optional): enter model identifiers that are not in
-  the standard picker, such as ``openai/aws:anthropic.claude-sonnet-4-6`` for
-  a custom gateway. When using a custom endpoint, prefix model names with
-  ``openai/`` so the Agent uses the OpenAI-compatible wire format
+  the standard picker, such as non-standard IDs used by an enterprise gateway.
+  Prefix with the provider slug (e.g. ``openai/my-model-id``) to ensure
+  correct routing when the model name alone is ambiguous
 - **Extra headers** (optional): static key-value HTTP headers sent with every
   request (e.g. ``User-Agent``, project tokens required by your gateway)
 - **Default**: mark this provider as the default
@@ -76,31 +76,58 @@ You can click **Test connection** to verify your credentials before saving.
 Custom endpoints and enterprise gateways
 _________________________________________
 
-If your organization routes LLM traffic through an internal gateway or proxy
-(for example, an OpenAI-compatible service that enforces usage quotas or
-applies custom authentication), you can point the Agent at it using the
-**Endpoint** and **Extra headers** fields.
+If your organization routes LLM traffic through an internal gateway or proxy,
+you can point the Agent at it using the **Endpoint** and **Extra headers**
+fields on any provider configuration.
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/custom_gateway_screenshot.webp
    :alt: fiftyone-agent-custom-gateway
    :align: center
 
-A typical configuration looks like:
+**Provider, match the API format, not the model brand**
 
-- **Provider**: ``openai``
-- **Endpoint**: the base URL of your gateway, e.g.
-  ``https://gateway.internal/api/openai/v1``
-- **API key**: the credential your gateway expects in the
-  ``Authorization: Bearer`` header (OIDC token, service account key, or a
-  dummy value if the gateway handles auth via certificates or headers)
-- **Custom model names**: the model identifier your gateway uses, prefixed
-  with ``openai/``, e.g. ``openai/aws:anthropic.claude-sonnet-4-6``
-- **Extra headers**: any additional headers required by your gateway, such as
-  ``User-Agent: MyApp/1.0`` or ``X-Gateway-Project-Token: <token>``
+The **Provider** field controls the request format the Agent uses, not which
+model it calls. Set it to match what your gateway expects:
+
+- If your gateway exposes an OpenAI-compatible API (``/chat/completions``),
+  select ``openai``, even if the underlying model is Claude or Gemini
+- If your gateway exposes the Anthropic Messages API (``/v1/messages``)
+  natively, select ``anthropic``
+
+**Endpoint, base URL only**
+
+Enter only the base URL of your gateway — do not include the API path. The
+Agent appends the correct path automatically based on the provider you
+selected. For example:
+
+.. code-block:: text
+
+   ✓  https://gateway.internal/api/openai/v1
+   ✗  https://gateway.internal/api/openai/v1/chat/completions
+
+**Model names, always prefix with the provider slug**
+
+Use the model identifier your gateway provides, prefixed with the provider
+slug. The prefix prevents the model ID from being misrouted to a cloud
+provider instead of your gateway, and is stripped before the name is sent:
+
+.. code-block:: text
+
+   openai/your-model-id
+   anthropic/your-model-id
+
+This is especially important when your gateway returns model IDs that start
+with a vendor name (e.g. ``anthropic.claude-sonnet``). Without the prefix,
+those IDs may be misrouted to a cloud provider instead of your gateway.
+
+Use **Test connection** to verify the full configuration works before saving.
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/custom_gateway_headers_screenshot.webp
    :alt: fiftyone-agent-extra-headers
    :align: center
+
+Use **Extra headers** for any additional authentication or routing headers your
+gateway requires, such as project tokens or custom ``User-Agent`` values.
 
 **Per-user attribution**
 

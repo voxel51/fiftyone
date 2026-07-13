@@ -39,6 +39,16 @@ export async function* readMcapDecodedMessages({
     startTimeNs: request.startTimeNs,
   });
 
+  // Limited reads may stop after the first chunk, so only unbounded window
+  // reads warm the byte layer ahead of the serial read loop.
+  if (request.limit === undefined) {
+    void reader.prefetchWindow?.({
+      endTimeNs: endTime,
+      startTimeNs: startTime,
+      topics: request.topics,
+    });
+  }
+
   for await (const message of reader.readMessages({
     endTime,
     startTime,

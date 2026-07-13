@@ -1,13 +1,27 @@
 import type {
+  DecodeContext,
   DecodedAttributeValue,
+  DecodedOutput,
   Decoder,
   PointCloudField,
   PointCloudScalarField,
 } from "../../../../decoders";
-import { resourceHintsForArrayBufferViews } from "../../../../decoders";
+import {
+  buildPointCloudRenderPayload,
+  resourceHintsForArrayBufferViews,
+} from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
+import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
-import { FOXGLOVE_POINT_CLOUD_PAYLOAD } from "./protobuf/payloads";
+import {
+  decodePose,
+  normalizedQuaternion,
+  type ProtobufPose3D,
+} from "./protobuf/geometry";
+import {
+  FOXGLOVE_POINT_CLOUD_CDR_PAYLOADS,
+  FOXGLOVE_POINT_CLOUD_PAYLOAD,
+} from "./payloads";
 import {
   asRecord,
   optionalRecord,
@@ -38,7 +52,10 @@ const INT32_MAX_VALUE = 2_147_483_647;
 
 const FLOAT32_BYTE_WIDTH = 4;
 
-const POINT_COMPONENT_COUNT = 3;
+/**
+ * Number of float components stored per decoded point position.
+ */
+export const POINT_COMPONENT_COUNT = 3;
 const COLOR_COMPONENT_COUNT = 3;
 
 const X_COMPONENT_INDEX = 0;
@@ -54,11 +71,24 @@ const CANONICAL_SCALAR_FIELDS = Object.freeze([
 const CANONICAL_SCALAR_FIELD_NAMES: ReadonlySet<string> = new Set(
   CANONICAL_SCALAR_FIELDS,
 );
+// Every numeric channel that is neither a position component nor consumed
+// by color extraction is a color-by-field candidate (ring, velocity, ...).
+// Capped so exotic layouts cannot balloon worker→main transfer cost.
+const MAX_SCALAR_FIELDS = 16;
+const POSITION_FIELD_NAMES: ReadonlySet<string> = new Set(["x", "y", "z"]);
 
 const RED_COLOR_CHANNEL_NAMES = Object.freeze(["r", "red"] as const);
 const GREEN_COLOR_CHANNEL_NAMES = Object.freeze(["g", "green"] as const);
 const BLUE_COLOR_CHANNEL_NAMES = Object.freeze(["b", "blue"] as const);
 const PACKED_COLOR_FIELD_NAMES = Object.freeze(["color", "rgb", "rgba"]);
+const COLOR_FIELD_NAMES: ReadonlySet<string> = new Set([
+  ...RED_COLOR_CHANNEL_NAMES,
+  ...GREEN_COLOR_CHANNEL_NAMES,
+  ...BLUE_COLOR_CHANNEL_NAMES,
+  ...PACKED_COLOR_FIELD_NAMES,
+  "a",
+  "alpha",
+]);
 
 /**
  * Decoder for Foxglove point cloud protobuf messages.
@@ -74,62 +104,95 @@ export const foxglovePointCloudDecoder: Decoder = {
       FOXGLOVE_POINT_CLOUD_PAYLOAD,
       context,
     );
-    const data = requiredBytes(message, "data");
-    const pointStride = requiredNumber(message, "pointStride", "point_stride");
-    const fields = packedFields(requiredArray(message, "fields"));
-    const decodedPoints = extractPointCloudData(data, pointStride, fields);
-    // Per-message Foxglove frame_id carried by this point cloud payload. This
-    // is separate from the MCAP channel frame_id metadata fallback.
-    const frameId = optionalString(message, "frameId", "frame_id");
-    const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
-    const pointCount = decodedPoints.positions.length / POINT_COMPONENT_COUNT;
-    const packedFieldMetadata = fields.map((field) => ({
-      name: field.name,
-      offset: field.offset,
-      type: field.type,
-    }));
-    const attributes: Record<string, DecodedAttributeValue> = {
-      fields: packedFieldMetadata,
-      pointCount,
-      pointStride,
-    };
-
-    if (frameId) {
-      attributes.frameId = frameId;
-    }
-
-    const transferableViews = [
-      decodedPoints.positions,
-      decodedPoints.colors,
-      ...decodedPoints.scalarFields.map((field) => field.values),
-    ].filter((view): view is Float32Array => view !== undefined);
-
-    return {
-      attributes,
-      resourceHints: resourceHintsForArrayBufferViews(...transferableViews),
-      timing: timingFromContext(context, messageTimestamp),
-      visualization: {
-        ...(frameId ? { coordinateFrameId: frameId } : {}),
-        ...(decodedPoints.colors ? { colors: decodedPoints.colors } : {}),
-        ...(decodedPoints.scalarFields.length
-          ? { scalarFields: decodedPoints.scalarFields }
-          : {}),
-        fields: packedFieldMetadata,
-        kind: VISUALIZATION_KIND.POINT_CLOUD,
-        pointCount,
-        positions: decodedPoints.positions,
-      },
-    };
+    return decodeFoxglovePointCloudRecord(message, context);
   },
 };
 
-interface DecodedPointCloudData {
+/**
+ * Decoders for Foxglove PointCloud messages carried over ROS 2 CDR.
+ */
+export const foxglovePointCloudCdrDecoders = rosDecodersForPayloads({
+  id: "foxglove.point-cloud.cdr",
+  map: decodeFoxglovePointCloudRecord,
+  payloads: FOXGLOVE_POINT_CLOUD_CDR_PAYLOADS,
+});
+
+export function decodeFoxglovePointCloudRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const data = requiredBytes(message, "data");
+  const pointStride = requiredNumber(message, "pointStride", "point_stride");
+  const fields = packedFields(requiredArray(message, "fields"));
+  const decodedPoints = extractPointCloudData(data, pointStride, fields);
+  applyPose(
+    decodedPoints.positions,
+    decodePose(optionalRecord(message, "pose")),
+  );
+  // Per-message Foxglove frame_id carried by this point cloud payload. This
+  // is separate from the MCAP channel frame_id metadata fallback.
+  const frameId = optionalString(message, "frameId", "frame_id");
+  const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
+  const pointCount = decodedPoints.positions.length / POINT_COMPONENT_COUNT;
+  const packedFieldMetadata = fields.map((field) => ({
+    name: field.name,
+    offset: field.offset,
+    type: field.type,
+  }));
+  const attributes: Record<string, DecodedAttributeValue> = {
+    fields: packedFieldMetadata,
+    pointCount,
+    pointStride,
+  };
+
+  if (frameId) {
+    attributes.frameId = frameId;
+  }
+  const renderPayload = buildPointCloudRenderPayload(decodedPoints);
+
+  const transferableViews = [
+    decodedPoints.positions,
+    decodedPoints.colors,
+    ...decodedPoints.scalarFields.map((field) => field.values),
+    renderPayload.positions,
+    renderPayload.colors,
+    ...renderPayload.scalarFields.map((field) => field.values),
+    renderPayload.sourceIndices,
+  ].filter((view): view is Float32Array | Uint32Array => view !== undefined);
+
+  return {
+    attributes,
+    resourceHints: resourceHintsForArrayBufferViews(...transferableViews),
+    timing: timingFromContext(context, messageTimestamp),
+    visualization: {
+      ...(frameId ? { coordinateFrameId: frameId } : {}),
+      ...(decodedPoints.colors ? { colors: decodedPoints.colors } : {}),
+      ...(decodedPoints.scalarFields.length
+        ? { scalarFields: decodedPoints.scalarFields }
+        : {}),
+      fields: packedFieldMetadata,
+      kind: VISUALIZATION_KIND.POINT_CLOUD,
+      pointCount,
+      positions: decodedPoints.positions,
+      renderPayload,
+    },
+  };
+}
+
+/**
+ * Normalized point cloud buffers shared by Foxglove and ROS decoders.
+ */
+export interface DecodedPointCloudData {
   readonly colors?: Float32Array;
   readonly positions: Float32Array;
   readonly scalarFields: readonly PointCloudScalarField[];
 }
 
-function extractPointCloudData(
+/**
+ * Extracts positions, optional RGB colors, and scalar channels from packed
+ * point data using the supplied field layout.
+ */
+export function extractPointCloudData(
   data: Uint8Array,
   pointStride: number,
   fields: readonly PointCloudField[],
@@ -220,35 +283,45 @@ function extractScalarFields(
   pointCount: number,
   fields: readonly PointCloudField[],
 ): readonly PointCloudScalarField[] {
-  const scalarFields: PointCloudScalarField[] = [];
-  const scalarFieldByName = new Map<string, PointCloudField>();
+  const canonicalFieldByName = new Map<string, PointCloudField>();
+  const additionalFields: PointCloudField[] = [];
+  const seenNames = new Set<string>();
 
   for (const field of fields) {
     const scalarName = normalizedFieldName(field.name);
     if (
-      !CANONICAL_SCALAR_FIELD_NAMES.has(scalarName) ||
-      scalarFieldByName.has(scalarName) ||
+      POSITION_FIELD_NAMES.has(scalarName) ||
+      COLOR_FIELD_NAMES.has(scalarName) ||
+      seenNames.has(scalarName) ||
       !canReadNumericField(field, pointStride)
     ) {
       continue;
     }
 
-    scalarFieldByName.set(scalarName, field);
-  }
-
-  for (const scalarName of CANONICAL_SCALAR_FIELDS) {
-    const field = scalarFieldByName.get(scalarName);
-    if (!field) {
-      continue;
+    seenNames.add(scalarName);
+    if (CANONICAL_SCALAR_FIELD_NAMES.has(scalarName)) {
+      canonicalFieldByName.set(scalarName, field);
+    } else {
+      additionalFields.push(field);
     }
-
-    scalarFields.push({
-      name: field.name,
-      values: extractNumericValues(data, pointStride, pointCount, field),
-    });
   }
 
-  return scalarFields;
+  // Canonical sensor-return channels first (in preference order, so the
+  // renderer's auto-color pick stays deterministic), then everything else
+  // in declaration order up to the extraction cap.
+  const orderedFields: PointCloudField[] = [];
+  for (const scalarName of CANONICAL_SCALAR_FIELDS) {
+    const field = canonicalFieldByName.get(scalarName);
+    if (field) {
+      orderedFields.push(field);
+    }
+  }
+  orderedFields.push(...additionalFields);
+
+  return orderedFields.slice(0, MAX_SCALAR_FIELDS).map((field) => ({
+    name: field.name,
+    values: extractNumericValues(data, pointStride, pointCount, field),
+  }));
 }
 
 function extractColorField(
@@ -460,6 +533,35 @@ function clamp01(value: number): number {
 
 function normalizedFieldName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function applyPose(positions: Float32Array, pose: ProtobufPose3D) {
+  const [px, py, pz] = pose.position;
+  const normalized = normalizedQuaternion(pose.quaternion);
+
+  if (!normalized && px === 0 && py === 0 && pz === 0) {
+    return;
+  }
+
+  const [qx, qy, qz, qw] = normalized ?? [0, 0, 0, 1];
+  for (
+    let offset = 0;
+    offset < positions.length;
+    offset += POINT_COMPONENT_COUNT
+  ) {
+    const x = positions[offset];
+    const y = positions[offset + 1];
+    const z = positions[offset + 2];
+    // Quaternion-rotate v via t = 2(q_vec x v); v' = v + w*t + q_vec x t,
+    // then translate from point-cloud-local coordinates into frame_id.
+    const tx = 2 * (qy * z - qz * y);
+    const ty = 2 * (qz * x - qx * z);
+    const tz = 2 * (qx * y - qy * x);
+
+    positions[offset] = px + x + qw * tx + qy * tz - qz * ty;
+    positions[offset + 1] = py + y + qw * ty + qz * tx - qx * tz;
+    positions[offset + 2] = pz + z + qw * tz + qx * ty - qy * tx;
+  }
 }
 
 function packedFields(values: readonly unknown[]): readonly PointCloudField[] {

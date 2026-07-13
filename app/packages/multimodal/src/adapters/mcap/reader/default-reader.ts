@@ -2,6 +2,15 @@ import "../browser-node-globals";
 import { McapIndexedReader, type McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { loadDecompressHandlers } from "../mcap-support";
+import { ByteClientReadable } from "./byte-readable";
+import {
+  collectChunkDataPrefetchRanges,
+  collectWindowPrefetchRanges,
+  prefetchMcapByteRanges,
+  type McapPrefetchChunkDataRequest,
+  type McapPrefetchWindowRequest,
+} from "./chunk-prefetch";
+import { createCachedMcapDecompressHandlers } from "./decompress-cache";
 import { readLatestIndexedMessageTimesForReader } from "./latest-before";
 import { readIndexedMessageTimesForReader } from "./message-index";
 import { readTopicIndexedTimeBoundsForReader } from "./topic-time-bounds";
@@ -22,17 +31,42 @@ export async function createDefaultMcapReader(
   readable: McapTypes.IReadable,
 ): Promise<McapIndexedReaderLike> {
   const wasmDecompressHandlers = await loadDecompressHandlers();
+  const decompressHandlers = createCachedMcapDecompressHandlers(
+    wasmDecompressHandlers,
+  );
   const reader = await McapIndexedReader.Initialize({
-    decompressHandlers: wasmDecompressHandlers,
+    decompressHandlers,
     messageIndexCacheSizeBytes: DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES,
     readable,
   });
+  if (readable instanceof ByteClientReadable) {
+    readable.setChunkIndexes(reader.chunkIndexes);
+  }
   const chunkCompressions = compressedChunkTypes(reader);
-  assertSupportedChunkCompressions(chunkCompressions, wasmDecompressHandlers);
+  assertSupportedChunkCompressions(chunkCompressions, decompressHandlers);
 
   return {
     channelsById: reader.channelsById,
     chunkIndexes: reader.chunkIndexes,
+    prefetchChunkData: (request: McapPrefetchChunkDataRequest) =>
+      prefetchMcapByteRanges(
+        readable,
+        collectChunkDataPrefetchRanges({
+          chunkIndexes: reader.chunkIndexes,
+          request,
+        }),
+        request.maxConcurrentReads,
+      ),
+    prefetchWindow: (request: McapPrefetchWindowRequest) =>
+      prefetchMcapByteRanges(
+        readable,
+        collectWindowPrefetchRanges({
+          channelsById: reader.channelsById,
+          chunkIndexes: reader.chunkIndexes,
+          request,
+        }),
+        request.maxConcurrentReads,
+      ),
     readIndexedMessageTimes: (args?: McapReadIndexedMessageTimesRequest) =>
       readIndexedMessageTimesForReader(reader, readable, args),
     readLatestIndexedMessageTimes: (

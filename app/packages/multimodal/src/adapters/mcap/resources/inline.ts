@@ -7,6 +7,7 @@ import { readMcapDecodedMessages } from "./read-decoded-messages";
 import {
   createDefaultMcapReader,
   createMcapReaderStore,
+  type McapChunkReadDebugLog,
   type McapReaderFactory,
 } from "../reader";
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
@@ -20,14 +21,22 @@ import {
   readMcapFrameTransformBootstrap,
   readMcapFrameTransformWindow,
 } from "./read-frame-transforms";
+import { enumerateMcapNumericFields } from "./numeric-fields";
+import { readMcapNumericSeries } from "./read-numeric-series";
+import { readMcapRawMessageRecord } from "./read-raw-message-record";
 import { readMcapTopics } from "./read-topics";
 import { readMcapTopicTimeBounds } from "./read-topic-time-bounds";
 import type { McapFrameTransformSet } from "../frame-transform-types";
 import {
   type McapDecodedMessage,
+  type McapEnumerateNumericFieldsRequest,
+  type McapNumericSeriesResult,
   type McapReadDecodedMessagesRequest,
   type McapReadFrameTransformBootstrapRequest,
   type McapReadFrameTransformWindowRequest,
+  type McapRawMessageRecordResult,
+  type McapReadNumericSeriesRequest,
+  type McapReadRawMessageRecordRequest,
   type McapReadSynchronizedMessageBatchRequest,
   type McapReadSynchronizedMessagesRequest,
   type McapReadTopicsRequest,
@@ -36,6 +45,7 @@ import {
   type McapResourceClient,
   type McapSynchronizedMessageWindow,
   type McapTimelineRange,
+  type McapTopicNumericFields,
   type McapTopicTimeBounds,
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
@@ -48,7 +58,10 @@ const FRAME_TRANSFORM_WINDOW_READ_CACHE_LIMIT = 32;
 export interface CreateInlineMcapResourceClientOptions {
   readonly byteClient?: ByteClient;
   readonly decodeClient?: DecodeClient;
+  readonly debugChunkReads?: boolean;
+  readonly logChunkRead?: (entry: McapChunkReadDebugLog) => void;
   readonly readerFactory?: McapReaderFactory;
+  readonly readSignal?: { readonly current: AbortSignal | null };
 }
 
 /**
@@ -66,8 +79,18 @@ export function createInlineMcapResourceClient(
       registry: createMcapDecoderRegistry(),
     });
   const readerFactory = options.readerFactory ?? createDefaultMcapReader;
-  const readerStore = createMcapReaderStore({ byteClient, readerFactory });
+  const readerStore = createMcapReaderStore({
+    byteClient,
+    debugChunkReads: options.debugChunkReads,
+    logChunkRead: options.logChunkRead,
+    readerFactory,
+    readSignal: options.readSignal,
+  });
   const topicReads = new Map<string, Promise<readonly StreamInventory[]>>();
+  const numericFieldReads = new Map<
+    string,
+    Promise<readonly McapTopicNumericFields[]>
+  >();
   const topicTimeBoundsReads = new Map<
     string,
     Promise<readonly McapTopicTimeBounds[]>
@@ -88,6 +111,7 @@ export function createInlineMcapResourceClient(
   const client: McapResourceClient = {
     dispose() {
       topicReads.clear();
+      numericFieldReads.clear();
       topicTimeBoundsReads.clear();
       predecessorStores.clear();
       frameTransformBootstrapReads.clear();
@@ -133,6 +157,44 @@ export function createInlineMcapResourceClient(
       topicReads.set(sourceKey, read);
 
       return read;
+    },
+
+    async enumerateNumericFields(request: McapEnumerateNumericFieldsRequest) {
+      const sourceKey = byteSourceAccessKey(request.source);
+      const fieldsKey = request.topics
+        ? [sourceKey, ...request.topics].join("\0")
+        : sourceKey;
+      const cached = numericFieldReads.get(fieldsKey);
+      if (cached) {
+        return cached;
+      }
+
+      const read = readerStore
+        .get(request.source)
+        .then((reader) => enumerateMcapNumericFields(reader, request))
+        .catch((error) => {
+          numericFieldReads.delete(fieldsKey);
+          throw error;
+        });
+      numericFieldReads.set(fieldsKey, read);
+
+      return read;
+    },
+
+    async readNumericSeries(
+      request: McapReadNumericSeriesRequest,
+    ): Promise<McapNumericSeriesResult> {
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const reader = await readerStore.get(request.source);
+      return readMcapNumericSeries({ reader, request, timeline });
+    },
+
+    async readRawMessageRecord(
+      request: McapReadRawMessageRecordRequest,
+    ): Promise<McapRawMessageRecordResult> {
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const reader = await readerStore.get(request.source);
+      return readMcapRawMessageRecord({ reader, request, timeline });
     },
 
     async readTopicTimeBounds(request: McapReadTopicTimeBoundsRequest) {
@@ -191,7 +253,12 @@ export function createInlineMcapResourceClient(
       const read = readerStore
         .get(request.source)
         .then((reader) =>
-          readMcapFrameTransformWindow({ reader, request, timeline }),
+          readMcapFrameTransformWindow({
+            reader,
+            readSignal: options.readSignal,
+            request,
+            timeline,
+          }),
         )
         .catch((error) => {
           if (frameTransformWindowReads.get(windowKey) === read) {
@@ -224,6 +291,7 @@ export function createInlineMcapResourceClient(
         decodeClient,
         predecessorStore,
         reader,
+        readSignal: options.readSignal,
         request,
         timeline,
       });

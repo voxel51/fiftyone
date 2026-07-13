@@ -62,6 +62,8 @@ const ActionButton = ({ action }: { action: ToolbarActionItem }) => {
       disabled={action.isDisabled}
       onClick={action.onClick}
       aria-label={action.label}
+      data-cy={action.id}
+      data-cy-active={String(action.isActive ?? false)}
     >
       {action.icon}
     </StyledToolbarAction>

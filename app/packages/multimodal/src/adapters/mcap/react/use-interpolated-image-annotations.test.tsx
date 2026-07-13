@@ -13,6 +13,8 @@ import {
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import { McapTopicCache } from "./mcap-topic-cache";
 import {
+  nextDistinctCachedMessage,
+  preparedImageAnnotationInterpolation,
   useInterpolatedImageAnnotations,
   useInterpolatedImageAnnotationSets,
 } from "./use-interpolated-image-annotations";
@@ -50,12 +52,33 @@ function absBig(n: bigint): bigint {
 
 function makeTimeline(ticks: readonly bigint[]): McapTimelineIndex {
   const startTimeNs = ticks[0] ?? 0n;
+  const stepNs =
+    ticks.length > 1 ? (ticks[1] as bigint) - startTimeNs : 1_000_000n;
   const toNs = (sec: number) =>
     startTimeNs + BigInt(Math.round((Number.isFinite(sec) ? sec : 0) * 1e9));
+  const lowerBound = (target: bigint): number => {
+    let lo = 0;
+    let hi = ticks.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if ((ticks[mid] as bigint) < target) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  };
   return {
-    ticks,
     durationSec: 1,
+    endTimeNs: ticks.at(-1) ?? startTimeNs,
+    indexAtOrAfter: lowerBound,
+    indexOfTick: (tick) => {
+      const index = ticks.indexOf(tick);
+      return index === -1 ? undefined : index;
+    },
+    nsToSec: (timeNs) => Number(timeNs - startTimeNs) / 1e9,
     startTimeNs,
+    stepNs,
+    tickAt: (index) => ticks[index],
+    tickCount: ticks.length,
     secToNs: toNs,
     nearestTick: (sec) => {
       if (ticks.length === 0) return undefined;
@@ -92,6 +115,7 @@ function makeStream(
     };
   });
   const stream: McapDataStream = {
+    sourceKey: "test-source",
     subscribeToTopic,
     getTopicCache: (topic) => caches.get(topic),
     getTimelineIndex: () => timeline,
@@ -633,6 +657,142 @@ describe("useInterpolatedImageAnnotationSets — interpolation seam", () => {
       cacheA.set(TICKS[0], message(TICKS[0], emptyViz()));
     });
     expect(latest()?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
+  });
+});
+
+describe("image annotation interpolation caches", () => {
+  it("reuses the prepared plan only for the same visualization pair", () => {
+    const cache = new WeakMap() as Parameters<
+      typeof preparedImageAnnotationInterpolation
+    >[0];
+    const previous = circleViz([0, 0]);
+    const next = circleViz([10, 0]);
+
+    const first = preparedImageAnnotationInterpolation(cache, previous, next);
+    const second = preparedImageAnnotationInterpolation(cache, previous, next);
+    const differentPair = preparedImageAnnotationInterpolation(
+      cache,
+      previous,
+      circleViz([20, 0]),
+    );
+
+    expect(second).toBe(first);
+    expect(differentPair).not.toBe(first);
+  });
+
+  it("reuses a positive next-message lookup while the pair remains current", () => {
+    const ticks = Array.from({ length: 130 }, (_, index) => BigInt(index));
+    const timeline = makeTimeline(ticks);
+    const cache = new McapTopicCache();
+    const current = message(0n, emptyViz());
+    const next = message(125n, emptyViz());
+    cache.set(6n, current);
+    cache.set(125n, next);
+    const lookupCache = new WeakMap();
+
+    expect(
+      nextDistinctCachedMessage({
+        cache,
+        currentMessage: current,
+        currentTick: 6n,
+        currentTimelineTimeNs: 0n,
+        lookupCache,
+        timeline,
+      }),
+    ).toBe(next);
+
+    const get = vi.spyOn(cache, "get");
+    expect(
+      nextDistinctCachedMessage({
+        cache,
+        currentMessage: current,
+        currentTick: 7n,
+        currentTimelineTimeNs: 0n,
+        lookupCache,
+        timeline,
+      }),
+    ).toBe(next);
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it("rescans a cached miss as its bounded window advances", () => {
+    const ticks = Array.from({ length: 130 }, (_, index) => BigInt(index));
+    const timeline = makeTimeline(ticks);
+    const cache = new McapTopicCache();
+    const current = message(0n, emptyViz());
+    const next = message(125n, emptyViz());
+    cache.set(0n, current);
+    cache.set(6n, current);
+    cache.set(125n, next);
+    const lookupCache = new WeakMap();
+
+    expect(
+      nextDistinctCachedMessage({
+        cache,
+        currentMessage: current,
+        currentTick: 0n,
+        currentTimelineTimeNs: 0n,
+        lookupCache,
+        timeline,
+      }),
+    ).toBeNull();
+    expect(
+      nextDistinctCachedMessage({
+        cache,
+        currentMessage: current,
+        currentTick: 6n,
+        currentTimelineTimeNs: 0n,
+        lookupCache,
+        timeline,
+      }),
+    ).toBe(next);
+  });
+
+  it("invalidates a cached miss when late lookahead arrives", () => {
+    const timeline = makeTimeline(TICKS);
+    const cache = new McapTopicCache();
+    const current = message(TICKS[0], emptyViz());
+    const next = message(TICKS[2], emptyViz());
+    cache.set(TICKS[0], current);
+    const lookupCache = new WeakMap();
+    const lookup = () =>
+      nextDistinctCachedMessage({
+        cache,
+        currentMessage: current,
+        currentTick: TICKS[0],
+        currentTimelineTimeNs: current.timelineTimeNs,
+        lookupCache,
+        timeline,
+      });
+
+    expect(lookup()).toBeNull();
+    cache.set(TICKS[2], next);
+    expect(lookup()).toBe(next);
+  });
+
+  it("replaces a cached positive lookup when earlier lookahead arrives", () => {
+    const ticks = [0n, 1n, 2n, 3n, 4n];
+    const timeline = makeTimeline(ticks);
+    const cache = new McapTopicCache();
+    const current = message(0n, emptyViz());
+    const later = message(4n, circleViz([40, 0]));
+    const earlier = message(2n, circleViz([20, 0]));
+    cache.set(0n, current);
+    cache.set(4n, later);
+    const lookupCache = new WeakMap();
+    const lookup = () =>
+      nextDistinctCachedMessage({
+        cache,
+        currentMessage: current,
+        currentTick: 0n,
+        currentTimelineTimeNs: current.timelineTimeNs,
+        lookupCache,
+        timeline,
+      });
+
+    expect(lookup()).toBe(later);
+    cache.set(2n, earlier);
+    expect(lookup()).toBe(earlier);
   });
 });
 

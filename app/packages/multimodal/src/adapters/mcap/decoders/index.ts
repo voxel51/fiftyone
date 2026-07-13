@@ -1,6 +1,8 @@
 import type { Decoder } from "../../../decoders";
 import { DecoderRegistry } from "../../../decoders";
 import { foxgloveDecoders } from "./foxglove";
+import { jsonDecoders } from "./json";
+import { rosDecoders } from "./ros";
 
 /**
  * Foxglove MCAP decoder exports provided by the MCAP adapter.
@@ -8,9 +10,23 @@ import { foxgloveDecoders } from "./foxglove";
 export * from "./foxglove";
 
 /**
+ * JSON MCAP decoder exports provided by the MCAP adapter.
+ */
+export * from "./json";
+
+/**
+ * ROS MCAP decoder exports provided by the MCAP adapter.
+ */
+export * from "./ros";
+
+/**
  * Built-in payload decoders used by the MCAP adapter.
  */
-const mcapBuiltInDecoders: readonly Decoder[] = [...foxgloveDecoders];
+const mcapBuiltInDecoders: readonly Decoder[] = [
+  ...foxgloveDecoders,
+  ...jsonDecoders,
+  ...rosDecoders,
+];
 
 /**
  * Creates an MCAP decoder registry with adapter-owned built-ins.

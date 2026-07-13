@@ -177,7 +177,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     return size;
   }
 
-  hasDefaultZoom(state: VideoState, overlays: Overlay<VideoState>[]): boolean {
+  hasDefaultZoom(state: VideoState, _overlays: Overlay<VideoState>[]): boolean {
     const pan = [0, 0];
     const scale = 1;
 

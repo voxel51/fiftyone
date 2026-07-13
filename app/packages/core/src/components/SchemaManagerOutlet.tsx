@@ -14,10 +14,12 @@
  * OSS, the samples page in teams-app — inside the Recoil/Jotai-aware tree.
  */
 
+import { useRegisterAnnotationContextManager } from "@fiftyone/annotation";
 import { useSchemaManagerUrl } from "../url/useSchemaManagerUrl";
 import SchemaManager from "./Modal/Sidebar/Annotate/SchemaManager";
 import { useSchemaManagerModal } from "./Modal/Sidebar/Annotate/SchemaManager/hooks";
 import SchemaManagementProvider from "./Modal/Sidebar/Annotate/SchemaManagementProvider";
+import { useAnnotationContextManager } from "./Modal/Sidebar/Annotate/useAnnotationContextManager";
 import useCanManageSchema from "./Modal/Sidebar/Annotate/useCanManageSchema";
 import { useEnsureSchemasLoaded } from "./Modal/Sidebar/Annotate/useEnsureSchemasLoaded";
 
@@ -28,6 +30,10 @@ const SchemaManagerOutlet = () => {
   // flips; both hooks are no-ops when `canManage` is false.
   useSchemaManagerUrl();
   useEnsureSchemasLoaded(canManage);
+  // The context-manager implementation registers app-level (not gated on
+  // `canManage` — enter/exit must work regardless, and programmatic entry
+  // via the `annotate` operator can precede the modal mounting).
+  useRegisterAnnotationContextManager(useAnnotationContextManager());
 
   if (!canManage) return null;
 
