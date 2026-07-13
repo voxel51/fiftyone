@@ -35,6 +35,7 @@ import { webGpuDeviceStats } from "../../../visualization/panels/gpu/webgpu-devi
 import { webGpuSnapshotRendererStats } from "../../../visualization/panels/gpu/webgpu-snapshot-renderer";
 import { imageTextureCacheStats } from "../../../visualization/panels/image-texture-cache";
 import { gpuPointCloudColormapTextureStats } from "../../../visualization/panels/point-cloud/gpu/gpu-point-cloud-colormap-texture";
+import { mcapMapPerformanceStats } from "./mcap-map-performance";
 import styles from "./McapSettingsSidebar.module.css";
 
 const STATS_REFRESH_INTERVAL_MS = 1_000;
@@ -99,6 +100,7 @@ function LivePerformanceStats({
   const [copied, setCopied] = useState(false);
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // This effect samples cumulative runtime counters for the live panel.
   useEffect(() => {
     const interval = setInterval(
       () => setRuntime(readRuntimeStats()),
@@ -107,6 +109,7 @@ function LivePerformanceStats({
     return () => clearInterval(interval);
   }, []);
 
+  // This effect clears the copy-feedback timer on unmount.
   useEffect(
     () => () => {
       if (copyResetTimer.current !== null) {
@@ -157,6 +160,7 @@ function LivePerformanceStats({
     environment,
     gridLive,
     imageTextures,
+    map,
     projection,
     snapshotRenderer,
     webGpu,
@@ -204,6 +208,18 @@ function LivePerformanceStats({
             ],
           ]}
           title="Rendering"
+        />
+        <StatsGroup
+          rows={[
+            [
+              "Tile / surface commits",
+              `${map.reactCommits.tile} / ${map.reactCommits.surface}`,
+            ],
+            ["Playback paints", formatInteger(map.playbackPaints)],
+            ["Follow commands", formatInteger(map.followCommands)],
+            ["GeoJSON source updates", formatInteger(map.totalSourceUpdates)],
+          ]}
+          title="Map"
         />
         <StatsGroup
           rows={[
@@ -337,6 +353,7 @@ function useFramePerformanceStats(): FramePerformanceStats {
     p95FrameTimeMs: null,
   });
 
+  // This effect samples browser frame cadence for the rendering summary.
   useEffect(() => {
     if (typeof window.requestAnimationFrame !== "function") return;
 
@@ -426,6 +443,7 @@ function readRuntimeStats() {
     },
     gridLive: gridLiveLeaseStats(),
     imageTextures: imageTextureCacheStats(),
+    map: mcapMapPerformanceStats(),
     projection: gpuPointCloudProjectionResourceStats(),
     snapshotRenderer: webGpuSnapshotRendererStats(),
     webGpu: webGpuDeviceStats(),

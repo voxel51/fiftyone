@@ -1,5 +1,6 @@
 import {
   getHoverTime,
+  getIsPlaying,
   getPlayhead,
   setHoverTime,
   subscribeHoverTime,
@@ -7,6 +8,7 @@ import {
   useIsPlaying,
   usePlayback,
   usePlaybackStore,
+  type PlaybackStore,
 } from "@fiftyone/playback";
 import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import React, {
@@ -25,13 +27,17 @@ import {
 } from "./mcap-location-tracks-context";
 import {
   combineLocationBounds,
-  interpolateLocationAtTime,
+  createLocationTrackCursor,
+  indexedLocationTrailCoordinates,
+  indexLocationTrack,
   locationBounds,
-  locationTrailCoordinates,
+  resolveIndexedLocationAtTime,
+  type IndexedLocationTrack,
   type InterpolatedLocation,
+  type LocationTrackCursor,
   type LocationBounds,
-  type McapLocationTrackSegment,
   type McapLocationTrackState,
+  type ResolvedLocationTrackPosition,
 } from "./mcap-location-track";
 import {
   ensurePuckImages,
@@ -53,26 +59,42 @@ import {
 } from "./mcap-map-camera";
 import {
   MCAP_MAP_BASE_LAYER,
-  OPENFREEMAP_LIBERTY_STYLE_URL,
   type McapMapBaseLayer,
   useMcapMapTileSettings,
   useSetMcapMapTileSettings,
 } from "./mcap-map-tile-state";
 import {
+  initialMcapMapBasemapStatus,
+  loadOpenFreeMapStyle,
+  MCAP_MAP_LOCAL_BACKGROUND_LAYER_ID,
+  mcapMapBasemapSourceIds,
+  mcapMapBasemapStatusText,
+  mergeMcapMapOverlaysIntoStyle,
+  type McapMapBasemapStatus,
+} from "./mcap-map-basemap";
+import {
+  canPreserveMcapMapViewportBetweenSamples,
   readMcapMapViewport,
   useMcapMapViewportScope,
   writeMcapMapViewport,
 } from "./mcap-map-viewport-cache";
 import { mcapMapViewportIsNearEvidence } from "./mcap-map-viewport-proximity";
 import { useMcapDataStream } from "./mcap-data-stream-context";
+import { McapMapPlaybackController } from "./mcap-map-playback-controller";
+import {
+  noteMcapMapFollowCommand,
+  noteMcapMapPlaybackPaint,
+  noteMcapMapReactCommit,
+  noteMcapMapSourceUpdate,
+} from "./mcap-map-performance";
+import { mcapMapRouteProgressFilters } from "./mcap-map-route-progress";
+import type { McapTimelineIndex } from "./mcap-timeline-index";
 import type { McapTileProps } from "./mcap-tile-types";
 import { degreesToRadians } from "./wgs84";
 import McapMapTileSettings from "./McapMapTileSettings";
 import { useRegisterMcapTileSettings } from "./mcap-tile-settings-context";
 import styles from "./McapMapTile.module.css";
 
-const ROUTE_PAST_SOURCE_ID = "mcap-location-route-past";
-const ROUTE_FUTURE_SOURCE_ID = "mcap-location-route-future";
 const HIT_SOURCE_ID = "mcap-location-hit-points";
 const CURRENT_SOURCE_ID = "mcap-location-current";
 const HOVER_SOURCE_ID = "mcap-location-hover";
@@ -80,10 +102,6 @@ const MEASURE_LINE_SOURCE_ID = "mcap-location-measure-line";
 const MEASURE_PREVIEW_SOURCE_ID = "mcap-location-measure-preview";
 const MEASURE_POINTS_SOURCE_ID = "mcap-location-measure-points";
 
-const ROUTE_PAST_LAYER_ID = "mcap-location-route-past";
-const ROUTE_PAST_CASING_LAYER_ID = "mcap-location-route-past-casing";
-const ROUTE_FUTURE_LAYER_ID = "mcap-location-route-future";
-const ROUTE_FUTURE_CASING_LAYER_ID = "mcap-location-route-future-casing";
 const HIT_LAYER_ID = "mcap-location-hit-points";
 const ACCURACY_LAYER_ID = "mcap-location-accuracy";
 const PULSE_LAYER_ID = "mcap-location-pulse";
@@ -97,9 +115,12 @@ const MEASURE_POINTS_LAYER_ID = "mcap-location-measure-points";
 // feature properties); the color is baked into the id so a palette change
 // recreates the layer.
 const COMET_ID_PREFIX = "mcap-location-comet:";
+const ROUTE_ID_PREFIX = "mcap-location-route:";
 const COMET_TRAIL_NS = 15_000_000_000n;
 
 const PULSE_PERIOD_MS = 1_600;
+const FOLLOW_INTERVAL_MS = 1_000 / 15;
+const FOLLOW_MIN_MOVEMENT_PX = 1;
 // While the recenter animation runs, the follow easeTo must stand down or
 // it freezes the zoom mid-flight (easeTo without zoom keeps current zoom).
 const RECENTER_GUARD_MS = 600;
@@ -139,6 +160,7 @@ interface MapPointerEvent {
 }
 
 interface GeoJsonFeature {
+  readonly id?: string | number;
   readonly type: "Feature";
   readonly geometry: {
     readonly type: "LineString" | "Point";
@@ -152,6 +174,30 @@ interface GeoJsonFeatureCollection {
   readonly features: readonly GeoJsonFeature[];
 }
 
+interface IndexedMapTrack {
+  readonly index: IndexedLocationTrack;
+  readonly key: string;
+  readonly track: McapLocationTrackState;
+}
+
+interface MapPlaybackFrame {
+  readonly comets: readonly CometTrail[];
+  readonly markers: readonly MapLocationMarker[];
+  readonly resolutions: ReadonlyMap<string, ResolvedLocationTrackPosition>;
+}
+
+interface MapPlaybackPaintState {
+  readonly cursors: Map<string, LocationTrackCursor>;
+  lastFollowAtMs: number;
+  readonly routeProgressKeys: Map<string, string>;
+}
+
+interface MapSurfaceActivity {
+  documentVisible: boolean;
+  hasSize: boolean;
+  intersects: boolean;
+}
+
 let mapLibreImport: Promise<MapLibreModule> | null = null;
 let mapLibreCssImport: Promise<void> | null = null;
 
@@ -159,13 +205,17 @@ const EMPTY_FEATURE_COLLECTION: GeoJsonFeatureCollection = {
   type: "FeatureCollection",
   features: [],
 };
+const indexedLocationTrackByState = new WeakMap<
+  McapLocationTrackState,
+  IndexedLocationTrack
+>();
 
 const NO_TILE_STYLE: MapLibreStyle = {
   version: 8,
   sources: {},
   layers: [
     {
-      id: "mcap-location-background",
+      id: MCAP_MAP_LOCAL_BACKGROUND_LAYER_ID,
       type: "background",
       paint: { "background-color": "#06101a" },
     },
@@ -173,6 +223,10 @@ const NO_TILE_STYLE: MapLibreStyle = {
 };
 
 const McapMapTile: React.FC<McapTileProps> = () => {
+  // This effect records tile commits for the performance-stats panel.
+  useEffect(() => {
+    noteMcapMapReactCommit("tile");
+  });
   const tileId = useTileId();
   // Settings render through the sidebar's tile-settings registry, not here.
   const settingsRegistration = useMemo(
@@ -193,16 +247,19 @@ const McapMapTile: React.FC<McapTileProps> = () => {
   const store = usePlaybackStore();
   const { seek } = usePlayback();
   const isPlaying = useIsPlaying();
-  const [playheadSec, setPlayheadSec] = useState(() => getPlayhead(store));
-  const [hoverSec, setHoverSec] = useState<number | null>(() =>
-    getHoverTime(store),
-  );
   const [recenterNonce, setRecenterNonce] = useState(0);
   const [fitRouteNonce, setFitRouteNonce] = useState(0);
   const [measureArmed, setMeasureArmed] = useState(false);
   const [measurement, setMeasurement] = useState<MapMeasurementState | null>(
     null,
   );
+  const [basemapState, setBasemapState] = useState<{
+    readonly baseLayer: McapMapBaseLayer;
+    readonly status: McapMapBasemapStatus;
+  }>(() => ({
+    baseLayer: settings.baseLayer,
+    status: initialMcapMapBasemapStatus(settings.baseLayer),
+  }));
 
   const locationSources = useMemo(
     () => sources.filter((source) => source.type === MCAP_SOURCE_TYPE.LOCATION),
@@ -240,36 +297,13 @@ const McapMapTile: React.FC<McapTileProps> = () => {
       tracks.length < visibleTopics.length ||
       tracks.some((track) => track.status === "loading"));
 
+  // This effect keeps the automatic title synchronized with ready tracks.
   useEffect(() => {
     setTileTitle(mapTileTitle(readyTracks, locationSources.length), {
       source: "auto",
     });
   }, [locationSources.length, readyTracks, setTileTitle]);
 
-  useEffect(() => {
-    const unsubscribePlayhead = subscribePlayhead(store, () => {
-      setPlayheadSec(getPlayhead(store));
-    });
-    const unsubscribeHover = subscribeHoverTime(store, () => {
-      setHoverSec(getHoverTime(store));
-    });
-    setPlayheadSec(getPlayhead(store));
-    setHoverSec(getHoverTime(store));
-    return () => {
-      unsubscribePlayhead();
-      unsubscribeHover();
-      setHoverTime(store, null);
-    };
-  }, [store]);
-
-  const playheadNs = useMemo(
-    () => (timeline ? timeline.secToNs(playheadSec) : null),
-    [playheadSec, timeline],
-  );
-  const hoverNs = useMemo(
-    () => (timeline && hoverSec !== null ? timeline.secToNs(hoverSec) : null),
-    [hoverSec, timeline],
-  );
   const bounds = useMemo(
     () =>
       combineLocationBounds(
@@ -277,15 +311,6 @@ const McapMapTile: React.FC<McapTileProps> = () => {
       ),
     [readyTracks],
   );
-  const currentLocations = useMemo(
-    () => trackMarkersAt(readyTracks, playheadNs),
-    [playheadNs, readyTracks],
-  );
-  const hoverLocations = useMemo(
-    () => trackMarkersAt(readyTracks, hoverNs),
-    [hoverNs, readyTracks],
-  );
-
   const onSeekTimeNs = useCallback(
     (timeNs: bigint) => {
       if (!timeline) return;
@@ -312,6 +337,7 @@ const McapMapTile: React.FC<McapTileProps> = () => {
     });
   }, []);
 
+  // This effect owns the Escape shortcut while measurement mode is active.
   useEffect(() => {
     if (!measureArmed) return undefined;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -341,7 +367,7 @@ const McapMapTile: React.FC<McapTileProps> = () => {
   ).length;
   const errorCount = tracks.filter((track) => track.status === "error").length;
   const truncated = tracks.some((track) => track.truncated);
-  const statusText = mapStatusText({
+  const trackStatusText = mapStatusText({
     enabledTopicCount: visibleTopics.length,
     errorCount,
     loadingCount,
@@ -349,34 +375,58 @@ const McapMapTile: React.FC<McapTileProps> = () => {
     readyTrackCount: readyTracks.length,
     truncated,
   });
+  const basemapStatus =
+    basemapState.baseLayer === settings.baseLayer
+      ? basemapState.status
+      : initialMcapMapBasemapStatus(settings.baseLayer);
+  const statusText = joinMapStatusText(
+    mcapMapBasemapStatusText(basemapStatus),
+    trackStatusText,
+  );
+  const onBasemapStatusChange = useCallback(
+    (baseLayer: McapMapBaseLayer, status: McapMapBasemapStatus) => {
+      setBasemapState((current) =>
+        current.baseLayer === baseLayer && current.status === status
+          ? current
+          : { baseLayer, status },
+      );
+    },
+    [],
+  );
 
   return (
     <>
       <div className={styles.body} data-testid="mcap-map-tile">
         <McapMapLibreSurface
           bounds={bounds}
-          currentLocations={currentLocations}
           fitRouteNonce={fitRouteNonce}
           followEgo={settings.followEgo}
-          hoverLocations={hoverLocations}
           locationEvidencePending={locationEvidencePending}
           measureArmed={measureArmed}
           measurement={measurement}
           onHoverTimeNs={onHoverTimeNs}
+          onBasemapStatusChange={onBasemapStatusChange}
           onMeasurePick={onMeasurePick}
           onSeekTimeNs={onSeekTimeNs}
           onUserMove={() => setSettings({ followEgo: false })}
-          playheadNs={playheadNs}
+          playbackStore={store}
           pulseActive={isPlaying}
           recenterNonce={recenterNonce}
           baseLayer={settings.baseLayer}
           sourceKey={sourceKey}
           tracks={readyTracks}
+          timeline={timeline}
           viewportScope={mapViewportScope}
         />
         <div className={styles.overlay}>
           {statusText ? (
-            <span className={styles.statusBadge}>{statusText}</span>
+            <span
+              aria-live="polite"
+              className={styles.statusBadge}
+              role="status"
+            >
+              {statusText}
+            </span>
           ) : null}
           {!settings.followEgo && readyTracks.length > 0 ? (
             <button
@@ -439,57 +489,91 @@ const McapMapTile: React.FC<McapTileProps> = () => {
 function McapMapLibreSurface({
   baseLayer,
   bounds,
-  currentLocations,
   fitRouteNonce,
   followEgo,
-  hoverLocations,
   locationEvidencePending,
   measureArmed,
   measurement,
   onHoverTimeNs,
+  onBasemapStatusChange,
   onMeasurePick,
   onSeekTimeNs,
   onUserMove,
-  playheadNs,
+  playbackStore,
   pulseActive,
   recenterNonce,
   sourceKey,
   tracks,
+  timeline,
   viewportScope,
 }: {
   readonly baseLayer: McapMapBaseLayer;
   readonly bounds: LocationBounds | null;
-  readonly currentLocations: readonly MapLocationMarker[];
   readonly fitRouteNonce: number;
   readonly followEgo: boolean;
-  readonly hoverLocations: readonly MapLocationMarker[];
   readonly locationEvidencePending: boolean;
   readonly measureArmed: boolean;
   readonly measurement: MapMeasurementState | null;
   readonly onHoverTimeNs: (timeNs: bigint | null) => void;
+  readonly onBasemapStatusChange: (
+    baseLayer: McapMapBaseLayer,
+    status: McapMapBasemapStatus,
+  ) => void;
   readonly onMeasurePick: (point: MapMeasurementPoint) => void;
   readonly onSeekTimeNs: (timeNs: bigint) => void;
   readonly onUserMove: () => void;
-  readonly playheadNs: bigint | null;
+  readonly playbackStore: PlaybackStore;
   readonly pulseActive: boolean;
   readonly recenterNonce: number;
   readonly sourceKey: string | null;
   readonly tracks: readonly McapLocationTrackState[];
+  readonly timeline: McapTimelineIndex | null;
   readonly viewportScope: string | null;
 }) {
+  // This effect records surface commits for the performance-stats panel.
+  useEffect(() => {
+    noteMcapMapReactCommit("surface");
+  });
+  const indexedTracks = useMemo(() => tracks.map(indexedMapTrack), [tracks]);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const loadedRef = useRef(false);
+  const cameraReadyRef = useRef(false);
   const cameraEpochRef = useRef<string | null>(null);
+  const previousViewportScopeRef = useRef(viewportScope);
+  const previousSourceKeyRef = useRef(sourceKey);
   const initialFrameEpochRef = useRef<string | null>(null);
   const warmStartEpochRef = useRef<string | null>(null);
   const userInteractedRef = useRef(false);
   const recenterGuardUntilRef = useRef(0);
+  const suppressViewportWriteRef = useRef(false);
+  const playbackControllerRef = useRef<McapMapPlaybackController | null>(null);
+  const installedTrackLayersRef = useRef(
+    new Map<string, McapLocationTrackState>(),
+  );
+  const installedBaseLayerRef = useRef<McapMapBaseLayer>(
+    MCAP_MAP_BASE_LAYER.NONE,
+  );
+  const basemapStatusRef = useRef<McapMapBasemapStatus>("disabled");
+  const playbackPaintStateRef = useRef<MapPlaybackPaintState>({
+    cursors: new Map(),
+    lastFollowAtMs: Number.NEGATIVE_INFINITY,
+    routeProgressKeys: new Map(),
+  });
+  const latestPlaybackFrameRef = useRef<MapPlaybackFrame>(
+    emptyMapPlaybackFrame(),
+  );
+  const surfaceActivityRef = useRef<MapSurfaceActivity>({
+    documentVisible:
+      typeof document === "undefined" || document.visibilityState === "visible",
+    hasSize: true,
+    intersects: true,
+  });
+  const measurementHoverRef = useRef<MapMeasurementPoint | null>(null);
+  const measurementPreviewFrameRef = useRef<number | null>(null);
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
-  const [measurementHover, setMeasurementHover] =
-    useState<MapMeasurementPoint | null>(null);
   const onSeekTimeNsRef = useRef(onSeekTimeNs);
   const onHoverTimeNsRef = useRef(onHoverTimeNs);
   const onMeasurePickRef = useRef(onMeasurePick);
@@ -497,6 +581,10 @@ function McapMapLibreSurface({
   const measureArmedRef = useRef(measureArmed);
   const measurementRef = useRef(measurement);
   const viewportScopeRef = useRef(viewportScope);
+  const indexedTracksRef = useRef(indexedTracks);
+  const followEgoRef = useRef(followEgo);
+  const pulseActiveRef = useRef(pulseActive);
+  const sourceKeyRef = useRef(sourceKey);
   onSeekTimeNsRef.current = onSeekTimeNs;
   onHoverTimeNsRef.current = onHoverTimeNs;
   onMeasurePickRef.current = onMeasurePick;
@@ -504,8 +592,59 @@ function McapMapLibreSurface({
   measureArmedRef.current = measureArmed;
   measurementRef.current = measurement;
   viewportScopeRef.current = viewportScope;
+  indexedTracksRef.current = indexedTracks;
+  followEgoRef.current = followEgo;
+  pulseActiveRef.current = pulseActive;
+  sourceKeyRef.current = sourceKey;
 
   const cameraEpoch = `${viewportScope ?? ""}\0${sourceKey ?? ""}`;
+
+  // This effect pauses imperative map work when the surface cannot be seen.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return undefined;
+    const activity = surfaceActivityRef.current;
+    const syncActivity = () => {
+      playbackControllerRef.current?.setSurfaceActive(
+        isMapSurfaceActive(activity),
+      );
+    };
+    const handleVisibilityChange = () => {
+      activity.documentVisible = document.visibilityState === "visible";
+      syncActivity();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    let intersectionObserver: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== "undefined") {
+      intersectionObserver = new IntersectionObserver(([entry]) => {
+        activity.intersects = entry?.isIntersecting ?? false;
+        syncActivity();
+      });
+      intersectionObserver.observe(container);
+    }
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      activity.hasSize =
+        container.clientWidth > 0 && container.clientHeight > 0;
+      resizeObserver = new ResizeObserver(([entry]) => {
+        const width = entry?.contentRect.width ?? container.clientWidth;
+        const height = entry?.contentRect.height ?? container.clientHeight;
+        activity.hasSize = width > 0 && height > 0;
+        if (activity.hasSize) mapRef.current?.resize();
+        syncActivity();
+      });
+      resizeObserver.observe(container);
+    }
+    syncActivity();
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      intersectionObserver?.disconnect();
+      resizeObserver?.disconnect();
+    };
+  }, []);
 
   // This effect owns the MapLibre instance and its imperative subscriptions.
   useEffect(() => {
@@ -514,10 +653,11 @@ function McapMapLibreSurface({
     }
     setLoaded(false);
     setCameraReady(false);
+    cameraReadyRef.current = false;
     loadedRef.current = false;
     warmStartEpochRef.current = null;
+    const installedTrackLayers = installedTrackLayersRef.current;
     let cancelled = false;
-    let resizeObserver: ResizeObserver | null = null;
     let webglCanvas: HTMLCanvasElement | null = null;
     let handleWebglContextLost: ((event: Event) => void) | null = null;
     let handleWebglContextRestored: (() => void) | null = null;
@@ -531,7 +671,7 @@ function McapMapLibreSurface({
           container: containerRef.current,
           interactive: true,
           pitchWithRotate: false,
-          style: mapStyleForBaseLayer(baseLayer),
+          style: NO_TILE_STYLE,
           zoom: 1,
         });
         mapRef.current = map;
@@ -564,7 +704,9 @@ function McapMapLibreSurface({
         map.on("rotatestart", handleUserMove);
         map.on("pitchstart", handleUserMove);
         map.on("moveend", () => {
-          rememberMapViewport(map, viewportScopeRef.current);
+          if (!suppressViewportWriteRef.current) {
+            rememberMapViewport(map, viewportScopeRef.current);
+          }
         });
         map.on("click", HIT_LAYER_ID, (event) => {
           if (measureArmedRef.current) return;
@@ -592,22 +734,42 @@ function McapMapLibreSurface({
           if (!measureArmedRef.current) return;
           const current = measurementRef.current;
           if (!current || current.b) {
-            setMeasurementHover(null);
+            measurementHoverRef.current = null;
+            scheduleMeasurementPreviewUpdate(
+              map,
+              measurementRef,
+              measurementHoverRef,
+              measurementPreviewFrameRef,
+            );
             return;
           }
-          setMeasurementHover(measurementPointFromMapEvent(event));
+          measurementHoverRef.current = measurementPointFromMapEvent(event);
+          scheduleMeasurementPreviewUpdate(
+            map,
+            measurementRef,
+            measurementHoverRef,
+            measurementPreviewFrameRef,
+          );
         });
         // "mouseleave" only exists as a layer-scoped event; the map-level
         // pointer-exit event is "mouseout".
         map.on("mouseout", () => {
-          setMeasurementHover(null);
+          measurementHoverRef.current = null;
+          scheduleMeasurementPreviewUpdate(
+            map,
+            measurementRef,
+            measurementHoverRef,
+            measurementPreviewFrameRef,
+          );
         });
         webglCanvas = map.getCanvas();
         handleWebglContextLost = (event: Event) => {
           event.preventDefault();
+          loadedRef.current = false;
           setLoaded(false);
         };
         handleWebglContextRestored = () => {
+          loadedRef.current = true;
           setFailed(false);
           setLoaded(loadedRef.current);
           map.resize();
@@ -621,17 +783,15 @@ function McapMapLibreSurface({
           "webglcontextrestored",
           handleWebglContextRestored,
         );
-
-        if (typeof ResizeObserver !== "undefined") {
-          resizeObserver = new ResizeObserver(() => map.resize());
-          resizeObserver.observe(containerRef.current);
-        }
       })
       .catch(() => setFailed(true));
 
     return () => {
       cancelled = true;
-      resizeObserver?.disconnect();
+      if (measurementPreviewFrameRef.current !== null) {
+        cancelAnimationFrame(measurementPreviewFrameRef.current);
+        measurementPreviewFrameRef.current = null;
+      }
       if (webglCanvas && handleWebglContextLost) {
         webglCanvas.removeEventListener(
           "webglcontextlost",
@@ -651,59 +811,321 @@ function McapMapLibreSurface({
         mapRef.current = null;
       }
       loadedRef.current = false;
+      installedBaseLayerRef.current = MCAP_MAP_BASE_LAYER.NONE;
+      basemapStatusRef.current = "disabled";
+      installedTrackLayers.clear();
     };
-  }, [baseLayer, failed]);
+  }, [failed]);
 
   // This effect allows a failed map to retry after the base layer changes.
   useEffect(() => {
     setFailed(false);
   }, [baseLayer]);
 
+  // This effect keeps the local trajectory style live while the provider style
+  // and its initial sources load. It waits for the route-derived camera before
+  // installing the remote style, avoiding throwaway Null Island tile work.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return undefined;
+
+    let cancelled = false;
+    let removeReadinessListeners: () => void = () => undefined;
+    const report = (status: McapMapBasemapStatus) => {
+      if (cancelled) return;
+      basemapStatusRef.current = status;
+      onBasemapStatusChange(baseLayer, status);
+    };
+
+    if (baseLayer === MCAP_MAP_BASE_LAYER.NONE) {
+      report("disabled");
+      if (installedBaseLayerRef.current !== MCAP_MAP_BASE_LAYER.NONE) {
+        installedBaseLayerRef.current = MCAP_MAP_BASE_LAYER.NONE;
+        map.setStyle(NO_TILE_STYLE, {
+          transformStyle: mergeMcapMapOverlaysIntoStyle,
+        });
+        ensureCurrentPuckImages(map, indexedTracksRef.current);
+        playbackControllerRef.current?.invalidate();
+      }
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (
+      installedBaseLayerRef.current === baseLayer &&
+      basemapStatusRef.current === "ready"
+    ) {
+      report("ready");
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    report("loading");
+    void loadOpenFreeMapStyle()
+      .then((style) => {
+        if (cancelled) return;
+        const styleAlreadyInstalled =
+          installedBaseLayerRef.current === baseLayer;
+        if (!styleAlreadyInstalled && !cameraReady) return;
+        const sourceIds = mcapMapBasemapSourceIds(style);
+        let overlaysRestored = false;
+        const restoreOverlays = () => {
+          if (overlaysRestored || cancelled) return;
+          ensureCurrentPuckImages(map, indexedTracksRef.current);
+          playbackControllerRef.current?.invalidate();
+          overlaysRestored = true;
+        };
+        const markReadyWhenLoaded = () => {
+          if (
+            cancelled ||
+            sourceIds.some(
+              (id) => !map.getSource(id) || !map.isSourceLoaded(id),
+            )
+          ) {
+            return;
+          }
+          restoreOverlays();
+          report("ready");
+          removeReadinessListeners();
+        };
+        const handleStyleData = () => {
+          restoreOverlays();
+          markReadyWhenLoaded();
+        };
+        removeReadinessListeners = () => {
+          map.off("sourcedata", markReadyWhenLoaded);
+          map.off("styledata", handleStyleData);
+          removeReadinessListeners = () => undefined;
+        };
+        map.on("sourcedata", markReadyWhenLoaded);
+        map.on("styledata", handleStyleData);
+        if (!styleAlreadyInstalled) {
+          installedBaseLayerRef.current = baseLayer;
+          map.setStyle(style, {
+            transformStyle: mergeMcapMapOverlaysIntoStyle,
+          });
+        }
+        markReadyWhenLoaded();
+      })
+      .catch(() => {
+        if (cancelled) return;
+        installedBaseLayerRef.current = MCAP_MAP_BASE_LAYER.NONE;
+        report("error");
+      });
+
+    return () => {
+      cancelled = true;
+      removeReadinessListeners();
+    };
+  }, [baseLayer, cameraReady, loaded, onBasemapStatusChange]);
+
   // This effect invalidates automatic camera work from the previous
   // recording. The validated warm-start effect below makes the map visible
   // again once real location evidence arrives.
   useEffect(() => {
     if (cameraEpochRef.current !== cameraEpoch) {
+      const sourceChanged = previousSourceKeyRef.current !== sourceKey;
+      if (sourceChanged) {
+        latestPlaybackFrameRef.current = emptyMapPlaybackFrame();
+        playbackPaintStateRef.current.cursors.clear();
+        playbackPaintStateRef.current.routeProgressKeys.clear();
+      }
+      const preserveLiveCamera =
+        sourceChanged &&
+        cameraReadyRef.current &&
+        loadedRef.current &&
+        canPreserveMcapMapViewportBetweenSamples(
+          previousViewportScopeRef.current,
+          viewportScope,
+        );
+      if (preserveLiveCamera && mapRef.current) {
+        // Capture the latest follow position once at the sample boundary. The
+        // ordinary follow loop deliberately avoids per-tick cache writes.
+        rememberMapViewport(mapRef.current, viewportScope);
+      }
       cameraEpochRef.current = cameraEpoch;
       initialFrameEpochRef.current = null;
       warmStartEpochRef.current = null;
       userInteractedRef.current = false;
-      setCameraReady(false);
+      if (!preserveLiveCamera) {
+        cameraReadyRef.current = false;
+        setCameraReady(false);
+      }
+      previousViewportScopeRef.current = viewportScope;
+      previousSourceKeyRef.current = sourceKey;
     }
-  }, [cameraEpoch]);
+  }, [cameraEpoch, sourceKey, viewportScope]);
 
-  // This effect applies each explicit fit-route request exactly once.
+  // This effect synchronizes the measurement cursor and clears stale preview.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     map.getCanvas().style.cursor = measureArmed ? "crosshair" : "";
     if (!measureArmed) {
-      setMeasurementHover(null);
+      measurementHoverRef.current = null;
+      setGeoJsonSourceData(
+        map,
+        MEASURE_PREVIEW_SOURCE_ID,
+        EMPTY_FEATURE_COLLECTION,
+      );
     }
   }, [measureArmed, loaded]);
 
-  const sourceData = useMemo(
-    () => ({
-      comets: cometTrails(tracks, playheadNs),
-      current: currentPuckFeatures(currentLocations),
-      future: routeFeatures(tracks, playheadNs, "future"),
-      hit: hitPointFeatures(tracks),
-      hover: markerFeatures(hoverLocations),
-      measureLine: measurementLineFeature(measurement),
-      measurePoints: measurementPointFeatures(measurement),
-      measurePreview: measurementPreviewFeature(measurement, measurementHover),
-      past: routeFeatures(tracks, playheadNs, "past"),
-      trackColors: tracks.map((track) => track.color),
-    }),
-    [
-      currentLocations,
-      hoverLocations,
-      measurement,
-      measurementHover,
-      playheadNs,
-      tracks,
-    ],
+  // This effect owns the playback subscription and its capped map controller.
+  useEffect(() => {
+    const controller = new McapMapPlaybackController({
+      onPaint: (playheadNs, nowMs) => {
+        const indexed = indexedTracksRef.current;
+        const paintState = playbackPaintStateRef.current;
+        const frame = mapPlaybackFrameAt(
+          indexed,
+          playheadNs,
+          paintState.cursors,
+        );
+        latestPlaybackFrameRef.current = frame;
+        const map = mapRef.current;
+        if (!map || !loadedRef.current) return;
+
+        noteMcapMapPlaybackPaint();
+        paintMapPlaybackFrame(map, indexed, frame, paintState);
+        if (
+          sourceKeyRef.current &&
+          cameraReadyRef.current &&
+          followEgoRef.current &&
+          !userInteractedRef.current &&
+          initialFrameEpochRef.current !== cameraEpochRef.current
+        ) {
+          const target = playbackCameraTarget(
+            null,
+            frame.markers,
+            frame.comets,
+          );
+          if (target) {
+            initialFrameEpochRef.current = cameraEpochRef.current;
+            recenterGuardUntilRef.current = nowMs + RECENTER_GUARD_MS;
+            applyMcapMapCameraTarget(map, target, 240);
+          }
+        }
+        updateFollowCamera({
+          cameraReady: cameraReadyRef.current,
+          current: frame.markers[0]?.location ?? null,
+          enabled: followEgoRef.current,
+          map,
+          nowMs,
+          paintState,
+          recenterGuardUntil: recenterGuardUntilRef.current,
+          suppressViewportWriteRef,
+        });
+        updateMapPulse(map, pulseActiveRef.current, nowMs);
+      },
+    });
+    playbackControllerRef.current = controller;
+    controller.setSurfaceActive(isMapSurfaceActive(surfaceActivityRef.current));
+
+    const publish = () => {
+      controller.updatePlayhead(
+        timeline ? timeline.secToNs(getPlayhead(playbackStore)) : null,
+        !getIsPlaying(playbackStore),
+      );
+    };
+    const unsubscribe = subscribePlayhead(playbackStore, publish);
+    publish();
+    return () => {
+      unsubscribe();
+      controller.dispose();
+      if (playbackControllerRef.current === controller) {
+        playbackControllerRef.current = null;
+      }
+    };
+  }, [playbackStore, timeline]);
+
+  // This effect publishes track-static sources, images, and layer membership.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    ensurePuckImages(
+      map,
+      indexedTracks.map(({ track }) => track.color),
+    );
+    reconcileTrackLayers(map, indexedTracks, installedTrackLayersRef.current);
+    setGeoJsonSourceData(
+      map,
+      HIT_SOURCE_ID,
+      hitPointFeatures(indexedTracks.map(({ track }) => track)),
+    );
+    prunePlaybackPaintState(playbackPaintStateRef.current, indexedTracks);
+    playbackControllerRef.current?.invalidate();
+  }, [indexedTracks, loaded]);
+
+  // This effect isolates hover subscription updates to the hover source.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return undefined;
+    const publish = () => {
+      const hoverSec = getHoverTime(playbackStore);
+      const hoverNs =
+        hoverSec !== null && timeline ? timeline.secToNs(hoverSec) : null;
+      setGeoJsonSourceData(
+        map,
+        HOVER_SOURCE_ID,
+        markerFeatures(indexedTrackMarkersAt(indexedTracks, hoverNs)),
+      );
+    };
+    const unsubscribe = subscribeHoverTime(playbackStore, publish);
+    publish();
+    return unsubscribe;
+  }, [indexedTracks, loaded, playbackStore, timeline]);
+
+  // This effect clears shared hover state when this map surface unmounts.
+  useEffect(
+    () => () => {
+      setHoverTime(playbackStore, null);
+    },
+    [playbackStore],
   );
+
+  // This effect publishes committed measurement geometry.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    setGeoJsonSourceData(
+      map,
+      MEASURE_LINE_SOURCE_ID,
+      measurementLineFeature(measurement),
+    );
+    setGeoJsonSourceData(
+      map,
+      MEASURE_POINTS_SOURCE_ID,
+      measurementPointFeatures(measurement),
+    );
+    setGeoJsonSourceData(
+      map,
+      MEASURE_PREVIEW_SOURCE_ID,
+      measurementPreviewFeature(measurement, measurementHoverRef.current),
+    );
+  }, [loaded, measurement]);
+
+  // This effect synchronizes pulse state and flushes the final paused frame.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    if (!pulseActive) {
+      map.setPaintProperty(PULSE_LAYER_ID, "circle-opacity", 0);
+      playbackControllerRef.current?.updatePlayhead(
+        timeline ? timeline.secToNs(getPlayhead(playbackStore)) : null,
+        true,
+      );
+    } else {
+      playbackControllerRef.current?.invalidate();
+    }
+  }, [loaded, playbackStore, pulseActive, timeline]);
+
+  // This effect repaints immediately when continuous follow is enabled.
+  useEffect(() => {
+    if (followEgo) playbackControllerRef.current?.invalidate();
+  }, [followEgo, loaded]);
 
   // This effect validates the dataset-scoped warm start before
   // exposing the map. A cached location is useful only when the new marker or
@@ -711,7 +1133,8 @@ function McapMapLibreSurface({
   useEffect(() => {
     const map = mapRef.current;
     const container = containerRef.current;
-    const marker = currentLocations[0]?.location ?? null;
+    const frame = latestPlaybackFrameRef.current;
+    const marker = frame.markers[0]?.location ?? null;
     if (
       !sourceKey ||
       !map ||
@@ -724,7 +1147,9 @@ function McapMapLibreSurface({
     if (!marker && !bounds) {
       if (locationEvidencePending) return;
       warmStartEpochRef.current = cameraEpoch;
+      cameraReadyRef.current = true;
       setCameraReady(true);
+      playbackControllerRef.current?.invalidate();
       return;
     }
 
@@ -746,84 +1171,26 @@ function McapMapLibreSurface({
         zoom: viewport.zoom,
       });
     } else {
-      const target = playbackCameraTarget(
-        bounds,
-        currentLocations,
-        sourceData.comets,
-      );
+      const target = playbackCameraTarget(bounds, frame.markers, frame.comets);
       if (target) {
         initialFrameEpochRef.current = cameraEpoch;
         applyMcapMapCameraTarget(map, target, 0);
       }
     }
+    cameraReadyRef.current = true;
     setCameraReady(true);
+    playbackControllerRef.current?.invalidate();
   }, [
     bounds,
     cameraEpoch,
-    currentLocations,
     loaded,
     locationEvidencePending,
-    sourceData.comets,
     sourceKey,
     viewportScope,
   ]);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !loadedRef.current) {
-      return;
-    }
-    ensurePuckImages(map, sourceData.trackColors);
-    syncCometLayers(map, sourceData.comets);
-    setGeoJsonSourceData(map, ROUTE_PAST_SOURCE_ID, sourceData.past);
-    setGeoJsonSourceData(map, ROUTE_FUTURE_SOURCE_ID, sourceData.future);
-    setGeoJsonSourceData(map, HIT_SOURCE_ID, sourceData.hit);
-    setGeoJsonSourceData(map, CURRENT_SOURCE_ID, sourceData.current);
-    setGeoJsonSourceData(map, HOVER_SOURCE_ID, sourceData.hover);
-    setGeoJsonSourceData(map, MEASURE_LINE_SOURCE_ID, sourceData.measureLine);
-    setGeoJsonSourceData(
-      map,
-      MEASURE_PREVIEW_SOURCE_ID,
-      sourceData.measurePreview,
-    );
-    setGeoJsonSourceData(
-      map,
-      MEASURE_POINTS_SOURCE_ID,
-      sourceData.measurePoints,
-    );
-  }, [sourceData, loaded]);
-
-  // Sonar pulse under the puck while playing: the marker doubles as the
-  // playback-state indicator. rAF-driven paint updates on one tiny layer.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !loadedRef.current || !map.getLayer(PULSE_LAYER_ID)) {
-      return undefined;
-    }
-    if (!pulseActive) {
-      map.setPaintProperty(PULSE_LAYER_ID, "circle-opacity", 0);
-      return undefined;
-    }
-    let frame = 0;
-    const tick = (now: number) => {
-      const phase = (now % PULSE_PERIOD_MS) / PULSE_PERIOD_MS;
-      map.setPaintProperty(PULSE_LAYER_ID, "circle-radius", 10 + phase * 16);
-      map.setPaintProperty(PULSE_LAYER_ID, "circle-opacity", 0.4 * (1 - phase));
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(frame);
-      // Skip the reset when this cleanup races a map teardown.
-      if (mapRef.current === map && map.getLayer(PULSE_LAYER_ID)) {
-        map.setPaintProperty(PULSE_LAYER_ID, "circle-opacity", 0);
-      }
-    };
-  }, [pulseActive, loaded]);
-
-  // Recenter: re-frame around "now" — fit the recent trail when one
-  // exists (adaptive zoom: a fast vehicle gets a wider view), else ease to
-  // the marker at street zoom, else fall back to the whole track.
+  // This effect applies each explicit Recenter request exactly once. It fits
+  // the recent trail when one exists, then falls back to the marker or route.
   useEffect(() => {
     const map = mapRef.current;
     if (recenterNonce === 0 || !map || !loadedRef.current) {
@@ -831,9 +1198,10 @@ function McapMapLibreSurface({
     }
     initialFrameEpochRef.current = cameraEpoch;
     recenterGuardUntilRef.current = performance.now() + RECENTER_GUARD_MS;
+    const frame = latestPlaybackFrameRef.current;
     applyMcapMapCameraTarget(
       map,
-      playbackCameraTarget(bounds, currentLocations, sourceData.comets),
+      playbackCameraTarget(bounds, frame.markers, frame.comets),
       400,
     );
     // Latest-closure effect: only the nonce (and load state) may trigger
@@ -843,42 +1211,7 @@ function McapMapLibreSurface({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recenterNonce, loaded]);
 
-  // A new scene frames once around the playhead as soon as both the map and
-  // real GPS data are ready. Subsequent ticks only follow the marker, and a
-  // gesture before readiness opts out of this automatic move.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (
-      !sourceKey ||
-      !map ||
-      !loadedRef.current ||
-      !cameraReady ||
-      !followEgo ||
-      userInteractedRef.current ||
-      initialFrameEpochRef.current === cameraEpoch
-    ) {
-      return;
-    }
-    const target = playbackCameraTarget(
-      null,
-      currentLocations,
-      sourceData.comets,
-    );
-    if (!target) return;
-
-    initialFrameEpochRef.current = cameraEpoch;
-    recenterGuardUntilRef.current = performance.now() + RECENTER_GUARD_MS;
-    applyMcapMapCameraTarget(map, target, 240);
-  }, [
-    cameraEpoch,
-    cameraReady,
-    currentLocations,
-    followEgo,
-    loaded,
-    sourceData.comets,
-    sourceKey,
-  ]);
-
+  // This effect applies each explicit Fit route request exactly once.
   useEffect(() => {
     const map = mapRef.current;
     if (fitRouteNonce === 0 || !map || !loadedRef.current || !bounds) {
@@ -889,22 +1222,6 @@ function McapMapLibreSurface({
     // move a camera the user may have adjusted in the meantime.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitRouteNonce, loaded]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    const current = currentLocations[0]?.location;
-    if (!map || !loadedRef.current || !cameraReady || !followEgo || !current) {
-      return;
-    }
-    if (performance.now() < recenterGuardUntilRef.current) {
-      return;
-    }
-    map.easeTo({
-      center: [current.longitude, current.latitude],
-      duration: 120,
-      essential: false,
-    });
-  }, [cameraReady, currentLocations, followEgo, loaded]);
 
   return (
     <>
@@ -928,14 +1245,14 @@ interface MapLocationMarker {
   readonly topic: string;
 }
 
-function trackMarkersAt(
-  tracks: readonly McapLocationTrackState[],
+function indexedTrackMarkersAt(
+  tracks: readonly IndexedMapTrack[],
   timeNs: bigint | null,
 ): readonly MapLocationMarker[] {
   if (timeNs === null) return [];
   const markers: MapLocationMarker[] = [];
-  for (const track of tracks) {
-    const location = interpolateLocationAtTime(track.segments, timeNs);
+  for (const { index, track } of tracks) {
+    const location = resolveIndexedLocationAtTime(index, timeNs).location;
     if (location) {
       markers.push({
         color: track.color,
@@ -1039,8 +1356,6 @@ function StaticLocationMap({
 }
 
 function addMcapMapSourcesAndLayers(map: MapLibreMap) {
-  addGeoJsonSource(map, ROUTE_PAST_SOURCE_ID);
-  addGeoJsonSource(map, ROUTE_FUTURE_SOURCE_ID);
   addGeoJsonSource(map, HIT_SOURCE_ID);
   addGeoJsonSource(map, CURRENT_SOURCE_ID);
   addGeoJsonSource(map, HOVER_SOURCE_ID);
@@ -1048,54 +1363,6 @@ function addMcapMapSourcesAndLayers(map: MapLibreMap) {
   addGeoJsonSource(map, MEASURE_PREVIEW_SOURCE_ID);
   addGeoJsonSource(map, MEASURE_POINTS_SOURCE_ID);
 
-  map.addLayer({
-    id: ROUTE_FUTURE_CASING_LAYER_ID,
-    type: "line",
-    source: ROUTE_FUTURE_SOURCE_ID,
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: {
-      "line-color": ROUTE_CASING_COLOR,
-      "line-opacity": 0.55,
-      "line-width": 4.5,
-    },
-  });
-  // Future route is deliberately colorless: track identity lives in the
-  // traveled route, comet trail, puck, and legend.
-  map.addLayer({
-    id: ROUTE_FUTURE_LAYER_ID,
-    type: "line",
-    source: ROUTE_FUTURE_SOURCE_ID,
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: {
-      "line-color": FUTURE_ROUTE_COLOR,
-      "line-opacity": 0.3,
-      "line-width": 2.5,
-    },
-  });
-  map.addLayer({
-    id: ROUTE_PAST_CASING_LAYER_ID,
-    type: "line",
-    source: ROUTE_PAST_SOURCE_ID,
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: {
-      "line-color": ROUTE_CASING_COLOR,
-      "line-opacity": 0.85,
-      "line-width": 4.5,
-    },
-  });
-  // Dim history base; the per-track comet-trail layers (inserted above
-  // this, below the pulse) add the bright gradient head behind the puck.
-  map.addLayer({
-    id: ROUTE_PAST_LAYER_ID,
-    type: "line",
-    source: ROUTE_PAST_SOURCE_ID,
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: {
-      "line-color": ["get", "color"],
-      "line-opacity": 0.5,
-      "line-width": 2.5,
-    },
-  });
   // Accuracy ring: the receiver's own 2σ horizontal-error estimate as a
   // metric circle under the puck. Present only when the fix carried a
   // non-degenerate covariance — no estimate, no ring.
@@ -1270,89 +1537,485 @@ function coordinateBounds(
   return { east, north, south, west };
 }
 
-function cometTrails(
-  tracks: readonly McapLocationTrackState[],
-  playheadNs: bigint | null,
-): readonly CometTrail[] {
-  if (playheadNs === null) {
-    return [];
-  }
-  const trails: CometTrail[] = [];
-  for (const track of tracks) {
-    const coordinates = locationTrailCoordinates(
-      track.segments,
-      playheadNs,
-      COMET_TRAIL_NS,
-    );
-    if (coordinates.length >= 2) {
-      trails.push({
-        color: track.color,
-        coordinates,
-        key: `${COMET_ID_PREFIX}${track.color}:${track.topic}`,
-      });
-    }
-  }
-  return trails;
+function trackLayerKey(track: McapLocationTrackState): string {
+  return `${track.color}:${track.topic}`;
 }
 
-/**
- * Reconciles one gradient line source+layer per comet trail. Layers are
- * per track because `line-gradient` cannot read feature properties; the
- * gradient runs transparent → track color toward the puck.
- */
-function syncCometLayers(
+function indexedMapTrack(track: McapLocationTrackState): IndexedMapTrack {
+  let index = indexedLocationTrackByState.get(track);
+  if (!index) {
+    index = indexLocationTrack(track.segments);
+    indexedLocationTrackByState.set(track, index);
+  }
+  return { index, key: trackLayerKey(track), track };
+}
+
+function routeSourceId(key: string): string {
+  return `${ROUTE_ID_PREFIX}${key}`;
+}
+
+function routeLayerId(key: string, kind: string): string {
+  return `${routeSourceId(key)}:${kind}`;
+}
+
+function cometSourceId(key: string): string {
+  return `${COMET_ID_PREFIX}${key}`;
+}
+
+function reconcileTrackLayers(
   map: MapLibreMap,
-  trails: readonly CometTrail[],
+  tracks: readonly IndexedMapTrack[],
+  installed: Map<string, McapLocationTrackState>,
 ): void {
-  const wanted = new Map(trails.map((trail) => [trail.key, trail]));
-  for (const layer of map.getStyle()?.layers ?? []) {
-    if (layer.id.startsWith(COMET_ID_PREFIX) && !wanted.has(layer.id)) {
-      map.removeLayer(layer.id);
-      map.removeSource(layer.id);
+  const wanted = new Map(tracks.map((track) => [track.key, track]));
+  for (const key of installed.keys()) {
+    if (!wanted.has(key)) {
+      removeTrackLayers(map, key);
+      installed.delete(key);
     }
   }
-  for (const [id, trail] of wanted) {
-    if (!map.getSource(id)) {
-      map.addSource(id, {
-        type: "geojson",
-        data: EMPTY_FEATURE_COLLECTION,
-        lineMetrics: true,
-      } as never);
-      map.addLayer(
-        {
-          id,
-          type: "line",
-          source: id,
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: {
-            "line-gradient": [
-              "interpolate",
-              ["linear"],
-              ["line-progress"],
-              0,
-              hexColorWithAlpha(trail.color, COMET_TAIL_ALPHA),
-              1,
-              trail.color,
-            ],
-            // Same width as the base route so the trail reads as part of
-            // the line rather than a bulge riding on top of it.
-            "line-width": 2.5,
-          },
-        },
-        PULSE_LAYER_ID,
+  for (const indexedTrack of tracks) {
+    const installedTrack = installed.get(indexedTrack.key);
+    if (!installedTrack) {
+      addTrackRouteLayers(map, indexedTrack);
+      addCometLayer(map, indexedTrack);
+    } else if (installedTrack !== indexedTrack.track) {
+      setGeoJsonSourceData(
+        map,
+        routeSourceId(indexedTrack.key),
+        staticRouteFeatures(indexedTrack),
       );
     }
-    setGeoJsonSourceData(map, id, {
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          geometry: { type: "LineString", coordinates: trail.coordinates },
-          properties: {},
-        },
-      ],
+    installed.set(indexedTrack.key, indexedTrack.track);
+  }
+}
+
+function addTrackRouteLayers(map: MapLibreMap, indexedTrack: IndexedMapTrack) {
+  const { key, track } = indexedTrack;
+  const source = routeSourceId(key);
+  map.addSource(source, {
+    type: "geojson",
+    data: staticRouteFeatures(indexedTrack),
+    lineMetrics: true,
+  } as never);
+  const layout = { "line-cap": "round", "line-join": "round" } as const;
+  const segment = ["get", "segmentIndex"];
+  const noPast = ["<", segment, 0];
+  const allFuture = [">=", segment, 0];
+  const noActive = ["==", segment, -1];
+  map.addLayer(
+    {
+      id: routeLayerId(key, "future-casing"),
+      type: "line",
+      source,
+      filter: allFuture,
+      layout,
+      paint: {
+        "line-color": ROUTE_CASING_COLOR,
+        "line-opacity": 0.55,
+        "line-width": 4.5,
+      },
+    } as never,
+    ACCURACY_LAYER_ID,
+  );
+  map.addLayer(
+    {
+      id: routeLayerId(key, "future"),
+      type: "line",
+      source,
+      filter: allFuture,
+      layout,
+      paint: {
+        "line-color": FUTURE_ROUTE_COLOR,
+        "line-opacity": 0.3,
+        "line-width": 2.5,
+      },
+    } as never,
+    ACCURACY_LAYER_ID,
+  );
+  map.addLayer(
+    {
+      id: routeLayerId(key, "past-casing"),
+      type: "line",
+      source,
+      filter: noPast,
+      layout,
+      paint: {
+        "line-color": ROUTE_CASING_COLOR,
+        "line-opacity": 0.85,
+        "line-width": 4.5,
+      },
+    } as never,
+    ACCURACY_LAYER_ID,
+  );
+  map.addLayer(
+    {
+      id: routeLayerId(key, "past"),
+      type: "line",
+      source,
+      filter: noPast,
+      layout,
+      paint: {
+        "line-color": track.color,
+        "line-opacity": 0.5,
+        "line-width": 2.5,
+      },
+    } as never,
+    ACCURACY_LAYER_ID,
+  );
+  map.addLayer(
+    {
+      id: routeLayerId(key, "active-casing"),
+      type: "line",
+      source,
+      filter: noActive,
+      layout,
+      paint: {
+        "line-gradient": activeRouteGradient(
+          ROUTE_CASING_COLOR,
+          0.85,
+          ROUTE_CASING_COLOR,
+          0.55,
+          0,
+        ),
+        "line-width": 4.5,
+      },
+    } as never,
+    ACCURACY_LAYER_ID,
+  );
+  map.addLayer(
+    {
+      id: routeLayerId(key, "active"),
+      type: "line",
+      source,
+      filter: noActive,
+      layout,
+      paint: {
+        "line-gradient": activeRouteGradient(
+          track.color,
+          0.5,
+          FUTURE_ROUTE_COLOR,
+          0.3,
+          0,
+        ),
+        "line-width": 2.5,
+      },
+    } as never,
+    ACCURACY_LAYER_ID,
+  );
+}
+
+function addCometLayer(map: MapLibreMap, indexedTrack: IndexedMapTrack): void {
+  const source = cometSourceId(indexedTrack.key);
+  map.addSource(source, {
+    type: "geojson",
+    data: EMPTY_FEATURE_COLLECTION,
+    lineMetrics: true,
+  } as never);
+  map.addLayer(
+    {
+      id: source,
+      type: "line",
+      source,
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-gradient": [
+          "interpolate",
+          ["linear"],
+          ["line-progress"],
+          0,
+          hexColorWithAlpha(indexedTrack.track.color, COMET_TAIL_ALPHA),
+          1,
+          indexedTrack.track.color,
+        ],
+        "line-width": 2.5,
+      },
+    } as never,
+    PULSE_LAYER_ID,
+  );
+}
+
+function removeTrackLayers(map: MapLibreMap, key: string): void {
+  const layers = [
+    routeLayerId(key, "active"),
+    routeLayerId(key, "active-casing"),
+    routeLayerId(key, "past"),
+    routeLayerId(key, "past-casing"),
+    routeLayerId(key, "future"),
+    routeLayerId(key, "future-casing"),
+    cometSourceId(key),
+  ];
+  for (const layer of layers) {
+    if (map.getLayer(layer)) map.removeLayer(layer);
+  }
+  for (const source of [routeSourceId(key), cometSourceId(key)]) {
+    if (map.getSource(source)) map.removeSource(source);
+  }
+}
+
+function staticRouteFeatures(
+  indexedTrack: IndexedMapTrack,
+): GeoJsonFeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: indexedTrack.index.segments.flatMap((segment, segmentIndex) =>
+      segment.coordinates.length < 2
+        ? []
+        : [
+            {
+              id: segmentIndex,
+              type: "Feature" as const,
+              geometry: {
+                type: "LineString" as const,
+                coordinates: segment.coordinates,
+              },
+              properties: {
+                segmentIndex,
+                topic: indexedTrack.track.topic,
+              },
+            },
+          ],
+    ),
+  };
+}
+
+function emptyMapPlaybackFrame(): MapPlaybackFrame {
+  return { comets: [], markers: [], resolutions: new Map() };
+}
+
+function mapPlaybackFrameAt(
+  tracks: readonly IndexedMapTrack[],
+  playheadNs: bigint | null,
+  cursors: Map<string, LocationTrackCursor>,
+): MapPlaybackFrame {
+  const markers: MapLocationMarker[] = [];
+  const comets: CometTrail[] = [];
+  const resolutions = new Map<string, ResolvedLocationTrackPosition>();
+  for (const indexedTrack of tracks) {
+    const cursor = cursors.get(indexedTrack.key) ?? createLocationTrackCursor();
+    cursors.set(indexedTrack.key, cursor);
+    const resolved =
+      playheadNs === null
+        ? unresolvedRoutePosition(indexedTrack.index)
+        : resolveIndexedLocationAtTime(indexedTrack.index, playheadNs, cursor);
+    resolutions.set(indexedTrack.key, resolved);
+    if (resolved.location) {
+      markers.push({
+        color: indexedTrack.track.color,
+        label: indexedTrack.track.label,
+        location: resolved.location,
+        topic: indexedTrack.track.topic,
+      });
+    }
+    comets.push({
+      color: indexedTrack.track.color,
+      coordinates:
+        playheadNs === null
+          ? []
+          : indexedLocationTrailCoordinates(
+              indexedTrack.index,
+              resolved,
+              COMET_TRAIL_NS,
+            ),
+      key: indexedTrack.key,
     });
   }
+  return { comets, markers, resolutions };
+}
+
+function unresolvedRoutePosition(
+  track: IndexedLocationTrack,
+): ResolvedLocationTrackPosition {
+  return {
+    boundarySegmentIndex: 0,
+    lineProgress: null,
+    location: null,
+    pointIndex: null,
+    segmentIndex: null,
+    state: track.segments.length === 0 ? "empty" : "before",
+  };
+}
+
+function paintMapPlaybackFrame(
+  map: MapLibreMap,
+  tracks: readonly IndexedMapTrack[],
+  frame: MapPlaybackFrame,
+  paintState: MapPlaybackPaintState,
+): void {
+  setGeoJsonSourceData(
+    map,
+    CURRENT_SOURCE_ID,
+    currentPuckFeatures(frame.markers),
+  );
+  for (let index = 0; index < tracks.length; index += 1) {
+    const indexedTrack = tracks[index];
+    const comet = frame.comets[index];
+    setGeoJsonSourceData(
+      map,
+      cometSourceId(indexedTrack.key),
+      lineFeatureCollection(comet?.coordinates ?? []),
+    );
+    const resolved = frame.resolutions.get(indexedTrack.key);
+    if (resolved) {
+      updateRouteProgress(map, indexedTrack, resolved, paintState);
+    }
+  }
+}
+
+function updateRouteProgress(
+  map: MapLibreMap,
+  indexedTrack: IndexedMapTrack,
+  resolved: ResolvedLocationTrackPosition,
+  paintState: MapPlaybackPaintState,
+): void {
+  const { key, track } = indexedTrack;
+  if (!map.getLayer(routeLayerId(key, "active"))) return;
+  const activeSegment = resolved.segmentIndex;
+  const filters = mcapMapRouteProgressFilters(resolved);
+  if (paintState.routeProgressKeys.get(key) !== filters.key) {
+    map.setFilter(routeLayerId(key, "past-casing"), filters.past as never);
+    map.setFilter(routeLayerId(key, "past"), filters.past as never);
+    map.setFilter(routeLayerId(key, "future-casing"), filters.future as never);
+    map.setFilter(routeLayerId(key, "future"), filters.future as never);
+    map.setFilter(routeLayerId(key, "active-casing"), filters.active as never);
+    map.setFilter(routeLayerId(key, "active"), filters.active as never);
+    paintState.routeProgressKeys.set(key, filters.key);
+  }
+  if (activeSegment !== null && resolved.lineProgress !== null) {
+    map.setPaintProperty(
+      routeLayerId(key, "active-casing"),
+      "line-gradient",
+      activeRouteGradient(
+        ROUTE_CASING_COLOR,
+        0.85,
+        ROUTE_CASING_COLOR,
+        0.55,
+        resolved.lineProgress,
+      ) as never,
+    );
+    map.setPaintProperty(
+      routeLayerId(key, "active"),
+      "line-gradient",
+      activeRouteGradient(
+        track.color,
+        0.5,
+        FUTURE_ROUTE_COLOR,
+        0.3,
+        resolved.lineProgress,
+      ) as never,
+    );
+  }
+}
+
+function activeRouteGradient(
+  pastColor: string,
+  pastOpacity: number,
+  futureColor: string,
+  futureOpacity: number,
+  progress: number,
+): readonly unknown[] {
+  const clampedProgress = Math.max(0, Math.min(1, progress));
+  return [
+    "step",
+    ["line-progress"],
+    hexColorWithAlpha(pastColor, pastOpacity),
+    clampedProgress,
+    hexColorWithAlpha(futureColor, futureOpacity),
+  ];
+}
+
+function lineFeatureCollection(
+  coordinates: readonly [number, number][],
+): GeoJsonFeatureCollection {
+  if (coordinates.length < 2) return EMPTY_FEATURE_COLLECTION;
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        geometry: { type: "LineString", coordinates },
+        properties: {},
+      },
+    ],
+  };
+}
+
+function prunePlaybackPaintState(
+  state: MapPlaybackPaintState,
+  tracks: readonly IndexedMapTrack[],
+): void {
+  const wanted = new Set(tracks.map((track) => track.key));
+  for (const key of state.cursors.keys()) {
+    if (!wanted.has(key)) state.cursors.delete(key);
+  }
+  for (const key of state.routeProgressKeys.keys()) {
+    if (!wanted.has(key)) state.routeProgressKeys.delete(key);
+  }
+}
+
+function updateFollowCamera({
+  cameraReady,
+  current,
+  enabled,
+  map,
+  nowMs,
+  paintState,
+  recenterGuardUntil,
+  suppressViewportWriteRef,
+}: {
+  readonly cameraReady: boolean;
+  readonly current: InterpolatedLocation | null;
+  readonly enabled: boolean;
+  readonly map: MapLibreMap;
+  readonly nowMs: number;
+  readonly paintState: MapPlaybackPaintState;
+  readonly recenterGuardUntil: number;
+  readonly suppressViewportWriteRef: React.MutableRefObject<boolean>;
+}): void {
+  if (
+    !cameraReady ||
+    !enabled ||
+    !current ||
+    nowMs < recenterGuardUntil ||
+    nowMs - paintState.lastFollowAtMs < FOLLOW_INTERVAL_MS
+  ) {
+    return;
+  }
+  paintState.lastFollowAtMs = nowMs;
+  const center = map.project(map.getCenter());
+  const target = map.project([current.longitude, current.latitude]);
+  if (
+    Math.hypot(target.x - center.x, target.y - center.y) <
+    FOLLOW_MIN_MOVEMENT_PX
+  ) {
+    return;
+  }
+  suppressViewportWriteRef.current = true;
+  try {
+    noteMcapMapFollowCommand();
+    map.jumpTo({ center: [current.longitude, current.latitude] });
+  } finally {
+    suppressViewportWriteRef.current = false;
+  }
+}
+
+function updateMapPulse(
+  map: MapLibreMap,
+  pulseActive: boolean,
+  nowMs: number,
+): void {
+  if (!map.getLayer(PULSE_LAYER_ID)) return;
+  if (!pulseActive) {
+    map.setPaintProperty(PULSE_LAYER_ID, "circle-opacity", 0);
+    return;
+  }
+  const phase = (nowMs % PULSE_PERIOD_MS) / PULSE_PERIOD_MS;
+  map.setPaintProperty(PULSE_LAYER_ID, "circle-radius", 10 + phase * 16);
+  map.setPaintProperty(PULSE_LAYER_ID, "circle-opacity", 0.4 * (1 - phase));
+}
+
+function isMapSurfaceActive(activity: MapSurfaceActivity): boolean {
+  return activity.documentVisible && activity.hasSize && activity.intersects;
 }
 
 function addGeoJsonSource(map: MapLibreMap, sourceId: string) {
@@ -1369,6 +2032,7 @@ function setGeoJsonSourceData(
 ) {
   const source = map.getSource(sourceId);
   if (isGeoJsonSource(source)) {
+    noteMcapMapSourceUpdate(sourceId);
     source.setData(data);
   }
 }
@@ -1379,64 +2043,6 @@ function isGeoJsonSource(
   return (
     typeof (source as { setData?: unknown } | undefined)?.setData === "function"
   );
-}
-
-function routeFeatures(
-  tracks: readonly McapLocationTrackState[],
-  playheadNs: bigint | null,
-  side: "past" | "future",
-): GeoJsonFeatureCollection {
-  const features: GeoJsonFeature[] = [];
-  for (const track of tracks) {
-    for (const segment of track.segments) {
-      const coordinates = routeCoordinatesForSegment(segment, playheadNs, side);
-      if (coordinates.length < 2) continue;
-      features.push({
-        type: "Feature",
-        geometry: { type: "LineString", coordinates },
-        properties: {
-          color: track.color,
-          topic: track.topic,
-        },
-      });
-    }
-  }
-  return { type: "FeatureCollection", features };
-}
-
-function routeCoordinatesForSegment(
-  segment: McapLocationTrackSegment,
-  playheadNs: bigint | null,
-  side: "past" | "future",
-): readonly [number, number][] {
-  if (playheadNs === null) {
-    return side === "future"
-      ? segment.points.map((point) => [point.longitude, point.latitude])
-      : [];
-  }
-
-  const points =
-    side === "past"
-      ? segment.points.filter((point) => point.timeNs <= playheadNs)
-      : segment.points.filter((point) => point.timeNs >= playheadNs);
-  const interpolated = interpolateLocationAtTime([segment], playheadNs);
-  if (interpolated) {
-    if (side === "past") {
-      points.push({
-        latitude: interpolated.latitude,
-        longitude: interpolated.longitude,
-        timeNs: interpolated.timeNs,
-      });
-    } else {
-      points.unshift({
-        latitude: interpolated.latitude,
-        longitude: interpolated.longitude,
-        timeNs: interpolated.timeNs,
-      });
-    }
-  }
-
-  return points.map((point) => [point.longitude, point.latitude]);
 }
 
 function hitPointFeatures(
@@ -1584,6 +2190,23 @@ function measurementPreviewFeature(
   };
 }
 
+function scheduleMeasurementPreviewUpdate(
+  map: MapLibreMap,
+  measurementRef: React.MutableRefObject<MapMeasurementState | null>,
+  hoverRef: React.MutableRefObject<MapMeasurementPoint | null>,
+  frameRef: React.MutableRefObject<number | null>,
+): void {
+  if (frameRef.current !== null) return;
+  frameRef.current = requestAnimationFrame(() => {
+    frameRef.current = null;
+    setGeoJsonSourceData(
+      map,
+      MEASURE_PREVIEW_SOURCE_ID,
+      measurementPreviewFeature(measurementRef.current, hoverRef.current),
+    );
+  });
+}
+
 function measurementPointFeatures(
   measurement: MapMeasurementState | null,
 ): GeoJsonFeatureCollection {
@@ -1667,6 +2290,13 @@ function mapStatusText({
   return notes.length > 0 ? notes.join(" · ") : null;
 }
 
+function joinMapStatusText(
+  ...parts: readonly (string | null)[]
+): string | null {
+  const status = parts.filter((part): part is string => Boolean(part));
+  return status.length > 0 ? status.join(" · ") : null;
+}
+
 function emptyText({
   enabledTopicCount,
   loadingCount,
@@ -1689,12 +2319,14 @@ function emptyText({
   return text ? <div className={styles.emptyState}>{text}</div> : null;
 }
 
-function mapStyleForBaseLayer(
-  baseLayer: McapMapBaseLayer,
-): MapLibreStyle | string {
-  return baseLayer === MCAP_MAP_BASE_LAYER.NONE
-    ? NO_TILE_STYLE
-    : OPENFREEMAP_LIBERTY_STYLE_URL;
+function ensureCurrentPuckImages(
+  map: MapLibreMap,
+  tracks: readonly IndexedMapTrack[],
+): void {
+  ensurePuckImages(
+    map,
+    tracks.map(({ track }) => track.color),
+  );
 }
 
 function loadMapLibre(): Promise<MapLibreModule> {
