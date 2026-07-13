@@ -32,7 +32,7 @@ export const PointSizeSlider = () => {
 
   const step = useMemo(
     () => (pointSizeNum === 0 ? 0.01 : pointSizeNum / 10),
-    [minBound, maxBound],
+    [pointSizeNum],
   );
 
   const handleSliderChange = useCallback(

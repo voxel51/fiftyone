@@ -68,5 +68,13 @@ module.exports = {
       version: "detect",
     },
   },
-  overrides: [],
+  overrides: [
+    {
+      // react-three-fiber renders three.js object properties as JSX props
+      files: ["packages/looker-3d/**"],
+      rules: {
+        "react/no-unknown-property": "off",
+      },
+    },
+  ],
 };
