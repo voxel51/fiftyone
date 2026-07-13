@@ -1792,11 +1792,11 @@ export function useRegisterMcapDataStream({
       pendingPlanThroughputFloorRef.current = null;
       remoteStartupGateDecisionRef.current = null;
       client?.cancelIdleReads?.();
-      // A seek is a time jump: frames held over from the previous position
-      // would render wrong-time sensor data as if current. Drop them so an
-      // uncovered target shows its explicit loading state until real data
-      // lands (a covered target repaints from cache immediately).
-      lastFrameRef.current.clear();
+      // Retain the previous frame while an uncovered target loads. Topic
+      // loading state lets scene tiles mark the retained snapshot as previous,
+      // and the target frame replaces it as soon as the foreground fetch
+      // lands. Source changes and topic unsubscription still clear retained
+      // frames at their ownership boundaries.
       prefetchLookaheadFrom(seekEvent.time);
     }
   }, [client, seekEvent, prefetchLookaheadFrom]);

@@ -20,9 +20,9 @@ import { setMcapTopicDiagnostics } from "./mcap-stream-status-state";
  * while the clock is frozen on a stall (buffering or a pending play press)
  * or the topic's failed fetches were sealed as empty ticks, the last real
  * frame stays up instead of blanking the tile: the time readout is not
- * advancing past real data, so holding is truthful. Seeks are time jumps
- * and clear `lastFrame` before their first push, so a held frame can never
- * survive into a different position's loading state.
+ * advancing past real data, so holding is truthful. Seeks also retain the
+ * previous frame until the target resolves; tile chrome identifies it as
+ * previous content while the target is loading.
  */
 export function pushTickToStore(
   activeTopics: string[],

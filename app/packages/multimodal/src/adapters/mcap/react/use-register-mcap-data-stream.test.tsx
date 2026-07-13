@@ -1181,7 +1181,7 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     kind: VISUALIZATION_KIND.ENCODED_IMAGE,
   } as const;
 
-  it("drops held frames on seek so an uncovered target shows loading", async () => {
+  it("retains the previous frame while an uncovered seek target loads", async () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
@@ -1219,16 +1219,18 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     await waitFor(() => {
       expect(getStreamValue(store, TOPIC)).not.toBeNull();
     });
+    const previousFrame = getStreamValue(store, TOPIC);
 
     act(() => {
       api?.seek(0.9);
     });
 
-    // The debounced seek event clears held frames; the uncovered target
-    // renders its explicit loading state instead of the pre-seek frame.
+    // The debounced seek keeps the previous frame until foreground data for
+    // the target arrives. Stream status makes that retained content explicit.
     await waitFor(() => {
-      expect(getStreamValue(store, TOPIC)).toBeNull();
+      expect(getMcapTopicStatus(store, TOPIC)).toBe("loading");
     });
+    expect(getStreamValue(store, TOPIC)).toBe(previousFrame);
   });
 
   it("gates a pending play press behind the bandwidth cushion and reports progress", async () => {
