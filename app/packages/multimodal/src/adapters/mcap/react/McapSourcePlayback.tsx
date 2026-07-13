@@ -68,12 +68,15 @@ const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 export interface McapSourcePlaybackProps {
   readonly children?: React.ReactNode;
   readonly client: McapResourceClient;
+  /** Track ids to start pinned to the timeline (e.g. from a grid tag filter). */
+  readonly defaultPinnedTrackIds?: readonly string[];
   readonly fileName: string;
   readonly headerActions?: React.ReactNode;
   readonly latencyLabel?: string;
   readonly latencySourceKey?: string;
   readonly layoutScopeKey?: string;
   readonly onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
+  readonly onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   readonly onTagDelete?: NonNullable<
     TemporalTagTimelineProps["eventMenuItems"]
   >[number]["onSelect"];
@@ -89,12 +92,14 @@ export interface McapSourcePlaybackProps {
 export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   children,
   client,
+  defaultPinnedTrackIds,
   fileName,
   headerActions,
   latencyLabel = "mcap modal",
   latencySourceKey,
   layoutScopeKey,
   onTagCreate,
+  onTagUpdate,
   onTagDelete,
   source,
   tracks,
@@ -272,6 +277,12 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                                 ? [...tracks]
                                 : undefined
                             }
+                            defaultPinnedTrackIds={
+                              defaultPinnedTrackIds &&
+                              defaultPinnedTrackIds.length > 0
+                                ? [...defaultPinnedTrackIds]
+                                : undefined
+                            }
                             onTagDelete={onTagDelete}
                             leftSidebar={
                               <McapSettingsSidebar topics={topics} />
@@ -284,6 +295,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                             leftSidebarWidth={defaultLeftSidebarWidth}
                             onLeftSidebarWidthChange={onLeftSidebarWidthChange}
                             onTagCreate={onTagCreate}
+                            onTagUpdate={onTagUpdate}
                           >
                             <McapStreams client={client} source={source} />
                             <McapNetworkHealthTracker client={client} />

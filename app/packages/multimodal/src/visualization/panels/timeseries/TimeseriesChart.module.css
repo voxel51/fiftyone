@@ -21,6 +21,46 @@
   width: 100%;
 }
 
+.controls {
+  bottom: calc(var(--timeseries-legend-height, 0px) + 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  position: absolute;
+  right: 8px;
+  z-index: 5;
+}
+
+.controlButton {
+  align-items: center;
+  background: rgba(5, 11, 18, 0.76);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 4px;
+  color: #cbd5e1;
+  cursor: pointer;
+  display: inline-flex;
+  height: 18px;
+  justify-content: center;
+  padding: 0;
+  width: 18px;
+}
+
+.controlIcon {
+  height: 10px;
+  width: 10px;
+}
+
+.controlButton:hover,
+.controlButton:focus-visible {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(203, 213, 225, 0.48);
+}
+
+.controlButton:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 1px;
+}
+
 .playhead {
   border-left: 1px solid rgba(255, 255, 255, 0.65);
   bottom: 0;
@@ -48,10 +88,10 @@
   z-index: 1;
 }
 
-/* The plot area is click-to-seek; say so. Overrides uPlot's default
-   crosshair on its cursor overlay. */
+/* The plot area supports click-to-seek and drag-to-zoom. */
 .root :global(.u-over) {
-  cursor: pointer;
+  cursor: crosshair;
+  touch-action: none;
 }
 
 .root :global(.u-legend) {
@@ -79,5 +119,6 @@
 }
 
 .root :global(.u-select) {
-  display: none;
+  background: rgba(96, 165, 250, 0.16);
+  border: 1px solid rgba(147, 197, 253, 0.72);
 }
