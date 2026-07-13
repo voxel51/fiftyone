@@ -50,6 +50,7 @@ import {
 } from "./mcap-3d-viewpoint-context";
 import {
   useRegisterMcapSceneFrameControls,
+  useMcapSceneFrameControls,
   type McapSceneFrameControls,
 } from "./mcap-scene-frames-context";
 import { usePublishMcapSceneNotices } from "./mcap-scene-notices-context";
@@ -174,6 +175,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     pointCloudTopics,
     poseSources,
     poseTopics,
+    primarySourceId,
     restoredSourceShapeMatches,
     sceneAnnotationSources,
     sceneAnnotationTopics,
@@ -266,30 +268,77 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const locationFrames =
     useMcapTopicPlaybackFrames<LocationVisualization>(locationTopics);
   const playbackTimeNs = useMcapPlaybackTimeNs();
+  const registeredSceneFrameControls = useMcapSceneFrameControls();
+  const referenceAuthority =
+    registeredSceneFrameControls &&
+    registeredSceneFrameControls.authorityTileId !== tileId
+      ? registeredSceneFrameControls
+      : null;
   const {
     cameraTargetFrameId,
+    cameraTargetSelectionSource,
     frameIds,
+    localActiveComponentFrameIds,
+    localFrameIds,
+    localOmittedFrameIds,
+    localOmittedSourceIds,
+    localReferenceTransition,
+    localReferenceSelectionSource,
+    localUseRecommendedWorldFrame,
+    localUpdateWorldFrameId,
+    localWorldFrameId,
+    referenceTransition,
     updateCameraTargetFrameId,
-    updateWorldFrameId,
     worldFrameId,
   } = useMcap3dFrameSelection({
     annotationFrames,
+    annotationTopics: sceneAnnotationTopics,
     calibrationFrames,
+    calibrationTopics: cameraTopics,
     frames,
     frameTransforms,
     gridFrames,
+    gridTopics: mapLayerTopics,
     onPreferredCameraTargetFrameIdChange: setPreferredCameraTargetFrameId,
     onPreferredWorldFrameIdChange: setPreferredWorldFrameId,
+    playbackTimeNs,
+    pointCloudTopics,
+    poseFrames,
+    poseTopics,
     preferredCameraTargetFrameId,
     preferredWorldFrameId,
+    primarySourceId,
+    referenceAuthority,
     restore: viewStateRestore,
   });
-  // The world frame is scene-scoped: publish this tile's frame controls so
+  // The reference frame is scene-scoped: publish this tile's controls so
   // the sidebar's Scene tab can edit them. Selections write through the
-  // modal-wide preference, so concurrent 3D tiles converge on one world.
+  // modal-wide preference, so concurrent 3D tiles converge on one choice.
   const sceneFrameControls = useMemo<McapSceneFrameControls>(
-    () => ({ frameIds, updateWorldFrameId, worldFrameId }),
-    [frameIds, updateWorldFrameId, worldFrameId],
+    () => ({
+      activeComponentFrameIds: localActiveComponentFrameIds,
+      authorityTileId: tileId ?? "",
+      frameIds: localFrameIds,
+      omittedFrameIds: localOmittedFrameIds,
+      omittedSourceIds: localOmittedSourceIds,
+      referenceTransition: localReferenceTransition,
+      updateWorldFrameId: localUpdateWorldFrameId,
+      useRecommendedWorldFrame: localUseRecommendedWorldFrame,
+      worldFrameId: localWorldFrameId,
+      worldFrameSelectionSource: localReferenceSelectionSource,
+    }),
+    [
+      localActiveComponentFrameIds,
+      localFrameIds,
+      localOmittedFrameIds,
+      localOmittedSourceIds,
+      localReferenceTransition,
+      localReferenceSelectionSource,
+      localUseRecommendedWorldFrame,
+      localUpdateWorldFrameId,
+      localWorldFrameId,
+      tileId,
+    ],
   );
   useRegisterMcapSceneFrameControls(tileId, sceneFrameControls);
 
@@ -796,6 +845,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     selectedTopicsKey,
     onDefaultTrackingModeChange: setDefaultTrackingMode,
     sourceKey,
+    suspendAutoFollowAtReference:
+      cameraTargetSelectionSource === "auto" &&
+      cameraTargetFrameId === worldFrameId,
+    worldFrameTransition: referenceTransition,
     worldFrameId,
   });
   const updateCameraProjection = useCallback(

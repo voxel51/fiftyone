@@ -10,13 +10,14 @@ interface Mcap3dViewSettingsContextValue {
   readonly sceneUpAxis: Mcap3dSceneUpAxis;
   readonly setDefaultTrackingMode: (mode: Mcap3dTrackingMode) => void;
   readonly setPreferredCameraTargetFrameId: (frameId: string) => void;
-  readonly setPreferredWorldFrameId: (frameId: string) => void;
+  readonly setPreferredWorldFrameId: (frameId: string | null) => void;
   readonly setSceneUpAxis: (axis: Mcap3dSceneUpAxis) => void;
 }
 
 const Mcap3dViewSettingsContext =
   createContext<Mcap3dViewSettingsContextValue | null>(null);
 
+/** Supplies scene-wide 3D view preferences and their persistence callbacks. */
 export const Mcap3dViewSettingsProvider: React.FC<{
   readonly children: React.ReactNode;
   readonly defaultTrackingMode: Mcap3dTrackingMode;
@@ -25,7 +26,7 @@ export const Mcap3dViewSettingsProvider: React.FC<{
   readonly sceneUpAxis: Mcap3dSceneUpAxis;
   readonly setDefaultTrackingMode: (mode: Mcap3dTrackingMode) => void;
   readonly setPreferredCameraTargetFrameId: (frameId: string) => void;
-  readonly setPreferredWorldFrameId: (frameId: string) => void;
+  readonly setPreferredWorldFrameId: (frameId: string | null) => void;
   readonly setSceneUpAxis: (axis: Mcap3dSceneUpAxis) => void;
 }> = ({
   children,
@@ -68,6 +69,7 @@ export const Mcap3dViewSettingsProvider: React.FC<{
   );
 };
 
+/** Reads the required scene-wide 3D view settings. */
 export function useMcap3dViewSettings(): Mcap3dViewSettingsContextValue {
   const value = useContext(Mcap3dViewSettingsContext);
   if (!value) {

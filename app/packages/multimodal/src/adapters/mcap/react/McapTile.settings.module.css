@@ -10,6 +10,21 @@
   gap: 6px;
 }
 
+.recommendButton {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  color: var(--color-content-text-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.recommendButton:hover {
+  color: var(--color-content-text);
+}
+
 .row {
   display: flex;
   gap: 8px;

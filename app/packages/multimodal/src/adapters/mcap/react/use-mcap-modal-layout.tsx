@@ -64,7 +64,7 @@ export interface McapModalLayout {
   sceneUpAxis: Mcap3dSceneUpAxis;
   onSceneUpAxisChange: (axis: Mcap3dSceneUpAxis) => void;
   preferredWorldFrameId: string | null;
-  onPreferredWorldFrameIdChange: (frameId: string) => void;
+  onPreferredWorldFrameIdChange: (frameId: string | null) => void;
   preferredCameraTargetFrameId: string | null;
   onPreferredCameraTargetFrameIdChange: (frameId: string) => void;
   defaultTrackingMode: Mcap3dTrackingMode;
@@ -223,10 +223,10 @@ export function useMcapModalLayout({
   );
 
   const onPreferredWorldFrameIdChange = useCallback(
-    (frameId: string) => {
+    (frameId: string | null) => {
       setPreferredWorldFrameId(frameId);
       writeMcapCameraPreferences(
-        { preferredWorldFrameId: frameId },
+        { preferredWorldFrameId: frameId ?? undefined },
         datasetId,
         cameraPreferenceField,
       );

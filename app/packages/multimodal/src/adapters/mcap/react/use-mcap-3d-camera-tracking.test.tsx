@@ -39,6 +39,27 @@ describe("useMcap3dCameraTracking", () => {
     expect(result.current.poseCommand).toBeNull();
   });
 
+  it("runs effectively free when automatic targeting has only the reference frame", () => {
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        cameraTargetFrameId: "map",
+        suspendAutoFollowAtReference: true,
+      }),
+    });
+
+    expect(result.current.trackingMode).toBe("position");
+    expect(result.current.rig.mode).toBe("free");
+    expect(result.current.cameraTrackingNotice).toBeNull();
+
+    rerender(
+      trackingProps({
+        cameraTargetFrameId: "base_link",
+        suspendAutoFollowAtReference: false,
+      }),
+    );
+    expect(result.current.rig.mode).toBe("position");
+  });
+
   it("keeps interaction and initial traffic out of React state", () => {
     const { result } = renderHook(useMcap3dCameraTracking, {
       initialProps: trackingProps(),
@@ -338,6 +359,39 @@ describe("useMcap3dCameraTracking world-frame changes", () => {
 
     // Content re-places through T(odom ← map) = +10 on x; the camera rides
     // the same transform so the on-screen view is unchanged.
+    expect(result.current.poseCommand).toEqual({
+      position: [11, 0, 10],
+      target: [11, 0, 0],
+    });
+  });
+
+  it("uses the exact transform committed by automatic reference promotion", () => {
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({ placementStatus: "transformed" }),
+    });
+    act(() => {
+      result.current.handleCameraPoseChange(pose(1), "interaction");
+    });
+
+    rerender(
+      trackingProps({
+        frameTransforms: missingTransforms(),
+        placementStatus: "transformed",
+        worldFrameId: "odom",
+        worldFrameTransition: {
+          key: "promotion-1",
+          sourceFrameId: "map",
+          targetFrameId: "odom",
+          transform: {
+            rotation: new Quaternion(),
+            sourceFrameId: "map",
+            targetFrameId: "odom",
+            translation: new Vector3(10, 0, 0),
+          },
+        },
+      }),
+    );
+
     expect(result.current.poseCommand).toEqual({
       position: [11, 0, 10],
       target: [11, 0, 0],

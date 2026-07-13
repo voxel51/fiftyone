@@ -87,6 +87,8 @@ export interface McapFrameTransformsState {
   readonly resolve: McapFrameTransformResolver;
   readonly status: McapFrameTransformsStatus;
   readonly summarizeGraph: McapFrameGraphSummarizer;
+  /** Changes only when the normalized transform edge inventory changes. */
+  readonly topologyRevision?: number;
 }
 
 export interface UseMcapFrameTransformsOptions {
@@ -605,6 +607,7 @@ export function useMcapFrameTransforms({
       resolve,
       status: state.status,
       summarizeGraph,
+      topologyRevision: storeRef.current?.topologyRevision() ?? 0,
     }),
     [
       frameIds,

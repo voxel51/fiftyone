@@ -41,6 +41,7 @@ import {
   type Mcap3dViewStateStore,
 } from "./mcap-3d-view-state";
 import { useMcap3dViewStateStore } from "./mcap-3d-view-state-context";
+import type { McapReferenceTransition } from "./mcap-3d-reference-selection";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
@@ -130,7 +131,9 @@ export function useMcap3dCameraTracking({
   sceneUpAxis = DEFAULT_MCAP_3D_SCENE_UP_AXIS,
   selectedTopicsKey,
   sourceKey,
+  suspendAutoFollowAtReference = false,
   viewStateStore: suppliedViewStateStore,
+  worldFrameTransition = null,
   worldFrameId,
 }: {
   readonly cameraNavigationMode?: Mcap3dCameraNavigationMode;
@@ -149,7 +152,11 @@ export function useMcap3dCameraTracking({
   readonly sceneUpAxis?: Mcap3dSceneUpAxis;
   readonly selectedTopicsKey: string;
   readonly sourceKey: string;
+  /** Retain follow intent, but run effectively free until an ego target exists. */
+  readonly suspendAutoFollowAtReference?: boolean;
   readonly viewStateStore?: Mcap3dViewStateStore;
+  /** Exact transform accepted by a guarded automatic reference promotion. */
+  readonly worldFrameTransition?: McapReferenceTransition | null;
   readonly worldFrameId: string;
 }) {
   const viewStateStore = useMcap3dViewStateStore(suppliedViewStateStore);
@@ -164,6 +171,10 @@ export function useMcap3dCameraTracking({
     defaultTrackingMode;
   const [trackingMode, setTrackingMode] =
     useState<Mcap3dTrackingMode>(restoredTrackingMode);
+  const effectiveTrackingMode =
+    suspendAutoFollowAtReference && isFollowTrackingMode(trackingMode)
+      ? "free"
+      : trackingMode;
   const [poseCommand, setPoseCommand] = useState<PointCloudCameraPose | null>(
     null,
   );
@@ -251,13 +262,13 @@ export function useMcap3dCameraTracking({
       buildMcapCameraTargetNotice({
         cameraTargetFrameId,
         cameraTargetStatus: cameraTargetResolution.status,
-        trackingMode,
+        trackingMode: effectiveTrackingMode,
         worldFrameId,
       }),
     [
       cameraTargetFrameId,
       cameraTargetResolution.status,
-      trackingMode,
+      effectiveTrackingMode,
       worldFrameId,
     ],
   );
@@ -431,7 +442,6 @@ export function useMcap3dCameraTracking({
   // have no resolvable path, a stale-frame pose is worse than a refit: the
   // pose command (fit-pin latch included) is dropped and the panel falls
   // back to fitting the re-placed scene.
-  // This layout effect retries an exact or absolute pose restore before paint.
   useLayoutEffect(() => {
     if (activeSourceKeyRef.current !== sourceKey) return;
 
@@ -464,21 +474,30 @@ export function useMcap3dCameraTracking({
       return;
     }
 
-    const resolution =
-      playbackTimeNs === undefined
+    const committedTransform =
+      worldFrameTransition?.sourceFrameId === previousWorldFrameId &&
+      worldFrameTransition.targetFrameId === worldFrameId
+        ? worldFrameTransition.transform
+        : null;
+    const resolution = committedTransform
+      ? null
+      : playbackTimeNs === undefined
         ? null
         : frameTransforms.resolve(
             previousWorldFrameId,
             worldFrameId,
             playbackTimeNs,
           );
-    if (resolution?.status !== "resolved") {
+    const transform =
+      committedTransform ??
+      (resolution?.status === "resolved" ? resolution.transform : null);
+    if (!transform) {
       latestCameraPoseRef.current = null;
       setPoseCommand(null);
       return;
     }
 
-    const remappedPose = transformCameraPose(basePose, resolution.transform);
+    const remappedPose = transformCameraPose(basePose, transform);
     latestCameraPoseRef.current = remappedPose;
     setPoseCommand(remappedPose);
     recordCameraViewIfEligible(remappedPose);
@@ -492,6 +511,7 @@ export function useMcap3dCameraTracking({
     playbackTimeNs,
     recordCameraViewIfEligible,
     sourceKey,
+    worldFrameTransition,
     worldFrameId,
   ]);
 
@@ -555,11 +575,11 @@ export function useMcap3dCameraTracking({
     // own and re-bases from whatever the shell applies.
     const anchor = latestAnchorRef.current;
     const anchorGoverned =
-      isFollowTrackingMode(trackingMode) &&
+      isFollowTrackingMode(effectiveTrackingMode) &&
       anchor !== null &&
       trackingAnchorMatches({
         anchor,
-        mode: trackingMode,
+        mode: effectiveTrackingMode,
         sceneUpAxis,
         targetFrameId: cameraTargetFrameId,
         worldFrameId,
@@ -602,7 +622,7 @@ export function useMcap3dCameraTracking({
     recordCameraViewIfEligible,
     sceneUpAxis,
     sourceKey,
-    trackingMode,
+    effectiveTrackingMode,
     worldFrameId,
   ]);
 
@@ -866,7 +886,7 @@ export function useMcap3dCameraTracking({
   const rig = useMemo(
     () => ({
       adoptAnchor: sourceChanged ? null : adoptAnchor,
-      mode: trackingMode,
+      mode: effectiveTrackingMode,
       onCommit,
       onGestureStart,
       onPoseSample,
@@ -884,7 +904,7 @@ export function useMcap3dCameraTracking({
       onPoseSample,
       sceneUpAxis,
       sourceChanged,
-      trackingMode,
+      effectiveTrackingMode,
       worldFrameId,
     ],
   );

@@ -97,7 +97,7 @@ export interface Mcap3dViewStateStore {
     overrides: Readonly<Record<string, string>>,
   ): void;
   recordUserCameraTargetFrameId(frameId: string): void;
-  recordUserWorldFrameId(frameId: string): void;
+  recordUserWorldFrameId(frameId: string | null): void;
 }
 
 /** Creates one non-reactive view-state store for one inspection scope. */

@@ -12,7 +12,7 @@ import { McapSettingsLabel } from "./McapSettingsLabel";
 import settingsStyles from "./McapTile.settings.module.css";
 
 const WORLD_FRAME_TOOLTIP =
-  "Where everything exists. Data is transformed into this stable coordinate system before it is drawn. One world frame applies to every 3D view of the scene.";
+  "The coordinate system used to place the active transform component. One reference frame applies to every 3D view of the scene.";
 const UP_AXIS_TOOLTIP =
   "World axis treated as up by the 3D camera, gizmo, and reference grid.";
 
@@ -40,17 +40,28 @@ const McapSceneWorldSettings: React.FC = () => {
   return (
     <McapSidebarGroup summary={summary} title="World">
       {frameControls ? (
-        <McapFrameSelect
-          disabled={frameControls.frameIds.length === 0}
-          label="World Frame"
-          onChange={frameControls.updateWorldFrameId}
-          options={frameControls.frameIds}
-          tooltip={WORLD_FRAME_TOOLTIP}
-          value={frameControls.worldFrameId}
-        />
+        <>
+          <McapFrameSelect
+            disabled={frameControls.frameIds.length === 0}
+            label="Reference Frame"
+            onChange={frameControls.updateWorldFrameId}
+            options={frameControls.frameIds}
+            tooltip={WORLD_FRAME_TOOLTIP}
+            value={frameControls.worldFrameId}
+          />
+          {frameControls.worldFrameSelectionSource === "user" ? (
+            <button
+              className={settingsStyles.recommendButton}
+              onClick={frameControls.useRecommendedWorldFrame}
+              type="button"
+            >
+              Use recommended frame
+            </button>
+          ) : null}
+        </>
       ) : (
         <Text color={TextColor.Muted} variant={TextVariant.Xs}>
-          Add a 3D panel to choose the world frame.
+          Add a 3D panel to choose the reference frame.
         </Text>
       )}
       <SceneUpAxisSelect

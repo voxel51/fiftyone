@@ -430,6 +430,7 @@ export function useMcap3dSelection({
     pointCloudTopics,
     poseSources,
     poseTopics,
+    primarySourceId,
     restoredSourceShapeMatches: selectionRestore.sourceShapeMatches,
     sceneAnnotationSources,
     sceneAnnotationTopics,

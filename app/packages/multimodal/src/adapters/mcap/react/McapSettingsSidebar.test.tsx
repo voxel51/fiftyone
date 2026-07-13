@@ -198,7 +198,9 @@ describe("McapSettingsSidebar", () => {
     renderSidebar();
 
     expect(screen.queryByText("World")).toBeNull();
-    expect(screen.queryByRole("combobox", { name: "World Frame" })).toBeNull();
+    expect(
+      screen.queryByRole("combobox", { name: "Reference Frame" }),
+    ).toBeNull();
   });
 
   it("surfaces a stabilized sampling notice in the scene status strip", () => {

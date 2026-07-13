@@ -1,5 +1,6 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Quaternion, Vector3 } from "three";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PointCloudVisualization } from "../../../decoders";
 import type { McapFrameGraphSummary } from "../frame-transforms";
 import {
@@ -27,6 +28,7 @@ describe("useMcap3dFrameSelection", () => {
   it("defaults map plus base_link logs to stable world and ego target", () => {
     const { result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
+        ...pointCloudObservation("lidar"),
         frameTransforms: transforms([
           ["map", "base_link"],
           ["base_link", "lidar"],
@@ -43,6 +45,7 @@ describe("useMcap3dFrameSelection", () => {
   it("keeps the user's world frame while it exists and degrades when it disappears", () => {
     const { rerender, result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
+        ...pointCloudObservation("base_link"),
         frameTransforms: transforms([
           ["odom", "map"],
           ["map", "base_link"],
@@ -60,6 +63,7 @@ describe("useMcap3dFrameSelection", () => {
 
     rerender(
       selectionProps({
+        ...pointCloudObservation("base_link"),
         frameTransforms: transforms([
           ["odom", "map"],
           ["map", "base_link"],
@@ -69,7 +73,10 @@ describe("useMcap3dFrameSelection", () => {
     expect(result.current.worldFrameId).toBe("odom");
 
     rerender(
-      selectionProps({ frameTransforms: transforms([["map", "base_link"]]) }),
+      selectionProps({
+        ...pointCloudObservation("base_link"),
+        frameTransforms: transforms([["map", "base_link"]]),
+      }),
     );
     expect(result.current.worldFrameId).toBe("map");
     // The user's choice degrades silently; the selection-source flag stays.
@@ -79,6 +86,7 @@ describe("useMcap3dFrameSelection", () => {
   it("uses the TF root instead of an early optical frame in sensor-arm graphs", () => {
     const { result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
+        ...pointCloudObservation("realsense_depth_optical_frame"),
         frameTransforms: transforms([
           ["link0", "camera_color_optical_frame"],
           ["link0", "wrist_link"],
@@ -91,9 +99,10 @@ describe("useMcap3dFrameSelection", () => {
     expect(result.current.worldFrameId).not.toContain("optical");
   });
 
-  it("falls back to ego world names in rootless graphs without data rank", () => {
+  it("falls back to ego world names in rootless graphs", () => {
     const { result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
+        ...pointCloudObservation("base_link"),
         frameTransforms: transforms([
           ["camera", "base_link"],
           ["base_link", "camera"],
@@ -107,6 +116,7 @@ describe("useMcap3dFrameSelection", () => {
   it("falls back to the first non-optical TF frame when no better default exists", () => {
     const { result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
+        ...pointCloudObservation("a_frame"),
         frameTransforms: transforms([
           ["z_frame", "a_frame"],
           ["a_frame", "z_frame"],
@@ -118,7 +128,7 @@ describe("useMcap3dFrameSelection", () => {
     expect(result.current.worldFrameId).toBe("a_frame");
   });
 
-  it("does not lock onto a data frame before transform frame ids arrive", () => {
+  it("uses a truthful local frame when geometry has no transforms", () => {
     const { rerender, result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
         frames: [pointCloudFrame("lidar_data")],
@@ -126,8 +136,8 @@ describe("useMcap3dFrameSelection", () => {
     });
 
     expect(result.current.frameIds).toEqual(["lidar_data"]);
-    expect(result.current.worldFrameId).toBe("");
-    expect(result.current.cameraTargetFrameId).toBe("");
+    expect(result.current.worldFrameId).toBe("lidar_data");
+    expect(result.current.cameraTargetFrameId).toBe("lidar_data");
 
     rerender(
       selectionProps({
@@ -140,8 +150,10 @@ describe("useMcap3dFrameSelection", () => {
       "sensor_mount",
       "zzz_frame",
     ]);
-    expect(result.current.worldFrameId).toBe("zzz_frame");
-    expect(result.current.cameraTargetFrameId).toBe("zzz_frame");
+    // A disconnected TF island must not displace the component that carries
+    // the selected geometry.
+    expect(result.current.worldFrameId).toBe("lidar_data");
+    expect(result.current.cameraTargetFrameId).toBe("lidar_data");
   });
 
   it("prefers ego frames over the world frame for the camera target", () => {
@@ -162,6 +174,7 @@ describe("useMcap3dFrameSelection", () => {
   it("falls back to the world frame for the camera target when no ego frame exists", () => {
     const { result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
+        ...pointCloudObservation("odom"),
         frameTransforms: transforms([["world", "odom"]]),
       }),
     });
@@ -173,6 +186,7 @@ describe("useMcap3dFrameSelection", () => {
   it("uses a unique namespaced ego suffix for the camera target", () => {
     const { result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
+        ...pointCloudObservation("robot/lidar"),
         frameTransforms: transforms([
           ["robot/map", "robot/base_link"],
           ["robot/base_link", "robot/lidar"],
@@ -187,6 +201,7 @@ describe("useMcap3dFrameSelection", () => {
   it("does not guess an ambiguous namespaced ego suffix for the camera target", () => {
     const { result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
+        ...pointCloudObservation("map"),
         frameTransforms: transforms([
           ["map", "robot_a/base_link"],
           ["map", "robot_b/base_link"],
@@ -201,6 +216,7 @@ describe("useMcap3dFrameSelection", () => {
   it("adopts carried-over user frames once they appear in the streaming inventory", () => {
     const { rerender, result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
+        ...pointCloudObservation("base_link"),
         frameTransforms: transforms([["map", "base_link"]]),
         restore: {
           userCameraTargetFrameId: "ego_vehicle",
@@ -216,6 +232,7 @@ describe("useMcap3dFrameSelection", () => {
 
     rerender(
       selectionProps({
+        ...pointCloudObservation("base_link"),
         frameTransforms: transforms([
           ["map", "base_link"],
           ["map", "ego_vehicle"],
@@ -233,6 +250,7 @@ describe("useMcap3dFrameSelection", () => {
 
     rerender(
       selectionProps({
+        ...pointCloudObservation("base_link"),
         frameTransforms: transforms([
           ["odom", "map"],
           ["map", "base_link"],
@@ -251,6 +269,7 @@ describe("useMcap3dFrameSelection", () => {
   it("never pins a carried-over frame that does not reappear", () => {
     const { rerender, result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
+        ...pointCloudObservation("base_link"),
         frameTransforms: transforms([["map", "base_link"]]),
         restore: { userCameraTargetFrameId: null, userWorldFrameId: "gone" },
       }),
@@ -258,6 +277,7 @@ describe("useMcap3dFrameSelection", () => {
 
     rerender(
       selectionProps({
+        ...pointCloudObservation("base_link"),
         frameTransforms: transforms([
           ["odom", "map"],
           ["map", "base_link"],
@@ -273,6 +293,7 @@ describe("useMcap3dFrameSelection", () => {
   it("cancels the pending adoption when the user selects a frame first", () => {
     const { rerender, result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
+        ...pointCloudObservation("base_link"),
         frameTransforms: transforms([["map", "base_link"]]),
         restore: { userCameraTargetFrameId: null, userWorldFrameId: "odom" },
       }),
@@ -314,6 +335,147 @@ describe("useMcap3dFrameSelection", () => {
       userCameraTargetFrameId: "map",
       userWorldFrameId: "odom",
     });
+  });
+
+  it("clears explicit intent when returning to the recommended reference", () => {
+    const { result } = renderHook(useMcap3dFrameSelection, {
+      initialProps: selectionProps({
+        ...pointCloudObservation("base_link"),
+        frameTransforms: transforms([["map", "base_link"]]),
+      }),
+    });
+
+    act(() => result.current.updateWorldFrameId("base_link"));
+    expect(result.current.worldFrameId).toBe("base_link");
+    expect(viewStateStore.getSnapshot().userWorldFrameId).toBe("base_link");
+
+    act(() => result.current.useRecommendedWorldFrame());
+    expect(result.current.worldFrameId).toBe("map");
+    expect(result.current.referenceSelectionSource).toBe("auto-stable");
+    expect(viewStateStore.getSnapshot().userWorldFrameId).toBeNull();
+  });
+
+  it("keeps topic frame identity through a content gap without resummarizing topology", () => {
+    const frameTransforms = transforms([["map", "lidar"]]);
+    const summarizeGraph = vi.fn(frameTransforms.summarizeGraph);
+    const props = selectionProps({
+      frameTransforms: { ...frameTransforms, summarizeGraph },
+      frames: [pointCloudFrame("lidar")],
+      pointCloudTopics: ["/points"],
+      primarySourceId: "/points",
+    });
+    const { rerender, result } = renderHook(useMcap3dFrameSelection, {
+      initialProps: props,
+    });
+
+    rerender({ ...props, frames: [null] });
+    expect(result.current.worldFrameId).toBe("map");
+    expect(summarizeGraph).toHaveBeenCalledTimes(1);
+  });
+
+  it("checks readiness once for a promotion key and ignores playback clock updates", () => {
+    const local = transforms([["world", "base_link"]]);
+    const connected = transforms([
+      ["world", "base_link"],
+      ["base_link", "velodyne"],
+    ]);
+    const getPlacementReadiness = vi.fn(() => ({
+      frameIds: ["velodyne"],
+      status: "loading" as const,
+    }));
+    const { rerender, result } = renderHook(useMcap3dFrameSelection, {
+      initialProps: selectionProps({
+        frameTransforms: { ...local, topologyRevision: 1 },
+        frames: [pointCloudFrame("velodyne")],
+        playbackTimeNs: 10n,
+        pointCloudTopics: ["/points"],
+        primarySourceId: "/points",
+      }),
+    });
+    expect(result.current.worldFrameId).toBe("velodyne");
+
+    const connectedProps = selectionProps({
+      frameTransforms: {
+        ...connected,
+        getPlacementReadiness,
+        topologyRevision: 2,
+      },
+      frames: [pointCloudFrame("velodyne")],
+      playbackTimeNs: 10n,
+      pointCloudTopics: ["/points"],
+      primarySourceId: "/points",
+    });
+    rerender(connectedProps);
+    expect(result.current.worldFrameId).toBe("velodyne");
+    expect(result.current.pendingPromotion).not.toBeNull();
+    expect(getPlacementReadiness).toHaveBeenCalledTimes(1);
+
+    rerender({ ...connectedProps, playbackTimeNs: 20n });
+    expect(getPlacementReadiness).toHaveBeenCalledTimes(1);
+  });
+
+  it("commits the exact transform that passes the promotion gate", () => {
+    const local = transforms([["world", "base_link"]]);
+    const connected = transforms([
+      ["world", "base_link"],
+      ["base_link", "velodyne"],
+    ]);
+    const transform = {
+      rotation: new Quaternion(),
+      sourceFrameId: "velodyne",
+      targetFrameId: "world",
+      translation: new Vector3(4, 0, 0),
+    };
+    const resolve = vi.fn(() => ({
+      sourceFrameId: "velodyne",
+      status: "resolved" as const,
+      targetFrameId: "world",
+      transform,
+    }));
+    const baseProps = {
+      frames: [pointCloudFrame("velodyne")],
+      playbackTimeNs: 10n,
+      pointCloudTopics: ["/points"],
+      primarySourceId: "/points",
+    };
+    const { rerender, result } = renderHook(useMcap3dFrameSelection, {
+      initialProps: selectionProps({
+        ...baseProps,
+        frameTransforms: { ...local, topologyRevision: 1 },
+      }),
+    });
+
+    rerender(
+      selectionProps({
+        ...baseProps,
+        frameTransforms: {
+          ...connected,
+          resolve,
+          topologyRevision: 2,
+        },
+      }),
+    );
+
+    expect(result.current.worldFrameId).toBe("world");
+    expect(result.current.referenceTransition).toMatchObject({
+      sourceFrameId: "velodyne",
+      targetFrameId: "world",
+      transform,
+    });
+    expect(resolve).toHaveBeenCalledTimes(1);
+
+    rerender(
+      selectionProps({
+        ...baseProps,
+        frameTransforms: {
+          ...connected,
+          resolve,
+          topologyRevision: 2,
+        },
+        playbackTimeNs: 20n,
+      }),
+    );
+    expect(resolve).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -364,12 +526,20 @@ function pointCloudFrame(
   };
 }
 
+function pointCloudObservation(frameId: string) {
+  return {
+    frames: [pointCloudFrame(frameId)],
+    pointCloudTopics: ["/points"],
+  };
+}
+
 function summarizeGraph(
   edges: readonly TransformEdge[],
   dataBearingFrameIds: ReadonlySet<string>,
 ): McapFrameGraphSummary {
   if (edges.length === 0) {
     return {
+      components: [],
       dataBearingReachableCountsByFrameId: new Map(),
       reachableCountsByFrameId: new Map(),
       roots: [],
@@ -379,6 +549,7 @@ function summarizeGraph(
 
   const childFrameIds = new Set<string>();
   const childrenByParent = new Map<string, string[]>();
+  const neighborsByFrameId = new Map<string, string[]>();
   const frameIds = new Set<string>();
   const parentFrameIds = new Set<string>();
   for (const [parentFrameId, childFrameId] of edges) {
@@ -390,6 +561,14 @@ function summarizeGraph(
       ...(childrenByParent.get(parentFrameId) ?? []),
       childFrameId,
     ]);
+    neighborsByFrameId.set(parentFrameId, [
+      ...(neighborsByFrameId.get(parentFrameId) ?? []),
+      childFrameId,
+    ]);
+    neighborsByFrameId.set(childFrameId, [
+      ...(neighborsByFrameId.get(childFrameId) ?? []),
+      parentFrameId,
+    ]);
   }
 
   for (const children of childrenByParent.values()) {
@@ -400,6 +579,10 @@ function summarizeGraph(
   const roots = [...parentFrameIds]
     .filter((frameId) => !childFrameIds.has(frameId))
     .sort(compareFrameIds);
+  const components = connectedComponents(
+    tfConnectedFrameIds,
+    neighborsByFrameId,
+  );
   const reachableCountsByFrameId = new Map<string, number>();
   const dataBearingReachableCountsByFrameId = new Map<string, number>();
   for (const frameId of tfConnectedFrameIds) {
@@ -414,11 +597,36 @@ function summarizeGraph(
   }
 
   return {
+    components,
     dataBearingReachableCountsByFrameId,
     reachableCountsByFrameId,
     roots,
     tfConnectedFrameIds,
   };
+}
+
+function connectedComponents(
+  frameIds: readonly string[],
+  neighborsByFrameId: ReadonlyMap<string, readonly string[]>,
+) {
+  const visited = new Set<string>();
+  const components: string[][] = [];
+  for (const frameId of frameIds) {
+    if (visited.has(frameId)) continue;
+    const component: string[] = [];
+    const stack = [frameId];
+    while (stack.length > 0) {
+      const current = stack.pop();
+      if (!current || visited.has(current)) continue;
+      visited.add(current);
+      component.push(current);
+      stack.push(...(neighborsByFrameId.get(current) ?? []));
+    }
+    components.push(component.sort(compareFrameIds));
+  }
+  return components.sort((left, right) =>
+    compareFrameIds(left[0] ?? "", right[0] ?? ""),
+  );
 }
 
 function reachableFrameIdsFrom(

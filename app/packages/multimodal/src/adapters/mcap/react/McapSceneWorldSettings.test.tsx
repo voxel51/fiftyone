@@ -58,9 +58,11 @@ describe("McapSceneWorldSettings", () => {
     renderWorldSettings();
 
     expect(
-      screen.getByText("Add a 3D panel to choose the world frame."),
+      screen.getByText("Add a 3D panel to choose the reference frame."),
     ).toBeTruthy();
-    expect(screen.queryByRole("combobox", { name: "World Frame" })).toBeNull();
+    expect(
+      screen.queryByRole("combobox", { name: "Reference Frame" }),
+    ).toBeNull();
     expect(screen.getByRole("combobox", { name: "Up Axis" })).toBeTruthy();
   });
 
@@ -68,20 +70,50 @@ describe("McapSceneWorldSettings", () => {
     const updateWorldFrameId = vi.fn();
     renderWorldSettings({
       frameControls: {
+        activeComponentFrameIds: ["base_link", "map"],
+        authorityTileId: "tile-1",
         frameIds: ["base_link", "map"],
+        omittedFrameIds: [],
+        omittedSourceIds: [],
+        referenceTransition: null,
         updateWorldFrameId,
+        useRecommendedWorldFrame: vi.fn(),
         worldFrameId: "map",
+        worldFrameSelectionSource: "auto-stable",
       },
     });
 
     const select = screen.getByRole("combobox", {
-      name: "World Frame",
+      name: "Reference Frame",
     }) as HTMLSelectElement;
     expect(select.value).toBe("map");
 
     fireEvent.change(select, { target: { value: "base_link" } });
 
     expect(updateWorldFrameId).toHaveBeenCalledWith("base_link");
+  });
+
+  it("lets an explicit reference return to the deterministic recommendation", () => {
+    const useRecommendedWorldFrame = vi.fn();
+    renderWorldSettings({
+      frameControls: {
+        activeComponentFrameIds: ["base_link", "map"],
+        authorityTileId: "tile-1",
+        frameIds: ["base_link", "map"],
+        omittedFrameIds: [],
+        omittedSourceIds: [],
+        referenceTransition: null,
+        updateWorldFrameId: vi.fn(),
+        useRecommendedWorldFrame,
+        worldFrameId: "base_link",
+        worldFrameSelectionSource: "user",
+      },
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Use recommended frame" }),
+    );
+    expect(useRecommendedWorldFrame).toHaveBeenCalledTimes(1);
   });
 
   it("edits the scene up axis through the modal view settings", () => {

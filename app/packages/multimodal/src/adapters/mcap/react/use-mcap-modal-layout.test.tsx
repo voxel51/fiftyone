@@ -218,6 +218,13 @@ describe("useMcapModalLayout", () => {
       preferredWorldFrameId: "odom",
       sceneUpAxis: "z",
     });
+
+    act(() => result.current.onPreferredWorldFrameIdChange(null));
+
+    expect(result.current.preferredWorldFrameId).toBeNull();
+    expect(
+      readMcapCameraPreferences("dataset-a", "mcap")?.preferredWorldFrameId,
+    ).toBeUndefined();
   });
 
   it("falls back to dataset-scoped scene-axis persistence without a media field", () => {
