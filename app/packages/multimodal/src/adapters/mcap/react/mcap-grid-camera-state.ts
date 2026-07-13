@@ -27,6 +27,9 @@ export function useMcapGridCameraPose(scopeKey: string, enabled = true) {
     () => retainCameraPoseScope(scopeKey, poseAtom),
     [poseAtom, scopeKey],
   );
+  useEffect(() => {
+    touchAndEvictCameraPoseScopes(scopeKey, poseAtom);
+  });
 
   // This effect subscribes only previews that are actively rendering.
   useEffect(() => {
@@ -61,14 +64,8 @@ export function __resetMcapGridCameraPoseForTests() {
 }
 
 function cameraPoseAtomForScope(scopeKey: string) {
-  const now = Date.now();
-  evictExpiredCameraPoseScopes(now);
-
   const existing = cameraPoseAtomsByScope.get(scopeKey);
   if (existing) {
-    existing.lastAccessedAtMs = now;
-    cameraPoseAtomsByScope.delete(scopeKey);
-    cameraPoseAtomsByScope.set(scopeKey, existing);
     return existing.atom;
   }
 
@@ -76,9 +73,8 @@ function cameraPoseAtomForScope(scopeKey: string) {
   cameraPoseAtomsByScope.set(scopeKey, {
     activeMounts: 0,
     atom: poseAtom,
-    lastAccessedAtMs: now,
+    lastAccessedAtMs: 0,
   });
-  evictInactiveCameraPoseScopesToLimit(scopeKey);
   return poseAtom;
 }
 
@@ -91,7 +87,7 @@ function retainCameraPoseScope(
     entry = {
       activeMounts: 0,
       atom: poseAtom,
-      lastAccessedAtMs: Date.now(),
+      lastAccessedAtMs: 0,
     };
     cameraPoseAtomsByScope.set(scopeKey, entry);
   }
@@ -104,6 +100,19 @@ function retainCameraPoseScope(
     evictExpiredCameraPoseScopes(Date.now());
     evictInactiveCameraPoseScopesToLimit();
   };
+}
+
+function touchAndEvictCameraPoseScopes(
+  scopeKey: string,
+  poseAtom: PrimitiveAtom<PointCloudCameraPose | null>,
+) {
+  const entry = cameraPoseAtomsByScope.get(scopeKey);
+  if (!entry || entry.atom !== poseAtom) return;
+  entry.lastAccessedAtMs = Date.now();
+  cameraPoseAtomsByScope.delete(scopeKey);
+  cameraPoseAtomsByScope.set(scopeKey, entry);
+  evictExpiredCameraPoseScopes(entry.lastAccessedAtMs);
+  evictInactiveCameraPoseScopesToLimit(scopeKey);
 }
 
 function evictExpiredCameraPoseScopes(now: number) {

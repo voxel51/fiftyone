@@ -36,7 +36,6 @@ import {
 import { buildMcapCameraTargetNotice } from "./mcap-health";
 import {
   DEFAULT_MCAP_3D_CAMERA_NAVIGATION_MODE,
-  nextMcap3dViewStateRestoreOnceKey,
   type Mcap3dCameraNavigationMode,
   type Mcap3dCameraViewSnapshot,
   type Mcap3dViewStateStore,
@@ -188,10 +187,6 @@ export function useMcap3dCameraTracking({
   const [cameraCommandSourceKey, setCameraCommandSourceKey] =
     useState(sourceKey);
   const sourceChanged = cameraCommandSourceKey !== sourceKey;
-  const cameraEpochRef = useRef<string | null>(null);
-  if (cameraEpochRef.current === null) {
-    cameraEpochRef.current = nextMcap3dViewStateRestoreOnceKey();
-  }
   // Pending camera restore intents, captured once at mount. They die on
   // apply, on any deliberate camera/mode change, or with the mount itself.
   const pendingCameraViewRestoreRef = useRef<Mcap3dCameraViewSnapshot | null>(
@@ -773,7 +768,6 @@ export function useMcap3dCameraTracking({
       sourceKey,
       worldFrameId,
     };
-    cameraEpochRef.current = nextMcap3dViewStateRestoreOnceKey();
     pendingCameraViewRestoreRef.current = carriedCameraView;
     pendingCompositionRestoreRef.current = navigationCompositions;
     latestCameraPoseRef.current = null;

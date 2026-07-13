@@ -31,6 +31,16 @@ describe("mcap3dViewState store", () => {
       near: 0.1,
     });
     store.recordCameraNavigationMode("absolute");
+    const navigationComposition = {
+      kind: "target-relative",
+      relativePosition: [1, 2, 3],
+      relativeTarget: [0, 0, 0],
+      rotationMode: "heading",
+      sceneUpAxis: "z",
+      targetFrameId: "base_link",
+      trackingMode: "heading",
+    } as const;
+    store.recordNavigationCompositions([navigationComposition]);
     expect(store.getSnapshot()).toEqual({
       cameraNavigationMode: "absolute",
       cameraView: {
@@ -39,7 +49,7 @@ describe("mcap3dViewState store", () => {
         worldFrameId: "map",
       },
       cameraProjection: { far: 20000, fovDegrees: 60, near: 0.1 },
-      navigationCompositions: [],
+      navigationCompositions: [navigationComposition],
       enabledSourceIds: ["/lidar/top"],
       renderableSourceIds: ["/lidar/top", "/labels/boxes"],
       trackingMode: "heading",

@@ -112,7 +112,7 @@ export function cameraPoseFromOrbit(
   const target = finiteTuple(orbit.target, [0, 0, 0]);
   const position = new Vector3(...target).add(offset);
 
-  return { position: position.toArray(), target };
+  return { position: [position.x, position.y, position.z], target };
 }
 
 /** Clamps perspective projection parameters to safe renderer bounds. */

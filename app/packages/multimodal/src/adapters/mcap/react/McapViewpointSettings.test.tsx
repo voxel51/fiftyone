@@ -107,10 +107,51 @@ describe("McapViewpointSettings", () => {
     expect(inputValue("Elevation (°)")).toBe("0");
     expect(inputValue("Distance")).toBe("10");
   });
+
+  it("normalizes near and far projection commits at both bounds", () => {
+    const controller = createController();
+    renderSettings(controller);
+    fireEvent.click(screen.getByRole("button", { name: /Viewpoint/ }));
+
+    commitNumber("Near", "-1");
+    expect(controller.setProjection).toHaveBeenLastCalledWith({
+      far: 10000,
+      fovDegrees: 50,
+      near: 0.0001,
+    });
+
+    commitNumber("Near", "1000000000");
+    expect(controller.setProjection).toHaveBeenLastCalledWith({
+      far: 500500000,
+      fovDegrees: 50,
+      near: 500000000,
+    });
+
+    commitNumber("Far", "-1");
+    expect(controller.setProjection).toHaveBeenLastCalledWith({
+      far: 500500000,
+      fovDegrees: 50,
+      near: 500000000,
+    });
+
+    commitNumber("Far", "2000000000");
+    expect(controller.setProjection).toHaveBeenLastCalledWith({
+      far: 1000000000,
+      fovDegrees: 50,
+      near: 500000000,
+    });
+  });
 });
 
 function inputValue(label: string): string {
   return (screen.getByLabelText(label) as HTMLInputElement).value;
+}
+
+function commitNumber(label: string, value: string): void {
+  const input = screen.getByLabelText(label);
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value } });
+  fireEvent.blur(input);
 }
 
 function renderSettings(controller: Mcap3dViewpointController) {
