@@ -99,7 +99,7 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    name: Test e2e (Mongo ${{ matrix.mongodb-version }}, shard ${{ matrix.shard }}/4)
+    name: Run e2e shard ${{ matrix.shard }}/4 (report-only, Mongo ${{ matrix.mongodb-version }})
     env:
       FIFTYONE_DO_NOT_TRACK: true
       FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE: false
@@ -179,7 +179,12 @@ jobs:
         working-directory: e2e-pw
 
       - name: Run Playwright tests
-        run: yarn e2e --shard=${{ matrix.shard }}/4
+        # Report-only: failed specs are surfaced by the e2e verdict job from
+        # the merged blob reports. A red shard means infra death (timeout,
+        # lost runner), not a test failure.
+        run: |
+          yarn e2e --shard=${{ matrix.shard }}/4 ||
+            echo "::warning::shard ${{ matrix.shard }} had failing specs; see the e2e verdict job"
         working-directory: e2e-pw
 
       - name: Lint Playwright tests
@@ -195,11 +200,10 @@ jobs:
           # 3 days so reports from Friday/weekend runs survive into Monday.
           retention-days: 3
 
-  e2e-report:
+  e2e-verdict:
     needs: test-e2e
-    # Reporting plumbing must not change the e2e verdict that required
-    # checks see; a red here never blocks a merge.
-    continue-on-error: true
+    # The single authoritative e2e check: shard jobs are report-only, so
+    # this job alone decides pass/fail from the merged shard reports.
     if: always() && contains(fromJSON('["success", "failure"]'), needs.test-e2e.result)
     timeout-minutes: 15
     runs-on: ubuntu-latest
@@ -208,7 +212,7 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    name: Report e2e results
+    name: e2e verdict
     defaults:
       run:
         shell: bash
@@ -296,3 +300,9 @@ jobs:
                 body,
               });
             }
+
+      - name: Enforce verdict
+        working-directory: e2e-pw
+        env:
+          EXPECTED_SHARDS: "4"
+        run: node scripts/enforce-verdict.mjs merged-results.json all-blob-reports
