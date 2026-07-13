@@ -24,6 +24,7 @@ import type {
   ImageVisualization,
 } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
+import { VISUALIZATION_KIND } from "../../../visualization";
 import { MCAP_SCENE_SOURCE_METADATA, MCAP_SOURCE_TYPE } from "../scene-sources";
 import { findBestMatchingAnnotationTopics } from "../topic-matching";
 import { ImagePanel } from "../../../visualization/panels/image";
@@ -50,6 +51,7 @@ import {
   usePublishMcapImageTileBinding,
 } from "./mcap-tile-source-bindings";
 import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
+import McapDepthHoverOverlay from "./McapDepthHoverOverlay";
 import McapImageProjectionOverlay from "./McapImageProjectionOverlay";
 import McapImageProjectionScene from "./McapImageProjectionScene";
 import { useMcapHoverEcho } from "./mcap-hover-echo";
@@ -361,6 +363,27 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
           imageDims: effectiveImageDims,
         }
       : null;
+  const depthCameraFrameId =
+    frame?.kind === VISUALIZATION_KIND.RAW_IMAGE
+      ? (frame.coordinateFrameId ?? calibration?.coordinateFrameId)
+      : undefined;
+  const activeDepthHover =
+    frame?.kind === VISUALIZATION_KIND.RAW_IMAGE &&
+    frame.depth &&
+    playbackFrame &&
+    depthCameraFrameId &&
+    sourceCameraModel &&
+    displayCameraModel &&
+    frame.width === sourceCameraModel.width &&
+    frame.height === sourceCameraModel.height
+      ? {
+          cameraFrameId: depthCameraFrameId,
+          contentTimeNs: playbackFrame.contentTimeNs,
+          displayCameraModel,
+          frame,
+          sourceCameraModel,
+        }
+      : null;
   const projectionLayers = useMcapImageProjectionLayers(
     activeProjection ? selectedProjectionTopics : EMPTY_PROJECTION_TOPICS,
     activeProjection?.cameraFrameId,
@@ -369,7 +392,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     fit: IMAGE_FIT,
     // The resting hand cursor would occlude the very dot a dwell hover
     // inspects; a crosshair pinpoints it. Dragging still shows "grabbing".
-    idleCursor: activeProjection ? "crosshair" : undefined,
+    idleCursor: activeProjection || activeDepthHover ? "crosshair" : undefined,
     imageSize: effectiveImageDims,
     resetKey: `${topic}\n${projection.display}\n${rectifiedViewActive}`,
   });
@@ -698,6 +721,14 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
             textureKey={textureKey}
             viewTransform={imagePanZoom.viewTransform}
           />
+          {activeDepthHover ? (
+            <McapDepthHoverOverlay
+              {...activeDepthHover}
+              fit={IMAGE_FIT}
+              imageTopic={topic}
+              viewTransform={imagePanZoom.viewTransform}
+            />
+          ) : null}
           {activeProjection ? (
             <McapImageProjectionOverlay
               cameraModel={activeProjection.cameraModel}
