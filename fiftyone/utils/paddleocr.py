@@ -84,19 +84,15 @@ def _to_numpy_bgr(img):
     return np.ascontiguousarray(img[:, :, ::-1])
 
 
-def _quad_to_bbox(poly, width, height):
-    """Axis-aligned ``[x, y, w, h]`` in ``[0, 1]`` enclosing a quad polygon."""
-    xs = [float(p[0]) for p in poly]
-    ys = [float(p[1]) for p in poly]
-    x0 = min(max(min(xs), 0.0), float(width))
-    y0 = min(max(min(ys), 0.0), float(height))
-    x1 = min(max(max(xs), 0.0), float(width))
-    y1 = min(max(max(ys), 0.0), float(height))
+def _normalize_quad(poly, width, height):
+    """Normalizes a pixel-coordinate quad into ``[0, 1]``, clamped to the
+    frame."""
     return [
-        x0 / width,
-        y0 / height,
-        max(x1 - x0, 0.0) / width,
-        max(y1 - y0, 0.0) / height,
+        (
+            min(max(float(x) / width, 0.0), 1.0),
+            min(max(float(y) / height, 0.0), 1.0),
+        )
+        for x, y in poly
     ]
 
 
@@ -162,9 +158,7 @@ class PaddleOCRDetectionOutputProcessor(fout.OutputProcessor):
                 score = float(score)
                 if confidence_thresh is not None and score < confidence_thresh:
                     continue
-                points = [
-                    [(float(x) / width, float(y) / height) for x, y in poly]
-                ]
+                points = [_normalize_quad(poly, width, height)]
                 polylines.append(
                     fol.Polyline(
                         label="text",
@@ -212,7 +206,9 @@ class PaddleOCROutputProcessor(fout.OutputProcessor):
                     continue
                 detection = fol.Detection(
                     label=text,
-                    bounding_box=_quad_to_bbox(poly, width, height),
+                    bounding_box=fout._polyline_to_bbox(
+                        [_normalize_quad(poly, width, height)]
+                    ),
                     confidence=rec_score,
                 )
                 detection["det_confidence"] = float(det_score)

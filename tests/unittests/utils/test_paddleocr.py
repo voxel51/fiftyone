@@ -123,21 +123,22 @@ class TestPaddleOCRHelpers:
         assert out.dtype == np.uint8
         assert out.max() == 255
 
-    def test_quad_to_bbox(self):
-        from fiftyone.utils.paddleocr import _quad_to_bbox
+    def test_normalize_quad(self):
+        from fiftyone.utils.paddleocr import _normalize_quad
 
         poly = [[20, 40], [120, 40], [120, 90], [20, 90]]
-        bbox = _quad_to_bbox(poly, width=200, height=100)
-        assert bbox == pytest.approx([0.1, 0.4, 0.5, 0.5])
+        pts = _normalize_quad(poly, width=200, height=100)
+        assert np.allclose(
+            pts, [(0.1, 0.4), (0.6, 0.4), (0.6, 0.9), (0.1, 0.9)]
+        )
 
-    def test_quad_to_bbox_out_of_frame(self):
-        from fiftyone.utils.paddleocr import _quad_to_bbox
+    def test_normalize_quad_out_of_frame(self):
+        from fiftyone.utils.paddleocr import _normalize_quad
 
         # polygon lying wholly outside the frame clamps into [0, 1]
         poly = [[250, 150], [300, 150], [300, 180], [250, 180]]
-        bbox = _quad_to_bbox(poly, width=200, height=100)
-        assert bbox == pytest.approx([1.0, 1.0, 0.0, 0.0])
-        assert all(0.0 <= v <= 1.0 for v in bbox)
+        pts = _normalize_quad(poly, width=200, height=100)
+        assert all(v == 1.0 for p in pts for v in p)
 
     def test_map_device(self):
         from fiftyone.utils.paddleocr import _map_device
