@@ -23,6 +23,7 @@ import {
   HOVER_INTENT_DELAY_MS,
   PLAYBACK_HOVER_INTENT_DELAY_MS,
 } from "./GridRenderer";
+import classes from "./GridRenderer.module.css";
 
 const previewHarness = vi.hoisted(() => ({
   preview: {
@@ -42,7 +43,6 @@ const bitmapViewHarness = vi.hoisted(() => ({
     fit?: string;
     frame: Extract<McapGridPreviewFrame, { kind: "image" }>["image"];
     onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
-    onImageLoaded?: (width: number, height: number) => void;
   } | null,
 }));
 
@@ -69,6 +69,15 @@ const cameraPoseHarness = vi.hoisted(() => ({
   pose: null as unknown,
   setPose: vi.fn(),
 }));
+
+function getGridRendererRoot(container: HTMLElement): HTMLElement {
+  const root = container.querySelector<HTMLElement>(`.${classes.root}`);
+  if (!root) {
+    throw new Error("Expected an MCAP grid renderer root");
+  }
+
+  return root;
+}
 
 vi.mock("./use-stable-mcap-source", () => ({
   useStableMcapSource: vi.fn(() => null),
@@ -100,22 +109,6 @@ vi.mock("./mcap-grid-stream-state", () => ({
   useRegisterMcapGridStreamTopics: vi.fn(() => vi.fn()),
 }));
 
-vi.mock("../../../visualization/panels/ImageAnnotationsOverlay", () => ({
-  ImageAnnotationsOverlay: ({
-    imageHeight,
-    imageWidth,
-  }: {
-    readonly imageHeight: number;
-    readonly imageWidth: number;
-  }) => (
-    <div
-      data-image-height={imageHeight}
-      data-image-width={imageWidth}
-      data-testid="annotations-overlay"
-    />
-  ),
-}));
-
 vi.mock("../../../visualization/panels/bitmap-image-view", async () => {
   const { useEffect } = await import("react");
   return {
@@ -132,15 +125,13 @@ vi.mock("../../../visualization/panels/bitmap-image-view", async () => {
       readonly fit?: string;
       readonly frame: Extract<McapGridPreviewFrame, { kind: "image" }>["image"];
       readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
-      readonly onImageLoaded?: (width: number, height: number) => void;
     }) => {
       bitmapViewHarness.lastProps = props;
-      const { onBitmapRetainedBytesChange, onImageLoaded } = props;
-      // This effect reports decoded natural dims like the real view does.
+      const { onBitmapRetainedBytesChange } = props;
+      // This effect reports decoded bitmap retention like the real view does.
       useEffect(() => {
-        onImageLoaded?.(640, 480);
         onBitmapRetainedBytesChange?.(640 * 480 * 4);
-      }, [onBitmapRetainedBytesChange, onImageLoaded]);
+      }, [onBitmapRetainedBytesChange]);
       return <div data-testid="bitmap-image-view" />;
     },
   };
@@ -197,7 +188,7 @@ describe("GridRenderer", () => {
     expect(screen.queryByTestId("mcap-loading-ascii")).toBeNull();
   });
 
-  it("renders image frames through the GPU-free bitmap view", async () => {
+  it("renders image frames through the GPU-free bitmap view", () => {
     const bytes = new Uint8Array([9, 9, 9]);
     previewHarness.preview.frame = imageFrame(bytes);
     previewHarness.preview.status = "ready";
@@ -217,12 +208,6 @@ describe("GridRenderer", () => {
     expect(bitmapViewHarness.lastProps.frame.bytes).toBe(bytes);
     expect(bitmapViewHarness.lastProps?.fit).toBe("cover");
     expect(bitmapViewHarness.lastProps.frame.mimeType).toBe("image/jpeg");
-
-    // The DOM annotations overlay still receives the decoded dims the
-    // bitmap view reports via onImageLoaded.
-    const overlay = await screen.findByTestId("annotations-overlay");
-    expect(overlay.getAttribute("data-image-width")).toBe("640");
-    expect(overlay.getAttribute("data-image-height")).toBe("480");
   });
 
   it("reports retained frame and decoded bitmap bytes to the grid LRU", async () => {
@@ -251,13 +236,15 @@ describe("GridRenderer", () => {
     const onClick = vi.fn();
     const onContextMenu = vi.fn();
 
-    render(
+    const { container } = render(
       <div onClick={onClick} onContextMenu={onContextMenu}>
         <GridRenderer ctx={rendererCtx()} />
       </div>,
     );
 
     const image = screen.getByTestId("bitmap-image-view");
+    const root = getGridRendererRoot(container);
+    expect(root.classList.contains(classes.modalActivationSurface)).toBe(true);
     fireEvent.click(image);
     fireEvent.contextMenu(image);
 
@@ -265,12 +252,12 @@ describe("GridRenderer", () => {
     expect(onContextMenu).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps point-cloud and unresolved tile activation inside the renderer", () => {
+  it("keeps point-cloud tile activation inside the renderer", () => {
     previewHarness.preview.frame = pointCloudFrame();
     previewHarness.preview.status = "ready";
     const onClick = vi.fn();
     const onContextMenu = vi.fn();
-    const { rerender } = render(
+    const { container } = render(
       <div onClick={onClick} onContextMenu={onContextMenu}>
         <GridRenderer ctx={rendererCtx()} />
       </div>,
@@ -282,22 +269,34 @@ describe("GridRenderer", () => {
 
     expect(onClick).not.toHaveBeenCalled();
     expect(onContextMenu).not.toHaveBeenCalled();
-
-    previewHarness.preview.frame = null;
-    previewHarness.preview.status = "loading";
-    rerender(
-      <div onClick={onClick} onContextMenu={onContextMenu}>
-        <GridRenderer ctx={rendererCtx()} />
-      </div>,
-    );
-
-    const loading = screen.getByTestId("mcap-loading-ascii");
-    fireEvent.click(loading);
-    fireEvent.contextMenu(loading);
-
-    expect(onClick).not.toHaveBeenCalled();
-    expect(onContextMenu).not.toHaveBeenCalled();
+    const root = getGridRendererRoot(container);
+    expect(root.classList.contains(classes.modalActivationSurface)).toBe(false);
   });
+
+  it.each(["idle", "loading", "ready", "unavailable", "error"] as const)(
+    "allows frame-less %s tile activation to pass through",
+    (status) => {
+      previewHarness.preview.frame = null;
+      previewHarness.preview.status = status;
+      const onClick = vi.fn();
+      const onContextMenu = vi.fn();
+      const { container } = render(
+        <div onClick={onClick} onContextMenu={onContextMenu}>
+          <GridRenderer ctx={rendererCtx()} />
+        </div>,
+      );
+
+      const root = getGridRendererRoot(container);
+      expect(root.classList.contains(classes.modalActivationSurface)).toBe(
+        true,
+      );
+      fireEvent.click(root);
+      fireEvent.contextMenu(root);
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(onContextMenu).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("requires hover intent before starting playback", () => {
     vi.useFakeTimers();
@@ -400,6 +399,8 @@ describe("GridRenderer", () => {
     expect(bitmapHostHarness.lastBitmap).toBe(bitmap);
 
     const cell = pointCloudCells()[0];
+    expect(cell.classList.contains(classes.pointCloud)).toBe(true);
+    expect(cell.classList.contains(classes.livePointCloud)).toBe(false);
     // React synthesizes onPointerEnter/Leave from pointerover/pointerout.
     fireEvent.pointerOver(cell);
     // Before the intent delay fires the cell stays snapshot-only.
@@ -413,6 +414,7 @@ describe("GridRenderer", () => {
     // still-mounted snapshot host.
     expect(screen.getByTestId("point-cloud-panel")).toBeTruthy();
     expect(screen.getByTestId("bitmap-canvas-host")).toBeTruthy();
+    expect(cell.classList.contains(classes.livePointCloud)).toBe(true);
     expect(gridLiveLeaseStats()).toMatchObject({ active: 1, granted: 1 });
     // Going live does not request a snapshot.
     expect(snapshotHarness.requests.length).toBe(1);
@@ -422,6 +424,7 @@ describe("GridRenderer", () => {
     // Back at rest: live panel gone, lease released, and a fresh snapshot
     // was requested at the current shared pose.
     expect(screen.queryByTestId("point-cloud-panel")).toBeNull();
+    expect(cell.classList.contains(classes.livePointCloud)).toBe(false);
     expect(gridLiveLeaseStats().active).toBe(0);
     expect(snapshotHarness.requests.length).toBe(2);
 
@@ -711,7 +714,6 @@ function pointCloudCells(): HTMLElement[] {
 
 function imageFrame(bytes: Uint8Array): McapGridPreviewFrame {
   return {
-    annotations: {},
     image: { bytes, kind: "encoded-image", mimeType: "image/jpeg" },
     kind: "image",
   } as unknown as McapGridPreviewFrame;

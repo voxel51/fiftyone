@@ -65,14 +65,19 @@ export function useImageTextureLease({
     enabled && hasImageData(frame) ? "loading" : disabledStatus,
   );
 
-  // This effect releases the held texture lease on unmount — release, not
+  // This effect retires the held texture lease on unmount — release, not
   // dispose: keyed texture sources may be retained by the cache for instant
-  // re-acquire; keyless private leases dispose themselves on release.
+  // re-acquire; keyless private leases dispose themselves on release. The
+  // deferred release also matters when this view leaves a shared WebGPU stage:
+  // an already-submitted command buffer may still reference its texture.
   useEffect(
     () => () => {
-      heldTextureRef.current?.release();
+      const heldTexture = heldTextureRef.current;
       heldTextureRef.current = null;
-      releaseRetiredTextures(retiredTexturesRef);
+      retireImageTextures([
+        ...(heldTexture ? [heldTexture] : []),
+        ...takeRetiredTextures(retiredTexturesRef),
+      ]);
     },
     [],
   );
@@ -80,12 +85,15 @@ export function useImageTextureLease({
   // A replacement first has to commit through the image scene before its old
   // GPU texture can be destroyed. Releasing from the promise callback races
   // the shared WebGPU stage: it can still encode the previous portal while
-  // React is committing the new handle. This effect runs on the following
-  // committed render, after the scene has stopped referring to each retired
-  // texture. It intentionally precedes the request effect so a synchronous
-  // disable/error transition cannot retire and release in one effect flush.
+  // React is committing the new handle. Even releasing on this following
+  // committed render is too early for WebGPU: a command buffer submitted by
+  // the previous frame can still own the texture. Keep retired leases through
+  // two browser frames so the replacement portal commits and renders before
+  // disposal. It intentionally precedes the request effect so a synchronous
+  // disable/error transition cannot retire and schedule release in one effect
+  // flush.
   useEffect(() => {
-    releaseRetiredTextures(retiredTexturesRef);
+    retireImageTextures(takeRetiredTextures(retiredTexturesRef));
   });
 
   // This effect resolves the current encoded image into a leased texture.
@@ -197,16 +205,44 @@ function replaceHeldTexture(
   setHandle(next?.handle ?? null);
 }
 
-function releaseRetiredTextures(
+function takeRetiredTextures(
   retiredRef: MutableRefObject<HeldImageTexture[]>,
-): void {
+): HeldImageTexture[] {
   const retired = retiredRef.current;
   if (retired.length === 0) {
-    return;
+    return [];
   }
 
   retiredRef.current = [];
-  for (const texture of retired) {
+  return retired;
+}
+
+/**
+ * Releases texture leases after two paints. React commits an ImagePanel before
+ * the shared WebGPU portal and GPU queue necessarily stop using its previous
+ * texture; immediate disposal can otherwise trigger a destroyed-texture
+ * validation error during rapid playback or seek churn.
+ */
+function retireImageTextures(textures: readonly HeldImageTexture[]): void {
+  if (textures.length === 0) {
+    return;
+  }
+
+  if (
+    typeof window === "undefined" ||
+    typeof window.requestAnimationFrame !== "function"
+  ) {
+    releaseImageTextures(textures);
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => releaseImageTextures(textures));
+  });
+}
+
+function releaseImageTextures(textures: readonly HeldImageTexture[]): void {
+  for (const texture of textures) {
     texture.release();
   }
 }

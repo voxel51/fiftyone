@@ -20,8 +20,14 @@ import {
   type PlaybackStore,
   type PlaybackStream,
 } from "@fiftyone/playback";
-import { markModalLoadingLatencyEvent } from "@fiftyone/utilities";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   getMcapTopicStatus,
   getMcapTopicStaleAgeNs,
@@ -35,7 +41,7 @@ import {
   byteSourceAccessKey,
   type ByteSourceDescriptor,
 } from "../../../query/bytes";
-import { durationMsSince, monotonicNowMs } from "../../../time";
+import { monotonicNowMs } from "../../../time";
 import { DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ } from "../timeline";
 import type {
   McapByteTimelinePoint,
@@ -60,6 +66,7 @@ import { pushTickToStore } from "./mcap-playback-frame-push";
 import {
   computeMcapStartupCushion,
   MAX_STARTUP_CUSHION_SECONDS,
+  MAX_STARTUP_CUSHION_WAIT_SECONDS,
   UNMEASURED_LINK_NOMINAL_WAIT_SECONDS,
   type McapStartupCushion,
 } from "./mcap-startup-cushion";
@@ -256,11 +263,24 @@ export function useRegisterMcapDataStream({
   staleWarningTopics,
   streamPolicies,
 }: UseMcapDataStreamOptions): void {
-  const { registerStream, seek, subscribeStream } = usePlayback();
+  const { pause, registerStream, seek, subscribeStream } = usePlayback();
   const store = usePlaybackStore();
   const isPlaying = useIsPlaying();
   const setDataStream = useSetMcapDataStream();
   const seekEvent = useSeekEvent();
+  // Per-recording discriminator for cross-tile caches and source lifecycle.
+  const sourceKey = useMemo(
+    () => (source ? byteSourceAccessKey(source) : ""),
+    [source],
+  );
+
+  // This layout effect resets recording-local time before paint while the
+  // playback store—and therefore the modal workspace—survives navigation.
+  // The topic-bounds path below may then advance zero to the first data tick.
+  useLayoutEffect(() => {
+    pause();
+    seek(0);
+  }, [pause, seek, sourceKey]);
 
   const [index, setIndex] = useState<McapTimelineIndex | null>(null);
 
@@ -602,7 +622,6 @@ export function useRegisterMcapDataStream({
     }
     if (!source) return undefined;
     let cancelled = false;
-    const timelineRangeStartMs = monotonicNowMs();
     const rangeRead = client.readTimelineRange({
       source,
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
@@ -612,14 +631,6 @@ export function useRegisterMcapDataStream({
         if (!cancelled && sourceEpochRef.current === sourceEpoch) {
           byteTimelineRef.current = range.byteTimeline ?? null;
           const nextIndex = createMcapTimelineIndex(range);
-          const detail = {
-            durationMs: durationMsSince(timelineRangeStartMs),
-            durationSec: Number(nextIndex.durationSec.toFixed(3)),
-            ticks: nextIndex.tickCount,
-          };
-          markModalLoadingLatencyEvent("mcap timeline ready", detail, {
-            onceKey: "mcap-timeline-ready",
-          });
           setIndex(nextIndex);
         }
       })
@@ -875,35 +886,12 @@ export function useRegisterMcapDataStream({
       tick,
     });
 
-    if (tick !== null && blockingTotal > 0) {
-      if (blockingCovered === blockingTotal) {
-        onPlayheadDataReadyRef.current?.();
-        markModalLoadingLatencyEvent(
-          "mcap playhead data ready",
-          {
-            playheadSec: Number(playheadSec.toFixed(3)),
-            streams: blockingTotal,
-            tickNs: tick,
-          },
-          { onceKey: "mcap-playhead-data-ready" },
-        );
-      }
-
-      if (startupReady) {
-        markModalLoadingLatencyEvent(
-          "mcap startup buffer ready",
-          {
-            lookaheadSec: Number(
-              PLAYBACK_POLICY.startupLookaheadSeconds.toFixed(3),
-            ),
-            playheadSec: Number(playheadSec.toFixed(3)),
-            streams: blockingTotal,
-            tickNs: tick,
-            ticks: startupCoverage.total,
-          },
-          { onceKey: "mcap-startup-buffer-ready" },
-        );
-      }
+    if (
+      tick !== null &&
+      blockingTotal > 0 &&
+      blockingCovered === blockingTotal
+    ) {
+      onPlayheadDataReadyRef.current?.();
     }
 
     // Every data-flow event that can change statuses can also change
@@ -1556,6 +1544,7 @@ export function useRegisterMcapDataStream({
         if (getActiveBlockingTopics().length === 0) return 0;
         return resolveStartupCushion().cushionSeconds;
       },
+      startupBufferMaxWaitSeconds: MAX_STARTUP_CUSHION_WAIT_SECONDS,
       bufferedRanges: computeBufferedRanges,
 
       bufferState: (timeSec) => {
@@ -1790,11 +1779,11 @@ export function useRegisterMcapDataStream({
       pendingPlanThroughputFloorRef.current = null;
       remoteStartupGateDecisionRef.current = null;
       client?.cancelIdleReads?.();
-      // A seek is a time jump: frames held over from the previous position
-      // would render wrong-time sensor data as if current. Drop them so an
-      // uncovered target shows its explicit loading state until real data
-      // lands (a covered target repaints from cache immediately).
-      lastFrameRef.current.clear();
+      // Retain the previous frame while an uncovered target loads. Topic
+      // loading state lets scene tiles mark the retained snapshot as previous,
+      // and the target frame replaces it as soon as the foreground fetch
+      // lands. Source changes and topic unsubscription still clear retained
+      // frames at their ownership boundaries.
       prefetchLookaheadFrom(seekEvent.time);
     }
   }, [client, seekEvent, prefetchLookaheadFrom]);
@@ -1862,14 +1851,6 @@ export function useRegisterMcapDataStream({
     },
     [client, source],
   );
-  // Per-recording discriminator for cross-tile cache keys (e.g. the shared
-  // image-texture cache): keys embedding it can never collide across
-  // recordings, so no cache flush is needed at the source-change boundary.
-  const sourceKey = useMemo(
-    () => (source ? byteSourceAccessKey(source) : ""),
-    [source],
-  );
-
   // This effect publishes the current recording stream through React context.
   useEffect(() => {
     setDataStream({

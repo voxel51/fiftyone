@@ -31,6 +31,18 @@ export function useMcapMapViewportScope(): string | null {
   return useContext(McapMapViewportScopeContext);
 }
 
+/** Whether a live camera may stay visible while switching MCAP samples. */
+export function canPreserveMcapMapViewportBetweenSamples(
+  previousScopeKey: string | null,
+  nextScopeKey: string | null,
+): boolean {
+  return (
+    previousScopeKey !== null &&
+    nextScopeKey !== null &&
+    previousScopeKey === nextScopeKey
+  );
+}
+
 /** Reads and promotes the most recent viewport for a dataset scope. */
 export function readMcapMapViewport(
   scopeKey: string | null,

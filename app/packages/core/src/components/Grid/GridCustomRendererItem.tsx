@@ -12,6 +12,7 @@ import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Checkbox } from "@mui/material";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
+import classes from "./GridCustomRendererItem.module.css";
 import GridTagBubbles from "./GridTagBubbles";
 
 type GridCustomRendererItemConfig = {
@@ -192,6 +193,7 @@ const GridCustomRendererWrapper = ({
 
   return (
     <div
+      className={classes.container}
       style={CONTAINER_STYLES}
       onMouseEnter={() => setHovering(true)}
       onMouseMove={() => setHovering(true)}
@@ -212,16 +214,15 @@ const GridCustomRendererWrapper = ({
           onClick={onSelect}
         />
       )}
-      {hovering && (
-        <button
-          aria-label="Open sample modal"
-          title="Open sample modal"
-          onClick={onOpenModal}
-          style={OPEN_MODAL_BUTTON_STYLES}
-        >
-          <OpenInFullIcon fontSize="inherit" />
-        </button>
-      )}
+      <button
+        aria-label="Open sample modal"
+        className={classes.openModalButton}
+        title="Open sample modal"
+        onClick={onOpenModal}
+        style={OPEN_MODAL_BUTTON_STYLES}
+      >
+        <OpenInFullIcon fontSize="inherit" />
+      </button>
     </div>
   );
 };

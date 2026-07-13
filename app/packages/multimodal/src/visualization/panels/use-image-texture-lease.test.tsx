@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 
 import type { RawImageVisualization } from "../../decoders";
@@ -24,6 +24,11 @@ interface TestLease {
 }
 
 describe("useImageTextureLease", () => {
+  afterEach(() => {
+    leases.length = 0;
+    vi.restoreAllMocks();
+  });
+
   it("classifies expected decoder waits without inspecting message text", async () => {
     leases.push({
       promise: Promise.reject(
@@ -44,6 +49,11 @@ describe("useImageTextureLease", () => {
   });
 
   it("commits a replacement before releasing the previously visible texture", async () => {
+    const animationFrames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
     const first = deferred<ImageTextureHandle>();
     const second = deferred<ImageTextureHandle>();
     const handlesAtRelease: Array<ImageTextureHandle | null> = [];
@@ -81,7 +91,13 @@ describe("useImageTextureLease", () => {
       expect(rendered.result.current.handle).toBe(secondHandle),
     );
 
+    expect(handlesAtRelease).toEqual([]);
+    act(() => animationFrames.shift()?.(0));
+    expect(handlesAtRelease).toEqual([]);
+    act(() => animationFrames.shift()?.(16));
     expect(handlesAtRelease).toEqual([secondHandle]);
+
+    rendered.unmount();
   });
 });
 

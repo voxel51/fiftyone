@@ -290,6 +290,9 @@ describe("useMcapFrameTransforms", () => {
     await waitFor(() => {
       expect(latestState.current?.status).toBe("ready");
     });
+    expect(requireLatestState(latestState).isPlacementTimeSettled?.(100n)).toBe(
+      false,
+    );
     expect(
       requireLatestState(latestState).getPlacementReadiness({
         frameIds: ["lidar"],
@@ -312,6 +315,9 @@ describe("useMcapFrameTransforms", () => {
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(1);
     });
+    expect(requireLatestState(latestState).isPlacementTimeSettled?.(100n)).toBe(
+      false,
+    );
     expect(
       requireLatestState(latestState).getPlacementReadiness({
         frameIds: ["lidar"],
@@ -332,6 +338,9 @@ describe("useMcapFrameTransforms", () => {
         }).status,
       ).toBe("ready");
     });
+    expect(requireLatestState(latestState).isPlacementTimeSettled?.(100n)).toBe(
+      true,
+    );
   });
 
   it("treats an indexed no-path placement as definitive missing", async () => {
@@ -421,6 +430,9 @@ describe("useMcapFrameTransforms", () => {
         timeNs: 100n,
       }),
     ).toEqual({ frameIds: ["lidar"], status: "definitiveMissing" });
+    expect(requireLatestState(latestState).isPlacementTimeSettled?.(100n)).toBe(
+      true,
+    );
 
     rerender(
       <FrameTransformsHarness

@@ -94,34 +94,38 @@ export const McapNetworkStatusPill: React.FC = () => {
   const playPending = useIsPlayPending();
   const bufferingDetail = useBufferingDetail();
   const startupCushion = useMcapStartupCushionState();
+  const displayThroughput =
+    health.busyThroughputBytesPerSec ?? health.throughputBytesPerSec;
   const throughputLabel =
-    health.throughputBytesPerSec !== null && health.throughputBytesPerSec > 0
-      ? `${humanReadableBytes(Math.round(health.throughputBytesPerSec))}/s`
+    displayThroughput !== null && displayThroughput > 0
+      ? `${humanReadableBytes(Math.round(displayThroughput))}/s`
       : null;
   const placementPending =
     playPending && bufferingDetail === MCAP_3D_PLACEMENT_BUFFERING_DETAIL;
-  if (!throughputLabel && !placementPending) {
-    return null;
-  }
-
   // The bandwidth-aware start gate is holding this play press: name the
   // wait so it reads as deliberate buffering, not a hang.
   const gatedStart =
-    playPending &&
-    startupCushion !== null &&
-    startupCushion.estimatedWaitSeconds >= 1
-      ? startupCushion
-      : null;
+    playPending && startupCushion !== null ? startupCushion : null;
+  if (!throughputLabel && !placementPending && !gatedStart) {
+    return null;
+  }
+
   const bufferingLabel = placementPending
     ? "waiting for transforms"
     : gatedStart
-      ? `buffering ~${Math.round(gatedStart.estimatedWaitSeconds)}s`
+      ? `buffering ${Math.round(gatedStart.progressFraction * 100)}% of ${Number(
+          gatedStart.targetSeconds.toFixed(1),
+        )}s`
       : null;
   const label = placementPending
     ? "Placement"
-    : health.limited
-      ? "Slow network"
-      : "Bandwidth";
+    : gatedStart
+      ? health.limited
+        ? "Slow network"
+        : "Preparing playback"
+      : health.limited
+        ? "Slow network"
+        : "Bandwidth";
 
   return (
     <span
@@ -130,9 +134,15 @@ export const McapNetworkStatusPill: React.FC = () => {
       title={
         placementPending
           ? "Playback is waiting for frame transforms needed to place the 3D point cloud."
-          : health.limited
-            ? "Playback is buffering because the network cannot keep up with this recording's data rate."
-            : "Observed MCAP transfer throughput."
+          : gatedStart
+            ? `Playback has buffered ${Math.round(
+                gatedStart.progressFraction * 100,
+              )}% of its ${Number(
+                gatedStart.targetSeconds.toFixed(1),
+              )}-second startup runway.`
+            : health.limited
+              ? "Playback is buffering because the network cannot keep up with this recording's data rate."
+              : "Observed MCAP throughput while transfers were active."
       }
     >
       {gatedStart ? (

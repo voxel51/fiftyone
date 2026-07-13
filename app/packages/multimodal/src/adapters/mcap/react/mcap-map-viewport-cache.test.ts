@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  canPreserveMcapMapViewportBetweenSamples,
   readMcapMapViewport,
   resetMcapMapViewportCacheForTests,
   writeMcapMapViewport,
@@ -22,6 +23,16 @@ describe("mcap map viewport cache", () => {
       longitude: -122.4194,
       zoom: 16,
     });
+  });
+
+  it("preserves a live camera only between samples in the same dataset", () => {
+    expect(
+      canPreserveMcapMapViewportBetweenSamples("dataset-a", "dataset-a"),
+    ).toBe(true);
+    expect(
+      canPreserveMcapMapViewportBetweenSamples("dataset-a", "dataset-b"),
+    ).toBe(false);
+    expect(canPreserveMcapMapViewportBetweenSamples(null, null)).toBe(false);
   });
 
   it("does not leak a viewport into another dataset", () => {

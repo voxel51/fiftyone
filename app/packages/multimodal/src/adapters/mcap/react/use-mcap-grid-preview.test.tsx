@@ -35,6 +35,7 @@ vi.mock("../worker", () => ({
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   resetMcapSourceBootstrapCacheForTests();
 });
 
@@ -124,11 +125,17 @@ describe("useMcapGridPreview", () => {
   it("plays additional preview frames on hover", async () => {
     const latestState = { current: null as McapGridPreviewState | null };
     const hover = deferred<McapGridPreviewResult>();
+    const nextRequest = deferred<McapGridPreviewResult>();
     poolHarness.pool.request
       .mockResolvedValueOnce(
-        readyResult({ bytes: [1, 2, 3], nextStartTimeNs: 10n }),
+        readyResult({
+          bytes: [1, 2, 3],
+          frameTimeNs: 0n,
+          nextStartTimeNs: 1n,
+        }),
       )
-      .mockReturnValueOnce(hover.promise);
+      .mockReturnValueOnce(hover.promise)
+      .mockReturnValue(nextRequest.promise);
 
     render(
       <PreviewHarness
@@ -154,13 +161,19 @@ describe("useMcapGridPreview", () => {
     });
     expect(poolHarness.pool.request.mock.calls[1]?.[0]).toMatchObject({
       source: sourceForId("hover"),
-      startTimeNs: 10n,
+      startTimeNs: 1n,
     });
     expect(poolHarness.pool.request.mock.calls[1]?.[1]).toMatchObject({
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
     });
 
-    hover.resolve(readyResult({ bytes: [9, 8, 7], nextStartTimeNs: 20n }));
+    hover.resolve(
+      readyResult({
+        bytes: [9, 8, 7],
+        frameTimeNs: 100_000_000n,
+        nextStartTimeNs: 100_000_001n,
+      }),
+    );
 
     await waitFor(() => {
       expect(firstImageByte(latestState.current?.frame ?? null)).toBe(9);
@@ -175,6 +188,85 @@ describe("useMcapGridPreview", () => {
       latestState.current?.pause();
     });
     expect(poolHarness.pool.release).toHaveBeenCalledTimes(1);
+  });
+
+  it("presents hover frames at their recorded one-times cadence", async () => {
+    vi.useFakeTimers({ toFake: ["clearTimeout", "performance", "setTimeout"] });
+    const latestState = { current: null as McapGridPreviewState | null };
+    const nextRequest = deferred<McapGridPreviewResult>();
+    poolHarness.pool.request
+      .mockResolvedValueOnce(
+        readyResult({
+          bytes: [1],
+          frameTimeNs: 0n,
+          nextStartTimeNs: 1n,
+        }),
+      )
+      .mockResolvedValueOnce(
+        readyResult({
+          bytes: [2],
+          frameTimeNs: 500_000_000n,
+          nextStartTimeNs: 500_000_001n,
+        }),
+      )
+      .mockReturnValue(nextRequest.promise);
+
+    render(
+      <PreviewHarness
+        id="paced"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        source={sourceForId("paced")}
+      />,
+    );
+    await act(async () => undefined);
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
+
+    act(() => latestState.current?.play());
+    await act(async () => undefined);
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
+
+    await act(() => vi.advanceTimersByTimeAsync(499));
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
+
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(2);
+
+    act(() => latestState.current?.pause());
+  });
+
+  it("backs off before retrying a missing hover frame", async () => {
+    vi.useFakeTimers({ toFake: ["clearTimeout", "performance", "setTimeout"] });
+    const latestState = { current: null as McapGridPreviewState | null };
+    const retry = deferred<McapGridPreviewResult>();
+    poolHarness.pool.request
+      .mockResolvedValueOnce(readyResult({ bytes: [1] }))
+      .mockResolvedValueOnce(emptyResult(true))
+      .mockReturnValue(retry.promise);
+
+    render(
+      <PreviewHarness
+        id="missing-frame"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        source={sourceForId("missing-frame")}
+      />,
+    );
+    await act(async () => undefined);
+
+    act(() => latestState.current?.play());
+    await act(async () => undefined);
+    expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+
+    await act(() => vi.advanceTimersByTimeAsync(82));
+    expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+
+    await act(() => vi.advanceTimersByTimeAsync(2));
+    expect(poolHarness.pool.request).toHaveBeenCalledTimes(3);
+
+    act(() => latestState.current?.pause());
   });
 
   it("reloads and sends the selected stream topic when it changes", async () => {
@@ -306,6 +398,7 @@ function PreviewHarness({
 }) {
   const state = useMcapGridPreview({ enabled, selectedStreamTopic, source });
 
+  // This effect exposes each hook update to tests that inspect live state.
   useEffect(() => {
     onState?.(state);
   }, [onState, state]);
@@ -324,20 +417,23 @@ function formatState(state: McapGridPreviewState): string {
 
 function readyResult({
   bytes,
-  streamTopic = "/camera/front",
   nextStartTimeNs = 5n,
+  frameTimeNs = nextStartTimeNs === undefined
+    ? undefined
+    : nextStartTimeNs - 1n,
+  streamTopic = "/camera/front",
 }: {
   readonly bytes: readonly number[];
+  readonly frameTimeNs?: bigint;
   readonly streamTopic?: string;
   readonly nextStartTimeNs?: bigint;
 }): McapGridPreviewResult {
   return {
-    delayMs: 83,
+    frameTimeNs,
     nextStartTimeNs,
     state: {
       error: null,
       frame: {
-        annotations: null,
         image: createImage(bytes),
         kind: "image",
       },

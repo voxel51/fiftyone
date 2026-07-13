@@ -70,11 +70,13 @@ interface McapCameraImageAssociations {
  */
 export function useMcap3dSelection({
   restore = null,
+  sourceKey,
   viewStateStore: suppliedViewStateStore,
 }: {
   readonly restore?: Mcap3dViewStateSnapshot | null;
+  readonly sourceKey: string;
   readonly viewStateStore?: Mcap3dViewStateStore;
-} = {}) {
+}) {
   const viewStateStore = useMcap3dViewStateStore(suppliedViewStateStore);
   const tileId = useTileId();
   const visibilityScope = useMcapPanelVisibilityScope();
@@ -154,6 +156,10 @@ export function useMcap3dSelection({
       ),
     [cameraAssociations, renderableSources],
   );
+  const selectableRenderableSourceIds = useMemo(
+    () => selectableRenderableSources.map((source) => source.id),
+    [selectableRenderableSources],
+  );
   const defaultRenderableSources = useMemo(
     () =>
       filterDefaultTopicEquivalents(selectableRenderableSources, {
@@ -167,10 +173,7 @@ export function useMcap3dSelection({
   // mount: it applies only when the new sample's renderable source ids
   // exactly match the shape the snapshot was captured against.
   const [selectionRestore] = useState(() =>
-    resolveMcap3dSelectionRestore(
-      restore,
-      selectableRenderableSources.map((s) => s.id),
-    ),
+    resolveMcap3dSelectionRestore(restore, selectableRenderableSourceIds),
   );
   const [selection, setSelection] = useState<Mcap3dSelectionState>(() => {
     const persisted = readMcap3dTileVisibility(visibilityScope, tileId ?? null);
@@ -205,13 +208,17 @@ export function useMcap3dSelection({
   }, [customized, enabled, primarySourceId, tileId, visibilityScope]);
 
   // This effect retains the memory bridge for navigation compatibility while
-  // durable per-tile visibility remains the source of truth.
+  // durable per-tile visibility remains the source of truth. During modal
+  // navigation the next inventory can arrive before its data stream is bound;
+  // keep the outgoing source shape until the non-empty source key commits the
+  // next camera epoch.
   useEffect(() => {
+    if (!sourceKey) return;
     viewStateStore.recordSourceSelection({
       enabledSourceIds: [...enabled],
-      renderableSourceIds: selectableRenderableSources.map((s) => s.id),
+      renderableSourceIds: selectableRenderableSourceIds,
     });
-  }, [enabled, selectableRenderableSources, viewStateStore]);
+  }, [enabled, selectableRenderableSourceIds, sourceKey, viewStateStore]);
 
   // This effect keeps untouched camera defaults aligned with the image panes
   // currently open. The first sidebar edit freezes the explicit selection.
@@ -238,9 +245,9 @@ export function useMcap3dSelection({
     defaultRenderableSources,
   ]);
 
-  // Reconcile inventory churn conservatively: missing sources disappear and
-  // a missing primary gets one ranked replacement, but newly discovered
-  // secondary sources never auto-enable.
+  // This effect reconciles inventory churn conservatively: missing sources
+  // disappear and a missing primary gets one ranked replacement, but newly
+  // discovered secondary sources never auto-enable.
   useEffect(() => {
     const currentIds = new Set(
       selectableRenderableSources.map((source) => source.id),
@@ -431,6 +438,7 @@ export function useMcap3dSelection({
     poseSources,
     poseTopics,
     primarySourceId,
+    renderableSourceIds: selectableRenderableSourceIds,
     restoredSourceShapeMatches: selectionRestore.sourceShapeMatches,
     sceneAnnotationSources,
     sceneAnnotationTopics,

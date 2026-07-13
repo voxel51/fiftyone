@@ -1,6 +1,7 @@
 import { createStore } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
+  achievedSpeedAtom,
   bufferedRangesAtom,
   currentTimeAtom,
   durationAtom,
@@ -19,6 +20,7 @@ import {
 } from "./atoms";
 import { MAX_SPEED, SEEK_BAR_DEBOUNCE } from "../constants";
 import { clamp, clampAndValidateBounds } from "./utils";
+import { createPlaybackRateMeter } from "./playback-rate-meter";
 import type {
   PlaybackClockSource,
   PlaybackConfig,
@@ -145,6 +147,7 @@ export function usePlaybackEngine({
   const streamsRef = useRef<Map<string, PlaybackStream>>(new Map());
   const subscribersRef = useRef<Map<string, number>>(new Map());
   const rafIdRef = useRef<number | null>(null);
+  const achievedRateMeterRef = useRef(createPlaybackRateMeter());
   // Wallclock at the previous tick. Used for `dt`-driven advance when
   // no clock source is registered. Reset to `null` on play() so the
   // first tick after pause doesn't see a huge gap.
@@ -154,6 +157,11 @@ export function usePlaybackEngine({
   // when `null` or `read()` returns `null`, the engine falls back to dt.
   const clockSourceRef = useRef<PlaybackClockSource | null>(null);
   const pendingPlayRef = useRef(false);
+  const pendingPlayStartedAtMsRef = useRef<number | null>(null);
+  const pendingPlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const tryStartPendingPlaybackRef = useRef<() => void>(() => undefined);
   const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekSeqRef = useRef(0);
   // A seek/step/snap target that couldn't commit immediately because a
@@ -315,6 +323,7 @@ export function usePlaybackEngine({
       // doesn't see a huge dt spike.
       if (lastTimestampRef.current === null) {
         lastTimestampRef.current = timestamp;
+        achievedRateMeterRef.current.reset(timestamp);
         rafIdRef.current = requestAnimationFrame(tick);
         return;
       }
@@ -343,12 +352,25 @@ export function usePlaybackEngine({
       const willWrap = rawNext >= loopEnd;
       const targetTime = willWrap ? loopStart : rawNext;
 
+      let committedMediaSeconds = 0;
       if (runBarrier(targetTime)) {
         store.set(playheadAtom, targetTime);
         doCommit(targetTime);
+        committedMediaSeconds = willWrap
+          ? Math.max(0, loopEnd - currentTime) +
+            Math.max(0, targetTime - loopStart)
+          : Math.max(0, targetTime - currentTime);
         // Loop-wrap is a discontinuous jump — fire immediately so
         // streams can flush their cache and buffer around loopStart.
         if (willWrap) fireSeekEvent(loopStart, true);
+      }
+
+      const achievedSpeed = achievedRateMeterRef.current.sample(
+        timestamp,
+        committedMediaSeconds,
+      );
+      if (achievedSpeed !== null) {
+        store.set(achievedSpeedAtom, achievedSpeed);
       }
 
       rafIdRef.current = requestAnimationFrame(tick);
@@ -361,8 +383,12 @@ export function usePlaybackEngine({
       const isPlaying = store.get(isPlayingAtom);
       if (isPlaying) {
         lastTimestampRef.current = null;
+        achievedRateMeterRef.current.reset();
+        store.set(achievedSpeedAtom, null);
         rafIdRef.current = requestAnimationFrame(tick);
       } else {
+        achievedRateMeterRef.current.reset();
+        store.set(achievedSpeedAtom, null);
         if (rafIdRef.current !== null) {
           cancelAnimationFrame(rafIdRef.current);
           rafIdRef.current = null;
@@ -412,9 +438,43 @@ export function usePlaybackEngine({
     settleRafRef.current = requestAnimationFrame(settleTick);
   }, [store, runBarrier, doCommit]);
 
+  const clearPendingPlayTimeout = useCallback(() => {
+    if (pendingPlayTimeoutRef.current === null) return;
+    clearTimeout(pendingPlayTimeoutRef.current);
+    pendingPlayTimeoutRef.current = null;
+  }, []);
+
+  const schedulePendingPlayTimeout = useCallback(() => {
+    clearPendingPlayTimeout();
+    const startedAtMs = pendingPlayStartedAtMsRef.current;
+    if (!pendingPlayRef.current || startedAtMs === null) return;
+
+    const nowMs = performance.now();
+    let nextWaitMs = Number.POSITIVE_INFINITY;
+    for (const stream of streamsRef.current.values()) {
+      if (!stream.blocking || !isActive(stream.id)) continue;
+      const deadlineMs = startupCoverageDeadlineMs(stream, startedAtMs);
+      if (deadlineMs === null) continue;
+      const remainingMs = deadlineMs - nowMs;
+      // An expired stream is already handled by evaluatePlaybackStart. Do
+      // not let it pin the scheduler to a zero-delay loop while another
+      // blocking stream still has a later deadline.
+      if (remainingMs <= 0) continue;
+      nextWaitMs = Math.min(nextWaitMs, remainingMs);
+    }
+
+    if (!Number.isFinite(nextWaitMs)) return;
+    pendingPlayTimeoutRef.current = setTimeout(() => {
+      pendingPlayTimeoutRef.current = null;
+      tryStartPendingPlaybackRef.current();
+    }, Math.ceil(nextWaitMs));
+  }, [clearPendingPlayTimeout, isActive]);
+
   const evaluatePlaybackStart = useCallback(
     (time: number, requestMissing: boolean): boolean => {
       const duration = store.get(durationAtom);
+      const pendingStartedAtMs = pendingPlayStartedAtMsRef.current;
+      const nowMs = performance.now();
       let activeBlockingStreams = 0;
       let ready = true;
 
@@ -426,7 +486,9 @@ export function usePlaybackEngine({
         const state = s.bufferState(time);
         const currentReady = state === "ready";
         const startupReady =
-          currentReady && streamHasStartupCoverage(s, time, duration);
+          currentReady &&
+          (streamHasStartupCoverage(s, time, duration) ||
+            startupCoverageWaitExpired(s, pendingStartedAtMs, nowMs));
 
         if (currentReady && startupReady) continue;
 
@@ -446,10 +508,12 @@ export function usePlaybackEngine({
   const clearPendingPlay = useCallback(
     (clearBuffering = false) => {
       pendingPlayRef.current = false;
+      pendingPlayStartedAtMsRef.current = null;
+      clearPendingPlayTimeout();
       store.set(isPlayPendingAtom, false);
       if (clearBuffering) store.set(isBufferingAtom, false);
     },
-    [store],
+    [clearPendingPlayTimeout, store],
   );
 
   const startPlayback = useCallback(() => {
@@ -459,6 +523,7 @@ export function usePlaybackEngine({
 
   const requestOrStartPlayback = useCallback(
     (time: number) => {
+      pendingPlayStartedAtMsRef.current ??= performance.now();
       if (evaluatePlaybackStart(time, true)) {
         startPlayback();
         return;
@@ -467,8 +532,9 @@ export function usePlaybackEngine({
       pendingPlayRef.current = true;
       store.set(isPlayPendingAtom, true);
       store.set(isBufferingAtom, true);
+      schedulePendingPlayTimeout();
     },
-    [evaluatePlaybackStart, startPlayback, store],
+    [evaluatePlaybackStart, schedulePendingPlayTimeout, startPlayback, store],
   );
 
   const tryStartPendingPlayback = useCallback(() => {
@@ -485,7 +551,15 @@ export function usePlaybackEngine({
     }
 
     evaluatePlaybackStart(time, true);
-  }, [clearPendingPlay, evaluatePlaybackStart, startPlayback, store]);
+    schedulePendingPlayTimeout();
+  }, [
+    clearPendingPlay,
+    evaluatePlaybackStart,
+    schedulePendingPlayTimeout,
+    startPlayback,
+    store,
+  ]);
+  tryStartPendingPlaybackRef.current = tryStartPendingPlayback;
 
   useEffect(() => {
     const unsubscribeBufferedRanges = store.sub(
@@ -501,6 +575,14 @@ export function usePlaybackEngine({
       unsubscribeStreamRanges();
     };
   }, [store, tryStartPendingPlayback]);
+
+  // This effect clears a pending startup deadline when the engine unmounts.
+  useEffect(
+    () => () => {
+      clearPendingPlayTimeout();
+    },
+    [clearPendingPlayTimeout],
+  );
 
   /**
    * Commit `time` now if the barrier is satisfied, else remember it and
@@ -779,6 +861,31 @@ function streamHasStartupCoverage(
     Math.min(duration, time + startupSeconds),
     startupCoverageStartTolerance(stream),
   );
+}
+
+function startupCoverageWaitExpired(
+  stream: PlaybackStream,
+  pendingStartedAtMs: number | null,
+  nowMs: number,
+): boolean {
+  const deadlineMs = startupCoverageDeadlineMs(stream, pendingStartedAtMs);
+  return deadlineMs !== null && nowMs >= deadlineMs;
+}
+
+function startupCoverageDeadlineMs(
+  stream: PlaybackStream,
+  pendingStartedAtMs: number | null,
+): number | null {
+  const maxWaitSeconds = stream.startupBufferMaxWaitSeconds;
+  if (
+    pendingStartedAtMs === null ||
+    maxWaitSeconds === undefined ||
+    !Number.isFinite(maxWaitSeconds) ||
+    maxWaitSeconds < 0
+  ) {
+    return null;
+  }
+  return pendingStartedAtMs + maxWaitSeconds * 1_000;
 }
 
 function startupCoverageStartTolerance(stream: PlaybackStream): number {
