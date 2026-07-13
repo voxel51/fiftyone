@@ -427,6 +427,12 @@ export interface McapReadRawMessageRecordRequest {
   readonly activeTimeline?: McapActiveTimeline;
 
   /**
+   * Includes the complete decoded message as JSON. This is intentionally
+   * opt-in because large sensor payloads can produce multi-megabyte strings.
+   */
+  readonly includeFullJson?: boolean;
+
+  /**
    * Optional overrides for the worker-side prune budgets.
    */
   readonly prune?: McapRawPruneBudgets;
@@ -487,6 +493,12 @@ export interface McapRawMessageRecordResult {
   readonly sequence?: number;
   readonly encodedPayloadBytes?: number;
   readonly decodeUnavailableReason?: McapDecodeUnavailableReason;
+
+  /**
+   * Complete decoded message JSON, present only when explicitly requested.
+   * Unlike `root`, this value is not subject to inspector display budgets.
+   */
+  readonly fullJson?: string;
 
   /**
    * Pruned record tree; present only when `ok`.
