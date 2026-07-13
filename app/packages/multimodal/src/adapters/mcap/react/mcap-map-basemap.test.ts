@@ -5,6 +5,7 @@ import {
   mcapMapBasemapSourceIds,
   mcapMapBasemapStatusText,
   mergeMcapMapOverlaysIntoStyle,
+  shouldShowMcapMapStaticPreview,
 } from "./mcap-map-basemap";
 import { MCAP_MAP_BASE_LAYER } from "./mcap-map-tile-state";
 
@@ -89,5 +90,51 @@ describe("MCAP map basemap lifecycle", () => {
     expect(initialMcapMapBasemapStatus(MCAP_MAP_BASE_LAYER.DEFAULT)).toBe(
       "loading",
     );
+  });
+
+  it("keeps the static route visible until the provider map can take over", () => {
+    expect(
+      shouldShowMcapMapStaticPreview({
+        basemapStatus: "loading",
+        cameraReady: true,
+        failed: false,
+        mapLoaded: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldShowMcapMapStaticPreview({
+        basemapStatus: "ready",
+        cameraReady: false,
+        failed: false,
+        mapLoaded: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldShowMcapMapStaticPreview({
+        basemapStatus: "ready",
+        cameraReady: true,
+        failed: false,
+        mapLoaded: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("falls back to the static route when MapLibre fails", () => {
+    expect(
+      shouldShowMcapMapStaticPreview({
+        basemapStatus: "error",
+        cameraReady: true,
+        failed: true,
+        mapLoaded: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldShowMcapMapStaticPreview({
+        basemapStatus: "error",
+        cameraReady: true,
+        failed: false,
+        mapLoaded: true,
+      }),
+    ).toBe(false);
   });
 });

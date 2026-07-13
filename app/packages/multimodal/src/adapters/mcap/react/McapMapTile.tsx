@@ -70,6 +70,7 @@ import {
   mcapMapBasemapSourceIds,
   mcapMapBasemapStatusText,
   mergeMcapMapOverlaysIntoStyle,
+  shouldShowMcapMapStaticPreview,
   type McapMapBasemapStatus,
 } from "./mcap-map-basemap";
 import {
@@ -398,6 +399,7 @@ const McapMapTile: React.FC<McapTileProps> = () => {
     <>
       <div className={styles.body} data-testid="mcap-map-tile">
         <McapMapLibreSurface
+          basemapStatus={basemapStatus}
           bounds={bounds}
           fitRouteNonce={fitRouteNonce}
           followEgo={settings.followEgo}
@@ -488,6 +490,7 @@ const McapMapTile: React.FC<McapTileProps> = () => {
 
 function McapMapLibreSurface({
   baseLayer,
+  basemapStatus,
   bounds,
   fitRouteNonce,
   followEgo,
@@ -508,6 +511,7 @@ function McapMapLibreSurface({
   viewportScope,
 }: {
   readonly baseLayer: McapMapBaseLayer;
+  readonly basemapStatus: McapMapBasemapStatus;
   readonly bounds: LocationBounds | null;
   readonly fitRouteNonce: number;
   readonly followEgo: boolean;
@@ -574,6 +578,12 @@ function McapMapLibreSurface({
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const showStaticPreview = shouldShowMcapMapStaticPreview({
+    basemapStatus,
+    cameraReady,
+    failed,
+    mapLoaded: loaded,
+  });
   const onSeekTimeNsRef = useRef(onSeekTimeNs);
   const onHoverTimeNsRef = useRef(onHoverTimeNs);
   const onMeasurePickRef = useRef(onMeasurePick);
@@ -1226,10 +1236,7 @@ function McapMapLibreSurface({
   return (
     <>
       <div className={styles.map} ref={containerRef} />
-      {!cameraReady && loaded && !failed ? (
-        <div aria-hidden className={styles.cameraPending} />
-      ) : null}
-      {failed || !loaded ? (
+      {showStaticPreview ? (
         <div className={styles.fallback}>
           <StaticLocationMap tracks={tracks} />
         </div>

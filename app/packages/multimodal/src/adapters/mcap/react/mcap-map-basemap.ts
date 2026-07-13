@@ -37,6 +37,24 @@ export function mcapMapBasemapStatusText(
 }
 
 /**
+ * Keeps the dependency-free route preview visible until the interactive map
+ * is framed and its selected provider has loaded enough tiles to take over.
+ */
+export function shouldShowMcapMapStaticPreview({
+  basemapStatus,
+  cameraReady,
+  failed,
+  mapLoaded,
+}: {
+  readonly basemapStatus: McapMapBasemapStatus;
+  readonly cameraReady: boolean;
+  readonly failed: boolean;
+  readonly mapLoaded: boolean;
+}): boolean {
+  return failed || !mapLoaded || !cameraReady || basemapStatus === "loading";
+}
+
+/**
  * Carries the live MCAP sources and layers into a replacement base style.
  * The local background is deliberately excluded so it cannot cover the
  * remote basemap after the swap.
