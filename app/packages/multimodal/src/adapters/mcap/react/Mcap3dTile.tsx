@@ -174,11 +174,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
   const [cameraNavigationMode, setCameraNavigationMode] =
     useState<Mcap3dCameraNavigationMode>(viewStateRestore.cameraNavigationMode);
-  const carriedTargetComposition = viewStateStore
-    .getSnapshot()
-    .navigationCompositions.find(
-      (composition) => composition.kind === "target-relative",
-    );
+  const carriedTargetComposition = viewStateRestore.navigationCompositions.find(
+    (composition) => composition.kind === "target-relative",
+  );
   const carriedCameraTargetFrameId =
     cameraNavigationMode === "relative" &&
     carriedTargetComposition?.kind === "target-relative"
