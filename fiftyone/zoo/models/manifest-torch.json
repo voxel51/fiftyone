@@ -11999,6 +11999,177 @@
             ],
             "training_data": [],
             "date_added": "2026-01-28 12:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-v6-medium-det-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-OCRv6 medium text detection model that locates text regions in images",
+            "source": "https://huggingface.co/collections/PaddlePaddle/pp-ocrv6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 88020412,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr.PaddleOCRDetectionModel",
+                "config": {
+                    "det_model_name": "PP-OCRv6_medium_det"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "paddleocr", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-13 00:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-v6-small-det-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-OCRv6 small text detection model that locates text regions in images",
+            "source": "https://huggingface.co/collections/PaddlePaddle/pp-ocrv6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 9938124,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr.PaddleOCRDetectionModel",
+                "config": {
+                    "det_model_name": "PP-OCRv6_small_det"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "paddleocr", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-13 00:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-v6-tiny-det-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-OCRv6 tiny text detection model that locates text regions in images",
+            "source": "https://huggingface.co/collections/PaddlePaddle/pp-ocrv6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 1786412,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr.PaddleOCRDetectionModel",
+                "config": {
+                    "det_model_name": "PP-OCRv6_tiny_det"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "paddleocr", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-13 00:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-v6-medium-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-OCRv6 medium OCR model that detects and reads text in images",
+            "source": "https://huggingface.co/collections/PaddlePaddle/pp-ocrv6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 164762132,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr.PaddleOCRModel",
+                "config": {
+                    "det_model_name": "PP-OCRv6_medium_det",
+                    "rec_model_name": "PP-OCRv6_medium_rec"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "paddleocr", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-13 00:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-v6-small-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-OCRv6 small OCR model that detects and reads text in images",
+            "source": "https://huggingface.co/collections/PaddlePaddle/pp-ocrv6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 31142860,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr.PaddleOCRModel",
+                "config": {
+                    "det_model_name": "PP-OCRv6_small_det",
+                    "rec_model_name": "PP-OCRv6_small_rec"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "paddleocr", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-13 00:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-v6-tiny-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-OCRv6 tiny OCR model that detects and reads text in images",
+            "source": "https://huggingface.co/collections/PaddlePaddle/pp-ocrv6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 6260676,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr.PaddleOCRModel",
+                "config": {
+                    "det_model_name": "PP-OCRv6_tiny_det",
+                    "rec_model_name": "PP-OCRv6_tiny_rec"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "paddleocr", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-13 00:00:00"
         }
     ]
 }
