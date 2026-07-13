@@ -386,6 +386,32 @@ describe("McapSettingsSidebar", () => {
     ).toBe("true");
   });
 
+  it("opens GPS topics in a Map panel without leaving Topics", () => {
+    const { probeState } = renderSidebar({
+      topics: [
+        topic("/gps", {
+          count: "5",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "sensor_msgs/NavSatFix",
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Topics" }));
+
+    expect(screen.getByText("5 msgs · Map · Raw")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "3D /gps" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Map /gps" }));
+
+    const focusedTileId = probeState.current?.focusedTileId;
+    expect(focusedTileId?.startsWith("map-")).toBe(true);
+    expect(probeState.current?.titles[focusedTileId ?? ""]).toBe("Map");
+    expect(
+      screen.getByRole("tab", { name: "Topics" }).getAttribute("aria-selected"),
+    ).toBe("true");
+  });
+
   it("searches long topic lists", () => {
     renderSidebar({
       topics: [
