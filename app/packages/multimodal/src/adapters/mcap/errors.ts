@@ -12,10 +12,18 @@ export function mcapError(error: unknown, fallback?: string): Error {
  */
 export function mcapErrorMessage(error: unknown, fallback?: string): string {
   if (error instanceof Error) {
+    if (isHttpNotFoundError(error)) {
+      return "Recording not found (HTTP 404). Check that the file still exists at its configured path and is accessible to FiftyOne.";
+    }
+
     return error.message;
   }
 
   return fallback ?? String(error);
+}
+
+function isHttpNotFoundError(error: Error): boolean {
+  return "code" in error && error.code === 404;
 }
 
 /**

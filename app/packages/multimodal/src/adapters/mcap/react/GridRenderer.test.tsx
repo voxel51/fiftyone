@@ -165,6 +165,7 @@ afterEach(() => {
   bitmapHostHarness.lastBitmap = null;
   bitmapViewHarness.lastProps = null;
   cameraPoseHarness.pose = null;
+  previewHarness.preview.error = null;
   previewHarness.preview.frame = null;
   previewHarness.preview.hasPreviewTopics = false;
   previewHarness.preview.status = "idle";
@@ -175,6 +176,17 @@ afterEach(() => {
 });
 
 describe("GridRenderer", () => {
+  it("explains when the recording cannot be found", () => {
+    previewHarness.preview.error =
+      "Recording not found (HTTP 404). Check that the file still exists at its configured path and is accessible to FiftyOne.";
+    previewHarness.preview.status = "error";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(screen.getByText("Preview unavailable")).toBeTruthy();
+    expect(screen.getByText(previewHarness.preview.error)).toBeTruthy();
+  });
+
   it("shows idle as an empty no-source state without loading animation", () => {
     previewHarness.preview.status = "idle";
     previewHarness.preview.hasPreviewTopics = false;
