@@ -388,6 +388,39 @@ describe("useMcap3dSelection", () => {
     expect(viewStateStore.getSnapshot()).not.toHaveProperty("showCameraImages");
   });
 
+  it("keeps the outgoing source shape while the next stream is unbound", () => {
+    let sourceKey = "source-a";
+    useSceneInventoryMock.mockReturnValue([lidarTop]);
+    const { rerender } = renderHook(
+      () => useMcap3dSelection({ sourceKey, viewStateStore }),
+      {
+        wrapper: ({ children }) => (
+          <McapPanelVisibilityProvider scopeKey="dataset-a:field-a">
+            {children}
+          </McapPanelVisibilityProvider>
+        ),
+      },
+    );
+
+    expect(viewStateStore.getSnapshot().renderableSourceIds).toEqual([
+      lidarTop.id,
+    ]);
+
+    sourceKey = "";
+    useSceneInventoryMock.mockReturnValue([lidarFront, boxes]);
+    rerender();
+    expect(viewStateStore.getSnapshot().renderableSourceIds).toEqual([
+      lidarTop.id,
+    ]);
+
+    sourceKey = "source-b";
+    rerender();
+    expect(viewStateStore.getSnapshot().renderableSourceIds).toEqual([
+      lidarFront.id,
+      boxes.id,
+    ]);
+  });
+
   it("restores per-tile visibility before applying fresh defaults", () => {
     const first = renderSelection([lidarTop, lidarFront, boxes]);
     expect(localStorage.getItem("fiftyone.mcap.panel-visibility")).toBeNull();
@@ -413,16 +446,26 @@ describe("useMcap3dSelection", () => {
 
 function renderSelection(
   sources: readonly SceneSource[],
-  props: Parameters<typeof useMcap3dSelection>[0] = {},
+  props: Omit<Parameters<typeof useMcap3dSelection>[0], "sourceKey"> & {
+    readonly sourceKey?: string;
+  } = {},
 ) {
   useSceneInventoryMock.mockReturnValue(sources);
-  return renderHook(() => useMcap3dSelection({ ...props, viewStateStore }), {
-    wrapper: ({ children }) => (
-      <McapPanelVisibilityProvider scopeKey="dataset-a:field-a">
-        {children}
-      </McapPanelVisibilityProvider>
-    ),
-  });
+  return renderHook(
+    () =>
+      useMcap3dSelection({
+        ...props,
+        sourceKey: props.sourceKey ?? "source-a",
+        viewStateStore,
+      }),
+    {
+      wrapper: ({ children }) => (
+        <McapPanelVisibilityProvider scopeKey="dataset-a:field-a">
+          {children}
+        </McapPanelVisibilityProvider>
+      ),
+    },
+  );
 }
 
 function viewStateSnapshot(

@@ -174,6 +174,16 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
   const [cameraNavigationMode, setCameraNavigationMode] =
     useState<Mcap3dCameraNavigationMode>(viewStateRestore.cameraNavigationMode);
+  const carriedTargetComposition = viewStateStore
+    .getSnapshot()
+    .navigationCompositions.find(
+      (composition) => composition.kind === "target-relative",
+    );
+  const carriedCameraTargetFrameId =
+    cameraNavigationMode === "relative" &&
+    carriedTargetComposition?.kind === "target-relative"
+      ? carriedTargetComposition.targetFrameId
+      : null;
   const {
     cameraSources,
     cameraTopics,
@@ -187,6 +197,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     poseSources,
     poseTopics,
     primarySourceId,
+    renderableSourceIds,
     restoredSourceShapeMatches,
     sceneAnnotationSources,
     sceneAnnotationTopics,
@@ -196,7 +207,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     selectedTopicsKey,
     setSourcesEnabled,
     toggleSource,
-  } = useMcap3dSelection({ restore: viewStateRestore });
+  } = useMcap3dSelection({ restore: viewStateRestore, sourceKey });
   const selectedTopicStatuses = useMcapTopicStatuses(selectedTopics);
   const selectedSourcePending = selectedTopicStatuses.some(
     (status) => status === "loading",
@@ -304,6 +315,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     localUseRecommendedWorldFrame,
     localUpdateWorldFrameId,
     localWorldFrameId,
+    navigationReferenceSettled,
     omittedFrameIds,
     omittedSourceIds,
     referenceTransition,
@@ -321,6 +333,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     gridTopics: mapLayerTopics,
     onPreferredCameraTargetFrameIdChange: setPreferredCameraTargetFrameId,
     onPreferredWorldFrameIdChange: setPreferredWorldFrameId,
+    carriedCameraTargetFrameId,
     playbackTimeNs,
     pointCloudTopics,
     poseFrames,
@@ -851,19 +864,21 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     trackingMode,
   } = useMcap3dCameraTracking({
     cameraTargetFrameId,
+    cameraTargetSelectionSource,
     defaultTrackingMode,
     frameTransforms,
     placementStatus,
     playbackTimeNs,
     provisionalFrameIds,
     provisionalPlaybackFrame,
-    navigationRestoreCompatible: restoredSourceShapeMatches,
     cameraNavigationMode,
     onCameraPoseSample: publishViewpointPose,
+    renderableSourceIds,
     restore: viewStateRestore,
     sceneUpAxis,
     selectedTopicsKey,
     onDefaultTrackingModeChange: setDefaultTrackingMode,
+    navigationReferenceSettled,
     sourceKey,
     suspendAutoFollowAtReference:
       cameraTargetSelectionSource === "auto" &&

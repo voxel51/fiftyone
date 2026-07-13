@@ -171,6 +171,22 @@ describe("useMcap3dFrameSelection", () => {
     expect(result.current.cameraTargetFrameId).toBe("base_link");
   });
 
+  it("keeps a carried automatic camera target when it exists", () => {
+    const { result } = renderHook(useMcap3dFrameSelection, {
+      initialProps: selectionProps({
+        ...pointCloudObservation("base_link"),
+        frameTransforms: transforms([
+          ["map", "base_link"],
+          ["base_link", "sensor_target"],
+        ]),
+        carriedCameraTargetFrameId: "sensor_target",
+      }),
+    });
+
+    expect(result.current.cameraTargetFrameId).toBe("sensor_target");
+    expect(result.current.cameraTargetSelectionSource).toBe("auto");
+  });
+
   it("falls back to the world frame for the camera target when no ego frame exists", () => {
     const { result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
@@ -408,10 +424,31 @@ describe("useMcap3dFrameSelection", () => {
     rerender(connectedProps);
     expect(result.current.worldFrameId).toBe("velodyne");
     expect(result.current.pendingPromotion).not.toBeNull();
+    expect(result.current.navigationReferenceSettled).toBe(false);
     expect(getPlacementReadiness).toHaveBeenCalledTimes(1);
 
     rerender({ ...connectedProps, playbackTimeNs: 20n });
     expect(getPlacementReadiness).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not expose a navigation reference before transform bootstrap settles", () => {
+    const loading = transforms([]);
+    const { rerender, result } = renderHook(useMcap3dFrameSelection, {
+      initialProps: selectionProps({
+        ...pointCloudObservation("lidar"),
+        frameTransforms: loading,
+      }),
+    });
+
+    expect(result.current.navigationReferenceSettled).toBe(false);
+
+    rerender(
+      selectionProps({
+        ...pointCloudObservation("lidar"),
+        frameTransforms: { ...loading, status: "ready" },
+      }),
+    );
+    expect(result.current.navigationReferenceSettled).toBe(true);
   });
 
   it("commits the exact transform that passes the promotion gate", () => {
