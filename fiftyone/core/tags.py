@@ -354,7 +354,10 @@ class TemporalTags(object):
             return 0
 
         query = _build_query(
-            self._dataset._doc.id, None, sample_ids=self._sample_ids
+            self._dataset._doc.id,
+            None,
+            sample_ids=self._sample_ids,
+            kind=TagKind.TEMPORAL,
         )
         return collection.count_documents(query)
 
@@ -426,7 +429,10 @@ class TemporalTags(object):
             an iterator over :class:`TemporalTag` instances
         """
         query = _build_query(
-            self._dataset._doc.id, filter, sample_ids=self._sample_ids
+            self._dataset._doc.id,
+            filter,
+            sample_ids=self._sample_ids,
+            kind=TagKind.TEMPORAL,
         )
         collection = _get_existing_collection()
         if collection is None:
@@ -620,7 +626,10 @@ class TemporalTags(object):
             the number of deleted temporal tags
         """
         query = _build_query(
-            self._dataset._doc.id, filter, sample_ids=self._sample_ids
+            self._dataset._doc.id,
+            filter,
+            sample_ids=self._sample_ids,
+            kind=TagKind.TEMPORAL,
         )
         has_selector = filter is not None and not _is_empty_filter(filter)
 
@@ -683,6 +692,7 @@ class TemporalTags(object):
                 self._dataset._doc.id,
                 filter,
                 sample_ids=self._sample_ids,
+                kind=TagKind.TEMPORAL,
             )
         }
         if by_sample:
@@ -850,9 +860,7 @@ def delete_for_dataset_id(dataset_id) -> int:
     if collection is None:
         return 0
 
-    return collection.delete_many(
-        {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
-    ).deleted_count
+    return collection.delete_many({"_dataset_id": dataset_id}).deleted_count
 
 
 def delete_for_sample_ids(dataset_id, sample_ids) -> int:
@@ -874,7 +882,6 @@ def delete_for_sample_ids(dataset_id, sample_ids) -> int:
         num_deleted += collection.delete_many(
             {
                 "_dataset_id": dataset_id,
-                "kind": TagKind.TEMPORAL.value,
                 "_sample_id": {"$in": sample_oids},
             }
         ).deleted_count
@@ -887,9 +894,7 @@ def count_for_dataset_id(dataset_id) -> int:
     if collection is None:
         return 0
 
-    return collection.count_documents(
-        {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
-    )
+    return collection.count_documents({"_dataset_id": dataset_id})
 
 
 def get_orphan_dataset_ids(dataset_ids) -> list:
@@ -919,7 +924,6 @@ def count_for_dataset_ids(dataset_ids) -> int:
     return collection.count_documents(
         {
             "_dataset_id": _build_in_query(dataset_ids),
-            "kind": TagKind.TEMPORAL.value,
         }
     )
 
@@ -936,7 +940,6 @@ def delete_for_dataset_ids(dataset_ids) -> int:
     return collection.delete_many(
         {
             "_dataset_id": _build_in_query(dataset_ids),
-            "kind": TagKind.TEMPORAL.value,
         }
     ).deleted_count
 
@@ -1272,9 +1275,11 @@ def _from_export_doc(doc) -> TemporalTag:
 
 
 def _build_query(
-    dataset_id, filter: TemporalTagFilter | None, sample_ids=None
+    dataset_id, filter: TemporalTagFilter | None, sample_ids=None, kind=None
 ):
-    query = {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
+    query = {"_dataset_id": dataset_id}
+    if kind is not None:
+        query["kind"] = kind.value
 
     if sample_ids is not None:
         query["_sample_id"] = _build_in_query(list(sample_ids))
