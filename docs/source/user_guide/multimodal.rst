@@ -143,25 +143,9 @@ The map tile plots GNSS location streams (e.g. `foxglove.LocationFix` or
 position follows the playback clock, and you can hover to inspect points
 along the track and measure distances between locations.
 
-.. Placeholder: recording of the map tile
-.. .. image:: /images/multimodal/multimodal-map-tile.webp
-..    :alt: multimodal-map-tile
-..    :align: center
-
-.. _multimodal-logs-tile:
-
-Logs tile
----------
-
-The logs tile is a console view for log topics (`foxglove.Log`,
-`rcl_interfaces/msg/Log`, `rosgraph_msgs/Log`). Log entries scroll in sync
-with the playback clock, and you can pause following to scan the history or
-seek the recording to an entry of interest.
-
-.. Placeholder: recording of the logs tile
-.. .. image:: /images/multimodal/multimodal-logs-tile.webp
-..    :alt: multimodal-logs-tile
-..    :align: center
+.. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/map-panel.webp
+   :alt: multimodal-map-tile
+   :align: center
 
 .. _multimodal-plot-tile:
 
@@ -191,6 +175,21 @@ scrub through the recording.
 .. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/message-panel.webp
    :alt: multimodal-message-tile
    :align: center
+
+.. _multimodal-logs-tile:
+
+Logs tile
+---------
+
+The logs tile is a console view for log topics (`foxglove.Log`,
+`rcl_interfaces/msg/Log`, `rosgraph_msgs/Log`). Log entries scroll in sync
+with the playback clock, and you can pause following to scan the history or
+seek the recording to an entry of interest.
+
+.. Placeholder: recording of the logs tile
+.. .. image:: /images/multimodal/multimodal-logs-tile.webp
+..    :alt: multimodal-logs-tile
+..    :align: center
 
 .. _multimodal-settings-sidebar:
 
@@ -263,10 +262,9 @@ open an arbitrary local `.mcap` file (via drag-and-drop or file browser) or a
 remote URL without creating a dataset first. Local files stay in your browser
 session and are read directly — nothing is uploaded.
 
-.. Placeholder: gif showing the MCAP Explorer panel
-.. .. image:: /images/multimodal/mcap-explorer.gif
-..    :alt: mcap-explorer
-..    :align: center
+.. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/mcap-explorer.webp
+   :alt: mcap-explorer
+   :align: center
 
 .. _multimodal-temporal-tags:
 
@@ -332,10 +330,10 @@ criteria:
 Supported schemas
 _________________
 
-FiftyOne ships with built-in decoders for the message schemas below. Any
-channel whose schema is not recognized remains fully accessible via the
-:ref:`Message tile <multimodal-message-tile>`, so you can always inspect
-your data even before a dedicated decoder exists.
+FiftyOne ships with built-in decoders for visualizing the message schemas
+below in the App. Any channel whose schema is not recognized remains fully
+accessible via the :ref:`Message tile <multimodal-message-tile>`, so you can
+always inspect your data even before a dedicated decoder exists.
 
 ROS
 ---
@@ -404,7 +402,7 @@ are supported, in both their protobuf and ROS (CDR) encodings:
 
     * - Schema
       - Description
-    * - `foxglove.Image`
+    * - `foxglove.RawImage`
       - Raw camera images
     * - `foxglove.CompressedImage`
       - Compressed camera images
@@ -464,12 +462,8 @@ _______________________________
     MCAP indexing is only available in
     :ref:`FiftyOne Enterprise <fiftyone-enterprise>`. It is currently in
     **beta** and is disabled by default; contact your deployment
-    administrator or Voxel51 support to enable the feature flag for your
+    administrator or Voxel51 support to enable the feature for your
     deployment.
-
-    As we continue to refine the feature during the beta period, some of the
-    APIs and manifest fields described below may evolve in future releases.
-    We'll keep this page up to date as that happens.
 
 MCAP files are optimized for recording and playback, not for analytical
 queries. Questions like *"find every episode where a pedestrian was visible
@@ -483,6 +477,10 @@ Iceberg <https://iceberg.apache.org>`_) called **projections**. These tables
 power fast, scalable filtering, aggregation, and event search across your
 entire dataset — in the App's grid, sidebar, and query interfaces — without
 ever re-reading the source MCAPs.
+
+The indexing pipeline maintains its own decoder registry, which currently
+covers the core ROS 2, Foxglove, and JSON message schemas (e.g. images,
+point clouds, IMU readings, poses, diagnostics, and image annotations).
 
 You control exactly what gets indexed by authoring a
 :ref:`projection manifest <multimodal-manifests>`. Four kinds (*grains*) of
