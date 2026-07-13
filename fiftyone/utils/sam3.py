@@ -1150,7 +1150,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         session_id = response["session_id"]
 
         sample_detections = {
-            i + 1: fol.Detections(detections=[])
+            i: fol.Detections(detections=[])
             for i in sorted(sample.frames.keys())
         }
 
