@@ -207,8 +207,11 @@ jobs:
   e2e-verdict:
     needs: test-e2e
     # The single authoritative e2e check: shard jobs are report-only, so
-    # this job alone decides pass/fail from the merged shard reports.
-    if: always() && contains(fromJSON('["success", "failure"]'), needs.test-e2e.result)
+    # this job alone decides pass/fail from the merged shard reports. Runs
+    # on 'cancelled' too — timeout-minutes kills report as cancelled, and
+    # those runs still need a comment and a red verdict. A run-level
+    # cancellation force-cancels this job anyway.
+    if: always() && needs.test-e2e.result != 'skipped'
     timeout-minutes: 15
     runs-on: ubuntu-latest
     container:
@@ -266,8 +269,10 @@ jobs:
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
+          EXPECTED_SHARDS: "8"
         run: |
-          node scripts/report-summary.mjs merged-results.json > e2e-summary.md
+          node scripts/report-summary.mjs merged-results.json all-blob-reports > e2e-summary.md
           cat e2e-summary.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post authoritative PR comment
@@ -287,12 +292,15 @@ jobs:
               ? 'FOE'
               : 'OSS';
             const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              per_page: 100,
-            });
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              },
+            );
             const existing = comments.find((c) => c.body.includes(marker));
             if (existing) {
               await github.rest.issues.updateComment({
