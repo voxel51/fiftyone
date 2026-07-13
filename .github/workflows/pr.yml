@@ -116,6 +116,11 @@ jobs:
       needs.modified-files.outputs.e2e-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/e2e.yml
+    permissions:
+      contents: read
+      checks: read
+      # the e2e-report job upserts the authoritative e2e results comment
+      pull-requests: write
 
   lint:
     needs: modified-files

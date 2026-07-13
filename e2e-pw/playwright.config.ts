@@ -24,9 +24,12 @@ export default defineConfig({
   // src/oss/fixtures), so workers only contend for runner CPU/memory.
   workers: process.env.CI ? 2 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter:
-    process.env.CI || process.env.IS_UTILITY_DOCKER
-      ? [["line"], ["html", { open: "never" }], ["github"]]
+  reporter: process.env.CI
+    ? // blob reports are merged across shards into the authoritative PR
+      // comment and combined HTML report (see e2e-report in e2e.yml)
+      [["line"], ["blob"], ["github"]]
+    : process.env.IS_UTILITY_DOCKER
+      ? [["line"], ["html", { open: "never" }]]
       : [["line", { printSteps: true }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {

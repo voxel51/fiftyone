@@ -186,11 +186,113 @@ jobs:
         run: yarn lint
         working-directory: e2e-pw
 
-      - name: Upload test report
+      - name: Upload blob report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report-mongodb-${{ matrix.mongodb-version }}-shard-${{ matrix.shard }}
+          name: e2e-blob-shard-${{ matrix.shard }}
+          path: e2e-pw/blob-report/
+          # 3 days so reports from Friday/weekend runs survive into Monday.
+          retention-days: 3
+
+  e2e-report:
+    needs: test-e2e
+    # Reporting plumbing must not change the e2e verdict that required
+    # checks see; a red here never blocks a merge.
+    continue-on-error: true
+    if: always() && contains(fromJSON('["success", "failure"]'), needs.test-e2e.result)
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/voxel51/fiftyone-e2e:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    name: Report e2e results
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /e2e-pw/**
+          sparse-checkout-cone-mode: false
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v8
+        with:
+          pattern: e2e-blob-shard-*
+          path: e2e-pw/all-blob-reports
+          merge-multiple: true
+
+      - name: Cache E2E Node Modules
+        id: e2e-node-cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            e2e-pw/node_modules
+          key: node-modules-${{ hashFiles('e2e-pw/yarn.lock') }}
+
+      - name: Install E2E dependencies
+        run: yarn install
+        working-directory: e2e-pw
+
+      - name: Merge shard reports
+        working-directory: e2e-pw
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: merged-results.json
+        run: yarn playwright merge-reports --reporter html,json ./all-blob-reports
+
+      - name: Upload merged report
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-merged
           path: e2e-pw/playwright-report/
           # 3 days so reports from Friday/weekend runs survive into Monday.
           retention-days: 3
+
+      - name: Summarize
+        working-directory: e2e-pw
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node scripts/report-summary.mjs merged-results.json > e2e-summary.md
+          cat e2e-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post authoritative PR comment
+        # Same-repo PRs only: fork tokens are read-only, and the job summary
+        # above still carries the itemized list there.
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('e2e-pw/e2e-summary.md', 'utf8');
+            const marker = '<!-- e2e-authoritative-report -->';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

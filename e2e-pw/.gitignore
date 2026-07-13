@@ -1,6 +1,10 @@
 node_modules/
 /test-results/
 /playwright-report/
+/blob-report/
+/all-blob-reports/
+merged-results.json
+e2e-summary.md
 /playwright/.cache/
 .build
 
