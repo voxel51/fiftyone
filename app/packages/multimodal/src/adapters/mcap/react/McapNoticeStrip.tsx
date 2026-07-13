@@ -15,6 +15,7 @@ import {
 } from "@voxel51/voodo";
 import React from "react";
 import type { McapHealthNotice, McapHealthSeverity } from "./mcap-health";
+import styles from "./McapNoticeStrip.module.css";
 
 const SEVERITY_ICON: Record<McapHealthSeverity, IconName> = {
   error: IconName.Error,
@@ -57,11 +58,13 @@ const McapNoticeStrip: React.FC<{
             orientation={Orientation.Row}
             spacing={Spacing.Sm}
           >
-            <Icon
-              color={SEVERITY_ICON_COLOR[notice.severity]}
-              name={SEVERITY_ICON[notice.severity]}
-              size={Size.Sm}
-            />
+            <span className={styles.iconSlot}>
+              <Icon
+                color={SEVERITY_ICON_COLOR[notice.severity]}
+                name={SEVERITY_ICON[notice.severity]}
+                size={Size.Sm}
+              />
+            </span>
             <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
               <Text
                 color={SEVERITY_TEXT_COLOR[notice.severity]}
