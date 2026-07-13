@@ -48,6 +48,10 @@ import { isMcapReadCancelledError } from "../errors";
 import { MCAP_ACTIVE_TIMELINE } from "../types";
 import { useSetMcapDataStream } from "./mcap-data-stream-context";
 import {
+  decodedCacheBudgetBytes,
+  nextDecodedCacheLookaheadSeconds,
+} from "./mcap-decoded-cache-policy";
+import {
   getMcapNetworkHealth,
   shouldDeferMcapIdleWorkForStore,
 } from "./mcap-network-health";
@@ -160,12 +164,6 @@ interface DerivedMcapPlaybackPolicy extends McapPlaybackPolicy {
   readonly startupMaxPrefetchBatch: number;
 
   /**
-   * Number of bounded worker batches needed to cover one full lookahead window,
-   * derived from `lookaheadSeconds / prefetchBatchSeconds`.
-   */
-  readonly prefetchBatchesPerLookahead: number;
-
-  /**
    * Maximum entries retained per topic cache, derived from tick rate,
    * lookahead window, and `topicCacheLookaheadMultiplier`.
    */
@@ -268,6 +266,15 @@ export function useRegisterMcapDataStream({
 
   // Stable refs — read in RAF/subscribe callbacks without closure capture.
   const topicCachesRef = useRef<Map<string, McapTopicCache>>(new Map());
+  const decodedCacheBudgetBytesRef = useRef(0);
+  if (decodedCacheBudgetBytesRef.current === 0) {
+    decodedCacheBudgetBytesRef.current = decodedCacheBudgetBytes(
+      reportedDeviceMemoryGb(),
+    );
+  }
+  const backgroundLookaheadSecondsRef = useRef(
+    PLAYBACK_POLICY.lookaheadSeconds,
+  );
   // Pending fetches keyed by tick → set of topics each in-flight request
   // is covering. Per-topic so a request that omits a newly-subscribed
   // topic doesn't make collectMissingTicks think that topic is in flight.
@@ -319,9 +326,11 @@ export function useRegisterMcapDataStream({
   );
   const streamPoliciesRef = useRef(streamPolicies);
   const onPlayheadDataReadyRef = useRef(onPlayheadDataReady);
+  // This effect keeps active topic discovery current without rebuilding streams.
   useEffect(() => {
     allTopicsRef.current = allTopics;
   }, [allTopics]);
+  // This effect keeps readiness gating aligned with the latest blocking topics.
   useEffect(() => {
     blockingTopicsRef.current = new Set(blockingTopics);
   }, [blockingTopics]);
@@ -329,12 +338,15 @@ export function useRegisterMcapDataStream({
   useEffect(() => {
     onPlayheadDataReadyRef.current = onPlayheadDataReady;
   }, [onPlayheadDataReady]);
+  // This effect keeps stale-age evaluation current inside stable callbacks.
   useEffect(() => {
     staleMediaWarningNsRef.current = staleMediaWarningNs;
   }, [staleMediaWarningNs]);
+  // This effect keeps stale-warning topic membership current inside callbacks.
   useEffect(() => {
     staleWarningTopicsRef.current = new Set(staleWarningTopics);
   }, [staleWarningTopics]);
+  // This effect keeps per-topic sync policies current without stream churn.
   useEffect(() => {
     streamPoliciesRef.current = streamPolicies;
   }, [streamPolicies]);
@@ -569,6 +581,7 @@ export function useRegisterMcapDataStream({
     pendingPlanThroughputFloorRef.current = null;
     remoteStartupGateDecisionRef.current = null;
     nextLookaheadRefreshTimeRef.current = 0;
+    backgroundLookaheadSecondsRef.current = PLAYBACK_POLICY.lookaheadSeconds;
     lastObservedPlayheadSecRef.current = null;
     loopRunwayStartTickKeyRef.current = null;
     clearPausedIdleWarmupTimer();
@@ -963,6 +976,50 @@ export function useRegisterMcapDataStream({
     }
   }, []);
 
+  const rebalanceDecodedCaches = useCallback(
+    (pruneSpeculative: boolean) => {
+      const currentIndex = indexRef.current;
+      if (!currentIndex) return;
+
+      const caches = topicCachesRef.current;
+      let decodedBytes = 0;
+      for (const cache of caches.values()) {
+        decodedBytes += cache.decodedBytes;
+      }
+
+      const budgetBytes = decodedCacheBudgetBytesRef.current;
+      backgroundLookaheadSecondsRef.current = nextDecodedCacheLookaheadSeconds({
+        budgetBytes,
+        currentSeconds: backgroundLookaheadSecondsRef.current,
+        decodedBytes,
+        maxSeconds: PLAYBACK_POLICY.lookaheadSeconds,
+        minSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+        stepSeconds: PLAYBACK_POLICY.prefetchBatchSeconds,
+      });
+
+      if (decodedBytes <= budgetBytes || !pruneSpeculative) return;
+
+      const playheadSec = getPlayhead(store);
+      const protectedStartTick = currentIndex.nearestTick(
+        Math.max(0, playheadSec - PLAYBACK_POLICY.startupLookaheadSeconds),
+      );
+      const protectedEndTick = currentIndex.nearestTick(
+        Math.min(
+          currentIndex.durationSec,
+          playheadSec + backgroundLookaheadSecondsRef.current,
+        ),
+      );
+      if (protectedStartTick === undefined || protectedEndTick === undefined) {
+        return;
+      }
+
+      for (const cache of caches.values()) {
+        cache.pruneOutside(protectedStartTick, protectedEndTick);
+      }
+    },
+    [store],
+  );
+
   // Core batch-fetch helper. Fetches ticks for the active topic set, fills
   // per-topic caches, and (since the engine doesn't tick when paused) also
   // pushes any fetched frame at the current playhead to atoms so paused
@@ -1027,6 +1084,7 @@ export function useRegisterMcapDataStream({
               pinned: operation === "loopback-lookahead",
             });
           }
+          rebalanceDecodedCaches(operation === "background-lookahead");
           const currentIndex = indexRef.current;
           if (!currentIndex) return;
           const tick = currentIndex.nearestTick(getPlayhead(store));
@@ -1070,6 +1128,7 @@ export function useRegisterMcapDataStream({
       handleFetchFailure,
       handleFetchSuccess,
       publishStreamStatuses,
+      rebalanceDecodedCaches,
     ],
   );
 
@@ -1112,6 +1171,7 @@ export function useRegisterMcapDataStream({
           if (activeFetchedTopics.length === 0) return;
 
           distributeWindowToCaches(window, caches, activeFetchedTopics);
+          rebalanceDecodedCaches(false);
           pushTickToStore(
             activeTopicsInCaches(caches, activeTopics),
             tick,
@@ -1141,6 +1201,7 @@ export function useRegisterMcapDataStream({
       handleFetchFailure,
       handleFetchSuccess,
       publishStreamStatuses,
+      rebalanceDecodedCaches,
     ],
   );
 
@@ -1193,10 +1254,8 @@ export function useRegisterMcapDataStream({
       }
 
       const secondsToLoopEnd = loopEndSec - timeSec;
-      if (
-        secondsToLoopEnd < 0 ||
-        secondsToLoopEnd > PLAYBACK_POLICY.lookaheadSeconds
-      ) {
+      const lookaheadSeconds = backgroundLookaheadSecondsRef.current;
+      if (secondsToLoopEnd < 0 || secondsToLoopEnd > lookaheadSeconds) {
         return false;
       }
 
@@ -1213,7 +1272,7 @@ export function useRegisterMcapDataStream({
 
       const missing = collectMissingTicksForTopics(
         loopStartSec,
-        loopStartSec + PLAYBACK_POLICY.lookaheadSeconds,
+        loopStartSec + lookaheadSeconds,
         PLAYBACK_POLICY.maxPrefetchBatch,
         activeTopics,
       );
@@ -1264,7 +1323,12 @@ export function useRegisterMcapDataStream({
       return true;
     }
 
-    const endSec = timeSec + PLAYBACK_POLICY.pausedWarmupRunwaySeconds;
+    const endSec =
+      timeSec +
+      Math.min(
+        PLAYBACK_POLICY.pausedWarmupRunwaySeconds,
+        backgroundLookaheadSecondsRef.current,
+      );
     const blockingMissing = collectMissingTicksForTopics(
       timeSec,
       endSec,
@@ -1334,6 +1398,7 @@ export function useRegisterMcapDataStream({
     [runPausedIdleWarmup, store],
   );
 
+  // This effect exposes the current idle-warmup scheduler to timer callbacks.
   useEffect(() => {
     schedulePausedIdleWarmupRef.current = schedulePausedIdleWarmup;
     return () => {
@@ -1343,6 +1408,7 @@ export function useRegisterMcapDataStream({
     };
   }, [schedulePausedIdleWarmup]);
 
+  // This effect starts paused warmup and cancels it while playback is active.
   useEffect(() => {
     if (isPlaying) {
       clearPausedIdleWarmupTimer();
@@ -1428,7 +1494,7 @@ export function useRegisterMcapDataStream({
     ],
   );
 
-  // Register the single engine stream and the proactive lookahead subscription.
+  // This effect registers the engine stream and proactive lookahead subscription.
   useEffect(() => {
     if (!index || !source) return undefined;
 
@@ -1651,6 +1717,7 @@ export function useRegisterMcapDataStream({
             activeTopics,
           ),
         fetchBatch,
+        lookaheadSeconds: backgroundLookaheadSecondsRef.current,
         policy: PLAYBACK_POLICY,
         timeSec,
       });
@@ -1769,6 +1836,7 @@ export function useRegisterMcapDataStream({
     [source],
   );
 
+  // This effect publishes the current recording stream through React context.
   useEffect(() => {
     setDataStream({
       getTimelineIndex,
@@ -1809,9 +1877,6 @@ function deriveMcapPlaybackPolicy(
     ...policy,
     maxPrefetchBatch: Math.ceil(tickRateHz * policy.prefetchBatchSeconds),
     pausedWarmupRunwaySeconds,
-    prefetchBatchesPerLookahead: Math.ceil(
-      policy.lookaheadSeconds / policy.prefetchBatchSeconds,
-    ),
     startupLookaheadSeconds,
     startupMaxPrefetchBatch: Math.max(
       policy.startupMinTicks,
@@ -1839,6 +1904,7 @@ function fillMissingLookaheadFrom({
   activeTopics,
   collectMissingTicks,
   fetchBatch,
+  lookaheadSeconds,
   policy,
   timeSec,
 }: {
@@ -1853,13 +1919,14 @@ function fillMissingLookaheadFrom({
     activeTopics: string[],
     operation: McapDataOperation,
   ) => boolean;
+  lookaheadSeconds: number;
   policy: DerivedMcapPlaybackPolicy;
   timeSec: number;
 }): boolean {
-  const endSec = timeSec + policy.lookaheadSeconds;
+  const endSec = timeSec + lookaheadSeconds;
   const batchesToQueue = Math.min(
     policy.prefetchBatchesPerPass,
-    policy.prefetchBatchesPerLookahead,
+    Math.ceil(lookaheadSeconds / policy.prefetchBatchSeconds),
   );
   let queued = false;
   for (let i = 0; i < batchesToQueue; i++) {
@@ -2071,6 +2138,15 @@ function staleAgeForMessage(
   if (staleMediaWarningNs <= 0n) return null;
   const ageNs = tick >= msg.timelineTimeNs ? tick - msg.timelineTimeNs : 0n;
   return ageNs > staleMediaWarningNs ? ageNs : null;
+}
+
+function reportedDeviceMemoryGb(): number | null {
+  if (typeof navigator === "undefined") return null;
+  const memoryGb = (navigator as Navigator & { deviceMemory?: number })
+    .deviceMemory;
+  return memoryGb !== undefined && Number.isFinite(memoryGb) && memoryGb > 0
+    ? memoryGb
+    : null;
 }
 
 function distributeWindowToCaches(
