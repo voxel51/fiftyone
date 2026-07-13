@@ -4,7 +4,10 @@
  * display-ready RGBA with per-encoding handling for color, mono, depth,
  * packed-YUV, and Bayer layouts.
  */
-import type { DecodedAttributeValue } from "../../../decoders";
+import type {
+  DecodedAttributeValue,
+  RawImageDepthData,
+} from "../../../decoders";
 
 const RGBA_CHANNEL_COUNT = 4;
 const UINT8_MAX = 255;
@@ -27,6 +30,7 @@ interface ImageLayout {
  */
 export interface DecodeImageResult {
   readonly attributes?: Record<string, DecodedAttributeValue>;
+  readonly depth?: RawImageDepthData;
   readonly rgba?: Uint8Array;
   readonly unsupportedReason?: string;
 }
@@ -314,16 +318,15 @@ function depth16Rgba({
 }: ImageLayout & {
   readonly littleEndian: boolean;
 }): DecodeImageResult {
+  const values = new Uint16Array(width * height);
   const view = dataView(data);
-  return depthRgba({
-    height,
-    readValue: (pixelIndex) => {
-      const y = Math.floor(pixelIndex / width);
-      const x = pixelIndex % width;
-      return view.getUint16(y * step + x * 2, littleEndian);
-    },
-    width,
-  });
+  for (let y = 0; y < height; y++) {
+    const rowOffset = y * step;
+    for (let x = 0; x < width; x++) {
+      values[y * width + x] = view.getUint16(rowOffset + x * 2, littleEndian);
+    }
+  }
+  return depthRgba(values, 0.001);
 }
 
 function depth32Rgba({
@@ -335,35 +338,27 @@ function depth32Rgba({
 }: ImageLayout & {
   readonly littleEndian: boolean;
 }): DecodeImageResult {
+  const values = new Float32Array(width * height);
   const view = dataView(data);
-  return depthRgba({
-    height,
-    readValue: (pixelIndex) => {
-      const y = Math.floor(pixelIndex / width);
-      const x = pixelIndex % width;
-      return view.getFloat32(y * step + x * 4, littleEndian);
-    },
-    width,
-  });
+  for (let y = 0; y < height; y++) {
+    const rowOffset = y * step;
+    for (let x = 0; x < width; x++) {
+      values[y * width + x] = view.getFloat32(rowOffset + x * 4, littleEndian);
+    }
+  }
+  return depthRgba(values, 1);
 }
 
-function depthRgba({
-  height,
-  readValue,
-  width,
-}: {
-  readonly height: number;
-  readonly readValue: (pixelIndex: number) => number;
-  readonly width: number;
-}): DecodeImageResult {
-  const pixelCount = width * height;
-  const values = new Float32Array(pixelCount);
+function depthRgba(
+  values: Uint16Array | Float32Array,
+  metersPerUnit: number,
+): DecodeImageResult {
+  const pixelCount = values.length;
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
 
   for (let index = 0; index < pixelCount; index++) {
-    const value = readValue(index);
-    values[index] = value;
+    const value = values[index];
     if (value > 0 && Number.isFinite(value)) {
       min = Math.min(min, value);
       max = Math.max(max, value);
@@ -391,6 +386,7 @@ function depthRgba({
           depthMin: min,
         }
       : undefined,
+    depth: { metersPerUnit, values },
     rgba,
   };
 }
