@@ -33,11 +33,6 @@ type GridSizeHintSample = {
   } | null;
 };
 
-type GridSelectionSample = {
-  _id?: string;
-  id?: string;
-};
-
 /** Error boundary for a sample renderer with fallback behavior. */
 class GridCustomRendererErrorBoundary extends React.Component<
   React.PropsWithChildren<{ onError: (error: Error) => void }>,
@@ -231,6 +226,26 @@ const GridCustomRendererWrapper = ({
   );
 };
 
+const GridCustomRenderer = ({
+  Renderer,
+  ctx,
+  onRetainedBytesChange,
+}: {
+  readonly Renderer: React.ComponentType<SampleRendererProps>;
+  readonly ctx: SampleRendererRenderContext;
+  readonly onRetainedBytesChange: (retainedBytes: number) => void;
+}) => {
+  const modalActive = fos.useModalActive();
+
+  return (
+    <Renderer
+      ctx={ctx}
+      isGridActive={!modalActive}
+      onRetainedBytesChange={onRetainedBytesChange}
+    />
+  );
+};
+
 /**
  * Spotlight-compatible adapter that mounts a sample renderer directly in grid tiles.
  *
@@ -254,6 +269,7 @@ export class GridCustomRendererItem {
   private destroyed = false;
   private selected = false;
   private inSelectionMode = false;
+  private retainedSizeBytes?: number;
   private dimensions?: GridItemDimensions;
 
   constructor(private readonly config: GridCustomRendererItemConfig) {
@@ -282,6 +298,16 @@ export class GridCustomRendererItem {
   private dispatchEvent(eventType: string, detail?: unknown) {
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
+
+  private handleRetainedBytesChange = (retainedBytes: number) => {
+    const normalized = getFiniteSizeBytes(retainedBytes);
+    if (this.retainedSizeBytes === normalized) {
+      return;
+    }
+
+    this.retainedSizeBytes = normalized;
+    this.dispatchEvent("refresh");
+  };
 
   private isDatasetFailOpen() {
     return fos.isGridCustomRendererFailOpen(this.config.ctx.dataset.name);
@@ -317,7 +343,11 @@ export class GridCustomRendererItem {
             onOpenModal={this.handleOpenModalClick}
             onSelect={this.handleSelectSampleClick}
           >
-            <Renderer ctx={ctx} />
+            <GridCustomRenderer
+              Renderer={Renderer}
+              ctx={ctx}
+              onRetainedBytesChange={this.handleRetainedBytesChange}
+            />
             <div style={FOOTER_STYLES}>
               <GridTagBubbles sample={sample} />
               {ctx.media?.mediaType === MEDIA_TYPE_MULTIMODAL ? (
@@ -509,13 +539,12 @@ export class GridCustomRendererItem {
       isSampleFile && safeSample
         ? getFiniteSizeBytes(safeSample.metadata?.size_bytes)
         : 0;
-    const sourceSizeHintBytes = getSourceSizeHintBytes(
-      sourceSizeBytes,
-      this.config.ctx.media.mediaType,
-    );
+    const retainedSizeBytes =
+      this.retainedSizeBytes ??
+      getSourceSizeHintBytes(sourceSizeBytes, this.config.ctx.media.mediaType);
 
     return Math.ceil(
-      MIN_GRID_RENDERER_SIZE_BYTES + renderedSizeBytes + sourceSizeHintBytes,
+      MIN_GRID_RENDERER_SIZE_BYTES + renderedSizeBytes + retainedSizeBytes,
     );
   }
 }

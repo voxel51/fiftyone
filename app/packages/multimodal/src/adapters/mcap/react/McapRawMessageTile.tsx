@@ -1,7 +1,6 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
-import { useSetTileTitle } from "@fiftyone/tiling";
-import React, { useCallback, useEffect, useMemo } from "react";
-import { rawNodeToJson } from "../resources/raw-record-prune";
+import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { McapRawMessageRecordResult } from "../types";
 import { useAddMcapFieldToPlot } from "./use-add-mcap-field-to-plot";
 import { useMcapDataStream } from "./mcap-data-stream-context";
@@ -12,6 +11,7 @@ import type { McapTileProps } from "./mcap-tile-types";
 import McapRawMessageTree from "./McapRawMessageTree";
 import rawStyles from "./McapRawMessageTile.module.css";
 import McapRawMessageTileSettings from "./McapRawMessageTileSettings";
+import { useRegisterMcapTileSettings } from "./mcap-tile-settings-context";
 import styles from "./McapTile.module.css";
 import { useCopyFeedback } from "./use-copy-feedback";
 
@@ -25,6 +25,13 @@ import { useCopyFeedback } from "./use-copy-feedback";
  * (playhead-anchored, idle lane).
  */
 const McapRawMessageTile: React.FC<McapTileProps> = () => {
+  const tileId = useTileId();
+  // Settings render through the sidebar's tile-settings registry, not here.
+  const settingsRegistration = useMemo(
+    () => ({ content: <McapRawMessageTileSettings /> }),
+    [],
+  );
+  useRegisterMcapTileSettings(tileId, settingsRegistration);
   const topic = useMcapRawTileTopic();
   const setTileTitle = useSetTileTitle();
   const { recordsByTopic, subscribeRecord } = useMcapRawMessageContext();
@@ -48,6 +55,7 @@ const McapRawMessageTile: React.FC<McapTileProps> = () => {
     }
   }, [ensureEnumeration, topic]);
 
+  // This effect keeps the tile title synchronized with the selected topic.
   useEffect(() => {
     setTileTitle(topic ?? "Message", { source: "auto" });
   }, [setTileTitle, topic]);
@@ -78,7 +86,6 @@ const McapRawMessageTile: React.FC<McapTileProps> = () => {
 
   return (
     <>
-      <McapRawMessageTileSettings />
       <div className={rawStyles.body} data-cy="mcap-raw-tile">
         {!topic ? (
           <div className={styles.loading}>
@@ -123,17 +130,32 @@ function MetaRow({
   readonly topic: string;
 }) {
   const dataStream = useMcapDataStream();
-  const [copied, showCopied] = useCopyFeedback(false);
+  const { readFullMessageJson } = useMcapRawMessageContext();
+  const [copying, setCopying] = useState(false);
+  const [copyFeedback, showCopyFeedback] = useCopyFeedback<
+    "idle" | "copied" | "failed"
+  >("idle");
 
-  const handleCopyMessage = useCallback(() => {
-    if (!result.root) {
+  const handleCopyMessage = useCallback(async () => {
+    if (!result.root || copying) {
       return;
     }
-    void navigator.clipboard?.writeText(
-      JSON.stringify(rawNodeToJson(result.root), null, 2),
-    );
-    showCopied(true);
-  }, [result.root, showCopied]);
+    if (!navigator.clipboard?.writeText) {
+      showCopyFeedback("failed");
+      return;
+    }
+
+    setCopying(true);
+    try {
+      const json = await readFullMessageJson(topic, result.validFromNs);
+      await navigator.clipboard.writeText(json);
+      showCopyFeedback("copied");
+    } catch {
+      showCopyFeedback("failed");
+    } finally {
+      setCopying(false);
+    }
+  }, [copying, readFullMessageJson, result, showCopyFeedback, topic]);
 
   const startTimeNs = dataStream?.getTimelineIndex()?.startTimeNs;
   const relativeTime =
@@ -168,7 +190,7 @@ function MetaRow({
       {result.truncated ? (
         <span
           className={rawStyles.metaBadge}
-          title="Large fields are shortened for display; copies carry the same shortened data"
+          title="Large fields are shortened for display; Copy message retrieves the complete decoded message"
         >
           truncated
         </span>
@@ -177,11 +199,18 @@ function MetaRow({
         <button
           className={rawStyles.copyMessageButton}
           data-cy="mcap-raw-copy-message"
-          onClick={handleCopyMessage}
+          disabled={copying}
+          onClick={() => void handleCopyMessage()}
           title="Copy the whole message as JSON"
           type="button"
         >
-          {copied ? "Copied" : "Copy message"}
+          {copying
+            ? "Copying…"
+            : copyFeedback === "copied"
+              ? "Copied"
+              : copyFeedback === "failed"
+                ? "Copy failed"
+                : "Copy message"}
         </button>
       ) : null}
     </div>

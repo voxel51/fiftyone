@@ -13,6 +13,7 @@ export * from "./fetch";
 export * from "./format";
 export * from "./ids";
 export * from "./media";
+export * from "./modal-loading-latency";
 export * from "./order";
 export * from "./paths";
 export * from "./permission";

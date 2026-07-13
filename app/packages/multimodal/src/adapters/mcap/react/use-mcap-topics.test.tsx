@@ -4,10 +4,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type { StreamInventory } from "../../../schemas/v1";
 import type { McapResourceClient } from "../types";
+import {
+  publishMcapSourceBootstrap,
+  resetMcapSourceBootstrapCacheForTests,
+} from "../source-bootstrap-cache";
 import { useMcapTopics, type McapTopicsState } from "./use-mcap-topics";
 
 afterEach(() => {
   cleanup();
+  resetMcapSourceBootstrapCacheForTests();
 });
 
 describe("useMcapTopics", () => {
@@ -30,6 +35,61 @@ describe("useMcapTopics", () => {
       expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
     });
     expect(client.readTopics).toHaveBeenCalledWith({ source });
+  });
+
+  it("renders grid bootstrap topics immediately while revalidating", async () => {
+    const source = createSource("bootstrapped");
+    const cachedTopic = createTopic("cached-camera");
+    let releaseRead = () => undefined as void;
+    const pendingRead = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    const client = createTopicsClient(async () => {
+      await pendingRead;
+      return [createTopic("fresh-camera")];
+    });
+    publishMcapSourceBootstrap(source, { topics: [cachedTopic] });
+    const states: McapTopicsState[] = [];
+
+    render(
+      <TopicsHarness
+        client={client}
+        label="topics"
+        onState={(state) => states.push(state)}
+        source={source}
+      />,
+    );
+
+    expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+    expect(states.at(-1)?.topics.map((topic) => topic.streamId)).toEqual([
+      "cached-camera",
+    ]);
+    expect(client.readTopics).toHaveBeenCalledWith({ source });
+
+    releaseRead();
+    await waitFor(() => {
+      expect(states.at(-1)?.topics.map((topic) => topic.streamId)).toEqual([
+        "fresh-camera",
+      ]);
+    });
+  });
+
+  it("observes bootstrap topics published after the source first renders", () => {
+    const source = createSource("late-bootstrap");
+    const client = createTopicsClient(
+      () => new Promise<readonly StreamInventory[]>(() => undefined),
+    );
+    const { rerender } = render(
+      <TopicsHarness client={client} label="topics" source={source} />,
+    );
+    expect(screen.getByTestId("topics").textContent).toBe("loading:0:");
+
+    publishMcapSourceBootstrap(source, {
+      topics: [createTopic("cached-camera")],
+    });
+    rerender(<TopicsHarness client={client} label="topics" source={source} />);
+
+    expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
   });
 
   it("surfaces failed reads and retries the same source later", async () => {

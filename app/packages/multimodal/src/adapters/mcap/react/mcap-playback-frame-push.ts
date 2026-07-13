@@ -9,6 +9,7 @@ import {
 import type { PlaybackStore } from "@fiftyone/playback/src/lib/playback/types";
 import type { McapTopicCache } from "./mcap-topic-cache";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
+import { setMcapTopicDiagnostics } from "./mcap-stream-status-state";
 
 /**
  * Publishes each active topic's frame at `tick` into the playback store.
@@ -37,6 +38,13 @@ export function pushTickToStore(
     if (!cache) continue;
     const msg = cache.get(tick);
     const viz = msg?.decoded.output.visualization ?? null;
+    if (msg !== undefined) {
+      setMcapTopicDiagnostics(
+        store,
+        topic,
+        msg?.decoded.output.diagnostics ?? [],
+      );
+    }
     let toWrite: McapTopicPlaybackFrame<unknown> | null;
     if (msg === undefined) {
       toWrite = lastFrame.get(topic) ?? null;

@@ -10,10 +10,6 @@ import { humanReadableBytes } from "@fiftyone/utilities";
 import React, { useEffect, useRef } from "react";
 import type { McapResourceClient } from "../types";
 import {
-  isMcapLatencyDebugEnabled,
-  recordMcapLatencyMetric,
-} from "../mcap-latency-debug";
-import {
   createMcapNetworkHealthEstimator,
   shouldPublishMcapNetworkHealth,
 } from "./mcap-network-health-estimator";
@@ -56,22 +52,11 @@ export const McapNetworkHealthTracker: React.FC<{
       const next = estimator.evaluate(nowMs());
       if (shouldPublishMcapNetworkHealth(previous, next)) {
         setMcapNetworkHealth(store, next);
-        recordNetworkHealthMetric(next);
       }
     };
 
     const unsubscribe = subscribeTransport((sample) => {
       estimator.onTransportSample(sample, nowMs());
-      if (isMcapLatencyDebugEnabled()) {
-        recordMcapLatencyMetric("network transport samples", 1, {
-          busyMs: Number(sample.snapshot.busyMs.toFixed(1)),
-          fetchedMB: Number(
-            (sample.snapshot.fetchedBytes / 1024 / 1024).toFixed(3),
-          ),
-          lane: sample.lane,
-          reads: sample.snapshot.reads,
-        });
-      }
       publish();
     });
     const heartbeat = setInterval(publish, HEALTH_HEARTBEAT_MS);
@@ -94,7 +79,6 @@ export const McapNetworkHealthTracker: React.FC<{
     const next = estimator.evaluate(nowMs());
     if (shouldPublishMcapNetworkHealth(getMcapNetworkHealth(store), next)) {
       setMcapNetworkHealth(store, next);
-      recordNetworkHealthMetric(next);
     }
   }, [buffering, playPending, store]);
 
@@ -176,23 +160,6 @@ export const McapNetworkStatusPill: React.FC = () => {
     </span>
   );
 };
-
-function recordNetworkHealthMetric(
-  health: ReturnType<typeof getMcapNetworkHealth>,
-) {
-  if (!isMcapLatencyDebugEnabled()) {
-    return;
-  }
-
-  recordMcapLatencyMetric("network health published", health.limited ? 1 : 0, {
-    busyFraction: Number(health.busyFraction.toFixed(3)),
-    limited: health.limited,
-    throughputMBps:
-      health.throughputBytesPerSec === null
-        ? null
-        : Number((health.throughputBytesPerSec / 1024 / 1024).toFixed(3)),
-  });
-}
 
 function nowMs(): number {
   return globalThis.performance?.now?.() ?? Date.now();
