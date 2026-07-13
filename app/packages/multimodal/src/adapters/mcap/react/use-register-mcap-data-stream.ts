@@ -20,7 +20,6 @@ import {
   type PlaybackStore,
   type PlaybackStream,
 } from "@fiftyone/playback";
-import { markModalLoadingLatencyEvent } from "@fiftyone/utilities";
 import {
   useCallback,
   useEffect,
@@ -42,7 +41,7 @@ import {
   byteSourceAccessKey,
   type ByteSourceDescriptor,
 } from "../../../query/bytes";
-import { durationMsSince, monotonicNowMs } from "../../../time";
+import { monotonicNowMs } from "../../../time";
 import { DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ } from "../timeline";
 import type {
   McapByteTimelinePoint,
@@ -623,7 +622,6 @@ export function useRegisterMcapDataStream({
     }
     if (!source) return undefined;
     let cancelled = false;
-    const timelineRangeStartMs = monotonicNowMs();
     const rangeRead = client.readTimelineRange({
       source,
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
@@ -633,14 +631,6 @@ export function useRegisterMcapDataStream({
         if (!cancelled && sourceEpochRef.current === sourceEpoch) {
           byteTimelineRef.current = range.byteTimeline ?? null;
           const nextIndex = createMcapTimelineIndex(range);
-          const detail = {
-            durationMs: durationMsSince(timelineRangeStartMs),
-            durationSec: Number(nextIndex.durationSec.toFixed(3)),
-            ticks: nextIndex.tickCount,
-          };
-          markModalLoadingLatencyEvent("mcap timeline ready", detail, {
-            onceKey: "mcap-timeline-ready",
-          });
           setIndex(nextIndex);
         }
       })
@@ -896,35 +886,12 @@ export function useRegisterMcapDataStream({
       tick,
     });
 
-    if (tick !== null && blockingTotal > 0) {
-      if (blockingCovered === blockingTotal) {
-        onPlayheadDataReadyRef.current?.();
-        markModalLoadingLatencyEvent(
-          "mcap playhead data ready",
-          {
-            playheadSec: Number(playheadSec.toFixed(3)),
-            streams: blockingTotal,
-            tickNs: tick,
-          },
-          { onceKey: "mcap-playhead-data-ready" },
-        );
-      }
-
-      if (startupReady) {
-        markModalLoadingLatencyEvent(
-          "mcap startup buffer ready",
-          {
-            lookaheadSec: Number(
-              PLAYBACK_POLICY.startupLookaheadSeconds.toFixed(3),
-            ),
-            playheadSec: Number(playheadSec.toFixed(3)),
-            streams: blockingTotal,
-            tickNs: tick,
-            ticks: startupCoverage.total,
-          },
-          { onceKey: "mcap-startup-buffer-ready" },
-        );
-      }
+    if (
+      tick !== null &&
+      blockingTotal > 0 &&
+      blockingCovered === blockingTotal
+    ) {
+      onPlayheadDataReadyRef.current?.();
     }
 
     // Every data-flow event that can change statuses can also change
