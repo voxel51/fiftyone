@@ -5,6 +5,7 @@ import { DefaultValue, selector, useRecoilState, useRecoilValue } from "recoil";
 import Checkbox from "../Common/Checkbox";
 import { SectionWrapper } from "./ShareStyledDiv";
 import TemporalTagByValue from "./colorPalette/TemporalTagByValue";
+import { getRandomColorFromPool } from "./utils";
 
 const temporalTagSetting = selector<TemporalTagColorInput>({
   key: "temporalTagSetting",
@@ -53,8 +54,7 @@ const TemporalTag: React.FC = () => {
                   valueColors: [
                     {
                       value: "",
-                      color:
-                        colorPool[Math.floor(Math.random() * colorPool.length)],
+                      color: getRandomColorFromPool(colorPool),
                     },
                   ],
                 };
