@@ -28,6 +28,7 @@ import {
   usePointCloudSamplingSummary,
 } from "./McapSceneStatus";
 import McapSceneWorldSettings from "./McapSceneWorldSettings";
+import { McapSettingsNumberField } from "./McapSettingsNumberField";
 import McapSidebarGroup from "./McapSidebarGroup";
 import styles from "./McapSettingsSidebar.module.css";
 import McapTopicsSettings from "./McapTopicsSettings";
@@ -327,22 +328,18 @@ function PolicyNumberInput({
   readonly value: number;
 }) {
   return (
-    <label className={styles.controlRow}>
+    <div className={styles.controlRow}>
       <ControlLabel label={label} tooltip={tooltip} />
-      <span className={styles.numberInputWrap}>
-        <input
-          aria-label={label}
-          className={styles.numberInput}
-          max={60_000}
-          min={0}
-          onChange={(event) => onChange(Number(event.target.value))}
-          step={1}
-          type="number"
-          value={value}
-        />
-        <span className={styles.unitLabel}>ms</span>
-      </span>
-    </label>
+      <McapSettingsNumberField
+        ariaLabel={label}
+        max={60_000}
+        min={0}
+        onCommit={onChange}
+        step={50}
+        unit="ms"
+        value={value}
+      />
+    </div>
   );
 }
 

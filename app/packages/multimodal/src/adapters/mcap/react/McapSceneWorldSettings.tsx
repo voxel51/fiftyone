@@ -1,4 +1,4 @@
-import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { RadioGroup, Size, Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React from "react";
 import { useOptionalMcap3dViewSettings } from "./mcap-3d-view-settings-context";
 import {
@@ -73,6 +73,13 @@ const McapSceneWorldSettings: React.FC = () => {
   );
 };
 
+const UP_AXIS_OPTIONS = MCAP_3D_SCENE_UP_AXES.map((axis) => ({
+  label: axis.toUpperCase(),
+  value: axis,
+}));
+
+// Three fixed options: a radio group keeps every choice visible (the
+// settings audit's cardinality rule), like the map tile's basemap picker.
 function SceneUpAxisSelect({
   onChange,
   tooltip,
@@ -83,21 +90,16 @@ function SceneUpAxisSelect({
   readonly value: Mcap3dSceneUpAxis;
 }) {
   return (
-    <label className={settingsStyles.field}>
+    <div className={settingsStyles.field}>
       <McapSettingsLabel label="Up Axis" tooltip={tooltip} />
-      <select
-        aria-label="Up Axis"
-        className={settingsStyles.select}
-        onChange={(event) => onChange(event.target.value as Mcap3dSceneUpAxis)}
+      <RadioGroup
+        name="mcap-scene-up-axis"
+        onChange={(next) => onChange(next as Mcap3dSceneUpAxis)}
+        options={UP_AXIS_OPTIONS}
+        size={Size.Sm}
         value={value}
-      >
-        {MCAP_3D_SCENE_UP_AXES.map((axis) => (
-          <option key={axis} value={axis}>
-            {axis.toUpperCase()}
-          </option>
-        ))}
-      </select>
-    </label>
+      />
+    </div>
   );
 }
 

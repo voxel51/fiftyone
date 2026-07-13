@@ -1,7 +1,5 @@
 import {
   FormField,
-  Input,
-  InputType,
   Orientation,
   RadioGroup,
   Size,
@@ -11,7 +9,7 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo } from "react";
 import {
   cameraOrbitFromPose,
   cameraPoseFromOrbit,
@@ -21,6 +19,7 @@ import { useMcap3dViewpoint } from "./mcap-3d-viewpoint-context";
 import type { Mcap3dCameraNavigationMode } from "./mcap-3d-view-state";
 import McapSidebarGroup from "./McapSidebarGroup";
 import { McapSettingsLabel } from "./McapSettingsLabel";
+import { McapSettingsNumberField } from "./McapSettingsNumberField";
 import styles from "./McapViewpointSettings.module.css";
 
 const CAMERA_AXES = ["X", "Y", "Z"] as const;
@@ -106,7 +105,7 @@ const McapViewpointSettings: React.FC<{
                     target: pose.target,
                   });
                 }}
-                step="any"
+                step={0.1}
                 value={pose.position[index]}
               />
             ))}
@@ -128,7 +127,7 @@ const McapViewpointSettings: React.FC<{
                     ),
                   );
                 }}
-                step="any"
+                step={0.1}
                 value={orbit.target[index]}
               />
             ))}
@@ -163,6 +162,7 @@ const McapViewpointSettings: React.FC<{
             />
             <CompactNumberField
               label="Distance"
+              mapping="multiplicative"
               min={0.001}
               onCommit={(distance) =>
                 viewpoint.controller.setPose(
@@ -172,7 +172,7 @@ const McapViewpointSettings: React.FC<{
                   ),
                 )
               }
-              step="any"
+              step={0.1}
               value={orbit.distance}
             />
           </CompactFieldRow>
@@ -195,6 +195,7 @@ const McapViewpointSettings: React.FC<{
             />
             <CompactNumberField
               label="Near"
+              mapping="multiplicative"
               min={0.0001}
               onCommit={(near) =>
                 viewpoint.controller.setProjection(
@@ -204,11 +205,12 @@ const McapViewpointSettings: React.FC<{
                   }),
                 )
               }
-              step="any"
+              step={0.01}
               value={viewpoint.snapshot.projection.near}
             />
             <CompactNumberField
               label="Far"
+              mapping="multiplicative"
               min={0.0002}
               onCommit={(far) =>
                 viewpoint.controller.setProjection(
@@ -218,7 +220,7 @@ const McapViewpointSettings: React.FC<{
                   }),
                 )
               }
-              step="any"
+              step={1}
               value={viewpoint.snapshot.projection.far}
             />
           </CompactFieldRow>
@@ -252,6 +254,7 @@ function CompactFieldRow({
 function CompactNumberField({
   ariaLabel,
   label,
+  mapping,
   max,
   min,
   onCommit,
@@ -260,79 +263,31 @@ function CompactNumberField({
 }: {
   readonly ariaLabel?: string;
   readonly label: string;
+  readonly mapping?: "linear" | "multiplicative";
   readonly max?: number;
   readonly min?: number;
   readonly onCommit: (value: number) => void;
-  readonly step: number | "any";
+  readonly step: number;
   readonly value: number;
 }) {
-  const [draft, setDraft] = useState(() => formatInputValue(value));
-  const editingRef = useRef(false);
-  const cancelledRef = useRef(false);
-  // This effect follows live camera changes while preserving an active draft.
-  useEffect(() => {
-    if (!editingRef.current) setDraft(formatInputValue(value));
-  }, [value]);
-
-  const commit = () => {
-    editingRef.current = false;
-    if (cancelledRef.current) {
-      cancelledRef.current = false;
-      setDraft(formatInputValue(value));
-      return;
-    }
-    if (draft.trim() === "") {
-      setDraft(formatInputValue(value));
-      return;
-    }
-    const parsed = Number(draft);
-    if (!Number.isFinite(parsed)) {
-      setDraft(formatInputValue(value));
-      return;
-    }
-    const bounded = Math.min(
-      max ?? Number.POSITIVE_INFINITY,
-      Math.max(min ?? Number.NEGATIVE_INFINITY, parsed),
-    );
-    setDraft(formatInputValue(bounded));
-    onCommit(bounded);
-  };
-
   return (
     <FormField
       label={label}
       spacing={Spacing.Xs}
       control={
-        <Input
-          aria-label={ariaLabel ?? label}
-          className={styles.numberInput}
+        <McapSettingsNumberField
+          ariaLabel={ariaLabel ?? label}
+          commitOn="blur"
+          mapping={mapping}
           max={max}
           min={min}
-          onBlur={commit}
-          onChange={(event) => setDraft(event.target.value)}
-          onFocus={() => {
-            editingRef.current = true;
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") event.currentTarget.blur();
-            if (event.key === "Escape") {
-              cancelledRef.current = true;
-              event.currentTarget.blur();
-            }
-          }}
-          size={Size.Xs}
+          onCommit={onCommit}
           step={step}
-          type={InputType.Number}
-          value={draft}
+          value={value}
         />
       }
     />
   );
-}
-
-function formatInputValue(value: number): string {
-  if (!Number.isFinite(value)) return "";
-  return Number(value.toPrecision(7)).toString();
 }
 
 function formatAngle(value: number): string {

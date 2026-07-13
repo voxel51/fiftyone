@@ -257,10 +257,7 @@ describe("Mcap3dTileSettings", () => {
     });
     expect(readMcapModalSettings().sceneBackground.solidColor).toBe("#123456");
 
-    fireEvent.change(
-      screen.getByRole("combobox", { name: "Background style" }),
-      { target: { value: "abyss" } },
-    );
+    selectVoodooOption(getVoodooCombobox(/^Background\b/), "Abyss");
     expect(readMcapModalSettings().sceneBackground.mode).toBe("abyss");
   });
 
@@ -282,9 +279,7 @@ describe("Mcap3dTileSettings", () => {
       worldFrameId: "map",
     });
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Camera Target" }), {
-      target: { value: "base_link" },
-    });
+    selectVoodooOption(getVoodooCombobox(/^Camera Target/), "base_link");
 
     expect(props.updateCameraTargetFrameId).toHaveBeenCalledWith("base_link");
   });
@@ -371,15 +366,20 @@ describe("Mcap3dTileSettings", () => {
     ensurePointCloudStyleExpanded();
     const input = screen.getByRole("spinbutton", { name: "Point size" });
 
-    expect(input.getAttribute("max")).toBe("10");
-    expect(input.getAttribute("min")).toBe("1");
-    expect(input.getAttribute("step")).toBe("0.25");
+    expect(input.getAttribute("aria-valuemax")).toBe("10");
+    expect(input.getAttribute("aria-valuemin")).toBe("1");
 
     fireEvent.change(input, {
       target: { value: "4.5" },
     });
 
     expect(readMcapModalSettings().pointCloudPointSize).toBe(4.5);
+
+    // Out-of-range commits clamp instead of writing through.
+    fireEvent.change(input, {
+      target: { value: "50" },
+    });
+    expect(readMcapModalSettings().pointCloudPointSize).toBe(10);
   });
 
   it("keeps per-source default colormaps distinct", () => {
@@ -680,7 +680,7 @@ describe("Mcap3dTileSettings", () => {
       screen.queryByRole("switch", { name: "Toggle reference grid" }),
     ).toBeNull();
     expect(
-      screen.queryByRole("combobox", { name: "Background style" }),
+      screen.queryByRole("combobox", { name: /^Background\b/ }),
     ).toBeNull();
   });
 
@@ -698,7 +698,7 @@ describe("Mcap3dTileSettings", () => {
     expandAppearance();
 
     expect(
-      screen.getByRole("combobox", { name: "Background style" }),
+      screen.getByRole("combobox", { name: /^Background\b/ }),
     ).toBeTruthy();
     expect(screen.queryByLabelText("Background color")).toBeNull();
   });

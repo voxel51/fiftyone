@@ -68,6 +68,8 @@ import {
   settingsBooleanNoSpaceToggleProps,
 } from "./mcap-settings-keyboard";
 import { McapFrameSelect } from "./McapFrameSelect";
+import { McapSettingsNumberField } from "./McapSettingsNumberField";
+import { McapSettingsSelect } from "./McapSettingsSelect";
 import McapSidebarGroup from "./McapSidebarGroup";
 import settingsStyles from "./McapTile.settings.module.css";
 import { McapSettingsLabel as SettingsLabel } from "./McapSettingsLabel";
@@ -456,25 +458,19 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
           />
         </div>
 
-        <div className={settingsStyles.field}>
+        <label className={settingsStyles.field}>
           <SettingsLabel
             label="Background"
             tooltip="Scene backdrop behind the 3D view: a solid color of your choice, or a named gradient — Abyss (dark) or Studio (light)."
           />
-          <select
-            aria-label="Background style"
-            className={settingsStyles.select}
-            onChange={(event) =>
-              setSceneBackground({
-                mode: event.target.value as McapSceneBackgroundMode,
-              })
+          <McapSettingsSelect
+            ariaLabel="Background style"
+            onChange={(mode) =>
+              setSceneBackground({ mode: mode as McapSceneBackgroundMode })
             }
+            options={SCENE_BACKGROUND_OPTIONS}
             value={sceneBackground.mode}
-          >
-            <option value="solid">Solid color</option>
-            <option value="abyss">Abyss</option>
-            <option value="studio">Studio</option>
-          </select>
+          />
           {sceneBackground.mode === "solid" ? (
             <input
               aria-label="Background color"
@@ -486,11 +482,17 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
               value={sceneBackground.solidColor}
             />
           ) : null}
-        </div>
+        </label>
       </McapSidebarGroup>
     </div>
   );
 };
+
+const SCENE_BACKGROUND_OPTIONS = [
+  { label: "Solid color", value: "solid" },
+  { label: "Abyss", value: "abyss" },
+  { label: "Studio", value: "studio" },
+];
 
 const MCAP_IMAGE_GEOMETRY_OPTIONS: Descriptor<{ label: string }>[] = [
   { data: { label: "Auto (recommended)" }, id: "auto" },
@@ -1398,23 +1400,12 @@ function SettingsNullableNumberInput({
     <FormField
       label={<SettingsLabel label={label} tooltip={tooltip} />}
       control={
-        <Input
-          aria-label={label}
-          onChange={(event) => {
-            if (event.target.value === "") {
-              onChange(null);
-              return;
-            }
-            const next = Number(event.target.value);
-            if (Number.isFinite(next)) {
-              onChange(next);
-            }
-          }}
+        <McapSettingsNumberField
+          ariaLabel={label}
+          empty="null"
+          onCommit={onChange}
           placeholder="auto"
-          size={Size.Sm}
-          step="any"
-          type={InputType.Number}
-          value={value ?? ""}
+          value={value}
         />
       }
     />
@@ -1424,6 +1415,7 @@ function SettingsNullableNumberInput({
 function SettingsNumberInput({
   disabled,
   label,
+  mapping,
   max,
   min,
   onChange,
@@ -1433,6 +1425,7 @@ function SettingsNumberInput({
 }: {
   readonly disabled?: boolean;
   readonly label: string;
+  readonly mapping?: "linear" | "multiplicative";
   readonly max?: number;
   readonly min: number;
   readonly onChange: (value: number) => void;
@@ -1449,20 +1442,14 @@ function SettingsNumberInput({
           {label}
         </Text>
       )}
-      <input
-        aria-label={label}
-        className={settingsStyles.select}
-        disabled={Boolean(disabled)}
+      <McapSettingsNumberField
+        ariaLabel={label}
+        disabled={disabled}
+        mapping={mapping}
         max={max}
         min={min}
-        onChange={(event) => {
-          const next = Number(event.target.value);
-          if (Number.isFinite(next)) {
-            onChange(next);
-          }
-        }}
+        onCommit={onChange}
         step={step}
-        type="number"
         value={value}
       />
     </label>
@@ -1481,18 +1468,12 @@ function TrackingModeSelect({
   return (
     <label className={settingsStyles.field}>
       <SettingsLabel label="Tracking Mode" tooltip={tooltip} />
-      <select
-        aria-label="Tracking Mode"
-        className={settingsStyles.select}
-        onChange={(event) => onChange(event.target.value as Mcap3dTrackingMode)}
+      <McapSettingsSelect
+        ariaLabel="Tracking Mode"
+        onChange={(value) => onChange(value as Mcap3dTrackingMode)}
+        options={TRACKING_MODES}
         value={value}
-      >
-        {TRACKING_MODES.map((mode) => (
-          <option key={mode.value} value={mode.value}>
-            {mode.label}
-          </option>
-        ))}
-      </select>
+      />
     </label>
   );
 }

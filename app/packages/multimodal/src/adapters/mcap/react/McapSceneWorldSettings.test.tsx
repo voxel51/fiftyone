@@ -61,9 +61,10 @@ describe("McapSceneWorldSettings", () => {
       screen.getByText("Add a 3D panel to choose the reference frame."),
     ).toBeTruthy();
     expect(
-      screen.queryByRole("combobox", { name: "Reference Frame" }),
+      screen.queryByRole("combobox", { name: /^Reference Frame/ }),
     ).toBeNull();
-    expect(screen.getByRole("combobox", { name: "Up Axis" })).toBeTruthy();
+    // Up axis renders as a radio group: every option stays visible.
+    expect(screen.getByRole("radio", { name: "Z" })).toBeTruthy();
   });
 
   it("edits the scene world frame through the registered 3D controls", () => {
@@ -83,12 +84,12 @@ describe("McapSceneWorldSettings", () => {
       },
     });
 
-    const select = screen.getByRole("combobox", {
-      name: "Reference Frame",
-    }) as HTMLSelectElement;
-    expect(select.value).toBe("map");
+    const select = screen.getByRole("combobox", { name: /^Reference Frame/ });
 
+    fireEvent.focus(select);
     fireEvent.change(select, { target: { value: "base_link" } });
+    fireEvent.keyDown(select, { key: "ArrowDown" });
+    fireEvent.keyDown(select, { key: "Enter" });
 
     expect(updateWorldFrameId).toHaveBeenCalledWith("base_link");
   });
@@ -120,9 +121,7 @@ describe("McapSceneWorldSettings", () => {
     const setSceneUpAxis = vi.fn();
     renderWorldSettings({ setSceneUpAxis });
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Up Axis" }), {
-      target: { value: "y" },
-    });
+    fireEvent.click(screen.getByRole("radio", { name: "Y" }));
 
     expect(setSceneUpAxis).toHaveBeenCalledWith("y");
   });

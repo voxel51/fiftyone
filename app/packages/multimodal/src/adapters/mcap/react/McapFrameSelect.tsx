@@ -1,5 +1,6 @@
 import settingsStyles from "./McapTile.settings.module.css";
 import { McapSettingsLabel } from "./McapSettingsLabel";
+import { McapSettingsSelect } from "./McapSettingsSelect";
 
 /**
  * Coordinate-frame picker shared by the MCAP settings surfaces (world
@@ -21,26 +22,24 @@ export function McapFrameSelect({
   readonly tooltip: string;
   readonly value: string;
 }) {
+  const selectOptions = [
+    ...(options.length === 0 ? [{ label: "No frames", value: "" }] : []),
+    ...(options.length > 0 && !value
+      ? [{ label: "Select frame", value: "" }]
+      : []),
+    ...options.map((frameId) => ({ label: frameId, value: frameId })),
+  ];
+
   return (
     <label className={settingsStyles.field}>
       <McapSettingsLabel label={label} tooltip={tooltip} />
-      <select
-        aria-label={label}
-        className={settingsStyles.select}
+      <McapSettingsSelect
+        ariaLabel={label}
         disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={onChange}
+        options={selectOptions}
         value={value}
-      >
-        {options.length === 0 ? <option value="">No frames</option> : null}
-        {options.length > 0 && !value ? (
-          <option value="">Select frame</option>
-        ) : null}
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      />
     </label>
   );
 }
