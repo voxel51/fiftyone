@@ -224,6 +224,39 @@ describe("useMcapGridPreview", () => {
     act(() => latestState.current?.pause());
   });
 
+  it("backs off before retrying a missing hover frame", async () => {
+    vi.useFakeTimers({ toFake: ["clearTimeout", "performance", "setTimeout"] });
+    const latestState = { current: null as McapGridPreviewState | null };
+    const retry = deferred<McapGridPreviewResult>();
+    poolHarness.pool.request
+      .mockResolvedValueOnce(readyResult({ bytes: [1] }))
+      .mockResolvedValueOnce(emptyResult(true))
+      .mockReturnValue(retry.promise);
+
+    render(
+      <PreviewHarness
+        id="missing-frame"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        source={sourceForId("missing-frame")}
+      />,
+    );
+    await act(async () => undefined);
+
+    act(() => latestState.current?.play());
+    await act(async () => undefined);
+    expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+
+    await act(() => vi.advanceTimersByTimeAsync(82));
+    expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+
+    await act(() => vi.advanceTimersByTimeAsync(2));
+    expect(poolHarness.pool.request).toHaveBeenCalledTimes(3);
+
+    act(() => latestState.current?.pause());
+  });
+
   it("reloads and sends the selected stream topic when it changes", async () => {
     poolHarness.pool.request
       .mockResolvedValueOnce(

@@ -212,6 +212,13 @@ export function useMcapGridPreview({
             frameTimeNsRef.current = undefined;
             nextStartTimeNsRef.current = undefined;
             previousFrameTimeNs = undefined;
+            await delayMs(
+              mcapGridPreviewPlaybackDelayMs(undefined, undefined),
+              controller.signal,
+            );
+            if (!active) {
+              break;
+            }
             continue;
           }
 
