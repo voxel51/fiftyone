@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { ImageAnnotationsOverlay } from "../../../visualization/panels/ImageAnnotationsOverlay";
 import {
   BitmapCanvasHost,
   BitmapImageFrameView,
@@ -35,14 +34,14 @@ import {
 import { useStableMcapSource } from "./use-stable-mcap-source";
 
 const IMAGE_FIT = "cover";
-const GRID_ANNOTATION_STROKE_WIDTH = 1;
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting
 // the one hovered cell staleness-marks every visible point-cloud cell, so
 // the debounce is what coalesces that churn into one serial snapshot burst.
 const SNAPSHOT_REFRESH_DEBOUNCE_MS = 250;
-// Hover-intent delay before a point-cloud cell requests a live-renderer
-// lease: scroll-past must not thrash leases/renderers (device churn is
-// exactly what the lease pool exists to prevent). Exported for tests.
+/**
+ * Hover-intent delay before a point-cloud cell requests a live-renderer lease.
+ * Exported for tests.
+ */
 export const HOVER_INTENT_DELAY_MS = 120;
 /** Dwell before hover playback starts, avoiding scroll-under-cursor churn. */
 export const PLAYBACK_HOVER_INTENT_DELAY_MS = HOVER_INTENT_DELAY_MS;
@@ -122,6 +121,7 @@ export function GridRenderer({
     );
   }, [onRetainedBytesChange, preview.frame, surfaceRetainedBytes]);
 
+  // This effect registers the sample's previewable topics for grid controls.
   useEffect(() => {
     return registerStreamTopics({
       datasetName: ctx.dataset.name,
@@ -561,40 +561,15 @@ function ImagePreviewFrame({
   readonly frame: Extract<McapGridPreviewFrame, { kind: "image" }>;
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
 }) {
-  const [imageDims, setImageDims] = useState<{
-    width: number;
-    height: number;
-  } | null>(null);
-
+  // GPU-free bitmap path: image preview cells hold zero WebGPU devices (the
+  // modal's ImagePanel is untouched).
   return (
-    <>
-      {/* GPU-free bitmap path: image preview cells hold zero WebGPU
-          devices (the modal's ImagePanel is untouched). */}
-      <BitmapImageFrameView
-        className={classes.imagePanel}
-        fit={IMAGE_FIT}
-        frame={frame.image}
-        onBitmapRetainedBytesChange={onSurfaceRetainedBytesChange}
-        onImageLoaded={(width, height) =>
-          setImageDims((prev) =>
-            prev?.width === width && prev?.height === height
-              ? prev
-              : { width, height },
-          )
-        }
-      />
-      {imageDims && frame.annotations ? (
-        <div className={classes.annotationLayer}>
-          <ImageAnnotationsOverlay
-            annotations={[frame.annotations]}
-            fit={IMAGE_FIT}
-            imageHeight={imageDims.height}
-            imageWidth={imageDims.width}
-            strokeWidth={GRID_ANNOTATION_STROKE_WIDTH}
-          />
-        </div>
-      ) : null}
-    </>
+    <BitmapImageFrameView
+      className={classes.imagePanel}
+      fit={IMAGE_FIT}
+      frame={frame.image}
+      onBitmapRetainedBytesChange={onSurfaceRetainedBytesChange}
+    />
   );
 }
 

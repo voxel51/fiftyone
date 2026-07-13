@@ -35,6 +35,7 @@ vi.mock("../worker", () => ({
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   resetMcapSourceBootstrapCacheForTests();
 });
 
@@ -177,6 +178,52 @@ describe("useMcapGridPreview", () => {
     expect(poolHarness.pool.release).toHaveBeenCalledTimes(1);
   });
 
+  it("presents hover frames at their recorded one-times cadence", async () => {
+    vi.useFakeTimers({ toFake: ["clearTimeout", "performance", "setTimeout"] });
+    const latestState = { current: null as McapGridPreviewState | null };
+    const nextRequest = deferred<McapGridPreviewResult>();
+    poolHarness.pool.request
+      .mockResolvedValueOnce(
+        readyResult({
+          bytes: [1],
+          frameTimeNs: 0n,
+          nextStartTimeNs: 1n,
+        }),
+      )
+      .mockResolvedValueOnce(
+        readyResult({
+          bytes: [2],
+          frameTimeNs: 500_000_000n,
+          nextStartTimeNs: 500_000_001n,
+        }),
+      )
+      .mockReturnValue(nextRequest.promise);
+
+    render(
+      <PreviewHarness
+        id="paced"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        source={sourceForId("paced")}
+      />,
+    );
+    await act(async () => undefined);
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
+
+    act(() => latestState.current?.play());
+    await act(async () => undefined);
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
+
+    await act(() => vi.advanceTimersByTimeAsync(499));
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
+
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(2);
+
+    act(() => latestState.current?.pause());
+  });
+
   it("reloads and sends the selected stream topic when it changes", async () => {
     poolHarness.pool.request
       .mockResolvedValueOnce(
@@ -306,6 +353,7 @@ function PreviewHarness({
 }) {
   const state = useMcapGridPreview({ enabled, selectedStreamTopic, source });
 
+  // This effect exposes each hook update to tests that inspect live state.
   useEffect(() => {
     onState?.(state);
   }, [onState, state]);
@@ -324,20 +372,23 @@ function formatState(state: McapGridPreviewState): string {
 
 function readyResult({
   bytes,
-  streamTopic = "/camera/front",
   nextStartTimeNs = 5n,
+  frameTimeNs = nextStartTimeNs === undefined
+    ? undefined
+    : nextStartTimeNs - 1n,
+  streamTopic = "/camera/front",
 }: {
   readonly bytes: readonly number[];
+  readonly frameTimeNs?: bigint;
   readonly streamTopic?: string;
   readonly nextStartTimeNs?: bigint;
 }): McapGridPreviewResult {
   return {
-    delayMs: 83,
+    frameTimeNs,
     nextStartTimeNs,
     state: {
       error: null,
       frame: {
-        annotations: null,
         image: createImage(bytes),
         kind: "image",
       },

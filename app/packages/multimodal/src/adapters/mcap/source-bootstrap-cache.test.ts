@@ -78,7 +78,6 @@ function createTopic(streamId: string): StreamInventory {
 
 function createPoster(bytes: number[]): McapGridPreviewFrame {
   return {
-    annotations: null,
     image: {
       bytes: new Uint8Array(bytes),
       kind: "encoded-image",

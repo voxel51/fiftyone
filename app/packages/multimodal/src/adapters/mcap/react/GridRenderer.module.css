@@ -15,13 +15,6 @@
   position: absolute;
 }
 
-.annotationLayer {
-  inset: 0;
-  opacity: 0.5;
-  pointer-events: none;
-  position: absolute;
-}
-
 .status {
   font-size: 12px;
   font-weight: 600;

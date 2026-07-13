@@ -42,7 +42,6 @@ const bitmapViewHarness = vi.hoisted(() => ({
     fit?: string;
     frame: Extract<McapGridPreviewFrame, { kind: "image" }>["image"];
     onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
-    onImageLoaded?: (width: number, height: number) => void;
   } | null,
 }));
 
@@ -100,22 +99,6 @@ vi.mock("./mcap-grid-stream-state", () => ({
   useRegisterMcapGridStreamTopics: vi.fn(() => vi.fn()),
 }));
 
-vi.mock("../../../visualization/panels/ImageAnnotationsOverlay", () => ({
-  ImageAnnotationsOverlay: ({
-    imageHeight,
-    imageWidth,
-  }: {
-    readonly imageHeight: number;
-    readonly imageWidth: number;
-  }) => (
-    <div
-      data-image-height={imageHeight}
-      data-image-width={imageWidth}
-      data-testid="annotations-overlay"
-    />
-  ),
-}));
-
 vi.mock("../../../visualization/panels/bitmap-image-view", async () => {
   const { useEffect } = await import("react");
   return {
@@ -132,15 +115,13 @@ vi.mock("../../../visualization/panels/bitmap-image-view", async () => {
       readonly fit?: string;
       readonly frame: Extract<McapGridPreviewFrame, { kind: "image" }>["image"];
       readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
-      readonly onImageLoaded?: (width: number, height: number) => void;
     }) => {
       bitmapViewHarness.lastProps = props;
-      const { onBitmapRetainedBytesChange, onImageLoaded } = props;
-      // This effect reports decoded natural dims like the real view does.
+      const { onBitmapRetainedBytesChange } = props;
+      // This effect reports decoded bitmap retention like the real view does.
       useEffect(() => {
-        onImageLoaded?.(640, 480);
         onBitmapRetainedBytesChange?.(640 * 480 * 4);
-      }, [onBitmapRetainedBytesChange, onImageLoaded]);
+      }, [onBitmapRetainedBytesChange]);
       return <div data-testid="bitmap-image-view" />;
     },
   };
@@ -197,7 +178,7 @@ describe("GridRenderer", () => {
     expect(screen.queryByTestId("mcap-loading-ascii")).toBeNull();
   });
 
-  it("renders image frames through the GPU-free bitmap view", async () => {
+  it("renders image frames through the GPU-free bitmap view", () => {
     const bytes = new Uint8Array([9, 9, 9]);
     previewHarness.preview.frame = imageFrame(bytes);
     previewHarness.preview.status = "ready";
@@ -217,12 +198,6 @@ describe("GridRenderer", () => {
     expect(bitmapViewHarness.lastProps.frame.bytes).toBe(bytes);
     expect(bitmapViewHarness.lastProps?.fit).toBe("cover");
     expect(bitmapViewHarness.lastProps.frame.mimeType).toBe("image/jpeg");
-
-    // The DOM annotations overlay still receives the decoded dims the
-    // bitmap view reports via onImageLoaded.
-    const overlay = await screen.findByTestId("annotations-overlay");
-    expect(overlay.getAttribute("data-image-width")).toBe("640");
-    expect(overlay.getAttribute("data-image-height")).toBe("480");
   });
 
   it("reports retained frame and decoded bitmap bytes to the grid LRU", async () => {
@@ -711,7 +686,6 @@ function pointCloudCells(): HTMLElement[] {
 
 function imageFrame(bytes: Uint8Array): McapGridPreviewFrame {
   return {
-    annotations: {},
     image: { bytes, kind: "encoded-image", mimeType: "image/jpeg" },
     kind: "image",
   } as unknown as McapGridPreviewFrame;
