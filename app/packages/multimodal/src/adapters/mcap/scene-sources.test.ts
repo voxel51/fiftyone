@@ -49,6 +49,9 @@ describe("mcapSceneSources", () => {
         id: "/CAM_FRONT/image_rect_compressed",
         type: MCAP_SOURCE_TYPE.IMAGE,
         label: "CAM_FRONT",
+        metadata: {
+          "mcap.calibration_topic": "/CAM_FRONT/camera_info",
+        },
       },
       {
         id: "/CAM_REAR/image",

@@ -33,7 +33,7 @@ describe("GPU pointcloud projection material", () => {
       calibrationWidth: 640,
       color: resolveGpuPointCloudColor(payload, { colorBy: "rgb" }),
       imageRect,
-      projectionMatrix,
+      projection: { kind: "pinhole", projectionMatrix },
       resource,
     });
 
@@ -41,8 +41,14 @@ describe("GPU pointcloud projection material", () => {
     expect(shader.material.colorNode).not.toBeNull();
     expect(shader.material.fragmentNode).not.toBeNull();
     expect(shader.material.scaleNode).not.toBeNull();
-    expect(shader.projectionMatrix.value).not.toBe(projectionMatrix);
-    expect(shader.projectionMatrix.value.elements).toEqual(
+    expect(shader.cameraProjection.kind).toBe("pinhole");
+    if (shader.cameraProjection.kind !== "pinhole") {
+      throw new Error("Expected pinhole projection bindings");
+    }
+    expect(shader.cameraProjection.projectionMatrix.value).not.toBe(
+      projectionMatrix,
+    );
+    expect(shader.cameraProjection.projectionMatrix.value.elements).toEqual(
       projectionMatrix.elements,
     );
     expect(shader.dimensions.value.toArray()).toEqual([640, 480]);
@@ -66,11 +72,60 @@ describe("GPU pointcloud projection material", () => {
       calibrationHeight: 1,
       calibrationWidth: 1,
       color: resolveGpuPointCloudColor(payload, { colorBy: "intensity" }),
-      projectionMatrix: new THREE.Matrix4(),
+      projection: {
+        kind: "pinhole",
+        projectionMatrix: new THREE.Matrix4(),
+      },
       resource,
     });
 
     expect(shader.material.colorNode).not.toBeNull();
     shader.material.dispose();
   });
+
+  it.each(["rational-polynomial", "equidistant"] as const)(
+    "builds shared %s camera-model nodes",
+    (kind) => {
+      const payload = buildPointCloudRenderPayload({
+        positions: new Float32Array([0, 0, 1]),
+      });
+      const resource = getGpuPointCloudProjectionResource({
+        contentKey: kind,
+        payload,
+        streamKey: kind,
+      });
+      const common = {
+        cameraMatrix: new THREE.Matrix4(),
+        intrinsicsX: new THREE.Vector4(100, 0, 50, 0),
+        intrinsicsY: new THREE.Vector4(0, 100, 50, 0),
+      };
+      const projection =
+        kind === "rational-polynomial"
+          ? {
+              ...common,
+              distortionHigh: new THREE.Vector4(),
+              distortionLow: new THREE.Vector4(-0.1, 0, 0, 0),
+              kind,
+              maxRadius: 1,
+            }
+          : {
+              ...common,
+              distortion: new THREE.Vector4(),
+              kind,
+              maxTheta: 2,
+            };
+      const shader = createGpuPointCloudProjectionMaterial({
+        calibrationHeight: 100,
+        calibrationWidth: 100,
+        color: resolveGpuPointCloudColor(payload, {}),
+        projection,
+        resource,
+      });
+
+      expect(shader.cameraProjection.kind).toBe(kind);
+      expect(shader.material.positionNode).not.toBeNull();
+      expect(shader.material.scaleNode).not.toBeNull();
+      shader.material.dispose();
+    },
+  );
 });

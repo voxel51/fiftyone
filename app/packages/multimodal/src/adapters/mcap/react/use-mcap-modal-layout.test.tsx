@@ -149,6 +149,7 @@ describe("useMcapModalLayout", () => {
     ]);
     expect(result.current.initialTiles["image-default"].title).toBe("Image");
     expect(result.current.initialTiles["3d-7"].title).toBe("3D");
+    expect(Object.keys(result.current.resetTiles)).toEqual(["image-1", "3d-1"]);
   });
 
   it("restores manual tile titles for surviving leaves", () => {
@@ -525,7 +526,7 @@ describe("McapModalLayoutPersistence", () => {
 
   function LayoutDriver({ next }: { next: string | null }) {
     const { setLayout } = useTiling();
-    // Drives the provider's layout from test props — stand-in for the
+    // This effect drives layout from test props — stand-in for the
     // user rearranging tiles.
     useEffect(() => {
       setLayout(next);
@@ -536,7 +537,7 @@ describe("McapModalLayoutPersistence", () => {
 
   function ExpandedDriver({ next }: { next: string | null }) {
     const { setExpandedTileId } = useTiling();
-    // Drives the provider's fullscreen state from test props — stand-in
+    // This effect drives fullscreen state from test props — stand-in
     // for the user toggling a tile's fullscreen button.
     useEffect(() => {
       setExpandedTileId(next);
@@ -553,6 +554,7 @@ describe("McapModalLayoutPersistence", () => {
     readonly title: string;
   }) {
     const { setTileTitle } = useTiling();
+    // This effect drives the manual title from test props.
     useEffect(() => {
       setTileTitle(tileId, title);
     }, [setTileTitle, tileId, title]);

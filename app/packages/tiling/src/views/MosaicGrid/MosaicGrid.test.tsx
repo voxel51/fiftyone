@@ -7,6 +7,7 @@ import MosaicGrid, {
   addTileToLayout,
   autoLayout,
   collectTileIds,
+  measureMosaicLayoutMetrics,
 } from "./MosaicGrid";
 
 // Tile windows read tile state (titles) through the tiling context.
@@ -19,6 +20,7 @@ const LidarTile: React.FC = () => <div />;
 
 const RegisterTileKinds: React.FC = () => {
   const { registerTile } = useTileRegistry();
+  // This effect registers the tile kinds used by the editable-grid harness.
   React.useEffect(() => {
     const cleanupCamera = registerTile({
       type: "cam",
@@ -74,6 +76,34 @@ const EditableGridHarness: React.FC = () => {
 const noop = () => undefined;
 
 describe("MosaicGrid pure helpers", () => {
+  it("measures canvas bounds and actual tile chrome", () => {
+    const root = document.createElement("div");
+    const tile = document.createElement("div");
+    const tileWindow = document.createElement("div");
+    const tileBody = document.createElement("div");
+    tile.className = "mosaic-tile";
+    tile.style.margin = "4px 3px";
+    tileWindow.className = "mosaic-window";
+    tileBody.className = "mosaic-window-body";
+    tileWindow.appendChild(tileBody);
+    tile.appendChild(tileWindow);
+    root.appendChild(tile);
+    vi.spyOn(root, "getBoundingClientRect").mockReturnValue(domRect(1200, 700));
+    vi.spyOn(tileWindow, "getBoundingClientRect").mockReturnValue(
+      domRect(500, 300),
+    );
+    vi.spyOn(tileBody, "getBoundingClientRect").mockReturnValue(
+      domRect(480, 260),
+    );
+
+    expect(measureMosaicLayoutMetrics(root)).toEqual({
+      width: 1200,
+      height: 700,
+      tileHorizontalInset: 26,
+      tileVerticalInset: 48,
+    });
+  });
+
   describe("autoLayout", () => {
     it("returns null for an empty id list", () => {
       expect(autoLayout([])).toBeNull();
@@ -187,6 +217,20 @@ describe("MosaicGrid pure helpers", () => {
     });
   });
 });
+
+function domRect(width: number, height: number): DOMRect {
+  return {
+    bottom: height,
+    height,
+    left: 0,
+    right: width,
+    top: 0,
+    width,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  } as DOMRect;
+}
 
 describe("MosaicGrid component", () => {
   afterEach(() => cleanup());

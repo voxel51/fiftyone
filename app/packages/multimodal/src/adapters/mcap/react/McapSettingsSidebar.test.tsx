@@ -277,7 +277,6 @@ describe("McapSettingsSidebar", () => {
     expect(
       screen.getByRole("button", { name: /Transforms & Poses/ }),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Telemetry/ })).toBeTruthy();
     expect(
       screen.getByRole("button", { name: /Custom \/ Unknown/ }),
     ).toBeTruthy();

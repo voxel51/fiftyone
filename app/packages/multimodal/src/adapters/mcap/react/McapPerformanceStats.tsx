@@ -1,8 +1,10 @@
 import {
+  getCurrentTime,
+  subscribeCurrentTime,
   useBufferingDetail,
-  useCurrentTime,
   useDuration,
   useIsPlaying,
+  usePlaybackStore,
 } from "@fiftyone/playback";
 import {
   Button,
@@ -17,7 +19,16 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { gpuPointCloudProjectionResourceStats } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-resources";
 import { gridLiveLeaseStats } from "../../../visualization/panels/gpu/webgpu-live-lease";
 import { webGpuDeviceStats } from "../../../visualization/panels/gpu/webgpu-device-registry";
@@ -27,6 +38,7 @@ import { gpuPointCloudColormapTextureStats } from "../../../visualization/panels
 import styles from "./McapSettingsSidebar.module.css";
 
 const STATS_REFRESH_INTERVAL_MS = 1_000;
+const PLAYHEAD_REFRESH_INTERVAL_MS = 250;
 const COPY_CONFIRMATION_MS = 1_500;
 
 interface PointCloudSamplingSummary {
@@ -78,7 +90,7 @@ function LivePerformanceStats({
 }: {
   readonly sampling: PointCloudSamplingSummary | null;
 }) {
-  const currentTime = useCurrentTime();
+  const playbackStore = usePlaybackStore();
   const duration = useDuration();
   const isPlaying = useIsPlaying();
   const bufferingDetail = useBufferingDetail();
@@ -104,30 +116,28 @@ function LivePerformanceStats({
     [],
   );
 
-  const snapshot = useMemo(
+  const snapshotBase = useMemo(
     () => ({
       ...runtime,
       playback: {
         buffering: bufferingDetail,
-        currentTimeSec: currentTime,
         durationSec: duration,
         playing: isPlaying,
       },
       rendering: framePerformance,
       pointCloudSampling: sampling,
     }),
-    [
-      bufferingDetail,
-      currentTime,
-      duration,
-      framePerformance,
-      isPlaying,
-      runtime,
-      sampling,
-    ],
+    [bufferingDetail, duration, framePerformance, isPlaying, runtime, sampling],
   );
   const copySnapshot = useCallback(async () => {
     if (!navigator.clipboard?.writeText) return;
+    const snapshot = {
+      ...snapshotBase,
+      playback: {
+        ...snapshotBase.playback,
+        currentTimeSec: getCurrentTime(playbackStore),
+      },
+    };
     try {
       await navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
     } catch {
@@ -141,7 +151,7 @@ function LivePerformanceStats({
       () => setCopied(false),
       COPY_CONFIRMATION_MS,
     );
-  }, [snapshot]);
+  }, [playbackStore, snapshotBase]);
 
   const {
     environment,
@@ -150,7 +160,7 @@ function LivePerformanceStats({
     projection,
     snapshotRenderer,
     webGpu,
-  } = snapshot;
+  } = snapshotBase;
 
   return (
     <Card background={CardBackground.Secondary} compact outlined>
@@ -171,7 +181,7 @@ function LivePerformanceStats({
         <StatsGroup
           rows={[
             ["State", isPlaying ? "Playing" : "Paused"],
-            ["Playhead", formatSeconds(currentTime)],
+            ["Playhead", <SampledPlayheadValue key="playhead" />],
             ["Duration", formatSeconds(duration)],
             ["Buffering", bufferingDetail ?? "No"],
           ]}
@@ -288,6 +298,37 @@ function LivePerformanceStats({
   );
 }
 
+const SampledPlayheadValue = memo(function SampledPlayheadValue() {
+  const currentTime = useSampledCurrentTime();
+  return <>{formatSeconds(currentTime)}</>;
+});
+
+/** Coalesces playback commits so only this tiny readout updates at 4 Hz. */
+function useSampledCurrentTime(): number {
+  const store = usePlaybackStore();
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+      const unsubscribe = subscribeCurrentTime(store, () => {
+        if (refreshTimer !== null) return;
+        refreshTimer = setTimeout(() => {
+          refreshTimer = null;
+          onStoreChange();
+        }, PLAYHEAD_REFRESH_INTERVAL_MS);
+      });
+
+      return () => {
+        unsubscribe();
+        if (refreshTimer !== null) clearTimeout(refreshTimer);
+      };
+    },
+    [store],
+  );
+  const getSnapshot = useCallback(() => getCurrentTime(store), [store]);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
 function useFramePerformanceStats(): FramePerformanceStats {
   const [stats, setStats] = useState<FramePerformanceStats>({
     averageFrameTimeMs: null,
@@ -348,7 +389,7 @@ function StatsGroup({
   rows,
   title,
 }: {
-  readonly rows: readonly (readonly [string, string])[];
+  readonly rows: readonly (readonly [string, ReactNode])[];
   readonly title: string;
 }) {
   return (

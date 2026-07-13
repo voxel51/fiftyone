@@ -5,6 +5,7 @@ import {
   gpuPointCloudProjectionResourceKey,
   gpuProjectionImagePlaneSize,
   gpuProjectionViewportRect,
+  sensorToCameraMatrix,
   sensorToImageProjectionMatrix,
 } from "./gpu-point-cloud-projection";
 
@@ -68,6 +69,36 @@ describe("GPU pointcloud projection math", () => {
     expect(homogeneous.x).toBe(106);
     expect(homogeneous.y).toBe(211);
     expect(homogeneous.z).toBe(10);
+  });
+
+  it("applies camera rectification before P", () => {
+    const matrix = sensorToImageProjectionMatrix({
+      calibration: {
+        height: 100,
+        P: [100, 0, 50, 0, 0, 100, 50, 0, 0, 0, 1, 0],
+        R: [0, -1, 0, 1, 0, 0, 0, 0, 1],
+        width: 100,
+      },
+      rotation: IDENTITY_ROTATION,
+      translation: ZERO_TRANSLATION,
+    });
+    const homogeneous = new THREE.Vector4(1, 0, 10, 1).applyMatrix4(
+      requireMatrix(matrix),
+    );
+    expect(homogeneous.x / homogeneous.z).toBeCloseTo(50);
+    expect(homogeneous.y / homogeneous.z).toBeCloseTo(60);
+  });
+
+  it("builds a normalized sensor-to-camera matrix", () => {
+    const matrix = sensorToCameraMatrix({
+      rotation: { w: 2, x: 0, y: 0, z: 2 },
+      translation: { x: 1, y: 2, z: 3 },
+    });
+    const camera = new THREE.Vector4(1, 0, 0, 1).applyMatrix4(matrix);
+    expect(camera.x).toBeCloseTo(1);
+    expect(camera.y).toBeCloseTo(3);
+    expect(camera.z).toBeCloseTo(3);
+    expect(camera.w).toBe(1);
   });
 
   it("falls back to finite intrinsics when P contains invalid entries", () => {

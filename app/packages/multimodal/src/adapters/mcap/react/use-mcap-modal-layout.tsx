@@ -48,6 +48,8 @@ export interface McapModalLayout {
   initialLayout: MosaicNode<string> | undefined;
   /** Tile id that should initially render expanded to fullscreen. */
   initialExpandedTileId: string | null;
+  /** Resolver-default tile entries restored by Reset Layout. */
+  resetTiles: Record<string, TilingTile>;
   defaultLeftOpen: boolean;
   onLeftOpenChange: (open: boolean) => void;
   /** Persisted sidebar width; `undefined` keeps the shell's default. */
@@ -136,6 +138,7 @@ export function useMcapModalLayout({
   const persistedSceneUpAxis =
     persisted?.sceneUpAxis ?? DEFAULT_MCAP_3D_SCENE_UP_AXIS;
   const [sceneUpAxis, setSceneUpAxis] = useState(persistedSceneUpAxis);
+  // This effect restores the dataset-scoped scene axis after a source change.
   useEffect(() => {
     setSceneUpAxis(persistedSceneUpAxis);
   }, [datasetId, persistedSceneUpAxis]);
@@ -167,6 +170,7 @@ export function useMcapModalLayout({
     initialManualTileTitles: restored?.manualTileTitles ?? {},
     initialLayout: restored?.layout ?? resolved.layout,
     initialExpandedTileId,
+    resetTiles: defaultTiles,
     defaultLeftOpen: persisted?.leftSidebarOpen ?? true,
     onLeftOpenChange,
     defaultLeftSidebarWidth: persisted?.sidebarWidthPx,
@@ -555,6 +559,7 @@ function useSeedPersistedTileAtom<TileValue>({
   readonly store: ReturnType<typeof useStore>;
   readonly tilesRef: React.MutableRefObject<Record<string, TilingTile>>;
 }) {
+  // This effect seeds one tile-scoped atom from persisted layout state.
   useEffect(() => {
     const persisted = readMcapModalLayout(datasetIdRef.current)?.[field] as
       | Readonly<Record<string, TileValue>>
@@ -594,6 +599,7 @@ function useDebouncedMcapLayoutAtomMirror<Value>({
   readonly seededKeyRef: React.MutableRefObject<string | null>;
   readonly store: ReturnType<typeof useStore>;
 }) {
+  // This effect mirrors atom changes to storage and flushes them on cleanup.
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     let dirty = false;

@@ -64,7 +64,10 @@ describe("mcap-modal-settings", () => {
       },
       imageProjection: {
         "/camera/front": {
+          calibrationTopic: "/camera/front/camera_info",
+          display: "rectified",
           enabled: true,
+          geometry: "original",
           pointSize: 4,
           topics: ["/lidar/points"],
         },
@@ -90,7 +93,10 @@ describe("mcap-modal-settings", () => {
       },
       imageProjection: {
         "/camera/front": {
+          calibrationTopic: "/camera/front/camera_info",
+          display: "rectified",
           enabled: true,
+          geometry: "original",
           pointSize: 4,
           topics: ["/lidar/points"],
         },
@@ -578,10 +584,20 @@ describe("mcap-modal-settings", () => {
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       imageProjection: {
-        "  ": { enabled: true, pointSize: 6, topics: null },
+        "  ": {
+          calibrationTopic: null,
+          display: "recorded",
+          enabled: true,
+          geometry: "auto",
+          pointSize: 6,
+          topics: null,
+        },
         "/camera/array": [] as never,
         "/camera/front": {
+          calibrationTopic: "  ",
+          display: "magic" as never,
           enabled: "yes" as never,
+          geometry: "magic" as never,
           pointSize: 900,
           topics: ["/lidar", "", "/lidar", 42 as never],
         },
@@ -598,7 +614,10 @@ describe("mcap-modal-settings", () => {
     expect(readMcapModalSettings().imageProjection).toEqual({
       "/camera/array": DEFAULT_MCAP_IMAGE_PROJECTION,
       "/camera/front": {
+        calibrationTopic: null,
+        display: "recorded",
         enabled: false,
+        geometry: "auto",
         pointSize: MAX_MCAP_POINT_CLOUD_POINT_SIZE,
         topics: [],
       },
@@ -616,7 +635,10 @@ describe("mcap-modal-settings", () => {
       result.current.setProjection({ enabled: true, pointSize: 8 });
     });
     expect(result.current.projection).toEqual({
+      calibrationTopic: null,
+      display: "recorded",
       enabled: true,
+      geometry: "auto",
       pointSize: 8,
       topics: null,
     });
@@ -627,7 +649,10 @@ describe("mcap-modal-settings", () => {
     expect(result.current.projection.topics).toEqual(["/lidar/points"]);
     expect(readMcapModalSettings().imageProjection).toEqual({
       "/camera/front": {
+        calibrationTopic: null,
+        display: "recorded",
         enabled: true,
+        geometry: "auto",
         pointSize: 8,
         topics: ["/lidar/points"],
       },
@@ -637,9 +662,36 @@ describe("mcap-modal-settings", () => {
       result.current.setProjection({ enabled: false });
     });
     expect(result.current.projection).toEqual({
+      calibrationTopic: null,
+      display: "recorded",
       enabled: false,
+      geometry: "auto",
       pointSize: 8,
       topics: [],
     });
+  });
+
+  it("persists image geometry and calibration overrides per image topic", () => {
+    const { result } = renderHook(() =>
+      useMcapImageProjection("/camera/front"),
+    );
+
+    act(() => {
+      result.current.setProjection({
+        calibrationTopic: " /camera/front/calibration ",
+        display: "rectified",
+        geometry: "rectified",
+      });
+    });
+
+    expect(result.current.projection).toEqual({
+      ...DEFAULT_MCAP_IMAGE_PROJECTION,
+      calibrationTopic: "/camera/front/calibration",
+      display: "rectified",
+      geometry: "rectified",
+    });
+    expect(readMcapModalSettings().imageProjection["/camera/front"]).toEqual(
+      result.current.projection,
+    );
   });
 });

@@ -69,6 +69,7 @@ import {
 } from "./mcap-settings-keyboard";
 import McapSidebarGroup from "./McapSidebarGroup";
 import settingsStyles from "./McapTile.settings.module.css";
+import { McapSettingsLabel as SettingsLabel } from "./McapSettingsLabel";
 import { TRACKING_MODES } from "./use-mcap-3d-camera-tracking";
 
 /**
@@ -534,6 +535,7 @@ function PointCloudStyleSection({
     showPointCloudColorLegend ? "legend on" : "legend off"
   } · ${selectedPointCloudSources.length} active`;
 
+  // This effect closes details for a point cloud that is no longer selected.
   useEffect(() => {
     if (
       expandedSourceId &&
@@ -992,6 +994,7 @@ function PointCloudColormapEditor({
   );
   const title = `Colormap${sourceLabel ? ` (${sourceLabel})` : ""}`;
 
+  // This effect seeds the editor whenever the colormap dialog opens.
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -1486,31 +1489,6 @@ function SceneUpAxisSelect({
         ))}
       </select>
     </label>
-  );
-}
-
-function SettingsLabel({
-  label,
-  tooltip,
-}: {
-  readonly label: string;
-  readonly tooltip: string;
-}) {
-  return (
-    <span className={settingsStyles.labelWithTooltip}>
-      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-        {label}
-      </Text>
-      <span
-        aria-label={tooltip}
-        className={settingsStyles.tooltipIcon}
-        data-tooltip={tooltip}
-        role="img"
-        tabIndex={0}
-      >
-        ?
-      </span>
-    </span>
   );
 }
 

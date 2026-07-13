@@ -1,8 +1,15 @@
+import { Icon, IconName, Size } from "@voxel51/voodo";
 import React, { useEffect, useRef } from "react";
 import uPlot, { type AlignedData } from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { CLICK_DRAG_TOLERANCE_PX } from "../interaction";
 import styles from "./TimeseriesChart.module.css";
+import {
+  TIMESERIES_ZOOM_IN_FACTOR,
+  TIMESERIES_ZOOM_OUT_FACTOR,
+  touchZoomPanPlugin,
+  zoomTimeseriesChart,
+} from "./timeseries-zoom";
 
 /** Identity of one drawn series: legend label + mark color. */
 export interface TimeseriesChartSeries {
@@ -47,8 +54,7 @@ export interface TimeseriesChartProps {
   ) => () => void;
 
   /**
-   * Drawn series. Identity changes rebuild the chart — memoize in the
-   * caller.
+   * Drawn series. Label, color, or order changes rebuild the chart.
    */
   readonly series: readonly TimeseriesChartSeries[];
 }
@@ -57,12 +63,46 @@ const AXIS_INK = "#898781";
 const GRID_STROKE = "#2c2c2a";
 const TICK_STROKE = "#383835";
 const CHART_FONT = '11px system-ui, -apple-system, "Segoe UI", sans-serif';
+const MIN_Y_AXIS_SIZE_PX = 52;
+const Y_AXIS_LABEL_GUTTER_PX = 16;
+
+const yAxisSize: uPlot.Axis.Size = (chart, values) => {
+  if (!values || values.length === 0) {
+    return MIN_Y_AXIS_SIZE_PX;
+  }
+  chart.ctx.save();
+  chart.ctx.font = CHART_FONT;
+  let widestLabel = 0;
+  for (const value of values) {
+    widestLabel = Math.max(
+      widestLabel,
+      chart.ctx.measureText(String(value)).width,
+    );
+  }
+  chart.ctx.restore();
+  return Math.max(
+    MIN_Y_AXIS_SIZE_PX,
+    Math.ceil(widestLabel + Y_AXIS_LABEL_GUTTER_PX),
+  );
+};
+
+function resetTimeseriesChart(
+  chart: uPlot,
+  data: AlignedData,
+  xMax: number,
+): void {
+  chart.batch(() => {
+    chart.setData(data, true);
+    chart.setScale("x", { min: 0, max: xMax });
+  });
+}
+
 /**
  * Dense multi-series line chart on uPlot. Renders on the shared dark
  * visualization surface; identity is carried by the always-present
  * legend (live cursor values) plus mark color, never color alone. The
- * x scale is fixed to the full recording so the playhead overlay and
- * click-to-seek map 1:1 onto playback time.
+ * x scale starts at the full recording and stays constrained to it while
+ * touch gestures or controls change the visible range.
  */
 export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   data,
@@ -80,12 +120,44 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   const hoverLineRef = useRef<HTMLDivElement | null>(null);
   const hoverSecRef = useRef<number | null>(null);
   const pointerInsideRef = useRef(false);
+  const hasInteractiveScaleRef = useRef(false);
   const dataRef = useRef(data);
   dataRef.current = data;
+  const seriesRef = useRef(series);
+  seriesRef.current = series;
   const onSeekRef = useRef(onSeek);
   onSeekRef.current = onSeek;
   const onHoverTimeRef = useRef(onHoverTime);
   onHoverTimeRef.current = onHoverTime;
+  const seriesIdentity = JSON.stringify(series);
+  const xMax = Math.max(durationSec, 1e-9);
+
+  const handleZoomIn = () => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+    zoomTimeseriesChart(chart, TIMESERIES_ZOOM_IN_FACTOR, [0, xMax]);
+    hasInteractiveScaleRef.current = true;
+  };
+
+  const handleZoomOut = () => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+    zoomTimeseriesChart(chart, TIMESERIES_ZOOM_OUT_FACTOR, [0, xMax]);
+    hasInteractiveScaleRef.current = true;
+  };
+
+  const handleResetZoom = () => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+    hasInteractiveScaleRef.current = false;
+    resetTimeseriesChart(chart, dataRef.current, xMax);
+  };
 
   // This effect owns the uPlot instance lifecycle: create per series
   // identity / duration change, resize with the tile, destroy on
@@ -93,9 +165,12 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   // live inside uPlot's plot-area overlay (axes and legend excluded).
   useEffect(() => {
     const host = plotRef.current;
-    if (!host || series.length === 0) {
+    const currentSeries = seriesRef.current;
+    if (!host || currentSeries.length === 0) {
       return undefined;
     }
+    hasInteractiveScaleRef.current = false;
+    const xLimits = [0, xMax] as const;
 
     const positionPlayhead = (chart: uPlot) => {
       const line = playheadLineRef.current;
@@ -144,26 +219,44 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         {
           font: CHART_FONT,
           grid: { stroke: GRID_STROKE, width: 1 },
-          size: 48,
+          size: yAxisSize,
           stroke: AXIS_INK,
           ticks: { stroke: TICK_STROKE, width: 1 },
         },
       ],
       cursor: {
-        drag: { setScale: false, x: false, y: false },
+        drag: {
+          dist: CLICK_DRAG_TOLERANCE_PX,
+          setScale: true,
+          x: true,
+          y: true,
+        },
         y: false,
       },
       height: Math.max(host.clientHeight, 80),
       hooks: {
         draw: [positionPlayhead, positionHoverCaret],
+        setSelect: [
+          () => {
+            hasInteractiveScaleRef.current = true;
+          },
+        ],
       },
       legend: { live: true },
+      plugins: [
+        touchZoomPanPlugin({
+          onInteraction: () => {
+            hasInteractiveScaleRef.current = true;
+          },
+          xLimits,
+        }),
+      ],
       scales: {
-        x: { range: [0, Math.max(durationSec, 1e-9)], time: false },
+        x: { time: false },
       },
       series: [
         {},
-        ...series.map((entry) => ({
+        ...currentSeries.map((entry) => ({
           label: entry.label,
           points: { show: false },
           spanGaps: false,
@@ -176,6 +269,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
 
     const chart = new uPlot(options, dataRef.current, host);
     chartRef.current = chart;
+    chart.setScale("x", { min: 0, max: xMax });
 
     const line = document.createElement("div");
     line.className = styles.playhead;
@@ -194,16 +288,45 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     // Click-to-seek listens on uPlot's own overlay so plot-area padding
     // and axes never miscount; pointer travel separates click from drag.
     const over = chart.over;
-    let downX: number | null = null;
+    const activePointerIds = new Set<number>();
+    let downPoint: {
+      readonly pointerId: number;
+      readonly x: number;
+      readonly y: number;
+    } | null = null;
+    let suppressSeek = false;
     const onPointerDown = (event: PointerEvent) => {
-      downX = event.clientX;
+      activePointerIds.add(event.pointerId);
+      if (activePointerIds.size === 1) {
+        downPoint = {
+          pointerId: event.pointerId,
+          x: event.clientX,
+          y: event.clientY,
+        };
+        suppressSeek = false;
+      } else {
+        suppressSeek = true;
+      }
     };
     const onPointerUp = (event: PointerEvent) => {
-      const startX = downX;
-      downX = null;
+      activePointerIds.delete(event.pointerId);
+      const start = downPoint;
+      if (start?.pointerId !== event.pointerId) {
+        if (activePointerIds.size === 0) {
+          suppressSeek = false;
+        }
+        return;
+      }
+      const shouldSuppressSeek = suppressSeek;
+      downPoint = null;
+      if (activePointerIds.size === 0) {
+        suppressSeek = false;
+      }
       if (
-        startX === null ||
-        Math.abs(event.clientX - startX) > CLICK_DRAG_TOLERANCE_PX
+        start === null ||
+        shouldSuppressSeek ||
+        Math.hypot(event.clientX - start.x, event.clientY - start.y) >
+          CLICK_DRAG_TOLERANCE_PX
       ) {
         return;
       }
@@ -215,6 +338,15 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       const sec = chart.posToVal(event.clientX - rect.left, "x");
       if (Number.isFinite(sec)) {
         seek(Math.min(Math.max(sec, 0), durationSec));
+      }
+    };
+    const onPointerCancel = (event: PointerEvent) => {
+      activePointerIds.delete(event.pointerId);
+      if (downPoint?.pointerId === event.pointerId) {
+        downPoint = null;
+      }
+      if (activePointerIds.size === 0) {
+        suppressSeek = false;
       }
     };
     const onPointerEnter = () => {
@@ -233,36 +365,52 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       }
     };
     const onPointerLeave = () => {
+      activePointerIds.clear();
+      downPoint = null;
+      suppressSeek = false;
       pointerInsideRef.current = false;
       positionHoverCaret(chart);
       onHoverTimeRef.current?.(null);
     };
+    // uPlot resets its scales on double click. In this surface a double click
+    // is also two seek clicks, so keep seek semantics and make reset an
+    // explicit control instead.
+    const onDoubleClickCapture = (event: MouseEvent) => {
+      event.stopImmediatePropagation();
+    };
     over.addEventListener("pointerdown", onPointerDown);
     over.addEventListener("pointerup", onPointerUp);
+    over.addEventListener("pointercancel", onPointerCancel);
     over.addEventListener("pointerenter", onPointerEnter);
     over.addEventListener("pointermove", onPointerMove);
     over.addEventListener("pointerleave", onPointerLeave);
+    over.addEventListener("dblclick", onDoubleClickCapture, true);
 
     // The chart fills the tile; the legend below the canvas is part of
     // the measured host, so size to the remainder.
-    const observer = new ResizeObserver(() => {
+    const resizeChart = () => {
       const legendHeight =
         host.querySelector<HTMLElement>(".u-legend")?.offsetHeight ?? 0;
+      host.style.setProperty("--timeseries-legend-height", `${legendHeight}px`);
       const width = host.clientWidth;
       const height = host.clientHeight - legendHeight;
       if (width > 0 && height > 40) {
         chart.setSize({ height, width });
       }
-    });
+    };
+    const observer = new ResizeObserver(resizeChart);
     observer.observe(host);
+    resizeChart();
 
     return () => {
       observer.disconnect();
       over.removeEventListener("pointerdown", onPointerDown);
       over.removeEventListener("pointerup", onPointerUp);
+      over.removeEventListener("pointercancel", onPointerCancel);
       over.removeEventListener("pointerenter", onPointerEnter);
       over.removeEventListener("pointermove", onPointerMove);
       over.removeEventListener("pointerleave", onPointerLeave);
+      over.removeEventListener("dblclick", onDoubleClickCapture, true);
       // A chart torn down mid-hover must not leave a stale caret in
       // sibling surfaces.
       if (pointerInsideRef.current) {
@@ -274,13 +422,21 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       chartRef.current = null;
       chart.destroy();
     };
-  }, [durationSec, series]);
+  }, [durationSec, seriesIdentity, xMax]);
 
-  // This effect pushes new data into the existing instance without a
-  // rebuild.
+  // This effect pushes new data into the existing instance. Auto-range while
+  // untouched, but preserve a user-controlled viewport across data updates.
   useEffect(() => {
-    chartRef.current?.setData(data, true);
-  }, [data]);
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+    if (hasInteractiveScaleRef.current) {
+      chart.setData(data, false);
+    } else {
+      resetTimeseriesChart(chart, data, xMax);
+    }
+  }, [data, xMax]);
 
   // This effect subscribes the echo caret to the shared hover-time feed;
   // caret moves are DOM transforms, never chart redraws.
@@ -333,9 +489,50 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
 
   return (
     <div className={styles.root} data-testid="timeseries-chart">
-      <div className={styles.plot} ref={plotRef} />
+      <div className={styles.plot} ref={plotRef}>
+        <div className={styles.controls}>
+          <ChartControl
+            icon={IconName.Add}
+            label="Zoom in"
+            onClick={handleZoomIn}
+          />
+          <ChartControl
+            icon={IconName.Remove}
+            label="Zoom out"
+            onClick={handleZoomOut}
+          />
+          <ChartControl
+            icon={IconName.Fullscreen}
+            label="Reset zoom"
+            onClick={handleResetZoom}
+          />
+        </div>
+      </div>
     </div>
   );
 };
+
+interface ChartControlProps {
+  readonly icon: IconName;
+  readonly label: string;
+  readonly onClick: () => void;
+}
+
+const ChartControl: React.FC<ChartControlProps> = ({
+  icon,
+  label,
+  onClick,
+}) => (
+  <button
+    aria-label={label}
+    className={styles.controlButton}
+    onClick={onClick}
+    onPointerDown={(event) => event.stopPropagation()}
+    title={label}
+    type="button"
+  >
+    <Icon className={styles.controlIcon} name={icon} size={Size.Xs} />
+  </button>
+);
 
 export default TimeseriesChart;

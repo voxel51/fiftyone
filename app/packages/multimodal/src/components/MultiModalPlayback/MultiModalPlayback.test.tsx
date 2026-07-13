@@ -197,6 +197,42 @@ describe("MultiModalPlayback shell", () => {
     expect(screen.getByTestId("mosaic-stub").dataset.expandedTileId).toBe("");
   });
 
+  it("restores host defaults from the toolbar Reset Layout action", () => {
+    const resetLayout = {
+      direction: "row" as const,
+      first: "camera-1",
+      second: "lidar-1",
+      splitPercentage: 60,
+    };
+    render(
+      <MultiModalPlayback
+        fileName="session.fo"
+        addTileMenu={<span>Placeholder tile</span>}
+        initialTiles={{
+          "camera-9": { title: "persisted_camera", render: () => null },
+        }}
+        initialLayout="camera-9"
+        resetTiles={{
+          "camera-1": { title: "camera_front", render: () => null },
+          "lidar-1": { title: "lidar_top", render: () => null },
+        }}
+        resetLayout={resetLayout}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("tiling-header-add-tile"));
+    fireEvent.click(screen.getByText("Reset Layout"));
+
+    expect(screen.getByTestId("mosaic-stub").dataset.layout).toBe(
+      JSON.stringify(resetLayout),
+    );
+    expect(screen.getByTestId("title-camera-1").textContent).toBe(
+      "camera_front",
+    );
+    expect(screen.getByTestId("title-lidar-1").textContent).toBe("lidar_top");
+    expect(screen.queryByTestId("title-camera-9")).toBeNull();
+  });
+
   it("seeds the mosaic expanded tile from initialExpandedTileId", () => {
     render(
       <MultiModalPlayback

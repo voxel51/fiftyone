@@ -1,7 +1,8 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneSource } from "../../../scene-inventory";
-import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import { MCAP_SCENE_SOURCE_METADATA, MCAP_SOURCE_TYPE } from "../scene-sources";
+import { topicPrefix } from "../topic-matching";
 import {
   EMPTY_MCAP_3D_VIEW_STATE,
   getMcap3dViewStateSnapshot,
@@ -349,5 +350,18 @@ function viewStateSnapshot(
 }
 
 function source(id: string, type: string): SceneSource {
-  return { id, label: id, type };
+  const calibrationTopic =
+    type === MCAP_SOURCE_TYPE.IMAGE ? `${topicPrefix(id)}/camera_info` : null;
+  return {
+    id,
+    label: id,
+    ...(calibrationTopic
+      ? {
+          metadata: {
+            [MCAP_SCENE_SOURCE_METADATA.CALIBRATION_TOPIC]: calibrationTopic,
+          },
+        }
+      : {}),
+    type,
+  };
 }

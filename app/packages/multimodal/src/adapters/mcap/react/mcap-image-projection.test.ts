@@ -4,7 +4,6 @@ import {
   pickProjectedPoint,
   projectPointCloudToImage,
 } from "./mcap-image-projection";
-import { hasNonTrivialDistortion } from "./mcap-image-calibration";
 
 const IDENTITY_ROTATION = { w: 1, x: 0, y: 0, z: 0 };
 const ZERO_TRANSLATION = { x: 0, y: 0, z: 0 };
@@ -273,23 +272,5 @@ describe("pickProjectedPoint", () => {
     });
 
     expect(pick?.pointIndex).toBe(0);
-  });
-});
-
-describe("hasNonTrivialDistortion", () => {
-  it("flags only declared models with non-zero coefficients", () => {
-    expect(hasNonTrivialDistortion({})).toBe(false);
-    expect(
-      hasNonTrivialDistortion({ D: [0.1], distortionModel: undefined }),
-    ).toBe(false);
-    expect(
-      hasNonTrivialDistortion({ D: [0, 0, 0], distortionModel: "plumb_bob" }),
-    ).toBe(false);
-    expect(
-      hasNonTrivialDistortion({
-        D: [-0.2, 0.05, 0, 0, 0],
-        distortionModel: "plumb_bob",
-      }),
-    ).toBe(true);
   });
 });

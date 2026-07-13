@@ -235,6 +235,10 @@ export interface CameraCalibrationVisualization {
    * payload (the camera's frame).
    */
   readonly coordinateFrameId?: string;
+  /** ROS CameraInfo horizontal binning; zero means no binning. */
+  readonly binningX?: number;
+  /** ROS CameraInfo vertical binning; zero means no binning. */
+  readonly binningY?: number;
   readonly width: number;
   readonly height: number;
   readonly K: readonly number[];
@@ -242,7 +246,18 @@ export interface CameraCalibrationVisualization {
   readonly P?: readonly number[];
   readonly distortionModel?: string;
   readonly D?: readonly number[];
+  /** ROS CameraInfo sensor-space crop, when the source schema provides it. */
+  readonly roi?: CameraCalibrationRegionOfInterest;
   readonly timestampNs?: bigint;
+}
+
+/** Sensor-space crop carried by ROS CameraInfo calibration messages. */
+export interface CameraCalibrationRegionOfInterest {
+  readonly doRectify: boolean;
+  readonly height: number;
+  readonly width: number;
+  readonly xOffset: number;
+  readonly yOffset: number;
 }
 
 /**

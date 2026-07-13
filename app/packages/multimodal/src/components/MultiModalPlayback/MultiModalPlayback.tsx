@@ -88,6 +88,14 @@ export interface MultiModalPlaybackProps {
   initialLayout?: MosaicNode<string> | null;
   /** Tile id that should start expanded to fullscreen. */
   initialExpandedTileId?: string | null;
+  /** Tile entries restored by the header's Reset Layout action. */
+  resetTiles?: Record<string, TilingTile>;
+  /** User-authored titles restored by Reset Layout. */
+  resetManualTileTitles?: Record<string, string>;
+  /** Mosaic tree restored by Reset Layout. */
+  resetLayout?: MosaicNode<string> | null;
+  /** Optional geometry-aware builder for Reset Layout. */
+  resetLayoutStrategy?: TilingAutoLayoutStrategy;
 
   /** Discoverable data sources for the current scene. */
   sceneSources?: readonly SceneSource[];
@@ -144,6 +152,7 @@ export interface MultiModalPlaybackProps {
    * hotkey, Shift+drag).
    */
   onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
+  onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   /** Callback that deletes an existing temporal tag by its backend id. */
   onTagDelete?: NonNullable<
     TemporalTagTimelineProps["eventMenuItems"]
@@ -204,6 +213,10 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   autoLayoutStrategy,
   initialLayout,
   initialExpandedTileId,
+  resetTiles,
+  resetManualTileTitles,
+  resetLayout,
+  resetLayoutStrategy,
   sceneSources = EMPTY_SOURCES,
   sharedImageWebGpuViews = false,
   deselectFocusedTileOnRepeatSelect = true,
@@ -216,13 +229,21 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   leftSidebarWidth,
   onLeftSidebarWidthChange,
   onTagCreate,
+  onTagUpdate,
   onTagDelete,
   children,
   className,
 }) => {
   return (
     <PlaybackProvider>
-      <TrackProvider tracks={tracks} initialPinnedIds={defaultPinnedTrackIds}>
+      {/* Only the grid-filtered tags (initialPinnedIds) start pinned. Auto-pin
+          is off so tracks arriving in async batches don't each pin themselves,
+          which would pin everything as the batches land. */}
+      <TrackProvider
+        tracks={tracks}
+        initialPinnedIds={defaultPinnedTrackIds}
+        autoPinNewTracks={false}
+      >
         <SceneInventoryProvider sources={sceneSources}>
           <TilingProvider
             initialTiles={initialTiles}
@@ -230,6 +251,10 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
             autoLayoutStrategy={autoLayoutStrategy}
             initialLayout={initialLayout}
             initialExpandedTileId={initialExpandedTileId}
+            resetTiles={resetTiles}
+            resetManualTileTitles={resetManualTileTitles}
+            resetLayout={resetLayout}
+            resetLayoutStrategy={resetLayoutStrategy}
           >
             {children}
             <Layout
@@ -250,9 +275,14 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               leftSidebarWidth={leftSidebarWidth}
               onLeftSidebarWidthChange={onLeftSidebarWidthChange}
               onTagCreate={onTagCreate}
+              onTagUpdate={onTagUpdate}
               onTagDelete={onTagDelete}
               sharedImageWebGpuViews={sharedImageWebGpuViews}
               className={className}
+              // The multimodal playback modal always starts with the timeline
+              // drawer closed, so only pinned tracks (e.g. those auto-pinned
+              // from a temporal-tag grid filter) show until the user opens it.
+              timelineDrawerDefaultOpen={false}
             />
           </TilingProvider>
         </SceneInventoryProvider>
@@ -277,9 +307,12 @@ interface LayoutProps {
   leftSidebarWidth?: number;
   onLeftSidebarWidthChange?: (px: number) => void;
   onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
+  onTagUpdate?: MultiModalPlaybackProps["onTagUpdate"];
   onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
   sharedImageWebGpuViews: boolean;
   className?: string;
+  /** Initial open state for the timeline drawer. */
+  timelineDrawerDefaultOpen: boolean;
 }
 
 function Layout({
@@ -298,9 +331,11 @@ function Layout({
   leftSidebarWidth,
   onLeftSidebarWidthChange,
   onTagCreate,
+  onTagUpdate,
   onTagDelete,
   sharedImageWebGpuViews,
   className,
+  timelineDrawerDefaultOpen,
 }: LayoutProps) {
   const {
     layout,
@@ -314,6 +349,7 @@ function Layout({
     changeTileType,
     expandedTileId,
     setExpandedTileId,
+    setLayoutMetrics,
   } = useTiling();
   // `null` (as opposed to undefined, which picks up the default sidebar)
   // removes the region outright: no drawer and no header toggle.
@@ -391,6 +427,7 @@ function Layout({
       onCloseOtherTiles={closeOtherTiles}
       expandedTileId={expandedTileId}
       onExpandedTileIdChange={setExpandedTileId}
+      onLayoutMetricsChange={setLayoutMetrics}
       zeroStateView={<TilingZeroState addTileMenu={addTileMenu} />}
     />
   );
@@ -470,8 +507,13 @@ function Layout({
       </div>
 
       <TemporalTagTimeline
+        // Computed by the parent from `defaultPinnedTrackIds`: closed when
+        // opened from a temporal-tag grid filter so only the pinned (filtered)
+        // tracks show, open otherwise.
+        defaultDrawerOpen={timelineDrawerDefaultOpen}
         extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}
+        onTagUpdate={onTagUpdate}
         eventMenuItems={
           onTagDelete
             ? [

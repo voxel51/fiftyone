@@ -22,6 +22,11 @@ import type {
 } from "../../../decoders";
 import { groupLineSegmentsByLabel } from "../../../utils/line-segment-grouping";
 import type { McapDecodedMessage } from "../types";
+import type {
+  ImageAnnotationBounds,
+  ImageAnnotationLineListGroup,
+  ImageAnnotationRenderMetadata,
+} from "../../../visualization/panels/image-annotation-render-metadata";
 
 function interpolationFraction({
   nextTimelineTimeNs,
@@ -56,17 +61,167 @@ type Point2 = readonly [number, number];
 const MATCH_DISTANCE_PX = 200;
 const MIN_MATCH_IOU = 0.15;
 
+interface PointTrack {
+  readonly deltaX: number;
+  readonly deltaY: number;
+  readonly x: number;
+  readonly y: number;
+}
+
+interface CircleTrack {
+  readonly deltaDiameter: number;
+  readonly position: PointTrack;
+  readonly previous: ImageAnnotationCircle;
+}
+
+interface TextTrack {
+  readonly position: PointTrack | null;
+  readonly previous: ImageAnnotationText;
+}
+
+interface PreparedLineGroup {
+  readonly label: string | null;
+  readonly previousBounds: ImageAnnotationBounds;
+  readonly previousPoints: readonly Point2[];
+  readonly previousSegments: readonly [Point2, Point2][];
+  readonly segmentTracks: readonly [PointTrack, PointTrack][] | null;
+}
+
+type PreparedCircles =
+  | {
+      readonly kind: "interpolate";
+      readonly tracks: readonly CircleTrack[];
+    }
+  | {
+      readonly kind: "passthrough";
+      readonly value: readonly ImageAnnotationCircle[];
+    };
+
+type PreparedPointPrimitive =
+  | {
+      readonly kind: "indexed";
+      readonly pointTracks: readonly PointTrack[];
+      readonly previous: ImageAnnotationPoints;
+    }
+  | {
+      readonly groups: readonly PreparedLineGroup[];
+      readonly kind: "line-list";
+      readonly previous: ImageAnnotationPoints;
+    }
+  | {
+      readonly groups: readonly ImageAnnotationLineListGroup[] | null;
+      readonly kind: "passthrough";
+      readonly value: ImageAnnotationPoints;
+    };
+
+type PreparedPoints =
+  | {
+      readonly items: readonly PreparedPointPrimitive[];
+      readonly kind: "interpolate";
+    }
+  | {
+      readonly kind: "passthrough";
+      readonly renderMetadata: ImageAnnotationRenderMetadata;
+      readonly value: readonly ImageAnnotationPoints[];
+    };
+
+interface SampledPoints {
+  readonly lineListGroups: ImageAnnotationRenderMetadata["lineListGroups"];
+  readonly points: readonly ImageAnnotationPoints[];
+}
+
+interface SampledLineList {
+  readonly groups: readonly ImageAnnotationLineListGroup[];
+  readonly primitive: ImageAnnotationPoints;
+}
+
+export interface SampledImageAnnotationInterpolation {
+  readonly frame: ImageAnnotationsVisualization;
+  readonly renderMetadata: ImageAnnotationRenderMetadata;
+}
+
+/** Fraction-independent render plan for one immutable annotation pair. */
+export interface PreparedImageAnnotationInterpolation {
+  readonly circles: PreparedCircles;
+  readonly kind: ImageAnnotationsVisualization["kind"];
+  readonly points: PreparedPoints;
+  readonly texts: readonly TextTrack[];
+}
+
+/**
+ * Performs all topology discovery and object matching once for a source-message
+ * pair. The returned plan is immutable and safe to sample from every visual
+ * playback tick.
+ */
+export function prepareImageAnnotationInterpolation(
+  previous: ImageAnnotationsVisualization,
+  next: ImageAnnotationsVisualization,
+): PreparedImageAnnotationInterpolation {
+  return {
+    circles: prepareCircles(previous.circles, next.circles),
+    kind: previous.kind,
+    points: preparePoints(previous, next),
+    texts: prepareTexts(previous.texts, next.texts),
+  };
+}
+
+/** Allocates one immutable frame by applying only fraction-dependent lerps. */
+export function sampleImageAnnotationInterpolation(
+  prepared: PreparedImageAnnotationInterpolation,
+  fraction: number,
+): SampledImageAnnotationInterpolation {
+  const sampledPoints = samplePoints(prepared.points, fraction);
+  return {
+    frame: {
+      kind: prepared.kind,
+      circles: sampleCircles(prepared.circles, fraction),
+      points: sampledPoints.points,
+      texts: sampleTexts(prepared.texts, fraction),
+    },
+    renderMetadata: {
+      lineListGroups: sampledPoints.lineListGroups,
+    },
+  };
+}
+
 function interpolateImageAnnotations(
   prev: ImageAnnotationsVisualization,
   next: ImageAnnotationsVisualization,
   f: number,
 ): ImageAnnotationsVisualization {
+  return sampleImageAnnotationInterpolation(
+    prepareImageAnnotationInterpolation(prev, next),
+    f,
+  ).frame;
+}
+
+function prepareCircles(
+  previous: readonly ImageAnnotationCircle[],
+  next: readonly ImageAnnotationCircle[],
+): PreparedCircles {
+  if (previous.length !== next.length) {
+    return { kind: "passthrough", value: previous };
+  }
   return {
-    kind: prev.kind,
-    circles: interpolateCircles(prev.circles, next.circles, f),
-    points: interpolatePointsArray(prev, next, f),
-    texts: interpolateTexts(prev.texts, next.texts, f),
+    kind: "interpolate",
+    tracks: previous.map((circle, index) => ({
+      deltaDiameter: next[index].diameter - circle.diameter,
+      position: preparePointTrack(circle.position, next[index].position),
+      previous: circle,
+    })),
   };
+}
+
+function sampleCircles(
+  prepared: PreparedCircles,
+  fraction: number,
+): readonly ImageAnnotationCircle[] {
+  if (prepared.kind === "passthrough") return prepared.value;
+  return prepared.tracks.map(({ deltaDiameter, position, previous }) => ({
+    ...previous,
+    diameter: previous.diameter + deltaDiameter * fraction,
+    position: samplePointTrack(position, fraction),
+  }));
 }
 
 function interpolateCircles(
@@ -74,17 +229,52 @@ function interpolateCircles(
   next: readonly ImageAnnotationCircle[],
   f: number,
 ): readonly ImageAnnotationCircle[] {
-  // Index matching is acceptable for circles — they're rare in this data
-  // and tend to stay in order; if counts differ we just keep prev.
-  if (prev.length !== next.length) return prev;
-  return prev.map((p, i) => {
-    const n = next[i];
-    return {
-      ...p,
-      position: lerpPoint(p.position, n.position, f),
-      diameter: lerp(p.diameter, n.diameter, f),
-    };
-  });
+  return sampleCircles(prepareCircles(prev, next), f);
+}
+
+function prepareTexts(
+  previous: readonly ImageAnnotationText[],
+  next: readonly ImageAnnotationText[],
+): readonly TextTrack[] {
+  const tracks: TextTrack[] = [];
+  const usedNext = new Set<number>();
+  for (const text of previous) {
+    let bestIdx = -1;
+    let bestDist = Infinity;
+    for (let index = 0; index < next.length; index++) {
+      if (usedNext.has(index)) continue;
+      const candidate = next[index];
+      if (candidate.text !== text.text) continue;
+      const distance = squaredDistance(text.position, candidate.position);
+      if (distance < bestDist) {
+        bestDist = distance;
+        bestIdx = index;
+      }
+    }
+    const matched =
+      bestIdx !== -1 && bestDist <= MATCH_DISTANCE_PX * MATCH_DISTANCE_PX
+        ? next[bestIdx]
+        : null;
+    if (matched) usedNext.add(bestIdx);
+    tracks.push({
+      position: matched
+        ? preparePointTrack(text.position, matched.position)
+        : null,
+      previous: text,
+    });
+  }
+  return tracks;
+}
+
+function sampleTexts(
+  prepared: readonly TextTrack[],
+  fraction: number,
+): readonly ImageAnnotationText[] {
+  return prepared.map(({ position, previous }) =>
+    position
+      ? { ...previous, position: samplePointTrack(position, fraction) }
+      : previous,
+  );
 }
 
 function interpolateTexts(
@@ -92,31 +282,7 @@ function interpolateTexts(
   next: readonly ImageAnnotationText[],
   f: number,
 ): readonly ImageAnnotationText[] {
-  // Match texts by `text` content + nearest position, greedy per content.
-  const out: ImageAnnotationText[] = [];
-  const usedNext = new Set<number>();
-  for (const p of prev) {
-    let bestIdx = -1;
-    let bestDist = Infinity;
-    for (let j = 0; j < next.length; j++) {
-      if (usedNext.has(j)) continue;
-      const n = next[j];
-      if (n.text !== p.text) continue;
-      const d = squaredDistance(p.position, n.position);
-      if (d < bestDist) {
-        bestDist = d;
-        bestIdx = j;
-      }
-    }
-    if (bestIdx === -1 || bestDist > MATCH_DISTANCE_PX * MATCH_DISTANCE_PX) {
-      out.push(p);
-      continue;
-    }
-    usedNext.add(bestIdx);
-    const n = next[bestIdx];
-    out.push({ ...p, position: lerpPoint(p.position, n.position, f) });
-  }
-  return out;
+  return sampleTexts(prepareTexts(prev, next), f);
 }
 
 /**
@@ -131,19 +297,90 @@ function interpolatePointsArray(
   next: ImageAnnotationsVisualization,
   f: number,
 ): readonly ImageAnnotationPoints[] {
-  if (prev.points.length !== next.points.length) return prev.points;
-  return prev.points.map((pp, idx) => {
-    const np = next.points[idx];
-    if (pp.type !== np.type) return pp;
-    if (pp.type === "line-list") {
-      return interpolateLineList(pp, np, prev.texts, next.texts, f);
-    }
-    if (pp.points.length !== np.points.length) return pp;
+  return samplePoints(preparePoints(prev, next), f).points;
+}
+
+function preparePoints(
+  previous: ImageAnnotationsVisualization,
+  next: ImageAnnotationsVisualization,
+): PreparedPoints {
+  if (previous.points.length !== next.points.length) {
     return {
-      ...pp,
-      points: pp.points.map((pt, j) => lerpPoint(pt, np.points[j], f)),
+      kind: "passthrough",
+      renderMetadata: prepareImageAnnotationRenderMetadata(previous),
+      value: previous.points,
     };
-  });
+  }
+
+  return {
+    items: previous.points.map((primitive, index) => {
+      const nextPrimitive = next.points[index];
+      if (primitive.type !== nextPrimitive.type) {
+        return {
+          groups:
+            primitive.type === "line-list"
+              ? prepareLineListRenderGroups(primitive, previous.texts)
+              : null,
+          kind: "passthrough",
+          value: primitive,
+        };
+      }
+      if (primitive.type === "line-list") {
+        return prepareLineList(
+          primitive,
+          nextPrimitive,
+          previous.texts,
+          next.texts,
+        );
+      }
+      if (primitive.points.length !== nextPrimitive.points.length) {
+        return { groups: null, kind: "passthrough", value: primitive };
+      }
+      return {
+        kind: "indexed",
+        pointTracks: primitive.points.map((point, pointIndex) =>
+          preparePointTrack(point, nextPrimitive.points[pointIndex]),
+        ),
+        previous: primitive,
+      };
+    }),
+    kind: "interpolate",
+  };
+}
+
+function samplePoints(
+  prepared: PreparedPoints,
+  fraction: number,
+): SampledPoints {
+  if (prepared.kind === "passthrough") {
+    return {
+      lineListGroups: prepared.renderMetadata.lineListGroups,
+      points: prepared.value,
+    };
+  }
+  const lineListGroups: (readonly ImageAnnotationLineListGroup[] | null)[] = [];
+  const points: ImageAnnotationPoints[] = [];
+  for (const item of prepared.items) {
+    if (item.kind === "passthrough") {
+      points.push(item.value);
+      lineListGroups.push(item.groups);
+      continue;
+    }
+    if (item.kind === "line-list") {
+      const sampled = sampleLineList(item, fraction);
+      points.push(sampled.primitive);
+      lineListGroups.push(sampled.groups);
+      continue;
+    }
+    points.push({
+      ...item.previous,
+      points: item.pointTracks.map((point) =>
+        samplePointTrack(point, fraction),
+      ),
+    });
+    lineListGroups.push(null);
+  }
+  return { lineListGroups, points };
 }
 
 function interpolateLineList(
@@ -153,16 +390,88 @@ function interpolateLineList(
   nextTexts: readonly ImageAnnotationText[],
   f: number,
 ): ImageAnnotationPoints {
+  return sampleLineList(
+    prepareLineList(prevPrim, nextPrim, prevTexts, nextTexts),
+    f,
+  ).primitive;
+}
+
+function prepareLineList(
+  prevPrim: ImageAnnotationPoints,
+  nextPrim: ImageAnnotationPoints,
+  prevTexts: readonly ImageAnnotationText[],
+  nextTexts: readonly ImageAnnotationText[],
+): Extract<PreparedPointPrimitive, { readonly kind: "line-list" }> {
   const prevGroups = groupLineList(prevPrim.points, prevTexts);
   const nextGroups = groupLineList(nextPrim.points, nextTexts);
   const matchedPairs = matchLineListGroups(prevGroups, nextGroups);
 
+  return {
+    groups: matchedPairs.map(({ prev, next }) => ({
+      label: prev.label,
+      previousBounds: prev.bounds,
+      previousPoints: prev.segments.flatMap(([a, b]) => [a, b]),
+      previousSegments: prev.segments,
+      segmentTracks:
+        next && prev.segments.length === next.segments.length
+          ? prev.segments.map(([previousA, previousB], index) => {
+              const [nextA, nextB] = next.segments[index];
+              return [
+                preparePointTrack(previousA, nextA),
+                preparePointTrack(previousB, nextB),
+              ];
+            })
+          : null,
+    })),
+    kind: "line-list",
+    previous: prevPrim,
+  };
+}
+
+function sampleLineList(
+  prepared: Extract<PreparedPointPrimitive, { readonly kind: "line-list" }>,
+  fraction: number,
+): SampledLineList {
+  const groups: ImageAnnotationLineListGroup[] = [];
   const out: Point2[] = [];
-  for (const { prev, next } of matchedPairs) {
-    appendInterpolatedSegments(out, prev, next, f);
+  for (const {
+    label,
+    previousBounds,
+    previousPoints,
+    previousSegments,
+    segmentTracks,
+  } of prepared.groups) {
+    if (!segmentTracks) {
+      appendSegments(out, previousSegments);
+      groups.push({
+        bounds: previousBounds,
+        label,
+        points: previousPoints,
+        segments: previousSegments,
+      });
+      continue;
+    }
+    const segments: [Point2, Point2][] = [];
+    const points: Point2[] = [];
+    for (const [a, b] of segmentTracks) {
+      const sampledA = samplePointTrack(a, fraction);
+      const sampledB = samplePointTrack(b, fraction);
+      out.push(sampledA, sampledB);
+      points.push(sampledA, sampledB);
+      segments.push([sampledA, sampledB]);
+    }
+    groups.push({
+      bounds: segmentsBounds(segments),
+      label,
+      points,
+      segments,
+    });
   }
 
-  return { ...prevPrim, points: out };
+  return {
+    groups,
+    primitive: { ...prepared.previous, points: out },
+  };
 }
 
 interface MatchedGroupPair {
@@ -216,23 +525,6 @@ function bestNextGroupIndex(
   return bestIdx;
 }
 
-function appendInterpolatedSegments(
-  out: Point2[],
-  prev: Group,
-  next: Group | null,
-  f: number,
-): void {
-  if (!next || prev.segments.length !== next.segments.length) {
-    appendSegments(out, prev.segments);
-    return;
-  }
-  for (let i = 0; i < prev.segments.length; i++) {
-    const [pa, pb] = prev.segments[i];
-    const [na, nb] = next.segments[i];
-    out.push(lerpPoint(pa, na, f), lerpPoint(pb, nb, f));
-  }
-}
-
 function appendSegments(
   out: Point2[],
   segments: readonly [Point2, Point2][],
@@ -260,6 +552,33 @@ function groupLineList(
 ): readonly Group[] {
   return groupLineSegmentsByLabel(points, texts).map(({ label, segments }) =>
     makeGroup(segments, label),
+  );
+}
+
+/** Prepares renderer grouping once for a non-interpolated annotation frame. */
+export function prepareImageAnnotationRenderMetadata(
+  frame: ImageAnnotationsVisualization,
+): ImageAnnotationRenderMetadata {
+  return {
+    lineListGroups: frame.points.map((primitive) =>
+      primitive.type === "line-list"
+        ? prepareLineListRenderGroups(primitive, frame.texts)
+        : null,
+    ),
+  };
+}
+
+function prepareLineListRenderGroups(
+  primitive: ImageAnnotationPoints,
+  texts: readonly ImageAnnotationText[],
+): readonly ImageAnnotationLineListGroup[] {
+  return groupLineSegmentsByLabel(primitive.points, texts).map(
+    ({ label, segments }) => ({
+      bounds: segmentsBounds(segments),
+      label,
+      points: segments.flatMap(([a, b]) => [a, b]),
+      segments,
+    }),
   );
 }
 
@@ -338,12 +657,7 @@ function chamferDistance(a: readonly Point2[], b: readonly Point2[]): number {
   return (sumAB / a.length + sumBA / b.length) / 2;
 }
 
-interface Bounds {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-}
+type Bounds = ImageAnnotationBounds;
 
 function segmentsBounds(segments: readonly [Point2, Point2][]): Bounds {
   if (segments.length === 0) {
@@ -373,12 +687,17 @@ function squaredDistance(a: Point2, b: Point2): number {
   return dx * dx + dy * dy;
 }
 
-function lerpPoint(a: Point2, b: Point2, f: number): Point2 {
-  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+function preparePointTrack(previous: Point2, next: Point2): PointTrack {
+  return {
+    deltaX: next[0] - previous[0],
+    deltaY: next[1] - previous[1],
+    x: previous[0],
+    y: previous[1],
+  };
 }
 
-function lerp(a: number, b: number, f: number): number {
-  return a + (b - a) * f;
+function samplePointTrack(track: PointTrack, fraction: number): Point2 {
+  return [track.x + track.deltaX * fraction, track.y + track.deltaY * fraction];
 }
 
 function lowerBoundBigInt(arr: readonly bigint[], target: bigint): number {
