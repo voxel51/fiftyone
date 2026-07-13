@@ -1,5 +1,5 @@
 # Prebaked environment for the e2e CI shards (.github/workflows/e2e.yml).
-# Rebuilt by .github/workflows/build-e2e-image.yml on develop pushes that
+# Rebuilt by .github/workflows/build-ci-images.yml on develop pushes that
 # touch the Python dependency tree or the Playwright lockfile.
 #
 # The image bakes everything a shard job used to install at runtime:

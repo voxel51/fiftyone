@@ -91,7 +91,7 @@ jobs:
     needs: prepare-e2e
     timeout-minutes: 90
     runs-on: ubuntu-latest
-    # The prebaked image (built by build-e2e-image.yml) carries Python +
+    # The prebaked image (built by build-ci-images.yml) carries Python +
     # fiftyone's dependency tree, Node/Yarn, ffmpeg, and Chromium, so shard
     # jobs skip all toolchain setup.
     container:
