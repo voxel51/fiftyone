@@ -10,16 +10,19 @@ dotenv.config({ path: process.env.CI ? ".env.ci" : ".env.dev" });
 export default defineConfig({
   testDir: "./src",
   testMatch: "**/?(*.)+(spec).ts?(x)",
-  timeout: Duration.Minutes(5),
+  // Most tests finish well under a minute; a tighter cap bounds the time a
+  // hung test can burn across retries. Slow specs set their own timeout.
+  timeout: Duration.Minutes(3),
 
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI || process.env.IS_UTILITY_DOCKER ? 3 : 0,
-  /* Run one worker per CI shard to keep worker-scoped server state isolated */
-  workers: process.env.CI ? 1 : undefined,
+  retries: process.env.CI || process.env.IS_UTILITY_DOCKER ? 2 : 0,
+  // Each worker gets its own FiftyOne server on its own port (see
+  // src/oss/fixtures), so workers only contend for runner CPU/memory.
+  workers: process.env.CI ? 2 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter:
     process.env.CI || process.env.IS_UTILITY_DOCKER
