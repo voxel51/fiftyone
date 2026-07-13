@@ -47,6 +47,12 @@ describe("MCAP camera model", () => {
     expect(
       suggestMcapImageGeometry("/camera/front/image_rect/compressed"),
     ).toBe("rectified");
+    expect(
+      suggestMcapImageGeometry("/camera/front/image_raw/compressedDepth"),
+    ).toBe("original");
+    expect(suggestMcapImageGeometry("/camera/front/image_raw/compress")).toBe(
+      null,
+    );
 
     expect(suggestMcapImageGeometry("/raw/camera/front/image")).toBeNull();
 

@@ -9,8 +9,8 @@ const GRID_ROWS = 7;
 const NUMERIC_EPSILON = 1e-9;
 const CAMERA_MODEL_CACHE_LIMIT = 64;
 const IMAGE_TRANSPORT_TOPIC_TOKENS = new Set([
-  "compress",
   "compressed",
+  "compresseddepth",
   "compressedimage",
 ]);
 
