@@ -39,6 +39,32 @@ export const mcapPlotTileSeriesAtom = atom<
   Readonly<Record<string, readonly McapPlotSeriesConfig[]>>
 >({});
 
+/**
+ * Adds one topic+field series to a specific plot tile. Existing series
+ * are left untouched so repeated "add to plot" actions are idempotent.
+ */
+export function addMcapPlotSeriesToTile(
+  previous: Readonly<Record<string, readonly McapPlotSeriesConfig[]>>,
+  tileId: string,
+  topic: string,
+  fieldPath: string,
+): Readonly<Record<string, readonly McapPlotSeriesConfig[]>> {
+  const current = previous[tileId] ?? [];
+  const exists = current.some(
+    (series) => series.topic === topic && series.fieldPath === fieldPath,
+  );
+  if (exists) {
+    return previous;
+  }
+  return {
+    ...previous,
+    [tileId]: [
+      ...current,
+      { color: nextPlotSeriesColor(current), fieldPath, topic },
+    ],
+  };
+}
+
 /** Subscribe to the surrounding plot tile's enabled series. */
 export function useMcapPlotTileSeries(): readonly McapPlotSeriesConfig[] {
   const tileId = useTileId();
@@ -75,16 +101,16 @@ export function useToggleMcapPlotSeries(): (
         if (enabled === exists) {
           return previous;
         }
-        const next = enabled
-          ? [
-              ...current,
-              { color: nextPlotSeriesColor(current), fieldPath, topic },
-            ]
-          : current.filter(
-              (series) =>
-                series.topic !== topic || series.fieldPath !== fieldPath,
-            );
-        return { ...previous, [tileId]: next };
+        if (enabled) {
+          return addMcapPlotSeriesToTile(previous, tileId, topic, fieldPath);
+        }
+        return {
+          ...previous,
+          [tileId]: current.filter(
+            (series) =>
+              series.topic !== topic || series.fieldPath !== fieldPath,
+          ),
+        };
       });
     },
     [store, tileId],

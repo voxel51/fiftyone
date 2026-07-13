@@ -3,31 +3,31 @@ import {
   normalizeMcap3dSceneUpAxis,
   type Mcap3dSceneUpAxis,
 } from "./mcap-3d-scene-up";
+import {
+  DEFAULT_MCAP_MAP_TILE_SETTINGS,
+  normalizeMcapMapBaseLayer,
+  type McapMapTileSettings,
+} from "./mcap-map-tile-state";
 import { MCAP_TILE_TYPE } from "./mcap-tile-types";
 
 /**
  * Persistence for the MCAP modal's chrome: sidebar visibility, sidebar
  * width, the mosaic tile arrangement, and the currently expanded tile.
  *
- * One localStorage key holding per-dataset entries plus a browser-wide
- * fallback. Samples in a dataset are typically different recordings with
- * the same topic structure, so the arrangement a user settles on should
- * follow them from sample to sample — and datasets with different topic
- * shapes should each keep their own. Every write also updates the
- * fallback, which tracks the latest arrangement anywhere, so a
- * never-seen dataset opens with the same continuity the old
- * browser-wide key provided. Legacy v1 payloads (one browser-wide
- * entry) are read as that fallback layer, so upgrading loses nothing;
- * the first v2 write migrates them into `fallback` for good.
+ * One localStorage key holding scoped entries plus a browser-wide fallback
+ * for callers that do not provide a scope. Samples in a dataset are
+ * typically different recordings with the same topic structure, so the
+ * sample renderer scopes by dataset; the standalone MCAP explorer scopes by
+ * source. A scoped read intentionally restores only that exact scope, so a
+ * new dataset or new explorer MCAP starts from the built-in defaults.
  *
  * Restore is best-effort: anything unreadable or structurally invalid
  * falls back to the built-in defaults (see `use-mcap-modal-layout`).
  */
 
 /**
- * Per-scope persisted fields. Every field is optional — callers fall
- * back per-field, and a dataset entry falls back to the shared
- * `fallback` entry per-field on read.
+ * Per-scope persisted fields. Every field is optional — callers fall back to
+ * built-in defaults per-field.
  */
 export interface McapPersistedModalLayout {
   /** Tile id rendered expanded over the saved layout, when any. */
@@ -41,6 +41,11 @@ export interface McapPersistedModalLayout {
    * it is never merged into (or read from) the browser-wide fallback.
    */
   plotSeries?: Record<string, readonly McapPersistedPlotSeries[]>;
+  /**
+   * Map tile topic visibility and follow/basemap preferences. Dataset-scoped:
+   * topic names belong to one recording family.
+   */
+  mapSettings?: Record<string, McapPersistedMapSettings>;
   /**
    * Inspected topic per raw-message tile id. Topics belong to one
    * dataset's recordings, so this field is dataset-scoped only — like
@@ -72,12 +77,17 @@ export interface McapPersistedPlotSeries {
   readonly topic: string;
 }
 
+export type McapPersistedMapSettings = McapMapTileSettings;
+
 // Bound the persisted plot config so a corrupt or adversarial payload
 // cannot balloon the localStorage entry parsed on every modal mount.
 const MAX_PLOT_TILES = 32;
 const MAX_PLOT_SERIES_PER_TILE = 64;
 const MAX_RAW_TILES = 32;
 const MAX_RAW_TOPIC_LENGTH = 512;
+const MAX_MAP_TILES = 16;
+const MAX_MAP_TOPICS_PER_TILE = 64;
+const MAX_MAP_TOPIC_LENGTH = 512;
 const MAX_TILE_TITLES = 64;
 const MAX_TILE_TITLE_LENGTH = 160;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
@@ -88,16 +98,16 @@ interface PersistedDatasetEntry extends McapPersistedModalLayout {
 }
 
 interface PersistedStore {
-  version: typeof VERSION;
-  /** Latest arrangement written anywhere — the never-seen-dataset layer. */
+  version: typeof STORAGE_VERSION;
+  /** Browser-wide layer used only by unscoped callers. */
   fallback?: McapPersistedModalLayout;
   byDataset?: Record<string, PersistedDatasetEntry>;
 }
 
 const STORAGE_KEY = "fiftyone.mcap.modal-layout";
-const VERSION = 2;
-const LEGACY_VERSION = 1;
-const DATASET_SCOPED_LAYOUT_FIELDS = [
+const STORAGE_VERSION = 1;
+const FALLBACK_OMITTED_FIELDS = [
+  "mapSettings",
   "plotSeries",
   "rawTopics",
   "sceneUpAxis",
@@ -108,7 +118,7 @@ const DATASET_SCOPED_LAYOUT_FIELDS = [
 // payload unboundedly — localStorage is quota'd and the whole key is
 // parsed on every modal mount. 20 comfortably covers a user's active
 // datasets; least-recently-updated entries beyond that are evicted and
-// simply fall back to the shared entry on their next open.
+// simply use defaults on their next open.
 const MAX_DATASET_ENTRIES = 20;
 
 /** True when the value is a structurally valid mosaic tree of tile ids. */
@@ -140,6 +150,7 @@ function sanitizeEntry(raw: unknown): McapPersistedModalLayout | undefined {
     layout: isValidMosaicLayout(candidate.layout)
       ? candidate.layout
       : undefined,
+    mapSettings: sanitizeMapSettings(candidate.mapSettings),
     plotSeries: sanitizePlotSeries(candidate.plotSeries),
     rawTopics: sanitizeRawTopics(candidate.rawTopics),
     sceneUpAxis: normalizeMcap3dSceneUpAxis(candidate.sceneUpAxis),
@@ -241,6 +252,74 @@ export function sanitizeRawTopics(
 }
 
 /**
+ * Structural validation of per-map tile settings. Topic arrays are allowed
+ * to be empty (the user may hide every GPS topic), topic strings are bounded,
+ * and only map tile ids are restored.
+ */
+export function sanitizeMapSettings(
+  raw: unknown,
+): Record<string, McapPersistedMapSettings> | undefined {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const result: Record<string, McapPersistedMapSettings> = {};
+  let tileCount = 0;
+  for (const [tileId, settings] of Object.entries(raw)) {
+    if (
+      tileCount >= MAX_MAP_TILES ||
+      mcapTileTypeFromId(tileId) !== MCAP_TILE_TYPE.MAP ||
+      typeof settings !== "object" ||
+      settings === null ||
+      Array.isArray(settings)
+    ) {
+      continue;
+    }
+
+    const record = settings as Record<string, unknown>;
+    const baseLayer =
+      normalizeMcapMapBaseLayer(record.baseLayer) ??
+      DEFAULT_MCAP_MAP_TILE_SETTINGS.baseLayer;
+    const enabledTopics = sanitizeMapTopicList(record.enabledTopics);
+    const followEgo =
+      typeof record.followEgo === "boolean"
+        ? record.followEgo
+        : DEFAULT_MCAP_MAP_TILE_SETTINGS.followEgo;
+
+    result[tileId] = {
+      baseLayer,
+      followEgo,
+      ...(enabledTopics !== undefined ? { enabledTopics } : {}),
+    };
+    tileCount += 1;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function sanitizeMapTopicList(raw: unknown): readonly string[] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+  const topics: string[] = [];
+  const seen = new Set<string>();
+  for (const value of raw) {
+    if (topics.length >= MAX_MAP_TOPICS_PER_TILE) break;
+    if (
+      typeof value !== "string" ||
+      value.length === 0 ||
+      value.length > MAX_MAP_TOPIC_LENGTH ||
+      seen.has(value)
+    ) {
+      continue;
+    }
+    seen.add(value);
+    topics.push(value);
+  }
+  return topics;
+}
+
+/**
  * Structural validation of user-authored tile titles. Unknown tile-id
  * shapes and empty/overlong titles drop individually.
  */
@@ -269,11 +348,7 @@ export function sanitizeTileTitles(
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
-/**
- * Parse and sanitize whatever is in storage into the v2 store shape.
- * v1 payloads are read as the fallback layer (their single entry was
- * browser-wide, which is exactly what `fallback` means now).
- */
+/** Parse and sanitize whatever is in storage into the current store shape. */
 function readStore(): {
   fallback?: McapPersistedModalLayout;
   byDataset: Record<string, PersistedDatasetEntry>;
@@ -284,10 +359,15 @@ function readStore(): {
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return null;
     const version = (parsed as { version?: unknown }).version;
-    if (version === LEGACY_VERSION) {
-      return { fallback: sanitizeEntry(parsed), byDataset: {} };
+    if (version !== STORAGE_VERSION) {
+      if (version === undefined) {
+        const legacyFallback = sanitizedFallbackLayout(parsed);
+        return legacyFallback
+          ? { fallback: legacyFallback, byDataset: {} }
+          : null;
+      }
+      return null;
     }
-    if (version !== VERSION) return null;
     const store = parsed as { fallback?: unknown; byDataset?: unknown };
     const byDataset: Record<string, PersistedDatasetEntry> = {};
     if (typeof store.byDataset === "object" && store.byDataset !== null) {
@@ -304,11 +384,12 @@ function readStore(): {
         };
       }
     }
+    const fallback =
+      store.fallback === undefined
+        ? undefined
+        : sanitizedFallbackLayout(store.fallback);
     return {
-      fallback:
-        store.fallback === undefined
-          ? undefined
-          : sanitizeEntry(store.fallback),
+      fallback,
       byDataset,
     };
   } catch {
@@ -320,34 +401,21 @@ function readStore(): {
 
 /**
  * Read the persisted modal layout for `datasetKey`, or `null` when
- * nothing valid is stored. Each field resolves from the dataset's entry
- * first and the browser-wide fallback second; individual fields remain
- * optional — callers fall back per-field.
+ * nothing valid is stored. Scoped reads restore only the exact entry; a
+ * missing entry means the caller should use built-in defaults. Unscoped reads
+ * use the browser-wide fallback.
  */
 export function readMcapModalLayout(
   datasetKey?: string,
 ): McapPersistedModalLayout | null {
   const store = readStore();
   if (!store) return null;
-  const entry = datasetKey ? store.byDataset[datasetKey] : undefined;
-  const fallback = store.fallback;
-  if (!entry && !fallback) return null;
-  return {
-    expandedTileId: entry?.expandedTileId ?? fallback?.expandedTileId,
-    leftSidebarOpen: entry?.leftSidebarOpen ?? fallback?.leftSidebarOpen,
-    layout: entry?.layout ?? fallback?.layout,
-    // Dataset-scoped on purpose: series reference this dataset's topics,
-    // so another dataset's plots must never leak in via the fallback.
-    plotSeries: entry?.plotSeries,
-    // Dataset-scoped for the same reason as plotSeries.
-    rawTopics: entry?.rawTopics,
-    // Dataset-scoped for the same reason as plotSeries/rawTopics.
-    tileTitles: entry?.tileTitles,
-    // Dataset-scoped on purpose: world-up conventions are recording-family
-    // semantics, not reusable browser chrome.
-    sceneUpAxis: entry?.sceneUpAxis,
-    sidebarWidthPx: entry?.sidebarWidthPx ?? fallback?.sidebarWidthPx,
-  };
+  if (datasetKey) {
+    const entry = store.byDataset[datasetKey];
+    return entry ? layoutFromDatasetEntry(entry) : null;
+  }
+
+  return store.fallback ?? null;
 }
 
 /**
@@ -355,10 +423,8 @@ export function readMcapModalLayout(
  * toggles, the width observer, and the layout observer write
  * independently.
  *
- * Writes update both the dataset's entry and the browser-wide fallback:
- * the fallback tracks the latest arrangement anywhere, so a dataset the
- * user has never opened before starts from their most recent
- * arrangement instead of the built-in defaults.
+ * Scoped writes update only the scoped entry. Unscoped writes update the
+ * browser-wide fallback.
  */
 export function writeMcapModalLayout(
   patch: Partial<McapPersistedModalLayout>,
@@ -369,6 +435,7 @@ export function writeMcapModalLayout(
     if (!storage) return;
     const store = readStore();
     const byDataset = { ...store?.byDataset };
+    let fallback = store?.fallback;
     if (datasetKey) {
       byDataset[datasetKey] = {
         ...byDataset[datasetKey],
@@ -376,15 +443,14 @@ export function writeMcapModalLayout(
         updatedAtMs: Date.now(),
       };
       evictLeastRecentlyUpdated(byDataset);
+    } else {
+      fallback = stripDatasetScopedLayoutFields({
+        ...fallback,
+        ...patch,
+      });
     }
-    // The fallback layer tracks the latest arrangement anywhere, but
-    // dataset-scoped semantics must not leak between unrelated topic sets.
-    const fallback = stripDatasetScopedLayoutFields({
-      ...store?.fallback,
-      ...patch,
-    });
     const next: PersistedStore = {
-      version: VERSION,
+      version: STORAGE_VERSION,
       fallback,
       byDataset,
     };
@@ -395,14 +461,34 @@ export function writeMcapModalLayout(
   }
 }
 
+function layoutFromDatasetEntry(
+  entry: PersistedDatasetEntry,
+): McapPersistedModalLayout {
+  const { updatedAtMs: _updatedAtMs, ...layout } = entry;
+  return layout;
+}
+
 function stripDatasetScopedLayoutFields(
   layout: Partial<McapPersistedModalLayout>,
 ): McapPersistedModalLayout {
   const fallback = { ...layout };
-  for (const field of DATASET_SCOPED_LAYOUT_FIELDS) {
+  for (const field of FALLBACK_OMITTED_FIELDS) {
     delete fallback[field];
   }
   return fallback;
+}
+
+function sanitizedFallbackLayout(
+  raw: unknown,
+): McapPersistedModalLayout | undefined {
+  const entry = sanitizeEntry(raw);
+  if (!entry) {
+    return undefined;
+  }
+  const fallback = stripDatasetScopedLayoutFields(entry);
+  return Object.values(fallback).some((value) => value !== undefined)
+    ? fallback
+    : undefined;
 }
 
 /** Drop the least-recently-updated entries beyond the table cap. */

@@ -6,12 +6,13 @@ import {
   isImageAnnotationsStream,
   isImageStream,
   isLocationFixStream,
+  isLogStream,
   isPointCloudStream,
   isPoseStream,
   isSceneUpdateStream,
   topicName,
 } from "./stream-topics";
-import { topicPrefix } from "./topic-matching";
+import { chooseCalibrationTopic, topicPrefix } from "./topic-matching";
 import type { McapStreamSyncPolicies, McapStreamSyncPolicy } from "./types";
 
 /**
@@ -31,6 +32,8 @@ export const MCAP_SOURCE_TYPE = {
   // Foxglove LocationFix topics: geographic fixes surfaced as telemetry
   // readouts (and, later, map panels); never a standalone tile.
   LOCATION: "location",
+  // Log and diagnostics topics: console-shaped streams rendered in a log tile.
+  LOG: "log",
   // Foxglove Grid topics: 2D data grids rendered as textured ground/map
   // planes in the 3D scene. Named "map-layer" rather than "grid" because
   // "grid" already means the FiftyOne sample grid throughout the app.
@@ -46,6 +49,11 @@ export const MCAP_SOURCE_TYPE = {
 export type McapSourceType =
   (typeof MCAP_SOURCE_TYPE)[keyof typeof MCAP_SOURCE_TYPE];
 
+/** Static MCAP relationships published through generic scene-source metadata. */
+export const MCAP_SCENE_SOURCE_METADATA = {
+  CALIBRATION_TOPIC: "mcap.calibration_topic",
+} as const;
+
 // Latest-at-or-before with no tolerance = unbounded lookback: the read
 // layer resolves the predecessor message however sparse the stream is
 // (keyframe-rate annotations against full-rate video need no special
@@ -60,6 +68,7 @@ const SYNC_POLICY_BY_TYPE: Record<McapSourceType, McapStreamSyncPolicy> = {
   [MCAP_SOURCE_TYPE.IMAGE]: LATEST_SYNC_POLICY,
   [MCAP_SOURCE_TYPE.IMAGE_ANNOTATION]: LATEST_SYNC_POLICY,
   [MCAP_SOURCE_TYPE.LOCATION]: LATEST_SYNC_POLICY,
+  [MCAP_SOURCE_TYPE.LOG]: LATEST_SYNC_POLICY,
   // Unbounded lookback is what makes static maps work: a one-shot /map
   // message published at file start stays resolvable for the whole run.
   [MCAP_SOURCE_TYPE.MAP_LAYER]: LATEST_SYNC_POLICY,
@@ -88,7 +97,7 @@ export function mcapSceneSources(
     if (!id) {
       continue;
     }
-    const type = sourceTypeFor(topic);
+    const type = mcapSourceTypeForTopic(topic);
     if (!type) {
       continue;
     }
@@ -108,15 +117,30 @@ export function mcapSceneSources(
     labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
   }
 
+  const calibrationTopics = classified
+    .filter(({ type }) => type === MCAP_SOURCE_TYPE.CAMERA_CALIBRATION)
+    .map(({ id }) => id);
+
   // Prefer the short prefix-derived label; topics whose prefixes collide
   // (e.g. raw and rectified streams of one camera) keep their full topic
   // so source pickers stay unambiguous.
   return classified.map(({ id, type, recordCount }) => {
     const short = shortTopicLabel(id);
+    const calibrationTopic =
+      type === MCAP_SOURCE_TYPE.IMAGE
+        ? chooseCalibrationTopic(id, calibrationTopics)
+        : null;
     return {
       id,
       type,
       label: (labelCounts.get(short) ?? 0) > 1 ? displayTopic(id) : short,
+      ...(calibrationTopic
+        ? {
+            metadata: {
+              [MCAP_SCENE_SOURCE_METADATA.CALIBRATION_TOPIC]: calibrationTopic,
+            },
+          }
+        : {}),
       ...(recordCount !== undefined ? { recordCount } : {}),
     };
   });
@@ -140,7 +164,9 @@ export function mcapStreamPolicies(
   return policies;
 }
 
-function sourceTypeFor(topic: StreamInventory): McapSourceType | null {
+export function mcapSourceTypeForTopic(
+  topic: StreamInventory,
+): McapSourceType | null {
   if (isImageStream(topic)) {
     return MCAP_SOURCE_TYPE.IMAGE;
   }
@@ -164,6 +190,9 @@ function sourceTypeFor(topic: StreamInventory): McapSourceType | null {
   }
   if (isLocationFixStream(topic)) {
     return MCAP_SOURCE_TYPE.LOCATION;
+  }
+  if (isLogStream(topic)) {
+    return MCAP_SOURCE_TYPE.LOG;
   }
   return null;
 }

@@ -1,27 +1,62 @@
 import type { Decoder } from "../../../../decoders";
-import { foxgloveCameraCalibrationDecoder } from "./camera-calibration";
-import { foxgloveCompressedImageDecoder } from "./compressed-image";
+import {
+  foxgloveCameraCalibrationCdrDecoders,
+  foxgloveCameraCalibrationDecoder,
+} from "./camera-calibration";
+import {
+  foxgloveCompressedImageCdrDecoders,
+  foxgloveCompressedImageDecoder,
+} from "./compressed-image";
 import {
   foxgloveCompressedVideoCdrDecoders,
   foxgloveCompressedVideoDecoder,
 } from "./compressed-video";
-import { foxgloveGridDecoder } from "./grid";
-import { foxgloveImageAnnotationsDecoder } from "./image-annotations";
-import { foxgloveLaserScanDecoder } from "./laser-scan";
-import { foxgloveLocationFixDecoder } from "./location-fix";
-import { foxglovePointCloudDecoder } from "./point-cloud";
-import { foxglovePoseInFrameDecoder } from "./pose-in-frame";
-import { foxgloveSceneUpdateDecoder } from "./scene-update";
+import { foxgloveGridCdrDecoders, foxgloveGridDecoder } from "./grid";
+import {
+  foxgloveImageAnnotationsCdrDecoders,
+  foxgloveImageAnnotationsDecoder,
+} from "./image-annotations";
+import {
+  foxgloveLaserScanCdrDecoders,
+  foxgloveLaserScanDecoder,
+} from "./laser-scan";
+import {
+  foxgloveLocationFixCdrDecoders,
+  foxgloveLocationFixDecoder,
+} from "./location-fix";
+import { foxgloveLogCdrDecoders, foxgloveLogDecoder } from "./log";
+import {
+  foxglovePointCloudCdrDecoders,
+  foxglovePointCloudDecoder,
+} from "./point-cloud";
+import {
+  foxglovePoseInFrameCdrDecoders,
+  foxglovePoseInFrameDecoder,
+} from "./pose-in-frame";
+import {
+  foxgloveRawImageCdrDecoders,
+  foxgloveRawImageDecoder,
+} from "./raw-image";
+import {
+  foxgloveSceneUpdateCdrDecoders,
+  foxgloveSceneUpdateDecoder,
+} from "./scene-update";
 
 /**
  * Foxglove camera calibration decoder export.
  */
-export { foxgloveCameraCalibrationDecoder } from "./camera-calibration";
+export {
+  foxgloveCameraCalibrationCdrDecoders,
+  foxgloveCameraCalibrationDecoder,
+} from "./camera-calibration";
 
 /**
  * Foxglove compressed image decoder export.
  */
-export { foxgloveCompressedImageDecoder } from "./compressed-image";
+export {
+  foxgloveCompressedImageCdrDecoders,
+  foxgloveCompressedImageDecoder,
+} from "./compressed-image";
 
 /**
  * Foxglove compressed video decoder export.
@@ -34,37 +69,68 @@ export {
 /**
  * Foxglove Grid decoder export.
  */
-export { foxgloveGridDecoder } from "./grid";
+export { foxgloveGridCdrDecoders, foxgloveGridDecoder } from "./grid";
 
 /**
  * Foxglove image annotations decoder export.
  */
-export { foxgloveImageAnnotationsDecoder } from "./image-annotations";
+export {
+  foxgloveImageAnnotationsCdrDecoders,
+  foxgloveImageAnnotationsDecoder,
+} from "./image-annotations";
 
 /**
  * Foxglove LaserScan decoder export.
  */
-export { foxgloveLaserScanDecoder } from "./laser-scan";
+export {
+  foxgloveLaserScanCdrDecoders,
+  foxgloveLaserScanDecoder,
+} from "./laser-scan";
 
 /**
  * Foxglove point cloud decoder export.
  */
-export { foxglovePointCloudDecoder } from "./point-cloud";
+export {
+  foxglovePointCloudCdrDecoders,
+  foxglovePointCloudDecoder,
+} from "./point-cloud";
 
 /**
  * Foxglove LocationFix decoder export.
  */
-export { foxgloveLocationFixDecoder } from "./location-fix";
+export {
+  foxgloveLocationFixCdrDecoders,
+  foxgloveLocationFixDecoder,
+} from "./location-fix";
+
+/**
+ * Foxglove Log decoder export.
+ */
+export { foxgloveLogCdrDecoders, foxgloveLogDecoder } from "./log";
 
 /**
  * Foxglove PoseInFrame decoder export.
  */
-export { foxglovePoseInFrameDecoder } from "./pose-in-frame";
+export {
+  foxglovePoseInFrameCdrDecoders,
+  foxglovePoseInFrameDecoder,
+} from "./pose-in-frame";
+
+/**
+ * Foxglove RawImage decoder exports.
+ */
+export {
+  foxgloveRawImageCdrDecoders,
+  foxgloveRawImageDecoder,
+} from "./raw-image";
 
 /**
  * Foxglove SceneUpdate decoder export.
  */
-export { foxgloveSceneUpdateDecoder } from "./scene-update";
+export {
+  foxgloveSceneUpdateCdrDecoders,
+  foxgloveSceneUpdateDecoder,
+} from "./scene-update";
 
 /**
  * Foxglove payload descriptor exports.
@@ -76,14 +142,27 @@ export * from "./payloads";
  */
 export const foxgloveDecoders: readonly Decoder[] = [
   foxgloveCameraCalibrationDecoder,
+  ...foxgloveCameraCalibrationCdrDecoders,
   foxgloveCompressedImageDecoder,
+  ...foxgloveCompressedImageCdrDecoders,
   foxgloveCompressedVideoDecoder,
   ...foxgloveCompressedVideoCdrDecoders,
   foxgloveGridDecoder,
+  ...foxgloveGridCdrDecoders,
   foxgloveImageAnnotationsDecoder,
+  ...foxgloveImageAnnotationsCdrDecoders,
   foxgloveLaserScanDecoder,
+  ...foxgloveLaserScanCdrDecoders,
   foxgloveLocationFixDecoder,
+  ...foxgloveLocationFixCdrDecoders,
+  foxgloveLogDecoder,
+  ...foxgloveLogCdrDecoders,
   foxglovePointCloudDecoder,
+  ...foxglovePointCloudCdrDecoders,
   foxglovePoseInFrameDecoder,
+  ...foxglovePoseInFrameCdrDecoders,
+  foxgloveRawImageDecoder,
+  ...foxgloveRawImageCdrDecoders,
   foxgloveSceneUpdateDecoder,
+  ...foxgloveSceneUpdateCdrDecoders,
 ];

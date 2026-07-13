@@ -66,8 +66,8 @@ const ROS_NUMERIC_SCALAR_TYPES: ReadonlySet<string> = new Set([
 
 /**
  * Enumerates numeric leaf field paths of a protobufjs message type in
- * declaration order. Repeated and map fields are skipped (v1 plots
- * scalars only); nested messages recurse up to `MAX_FIELD_DEPTH` with a
+ * declaration order. Repeated and map fields are skipped because plots use
+ * scalar series; nested messages recurse up to `MAX_FIELD_DEPTH` with a
  * cycle guard for self-referential schemas.
  */
 export function walkProtobufNumericFields(
@@ -80,8 +80,8 @@ export function walkProtobufNumericFields(
 
 /**
  * Enumerates numeric leaf field paths of parsed ROS message definitions.
- * Arrays are skipped to match the v1 scalar-only plot contract; nested
- * complex fields recurse up to `MAX_FIELD_DEPTH` with a cycle guard.
+ * Arrays are skipped to match the scalar-only plot contract; nested complex
+ * fields recurse up to `MAX_FIELD_DEPTH` with a cycle guard.
  */
 export function walkRosNumericFields(
   definitions: readonly RosMessageDefinition[],

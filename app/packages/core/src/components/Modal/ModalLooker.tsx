@@ -77,11 +77,16 @@ const ModalLookerContent = React.memo(
     const shouldRenderImavid = useRecoilValue(
       fos.shouldRenderImaVidLooker(true),
     );
-    const video = useRecoilValue(fos.isVideoDataset);
+    const isVideoDataset = useRecoilValue(fos.isVideoDataset);
 
     const mediaType =
       (sample.sample.media_type as unknown as string) ??
       sample.sample._media_type;
+
+    // the root dataset media type is "group" for grouped datasets, so decide
+    // the video surface from the open sample: true for a video dataset or a
+    // grouped dataset whose active slice is a video sample
+    const video = isVideoDataset || mediaType === "video";
 
     const isNative = isNativeMediaType(mediaType as string);
     const isAnnotate = mode === fos.ModalMode.ANNOTATE;

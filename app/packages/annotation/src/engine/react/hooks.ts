@@ -193,17 +193,23 @@ export const useSignalValue = <T>(
   return value;
 };
 
-/** The shared ref-addressed write-half, bound to the ambient sample. */
+/**
+ * The shared ref-addressed write-half, bound to an explicit sample scope. The
+ * caller injects the surface's sample (like a bridge carries `bridge.sample`) —
+ * relying on `engine.ambientSample()` would throw once a grouped modal
+ * registers more than one store.
+ */
 export const useSurfaceActions = (
   engine: AnnotationEngine,
   surface: string,
+  sample: string,
 ): SurfaceActions =>
   useMemo(
     () =>
       createSurfaceActions({
         engine,
         surface,
-        getSample: () => engine.ambientSample(),
+        getSample: () => sample,
       }),
-    [engine, surface],
+    [engine, surface, sample],
   );

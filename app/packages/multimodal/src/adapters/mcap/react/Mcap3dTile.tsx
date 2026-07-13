@@ -23,6 +23,7 @@ import {
   PointCloudPanel,
   type PointCloudPanelLayer,
   type PointCloudPanelRenderStats,
+  type PointCloudPointPick,
   type SceneAnnotationPanelLayer,
   type ThreeSceneBackground,
 } from "../../../visualization/panels/point-cloud";
@@ -54,9 +55,17 @@ import {
   mcapSelectedObjectAtom,
   useMcapSelectedObject,
 } from "./mcap-selected-object";
+import { mcapHoveredPointForFrame } from "./mcap-point-hover";
+import {
+  mcapHoverEchoAtom,
+  useMcapHoverEcho,
+  type McapHoverEcho,
+} from "./mcap-hover-echo";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
+  DEFAULT_MCAP_IMAGE_PROJECTION,
   defaultMcapPointCloudColorForSource,
+  useMcapImageProjectionSettingsByTopic,
   useMcapPinholeCameraSettings,
   useMcapPlaybackSettings,
   useMcapPointCloudStyleSettings,
@@ -64,6 +73,9 @@ import {
   useMcapSceneBackgroundSettings,
   useMcapTemporalPolicySettings,
 } from "./mcap-modal-settings";
+import { resolveMcapCameraModel } from "./camera-geometry/mcap-camera-model";
+import { mcapCameraRayModel } from "./camera-geometry/mcap-camera-ray-model";
+import { resolveMcapFrustumImageTopics } from "./camera-geometry/mcap-camera-association";
 import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import type { McapTileProps } from "./mcap-tile-types";
 import styles from "./McapTile.module.css";
@@ -139,6 +151,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const { fidelityMode } = useMcapPlaybackSettings();
   const { temporalPolicy } = useMcapTemporalPolicySettings();
   const { pinholeCamera } = useMcapPinholeCameraSettings();
+  const imageProjectionSettings = useMcapImageProjectionSettingsByTopic();
   const { pointCloudColors, pointCloudPointSize, showPointCloudColorLegend } =
     useMcapPointCloudStyleSettings();
   const { referenceGrid } = useMcapReferenceGridSettings();
@@ -169,8 +182,16 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         : null,
     [referenceGrid, sceneUpAxis],
   );
-  const frustumImageFrames =
-    useMcapTopicPlaybackFrames<ImageVisualization>(frustumImageTopics);
+  const resolvedFrustumImageTopics = useMemo(() => {
+    return resolveMcapFrustumImageTopics({
+      cameraTopics,
+      inventoryImageTopics: frustumImageTopics,
+      settingsByImageTopic: imageProjectionSettings,
+    });
+  }, [cameraTopics, frustumImageTopics, imageProjectionSettings]);
+  const frustumImageFrames = useMcapTopicPlaybackFrames<ImageVisualization>(
+    resolvedFrustumImageTopics,
+  );
   const frames =
     useMcapTopicPlaybackFrames<PointCloudVisualization>(pointCloudTopics);
   const pointCloudColorCapabilities = usePointCloudColorCapabilities(
@@ -355,9 +376,34 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       cameraFrustumLayers.map((layer) => {
         const index = cameraTopics.indexOf(layer.id);
         const imageFrame = index >= 0 ? frustumImageFrames[index] : null;
-        const imageTopic = index >= 0 ? (frustumImageTopics[index] ?? "") : "";
-        // Frustum ↔ tile link: Cmd-clicking the frustum opens/focuses its
-        // camera's tile; hovering that tile lights the frustum up.
+        const imageTopic =
+          index >= 0 ? (resolvedFrustumImageTopics[index] ?? "") : "";
+        const geometry = imageTopic
+          ? (
+              imageProjectionSettings[imageTopic] ??
+              DEFAULT_MCAP_IMAGE_PROJECTION
+            ).geometry
+          : "original";
+        const cameraModelResolution = resolveMcapCameraModel({
+          calibration: layer.frame,
+          geometry,
+          imageTopic,
+        });
+        const rayCameraModelResolution =
+          cameraModelResolution.status === "ready"
+            ? cameraModelResolution
+            : resolveMcapCameraModel({
+                calibration: layer.frame,
+                geometry: "original",
+                imageTopic,
+              });
+        const cameraRayModel =
+          rayCameraModelResolution.status === "ready"
+            ? mcapCameraRayModel(rayCameraModelResolution.model)
+            : undefined;
+        const imageGeometryReady = cameraModelResolution.status === "ready";
+        // Cmd-clicking a frustum opens its image tile; hovering or focusing
+        // the tile highlights the frustum.
         const linked = imageTopic
           ? {
               highlighted: hoveredImageTopic === imageTopic,
@@ -370,17 +416,20 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
               },
             }
           : {};
-        if (!imageFrame) {
+        if (!imageFrame || !imageGeometryReady) {
           return {
             ...layer,
             ...linked,
+            cameraRayModel,
             imagePlaneDepthM: pinholeImagePlaneDepthM,
             opacity: pinholeOpacity,
+            requireCameraRayModel: true,
           };
         }
         return {
           ...layer,
           ...linked,
+          cameraRayModel,
           image: imageFrame.frame,
           imageContentTimeNs: imageFrame.contentTimeNs,
           imagePlaneDepthM: pinholeImagePlaneDepthM,
@@ -393,6 +442,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
                 )
               : undefined,
           opacity: pinholeOpacity,
+          requireCameraRayModel: true,
         };
       }),
     [
@@ -400,11 +450,12 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       cameraTopics,
       frustumImageFrames,
       focusedImageTopic,
-      frustumImageTopics,
       hoveredImageTopic,
+      imageProjectionSettings,
       openImageTile,
       pinholeImagePlaneDepthM,
       pinholeOpacity,
+      resolvedFrustumImageTopics,
       sourceKey,
     ],
   );
@@ -427,6 +478,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const {
     containerProps: hoverTooltipContainerProps,
     onHoverEntity,
+    onHoverPoint,
     tooltip: hoverTooltip,
   } = useMcap3dHoverTooltip();
   const annotationLayers = useMemo(
@@ -446,7 +498,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
           ...layer,
           highlighted: isSelected || isMcapLabelEcho(selectedObject, label),
           onHoverEntity: (hoveredId: string | null) =>
-            onHoverEntity(hoveredId ? { entityId, label, topic } : null),
+            onHoverEntity(
+              hoveredId ? { entityId, kind: "entity", label, topic } : null,
+            ),
           onSelectEntity: (
             _entityId: string,
             modifiers: { readonly shiftKey: boolean },
@@ -473,6 +527,53 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         };
       }),
     [onHoverEntity, sceneAnnotationLayers, selectedObject, setSelectedObject],
+  );
+  // Share point hovers between the 3D scene and image projections.
+  const hoverEcho = useMcapHoverEcho();
+  const publishedPointHoverRefs = useRef(new Map<string, McapHoverEcho>());
+  const hoverablePointCloudLayers = useMemo(
+    () =>
+      coloredPointCloudLayers.map((layer) => {
+        const topic = layer.id;
+        const frame = layer.frame;
+        return {
+          ...layer,
+          hoveredPoint:
+            hoverEcho?.kind === "point" && hoverEcho.topic === topic
+              ? { color: hoverEcho.color, position: hoverEcho.position }
+              : null,
+          onHoverPoint: (pick: PointCloudPointPick | null) => {
+            const hoveredPoint = pick
+              ? mcapHoveredPointForFrame(topic, frame, pick.pointIndex)
+              : null;
+            const payload = hoveredPoint
+              ? { ...hoveredPoint, color: pick?.color ?? null }
+              : null;
+            onHoverPoint(payload);
+            if (payload && pick) {
+              const hover: McapHoverEcho = {
+                color: pick.color,
+                kind: "point",
+                pointIndex: payload.pointIndex,
+                position: payload.position,
+                topic,
+              };
+              publishedPointHoverRefs.current.set(topic, hover);
+              jotaiStore.set(mcapHoverEchoAtom, hover);
+              return;
+            }
+
+            const published = publishedPointHoverRefs.current.get(topic);
+            publishedPointHoverRefs.current.delete(topic);
+            if (published) {
+              jotaiStore.set(mcapHoverEchoAtom, (current) =>
+                current === published ? null : current,
+              );
+            }
+          },
+        };
+      }),
+    [coloredPointCloudLayers, hoverEcho, jotaiStore, onHoverPoint],
   );
   // Schema-driven telemetry: speed from the first enabled pose stream whose
   // latest sample carries velocity, coordinates from the first LocationFix
@@ -606,11 +707,11 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       gridLayers,
       notices: panelNotices,
       placementStatus,
-      pointCloudLayers: coloredPointCloudLayers,
+      pointCloudLayers: hoverablePointCloudLayers,
     }),
     [
       annotationLayers,
-      coloredPointCloudLayers,
+      hoverablePointCloudLayers,
       frustumLayers,
       gridLayers,
       panelNotices,

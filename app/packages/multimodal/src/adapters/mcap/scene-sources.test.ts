@@ -18,6 +18,13 @@ describe("mcapSceneSources", () => {
         "cdr",
         "ros2msg",
       ),
+      createTopic("/CAM_RGBD/raw", "foxglove.RawImage"),
+      createTopic(
+        "/CAM_RGBD/raw_cdr",
+        "foxglove_msgs/msg/RawImage",
+        "cdr",
+        "ros2msg",
+      ),
       createTopic("/LIDAR_TOP", "foxglove.PointCloud"),
       createTopic("/scan", "foxglove.LaserScan"),
       createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
@@ -29,7 +36,12 @@ describe("mcapSceneSources", () => {
       createTopic("/odom", "Pose", "json", "jsonschema"),
       createTopic("/gps", "foxglove.LocationFix"),
       createTopic("/tf", "foxglove.FrameTransform"),
-      createTopic("/diagnostics", "diagnostic_msgs/DiagnosticArray", "ros1"),
+      createTopic(
+        "/diagnostics",
+        "diagnostic_msgs/DiagnosticArray",
+        "ros1",
+        "ros1msg",
+      ),
     ]);
 
     expect(sources).toEqual([
@@ -37,6 +49,9 @@ describe("mcapSceneSources", () => {
         id: "/CAM_FRONT/image_rect_compressed",
         type: MCAP_SOURCE_TYPE.IMAGE,
         label: "CAM_FRONT",
+        metadata: {
+          "mcap.calibration_topic": "/CAM_FRONT/camera_info",
+        },
       },
       {
         id: "/CAM_REAR/image",
@@ -52,6 +67,16 @@ describe("mcapSceneSources", () => {
         id: "/CAM_VIDEO_CDR",
         type: MCAP_SOURCE_TYPE.IMAGE,
         label: "CAM_VIDEO_CDR",
+      },
+      {
+        id: "/CAM_RGBD/raw",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "CAM_RGBD",
+      },
+      {
+        id: "/CAM_RGBD/raw_cdr",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "CAM_RGBD/raw_cdr",
       },
       {
         id: "/LIDAR_TOP",
@@ -102,6 +127,11 @@ describe("mcapSceneSources", () => {
         id: "/gps",
         type: MCAP_SOURCE_TYPE.LOCATION,
         label: "gps",
+      },
+      {
+        id: "/diagnostics",
+        type: MCAP_SOURCE_TYPE.LOG,
+        label: "diagnostics",
       },
     ]);
   });
@@ -225,6 +255,12 @@ describe("mcapStreamPolicies", () => {
         createTopic("/markers/annotations", "foxglove.SceneUpdate"),
         createTopic("/lidar", "foxglove.PointCloud"),
         createTopic("/map", "foxglove.Grid"),
+        createTopic(
+          "/diagnostics",
+          "diagnostic_msgs/DiagnosticArray",
+          "ros1",
+          "ros1msg",
+        ),
       ]),
     );
 
@@ -245,6 +281,9 @@ describe("mcapStreamPolicies", () => {
     // A one-shot static /map stays resolvable for the whole run through the
     // same unbounded lookback.
     expect(policies["/map"]).toEqual({
+      mode: PlaybackSyncMode.LATEST,
+    });
+    expect(policies["/diagnostics"]).toEqual({
       mode: PlaybackSyncMode.LATEST,
     });
   });

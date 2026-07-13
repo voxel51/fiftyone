@@ -62,8 +62,12 @@ export interface TrackEventMenuItem {
   destructive?: boolean;
   /** Grey out and ignore clicks (e.g. "Merge into…" with no candidates). */
   disabled?: boolean;
-  /** Receives the event the menu was opened on. */
-  onSelect: (event: NormalizedEvent) => void;
+  /**
+   * Receives the event the menu was opened on, plus the click position (so an
+   * action can anchor a popup near the menu). `anchor` may be absent if the
+   * click carried no coordinates.
+   */
+  onSelect: (event: NormalizedEvent, anchor?: { x: number; y: number }) => void;
 }
 
 function normalizeEvent(e: TimelineTrackEvent): NormalizedEvent {
@@ -651,7 +655,10 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                           ev.stopPropagation();
 
                           if (!item.disabled) {
-                            item.onSelect(event);
+                            item.onSelect(event, {
+                              x: ev.clientX,
+                              y: ev.clientY,
+                            });
                           }
                         }}
                       >

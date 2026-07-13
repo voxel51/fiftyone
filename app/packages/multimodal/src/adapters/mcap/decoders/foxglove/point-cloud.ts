@@ -1,18 +1,27 @@
 import type {
+  DecodeContext,
   DecodedAttributeValue,
+  DecodedOutput,
   Decoder,
   PointCloudField,
   PointCloudScalarField,
 } from "../../../../decoders";
-import { resourceHintsForArrayBufferViews } from "../../../../decoders";
+import {
+  buildPointCloudRenderPayload,
+  resourceHintsForArrayBufferViews,
+} from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
+import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
 import {
   decodePose,
   normalizedQuaternion,
   type ProtobufPose3D,
 } from "./protobuf/geometry";
-import { FOXGLOVE_POINT_CLOUD_PAYLOAD } from "./protobuf/payloads";
+import {
+  FOXGLOVE_POINT_CLOUD_CDR_PAYLOADS,
+  FOXGLOVE_POINT_CLOUD_PAYLOAD,
+} from "./payloads";
 import {
   asRecord,
   optionalRecord,
@@ -95,58 +104,80 @@ export const foxglovePointCloudDecoder: Decoder = {
       FOXGLOVE_POINT_CLOUD_PAYLOAD,
       context,
     );
-    const data = requiredBytes(message, "data");
-    const pointStride = requiredNumber(message, "pointStride", "point_stride");
-    const fields = packedFields(requiredArray(message, "fields"));
-    const decodedPoints = extractPointCloudData(data, pointStride, fields);
-    applyPose(
-      decodedPoints.positions,
-      decodePose(optionalRecord(message, "pose")),
-    );
-    // Per-message Foxglove frame_id carried by this point cloud payload. This
-    // is separate from the MCAP channel frame_id metadata fallback.
-    const frameId = optionalString(message, "frameId", "frame_id");
-    const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
-    const pointCount = decodedPoints.positions.length / POINT_COMPONENT_COUNT;
-    const packedFieldMetadata = fields.map((field) => ({
-      name: field.name,
-      offset: field.offset,
-      type: field.type,
-    }));
-    const attributes: Record<string, DecodedAttributeValue> = {
-      fields: packedFieldMetadata,
-      pointCount,
-      pointStride,
-    };
-
-    if (frameId) {
-      attributes.frameId = frameId;
-    }
-
-    const transferableViews = [
-      decodedPoints.positions,
-      decodedPoints.colors,
-      ...decodedPoints.scalarFields.map((field) => field.values),
-    ].filter((view): view is Float32Array => view !== undefined);
-
-    return {
-      attributes,
-      resourceHints: resourceHintsForArrayBufferViews(...transferableViews),
-      timing: timingFromContext(context, messageTimestamp),
-      visualization: {
-        ...(frameId ? { coordinateFrameId: frameId } : {}),
-        ...(decodedPoints.colors ? { colors: decodedPoints.colors } : {}),
-        ...(decodedPoints.scalarFields.length
-          ? { scalarFields: decodedPoints.scalarFields }
-          : {}),
-        fields: packedFieldMetadata,
-        kind: VISUALIZATION_KIND.POINT_CLOUD,
-        pointCount,
-        positions: decodedPoints.positions,
-      },
-    };
+    return decodeFoxglovePointCloudRecord(message, context);
   },
 };
+
+/**
+ * Decoders for Foxglove PointCloud messages carried over ROS 2 CDR.
+ */
+export const foxglovePointCloudCdrDecoders = rosDecodersForPayloads({
+  id: "foxglove.point-cloud.cdr",
+  map: decodeFoxglovePointCloudRecord,
+  payloads: FOXGLOVE_POINT_CLOUD_CDR_PAYLOADS,
+});
+
+export function decodeFoxglovePointCloudRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const data = requiredBytes(message, "data");
+  const pointStride = requiredNumber(message, "pointStride", "point_stride");
+  const fields = packedFields(requiredArray(message, "fields"));
+  const decodedPoints = extractPointCloudData(data, pointStride, fields);
+  applyPose(
+    decodedPoints.positions,
+    decodePose(optionalRecord(message, "pose")),
+  );
+  // Per-message Foxglove frame_id carried by this point cloud payload. This
+  // is separate from the MCAP channel frame_id metadata fallback.
+  const frameId = optionalString(message, "frameId", "frame_id");
+  const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
+  const pointCount = decodedPoints.positions.length / POINT_COMPONENT_COUNT;
+  const packedFieldMetadata = fields.map((field) => ({
+    name: field.name,
+    offset: field.offset,
+    type: field.type,
+  }));
+  const attributes: Record<string, DecodedAttributeValue> = {
+    fields: packedFieldMetadata,
+    pointCount,
+    pointStride,
+  };
+
+  if (frameId) {
+    attributes.frameId = frameId;
+  }
+  const renderPayload = buildPointCloudRenderPayload(decodedPoints);
+
+  const transferableViews = [
+    decodedPoints.positions,
+    decodedPoints.colors,
+    ...decodedPoints.scalarFields.map((field) => field.values),
+    renderPayload.positions,
+    renderPayload.colors,
+    ...renderPayload.scalarFields.map((field) => field.values),
+    renderPayload.sourceIndices,
+  ].filter((view): view is Float32Array | Uint32Array => view !== undefined);
+
+  return {
+    attributes,
+    resourceHints: resourceHintsForArrayBufferViews(...transferableViews),
+    timing: timingFromContext(context, messageTimestamp),
+    visualization: {
+      ...(frameId ? { coordinateFrameId: frameId } : {}),
+      ...(decodedPoints.colors ? { colors: decodedPoints.colors } : {}),
+      ...(decodedPoints.scalarFields.length
+        ? { scalarFields: decodedPoints.scalarFields }
+        : {}),
+      fields: packedFieldMetadata,
+      kind: VISUALIZATION_KIND.POINT_CLOUD,
+      pointCount,
+      positions: decodedPoints.positions,
+      renderPayload,
+    },
+  };
+}
 
 /**
  * Normalized point cloud buffers shared by Foxglove and ROS decoders.

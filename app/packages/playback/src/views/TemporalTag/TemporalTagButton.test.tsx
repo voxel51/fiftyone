@@ -8,6 +8,8 @@ import type { TemporalTagModeState } from "./use-temporal-tag-mode";
 
 const idleState: TemporalTagModeState = {
   phase: "idle",
+  mode: "create",
+  editId: null,
   selection: null,
   previewStart: null,
   previewEnd: null,
@@ -26,6 +28,7 @@ function makeActions(
     startDrag: vi.fn(),
     updateDrag: vi.fn(),
     finishDrag: vi.fn(),
+    startEdit: vi.fn(),
     setAnchorHandle: vi.fn(),
     setLabel: vi.fn(),
     cancel: vi.fn(),

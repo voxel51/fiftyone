@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import * as THREE from "three";
 
 import {
   clampImageViewTransform,
   imageDisplayRect,
+  imageTextureMeshGeometry,
+  replaceImageMaterialTexture,
   transformedImageDisplayRect,
 } from "./base-2d-scene";
 
@@ -92,5 +95,36 @@ describe("2D image view helpers", () => {
         },
       ),
     ).toEqual({ scale: 0.8, translateX: 40, translateY: -30 });
+  });
+
+  it("invalidates WebGPU material bindings when an image texture changes", () => {
+    const material = new THREE.MeshBasicMaterial();
+    const first = new THREE.Texture();
+    const second = new THREE.Texture();
+
+    replaceImageMaterialTexture(material, first);
+    const firstVersion = material.version;
+    replaceImageMaterialTexture(material, second);
+
+    expect(material.map).toBe(second);
+    expect(material.version).toBe(firstVersion + 1);
+
+    replaceImageMaterialTexture(material, second);
+    expect(material.version).toBe(firstVersion + 1);
+  });
+
+  it("creates renderer-owned geometry from a cached texture remap mesh", () => {
+    const geometry = imageTextureMeshGeometry({
+      displayHeight: 50,
+      displayWidth: 100,
+      indices: Uint32Array.from([0, 1, 2]),
+      positions: Float32Array.from([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+      uvs: Float32Array.from([0, 0, 1, 0, 0, 1]),
+    });
+
+    expect(geometry.getAttribute("position").count).toBe(3);
+    expect(geometry.getAttribute("uv").count).toBe(3);
+    expect(geometry.getIndex()?.count).toBe(3);
+    geometry.dispose();
   });
 });

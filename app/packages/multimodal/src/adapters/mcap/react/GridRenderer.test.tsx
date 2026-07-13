@@ -11,12 +11,12 @@ import {
   WEBGPU_DEVICE_BUDGET,
   registerWebGpuRenderer,
   resetWebGpuDeviceRegistryForTests,
-} from "../../../visualization/panels/webgpu-device-registry";
+} from "../../../visualization/panels/gpu/webgpu-device-registry";
 import {
   acquireGridLiveLease,
   gridLiveLeaseStats,
   resetGridLiveLeasesForTests,
-} from "../../../visualization/panels/webgpu-live-lease";
+} from "../../../visualization/panels/gpu/webgpu-live-lease";
 import type { McapGridPreviewFrame } from "../grid-preview";
 import { GridRenderer, HOVER_INTENT_DELAY_MS } from "./GridRenderer";
 
@@ -80,7 +80,7 @@ vi.mock("./mcap-grid-camera-state", () => ({
   ]),
 }));
 
-vi.mock("../../../visualization/panels/webgpu-snapshot-renderer", () => ({
+vi.mock("../../../visualization/panels/gpu/webgpu-snapshot-renderer", () => ({
   renderPointCloudSnapshot: vi.fn(
     (job: SnapshotRequest["job"]) =>
       new Promise<ImageBitmap | null>((resolve) => {
@@ -202,6 +202,60 @@ describe("GridRenderer", () => {
     const overlay = await screen.findByTestId("annotations-overlay");
     expect(overlay.getAttribute("data-image-width")).toBe("640");
     expect(overlay.getAttribute("data-image-height")).toBe("480");
+  });
+
+  it("allows ready image tile activation to pass through", () => {
+    previewHarness.preview.frame = imageFrame(new Uint8Array([1]));
+    previewHarness.preview.status = "ready";
+    const onClick = vi.fn();
+    const onContextMenu = vi.fn();
+
+    render(
+      <div onClick={onClick} onContextMenu={onContextMenu}>
+        <GridRenderer ctx={rendererCtx()} />
+      </div>,
+    );
+
+    const image = screen.getByTestId("bitmap-image-view");
+    fireEvent.click(image);
+    fireEvent.contextMenu(image);
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(onContextMenu).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps point-cloud and unresolved tile activation inside the renderer", () => {
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+    const onClick = vi.fn();
+    const onContextMenu = vi.fn();
+    const { rerender } = render(
+      <div onClick={onClick} onContextMenu={onContextMenu}>
+        <GridRenderer ctx={rendererCtx()} />
+      </div>,
+    );
+
+    const pointCloud = screen.getByTestId("bitmap-canvas-host");
+    fireEvent.click(pointCloud);
+    fireEvent.contextMenu(pointCloud);
+
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onContextMenu).not.toHaveBeenCalled();
+
+    previewHarness.preview.frame = null;
+    previewHarness.preview.status = "loading";
+    rerender(
+      <div onClick={onClick} onContextMenu={onContextMenu}>
+        <GridRenderer ctx={rendererCtx()} />
+      </div>,
+    );
+
+    const loading = screen.getByTestId("mcap-loading-ascii");
+    fireEvent.click(loading);
+    fireEvent.contextMenu(loading);
+
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onContextMenu).not.toHaveBeenCalled();
   });
 
   it("renders point-cloud cells as a snapshot bitmap at rest with NO live panel", async () => {

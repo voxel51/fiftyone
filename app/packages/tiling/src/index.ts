@@ -13,6 +13,7 @@ export type {
   TilingTile,
   AddTileOptions,
   TilingAutoLayoutStrategy,
+  TilingLayoutMetrics,
   SetTileTitleOptions,
   TileTitleSource,
   TilingContextValue,

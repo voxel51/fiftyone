@@ -6,9 +6,10 @@ import * as THREE from "three";
 import type { CameraCalibrationVisualization } from "../../../decoders";
 import { CLICK_DRAG_TOLERANCE_PX } from "../interaction";
 import { useImageTextureLease } from "../use-image-texture-lease";
+import { POINT_PICK_BLOCKING_USER_DATA } from "./point-picking";
 import { useScenePicking } from "./scene-interactivity";
 import { pointCloudObjectTransform } from "./transforms";
-import type { CameraFrustumPanelLayer } from "./types";
+import type { CameraFrustumPanelLayer, CameraImageRayModel } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
 import {
   SCENE_SELECTED_DASH_SIZE,
@@ -28,13 +29,17 @@ const CAMERA_FRUSTUM_AXIS_LINE_WIDTH = 2;
 // Highlighted (linked camera tile hovered / pending select) style.
 const CAMERA_FRUSTUM_HIGHLIGHT_COLOR = 0xffffff;
 const CAMERA_FRUSTUM_HIGHLIGHT_OPACITY = 1;
+const CAMERA_BOUNDARY_SEGMENTS_PER_EDGE = 16;
+const CAMERA_SURFACE_COLUMNS = 48;
+const CAMERA_SURFACE_ROWS = 32;
 export function CameraFrustumSceneLayer({
   layer,
 }: {
   readonly layer: CameraFrustumPanelLayer;
 }) {
   const invalidate = useThree((state) => state.invalidate);
-  const { frame, frameTransform, image } = layer;
+  const { cameraRayModel, frame, frameTransform, image } = layer;
+  const requireCameraRayModel = layer.requireCameraRayModel === true;
   const objectTransform = useMemo(
     () => pointCloudObjectTransform(frameTransform),
     [frameTransform],
@@ -64,14 +69,24 @@ export function CameraFrustumSceneLayer({
     imagePlaneDepthM,
   ].join(",");
   const geometry = useMemo(
-    () => createCameraFrustumGeometry(frame, imagePlaneDepthM),
+    () =>
+      requireCameraRayModel && !cameraRayModel
+        ? null
+        : createCameraFrustumGeometry(frame, imagePlaneDepthM, cameraRayModel),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [intrinsicsKey],
+    [cameraRayModel, intrinsicsKey, requireCameraRayModel],
   );
   const imagePlaneGeometry = useMemo(
-    () => createCameraImagePlaneGeometry(frame, imagePlaneDepthM),
+    () =>
+      requireCameraRayModel && !cameraRayModel
+        ? null
+        : createCameraImagePlaneGeometry(
+            frame,
+            imagePlaneDepthM,
+            cameraRayModel,
+          ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [intrinsicsKey],
+    [cameraRayModel, intrinsicsKey, requireCameraRayModel],
   );
   const axisGeometry = useMemo(
     () => createCameraAxisMarkerGeometry(imagePlaneDepthM),
@@ -101,8 +116,11 @@ export function CameraFrustumSceneLayer({
     onLoaded: () => invalidate(),
     textureKey: layer.imageTextureKey,
   });
+  // This effect disposes superseded wireframe geometry.
   useEffect(() => () => geometry?.dispose(), [geometry]);
+  // This effect disposes superseded camera-image geometry.
   useEffect(() => () => imagePlaneGeometry?.dispose(), [imagePlaneGeometry]);
+  // This effect disposes the camera-axis marker when it is replaced.
   useEffect(() => () => axisGeometry.dispose(), [axisGeometry]);
   useInvalidateOn([
     axisGeometry,
@@ -158,6 +176,7 @@ export function CameraFrustumSceneLayer({
           : undefined
       }
       onPointerOut={interactive ? () => setHovered(false) : undefined}
+      userData={interactive ? POINT_PICK_BLOCKING_USER_DATA : undefined}
     >
       <lineSegments frustumCulled={false}>
         <primitive attach="geometry" object={geometry} />
@@ -248,10 +267,29 @@ function cameraFrustumCorners(
  * Wireframe frustum for one camera: four rays from the optical center to
  * the image corners plus the far rectangle.
  */
-function createCameraFrustumGeometry(
+export function createCameraFrustumGeometry(
   frame: CameraCalibrationVisualization,
   depth: number,
+  rayModel?: CameraImageRayModel,
 ): THREE.BufferGeometry | null {
+  if (rayModel) {
+    const boundary = cameraRayBoundary(rayModel, depth);
+    if (boundary.length < 4) {
+      return null;
+    }
+    const segments: number[] = [];
+    const quarter = Math.max(1, Math.floor(boundary.length / 4));
+    for (const index of [0, quarter, quarter * 2, quarter * 3]) {
+      const point = boundary[Math.min(index, boundary.length - 1)];
+      segments.push(0, 0, 0, ...point);
+    }
+    for (let index = 0; index < boundary.length; index++) {
+      const next = boundary[(index + 1) % boundary.length];
+      segments.push(...boundary[index], ...next);
+    }
+    return lineGeometry(segments);
+  }
+
   const corners = cameraFrustumCorners(frame, depth);
   if (!corners) {
     return null;
@@ -266,14 +304,7 @@ function createCameraFrustumGeometry(
     segments.push(...corners[index], ...next);
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute(
-    "position",
-    new THREE.BufferAttribute(Float32Array.from(segments), 3),
-  );
-
-  // Line distances for the dashed selected style; harmless otherwise.
-  return withLineDistances(geometry);
+  return lineGeometry(segments);
 }
 
 /**
@@ -281,10 +312,14 @@ function createCameraFrustumGeometry(
  * image renders upright: image pixel row 0 (top) sits on the frustum's
  * top edge, matching the default `flipY` texture orientation.
  */
-function createCameraImagePlaneGeometry(
+export function createCameraImagePlaneGeometry(
   frame: CameraCalibrationVisualization,
   depth: number,
+  rayModel?: CameraImageRayModel,
 ): THREE.BufferGeometry | null {
+  if (rayModel) {
+    return createCameraRaySurfaceGeometry(rayModel, depth);
+  }
   const corners = cameraFrustumCorners(frame, depth);
   if (!corners) {
     return null;
@@ -303,6 +338,124 @@ function createCameraImagePlaneGeometry(
   geometry.setIndex([0, 1, 2, 0, 2, 3]);
 
   return geometry;
+}
+
+function cameraRayBoundary(
+  model: CameraImageRayModel,
+  depth: number,
+): readonly (readonly [number, number, number])[] {
+  const points: Array<readonly [number, number, number]> = [];
+  const width = Math.max(1, model.width - 1);
+  const height = Math.max(1, model.height - 1);
+  const append = (u: number, v: number) => {
+    const point = cameraRayPoint(model.rayForPixel(u, v), depth);
+    if (point) {
+      points.push(point);
+    }
+  };
+  for (let step = 0; step < CAMERA_BOUNDARY_SEGMENTS_PER_EDGE; step++) {
+    append((width * step) / CAMERA_BOUNDARY_SEGMENTS_PER_EDGE, 0);
+  }
+  for (let step = 0; step < CAMERA_BOUNDARY_SEGMENTS_PER_EDGE; step++) {
+    append(width, (height * step) / CAMERA_BOUNDARY_SEGMENTS_PER_EDGE);
+  }
+  for (let step = 0; step < CAMERA_BOUNDARY_SEGMENTS_PER_EDGE; step++) {
+    append(width - (width * step) / CAMERA_BOUNDARY_SEGMENTS_PER_EDGE, height);
+  }
+  for (let step = 0; step < CAMERA_BOUNDARY_SEGMENTS_PER_EDGE; step++) {
+    append(0, height - (height * step) / CAMERA_BOUNDARY_SEGMENTS_PER_EDGE);
+  }
+  return points;
+}
+
+function createCameraRaySurfaceGeometry(
+  model: CameraImageRayModel,
+  depth: number,
+): THREE.BufferGeometry | null {
+  const columns = CAMERA_SURFACE_COLUMNS;
+  const rows = CAMERA_SURFACE_ROWS;
+  const vertexCount = (columns + 1) * (rows + 1);
+  const positions = new Float32Array(vertexCount * 3);
+  const uvs = new Float32Array(vertexCount * 2);
+  const valid = new Uint8Array(vertexCount);
+  for (let row = 0; row <= rows; row++) {
+    const rowFraction = row / rows;
+    for (let column = 0; column <= columns; column++) {
+      const columnFraction = column / columns;
+      const vertex = row * (columns + 1) + column;
+      const point = cameraRayPoint(
+        model.rayForPixel(
+          (model.width - 1) * columnFraction,
+          (model.height - 1) * rowFraction,
+        ),
+        depth,
+      );
+      if (!point) {
+        continue;
+      }
+      positions.set(point, vertex * 3);
+      uvs[vertex * 2] = columnFraction;
+      uvs[vertex * 2 + 1] = 1 - rowFraction;
+      valid[vertex] = 1;
+    }
+  }
+
+  const indices: number[] = [];
+  for (let row = 0; row < rows; row++) {
+    for (let column = 0; column < columns; column++) {
+      const topLeft = row * (columns + 1) + column;
+      const topRight = topLeft + 1;
+      const bottomLeft = topLeft + columns + 1;
+      const bottomRight = bottomLeft + 1;
+      appendValidTriangle(indices, valid, topLeft, bottomLeft, topRight);
+      appendValidTriangle(indices, valid, topRight, bottomLeft, bottomRight);
+    }
+  }
+  if (indices.length === 0) {
+    return null;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  return geometry;
+}
+
+function cameraRayPoint(
+  ray: readonly [number, number, number] | null,
+  depth: number,
+): readonly [number, number, number] | null {
+  if (!ray) {
+    return null;
+  }
+  const length = Math.hypot(ray[0], ray[1], ray[2]);
+  if (!(length > 1e-9) || !Number.isFinite(length)) {
+    return null;
+  }
+  const scale = depth / length;
+  return [ray[0] * scale, ray[1] * scale, ray[2] * scale];
+}
+
+function appendValidTriangle(
+  indices: number[],
+  valid: Uint8Array,
+  first: number,
+  second: number,
+  third: number,
+): void {
+  if (valid[first] && valid[second] && valid[third]) {
+    indices.push(first, second, third);
+  }
+}
+
+function lineGeometry(segments: readonly number[]): THREE.BufferGeometry {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(Float32Array.from(segments), 3),
+  );
+  // Line distances for the dashed selected style; harmless otherwise.
+  return withLineDistances(geometry);
 }
 
 function createCameraAxisMarkerGeometry(depth: number): THREE.BufferGeometry {

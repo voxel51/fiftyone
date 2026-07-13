@@ -14,6 +14,7 @@ const h = vi.hoisted(() => ({ stream: null as unknown }));
 
 vi.mock("@fiftyone/annotation", () => ({
   useAnnotationEngine: () => ({}),
+  useActiveSampleId: () => "sample-1",
   useSurfaceActions: () => mockActions,
 }));
 

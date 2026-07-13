@@ -18,6 +18,10 @@ export interface McapImageAnnotationOverlayProps {
   readonly imageHeight: number;
   readonly fit?: "contain" | "cover";
   readonly interpolate?: boolean;
+  readonly pixelTransform?: (
+    u: number,
+    v: number,
+  ) => readonly [number, number] | null;
   readonly topics: readonly string[];
   readonly viewTransform?: ImageViewTransform;
 }
@@ -37,6 +41,7 @@ const McapImageAnnotationOverlay: React.FC<McapImageAnnotationOverlayProps> = ({
   imageHeight,
   fit = "contain",
   interpolate = true,
+  pixelTransform,
   topics,
   viewTransform,
 }) => {
@@ -104,12 +109,14 @@ const McapImageAnnotationOverlay: React.FC<McapImageAnnotationOverlayProps> = ({
   return (
     <ImageAnnotationsOverlay
       annotations={annotationSets.map((set) => set.frame)}
+      renderMetadata={annotationSets.map((set) => set.renderMetadata)}
       imageWidth={imageWidth}
       imageHeight={imageHeight}
       fit={fit}
       selectedKey={selectedKey}
       highlightLabel={highlightLabel}
       onSelectPrimitive={handleSelect}
+      pixelTransform={pixelTransform}
       viewTransform={viewTransform}
     />
   );

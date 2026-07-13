@@ -474,6 +474,7 @@ describe("MCAP grid preview", () => {
     ).toEqual({
       annotations: ["/camera/front/annotations"],
       image: ["/camera/front"],
+      logs: [],
       pointCloud: ["/lidar/points"],
       previewable: ["/camera/front", "/lidar/points"],
       sceneUpdates: ["/markers"],
@@ -495,6 +496,7 @@ describe("MCAP grid preview", () => {
     ).toEqual({
       annotations: [],
       image: [],
+      logs: [],
       pointCloud: [],
       previewable: [],
       sceneUpdates: [],
@@ -508,6 +510,7 @@ describe("MCAP grid preview", () => {
         "/CAM_FRONT/image_rect_compressed",
         "/CAM_BACK/image_rect_compressed",
       ],
+      logs: [],
       pointCloud: [],
       previewable: [
         "/CAM_FRONT/image_rect_compressed",

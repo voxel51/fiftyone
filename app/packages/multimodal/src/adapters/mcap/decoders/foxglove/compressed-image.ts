@@ -1,11 +1,17 @@
 import {
   resourceHintsForArrayBufferViews,
+  type DecodeContext,
   type DecodedAttributeValue,
+  type DecodedOutput,
   type Decoder,
 } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
+import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
-import { FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD } from "./protobuf/payloads";
+import {
+  FOXGLOVE_COMPRESSED_IMAGE_CDR_PAYLOADS,
+  FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
+} from "./payloads";
 import {
   optionalRecord,
   optionalString,
@@ -32,43 +38,59 @@ export const foxgloveCompressedImageDecoder: Decoder = {
       FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD,
       context,
     );
-    const data = requiredBytes(message, "data");
-    const format = optionalString(message, "format") ?? "unknown";
-    const frameId = optionalString(message, "frameId", "frame_id");
-    const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
-    const attributes: Record<string, DecodedAttributeValue> = {
-      byteLength: data.byteLength,
-      format,
-    };
-    const mimeType = mimeTypeFromFormat(format);
-    const unsupportedReason =
-      mimeType === null ? unsupportedImageReason(format) : undefined;
+    return decodeFoxgloveCompressedImageRecord(message, context);
+  },
+};
 
-    if (frameId) {
-      attributes.frameId = frameId;
-    }
+/**
+ * Decoders for Foxglove CompressedImage messages carried over ROS 2 CDR.
+ */
+export const foxgloveCompressedImageCdrDecoders = rosDecodersForPayloads({
+  id: "foxglove.compressed-image.cdr",
+  map: decodeFoxgloveCompressedImageRecord,
+  payloads: FOXGLOVE_COMPRESSED_IMAGE_CDR_PAYLOADS,
+});
 
-    if (unsupportedReason) {
-      attributes.unsupportedReason = unsupportedReason;
-      return {
-        attributes,
-        resourceHints: resourceHintsForArrayBufferViews(data),
-        timing: timingFromContext(context, messageTimestamp),
-      };
-    }
+export function decodeFoxgloveCompressedImageRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const data = requiredBytes(message, "data");
+  const format = optionalString(message, "format") ?? "unknown";
+  const frameId = optionalString(message, "frameId", "frame_id");
+  const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
+  const attributes: Record<string, DecodedAttributeValue> = {
+    byteLength: data.byteLength,
+    format,
+  };
+  const mimeType = mimeTypeFromFormat(format);
+  const unsupportedReason =
+    mimeType === null ? unsupportedImageReason(format) : undefined;
 
+  if (frameId) {
+    attributes.frameId = frameId;
+  }
+
+  if (unsupportedReason) {
+    attributes.unsupportedReason = unsupportedReason;
     return {
       attributes,
       resourceHints: resourceHintsForArrayBufferViews(data),
       timing: timingFromContext(context, messageTimestamp),
-      visualization: {
-        bytes: data,
-        kind: VISUALIZATION_KIND.ENCODED_IMAGE,
-        mimeType: mimeType ?? undefined,
-      },
     };
-  },
-};
+  }
+
+  return {
+    attributes,
+    resourceHints: resourceHintsForArrayBufferViews(data),
+    timing: timingFromContext(context, messageTimestamp),
+    visualization: {
+      bytes: data,
+      kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+      mimeType: mimeType ?? undefined,
+    },
+  };
+}
 
 function mimeTypeFromFormat(format: string): string | null | undefined {
   const lowerFormat = format.trim().toLowerCase();

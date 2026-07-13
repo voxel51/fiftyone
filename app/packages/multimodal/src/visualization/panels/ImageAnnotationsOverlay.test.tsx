@@ -410,6 +410,61 @@ describe("ImageAnnotationsOverlay", () => {
     expect(lines[0].getAttribute("y2")).toBe("10");
   });
 
+  it("renders prepared line-list groups without regrouping the raw primitive", () => {
+    const annotation = {
+      ...emptySet(),
+      points: [
+        {
+          type: "line-list" as const,
+          points: [
+            [0, 0],
+            [10, 10],
+          ] as const,
+          thickness: 2,
+          outlineColor: RED,
+          outlineColors: [],
+          fillColor: null,
+        },
+      ],
+    };
+    const { container } = render(
+      <ImageAnnotationsOverlay
+        annotations={[annotation]}
+        fit="contain"
+        imageHeight={100}
+        imageWidth={200}
+        renderMetadata={[
+          {
+            lineListGroups: [
+              [
+                {
+                  bounds: { minX: 50, minY: 20, maxX: 70, maxY: 40 },
+                  label: "car",
+                  points: [
+                    [50, 20],
+                    [70, 40],
+                  ],
+                  segments: [
+                    [
+                      [50, 20],
+                      [70, 40],
+                    ],
+                  ],
+                },
+              ],
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const line = requireElement<SVGLineElement>(container, "line");
+    expect(line.getAttribute("x1")).toBe("50");
+    expect(line.getAttribute("y1")).toBe("20");
+    expect(line.getAttribute("x2")).toBe("70");
+    expect(line.getAttribute("y2")).toBe("40");
+  });
+
   it("renders one circle per individual point", () => {
     // The interactive renderer draws a <circle> for each point; colour is
     // applied via CSS custom property, not the fill attribute.
@@ -541,6 +596,65 @@ describe("ImageAnnotationsOverlay", () => {
     ]);
 
     expect(container.querySelectorAll("circle")).toHaveLength(4);
+  });
+});
+
+describe("nonlinear pixel mapping", () => {
+  it("remaps circles, line work, and text into displayed pixel space", () => {
+    const { container } = render(
+      <ImageAnnotationsOverlay
+        annotations={[
+          {
+            ...emptySet(),
+            circles: [
+              {
+                position: [20, 20],
+                diameter: 10,
+                thickness: 1,
+                outlineColor: RED,
+                fillColor: null,
+              },
+            ],
+            points: [
+              {
+                fillColor: null,
+                outlineColor: RED,
+                outlineColors: [],
+                points: [
+                  [10, 10],
+                  [20, 20],
+                ],
+                thickness: 1,
+                type: "line-strip",
+              },
+            ],
+            texts: [
+              {
+                backgroundColor: null,
+                fontSize: 8,
+                position: [10, 10],
+                text: "car",
+                textColor: WHITE,
+              },
+            ],
+          },
+        ]}
+        fit="contain"
+        imageHeight={300}
+        imageWidth={400}
+        pixelTransform={(x, y) => [x * 2, y * 3]}
+      />,
+    );
+
+    expect(container.querySelector("circle")).toBeNull();
+    expect(
+      container.querySelector("polygon")?.getAttribute("points"),
+    ).toContain("50,60");
+    expect(
+      container.querySelector("polyline")?.getAttribute("points"),
+    ).toContain("20,30");
+    expect(container.querySelector("text")?.getAttribute("x")).toBe("20");
+    expect(container.querySelector("text")?.getAttribute("y")).toBe("30");
   });
 });
 

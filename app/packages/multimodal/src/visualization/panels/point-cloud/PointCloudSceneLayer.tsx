@@ -1,13 +1,36 @@
 /* eslint-disable react/no-unknown-property */
-import { useThree } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { instancedBufferAttribute } from "three/tsl";
+import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
 
+import type { PointCloudRenderPayload } from "../../../decoders";
+import {
+  createGpuPointCloudColorNode,
+  createGpuPointCloudColorUniforms,
+  gpuPointCloudColorNodeKey,
+  updateGpuPointCloudColorUniforms,
+  type GpuPointCloudColorUniforms,
+} from "./gpu/gpu-point-cloud-color-nodes";
+import type { ResolvedGpuPointCloudColor } from "./gpu/gpu-point-cloud-color";
+import {
+  gpuPointCloudPositionNode,
+  gpuPointCloudSampleIndexFromStrideNode,
+  gpuPointCloudScalarNode,
+  type GpuPointCloudNode,
+} from "./gpu/gpu-point-cloud-position-nodes";
 import { POINT_COMPONENT_COUNT } from "./point-cloud-colors";
+import {
+  GpuPointCloud3dPickerRegistryContext,
+  type GpuPointCloud3dPickLayer,
+} from "./gpu/gpu-point-cloud-3d-picker";
 import { pointCloudObjectTransform } from "./transforms";
-import type { PointCloudPanelLayer, PointCloudRenderData } from "./types";
+import type {
+  PointCloudHoveredPointMarker,
+  PointCloudPanelLayer,
+  PointCloudRenderData,
+} from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
 
 // Default point sprite size in pixels. Lives here (not in the panel) so
@@ -27,45 +50,370 @@ export interface PointCloudInstanceAttributes {
   readonly position: THREE.InstancedBufferAttribute;
 }
 
+/** Decoder-owned sampled arrays and resolved style for the zero-copy GPU path. */
+export interface GpuPointCloudSceneData {
+  readonly color: ResolvedGpuPointCloudColor;
+  readonly payload: PointCloudRenderPayload;
+  readonly renderedPointCount: number;
+  /** Stable within this canvas; includes the layer id and source content time. */
+  readonly resourceKey?: string;
+}
+
 export function PointCloudSceneLayer({
   data,
+  gpu,
   layer,
   pointSize,
 }: {
   readonly data: PointCloudRenderData;
+  readonly gpu?: GpuPointCloudSceneData;
   readonly layer: PointCloudPanelLayer;
   readonly pointSize: number;
 }) {
-  const { frameTransform } = layer;
+  const { frameTransform, hoveredPoint } = layer;
   const objectTransform = useMemo(
     () => pointCloudObjectTransform(frameTransform),
     [frameTransform],
   );
 
-  useInvalidateOn([objectTransform]);
+  useInvalidateOn([objectTransform, hoveredPoint]);
 
   return (
     <group
       position={objectTransform.position}
       quaternion={objectTransform.quaternion}
     >
-      <PointCloudPoints data={data} pointSize={pointSize} />
+      {gpu ? (
+        <GpuPointCloudPoints
+          gpu={gpu}
+          layerId={layer.onHoverPoint ? layer.id : undefined}
+          pointSize={pointSize}
+        />
+      ) : (
+        <PointCloudPoints
+          data={data}
+          layerId={layer.onHoverPoint ? layer.id : undefined}
+          pointSize={pointSize}
+        />
+      )}
+      {hoveredPoint ? (
+        <HoveredPointMarker marker={hoveredPoint} pointSize={pointSize} />
+      ) : null}
     </group>
   );
+}
+
+interface GpuPointCloud3dResource {
+  readonly capacity: number;
+  color: THREE.BufferAttribute | null;
+  readonly position: THREE.BufferAttribute;
+  renderedPointCount: number;
+  sampledPointCount: number;
+  readonly scalar: Map<string, THREE.BufferAttribute>;
+  readonly spriteGeometry: THREE.PlaneGeometry;
+}
+
+interface GpuPointCloud3dMaterial {
+  readonly colorUniforms: GpuPointCloudColorUniforms;
+  readonly material: PointsNodeMaterial;
+  readonly sampleStride: SceneUniformNode<number>;
+}
+
+interface SceneUniformNode<T> extends GpuPointCloudNode {
+  value: T;
+}
+
+const sceneTsl = TSL as unknown as {
+  uniform<T extends number>(value: T): SceneUniformNode<T>;
+};
+
+const EMPTY_GPU_INSTANCE_ATTRIBUTES = new Map<
+  string,
+  THREE.InstancedBufferAttribute
+>();
+
+/**
+ * Renders decoder-prepared samples without rescanning or copying their point
+ * and channel arrays. The visible instanced sprite is fully positioned and
+ * coloured in the WebGPU vertex graph; dwell picking shares the same storage
+ * attribute through the canvas-local GPU picker registry.
+ */
+function GpuPointCloudPoints({
+  gpu,
+  layerId,
+  pointSize,
+}: {
+  readonly gpu: GpuPointCloudSceneData;
+  /** Set only when the layer is pickable. */
+  readonly layerId?: string;
+  readonly pointSize: number;
+}) {
+  const invalidate = useThree((state) => state.invalidate);
+  const pickerRegistry = useContext(GpuPointCloud3dPickerRegistryContext);
+  const capacityRef = useRef(0);
+  // Capacity is monotonic for this mounted layer. Smaller later frames reuse
+  // the existing GPU allocation; only a larger worker bucket replaces it.
+  if (gpu.payload.capacity > capacityRef.current) {
+    capacityRef.current = gpu.payload.capacity;
+  }
+  const capacity = capacityRef.current;
+  const resource = useMemo(
+    () => createGpuPointCloud3dResource(gpu.payload, capacity),
+    // Capacity is grow-only. The current payload seeds a newly grown buffer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [capacity],
+  );
+  // Fields may appear after the first frame. Schema growth must happen before
+  // material construction because TSL storage bindings define shader topology.
+  ensureGpuPointCloud3dSchema(resource, gpu.payload);
+  const colorNodeKey = gpuPointCloudColorNodeKey(gpu.color);
+  // Rebuild only when the chosen color source changes graph shape (for
+  // example uniform -> scalar field). Ranges, ramps, and per-frame values are
+  // uniforms or replacement attribute arrays applied below.
+  const shader = useMemo(
+    () => createGpuPointCloud3dMaterial(resource, gpu.color),
+    // Frame values and point size are mutable uniforms/properties.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [colorNodeKey, resource],
+  );
+  const sprite = useMemo(() => {
+    const instanceSprite = new THREE.Sprite(
+      shader.material as unknown as THREE.SpriteMaterial,
+    );
+    instanceSprite.count = 0;
+    instanceSprite.frustumCulled = false;
+    instanceSprite.geometry = resource.spriteGeometry;
+    instanceSprite.raycast = NOOP_RAYCAST;
+    return instanceSprite;
+  }, [resource, shader.material]);
+  const pickLayer = useMemo<GpuPointCloud3dPickLayer | null>(
+    () =>
+      layerId
+        ? {
+            colorAttribute: null,
+            layerId,
+            object: sprite,
+            positionAttribute: resource.position,
+            positionLayout: "flat",
+            renderedPointCount: 0,
+            resourceKey: layerId,
+            sampledPointCount: 0,
+          }
+        : null,
+    [layerId, resource.position, sprite],
+  );
+  const appliedContentRef = useRef<string | PointCloudRenderPayload | null>(
+    null,
+  );
+
+  useLayoutEffect(() => {
+    // Layout timing is intentional: swap typed-array views and uniforms after
+    // React commits this scene but before R3F can submit its next frame.
+    const contentIdentity = gpu.resourceKey ?? gpu.payload;
+    if (appliedContentRef.current !== contentIdentity) {
+      updateGpuPointCloud3dResource(resource, gpu.payload);
+      appliedContentRef.current = contentIdentity;
+    }
+    resource.sampledPointCount = gpu.payload.sampledPointCount;
+    resource.renderedPointCount = gpu.renderedPointCount;
+    sprite.count = gpu.renderedPointCount;
+    shader.sampleStride.value =
+      gpu.renderedPointCount > 0
+        ? Math.fround(gpu.payload.sampledPointCount / gpu.renderedPointCount)
+        : 1;
+    shader.material.size = pointSize;
+    updateGpuPointCloudColorUniforms(shader.colorUniforms, gpu.color);
+    if (pickLayer) {
+      // The picker holds the same position BufferAttribute object. Notify it
+      // after counts/frame identity change so pending reads are invalidated.
+      pickLayer.renderedPointCount = gpu.renderedPointCount;
+      pickLayer.resourceKey = gpu.resourceKey ?? pickLayer.layerId;
+      pickLayer.sampledPointCount = gpu.payload.sampledPointCount;
+      pickerRegistry?.notify();
+    }
+    invalidate();
+  }, [
+    gpu,
+    invalidate,
+    pickLayer,
+    pickerRegistry,
+    pointSize,
+    resource,
+    shader,
+    sprite,
+  ]);
+  useLayoutEffect(() => {
+    if (!pickLayer || !pickerRegistry) {
+      return undefined;
+    }
+    return pickerRegistry.register(pickLayer);
+  }, [pickLayer, pickerRegistry]);
+  useEffect(
+    () => () => {
+      resource.spriteGeometry.dispose();
+    },
+    [resource],
+  );
+  useEffect(() => () => shader.material.dispose(), [shader.material]);
+
+  return <primitive object={sprite} />;
+}
+
+function createGpuPointCloud3dResource(
+  payload: PointCloudRenderPayload,
+  capacity: number,
+): GpuPointCloud3dResource {
+  // Flat float storage avoids Three's main-thread vec3→vec4 padding
+  // pass for WebGPU storage buffers. The shader reconstructs vec3 values.
+  const position = new THREE.BufferAttribute(payload.positions, 1);
+  const color = payload.colors
+    ? new THREE.BufferAttribute(payload.colors, 1)
+    : null;
+  const scalar = new Map<string, THREE.BufferAttribute>();
+  for (const field of payload.scalarFields) {
+    scalar.set(field.name, new THREE.BufferAttribute(field.values, 1));
+  }
+  // PointsNodeMaterial on WebGPU renders instanced screen-aligned quads. A
+  // one-quad geometry supplies ownership/lifetime; point data comes from node
+  // storage attributes rather than the quad's vertex positions.
+  const spriteGeometry = new THREE.PlaneGeometry(1, 1);
+  // Three's WebGPU renderer releases node-owned buffers through geometry
+  // disposal, so every prepared attribute is attached under a private name.
+  spriteGeometry.setAttribute("pointPosition", position);
+  if (color) {
+    spriteGeometry.setAttribute("pointColor", color);
+  }
+  let scalarIndex = 0;
+  for (const attribute of scalar.values()) {
+    spriteGeometry.setAttribute(`pointScalar${scalarIndex++}`, attribute);
+  }
+
+  return {
+    capacity,
+    color,
+    position,
+    renderedPointCount: 0,
+    sampledPointCount: payload.sampledPointCount,
+    scalar,
+    spriteGeometry,
+  };
+}
+
+function createGpuPointCloud3dMaterial(
+  resource: GpuPointCloud3dResource,
+  color: ResolvedGpuPointCloudColor,
+): GpuPointCloud3dMaterial {
+  const material = new PointsNodeMaterial({
+    size: DEFAULT_POINT_SIZE,
+    sizeAttenuation: false,
+  });
+  // instanceIndex spans renderedPointCount. The stride maps it evenly into
+  // sampledPointCount, allowing runtime point budgets without new CPU arrays.
+  const sampleStride = sceneTsl.uniform(1);
+  const sampleIndex = gpuPointCloudSampleIndexFromStrideNode(sampleStride);
+  const positionNode = gpuPointCloudPositionNode(
+    resource.position,
+    "flat",
+    sampleIndex,
+  );
+  const colorNode = resource.color
+    ? gpuPointCloudPositionNode(resource.color, "flat", sampleIndex)
+    : null;
+  const scalarNodes = new Map<string, TSL.Node>();
+  for (const [name, attribute] of resource.scalar) {
+    scalarNodes.set(name, gpuPointCloudScalarNode(attribute, sampleIndex));
+  }
+  material.positionNode = positionNode;
+  const colorUniforms = createGpuPointCloudColorUniforms(color);
+  material.colorNode = createGpuPointCloudColorNode(
+    color,
+    {
+      color: null,
+      colorNode,
+      positionNode,
+      scalar: EMPTY_GPU_INSTANCE_ATTRIBUTES,
+      scalarNodes,
+    },
+    colorUniforms,
+  );
+  material.toneMapped = false;
+  return { colorUniforms, material, sampleStride };
+}
+
+function ensureGpuPointCloud3dSchema(
+  resource: GpuPointCloud3dResource,
+  payload: PointCloudRenderPayload,
+): void {
+  // Schema is grow-only within one capacity resource. Removing an optional
+  // channel does not invalidate its binding; the active color policy decides
+  // whether the compiled material reads it.
+  if (payload.colors && !resource.color) {
+    resource.color = new THREE.BufferAttribute(payload.colors, 1);
+    resource.spriteGeometry.setAttribute("pointColor", resource.color);
+  }
+  let addedScalar = false;
+  for (const field of payload.scalarFields) {
+    if (resource.scalar.has(field.name)) continue;
+    resource.scalar.set(field.name, new THREE.BufferAttribute(field.values, 1));
+    addedScalar = true;
+  }
+  if (addedScalar) attachGpuPointCloud3dScalars(resource);
+}
+
+function updateGpuPointCloud3dResource(
+  resource: GpuPointCloud3dResource,
+  payload: PointCloudRenderPayload,
+): void {
+  // Replace transferred ArrayBuffer views instead of copying point data on the
+  // main thread. needsUpdate below tells Three to upload the new view once.
+  replaceGpuPointCloud3dArray(resource.position, payload.positions);
+  if (payload.colors && resource.color) {
+    replaceGpuPointCloud3dArray(resource.color, payload.colors);
+  }
+  for (const field of payload.scalarFields) {
+    const attribute = resource.scalar.get(field.name);
+    if (attribute) replaceGpuPointCloud3dArray(attribute, field.values);
+  }
+}
+
+function replaceGpuPointCloud3dArray(
+  attribute: THREE.BufferAttribute,
+  array: Float32Array,
+): void {
+  attribute.array = array;
+  (attribute as unknown as { count: number }).count = array.length;
+  attribute.needsUpdate = true;
+}
+
+function attachGpuPointCloud3dScalars(resource: GpuPointCloud3dResource): void {
+  let scalarIndex = 0;
+  for (const attribute of resource.scalar.values()) {
+    resource.spriteGeometry.setAttribute(
+      `pointScalar${scalarIndex++}`,
+      attribute,
+    );
+  }
 }
 
 // Small clouds (radar sweeps) share one bucket so per-tick count jitter
 // never reallocates their geometry.
 const MIN_POINT_CAPACITY = 1_024;
+const POINT_PICK_POSITION_ATTRIBUTE = "pointPickPosition";
 
 function PointCloudPoints({
   data,
+  layerId,
   pointSize,
 }: {
   readonly data: PointCloudRenderData;
+  /** Set only when the layer is pickable. */
+  readonly layerId?: string;
   readonly pointSize: number;
 }) {
   const invalidate = useThree((state) => state.invalidate);
+  const pickerRegistry = useContext(GpuPointCloud3dPickerRegistryContext);
+  const pointsRef = useRef<THREE.Points | null>(null);
+  const pickLayerRef = useRef<GpuPointCloud3dPickLayer | null>(null);
   // Grow-only capacity in power-of-two buckets: playback ticks fluctuate a
   // few points around a stable count, and a boundary-straddling count must
   // not thrash between two buckets.
@@ -92,8 +440,43 @@ function PointCloudPoints({
   // churn with in-place writes.
   useLayoutEffect(() => {
     applyPointCloudData(geometry, data);
+    const pickLayer = pickLayerRef.current;
+    if (pickLayer) {
+      pickLayer.renderedPointCount = data.renderedPointCount;
+      pickLayer.sampledPointCount = data.renderedPointCount;
+      pickerRegistry?.notify();
+    }
     invalidate();
-  }, [data, geometry, invalidate]);
+  }, [data, geometry, invalidate, pickerRegistry]);
+
+  useLayoutEffect(() => {
+    const object = pointsRef.current;
+    if (!layerId || !object || !pickerRegistry) {
+      return undefined;
+    }
+    const pickLayer: GpuPointCloud3dPickLayer = {
+      colorAttribute: geometry.getAttribute("color") as THREE.BufferAttribute,
+      layerId,
+      object,
+      positionAttribute: geometry.getAttribute(
+        POINT_PICK_POSITION_ATTRIBUTE,
+      ) as THREE.BufferAttribute,
+      positionLayout: "flat",
+      renderedPointCount: data.renderedPointCount,
+      resourceKey: layerId,
+      sampledPointCount: data.renderedPointCount,
+    };
+    pickLayerRef.current = pickLayer;
+    const unregister = pickerRegistry.register(pickLayer);
+    return () => {
+      unregister();
+      if (pickLayerRef.current === pickLayer) {
+        pickLayerRef.current = null;
+      }
+    };
+    // Frame data mutates the registered layer in the preceding layout effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geometry, layerId, pickerRegistry]);
 
   // This effect disposes the GPU geometry when capacity grows or on unmount.
   useEffect(() => () => geometry.dispose(), [geometry]);
@@ -101,7 +484,14 @@ function PointCloudPoints({
   // Keying by capacity retires the points object together with its
   // geometry, so a geometry is never swapped into a live three object.
   return (
-    <points key={capacity} frustumCulled={false}>
+    <points
+      key={capacity}
+      frustumCulled={false}
+      raycast={NOOP_RAYCAST}
+      ref={(object) => {
+        pointsRef.current = object as unknown as THREE.Points | null;
+      }}
+    >
       <primitive attach="geometry" object={geometry} />
       <pointsMaterial {...POINT_CLOUD_POINTS_MATERIAL_PROPS} size={pointSize} />
       {pointSize > WEBGPU_POINT_PRIMITIVE_SIZE_PX ? (
@@ -113,6 +503,86 @@ function PointCloudPoints({
       ) : null}
     </points>
   );
+}
+
+// Hover emphasis: the marker grows the point by 10% in its original color,
+// easing in over a short beat. The marker is
+// screen-space sized (sizeAttenuation off) with a pixel floor, so the
+// intersected point reads clearly at any zoom or point size.
+const HOVERED_POINT_GROWTH = 1.1;
+const HOVER_EMPHASIS_ANIMATION_MS = 150;
+const HOVERED_POINT_MIN_SCREEN_PX = 8;
+const HOVERED_POINT_RENDER_ORDER = 9_000;
+const DEFAULT_HOVER_EMPHASIS: readonly [number, number, number] = [1, 1, 1];
+
+/**
+ * Screen-space emphasis dot rendered over the hovered cloud point, in
+ * the cloud's sensor frame so the parent group places it exactly like
+ * the point it marks. Uses the same instanced-sprite mechanism as
+ * {@link PointCloudSizedSprites} because plain WebGPU point primitives
+ * ignore material size. Depth testing is off so the emphasis reads over
+ * neighboring points.
+ */
+function HoveredPointMarker({
+  marker,
+  pointSize,
+}: {
+  readonly marker: PointCloudHoveredPointMarker;
+  readonly pointSize: number;
+}) {
+  const invalidate = useThree((state) => state.invalidate);
+  const baseSizePx = Math.max(pointSize, HOVERED_POINT_MIN_SCREEN_PX);
+  const attributes = useMemo(() => createPointCloudInstanceAttributes(1), []);
+  const material = useMemo(() => {
+    const spriteMaterial = createPointCloudSpriteMaterial(
+      attributes,
+      baseSizePx,
+      true,
+    );
+    spriteMaterial.depthTest = false;
+    spriteMaterial.depthWrite = false;
+    return spriteMaterial;
+  }, [attributes, baseSizePx]);
+  const sprite = useMemo(() => {
+    const instanceSprite = new THREE.Sprite(
+      material as unknown as THREE.SpriteMaterial,
+    );
+    instanceSprite.count = 1;
+    instanceSprite.frustumCulled = false;
+    instanceSprite.raycast = NOOP_RAYCAST;
+    instanceSprite.renderOrder = HOVERED_POINT_RENDER_ORDER;
+    return instanceSprite;
+  }, [material]);
+  const animationStartRef = useRef(0);
+
+  // This layout effect repositions/recolors the marker and restarts the
+  // grow-in whenever the hovered point changes.
+  useLayoutEffect(() => {
+    const emphasis = marker.color ?? DEFAULT_HOVER_EMPHASIS;
+    (attributes.position.array as Float32Array).set(marker.position);
+    (attributes.color.array as Float32Array).set(emphasis);
+    markAttributeUpdated(attributes.position, POINT_COMPONENT_COUNT);
+    markAttributeUpdated(attributes.color, POINT_COMPONENT_COUNT);
+    animationStartRef.current = performance.now();
+    material.size = baseSizePx;
+    invalidate();
+  }, [attributes, baseSizePx, invalidate, marker, material]);
+
+  // Grow-in on the demand frameloop: each rendered frame advances the
+  // eased size and re-invalidates until the animation lands.
+  useFrame(() => {
+    const elapsed = performance.now() - animationStartRef.current;
+    const t = Math.min(1, elapsed / HOVER_EMPHASIS_ANIMATION_MS);
+    const eased = 1 - (1 - t) ** 3;
+    material.size = baseSizePx * (1 + (HOVERED_POINT_GROWTH - 1) * eased);
+    if (t < 1) {
+      invalidate();
+    }
+  });
+
+  useEffect(() => () => material.dispose(), [material]);
+
+  return <primitive object={sprite} />;
 }
 
 function PointCloudSizedSprites({
@@ -161,13 +631,36 @@ function PointCloudSizedSprites({
 export function createPointCloudSpriteMaterial(
   attributes: PointCloudInstanceAttributes,
   pointSize: number,
+  circular = false,
 ) {
   const material = new PointsNodeMaterial({
     size: pointSize,
     sizeAttenuation: false,
-  });
-  material.colorNode = instancedBufferAttribute(attributes.color, "vec3");
-  material.positionNode = instancedBufferAttribute(attributes.position, "vec3");
+  }) as PointsNodeMaterial & { fragmentNode: TSL.Node | null };
+  material.colorNode = TSL.instancedBufferAttribute(attributes.color, "vec3");
+  material.positionNode = TSL.instancedBufferAttribute(
+    attributes.position,
+    "vec3",
+  );
+  if (circular) {
+    type SpriteNode = TSL.Node & {
+      greaterThan(value: number): SpriteNode;
+      length(): SpriteNode;
+      sub(value: number): SpriteNode;
+    };
+    const tsl = TSL as unknown as {
+      Discard(condition: SpriteNode): void;
+      Fn(callback: () => TSL.Node): () => TSL.Node;
+      uv(): SpriteNode;
+      vec4(color: TSL.Node | null, alpha: number): TSL.Node;
+    };
+    material.fragmentNode = tsl.Fn(() => {
+      const centeredPoint = tsl.uv().sub(0.5) as SpriteNode;
+      const pointRadius = centeredPoint.length() as SpriteNode;
+      tsl.Discard(pointRadius.greaterThan(0.5));
+      return tsl.vec4(material.colorNode, 1);
+    })();
+  }
   return material;
 }
 
@@ -191,6 +684,13 @@ export function createPointCloudGeometry(capacityPoints: number) {
   );
   geometry.setAttribute("position", positionAttribute);
   geometry.setAttribute("color", colorAttribute);
+  // Legacy frames already own compact CPU render data. The picker gets a
+  // flat storage view over the same array (no CPU copy); using a distinct
+  // attribute keeps Three from padding the visible vec3 vertex buffer.
+  geometry.setAttribute(
+    POINT_PICK_POSITION_ATTRIBUTE,
+    new THREE.BufferAttribute(positionAttribute.array, 1),
+  );
   geometry.setDrawRange(0, 0);
 
   return geometry;
@@ -221,10 +721,14 @@ export function applyPointCloudData(
   data: PointCloudRenderData,
 ) {
   const position = geometry.getAttribute("position") as THREE.BufferAttribute;
+  const pickPosition = geometry.getAttribute(
+    POINT_PICK_POSITION_ATTRIBUTE,
+  ) as THREE.BufferAttribute;
   const color = geometry.getAttribute("color") as THREE.BufferAttribute;
   (position.array as Float32Array).set(data.positions);
   (color.array as Float32Array).set(data.colors);
   markAttributeUpdated(position, data.positions.length);
+  markAttributeUpdated(pickPosition, data.positions.length);
   markAttributeUpdated(color, data.colors.length);
   geometry.setDrawRange(0, data.renderedPointCount);
   geometry.boundingBox = data.bounds.clone();

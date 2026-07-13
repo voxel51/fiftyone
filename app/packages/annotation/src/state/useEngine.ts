@@ -1,4 +1,4 @@
-import { useIsVideo } from "@fiftyone/state";
+import { useModalSample } from "@fiftyone/state";
 import { atom, useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { AnnotationEngine } from "../engine/core/engine";
@@ -43,7 +43,16 @@ export const useSyncAnnotationEngine = (): void => {
   const getSample = useSampleInstanceGetter();
   const modalId = useActiveSampleId();
   const sceneId = useThreeDSceneSampleId();
-  const isVideo = useIsVideo();
+
+  // Whether the SELECTED modal sample is a video — true for a video dataset or
+  // a grouped dataset whose selected slice is a video sample. The dataset-level
+  // media type is "group" for a group, so decide from the open sample (matches
+  // ModalLooker's video-surface decision). The video surface owns that sample's
+  // store, so the root must skip it in both cases.
+  const modalSample = useModalSample();
+  const isVideo =
+    ((modalSample?.sample?.media_type as unknown as string) ??
+      modalSample?.sample?._media_type) === "video";
 
   // the modal's distinct sample documents — a grouped 2D + 3D modal renders
   // two at once (the selected slice and the pinned 3D scene, already guaranteed

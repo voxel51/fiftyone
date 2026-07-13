@@ -1,7 +1,13 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree } from "@react-three/fiber";
 import type { ReactNode } from "react";
-import { useEffect, useMemo } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import * as THREE from "three";
 
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
@@ -42,10 +48,23 @@ export interface ImageTextureHandle {
   readonly texture: THREE.Texture;
 }
 
+/** Cached unit-plane mesh that remaps displayed pixels into source texture UVs. */
+export interface ImageTextureMesh {
+  readonly displayHeight: number;
+  readonly displayWidth: number;
+  readonly indices: Uint32Array;
+  /** Interleaved xyz positions in normalized image-plane coordinates. */
+  readonly positions: Float32Array;
+  /** Interleaved source-texture UV coordinates. */
+  readonly uvs: Float32Array;
+}
+
 /**
  * Props for the shared 2D visualization scene shell.
  */
 export interface Base2DSceneProps {
+  /** Set false when a shared stage clears the render target once per frame. */
+  readonly background?: boolean;
   readonly children?: ReactNode;
 }
 
@@ -53,7 +72,13 @@ export interface Base2DSceneProps {
  * Props for rendering an image texture into the 2D scene.
  */
 export interface ImageTexturePlaneProps {
+  /**
+   * Scene layers aligned to the image. Coordinates are normalized image
+   * coordinates: x/y in [-0.5, 0.5], +x right, +y up.
+   */
+  readonly children?: ReactNode;
   readonly fit: "contain" | "cover";
+  readonly textureMesh?: ImageTextureMesh | null;
   readonly textureHandle: ImageTextureHandle | null;
   readonly viewTransform?: ImageViewTransform;
 }
@@ -71,13 +96,15 @@ const VIEW_TRANSFORM_EPSILON = 0.000001;
 /**
  * Base 2D R3F scene for image-like renderables.
  */
-export function Base2DScene({ children }: Base2DSceneProps) {
+export function Base2DScene({ background = true, children }: Base2DSceneProps) {
   return (
     <>
-      <color
-        args={[VISUALIZATION_PANEL_BACKGROUND_COLOR]}
-        attach="background"
-      />
+      {background ? (
+        <color
+          args={[VISUALIZATION_PANEL_BACKGROUND_COLOR]}
+          attach="background"
+        />
+      ) : null}
       {children}
     </>
   );
@@ -87,24 +114,39 @@ export function Base2DScene({ children }: Base2DSceneProps) {
  * Image attachment point for the base 2D scene.
  */
 export function ImageTexturePlane({
+  children,
   fit,
+  textureMesh,
   textureHandle,
   viewTransform,
 }: ImageTexturePlaneProps) {
   const invalidate = useThree((state) => state.invalidate);
+  const materialRef = useRef<THREE.MeshBasicMaterial | null>(null);
+  const bindMaterial = useCallback((material: unknown) => {
+    materialRef.current = material as THREE.MeshBasicMaterial | null;
+  }, []);
   const size = useThree((state) => state.size);
+  const remapGeometry = useMemo(
+    () => (textureMesh ? imageTextureMeshGeometry(textureMesh) : null),
+    [textureMesh],
+  );
+  // This effect disposes the texture-remap mesh when it is replaced.
+  useEffect(() => () => remapGeometry?.dispose(), [remapGeometry]);
   const planeScale = useMemo(
     () =>
       imagePlaneScale(
-        textureHandle?.aspectRatio ?? 1,
+        textureMesh
+          ? textureMesh.displayWidth / Math.max(1, textureMesh.displayHeight)
+          : (textureHandle?.aspectRatio ?? 1),
         size.width,
         size.height,
         fit,
       ),
-    [fit, size.height, size.width, textureHandle?.aspectRatio],
+    [fit, size.height, size.width, textureHandle?.aspectRatio, textureMesh],
   );
   const normalizedViewTransform = normalizeImageViewTransform(viewTransform);
 
+  // This effect invalidates the demand-rendered scene when its view changes.
   useEffect(() => {
     invalidate();
   }, [
@@ -115,6 +157,18 @@ export function ImageTexturePlane({
     normalizedViewTransform.translateX,
     normalizedViewTransform.translateY,
   ]);
+
+  // This layout effect binds the decoded texture before the browser paints.
+  useLayoutEffect(() => {
+    const material = materialRef.current;
+    const texture = textureHandle?.texture ?? null;
+    if (!material || !texture) {
+      return;
+    }
+
+    replaceImageMaterialTexture(material, texture);
+    invalidate();
+  }, [invalidate, textureHandle?.texture]);
 
   if (!textureHandle) {
     return null;
@@ -129,19 +183,52 @@ export function ImageTexturePlane({
       ]}
       scale={[normalizedViewTransform.scale, normalizedViewTransform.scale, 1]}
     >
-      <mesh frustumCulled={false} scale={planeScale}>
-        <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial
-          depthTest={false}
-          depthWrite={false}
-          toneMapped={false}
-          transparent
-        >
-          <primitive attach="map" object={textureHandle.texture} />
-        </meshBasicMaterial>
-      </mesh>
+      <group scale={planeScale}>
+        <mesh frustumCulled={false}>
+          {remapGeometry ? (
+            <primitive attach="geometry" object={remapGeometry} />
+          ) : (
+            <planeGeometry args={[1, 1]} />
+          )}
+          <meshBasicMaterial
+            depthTest={false}
+            depthWrite={false}
+            ref={bindMaterial}
+            toneMapped={false}
+            transparent
+          />
+        </mesh>
+        {children}
+      </group>
     </group>
   );
+}
+
+/** Converts a renderer-neutral cached mesh into one renderer-owned geometry. */
+export function imageTextureMeshGeometry(
+  mesh: ImageTextureMesh,
+): THREE.BufferGeometry {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(mesh.positions, 3),
+  );
+  geometry.setAttribute("uv", new THREE.BufferAttribute(mesh.uvs, 2));
+  geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
+  return geometry;
+}
+
+/** Rebinds a decoded frame and invalidates Three's WebGPU bind-group cache. */
+export function replaceImageMaterialTexture(
+  material: THREE.MeshBasicMaterial,
+  texture: THREE.Texture,
+): void {
+  if (material.map === texture) {
+    return;
+  }
+
+  material.map = texture;
+  material.needsUpdate = true;
 }
 
 export function imageDisplayRect(

@@ -14,6 +14,7 @@
         "@fiftyone/flashlight": "*",
         "@fiftyone/looker": "*",
         "@fiftyone/map": "*",
+        "@fiftyone/multimodal": "*",
         "@fiftyone/operators": "*",
         "@fiftyone/spotlight": "*",
         "@fiftyone/state": "*",

@@ -1,4 +1,4 @@
-import { autoLayout } from "@fiftyone/tiling";
+import { autoLayout, type TilingLayoutMetrics } from "@fiftyone/tiling";
 import type { MosaicNode } from "react-mosaic-component";
 import {
   BYTE_SOURCE_READ_PROFILE,
@@ -31,13 +31,20 @@ const DEFAULT_CPU_CORES = 4;
 const DEFAULT_VIEWPORT_WIDTH_PX = 1280;
 const DEFAULT_VIEWPORT_HEIGHT_PX = 800;
 
-const THREE_D_TOP_SPLIT_PERCENTAGE = 100 * (2 / 3);
+const THREE_D_WITH_MAP_SPLIT_PERCENTAGE = 70;
 const MESSAGE_RAIL_SPLIT_PERCENTAGE = 75;
 const VISUAL_WITH_PLOTS_SPLIT_PERCENTAGE = 70;
 const CONTEXT_SHELF_IMAGE_SPLIT_PERCENTAGE = 65;
+const DEFAULT_IMAGE_ASPECT_RATIO = 16 / 9;
+const DEFAULT_IMAGE_BANK_ASPECT_RATIO = 16 / 9;
+const DEFAULT_CONTEXT_SHELF_HEIGHT_FRACTION = 1 / 3;
+const MIN_CONTEXT_SHELF_HEIGHT_FRACTION = 0.2;
+const MAX_CONTEXT_SHELF_HEIGHT_FRACTION = 0.4;
 
 // Mosaic leaf id of the single default 3D tile.
 const THREE_D_TILE_ID = `${MCAP_TILE_TYPE.THREE_D}-1`;
+const MAP_TILE_ID = `${MCAP_TILE_TYPE.MAP}-1`;
+const LOG_TILE_ID = `${MCAP_TILE_TYPE.LOG}-1`;
 
 /**
  * Device/runtime signals the layout resolver weighs. Collected once per
@@ -203,6 +210,12 @@ export function resolvePlaybackLayout({
       source.type === MCAP_SOURCE_TYPE.MAP_LAYER ||
       source.type === MCAP_SOURCE_TYPE.POSE,
   );
+  const hasLogs = sources.some(
+    (source) => source.type === MCAP_SOURCE_TYPE.LOG,
+  );
+  const hasMap = sources.some(
+    (source) => source.type === MCAP_SOURCE_TYPE.LOCATION,
+  );
 
   const imageTileCount =
     rankedImages.length === 0
@@ -227,9 +240,23 @@ export function resolvePlaybackLayout({
       title: "3D",
     });
   }
+  if (hasMap) {
+    tiles.push({
+      id: MAP_TILE_ID,
+      tileType: MCAP_TILE_TYPE.MAP,
+      title: "Map",
+    });
+  }
+  if (hasLogs) {
+    tiles.push({
+      id: LOG_TILE_ID,
+      tileType: MCAP_TILE_TYPE.LOG,
+      title: "Logs",
+    });
+  }
 
   return {
-    layout: buildLayoutTree(tiles),
+    layout: buildLayoutTree(tiles, capabilities),
     tiles,
   };
 }
@@ -269,7 +296,7 @@ function imageTileBudget({
   const imageRegionWidth = capabilities.viewportWidth;
   const imageRegionHeight =
     capabilities.viewportHeight *
-    (has3d ? 1 - THREE_D_TOP_SPLIT_PERCENTAGE / 100 : 1);
+    (has3d ? MAX_CONTEXT_SHELF_HEIGHT_FRACTION : 1);
   const viewportBudget = Math.max(
     1,
     Math.floor(imageRegionWidth / MIN_IMAGE_TILE_WIDTH_PX) *
@@ -305,17 +332,30 @@ function remoteNetworkBudget(downlinkMbps: number | null): number {
  * Customer-oriented MCAP arrangement:
  *
  * - images stay co-located as a camera bank
- * - 3D tiles span a full-width top region when present
+ * - 3D and map tiles share the top visual region when both are present
+ * - the supporting shelf hugs its image rows between 20–40% of the mosaic;
+ *   3D receives the remainder
  * - plots stack as time-series diagnostics
  * - raw/message tiles stack as a right inspection rail
  * - unknown tile ids fall into diagnostics after known groups
  */
 export function buildMcapAutoLayout(
   tileIds: readonly string[],
+  imageAspectRatios: Readonly<Record<string, number>> = {},
+  geometry: number | TilingLayoutMetrics = DEFAULT_VIEWPORT_WIDTH_PX /
+    DEFAULT_VIEWPORT_HEIGHT_PX,
 ): MosaicNode<string> | null {
+  const layoutMetrics = typeof geometry === "number" ? null : geometry;
+  const viewportAspectRatio =
+    typeof geometry === "number" ? geometry : geometry.width / geometry.height;
+  const effectiveViewportAspectRatio =
+    normalizePositive(viewportAspectRatio) ??
+    DEFAULT_VIEWPORT_WIDTH_PX / DEFAULT_VIEWPORT_HEIGHT_PX;
   const images: string[] = [];
   const threeD: string[] = [];
+  const maps: string[] = [];
   const plots: string[] = [];
+  const logs: string[] = [];
   const messages: string[] = [];
   const unknown: string[] = [];
 
@@ -327,8 +367,14 @@ export function buildMcapAutoLayout(
       case MCAP_TILE_TYPE.THREE_D:
         threeD.push(tileId);
         break;
+      case MCAP_TILE_TYPE.MAP:
+        maps.push(tileId);
+        break;
       case MCAP_TILE_TYPE.PLOT:
         plots.push(tileId);
+        break;
+      case MCAP_TILE_TYPE.LOG:
+        logs.push(tileId);
         break;
       case MCAP_TILE_TYPE.RAW:
         messages.push(tileId);
@@ -339,36 +385,62 @@ export function buildMcapAutoLayout(
     }
   }
 
-  const threeDRegion = autoLayout(threeD);
-  const supportingRegion = threeDRegion
-    ? buildContextShelf(images, plots, messages, unknown)
-    : buildNon3dLayout(images, plots, messages, unknown);
+  const topVisualRegion =
+    threeD.length > 0 ? buildTopVisualRegion(threeD, maps) : null;
+  const supportingRegion = topVisualRegion
+    ? buildContextShelf(
+        images,
+        plots,
+        logs,
+        messages,
+        unknown,
+        imageAspectRatios,
+        effectiveViewportAspectRatio,
+        layoutMetrics,
+      )
+    : null;
 
-  if (threeDRegion) {
+  if (topVisualRegion) {
     if (!supportingRegion) {
-      return threeDRegion;
+      return topVisualRegion;
     }
 
     return {
       direction: "column",
-      first: threeDRegion,
-      second: supportingRegion,
-      splitPercentage: THREE_D_TOP_SPLIT_PERCENTAGE,
+      first: topVisualRegion,
+      second: supportingRegion.layout,
+      splitPercentage: 100 * (1 - supportingRegion.preferredHeightFraction),
     };
   }
 
-  return supportingRegion;
+  return buildNon3dLayout(
+    images,
+    maps,
+    plots,
+    logs,
+    messages,
+    unknown,
+    imageAspectRatios,
+  );
 }
 
 function buildNon3dLayout(
   images: readonly string[],
+  maps: readonly string[],
   plots: readonly string[],
+  logs: readonly string[],
   messages: readonly string[],
   unknown: readonly string[],
+  imageAspectRatios: Readonly<Record<string, number>>,
 ): MosaicNode<string> | null {
-  const imageBank = autoLayout([...images]);
-  const diagnostics = buildDiagnosticsStack(plots, unknown);
-  const left = stackNodes([imageBank, diagnostics], {
+  const imageBank = buildImageBank(images, imageAspectRatios);
+  const mapBank = autoLayout([...maps]);
+  const visualBank = stackNodes([imageBank, mapBank], {
+    direction: "row",
+    splitPercentage: CONTEXT_SHELF_IMAGE_SPLIT_PERCENTAGE,
+  });
+  const diagnostics = buildDiagnosticsStack(plots, logs, unknown);
+  const left = stackNodes([visualBank, diagnostics], {
     direction: "column",
     splitPercentage: VISUAL_WITH_PLOTS_SPLIT_PERCENTAGE,
   });
@@ -389,47 +461,309 @@ function buildNon3dLayout(
   };
 }
 
+function buildTopVisualRegion(
+  threeD: readonly string[],
+  maps: readonly string[],
+): MosaicNode<string> | null {
+  return stackNodes([autoLayout([...threeD]), autoLayout([...maps])], {
+    direction: "row",
+    splitPercentage: THREE_D_WITH_MAP_SPLIT_PERCENTAGE,
+  });
+}
+
 function buildContextShelf(
   images: readonly string[],
   plots: readonly string[],
+  logs: readonly string[],
   messages: readonly string[],
   unknown: readonly string[],
-): MosaicNode<string> | null {
-  const imageBank = autoLayout([...images]);
-  const diagnostics = buildDiagnosticsStack(plots, unknown);
-  const left = stackNodes([imageBank, diagnostics], {
+  imageAspectRatios: Readonly<Record<string, number>>,
+  viewportAspectRatio: number,
+  layoutMetrics: TilingLayoutMetrics | null,
+): {
+  readonly layout: MosaicNode<string>;
+  readonly preferredHeightFraction: number;
+} | null {
+  const diagnostics = buildDiagnosticsStack(plots, logs, unknown);
+  const messageRail = stackTiles(messages, "column");
+  const imageWidthFraction =
+    (diagnostics ? CONTEXT_SHELF_IMAGE_SPLIT_PERCENTAGE / 100 : 1) *
+    (messageRail ? MESSAGE_RAIL_SPLIT_PERCENTAGE / 100 : 1);
+  const targetImageBankAspectRatio =
+    (viewportAspectRatio * imageWidthFraction) /
+    MIN_CONTEXT_SHELF_HEIGHT_FRACTION;
+  const imageBank = buildImageBankLayout(
+    images,
+    imageAspectRatios,
+    targetImageBankAspectRatio,
+    layoutMetrics
+      ? {
+          rowWidth: layoutMetrics.width * imageWidthFraction,
+          tileHorizontalInset: layoutMetrics.tileHorizontalInset,
+          tileVerticalInset: layoutMetrics.tileVerticalInset,
+        }
+      : undefined,
+  );
+  const left = stackNodes([imageBank?.layout ?? null, diagnostics], {
     direction: "row",
     splitPercentage: CONTEXT_SHELF_IMAGE_SPLIT_PERCENTAGE,
   });
-  const messageRail = stackTiles(messages, "column");
+  const preferredHeightFraction = clamp(
+    preferredContextShelfHeightFraction(
+      imageBank,
+      viewportAspectRatio,
+      imageWidthFraction,
+      layoutMetrics,
+    ),
+    MIN_CONTEXT_SHELF_HEIGHT_FRACTION,
+    MAX_CONTEXT_SHELF_HEIGHT_FRACTION,
+  );
 
   if (!messageRail) {
-    return left;
+    return left ? { layout: left, preferredHeightFraction } : null;
   }
   if (!left) {
-    return messageRail;
+    return { layout: messageRail, preferredHeightFraction };
   }
 
   return {
-    direction: "row",
-    first: left,
-    second: messageRail,
-    splitPercentage: MESSAGE_RAIL_SPLIT_PERCENTAGE,
+    layout: {
+      direction: "row",
+      first: left,
+      second: messageRail,
+      splitPercentage: MESSAGE_RAIL_SPLIT_PERCENTAGE,
+    },
+    preferredHeightFraction,
+  };
+}
+
+function preferredContextShelfHeightFraction(
+  imageBank: {
+    readonly aspectRatio: number;
+    readonly preferredHeightPx?: number;
+  } | null,
+  viewportAspectRatio: number,
+  imageWidthFraction: number,
+  layoutMetrics: TilingLayoutMetrics | null,
+): number {
+  if (!imageBank) {
+    return DEFAULT_CONTEXT_SHELF_HEIGHT_FRACTION;
+  }
+  if (layoutMetrics && imageBank.preferredHeightPx !== undefined) {
+    return imageBank.preferredHeightPx / layoutMetrics.height;
+  }
+  return (viewportAspectRatio * imageWidthFraction) / imageBank.aspectRatio;
+}
+
+/**
+ * Packs image tiles into rows whose combined shape best matches the available
+ * image bank. Unlike the generic mosaic layout, this preserves the relative
+ * widths of landscape, portrait, and square images, minimizing letterboxing.
+ */
+export function buildAspectAwareImageLayout(
+  tileIds: readonly string[],
+  aspectRatios: Readonly<Record<string, number>> = {},
+  targetAspectRatio = DEFAULT_IMAGE_BANK_ASPECT_RATIO,
+): MosaicNode<string> | null {
+  return (
+    buildImageBankLayout(tileIds, aspectRatios, targetAspectRatio)?.layout ??
+    null
+  );
+}
+
+function buildImageBankLayout(
+  tileIds: readonly string[],
+  aspectRatios: Readonly<Record<string, number>>,
+  targetAspectRatio: number,
+  sizing?: {
+    readonly rowWidth: number;
+    readonly tileHorizontalInset: number;
+    readonly tileVerticalInset: number;
+  },
+): {
+  readonly layout: MosaicNode<string>;
+  readonly aspectRatio: number;
+  readonly preferredHeightPx?: number;
+} | null {
+  if (tileIds.length === 0) return null;
+
+  const ratios = tileIds.map(
+    (tileId) =>
+      normalizePositive(aspectRatios[tileId]) ?? DEFAULT_IMAGE_ASPECT_RATIO,
+  );
+  const rows = bestImageRows(ratios, targetAspectRatio);
+  const rowAspects = rows.map(([start, end]) =>
+    ratios.slice(start, end).reduce((sum, ratio) => sum + ratio, 0),
+  );
+  const rowTileCounts = rows.map(([start, end]) => end - start);
+  const rowHeights = rowAspects.map((rowAspect, index) =>
+    sizing
+      ? Math.max(
+          1,
+          sizing.rowWidth - sizing.tileHorizontalInset * rowTileCounts[index],
+        ) /
+          rowAspect +
+        sizing.tileVerticalInset
+      : 1 / rowAspect,
+  );
+  const rowNodes = rows.map(([start, end]) => {
+    const rowRatios = ratios.slice(start, end);
+    return buildWeightedRow(
+      tileIds.slice(start, end),
+      sizing
+        ? imageRowOuterWidths(
+            rowRatios,
+            sizing.rowWidth,
+            sizing.tileHorizontalInset,
+          )
+        : rowRatios,
+    );
+  });
+
+  return {
+    aspectRatio: combinedRowAspectRatio(rowAspects),
+    layout: buildWeightedStack(rowNodes, rowHeights, "column"),
+    ...(sizing
+      ? {
+          preferredHeightPx: rowHeights.reduce(
+            (height, rowHeight) => height + rowHeight,
+            0,
+          ),
+        }
+      : {}),
+  };
+}
+
+function imageRowOuterWidths(
+  aspectRatios: readonly number[],
+  rowWidth: number,
+  tileHorizontalInset: number,
+): readonly number[] {
+  const totalAspectRatio = aspectRatios.reduce((sum, ratio) => sum + ratio, 0);
+  const contentWidth = rowWidth - tileHorizontalInset * aspectRatios.length;
+  if (!(contentWidth > 0)) return aspectRatios;
+  const contentHeight = contentWidth / totalAspectRatio;
+  return aspectRatios.map(
+    (ratio) => ratio * contentHeight + tileHorizontalInset,
+  );
+}
+
+function buildImageBank(
+  images: readonly string[],
+  imageAspectRatios: Readonly<Record<string, number>> = {},
+  targetAspectRatio = DEFAULT_IMAGE_BANK_ASPECT_RATIO,
+): MosaicNode<string> | null {
+  return (
+    buildImageBankLayout(images, imageAspectRatios, targetAspectRatio)
+      ?.layout ?? null
+  );
+}
+
+function bestImageRows(
+  ratios: readonly number[],
+  targetAspectRatio: number,
+): Array<readonly [number, number]> {
+  let bestRows: Array<readonly [number, number]> = [[0, ratios.length]];
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (let rowCount = 1; rowCount <= ratios.length; rowCount++) {
+    const rows = balancedImageRows(ratios, rowCount);
+    const rowAspects = rows.map(([rowStart, rowEnd]) =>
+      ratios.slice(rowStart, rowEnd).reduce((sum, ratio) => sum + ratio, 0),
+    );
+    const layoutAspect = combinedRowAspectRatio(rowAspects);
+    const score = Math.abs(Math.log(layoutAspect / targetAspectRatio));
+    if (score < bestScore) {
+      bestScore = score;
+      bestRows = rows;
+    }
+  }
+
+  return bestRows;
+}
+
+function balancedImageRows(
+  ratios: readonly number[],
+  rowCount: number,
+): Array<readonly [number, number]> {
+  const rows: Array<readonly [number, number]> = [];
+  let start = 0;
+  let remainingAspect = ratios.reduce((sum, ratio) => sum + ratio, 0);
+
+  for (let row = 0; row < rowCount - 1; row++) {
+    const remainingRows = rowCount - row;
+    const targetRowAspect = remainingAspect / remainingRows;
+    const latestEnd = ratios.length - (remainingRows - 1);
+    let rowAspect = 0;
+    let bestEnd = start + 1;
+    let bestDifference = Number.POSITIVE_INFINITY;
+    let selectedAspect = ratios[start];
+
+    for (let end = start + 1; end <= latestEnd; end++) {
+      rowAspect += ratios[end - 1];
+      const difference = Math.abs(rowAspect - targetRowAspect);
+      if (difference < bestDifference) {
+        bestDifference = difference;
+        bestEnd = end;
+        selectedAspect = rowAspect;
+      }
+    }
+
+    rows.push([start, bestEnd]);
+    start = bestEnd;
+    remainingAspect -= selectedAspect;
+  }
+
+  rows.push([start, ratios.length]);
+  return rows;
+}
+
+function combinedRowAspectRatio(rowAspects: readonly number[]): number {
+  return 1 / rowAspects.reduce((sum, row) => sum + 1 / row, 0);
+}
+
+function buildWeightedRow(
+  tileIds: readonly string[],
+  widths: readonly number[],
+): MosaicNode<string> {
+  return buildWeightedStack(tileIds, widths, "row");
+}
+
+function buildWeightedStack(
+  nodes: readonly MosaicNode<string>[],
+  weights: readonly number[],
+  direction: "row" | "column",
+): MosaicNode<string> {
+  if (nodes.length === 1) return nodes[0];
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  return {
+    direction,
+    first: nodes[0],
+    second: buildWeightedStack(nodes.slice(1), weights.slice(1), direction),
+    splitPercentage: (100 * weights[0]) / totalWeight,
   };
 }
 
 function buildLayoutTree(
   tiles: readonly PlaybackLayoutTile[],
+  capabilities: PlaybackDeviceCapabilities,
 ): MosaicNode<string> | undefined {
-  return buildMcapAutoLayout(tiles.map((tile) => tile.id)) ?? undefined;
+  return (
+    buildMcapAutoLayout(
+      tiles.map((tile) => tile.id),
+      {},
+      capabilities.viewportWidth / capabilities.viewportHeight,
+    ) ?? undefined
+  );
 }
 
 function buildDiagnosticsStack(
   plots: readonly string[],
+  logs: readonly string[],
   unknown: readonly string[],
 ): MosaicNode<string> | null {
   return stackNodes([
     stackTiles(plots, "column"),
+    stackTiles(logs, "column"),
     stackTiles(unknown, "column"),
   ]);
 }
@@ -484,4 +818,8 @@ function normalizePositive(value: number | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) && value > 0
     ? value
     : null;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }

@@ -7,6 +7,12 @@ import { useCopyFeedback } from "./use-copy-feedback";
 /** Levels expanded by default; deeper nodes open on demand. */
 const AUTO_EXPAND_DEPTH = 2;
 
+export interface McapRawMessageTreeProps {
+  readonly onAddNumericFieldToPlot?: (path: string) => void;
+  readonly plottableFieldPaths?: ReadonlySet<string>;
+  readonly root: McapRawObjectNode;
+}
+
 /**
  * Collapsible tree over one pruned message record. Children render only
  * while their parent is expanded, so even a budget-maxed tree stays a
@@ -14,13 +20,16 @@ const AUTO_EXPAND_DEPTH = 2;
  * lives across record refreshes — watching one value during playback
  * must not re-fold the tree every message.
  */
-const McapRawMessageTree: React.FC<{
-  readonly root: McapRawObjectNode;
-}> = ({ root }) => {
+const McapRawMessageTree: React.FC<McapRawMessageTreeProps> = ({
+  onAddNumericFieldToPlot,
+  plottableFieldPaths,
+  root,
+}) => {
   const [expandedOverrides, setExpandedOverrides] = useState<
     ReadonlyMap<string, boolean>
   >(new Map());
   const [copiedPath, showCopiedPath] = useCopyFeedback<string | null>(null);
+  const [plottedPath, showPlottedPath] = useCopyFeedback<string | null>(null);
 
   const toggle = useCallback((path: string, expanded: boolean) => {
     setExpandedOverrides((previous) => {
@@ -40,10 +49,25 @@ const McapRawMessageTree: React.FC<{
     [showCopiedPath],
   );
 
+  const addToPlot = useCallback(
+    (path: string) => {
+      if (!onAddNumericFieldToPlot) {
+        return;
+      }
+      onAddNumericFieldToPlot(path);
+      showPlottedPath(path);
+    },
+    [onAddNumericFieldToPlot, showPlottedPath],
+  );
+  const effectivePlottableFieldPaths = onAddNumericFieldToPlot
+    ? plottableFieldPaths
+    : undefined;
+
   return (
     <div className={styles.tree} data-testid="mcap-raw-tree">
       {root.entries.map(([key, node]) => (
         <TreeRow
+          addToPlot={addToPlot}
           copiedPath={copiedPath}
           copy={copy}
           depth={0}
@@ -52,7 +76,10 @@ const McapRawMessageTree: React.FC<{
           label={key}
           node={node}
           path={key}
+          plottableFieldPaths={effectivePlottableFieldPaths}
+          plottedPath={plottedPath}
           toggle={toggle}
+          withinArray={false}
         />
       ))}
       {root.droppedEntries ? (
@@ -67,6 +94,7 @@ const McapRawMessageTree: React.FC<{
 };
 
 interface TreeRowProps {
+  readonly addToPlot: (path: string) => void;
   readonly copiedPath: string | null;
   readonly copy: (path: string, node: McapRawValueNode) => void;
   readonly depth: number;
@@ -74,10 +102,14 @@ interface TreeRowProps {
   readonly label: string;
   readonly node: McapRawValueNode;
   readonly path: string;
+  readonly plottableFieldPaths?: ReadonlySet<string>;
+  readonly plottedPath: string | null;
   readonly toggle: (path: string, expanded: boolean) => void;
+  readonly withinArray: boolean;
 }
 
 function TreeRow({
+  addToPlot,
   copiedPath,
   copy,
   depth,
@@ -85,12 +117,19 @@ function TreeRow({
   label,
   node,
   path,
+  plottableFieldPaths,
+  plottedPath,
   toggle,
+  withinArray,
 }: TreeRowProps) {
   const expandable = isExpandable(node);
   const expanded =
     expandedOverrides.get(path) ?? (expandable && depth < AUTO_EXPAND_DEPTH);
   const indent = { paddingLeft: `${depth * 14}px` };
+  const canAddToPlot =
+    !withinArray && isPlottableScalar(node) && plottableFieldPaths?.has(path);
+  const addToPlotLabel =
+    plottedPath === path ? `${path} plotted` : `Add ${path} to plot`;
 
   return (
     <>
@@ -115,6 +154,18 @@ function TreeRow({
             {expanded && expandable ? "" : nodePreview(node)}
           </span>
         </div>
+        {canAddToPlot ? (
+          <button
+            aria-label={addToPlotLabel}
+            className={styles.copyButton}
+            data-testid={`mcap-raw-plot-${path}`}
+            onClick={() => addToPlot(path)}
+            title="Add field to plot"
+            type="button"
+          >
+            {plottedPath === path ? "plotted" : "plot"}
+          </button>
+        ) : null}
         <button
           aria-label={`Copy ${label}`}
           className={styles.copyButton}
@@ -129,6 +180,7 @@ function TreeRow({
       {expanded && node.kind === "object"
         ? node.entries.map(([childKey, child]) => (
             <TreeRow
+              addToPlot={addToPlot}
               copiedPath={copiedPath}
               copy={copy}
               depth={depth + 1}
@@ -137,7 +189,10 @@ function TreeRow({
               label={childKey}
               node={child}
               path={`${path}.${childKey}`}
+              plottableFieldPaths={plottableFieldPaths}
+              plottedPath={plottedPath}
               toggle={toggle}
+              withinArray={withinArray}
             />
           ))
         : null}
@@ -157,6 +212,7 @@ function TreeRow({
       {expanded && node.kind === "array"
         ? node.items.map((item, index) => (
             <TreeRow
+              addToPlot={addToPlot}
               copiedPath={copiedPath}
               copy={copy}
               depth={depth + 1}
@@ -165,7 +221,10 @@ function TreeRow({
               label={String(index)}
               node={item}
               path={`${path}.${index}`}
+              plottableFieldPaths={plottableFieldPaths}
+              plottedPath={plottedPath}
               toggle={toggle}
+              withinArray={true}
             />
           ))
         : null}
@@ -193,6 +252,13 @@ function isExpandable(node: McapRawValueNode): boolean {
   return (
     (node.kind === "object" && node.entries.length > 0) ||
     (node.kind === "array" && node.items.length > 0)
+  );
+}
+
+function isPlottableScalar(node: McapRawValueNode): boolean {
+  return (
+    node.kind === "scalar" &&
+    (node.valueType === "number" || node.valueType === "bigint")
   );
 }
 

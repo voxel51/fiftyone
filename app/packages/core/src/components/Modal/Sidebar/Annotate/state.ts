@@ -35,9 +35,68 @@ export const activeLabelSchemas = atom<string[] | null>(null);
 export const exploreActiveFields = atom<string[] | null>(null);
 
 /**
- * Intersection of activeLabelSchemas and exploreActiveFields.
+ * Media type of the group slice currently being annotated, mirrored from Recoil
+ * by `useSyncAnnotationSliceMediaType`. null when the dataset isn't grouped — in
+ * that case visibleLabelSchemas applies no per-slice filtering. Recoil can't be
+ * read from inside a Jotai getter, so the slice media type is bridged in (same
+ * pattern as exploreActiveFields).
+ */
+export const annotationSliceMediaType = atom<string | null>(null);
+
+const FRAMES_PREFIX = "frames.";
+const CLASSIFICATION_TYPES = new Set(["classification", "classifications"]);
+const TEMPORAL_TYPES = new Set(["temporaldetection", "temporaldetections"]);
+
+/**
+ * Whether an active-schema path is annotatable on a slice of the given media
+ * type. In a grouped dataset the active schema is a superset across slices, so
+ * navigating to a slice must hide the paths that slice can't carry:
+ *   - frame fields (`frames.*`) exist only on video slices;
+ *   - temporal detections span frames, so they're video-only;
+ *   - spatial sample-level labels (detection/polyline/keypoint/seg) live in
+ *     `frames.*` on video, so at the sample level they belong to image/3d;
+ *   - classifications and primitive scalars are whole-sample — valid anywhere.
+ * `sliceMediaType == null` means the dataset isn't grouped → no filtering.
+ */
+const isPathAnnotatableOnSlice = (
+  path: string,
+  rawType: string | undefined,
+  isPrimitive: boolean,
+  sliceMediaType: string | null,
+): boolean => {
+  if (sliceMediaType == null) {
+    return true;
+  }
+
+  const isVideo = sliceMediaType === "video";
+
+  if (path.startsWith(FRAMES_PREFIX)) {
+    return isVideo;
+  }
+
+  if (isPrimitive) {
+    return true;
+  }
+
+  const type = (rawType ?? "").toLowerCase();
+
+  if (CLASSIFICATION_TYPES.has(type)) {
+    return true;
+  }
+
+  if (TEMPORAL_TYPES.has(type)) {
+    return isVideo;
+  }
+
+  return !isVideo;
+};
+
+/**
+ * Intersection of activeLabelSchemas and exploreActiveFields, further narrowed
+ * to the paths the current group slice supports (see isPathAnnotatableOnSlice).
  * Display consumers should read this instead of activeLabelSchemas so that
- * hiding a field in the Explore sidebar also hides it in Annotate.
+ * hiding a field in the Explore sidebar also hides it in Annotate, and so that
+ * navigating between slices only offers schemas valid for the open slice.
  */
 export const visibleLabelSchemas = atom((get) => {
   const active = get(activeLabelSchemas);
@@ -45,14 +104,23 @@ export const visibleLabelSchemas = atom((get) => {
 
   const explore = get(exploreActiveFields);
   const exploreSet = new Set(explore ?? []);
+  const sliceMediaType = get(annotationSliceMediaType);
+
   return active.filter((field) => {
     const type = get(fieldType(field));
     // Primitive fields don't appear in the Explore sidebar — always show them.
     // Everything else is a label (embedded doc) type — filter by explore visibility.
-    if (type && PRIMITIVE_FIELD_TYPES.has(type)) {
-      return true;
+    const isPrimitive = !!type && PRIMITIVE_FIELD_TYPES.has(type);
+    if (!isPrimitive && !exploreSet.has(field)) {
+      return false;
     }
-    return exploreSet.has(field);
+
+    return isPathAnnotatableOnSlice(
+      field,
+      get(labelSchemaData(field))?.type,
+      isPrimitive,
+      sliceMediaType,
+    );
   });
 });
 

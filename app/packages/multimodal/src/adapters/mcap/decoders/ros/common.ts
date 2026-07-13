@@ -2,6 +2,15 @@ import type {
   DecodeContext,
   DecodedAttributeValue,
   PayloadDescriptor,
+  SceneArrowPrimitive,
+  SceneCubePrimitive,
+  SceneCylinderPrimitive,
+  SceneEntityVisualization,
+  SceneLinePrimitive,
+  SceneModelPrimitive,
+  SceneSpherePrimitive,
+  SceneTextPrimitive,
+  SceneTrianglePrimitive,
 } from "../../../../decoders";
 import { optionalBigInt, optionalString } from "../foxglove/protobuf/records";
 import { timingFromContext } from "../foxglove/protobuf/timing";
@@ -87,6 +96,26 @@ export function arrayField(
   }
 
   return value;
+}
+
+/**
+ * Reads an array field as records, replacing malformed entries with empty
+ * records so message-level degradation stays local to the entry.
+ */
+export function arrayRecords(
+  record: Record<string, unknown>,
+  field: string,
+): readonly Record<string, unknown>[] {
+  return arrayField(record, field).map((value) =>
+    isRecord(value) ? value : {},
+  );
+}
+
+/**
+ * Type guard for plain record-shaped values.
+ */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 /**
@@ -308,6 +337,66 @@ export function stringField(
 ): string {
   const value = record[field];
   return typeof value === "string" ? value : fallback;
+}
+
+/**
+ * Builds a SceneEntityVisualization with the shared default primitive fields.
+ */
+export function sceneEntityVisualization({
+  arrows = [],
+  cubes = [],
+  cylinders = [],
+  frameId,
+  frameLocked = false,
+  id,
+  lifetimeNs,
+  lines = [],
+  metadata = {},
+  models = [],
+  spheres = [],
+  texts = [],
+  timestampNs,
+  triangles = [],
+}: {
+  readonly arrows?: readonly SceneArrowPrimitive[];
+  readonly cubes?: readonly SceneCubePrimitive[];
+  readonly cylinders?: readonly SceneCylinderPrimitive[];
+  readonly frameId?: string | undefined;
+  readonly frameLocked?: boolean;
+  readonly id: string;
+  readonly lifetimeNs?: bigint | undefined;
+  readonly lines?: readonly SceneLinePrimitive[];
+  readonly metadata?: Readonly<Record<string, string>>;
+  readonly models?: readonly SceneModelPrimitive[];
+  readonly spheres?: readonly SceneSpherePrimitive[];
+  readonly texts?: readonly SceneTextPrimitive[];
+  readonly timestampNs?: bigint | undefined;
+  readonly triangles?: readonly SceneTrianglePrimitive[];
+}): SceneEntityVisualization {
+  return {
+    arrowCount: arrows.length,
+    arrows,
+    cubeCount: cubes.length,
+    cubes,
+    cylinderCount: cylinders.length,
+    cylinders,
+    ...(frameId ? { frameId } : {}),
+    frameLocked,
+    id,
+    lineCount: lines.length,
+    lines,
+    ...(lifetimeNs !== undefined ? { lifetimeNs } : {}),
+    metadata,
+    modelCount: models.length,
+    models,
+    sphereCount: spheres.length,
+    spheres,
+    textCount: texts.length,
+    texts,
+    ...(timestampNs !== undefined ? { timestampNs } : {}),
+    triangleCount: triangles.length,
+    triangles,
+  };
 }
 
 function firstBigInt(
