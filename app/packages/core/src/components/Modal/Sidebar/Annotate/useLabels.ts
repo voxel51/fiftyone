@@ -446,6 +446,10 @@ const useSyncOverlayReadOnly = () => {
 export default function useLabels() {
   const paths = useRecoilValue(pathMap);
   const currentLabels = useAtomValue(labels);
+  // Live mirror for the sample-change cleanup, which can't depend on
+  // `currentLabels` without tearing down overlays on every edit.
+  const currentLabelsRef = useRef(currentLabels);
+  currentLabelsRef.current = currentLabels;
   const modalSample = useModalSample();
   const currentSampleId = useCurrentSampleId();
   const setLabels = useSetAtom(labels);
@@ -505,7 +509,8 @@ export default function useLabels() {
   // fresh instead of entering the refresh path with stale labels.
   useEffect(() => {
     return () => {
-      currentLabels.forEach((label) => {
+      // Live set, so annotations added this sample are removed too.
+      currentLabelsRef.current.forEach((label) => {
         removeOverlay(label.overlay.id, false);
       });
       setLabels([]);

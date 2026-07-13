@@ -23,9 +23,9 @@ import type {
 /**
  * Base abstract class for all overlays.
  */
-export abstract class BaseOverlay<
-  Label extends RawLookerLabel = RawLookerLabel,
-> implements InteractionHandler {
+export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
+  implements InteractionHandler
+{
   readonly id: string;
   readonly cursor?: string;
 
@@ -241,6 +241,7 @@ export abstract class BaseOverlay<
    * Override this method in subclasses to perform specific cleanup.
    */
   destroy(): void {
+    this.renderer?.dispose(this.containerId);
     this._eventBus = undefined;
     this._eventChannel = undefined;
   }
