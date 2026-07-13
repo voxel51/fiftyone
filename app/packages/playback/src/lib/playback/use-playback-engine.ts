@@ -449,7 +449,7 @@ export function usePlaybackEngine({
     const startedAtMs = pendingPlayStartedAtMsRef.current;
     if (!pendingPlayRef.current || startedAtMs === null) return;
 
-    const nowMs = Date.now();
+    const nowMs = performance.now();
     let nextWaitMs = Number.POSITIVE_INFINITY;
     for (const stream of streamsRef.current.values()) {
       if (!stream.blocking || !isActive(stream.id)) continue;
@@ -474,7 +474,7 @@ export function usePlaybackEngine({
     (time: number, requestMissing: boolean): boolean => {
       const duration = store.get(durationAtom);
       const pendingStartedAtMs = pendingPlayStartedAtMsRef.current;
-      const nowMs = Date.now();
+      const nowMs = performance.now();
       let activeBlockingStreams = 0;
       let ready = true;
 
@@ -523,7 +523,7 @@ export function usePlaybackEngine({
 
   const requestOrStartPlayback = useCallback(
     (time: number) => {
-      pendingPlayStartedAtMsRef.current ??= Date.now();
+      pendingPlayStartedAtMsRef.current ??= performance.now();
       if (evaluatePlaybackStart(time, true)) {
         startPlayback();
         return;

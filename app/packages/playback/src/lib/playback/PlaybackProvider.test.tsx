@@ -449,6 +449,38 @@ describe("PlaybackProvider engine actions", () => {
       }
     });
 
+    it("keeps the startup deadline stable across wall-clock changes", async () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+        const ranges: Array<[number, number]> = [[0, 0.05]];
+        const { result } = renderEngine({ duration: 10 });
+
+        act(() => {
+          result.current.api.registerStream({
+            id: "mcap",
+            blocking: true,
+            startupBufferSeconds: 3,
+            startupBufferMaxWaitSeconds: 1,
+            bufferState: () => "ready",
+            bufferedRanges: () => ranges,
+          });
+          result.current.api.subscribeStream("mcap");
+          result.current.api.play();
+        });
+
+        vi.setSystemTime(new Date("2026-01-02T00:00:00Z"));
+        act(() => bumpStreamRangesVersion(result.current.store));
+        expect(result.current.isPlayPending).toBe(true);
+        expect(result.current.isPlaying).toBe(false);
+
+        await act(() => vi.advanceTimersByTimeAsync(1_000));
+        expect(result.current.isPlaying).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("does not bypass an unready current frame after the startup deadline", async () => {
       vi.useFakeTimers();
       try {
