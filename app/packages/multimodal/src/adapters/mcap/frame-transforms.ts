@@ -19,6 +19,7 @@ const DEFAULT_FRAME_TRANSFORM_POLICY: McapFrameTransformPolicy = {
   boundaryClampNs: 50_000_000n,
   maxInterpolationGapNs: 0n,
 };
+const MAX_ADJACENCY_CACHE_ENTRIES = 8;
 
 export interface McapFrameGraphSummary {
   readonly dataBearingReachableCountsByFrameId: ReadonlyMap<string, number>;
@@ -49,10 +50,10 @@ export class McapFrameTransformStore {
   >();
   private dynamicRanges: readonly McapFrameTransformTimeRange[] = [];
   private readonly frameIdsById = new Set<string>();
-  private adjacencyCache: {
-    readonly adjacency: Map<string, McapComposedFrameTransform[]>;
-    readonly timeKey: string;
-  } | null = null;
+  private readonly adjacencyCache = new Map<
+    string,
+    Map<string, McapComposedFrameTransform[]>
+  >();
   private readonly staticSamplesByEdge = new Map<
     string,
     McapFrameTransformSample
@@ -67,7 +68,7 @@ export class McapFrameTransformStore {
           normalized,
         );
         this.addFrameIds(normalized);
-        this.adjacencyCache = null;
+        this.adjacencyCache.clear();
       }
     }
   }
@@ -99,7 +100,7 @@ export class McapFrameTransformStore {
     }
 
     this.dynamicRanges = sortAndMergeTimeRanges([...this.dynamicRanges, range]);
-    this.adjacencyCache = null;
+    this.adjacencyCache.clear();
   }
 
   isTimeIndexed(timeNs: bigint): boolean {
@@ -261,8 +262,11 @@ export class McapFrameTransformStore {
     policy: McapFrameTransformPolicy,
   ) {
     const timeKey = frameTransformTimeKey(timeNs, policy);
-    if (this.adjacencyCache?.timeKey === timeKey) {
-      return this.adjacencyCache.adjacency;
+    const cached = this.adjacencyCache.get(timeKey);
+    if (cached) {
+      this.adjacencyCache.delete(timeKey);
+      this.adjacencyCache.set(timeKey, cached);
+      return cached;
     }
 
     const adjacency = new Map<string, McapComposedFrameTransform[]>();
@@ -279,10 +283,11 @@ export class McapFrameTransformStore {
       );
     }
 
-    this.adjacencyCache = {
-      adjacency,
-      timeKey,
-    };
+    this.adjacencyCache.set(timeKey, adjacency);
+    if (this.adjacencyCache.size > MAX_ADJACENCY_CACHE_ENTRIES) {
+      const oldestKey = this.adjacencyCache.keys().next().value;
+      if (oldestKey !== undefined) this.adjacencyCache.delete(oldestKey);
+    }
 
     return adjacency;
   }
