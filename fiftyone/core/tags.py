@@ -177,7 +177,7 @@ class Tag(object):
             d["id"] = self.id
 
         if self.kind is not None:
-            d["kind"] = self.kind
+            d["kind"] = self.kind.value
 
         return d
 
