@@ -257,6 +257,7 @@ jobs:
         run: yarn playwright merge-reports --reporter html,json ./all-blob-reports
 
       - name: Upload merged report
+        id: upload-merged
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report-merged
@@ -271,7 +272,14 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
           EXPECTED_SHARDS: "8"
+          REPORT_URL: ${{ steps.upload-merged.outputs.artifact-url }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          # attempt start time, for the wall-clock line in the comment
+          RUN_STARTED_AT=$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT" |
+            node -e "let d='';process.stdin.on('data',(c)=>(d+=c)).on('end',()=>console.log(JSON.parse(d).run_started_at??''))" || true)
+          export RUN_STARTED_AT
           node scripts/report-summary.mjs merged-results.json all-blob-reports > e2e-summary.md
           cat e2e-summary.md >> "$GITHUB_STEP_SUMMARY"
 

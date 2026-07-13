@@ -5,7 +5,9 @@
 // Usage: node scripts/report-summary.mjs merged-results.json [blob-dir]
 // Env: RUN_URL (workflow run link), HEAD_SHA (commit the run tested),
 // TEST_E2E_RESULT (shard jobs' aggregate result), EXPECTED_SHARDS
-// (shard count; with blob-dir, flags runs whose reports are incomplete)
+// (shard count; with blob-dir, flags runs whose reports are incomplete),
+// RUN_STARTED_AT (attempt start, for the wall-clock line), REPORT_URL
+// (merged HTML report artifact download link)
 
 import { readFileSync, readdirSync } from "node:fs";
 
@@ -83,6 +85,14 @@ const sha = (process.env.HEAD_SHA ?? "").slice(0, 10);
 const runUrl = process.env.RUN_URL ?? "";
 const runLink = runUrl ? ` — [run](${runUrl})` : "";
 
+const startedAt = Date.parse(process.env.RUN_STARTED_AT ?? "");
+let wallClock = "";
+if (!Number.isNaN(startedAt)) {
+  const totalSeconds = Math.round((Date.now() - startedAt) / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  wallClock = ` · ⏱ ${minutes}m ${totalSeconds % 60}s`;
+}
+
 const headline = failed.length
   ? `## ❌ e2e (${FLAVOR}): ${failed.length} failed spec${
       failed.length === 1 ? "" : "s"
@@ -106,7 +116,7 @@ lines.push(
   "",
   `**${failed.length} failed · ${flaky.length} flaky · ${
     stats.expected ?? 0
-  } passed · ${stats.skipped ?? 0} skipped** at \`${sha}\`${runLink}`,
+  } passed · ${stats.skipped ?? 0} skipped**${wallClock} at \`${sha}\`${runLink}`,
 );
 
 if (failed.length) {
@@ -115,9 +125,12 @@ if (failed.length) {
 if (flaky.length) {
   lines.push("", "### Flaky (passed on retry)", ...itemize(flaky));
 }
+const reportUrl = process.env.REPORT_URL ?? "";
 lines.push(
   "",
-  "Full HTML report: `playwright-report-merged` artifact on the run page.",
+  reportUrl
+    ? `Full HTML report: [playwright-report-merged](${reportUrl})`
+    : "Full HTML report: `playwright-report-merged` artifact on the run page.",
 );
 
 console.log(lines.join("\n"));
