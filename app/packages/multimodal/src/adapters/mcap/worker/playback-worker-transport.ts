@@ -240,7 +240,10 @@ export class McapPlaybackWorkerTransport {
     if (response.done) {
       this.finishStream(response.id, stream);
     } else {
-      pushStreamValue(stream, response.item);
+      const items = "items" in response ? response.items : [response.item];
+      for (const item of items) {
+        pushStreamValue(stream, item);
+      }
     }
   }
 

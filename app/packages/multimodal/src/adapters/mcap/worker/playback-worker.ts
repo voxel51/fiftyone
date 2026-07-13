@@ -16,6 +16,7 @@ import type {
   McapPlaybackWorkerRequest,
   McapPlaybackWorkerResponse,
   McapPlaybackWorkerRpcRequest,
+  McapPlaybackWorkerStreamItemByType,
   McapPlaybackWorkerStreamType,
   McapPlaybackWorkerTransportResponse,
 } from "./playback-worker-types";
@@ -34,6 +35,7 @@ const workerScope = self as unknown as McapPlaybackWorkerScope;
 const scheduler = new McapPlaybackWorkerScheduler();
 const transportMeter = createMcapTransportMeter();
 const TRANSPORT_PROGRESS_INTERVAL_MS = 500;
+const STREAM_BATCH_SIZE = 64;
 // This lane runs one request at a time, so one slot scopes byte reads to
 // the active request's abort signal without threading it through the
 // reader stack (@mcap/core reads carry no signal parameter).
@@ -128,19 +130,36 @@ async function runAndRespond(
 async function streamRequest(
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>,
 ) {
+  let batch: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][] =
+    [];
+
   for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
     const transferables = transferablesForMcapResult(item);
-    postResponse(
-      {
-        done: false,
-        id: message.id,
-        item,
-        ok: true,
-        stream: true,
-      },
-      transferables,
-    );
+    // Transferable buffers must keep their per-item ownership boundary. Plain
+    // decoded records can share one postMessage to reduce main-thread churn.
+    if (transferables.length > 0) {
+      postStreamBatch(message.id, batch);
+      batch = [];
+      postResponse(
+        {
+          done: false,
+          id: message.id,
+          item,
+          ok: true,
+          stream: true,
+        },
+        transferables,
+      );
+      continue;
+    }
+
+    batch.push(item);
+    if (batch.length >= STREAM_BATCH_SIZE) {
+      postStreamBatch(message.id, batch);
+      batch = [];
+    }
   }
+  postStreamBatch(message.id, batch);
 
   postResponse({
     done: true,
@@ -148,6 +167,23 @@ async function streamRequest(
     ok: true,
     stream: true,
     transport: transportMeter.snapshot(),
+  });
+}
+
+function postStreamBatch(
+  id: number,
+  items: readonly McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][],
+) {
+  if (items.length === 0) {
+    return;
+  }
+
+  postResponse({
+    done: false,
+    id,
+    items,
+    ok: true,
+    stream: true,
   });
 }
 
@@ -238,7 +274,12 @@ function transferablesForResponse(response: McapPlaybackWorkerResponse) {
   }
 
   if ("stream" in response) {
-    return response.done ? [] : transferablesForMcapResult(response.item);
+    if (response.done) {
+      return [];
+    }
+    return transferablesForMcapResult(
+      "items" in response ? response.items : response.item,
+    );
   }
 
   return transferablesForMcapResult(response.result);
