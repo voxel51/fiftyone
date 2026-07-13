@@ -1,8 +1,4 @@
-import {
-  humanReadableBytes,
-  markModalLoadingLatencyEvent,
-  markModalLoadingLatencyEventAfterPaint,
-} from "@fiftyone/utilities";
+import { humanReadableBytes } from "@fiftyone/utilities";
 import type { TilingLayoutMetrics } from "@fiftyone/tiling";
 import type { TemporalTagTimelineProps, Track } from "@fiftyone/playback";
 import { Size, Spinner } from "@voxel51/voodo";
@@ -27,7 +23,6 @@ import {
 } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-resources";
 import { releaseGpuPointCloudColormapTextures } from "../../../visualization/panels/point-cloud/gpu/gpu-point-cloud-colormap-texture";
 import { BitmapImageFrameView } from "../../../visualization/panels/bitmap-image-view";
-import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { getMcapSourceBootstrap } from "../source-bootstrap-cache";
 import type { McapResourceClient } from "../types";
 import { Mcap3dViewStateProvider } from "./mcap-3d-view-state-context";
@@ -155,15 +150,6 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     },
     [],
   );
-  // This layout effect records the renderer mount before the browser paints.
-  useLayoutEffect(() => {
-    markModalLoadingLatencyEvent("mcap renderer mounted", {
-      fileName,
-      readProfile: source?.readProfile,
-      sourceId: source?.sourceId,
-    });
-  }, [fileName, source]);
-
   // This effect clears host-owned GPU state on unmount. The lightweight 3D
   // view snapshot intentionally outlives this host in its scoped registry.
   useEffect(() => {
@@ -226,20 +212,10 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   const cameraViewStateScopeKey =
     mcapCameraScopeKey(effectiveLayoutScopeKey, cameraPreferenceField) ??
     effectiveLayoutScopeKey;
-  const metadata = useMemo(
-    () => ({
-      sizeLabel: sourceSizeLabel(source?.sizeBytes),
-      ...sourceCounts(sources),
-      topicCount,
-    }),
-    [source?.sizeBytes, sources, topicCount],
-  );
+  const sizeLabel = sourceSizeLabel(source?.sizeBytes);
   const headerCaption = useMemo(
-    () =>
-      metadata.sizeLabel ? (
-        <McapHeaderCaption sizeLabel={metadata.sizeLabel} />
-      ) : null,
-    [metadata.sizeLabel],
+    () => (sizeLabel ? <McapHeaderCaption sizeLabel={sizeLabel} /> : null),
+    [sizeLabel],
   );
   const {
     initialTiles,
@@ -265,19 +241,6 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     readProfile: source?.readProfile,
     sources: shellSources,
   });
-
-  // Mark scene-inventory latency once the target inventory resolves.
-  useEffect(() => {
-    if (status !== "ready") return;
-    markModalLoadingLatencyEvent(
-      "mcap scene inventory ready",
-      {
-        ...metadata,
-        sourceCount: sources.length,
-      },
-      { onceKey: "mcap-scene-inventory-ready" },
-    );
-  }, [metadata, sources.length, status]);
 
   if (!source) {
     return <McapPlaybackState text="No MCAP source selected" />;
@@ -536,8 +499,6 @@ function McapPreparingPlayback({
   readonly poster?: McapPosterImage;
   readonly posterTopic?: string;
 }) {
-  useMcapPosterLatencyMarks(Boolean(poster));
-
   return (
     <div
       aria-label={`Preparing ${fileName}`}
@@ -570,8 +531,6 @@ function McapPosterOverlay({
   readonly posterTopic?: string;
   readonly statusText?: string;
 }) {
-  useMcapPosterLatencyMarks(Boolean(poster));
-
   return (
     <div
       aria-label={`Preview of ${fileName}`}
@@ -615,58 +574,10 @@ function McapPosterCard({
   );
 }
 
-function useMcapPosterLatencyMarks(hasPoster: boolean): void {
-  // This layout effect records scaffold and poster commit/paint boundaries.
-  useLayoutEffect(() => {
-    markModalLoadingLatencyEvent(
-      "mcap scaffold committed",
-      { hasPoster },
-      {
-        onceKey: "mcap-scaffold-committed",
-      },
-    );
-    const cancelScaffoldPaint = markModalLoadingLatencyEventAfterPaint(
-      "mcap scaffold painted",
-      { hasPoster },
-      { onceKey: "mcap-scaffold-painted" },
-    );
-    if (!hasPoster) {
-      return cancelScaffoldPaint;
-    }
-
-    markModalLoadingLatencyEvent("mcap poster committed", undefined, {
-      onceKey: "mcap-poster-committed",
-    });
-    const cancelPosterPaint = markModalLoadingLatencyEventAfterPaint(
-      "mcap poster painted",
-      undefined,
-      { onceKey: "mcap-poster-painted" },
-    );
-    return () => {
-      cancelScaffoldPaint();
-      cancelPosterPaint();
-    };
-  }, [hasPoster]);
-}
-
 // Deliberately just the file size: topic/stream/label counts used to render
 // here too, but they ate header real estate without informing any decision.
 function McapHeaderCaption({ sizeLabel }: { readonly sizeLabel: string }) {
   return <span className={styles.captionText}>{sizeLabel}</span>;
-}
-
-function sourceCounts(sources: readonly { type: string }[]) {
-  return {
-    imageCount: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.IMAGE).length,
-    labelCount: sources.filter(
-      (s) =>
-        s.type === MCAP_SOURCE_TYPE.IMAGE_ANNOTATION ||
-        s.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
-    ).length,
-    pointCloudCount: sources.filter(
-      (s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD,
-    ).length,
-  };
 }
 
 function currentViewportAspectRatio(): number {
