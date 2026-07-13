@@ -21,7 +21,14 @@ import {
   type PlaybackStream,
 } from "@fiftyone/playback";
 import { markModalLoadingLatencyEvent } from "@fiftyone/utilities";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   getMcapTopicStatus,
   getMcapTopicStaleAgeNs,
@@ -257,11 +264,24 @@ export function useRegisterMcapDataStream({
   staleWarningTopics,
   streamPolicies,
 }: UseMcapDataStreamOptions): void {
-  const { registerStream, seek, subscribeStream } = usePlayback();
+  const { pause, registerStream, seek, subscribeStream } = usePlayback();
   const store = usePlaybackStore();
   const isPlaying = useIsPlaying();
   const setDataStream = useSetMcapDataStream();
   const seekEvent = useSeekEvent();
+  // Per-recording discriminator for cross-tile caches and source lifecycle.
+  const sourceKey = useMemo(
+    () => (source ? byteSourceAccessKey(source) : ""),
+    [source],
+  );
+
+  // This layout effect resets recording-local time before paint while the
+  // playback store—and therefore the modal workspace—survives navigation.
+  // The topic-bounds path below may then advance zero to the first data tick.
+  useLayoutEffect(() => {
+    pause();
+    seek(0);
+  }, [pause, seek, sourceKey]);
 
   const [index, setIndex] = useState<McapTimelineIndex | null>(null);
 
@@ -1864,14 +1884,6 @@ export function useRegisterMcapDataStream({
     },
     [client, source],
   );
-  // Per-recording discriminator for cross-tile cache keys (e.g. the shared
-  // image-texture cache): keys embedding it can never collide across
-  // recordings, so no cache flush is needed at the source-change boundary.
-  const sourceKey = useMemo(
-    () => (source ? byteSourceAccessKey(source) : ""),
-    [source],
-  );
-
   // This effect publishes the current recording stream through React context.
   useEffect(() => {
     setDataStream({

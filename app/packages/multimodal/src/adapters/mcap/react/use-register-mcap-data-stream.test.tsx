@@ -51,6 +51,86 @@ afterEach(() => {
 });
 
 describe("useRegisterMcapDataStream", () => {
+  it("pauses and starts the next source at its first data tick", async () => {
+    const sourceA = createSource("source-a");
+    const sourceB = createSource("source-b");
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const onApi = (value: ReturnType<typeof usePlayback>) => {
+      api = value;
+    };
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly McapSynchronizedMessageWindow[]>(
+            () => undefined,
+          ),
+      ),
+      readSynchronizedMessages: vi.fn(
+        () => new Promise<McapSynchronizedMessageWindow>(() => undefined),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTopicTimeBounds: vi.fn(async ({ source }) => [
+        {
+          firstMessageTimeNs:
+            source.sourceId === sourceB.sourceId ? 10_000_000n : 0n,
+          lastMessageTimeNs: 1_000_000_000n,
+          topic: TOPIC,
+        },
+      ]),
+    });
+
+    const { rerender } = render(
+      <Harness
+        client={client}
+        onApi={onApi}
+        onStore={storeCapture.onStore}
+        source={sourceA}
+        subscribe={false}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+    await waitFor(() => {
+      expect(client.readTimelineRange).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      api?.seek(0.75);
+      api?.play();
+    });
+    expect(getPlayhead(store)).toBe(0.75);
+    expect(getIsPlaying(store)).toBe(true);
+
+    rerender(
+      <Harness
+        client={client}
+        onApi={onApi}
+        onStore={storeCapture.onStore}
+        source={null}
+        subscribe={false}
+      />,
+    );
+
+    expect(getPlayhead(store)).toBe(0);
+    expect(getIsPlaying(store)).toBe(false);
+
+    rerender(
+      <Harness
+        client={client}
+        onApi={onApi}
+        onStore={storeCapture.onStore}
+        source={sourceB}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getPlayhead(store)).toBeCloseTo(1 / 30, 6);
+    });
+    expect(getIsPlaying(store)).toBe(false);
+    expect(client.readTopicTimeBounds).toHaveBeenCalledTimes(2);
+  });
+
   it("ignores in-flight batch results after the source changes", async () => {
     const sourceA = createSource("source-a");
     const sourceB = createSource("source-b");
