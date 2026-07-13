@@ -12,6 +12,11 @@ import {
 import type { ByteReadDebugLog } from "../../../query/bytes";
 import { createMcapTransportMeter } from "./transport-meter";
 import { transferablesForMcapResult } from "./playback-worker-transfer";
+import {
+  estimateMcapStreamItemBytes,
+  isMcapStreamBatchFull,
+  wouldOverflowMcapStreamBatch,
+} from "./playback-worker-stream-batch";
 import type {
   McapPlaybackWorkerRequest,
   McapPlaybackWorkerResponse,
@@ -35,7 +40,6 @@ const workerScope = self as unknown as McapPlaybackWorkerScope;
 const scheduler = new McapPlaybackWorkerScheduler();
 const transportMeter = createMcapTransportMeter();
 const TRANSPORT_PROGRESS_INTERVAL_MS = 500;
-const STREAM_BATCH_SIZE = 64;
 // This lane runs one request at a time, so one slot scopes byte reads to
 // the active request's abort signal without threading it through the
 // reader stack (@mcap/core reads carry no signal parameter).
@@ -132,6 +136,7 @@ async function streamRequest(
 ) {
   let batch: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][] =
     [];
+  let batchBytes = 0;
 
   for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
     const transferables = transferablesForMcapResult(item);
@@ -140,6 +145,7 @@ async function streamRequest(
     if (transferables.length > 0) {
       postStreamBatch(message.id, batch);
       batch = [];
+      batchBytes = 0;
       postResponse(
         {
           done: false,
@@ -153,10 +159,30 @@ async function streamRequest(
       continue;
     }
 
-    batch.push(item);
-    if (batch.length >= STREAM_BATCH_SIZE) {
+    const itemBytes = estimateMcapStreamItemBytes(item);
+    if (
+      wouldOverflowMcapStreamBatch({
+        batchBytes,
+        batchItems: batch.length,
+        nextItemBytes: itemBytes,
+      })
+    ) {
       postStreamBatch(message.id, batch);
       batch = [];
+      batchBytes = 0;
+    }
+
+    batch.push(item);
+    batchBytes += itemBytes;
+    if (
+      isMcapStreamBatchFull({
+        batchBytes,
+        batchItems: batch.length,
+      })
+    ) {
+      postStreamBatch(message.id, batch);
+      batch = [];
+      batchBytes = 0;
     }
   }
   postStreamBatch(message.id, batch);
