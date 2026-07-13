@@ -31,7 +31,6 @@ import {
 } from "./mcap-location-track";
 
 const LOCATION_TRACK_READ_LIMIT = 25_000;
-const LOCATION_TRACK_START_DELAY_MS = 1_500;
 const LOCATION_TRACK_DEFERRED_RETRY_MS = 2_000;
 
 const EMPTY_LOCATION_TRACKS: McapLocationTracks = new Map();
@@ -226,7 +225,7 @@ export function McapLocationTracksBridge({
       });
     };
 
-    scheduleRetry(LOCATION_TRACK_START_DELAY_MS);
+    start();
 
     return () => {
       cancelled = true;

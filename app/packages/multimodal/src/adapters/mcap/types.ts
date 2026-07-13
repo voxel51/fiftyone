@@ -184,7 +184,8 @@ export interface McapEnumerateNumericFieldsRequest {
 
 /**
  * One numeric leaf field of a topic's message schema, addressed by a
- * dotted path (e.g. `twist.linear.x`).
+ * dotted path (e.g. `twist.linear.x`). Numeric segments address array
+ * elements (e.g. `position.0`).
  */
 export interface McapNumericFieldDescriptor {
   readonly path: string;
@@ -226,9 +227,9 @@ export interface McapTopicNumericFields {
   readonly availability: McapNumericFieldAvailability;
 
   /**
-   * True when fields were derived by sampling decoded messages (JSON
-   * channels carry no walkable schema); fields appearing only later in
-   * the recording may be missing.
+   * True when enumeration sampled decoded messages (JSON channels carry no
+   * walkable schema, and array indexes cannot be known from schemas alone).
+   * Fields appearing only later in the recording may be missing.
    */
   readonly sampled?: boolean;
   readonly fields: readonly McapNumericFieldDescriptor[];

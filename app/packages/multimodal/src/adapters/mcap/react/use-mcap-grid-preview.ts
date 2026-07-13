@@ -55,6 +55,7 @@ export function useMcapGridPreview({
     readonly selectedStreamTopic?: string | null;
     readonly source: ByteSourceDescriptor;
   } | null>(null);
+  const frameTimeNsRef = useRef<bigint | undefined>(undefined);
   const nextStartTimeNsRef = useRef<bigint | undefined>(undefined);
   const pause = useCallback(() => setPlaying(false), []);
   const play = useCallback(() => {
@@ -68,6 +69,7 @@ export function useMcapGridPreview({
   useEffect(() => {
     initialLoadInFlightRef.current = false;
     loadedRequestRef.current = null;
+    frameTimeNsRef.current = undefined;
     nextStartTimeNsRef.current = undefined;
     setPlaying(false);
     setState(
@@ -110,6 +112,7 @@ export function useMcapGridPreview({
     const pool = getMcapGridPreviewPool();
     pool.acquire();
     initialLoadInFlightRef.current = true;
+    frameTimeNsRef.current = undefined;
     nextStartTimeNsRef.current = undefined;
 
     const request = selectedStreamTopic
@@ -124,6 +127,7 @@ export function useMcapGridPreview({
         if (active) {
           publishGridBootstrap(source, result);
           loadedRequestRef.current = { selectedStreamTopic, source };
+          frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState(result.state);
         }
@@ -175,6 +179,8 @@ export function useMcapGridPreview({
     const pool = getMcapGridPreviewPool();
     pool.acquire();
     let bootstrapPublished = false;
+    let previousFrameTimeNs = frameTimeNsRef.current;
+    let presentedAtMs = performance.now();
 
     const run = async () => {
       try {
@@ -203,9 +209,32 @@ export function useMcapGridPreview({
           }
 
           if (!result.state.frame) {
+            frameTimeNsRef.current = undefined;
             nextStartTimeNsRef.current = undefined;
-            await delayMs(mcapGridPreviewPlaybackDelayMs(source));
+            previousFrameTimeNs = undefined;
+            await delayMs(
+              mcapGridPreviewPlaybackDelayMs(undefined, undefined),
+              controller.signal,
+            );
+            if (!active) {
+              break;
+            }
             continue;
+          }
+
+          const playbackDelayMs = mcapGridPreviewPlaybackDelayMs(
+            previousFrameTimeNs,
+            result.frameTimeNs,
+            performance.now() - presentedAtMs,
+          );
+          if (playbackDelayMs === null) {
+            nextStartTimeNsRef.current = result.nextStartTimeNs;
+            continue;
+          }
+
+          await delayMs(playbackDelayMs, controller.signal);
+          if (!active) {
+            break;
           }
 
           if (!bootstrapPublished) {
@@ -213,9 +242,11 @@ export function useMcapGridPreview({
             bootstrapPublished = true;
           }
 
+          frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState(result.state);
-          await delayMs(mcapGridPreviewPlaybackDelayMs(source, result.delayMs));
+          previousFrameTimeNs = result.frameTimeNs;
+          presentedAtMs = performance.now();
         }
       } catch (caughtError) {
         if (active && !controller.signal.aborted) {
@@ -261,8 +292,22 @@ function publishGridBootstrap(
   });
 }
 
-function delayMs(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+function delayMs(milliseconds: number, signal: AbortSignal): Promise<void> {
+  if (milliseconds <= 0 || signal.aborted) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(finish, milliseconds);
+    signal.addEventListener("abort", finish, { once: true });
+
+    function finish() {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", finish);
+      resolve();
+    }
+  });
 }
 
+/** Status type exposed alongside the grid preview hook. */
 export type { McapGridPreviewStatus };

@@ -68,7 +68,9 @@ describe("projectNumericField", () => {
     expect(projectNumericField(record, ["armed"])).toBe(1);
     expect(projectNumericField(record, ["count"])).toBe(7);
     expect(projectNumericField(record, ["name"])).toBeUndefined();
-    expect(projectNumericField(record, ["ranges", "0"])).toBeUndefined();
+    expect(projectNumericField(record, ["ranges", "0"])).toBe(1);
+    expect(projectNumericField(record, ["ranges", "1.5"])).toBeUndefined();
+    expect(projectNumericField(record, ["ranges", "9"])).toBeUndefined();
     expect(projectNumericField(record, ["missing", "leaf"])).toBeUndefined();
   });
 

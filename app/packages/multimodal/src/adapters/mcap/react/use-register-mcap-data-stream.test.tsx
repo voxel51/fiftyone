@@ -51,6 +51,86 @@ afterEach(() => {
 });
 
 describe("useRegisterMcapDataStream", () => {
+  it("pauses and starts the next source at its first data tick", async () => {
+    const sourceA = createSource("source-a");
+    const sourceB = createSource("source-b");
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const onApi = (value: ReturnType<typeof usePlayback>) => {
+      api = value;
+    };
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly McapSynchronizedMessageWindow[]>(
+            () => undefined,
+          ),
+      ),
+      readSynchronizedMessages: vi.fn(
+        () => new Promise<McapSynchronizedMessageWindow>(() => undefined),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTopicTimeBounds: vi.fn(async ({ source }) => [
+        {
+          firstMessageTimeNs:
+            source.sourceId === sourceB.sourceId ? 10_000_000n : 0n,
+          lastMessageTimeNs: 1_000_000_000n,
+          topic: TOPIC,
+        },
+      ]),
+    });
+
+    const { rerender } = render(
+      <Harness
+        client={client}
+        onApi={onApi}
+        onStore={storeCapture.onStore}
+        source={sourceA}
+        subscribe={false}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+    await waitFor(() => {
+      expect(client.readTimelineRange).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      api?.seek(0.75);
+      api?.play();
+    });
+    expect(getPlayhead(store)).toBe(0.75);
+    expect(getIsPlaying(store)).toBe(true);
+
+    rerender(
+      <Harness
+        client={client}
+        onApi={onApi}
+        onStore={storeCapture.onStore}
+        source={null}
+        subscribe={false}
+      />,
+    );
+
+    expect(getPlayhead(store)).toBe(0);
+    expect(getIsPlaying(store)).toBe(false);
+
+    rerender(
+      <Harness
+        client={client}
+        onApi={onApi}
+        onStore={storeCapture.onStore}
+        source={sourceB}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getPlayhead(store)).toBeCloseTo(1 / 30, 6);
+    });
+    expect(getIsPlaying(store)).toBe(false);
+    expect(client.readTopicTimeBounds).toHaveBeenCalledTimes(2);
+  });
+
   it("ignores in-flight batch results after the source changes", async () => {
     const sourceA = createSource("source-a");
     const sourceB = createSource("source-b");
@@ -1181,7 +1261,7 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     kind: VISUALIZATION_KIND.ENCODED_IMAGE,
   } as const;
 
-  it("drops held frames on seek so an uncovered target shows loading", async () => {
+  it("retains the previous frame while an uncovered seek target loads", async () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
@@ -1219,16 +1299,18 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     await waitFor(() => {
       expect(getStreamValue(store, TOPIC)).not.toBeNull();
     });
+    const previousFrame = getStreamValue(store, TOPIC);
 
     act(() => {
       api?.seek(0.9);
     });
 
-    // The debounced seek event clears held frames; the uncovered target
-    // renders its explicit loading state instead of the pre-seek frame.
+    // The debounced seek keeps the previous frame until foreground data for
+    // the target arrives. Stream status makes that retained content explicit.
     await waitFor(() => {
-      expect(getStreamValue(store, TOPIC)).toBeNull();
+      expect(getMcapTopicStatus(store, TOPIC)).toBe("loading");
     });
+    expect(getStreamValue(store, TOPIC)).toBe(previousFrame);
   });
 
   it("gates a pending play press behind the bandwidth cushion and reports progress", async () => {

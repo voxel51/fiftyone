@@ -20,6 +20,10 @@ let viewStateStore: Mcap3dViewStateStore;
 
 beforeEach(() => {
   viewStateStore = createMcap3dViewStateStore();
+  viewStateStore.recordSourceSelection({
+    enabledSourceIds: ["lidar"],
+    renderableSourceIds: ["lidar"],
+  });
 });
 
 afterEach(() => {
@@ -697,6 +701,147 @@ describe("useMcap3dCameraTracking view-state restore", () => {
     });
   });
 
+  it("carries relative composition through the unbound navigation interval", () => {
+    const anchor = trackingAnchor({});
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({ placementStatus: "transformed" }),
+    });
+
+    act(() => {
+      result.current.rig.onCommit(pose(5), anchor);
+    });
+    const carried = viewStateStore.getSnapshot().navigationCompositions;
+    expect(carried).toHaveLength(1);
+
+    // The data-stream provider hides A before B is ready. The shell and last
+    // scene stay mounted, but this empty key must not consume A's composition.
+    rerender(trackingProps({ placementStatus: "transformed", sourceKey: "" }));
+    expect(result.current.poseCommand).toBeNull();
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual(
+      carried,
+    );
+
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "empty",
+        sourceKey: "source-b",
+      }),
+    );
+    expect(result.current.poseCommand).toBeNull();
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual(
+      carried,
+    );
+
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        sourceKey: "source-b",
+      }),
+    );
+    expect(result.current.poseCommand).toEqual({
+      position: [15, 0, 10],
+      target: [15, 0, 0],
+    });
+  });
+
+  it("waits for the incoming world-frame choice before restoring relative navigation", () => {
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({ placementStatus: "transformed" }),
+    });
+    act(() => {
+      result.current.rig.onCommit(pose(5), trackingAnchor({}));
+    });
+
+    rerender(trackingProps({ placementStatus: "transformed", sourceKey: "" }));
+    rerender(
+      trackingProps({
+        cameraTargetFrameId: "lidar",
+        cameraTargetSelectionSource: "auto",
+        navigationReferenceSettled: false,
+        placementStatus: "transformed",
+        sourceKey: "source-b",
+        worldFrameId: "lidar",
+      }),
+    );
+
+    // A local reference is rendered while the incoming graph is still being
+    // promoted. Applying here would make the later lidar -> map remap rotate
+    // the user's saved orbit a second time.
+    expect(result.current.poseCommand).toBeNull();
+
+    rerender(
+      trackingProps({
+        cameraTargetSelectionSource: "auto",
+        frameTransforms: translationTransforms(10, 0, 0),
+        navigationReferenceSettled: true,
+        placementStatus: "transformed",
+        sourceKey: "source-b",
+      }),
+    );
+    expect(result.current.poseCommand).toEqual({
+      position: [15, 0, 10],
+      target: [15, 0, 0],
+    });
+  });
+
+  it("rejects relative composition when the source shape changes after loading", () => {
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({ placementStatus: "transformed" }),
+    });
+    act(() => {
+      result.current.rig.onCommit(pose(5), trackingAnchor({}));
+    });
+    expect(viewStateStore.getSnapshot().navigationCompositions).toHaveLength(1);
+
+    rerender(
+      trackingProps({
+        placementStatus: "transformed",
+        renderableSourceIds: ["radar"],
+        sourceKey: "",
+      }),
+    );
+    expect(viewStateStore.getSnapshot().navigationCompositions).toHaveLength(1);
+
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        renderableSourceIds: ["radar"],
+        sourceKey: "source-b",
+      }),
+    );
+    expect(result.current.poseCommand).toBeNull();
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+  });
+
+  it("abandons a pending composition when the source shape changes", () => {
+    const restore = cameraRestore({
+      navigationCompositions: [targetComposition({})],
+    });
+    viewStateStore.recordNavigationCompositions(restore.navigationCompositions);
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        placementStatus: "empty",
+        restore,
+        sourceKey: "source-b",
+      }),
+    });
+
+    rerender(
+      trackingProps({
+        placementStatus: "transformed",
+        renderableSourceIds: ["radar"],
+        restore,
+        sourceKey: "source-b",
+      }),
+    );
+
+    expect(result.current.poseCommand).toBeNull();
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+  });
+
   it("flushes the latest imperative pose before a persistent-shell source hop", () => {
     const anchor = trackingAnchor({
       relativePosition: [6, 0, 10],
@@ -769,19 +914,13 @@ describe("useMcap3dCameraTracking view-state restore", () => {
   it("falls back to bounds composition when target semantics are incompatible", () => {
     const { result } = renderHook(useMcap3dCameraTracking, {
       initialProps: trackingProps({
+        cameraTargetSelectionSource: "user",
         frameTransforms: translationTransforms(10, 0, 0),
         placementStatus: "transformed",
         restore: cameraRestore({
           navigationCompositions: [
             targetComposition({ targetFrameId: "vehicle" }),
-            {
-              distanceInRadii: 2,
-              kind: "bounds-normalized",
-              sceneUpAxis: "z",
-              targetOffsetInRadii: [0, 0, 0],
-              trackingMode: "free",
-              viewDirection: [0, 0, 1],
-            },
+            boundsComposition(),
           ],
         }),
         sourceKey: "source-b",
@@ -801,16 +940,78 @@ describe("useMcap3dCameraTracking view-state restore", () => {
     });
   });
 
+  it("resolves automatic navigation against the carried semantic target", () => {
+    const restore = cameraRestore({
+      navigationCompositions: [targetComposition({}), boundsComposition()],
+    });
+    const { result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        cameraTargetFrameId: "LIDAR_TOP",
+        cameraTargetSelectionSource: "auto",
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        restore,
+        sourceKey: "source-b",
+      }),
+    });
+
+    expect(result.current.poseCommand).toEqual({
+      position: [15, 0, 10],
+      target: [15, 0, 0],
+    });
+    act(() => {
+      result.current.noteRenderedCameraPose(pose(0), {
+        center: [100, 0, 0],
+        radius: 10,
+      });
+    });
+    expect(result.current.poseCommand).toEqual({
+      position: [15, 0, 10],
+      target: [15, 0, 0],
+    });
+  });
+
+  it("falls back to bounds after transform discovery fails", () => {
+    const { result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        cameraTargetFrameId: "LIDAR_TOP",
+        cameraTargetSelectionSource: "auto",
+        frameTransforms: {
+          ...missingTransforms(),
+          error: "transform discovery failed",
+          status: "error",
+        },
+        placementStatus: "transformed",
+        restore: cameraRestore({
+          navigationCompositions: [targetComposition({}), boundsComposition()],
+        }),
+        sourceKey: "source-b",
+      }),
+    });
+
+    act(() => {
+      result.current.noteRenderedCameraPose(pose(0), {
+        center: [100, 0, 0],
+        radius: 10,
+      });
+    });
+    expect(result.current.poseCommand).toEqual({
+      position: [100, 0, 20],
+      target: [100, 0, 0],
+    });
+  });
+
   it("rejects navigation composition when the 3D source family changed", () => {
     const compositions = [targetComposition({})];
     viewStateStore.recordNavigationCompositions(compositions);
     const { result } = renderHook(useMcap3dCameraTracking, {
       initialProps: trackingProps({
         frameTransforms: translationTransforms(10, 0, 0),
-        navigationRestoreCompatible: false,
         placementStatus: "transformed",
+        renderableSourceIds: ["lidar-b"],
         restore: cameraRestore({
           navigationCompositions: compositions,
+          renderableSourceIds: ["lidar-a"],
         }),
         sourceKey: "source-b",
       }),
@@ -963,6 +1164,7 @@ function cameraRestore(
   return {
     cameraView: null,
     navigationCompositions: [],
+    renderableSourceIds: ["lidar"],
     trackingMode: null,
     ...overrides,
   };
@@ -1002,14 +1204,28 @@ function targetComposition(
   };
 }
 
+function boundsComposition() {
+  return {
+    distanceInRadii: 2,
+    kind: "bounds-normalized" as const,
+    sceneUpAxis: "z" as const,
+    targetOffsetInRadii: [0, 0, 0] as const,
+    trackingMode: "free" as const,
+    viewDirection: [0, 0, 1] as const,
+  };
+}
+
 function trackingProps(overrides: Partial<TrackingProps> = {}): TrackingProps {
   return {
     cameraTargetFrameId: "base_link",
+    cameraTargetSelectionSource: "user",
     frameTransforms: translationTransforms(0, 0, 0),
+    navigationReferenceSettled: true,
     placementStatus: "empty",
     playbackTimeNs: 0n,
     provisionalFrameIds: [],
     provisionalPlaybackFrame: null,
+    renderableSourceIds: ["lidar"],
     sceneUpAxis: "z",
     selectedTopicsKey: "topics",
     sourceKey: "source-a",

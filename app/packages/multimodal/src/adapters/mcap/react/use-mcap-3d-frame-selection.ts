@@ -69,6 +69,7 @@ export function useMcap3dFrameSelection({
   frameTransforms,
   gridFrames,
   gridTopics = [],
+  carriedCameraTargetFrameId = null,
   onPreferredCameraTargetFrameIdChange,
   onPreferredWorldFrameIdChange,
   playbackTimeNs,
@@ -90,6 +91,7 @@ export function useMcap3dFrameSelection({
   readonly frameTransforms: McapFrameTransformsState;
   readonly gridFrames: readonly (McapTopicPlaybackFrame<GridVisualization> | null)[];
   readonly gridTopics?: readonly string[];
+  readonly carriedCameraTargetFrameId?: string | null;
   readonly onPreferredCameraTargetFrameIdChange?: (frameId: string) => void;
   readonly onPreferredWorldFrameIdChange?: (frameId: string | null) => void;
   readonly playbackTimeNs?: bigint;
@@ -284,6 +286,17 @@ export function useMcap3dFrameSelection({
   const pendingPromotion = referenceAuthority
     ? null
     : selection.pendingPromotion;
+  const transformBootstrapSettled =
+    frameTransforms.status === "ready" || frameTransforms.status === "error";
+  const placementTimeSettled =
+    playbackTimeNs === undefined ||
+    (frameTransforms.isPlacementTimeSettled?.(playbackTimeNs) ?? true);
+  const navigationReferenceSettled =
+    transformBootstrapSettled &&
+    placementTimeSettled &&
+    (referenceAuthority !== null ||
+      (selection.facts.revisionKey === facts.revisionKey &&
+        pendingPromotion === null));
   const indexedRangeKey = pendingPromotion
     ? frameTransforms
         .indexedDynamicRanges()
@@ -349,10 +362,15 @@ export function useMcap3dFrameSelection({
     activeComponentFrameIds,
     worldFrameId,
   );
+  const availableCarriedCameraTargetFrameId =
+    carriedCameraTargetFrameId &&
+    activeComponentFrameIds.includes(carriedCameraTargetFrameId)
+      ? carriedCameraTargetFrameId
+      : "";
   const cameraTargetFrameId =
     userCameraTargetFrameId && frameIds.includes(userCameraTargetFrameId)
       ? userCameraTargetFrameId
-      : autoCameraTargetFrameId;
+      : availableCarriedCameraTargetFrameId || autoCameraTargetFrameId;
   const cameraTargetSelectionSource: FrameSelectionSource =
     userCameraTargetFrameId && frameIds.includes(userCameraTargetFrameId)
       ? "user"
@@ -416,6 +434,7 @@ export function useMcap3dFrameSelection({
     localWorldFrameId: localDecision.referenceFrameId,
     omittedFrameIds,
     omittedSourceIds,
+    navigationReferenceSettled,
     pendingPromotion,
     referenceTransition,
     referenceSelectionSource,

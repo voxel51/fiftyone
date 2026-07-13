@@ -46,10 +46,12 @@ const ModalBridge = ({ children }: React.PropsWithChildren) => (
 );
 
 const getOpenModalButton = (host: HTMLElement) =>
-  host.querySelector("button[title='Open sample modal']");
+  host.querySelector<HTMLButtonElement>("button[title='Open sample modal']");
 
 const getSelectControl = (host: HTMLElement) =>
-  host.querySelector("[title='Select sample'], [title='Selected']");
+  host.querySelector<HTMLElement>(
+    "[title='Select sample'], [title='Selected']",
+  );
 
 describe("GridCustomRendererItem", () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
@@ -89,46 +91,54 @@ describe("GridCustomRendererItem", () => {
 
     expect(getGridCustomRendererFailover(BASE_CTX.dataset.name)).toBeNull();
     expect(loadSpy).toHaveBeenCalled();
-    expect(getOpenModalButton(host)).toBeNull();
+    const openButton = getOpenModalButton(host);
+    if (!openButton) {
+      throw new Error("Expected the open-modal button to be mounted");
+    }
     expect(getSelectControl(host)).toBeNull();
 
     const renderer = host.querySelector("[data-testid='renderer']");
-    expect(renderer).toBeTruthy();
+    if (!(renderer instanceof HTMLElement)) {
+      throw new Error("Expected the custom grid renderer to be mounted");
+    }
 
-    const wrapper = renderer?.parentElement as HTMLElement | null;
-    expect(wrapper).toBeTruthy();
+    const wrapper = renderer.parentElement;
+    if (!wrapper) {
+      throw new Error("Expected the custom grid renderer wrapper");
+    }
 
     const hostClickSpy = vi.fn();
     const hostContextMenuSpy = vi.fn();
     host.addEventListener("click", hostClickSpy);
     host.addEventListener("contextmenu", hostContextMenuSpy);
 
-    fireEvent.click(renderer as HTMLElement);
-    fireEvent.contextMenu(renderer as HTMLElement);
+    fireEvent.click(renderer);
+    fireEvent.contextMenu(renderer);
 
     expect(hostClickSpy).not.toHaveBeenCalled();
     expect(hostContextMenuSpy).not.toHaveBeenCalled();
 
-    fireEvent.mouseEnter(wrapper as HTMLElement);
+    openButton.click();
+    expect(hostClickSpy).toHaveBeenCalledTimes(1);
+
+    fireEvent.mouseEnter(wrapper);
 
     await waitFor(() => {
-      expect(getOpenModalButton(host)).toBeTruthy();
+      expect(getOpenModalButton(host)).toBe(openButton);
       expect(getSelectControl(host)).toBeTruthy();
     });
 
-    const openButton = getOpenModalButton(host) as HTMLElement | null;
-    expect(openButton).toBeTruthy();
     expect(
-      openButton?.querySelector("[data-testid='OpenInFullIcon']"),
+      openButton.querySelector("[data-testid='OpenInFullIcon']"),
     ).toBeTruthy();
-    openButton?.click();
-    expect(hostClickSpy).toHaveBeenCalledTimes(1);
 
     const selectSpy = vi.fn();
     looker.addEventListener("selectthumbnail", selectSpy);
-    const selectButton = getSelectControl(host) as HTMLElement | null;
-    expect(selectButton).toBeTruthy();
-    selectButton?.dispatchEvent(
+    const selectButton = getSelectControl(host);
+    if (!selectButton) {
+      throw new Error("Expected the sample selection control");
+    }
+    selectButton.dispatchEvent(
       new MouseEvent("click", { bubbles: true, shiftKey: true, altKey: true }),
     );
     expect(selectSpy).toHaveBeenCalledWith(
@@ -144,10 +154,10 @@ describe("GridCustomRendererItem", () => {
       }),
     );
 
-    fireEvent.mouseLeave(wrapper as HTMLElement);
+    fireEvent.mouseLeave(wrapper);
 
     await waitFor(() => {
-      expect(getOpenModalButton(host)).toBeNull();
+      expect(getOpenModalButton(host)).toBe(openButton);
       expect(getSelectControl(host)).toBeTruthy();
     });
 

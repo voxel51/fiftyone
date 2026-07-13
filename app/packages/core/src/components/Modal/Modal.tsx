@@ -18,20 +18,8 @@ import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import {
-  is3d,
-  markModalLoadingLatencyEvent,
-  markModalLoadingLatencyEventAfterPaint,
-  MEDIA_TYPE_MULTIMODAL,
-} from "@fiftyone/utilities";
-import React, {
-  Fragment,
-  Suspense,
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { is3d, MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
+import React, { Fragment, Suspense, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import {
   FallbackProps,
@@ -134,18 +122,6 @@ const Modal = () => {
   const clearModal = fos.useClearModal();
   const is3dVisible = fos.useIs3dVisible();
   const modalSelector = useRecoilValue(fos.modalSelector);
-
-  // This layout effect records host commit and post-paint latency boundaries.
-  useLayoutEffect(() => {
-    markModalLoadingLatencyEvent("host modal committed", undefined, {
-      onceKey: "host-modal-committed",
-    });
-    return markModalLoadingLatencyEventAfterPaint(
-      "host modal painted",
-      undefined,
-      { onceKey: "host-modal-painted" },
-    );
-  }, [modalSelector?.groupId, modalSelector?.id]);
 
   const onPointerDownModalWrapper = useCallback((e: React.PointerEvent) => {
     // Track where the pointer down started

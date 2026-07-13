@@ -1,10 +1,5 @@
-import {
-  markModalLoadingLatencyEvent,
-  markModalLoadingLatencyEventAfterPaint,
-} from "@fiftyone/utilities";
-import { useEffect, useLayoutEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useSceneInventory } from "../../../scene-inventory/SceneInventoryProvider";
-import { byteSourceAccessKey } from "../../../query/bytes/cache";
 import type { ByteSourceDescriptor } from "../../../query/bytes/types";
 import { MCAP_SOURCE_TYPE, mcapStreamPolicies } from "../scene-sources";
 import { MCAP_ACTIVE_TIMELINE, type McapResourceClient } from "../types";
@@ -52,20 +47,11 @@ export function McapStreams({
   source,
 }: McapStreamsProps) {
   const sources = useSceneInventory();
-  const sourceKey = source ? byteSourceAccessKey(source) : "";
-  const sourceId = source?.sourceId;
   const { fidelityMode } = useMcapPlaybackSettings();
   const { temporalPolicy } = useMcapTemporalPolicySettings();
 
   const streamPolicies = useMemo(() => mcapStreamPolicies(sources), [sources]);
   const allTopics = useMemo(() => sources.map((s) => s.id), [sources]);
-  const pointCloudTopics = useMemo(
-    () =>
-      sources
-        .filter((s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD)
-        .map((s) => s.id),
-    [sources],
-  );
   const staleWarningTopics = useMemo(
     () =>
       sources
@@ -96,32 +82,6 @@ export function McapStreams({
         .map((s) => s.id),
     [sources],
   );
-  // This layout effect records shell commit and post-paint latency boundaries.
-  useLayoutEffect(() => {
-    if (!sourceId) {
-      return undefined;
-    }
-    const detail = {
-      blockingTopics: blockingTopics.length,
-      pointCloudTopics: pointCloudTopics.length,
-      sourceId,
-      topics: allTopics.length,
-    };
-    markModalLoadingLatencyEvent("mcap shell committed", detail, {
-      onceKey: "mcap-shell-committed",
-    });
-    return markModalLoadingLatencyEventAfterPaint(
-      "mcap shell painted",
-      detail,
-      { onceKey: "mcap-shell-painted" },
-    );
-  }, [
-    allTopics.length,
-    blockingTopics.length,
-    pointCloudTopics.length,
-    sourceId,
-    sourceKey,
-  ]);
   const poseTopics = useMemo(
     () =>
       sources.filter((s) => s.type === MCAP_SOURCE_TYPE.POSE).map((s) => s.id),

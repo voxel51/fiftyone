@@ -1,9 +1,9 @@
 import { useTileId, useTiling } from "@fiftyone/tiling";
-import { useSeekEvent } from "@fiftyone/playback/src/lib/playback/use-playback-state";
 import React, {
   type SetStateAction,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -36,6 +36,11 @@ import {
 import { Mcap3dCameraRig } from "./Mcap3dCameraRig";
 import Mcap3dTileSettings from "./Mcap3dTileSettings";
 import { build3dLayers } from "./mcap-3d-layers";
+import {
+  selectMcap3dSceneSnapshot,
+  type HeldMcap3dSceneSnapshot,
+  type Mcap3dHeldSceneReason,
+} from "./mcap-3d-scene-snapshot";
 import { useMcap3dViewSettings } from "./mcap-3d-view-settings-context";
 import {
   buildMcap3dPlacementNotices,
@@ -45,7 +50,10 @@ import {
   useStabilizedMcapNotices,
   type McapHealthNotice,
 } from "./mcap-health";
-import { useMcapTopicDiagnostics } from "./mcap-stream-status-state";
+import {
+  useMcapTopicDiagnostics,
+  useMcapTopicStatuses,
+} from "./mcap-stream-status-state";
 import { useMcap3dViewStateStore } from "./mcap-3d-view-state-context";
 import {
   type Mcap3dViewpointController,
@@ -138,6 +146,7 @@ const ABYSS_BACKGROUND: ThreeSceneBackground = {
   top: "#12362b",
 };
 const EMPTY_SCENE_RAYS: readonly SceneRayPanelLayer[] = [];
+const DEFINITIVE_MISSING_SCENE_GRACE_MS = 2_000;
 const STUDIO_BACKGROUND: ThreeSceneBackground = {
   bottom: "#c8b39a",
   kind: "gradient",
@@ -166,6 +175,14 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
   const [cameraNavigationMode, setCameraNavigationMode] =
     useState<Mcap3dCameraNavigationMode>(viewStateRestore.cameraNavigationMode);
+  const carriedTargetComposition = viewStateRestore.navigationCompositions.find(
+    (composition) => composition.kind === "target-relative",
+  );
+  const carriedCameraTargetFrameId =
+    cameraNavigationMode === "relative" &&
+    carriedTargetComposition?.kind === "target-relative"
+      ? carriedTargetComposition.targetFrameId
+      : null;
   const {
     cameraSources,
     cameraTopics,
@@ -179,6 +196,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     poseSources,
     poseTopics,
     primarySourceId,
+    renderableSourceIds,
     restoredSourceShapeMatches,
     sceneAnnotationSources,
     sceneAnnotationTopics,
@@ -188,7 +206,11 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     selectedTopicsKey,
     setSourcesEnabled,
     toggleSource,
-  } = useMcap3dSelection({ restore: viewStateRestore });
+  } = useMcap3dSelection({ restore: viewStateRestore, sourceKey });
+  const selectedTopicStatuses = useMcapTopicStatuses(selectedTopics);
+  const selectedSourcePending = selectedTopicStatuses.some(
+    (status) => status === "loading",
+  );
   const frameTransforms = useMcapFrameTransformsContext();
   const { fidelityMode } = useMcapPlaybackSettings();
   const { temporalPolicy } = useMcapTemporalPolicySettings();
@@ -221,8 +243,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
   const tileId = useTileId();
   const { focusedTileId } = useTiling();
-  const seekEvent = useSeekEvent();
-  const sceneSnapshotRef = useRef<HeldMcap3dSceneSnapshot | null>(null);
+  const sceneSnapshotRef =
+    useRef<HeldMcap3dSceneSnapshot<Mcap3dSceneSnapshot> | null>(null);
+  const [, refreshSceneSnapshot] = useState(0);
   const panelBackground = useMemo<ThreeSceneBackground>(() => {
     switch (sceneBackground.mode) {
       case "abyss":
@@ -291,6 +314,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     localUseRecommendedWorldFrame,
     localUpdateWorldFrameId,
     localWorldFrameId,
+    navigationReferenceSettled,
     omittedFrameIds,
     omittedSourceIds,
     referenceTransition,
@@ -308,6 +332,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     gridTopics: mapLayerTopics,
     onPreferredCameraTargetFrameIdChange: setPreferredCameraTargetFrameId,
     onPreferredWorldFrameIdChange: setPreferredWorldFrameId,
+    carriedCameraTargetFrameId,
     playbackTimeNs,
     pointCloudTopics,
     poseFrames,
@@ -838,19 +863,21 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     trackingMode,
   } = useMcap3dCameraTracking({
     cameraTargetFrameId,
+    cameraTargetSelectionSource,
     defaultTrackingMode,
     frameTransforms,
     placementStatus,
     playbackTimeNs,
     provisionalFrameIds,
     provisionalPlaybackFrame,
-    navigationRestoreCompatible: restoredSourceShapeMatches,
     cameraNavigationMode,
     onCameraPoseSample: publishViewpointPose,
+    renderableSourceIds,
     restore: viewStateRestore,
     sceneUpAxis,
     selectedTopicsKey,
     onDefaultTrackingModeChange: setDefaultTrackingMode,
+    navigationReferenceSettled,
     sourceKey,
     suspendAutoFollowAtReference:
       cameraTargetSelectionSource === "auto" &&
@@ -955,9 +982,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         selectedTopicsKey,
         worldFrameId,
         fidelityMode,
-        seekEvent?.seq ?? 0,
       ]),
-    [fidelityMode, seekEvent?.seq, selectedTopicsKey, sourceKey, worldFrameId],
+    [fidelityMode, selectedTopicsKey, sourceKey, worldFrameId],
   );
   const currentSceneSnapshot = useMemo<Mcap3dSceneSnapshot>(
     () => ({
@@ -977,16 +1003,48 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       placementStatus,
     ],
   );
+  const hasSceneSourceData =
+    frames.some(Boolean) ||
+    annotationFrames.some(Boolean) ||
+    gridFrames.some(Boolean) ||
+    calibrationFrames.some(Boolean);
+  const currentSceneRetainable =
+    currentSceneSnapshot.pointCloudLayers.length > 0 ||
+    currentSceneSnapshot.annotationLayers.length > 0 ||
+    currentSceneSnapshot.gridLayers.length > 0 ||
+    currentSceneSnapshot.frustumLayers.length > 0;
   const sceneSnapshotSelection = selectMcap3dSceneSnapshot({
     current: currentSceneSnapshot,
+    currentRetainable: currentSceneRetainable,
+    definitiveMissingGraceMs: DEFINITIVE_MISSING_SCENE_GRACE_MS,
+    empty: emptyMcap3dSceneSnapshot(currentSceneSnapshot.placementStatus),
+    hasSourceData: hasSceneSourceData,
     held: sceneSnapshotRef.current,
     key: sceneSnapshotKey,
-    shouldCommit:
-      placementReadiness.status === "ready" ||
-      placementReadiness.status === "definitiveMissing",
+    nowMs: Date.now(),
+    readiness: selectedSourcePending
+      ? "pending"
+      : placementReadiness.status === "ready" ||
+          placementReadiness.status === "definitiveMissing"
+        ? placementReadiness.status
+        : "pending",
   });
-  sceneSnapshotRef.current = sceneSnapshotSelection.nextHeld;
+  // This layout effect commits held-scene state only after React commits the
+  // scene selected by the same render.
+  useLayoutEffect(() => {
+    sceneSnapshotRef.current = sceneSnapshotSelection.nextHeld;
+  }, [sceneSnapshotSelection.nextHeld]);
   const displayedScene = sceneSnapshotSelection.snapshot;
+  // This effect expires a transform-only scene hold even when no new stream
+  // event arrives to trigger another render.
+  useEffect(() => {
+    if (sceneSnapshotSelection.graceRemainingMs === null) return undefined;
+    const timer = setTimeout(
+      () => refreshSceneSnapshot((version) => version + 1),
+      sceneSnapshotSelection.graceRemainingMs,
+    );
+    return () => clearTimeout(timer);
+  }, [sceneSnapshotSelection.graceRemainingMs]);
   const depthHover = useMcapDepthHover();
   const depthRayResolution = useMemo(
     () =>
@@ -1155,7 +1213,13 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             showColorLegend={showPointCloudColorLegend}
             worldGrid={worldGrid}
           />
-          <McapTileStatusBadge topics={selectedTopics} />
+          {sceneSnapshotSelection.heldReason ? (
+            <McapHeldSceneStatusBadge
+              reason={sceneSnapshotSelection.heldReason}
+            />
+          ) : (
+            <McapTileStatusBadge topics={selectedTopics} />
+          )}
           {hoverTooltip ? <Mcap3dHoverTooltip tooltip={hoverTooltip} /> : null}
         </div>
       ) : (
@@ -1178,43 +1242,6 @@ interface Mcap3dSceneSnapshot {
   readonly pointCloudLayers: readonly PointCloudPanelLayer[];
 }
 
-interface HeldMcap3dSceneSnapshot {
-  readonly key: string;
-  readonly snapshot: Mcap3dSceneSnapshot;
-}
-
-function selectMcap3dSceneSnapshot({
-  current,
-  held,
-  key,
-  shouldCommit,
-}: {
-  readonly current: Mcap3dSceneSnapshot;
-  readonly held: HeldMcap3dSceneSnapshot | null;
-  readonly key: string;
-  readonly shouldCommit: boolean;
-}): {
-  readonly nextHeld: HeldMcap3dSceneSnapshot | null;
-  readonly snapshot: Mcap3dSceneSnapshot;
-} {
-  if (shouldCommit) {
-    return {
-      nextHeld: { key, snapshot: current },
-      snapshot: current,
-    };
-  }
-  if (held?.key === key) {
-    return {
-      nextHeld: held,
-      snapshot: held.snapshot,
-    };
-  }
-  return {
-    nextHeld: null,
-    snapshot: emptyMcap3dSceneSnapshot(current.placementStatus),
-  };
-}
-
 function emptyMcap3dSceneSnapshot(
   placementStatus: Mcap3dPlacementStatus,
 ): Mcap3dSceneSnapshot {
@@ -1227,5 +1254,19 @@ function emptyMcap3dSceneSnapshot(
     pointCloudLayers: [],
   };
 }
+
+const McapHeldSceneStatusBadge: React.FC<{
+  readonly reason: Mcap3dHeldSceneReason;
+}> = ({ reason }) => (
+  <span
+    className={styles.statusBadge}
+    data-status="loading"
+    data-testid="mcap-3d-held-scene-status"
+    role="status"
+  >
+    {reason === "pending" ? "Loading target" : "Waiting for transforms"}
+    {" · showing previous scene"}
+  </span>
+);
 
 export default Mcap3dTile;
