@@ -101,7 +101,6 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   const hoveredRef = useRef(hovered);
   hoveredRef.current = hovered;
   const onHoverRef = useRef(layer.onHover);
-  onHoverRef.current = layer.onHover;
   // Selected (linked camera tile focused) draws dashed; hover — direct
   // or echoed from the linked tile — draws solid in the highlight color.
   const selected = Boolean(layer.selected);
@@ -136,6 +135,22 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
     },
     [],
   );
+  // Transfer an active hover between callback instances without leaving the
+  // previous owner stuck in its hovered state.
+  useEffect(() => {
+    if (onHoverRef.current === layer.onHover) return;
+    onHoverRef.current?.(false);
+    onHoverRef.current = layer.onHover;
+    onHoverRef.current?.(hoveredRef.current);
+  }, [layer.onHover]);
+  // Pointer-out handlers disappear when picking or interactivity is disabled,
+  // so clear the hover explicitly while the active callback is still known.
+  useEffect(() => {
+    if (interactive || !hoveredRef.current) return;
+    hoveredRef.current = false;
+    setHovered(false);
+    onHoverRef.current?.(false);
+  }, [interactive]);
   useInvalidateOn([
     axisGeometry,
     baseOpacity,
@@ -184,16 +199,18 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
         interactive
           ? (event) => {
               event.stopPropagation();
+              hoveredRef.current = true;
               setHovered(true);
-              layer.onHover?.(true);
+              onHoverRef.current?.(true);
             }
           : undefined
       }
       onPointerOut={
         interactive
           ? () => {
+              hoveredRef.current = false;
               setHovered(false);
-              layer.onHover?.(false);
+              onHoverRef.current?.(false);
             }
           : undefined
       }
