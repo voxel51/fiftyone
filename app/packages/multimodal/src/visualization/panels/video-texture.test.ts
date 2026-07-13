@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EncodedVideoVisualization } from "../../decoders";
 import { VISUALIZATION_KIND } from "../visualization-registry";
+import { createImageTexture } from "./image-texture";
 import {
   createEncodedVideoCanvas,
   createEncodedVideoTexture,
@@ -104,6 +105,54 @@ describe("createEncodedVideoTexture", () => {
     ).rejects.toThrow("Waiting for H.264 keyframe");
 
     expect(fakeDecoderInstances).toHaveLength(0);
+  });
+
+  it("decodes a delta target after replaying its keyframe runway", async () => {
+    const keyframe = h264Frame({ keyframe: true, timestampNs: 1000n });
+    const delta = h264Frame({
+      hasParameterSets: false,
+      keyframe: false,
+      timestampNs: 2000n,
+    });
+    const target = h264Frame({
+      hasParameterSets: false,
+      keyframe: false,
+      timestampNs: 3000n,
+    });
+
+    const handle = await createImageTexture(
+      target,
+      "rec\n/camera/video\n3000",
+      [keyframe, delta],
+    );
+
+    expect(fakeDecoderInstances).toHaveLength(1);
+    expect(
+      fakeDecoderInstances[0].decodeCalls.map((call) => call.type),
+    ).toEqual(["key", "delta", "delta"]);
+    expect(fakeDecoderInstances[0].outputFrames[0]?.close).toHaveBeenCalled();
+    expect(fakeDecoderInstances[0].outputFrames[1]?.close).toHaveBeenCalled();
+    handle.dispose();
+  });
+
+  it("bounds prerequisite replay to the latest 600 video frames", async () => {
+    const runway = Array.from({ length: 601 }, (_, index) =>
+      h264Frame({
+        keyframe: true,
+        timestampNs: BigInt(index + 1) * 1_000n,
+      }),
+    );
+    const target = h264Frame({ keyframe: true, timestampNs: 602_000n });
+
+    const handle = await createImageTexture(
+      target,
+      "rec\n/camera/video\n602000",
+      runway,
+    );
+
+    expect(fakeDecoderInstances[0].decodeCalls).toHaveLength(601);
+    expect(fakeDecoderInstances[0].decodeCalls[0]?.timestamp).toBe(2);
+    handle.dispose();
   });
 
   it("resets decoder state on backwards timestamps", async () => {

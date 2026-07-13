@@ -1,5 +1,4 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { McapTopicNumericFields } from "../types";
 import McapPlotTileSettings from "./McapPlotTileSettings";
@@ -12,14 +11,6 @@ const mockState = vi.hoisted(() => ({
   seriesConfigs: [] as readonly unknown[],
   toggleSeries: vi.fn(),
 }));
-
-vi.mock("@fiftyone/tiling", async () => {
-  const React = await import("react");
-  return {
-    TileSettingsContent: ({ children }: { readonly children: ReactNode }) =>
-      React.createElement("div", null, children),
-  };
-});
 
 vi.mock("./mcap-numeric-series-context", () => ({
   useMcapNumericSeriesContext: () => ({

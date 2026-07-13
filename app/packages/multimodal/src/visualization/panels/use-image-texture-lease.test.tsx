@@ -6,6 +6,7 @@ import type { RawImageVisualization } from "../../decoders";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import type { ImageTextureHandle } from "./base-2d-scene";
 import { useImageTextureLease } from "./use-image-texture-lease";
+import { VideoTextureWaitError } from "./video-texture";
 
 const leases = vi.hoisted(() => [] as TestLease[]);
 
@@ -23,6 +24,25 @@ interface TestLease {
 }
 
 describe("useImageTextureLease", () => {
+  it("classifies expected decoder waits without inspecting message text", async () => {
+    leases.push({
+      promise: Promise.reject(
+        new VideoTextureWaitError("Decoder prerequisites pending"),
+      ),
+      release: vi.fn(),
+    });
+
+    const rendered = renderHook(() =>
+      useImageTextureLease({ frame: rawFrame(), identity: 1 }),
+    );
+
+    await waitFor(() => expect(rendered.result.current.status).toBe("error"));
+    expect(rendered.result.current.errorKind).toBe("waiting");
+    expect(rendered.result.current.errorMessage).toBe(
+      "Decoder prerequisites pending",
+    );
+  });
+
   it("commits a replacement before releasing the previously visible texture", async () => {
     const first = deferred<ImageTextureHandle>();
     const second = deferred<ImageTextureHandle>();

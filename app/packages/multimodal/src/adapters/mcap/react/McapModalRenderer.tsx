@@ -2,6 +2,7 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import React from "react";
 import { McapAdjacentSamplePrewarm } from "./McapAdjacentSamplePrewarm";
 import { McapSourcePlayback } from "./McapSourcePlayback";
+import { mcapSourceDisplayName } from "./mcap-source-display-name";
 import { useMcapResourceClient } from "./use-mcap-resource-client";
 import {
   useFilteredTemporalTagPinnedIds,
@@ -17,7 +18,7 @@ import { useStableMcapSource } from "./use-stable-mcap-source";
 const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const client = useMcapResourceClient({ worker: true });
   const source = useStableMcapSource(ctx);
-  const fileName = fileNameFromPath(ctx.media.path) ?? "recording.mcap";
+  const fileName = mcapSourceDisplayName(ctx.media.path) ?? "recording.mcap";
   const datasetId = ctx.dataset.datasetId;
   const { tracks, onTagCreate, onTagUpdate, onTagDelete } =
     useMcapTemporalTags(ctx);
@@ -30,14 +31,12 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
       client={client}
       defaultPinnedTrackIds={defaultPinnedTrackIds}
       fileName={fileName}
-      latencyLabel="mcap modal"
-      latencySourceKey={
-        typeof ctx.media.path === "string" ? ctx.media.path : undefined
-      }
       layoutScopeKey={datasetId}
+      cameraPreferenceField={ctx.media.field}
       onTagCreate={onTagCreate}
       onTagUpdate={onTagUpdate}
       onTagDelete={onTagDelete}
+      navigationPending={ctx.transitioning === true}
       source={source}
       tracks={tracks}
     >
@@ -45,10 +44,5 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
     </McapSourcePlayback>
   );
 };
-
-function fileNameFromPath(path: unknown): string | null {
-  if (typeof path !== "string" || !path) return null;
-  return path.split(/[/\\]/).pop() || null;
-}
 
 export default McapModalRenderer;

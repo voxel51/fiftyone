@@ -17,6 +17,7 @@
  * | `transform:clamped`            | info     | scene | nearest-sample transform used within the boundary clamp |
  * | `transform:large-gap`          | warning  | scene | interpolating across a gap wider than the warning threshold |
  * | `camera:target-unavailable`    | warning  | scene | follow tracking enabled but the target transform is missing |
+ * | `render:sampled`               | warning  | scene | point clouds exceed the display cap and render sampled |
  * | `stream:loading`               | info     | tile  | a topic is buffering at the playhead |
  * | `stream:gap`                   | info     | tile  | the playhead is before a topic's first message |
  * | `stream:stale`                 | warning  | tile  | the displayed frame is older than the stale threshold |
@@ -26,12 +27,14 @@
  */
 
 import { useEffect, useReducer, useRef } from "react";
+import type { DecodedDiagnostic } from "../../../decoders";
 import type { Mcap3dTransformGapWarning } from "./mcap-3d-layers";
 import {
   isFollowTrackingMode,
   type Mcap3dTrackingMode,
 } from "./mcap-3d-camera";
 import type { McapTopicStatus } from "./mcap-stream-status-state";
+import type { McapReferenceSelectionSource } from "./mcap-3d-reference-selection";
 
 export type McapHealthSeverity = "error" | "info" | "warning";
 export type McapHealthScope = "scene" | "tile" | "topic";
@@ -49,6 +52,54 @@ export interface McapHealthNotice {
   readonly scope: McapHealthScope;
   readonly severity: McapHealthSeverity;
   readonly topicId?: string;
+}
+
+/** Converts latest decoder diagnostics into topic-scoped health notices. */
+export function buildMcapCapabilityNotices(
+  topics: readonly string[],
+  diagnosticsByTopic: readonly (readonly DecodedDiagnostic[])[],
+): McapHealthNotice[] {
+  return topics.flatMap((topicId, index) =>
+    (diagnosticsByTopic[index] ?? []).map((diagnostic) => ({
+      id: `capability:${topicId}:${diagnostic.code}`,
+      message: diagnostic.message,
+      scope: "topic" as const,
+      severity: diagnostic.severity,
+      topicId,
+    })),
+  );
+}
+
+/** Explains when the scene is intentionally rendered in local coordinates. */
+export function buildMcapReferenceFrameNotices({
+  omittedFrameIds,
+  omittedSourceIds = [],
+  referenceFrameId,
+  source,
+}: {
+  readonly omittedFrameIds: readonly string[];
+  readonly omittedSourceIds?: readonly string[];
+  readonly referenceFrameId: string;
+  readonly source: McapReferenceSelectionSource;
+}): McapHealthNotice[] {
+  if (source !== "auto-local" || !referenceFrameId) return [];
+  const details = [
+    ...(omittedSourceIds.length > 0
+      ? [`Omitted sources: ${boundedIdList(omittedSourceIds)}`]
+      : []),
+    ...(omittedFrameIds.length > 0
+      ? [`No transform path to ${boundedIdList(omittedFrameIds)}`]
+      : []),
+  ];
+  return [
+    {
+      ...(details.length > 0 ? { detail: details.join(". ") } : {}),
+      id: "reference:local",
+      message: `Showing ${referenceFrameId} in local coordinates`,
+      scope: "scene",
+      severity: "info",
+    },
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -213,6 +264,42 @@ export function buildMcapCameraTargetNotice({
   };
 }
 
+/**
+ * Live point-cloud sampling summary: how many rendered clouds exceed the
+ * display cap, and the largest finite point count among them.
+ */
+export interface McapPointCloudSamplingSummary {
+  readonly largestFinitePointCount: number;
+  readonly sampledCloudCount: number;
+}
+
+/**
+ * Display-sampling notice: at least one rendered point cloud exceeds the
+ * per-cloud render cap and is shown sampled. Null while every cloud renders
+ * in full.
+ */
+export function buildMcapPointCloudSamplingNotice(
+  sampling: McapPointCloudSamplingSummary | null,
+  maxRenderPoints: number,
+): McapHealthNotice | null {
+  if (!sampling || sampling.sampledCloudCount <= 0) {
+    return null;
+  }
+
+  const detail =
+    sampling.sampledCloudCount === 1
+      ? `Showing ${maxRenderPoints.toLocaleString()} of ${sampling.largestFinitePointCount.toLocaleString()} points.`
+      : `${sampling.sampledCloudCount.toLocaleString()} point clouds exceed the ${maxRenderPoints.toLocaleString()}-point display limit.`;
+
+  return {
+    detail,
+    id: "render:sampled",
+    message: "Point cloud sampled for display",
+    scope: "scene",
+    severity: "warning",
+  };
+}
+
 function formatInterpolationGapWarnings(
   gaps: readonly Mcap3dTransformGapWarning[],
 ): string {
@@ -362,6 +449,7 @@ function streamNoticeMessage(
   statuses: readonly McapTopicStatus[],
   startTimes: readonly (number | null)[],
   staleAges: readonly (bigint | null)[],
+  topics: readonly string[],
 ): string {
   switch (summary.status) {
     case "loading":
@@ -376,9 +464,21 @@ function streamNoticeMessage(
         ageNs === null ? "" : ` from ${formatStaleAge(ageNs)} ago`;
       return `Displaying stale frame${ageCopy}${affectedSuffix(summary)}`;
     }
-    case "failed":
-      return `Failed to load${affectedSuffix(summary)}`;
+    case "failed": {
+      const failedTopics = topics.filter(
+        (_topic, index) => statuses[index] === "failed",
+      );
+      return failedTopics.length > 0
+        ? `Failed to load: ${boundedIdList(failedTopics, 3)}`
+        : `Failed to load${affectedSuffix(summary)}`;
+    }
   }
+}
+
+function boundedIdList(ids: readonly string[], limit = 8): string {
+  const visible = ids.slice(0, limit).join(", ");
+  const remaining = ids.length - limit;
+  return remaining > 0 ? `${visible}, +${remaining} more` : visible;
 }
 
 /**
@@ -391,17 +491,25 @@ export function buildMcapTileStreamNotice({
   staleAges,
   startTimes,
   statuses,
+  topics = [],
 }: {
   readonly staleAges: readonly (bigint | null)[];
   readonly startTimes: readonly (number | null)[];
   readonly statuses: readonly McapTopicStatus[];
+  readonly topics?: readonly string[];
 }): McapTileStreamNotice | null {
   const summary = summarizeStatuses(statuses);
   if (!summary) return null;
 
   return {
     id: `stream:${summary.status}`,
-    message: streamNoticeMessage(summary, statuses, startTimes, staleAges),
+    message: streamNoticeMessage(
+      summary,
+      statuses,
+      startTimes,
+      staleAges,
+      topics,
+    ),
     scope: "tile",
     severity: STREAM_STATUS_SEVERITY[summary.status],
     status: summary.status,

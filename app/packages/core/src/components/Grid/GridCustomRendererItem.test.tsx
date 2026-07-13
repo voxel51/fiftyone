@@ -2,8 +2,10 @@ import { fireEvent, waitFor } from "@testing-library/react";
 import {
   __resetGridCustomRendererFailoverForTests,
   getGridCustomRendererFailover,
+  modalSelector,
 } from "@fiftyone/state";
 import React from "react";
+import { RecoilRoot } from "recoil";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
@@ -34,7 +36,14 @@ const BASE_SYMBOL = { description: "sample-id" } as const;
 const RGBA_BYTES_PER_PIXEL = 4;
 const MIN_GRID_RENDERER_SIZE_BYTES = 1;
 
-const TestBridge = ({ children }: React.PropsWithChildren) => <>{children}</>;
+const TestBridge = ({ children }: React.PropsWithChildren) => (
+  <RecoilRoot>{children}</RecoilRoot>
+);
+const ModalBridge = ({ children }: React.PropsWithChildren) => (
+  <RecoilRoot initializeState={({ set }) => set(modalSelector, { id: "1" })}>
+    {children}
+  </RecoilRoot>
+);
 
 const getOpenModalButton = (host: HTMLElement) =>
   host.querySelector("button[title='Open sample modal']");
@@ -254,6 +263,67 @@ describe("GridCustomRendererItem", () => {
         sourceSizeBytes +
         MIN_GRID_RENDERER_SIZE_BYTES,
     );
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("uses renderer-reported retained bytes instead of the source hint", async () => {
+    const retainedBytes = 321;
+    const Renderer = ({
+      onRetainedBytesChange,
+    }: {
+      onRetainedBytesChange?: (bytes: number) => void;
+    }) => {
+      React.useEffect(() => {
+        onRetainedBytesChange?.(retainedBytes);
+      }, [onRetainedBytesChange]);
+      return <div>preview</div>;
+    };
+    const looker = new GridCustomRendererItem({
+      pluginName: "measured-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const refresh = vi.fn();
+    looker.addEventListener("refresh", refresh);
+
+    looker.attach(host, [10, 20], 12);
+
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(looker.getSizeBytesEstimate()).toBe(
+      10 * 20 * RGBA_BYTES_PER_PIXEL + retainedBytes + 1,
+    );
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("marks grid renderers inactive while the modal is open", async () => {
+    const Renderer = vi.fn(({ isGridActive }: { isGridActive?: boolean }) => (
+      <div>{String(isGridActive)}</div>
+    ));
+    const looker = new GridCustomRendererItem({
+      pluginName: "activity-renderer",
+      Renderer,
+      RecoilBridge: ModalBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [10, 20], 12);
+
+    await waitFor(() => {
+      expect(Renderer.mock.calls.at(-1)?.[0]).toMatchObject({
+        isGridActive: false,
+      });
+    });
 
     looker.destroy();
     host.remove();

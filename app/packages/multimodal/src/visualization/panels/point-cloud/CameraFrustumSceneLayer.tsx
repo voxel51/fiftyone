@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree, type ThreeEvent } from "@react-three/fiber";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 import type { CameraCalibrationVisualization } from "../../../decoders";
@@ -32,10 +32,14 @@ const CAMERA_FRUSTUM_HIGHLIGHT_OPACITY = 1;
 const CAMERA_BOUNDARY_SEGMENTS_PER_EDGE = 16;
 const CAMERA_SURFACE_COLUMNS = 48;
 const CAMERA_SURFACE_ROWS = 32;
-export function CameraFrustumSceneLayer({
+// Memoized: hovering or focusing one linked camera tile re-renders that
+// frustum and the one losing emphasis, not every camera in the scene.
+export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   layer,
+  onTextureError,
 }: {
   readonly layer: CameraFrustumPanelLayer;
+  readonly onTextureError?: (layerId: string, message: string | null) => void;
 }) {
   const invalidate = useThree((state) => state.invalidate);
   const { cameraRayModel, frame, frameTransform, image } = layer;
@@ -94,7 +98,11 @@ export function CameraFrustumSceneLayer({
   );
   const pickingEnabled = useScenePicking();
   const [hovered, setHovered] = useState(false);
-  const interactive = Boolean(layer.onSelect) && pickingEnabled;
+  const interactive =
+    Boolean(layer.onHover || layer.onSelect) && pickingEnabled;
+  const hoveredRef = useRef(hovered);
+  hoveredRef.current = hovered;
+  const onHoverRef = useRef(layer.onHover);
   // Selected (linked camera tile focused) draws dashed; hover — direct
   // or echoed from the linked tile — draws solid in the highlight color.
   const selected = Boolean(layer.selected);
@@ -109,19 +117,69 @@ export function CameraFrustumSceneLayer({
   // re-delivering the same message in new wrapper objects every batch.
   const imageIdentity =
     layer.imageTextureKey ?? layer.imageContentTimeNs ?? image;
-  const { handle: imageHandle } = useImageTextureLease({
+  const {
+    errorMessage: imageErrorMessage,
+    handle: imageHandle,
+    status: imageStatus,
+  } = useImageTextureLease({
+    decodeRunway: layer.imageDecodeRunway,
     enabled: Boolean(image),
     frame: image,
     identity: imageIdentity,
     onLoaded: () => invalidate(),
     textureKey: layer.imageTextureKey,
   });
+  // This effect publishes image-plane failures without hiding the wireframe.
+  useEffect(() => {
+    const textureError =
+      layer.imageUnavailableReason ??
+      (imageStatus === "error"
+        ? (imageErrorMessage ?? "Camera texture unavailable")
+        : null);
+    onTextureError?.(layer.id, textureError);
+  }, [
+    imageErrorMessage,
+    imageStatus,
+    layer.id,
+    layer.imageUnavailableReason,
+    onTextureError,
+  ]);
+  // This effect removes the layer's published texture failure on unmount.
+  useEffect(
+    () => () => {
+      onTextureError?.(layer.id, null);
+    },
+    [layer.id, onTextureError],
+  );
   // This effect disposes superseded wireframe geometry.
   useEffect(() => () => geometry?.dispose(), [geometry]);
   // This effect disposes superseded camera-image geometry.
   useEffect(() => () => imagePlaneGeometry?.dispose(), [imagePlaneGeometry]);
   // This effect disposes the camera-axis marker when it is replaced.
   useEffect(() => () => axisGeometry.dispose(), [axisGeometry]);
+  // This effect clears an active frustum hover when the layer unmounts.
+  useEffect(
+    () => () => {
+      if (hoveredRef.current) onHoverRef.current?.(false);
+    },
+    [],
+  );
+  // Transfer an active hover between callback instances without leaving the
+  // previous owner stuck in its hovered state.
+  useEffect(() => {
+    if (onHoverRef.current === layer.onHover) return;
+    onHoverRef.current?.(false);
+    onHoverRef.current = layer.onHover;
+    onHoverRef.current?.(hoveredRef.current);
+  }, [layer.onHover]);
+  // Pointer-out handlers disappear when picking or interactivity is disabled,
+  // so clear the hover explicitly while the active callback is still known.
+  useEffect(() => {
+    if (interactive || !hoveredRef.current) return;
+    hoveredRef.current = false;
+    setHovered(false);
+    onHoverRef.current?.(false);
+  }, [interactive]);
   useInvalidateOn([
     axisGeometry,
     baseOpacity,
@@ -144,13 +202,12 @@ export function CameraFrustumSceneLayer({
     };
   }, [hovered, interactive]);
 
-  if (!geometry) {
-    return null;
-  }
-
   // Cast, not a type: fiber's bundled three `Texture` type is out of sync
   // with the app's pinned three version — see GridSceneLayer's textureMap.
   const imageMap = imageHandle ? (imageHandle.texture as never) : null;
+  if (!geometry) {
+    return null;
+  }
 
   return (
     <group
@@ -171,11 +228,21 @@ export function CameraFrustumSceneLayer({
         interactive
           ? (event) => {
               event.stopPropagation();
+              hoveredRef.current = true;
               setHovered(true);
+              onHoverRef.current?.(true);
             }
           : undefined
       }
-      onPointerOut={interactive ? () => setHovered(false) : undefined}
+      onPointerOut={
+        interactive
+          ? () => {
+              hoveredRef.current = false;
+              setHovered(false);
+              onHoverRef.current?.(false);
+            }
+          : undefined
+      }
       userData={interactive ? POINT_PICK_BLOCKING_USER_DATA : undefined}
     >
       <lineSegments frustumCulled={false}>
@@ -222,7 +289,7 @@ export function CameraFrustumSceneLayer({
       ) : null}
     </group>
   );
-}
+});
 
 /**
  * Image-corner directions for one camera in the OpenCV/Foxglove camera

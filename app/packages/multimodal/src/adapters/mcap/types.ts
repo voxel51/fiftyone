@@ -427,6 +427,12 @@ export interface McapReadRawMessageRecordRequest {
   readonly activeTimeline?: McapActiveTimeline;
 
   /**
+   * Includes the complete decoded message as JSON. This is intentionally
+   * opt-in because large sensor payloads can produce multi-megabyte strings.
+   */
+  readonly includeFullJson?: boolean;
+
+  /**
    * Optional overrides for the worker-side prune budgets.
    */
   readonly prune?: McapRawPruneBudgets;
@@ -487,6 +493,12 @@ export interface McapRawMessageRecordResult {
   readonly sequence?: number;
   readonly encodedPayloadBytes?: number;
   readonly decodeUnavailableReason?: McapDecodeUnavailableReason;
+
+  /**
+   * Complete decoded message JSON, present only when explicitly requested.
+   * Unlike `root`, this value is not subject to inspector display budgets.
+   */
+  readonly fullJson?: string;
 
   /**
    * Pruned record tree; present only when `ok`.
@@ -634,12 +646,6 @@ export interface McapReadSynchronizedMessageBatchRequest extends Omit<
   "timeNs"
 > {
   /**
-   * Optional caller-owned id used only for correlating debug instrumentation
-   * across stream fetches, worker attribution, and bandwidth samples.
-   */
-  readonly mcapDataRequestId?: string;
-
-  /**
    * Playback times to resolve against the same source/topic/policy request.
    */
   readonly timeNs: readonly bigint[];
@@ -734,6 +740,11 @@ export interface McapSynchronizedMessageWindow {
     Record<string, readonly McapDecodedMessage[]>
   >;
 
+  /** Payload decode failures, contained to their topic for this window. */
+  readonly decodeErrorsByTopic?: Readonly<
+    Record<string, readonly McapTopicDecodeDiagnostic[]>
+  >;
+
   /**
    * Inclusive lower bound covered by the resolved stream policies.
    */
@@ -750,6 +761,16 @@ export interface McapSynchronizedMessageWindow {
    * Timeline used to compute message synchronization times in this window.
    */
   readonly activeTimeline: McapActiveTimeline;
+}
+
+/** Serializable details for one topic failure in a synchronized window. */
+export interface McapTopicDecodeDiagnostic {
+  readonly code: "message-decode-failed";
+  readonly message: string;
+  readonly messageTimeNs: bigint;
+  readonly payloadIdentity: string;
+  readonly requestedTimeNs: bigint;
+  readonly topic: string;
 }
 
 /**

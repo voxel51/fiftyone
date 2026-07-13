@@ -1,6 +1,11 @@
-import { useEffect, useMemo } from "react";
-import { useSceneInventory } from "../../../scene-inventory";
-import type { ByteSourceDescriptor } from "../../../query/bytes";
+import {
+  markModalLoadingLatencyEvent,
+  markModalLoadingLatencyEventAfterPaint,
+} from "@fiftyone/utilities";
+import { useEffect, useLayoutEffect, useMemo } from "react";
+import { useSceneInventory } from "../../../scene-inventory/SceneInventoryProvider";
+import { byteSourceAccessKey } from "../../../query/bytes/cache";
+import type { ByteSourceDescriptor } from "../../../query/bytes/types";
 import { MCAP_SOURCE_TYPE, mcapStreamPolicies } from "../scene-sources";
 import { MCAP_ACTIVE_TIMELINE, type McapResourceClient } from "../types";
 import {
@@ -13,7 +18,6 @@ import { McapPoseTrajectoriesStartupGate } from "./mcap-pose-trajectories-contex
 import { McapRawMessageBridge } from "./mcap-raw-message-context";
 import { McapSceneUpdateHistoryBridge } from "./mcap-scene-update-history-context";
 import { useMcapDataStream } from "./mcap-data-stream-context";
-import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import {
   type McapPlaybackFidelityMode,
   type McapTemporalPolicySettings,
@@ -30,6 +34,8 @@ const FRAME_TRANSFORM_RANGE_PADDING_NS = 1_000_000_000n;
 export interface McapStreamsProps {
   /** Shared adapter resource client owned by the modal renderer. */
   client: McapResourceClient;
+  /** Called after every blocking stream covers the current playhead. */
+  onPlayheadDataReady?: () => void;
   /** Byte source currently feeding the playback shell. */
   source: ByteSourceDescriptor | null;
 }
@@ -40,8 +46,14 @@ export interface McapStreamsProps {
  * sync policies from the source types, then wires the MCAP data layer
  * (single playback stream, per-topic caches, tile registry).
  */
-export function McapStreams({ client, source }: McapStreamsProps) {
+export function McapStreams({
+  client,
+  onPlayheadDataReady,
+  source,
+}: McapStreamsProps) {
   const sources = useSceneInventory();
+  const sourceKey = source ? byteSourceAccessKey(source) : "";
+  const sourceId = source?.sourceId;
   const { fidelityMode } = useMcapPlaybackSettings();
   const { temporalPolicy } = useMcapTemporalPolicySettings();
 
@@ -84,22 +96,32 @@ export function McapStreams({ client, source }: McapStreamsProps) {
         .map((s) => s.id),
     [sources],
   );
-  const presentTypes = useMemo(
-    () => Array.from(new Set(sources.map((s) => s.type))),
-    [sources],
-  );
-  useEffect(() => {
-    markMcapLatencyEvent(
-      "playback shell mounted",
-      {
-        blockingTopics: blockingTopics.length,
-        pointCloudTopics: pointCloudTopics.length,
-        topics: allTopics.length,
-      },
-      { onceKey: "playback-shell-mounted" },
+  // This layout effect records shell commit and post-paint latency boundaries.
+  useLayoutEffect(() => {
+    if (!sourceId) {
+      return undefined;
+    }
+    const detail = {
+      blockingTopics: blockingTopics.length,
+      pointCloudTopics: pointCloudTopics.length,
+      sourceId,
+      topics: allTopics.length,
+    };
+    markModalLoadingLatencyEvent("mcap shell committed", detail, {
+      onceKey: "mcap-shell-committed",
+    });
+    return markModalLoadingLatencyEventAfterPaint(
+      "mcap shell painted",
+      detail,
+      { onceKey: "mcap-shell-painted" },
     );
-  }, [allTopics.length, blockingTopics.length, pointCloudTopics.length]);
-
+  }, [
+    allTopics.length,
+    blockingTopics.length,
+    pointCloudTopics.length,
+    sourceId,
+    sourceKey,
+  ]);
   const poseTopics = useMemo(
     () =>
       sources.filter((s) => s.type === MCAP_SOURCE_TYPE.POSE).map((s) => s.id),
@@ -120,14 +142,14 @@ export function McapStreams({ client, source }: McapStreamsProps) {
   useRegisterMcapDataStream({
     blockingTopics,
     client,
+    onPlayheadDataReady,
     source,
     allTopics,
-    pointCloudTopics,
     staleMediaWarningNs: msToNs(temporalPolicy.staleMediaWarningMs),
     staleWarningTopics,
     streamPolicies,
   });
-  useMcapTiles({ presentTypes });
+  useMcapTiles();
 
   return (
     <>

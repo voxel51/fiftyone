@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property */
 import { type ThreeEvent } from "@react-three/fiber";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 
 import type { SceneEntityVisualization } from "../../../decoders";
 import { CLICK_DRAG_TOLERANCE_PX } from "../interaction";
@@ -22,7 +22,10 @@ import { pointCloudObjectTransform } from "./transforms";
 import type { SceneAnnotationPanelLayer } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
 
-export function SceneAnnotationLayer({
+// Memoized: callers keep layer identity stable across renders their content
+// didn't cause (useKeyedIdentityMap), so selecting one entity re-renders that
+// entity's layer, not every annotation in the scene.
+export const SceneAnnotationLayer = memo(function SceneAnnotationLayer({
   layer,
 }: {
   readonly layer: SceneAnnotationPanelLayer;
@@ -52,7 +55,7 @@ export function SceneAnnotationLayer({
       ))}
     </group>
   );
-}
+});
 
 function SceneAnnotationEntity({
   entity,

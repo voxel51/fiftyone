@@ -11,31 +11,41 @@ import type { PointCloudVisualization } from "../../../decoders";
 import type {
   PointCloudCameraPose,
   PointCloudFrameTransform,
+  PointCloudSceneBoundsSummary,
 } from "../../../visualization/panels/point-cloud";
 import {
-  cameraPoseFromTrackingAnchor,
   cameraTargetPoseFromFrameTransform,
-  cameraTrackingAnchorFromPose,
+  DEFAULT_MCAP_3D_TRACKING_MODE,
   identityCameraTargetPose,
   isFollowTrackingMode,
-  type Mcap3dCameraTargetPose,
+  trackingAnchorMatches,
+  type CameraTargetResolution,
   type Mcap3dCameraTrackingAnchor,
   type Mcap3dTrackingMode,
 } from "./mcap-3d-camera";
+import type { Mcap3dCameraRigSample } from "./mcap-3d-camera-rig-core";
+import {
+  captureMcap3dCameraCompositions,
+  resolveMcap3dCameraComposition,
+  type Mcap3dCameraComposition,
+} from "./mcap-3d-camera-composition";
 import {
   DEFAULT_MCAP_3D_SCENE_UP_AXIS,
   type Mcap3dSceneUpAxis,
 } from "./mcap-3d-scene-up";
 import { buildMcapCameraTargetNotice } from "./mcap-health";
 import {
-  recordMcap3dCameraView,
-  recordMcap3dTrackingAnchor,
-  recordMcap3dTrackingMode,
+  DEFAULT_MCAP_3D_CAMERA_NAVIGATION_MODE,
+  type Mcap3dCameraNavigationMode,
   type Mcap3dCameraViewSnapshot,
+  type Mcap3dViewStateStore,
 } from "./mcap-3d-view-state";
+import { useMcap3dViewStateStore } from "./mcap-3d-view-state-context";
+import type { McapReferenceTransition } from "./mcap-3d-reference-selection";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
+/** User-selectable camera tracking modes and their display labels. */
 export const TRACKING_MODES: readonly {
   readonly label: string;
   readonly value: Mcap3dTrackingMode;
@@ -57,8 +67,10 @@ export const TRACKING_MODES: readonly {
     value: "pose",
   },
 ] as const;
-const DEFAULT_TRACKING_MODE: Mcap3dTrackingMode = "position";
+/** Origin of a camera-pose change reported by the point-cloud panel. */
 export type CameraPoseChangeSource = "focus" | "initial" | "interaction";
+
+/** Coordinate readiness of the currently displayed 3D scene. */
 export type Mcap3dPlacementStatus =
   | "empty"
   | "provisional"
@@ -69,95 +81,172 @@ interface ProvisionalCameraView {
   readonly contentTimeNs: bigint;
   readonly sourceFrameId: string;
 }
-interface HeldControlledCameraPose {
-  readonly mode: Exclude<Mcap3dTrackingMode, "free">;
-  readonly pose: PointCloudCameraPose;
-  readonly targetFrameId: string;
-  readonly worldFrameId: string;
-}
-export type CameraTargetResolution =
-  | {
-      readonly pose: Mcap3dCameraTargetPose;
-      readonly status: "resolved";
-    }
-  | {
-      readonly status: "missing" | "pending";
-    };
+/** Re-exported target resolution shared by camera consumers. */
+export type { CameraTargetResolution } from "./mcap-3d-camera";
 
+/** Camera state captured at a 3D source-epoch boundary. */
 export interface Mcap3dCameraTrackingRestore {
   readonly cameraView: Mcap3dCameraViewSnapshot | null;
-  readonly trackingAnchor: Mcap3dCameraTrackingAnchor | null;
+  readonly navigationCompositions: readonly Mcap3dCameraComposition[];
   readonly trackingMode: Mcap3dTrackingMode | null;
 }
 
 /**
- * Camera pose + tracking state for the 3D tile: free/follow tracking modes,
- * the tracking anchor that preserves the user's offset while following, the
- * provisional→transformed and world-frame-change camera-pose remaps, and the
- * pose bookkeeping fed by panel callbacks. State is local to the calling
- * tile — it resets when the tile remounts.
+ * Boundary-commit camera tracking state for the 3D tile.
+ *
+ * The camera itself is owned imperatively: OrbitControls moves it during
+ * gestures and the Mcap3dCameraRig composes follow modes per target update,
+ * both inside the canvas. This hook holds only *intent* (tracking mode,
+ * frame-derived target resolution) and *boundary snapshots*:
+ *
+ * - `poseCommand` is the one downward channel — the last external pose the
+ *   camera was told to adopt (restore, world-frame remap, provisional remap,
+ *   view preset, focus/recenter, mode-switch freeze) plus a one-shot
+ *   first-gesture pin that holds the panel out of fit-fallback. Interaction
+ *   never writes it; gestures cost zero React renders.
+ * - The rig reports upward through `onPoseSample` (ref-writes at frame
+ *   rate), `onGestureStart` (abandons carried-over restores, pins the fit
+ *   latch), and `onCommit` (per-gesture persistence to the view-state
+ *   store).
+ *
  * An optional `restore` snapshot (captured once at mount) carries the
- * previous sample's camera view: the tracking mode restores unconditionally;
- * the camera pose (free mode) or tracking anchor (follow modes) restores as
- * a pending intent that only applies once its frame gates hold, and is
- * abandoned on any deliberate camera or mode change by the user.
+ * previous sample's camera view: the tracking mode restores independently;
+ * an exact same-source pose or portable cross-source composition restores as
+ * a pending intent only after its compatibility gates hold, and is abandoned
+ * on any deliberate camera or mode change by the user.
  */
 export function useMcap3dCameraTracking({
+  cameraNavigationMode = DEFAULT_MCAP_3D_CAMERA_NAVIGATION_MODE,
   cameraTargetFrameId,
+  defaultTrackingMode = DEFAULT_MCAP_3D_TRACKING_MODE,
   frameTransforms,
   placementStatus,
   playbackTimeNs,
   provisionalFrameIds,
   provisionalPlaybackFrame,
+  navigationRestoreCompatible = true,
+  onCameraPoseSample,
+  onDefaultTrackingModeChange,
   restore = null,
   sceneUpAxis = DEFAULT_MCAP_3D_SCENE_UP_AXIS,
   selectedTopicsKey,
+  sourceKey,
+  suspendAutoFollowAtReference = false,
+  viewStateStore: suppliedViewStateStore,
+  worldFrameTransition = null,
   worldFrameId,
 }: {
+  readonly cameraNavigationMode?: Mcap3dCameraNavigationMode;
   readonly cameraTargetFrameId: string;
+  readonly defaultTrackingMode?: Mcap3dTrackingMode;
   readonly frameTransforms: McapFrameTransformsState;
   readonly placementStatus: Mcap3dPlacementStatus;
   readonly playbackTimeNs: bigint | undefined;
   readonly provisionalFrameIds: readonly string[];
   readonly provisionalPlaybackFrame: McapTopicPlaybackFrame<PointCloudVisualization> | null;
+  readonly navigationRestoreCompatible?: boolean;
+  /** Live pose sink for non-React camera observers such as Viewpoint. */
+  readonly onCameraPoseSample?: (pose: PointCloudCameraPose) => void;
+  readonly onDefaultTrackingModeChange?: (mode: Mcap3dTrackingMode) => void;
   readonly restore?: Mcap3dCameraTrackingRestore | null;
   readonly sceneUpAxis?: Mcap3dSceneUpAxis;
   readonly selectedTopicsKey: string;
+  readonly sourceKey: string;
+  /** Retain follow intent, but run effectively free until an ego target exists. */
+  readonly suspendAutoFollowAtReference?: boolean;
+  readonly viewStateStore?: Mcap3dViewStateStore;
+  /** Exact transform accepted by a guarded automatic reference promotion. */
+  readonly worldFrameTransition?: McapReferenceTransition | null;
   readonly worldFrameId: string;
 }) {
+  const viewStateStore = useMcap3dViewStateStore(suppliedViewStateStore);
   // The restored tracking mode decides which camera restore is meaningful:
   // in follow modes the view is defined by the anchor (a target-relative
   // offset), in free mode by the absolute pose in its world frame.
-  const restoredTrackingMode = restore?.trackingMode ?? DEFAULT_TRACKING_MODE;
-  const restoresAnchor =
-    isFollowTrackingMode(restoredTrackingMode) &&
-    restore?.trackingAnchor?.mode === restoredTrackingMode;
+  const restoredTrackingMode =
+    (navigationRestoreCompatible
+      ? restore?.navigationCompositions[0]?.trackingMode
+      : undefined) ??
+    restore?.trackingMode ??
+    defaultTrackingMode;
   const [trackingMode, setTrackingMode] =
     useState<Mcap3dTrackingMode>(restoredTrackingMode);
-  const [cameraPose, setCameraPose] = useState<PointCloudCameraPose | null>(
+  const effectiveTrackingMode =
+    suspendAutoFollowAtReference && isFollowTrackingMode(trackingMode)
+      ? "free"
+      : trackingMode;
+  const [poseCommand, setPoseCommand] = useState<PointCloudCameraPose | null>(
     null,
   );
-  const [trackingAnchor, setTrackingAnchor] =
+  const [adoptAnchor, setAdoptAnchor] =
     useState<Mcap3dCameraTrackingAnchor | null>(null);
   const latestCameraPoseRef = useRef<PointCloudCameraPose | null>(null);
-  const heldControlledCameraPoseRef = useRef<HeldControlledCameraPose | null>(
+  const latestAnchorRef = useRef<Mcap3dCameraTrackingAnchor | null>(null);
+  const latestSceneBoundsRef = useRef<PointCloudSceneBoundsSummary | null>(
     null,
   );
+  const hasRecordedCompositionRef = useRef(false);
+  const hasRecordedBoundsCompositionRef = useRef(false);
   const lastProvisionalViewRef = useRef<ProvisionalCameraView | null>(null);
   const hadRecentProvisionalPlacementRef = useRef(false);
   const cameraPoseRemapKeyRef = useRef<string | null>(null);
   const worldFrameRemapTrackerRef = useRef(worldFrameId);
+  // The modal shell intentionally keeps this hook mounted across sample
+  // navigation. Track the source that owns the current command so the old
+  // recording's absolute pose can never be sent into the next recording.
+  const activeSourceKeyRef = useRef(sourceKey);
+  const [cameraCommandSourceKey, setCameraCommandSourceKey] =
+    useState(sourceKey);
+  const sourceChanged = cameraCommandSourceKey !== sourceKey;
   // Pending camera restore intents, captured once at mount. They die on
   // apply, on any deliberate camera/mode change, or with the mount itself.
   const pendingCameraViewRestoreRef = useRef<Mcap3dCameraViewSnapshot | null>(
-    restoresAnchor ? null : (restore?.cameraView ?? null),
+    restore?.cameraView &&
+      (restore.cameraView.sourceKey === sourceKey ||
+        cameraNavigationMode === "absolute")
+      ? restore.cameraView
+      : null,
   );
-  const pendingAnchorRestoreRef = useRef<Mcap3dCameraTrackingAnchor | null>(
-    restoresAnchor ? (restore?.trackingAnchor ?? null) : null,
+  const pendingCompositionRestoreRef = useRef<
+    readonly Mcap3dCameraComposition[]
+  >(
+    pendingCameraViewRestoreRef.current
+      ? []
+      : navigationRestoreCompatible
+        ? (restore?.navigationCompositions ?? [])
+        : [],
   );
-  const followTrackingMode = isFollowTrackingMode(trackingMode)
-    ? trackingMode
-    : null;
+  // Relative navigation discards raw coordinates when their source changes;
+  // explicit absolute navigation retains them. An incompatible source family
+  // still invalidates portable compositions.
+  useLayoutEffect(() => {
+    const snapshot = viewStateStore.getSnapshot();
+    if (
+      restore?.cameraView &&
+      restore.cameraView.sourceKey !== sourceKey &&
+      cameraNavigationMode !== "absolute" &&
+      snapshot.cameraView === restore.cameraView
+    ) {
+      viewStateStore.recordCameraView(null);
+    }
+    if (
+      !navigationRestoreCompatible &&
+      restore?.navigationCompositions.length &&
+      snapshot.navigationCompositions === restore.navigationCompositions
+    ) {
+      viewStateStore.recordNavigationCompositions([]);
+    }
+  }, [
+    cameraNavigationMode,
+    navigationRestoreCompatible,
+    restore,
+    sourceKey,
+    viewStateStore,
+  ]);
+  // Recording gate readable from imperative callbacks (rig commits, unmount)
+  // without re-binding them per render. Render-phase ref write: idempotent.
+  const recordGateRef = useRef({ placementStatus, sourceKey, worldFrameId });
+  recordGateRef.current = { placementStatus, sourceKey, worldFrameId };
   const cameraTargetResolution = useMemo(
     () =>
       resolveCameraTargetPose({
@@ -168,173 +257,155 @@ export function useMcap3dCameraTracking({
       }),
     [cameraTargetFrameId, frameTransforms, playbackTimeNs, worldFrameId],
   );
-  const cameraTargetPose =
-    cameraTargetResolution.status === "resolved"
-      ? cameraTargetResolution.pose
-      : null;
-  const controlledCameraPose = useMemo(() => {
-    if (
-      !followTrackingMode ||
-      !trackingAnchor ||
-      !trackingAnchorMatches({
-        anchor: trackingAnchor,
-        mode: followTrackingMode,
-        sceneUpAxis,
-        targetFrameId: cameraTargetFrameId,
-        worldFrameId,
-      })
-    ) {
-      return null;
-    }
-    if (cameraTargetPose) {
-      return cameraPoseFromTrackingAnchor(
-        trackingAnchor,
-        cameraTargetPose,
-        sceneUpAxis,
-      );
-    }
-
-    // The target transform is momentarily unresolved (a seek outside the
-    // indexed window): hold the last controlled pose instead of falling back
-    // to the stale uncontrolled pose — a frozen follow view beats a double
-    // camera jump. `missing` still falls through to the fallback plus the
-    // camera-target notice.
-    const held = heldControlledCameraPoseRef.current;
-    if (
-      cameraTargetResolution.status === "pending" &&
-      held &&
-      held.mode === followTrackingMode &&
-      held.targetFrameId === cameraTargetFrameId &&
-      held.worldFrameId === worldFrameId
-    ) {
-      return held.pose;
-    }
-
-    return null;
-  }, [
-    cameraTargetFrameId,
-    cameraTargetPose,
-    cameraTargetResolution.status,
-    followTrackingMode,
-    sceneUpAxis,
-    trackingAnchor,
-    worldFrameId,
-  ]);
-  const panelCameraPose = controlledCameraPose ?? cameraPose;
   const cameraTrackingNotice = useMemo(
     () =>
       buildMcapCameraTargetNotice({
         cameraTargetFrameId,
         cameraTargetStatus: cameraTargetResolution.status,
-        trackingMode,
+        trackingMode: effectiveTrackingMode,
         worldFrameId,
       }),
     [
       cameraTargetFrameId,
       cameraTargetResolution.status,
-      trackingMode,
+      effectiveTrackingMode,
       worldFrameId,
     ],
   );
 
-  // This effect restores the previous sample's follow-mode tracking anchor
-  // once the effective world/target frames match the frames the anchor was
-  // captured in. It is declared before the re-anchor effect below so that in
-  // the commit where the frames first match, the restored anchor lands first
-  // and re-anchoring (from a panel-fitted pose) keeps it instead of creating
-  // a fresh one.
-  useEffect(() => {
-    const anchor = pendingAnchorRestoreRef.current;
-    if (
-      !anchor ||
-      !mcap3dTrackingAnchorRestoreApplies({
-        anchor,
+  const recordCameraViewIfEligible = useCallback(
+    (pose: PointCloudCameraPose) => {
+      // Gated on transformed placement: a pose captured during provisional
+      // placement is NOT a world-frame pose yet — recording it would restore
+      // a wrong-frame view on the next sample.
+      const gate = recordGateRef.current;
+      if (
+        gate.sourceKey &&
+        gate.worldFrameId &&
+        gate.placementStatus === "transformed"
+      ) {
+        viewStateStore.recordCameraView({
+          pose,
+          sourceKey: gate.sourceKey,
+          worldFrameId: gate.worldFrameId,
+        });
+      }
+    },
+    [viewStateStore],
+  );
+
+  const recordNavigationComposition = useCallback(
+    (
+      pose: PointCloudCameraPose,
+      anchor: Mcap3dCameraTrackingAnchor | null,
+      mode = trackingMode,
+    ) => {
+      if (placementStatus !== "transformed") return;
+      const compositions = captureMcap3dCameraCompositions({
+        cameraPose: pose,
         cameraTargetFrameId,
+        cameraTargetResolution,
+        sceneBounds: latestSceneBoundsRef.current,
         sceneUpAxis,
-        trackingMode,
+        trackingAnchor: anchor,
+        trackingMode: mode,
         worldFrameId,
-      })
+      });
+      if (compositions.length > 0) {
+        viewStateStore.recordNavigationCompositions(compositions);
+        hasRecordedCompositionRef.current = true;
+        if (latestSceneBoundsRef.current) {
+          hasRecordedBoundsCompositionRef.current = true;
+        }
+      }
+    },
+    [
+      cameraTargetFrameId,
+      cameraTargetResolution,
+      placementStatus,
+      sceneUpAxis,
+      trackingMode,
+      viewStateStore,
+      worldFrameId,
+    ],
+  );
+  const recordNavigationCompositionRef = useRef(recordNavigationComposition);
+  recordNavigationCompositionRef.current = recordNavigationComposition;
+  // This layout effect refreshes portable intent after frame conventions change.
+  useLayoutEffect(() => {
+    if (
+      pendingCameraViewRestoreRef.current ||
+      pendingCompositionRestoreRef.current.length > 0 ||
+      worldFrameRemapTrackerRef.current !== worldFrameId
     ) {
       return;
     }
-
-    pendingAnchorRestoreRef.current = null;
-    setTrackingAnchor(anchor);
-  }, [cameraTargetFrameId, sceneUpAxis, trackingMode, worldFrameId]);
-
-  // Re-anchor when the user changes tracking mode or target frame. During
-  // normal playback the anchor remains stable and the target transform moves.
-  useEffect(() => {
-    if (!followTrackingMode) {
-      setTrackingAnchor(null);
-      return;
+    const pose = latestCameraPoseRef.current;
+    if (pose) {
+      recordNavigationCompositionRef.current(pose, latestAnchorRef.current);
     }
-    if (!cameraTargetPose || !cameraTargetFrameId || !worldFrameId) {
-      return;
-    }
+  }, [cameraTargetFrameId, sceneUpAxis, worldFrameId]);
 
-    setTrackingAnchor((current) => {
-      if (
-        trackingAnchorMatches({
-          anchor: current,
-          mode: followTrackingMode,
-          sceneUpAxis,
-          targetFrameId: cameraTargetFrameId,
-          worldFrameId,
-        })
-      ) {
-        return current;
-      }
+  const applyPendingComposition = useCallback(() => {
+    const compositions = pendingCompositionRestoreRef.current;
+    if (compositions.length === 0) return;
 
-      const basePose = latestCameraPoseRef.current ?? cameraPose;
-      if (!basePose) {
-        return current;
-      }
-
-      return cameraTrackingAnchorFromPose({
-        cameraPose: basePose,
-        mode: followTrackingMode,
+    let resolved: Extract<
+      ReturnType<typeof resolveMcap3dCameraComposition>,
+      { status: "resolved" }
+    > | null = null;
+    let resolvedComposition: Mcap3dCameraComposition | null = null;
+    for (const composition of compositions) {
+      const candidate = resolveMcap3dCameraComposition({
+        cameraTargetFrameId,
+        cameraTargetResolution,
+        composition,
+        placementStatus,
+        sceneBounds: latestSceneBoundsRef.current,
         sceneUpAxis,
-        targetFrameId: cameraTargetFrameId,
-        targetPose: cameraTargetPose,
         worldFrameId,
       });
-    });
+      if (candidate.status === "resolved") {
+        resolved = candidate;
+        resolvedComposition = composition;
+        break;
+      }
+      if (candidate.status === "pending") return;
+    }
+
+    pendingCompositionRestoreRef.current = [];
+    if (!resolved || !resolvedComposition) {
+      return;
+    }
+
+    lastProvisionalViewRef.current = null;
+    hadRecentProvisionalPlacementRef.current = false;
+    latestCameraPoseRef.current = resolved.pose;
+    latestAnchorRef.current = resolved.anchor;
+    setPoseCommand(resolved.pose);
+    if (resolved.anchor) setAdoptAnchor(resolved.anchor);
+    recordCameraViewIfEligible(resolved.pose);
+    recordNavigationComposition(
+      resolved.pose,
+      resolved.anchor,
+      resolvedComposition.trackingMode,
+    );
   }, [
-    cameraPose,
     cameraTargetFrameId,
-    cameraTargetPose,
-    followTrackingMode,
+    cameraTargetResolution,
+    placementStatus,
+    recordCameraViewIfEligible,
+    recordNavigationComposition,
     sceneUpAxis,
     worldFrameId,
   ]);
 
-  useEffect(() => {
-    const latestPose = controlledCameraPose ?? cameraPose;
-    if (latestPose) {
-      latestCameraPoseRef.current = latestPose;
-    }
-  }, [cameraPose, controlledCameraPose]);
+  // This layout effect retries a portable restore as its gates become ready.
+  useLayoutEffect(() => {
+    applyPendingComposition();
+  }, [applyPendingComposition]);
 
-  // This effect remembers the last controlled pose together with the frames
-  // it was derived for, so the memo above can hold it through transient
-  // pending target resolutions without ever serving a wrong-frame pose.
-  useEffect(() => {
-    if (controlledCameraPose && followTrackingMode) {
-      heldControlledCameraPoseRef.current = {
-        mode: followTrackingMode,
-        pose: controlledCameraPose,
-        targetFrameId: cameraTargetFrameId,
-        worldFrameId,
-      };
-    }
-  }, [
-    cameraTargetFrameId,
-    controlledCameraPose,
-    followTrackingMode,
-    worldFrameId,
-  ]);
-
+  // This effect discards provisional camera memory when source topics change.
   useEffect(() => {
     lastProvisionalViewRef.current = null;
     hadRecentProvisionalPlacementRef.current = false;
@@ -369,8 +440,11 @@ export function useMcap3dCameraTracking({
   // declared before the carried-view restore below so a carried view gated
   // on the new world frame still wins the commit. When the two world frames
   // have no resolvable path, a stale-frame pose is worse than a refit: the
-  // pose is dropped and the panel falls back to fitting the re-placed scene.
+  // pose command (fit-pin latch included) is dropped and the panel falls
+  // back to fitting the re-placed scene.
   useLayoutEffect(() => {
+    if (activeSourceKeyRef.current !== sourceKey) return;
+
     const previousWorldFrameId = worldFrameRemapTrackerRef.current;
     if (previousWorldFrameId === worldFrameId) {
       return;
@@ -400,39 +474,59 @@ export function useMcap3dCameraTracking({
       return;
     }
 
-    const resolution =
-      playbackTimeNs === undefined
+    const committedTransform =
+      worldFrameTransition?.sourceFrameId === previousWorldFrameId &&
+      worldFrameTransition.targetFrameId === worldFrameId
+        ? worldFrameTransition.transform
+        : null;
+    const resolution = committedTransform
+      ? null
+      : playbackTimeNs === undefined
         ? null
         : frameTransforms.resolve(
             previousWorldFrameId,
             worldFrameId,
             playbackTimeNs,
           );
-    if (resolution?.status !== "resolved") {
+    const transform =
+      committedTransform ??
+      (resolution?.status === "resolved" ? resolution.transform : null);
+    if (!transform) {
       latestCameraPoseRef.current = null;
-      setCameraPose(null);
+      setPoseCommand(null);
       return;
     }
 
-    const remappedPose = transformCameraPose(basePose, resolution.transform);
+    const remappedPose = transformCameraPose(basePose, transform);
     latestCameraPoseRef.current = remappedPose;
-    setCameraPose(remappedPose);
-  }, [frameTransforms, placementStatus, playbackTimeNs, worldFrameId]);
+    setPoseCommand(remappedPose);
+    recordCameraViewIfEligible(remappedPose);
+    recordNavigationCompositionRef.current(
+      remappedPose,
+      latestAnchorRef.current,
+    );
+  }, [
+    frameTransforms,
+    placementStatus,
+    playbackTimeNs,
+    recordCameraViewIfEligible,
+    sourceKey,
+    worldFrameTransition,
+    worldFrameId,
+  ]);
 
-  // This effect applies the previous sample's carried-over camera pose once
-  // placement is transformed and the effective world frame matches the frame
-  // the pose was captured in. It deliberately bypasses the
-  // provisional→transformed remap machinery below (which exists to fix poses
-  // captured during provisional placement): on apply it consumes the
-  // provisional-view memory, so the remap effect — declared after this one
-  // and therefore run later in the same commit — short-circuits and can
-  // never overwrite the restored pose.
-  useLayoutEffect(() => {
+  // Applies a same-source pose, or an explicitly absolute cross-source pose,
+  // once placement and world-frame gates match. Consuming provisional memory
+  // here prevents the later provisional remap from overwriting the restore.
+  const applyPendingCameraView = useCallback(() => {
     const pending = pendingCameraViewRestoreRef.current;
     if (
       !pending ||
       !mcap3dCameraPoseRestoreApplies({
+        allowCrossSource: cameraNavigationMode === "absolute",
+        currentSourceKey: sourceKey,
         placementStatus,
+        restoreSourceKey: pending.sourceKey,
         restoreWorldFrameId: pending.worldFrameId,
         worldFrameId,
       })
@@ -444,10 +538,26 @@ export function useMcap3dCameraTracking({
     lastProvisionalViewRef.current = null;
     hadRecentProvisionalPlacementRef.current = false;
     latestCameraPoseRef.current = pending.pose;
-    setCameraPose(pending.pose);
-  }, [placementStatus, worldFrameId]);
+    setPoseCommand(pending.pose);
+    recordCameraViewIfEligible(pending.pose);
+  }, [
+    cameraNavigationMode,
+    placementStatus,
+    recordCameraViewIfEligible,
+    sourceKey,
+    worldFrameId,
+  ]);
 
+  // This layout effect retries an exact or absolute pose restore before paint.
   useLayoutEffect(() => {
+    if (activeSourceKeyRef.current !== sourceKey) return;
+    applyPendingCameraView();
+  }, [applyPendingCameraView, sourceKey]);
+
+  // This layout effect remaps a provisional camera once placement resolves.
+  useLayoutEffect(() => {
+    if (activeSourceKeyRef.current !== sourceKey) return;
+
     if (placementStatus === "provisional") {
       hadRecentProvisionalPlacementRef.current = true;
       return;
@@ -460,7 +570,21 @@ export function useMcap3dCameraTracking({
     }
 
     hadRecentProvisionalPlacementRef.current = false;
-    if (controlledCameraPose || !worldFrameId) {
+    // When a matching follow anchor governs the camera, the provisional pose
+    // memory is moot: the rig composes in the effective world frame on its
+    // own and re-bases from whatever the shell applies.
+    const anchor = latestAnchorRef.current;
+    const anchorGoverned =
+      isFollowTrackingMode(effectiveTrackingMode) &&
+      anchor !== null &&
+      trackingAnchorMatches({
+        anchor,
+        mode: effectiveTrackingMode,
+        sceneUpAxis,
+        targetFrameId: cameraTargetFrameId,
+        worldFrameId,
+      });
+    if (anchorGoverned || !worldFrameId) {
       return;
     }
 
@@ -489,170 +613,341 @@ export function useMcap3dCameraTracking({
     );
     cameraPoseRemapKeyRef.current = remapKey;
     latestCameraPoseRef.current = remappedPose;
-    setCameraPose(remappedPose);
-  }, [controlledCameraPose, frameTransforms, placementStatus, worldFrameId]);
+    setPoseCommand(remappedPose);
+    recordCameraViewIfEligible(remappedPose);
+  }, [
+    cameraTargetFrameId,
+    frameTransforms,
+    placementStatus,
+    recordCameraViewIfEligible,
+    sceneUpAxis,
+    sourceKey,
+    effectiveTrackingMode,
+    worldFrameId,
+  ]);
 
   const handleCameraPoseChange = useCallback(
     (pose: PointCloudCameraPose, source: CameraPoseChangeSource) => {
       latestCameraPoseRef.current = pose;
       rememberProvisionalCameraPose(pose);
-      if (source !== "initial") {
-        // A deliberate camera change abandons any not-yet-applied carried
-        // view: the user has re-oriented, so the previous sample's view no
-        // longer applies.
-        pendingCameraViewRestoreRef.current = null;
-        pendingAnchorRestoreRef.current = null;
-        setCameraPose(pose);
-      }
-      if (
-        !followTrackingMode ||
-        !cameraTargetPose ||
-        !cameraTargetFrameId ||
-        !worldFrameId
-      ) {
+      if (source === "initial" || source === "interaction") {
+        // Interaction traffic is bookkeeping only: the rig re-bases the
+        // anchor imperatively (external-write protocol) and commits at
+        // gesture boundaries — a per-event React write here would re-render
+        // the whole tile per pointer move.
         return;
       }
-
-      setTrackingAnchor(
-        cameraTrackingAnchorFromPose({
-          cameraPose: pose,
-          mode: followTrackingMode,
-          sceneUpAxis,
-          targetFrameId: cameraTargetFrameId,
-          targetPose: cameraTargetPose,
-          worldFrameId,
-        }),
-      );
+      // "focus": recenter and view presets — deliberate one-shot changes.
+      // The shell applies the command; the rig observes that application as
+      // an external write and re-bases its anchor within the same dispatch.
+      pendingCameraViewRestoreRef.current = null;
+      pendingCompositionRestoreRef.current = [];
+      setPoseCommand(pose);
+      recordCameraViewIfEligible(pose);
+      recordNavigationComposition(pose, latestAnchorRef.current);
     },
     [
-      cameraTargetFrameId,
-      cameraTargetPose,
-      followTrackingMode,
+      recordCameraViewIfEligible,
+      recordNavigationComposition,
       rememberProvisionalCameraPose,
-      sceneUpAxis,
-      worldFrameId,
     ],
   );
   const noteRenderedCameraPose = useCallback(
-    (pose: PointCloudCameraPose) => {
+    (
+      pose: PointCloudCameraPose,
+      sceneBounds?: PointCloudSceneBoundsSummary,
+    ) => {
       latestCameraPoseRef.current = pose;
+      if (sceneBounds) latestSceneBoundsRef.current = sceneBounds;
       rememberProvisionalCameraPose(pose);
+      if (pendingCompositionRestoreRef.current.length > 0) {
+        applyPendingComposition();
+        return;
+      }
+      if (
+        !hasRecordedCompositionRef.current ||
+        (sceneBounds && !hasRecordedBoundsCompositionRef.current)
+      ) {
+        recordNavigationComposition(pose, latestAnchorRef.current);
+      }
     },
-    [rememberProvisionalCameraPose],
+    [
+      applyPendingComposition,
+      recordNavigationComposition,
+      rememberProvisionalCameraPose,
+    ],
   );
-  // Stable getter for the last displayed pose (controlled, held, or fitted —
-  // whatever actually painted). View-preset shortcuts read it to preserve the
-  // user's current zoom distance without re-rendering per pose change.
+  // Stable getter for the last displayed pose (composed, dragged, applied,
+  // or fitted — whatever actually painted). View-preset shortcuts read it to
+  // preserve the user's current zoom distance without re-rendering per pose
+  // change.
   const getDisplayedCameraPose = useCallback(
     (): PointCloudCameraPose | null => latestCameraPoseRef.current,
     [],
   );
-  const updateTrackingMode = useCallback((mode: Mcap3dTrackingMode) => {
-    // A manual mode change is a user decision that supersedes any pending
-    // carried-over camera restore; the mode itself is written through to the
-    // session view-state store.
+
+  const onGestureStart = useCallback((pose: PointCloudCameraPose) => {
+    // A grab is deliberate: abandon carried-over restores the moment the
+    // user takes hold, and pin the panel out of fit-fallback. The pin is
+    // one-shot — the functional update bails once any command exists, so
+    // wheel micro-gestures cost no renders.
     pendingCameraViewRestoreRef.current = null;
-    pendingAnchorRestoreRef.current = null;
-    // Freeze the currently displayed pose as the uncontrolled base: switching
-    // modes must never move the camera. Without this, leaving a follow mode
-    // would fall back to the pose from the last drag, snapping the view back
-    // by however far the target has travelled since.
-    const latestPose = latestCameraPoseRef.current;
-    if (latestPose) {
-      setCameraPose(latestPose);
-    }
-    recordMcap3dTrackingMode(mode);
-    setTrackingMode(mode);
+    pendingCompositionRestoreRef.current = [];
+    latestCameraPoseRef.current = pose;
+    setPoseCommand((current) => current ?? pose);
   }, []);
 
-  // This effect writes the latest uncontrolled camera pose (with the world
-  // frame it is expressed in) through to the session view-state store so the
-  // view can carry across sample navigation. Gated on transformed placement:
-  // during provisional placement the scene renders in its source frame, so a
-  // pose captured then is NOT a world-frame pose yet — recording it would
-  // restore a wrong-frame view on the next sample (the remap machinery that
-  // would have corrected it in-sample cannot run against the store).
-  useEffect(() => {
-    if (cameraPose && worldFrameId && placementStatus === "transformed") {
-      recordMcap3dCameraView({ pose: cameraPose, worldFrameId });
-    }
-  }, [cameraPose, placementStatus, worldFrameId]);
+  const onCommit = useCallback(
+    (pose: PointCloudCameraPose, anchor: Mcap3dCameraTrackingAnchor | null) => {
+      latestCameraPoseRef.current = pose;
+      latestAnchorRef.current = anchor;
+      rememberProvisionalCameraPose(pose);
+      recordCameraViewIfEligible(pose);
+      recordNavigationComposition(pose, anchor);
+    },
+    [
+      recordCameraViewIfEligible,
+      recordNavigationComposition,
+      rememberProvisionalCameraPose,
+    ],
+  );
 
-  // This effect writes the follow-mode tracking anchor through to the
-  // session view-state store so the follow offset can carry across sample
-  // navigation.
-  useEffect(() => {
-    if (trackingAnchor) {
-      recordMcap3dTrackingAnchor(trackingAnchor);
+  const onPoseSample = useCallback(
+    (sample: Mcap3dCameraRigSample) => {
+      onCameraPoseSample?.(sample.pose);
+      latestCameraPoseRef.current = sample.pose;
+      latestAnchorRef.current = sample.anchor;
+      rememberProvisionalCameraPose(sample.pose);
+    },
+    [onCameraPoseSample, rememberProvisionalCameraPose],
+  );
+
+  const activeEpochRecorderRef = useRef({
+    placementStatus,
+    recordNavigationComposition,
+    sourceKey,
+    worldFrameId,
+  });
+  if (activeEpochRecorderRef.current.sourceKey === sourceKey) {
+    activeEpochRecorderRef.current = {
+      placementStatus,
+      recordNavigationComposition,
+      sourceKey,
+      worldFrameId,
+    };
+  }
+
+  // A source hop is an in-place camera epoch change: the shell and its
+  // controls survive, but raw coordinates do not. Re-seed the pending restore
+  // from the state the previous source wrote through, clear every source-local
+  // camera latch, and let the portable composition resolve against the new
+  // source. `sourceChanged` masks the old command during the transition render;
+  // this layout effect then completes the reset before paint.
+  useLayoutEffect(() => {
+    if (activeSourceKeyRef.current === sourceKey) return;
+
+    const previousEpoch = activeEpochRecorderRef.current;
+    const previousPose = latestCameraPoseRef.current;
+    if (
+      previousPose &&
+      !pendingCameraViewRestoreRef.current &&
+      pendingCompositionRestoreRef.current.length === 0 &&
+      previousEpoch.placementStatus === "transformed" &&
+      previousEpoch.sourceKey &&
+      previousEpoch.worldFrameId
+    ) {
+      viewStateStore.recordCameraView({
+        pose: previousPose,
+        sourceKey: previousEpoch.sourceKey,
+        worldFrameId: previousEpoch.worldFrameId,
+      });
+      previousEpoch.recordNavigationComposition(
+        previousPose,
+        latestAnchorRef.current,
+      );
     }
-  }, [trackingAnchor]);
+
+    const snapshot = viewStateStore.getSnapshot();
+    const carriedCameraView =
+      snapshot.cameraView &&
+      (snapshot.cameraView.sourceKey === sourceKey ||
+        cameraNavigationMode === "absolute")
+        ? snapshot.cameraView
+        : null;
+    const navigationCompositions = carriedCameraView
+      ? []
+      : navigationRestoreCompatible
+        ? snapshot.navigationCompositions
+        : [];
+
+    activeSourceKeyRef.current = sourceKey;
+    setCameraCommandSourceKey(sourceKey);
+    activeEpochRecorderRef.current = {
+      placementStatus,
+      recordNavigationComposition,
+      sourceKey,
+      worldFrameId,
+    };
+    pendingCameraViewRestoreRef.current = carriedCameraView;
+    pendingCompositionRestoreRef.current = navigationCompositions;
+    latestCameraPoseRef.current = null;
+    latestAnchorRef.current = null;
+    latestSceneBoundsRef.current = null;
+    lastProvisionalViewRef.current = null;
+    hadRecentProvisionalPlacementRef.current = false;
+    cameraPoseRemapKeyRef.current = null;
+    worldFrameRemapTrackerRef.current = worldFrameId;
+    hasRecordedCompositionRef.current = false;
+    hasRecordedBoundsCompositionRef.current = false;
+    setPoseCommand(null);
+    setAdoptAnchor(null);
+
+    if (snapshot.cameraView && !carriedCameraView) {
+      viewStateStore.recordCameraView(null);
+    }
+    if (
+      !navigationRestoreCompatible &&
+      snapshot.navigationCompositions.length
+    ) {
+      viewStateStore.recordNavigationCompositions([]);
+    }
+
+    const restoredMode =
+      navigationCompositions[0]?.trackingMode ??
+      snapshot.trackingMode ??
+      defaultTrackingMode;
+    setTrackingMode(restoredMode);
+    applyPendingCameraView();
+    applyPendingComposition();
+  }, [
+    applyPendingCameraView,
+    applyPendingComposition,
+    cameraNavigationMode,
+    defaultTrackingMode,
+    navigationRestoreCompatible,
+    placementStatus,
+    recordNavigationComposition,
+    sourceKey,
+    viewStateStore,
+    worldFrameId,
+  ]);
+
+  const updateTrackingMode = useCallback(
+    (mode: Mcap3dTrackingMode) => {
+      // A manual mode change is a user decision that supersedes any pending
+      // carried-over camera restore; the mode itself is written through to
+      // the session view-state store.
+      pendingCameraViewRestoreRef.current = null;
+      pendingCompositionRestoreRef.current = [];
+      // Freeze the displayed pose into the command channel: switching modes
+      // must never move the camera. The rig re-derives its anchor under the
+      // new mode from the live camera without moving it; the frozen command
+      // keeps the downward channel pointing at the view the user kept.
+      const latestPose = latestCameraPoseRef.current;
+      if (latestPose) {
+        setPoseCommand(latestPose);
+        recordCameraViewIfEligible(latestPose);
+        recordNavigationComposition(latestPose, latestAnchorRef.current, mode);
+      }
+      viewStateStore.recordTrackingMode(mode);
+      onDefaultTrackingModeChange?.(mode);
+      setTrackingMode(mode);
+    },
+    [
+      onDefaultTrackingModeChange,
+      recordCameraViewIfEligible,
+      recordNavigationComposition,
+      viewStateStore,
+    ],
+  );
+
+  // This effect records the final view state on unmount, so a sample hop
+  // mid-gesture still carries the last displayed composition (write-through
+  // recording otherwise happens at gesture commits).
+  const recordCameraViewRef = useRef(recordCameraViewIfEligible);
+  recordCameraViewRef.current = recordCameraViewIfEligible;
+  useEffect(
+    () => () => {
+      if (
+        pendingCameraViewRestoreRef.current ||
+        pendingCompositionRestoreRef.current.length > 0
+      ) {
+        return;
+      }
+      const pose = latestCameraPoseRef.current;
+      if (pose) {
+        recordCameraViewRef.current(pose);
+        recordNavigationCompositionRef.current(pose, latestAnchorRef.current);
+      }
+    },
+    [],
+  );
+
+  const rig = useMemo(
+    () => ({
+      adoptAnchor: sourceChanged ? null : adoptAnchor,
+      mode: effectiveTrackingMode,
+      onCommit,
+      onGestureStart,
+      onPoseSample,
+      sceneUpAxis,
+      targetFrameId: cameraTargetFrameId,
+      targetResolution: cameraTargetResolution,
+      worldFrameId,
+    }),
+    [
+      adoptAnchor,
+      cameraTargetFrameId,
+      cameraTargetResolution,
+      onCommit,
+      onGestureStart,
+      onPoseSample,
+      sceneUpAxis,
+      sourceChanged,
+      effectiveTrackingMode,
+      worldFrameId,
+    ],
+  );
 
   return {
-    cameraPose,
     cameraTargetResolution,
     cameraTrackingNotice,
-    controlledCameraPose,
     getDisplayedCameraPose,
     handleCameraPoseChange,
     noteRenderedCameraPose,
-    panelCameraPose,
+    poseCommand: sourceChanged ? null : poseCommand,
+    rig,
     setTrackingMode: updateTrackingMode,
-    trackingAnchor,
     trackingMode,
   };
 }
 
 /**
  * Pure gate for applying a carried-over camera pose: only once placement is
- * transformed (never against a provisional source-frame preview) and only in
- * the world frame the pose was captured in — a pose is meaningless in any
- * other frame.
+ * transformed (never against a provisional source-frame preview), within the
+ * same recording, and in the world frame the pose was captured in.
  */
 export function mcap3dCameraPoseRestoreApplies({
+  allowCrossSource = false,
+  currentSourceKey,
   placementStatus,
+  restoreSourceKey,
   restoreWorldFrameId,
   worldFrameId,
 }: {
+  readonly allowCrossSource?: boolean;
+  readonly currentSourceKey: string;
   readonly placementStatus: Mcap3dPlacementStatus;
+  readonly restoreSourceKey: string;
   readonly restoreWorldFrameId: string;
   readonly worldFrameId: string;
 }): boolean {
   return (
     placementStatus === "transformed" &&
+    currentSourceKey !== "" &&
+    (allowCrossSource || currentSourceKey === restoreSourceKey) &&
     worldFrameId !== "" &&
     restoreWorldFrameId === worldFrameId
-  );
-}
-
-/**
- * Pure gate for applying a carried-over follow-mode tracking anchor: the
- * anchor's mode, scene-up, and both of its frames must match the effective
- * selections.
- */
-export function mcap3dTrackingAnchorRestoreApplies({
-  anchor,
-  cameraTargetFrameId,
-  sceneUpAxis,
-  trackingMode,
-  worldFrameId,
-}: {
-  readonly anchor: Mcap3dCameraTrackingAnchor;
-  readonly cameraTargetFrameId: string;
-  readonly sceneUpAxis: Mcap3dSceneUpAxis;
-  readonly trackingMode: Mcap3dTrackingMode;
-  readonly worldFrameId: string;
-}): boolean {
-  return (
-    isFollowTrackingMode(trackingMode) &&
-    cameraTargetFrameId !== "" &&
-    worldFrameId !== "" &&
-    trackingAnchorMatches({
-      anchor,
-      mode: trackingMode,
-      sceneUpAxis,
-      targetFrameId: cameraTargetFrameId,
-      worldFrameId,
-    })
   );
 }
 
@@ -697,27 +992,6 @@ export function resolveCameraTargetPose({
     pose: cameraTargetPoseFromFrameTransform(resolution.transform),
     status: "resolved",
   };
-}
-
-function trackingAnchorMatches({
-  anchor,
-  mode,
-  sceneUpAxis,
-  targetFrameId,
-  worldFrameId,
-}: {
-  readonly anchor: Mcap3dCameraTrackingAnchor | null;
-  readonly mode: Exclude<Mcap3dTrackingMode, "free">;
-  readonly sceneUpAxis: Mcap3dSceneUpAxis;
-  readonly targetFrameId: string;
-  readonly worldFrameId: string;
-}): boolean {
-  return (
-    anchor?.mode === mode &&
-    anchor.sceneUpAxis === sceneUpAxis &&
-    anchor.targetFrameId === targetFrameId &&
-    anchor.worldFrameId === worldFrameId
-  );
 }
 
 function transformCameraPose(

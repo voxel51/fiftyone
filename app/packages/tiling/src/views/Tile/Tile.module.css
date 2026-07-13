@@ -27,6 +27,11 @@
   font-size: 0.8125rem;
 }
 
+.highlightedTitle {
+  color: var(--color-content-text-highlighted-pane-title, #ffd166);
+  font-weight: 600;
+}
+
 .titleInput {
   flex: 1;
   min-width: 0;

@@ -38,6 +38,8 @@ export interface TileHeaderProps {
    */
   onSelect?: () => void;
   className?: string;
+  /** Render the title with transient cross-panel emphasis. */
+  highlighted?: boolean;
 }
 
 /**
@@ -61,6 +63,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
   renameRequest = 0,
   onSelect,
   className,
+  highlighted = false,
 }) => {
   const fullscreenLabel = isFullscreen ? "Exit fullscreen" : "Fullscreen";
   const fullscreenIcon = isFullscreen
@@ -167,7 +170,8 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
         <Text
           variant={TextVariant.Xs}
           color={TextColor.Secondary}
-          className={styles.title}
+          className={clsx(styles.title, highlighted && styles.highlightedTitle)}
+          data-highlighted={highlighted || undefined}
           data-testid="tile-header-title"
           onDoubleClick={startEditing}
           title={title}

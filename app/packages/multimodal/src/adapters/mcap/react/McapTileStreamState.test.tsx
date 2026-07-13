@@ -1,7 +1,7 @@
 import { PlaybackProvider, usePlaybackStore } from "@fiftyone/playback";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
 import {
   setMcapTopicStartTimeSec,
@@ -13,6 +13,7 @@ const TOPIC = "/camera";
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 describe("McapTileEmptyState", () => {
@@ -22,6 +23,22 @@ describe("McapTileEmptyState", () => {
     expect(screen.getByTestId("mcap-tile-empty-state").textContent).toBe(
       "No source available",
     );
+  });
+
+  it("does not flash a loading indicator for a sub-threshold gap", () => {
+    vi.useFakeTimers();
+    render(
+      <PlaybackProvider>
+        <McapTileEmptyState topics={[TOPIC]} />
+      </PlaybackProvider>,
+    );
+
+    const indicator = screen.getByTestId("mcap-tile-loading-indicator");
+    expect(indicator.dataset.visible).toBeUndefined();
+    act(() => vi.advanceTimersByTime(199));
+    expect(indicator.dataset.visible).toBeUndefined();
+    act(() => vi.advanceTimersByTime(1));
+    expect(indicator.dataset.visible).toBe("true");
   });
 
   it("rounds tiny positive gap starts up to the displayed centisecond", async () => {
