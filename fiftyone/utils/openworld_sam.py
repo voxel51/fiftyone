@@ -203,6 +203,8 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
     Args:
         name_or_path (None): HF repo ID or local path to the OpenWorldSAM model
             uploaded with ``trust_remote_code=True``
+        revision (None): optional HF commit SHA / branch / tag to pin when
+            downloading the Hub snapshot
         iou_thresh (0.5): minimum IoU score to keep an instance
         classes (None): list of text prompts for zero-shot segmentation.
             Defaults to ``ADE_PANOPTIC_CLASSES`` from the HuggingFace repo
@@ -227,6 +229,7 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
         d = self.init(d)
         super().__init__(d)
         self.name_or_path = self.parse_string(d, "name_or_path")
+        self.revision = self.parse_string(d, "revision", default=None)
         self.iou_thresh = self.parse_number(d, "iou_thresh", default=0.5)
         self.nms_thresh = self.parse_number(d, "nms_thresh", default=0.2)
         self.top_k = self.parse_int(d, "top_k", default=100)
@@ -318,6 +321,7 @@ class OpenWorldSAMModel(fout.TorchImageModel):
         # download the snapshot and import directly via sys.path.
         self._local_hf_dir = snapshot_download(
             config.name_or_path,
+            revision=config.revision,
             cache_dir=fo.config.model_zoo_dir,
             ignore_patterns=["*.pt", "*.pth"],
         )

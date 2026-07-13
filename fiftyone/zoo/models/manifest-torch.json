@@ -12109,6 +12109,7 @@
                 "type": "fiftyone.utils.openworld_sam.OpenWorldSAMModel",
                 "config": {
                     "name_or_path": "Voxel51/openworld-sam",
+                    "revision": "d065dbb41559e05ac482d4d7b694cf56b20ed173",
                     "sam_transforms_fcn": "fiftyone.utils.openworld_sam.build_sam_transform",
                     "transforms_fcn": "fiftyone.utils.openworld_sam.build_beit_transform",
                     "transforms_args": {
