@@ -365,7 +365,7 @@ export function sanitizeMapSettings(
     const baseLayer =
       normalizeMcapMapBaseLayer(record.baseLayer) ??
       DEFAULT_MCAP_MAP_TILE_SETTINGS.baseLayer;
-    const enabledTopics = sanitizeMapTopicList(record.enabledTopics);
+    const enabledTopics = sanitizeTopicList(record.enabledTopics);
     const followEgo =
       typeof record.followEgo === "boolean"
         ? record.followEgo
@@ -403,7 +403,7 @@ export function sanitizeLogSettings(
     }
 
     const record = settings as Record<string, unknown>;
-    const enabledTopics = sanitizeMapTopicList(record.enabledTopics);
+    const enabledTopics = sanitizeTopicList(record.enabledTopics);
     const followPlayhead =
       typeof record.followPlayhead === "boolean"
         ? record.followPlayhead
@@ -425,13 +425,12 @@ function sanitizeLogLevels(raw: unknown): readonly McapLogLevel[] {
   if (!Array.isArray(raw)) {
     return DEFAULT_MCAP_LOG_TILE_SETTINGS.selectedLevels;
   }
-  const levels = MCAP_LOG_LEVELS.filter((level) => raw.includes(level));
-  return levels.length > 0
-    ? levels
-    : DEFAULT_MCAP_LOG_TILE_SETTINGS.selectedLevels;
+  // An empty result is kept: all-levels-off is a deliberate view state,
+  // exactly like the map tile's explicit empty topic list.
+  return MCAP_LOG_LEVELS.filter((level) => raw.includes(level));
 }
 
-function sanitizeMapTopicList(raw: unknown): readonly string[] | undefined {
+function sanitizeTopicList(raw: unknown): readonly string[] | undefined {
   if (!Array.isArray(raw)) {
     return undefined;
   }

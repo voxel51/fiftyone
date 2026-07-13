@@ -536,17 +536,11 @@ describe("mcap-layout-persistence", () => {
           followPlayhead: false,
           selectedLevels: ["error"],
         },
-        // Unrecognized levels and non-boolean follow fall back to defaults.
+        // Non-boolean follow falls back to the default; an explicitly
+        // empty level selection survives — all-off is a deliberate view.
         "log-2": {
           followPlayhead: true,
-          selectedLevels: [
-            "debug",
-            "info",
-            "warn",
-            "error",
-            "fatal",
-            "unknown",
-          ],
+          selectedLevels: [],
         },
       });
     });
