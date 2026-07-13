@@ -135,6 +135,26 @@ describe("createEncodedVideoTexture", () => {
     handle.dispose();
   });
 
+  it("bounds prerequisite replay to the latest 600 video frames", async () => {
+    const runway = Array.from({ length: 601 }, (_, index) =>
+      h264Frame({
+        keyframe: true,
+        timestampNs: BigInt(index + 1) * 1_000n,
+      }),
+    );
+    const target = h264Frame({ keyframe: true, timestampNs: 602_000n });
+
+    const handle = await createImageTexture(
+      target,
+      "rec\n/camera/video\n602000",
+      runway,
+    );
+
+    expect(fakeDecoderInstances[0].decodeCalls).toHaveLength(601);
+    expect(fakeDecoderInstances[0].decodeCalls[0]?.timestamp).toBe(2);
+    handle.dispose();
+  });
+
   it("resets decoder state on backwards timestamps", async () => {
     const keyframe = await createEncodedVideoTexture(
       h264Frame({ keyframe: true, timestampNs: 2000n }),

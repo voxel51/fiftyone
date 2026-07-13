@@ -13,6 +13,8 @@ import type {
 import type { ImageTextureHandle } from "./base-2d-scene";
 import { createEncodedVideoTexture } from "./video-texture";
 
+const MAX_VIDEO_DECODE_PREREQUISITES = 600;
+
 /**
  * Decodes an image visualization into a disposable texture handle.
  */
@@ -25,7 +27,8 @@ export async function createImageTexture(
     return createRawImageTexture(frame);
   }
   if (frame.kind === "encoded-video") {
-    for (const prerequisite of decodeRunway) {
+    const prerequisites = decodeRunway.slice(-MAX_VIDEO_DECODE_PREREQUISITES);
+    for (const prerequisite of prerequisites) {
       if (prerequisite.kind !== "encoded-video") continue;
       const handle = await createEncodedVideoTexture(prerequisite, textureKey);
       handle.dispose();

@@ -102,6 +102,7 @@ export function ImagePanel({
   const sharedStage = useWebGpuViewStage();
   const useSharedView = sharedStage !== null && sharedStage.error === null;
   const {
+    errorKind,
     errorMessage,
     handle: textureHandle,
     status,
@@ -156,12 +157,12 @@ export function ImagePanel({
         {
           id: "image-texture",
           message,
-          severity: message.startsWith("Waiting for ") ? "info" : "error",
+          severity: errorKind === "waiting" ? "info" : "error",
         },
       ];
     }
     return notices;
-  }, [canvasError, errorMessage, notices, status]);
+  }, [canvasError, errorKind, errorMessage, notices, status]);
 
   return (
     <div

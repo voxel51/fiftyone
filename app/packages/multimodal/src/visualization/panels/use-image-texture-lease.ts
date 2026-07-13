@@ -7,11 +7,15 @@ import {
   acquireImageTexture,
   type ImageTextureLease,
 } from "./image-texture-cache";
+import { VideoTextureWaitError } from "./video-texture";
 
 const EMPTY_IMAGE_DECODE_RUNWAY: readonly ImageVisualization[] = [];
 
 /** Loading state for an encoded-image texture lease. */
 export type ImageTextureLeaseStatus = "idle" | "loading" | "loaded" | "error";
+
+/** Whether a texture error is terminal or awaiting more stream data. */
+export type ImageTextureLeaseErrorKind = "failure" | "waiting";
 
 interface HeldImageTexture {
   readonly handle: ImageTextureHandle;
@@ -42,6 +46,7 @@ export function useImageTextureLease({
   onLoaded,
   textureKey,
 }: UseImageTextureLeaseOptions): {
+  readonly errorKind: ImageTextureLeaseErrorKind | null;
   readonly errorMessage: string | null;
   readonly handle: ImageTextureHandle | null;
   readonly status: ImageTextureLeaseStatus;
@@ -51,6 +56,9 @@ export function useImageTextureLease({
   const hasVisibleTextureRef = useRef(false);
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
+  const [errorKind, setErrorKind] = useState<ImageTextureLeaseErrorKind | null>(
+    null,
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [handle, setHandle] = useState<ImageTextureHandle | null>(null);
   const [status, setStatus] = useState<ImageTextureLeaseStatus>(() =>
@@ -89,6 +97,7 @@ export function useImageTextureLease({
     if (!enabled || !hasImageData(frame)) {
       hasVisibleTextureRef.current = false;
       replaceHeldTexture(null, heldTextureRef, retiredTexturesRef, setHandle);
+      setErrorKind(null);
       setErrorMessage(null);
       setStatus(disabledStatus);
       return undefined;
@@ -96,6 +105,7 @@ export function useImageTextureLease({
 
     let cancelled = false;
     if (!hasVisibleTextureRef.current) {
+      setErrorKind(null);
       setErrorMessage(null);
       setStatus("loading");
     }
@@ -117,6 +127,7 @@ export function useImageTextureLease({
           setHandle,
         );
         hasVisibleTextureRef.current = true;
+        setErrorKind(null);
         setErrorMessage(null);
         setStatus("loaded");
         onLoadedRef.current?.(decodedHandle);
@@ -129,6 +140,9 @@ export function useImageTextureLease({
 
         hasVisibleTextureRef.current = false;
         replaceHeldTexture(null, heldTextureRef, retiredTexturesRef, setHandle);
+        setErrorKind(
+          error instanceof VideoTextureWaitError ? "waiting" : "failure",
+        );
         setErrorMessage(errorMessageFromUnknown(error));
         setStatus("error");
       });
@@ -141,7 +155,7 @@ export function useImageTextureLease({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [decodeRunway, disabledStatus, enabled, identity, textureKey]);
 
-  return { errorMessage, handle, status };
+  return { errorKind, errorMessage, handle, status };
 }
 
 export function hasImageData(
