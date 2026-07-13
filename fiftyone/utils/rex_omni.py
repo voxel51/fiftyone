@@ -11,6 +11,7 @@ import logging
 import re
 
 import numpy as np
+from PIL import Image as PILImage
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -25,15 +26,14 @@ logger = logging.getLogger(__name__)
 
 def _ensure_rex_omni():
     # Rex-Omni is a Qwen2.5-VL checkpoint; Qwen2.5-VL support landed in
-    # transformers 4.49.0.
-    fou.ensure_package("transformers>=4.49.0")
+    # transformers 4.49.0. transformers 5.x remaps the checkpoint's
+    # added-token ids (coordinate bins, image pad) beyond its embedding
+    # table, so inference requires 4.x
+    fou.ensure_package("transformers>=4.49,<5")
     fou.ensure_package("accelerate")
 
 
 transformers = fou.lazy_import("transformers", callback=_ensure_rex_omni)
-
-from PIL import Image as PILImage
-
 
 DEFAULT_REX_OMNI_MODEL = "IDEA-Research/Rex-Omni"
 
@@ -43,9 +43,7 @@ DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant"
 
 # The detection prompt template used by the reference implementation. ``{}`` is
 # filled with a comma-separated category list.
-DETECTION_PROMPT_TEMPLATE = (
-    "Detect {}. Output the bounding box coordinates in [x0, y0, x1, y1] format."
-)
+DETECTION_PROMPT_TEMPLATE = "Detect {}. Output the bounding box coordinates in [x0, y0, x1, y1] format."
 
 # Image preprocessing bounds (in pixels), expressed in units of 28x28 patches,
 # matching the reference implementation's defaults.
@@ -93,7 +91,9 @@ class RexOmniOutputProcessor(fout.OutputProcessor):
         # Drop anything after the turn terminator, then ensure the final box
         # group is closed so a generation that hit the token cap still parses.
         text = text.split("<|im_end|>")[0]
-        if "<|box_start|>" in text and not text.rstrip().endswith("<|box_end|>"):
+        if "<|box_start|>" in text and not text.rstrip().endswith(
+            "<|box_end|>"
+        ):
             text = text + "<|box_end|>"
 
         detections = []
@@ -114,9 +114,7 @@ class RexOmniOutputProcessor(fout.OutputProcessor):
                 if w <= 0 or h <= 0:
                     continue
                 detections.append(
-                    fol.Detection(
-                        label=label, bounding_box=[x0, y0, w, h]
-                    )
+                    fol.Detection(label=label, bounding_box=[x0, y0, w, h])
                 )
 
         return detections
@@ -211,10 +209,12 @@ class RexOmniModel(fout.TorchImageModel):
         if self._using_gpu:
             device_map = "auto" if config.device is None else None
 
-        model = transformers.Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            config.name_or_path,
-            torch_dtype=dtype,
-            device_map=device_map,
+        model = (
+            transformers.Qwen2_5_VLForConditionalGeneration.from_pretrained(
+                config.name_or_path,
+                torch_dtype=dtype,
+                device_map=device_map,
+            )
         )
 
         if device_map is None:
@@ -303,7 +303,11 @@ class RexOmniModel(fout.TorchImageModel):
         """Convert an input image to a PIL image for the processor."""
         if isinstance(img, torch.Tensor):
             img = img.cpu().numpy()
-            if img.shape[0] in (1, 3, 4) and img.shape[2] not in (1, 3, 4):
+            if (
+                img.ndim == 3
+                and img.shape[0] in (1, 3, 4)
+                and img.shape[2] not in (1, 3, 4)
+            ):
                 img = np.transpose(img, (1, 2, 0))
 
         if isinstance(img, np.ndarray):
@@ -311,6 +315,8 @@ class RexOmniModel(fout.TorchImageModel):
                 if img.max() <= 1.0:
                     img = img * 255.0
                 img = np.clip(img, 0, 255).astype(np.uint8)
+            if img.ndim == 3 and img.shape[2] == 1:
+                img = img[:, :, 0]
             img = PILImage.fromarray(img)
 
         return img.convert("RGB")

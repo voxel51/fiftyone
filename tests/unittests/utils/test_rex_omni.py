@@ -6,10 +6,11 @@ Tests for fiftyone/utils/rex_omni.py output processor and parsing.
 |
 """
 
+import numpy as np
 import pytest
 
 import fiftyone.core.labels as fol
-from fiftyone.utils.rex_omni import RexOmniOutputProcessor
+from fiftyone.utils.rex_omni import RexOmniModel, RexOmniOutputProcessor
 
 
 def _obj(label, *coord_groups):
@@ -53,16 +54,20 @@ class TestRexOmniOutputProcessor:
 
     def test_multiple_labels(self):
         processor = RexOmniOutputProcessor()
-        raw = _obj("cat", (0, 0, 500, 500)) + ", " + _obj(
-            "remote", (600, 100, 700, 300)
+        raw = (
+            _obj("cat", (0, 0, 500, 500))
+            + ", "
+            + _obj("remote", (600, 100, 700, 300))
         )
         dets = processor._parse(raw)
         assert [d.label for d in dets] == ["cat", "remote"]
 
     def test_im_end_truncates(self):
         processor = RexOmniOutputProcessor()
-        raw = _obj("cat", (0, 0, 999, 999)) + "<|im_end|>" + _obj(
-            "dog", (1, 1, 2, 2)
+        raw = (
+            _obj("cat", (0, 0, 999, 999))
+            + "<|im_end|>"
+            + _obj("dog", (1, 1, 2, 2))
         )
         dets = processor._parse(raw)
         # everything after <|im_end|> is dropped
@@ -98,7 +103,9 @@ class TestRexOmniOutputProcessor:
         dets = processor._parse(_obj("cat", (500, 500)))
         assert dets == []
 
-    @pytest.mark.parametrize("raw", ["", "  ", "There are none.", "no objects"])
+    @pytest.mark.parametrize(
+        "raw", ["", "  ", "There are none.", "no objects"]
+    )
     def test_empty_outputs(self, raw):
         processor = RexOmniOutputProcessor()
         assert processor._parse(raw) == []
@@ -113,6 +120,59 @@ class TestRexOmniOutputProcessor:
         assert all(isinstance(d, fol.Detections) for d in out)
         assert len(out[0].detections) == 1
         assert len(out[1].detections) == 0
+
+
+class TestRexOmniPrepareImage:
+    """Input normalization to RGB PIL images."""
+
+    def _prepare(self, img):
+        model = RexOmniModel.__new__(RexOmniModel)
+        return model._prepare_image(img)
+
+    def test_hwc_uint8_array(self):
+        img = np.zeros((8, 10, 3), dtype=np.uint8)
+        out = self._prepare(img)
+        assert out.mode == "RGB"
+        assert out.size == (10, 8)
+
+    def test_2d_grayscale_array(self):
+        img = np.full((8, 10), 128, dtype=np.uint8)
+        out = self._prepare(img)
+        assert out.mode == "RGB"
+        assert out.size == (10, 8)
+
+    def test_hw1_grayscale_array(self):
+        img = np.full((8, 10, 1), 128, dtype=np.uint8)
+        out = self._prepare(img)
+        assert out.mode == "RGB"
+        assert out.size == (10, 8)
+
+    def test_float_array_scaled(self):
+        img = np.ones((8, 10, 3), dtype=np.float32)
+        out = self._prepare(img)
+        assert out.mode == "RGB"
+        assert np.asarray(out).max() == 255
+
+    def test_chw_tensor(self):
+        torch = pytest.importorskip("torch")
+        img = torch.zeros(3, 8, 10, dtype=torch.uint8)
+        out = self._prepare(img)
+        assert out.mode == "RGB"
+        assert out.size == (10, 8)
+
+    def test_2d_grayscale_tensor(self):
+        torch = pytest.importorskip("torch")
+        img = torch.full((8, 10), 128, dtype=torch.uint8)
+        out = self._prepare(img)
+        assert out.mode == "RGB"
+        assert out.size == (10, 8)
+
+    def test_c1_chw_tensor(self):
+        torch = pytest.importorskip("torch")
+        img = torch.full((1, 8, 10), 128, dtype=torch.uint8)
+        out = self._prepare(img)
+        assert out.mode == "RGB"
+        assert out.size == (10, 8)
 
 
 if __name__ == "__main__":

@@ -11623,7 +11623,7 @@
                 "packages": [
                     "torch",
                     "torchvision",
-                    "transformers>=4.49.0",
+                    "transformers>=4.49,<5",
                     "accelerate"
                 ],
                 "cpu": { "support": true },
