@@ -1,5 +1,4 @@
 import { Enum, Type } from "protobufjs";
-import { decodeJsonRecord } from "../decoders/json/decode";
 import {
   isRosMessageEncoding,
   rosMessageDefinitionsForChannel,
@@ -14,6 +13,8 @@ import type {
   McapNumericFieldAvailability,
   McapTopicNumericFields,
 } from "../types";
+import { genericRecordDecoderForChannel } from "./generic-record-decoder";
+import { DEFAULT_RAW_PRUNE_BUDGETS } from "./raw-record-prune";
 
 /**
  * Nested-message depth cap for schema walks. Telemetry payloads are
@@ -23,11 +24,22 @@ import type {
 const MAX_FIELD_DEPTH = 6;
 
 /**
- * JSON channels carry no walkable schema, so fields come from decoding
- * a handful of messages. Sampling more only helps schemas whose fields
- * appear late, which the `sampled` flag already discloses.
+ * A few messages are enough to discover ordinary telemetry arrays without
+ * making field enumeration scan each topic.
  */
-const JSON_SAMPLE_MESSAGE_LIMIT = 3;
+const FIELD_SAMPLE_MESSAGE_LIMIT = 3;
+
+/**
+ * Keep sampled indexed fields aligned with the raw inspector's array
+ * preview. Large sensor buffers must not turn into thousands of plot
+ * toggles, while ordinary vectors, matrices, and joint arrays fit whole.
+ */
+const SAMPLED_ARRAY_ELEMENT_LIMIT = DEFAULT_RAW_PRUNE_BUDGETS.maxArrayLength;
+
+interface NumericFieldWalkResult {
+  readonly fields: McapNumericFieldDescriptor[];
+  hasArrays: boolean;
+}
 
 const PROTOBUF_NUMERIC_SCALAR_TYPES: ReadonlySet<string> = new Set([
   "double",
@@ -66,39 +78,44 @@ const ROS_NUMERIC_SCALAR_TYPES: ReadonlySet<string> = new Set([
 
 /**
  * Enumerates numeric leaf field paths of a protobufjs message type in
- * declaration order. Repeated and map fields are skipped because plots use
- * scalar series; nested messages recurse up to `MAX_FIELD_DEPTH` with a
- * cycle guard for self-referential schemas.
+ * declaration order. Repeated fields have no schema-level length, so this
+ * walk leaves them for bounded message sampling during topic enumeration.
+ * Map fields remain unsupported. Nested messages recurse up to
+ * `MAX_FIELD_DEPTH` with a cycle guard for self-referential schemas.
  */
 export function walkProtobufNumericFields(
   type: Type,
 ): readonly McapNumericFieldDescriptor[] {
-  const fields: McapNumericFieldDescriptor[] = [];
-  walkProtobufType(type, "", new Set([type.fullName]), fields);
-  return fields;
+  return protobufNumericFields(type).fields;
 }
 
 /**
  * Enumerates numeric leaf field paths of parsed ROS message definitions.
- * Arrays are skipped to match the scalar-only plot contract; nested complex
- * fields recurse up to `MAX_FIELD_DEPTH` with a cycle guard.
+ * Arrays are left for bounded message sampling during topic enumeration;
+ * nested complex fields recurse up to `MAX_FIELD_DEPTH` with a cycle guard.
  */
 export function walkRosNumericFields(
   definitions: readonly RosMessageDefinition[],
 ): readonly McapNumericFieldDescriptor[] {
+  return rosNumericFields(definitions).fields;
+}
+
+function rosNumericFields(
+  definitions: readonly RosMessageDefinition[],
+): NumericFieldWalkResult {
   const root = rootRosMessageDefinition(definitions);
   if (!root) {
-    return [];
+    return { fields: [], hasArrays: false };
   }
   const definitionsByName = new Map(
     definitions
       .filter((definition) => definition.name)
       .map((definition) => [definition.name ?? "", definition] as const),
   );
-  const fields: McapNumericFieldDescriptor[] = [];
+  const result: NumericFieldWalkResult = { fields: [], hasArrays: false };
   const visited = new Set(root.name ? [root.name] : []);
-  walkRosDefinition(root, definitionsByName, "", visited, fields);
-  return fields;
+  walkRosDefinition(root, definitionsByName, "", visited, result);
+  return result;
 }
 
 function walkRosDefinition(
@@ -106,20 +123,24 @@ function walkRosDefinition(
   definitionsByName: ReadonlyMap<string, RosMessageDefinition>,
   prefix: string,
   visited: Set<string>,
-  out: McapNumericFieldDescriptor[],
+  result: NumericFieldWalkResult,
 ): void {
   if (visited.size > MAX_FIELD_DEPTH) {
     return;
   }
 
   for (const field of definition.definitions) {
-    if (field.isConstant || field.isArray) {
+    if (field.isConstant) {
+      continue;
+    }
+    if (field.isArray) {
+      result.hasArrays = true;
       continue;
     }
 
     const path = prefix ? `${prefix}.${field.name}` : field.name;
     if (field.enumType) {
-      out.push({ path, valueType: "enum" });
+      result.fields.push({ path, valueType: "enum" });
       continue;
     }
 
@@ -129,13 +150,13 @@ function walkRosDefinition(
         continue;
       }
       visited.add(field.type);
-      walkRosDefinition(nested, definitionsByName, path, visited, out);
+      walkRosDefinition(nested, definitionsByName, path, visited, result);
       visited.delete(field.type);
       continue;
     }
 
     if (ROS_NUMERIC_SCALAR_TYPES.has(field.type)) {
-      out.push({ path, valueType: field.type });
+      result.fields.push({ path, valueType: field.type });
     }
   }
 }
@@ -144,7 +165,7 @@ function walkProtobufType(
   type: Type,
   prefix: string,
   visited: Set<string>,
-  out: McapNumericFieldDescriptor[],
+  result: NumericFieldWalkResult,
 ): void {
   if (visited.size > MAX_FIELD_DEPTH) {
     return;
@@ -152,13 +173,17 @@ function walkProtobufType(
 
   for (const field of type.fieldsArray) {
     field.resolve();
-    if (field.repeated || field.map) {
+    if (field.map) {
+      continue;
+    }
+    if (field.repeated) {
+      result.hasArrays = true;
       continue;
     }
 
     const path = prefix ? `${prefix}.${field.name}` : field.name;
     if (field.resolvedType instanceof Enum) {
-      out.push({ path, valueType: "enum" });
+      result.fields.push({ path, valueType: "enum" });
       continue;
     }
 
@@ -167,71 +192,90 @@ function walkProtobufType(
         continue;
       }
       visited.add(field.resolvedType.fullName);
-      walkProtobufType(field.resolvedType, path, visited, out);
+      walkProtobufType(field.resolvedType, path, visited, result);
       visited.delete(field.resolvedType.fullName);
       continue;
     }
 
     if (PROTOBUF_NUMERIC_SCALAR_TYPES.has(field.type)) {
-      out.push({ path, valueType: field.type });
+      result.fields.push({ path, valueType: field.type });
     }
   }
 }
 
+function protobufNumericFields(type: Type): NumericFieldWalkResult {
+  const result: NumericFieldWalkResult = { fields: [], hasArrays: false };
+  walkProtobufType(type, "", new Set([type.fullName]), result);
+  return result;
+}
+
 /**
- * Collects numeric leaf field paths from sampled JSON message records.
- * The union across samples, in first-seen order.
+ * Collects numeric leaf field paths from sampled message records. Arrays are
+ * addressed by dotted indexes (`position.0`) and bounded to the same first 50
+ * elements shown by the raw-message inspector. The union across samples is
+ * returned in first-seen order.
  */
-export function jsonNumericFieldsFromSamples(
+export function numericFieldsFromSamples(
   samples: readonly Record<string, unknown>[],
 ): readonly McapNumericFieldDescriptor[] {
   const byPath = new Map<string, McapNumericFieldDescriptor>();
   for (const sample of samples) {
-    walkJsonRecord(sample, "", 0, byPath);
+    walkSampleValue(sample, "", 0, byPath);
   }
   return [...byPath.values()];
 }
 
-function walkJsonRecord(
-  record: Record<string, unknown>,
+function walkSampleValue(
+  value: unknown,
   prefix: string,
   depth: number,
   out: Map<string, McapNumericFieldDescriptor>,
 ): void {
-  if (depth >= MAX_FIELD_DEPTH) {
+  const valueType = sampledNumericValueType(value);
+  if (prefix && valueType) {
+    if (!out.has(prefix)) {
+      out.set(prefix, { path: prefix, valueType });
+    }
     return;
   }
 
-  for (const [key, value] of Object.entries(record)) {
+  if (valueType) {
+    return;
+  }
+
+  if (value === null || typeof value !== "object" || depth >= MAX_FIELD_DEPTH) {
+    return;
+  }
+
+  const array = sampledArray(value);
+  if (array) {
+    const keep = Math.min(array.length, SAMPLED_ARRAY_ELEMENT_LIMIT);
+    for (let index = 0; index < keep; index += 1) {
+      const path = prefix ? `${prefix}.${index}` : String(index);
+      walkSampleValue(array[index], path, depth + 1, out);
+    }
+    return;
+  }
+
+  if (ArrayBuffer.isView(value)) {
+    return;
+  }
+
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
     const path = prefix ? `${prefix}.${key}` : key;
-    if (typeof value === "number") {
-      if (!out.has(path)) {
-        out.set(path, { path, valueType: "number" });
-      }
-      continue;
-    }
-
-    if (typeof value === "boolean") {
-      if (!out.has(path)) {
-        out.set(path, { path, valueType: "bool" });
-      }
-      continue;
-    }
-
-    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-      walkJsonRecord(value as Record<string, unknown>, path, depth + 1, out);
-    }
+    walkSampleValue(child, path, depth + 1, out);
   }
 }
 
 /**
  * Enumerates plottable numeric fields for every requested topic.
- * Protobuf channels walk their binary descriptor, ROS channels walk their
- * parsed message definitions (both zero message reads), JSON channels
- * sample a few decoded messages, and other encodings return an explicit
- * unsupported-encoding entry. Never throws per topic; schema parse or
- * sampling failures degrade to an empty field list with an availability
- * reason so one bad channel cannot hide the rest.
+ * Protobuf channels walk their binary descriptor and ROS channels walk their
+ * parsed message definitions. Schemas containing arrays additionally sample
+ * a few decoded messages to discover bounded indexed paths; JSON channels do
+ * the same because they carry no walkable schema. Other encodings return an
+ * explicit unsupported-encoding entry. Never throws per topic; schema parse
+ * or sampling failures degrade gracefully so one bad channel cannot hide the
+ * rest.
  */
 export async function enumerateMcapNumericFields(
   reader: McapIndexedReaderLike,
@@ -260,14 +304,19 @@ export async function enumerateMcapNumericFields(
       schema.name &&
       schema.data.byteLength > 0
     ) {
-      const { availability, fields } = protobufFieldsForSchema(
-        schema.data,
-        schema.name,
-      );
+      const schemaFields = protobufFieldsForSchema(schema.data, schema.name);
+      const sampledFields = schemaFields.hasArrays
+        ? await sampleNumericFieldsForTopic(reader, topic, channel)
+        : [];
+      const fields = mergeNumericFields(schemaFields.fields, sampledFields);
       results.push({
-        availability,
+        availability:
+          schemaFields.availability === "schema-unavailable"
+            ? schemaFields.availability
+            : availabilityForFields(fields),
         encoding: "protobuf",
         fields,
+        ...(schemaFields.hasArrays ? { sampled: true } : {}),
         topic,
       });
       continue;
@@ -283,7 +332,7 @@ export async function enumerateMcapNumericFields(
     }
 
     if (channel.messageEncoding === "json") {
-      const fields = await jsonFieldsForTopic(reader, topic);
+      const fields = await sampleNumericFieldsForTopic(reader, topic, channel);
       results.push({
         availability: availabilityForFields(fields),
         encoding: "json",
@@ -295,11 +344,19 @@ export async function enumerateMcapNumericFields(
     }
 
     if (isRosMessageEncoding(channel.messageEncoding)) {
-      const { availability, fields } = rosFieldsForChannel(reader, channel);
+      const schemaFields = rosFieldsForChannel(reader, channel);
+      const sampledFields = schemaFields.hasArrays
+        ? await sampleNumericFieldsForTopic(reader, topic, channel)
+        : [];
+      const fields = mergeNumericFields(schemaFields.fields, sampledFields);
       results.push({
-        availability,
+        availability:
+          schemaFields.availability === "schema-unavailable"
+            ? schemaFields.availability
+            : availabilityForFields(fields),
         encoding: channel.messageEncoding,
         fields,
+        ...(schemaFields.hasArrays ? { sampled: true } : {}),
         topic,
       });
       continue;
@@ -322,16 +379,28 @@ function rosFieldsForChannel(
 ): {
   readonly availability: McapNumericFieldAvailability;
   readonly fields: readonly McapNumericFieldDescriptor[];
+  readonly hasArrays: boolean;
 } {
   try {
     const definitions = rosMessageDefinitionsForChannel(reader, channel);
     if (!definitions) {
-      return { availability: "schema-unavailable", fields: [] };
+      return {
+        availability: "schema-unavailable",
+        fields: [],
+        hasArrays: false,
+      };
     }
-    const fields = walkRosNumericFields(definitions);
-    return { availability: availabilityForFields(fields), fields };
+    const result = rosNumericFields(definitions);
+    return {
+      availability: availabilityForFields(result.fields),
+      ...result,
+    };
   } catch {
-    return { availability: "schema-unavailable", fields: [] };
+    return {
+      availability: "schema-unavailable",
+      fields: [],
+      hasArrays: false,
+    };
   }
 }
 
@@ -341,15 +410,24 @@ function protobufFieldsForSchema(
 ): {
   readonly availability: McapNumericFieldAvailability;
   readonly fields: readonly McapNumericFieldDescriptor[];
+  readonly hasArrays: boolean;
 } {
   try {
     const root = protobufFromBinaryDescriptor(schemaData);
-    const fields = walkProtobufNumericFields(root.lookupType(schemaName));
-    return { availability: availabilityForFields(fields), fields };
+    const type = root.lookupType(schemaName);
+    const result = protobufNumericFields(type);
+    return {
+      availability: availabilityForFields(result.fields),
+      ...result,
+    };
   } catch {
     // Unparseable descriptor — list the topic without fields rather
     // than failing the whole enumeration.
-    return { availability: "schema-unavailable", fields: [] };
+    return {
+      availability: "schema-unavailable",
+      fields: [],
+      hasArrays: false,
+    };
   }
 }
 
@@ -359,25 +437,87 @@ function availabilityForFields(
   return fields.length > 0 ? "ready" : "no-numeric-fields";
 }
 
-async function jsonFieldsForTopic(
+async function sampleNumericFieldsForTopic(
   reader: McapIndexedReaderLike,
   topic: string,
+  channel: { readonly messageEncoding: string; readonly schemaId: number },
 ): Promise<readonly McapNumericFieldDescriptor[]> {
+  const decodeRecord = genericRecordDecoderForChannel(reader, channel);
+  if (!decodeRecord) {
+    return [];
+  }
+
   const samples: Record<string, unknown>[] = [];
   try {
     for await (const message of reader.readMessages({ topics: [topic] })) {
       try {
-        samples.push(decodeJsonRecord(message.data));
+        samples.push(decodeRecord(message.data));
       } catch {
         // Malformed sample — keep scanning up to the sample limit.
       }
-      if (samples.length >= JSON_SAMPLE_MESSAGE_LIMIT) {
+      if (samples.length >= FIELD_SAMPLE_MESSAGE_LIMIT) {
         break;
       }
     }
   } catch {
     // Read failure degrades to whatever samples were collected.
   }
+  return numericFieldsFromSamples(samples);
+}
 
-  return jsonNumericFieldsFromSamples(samples);
+function mergeNumericFields(
+  schemaFields: readonly McapNumericFieldDescriptor[],
+  sampledFields: readonly McapNumericFieldDescriptor[],
+): readonly McapNumericFieldDescriptor[] {
+  const byPath = new Map(
+    schemaFields.map((field) => [field.path, field] as const),
+  );
+  for (const field of sampledFields) {
+    if (!byPath.has(field.path)) {
+      byPath.set(field.path, field);
+    }
+  }
+  return [...byPath.values()];
+}
+
+function sampledNumericValueType(value: unknown): string | undefined {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? "number" : undefined;
+  }
+  if (typeof value === "boolean") {
+    return "bool";
+  }
+  if (typeof value === "bigint") {
+    return "bigint";
+  }
+  if (
+    value !== null &&
+    typeof value === "object" &&
+    "toNumber" in value &&
+    typeof (value as { readonly toNumber?: unknown }).toNumber === "function"
+  ) {
+    return "int64";
+  }
+  return undefined;
+}
+
+function sampledArray(
+  value: object,
+): { readonly [index: number]: unknown; readonly length: number } | undefined {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (
+    ArrayBuffer.isView(value) &&
+    !(value instanceof DataView) &&
+    !(value instanceof Uint8Array) &&
+    "length" in value &&
+    typeof value.length === "number"
+  ) {
+    return value as unknown as {
+      readonly length: number;
+      readonly [index: number]: unknown;
+    };
+  }
+  return undefined;
 }
