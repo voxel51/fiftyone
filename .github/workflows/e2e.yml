@@ -2,18 +2,11 @@ name: Test e2e
 
 on:
   workflow_call:
-    secrets:
-      docker-username:
-        required: false
-      docker-password:
-        required: false
 jobs:
   prepare-e2e:
     timeout-minutes: 45
     runs-on: ubuntu-latest
     name: Prepare e2e assets
-    env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
     defaults:
       run:
         shell: bash
@@ -94,36 +87,27 @@ jobs:
         run: yarn install
         working-directory: e2e-pw
 
-      - name: Get Playwright version
-        id: playwright-version
-        run: |
-          echo "PLAYWRIGHT_VERSION=$(node -e "process.stdout.write(require('@playwright/test/package.json').version)")" >> $GITHUB_OUTPUT
-        working-directory: e2e-pw
-
-      - name: Cache playwright browser
-        uses: actions/cache@v5
-        id: playwright-browser-cache
-        with:
-          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
-          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.PLAYWRIGHT_VERSION }}
-
-      - name: Install Playwright Chromium if not cached
-        run: yarn playwright install chromium
-        if: steps.playwright-browser-cache.outputs.cache-hit != 'true'
-        working-directory: e2e-pw
-
   test-e2e:
     needs: prepare-e2e
     timeout-minutes: 90
-    runs-on: ubuntu-latest # the standard runner's 14GB free disk space is not sufficient.  We create more free space with the `jlumbroso/free-disk-space` action as a step (below).
+    runs-on: ubuntu-latest
+    # The prebaked image (built by build-e2e-image.yml) carries Python +
+    # fiftyone's dependency tree, Node/Yarn, ffmpeg, and Chromium, so shard
+    # jobs skip all toolchain setup.
+    container:
+      image: ghcr.io/voxel51/fiftyone-e2e:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     name: Test e2e (Mongo ${{ matrix.mongodb-version }}, shard ${{ matrix.shard }}/4)
     env:
       FIFTYONE_DO_NOT_TRACK: true
       FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE: false
-      FIFTYONE_DATABASE_URI: mongodb://localhost:27017
+      # Job containers reach service containers by service name, not localhost
+      FIFTYONE_DATABASE_URI: mongodb://mongo:27017
       FIFTYONE_DATABASE_NAME: playwright
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
-      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       FIFTYONE_PLUGINS_DIR: ${{ github.workspace }}/e2e-pw/src/shared/assets/plugins
       VFF_EXP_ANNOTATION: true
     defaults:
@@ -161,17 +145,6 @@ jobs:
             !/docs/**
           sparse-checkout-cone-mode: false
 
-      - name: Setup node 22
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      - name: Enable corepack
-        run: corepack enable
-
-      - name: Prepare yarn 4
-        run: corepack prepare yarn@4.9.1 --activate
-
       - name: Download built app static assets
         uses: actions/download-artifact@v8
         with:
@@ -180,41 +153,10 @@ jobs:
       - name: Restore built app static assets
         run: tar -xzf e2e-app-static.tgz -C .
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v4
-        # Skip docker login on forks (that won't have the docker-* secrets)
-        if: env.docker-username != '' && env.docker-password != ''
-        env:
-          docker-username: ${{ secrets.docker-username }}
-          docker-password: ${{ secrets.docker-password }}
-        with:
-          username: ${{ env.docker-username }}
-          password: ${{ env.docker-password }}
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.10.16
-
-      - name: Setup (UV)
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: 3.10.16
-          enable-cache: true
-          cache-dependency-path: |
-            requirements/common.txt
-            requirements/github.txt
-            requirements/test.txt
-            requirements/e2e.txt
-      - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false # e2e test failed when `true`
-      - name: Install requirements
-        run: |
-          uv pip install --system -r requirements/e2e.txt
-
       - name: Install fiftyone
+        # dependencies are baked into the image; this only builds fiftyone
+        # itself from the PR's source (plus any deps added since the last
+        # image build)
         run: |
           uv pip install --system '.[multimodal]' -r requirements/e2e.txt
 
@@ -223,9 +165,6 @@ jobs:
         run: |
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
-
-      - name: Setup FFmpeg
-        uses: ./.github/actions/setup-ffmpeg
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
@@ -237,24 +176,6 @@ jobs:
 
       - name: Install E2E dependencies
         run: yarn install
-        working-directory: e2e-pw
-
-      - name: Get Playwright version
-        id: playwright-version
-        run: |
-          echo "PLAYWRIGHT_VERSION=$(node -e "process.stdout.write(require('@playwright/test/package.json').version)")" >> $GITHUB_OUTPUT
-        working-directory: e2e-pw
-
-      - name: Cache playwright browser
-        uses: actions/cache@v5
-        id: playwright-browser-cache
-        with:
-          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
-          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.PLAYWRIGHT_VERSION }}
-
-      - name: Install Playwright Chromium if not cached
-        run: yarn playwright install chromium
-        if: steps.playwright-browser-cache.outputs.cache-hit != 'true'
         working-directory: e2e-pw
 
       - name: Run Playwright tests
