@@ -1,5 +1,5 @@
 /* eslint-disable react/no-unknown-property */
-import { useEffect, useMemo } from "react";
+import { useEffect, useLayoutEffect, useMemo } from "react";
 import * as THREE from "three";
 
 import { pointCloudObjectTransform } from "./transforms";
@@ -25,10 +25,10 @@ export function SceneRayLayer({
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute(
       "position",
-      new THREE.Float32BufferAttribute([...layer.start, ...layer.end], 3),
+      new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3),
     );
     return geometry;
-  }, [layer.end, layer.start]);
+  }, []);
   const endpointGeometry = useMemo(() => {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute(
@@ -40,7 +40,15 @@ export function SceneRayLayer({
   const color = layer.color ?? DEFAULT_RAY_COLOR;
   useInvalidateOn([color, layer.end, layer.start, objectTransform]);
 
-  // This effect disposes the prior line geometry when the ray moves.
+  // This effect updates the stable line buffer before the scene is painted.
+  useLayoutEffect(() => {
+    const positions = lineGeometry.getAttribute("position");
+    positions.setXYZ(0, layer.start[0], layer.start[1], layer.start[2]);
+    positions.setXYZ(1, layer.end[0], layer.end[1], layer.end[2]);
+    positions.needsUpdate = true;
+  }, [layer.end, layer.start, lineGeometry]);
+
+  // This effect disposes the stable line geometry on unmount.
   useEffect(() => () => lineGeometry.dispose(), [lineGeometry]);
 
   // This effect disposes the stable endpoint geometry on unmount.

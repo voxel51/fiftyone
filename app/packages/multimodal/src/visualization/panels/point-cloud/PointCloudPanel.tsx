@@ -235,7 +235,7 @@ export function PointCloudPanel({
     const center = frameFitBounds.getCenter(new THREE.Vector3());
     const size = frameFitBounds.getSize(new THREE.Vector3());
     return {
-      center: center.toArray(),
+      center: [center.x, center.y, center.z] as const,
       radius: size.length() / 2,
     } as const;
   }, [frameFitBounds]);
