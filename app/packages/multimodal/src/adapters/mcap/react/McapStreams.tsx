@@ -4,10 +4,8 @@ import {
 } from "@fiftyone/utilities";
 import { useEffect, useLayoutEffect, useMemo } from "react";
 import { useSceneInventory } from "../../../scene-inventory/SceneInventoryProvider";
-import {
-  byteSourceAccessKey,
-  type ByteSourceDescriptor,
-} from "../../../query/bytes";
+import { byteSourceAccessKey } from "../../../query/bytes/cache";
+import type { ByteSourceDescriptor } from "../../../query/bytes/types";
 import { MCAP_SOURCE_TYPE, mcapStreamPolicies } from "../scene-sources";
 import { MCAP_ACTIVE_TIMELINE, type McapResourceClient } from "../types";
 import {

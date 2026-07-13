@@ -16,10 +16,8 @@ import React, {
   useState,
 } from "react";
 import MultiModalPlayback from "../../../components/MultiModalPlayback/MultiModalPlayback";
-import {
-  byteSourceAccessKey,
-  type ByteSourceDescriptor,
-} from "../../../query/bytes";
+import { byteSourceAccessKey } from "../../../query/bytes/cache";
+import type { ByteSourceDescriptor } from "../../../query/bytes/types";
 import type { SceneSource } from "../../../scene-inventory";
 import type { StreamInventory } from "../../../schemas/v1";
 import { releaseRetainedImageTextures } from "../../../visualization/panels/image-texture-cache";
