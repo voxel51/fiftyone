@@ -78,11 +78,14 @@ export type McapFramePlacementReadinessGetter = ({
 
 export type McapFramePlacementPrefetcher = (timeNs: bigint) => void;
 
+/** Source-scoped transform graph, placement resolver, and load state. */
 export interface McapFrameTransformsState {
   readonly error: string | null;
   readonly frameIds: readonly string[];
   readonly getPlacementReadiness: McapFramePlacementReadinessGetter;
   readonly indexedDynamicRanges: () => readonly McapFrameTransformTimeRange[];
+  /** Whether transform discovery for a playhead has completed or exhausted retries. */
+  readonly isPlacementTimeSettled?: (timeNs: bigint) => boolean;
   readonly prefetchPlacement: McapFramePlacementPrefetcher;
   readonly resolve: McapFrameTransformResolver;
   readonly status: McapFrameTransformsStatus;
@@ -233,6 +236,8 @@ export function useMcapFrameTransforms({
     };
   }, [activeTimeline, client, dynamicRangeMode, source]);
 
+  // This effect makes exhausted placement windows retryable after an explicit
+  // seek, which is a deliberate request to revisit the active transform time.
   useEffect(() => {
     if (!playbackStore) {
       return undefined;
@@ -353,10 +358,9 @@ export function useMcapFrameTransforms({
     [activeTimeline, client, dynamicRangeMode, source, state.status],
   );
 
-  // Warm a short transform runway on the idle lane. This is intentionally
-  // separate from the foreground placement window: if playback outruns the
-  // ready transform cache, the placement effect below can still issue a small
-  // foreground read for the active time instead of waiting behind idle work.
+  // This effect warms a short transform runway on the idle lane. It stays
+  // separate from the foreground placement window so playback catch-up never
+  // waits behind speculative work.
   useEffect(() => {
     const store = storeRef.current;
     if (dynamicRangeMode !== "range") {
@@ -590,6 +594,19 @@ export function useMcapFrameTransforms({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.version],
   );
+  const isPlacementTimeSettled = useCallback(
+    (requestTimeNs: bigint) => {
+      if (state.status === "error") return true;
+      if (state.status !== "ready" || dynamicRangeMode === "pending") {
+        return false;
+      }
+      return (
+        (storeRef.current?.isTimeIndexed(requestTimeNs) ?? false) ||
+        isTimeInRanges(surrenderedPlacementRangesRef.current, requestTimeNs)
+      );
+    },
+    [dynamicRangeMode, state.status],
+  );
   const summarizeGraph = useCallback<McapFrameGraphSummarizer>(
     (dataBearingFrameIds) =>
       storeRef.current?.summarizeGraph(dataBearingFrameIds) ??
@@ -603,6 +620,7 @@ export function useMcapFrameTransforms({
       frameIds,
       getPlacementReadiness,
       indexedDynamicRanges,
+      isPlacementTimeSettled,
       prefetchPlacement: requestPlacementRangeForTime,
       resolve,
       status: state.status,
@@ -613,6 +631,7 @@ export function useMcapFrameTransforms({
       frameIds,
       getPlacementReadiness,
       indexedDynamicRanges,
+      isPlacementTimeSettled,
       requestPlacementRangeForTime,
       resolve,
       state.error,
