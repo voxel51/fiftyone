@@ -8,10 +8,12 @@ import { parseByteSize } from "./byte-size";
 import type { ByteClient } from "./types";
 
 const DEFAULT_HTTP_BYTE_READ_RETRIES = 2;
-const DEFAULT_HTTP_BYTE_READ_TIMEOUT_MS = 30_000;
+const DEFAULT_HTTP_BYTE_READ_INACTIVITY_TIMEOUT_MS = 30_000;
+const MAX_HTTP_BYTE_READ_INACTIVITY_TIMEOUT_MS = 5 * 60_000;
+const MIN_HTTP_BYTE_READ_RATE_BYTES_PER_SEC = 64 * 1024;
 
 type AbortableFetchFunction = <Body, Result>(
-  config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal },
+  config: FetchFunctionConfig<Body>,
 ) => Promise<FetchFunctionResult<Result>>;
 
 /**
@@ -28,14 +30,17 @@ export function createHttpByteClient(
 
       try {
         const { headers } = await withHttpByteReadTimeout(
-          fetchBytes<undefined, ArrayBuffer>({
-            method: "HEAD",
-            path: source.url,
-            result: "arrayBuffer",
-            retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
-            signal: controller.signal,
-          }),
+          (onProgress) =>
+            fetchBytes<undefined, ArrayBuffer>({
+              method: "HEAD",
+              path: source.url,
+              result: "arrayBuffer",
+              retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
+              signal: controller.signal,
+              onProgress,
+            }),
           controller,
+          DEFAULT_HTTP_BYTE_READ_INACTIVITY_TIMEOUT_MS,
         );
         const sizeBytes = parseByteSize(headers?.get("Content-Length"));
         const etag = normalizeEtag(headers?.get("ETag"));
@@ -82,17 +87,20 @@ export function createHttpByteClient(
       let buffer: ArrayBuffer;
       try {
         ({ headers, response: buffer } = await withHttpByteReadTimeout(
-          fetchBytes<undefined, ArrayBuffer>({
-            headers: {
-              Range: `bytes=${request.range.offset.toString()}-${endOffset.toString()}`,
-            },
-            method: "GET",
-            path: request.source.url,
-            result: "arrayBuffer",
-            retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
-            signal: controller.signal,
-          }),
+          (onProgress) =>
+            fetchBytes<undefined, ArrayBuffer>({
+              headers: {
+                Range: `bytes=${request.range.offset.toString()}-${endOffset.toString()}`,
+              },
+              method: "GET",
+              path: request.source.url,
+              result: "arrayBuffer",
+              retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
+              signal: controller.signal,
+              onProgress,
+            }),
           controller,
+          httpByteReadInactivityTimeoutMs(expectedLength),
         ));
       } catch (error) {
         // Deliberate aborts must be distinguishable from transport failures.
@@ -202,23 +210,34 @@ function normalizeEtag(value: string | null | undefined): string | undefined {
 }
 
 function withHttpByteReadTimeout<Result>(
-  request: Promise<Result>,
+  request: (onProgress: (loadedBytes: number) => void) => Promise<Result>,
   controller: AbortController,
+  inactivityTimeoutMs: number,
 ): Promise<Result> {
   let timedOut = false;
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const timeoutError = new Error(
-    `HTTP byte-range read timed out after ${DEFAULT_HTTP_BYTE_READ_TIMEOUT_MS}ms`,
+    `HTTP byte-range read timed out after ${inactivityTimeoutMs}ms without progress`,
   );
+  let rejectTimeout!: (error: Error) => void;
   const timeoutRequest = new Promise<never>((_, reject) => {
+    rejectTimeout = reject;
+  });
+  const armTimeout = () => {
+    if (timedOut) return;
+    if (timeout !== undefined) clearTimeout(timeout);
     timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
-      reject(timeoutError);
-    }, DEFAULT_HTTP_BYTE_READ_TIMEOUT_MS);
-  });
+      rejectTimeout(timeoutError);
+    }, inactivityTimeoutMs);
+  };
+  armTimeout();
 
-  return Promise.race([request, timeoutRequest])
+  return Promise.race([
+    Promise.resolve().then(() => request(armTimeout)),
+    timeoutRequest,
+  ])
     .catch((error) => {
       if (timedOut) {
         throw timeoutError;
@@ -227,8 +246,18 @@ function withHttpByteReadTimeout<Result>(
       throw error;
     })
     .finally(() => {
-      if (timeout) {
+      if (timeout !== undefined) {
         clearTimeout(timeout);
       }
     });
+}
+
+function httpByteReadInactivityTimeoutMs(expectedLength: number): number {
+  const sizeAwareTimeoutMs = Math.ceil(
+    (expectedLength / MIN_HTTP_BYTE_READ_RATE_BYTES_PER_SEC) * 1_000,
+  );
+  return Math.min(
+    MAX_HTTP_BYTE_READ_INACTIVITY_TIMEOUT_MS,
+    Math.max(DEFAULT_HTTP_BYTE_READ_INACTIVITY_TIMEOUT_MS, sizeAwareTimeoutMs),
+  );
 }

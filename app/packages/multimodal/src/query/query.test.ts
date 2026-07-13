@@ -24,7 +24,7 @@ import {
 } from "./decode";
 
 type ExtendedFetchFunction = <Body, Result>(
-  config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal },
+  config: FetchFunctionConfig<Body>,
 ) => Promise<FetchFunctionResult<Result>>;
 
 interface FetchCall {
@@ -34,6 +34,7 @@ interface FetchCall {
   readonly path: string;
   readonly result: FetchFunctionConfig<unknown>["result"];
   readonly signal: AbortSignal | undefined;
+  readonly onProgress: ((loadedBytes: number) => void) | undefined;
 }
 
 describe("multimodal query clients", () => {
@@ -581,7 +582,7 @@ describe("multimodal query clients", () => {
     try {
       const client = createHttpByteClient(
         async <Body, Result>(
-          config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal },
+          config: FetchFunctionConfig<Body>,
         ): Promise<FetchFunctionResult<Result>> =>
           new Promise((_, reject) => {
             config.signal?.addEventListener("abort", () => {
@@ -596,6 +597,83 @@ describe("multimodal query clients", () => {
 
       await vi.advanceTimersByTimeAsync(30_000);
       await rejection;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("allows more inactivity time for large HTTP byte ranges", async () => {
+    vi.useFakeTimers();
+    try {
+      const client = createHttpByteClient(
+        async <Body, Result>(
+          config: FetchFunctionConfig<Body>,
+        ): Promise<FetchFunctionResult<Result>> =>
+          new Promise((_, reject) => {
+            config.signal?.addEventListener("abort", () => {
+              reject(new DOMException("aborted", "AbortError"));
+            });
+          }),
+      );
+      const read = client.readBytes(
+        createByteRangeReadRequest({
+          range: { length: 3n * 1024n * 1024n, offset: 0n },
+        }),
+      );
+      let settled = false;
+      void read.then(
+        () => {
+          settled = true;
+        },
+        () => {
+          settled = true;
+        },
+      );
+      const rejection = expect(read).rejects.toThrow(
+        "HTTP byte-range read timed out",
+      );
+
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(18_000);
+      await rejection;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("resets the HTTP byte-range timeout when response bytes arrive", async () => {
+    vi.useFakeTimers();
+    try {
+      const bytes = new Uint8Array([1, 2, 3]).buffer;
+      const client = createHttpByteClient(
+        async <Body, Result>(
+          config: FetchFunctionConfig<Body>,
+        ): Promise<FetchFunctionResult<Result>> =>
+          new Promise((resolve) => {
+            setTimeout(() => config.onProgress?.(1), 20_000);
+            setTimeout(() => config.onProgress?.(2), 40_000);
+            setTimeout(
+              () =>
+                resolve({
+                  headers: new Headers({
+                    "Content-Range": "bytes 4-6/7",
+                  }),
+                  response: bytes as Result,
+                }),
+              60_000,
+            );
+          }),
+      );
+      const read = client.readBytes({
+        range: { length: 3n, offset: 4n },
+        source: createByteRangeReadRequest().source,
+      });
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      await expect(read).resolves.toMatchObject({
+        bytes: new Uint8Array([1, 2, 3]),
+      });
     } finally {
       vi.useRealTimers();
     }
@@ -772,10 +850,10 @@ function createFetchMock(
 } {
   const calls: FetchCall[] = [];
   const extendedFetch: ExtendedFetchFunction = async <Body, Result>(
-    config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal },
+    config: FetchFunctionConfig<Body>,
   ): Promise<FetchFunctionResult<Result>> => {
-    const { body, headers, method, path, result, signal } = config;
-    calls.push({ body, headers, method, path, result, signal });
+    const { body, headers, method, onProgress, path, result, signal } = config;
+    calls.push({ body, headers, method, onProgress, path, result, signal });
 
     const response = responses[path];
     if (!response) {
