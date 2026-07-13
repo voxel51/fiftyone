@@ -61,7 +61,7 @@ import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
 import { McapSettingsLabel } from "./McapSettingsLabel";
 import type { McapTileProps } from "./mcap-tile-types";
 import {
-  useMcapTopicPlaybackFrame,
+  useMcapTopicContentFrame,
   useMcapTopicStream,
 } from "./use-mcap-topic-stream";
 import { useMcapVideoDecodeRunway } from "./use-mcap-video-decode-runways";
@@ -191,7 +191,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
 
   // Keep the playback wrapper: `contentTimeNs` is the message identity the
   // shared image-texture cache key needs (bytes identity churns per batch).
-  const playbackFrame = useMcapTopicPlaybackFrame<ImageVisualization>(topic);
+  const playbackFrame = useMcapTopicContentFrame<ImageVisualization>(topic);
   const frame = playbackFrame?.frame ?? null;
   const decodeRunway = useMcapVideoDecodeRunway(topic, playbackFrame);
   const sourceKey = useMcapDataStream()?.sourceKey ?? "";

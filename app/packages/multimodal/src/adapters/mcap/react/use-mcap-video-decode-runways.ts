@@ -6,7 +6,7 @@ import {
   useMcapDataStream,
   type McapDataStream,
 } from "./mcap-data-stream-context";
-import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
+import type { McapTopicContentFrame } from "./use-mcap-topic-stream";
 
 const INITIAL_VIDEO_RUNWAY_LOOKBACK_NS = 15_000_000_000n;
 const EMPTY_RUNWAY: readonly ImageVisualization[] = [];
@@ -24,7 +24,7 @@ interface VideoDecodeRunway {
  */
 export function useMcapVideoDecodeRunways(
   topics: readonly string[],
-  playbackFrames: readonly (McapTopicPlaybackFrame<ImageVisualization> | null)[],
+  playbackFrames: readonly (McapTopicContentFrame<ImageVisualization> | null)[],
 ): readonly (readonly ImageVisualization[])[] {
   const dataStream = useMcapDataStream();
   const [runways, setRunways] = useState<
@@ -157,7 +157,7 @@ export function useMcapVideoDecodeRunways(
 /** Single-topic convenience wrapper used by an image tile. */
 export function useMcapVideoDecodeRunway(
   topic: string,
-  playbackFrame: McapTopicPlaybackFrame<ImageVisualization> | null,
+  playbackFrame: McapTopicContentFrame<ImageVisualization> | null,
 ): readonly ImageVisualization[] {
   const topics = useMemo(() => (topic ? [topic] : []), [topic]);
   const playbackFrames = useMemo(

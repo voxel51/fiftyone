@@ -1,4 +1,3 @@
-import { usePlayhead } from "@fiftyone/playback";
 import {
   useCallback,
   useEffect,
@@ -24,6 +23,7 @@ import {
 } from "./mcap-data-stream-context";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import type { McapTopicCache } from "./mcap-topic-cache";
+import { useOptionalPlayhead } from "./use-optional-playhead";
 
 /** Options for the interpolated image-annotation hooks. */
 export interface UseInterpolatedImageAnnotationsOptions {
@@ -107,8 +107,9 @@ export function useInterpolatedImageAnnotationSets(
     [],
   );
 
-  // Re-render every RAF tick so the lerp tracks the playhead.
-  const playhead = usePlayhead();
+  // Smooth mode tracks every RAF tick. As-recorded mode samples placement time
+  // only when stream/cache content renders for another reason.
+  const playhead = useOptionalPlayhead(interpolate);
   const timeline = dataStream?.getTimelineIndex() ?? null;
   const cacheSnapshot = useTopicCacheSnapshot(dataStream, stableTopics);
   // Fresh caches whenever the stream or timeline changes so entries keyed by
