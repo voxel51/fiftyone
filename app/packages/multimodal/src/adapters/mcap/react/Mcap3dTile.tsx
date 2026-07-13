@@ -3,6 +3,7 @@ import React, {
   type SetStateAction,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -1028,7 +1029,11 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         ? placementReadiness.status
         : "pending",
   });
-  sceneSnapshotRef.current = sceneSnapshotSelection.nextHeld;
+  // This layout effect commits held-scene state only after React commits the
+  // scene selected by the same render.
+  useLayoutEffect(() => {
+    sceneSnapshotRef.current = sceneSnapshotSelection.nextHeld;
+  }, [sceneSnapshotSelection.nextHeld]);
   const displayedScene = sceneSnapshotSelection.snapshot;
   // This effect expires a transform-only scene hold even when no new stream
   // event arrives to trigger another render.
