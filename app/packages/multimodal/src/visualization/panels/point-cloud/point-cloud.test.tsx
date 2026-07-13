@@ -686,6 +686,66 @@ describe("PointCloudPanel", () => {
     expect(cameraPose.target).toEqual([1, 2, 3]);
   });
 
+  it("renders transient scene rays without widening camera bounds", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const setAttribute = vi.spyOn(
+      THREE.BufferGeometry.prototype,
+      "setAttribute",
+    );
+
+    const { container } = render(
+      <PointCloudPanel
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 1,
+              positions: new Float32Array([1, 2, 3]),
+            },
+            id: "/points",
+          },
+        ]}
+        rayLayers={[
+          {
+            end: [0.1, 0.2, 4],
+            frameTransform: {
+              rotation: new THREE.Quaternion(),
+              sourceFrameId: "camera",
+              targetFrameId: "map",
+              translation: new THREE.Vector3(100, 200, 300),
+            },
+            id: "depth-ray:/camera/depth",
+            start: [0, 0, 0],
+          },
+        ]}
+        showHud={false}
+      />,
+    );
+
+    const rayPositions = setAttribute.mock.calls
+      .filter(([attributeName]) => attributeName === "position")
+      .map(([, attribute]) => attribute as THREE.BufferAttribute)
+      .find((attribute) => attribute.array.length === 6);
+    const rayValues = Array.from(rayPositions?.array ?? []);
+    expect(rayValues.slice(0, 3)).toEqual([0, 0, 0]);
+    expect(rayValues[3]).toBeCloseTo(0.1);
+    expect(rayValues[4]).toBeCloseTo(0.2);
+    expect(rayValues[5]).toBeCloseTo(4);
+    expect(container.querySelector("points")).toBeTruthy();
+    expect(
+      Array.from(container.querySelectorAll("group")).some(
+        (group) => group.getAttribute("position") === "100,200,300",
+      ),
+    ).toBe(true);
+
+    const cameraPose = JSON.parse(
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
+        "{}",
+    ) as { readonly target?: readonly number[] };
+    expect(cameraPose.target).toEqual([1, 2, 3]);
+  });
+
   it("applies custom camera frustum depth and base opacity", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const setAttribute = vi.spyOn(

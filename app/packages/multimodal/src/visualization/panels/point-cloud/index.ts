@@ -58,5 +58,6 @@ export type {
   PointCloudPointPick,
   PointCloudSceneBoundsSummary,
   SceneAnnotationPanelLayer,
+  SceneRayPanelLayer,
   WorldGridPanelConfig,
 } from "./types";

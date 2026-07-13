@@ -31,6 +31,7 @@ import {
   type PointCloudPanelRenderStats,
   type PointCloudPointPick,
   type SceneAnnotationPanelLayer,
+  type SceneRayPanelLayer,
 } from "../../../visualization/panels/point-cloud/types";
 import { Mcap3dCameraRig } from "./Mcap3dCameraRig";
 import Mcap3dTileSettings from "./Mcap3dTileSettings";
@@ -83,6 +84,8 @@ import {
   useMcapHoverEcho,
   type McapHoverEcho,
 } from "./mcap-hover-echo";
+import { useMcapDepthHover } from "./mcap-depth-hover";
+import { resolveMcapDepthRay } from "./mcap-depth-ray";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
   DEFAULT_MCAP_IMAGE_PROJECTION,
@@ -130,6 +133,7 @@ const ABYSS_BACKGROUND: ThreeSceneBackground = {
   kind: "gradient",
   top: "#12362b",
 };
+const EMPTY_SCENE_RAYS: readonly SceneRayPanelLayer[] = [];
 const STUDIO_BACKGROUND: ThreeSceneBackground = {
   bottom: "#c8b39a",
   kind: "gradient",
@@ -906,6 +910,41 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   });
   sceneSnapshotRef.current = sceneSnapshotSelection.nextHeld;
   const displayedScene = sceneSnapshotSelection.snapshot;
+  const depthHover = useMcapDepthHover();
+  const depthRayResolution = useMemo(
+    () =>
+      depthHover
+        ? resolveMcapDepthRay({
+            frustumLayers: displayedScene.frustumLayers,
+            hover: depthHover,
+            resolveFrameTransform: frameTransforms.resolve,
+            timeNs: playbackTimeNs,
+            worldFrameId,
+          })
+        : null,
+    [
+      depthHover,
+      displayedScene.frustumLayers,
+      frameTransforms.resolve,
+      playbackTimeNs,
+      worldFrameId,
+    ],
+  );
+  const depthRayLayers =
+    depthRayResolution?.status === "ready"
+      ? [depthRayResolution.layer]
+      : EMPTY_SCENE_RAYS;
+  const prefetchFramePlacement = frameTransforms.prefetchPlacement;
+
+  // This effect requests the transform window needed by a hovered camera ray.
+  useEffect(() => {
+    if (
+      depthRayResolution?.status === "pending" &&
+      playbackTimeNs !== undefined
+    ) {
+      prefetchFramePlacement(playbackTimeNs);
+    }
+  }, [depthRayResolution?.status, prefetchFramePlacement, playbackTimeNs]);
 
   const handlePanelRenderStats = useCallback(
     (stats: PointCloudPanelRenderStats) => {
@@ -1003,6 +1042,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         displayedScene.annotationLayers.length > 0 ||
         displayedScene.gridLayers.length > 0 ||
         displayedScene.frustumLayers.length > 0 ||
+        depthRayLayers.length > 0 ||
         producedNotices.length > 0 ? (
         <div className={styles.panelStack} {...hoverTooltipContainerProps}>
           <PointCloudPanel
@@ -1022,6 +1062,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             onCameraPoseChange={handleCameraPoseChange}
             onRenderStats={handlePanelRenderStats}
             pointSize={pointCloudPointSize}
+            rayLayers={depthRayLayers}
             sceneUp={sceneUpAxis}
             showColorLegend={showPointCloudColorLegend}
             worldGrid={worldGrid}

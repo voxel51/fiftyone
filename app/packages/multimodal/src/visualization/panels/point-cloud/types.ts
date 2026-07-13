@@ -228,6 +228,16 @@ export interface SceneAnnotationPanelLayer {
   readonly onHoverEntity?: (entityId: string | null) => void;
 }
 
+/** One transient, noninteractive ray rendered in a source coordinate frame. */
+export interface SceneRayPanelLayer {
+  /** Packed RGB color used by the line and endpoint marker. */
+  readonly color?: number;
+  readonly end: readonly [number, number, number];
+  readonly frameTransform?: PointCloudFrameTransform;
+  readonly id: string;
+  readonly start: readonly [number, number, number];
+}
+
 /**
  * One grid (map) layer rendered as a textured ground plane in the shared
  * scene. `contentTimeNs` identifies the source message so the GPU texture
@@ -378,6 +388,8 @@ export interface PointCloudPanelProps {
    */
   readonly hudLines?: readonly string[];
   readonly layers: readonly PointCloudPanelLayer[];
+  /** Transient rays excluded from fitting, counts, and scene picking. */
+  readonly rayLayers?: readonly SceneRayPanelLayer[];
   readonly maxRenderedPoints?: number;
   /**
    * Diagnostic notices (transform availability, placement fallbacks).

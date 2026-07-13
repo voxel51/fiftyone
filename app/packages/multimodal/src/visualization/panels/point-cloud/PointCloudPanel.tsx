@@ -54,6 +54,7 @@ import {
   type MeasurementState,
 } from "./measurement";
 import { SceneAnnotationLayer } from "./SceneAnnotationLayer";
+import { SceneRayLayer } from "./SceneRayLayer";
 import { ScenePickingContext } from "./scene-interactivity";
 import { WorldGridLayer } from "./WorldGridLayer";
 import { colormapCssGradient, pointCloudColormapKey } from "./colormaps";
@@ -101,6 +102,7 @@ export function PointCloudPanel({
   onCameraPoseChange,
   onRenderStats,
   pointSize = DEFAULT_POINT_SIZE,
+  rayLayers = [],
   sceneUp = "z",
   showGizmo = true,
   showColorLegend = false,
@@ -471,6 +473,9 @@ export function PointCloudPanel({
                   layer={layer}
                   onTextureError={updateFrustumTextureError}
                 />
+              ))}
+              {rayLayers.map((layer) => (
+                <SceneRayLayer key={layer.id} layer={layer} />
               ))}
               <PointCloudPickingLayer
                 gpuPickData={gpuPickData}
