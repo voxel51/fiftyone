@@ -41,6 +41,20 @@ are named `<short-description>.spec.ts`, e.g. `my-regression-test.spec.ts`.
   create POMs that contain the assertion class.
 - Refrain from using `page.waitForTimeout()`. There is almost always a better
   alternative, like using custom events.
+- Keep individual tests small. These specs also run in fiftyone-teams CI at
+  roughly 2–4x the duration (slower server boot, page loads, and screenshot
+  stabilization), so a test that takes more than ~60 seconds here is a timeout
+  risk there. Split large flows into focused tests.
+- Avoid `test.describe.serial` unless tests genuinely depend on each other's
+  state. With serial mode, one failure re-runs the entire file on every retry
+  (re-paying web server boot and dataset creation) and healthy siblings get
+  reported as retried, which confuses flake triage. When tests mutate shared
+  data (e.g. annotation autosave), prefer giving each test its own sample
+  (`numSamples` plus `indexToId`-addressed ids) over serializing the file.
+- Settle the canvas before `toHaveScreenshot` (finish drags, move the pointer
+  to a neutral position). Screenshot assertions wait for consecutive identical
+  frames, so each one against a repainting canvas pays a multi-second
+  stabilization loop.
 
 #### Check for flakiness
 
