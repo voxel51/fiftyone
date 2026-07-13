@@ -7,7 +7,7 @@ import {
   usePlayback,
   usePlaybackStore,
 } from "@fiftyone/playback";
-import { useSetTileTitle } from "@fiftyone/tiling";
+import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { AlignedData } from "uplot";
 import TimeseriesChart, {
@@ -23,6 +23,7 @@ import type { McapTileProps } from "./mcap-tile-types";
 import { joinNumericSeries } from "./numeric-series-join";
 import plotStyles from "./McapPlotTile.module.css";
 import McapPlotTileSettings from "./McapPlotTileSettings";
+import { useRegisterMcapTileSettings } from "./mcap-tile-settings-context";
 import styles from "./McapTile.module.css";
 
 /**
@@ -33,6 +34,13 @@ import styles from "./McapTile.module.css";
  * bulk lane).
  */
 const McapPlotTile: React.FC<McapTileProps> = () => {
+  const tileId = useTileId();
+  // Settings render through the sidebar's tile-settings registry, not here.
+  const settingsRegistration = useMemo(
+    () => ({ content: <McapPlotTileSettings /> }),
+    [],
+  );
+  useRegisterMcapTileSettings(tileId, settingsRegistration);
   const seriesConfigs = useMcapPlotTileSeries();
   const setTileTitle = useSetTileTitle();
   const { ensureEnumeration, seriesByKey, subscribeSeries } =
@@ -151,7 +159,6 @@ const McapPlotTile: React.FC<McapTileProps> = () => {
 
   return (
     <>
-      <McapPlotTileSettings />
       <div className={plotStyles.body} data-testid="mcap-plot-tile">
         {statusNotes.length > 0 ? (
           <span

@@ -8,7 +8,7 @@ import {
   usePlayback,
   usePlaybackStore,
 } from "@fiftyone/playback";
-import { useSetTileTitle } from "@fiftyone/tiling";
+import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import React, {
   useCallback,
   useEffect,
@@ -68,6 +68,7 @@ import { useMcapDataStream } from "./mcap-data-stream-context";
 import type { McapTileProps } from "./mcap-tile-types";
 import { degreesToRadians } from "./wgs84";
 import McapMapTileSettings from "./McapMapTileSettings";
+import { useRegisterMcapTileSettings } from "./mcap-tile-settings-context";
 import styles from "./McapMapTile.module.css";
 
 const ROUTE_PAST_SOURCE_ID = "mcap-location-route-past";
@@ -172,6 +173,13 @@ const NO_TILE_STYLE: MapLibreStyle = {
 };
 
 const McapMapTile: React.FC<McapTileProps> = () => {
+  const tileId = useTileId();
+  // Settings render through the sidebar's tile-settings registry, not here.
+  const settingsRegistration = useMemo(
+    () => ({ content: <McapMapTileSettings /> }),
+    [],
+  );
+  useRegisterMcapTileSettings(tileId, settingsRegistration);
   const setTileTitle = useSetTileTitle();
   const sources = useSceneInventory();
   const tracksByTopic = useMcapLocationTracksContext();
@@ -344,7 +352,6 @@ const McapMapTile: React.FC<McapTileProps> = () => {
 
   return (
     <>
-      <McapMapTileSettings />
       <div className={styles.body} data-testid="mcap-map-tile">
         <McapMapLibreSurface
           bounds={bounds}

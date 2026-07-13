@@ -1,5 +1,5 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
-import { useSetTileTitle } from "@fiftyone/tiling";
+import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { McapRawMessageRecordResult } from "../types";
 import { useAddMcapFieldToPlot } from "./use-add-mcap-field-to-plot";
@@ -11,6 +11,7 @@ import type { McapTileProps } from "./mcap-tile-types";
 import McapRawMessageTree from "./McapRawMessageTree";
 import rawStyles from "./McapRawMessageTile.module.css";
 import McapRawMessageTileSettings from "./McapRawMessageTileSettings";
+import { useRegisterMcapTileSettings } from "./mcap-tile-settings-context";
 import styles from "./McapTile.module.css";
 import { useCopyFeedback } from "./use-copy-feedback";
 
@@ -24,6 +25,13 @@ import { useCopyFeedback } from "./use-copy-feedback";
  * (playhead-anchored, idle lane).
  */
 const McapRawMessageTile: React.FC<McapTileProps> = () => {
+  const tileId = useTileId();
+  // Settings render through the sidebar's tile-settings registry, not here.
+  const settingsRegistration = useMemo(
+    () => ({ content: <McapRawMessageTileSettings /> }),
+    [],
+  );
+  useRegisterMcapTileSettings(tileId, settingsRegistration);
   const topic = useMcapRawTileTopic();
   const setTileTitle = useSetTileTitle();
   const { recordsByTopic, subscribeRecord } = useMcapRawMessageContext();
@@ -78,7 +86,6 @@ const McapRawMessageTile: React.FC<McapTileProps> = () => {
 
   return (
     <>
-      <McapRawMessageTileSettings />
       <div className={rawStyles.body} data-cy="mcap-raw-tile">
         {!topic ? (
           <div className={styles.loading}>

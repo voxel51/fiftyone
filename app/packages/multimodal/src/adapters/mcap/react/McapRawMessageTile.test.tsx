@@ -43,6 +43,7 @@ const DISPLAYED_RESULT: McapRawMessageRecordResult = {
 
 vi.mock("@fiftyone/tiling", () => ({
   useSetTileTitle: () => mocks.setTileTitle,
+  useTileId: () => "raw-1",
 }));
 
 vi.mock("./mcap-data-stream-context", () => ({
