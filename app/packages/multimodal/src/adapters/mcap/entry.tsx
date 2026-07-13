@@ -20,6 +20,7 @@ registerComponent({
     // per-sample state swaps by source (activateSource + keyed shell).
     modal: { persistAcrossSamples: true },
     grid: {
+      clickBehavior: "passthrough",
       enabled: true,
       overrideComponent: GridRenderer,
       slots: {

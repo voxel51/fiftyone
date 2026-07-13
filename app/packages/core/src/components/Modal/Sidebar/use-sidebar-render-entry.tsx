@@ -25,10 +25,15 @@ export const useModalSidebarRenderEntry = () => {
         case fos.EntryKind.PATH: {
           const isTag = entry.path === fos.TAGS_FIELD;
           const isLabelTag = entry.path === fos.LABEL_TAGS_FIELD;
+          const isTemporalTag = entry.path === fos.TEMPORAL_TAGS_FIELD;
           const isLabel = labelPaths.includes(entry.path);
           const isOther = disabled.has(entry.path);
           const isFieldPrimitive =
-            !isLabelTag && !isLabel && !isOther && !(isTag && mode === "group");
+            !isLabelTag &&
+            !isTemporalTag &&
+            !isLabel &&
+            !isOther &&
+            !(isTag && mode === "group");
 
           return {
             children: (
@@ -36,6 +41,7 @@ export const useModalSidebarRenderEntry = () => {
                 {(isLabel ||
                   isOther ||
                   isLabelTag ||
+                  isTemporalTag ||
                   (isTag && mode === "group")) && (
                   <Entries.FilterablePath
                     entryKey={key}

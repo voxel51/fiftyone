@@ -17,6 +17,11 @@ import type {
   RgbaColor,
 } from "../../decoders";
 import { groupLineSegmentsByLabel } from "../../utils/line-segment-grouping";
+import type {
+  ImageAnnotationBounds,
+  ImageAnnotationLineListGroup,
+  ImageAnnotationRenderMetadata,
+} from "./image-annotation-render-metadata";
 import {
   imageDisplayRect,
   transformedImageDisplayRect,
@@ -66,6 +71,8 @@ export interface ImageAnnotationsOverlayProps {
    */
   readonly highlightLabel?: string | null;
   readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
+  /** Optional render-ready grouping prepared with interpolated geometry. */
+  readonly renderMetadata?: readonly ImageAnnotationRenderMetadata[];
   /** Optional nonlinear source-pixel to displayed-pixel mapping. */
   readonly pixelTransform?: ImagePixelTransform;
   readonly viewTransform?: ImageViewTransform;
@@ -91,6 +98,7 @@ export function ImageAnnotationsOverlay({
   selectedKey,
   highlightLabel,
   onSelectPrimitive,
+  renderMetadata,
   pixelTransform,
   viewTransform,
 }: ImageAnnotationsOverlayProps) {
@@ -154,6 +162,7 @@ export function ImageAnnotationsOverlay({
                   selectedKey={selectedKey ?? null}
                   highlightLabel={highlightLabel ?? null}
                   onSelectPrimitive={onSelectPrimitive}
+                  renderMetadata={renderMetadata?.[i]}
                 />
               </Fragment>
             ))}
@@ -171,6 +180,7 @@ interface SetPrimitivesProps {
   readonly selectedKey: string | null;
   readonly highlightLabel: string | null;
   readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
+  readonly renderMetadata?: ImageAnnotationRenderMetadata;
 }
 
 function SetPrimitives({
@@ -180,6 +190,7 @@ function SetPrimitives({
   selectedKey,
   highlightLabel,
   onSelectPrimitive,
+  renderMetadata,
 }: SetPrimitivesProps) {
   return (
     <>
@@ -195,6 +206,7 @@ function SetPrimitives({
             selectedKey={selectedKey}
             highlightLabel={highlightLabel}
             onSelectPrimitive={onSelectPrimitive}
+            preparedGroups={renderMetadata?.lineListGroups[j] ?? undefined}
           />
         ) : (
           <PolylinePrimitive
@@ -437,6 +449,7 @@ interface LineListGroupsProps {
   readonly selectedKey: string | null;
   readonly highlightLabel: string | null;
   readonly onSelectPrimitive?: ImageAnnotationSelectHandler;
+  readonly preparedGroups?: readonly ImageAnnotationLineListGroup[];
 }
 
 function LineListGroups({
@@ -448,10 +461,12 @@ function LineListGroups({
   selectedKey,
   highlightLabel,
   onSelectPrimitive,
+  preparedGroups,
 }: LineListGroupsProps) {
   const pixelTransform = useContext(ImagePixelTransformContext);
   const thickness = lineWidth(primitive.thickness, strokeWidth);
-  const groups = groupLineListByLabel(primitive.points, texts);
+  const groups =
+    preparedGroups ?? groupLineListByLabel(primitive.points, texts);
 
   return (
     <>
@@ -468,7 +483,7 @@ function LineListGroups({
             kind: "points",
             value: {
               ...primitive,
-              points: group.segments.flatMap((s) => [s[0], s[1]]),
+              points: group.points,
             },
           },
           color,
@@ -477,17 +492,19 @@ function LineListGroups({
         const isSelected =
           selectedKey === key ||
           (highlightLabel !== null && group.label === highlightLabel);
-        const displaySegments = group.segments
-          .map((segment) =>
-            pixelTransform
-              ? transformedSegment(segment[0], segment[1], pixelTransform)
-              : [segment[0], segment[1]],
-          )
-          .filter((segment) => segment.length >= 2);
+        const displaySegments = pixelTransform
+          ? group.segments
+              .map((segment) =>
+                transformedSegment(segment[0], segment[1], pixelTransform),
+              )
+              .filter((segment) => segment.length >= 2)
+          : group.segments;
         if (displaySegments.length === 0) {
           return null;
         }
-        const b = pointsBounds(displaySegments.flat()) ?? group.bounds;
+        const b = pixelTransform
+          ? (pointsBounds(displaySegments.flat()) ?? group.bounds)
+          : group.bounds;
         return (
           <g
             key={gi}
@@ -615,20 +632,11 @@ function TextPrimitive({
 // Helpers
 // ---------------------------------------------------------------------------
 
-interface Bounds {
-  readonly minX: number;
-  readonly minY: number;
-  readonly maxX: number;
-  readonly maxY: number;
-}
+type Bounds = ImageAnnotationBounds;
 
 type Point2 = readonly [number, number];
 
-interface LineListGroup {
-  readonly label: string | null;
-  readonly segments: readonly [Point2, Point2][];
-  readonly bounds: Bounds;
-}
+type LineListGroup = ImageAnnotationLineListGroup;
 
 function groupLineListByLabel(
   points: readonly Point2[],
@@ -636,6 +644,7 @@ function groupLineListByLabel(
 ): readonly LineListGroup[] {
   return groupLineSegmentsByLabel(points, texts).map(({ label, segments }) => ({
     label,
+    points: segments.flatMap(([a, b]) => [a, b]),
     segments,
     bounds: segmentsBounds(segments),
   }));

@@ -20,6 +20,8 @@ import {
   lowerBoundBigInt,
   makeGroup,
   matchLineListGroups,
+  prepareImageAnnotationInterpolation,
+  sampleImageAnnotationInterpolation,
   vizOf,
   type Point2,
 } from "./interpolate-image-annotations";
@@ -578,6 +580,42 @@ describe("interpolateImageAnnotations", () => {
     expect(out.points[0].type).toBe("line-list");
     expect(out.points[0].points).toHaveLength(8);
     expect(out.points[0].points[0]).toEqual([2.5, 0]);
+  });
+
+  it("samples one prepared pair immutably at multiple fractions", () => {
+    const prev = viz({
+      circles: [circle([0, 0], 10)],
+      points: [lineList(boxPoints(0, 0, 10, 10))],
+      texts: [text("car", [0, 0])],
+    });
+    const next = viz({
+      circles: [circle([20, 10], 30)],
+      points: [lineList(boxPoints(5, 0, 10, 10))],
+      texts: [text("car", [20, 10])],
+    });
+    const prepared = prepareImageAnnotationInterpolation(prev, next);
+
+    const quarterSample = sampleImageAnnotationInterpolation(prepared, 0.25);
+    const quarter = quarterSample.frame;
+    const quarterSnapshot = structuredClone(quarter);
+    const threeQuarters = sampleImageAnnotationInterpolation(
+      prepared,
+      0.75,
+    ).frame;
+
+    expect(quarter.circles[0].position).toEqual([5, 2.5]);
+    expect(quarter.points[0].points[0]).toEqual([1.25, 0]);
+    expect(quarter.texts[0].position).toEqual([5, 2.5]);
+    expect(quarterSample.renderMetadata.lineListGroups[0]?.[0].bounds).toEqual({
+      minX: 1.25,
+      minY: 0,
+      maxX: 11.25,
+      maxY: 10,
+    });
+    expect(threeQuarters.circles[0].position).toEqual([15, 7.5]);
+    expect(quarter).toEqual(quarterSnapshot);
+    expect(prev.circles[0].position).toEqual([0, 0]);
+    expect(next.circles[0].position).toEqual([20, 10]);
   });
 
   it("preserves the kind discriminant", () => {

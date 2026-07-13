@@ -2909,6 +2909,7 @@ __metadata:
     "@fiftyone/flashlight": "npm:*"
     "@fiftyone/looker": "npm:*"
     "@fiftyone/map": "npm:*"
+    "@fiftyone/multimodal": "npm:*"
     "@fiftyone/operators": "npm:*"
     "@fiftyone/spotlight": "npm:*"
     "@fiftyone/state": "npm:*"

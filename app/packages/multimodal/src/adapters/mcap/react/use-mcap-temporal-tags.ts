@@ -1,10 +1,21 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import type { Track } from "@fiftyone/playback";
-import type { TemporalTagCreatePayload } from "@fiftyone/playback";
+import type {
+  TemporalTagCreatePayload,
+  TemporalTagUpdatePayload,
+} from "@fiftyone/playback";
+import { useActiveTemporalTagFilterValues } from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import { useSampleRendererTemporalTags } from "../../../temporal-tags";
 
 const NO_TRACKS: Track[] = [];
+const NO_IDS: string[] = [];
+
+/** Track id for a temporal-tag group. Must match `TemporalTagTimeline`'s
+ * `temporal-tag::` prefix check. */
+const TEMPORAL_TAG_TRACK_PREFIX = "temporal-tag::";
+const temporalTagTrackId = (label: string): string =>
+  `${TEMPORAL_TAG_TRACK_PREFIX}${label}`;
 
 const TAG_COLORS = [
   "#f97316",
@@ -28,6 +39,7 @@ function hashLabel(label: string): number {
 export interface McapTemporalTagsResult {
   tracks: Track[];
   onTagCreate: (tag: TemporalTagCreatePayload) => Promise<void>;
+  onTagUpdate: (tag: TemporalTagUpdatePayload) => Promise<void>;
   onTagDelete: (event: { data?: unknown }) => Promise<void>;
 }
 
@@ -36,6 +48,7 @@ export function useMcapTemporalTags(
 ): McapTemporalTagsResult {
   const {
     create,
+    update,
     delete: deleteTags,
     temporalTags,
   } = useSampleRendererTemporalTags(ctx);
@@ -58,6 +71,16 @@ export function useMcapTemporalTags(
         },
       ]).then(() => undefined),
     [create],
+  );
+
+  const onTagUpdate = useCallback(
+    (tag: TemporalTagUpdatePayload) =>
+      update(tag.id, {
+        start: Math.round(tag.start * 1_000_000_000),
+        end: Math.round(tag.end * 1_000_000_000),
+        tag: tag.tag,
+      }).then(() => undefined),
+    [update],
   );
 
   const tracks = useMemo<Track[]>(() => {
@@ -83,7 +106,7 @@ export function useMcapTemporalTags(
     });
 
     return sorted.map(([label, events]) => ({
-      id: `temporal-tag::${label}`,
+      id: temporalTagTrackId(label),
       label,
       color: TAG_COLORS[hashLabel(label) % TAG_COLORS.length],
       events: events.map((t) => ({
@@ -95,5 +118,19 @@ export function useMcapTemporalTags(
     }));
   }, [temporalTags]);
 
-  return { tracks, onTagCreate, onTagDelete };
+  return { tracks, onTagCreate, onTagUpdate, onTagDelete };
+}
+
+/**
+ * Track ids to auto-pin when the modal is opened from a temporal-tag-filtered
+ * grid: one per tag value the grid is filtering *for*. Ids with no matching
+ * track are harmless — the timeline pins only tracks that exist, so a filtered
+ * tag the current sample lacks simply isn't shown.
+ */
+export function useFilteredTemporalTagPinnedIds(): string[] {
+  const values = useActiveTemporalTagFilterValues();
+  return useMemo(
+    () => (values.length ? values.map(temporalTagTrackId) : NO_IDS),
+    [values],
+  );
 }
