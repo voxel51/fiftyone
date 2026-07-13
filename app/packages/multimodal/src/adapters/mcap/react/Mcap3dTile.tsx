@@ -40,9 +40,12 @@ import { useMcap3dViewSettings } from "./mcap-3d-view-settings-context";
 import {
   buildMcap3dPlacementNotices,
   buildMcap3dTransformNotices,
+  buildMcapCapabilityNotices,
+  buildMcapReferenceFrameNotices,
   useStabilizedMcapNotices,
   type McapHealthNotice,
 } from "./mcap-health";
+import { useMcapTopicDiagnostics } from "./mcap-stream-status-state";
 import { useMcap3dViewStateStore } from "./mcap-3d-view-state-context";
 import {
   type Mcap3dViewpointController,
@@ -264,6 +267,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     useMcapTopicPlaybackFrames<GridVisualization>(mapLayerTopics);
   const calibrationFrames =
     useMcapTopicPlaybackFrames<CameraCalibrationVisualization>(cameraTopics);
+  const calibrationDiagnostics = useMcapTopicDiagnostics(cameraTopics);
   const poseFrames = useMcapTopicPlaybackFrames<PoseVisualization>(poseTopics);
   const locationFrames =
     useMcapTopicPlaybackFrames<LocationVisualization>(locationTopics);
@@ -287,7 +291,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     localUseRecommendedWorldFrame,
     localUpdateWorldFrameId,
     localWorldFrameId,
+    omittedFrameIds,
+    omittedSourceIds,
     referenceTransition,
+    referenceSelectionSource,
     updateCameraTargetFrameId,
     worldFrameId,
   } = useMcap3dFrameSelection({
@@ -913,9 +920,26 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => [
       ...placementNotices,
       ...transformNotices,
+      ...buildMcapCapabilityNotices(cameraTopics, calibrationDiagnostics),
+      ...buildMcapReferenceFrameNotices({
+        omittedFrameIds,
+        omittedSourceIds,
+        referenceFrameId: worldFrameId,
+        source: referenceSelectionSource,
+      }),
       ...(cameraTrackingNotice ? [cameraTrackingNotice] : []),
     ],
-    [cameraTrackingNotice, placementNotices, transformNotices],
+    [
+      calibrationDiagnostics,
+      cameraTopics,
+      cameraTrackingNotice,
+      omittedFrameIds,
+      omittedSourceIds,
+      placementNotices,
+      referenceSelectionSource,
+      transformNotices,
+      worldFrameId,
+    ],
   );
   // Scene-scoped notices are stabilized before reaching the panel:
   // per-tick condition flips around transform boundaries must not blink
@@ -1015,7 +1039,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const settingsElement = useMemo(
     () => (
       <Mcap3dTileSettings
-        cameraInputs={{ imageTopics: frustumImageTopics }}
+        cameraInputs={{
+          diagnosticsByTopic: calibrationDiagnostics,
+          imageTopics: frustumImageTopics,
+        }}
         frameControls={{
           cameraTargetFrameId,
           frameIds,
@@ -1052,6 +1079,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       cameraSources,
       cameraTargetFrameId,
       cameraTopics,
+      calibrationDiagnostics,
       frustumImageTopics,
       enabled,
       frameIds,

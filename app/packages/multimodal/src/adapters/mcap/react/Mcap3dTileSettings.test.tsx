@@ -1,6 +1,7 @@
 import { PlaybackProvider } from "@fiftyone/playback";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { DecodedDiagnostic } from "../../../decoders";
 import type { SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import Mcap3dTileSettings, {
@@ -132,6 +133,24 @@ describe("Mcap3dTileSettings", () => {
     expect(props.toggleSource).toHaveBeenCalledWith(CAM_FRONT.id, false);
   });
 
+  it("shows camera capability diagnostics beside the affected source", () => {
+    renderSettings({
+      cameraDiagnosticsByTopic: [
+        [
+          {
+            capability: "camera-calibration",
+            code: "camera-calibration-unavailable",
+            message: "Camera calibration is unavailable",
+            severity: "warning",
+          },
+        ],
+        [],
+      ],
+    });
+
+    expect(screen.getByText("Camera calibration is unavailable")).toBeTruthy();
+  });
+
   it("hides source groups that have no sources", () => {
     renderSettings({
       cameraSources: [],
@@ -252,7 +271,9 @@ describe("Mcap3dTileSettings", () => {
     });
 
     expect(screen.queryByRole("combobox", { name: "Up Axis" })).toBeNull();
-    expect(screen.queryByRole("combobox", { name: "World Frame" })).toBeNull();
+    expect(
+      screen.queryByRole("combobox", { name: "Reference Frame" }),
+    ).toBeNull();
   });
 
   it("wires the camera target control to the tile updater", () => {
@@ -268,7 +289,7 @@ describe("Mcap3dTileSettings", () => {
     expect(props.updateCameraTargetFrameId).toHaveBeenCalledWith("base_link");
   });
 
-  it("explains follow-mode no-ops when the target matches the world frame", () => {
+  it("explains follow-mode no-ops when the target matches the reference frame", () => {
     renderSettings({
       cameraTargetFrameId: "map",
       frameIds: ["map"],
@@ -744,6 +765,7 @@ function selectVoodooOption(combobox: HTMLElement, query: string) {
 }
 
 interface SettingsTestProps {
+  readonly cameraDiagnosticsByTopic: readonly (readonly DecodedDiagnostic[])[];
   readonly cameraSources: readonly SceneSource[];
   readonly cameraImageTopics: readonly string[];
   readonly cameraTargetFrameId: string;
@@ -798,6 +820,7 @@ function settingsProps(
   overrides: Partial<SettingsTestProps> = {},
 ): SettingsTestProps {
   return {
+    cameraDiagnosticsByTopic: [[], []],
     cameraSources: [CAM_FRONT, CAM_BACK],
     cameraImageTopics: ["CAM_FRONT/image_raw", "CAM_BACK/image_raw"],
     cameraTargetFrameId: "",
@@ -855,7 +878,10 @@ function seedModalSettings(props: SettingsTestProps) {
 
 function componentProps(props: SettingsTestProps): Mcap3dTileSettingsProps {
   return {
-    cameraInputs: { imageTopics: props.cameraImageTopics },
+    cameraInputs: {
+      diagnosticsByTopic: props.cameraDiagnosticsByTopic,
+      imageTopics: props.cameraImageTopics,
+    },
     frameControls: {
       cameraTargetFrameId: props.cameraTargetFrameId,
       frameIds: props.frameIds,

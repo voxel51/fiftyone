@@ -902,6 +902,61 @@ describe("stream status + buffering feedback", () => {
     }
   });
 
+  it("increments failure state only for the topic whose payload decode failed", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const source = createSource("source");
+      const storeCapture = capturePlaybackStore();
+      let api: ReturnType<typeof usePlayback> | undefined;
+      const client = createClient({
+        readSynchronizedMessageBatch: vi.fn(async (request) =>
+          request.timeNs.map(createPartialDecodeWindow),
+        ),
+        readSynchronizedMessages: vi.fn(async (request) =>
+          createPartialDecodeWindow(request.timeNs),
+        ),
+        readTimelineRange: vi.fn(async () => createTimelineRange()),
+      });
+
+      render(
+        <Harness
+          allTopics={[TOPIC, LIDAR_TOPIC]}
+          blockingTopics={[TOPIC, LIDAR_TOPIC]}
+          client={client}
+          onApi={(playback) => {
+            api = playback;
+          }}
+          onStore={storeCapture.onStore}
+          source={source}
+          subscribedTopics={[TOPIC, LIDAR_TOPIC]}
+        />,
+        { wrapper: TestProviders },
+      );
+      const store = storeCapture.store();
+
+      await waitFor(() => {
+        expect(getMcapTopicStatus(store, LIDAR_TOPIC)).toBe("ready");
+        expect(getStreamValue(store, LIDAR_TOPIC)).not.toBeNull();
+      });
+      await act(async () => {
+        api?.seek(0.5);
+        await Promise.resolve();
+      });
+      await waitFor(() => {
+        expect(getMcapTopicStatus(store, TOPIC)).toBe("failed");
+      });
+      expect(getMcapTopicStatus(store, LIDAR_TOPIC)).toBe("ready");
+      expect(getStreamValue(store, LIDAR_TOPIC)).not.toBeNull();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("giving up on topics"),
+        [TOPIC],
+        expect.any(Error),
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("clears the engine's paused-seek buffering flag once the seeked tick is covered", async () => {
     const source = createSource("source");
     // Hold every priority current-frame request open, keyed by tick, so
@@ -1793,6 +1848,43 @@ function createEmptyWindow(timeNs: bigint): McapSynchronizedMessageWindow {
     endTimeNs: timeNs,
     messages: [],
     messagesByTopic: {},
+    startTimeNs: timeNs,
+    streamPolicies: {},
+    timeNs,
+  };
+}
+
+function createPartialDecodeWindow(
+  timeNs: bigint,
+): McapSynchronizedMessageWindow {
+  const lidarMessage = createDecodedMessage({
+    timeNs,
+    topic: LIDAR_TOPIC,
+    visualization: {
+      bytes: new Uint8Array([1]),
+      kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+    },
+  });
+  return {
+    activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+    decodeErrorsByTopic: {
+      [TOPIC]: [
+        {
+          code: "message-decode-failed",
+          message: "invalid calibration",
+          messageTimeNs: timeNs,
+          payloadIdentity: '["cdr","ros2msg","sensor_msgs/msg/CameraInfo"]',
+          requestedTimeNs: timeNs,
+          topic: TOPIC,
+        },
+      ],
+    },
+    endTimeNs: timeNs,
+    messages: [lidarMessage],
+    messagesByTopic: {
+      [LIDAR_TOPIC]: [lidarMessage],
+      [TOPIC]: [],
+    },
     startTimeNs: timeNs,
     streamPolicies: {},
     timeNs,

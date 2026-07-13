@@ -740,6 +740,11 @@ export interface McapSynchronizedMessageWindow {
     Record<string, readonly McapDecodedMessage[]>
   >;
 
+  /** Payload decode failures, contained to their topic for this window. */
+  readonly decodeErrorsByTopic?: Readonly<
+    Record<string, readonly McapTopicDecodeDiagnostic[]>
+  >;
+
   /**
    * Inclusive lower bound covered by the resolved stream policies.
    */
@@ -756,6 +761,16 @@ export interface McapSynchronizedMessageWindow {
    * Timeline used to compute message synchronization times in this window.
    */
   readonly activeTimeline: McapActiveTimeline;
+}
+
+/** Serializable details for one topic failure in a synchronized window. */
+export interface McapTopicDecodeDiagnostic {
+  readonly code: "message-decode-failed";
+  readonly message: string;
+  readonly messageTimeNs: bigint;
+  readonly payloadIdentity: string;
+  readonly requestedTimeNs: bigint;
+  readonly topic: string;
 }
 
 /**

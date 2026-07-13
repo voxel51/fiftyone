@@ -585,11 +585,20 @@ export interface DecodedResourceHints {
   readonly transferables?: readonly Transferable[];
 }
 
+/** A successful decode's bounded capability or quality diagnostic. */
+export interface DecodedDiagnostic {
+  readonly capability?: string;
+  readonly code: string;
+  readonly message: string;
+  readonly severity: "info" | "warning";
+}
+
 /**
  * Structured decoder output for downstream playback and visualization.
  */
 export interface DecodedOutput {
   readonly attributes?: Record<string, DecodedAttributeValue>;
+  readonly diagnostics?: readonly DecodedDiagnostic[];
   readonly resourceHints?: DecodedResourceHints;
   readonly timing?: DecodedTiming;
   readonly visualization?: DecodedVisualization;

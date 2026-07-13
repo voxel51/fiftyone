@@ -9,7 +9,11 @@ import {
   maxBigInt,
   minBigInt,
 } from "../sync";
-import { mcapReadCancelledError } from "../errors";
+import {
+  isMcapTopicDecodeError,
+  mcapReadCancelledError,
+  type McapTopicDecodeError,
+} from "../errors";
 import { decodeMcapMessage, mcapMessageRecordId } from "../message-decoder";
 import type { McapIndexedMessageTime, McapIndexedReaderLike } from "../reader";
 import type { McapTimelineStrategy } from "../timeline";
@@ -18,6 +22,7 @@ import type {
   McapReadSynchronizedMessageBatchRequest,
   McapResolvedStreamSyncPolicy,
   McapSynchronizedMessageWindow,
+  McapTopicDecodeDiagnostic,
 } from "../types";
 import type { McapPredecessorStore } from "./predecessor-store";
 
@@ -42,6 +47,10 @@ interface McapRawMessageCandidate {
 interface McapIndexedMessageCandidate extends McapIndexedMessageTime {
   readonly timelineTimeNs: bigint;
 }
+
+type McapSettledTopicDecode =
+  | { readonly decoded: McapDecodedMessage; readonly status: "decoded" }
+  | { readonly error: McapTopicDecodeError; readonly status: "error" };
 
 /**
  * Reads and decodes synchronized MCAP windows for one batched playback request.
@@ -461,11 +470,75 @@ async function decodeWindowsFromCandidates<
   return Promise.all(
     selections.map(async ({ selectedByTopic, streamPolicies, timeNs }) => {
       const messagesByTopic: Record<string, readonly McapDecodedMessage[]> = {};
+      const decodeErrorsByTopic: Record<
+        string,
+        readonly McapTopicDecodeDiagnostic[]
+      > = {};
       const messages: McapDecodedMessage[] = [];
 
       for (const [topic, selected] of selectedByTopic) {
         throwIfAborted?.();
-        const decoded = await Promise.all(selected.map(decodeCandidate));
+        const settled: readonly McapSettledTopicDecode[] = await Promise.all(
+          selected.map(async (candidate) => {
+            try {
+              return {
+                decoded: await decodeCandidate(candidate),
+                status: "decoded",
+              } as const;
+            } catch (error) {
+              if (!isMcapTopicDecodeError(error)) throw error;
+              return { error, status: "error" } as const;
+            }
+          }),
+        );
+        const errors = settled
+          .filter(
+            (
+              result,
+            ): result is Extract<
+              McapSettledTopicDecode,
+              { readonly status: "error" }
+            > => result.status === "error",
+          )
+          .map((result) => result.error);
+        if (errors.length > 0) {
+          // Topic-atomic per window: never mix a partially decoded source
+          // with siblings from the same synchronized selection.
+          messagesByTopic[topic] = [];
+          decodeErrorsByTopic[topic] = [
+            ...new Map(
+              errors.map(
+                (error): readonly [string, McapTopicDecodeDiagnostic] => [
+                  [
+                    error.code,
+                    error.messageTimeNs,
+                    error.payloadIdentity,
+                    error.message,
+                  ].join("\0"),
+                  {
+                    code: error.code,
+                    message: error.message,
+                    messageTimeNs: error.messageTimeNs,
+                    payloadIdentity: error.payloadIdentity,
+                    requestedTimeNs: timeNs,
+                    topic,
+                  },
+                ],
+              ),
+            ).values(),
+          ];
+          continue;
+        }
+        const decoded = settled
+          .filter(
+            (
+              result,
+            ): result is Extract<
+              McapSettledTopicDecode,
+              { readonly status: "decoded" }
+            > => result.status === "decoded",
+          )
+          .map((result) => result.decoded);
         messagesByTopic[topic] = decoded;
         messages.push(...decoded);
       }
@@ -474,6 +547,9 @@ async function decodeWindowsFromCandidates<
 
       return {
         activeTimeline: timeline.id,
+        ...(Object.keys(decodeErrorsByTopic).length > 0
+          ? { decodeErrorsByTopic }
+          : {}),
         endTimeNs: maxBigInt(
           Object.values(streamPolicies).map((policy) => policy.endTimeNs),
         ),

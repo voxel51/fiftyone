@@ -45,7 +45,12 @@ export const McapTileStatusBadge: React.FC<{
   const statuses = useMcapTopicStatuses(stableTopics);
   const startTimes = useMcapTopicStartTimes(stableTopics);
   const staleAges = useMcapTopicStaleAges(stableTopics);
-  const notice = buildMcapTileStreamNotice({ staleAges, startTimes, statuses });
+  const notice = buildMcapTileStreamNotice({
+    staleAges,
+    startTimes,
+    statuses,
+    topics: stableTopics,
+  });
 
   if (!notice) return null;
 
@@ -77,7 +82,12 @@ export const McapTileStreamNoticeStrip: React.FC<{
   const statuses = useMcapTopicStatuses(stableTopics);
   const startTimes = useMcapTopicStartTimes(stableTopics);
   const staleAges = useMcapTopicStaleAges(stableTopics);
-  const notice = buildMcapTileStreamNotice({ staleAges, startTimes, statuses });
+  const notice = buildMcapTileStreamNotice({
+    staleAges,
+    startTimes,
+    statuses,
+    topics: stableTopics,
+  });
 
   return <McapNoticeStrip notices={notice ? [notice] : []} />;
 };

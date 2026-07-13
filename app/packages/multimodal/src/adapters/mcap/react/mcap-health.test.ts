@@ -6,7 +6,9 @@ import {
   buildMcap3dPlacementNotices,
   buildMcap3dTransformNotices,
   buildMcapCameraTargetNotice,
+  buildMcapCapabilityNotices,
   buildMcapPointCloudSamplingNotice,
+  buildMcapReferenceFrameNotices,
   buildMcapTileEmptyStateModel,
   buildMcapTileStreamNotice,
   createMcapNoticeStabilizer,
@@ -228,6 +230,54 @@ describe("buildMcapPointCloudSamplingNotice", () => {
   });
 });
 
+describe("capability and reference notices", () => {
+  it("keeps unavailable camera calibration scoped to its topic", () => {
+    expect(
+      buildMcapCapabilityNotices(
+        ["/camera/info"],
+        [
+          [
+            {
+              capability: "camera-calibration",
+              code: "camera-calibration-unavailable",
+              message: "Camera calibration is unavailable",
+              severity: "warning",
+            },
+          ],
+        ],
+      ),
+    ).toEqual([
+      {
+        id: "capability:/camera/info:camera-calibration-unavailable",
+        message: "Camera calibration is unavailable",
+        scope: "topic",
+        severity: "warning",
+        topicId: "/camera/info",
+      },
+    ]);
+  });
+
+  it("explains the truthful local reference without claiming registration", () => {
+    expect(
+      buildMcapReferenceFrameNotices({
+        omittedFrameIds: ["base_link", "world"],
+        omittedSourceIds: ["/camera/info"],
+        referenceFrameId: "velodyne",
+        source: "auto-local",
+      }),
+    ).toEqual([
+      {
+        detail:
+          "Omitted sources: /camera/info. No transform path to base_link, world",
+        id: "reference:local",
+        message: "Showing velodyne in local coordinates",
+        scope: "scene",
+        severity: "info",
+      },
+    ]);
+  });
+});
+
 describe("buildMcapTileStreamNotice", () => {
   it("returns null while every topic is current", () => {
     expect(
@@ -344,6 +394,17 @@ describe("buildMcapTileStreamNotice", () => {
       severity: "error",
       status: "failed",
     });
+  });
+
+  it("names failed sources instead of showing an aggregate fraction", () => {
+    expect(
+      buildMcapTileStreamNotice({
+        staleAges: [null, null, null],
+        startTimes: [null, null, null],
+        statuses: ["failed", "ready", "failed"],
+        topics: ["/camera/ir", "/lidar", "/camera/front"],
+      })?.message,
+    ).toBe("Failed to load: /camera/ir, /camera/front");
   });
 
   it("orders severity: failed over loading over gap over stale", () => {

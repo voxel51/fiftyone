@@ -20,6 +20,7 @@ import {
 } from "@voxel51/voodo";
 import type { Descriptor } from "@voxel51/voodo";
 import React, { useEffect, useMemo, useState } from "react";
+import type { DecodedDiagnostic } from "../../../decoders";
 import type { SceneSource } from "../../../scene-inventory";
 import {
   isFollowTrackingMode,
@@ -115,6 +116,7 @@ export interface Mcap3dTileSettingsPointCloudInputs {
 
 /** Image topics paired with the currently selected camera calibrations. */
 export interface Mcap3dTileSettingsCameraInputs {
+  readonly diagnosticsByTopic: readonly (readonly DecodedDiagnostic[])[];
   readonly imageTopics: readonly string[];
 }
 
@@ -169,7 +171,7 @@ export interface Mcap3dTileSettingsProps {
  * Settings for one 3D view, registered into the sidebar's panel tab.
  * Everything here answers "what does this window show": the tile's stream
  * status, its camera (viewpoint + tracking), which sources it draws, and
- * its viewport appearance. Scene-defining state — world frame, up axis —
+ * its viewport appearance. Scene-defining state — reference frame, up axis —
  * lives on the sidebar's Scene tab instead. Unlike the image tile, sources
  * are multi-selectable — overlaying several sensors in one view is the
  * point of a 3D panel — so per-source checkboxes group into collapsible
@@ -208,6 +210,18 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   const pointCloudTopics = sourceGroups.pointCloud.topics;
   const cameraSources = sourceGroups.camera.sources;
   const cameraTopics = sourceGroups.camera.topics;
+  const cameraDetailsBySourceId = useMemo(
+    () =>
+      new Map(
+        cameraTopics.map((topic, index) => [
+          topic,
+          (cameraInputs.diagnosticsByTopic[index] ?? []).map(
+            (diagnostic) => diagnostic.message,
+          ),
+        ]),
+      ),
+    [cameraInputs.diagnosticsByTopic, cameraTopics],
+  );
   const sceneAnnotationSources = sourceGroups.sceneAnnotation.sources;
   const sceneAnnotationTopics = sourceGroups.sceneAnnotation.topics;
   const poseSources = sourceGroups.pose.sources;
@@ -247,9 +261,10 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
         worldFrameId &&
         cameraTargetFrameId === worldFrameId ? (
           <span className={settingsStyles.emptyText}>
-            The camera target and the world frame match, so follow modes change
-            nothing: a frame cannot move relative to itself. Pick a global world
-            frame (like map) on the Scene tab to see the target move.
+            The camera target and the reference frame match, so follow modes
+            change nothing: a frame cannot move relative to itself. Pick a
+            global reference frame (like map) on the Scene tab to see the target
+            move.
           </span>
         ) : null}
       </McapSidebarGroup>
@@ -279,6 +294,7 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
       ) : null}
 
       <SourceGroup
+        detailsBySourceId={cameraDetailsBySourceId}
         enabled={enabled}
         selectedCount={cameraTopics.length}
         setSourcesEnabled={setSourcesEnabled}
@@ -490,6 +506,7 @@ function isMcapImageGeometryMode(
 
 function SourceGroup({
   children,
+  detailsBySourceId,
   enabled,
   selectedCount,
   setSourcesEnabled,
@@ -499,6 +516,7 @@ function SourceGroup({
   toggleSource,
 }: {
   readonly children?: React.ReactNode;
+  readonly detailsBySourceId?: ReadonlyMap<string, readonly string[]>;
   readonly enabled: ReadonlySet<string>;
   readonly selectedCount: number;
   readonly setSourcesEnabled: (
@@ -529,15 +547,28 @@ function SourceGroup({
       }}
     >
       <div className={settingsStyles.optionStack}>
-        {sources.map((s) => (
-          <Checkbox
-            key={s.id}
-            label={s.label}
-            checked={enabled.has(s.id)}
-            onChange={(checked) => toggleSource(s.id, checked)}
-            {...checkboxNoSpaceToggleProps}
-          />
-        ))}
+        {sources.map((s) => {
+          const details = detailsBySourceId?.get(s.id) ?? [];
+          return (
+            <div key={s.id}>
+              <Checkbox
+                label={s.label}
+                checked={enabled.has(s.id)}
+                onChange={(checked) => toggleSource(s.id, checked)}
+                {...checkboxNoSpaceToggleProps}
+              />
+              {details.map((detail, index) => (
+                <Text
+                  color={TextColor.Muted}
+                  key={`${index}:${detail}`}
+                  variant={TextVariant.Xs}
+                >
+                  {detail}
+                </Text>
+              ))}
+            </div>
+          );
+        })}
       </div>
       {children}
     </McapSidebarGroup>

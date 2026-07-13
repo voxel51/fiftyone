@@ -1071,7 +1071,10 @@ export function useRegisterMcapDataStream({
         )
         .then((windows) => {
           if (sourceEpochRef.current !== sourceEpoch) return;
-          handleFetchSuccess(topicsToFetch);
+          const decodeFailures = decodeFailuresByTopic(windows);
+          handleFetchSuccess(
+            topicsToFetch.filter((topic) => !decodeFailures.has(topic)),
+          );
 
           const activeFetchedTopics = activeTopicsInCaches(
             caches,
@@ -1080,9 +1083,23 @@ export function useRegisterMcapDataStream({
           if (activeFetchedTopics.length === 0) return;
 
           for (const window of windows) {
-            distributeWindowToCaches(window, caches, activeFetchedTopics, {
-              pinned: operation === "loopback-lookahead",
-            });
+            distributeWindowToCaches(
+              window,
+              caches,
+              activeFetchedTopics.filter(
+                (topic) => !window.decodeErrorsByTopic?.[topic],
+              ),
+              {
+                pinned: operation === "loopback-lookahead",
+              },
+            );
+          }
+          for (const [topic, failure] of decodeFailures) {
+            handleFetchFailure(
+              new Error(failure.messages.join("; ")),
+              failure.ticks,
+              [topic],
+            );
           }
           rebalanceDecodedCaches(operation === "background-lookahead");
           const currentIndex = indexRef.current;
@@ -1162,7 +1179,10 @@ export function useRegisterMcapDataStream({
         })
         .then((window) => {
           if (sourceEpochRef.current !== sourceEpoch) return;
-          handleFetchSuccess(topicsToFetch);
+          const decodeFailures = decodeFailuresByTopic([window]);
+          handleFetchSuccess(
+            topicsToFetch.filter((topic) => !decodeFailures.has(topic)),
+          );
 
           const activeFetchedTopics = activeTopicsInCaches(
             caches,
@@ -1170,7 +1190,20 @@ export function useRegisterMcapDataStream({
           );
           if (activeFetchedTopics.length === 0) return;
 
-          distributeWindowToCaches(window, caches, activeFetchedTopics);
+          distributeWindowToCaches(
+            window,
+            caches,
+            activeFetchedTopics.filter(
+              (topic) => !window.decodeErrorsByTopic?.[topic],
+            ),
+          );
+          for (const [topic, failure] of decodeFailures) {
+            handleFetchFailure(
+              new Error(failure.messages.join("; ")),
+              failure.ticks,
+              [topic],
+            );
+          }
           rebalanceDecodedCaches(false);
           pushTickToStore(
             activeTopicsInCaches(caches, activeTopics),
@@ -1183,6 +1216,7 @@ export function useRegisterMcapDataStream({
         })
         .catch((error) => {
           if (sourceEpochRef.current !== sourceEpoch) return;
+          if (isMcapReadCancelledError(error)) return;
           handleFetchFailure(error, [tick], topicsToFetch);
         })
         .finally(() => {
@@ -2162,6 +2196,40 @@ function distributeWindowToCaches(
     const msgs = window.messagesByTopic[topic];
     caches.get(topic)?.set(window.timeNs, msgs?.[0] ?? null, options);
   }
+}
+
+interface McapTopicWindowDecodeFailure {
+  readonly messages: readonly string[];
+  readonly ticks: readonly bigint[];
+}
+
+function decodeFailuresByTopic(
+  windows: readonly McapSynchronizedMessageWindow[],
+): ReadonlyMap<string, McapTopicWindowDecodeFailure> {
+  const messagesByTopic = new Map<string, Set<string>>();
+  const ticksByTopic = new Map<string, bigint[]>();
+  for (const window of windows) {
+    for (const [topic, diagnostics] of Object.entries(
+      window.decodeErrorsByTopic ?? {},
+    )) {
+      const messages = messagesByTopic.get(topic) ?? new Set<string>();
+      for (const diagnostic of diagnostics) messages.add(diagnostic.message);
+      messagesByTopic.set(topic, messages);
+      const ticks = ticksByTopic.get(topic) ?? [];
+      ticks.push(window.timeNs);
+      ticksByTopic.set(topic, ticks);
+    }
+  }
+
+  return new Map(
+    [...messagesByTopic].map(([topic, messages]) => [
+      topic,
+      {
+        messages: [...messages],
+        ticks: ticksByTopic.get(topic) ?? [],
+      },
+    ]),
+  );
 }
 
 function bufferedRangesEqual(
