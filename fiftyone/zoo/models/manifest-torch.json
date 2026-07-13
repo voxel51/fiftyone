@@ -12016,7 +12016,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "paddleocr", "transformers>=5.13"],
+                "packages": ["torch", "paddleocr>=3.7", "transformers>=5.13"],
                 "cpu": {
                     "support": true
                 },
@@ -12044,7 +12044,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "paddleocr", "transformers>=5.13"],
+                "packages": ["torch", "paddleocr>=3.7", "transformers>=5.13"],
                 "cpu": {
                     "support": true
                 },
@@ -12072,7 +12072,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "paddleocr", "transformers>=5.13"],
+                "packages": ["torch", "paddleocr>=3.7", "transformers>=5.13"],
                 "cpu": {
                     "support": true
                 },
@@ -12101,7 +12101,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "paddleocr", "transformers>=5.13"],
+                "packages": ["torch", "paddleocr>=3.7", "transformers>=5.13"],
                 "cpu": {
                     "support": true
                 },
@@ -12130,7 +12130,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "paddleocr", "transformers>=5.13"],
+                "packages": ["torch", "paddleocr>=3.7", "transformers>=5.13"],
                 "cpu": {
                     "support": true
                 },
@@ -12159,7 +12159,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "paddleocr", "transformers>=5.13"],
+                "packages": ["torch", "paddleocr>=3.7", "transformers>=5.13"],
                 "cpu": {
                     "support": true
                 },

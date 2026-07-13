@@ -10,6 +10,7 @@
 import logging
 
 import numpy as np
+from PIL import Image as PILImage
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -20,24 +21,31 @@ fou.ensure_torch()
 
 logger = logging.getLogger(__name__)
 
-# The PP-OCRv6 safetensors weights are run through paddleocr's ``transformers``
-# engine (torch only, no paddlepaddle). That engine needs a transformers new
-# enough to expose ``AutoModelForTextRecognition`` and the PP-OCR model types;
-# 5.0.0 (the version pinned in some enterprise images) is too old.
+# PP-OCRv6 models and the ``transformers`` engine require paddleocr>=3.7. The
+# engine needs a transformers version that provides
+# ``AutoModelForTextRecognition`` and the PP-OCR model types
+_MIN_PADDLEOCR = "paddleocr>=3.7"
 _MIN_TRANSFORMERS = "transformers>=5.13"
 
 
 def _ensure_paddleocr():
-    fou.ensure_package("paddleocr")
+    fou.ensure_package(_MIN_PADDLEOCR)
     fou.ensure_package(_MIN_TRANSFORMERS)
 
 
 paddleocr = fou.lazy_import("paddleocr", callback=_ensure_paddleocr)
 
-from PIL import Image as PILImage
-
 DEFAULT_DET_MODEL = "PP-OCRv6_medium_det"
 DEFAULT_REC_MODEL = "PP-OCRv6_medium_rec"
+
+
+def _map_device(device):
+    """Maps a torch device string to paddleocr's device convention."""
+    device = str(device)
+    if device.startswith("cuda"):
+        return "gpu" + device[4:]
+
+    return device
 
 
 def _to_numpy_bgr(img):
@@ -67,7 +75,9 @@ def _to_numpy_bgr(img):
 
     if img.ndim == 2:
         img = np.stack([img] * 3, axis=-1)
-    if img.shape[2] == 4:
+    elif img.shape[2] == 1:
+        img = np.repeat(img, 3, axis=2)
+    elif img.shape[2] == 4:
         img = img[:, :, :3]
 
     # RGB (FiftyOne/PIL) -> BGR (paddleocr/cv2)
@@ -78,10 +88,10 @@ def _quad_to_bbox(poly, width, height):
     """Axis-aligned ``[x, y, w, h]`` in ``[0, 1]`` enclosing a quad polygon."""
     xs = [float(p[0]) for p in poly]
     ys = [float(p[1]) for p in poly]
-    x0 = max(min(xs), 0.0)
-    y0 = max(min(ys), 0.0)
-    x1 = min(max(xs), float(width))
-    y1 = min(max(ys), float(height))
+    x0 = min(max(min(xs), 0.0), float(width))
+    y0 = min(max(min(ys), 0.0), float(height))
+    x1 = min(max(max(xs), 0.0), float(width))
+    y1 = min(max(max(ys), 0.0), float(height))
     return [
         x0 / width,
         y0 / height,
@@ -97,6 +107,9 @@ def _rotate_crop(img_bgr, poly):
     import cv2
 
     points = np.array(poly, dtype=np.float32)
+    if points.shape != (4, 2):
+        return None
+
     crop_w = int(
         max(
             np.linalg.norm(points[0] - points[1]),
@@ -258,7 +271,9 @@ class PaddleOCRDetectionModel(fout.TorchImageModel):
 
     def _load_model(self, config):
         return paddleocr.TextDetection(
-            model_name=config.det_model_name, engine="transformers"
+            model_name=config.det_model_name,
+            engine="transformers",
+            device=_map_device(self._device),
         )
 
     @property
@@ -274,8 +289,10 @@ class PaddleOCRDetectionModel(fout.TorchImageModel):
             try:
                 for res in self._model.predict(input=arr, batch_size=1):
                     r = res.json["res"]
-                    polys.extend(r.get("dt_polys") or [])
-                    scores.extend(r.get("dt_scores") or [])
+                    if r.get("dt_polys") is not None:
+                        polys.extend(r["dt_polys"])
+                    if r.get("dt_scores") is not None:
+                        scores.extend(r["dt_scores"])
             except Exception as e:  # per-image guard
                 logger.warning("PP-OCR detection failed on an image: %s", e)
             out.append(
@@ -296,6 +313,8 @@ class PaddleOCRModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         det_model_name ("PP-OCRv6_medium_det"): the PP-OCR text-detection model
         rec_model_name ("PP-OCRv6_medium_rec"): the PP-OCR text-recognition
             model
+        rec_batch_size (32): the batch size to use when recognizing the
+            detected text-region crops
     """
 
     def __init__(self, d):
@@ -307,6 +326,7 @@ class PaddleOCRModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.rec_model_name = self.parse_string(
             d, "rec_model_name", default=DEFAULT_REC_MODEL
         )
+        self.rec_batch_size = self.parse_int(d, "rec_batch_size", default=32)
         self.raw_inputs = True
         if self.output_processor_cls is None:
             self.output_processor_cls = (
@@ -349,11 +369,16 @@ class PaddleOCRModel(fout.TorchImageModel):
         pass  # paddleocr downloads the models on first load
 
     def _load_model(self, config):
+        device = _map_device(self._device)
         self._rec_model = paddleocr.TextRecognition(
-            model_name=config.rec_model_name, engine="transformers"
+            model_name=config.rec_model_name,
+            engine="transformers",
+            device=device,
         )
         return paddleocr.TextDetection(
-            model_name=config.det_model_name, engine="transformers"
+            model_name=config.det_model_name,
+            engine="transformers",
+            device=device,
         )
 
     @property
@@ -369,8 +394,10 @@ class PaddleOCRModel(fout.TorchImageModel):
             try:
                 for res in self._model.predict(input=arr, batch_size=1):
                     r = res.json["res"]
-                    polys.extend(r.get("dt_polys") or [])
-                    det_scores.extend(r.get("dt_scores") or [])
+                    if r.get("dt_polys") is not None:
+                        polys.extend(r["dt_polys"])
+                    if r.get("dt_scores") is not None:
+                        det_scores.extend(r["dt_scores"])
             except Exception as e:
                 logger.warning("PP-OCR detection failed on an image: %s", e)
 
@@ -387,7 +414,10 @@ class PaddleOCRModel(fout.TorchImageModel):
                 try:
                     rec_out = list(
                         self._rec_model.predict(
-                            input=crops, batch_size=len(crops)
+                            input=crops,
+                            batch_size=min(
+                                len(crops), self.config.rec_batch_size
+                            ),
                         )
                     )
                     for i, res in zip(crop_idx, rec_out):
