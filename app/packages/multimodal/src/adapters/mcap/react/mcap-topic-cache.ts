@@ -129,9 +129,9 @@ export class McapTopicCache {
       const hadEntry = previousEntry !== undefined;
       const previous = previousEntry?.msg;
       this.cache.delete(key);
-      if (previousEntry) this.releaseEntry(previousEntry);
       const entry = { msg };
       this.retainEntry(entry);
+      if (previousEntry) this.releaseEntry(previousEntry);
       this.pinned.set(key, entry);
       if (!hadEntry || previous !== msg) this.bumpRevision();
       return;
@@ -143,6 +143,8 @@ export class McapTopicCache {
     const previous = this.cache.peek(key)?.msg;
     const entry = { msg };
     this.retainEntry(entry);
+    // LRUCache's default noDisposeOnSet=false releases the replaced entry via
+    // dispose, keeping message-retention byte accounting balanced.
     this.cache.set(key, entry);
     if (!hadEntry || previous !== msg) this.bumpRevision();
   }

@@ -517,6 +517,9 @@ export function McapNumericSeriesBridge({
               const failedNow = nowMs();
               for (const fieldPath of fieldPaths) {
                 const key = mcapNumericSeriesKey(batch.topic, fieldPath);
+                if (speculativelyReservedKeys.delete(key)) {
+                  speculativeBytesReserved -= ESTIMATED_SERIES_BYTES_PER_FIELD;
+                }
                 coverage.set(
                   key,
                   removeCoveredRange(

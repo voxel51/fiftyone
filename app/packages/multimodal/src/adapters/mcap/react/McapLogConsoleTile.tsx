@@ -263,7 +263,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
           return {
             rawRows: merged.rows,
             status: "ready",
-            truncated: current.truncated || merged.truncated,
+            truncated: merged.truncated,
           };
         });
       } catch (error) {
