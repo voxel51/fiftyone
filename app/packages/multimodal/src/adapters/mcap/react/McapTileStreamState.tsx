@@ -10,6 +10,7 @@ import {
   useMcapTopicStaleAges,
   useMcapTopicStatuses,
 } from "./mcap-stream-status-state";
+import McapNoticeStrip from "./McapNoticeStrip";
 import styles from "./McapTile.module.css";
 
 /** Loading gaps shorter than this should read as an atomic frame swap. */
@@ -61,6 +62,24 @@ export const McapTileStatusBadge: React.FC<{
       {notice.message}
     </span>
   );
+};
+
+/**
+ * The same per-topic stream summary as the corner badge, rendered as the
+ * tile settings' status strip: buffering, gap, stale, and failure states
+ * read identically whether the user is looking at the tile or its
+ * settings. Renders nothing while every topic is current.
+ */
+export const McapTileStreamNoticeStrip: React.FC<{
+  topics: readonly string[];
+}> = ({ topics }) => {
+  const stableTopics = useStableTopics(topics);
+  const statuses = useMcapTopicStatuses(stableTopics);
+  const startTimes = useMcapTopicStartTimes(stableTopics);
+  const staleAges = useMcapTopicStaleAges(stableTopics);
+  const notice = buildMcapTileStreamNotice({ staleAges, startTimes, statuses });
+
+  return <McapNoticeStrip notices={notice ? [notice] : []} />;
 };
 
 /**

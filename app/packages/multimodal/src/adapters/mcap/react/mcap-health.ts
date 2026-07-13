@@ -17,6 +17,7 @@
  * | `transform:clamped`            | info     | scene | nearest-sample transform used within the boundary clamp |
  * | `transform:large-gap`          | warning  | scene | interpolating across a gap wider than the warning threshold |
  * | `camera:target-unavailable`    | warning  | scene | follow tracking enabled but the target transform is missing |
+ * | `render:sampled`               | warning  | scene | point clouds exceed the display cap and render sampled |
  * | `stream:loading`               | info     | tile  | a topic is buffering at the playhead |
  * | `stream:gap`                   | info     | tile  | the playhead is before a topic's first message |
  * | `stream:stale`                 | warning  | tile  | the displayed frame is older than the stale threshold |
@@ -208,6 +209,42 @@ export function buildMcapCameraTargetNotice({
     detail: `${cameraTargetFrameId} to ${worldFrameId}`,
     id: "camera:target-unavailable",
     message: "Camera target transform unavailable",
+    scope: "scene",
+    severity: "warning",
+  };
+}
+
+/**
+ * Live point-cloud sampling summary: how many rendered clouds exceed the
+ * display cap, and the largest finite point count among them.
+ */
+export interface McapPointCloudSamplingSummary {
+  readonly largestFinitePointCount: number;
+  readonly sampledCloudCount: number;
+}
+
+/**
+ * Display-sampling notice: at least one rendered point cloud exceeds the
+ * per-cloud render cap and is shown sampled. Null while every cloud renders
+ * in full.
+ */
+export function buildMcapPointCloudSamplingNotice(
+  sampling: McapPointCloudSamplingSummary | null,
+  maxRenderPoints: number,
+): McapHealthNotice | null {
+  if (!sampling || sampling.sampledCloudCount <= 0) {
+    return null;
+  }
+
+  const detail =
+    sampling.sampledCloudCount === 1
+      ? `Showing ${maxRenderPoints.toLocaleString()} of ${sampling.largestFinitePointCount.toLocaleString()} points.`
+      : `${sampling.sampledCloudCount.toLocaleString()} point clouds exceed the ${maxRenderPoints.toLocaleString()}-point display limit.`;
+
+  return {
+    detail,
+    id: "render:sampled",
+    message: "Point cloud sampled for display",
     scope: "scene",
     severity: "warning",
   };

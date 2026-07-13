@@ -6,6 +6,7 @@ import {
   buildMcap3dPlacementNotices,
   buildMcap3dTransformNotices,
   buildMcapCameraTargetNotice,
+  buildMcapPointCloudSamplingNotice,
   buildMcapTileEmptyStateModel,
   buildMcapTileStreamNotice,
   createMcapNoticeStabilizer,
@@ -187,6 +188,42 @@ describe("buildMcapCameraTargetNotice", () => {
         ...missingTarget,
         cameraTargetFrameId: "",
       }),
+    ).toBeNull();
+  });
+});
+
+describe("buildMcapPointCloudSamplingNotice", () => {
+  it("details the single sampled cloud against the render cap", () => {
+    expect(
+      buildMcapPointCloudSamplingNotice(
+        { largestFinitePointCount: 275_000, sampledCloudCount: 1 },
+        150_000,
+      ),
+    ).toEqual({
+      detail: "Showing 150,000 of 275,000 points.",
+      id: "render:sampled",
+      message: "Point cloud sampled for display",
+      scope: "scene",
+      severity: "warning",
+    });
+  });
+
+  it("counts clouds when several exceed the display limit", () => {
+    expect(
+      buildMcapPointCloudSamplingNotice(
+        { largestFinitePointCount: 900_000, sampledCloudCount: 3 },
+        150_000,
+      )?.detail,
+    ).toBe("3 point clouds exceed the 150,000-point display limit.");
+  });
+
+  it("stays quiet while every cloud renders in full", () => {
+    expect(buildMcapPointCloudSamplingNotice(null, 150_000)).toBeNull();
+    expect(
+      buildMcapPointCloudSamplingNotice(
+        { largestFinitePointCount: 0, sampledCloudCount: 0 },
+        150_000,
+      ),
     ).toBeNull();
   });
 });
