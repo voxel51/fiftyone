@@ -4,7 +4,10 @@ import type {
   DecodedOutput,
   Decoder,
 } from "../../../../decoders";
-import { resourceHintsForArrayBufferViews } from "../../../../decoders";
+import {
+  buildPointCloudRenderPayload,
+  resourceHintsForArrayBufferViews,
+} from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
@@ -86,6 +89,13 @@ export function decodeFoxgloveLaserScanRecord(
   });
   const pointCount =
     decoded.positions.length / LASER_SCAN_POINT_COMPONENT_COUNT;
+  const scalarFields = decoded.intensities
+    ? [{ name: INTENSITY_FIELD_NAME, values: decoded.intensities }]
+    : undefined;
+  const renderPayload = buildPointCloudRenderPayload({
+    positions: decoded.positions,
+    scalarFields,
+  });
 
   const attributes: Record<string, DecodedAttributeValue> = {
     endAngle,
@@ -100,6 +110,9 @@ export function decodeFoxgloveLaserScanRecord(
   const transferableViews = [
     decoded.positions,
     ...(decoded.intensities ? [decoded.intensities] : []),
+    renderPayload.positions,
+    ...renderPayload.scalarFields.map((field) => field.values),
+    renderPayload.sourceIndices,
   ];
 
   return {
@@ -112,13 +125,8 @@ export function decodeFoxgloveLaserScanRecord(
       kind: VISUALIZATION_KIND.POINT_CLOUD,
       pointCount,
       positions: decoded.positions,
-      ...(decoded.intensities
-        ? {
-            scalarFields: [
-              { name: INTENSITY_FIELD_NAME, values: decoded.intensities },
-            ],
-          }
-        : {}),
+      renderPayload,
+      ...(scalarFields ? { scalarFields } : {}),
     },
   };
 }

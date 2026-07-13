@@ -18,6 +18,13 @@ describe("mcapSceneSources", () => {
         "cdr",
         "ros2msg",
       ),
+      createTopic("/CAM_RGBD/raw", "foxglove.RawImage"),
+      createTopic(
+        "/CAM_RGBD/raw_cdr",
+        "foxglove_msgs/msg/RawImage",
+        "cdr",
+        "ros2msg",
+      ),
       createTopic("/LIDAR_TOP", "foxglove.PointCloud"),
       createTopic("/scan", "foxglove.LaserScan"),
       createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
@@ -42,6 +49,9 @@ describe("mcapSceneSources", () => {
         id: "/CAM_FRONT/image_rect_compressed",
         type: MCAP_SOURCE_TYPE.IMAGE,
         label: "CAM_FRONT",
+        metadata: {
+          "mcap.calibration_topic": "/CAM_FRONT/camera_info",
+        },
       },
       {
         id: "/CAM_REAR/image",
@@ -57,6 +67,16 @@ describe("mcapSceneSources", () => {
         id: "/CAM_VIDEO_CDR",
         type: MCAP_SOURCE_TYPE.IMAGE,
         label: "CAM_VIDEO_CDR",
+      },
+      {
+        id: "/CAM_RGBD/raw",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "CAM_RGBD",
+      },
+      {
+        id: "/CAM_RGBD/raw_cdr",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "CAM_RGBD/raw_cdr",
       },
       {
         id: "/LIDAR_TOP",

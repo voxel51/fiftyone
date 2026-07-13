@@ -1,6 +1,16 @@
 import { useTiling } from "@fiftyone/tiling";
+import { useStreamValues } from "@fiftyone/playback";
 import {
+  Align,
+  Card,
+  CardBackground,
+  Icon,
+  IconColor,
+  IconName,
+  Orientation,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -15,6 +25,11 @@ import React, {
   useState,
 } from "react";
 import type { StreamInventory } from "../../../schemas/v1";
+import { useSceneSourcesByType } from "../../../scene-inventory";
+import type { PointCloudVisualization } from "../../../decoders";
+import { MAX_POINT_CLOUD_RENDER_POINTS } from "../../../decoders";
+import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 import {
   type McapPlaybackFidelityMode,
   type McapTemporalPolicySettings,
@@ -22,6 +37,7 @@ import {
   useMcapTemporalPolicySettings,
 } from "./mcap-modal-settings";
 import McapSidebarGroup from "./McapSidebarGroup";
+import McapPerformanceStats from "./McapPerformanceStats";
 import styles from "./McapSettingsSidebar.module.css";
 import McapTopicsSettings from "./McapTopicsSettings";
 
@@ -36,6 +52,7 @@ const McapSettingsSidebar: React.FC<{
   readonly topics?: readonly StreamInventory[];
 }> = ({ topics = [] }) => {
   const { focusedTileId, setSettingsSlotEl, tiles } = useTiling();
+  const sampling = usePointCloudSamplingState();
   const focusedTile =
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId] : null;
   const focusedTileTitle = focusedTile?.title ?? null;
@@ -70,7 +87,7 @@ const McapSettingsSidebar: React.FC<{
         id: "scene",
         data: {
           label: "Scene",
-          content: <GlobalSceneSettings />,
+          content: <GlobalSceneSettings sampling={sampling} />,
         },
       },
       {
@@ -78,10 +95,12 @@ const McapSettingsSidebar: React.FC<{
         data: {
           label: "Topics",
           content: (
-            <McapTopicsSettings
-              onTopicActionStart={suppressNextPanelAutoSwitch}
-              topics={topics}
-            />
+            <TopicsSettingsContent sampling={sampling}>
+              <McapTopicsSettings
+                onTopicActionStart={suppressNextPanelAutoSwitch}
+                topics={topics}
+              />
+            </TopicsSettingsContent>
           ),
         },
       },
@@ -92,13 +111,21 @@ const McapSettingsSidebar: React.FC<{
         id: "panel",
         data: {
           label: focusedTileTitle,
-          content: <PanelSettingsContent slotRef={slotRef} />,
+          content: (
+            <PanelSettingsContent sampling={sampling} slotRef={slotRef} />
+          ),
         },
       });
     }
 
     return nextTabs;
-  }, [focusedTileTitle, slotRef, suppressNextPanelAutoSwitch, topics]);
+  }, [
+    focusedTileTitle,
+    sampling,
+    slotRef,
+    suppressNextPanelAutoSwitch,
+    topics,
+  ]);
   const selectedTab =
     hasPanelTab &&
     !hadPanelTabRef.current &&
@@ -126,30 +153,127 @@ const McapSettingsSidebar: React.FC<{
         fullWidth
         onChange={handleTabChange}
         size={Size.Sm}
+        tabListClassName={styles.stickyTabList}
         tabs={tabs}
       />
     </div>
   );
 };
 
+function TopicsSettingsContent({
+  children,
+  sampling,
+}: {
+  readonly children: React.ReactNode;
+  readonly sampling: PointCloudSamplingState | null;
+}) {
+  return (
+    <div className={styles.root}>
+      <PointCloudSamplingWarning sampling={sampling} />
+      {children}
+    </div>
+  );
+}
+
 function PanelSettingsContent({
+  sampling,
   slotRef,
 }: {
+  readonly sampling: PointCloudSamplingState | null;
   readonly slotRef: (el: HTMLDivElement | null) => void;
 }) {
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
+      <PointCloudSamplingWarning sampling={sampling} />
       <div ref={slotRef} />
     </div>
   );
 }
 
-function GlobalSceneSettings() {
+function GlobalSceneSettings({
+  sampling,
+}: {
+  readonly sampling: PointCloudSamplingState | null;
+}) {
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
+      <PointCloudSamplingWarning sampling={sampling} />
+      <McapPerformanceStats sampling={sampling} />
       <PlaybackFidelitySettings />
       <TimeResolutionSettings />
     </div>
+  );
+}
+
+interface PointCloudSamplingState {
+  readonly sampledCloudCount: number;
+  readonly largestFinitePointCount: number;
+}
+
+function usePointCloudSamplingState(): PointCloudSamplingState | null {
+  const pointCloudSources = useSceneSourcesByType(MCAP_SOURCE_TYPE.POINT_CLOUD);
+  const topicIds = useMemo(
+    () => pointCloudSources.map((source) => source.id),
+    [pointCloudSources],
+  );
+  const frames =
+    useStreamValues<McapTopicPlaybackFrame<PointCloudVisualization> | null>(
+      topicIds,
+    );
+
+  let sampledCloudCount = 0;
+  let largestFinitePointCount = 0;
+  for (const playbackFrame of frames) {
+    const payload = playbackFrame?.frame.renderPayload;
+    if (!payload || payload.finitePointCount <= payload.sampledPointCount) {
+      continue;
+    }
+    sampledCloudCount++;
+    largestFinitePointCount = Math.max(
+      largestFinitePointCount,
+      payload.finitePointCount,
+    );
+  }
+
+  return sampledCloudCount > 0
+    ? { largestFinitePointCount, sampledCloudCount }
+    : null;
+}
+
+function PointCloudSamplingWarning({
+  sampling,
+}: {
+  readonly sampling: PointCloudSamplingState | null;
+}) {
+  if (!sampling) return null;
+
+  const description =
+    sampling.sampledCloudCount === 1
+      ? `Showing ${MAX_POINT_CLOUD_RENDER_POINTS.toLocaleString()} of ${sampling.largestFinitePointCount.toLocaleString()} points.`
+      : `${sampling.sampledCloudCount.toLocaleString()} point clouds exceed the ${MAX_POINT_CLOUD_RENDER_POINTS.toLocaleString()}-point display limit.`;
+
+  return (
+    <Card background={CardBackground.Secondary} compact outlined>
+      <Stack
+        align={Align.Start}
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+      >
+        <Icon
+          color={IconColor.Warning}
+          name={IconName.Warning}
+          size={Size.Sm}
+        />
+        <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+          <Text color={TextColor.Warning} variant={TextVariant.Sm}>
+            Point cloud sampled for display
+          </Text>
+          <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
+            {description}
+          </Text>
+        </Stack>
+      </Stack>
+    </Card>
   );
 }
 

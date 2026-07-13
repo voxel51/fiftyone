@@ -218,13 +218,14 @@ describe("build3dLayers", () => {
         targetFrameId,
         transform,
       })),
-      frames: [playbackFrame(frame("lidar"))],
+      frames: [playbackFrame(frame("lidar"), 123n)],
       selectedTopics: ["lidar-topic"],
       worldFrameId: "base_link",
     });
 
     expect(unresolvedFrameIds).toEqual([]);
     expect(pointCloudLayers).toHaveLength(1);
+    expect(pointCloudLayers[0]?.contentTimeNs).toBe(123n);
     expect(pointCloudLayers[0]?.frameTransform).toBe(transform);
   });
 
@@ -236,7 +237,7 @@ describe("build3dLayers", () => {
           status: "pending",
           targetFrameId,
         })),
-        frames: [playbackFrame(frame("lidar"))],
+        frames: [playbackFrame(frame("lidar"), 456n)],
         selectedTopics: ["lidar-topic"],
         worldFrameId: "map",
       });
@@ -246,6 +247,7 @@ describe("build3dLayers", () => {
     expect(unresolvedFrameIds).toEqual([]);
     expect(provisionalFrameIds).toEqual(["lidar"]);
     expect(pointCloudLayers).toHaveLength(1);
+    expect(pointCloudLayers[0]?.contentTimeNs).toBe(456n);
     expect(pointCloudLayers[0]?.frameTransform).toBeUndefined();
   });
 
@@ -308,12 +310,13 @@ describe("build3dLayers", () => {
       frameTransforms: transformsState(() => {
         throw new Error("resolve must not run for frameless clouds");
       }),
-      frames: [playbackFrame(frame(undefined))],
+      frames: [playbackFrame(frame(undefined), 789n)],
       selectedTopics: ["pcd-topic"],
       worldFrameId: "map",
     });
 
     expect(pointCloudLayers).toHaveLength(1);
+    expect(pointCloudLayers[0]?.contentTimeNs).toBe(789n);
     expect(pointCloudLayers[0]?.frameTransform).toBeUndefined();
   });
 

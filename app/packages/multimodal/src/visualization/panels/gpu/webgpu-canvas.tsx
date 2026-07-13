@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three/webgpu";
 
-import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
+import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../style-tokens";
 import {
   registerWebGpuRenderer,
   type WebGpuRendererRegistration,
@@ -23,6 +23,16 @@ type RendererWithDreiCompat = THREE.WebGPURenderer & {
 
 type RendererWithSetSize = {
   setSize: (width: number, height: number, updateStyle?: boolean) => void;
+};
+
+interface WebGpuDeviceLossInfo {
+  readonly api?: string;
+  readonly message?: string;
+  readonly reason?: string | null;
+}
+
+type RendererWithDeviceLoss = {
+  onDeviceLost?: (info: WebGpuDeviceLossInfo) => void;
 };
 
 // Playback canvases redraw frequently; default to CSS pixel density and let
@@ -152,6 +162,29 @@ export function WebGpuCanvas({
     const applySize = sizedRenderer.setSize.bind(renderer);
     sizedRenderer.setSize = (width, height, updateStyle) =>
       applySize(Math.max(1, width), Math.max(1, height), updateStyle);
+    const rendererWithDeviceLoss =
+      renderer as unknown as RendererWithDeviceLoss;
+    const defaultDeviceLoss =
+      rendererWithDeviceLoss.onDeviceLost?.bind(renderer);
+    rendererWithDeviceLoss.onDeviceLost = (info) => {
+      defaultDeviceLoss?.(info);
+      if (!mountedRef.current || rendererRef.current !== renderer) {
+        return;
+      }
+      // A lost device makes this renderer permanently unusable. Clear the
+      // identity before surfacing the error so later effects cannot prepare or
+      // invalidate it as though it were still the active backend.
+      rendererRef.current = null;
+      rendererReadyRef.current = false;
+      releaseRendererRegistration(registrationsRef.current, renderer);
+      setIsReady(false);
+      const reason = info.reason ? ` (${info.reason})` : "";
+      onErrorRef.current?.(
+        `${info.api ?? "WebGPU"} device lost${reason}: ${
+          info.message ?? "unknown reason"
+        }`,
+      );
+    };
     // Canvas may ask for a renderer before React rebuilds callbacks. Read the
     // color from a ref so renderer creation stays stable across color changes.
     prepareWebGpuRenderer(renderer, clearColorRef.current);
@@ -233,6 +266,7 @@ export function WebGpuCanvas({
     <Canvas
       camera={camera}
       className={className}
+      data-webgpu-surface={surface}
       dpr={dpr}
       flat
       frameloop={isReady ? frameloop : "never"}

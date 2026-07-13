@@ -168,6 +168,7 @@ export function buildMcapTopicInventoryRows({
           sourceType,
           stream,
           telemetry,
+          topic: name,
         }),
         countLabel: messageCountLabel(stream.recordCount),
         encoding: encodingFor(stream),
@@ -222,12 +223,17 @@ function categoryForTopic({
   sourceType,
   stream,
   telemetry,
+  topic,
 }: {
   readonly frameTransform: boolean;
   readonly sourceType: McapSourceType | null;
   readonly stream: StreamInventory;
   readonly telemetry: boolean;
+  readonly topic: string;
 }): McapTopicCategory {
+  if (/(?:^|\/)imu(?:\/|$)/i.test(topic)) {
+    return MCAP_TOPIC_CATEGORY.SENSORS;
+  }
   if (sourceType === MCAP_SOURCE_TYPE.LOG || isLogStream(stream)) {
     return MCAP_TOPIC_CATEGORY.DIAGNOSTICS;
   }

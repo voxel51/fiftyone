@@ -5,6 +5,10 @@ import {
   type PointCloudColormap,
 } from "../../../visualization/panels/point-cloud";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../../visualization/panels/style-tokens";
+import type {
+  McapImageDisplayMode,
+  McapImageGeometryMode,
+} from "./camera-geometry/mcap-camera-model";
 
 /**
  * Timing tolerances and warning thresholds for synchronized MCAP playback.
@@ -68,11 +72,32 @@ export interface McapPointCloudColorSettings {
 }
 
 /**
+ * Per-image-topic pointcloud projection preferences. Projected dots
+ * inherit each cloud's 3D colour settings; point size is the
+ * projection's own knob because dots compete with photographic detail,
+ * not a dark void.
+ */
+export interface McapImageProjectionSettings {
+  /** Explicit calibration topic; null uses the scene-inventory association. */
+  readonly calibrationTopic: string | null;
+  /** Presentation of the recorded pixels; rectified is an explicit remap. */
+  readonly display: McapImageDisplayMode;
+  readonly enabled: boolean;
+  /** Recorded image pixel geometry; Auto blocks materially ambiguous models. */
+  readonly geometry: McapImageGeometryMode;
+  /** Dot size, on the same scale as the 3D point size. */
+  readonly pointSize: number;
+  /** Explicit cloud topics to project; null projects every cloud. */
+  readonly topics: readonly string[] | null;
+}
+
+/**
  * Full localStorage payload for browser-wide MCAP modal preferences.
  */
 export interface McapPersistedModalSettings {
   readonly fidelityMode: McapPlaybackFidelityMode;
   readonly imageLabelTopics: Record<string, readonly string[]>;
+  readonly imageProjection: Record<string, McapImageProjectionSettings>;
   readonly pinholeCamera: McapPinholeCameraSettings;
   readonly pointCloudColors: Record<string, McapPointCloudColorSettings>;
   readonly pointCloudPointSize: number;
@@ -238,6 +263,7 @@ export const MCAP_POINT_CLOUD_POINT_SIZE_STEP = 0.25;
 export const DEFAULT_MCAP_MODAL_SETTINGS: McapPersistedModalSettings = {
   fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
   imageLabelTopics: {},
+  imageProjection: {},
   pinholeCamera: DEFAULT_MCAP_PINHOLE_CAMERA,
   pointCloudColors: {},
   pointCloudPointSize: DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
@@ -264,6 +290,9 @@ export function readMcapModalSettings(): McapPersistedModalSettings {
       fidelityMode: normalizeMcapFidelityMode(candidate.fidelityMode),
       imageLabelTopics: normalizeMcapImageLabelTopicMap(
         candidate.imageLabelTopics,
+      ),
+      imageProjection: normalizeMcapImageProjectionMap(
+        candidate.imageProjection,
       ),
       pinholeCamera: normalizeMcapPinholeCamera(candidate.pinholeCamera),
       pointCloudColors: normalizeMcapPointCloudColorMap(
@@ -313,6 +342,7 @@ export function normalizeMcapModalSettings(
     imageLabelTopics: normalizeMcapImageLabelTopicMap(
       settings.imageLabelTopics,
     ),
+    imageProjection: normalizeMcapImageProjectionMap(settings.imageProjection),
     pinholeCamera: normalizeMcapPinholeCamera(settings.pinholeCamera),
     pointCloudColors: normalizeMcapPointCloudColorMap(
       settings.pointCloudColors,
@@ -336,6 +366,90 @@ export function normalizeMcapFidelityMode(
   return FIDELITY_MODES.includes(value as McapPlaybackFidelityMode)
     ? (value as McapPlaybackFidelityMode)
     : DEFAULT_MCAP_FIDELITY_MODE;
+}
+
+/**
+ * Default projected-dot size: 3× the default 3D point size, so dots
+ * stay legible over imagery out of the box.
+ */
+export const DEFAULT_MCAP_PROJECTION_POINT_SIZE =
+  3 * DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE;
+
+/**
+ * Default pointcloud projection settings for one image topic.
+ */
+export const DEFAULT_MCAP_IMAGE_PROJECTION: McapImageProjectionSettings = {
+  calibrationTopic: null,
+  display: "recorded",
+  enabled: false,
+  geometry: "auto",
+  pointSize: DEFAULT_MCAP_PROJECTION_POINT_SIZE,
+  topics: [],
+} as const;
+
+/**
+ * Normalizes persisted per-image-topic pointcloud projection settings.
+ */
+export function normalizeMcapImageProjectionMap(
+  value: unknown,
+): Record<string, McapImageProjectionSettings> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return {};
+  }
+
+  const result: Record<string, McapImageProjectionSettings> = {};
+  for (const [imageTopic, settings] of Object.entries(value)) {
+    const normalizedImageTopic = imageTopic.trim();
+    if (!normalizedImageTopic) continue;
+    result[normalizedImageTopic] = normalizeMcapImageProjection(settings);
+  }
+  return result;
+}
+
+/**
+ * Normalizes one pointcloud projection settings entry.
+ */
+export function normalizeMcapImageProjection(
+  value: unknown,
+): McapImageProjectionSettings {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return DEFAULT_MCAP_IMAGE_PROJECTION;
+  }
+
+  const candidate = value as Partial<McapImageProjectionSettings>;
+  const topics =
+    candidate.topics === null || candidate.topics === undefined
+      ? null
+      : normalizeMcapTopicList(candidate.topics);
+  const enabled =
+    candidate.enabled === true && (topics === null || topics.length > 0);
+  return {
+    calibrationTopic: normalizeOptionalTopic(candidate.calibrationTopic),
+    display: normalizeMcapImageDisplay(candidate.display),
+    enabled,
+    geometry: normalizeMcapImageGeometry(candidate.geometry),
+    pointSize: clampNumber(
+      candidate.pointSize,
+      MIN_MCAP_POINT_CLOUD_POINT_SIZE,
+      MAX_MCAP_POINT_CLOUD_POINT_SIZE,
+      DEFAULT_MCAP_PROJECTION_POINT_SIZE,
+    ),
+    topics: enabled ? topics : [],
+  };
+}
+
+/** Returns a supported image presentation mode or the recorded pixels. */
+export function normalizeMcapImageDisplay(
+  value: unknown,
+): McapImageDisplayMode {
+  return value === "rectified" ? value : "recorded";
+}
+
+/** Returns a supported image-geometry mode or Auto. */
+export function normalizeMcapImageGeometry(
+  value: unknown,
+): McapImageGeometryMode {
+  return value === "original" || value === "rectified" ? value : "auto";
 }
 
 /**
@@ -372,6 +486,13 @@ export function normalizeMcapTopicList(value: unknown): readonly string[] {
         .filter(Boolean),
     ),
   );
+}
+
+function normalizeOptionalTopic(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  return value.trim() || null;
 }
 
 /**

@@ -61,7 +61,7 @@ export const useIsGroupDataset = () => {
   return useRecoilValue(isGroup);
 };
 
-export type GroupSliceMediaType = "video" | "3d" | "image";
+export type GroupSliceMediaType = "video" | "3d" | "image" | "multimodal";
 
 /**
  * Hook which provides a function to get the default keypoint skeleton for a

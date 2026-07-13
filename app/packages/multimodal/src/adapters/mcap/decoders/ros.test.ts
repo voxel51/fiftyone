@@ -636,6 +636,42 @@ describe("ROS MCAP decoders", () => {
     expect(
       Array.from(output.visualization.scalarFields?.[1]?.values ?? []),
     ).toEqual([50_000, 60_000, 65_535]);
+    const renderPayload = output.visualization.renderPayload;
+    if (!renderPayload) {
+      throw new Error("Expected point cloud render payload");
+    }
+    expect(renderPayload).toMatchObject({
+      bounds: { max: [9, 10, 11], min: [1, 2, 3] },
+      capacity: 1_024,
+      finitePointCount: 3,
+      heightRange: { max: 11, min: 3 },
+      sampledPointCount: 3,
+    });
+    expect(Array.from(renderPayload.sourceIndices.slice(0, 3))).toEqual([
+      0, 1, 2,
+    ]);
+    expect(renderPayload.scalarFields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          finiteValueCount: 3,
+          name: "intensity",
+          range: { max: 40, min: 10 },
+        }),
+        expect.objectContaining({
+          finiteValueCount: 3,
+          name: "ring",
+          range: { max: 65_535, min: 50_000 },
+        }),
+      ]),
+    );
+    expect(output.resourceHints?.transferables).toEqual(
+      expect.arrayContaining([
+        renderPayload.positions.buffer,
+        renderPayload.sourceIndices.buffer,
+        renderPayload.scalarFields[0].values.buffer,
+        renderPayload.scalarFields[1].values.buffer,
+      ]),
+    );
     expect(output.attributes).toMatchObject({
       frameId: "lidar",
       height: 2,
@@ -1089,7 +1125,7 @@ describe("ROS MCAP decoders", () => {
     const unsupported = decoder.decode(
       ros1ImageMessage({
         data: [1, 2],
-        encoding: "yuv422",
+        encoding: "nv12",
         height: 1,
         step: 2,
         width: 1,
@@ -1109,8 +1145,8 @@ describe("ROS MCAP decoders", () => {
 
     expect(unsupported.visualization).toBeUndefined();
     expect(unsupported.attributes).toMatchObject({
-      encoding: "yuv422",
-      unsupportedReason: "ROS Image encoding 'yuv422' is unsupported",
+      encoding: "nv12",
+      unsupportedReason: "ROS Image encoding 'nv12' is unsupported",
     });
     expect(malformed.visualization).toBeUndefined();
     expect(malformed.attributes?.unsupportedReason).toContain(
@@ -1153,11 +1189,20 @@ describe("ROS MCAP decoders", () => {
       throw new Error("Expected camera calibration visualization");
     }
     expect(output.visualization).toMatchObject({
+      binningX: 0,
+      binningY: 0,
       coordinateFrameId: "camera_optical",
       D: [0.1, -0.2, 0, 0, 0],
       distortionModel: "plumb_bob",
       height: 480,
       K,
+      roi: {
+        doRectify: false,
+        height: 0,
+        width: 0,
+        xOffset: 0,
+        yOffset: 0,
+      },
       timestampNs: 5_000_000_006n,
       width: 640,
     });
@@ -1196,6 +1241,29 @@ describe("ROS MCAP decoders", () => {
     expect(
       Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
     ).toEqual([5, 7]);
+    const renderPayload = output.visualization.renderPayload;
+    if (!renderPayload) {
+      throw new Error("Expected point cloud render payload");
+    }
+    expect(renderPayload).toMatchObject({
+      capacity: 1_024,
+      finitePointCount: 2,
+      sampledPointCount: 2,
+    });
+    expect(renderPayload.bounds?.min[0]).toBeCloseTo(-1);
+    expect(renderPayload.bounds?.max[0]).toBeCloseTo(1);
+    expect(renderPayload.bounds?.min[1]).toBeCloseTo(0);
+    expect(renderPayload.bounds?.max[1]).toBeCloseTo(0);
+    expect(
+      Array.from(renderPayload.scalarFields[0].values.slice(0, 2)),
+    ).toEqual([5, 7]);
+    expect(output.resourceHints?.transferables).toEqual(
+      expect.arrayContaining([
+        renderPayload.positions.buffer,
+        renderPayload.sourceIndices.buffer,
+        renderPayload.scalarFields[0].values.buffer,
+      ]),
+    );
   });
 
   it("decodes ros2 PoseStamped and Odometry into pose visualizations", () => {

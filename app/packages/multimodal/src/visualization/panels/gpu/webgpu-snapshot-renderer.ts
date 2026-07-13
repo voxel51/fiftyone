@@ -33,12 +33,12 @@ import {
   PERSPECTIVE_POINT_CAMERA,
   cameraPoseForBounds,
   sceneBoundsForLayers,
-} from "./point-cloud/camera-fit-bounds";
+} from "../point-cloud/camera-fit-bounds";
 import {
   DEFAULT_MAX_RENDERED_POINTS,
   POINT_COMPONENT_COUNT,
   buildPointCloudRenderData,
-} from "./point-cloud/point-cloud-colors";
+} from "../point-cloud/point-cloud-colors";
 import {
   DEFAULT_POINT_SIZE,
   POINT_CLOUD_POINTS_MATERIAL_PROPS,
@@ -48,15 +48,15 @@ import {
   createPointCloudGeometry,
   createPointCloudInstanceAttributes,
   createPointCloudSpriteMaterial,
-} from "./point-cloud/PointCloudSceneLayer";
-import { pointCloudObjectTransform } from "./point-cloud/transforms";
+} from "../point-cloud/PointCloudSceneLayer";
+import { pointCloudObjectTransform } from "../point-cloud/transforms";
 import type {
   PointCloudCameraPose,
   PointCloudColorBy,
   PointCloudPanelLayer,
   PointCloudRenderLayer,
-} from "./point-cloud/types";
-import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
+} from "../point-cloud/types";
+import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../style-tokens";
 import {
   registerWebGpuRenderer,
   type WebGpuRendererRegistration,

@@ -805,6 +805,7 @@ function seedModalSettings(props: SettingsTestProps) {
   writeMcapModalSettings({
     fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
     imageLabelTopics: {},
+    imageProjection: {},
     pinholeCamera: props.pinholeCamera,
     pointCloudColors: props.pointCloudColors,
     pointCloudPointSize: props.pointCloudPointSize,

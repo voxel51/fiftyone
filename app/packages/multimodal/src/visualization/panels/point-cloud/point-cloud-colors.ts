@@ -56,6 +56,72 @@ export interface PointCloudColorOptions {
   readonly uniformColor?: string;
 }
 
+/**
+ * Streams the resolved per-point colouring of one cloud: `write` emits
+ * the colour of any source (decoded) index into a target array. Shared
+ * by the 3D render path and the 2D projection overlay so a cloud's dots
+ * look identical wherever it appears — same settings resolution, same
+ * auto-channel fallbacks, same per-frame normalization.
+ */
+export interface PointCloudColorWriter {
+  /** The scalar ramp in effect, for legends/emphasis; null for rgb/uniform. */
+  readonly colorRamp: PointCloudColorRamp | null;
+  readonly write: (
+    target: Float32Array,
+    targetOffset: number,
+    sourcePointIndex: number,
+    /** The point's sensor-frame z, driving height ramps. */
+    z: number,
+  ) => void;
+}
+
+/**
+ * Builds the colour writer for one cloud from its decoded arrays and
+ * colour settings.
+ */
+export function createPointCloudColorWriter(
+  sourcePositions: Float32Array,
+  colorOptions: PointCloudColorOptions,
+): PointCloudColorWriter {
+  return createPointCloudColorWriterWithBounds(
+    sourcePositions,
+    colorOptions,
+    computeSourceHeightBounds(sourcePositions),
+  );
+}
+
+function createPointCloudColorWriterWithBounds(
+  sourcePositions: Float32Array,
+  colorOptions: PointCloudColorOptions,
+  heightBounds: ReturnType<typeof computeSourceHeightBounds>,
+): PointCloudColorWriter {
+  const colormapLookup = createPointCloudColormapLookup(
+    colorOptions.colormap ?? DEFAULT_POINT_CLOUD_COLORMAP,
+  );
+  const colorSource = resolvePointCloudColorSource({
+    ...colorOptions,
+    fixedRange: resolveFixedRange(colorOptions),
+    heightBounds,
+    sourcePointCount: Math.floor(
+      sourcePositions.length / POINT_COMPONENT_COUNT,
+    ),
+    sourcePositions,
+  });
+
+  return {
+    colorRamp: colorRampForSource(colorSource, colormapLookup.colormap, 1),
+    write: (target, targetOffset, sourcePointIndex, z) =>
+      writePointColor(
+        target,
+        targetOffset,
+        colorSource,
+        colormapLookup,
+        sourcePointIndex,
+        z,
+      ),
+  };
+}
+
 export function buildPointCloudRenderData(
   sourcePositions: Float32Array,
   maxRenderedPoints: number,
@@ -64,12 +130,7 @@ export function buildPointCloudRenderData(
   const sourcePointCount = Math.floor(
     sourcePositions.length / POINT_COMPONENT_COUNT,
   );
-  const sampleEvery = Math.max(
-    MIN_POINT_SAMPLE_COUNT,
-    Math.ceil(
-      sourcePointCount / Math.max(MIN_POINT_SAMPLE_COUNT, maxRenderedPoints),
-    ),
-  );
+  const sampleEvery = pointSampleStride(sourcePointCount, maxRenderedPoints);
   const maxSampleCount = Math.max(
     MIN_POINT_SAMPLE_COUNT,
     Math.ceil(sourcePointCount / sampleEvery),
@@ -77,16 +138,11 @@ export function buildPointCloudRenderData(
   const positions = new Float32Array(maxSampleCount * POINT_COMPONENT_COUNT);
   const colors = new Float32Array(maxSampleCount * COLOR_COMPONENT_COUNT);
   const heightBounds = computeSourceHeightBounds(sourcePositions);
-  const colormapLookup = createPointCloudColormapLookup(
-    colorOptions.colormap ?? DEFAULT_POINT_CLOUD_COLORMAP,
-  );
-  const colorSource = resolvePointCloudColorSource({
-    ...colorOptions,
-    fixedRange: resolveFixedRange(colorOptions),
-    heightBounds,
-    sourcePointCount,
+  const colorWriter = createPointCloudColorWriterWithBounds(
     sourcePositions,
-  });
+    colorOptions,
+    heightBounds,
+  );
   const bounds = new THREE.Box3();
   // Bounds are updated per rendered point; reuse one vector to avoid a large
   // allocation burst on dense point clouds.
@@ -105,7 +161,7 @@ export function buildPointCloudRenderData(
     const y = sourcePositions[sourceOffset + Y_COMPONENT_INDEX];
     const z = sourcePositions[sourceOffset + Z_COMPONENT_INDEX];
 
-    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+    if (!isFinitePosition(x, y, z)) {
       continue;
     }
 
@@ -113,14 +169,7 @@ export function buildPointCloudRenderData(
     positions[targetOffset + X_COMPONENT_INDEX] = x;
     positions[targetOffset + Y_COMPONENT_INDEX] = y;
     positions[targetOffset + Z_COMPONENT_INDEX] = z;
-    writePointColor(
-      colors,
-      targetOffset,
-      colorSource,
-      colormapLookup,
-      sourcePointIndex,
-      z,
-    );
+    colorWriter.write(colors, targetOffset, sourcePointIndex, z);
     tmpVec.set(
       positions[targetOffset + X_COMPONENT_INDEX],
       positions[targetOffset + Y_COMPONENT_INDEX],
@@ -145,16 +194,71 @@ export function buildPointCloudRenderData(
 
   return {
     bounds,
-    colorRamp: colorRampForSource(
-      colorSource,
-      colormapLookup.colormap,
-      renderedPointCount,
-    ),
+    colorRamp: renderedPointCount > 0 ? colorWriter.colorRamp : null,
     colors,
     finitePointCount: heightBounds.finitePointCount,
     positions,
     renderedPointCount,
   };
+}
+
+/**
+ * Recovers the source (decoded-array) index of the n-th rendered point.
+ * Replays the exact sampling walk of {@link buildPointCloudRenderData}
+ * (uniform stride + non-finite drop), so a raycast hit on the rendered
+ * geometry maps back to decoded per-point fields without materializing an
+ * index map on every playback tick — the walk runs only when picking.
+ */
+export function sourcePointIndexForRenderedIndex(
+  sourcePositions: Float32Array,
+  maxRenderedPoints: number,
+  renderedIndex: number,
+): number | null {
+  if (!Number.isInteger(renderedIndex) || renderedIndex < 0) {
+    return null;
+  }
+
+  const sourcePointCount = Math.floor(
+    sourcePositions.length / POINT_COMPONENT_COUNT,
+  );
+  const sampleEvery = pointSampleStride(sourcePointCount, maxRenderedPoints);
+  let renderedPointCount = 0;
+
+  for (
+    let sourcePointIndex = 0;
+    sourcePointIndex < sourcePointCount;
+    sourcePointIndex += sampleEvery
+  ) {
+    const sourceOffset = sourcePointIndex * POINT_COMPONENT_COUNT;
+    const x = sourcePositions[sourceOffset];
+    const y = sourcePositions[sourceOffset + Y_COMPONENT_INDEX];
+    const z = sourcePositions[sourceOffset + Z_COMPONENT_INDEX];
+
+    if (!isFinitePosition(x, y, z)) {
+      continue;
+    }
+
+    if (renderedPointCount === renderedIndex) {
+      return sourcePointIndex;
+    }
+    renderedPointCount++;
+  }
+
+  return null;
+}
+
+function pointSampleStride(
+  pointCount: number,
+  maxRenderedPoints: number,
+): number {
+  return Math.max(
+    MIN_POINT_SAMPLE_COUNT,
+    Math.ceil(pointCount / Math.max(MIN_POINT_SAMPLE_COUNT, maxRenderedPoints)),
+  );
+}
+
+function isFinitePosition(x: number, y: number, z: number): boolean {
+  return Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z);
 }
 
 type PointCloudColorSource =
