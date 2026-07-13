@@ -82,6 +82,7 @@ describe("SpeedControl", () => {
     const achievedRate = screen.getByTestId("timeline-controls-achieved-speed");
     expect(achievedRate.textContent).toBe("actual 3.1×");
     expect(achievedRate.title).toBe("Requested 4×; currently achieving 3.1×");
+    expect(achievedRate.getAttribute("aria-live")).toBe("polite");
   });
 
   it("does not add noise when achieved speed is close to requested", () => {

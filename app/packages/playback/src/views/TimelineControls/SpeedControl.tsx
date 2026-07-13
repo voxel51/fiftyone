@@ -160,6 +160,7 @@ const SpeedControl: React.FC = () => {
       />
       {underDelivering ? (
         <span
+          aria-live="polite"
           className={styles.achievedSpeed}
           data-testid="timeline-controls-achieved-speed"
           title={`Requested ${fmtSpeed(speed)}; currently achieving ${fmtSpeed(
