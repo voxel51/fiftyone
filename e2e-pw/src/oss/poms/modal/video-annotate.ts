@@ -276,6 +276,19 @@ export class VideoAnnotatePom {
     );
   }
 
+  /**
+   * The distinct field PATHS of every label row currently listed in the sidebar
+   * (read off `data-cy-path`, e.g. `frames.detections`, `detections`, `events`).
+   * The annotate sidebar list is gated on the per-slice schema filter, so this
+   * reflects which schema paths the open slice offers for annotation.
+   */
+  async listedLabelPaths(): Promise<string[]> {
+    const paths = await this.labelRows.evaluateAll((els) =>
+      els.map((e) => e.getAttribute("data-cy-path") ?? ""),
+    );
+    return [...new Set(paths.filter(Boolean))];
+  }
+
   /** Select a listed label row by its class text (opens its editor). */
   async selectLabel(labelText: string) {
     await this.labelRow(labelText).first().click();

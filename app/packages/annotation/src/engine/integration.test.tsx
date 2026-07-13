@@ -190,7 +190,7 @@ const useMockSidebar = (engine: AnnotationEngine, sample: string) => {
   const form = useEngineSelector(engine, (e) =>
     anchor ? e.getLabel(anchor) : undefined,
   );
-  const actions = useSurfaceActions(engine, "mock-sidebar");
+  const actions = useSurfaceActions(engine, "mock-sidebar", "sample-1");
 
   return { entries, anchor, activeIds, hoveredIds, form, actions };
 };

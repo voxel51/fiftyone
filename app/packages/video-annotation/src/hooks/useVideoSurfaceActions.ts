@@ -581,8 +581,8 @@ const makeTemporalDetectionOps = (actions: SurfaceActions) => {
  */
 export const useVideoSurfaceActions = (): VideoSurfaceActions => {
   const engine = useAnnotationEngine();
-  const actions = useSurfaceActions(engine, SURFACE);
   const sampleId = useActiveSampleId();
+  const actions = useSurfaceActions(engine, SURFACE, sampleId);
   const stream = useFrameLabelsStream();
   const eventBus = useAnnotationEventBus();
 
