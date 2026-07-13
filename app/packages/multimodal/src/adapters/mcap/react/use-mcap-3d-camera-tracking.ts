@@ -246,6 +246,7 @@ export function useMcap3dCameraTracking({
       restore?.navigationCompositions.length &&
       snapshot.navigationCompositions === restore.navigationCompositions
     ) {
+      pendingCompositionRestoreRef.current = [];
       viewStateStore.recordNavigationCompositions([]);
     }
   }, [

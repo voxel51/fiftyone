@@ -816,6 +816,32 @@ describe("useMcap3dCameraTracking view-state restore", () => {
     expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
   });
 
+  it("abandons a pending composition when the source shape changes", () => {
+    const restore = cameraRestore({
+      navigationCompositions: [targetComposition({})],
+    });
+    viewStateStore.recordNavigationCompositions(restore.navigationCompositions);
+    const { rerender, result } = renderHook(useMcap3dCameraTracking, {
+      initialProps: trackingProps({
+        placementStatus: "empty",
+        restore,
+        sourceKey: "source-b",
+      }),
+    });
+
+    rerender(
+      trackingProps({
+        placementStatus: "transformed",
+        renderableSourceIds: ["radar"],
+        restore,
+        sourceKey: "source-b",
+      }),
+    );
+
+    expect(result.current.poseCommand).toBeNull();
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+  });
+
   it("flushes the latest imperative pose before a persistent-shell source hop", () => {
     const anchor = trackingAnchor({
       relativePosition: [6, 0, 10],
