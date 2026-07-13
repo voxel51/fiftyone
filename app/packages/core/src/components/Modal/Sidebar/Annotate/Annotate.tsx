@@ -46,6 +46,9 @@ const DISABLED_MESSAGES: Record<
     </p>
   ),
   videoDataset: <p>Annotation isn&rsquo;t supported for video datasets.</p>,
+  multimodalDataset: (
+    <p>Annotation isn&rsquo;t supported for multimodal datasets.</p>
+  ),
 };
 
 const Container = styled.div`
