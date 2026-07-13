@@ -65,7 +65,7 @@ export const useAutoInterpolate = (): void => {
   const sampleId = useActiveSampleId();
   const stream = useFrameLabelsStream();
   const propagate = useVideoPropagate();
-  const actions = useSurfaceActions(engine, SURFACE);
+  const actions = useSurfaceActions(engine, SURFACE, sampleId);
 
   useAnnotationEventHandler(
     "annotation:keyframeChanged",

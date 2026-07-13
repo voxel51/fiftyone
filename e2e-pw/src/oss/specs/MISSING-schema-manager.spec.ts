@@ -252,23 +252,23 @@ test.describe.serial("schema manager", () => {
     await expect(page.getByRole("button", { name: "Schema" })).toBeHidden();
   });
 
-  test("annotation disabled for grouped dataset with no supported slices", async ({
+  test("annotation enabled for a grouped dataset with a video slice", async ({
     fiftyoneLoader,
     page,
     modal,
     schemaManager,
   }) => {
-    // Navigate to grouped video dataset
+    // A grouped dataset whose slice is a video now supports annotation. Video
+    // slices are annotatable, so the tab is enabled rather than reporting "no
+    // slices that support annotation" (previously video was omitted from the
+    // supported group slice types). Every real group slice media type
+    // (image/video/3d/point-cloud) is now annotatable.
     await fiftyoneLoader.waitUntilGridVisible(page, groupVideoDatasetName, {
       searchParams: new URLSearchParams({ id: groupVideoId }),
     });
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
 
-    // Annotation should be disabled for grouped datasets with no supported slices
-    await modal.sidebar.assert.hasDisabledMessage(
-      "has no slices that support annotation",
-    );
-    await schemaManager.assert.isDisabled();
+    await schemaManager.assert.isEnabled();
   });
 });
