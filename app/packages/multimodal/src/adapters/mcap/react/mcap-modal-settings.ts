@@ -31,9 +31,10 @@ import {
   type McapPointCloudColorSettings,
   type McapReferenceGridSettings,
   type McapSceneBackgroundSettings,
-  type McapScopedModalSettings,
   type McapTemporalPolicySettings,
 } from "./mcap-modal-settings-storage";
+import type { McapScopedModalSettings } from "./mcap-modal-settings-storage";
+export type { McapScopedModalSettings };
 export type {
   McapImageDisplayMode,
   McapImageGeometryMode,
@@ -66,7 +67,6 @@ export {
   type McapReferenceGridSettings,
   type McapSceneBackgroundMode,
   type McapSceneBackgroundSettings,
-  type McapScopedModalSettings,
   type McapTemporalPolicySettings,
 } from "./mcap-modal-settings-storage";
 
