@@ -60,6 +60,7 @@ import { pushTickToStore } from "./mcap-playback-frame-push";
 import {
   computeMcapStartupCushion,
   MAX_STARTUP_CUSHION_SECONDS,
+  MAX_STARTUP_CUSHION_WAIT_SECONDS,
   UNMEASURED_LINK_NOMINAL_WAIT_SECONDS,
   type McapStartupCushion,
 } from "./mcap-startup-cushion";
@@ -1556,6 +1557,7 @@ export function useRegisterMcapDataStream({
         if (getActiveBlockingTopics().length === 0) return 0;
         return resolveStartupCushion().cushionSeconds;
       },
+      startupBufferMaxWaitSeconds: MAX_STARTUP_CUSHION_WAIT_SECONDS,
       bufferedRanges: computeBufferedRanges,
 
       bufferState: (timeSec) => {

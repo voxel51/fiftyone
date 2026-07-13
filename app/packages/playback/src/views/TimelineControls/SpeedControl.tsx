@@ -2,7 +2,10 @@ import clsx from "clsx";
 import React, { useEffect, useRef, useState } from "react";
 import { MAX_SPEED, MIN_SPEED } from "../../lib/constants";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
-import { useSpeed } from "../../lib/playback/use-playback-state";
+import {
+  useAchievedSpeed,
+  useSpeed,
+} from "../../lib/playback/use-playback-state";
 import { usePointerLockDrag } from "../../utils/usePointerLockDrag";
 import styles from "./TimelineControls.module.css";
 
@@ -15,6 +18,7 @@ const CLICK_PX_THRESHOLD = 3;
 const PX_PER_DOUBLING = 130;
 // Arrow-key / nudge factor.
 const NUDGE_FACTOR = 1.1;
+const UNDER_DELIVERY_RATIO = 0.9;
 
 /** `1` -> "1×", `0.25` -> "0.25×". */
 const fmtSpeed = (n: number): string => `${n}×`;
@@ -48,7 +52,13 @@ const parseSpeed = (raw: string): number | null => {
  */
 const SpeedControl: React.FC = () => {
   const speed = useSpeed();
+  const achievedSpeed = useAchievedSpeed();
   const { setSpeed } = usePlayback();
+  const displayedAchievedSpeed = Math.round((achievedSpeed ?? 0) * 10) / 10;
+  const underDelivering =
+    achievedSpeed !== null &&
+    speed > 1 &&
+    achievedSpeed < speed * UNDER_DELIVERY_RATIO;
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
@@ -104,49 +114,62 @@ const SpeedControl: React.FC = () => {
   });
 
   return (
-    <input
-      ref={inputRef}
-      type="text"
-      inputMode="decimal"
-      role="spinbutton"
-      aria-label="Playback speed"
-      aria-valuenow={speed}
-      aria-valuemin={MIN_SPEED}
-      aria-valuemax={MAX_SPEED}
-      data-testid="timeline-controls-speed"
-      className={clsx(styles.speed, styles.speedInput)}
-      readOnly={!editing}
-      value={editing ? draft : fmtSpeed(speed)}
-      onChange={(e) => setDraft(e.target.value)}
-      onPointerDown={(e) => {
-        // While already editing, leave pointer handling to the text field so
-        // caret placement / selection work normally.
-        if (!editing) scrub.handleProps.onPointerDown(e);
-      }}
-      onDoubleClick={() => {
-        setEditing(false);
-        setSpeed(1);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          nudge(1);
-        } else if (e.key === "ArrowDown") {
-          e.preventDefault();
-          nudge(-1);
-        } else if (e.key === "Enter") {
-          e.preventDefault();
-          if (editing) commit();
-          else beginEdit();
-        } else if (e.key === "Escape" && editing) {
-          e.preventDefault();
+    <span className={styles.speedGroup}>
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="decimal"
+        role="spinbutton"
+        aria-label="Playback speed"
+        aria-valuenow={speed}
+        aria-valuemin={MIN_SPEED}
+        aria-valuemax={MAX_SPEED}
+        data-testid="timeline-controls-speed"
+        className={clsx(styles.speed, styles.speedInput)}
+        readOnly={!editing}
+        value={editing ? draft : fmtSpeed(speed)}
+        onChange={(e) => setDraft(e.target.value)}
+        onPointerDown={(e) => {
+          // While already editing, leave pointer handling to the text field so
+          // caret placement / selection work normally.
+          if (!editing) scrub.handleProps.onPointerDown(e);
+        }}
+        onDoubleClick={() => {
           setEditing(false);
-        }
-      }}
-      onBlur={() => {
-        if (editing) commit();
-      }}
-    />
+          setSpeed(1);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            nudge(1);
+          } else if (e.key === "ArrowDown") {
+            e.preventDefault();
+            nudge(-1);
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (editing) commit();
+            else beginEdit();
+          } else if (e.key === "Escape" && editing) {
+            e.preventDefault();
+            setEditing(false);
+          }
+        }}
+        onBlur={() => {
+          if (editing) commit();
+        }}
+      />
+      {underDelivering ? (
+        <span
+          className={styles.achievedSpeed}
+          data-testid="timeline-controls-achieved-speed"
+          title={`Requested ${fmtSpeed(speed)}; currently achieving ${fmtSpeed(
+            displayedAchievedSpeed,
+          )}`}
+        >
+          actual {fmtSpeed(displayedAchievedSpeed)}
+        </span>
+      ) : null}
+    </span>
   );
 };
 
