@@ -13,6 +13,7 @@ import MeasureRulerIcon from "../../../components/MeasureRulerIcon";
 import type { PointCloudBounds } from "../../../decoders";
 import { Base3DScene } from "../base-3d-scene";
 import { WebGpuCanvas } from "../gpu/webgpu-canvas";
+import { PanelNotices } from "../panel-notices";
 import { useKeyedIdentityMap } from "../use-keyed-identity-map";
 import {
   DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
@@ -22,7 +23,7 @@ import {
 } from "./camera-fit-bounds";
 import { CameraFrustumSceneLayer } from "./CameraFrustumSceneLayer";
 import { GridSceneLayer } from "./GridSceneLayer";
-import { NOTICE_SEVERITY_ICON_COLORS, styles } from "./panel-styles";
+import { styles } from "./panel-styles";
 import {
   DEFAULT_MAX_RENDERED_POINTS,
   EMPTY_POINT_CLOUD_BOUNDS_SIZE,
@@ -58,7 +59,6 @@ import { WorldGridLayer } from "./WorldGridLayer";
 import { colormapCssGradient, pointCloudColormapKey } from "./colormaps";
 import type {
   PanelNotice,
-  PanelNoticeSeverity,
   PointCloudCameraPose,
   PointCloudCameraProjection,
   PointCloudColorRamp,
@@ -110,6 +110,24 @@ export function PointCloudPanel({
   worldGrid = null,
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
+  const [frustumTextureErrors, setFrustumTextureErrors] = useState<
+    Readonly<Record<string, string>>
+  >({});
+  const updateFrustumTextureError = useCallback(
+    (layerId: string, message: string | null) => {
+      setFrustumTextureErrors((current) => {
+        if (message === null) {
+          if (!(layerId in current)) return current;
+          const next = { ...current };
+          delete next[layerId];
+          return next;
+        }
+        if (current[layerId] === message) return current;
+        return { ...current, [layerId]: message };
+      });
+    },
+    [],
+  );
   const pointPickerRegistry = useMemo(
     // The 3D canvas is its own invalidation/device domain. Keep its picker
     // registry local rather than sharing resources with the modal image stage.
@@ -299,6 +317,7 @@ export function PointCloudPanel({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [measureArmed, measurement]);
+  // This effect clears a measurement when its supporting plane changes.
   useEffect(() => {
     setMeasurement(null);
   }, [measurePlaneUp]);
@@ -335,6 +354,23 @@ export function PointCloudPanel({
     annotationLayers.length > 0 ||
     gridLayers.length > 0 ||
     frustumLayers.length > 0;
+  const frustumTextureNotices = useMemo<readonly PanelNotice[]>(
+    () =>
+      Object.entries(frustumTextureErrors).map(([layerId, message]) => ({
+        detail:
+          frustumLayers.find((layer) => layer.id === layerId)?.imageTopic ??
+          layerId,
+        id: `camera-texture:${layerId}`,
+        message,
+        severity: "warning",
+      })),
+    [frustumLayers, frustumTextureErrors],
+  );
+  const panelNotices = useMemo(
+    () => [...notices, ...frustumTextureNotices],
+    [frustumTextureNotices, notices],
+  );
+  // This effect reports scene render statistics after React commits the frame.
   useEffect(() => {
     if (!onRenderStats || !hasSceneLayers) return;
 
@@ -430,7 +466,11 @@ export function PointCloudPanel({
                 <SceneAnnotationLayer key={layer.id} layer={layer} />
               ))}
               {frustumLayers.map((layer) => (
-                <CameraFrustumSceneLayer key={layer.id} layer={layer} />
+                <CameraFrustumSceneLayer
+                  key={layer.id}
+                  layer={layer}
+                  onTextureError={updateFrustumTextureError}
+                />
               ))}
               <PointCloudPickingLayer
                 gpuPickData={gpuPickData}
@@ -477,7 +517,7 @@ export function PointCloudPanel({
           <Icon
             name={IconName.Fullscreen}
             size={Size.Xs}
-            style={styles.noticesIcon}
+            style={styles.controlIcon}
           />
         </button>
       ) : null}
@@ -500,7 +540,7 @@ export function PointCloudPanel({
           {measureReadout}
         </div>
       ) : null}
-      <PanelNotices notices={notices} />
+      <PanelNotices notices={panelNotices} scope="scene" />
     </div>
   );
 }
@@ -608,76 +648,6 @@ function ColorRampLegend({
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-/** Worst severity across the chip's notices; drives the icon color only. */
-function worstNoticeSeverity(
-  notices: readonly PanelNotice[],
-): PanelNoticeSeverity {
-  let worst: PanelNoticeSeverity = "info";
-  for (const notice of notices) {
-    if (notice.severity === "error") return "error";
-    if (notice.severity === "warning") worst = "warning";
-  }
-  return worst;
-}
-
-/**
- * Collapsed-by-default diagnostics chip in the panel's bottom-left
- * corner. Transform/placement notices are informative but verbose, so
- * the resting state is a warning glyph plus a count; the full messages
- * expand on demand.
- *
- * Rows are keyed by notice id, so a notice whose detail text updates per
- * playback tick edits its row in place instead of remounting it.
- */
-function PanelNotices({
-  notices,
-}: {
-  readonly notices: readonly PanelNotice[];
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  if (notices.length === 0) {
-    return null;
-  }
-
-  return (
-    <div style={styles.notices}>
-      {expanded ? (
-        <ul aria-label="3D scene notices" style={styles.noticesList}>
-          {notices.map((notice) => (
-            <li key={notice.id} style={styles.noticesItem}>
-              <div>{notice.message}</div>
-              {notice.detail ? (
-                <div style={styles.noticesItemDetail}>{notice.detail}</div>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <button
-        aria-expanded={expanded}
-        aria-label={`${notices.length} scene ${
-          notices.length === 1 ? "notice" : "notices"
-        }`}
-        onClick={() => setExpanded((current) => !current)}
-        style={styles.noticesToggle}
-        title={expanded ? "Hide scene notices" : "Show scene notices"}
-        type="button"
-      >
-        <Icon
-          name={IconName.Warning}
-          size={Size.Xs}
-          style={{
-            ...styles.noticesIcon,
-            color: NOTICE_SEVERITY_ICON_COLORS[worstNoticeSeverity(notices)],
-          }}
-        />
-        {notices.length}
-      </button>
     </div>
   );
 }

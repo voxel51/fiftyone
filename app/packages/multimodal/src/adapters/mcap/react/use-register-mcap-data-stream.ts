@@ -1733,6 +1733,34 @@ export function useRegisterMcapDataStream({
     [],
   );
   const getTimelineIndex = useCallback(() => index, [index]);
+  const readTopicMessages = useCallback(
+    async ({
+      endTimeNs,
+      startTimeNs,
+      topic,
+    }: {
+      readonly endTimeNs: bigint;
+      readonly startTimeNs: bigint;
+      readonly topic: string;
+    }) => {
+      if (!source) return [];
+      const messages: McapDecodedMessage[] = [];
+      for await (const message of client.readDecodedMessages(
+        {
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          endTimeNs,
+          source,
+          startTimeNs,
+          topics: [topic],
+        },
+        { priority: "current" },
+      )) {
+        messages.push(message);
+      }
+      return messages;
+    },
+    [client, source],
+  );
   // Per-recording discriminator for cross-tile cache keys (e.g. the shared
   // image-texture cache): keys embedding it can never collide across
   // recordings, so no cache flush is needed at the source-change boundary.
@@ -1745,6 +1773,7 @@ export function useRegisterMcapDataStream({
     setDataStream({
       getTimelineIndex,
       getTopicCache,
+      readTopicMessages,
       sourceKey,
       subscribeToTopic,
     });
@@ -1757,6 +1786,7 @@ export function useRegisterMcapDataStream({
     subscribeToTopic,
     getTopicCache,
     getTimelineIndex,
+    readTopicMessages,
   ]);
 }
 

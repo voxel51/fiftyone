@@ -36,8 +36,10 @@ const CAMERA_SURFACE_ROWS = 32;
 // frustum and the one losing emphasis, not every camera in the scene.
 export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   layer,
+  onTextureError,
 }: {
   readonly layer: CameraFrustumPanelLayer;
+  readonly onTextureError?: (layerId: string, message: string | null) => void;
 }) {
   const invalidate = useThree((state) => state.invalidate);
   const { cameraRayModel, frame, frameTransform, image } = layer;
@@ -115,13 +117,40 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   // re-delivering the same message in new wrapper objects every batch.
   const imageIdentity =
     layer.imageTextureKey ?? layer.imageContentTimeNs ?? image;
-  const { handle: imageHandle } = useImageTextureLease({
+  const {
+    errorMessage: imageErrorMessage,
+    handle: imageHandle,
+    status: imageStatus,
+  } = useImageTextureLease({
+    decodeRunway: layer.imageDecodeRunway,
     enabled: Boolean(image),
     frame: image,
     identity: imageIdentity,
     onLoaded: () => invalidate(),
     textureKey: layer.imageTextureKey,
   });
+  // This effect publishes image-plane failures without hiding the wireframe.
+  useEffect(() => {
+    const textureError =
+      layer.imageUnavailableReason ??
+      (imageStatus === "error"
+        ? (imageErrorMessage ?? "Camera texture unavailable")
+        : null);
+    onTextureError?.(layer.id, textureError);
+  }, [
+    imageErrorMessage,
+    imageStatus,
+    layer.id,
+    layer.imageUnavailableReason,
+    onTextureError,
+  ]);
+  // This effect removes the layer's published texture failure on unmount.
+  useEffect(
+    () => () => {
+      onTextureError?.(layer.id, null);
+    },
+    [layer.id, onTextureError],
+  );
   // This effect disposes superseded wireframe geometry.
   useEffect(() => () => geometry?.dispose(), [geometry]);
   // This effect disposes superseded camera-image geometry.
@@ -176,7 +205,7 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   // Cast, not a type: fiber's bundled three `Texture` type is out of sync
   // with the app's pinned three version — see GridSceneLayer's textureMap.
   const imageMap = imageHandle ? (imageHandle.texture as never) : null;
-  if (!geometry || (image && (!imageMap || !imagePlaneGeometry))) {
+  if (!geometry) {
     return null;
   }
 

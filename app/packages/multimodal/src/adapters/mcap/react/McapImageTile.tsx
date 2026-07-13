@@ -25,6 +25,7 @@ import { MCAP_SCENE_SOURCE_METADATA, MCAP_SOURCE_TYPE } from "../scene-sources";
 import { findBestMatchingAnnotationTopics } from "../topic-matching";
 import { ImagePanel } from "../../../visualization/panels/image";
 import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
+import type { PanelNotice } from "../../../visualization/panels/panel-notices";
 import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
 import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-picker";
 import { useMcapDataStream } from "./mcap-data-stream-context";
@@ -60,6 +61,7 @@ import {
   useMcapTopicPlaybackFrame,
   useMcapTopicStream,
 } from "./use-mcap-topic-stream";
+import { useMcapVideoDecodeRunway } from "./use-mcap-video-decode-runways";
 import { useMcapImageProjectionLayers } from "./use-mcap-image-projection-layers";
 import {
   effectiveMcapCameraCalibration,
@@ -187,6 +189,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   // shared image-texture cache key needs (bytes identity churns per batch).
   const playbackFrame = useMcapTopicPlaybackFrame<ImageVisualization>(topic);
   const frame = playbackFrame?.frame ?? null;
+  const decodeRunway = useMcapVideoDecodeRunway(topic, playbackFrame);
   const sourceKey = useMcapDataStream()?.sourceKey ?? "";
   // Shared texture key per (recording, topic, frame). The 3D tile's
   // frustum image planes form the same key, so both surfaces share one
@@ -426,6 +429,19 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     projection.geometry,
     cameraModelResolution,
   );
+  const imageNotices = useMemo<readonly PanelNotice[]>(
+    () =>
+      visibleIssue
+        ? [
+            {
+              id: "mcap-image-projection",
+              message: visibleIssue,
+              severity: "warning",
+            },
+          ]
+        : [],
+    [visibleIssue],
+  );
 
   return (
     <>
@@ -634,6 +650,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
         >
           <ImagePanel
             canvasSurface="modal-image"
+            decodeRunway={decodeRunway}
             frame={frame}
             className={styles.panel}
             fit={IMAGE_FIT}
@@ -645,6 +662,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               )
             }
             onResetView={imagePanZoom.resetView}
+            notices={imageNotices}
             sceneChildren={
               activeProjection ? (
                 <McapImageProjectionScene
@@ -679,9 +697,6 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               sourceKey={sourceKey || "mcap-session"}
               viewTransform={imagePanZoom.viewTransform}
             />
-          ) : null}
-          {visibleIssue ? (
-            <div className={styles.projectionNotice}>{visibleIssue}</div>
           ) : null}
           {effectiveImageDims && selectedLabelTopics.length > 0 ? (
             <McapImageAnnotationOverlay

@@ -45,6 +45,7 @@ import {
   type PointCloudColormapName,
 } from "../../../visualization/panels/point-cloud";
 import {
+  DEFAULT_MCAP_IMAGE_PROJECTION,
   DEFAULT_MCAP_POINT_CLOUD_COLOR,
   MAX_MCAP_POINT_CLOUD_POINT_SIZE,
   MCAP_POINT_CLOUD_POINT_SIZE_STEP,
@@ -53,10 +54,13 @@ import {
   type McapPointCloudColorSettings,
   type McapSceneBackgroundMode,
   useMcapPinholeCameraSettings,
+  useMcapImageProjectionSettingsByTopic,
   useMcapPointCloudStyleSettings,
   useMcapReferenceGridSettings,
   useMcapSceneBackgroundSettings,
+  useSetMcapImageProjection,
 } from "./mcap-modal-settings";
+import type { McapImageGeometryMode } from "./camera-geometry/mcap-camera-model";
 import type { PointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import {
   MCAP_3D_SCENE_UP_AXES,
@@ -111,6 +115,11 @@ export interface Mcap3dTileSettingsPointCloudInputs {
   readonly selectedSources: readonly SceneSource[];
 }
 
+/** Image topics paired with the currently selected camera calibrations. */
+export interface Mcap3dTileSettingsCameraInputs {
+  readonly imageTopics: readonly string[];
+}
+
 /**
  * Frame controls owned by the 3D tile instance.
  */
@@ -154,6 +163,7 @@ export interface Mcap3dTileSettingsSceneControls {
  * Grouped props for tile-local state consumed by the 3D settings sidebar.
  */
 export interface Mcap3dTileSettingsProps {
+  readonly cameraInputs: Mcap3dTileSettingsCameraInputs;
   readonly frameControls: Mcap3dTileSettingsFrameControls;
   readonly pointCloudInputs: Mcap3dTileSettingsPointCloudInputs;
   readonly poseControls: Mcap3dTileSettingsPoseControls;
@@ -172,6 +182,7 @@ export interface Mcap3dTileSettingsProps {
  * props, and expanded editor state stays local to this sidebar.
  */
 const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
+  cameraInputs,
   frameControls,
   pointCloudInputs,
   poseControls,
@@ -181,6 +192,8 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   trackingControls,
 }) => {
   const { pinholeCamera, setPinholeCamera } = useMcapPinholeCameraSettings();
+  const imageProjectionSettings = useMcapImageProjectionSettingsByTopic();
+  const setImageProjection = useSetMcapImageProjection();
   const {
     pointCloudColors,
     pointCloudPointSize,
@@ -280,6 +293,42 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
               tooltip="Normal frustum and image-plane opacity. Hovered and focused frustums render fully opaque."
               value={pinholeCamera.opacityPercent}
             />
+            {cameraTopics.map((cameraTopic, index) => {
+              const imageTopic = cameraInputs.imageTopics[index];
+              if (!imageTopic) return null;
+              const cameraLabel =
+                cameraSources.find((source) => source.id === cameraTopic)
+                  ?.label ?? cameraTopic;
+              const geometry =
+                imageProjectionSettings[imageTopic]?.geometry ??
+                DEFAULT_MCAP_IMAGE_PROJECTION.geometry;
+              return (
+                <FormField
+                  key={cameraTopic}
+                  label={
+                    <SettingsLabel
+                      label={`Geometry (${cameraLabel})`}
+                      tooltip="Whether the recorded image uses the original distorted camera model or the rectified projection. This also controls the 3D frustum texture."
+                    />
+                  }
+                  control={
+                    <Select
+                      aria-label={`Recorded image geometry (${cameraLabel})`}
+                      exclusive
+                      onChange={(value) => {
+                        if (isMcapImageGeometryMode(value)) {
+                          setImageProjection(imageTopic, { geometry: value });
+                        }
+                      }}
+                      options={MCAP_IMAGE_GEOMETRY_OPTIONS}
+                      portal
+                      zIndex={ZIndex.AboveModal}
+                      value={geometry}
+                    />
+                  }
+                />
+              );
+            })}
           </McapSidebarGroup>
         ) : null}
 
@@ -446,6 +495,18 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
     </TileSettingsContent>
   );
 };
+
+const MCAP_IMAGE_GEOMETRY_OPTIONS: Descriptor<{ label: string }>[] = [
+  { data: { label: "Auto (recommended)" }, id: "auto" },
+  { data: { label: "Original camera" }, id: "original" },
+  { data: { label: "Rectified" }, id: "rectified" },
+];
+
+function isMcapImageGeometryMode(
+  value: unknown,
+): value is McapImageGeometryMode {
+  return value === "auto" || value === "original" || value === "rectified";
+}
 
 function SourceGroup({
   children,

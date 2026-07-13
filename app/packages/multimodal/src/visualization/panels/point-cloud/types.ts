@@ -15,25 +15,9 @@ import type {
   ThreeSceneUpAxis,
 } from "../base-3d-scene";
 import type { PointCloudColormap } from "./colormaps";
+import type { PanelNotice } from "../panel-notices";
 
-export type PanelNoticeSeverity = "error" | "info" | "warning";
-
-/**
- * Render shape for one diagnostic notice in the panel's collapsed chip.
- * The panel is a generic visualization layer: producers (e.g. the MCAP
- * tile) map their richer health models onto this shape. `id` is the
- * stable identity used for row reconciliation — message/detail update in
- * place without remounting the row, which is what keeps churning frame
- * lists from blinking the chip.
- */
-export interface PanelNotice {
-  /** Volatile specifics (frame-id lists, durations), rendered dimmer. */
-  readonly detail?: string;
-  readonly id: string;
-  /** Short, stable description of the condition. */
-  readonly message: string;
-  readonly severity: PanelNoticeSeverity;
-}
+export type { PanelNotice, PanelNoticeSeverity } from "../panel-notices";
 
 /**
  * Point-cloud colouring modes. Besides the reserved modes ("auto",
@@ -280,6 +264,10 @@ export interface CameraFrustumPanelLayer {
   /** Withhold the frustum instead of falling back to a pinhole approximation. */
   readonly requireCameraRayModel?: boolean;
   readonly contentTimeNs?: bigint;
+  /** Ordered H.264 frames needed to initialize decoding before `image`. */
+  readonly imageDecodeRunway?: readonly ImageVisualization[];
+  /** Why the image plane is unavailable while the wireframe remains usable. */
+  readonly imageUnavailableReason?: string;
   readonly frame: CameraCalibrationVisualization;
   readonly frameTransform?: PointCloudFrameTransform;
   readonly id: string;

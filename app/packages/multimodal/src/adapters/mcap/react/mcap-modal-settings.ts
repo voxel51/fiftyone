@@ -515,6 +515,18 @@ export function useMcapImageProjectionSettingsByTopic(): Readonly<
   return useAtomValue(imageProjectionAtom, { store: mcapModalSettingsStore });
 }
 
+/** Updates camera geometry settings for an image without requiring its tile. */
+export function useSetMcapImageProjection() {
+  const setStoredProjection = useSetAtom(imageProjectionAtom, {
+    store: mcapModalSettingsStore,
+  });
+  return useCallback(
+    (imageTopic: string, settings: Partial<McapImageProjectionSettings>) =>
+      setStoredProjection({ imageTopic, settings }),
+    [setStoredProjection],
+  );
+}
+
 /**
  * Resyncs the private settings store from localStorage for isolated tests.
  */

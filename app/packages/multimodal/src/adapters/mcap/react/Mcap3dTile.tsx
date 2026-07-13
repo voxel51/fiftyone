@@ -112,6 +112,7 @@ import {
 import { useInterpolatedSceneUpdateFrames } from "./use-interpolated-scene-updates";
 import { useMcapPlaybackTimeNs } from "./use-mcap-playback-time-ns";
 import { useMcapTopicPlaybackFrames } from "./use-mcap-topic-stream";
+import { useMcapVideoDecodeRunways } from "./use-mcap-video-decode-runways";
 
 /**
  * Named gradient backdrop profiles for the 3D scene. "Abyss" is dark
@@ -231,6 +232,10 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
   const frustumImageFrames =
     useMcapTopicPlaybackFrames<ImageVisualization>(frustumImageTopics);
+  const frustumImageDecodeRunways = useMcapVideoDecodeRunways(
+    frustumImageTopics,
+    frustumImageFrames,
+  );
   const frames =
     useMcapTopicPlaybackFrames<PointCloudVisualization>(pointCloudTopics);
   const pointCloudColorCapabilities = usePointCloudColorCapabilities(
@@ -427,6 +432,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     build: (layer) => {
       const index = cameraTopics.indexOf(layer.id);
       const imageFrame = index >= 0 ? frustumImageFrames[index] : null;
+      const imageDecodeRunway =
+        index >= 0 ? frustumImageDecodeRunways[index] : undefined;
       const imageTopic = index >= 0 ? (frustumImageTopics[index] ?? "") : "";
       const geometry = imageTopic
         ? (imageProjectionSettings[imageTopic] ?? DEFAULT_MCAP_IMAGE_PROJECTION)
@@ -449,7 +456,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         rayCameraModelResolution.status === "ready"
           ? mcapCameraRayModel(rayCameraModelResolution.model)
           : undefined;
-      const imageGeometryReady = cameraModelResolution.status === "ready";
       // Cmd-clicking a frustum opens its image tile; hovering or focusing
       // the tile highlights the frustum.
       const linked = imageTopic
@@ -481,24 +487,31 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             },
           }
         : {};
-      if (!imageFrame || !imageGeometryReady) {
-        return null;
+      let imageProps: Partial<CameraFrustumPanelLayer> = {};
+      if (imageFrame) {
+        imageProps =
+          cameraModelResolution.status === "ready"
+            ? {
+                image: imageFrame.frame,
+                imageContentTimeNs: imageFrame.contentTimeNs,
+                ...(imageDecodeRunway?.length ? { imageDecodeRunway } : {}),
+                imageTextureKey:
+                  sourceKey && imageTopic
+                    ? imageTextureCacheKey(
+                        sourceKey,
+                        imageTopic,
+                        imageFrame.contentTimeNs,
+                      )
+                    : undefined,
+              }
+            : { imageUnavailableReason: cameraModelResolution.message };
       }
       return {
         ...layer,
         ...linked,
+        ...imageProps,
         cameraRayModel,
-        image: imageFrame.frame,
-        imageContentTimeNs: imageFrame.contentTimeNs,
         imagePlaneDepthM: pinholeImagePlaneDepthM,
-        imageTextureKey:
-          sourceKey && imageTopic
-            ? imageTextureCacheKey(
-                sourceKey,
-                imageTopic,
-                imageFrame.contentTimeNs,
-              )
-            : undefined,
         opacity: pinholeOpacity,
         requireCameraRayModel: true,
       };
@@ -512,6 +525,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       return [
         layer,
         index >= 0 ? frustumImageFrames[index] : null,
+        index >= 0 ? frustumImageDecodeRunways[index] : null,
         imageTopic,
         imageTopic ? imageProjectionSettings[imageTopic] : null,
         imageTopic !== "" && hoveredImageTopic === imageTopic,
@@ -892,6 +906,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   // reconcile it.
   const settingsProps = useMemo(
     () => ({
+      cameraInputs: { imageTopics: frustumImageTopics },
       frameControls: {
         cameraTargetFrameId,
         frameIds,
@@ -927,6 +942,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       cameraSources,
       cameraTargetFrameId,
       cameraTopics,
+      frustumImageTopics,
       enabled,
       frameIds,
       mapLayerSources,

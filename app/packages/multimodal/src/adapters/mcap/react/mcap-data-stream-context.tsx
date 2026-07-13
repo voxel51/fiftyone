@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
+import type { McapDecodedMessage } from "../types";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import type { McapTopicCache } from "./mcap-topic-cache";
 
@@ -27,6 +28,15 @@ export interface McapDataStream {
   /** Read access to the timeline index — ordered ticks plus
    *  `nearestTick(timeSec)` / `secToNs(timeSec)`. */
   readonly getTimelineIndex: () => McapTimelineIndex | null;
+
+  /** Reads one decoded topic range for consumers that need ordered history
+   *  rather than the latest synchronized frame (notably H.264 decoder
+   *  runway reconstruction after a paused seek or late subscription). */
+  readonly readTopicMessages?: (request: {
+    readonly endTimeNs: bigint;
+    readonly startTimeNs: bigint;
+    readonly topic: string;
+  }) => Promise<readonly McapDecodedMessage[]>;
 }
 
 interface McapDataStreamContextValue {

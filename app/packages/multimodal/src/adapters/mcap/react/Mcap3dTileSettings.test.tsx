@@ -216,6 +216,23 @@ describe("Mcap3dTileSettings", () => {
     expect(readMcapModalSettings().pinholeCamera.opacityPercent).toBe(40);
   });
 
+  it("lets a camera texture geometry be chosen without an image tile", () => {
+    renderSettings({
+      cameraSources: [CAM_FRONT],
+      cameraImageTopics: ["CAM_FRONT/image_raw"],
+      cameraTopics: [CAM_FRONT.id],
+      enabled: new Set([CAM_FRONT.id]),
+    });
+    expandPinhole();
+
+    const geometry = getVoodooCombobox(/^Geometry \(CAM_FRONT\/camera_info\)/);
+    selectVoodooOption(geometry, "Original camera");
+
+    expect(
+      readMcapModalSettings().imageProjection["CAM_FRONT/image_raw"]?.geometry,
+    ).toBe("original");
+  });
+
   it("wires the background controls to the settings updater", () => {
     renderSettings();
     expandAppearance();
@@ -710,6 +727,7 @@ function selectVoodooOption(combobox: HTMLElement, query: string) {
 
 interface SettingsTestProps {
   readonly cameraSources: readonly SceneSource[];
+  readonly cameraImageTopics: readonly string[];
   readonly cameraTargetFrameId: string;
   readonly cameraTopics: readonly string[];
   readonly enabled: ReadonlySet<string>;
@@ -762,6 +780,7 @@ function settingsProps(
 ): SettingsTestProps {
   return {
     cameraSources: [CAM_FRONT, CAM_BACK],
+    cameraImageTopics: ["CAM_FRONT/image_raw", "CAM_BACK/image_raw"],
     cameraTargetFrameId: "",
     cameraTopics: [CAM_FRONT.id, CAM_BACK.id],
     enabled: new Set([CAM_FRONT.id, CAM_BACK.id, LIDAR.id]),
@@ -819,6 +838,7 @@ function seedModalSettings(props: SettingsTestProps) {
 
 function componentProps(props: SettingsTestProps): Mcap3dTileSettingsProps {
   return {
+    cameraInputs: { imageTopics: props.cameraImageTopics },
     frameControls: {
       cameraTargetFrameId: props.cameraTargetFrameId,
       frameIds: props.frameIds,

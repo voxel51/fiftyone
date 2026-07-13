@@ -8,6 +8,8 @@ import {
   type ImageTextureLease,
 } from "./image-texture-cache";
 
+const EMPTY_IMAGE_DECODE_RUNWAY: readonly ImageVisualization[] = [];
+
 /** Loading state for an encoded-image texture lease. */
 export type ImageTextureLeaseStatus = "idle" | "loading" | "loaded" | "error";
 
@@ -18,6 +20,7 @@ interface HeldImageTexture {
 
 /** Inputs for `useImageTextureLease`, including cache identity and decode data. */
 export interface UseImageTextureLeaseOptions {
+  readonly decodeRunway?: readonly ImageVisualization[];
   readonly disabledStatus?: ImageTextureLeaseStatus;
   readonly enabled?: boolean;
   readonly frame: ImageVisualization | null | undefined;
@@ -31,6 +34,7 @@ export interface UseImageTextureLeaseOptions {
  * releases the previous lease when the requested image changes.
  */
 export function useImageTextureLease({
+  decodeRunway = EMPTY_IMAGE_DECODE_RUNWAY,
   disabledStatus = "idle",
   enabled = true,
   frame,
@@ -97,7 +101,7 @@ export function useImageTextureLease({
     }
 
     const lease = acquireImageTexture(textureKey, () =>
-      createImageTexture(frame, textureKey),
+      createImageTexture(frame, textureKey, decodeRunway),
     );
     lease.promise
       .then((decodedHandle) => {
@@ -135,7 +139,7 @@ export function useImageTextureLease({
     // `identity`, not the frame object, is the requested lifecycle key. Keyed
     // MCAP callers deliberately keep identity stable across fresh wrappers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disabledStatus, enabled, identity, textureKey]);
+  }, [decodeRunway, disabledStatus, enabled, identity, textureKey]);
 
   return { errorMessage, handle, status };
 }

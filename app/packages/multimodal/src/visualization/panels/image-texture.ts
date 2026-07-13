@@ -19,11 +19,17 @@ import { createEncodedVideoTexture } from "./video-texture";
 export async function createImageTexture(
   frame: ImageVisualization,
   textureKey?: string,
+  decodeRunway: readonly ImageVisualization[] = [],
 ): Promise<ImageTextureHandle> {
   if (frame.kind === "raw-image") {
     return createRawImageTexture(frame);
   }
   if (frame.kind === "encoded-video") {
+    for (const prerequisite of decodeRunway) {
+      if (prerequisite.kind !== "encoded-video") continue;
+      const handle = await createEncodedVideoTexture(prerequisite, textureKey);
+      handle.dispose();
+    }
     return createEncodedVideoTexture(frame, textureKey);
   }
   return createEncodedImageTexture(frame);
