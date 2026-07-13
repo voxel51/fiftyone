@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - develop
+      # TODO: remove before merge — temporary trigger to bootstrap the images
+      # from this branch so the PR's own CI can pull them
+      - ben/e2e-speedups
     paths:
       - requirements/**
       - setup.py
