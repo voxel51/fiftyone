@@ -56,6 +56,9 @@ const WINDOW_QUANTUM_NS = 15_000_000_000n;
 /** Playhead-driven fills run at most this often; fetch latency dominates. */
 const PLAYHEAD_FILL_THROTTLE_MS = 500;
 
+/** Coalesces a short burst of plot-field toggles into one topic scan. */
+const FIELD_SELECTION_DEBOUNCE_MS = 250;
+
 /** Starved-link stand-down retry, matching the pose-trajectory gate. */
 const DEFERRED_RETRY_MS = 2_000;
 
@@ -75,6 +78,16 @@ const FAILURE_BACKOFF_MS = 5_000;
  */
 const FULL_RANGE_POINT_BUDGET = 4_000;
 const MIN_WINDOW_POINT_BUDGET = 200;
+
+/**
+ * Speculative memory is estimated as two packed Float64 values per point
+ * (time and value). Reserve against the full-range point cap so accumulated
+ * windows cannot silently outgrow the source-level budget.
+ */
+const ESTIMATED_SERIES_BYTES_PER_FIELD =
+  FULL_RANGE_POINT_BUDGET * Float64Array.BYTES_PER_ELEMENT * 2;
+const TOPIC_PREFETCH_BUDGET_BYTES = 2 * 1024 * 1024;
+const SOURCE_PREFETCH_BUDGET_BYTES = 8 * 1024 * 1024;
 
 /** Coverage sentinel for unbounded (windowless fallback) fetches. */
 const FULL_COVERAGE: NsRange = { endNs: 1n << 62n, startNs: 0n };
@@ -275,11 +288,17 @@ export function McapNumericSeriesBridge({
     }
 
     let enumerationRequested = false;
+    let numericFieldPathsByTopic: ReadonlyMap<
+      string,
+      readonly string[]
+    > | null = null;
+    let speculativeBytesReserved = 0;
     const coverage = new Map<string, NsRange[]>();
     const segments = new Map<string, NumericSeriesSegment[]>();
     const published = new Map<string, McapNumericSeriesState>();
     const truncatedKeys = new Set<string>();
     const failedAtMs = new Map<string, number>();
+    const speculativelyReservedKeys = new Set<string>();
 
     const publish = (isCancelled: () => boolean) => {
       if (!isCancelled()) {
@@ -289,6 +308,7 @@ export function McapNumericSeriesBridge({
 
     return startMcapDemandBridge<McapNumericSeriesHandlers>({
       dataStreamRef,
+      demandDebounceMs: FIELD_SELECTION_DEBOUNCE_MS,
       deferredRetryMs: DEFERRED_RETRY_MS,
       handlersRef,
       makeHandlers: ({ isCancelled, queueFill }) => ({
@@ -302,12 +322,21 @@ export function McapNumericSeriesBridge({
             .enumerateNumericFields({ source })
             .then((topics) => {
               if (!isCancelled()) {
+                numericFieldPathsByTopic = new Map(
+                  topics
+                    .filter((topic) => topic.availability === "ready")
+                    .map((topic) => [
+                      topic.topic,
+                      [...new Set(topic.fields.map((field) => field.path))],
+                    ]),
+                );
                 setEnumeration({ status: "ready", topics });
               }
             })
             .catch(() => {
               if (!isCancelled()) {
                 enumerationRequested = false;
+                numericFieldPathsByTopic = null;
                 setEnumeration({ status: "error", topics: [] });
               }
             });
@@ -328,12 +357,13 @@ export function McapNumericSeriesBridge({
             : null;
 
         const now = nowMs();
+        const demandedKeys = new Set(demandKeys);
         const batches = new Map<
           string,
-          { fieldPaths: string[]; range: NsRange | null; topic: string }
+          { fieldPaths: Set<string>; range: NsRange | null; topic: string }
         >();
         let publishNeeded = false;
-        for (const key of demandKeys) {
+        for (const key of demandedKeys) {
           if (!userInitiated) {
             const failed = failedAtMs.get(key);
             if (failed !== undefined && now - failed < FAILURE_BACKOFF_MS) {
@@ -359,10 +389,10 @@ export function McapNumericSeriesBridge({
                 : `${topic}\0${range.startNs}:${range.endNs}`;
             let batch = batches.get(batchKey);
             if (!batch) {
-              batch = { fieldPaths: [], range, topic };
+              batch = { fieldPaths: new Set(), range, topic };
               batches.set(batchKey, batch);
             }
-            batch.fieldPaths.push(fieldPath);
+            batch.fieldPaths.add(fieldPath);
           }
           coverage.set(key, covered);
           if (missing.length > 0 && !published.has(key)) {
@@ -370,16 +400,68 @@ export function McapNumericSeriesBridge({
             publishNeeded = true;
           }
         }
+
+        for (const batch of batches.values()) {
+          const topicFieldPaths = numericFieldPathsByTopic?.get(batch.topic);
+          if (
+            !topicFieldPaths ||
+            topicFieldPaths.length * ESTIMATED_SERIES_BYTES_PER_FIELD >
+              TOPIC_PREFETCH_BUDGET_BYTES
+          ) {
+            continue;
+          }
+
+          const range = batch.range ?? FULL_COVERAGE;
+          const prefetchFieldPaths: string[] = [];
+          let additionalBytes = 0;
+          for (const fieldPath of topicFieldPaths) {
+            const key = mcapNumericSeriesKey(batch.topic, fieldPath);
+            if (
+              demandedKeys.has(key) ||
+              subtractCoveredRanges(range, coverage.get(key) ?? []).length === 0
+            ) {
+              continue;
+            }
+            prefetchFieldPaths.push(fieldPath);
+            if (!speculativelyReservedKeys.has(key)) {
+              additionalBytes += ESTIMATED_SERIES_BYTES_PER_FIELD;
+            }
+          }
+          // Prefetch the whole eligible topic or none of it. A partial prefix
+          // would make later checkbox order determine how many scans occur.
+          if (
+            speculativeBytesReserved + additionalBytes >
+            SOURCE_PREFETCH_BUDGET_BYTES
+          ) {
+            continue;
+          }
+
+          for (const fieldPath of prefetchFieldPaths) {
+            const key = mcapNumericSeriesKey(batch.topic, fieldPath);
+            batch.fieldPaths.add(fieldPath);
+            coverage.set(key, addCoveredRange(coverage.get(key) ?? [], range));
+            if (!speculativelyReservedKeys.has(key)) {
+              speculativelyReservedKeys.add(key);
+              speculativeBytesReserved += ESTIMATED_SERIES_BYTES_PER_FIELD;
+            }
+            if (!published.has(key)) {
+              published.set(key, { status: "loading" });
+              publishNeeded = true;
+            }
+          }
+        }
+
         if (publishNeeded) {
           publish(isCancelled);
         }
 
         for (const batch of batches.values()) {
+          const fieldPaths = [...batch.fieldPaths];
           void client
             .readNumericSeries(
               {
                 activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-                fieldPaths: batch.fieldPaths,
+                fieldPaths,
                 maxPointsPerField: windowPointBudget(
                   batch.range,
                   timeline?.durationSec,
@@ -433,7 +515,7 @@ export function McapNumericSeriesBridge({
               const message =
                 error instanceof Error ? error.message : String(error);
               const failedNow = nowMs();
-              for (const fieldPath of batch.fieldPaths) {
+              for (const fieldPath of fieldPaths) {
                 const key = mcapNumericSeriesKey(batch.topic, fieldPath);
                 coverage.set(
                   key,
@@ -442,11 +524,18 @@ export function McapNumericSeriesBridge({
                     batch.range ?? FULL_COVERAGE,
                   ),
                 );
-                failedAtMs.set(key, failedNow);
-                // Keep whatever segments already rendered; only surface a
-                // hard error state when the signal has nothing to show.
-                if (!segments.has(key)) {
-                  published.set(key, { error: message, status: "error" });
+                if (refCountsRef.current.has(key)) {
+                  failedAtMs.set(key, failedNow);
+                  // Keep whatever segments already rendered; only surface a
+                  // hard error state when the signal has nothing to show.
+                  if (!segments.has(key)) {
+                    published.set(key, { error: message, status: "error" });
+                  }
+                } else {
+                  failedAtMs.delete(key);
+                  if (!segments.has(key)) {
+                    published.delete(key);
+                  }
                 }
               }
               publish(isCancelled);
