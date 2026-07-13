@@ -82,35 +82,51 @@ describe("TilingHeader", () => {
       screen.queryByTestId("tiling-header-toggle-left-sidebar"),
     ).toBeNull();
     expect(
+      screen.queryByTestId("tiling-header-toggle-timeline-tracks"),
+    ).toBeNull();
+    expect(
       screen.queryByTestId("tiling-header-toggle-right-sidebar"),
     ).toBeNull();
   });
 
-  it("renders sidebar toggles and reflects open state via aria-pressed", () => {
+  it("renders panel toggles in positional order and reflects their open state", () => {
     const onLeft = vi.fn();
+    const onTimeline = vi.fn();
     const onRight = vi.fn();
     render(
       <TilingProvider>
         <TilingHeader
           fileName="x"
           leftSidebarOpen
+          timelineTracksOpen={false}
           rightSidebarOpen={false}
           onToggleLeftSidebar={onLeft}
+          onToggleTimelineTracks={onTimeline}
           onToggleRightSidebar={onRight}
         />
       </TilingProvider>,
     );
 
     const left = screen.getByTestId("tiling-header-toggle-left-sidebar");
+    const bottom = screen.getByTestId("tiling-header-toggle-timeline-tracks");
     const right = screen.getByTestId("tiling-header-toggle-right-sidebar");
     expect(left.getAttribute("aria-pressed")).toBe("true");
+    expect(bottom.getAttribute("aria-pressed")).toBe("false");
     expect(right.getAttribute("aria-pressed")).toBe("false");
     expect(left.getAttribute("aria-label")).toBe("Hide settings");
+    expect(bottom.getAttribute("aria-label")).toBe("Show timeline tracks");
     expect(right.getAttribute("aria-label")).toBe("Show inspector");
+    expect(
+      screen
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["Hide settings", "Show timeline tracks", "Show inspector"]);
 
     fireEvent.click(left);
+    fireEvent.click(bottom);
     fireEvent.click(right);
     expect(onLeft).toHaveBeenCalledOnce();
+    expect(onTimeline).toHaveBeenCalledOnce();
     expect(onRight).toHaveBeenCalledOnce();
   });
 

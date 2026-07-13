@@ -292,9 +292,8 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               onTagDelete={onTagDelete}
               sharedImageWebGpuViews={sharedImageWebGpuViews}
               className={className}
-              // The multimodal playback modal always starts with the timeline
-              // drawer closed, so only pinned tracks (e.g. those auto-pinned
-              // from a temporal-tag grid filter) show until the user opens it.
+              // Start with the tracks drawer collapsed. Pinned tracks remain
+              // visible below the ruler until the user expands the drawer.
               timelineDrawerDefaultOpen={false}
             />
           </TilingProvider>
@@ -370,6 +369,9 @@ function Layout({
   // removes the region outright: no drawer and no header toggle.
   const hasRightSidebar = rightSidebar !== null && rightSidebar !== undefined;
   const [leftOpen, setLeftOpen] = useState(defaultLeftOpen);
+  const [timelineTracksOpen, setTimelineTracksOpen] = useState(
+    timelineDrawerDefaultOpen,
+  );
   const [rightOpen, setRightOpen] = useState(defaultRightOpen);
   const previousTileCountRef = useRef(Object.keys(tiles).length);
   // The Drawer has no size-seeding prop, but its open width always
@@ -472,8 +474,10 @@ function Layout({
         headerActions={headerActions}
         addTileMenu={addTileMenu}
         leftSidebarOpen={leftOpen}
+        timelineTracksOpen={timelineTracksOpen}
         rightSidebarOpen={rightOpen}
         onToggleLeftSidebar={() => updateLeftOpen(!leftOpen)}
+        onToggleTimelineTracks={() => setTimelineTracksOpen((open) => !open)}
         onToggleRightSidebar={
           hasRightSidebar ? () => updateRightOpen(!rightOpen) : undefined
         }
@@ -540,10 +544,8 @@ function Layout({
       </div>
 
       <TemporalTagTimeline
-        // Computed by the parent from `defaultPinnedTrackIds`: closed when
-        // opened from a temporal-tag grid filter so only the pinned (filtered)
-        // tracks show, open otherwise.
-        defaultDrawerOpen={timelineDrawerDefaultOpen}
+        drawerOpen={timelineTracksOpen}
+        onDrawerOpenChange={setTimelineTracksOpen}
         extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}
         onTagUpdate={onTagUpdate}
