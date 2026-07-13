@@ -24,7 +24,7 @@ export interface McapDepthHover extends McapDepthSample {
 }
 
 /** Modal-local depth hover shared by image and 3D tiles. */
-export const mcapDepthHoverAtom = atom<McapDepthHover | null>(null);
+const mcapDepthHoverAtom = atom<McapDepthHover | null>(null);
 
 /** Reads the depth sample currently hovered in an image tile. */
 export function useMcapDepthHover(): McapDepthHover | null {

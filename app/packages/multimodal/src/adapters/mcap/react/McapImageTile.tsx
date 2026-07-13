@@ -171,7 +171,8 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     return () => {
       if (highlighted) setTileTitleHighlighted(false);
     };
-  }, [hoveredFrustumImageTopic, setTileTitleHighlighted, topic]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tile setter is stable
+  }, [hoveredFrustumImageTopic, topic]);
 
   // How "Duplicate" clones this tile: same source, same title — unlike a
   // split, which spawns a fresh tile on the next undisplayed stream.

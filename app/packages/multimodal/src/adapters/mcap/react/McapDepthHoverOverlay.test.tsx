@@ -1,12 +1,12 @@
-import { cleanup, fireEvent, render } from "@testing-library/react";
-import { createStore, Provider as JotaiProvider } from "jotai";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { Provider as JotaiProvider } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { RawImageVisualization } from "../../../decoders";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type { McapCameraModel } from "./camera-geometry/mcap-camera-model";
 import McapDepthHoverOverlay from "./McapDepthHoverOverlay";
-import { mcapDepthHoverAtom } from "./mcap-depth-hover";
+import { useMcapDepthHover } from "./mcap-depth-hover";
 
 afterEach(() => {
   cleanup();
@@ -23,10 +23,9 @@ describe("McapDepthHoverOverlay", () => {
     vi.spyOn(window, "cancelAnimationFrame").mockImplementation(
       () => undefined,
     );
-    const store = createStore();
     const model = cameraModel();
     const { getByTestId } = render(
-      <JotaiProvider store={store}>
+      <JotaiProvider>
         <div data-testid="surface">
           <McapDepthHoverOverlay
             cameraFrameId="camera"
@@ -37,6 +36,7 @@ describe("McapDepthHoverOverlay", () => {
             imageTopic="/camera/depth"
             sourceCameraModel={model}
           />
+          <DepthHoverProbe />
         </div>
       </JotaiProvider>,
     );
@@ -54,11 +54,11 @@ describe("McapDepthHoverOverlay", () => {
       }),
     );
     expect(animationFrames).toHaveLength(1);
-    animationFrames.shift()?.(0);
+    act(() => animationFrames.shift()?.(0));
 
-    expect(store.get(mcapDepthHoverAtom)).toEqual({
+    expect(readDepthHover(getByTestId("depth-hover").textContent)).toEqual({
       cameraFrameId: "camera",
-      contentTimeNs: 42n,
+      contentTimeNs: "42",
       depthMeters: 2,
       imageTopic: "/camera/depth",
       pixel: [2, 1],
@@ -66,7 +66,7 @@ describe("McapDepthHoverOverlay", () => {
     });
 
     fireEvent(surface, new MouseEvent("pointerleave"));
-    expect(store.get(mcapDepthHoverAtom)).toBeNull();
+    expect(readDepthHover(getByTestId("depth-hover").textContent)).toBeNull();
   });
 
   it("withholds samples over contain-fit letterboxing", () => {
@@ -75,10 +75,9 @@ describe("McapDepthHoverOverlay", () => {
       animationFrames.push(callback);
       return animationFrames.length;
     });
-    const store = createStore();
     const model = cameraModel();
     const { getByTestId } = render(
-      <JotaiProvider store={store}>
+      <JotaiProvider>
         <div data-testid="surface">
           <McapDepthHoverOverlay
             cameraFrameId="camera"
@@ -89,6 +88,7 @@ describe("McapDepthHoverOverlay", () => {
             imageTopic="/camera/depth"
             sourceCameraModel={model}
           />
+          <DepthHoverProbe />
         </div>
       </JotaiProvider>,
     );
@@ -105,11 +105,29 @@ describe("McapDepthHoverOverlay", () => {
         clientY: 50,
       }),
     );
-    animationFrames.shift()?.(0);
+    act(() => animationFrames.shift()?.(0));
 
-    expect(store.get(mcapDepthHoverAtom)).toBeNull();
+    expect(readDepthHover(getByTestId("depth-hover").textContent)).toBeNull();
   });
 });
+
+function DepthHoverProbe() {
+  const hover = useMcapDepthHover();
+  return (
+    <output data-testid="depth-hover">
+      {hover
+        ? JSON.stringify({
+            ...hover,
+            contentTimeNs: hover.contentTimeNs.toString(),
+          })
+        : "null"}
+    </output>
+  );
+}
+
+function readDepthHover(value: string | null): unknown {
+  return JSON.parse(value ?? "null");
+}
 
 function cameraModel(): McapCameraModel {
   return {

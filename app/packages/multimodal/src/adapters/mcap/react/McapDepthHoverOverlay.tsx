@@ -48,7 +48,8 @@ export default function McapDepthHoverOverlay(inputs: DepthHoverInputs) {
     if (!published) return;
     publishedRef.current = null;
     setDepthHover((current) => (current === published ? null : current));
-  }, [setDepthHover]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Jotai setter is stable
+  }, []);
 
   const publishAtPointer = useCallback(() => {
     animationFrameRef.current = null;
@@ -123,7 +124,8 @@ export default function McapDepthHoverOverlay(inputs: DepthHoverInputs) {
     };
     publishedRef.current = hover;
     setDepthHover(hover);
-  }, [clearPublished, setDepthHover]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Jotai setter is stable
+  }, [clearPublished]);
 
   const schedulePublish = useCallback(() => {
     if (animationFrameRef.current !== null) return;
