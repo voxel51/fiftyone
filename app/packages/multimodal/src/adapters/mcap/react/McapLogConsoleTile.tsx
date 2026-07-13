@@ -18,6 +18,10 @@ import React, {
 import { byteSourceAccessKey } from "../../../query/bytes";
 import { useSceneSourcesByType } from "../../../scene-inventory/SceneInventoryProvider";
 import { MCAP_LOG_LEVELS, type McapLogLevel } from "../log-records";
+import {
+  useMcapLogTileSettings,
+  useSetMcapLogTileSettings,
+} from "./mcap-log-tile-state";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import {
@@ -73,11 +77,10 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
   const store = usePlaybackStore();
   const { seek } = usePlayback();
   const setTileTitle = useSetTileTitle();
-  const [followPlayhead, setFollowPlayhead] = useState(true);
+  const { enabledTopics, followPlayhead, selectedLevels } =
+    useMcapLogTileSettings();
+  const setLogSettings = useSetMcapLogTileSettings();
   const [centerTimeNs, setCenterTimeNs] = useState<bigint | undefined>();
-  const [selectedTopics, setSelectedTopics] = useState<readonly string[]>([]);
-  const [selectedLevels, setSelectedLevels] =
-    useState<readonly McapLogLevel[]>(MCAP_LOG_LEVELS);
   const [state, setState] = useState<LogRowsState>(INITIAL_ROWS);
   const fetchedWindowRef = useRef<LogRowsCacheWindow | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -88,15 +91,12 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     setTileTitle("Logs", { source: "auto" });
   }, [setTileTitle]);
 
-  // This effect preserves valid topic selections as log sources change and
-  // selects every source when none of the previous selections survive.
-  useEffect(() => {
+  const selectedTopics = useMemo(() => {
     const ids = logSources.map((entry) => entry.id);
-    setSelectedTopics((current) => {
-      const valid = current.filter((topic) => ids.includes(topic));
-      return valid.length > 0 ? valid : ids;
-    });
-  }, [logSources]);
+    if (enabledTopics === undefined) return ids;
+    const valid = enabledTopics.filter((topic) => ids.includes(topic));
+    return valid.length > 0 ? valid : ids;
+  }, [enabledTopics, logSources]);
 
   // This effect follows the playhead at a bounded refresh rate and pauses
   // while a history read is active so follow-up windows cannot pile up.
@@ -304,21 +304,27 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     [seek, timelineIndex],
   );
 
-  const toggleTopic = useCallback((topic: string, checked: boolean) => {
-    setSelectedTopics((current) =>
-      checked
-        ? [...new Set([...current, topic])]
-        : current.filter((entry) => entry !== topic),
-    );
-  }, []);
+  const toggleTopic = useCallback(
+    (topic: string, checked: boolean) => {
+      setLogSettings({
+        enabledTopics: checked
+          ? [...new Set([...selectedTopics, topic])]
+          : selectedTopics.filter((entry) => entry !== topic),
+      });
+    },
+    [selectedTopics, setLogSettings],
+  );
 
-  const toggleLevel = useCallback((level: McapLogLevel, checked: boolean) => {
-    setSelectedLevels((current) =>
-      checked
-        ? [...new Set([...current, level])]
-        : current.filter((entry) => entry !== level),
-    );
-  }, []);
+  const toggleLevel = useCallback(
+    (level: McapLogLevel, checked: boolean) => {
+      setLogSettings({
+        selectedLevels: checked
+          ? [...new Set([...selectedLevels, level])]
+          : selectedLevels.filter((entry) => entry !== level),
+      });
+    },
+    [selectedLevels, setLogSettings],
+  );
 
   const timeOriginNs = timelineIndex?.startTimeNs;
   const showRowList =
@@ -385,7 +391,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
           <Checkbox
             checked={followPlayhead}
             label="Follow"
-            onChange={setFollowPlayhead}
+            onChange={(checked) => setLogSettings({ followPlayhead: checked })}
             {...checkboxNoSpaceToggleProps}
           />
         </div>

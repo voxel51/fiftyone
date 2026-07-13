@@ -4,6 +4,7 @@ import {
   mcapTileTypeFromId,
   readMcapCameraPreferences,
   readMcapModalLayout,
+  sanitizeLogSettings,
   sanitizeMapSettings,
   sanitizePlotSeries,
   sanitizeRawTopics,
@@ -489,6 +490,70 @@ describe("mcap-layout-persistence", () => {
       expect(sanitizeRawTopics([])).toBeUndefined();
       expect(sanitizeRawTopics("x")).toBeUndefined();
       expect(sanitizeRawTopics({})).toBeUndefined();
+    });
+  });
+
+  describe("logSettings", () => {
+    const SETTINGS = {
+      "log-1": {
+        enabledTopics: ["/rosout"],
+        followPlayhead: false,
+        // Canonical severity order, as the sanitizer normalizes it.
+        selectedLevels: ["warn", "error"],
+      },
+    };
+
+    it("round-trips per-dataset log tile settings", () => {
+      writeMcapModalLayout({ logSettings: SETTINGS as never }, "ds-a");
+      expect(readMcapModalLayout("ds-a")?.logSettings).toEqual(SETTINGS);
+    });
+
+    it("sanitizes malformed log settings rows individually", () => {
+      writeMcapModalLayout(
+        {
+          logSettings: {
+            "log-1": {
+              enabledTopics: ["/rosout", "", "/rosout", 5],
+              followPlayhead: false,
+              selectedLevels: ["error", "shout"],
+            },
+            "image-1": {
+              followPlayhead: true,
+              selectedLevels: ["info"],
+            },
+            "log-2": {
+              followPlayhead: "yes",
+              selectedLevels: [],
+            },
+          } as never,
+        },
+        "ds-a",
+      );
+
+      expect(readMcapModalLayout("ds-a")?.logSettings).toEqual({
+        "log-1": {
+          enabledTopics: ["/rosout"],
+          followPlayhead: false,
+          selectedLevels: ["error"],
+        },
+        // Unrecognized levels and non-boolean follow fall back to defaults.
+        "log-2": {
+          followPlayhead: true,
+          selectedLevels: [
+            "debug",
+            "info",
+            "warn",
+            "error",
+            "fatal",
+            "unknown",
+          ],
+        },
+      });
+    });
+
+    it("sanitizeLogSettings rejects non-object payloads", () => {
+      expect(sanitizeLogSettings(null)).toBeUndefined();
+      expect(sanitizeLogSettings([])).toBeUndefined();
     });
   });
 

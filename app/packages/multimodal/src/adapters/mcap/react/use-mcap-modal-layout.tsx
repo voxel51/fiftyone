@@ -27,6 +27,11 @@ import {
   type McapPersistedModalLayout,
 } from "./mcap-layout-persistence";
 import {
+  DEFAULT_MCAP_LOG_TILE_SETTINGS,
+  mcapLogTileSettingsAtom,
+  type McapLogTileSettings,
+} from "./mcap-log-tile-state";
+import {
   DEFAULT_MCAP_MAP_TILE_SETTINGS,
   mcapMapTileSettingsAtom,
   type McapMapTileSettings,
@@ -469,6 +474,30 @@ export function McapModalLayoutPersistence({
     store,
   });
 
+  const seededLogKeyRef = useRef<string | null>(null);
+  useSeedPersistedTileAtom({
+    atom: mcapLogTileSettingsAtom,
+    datasetIdRef,
+    field: "logSettings",
+    seededKeyRef: seededLogKeyRef,
+    store,
+    tilesRef,
+  });
+
+  const logSettingsPatch = useCallback(
+    (value: Readonly<Record<string, McapLogTileSettings>>) => ({
+      logSettings: compactLogSettings(value),
+    }),
+    [],
+  );
+  useDebouncedMcapLayoutAtomMirror({
+    atom: mcapLogTileSettingsAtom,
+    datasetIdRef,
+    patchForValue: logSettingsPatch,
+    seededKeyRef: seededLogKeyRef,
+    store,
+  });
+
   const seededMapKeyRef = useRef<string | null>(null);
   useSeedPersistedTileAtom({
     atom: mcapMapTileSettingsAtom,
@@ -611,6 +640,31 @@ function compactPlotSeries(
   return compact;
 }
 
+function compactLogSettings(
+  value: Readonly<Record<string, McapLogTileSettings>>,
+): Record<string, McapLogTileSettings> | undefined {
+  const compact: Record<string, McapLogTileSettings> = {};
+  for (const [tileId, settings] of Object.entries(value)) {
+    const isDefault =
+      settings.followPlayhead ===
+        DEFAULT_MCAP_LOG_TILE_SETTINGS.followPlayhead &&
+      settings.selectedLevels ===
+        DEFAULT_MCAP_LOG_TILE_SETTINGS.selectedLevels &&
+      settings.enabledTopics === undefined;
+    if (isDefault) {
+      continue;
+    }
+    compact[tileId] = {
+      followPlayhead: settings.followPlayhead,
+      selectedLevels: settings.selectedLevels,
+      ...(settings.enabledTopics !== undefined
+        ? { enabledTopics: settings.enabledTopics }
+        : {}),
+    };
+  }
+  return Object.keys(compact).length > 0 ? compact : undefined;
+}
+
 function compactMapSettings(
   value: Readonly<Record<string, McapMapTileSettings>>,
 ): Record<string, McapMapTileSettings> | undefined {
@@ -636,7 +690,11 @@ function compactMapSettings(
   return Object.keys(compact).length > 0 ? compact : undefined;
 }
 
-type PersistedTileAtomField = "mapSettings" | "plotSeries" | "rawTopics";
+type PersistedTileAtomField =
+  | "logSettings"
+  | "mapSettings"
+  | "plotSeries"
+  | "rawTopics";
 
 /**
  * Seeds tile-scoped atoms from the dataset entry once per modal mount.

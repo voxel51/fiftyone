@@ -4,6 +4,11 @@ import {
   type Mcap3dSceneUpAxis,
 } from "./mcap-3d-scene-up";
 import type { Mcap3dTrackingMode } from "./mcap-3d-camera";
+import { MCAP_LOG_LEVELS, type McapLogLevel } from "../log-records";
+import {
+  DEFAULT_MCAP_LOG_TILE_SETTINGS,
+  type McapLogTileSettings,
+} from "./mcap-log-tile-state";
 import {
   DEFAULT_MCAP_MAP_TILE_SETTINGS,
   normalizeMcapMapBaseLayer,
@@ -48,6 +53,11 @@ export interface McapPersistedModalLayout {
    */
   mapSettings?: Record<string, McapPersistedMapSettings>;
   /**
+   * Log console topic/level visibility and follow preference per log tile
+   * id. Dataset-scoped: topic names belong to one recording family.
+   */
+  logSettings?: Record<string, McapPersistedLogSettings>;
+  /**
    * Inspected topic per raw-message tile id. Topics belong to one
    * dataset's recordings, so this field is dataset-scoped only — like
    * `plotSeries`, never merged into the browser-wide fallback.
@@ -90,6 +100,8 @@ export interface McapPersistedPlotSeries {
 
 export type McapPersistedMapSettings = McapMapTileSettings;
 
+export type McapPersistedLogSettings = McapLogTileSettings;
+
 // Bound the persisted plot config so a corrupt or adversarial payload
 // cannot balloon the localStorage entry parsed on every modal mount.
 const MAX_PLOT_TILES = 32;
@@ -97,6 +109,7 @@ const MAX_PLOT_SERIES_PER_TILE = 64;
 const MAX_RAW_TILES = 32;
 const MAX_RAW_TOPIC_LENGTH = 512;
 const MAX_MAP_TILES = 16;
+const MAX_LOG_TILES = 16;
 const MAX_MAP_TOPICS_PER_TILE = 64;
 const MAX_MAP_TOPIC_LENGTH = 512;
 const MAX_TILE_TITLES = 64;
@@ -121,6 +134,7 @@ interface PersistedStore {
 const STORAGE_KEY = "fiftyone.mcap.modal-layout";
 const STORAGE_VERSION = 1;
 const FALLBACK_OMITTED_FIELDS = [
+  "logSettings",
   "mapSettings",
   "cameraPreferences",
   "plotSeries",
@@ -166,6 +180,7 @@ function sanitizeEntry(raw: unknown): McapPersistedModalLayout | undefined {
     layout: isValidMosaicLayout(candidate.layout)
       ? candidate.layout
       : undefined,
+    logSettings: sanitizeLogSettings(candidate.logSettings),
     mapSettings: sanitizeMapSettings(candidate.mapSettings),
     plotSeries: sanitizePlotSeries(candidate.plotSeries),
     rawTopics: sanitizeRawTopics(candidate.rawTopics),
@@ -365,6 +380,55 @@ export function sanitizeMapSettings(
   }
 
   return Object.keys(result).length > 0 ? result : undefined;
+}
+
+export function sanitizeLogSettings(
+  raw: unknown,
+): Record<string, McapPersistedLogSettings> | undefined {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const result: Record<string, McapPersistedLogSettings> = {};
+  let tileCount = 0;
+  for (const [tileId, settings] of Object.entries(raw)) {
+    if (
+      tileCount >= MAX_LOG_TILES ||
+      mcapTileTypeFromId(tileId) !== MCAP_TILE_TYPE.LOG ||
+      typeof settings !== "object" ||
+      settings === null ||
+      Array.isArray(settings)
+    ) {
+      continue;
+    }
+
+    const record = settings as Record<string, unknown>;
+    const enabledTopics = sanitizeMapTopicList(record.enabledTopics);
+    const followPlayhead =
+      typeof record.followPlayhead === "boolean"
+        ? record.followPlayhead
+        : DEFAULT_MCAP_LOG_TILE_SETTINGS.followPlayhead;
+    const selectedLevels = sanitizeLogLevels(record.selectedLevels);
+
+    result[tileId] = {
+      followPlayhead,
+      selectedLevels,
+      ...(enabledTopics !== undefined ? { enabledTopics } : {}),
+    };
+    tileCount += 1;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function sanitizeLogLevels(raw: unknown): readonly McapLogLevel[] {
+  if (!Array.isArray(raw)) {
+    return DEFAULT_MCAP_LOG_TILE_SETTINGS.selectedLevels;
+  }
+  const levels = MCAP_LOG_LEVELS.filter((level) => raw.includes(level));
+  return levels.length > 0
+    ? levels
+    : DEFAULT_MCAP_LOG_TILE_SETTINGS.selectedLevels;
 }
 
 function sanitizeMapTopicList(raw: unknown): readonly string[] | undefined {
