@@ -132,7 +132,7 @@ function annotationTopicMatchScore(
 /**
  * Chooses the camera-calibration topic that best matches a selected camera
  * topic. Prefers the exact `<camera prefix>/camera_info` sibling, then
- * falls back to the highest shared-token score.
+ * falls back to a unique highest shared-token score.
  */
 export function chooseCalibrationTopic(
   imageTopic: string,
@@ -151,6 +151,7 @@ export function chooseCalibrationTopic(
 
   let bestTopic: string | null = null;
   let bestScore = 0;
+  let bestScoreTied = false;
   const imageTokens = topicTokens(imageTopic);
 
   for (const calibrationTopic of calibrationTopics) {
@@ -168,10 +169,13 @@ export function chooseCalibrationTopic(
     if (score > bestScore) {
       bestScore = score;
       bestTopic = calibrationTopic;
+      bestScoreTied = false;
+    } else if (score > 0 && score === bestScore) {
+      bestScoreTied = true;
     }
   }
 
-  return bestTopic;
+  return bestScoreTied ? null : bestTopic;
 }
 
 /**

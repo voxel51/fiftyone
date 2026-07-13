@@ -10,9 +10,12 @@ import {
   DropdownAnchor,
   DropdownTrigger,
   MenuTextItem,
+  Select,
+  SelectAnchor,
   Text,
   TextColor,
   TextVariant,
+  ZIndex,
 } from "@voxel51/voodo";
 import { useStore } from "jotai";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -77,6 +80,7 @@ import {
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_TOPICS: readonly string[] = [];
+const AUTO_CALIBRATION_OPTION_ID = "__mcap_auto_calibration__";
 const IMAGE_GEOMETRY_MODES: readonly McapImageGeometryMode[] = [
   "auto",
   "original",
@@ -96,11 +100,11 @@ const IMAGE_DISPLAY_LABELS: Record<McapImageDisplayMode, string> = {
   rectified: "Rectified view",
 };
 const CAMERA_CALIBRATION_HELP =
-  "Calibration topic used for camera geometry. Auto uses the scene inventory's image-to-camera association; choosing a topic overrides that association for this image and its 3D frustum.";
+  "Calibration topic used for camera geometry. Auto uses a unique scene-inventory image-to-camera match and leaves ambiguous images unmatched; choosing a topic overrides that association for this image and its 3D frustum.";
 const IMAGE_DISPLAY_HELP =
   "Pixels shown in this tile. Recorded pixels preserves the source image exactly. Rectified view remaps a supported original image into the calibration's rectified pixel space and moves annotations, projections, and picking with it.";
 const RECORDED_IMAGE_GEOMETRY_HELP =
-  "Coordinate system of the recorded image. Auto trusts explicit evidence and pixel-equivalent models; topic names are hints only, and ambiguous overlays are withheld. Original camera applies K and lens distortion D. Rectified uses R and P without applying D.";
+  "Coordinate system of the recorded image. Auto recognizes canonical image_raw and image_rect topic suffixes, accepts pixel-equivalent models, and withholds ambiguous overlays otherwise. Original camera applies K and lens distortion D. Rectified uses R and P without applying D.";
 
 const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const [imageDims, setImageDims] = useState<{
@@ -369,8 +373,6 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     imageSize: effectiveImageDims,
     resetKey: `${topic}\n${projection.display}\n${rectifiedViewActive}`,
   });
-  const currentLabel =
-    images.find((s) => s.id === topic)?.label ?? "Select source";
   const toggleLabelTopic = (labelTopic: string, checked: boolean) => {
     if (!topic) return;
     const next = new Set(selectedLabelTopics);
@@ -442,28 +444,45 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
         : [],
     [visibleIssue],
   );
+  const imageSourceOptions = useMemo(
+    () =>
+      images.map((source) => ({
+        data: { label: source.label },
+        id: source.id,
+      })),
+    [images],
+  );
+  const calibrationSourceOptions = useMemo(
+    () => [
+      {
+        data: { label: calibrationSelectionLabel },
+        id: AUTO_CALIBRATION_OPTION_ID,
+      },
+      ...calibrationSources.map((source) => ({
+        data: { label: source.label },
+        id: source.id,
+      })),
+    ],
+    [calibrationSelectionLabel, calibrationSources],
+  );
 
   return (
     <>
       <TileSettingsContent>
         <div className={settingsStyles.root}>
           <McapSidebarGroup title="Source">
-            <Dropdown
-              anchor={DropdownAnchor.BottomStart}
-              trigger={<DropdownTrigger>{currentLabel}</DropdownTrigger>}
-            >
-              {images.map((s) => (
-                <MenuTextItem
-                  key={s.id}
-                  onClick={() => {
-                    setTopic(s.id);
-                    setTileTitle(s.label, { source: "auto" });
-                  }}
-                >
-                  {s.label}
-                </MenuTextItem>
-              ))}
-            </Dropdown>
+            <Select
+              anchor={SelectAnchor.BottomStart}
+              aria-label="Source"
+              exclusive
+              onChange={(value) => {
+                if (typeof value === "string") setTopic(value);
+              }}
+              options={imageSourceOptions}
+              portal
+              value={topic}
+              zIndex={ZIndex.AboveModal}
+            />
           </McapSidebarGroup>
           {canConfigureCameraGeometry ? (
             <McapSidebarGroup
@@ -475,30 +494,24 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   label="Calibration"
                   tooltip={CAMERA_CALIBRATION_HELP}
                 />
-                <Dropdown
-                  anchor={DropdownAnchor.BottomStart}
-                  trigger={
-                    <DropdownTrigger>
-                      {calibrationSelectionLabel}
-                    </DropdownTrigger>
+                <Select
+                  anchor={SelectAnchor.BottomStart}
+                  aria-label="Calibration"
+                  exclusive
+                  onChange={(value) => {
+                    if (typeof value !== "string") return;
+                    setProjection({
+                      calibrationTopic:
+                        value === AUTO_CALIBRATION_OPTION_ID ? null : value,
+                    });
+                  }}
+                  options={calibrationSourceOptions}
+                  portal
+                  value={
+                    projection.calibrationTopic ?? AUTO_CALIBRATION_OPTION_ID
                   }
-                >
-                  <MenuTextItem
-                    onClick={() => setProjection({ calibrationTopic: null })}
-                  >
-                    Auto
-                  </MenuTextItem>
-                  {calibrationSources.map((source) => (
-                    <MenuTextItem
-                      key={source.id}
-                      onClick={() =>
-                        setProjection({ calibrationTopic: source.id })
-                      }
-                    >
-                      {source.label}
-                    </MenuTextItem>
-                  ))}
-                </Dropdown>
+                  zIndex={ZIndex.AboveModal}
+                />
               </label>
               <label className={settingsStyles.field}>
                 <McapSettingsLabel

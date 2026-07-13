@@ -27,6 +27,16 @@ describe("chooseCalibrationTopic", () => {
     ).toBe("/calibration/front_info");
   });
 
+  it("returns no match when fuzzy calibration candidates tie", () => {
+    expect(
+      chooseCalibrationTopic("/boxi/hesai/intensity_image", [
+        "/boxi/alphasense/front_left/camera_info",
+        "/boxi/alphasense/front_right/camera_info",
+        "/boxi/hdr/front/camera_info",
+      ]),
+    ).toBeNull();
+  });
+
   it("returns null when nothing matches", () => {
     expect(chooseCalibrationTopic("/CAM_FRONT/image_rect", [])).toBeNull();
     expect(

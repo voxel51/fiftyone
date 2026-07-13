@@ -8,6 +8,11 @@ const GRID_COLUMNS = 9;
 const GRID_ROWS = 7;
 const NUMERIC_EPSILON = 1e-9;
 const CAMERA_MODEL_CACHE_LIMIT = 64;
+const IMAGE_TRANSPORT_TOPIC_TOKENS = new Set([
+  "compress",
+  "compressed",
+  "compressedimage",
+]);
 
 const IDENTITY_RECTIFICATION: readonly number[] = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 
@@ -209,7 +214,14 @@ export function resolveMcapCameraModel({
     return readyOrFailure(rectified, "rectified");
   }
 
-  const suggestion = suggestMcapImageGeometry(imageTopic);
+  const inferredGeometry = suggestMcapImageGeometry(imageTopic);
+  if (inferredGeometry) {
+    return readyOrFailure(
+      inferredGeometry === "original" ? original : rectified,
+      inferredGeometry,
+    );
+  }
+
   if (isFailure(original) && isFailure(rectified)) {
     return {
       equivalentDisplacementPx: null,
@@ -218,7 +230,7 @@ export function resolveMcapCameraModel({
         original.status === "unsupported" || rectified.status === "unsupported"
           ? "unsupported"
           : "invalid",
-      suggestedMode: suggestion,
+      suggestedMode: null,
     };
   }
 
@@ -237,7 +249,7 @@ export function resolveMcapCameraModel({
       message:
         "Original and rectified camera models differ; choose the image geometry",
       status: "ambiguous",
-      suggestedMode: suggestion,
+      suggestedMode: null,
     };
   }
 
@@ -264,7 +276,7 @@ export function resolveMcapCameraModel({
     equivalentDisplacementPx: null,
     message: `${capitalize(availableMode)} projection is available, but Auto cannot prove the image uses it: ${unavailable.message}`,
     status: unavailable.status === "unsupported" ? "unsupported" : "ambiguous",
-    suggestedMode: suggestion ?? availableMode,
+    suggestedMode: availableMode,
   };
 }
 
@@ -310,21 +322,26 @@ function cameraModelCacheKey(
   ].join("|");
 }
 
-/** Low-confidence naming hint; never sufficient to resolve Auto by itself. */
+/** Geometry encoded by a canonical terminal image topic suffix. */
 export function suggestMcapImageGeometry(
   imageTopic: string,
 ): McapResolvedImageGeometryMode | null {
-  const segments = imageTopic
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-  if (
-    segments.some((segment) => segment === "rect" || segment === "rectified")
-  ) {
-    return "rectified";
-  }
-  if (segments.includes("raw")) {
-    return "original";
+  const pathSegments = imageTopic.toLowerCase().split("/").filter(Boolean);
+  for (let index = pathSegments.length - 1; index >= 0; index -= 1) {
+    const tokens = pathSegments[index].split(/[^a-z0-9]+/).filter(Boolean);
+    if (tokens.every((token) => IMAGE_TRANSPORT_TOPIC_TOKENS.has(token))) {
+      continue;
+    }
+    if (!tokens.includes("image")) {
+      return null;
+    }
+    if (tokens.includes("rect") || tokens.includes("rectified")) {
+      return "rectified";
+    }
+    if (tokens.includes("raw")) {
+      return "original";
+    }
+    return null;
   }
   return null;
 }
