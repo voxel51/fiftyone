@@ -277,7 +277,12 @@ jobs:
           script: |
             const fs = require('fs');
             const body = fs.readFileSync('e2e-pw/e2e-summary.md', 'utf8');
-            const marker = '<!-- e2e-authoritative-report -->';
+            const flavor = process.env.GITHUB_REPOSITORY.endsWith(
+              'fiftyone-teams',
+            )
+              ? 'FOE'
+              : 'OSS';
+            const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,

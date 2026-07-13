@@ -7,7 +7,12 @@
 
 import { readFileSync } from "node:fs";
 
-const MARKER = "<!-- e2e-authoritative-report -->";
+// The synced copy of this suite runs in fiftyone-teams too; flavor-scoped
+// markers and headings let the OSS and FOE comments coexist on the OSS PR.
+const FLAVOR = (process.env.GITHUB_REPOSITORY ?? "").endsWith("fiftyone-teams")
+  ? "FOE"
+  : "OSS";
+const MARKER = `<!-- e2e-authoritative-report:${FLAVOR} -->`;
 const MAX_LISTED = 50;
 
 const [, , jsonPath] = process.argv;
@@ -66,8 +71,10 @@ const runLink = runUrl ? ` — [run](${runUrl})` : "";
 const lines = [
   MARKER,
   failed.length
-    ? `## ❌ e2e: ${failed.length} failed spec${failed.length === 1 ? "" : "s"}`
-    : "## ✅ e2e passed",
+    ? `## ❌ e2e (${FLAVOR}): ${failed.length} failed spec${
+        failed.length === 1 ? "" : "s"
+      }`
+    : `## ✅ e2e (${FLAVOR}) passed`,
   "",
   `**${failed.length} failed · ${flaky.length} flaky · ${
     stats.expected ?? 0
