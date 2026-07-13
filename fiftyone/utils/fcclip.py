@@ -19,6 +19,7 @@ class FCCLIPModelConfig(fout.TorchImageModelConfig, HasZooModel):
     Args:
         name_or_path (None): HF repo or local path to the FC-CLIP model
             uploaded with ``trust_remote_code=True``
+        revision (None): optional HF commit SHA / branch / tag to pin
         confidence_thresh (0.8): minimum panoptic segment confidence to keep
         task ("panoptic"): segmentation task — ``"instance"`` keeps only
             "thing" segments, ``"panoptic"`` keeps both "thing" and "stuff"
@@ -29,6 +30,7 @@ class FCCLIPModelConfig(fout.TorchImageModelConfig, HasZooModel):
         d = self.init(d)
         super().__init__(d)
         self.name_or_path = self.parse_string(d, "name_or_path")
+        self.revision = self.parse_string(d, "revision", default=None)
         self.confidence_thresh = self.parse_number(
             d, "confidence_thresh", default=0.8
         )
@@ -178,6 +180,7 @@ class FCCLIPModel(fout.TorchImageModel):
 
         model = AutoModel.from_pretrained(
             config.name_or_path,
+            revision=config.revision,
             trust_remote_code=True,
             cache_dir=fo.config.model_zoo_dir,
             low_cpu_mem_usage=False,

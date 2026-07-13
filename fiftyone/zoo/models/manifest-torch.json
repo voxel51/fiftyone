@@ -761,6 +761,7 @@
                 "type": "fiftyone.utils.fcclip.FCCLIPModel",
                 "config": {
                     "name_or_path": "Voxel51/fc-clip",
+                    "revision": "be25e3eac3dd8cc3c482b0b4251309bae3ab8419",
                     "task": "instance"
                 }
             },
@@ -808,6 +809,7 @@
                 "type": "fiftyone.utils.fcclip.FCCLIPModel",
                 "config": {
                     "name_or_path": "Voxel51/fc-clip",
+                    "revision": "be25e3eac3dd8cc3c482b0b4251309bae3ab8419",
                     "task": "panoptic"
                 }
             },
