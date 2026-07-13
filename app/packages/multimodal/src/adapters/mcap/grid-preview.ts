@@ -615,6 +615,11 @@ function collectArrayBuffers(
 function compactGridPointCloud(
   frame: PointCloudVisualization,
 ): PointCloudVisualization {
+  const sampledPointCount =
+    frame.renderPayload?.sampledPointCount ?? frame.pointCount;
+  if (sampledPointCount <= MCAP_GRID_PREVIEW_MAX_POINTS) {
+    return frame;
+  }
   const sourcePayload =
     frame.renderPayload ??
     buildPointCloudRenderPayload({

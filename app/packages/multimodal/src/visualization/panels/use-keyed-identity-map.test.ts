@@ -84,6 +84,7 @@ describe("useKeyedIdentityMap", () => {
 
   it("drops cache entries for removed keys", () => {
     const build = vi.fn((item: Item) => item.id);
+    const itemA = { id: "a", value: 1 };
     const { rerender, result } = renderHook(
       ({ items }: { items: readonly Item[] }) =>
         useKeyedIdentityMap(items, {
@@ -91,9 +92,8 @@ describe("useKeyedIdentityMap", () => {
           inputs: (item) => [item],
           key: (item) => item.id,
         }),
-      { initialProps: { items: [{ id: "a", value: 1 }] as readonly Item[] } },
+      { initialProps: { items: [itemA] as readonly Item[] } },
     );
-    const itemA = { id: "a", value: 1 };
 
     rerender({ items: [] });
     expect(result.current).toEqual([]);

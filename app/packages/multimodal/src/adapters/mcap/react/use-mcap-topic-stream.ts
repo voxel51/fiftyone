@@ -1,5 +1,5 @@
 import { useStreamValue, useStreamValues } from "@fiftyone/playback";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   useMcapDataStream,
   type McapDataStream,
@@ -69,6 +69,10 @@ export function useMcapTopicPlaybackFrames<T = unknown>(
 ): readonly (McapTopicPlaybackFrame<T> | null)[] {
   const dataStream = useMcapDataStream();
   const values = useStreamValues<McapTopicPlaybackFrame<T> | null>(topics);
+  // Only the fallback's length matters; topic identity is intentionally
+  // excluded so unavailable-stream renders keep the same array instance.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const emptyValues = useMemo(() => topics.map(() => null), [topics.length]);
   const subscriptionsRef = useRef<Map<string, () => void>>(new Map());
   const streamRef = useRef<McapDataStream | null>(null);
 
@@ -110,5 +114,5 @@ export function useMcapTopicPlaybackFrames<T = unknown>(
     [],
   );
 
-  return dataStream ? values : topics.map(() => null);
+  return dataStream ? values : emptyValues;
 }

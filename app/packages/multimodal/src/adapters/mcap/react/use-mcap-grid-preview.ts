@@ -174,6 +174,7 @@ export function useMcapGridPreview({
     const controller = new AbortController();
     const pool = getMcapGridPreviewPool();
     pool.acquire();
+    let bootstrapPublished = false;
 
     const run = async () => {
       try {
@@ -201,11 +202,15 @@ export function useMcapGridPreview({
             break;
           }
 
-          publishGridBootstrap(source, result);
           if (!result.state.frame) {
             nextStartTimeNsRef.current = undefined;
             await delayMs(mcapGridPreviewPlaybackDelayMs(source));
             continue;
+          }
+
+          if (!bootstrapPublished) {
+            publishGridBootstrap(source, result);
+            bootstrapPublished = true;
           }
 
           nextStartTimeNsRef.current = result.nextStartTimeNs;

@@ -165,6 +165,11 @@ describe("useMcapGridPreview", () => {
     await waitFor(() => {
       expect(firstImageByte(latestState.current?.frame ?? null)).toBe(9);
     });
+    expect(
+      firstImageByte(
+        getMcapSourceBootstrap(sourceForId("hover"))?.poster ?? null,
+      ),
+    ).toBe(9);
 
     act(() => {
       latestState.current?.pause();

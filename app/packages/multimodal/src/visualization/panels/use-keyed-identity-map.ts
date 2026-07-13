@@ -32,10 +32,10 @@ export function useKeyedIdentityMap<Item, Out>(
     readonly key: (item: Item, index: number) => string;
   },
 ): readonly Out[] {
-  const cacheRef = useRef(new Map<string, KeyedIdentityEntry<Out>>());
+  const cacheRef = useRef<Map<string, KeyedIdentityEntry<Out>> | null>(null);
   const lastArrayRef = useRef<readonly Out[] | null>(null);
 
-  const cache = cacheRef.current;
+  const cache = (cacheRef.current ??= new Map());
   const seen = new Set<string>();
   const next = items.map((item, index) => {
     const key = options.key(item, index);
