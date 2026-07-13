@@ -318,10 +318,13 @@ export function useMcap3dFrameSelection({
         : { timeNs: pendingPromotion.timeNs }),
     });
     if (readiness.status === "ready") {
+      // Readiness without a placement time only admits static transforms, for
+      // which the resolver's required timestamp is immaterial.
+      const resolutionTimeNs = pendingPromotion.timeNs ?? 0n;
       const resolution = resolveFrameTransformRef.current(
         pendingPromotion.sourceFrameId,
         pendingPromotion.candidateFrameId,
-        pendingPromotion.timeNs,
+        resolutionTimeNs,
       );
       if (resolution.status === "resolved") {
         dispatch({
