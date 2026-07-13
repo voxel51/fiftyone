@@ -23,6 +23,7 @@ import {
   HOVER_INTENT_DELAY_MS,
   PLAYBACK_HOVER_INTENT_DELAY_MS,
 } from "./GridRenderer";
+import classes from "./GridRenderer.module.css";
 
 const previewHarness = vi.hoisted(() => ({
   preview: {
@@ -240,12 +241,12 @@ describe("GridRenderer", () => {
     expect(onContextMenu).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps point-cloud and unresolved tile activation inside the renderer", () => {
+  it("keeps point-cloud tile activation inside the renderer", () => {
     previewHarness.preview.frame = pointCloudFrame();
     previewHarness.preview.status = "ready";
     const onClick = vi.fn();
     const onContextMenu = vi.fn();
-    const { rerender } = render(
+    render(
       <div onClick={onClick} onContextMenu={onContextMenu}>
         <GridRenderer ctx={rendererCtx()} />
       </div>,
@@ -257,22 +258,32 @@ describe("GridRenderer", () => {
 
     expect(onClick).not.toHaveBeenCalled();
     expect(onContextMenu).not.toHaveBeenCalled();
-
-    previewHarness.preview.frame = null;
-    previewHarness.preview.status = "loading";
-    rerender(
-      <div onClick={onClick} onContextMenu={onContextMenu}>
-        <GridRenderer ctx={rendererCtx()} />
-      </div>,
-    );
-
-    const loading = screen.getByTestId("mcap-loading-ascii");
-    fireEvent.click(loading);
-    fireEvent.contextMenu(loading);
-
-    expect(onClick).not.toHaveBeenCalled();
-    expect(onContextMenu).not.toHaveBeenCalled();
   });
+
+  it.each(["idle", "loading", "ready", "unavailable", "error"] as const)(
+    "allows frame-less %s tile activation to pass through",
+    (status) => {
+      previewHarness.preview.frame = null;
+      previewHarness.preview.status = status;
+      const onClick = vi.fn();
+      const onContextMenu = vi.fn();
+      const { container } = render(
+        <div onClick={onClick} onContextMenu={onContextMenu}>
+          <GridRenderer ctx={rendererCtx()} />
+        </div>,
+      );
+
+      const root = container.firstElementChild?.firstElementChild;
+      if (!(root instanceof HTMLElement)) {
+        throw new Error("Expected an MCAP grid renderer root");
+      }
+      fireEvent.click(root);
+      fireEvent.contextMenu(root);
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(onContextMenu).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("requires hover intent before starting playback", () => {
     vi.useFakeTimers();
@@ -375,6 +386,8 @@ describe("GridRenderer", () => {
     expect(bitmapHostHarness.lastBitmap).toBe(bitmap);
 
     const cell = pointCloudCells()[0];
+    expect(cell.classList.contains(classes.pointCloud)).toBe(true);
+    expect(cell.classList.contains(classes.livePointCloud)).toBe(false);
     // React synthesizes onPointerEnter/Leave from pointerover/pointerout.
     fireEvent.pointerOver(cell);
     // Before the intent delay fires the cell stays snapshot-only.
@@ -388,6 +401,7 @@ describe("GridRenderer", () => {
     // still-mounted snapshot host.
     expect(screen.getByTestId("point-cloud-panel")).toBeTruthy();
     expect(screen.getByTestId("bitmap-canvas-host")).toBeTruthy();
+    expect(cell.classList.contains(classes.livePointCloud)).toBe(true);
     expect(gridLiveLeaseStats()).toMatchObject({ active: 1, granted: 1 });
     // Going live does not request a snapshot.
     expect(snapshotHarness.requests.length).toBe(1);
@@ -397,6 +411,7 @@ describe("GridRenderer", () => {
     // Back at rest: live panel gone, lease released, and a fresh snapshot
     // was requested at the current shared pose.
     expect(screen.queryByTestId("point-cloud-panel")).toBeNull();
+    expect(cell.classList.contains(classes.livePointCloud)).toBe(false);
     expect(gridLiveLeaseStats().active).toBe(0);
     expect(snapshotHarness.requests.length).toBe(2);
 

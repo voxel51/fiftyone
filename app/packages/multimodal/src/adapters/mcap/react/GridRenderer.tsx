@@ -84,11 +84,13 @@ export function GridRenderer({
   });
   const registerStreamTopics = useRegisterMcapGridStreamTopics();
   const stableStreamTopics = useStableGridStreamTopics(preview.streamTopics);
-  const allowGridActivation =
-    preview.status === "ready" && preview.frame?.kind === "image";
-  const gridActivationHandler = allowGridActivation
-    ? undefined
-    : stopGridActivationPropagation;
+  const blocksGridActivation = preview.frame?.kind === "point-cloud";
+  const gridActivationHandler = blocksGridActivation
+    ? stopGridActivationPropagation
+    : undefined;
+  const rootClassName = blocksGridActivation
+    ? classes.root
+    : `${classes.root} ${classes.modalActivationSurface}`;
   const playbackIntent = usePlaybackHoverIntent(
     preview.pause,
     preview.play,
@@ -133,7 +135,7 @@ export function GridRenderer({
 
   return (
     <div
-      className={classes.root}
+      className={rootClassName}
       onClick={gridActivationHandler}
       onContextMenu={gridActivationHandler}
       onPointerEnter={playbackIntent.enter}
@@ -504,9 +506,13 @@ function PointCloudPreviewFrame({
     };
   }, [cancelHoverIntent]);
 
+  const pointCloudClassName = live
+    ? `${classes.imagePanel} ${classes.pointCloud} ${classes.livePointCloud}`
+    : `${classes.imagePanel} ${classes.pointCloud}`;
+
   return (
     <div
-      className={classes.imagePanel}
+      className={pointCloudClassName}
       onPointerEnter={() => {
         // Arm the hover-intent timer; only a dwell past the delay asks
         // the pool for a live-renderer lease.
