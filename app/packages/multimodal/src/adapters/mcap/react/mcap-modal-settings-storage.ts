@@ -92,7 +92,24 @@ export interface McapImageProjectionSettings {
 }
 
 /**
+ * Topic-keyed styling persisted per settings scope (one dataset or ad hoc
+ * recording source). Bare topic names collide across unrelated datasets —
+ * two recordings sharing `/lidar_top` are not one preference — so these
+ * maps resolve scoped-first with the legacy top-level maps as fallback.
+ */
+export interface McapScopedModalSettings {
+  readonly imageLabelTopics: Record<string, readonly string[]>;
+  readonly imageProjection: Record<string, McapImageProjectionSettings>;
+  readonly pointCloudColors: Record<string, McapPointCloudColorSettings>;
+}
+
+/**
  * Full localStorage payload for browser-wide MCAP modal preferences.
+ *
+ * Device-global preferences (fidelity, timing, pinhole, grid, background,
+ * point size) live at the top level. Topic-keyed styling additionally lives
+ * under `scoped`, keyed by settings scope; the top-level topic maps remain
+ * as the pre-scoping fallback.
  */
 export interface McapPersistedModalSettings {
   readonly fidelityMode: McapPlaybackFidelityMode;
@@ -103,6 +120,7 @@ export interface McapPersistedModalSettings {
   readonly pointCloudPointSize: number;
   readonly referenceGrid: McapReferenceGridSettings;
   readonly sceneBackground: McapSceneBackgroundSettings;
+  readonly scoped: Record<string, McapScopedModalSettings>;
   readonly showPointCloudColorLegend: boolean;
   readonly temporalPolicy: McapTemporalPolicySettings;
 }
@@ -258,6 +276,21 @@ export const MAX_MCAP_POINT_CLOUD_POINT_SIZE = 10;
 export const MCAP_POINT_CLOUD_POINT_SIZE_STEP = 0.25;
 
 /**
+ * Empty per-scope styling payload.
+ */
+export const EMPTY_MCAP_SCOPED_SETTINGS: McapScopedModalSettings = {
+  imageLabelTopics: {},
+  imageProjection: {},
+  pointCloudColors: {},
+};
+
+/**
+ * Most scopes retained in the persisted payload. Writes re-insert their
+ * scope last, so pruning drops the least recently written datasets first.
+ */
+export const MAX_MCAP_SETTINGS_SCOPES = 20;
+
+/**
  * Complete default MCAP modal settings payload.
  */
 export const DEFAULT_MCAP_MODAL_SETTINGS: McapPersistedModalSettings = {
@@ -269,6 +302,7 @@ export const DEFAULT_MCAP_MODAL_SETTINGS: McapPersistedModalSettings = {
   pointCloudPointSize: DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
   referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
   sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
+  scoped: {},
   showPointCloudColorLegend: false,
   temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
 };
@@ -303,6 +337,7 @@ export function readMcapModalSettings(): McapPersistedModalSettings {
       ),
       referenceGrid: normalizeMcapReferenceGrid(candidate.referenceGrid),
       sceneBackground: normalizeMcapSceneBackground(candidate.sceneBackground),
+      scoped: normalizeMcapScopedSettingsMap(candidate.scoped),
       showPointCloudColorLegend:
         typeof candidate.showPointCloudColorLegend === "boolean"
           ? candidate.showPointCloudColorLegend
@@ -352,8 +387,62 @@ export function normalizeMcapModalSettings(
     ),
     referenceGrid: normalizeMcapReferenceGrid(settings.referenceGrid),
     sceneBackground: normalizeMcapSceneBackground(settings.sceneBackground),
+    scoped: normalizeMcapScopedSettingsMap(settings.scoped),
     showPointCloudColorLegend: settings.showPointCloudColorLegend === true,
     temporalPolicy: normalizeMcapTemporalPolicy(settings.temporalPolicy),
+  };
+}
+
+/**
+ * Normalizes the per-scope styling map: each entry's topic maps go through
+ * the same normalizers as the top-level maps, entries left empty are
+ * dropped, and only the last `MAX_MCAP_SETTINGS_SCOPES` entries survive —
+ * writes re-insert their scope last, so insertion order is recency order.
+ */
+export function normalizeMcapScopedSettingsMap(
+  value: unknown,
+): Record<string, McapScopedModalSettings> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return {};
+  }
+
+  const entries: [string, McapScopedModalSettings][] = [];
+  for (const [scope, scopedValue] of Object.entries(value)) {
+    const normalizedScope = scope.trim();
+    if (!normalizedScope) continue;
+    const scoped = normalizeMcapScopedSettings(scopedValue);
+    if (
+      Object.keys(scoped.imageLabelTopics).length === 0 &&
+      Object.keys(scoped.imageProjection).length === 0 &&
+      Object.keys(scoped.pointCloudColors).length === 0
+    ) {
+      continue;
+    }
+    entries.push([normalizedScope, scoped]);
+  }
+
+  return Object.fromEntries(entries.slice(-MAX_MCAP_SETTINGS_SCOPES));
+}
+
+/**
+ * Normalizes one scope's styling payload.
+ */
+export function normalizeMcapScopedSettings(
+  value: unknown,
+): McapScopedModalSettings {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return EMPTY_MCAP_SCOPED_SETTINGS;
+  }
+
+  const candidate = value as Partial<McapScopedModalSettings>;
+  return {
+    imageLabelTopics: normalizeMcapImageLabelTopicMap(
+      candidate.imageLabelTopics,
+    ),
+    imageProjection: normalizeMcapImageProjectionMap(candidate.imageProjection),
+    pointCloudColors: normalizeMcapPointCloudColorMap(
+      candidate.pointCloudColors,
+    ),
   };
 }
 

@@ -9,9 +9,16 @@ import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { StreamInventory } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
 import {
+  DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE,
   MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS,
+  MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS,
+  MCAP_GRID_PREVIEW_MAX_POINTS,
+  REMOTE_MCAP_GRID_PREVIEW_MIN_FRAME_DELAY_MS,
+  REMOTE_MCAP_GRID_PREVIEW_PLAYBACK_RATE,
   chooseCameraSelection,
   decodeGridPreview,
+  mcapGridPreviewPlaybackDelayMs,
+  mcapGridPreviewFrameRetainedBytes,
   type McapGridPreviewFrame,
 } from "./grid-preview";
 import { firstImageByte, imageFrame } from "./grid-preview-test-utils";
@@ -22,6 +29,54 @@ import type {
   McapResourceClient,
   McapSynchronizedMessageWindow,
 } from "./types";
+
+describe("MCAP grid preview playback cadence", () => {
+  it("preserves the existing cadence for local and unknown sources", () => {
+    const expected =
+      MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS /
+      DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE;
+
+    expect(
+      mcapGridPreviewPlaybackDelayMs({
+        readProfile: "local",
+        sourceId: "local",
+        url: "/local.mcap",
+      }),
+    ).toBe(expected);
+    expect(
+      mcapGridPreviewPlaybackDelayMs({
+        sourceId: "unknown",
+        url: "/unknown.mcap",
+      }),
+    ).toBe(expected);
+  });
+
+  it("caps remote image and point-cloud previews at four requests per second", () => {
+    expect(
+      mcapGridPreviewPlaybackDelayMs({
+        readProfile: "remote",
+        sourceId: "remote",
+        url: "/proxy.mcap",
+      }),
+    ).toBe(REMOTE_MCAP_GRID_PREVIEW_MIN_FRAME_DELAY_MS);
+  });
+
+  it("slows annotated remote previews to the remote playback rate", () => {
+    expect(
+      mcapGridPreviewPlaybackDelayMs(
+        {
+          readProfile: "remote",
+          sourceId: "remote",
+          url: "/proxy.mcap",
+        },
+        MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS,
+      ),
+    ).toBe(
+      MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS /
+        REMOTE_MCAP_GRID_PREVIEW_PLAYBACK_RATE,
+    );
+  });
+});
 
 describe("MCAP grid preview", () => {
   it("returns an empty no-stream state and caches the missing selection", async () => {
@@ -49,9 +104,13 @@ describe("MCAP grid preview", () => {
     ) {
       yield createImageMessage(request.topics?.[0] ?? "/camera", [1, 2, 3], 7n);
     });
+    const inventory = [
+      createTopic("/camera/front"),
+      createTopic("/diagnostics", "example.Diagnostics"),
+    ];
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [createTopic("/camera/front")]),
+      readTopics: vi.fn(async () => inventory),
     });
     const entry = { client };
 
@@ -62,6 +121,8 @@ describe("MCAP grid preview", () => {
     });
 
     expect(first.state.status).toBe("ready");
+    expect(first.bootstrapTopics).toBe(inventory);
+    expect(second.bootstrapTopics).toBeUndefined();
     expect(firstImageByte(first.state.frame)).toBe(1);
     expect(first.nextStartTimeNs).toBe(8n);
     expect(second.state.status).toBe("ready");
@@ -462,6 +523,37 @@ describe("MCAP grid preview", () => {
     );
   });
 
+  it("compacts dense point clouds to the grid render budget before transfer", async () => {
+    const sourcePointCount = MCAP_GRID_PREVIEW_MAX_POINTS + 10;
+    const positions = new Float32Array(sourcePointCount * 3);
+    for (let index = 0; index < sourcePointCount; index++) {
+      positions[index * 3] = index;
+    }
+    const readDecodedMessages = vi.fn(async function* () {
+      yield createPointCloudMessage("/lidar/points", positions);
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic("/lidar/points", "foxglove.PointCloud"),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      { source: createSource() },
+    );
+    const frame = pointCloudFrame(result.state.frame)?.pointCloud;
+
+    expect(frame?.pointCount).toBe(MCAP_GRID_PREVIEW_MAX_POINTS);
+    expect(frame?.positions).toBe(frame?.renderPayload?.positions);
+    expect(frame?.positions[0]).toBe(0);
+    expect(frame?.positions.at(-3)).toBe(sourcePointCount - 1);
+    expect(mcapGridPreviewFrameRetainedBytes(result.state.frame)).toBe(
+      MCAP_GRID_PREVIEW_MAX_POINTS * (3 * Float32Array.BYTES_PER_ELEMENT + 4),
+    );
+  });
+
   it("classifies image and annotation topics from schema metadata", () => {
     expect(
       streamTopics([
@@ -688,14 +780,17 @@ function createAnnotationMessage(
 
 function createPointCloudMessage(
   topic: string,
-  positions: readonly number[],
+  positions: readonly number[] | Float32Array,
   timelineTimeNs = 10n,
 ): McapDecodedMessage {
   const visualization: PointCloudVisualization = {
     fields: [],
     kind: VISUALIZATION_KIND.POINT_CLOUD,
     pointCount: Math.floor(positions.length / 3),
-    positions: new Float32Array(positions),
+    positions:
+      positions instanceof Float32Array
+        ? positions
+        : new Float32Array(positions),
   };
 
   return createDecodedMessage(topic, "foxglove.PointCloud", {

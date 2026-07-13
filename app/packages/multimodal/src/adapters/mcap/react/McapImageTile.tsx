@@ -1,5 +1,6 @@
 import {
   TileSettingsContent,
+  useSetTileTitleHighlighted,
   useSetTileTitle,
   useTileDuplicator,
 } from "@fiftyone/tiling";
@@ -9,9 +10,12 @@ import {
   DropdownAnchor,
   DropdownTrigger,
   MenuTextItem,
+  Select,
+  SelectAnchor,
   Text,
   TextColor,
   TextVariant,
+  ZIndex,
 } from "@voxel51/voodo";
 import { useStore } from "jotai";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -20,10 +24,12 @@ import type {
   ImageVisualization,
 } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
+import { VISUALIZATION_KIND } from "../../../visualization";
 import { MCAP_SCENE_SOURCE_METADATA, MCAP_SOURCE_TYPE } from "../scene-sources";
-import { chooseAnnotationTopic } from "../topic-matching";
+import { findBestMatchingAnnotationTopics } from "../topic-matching";
 import { ImagePanel } from "../../../visualization/panels/image";
 import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
+import type { PanelNotice } from "../../../visualization/panels/panel-notices";
 import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
 import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-picker";
 import { useMcapDataStream } from "./mcap-data-stream-context";
@@ -32,18 +38,20 @@ import {
   MAX_MCAP_POINT_CLOUD_POINT_SIZE,
   MCAP_POINT_CLOUD_POINT_SIZE_STEP,
   MIN_MCAP_POINT_CLOUD_POINT_SIZE,
-  useMcapImageLabelTopics,
   useMcapImageProjection,
   useMcapPlaybackSettings,
 } from "./mcap-modal-settings";
+import { useMcapImageTileLabelTopics } from "./mcap-panel-visibility";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import {
   chooseNextImageTopic,
   mcapImageTileBindingsAtom,
+  useMcapHoveredFrustumImageTopic,
   useMcapImageTileHoverProps,
   usePublishMcapImageTileBinding,
 } from "./mcap-tile-source-bindings";
 import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
+import McapDepthHoverOverlay from "./McapDepthHoverOverlay";
 import McapImageProjectionOverlay from "./McapImageProjectionOverlay";
 import McapImageProjectionScene from "./McapImageProjectionScene";
 import { useMcapHoverEcho } from "./mcap-hover-echo";
@@ -55,9 +63,10 @@ import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
 import { McapSettingsLabel } from "./McapSettingsLabel";
 import type { McapTileProps } from "./mcap-tile-types";
 import {
-  useMcapTopicPlaybackFrame,
+  useMcapTopicContentFrame,
   useMcapTopicStream,
 } from "./use-mcap-topic-stream";
+import { useMcapVideoDecodeRunway } from "./use-mcap-video-decode-runways";
 import { useMcapImageProjectionLayers } from "./use-mcap-image-projection-layers";
 import {
   effectiveMcapCameraCalibration,
@@ -73,6 +82,7 @@ import {
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_TOPICS: readonly string[] = [];
+const AUTO_CALIBRATION_OPTION_ID = "__mcap_auto_calibration__";
 const IMAGE_GEOMETRY_MODES: readonly McapImageGeometryMode[] = [
   "auto",
   "original",
@@ -92,11 +102,11 @@ const IMAGE_DISPLAY_LABELS: Record<McapImageDisplayMode, string> = {
   rectified: "Rectified view",
 };
 const CAMERA_CALIBRATION_HELP =
-  "Calibration topic used for camera geometry. Auto uses the scene inventory's image-to-camera association; choosing a topic overrides that association for this image and its 3D frustum.";
+  "Calibration topic used for camera geometry. Auto uses a unique scene-inventory image-to-camera match and leaves ambiguous images unmatched; choosing a topic overrides that association for this image and its 3D frustum.";
 const IMAGE_DISPLAY_HELP =
   "Pixels shown in this tile. Recorded pixels preserves the source image exactly. Rectified view remaps a supported original image into the calibration's rectified pixel space and moves annotations, projections, and picking with it.";
 const RECORDED_IMAGE_GEOMETRY_HELP =
-  "Coordinate system of the recorded image. Auto trusts explicit evidence and pixel-equivalent models; topic names are hints only, and ambiguous overlays are withheld. Original camera applies K and lens distortion D. Rectified uses R and P without applying D.";
+  "Coordinate system of the recorded image. Auto recognizes canonical image_raw and image_rect topic suffixes, accepts pixel-equivalent models, and withholds ambiguous overlays otherwise. Original camera applies K and lens distortion D. Rectified uses R and P without applying D.";
 
 const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const [imageDims, setImageDims] = useState<{
@@ -116,6 +126,8 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const pointCloudSources = useSceneSourcesByType(MCAP_SOURCE_TYPE.POINT_CLOUD);
   const { fidelityMode } = useMcapPlaybackSettings();
   const setTileTitle = useSetTileTitle();
+  const setTileTitleHighlighted = useSetTileTitleHighlighted();
+  const hoveredFrustumImageTopic = useMcapHoveredFrustumImageTopic();
   const jotaiStore = useStore();
   // Open on the resolver-assigned source; tiles added by hand (split
   // buttons, add-tile menu) bind the default-preferred stream no sibling
@@ -131,11 +143,8 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
         jotaiStore.get(mcapImageTileBindingsAtom),
       ),
   );
-  const {
-    hasExplicitLabelTopics,
-    labelTopics: storedLabelTopics,
-    setLabelTopics,
-  } = useMcapImageLabelTopics(topic);
+  const { labelTopics: storedLabelTopics, setLabelTopics } =
+    useMcapImageTileLabelTopics(topic);
   const { projection, setProjection } = useMcapImageProjection(topic);
 
   // This effect binds the pane to the best undisplayed image source once
@@ -154,6 +163,16 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   usePublishMcapImageTileBinding(topic);
   // Hovering this tile lights up its camera frustum in the 3D scene.
   const hoverProps = useMcapImageTileHoverProps(topic);
+
+  // This effect mirrors 3D camera hover into this image pane's title.
+  useEffect(() => {
+    const highlighted = Boolean(topic && hoveredFrustumImageTopic === topic);
+    setTileTitleHighlighted(highlighted);
+    return () => {
+      if (highlighted) setTileTitleHighlighted(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tile setter is stable
+  }, [hoveredFrustumImageTopic, topic]);
 
   // How "Duplicate" clones this tile: same source, same title — unlike a
   // split, which spawns a fresh tile on the next undisplayed stream.
@@ -175,8 +194,9 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
 
   // Keep the playback wrapper: `contentTimeNs` is the message identity the
   // shared image-texture cache key needs (bytes identity churns per batch).
-  const playbackFrame = useMcapTopicPlaybackFrame<ImageVisualization>(topic);
+  const playbackFrame = useMcapTopicContentFrame<ImageVisualization>(topic);
   const frame = playbackFrame?.frame ?? null;
+  const decodeRunway = useMcapVideoDecodeRunway(topic, playbackFrame);
   const sourceKey = useMcapDataStream()?.sourceKey ?? "";
   // Shared texture key per (recording, topic, frame). The 3D tile's
   // frustum image planes form the same key, so both surfaces share one
@@ -189,6 +209,19 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     () => annotationSources.map((s) => s.id),
     [annotationSources],
   );
+  const labelSourceGroups = useMemo(() => {
+    const matchingTopics = new Set(
+      topic ? findBestMatchingAnnotationTopics(topic, annotationTopics) : [],
+    );
+    return {
+      matching: annotationSources.filter((source) =>
+        matchingTopics.has(source.id),
+      ),
+      remaining: annotationSources.filter(
+        (source) => !matchingTopics.has(source.id),
+      ),
+    };
+  }, [annotationSources, annotationTopics, topic]);
   const autoCalibrationTopic =
     images.find((source) => source.id === topic)?.metadata?.[
       MCAP_SCENE_SOURCE_METADATA.CALIBRATION_TOPIC
@@ -298,26 +331,11 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
       ? effectiveImageDims.width / effectiveImageDims.height
       : null,
   );
-  const inferredAnnotationTopic = useMemo(
-    () => (topic ? chooseAnnotationTopic(topic, annotationTopics) : null),
-    [topic, annotationTopics],
-  );
   const selectedLabelTopics = useMemo(() => {
     if (!topic) return [];
-    if (hasExplicitLabelTopics) {
-      const available = new Set(annotationTopics);
-      return storedLabelTopics.filter((labelTopic) =>
-        available.has(labelTopic),
-      );
-    }
-    return inferredAnnotationTopic ? [inferredAnnotationTopic] : [];
-  }, [
-    annotationTopics,
-    hasExplicitLabelTopics,
-    inferredAnnotationTopic,
-    storedLabelTopics,
-    topic,
-  ]);
+    const available = new Set(annotationTopics);
+    return storedLabelTopics.filter((labelTopic) => available.has(labelTopic));
+  }, [annotationTopics, storedLabelTopics, topic]);
   const activeTopics = useMemo(
     () => (topic ? [topic, ...selectedLabelTopics] : []),
     [selectedLabelTopics, topic],
@@ -346,6 +364,27 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
           imageDims: effectiveImageDims,
         }
       : null;
+  const depthCameraFrameId =
+    frame?.kind === VISUALIZATION_KIND.RAW_IMAGE
+      ? (frame.coordinateFrameId ?? calibration?.coordinateFrameId)
+      : undefined;
+  const activeDepthHover =
+    frame?.kind === VISUALIZATION_KIND.RAW_IMAGE &&
+    frame.depth &&
+    playbackFrame &&
+    depthCameraFrameId &&
+    sourceCameraModel &&
+    displayCameraModel &&
+    frame.width === sourceCameraModel.width &&
+    frame.height === sourceCameraModel.height
+      ? {
+          cameraFrameId: depthCameraFrameId,
+          contentTimeNs: playbackFrame.contentTimeNs,
+          displayCameraModel,
+          frame,
+          sourceCameraModel,
+        }
+      : null;
   const projectionLayers = useMcapImageProjectionLayers(
     activeProjection ? selectedProjectionTopics : EMPTY_PROJECTION_TOPICS,
     activeProjection?.cameraFrameId,
@@ -354,12 +393,10 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     fit: IMAGE_FIT,
     // The resting hand cursor would occlude the very dot a dwell hover
     // inspects; a crosshair pinpoints it. Dragging still shows "grabbing".
-    idleCursor: activeProjection ? "crosshair" : undefined,
+    idleCursor: activeProjection || activeDepthHover ? "crosshair" : undefined,
     imageSize: effectiveImageDims,
     resetKey: `${topic}\n${projection.display}\n${rectifiedViewActive}`,
   });
-  const currentLabel =
-    images.find((s) => s.id === topic)?.label ?? "Select source";
   const toggleLabelTopic = (labelTopic: string, checked: boolean) => {
     if (!topic) return;
     const next = new Set(selectedLabelTopics);
@@ -418,28 +455,58 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     projection.geometry,
     cameraModelResolution,
   );
+  const imageNotices = useMemo<readonly PanelNotice[]>(
+    () =>
+      visibleIssue
+        ? [
+            {
+              id: "mcap-image-projection",
+              message: visibleIssue,
+              severity: "warning",
+            },
+          ]
+        : [],
+    [visibleIssue],
+  );
+  const imageSourceOptions = useMemo(
+    () =>
+      images.map((source) => ({
+        data: { label: source.label },
+        id: source.id,
+      })),
+    [images],
+  );
+  const calibrationSourceOptions = useMemo(
+    () => [
+      {
+        data: { label: calibrationSelectionLabel },
+        id: AUTO_CALIBRATION_OPTION_ID,
+      },
+      ...calibrationSources.map((source) => ({
+        data: { label: source.label },
+        id: source.id,
+      })),
+    ],
+    [calibrationSelectionLabel, calibrationSources],
+  );
 
   return (
     <>
       <TileSettingsContent>
         <div className={settingsStyles.root}>
           <McapSidebarGroup title="Source">
-            <Dropdown
-              anchor={DropdownAnchor.BottomStart}
-              trigger={<DropdownTrigger>{currentLabel}</DropdownTrigger>}
-            >
-              {images.map((s) => (
-                <MenuTextItem
-                  key={s.id}
-                  onClick={() => {
-                    setTopic(s.id);
-                    setTileTitle(s.label, { source: "auto" });
-                  }}
-                >
-                  {s.label}
-                </MenuTextItem>
-              ))}
-            </Dropdown>
+            <Select
+              anchor={SelectAnchor.BottomStart}
+              aria-label="Source"
+              exclusive
+              onChange={(value) => {
+                if (typeof value === "string") setTopic(value);
+              }}
+              options={imageSourceOptions}
+              portal
+              value={topic}
+              zIndex={ZIndex.AboveModal}
+            />
           </McapSidebarGroup>
           {canConfigureCameraGeometry ? (
             <McapSidebarGroup
@@ -451,30 +518,24 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   label="Calibration"
                   tooltip={CAMERA_CALIBRATION_HELP}
                 />
-                <Dropdown
-                  anchor={DropdownAnchor.BottomStart}
-                  trigger={
-                    <DropdownTrigger>
-                      {calibrationSelectionLabel}
-                    </DropdownTrigger>
+                <Select
+                  anchor={SelectAnchor.BottomStart}
+                  aria-label="Calibration"
+                  exclusive
+                  onChange={(value) => {
+                    if (typeof value !== "string") return;
+                    setProjection({
+                      calibrationTopic:
+                        value === AUTO_CALIBRATION_OPTION_ID ? null : value,
+                    });
+                  }}
+                  options={calibrationSourceOptions}
+                  portal
+                  value={
+                    projection.calibrationTopic ?? AUTO_CALIBRATION_OPTION_ID
                   }
-                >
-                  <MenuTextItem
-                    onClick={() => setProjection({ calibrationTopic: null })}
-                  >
-                    Auto
-                  </MenuTextItem>
-                  {calibrationSources.map((source) => (
-                    <MenuTextItem
-                      key={source.id}
-                      onClick={() =>
-                        setProjection({ calibrationTopic: source.id })
-                      }
-                    >
-                      {source.label}
-                    </MenuTextItem>
-                  ))}
-                </Dropdown>
+                  zIndex={ZIndex.AboveModal}
+                />
               </label>
               <label className={settingsStyles.field}>
                 <McapSettingsLabel
@@ -540,16 +601,19 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                 },
               }}
             >
-              <div className={settingsStyles.optionStack}>
-                {annotationSources.map((s) => (
-                  <Checkbox
-                    key={s.id}
-                    label={s.label}
-                    checked={selectedLabelTopics.includes(s.id)}
-                    onChange={(checked) => toggleLabelTopic(s.id, checked)}
-                    {...checkboxNoSpaceToggleProps}
-                  />
-                ))}
+              <div className={settingsStyles.labelGroups}>
+                <ImageLabelSourceGroup
+                  sources={labelSourceGroups.matching}
+                  selectedTopics={selectedLabelTopics}
+                  title="Matching"
+                  toggleTopic={toggleLabelTopic}
+                />
+                <ImageLabelSourceGroup
+                  sources={labelSourceGroups.remaining}
+                  selectedTopics={selectedLabelTopics}
+                  title="Remaining"
+                  toggleTopic={toggleLabelTopic}
+                />
               </div>
             </McapSidebarGroup>
           ) : null}
@@ -623,6 +687,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
         >
           <ImagePanel
             canvasSurface="modal-image"
+            decodeRunway={decodeRunway}
             frame={frame}
             className={styles.panel}
             fit={IMAGE_FIT}
@@ -634,6 +699,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               )
             }
             onResetView={imagePanZoom.resetView}
+            notices={imageNotices}
             sceneChildren={
               activeProjection ? (
                 <McapImageProjectionScene
@@ -656,6 +722,14 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
             textureKey={textureKey}
             viewTransform={imagePanZoom.viewTransform}
           />
+          {activeDepthHover ? (
+            <McapDepthHoverOverlay
+              {...activeDepthHover}
+              fit={IMAGE_FIT}
+              imageTopic={topic}
+              viewTransform={imagePanZoom.viewTransform}
+            />
+          ) : null}
           {activeProjection ? (
             <McapImageProjectionOverlay
               cameraModel={activeProjection.cameraModel}
@@ -668,9 +742,6 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               sourceKey={sourceKey || "mcap-session"}
               viewTransform={imagePanZoom.viewTransform}
             />
-          ) : null}
-          {visibleIssue ? (
-            <div className={styles.projectionNotice}>{visibleIssue}</div>
           ) : null}
           {effectiveImageDims && selectedLabelTopics.length > 0 ? (
             <McapImageAnnotationOverlay
@@ -695,6 +766,39 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     </>
   );
 };
+
+function ImageLabelSourceGroup({
+  selectedTopics,
+  sources,
+  title,
+  toggleTopic,
+}: {
+  readonly selectedTopics: readonly string[];
+  readonly sources: readonly { readonly id: string; readonly label: string }[];
+  readonly title: string;
+  readonly toggleTopic: (topic: string, checked: boolean) => void;
+}) {
+  if (sources.length === 0) return null;
+
+  return (
+    <div className={settingsStyles.field}>
+      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+        {title}
+      </Text>
+      <div className={settingsStyles.optionStack}>
+        {sources.map((source) => (
+          <Checkbox
+            key={source.id}
+            label={source.label}
+            checked={selectedTopics.includes(source.id)}
+            onChange={(checked) => toggleTopic(source.id, checked)}
+            {...checkboxNoSpaceToggleProps}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 type ImageDimensions = { readonly height: number; readonly width: number };
 

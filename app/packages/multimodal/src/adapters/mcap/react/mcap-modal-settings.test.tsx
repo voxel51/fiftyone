@@ -18,11 +18,13 @@ import {
   DEFAULT_MCAP_SCENE_BACKGROUND,
   DEFAULT_MCAP_TEMPORAL_POLICY,
   MAX_MCAP_POINT_CLOUD_POINT_SIZE,
+  MAX_MCAP_SETTINGS_SCOPES,
   defaultMcapPointCloudColorForIndex,
   defaultMcapPointCloudColorForSource,
   readMcapModalSettings,
   useMcapImageLabelTopics,
   useMcapImageProjection,
+  useMcapModalSettingsScopeSync,
   useMcapPinholeCameraSettings,
   useMcapPlaybackSettings,
   useMcapPointCloudStyleSettings,
@@ -51,6 +53,7 @@ describe("mcap-modal-settings", () => {
       pointCloudPointSize: DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
       referenceGrid: DEFAULT_MCAP_REFERENCE_GRID,
       sceneBackground: DEFAULT_MCAP_SCENE_BACKGROUND,
+      scoped: {},
       showPointCloudColorLegend: false,
       temporalPolicy: DEFAULT_MCAP_TEMPORAL_POLICY,
     });
@@ -58,6 +61,7 @@ describe("mcap-modal-settings", () => {
 
   it("round-trips fidelity mode and image label topics", () => {
     writeMcapModalSettings({
+      scoped: {},
       fidelityMode: "as-recorded",
       imageLabelTopics: {
         "/camera/front": ["/labels/front", "/labels/all"],
@@ -106,6 +110,7 @@ describe("mcap-modal-settings", () => {
       pointCloudPointSize: 4,
       referenceGrid: { enabled: false, opacityPercent: 50, spacingM: 5 },
       sceneBackground: { mode: "abyss", solidColor: "#112233" },
+      scoped: {},
       showPointCloudColorLegend: true,
       temporalPolicy: {
         boundaryClampMs: 0,
@@ -118,6 +123,7 @@ describe("mcap-modal-settings", () => {
 
   it("rejects unknown fidelity modes", () => {
     writeMcapModalSettings({
+      scoped: {},
       fidelityMode: "plaid" as never,
       imageLabelTopics: {},
       imageProjection: {},
@@ -137,6 +143,7 @@ describe("mcap-modal-settings", () => {
 
   it("clamps invalid reference-grid values", () => {
     writeMcapModalSettings({
+      scoped: {},
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       imageProjection: {},
@@ -162,6 +169,7 @@ describe("mcap-modal-settings", () => {
 
   it("clamps invalid pinhole camera values", () => {
     writeMcapModalSettings({
+      scoped: {},
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       imageProjection: {},
@@ -185,6 +193,7 @@ describe("mcap-modal-settings", () => {
 
   it("rejects invalid scene background values", () => {
     writeMcapModalSettings({
+      scoped: {},
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       imageProjection: {},
@@ -207,6 +216,7 @@ describe("mcap-modal-settings", () => {
 
   it("round-trips point cloud color settings", () => {
     writeMcapModalSettings({
+      scoped: {},
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       imageProjection: {},
@@ -254,6 +264,7 @@ describe("mcap-modal-settings", () => {
 
   it("sanitizes invalid point cloud color settings", () => {
     writeMcapModalSettings({
+      scoped: {},
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       imageProjection: {},
@@ -333,6 +344,7 @@ describe("mcap-modal-settings", () => {
 
   it("preserves explicit empty label selections", () => {
     writeMcapModalSettings({
+      scoped: {},
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {
         "/camera/front": [],
@@ -531,6 +543,7 @@ describe("mcap-modal-settings", () => {
 
   it("clamps persisted point size to the supported range", () => {
     writeMcapModalSettings({
+      scoped: {},
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       imageProjection: {},
@@ -550,6 +563,7 @@ describe("mcap-modal-settings", () => {
 
   it("clamps invalid temporal policy values", () => {
     writeMcapModalSettings({
+      scoped: {},
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       imageProjection: {},
@@ -581,6 +595,7 @@ describe("mcap-modal-settings", () => {
 
   it("sanitizes invalid lidar projection settings", () => {
     writeMcapModalSettings({
+      scoped: {},
       fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
       imageLabelTopics: {},
       imageProjection: {
@@ -693,5 +708,90 @@ describe("mcap-modal-settings", () => {
     expect(readMcapModalSettings().imageProjection["/camera/front"]).toEqual(
       result.current.projection,
     );
+  });
+
+  it("scopes topic-keyed styling to the synced dataset with global fallback", () => {
+    const globalHook = renderHook(() => useMcapPointCloudStyleSettings());
+    act(() => {
+      globalHook.result.current.setPointCloudColor("/lidar_top", {
+        colorBy: "height",
+      });
+    });
+    globalHook.unmount();
+
+    const { result, unmount } = renderHook(() => {
+      useMcapModalSettingsScopeSync("dataset-a");
+      return useMcapPointCloudStyleSettings();
+    });
+
+    // Unwritten topics resolve through the global fallback.
+    expect(result.current.pointCloudColors["/lidar_top"]?.colorBy).toBe(
+      "height",
+    );
+
+    // A scoped edit starts from the resolved value and shadows the global.
+    act(() => {
+      result.current.setPointCloudColor("/lidar_top", { rangeMax: 9 });
+    });
+    expect(result.current.pointCloudColors["/lidar_top"]).toMatchObject({
+      colorBy: "height",
+      rangeMax: 9,
+    });
+
+    const persisted = readMcapModalSettings();
+    expect(
+      persisted.scoped["dataset-a"]?.pointCloudColors["/lidar_top"],
+    ).toMatchObject({ colorBy: "height", rangeMax: 9 });
+    expect(persisted.pointCloudColors["/lidar_top"]).toMatchObject({
+      colorBy: "height",
+      rangeMax: null,
+    });
+
+    // Leaving the dataset restores the unscoped (global) view.
+    unmount();
+    const after = renderHook(() => useMcapPointCloudStyleSettings());
+    expect(after.result.current.pointCloudColors["/lidar_top"]).toMatchObject({
+      colorBy: "height",
+      rangeMax: null,
+    });
+  });
+
+  it("keeps datasets from styling each other's topics", () => {
+    const datasetA = renderHook(() => {
+      useMcapModalSettingsScopeSync("dataset-a");
+      return useMcapImageLabelTopics("/camera/front");
+    });
+    act(() => {
+      datasetA.result.current.setLabelTopics(["/labels/a"]);
+    });
+    expect(datasetA.result.current.labelTopics).toEqual(["/labels/a"]);
+    datasetA.unmount();
+
+    const datasetB = renderHook(() => {
+      useMcapModalSettingsScopeSync("dataset-b");
+      return useMcapImageLabelTopics("/camera/front");
+    });
+    expect(datasetB.result.current.labelTopics).toEqual([]);
+    expect(datasetB.result.current.hasExplicitLabelTopics).toBe(false);
+  });
+
+  it("prunes the least recently written scopes past the retention cap", () => {
+    for (let index = 0; index < MAX_MCAP_SETTINGS_SCOPES + 1; index++) {
+      const scope = renderHook(() => {
+        useMcapModalSettingsScopeSync(`dataset-${index}`);
+        return useMcapPointCloudStyleSettings();
+      });
+      act(() => {
+        scope.result.current.setPointCloudColor("/lidar_top", {
+          colorBy: "height",
+        });
+      });
+      scope.unmount();
+    }
+
+    const scopes = Object.keys(readMcapModalSettings().scoped);
+    expect(scopes).toHaveLength(MAX_MCAP_SETTINGS_SCOPES);
+    expect(scopes).not.toContain("dataset-0");
+    expect(scopes).toContain(`dataset-${MAX_MCAP_SETTINGS_SCOPES}`);
   });
 });

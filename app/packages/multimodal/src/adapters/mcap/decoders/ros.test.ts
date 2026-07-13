@@ -1094,6 +1094,17 @@ describe("ROS MCAP decoders", () => {
       depthMax: 2000,
       depthMin: 1000,
     });
+    if (depth16.visualization?.kind !== VISUALIZATION_KIND.RAW_IMAGE) {
+      throw new Error("Expected raw depth image visualization");
+    }
+    expect(depth16.visualization.depth?.metersPerUnit).toBe(0.001);
+    expect(depth16.visualization.depth?.values).toBeInstanceOf(Uint16Array);
+    expect(Array.from(depth16.visualization.depth?.values ?? [])).toEqual([
+      0, 1000, 2000, 1000,
+    ]);
+    expect(depth16.resourceHints?.transferables).toContain(
+      depth16.visualization.depth?.values.buffer,
+    );
     expect(rawRgba(depth32)).toEqual([
       0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255,
     ]);
@@ -1101,6 +1112,16 @@ describe("ROS MCAP decoders", () => {
       depthMax: 3,
       depthMin: 1.5,
     });
+    if (depth32.visualization?.kind !== VISUALIZATION_KIND.RAW_IMAGE) {
+      throw new Error("Expected raw depth image visualization");
+    }
+    expect(depth32.visualization.depth?.metersPerUnit).toBe(1);
+    expect(depth32.visualization.depth?.values).toBeInstanceOf(Float32Array);
+    expect(Array.from(depth32.visualization.depth?.values ?? [])).toEqual([
+      Number.NaN,
+      1.5,
+      3,
+    ]);
   });
 
   it("decodes ros2 idl Bayer Image with deterministic demosaic", () => {

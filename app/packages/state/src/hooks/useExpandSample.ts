@@ -1,5 +1,9 @@
 import type { PaginateSamplesNode } from "@fiftyone/relay";
 import type { ID, SpotlightConfig } from "@fiftyone/spotlight";
+import {
+  markModalLoadingLatencyEvent,
+  startModalLoadingLatencySession,
+} from "@fiftyone/utilities";
 
 import { get } from "lodash";
 import { useRecoilCallback } from "recoil";
@@ -38,10 +42,19 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           return;
         }
 
-        const hasGroupSlices = await snapshot.getPromise(
-          groupAtoms.hasGroupSlices,
-        );
-        const groupField = await snapshot.getPromise(groupAtoms.groupField);
+        startModalLoadingLatencySession({
+          detail: { sampleId: item.id.description },
+          entryPath: "grid",
+        });
+        markModalLoadingLatencyEvent("grid tile activated");
+
+        const [hasGroupSlices, groupField] = await Promise.all([
+          snapshot.getPromise(groupAtoms.hasGroupSlices),
+          snapshot.getPromise(groupAtoms.groupField),
+        ]);
+        markModalLoadingLatencyEvent("grid modal prerequisites ready", {
+          hasGroupSlices,
+        });
 
         const iter = async (request: Promise<ID | undefined>) => {
           const id = await request;
@@ -102,14 +115,23 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
 
         const hasNext = Boolean(await cursor.next(1, true));
         const hasPrevious = Boolean(await cursor.next(-1, true));
+        markModalLoadingLatencyEvent("grid navigation context ready", {
+          hasNext,
+          hasPrevious,
+        });
 
-        setModalState({
+        await setModalState({
           next,
           peek,
           previous,
-        })
-          .then(() => iter(Promise.resolve(item.id)))
-          .then((data) => setExpandedSample({ ...data, hasNext, hasPrevious }));
+        });
+        markModalLoadingLatencyEvent("modal state initialized");
+
+        const data = await iter(Promise.resolve(item.id));
+        markModalLoadingLatencyEvent("modal selector requested", {
+          sampleId: data.id,
+        });
+        await setExpandedSample({ ...data, hasNext, hasPrevious });
       },
     [setExpandedSample, setModalState],
   );

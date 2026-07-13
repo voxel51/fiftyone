@@ -14,8 +14,8 @@ import {
 // Ego chase view: behind and above the ego along its heading, looking at it.
 // Fixed automotive-scale offsets — the trained looker-3d "ego view" is a
 // close-in vehicle-centered view, not a scene fit.
-const EGO_VIEW_BACK_M = 12;
-const EGO_VIEW_UP_M = 5;
+const EGO_VIEW_BACK_M = 22;
+const EGO_VIEW_UP_M = 7;
 // Top view preserves the user's current zoom distance, clamped to a range
 // that stays useful for automotive scenes (lidar radius ~50-100m).
 const TOP_VIEW_MIN_HEIGHT_M = 25;

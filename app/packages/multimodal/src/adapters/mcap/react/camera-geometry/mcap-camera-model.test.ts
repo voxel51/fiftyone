@@ -40,15 +40,23 @@ describe("MCAP camera model", () => {
     });
   });
 
-  it("treats topic names as suggestions only", () => {
+  it("resolves Auto from canonical image geometry suffixes", () => {
     expect(suggestMcapImageGeometry("/camera/front/image_raw")).toBe(
       "original",
     );
     expect(
       suggestMcapImageGeometry("/camera/front/image_rect/compressed"),
     ).toBe("rectified");
+    expect(
+      suggestMcapImageGeometry("/camera/front/image_raw/compressedDepth"),
+    ).toBe("original");
+    expect(suggestMcapImageGeometry("/camera/front/image_raw/compress")).toBe(
+      null,
+    );
 
-    const resolved = resolveMcapCameraModel({
+    expect(suggestMcapImageGeometry("/raw/camera/front/image")).toBeNull();
+
+    const rectified = resolveMcapCameraModel({
       calibration: calibration({
         D: [-0.2, 0.03, 0, 0, 0],
         distortionModel: "plumb_bob",
@@ -57,11 +65,40 @@ describe("MCAP camera model", () => {
       geometry: "auto",
       imageTopic: "/camera/front/image_rect",
     });
-    expect(resolved.status).toBe("ambiguous");
-    if (resolved.status !== "ambiguous") {
-      throw new Error("Expected an ambiguous geometry resolution");
+    expect(rectified.status).toBe("ready");
+    if (rectified.status !== "ready") {
+      throw new Error("Expected a rectified geometry resolution");
     }
-    expect(resolved.suggestedMode).toBe("rectified");
+    expect(rectified.mode).toBe("rectified");
+
+    const original = resolveMcapCameraModel({
+      calibration: calibration({
+        D: [-0.2, 0.03, 0, 0, 0],
+        distortionModel: "plumb_bob",
+        P,
+      }),
+      geometry: "auto",
+      imageTopic: "/camera/front/image_raw/compressed",
+    });
+    expect(original.status).toBe("ready");
+    if (original.status !== "ready") {
+      throw new Error("Expected an original geometry resolution");
+    }
+    expect(original.mode).toBe("original");
+  });
+
+  it("keeps Auto ambiguous when the image topic has no geometry evidence", () => {
+    const resolved = resolveMcapCameraModel({
+      calibration: calibration({
+        D: [-0.2, 0.03, 0, 0, 0],
+        distortionModel: "plumb_bob",
+        P,
+      }),
+      geometry: "auto",
+      imageTopic: "/camera/front/image",
+    });
+
+    expect(resolved.status).toBe("ambiguous");
   });
 
   it("automatically accepts equivalent original and rectified models", () => {

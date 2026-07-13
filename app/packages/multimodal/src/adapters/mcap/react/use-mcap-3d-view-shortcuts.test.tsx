@@ -56,9 +56,9 @@ describe("egoViewCameraPose", () => {
     });
 
     expect(pose.target).toEqual([0, 0, 0]);
-    expect(pose.position[0]).toBeCloseTo(-12);
+    expect(pose.position[0]).toBeCloseTo(-22);
     expect(pose.position[1]).toBeCloseTo(0);
-    expect(pose.position[2]).toBeCloseTo(5);
+    expect(pose.position[2]).toBeCloseTo(7);
   });
 
   it("stays behind the ego along its yaw heading and keeps a level horizon", () => {
@@ -79,8 +79,8 @@ describe("egoViewCameraPose", () => {
 
     expect(pose.target).toEqual([100, 50, 1]);
     expect(pose.position[0]).toBeCloseTo(100);
-    expect(pose.position[1]).toBeCloseTo(38);
-    expect(pose.position[2]).toBeCloseTo(6);
+    expect(pose.position[1]).toBeCloseTo(28);
+    expect(pose.position[2]).toBeCloseTo(8);
   });
 
   it("places above along the configured up axis", () => {
@@ -93,8 +93,8 @@ describe("egoViewCameraPose", () => {
     );
 
     expect(pose.target).toEqual([0, 0, 0]);
-    expect(pose.position[0]).toBeCloseTo(-12);
-    expect(pose.position[1]).toBeCloseTo(5);
+    expect(pose.position[0]).toBeCloseTo(-22);
+    expect(pose.position[1]).toBeCloseTo(7);
     expect(pose.position[2]).toBeCloseTo(0);
   });
 });
@@ -167,8 +167,8 @@ describe("useMcap3dViewShortcuts", () => {
     expect(source).toBe("focus");
     // Ego (base_link) sits at +10 x in the world frame.
     expect(pose.target).toEqual([10, 0, 0]);
-    expect(pose.position[0]).toBeCloseTo(-2);
-    expect(pose.position[2]).toBeCloseTo(5);
+    expect(pose.position[0]).toBeCloseTo(-12);
+    expect(pose.position[2]).toBeCloseTo(7);
 
     fireEvent.keyDown(window, { code: "KeyT" });
     expect(onApplyCameraPose).toHaveBeenCalledTimes(2);
@@ -262,8 +262,8 @@ describe("useMcap3dViewShortcuts", () => {
     expect(onApplyCameraPose).toHaveBeenCalledTimes(1);
     let [pose] = onApplyCameraPose.mock.calls[0];
     expect(pose.target).toEqual([10, 0, 0]);
-    expect(pose.position[0]).toBeCloseTo(-2);
-    expect(pose.position[1]).toBeCloseTo(5);
+    expect(pose.position[0]).toBeCloseTo(-12);
+    expect(pose.position[1]).toBeCloseTo(7);
     expect(pose.position[2]).toBeCloseTo(0);
 
     fireEvent.keyDown(window, { code: "KeyT" });

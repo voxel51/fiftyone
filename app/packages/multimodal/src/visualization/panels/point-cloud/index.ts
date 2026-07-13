@@ -1,5 +1,6 @@
 export { PointCloudPanel } from "./PointCloudPanel";
 export { DEFAULT_POINT_SIZE } from "./PointCloudSceneLayer";
+export { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "./camera-fit-bounds";
 export {
   createPointCloudColorWriter,
   type PointCloudColorOptions,
@@ -45,6 +46,7 @@ export type {
   PanelNotice,
   PanelNoticeSeverity,
   PointCloudCameraPose,
+  PointCloudCameraProjection,
   PointCloudColorBy,
   PointCloudColorRamp,
   PointCloudColorSettings,
@@ -54,6 +56,8 @@ export type {
   PointCloudPanelProps,
   PointCloudPanelRenderStats,
   PointCloudPointPick,
+  PointCloudSceneBoundsSummary,
   SceneAnnotationPanelLayer,
+  SceneRayPanelLayer,
   WorldGridPanelConfig,
 } from "./types";

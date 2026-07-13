@@ -9,10 +9,12 @@ import { useTileRegistry } from "./use-tile-registry";
 import {
   useSetTileSelection,
   useSetTileTitle,
+  useSetTileTitleHighlighted,
   useTileSelection,
   useTileSelectionFor,
   useTileTitle,
   useTileTitleFor,
+  useTileTitleHighlighted,
   useTileTypes,
 } from "./use-tile-state";
 
@@ -215,6 +217,24 @@ describe("useTileTitle / useTileTitleFor / useSetTileTitle", () => {
       result.current.setTitle("Should Not Change");
     });
     expect(result.current.title).toBe("Camera");
+  });
+});
+
+describe("tile title highlighting", () => {
+  afterEach(() => cleanup());
+
+  it("publishes transient title emphasis within the tile scope", () => {
+    const { result } = renderHook(
+      () => ({
+        highlighted: useTileTitleHighlighted(),
+        setHighlighted: useSetTileTitleHighlighted(),
+      }),
+      { wrapper: wrap("cam-1") },
+    );
+
+    expect(result.current.highlighted).toBe(false);
+    act(() => result.current.setHighlighted(true));
+    expect(result.current.highlighted).toBe(true);
   });
 });
 

@@ -40,11 +40,17 @@ type TextureWithNormalized = THREE.Texture & {
   normalized?: boolean;
 };
 
-// Retention LRU bound for zero-ref entries: ~6 cameras × a handful of
-// recent frames each. Big enough that steady playback with every surface
-// open never evicts the current frames; small enough that a stale
-// recording's textures are shed quickly once new frames stream in.
+const RGBA_BYTES_PER_PIXEL = 4;
+
+// Dual retention bounds for zero-ref entries. The entry ceiling protects
+// small-image workloads from unbounded bookkeeping, while the decoded-byte
+// ceiling keeps the same count from retaining hundreds of MiB at camera-scale
+// resolutions. Live leases never participate in either limit.
+/** Maximum number of zero-ref decoded image sources retained. */
 export const IMAGE_TEXTURE_RETENTION_CAP = 32;
+
+/** Maximum RGBA-equivalent bytes retained across zero-ref image sources. */
+export const IMAGE_TEXTURE_RETENTION_BYTE_CAP = 128 * 1024 * 1024;
 
 /**
  * One consumer's claim on a cached texture. `release` is idempotent and is
@@ -55,6 +61,7 @@ export interface ImageTextureLease {
   readonly release: () => void;
 }
 
+/** Runtime counters for the shared decoded-image cache. */
 export interface ImageTextureCacheStats {
   /** Decodes actually started (cached misses + keyless decodes). */
   readonly decodeCount: number;
@@ -62,9 +69,12 @@ export interface ImageTextureCacheStats {
   readonly entryCount: number;
   /** Zero-ref entries currently held in the retention LRU. */
   readonly retainedCount: number;
+  /** RGBA-equivalent decoded bytes held by zero-ref retained entries. */
+  readonly retainedDecodedBytes: number;
 }
 
 interface ImageTextureCacheEntry {
+  decodedBytes: number;
   handle: ImageTextureHandle | null;
   readonly key: string;
   promise: Promise<ImageTextureHandle>;
@@ -78,6 +88,7 @@ const entries = new Map<string, ImageTextureCacheEntry>();
 // (oldest first). Always a subset of `entries`.
 const retained = new Map<string, ImageTextureCacheEntry>();
 let decodeCount = 0;
+let retainedDecodedBytes = 0;
 
 /**
  * Canonical shared key for one camera frame:
@@ -114,7 +125,7 @@ export function acquireImageTexture(
     entries.set(key, entry);
   } else if (entry.refCount === 0) {
     // Re-acquired from retention — leased entries live outside the LRU.
-    retained.delete(key);
+    removeRetainedEntry(entry);
   }
   entry.refCount += 1;
 
@@ -149,6 +160,7 @@ export function imageTextureCacheStats(): ImageTextureCacheStats {
     decodeCount,
     entryCount: entries.size,
     retainedCount: retained.size,
+    retainedDecodedBytes,
   };
 }
 
@@ -159,12 +171,13 @@ export function imageTextureCacheStats(): ImageTextureCacheStats {
  * LRU churn from the next one evicts them.
  */
 export function releaseRetainedImageTextures(): void {
-  for (const entry of retained.values()) {
-    entry.handle?.dispose();
-    entry.handle = null;
-    entries.delete(entry.key);
+  while (retained.size > 0) {
+    const oldest = retained.values().next().value as
+      | ImageTextureCacheEntry
+      | undefined;
+    if (!oldest) break;
+    evictRetainedEntry(oldest);
   }
-  retained.clear();
 }
 
 /**
@@ -181,6 +194,7 @@ export function resetImageTextureCacheForTests(): void {
   entries.clear();
   retained.clear();
   decodeCount = 0;
+  retainedDecodedBytes = 0;
 }
 
 function createEntry(
@@ -188,6 +202,7 @@ function createEntry(
   decode: () => Promise<ImageTextureHandle>,
 ): ImageTextureCacheEntry {
   const entry: ImageTextureCacheEntry = {
+    decodedBytes: 0,
     handle: null,
     key,
     promise: undefined as unknown as Promise<ImageTextureHandle>,
@@ -206,6 +221,7 @@ function createEntry(
         handle.dispose();
         return handle;
       }
+      entry.decodedBytes = decodedImageBytes(handle);
       entry.handle = handle;
       entry.state = "resolved";
       if (entry.refCount === 0) {
@@ -239,14 +255,64 @@ function releaseEntry(entry: ImageTextureCacheEntry): void {
 }
 
 function retainEntry(entry: ImageTextureCacheEntry): void {
-  retained.set(entry.key, entry);
-  while (retained.size > IMAGE_TEXTURE_RETENTION_CAP) {
-    const oldestKey = retained.keys().next().value as string;
-    const oldest = retained.get(oldestKey);
-    retained.delete(oldestKey);
-    entries.delete(oldestKey);
-    oldest?.handle?.dispose();
+  if (entry.decodedBytes > IMAGE_TEXTURE_RETENTION_BYTE_CAP) {
+    // An entry that cannot fit by itself must not flush useful smaller frames
+    // before being evicted too. retainEntry only runs after the last lease
+    // releases, so the canonical decoded source can be disposed immediately.
+    if (entries.get(entry.key) === entry) {
+      entries.delete(entry.key);
+    }
+    entry.handle?.dispose();
+    entry.handle = null;
+    return;
   }
+  if (retained.has(entry.key)) {
+    // Refresh an explicitly re-retained entry to the newest LRU position
+    // without double-counting its bytes.
+    retained.delete(entry.key);
+  } else {
+    retainedDecodedBytes += entry.decodedBytes;
+  }
+  retained.set(entry.key, entry);
+  while (
+    retained.size > IMAGE_TEXTURE_RETENTION_CAP ||
+    retainedDecodedBytes > IMAGE_TEXTURE_RETENTION_BYTE_CAP
+  ) {
+    const oldest = retained.values().next().value as
+      | ImageTextureCacheEntry
+      | undefined;
+    if (!oldest) break;
+    evictRetainedEntry(oldest);
+  }
+}
+
+function removeRetainedEntry(entry: ImageTextureCacheEntry): boolean {
+  if (!retained.delete(entry.key)) return false;
+  retainedDecodedBytes -= entry.decodedBytes;
+  return true;
+}
+
+function evictRetainedEntry(entry: ImageTextureCacheEntry): void {
+  if (!removeRetainedEntry(entry)) return;
+  if (entries.get(entry.key) === entry) {
+    entries.delete(entry.key);
+  }
+  entry.handle?.dispose();
+  entry.handle = null;
+}
+
+function decodedImageBytes(handle: ImageTextureHandle): number {
+  const { imageHeight, imageWidth } = handle;
+  if (
+    !Number.isSafeInteger(imageWidth) ||
+    !Number.isSafeInteger(imageHeight) ||
+    imageWidth <= 0 ||
+    imageHeight <= 0
+  ) {
+    return 0;
+  }
+  const bytes = imageWidth * imageHeight * RGBA_BYTES_PER_PIXEL;
+  return Number.isSafeInteger(bytes) ? bytes : Number.MAX_SAFE_INTEGER;
 }
 
 function createLeasedImageTextureHandle(

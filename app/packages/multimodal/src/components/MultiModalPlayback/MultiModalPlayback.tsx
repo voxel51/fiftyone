@@ -12,7 +12,13 @@ import {
 } from "@fiftyone/tiling";
 import { Drawer } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useCallback, useRef, useState, type ReactNode } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { MosaicNode } from "react-mosaic-component";
 import {
   PlaybackProvider,
@@ -133,6 +139,11 @@ export interface MultiModalPlaybackProps {
   /** Observes right-sidebar visibility — e.g. to persist the choice. */
   onRightOpenChange?: (open: boolean) => void;
   /**
+   * Transitional content rendered over only the central mosaic viewport.
+   * The header, sidebars, and timeline remain visible during source swaps.
+   */
+  mainOverlay?: ReactNode;
+  /**
    * Starting width of the left sidebar in px, clamped to
    * {@link SIDEBAR_MIN_WIDTH_PX}–{@link SIDEBAR_MAX_WIDTH_PX}. The pane
    * is drag-resizable via its edge handle either way; this only seeds
@@ -226,6 +237,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   defaultRightOpen = true,
   onLeftOpenChange,
   onRightOpenChange,
+  mainOverlay,
   leftSidebarWidth,
   onLeftSidebarWidthChange,
   onTagCreate,
@@ -272,6 +284,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               defaultRightOpen={defaultRightOpen}
               onLeftOpenChange={onLeftOpenChange}
               onRightOpenChange={onRightOpenChange}
+              mainOverlay={mainOverlay}
               leftSidebarWidth={leftSidebarWidth}
               onLeftSidebarWidthChange={onLeftSidebarWidthChange}
               onTagCreate={onTagCreate}
@@ -279,9 +292,8 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               onTagDelete={onTagDelete}
               sharedImageWebGpuViews={sharedImageWebGpuViews}
               className={className}
-              // The multimodal playback modal always starts with the timeline
-              // drawer closed, so only pinned tracks (e.g. those auto-pinned
-              // from a temporal-tag grid filter) show until the user opens it.
+              // Start with the tracks drawer collapsed. Pinned tracks remain
+              // visible below the ruler until the user expands the drawer.
               timelineDrawerDefaultOpen={false}
             />
           </TilingProvider>
@@ -304,6 +316,7 @@ interface LayoutProps {
   defaultRightOpen: boolean;
   onLeftOpenChange?: (open: boolean) => void;
   onRightOpenChange?: (open: boolean) => void;
+  mainOverlay?: ReactNode;
   leftSidebarWidth?: number;
   onLeftSidebarWidthChange?: (px: number) => void;
   onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
@@ -328,6 +341,7 @@ function Layout({
   defaultRightOpen,
   onLeftOpenChange,
   onRightOpenChange,
+  mainOverlay,
   leftSidebarWidth,
   onLeftSidebarWidthChange,
   onTagCreate,
@@ -355,7 +369,11 @@ function Layout({
   // removes the region outright: no drawer and no header toggle.
   const hasRightSidebar = rightSidebar !== null && rightSidebar !== undefined;
   const [leftOpen, setLeftOpen] = useState(defaultLeftOpen);
+  const [timelineTracksOpen, setTimelineTracksOpen] = useState(
+    timelineDrawerDefaultOpen,
+  );
   const [rightOpen, setRightOpen] = useState(defaultRightOpen);
+  const previousTileCountRef = useRef(Object.keys(tiles).length);
   // The Drawer has no size-seeding prop, but its open width always
   // resolves to `maxSize` (its content measurement saturates against the
   // full-height sidebar), so driving `maxSize` from state gives us both
@@ -367,14 +385,30 @@ function Layout({
   leftWidthRef.current = leftWidth;
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
-  const updateLeftOpen = (open: boolean) => {
-    setLeftOpen(open);
-    onLeftOpenChange?.(open);
-  };
-  const updateRightOpen = (open: boolean) => {
-    setRightOpen(open);
-    onRightOpenChange?.(open);
-  };
+  const updateLeftOpen = useCallback(
+    (open: boolean) => {
+      setLeftOpen(open);
+      onLeftOpenChange?.(open);
+    },
+    [onLeftOpenChange],
+  );
+  const updateRightOpen = useCallback(
+    (open: boolean) => {
+      setRightOpen(open);
+      onRightOpenChange?.(open);
+    },
+    [onRightOpenChange],
+  );
+
+  // A newly spawned panel is focused immediately, so reveal the settings it
+  // can configure even when the user previously collapsed the left sidebar.
+  useEffect(() => {
+    const tileCount = Object.keys(tiles).length;
+    if (tileCount > previousTileCountRef.current && !leftOpen) {
+      updateLeftOpen(true);
+    }
+    previousTileCountRef.current = tileCount;
+  }, [leftOpen, tiles, updateLeftOpen]);
 
   const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>) => {
     // Primary button only: a right-click must not arm a drag that the
@@ -440,8 +474,10 @@ function Layout({
         headerActions={headerActions}
         addTileMenu={addTileMenu}
         leftSidebarOpen={leftOpen}
+        timelineTracksOpen={timelineTracksOpen}
         rightSidebarOpen={rightOpen}
         onToggleLeftSidebar={() => updateLeftOpen(!leftOpen)}
+        onToggleTimelineTracks={() => setTimelineTracksOpen((open) => !open)}
         onToggleRightSidebar={
           hasRightSidebar ? () => updateRightOpen(!rightOpen) : undefined
         }
@@ -486,6 +522,7 @@ function Layout({
           ) : (
             mosaic
           )}
+          {mainOverlay}
         </div>
 
         {hasRightSidebar ? (
@@ -507,10 +544,8 @@ function Layout({
       </div>
 
       <TemporalTagTimeline
-        // Computed by the parent from `defaultPinnedTrackIds`: closed when
-        // opened from a temporal-tag grid filter so only the pinned (filtered)
-        // tracks show, open otherwise.
-        defaultDrawerOpen={timelineDrawerDefaultOpen}
+        drawerOpen={timelineTracksOpen}
+        onDrawerOpenChange={setTimelineTracksOpen}
         extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}
         onTagUpdate={onTagUpdate}
