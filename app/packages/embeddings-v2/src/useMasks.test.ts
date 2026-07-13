@@ -71,6 +71,30 @@ describe("useMasks", () => {
     ]);
   });
 
+  // A client-computed filter mask (colorMask.ts) must scope the plot
+  // without waiting on — or being overridden by — the server masks
+  it("folds a local mask in with the server masks", async () => {
+    vi.mocked(fetchMasks).mockResolvedValue(
+      masks({ visible: new Uint8Array([1, 1, 1, 0]) }),
+    );
+    const local = new Uint8Array([1, 0, 1, 1]);
+    const { result } = renderHook(() =>
+      useMasks("ds", "viz", [], null, 4, local),
+    );
+
+    // Applies alone before the fetch resolves (the instant path) ...
+    expect([...(result.current.visibleMask as Uint8Array)]).toEqual([
+      1, 0, 1, 1,
+    ]);
+    // ... and composes once the server masks land
+    await waitFor(() =>
+      expect([...(result.current.visibleMask as Uint8Array)]).toEqual([
+        1, 0, 1, 0,
+      ]),
+    );
+    expect(result.current.visibleCount).toBe(2);
+  });
+
   it("clears masks when no run is selected", async () => {
     vi.mocked(fetchMasks).mockClear();
     const { result } = renderHook(() => useMasks("ds", null, [], null, 0));

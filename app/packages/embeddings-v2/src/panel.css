@@ -431,6 +431,29 @@
   flex-shrink: 0;
 }
 
+/* --- Continuous (spectrum) legend -------------------------------------- */
+
+.emb-legend-ramp {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  /* Match the categorical legend's row width so switching color-by
+     fields doesn't resize the floating panel */
+  min-width: 10rem;
+  padding: 0.25rem 0;
+}
+
+.emb-legend-ramp-track {
+  height: 0.375rem;
+  border-radius: 9999px;
+}
+
+.emb-legend-ramp-labels {
+  display: flex;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+
 .emb-legend-label {
   display: block;
   flex: 1;

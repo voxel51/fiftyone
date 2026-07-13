@@ -29,6 +29,22 @@ const PALETTE_RGB = PALETTE.map(hexToRgb);
 export const categoryHex = (index: number): string =>
   PALETTE[index % PALETTE.length];
 
+/**
+ * The CSS color at position t ∈ [0, 1] on the continuous ramp — the
+ * same per-channel interpolation buildColors applies (including its
+ * float32 quantization), so a legend gradient built from this cannot
+ * drift from the point colors.
+ */
+export const rampCss = (t: number): string => {
+  const at = (channel: number) =>
+    Math.round(
+      Math.fround(
+        RAMP_LO[channel] + t * (RAMP_HI[channel] - RAMP_LO[channel]),
+      ) * 255,
+    );
+  return `rgb(${at(0)}, ${at(1)}, ${at(2)})`;
+};
+
 /** Expands a color column into Float32Array(n*3) rgb for the renderer */
 export function buildColors(
   column: ColorValues,

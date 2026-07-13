@@ -156,6 +156,10 @@ export interface ColorMeta {
   style: "categorical" | "continuous";
   classes?: { label: string | number | boolean; count: number }[];
   truncated?: boolean;
+  /** Each point's column value IS its full field value (no list
+   * flattening) — the precondition for evaluating filters against the
+   * column client-side */
+  exact?: boolean;
   min?: number | null;
   max?: number | null;
 }

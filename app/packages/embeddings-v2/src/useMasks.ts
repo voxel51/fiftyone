@@ -4,8 +4,12 @@ import { fetchMasks, type Masks } from "./protocol";
 /**
  * The run's view/filter masks, shaped for the renderer: view stages
  * and sidebar filters both scope the plot, so their masks combine into
- * one `visibleMask` that hides non-members. Masks cover the run's full
- * wire order; during a progressive load the loaded prefix is valid by
+ * one `visibleMask` that hides non-members. `localMask` is a mask the
+ * host computed client-side (the color-by field's filter evaluated
+ * against the color column — see colorMask.ts); it ANDs in without a
+ * network round trip, so the filters passed here must EXCLUDE whatever
+ * the local mask already covers. Masks cover the run's full wire
+ * order; during a progressive load the loaded prefix is valid by
  * construction, so `visibleMask` is sliced to `loadedCount`.
  */
 export function useMasks(
@@ -14,6 +18,7 @@ export function useMasks(
   view: unknown[],
   filters: unknown,
   loadedCount: number,
+  localMask: Uint8Array | null = null,
 ): {
   visibleMask: Uint8Array | null;
   visibleCount: number | null;
@@ -37,17 +42,19 @@ export function useMasks(
   }, [datasetName, brainKey, view, filters]);
 
   // The endpoint early-outs each mask to null when its inputs are empty
-  // (no view stages / no filters), so combining only pays when both exist
+  // (no view stages / no filters), so combining only pays when needed
   const combined = useMemo(() => {
-    const visible = masks?.visible ?? null;
-    const match = masks?.match ?? null;
-    if (!visible || !match) return visible ?? match;
-    const out = new Uint8Array(visible.length);
+    const parts = [masks?.visible, masks?.match, localMask].filter(
+      (part): part is Uint8Array => Boolean(part),
+    );
+    if (!parts.length) return null;
+    if (parts.length === 1) return parts[0];
+    const out = new Uint8Array(parts[0].length);
     for (let i = 0; i < out.length; i++) {
-      out[i] = visible[i] && match[i] ? 1 : 0;
+      out[i] = parts.every((part) => part[i]) ? 1 : 0;
     }
     return out;
-  }, [masks]);
+  }, [masks, localMask]);
 
   const visibleMask = useMemo(() => {
     if (!combined || !loadedCount) return null;

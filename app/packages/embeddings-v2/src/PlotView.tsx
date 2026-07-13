@@ -40,12 +40,14 @@ import {
   type CSSProperties,
 } from "react";
 import {
+  useRecoilCallback,
   useRecoilState,
   useRecoilValue,
-  useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
 import { ColorLegend } from "./ColorLegend";
+import { localColorMask } from "./colorMask";
+import { ContinuousLegend } from "./ContinuousLegend";
 import { categoryHex, MISSING_CATEGORY } from "./colors";
 import HoverCard from "./HoverCard";
 import {
@@ -158,6 +160,33 @@ export default function PlotView({
     loading: colorLoading,
     error: colorError,
   } = useColorColumn(datasetName, brainKey, run, colorField);
+  // The color-by field's filter, evaluated client-side against the
+  // color column when provably faithful (see colorMask.ts) — legend
+  // clicks then never wait on the masks round trip
+  const localColor = useMemo(() => {
+    if (!colorField || !colorValues || !colorMeta) return null;
+    const fieldFilter = (filters as Record<string, CategoricalFilter> | null)?.[
+      colorField
+    ];
+    if (!fieldFilter) return null;
+    const mask = localColorMask(fieldFilter, colorValues, colorMeta);
+    return mask ? { field: colorField, mask } : null;
+  }, [filters, colorField, colorValues, colorMeta]);
+
+  // A locally-handled filter must not also reach the server — the whole
+  // point is skipping that aggregation. Identity is stabilized through
+  // JSON so a legend click (which only changes the locally-handled
+  // entry) does not refetch the unchanged remainder
+  const serverFiltersJson = useMemo(() => {
+    const record = { ...((filters ?? {}) as Record<string, unknown>) };
+    if (localColor) delete record[localColor.field];
+    return JSON.stringify(record);
+  }, [filters, localColor]);
+  const serverFilters = useMemo(
+    () => JSON.parse(serverFiltersJson) as Record<string, unknown>,
+    [serverFiltersJson],
+  );
+
   const {
     visibleMask,
     visibleCount,
@@ -166,8 +195,9 @@ export default function PlotView({
     datasetName,
     brainKey,
     view,
-    filters,
+    serverFilters,
     loaded?.points.length ?? 0,
+    localColor?.mask ?? null,
   );
   // The hover card's swatch mirrors the point's rendered color, which
   // buildColors derives from the same class column
@@ -208,14 +238,11 @@ export default function PlotView({
 
   // The legend has no state of its own: which classes are on derives
   // from the App's sidebar filter for the color-by field, and clicks
-  // write the next filter back. The masks endpoint consumes the same
+  // write the next filter back. The masks path consumes the same
   // fos.filters, so the plot and grid scope together. String classes
   // only: the sidebar's numeric filters are range-shaped, not value
   // lists, so numeric-class legends render inert
-  const [fieldFilter, setFieldFilter] = useRecoilState(
-    fos.filter({ path: colorField ?? "", modal: false }),
-  );
-  const resetFieldFilter = useResetRecoilState(
+  const fieldFilter = useRecoilValue(
     fos.filter({ path: colorField ?? "", modal: false }),
   );
   const legendFilter = (fieldFilter ?? null) as CategoricalFilter | null;
@@ -236,25 +263,41 @@ export default function PlotView({
     return new Set(classLabels.filter((label) => !on.has(label)));
   }, [classLabels, legendFilter]);
 
-  const applyLegendFilter = (next: CategoricalFilter | null) => {
-    if (next) {
-      setFieldFilter(next);
-    } else {
-      resetFieldFilter();
-    }
-  };
-  // A dblclick arrives as click-click-dblclick; the two toggles cancel
-  // (toggle is its own inverse), then the solo lands — no click timers
-  const handleLegendToggle = (label: string) => {
-    if (classLabels) {
-      applyLegendFilter(toggleLabel(legendFilter, classLabels, label));
-    }
-  };
-  const handleLegendSolo = (label: string) => {
-    if (classLabels) {
-      applyLegendFilter(soloLabel(legendFilter, classLabels, label));
-    }
-  };
+  // Writes read the filter from a fresh snapshot, not the render-time
+  // value — rapid clicks must each transform the latest state, or a
+  // click can silently compute from a stale base and drop its
+  // predecessor. A dblclick arrives as click-click-dblclick; the two
+  // toggles cancel (toggle is its own inverse), then the solo lands —
+  // no click timers
+  const handleLegendClick = useRecoilCallback(
+    ({ snapshot, set, reset }) =>
+      (label: string, solo: boolean) => {
+        if (!colorField || !classLabels) return;
+        const filterState = fos.filter({ path: colorField, modal: false });
+        const current = (snapshot.getLoadable(filterState).valueMaybe() ??
+          null) as CategoricalFilter | null;
+        const transform = solo ? soloLabel : toggleLabel;
+        const next = transform(current, classLabels, label);
+        if (next) {
+          set(filterState, next);
+        } else {
+          reset(filterState);
+        }
+      },
+    [colorField, classLabels],
+  );
+  const handleLegendToggle = (label: string) => handleLegendClick(label, false);
+  const handleLegendSolo = (label: string) => handleLegendClick(label, true);
+
+  const resetLegendFilter = useRecoilCallback(
+    ({ reset }) =>
+      () => {
+        if (colorField) {
+          reset(fos.filter({ path: colorField, modal: false }));
+        }
+      },
+    [colorField],
+  );
 
   const error = loadError ?? colorError ?? masksError ?? selectionError;
 
@@ -291,7 +334,7 @@ export default function PlotView({
       clearAll();
       return;
     }
-    if (legendFilter) resetFieldFilter();
+    if (legendFilter) resetLegendFilter();
   };
 
   // The panel tab's selection pill lives outside this tree; it mirrors
@@ -424,7 +467,7 @@ export default function PlotView({
             containerHeight={plotRef.current?.clientHeight ?? 0}
           />
         )}
-        {colorField && colorMeta && (
+        {colorField && colorMeta && colorMeta.style === "categorical" && (
           <ColorLegend
             field={colorField}
             meta={colorMeta}
@@ -432,6 +475,9 @@ export default function PlotView({
             onToggle={handleLegendToggle}
             onSolo={handleLegendSolo}
           />
+        )}
+        {colorField && colorMeta && colorMeta.style === "continuous" && (
+          <ContinuousLegend field={colorField} meta={colorMeta} />
         )}
         {chipCount ? (
           <div className="emb-plot-overlay emb-plot-chip">
