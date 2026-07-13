@@ -48,6 +48,12 @@ import {
   useRegisterMcap3dViewpoint,
 } from "./mcap-3d-viewpoint-context";
 import {
+  useRegisterMcapSceneFrameControls,
+  type McapSceneFrameControls,
+} from "./mcap-scene-frames-context";
+import { usePublishMcapSceneNotices } from "./mcap-scene-notices-context";
+import { useRegisterMcapTileSettings } from "./mcap-tile-settings-context";
+import {
   createMcap3dViewpointStore,
   normalizeMcap3dCameraProjection,
 } from "./mcap-3d-viewpoint";
@@ -191,7 +197,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     setDefaultTrackingMode,
     setPreferredCameraTargetFrameId,
     setPreferredWorldFrameId,
-    setSceneUpAxis,
   } = useMcap3dViewSettings();
   const [viewpointStore] = useState(() =>
     createMcap3dViewpointStore({
@@ -275,6 +280,14 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     preferredWorldFrameId,
     restore: viewStateRestore,
   });
+  // The world frame is scene-scoped: publish this tile's frame controls so
+  // the sidebar's Scene tab can edit them. Selections write through the
+  // modal-wide preference, so concurrent 3D tiles converge on one world.
+  const sceneFrameControls = useMemo<McapSceneFrameControls>(
+    () => ({ frameIds, updateWorldFrameId, worldFrameId }),
+    [frameIds, updateWorldFrameId, worldFrameId],
+  );
+  useRegisterMcapSceneFrameControls(tileId, sceneFrameControls);
 
   const provisionalTopicId = useMemo(
     () => selectProvisionalPointCloudTopic(selectedPointCloudSources, frames),
@@ -851,6 +864,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   // per-tick condition flips around transform boundaries must not blink
   // the chip, and the returned identity is stable while content holds.
   const panelNotices = useStabilizedMcapNotices(producedNotices);
+  // The same stabilized set feeds the sidebar's Scene status strip, so
+  // scene health reads identically in the canvas chip and the sidebar.
+  usePublishMcapSceneNotices(tileId, panelNotices);
   const sceneSnapshotKey = useMemo(
     () =>
       JSON.stringify([
@@ -901,43 +917,45 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     [noteRenderedCameraPose, viewpointStore],
   );
 
-  // The settings sidebar is a memoized subtree; its grouped props are
-  // stabilized together so playback ticks and pose-command updates don't
-  // reconcile it.
-  const settingsProps = useMemo(
-    () => ({
-      cameraInputs: { imageTopics: frustumImageTopics },
-      frameControls: {
-        cameraTargetFrameId,
-        frameIds,
-        updateCameraTargetFrameId,
-        updateWorldFrameId,
-        worldFrameId,
-      },
-      pointCloudInputs: {
-        colorCapabilities: pointCloudColorCapabilities,
-        selectedSources: selectedPointCloudSources,
-      },
-      poseControls: {
-        selectedSources: selectedPoseSources,
-        setTrajectoryFrameOverrides,
-        trajectories,
-        trajectoryFrameByTopic,
-      },
-      sceneControls: { sceneUpAxis, setSceneUpAxis },
-      selection: { enabled, setSourcesEnabled, toggleSource },
-      sourceGroups: {
-        camera: { sources: cameraSources, topics: cameraTopics },
-        mapLayer: { sources: mapLayerSources, topics: mapLayerTopics },
-        pointCloud: { sources: pointCloudSources, topics: pointCloudTopics },
-        pose: { sources: poseSources, topics: poseTopics },
-        sceneAnnotation: {
-          sources: sceneAnnotationSources,
-          topics: sceneAnnotationTopics,
-        },
-      },
-      trackingControls: { mode: trackingMode, setMode: setTrackingMode },
-    }),
+  // The settings tree is registered into the sidebar rather than rendered
+  // here; the element is memoized over grouped, stabilized props so playback
+  // ticks and pose-command updates never re-register (or reconcile) it.
+  const settingsElement = useMemo(
+    () => (
+      <Mcap3dTileSettings
+        cameraInputs={{ imageTopics: frustumImageTopics }}
+        frameControls={{
+          cameraTargetFrameId,
+          frameIds,
+          updateCameraTargetFrameId,
+          worldFrameId,
+        }}
+        pointCloudInputs={{
+          colorCapabilities: pointCloudColorCapabilities,
+          selectedSources: selectedPointCloudSources,
+        }}
+        poseControls={{
+          selectedSources: selectedPoseSources,
+          setTrajectoryFrameOverrides,
+          trajectories,
+          trajectoryFrameByTopic,
+        }}
+        selectedTopics={selectedTopics}
+        selection={{ enabled, setSourcesEnabled, toggleSource }}
+        sourceGroups={{
+          camera: { sources: cameraSources, topics: cameraTopics },
+          mapLayer: { sources: mapLayerSources, topics: mapLayerTopics },
+          pointCloud: { sources: pointCloudSources, topics: pointCloudTopics },
+          pose: { sources: poseSources, topics: poseTopics },
+          sceneAnnotation: {
+            sources: sceneAnnotationSources,
+            topics: sceneAnnotationTopics,
+          },
+        }}
+        tileId={tileId ?? null}
+        trackingControls={{ mode: trackingMode, setMode: setTrackingMode }}
+      />
+    ),
     [
       cameraSources,
       cameraTargetFrameId,
@@ -954,26 +972,25 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       poseTopics,
       sceneAnnotationSources,
       sceneAnnotationTopics,
-      sceneUpAxis,
       selectedPointCloudSources,
       selectedPoseSources,
-      setSceneUpAxis,
+      selectedTopics,
       setSourcesEnabled,
       setTrackingMode,
       setTrajectoryFrameOverrides,
+      tileId,
       toggleSource,
       trackingMode,
       trajectories,
       trajectoryFrameByTopic,
       updateCameraTargetFrameId,
-      updateWorldFrameId,
       worldFrameId,
     ],
   );
+  useRegisterMcapTileSettings(tileId, settingsElement);
 
   return (
     <>
-      <Mcap3dTileSettings {...settingsProps} />
       {selectedTopics.length === 0 ? (
         <div className={styles.loading}>
           <span className={styles.emptyText}>No sources selected</span>

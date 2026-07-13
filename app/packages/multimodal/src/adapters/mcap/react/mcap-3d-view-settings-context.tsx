@@ -77,3 +77,12 @@ export function useMcap3dViewSettings(): Mcap3dViewSettingsContextValue {
   }
   return value;
 }
+
+/**
+ * Provider-tolerant read for modal chrome that renders with or without a
+ * playback host (tests, isolated sidebars). Null means no scene exists to
+ * orient, and callers should omit their scene-orientation controls.
+ */
+export function useOptionalMcap3dViewSettings(): Mcap3dViewSettingsContextValue | null {
+  return useContext(Mcap3dViewSettingsContext);
+}

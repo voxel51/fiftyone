@@ -32,13 +32,13 @@ const CAMERA_NAVIGATION_OPTIONS: {
   { label: "Absolute coordinates", value: "absolute" },
 ];
 const CAMERA_NAVIGATION_TOOLTIP =
-  "Relative preserves azimuth, elevation, and distance around each sample's camera target; position and target translate into the new recording. Absolute preserves the exact position and target coordinates; use it only when samples share the same world coordinate system.";
+  "How the camera carries over when navigating to another sample. Relative preserves azimuth, elevation, and distance around each sample's camera target; position and target translate into the new recording. Absolute preserves the exact position and target coordinates; use it only when samples share the same world coordinate system.";
 
-/** Compact live camera controls for the modal Scene sidebar. */
+/** Compact live camera controls for one 3D view's settings. */
 const McapViewpointSettings: React.FC<{
-  readonly preferredTileId?: string | null;
-}> = ({ preferredTileId }) => {
-  const viewpoint = useMcap3dViewpoint(preferredTileId);
+  readonly tileId: string | null;
+}> = ({ tileId }) => {
+  const viewpoint = useMcap3dViewpoint(tileId);
   const pose = viewpoint?.snapshot.pose ?? null;
   const orbit = useMemo(
     () =>
@@ -51,9 +51,7 @@ const McapViewpointSettings: React.FC<{
     ? `Az ${formatAngle(orbit.azimuthDegrees)} · El ${formatAngle(
         orbit.elevationDegrees,
       )} · ${formatDistance(orbit.distance)} m`
-    : viewpoint
-      ? "Waiting for camera"
-      : "No 3D view";
+    : "Waiting for camera";
 
   return (
     <McapSidebarGroup
@@ -63,16 +61,14 @@ const McapViewpointSettings: React.FC<{
     >
       {!viewpoint || !orbit || !pose ? (
         <Text color={TextColor.Muted} variant={TextVariant.Xs}>
-          {viewpoint
-            ? "The camera will appear after the first 3D frame renders."
-            : "Add a 3D panel to inspect and edit its camera."}
+          The camera will appear after the first 3D frame renders.
         </Text>
       ) : (
         <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
           <FormField
             label={
               <McapSettingsLabel
-                label="Between samples"
+                label="Across samples"
                 tooltip={CAMERA_NAVIGATION_TOOLTIP}
               />
             }

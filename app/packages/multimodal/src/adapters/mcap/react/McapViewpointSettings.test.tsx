@@ -158,7 +158,7 @@ function renderSettings(controller: Mcap3dViewpointController) {
   return render(
     <Mcap3dViewpointProvider>
       <RegisterViewpoint controller={controller} />
-      <McapViewpointSettings preferredTileId="3d-1" />
+      <McapViewpointSettings tileId="3d-1" />
     </Mcap3dViewpointProvider>,
   );
 }

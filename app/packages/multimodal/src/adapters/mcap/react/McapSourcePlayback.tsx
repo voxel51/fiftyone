@@ -33,6 +33,10 @@ import type { McapResourceClient } from "../types";
 import { Mcap3dViewStateProvider } from "./mcap-3d-view-state-context";
 import { Mcap3dViewSettingsProvider } from "./mcap-3d-view-settings-context";
 import { Mcap3dViewpointProvider } from "./mcap-3d-viewpoint-context";
+import { useMcapModalSettingsScopeSync } from "./mcap-modal-settings";
+import { McapSceneFramesProvider } from "./mcap-scene-frames-context";
+import { McapSceneNoticesProvider } from "./mcap-scene-notices-context";
+import { McapTileSettingsProvider } from "./mcap-tile-settings-context";
 import { mcapCameraScopeKey } from "./mcap-camera-scope";
 import {
   McapDataStreamProvider,
@@ -216,6 +220,9 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   const playbackSource = readyInventory && !navigationPending ? source : null;
   const effectiveLayoutScopeKey =
     layoutScopeKey ?? (source ? `mcap-source:${source.sourceId}` : undefined);
+  // Topic-keyed styling (point-cloud colors, image projection, label
+  // topics) persists per dataset scope, not per bare topic name.
+  useMcapModalSettingsScopeSync(effectiveLayoutScopeKey);
   const cameraViewStateScopeKey =
     mcapCameraScopeKey(effectiveLayoutScopeKey, cameraPreferenceField) ??
     effectiveLayoutScopeKey;
@@ -457,9 +464,15 @@ const McapPlaybackSessionStateProviders: React.FC<{
   <Mcap3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
     <McapPanelVisibilityProvider scopeKey={cameraViewStateScopeKey}>
       <Mcap3dViewpointProvider>
-        <McapMapViewportScopeProvider scopeKey={viewportScopeKey}>
-          {children}
-        </McapMapViewportScopeProvider>
+        <McapSceneFramesProvider>
+          <McapSceneNoticesProvider>
+            <McapTileSettingsProvider>
+              <McapMapViewportScopeProvider scopeKey={viewportScopeKey}>
+                {children}
+              </McapMapViewportScopeProvider>
+            </McapTileSettingsProvider>
+          </McapSceneNoticesProvider>
+        </McapSceneFramesProvider>
       </Mcap3dViewpointProvider>
     </McapPanelVisibilityProvider>
   </Mcap3dViewStateProvider>

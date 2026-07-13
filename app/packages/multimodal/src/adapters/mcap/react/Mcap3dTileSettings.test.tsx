@@ -1,3 +1,4 @@
+import { PlaybackProvider } from "@fiftyone/playback";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneSource } from "../../../scene-inventory";
@@ -16,11 +17,6 @@ import {
   type McapReferenceGridSettings,
   type McapSceneBackgroundSettings,
 } from "./mcap-modal-settings";
-
-vi.mock("@fiftyone/tiling", () => ({
-  TileSettingsContent: ({ children }: { readonly children: unknown }) =>
-    children,
-}));
 
 const CAM_FRONT = source(
   "CAM_FRONT/camera_info",
@@ -249,18 +245,40 @@ describe("Mcap3dTileSettings", () => {
     expect(readMcapModalSettings().sceneBackground.mode).toBe("abyss");
   });
 
-  it("wires the scene up-axis control to the dataset view updater", () => {
-    const props = renderSettings({
+  it("keeps scene-scoped controls off the tile settings", () => {
+    renderSettings({
       frameIds: ["map"],
-      sceneUpAxis: "z",
       worldFrameId: "map",
     });
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Up Axis" }), {
-      target: { value: "y" },
+    expect(screen.queryByRole("combobox", { name: "Up Axis" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "World Frame" })).toBeNull();
+  });
+
+  it("wires the camera target control to the tile updater", () => {
+    const props = renderSettings({
+      frameIds: ["base_link", "map"],
+      worldFrameId: "map",
     });
 
-    expect(props.setSceneUpAxis).toHaveBeenCalledWith("y");
+    fireEvent.change(screen.getByRole("combobox", { name: "Camera Target" }), {
+      target: { value: "base_link" },
+    });
+
+    expect(props.updateCameraTargetFrameId).toHaveBeenCalledWith("base_link");
+  });
+
+  it("explains follow-mode no-ops when the target matches the world frame", () => {
+    renderSettings({
+      cameraTargetFrameId: "map",
+      frameIds: ["map"],
+      trackingMode: "position",
+      worldFrameId: "map",
+    });
+
+    expect(
+      screen.getByText(/a frame cannot move relative to itself/),
+    ).toBeTruthy();
   });
 
   it("wires the point cloud color controls to the settings updater", () => {
@@ -749,10 +767,8 @@ interface SettingsTestProps {
   readonly sceneAnnotationSources: readonly SceneSource[];
   readonly sceneAnnotationTopics: readonly string[];
   readonly sceneBackground: McapSceneBackgroundSettings;
-  readonly sceneUpAxis: "x" | "y" | "z";
   readonly selectedPointCloudSources: readonly SceneSource[];
   readonly selectedPoseSources: readonly SceneSource[];
-  readonly setSceneUpAxis: ReturnType<typeof vi.fn>;
   readonly setSourcesEnabled: ReturnType<typeof vi.fn>;
   readonly setTrackingMode: ReturnType<typeof vi.fn>;
   readonly setTrajectoryFrameOverrides: ReturnType<typeof vi.fn>;
@@ -762,7 +778,6 @@ interface SettingsTestProps {
   readonly trajectories: Map<string, never>;
   readonly trajectoryFrameByTopic: Map<string, string>;
   readonly updateCameraTargetFrameId: ReturnType<typeof vi.fn>;
-  readonly updateWorldFrameId: ReturnType<typeof vi.fn>;
   readonly worldFrameId: string;
 }
 
@@ -771,7 +786,11 @@ function renderSettings(
 ): SettingsTestProps {
   const props = settingsProps(overrides);
   seedModalSettings(props);
-  render(<Mcap3dTileSettings {...componentProps(props)} />);
+  render(
+    <PlaybackProvider duration={1}>
+      <Mcap3dTileSettings {...componentProps(props)} />
+    </PlaybackProvider>,
+  );
   return props;
 }
 
@@ -799,13 +818,11 @@ function settingsProps(
     poseTopics: [],
     referenceGrid: { enabled: true, opacityPercent: 5, spacingM: 1 },
     sceneBackground: { mode: "solid" as const, solidColor: "#050b12" },
-    sceneUpAxis: "z",
     showPointCloudColorLegend: false,
     sceneAnnotationSources: [],
     sceneAnnotationTopics: [],
     selectedPointCloudSources: [LIDAR],
     selectedPoseSources: [],
-    setSceneUpAxis: vi.fn(),
     setSourcesEnabled: vi.fn(),
     setTrackingMode: vi.fn(),
     setTrajectoryFrameOverrides: vi.fn(),
@@ -814,7 +831,6 @@ function settingsProps(
     trajectories: new Map<string, never>(),
     trajectoryFrameByTopic: new Map(),
     updateCameraTargetFrameId: vi.fn(),
-    updateWorldFrameId: vi.fn(),
     worldFrameId: "",
     ...overrides,
   };
@@ -822,6 +838,7 @@ function settingsProps(
 
 function seedModalSettings(props: SettingsTestProps) {
   writeMcapModalSettings({
+    scoped: {},
     fidelityMode: DEFAULT_MCAP_FIDELITY_MODE,
     imageLabelTopics: {},
     imageProjection: {},
@@ -843,7 +860,6 @@ function componentProps(props: SettingsTestProps): Mcap3dTileSettingsProps {
       cameraTargetFrameId: props.cameraTargetFrameId,
       frameIds: props.frameIds,
       updateCameraTargetFrameId: props.updateCameraTargetFrameId,
-      updateWorldFrameId: props.updateWorldFrameId,
       worldFrameId: props.worldFrameId,
     },
     pointCloudInputs: {
@@ -856,10 +872,7 @@ function componentProps(props: SettingsTestProps): Mcap3dTileSettingsProps {
       trajectories: props.trajectories,
       trajectoryFrameByTopic: props.trajectoryFrameByTopic,
     },
-    sceneControls: {
-      sceneUpAxis: props.sceneUpAxis,
-      setSceneUpAxis: props.setSceneUpAxis,
-    },
+    selectedTopics: props.pointCloudTopics,
     selection: {
       enabled: props.enabled,
       setSourcesEnabled: props.setSourcesEnabled,
@@ -887,6 +900,7 @@ function componentProps(props: SettingsTestProps): Mcap3dTileSettingsProps {
         topics: props.sceneAnnotationTopics,
       },
     },
+    tileId: "3d-1",
     trackingControls: {
       mode: props.trackingMode,
       setMode: props.setTrackingMode,
