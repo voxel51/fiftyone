@@ -208,6 +208,11 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
             Defaults to ``ADE_PANOPTIC_CLASSES`` from the HuggingFace repo
         nms_thresh (0.2): NMS IoU threshold for duplicate suppression
         top_k (100): maximum instances returned per image
+        mask_decoder_chunk_size (500): number of candidate queries scored per
+            mask decoder call. The decoder's repeat_image path duplicates the
+            image embeddings once per candidate, so this bounds peak memory;
+            larger values are faster (less call overhead, more parallelism)
+            but use more memory
         transforms_fcn (None): function that builds the BEiT-3 branch transform.
             Defaults to :func:`build_beit_transform`
         sam_transforms_fcn (None): function that builds the SAM2 branch
@@ -225,6 +230,9 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
         self.iou_thresh = self.parse_number(d, "iou_thresh", default=0.5)
         self.nms_thresh = self.parse_number(d, "nms_thresh", default=0.2)
         self.top_k = self.parse_int(d, "top_k", default=100)
+        self.mask_decoder_chunk_size = self.parse_int(
+            d, "mask_decoder_chunk_size", default=500
+        )
         self.raw_inputs = True  # items are dicts, not stackable tensors
         self.sam_transforms_fcn = self.parse_raw(
             d, "sam_transforms_fcn", default=None
@@ -242,6 +250,8 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
             raise ValueError("nms_thresh must be in [0, 1]")
         if self.top_k < 1:
             raise ValueError("top_k must be >= 1")
+        if self.mask_decoder_chunk_size < 1:
+            raise ValueError("mask_decoder_chunk_size must be >= 1")
 
 
 class OpenWorldSAMModel(fout.TorchImageModel):
@@ -332,6 +342,7 @@ class OpenWorldSAMModel(fout.TorchImageModel):
             iou_thresh=config.iou_thresh,
             top_k_on=True,
             detections_per_image=config.top_k,
+            mask_decoder_chunk_size=config.mask_decoder_chunk_size,
         )
         model = OpenWorldSAMModel.from_pretrained(
             self._local_hf_dir,
