@@ -70,6 +70,15 @@ const cameraPoseHarness = vi.hoisted(() => ({
   setPose: vi.fn(),
 }));
 
+function getGridRendererRoot(container: HTMLElement): HTMLElement {
+  const root = container.querySelector<HTMLElement>(`.${classes.root}`);
+  if (!root) {
+    throw new Error("Expected an MCAP grid renderer root");
+  }
+
+  return root;
+}
+
 vi.mock("./use-stable-mcap-source", () => ({
   useStableMcapSource: vi.fn(() => null),
 }));
@@ -227,13 +236,15 @@ describe("GridRenderer", () => {
     const onClick = vi.fn();
     const onContextMenu = vi.fn();
 
-    render(
+    const { container } = render(
       <div onClick={onClick} onContextMenu={onContextMenu}>
         <GridRenderer ctx={rendererCtx()} />
       </div>,
     );
 
     const image = screen.getByTestId("bitmap-image-view");
+    const root = getGridRendererRoot(container);
+    expect(root.classList.contains(classes.modalActivationSurface)).toBe(true);
     fireEvent.click(image);
     fireEvent.contextMenu(image);
 
@@ -246,7 +257,7 @@ describe("GridRenderer", () => {
     previewHarness.preview.status = "ready";
     const onClick = vi.fn();
     const onContextMenu = vi.fn();
-    render(
+    const { container } = render(
       <div onClick={onClick} onContextMenu={onContextMenu}>
         <GridRenderer ctx={rendererCtx()} />
       </div>,
@@ -258,6 +269,8 @@ describe("GridRenderer", () => {
 
     expect(onClick).not.toHaveBeenCalled();
     expect(onContextMenu).not.toHaveBeenCalled();
+    const root = getGridRendererRoot(container);
+    expect(root.classList.contains(classes.modalActivationSurface)).toBe(false);
   });
 
   it.each(["idle", "loading", "ready", "unavailable", "error"] as const)(
@@ -273,10 +286,10 @@ describe("GridRenderer", () => {
         </div>,
       );
 
-      const root = container.firstElementChild?.firstElementChild;
-      if (!(root instanceof HTMLElement)) {
-        throw new Error("Expected an MCAP grid renderer root");
-      }
+      const root = getGridRendererRoot(container);
+      expect(root.classList.contains(classes.modalActivationSurface)).toBe(
+        true,
+      );
       fireEvent.click(root);
       fireEvent.contextMenu(root);
 
