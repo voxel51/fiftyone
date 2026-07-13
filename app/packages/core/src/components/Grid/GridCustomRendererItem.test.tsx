@@ -89,7 +89,8 @@ describe("GridCustomRendererItem", () => {
 
     expect(getGridCustomRendererFailover(BASE_CTX.dataset.name)).toBeNull();
     expect(loadSpy).toHaveBeenCalled();
-    expect(getOpenModalButton(host)).toBeNull();
+    const openButton = getOpenModalButton(host) as HTMLElement | null;
+    expect(openButton).toBeTruthy();
     expect(getSelectControl(host)).toBeNull();
 
     const renderer = host.querySelector("[data-testid='renderer']");
@@ -109,6 +110,9 @@ describe("GridCustomRendererItem", () => {
     expect(hostClickSpy).not.toHaveBeenCalled();
     expect(hostContextMenuSpy).not.toHaveBeenCalled();
 
+    openButton?.click();
+    expect(hostClickSpy).toHaveBeenCalledTimes(1);
+
     fireEvent.mouseEnter(wrapper as HTMLElement);
 
     await waitFor(() => {
@@ -116,13 +120,9 @@ describe("GridCustomRendererItem", () => {
       expect(getSelectControl(host)).toBeTruthy();
     });
 
-    const openButton = getOpenModalButton(host) as HTMLElement | null;
-    expect(openButton).toBeTruthy();
     expect(
       openButton?.querySelector("[data-testid='OpenInFullIcon']"),
     ).toBeTruthy();
-    openButton?.click();
-    expect(hostClickSpy).toHaveBeenCalledTimes(1);
 
     const selectSpy = vi.fn();
     looker.addEventListener("selectthumbnail", selectSpy);
@@ -147,7 +147,7 @@ describe("GridCustomRendererItem", () => {
     fireEvent.mouseLeave(wrapper as HTMLElement);
 
     await waitFor(() => {
-      expect(getOpenModalButton(host)).toBeNull();
+      expect(getOpenModalButton(host)).toBe(openButton);
       expect(getSelectControl(host)).toBeTruthy();
     });
 

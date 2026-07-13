@@ -1,0 +1,10 @@
+.container:hover .openModalButton,
+.container:focus-within .openModalButton {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.openModalButton {
+  opacity: 0;
+  pointer-events: none;
+}
