@@ -38,7 +38,7 @@ const McapSceneWorldSettings: React.FC = () => {
     : `up ${sceneUpAxis.toUpperCase()}`;
 
   return (
-    <McapSidebarGroup summary={summary} title="World">
+    <McapSidebarGroup defaultExpanded={false} summary={summary} title="World">
       {frameControls ? (
         <>
           <McapFrameSelect

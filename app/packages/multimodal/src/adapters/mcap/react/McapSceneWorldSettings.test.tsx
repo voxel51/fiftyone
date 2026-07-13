@@ -8,6 +8,10 @@ import {
 } from "./mcap-scene-frames-context";
 import McapSceneWorldSettings from "./McapSceneWorldSettings";
 
+function expandWorldGroup() {
+  fireEvent.click(screen.getByRole("button", { name: /World/ }));
+}
+
 afterEach(() => cleanup());
 
 function RegisterFrameControls({
@@ -54,8 +58,31 @@ describe("McapSceneWorldSettings", () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it("starts collapsed and summarizes the world selection", () => {
+    renderWorldSettings({
+      frameControls: {
+        activeComponentFrameIds: ["base_link", "map"],
+        authorityTileId: "tile-1",
+        frameIds: ["base_link", "map"],
+        omittedFrameIds: [],
+        omittedSourceIds: [],
+        referenceTransition: null,
+        updateWorldFrameId: vi.fn(),
+        useRecommendedWorldFrame: vi.fn(),
+        worldFrameId: "map",
+        worldFrameSelectionSource: "auto-stable",
+      },
+    });
+
+    expect(screen.getByText("map · up Z")).toBeTruthy();
+    expect(
+      screen.queryByRole("combobox", { name: /^Reference Frame/ }),
+    ).toBeNull();
+  });
+
   it("hints at adding a 3D panel while no frame controls exist", () => {
     renderWorldSettings();
+    expandWorldGroup();
 
     expect(
       screen.getByText("Add a 3D panel to choose the reference frame."),
@@ -84,6 +111,7 @@ describe("McapSceneWorldSettings", () => {
       },
     });
 
+    expandWorldGroup();
     const select = screen.getByRole("combobox", { name: /^Reference Frame/ });
 
     fireEvent.focus(select);
@@ -111,6 +139,7 @@ describe("McapSceneWorldSettings", () => {
       },
     });
 
+    expandWorldGroup();
     fireEvent.click(
       screen.getByRole("button", { name: "Use recommended frame" }),
     );
@@ -121,6 +150,7 @@ describe("McapSceneWorldSettings", () => {
     const setSceneUpAxis = vi.fn();
     renderWorldSettings({ setSceneUpAxis });
 
+    expandWorldGroup();
     fireEvent.click(screen.getByRole("radio", { name: "Y" }));
 
     expect(setSceneUpAxis).toHaveBeenCalledWith("y");
