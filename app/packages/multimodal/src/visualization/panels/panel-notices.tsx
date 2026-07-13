@@ -1,4 +1,4 @@
-import { Icon, IconName, Size } from "@voxel51/voodo";
+import { Icon, IconColor, IconName, Size } from "@voxel51/voodo";
 import { useState, type CSSProperties, type PointerEvent } from "react";
 
 import {
@@ -34,6 +34,7 @@ export function PanelNotices({
   if (notices.length === 0) {
     return null;
   }
+  const severity = worstSeverity(notices);
 
   return (
     <div onPointerDown={stopSceneInteraction} style={styles.root}>
@@ -60,12 +61,10 @@ export function PanelNotices({
         type="button"
       >
         <Icon
-          name={IconName.Warning}
+          color={NOTICE_SEVERITY_ICON_COLOR[severity]}
+          name={NOTICE_SEVERITY_ICON[severity]}
           size={Size.Xs}
-          style={{
-            ...styles.icon,
-            color: NOTICE_SEVERITY_ICON_COLORS[worstSeverity(notices)],
-          }}
+          style={styles.icon}
         />
         {notices.length}
       </button>
@@ -90,10 +89,16 @@ const HUD_BORDER_RADIUS_PX = 4;
 const HUD_FONT_SIZE_PX = 11;
 const HUD_OFFSET_PX = 8;
 
-const NOTICE_SEVERITY_ICON_COLORS: Record<PanelNoticeSeverity, string> = {
-  error: "#f87171",
-  info: "#9ca3af",
-  warning: "#facc15",
+const NOTICE_SEVERITY_ICON: Record<PanelNoticeSeverity, IconName> = {
+  error: IconName.Error,
+  info: IconName.Info,
+  warning: IconName.Warning,
+};
+
+const NOTICE_SEVERITY_ICON_COLOR: Record<PanelNoticeSeverity, IconColor> = {
+  error: IconColor.Destructive,
+  info: IconColor.Info,
+  warning: IconColor.Warning,
 };
 
 const styles: Record<string, CSSProperties> = {

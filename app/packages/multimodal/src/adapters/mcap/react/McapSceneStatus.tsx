@@ -2,7 +2,7 @@ import { useStreamValues } from "@fiftyone/playback";
 import React, { useMemo } from "react";
 import type { PointCloudVisualization } from "../../../decoders";
 import { MAX_POINT_CLOUD_RENDER_POINTS } from "../../../decoders";
-import { useSceneSourcesByType } from "../../../scene-inventory";
+import { useSceneSourcesByType } from "../../../scene-inventory/SceneInventoryProvider";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import {
   buildMcapPointCloudSamplingNotice,
