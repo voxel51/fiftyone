@@ -363,7 +363,8 @@ export function useMcap3dFrameSelection({
     worldFrameId,
   );
   const availableCarriedCameraTargetFrameId =
-    carriedCameraTargetFrameId && frameIds.includes(carriedCameraTargetFrameId)
+    carriedCameraTargetFrameId &&
+    activeComponentFrameIds.includes(carriedCameraTargetFrameId)
       ? carriedCameraTargetFrameId
       : "";
   const cameraTargetFrameId =

@@ -187,6 +187,22 @@ describe("useMcap3dFrameSelection", () => {
     expect(result.current.cameraTargetSelectionSource).toBe("auto");
   });
 
+  it("rejects a carried camera target outside the active component", () => {
+    const { result } = renderHook(useMcap3dFrameSelection, {
+      initialProps: selectionProps({
+        ...pointCloudObservation("base_link"),
+        frameTransforms: transforms([
+          ["map", "base_link"],
+          ["other", "sensor_target"],
+        ]),
+        carriedCameraTargetFrameId: "sensor_target",
+      }),
+    });
+
+    expect(result.current.cameraTargetFrameId).toBe("base_link");
+    expect(result.current.cameraTargetSelectionSource).toBe("auto");
+  });
+
   it("falls back to the world frame for the camera target when no ego frame exists", () => {
     const { result } = renderHook(useMcap3dFrameSelection, {
       initialProps: selectionProps({
