@@ -148,6 +148,33 @@ describe("readMcapNumericSeries", () => {
     expect([...result.fields[1].values]).toEqual([0, 1]);
   });
 
+  it("decodes each message once when extracting multiple fields", async () => {
+    const parse = vi.spyOn(JSON, "parse");
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [
+        jsonMessage({ battery: 90, armed: false }, 1_000_000_000n),
+        jsonMessage({ battery: 88, armed: true }, 2_000_000_000n),
+      ],
+    });
+
+    try {
+      await readMcapNumericSeries({
+        reader,
+        request: {
+          fieldPaths: ["battery", "armed"],
+          source: createSource(),
+          topic: "/state",
+        },
+        timeline,
+      });
+
+      expect(parse).toHaveBeenCalledTimes(2);
+    } finally {
+      parse.mockRestore();
+    }
+  });
+
   it("extracts from ros1 messages", async () => {
     const reader = createReader({
       channel: createChannel({ messageEncoding: "ros1", topic: "/telemetry" }),

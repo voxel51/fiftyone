@@ -1,85 +1,226 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import type {
   CameraCalibrationVisualization,
   GridVisualization,
   PointCloudVisualization,
+  PoseVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
-import type { McapFrameGraphSummary } from "../frame-transforms";
-import { markMcapLatencyEvent } from "../mcap-latency-debug";
+import type { Mcap3dViewStateStore } from "./mcap-3d-view-state";
+import { useMcap3dViewStateStore } from "./mcap-3d-view-state-context";
 import {
-  nextMcap3dViewStateRestoreOnceKey,
-  recordMcap3dUserCameraTargetFrameId,
-  recordMcap3dUserWorldFrameId,
-} from "./mcap-3d-view-state";
+  chooseMcapCameraTarget,
+  createMcapReferenceSelectionState,
+  mcapReferenceSelectionReducer,
+  type McapFrameObservation,
+  type McapReferenceSelectionSource,
+  type McapReferenceTransition,
+} from "./mcap-3d-reference-selection";
 import type { McapFrameTransformsState } from "./use-mcap-frame-transforms";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
-const STABLE_WORLD_FRAME_IDS = ["map", "world", "odom"] as const;
-const EGO_FRAME_IDS = ["base_link", "ego_vehicle", "ego", "vehicle"] as const;
-export const PREFERRED_CAMERA_TARGET_FRAMES = EGO_FRAME_IDS;
+/** Frame names considered ego-centric automatic camera targets, in priority order. */
+export const PREFERRED_CAMERA_TARGET_FRAMES = [
+  "base_link",
+  "ego_vehicle",
+  "ego",
+  "vehicle",
+] as const;
+
+/** Whether a rendered frame choice was automatic or explicitly selected. */
 export type FrameSelectionSource = "auto" | "user";
 
+/** User frame choices eligible to carry across a compatible sample change. */
 export interface Mcap3dFrameSelectionRestore {
   readonly userCameraTargetFrameId: string | null;
   readonly userWorldFrameId: string | null;
 }
 
+/** Scene-authoritative reference controls consumed by secondary 3D tiles. */
+export interface Mcap3dReferenceAuthority {
+  readonly activeComponentFrameIds: readonly string[];
+  readonly omittedFrameIds: readonly string[];
+  readonly omittedSourceIds: readonly string[];
+  readonly referenceTransition: McapReferenceTransition | null;
+  readonly updateWorldFrameId: (frameId: string) => void;
+  readonly useRecommendedWorldFrame: () => void;
+  readonly worldFrameId: string;
+  readonly worldFrameSelectionSource: McapReferenceSelectionSource;
+}
+
 /**
- * World-frame and camera-target frame selection for the 3D tile. Derives
- * the available frame ids from the transform graph plus the current playback
- * frames, auto-fills both selections from preferred defaults, and lets the
- * user's explicit choice stick while its frame remains available. State is
- * local to the calling tile — it resets when the tile remounts.
- * An optional `restore` carries the previous sample's *user* selections as a
- * pending intent: the auto selection runs untouched while the frame id is
- * absent, and the intent is adopted only if/when the id (re)appears in the
- * streaming inventory — so a stale id can never pin the selection. A manual
- * selection cancels the pending intent.
+ * Thin React adapter around the pure reference-frame reducer. Data-frame
+ * identity is retained per selected topic across null playback gaps; graph
+ * work is keyed only by topology and that bounded inventory, never by ticks.
  */
 export function useMcap3dFrameSelection({
   annotationFrames,
+  annotationTopics = [],
   calibrationFrames,
+  calibrationTopics = [],
   frames,
   frameTransforms,
   gridFrames,
+  gridTopics = [],
+  onPreferredCameraTargetFrameIdChange,
+  onPreferredWorldFrameIdChange,
+  playbackTimeNs,
+  pointCloudTopics = [],
+  poseFrames = [],
+  poseTopics = [],
+  preferredCameraTargetFrameId = null,
+  preferredWorldFrameId = null,
+  primarySourceId = null,
+  referenceAuthority = null,
   restore = null,
+  viewStateStore: suppliedViewStateStore,
 }: {
   readonly annotationFrames: readonly (McapTopicPlaybackFrame<SceneUpdateVisualization> | null)[];
+  readonly annotationTopics?: readonly string[];
   readonly calibrationFrames: readonly (McapTopicPlaybackFrame<CameraCalibrationVisualization> | null)[];
+  readonly calibrationTopics?: readonly string[];
   readonly frames: readonly (McapTopicPlaybackFrame<PointCloudVisualization> | null)[];
   readonly frameTransforms: McapFrameTransformsState;
   readonly gridFrames: readonly (McapTopicPlaybackFrame<GridVisualization> | null)[];
+  readonly gridTopics?: readonly string[];
+  readonly onPreferredCameraTargetFrameIdChange?: (frameId: string) => void;
+  readonly onPreferredWorldFrameIdChange?: (frameId: string | null) => void;
+  readonly playbackTimeNs?: bigint;
+  readonly pointCloudTopics?: readonly string[];
+  readonly poseFrames?: readonly (McapTopicPlaybackFrame<PoseVisualization> | null)[];
+  readonly poseTopics?: readonly string[];
+  readonly preferredCameraTargetFrameId?: string | null;
+  readonly preferredWorldFrameId?: string | null;
+  readonly primarySourceId?: string | null;
+  readonly referenceAuthority?: Mcap3dReferenceAuthority | null;
   readonly restore?: Mcap3dFrameSelectionRestore | null;
+  readonly viewStateStore?: Mcap3dViewStateStore;
 }) {
-  const [worldFrameId, setWorldFrameId] = useState("");
-  const [cameraTargetFrameId, setCameraTargetFrameId] = useState("");
-  const [worldFrameSelectionSource, setWorldFrameSelectionSource] =
-    useState<FrameSelectionSource>("auto");
-  const [cameraTargetSelectionSource, setCameraTargetSelectionSource] =
-    useState<FrameSelectionSource>("auto");
-  // Pending carry-over of the previous sample's user-selected frames,
-  // captured once at mount. The intent dies on adoption, on a manual
-  // selection, or with the mount itself (next sample hop).
-  const pendingUserWorldFrameIdRef = useRef(restore?.userWorldFrameId ?? null);
+  const viewStateStore = useMcap3dViewStateStore(suppliedViewStateStore);
+  const pendingUserWorldFrameIdRef = useRef(
+    restore?.userWorldFrameId ?? preferredWorldFrameId,
+  );
   const pendingUserCameraTargetFrameIdRef = useRef(
-    restore?.userCameraTargetFrameId ?? null,
+    restore?.userCameraTargetFrameId ?? preferredCameraTargetFrameId,
   );
-  const restoreMarkKeyRef = useRef<string | null>(null);
-  if (restoreMarkKeyRef.current === null) {
-    restoreMarkKeyRef.current = nextMcap3dViewStateRestoreOnceKey();
-  }
+  const lastPreferredWorldFrameIdRef = useRef(preferredWorldFrameId);
+  const [userCameraTargetFrameId, setUserCameraTargetFrameId] = useState("");
+  const lastKnownFrameIdsByTopicRef = useRef<
+    ReadonlyMap<string, readonly string[]>
+  >(new Map<string, readonly string[]>());
+  const playbackTimeNsRef = useRef(playbackTimeNs);
+  playbackTimeNsRef.current = playbackTimeNs;
+
+  const frameInventory = useMemo(() => {
+    const topicFrames: TopicFrameObservation[] = [
+      ...coordinateTopicFrames(pointCloudTopics, frames, "point-cloud"),
+      ...coordinateTopicFrames(gridTopics, gridFrames, "grid"),
+      ...coordinateTopicFrames(
+        calibrationTopics,
+        calibrationFrames,
+        "calibration",
+      ),
+      ...coordinateTopicFrames(poseTopics, poseFrames, "pose"),
+      ...annotationTopicFrames(annotationTopics, annotationFrames),
+    ];
+    return nextLastKnownFrameInventory(
+      lastKnownFrameIdsByTopicRef.current,
+      topicFrames,
+    );
+  }, [
+    annotationFrames,
+    annotationTopics,
+    calibrationFrames,
+    calibrationTopics,
+    frames,
+    gridFrames,
+    gridTopics,
+    pointCloudTopics,
+    poseFrames,
+    poseTopics,
+  ]);
+  // This effect commits last-known frame identity only after React commits the
+  // render, so an interrupted render cannot corrupt the inventory used by a
+  // later playback gap.
+  useEffect(() => {
+    lastKnownFrameIdsByTopicRef.current = frameInventory.frameIdsByTopic;
+  }, [frameInventory]);
+  const inventoryKey = observationInventoryKey(frameInventory.observations);
+  const observations = useMemo(
+    () => frameInventory.observations,
+    // Equal inventory keys describe equal, normalized observations. Keeping
+    // the prior identity prevents playback ticks from retriggering graph work.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [inventoryKey],
+  );
   const dataBearingFrameIds = useMemo(
-    () =>
-      uniqueSortedFrameIds([
-        ...frameIdsFromCoordinateFrames(frames),
-        ...frameIdsFromCoordinateFrames(gridFrames),
-        ...frameIdsFromCoordinateFrames(calibrationFrames),
-        ...frameIdsFromSceneAnnotationFrames(annotationFrames),
-      ]),
-    [annotationFrames, calibrationFrames, frames, gridFrames],
+    () => uniqueSortedFrameIds(observations.flatMap((item) => item.frameIds)),
+    [observations],
   );
-  const frameIds = useMemo(
+  const topologyMemoKey =
+    frameTransforms.topologyRevision ?? frameTransforms.frameIds.join("\0");
+  const fallbackSummarizer =
+    frameTransforms.topologyRevision === undefined
+      ? frameTransforms.summarizeGraph
+      : null;
+  const graphSummary = useMemo(
+    () => frameTransforms.summarizeGraph(new Set(dataBearingFrameIds)),
+    // Production transform stores trigger only on `topologyRevision`; the
+    // summarizer fallback keeps injected test states with no revision honest.
+    // Dynamic samples on known edges cannot change component membership.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fallbackSummarizer, inventoryKey, topologyMemoKey],
+  );
+  const topologyRevisionKey =
+    frameTransforms.topologyRevision?.toString() ??
+    graphSummary.components
+      .map((component) => component.join("\0"))
+      .join("\u0001");
+  const facts = useMemo(
+    () => ({
+      graphSummary,
+      observations,
+      primarySourceId,
+      revisionKey: [
+        topologyRevisionKey,
+        inventoryKey,
+        primarySourceId ?? "",
+      ].join("\0"),
+    }),
+    [
+      graphSummary,
+      inventoryKey,
+      observations,
+      primarySourceId,
+      topologyRevisionKey,
+    ],
+  );
+  const [selection, dispatch] = useReducer(
+    mcapReferenceSelectionReducer,
+    facts,
+    createMcapReferenceSelectionState,
+  );
+
+  // This effect feeds topology or inventory changes into the pure selection
+  // reducer while sampling the current playhead only for a new promotion key.
+  useEffect(() => {
+    dispatch({
+      facts,
+      ...(playbackTimeNsRef.current === undefined
+        ? {}
+        : { timeNs: playbackTimeNsRef.current }),
+      type: "factsChanged",
+    });
+  }, [facts]);
+
+  const localFrameIds = useMemo(
     () =>
       uniqueSortedFrameIds([
         ...frameTransforms.frameIds,
@@ -87,102 +228,210 @@ export function useMcap3dFrameSelection({
       ]),
     [dataBearingFrameIds, frameTransforms.frameIds],
   );
-  const graphSummary = useMemo(
-    () => frameTransforms.summarizeGraph(new Set(dataBearingFrameIds)),
-    [dataBearingFrameIds, frameTransforms],
+  const frameIds = useMemo(
+    () =>
+      referenceAuthority
+        ? uniqueSortedFrameIds([
+            ...localFrameIds,
+            ...referenceAuthority.activeComponentFrameIds,
+          ])
+        : localFrameIds,
+    [localFrameIds, referenceAuthority],
   );
+  const localDecision = selection.decision;
+  const activeComponentFrameIds =
+    referenceAuthority?.activeComponentFrameIds ??
+    localDecision.activeComponentFrameIds;
+  const worldFrameId =
+    referenceAuthority?.worldFrameId ?? localDecision.referenceFrameId;
+  const referenceSelectionSource =
+    referenceAuthority?.worldFrameSelectionSource ?? localDecision.source;
+  const omittedFrameIds =
+    referenceAuthority?.omittedFrameIds ?? localDecision.omittedFrameIds;
+  const omittedSourceIds =
+    referenceAuthority?.omittedSourceIds ?? localDecision.omittedSourceIds;
+  const referenceTransition =
+    referenceAuthority?.referenceTransition ?? selection.committedTransition;
 
-  // This effect keeps the world frame on a preferred default until the user
-  // explicitly chooses a frame.
+  // This effect mirrors external preference changes into pending user intent,
+  // including an explicit reset back to automatic recommendation.
   useEffect(() => {
-    setWorldFrameId((current) =>
-      nextWorldFrameSelection({
-        current,
-        frameIds,
-        graphSummary,
-        selectionSource: worldFrameSelectionSource,
-      }),
-    );
-  }, [frameIds, graphSummary, worldFrameSelectionSource]);
+    if (preferredWorldFrameId === lastPreferredWorldFrameIdRef.current) return;
+    lastPreferredWorldFrameIdRef.current = preferredWorldFrameId;
+    if (preferredWorldFrameId) {
+      pendingUserWorldFrameIdRef.current = preferredWorldFrameId;
+    } else {
+      pendingUserWorldFrameIdRef.current = null;
+      dispatch({ type: "useRecommendedReference" });
+    }
+  }, [preferredWorldFrameId]);
 
-  // This effect keeps the camera target on a preferred default until the user
-  // explicitly chooses a frame.
-  useEffect(() => {
-    setCameraTargetFrameId((current) =>
-      nextCameraTargetFrameSelection({
-        current,
-        frameIds,
-        graphSummary,
-        selectionSource: cameraTargetSelectionSource,
-        worldFrameId,
-      }),
-    );
-  }, [cameraTargetSelectionSource, frameIds, graphSummary, worldFrameId]);
-
-  // This effect adopts the previous sample's user-selected frames once they
-  // (re)appear in the streaming frame inventory. Until then the auto
-  // selection above runs untouched; if the frame never (re)appears, nothing
-  // is ever pinned.
+  // This effect adopts carried user intent once its frame appears in the
+  // bounded inventory; ordinary content gaps keep the intent pending.
   useEffect(() => {
     const pendingWorld = pendingUserWorldFrameIdRef.current;
-    if (mcap3dUserFrameRestoreApplies(pendingWorld, frameIds)) {
+    if (mcap3dUserFrameRestoreApplies(pendingWorld, localFrameIds)) {
       pendingUserWorldFrameIdRef.current = null;
-      setWorldFrameSelectionSource("user");
-      setWorldFrameId(pendingWorld);
-      markMcapLatencyEvent(
-        "3d view state restored",
-        { field: "worldFrameId", frameId: pendingWorld },
-        { onceKey: `${restoreMarkKeyRef.current}:worldFrameId` },
-      );
+      dispatch({ frameId: pendingWorld, type: "userReferenceSelected" });
     }
-
     const pendingTarget = pendingUserCameraTargetFrameIdRef.current;
     if (mcap3dUserFrameRestoreApplies(pendingTarget, frameIds)) {
       pendingUserCameraTargetFrameIdRef.current = null;
-      setCameraTargetSelectionSource("user");
-      setCameraTargetFrameId(pendingTarget);
-      markMcapLatencyEvent(
-        "3d view state restored",
-        { field: "cameraTargetFrameId", frameId: pendingTarget },
-        { onceKey: `${restoreMarkKeyRef.current}:cameraTargetFrameId` },
-      );
+      setUserCameraTargetFrameId(pendingTarget);
     }
-  }, [frameIds]);
+  }, [frameIds, localFrameIds, preferredWorldFrameId]);
 
-  const updateWorldFrameId = useCallback((frameId: string) => {
-    // A manual selection supersedes any pending carried-over user frame and
-    // is written through to the session view-state store.
+  const pendingPromotion = referenceAuthority
+    ? null
+    : selection.pendingPromotion;
+  const indexedRangeKey = pendingPromotion
+    ? frameTransforms
+        .indexedDynamicRanges()
+        .filter(
+          (range) =>
+            pendingPromotion.timeNs !== undefined &&
+            range.startTimeNs <= pendingPromotion.timeNs &&
+            pendingPromotion.timeNs <= range.endTimeNs,
+        )
+        .map((range) => `${range.startTimeNs}:${range.endTimeNs}`)
+        .join("|")
+    : "";
+  const readinessGetterRef = useRef(frameTransforms.getPlacementReadiness);
+  const prefetchPlacementRef = useRef(frameTransforms.prefetchPlacement);
+  const resolveFrameTransformRef = useRef(frameTransforms.resolve);
+  const readinessAttemptKeyRef = useRef<string | null>(null);
+  readinessGetterRef.current = frameTransforms.getPlacementReadiness;
+  prefetchPlacementRef.current = frameTransforms.prefetchPlacement;
+  resolveFrameTransformRef.current = frameTransforms.resolve;
+  // This effect checks a new promotion/range pair once. Tick-only renders do
+  // not retry transform resolution or alter the reference decision.
+  useEffect(() => {
+    if (!pendingPromotion) return;
+    const attemptKey = `${pendingPromotion.key}\0${indexedRangeKey}`;
+    if (readinessAttemptKeyRef.current === attemptKey) return;
+    readinessAttemptKeyRef.current = attemptKey;
+    const readiness = readinessGetterRef.current({
+      frameIds: pendingPromotion.frameIds,
+      targetFrameId: pendingPromotion.candidateFrameId,
+      ...(pendingPromotion.timeNs === undefined
+        ? {}
+        : { timeNs: pendingPromotion.timeNs }),
+    });
+    if (readiness.status === "ready") {
+      // Readiness without a placement time only admits static transforms, for
+      // which the resolver's required timestamp is immaterial.
+      const resolutionTimeNs = pendingPromotion.timeNs ?? 0n;
+      const resolution = resolveFrameTransformRef.current(
+        pendingPromotion.sourceFrameId,
+        pendingPromotion.candidateFrameId,
+        resolutionTimeNs,
+      );
+      if (resolution.status === "resolved") {
+        dispatch({
+          key: pendingPromotion.key,
+          transform: resolution.transform,
+          type: "promotionResolved",
+        });
+      } else {
+        dispatch({ key: pendingPromotion.key, type: "promotionRejected" });
+      }
+    } else if (readiness.status === "definitiveMissing") {
+      dispatch({ key: pendingPromotion.key, type: "promotionRejected" });
+    } else if (
+      readiness.status === "needsFetch" &&
+      pendingPromotion.timeNs !== undefined
+    ) {
+      prefetchPlacementRef.current(pendingPromotion.timeNs);
+    }
+  }, [indexedRangeKey, pendingPromotion]);
+
+  const autoCameraTargetFrameId = chooseMcapCameraTarget(
+    activeComponentFrameIds,
+    worldFrameId,
+  );
+  const cameraTargetFrameId =
+    userCameraTargetFrameId && frameIds.includes(userCameraTargetFrameId)
+      ? userCameraTargetFrameId
+      : autoCameraTargetFrameId;
+  const cameraTargetSelectionSource: FrameSelectionSource =
+    userCameraTargetFrameId && frameIds.includes(userCameraTargetFrameId)
+      ? "user"
+      : "auto";
+
+  const updateLocalWorldFrameId = useCallback(
+    (frameId: string) => {
+      pendingUserWorldFrameIdRef.current = null;
+      viewStateStore.recordUserWorldFrameId(frameId);
+      onPreferredWorldFrameIdChange?.(frameId);
+      dispatch({ frameId, type: "userReferenceSelected" });
+    },
+    [onPreferredWorldFrameIdChange, viewStateStore],
+  );
+  const updateWorldFrameId = useCallback(
+    (frameId: string) => {
+      if (referenceAuthority) {
+        referenceAuthority.updateWorldFrameId(frameId);
+      } else {
+        updateLocalWorldFrameId(frameId);
+      }
+    },
+    [referenceAuthority, updateLocalWorldFrameId],
+  );
+  const resetLocalWorldFrameRecommendation = useCallback(() => {
     pendingUserWorldFrameIdRef.current = null;
-    recordMcap3dUserWorldFrameId(frameId);
-    setWorldFrameSelectionSource("user");
-    setWorldFrameId(frameId);
-  }, []);
-  const updateCameraTargetFrameId = useCallback((frameId: string) => {
-    // A manual selection supersedes any pending carried-over user frame and
-    // is written through to the session view-state store.
-    pendingUserCameraTargetFrameIdRef.current = null;
-    recordMcap3dUserCameraTargetFrameId(frameId);
-    setCameraTargetSelectionSource("user");
-    setCameraTargetFrameId(frameId);
-  }, []);
+    viewStateStore.recordUserWorldFrameId(null);
+    onPreferredWorldFrameIdChange?.(null);
+    dispatch({ type: "useRecommendedReference" });
+  }, [onPreferredWorldFrameIdChange, viewStateStore]);
+  const useRecommendedWorldFrame = useCallback(() => {
+    if (referenceAuthority) {
+      referenceAuthority.useRecommendedWorldFrame();
+    } else {
+      resetLocalWorldFrameRecommendation();
+    }
+  }, [referenceAuthority, resetLocalWorldFrameRecommendation]);
+  const updateCameraTargetFrameId = useCallback(
+    (frameId: string) => {
+      pendingUserCameraTargetFrameIdRef.current = null;
+      viewStateStore.recordUserCameraTargetFrameId(frameId);
+      onPreferredCameraTargetFrameIdChange?.(frameId);
+      setUserCameraTargetFrameId(frameId);
+    },
+    [onPreferredCameraTargetFrameIdChange, viewStateStore],
+  );
 
   return {
+    activeComponentFrameIds,
     cameraTargetFrameId,
     cameraTargetSelectionSource,
     frameIds,
+    localActiveComponentFrameIds: localDecision.activeComponentFrameIds,
+    localFrameIds,
+    localOmittedFrameIds: localDecision.omittedFrameIds,
+    localOmittedSourceIds: localDecision.omittedSourceIds,
+    localReferenceTransition: selection.committedTransition,
+    localReferenceSelectionSource: localDecision.source,
+    localUseRecommendedWorldFrame: resetLocalWorldFrameRecommendation,
+    localUpdateWorldFrameId: updateLocalWorldFrameId,
+    localWorldFrameId: localDecision.referenceFrameId,
+    omittedFrameIds,
+    omittedSourceIds,
+    pendingPromotion,
+    referenceTransition,
+    referenceSelectionSource,
     updateCameraTargetFrameId,
     updateWorldFrameId,
+    useRecommendedWorldFrame,
     worldFrameId,
-    worldFrameSelectionSource,
+    worldFrameSelectionSource:
+      referenceSelectionSource === "user" ||
+      (!referenceAuthority && selection.userReferenceFrameId !== null)
+        ? ("user" as const)
+        : ("auto" as const),
   };
 }
 
-/**
- * Pure gate for adopting a carried-over user frame selection: the frame id
- * must currently exist in the streaming frame inventory. "Not yet present"
- * and "absent" are indistinguishable while frames stream in, so the caller
- * keeps the intent pending and re-checks as the inventory grows.
- */
+/** Returns whether a carried user frame is available in the current inventory. */
 export function mcap3dUserFrameRestoreApplies(
   frameId: string | null,
   frameIds: readonly string[],
@@ -190,49 +439,79 @@ export function mcap3dUserFrameRestoreApplies(
   return frameId !== null && frameId !== "" && frameIds.includes(frameId);
 }
 
-type CoordinateFrameVisualization = {
-  readonly coordinateFrameId?: string;
-};
+interface TopicFrameObservation {
+  readonly frameIds: readonly string[];
+  readonly sourceId: string;
+}
 
-function frameIdsFromCoordinateFrames<
-  Frame extends CoordinateFrameVisualization,
+function coordinateTopicFrames<
+  Frame extends { readonly coordinateFrameId?: string },
 >(
+  topics: readonly string[],
   frames: readonly (McapTopicPlaybackFrame<Frame> | null)[],
-): readonly string[] {
-  const frameIds: string[] = [];
-
-  for (const playbackFrame of frames) {
-    if (!playbackFrame) {
-      continue;
-    }
-    pushFrameId(frameIds, playbackFrame.frame.coordinateFrameId);
-  }
-
-  return frameIds;
+  fallbackPrefix: string,
+): readonly TopicFrameObservation[] {
+  return frames.map((playbackFrame, index) => ({
+    frameIds: playbackFrame?.frame.coordinateFrameId
+      ? [playbackFrame.frame.coordinateFrameId]
+      : [],
+    sourceId: topics[index] ?? `${fallbackPrefix}:${index}`,
+  }));
 }
 
-function frameIdsFromSceneAnnotationFrames(
+function annotationTopicFrames(
+  topics: readonly string[],
   frames: readonly (McapTopicPlaybackFrame<SceneUpdateVisualization> | null)[],
-): readonly string[] {
-  const frameIds: string[] = [];
-
-  for (const playbackFrame of frames) {
-    if (!playbackFrame) {
-      continue;
-    }
-    for (const entity of playbackFrame.frame.entities) {
-      pushFrameId(frameIds, entity.frameId);
-    }
-  }
-
-  return frameIds;
+): readonly TopicFrameObservation[] {
+  return frames.map((playbackFrame, index) => ({
+    frameIds:
+      playbackFrame?.frame.entities
+        .map((entity) => entity.frameId)
+        .filter((frameId): frameId is string => typeof frameId === "string") ??
+      [],
+    sourceId: topics[index] ?? `annotation:${index}`,
+  }));
 }
 
-function pushFrameId(frameIds: string[], frameId: string | undefined) {
-  const normalized = frameId?.trim();
-  if (normalized) {
-    frameIds.push(normalized);
+function nextLastKnownFrameInventory(
+  current: ReadonlyMap<string, readonly string[]>,
+  topicFrames: readonly TopicFrameObservation[],
+): {
+  readonly frameIdsByTopic: ReadonlyMap<string, readonly string[]>;
+  readonly observations: readonly McapFrameObservation[];
+} {
+  const next = new Map(current);
+  const selectedTopics = new Set(topicFrames.map((item) => item.sourceId));
+  for (const topic of next.keys()) {
+    if (!selectedTopics.has(topic)) next.delete(topic);
   }
+  const observedFrameIdsByTopic = new Map<string, string[]>();
+  for (const item of topicFrames) {
+    const frameIds = observedFrameIdsByTopic.get(item.sourceId) ?? [];
+    frameIds.push(...item.frameIds);
+    observedFrameIdsByTopic.set(item.sourceId, frameIds);
+  }
+  for (const [topic, observedFrameIds] of observedFrameIdsByTopic) {
+    const frameIds = uniqueSortedFrameIds(observedFrameIds);
+    if (frameIds.length > 0) next.set(topic, frameIds);
+  }
+  return {
+    frameIdsByTopic: next,
+    observations: [...next.entries()]
+      .map(([sourceId, frameIds]) => ({ frameIds, sourceId }))
+      .sort((left, right) => compareFrameIds(left.sourceId, right.sourceId)),
+  };
+}
+
+function observationInventoryKey(
+  observations: readonly McapFrameObservation[],
+): string {
+  return observations
+    .map(
+      (observation) =>
+        `${observation.sourceId}:${observation.frameIds.join(",")}`,
+    )
+    .join("|");
 }
 
 function uniqueSortedFrameIds(frameIds: readonly string[]): readonly string[] {
@@ -241,210 +520,6 @@ function uniqueSortedFrameIds(frameIds: readonly string[]): readonly string[] {
   );
 }
 
-function nextWorldFrameSelection({
-  current,
-  frameIds,
-  graphSummary,
-  selectionSource,
-}: {
-  readonly current: string;
-  readonly frameIds: readonly string[];
-  readonly graphSummary: McapFrameGraphSummary;
-  readonly selectionSource: FrameSelectionSource;
-}) {
-  if (selectionSource === "user" && current && frameIds.includes(current)) {
-    return current;
-  }
-
-  const tfWorldCandidateFrameIds = worldCandidateFrameIds(
-    graphSummary.tfConnectedFrameIds,
-  );
-  const stableWorldFrameId =
-    firstExactPreferredFrameId(
-      tfWorldCandidateFrameIds,
-      STABLE_WORLD_FRAME_IDS,
-    ) ||
-    uniqueSuffixPreferredFrameId(
-      tfWorldCandidateFrameIds,
-      STABLE_WORLD_FRAME_IDS,
-    );
-  if (stableWorldFrameId) {
-    return stableWorldFrameId;
-  }
-
-  const graphWorldFrameId = graphDerivedWorldFrameId({
-    candidateFrameIds: tfWorldCandidateFrameIds,
-    graphSummary,
-  });
-  if (graphWorldFrameId) {
-    return graphWorldFrameId;
-  }
-
-  const egoWorldFrameId =
-    firstExactPreferredFrameId(tfWorldCandidateFrameIds, EGO_FRAME_IDS) ||
-    uniqueSuffixPreferredFrameId(tfWorldCandidateFrameIds, EGO_FRAME_IDS);
-  if (egoWorldFrameId) {
-    return egoWorldFrameId;
-  }
-
-  return tfWorldCandidateFrameIds[0] ?? "";
-}
-
-function nextCameraTargetFrameSelection({
-  current,
-  frameIds,
-  graphSummary,
-  selectionSource,
-  worldFrameId,
-}: {
-  readonly current: string;
-  readonly frameIds: readonly string[];
-  readonly graphSummary: McapFrameGraphSummary;
-  readonly selectionSource: FrameSelectionSource;
-  readonly worldFrameId: string;
-}) {
-  if (selectionSource === "user" && current && frameIds.includes(current)) {
-    return current;
-  }
-
-  const targetCandidateFrameIds =
-    graphSummary.tfConnectedFrameIds.length > 0
-      ? graphSummary.tfConnectedFrameIds
-      : frameIds;
-  const egoFrameId =
-    firstExactPreferredFrameId(targetCandidateFrameIds, EGO_FRAME_IDS) ||
-    uniqueSuffixPreferredFrameId(targetCandidateFrameIds, EGO_FRAME_IDS);
-  if (egoFrameId) {
-    return egoFrameId;
-  }
-
-  return worldFrameId && frameIds.includes(worldFrameId) ? worldFrameId : "";
-}
-
-function worldCandidateFrameIds(
-  tfConnectedFrameIds: readonly string[],
-): readonly string[] {
-  const sortedFrameIds = uniqueSortedFrameIds(tfConnectedFrameIds);
-  const nonOpticalFrameIds = sortedFrameIds.filter(
-    (frameId) => !isOpticalFrameId(frameId),
-  );
-
-  return nonOpticalFrameIds.length > 0 ? nonOpticalFrameIds : sortedFrameIds;
-}
-
-function graphDerivedWorldFrameId({
-  candidateFrameIds,
-  graphSummary,
-}: {
-  readonly candidateFrameIds: readonly string[];
-  readonly graphSummary: McapFrameGraphSummary;
-}) {
-  if (candidateFrameIds.length === 0) {
-    return "";
-  }
-
-  const candidateFrameIdSet = new Set(candidateFrameIds);
-  const rootCandidates = graphSummary.roots.filter((frameId) =>
-    candidateFrameIdSet.has(frameId),
-  );
-  if (rootCandidates.length > 0) {
-    return highestReachabilityFrameId(rootCandidates, graphSummary);
-  }
-
-  const maxDataBearingReachability = Math.max(
-    ...candidateFrameIds.map((frameId) =>
-      graphReachableCount(
-        graphSummary.dataBearingReachableCountsByFrameId,
-        frameId,
-      ),
-    ),
-  );
-  if (maxDataBearingReachability <= 0) {
-    return "";
-  }
-
-  return highestReachabilityFrameId(
-    candidateFrameIds.filter(
-      (frameId) =>
-        graphReachableCount(
-          graphSummary.dataBearingReachableCountsByFrameId,
-          frameId,
-        ) === maxDataBearingReachability,
-    ),
-    graphSummary,
-  );
-}
-
-function highestReachabilityFrameId(
-  frameIds: readonly string[],
-  graphSummary: McapFrameGraphSummary,
-) {
-  return [...frameIds].sort((left, right) => {
-    const dataBearingOrder =
-      graphReachableCount(
-        graphSummary.dataBearingReachableCountsByFrameId,
-        right,
-      ) -
-      graphReachableCount(
-        graphSummary.dataBearingReachableCountsByFrameId,
-        left,
-      );
-    if (dataBearingOrder !== 0) {
-      return dataBearingOrder;
-    }
-
-    const reachableOrder =
-      graphReachableCount(graphSummary.reachableCountsByFrameId, right) -
-      graphReachableCount(graphSummary.reachableCountsByFrameId, left);
-    return reachableOrder === 0 ? compareFrameIds(left, right) : reachableOrder;
-  })[0];
-}
-
-function graphReachableCount(
-  countsByFrameId: ReadonlyMap<string, number>,
-  frameId: string,
-) {
-  return countsByFrameId.get(frameId) ?? 0;
-}
-
-function firstExactPreferredFrameId(
-  frameIds: readonly string[],
-  preferredFrameIds: readonly string[],
-) {
-  for (const preferredFrameId of preferredFrameIds) {
-    if (frameIds.includes(preferredFrameId)) {
-      return preferredFrameId;
-    }
-  }
-
-  return "";
-}
-
-function uniqueSuffixPreferredFrameId(
-  frameIds: readonly string[],
-  preferredFrameIds: readonly string[],
-) {
-  for (const preferredFrameId of preferredFrameIds) {
-    const suffix = `/${preferredFrameId}`;
-    const matches = frameIds.filter(
-      (frameId) => frameId !== preferredFrameId && frameId.endsWith(suffix),
-    );
-    if (matches.length === 1) {
-      return matches[0] ?? "";
-    }
-  }
-
-  return "";
-}
-
-function isOpticalFrameId(frameId: string) {
-  return frameId.toLowerCase().includes("optical");
-}
-
-function compareFrameIds(left: string, right: string) {
-  if (left === right) {
-    return 0;
-  }
-
-  return left < right ? -1 : 1;
+function compareFrameIds(left: string, right: string): number {
+  return left === right ? 0 : left < right ? -1 : 1;
 }

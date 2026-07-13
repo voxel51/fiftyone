@@ -82,10 +82,14 @@ export function decodeRosImageRecord(
 
   return {
     attributes,
-    resourceHints: resourceHintsForArrayBufferViews(result.rgba),
+    resourceHints: resourceHintsForArrayBufferViews(
+      result.rgba,
+      ...(result.depth ? [result.depth.values] : []),
+    ),
     timing,
     visualization: {
       ...(frameId ? { coordinateFrameId: frameId } : {}),
+      ...(result.depth ? { depth: result.depth } : {}),
       height,
       kind: VISUALIZATION_KIND.RAW_IMAGE,
       rgba: result.rgba,

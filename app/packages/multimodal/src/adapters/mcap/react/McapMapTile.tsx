@@ -8,7 +8,7 @@ import {
   usePlayback,
   usePlaybackStore,
 } from "@fiftyone/playback";
-import { useSetTileTitle } from "@fiftyone/tiling";
+import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import React, {
   useCallback,
   useEffect,
@@ -19,7 +19,10 @@ import React, {
 import MeasureRulerIcon from "../../../components/MeasureRulerIcon";
 import { useSceneInventory } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
-import { useMcapLocationTracksContext } from "./mcap-location-tracks-context";
+import {
+  useMcapLocationTracksContext,
+  useMcapLocationTracksSourceKey,
+} from "./mcap-location-tracks-context";
 import {
   combineLocationBounds,
   interpolateLocationAtTime,
@@ -44,16 +47,28 @@ import {
   type MapMeasurementState,
 } from "./mcap-map-measurement";
 import {
+  mcapMapPlaybackCameraTarget,
+  mcapMapRouteCameraTarget,
+  type McapMapCameraTarget,
+} from "./mcap-map-camera";
+import {
   MCAP_MAP_BASE_LAYER,
   OPENFREEMAP_LIBERTY_STYLE_URL,
   type McapMapBaseLayer,
   useMcapMapTileSettings,
   useSetMcapMapTileSettings,
 } from "./mcap-map-tile-state";
+import {
+  readMcapMapViewport,
+  useMcapMapViewportScope,
+  writeMcapMapViewport,
+} from "./mcap-map-viewport-cache";
+import { mcapMapViewportIsNearEvidence } from "./mcap-map-viewport-proximity";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import type { McapTileProps } from "./mcap-tile-types";
 import { degreesToRadians } from "./wgs84";
 import McapMapTileSettings from "./McapMapTileSettings";
+import { useRegisterMcapTileSettings } from "./mcap-tile-settings-context";
 import styles from "./McapMapTile.module.css";
 
 const ROUTE_PAST_SOURCE_ID = "mcap-location-route-past";
@@ -85,9 +100,6 @@ const COMET_ID_PREFIX = "mcap-location-comet:";
 const COMET_TRAIL_NS = 15_000_000_000n;
 
 const PULSE_PERIOD_MS = 1_600;
-// Recenter zooms to the recent trail when one exists; otherwise this
-// street-scale zoom around the marker.
-const RECENTER_MARKER_ZOOM = 16;
 // While the recenter animation runs, the follow easeTo must stand down or
 // it freezes the zoom mid-flight (easeTo without zoom keeps current zoom).
 const RECENTER_GUARD_MS = 600;
@@ -161,12 +173,22 @@ const NO_TILE_STYLE: MapLibreStyle = {
 };
 
 const McapMapTile: React.FC<McapTileProps> = () => {
+  const tileId = useTileId();
+  // Settings render through the sidebar's tile-settings registry, not here.
+  const settingsRegistration = useMemo(
+    () => ({ content: <McapMapTileSettings /> }),
+    [],
+  );
+  useRegisterMcapTileSettings(tileId, settingsRegistration);
   const setTileTitle = useSetTileTitle();
   const sources = useSceneInventory();
   const tracksByTopic = useMcapLocationTracksContext();
+  const tracksSourceKey = useMcapLocationTracksSourceKey();
   const settings = useMcapMapTileSettings();
   const setSettings = useSetMcapMapTileSettings();
+  const mapViewportScope = useMcapMapViewportScope();
   const dataStream = useMcapDataStream();
+  const sourceKey = dataStream?.sourceKey ?? null;
   const timeline = dataStream?.getTimelineIndex() ?? null;
   const store = usePlaybackStore();
   const { seek } = usePlayback();
@@ -176,6 +198,7 @@ const McapMapTile: React.FC<McapTileProps> = () => {
     getHoverTime(store),
   );
   const [recenterNonce, setRecenterNonce] = useState(0);
+  const [fitRouteNonce, setFitRouteNonce] = useState(0);
   const [measureArmed, setMeasureArmed] = useState(false);
   const [measurement, setMeasurement] = useState<MapMeasurementState | null>(
     null,
@@ -197,13 +220,12 @@ const McapMapTile: React.FC<McapTileProps> = () => {
     () => allTopics.filter((topic) => enabledTopics.has(topic)),
     [allTopics, enabledTopics],
   );
-  const tracks = useMemo(
-    () =>
-      visibleTopics
-        .map((topic) => tracksByTopic.get(topic))
-        .filter((track): track is McapLocationTrackState => Boolean(track)),
-    [tracksByTopic, visibleTopics],
-  );
+  const tracks = useMemo(() => {
+    if (!sourceKey || tracksSourceKey !== sourceKey) return [];
+    return visibleTopics
+      .map((topic) => tracksByTopic.get(topic))
+      .filter((track): track is McapLocationTrackState => Boolean(track));
+  }, [sourceKey, tracksByTopic, tracksSourceKey, visibleTopics]);
   const readyTracks = useMemo(
     () =>
       tracks.filter(
@@ -211,6 +233,12 @@ const McapMapTile: React.FC<McapTileProps> = () => {
       ),
     [tracks],
   );
+  const locationEvidencePending =
+    visibleTopics.length > 0 &&
+    (!sourceKey ||
+      tracksSourceKey !== sourceKey ||
+      tracks.length < visibleTopics.length ||
+      tracks.some((track) => track.status === "loading"));
 
   useEffect(() => {
     setTileTitle(mapTileTitle(readyTracks, locationSources.length), {
@@ -324,13 +352,14 @@ const McapMapTile: React.FC<McapTileProps> = () => {
 
   return (
     <>
-      <McapMapTileSettings />
       <div className={styles.body} data-testid="mcap-map-tile">
         <McapMapLibreSurface
           bounds={bounds}
           currentLocations={currentLocations}
+          fitRouteNonce={fitRouteNonce}
           followEgo={settings.followEgo}
           hoverLocations={hoverLocations}
+          locationEvidencePending={locationEvidencePending}
           measureArmed={measureArmed}
           measurement={measurement}
           onHoverTimeNs={onHoverTimeNs}
@@ -341,7 +370,9 @@ const McapMapTile: React.FC<McapTileProps> = () => {
           pulseActive={isPlaying}
           recenterNonce={recenterNonce}
           baseLayer={settings.baseLayer}
+          sourceKey={sourceKey}
           tracks={readyTracks}
+          viewportScope={mapViewportScope}
         />
         <div className={styles.overlay}>
           {statusText ? (
@@ -357,6 +388,18 @@ const McapMapTile: React.FC<McapTileProps> = () => {
               type="button"
             >
               Recenter
+            </button>
+          ) : null}
+          {readyTracks.length > 0 ? (
+            <button
+              className={styles.controlButton}
+              onClick={() => {
+                setSettings({ followEgo: false });
+                setFitRouteNonce((value) => value + 1);
+              }}
+              type="button"
+            >
+              Fit route
             </button>
           ) : null}
         </div>
@@ -397,8 +440,10 @@ function McapMapLibreSurface({
   baseLayer,
   bounds,
   currentLocations,
+  fitRouteNonce,
   followEgo,
   hoverLocations,
+  locationEvidencePending,
   measureArmed,
   measurement,
   onHoverTimeNs,
@@ -408,13 +453,17 @@ function McapMapLibreSurface({
   playheadNs,
   pulseActive,
   recenterNonce,
+  sourceKey,
   tracks,
+  viewportScope,
 }: {
   readonly baseLayer: McapMapBaseLayer;
   readonly bounds: LocationBounds | null;
   readonly currentLocations: readonly MapLocationMarker[];
+  readonly fitRouteNonce: number;
   readonly followEgo: boolean;
   readonly hoverLocations: readonly MapLocationMarker[];
+  readonly locationEvidencePending: boolean;
   readonly measureArmed: boolean;
   readonly measurement: MapMeasurementState | null;
   readonly onHoverTimeNs: (timeNs: bigint | null) => void;
@@ -424,15 +473,21 @@ function McapMapLibreSurface({
   readonly playheadNs: bigint | null;
   readonly pulseActive: boolean;
   readonly recenterNonce: number;
+  readonly sourceKey: string | null;
   readonly tracks: readonly McapLocationTrackState[];
+  readonly viewportScope: string | null;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const loadedRef = useRef(false);
-  const fitKeyRef = useRef<string | null>(null);
+  const cameraEpochRef = useRef<string | null>(null);
+  const initialFrameEpochRef = useRef<string | null>(null);
+  const warmStartEpochRef = useRef<string | null>(null);
+  const userInteractedRef = useRef(false);
   const recenterGuardUntilRef = useRef(0);
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const [measurementHover, setMeasurementHover] =
     useState<MapMeasurementPoint | null>(null);
   const onSeekTimeNsRef = useRef(onSeekTimeNs);
@@ -441,20 +496,26 @@ function McapMapLibreSurface({
   const onUserMoveRef = useRef(onUserMove);
   const measureArmedRef = useRef(measureArmed);
   const measurementRef = useRef(measurement);
+  const viewportScopeRef = useRef(viewportScope);
   onSeekTimeNsRef.current = onSeekTimeNs;
   onHoverTimeNsRef.current = onHoverTimeNs;
   onMeasurePickRef.current = onMeasurePick;
   onUserMoveRef.current = onUserMove;
   measureArmedRef.current = measureArmed;
   measurementRef.current = measurement;
+  viewportScopeRef.current = viewportScope;
 
+  const cameraEpoch = `${viewportScope ?? ""}\0${sourceKey ?? ""}`;
+
+  // This effect owns the MapLibre instance and its imperative subscriptions.
   useEffect(() => {
     if (!containerRef.current || mapRef.current || failed) {
       return undefined;
     }
     setLoaded(false);
+    setCameraReady(false);
     loadedRef.current = false;
-    fitKeyRef.current = null;
+    warmStartEpochRef.current = null;
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
     let webglCanvas: HTMLCanvasElement | null = null;
@@ -494,6 +555,7 @@ function McapMapLibreSurface({
         });
         const handleUserMove = (event: { originalEvent?: unknown }) => {
           if (event.originalEvent) {
+            userInteractedRef.current = true;
             onUserMoveRef.current();
           }
         };
@@ -501,6 +563,9 @@ function McapMapLibreSurface({
         map.on("zoomstart", handleUserMove);
         map.on("rotatestart", handleUserMove);
         map.on("pitchstart", handleUserMove);
+        map.on("moveend", () => {
+          rememberMapViewport(map, viewportScopeRef.current);
+        });
         map.on("click", HIT_LAYER_ID, (event) => {
           if (measureArmedRef.current) return;
           const timeNs = timeNsFromMapEvent(event);
@@ -581,6 +646,7 @@ function McapMapLibreSurface({
       }
       const map = mapRef.current;
       if (map) {
+        rememberMapViewport(map, viewportScopeRef.current);
         map.remove();
         mapRef.current = null;
       }
@@ -588,10 +654,25 @@ function McapMapLibreSurface({
     };
   }, [baseLayer, failed]);
 
+  // This effect allows a failed map to retry after the base layer changes.
   useEffect(() => {
     setFailed(false);
   }, [baseLayer]);
 
+  // This effect invalidates automatic camera work from the previous
+  // recording. The validated warm-start effect below makes the map visible
+  // again once real location evidence arrives.
+  useEffect(() => {
+    if (cameraEpochRef.current !== cameraEpoch) {
+      cameraEpochRef.current = cameraEpoch;
+      initialFrameEpochRef.current = null;
+      warmStartEpochRef.current = null;
+      userInteractedRef.current = false;
+      setCameraReady(false);
+    }
+  }, [cameraEpoch]);
+
+  // This effect applies each explicit fit-route request exactly once.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -623,6 +704,69 @@ function McapMapLibreSurface({
       tracks,
     ],
   );
+
+  // This effect validates the dataset-scoped warm start before
+  // exposing the map. A cached location is useful only when the new marker or
+  // route falls within the zoom-scaled proximity window.
+  useEffect(() => {
+    const map = mapRef.current;
+    const container = containerRef.current;
+    const marker = currentLocations[0]?.location ?? null;
+    if (
+      !sourceKey ||
+      !map ||
+      !container ||
+      !loadedRef.current ||
+      warmStartEpochRef.current === cameraEpoch
+    ) {
+      return;
+    }
+    if (!marker && !bounds) {
+      if (locationEvidencePending) return;
+      warmStartEpochRef.current = cameraEpoch;
+      setCameraReady(true);
+      return;
+    }
+
+    warmStartEpochRef.current = cameraEpoch;
+    const viewport = readMcapMapViewport(viewportScope);
+    const warmStartApplies =
+      viewport !== null &&
+      mcapMapViewportIsNearEvidence({
+        bounds,
+        height: container.clientHeight,
+        marker,
+        viewport,
+        width: container.clientWidth,
+      });
+    if (viewport && warmStartApplies) {
+      initialFrameEpochRef.current = cameraEpoch;
+      map.jumpTo({
+        center: [viewport.longitude, viewport.latitude],
+        zoom: viewport.zoom,
+      });
+    } else {
+      const target = playbackCameraTarget(
+        bounds,
+        currentLocations,
+        sourceData.comets,
+      );
+      if (target) {
+        initialFrameEpochRef.current = cameraEpoch;
+        applyMcapMapCameraTarget(map, target, 0);
+      }
+    }
+    setCameraReady(true);
+  }, [
+    bounds,
+    cameraEpoch,
+    currentLocations,
+    loaded,
+    locationEvidencePending,
+    sourceData.comets,
+    sourceKey,
+    viewportScope,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -677,25 +821,6 @@ function McapMapLibreSurface({
     };
   }, [pulseActive, loaded]);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !loadedRef.current || !bounds) {
-      return;
-    }
-    const fitKey = `${bounds.west}:${bounds.south}:${bounds.east}:${bounds.north}`;
-    if (fitKeyRef.current === fitKey) {
-      return;
-    }
-    fitKeyRef.current = fitKey;
-    map.fitBounds(
-      [
-        [bounds.west, bounds.south],
-        [bounds.east, bounds.north],
-      ],
-      { duration: 240, maxZoom: 17, padding: 42 },
-    );
-  }, [bounds, loaded]);
-
   // Recenter: re-frame around "now" — fit the recent trail when one
   // exists (adaptive zoom: a fast vehicle gets a wider view), else ease to
   // the marker at street zoom, else fall back to the whole track.
@@ -704,34 +829,13 @@ function McapMapLibreSurface({
     if (recenterNonce === 0 || !map || !loadedRef.current) {
       return;
     }
+    initialFrameEpochRef.current = cameraEpoch;
     recenterGuardUntilRef.current = performance.now() + RECENTER_GUARD_MS;
-    const trailBounds = coordinateBounds(
-      sourceData.comets.flatMap((trail) => trail.coordinates),
+    applyMcapMapCameraTarget(
+      map,
+      playbackCameraTarget(bounds, currentLocations, sourceData.comets),
+      400,
     );
-    const marker = currentLocations[0]?.location;
-    if (trailBounds) {
-      map.fitBounds(
-        [
-          [trailBounds.west, trailBounds.south],
-          [trailBounds.east, trailBounds.north],
-        ],
-        { duration: 400, maxZoom: 17, padding: 80 },
-      );
-    } else if (marker) {
-      map.easeTo({
-        center: [marker.longitude, marker.latitude],
-        duration: 400,
-        zoom: RECENTER_MARKER_ZOOM,
-      });
-    } else if (bounds) {
-      map.fitBounds(
-        [
-          [bounds.west, bounds.south],
-          [bounds.east, bounds.north],
-        ],
-        { duration: 400, maxZoom: 17, padding: 42 },
-      );
-    }
     // Latest-closure effect: only the nonce (and load state) may trigger
     // it — depending on trail/marker would re-run the camera move every
     // playhead tick — but React runs the freshest closure, so the values
@@ -739,10 +843,57 @@ function McapMapLibreSurface({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recenterNonce, loaded]);
 
+  // A new scene frames once around the playhead as soon as both the map and
+  // real GPS data are ready. Subsequent ticks only follow the marker, and a
+  // gesture before readiness opts out of this automatic move.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (
+      !sourceKey ||
+      !map ||
+      !loadedRef.current ||
+      !cameraReady ||
+      !followEgo ||
+      userInteractedRef.current ||
+      initialFrameEpochRef.current === cameraEpoch
+    ) {
+      return;
+    }
+    const target = playbackCameraTarget(
+      null,
+      currentLocations,
+      sourceData.comets,
+    );
+    if (!target) return;
+
+    initialFrameEpochRef.current = cameraEpoch;
+    recenterGuardUntilRef.current = performance.now() + RECENTER_GUARD_MS;
+    applyMcapMapCameraTarget(map, target, 240);
+  }, [
+    cameraEpoch,
+    cameraReady,
+    currentLocations,
+    followEgo,
+    loaded,
+    sourceData.comets,
+    sourceKey,
+  ]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (fitRouteNonce === 0 || !map || !loadedRef.current || !bounds) {
+      return;
+    }
+    applyMcapMapCameraTarget(map, mcapMapRouteCameraTarget(bounds), 400);
+    // Bounds grow as track data arrives, but only another button press should
+    // move a camera the user may have adjusted in the meantime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitRouteNonce, loaded]);
+
   useEffect(() => {
     const map = mapRef.current;
     const current = currentLocations[0]?.location;
-    if (!map || !loadedRef.current || !followEgo || !current) {
+    if (!map || !loadedRef.current || !cameraReady || !followEgo || !current) {
       return;
     }
     if (performance.now() < recenterGuardUntilRef.current) {
@@ -753,11 +904,14 @@ function McapMapLibreSurface({
       duration: 120,
       essential: false,
     });
-  }, [currentLocations, followEgo, loaded]);
+  }, [cameraReady, currentLocations, followEgo, loaded]);
 
   return (
     <>
       <div className={styles.map} ref={containerRef} />
+      {!cameraReady && loaded && !failed ? (
+        <div aria-hidden className={styles.cameraPending} />
+      ) : null}
       {failed || !loaded ? (
         <div className={styles.fallback}>
           <StaticLocationMap tracks={tracks} />
@@ -1050,6 +1204,53 @@ interface CometTrail {
   readonly key: string;
 }
 
+function playbackCameraTarget(
+  bounds: LocationBounds | null,
+  currentLocations: readonly MapLocationMarker[],
+  comets: readonly CometTrail[],
+): McapMapCameraTarget | null {
+  return mcapMapPlaybackCameraTarget({
+    bounds,
+    marker: currentLocations[0]?.location ?? null,
+    trailBounds: coordinateBounds(comets.flatMap((trail) => trail.coordinates)),
+  });
+}
+
+function applyMcapMapCameraTarget(
+  map: MapLibreMap,
+  target: McapMapCameraTarget | null,
+  duration: number,
+): void {
+  if (!target) return;
+  if (target.kind === "marker") {
+    map.easeTo({
+      center: [target.longitude, target.latitude],
+      duration,
+      zoom: target.zoom,
+    });
+    return;
+  }
+  map.fitBounds(
+    [
+      [target.bounds.west, target.bounds.south],
+      [target.bounds.east, target.bounds.north],
+    ],
+    { duration, maxZoom: 17, padding: target.padding },
+  );
+}
+
+function rememberMapViewport(
+  map: MapLibreMap,
+  viewportScope: string | null,
+): void {
+  const center = map.getCenter();
+  writeMcapMapViewport(viewportScope, {
+    latitude: center.lat,
+    longitude: center.lng,
+    zoom: map.getZoom(),
+  });
+}
+
 function coordinateBounds(
   coordinates: readonly [number, number][],
 ): LocationBounds | null {
@@ -1166,10 +1367,18 @@ function setGeoJsonSourceData(
   sourceId: string,
   data: GeoJsonFeatureCollection,
 ) {
-  const source = map.getSource(sourceId) as
-    | { setData: (data: GeoJsonFeatureCollection) => void }
-    | undefined;
-  source?.setData(data);
+  const source = map.getSource(sourceId);
+  if (isGeoJsonSource(source)) {
+    source.setData(data);
+  }
+}
+
+function isGeoJsonSource(
+  source: unknown,
+): source is { setData: (data: GeoJsonFeatureCollection) => void } {
+  return (
+    typeof (source as { setData?: unknown } | undefined)?.setData === "function"
+  );
 }
 
 function routeFeatures(

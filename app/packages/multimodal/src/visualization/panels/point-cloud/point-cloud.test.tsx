@@ -686,6 +686,66 @@ describe("PointCloudPanel", () => {
     expect(cameraPose.target).toEqual([1, 2, 3]);
   });
 
+  it("renders transient scene rays without widening camera bounds", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const setAttribute = vi.spyOn(
+      THREE.BufferGeometry.prototype,
+      "setAttribute",
+    );
+
+    const { container } = render(
+      <PointCloudPanel
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 1,
+              positions: new Float32Array([1, 2, 3]),
+            },
+            id: "/points",
+          },
+        ]}
+        rayLayers={[
+          {
+            end: [0.1, 0.2, 4],
+            frameTransform: {
+              rotation: new THREE.Quaternion(),
+              sourceFrameId: "camera",
+              targetFrameId: "map",
+              translation: new THREE.Vector3(100, 200, 300),
+            },
+            id: "depth-ray:/camera/depth",
+            start: [0, 0, 0],
+          },
+        ]}
+        showHud={false}
+      />,
+    );
+
+    const rayPositions = setAttribute.mock.calls
+      .filter(([attributeName]) => attributeName === "position")
+      .map(([, attribute]) => attribute as THREE.BufferAttribute)
+      .find((attribute) => attribute.array.length === 6);
+    const rayValues = Array.from(rayPositions?.array ?? []);
+    expect(rayValues.slice(0, 3)).toEqual([0, 0, 0]);
+    expect(rayValues[3]).toBeCloseTo(0.1);
+    expect(rayValues[4]).toBeCloseTo(0.2);
+    expect(rayValues[5]).toBeCloseTo(4);
+    expect(container.querySelector("points")).toBeTruthy();
+    expect(
+      Array.from(container.querySelectorAll("group")).some(
+        (group) => group.getAttribute("position") === "100,200,300",
+      ),
+    ).toBe(true);
+
+    const cameraPose = JSON.parse(
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
+        "{}",
+    ) as { readonly target?: readonly number[] };
+    expect(cameraPose.target).toEqual([1, 2, 3]);
+  });
+
   it("applies custom camera frustum depth and base opacity", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const setAttribute = vi.spyOn(
@@ -819,6 +879,92 @@ describe("PointCloudPanel", () => {
 
     expect(createBitmap).toHaveBeenCalledTimes(1);
     expect(imageTextureCacheStats().decodeCount).toBe(1);
+  });
+
+  it("keeps the frustum visible and surfaces video decoder errors", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const { container } = render(
+      <PointCloudPanel
+        frustumLayers={[
+          {
+            frame: {
+              height: 1080,
+              K: [700, 0, 720, 0, 700, 540, 0, 0, 1],
+              kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
+              width: 1440,
+            },
+            id: "/camera/front_right/camera_info",
+            image: {
+              bytes: new Uint8Array([0, 0, 0, 1, 0x61]),
+              codec: "h264",
+              format: "h264",
+              h264: { hasFrame: true },
+              keyframe: false,
+              kind: VISUALIZATION_KIND.ENCODED_VIDEO,
+              timestampNs: 100n,
+            },
+            imageContentTimeNs: 100n,
+            imageTextureKey: "rec\n/camera/front_right/image\n100",
+            imageTopic: "/camera/front_right/image",
+          },
+        ]}
+        layers={[]}
+        showHud={false}
+      />,
+    );
+
+    const noticeToggle = await screen.findByRole("button", {
+      name: "1 scene notice",
+    });
+    expect(screen.queryByText("Waiting for H.264 keyframe")).toBeNull();
+    expect(container.querySelector("linesegments")).toBeTruthy();
+    expect(container.querySelector("mesh")).toBeNull();
+
+    fireEvent.click(noticeToggle);
+    expect(screen.getByText("Waiting for H.264 keyframe")).toBeTruthy();
+    expect(screen.getByText("/camera/front_right/image")).toBeTruthy();
+  });
+
+  it("keeps the frustum visible when image geometry needs a user choice", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { container } = render(
+      <PointCloudPanel
+        frustumLayers={[
+          {
+            frame: {
+              height: 1080,
+              K: [700, 0, 720, 0, 700, 540, 0, 0, 1],
+              kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
+              width: 1440,
+            },
+            id: "/camera/front_right/camera_info",
+            imageTopic: "/camera/front_right/image_raw/compressed",
+            imageUnavailableReason:
+              "Original and rectified camera models differ; choose the image geometry",
+          },
+        ]}
+        layers={[]}
+        showHud={false}
+      />,
+    );
+
+    expect(container.querySelector("linesegments")).toBeTruthy();
+    const noticeToggle = await screen.findByRole("button", {
+      name: "1 scene notice",
+    });
+    expect(
+      screen.queryByText(
+        "Original and rectified camera models differ; choose the image geometry",
+      ),
+    ).toBeNull();
+
+    fireEvent.click(noticeToggle);
+    expect(
+      screen.getByText(
+        "Original and rectified camera models differ; choose the image geometry",
+      ),
+    ).toBeTruthy();
   });
 
   it("renders the world reference grid only when opted in", () => {

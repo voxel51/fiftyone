@@ -7,7 +7,6 @@ import {
   GatedDynamicImports,
   type GatedDynamicImport,
 } from "@fiftyone/core/src/components/GatedDynamicImports";
-import { FeatureFlag } from "@fiftyone/feature-flags";
 import { BeforeScreenshotContext, screenshotCallbacks } from "@fiftyone/state";
 import { SnackbarProvider } from "notistack";
 import type React from "react";
@@ -25,13 +24,16 @@ if (
   document.title = `${document.title} (${import.meta.env.VITE_DEV_WORKTREE_NAME})`;
 }
 
-const GATED_DYNAMIC_IMPORTS: GatedDynamicImport[] = [
-  {
-    featureFlag: FeatureFlag.VFF_MULTIMODAL,
-    moduleKey: "multimodal",
-    registerModule: () => import("@fiftyone/multimodal/inject"),
-  },
-];
+/**
+ * Register future feature-gated modules here.
+ */
+const GATED_DYNAMIC_IMPORTS: GatedDynamicImport[] = [];
+
+// Dynamically import multimodal to keep its heavy dependencies out of the
+// app's initial bundle.
+import("@fiftyone/multimodal/inject").catch((error) => {
+  console.warn("Failed to register module: multimodal", error);
+});
 
 const App: React.FC = () => {
   const { context, environment } = useRouter();

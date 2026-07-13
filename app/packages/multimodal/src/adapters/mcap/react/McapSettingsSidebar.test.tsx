@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import {
   TileIdScope,
   TileSettingsContent,
@@ -18,6 +24,10 @@ import type { StreamInventory } from "../../../schemas/v1";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { mcapRawTileTopicAtom } from "./mcap-raw-tile-state";
 import { __resetMcapModalSettingsForTests } from "./mcap-modal-settings";
+import {
+  McapTileSettingsProvider,
+  useRegisterMcapTileSettings,
+} from "./mcap-tile-settings-context";
 import McapSettingsSidebar from "./McapSettingsSidebar";
 
 const playbackFrames = vi.hoisted(() => ({ current: [] as unknown[] }));
@@ -65,6 +75,26 @@ const TileBody: React.FC<{ label: string }> = ({ label }) => (
   </TileSettingsContent>
 );
 
+const RegisteredTileBody: React.FC<{
+  label: string;
+  streamTopics?: readonly string[];
+  tileId: string;
+}> = ({ label, streamTopics, tileId }) => {
+  // Memoized like production registrations: a fresh registration every
+  // render would re-register every render.
+  const registration = React.useMemo(
+    () => ({
+      content: (
+        <div data-testid={PANEL_SETTINGS_TEST_ID}>{label} registered knobs</div>
+      ),
+      streamTopics,
+    }),
+    [label, streamTopics],
+  );
+  useRegisterMcapTileSettings(tileId, registration);
+  return null;
+};
+
 const FocusButton: React.FC<{ id: string; testId: string }> = ({
   id,
   testId,
@@ -101,8 +131,14 @@ const TilingStateProbe: React.FC<{
 };
 
 function renderSidebar({
+  registeredStreamTopics,
+  registeredTileSettings,
   topics = [],
 }: {
+  /** Stream topics declared by the registered tiles' registrations. */
+  readonly registeredStreamTopics?: readonly string[];
+  /** Tile ids whose settings register through the tile-settings registry. */
+  readonly registeredTileSettings?: readonly string[];
   readonly topics?: readonly StreamInventory[];
 } = {}) {
   const probeState: { current: TilingProbeState | null } = { current: null };
@@ -110,16 +146,34 @@ function renderSidebar({
     <PlaybackProvider duration={1}>
       <SceneInventoryProvider sources={SOURCES}>
         <TilingProvider initialTiles={INITIAL_TILES}>
-          <TilingStateProbe stateRef={probeState} />
-          <TileIdScope tileId={CAMERA_TILE_ID}>
-            <TileBody label="camera" />
-          </TileIdScope>
-          <TileIdScope tileId={LIDAR_TILE_ID}>
-            <TileBody label="lidar" />
-          </TileIdScope>
-          <FocusButton id={CAMERA_TILE_ID} testId="focus-camera" />
-          <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
-          <McapSettingsSidebar topics={topics} />
+          <McapTileSettingsProvider>
+            <TilingStateProbe stateRef={probeState} />
+            <TileIdScope tileId={CAMERA_TILE_ID}>
+              {registeredTileSettings?.includes(CAMERA_TILE_ID) ? (
+                <RegisteredTileBody
+                  label="camera"
+                  streamTopics={registeredStreamTopics}
+                  tileId={CAMERA_TILE_ID}
+                />
+              ) : (
+                <TileBody label="camera" />
+              )}
+            </TileIdScope>
+            <TileIdScope tileId={LIDAR_TILE_ID}>
+              {registeredTileSettings?.includes(LIDAR_TILE_ID) ? (
+                <RegisteredTileBody
+                  label="lidar"
+                  streamTopics={registeredStreamTopics}
+                  tileId={LIDAR_TILE_ID}
+                />
+              ) : (
+                <TileBody label="lidar" />
+              )}
+            </TileIdScope>
+            <FocusButton id={CAMERA_TILE_ID} testId="focus-camera" />
+            <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
+            <McapSettingsSidebar topics={topics} />
+          </McapTileSettingsProvider>
         </TilingProvider>
       </SceneInventoryProvider>
     </PlaybackProvider>,
@@ -151,26 +205,50 @@ describe("McapSettingsSidebar", () => {
 
     expect(screen.queryByText("Images")).toBeNull();
     expect(screen.queryByText("3D")).toBeNull();
-    expect(screen.getByLabelText("Between samples")).toBeTruthy();
+    expect(screen.getByLabelText("Between messages")).toBeTruthy();
     expect(screen.getByText("Advanced timing")).toBeTruthy();
   });
 
-  it("warns when an active point cloud is sampled for display", () => {
-    playbackFrames.current = [
-      {
-        frame: {
-          renderPayload: {
-            finitePointCount: 275_000,
-            sampledPointCount: 150_000,
-          },
-        },
-      },
-    ];
-
+  it("hides scene world controls without a playback host", () => {
     renderSidebar();
 
-    expect(screen.getByText("Point cloud sampled for display")).toBeTruthy();
-    expect(screen.getByText("Showing 150,000 of 275,000 points.")).toBeTruthy();
+    expect(screen.queryByText("World")).toBeNull();
+    expect(
+      screen.queryByRole("combobox", { name: "Reference Frame" }),
+    ).toBeNull();
+  });
+
+  it("surfaces a stabilized sampling notice in the scene status strip", () => {
+    vi.useFakeTimers();
+    try {
+      playbackFrames.current = [
+        {
+          frame: {
+            renderPayload: {
+              finitePointCount: 275_000,
+              sampledPointCount: 150_000,
+            },
+          },
+        },
+      ];
+
+      renderSidebar();
+
+      // The notice pipeline's appearance floor holds new conditions back so
+      // boundary flips never blink the strip.
+      expect(screen.queryByText("Point cloud sampled for display")).toBeNull();
+
+      act(() => {
+        vi.advanceTimersByTime(600);
+      });
+
+      expect(screen.getByText("Point cloud sampled for display")).toBeTruthy();
+      expect(
+        screen.getByText("Showing 150,000 of 275,000 points."),
+      ).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("opens live performance diagnostics from the scene tab", () => {
@@ -206,14 +284,14 @@ describe("McapSettingsSidebar", () => {
     renderSidebar();
 
     const select = screen.getByLabelText(
-      "Between samples",
+      "Between messages",
     ) as HTMLSelectElement;
     expect(select.value).toBe("smooth");
 
     fireEvent.change(select, { target: { value: "as-recorded" } });
 
     expect(
-      (screen.getByLabelText("Between samples") as HTMLSelectElement).value,
+      (screen.getByLabelText("Between messages") as HTMLSelectElement).value,
     ).toBe("as-recorded");
     expect(
       JSON.parse(localStorage.getItem("fiftyone.mcap.modal-settings") ?? "{}")
@@ -320,6 +398,32 @@ describe("McapSettingsSidebar", () => {
     expect(focusedTileId?.startsWith("raw-")).toBe(true);
     expect(probeState.current?.titles[focusedTileId ?? ""]).toBe("/imu");
     expect(probeState.current?.topicsByTile[focusedTileId ?? ""]).toBe("/imu");
+    expect(
+      screen.getByRole("tab", { name: "Topics" }).getAttribute("aria-selected"),
+    ).toBe("true");
+  });
+
+  it("opens GPS topics in a Map panel without leaving Topics", () => {
+    const { probeState } = renderSidebar({
+      topics: [
+        topic("/gps", {
+          count: "5",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          schema: "sensor_msgs/NavSatFix",
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Topics" }));
+
+    expect(screen.getByText("5 msgs · Map · Raw")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "3D /gps" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Map /gps" }));
+
+    const focusedTileId = probeState.current?.focusedTileId;
+    expect(focusedTileId?.startsWith("map-")).toBe(true);
+    expect(probeState.current?.titles[focusedTileId ?? ""]).toBe("Map");
     expect(
       screen.getByRole("tab", { name: "Topics" }).getAttribute("aria-selected"),
     ).toBe("true");
@@ -434,6 +538,43 @@ describe("McapSettingsSidebar", () => {
 
     expect(screen.getByTestId(PANEL_SETTINGS_TEST_ID).textContent).toBe(
       "lidar knobs",
+    );
+  });
+
+  it("renders registry-backed tile settings without the DOM slot", () => {
+    renderSidebar({ registeredTileSettings: [LIDAR_TILE_ID] });
+
+    fireEvent.click(screen.getByTestId("focus-lidar"));
+
+    expect(screen.getByTestId(PANEL_SETTINGS_TEST_ID).textContent).toBe(
+      "lidar registered knobs",
+    );
+  });
+
+  it("frames registered stream tiles with their status strip", () => {
+    renderSidebar({
+      registeredTileSettings: [LIDAR_TILE_ID],
+      registeredStreamTopics: ["/lidar/top"],
+    });
+
+    fireEvent.click(screen.getByTestId("focus-lidar"));
+
+    // No stream state has been written for the topic, so the strip
+    // surfaces the buffering notice above the tile's controls.
+    expect(screen.getByText(/Buffering/)).toBeTruthy();
+    expect(screen.getByTestId(PANEL_SETTINGS_TEST_ID).textContent).toBe(
+      "lidar registered knobs",
+    );
+  });
+
+  it("falls back to the DOM slot when switching to a portal tile", () => {
+    renderSidebar({ registeredTileSettings: [LIDAR_TILE_ID] });
+
+    fireEvent.click(screen.getByTestId("focus-lidar"));
+    fireEvent.click(screen.getByTestId("focus-camera"));
+
+    expect(screen.getByTestId(PANEL_SETTINGS_TEST_ID).textContent).toBe(
+      "camera knobs",
     );
   });
 });

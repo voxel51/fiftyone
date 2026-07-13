@@ -4,6 +4,10 @@ import {
 } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
+import {
+  markModalLoadingLatencyEvent,
+  startModalLoadingLatencySession,
+} from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
@@ -90,13 +94,27 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
           const navigation = fos.modalNavigation.get();
           if (navigation) {
             clearUndo();
-            return await navigation.next(offset).then((s) => {
+            return await navigation.next(offset).then((selector) => {
+              markModalLoadingLatencyEvent("modal navigation target resolved", {
+                offset,
+                sampleId: selector.id,
+              });
               selectiveRenderingEventBus.removeAllListeners();
-              setModal(s);
+              markModalLoadingLatencyEvent("modal selector requested", {
+                sampleId: selector.id,
+              });
+              setModal(selector);
             });
           }
         },
-        onNavigationStart: closePanels,
+        onNavigationStart: () => {
+          startModalLoadingLatencySession({
+            detail: { fromSampleId: modalRef.current?.id },
+            entryPath: "next",
+          });
+          markModalLoadingLatencyEvent("modal navigation requested");
+          closePanels();
+        },
         debounceTime: 150,
       }),
     [closePanels, setModal, clearUndo],
@@ -110,13 +128,27 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
           const navigation = fos.modalNavigation.get();
           if (navigation) {
             clearUndo();
-            return await navigation.previous(offset).then((s) => {
+            return await navigation.previous(offset).then((selector) => {
+              markModalLoadingLatencyEvent("modal navigation target resolved", {
+                offset: -offset,
+                sampleId: selector.id,
+              });
               selectiveRenderingEventBus.removeAllListeners();
-              setModal(s);
+              markModalLoadingLatencyEvent("modal selector requested", {
+                sampleId: selector.id,
+              });
+              setModal(selector);
             });
           }
         },
-        onNavigationStart: closePanels,
+        onNavigationStart: () => {
+          startModalLoadingLatencySession({
+            detail: { fromSampleId: modalRef.current?.id },
+            entryPath: "previous",
+          });
+          markModalLoadingLatencyEvent("modal navigation requested");
+          closePanels();
+        },
         debounceTime: 150,
       }),
     [closePanels, setModal, clearUndo],

@@ -152,69 +152,9 @@ export const styles: Record<string, CSSProperties> = {
     justifyContent: "space-between",
     opacity: 0.8,
   },
-  notices: {
-    alignItems: "flex-start",
-    bottom: HUD_OFFSET_PX,
-    display: "flex",
-    flexDirection: "column",
-    gap: 4,
-    left: HUD_OFFSET_PX,
-    maxWidth: "calc(100% - 16px)",
-    position: "absolute",
-  },
-  noticesToggle: {
-    alignItems: "center",
-    background: VISUALIZATION_HUD_BACKGROUND_COLOR,
-    border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
-    borderRadius: HUD_BORDER_RADIUS_PX,
-    color: VISUALIZATION_HUD_TEXT_COLOR,
-    cursor: "pointer",
-    display: "inline-flex",
-    fontSize: HUD_FONT_SIZE_PX,
-    gap: 4,
-    height: 24,
-    justifyContent: "center",
-    padding: "0 7px",
-  },
-  noticesIcon: {
+  controlIcon: {
     flex: "0 0 auto",
     height: 13,
     width: 13,
   },
-  noticesList: {
-    background: VISUALIZATION_HUD_BACKGROUND_COLOR,
-    border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
-    borderRadius: HUD_BORDER_RADIUS_PX,
-    color: VISUALIZATION_HUD_TEXT_COLOR,
-    display: "flex",
-    flexDirection: "column",
-    fontSize: HUD_FONT_SIZE_PX,
-    gap: 4,
-    lineHeight: 1.35,
-    listStyle: "none",
-    margin: 0,
-    maxHeight: 160,
-    overflowY: "auto",
-    padding: "6px 8px",
-  },
-  noticesItem: {
-    margin: 0,
-  },
-  noticesItemDetail: {
-    margin: 0,
-    opacity: 0.75,
-  },
-};
-
-/**
- * Chip icon color per worst notice severity: info gray, warning amber
- * (the chip's historical color), error red.
- */
-export const NOTICE_SEVERITY_ICON_COLORS: Record<
-  "error" | "info" | "warning",
-  string
-> = {
-  error: "#f87171",
-  info: "#9ca3af",
-  warning: "#facc15",
 };

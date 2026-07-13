@@ -13,7 +13,6 @@ import type { PlaybackStore } from "@fiftyone/playback/src/lib/playback/types";
 import { modalNavigation } from "@fiftyone/state";
 import { useEffect } from "react";
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import { prewarmMcapSource } from "../prewarm-mcap-source";
 import { getMcapSourceDescriptorForSample } from "../sample";
 import { getMcapNetworkHealth } from "./mcap-network-health";
@@ -47,6 +46,8 @@ export function McapAdjacentSamplePrewarm({
 }) {
   const store = usePlaybackStore();
   const mediaField = ctx.media.field;
+  const currentSample = ctx.sample.sample as { _id?: string; id?: string };
+  const sampleId = currentSample._id ?? currentSample.id;
 
   // This effect schedules the advisory prewarm pass for the mounted
   // source's neighbors: browser-idle callback after a settle delay,
@@ -103,17 +104,9 @@ export function McapAdjacentSamplePrewarm({
             continue;
           }
 
-          markMcapLatencyEvent("adjacent prewarm start", {
-            offset,
-            sourceId: source.sourceId,
-          });
           await prewarmMcapSource(source, { signal: abort.signal });
           if (!abort.signal.aborted) {
             prewarmedSourceKeys.add(sourceKey);
-            markMcapLatencyEvent("adjacent prewarm complete", {
-              offset,
-              sourceId: source.sourceId,
-            });
           }
         } catch {
           // Advisory: the real read owns error semantics.
@@ -130,7 +123,7 @@ export function McapAdjacentSamplePrewarm({
       }
       abort.abort();
     };
-  }, [store, mediaField]);
+  }, [store, mediaField, sampleId]);
 
   return null;
 }

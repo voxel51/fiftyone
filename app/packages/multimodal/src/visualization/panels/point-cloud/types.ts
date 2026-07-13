@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import * as THREE from "three";
 
 import type {
@@ -15,25 +15,9 @@ import type {
   ThreeSceneUpAxis,
 } from "../base-3d-scene";
 import type { PointCloudColormap } from "./colormaps";
+import type { PanelNotice } from "../panel-notices";
 
-export type PanelNoticeSeverity = "error" | "info" | "warning";
-
-/**
- * Render shape for one diagnostic notice in the panel's collapsed chip.
- * The panel is a generic visualization layer: producers (e.g. the MCAP
- * tile) map their richer health models onto this shape. `id` is the
- * stable identity used for row reconciliation — message/detail update in
- * place without remounting the row, which is what keeps churning frame
- * lists from blinking the chip.
- */
-export interface PanelNotice {
-  /** Volatile specifics (frame-id lists, durations), rendered dimmer. */
-  readonly detail?: string;
-  readonly id: string;
-  /** Short, stable description of the condition. */
-  readonly message: string;
-  readonly severity: PanelNoticeSeverity;
-}
+export type { PanelNotice, PanelNoticeSeverity } from "../panel-notices";
 
 /**
  * Point-cloud colouring modes. Besides the reserved modes ("auto",
@@ -142,6 +126,14 @@ export interface PointCloudFrameTransform {
  */
 export type PointCloudCameraPose = ThreeCameraPose;
 
+/** Perspective projection parameters for an interactive point-cloud view. */
+export interface PointCloudCameraProjection {
+  /** Vertical field of view in degrees. */
+  readonly fovDegrees: number;
+  readonly near: number;
+  readonly far: number;
+}
+
 /**
  * Appearance of the panel's world reference grid. Every field has a
  * sensible default; pass `{}` for the stock grid.
@@ -236,6 +228,16 @@ export interface SceneAnnotationPanelLayer {
   readonly onHoverEntity?: (entityId: string | null) => void;
 }
 
+/** One transient, noninteractive ray rendered in a source coordinate frame. */
+export interface SceneRayPanelLayer {
+  /** Packed RGB color used by the line and endpoint marker. */
+  readonly color?: number;
+  readonly end: readonly [number, number, number];
+  readonly frameTransform?: PointCloudFrameTransform;
+  readonly id: string;
+  readonly start: readonly [number, number, number];
+}
+
 /**
  * One grid (map) layer rendered as a textured ground plane in the shared
  * scene. `contentTimeNs` identifies the source message so the GPU texture
@@ -272,6 +274,10 @@ export interface CameraFrustumPanelLayer {
   /** Withhold the frustum instead of falling back to a pinhole approximation. */
   readonly requireCameraRayModel?: boolean;
   readonly contentTimeNs?: bigint;
+  /** Ordered H.264 frames needed to initialize decoding before `image`. */
+  readonly imageDecodeRunway?: readonly ImageVisualization[];
+  /** Why the image plane is unavailable while the wireframe remains usable. */
+  readonly imageUnavailableReason?: string;
   readonly frame: CameraCalibrationVisualization;
   readonly frameTransform?: PointCloudFrameTransform;
   readonly id: string;
@@ -302,6 +308,8 @@ export interface CameraFrustumPanelLayer {
    * the wireframe dashed, distinguishing it from a transient hover.
    */
   readonly selected?: boolean;
+  /** Reports direct pointer hover over the frustum or textured image plane. */
+  readonly onHover?: (hovered: boolean) => void;
   /** Makes the frustum clickable — called on a non-drag click. */
   readonly onSelect?: (modifiers: { readonly metaKey: boolean }) => void;
 }
@@ -319,6 +327,13 @@ export interface PointCloudPanelRenderStats {
   readonly gridLayerCount: number;
   readonly layerCount: number;
   readonly renderedPointCount: number;
+  readonly sceneBounds?: PointCloudSceneBoundsSummary;
+}
+
+/** Compact world-space bounds exposed to camera composition callers. */
+export interface PointCloudSceneBoundsSummary {
+  readonly center: readonly [number, number, number];
+  readonly radius: number;
 }
 
 /**
@@ -331,7 +346,23 @@ export interface PointCloudPanelProps {
    * the shared dark panel color.
    */
   readonly background?: ThreeSceneBackground;
+  /**
+   * Externally supplied camera pose, applied whenever it differs from the
+   * live scene pose. Callers may drive it as a controlled pose (grid
+   * previews do) or as a rare command channel — restore/remap/preset poses
+   * only — with interactive motion owned imperatively inside the canvas via
+   * `cameraRig` (the modal 3D tile does).
+   */
   readonly cameraPose?: PointCloudCameraPose | null;
+  /** Perspective projection override; defaults to the panel camera preset. */
+  readonly cameraProjection?: PointCloudCameraProjection;
+  /**
+   * Optional camera controller mounted inside the canvas (rendered as a
+   * child of the shared 3D scene). Lets callers own camera behavior
+   * imperatively — e.g. the MCAP follow-mode rig — while the panel stays
+   * generic.
+   */
+  readonly cameraRig?: ReactNode;
   /**
    * Device-registry surface tag passed through to the WebGPU canvas
    * ("modal-3d", "grid-preview", ...). Bookkeeping only.
@@ -357,6 +388,8 @@ export interface PointCloudPanelProps {
    */
   readonly hudLines?: readonly string[];
   readonly layers: readonly PointCloudPanelLayer[];
+  /** Transient rays excluded from fitting, counts, and scene picking. */
+  readonly rayLayers?: readonly SceneRayPanelLayer[];
   readonly maxRenderedPoints?: number;
   /**
    * Diagnostic notices (transform availability, placement fallbacks).
