@@ -14,8 +14,3 @@ export const registeredTilesAtom = atom<RegisteredTile[]>([]);
 export const tileSelectionAtom = atomFamily(
   (_tileId: string) => atom<unknown>(null) as PrimitiveAtom<unknown>,
 );
-
-/** Transient emphasis for one tile's header title. */
-export const tileTitleHighlightedAtom = atomFamily((_tileId: string) =>
-  atom(false),
-);

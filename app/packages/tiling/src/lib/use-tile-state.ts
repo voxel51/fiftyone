@@ -1,15 +1,15 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atomFamily } from "jotai/utils";
 import { useCallback, useEffect, useRef } from "react";
-import {
-  registeredTilesAtom,
-  tileSelectionAtom,
-  tileTitleHighlightedAtom,
-} from "./atoms";
+import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
 import { useTileId, useTiling } from "./TilingProvider";
 import type { RegisteredTile, SetTileTitleOptions, TilingTile } from "./types";
 
 // Stable placeholder for use outside a TileIdScope; writes no-op.
 const NO_TILE = "__no-tile__";
+
+/** Transient emphasis for one tile's header title. */
+const tileTitleHighlightedAtom = atomFamily((_tileId: string) => atom(false));
 
 export function useTileSelection<T = unknown>(): T | null {
   const tileId = useTileId();
@@ -78,7 +78,8 @@ export function useSetTileTitleHighlighted(): (highlighted: boolean) => void {
       if (!tileId) return;
       setHighlighted(highlighted);
     },
-    [setHighlighted, tileId],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tileId],
   );
 }
 
