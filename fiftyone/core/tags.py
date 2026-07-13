@@ -38,6 +38,7 @@ foms = fou.lazy_import("fiftyone.multimodal.schemas.v1")
 
 __all__ = [
     "TAGS_EXPORT_FILENAME",
+    "TAGS_COLLECTION_NAME",
     "TemporalTagNotFoundError",
     "clone_tags",
     "count_for_dataset_id",
@@ -48,6 +49,15 @@ __all__ = [
     "export_tags",
     "get_orphan_dataset_ids",
     "import_tags",
+    "TagKind",
+    "TemporalTag",
+    "TemporalTagFilter",
+    "TemporalTags",
+    "add_temporal_tags",
+    "count_temporal_tags",
+    "delete_temporal_tags",
+    "list_temporal_tags",
+    "update_temporal_tag",
 ]
 
 TAGS_COLLECTION_NAME = "tags"
@@ -1622,18 +1632,3 @@ def _ensure_indexes(collection) -> None:
         ],
         name="temporal_tag_counts",
     )
-
-
-__all__ = [
-    "TAGS_EXPORT_FILENAME",
-    "TAGS_COLLECTION_NAME",
-    "TagKind",
-    "TemporalTag",
-    "TemporalTagFilter",
-    "TemporalTags",
-    "add_temporal_tags",
-    "count_temporal_tags",
-    "delete_temporal_tags",
-    "list_temporal_tags",
-    "update_temporal_tag",
-]
