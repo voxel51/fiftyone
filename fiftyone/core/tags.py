@@ -1215,7 +1215,7 @@ def _from_storage_doc(doc) -> TemporalTag:
             last_modified_at=doc.get("last_modified_at", None),
         )
     raise ValueError(
-        "Expected a temporal tag document, but found kind=%s" % kind
+        "Expected a temporal tag document, but found kind=%s" % kind.value
     )
 
 
@@ -1270,7 +1270,7 @@ def _from_export_doc(doc) -> TemporalTag:
             last_modified_at=doc.get("last_modified_at", None),
         )
     raise ValueError(
-        "Expected a temporal tag document, but found kind=%s" % kind
+        "Expected a temporal tag document, but found kind=%s" % kind.value
     )
 
 
