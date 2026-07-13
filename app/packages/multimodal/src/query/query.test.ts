@@ -679,6 +679,41 @@ describe("multimodal query clients", () => {
     }
   });
 
+  it("does not reset the HTTP byte-range timeout for duplicate progress", async () => {
+    vi.useFakeTimers();
+    try {
+      const client = createHttpByteClient(
+        async <Body, Result>(
+          config: FetchFunctionConfig<Body>,
+        ): Promise<FetchFunctionResult<Result>> =>
+          new Promise(() => {
+            setTimeout(() => config.onProgress?.(1), 20_000);
+            setTimeout(() => config.onProgress?.(1), 40_000);
+          }),
+      );
+      const read = client.readBytes(createByteRangeReadRequest());
+      let settled = false;
+      void read.then(
+        () => {
+          settled = true;
+        },
+        () => {
+          settled = true;
+        },
+      );
+      const rejection = expect(read).rejects.toThrow(
+        "HTTP byte-range read timed out",
+      );
+
+      await vi.advanceTimersByTimeAsync(49_999);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await rejection;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("uses decoded cache hits without re-running decoders", async () => {
     const payload = {
       encoding: "custom",

@@ -223,6 +223,7 @@ function withHttpByteReadTimeout<Result>(
   const timeoutRequest = new Promise<never>((_, reject) => {
     rejectTimeout = reject;
   });
+  let lastLoadedBytes = 0;
   const armTimeout = () => {
     if (timedOut) return;
     if (timeout !== undefined) clearTimeout(timeout);
@@ -232,10 +233,15 @@ function withHttpByteReadTimeout<Result>(
       rejectTimeout(timeoutError);
     }, inactivityTimeoutMs);
   };
+  const onProgress = (loadedBytes: number) => {
+    if (loadedBytes <= lastLoadedBytes) return;
+    lastLoadedBytes = loadedBytes;
+    armTimeout();
+  };
   armTimeout();
 
   return Promise.race([
-    Promise.resolve().then(() => request(armTimeout)),
+    Promise.resolve().then(() => request(onProgress)),
     timeoutRequest,
   ])
     .catch((error) => {
