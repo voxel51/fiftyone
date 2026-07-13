@@ -20,9 +20,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI || process.env.IS_UTILITY_DOCKER ? 2 : 0,
-  // Each worker gets its own FiftyOne server on its own port (see
-  // src/oss/fixtures), so workers only contend for runner CPU/memory.
-  workers: process.env.CI ? 2 : undefined,
+  // One worker per CI shard: 2 workers on a 4-vCPU runner was tried and
+  // contention made tests time out (20 failures on an otherwise-green
+  // shard). Scale via shard count in e2e.yml instead.
+  workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI
     ? // blob reports are merged across shards into the authoritative PR
