@@ -96,10 +96,6 @@ export function McapStreams({
         .map((s) => s.id),
     [sources],
   );
-  const presentTypes = useMemo(
-    () => Array.from(new Set(sources.map((s) => s.type))),
-    [sources],
-  );
   // This layout effect records shell commit and post-paint latency boundaries.
   useLayoutEffect(() => {
     if (!sourceId) {
@@ -153,7 +149,7 @@ export function McapStreams({
     staleWarningTopics,
     streamPolicies,
   });
-  useMcapTiles({ presentTypes });
+  useMcapTiles();
 
   return (
     <>
