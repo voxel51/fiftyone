@@ -40,8 +40,15 @@ function usePaintFrameToCanvas(
       return;
     }
 
+    // A closed `ImageBitmap` reports zero dimensions; drawing it throws
+    // ("image source is detached"). Skip rather than crash — the current
+    // canvas contents linger until the next live frame commits.
     const w = frame.bitmap.width;
     const h = frame.bitmap.height;
+    if (w === 0 || h === 0) {
+      return;
+    }
+
     if (canvasEl.width !== w) {
       canvasEl.width = w;
     }
