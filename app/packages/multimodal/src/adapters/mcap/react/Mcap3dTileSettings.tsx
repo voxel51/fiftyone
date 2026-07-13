@@ -73,7 +73,6 @@ import { McapSettingsSelect } from "./McapSettingsSelect";
 import McapSidebarGroup from "./McapSidebarGroup";
 import settingsStyles from "./McapTile.settings.module.css";
 import { McapSettingsLabel as SettingsLabel } from "./McapSettingsLabel";
-import { McapTileStreamNoticeStrip } from "./McapTileStreamState";
 import McapViewpointSettings from "./McapViewpointSettings";
 import { TRACKING_MODES } from "./use-mcap-3d-camera-tracking";
 
@@ -162,7 +161,6 @@ export interface Mcap3dTileSettingsProps {
   readonly frameControls: Mcap3dTileSettingsFrameControls;
   readonly pointCloudInputs: Mcap3dTileSettingsPointCloudInputs;
   readonly poseControls: Mcap3dTileSettingsPoseControls;
-  readonly selectedTopics: readonly string[];
   readonly selection: Mcap3dTileSettingsSelectionControls;
   readonly sourceGroups: Mcap3dTileSettingsSourceGroups;
   readonly tileId: string | null;
@@ -170,10 +168,11 @@ export interface Mcap3dTileSettingsProps {
 }
 
 /**
- * Settings for one 3D view, registered into the sidebar's panel tab.
- * Everything here answers "what does this window show": the tile's stream
- * status, its camera (viewpoint + tracking), which sources it draws, and
- * its viewport appearance. Scene-defining state — reference frame, up axis —
+ * Settings for one 3D view, registered into the sidebar's panel tab
+ * (which frames it with the tile's stream-status strip). Everything here
+ * answers "what does this window show": the view's camera (viewpoint +
+ * tracking), which sources it draws, and its viewport appearance.
+ * Scene-defining state — reference frame, up axis —
  * lives on the sidebar's Scene tab instead. Unlike the image tile, sources
  * are multi-selectable — overlaying several sensors in one view is the
  * point of a 3D panel — so per-source checkboxes group into collapsible
@@ -186,7 +185,6 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   frameControls,
   pointCloudInputs,
   poseControls,
-  selectedTopics,
   selection,
   sourceGroups,
   tileId,
@@ -241,8 +239,6 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
 
   return (
     <div className={settingsStyles.root}>
-      <McapTileStreamNoticeStrip topics={selectedTopics} />
-
       <McapViewpointSettings tileId={tileId} />
 
       <McapSidebarGroup title="Tracking">

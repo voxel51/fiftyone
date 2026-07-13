@@ -75,19 +75,23 @@ const TileBody: React.FC<{ label: string }> = ({ label }) => (
   </TileSettingsContent>
 );
 
-const RegisteredTileBody: React.FC<{ label: string; tileId: string }> = ({
-  label,
-  tileId,
-}) => {
-  // Memoized like production registrations: a fresh element every render
-  // would re-register every render.
-  const settings = React.useMemo(
-    () => (
-      <div data-testid={PANEL_SETTINGS_TEST_ID}>{label} registered knobs</div>
-    ),
-    [label],
+const RegisteredTileBody: React.FC<{
+  label: string;
+  streamTopics?: readonly string[];
+  tileId: string;
+}> = ({ label, streamTopics, tileId }) => {
+  // Memoized like production registrations: a fresh registration every
+  // render would re-register every render.
+  const registration = React.useMemo(
+    () => ({
+      content: (
+        <div data-testid={PANEL_SETTINGS_TEST_ID}>{label} registered knobs</div>
+      ),
+      streamTopics,
+    }),
+    [label, streamTopics],
   );
-  useRegisterMcapTileSettings(tileId, settings);
+  useRegisterMcapTileSettings(tileId, registration);
   return null;
 };
 
@@ -127,9 +131,12 @@ const TilingStateProbe: React.FC<{
 };
 
 function renderSidebar({
+  registeredStreamTopics,
   registeredTileSettings,
   topics = [],
 }: {
+  /** Stream topics declared by the registered tiles' registrations. */
+  readonly registeredStreamTopics?: readonly string[];
   /** Tile ids whose settings register through the tile-settings registry. */
   readonly registeredTileSettings?: readonly string[];
   readonly topics?: readonly StreamInventory[];
@@ -143,14 +150,22 @@ function renderSidebar({
             <TilingStateProbe stateRef={probeState} />
             <TileIdScope tileId={CAMERA_TILE_ID}>
               {registeredTileSettings?.includes(CAMERA_TILE_ID) ? (
-                <RegisteredTileBody label="camera" tileId={CAMERA_TILE_ID} />
+                <RegisteredTileBody
+                  label="camera"
+                  streamTopics={registeredStreamTopics}
+                  tileId={CAMERA_TILE_ID}
+                />
               ) : (
                 <TileBody label="camera" />
               )}
             </TileIdScope>
             <TileIdScope tileId={LIDAR_TILE_ID}>
               {registeredTileSettings?.includes(LIDAR_TILE_ID) ? (
-                <RegisteredTileBody label="lidar" tileId={LIDAR_TILE_ID} />
+                <RegisteredTileBody
+                  label="lidar"
+                  streamTopics={registeredStreamTopics}
+                  tileId={LIDAR_TILE_ID}
+                />
               ) : (
                 <TileBody label="lidar" />
               )}
@@ -531,6 +546,22 @@ describe("McapSettingsSidebar", () => {
 
     fireEvent.click(screen.getByTestId("focus-lidar"));
 
+    expect(screen.getByTestId(PANEL_SETTINGS_TEST_ID).textContent).toBe(
+      "lidar registered knobs",
+    );
+  });
+
+  it("frames registered stream tiles with their status strip", () => {
+    renderSidebar({
+      registeredTileSettings: [LIDAR_TILE_ID],
+      registeredStreamTopics: ["/lidar/top"],
+    });
+
+    fireEvent.click(screen.getByTestId("focus-lidar"));
+
+    // No stream state has been written for the topic, so the strip
+    // surfaces the buffering notice above the tile's controls.
+    expect(screen.getByText(/Buffering/)).toBeTruthy();
     expect(screen.getByTestId(PANEL_SETTINGS_TEST_ID).textContent).toBe(
       "lidar registered knobs",
     );

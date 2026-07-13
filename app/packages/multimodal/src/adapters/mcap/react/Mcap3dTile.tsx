@@ -1034,47 +1034,54 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
 
   // The settings tree is registered into the sidebar rather than rendered
-  // here; the element is memoized over grouped, stabilized props so playback
-  // ticks and pose-command updates never re-register (or reconcile) it.
-  const settingsElement = useMemo(
-    () => (
-      <Mcap3dTileSettings
-        cameraInputs={{
-          diagnosticsByTopic: calibrationDiagnostics,
-          imageTopics: frustumImageTopics,
-        }}
-        frameControls={{
-          cameraTargetFrameId,
-          frameIds,
-          updateCameraTargetFrameId,
-          worldFrameId,
-        }}
-        pointCloudInputs={{
-          colorCapabilities: pointCloudColorCapabilities,
-          selectedSources: selectedPointCloudSources,
-        }}
-        poseControls={{
-          selectedSources: selectedPoseSources,
-          setTrajectoryFrameOverrides,
-          trajectories,
-          trajectoryFrameByTopic,
-        }}
-        selectedTopics={selectedTopics}
-        selection={{ enabled, setSourcesEnabled, toggleSource }}
-        sourceGroups={{
-          camera: { sources: cameraSources, topics: cameraTopics },
-          mapLayer: { sources: mapLayerSources, topics: mapLayerTopics },
-          pointCloud: { sources: pointCloudSources, topics: pointCloudTopics },
-          pose: { sources: poseSources, topics: poseTopics },
-          sceneAnnotation: {
-            sources: sceneAnnotationSources,
-            topics: sceneAnnotationTopics,
-          },
-        }}
-        tileId={tileId ?? null}
-        trackingControls={{ mode: trackingMode, setMode: setTrackingMode }}
-      />
-    ),
+  // here; the registration is memoized over grouped, stabilized props so
+  // playback ticks and pose-command updates never re-register (or
+  // reconcile) it. `streamTopics` lets the sidebar frame render this
+  // tile's stream-status strip.
+  const settingsRegistration = useMemo(
+    () => ({
+      content: (
+        <Mcap3dTileSettings
+          cameraInputs={{
+            diagnosticsByTopic: calibrationDiagnostics,
+            imageTopics: frustumImageTopics,
+          }}
+          frameControls={{
+            cameraTargetFrameId,
+            frameIds,
+            updateCameraTargetFrameId,
+            worldFrameId,
+          }}
+          pointCloudInputs={{
+            colorCapabilities: pointCloudColorCapabilities,
+            selectedSources: selectedPointCloudSources,
+          }}
+          poseControls={{
+            selectedSources: selectedPoseSources,
+            setTrajectoryFrameOverrides,
+            trajectories,
+            trajectoryFrameByTopic,
+          }}
+          selection={{ enabled, setSourcesEnabled, toggleSource }}
+          sourceGroups={{
+            camera: { sources: cameraSources, topics: cameraTopics },
+            mapLayer: { sources: mapLayerSources, topics: mapLayerTopics },
+            pointCloud: {
+              sources: pointCloudSources,
+              topics: pointCloudTopics,
+            },
+            pose: { sources: poseSources, topics: poseTopics },
+            sceneAnnotation: {
+              sources: sceneAnnotationSources,
+              topics: sceneAnnotationTopics,
+            },
+          }}
+          tileId={tileId ?? null}
+          trackingControls={{ mode: trackingMode, setMode: setTrackingMode }}
+        />
+      ),
+      streamTopics: selectedTopics,
+    }),
     [
       cameraSources,
       cameraTargetFrameId,
@@ -1107,7 +1114,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       worldFrameId,
     ],
   );
-  useRegisterMcapTileSettings(tileId, settingsElement);
+  useRegisterMcapTileSettings(tileId, settingsRegistration);
 
   return (
     <>

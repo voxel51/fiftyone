@@ -1,4 +1,4 @@
-import { useTiling } from "@fiftyone/tiling";
+import { TileIdScope, useTiling } from "@fiftyone/tiling";
 import {
   Size,
   Text,
@@ -21,7 +21,10 @@ import {
   useMcapPlaybackSettings,
   useMcapTemporalPolicySettings,
 } from "./mcap-modal-settings";
-import { useMcapTileSettings } from "./mcap-tile-settings-context";
+import {
+  useMcapTileSettings,
+  type McapTileSettingsRegistration,
+} from "./mcap-tile-settings-context";
 import McapPerformanceStats from "./McapPerformanceStats";
 import {
   McapSceneStatusStrip,
@@ -31,6 +34,7 @@ import McapSceneWorldSettings from "./McapSceneWorldSettings";
 import { McapSettingsNumberField } from "./McapSettingsNumberField";
 import McapSidebarGroup from "./McapSidebarGroup";
 import styles from "./McapSettingsSidebar.module.css";
+import { McapTileStreamNoticeStrip } from "./McapTileStreamState";
 import McapTopicsSettings from "./McapTopicsSettings";
 
 type ActiveSettingsTab = "panel" | "scene" | "topics";
@@ -112,8 +116,9 @@ const McapSettingsSidebar: React.FC<{
           label: focusedTileTitle,
           content: (
             <PanelSettingsContent
-              registeredSettings={registeredPanelSettings}
+              registration={registeredPanelSettings}
               slotRef={slotRef}
+              tileId={focusedTileId}
             />
           ),
         },
@@ -122,6 +127,7 @@ const McapSettingsSidebar: React.FC<{
 
     return nextTabs;
   }, [
+    focusedTileId,
     focusedTileTitle,
     registeredPanelSettings,
     slotRef,
@@ -163,20 +169,34 @@ const McapSettingsSidebar: React.FC<{
 };
 
 /**
- * The focused tile's settings. Registry-backed tiles render as ordinary
- * children of the sidebar tree; tiles that still use the tiling portal get
- * the DOM slot they expect. Exactly one of the two is mounted at a time.
+ * The focused tile's settings, framed by the sidebar: registry-backed
+ * tiles render as ordinary children — inside a `TileIdScope` so their
+ * tileId-scoped hooks resolve, below the tile's stream-status strip when
+ * the registration declares stream topics — while tiles that still use the
+ * tiling portal get the DOM slot they expect. Exactly one of the two is
+ * mounted at a time.
  */
 function PanelSettingsContent({
-  registeredSettings,
+  registration,
   slotRef,
+  tileId,
 }: {
-  readonly registeredSettings: React.ReactNode | null;
+  readonly registration: McapTileSettingsRegistration | null;
   readonly slotRef: (el: HTMLDivElement | null) => void;
+  readonly tileId: string | null;
 }) {
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
-      {registeredSettings ?? <div ref={slotRef} />}
+      {registration && tileId ? (
+        <TileIdScope tileId={tileId}>
+          {registration.streamTopics?.length ? (
+            <McapTileStreamNoticeStrip topics={registration.streamTopics} />
+          ) : null}
+          {registration.content}
+        </TileIdScope>
+      ) : (
+        <div ref={slotRef} />
+      )}
     </div>
   );
 }

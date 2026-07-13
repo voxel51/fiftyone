@@ -898,7 +898,6 @@ function componentProps(props: SettingsTestProps): Mcap3dTileSettingsProps {
       trajectories: props.trajectories,
       trajectoryFrameByTopic: props.trajectoryFrameByTopic,
     },
-    selectedTopics: props.pointCloudTopics,
     selection: {
       enabled: props.enabled,
       setSourcesEnabled: props.setSourcesEnabled,
