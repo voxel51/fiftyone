@@ -63,11 +63,34 @@ export function useMcapHoveredImageTopic(): string | null {
 }
 
 /** Image topic whose textured 3D camera frustum is currently hovered. */
-export const mcapHoveredFrustumImageTopicAtom = atom<string | null>(null);
+const mcapHoveredFrustumImageTopicAtom = atom<string | null>(null);
 
 /** Subscribe to the image topic hovered from the 3D camera surface. */
 export function useMcapHoveredFrustumImageTopic(): string | null {
   return useAtomValue(mcapHoveredFrustumImageTopicAtom);
+}
+
+/** Domain operations for publishing hover from a 3D camera frustum. */
+export function useMcapFrustumImageHover(): {
+  readonly clearIfCurrent: (topic: string) => boolean;
+  readonly setHovered: (topic: string) => void;
+} {
+  const store = useStore();
+  return useMemo(
+    () => ({
+      clearIfCurrent: (topic: string) => {
+        if (store.get(mcapHoveredFrustumImageTopicAtom) !== topic) {
+          return false;
+        }
+        store.set(mcapHoveredFrustumImageTopicAtom, null);
+        return true;
+      },
+      setHovered: (topic: string) => {
+        store.set(mcapHoveredFrustumImageTopicAtom, topic);
+      },
+    }),
+    [store],
+  );
 }
 
 /**

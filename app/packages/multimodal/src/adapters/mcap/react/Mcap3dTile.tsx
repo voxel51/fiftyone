@@ -19,19 +19,19 @@ import type {
 } from "../../../decoders";
 import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
 import { useKeyedIdentityMap } from "../../../visualization/panels/use-keyed-identity-map";
+import type { ThreeSceneBackground } from "../../../visualization/panels/base-3d-scene";
+import { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "../../../visualization/panels/point-cloud/camera-fit-bounds";
+import { PointCloudPanel } from "../../../visualization/panels/point-cloud/PointCloudPanel";
 import {
-  DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
   type CameraFrustumPanelLayer,
   type GridPanelLayer,
-  PointCloudPanel,
   type PointCloudCameraPose,
   type PointCloudCameraProjection,
   type PointCloudPanelLayer,
   type PointCloudPanelRenderStats,
   type PointCloudPointPick,
   type SceneAnnotationPanelLayer,
-  type ThreeSceneBackground,
-} from "../../../visualization/panels/point-cloud";
+} from "../../../visualization/panels/point-cloud/types";
 import { Mcap3dCameraRig } from "./Mcap3dCameraRig";
 import Mcap3dTileSettings from "./Mcap3dTileSettings";
 import { build3dLayers } from "./mcap-3d-layers";
@@ -55,7 +55,7 @@ import type { Mcap3dCameraNavigationMode } from "./mcap-3d-view-state";
 import { type PrimitiveAtom, useStore } from "jotai";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import {
-  mcapHoveredFrustumImageTopicAtom,
+  useMcapFrustumImageHover,
   useMcapHoveredImageTopic,
   useMcapImageTileBindings,
 } from "./mcap-tile-source-bindings";
@@ -407,6 +407,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   // (recording, image topic, frame), so both surfaces share one decoded
   // texture through the image-texture cache.
   const openImageTile = useOpenMcapImageTile();
+  const frustumImageHover = useMcapFrustumImageHover();
   const hoveredImageTopic = useMcapHoveredImageTopic();
   const imageTileBindings = useMcapImageTileBindings();
   const {
@@ -458,7 +459,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             imageTopic,
             onHover: (hovered: boolean) => {
               if (hovered) {
-                jotaiStore.set(mcapHoveredFrustumImageTopicAtom, imageTopic);
+                frustumImageHover.setHovered(imageTopic);
                 onHoverCamera({
                   calibrationTopic: layer.id,
                   distortionModel: layer.frame.distortionModel,
@@ -469,10 +470,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
                 });
                 return;
               }
-              if (
-                jotaiStore.get(mcapHoveredFrustumImageTopicAtom) === imageTopic
-              ) {
-                jotaiStore.set(mcapHoveredFrustumImageTopicAtom, null);
+              if (frustumImageHover.clearIfCurrent(imageTopic)) {
                 onHoverCamera(null);
               }
             },
@@ -518,6 +516,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         imageTopic ? imageProjectionSettings[imageTopic] : null,
         imageTopic !== "" && hoveredImageTopic === imageTopic,
         imageTopic !== "" && focusedImageTopic === imageTopic,
+        frustumImageHover,
         openImageTile,
         onHoverCamera,
         pinholeImagePlaneDepthM,
