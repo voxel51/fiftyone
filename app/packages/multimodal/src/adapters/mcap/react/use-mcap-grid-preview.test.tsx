@@ -125,11 +125,17 @@ describe("useMcapGridPreview", () => {
   it("plays additional preview frames on hover", async () => {
     const latestState = { current: null as McapGridPreviewState | null };
     const hover = deferred<McapGridPreviewResult>();
+    const nextRequest = deferred<McapGridPreviewResult>();
     poolHarness.pool.request
       .mockResolvedValueOnce(
-        readyResult({ bytes: [1, 2, 3], nextStartTimeNs: 10n }),
+        readyResult({
+          bytes: [1, 2, 3],
+          frameTimeNs: 0n,
+          nextStartTimeNs: 1n,
+        }),
       )
-      .mockReturnValueOnce(hover.promise);
+      .mockReturnValueOnce(hover.promise)
+      .mockReturnValue(nextRequest.promise);
 
     render(
       <PreviewHarness
@@ -155,13 +161,19 @@ describe("useMcapGridPreview", () => {
     });
     expect(poolHarness.pool.request.mock.calls[1]?.[0]).toMatchObject({
       source: sourceForId("hover"),
-      startTimeNs: 10n,
+      startTimeNs: 1n,
     });
     expect(poolHarness.pool.request.mock.calls[1]?.[1]).toMatchObject({
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
     });
 
-    hover.resolve(readyResult({ bytes: [9, 8, 7], nextStartTimeNs: 20n }));
+    hover.resolve(
+      readyResult({
+        bytes: [9, 8, 7],
+        frameTimeNs: 100_000_000n,
+        nextStartTimeNs: 100_000_001n,
+      }),
+    );
 
     await waitFor(() => {
       expect(firstImageByte(latestState.current?.frame ?? null)).toBe(9);

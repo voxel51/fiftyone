@@ -222,14 +222,17 @@ export function useMcapGridPreview({
             continue;
           }
 
-          await delayMs(
-            mcapGridPreviewPlaybackDelayMs(
-              previousFrameTimeNs,
-              result.frameTimeNs,
-              performance.now() - presentedAtMs,
-            ),
-            controller.signal,
+          const playbackDelayMs = mcapGridPreviewPlaybackDelayMs(
+            previousFrameTimeNs,
+            result.frameTimeNs,
+            performance.now() - presentedAtMs,
           );
+          if (playbackDelayMs === null) {
+            nextStartTimeNsRef.current = result.nextStartTimeNs;
+            continue;
+          }
+
+          await delayMs(playbackDelayMs, controller.signal);
           if (!active) {
             break;
           }

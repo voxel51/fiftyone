@@ -31,20 +31,37 @@ const MCAP_GRID_PREVIEW_MIN_FRAME_DELAY_MS = 1_000 / MCAP_GRID_PREVIEW_MAX_FPS;
 
 /**
  * Returns the remaining wall-clock delay before presenting an MCAP grid frame.
- * Playback follows the recorded timeline at 1x while capping rendering at
- * {@link MCAP_GRID_PREVIEW_MAX_FPS} for every source type.
+ * Returns `null` when the frame should be skipped to preserve 1x playback
+ * without exceeding {@link MCAP_GRID_PREVIEW_MAX_FPS}.
  */
+export function mcapGridPreviewPlaybackDelayMs(
+  previousFrameTimeNs: undefined,
+  frameTimeNs: undefined,
+  elapsedMs?: number,
+): number;
+export function mcapGridPreviewPlaybackDelayMs(
+  previousFrameTimeNs: bigint | undefined,
+  frameTimeNs: bigint | undefined,
+  elapsedMs?: number,
+): number | null;
 export function mcapGridPreviewPlaybackDelayMs(
   previousFrameTimeNs: bigint | undefined,
   frameTimeNs: bigint | undefined,
   elapsedMs = 0,
-): number {
+): number | null {
   const timelineDelayMs =
     previousFrameTimeNs !== undefined &&
     frameTimeNs !== undefined &&
     frameTimeNs > previousFrameTimeNs
       ? Number(frameTimeNs - previousFrameTimeNs) / NANOSECONDS_PER_MILLISECOND
       : 0;
+
+  if (
+    timelineDelayMs > 0 &&
+    timelineDelayMs < MCAP_GRID_PREVIEW_MIN_FRAME_DELAY_MS
+  ) {
+    return null;
+  }
 
   return Math.max(
     0,

@@ -23,9 +23,13 @@ import type { McapDecodedMessage, McapResourceClient } from "./types";
 
 describe("MCAP grid preview playback cadence", () => {
   it("caps playback at twelve frames per second", () => {
-    expect(mcapGridPreviewPlaybackDelayMs(0n, 40_000_000n)).toBe(
-      1_000 / MCAP_GRID_PREVIEW_MAX_FPS,
-    );
+    expect(mcapGridPreviewPlaybackDelayMs(0n, 40_000_000n)).toBeNull();
+  });
+
+  it("skips high-rate frames without stretching the recorded timeline", () => {
+    expect(mcapGridPreviewPlaybackDelayMs(0n, 33_000_000n)).toBeNull();
+    expect(mcapGridPreviewPlaybackDelayMs(0n, 66_000_000n)).toBeNull();
+    expect(mcapGridPreviewPlaybackDelayMs(0n, 99_000_000n)).toBe(99);
   });
 
   it("uses recorded frame timing at one-times speed", () => {
