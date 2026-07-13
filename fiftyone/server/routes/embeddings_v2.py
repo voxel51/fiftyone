@@ -466,7 +466,7 @@ def _build_color_body(dataset, results, field_path):
     """Builds a complete ``/v2/color`` response body: header, value
     column, JSON meta tail. Immutable bytes, safe to cache and share.
     """
-    style, values, classes, truncated = _color_data(
+    style, values, classes, truncated, exact = _color_data(
         dataset, results, field_path
     )
     n = len(values)
@@ -481,7 +481,12 @@ def _build_color_body(dataset, results, field_path):
                 column[i] = index
 
         dtype = DTYPE_U16
-        meta = {"style": style, "classes": classes, "truncated": truncated}
+        meta = {
+            "style": style,
+            "classes": classes,
+            "truncated": truncated,
+            "exact": exact,
+        }
     else:
         column = np.array(
             [float(v) if v is not None else np.nan for v in values],
@@ -547,6 +552,13 @@ def _as_list(ids):
     return ids.tolist() if isinstance(ids, np.ndarray) else list(ids)
 
 
+def _first_value(value):
+    if isinstance(value, (list, tuple)):
+        return value[0] if value else None
+
+    return value
+
+
 def _color_data(dataset, results, field_path):
     """Resolves per-point color-by values (wire order) and the style
     decision.
@@ -559,7 +571,12 @@ def _color_data(dataset, results, field_path):
     meaningless for strings.)
 
     Returns:
-        a ``(style, values, classes, truncated)`` tuple
+        a ``(style, values, classes, truncated, exact)`` tuple, where
+        ``exact`` says each point's column value IS the point's full
+        field value (list fields keep only their first element, so a
+        filter evaluated against the column could disagree with the
+        same filter evaluated against the field — clients must not
+        compute filter masks locally unless ``exact`` is true)
     """
     patches_field = results.config.patches_field
     is_patches = patches_field is not None
@@ -569,13 +586,21 @@ def _color_data(dataset, results, field_path):
         field_path, _as_list(ids), link_field=patches_field
     )
 
+    exact = True
     field = dataset.get_field(field_path)
     if isinstance(field, fof.ListField):
-        values = [v[0] if v else None for v in values]
         field = field.field
 
+    # Paths through label lists (e.g. ``detections.label``) yield a
+    # LIST per point even though the leaf field is scalar, so listiness
+    # must be detected in the values, not the schema. Collapse to the
+    # first element; the column is then lossy (see ``exact`` above)
+    if any(isinstance(v, (list, tuple)) for v in values):
+        values = [_first_value(v) for v in values]
+        exact = False
+
     if isinstance(field, fof.FloatField):
-        return "continuous", values, None, False
+        return "continuous", values, None, False, exact
 
     distinct = {}
     for value in values:
@@ -583,7 +608,7 @@ def _color_data(dataset, results, field_path):
             distinct[value] = distinct.get(value, 0) + 1
 
     if len(distinct) > MAX_CATEGORIES and isinstance(field, fof.IntField):
-        return "continuous", values, None, False
+        return "continuous", values, None, False, exact
 
     ranked = sorted(
         distinct.items(), key=lambda item: (-item[1], str(item[0]))
@@ -593,7 +618,7 @@ def _color_data(dataset, results, field_path):
         {"label": label, "count": count}
         for label, count in ranked[:MAX_CATEGORIES]
     ]
-    return "categorical", values, classes, truncated
+    return "categorical", values, classes, truncated, exact
 
 
 def _match_mask(

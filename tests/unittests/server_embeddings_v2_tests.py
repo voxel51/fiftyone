@@ -195,6 +195,9 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertEqual(meta["style"], "categorical")
         self.assertEqual(len(meta["classes"]), 3)
         self.assertEqual(sum(c["count"] for c in meta["classes"]), len(points))
+        # Scalar field: column values ARE the field values, so clients
+        # may evaluate filters against the column locally
+        self.assertTrue(meta["exact"])
 
         indices = np.frombuffer(column, dtype="<u2")
         labels = [meta["classes"][i]["label"] for i in indices]
@@ -448,10 +451,52 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         )
         self.assertEqual(meta["style"], "categorical")
         self.assertEqual({c["label"] for c in meta["classes"]}, {"a", "c"})
+        # Collapsed values are lossy: the ["a", "b"] sample's column
+        # value says nothing about "b", so filters must NOT be
+        # evaluated against the column client-side
+        self.assertFalse(meta["exact"])
 
         indices = np.frombuffer(column, dtype="<u2")
         # The empty-list sample is missing
         self.assertEqual(indices[2], v2.MISSING_CATEGORY)
+
+    @drop_datasets
+    def test_color_label_list_field(self):
+        # Label-list paths (detections.label) yield a LIST per point
+        # while the schema's leaf field is a scalar StringField — the
+        # values, not the schema, carry the listiness. Regression: this
+        # crashed the endpoint (unhashable list) on any detections
+        # dataset
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/tmp/a.png",
+                    gt=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.Sample(filepath="/tmp/b.png", gt=fo.Detections()),
+            ]
+        )
+        points = np.zeros((2, 2))
+        fob.compute_visualization(dataset, points=points, brain_key="viz")
+        base = {"datasetName": dataset.name, "brainKey": "viz"}
+
+        _, _, column, meta = _parse_color(
+            v2.EmbeddingsV2Color._post_sync(
+                None, {**base, "field": "gt.detections.label"}
+            )
+        )
+        self.assertEqual(meta["style"], "categorical")
+        self.assertEqual({c["label"] for c in meta["classes"]}, {"cat"})
+        self.assertFalse(meta["exact"])
+
+        indices = np.frombuffer(column, dtype="<u2")
+        self.assertEqual(indices[1], v2.MISSING_CATEGORY)
 
     @drop_datasets
     def test_color_missing_values(self):
