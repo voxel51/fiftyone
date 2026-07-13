@@ -94,15 +94,15 @@ class FCCLIPOutputProcessor(fout.OutputProcessor):
                 continue
 
             cat_id = seg["category_id"]
-            mask = (panoptic_seg == seg["id"]).numpy().astype(bool)
-            if not mask.any():
-                continue
             label = (
                 self.classes[cat_id]
                 if self.classes and 0 <= cat_id < len(self.classes)
                 else str(cat_id)
             )
             if classes is not None and label not in classes:
+                continue
+            mask = (panoptic_seg == seg["id"]).numpy().astype(bool)
+            if not mask.any():
                 continue
             detections.append(
                 fol.Detection.from_mask(
