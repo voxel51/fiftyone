@@ -2,12 +2,12 @@ import type { McapTypes } from "@mcap/core";
 import type { DecodeClient } from "../../../query/decode";
 import {
   compareByTimelineTime,
+  createCandidateSelector,
   createWindowBounds,
   isUnboundedLatestPolicy,
   isWithinRange,
   maxBigInt,
   minBigInt,
-  selectCandidatesForTopic,
 } from "../sync";
 import { mcapReadCancelledError } from "../errors";
 import { decodeMcapMessage, mcapMessageRecordId } from "../message-decoder";
@@ -416,17 +416,24 @@ async function decodeWindowsFromCandidates<
   // Selection is synchronous, so resolve every window's candidate set before
   // any decode read starts: the union names exactly which messages (and
   // therefore chunks) this batch touches.
+  const selectorsByTopic = new Map(
+    topics.map(
+      (topic) =>
+        [
+          topic,
+          createCandidateSelector(
+            candidates.get(topic) ?? [],
+            selectTieBreaker,
+          ),
+        ] as const,
+    ),
+  );
   const selections = windowBounds.map(({ timeNs, streamPolicies }) => ({
     selectedByTopic: topics.map(
       (topic) =>
         [
           topic,
-          selectCandidatesForTopic(
-            candidates.get(topic) ?? [],
-            timeNs,
-            streamPolicies[topic],
-            selectTieBreaker,
-          ),
+          selectorsByTopic.get(topic)?.(timeNs, streamPolicies[topic]) ?? [],
         ] as const,
     ),
     streamPolicies,
