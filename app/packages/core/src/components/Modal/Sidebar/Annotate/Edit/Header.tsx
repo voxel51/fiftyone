@@ -98,7 +98,12 @@ const LabelHamburgerMenu = () => {
   return (
     <>
       <Clickable onClick={() => setOpen(true)}>
-        <Box ref={anchor} sx={{ p: 0.5 }} data-cy="label-menu-trigger">
+        <Box
+          ref={anchor}
+          sx={{ p: 0.5 }}
+          data-cy="label-menu-trigger"
+          data-overlay-loaded={String(overlay instanceof DetectionOverlay)}
+        >
           <Icon name={IconName.MoreVertical} size={Size.Md} />
         </Box>
       </Clickable>

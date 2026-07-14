@@ -345,12 +345,13 @@ jobs:
           REPORT_URL: ${{ steps.upload-merged.outputs.artifact-url }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          # attempt start time, for the wall-clock line in the comment
-          RUN_STARTED_AT=$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
-            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT" |
-            node -e "let d='';process.stdin.on('data',(c)=>(d+=c)).on('end',()=>console.log(JSON.parse(d).run_started_at??''))" || true)
+          # sibling suite results + the e2e pipeline start (prepare-e2e)
+          curl -sf -H "Authorization: Bearer $GH_TOKEN" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+            > run-jobs.json || echo '{}' > run-jobs.json
+          RUN_STARTED_AT=$(node -e "const j=require('./run-jobs.json').jobs??[];const p=j.find((x)=>x.name.endsWith('Prepare e2e assets'));console.log(p?.started_at??'')")
           export RUN_STARTED_AT
-          node scripts/report-summary.mjs merged-results.json all-blob-reports > e2e-summary.md
+          node scripts/report-summary.mjs merged-results.json all-blob-reports run-jobs.json > e2e-summary.md
           cat e2e-summary.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post authoritative PR comment

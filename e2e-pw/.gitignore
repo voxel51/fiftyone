@@ -18,3 +18,4 @@ e2e-summary.md
 coverage
 .snowpack
 yarn-error.log
+/run-jobs.json

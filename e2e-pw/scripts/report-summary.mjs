@@ -2,7 +2,7 @@
 // --reporter json) as the markdown body for the authoritative e2e PR comment
 // and the workflow job summary.
 //
-// Usage: node scripts/report-summary.mjs merged-results.json [blob-dir]
+// Usage: node scripts/report-summary.mjs merged-results.json [blob-dir] [jobs-json]
 // Env: RUN_URL (workflow run link), HEAD_SHA (commit the run tested),
 // TEST_E2E_RESULT (shard jobs' aggregate result), EXPECTED_SHARDS
 // (shard count; with blob-dir, flags runs whose reports are incomplete),
@@ -19,7 +19,7 @@ const FLAVOR = (process.env.GITHUB_REPOSITORY ?? "").endsWith("fiftyone-teams")
 const MARKER = `<!-- e2e-authoritative-report:${FLAVOR} -->`;
 const MAX_LISTED = 50;
 
-const [, , jsonPath, blobDir] = process.argv;
+const [, , jsonPath, blobDir, jobsPath] = process.argv;
 if (!jsonPath) {
   console.error(
     "usage: node scripts/report-summary.mjs <merged-results.json> [blob-dir]",
@@ -93,13 +93,52 @@ if (!Number.isNaN(startedAt)) {
   wallClock = ` · ⏱ ${minutes}m ${totalSeconds % 60}s`;
 }
 
+// one row per sibling suite in the run (build, lint, unit tests, ...)
+const suiteRows = [];
+if (jobsPath) {
+  try {
+    const jobs = JSON.parse(readFileSync(jobsPath, "utf8")).jobs ?? [];
+    const groups = new Map();
+    const ignore = new Set([
+      "all-tests",
+      "modified-files",
+      "triage",
+      "enterprise-sync",
+    ]);
+    for (const job of jobs) {
+      const group = job.name.includes(" / ")
+        ? job.name.split(" / ")[0]
+        : job.name;
+      if (ignore.has(group) || group === "e2e") {
+        continue;
+      }
+      groups.set(group, [...(groups.get(group) ?? []), job]);
+    }
+    const icon = (js) =>
+      js.some((j) => j.conclusion === "failure")
+        ? "❌"
+        : js.some((j) => j.status !== "completed")
+          ? "⏳"
+          : js.every((j) => j.conclusion === "skipped")
+            ? "⊘ skipped"
+            : js.some((j) => j.conclusion === "cancelled")
+              ? "🚫 cancelled"
+              : "✅";
+    for (const [name, js] of [...groups.entries()].sort()) {
+      suiteRows.push(`| ${name} | ${icon(js)} |`);
+    }
+  } catch {
+    // jobs are informational; the e2e verdict never depends on them
+  }
+}
+
 const headline = failed.length
-  ? `## ❌ e2e (${FLAVOR}): ${failed.length} failed spec${
+  ? `## ❌ CI (${FLAVOR}): ${failed.length} failed e2e spec${
       failed.length === 1 ? "" : "s"
     }`
   : incomplete
-    ? `## ⚠️ e2e (${FLAVOR}): incomplete run`
-    : `## ✅ e2e (${FLAVOR}) passed`;
+    ? `## ⚠️ CI (${FLAVOR}): incomplete e2e run`
+    : `## ✅ CI (${FLAVOR}): e2e passed`;
 
 const lines = [MARKER, headline];
 if (incomplete) {
@@ -118,6 +157,15 @@ lines.push(
     stats.expected ?? 0
   } passed · ${stats.skipped ?? 0} skipped**${wallClock} at \`${sha}\`${runLink}`,
 );
+if (suiteRows.length) {
+  lines.push(
+    "",
+    "| suite | result |",
+    "| --- | --- |",
+    ...suiteRows,
+    `| e2e | ${failed.length ? "❌" : incomplete ? "⚠️" : "✅"} |`,
+  );
+}
 
 if (failed.length) {
   lines.push("", "### Failed specs", ...itemize(failed));
