@@ -12097,10 +12097,10 @@
             "date_added": "2026-01-28 12:00:00"
         },
         {
-            "base_name": "openworld-sam-ade20k-torch",
+            "base_name": "openworld-sam-ade20k-instance-torch",
             "base_filename": null,
             "version": null,
-            "description": "Extends SAM2 Hiera-Large with BEiT-3 language understanding; returns per-instance binary masks for open-vocabulary queries",
+            "description": "Extends SAM2 Hiera-Large with BEiT-3 language understanding; returns per-instance binary masks for open-vocabulary queries, keeping only \"thing\" classes",
             "source": "https://huggingface.co/Voxel51/openworld-sam",
             "author": "Shiting Xiao, et al. (Yale / Google DeepMind)",
             "license": "Apache 2.0",
@@ -12110,6 +12110,7 @@
                 "config": {
                     "name_or_path": "Voxel51/openworld-sam",
                     "revision": "d065dbb41559e05ac482d4d7b694cf56b20ed173",
+                    "task": "instance",
                     "sam_transforms_fcn": "fiftyone.utils.openworld_sam.build_sam_transform",
                     "transforms_fcn": "fiftyone.utils.openworld_sam.build_beit_transform",
                     "transforms_args": {
@@ -12142,6 +12143,66 @@
             "tags": [
                 "segmentation",
                 "instances",
+                "zero-shot",
+                "open-vocabulary",
+                "torch",
+                "transformer"
+            ],
+            "training_data": [
+                {
+                    "name": "ADE20K-150",
+                    "url": "http://sceneparsing.csail.mit.edu/"
+                }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "openworld-sam-ade20k-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Extends SAM2 Hiera-Large with BEiT-3 language understanding; returns per-instance binary masks for open-vocabulary queries, including both \"thing\" and \"stuff\" classes",
+            "source": "https://huggingface.co/Voxel51/openworld-sam",
+            "author": "Shiting Xiao, et al. (Yale / Google DeepMind)",
+            "license": "Apache 2.0",
+            "size_bytes": 5000000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.openworld_sam.OpenWorldSAMModel",
+                "config": {
+                    "name_or_path": "Voxel51/openworld-sam",
+                    "revision": "d065dbb41559e05ac482d4d7b694cf56b20ed173",
+                    "task": "panoptic",
+                    "sam_transforms_fcn": "fiftyone.utils.openworld_sam.build_sam_transform",
+                    "transforms_fcn": "fiftyone.utils.openworld_sam.build_beit_transform",
+                    "transforms_args": {
+                        "sam_pixel_mean": [123.675, 116.28, 103.53],
+                        "sam_pixel_std": [58.395, 57.12, 57.375],
+                        "sam_image_size": 1024,
+                        "beit_image_size": 224,
+                        "beit_image_mean": [0.5, 0.5, 0.5],
+                        "beit_image_std": [0.5, 0.5, 0.5]
+                    }
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "timm",
+                    "torchscale",
+                    "safetensors",
+                    "sentencepiece"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "segmentation",
+                "panoptic",
                 "zero-shot",
                 "open-vocabulary",
                 "torch",

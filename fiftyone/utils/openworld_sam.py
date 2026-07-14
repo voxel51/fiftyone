@@ -16,6 +16,47 @@ from fiftyone.zoo.models import HasZooModel
 import fiftyone.utils.torch as fout
 
 
+def _load_ade20k_stuff_classes(local_hf_dir):
+    """Derives the ADE20K-150 panoptic "stuff" class names from the
+    checkpoint's own isthing metadata, rather than hardcoding a duplicate
+    copy that could drift from it.
+
+    OpenWorldSAM has no native thing/stuff head, but the checkpoint ships
+    the isthing split used to train it, in ``ADE20K_150_CATEGORIES`` in
+    ``datasets/datasets/register_ade20k_panoptic.py``. The list literal is
+    extracted via ``ast`` instead of executing the module (same reasoning
+    as the file-path load of ``utils/constants.py`` below).
+    """
+    import ast
+    import os
+
+    path = os.path.join(
+        local_hf_dir, "datasets", "datasets", "register_ade20k_panoptic.py"
+    )
+    with open(path) as f:
+        tree = ast.parse(f.read(), filename=path)
+
+    for node in tree.body:
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "ADE20K_150_CATEGORIES"
+        ):
+            categories = ast.literal_eval(node.value)
+            break
+    else:
+        raise ValueError("Could not find ADE20K_150_CATEGORIES in %s" % path)
+
+    # Names here are comma-separated synonyms (e.g. "road, route"); classes
+    # in ADE_PANOPTIC_CLASSES (utils/constants.py) use just the first one.
+    return {
+        cat["name"].split(",")[0].strip()
+        for cat in categories
+        if not cat["isthing"]
+    }
+
+
 def build_sam_transform(
     sam_pixel_mean=(123.675, 116.280, 103.530),
     sam_pixel_std=(58.395, 57.120, 57.375),
@@ -129,7 +170,8 @@ class OpenWorldSAMOutputProcessor(fout.OutputProcessor):
     masks already carry their own spatial dimensions.
 
     Args:
-        classes (None): the list of class labels for the model
+        classes (None): the list of class labels for the model. When
+        ``task="instance"``, the default class list excludes "stuff" classes.
     """
 
     def __init__(self, classes=None, **kwargs):
@@ -208,6 +250,9 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
         iou_thresh (0.5): minimum IoU score to keep an instance
         classes (None): list of text prompts for zero-shot segmentation.
             Defaults to ``ADE_PANOPTIC_CLASSES`` from the HuggingFace repo
+        task ("instance"): segmentation task — ``"instance"`` keeps only
+            "thing" classes (per the ADE20K-150 panoptic isthing split);
+            ``"panoptic"`` keeps both "thing" and "stuff" classes
         nms_thresh (0.2): NMS IoU threshold for duplicate suppression
         top_k (100): maximum instances returned per image
         mask_decoder_chunk_size (500): number of candidate queries scored per
@@ -230,6 +275,7 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
         super().__init__(d)
         self.name_or_path = self.parse_string(d, "name_or_path")
         self.revision = self.parse_string(d, "revision", default=None)
+        self.task = self.parse_string(d, "task", default="instance")
         self.iou_thresh = self.parse_number(d, "iou_thresh", default=0.5)
         self.nms_thresh = self.parse_number(d, "nms_thresh", default=0.2)
         self.top_k = self.parse_int(d, "top_k", default=100)
@@ -247,6 +293,10 @@ class OpenWorldSAMModelConfig(fout.TorchImageModelConfig, HasZooModel):
         self.validate_config()
 
     def validate_config(self):
+        if self.task not in ("instance", "panoptic"):
+            raise ValueError(
+                "task must be 'instance' or 'panoptic'; found '%s'" % self.task
+            )
         if not 0 <= self.iou_thresh <= 1:
             raise ValueError("iou_thresh must be in [0, 1]")
         if not 0 <= self.nms_thresh <= 1:
@@ -265,7 +315,9 @@ class OpenWorldSAMModel(fout.TorchImageModel):
     are hosted on HuggingFace Hub (``trust_remote_code=True``).
 
     Returns :class:`fiftyone.core.labels.Detections` with per-instance binary
-    masks, labels, and confidence scores for each image.
+    masks, labels, and confidence scores for each image. The zoo exposes
+    ``"instance"`` (thing classes only) and ``"panoptic"`` (thing + stuff
+    classes) variants; see the ``task`` config option.
 
     Example::
 
@@ -274,7 +326,7 @@ class OpenWorldSAMModel(fout.TorchImageModel):
 
         dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
         model = foz.load_zoo_model(
-            "openworld-sam-ade20k-torch",
+            "openworld-sam-ade20k-instance-torch",
             classes=["person", "car", "chair", "table"],
         )
         dataset.apply_model(model, label_field="owsam_pred")
@@ -289,25 +341,37 @@ class OpenWorldSAMModel(fout.TorchImageModel):
 
     def _parse_classes(self, config):
         if config.classes is not None:
-            return list(config.classes)
+            classes = list(config.classes)
+        else:
+            # Load constants.py directly by file path rather than importing
+            # the `utils` package. `utils/__init__.py` does `from
+            # .visualizer import *`, and visualizer.py unconditionally
+            # imports detectron2, which isn't a dependency of this model.
+            import importlib.util
+            import os
 
-        # Load constants.py directly by file path rather than importing the
-        # `utils` package. `utils/__init__.py` does `from .visualizer import
-        # *`, and visualizer.py unconditionally imports detectron2, which
-        # isn't a dependency of this model.
-        import importlib.util
-        import os
+            constants_path = os.path.join(
+                self._local_hf_dir, "utils", "constants.py"
+            )
+            spec = importlib.util.spec_from_file_location(
+                "openworld_sam_constants", constants_path
+            )
+            constants = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(constants)
 
-        constants_path = os.path.join(
-            self._local_hf_dir, "utils", "constants.py"
-        )
-        spec = importlib.util.spec_from_file_location(
-            "openworld_sam_constants", constants_path
-        )
-        constants = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(constants)
+            classes = list(constants.ADE_PANOPTIC_CLASSES)
 
-        return list(constants.ADE_PANOPTIC_CLASSES)
+        if config.task == "instance":
+            # Exclude "stuff" classes from the candidate query set itself,
+            # rather than filtering the winning label after the fact.
+            # If stuff classes stay in the pool, they usually win top-k/NMS
+            # outright and suppress the correct "thing" candidate (NMS is
+            # class-agnostic) before a post-hoc label filter ever sees it.
+            # Removing them here means only "thing" classes compete.
+            stuff_classes = _load_ade20k_stuff_classes(self._local_hf_dir)
+            classes = [c for c in classes if c not in stuff_classes]
+
+        return classes
 
     def _download_model(self, config):
         pass  # HF Hub handles download automatically on first load
