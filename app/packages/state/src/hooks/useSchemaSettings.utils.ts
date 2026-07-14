@@ -1,4 +1,3 @@
-import { MediaType } from "@fiftyone/relay";
 import {
   CLASSIFICATION_DISABLED_SUB_PATHS,
   CLASSIFICATION_FIELD,
@@ -35,6 +34,9 @@ import {
   VALID_LABEL_TYPES,
   VALID_LIST_LABEL_FIELDS,
 } from "@fiftyone/utilities";
+import type { State } from "../recoil/types";
+
+type MediaType = State.MediaType;
 
 const isMetadataField = (path: string) => {
   return path === "metadata" || path.startsWith("metadata.");

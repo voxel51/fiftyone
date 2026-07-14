@@ -18,6 +18,7 @@ export default graphql`
 
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
       name
+      mediaType
       defaultGroupSlice
       viewName
       savedViewSlug

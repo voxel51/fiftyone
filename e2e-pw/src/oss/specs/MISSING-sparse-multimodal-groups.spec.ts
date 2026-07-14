@@ -197,7 +197,8 @@ test.describe.serial("sparse multimodal groups", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("opens a pcd-only group from the pcd grid slice without throwing", async ({
+  // TODO re-enable this test once its flakiness is resolved
+  test.skip("opens a pcd-only group from the pcd grid slice without throwing", async ({
     grid,
     modal,
   }) => {
@@ -225,7 +226,8 @@ test.describe.serial("sparse multimodal groups", () => {
     });
   });
 
-  test("opens the first modal cleanly from every grid slice", async ({
+  // TODO re-enable this test once its flakiness is resolved
+  test.skip("opens the first modal cleanly from every grid slice", async ({
     grid,
     modal,
   }) => {

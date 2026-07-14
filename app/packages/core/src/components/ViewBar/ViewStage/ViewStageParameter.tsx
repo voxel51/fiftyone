@@ -182,7 +182,7 @@ const ObjectEditor = ({
     width: state.matches("editing") ? 400 : 0,
   });
 
-  useOutsideClick(containerRef, (e) => {
+  useOutsideClick(containerRef, () => {
     send("BLUR");
     onClose();
   });

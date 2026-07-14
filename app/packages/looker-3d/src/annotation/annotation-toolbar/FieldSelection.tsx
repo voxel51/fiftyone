@@ -69,7 +69,7 @@ export const FieldSelection = () => {
   }
 
   return (
-    <div style={{ minWidth: "40px", maxWidth: "80px" }}>
+    <div style={{ maxWidth: "120px" }}>
       <select
         value={currentActiveField || ""}
         onChange={(e) => setCurrentActiveField(e.target.value)}

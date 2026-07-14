@@ -41,6 +41,7 @@ const makeProvider = () => {
   const mock = {
     initialize: vi.fn().mockResolvedValue(undefined),
     infer: vi.fn(),
+    inferBitmap: vi.fn(),
     abort: vi.fn(),
     dispose: vi.fn(),
     isInitialized: vi.fn().mockReturnValue(false),
@@ -60,11 +61,14 @@ const makeProvider = () => {
   return mock as unknown as BrowserAnnotationProvider & {
     initialize: ReturnType<typeof vi.fn>;
     infer: ReturnType<typeof vi.fn>;
+    inferBitmap: ReturnType<typeof vi.fn>;
     abort: ReturnType<typeof vi.fn>;
     dispose: ReturnType<typeof vi.fn>;
     isInitialized: ReturnType<typeof vi.fn>;
   };
 };
+
+const fakeBitmap = { width: 4, height: 4 } as unknown as ImageBitmap;
 
 describe("SAM2BrowserAnnotationAgent", () => {
   let agent: SAM2BrowserAnnotationAgent;
@@ -115,6 +119,39 @@ describe("SAM2BrowserAnnotationAgent", () => {
       expect(provider.infer).toHaveBeenCalledWith(
         expect.objectContaining({ imageUrl: _MEDIA_URL }),
       );
+    });
+
+    it("infers on the decoded bitmap (not the URL) when a media bitmap is supplied", async () => {
+      provider.inferBitmap.mockResolvedValue(makeProviderResult());
+
+      await agent.infer(
+        makeContext({
+          getMediaBitmap: async () => ({
+            bitmap: fakeBitmap,
+            cacheKey: "sample-id#frame=3",
+          }),
+        }),
+      );
+
+      expect(provider.inferBitmap).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bitmap: fakeBitmap,
+          cacheKey: "sample-id#frame=3",
+          useEmbeddingCache: true,
+        }),
+      );
+      expect(provider.infer).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the URL path when the media bitmap resolver yields null", async () => {
+      provider.infer.mockResolvedValue(makeProviderResult());
+
+      await agent.infer(makeContext({ getMediaBitmap: async () => null }));
+
+      expect(provider.infer).toHaveBeenCalledWith(
+        expect.objectContaining({ imageUrl: _MEDIA_URL }),
+      );
+      expect(provider.inferBitmap).not.toHaveBeenCalled();
     });
 
     it("should convert positive and negative points to PromptPoints", async () => {

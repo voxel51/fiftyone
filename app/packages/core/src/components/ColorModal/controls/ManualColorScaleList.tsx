@@ -170,7 +170,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
 
   return (
     <div style={style}>
-      {input?.map((v, index) => (
+      {input?.map((_v, index) => (
         <RowContainer key={index}>
           <NumberInput
             placeholder="float"

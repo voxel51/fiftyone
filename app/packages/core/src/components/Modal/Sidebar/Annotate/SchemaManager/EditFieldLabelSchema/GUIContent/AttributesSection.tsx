@@ -161,6 +161,7 @@ const AttributesSection = ({
                 {secondaryParts.join(" · ")}
               </Text>
               {config.read_only && <Pill size={Size.Md}>Read-only</Pill>}
+              {config.dynamic && <Pill size={Size.Md}>Dynamic</Pill>}
               {config._source && <Pill size={Size.Md}>{config._source}</Pill>}
             </Stack>
           ),

@@ -10,7 +10,7 @@ Installs FiftyOne.
 import os
 from setuptools import setup, find_packages
 
-VERSION = "1.19.0"
+VERSION = "1.20.0"
 
 
 def get_version():
@@ -79,8 +79,8 @@ setup(
         "retrying>=1,<2",
         "sseclient-py>=1.7.2,<2",
         "sse-starlette>=0.10.3,<4",
-        "starlette>=0.49.1,<1.1",
-        "strawberry-graphql>=0.312.3,<0.317.0",
+        "starlette>=1.3.1,<1.4",
+        "strawberry-graphql>=0.315.7,<0.317.0",
         "tabulate>=0.7,<0.11",
         "tqdm>=2,<5",
         "xmltodict>=1,<2",
@@ -121,8 +121,9 @@ setup(
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.10",
     extras_require={
-        "multimodal": [
-            "protobuf==7.35.0",
+        "multimodal-mcap": [
+            "protobuf==6.33.6",
         ],
+        "multimodal": ["fiftyone[multimodal-mcap]"],
     },
 )

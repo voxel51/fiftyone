@@ -1,12 +1,18 @@
-import { useSampleMutationManager } from "@fiftyone/annotation";
+import {
+  type AnnotationContextManager,
+  type EnterResult,
+  InitializationStatus,
+  useSetEntranceLabel,
+} from "@fiftyone/annotation";
 import {
   type ContextManager,
   DefaultContextManager,
   useActiveModalFields,
+  useModalSample,
   useQueryPerformanceSampleLimit,
   useUnboundStateRef,
 } from "@fiftyone/state";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { jotaiStore } from "@fiftyone/state/src/jotai";
 import { useCallback, useMemo } from "react";
 import { usePrimitiveController } from "./Edit/useActivePrimitive";
@@ -19,89 +25,26 @@ import {
   useSchemaResolver,
 } from "./useSchemaResolver";
 
-/**
- * Status code when attempting to initialize annotation schema.
- */
-export enum InitializationStatus {
-  InsufficientPermissions,
-  ServerError,
-  Success,
-}
-
-/**
- * Result type when attempting to enter annotation context.
- */
-export type EnterResult = {
-  status: InitializationStatus;
-  message?: string;
-};
-
-/**
- * Manager which provides methods for stateful entry-into and exit-from annotation mode.
- */
-export interface AnnotationContextManager {
-  /**
-   * Ensure a field's annotation schema exists on the server and is activated.
-   *
-   * This is non-destructive: existing schema state is preserved throughout
-   * the async work and atomically swapped once the server responds.
-   *
-   * @param field The field name to initialize and activate
-   */
-  activateField: (field: string) => Promise<EnterResult>;
-
-  /**
-   * Enter annotation mode, performing any required setup for the specified `path`.
-   *
-   * If a {@link FieldSchema} does not exist for the specified `path`,
-   * one will be created automatically. Existing schema and field visibility
-   * state is preserved — the new field is added to the active set, not
-   * substituted for it.
-   *
-   * If a `labelId` is provided,
-   * that label instance will be opened for editing in the annotation sidebar.
-   *
-   * @param path The path to the sample field
-   * @param labelId The ID of the active label
-   */
-  enter: (path?: string, labelId?: string) => Promise<EnterResult>;
-
-  /**
-   * Exit annotation mode, restoring the previous state in explore mode.
-   *
-   * Any active paths which were set before calling {@link enter} will be restored.
-   */
-  exit: () => void;
-
-  /**
-   * The label ID which triggered entrance into annotation.
-   *
-   * todo - this is required due to some chicken-and-egg behavior with renderer
-   *  and label init; we should move all annotation init logic into this
-   *  context manager and remove this.
-   */
-  entranceLabelId: string | null;
-
-  /**
-   * Clear the entrance label ID value.
-   *
-   * todo - this is required due to some chicken-and-egg behavior with renderer
-   *  and label init; we should move all annotation init logic into this
-   *  context manager and remove this.
-   */
-  clearEntranceLabelId: () => void;
-}
+// the contract (and the entrance-label state) live in @fiftyone/annotation;
+// this module provides the app-layer implementation
+export {
+  type AnnotationContextManager,
+  type EnterResult,
+  InitializationStatus,
+  useSetEntranceLabel,
+} from "@fiftyone/annotation";
 
 const contextManagerAtom = atom<ContextManager>(new DefaultContextManager());
 
-const activeLabelIdAtom = atom<string | null>(null);
-
 /**
- * Hook which provides an {@link AnnotationContextManager}.
+ * Hook which provides the {@link AnnotationContextManager} implementation.
+ *
+ * Register it for package-level consumers (the annotation controller) via
+ * `useRegisterAnnotationContextManager` — see `SchemaManagerOutlet`.
  */
 export const useAnnotationContextManager = (): AnnotationContextManager => {
   const contextManager = useAtomValue(contextManagerAtom);
-  const [activeLabelId, setActiveLabelId] = useAtom(activeLabelIdAtom);
+  const setEntranceLabel = useSetEntranceLabel();
   const saveChanges = useSave();
 
   const [activeFields, setActiveFields] = useActiveModalFields();
@@ -110,7 +53,9 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const canManageSchema = useCanManageSchema();
   const schemaResolver = useSchemaResolver();
   const { isPrimitive, setActivePrimitive } = usePrimitiveController();
-  const { reset: clearStaleMutations } = useSampleMutationManager();
+  // the modal's sample id — the same id the engine's store registers
+  // under; the store itself isn't registered yet on explore-tab entry
+  const modalSampleId = useModalSample()?.sample?._id;
   // Held in a ref so exit() invokes the most recent deactivator chain
   // even when the captured `exit` closure was snapshotted at mount.
   const deactivateAllModesRef = useUnboundStateRef(useDeactivateAllModes());
@@ -215,8 +160,14 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         result = await activateField(field);
       }
 
-      if (labelId) {
-        setActiveLabelId(labelId);
+      // the entrance payload is a complete ref captured here at the
+      // dispatch site — consumers apply what they were told
+      if (labelId && field && modalSampleId) {
+        setEntranceLabel({
+          sample: modalSampleId,
+          path: field,
+          instanceId: labelId,
+        });
       }
 
       return result;
@@ -225,38 +176,26 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       activateField,
       activeFields,
       contextManager,
+      modalSampleId,
       setActiveFields,
-      setActiveLabelId,
+      setEntranceLabel,
     ],
   );
 
   const exit = useCallback(() => {
     if (contextManager.isActive()) {
       saveChanges();
-      clearStaleMutations();
       deactivateAllModesRef.current();
       contextManager.exit();
     }
-  }, [clearStaleMutations, contextManager, deactivateAllModesRef, saveChanges]);
+  }, [contextManager, deactivateAllModesRef, saveChanges]);
 
   return useMemo(
     () => ({
       activateField,
-      clearEntranceLabelId: () => setActiveLabelId(null),
       enter,
-      entranceLabelId: activeLabelId,
       exit,
     }),
-    [activateField, activeLabelId, enter, exit, setActiveLabelId],
+    [activateField, enter, exit],
   );
 };
-
-/**
- * Hook that returns a setter for the entrance label ID.
- *
- * Use this to request that a label be activated for editing once its overlay
- * is ready in the scene. This integrates with
- * {@link useRegisterRendererEventHandlers} which handles the actual overlay
- * selection, avoiding race conditions with scene/overlay initialization.
- */
-export const useSetActiveLabelId = () => useSetAtom(activeLabelIdAtom);
