@@ -91,9 +91,13 @@ function Selector<T>(props: SelectorProps<T>) {
   }, [active, onSelect, toKey, valuesRef]);
 
   useLayoutEffect(() => {
-    setSearch(value || "");
+    // an async `value` update must not clobber an active editing session's
+    // search text — it would filter the open results by the stale value
+    if (!editing) {
+      setSearch(value || "");
+    }
     local.current = value || "";
-  }, [value]);
+  }, [value, editing]);
 
   const ref = useRef<HTMLInputElement | null>();
   const hovering = useRef(false);
