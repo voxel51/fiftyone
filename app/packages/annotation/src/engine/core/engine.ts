@@ -539,6 +539,10 @@ export class AnnotationEngine {
     }
   }
 
+  resync(sample: string): void {
+    this.dispatchChanges([wholeSampleReset(sample)]);
+  }
+
   // ---- internals ----
 
   private createLabelIn(

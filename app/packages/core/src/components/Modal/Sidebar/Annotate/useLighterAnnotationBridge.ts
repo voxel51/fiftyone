@@ -11,7 +11,7 @@ import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import { getNormalizedUrls } from "@fiftyone/state/src/utils";
 import { LABEL_LISTS_MAP } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { visibleLabelSchemas } from "./state";
 import { useLighterInteractionPolicy } from "./useLighterInteractionPolicy";
 import { useSyncOverlayReadOnly } from "./useSyncOverlayReadOnly";
@@ -42,12 +42,46 @@ export const useLighterAnnotationBridge = (): void => {
 
   const sampleId = modalSample?.sample?._id ?? "";
 
-  // key the scope set on content so renders don't re-create the bridge
-  const pathsKey = active ? [...active].sort().join(" ") : "";
-  const paths = useMemo(
-    () => new Set(pathsKey ? pathsKey.split(" ") : []),
-    [pathsKey],
-  );
+  // Stabilize the paths Set so purely additive changes (a field was activated)
+  // don't recreate the bridge. This avoids a flicker. Only a subtractive change
+  // (a field was deactivated) requires a fresh bridge: the loop's inScope filter
+  // must stop matching the removed path.
+  const pathsRef = useRef<Set<string>>(new Set());
+  const needsResyncRef = useRef(false);
+
+  const paths = useMemo(() => {
+    const next = new Set(active ?? []);
+    const prev = pathsRef.current;
+
+    const hasRemoval = [...prev].some((p) => !next.has(p));
+    if (hasRemoval || prev.size === 0) {
+      pathsRef.current = next;
+      needsResyncRef.current = false;
+      return next;
+    }
+
+    // additive-only: mutate in place so the bridge identity is preserved,
+    // then flag a resync so the bridge loop mounts labels on the new paths
+    let grew = false;
+    for (const p of next) {
+      if (!prev.has(p)) {
+        prev.add(p);
+        grew = true;
+      }
+    }
+    if (grew) {
+      needsResyncRef.current = true;
+    }
+    return prev;
+  }, [active]);
+
+  // This must run every render to catch ref mutaitons from the paths memo above.
+  useEffect(() => {
+    if (needsResyncRef.current && sampleId) {
+      needsResyncRef.current = false;
+      engine.resync(sampleId);
+    }
+  });
 
   // mutable inputs go through refs so the resolver is referentially stable —
   // a new resolver identity would re-create the bridge (clear + rehydrate)
