@@ -551,7 +551,7 @@ _________
    Using datasets <user_guide/using_datasets>
    FiftyOne App <user_guide/app>
    FiftyOne Enterprise 🚀 <enterprise/index>
-   FiftyOne Brain <brain>
+   FiftyOne Brain <brain/index>
    FiftyOne Multimodal __SUB_NEW__ <user_guide/multimodal>
 
 .. toctree::
@@ -561,7 +561,6 @@ _________
 
    Dataset Zoo <dataset_zoo/index>
    Model Zoo <model_zoo/index>
-   FiftyOne Labs <labs/index>
    Agents <agents/index>
    Plugins <plugins/index>
    Integrations <integrations/index>
