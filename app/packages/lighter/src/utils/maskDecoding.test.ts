@@ -29,6 +29,9 @@ describe("decodeMask", () => {
   beforeEach(() => {
     lastImageData = undefined;
 
+    // Force the deterministic main-thread fallback (no real Worker in jsdom).
+    vi.stubGlobal("Worker", undefined);
+
     vi.stubGlobal(
       "ImageData",
       class {
