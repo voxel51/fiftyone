@@ -1,16 +1,28 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  */
+import { Page } from "@playwright/test";
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { Box, SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { indexToId } from "src/shared/utils";
 
 /** Unique dataset name scoped to this test file, prefixed with `"quick-edit"`. */
 const DATASET_NAME = getUniqueDatasetNameWithPrefix("quick-edit");
 
-/** The fixed ObjectId used to address the single sample in the dataset. */
-const ID = "000000000000000000000000";
+/**
+ * One identical sample per test. Quick edit autosaves to the dataset, so each
+ * test edits its own sample and a failed test cannot leak state into another.
+ */
+const SAMPLE_IDS = {
+  classification: indexToId(0),
+  tooltip: indexToId(1),
+  resize: indexToId(2),
+  move: indexToId(3),
+  confidence: indexToId(4),
+};
 
 /** Width of the generated sample image in pixels. */
 const IMAGE_WIDTH = 914;
@@ -119,14 +131,16 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 /**
- * Starts the FiftyOne web server and creates a single-sample dataset
- * with a `Classification` and a `Detections` field before any tests run.
- * The detection is initialized to {@link INITIAL_BOUNDING_BOX}.
+ * Starts the FiftyOne web server and creates a dataset with one identical
+ * sample per test (see {@link SAMPLE_IDS}), each with a `Classification` and
+ * a `Detections` field. The detection is initialized to
+ * {@link INITIAL_BOUNDING_BOX}.
  */
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName: DATASET_NAME,
+    numSamples: Object.keys(SAMPLE_IDS).length,
     imageOptions: {
       fillColor: "white",
       height: IMAGE_HEIGHT,
@@ -154,32 +168,83 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
 /**
  * End-to-end tests for the quick-edit workflow in the sample modal.
  *
- * Each test opens the modal for the single sample in {@link DATASET_NAME}
- * (filtered by {@link ID}) and exercises the quick-edit UI for different
- * label types. Tests are run serially to avoid race conditions on shared
- * server state.
+ * Each test opens the modal for its own sample in {@link DATASET_NAME}
+ * (see {@link SAMPLE_IDS}) and exercises the quick-edit UI for different
+ * label types. Quick edit autosaves, so per-test samples keep the tests
+ * independent: a failure retries alone instead of re-running the whole file.
  */
-test.describe.serial("quick edit", () => {
+test.describe("quick edit", () => {
   /**
-   * Before each test, navigate to the dataset grid filtered to the target
-   * sample, open the modal, and assert that the looker canvas is visible.
+   * Navigates to the dataset grid filtered to the given sample, opens the
+   * modal, and asserts that the looker canvas is visible.
    */
-  test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
+  const openSample = async (
+    fiftyoneLoader: AbstractFiftyoneLoader,
+    page: Page,
+    modal: ModalPom,
+    id: string,
+  ) => {
     await fiftyoneLoader.waitUntilGridVisible(page, DATASET_NAME, {
-      searchParams: new URLSearchParams({ id: ID }),
+      searchParams: new URLSearchParams({ id }),
     });
 
     await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
-  });
+  };
+
+  /**
+   * Asserts that the sidebar edit fields reflect the given bounding box. The
+   * position panel shows the stored relative (0–1) coordinates directly.
+   */
+  const assertPosition = async (
+    modal: ModalPom,
+    { x, y, width, height }: Box,
+  ) => {
+    await modal.sidebar.edit.assert.verifyFieldValue(
+      "position.x",
+      x.toString(),
+    );
+    await modal.sidebar.edit.assert.verifyFieldValue(
+      "position.y",
+      y.toString(),
+    );
+    await modal.sidebar.edit.assert.verifyFieldValue(
+      "dimensions.width",
+      width.toString(),
+    );
+    await modal.sidebar.edit.assert.verifyFieldValue(
+      "dimensions.height",
+      height.toString(),
+    );
+  };
+
+  /**
+   * Opens the detection in quick-edit mode via the tooltip and waits for the
+   * lighter (quick-edit) canvas. Shared entry point for the detection tests
+   * below; tooltip content itself is covered by "detections via tooltip".
+   */
+  const enterDetectionQuickEdit = async (modal: ModalPom) => {
+    await modal.sampleCanvas.move(0.5, 0.5, "pointer");
+    await modal.sampleCanvas.tooltip.assert.isVisible();
+    await modal.sampleCanvas.tooltip.toggleLock();
+    await modal.sampleCanvas.tooltip.quickEdit();
+    await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
+    await modal.sampleCanvas.move(0.9, 0.9, "crosshair");
+  };
 
   /**
    * Verifies that a Classification label can be opened in quick-edit mode
    * via the sidebar. Checks the tooltip content before transitioning and
    * asserts the canvas switches to the lighter (quick-edit) view.
    */
-  test("classification via sidebar", async ({ modal }) => {
+  test("classification via sidebar", async ({
+    fiftyoneLoader,
+    modal,
+    page,
+  }) => {
+    await openSample(fiftyoneLoader, page, modal, SAMPLE_IDS.classification);
+
     // Init
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasScreenshot("classification-looker.png");
@@ -205,12 +270,13 @@ test.describe.serial("quick edit", () => {
 
   /**
    * Verifies that a Detection label can be opened in quick-edit mode via the
-   * tooltip. Exercises all eight bounding-box handles, asserting correct
-   * resize and move behavior including undo/redo for each handle. Also
-   * validates that setting the `confidence` field updates the canvas.
+   * tooltip. Checks the tooltip content and lock behavior before
+   * transitioning and asserts the canvas switches to the lighter
+   * (quick-edit) view with an empty undo/redo history.
    */
-  // TODO re-enable this test once its flakiness is resolved
-  test.skip("detections via tooltip", async ({ modal }) => {
+  test("detections via tooltip", async ({ fiftyoneLoader, modal, page }) => {
+    await openSample(fiftyoneLoader, page, modal, SAMPLE_IDS.tooltip);
+
     // Init
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasCursor("default");
@@ -241,29 +307,21 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.assert.hasScreenshot(
       "detection-lighter-selected-centered.png",
     );
+    await assertPosition(modal, INITIAL_BOUNDING_BOX);
+  });
 
-    /**
-     * Asserts that the sidebar edit fields reflect the given bounding box. The
-     * position panel shows the stored relative (0–1) coordinates directly.
-     */
-    const assertPosition = async function ({ x, y, width, height }: Box) {
-      await modal.sidebar.edit.assert.verifyFieldValue(
-        "position.x",
-        x.toString(),
-      );
-      await modal.sidebar.edit.assert.verifyFieldValue(
-        "position.y",
-        y.toString(),
-      );
-      await modal.sidebar.edit.assert.verifyFieldValue(
-        "dimensions.width",
-        width.toString(),
-      );
-      await modal.sidebar.edit.assert.verifyFieldValue(
-        "dimensions.height",
-        height.toString(),
-      );
-    };
+  /**
+   * Exercises all eight bounding-box handles, asserting correct resize
+   * behavior including undo/redo for each handle. Each iteration restores
+   * the initial bounding box.
+   */
+  test("detection resize via handles with undo/redo", async ({
+    fiftyoneLoader,
+    modal,
+    page,
+  }) => {
+    await openSample(fiftyoneLoader, page, modal, SAMPLE_IDS.resize);
+    await enterDetectionQuickEdit(modal);
 
     for (const point of DETECTION_CORNERS_AND_EDGES) {
       // Resize box
@@ -276,7 +334,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}.png`,
       );
-      await assertPosition(point.resize);
+      await assertPosition(modal, point.resize);
 
       // Undo
       await modal.sidebar.edit.undo();
@@ -284,7 +342,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png",
       );
-      await assertPosition(INITIAL_BOUNDING_BOX);
+      await assertPosition(modal, INITIAL_BOUNDING_BOX);
 
       // Redo
       await modal.sidebar.edit.redo();
@@ -293,7 +351,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}.png`,
       );
-      await assertPosition(point.resize);
+      await assertPosition(modal, point.resize);
 
       // Resize to original box
       await modal.sampleCanvas.move(0.5, 0.5, `${point.cursor}-resize`);
@@ -304,8 +362,22 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png",
       );
-      await assertPosition(INITIAL_BOUNDING_BOX);
+      await assertPosition(modal, INITIAL_BOUNDING_BOX);
     }
+  });
+
+  /**
+   * Drags the detection to all eight handle positions, asserting correct
+   * move behavior including undo/redo for each position. Each iteration
+   * restores the initial bounding box.
+   */
+  test("detection move with undo/redo", async ({
+    fiftyoneLoader,
+    modal,
+    page,
+  }) => {
+    await openSample(fiftyoneLoader, page, modal, SAMPLE_IDS.move);
+    await enterDetectionQuickEdit(modal);
 
     for (const point of DETECTION_CORNERS_AND_EDGES) {
       // Move box
@@ -317,7 +389,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}-move.png`,
       );
-      await assertPosition(point.move);
+      await assertPosition(modal, point.move);
 
       // Undo
       await modal.sidebar.edit.undo();
@@ -325,7 +397,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png",
       );
-      await assertPosition(INITIAL_BOUNDING_BOX);
+      await assertPosition(modal, INITIAL_BOUNDING_BOX);
 
       // Redo
       await modal.sidebar.edit.redo();
@@ -334,7 +406,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}-move.png`,
       );
-      await assertPosition(point.move);
+      await assertPosition(modal, point.move);
 
       // Move back
       await modal.sampleCanvas.move(point.x, point.y);
@@ -345,8 +417,18 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png",
       );
-      await assertPosition(INITIAL_BOUNDING_BOX);
+      await assertPosition(modal, INITIAL_BOUNDING_BOX);
     }
+  });
+
+  /**
+   * Validates that setting the `confidence` field updates the canvas, and
+   * that deselecting the detection keeps the edited value. The confidence
+   * change persists, but only to this test's own sample.
+   */
+  test("detection confidence edit", async ({ fiftyoneLoader, modal, page }) => {
+    await openSample(fiftyoneLoader, page, modal, SAMPLE_IDS.confidence);
+    await enterDetectionQuickEdit(modal);
 
     // Change confidence
     await modal.sidebar.edit.setFieldValue("confidence", "1.0");

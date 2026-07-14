@@ -18,7 +18,7 @@
  *     mask" for a masked detection, "Add mask" for a maskless one.
  *
  * Create/paint round-trips (drawing a polyline, painting a mask) live in
- * `MISSING-annotate-video-label-types-create.spec.ts`.
+ * `annotate-video-label-types-create.spec.ts`.
  */
 import { expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";

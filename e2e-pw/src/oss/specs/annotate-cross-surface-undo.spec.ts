@@ -5,7 +5,7 @@
  * write to ONE shared command stack through the annotation engine, so undo/redo
  * unwinds actions in LIFO order regardless of which surface produced them.
  *
- * Complements MISSING-annotate-edit.spec.ts (single-surface attribute edit) by
+ * Complements annotate-edit.spec.ts (single-surface attribute edit) by
  * exercising the engine-routed geometry edit path (Position.tsx → createPushAndExec)
  * and interleaving it with a canvas draw. Semantic assertions (field values, the
  * engine-derived Labels count, undo/redo enabled state) — no screenshots.
@@ -128,8 +128,7 @@ test.describe.serial("annotation cross-surface undo", () => {
       .toBeCloseTo(before, 4);
   });
 
-  // TODO re-enable this test once its flakiness is resolved
-  test.skip("a canvas drag commits through the engine and is undoable", async ({
+  test("a canvas drag commits through the engine and is undoable", async ({
     modal,
   }) => {
     // select the seeded box (opens the form + selects the overlay for dragging)
@@ -173,8 +172,7 @@ test.describe.serial("annotation cross-surface undo", () => {
       .toBeCloseTo(before, 3);
   });
 
-  // TODO re-enable this test once its flakiness is resolved
-  test.skip("a canvas draw and a sidebar edit share one LIFO undo stack", async ({
+  test("a canvas draw and a sidebar edit share one LIFO undo stack", async ({
     modal,
   }) => {
     const before = await modal.sidebar.annotate.getActiveLabelsCount();

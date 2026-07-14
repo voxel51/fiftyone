@@ -102,8 +102,8 @@ test.describe.serial("video per-frame detection drawing", () => {
         /\/sample\//.test(r.url()) &&
         ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "vehicle");
-    await modal.sidebar.edit.assert.verifyFieldValue("label", "vehicle");
+    await modal.sidebar.edit.selectFieldChoice("label", "person");
+    await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
     await saved;
 
     // the frame label survives a true round-trip

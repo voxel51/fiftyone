@@ -11,7 +11,7 @@
  * `usePolylineModeInstaller` creation handler; a brush stroke with nothing
  * selected fires `lighter:overlay-create`, which opens a fresh masked detection
  * (segmentation mode) on the engine frame path. Detection-box draw is covered
- * separately (`MISSING-annotate-video-draw.spec.ts`).
+ * separately (`annotate-video-draw.spec.ts`).
  */
 import { Browser, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -136,8 +136,7 @@ test.describe.serial("video non-box label create", () => {
     });
   });
 
-  // TODO re-enable this test once its flakiness is resolved
-  test.skip("painting a mask adds a track, assigns a class, and persists", async ({
+  test("painting a mask adds a track, assigns a class, and persists", async ({
     browser,
     fiftyoneLoader,
     modal,
@@ -164,14 +163,14 @@ test.describe.serial("video non-box label create", () => {
     // live masked overlay by the track's instance id, not a maskless stub
     await modal.sidebar.edit.assert.hasMaskPreview(true);
     const saved = savedSample(page);
-    await modal.sidebar.edit.selectFieldChoice("label", "vehicle");
-    await modal.sidebar.edit.assert.verifyFieldValue("label", "vehicle");
+    await modal.sidebar.edit.selectFieldChoice("label", "person");
+    await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
     await saved;
 
     // the masked detection survives a true round-trip with its mask intact
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
       await freshModal.videoAnnotate.assert.objectTrackCount(before + 1);
-      await freshModal.videoAnnotate.selectLabel("vehicle");
+      await freshModal.videoAnnotate.selectLabel("person");
       await freshModal.sidebar.edit.assert.hasMask(true);
       await freshModal.sidebar.edit.assert.hasMaskPreview(true);
     });

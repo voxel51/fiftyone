@@ -10,7 +10,7 @@
  *   - a single undo restores the source (count → 2).
  *
  * Masks are seeded via `fo.Detection` so the embedded mask carries `_cls` and
- * decodes (see MISSING-annotate-2d-mask.spec.ts for why the factory JSON path
+ * decodes (see annotate-2d-mask.spec.ts for why the factory JSON path
  * doesn't). Merge needs ≥2 masked detections in the field for the tool to enable.
  */
 import { Browser, expect, test as base } from "src/oss/fixtures";

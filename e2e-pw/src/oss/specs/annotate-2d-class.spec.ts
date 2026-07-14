@@ -106,8 +106,7 @@ test.describe.serial("2D label class editing", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "cat");
   });
 
-  // TODO re-enable this test once its flakiness is resolved
-  test.skip("a class change persists across a fresh load", async ({
+  test("a class change persists across a fresh load", async ({
     browser,
     fiftyoneLoader,
     modal,
