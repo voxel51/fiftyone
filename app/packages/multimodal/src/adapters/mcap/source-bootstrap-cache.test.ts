@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { StreamInventory } from "../../schemas/v1";
 import type { McapGridPreviewFrame } from "./grid-preview";
+import type { McapTimelineRange } from "./types";
 import {
   getMcapSourceBootstrap,
   peekMcapSourceBootstrap,
@@ -15,8 +16,9 @@ describe("MCAP source bootstrap cache", () => {
     const source = createSource("sample");
     const topics = [createTopic("/camera")];
     const poster = createPoster([1, 2, 3]);
+    const timelineRange = createTimelineRange();
 
-    publishMcapSourceBootstrap(source, { topics });
+    publishMcapSourceBootstrap(source, { timelineRange, topics });
     publishMcapSourceBootstrap(source, {
       poster,
       posterTopic: "/camera",
@@ -25,6 +27,7 @@ describe("MCAP source bootstrap cache", () => {
     expect(getMcapSourceBootstrap(source)).toEqual({
       poster,
       posterTopic: "/camera",
+      timelineRange,
       topics,
     });
   });
@@ -63,6 +66,14 @@ describe("MCAP source bootstrap cache", () => {
     });
   });
 });
+
+function createTimelineRange(): McapTimelineRange {
+  return {
+    activeTimeline: "log",
+    endTimeNs: 20_000_000_000n,
+    startTimeNs: 500_000_000n,
+  };
+}
 
 function createSource(sourceId: string): ByteSourceDescriptor {
   return { sourceId, url: `memory://${sourceId}.mcap` };

@@ -7,6 +7,7 @@ import {
   mcapGridPreviewFrameRetainedBytes,
   type McapGridPreviewFrame,
 } from "./grid-preview";
+import type { McapTimelineRange } from "./types";
 
 /** Keep enough nearby grid samples for first-open and short navigation runs. */
 const MAX_SOURCE_ENTRIES = 32;
@@ -17,6 +18,7 @@ const MAX_POSTER_BYTES = 32 * 1024 * 1024;
 export interface McapSourceBootstrap {
   readonly poster?: McapGridPreviewFrame;
   readonly posterTopic?: string;
+  readonly timelineRange?: McapTimelineRange;
   readonly topics?: readonly StreamInventory[];
 }
 
@@ -25,6 +27,7 @@ type CacheEntry = McapSourceBootstrap & {
 };
 
 const entries = new Map<string, CacheEntry>();
+const listenersBySource = new Map<string, Set<() => void>>();
 let retainedPosterBytes = 0;
 
 /**
@@ -49,15 +52,18 @@ export function publishMcapSourceBootstrap(
     bootstrap.posterTopic ??
     (replacesPoster ? undefined : current?.posterTopic);
   const topics = bootstrap.topics ?? current?.topics;
+  const timelineRange = bootstrap.timelineRange ?? current?.timelineRange;
   const next: CacheEntry = {
     ...(poster ? { poster } : {}),
     ...(posterTopic ? { posterTopic } : {}),
     ...(topics ? { topics } : {}),
+    ...(timelineRange ? { timelineRange } : {}),
     posterBytes: mcapGridPreviewFrameRetainedBytes(poster ?? null),
   };
   entries.set(key, next);
   retainedPosterBytes += next.posterBytes;
   evictBootstrapEntries();
+  notifyListeners(key);
 }
 
 /** Returns the current source bootstrap without changing its LRU position. */
@@ -82,6 +88,30 @@ export function getMcapSourceBootstrap(
   return copyEntry(entry);
 }
 
+/** Returns a stable cache snapshot suitable for `useSyncExternalStore`. */
+export function getMcapSourceBootstrapSnapshot(
+  source: ByteSourceDescriptor,
+): McapSourceBootstrap | null {
+  return entries.get(byteSourceAccessKey(source)) ?? null;
+}
+
+/** Subscribes to source-bootstrap publications for one source. */
+export function subscribeMcapSourceBootstrap(
+  source: ByteSourceDescriptor,
+  listener: () => void,
+): () => void {
+  const key = byteSourceAccessKey(source);
+  const listeners = listenersBySource.get(key) ?? new Set<() => void>();
+  listeners.add(listener);
+  listenersBySource.set(key, listeners);
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) {
+      listenersBySource.delete(key);
+    }
+  };
+}
+
 function copyEntry(entry: CacheEntry | undefined): McapSourceBootstrap | null {
   if (!entry) {
     return null;
@@ -90,6 +120,7 @@ function copyEntry(entry: CacheEntry | undefined): McapSourceBootstrap | null {
   return {
     ...(entry.poster ? { poster: entry.poster } : {}),
     ...(entry.posterTopic ? { posterTopic: entry.posterTopic } : {}),
+    ...(entry.timelineRange ? { timelineRange: entry.timelineRange } : {}),
     ...(entry.topics ? { topics: entry.topics } : {}),
   };
 }
@@ -98,6 +129,15 @@ function copyEntry(entry: CacheEntry | undefined): McapSourceBootstrap | null {
 export function resetMcapSourceBootstrapCacheForTests(): void {
   entries.clear();
   retainedPosterBytes = 0;
+  for (const key of listenersBySource.keys()) {
+    notifyListeners(key);
+  }
+}
+
+function notifyListeners(key: string): void {
+  for (const listener of listenersBySource.get(key) ?? []) {
+    listener();
+  }
 }
 
 function evictBootstrapEntries(): void {
@@ -113,5 +153,6 @@ function evictBootstrapEntries(): void {
     }
     entries.delete(oldest[0]);
     retainedPosterBytes -= oldest[1].posterBytes;
+    notifyListeners(oldest[0]);
   }
 }

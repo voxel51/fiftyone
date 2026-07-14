@@ -9,7 +9,11 @@ import type { StreamInventory } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
 import { filterDefaultTopicEquivalents } from "./topic-matching";
 import { streamTopics, type McapPreviewTopics } from "./stream-topics";
-import type { McapDecodedMessage, McapResourceClient } from "./types";
+import type {
+  McapDecodedMessage,
+  McapResourceClient,
+  McapTimelineRange,
+} from "./types";
 
 const NEXT_FRAME_STEP_NS = 1n;
 const NANOSECONDS_PER_MILLISECOND = 1_000_000;
@@ -147,6 +151,8 @@ export interface McapGridPreviewSnapshot {
  * Result returned by the grid preview worker for one high-level request.
  */
 export interface McapGridPreviewResult {
+  /** Full recording bounds, handed off on initial grid reads for overlays. */
+  readonly bootstrapTimelineRange?: McapTimelineRange;
   /** Full source inventory, handed off on initial grid reads for modal reuse. */
   readonly bootstrapTopics?: readonly StreamInventory[];
   /** Timeline timestamp of the decoded frame, used for 1x hover playback. */
@@ -162,6 +168,7 @@ export interface McapGridPreviewEntry {
   readonly client: McapResourceClient;
   autoSelection?: McapGridPreviewSelection | null;
   inventory?: readonly StreamInventory[];
+  timelineRange?: McapTimelineRange | null;
   topics?: McapGridTopics;
 }
 
@@ -182,11 +189,20 @@ export async function decodeGridPreview(
   { selectedStreamTopic, source, startTimeNs }: McapGridPreviewDecodeRequest,
 ): Promise<McapGridPreviewResult> {
   if (entry.topics === undefined) {
-    entry.inventory = await entry.client.readTopics({ source });
+    const [inventory, timelineRange] = await Promise.all([
+      entry.client.readTopics({ source }),
+      readGridTimelineRange(entry.client, source),
+    ]);
+    entry.inventory = inventory;
+    entry.timelineRange = timelineRange;
     entry.topics = streamTopics(entry.inventory);
+  } else if (entry.timelineRange === undefined) {
+    entry.timelineRange = await readGridTimelineRange(entry.client, source);
   }
 
   const topics = entry.topics;
+  const bootstrapTimelineRange =
+    startTimeNs === undefined ? (entry.timelineRange ?? undefined) : undefined;
   const bootstrapTopics =
     startTimeNs === undefined ? entry.inventory : undefined;
   const previewTopics = topics.previewable;
@@ -194,6 +210,7 @@ export async function decodeGridPreview(
 
   if (selectedStreamTopic && !selection) {
     return {
+      bootstrapTimelineRange,
       bootstrapTopics,
       state: {
         error: null,
@@ -208,6 +225,7 @@ export async function decodeGridPreview(
 
   if (!selection) {
     return {
+      bootstrapTimelineRange,
       bootstrapTopics,
       state: {
         error: null,
@@ -229,6 +247,7 @@ export async function decodeGridPreview(
 
   if (!result) {
     return {
+      bootstrapTimelineRange,
       bootstrapTopics,
       state: {
         error: null,
@@ -242,6 +261,7 @@ export async function decodeGridPreview(
   }
 
   return {
+    bootstrapTimelineRange,
     bootstrapTopics,
     frameTimeNs: result.frameTimeNs,
     nextStartTimeNs: result.nextStartTimeNs,
@@ -254,6 +274,19 @@ export async function decodeGridPreview(
       status: "ready",
     },
   };
+}
+
+async function readGridTimelineRange(
+  client: McapResourceClient,
+  source: ByteSourceDescriptor,
+): Promise<McapTimelineRange | null> {
+  try {
+    return await client.readTimelineRange({ source });
+  } catch {
+    // A preview remains useful for unusual MCAPs without indexed bounds; the
+    // temporal-tag overlay will fall back to its prior tag-derived domain.
+    return null;
+  }
 }
 
 function chooseSelection(

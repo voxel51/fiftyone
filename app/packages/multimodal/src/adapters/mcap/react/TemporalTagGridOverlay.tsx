@@ -2,11 +2,17 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import {
   useActiveTemporalTagFilterValues,
   useTemporalTagColor,
+  useTemporalTagsFieldActive,
 } from "@fiftyone/state";
-import { useMemo } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { TemporalTag } from "../../../temporal-tags";
 import { useSampleRendererTemporalTags } from "../../../temporal-tags";
+import {
+  getMcapSourceBootstrapSnapshot,
+  subscribeMcapSourceBootstrap,
+} from "../source-bootstrap-cache";
 import styles from "./TemporalTagGridOverlay.module.css";
+import { useStableMcapSource } from "./use-stable-mcap-source";
 
 /** Cap the stacked levels so the bar stays compact on a small grid tile. */
 const MAX_LEVELS = 3;
@@ -30,12 +36,14 @@ interface OverlayModel {
  * filter values: every filtered tag's intervals share one lane, colored per
  * tag, and overlapping intervals bump up into stacked levels (capped at
  * {@link MAX_LEVELS}). The time axis runs from 0 (recording start) to the
- * latest end across ALL of the sample's tags.
+ * recording end. The latest tag end is retained only as a fallback for MCAPs
+ * whose indexed timeline range cannot be read.
  */
 function buildOverlayModel(
   temporalTags: readonly TemporalTag[],
   activeValues: readonly string[],
   colorForTag: (value: string) => string,
+  recordingDurationNs?: number,
 ): OverlayModel | null {
   const active = new Set(activeValues);
   const byTag = new Map<string, { start: number; end: number }[]>();
@@ -104,7 +112,7 @@ function buildOverlayModel(
   return {
     marks,
     levelCount: Math.max(levelEnds.length, 1),
-    domainSpan: Math.max(domainEnd, 1),
+    domainSpan: Math.max(recordingDurationNs ?? domainEnd, 1),
   };
 }
 
@@ -114,21 +122,50 @@ const MARK_HEIGHT = 4;
 
 /**
  * Fetches the sample's temporal tags and renders the packed lane. Split from
- * the gate below so the fetch only runs when a temporal-tag filter is active.
+ * the gate below so the fetch only runs when the field or a filter is active.
  */
 function TemporalTagGridOverlayInner({
   ctx,
   activeValues,
+  showAll,
 }: {
   ctx: SampleRendererProps["ctx"];
   activeValues: readonly string[];
+  showAll: boolean;
 }) {
   const { temporalTags } = useSampleRendererTemporalTags(ctx);
   const colorForTag = useTemporalTagColor();
+  const source = useStableMcapSource(ctx);
+  const subscribe = useCallback(
+    (listener: () => void) =>
+      source ? subscribeMcapSourceBootstrap(source, listener) : () => undefined,
+    [source],
+  );
+  const bootstrap = useSyncExternalStore(
+    subscribe,
+    () => (source ? getMcapSourceBootstrapSnapshot(source) : null),
+    () => null,
+  );
+  const recordingDurationNs = bootstrap?.timelineRange
+    ? Number(
+        bootstrap.timelineRange.endTimeNs - bootstrap.timelineRange.startTimeNs,
+      )
+    : undefined;
+  const displayedValues = useMemo(
+    () =>
+      showAll ? [...new Set(temporalTags.map(({ tag }) => tag))] : activeValues,
+    [activeValues, showAll, temporalTags],
+  );
 
   const model = useMemo(
-    () => buildOverlayModel(temporalTags, activeValues, colorForTag),
-    [temporalTags, activeValues, colorForTag],
+    () =>
+      buildOverlayModel(
+        temporalTags,
+        displayedValues,
+        colorForTag,
+        recordingDurationNs,
+      ),
+    [temporalTags, displayedValues, colorForTag, recordingDurationNs],
   );
 
   if (!model) {
@@ -162,17 +199,24 @@ function TemporalTagGridOverlayInner({
 }
 
 /**
- * Bottom-of-tile overlay for MCAP grid previews: when a temporal-tag filter is
- * active, packs the filtered tags' intervals onto a single color-coded lane
- * (one color per tag; overlapping intervals bump up). Renders nothing (and
- * does no fetch) when no temporal-tag filter is active.
+ * Bottom-of-tile overlay for MCAP grid previews. Enabling the temporal-tags
+ * pseudo-field displays every interval, matching the sample-tags parent
+ * checkbox; selecting child filter values narrows the lane to those values.
+ * Renders nothing (and does no fetch) when neither state is active.
  */
 export function TemporalTagGridOverlay({ ctx }: SampleRendererProps) {
   const activeValues = useActiveTemporalTagFilterValues();
-  if (activeValues.length === 0) {
+  const fieldActive = useTemporalTagsFieldActive();
+  if (!fieldActive && activeValues.length === 0) {
     return null;
   }
-  return <TemporalTagGridOverlayInner ctx={ctx} activeValues={activeValues} />;
+  return (
+    <TemporalTagGridOverlayInner
+      ctx={ctx}
+      activeValues={activeValues}
+      showAll={fieldActive}
+    />
+  );
 }
 
 export default TemporalTagGridOverlay;
