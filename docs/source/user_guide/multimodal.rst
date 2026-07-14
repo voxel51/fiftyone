@@ -45,7 +45,7 @@ is automatically inferred as `"multimodal"`:
 
     import fiftyone as fo
 
-    dataset = fo.Dataset("driving-logs")
+    dataset = fo.Dataset("robot-teleop-episodes")
     dataset.add_samples(
         [
             fo.Sample(filepath="/path/to/episode-0001.mcap"),
@@ -277,8 +277,10 @@ You can create and read temporal tags programmatically:
 .. code-block:: python
     :linenos:
 
+    import fiftyone as fo
     import fiftyone.core.tags as fota
 
+    dataset = fo.load_dataset("robot-teleop-episodes")
     sample = dataset.first()
 
     # Tag the interval [start, end) on a sample, expressed in nanoseconds
@@ -485,16 +487,23 @@ buckets (`s3://`, `gs://`, `az://`).
 Enabling indexing
 -----------------
 
-To index a multimodal dataset, configure it with a
+Any dataset containing MCAP samples is
+:ref:`automatically registered <multimodal-overview>` as a multimodal
+dataset. To index it, configure it with a
 :ref:`projection manifest <multimodal-manifests>` and enable projections:
 
 .. code-block:: python
     :linenos:
 
-    from fiftyone.multimodal import MultimodalDataset
+    import fiftyone as fo
 
-    dataset = MultimodalDataset("driving-logs")
-    dataset.add_samples(...)
+    dataset = fo.Dataset("robot-teleop-episodes")
+    dataset.add_samples(
+        [
+            fo.Sample(filepath="/path/to/episode-0001.mcap"),
+            fo.Sample(filepath="/path/to/episode-0002.mcap"),
+        ]
+    )
 
     # Configure the dataset with your manifest and enable indexing
     with open("/path/to/manifest.yaml", "r") as f:
