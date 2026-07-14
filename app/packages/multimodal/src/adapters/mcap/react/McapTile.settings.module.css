@@ -25,12 +25,6 @@
   color: var(--color-content-text);
 }
 
-.row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
 .sectionHeader {
   align-items: center;
   display: flex;

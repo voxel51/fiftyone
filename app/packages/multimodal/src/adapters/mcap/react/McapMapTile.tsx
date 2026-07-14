@@ -396,95 +396,89 @@ const McapMapTile: React.FC<McapTileProps> = () => {
   );
 
   return (
-    <>
-      <div className={styles.body} data-testid="mcap-map-tile">
-        <McapMapLibreSurface
-          basemapStatus={basemapStatus}
-          bounds={bounds}
-          fitRouteNonce={fitRouteNonce}
-          followEgo={settings.followEgo}
-          locationEvidencePending={locationEvidencePending}
-          measureArmed={measureArmed}
-          measurement={measurement}
-          onHoverTimeNs={onHoverTimeNs}
-          onBasemapStatusChange={onBasemapStatusChange}
-          onMeasurePick={onMeasurePick}
-          onSeekTimeNs={onSeekTimeNs}
-          onUserMove={() => setSettings({ followEgo: false })}
-          playbackStore={store}
-          pulseActive={isPlaying}
-          recenterNonce={recenterNonce}
-          baseLayer={settings.baseLayer}
-          sourceKey={sourceKey}
-          tracks={readyTracks}
-          timeline={timeline}
-          viewportScope={mapViewportScope}
-        />
-        <div className={styles.overlay}>
-          {statusText ? (
-            <span
-              aria-live="polite"
-              className={styles.statusBadge}
-              role="status"
-            >
-              {statusText}
-            </span>
-          ) : null}
-          {!settings.followEgo && readyTracks.length > 0 ? (
-            <button
-              className={styles.controlButton}
-              onClick={() => {
-                setSettings({ followEgo: true });
-                setRecenterNonce((value) => value + 1);
-              }}
-              type="button"
-            >
-              Recenter
-            </button>
-          ) : null}
-          {readyTracks.length > 0 ? (
-            <button
-              className={styles.controlButton}
-              onClick={() => {
-                setSettings({ followEgo: false });
-                setFitRouteNonce((value) => value + 1);
-              }}
-              type="button"
-            >
-              Fit route
-            </button>
+    <div className={styles.body} data-testid="mcap-map-tile">
+      <McapMapLibreSurface
+        basemapStatus={basemapStatus}
+        bounds={bounds}
+        fitRouteNonce={fitRouteNonce}
+        followEgo={settings.followEgo}
+        locationEvidencePending={locationEvidencePending}
+        measureArmed={measureArmed}
+        measurement={measurement}
+        onHoverTimeNs={onHoverTimeNs}
+        onBasemapStatusChange={onBasemapStatusChange}
+        onMeasurePick={onMeasurePick}
+        onSeekTimeNs={onSeekTimeNs}
+        onUserMove={() => setSettings({ followEgo: false })}
+        playbackStore={store}
+        pulseActive={isPlaying}
+        recenterNonce={recenterNonce}
+        baseLayer={settings.baseLayer}
+        sourceKey={sourceKey}
+        tracks={readyTracks}
+        timeline={timeline}
+        viewportScope={mapViewportScope}
+      />
+      <div className={styles.overlay}>
+        {statusText ? (
+          <span aria-live="polite" className={styles.statusBadge} role="status">
+            {statusText}
+          </span>
+        ) : null}
+        {!settings.followEgo && readyTracks.length > 0 ? (
+          <button
+            className={styles.controlButton}
+            onClick={() => {
+              setSettings({ followEgo: true });
+              setRecenterNonce((value) => value + 1);
+            }}
+            type="button"
+          >
+            Recenter
+          </button>
+        ) : null}
+        {readyTracks.length > 0 ? (
+          <button
+            className={styles.controlButton}
+            onClick={() => {
+              setSettings({ followEgo: false });
+              setFitRouteNonce((value) => value + 1);
+            }}
+            type="button"
+          >
+            Fit route
+          </button>
+        ) : null}
+      </div>
+      {readyTracks.length > 0 ? (
+        <div className={styles.toolOverlay}>
+          <button
+            aria-label="Measure distance"
+            aria-pressed={measureArmed}
+            className={
+              measureArmed
+                ? styles.iconControlButtonActive
+                : styles.iconControlButton
+            }
+            onClick={onMeasureToggle}
+            title="Measure distance on the map (Esc clears)"
+            type="button"
+          >
+            <MeasureRulerIcon />
+          </button>
+          {measureReadout ? (
+            <div className={styles.measureReadout}>{measureReadout}</div>
           ) : null}
         </div>
-        {readyTracks.length > 0 ? (
-          <div className={styles.toolOverlay}>
-            <button
-              aria-label="Measure distance"
-              aria-pressed={measureArmed}
-              className={
-                measureArmed
-                  ? styles.iconControlButtonActive
-                  : styles.iconControlButton
-              }
-              onClick={onMeasureToggle}
-              title="Measure distance on the map (Esc clears)"
-              type="button"
-            >
-              <MeasureRulerIcon />
-            </button>
-            {measureReadout ? (
-              <div className={styles.measureReadout}>{measureReadout}</div>
-            ) : null}
-          </div>
-        ) : null}
-        {readyTracks.length > 0 ? <MapLegend tracks={readyTracks} /> : null}
-        {emptyText({
-          enabledTopicCount: visibleTopics.length,
-          locationTopicCount: locationSources.length,
-          loadingCount,
-          readyTrackCount: readyTracks.length,
-        })}
-      </div>
-    </>
+      ) : null}
+      {readyTracks.length > 0 ? <MapLegend tracks={readyTracks} /> : null}
+      {emptyText({
+        enabledTopicCount: visibleTopics.length,
+        locationTopicCount: locationSources.length,
+        loadingCount,
+        readyTrackCount: readyTracks.length,
+      })}
+    </div>
   );
 };
 

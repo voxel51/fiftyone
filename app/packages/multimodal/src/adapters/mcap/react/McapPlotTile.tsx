@@ -158,50 +158,48 @@ const McapPlotTile: React.FC<McapTileProps> = () => {
   ].filter(Boolean);
 
   return (
-    <>
-      <div className={plotStyles.body} data-testid="mcap-plot-tile">
-        {statusNotes.length > 0 ? (
-          <span
-            className={`${styles.statusBadge} ${
-              errorCount > 0 ? styles.statusBadgeError : ""
-            }`}
-          >
-            {statusNotes.join(" · ")}
+    <div className={plotStyles.body} data-testid="mcap-plot-tile">
+      {statusNotes.length > 0 ? (
+        <span
+          className={`${styles.statusBadge} ${
+            errorCount > 0 ? styles.statusBadgeError : ""
+          }`}
+        >
+          {statusNotes.join(" · ")}
+        </span>
+      ) : null}
+      {seriesConfigs.length === 0 ? (
+        <div className={styles.loading}>
+          <span className={styles.emptyText}>
+            Choose fields to plot in the panel settings
           </span>
-        ) : null}
-        {seriesConfigs.length === 0 ? (
-          <div className={styles.loading}>
-            <span className={styles.emptyText}>
-              Choose fields to plot in the panel settings
-            </span>
-          </div>
-        ) : ready.length > 0 ? (
-          <TimeseriesChart
-            data={chartData}
-            durationSec={durationSec}
-            onHoverTime={onHoverTime}
-            onSeek={seek}
-            registerHoverTimeListener={registerHoverTimeListener}
-            registerPlayheadListener={registerPlayheadListener}
-            series={chartSeries}
-          />
-        ) : (
-          <div className={styles.loading}>
-            <span
-              className={
-                errorCount > 0 && loadingCount === 0
-                  ? styles.emptyTextError
-                  : styles.emptyText
-              }
-            >
-              {errorCount > 0 && loadingCount === 0
-                ? "Selected series failed to load"
-                : "Loading series…"}
-            </span>
-          </div>
-        )}
-      </div>
-    </>
+        </div>
+      ) : ready.length > 0 ? (
+        <TimeseriesChart
+          data={chartData}
+          durationSec={durationSec}
+          onHoverTime={onHoverTime}
+          onSeek={seek}
+          registerHoverTimeListener={registerHoverTimeListener}
+          registerPlayheadListener={registerPlayheadListener}
+          series={chartSeries}
+        />
+      ) : (
+        <div className={styles.loading}>
+          <span
+            className={
+              errorCount > 0 && loadingCount === 0
+                ? styles.emptyTextError
+                : styles.emptyText
+            }
+          >
+            {errorCount > 0 && loadingCount === 0
+              ? "Selected series failed to load"
+              : "Loading series…"}
+          </span>
+        </div>
+      )}
+    </div>
   );
 };
 

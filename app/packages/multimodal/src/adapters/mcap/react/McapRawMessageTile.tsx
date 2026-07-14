@@ -85,40 +85,38 @@ const McapRawMessageTile: React.FC<McapTileProps> = () => {
   );
 
   return (
-    <>
-      <div className={rawStyles.body} data-cy="mcap-raw-tile">
-        {!topic ? (
-          <div className={styles.loading}>
-            <span className={styles.emptyText}>
-              Choose a topic in the panel settings
-            </span>
-          </div>
-        ) : !result ? (
-          <div className={styles.loading}>
-            <span
-              className={
-                state?.status === "error"
-                  ? styles.emptyTextError
-                  : styles.emptyText
-              }
-            >
-              {state?.status === "error"
-                ? `Could not read ${topic}: ${state.error ?? "unknown error"}`
-                : "Loading message…"}
-            </span>
-          </div>
-        ) : (
-          <>
-            <MetaRow result={result} topic={topic} />
-            <RecordBody
-              onAddNumericFieldToPlot={handleAddFieldToPlot}
-              plottableFieldPaths={plottableFieldPaths}
-              result={result}
-            />
-          </>
-        )}
-      </div>
-    </>
+    <div className={rawStyles.body} data-cy="mcap-raw-tile">
+      {!topic ? (
+        <div className={styles.loading}>
+          <span className={styles.emptyText}>
+            Choose a topic in the panel settings
+          </span>
+        </div>
+      ) : !result ? (
+        <div className={styles.loading}>
+          <span
+            className={
+              state?.status === "error"
+                ? styles.emptyTextError
+                : styles.emptyText
+            }
+          >
+            {state?.status === "error"
+              ? `Could not read ${topic}: ${state.error ?? "unknown error"}`
+              : "Loading message…"}
+          </span>
+        </div>
+      ) : (
+        <>
+          <MetaRow result={result} topic={topic} />
+          <RecordBody
+            onAddNumericFieldToPlot={handleAddFieldToPlot}
+            plottableFieldPaths={plottableFieldPaths}
+            result={result}
+          />
+        </>
+      )}
+    </div>
   );
 };
 

@@ -394,7 +394,7 @@ function PointCloudPreviewFrame({
       setLive(false);
     });
     if (lease === null) {
-      // Denied (Phase 3 budget policy): stay on the snapshot.
+      // The live-renderer budget is full; stay on the snapshot.
       return undefined;
     }
 

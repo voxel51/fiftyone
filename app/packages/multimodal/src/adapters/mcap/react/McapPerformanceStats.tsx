@@ -41,6 +41,7 @@ import styles from "./McapSettingsSidebar.module.css";
 const STATS_REFRESH_INTERVAL_MS = 1_000;
 const PLAYHEAD_REFRESH_INTERVAL_MS = 250;
 const COPY_CONFIRMATION_MS = 1_500;
+const LONG_FRAME_THRESHOLD_MS = 50;
 
 interface PointCloudSamplingSummary {
   readonly largestFinitePointCount: number;
@@ -203,7 +204,7 @@ function LivePerformanceStats({
               formatOptionalMilliseconds(framePerformance.p95FrameTimeMs),
             ],
             [
-              "Long frames (≥50 ms)",
+              `Long frames (≥${LONG_FRAME_THRESHOLD_MS} ms)`,
               `${formatInteger(framePerformance.longFrames)} / s`,
             ],
           ]}
@@ -384,8 +385,9 @@ function useFramePerformanceStats(): FramePerformanceStats {
         setStats({
           averageFrameTimeMs: totalFrameTime / frameDurations.length,
           framesPerSecond: (frameDurations.length * 1_000) / elapsed,
-          longFrames: frameDurations.filter((duration) => duration >= 50)
-            .length,
+          longFrames: frameDurations.filter(
+            (duration) => duration >= LONG_FRAME_THRESHOLD_MS,
+          ).length,
           p95FrameTimeMs: sortedDurations[p95Index],
         });
         frameDurations = [];
