@@ -24,6 +24,14 @@ export interface EncodedImageVisualization {
   readonly mimeType?: string;
 }
 
+/** Full-precision depth samples retained alongside a display-ready raw image. */
+export interface RawImageDepthData {
+  /** Converts one stored sample into meters. */
+  readonly metersPerUnit: number;
+  /** Contiguous row-major samples from the source image's top-left pixel. */
+  readonly values: Uint16Array | Float32Array;
+}
+
 interface BaseEncodedVideoVisualization {
   readonly kind: typeof VISUALIZATION_KIND.ENCODED_VIDEO;
   readonly bytes: Uint8Array;
@@ -68,6 +76,7 @@ export interface RawImageVisualization {
    * Per-message source coordinate frame decoded from the image header.
    */
   readonly coordinateFrameId?: string;
+  readonly depth?: RawImageDepthData;
   readonly height: number;
   readonly rgba: Uint8Array;
   readonly sourceEncoding: string;
@@ -576,11 +585,20 @@ export interface DecodedResourceHints {
   readonly transferables?: readonly Transferable[];
 }
 
+/** A successful decode's bounded capability or quality diagnostic. */
+export interface DecodedDiagnostic {
+  readonly capability?: string;
+  readonly code: string;
+  readonly message: string;
+  readonly severity: "info" | "warning";
+}
+
 /**
  * Structured decoder output for downstream playback and visualization.
  */
 export interface DecodedOutput {
   readonly attributes?: Record<string, DecodedAttributeValue>;
+  readonly diagnostics?: readonly DecodedDiagnostic[];
   readonly resourceHints?: DecodedResourceHints;
   readonly timing?: DecodedTiming;
   readonly visualization?: DecodedVisualization;

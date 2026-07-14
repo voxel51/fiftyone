@@ -3,7 +3,8 @@ import type {
   PoseVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
-import { recordMcap3dTrajectoryFrameOverrides } from "./mcap-3d-view-state";
+import type { Mcap3dViewStateStore } from "./mcap-3d-view-state";
+import { useMcap3dViewStateStore } from "./mcap-3d-view-state-context";
 import { useMcapPoseTrajectoriesContext } from "./mcap-pose-trajectories-context";
 import {
   defaultTrajectoryFrame,
@@ -29,6 +30,7 @@ export function useMcap3dPoseTrajectories({
   poseTopics,
   restore = null,
   sceneAnnotationTopics,
+  viewStateStore: suppliedViewStateStore,
 }: {
   readonly annotationFrames: readonly (McapTopicPlaybackFrame<SceneUpdateVisualization> | null)[];
   readonly frameIds: readonly string[];
@@ -37,7 +39,9 @@ export function useMcap3dPoseTrajectories({
   readonly poseTopics: readonly string[];
   readonly restore?: Readonly<Record<string, string>> | null;
   readonly sceneAnnotationTopics: readonly string[];
+  readonly viewStateStore?: Mcap3dViewStateStore;
 }) {
+  const viewStateStore = useMcap3dViewStateStore(suppliedViewStateStore);
   const trajectories = useMcapPoseTrajectoriesContext();
   const [trajectoryFrameOverrides, setTrajectoryFrameOverrides] = useState<
     Readonly<Record<string, string>>
@@ -46,8 +50,8 @@ export function useMcap3dPoseTrajectories({
   // This effect writes the per-topic trajectory frame overrides through to
   // the session view-state store so they can carry across sample navigation.
   useEffect(() => {
-    recordMcap3dTrajectoryFrameOverrides(trajectoryFrameOverrides);
-  }, [trajectoryFrameOverrides]);
+    viewStateStore.recordTrajectoryFrameOverrides(trajectoryFrameOverrides);
+  }, [trajectoryFrameOverrides, viewStateStore]);
   // Keyed on frame-id CONTENT, not array identity: `frameIds` is re-derived
   // every playback tick, and letting that identity churn reach the
   // trajectory scene updates would rebuild (and dispose) the

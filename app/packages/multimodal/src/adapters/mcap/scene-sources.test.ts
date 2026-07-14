@@ -148,6 +148,30 @@ describe("mcapSceneSources", () => {
     ]);
   });
 
+  it("does not attach an arbitrary calibration when fuzzy matches tie", () => {
+    const sources = mcapSceneSources([
+      createTopic("/boxi/hesai/intensity_image", "foxglove.CompressedVideo"),
+      createTopic(
+        "/boxi/alphasense/front_left/camera_info",
+        "sensor_msgs/msg/CameraInfo",
+        "cdr",
+        "ros2msg",
+      ),
+      createTopic(
+        "/boxi/alphasense/front_right/camera_info",
+        "sensor_msgs/msg/CameraInfo",
+        "cdr",
+        "ros2msg",
+      ),
+    ]);
+
+    expect(sources[0]).toEqual({
+      id: "/boxi/hesai/intensity_image",
+      label: "boxi/hesai/intensity_image",
+      type: MCAP_SOURCE_TYPE.IMAGE,
+    });
+  });
+
   it("classifies JSON-schema ROS topics from Test1-style MCAPs", () => {
     const sources = mcapSceneSources([
       createTopic(

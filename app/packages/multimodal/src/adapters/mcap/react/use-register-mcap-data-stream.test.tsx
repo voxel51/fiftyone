@@ -41,6 +41,7 @@ import { useRegisterMcapDataStream } from "./use-register-mcap-data-stream";
 const TOPIC = "/CAM_FRONT/image_rect_compressed";
 const IMAGE_ANNOTATION_TOPIC = "/CAM_FRONT/annotations";
 const LIDAR_TOPIC = "/LIDAR_TOP";
+const MAP_TOPIC = "/map";
 const RADAR_TOPIC = "/RADAR_FRONT";
 const DEFAULT_TEST_TOPICS = [TOPIC] as const;
 
@@ -50,6 +51,86 @@ afterEach(() => {
 });
 
 describe("useRegisterMcapDataStream", () => {
+  it("pauses and starts the next source at its first data tick", async () => {
+    const sourceA = createSource("source-a");
+    const sourceB = createSource("source-b");
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const onApi = (value: ReturnType<typeof usePlayback>) => {
+      api = value;
+    };
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly McapSynchronizedMessageWindow[]>(
+            () => undefined,
+          ),
+      ),
+      readSynchronizedMessages: vi.fn(
+        () => new Promise<McapSynchronizedMessageWindow>(() => undefined),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTopicTimeBounds: vi.fn(async ({ source }) => [
+        {
+          firstMessageTimeNs:
+            source.sourceId === sourceB.sourceId ? 10_000_000n : 0n,
+          lastMessageTimeNs: 1_000_000_000n,
+          topic: TOPIC,
+        },
+      ]),
+    });
+
+    const { rerender } = render(
+      <Harness
+        client={client}
+        onApi={onApi}
+        onStore={storeCapture.onStore}
+        source={sourceA}
+        subscribe={false}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+    await waitFor(() => {
+      expect(client.readTimelineRange).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      api?.seek(0.75);
+      api?.play();
+    });
+    expect(getPlayhead(store)).toBe(0.75);
+    expect(getIsPlaying(store)).toBe(true);
+
+    rerender(
+      <Harness
+        client={client}
+        onApi={onApi}
+        onStore={storeCapture.onStore}
+        source={null}
+        subscribe={false}
+      />,
+    );
+
+    expect(getPlayhead(store)).toBe(0);
+    expect(getIsPlaying(store)).toBe(false);
+
+    rerender(
+      <Harness
+        client={client}
+        onApi={onApi}
+        onStore={storeCapture.onStore}
+        source={sourceB}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getPlayhead(store)).toBeCloseTo(1 / 30, 6);
+    });
+    expect(getIsPlaying(store)).toBe(false);
+    expect(client.readTopicTimeBounds).toHaveBeenCalledTimes(2);
+  });
+
   it("ignores in-flight batch results after the source changes", async () => {
     const sourceA = createSource("source-a");
     const sourceB = createSource("source-b");
@@ -218,7 +299,6 @@ describe("stream status + buffering feedback", () => {
         blockingTopics={[LIDAR_TOPIC, RADAR_TOPIC, TOPIC]}
         client={client}
         onStore={storeCapture.onStore}
-        pointCloudTopics={[LIDAR_TOPIC, RADAR_TOPIC]}
         source={source}
         subscribedTopics={[LIDAR_TOPIC, RADAR_TOPIC, TOPIC]}
       />,
@@ -245,6 +325,37 @@ describe("stream status + buffering feedback", () => {
       RADAR_TOPIC,
       TOPIC,
     ]);
+  });
+
+  it("queues blocking current-frame data before non-blocking map overlays", async () => {
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readSynchronizedMessages: vi.fn(
+        () => new Promise<McapSynchronizedMessageWindow>(() => undefined),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        allTopics={[MAP_TOPIC, TOPIC]}
+        blockingTopics={[TOPIC]}
+        client={client}
+        onStore={storeCapture.onStore}
+        source={source}
+        subscribedTopics={[MAP_TOPIC, TOPIC]}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(client.readSynchronizedMessages).toHaveBeenCalledTimes(2);
+    });
+    const calls = vi.mocked(client.readSynchronizedMessages).mock.calls;
+    expect(calls[0]?.[0].topics).toEqual([TOPIC]);
+    expect(calls[1]?.[0].topics).toEqual([MAP_TOPIC]);
   });
 
   it("does not queue idle background lookahead while startup data is still in flight", async () => {
@@ -871,6 +982,61 @@ describe("stream status + buffering feedback", () => {
     }
   });
 
+  it("increments failure state only for the topic whose payload decode failed", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const source = createSource("source");
+      const storeCapture = capturePlaybackStore();
+      let api: ReturnType<typeof usePlayback> | undefined;
+      const client = createClient({
+        readSynchronizedMessageBatch: vi.fn(async (request) =>
+          request.timeNs.map(createPartialDecodeWindow),
+        ),
+        readSynchronizedMessages: vi.fn(async (request) =>
+          createPartialDecodeWindow(request.timeNs),
+        ),
+        readTimelineRange: vi.fn(async () => createTimelineRange()),
+      });
+
+      render(
+        <Harness
+          allTopics={[TOPIC, LIDAR_TOPIC]}
+          blockingTopics={[TOPIC, LIDAR_TOPIC]}
+          client={client}
+          onApi={(playback) => {
+            api = playback;
+          }}
+          onStore={storeCapture.onStore}
+          source={source}
+          subscribedTopics={[TOPIC, LIDAR_TOPIC]}
+        />,
+        { wrapper: TestProviders },
+      );
+      const store = storeCapture.store();
+
+      await waitFor(() => {
+        expect(getMcapTopicStatus(store, LIDAR_TOPIC)).toBe("ready");
+        expect(getStreamValue(store, LIDAR_TOPIC)).not.toBeNull();
+      });
+      await act(async () => {
+        api?.seek(0.5);
+        await Promise.resolve();
+      });
+      await waitFor(() => {
+        expect(getMcapTopicStatus(store, TOPIC)).toBe("failed");
+      });
+      expect(getMcapTopicStatus(store, LIDAR_TOPIC)).toBe("ready");
+      expect(getStreamValue(store, LIDAR_TOPIC)).not.toBeNull();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("giving up on topics"),
+        [TOPIC],
+        expect.any(Error),
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("clears the engine's paused-seek buffering flag once the seeked tick is covered", async () => {
     const source = createSource("source");
     // Hold every priority current-frame request open, keyed by tick, so
@@ -1095,7 +1261,7 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     kind: VISUALIZATION_KIND.ENCODED_IMAGE,
   } as const;
 
-  it("drops held frames on seek so an uncovered target shows loading", async () => {
+  it("retains the previous frame while an uncovered seek target loads", async () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
@@ -1133,16 +1299,18 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
     await waitFor(() => {
       expect(getStreamValue(store, TOPIC)).not.toBeNull();
     });
+    const previousFrame = getStreamValue(store, TOPIC);
 
     act(() => {
       api?.seek(0.9);
     });
 
-    // The debounced seek event clears held frames; the uncovered target
-    // renders its explicit loading state instead of the pre-seek frame.
+    // The debounced seek keeps the previous frame until foreground data for
+    // the target arrives. Stream status makes that retained content explicit.
     await waitFor(() => {
-      expect(getStreamValue(store, TOPIC)).toBeNull();
+      expect(getMcapTopicStatus(store, TOPIC)).toBe("loading");
     });
+    expect(getStreamValue(store, TOPIC)).toBe(previousFrame);
   });
 
   it("gates a pending play press behind the bandwidth cushion and reports progress", async () => {
@@ -1584,7 +1752,6 @@ function Harness({
   client,
   onStore,
   onApi,
-  pointCloudTopics = [],
   source,
   staleMediaWarningNs = 0n,
   staleWarningTopics = DEFAULT_TEST_TOPICS,
@@ -1597,7 +1764,6 @@ function Harness({
   readonly client: McapResourceClient;
   readonly onStore: (store: PlaybackStore) => void;
   readonly onApi?: (api: ReturnType<typeof usePlayback>) => void;
-  readonly pointCloudTopics?: readonly string[];
   readonly source: ByteSourceDescriptor | null;
   readonly staleMediaWarningNs?: bigint;
   readonly staleWarningTopics?: readonly string[];
@@ -1612,7 +1778,6 @@ function Harness({
     allTopics,
     blockingTopics,
     client,
-    pointCloudTopics,
     source,
     staleMediaWarningNs,
     staleWarningTopics,
@@ -1765,6 +1930,43 @@ function createEmptyWindow(timeNs: bigint): McapSynchronizedMessageWindow {
     endTimeNs: timeNs,
     messages: [],
     messagesByTopic: {},
+    startTimeNs: timeNs,
+    streamPolicies: {},
+    timeNs,
+  };
+}
+
+function createPartialDecodeWindow(
+  timeNs: bigint,
+): McapSynchronizedMessageWindow {
+  const lidarMessage = createDecodedMessage({
+    timeNs,
+    topic: LIDAR_TOPIC,
+    visualization: {
+      bytes: new Uint8Array([1]),
+      kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+    },
+  });
+  return {
+    activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+    decodeErrorsByTopic: {
+      [TOPIC]: [
+        {
+          code: "message-decode-failed",
+          message: "invalid calibration",
+          messageTimeNs: timeNs,
+          payloadIdentity: '["cdr","ros2msg","sensor_msgs/msg/CameraInfo"]',
+          requestedTimeNs: timeNs,
+          topic: TOPIC,
+        },
+      ],
+    },
+    endTimeNs: timeNs,
+    messages: [lidarMessage],
+    messagesByTopic: {
+      [LIDAR_TOPIC]: [lidarMessage],
+      [TOPIC]: [],
+    },
     startTimeNs: timeNs,
     streamPolicies: {},
     timeNs,

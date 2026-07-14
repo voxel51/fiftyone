@@ -110,6 +110,7 @@ export const SESSION_DEFAULT: Session = {
     colorBy: "field",
     fields: [],
     labelTags: {},
+    temporalTags: {},
     multicolorKeypoints: false,
     opacity: 0.7,
     showSkeletons: true,

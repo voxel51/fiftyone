@@ -70,6 +70,10 @@ export type FetchFunctionConfig<T> = {
    * @default false
    */
   cache?: boolean;
+  /** Cancels the request and response-body read. */
+  signal?: AbortSignal;
+  /** Reports cumulative response-body bytes as they arrive. */
+  onProgress?: (loadedBytes: number) => void;
 };
 
 /**
@@ -106,6 +110,8 @@ export interface FetchFunctionExtended {
     retryCodes?: number[],
     errorHandler?: (response: Response) => void | Promise<void>,
     headers?: Record<string, string>,
+    signal?: AbortSignal,
+    onProgress?: (loadedBytes: number) => void,
   ): Promise<FetchFunctionResult<R>>;
 }
 
@@ -212,6 +218,8 @@ export const getFetchFunctionExtended =
         config.retryCodes,
         config.errorHandler,
         config.headers,
+        config.signal,
+        config.onProgress,
       );
 
     if (config.cache) {
@@ -318,6 +326,8 @@ export const setFetchFunction = (
     retryCodes = [502, 503, 504],
     errorHandler,
     headers,
+    signal,
+    onProgress,
   ) => {
     let url: string;
     const controller = new AbortController();
@@ -366,7 +376,7 @@ export const setFetchFunction = (
       headers,
       mode: "cors",
       body: body ? JSON.stringify(body) : null,
-      signal: controller.signal,
+      signal: signal ?? controller.signal,
       referrerPolicy: "same-origin",
     });
 
@@ -420,6 +430,15 @@ export const setFetchFunction = (
       };
     }
 
+    if (result === "arrayBuffer" && onProgress) {
+      return {
+        response: asFetchResult(
+          await readResponseArrayBuffer(response, onProgress),
+        ),
+        headers: response.headers,
+      };
+    }
+
     return {
       response: await response[result](),
       headers: response.headers,
@@ -448,8 +467,48 @@ export const setFetchFunction = (
       retryCodes,
       errorHandler,
       headers,
+      undefined,
+      undefined,
     ).then((res) => res.response);
 };
+
+// FetchFunctionExtended predates result-type discrimination and lets callers
+// select the generic response type. Keep that boundary in one place for the
+// progress-aware array-buffer path instead of leaking an `any` assertion.
+function asFetchResult<Result>(value: unknown): Result {
+  return value as Result;
+}
+
+async function readResponseArrayBuffer(
+  response: Response,
+  onProgress: (loadedBytes: number) => void,
+): Promise<ArrayBuffer> {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    const buffer = await response.arrayBuffer();
+    onProgress(buffer.byteLength);
+    return buffer;
+  }
+
+  const chunks: Uint8Array[] = [];
+  let loadedBytes = 0;
+  onProgress(loadedBytes);
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loadedBytes += value.byteLength;
+    onProgress(loadedBytes);
+  }
+
+  const bytes = new Uint8Array(loadedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes.buffer;
+}
 
 class JSONStreamParser {
   constructor(

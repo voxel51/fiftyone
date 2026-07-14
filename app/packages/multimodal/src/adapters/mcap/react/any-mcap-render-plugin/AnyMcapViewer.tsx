@@ -183,7 +183,6 @@ const AnyMcapViewer: React.FC = () => {
                 Unmount recording
               </Button>
             }
-            latencyLabel="any mcap viewer"
             layoutScopeKey={`any-mcap:${active.source.sourceId}`}
             source={active.source}
           />

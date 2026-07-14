@@ -8,6 +8,14 @@ const VIDEO_DECODE_SESSION_CAP = 6;
 const VIDEO_DECODE_TIMEOUT_MS = 3000;
 const NANOSECONDS_PER_MICROSECOND = 1000n;
 
+/** Expected decoder state that can resolve once more stream data arrives. */
+export class VideoTextureWaitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "VideoTextureWaitError";
+  }
+}
+
 type EncodedVideoChunkType = "key" | "delta";
 
 interface EncodedVideoChunkLike {
@@ -189,7 +197,7 @@ class H264VideoDecodeSession {
     this.lastTimestampUs = timestampUs;
 
     if (!frame.h264?.hasFrame) {
-      throw new Error("Waiting for H.264 frame");
+      throw new VideoTextureWaitError("Waiting for H.264 frame");
     }
 
     const decoder = await this.ensureDecoder(frame);
@@ -206,12 +214,14 @@ class H264VideoDecodeSession {
     frame: EncodedVideoVisualization,
   ): Promise<VideoDecoderLike> {
     if (!frame.keyframe && !this.decoder) {
-      throw new Error("Waiting for H.264 keyframe");
+      throw new VideoTextureWaitError("Waiting for H.264 keyframe");
     }
 
     const codecString = frame.h264?.codecString ?? this.codecString;
     if (!codecString) {
-      throw new Error("Waiting for H.264 keyframe with SPS/PPS");
+      throw new VideoTextureWaitError(
+        "Waiting for H.264 keyframe with SPS/PPS",
+      );
     }
 
     if (
