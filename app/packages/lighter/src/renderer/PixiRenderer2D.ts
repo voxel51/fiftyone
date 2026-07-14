@@ -79,10 +79,10 @@ export class PixiRenderer2D implements Renderer2D {
       return;
     }
     try {
-      await Promise.all([
-        fonts.load(`${FONT_WEIGHT} ${FONT_SIZE}px ${FONT_FAMILY}`),
-        fonts.ready,
-      ]);
+      // the app's stylesheets register the face well before lighter mounts,
+      // so this waits on the specific load rather than document-wide
+      // fonts.ready, which can stall renderer startup on unrelated fonts
+      await fonts.load(`${FONT_WEIGHT} ${FONT_SIZE}px ${FONT_FAMILY}`);
     } catch {
       // draw with whatever font is available
     }
