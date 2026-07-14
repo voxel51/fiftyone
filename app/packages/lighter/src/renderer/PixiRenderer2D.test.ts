@@ -129,7 +129,8 @@ describe("PixiRenderer2D graphics context lifecycle", () => {
     const graphics = internal.containers
       .get("c1")
       .children.find((c: PIXI.Container) => c instanceof PIXI.Graphics) as
-      PIXI.Graphics | undefined;
+      | PIXI.Graphics
+      | undefined;
     expect(graphics).toBeDefined();
 
     // The GraphicsContext is freed only when destroy is called with context: true.
