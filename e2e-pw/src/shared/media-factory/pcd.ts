@@ -116,7 +116,7 @@ export const createPcd = (options: {
   }
   if (proc.status !== 0) {
     throw new Error(
-      `Pcd generation failed with exit code ${proc.status}: ${proc.stderr}`
+      `Pcd generation failed with exit code ${proc.status}: ${proc.stderr}`,
     );
   }
 
