@@ -41,7 +41,10 @@ import {
   useMcapImageProjection,
   useMcapPlaybackSettings,
 } from "./mcap-modal-settings";
-import { useMcapImageTileLabelTopics } from "./mcap-panel-visibility";
+import {
+  useMcapImageTileLabelTopics,
+  useMcapImageTilePointCloudProjection,
+} from "./mcap-panel-visibility";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import {
   chooseNextImageTopic,
@@ -107,6 +110,8 @@ const IMAGE_DISPLAY_HELP =
   "Pixels shown in this tile. Recorded pixels preserves the source image exactly. Rectified view remaps a supported original image into the calibration's rectified pixel space and moves annotations, projections, and picking with it.";
 const RECORDED_IMAGE_GEOMETRY_HELP =
   "Coordinate system of the recorded image. Auto recognizes canonical image_raw and image_rect topic suffixes, accepts pixel-equivalent models, and withholds ambiguous overlays otherwise. Original camera applies K and lens distortion D. Rectified uses R and P without applying D.";
+const POINT_CLOUD_PROJECTION_HELP =
+  "Projects selected 3D point clouds into this camera image using its calibration and frame transforms. Choose which clouds to overlay and adjust their dot size. These settings affect only this image tile.";
 
 const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const [imageDims, setImageDims] = useState<{
@@ -145,7 +150,12 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   );
   const { labelTopics: storedLabelTopics, setLabelTopics } =
     useMcapImageTileLabelTopics(topic);
-  const { projection, setProjection } = useMcapImageProjection(topic);
+  const { projection: cameraProjection, setProjection: setCameraProjection } =
+    useMcapImageProjection(topic);
+  const {
+    projection: pointCloudProjection,
+    setProjection: setPointCloudProjection,
+  } = useMcapImageTilePointCloudProjection(topic);
 
   // This effect binds the pane to the best undisplayed image source once
   // sources resolve.
@@ -226,7 +236,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     images.find((source) => source.id === topic)?.metadata?.[
       MCAP_SCENE_SOURCE_METADATA.CALIBRATION_TOPIC
     ] ?? null;
-  const explicitCalibrationTopic = projection.calibrationTopic;
+  const explicitCalibrationTopic = cameraProjection.calibrationTopic;
   const explicitCalibrationAvailable =
     !explicitCalibrationTopic ||
     calibrationSources.some((source) => source.id === explicitCalibrationTopic);
@@ -243,11 +253,11 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
       calibration
         ? resolveMcapCameraModel({
             calibration,
-            geometry: projection.geometry,
+            geometry: cameraProjection.geometry,
             imageTopic: topic,
           })
         : null,
-    [calibration, projection.geometry, topic],
+    [calibration, cameraProjection.geometry, topic],
   );
   const rectifiedModelResolution = useMemo(
     () =>
@@ -268,7 +278,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   );
   const rectifiedDisplay = useMemo(() => {
     if (
-      projection.display !== "rectified" ||
+      cameraProjection.display !== "rectified" ||
       sourceDimensionMismatch ||
       cameraModelResolution?.status !== "ready" ||
       cameraModelResolution.mode !== "original" ||
@@ -282,12 +292,12 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     );
   }, [
     cameraModelResolution,
-    projection.display,
+    cameraProjection.display,
     rectifiedModelResolution,
     sourceDimensionMismatch,
   ]);
   const rectifiedViewActive = Boolean(
-    projection.display === "rectified" &&
+    cameraProjection.display === "rectified" &&
     !sourceDimensionMismatch &&
     cameraModelResolution?.status === "ready" &&
     (cameraModelResolution.mode === "rectified" || rectifiedDisplay),
@@ -345,14 +355,20 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     [pointCloudSources],
   );
   const selectedProjectionTopics = useMemo(() => {
-    if (!projection.enabled) return [];
-    if (projection.topics === null) return pointCloudTopics;
+    if (!pointCloudProjection.enabled) return [];
+    if (pointCloudProjection.topics === null) return pointCloudTopics;
     const available = new Set(pointCloudTopics);
-    return projection.topics.filter((cloudTopic) => available.has(cloudTopic));
-  }, [pointCloudTopics, projection.enabled, projection.topics]);
+    return pointCloudProjection.topics.filter((cloudTopic) =>
+      available.has(cloudTopic),
+    );
+  }, [
+    pointCloudProjection.enabled,
+    pointCloudProjection.topics,
+    pointCloudTopics,
+  ]);
   const activeProjection =
     effectiveImageDims &&
-    projection.enabled &&
+    pointCloudProjection.enabled &&
     calibration &&
     calibration.coordinateFrameId &&
     displayCameraModel &&
@@ -395,7 +411,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     // inspects; a crosshair pinpoints it. Dragging still shows "grabbing".
     idleCursor: activeProjection || activeDepthHover ? "crosshair" : undefined,
     imageSize: effectiveImageDims,
-    resetKey: `${topic}\n${projection.display}\n${rectifiedViewActive}`,
+    resetKey: `${topic}\n${cameraProjection.display}\n${rectifiedViewActive}`,
   });
   const toggleLabelTopic = (labelTopic: string, checked: boolean) => {
     if (!topic) return;
@@ -419,13 +435,13 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     const topics = pointCloudTopics.filter((availableTopic) =>
       next.has(availableTopic),
     );
-    setProjection({ enabled: topics.length > 0, topics });
+    setPointCloudProjection({ enabled: topics.length > 0, topics });
   };
   const canProjectPointClouds = pointCloudSources.length > 0;
   const canConfigureCameraGeometry =
     calibrationSources.length > 0 || canProjectPointClouds;
   const calibrationSelectionLabel = describeCalibrationSelection(
-    projection.calibrationTopic,
+    cameraProjection.calibrationTopic,
     autoCalibrationTopic,
     calibrationSources,
   );
@@ -434,7 +450,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     calibration,
     calibrationTopic,
     cameraModelResolution,
-    display: projection.display,
+    display: cameraProjection.display,
     explicitCalibrationAvailable,
     imageDims,
     rectifiedDisplay,
@@ -445,14 +461,15 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     calibration,
     calibrationTopic,
     cameraModelResolution,
-    enabled: projection.enabled && selectedProjectionTopics.length > 0,
+    enabled:
+      pointCloudProjection.enabled && selectedProjectionTopics.length > 0,
     explicitCalibrationAvailable,
     imageDims,
     sourceDimensionMismatch,
   });
   const visibleIssue = rectifiedDisplayIssue ?? projectionIssue;
   const geometryControlLabel = describeGeometryControl(
-    projection.geometry,
+    cameraProjection.geometry,
     cameraModelResolution,
   );
   const imageNotices = useMemo<readonly PanelNotice[]>(
@@ -510,7 +527,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
           </McapSidebarGroup>
           {canConfigureCameraGeometry ? (
             <McapSidebarGroup
-              summary={`${IMAGE_DISPLAY_LABELS[projection.display]} · ${geometryControlLabel}`}
+              summary={`${IMAGE_DISPLAY_LABELS[cameraProjection.display]} · ${geometryControlLabel}`}
               title="Camera geometry"
             >
               <label className={settingsStyles.field}>
@@ -524,7 +541,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   exclusive
                   onChange={(value) => {
                     if (typeof value !== "string") return;
-                    setProjection({
+                    setCameraProjection({
                       calibrationTopic:
                         value === AUTO_CALIBRATION_OPTION_ID ? null : value,
                     });
@@ -532,7 +549,8 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   options={calibrationSourceOptions}
                   portal
                   value={
-                    projection.calibrationTopic ?? AUTO_CALIBRATION_OPTION_ID
+                    cameraProjection.calibrationTopic ??
+                    AUTO_CALIBRATION_OPTION_ID
                   }
                   zIndex={ZIndex.AboveModal}
                 />
@@ -546,14 +564,14 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   anchor={DropdownAnchor.BottomStart}
                   trigger={
                     <DropdownTrigger>
-                      {IMAGE_DISPLAY_LABELS[projection.display]}
+                      {IMAGE_DISPLAY_LABELS[cameraProjection.display]}
                     </DropdownTrigger>
                   }
                 >
                   {IMAGE_DISPLAY_MODES.map((mode) => (
                     <MenuTextItem
                       key={mode}
-                      onClick={() => setProjection({ display: mode })}
+                      onClick={() => setCameraProjection({ display: mode })}
                     >
                       {IMAGE_DISPLAY_LABELS[mode]}
                     </MenuTextItem>
@@ -569,14 +587,14 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   anchor={DropdownAnchor.BottomStart}
                   trigger={
                     <DropdownTrigger>
-                      {IMAGE_GEOMETRY_LABELS[projection.geometry]}
+                      {IMAGE_GEOMETRY_LABELS[cameraProjection.geometry]}
                     </DropdownTrigger>
                   }
                 >
                   {IMAGE_GEOMETRY_MODES.map((mode) => (
                     <MenuTextItem
                       key={mode}
-                      onClick={() => setProjection({ geometry: mode })}
+                      onClick={() => setCameraProjection({ geometry: mode })}
                     >
                       {IMAGE_GEOMETRY_LABELS[mode]}
                     </MenuTextItem>
@@ -621,13 +639,14 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
             <McapSidebarGroup
               summary={`${selectedProjectionTopics.length} of ${pointCloudSources.length} on`}
               title="Pointcloud projections"
+              tooltip={POINT_CLOUD_PROJECTION_HELP}
               toggle={{
                 ariaLabel: "Toggle pointcloud projections",
                 checked: selectedProjectionTopics.length > 0,
                 // Master toggle drives the children: on selects every
                 // cloud, off unchecks them all.
                 onChange: (checked) =>
-                  setProjection(
+                  setPointCloudProjection(
                     checked
                       ? { enabled: true, topics: null }
                       : { enabled: false, topics: [] },
@@ -646,7 +665,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   onChange={(event) => {
                     const next = Number(event.target.value);
                     if (Number.isFinite(next)) {
-                      setProjection({
+                      setPointCloudProjection({
                         pointSize: Math.min(
                           MAX_MCAP_POINT_CLOUD_POINT_SIZE,
                           Math.max(MIN_MCAP_POINT_CLOUD_POINT_SIZE, next),
@@ -656,7 +675,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   }}
                   step={MCAP_POINT_CLOUD_POINT_SIZE_STEP}
                   type="number"
-                  value={projection.pointSize}
+                  value={pointCloudProjection.pointSize}
                 />
               </label>
               <div className={settingsStyles.optionStack}>
@@ -709,7 +728,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   imageWidth={activeProjection.imageDims.width}
                   hoveredPoint={sharedHover}
                   layers={projectionLayers}
-                  pointSize={projection.pointSize}
+                  pointSize={pointCloudProjection.pointSize}
                   ref={projectionPickerRef}
                   sourceKey={sourceKey || "mcap-session"}
                   viewTransform={imagePanZoom.viewTransform}
@@ -738,7 +757,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               imageWidth={activeProjection.imageDims.width}
               layers={projectionLayers}
               pickerRef={projectionPickerRef}
-              pointSize={projection.pointSize}
+              pointSize={pointCloudProjection.pointSize}
               sourceKey={sourceKey || "mcap-session"}
               viewTransform={imagePanZoom.viewTransform}
             />

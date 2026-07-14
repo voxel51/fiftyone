@@ -9,6 +9,19 @@ import type {
   McapImageDisplayMode,
   McapImageGeometryMode,
 } from "./camera-geometry/mcap-camera-model";
+import {
+  DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
+  DEFAULT_MCAP_PROJECTION_POINT_SIZE,
+  normalizeMcapPointSize,
+} from "./mcap-point-size";
+
+export {
+  DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
+  DEFAULT_MCAP_PROJECTION_POINT_SIZE,
+  MAX_MCAP_POINT_CLOUD_POINT_SIZE,
+  MCAP_POINT_CLOUD_POINT_SIZE_STEP,
+  MIN_MCAP_POINT_CLOUD_POINT_SIZE,
+} from "./mcap-point-size";
 
 /**
  * Timing tolerances and warning thresholds for synchronized MCAP playback.
@@ -258,22 +271,6 @@ const SCENE_BACKGROUND_MODES: readonly McapSceneBackgroundMode[] = [
 ];
 
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
-/**
- * Default point sprite size for MCAP point-cloud rendering.
- */
-export const DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE = 2;
-/**
- * Smallest user-selectable MCAP point sprite size.
- */
-export const MIN_MCAP_POINT_CLOUD_POINT_SIZE = 1;
-/**
- * Largest user-selectable MCAP point sprite size.
- */
-export const MAX_MCAP_POINT_CLOUD_POINT_SIZE = 10;
-/**
- * Increment used by the point-size settings control.
- */
-export const MCAP_POINT_CLOUD_POINT_SIZE_STEP = 0.25;
 
 /**
  * Empty per-scope styling payload.
@@ -458,13 +455,6 @@ export function normalizeMcapFidelityMode(
 }
 
 /**
- * Default projected-dot size: 3× the default 3D point size, so dots
- * stay legible over imagery out of the box.
- */
-export const DEFAULT_MCAP_PROJECTION_POINT_SIZE =
-  3 * DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE;
-
-/**
  * Default pointcloud projection settings for one image topic.
  */
 export const DEFAULT_MCAP_IMAGE_PROJECTION: McapImageProjectionSettings = {
@@ -517,10 +507,8 @@ export function normalizeMcapImageProjection(
     display: normalizeMcapImageDisplay(candidate.display),
     enabled,
     geometry: normalizeMcapImageGeometry(candidate.geometry),
-    pointSize: clampNumber(
+    pointSize: normalizeMcapPointSize(
       candidate.pointSize,
-      MIN_MCAP_POINT_CLOUD_POINT_SIZE,
-      MAX_MCAP_POINT_CLOUD_POINT_SIZE,
       DEFAULT_MCAP_PROJECTION_POINT_SIZE,
     ),
     topics: enabled ? topics : [],
@@ -635,12 +623,7 @@ export function normalizeMcapPointCloudColor(
  * Clamps a point-cloud point size to the supported settings range.
  */
 export function normalizeMcapPointCloudPointSize(value: unknown): number {
-  return clampNumber(
-    value,
-    MIN_MCAP_POINT_CLOUD_POINT_SIZE,
-    MAX_MCAP_POINT_CLOUD_POINT_SIZE,
-    DEFAULT_MCAP_POINT_CLOUD_POINT_SIZE,
-  );
+  return normalizeMcapPointSize(value);
 }
 
 function finiteOrNull(value: unknown): number | null {

@@ -7,6 +7,10 @@ import React, {
   useRef,
   useState,
 } from "react";
+import {
+  DEFAULT_MCAP_PROJECTION_POINT_SIZE,
+  normalizeMcapPointSize,
+} from "./mcap-point-size";
 
 /** Persisted source visibility for one MCAP 3D tile. */
 export interface Mcap3dTileVisibility {
@@ -17,8 +21,21 @@ export interface Mcap3dTileVisibility {
 
 type ImageLabelTopicsByImage = Readonly<Record<string, readonly string[]>>;
 
+/** Point-cloud overlay preferences owned by one image tile. */
+export interface McapImageTilePointCloudProjection {
+  readonly enabled: boolean;
+  readonly pointSize: number;
+  /** Explicit cloud topics to project; null projects every cloud. */
+  readonly topics: readonly string[] | null;
+}
+
+type ImagePointCloudProjectionsByImage = Readonly<
+  Record<string, McapImageTilePointCloudProjection>
+>;
+
 interface McapPersistedTileVisibility {
   readonly imageLabelTopics?: ImageLabelTopicsByImage;
+  readonly imagePointCloudProjections?: ImagePointCloudProjectionsByImage;
   readonly threeD?: Mcap3dTileVisibility;
 }
 
@@ -45,6 +62,13 @@ const MAX_TILE_ID_LENGTH = 256;
 
 let cachedStorageValue: string | null | undefined;
 let cachedStore: McapPersistedVisibilityStore | null = null;
+
+const DEFAULT_IMAGE_POINT_CLOUD_PROJECTION: McapImageTilePointCloudProjection =
+  Object.freeze({
+    enabled: false,
+    pointSize: DEFAULT_MCAP_PROJECTION_POINT_SIZE,
+    topics: [],
+  });
 
 /**
  * Scopes panel visibility to one dataset/source and media field. The scope is
@@ -125,6 +149,66 @@ export function useMcapImageTileLabelTopics(imageTopic: string): {
   return {
     labelTopics: imageTopic ? (topicsByImage[imageTopic] ?? []) : [],
     setLabelTopics,
+  };
+}
+
+/**
+ * Per-image-panel point-cloud overlay state. Camera calibration and geometry
+ * remain source-scoped because 3D frustums consume them; overlay visibility,
+ * topic selection, and point size belong to the individual image tile.
+ */
+export function useMcapImageTilePointCloudProjection(imageTopic: string): {
+  readonly projection: McapImageTilePointCloudProjection;
+  readonly setProjection: (
+    settings: Partial<McapImageTilePointCloudProjection>,
+  ) => void;
+} {
+  const scopeKey = useMcapPanelVisibilityScope();
+  const tileId = useTileId();
+  const [projectionsByImage, setProjectionsByImage] =
+    useState<ImagePointCloudProjectionsByImage>(
+      () =>
+        readTileVisibility(scopeKey, tileId)?.imagePointCloudProjections ?? {},
+    );
+  const projectionsByImageRef = useRef(projectionsByImage);
+  projectionsByImageRef.current = projectionsByImage;
+
+  // This layout effect handles an in-place scope/tile swap before paint.
+  useLayoutEffect(() => {
+    const next =
+      readTileVisibility(scopeKey, tileId)?.imagePointCloudProjections ?? {};
+    projectionsByImageRef.current = next;
+    setProjectionsByImage(next);
+  }, [scopeKey, tileId]);
+
+  const setProjection = useCallback(
+    (settings: Partial<McapImageTilePointCloudProjection>) => {
+      if (!imageTopic) return;
+      const previous =
+        projectionsByImageRef.current[imageTopic] ??
+        DEFAULT_IMAGE_POINT_CLOUD_PROJECTION;
+      const projection = normalizeImagePointCloudProjectionUpdate(
+        previous,
+        settings,
+      );
+      const next = {
+        ...projectionsByImageRef.current,
+        [imageTopic]: projection,
+      };
+      projectionsByImageRef.current = next;
+      setProjectionsByImage(next);
+      writeTileVisibility(scopeKey, tileId, {
+        imagePointCloudProjections: next,
+      });
+    },
+    [imageTopic, scopeKey, tileId],
+  );
+
+  return {
+    projection: imageTopic
+      ? (projectionsByImage[imageTopic] ?? DEFAULT_IMAGE_POINT_CLOUD_PROJECTION)
+      : DEFAULT_IMAGE_POINT_CLOUD_PROJECTION,
+    setProjection,
   };
 }
 
@@ -220,9 +304,13 @@ function sanitizeTiles(
     const tile = rawTile as Record<string, unknown>;
     const threeD = sanitize3dVisibility(tile.threeD);
     const imageLabelTopics = sanitizeImageLabelTopics(tile.imageLabelTopics);
-    if (threeD || imageLabelTopics) {
+    const imagePointCloudProjections = sanitizeImagePointCloudProjections(
+      tile.imagePointCloudProjections,
+    );
+    if (threeD || imageLabelTopics || imagePointCloudProjections) {
       result[tileId] = {
         ...(imageLabelTopics ? { imageLabelTopics } : {}),
+        ...(imagePointCloudProjections ? { imagePointCloudProjections } : {}),
         ...(threeD ? { threeD } : {}),
       };
     }
@@ -263,6 +351,68 @@ function sanitizeImageLabelTopics(
     result[imageTopic] = sanitizeTopicList(labelTopics);
   }
   return result;
+}
+
+function sanitizeImagePointCloudProjections(
+  raw: unknown,
+): Record<string, McapImageTilePointCloudProjection> | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return null;
+  }
+  const result: Record<string, McapImageTilePointCloudProjection> = {};
+  for (const [imageTopic, projection] of Object.entries(raw)) {
+    if (Object.keys(result).length >= MAX_TOPICS_PER_TILE) break;
+    if (!isBoundedString(imageTopic, MAX_TOPIC_LENGTH)) continue;
+    result[imageTopic] = normalizeImagePointCloudProjection(projection);
+  }
+  return result;
+}
+
+function normalizeImagePointCloudProjectionUpdate(
+  previous: McapImageTilePointCloudProjection,
+  settings: Partial<McapImageTilePointCloudProjection>,
+): McapImageTilePointCloudProjection {
+  let topics =
+    settings.topics !== undefined ? settings.topics : previous.topics;
+  if (settings.enabled === false) {
+    topics = [];
+  } else if (
+    settings.enabled === true &&
+    settings.topics === undefined &&
+    !previous.enabled
+  ) {
+    topics = null;
+  }
+  return normalizeImagePointCloudProjection({
+    ...previous,
+    ...settings,
+    topics,
+  });
+}
+
+function normalizeImagePointCloudProjection(
+  raw: unknown,
+): McapImageTilePointCloudProjection {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return DEFAULT_IMAGE_POINT_CLOUD_PROJECTION;
+  }
+  const candidate = raw as Partial<McapImageTilePointCloudProjection>;
+  const topics =
+    candidate.topics === null
+      ? null
+      : Array.isArray(candidate.topics)
+        ? sanitizeTopicList(candidate.topics)
+        : [];
+  const enabled =
+    candidate.enabled === true && (topics === null || topics.length > 0);
+  return {
+    enabled,
+    pointSize: normalizeMcapPointSize(
+      candidate.pointSize,
+      DEFAULT_MCAP_PROJECTION_POINT_SIZE,
+    ),
+    topics: enabled ? topics : [],
+  };
 }
 
 function sanitizeTopicList(raw: readonly unknown[]): readonly string[] {
