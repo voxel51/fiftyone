@@ -10,7 +10,6 @@
 import logging
 
 import numpy as np
-from PIL import Image as PILImage
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -49,39 +48,10 @@ def _map_device(device):
 
 
 def _to_numpy_bgr(img):
-    """Converts a raw model input (PIL image, HWC uint8 numpy array, or CHW
-    torch tensor) to a contiguous HWC uint8 BGR numpy array, the format
-    paddleocr's predictors consume for in-memory inputs."""
-    try:
-        import torch
-
-        if isinstance(img, torch.Tensor):
-            img = img.detach().cpu().numpy()
-            if img.ndim == 3 and img.shape[0] in (1, 3, 4):
-                img = np.transpose(img, (1, 2, 0))
-    except ImportError:
-        pass
-
-    if isinstance(img, PILImage.Image):
-        img = np.asarray(img.convert("RGB"))
-
-    img = np.asarray(img)
-
-    if np.issubdtype(img.dtype, np.floating):
-        if img.max() <= 1.0:
-            img = img * 255.0
-        img = np.clip(img, 0, 255)
-    img = img.astype(np.uint8)
-
-    if img.ndim == 2:
-        img = np.stack([img] * 3, axis=-1)
-    elif img.shape[2] == 1:
-        img = np.repeat(img, 3, axis=2)
-    elif img.shape[2] == 4:
-        img = img[:, :, :3]
-
-    # RGB (FiftyOne/PIL) -> BGR (paddleocr/cv2)
-    return np.ascontiguousarray(img[:, :, ::-1])
+    """Converts a raw model input to a contiguous HWC uint8 BGR numpy array,
+    the format paddleocr's predictors consume for in-memory inputs."""
+    rgb = np.asarray(fout.to_rgb_pil(img))
+    return np.ascontiguousarray(rgb[:, :, ::-1])
 
 
 def _normalize_quad(poly, width, height):
