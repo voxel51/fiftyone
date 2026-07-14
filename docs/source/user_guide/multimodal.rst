@@ -231,6 +231,35 @@ annotation in an image tile — to view its details:
 Any fields not covered by the structured view are shown as raw JSON. Press
 `Esc` or click `Clear selection` to clear the current selection.
 
+.. _multimodal-timeline-tracks:
+
+Timeline tracks
+_______________
+
+Beneath the playback timeline, the viewer displays **tracks**: rows of
+time-anchored context that scrub in sync with the recording. Tracks are
+organized into sections that only appear when they have content:
+
+-   **Temporal tags**: the :ref:`temporal tags <multimodal-temporal-tags>`
+    on the current sample, which you can create directly on the timeline
+-   **Events**: intervals for :ref:`derived events <multimodal-indexing>`
+    computed by MCAP indexing, e.g. "high steering" or "pedestrian while
+    moving". Event tracks only appear when the recording has derived events
+-   **Labels**: annotations over time, one track per annotation topic. Label
+    tracks only appear while annotations are currently visible in one of
+    your tiles
+
+.. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/label-tracks.webp
+   :alt: multimodal-timeline-tracks
+   :align: center
+
+.. note::
+
+    Event and label tracks are only available in
+    :ref:`FiftyOne Enterprise <fiftyone-enterprise>`; event tracks
+    additionally require :ref:`MCAP indexing <multimodal-indexing>` to be
+    enabled.
+
 .. _multimodal-mcap-explorer:
 
 MCAP Explorer
