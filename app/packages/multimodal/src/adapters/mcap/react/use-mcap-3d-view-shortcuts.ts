@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Quaternion, Vector3 } from "three";
 import type { PointCloudCameraPose } from "../../../visualization/panels/point-cloud";
 import type { Mcap3dCameraTargetPose } from "./mcap-3d-camera";
@@ -136,6 +136,11 @@ export interface Mcap3dViewShortcutsOptions {
   readonly worldFrameId: string;
 }
 
+interface Mcap3dViewActions {
+  readonly applyEgoView: () => void;
+  readonly applyTopView: () => void;
+}
+
 /**
  * Trained view-preset shortcuts for the 3D tile: E = ego view, T = top view
  * (the same keys looker-3d trained users on). Both route through the "focus"
@@ -144,17 +149,36 @@ export interface Mcap3dViewShortcutsOptions {
  * Bound globally for the lifetime of the tile — the 3D scene is the modal's
  * one fused view, matching looker-3d's modal-global binding. Plain unmodified
  * keys only: the playback bar's temporal-tag hotkey lives on Shift+T, and
- * typing targets (inputs, selects) are ignored.
+ * typing targets (inputs, selects) are ignored. The returned actions share
+ * this same pose path with the on-canvas view buttons.
  */
 export function useMcap3dViewShortcuts(
   options: Mcap3dViewShortcutsOptions,
-): void {
+): Mcap3dViewActions {
   const latestOptionsRef = useRef(options);
   // This effect keeps the latest inputs readable from the stable key
   // listener without rebinding it on every playback tick.
   useEffect(() => {
     latestOptionsRef.current = options;
   });
+
+  const applyViewPreset = useCallback((code: "KeyE" | "KeyT"): boolean => {
+    const currentOptions = latestOptionsRef.current;
+    const pose = viewPresetPoseFor(code, currentOptions);
+    if (!pose) {
+      return false;
+    }
+
+    currentOptions.onApplyCameraPose(pose, "focus");
+    return true;
+  }, []);
+
+  const applyEgoView = useCallback(() => {
+    applyViewPreset("KeyE");
+  }, [applyViewPreset]);
+  const applyTopView = useCallback(() => {
+    applyViewPreset("KeyT");
+  }, [applyViewPreset]);
 
   // This effect binds the key listener for the lifetime of the tile; all
   // per-event state is read through refs.
@@ -173,18 +197,18 @@ export function useMcap3dViewShortcuts(
         return;
       }
 
-      const pose = viewPresetPoseFor(event.code, latestOptionsRef.current);
-      if (!pose) {
+      if (!applyViewPreset(event.code)) {
         return;
       }
 
       event.preventDefault();
-      latestOptionsRef.current.onApplyCameraPose(pose, "focus");
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [applyViewPreset]);
+
+  return { applyEgoView, applyTopView };
 }
 
 function viewPresetPoseFor(

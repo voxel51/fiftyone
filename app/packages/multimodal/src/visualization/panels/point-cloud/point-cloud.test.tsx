@@ -1233,11 +1233,27 @@ describe("PointCloudPanel", () => {
     expect(screen.queryByTestId("measure-readout")).toBeNull();
   });
 
+  it("renders caller controls without requiring fit bounds", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    render(
+      <PointCloudPanel
+        controls={<button aria-label="Camera preset" type="button" />}
+        layers={[]}
+      />,
+    );
+
+    expect(screen.getByLabelText("Camera preset")).toBeTruthy();
+    expect(screen.queryByLabelText("Recenter view")).toBeNull();
+    expect(screen.queryByLabelText("Measure distance")).toBeNull();
+  });
+
   it("hides the interactive controls when showControls is off (grid previews)", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     render(
       <PointCloudPanel
+        controls={<button aria-label="Camera preset" type="button" />}
         layers={[
           {
             frame: {
@@ -1255,6 +1271,7 @@ describe("PointCloudPanel", () => {
 
     expect(screen.queryByLabelText("Recenter view")).toBeNull();
     expect(screen.queryByLabelText("Measure distance")).toBeNull();
+    expect(screen.queryByLabelText("Camera preset")).toBeNull();
   });
 
   it("keeps the no-finite-points status for partially finite layers off", () => {

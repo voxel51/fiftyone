@@ -155,6 +155,25 @@ describe("topViewCameraPose", () => {
 });
 
 describe("useMcap3dViewShortcuts", () => {
+  it("exposes the same camera presets for on-screen controls", () => {
+    const onApplyCameraPose = vi.fn();
+    const { result } = renderHook(useMcap3dViewShortcuts, {
+      initialProps: shortcutOptions({
+        isActive: false,
+        onApplyCameraPose,
+      }),
+    });
+
+    result.current.applyEgoView();
+    result.current.applyTopView();
+
+    expect(onApplyCameraPose).toHaveBeenCalledTimes(2);
+    expect(onApplyCameraPose.mock.calls[0][0].target).toEqual([10, 0, 0]);
+    expect(onApplyCameraPose.mock.calls[1][0].target).toEqual([10, 0, 0]);
+    expect(onApplyCameraPose.mock.calls[0][1]).toBe("focus");
+    expect(onApplyCameraPose.mock.calls[1][1]).toBe("focus");
+  });
+
   it("applies the ego view on E and the top view on T through the focus channel", () => {
     const onApplyCameraPose = vi.fn();
     renderHook(useMcap3dViewShortcuts, {
