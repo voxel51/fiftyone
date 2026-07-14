@@ -10,9 +10,9 @@ dotenv.config({ path: process.env.CI ? ".env.ci" : ".env.dev" });
 export default defineConfig({
   testDir: "./src",
   testMatch: "**/?(*.)+(spec).ts?(x)",
-  // Most tests finish well under a minute; a tighter cap bounds the time a
-  // hung test can burn across retries. Slow specs set their own timeout.
-  timeout: Duration.Minutes(3),
+  // The slowest legitimate test is ~30s; a tight cap bounds what a hung
+  // test can burn across retries. Slow specs set their own timeout.
+  timeout: Duration.Seconds(90),
 
   /* Run tests in files in parallel */
   fullyParallel: true,

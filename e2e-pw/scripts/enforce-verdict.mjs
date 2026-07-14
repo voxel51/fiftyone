@@ -45,6 +45,11 @@ if (
 ) {
   failures.push("no tests ran");
 }
+if ((stats.flaky ?? 0) > 0) {
+  failures.push(
+    `${stats.flaky} flaky spec${stats.flaky === 1 ? "" : "s"} (passed on retry)`,
+  );
+}
 
 if (failures.length) {
   console.error(`e2e verdict: FAIL — ${failures.join("; ")}`);

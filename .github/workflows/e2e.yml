@@ -245,23 +245,22 @@ jobs:
       - name: Run Playwright tests
         # Report-only: failed specs are surfaced by the e2e verdict job from
         # the merged blob reports. A red shard means infra death (timeout,
-        # lost runner), not a test failure.
+        # lost runner), not a test failure. Specs are assigned to shards by
+        # duration (scripts/pack-shards.mjs), not Playwright's count-based
+        # sharding, so no shard is bottlenecked by the heavy spec families.
         run: |
-          yarn e2e --update-snapshots --shard=${{ matrix.shard }}/10 ||
-            echo "::warning::shard ${{ matrix.shard }} had failing specs; see the e2e verdict job"
+          FILES=$(node scripts/pack-shards.mjs ${{ matrix.shard }} 10)
+          if [ -z "$FILES" ]; then
+            echo "no specs assigned to shard ${{ matrix.shard }}"
+          else
+            yarn e2e $FILES ||
+              echo "::warning::shard ${{ matrix.shard }} had failing specs; see the e2e verdict job"
+          fi
         working-directory: e2e-pw
 
       - name: Lint Playwright tests
         run: yarn lint
         working-directory: e2e-pw
-
-      - name: Upload updated snapshots
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: updated-snapshots-${{ matrix.shard }}
-          path: e2e-pw/src/oss/specs/*-snapshots/
-          retention-days: 1
 
       - name: Upload blob report
         if: always()
