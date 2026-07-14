@@ -297,6 +297,16 @@
 .emb-plot-chip {
   left: 0.75rem;
   top: 0.75rem;
+  /* Tighter than the generic overlay: hairline chip hugging its clear
+     button, count emphasized by weight and tone rather than color */
+  gap: 0.25rem;
+  padding: 0.125rem 0.25rem 0.125rem 0.5rem;
+}
+
+.emb-plot-chip strong {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--emb-fg);
 }
 
 .emb-plot-counter {
@@ -305,11 +315,12 @@
   pointer-events: none;
 }
 
-/* Color-by column fetch in flight */
-.emb-plot-color-loading {
-  right: 0.75rem;
-  bottom: 0.75rem;
-  pointer-events: none;
+/* Color-by column fetch in flight; fixed-size slot beside the label */
+.emb-colorby-spinner {
+  display: inline-flex;
+  width: 1rem;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 /* --- FloatingPanel (generic; VOODO candidate) -------------------------- */

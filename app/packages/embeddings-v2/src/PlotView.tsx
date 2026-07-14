@@ -77,6 +77,7 @@ const TOKEN_VARS = {
   "--emb-card-elevated": `var(${getColorCssVar(BackgroundColor.CardElevated)})`,
   "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
   "--emb-border-strong": `var(${getColorCssVar(BorderColor.Strong)})`,
+  "--emb-fg": `var(${getColorCssVar(TextColor.Fg)})`,
 } as CSSProperties;
 
 /** Select option id for the uncolored state (fields are never empty) */
@@ -102,7 +103,7 @@ function ModeSegment({
     >
       <Icon
         name={icon}
-        size={Size.Xs}
+        size={Size.Md}
         color={active ? TextColor.Fg : TextColor.Secondary}
       />
       <Text
@@ -378,6 +379,17 @@ export default function PlotView({
           </Text>
         </div>
         <div className="emb-plot-controls">
+          {/* Fixed-width slot so the spinner's appearance never nudges
+              the control row */}
+          <span className="emb-colorby-spinner">
+            {colorLoading && (
+              <Icon
+                name={IconName.Spinner}
+                size={Size.Sm}
+                color={IconColor.Decorative}
+              />
+            )}
+          </span>
           <Text
             variant={TextVariant.Md}
             color={TextColor.Secondary}
@@ -419,8 +431,8 @@ export default function PlotView({
           <Tooltip content="Reset view" portal>
             <Button
               variant={Variant.Icon}
-              size={Size.Sm}
-              leadingIcon={IconName.Refresh}
+              size={Size.Md}
+              leadingIcon={IconName.Undo}
               aria-label="Reset view"
               onClick={() => viewRef.current?.resetCamera()}
             />
@@ -483,8 +495,8 @@ export default function PlotView({
           <div className="emb-plot-overlay emb-plot-chip">
             <Icon
               name={IconName.Check}
-              size={Size.Xs}
-              color={TextColor.Success}
+              size={Size.Md}
+              color={TextColor.Secondary}
             />
             <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
               <strong>{chipCount.toLocaleString()}</strong> selected
@@ -515,18 +527,6 @@ export default function PlotView({
               points
               {visibleCount !== null &&
                 ` · ${visibleCount.toLocaleString()} in view`}
-            </Text>
-          </div>
-        )}
-        {colorLoading && (
-          <div className="emb-plot-overlay emb-plot-color-loading">
-            <Icon
-              name={IconName.Spinner}
-              size={Size.Xs}
-              color={IconColor.Decorative}
-            />
-            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-              Loading colors
             </Text>
           </div>
         )}
