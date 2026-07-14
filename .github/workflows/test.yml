@@ -23,7 +23,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Setup node 22
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
