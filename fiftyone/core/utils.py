@@ -3128,6 +3128,76 @@ def get_cpu_count():
         return 1
 
 
+# cgroup v1 reports "no limit" as a near-maxint sentinel (rather than a
+# string like v2's "max"); anything at/above this is unlimited.
+_CGROUP_V1_MEMORY_UNLIMITED = 0x7FFFFFFFFFFFF000
+
+
+def get_memory_limit():
+    """Returns the memory limit in bytes available to the current process.
+
+    Analogous to :func:`get_cpu_count`, this reflects container memory
+    limits in environments like Kubernetes (via cgroups) rather than the
+    host's total physical RAM. Use it to size memory-hungry work (e.g. a
+    DuckDB ``memory_limit``) to the container without requiring a
+    hand-set environment variable that matches the deployment's limits.
+
+    The function checks the following sources, in order:
+
+    1. cgroup v2 memory limit (``/sys/fs/cgroup/memory.max``)
+    2. cgroup v1 memory limit
+       (``/sys/fs/cgroup/memory/memory.limit_in_bytes``)
+    3. physical RAM (``os.sysconf``)
+
+    A cgroup limit is capped at physical RAM (a cgroup can nominally be
+    configured above it), and cgroup "unlimited" values (``"max"`` in v2,
+    a near-maxint sentinel in v1) fall through to physical RAM.
+
+    Returns:
+        the memory limit in bytes, or ``None`` if it cannot be determined
+    """
+    try:
+        physical = None
+        try:
+            physical = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+        except Exception:
+            pass
+
+        cgroup = None
+        if sys.platform.startswith("linux"):
+            # cgroup v2
+            try:
+                with open("/sys/fs/cgroup/memory.max") as f:
+                    value = f.read().strip()
+                    if value != "max":
+                        cgroup = int(value)
+            except Exception:
+                pass
+
+            # cgroup v1 fallback
+            if cgroup is None:
+                try:
+                    with open(
+                        "/sys/fs/cgroup/memory/memory.limit_in_bytes"
+                    ) as f:
+                        value = int(f.read().strip())
+                        if 0 < value < _CGROUP_V1_MEMORY_UNLIMITED:
+                            cgroup = value
+                except Exception:
+                    pass
+
+        candidates = [v for v in (cgroup, physical) if v and v > 0]
+        if not candidates:
+            return None
+
+        # A cgroup can be configured above physical RAM; cap at physical.
+        return min(candidates)
+
+    except Exception:
+        logger.debug("Unable to determine memory limit", exc_info=True)
+        return None
+
+
 sync_task_executor = None
 
 
