@@ -92,6 +92,26 @@ describe("PixiRenderer2D mask texture lifecycle", () => {
     // Only the current frame's texture is retained, not one per frame.
     expect(internal.ownedTextures.get("c1")).toHaveLength(1);
   });
+
+  it("destroys and clears owned textures on cleanUp", () => {
+    const { renderer, internal } = makeRenderer();
+    renderer.drawImage(
+      { type: "canvas", canvas: document.createElement("canvas") },
+      BOUNDS,
+      { opacity: 1 },
+      "c1",
+    );
+
+    const texture = internal.ownedTextures.get("c1")[0] as PIXI.Texture;
+    const destroySpy = vi.spyOn(texture, "destroy");
+
+    // cleanUp bails early unless the pixi app exists; stub what it touches.
+    internal.app = { stop: () => {}, stage: { removeChildren: () => {} } };
+    renderer.cleanUp();
+
+    expect(destroySpy).toHaveBeenCalledWith(true);
+    expect(internal.ownedTextures.size).toBe(0);
+  });
 });
 
 describe("PixiRenderer2D graphics context lifecycle", () => {

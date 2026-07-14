@@ -43,11 +43,6 @@ const InteractiveSidebar = ({
   const start = useRef<number | null>(0);
   const [controller] = useState(() => new Controller({ minHeight: 0 }));
 
-  // Stop controllers on unmount so they don't leak via react-spring's frameloop.
-  useEffect(() => {
-    return () => disposeInteractiveItems(controller, items.current);
-  }, [controller]);
-
   const [entries, setEntries] = useEntries();
 
   if (entries instanceof Error) {
@@ -127,9 +122,19 @@ const InteractiveSidebar = ({
       }
     }
   }, [controller]);
+
   const [observer] = useState<ResizeObserver>(
     () => new ResizeObserver(placeItems),
   );
+
+  // Dispose controllers + disconnect the observer on unmount (disconnect also
+  // releases rows pruned during render, which the ref callback skips).
+  useEffect(() => {
+    return () => {
+      disposeInteractiveItems(controller, items.current);
+      observer.disconnect();
+    };
+  }, [controller, observer]);
 
   const getNewOrder = useGetNewOrder({
     down,
