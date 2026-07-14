@@ -374,9 +374,21 @@ class OpenWorldSAMModel(fout.TorchImageModel):
             sam_transform=self._load_sam_transform(config),
             beit_transform=self._load_transforms(config),
         )
-        # ragged_batches=True: items are dicts, not uniform tensors, so the
-        # DataLoader must not attempt to torch.stack them
-        return transform, True
+        # ragged_batches=False: per-sample tensors are uniformly shaped
+        # ([3, 1024, 1024] / [3, 224, 224]), so batching is supported via
+        # `collate_fn` below rather than PyTorch's default dict collate
+        # (which would try to torch.stack the "height"/"width" ints too).
+        return transform, False
+
+    @property
+    def has_collate_fn(self):
+        return True
+
+    @staticmethod
+    def collate_fn(batch):
+        # Keep each sample dict intact; `_forward_pass` builds the model's
+        # `List[Dict]` input from this list directly.
+        return batch
 
     def _build_output_processor(self, config):
         return OpenWorldSAMOutputProcessor(classes=self._classes)
