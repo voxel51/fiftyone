@@ -155,7 +155,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
       # Chromium needs more than Docker's default 64MB /dev/shm
       options: --shm-size=2gb
-    name: Run e2e shard ${{ matrix.shard }}/10 (report-only, Mongo ${{ matrix.mongodb-version }})
+    name: Run e2e shard ${{ matrix.shard }}/8 (report-only, Mongo ${{ matrix.mongodb-version }})
     env:
       FIFTYONE_DO_NOT_TRACK: true
       FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE: false
@@ -174,7 +174,7 @@ jobs:
       matrix:
         mongodb-version:
           - "latest"
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     services:
       # Run MongoDB as a service container rather than via a Docker-based
       # action. Container actions are built from `docker:latest` at job start
@@ -249,7 +249,7 @@ jobs:
         # duration (scripts/pack-shards.mjs), not Playwright's count-based
         # sharding, so no shard is bottlenecked by the heavy spec families.
         run: |
-          FILES=$(node scripts/pack-shards.mjs ${{ matrix.shard }} 10)
+          FILES=$(node scripts/pack-shards.mjs ${{ matrix.shard }} 8)
           if [ -z "$FILES" ]; then
             echo "no specs assigned to shard ${{ matrix.shard }}"
           else
@@ -341,7 +341,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
-          EXPECTED_SHARDS: "10"
+          EXPECTED_SHARDS: "8"
           REPORT_URL: ${{ steps.upload-merged.outputs.artifact-url }}
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -399,6 +399,6 @@ jobs:
       - name: Enforce verdict
         working-directory: e2e-pw
         env:
-          EXPECTED_SHARDS: "10"
+          EXPECTED_SHARDS: "8"
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
         run: node scripts/enforce-verdict.mjs merged-results.json all-blob-reports
