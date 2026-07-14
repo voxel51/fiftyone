@@ -21,7 +21,7 @@ export const useDefaultTimelineNameImperative = () => {
 
     return getTimelineNameFromSampleAndGroupId(
       currentSampleIdVal,
-      currentGroupIdVal
+      currentGroupIdVal,
     );
   }, [currentSampleIdVal, currentGroupIdVal]);
 

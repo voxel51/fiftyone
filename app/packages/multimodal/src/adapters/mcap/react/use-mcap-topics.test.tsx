@@ -39,7 +39,7 @@ describe("useMcapTopics", () => {
     });
 
     const { unmount } = render(
-      <TopicsHarness client={failedClient} label="failed" source={source} />
+      <TopicsHarness client={failedClient} label="failed" source={source} />,
     );
 
     await waitFor(() => {
@@ -49,13 +49,47 @@ describe("useMcapTopics", () => {
 
     const retryClient = createTopicsClient(async () => [createTopic("camera")]);
     render(
-      <TopicsHarness client={retryClient} label="retry" source={source} />
+      <TopicsHarness client={retryClient} label="retry" source={source} />,
     );
 
     await waitFor(() => {
       expect(screen.getByTestId("retry").textContent).toBe("ready:1:");
     });
     expect(retryClient.readTopics).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports loading, not the previous inventory, while a swapped source settles", async () => {
+    const firstSource = createSource("swap-a");
+    const secondSource = createSource("swap-b");
+    let releaseSecond = () => undefined as void;
+    const secondRead = new Promise<void>((resolve) => {
+      releaseSecond = resolve;
+    });
+    const client = createTopicsClient(async ({ source }) => {
+      if (source.sourceId === secondSource.sourceId) {
+        await secondRead;
+      }
+      return [createTopic(source.sourceId)];
+    });
+
+    const { rerender } = render(
+      <TopicsHarness client={client} label="topics" source={firstSource} />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+    });
+
+    // The persistent renderer swaps sources on the same mount; the first
+    // render after the swap must not present the old inventory as ready.
+    rerender(
+      <TopicsHarness client={client} label="topics" source={secondSource} />,
+    );
+    expect(screen.getByTestId("topics").textContent).toBe("loading:0:");
+
+    releaseSecond();
+    await waitFor(() => {
+      expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+    });
   });
 
   it("reads again when the source key changes", async () => {
@@ -66,7 +100,7 @@ describe("useMcapTopics", () => {
     ]);
 
     const { rerender } = render(
-      <TopicsHarness client={client} label="topics" source={firstSource} />
+      <TopicsHarness client={client} label="topics" source={firstSource} />,
     );
 
     await waitFor(() => {
@@ -74,7 +108,7 @@ describe("useMcapTopics", () => {
     });
 
     rerender(
-      <TopicsHarness client={client} label="topics" source={secondSource} />
+      <TopicsHarness client={client} label="topics" source={secondSource} />,
     );
 
     await waitFor(() => {
@@ -111,7 +145,7 @@ function TopicsHarness({
 }
 
 function createTopicsClient(
-  readTopics: McapResourceClient["readTopics"] = vi.fn(async () => [])
+  readTopics: McapResourceClient["readTopics"] = vi.fn(async () => []),
 ): McapResourceClient {
   return {
     dispose: vi.fn(),
@@ -123,9 +157,19 @@ function createTopicsClient(
     readFrameTransformBootstrap: vi.fn(),
     readFrameTransformWindow: vi.fn(),
     readSynchronizedMessageBatch: vi.fn(async () => []),
+    readRawMessageRecord: vi.fn(),
     readSynchronizedMessages: vi.fn(),
     readTimelineRange: vi.fn(),
     readTopics: vi.fn(readTopics),
+    readTopicTimeBounds: vi.fn(async () => []),
+    enumerateNumericFields: vi.fn(async () => []),
+    readNumericSeries: vi.fn(async () => ({
+      baseTimeNs: 0n,
+      fields: [],
+      messageCount: 0,
+      topic: "",
+      truncated: false,
+    })),
   };
 }
 

@@ -1,6 +1,12 @@
 name: Windows Tests
 
-on: workflow_call
+on:
+  workflow_call:
+    inputs:
+      python-versions:
+        description: JSON array of Python versions for the Windows test matrix
+        type: string
+        default: '["3.10", "3.11", "3.12", "3.13"]'
 
 jobs:
   test-python:
@@ -15,11 +21,7 @@ jobs:
       matrix:
         os:
           - windows-latest
-        python:
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "3.13"
+        python: ${{ fromJSON(inputs.python-versions) }}
     defaults:
       run:
         shell: bash
@@ -51,7 +53,7 @@ jobs:
           uv pip install --system -r requirements/github.txt
       - name: Install fiftyone
         run: |
-          uv pip install --system . -r requirements/github.txt
+          uv pip install --system '.[multimodal]' -r requirements/github.txt
       - name: Configure
         id: test_config
         run: |

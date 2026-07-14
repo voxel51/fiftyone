@@ -148,7 +148,7 @@ export type Action<State extends BaseState> = (
   update: StateUpdate<State>,
   dispatchEvent: DispatchEvent,
   eventKey?: string,
-  shiftKey?: boolean
+  shiftKey?: boolean,
 ) => void;
 
 export enum ControlEventKeyType {
@@ -462,8 +462,8 @@ export type StateUpdate<State extends BaseState> = (
   postUpdate?: (
     state: Readonly<State>,
     overlays: Readonly<Overlay<State>[]>,
-    sample: object
-  ) => void
+    sample: object,
+  ) => void,
 ) => void;
 
 export const DEFAULT_BASE_OPTIONS: BaseOptions = {
@@ -507,7 +507,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   skeletons: {},
   showSkeletons: true,
   showOverlays: true,
-  pointFilter: (path: string, point: Point) => true,
+  pointFilter: (_path: string, _point: Point) => true,
   attributeVisibility: {},
   mediaFallback: false,
   shouldHandleKeyEvents: true,

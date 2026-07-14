@@ -49,7 +49,7 @@ export const ImaVidLookerReact = React.memo(
     const [id] = useState(() => uuid());
     const colorScheme = useRecoilValue(fos.colorScheme);
     const dynamicGroupsTargetFrameRate = useRecoilValue(
-      fos.dynamicGroupsTargetFrameRate
+      fos.dynamicGroupsTargetFrameRate,
     );
 
     const { sample } = sampleDataWithExtraParams;
@@ -60,7 +60,7 @@ export const ImaVidLookerReact = React.memo(
 
     const lookerOptions = React.useMemo(
       () => ({ ...baseLookerOptions, showControls }),
-      [baseLookerOptions, showControls]
+      [baseLookerOptions, showControls],
     );
 
     const [reset, setReset] = useState(false);
@@ -77,7 +77,7 @@ export const ImaVidLookerReact = React.memo(
 
     const looker = React.useMemo(
       () => createLooker.current(sampleDataWithExtraParams),
-      [reset, createLooker, selectedMediaField]
+      [reset, createLooker, selectedMediaField],
     ) as ImaVidLooker;
 
     const { subscribeToImaVidStateChanges } =
@@ -138,9 +138,9 @@ export const ImaVidLookerReact = React.memo(
         }
 
         updateLookerOptions({}, (updatedOptions) =>
-          looker.updateOptions(updatedOptions)
+          looker.updateOptions(updatedOptions),
         );
-      }
+      },
     );
 
     useEffect(() => {
@@ -158,7 +158,7 @@ export const ImaVidLookerReact = React.memo(
     const ref = useRef<HTMLDivElement>(null);
     useEffect(() => {
       ref.current?.dispatchEvent(
-        new CustomEvent(`looker-attached`, { bubbles: true })
+        new CustomEvent(`looker-attached`, { bubbles: true }),
       );
     }, [ref]);
 
@@ -177,7 +177,7 @@ export const ImaVidLookerReact = React.memo(
           storeBufferManager.getUnprocessedBufferRange(range);
         const unprocessedBufferRange =
           fetchBufferManager.getUnprocessedBufferRange(
-            unprocessedStoreBufferRange
+            unprocessedStoreBufferRange,
           );
 
         if (!unprocessedBufferRange) {
@@ -191,7 +191,7 @@ export const ImaVidLookerReact = React.memo(
         }
 
         imaVidLookerRef.current.frameStoreController.enqueueFetch(
-          unprocessedBufferRange
+          unprocessedBufferRange,
         );
 
         imaVidLookerRef.current.frameStoreController.resumeFetch();
@@ -211,7 +211,7 @@ export const ImaVidLookerReact = React.memo(
 
                 window.removeEventListener(
                   "fetchMore",
-                  fetchMoreListener as EventListener
+                  fetchMoreListener as EventListener,
                 );
               }
             }
@@ -219,11 +219,11 @@ export const ImaVidLookerReact = React.memo(
 
           window.addEventListener(
             "fetchMore",
-            fetchMoreListener as EventListener
+            fetchMoreListener as EventListener,
           );
         });
       },
-      []
+      [],
     );
 
     const renderFrame = React.useCallback((frameNumber: number) => {
@@ -381,5 +381,5 @@ export const ImaVidLookerReact = React.memo(
         />
       </div>
     );
-  }
+  },
 );

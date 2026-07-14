@@ -53,8 +53,8 @@ const NonGroupModalSample = ({ is3DMediaType }: { is3DMediaType: boolean }) => {
   const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
   const isDirect3dSampleUnknownMediaType = useMemo(() => {
     const mediaPath = Array.isArray(sample.urls)
-      ? sample.urls.find((url) => url.field === modalMediaField)?.url ??
-        sample.urls[0]?.url
+      ? (sample.urls.find((url) => url.field === modalMediaField)?.url ??
+        sample.urls[0]?.url)
       : sample.urls[modalMediaField];
 
     return (

@@ -3,7 +3,7 @@
  */
 
 import { type EventDispatcher, getEventBus } from "@fiftyone/events";
-import { CONTAINS } from "../core/Scene2D";
+import { CONTAINS } from "../core/containment";
 import type { LighterEventGroup } from "../events";
 import type {
   InteractionHandler,
@@ -23,11 +23,20 @@ import type {
 /**
  * Base abstract class for all overlays.
  */
-export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
-  implements InteractionHandler
-{
+export abstract class BaseOverlay<
+  Label extends RawLookerLabel = RawLookerLabel,
+> implements InteractionHandler {
   readonly id: string;
   readonly cursor?: string;
+
+  /**
+   * Whether this overlay represents real annotation data that should be
+   * saved. Set to `false` for UI scaffolding (e.g. the point-selection
+   * keypoint overlay) that lives in the scene but must not be picked up by
+   * persistence. Consumers walking `scene.getAllOverlays()` for save deltas
+   * should skip overlays where this is `false`.
+   */
+  public isPersistent = true;
 
   protected isHoveredState = false;
 
@@ -84,7 +93,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
     if (!bounds) return false;
 
     return ["x", "y", "width", "height"].every(
-      (prop) => !Number.isNaN(bounds[prop])
+      (prop) => !Number.isNaN(bounds[prop]),
     );
   }
 
@@ -131,7 +140,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   render(
     renderer: Renderer2D,
     style: DrawStyle | null,
-    meta: RenderMeta
+    meta: RenderMeta,
   ): void | Promise<void> {
     // Store the current style for use in other methods
     this.currentStyle = style || undefined;
@@ -146,7 +155,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   protected abstract renderImpl(
     renderer: Renderer2D,
-    meta: RenderMeta
+    meta: RenderMeta,
   ): void | Promise<void>;
 
   /**
@@ -254,7 +263,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param point - The point to test.
    * @returns The containment level (NONE = 0, CONTENT = 1, BORDER = 2).
    */
-  getContainmentLevel(point: Point): CONTAINS {
+  getContainmentLevel(_point: Point): CONTAINS {
     return CONTAINS.NONE;
   }
 
@@ -299,7 +308,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverEnter(point: Point | null, event: PointerEvent | null): boolean {
+  onHoverEnter(_point: Point | null, _event: PointerEvent | null): boolean {
     this.isHoveredState = true;
     this.markDirty();
     return true;
@@ -312,7 +321,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverLeave?(point?: Point | null, event?: PointerEvent | null): boolean {
+  onHoverLeave?(_point?: Point | null, _event?: PointerEvent | null): boolean {
     this.isHoveredState = false;
     this.markDirty();
     return true;
@@ -325,7 +334,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverMove(point?: Point | null, event?: PointerEvent | null): boolean {
+  onHoverMove(_point?: Point | null, _event?: PointerEvent | null): boolean {
     return true;
   }
 
@@ -380,10 +389,23 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   }
 
   /**
-   * Updates the label for this overlay.
+   * Apply label state without emitting — the silent half of
+   * {@link updateLabel}. Used by Sample→overlay reconciliation so an applied
+   * change does not re-enter the overlay→Sample write path. Subclasses override
+   * to apply their derived state, but must NOT dispatch
+   * `lighter:overlay-commit-requested` here (that belongs in {@link updateLabel}).
+   * @param label - The new label.
+   */
+  applyLabel(label: Label) {
+    this.label = label;
+  }
+
+  /**
+   * Apply a label as a user edit: {@link applyLabel} plus the
+   * `lighter:overlay-commit-requested` dispatch that drives downstream sync.
    * @param label - The new label.
    */
   updateLabel(label: Label) {
-    this.label = label;
+    this.applyLabel(label);
   }
 }

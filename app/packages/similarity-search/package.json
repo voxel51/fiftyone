@@ -16,7 +16,8 @@
         "@fiftyone/operators": "*",
         "@fiftyone/plugins": "*",
         "@fiftyone/spaces": "*",
-        "@fiftyone/state": "*"
+        "@fiftyone/state": "*",
+        "@voxel51/voodo": "^0.0.37"
     },
     "devDependencies": {
         "vite": "^7.3.2",
@@ -28,7 +29,6 @@
     "packageManager": "yarn@4.9.1",
     "peerDependencies": {
         "@mui/icons-material": "*",
-        "@voxel51/voodo": "*",
         "jotai": "*",
         "recoil": "*"
     }

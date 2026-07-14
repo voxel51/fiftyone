@@ -9,12 +9,12 @@ import type { Records } from "./useRecords";
 export const addRange = (
   index: number,
   selected: Set<string>,
-  records: Records
+  records: Records,
 ) => {
   // filter selections without an index record
   const items = [...selected].filter((i) => records.has(i));
   const reverse = Object.fromEntries(
-    Array.from(records.entries()).map(([k, v]) => [v, k])
+    Array.from(records.entries()).map(([k, v]) => [v, k]),
   );
   const min = argMin(items.map((id) => Math.abs(get(records, id) - index)));
 
@@ -46,12 +46,12 @@ const get = (records: Records, id: string) => {
 export const removeRange = (
   index: number,
   selected: Set<string>,
-  records: Records
+  records: Records,
 ) => {
   // filter selections without an index record
   const items = new Set([...selected].filter((i) => records.has(i)));
   const reverse = Object.fromEntries(
-    Array.from(records.entries()).map(([k, v]) => [v, k])
+    Array.from(records.entries()).map(([k, v]) => [v, k]),
   );
 
   let before = index;
@@ -72,13 +72,13 @@ export const removeRange = (
         ? [index, after]
         : [before, index]
       : after - index === 0
-      ? [before, index]
-      : [index, after];
+        ? [before, index]
+        : [index, after];
 
   const next = new Set(
     Array.from(items).filter(
-      (s) => get(records, s) < start || get(records, s) > end
-    )
+      (s) => get(records, s) < start || get(records, s) > end,
+    ),
   );
 
   for (const id of selected) {
@@ -100,7 +100,7 @@ export default (records: Records) => {
 
         const current = new Map(await snapshot.getPromise(selectedSamples));
         const currentObjects = new Map(
-          await snapshot.getPromise(selectedSampleObjects)
+          await snapshot.getPromise(selectedSampleObjects),
         );
 
         const selectionType: SelectionType = altKey ? "alt" : "default";
@@ -147,7 +147,7 @@ export default (records: Records) => {
         set(selectedSamples, current);
         set(selectedSampleObjects, currentObjects);
       },
-    [records]
+    [records],
   );
   return ref;
 };

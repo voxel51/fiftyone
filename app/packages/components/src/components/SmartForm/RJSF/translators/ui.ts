@@ -10,7 +10,7 @@ import { addWarning, type TranslationContext } from "./utils";
  */
 export function translateToUISchema(
   schemaIO: any,
-  context: TranslationContext
+  context: TranslationContext,
 ): UiSchema {
   const uiSchema: UiSchema = {};
   const view = schemaIO.view;
@@ -55,6 +55,14 @@ export function translateToUISchema(
       uiSchema["ui:widget"] = "SelectWidget";
       uiSchema["ui:options"] = {
         multiple: view.multiple,
+      };
+      break;
+
+    case SmartFormComponents.TaxonomyView:
+      uiSchema["ui:widget"] = "TaxonomyWidget";
+      uiSchema["ui:options"] = {
+        taxonomy: view.taxonomy,
+        multiSelect: view.multiSelect,
       };
       break;
 
@@ -113,8 +121,8 @@ export function translateToUISchema(
       addWarning(
         context,
         `${component} mapped to textarea at: ${context.path.join(
-          "."
-        )}. Consider custom widget for syntax highlighting.`
+          ".",
+        )}. Consider custom widget for syntax highlighting.`,
       );
       break;
 
@@ -123,8 +131,8 @@ export function translateToUISchema(
       addWarning(
         context,
         `FileView may require custom widget configuration at: ${context.path.join(
-          "."
-        )}`
+          ".",
+        )}`,
       );
       break;
 
@@ -135,7 +143,7 @@ export function translateToUISchema(
       }
       addWarning(
         context,
-        `TabsView mapped to radio buttons at: ${context.path.join(".")}`
+        `TabsView mapped to radio buttons at: ${context.path.join(".")}`,
       );
       break;
 
@@ -193,7 +201,7 @@ export function translateToUISchema(
           translateToUISchema(item, {
             ...context,
             path: [...context.path, `items[${index}]`],
-          })
+          }),
         );
       }
       break;
@@ -206,7 +214,7 @@ export function translateToUISchema(
       };
       addWarning(
         context,
-        `MapView requires custom implementation at: ${context.path.join(".")}`
+        `MapView requires custom implementation at: ${context.path.join(".")}`,
       );
       break;
 
@@ -232,8 +240,8 @@ export function translateToUISchema(
       addWarning(
         context,
         `Custom component "${component}" requires custom widget implementation at: ${context.path.join(
-          "."
-        )}`
+          ".",
+        )}`,
       );
       break;
   }

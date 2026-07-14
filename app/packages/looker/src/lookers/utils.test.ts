@@ -26,21 +26,21 @@ describe("looker utilities", () => {
 
   it("retrieves array buffers without errors", () => {
     expect(
-      retrieveTransferables([new ClassificationsOverlay([])])
+      retrieveTransferables([new ClassificationsOverlay([])]),
     ).toStrictEqual([]);
 
     expect(
-      retrieveTransferables([new DetectionOverlay("ground_truth", {})])
+      retrieveTransferables([new DetectionOverlay("ground_truth", {})]),
     ).toStrictEqual([]);
 
     expect(
       retrieveTransferables([
         new HeatmapOverlay("ground_truth", { id: "", tags: [] }),
-      ])
+      ]),
     ).toStrictEqual([]);
 
     expect(
-      retrieveTransferables([new KeypointOverlay("ground_truth", {})])
+      retrieveTransferables([new KeypointOverlay("ground_truth", {})]),
     ).toStrictEqual([]);
 
     expect(
@@ -52,17 +52,17 @@ describe("looker utilities", () => {
           points: [],
           tags: [],
         }),
-      ])
+      ]),
     ).toStrictEqual([]);
 
     expect(
       retrieveTransferables([
         new SegmentationOverlay("ground_truth", { id: "", tags: [] }),
-      ])
+      ]),
     ).toStrictEqual([]);
 
     expect(
-      retrieveTransferables([new TemporalDetectionOverlay([])])
+      retrieveTransferables([new TemporalDetectionOverlay([])]),
     ).toStrictEqual([]);
   });
 });

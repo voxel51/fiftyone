@@ -60,7 +60,7 @@ const ValuesList = ({
       trimmed,
       values,
       isNumeric,
-      isInteger
+      isInteger,
     );
     if (validationError) {
       setInputError(validationError);
@@ -108,12 +108,12 @@ const ValuesList = ({
           />
         </Button>
       ),
-    })
+    }),
   );
 
   const handleOrderChange = (newItems: RichListItem[]) => {
     const newValues = newItems.map(
-      (item) => item.data.primaryContent as string
+      (item) => item.data.primaryContent as string,
     );
     onValuesChange(newValues);
   };

@@ -40,9 +40,8 @@ export abstract class Command<Result = unknown> {
  * type Result = CommandResult<CreateUser>; // { id: string }
  * ```
  */
-export type CommandResult<C extends Command<any>> = C extends Command<infer R>
-  ? R
-  : never;
+export type CommandResult<C extends Command<any>> =
+  C extends Command<infer R> ? R : never;
 
 /**
  * Constructor type for command classes.
@@ -67,5 +66,5 @@ export type CommandCtor<C extends Command<any>> = new (...args: any[]) => C;
  * ```
  */
 export type CommandHandler<C extends Command<any>> = (
-  cmd: C
+  cmd: C,
 ) => Promise<CommandResult<C>>;

@@ -4,10 +4,10 @@ import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetNameFilteringEnabled = getUniqueDatasetNameWithPrefix(
-  "frame-filtering-enabled"
+  "frame-filtering-enabled",
 );
 const datasetNameFilteringDisabled = getUniqueDatasetNameWithPrefix(
-  "frame-filtering-disabled"
+  "frame-filtering-disabled",
 );
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
@@ -40,7 +40,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
       dataset.app_config.disable_frame_filtering = disable
       dataset.persistent = True
       dataset.save()
-    `
+    `,
   );
 });
 
@@ -53,7 +53,7 @@ test.describe.serial("frame filtering", () => {
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(
       page,
-      datasetNameFilteringEnabled
+      datasetNameFilteringEnabled,
     );
     await grid.actionsRow.toggleDisplayOptions();
     await sidebar.asserter.assertFieldsEnabled([
@@ -74,7 +74,7 @@ test.describe.serial("frame filtering", () => {
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(
       page,
-      datasetNameFilteringDisabled
+      datasetNameFilteringDisabled,
     );
     await grid.actionsRow.toggleDisplayOptions();
     await sidebar.asserter.assertFieldDisabled("frames.detections");

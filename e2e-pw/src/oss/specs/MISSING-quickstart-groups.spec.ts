@@ -74,7 +74,7 @@ test.describe.serial("quickstart-groups", () => {
 
     // note: entry-counts might take a while to change, which is why we're asserting using polling
     await grid.assert.isEntryCountTextEqualTo(
-      "(12 samples) 4 groups with slice"
+      "(12 samples) 4 groups with slice",
     );
   });
 
@@ -94,26 +94,26 @@ test.describe.serial("quickstart-groups", () => {
 
     test("navigation works", async ({ modal }) => {
       expect(await modal.sidebar.getSampleFilepath(false)).toEqual(
-        FIRST_SAMPLE_FILENAME
+        FIRST_SAMPLE_FILENAME,
       );
 
       await modal.navigateNextSample();
 
       expect(await modal.sidebar.getSampleFilepath(false)).toEqual(
-        SECOND_SAMPLE_FILENAME
+        SECOND_SAMPLE_FILENAME,
       );
 
       await modal.navigatePreviousSample();
 
       expect(await modal.sidebar.getSampleFilepath(false)).toEqual(
-        FIRST_SAMPLE_FILENAME
+        FIRST_SAMPLE_FILENAME,
       );
 
       await modal.sidebar.toggleSidebarGroup("GROUP");
       await modal.navigateSlice("group.name", "right");
       await modal.navigateNextSample();
       expect(await modal.sidebar.getSidebarEntryText("group.name")).toEqual(
-        "right"
+        "right",
       );
     });
 
@@ -209,14 +209,14 @@ test.describe.serial("quickstart-groups", () => {
   }) => {
     let entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
     await sidebar.toggleSidebarGroup("GROUP");
     await entryExpandPromise;
 
     entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
     await sidebar.clickFieldDropdown("group.name");
     await entryExpandPromise;

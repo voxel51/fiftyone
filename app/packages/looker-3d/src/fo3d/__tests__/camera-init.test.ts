@@ -11,7 +11,7 @@ import {
 } from "../camera-init";
 
 const makeSources = (
-  overrides: Partial<CameraConfigSources> = {}
+  overrides: Partial<CameraConfigSources> = {},
 ): CameraConfigSources => ({
   savedState: null,
   overriddenCameraPosition: null,
@@ -45,7 +45,7 @@ describe("resolveCameraConfig", () => {
         },
         overriddenCameraPosition: [99, 99, 99],
         scenePosition: [50, 50, 50],
-      })
+      }),
     );
     expect(result.source).toBe("savedState");
     expect(result.position.toArray()).toEqual([10, 20, 30]);
@@ -57,7 +57,7 @@ describe("resolveCameraConfig", () => {
       makeSources({
         overriddenCameraPosition: [5, 10, 15],
         scenePosition: [50, 50, 50],
-      })
+      }),
     );
     expect(result.source).toBe("operatorOverride");
     expect(result.position.toArray()).toEqual([5, 10, 15]);
@@ -68,7 +68,7 @@ describe("resolveCameraConfig", () => {
       makeSources({
         overriddenCameraPosition: [5, 10, 15],
         sceneLookAt: [1, 2, 3],
-      })
+      }),
     );
     expect(result.source).toBe("operatorOverride");
     expect(result.target.toArray()).toEqual([1, 2, 3]);
@@ -80,7 +80,7 @@ describe("resolveCameraConfig", () => {
         overriddenCameraPosition: [5, 10, 15],
         boundingBox: finiteBbox,
         upVector: new Vector3(0, 1, 0),
-      })
+      }),
     );
     expect(result.source).toBe("operatorOverride");
     expect(result.target.toArray()).toEqual([0, 0, 0]);
@@ -90,7 +90,7 @@ describe("resolveCameraConfig", () => {
     const result = resolveCameraConfig(
       makeSources({
         overriddenCameraPosition: [5, 10, 15],
-      })
+      }),
     );
     expect(result.source).toBe("operatorOverride");
     expect(result.target.toArray()).toEqual([0, 0, 0]);
@@ -101,7 +101,7 @@ describe("resolveCameraConfig", () => {
       makeSources({
         scenePosition: [100, 200, 300],
         sceneLookAt: [10, 20, 30],
-      })
+      }),
     );
     expect(result.source).toBe("scenePosition");
     expect(result.position.toArray()).toEqual([100, 200, 300]);
@@ -116,7 +116,7 @@ describe("resolveCameraConfig", () => {
           useLegacyCoordinates: false,
           defaultUp: [0, 1, 0],
         },
-      })
+      }),
     );
     expect(result.source).toBe("pluginSettings");
     expect(result.position.toArray()).toEqual([7, 8, 9]);
@@ -127,7 +127,7 @@ describe("resolveCameraConfig", () => {
       makeSources({
         boundingBox: finiteBbox,
         upVector: new Vector3(0, 1, 0),
-      })
+      }),
     );
     expect(result.source).toBe("computedFromBbox");
     // Target should be bbox center
@@ -141,7 +141,7 @@ describe("resolveCameraConfig", () => {
       makeSources({
         boundingBox: finiteBbox,
         upVector: null,
-      })
+      }),
     );
     expect(result.source).toBe("fallback");
   });
@@ -151,19 +151,19 @@ describe("resolveCameraConfig", () => {
       new Vector3(
         Number.NEGATIVE_INFINITY,
         Number.NEGATIVE_INFINITY,
-        Number.NEGATIVE_INFINITY
+        Number.NEGATIVE_INFINITY,
       ),
       new Vector3(
         Number.POSITIVE_INFINITY,
         Number.POSITIVE_INFINITY,
-        Number.POSITIVE_INFINITY
-      )
+        Number.POSITIVE_INFINITY,
+      ),
     );
     const result = resolveCameraConfig(
       makeSources({
         boundingBox: infiniteBbox,
         upVector: new Vector3(0, 1, 0),
-      })
+      }),
     );
     expect(result.source).toBe("fallback");
   });
@@ -173,7 +173,7 @@ describe("resolveCameraConfig", () => {
 
     // Phase 1: bbox is null (still computing) — no other sources available
     const duringCompute = resolveCameraConfig(
-      makeSources({ boundingBox: null, upVector })
+      makeSources({ boundingBox: null, upVector }),
     );
     expect(duringCompute.source).toBe("fallback");
 
@@ -182,7 +182,7 @@ describe("resolveCameraConfig", () => {
 
     // Phase 2: bbox computation finishes (e.g. after 3 seconds)
     const afterCompute = resolveCameraConfig(
-      makeSources({ boundingBox: finiteBbox, upVector })
+      makeSources({ boundingBox: finiteBbox, upVector }),
     );
     expect(afterCompute.source).toBe("computedFromBbox");
     expect(afterCompute.target.toArray()).toEqual([0, 0, 0]);
@@ -194,7 +194,7 @@ describe("resolveCameraConfig", () => {
       makeSources({
         boundingBox: finiteBbox,
         upVector: new Vector3(0, 0, 1),
-      })
+      }),
     );
     expect(result.source).toBe("computedFromBbox");
     // Position should be above the center (Z-up)
@@ -208,7 +208,7 @@ describe("resolveCameraConfig", () => {
       makeSources({
         scenePosition: [100, 200, 300],
         // no sceneLookAt, no bbox
-      })
+      }),
     );
     expect(result.source).toBe("scenePosition");
     expect(result.position).toBeDefined();
@@ -218,7 +218,7 @@ describe("resolveCameraConfig", () => {
 });
 
 const makeViewSources = (
-  overrides: Partial<ViewConfigSources> = {}
+  overrides: Partial<ViewConfigSources> = {},
 ): ViewConfigSources => ({
   boundingBox: finiteBbox,
   upVector: new Vector3(0, 1, 0),
@@ -240,11 +240,11 @@ describe("resolveViewConfig", () => {
     it("uses bbox center as target for top view", () => {
       const offsetBbox = new Box3(
         new Vector3(10, 0, 10),
-        new Vector3(20, 5, 20)
+        new Vector3(20, 5, 20),
       );
       const result = resolveViewConfig(
         "top",
-        makeViewSources({ boundingBox: offsetBbox })
+        makeViewSources({ boundingBox: offsetBbox }),
       );
       expect(result.target.x).toBeCloseTo(15);
       expect(result.target.z).toBeCloseTo(15);
@@ -258,7 +258,7 @@ describe("resolveViewConfig", () => {
         makeViewSources({
           overriddenCameraPosition: [1, 1, 1],
           scenePosition: [9, 9, 9],
-        })
+        }),
       );
       expect(result.position.toArray()).toEqual([1, 1, 1]);
     });
@@ -273,7 +273,7 @@ describe("resolveViewConfig", () => {
             useLegacyCoordinates: false,
             defaultUp: [0, 1, 0],
           },
-        })
+        }),
       );
       expect(result.position.toArray()).toEqual([4, 5, 6]);
     });

@@ -13,20 +13,20 @@ describe("panelsCompareFn", () => {
     expect(
       panelsCompareFn(
         { name: "a", panelOptions: { priority: 1 } },
-        { name: "b", panelOptions: { priority: 2 } }
-      )
+        { name: "b", panelOptions: { priority: 2 } },
+      ),
     ).toBe(1);
     expect(
       panelsCompareFn(
         { name: "b", panelOptions: { priority: 2 } },
-        { name: "a", panelOptions: { priority: 1 } }
-      )
+        { name: "a", panelOptions: { priority: 1 } },
+      ),
     ).toBe(-1);
     expect(
       panelsCompareFn(
         { name: "a", panelOptions: { priority: 1 } },
-        { name: "a", panelOptions: { priority: 1 } }
-      )
+        { name: "a", panelOptions: { priority: 1 } },
+      ),
     ).toBe(0);
   });
 
@@ -54,7 +54,7 @@ describe("panelsCompareFn", () => {
     ];
     const sortedPanels = panels.sort(panelsCompareFn);
     expect(sortedPanels.map((panel) => panel.name).join("")).toEqual(
-      "FiftyOne"
+      "FiftyOne",
     );
   });
 });

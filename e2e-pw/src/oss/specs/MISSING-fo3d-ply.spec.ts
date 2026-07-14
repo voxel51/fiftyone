@@ -71,7 +71,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
     sample1 = fo.Sample(filepath="${scenePath}", name="sample1")
 
     dataset.add_samples([sample1])
-    `
+    `,
   );
 });
 
@@ -101,7 +101,7 @@ test.describe.serial("fo3d-ply", () => {
       {
         mask,
         animations: "allow",
-      }
+      },
     );
   });
 });

@@ -45,7 +45,7 @@ export const patchHistoryOnce = () => {
  */
 export const useUrlSearch = (): string => {
   const [search, setSearch] = useState<string>(() =>
-    typeof window === "undefined" ? "" : window.location.search
+    typeof window === "undefined" ? "" : window.location.search,
   );
 
   useEffect(() => {

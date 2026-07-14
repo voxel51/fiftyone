@@ -76,5 +76,5 @@ const TimelineController = React.memo(
     fos.useEventHandler(looker, "play", play);
 
     return null;
-  }
+  },
 );

@@ -14,7 +14,7 @@ export const hoveredSampleId = selector<string>({
 export default function (
   ref: MutableRefObject<boolean>,
   id: string,
-  looker: Lookers
+  looker: Lookers,
 ) {
   const hoveredId = useRecoilValue(hoveredSampleId);
   const ready = useRef(false);

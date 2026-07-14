@@ -70,7 +70,7 @@ export class EventDispatcher<T extends EventGroup> {
    */
   public on<E extends keyof T>(
     event: E,
-    handler: EventHandler<T[E]>
+    handler: EventHandler<T[E]>,
   ): () => void {
     const handlers = this.handlers[event];
 
@@ -125,7 +125,7 @@ export class EventDispatcher<T extends EventGroup> {
    */
   public once<E extends keyof T>(
     event: E,
-    handler: EventHandler<T[E]>
+    handler: EventHandler<T[E]>,
   ): () => void {
     const handlerFn = handler as (data?: T[E]) => void | Promise<void>;
     const wrapper: EventHandler<T[E]> = ((data?: T[E]) => {
@@ -242,7 +242,7 @@ export class EventDispatcher<T extends EventGroup> {
         if (result.status === "rejected") {
           console.error(
             `error handling event '${String(event)}' in handler ${index}`,
-            result.reason
+            result.reason,
           );
         }
       });

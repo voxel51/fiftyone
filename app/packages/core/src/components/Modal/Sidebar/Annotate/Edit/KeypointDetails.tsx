@@ -1,5 +1,5 @@
 import { Box } from "@mui/material";
-import { useAnnotationContext } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 import {
   Align,
   Orientation,
@@ -36,17 +36,17 @@ const ConditionalTooltip = ({
 };
 
 export const KeypointDetails = () => {
-  const { selectedLabel } = useAnnotationContext();
-  const currentData = selectedLabel?.data as KeypointAnnotationLabel["data"];
+  const { selected } = useAnnotationContext();
+  const currentData = selected?.label?.data as KeypointAnnotationLabel["data"];
   const getKeypointSkeleton = useGetKeypointSkeleton();
 
   const keypointSkeleton = useMemo(() => {
-    if (selectedLabel?.path) {
-      return getKeypointSkeleton(selectedLabel.path);
+    if (selected?.label?.path) {
+      return getKeypointSkeleton(selected.label.path);
     }
 
     return undefined;
-  }, [getKeypointSkeleton, selectedLabel?.path]);
+  }, [getKeypointSkeleton, selected?.label?.path]);
 
   const pointCount = currentData?.points?.length ?? 0;
 

@@ -1,14 +1,32 @@
 import { PathType, determinePathType, getBasename } from "./paths";
 
+export const MEDIA_TYPE_IMAGE = "image";
+export const MEDIA_TYPE_VIDEO = "video";
+export const MEDIA_TYPE_POINT_CLOUD = "point-cloud";
+export const MEDIA_TYPE_3D = "3d";
+export const MEDIA_TYPE_GROUP = "group";
+export const MEDIA_TYPE_MULTIMODAL = "multimodal";
+
+export type NativeMediaType =
+  | typeof MEDIA_TYPE_3D
+  | typeof MEDIA_TYPE_GROUP
+  | typeof MEDIA_TYPE_IMAGE
+  | typeof MEDIA_TYPE_POINT_CLOUD
+  | typeof MEDIA_TYPE_VIDEO;
+
+export type RecognizedMediaType =
+  | NativeMediaType
+  | typeof MEDIA_TYPE_MULTIMODAL;
+
 /**
  * Returns true if annotation is supported for the provided media type.
  *
  * @param mediaType media type
  */
 export const isAnnotationSupported = (
-  mediaType: string | null | undefined
+  mediaType: string | null | undefined,
 ): boolean => {
-  return !!mediaType && !["video", "group"].includes(mediaType);
+  return !!mediaType && !["group"].includes(mediaType);
 };
 
 const DIRECT_3D_SAMPLE_EXTENSIONS = new Set([
@@ -97,7 +115,7 @@ const extractExtensionFromPath = (path: string) => {
  * Supports raw filepaths as well as direct asset URLs
  */
 export const getSamplePathExtension = (
-  path: string | null | undefined
+  path: string | null | undefined,
 ): string | null => {
   if (typeof path !== "string") {
     return null;
@@ -117,7 +135,7 @@ export const getSamplePathExtension = (
  * Returns true when the provided sample path points to a supported direct 3D asset.
  */
 export const isDirect3dSamplePath = (
-  path: string | null | undefined
+  path: string | null | undefined,
 ): boolean => {
   const extension = getSamplePathExtension(path);
   return extension ? DIRECT_3D_SAMPLE_EXTENSIONS.has(extension) : false;
@@ -128,7 +146,7 @@ export const isDirect3dSamplePath = (
  * can be wrapped into a synthetic FO3D scene.
  */
 export const isWrappableDirect3dSamplePath = (
-  path: string | null | undefined
+  path: string | null | undefined,
 ): boolean => {
   const extension = getSamplePathExtension(path);
   return extension
@@ -171,6 +189,49 @@ export const is3d = (mediaType: string): boolean => {
 };
 
 /**
+ * Returns true if the provided media type is handled by FiftyOne's built-in
+ * renderers.
+ */
+export const isNativeMediaType = (
+  mediaType: string | null | undefined,
+): mediaType is NativeMediaType => {
+  return (
+    mediaType == null ||
+    mediaType === MEDIA_TYPE_IMAGE ||
+    mediaType === MEDIA_TYPE_VIDEO ||
+    mediaType === MEDIA_TYPE_GROUP ||
+    is3d(mediaType)
+  );
+};
+
+/**
+ * Returns true if the provided media type is multimodal.
+ *
+ * @param mediaType media type
+ */
+export const isMultimodal = (mediaType: string | null | undefined): boolean => {
+  return mediaType === MEDIA_TYPE_MULTIMODAL;
+};
+
+/**
+ * Returns true if the dataset has fields outside the Mongo sample
+ * collection — i.e. fields the standard ``lightning`` resolver can't
+ * see. Always false in OSS; overridden in Enterprise where multimodal
+ * datasets carry parquet-backed fields alongside their Mongo doc.
+ *
+ * Callers use this to disable Query Performance for affected
+ * datasets so the sidebar falls back to the standard aggregations
+ * path.
+ *
+ * @param mediaType media type
+ */
+export const hasNonMongoFields = (
+  _mediaType: string | null | undefined,
+): boolean => {
+  return false;
+};
+
+/**
  * Returns true if the provided set contains any media types which are
  * associated with FO3D.
  *
@@ -208,7 +269,7 @@ export const setContains3d = (mediaTypes: Set<string>): boolean => {
  */
 const anyMatch = <T>(
   set: Set<T>,
-  predicate: (element: T) => boolean
+  predicate: (element: T) => boolean,
 ): boolean => {
   return [...set].some(predicate);
 };

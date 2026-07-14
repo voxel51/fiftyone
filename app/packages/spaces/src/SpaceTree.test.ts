@@ -173,6 +173,48 @@ describe("SpaceTree", () => {
     expect(nodeC.isActive()).toBe(true);
   });
 
+  it("clears sizes on the space container when joinNode collapses a split", () => {
+    const tree = new SpaceTree();
+    const panelA = new SpaceNode();
+    panelA.type = "panel_a";
+    const panelB = new SpaceNode();
+    panelB.type = "panel_b";
+    tree.addNodeAfter(tree.root, panelA);
+    tree.addNodeAfter(tree.root, panelB);
+    tree.splitLayout(tree.root, Layout.Horizontal);
+    tree.setNodeSizes(tree.root, [0.9, 0.1]);
+    expect(tree.root.sizes).toEqual([0.9, 0.1]);
+
+    // Simulate the tab-drag collapse path: the panel container for the
+    // right pane becomes empty and joinNode is called directly (no removeNode)
+    const rightPaneContainer = tree.root.children[1];
+    rightPaneContainer.remove();
+    tree.joinNode(tree.root);
+
+    expect(tree.root.sizes).toBeUndefined();
+    expect(tree.root.isSpaceContainer()).toBe(false);
+  });
+
+  it("clears sizes on the space container when a panel is closed via removeNode", () => {
+    const tree = new SpaceTree();
+    const panelA = new SpaceNode();
+    panelA.type = "panel_a";
+    const panelB = new SpaceNode();
+    panelB.type = "panel_b";
+    tree.addNodeAfter(tree.root, panelA);
+    tree.addNodeAfter(tree.root, panelB);
+    tree.splitLayout(tree.root, Layout.Horizontal);
+    tree.setNodeSizes(tree.root, [0.9, 0.1]);
+    expect(tree.root.sizes).toEqual([0.9, 0.1]);
+
+    // Close the panel in the right pane via the X button path
+    const rightPanel = tree.root.children[1].children[0];
+    tree.removeNode(rightPanel);
+
+    expect(tree.root.sizes).toBeUndefined();
+    expect(tree.root.isSpaceContainer()).toBe(false);
+  });
+
   it("splits a provided node in a panel container into separate space", () => {
     const tree = new SpaceTree();
     const nodeA = new SpaceNode();

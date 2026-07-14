@@ -69,7 +69,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
         watermarkString: spec.img2Name,
         hideLogs: true,
       }),
-    ])
+    ]),
   );
 
   groupSpecs.forEach((spec, index) => {
@@ -220,7 +220,7 @@ test.describe.serial("navigation slice integrity", () => {
       {
         beforeScreenshot: async () =>
           ensureMain2dCanvasReadyForScreenshot(modal),
-      }
+      },
     );
   });
 });

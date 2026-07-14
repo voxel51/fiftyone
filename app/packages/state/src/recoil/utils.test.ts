@@ -9,8 +9,8 @@ describe("getSampleSrc tests", () => {
     setFetchParameters(window.location.origin, {}, proxy);
     expect(getSampleSrc("/path/to/image.png")).toEqual(
       `${window.location.origin}${proxy}/media?filepath=${encodeURIComponent(
-        image
-      )}`
+        image,
+      )}`,
     );
   });
 });

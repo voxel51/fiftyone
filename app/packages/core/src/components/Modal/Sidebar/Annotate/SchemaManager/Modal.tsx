@@ -43,10 +43,8 @@ export { ModalHeader as Header } from "./styled";
 
 const Heading = () => {
   const { field, setField } = useCurrentField();
-  const {
-    isNewField: newFieldMode,
-    setIsNewField: setNewFieldMode,
-  } = useNewFieldMode();
+  const { isNewField: newFieldMode, setIsNewField: setNewFieldMode } =
+    useNewFieldMode();
 
   if (newFieldMode) {
     return (
@@ -106,10 +104,8 @@ const Page = () => {
 const SchemaManagerFooter = () => {
   const field = useCurrentFieldValue();
   const { tab } = useSchemaEditorGUIJSONToggle();
-  const {
-    activeCount: activeSelectedCount,
-    hiddenCount: hiddenSelectedCount,
-  } = useSelectedFieldCounts();
+  const { activeCount: activeSelectedCount, hiddenCount: hiddenSelectedCount } =
+    useSelectedFieldCounts();
   const activateFields = useActivateFields();
   const deactivateFields = useDeactivateFields();
 
@@ -225,7 +221,7 @@ const Modal = () => {
         <SchemaManagerFooter />
       </ModalContainer>
     </ModalBackground>,
-    element
+    element,
   );
 };
 

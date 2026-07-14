@@ -20,7 +20,7 @@ export class JSONEditorPom {
     readonly page: Page,
     readonly eventUtils: EventUtils,
     readonly field: string,
-    readonly schemaManager: SchemaManagerPom
+    readonly schemaManager: SchemaManagerPom,
   ) {
     this.assert = new JSONEditorAsserter(this);
   }
@@ -42,7 +42,7 @@ export class JSONEditorPom {
       .getByTestId("errors-list")
       .locator("li");
     return await Promise.all(
-      (await items.all()).map((item) => item.textContent())
+      (await items.all()).map((item) => item.textContent()),
     );
   }
 
@@ -74,7 +74,7 @@ export class JSONEditorPom {
   async setJSON(json: JSONValue) {
     await this.page.evaluate(
       (json) => navigator.clipboard.writeText(json),
-      JSON.stringify(json, undefined, 2)
+      JSON.stringify(json, undefined, 2),
     );
     await this.selectAllJSON();
     await this.page.keyboard.press("ControlOrMeta+KeyV");
@@ -92,7 +92,7 @@ export class JSONEditorPom {
    */
   async scan() {
     const event = this.eventUtils.getEventReceivedPromiseForPredicate(
-      "schema-manager-scan-complete"
+      "schema-manager-scan-complete",
     );
     await this.schemaManager.locator.getByTestId("scan").click();
     await event;
@@ -103,7 +103,7 @@ export class JSONEditorPom {
    */
   async save() {
     const event = this.eventUtils.getEventReceivedPromiseForPredicate(
-      "schema-manager-save-complete"
+      "schema-manager-save-complete",
     );
     await this.schemaManager.footer.getByTestId("primary-button").click();
     await event;
@@ -130,7 +130,7 @@ export class JSONEditorPom {
    */
   waitForInvalidJSON() {
     return this.eventUtils.getEventReceivedPromiseForPredicate(
-      "schema-manager-invalid-json"
+      "schema-manager-invalid-json",
     );
   }
 
@@ -141,7 +141,7 @@ export class JSONEditorPom {
    */
   waitForValidJSON() {
     return this.eventUtils.getEventReceivedPromiseForPredicate(
-      "schema-manager-valid-json"
+      "schema-manager-valid-json",
     );
   }
 }

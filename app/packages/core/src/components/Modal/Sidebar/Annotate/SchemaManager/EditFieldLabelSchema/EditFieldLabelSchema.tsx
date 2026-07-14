@@ -40,7 +40,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
       setActiveTab(TAB_IDS[index]);
       labelSchema.resetErrors();
     },
-    [labelSchema.resetErrors]
+    [labelSchema.resetErrors],
   );
 
   return (

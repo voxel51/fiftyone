@@ -42,7 +42,7 @@ const makeRoutes = () => {
         import("./pages/IndexPage").then((module) => module.default),
       query: () =>
         import("./pages/__generated__/IndexPageQuery.graphql").then(
-          (module) => module.default
+          (module) => module.default,
         ),
     },
 
@@ -51,7 +51,7 @@ const makeRoutes = () => {
         import("./pages/datasets/DatasetPage").then((module) => module.default),
       query: () =>
         import("./pages/datasets/__generated__/DatasetPageQuery.graphql").then(
-          (module) => module.default
+          (module) => module.default,
         ),
       searchParams: { view: "savedViewSlug" },
       transform: (state, variables) => {

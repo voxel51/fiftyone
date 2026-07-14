@@ -5,7 +5,7 @@ import {
   RadioGroup as MUIRadioGroup,
   Radio,
 } from "@mui/material";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { ButtonView, HeaderView } from ".";
 import { autoFocus, getComponentProps } from "../utils";
 import { useKey } from "../hooks";
@@ -53,7 +53,7 @@ export default function RadioView(props: RadioGroupProps) {
       <MUIRadioGroup
         key={key}
         defaultValue={data}
-        onChange={(e, value) => {
+        onChange={(_e, value) => {
           onChange(path, value);
           setUserChanged();
         }}

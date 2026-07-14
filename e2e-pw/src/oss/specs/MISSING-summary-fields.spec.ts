@@ -63,7 +63,7 @@ test.describe.serial("summary fields", () => {
     });
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
     await modal.sidebar.clickFieldDropdown("summaries");
     await entryExpandPromise;

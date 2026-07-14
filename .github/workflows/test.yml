@@ -1,6 +1,12 @@
 name: Test
 
-on: workflow_call
+on:
+  workflow_call:
+    inputs:
+      python-versions:
+        description: JSON array of Python versions for the Python test matrix
+        type: string
+        default: '["3.10", "3.11", "3.12", "3.13"]'
 
 jobs:
   test-app:
@@ -35,7 +41,6 @@ jobs:
             app/.yarn/cache
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
       - name: Install
-        if: steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
       - name: Run
         run: cd app && yarn test
@@ -52,11 +57,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-        python:
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "3.13"
+        python: ${{ fromJSON(inputs.python-versions) }}
     defaults:
       run:
         shell: bash
@@ -92,7 +93,7 @@ jobs:
           uv pip install --system -r requirements/github.txt
       - name: Install fiftyone
         run: |
-          uv pip install --system . -r requirements/github.txt
+          uv pip install --system '.[multimodal]' -r requirements/github.txt
       - name: Configure
         id: test_config
         run: |
@@ -115,8 +116,8 @@ jobs:
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
       - name: Upload
-        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.11' }}
-        uses: codecov/codecov-action@v6
+        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.13' }}
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml

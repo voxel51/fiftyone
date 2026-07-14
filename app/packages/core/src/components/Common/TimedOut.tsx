@@ -1,6 +1,5 @@
 import { Tooltip } from "@fiftyone/components";
 import { QuestionMark } from "@mui/icons-material";
-import React from "react";
 import { useTheme } from "styled-components";
 
 const TimedOut = ({ queryTime }: { queryTime: number }) => {

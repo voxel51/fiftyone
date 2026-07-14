@@ -24,10 +24,9 @@ describe("useStream", () => {
   afterEach(() => cleanup());
 
   it("returns null until a stream with the matching id is registered + committed", () => {
-    const { result } = renderHook(
-      () => useStream<{ at: number }>("camera"),
-      { wrapper: wrap }
-    );
+    const { result } = renderHook(() => useStream<{ at: number }>("camera"), {
+      wrapper: wrap,
+    });
     expect(result.current).toBeNull();
   });
 
@@ -38,7 +37,7 @@ describe("useStream", () => {
         const { registerStream, seek } = usePlayback();
         return { stream, registerStream, seek };
       },
-      { wrapper: wrap }
+      { wrapper: wrap },
     );
 
     // Register a stream and seek — seeking commits since the stream is "ready".

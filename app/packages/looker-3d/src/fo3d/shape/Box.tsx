@@ -29,9 +29,9 @@ export const Box = ({
         box.depth,
         DEFAULT_SEGMENTS,
         DEFAULT_SEGMENTS,
-        DEFAULT_SEGMENTS
+        DEFAULT_SEGMENTS,
       ),
-    [box]
+    [box],
   );
   const { material } = useMeshMaterialControls(name, box.defaultMaterial);
 

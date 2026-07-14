@@ -49,6 +49,7 @@ export enum SmartFormComponents {
   LabelValueView = "LabelValueView",
   DatePickerView = "DatePickerView",
   JsonEditorView = "JsonEditorView",
+  TaxonomyView = "TaxonomyView",
 }
 
 export interface SmartFormProps {

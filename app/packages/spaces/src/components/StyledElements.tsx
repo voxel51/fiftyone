@@ -12,13 +12,13 @@ export const PanelContainer = styled.div`
   overflow: hidden;
 `;
 
-export const PanelTabs = styled.div`
+export const PanelTabs = styled.div<{ $isModal?: boolean }>`
   display: flex;
   background: var(--fo-palette-background-header);
   padding-bottom: 0px;
 `;
 
-export const StyledPanel = styled.div`
+export const StyledPanel = styled.div<{ $isModalPanel?: boolean }>`
   width: 100%;
   height: calc(100% - 28px);
   overflow: auto;

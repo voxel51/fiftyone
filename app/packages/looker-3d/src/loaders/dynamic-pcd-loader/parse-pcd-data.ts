@@ -12,7 +12,7 @@ const getRawValue = (
   byteOffset: number,
   type: PCDFileFormat,
   size: number,
-  littleEndian: boolean
+  littleEndian: boolean,
 ): number => {
   switch (type) {
     case "F":
@@ -37,7 +37,7 @@ const getRawValue = (
  */
 export const parsePCDData = (
   data: ArrayBuffer,
-  littleEndian: boolean
+  littleEndian: boolean,
 ): {
   header: PCDHeader;
   position: Float32Array;
@@ -145,7 +145,7 @@ export const parsePCDData = (
       const compressed = new Uint8Array(
         data,
         header.headerLen + 8,
-        compressedSize
+        compressedSize,
       );
       const decompressed = decompressLZF(compressed, decompressedSize);
       dv = new DataView(decompressed.buffer);
@@ -165,15 +165,15 @@ export const parsePCDData = (
         if (hasXYZ) {
           const x = dv.getFloat32(
             baseOffsets[ix] + sizes[ix] * i,
-            littleEndian
+            littleEndian,
           );
           const y = dv.getFloat32(
             baseOffsets[iy] + sizes[iy] * i,
-            littleEndian
+            littleEndian,
           );
           const z = dv.getFloat32(
             baseOffsets[iz] + sizes[iz] * i,
-            littleEndian
+            littleEndian,
           );
           if (isNaN(x) || isNaN(y) || isNaN(z)) continue;
           const pbase = validPointCount * 3;
@@ -190,7 +190,7 @@ export const parsePCDData = (
             baseOffsets[idx] + sizes[idx] * i,
             types[idx],
             sizes[idx],
-            littleEndian
+            littleEndian,
           );
           scalarArrays[si][validPointCount] = sanitizeNaNToZero(raw);
         }
@@ -229,7 +229,7 @@ export const parsePCDData = (
             rowBase + off[fields[idx]],
             types[idx],
             sizes[idx],
-            littleEndian
+            littleEndian,
           );
           scalarArrays[si][validPointCount] = sanitizeNaNToZero(raw);
         }
@@ -254,7 +254,7 @@ export const parsePCDData = (
     for (const f of allAttribsKeys) {
       attributes[f] = (attributes[f] as Float32Array).slice(
         0,
-        f === "rgb" ? validPointCount * 3 : validPointCount
+        f === "rgb" ? validPointCount * 3 : validPointCount,
       );
     }
   }

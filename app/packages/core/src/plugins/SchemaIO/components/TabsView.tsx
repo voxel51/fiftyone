@@ -1,6 +1,6 @@
 import { HelpTooltip } from "@fiftyone/components";
 import { Box, Tab, Tabs } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useKey } from "../hooks";
 import { getComponentProps } from "../utils";
 import HeaderView from "./HeaderView";
@@ -32,7 +32,7 @@ export default function TabsView(props) {
           value={tab}
           variant="scrollable"
           scrollButtons="auto"
-          onChange={(e, value) => {
+          onChange={(_e, value) => {
             setTab(value);
             setUserChanged();
           }}

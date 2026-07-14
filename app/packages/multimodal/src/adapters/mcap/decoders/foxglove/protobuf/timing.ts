@@ -26,7 +26,7 @@ interface DecodeTimingContext {
  */
 export function timingFromContext(
   context: DecodeContext,
-  messageTimestampNs: bigint | undefined
+  messageTimestampNs: bigint | undefined,
 ): DecodedTiming {
   const timingContext = timingContextFromContext(context);
   const sourceTimestamps: Record<string, bigint> = {
@@ -49,15 +49,22 @@ export function timingFromContext(
 }
 
 /**
- * Convert a protobuf Timestamp-like record into nanoseconds.
+ * Convert a protobuf Timestamp or ROS 2 Time-like record into nanoseconds.
  */
 export function timestampNs(timestamp: Record<string, unknown> | undefined) {
   if (!timestamp) {
     return undefined;
   }
 
-  const seconds = optionalBigInt(timestamp, "seconds") ?? 0n;
-  const nanos = optionalBigInt(timestamp, "nanos") ?? 0n;
+  const seconds =
+    optionalBigInt(timestamp, "seconds") ??
+    optionalBigInt(timestamp, "sec") ??
+    0n;
+  const nanos =
+    optionalBigInt(timestamp, "nanos") ??
+    optionalBigInt(timestamp, "nanosec") ??
+    optionalBigInt(timestamp, "nsec") ??
+    0n;
 
   return seconds * NANOSECONDS_PER_SECOND + nanos;
 }
@@ -81,7 +88,7 @@ function timingContextFromContext(context: DecodeContext): DecodeTimingContext {
 }
 
 function sourceTimestampsFromValue(
-  value: unknown
+  value: unknown,
 ): DecodedSourceTimestamps | undefined {
   if (value === undefined || value === null) {
     return undefined;

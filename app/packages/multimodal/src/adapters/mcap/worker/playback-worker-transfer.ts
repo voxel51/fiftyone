@@ -1,5 +1,6 @@
 import type {
   McapDecodedMessage,
+  McapNumericSeriesResult,
   McapSynchronizedMessageWindow,
 } from "../types";
 
@@ -8,6 +9,10 @@ import type {
  */
 export function transferablesForMcapResult(result: unknown): Transferable[] {
   const transferables = new Set<Transferable>();
+
+  for (const buffer of numericSeriesBuffersFromResult(result)) {
+    transferables.add(buffer);
+  }
 
   for (const message of decodedMessagesFromResult(result)) {
     for (const transferable of message.decoded.output.resourceHints
@@ -19,8 +24,45 @@ export function transferablesForMcapResult(result: unknown): Transferable[] {
   return [...transferables];
 }
 
+function numericSeriesBuffersFromResult(result: unknown): ArrayBuffer[] {
+  if (!isNumericSeriesResult(result)) {
+    return [];
+  }
+
+  // Fields may share one underlying buffer (pass-through decimation
+  // returns subarray views); the caller's Set dedupes.
+  return result.fields.flatMap((field) => {
+    const buffers: ArrayBuffer[] = [];
+    if (field.timesSec.buffer instanceof ArrayBuffer) {
+      buffers.push(field.timesSec.buffer);
+    }
+    if (field.values.buffer instanceof ArrayBuffer) {
+      buffers.push(field.values.buffer);
+    }
+    return buffers;
+  });
+}
+
+function isNumericSeriesResult(
+  value: unknown,
+): value is McapNumericSeriesResult {
+  const record = recordFromUnknown(value);
+  if (!record || !Array.isArray(record.fields)) {
+    return false;
+  }
+
+  return record.fields.every((field) => {
+    const fieldRecord = recordFromUnknown(field);
+    return (
+      !!fieldRecord &&
+      fieldRecord.timesSec instanceof Float64Array &&
+      fieldRecord.values instanceof Float64Array
+    );
+  });
+}
+
 function decodedMessagesFromResult(
-  result: unknown
+  result: unknown,
 ): readonly McapDecodedMessage[] {
   if (isSynchronizedWindow(result)) {
     return result.messages;
@@ -31,8 +73,8 @@ function decodedMessagesFromResult(
       isSynchronizedWindow(item)
         ? item.messages
         : isDecodedMessage(item)
-        ? [item]
-        : []
+          ? [item]
+          : [],
     );
   }
 
@@ -40,7 +82,7 @@ function decodedMessagesFromResult(
 }
 
 function isSynchronizedWindow(
-  value: unknown
+  value: unknown,
 ): value is McapSynchronizedMessageWindow {
   return Array.isArray(recordFromUnknown(value)?.messages);
 }

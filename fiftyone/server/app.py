@@ -77,7 +77,7 @@ class Static(StaticFiles):
         response = await super().get_response(path, scope)
         if response.status_code == 404:
             parts = pathlib.Path(path).parts
-            path = pathlib.Path(*parts[1:])
+            path = str(pathlib.Path(*parts[1:]))
             if parts and parts[0] == "datasets":
                 full_path, stat_result = self.lookup_path(path)
                 if stat_result and stat.S_ISREG(stat_result.st_mode):
@@ -125,6 +125,39 @@ for mtype, ext in mtypes:
     mimetypes.add_type(mtype, ext)
 
 
+_middleware = [Middleware(HeadersMiddleware)]
+
+_allowed_origins = [
+    o.strip()
+    for o in (fo.config.allowed_origins or "").split(",")
+    if o.strip()
+]
+if _allowed_origins:
+    _middleware.append(
+        Middleware(
+            CORSMiddleware,
+            allow_origins=_allowed_origins,
+            allow_methods=["GET", "PATCH", "POST", "HEAD", "OPTIONS"],
+            allow_headers=[
+                "authorization",
+                "content-type",
+                "if-match",
+                "range",
+            ],
+            expose_headers=[
+                "accept-ranges",
+                "content-range",
+                "content-length",
+            ],
+        )
+    )
+    if "*" in _allowed_origins:
+        logger.warning(
+            "FIFTYONE_ALLOWED_ORIGINS contains '*', so all cross-origin "
+            "requests are allowed."
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: Starlette):
     if is_notification_service_disabled():
@@ -163,20 +196,7 @@ async def lifespan(app: Starlette):
 
 
 app = Starlette(
-    middleware=[
-        Middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_methods=["GET", "PATCH", "POST", "HEAD", "OPTIONS"],
-            allow_headers=[
-                "access-control-allow-origin",
-                "authorization",
-                "content-type",
-                "if-match",
-            ],
-        ),
-        Middleware(HeadersMiddleware),
-    ],
+    middleware=_middleware,
     debug=True,
     lifespan=lifespan,
     routes=[Route(route, endpoint) for route, endpoint in routes]

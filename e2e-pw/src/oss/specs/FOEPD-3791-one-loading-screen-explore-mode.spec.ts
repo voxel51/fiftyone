@@ -12,7 +12,7 @@ import { PagePom } from "src/oss/poms/page";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "one-loading-screen-explore-mode"
+  "one-loading-screen-explore-mode",
 );
 
 const test = base.extend<{

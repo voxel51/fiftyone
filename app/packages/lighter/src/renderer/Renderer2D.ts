@@ -81,42 +81,42 @@ export interface Renderer2D {
     bounds: Rect,
     width: number,
     color: number | string,
-    containerId: string
+    containerId: string,
   ): void;
   drawScrim(
     bounds: Rect,
     canonicalMediaBounds: Rect,
-    containerId: string
+    containerId: string,
   ): void;
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void;
   drawText(
     text: string,
     position: Point,
     options: TextOptions | undefined,
-    containerId: string
+    containerId: string,
   ): Rect;
   drawPoint(
     center: Point,
     radius: number,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void;
   drawPoints(
     centers: Point[],
     radius: number,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void;
   drawLine(
     start: Point,
     end: Point,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void;
   drawLines(
     segments: Array<[Point, Point]>,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void;
   /**
    * Draw a closed polygon connecting `points` in order. When `style.fillStyle`
@@ -128,7 +128,7 @@ export interface Renderer2D {
     image: ImageSource,
     destination: Rect,
     options: ImageOptions | undefined,
-    containerId: string
+    containerId: string,
   ): void;
 
   dispose(containerId: string): void;

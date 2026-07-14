@@ -61,7 +61,6 @@ class PanelConfig(OperatorConfig):
         self.dark_icon = dark_icon
         self.allow_multiple = allow_multiple
         self.unlisted = True
-        self.on_startup = True
         self.surfaces = surfaces
         self.category = category
         self.alpha = alpha
@@ -115,7 +114,8 @@ class Panel(Operator):
         inputs.str("panel_id")
         return types.Property(inputs)
 
-    def on_startup(self, ctx):
+    def resolve_panel_config(self):
+        """Returns the registration config for this panel."""
         panel_config = {
             "name": self.config.name,
             "label": self.config.label,
@@ -150,7 +150,10 @@ class Panel(Operator):
             if hasattr(self, method) and callable(getattr(self, method)):
                 panel_config[method] = self.method_to_uri(method)
 
-        ctx.ops.register_panel(**panel_config)
+        return panel_config
+
+    def on_startup(self, ctx):
+        ctx.ops.register_panel(**self.resolve_panel_config())
 
     def on_load(self, ctx):
         pass
@@ -162,8 +165,8 @@ class Panel(Operator):
         event_args = ctx.params.get("event_args", {})
         if method_name is None or method_name == "on_startup":
             return self.on_startup(ctx)
-
         # trigger the event
+        result = None
         if hasattr(self, method_name):
             method = getattr(self, method_name)
             ctx.event_args = event_args

@@ -43,7 +43,9 @@ describe("ModalNavigation keyboard handler", () => {
   afterEach(() => {
     vi.clearAllMocks();
     // Clean up any created elements
-    document.querySelectorAll("[data-test-element]").forEach((el) => el.remove());
+    document
+      .querySelectorAll("[data-test-element]")
+      .forEach((el) => el.remove());
   });
 
   describe("when no form field is focused", () => {

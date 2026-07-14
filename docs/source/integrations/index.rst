@@ -168,6 +168,13 @@ on the cards below to see how!
     :tags: Model-Training,Model-Evaluation,Models
 
 .. customcarditem::
+    :header: TwelveLabs
+    :description: Use our TwelveLabs integration to embed and caption videos with the Marengo and Pegasus foundation models for video dataset curation.
+    :link: twelvelabs.html
+    :image: ../_images/brain-image-visualization.gif
+    :tags: Brain,Embeddings,Models
+
+.. customcarditem::
     :header: Albumentations
     :description: Use our Albumentations integration to test out data augmentation transformations in real-time on your FiftyOne datasets.
     :link: albumentations.html
@@ -239,6 +246,7 @@ on the cards below to see how!
     LanceDB <lancedb.rst>
     Hugging Face <huggingface.rst>
     Ultralytics <ultralytics.rst>
+    TwelveLabs <twelvelabs.rst>
     Albumentations <albumentations.rst>
     SuperGradients <super_gradients.rst>
     OpenCLIP <openclip.rst>

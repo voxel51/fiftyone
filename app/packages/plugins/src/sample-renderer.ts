@@ -1,5 +1,5 @@
-import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
+import { isNativeMediaType } from "@fiftyone/utilities";
 import type { Schema } from "@fiftyone/utilities";
 import mime from "mime";
 import type React from "react";
@@ -72,11 +72,71 @@ export type SampleRendererProps = {
 };
 
 /**
+ * Stable slots exposed by the grid surface for renderer-owned controls.
+ */
+export const SAMPLE_RENDERER_GRID_SLOT = {
+  HEADER_AFTER_RESOURCE_COUNT: "grid-header-after-resource-count",
+} as const;
+
+export type SampleRendererGridSlot =
+  (typeof SAMPLE_RENDERER_GRID_SLOT)[keyof typeof SAMPLE_RENDERER_GRID_SLOT];
+
+/**
+ * Controls how otherwise-unhandled grid-tile activation events are routed.
+ *
+ * - `"renderer"` (default) keeps click and context-menu events inside the
+ *   sample renderer. Users open the sample modal with the grid's explicit
+ *   open-modal control.
+ * - `"passthrough"` allows those events to bubble to the host grid, where a
+ *   normal tile click opens the sample modal. Renderer-owned interactive
+ *   regions can still call `stopPropagation()` to retain their interactions.
+ *
+ * This option does not disable pointer events or affect hover behavior,
+ * renderer-owned controls, the sample-selection checkbox, or the explicit
+ * open-modal control.
+ */
+export type SampleRendererGridClickBehavior = "renderer" | "passthrough";
+
+/**
  * Grid-specific renderer behavior, including enablement and optional override.
  */
 export type GridConfig = {
+  /**
+   * Enables the sample renderer on the grid surface. Grid rendering is
+   * disabled unless this is explicitly set to `true`.
+   */
   enabled?: boolean;
+  /**
+   * Optional component used only on the grid surface. When omitted, the
+   * renderer's canonical component is used in both the grid and modal.
+   */
   overrideComponent?: React.FunctionComponent<SampleRendererProps>;
+  /**
+   * Controls whether otherwise-unhandled tile activation events stay within
+   * the renderer or pass through to the host grid. Defaults to `"renderer"`.
+   *
+   * Use `"passthrough"` for non-interactive previews that should behave like
+   * native grid tiles. A renderer that mixes interactive and non-interactive
+   * regions may opt into passthrough and call `stopPropagation()` only from
+   * the interactive regions.
+   */
+  clickBehavior?: SampleRendererGridClickBehavior;
+  /**
+   * Components rendered in named grid slots while this renderer is active.
+   */
+  slots?: Partial<Record<SampleRendererGridSlot, React.FunctionComponent>>;
+};
+
+/**
+ * Modal-specific renderer behavior.
+ */
+export type ModalConfig = {
+  /**
+   * Keep the renderer shell mounted while navigating between samples it
+   * supports. The renderer must derive all per-sample state from `ctx`
+   * (or key its own internal subtrees).
+   */
+  persistAcrossSamples?: boolean;
 };
 
 /**
@@ -88,6 +148,7 @@ export type SampleRendererOptions<TSample = SampleRendererSampleLike> = {
     | MatchMedia
     | ((ctx: SampleRendererMatchContext<TSample>) => boolean);
   grid?: GridConfig;
+  modal?: ModalConfig;
 };
 
 type SampleRendererRegistrationLike<TSample = SampleRendererSampleLike> = {
@@ -120,7 +181,7 @@ function normalizeExtensionValue(value: string | null | undefined) {
 
 function normalizeMatcherArray(
   values: string[] | undefined,
-  normalizer: (value: string) => string | null
+  normalizer: (value: string) => string | null,
 ) {
   if (!Array.isArray(values)) {
     return undefined;
@@ -141,20 +202,20 @@ function normalizeMatcherArray(
  * Normalizes a match-media configuration for case-insensitive comparisons.
  */
 export function normalizeMatchMedia(
-  matchMedia: MatchMedia | undefined
+  matchMedia: MatchMedia | undefined,
 ): MatchMedia {
   return {
     extensions: normalizeMatcherArray(
       matchMedia?.extensions,
-      normalizeExtensionValue
+      normalizeExtensionValue,
     ),
     mimeTypes: normalizeMatcherArray(
       matchMedia?.mimeTypes,
-      normalizeMatcherValue
+      normalizeMatcherValue,
     ),
     mediaTypes: normalizeMatcherArray(
       matchMedia?.mediaTypes,
-      normalizeMatcherValue
+      normalizeMatcherValue,
     ),
   };
 }
@@ -165,7 +226,7 @@ function matchesField(allowed: string[] | undefined, value: string | null) {
 
 function getSampleMimeType(
   sample: SampleRendererSampleLike["sample"],
-  selectedMediaPath?: string | null
+  selectedMediaPath?: string | null,
 ) {
   if (selectedMediaPath && selectedMediaPath !== sample.filepath) {
     const mimeFromSelectedPath = mime.getType(selectedMediaPath);
@@ -201,7 +262,7 @@ export function hasMatchMediaMatchers(matchMedia: MatchMedia | undefined) {
  */
 export function matchesMatchMedia(
   matchMedia: MatchMedia | undefined,
-  media: SampleRendererMediaContext
+  media: SampleRendererMediaContext,
 ) {
   const normalized = normalizeMatchMedia(matchMedia);
 
@@ -212,7 +273,7 @@ export function matchesMatchMedia(
   return (
     matchesField(
       normalized.extensions,
-      normalizeExtensionValue(media.extension)
+      normalizeExtensionValue(media.extension),
     ) &&
     matchesField(normalized.mimeTypes, normalizeMatcherValue(media.mimeType)) &&
     matchesField(normalized.mediaTypes, normalizeMatcherValue(media.mediaType))
@@ -243,7 +304,7 @@ export function getFileExtension(path: string | null | undefined) {
  */
 export function getSelectedMediaPath<TSample extends SampleRendererSampleLike>(
   sample: TSample,
-  selectedMediaField: string
+  selectedMediaField: string,
 ) {
   const urls = sample.urls ? fos.getNormalizedUrls(sample.urls) : undefined;
 
@@ -259,7 +320,7 @@ export function getSelectedMediaPath<TSample extends SampleRendererSampleLike>(
  * Builds normalized media metadata used for sample renderer matching and render context.
  */
 export function createSampleRendererMediaContext<
-  TSample extends SampleRendererSampleLike
+  TSample extends SampleRendererSampleLike,
 >(sample: TSample, selectedMediaField: string): SampleRendererMediaContext {
   const path = getSelectedMediaPath(sample, selectedMediaField);
   const mediaType =
@@ -280,13 +341,13 @@ export function createSampleRendererMediaContext<
  * Creates the full render context passed to sample renderer components.
  */
 export function createSampleRendererRenderContext<
-  TSample extends SampleRendererSampleLike
+  TSample extends SampleRendererSampleLike,
 >(
   sample: TSample,
   selectedMediaField: string,
   dataset: fos.State.Dataset,
   schema: Schema,
-  surface: SampleRendererSurface
+  surface: SampleRendererSurface,
 ): SampleRendererRenderContext<TSample> {
   return {
     sample,
@@ -301,9 +362,35 @@ export function createSampleRendererRenderContext<
  * Returns whether a sample renderer registration is explicitly enabled for grid.
  */
 export function isSampleRendererGridEnabled(
-  registration: SampleRendererRegistrationLike
+  registration: SampleRendererRegistrationLike,
 ) {
   return registration.sampleRendererOptions.grid?.enabled === true;
+}
+
+/**
+ * Returns whether a renderer opts into persisting across sample navigation
+ * in the modal.
+ */
+export function isSampleRendererModalPersistent(
+  registration: SampleRendererRegistrationLike,
+) {
+  return (
+    registration.sampleRendererOptions.modal?.persistAcrossSamples === true
+  );
+}
+
+/**
+ * Returns the configured grid slot component when grid rendering is enabled.
+ */
+export function getSampleRendererGridSlotComponent(
+  registration: SampleRendererRegistrationLike,
+  slot: SampleRendererGridSlot,
+) {
+  if (!isSampleRendererGridEnabled(registration)) {
+    return null;
+  }
+
+  return registration.sampleRendererOptions.grid?.slots?.[slot] || null;
 }
 
 /**
@@ -311,7 +398,7 @@ export function isSampleRendererGridEnabled(
  */
 export function supportsSampleRenderer(
   registration: SampleRendererRegistrationLike<SampleRendererSampleLike>,
-  ctx: SampleRendererMatchContext<SampleRendererSampleLike>
+  ctx: SampleRendererMatchContext<SampleRendererSampleLike>,
 ) {
   if (ctx.media.isNative) {
     return false;
@@ -329,7 +416,7 @@ export function supportsSampleRenderer(
     } catch (error) {
       console.error(
         `Sample renderer "${registration.name}" failed while evaluating supports`,
-        error
+        error,
       );
       return false;
     }
@@ -342,7 +429,7 @@ export function supportsSampleRenderer(
  * Sorts renderer registrations by priority, then by name for deterministic ordering.
  */
 export function sortSampleRenderersByPriority<
-  TRegistration extends SampleRendererRegistrationLike
+  TRegistration extends SampleRendererRegistrationLike,
 >(registrationA: TRegistration, registrationB: TRegistration) {
   const priorityA = registrationA.sampleRendererOptions.priority || 0;
   const priorityB = registrationB.sampleRendererOptions.priority || 0;
@@ -358,7 +445,7 @@ export function sortSampleRenderersByPriority<
  * Returns the highest-priority renderer registration that supports the given context.
  */
 export function getMatchingSampleRenderer<
-  TRegistration extends SampleRendererRegistrationLike
+  TRegistration extends SampleRendererRegistrationLike,
 >(registrations: TRegistration[], ctx: SampleRendererMatchContext) {
   return (
     registrations
@@ -374,7 +461,7 @@ export function getMatchingSampleRenderer<
 export function getSampleRendererComponent<TSample = unknown>(
   registration: SampleRendererRegistrationLike<TSample>,
   surface: SampleRendererSurface,
-  canonicalComponent: React.FunctionComponent<SampleRendererProps>
+  canonicalComponent: React.FunctionComponent<SampleRendererProps>,
 ) {
   if (surface === "grid") {
     return (

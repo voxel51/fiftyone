@@ -7,7 +7,7 @@ import { useStableMcapSource } from "./use-stable-mcap-source";
  * Loads cached MCAP topic metadata for a sample renderer context.
  */
 export function useMcapSampleTopics(
-  ctx: SampleRendererProps["ctx"]
+  ctx: SampleRendererProps["ctx"],
 ): McapTopicsState {
   const client = useMcapResourceClient({ worker: true });
   const source = useStableMcapSource(ctx);

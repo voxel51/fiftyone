@@ -34,7 +34,7 @@ const channelRegistry = new Map<
 >();
 
 function getChannelMap(
-  channel: string | undefined
+  channel: string | undefined,
 ): Map<string, ClassificationOverlay> {
   let map = channelRegistry.get(channel);
   if (!map) {
@@ -67,7 +67,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
   private getStackIndex(): number {
     const siblings = getChannelMap(this.channel);
     const alphabetical = [...siblings.values()].sort((a, b) =>
-      (a.label?.label ?? "").localeCompare(b.label?.label ?? "")
+      (a.label?.label ?? "").localeCompare(b.label?.label ?? ""),
     );
 
     return alphabetical.indexOf(this);
@@ -81,7 +81,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     super.label = value;
 
     getChannelMap(this.channel).forEach((classificationOverlay) =>
-      classificationOverlay.markDirty()
+      classificationOverlay.markDirty(),
     );
   }
 
@@ -148,7 +148,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
         tab: "right",
         dashline,
       },
-      this.containerId
+      this.containerId,
     );
 
     this.emitLoaded();

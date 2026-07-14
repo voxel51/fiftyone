@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { selectorFamily, useRecoilValue } from "recoil";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 
@@ -38,16 +38,20 @@ export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
         path,
       });
     },
-    [modal, path]
+    [modal, path],
   );
   const hasFilters = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
   const queryPerformance = useRecoilValue(fos.queryPerformance) && !modal;
   const shown = useRecoilValue(showEntryCounts({ modal, path }));
 
   // empty path means we are showing grid sample count which is always allowed
+  // Temporal tags aren't sample fields, so there's no per-sample field count
+  // to aggregate — suppress the count badge (its options come from the tag
+  // counts endpoint instead).
   return (!queryPerformance || hasFilters || path === "") &&
     shown &&
-    (path !== "_label_tags" || modal) ? (
+    (path !== "_label_tags" || modal) &&
+    path !== "_temporal_tags" ? (
     <SuspenseEntryCounts
       countAtom={queryPerformance ? undefined : getAtom(false)}
       subcountAtom={getAtom(true)}
@@ -67,7 +71,7 @@ const labelTagCount = selectorFamily<
         fos.cumulativeCounts({
           ...fos.MATCH_LABEL_TAGS,
           ...rest,
-        })
+        }),
       );
       return labeltags[tag] ?? 0;
     },
@@ -86,7 +90,7 @@ export const labelTagsCount = selectorFamily({
         fos.cumulativeCounts({
           ...fos.MATCH_LABEL_TAGS,
           ...props,
-        })
+        }),
       );
 
       if (!labelTagObj) return { count: 0, results: [] };

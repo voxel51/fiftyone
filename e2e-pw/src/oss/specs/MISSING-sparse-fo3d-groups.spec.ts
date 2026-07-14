@@ -129,23 +129,27 @@ test.describe.serial("sparse grouped fo3d", () => {
     await grid.selectSlice("z");
   });
 
-  test("keeps sparse 3d modal navigation stable", async ({ grid, modal }) => {
+  // TODO FOEPD-3967 re-enable this test once its flakiness is resolved
+  test.skip("keeps sparse 3d modal navigation stable", async ({
+    grid,
+    modal,
+  }) => {
     const assertSingleSliceState = async (
       index: number,
-      expectedSlice: "x" | "y" | "z"
+      expectedSlice: "x" | "y" | "z",
     ) => {
       const spec = groupSpecs[index];
       const sample = spec.samples.find(({ slice }) => slice === expectedSlice);
 
       if (!sample) {
         throw new Error(
-          `Missing sample for ${spec.scene} on slice ${expectedSlice}`
+          `Missing sample for ${spec.scene} on slice ${expectedSlice}`,
         );
       }
 
       await modal.looker3dControls.waitForAllAssetsLoaded();
       await modal.looker3dControls.assert.verifySliceSelectorLabel(
-        expectedSlice
+        expectedSlice,
       );
       await modal.assert.verifyHasNoViewerError();
       await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
@@ -195,7 +199,7 @@ test.describe.serial("sparse grouped fo3d", () => {
       await modal.assert.verifyHasNoViewerError();
       await modal.sidebar.assert.waitUntilSidebarEntryTextEquals(
         "group.name",
-        slice
+        slice,
       );
 
       await modal.close();

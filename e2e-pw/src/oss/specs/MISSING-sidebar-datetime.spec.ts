@@ -70,50 +70,48 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
   `);
 });
 
-test.describe.serial(
-  "date field and date time field can filter visibility",
-  () => {
-    test.beforeEach(async ({ page, fiftyoneLoader }) => {
-      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    });
+test.describe
+  .serial("date field and date time field can filter visibility", () => {
+  test.beforeEach(async ({ page, fiftyoneLoader }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  });
 
-    test("change date field visibility works", async ({
-      eventUtils,
-      page,
-      sidebar,
-    }) => {
-      await sidebar.toggleSidebarMode();
-      await sidebar.toggleSidebarGroup("METADATA");
+  test("change date field visibility works", async ({
+    eventUtils,
+    page,
+    sidebar,
+  }) => {
+    await sidebar.toggleSidebarMode();
+    await sidebar.toggleSidebarGroup("METADATA");
 
-      const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-        "animation-onRest",
-        () => true
-      );
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true,
+    );
 
-      await sidebar.clickFieldCheckbox("dates");
-      await sidebar.clickFieldDropdown("dates");
-      await entryExpandPromise;
-      expect(await page.getByTestId("tag-dates").count()).toBe(2);
-    });
+    await sidebar.clickFieldCheckbox("dates");
+    await sidebar.clickFieldDropdown("dates");
+    await entryExpandPromise;
+    expect(await page.getByTestId("tag-dates").count()).toBe(2);
+  });
 
-    test("change datetime field visibility works", async ({
-      sidebar,
-      eventUtils,
-      page,
-    }) => {
-      await sidebar.toggleSidebarMode();
-      await sidebar.toggleSidebarGroup("METADATA");
+  test("change datetime field visibility works", async ({
+    sidebar,
+    eventUtils,
+    page,
+  }) => {
+    await sidebar.toggleSidebarMode();
+    await sidebar.toggleSidebarGroup("METADATA");
 
-      const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-        "animation-onRest",
-        () => true
-      );
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true,
+    );
 
-      await sidebar.clickFieldCheckbox("seconds");
-      await sidebar.clickFieldDropdown("seconds");
-      await entryExpandPromise;
+    await sidebar.clickFieldCheckbox("seconds");
+    await sidebar.clickFieldDropdown("seconds");
+    await entryExpandPromise;
 
-      expect(await page.getByTestId("tag-seconds").count()).toBe(2);
-    });
-  }
-);
+    expect(await page.getByTestId("tag-seconds").count()).toBe(2);
+  });
+});

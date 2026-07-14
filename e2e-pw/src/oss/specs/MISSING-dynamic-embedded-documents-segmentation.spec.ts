@@ -50,19 +50,17 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   `);
 });
 
-test.describe.serial(
-  "dynamic embedded documents (DED) visibility / filter",
-  () => {
-    test.beforeEach(async ({ page, fiftyoneLoader }) => {
-      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    });
+test.describe
+  .serial("dynamic embedded documents (DED) visibility / filter", () => {
+  test.beforeEach(async ({ page, fiftyoneLoader }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  });
 
-    test("Sample modal opens when the sample has segmentation mask label from disk mask_path", async ({
-      grid,
-      modal,
-    }) => {
-      await grid.openFirstSample();
-      await modal.assert.verifyModalOpenedSuccessfully();
-    });
-  }
-);
+  test("Sample modal opens when the sample has segmentation mask label from disk mask_path", async ({
+    grid,
+    modal,
+  }) => {
+    await grid.openFirstSample();
+    await modal.assert.verifyModalOpenedSuccessfully();
+  });
+});
