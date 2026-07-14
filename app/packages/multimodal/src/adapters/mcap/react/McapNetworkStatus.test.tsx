@@ -1,4 +1,7 @@
-import { isPlayPendingAtom } from "@fiftyone/playback/src/lib/playback/atoms";
+import {
+  bufferingDetailAtom,
+  isPlayPendingAtom,
+} from "@fiftyone/playback/src/lib/playback/atoms";
 import {
   PlaybackProvider,
   usePlaybackStore,
@@ -13,6 +16,7 @@ import {
   setMcapStartupCushionState,
   type McapStartupCushionState,
 } from "./mcap-startup-cushion-state";
+import { MCAP_3D_PLACEMENT_BUFFERING_DETAIL } from "./use-mcap-3d-placement-stream";
 
 const IDLE_HEALTH: McapNetworkHealth = {
   busyFraction: 0,
@@ -24,10 +28,12 @@ const IDLE_HEALTH: McapNetworkHealth = {
 };
 
 function NetworkStateSetup({
+  bufferingDetail = null,
   health = IDLE_HEALTH,
   playPending = false,
   startupCushion = null,
 }: {
+  readonly bufferingDetail?: string | null;
   readonly health?: McapNetworkHealth;
   readonly playPending?: boolean;
   readonly startupCushion?: McapStartupCushionState | null;
@@ -36,10 +42,11 @@ function NetworkStateSetup({
 
   // This effect publishes each test case's network and startup state.
   useEffect(() => {
+    store.set(bufferingDetailAtom, bufferingDetail);
     store.set(isPlayPendingAtom, playPending);
     setMcapNetworkHealth(store, health);
     setMcapStartupCushionState(store, startupCushion);
-  }, [health, playPending, startupCushion, store]);
+  }, [bufferingDetail, health, playPending, startupCushion, store]);
 
   return null;
 }
@@ -58,6 +65,37 @@ function renderPill(
 describe("McapNetworkStatusPill", () => {
   afterEach(cleanup);
 
+  it("stays hidden without throughput or a pending startup condition", () => {
+    const { container } = renderPill();
+
+    expect(
+      container.querySelector('[data-cy="mcap-network-status-pill"]'),
+    ).toBe(null);
+  });
+
+  it("prioritizes placement waits over startup and network state", () => {
+    renderPill({
+      bufferingDetail: MCAP_3D_PLACEMENT_BUFFERING_DETAIL,
+      health: { ...IDLE_HEALTH, limited: true },
+      playPending: true,
+      startupCushion: {
+        estimatedWaitSeconds: 3,
+        progressFraction: 0.25,
+        targetSeconds: 4,
+      },
+    });
+
+    const placementPill = screen.getByText("Placement");
+    expect(placementPill.getAttribute("title")).toBe(
+      "Playback is waiting for frame transforms needed to place the 3D point cloud.",
+    );
+    expect(
+      placementPill.querySelector<HTMLElement>('[style*="height: 25%"]')?.style
+        .height,
+    ).toBe("25%");
+    expect(screen.getByText("waiting for transforms")).toBeTruthy();
+  });
+
   it("shows startup coverage before the first throughput sample", () => {
     renderPill({
       playPending: true,
@@ -70,6 +108,36 @@ describe("McapNetworkStatusPill", () => {
 
     expect(screen.getByText("Preparing playback")).toBeTruthy();
     expect(screen.getByText("buffering 25% of 4s")).toBeTruthy();
+  });
+
+  it("uses the limited-network label during gated startup", () => {
+    renderPill({
+      health: { ...IDLE_HEALTH, limited: true },
+      playPending: true,
+      startupCushion: {
+        estimatedWaitSeconds: 3,
+        progressFraction: 0.25,
+        targetSeconds: 4,
+      },
+    });
+
+    expect(screen.getByText("Slow network")).toBeTruthy();
+    expect(screen.getByText("buffering 25% of 4s")).toBeTruthy();
+  });
+
+  it("shows limited throughput outside startup", () => {
+    renderPill({
+      health: {
+        ...IDLE_HEALTH,
+        limited: true,
+        throughputBytesPerSec: 1024,
+      },
+    });
+
+    expect(screen.getByText("Slow network").getAttribute("title")).toBe(
+      "Playback is buffering because the network cannot keep up with this recording's data rate.",
+    );
+    expect(screen.getByText("1 KB/s")).toBeTruthy();
   });
 
   it("shows active-transfer throughput instead of an idle-decayed rate", () => {
@@ -85,6 +153,7 @@ describe("McapNetworkStatusPill", () => {
     });
 
     expect(screen.getByText("1 MB/s")).toBeTruthy();
+    expect(screen.getByText("Bandwidth")).toBeTruthy();
     expect(screen.queryByText("4 B/s")).toBeNull();
   });
 });
