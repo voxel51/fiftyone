@@ -12,6 +12,7 @@ import {
 } from "../source-bootstrap-cache";
 import { MCAP_PLAYBACK_WORKER_PRIORITY } from "../worker/playback-worker-types";
 import {
+  MCAP_GRID_BUFFERING_DELAY_MS,
   useMcapGridPreview,
   type McapGridPreviewState,
 } from "./use-mcap-grid-preview";
@@ -82,6 +83,36 @@ describe("useMcapGridPreview", () => {
 
     expect(signal.aborted).toBe(true);
     expect(poolHarness.pool.release).toHaveBeenCalledTimes(1);
+  });
+
+  it("promotes a pending initial frame when its tile is hovered", async () => {
+    const background = deferred<McapGridPreviewResult>();
+    const foreground = deferred<McapGridPreviewResult>();
+    poolHarness.pool.request
+      .mockReturnValueOnce(background.promise)
+      .mockReturnValueOnce(foreground.promise);
+    const source = sourceForId("hover-priority");
+    const { rerender } = render(
+      <PreviewHarness id="hover-priority" source={source} />,
+    );
+    const backgroundSignal = poolHarness.pool.request.mock.calls[0]?.[1]
+      ?.signal as AbortSignal;
+
+    rerender(<PreviewHarness hovered id="hover-priority" source={source} />);
+
+    expect(backgroundSignal.aborted).toBe(true);
+    expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+    expect(poolHarness.pool.request.mock.calls[1]?.[1]).toMatchObject({
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+    });
+
+    foreground.resolve(readyResult({ bytes: [4] }));
+    await waitFor(() => {
+      expect(screen.getByTestId("preview-hover-priority").textContent).toBe(
+        "ready:1:frame:",
+      );
+    });
+    background.resolve(readyResult({ bytes: [1] }));
   });
 
   it("aborts stale source loads and ignores late results", async () => {
@@ -188,6 +219,43 @@ describe("useMcapGridPreview", () => {
       latestState.current?.pause();
     });
     expect(poolHarness.pool.release).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports buffering only when a hover frame read stays pending", async () => {
+    vi.useFakeTimers({ toFake: ["clearTimeout", "performance", "setTimeout"] });
+    const latestState = { current: null as McapGridPreviewState | null };
+    const hover = deferred<McapGridPreviewResult>();
+    poolHarness.pool.request
+      .mockResolvedValueOnce(readyResult({ bytes: [1] }))
+      .mockReturnValueOnce(hover.promise);
+
+    render(
+      <PreviewHarness
+        id="buffering"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        source={sourceForId("buffering")}
+      />,
+    );
+    await act(async () => undefined);
+
+    act(() => latestState.current?.play());
+    await act(async () => undefined);
+    expect(latestState.current?.isBuffering).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(MCAP_GRID_BUFFERING_DELAY_MS - 1);
+    });
+    expect(latestState.current?.isBuffering).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(latestState.current?.isBuffering).toBe(true);
+
+    act(() => latestState.current?.pause());
+    expect(latestState.current?.isBuffering).toBe(false);
   });
 
   it("presents hover frames at their recorded one-times cadence", async () => {
@@ -385,18 +453,25 @@ describe("useMcapGridPreview", () => {
 
 function PreviewHarness({
   enabled,
+  hovered,
   id,
   onState,
   selectedStreamTopic,
   source,
 }: {
   readonly enabled?: boolean;
+  readonly hovered?: boolean;
   readonly id: string;
   readonly onState?: (state: McapGridPreviewState) => void;
   readonly selectedStreamTopic?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }) {
-  const state = useMcapGridPreview({ enabled, selectedStreamTopic, source });
+  const state = useMcapGridPreview({
+    enabled,
+    hovered,
+    selectedStreamTopic,
+    source,
+  });
 
   // This effect exposes each hook update to tests that inspect live state.
   useEffect(() => {

@@ -24,12 +24,14 @@ import {
   PLAYBACK_HOVER_INTENT_DELAY_MS,
 } from "./GridRenderer";
 import classes from "./GridRenderer.module.css";
+import { useMcapGridPreview } from "./use-mcap-grid-preview";
 
 const previewHarness = vi.hoisted(() => ({
   preview: {
     error: null as string | null,
     frame: null as McapGridPreviewFrame | null,
     hasPreviewTopics: false,
+    isBuffering: false,
     pause: vi.fn(),
     play: vi.fn(),
     streamTopic: null as string | null,
@@ -159,6 +161,7 @@ afterEach(() => {
   previewHarness.preview.error = null;
   previewHarness.preview.frame = null;
   previewHarness.preview.hasPreviewTopics = false;
+  previewHarness.preview.isBuffering = false;
   previewHarness.preview.status = "idle";
   previewHarness.preview.streamTopic = null;
   previewHarness.preview.pause.mockClear();
@@ -208,6 +211,17 @@ describe("GridRenderer", () => {
     expect(bitmapViewHarness.lastProps.frame.bytes).toBe(bytes);
     expect(bitmapViewHarness.lastProps?.fit).toBe("cover");
     expect(bitmapViewHarness.lastProps.frame.mimeType).toBe("image/jpeg");
+  });
+
+  it("shows a tiny buffering indicator over the last rendered frame", () => {
+    previewHarness.preview.frame = imageFrame(new Uint8Array([1]));
+    previewHarness.preview.isBuffering = true;
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(screen.getByTestId("bitmap-image-view")).toBeTruthy();
+    expect(screen.getByTestId("mcap-grid-buffering-indicator")).toBeTruthy();
   });
 
   it("reports retained frame and decoded bitmap bytes to the grid LRU", async () => {
@@ -310,12 +324,18 @@ describe("GridRenderer", () => {
     }
 
     fireEvent.pointerOver(root);
+    expect(vi.mocked(useMcapGridPreview)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ hovered: true }),
+    );
     act(() => {
       vi.advanceTimersByTime(PLAYBACK_HOVER_INTENT_DELAY_MS - 1);
     });
     expect(previewHarness.preview.play).not.toHaveBeenCalled();
 
     fireEvent.pointerOut(root);
+    expect(vi.mocked(useMcapGridPreview)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ hovered: false }),
+    );
     act(() => {
       vi.advanceTimersByTime(PLAYBACK_HOVER_INTENT_DELAY_MS);
     });
