@@ -300,7 +300,9 @@ class ModalAnnotateEditAsserter {
     );
     const add = this.modalAnnotateEdit.page.getByTestId("label-menu-add-mask");
     if (hasMask) {
-      await expect(remove).toBeVisible();
+      // "Remove mask" renders once the decoded overlay mounts; a cold
+      // mask_path decode can take well over the default assert timeout
+      await expect(remove).toBeVisible({ timeout: 30_000 });
       await expect(add).toBeHidden();
     } else {
       await expect(add).toBeVisible();
