@@ -11,10 +11,11 @@ Includes all updates from :ref:`FiftyOne 1.19.0 <release-notes-v1.19.0>`, plus:
 
 - Auto Labeling, Model Evaluation, and Data Quality panels now work on
   grouped datasets, automatically scoping to the active group slice
-- Enterprise multimodal timelines now show read-only Events alongside MCAP
+- Multimodal datasets are backed by parquet-based projection tables, enabling
+  fast DuckDB-powered filtering and aggregation queries over large-scale
+  sensor and signal data
+- Enterprise multimodal timelines show read-only Event tracks alongside MCAP
   annotation label tracks, with track search and persistent layout controls
-- Multimodal media in the dataset grid now loads by default, without
-  requiring a feature flag
 - Fixed the multimodal grid returning zero samples when a sidebar filter was
   applied, a crash that could blank out sidebar counts, and a stale-metadata
   error after projection tables were recompacted
@@ -59,9 +60,6 @@ App
   `#8016 <https://github.com/voxel51/fiftyone/pull/8016>`_,
   `#8018 <https://github.com/voxel51/fiftyone/pull/8018>`_,
   `#8020 <https://github.com/voxel51/fiftyone/pull/8020>`_
-- The in-app annotation sidebar is temporarily hidden on multimodal datasets
-  while that experience is finished
-  `#8013 <https://github.com/voxel51/fiftyone/pull/8013>`_
 - **Native video decoding**: video annotation now decodes frames directly in
   the browser via WebCodecs, streaming byte ranges on demand instead of
   requiring `to_frames` preprocessing; fixed a related crash that could
