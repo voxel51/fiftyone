@@ -129,8 +129,7 @@ test.describe.serial("sparse grouped fo3d", () => {
     await grid.selectSlice("z");
   });
 
-  // TODO FOEPD-3967 re-enable this test once its flakiness is resolved
-  test.skip("keeps sparse 3d modal navigation stable", async ({
+  test("keeps sparse 3d modal navigation stable", async ({
     grid,
     modal,
   }) => {
