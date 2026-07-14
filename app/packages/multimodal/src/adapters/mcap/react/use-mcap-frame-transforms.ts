@@ -19,6 +19,7 @@ import type {
   McapFrameTransformResolution,
   McapFrameTransformTimeRange,
 } from "../frame-transform-types";
+import { compareBigInt } from "../bigint";
 import {
   EMPTY_MCAP_FRAME_GRAPH_SUMMARY,
   McapFrameTransformStore,
@@ -770,10 +771,6 @@ function mergeTransformRanges(
 }
 
 function compareStrings(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
-}
-
-function compareBigInt(left: bigint, right: bigint): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
