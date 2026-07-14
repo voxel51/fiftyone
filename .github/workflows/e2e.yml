@@ -187,6 +187,12 @@ jobs:
         run: yarn install
         working-directory: e2e-pw
 
+      - name: Install Chromium if the lockfile moved past the baked browser
+        # no-op when the image's browser matches; lets Playwright-upgrade
+        # PRs validate themselves before the image rebuilds
+        run: yarn playwright install chromium
+        working-directory: e2e-pw
+
       - name: Run Playwright tests
         # Report-only: failed specs are surfaced by the e2e verdict job from
         # the merged blob reports. A red shard means infra death (timeout,

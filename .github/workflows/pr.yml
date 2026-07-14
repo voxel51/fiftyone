@@ -226,6 +226,21 @@ jobs:
               core.info('No completed all-tests for this commit yet — waiting for the run testing it.');
               await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
             }
+      - name: Fail when a draft deferred the e2e suite
+        # A draft run must not publish a successful merge-authoritative
+        # aggregate for a SHA whose e2e never ran; it goes green after
+        # ready_for_review.
+        if: >-
+          env.NO_OP != 'true' &&
+          github.event.pull_request.draft == true &&
+          needs.e2e.result == 'skipped' &&
+          needs.modified-files.outputs.heavy == 'true' && (
+          needs.modified-files.outputs.app-changes == 'true' ||
+          needs.modified-files.outputs.e2e-changes == 'true' ||
+          needs.modified-files.outputs.fiftyone-changes == 'true')
+        run: |
+          echo "draft PR — e2e deferred until ready_for_review"
+          exit 1
       - name: Aggregate suite results
         if: env.NO_OP != 'true'
         run: sh -c ${{
