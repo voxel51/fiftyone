@@ -333,8 +333,8 @@ const Sidebar = ({ engine, sample }: Props) => {
         anchor ? e.getLabel(anchor) : undefined,
     );
 
-    // writes: the shared ref-addressed write-half
-    const actions = useSurfaceActions(engine, "sidebar");
+    // writes: the shared ref-addressed write-half, scoped to this surface's sample
+    const actions = useSurfaceActions(engine, "sidebar", sample);
 
     return (
         <>

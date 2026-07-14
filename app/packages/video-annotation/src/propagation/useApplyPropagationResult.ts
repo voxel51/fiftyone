@@ -2,6 +2,7 @@ import {
   type InferenceResult,
   type PropagatedDetection,
   type PropagationInferenceResult,
+  useActiveSampleId,
   useAnnotationEngine,
   useSurfaceActions,
 } from "@fiftyone/annotation";
@@ -46,7 +47,8 @@ const SURFACE = "video";
  */
 export const useApplyPropagatedDetection = (): PropagatedDetectionWriter => {
   const engine = useAnnotationEngine();
-  const actions = useSurfaceActions(engine, SURFACE);
+  const sampleId = useActiveSampleId();
+  const actions = useSurfaceActions(engine, SURFACE, sampleId);
   const stream = useFrameLabelsStream();
 
   return useCallback(
@@ -85,7 +87,8 @@ export const useApplyPropagatedDetection = (): PropagatedDetectionWriter => {
  */
 export const useApplyPropagationResult = (): PropagationResultHandler => {
   const engine = useAnnotationEngine();
-  const actions = useSurfaceActions(engine, SURFACE);
+  const sampleId = useActiveSampleId();
+  const actions = useSurfaceActions(engine, SURFACE, sampleId);
   const applyDetection = useApplyPropagatedDetection();
 
   return useCallback(

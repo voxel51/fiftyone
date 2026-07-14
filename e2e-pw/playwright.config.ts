@@ -24,6 +24,8 @@ export default defineConfig({
   // contention made tests time out (20 failures on an otherwise-green
   // shard). Scale via shard count in e2e.yml instead.
   workers: process.env.CI ? 1 : undefined,
+  /* Suppress "slow test file" warning annotations on the GitHub summary page */
+  reportSlowTests: null,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI
     ? // blob reports are merged across shards into the authoritative PR
