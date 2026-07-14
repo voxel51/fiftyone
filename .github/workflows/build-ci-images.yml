@@ -46,8 +46,8 @@ jobs:
           file: e2e-pw/ci/Dockerfile
           push: true
           tags: |
-            ghcr.io/voxel51/fiftyone-e2e:latest
-            ghcr.io/voxel51/fiftyone-e2e:${{ github.sha }}
+            ${{ vars.FIFTYONE_E2E_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-e2e' }}:latest
+            ${{ vars.FIFTYONE_E2E_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-e2e' }}:${{ github.sha }}
 
   build-test-image:
     timeout-minutes: 45
@@ -80,5 +80,5 @@ jobs:
           build-args: |
             PYTHON_VERSION=${{ matrix.python }}
           tags: |
-            ghcr.io/voxel51/fiftyone-test:${{ matrix.python }}
-            ghcr.io/voxel51/fiftyone-test:${{ matrix.python }}-${{ github.sha }}
+            ${{ vars.FIFTYONE_TEST_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-test' }}:${{ matrix.python }}
+            ${{ vars.FIFTYONE_TEST_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-test' }}:${{ matrix.python }}-${{ github.sha }}

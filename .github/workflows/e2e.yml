@@ -97,7 +97,8 @@ jobs:
     # fiftyone's dependency tree, Node/Yarn, ffmpeg, and Chromium, so shard
     # jobs skip all toolchain setup.
     container:
-      image: ghcr.io/voxel51/fiftyone-e2e:latest
+      # fiftyone-teams overrides the image name via repo var (superset deps)
+      image: ${{ vars.FIFTYONE_E2E_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-e2e' }}:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -215,7 +216,8 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/voxel51/fiftyone-e2e:latest
+      # fiftyone-teams overrides the image name via repo var (superset deps)
+      image: ${{ vars.FIFTYONE_E2E_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-e2e' }}:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

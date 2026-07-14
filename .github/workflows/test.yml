@@ -52,7 +52,8 @@ jobs:
     # Python plus fiftyone's dependency tree and ffmpeg, so test jobs skip
     # all toolchain setup.
     container:
-      image: ghcr.io/voxel51/fiftyone-test:${{ matrix.python }}
+      # fiftyone-teams overrides the image name via repo var (superset deps)
+      image: ${{ vars.FIFTYONE_TEST_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-test' }}:${{ matrix.python }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
