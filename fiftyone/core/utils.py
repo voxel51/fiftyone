@@ -11,6 +11,7 @@ import atexit
 from bson import json_util
 from base64 import b64encode, b64decode
 from collections import defaultdict
+from collections.abc import Mapping
 from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import date, datetime
@@ -2650,6 +2651,20 @@ def iter_slices(sliceable, batch_size):
     """
     if batch_size is None:
         yield sliceable
+        return
+
+    if isinstance(sliceable, Mapping):
+        # dict-like batches (eg HuggingFace ``BatchFeature``) are sliced
+        # per key along the batch dimension
+        end = min(len(v) for v in sliceable.values())
+        for start in range(0, end, batch_size):
+            yield type(sliceable)(
+                {
+                    k: v[start : (start + batch_size)]
+                    for k, v in sliceable.items()
+                }
+            )
+
         return
 
     try:

@@ -6,6 +6,7 @@ PyTorch utilities.
 |
 """
 
+from collections.abc import Mapping
 import functools
 import itertools
 import logging
@@ -2609,12 +2610,7 @@ class TorchImagePatchesDataset(Dataset):
         if self.ragged_batches:
             return img_patches
 
-        if self.use_numpy:
-            img_patches = np.stack(img_patches, axis=0)
-        else:
-            img_patches = torch.stack(img_patches, dim=0)
-
-        return img_patches
+        return _stack_transformed_patches(img_patches, self.use_numpy)
 
     def _parse_inputs(
         self,
@@ -2714,6 +2710,23 @@ class TorchImagePatchesDataset(Dataset):
         patches = np.array(patches)
 
         return image_paths, sample_ids, patch_edges, patches
+
+
+def _stack_transformed_patches(img_patches, use_numpy):
+    if use_numpy:
+        return np.stack(img_patches, axis=0)
+
+    if isinstance(img_patches[0], Mapping):
+        # dict-like transformed patches (eg HuggingFace ``BatchFeature``);
+        # merge them along the batch dimension
+        return type(img_patches[0])(
+            {
+                k: torch.cat([p[k] for p in img_patches], dim=0)
+                for k in img_patches[0]
+            }
+        )
+
+    return torch.stack(img_patches, dim=0)
 
 
 def _to_eta_bbox(bounding_box):
