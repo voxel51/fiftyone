@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property */
 import { type ThreeEvent } from "@react-three/fiber";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 import type { SceneEntityVisualization } from "../../../decoders";
 import { CLICK_DRAG_TOLERANCE_PX } from "../interaction";
@@ -22,9 +22,10 @@ import { pointCloudObjectTransform } from "./transforms";
 import type { SceneAnnotationPanelLayer } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
 
-// Memoized: callers keep layer identity stable across renders their content
-// didn't cause (useKeyedIdentityMap), so selecting one entity re-renders that
-// entity's layer, not every annotation in the scene.
+/**
+ * Renders one memoized scene-annotation layer in its source-frame transform.
+ * Stable layer identities keep unrelated annotation layers from rerendering.
+ */
 export const SceneAnnotationLayer = memo(function SceneAnnotationLayer({
   layer,
 }: {
@@ -75,6 +76,10 @@ function SceneAnnotationEntity({
 }) {
   const pickingEnabled = useScenePicking();
   const [hovered, setHovered] = useState(false);
+  const hoveredRef = useRef(hovered);
+  hoveredRef.current = hovered;
+  const onHoverEntityRef = useRef(onHoverEntity);
+  onHoverEntityRef.current = onHoverEntity;
   const interactive =
     Boolean(onSelectEntity || onHoverEntity) && pickingEnabled;
   const entityId = entity.id || String(entityIndex);
@@ -88,10 +93,23 @@ function SceneAnnotationEntity({
 
   useInvalidateOn([emphasis]);
 
+  // This effect clears an active entity hover when the entity unmounts before
+  // its pointer-out handler can run.
+  useEffect(
+    () => () => {
+      if (hoveredRef.current) {
+        hoveredRef.current = false;
+        onHoverEntityRef.current?.(null);
+      }
+    },
+    [],
+  );
+
   // This effect drops a stale hover when picking is disabled mid-hover
   // (the pointer-out handler is gone by then).
   useEffect(() => {
     if (!interactive && hovered) {
+      hoveredRef.current = false;
       setHovered(false);
       onHoverEntity?.(null);
     }
@@ -121,12 +139,14 @@ function SceneAnnotationEntity({
   const handlePointerOver = interactive
     ? (event: ThreeEvent<PointerEvent>) => {
         event.stopPropagation();
+        hoveredRef.current = true;
         setHovered(true);
         onHoverEntity?.(entityId);
       }
     : undefined;
   const handlePointerOut = interactive
     ? () => {
+        hoveredRef.current = false;
         setHovered(false);
         onHoverEntity?.(null);
       }
