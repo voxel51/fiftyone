@@ -986,7 +986,9 @@ def compute_orthographic_projection_image(
 
     image = np.zeros((width, height, 3), dtype=np.uint8)
 
-    if (
+    if len(points) == 0:
+        pass  # leave image blank
+    elif (
         len(colors) == len(points)
         and shading_mode is not None
         and shading_mode != "height"
@@ -1064,16 +1066,56 @@ def _get_pcd_filepath_from_scene(scene_path: str):
     return pcd_path
 
 
+def _read_pcd_tolerant(filepath):
+    """Parses an ASCII ``.pcd`` file whose data section contains values that
+    ``pypcd4`` cannot parse, zero-filling any invalid values.
+    """
+    with open(filepath, "rb") as f:
+        header = []
+        for bline in f:
+            line = bline.decode("utf-8", errors="ignore").strip()
+            if not line or line.startswith("#"):
+                continue
+
+            header.append(line)
+            if line.startswith("DATA"):
+                break
+
+        metadata = pypcd4.MetaData.parse_header(header)
+        if metadata.data != pypcd4.Encoding.ASCII:
+            raise ValueError(f"Failed to parse point cloud file '{filepath}'")
+
+        pc_data = np.atleast_1d(
+            np.genfromtxt(
+                f,
+                dtype=metadata.build_dtype(),
+                delimiter=" ",
+                filling_values=0,
+                invalid_raise=False,
+            )
+        )
+
+    metadata.points = len(pc_data)
+
+    return pypcd4.PointCloud(metadata, pc_data)
+
+
 def _read_point_cloud(filepath):
     """Reads a ``.pcd`` file into ``(points, colors)`` numpy arrays.
 
     ``points`` is an ``(n, 3)`` array of XYZ coordinates and ``colors`` is an
     ``(n, 3)`` array of RGB values in ``[0, 1]``, or an empty ``(0, 3)`` array
     when the file has no color channel.
+
+    Empty point clouds are supported, and invalid values are zero-filled.
     """
-    pc = pypcd4.PointCloud.from_path(filepath)
+    try:
+        pc = pypcd4.PointCloud.from_path(filepath)
+    except ValueError:
+        pc = _read_pcd_tolerant(filepath)
 
     points = pc.numpy(("x", "y", "z")).astype(float)
+    points[~np.isfinite(points)] = 0.0
 
     if "rgb" in pc.fields:
         colors = (
@@ -1138,11 +1180,16 @@ def _parse_point_cloud(
     else:
         min_bound, max_bound = bounds
 
+    if len(points) > 0:
+        default_min, default_max = points.min(axis=0), points.max(axis=0)
+    else:
+        default_min, default_max = np.zeros(3), np.zeros(3)
+
     if _contains_none(min_bound):
-        min_bound = _fill_none(min_bound, points.min(axis=0))
+        min_bound = _fill_none(min_bound, default_min)
 
     if _contains_none(max_bound):
-        max_bound = _fill_none(max_bound, points.max(axis=0))
+        max_bound = _fill_none(max_bound, default_max)
 
     min_bound = np.asarray(min_bound, dtype=float)
     max_bound = np.asarray(max_bound, dtype=float)

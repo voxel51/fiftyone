@@ -283,6 +283,82 @@ class ParsePointCloudTests(BaseOrthographicProjectionTests):
                 )
 
 
+class TolerantPointCloudTests(BaseOrthographicProjectionTests):
+    """Tests for malformed ``.pcd`` files that customers have in the wild:
+    empty point clouds and data sections with invalid values.
+    """
+
+    def write_raw_pcd(self, data_rows, num_points=None, data="ascii"):
+        if num_points is None:
+            num_points = len(data_rows)
+
+        header = (
+            "VERSION .7\n"
+            "FIELDS x y z\n"
+            "SIZE 4 4 4\n"
+            "TYPE F F F\n"
+            "COUNT 1 1 1\n"
+            f"WIDTH {num_points}\n"
+            "HEIGHT 1\n"
+            "VIEWPOINT 0 0 0 1 0 0 0\n"
+            f"POINTS {num_points}\n"
+            f"DATA {data}\n"
+        )
+        with open(self.test_pcd_path, "w") as f:
+            f.write(header)
+            f.writelines(f"{row}\n" for row in data_rows)
+
+    def assert_projection_succeeds(self):
+        for shading_mode in (None, "height", "intensity", "rgb"):
+            image, _ = fou3d.compute_orthographic_projection_image(
+                self.test_pcd_path, (32, 32), shading_mode=shading_mode
+            )
+            self.assertEqual(image.shape, (32, 32, 3))
+
+    def test_empty_ascii(self):
+        self.write_raw_pcd([])
+
+        points, colors = fou3d._read_point_cloud(self.test_pcd_path)
+
+        self.assertEqual(points.shape, (0, 3))
+        self.assertEqual(colors.shape, (0, 3))
+        self.assert_projection_succeeds()
+
+    def test_empty_binary(self):
+        self.write_raw_pcd([], data="binary")
+
+        points, _ = fou3d._read_point_cloud(self.test_pcd_path)
+
+        self.assertEqual(points.shape, (0, 3))
+        self.assert_projection_succeeds()
+
+    def test_empty_rgb(self):
+        pc = PointCloud.from_xyzrgb_points(np.zeros((0, 4), dtype=np.float32))
+        pc.save(self.test_pcd_path)
+
+        points, colors = fou3d._read_point_cloud(self.test_pcd_path)
+
+        self.assertEqual(points.shape, (0, 3))
+        self.assertEqual(colors.shape, (0, 3))
+        self.assert_projection_succeeds()
+
+    def test_invalid_values_are_zero_filled(self):
+        self.write_raw_pcd(["1 2 3", "null null null", "4 5 6"])
+
+        points, _ = fou3d._read_point_cloud(self.test_pcd_path)
+
+        nptest.assert_array_equal(points, [[1, 2, 3], [0, 0, 0], [4, 5, 6]])
+        self.assert_projection_succeeds()
+
+    def test_nan_values_are_zero_filled(self):
+        self.write_raw_pcd(["1 2 3", "nan nan nan", "4 5 6"])
+
+        points, _ = fou3d._read_point_cloud(self.test_pcd_path)
+
+        nptest.assert_array_equal(points, [[1, 2, 3], [0, 0, 0], [4, 5, 6]])
+        self.assert_projection_succeeds()
+
+
 class DataModelTests(unittest.TestCase):
     @drop_datasets
     def test_orthographic_projection_metadata_field(self):
