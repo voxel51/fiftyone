@@ -2656,7 +2656,14 @@ def iter_slices(sliceable, batch_size):
     if isinstance(sliceable, Mapping):
         # dict-like batches (eg HuggingFace ``BatchFeature``) are sliced
         # per key along the batch dimension
-        end = min(len(v) for v in sliceable.values())
+        lengths = {len(v) for v in sliceable.values()}
+        if len(lengths) > 1:
+            raise ValueError(
+                "Cannot slice mapping whose values have mismatched lengths "
+                "%s" % lengths
+            )
+
+        end = next(iter(lengths), 0)
         for start in range(0, end, batch_size):
             yield type(sliceable)(
                 {

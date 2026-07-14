@@ -7,6 +7,7 @@ Tests for fiftyone/utils/torch.py transformed-patch stacking.
 """
 
 import numpy as np
+import pytest
 import torch
 
 import fiftyone.core.utils as fou
@@ -61,3 +62,16 @@ class TestIterSlicesMapping:
         chunks = list(fou.iter_slices(batch, None))
         assert len(chunks) == 1
         assert chunks[0] is batch
+
+    def test_mapping_mismatched_lengths_raises(self):
+        batch = {"a": torch.zeros(3, 1), "b": torch.zeros(2, 1)}
+        with pytest.raises(ValueError, match="mismatched lengths"):
+            list(fou.iter_slices(batch, 2))
+
+    def test_numpy_mapping_patches_merged(self):
+        patches = [
+            {"pixel_values": np.zeros((1, 4, 4, 3))},
+            {"pixel_values": np.ones((1, 4, 4, 3))},
+        ]
+        out = fout._stack_transformed_patches(patches, use_numpy=True)
+        assert out["pixel_values"].shape == (2, 4, 4, 3)

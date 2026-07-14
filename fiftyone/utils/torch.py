@@ -2713,18 +2713,16 @@ class TorchImagePatchesDataset(Dataset):
 
 
 def _stack_transformed_patches(img_patches, use_numpy):
-    if use_numpy:
-        return np.stack(img_patches, axis=0)
-
     if isinstance(img_patches[0], Mapping):
         # dict-like transformed patches (eg HuggingFace ``BatchFeature``);
         # merge them along the batch dimension
+        cat = np.concatenate if use_numpy else torch.cat
         return type(img_patches[0])(
-            {
-                k: torch.cat([p[k] for p in img_patches], dim=0)
-                for k in img_patches[0]
-            }
+            {k: cat([p[k] for p in img_patches]) for k in img_patches[0]}
         )
+
+    if use_numpy:
+        return np.stack(img_patches, axis=0)
 
     return torch.stack(img_patches, dim=0)
 
