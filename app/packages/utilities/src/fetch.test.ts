@@ -1,9 +1,14 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { setFetchFunction, getFetchFunction } from "./fetch";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  getFetchFunction,
+  getFetchFunctionExtended,
+  setFetchFunction,
+} from "./fetch";
 
 describe("fetch", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe("Content-Type header", () => {
@@ -36,5 +41,58 @@ describe("fetch", () => {
       const [, init] = mockFetch.mock.calls[0];
       expect(init.headers["Content-Type"]).toBeUndefined();
     });
+  });
+
+  it("forwards external abort signals", async () => {
+    const mockFetch = vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_, reject) => {
+          init.signal?.addEventListener("abort", () => {
+            reject(new DOMException("aborted", "AbortError"));
+          });
+        }),
+    );
+    vi.stubGlobal("fetch", mockFetch);
+    setFetchFunction("http://localhost");
+    const controller = new AbortController();
+    const request = getFetchFunctionExtended()({
+      method: "GET",
+      path: "/test",
+      result: "arrayBuffer",
+      retries: 0,
+      signal: controller.signal,
+    });
+
+    controller.abort();
+
+    await expect(request).rejects.toMatchObject({ name: "AbortError" });
+    expect(mockFetch.mock.calls[0]?.[1].signal).toBe(controller.signal);
+  });
+
+  it("reports streamed array-buffer progress", async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([1, 2]));
+        controller.enqueue(new Uint8Array([3]));
+        controller.close();
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(stream, { status: 200 })),
+    );
+    setFetchFunction("http://localhost");
+    const onProgress = vi.fn();
+
+    const result = await getFetchFunctionExtended()<undefined, ArrayBuffer>({
+      method: "GET",
+      onProgress,
+      path: "/test",
+      result: "arrayBuffer",
+      retries: 0,
+    });
+
+    expect(new Uint8Array(result.response)).toEqual(new Uint8Array([1, 2, 3]));
+    expect(onProgress.mock.calls.map(([loaded]) => loaded)).toEqual([0, 2, 3]);
   });
 });

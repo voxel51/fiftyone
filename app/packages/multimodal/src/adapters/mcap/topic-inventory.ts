@@ -46,6 +46,7 @@ export const MCAP_TOPIC_CATEGORY_LABEL: Record<McapTopicCategory, string> = {
 export const MCAP_TOPIC_CAPABILITY = {
   IMAGE: "image",
   LOGS: "logs",
+  MAP: "map",
   PLOT: "plot",
   RAW: "raw",
   THREE_D: "three-d",
@@ -58,6 +59,7 @@ export const MCAP_TOPIC_CAPABILITY_LABEL: Record<McapTopicCapability, string> =
   {
     [MCAP_TOPIC_CAPABILITY.IMAGE]: "Image",
     [MCAP_TOPIC_CAPABILITY.LOGS]: "Logs",
+    [MCAP_TOPIC_CAPABILITY.MAP]: "Map",
     [MCAP_TOPIC_CAPABILITY.PLOT]: "Plot",
     [MCAP_TOPIC_CAPABILITY.RAW]: "Raw",
     [MCAP_TOPIC_CAPABILITY.THREE_D]: "3D",
@@ -281,13 +283,16 @@ function capabilitiesForTopic({
   if (
     frameTransform ||
     sourceType === MCAP_SOURCE_TYPE.CAMERA_CALIBRATION ||
-    sourceType === MCAP_SOURCE_TYPE.LOCATION ||
     sourceType === MCAP_SOURCE_TYPE.MAP_LAYER ||
     sourceType === MCAP_SOURCE_TYPE.POINT_CLOUD ||
     sourceType === MCAP_SOURCE_TYPE.POSE ||
     sourceType === MCAP_SOURCE_TYPE.SCENE_ANNOTATION
   ) {
     capabilities.push(MCAP_TOPIC_CAPABILITY.THREE_D);
+  }
+
+  if (sourceType === MCAP_SOURCE_TYPE.LOCATION) {
+    capabilities.push(MCAP_TOPIC_CAPABILITY.MAP);
   }
 
   if (sourceType === MCAP_SOURCE_TYPE.LOG) {

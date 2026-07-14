@@ -24,6 +24,7 @@ export type {
   PayloadDescriptor,
   PointCloudField,
   PointCloudVisualization,
+  RawImageDepthData,
   RawImageVisualization,
   SceneArrowPrimitive,
   SceneCubePrimitive,

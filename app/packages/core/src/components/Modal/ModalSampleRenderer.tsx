@@ -15,6 +15,7 @@ import { MetadataLooker } from "./MetadataLooker";
 type ModalSampleRendererProps = {
   sample: fos.ModalSample;
   modalMediaField: string;
+  transitioning?: boolean;
 };
 
 type ModalSampleRendererErrorBoundaryProps = React.PropsWithChildren<{
@@ -71,7 +72,11 @@ class ModalSampleRendererErrorBoundary extends React.Component<
  * to the built-in metadata renderer when no renderer is available.
  */
 export const ModalSampleRenderer = React.memo(
-  ({ sample, modalMediaField }: ModalSampleRendererProps) => {
+  ({
+    sample,
+    modalMediaField,
+    transitioning = false,
+  }: ModalSampleRendererProps) => {
     const dataset = fos.useCurrentDataset();
     const schema = fos.useModalSampleSchema();
     const { isDisabled: isDatasetRendererDisabled } =
@@ -94,13 +99,16 @@ export const ModalSampleRenderer = React.memo(
       return <MetadataLooker sample={sample} />;
     }
 
-    const ctx = createSampleRendererRenderContext(
-      sample,
-      modalMediaField,
-      dataset,
-      schema,
-      "modal",
-    );
+    const ctx = {
+      ...createSampleRendererRenderContext(
+        sample,
+        modalMediaField,
+        dataset,
+        schema,
+        "modal",
+      ),
+      transitioning,
+    };
     const matchedRenderer = getMatchingSampleRenderer(sampleRenderers, ctx);
     const canonicalRenderer = matchedRenderer
       ? getComponent<SampleRendererProps>(matchedRenderer.name)

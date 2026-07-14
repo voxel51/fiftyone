@@ -10,6 +10,7 @@ import clsx from "clsx";
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -17,6 +18,10 @@ import React, {
 import { byteSourceAccessKey } from "../../../query/bytes";
 import { useSceneSourcesByType } from "../../../scene-inventory/SceneInventoryProvider";
 import { MCAP_LOG_LEVELS, type McapLogLevel } from "../log-records";
+import {
+  useMcapLogTileSettings,
+  useSetMcapLogTileSettings,
+} from "./mcap-log-tile-state";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import {
@@ -24,6 +29,16 @@ import {
   type McapLogConsoleRow,
 } from "./mcap-log-console-rows";
 import { useMcapLogConsoleContext } from "./mcap-log-console-context";
+import {
+  coveredLogReadRange,
+  logWindowForCenter,
+  mergeBoundedLogRows,
+  mergeLogReadRanges,
+  missingLogReadRanges,
+  pruneLogRows,
+  type LogReadRange,
+  virtualLogRowRange,
+} from "./mcap-log-console-window";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import styles from "./McapLogConsoleTile.module.css";
 import tileStyles from "./McapTile.module.css";
@@ -32,13 +47,20 @@ import type { McapTileProps } from "./mcap-tile-types";
 const PLAYHEAD_REFRESH_MS = 500;
 const LOG_WINDOW_BEFORE_NS = 30_000_000_000n;
 const LOG_WINDOW_AFTER_NS = 2_000_000_000n;
-const LOG_WINDOW_LABEL = "32s";
+const NANOSECONDS_PER_SECOND = 1_000_000_000n;
+const LOG_WINDOW_LABEL = `${
+  (LOG_WINDOW_BEFORE_NS + LOG_WINDOW_AFTER_NS) / NANOSECONDS_PER_SECOND
+}s`;
 const LOG_READ_LIMIT = 600;
+const LOG_ROW_LIMIT = 2_000;
+const LOG_ROW_HEIGHT_PX = 30;
+const LOG_ROW_OVERSCAN = 8;
 
 interface LogRowsState {
   readonly error?: string;
   readonly rawRows: readonly McapLogConsoleRow[];
   readonly status: "idle" | "loading" | "ready" | "error";
+  readonly truncated: boolean;
 }
 
 interface LogRowsCacheWindow {
@@ -48,12 +70,11 @@ interface LogRowsCacheWindow {
   readonly topicsKey: string;
 }
 
-interface LogReadRange {
-  readonly endTimeNs: bigint;
-  readonly startTimeNs: bigint;
-}
-
-const INITIAL_ROWS: LogRowsState = { rawRows: [], status: "idle" };
+const INITIAL_ROWS: LogRowsState = {
+  rawRows: [],
+  status: "idle",
+  truncated: false,
+};
 
 const McapLogConsoleTile: React.FC<McapTileProps> = () => {
   const logSources = useSceneSourcesByType(MCAP_SOURCE_TYPE.LOG);
@@ -63,45 +84,55 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
   const store = usePlaybackStore();
   const { seek } = usePlayback();
   const setTileTitle = useSetTileTitle();
-  const [followPlayhead, setFollowPlayhead] = useState(true);
+  const { enabledTopics, followPlayhead, selectedLevels } =
+    useMcapLogTileSettings();
+  const setLogSettings = useSetMcapLogTileSettings();
   const [centerTimeNs, setCenterTimeNs] = useState<bigint | undefined>();
-  const [selectedTopics, setSelectedTopics] = useState<readonly string[]>([]);
-  const [selectedLevels, setSelectedLevels] =
-    useState<readonly McapLogLevel[]>(MCAP_LOG_LEVELS);
   const [state, setState] = useState<LogRowsState>(INITIAL_ROWS);
+  const lastPlayheadPublishMsRef = useRef(0);
   const fetchedWindowRef = useRef<LogRowsCacheWindow | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [viewport, setViewport] = useState({ height: 0, scrollTop: 0 });
 
+  // This effect keeps the automatic tile title aligned with the panel's role.
   useEffect(() => {
     setTileTitle("Logs", { source: "auto" });
   }, [setTileTitle]);
 
-  useEffect(() => {
+  const selectedTopics = useMemo(() => {
     const ids = logSources.map((entry) => entry.id);
-    setSelectedTopics((current) => {
-      const valid = current.filter((topic) => ids.includes(topic));
-      return valid.length > 0 ? valid : ids;
-    });
-  }, [logSources]);
+    if (enabledTopics === undefined) return ids;
+    const valid = enabledTopics.filter((topic) => ids.includes(topic));
+    return valid.length > 0 ? valid : ids;
+  }, [enabledTopics, logSources]);
 
+  // This effect resets the throttle when follow mode or playback ownership
+  // changes; fetch-state transitions intentionally preserve it.
   useEffect(() => {
-    if (!followPlayhead || !timelineIndex) {
+    lastPlayheadPublishMsRef.current = 0;
+  }, [followPlayhead, store, timelineIndex]);
+
+  // This effect follows the playhead at a bounded refresh rate and pauses
+  // while a history read is active so follow-up windows cannot pile up.
+  useEffect(() => {
+    if (!followPlayhead || !timelineIndex || state.status === "loading") {
       return undefined;
     }
 
-    let lastPublishMs = 0;
     const publish = () => {
       const now = Date.now();
-      if (now - lastPublishMs < PLAYHEAD_REFRESH_MS) {
+      if (now - lastPlayheadPublishMsRef.current < PLAYHEAD_REFRESH_MS) {
         return;
       }
-      lastPublishMs = now;
+      lastPlayheadPublishMsRef.current = now;
       setCenterTimeNs(timelineIndex.nearestTick(getPlayhead(store)));
     };
 
     publish();
     return subscribePlayhead(store, publish);
-  }, [followPlayhead, store, timelineIndex]);
+  }, [followPlayhead, state.status, store, timelineIndex]);
 
+  // This effect seeds the first log window from the recording timeline.
   useEffect(() => {
     if (centerTimeNs === undefined && timelineIndex) {
       setCenterTimeNs(timelineIndex.startTimeNs);
@@ -117,37 +148,40 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     [selectedTopics],
   );
   const sourceKey = source ? byteSourceAccessKey(source) : null;
-  const windowStartNs =
-    centerTimeNs !== undefined ? logWindowStartNs(centerTimeNs) : 0n;
-  const windowEndNs =
-    centerTimeNs !== undefined ? centerTimeNs + LOG_WINDOW_AFTER_NS : undefined;
+  const activeWindow = useMemo(
+    () =>
+      centerTimeNs === undefined
+        ? null
+        : logWindowForCenter(
+            centerTimeNs,
+            LOG_WINDOW_BEFORE_NS,
+            LOG_WINDOW_AFTER_NS,
+          ),
+    [centerTimeNs],
+  );
+  const windowStartNs = activeWindow?.startTimeNs ?? 0n;
+  const windowEndNs = activeWindow?.endTimeNs;
   const rows = useMemo(
     () =>
-      state.rawRows
-        .filter(
-          (row) =>
-            selectedLevelSet.has(row.level) &&
-            (windowEndNs === undefined ||
-              (row.timeNs >= windowStartNs && row.timeNs <= windowEndNs)),
-        )
-        .sort((left, right) => compareBigInt(left.timeNs, right.timeNs)),
+      state.rawRows.filter(
+        (row) =>
+          selectedLevelSet.has(row.level) &&
+          (windowEndNs === undefined ||
+            (row.timeNs >= windowStartNs && row.timeNs <= windowEndNs)),
+      ),
     [selectedLevelSet, state.rawRows, windowEndNs, windowStartNs],
   );
 
+  // This effect reads only the uncovered part of the active log window,
+  // cancels stale reads, and retains a bounded live tail for rendering.
   useEffect(() => {
-    if (
-      !source ||
-      !sourceKey ||
-      centerTimeNs === undefined ||
-      selectedTopics.length === 0
-    ) {
+    if (!source || !sourceKey || !activeWindow || selectedTopics.length === 0) {
       fetchedWindowRef.current = null;
       setState(INITIAL_ROWS);
       return undefined;
     }
 
     let cancelled = false;
-    const activeWindow = logWindowForCenter(centerTimeNs);
     const cachedWindow = fetchedWindowRef.current;
     const reusableWindow =
       cachedWindow?.client === client &&
@@ -167,7 +201,10 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
       return undefined;
     }
 
-    const ranges = missingLogReadRanges(reusableWindow, activeWindow);
+    const ranges = missingLogReadRanges(
+      reusableWindow?.ranges ?? null,
+      activeWindow,
+    );
 
     if (ranges.length === 0) {
       setState((current) => {
@@ -181,7 +218,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
 
     if (!reusableWindow) {
       fetchedWindowRef.current = null;
-      setState({ rawRows: [], status: "loading" });
+      setState({ rawRows: [], status: "loading", truncated: false });
     } else {
       setState((current) => ({
         ...current,
@@ -208,7 +245,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
               startTimeNs: range.startTimeNs,
               topics: selectedTopics,
             },
-            { priority: "current" },
+            { priority: "idle" },
           )) {
             if (cancelled) {
               break;
@@ -221,7 +258,12 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
             break;
           }
           coveredRanges.push(
-            coveredLogReadRange(range, messageCount, lastMessageTimeNs),
+            coveredLogReadRange(
+              range,
+              messageCount,
+              lastMessageTimeNs,
+              LOG_READ_LIMIT,
+            ),
           );
         }
 
@@ -235,10 +277,19 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
           sourceKey,
           topicsKey: selectedTopicsKey,
         };
-        setState((current) => ({
-          rawRows: mergeLogRows(current.rawRows, fetchedRows, activeWindow),
-          status: "ready",
-        }));
+        setState((current) => {
+          const merged = mergeBoundedLogRows(
+            current.rawRows,
+            fetchedRows,
+            activeWindow,
+            LOG_ROW_LIMIT,
+          );
+          return {
+            rawRows: merged.rows,
+            status: "ready",
+            truncated: merged.truncated,
+          };
+        });
       } catch (error) {
         if (!cancelled) {
           setState((current) => ({
@@ -247,6 +298,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
               ? pruneLogRows(current.rawRows, activeWindow)
               : [],
             status: "error",
+            truncated: reusableWindow ? current.truncated : false,
           }));
         }
       }
@@ -256,7 +308,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
       cancelled = true;
     };
   }, [
-    centerTimeNs,
+    activeWindow,
     client,
     selectedLevels.length,
     selectedTopics,
@@ -276,23 +328,77 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     [seek, timelineIndex],
   );
 
-  const toggleTopic = useCallback((topic: string, checked: boolean) => {
-    setSelectedTopics((current) =>
-      checked
-        ? [...new Set([...current, topic])]
-        : current.filter((entry) => entry !== topic),
-    );
-  }, []);
+  const toggleTopic = useCallback(
+    (topic: string, checked: boolean) => {
+      setLogSettings({
+        enabledTopics: checked
+          ? [...new Set([...selectedTopics, topic])]
+          : selectedTopics.filter((entry) => entry !== topic),
+      });
+    },
+    [selectedTopics, setLogSettings],
+  );
 
-  const toggleLevel = useCallback((level: McapLogLevel, checked: boolean) => {
-    setSelectedLevels((current) =>
-      checked
-        ? [...new Set([...current, level])]
-        : current.filter((entry) => entry !== level),
-    );
-  }, []);
+  const toggleLevel = useCallback(
+    (level: McapLogLevel, checked: boolean) => {
+      setLogSettings({
+        selectedLevels: checked
+          ? [...new Set([...selectedLevels, level])]
+          : selectedLevels.filter((entry) => entry !== level),
+      });
+    },
+    [selectedLevels, setLogSettings],
+  );
 
   const timeOriginNs = timelineIndex?.startTimeNs;
+  const showRowList =
+    logSources.length > 0 && state.status !== "error" && rows.length > 0;
+  const visibleRange = useMemo(
+    () =>
+      virtualLogRowRange({
+        overscan: LOG_ROW_OVERSCAN,
+        rowCount: rows.length,
+        rowHeightPx: LOG_ROW_HEIGHT_PX,
+        scrollTop: viewport.scrollTop,
+        viewportHeight: viewport.height,
+      }),
+    [rows.length, viewport.height, viewport.scrollTop],
+  );
+  const visibleRows = rows.slice(
+    visibleRange.startIndex,
+    visibleRange.endIndex,
+  );
+
+  // This effect measures the scroll viewport whenever the virtualized row
+  // list mounts or resizes and disconnects the observer on cleanup.
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    if (!element) {
+      return undefined;
+    }
+
+    const publish = () => {
+      setViewport({
+        height: element.clientHeight,
+        scrollTop: element.scrollTop,
+      });
+    };
+    publish();
+
+    if (typeof ResizeObserver === "undefined") {
+      return undefined;
+    }
+    const observer = new ResizeObserver(publish);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [showRowList]);
+
+  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    setViewport({
+      height: event.currentTarget.clientHeight,
+      scrollTop: event.currentTarget.scrollTop,
+    });
+  }, []);
 
   if (logSources.length === 0) {
     return (
@@ -309,7 +415,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
           <Checkbox
             checked={followPlayhead}
             label="Follow"
-            onChange={setFollowPlayhead}
+            onChange={(checked) => setLogSettings({ followPlayhead: checked })}
             {...checkboxNoSpaceToggleProps}
           />
         </div>
@@ -338,8 +444,12 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
           </div>
         ) : null}
         <span className={styles.meta}>
-          {state.status === "loading" ? "loading" : rows.length} ·{" "}
-          {LOG_WINDOW_LABEL}
+          {state.status === "loading"
+            ? "loading"
+            : state.truncated
+              ? `latest ${rows.length.toLocaleString()}`
+              : rows.length.toLocaleString()}{" "}
+          · {LOG_WINDOW_LABEL}
         </span>
       </div>
       {state.status === "error" ? (
@@ -355,47 +465,44 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
             : "No log rows in this time window"}
         </div>
       ) : (
-        <div className={styles.scroll}>
-          {rows.map((row) => (
-            <button
-              key={row.id}
-              className={styles.row}
-              onClick={() => handleRowClick(row)}
-              title={rowTitle(row)}
-              type="button"
+        <div className={styles.scroll} onScroll={handleScroll} ref={scrollRef}>
+          <div
+            className={styles.virtualSpacer}
+            style={{ height: rows.length * LOG_ROW_HEIGHT_PX }}
+          >
+            <div
+              className={styles.virtualRows}
+              style={{ transform: `translateY(${visibleRange.offsetPx}px)` }}
             >
-              <span className={styles.time}>
-                {timeOriginNs !== undefined
-                  ? formatRelativeTime(row.timeNs, timeOriginNs)
-                  : formatWindowOffset(row.timeNs, windowStartNs)}
-              </span>
-              <span className={clsx(styles.level, styles[row.level])}>
-                {row.status ?? row.level}
-              </span>
-              <span className={styles.source}>
-                {row.groupLabel ?? row.topic}
-              </span>
-              <span className={styles.message}>{row.message}</span>
-            </button>
-          ))}
+              {visibleRows.map((row) => (
+                <button
+                  key={row.id}
+                  className={styles.row}
+                  onClick={() => handleRowClick(row)}
+                  title={rowTitle(row)}
+                  type="button"
+                >
+                  <span className={styles.time}>
+                    {timeOriginNs !== undefined
+                      ? formatRelativeTime(row.timeNs, timeOriginNs)
+                      : formatWindowOffset(row.timeNs, windowStartNs)}
+                  </span>
+                  <span className={clsx(styles.level, styles[row.level])}>
+                    {row.status ?? row.level}
+                  </span>
+                  <span className={styles.source}>
+                    {row.groupLabel ?? row.topic}
+                  </span>
+                  <span className={styles.message}>{row.message}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 };
-
-function logWindowStartNs(centerTimeNs: bigint): bigint {
-  return centerTimeNs > LOG_WINDOW_BEFORE_NS
-    ? centerTimeNs - LOG_WINDOW_BEFORE_NS
-    : 0n;
-}
-
-function logWindowForCenter(centerTimeNs: bigint): LogReadRange {
-  return {
-    endTimeNs: centerTimeNs + LOG_WINDOW_AFTER_NS,
-    startTimeNs: logWindowStartNs(centerTimeNs),
-  };
-}
 
 function clipLogCacheWindow(
   cachedWindow: LogRowsCacheWindow,
@@ -403,132 +510,6 @@ function clipLogCacheWindow(
 ): LogRowsCacheWindow | null {
   const ranges = mergeLogReadRanges(cachedWindow.ranges, activeWindow);
   return ranges.length > 0 ? { ...cachedWindow, ranges } : null;
-}
-
-function missingLogReadRanges(
-  cachedWindow: LogRowsCacheWindow | null,
-  activeWindow: LogReadRange,
-): readonly LogReadRange[] {
-  if (!cachedWindow) {
-    return [activeWindow];
-  }
-
-  const ranges: LogReadRange[] = [];
-  let cursor = activeWindow.startTimeNs;
-  for (const covered of cachedWindow.ranges) {
-    if (covered.startTimeNs > cursor) {
-      ranges.push({ endTimeNs: covered.startTimeNs, startTimeNs: cursor });
-    }
-    if (covered.endTimeNs > cursor) {
-      cursor = covered.endTimeNs;
-    }
-    if (cursor >= activeWindow.endTimeNs) {
-      break;
-    }
-  }
-  if (cursor < activeWindow.endTimeNs) {
-    ranges.push({ endTimeNs: activeWindow.endTimeNs, startTimeNs: cursor });
-  }
-
-  return ranges;
-}
-
-function coveredLogReadRange(
-  range: LogReadRange,
-  messageCount: number,
-  lastMessageTimeNs: bigint | undefined,
-): LogReadRange {
-  if (messageCount >= LOG_READ_LIMIT && lastMessageTimeNs !== undefined) {
-    return {
-      endTimeNs: minBigInt(lastMessageTimeNs, range.endTimeNs),
-      startTimeNs: range.startTimeNs,
-    };
-  }
-
-  return range;
-}
-
-function mergeLogReadRanges(
-  ranges: readonly LogReadRange[],
-  activeWindow: LogReadRange,
-): readonly LogReadRange[] {
-  const clippedRanges: LogReadRange[] = [];
-  for (const range of ranges) {
-    const startTimeNs = maxBigInt(range.startTimeNs, activeWindow.startTimeNs);
-    const endTimeNs = minBigInt(range.endTimeNs, activeWindow.endTimeNs);
-    if (startTimeNs <= endTimeNs) {
-      clippedRanges.push({ endTimeNs, startTimeNs });
-    }
-  }
-  clippedRanges.sort((left, right) =>
-    compareBigInt(left.startTimeNs, right.startTimeNs),
-  );
-
-  const merged: LogReadRange[] = [];
-  for (const range of clippedRanges) {
-    const previous = merged[merged.length - 1];
-    if (!previous || range.startTimeNs > previous.endTimeNs) {
-      merged.push(range);
-      continue;
-    }
-    if (range.endTimeNs > previous.endTimeNs) {
-      merged[merged.length - 1] = {
-        ...previous,
-        endTimeNs: range.endTimeNs,
-      };
-    }
-  }
-
-  return merged;
-}
-
-function mergeLogRows(
-  current: readonly McapLogConsoleRow[],
-  incoming: readonly McapLogConsoleRow[],
-  activeWindow: LogReadRange,
-): readonly McapLogConsoleRow[] {
-  const retainedRows = pruneLogRows(current, activeWindow);
-  if (incoming.length === 0) {
-    return retainedRows;
-  }
-
-  const rowsById = new Map(retainedRows.map((row) => [row.id, row]));
-  for (const row of incoming) {
-    if (logRowInWindow(row, activeWindow)) {
-      rowsById.set(row.id, row);
-    }
-  }
-  return Array.from(rowsById.values());
-}
-
-function pruneLogRows(
-  rows: readonly McapLogConsoleRow[],
-  activeWindow: LogReadRange,
-): readonly McapLogConsoleRow[] {
-  const retainedRows = rows.filter((row) => logRowInWindow(row, activeWindow));
-  return retainedRows.length === rows.length ? rows : retainedRows;
-}
-
-function logRowInWindow(
-  row: McapLogConsoleRow,
-  activeWindow: LogReadRange,
-): boolean {
-  return (
-    row.timeNs >= activeWindow.startTimeNs &&
-    row.timeNs <= activeWindow.endTimeNs
-  );
-}
-
-function minBigInt(left: bigint, right: bigint): bigint {
-  return left < right ? left : right;
-}
-
-function maxBigInt(left: bigint, right: bigint): bigint {
-  return left > right ? left : right;
-}
-
-function compareBigInt(left: bigint, right: bigint): number {
-  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function formatRelativeTime(timeNs: bigint, originNs: bigint): string {

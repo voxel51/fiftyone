@@ -54,6 +54,11 @@
   color: var(--color-content-text-primary);
 }
 
+.copyMessageButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .scroll {
   flex: 1;
   min-height: 0;
