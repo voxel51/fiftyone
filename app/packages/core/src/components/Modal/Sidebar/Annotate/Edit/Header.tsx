@@ -81,8 +81,13 @@ const LabelHamburgerMenu = () => {
   const showDelete = !isGenerated;
   const showAddMask =
     isDetection && !isMaskDetection && !currentFieldIsReadOnly; // shown for a fresh box
+  // Gate on the live overlay: while a mask_path decode is in flight the
+  // row holds a stub and removeMask would silently no-op
   const showRemoveMask =
-    isDetection && isMaskDetection && !currentFieldIsReadOnly;
+    isDetection &&
+    isMaskDetection &&
+    !currentFieldIsReadOnly &&
+    overlay instanceof DetectionOverlay;
   const hasMenuItems =
     showDelete || showEditSchema || showAddMask || showRemoveMask;
 
