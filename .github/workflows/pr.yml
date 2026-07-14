@@ -24,6 +24,8 @@ permissions:
   contents: read
   pull-requests: read
   checks: read
+  # job containers pull the prebaked CI images (private in fiftyone-teams)
+  packages: read
 
 jobs:
   modified-files:
@@ -122,7 +124,9 @@ jobs:
     permissions:
       contents: read
       checks: read
-      # the e2e-report job upserts the authoritative e2e results comment
+      # job containers pull the prebaked CI images (private in fiftyone-teams)
+      packages: read
+      # the e2e verdict job upserts the authoritative e2e results comment
       pull-requests: write
 
   lint:
