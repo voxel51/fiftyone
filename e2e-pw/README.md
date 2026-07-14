@@ -120,8 +120,8 @@ class MyPOMAsserter {
    subject.
 2. Baseline screenshots are platform dependent. CI compares the
    `*-chromium-linux.png` baselines rendered inside the CI container image
-   (`ghcr.io/voxel51/fiftyone-e2e`); other environments' font stacks differ
-   by pixels, so only that image's renders are canonical. To update a linux
+   (`ghcr.io/voxel51/fiftyone-e2e`); other environments' font stacks differ by
+   pixels, so only that image's renders are canonical. To update a linux
    baseline, harvest the render from a CI run of your PR:
 
 ```
@@ -135,8 +135,8 @@ cp /tmp/report/data/<actual-sha>.png \
   src/oss/specs/<spec>.spec.ts-snapshots/<name>-chromium-linux.png
 ```
 
-   Only accept an actual after reviewing the diff — a dimension change or a
-   highlighted UI element is a behavioral difference, not render noise.
+Only accept an actual after reviewing the diff — a dimension change or a
+highlighted UI element is a behavioral difference, not render noise.
 
 #### Creating Datasets
 

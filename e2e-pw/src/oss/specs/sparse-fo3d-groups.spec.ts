@@ -129,10 +129,7 @@ test.describe.serial("sparse grouped fo3d", () => {
     await grid.selectSlice("z");
   });
 
-  test("keeps sparse 3d modal navigation stable", async ({
-    grid,
-    modal,
-  }) => {
+  test("keeps sparse 3d modal navigation stable", async ({ grid, modal }) => {
     const assertSingleSliceState = async (
       index: number,
       expectedSlice: "x" | "y" | "z",
