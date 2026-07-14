@@ -36,6 +36,7 @@ import type {
   ImageVisualization,
   RawImageVisualization,
 } from "../../decoders";
+import { fittedImageSize } from "./image-fit";
 import {
   createEncodedVideoCanvas,
   releaseEncodedVideoSession,
@@ -129,16 +130,7 @@ export function bitmapDrawRect(
   image: BitmapDrawSize,
   fit: "contain" | "cover",
 ): BitmapDrawRect {
-  const containerAspect = container.width / Math.max(1, container.height);
-  const imageAspect = image.width / Math.max(1, image.height);
-  const imageIsWider = imageAspect > containerAspect;
-  const constrainByWidth = fit === "contain" ? imageIsWider : !imageIsWider;
-  const width = constrainByWidth
-    ? container.width
-    : container.height * imageAspect;
-  const height = constrainByWidth
-    ? container.width / imageAspect
-    : container.height;
+  const { height, width } = fittedImageSize(container, image, fit);
 
   return {
     height,
