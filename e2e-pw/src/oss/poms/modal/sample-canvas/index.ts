@@ -290,7 +290,9 @@ class SampleCanvasAsserter {
       content: ".segmentation-toolbar { display: none !important; }",
     });
     await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name, {
-      maxDiffPixelRatio: 0.0,
+      // tolerate font/anti-aliasing rasterization noise (tens of pixels)
+      // while still failing on real changes (hundreds+)
+      maxDiffPixels: 100,
     });
   }
 
