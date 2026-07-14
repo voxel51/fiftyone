@@ -118,24 +118,25 @@ class MyPOMAsserter {
 
 1. Read [Playwright docs](https://playwright.dev/docs/test-snapshots) on this
    subject.
-2. Since baseline screenshots are platform dependent, and our CI server runs on
-   linux, to generate linux screenshots locally, run the following commands:
+2. Baseline screenshots are platform dependent. CI compares the
+   `*-chromium-linux.png` baselines rendered inside the CI container image
+   (`ghcr.io/voxel51/fiftyone-e2e`); other environments' font stacks differ
+   by pixels, so only that image's renders are canonical. To update a linux
+   baseline, harvest the render from a CI run of your PR:
 
 ```
-# create a docker image with playwright and python and fiftyone
-yarn build-linux-screenshot-docker-image
+# download the merged report from the failing run
+gh run download <run-id> -n playwright-report-merged -D /tmp/report
 
-# make sure mongod is running and available in your host machine at localhost:27017
-
-# generate screenshots
-# from e2e-pw directory, run:
-docker run --rm --network host -v $(pwd):/work/ -w /work/ -it screenshot /bin/bash
-
-# inside the docker container, run:
-npx playwright test --update-snapshots -g "description of my test"
-
-Note: `PYTHONPATH` and virtual env setup is done automatically.
+# each failed screenshot's trace zip (in /tmp/report/data/) lists
+# attachments mapping <name>-{expected,actual,diff}.png to sha-named
+# files in the same directory; commit the *actual* over the baseline:
+cp /tmp/report/data/<actual-sha>.png \
+  src/oss/specs/<spec>.spec.ts-snapshots/<name>-chromium-linux.png
 ```
+
+   Only accept an actual after reviewing the diff — a dimension change or a
+   highlighted UI element is a behavioral difference, not render noise.
 
 #### Creating Datasets
 
