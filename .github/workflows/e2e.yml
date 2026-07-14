@@ -247,13 +247,21 @@ jobs:
         # the merged blob reports. A red shard means infra death (timeout,
         # lost runner), not a test failure.
         run: |
-          yarn e2e --shard=${{ matrix.shard }}/10 ||
+          yarn e2e --update-snapshots --shard=${{ matrix.shard }}/10 ||
             echo "::warning::shard ${{ matrix.shard }} had failing specs; see the e2e verdict job"
         working-directory: e2e-pw
 
       - name: Lint Playwright tests
         run: yarn lint
         working-directory: e2e-pw
+
+      - name: Upload updated snapshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: updated-snapshots-${{ matrix.shard }}
+          path: e2e-pw/src/oss/specs/*-snapshots/
+          retention-days: 1
 
       - name: Upload blob report
         if: always()
