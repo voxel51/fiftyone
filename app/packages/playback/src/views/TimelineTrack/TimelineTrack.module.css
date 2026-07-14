@@ -93,9 +93,19 @@
   flex-shrink: 0;
 }
 
+.pinButton > div {
+  transition:
+    color 0.1s,
+    transform 0.1s;
+}
+
 .pinButtonActive {
   opacity: 1;
+}
+
+.pinButtonActive > div {
   color: var(--color-brand-primary);
+  transform: rotate(180deg);
 }
 
 .label:hover .pinButton {
