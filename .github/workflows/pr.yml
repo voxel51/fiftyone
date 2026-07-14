@@ -7,7 +7,7 @@ on:
     # it can land (no `synchronize` fires on an auto-retarget). No `closed`:
     # nothing here runs on it, and its no-op run races the suite still testing
     # the just-merged SHA, leaving a spurious red X on the merged PR.
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
 
 concurrency:
   # A PR title/body edit is a no-op run (run-ci=false). It gets its own group:
@@ -110,8 +110,11 @@ jobs:
 
   e2e:
     needs: modified-files
+    # Drafts skip the e2e suite (mirroring enterprise-sync); it runs when
+    # the PR is marked ready for review. all-tests treats skipped as green.
     if: >-
-      needs.modified-files.outputs.heavy == 'true' && (
+      needs.modified-files.outputs.heavy == 'true' &&
+      github.event.pull_request.draft != true && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.e2e-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true')
