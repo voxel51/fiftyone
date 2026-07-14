@@ -1,4 +1,5 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
+import { Size, Spinner } from "@voxel51/voodo";
 import {
   useCallback,
   useEffect,
@@ -66,6 +67,7 @@ export function GridRenderer({
     mcapCameraScopeKey(ctx.dataset.datasetId, ctx.media?.field) ??
     ctx.dataset.datasetId;
   const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null);
+  const [hovered, setHovered] = useState(false);
   const visible = useGridRendererVisibility(rootElement, isGridActive);
   const sampleId = useMemo(() => {
     const sample = ctx.sample.sample as { _id?: string; id?: string };
@@ -76,6 +78,7 @@ export function GridRenderer({
   );
   const preview = useMcapGridPreview({
     enabled: visible,
+    hovered,
     selectedStreamTopic:
       selectedStreamTopic === MCAP_GRID_STREAM_AUTO
         ? null
@@ -95,6 +98,7 @@ export function GridRenderer({
     preview.pause,
     preview.play,
     visible,
+    setHovered,
   );
   const [surfaceRetention, setSurfaceRetention] = useState<{
     readonly bytes: number;
@@ -159,6 +163,14 @@ export function GridRenderer({
           status={preview.status}
         />
       )}
+      {preview.frame && preview.isBuffering ? (
+        <span
+          className={classes.bufferingIndicator}
+          data-testid="mcap-grid-buffering-indicator"
+        >
+          <Spinner size={Size.Xs} />
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -198,6 +210,7 @@ function usePlaybackHoverIntent(
   pause: () => void,
   play: () => void,
   enabled: boolean,
+  setHovered: (hovered: boolean) => void,
 ) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancel = useCallback(() => {
@@ -208,18 +221,20 @@ function usePlaybackHoverIntent(
   }, []);
   const leave = useCallback(() => {
     cancel();
+    setHovered(false);
     pause();
-  }, [cancel, pause]);
+  }, [cancel, pause, setHovered]);
   const enter = useCallback(() => {
     cancel();
     if (!enabled) {
       return;
     }
+    setHovered(true);
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
       play();
     }, PLAYBACK_HOVER_INTENT_DELAY_MS);
-  }, [cancel, enabled, play]);
+  }, [cancel, enabled, play, setHovered]);
 
   // This effect cancels hover playback when the grid becomes inactive.
   useEffect(() => {
@@ -394,7 +409,7 @@ function PointCloudPreviewFrame({
       setLive(false);
     });
     if (lease === null) {
-      // Denied (Phase 3 budget policy): stay on the snapshot.
+      // The live-renderer budget is full; stay on the snapshot.
       return undefined;
     }
 

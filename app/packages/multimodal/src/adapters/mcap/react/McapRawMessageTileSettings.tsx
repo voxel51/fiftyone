@@ -8,6 +8,7 @@ import {
   useSetMcapRawTileTopic,
 } from "./mcap-raw-tile-state";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
+import { matchesMcapTopicFilter } from "./mcap-topic-filter";
 import { McapSettingsFilterInput } from "./McapSettingsFilterInput";
 import rawStyles from "./McapRawMessageTile.module.css";
 import settingsStyles from "./McapTile.settings.module.css";
@@ -142,15 +143,12 @@ function filterTopics(
   topics: readonly McapRawTopicInfo[],
   filter: string,
 ): readonly McapRawTopicInfo[] {
-  const needle = filter.trim().toLowerCase();
-  if (!needle) {
+  if (!filter.trim()) {
     return topics;
   }
 
-  return topics.filter(
-    (topic) =>
-      topic.topic.toLowerCase().includes(needle) ||
-      (topic.schemaName?.toLowerCase().includes(needle) ?? false),
+  return topics.filter((topic) =>
+    matchesMcapTopicFilter(filter, topic.topic, topic.schemaName),
   );
 }
 

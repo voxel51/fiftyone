@@ -1,4 +1,5 @@
 import type { McapLogConsoleRow } from "./mcap-log-console-rows";
+import { compareBigInt } from "../bigint";
 
 /** Inclusive timeline range represented by a log read or cache window. */
 export interface LogReadRange {
@@ -17,6 +18,116 @@ export interface VirtualLogRowRange {
   readonly endIndex: number;
   readonly offsetPx: number;
   readonly startIndex: number;
+}
+
+/** Returns the clamped beginning of a log window centered on a timeline tick. */
+export function logWindowStartNs(
+  centerTimeNs: bigint,
+  beforeNs: bigint,
+): bigint {
+  return centerTimeNs > beforeNs ? centerTimeNs - beforeNs : 0n;
+}
+
+/** Returns the inclusive log read window around a timeline tick. */
+export function logWindowForCenter(
+  centerTimeNs: bigint,
+  beforeNs: bigint,
+  afterNs: bigint,
+): LogReadRange {
+  return {
+    endTimeNs: centerTimeNs + afterNs,
+    startTimeNs: logWindowStartNs(centerTimeNs, beforeNs),
+  };
+}
+
+/** Returns the portions of an active window not covered by cached ranges. */
+export function missingLogReadRanges(
+  cachedRanges: readonly LogReadRange[] | null,
+  activeWindow: LogReadRange,
+): readonly LogReadRange[] {
+  if (!cachedRanges) {
+    return [activeWindow];
+  }
+
+  const ranges: LogReadRange[] = [];
+  let cursor = activeWindow.startTimeNs;
+  for (const covered of cachedRanges) {
+    if (covered.startTimeNs > cursor) {
+      ranges.push({ endTimeNs: covered.startTimeNs, startTimeNs: cursor });
+    }
+    if (covered.endTimeNs > cursor) {
+      cursor = covered.endTimeNs;
+    }
+    if (cursor >= activeWindow.endTimeNs) {
+      break;
+    }
+  }
+  if (cursor < activeWindow.endTimeNs) {
+    ranges.push({ endTimeNs: activeWindow.endTimeNs, startTimeNs: cursor });
+  }
+
+  return ranges;
+}
+
+/** Records how much of a capped log read is known to be covered. */
+export function coveredLogReadRange(
+  range: LogReadRange,
+  messageCount: number,
+  lastMessageTimeNs: bigint | undefined,
+  readLimit: number,
+): LogReadRange {
+  if (messageCount >= readLimit && lastMessageTimeNs !== undefined) {
+    return {
+      endTimeNs:
+        lastMessageTimeNs < range.endTimeNs
+          ? lastMessageTimeNs
+          : range.endTimeNs,
+      startTimeNs: range.startTimeNs,
+    };
+  }
+
+  return range;
+}
+
+/** Clips, sorts, and coalesces cached read ranges inside an active window. */
+export function mergeLogReadRanges(
+  ranges: readonly LogReadRange[],
+  activeWindow: LogReadRange,
+): readonly LogReadRange[] {
+  const clippedRanges: LogReadRange[] = [];
+  for (const range of ranges) {
+    const startTimeNs =
+      range.startTimeNs > activeWindow.startTimeNs
+        ? range.startTimeNs
+        : activeWindow.startTimeNs;
+    const endTimeNs =
+      range.endTimeNs < activeWindow.endTimeNs
+        ? range.endTimeNs
+        : activeWindow.endTimeNs;
+    if (startTimeNs <= endTimeNs) {
+      clippedRanges.push({ endTimeNs, startTimeNs });
+    }
+  }
+  clippedRanges.sort((left, right) =>
+    compareBigInt(left.startTimeNs, right.startTimeNs),
+  );
+
+  const merged: LogReadRange[] = [];
+  for (const range of clippedRanges) {
+    const previous = merged[merged.length - 1];
+    if (!previous || range.startTimeNs > previous.endTimeNs) {
+      merged.push(range);
+      continue;
+    }
+    if (range.endTimeNs > previous.endTimeNs) {
+      merged[merged.length - 1] = {
+        ...previous,
+        endTimeNs: range.endTimeNs,
+      };
+    }
+  }
+
+  return merged;
 }
 
 /**
@@ -113,8 +224,4 @@ function logRowInWindow(
     row.timeNs >= activeWindow.startTimeNs &&
     row.timeNs <= activeWindow.endTimeNs
   );
-}
-
-function compareBigInt(left: bigint, right: bigint): number {
-  return left < right ? -1 : left > right ? 1 : 0;
 }

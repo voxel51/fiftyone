@@ -35,6 +35,7 @@ import {
 } from "../../../visualization/panels/point-cloud/types";
 import { Mcap3dCameraRig } from "./Mcap3dCameraRig";
 import Mcap3dTileSettings from "./Mcap3dTileSettings";
+import { Mcap3dViewControls } from "./Mcap3dViewControls";
 import { build3dLayers } from "./mcap-3d-layers";
 import {
   selectMcap3dSceneSnapshot,
@@ -932,7 +933,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       sceneUpAxis,
     });
   }, [cameraNavigationMode, cameraProjection, sceneUpAxis, viewpointStore]);
-  useMcap3dViewShortcuts({
+  const { applyEgoView, applyTopView } = useMcap3dViewShortcuts({
     cameraTargetFrameId,
     frameIds,
     frameTransforms,
@@ -1198,6 +1199,12 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             cameraProjection={cameraProjection}
             cameraRig={<Mcap3dCameraRig {...rig} />}
             canvasSurface="modal-3d"
+            controls={
+              <Mcap3dViewControls
+                onEgoView={applyEgoView}
+                onTopView={applyTopView}
+              />
+            }
             fitResetKey={`${worldFrameId}:${sceneUpAxis}`}
             frustumLayers={displayedScene.frustumLayers}
             hudLines={hudLines}

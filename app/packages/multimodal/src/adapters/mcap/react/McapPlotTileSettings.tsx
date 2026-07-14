@@ -8,6 +8,7 @@ import {
   useToggleMcapPlotSeries,
 } from "./mcap-plot-tile-state";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
+import { matchesMcapTopicFilter } from "./mcap-topic-filter";
 import McapPlotTileStyles from "./McapPlotTile.module.css";
 import { McapSettingsFilterInput } from "./McapSettingsFilterInput";
 import McapSidebarGroup from "./McapSidebarGroup";
@@ -192,19 +193,18 @@ function filterTopics(
   topics: readonly McapTopicNumericFields[],
   filter: string,
 ): readonly McapTopicNumericFields[] {
-  const needle = filter.trim().toLowerCase();
-  if (!needle) {
+  if (!filter.trim()) {
     return topics;
   }
 
   const matches: McapTopicNumericFields[] = [];
   for (const topic of topics) {
-    if (topic.topic.toLowerCase().includes(needle)) {
+    if (matchesMcapTopicFilter(filter, topic.topic)) {
       matches.push(topic);
       continue;
     }
     const fields = topic.fields.filter((field) =>
-      field.path.toLowerCase().includes(needle),
+      matchesMcapTopicFilter(filter, field.path),
     );
     if (fields.length > 0) {
       matches.push({ ...topic, fields });

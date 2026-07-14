@@ -1,12 +1,61 @@
 import { describe, expect, it } from "vitest";
 import type { McapLogConsoleRow } from "./mcap-log-console-rows";
 import {
+  coveredLogReadRange,
+  logWindowForCenter,
   mergeBoundedLogRows,
+  mergeLogReadRanges,
+  missingLogReadRanges,
   pruneLogRows,
   virtualLogRowRange,
 } from "./mcap-log-console-window";
 
 describe("MCAP log console window", () => {
+  it("clamps a centered window to the beginning of the recording", () => {
+    expect(logWindowForCenter(5n, 30n, 2n)).toEqual({
+      endTimeNs: 7n,
+      startTimeNs: 0n,
+    });
+  });
+
+  it("clips and coalesces cached ranges inside the active window", () => {
+    expect(
+      mergeLogReadRanges(
+        [
+          { endTimeNs: 3n, startTimeNs: -2n },
+          { endTimeNs: 8n, startTimeNs: 3n },
+          { endTimeNs: 20n, startTimeNs: 12n },
+        ],
+        { endTimeNs: 10n, startTimeNs: 0n },
+      ),
+    ).toEqual([{ endTimeNs: 8n, startTimeNs: 0n }]);
+  });
+
+  it("returns only gaps not covered by cached read ranges", () => {
+    expect(
+      missingLogReadRanges(
+        [
+          { endTimeNs: 4n, startTimeNs: 2n },
+          { endTimeNs: 8n, startTimeNs: 6n },
+        ],
+        { endTimeNs: 10n, startTimeNs: 0n },
+      ),
+    ).toEqual([
+      { endTimeNs: 2n, startTimeNs: 0n },
+      { endTimeNs: 6n, startTimeNs: 4n },
+      { endTimeNs: 10n, startTimeNs: 8n },
+    ]);
+  });
+
+  it("caps covered ranges at the final message when a read hits its limit", () => {
+    const range = { endTimeNs: 10n, startTimeNs: 0n };
+    expect(coveredLogReadRange(range, 5, 4n, 5)).toEqual({
+      endTimeNs: 4n,
+      startTimeNs: 0n,
+    });
+    expect(coveredLogReadRange(range, 4, 4n, 5)).toBe(range);
+  });
+
   it("retains only the newest bounded rows in timeline order", () => {
     const merged = mergeBoundedLogRows(
       [row(1), row(2), row(3)],

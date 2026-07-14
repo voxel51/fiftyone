@@ -6,8 +6,10 @@ import {
   McapPanelVisibilityProvider,
   readMcap3dTileVisibility,
   useMcapImageTileLabelTopics,
+  useMcapImageTilePointCloudProjection,
   writeMcap3dTileVisibility,
 } from "./mcap-panel-visibility";
+import { DEFAULT_MCAP_PROJECTION_POINT_SIZE } from "./mcap-point-size";
 
 afterEach(() => {
   cleanup();
@@ -54,6 +56,57 @@ describe("MCAP panel visibility persistence", () => {
     expect(restored.result.current.labelTopics).toEqual([
       "/camera/front/labels",
     ]);
+  });
+
+  it("isolates point-cloud projections for image tiles on the same source", () => {
+    const wrapperFor = (tileId: string) => {
+      const Wrapper = ({ children }: { children: React.ReactNode }) => (
+        <McapPanelVisibilityProvider scopeKey="dataset-a:field-a">
+          <TilingProvider>
+            <TileIdScope tileId={tileId}>{children}</TileIdScope>
+          </TilingProvider>
+        </McapPanelVisibilityProvider>
+      );
+      return Wrapper;
+    };
+    const foo = renderHook(
+      () => useMcapImageTilePointCloudProjection("/camera/front/image"),
+      { wrapper: wrapperFor("image-1") },
+    );
+    const bar = renderHook(
+      () => useMcapImageTilePointCloudProjection("/camera/front/image"),
+      { wrapper: wrapperFor("image-2") },
+    );
+
+    act(() =>
+      foo.result.current.setProjection({
+        enabled: true,
+        pointSize: 8,
+        topics: ["/lidar/top"],
+      }),
+    );
+
+    expect(foo.result.current.projection).toEqual({
+      enabled: true,
+      pointSize: 8,
+      topics: ["/lidar/top"],
+    });
+    expect(bar.result.current.projection).toEqual({
+      enabled: false,
+      pointSize: DEFAULT_MCAP_PROJECTION_POINT_SIZE,
+      topics: [],
+    });
+
+    foo.unmount();
+    const restored = renderHook(
+      () => useMcapImageTilePointCloudProjection("/camera/front/image"),
+      { wrapper: wrapperFor("image-1") },
+    );
+    expect(restored.result.current.projection).toEqual({
+      enabled: true,
+      pointSize: 8,
+      topics: ["/lidar/top"],
+    });
   });
 
   it("fails closed on malformed storage", () => {
