@@ -80,10 +80,9 @@ In the App's sample grid, each multimodal sample displays a preview rendered
 from one of its streams, and you can use the stream selector to choose which
 stream is used for grid previews.
 
-.. Placeholder: gif showing grid previews + stream selector
-.. .. image:: /images/multimodal/multimodal-grid.gif
-..    :alt: multimodal-grid
-..    :align: center
+.. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/grid-playback.webp
+   :alt: multimodal-grid-previews
+   :align: center
 
 .. _multimodal-tiles:
 
@@ -94,11 +93,6 @@ Multimodal samples open in a configurable, mosaic-style viewer composed of
 **tiles**. You can add, remove, resize, and rearrange tiles, and bind each
 tile to any compatible stream in the recording. All tiles share a common
 playback clock, so scrubbing the timeline updates every tile in sync.
-
-.. Placeholder: gif showing the tiled viewer layout + timeline scrubbing
-.. .. image:: /images/multimodal/multimodal-viewer.gif
-..    :alt: multimodal-viewer
-..    :align: center
 
 .. _multimodal-image-tile:
 
@@ -186,11 +180,6 @@ The logs tile is a console view for log topics (`foxglove.Log`,
 with the playback clock, and you can pause following to scan the history or
 seek the recording to an entry of interest.
 
-.. Placeholder: recording of the logs tile
-.. .. image:: /images/multimodal/multimodal-logs-tile.webp
-..    :alt: multimodal-logs-tile
-..    :align: center
-
 .. _multimodal-settings-sidebar:
 
 Configuring tiles
@@ -225,11 +214,6 @@ tile is showing. It contains the following tabs:
     behavior, the topic/field series charted by a plot tile, or the topic
     shown in a message tile
 
-.. Placeholder: gif showing the left settings sidebar (scene + tile tabs)
-.. .. image:: /images/multimodal/multimodal-settings-sidebar.gif
-..    :alt: multimodal-settings-sidebar
-..    :align: center
-
 .. _multimodal-inspector-sidebar:
 
 Inspecting objects
@@ -246,11 +230,6 @@ annotation in an image tile — to view its details:
 
 Any fields not covered by the structured view are shown as raw JSON. Press
 `Esc` or click `Clear selection` to clear the current selection.
-
-.. Placeholder: gif showing the right inspector sidebar with a selected object
-.. .. image:: /images/multimodal/multimodal-inspector-sidebar.gif
-..    :alt: multimodal-inspector-sidebar
-..    :align: center
 
 .. _multimodal-mcap-explorer:
 
@@ -350,7 +329,8 @@ supported):
       - Description
     * - `sensor_msgs/msg/Image`
       - Raw camera images, including common pixel encodings (`rgb8`, `bgr8`,
-        `rgba8`, `bgra8`, `mono8`, `mono16`) and Bayer-patterned formats
+        `rgba8`, `bgra8`, `mono8`, `mono16`), YUV formats, depth encodings
+        (`16uc1`, `32fc1`), and Bayer-patterned formats
     * - `sensor_msgs/msg/CompressedImage`
       - Compressed (e.g. JPEG/PNG) camera images
     * - `sensor_msgs/msg/CameraInfo`
