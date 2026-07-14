@@ -7,7 +7,7 @@ describe("getLooker3dRenderKey", () => {
       getLooker3dRenderKey({
         modalSampleId: "camera-front-id",
         activeFo3dSlice: null,
-      })
+      }),
     ).toBe("camera-front-id:default");
   });
 
@@ -16,7 +16,7 @@ describe("getLooker3dRenderKey", () => {
       getLooker3dRenderKey({
         modalSampleId: "camera-front-id",
         activeFo3dSlice: "scene-left",
-      })
+      }),
     ).toBe("camera-front-id:scene-left:default");
   });
 
@@ -26,7 +26,7 @@ describe("getLooker3dRenderKey", () => {
         modalSampleId: "camera-front-id",
         activeFo3dSlice: "scene-left",
         renderContext: "annotate-focused",
-      })
+      }),
     ).toBe("camera-front-id:scene-left:annotate-focused");
   });
 });

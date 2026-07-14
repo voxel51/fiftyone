@@ -6,7 +6,7 @@ export const ONTOLOGY_TYPE = {
   taxonomy: "taxonomy",
 } as const;
 
-export type OntologyType = typeof ONTOLOGY_TYPE[keyof typeof ONTOLOGY_TYPE];
+export type OntologyType = (typeof ONTOLOGY_TYPE)[keyof typeof ONTOLOGY_TYPE];
 
 export interface OntologySummary {
   name: string;

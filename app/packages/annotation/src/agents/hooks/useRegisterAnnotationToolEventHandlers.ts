@@ -12,6 +12,7 @@ import { useApplyInferenceResult } from "./useApplyInferenceResult";
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { useRegisterPointSelectionEventHandlers } from "./useRegisterPointSelectionEventHandlers";
 import { useRegisterAgentLifecycleEvents } from "./useRegisterAgentLifecycleEvents";
+import { usePointSelectionSeed } from "./usePointSelectionSeed";
 
 const isToolsContextValid = (context: ToolsContext): boolean => {
   return (
@@ -37,9 +38,10 @@ export const useRegisterAnnotationToolEventHandlers = () => {
   const { scene } = useLighter();
 
   const agent = useAnnotationAgent(useAgentSelector().activeAgent?.agent);
+  const { consumeSeedNew } = usePointSelectionSeed();
   const createDetection = useCallback(
     () => createNew("Detection"),
-    [createNew]
+    [createNew],
   );
   const applyInferenceResult = useApplyInferenceResult(createDetection);
 
@@ -55,7 +57,13 @@ export const useRegisterAnnotationToolEventHandlers = () => {
       let cancelled = false;
 
       if (isToolsContextValid(toolsContext) && agent) {
-        const labelId = selected?.label?.overlay?.id ?? uuidv4();
+        // A finalized session seeds a fresh mask even while the just-committed
+        // label is still selected; otherwise refine the selection in place.
+        const seedNew = consumeSeedNew();
+        const labelId =
+          seedNew || !selected?.label?.overlay?.id
+            ? uuidv4()
+            : selected.label.overlay.id;
 
         agent
           .infer(labelId)
@@ -74,7 +82,7 @@ export const useRegisterAnnotationToolEventHandlers = () => {
       };
     },
     // trigger inference every time the input context changes
-    [toolsContext]
+    [toolsContext],
   );
 
   // Reset tools state on mount, unmount, and whenever the lighter scene is

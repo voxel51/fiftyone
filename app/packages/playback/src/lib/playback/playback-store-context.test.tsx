@@ -16,7 +16,7 @@ describe("usePlaybackStore", () => {
     console.error = () => {};
 
     expect(() => renderHook(() => usePlaybackStore())).toThrow(
-      "usePlaybackStore must be used inside a <PlaybackProvider>"
+      "usePlaybackStore must be used inside a <PlaybackProvider>",
     );
 
     console.error = consoleError;
@@ -39,9 +39,7 @@ describe("usePlaybackStore", () => {
   });
 
   it("returns null from context when the context is unset (raw context read)", () => {
-    const { result } = renderHook(() =>
-      React.useContext(PlaybackStoreContext)
-    );
+    const { result } = renderHook(() => React.useContext(PlaybackStoreContext));
     expect(result.current).toBeNull();
   });
 });

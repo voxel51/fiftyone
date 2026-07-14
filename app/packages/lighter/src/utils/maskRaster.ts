@@ -31,7 +31,7 @@ export interface RasterizedMask {
  *   {@link OverlayMask}.
  */
 export const decodeMaskToRaster = (
-  maskData: string | OverlayMask
+  maskData: string | OverlayMask,
 ): RasterizedMask => {
   const mask = typeof maskData === "string" ? deserialize(maskData) : maskData;
 
@@ -50,7 +50,7 @@ export const decodeMaskToRaster = (
 
   if (targets.length !== expectedPixels) {
     throw new Error(
-      `Mask payload length mismatch: expected ${expectedPixels}, got ${targets.length}`
+      `Mask payload length mismatch: expected ${expectedPixels}, got ${targets.length}`,
     );
   }
 

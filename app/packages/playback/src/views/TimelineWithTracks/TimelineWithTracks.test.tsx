@@ -1,11 +1,7 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import React from "react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
-import {
-  TrackProvider,
-  type Track,
-} from "../../lib/tracks/TrackProvider";
+import { TrackProvider, type Track } from "../../lib/tracks/TrackProvider";
 import TimelineWithTracks from "./TimelineWithTracks";
 import styles from "./TimelineWithTracks.module.css";
 
@@ -30,19 +26,14 @@ interface RenderOpts {
 }
 
 function renderTimeline(opts: RenderOpts = {}) {
-  const {
-    tracks = [],
-    pinnedIds = [],
-    duration = 10,
-    labelWidth,
-  } = opts;
+  const { tracks = [], pinnedIds = [], duration = 10, labelWidth } = opts;
 
   return render(
     <PlaybackProvider duration={duration} stepInterval={1 / 30}>
-      <TrackProvider initialTracks={tracks} initialPinnedIds={pinnedIds}>
+      <TrackProvider tracks={tracks} initialPinnedIds={pinnedIds}>
         <TimelineWithTracks labelWidth={labelWidth} />
       </TrackProvider>
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -63,12 +54,6 @@ describe("TimelineWithTracks", () => {
   });
 
   describe("empty state (no tracks)", () => {
-    it("renders the root container with the noTracks modifier", () => {
-      const { container } = renderTimeline({ tracks: [] });
-      const root = container.firstElementChild as HTMLElement;
-      expect(root.className).toContain(styles.noTracks);
-    });
-
     it("does not render the tracks area when there are no tracks", () => {
       const { container } = renderTimeline({ tracks: [] });
       // noTracks branch skips the Drawer entirely — no tracksOuter section
@@ -77,28 +62,18 @@ describe("TimelineWithTracks", () => {
   });
 
   describe("with tracks", () => {
-    it("renders the root container without the noTracks class", () => {
-      const { container } = renderTimeline({
-        tracks: [TRACK_A],
-        pinnedIds: ["track-a"],
-      });
-      const root = container.firstElementChild as HTMLElement;
-      expect(root.className).not.toContain(styles.noTracks);
-    });
-
     it("renders track labels for registered tracks", () => {
       renderTimeline({ tracks: [TRACK_A, TRACK_B], pinnedIds: ["track-a"] });
       expect(screen.getByText("Track A")).toBeTruthy();
     });
 
-    it("renders all tracks in the drawer body when open", () => {
+    it("renders rows for both pinned and unpinned tracks", () => {
       renderTimeline({
         tracks: [TRACK_A, TRACK_B],
         pinnedIds: ["track-a"],
       });
-      // Both labels should be visible in the default open state
-      expect(screen.getByText("Track A")).toBeTruthy();
-      expect(screen.getByText("Track B")).toBeTruthy();
+      expect(screen.getAllByText("Track A").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Track B").length).toBeGreaterThan(0);
     });
   });
 

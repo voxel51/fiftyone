@@ -2,16 +2,23 @@ import React, { useMemo } from "react";
 import { TIMELINE_LABEL_WIDTH } from "../../lib/constants";
 import { useTracks } from "../../lib/tracks/TrackProvider";
 import { TemporalTagProvider } from "./TemporalTagContext";
-import type { TemporalTagCreatePayload } from "./TemporalTagContext";
+import type {
+  TemporalTagCreatePayload,
+  TemporalTagUpdatePayload,
+} from "./TemporalTagContext";
 import TemporalTagButton from "./TemporalTagButton";
 import TemporalTagPopup from "./TemporalTagPopup";
 import TemporalTagRangeOverlay from "./TemporalTagRangeOverlay";
 import { useTemporalTagMode } from "./use-temporal-tag-mode";
 import TimelineWithTracks from "../TimelineWithTracks/TimelineWithTracks";
 import type { TimelineWithTracksProps } from "../TimelineWithTracks/TimelineWithTracks";
+import type { TrackEventMenuItem } from "../TimelineTrack/TimelineTrack";
 
 export interface TemporalTagTimelineProps extends TimelineWithTracksProps {
   onTagCreate?: (tag: TemporalTagCreatePayload) => Promise<void>;
+  /** When provided, adds an "Edit tag" context-menu action that opens the
+   *  popup pre-filled to mutate that tag's time range / label. */
+  onTagUpdate?: (tag: TemporalTagUpdatePayload) => Promise<void>;
 }
 
 /**
@@ -24,7 +31,11 @@ export interface TemporalTagTimelineProps extends TimelineWithTracksProps {
  */
 const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
   onTagCreate,
+  onTagUpdate,
   labelWidth: requestedLabelWidth = TIMELINE_LABEL_WIDTH,
+  rulerOverlay,
+  extraActions,
+  eventMenuItems,
   ...timelineProps
 }) => {
   const tracks = useTracks();
@@ -38,17 +49,59 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
       tracks
         .filter((t) => t.id.startsWith("temporal-tag::"))
         .map((t) => t.label),
-    [tracks]
+    [tracks],
   );
-  const tagContextValue = { state, actions, onTagCreate, existingTags };
+  const tagContextValue = {
+    state,
+    actions,
+    onTagCreate,
+    onTagUpdate,
+    existingTags,
+  };
+
+  // Prepend an "Edit tag" action (opens the popup pre-filled) to the
+  // caller-provided menu items when editing is wired in.
+  const mergedEventMenuItems = useMemo<TrackEventMenuItem[] | undefined>(() => {
+    if (!onTagUpdate) return eventMenuItems;
+    const editItem: TrackEventMenuItem = {
+      label: "Edit tag",
+      onSelect: (event, anchor) => {
+        if (typeof event.data !== "string" || !anchor) return;
+        actions.startEdit(
+          {
+            id: event.data,
+            start: event.startSec,
+            end: event.endSec ?? event.startSec,
+            label: event.label ?? "",
+          },
+          anchor,
+        );
+      },
+    };
+    return [editItem, ...(eventMenuItems ?? [])];
+  }, [onTagUpdate, eventMenuItems, actions]);
 
   return (
     <TemporalTagProvider value={tagContextValue}>
       <TimelineWithTracks
         {...timelineProps}
+        eventMenuItems={mergedEventMenuItems}
         labelWidth={requestedLabelWidth}
-        rulerOverlay={<TemporalTagRangeOverlay labelWidth={labelWidth} />}
-        extraActions={<TemporalTagButton />}
+        // Compose caller-provided slot content with the tag UI instead of
+        // replacing it — hosts inject their own controls (e.g. a timestamp
+        // readout) through the same slots.
+        rulerOverlay={
+          <>
+            {rulerOverlay}
+            <TemporalTagRangeOverlay labelWidth={labelWidth} />
+          </>
+        }
+        extraActions={
+          <>
+            {extraActions}
+            <TemporalTagButton />
+          </>
+        }
       />
       <TemporalTagPopup />
     </TemporalTagProvider>

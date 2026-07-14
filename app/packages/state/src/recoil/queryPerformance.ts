@@ -60,7 +60,7 @@ export const filterSearch = selectorFamily({
 
       if (get(isQueryPerformantDynamicGroup)) {
         const start = get(
-          schemaAtoms.dbPath(get(dynamicGroupParameters).orderBy)
+          schemaAtoms.dbPath(get(dynamicGroupParameters).orderBy),
         );
 
         allIndexes = allIndexes
@@ -144,7 +144,7 @@ export const indexInfo = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
   },
   {
     key: "indexInfo",
-  }
+  },
 );
 
 const indexKeysMatch = (one: string[], two: string[]) =>
@@ -172,7 +172,7 @@ export const validIndexes = selectorFamily({
       const keyList = keys.map((k) => get(schemaAtoms.dbPath(k)));
       if (get(isQueryPerformantDynamicGroup)) {
         const start = get(
-          schemaAtoms.dbPath(get(dynamicGroupParameters).orderBy)
+          schemaAtoms.dbPath(get(dynamicGroupParameters).orderBy),
         );
 
         allIndexes = allIndexes
@@ -275,7 +275,7 @@ export const indexesByPath = selectorFamily<string[], string[] | undefined>({
           schemaAtoms.fieldPaths({
             ftype: [BOOLEAN_FIELD, OBJECT_ID_FIELD, STRING_FIELD],
             space,
-          })
+          }),
         );
 
       const schema = gatherPaths(State.SPACE.SAMPLE);
@@ -285,7 +285,7 @@ export const indexesByPath = selectorFamily<string[], string[] | undefined>({
       const convertWildcards = (
         field: string,
         fields: string[],
-        frames: boolean
+        frames: boolean,
       ) => {
         const projection = frames ? framesProjection : samplesProjection;
 
@@ -329,7 +329,7 @@ export const pathIndex = selectorFamily({
     ({ path, withFilters }: { path: string; withFilters?: boolean }) =>
     ({ get }) => {
       const indexes = get(
-        indexesByPath(withFilters ? get(filterKeys) : undefined)
+        indexesByPath(withFilters ? get(filterKeys) : undefined),
       );
       return indexes.includes(get(schemaAtoms.dbPath(path)));
     },
@@ -430,7 +430,7 @@ export const indexedPaths = selectorFamily<
           schemaAtoms.fieldPaths({
             path: expanded,
             ftype: VALID_PRIMITIVE_TYPES,
-          })
+          }),
         )
           .map((p) => `${expanded}.${p}`)
           .filter((p) => indexes.includes(get(schemaAtoms.dbPath(p))));
@@ -507,7 +507,7 @@ export const queryPerformanceSetting = selector<boolean>({
   set: ({ get, set }, value) => {
     set(
       queryPerformanceStore(get(datasetId)),
-      value instanceof DefaultValue ? undefined : value
+      value instanceof DefaultValue ? undefined : value,
     );
   },
 });
@@ -532,7 +532,7 @@ const queryPerformanceMaxSearchStore = atomFamily<number, string>({
       {
         sessionStorage: true,
         valueClass: "number",
-      }
+      },
     ),
   ],
 });
@@ -543,7 +543,7 @@ export const queryPerformanceMaxSearch = selector({
   set: ({ get, set }, value) => {
     set(
       queryPerformanceMaxSearchStore(get(datasetId)),
-      value instanceof DefaultValue ? DEFAULT_MAX_SEARCH : value
+      value instanceof DefaultValue ? DEFAULT_MAX_SEARCH : value,
     );
   },
 });

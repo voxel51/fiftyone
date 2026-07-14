@@ -12,7 +12,7 @@ export default function useExtendedStageEffect() {
   const view = useRecoilValue(fos.view);
   const [loadedPlot] = usePanelStatePartial("loadedPlot", null, true);
   const setOverrideStage = useSetRecoilState(
-    fos.extendedSelectionOverrideStage
+    fos.extendedSelectionOverrideStage,
   );
   const { selection, spatialSelection } = useRecoilValue(fos.extendedSelection);
   const getCurrentDataset = useRecoilCallback(({ snapshot }) => async () => {
@@ -28,7 +28,7 @@ export default function useExtendedStageEffect() {
         view,
         null,
         loadedPlot.patches_field,
-        pointsField
+        pointsField,
       );
       fetchExtendedStage({
         datasetName,

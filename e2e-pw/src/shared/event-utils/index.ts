@@ -5,7 +5,7 @@ export class EventUtils {
 
   public async getEventReceivedPromiseForPredicate(
     eventName: string,
-    predicate: (e: CustomEvent) => boolean = () => true
+    predicate: (e: CustomEvent) => boolean = () => true,
   ) {
     const exposedFunctionName = getFunctionNameWithRandomSuffix(eventName);
     this.page.exposeFunction(exposedFunctionName, (e: CustomEvent) => {
@@ -25,7 +25,7 @@ export class EventUtils {
           };
           document.addEventListener(eventName_, cb);
         }),
-      { eventName_: eventName, exposedFunctionName_: exposedFunctionName }
+      { eventName_: eventName, exposedFunctionName_: exposedFunctionName },
     );
   }
 }

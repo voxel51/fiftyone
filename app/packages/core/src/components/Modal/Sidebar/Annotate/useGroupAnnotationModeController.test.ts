@@ -36,7 +36,7 @@ describe("hasApplicableAnnotationSlice", () => {
           mediaType: "point-cloud",
           isMissing: true,
         }),
-      ])
+      ]),
     ).toBe(false);
   });
 
@@ -44,7 +44,7 @@ describe("hasApplicableAnnotationSlice", () => {
     expect(
       hasApplicableAnnotationSlice([
         slice({ name: "video", mediaType: "video", isSupported: false }),
-      ])
+      ]),
     ).toBe(false);
   });
 
@@ -58,7 +58,7 @@ describe("hasApplicableAnnotationSlice", () => {
           mediaType: "point-cloud",
           isMissing: false,
         }),
-      ])
+      ]),
     ).toBe(true);
   });
 });

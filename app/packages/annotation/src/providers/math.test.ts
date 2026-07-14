@@ -37,7 +37,7 @@ describe("transformPoint", () => {
       const [ex, ey] = transformPoint(1, 1);
       expect(ex).toBeCloseTo(SZ, 5);
       expect(ey).toBeCloseTo(SZ, 5);
-    }
+    },
   );
 });
 
@@ -61,8 +61,7 @@ describe("computeMaskBbox", () => {
   it("Returns localized bbox for localized mask", () => {
     const mask = mask256().fill(-5);
     for (let y = 80; y < 100; y++)
-      for (let x = 15; x < 25; x++)
-        mask[y * SAM2_OUTPUT_SIZE + x] = 5;
+      for (let x = 15; x < 25; x++) mask[y * SAM2_OUTPUT_SIZE + x] = 5;
 
     const bbox = computeMaskBbox(mask, img)!;
     expect(bbox).not.toBeNull();
@@ -79,8 +78,12 @@ describe("postprocessMask", () => {
     const bbox1 = { x: 0, y: 0, w: 50, h: 100 };
     const bbox2 = { x: 0, y: 0, w: 100, h: 50 };
     const bbox3 = { x: 10, y: 15, w: 30, h: 20 };
-    expect(postprocessMask(mask256(), makeImg(50, 100), bbox1).length).toBe(50 * 100);
-    expect(postprocessMask(mask256(), makeImg(100, 50), bbox2).length).toBe(100 * 50);
+    expect(postprocessMask(mask256(), makeImg(50, 100), bbox1).length).toBe(
+      50 * 100,
+    );
+    expect(postprocessMask(mask256(), makeImg(100, 50), bbox2).length).toBe(
+      100 * 50,
+    );
     expect(postprocessMask(mask256(), img, bbox3).length).toBe(30 * 20);
   });
 
@@ -98,8 +101,7 @@ describe("postprocessMask", () => {
 
   it("Output always in [0, 1] even with large logits", () => {
     const large = mask256();
-    for (let i = 0; i < large.length; i++)
-      large[i] = Math.sin(i) * 100;
+    for (let i = 0; i < large.length; i++) large[i] = Math.sin(i) * 100;
 
     const out = postprocessMask(large, img, fullBbox);
     for (let i = 0; i < out.length; i++) {

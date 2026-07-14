@@ -6,7 +6,7 @@ describe("useRecords", () => {
   it("return new records when clear string changes", () => {
     const { result, rerender } = renderHook(
       (clear: string) => useRecords(clear),
-      { initialProps: "one" }
+      { initialProps: "one" },
     );
     expect(result.current.size).toBe(0);
 

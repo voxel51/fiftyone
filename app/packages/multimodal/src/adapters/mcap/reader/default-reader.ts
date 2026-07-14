@@ -2,10 +2,23 @@ import "../browser-node-globals";
 import { McapIndexedReader, type McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { loadDecompressHandlers } from "../mcap-support";
+import { ByteClientReadable } from "./byte-readable";
+import {
+  collectChunkDataPrefetchRanges,
+  collectWindowPrefetchRanges,
+  prefetchMcapByteRanges,
+  type McapPrefetchChunkDataRequest,
+  type McapPrefetchWindowRequest,
+} from "./chunk-prefetch";
+import { createCachedMcapDecompressHandlers } from "./decompress-cache";
+import { readLatestIndexedMessageTimesForReader } from "./latest-before";
 import { readIndexedMessageTimesForReader } from "./message-index";
+import { readTopicIndexedTimeBoundsForReader } from "./topic-time-bounds";
 import type {
   McapIndexedReaderLike,
   McapReadIndexedMessageTimesRequest,
+  McapReadLatestIndexedMessageTimesRequest,
+  McapReadTopicIndexedTimeBoundsRequest,
 } from "./types";
 
 const DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES = 128 * 1024 * 1024;
@@ -15,22 +28,52 @@ const DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES = 128 * 1024 * 1024;
  */
 export async function createDefaultMcapReader(
   _source: ByteSourceDescriptor,
-  readable: McapTypes.IReadable
+  readable: McapTypes.IReadable,
 ): Promise<McapIndexedReaderLike> {
   const wasmDecompressHandlers = await loadDecompressHandlers();
+  const decompressHandlers = createCachedMcapDecompressHandlers(
+    wasmDecompressHandlers,
+  );
   const reader = await McapIndexedReader.Initialize({
-    decompressHandlers: wasmDecompressHandlers,
+    decompressHandlers,
     messageIndexCacheSizeBytes: DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES,
     readable,
   });
+  if (readable instanceof ByteClientReadable) {
+    readable.setChunkIndexes(reader.chunkIndexes);
+  }
   const chunkCompressions = compressedChunkTypes(reader);
-  assertSupportedChunkCompressions(chunkCompressions, wasmDecompressHandlers);
+  assertSupportedChunkCompressions(chunkCompressions, decompressHandlers);
 
   return {
     channelsById: reader.channelsById,
     chunkIndexes: reader.chunkIndexes,
+    prefetchChunkData: (request: McapPrefetchChunkDataRequest) =>
+      prefetchMcapByteRanges(
+        readable,
+        collectChunkDataPrefetchRanges({
+          chunkIndexes: reader.chunkIndexes,
+          request,
+        }),
+        request.maxConcurrentReads,
+      ),
+    prefetchWindow: (request: McapPrefetchWindowRequest) =>
+      prefetchMcapByteRanges(
+        readable,
+        collectWindowPrefetchRanges({
+          channelsById: reader.channelsById,
+          chunkIndexes: reader.chunkIndexes,
+          request,
+        }),
+        request.maxConcurrentReads,
+      ),
     readIndexedMessageTimes: (args?: McapReadIndexedMessageTimesRequest) =>
       readIndexedMessageTimesForReader(reader, readable, args),
+    readLatestIndexedMessageTimes: (
+      args: McapReadLatestIndexedMessageTimesRequest,
+    ) => readLatestIndexedMessageTimesForReader(reader, readable, args),
+    readTopicIndexedTimeBounds: (args: McapReadTopicIndexedTimeBoundsRequest) =>
+      readTopicIndexedTimeBoundsForReader(reader, readable, args),
     readMessages: reader.readMessages.bind(reader),
     schemasById: reader.schemasById,
     statistics: reader.statistics,
@@ -44,13 +87,13 @@ function compressedChunkTypes(reader: McapIndexedReader): ReadonlySet<string> {
   return new Set(
     chunkIndexes
       .map((chunkIndex) => chunkIndex.compression)
-      .filter((compression) => compression.length > 0)
+      .filter((compression) => compression.length > 0),
   );
 }
 
 function assertSupportedChunkCompressions(
   compressions: ReadonlySet<string>,
-  decompressHandlers: McapTypes.DecompressHandlers
+  decompressHandlers: McapTypes.DecompressHandlers,
 ) {
   const supported = new Set(Object.keys(decompressHandlers));
   const unsupported = [...compressions]
@@ -62,8 +105,8 @@ function assertSupportedChunkCompressions(
 
     throw new Error(
       `Unsupported MCAP chunk compression: ${unsupported.join(
-        ", "
-      )}. Supported compressions are ${supportedList}.`
+        ", ",
+      )}. Supported compressions are ${supportedList}.`,
     );
   }
 }

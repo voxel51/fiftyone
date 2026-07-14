@@ -35,7 +35,7 @@ vi.mock("@fiftyone/state", async () => {
           [labelId]: label,
           ...acc,
         }),
-        {} as Record<string, any>
+        {} as Record<string, any>,
       ),
     set: ({ set }, newValue) => {
       if (newValue instanceof DV) {
@@ -45,8 +45,8 @@ vi.mock("@fiftyone/state", async () => {
       set(
         stubs.selectedLabels,
         Object.entries(newValue as Record<string, any>).map(
-          ([labelId, label]) => ({ ...label, labelId })
-        )
+          ([labelId, label]) => ({ ...label, labelId }),
+        ),
       );
     },
   });
@@ -82,7 +82,7 @@ function makeWrapper(initialMap: LabelMap) {
           set(stubs.selectedLabelMap, initialMap);
         },
       },
-      children
+      children,
     );
   };
 }
@@ -104,11 +104,11 @@ describe("useUnselectVisible", () => {
       () => ({
         callback: useUnselectVisible(
           undefined,
-          new Set(["label-a", "label-b"])
+          new Set(["label-a", "label-b"]),
         ),
         map: useRecoilValue(stubs.selectedLabelMap),
       }),
-      { wrapper: makeWrapper(initial) }
+      { wrapper: makeWrapper(initial) },
     );
 
     await act(async () => {
@@ -130,7 +130,7 @@ describe("useUnselectVisible", () => {
         callback: useUnselectVisible(undefined, new Set(["label-x"])),
         map: useRecoilValue(stubs.selectedLabelMap),
       }),
-      { wrapper: makeWrapper(initial) }
+      { wrapper: makeWrapper(initial) },
     );
 
     await act(async () => {
@@ -152,11 +152,11 @@ describe("useUnselectVisible", () => {
       () => ({
         callback: useUnselectVisible(
           undefined,
-          new Set(["label-a", "label-b"])
+          new Set(["label-a", "label-b"]),
         ),
         map: useRecoilValue(stubs.selectedLabelMap),
       }),
-      { wrapper: makeWrapper(initial) }
+      { wrapper: makeWrapper(initial) },
     );
 
     await act(async () => {
@@ -173,7 +173,7 @@ describe("useUnselectVisible", () => {
         wrapper: makeWrapper({
           "label-a": { sampleId: "s1", field: "detections" },
         }),
-      }
+      },
     );
 
     await act(async () => {
@@ -196,7 +196,7 @@ describe("useUnselectVisible", () => {
         wrapper: makeWrapper({
           "label-a": { sampleId: "s1", field: "detections" },
         }),
-      }
+      },
     );
 
     await act(async () => {
@@ -212,7 +212,7 @@ describe("useUnselectVisible", () => {
         callback: useUnselectVisible(undefined, new Set(["label-x"])),
         map: useRecoilValue(stubs.selectedLabelMap),
       }),
-      { wrapper: makeWrapper({}) }
+      { wrapper: makeWrapper({}) },
     );
 
     await act(async () => {
@@ -233,7 +233,7 @@ describe("useUnselectVisible", () => {
         callback: useUnselectVisible(undefined, new Set(["label-a"])),
         map: useRecoilValue(stubs.selectedLabelMap),
       }),
-      { wrapper: makeWrapper(initial) }
+      { wrapper: makeWrapper(initial) },
     );
 
     await act(async () => {

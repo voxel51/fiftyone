@@ -10,7 +10,7 @@ export type PythonCommandGenerator = (argv: string[]) => string;
 export class PythonRunner {
   constructor(
     private readonly pythonCommandGenerator: PythonCommandGenerator,
-    private readonly env?: Record<string, string>
+    private readonly env?: Record<string, string>,
   ) {
     this.pythonCommandGenerator = pythonCommandGenerator;
 
@@ -60,11 +60,11 @@ export class PythonRunner {
           reject(
             new Error(
               `Python process exited with code ${code}` +
-                (signal ? ` (signal ${signal})` : "")
-            )
+                (signal ? ` (signal ${signal})` : ""),
+            ),
           );
         }
-      })
+      }),
     );
   }
 }

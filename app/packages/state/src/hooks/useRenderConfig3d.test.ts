@@ -77,7 +77,7 @@ vi.mock("recoil", async () => {
         callback: (interfaceArgs: {
           snapshot: { getPromise: (node: { key: string }) => Promise<unknown> };
           set: (node: { key: string }, value: unknown) => void;
-        }) => (...args: unknown[]) => unknown
+        }) => (...args: unknown[]) => unknown,
       ) =>
       (...args: unknown[]) =>
         callback({

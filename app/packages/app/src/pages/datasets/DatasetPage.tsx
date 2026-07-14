@@ -17,7 +17,6 @@ import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { datasetQueryContext } from "@fiftyone/state";
-import React from "react";
 import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";

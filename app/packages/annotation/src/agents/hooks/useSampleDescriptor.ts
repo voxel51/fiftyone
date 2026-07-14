@@ -20,6 +20,6 @@ export const useSampleDescriptor = (): SampleDescriptor => {
       sampleId,
       mediaUrl,
     }),
-    [datasetId, mediaUrl, sampleId]
+    [datasetId, mediaUrl, sampleId],
   );
 };

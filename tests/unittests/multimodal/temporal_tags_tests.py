@@ -14,7 +14,7 @@ from decorators import drop_collection, drop_datasets
 
 import fiftyone as fo
 import fiftyone.core.odm as foo
-import fiftyone.multimodal.tags._temporal_tags as fota
+import fiftyone.core.tags as fota
 from fiftyone.multimodal.schemas import v1 as foms
 
 drop_tags = drop_collection(fota.TAGS_COLLECTION_NAME)
@@ -573,6 +573,13 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(len(fota.list_temporal_tags(dataset)), 4)
         self.assertEqual(
             fota.count_temporal_tags(dataset), {"keep": 1, "review": 3}
+        )
+        # by_sample counts distinct samples per tag: "review" is on both
+        # samples (2), "keep" on one (1) — even though there are 3 "review"
+        # intervals total.
+        self.assertEqual(
+            fota.count_temporal_tags(dataset, by_sample=True),
+            {"keep": 1, "review": 2},
         )
 
         sample_tags = fota.list_temporal_tags(

@@ -36,7 +36,7 @@ export const projectTo2D = (point: Vec3, plane: "xz" | "xy" | "yz"): Vec2 => {
 
 export const getProjectedCorners = (
   box: BoundingBox3D,
-  plane: "xz" | "xy" | "yz"
+  plane: "xz" | "xy" | "yz",
 ) => {
   const { dimensions, location, rotation } = box;
   const [dx, dy, dz] = dimensions;
@@ -76,7 +76,7 @@ export const getProjectedCorners = (
 
   // project the 3D points to 2D based on the specified plane
   const projectedCorners: Vec2[] = transformedCorners.map((corner) =>
-    projectTo2D(corner, plane)
+    projectTo2D(corner, plane),
   );
 
   return { projectedCorners };

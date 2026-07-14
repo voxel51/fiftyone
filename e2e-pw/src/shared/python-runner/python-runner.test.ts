@@ -80,9 +80,7 @@ describe("PythonRunner.exec", () => {
 
     proc.emit("exit", 1, null);
 
-    await expect(promise).rejects.toThrow(
-      /Python process exited with code 1/
-    );
+    await expect(promise).rejects.toThrow(/Python process exited with code 1/);
   });
 
   it("rejects with the signal in the message when the process is killed by a signal", async () => {

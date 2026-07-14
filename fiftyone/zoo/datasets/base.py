@@ -3145,6 +3145,74 @@ class QuickstartVideoDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class QuickstartTrajectoriesDataset(FiftyOneDataset):
+    """A small video dataset for trajectory annotation.
+
+    The dataset consists of the same 10 video segments as
+    :class:`QuickstartVideoDataset`, but the per-frame object detections are
+    linked across frames into object trajectories via the
+    :class:`fiftyone.core.labels.Instance` values in their ``instance``
+    attributes (the legacy ``index`` attribute has been removed).
+
+    .. note::
+
+        Before annotating trajectories, you must compute video metadata and
+        sample the videos into frames::
+
+            dataset.compute_metadata()
+            dataset.to_frames(sample_frames=True)
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-trajectories")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        35.20 MB
+    """
+
+    _GDRIVE_ID = "1474CYDOP3x3TVNWE0ftRE8M05pzd1w0Y"
+    _ARCHIVE_NAME = "quickstart-trajectories.zip"
+    _DIR_IN_ARCHIVE = "quickstart-trajectories"
+
+    @property
+    def name(self):
+        return "quickstart-trajectories"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("video", "quickstart")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_and_extract_archive(
+            self._GDRIVE_ID,
+            self._ARCHIVE_NAME,
+            self._DIR_IN_ARCHIVE,
+            dataset_dir,
+            scratch_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class QuickstartGroupsDataset(FiftyOneDataset):
     """A small dataset with grouped image and point cloud data.
 
@@ -3390,6 +3458,7 @@ AVAILABLE_DATASETS = {
     "quickstart": QuickstartDataset,
     "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,
+    "quickstart-trajectories": QuickstartTrajectoriesDataset,
     "quickstart-groups": QuickstartGroupsDataset,
     "quickstart-3d": Quickstart3DDataset,
     "sama-coco": SamaCOCODataset,

@@ -22,7 +22,7 @@ import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "smoke-annotate-segmentation-ai"
+  "smoke-annotate-segmentation-ai",
 );
 
 const test = base.extend<{
@@ -65,9 +65,11 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   // The factory wraps the worker source in a Blob URL so it runs in a real
   // Worker context — same shape as the production worker.
   await page.addInitScript((workerSrc: string) => {
-    (window as unknown as {
-      __FO_TEST_SAM2_WORKER_FACTORY?: () => Worker;
-    }).__FO_TEST_SAM2_WORKER_FACTORY = () => {
+    (
+      window as unknown as {
+        __FO_TEST_SAM2_WORKER_FACTORY?: () => Worker;
+      }
+    ).__FO_TEST_SAM2_WORKER_FACTORY = () => {
       const blob = new Blob([workerSrc], { type: "text/javascript" });
       return new Worker(URL.createObjectURL(blob));
     };
@@ -115,7 +117,10 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
       searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
     });
 
-    const state = await annotateSDK.getDetectionsState(datasetName, "instances");
+    const state = await annotateSDK.getDetectionsState(
+      datasetName,
+      "instances",
+    );
 
     expect(state.present).toBe(true);
     expect(state.count).toBeGreaterThanOrEqual(1);

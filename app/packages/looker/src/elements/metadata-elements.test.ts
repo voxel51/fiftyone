@@ -42,7 +42,7 @@ describe("metadata looker elements", () => {
     });
 
     const tagsElement = root.children.find(
-      (child) => child instanceof MetadataGridTagsElement
+      (child) => child instanceof MetadataGridTagsElement,
     ) as MetadataGridTagsElement | undefined;
 
     expect(tagsElement).toBeTruthy();
@@ -51,13 +51,13 @@ describe("metadata looker elements", () => {
       tagsElement?.isShown({
         ...config,
         thumbnail: false,
-      })
+      }),
     ).toBe(false);
     expect(
       tagsElement?.isShown({
         ...config,
         isModal: true,
-      })
+      }),
     ).toBe(false);
   });
 });

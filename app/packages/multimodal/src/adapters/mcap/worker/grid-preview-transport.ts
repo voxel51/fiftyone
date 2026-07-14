@@ -35,7 +35,7 @@ export class McapGridPreviewTransport {
   request(
     worker: Worker,
     payload: McapGridPreviewRequestPayload,
-    options: { readonly signal?: AbortSignal } = {}
+    options: { readonly signal?: AbortSignal } = {},
   ): Promise<McapGridPreviewResult> {
     if (options.signal?.aborted) {
       return Promise.reject(new McapGridPreviewRequestCancelledError());

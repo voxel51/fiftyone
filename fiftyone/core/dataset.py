@@ -1743,8 +1743,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def active_label_schemas(self, fields):
         fields = _as_str_list(fields)
 
+        label_schemas = self.label_schemas
         for field in fields:
-            if field not in self._doc.label_schemas:
+            if field not in label_schemas:
                 raise ValueError(
                     f"field '{field}' does not have a label schema"
                 )
@@ -1764,7 +1765,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the dataset's label schemas ``dict``
         """
-        return copy.deepcopy(self._doc.label_schemas) or {}
+        return copy.deepcopy(self._doc.all_stored_label_schemas()) or {}
 
     def set_label_schemas(self, label_schemas):
         """Set the dataset's :ref:`label schemas <annotation-label-schema>`
@@ -1798,7 +1799,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_schemas = {}
 
         foa.validate_label_schemas(self, label_schemas)
-        self._doc.label_schemas = label_schemas
+        self._doc.set_all_stored_label_schemas(label_schemas)
         self._doc.active_label_schemas = [
             field
             for field in self.active_label_schemas
@@ -1845,9 +1846,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             allow_new_fields=allow_new_fields,
             fields=field,
         )
-        label_schemas = self.label_schemas
-        label_schemas[field] = copy.deepcopy(label_schema)
-        self._doc.label_schemas = label_schemas
+        self._doc.set_stored_label_schema(field, copy.deepcopy(label_schema))
         self.save()
 
     def delete_label_schemas(self, fields=None):
@@ -1893,9 +1892,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         fields = _as_str_list(fields)
 
+        label_schemas = self.label_schemas
         result = self.active_label_schemas
         for field in fields:
-            if field not in self._doc.label_schemas:
+            if field not in label_schemas:
                 raise ValueError(f"field '{field}' is not in the label schema")
 
             if field not in result:
@@ -1924,9 +1924,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         fields = _as_str_list(fields)
 
+        label_schemas = self.label_schemas
         result = self.active_label_schemas
         for field in fields:
-            if field not in self._doc.label_schemas:
+            if field not in label_schemas:
                 raise ValueError(
                     f"field '{field}' does not have a label schema"
                 )
@@ -10179,7 +10180,8 @@ def _clone_collection(
 
     # Clone extras (full datasets only)
     if view is None and (
-        dataset.has_saved_views
+        _extras_cloners
+        or dataset.has_saved_views
         or dataset.has_workspaces
         or dataset.has_annotation_runs
         or dataset.has_brain_runs
@@ -10560,9 +10562,38 @@ def _update_no_overwrite(d, dnew):
     d.update({k: v for k, v in dnew.items() if k not in d})
 
 
+# Hooks invoked when a full dataset is cloned, as
+# ``cloner(src_dataset, dst_dataset, now, id_map)``. This lets downstream code
+# register additional "extras" to clone (e.g. execution store records) without
+# this module needing to know about those concepts. See
+# :func:`register_extras_cloner`.
+_extras_cloners = []
+
+
+def register_extras_cloner(cloner):
+    """Registers a callable to be invoked during :func:`_clone_extras`.
+
+    Each registered cloner is called as ``cloner(src_dataset, dst_dataset,
+    now, id_map)`` whenever a full dataset (not a view) is cloned, where
+    ``id_map`` is a ``{str(old_id): str(new_id)}`` dict mapping the source
+    dataset doc id and every cloned run doc id to their newly-minted clone
+    counterparts. Failures in a cloner are logged but do not abort the clone.
+
+    Args:
+        cloner: a callable with signature
+            ``cloner(src_dataset, dst_dataset, now, id_map)``
+    """
+    if cloner not in _extras_cloners:
+        _extras_cloners.append(cloner)
+
+
 def _clone_extras(src_dataset, dst_dataset, now):
     src_doc = src_dataset._doc
     dst_doc = dst_dataset._doc
+
+    # Maps source ids (dataset doc + cloned run docs) to their new clone ids,
+    # so extras cloners can rewrite references that change on clone
+    id_map = {str(src_doc.id): str(dst_doc.id)}
 
     # Clone saved views
     for _view_doc in src_doc.get_saved_views():
@@ -10591,6 +10622,7 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.timestamp = now
         run_doc.save(upsert=True)
 
+        id_map[str(_run_doc.id)] = str(run_doc.id)
         dst_doc.annotation_runs[anno_key] = run_doc
 
     # Clone brain method runs
@@ -10600,6 +10632,7 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.timestamp = now
         run_doc.save(upsert=True)
 
+        id_map[str(_run_doc.id)] = str(run_doc.id)
         dst_doc.brain_methods[brain_key] = run_doc
 
     # Clone evaluation runs
@@ -10609,6 +10642,7 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.timestamp = now
         run_doc.save(upsert=True)
 
+        id_map[str(_run_doc.id)] = str(run_doc.id)
         dst_doc.evaluations[eval_key] = run_doc
 
     # Clone other runs
@@ -10618,9 +10652,21 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.timestamp = now
         run_doc.save(upsert=True)
 
+        id_map[str(_run_doc.id)] = str(run_doc.id)
         dst_doc.runs[run_key] = run_doc
 
     dst_doc.save()
+
+    # Run any registered extras cloners (e.g. execution store cloning).
+    # Best-effort: a failure here must not abort the clone, which has already
+    # copied the dataset and its samples.
+    for cloner in _extras_cloners:
+        try:
+            cloner(src_dataset, dst_dataset, now, id_map)
+        except Exception:
+            logger.warning(
+                "Failed to run extras cloner %r", cloner, exc_info=True
+            )
 
 
 def _clone_reference_doc(ref_doc):

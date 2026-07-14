@@ -24,7 +24,7 @@ const GridHeaderSampleRendererControls = () => {
       dataset,
       schema,
     }),
-    [dataset, schema]
+    [dataset, schema],
   );
   const controls = useActivePlugins(PluginComponentType.SampleRenderer, ctx)
     .map((registration) => ({
@@ -32,7 +32,7 @@ const GridHeaderSampleRendererControls = () => {
       HeaderComponent: getSampleRendererGridSlotComponent(registration, SLOT),
     }))
     .filter((control): control is GridHeaderControl =>
-      Boolean(control.HeaderComponent)
+      Boolean(control.HeaderComponent),
     );
 
   if (!controls.length) {

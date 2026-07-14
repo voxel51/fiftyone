@@ -13,11 +13,10 @@ import type { AnnotationFields, LabelType } from "./types";
  * to the current selection's type; `null` opts out (returns empty).
  */
 export const useAnnotationFields = (
-  type?: LabelType | null
+  type?: LabelType | null,
 ): AnnotationFields => {
   const selected = useAtomValue(currentType);
-  const resolvedType: LabelType | null =
-    type === undefined ? selected : type;
+  const resolvedType: LabelType | null = type === undefined ? selected : type;
 
   const fields = useAtomValue(fieldsOfType(resolvedType));
   const defaultFieldValue = useAtomValue(defaultField(resolvedType));
@@ -29,6 +28,6 @@ export const useAnnotationFields = (
       defaultField: defaultFieldValue,
       disabledFields: disabled,
     }),
-    [fields, defaultFieldValue, disabled]
+    [fields, defaultFieldValue, disabled],
   );
 };

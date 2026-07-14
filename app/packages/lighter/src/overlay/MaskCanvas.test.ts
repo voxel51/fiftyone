@@ -57,7 +57,7 @@ const seedCanvas = (bounds: Rect, paintRect: Rect): MaskCanvas => {
     Math.round(paintRect.x - bounds.x),
     Math.round(paintRect.y - bounds.y),
     Math.round(paintRect.width),
-    Math.round(paintRect.height)
+    Math.round(paintRect.height),
   );
   return mc;
 };
@@ -86,7 +86,7 @@ describe("MaskCanvas.mergeFrom", () => {
     const newBounds = target.mergeFrom(
       sourceCanvas,
       sourceBounds,
-      targetBounds
+      targetBounds,
     );
 
     // Union: (0,0) → (18,18). The post-merge crop is a no-op here because
@@ -147,7 +147,7 @@ describe("MaskCanvas.mergeFrom", () => {
     const newBounds = target.mergeFrom(
       sourceCanvas,
       sourceBounds,
-      targetBounds
+      targetBounds,
     );
 
     // Source is inside target; bounds shouldn't grow. (Crop is a no-op in
@@ -248,7 +248,7 @@ describe("MaskCanvas onEncoded plumbing", () => {
       source.getPreviewSource() as HTMLCanvasElement,
       sourceBounds,
       targetBounds,
-      onEncoded
+      onEncoded,
     );
 
     await Promise.resolve();

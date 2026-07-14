@@ -2,7 +2,7 @@ import type { Lookers } from "@fiftyone/looker";
 import { VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject } from "react";
-import React, { useCallback, useLayoutEffect } from "react";
+import { useCallback, useLayoutEffect } from "react";
 import { useRecoilValue } from "recoil";
 import type { ActionOptionProps } from "../Common";
 import { ActionOption } from "../Common";
@@ -57,15 +57,15 @@ export default ({
 
   const hasVisibleUnselected = hasSetDiff(
     toIds(visibleSampleLabels),
-    selectedLabels
+    selectedLabels,
   );
   const hasFrameVisibleUnselected = hasSetDiff(
     toIds(visibleFrameLabels),
-    selectedLabels
+    selectedLabels,
   );
   const hasVisibleSelection = hasSetInt(
     selectedLabels,
-    toIds(visibleSampleLabels)
+    toIds(visibleSampleLabels),
   );
 
   const items: ({ key: string } & ActionOptionProps)[] = [];
@@ -90,9 +90,9 @@ export default ({
       text: `Unselect visible (current ${elementNames.singular})`,
       hidden: !hasVisibleSelection,
       onClick: closeAndCall(
-        useUnselectVisible(undefined, toIds(visibleSampleLabels))
+        useUnselectVisible(undefined, toIds(visibleSampleLabels)),
       ),
-    }
+    },
   );
 
   if (isVideo) {
@@ -108,9 +108,9 @@ export default ({
         text: "Unselect visible labels (current frame)",
         hidden: !hasVisibleSelection,
         onClick: closeAndCall(
-          useUnselectVisible(undefined, toIds(visibleFrameLabels))
+          useUnselectVisible(undefined, toIds(visibleFrameLabels)),
         ),
-      }
+      },
     );
   }
 
@@ -132,7 +132,7 @@ export default ({
       text: `Hide unselected labels (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useHideOthers(undefined, visibleSampleLabels)),
-    }
+    },
   );
 
   if (isVideo) {

@@ -12,7 +12,7 @@ import { CachedLabels, LookerId } from "./useShouldReloadSample";
 export const syncAndGetNewLabels = (
   lookerId: string,
   lut: Map<LookerId, CachedLabels>,
-  currentActiveLabelFields: Set<string>
+  currentActiveLabelFields: Set<string>,
 ): string[] | null => {
   if (currentActiveLabelFields.size === 0) {
     return null;
@@ -41,7 +41,7 @@ export const syncAndGetNewLabels = (
   // Update the cache by merging new fields into the existing set (or create a new set)
   lut.set(
     lookerId,
-    new Set([...(cachedFieldsForLooker ?? []), ...currentActiveLabelFields])
+    new Set([...(cachedFieldsForLooker ?? []), ...currentActiveLabelFields]),
   );
 
   return newFields;

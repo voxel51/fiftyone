@@ -78,7 +78,7 @@ export interface RegularLabel extends BaseLabel {
 export const isShown = <State extends BaseState, Label extends RegularLabel>(
   state: Readonly<State>,
   field: string,
-  label: Label
+  label: Label,
 ) => {
   if (state.options.filter) {
     return state.options.filter(field, label);
@@ -103,9 +103,8 @@ export interface Overlay<State extends Partial<BaseState>> {
 
 export abstract class CoordinateOverlay<
   State extends BaseState,
-  Label extends RegularLabel
-> implements Overlay<State>
-{
+  Label extends RegularLabel,
+> implements Overlay<State> {
   readonly field: string;
   readonly label: Label;
 
@@ -126,7 +125,7 @@ export abstract class CoordinateOverlay<
 
   isTagFiltered(state: Readonly<State>): boolean {
     return state.options.selectedLabelTags?.some((tag) =>
-      this.label.tags.includes(tag)
+      this.label.tags.includes(tag),
     );
   }
 

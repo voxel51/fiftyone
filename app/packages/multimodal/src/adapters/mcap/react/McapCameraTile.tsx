@@ -15,7 +15,7 @@ import React, { useEffect, useState } from "react";
 import type { EncodedImageVisualization } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { ImagePanel } from "../../../visualization/panels/image";
-import McapCameraAnnotationOverlay from "./McapCameraAnnotationOverlay";
+import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
 import settingsStyles from "./McapTile.settings.module.css";
 import styles from "./McapTile.module.css";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
@@ -101,13 +101,13 @@ const McapCameraTile: React.FC = () => {
               setImageDims((prev) =>
                 prev?.width === width && prev?.height === height
                   ? prev
-                  : { width, height }
+                  : { width, height },
               )
             }
           />
           {imageDims && annotationTopic ? (
-            <McapCameraAnnotationOverlay
-              topic={annotationTopic}
+            <McapImageAnnotationOverlay
+              topics={[annotationTopic]}
               imageWidth={imageDims.width}
               imageHeight={imageDims.height}
               interpolate={interpolateAnnotations}

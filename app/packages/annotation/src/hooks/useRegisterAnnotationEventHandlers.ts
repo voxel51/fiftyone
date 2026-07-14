@@ -2,8 +2,6 @@ import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
 import { INDEFINITE_TOAST_TIMEOUT, useActivityToast } from "@fiftyone/state";
 import { useCallback } from "react";
 import { IconName, Variant } from "@voxel51/voodo";
-import { useLabelsContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
-import { DetectionLabel } from "@fiftyone/looker";
 import {
   usePersistenceEventHandler,
   usePersistenceRetryController,
@@ -15,7 +13,6 @@ import {
  */
 export const useRegisterAnnotationEventHandlers = () => {
   const { setConfig } = useActivityToast();
-  const { addLabelToSidebar } = useLabelsContext();
   const handlePersistenceRequest = usePersistenceEventHandler();
   const retryController = usePersistenceRetryController();
 
@@ -25,7 +22,7 @@ export const useRegisterAnnotationEventHandlers = () => {
       if (retryController.canAttempt) {
         await handlePersistenceRequest();
       }
-    }, [handlePersistenceRequest, retryController.canAttempt])
+    }, [handlePersistenceRequest, retryController.canAttempt]),
   );
 
   useAnnotationEventHandler(
@@ -42,7 +39,7 @@ export const useRegisterAnnotationEventHandlers = () => {
           timeout: INDEFINITE_TOAST_TIMEOUT,
         });
       }
-    }, [retryController, setConfig])
+    }, [retryController, setConfig]),
   );
 
   useAnnotationEventHandler(
@@ -55,7 +52,7 @@ export const useRegisterAnnotationEventHandlers = () => {
       });
 
       retryController.reset();
-    }, [retryController, setConfig])
+    }, [retryController, setConfig]),
   );
 
   useAnnotationEventHandler(
@@ -80,22 +77,7 @@ export const useRegisterAnnotationEventHandlers = () => {
           });
         }
       },
-      [retryController.isUnhealthy, setConfig]
-    )
-  );
-
-  useAnnotationEventHandler(
-    "annotation:canvasDetectionOverlayEstablish",
-    useCallback(
-      (payload) => {
-        addLabelToSidebar({
-          data: payload.overlay.label as DetectionLabel,
-          overlay: payload.overlay,
-          path: payload.overlay.field,
-          type: "Detection",
-        });
-      },
-      [addLabelToSidebar]
-    )
+      [retryController.isUnhealthy, setConfig],
+    ),
   );
 };

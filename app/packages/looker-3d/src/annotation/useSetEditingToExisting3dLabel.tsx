@@ -24,10 +24,10 @@ type PolylineLabelData = fos.PolylineAnnotationLabel["data"];
  * @param type - The type of 3D annotation ("cuboid" or "polyline")
  */
 export function useSetEditingToExisting3dLabel(
-  type: typeof ANNOTATION_CUBOID
+  type: typeof ANNOTATION_CUBOID,
 ): (label: CuboidLabelData) => void;
 export function useSetEditingToExisting3dLabel(
-  type: typeof ANNOTATION_POLYLINE
+  type: typeof ANNOTATION_POLYLINE,
 ): (label: PolylineLabelData) => void;
 export function useSetEditingToExisting3dLabel(type: AnnotationType) {
   const isCuboid = type === ANNOTATION_CUBOID;
@@ -97,10 +97,8 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
       // setCurrentEditing above populated the atom with effectiveLabel, so
       // select()'s implicit savedLabel snapshot matches what the original
       // explicit set(savedLabel, effectiveLabel) wrote.
-      select(
-        currentEditingAtom as unknown as Parameters<typeof select>[0]
-      );
+      select(currentEditingAtom as unknown as Parameters<typeof select>[0]);
     },
-    [workingDoc]
+    [workingDoc],
   );
 }

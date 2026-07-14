@@ -74,7 +74,7 @@ describe("usePersistenceRetryController", () => {
   it("when inner canAttempt drops to false, becomes unhealthy immediately and disables retries after the fallback timeout", () => {
     setInner(true);
     const { result, rerender } = renderHook(() =>
-      usePersistenceRetryController()
+      usePersistenceRetryController(),
     );
     expect(result.current.isUnhealthy).toBe(false);
 
@@ -99,7 +99,7 @@ describe("usePersistenceRetryController", () => {
   it("if inner canAttempt recovers before the fallback timeout, the timeout is cleared and state resets", () => {
     setInner(true);
     const { result, rerender } = renderHook(() =>
-      usePersistenceRetryController()
+      usePersistenceRetryController(),
     );
 
     setInner(false);
@@ -123,7 +123,7 @@ describe("usePersistenceRetryController", () => {
   it("reset() resets the inner controller AND the internal state", () => {
     setInner(false);
     const { result, rerender } = renderHook(() =>
-      usePersistenceRetryController()
+      usePersistenceRetryController(),
     );
 
     // Drive into the disabled state

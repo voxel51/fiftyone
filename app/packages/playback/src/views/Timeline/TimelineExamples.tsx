@@ -72,7 +72,7 @@ export const TimelineCreator = () => {
     (frameNumber: number) => {
       setMyLocalFrameNumber(frameNumber);
     },
-    [setMyLocalFrameNumber]
+    [setMyLocalFrameNumber],
   );
 
   const { isTimelineInitialized, subscribe } = useCreateTimeline({

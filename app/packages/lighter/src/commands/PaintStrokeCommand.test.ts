@@ -9,7 +9,7 @@ import type { Rect } from "../types";
 import { PaintStrokeCommand } from "./PaintStrokeCommand";
 
 const makeSnapshot = (tag: string): MaskSnapshot =>
-  ({ tag, width: 4, height: 4, imageData: {} } as unknown as MaskSnapshot);
+  ({ tag, width: 4, height: 4, imageData: {} }) as unknown as MaskSnapshot;
 
 const makeBounds = (tag: number): Rect => ({
   x: tag,
@@ -40,13 +40,16 @@ describe("PaintStrokeCommand", () => {
       beforeSnapshot,
       beforeBounds,
       afterSnapshot,
-      afterBounds
+      afterBounds,
     );
 
     command.execute();
 
     expect(restoreMaskSnapshot).toHaveBeenCalledTimes(1);
-    expect(restoreMaskSnapshot).toHaveBeenCalledWith(afterSnapshot, afterBounds);
+    expect(restoreMaskSnapshot).toHaveBeenCalledWith(
+      afterSnapshot,
+      afterBounds,
+    );
   });
 
   it("undo restores the before-snapshot and before-bounds on the overlay", () => {
@@ -62,7 +65,7 @@ describe("PaintStrokeCommand", () => {
       beforeSnapshot,
       beforeBounds,
       afterSnapshot,
-      afterBounds
+      afterBounds,
     );
 
     command.undo();
@@ -70,7 +73,7 @@ describe("PaintStrokeCommand", () => {
     expect(restoreMaskSnapshot).toHaveBeenCalledTimes(1);
     expect(restoreMaskSnapshot).toHaveBeenCalledWith(
       beforeSnapshot,
-      beforeBounds
+      beforeBounds,
     );
   });
 
@@ -87,7 +90,7 @@ describe("PaintStrokeCommand", () => {
       beforeSnapshot,
       beforeBounds,
       afterSnapshot,
-      afterBounds
+      afterBounds,
     );
 
     command.execute();
@@ -110,7 +113,7 @@ describe("PaintStrokeCommand", () => {
       undefined,
       undefined,
       makeSnapshot("after"),
-      makeBounds(2)
+      makeBounds(2),
     );
 
     command.undo();
@@ -126,7 +129,7 @@ describe("PaintStrokeCommand", () => {
       makeSnapshot("before"),
       makeBounds(1),
       makeSnapshot("after"),
-      makeBounds(2)
+      makeBounds(2),
     );
     expect(command.id).toMatch(/^paint-my-overlay-\d+$/);
   });

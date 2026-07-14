@@ -1,9 +1,10 @@
+import type { LabelRef } from "@fiftyone/annotation";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { atom, type PrimitiveAtom } from "jotai";
 import type { LabelType } from "./types";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(
-  null
+  null,
 ) as PrimitiveAtom<AnnotationLabel["data"] | null>;
 
 /**
@@ -12,12 +13,12 @@ export const savedLabel = atom<AnnotationLabel["data"] | null>(
  * to a new field counts as dirty even when the merged data is structurally
  * unchanged.
  */
-export const savedLabelPath = atom<string | null>(
-  null
-) as PrimitiveAtom<string | null>;
+export const savedLabelPath = atom<string | null>(null) as PrimitiveAtom<
+  string | null
+>;
 
 export const currentEditingMaskAtom = atom<boolean>(
-  false
+  false,
 ) as PrimitiveAtom<boolean>;
 
 /**
@@ -27,8 +28,22 @@ export const currentEditingMaskAtom = atom<boolean>(
  * rather than touching this atom directly.
  */
 export const editingLabelAtom = atom<PrimitiveAtom<AnnotationLabel> | null>(
-  null
+  null,
 ) as PrimitiveAtom<PrimitiveAtom<AnnotationLabel> | null>;
+
+/**
+ * Engine identity of the label being edited, captured from the interaction
+ * anchor at select time. Carries the namespace the engine speaks — the full
+ * `frames.<field>` path, the track `instanceId`, and the present `frame` for a
+ * video frame label — so the form's write sites build a video-correct engine
+ * ref rather than re-deriving one from the (schema-namespace) field and the
+ * per-frame document `_id`. Null for selections made without an anchor (e.g.
+ * looker-3d's externally-managed editing atoms), where write sites fall back to
+ * the field + `data._id`, which is already correct for sample-level labels.
+ */
+export const editingRefAtom = atom<LabelRef | null>(
+  null,
+) as PrimitiveAtom<LabelRef | null>;
 
 /**
  * Label type for the "AddSchema" UI flow — set when the user tries to
@@ -36,5 +51,5 @@ export const editingLabelAtom = atom<PrimitiveAtom<AnnotationLabel> | null>(
  * exclusive with {@link editingLabelAtom}.
  */
 export const pendingNewTypeAtom = atom<LabelType | null>(
-  null
+  null,
 ) as PrimitiveAtom<LabelType | null>;

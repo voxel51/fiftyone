@@ -12,6 +12,7 @@ import { RecoilValueReadOnly, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalLooker } from "./ModalLooker";
 import { SelectSampleCheckbox } from "./SelectSampleCheckbox";
+import { useModalSampleRendererPersistenceKey } from "./use-modal-sample-renderer-persistence";
 
 const CheckboxWrapper = styled.div`
   position: absolute;
@@ -83,10 +84,13 @@ export const SampleWrapper = ({
 
 export const Sample2D = () => {
   const id = useRecoilValue(modalSampleId);
+  // Renderers that persist across samples keep the looker subtree mounted
+  // through navigation; everything else keeps the per-sample remount.
+  const persistenceKey = useModalSampleRendererPersistenceKey();
 
   return (
     <SampleWrapper>
-      <ModalLooker key={`looker-${id}`} />
+      <ModalLooker key={persistenceKey ?? `looker-${id}`} />
     </SampleWrapper>
   );
 };

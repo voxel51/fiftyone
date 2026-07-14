@@ -22,7 +22,7 @@ export const useFo3dPanelRouting = ({
   recomputeBounds,
 }: UseFo3dPanelRoutingArgs) => {
   const is2DSampleViewerVisible = useRecoilValue(
-    fos.groupMediaIsMain2DViewerVisible
+    fos.groupMediaIsMain2DViewerVisible,
   );
   const isGroup = useRecoilValue(fos.isGroup);
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
@@ -34,7 +34,7 @@ export const useFo3dPanelRouting = ({
       canAnnotate &&
       !(isGroup && is2DSampleViewerVisible) &&
       isSceneReady,
-    [mode, canAnnotate, isGroup, is2DSampleViewerVisible, isSceneReady]
+    [mode, canAnnotate, isGroup, is2DSampleViewerVisible, isSceneReady],
   );
 
   const currentRenderPath: RenderPath = shouldRenderMultiPanelView

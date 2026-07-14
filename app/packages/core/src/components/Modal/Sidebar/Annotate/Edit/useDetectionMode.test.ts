@@ -42,9 +42,8 @@ import {
   type MockScene,
 } from "./__testing__/mocks";
 
-const { useDetectionMode, _unsafeDetectionModeActiveAtom } = await import(
-  "./useDetectionMode"
-);
+const { useDetectionMode, _unsafeDetectionModeActiveAtom } =
+  await import("./useDetectionMode");
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
@@ -145,6 +144,7 @@ describe("useDetectionMode", () => {
 
       expect(scene().exitInteractiveMode).toHaveBeenCalledOnce();
       expect(annotationContext().createNew).toHaveBeenCalledOnce();
+      // field/class resolve from last-used memory → configured schema field
       expect(annotationContext().createNew).toHaveBeenCalledWith("Detection");
     });
   });

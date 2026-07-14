@@ -53,13 +53,13 @@ test.describe.serial("annotate-sidebar-smoke", () => {
     await annotateSDK.updateLabelSchema(
       datasetName,
       "ground_truth",
-      ground_truth_schema
+      ground_truth_schema,
     );
     await annotateSDK.addFieldToActiveLabelSchema(datasetName, "ground_truth");
     await annotateSDK.updateLabelSchema(
       datasetName,
       "uniqueness",
-      uniqueness_schema
+      uniqueness_schema,
     );
     await annotateSDK.addFieldToActiveLabelSchema(datasetName, "uniqueness");
 

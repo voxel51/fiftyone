@@ -10,7 +10,7 @@ export function closest<I>(
   target: number,
   top: (item: I) => number,
   lo = ZERO,
-  hi = rows.length - ONE
+  hi = rows.length - ONE,
 ): { index: number; delta: number } {
   if (!rows.length) {
     return null;

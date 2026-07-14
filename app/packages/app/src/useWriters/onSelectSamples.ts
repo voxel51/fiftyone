@@ -24,7 +24,7 @@ const onSelectSamples: RegisteredWriter<"selectedSamples"> =
       ([id, type]) => ({
         id,
         type,
-      })
+      }),
     );
 
     commitMutation<setSelectedSamplesMutation>(environment, {

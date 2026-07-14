@@ -23,7 +23,7 @@
         "@fiftyone/utilities": "workspace:^",
         "@testing-library/react": "^14.0.0",
         "jest": "^29.7.0",
-        "prettier": "2.2.1",
+        "prettier": "^3.8.4",
         "vite": "^7.3.2",
         "vitest": "^3.2.6"
     },

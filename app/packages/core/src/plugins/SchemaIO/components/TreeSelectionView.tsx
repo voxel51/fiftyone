@@ -79,7 +79,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
   }, [structure]);
 
   const [collapsedState, setCollapsedState] = React.useState<CollapsedState>(
-    initialCollapsedState
+    initialCollapsedState,
   );
 
   const [allCollapsed, setAllCollapsed] = React.useState(true);
@@ -132,7 +132,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
         // Recursive function to update the checked/indeterminate state of parent nodes
         const updateParentState = (parentId) => {
           const parentEntry = structure.find(
-            ([groupId]) => groupId === parentId
+            ([groupId]) => groupId === parentId,
           );
           if (!parentEntry) return;
 
@@ -140,12 +140,12 @@ export default function TreeSelectionView(props: ViewPropsType) {
           const allChecked = children.every((childId) =>
             typeof childId === "string"
               ? updatedState[childId].checked
-              : updatedState[childId[0]].checked
+              : updatedState[childId[0]].checked,
           );
           const someChecked = children.some((childId) =>
             typeof childId === "string"
               ? updatedState[childId].checked
-              : updatedState[childId[0]].checked
+              : updatedState[childId[0]].checked,
           );
 
           updatedState[parentId] = {
@@ -162,11 +162,12 @@ export default function TreeSelectionView(props: ViewPropsType) {
 
       // Update the selectAll checkbox status based on the final state of all nodes
       const allGroupsSelected = structure.every(
-        ([parentId]) => updatedState[parentId].checked
+        ([parentId]) => updatedState[parentId].checked,
       );
       const anySelected = structure.some(
         ([parentId]) =>
-          updatedState[parentId].checked || updatedState[parentId].indeterminate
+          updatedState[parentId].checked ||
+          updatedState[parentId].indeterminate,
       );
 
       updatedState["selectAll"] = {
@@ -198,7 +199,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
 
   const getGroupIdx = (
     groupId: string,
-    structure: [string, (string | [string, string[]])[]][]
+    structure: [string, (string | [string, string[]])[]][],
   ): number => {
     const idx = structure.findIndex(([id]) => id === groupId);
     return idx === -1 ? 0 : idx + 1;
@@ -217,7 +218,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
           !structure.some(([parentId]) => parentId === key) &&
           key !== "selectAll";
         return isSample && unboundState[key].checked; // Only checked samples
-      }
+      },
     );
 
     const dataSet: Set<string> = new Set(data);
@@ -245,12 +246,12 @@ export default function TreeSelectionView(props: ViewPropsType) {
           const allChildrenChecked = children.every((childId) =>
             typeof childId === "string"
               ? updatedState[childId].checked
-              : updatedState[childId[0]].checked
+              : updatedState[childId[0]].checked,
           );
           const someChildrenChecked = children.some((childId) =>
             typeof childId === "string"
               ? updatedState[childId].checked
-              : updatedState[childId[0]].checked
+              : updatedState[childId[0]].checked,
           );
 
           updatedState[parentId] = {
@@ -313,7 +314,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
     const count = childrenIds.length;
     const title = `Group ${getGroupIdx(
       nodeId,
-      structure
+      structure,
     )}  • ${count} Samples • ${nodeId}`;
     return (
       <Box sx={{ display: "flex", flexDirection: "column", ml: 3 }}>
@@ -355,7 +356,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
                   onChange={onChange}
                   onToggleCollapse={onToggleCollapse}
                 />
-              )
+              ),
             )}
           </Box>
         )}

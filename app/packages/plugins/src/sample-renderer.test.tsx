@@ -30,7 +30,7 @@ const createSample = () =>
       { field: "filepath", url: "/tmp/default.bin" },
       { field: "thumbnail_path", url: "/tmp/preview.PDF" },
     ],
-  } as const);
+  }) as const;
 
 const createRegistration = (
   name: string,
@@ -44,11 +44,12 @@ const createRegistration = (
         }
       | ((ctx: any) => boolean);
     grid?: {
+      clickBehavior?: "renderer" | "passthrough";
       enabled?: boolean;
       overrideComponent?: React.FunctionComponent<{ ctx: any }>;
       slots?: Partial<Record<string, React.FunctionComponent>>;
     };
-  }
+  },
 ) => ({
   name,
   component: ({ ctx }: { ctx: any }) => <div>{ctx.media.url}</div>,
@@ -66,7 +67,7 @@ describe("sample renderer matcher utilities", () => {
     const sample = createSample();
 
     expect(getSelectedMediaPath(sample, "thumbnail_path")).toBe(
-      "/tmp/preview.PDF"
+      "/tmp/preview.PDF",
     );
     expect(getSelectedMediaPath(sample, "missing")).toBe("/tmp/default.bin");
   });
@@ -74,7 +75,7 @@ describe("sample renderer matcher utilities", () => {
   it("builds a media context for non-native selected media", () => {
     const media = createSampleRendererMediaContext(
       createSample(),
-      "thumbnail_path"
+      "thumbnail_path",
     );
 
     expect(media).toMatchObject({
@@ -95,7 +96,7 @@ describe("sample renderer matcher utilities", () => {
       "thumbnail_path",
       dataset,
       schema,
-      "modal"
+      "modal",
     );
 
     expect(ctx.sample).toBe(sample);
@@ -109,19 +110,19 @@ describe("sample renderer matcher utilities", () => {
     expect(hasMatchMediaMatchers({})).toBe(false);
     expect(hasMatchMediaMatchers({ extensions: ["  ", ""] })).toBe(false);
     expect(hasMatchMediaMatchers({ mimeTypes: ["application/pdf"] })).toBe(
-      true
+      true,
     );
   });
 
   it("matches extensions, mime types, and media types case-insensitively", () => {
     const media = createSampleRendererMediaContext(
       createSample(),
-      "thumbnail_path"
+      "thumbnail_path",
     );
 
     expect(matchesMatchMedia({ extensions: [".pdf"] }, media)).toBe(true);
     expect(matchesMatchMedia({ mimeTypes: ["APPLICATION/PDF"] }, media)).toBe(
-      true
+      true,
     );
     expect(matchesMatchMedia({ mediaTypes: ["UNKNOWN"] }, media)).toBe(true);
   });
@@ -129,7 +130,7 @@ describe("sample renderer matcher utilities", () => {
   it("requires all provided matcher fields to match", () => {
     const media = createSampleRendererMediaContext(
       createSample(),
-      "thumbnail_path"
+      "thumbnail_path",
     );
 
     expect(
@@ -138,8 +139,8 @@ describe("sample renderer matcher utilities", () => {
           extensions: ["pdf"],
           mimeTypes: ["application/pdf"],
         },
-        media
-      )
+        media,
+      ),
     ).toBe(true);
     expect(
       matchesMatchMedia(
@@ -147,8 +148,8 @@ describe("sample renderer matcher utilities", () => {
           extensions: ["pdf"],
           mimeTypes: ["image/png"],
         },
-        media
-      )
+        media,
+      ),
     ).toBe(false);
   });
 });
@@ -160,7 +161,7 @@ describe("sample renderer selection", () => {
       "thumbnail_path",
       dataset,
       schema,
-      "modal"
+      "modal",
     );
     const registration = createRegistration("pdf", {
       supports: { extensions: ["pdf"] },
@@ -175,10 +176,10 @@ describe("sample renderer selection", () => {
       "thumbnail_path",
       dataset,
       schema,
-      "modal"
+      "modal",
     );
     const predicate = vi.fn(
-      (matchCtx) => matchCtx.media.mimeType === "application/pdf"
+      (matchCtx) => matchCtx.media.mimeType === "application/pdf",
     );
     const registration = createRegistration("pdf", {
       supports: predicate,
@@ -194,7 +195,7 @@ describe("sample renderer selection", () => {
       "thumbnail_path",
       dataset,
       schema,
-      "modal"
+      "modal",
     );
     const low = createRegistration("zeta", {
       priority: 1,
@@ -215,7 +216,7 @@ describe("sample renderer selection", () => {
       low,
     ]);
     expect(getMatchingSampleRenderer([low, tieB, tieA], ctx)?.name).toBe(
-      "alpha"
+      "alpha",
     );
   });
 
@@ -233,7 +234,7 @@ describe("sample renderer selection", () => {
       "filepath",
       dataset,
       schema,
-      "modal"
+      "modal",
     );
     const registration = createRegistration("native-image", {
       supports: { mediaTypes: ["image"] },
@@ -249,7 +250,7 @@ describe("sample renderer selection", () => {
       "thumbnail_path",
       dataset,
       schema,
-      "grid"
+      "grid",
     );
     const registration = createRegistration("pdf", {
       supports: { extensions: ["pdf"] },
@@ -270,7 +271,7 @@ describe("sample renderer selection", () => {
     };
 
     expect(getSampleRendererComponent(registration, "grid", canonical)).toBe(
-      canonical
+      canonical,
     );
   });
 
@@ -286,7 +287,7 @@ describe("sample renderer selection", () => {
     };
 
     expect(getSampleRendererComponent(registration, "grid", canonical)).toBe(
-      override
+      override,
     );
   });
 
@@ -316,14 +317,14 @@ describe("sample renderer selection", () => {
     expect(
       getSampleRendererGridSlotComponent(
         enabledRegistration,
-        SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT
-      )
+        SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT,
+      ),
     ).toBe(SlotComponent);
     expect(
       getSampleRendererGridSlotComponent(
         disabledRegistration,
-        SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT
-      )
+        SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT,
+      ),
     ).toBeNull();
   });
 });

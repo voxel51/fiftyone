@@ -51,7 +51,7 @@ const handleMessage = async (event: MessageEvent<MaskDecodeRequest>) => {
   try {
     const { rgba, width, height, rawPixels } = decodeMaskToRaster(maskData);
     const bitmap = await createImageBitmap(
-      new ImageData(new Uint8ClampedArray(rgba), width, height)
+      new ImageData(new Uint8ClampedArray(rgba), width, height),
     );
 
     const payload: MaskDecodeSuccess = {

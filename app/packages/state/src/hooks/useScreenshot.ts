@@ -7,7 +7,7 @@ import * as fos from "../";
 const SCREENSHOT_QUALITY = 0.25;
 
 export const useScreenshot = (
-  context: "ipython" | "colab" | "databricks" | undefined
+  context: "ipython" | "colab" | "databricks" | undefined,
 ) => {
   const subscription = useRecoilValue(fos.stateSubscription);
 
@@ -42,7 +42,7 @@ export const useScreenshot = (
                 img.onerror = reject;
                 img.src = dataURL;
               });
-            })
+            }),
         );
     });
     return Promise.all(promises);
@@ -58,12 +58,12 @@ export const useScreenshot = (
             "GET",
             link.getAttribute("href"),
             undefined,
-            "text"
+            "text",
           ).then((text: string) => {
             const style = document.createElement("style");
             style.appendChild(document.createTextNode(text));
             document.head.appendChild(style);
-          })
+          }),
         );
       }
     });
@@ -109,7 +109,7 @@ export const useScreenshot = (
               subscription,
               width,
             },
-            "*"
+            "*",
           );
           return;
         }
@@ -124,7 +124,7 @@ export const useScreenshot = (
             const proxy = params.get("proxy");
 
             window.location.assign(
-              `${proxy || "/"}screenshot/${subscription}.html?proxy=${proxy}`
+              `${proxy || "/"}screenshot/${subscription}.html?proxy=${proxy}`,
             );
           }
         });
@@ -136,7 +136,7 @@ export const useScreenshot = (
 
   return useCallback(() => {
     const notebook = new URLSearchParams(window.location.search).get(
-      "notebook"
+      "notebook",
     );
     if (!notebook) return;
 

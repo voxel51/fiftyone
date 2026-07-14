@@ -293,7 +293,7 @@ describe("EventDispatcher", () => {
       dispatcher.once("test:eventA", handler);
 
       expect(() =>
-        dispatcher.dispatch("test:eventA", { id: "1", name: "test" })
+        dispatcher.dispatch("test:eventA", { id: "1", name: "test" }),
       ).not.toThrow();
 
       // Wait for async error logging

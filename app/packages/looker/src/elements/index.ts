@@ -255,7 +255,7 @@ export const getImaVidElements: GetElements<ImaVidState> = (params) => {
         { node: common.ShowLabelOptionElement },
         { node: common.ShowTooltipOptionElement },
       ],
-    }
+    },
   );
 
   const elements = {

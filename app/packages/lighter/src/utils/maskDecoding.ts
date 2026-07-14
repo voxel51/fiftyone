@@ -79,10 +79,10 @@ const ensureWorker = (): Worker | undefined => {
         // `in`-narrow (the union discriminant doesn't narrow under this
         // package's tsconfig — cf. maskPathDecoding).
         job.reject(
-          new Error("error" in data ? data.error : "mask rasterize failed")
+          new Error("error" in data ? data.error : "mask rasterize failed"),
         );
       }
-    }
+    },
   );
 
   worker.addEventListener("error", (event) => {
@@ -102,7 +102,7 @@ const ensureWorker = (): Worker | undefined => {
 
 const decodeViaWorker = (
   w: Worker,
-  maskData: string | OverlayMask
+  maskData: string | OverlayMask,
 ): Promise<DecodedMask> =>
   new Promise((resolve, reject) => {
     const uuid = String(nextId++);
@@ -111,11 +111,11 @@ const decodeViaWorker = (
   });
 
 const decodeOnMainThread = async (
-  maskData: string | OverlayMask
+  maskData: string | OverlayMask,
 ): Promise<DecodedMask> => {
   const { rgba, width, height, rawPixels } = decodeMaskToRaster(maskData);
   const bitmap = await createImageBitmap(
-    new ImageData(new Uint8ClampedArray(rgba), width, height)
+    new ImageData(new Uint8ClampedArray(rgba), width, height),
   );
   return { bitmap, rawPixels: { src: rawPixels, width, height } };
 };
@@ -129,7 +129,7 @@ const decodeOnMainThread = async (
  *   a pre-decoded {@link OverlayMask} (`mask_path`).
  */
 export async function decodeMask(
-  maskData: string | OverlayMask
+  maskData: string | OverlayMask,
 ): Promise<DecodedMask> {
   const w = ensureWorker();
   if (!w) {
@@ -141,7 +141,7 @@ export async function decodeMask(
   } catch (err) {
     console.error(
       "[decodeMask] worker decode failed; main-thread fallback:",
-      err
+      err,
     );
     return decodeOnMainThread(maskData);
   }

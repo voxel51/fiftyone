@@ -7,10 +7,9 @@ import {
   usePlayback,
   usePlaybackStore,
 } from "../../lib/playback/PlaybackProvider";
-import {
-  viewEndAtom,
-  viewStartAtom,
-} from "../../lib/playback/atoms";
+import { viewEndAtom, viewStartAtom } from "../../lib/playback/atoms";
+import { setHoverTime } from "../../lib/playback/store-access";
+import { useHoverTime } from "../../lib/playback/use-playback-state";
 import TimelineRuler from "./TimelineRuler";
 import styles from "./TimelineRuler.module.css";
 
@@ -20,7 +19,19 @@ function ViewReadout() {
   const store = usePlaybackStore();
   const vs = useAtomValue(viewStartAtom, { store });
   const ve = useAtomValue(viewEndAtom, { store });
-  return <span data-testid="view">{`${vs.toFixed(3)} / ${ve.toFixed(3)}`}</span>;
+  return (
+    <span data-testid="view">{`${vs.toFixed(3)} / ${ve.toFixed(3)}`}</span>
+  );
+}
+
+// Renders the shared hover time so tests can assert on the published atom.
+function HoverReadout() {
+  const hover = useHoverTime();
+  return (
+    <span data-testid="hover">
+      {hover === null ? "none" : hover.toFixed(3)}
+    </span>
+  );
 }
 
 function Seeker({ time }: { time: number }) {
@@ -77,7 +88,8 @@ function renderRuler(opts: RenderOpts = {}) {
       {seekTo !== undefined ? <Seeker time={seekTo} /> : null}
       <TimelineRuler labelWidth={labelWidth} />
       <ViewReadout />
-    </PlaybackProvider>
+      <HoverReadout />
+    </PlaybackProvider>,
   );
 }
 
@@ -98,7 +110,7 @@ function renderRulerWithZoomRef(opts: RenderOpts = {}) {
       ) : null}
       <Harness />
       <ViewReadout />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -107,8 +119,7 @@ const inlineStyle = (el: Element): string => el.getAttribute("style") ?? "";
 describe("TimelineRuler", () => {
   // Save the original so afterEach can restore Element.prototype — otherwise
   // the stub leaks into later test suites that share the test runner.
-  const originalGetBoundingClientRect =
-    Element.prototype.getBoundingClientRect;
+  const originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
 
   beforeEach(() => {
     // The wheel handler reads getBoundingClientRect to convert the cursor's
@@ -136,10 +147,18 @@ describe("TimelineRuler", () => {
       const { container } = renderRuler();
       expect(container.querySelector(`.${styles.ruler}`)).not.toBeNull();
       expect(container.querySelector(`.${styles.lane}`)).not.toBeNull();
-      expect(container.querySelectorAll(`.${styles.loopHandle}`)).toHaveLength(2);
-      expect(container.querySelector(`.${styles.playheadGroup}`)).not.toBeNull();
-      expect(container.querySelector(`.${styles.playheadHandle}`)).not.toBeNull();
-      expect(container.querySelector(`.${styles.playheadTriangle}`)).not.toBeNull();
+      expect(container.querySelectorAll(`.${styles.loopHandle}`)).toHaveLength(
+        2,
+      );
+      expect(
+        container.querySelector(`.${styles.playheadGroup}`),
+      ).not.toBeNull();
+      expect(
+        container.querySelector(`.${styles.playheadHandle}`),
+      ).not.toBeNull();
+      expect(
+        container.querySelector(`.${styles.playheadTriangle}`),
+      ).not.toBeNull();
     });
 
     it("omits the labelSpacer when labelWidth is 0", () => {
@@ -174,16 +193,18 @@ describe("TimelineRuler", () => {
       };
       render(<Harness />);
       const ruler = screen.getByTestId("timeline-ruler");
-      expect(ruler.querySelector('[data-testid="ruler-overlay"]')).not.toBeNull();
+      expect(
+        ruler.querySelector('[data-testid="ruler-overlay"]'),
+      ).not.toBeNull();
     });
   });
 
   describe("ticks", () => {
     it("uses 1s intervals when the view is wider than 3s", () => {
       const { container } = renderRuler({ duration: 10 });
-      const labels = Array.from(container.querySelectorAll(`.${styles.tick}`)).map(
-        (el) => el.textContent
-      );
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
       // 0s through 10s inclusive.
       expect(labels).toEqual([
         "0s",
@@ -206,9 +227,9 @@ describe("TimelineRuler", () => {
         viewStart: 0,
         viewEnd: 3,
       });
-      const labels = Array.from(container.querySelectorAll(`.${styles.tick}`)).map(
-        (el) => el.textContent
-      );
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
       expect(labels).toEqual(["0s", "0.5s", "1s", "1.5s", "2s", "2.5s", "3s"]);
     });
 
@@ -218,9 +239,9 @@ describe("TimelineRuler", () => {
         viewStart: 1,
         viewEnd: 2,
       });
-      const labels = Array.from(container.querySelectorAll(`.${styles.tick}`)).map(
-        (el) => el.textContent
-      );
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
       expect(labels[0]).toBe("1s");
       expect(labels[labels.length - 1]).toBe("2s");
       // 11 ticks across a 1s window at 0.1s spacing.
@@ -233,6 +254,46 @@ describe("TimelineRuler", () => {
       // First tick at 0s sits at 0%, last at 10s sits at 100%.
       expect(inlineStyle(ticks[0])).toContain("left: 0%");
       expect(inlineStyle(ticks[ticks.length - 1])).toContain("left: 100%");
+    });
+
+    it("widens the interval on long files so ticks stay uncramped", () => {
+      // A 60s file zoomed all the way out used to render one label per second
+      // (61 ticks). It now scales up to a nicer interval.
+      const { container } = renderRuler({
+        duration: 60,
+        viewStart: 0,
+        viewEnd: 60,
+      });
+      const ticks = container.querySelectorAll(`.${styles.tick}`);
+      // 10s spacing → 7 ticks (0..60), well under the old crush.
+      expect(ticks).toHaveLength(7);
+    });
+
+    it("keeps a bounded tick count regardless of duration", () => {
+      const { container } = renderRuler({
+        duration: 300,
+        viewStart: 0,
+        viewEnd: 300,
+      });
+      const ticks = container.querySelectorAll(`.${styles.tick}`);
+      // 30s spacing → 11 ticks (0..300), never hundreds.
+      expect(ticks.length).toBeLessThanOrEqual(12);
+    });
+
+    it("labels ticks past a minute as m:ss", () => {
+      const { container } = renderRuler({
+        duration: 120,
+        viewStart: 0,
+        viewEnd: 120,
+      });
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
+      // Sub-minute ticks stay in seconds; minute+ ticks read as m:ss.
+      expect(labels).toContain("30s");
+      expect(labels).toContain("1:00");
+      expect(labels).toContain("1:30");
+      expect(labels).toContain("2:00");
     });
   });
 
@@ -271,7 +332,9 @@ describe("TimelineRuler", () => {
 
     it("always renders both loop handles (start + end)", () => {
       const { container } = renderRuler({ duration: 10 });
-      const handles = container.querySelectorAll<HTMLElement>(`.${styles.loopHandle}`);
+      const handles = container.querySelectorAll<HTMLElement>(
+        `.${styles.loopHandle}`,
+      );
       expect(handles).toHaveLength(2);
     });
 
@@ -282,7 +345,9 @@ describe("TimelineRuler", () => {
         defaultLoopEnd: 7,
       });
       // Two handles still present; their exact x is JSDOM-opaque.
-      expect(container.querySelectorAll(`.${styles.loopHandle}`)).toHaveLength(2);
+      expect(container.querySelectorAll(`.${styles.loopHandle}`)).toHaveLength(
+        2,
+      );
     });
   });
 
@@ -363,5 +428,62 @@ describe("TimelineRuler", () => {
       expect(vs).toBeCloseTo(6, 2);
     });
   });
+  describe("hover caret", () => {
+    // jsdom's PointerEvent lacks coordinate support; a MouseEvent with a
+    // pointer event type carries clientX and still triggers React's
+    // onPointerMove handler.
+    const pointerMoveAt = (el: Element, clientX: number) => {
+      fireEvent(el, new MouseEvent("pointermove", { bubbles: true, clientX }));
+    };
 
+    it("publishes the hovered time and renders the shared caret", () => {
+      renderRuler({ duration: 10 });
+      const ruler = screen.getByTestId("timeline-ruler");
+
+      pointerMoveAt(ruler, 250);
+
+      expect(screen.getByTestId("hover").textContent).toBe("2.500");
+      expect(screen.getByTestId("timeline-hover-caret")).toBeTruthy();
+    });
+
+    it("respects the label column when mapping pointer x to time", () => {
+      renderRuler({ duration: 10, labelWidth: 200 });
+      const ruler = screen.getByTestId("timeline-ruler");
+
+      // 200px label column, 800px lane: x=600 is halfway through the lane.
+      pointerMoveAt(ruler, 600);
+
+      expect(screen.getByTestId("hover").textContent).toBe("5.000");
+    });
+
+    it("clears hover state and the caret on pointer leave", () => {
+      renderRuler({ duration: 10 });
+      const ruler = screen.getByTestId("timeline-ruler");
+
+      pointerMoveAt(ruler, 250);
+      fireEvent.pointerLeave(ruler);
+
+      expect(screen.getByTestId("hover").textContent).toBe("none");
+      expect(screen.queryByTestId("timeline-hover-caret")).toBeNull();
+    });
+
+    it("renders a caret for hover published by another surface", () => {
+      // Publishes without touching the ruler, the way a plot panel does.
+      function ExternalHover({ time }: { time: number }) {
+        const store = usePlaybackStore();
+        useEffect(() => {
+          setHoverTime(store, time);
+        }, [store, time]);
+        return null;
+      }
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineRuler />
+          <ExternalHover time={7.5} />
+        </PlaybackProvider>,
+      );
+
+      expect(screen.getByTestId("timeline-hover-caret")).toBeTruthy();
+    });
+  });
 });

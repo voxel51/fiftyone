@@ -113,7 +113,7 @@ export const createMockScene = (overrides?: Partial<MockScene>): MockScene => ({
  * mock that strips `atom` crashes anything analytics-adjacent.
  */
 export const recoilPartialMock = async (
-  importOriginal: () => Promise<typeof import("recoil")>
+  importOriginal: () => Promise<typeof import("recoil")>,
 ) => ({
   ...(await importOriginal()),
   useRecoilValue: () => false,

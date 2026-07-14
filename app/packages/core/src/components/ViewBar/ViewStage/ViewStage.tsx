@@ -96,8 +96,6 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
     },
     config: config.stiff,
   }));
-  const trackEvent = useTrackEvent();
-
   useEffect(() => {
     set({
       top: active ? -3 : 0,
@@ -291,7 +289,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
           value={stage}
           autoFocus={focusOnInit}
           onFocus={() => !isEditing && send("EDIT")}
-          onBlur={(e) => {
+          onBlur={() => {
             state.matches("input.editing.searchResults.notHovering") &&
               send("BLUR");
           }}
@@ -302,13 +300,13 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             if (e.key === "Enter") {
               const match = getMatch(
                 stageInfo.map((s) => s.name),
-                e.target.value
+                e.target.value,
               );
               const value = match
                 ? match
                 : bestMatch.value
-                ? bestMatch.value
-                : e.target.value;
+                  ? bestMatch.value
+                  : e.target.value;
               send({
                 type: "COMMIT",
                 value,

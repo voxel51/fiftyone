@@ -10,7 +10,7 @@ const buildGeometryWithoutFaces = () => {
   const geometry = new BufferGeometry();
   geometry.setAttribute(
     "position",
-    new Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3)
+    new Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3),
   );
   return geometry;
 };

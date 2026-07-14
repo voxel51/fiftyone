@@ -14,7 +14,6 @@ import {
   Alert,
   Box,
   BoxProps,
-  Button,
   Checkbox,
   Fab,
   FormControl,
@@ -59,7 +58,7 @@ const createButtonViewProps = (schema, onClick) => ({
 function generateUniqueCopyId(
   baseId: string,
   state: any,
-  dataPath: string
+  dataPath: string,
 ): string {
   const existing = new Set(Object.keys(getFromPath(state, dataPath) || {}));
   let suffix = 1;
@@ -83,7 +82,7 @@ function calculateLayoutDimensions(
   autoLayout: boolean,
   layoutMode: string,
   numRows: number,
-  numCols: number
+  numCols: number,
 ) {
   const MIN_ITEM_WIDTH = 400;
   const MIN_ITEM_HEIGHT = 300;
@@ -97,13 +96,13 @@ function calculateLayoutDimensions(
   let COLS = autoLayout
     ? Math.floor(GRID_WIDTH / TARGET_ITEM_WIDTH) || 1
     : layoutMode === "columns"
-    ? numCols
-    : Math.ceil(numItems / numRows);
+      ? numCols
+      : Math.ceil(numItems / numRows);
   let ROWS = autoLayout
     ? Math.ceil(numItems / COLS) || 1
     : layoutMode === "rows"
-    ? numRows
-    : Math.ceil(numItems / numCols);
+      ? numRows
+      : Math.ceil(numItems / numCols);
   const ROW_HEIGHT = Math.min(GRID_HEIGHT, TARGET_ITEM_HEIGHT);
 
   if (numItems === 1) {
@@ -181,7 +180,7 @@ function useClipboardData() {
     if ("clipboard" in navigator && "addEventListener" in navigator.clipboard) {
       navigator.clipboard.addEventListener(
         "clipboardchange",
-        handleClipboardChange
+        handleClipboardChange,
       );
     }
     window.addEventListener("focus", handleFocus);
@@ -193,7 +192,7 @@ function useClipboardData() {
       ) {
         navigator.clipboard.removeEventListener(
           "clipboardchange",
-          handleClipboardChange
+          handleClipboardChange,
         );
       }
       window.removeEventListener("focus", handleFocus);
@@ -260,7 +259,7 @@ const AddItemCTA = ({ onAdd, onPaste, view, clipboardData, schema }) => {
                   label: cta_button_label,
                 },
               },
-              onAdd
+              onAdd,
             )}
           />
           {onPaste && hasClipboardData && schema.view.on_duplicate_item && (
@@ -274,7 +273,7 @@ const AddItemCTA = ({ onAdd, onPaste, view, clipboardData, schema }) => {
                     label: paste_button_label,
                   },
                 },
-                onPaste
+                onPaste,
               )}
             />
           )}
@@ -395,7 +394,7 @@ const ControlContainer = ({
   onEditLayoutClick,
   onPasteClick,
   onSelectAll,
-  onDeleteSelected,
+  onDeleteSelected: _onDeleteSelected,
   onExportItems,
   onExportAsPNG,
   handleExportMenuOpen,
@@ -404,7 +403,7 @@ const ControlContainer = ({
   isEditMode,
   autoLayout,
   editLayoutOpen,
-  shortcutKey,
+  shortcutKey: _shortcutKey,
   selectedItemIds,
   clipboardData,
   hasMultipleItems,
@@ -436,7 +435,7 @@ const ControlContainer = ({
               variant: "square",
             },
           },
-          onAddItem
+          onAddItem,
         )}
       />
       <ButtonView
@@ -449,7 +448,7 @@ const ControlContainer = ({
               variant: "square",
             },
           },
-          onEditLayoutClick
+          onEditLayoutClick,
         )}
       />
       {hasClipboardData &&
@@ -465,7 +464,7 @@ const ControlContainer = ({
                   variant: "square",
                 },
               },
-              onPasteClick
+              onPasteClick,
             )}
           />
         )}
@@ -483,7 +482,7 @@ const ControlContainer = ({
                   "Clipboard access denied. Please allow clipboard permissions in your browser settings.",
               },
             },
-            () => {} // Disabled click handler
+            () => {}, // Disabled click handler
           )}
         />
       )}
@@ -498,7 +497,7 @@ const ControlContainer = ({
                 variant: "square",
               },
             },
-            onSelectAll
+            onSelectAll,
           )}
         />
       )}
@@ -513,7 +512,7 @@ const ControlContainer = ({
                 variant: "square",
               },
             },
-            handleExportMenuOpen
+            handleExportMenuOpen,
           )}
         />
       </Box>
@@ -577,11 +576,10 @@ export default function DashboardView(props: ViewPropsType) {
   const allow_edit = schema.view.allow_edit;
   const allowMutation = allow_edit || allow_deletion;
   const dataPath = schema.view.data_path || "items_config";
-  const [panelState, setPanelState] = usePanelState();
+  const [panelState] = usePanelState();
 
   // Shared clipboard state
   const clipboardData = useClipboardData();
-  const { clipboardPermissionError } = clipboardData;
 
   // Notification hook for user feedback
   const showNotification = useNotification();
@@ -595,7 +593,7 @@ export default function DashboardView(props: ViewPropsType) {
 
   // Selection state - now supports multiple items
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   const onEditItem = useCallback(
@@ -608,7 +606,7 @@ export default function DashboardView(props: ViewPropsType) {
         });
       }
     },
-    [panelId, props, schema.view.on_edit_item, triggerPanelEvent]
+    [panelId, props, schema.view.on_edit_item, triggerPanelEvent],
   );
 
   const onCloseItem = useCallback(
@@ -621,7 +619,7 @@ export default function DashboardView(props: ViewPropsType) {
         });
       }
     },
-    [panelId, props, schema.view.on_remove_item, triggerPanelEvent]
+    [panelId, props, schema.view.on_remove_item, triggerPanelEvent],
   );
 
   const onAddItem = useCallback(() => {
@@ -766,7 +764,7 @@ export default function DashboardView(props: ViewPropsType) {
           layout: layout,
           auto_layout: auto_layout,
         },
-        callback: (result) => {
+        callback: () => {
           if (auto_layout !== undefined) {
             setAutoLayout(auto_layout);
           }
@@ -845,23 +843,11 @@ export default function DashboardView(props: ViewPropsType) {
         return newSet;
       });
     },
-    [propertiesAsArray]
+    [propertiesAsArray],
   );
 
   const handleItemDeselect = useCallback(() => {
     setSelectedItemIds(new Set());
-  }, []);
-
-  const handleItemToggle = useCallback((id: string) => {
-    setSelectedItemIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
   }, []);
 
   const selectAllItems = useCallback(() => {
@@ -890,7 +876,6 @@ export default function DashboardView(props: ViewPropsType) {
       });
     } else {
       // Fall back to individual deletes
-      let i = 0;
       for (const id of selectedItemIds) {
         onCloseItem({
           id: id,
@@ -919,24 +904,24 @@ export default function DashboardView(props: ViewPropsType) {
   const [isPasting, setIsPasting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(
-    null
+    null,
   );
 
   // Get platform-specific shortcut key
   const shortcutKey = getPlatformShortcutKey();
 
   const onDuplicateItem = useCallback(
-    ({ id, path }) => {
+    ({ id, path: _path }) => {
       const originalItem = getFromPath(
         (panelState as any)?.state,
-        `${dataPath}.${id}`
+        `${dataPath}.${id}`,
       );
       if (schema.view.on_duplicate_item && originalItem) {
         // Generate a unique ID to avoid collisions
         const newId = generateUniqueCopyId(
           id,
           (panelState as any)?.state,
-          dataPath
+          dataPath,
         );
 
         // Get layout information for this item from customLayout
@@ -985,7 +970,7 @@ export default function DashboardView(props: ViewPropsType) {
       triggerPanelEvent,
       customLayout,
       autoLayout,
-    ]
+    ],
   );
 
   const copyItemsToClipboard = useCallback(
@@ -1004,7 +989,7 @@ export default function DashboardView(props: ViewPropsType) {
         for (const id of itemsToCopy) {
           const value = getFromPath(
             (panelState as any)?.state,
-            `${dataPath}.${id}`
+            `${dataPath}.${id}`,
           );
           if (value) {
             plotList.push(value);
@@ -1040,7 +1025,7 @@ export default function DashboardView(props: ViewPropsType) {
                 },
               },
               null,
-              2
+              2,
             );
           } else {
             // Just copy the plots without layout, but still include auto-layout setting
@@ -1055,7 +1040,7 @@ export default function DashboardView(props: ViewPropsType) {
                 },
               },
               null,
-              2
+              2,
             );
           }
 
@@ -1091,15 +1076,15 @@ export default function DashboardView(props: ViewPropsType) {
       customLayout,
       propertiesAsArray,
       showNotification,
-    ]
+    ],
   );
 
   // Backward compatibility for single item copy
   const copyItemToClipboard = useCallback(
-    ({ id, path }) => {
+    ({ id, path: _path }) => {
       copyItemsToClipboard([id]);
     },
-    [copyItemsToClipboard]
+    [copyItemsToClipboard],
   );
 
   const onCopyItem = copyItemToClipboard;
@@ -1120,7 +1105,7 @@ export default function DashboardView(props: ViewPropsType) {
   const handleNumRowsChange = (event) => {
     const { value } = event.target;
     const newValue = Math.max(1, Math.min(value, propertiesAsArray.length));
-    setNumRows(value);
+    setNumRows(newValue);
   };
 
   const handleNumColsChange = (event) => {
@@ -1272,11 +1257,11 @@ export default function DashboardView(props: ViewPropsType) {
       autoLayout,
       layoutMode,
       numRows,
-      numCols
+      numCols,
     );
   const orderedProperties = sortPropertiesByCustomLayout(
     propertiesAsArray,
-    customLayout
+    customLayout,
   );
   const defaultLayout = orderedProperties.map((property, index) => {
     const layoutItem = {
@@ -1325,7 +1310,7 @@ export default function DashboardView(props: ViewPropsType) {
               customLayout={gridLayout}
             />
           </ThemeProvider>
-        </RecoilRoot>
+        </RecoilRoot>,
       );
 
       // Wait for the component to render and plots to load
@@ -1438,7 +1423,7 @@ export default function DashboardView(props: ViewPropsType) {
         }
       }, 100); // Small delay to ensure DOM has updated
     },
-    [isPasting, setCustomLayout]
+    [isPasting, setCustomLayout],
   );
 
   if (!propertiesAsArray.length) {
@@ -1533,7 +1518,7 @@ export default function DashboardView(props: ViewPropsType) {
                   {...getProps(
                     { ...props, schema: property },
                     "item",
-                    baseItemProps
+                    baseItemProps,
                   )}
                   className={
                     selectedItemIds.has(id) && isEditMode ? "selected" : ""

@@ -1,24 +1,24 @@
 ## Getting Started Locally
 
--   Install playwright extension for VSCode.
--   Copy `.env.dev.template` into `.env.dev` and fill in the values.
--   Run `yarn` to install dependencies. Make sure you're using at least node
-    18.x (preferably 20.x). `nvm install 20 && nvm use 20`.
--   Run tests directly from VSCode or from the command line with `yarn e2e`, or
-    start the UI mode using `yarn e2e:ui` command. If you're using a local dev
-    build, read the following section.
--   If Playwright version was upgraded, you'll need to run
-    `yarn playwright install` to update the browser binaries.
+- Install playwright extension for VSCode.
+- Copy `.env.dev.template` into `.env.dev` and fill in the values.
+- Run `yarn` to install dependencies. Make sure you're using at least node 18.x
+  (preferably 20.x). `nvm install 20 && nvm use 20`.
+- Run tests directly from VSCode or from the command line with `yarn e2e`, or
+  start the UI mode using `yarn e2e:ui` command. If you're using a local dev
+  build, read the following section.
+- If Playwright version was upgraded, you'll need to run
+  `yarn playwright install` to update the browser binaries.
 
 ### To use the local dev server of the app
 
--   This is useful if you want to run the tests against a local dev server of
-    the app.
--   Set `export USE_DEV_BUILD=true` in `.env.dev` file.
--   Run `yarn devserver` to start the app dev server in a separate terminal
-    window.
--   Proceed to run e2e tests as usual, from the CLI, VSCode, or Playwright UI.
--   **NOTE: Parallelization doesn't work with dev build.**
+- This is useful if you want to run the tests against a local dev server of the
+  app.
+- Set `export USE_DEV_BUILD=true` in `.env.dev` file.
+- Run `yarn devserver` to start the app dev server in a separate terminal
+  window.
+- Proceed to run e2e tests as usual, from the CLI, VSCode, or Playwright UI.
+- **NOTE: Parallelization doesn't work with dev build.**
 
 ### Tips
 
@@ -37,12 +37,12 @@ are named `<ticket>-<short-description>.spec.ts`, e.g.
 
 ### Patterns
 
--   Use POMs where applicable, e.g. for pages, or for common components like
-    grid, modal, sidebar.
--   Do not use assertion logic directly in POMs, instead use composition to
-    create POMs that contain the assertion class.
--   Refrain from using `page.waitForTimeout()`. There is almost always a better
-    alternative, like using custom events.
+- Use POMs where applicable, e.g. for pages, or for common components like
+  grid, modal, sidebar.
+- Do not use assertion logic directly in POMs, instead use composition to
+  create POMs that contain the assertion class.
+- Refrain from using `page.waitForTimeout()`. There is almost always a better
+  alternative, like using custom events.
 
 #### Check for flakiness
 
@@ -127,10 +127,10 @@ Note: `PYTHONPATH` and virtual env setup is done automatically.
 
 #### Creating Datasets
 
-Always use `DatasetFactory.createDataset` when a test needs a FiftyOne
-dataset. It generates blank PNG images, inserts samples directly into the
-underlying MongoDB collection for performance, and applies any additional
-schema fields and saved views.
+Always use `DatasetFactory.createDataset` when a test needs a FiftyOne dataset.
+It generates blank PNG images, inserts samples directly into the underlying
+MongoDB collection for performance, and applies any additional schema fields
+and saved views.
 
 ```ts
 import { DatasetFactory } from "src/shared/dataset-factory";
@@ -258,20 +258,20 @@ pattern to learn regardless of what is being tested.
 
 #### Browser / Target has been closed
 
--   Most likely a missing `await` somewhere. Use VSCode eslint integration to
-    get hints on missing `await`s.
+- Most likely a missing `await` somewhere. Use VSCode eslint integration to get
+  hints on missing `await`s.
 
 #### Error: No tests found
 
--   This shows up randomly when running tests from VSCode. Run "Developer:
-    Reload Window" to fix it.
+- This shows up randomly when running tests from VSCode. Run "Developer: Reload
+  Window" to fix it.
 
 #### Troubleshooting
 
 The order of the steps is from the most to the least likely to fix the issue.
 
--   Run `yarn kill-port 8787` to kill any stray processes that might be running
-    on port 8787.
--   Reload VSCode developer window.
--   Close all browser windows from previous test runs.
--   Restart the dev server.
+- Run `yarn kill-port 8787` to kill any stray processes that might be running
+  on port 8787.
+- Reload VSCode developer window.
+- Close all browser windows from previous test runs.
+- Restart the dev server.

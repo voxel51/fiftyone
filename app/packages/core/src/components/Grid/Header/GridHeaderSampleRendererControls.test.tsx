@@ -45,7 +45,7 @@ const renderControls = () =>
   render(
     <ThemeProvider theme={theme}>
       <GridHeaderSampleRendererControls />
-    </ThemeProvider>
+    </ThemeProvider>,
   );
 
 describe("GridHeaderSampleRendererControls", () => {
@@ -60,7 +60,7 @@ describe("GridHeaderSampleRendererControls", () => {
         }
 
         return registration.sampleRendererOptions.grid?.slots?.[slot] || null;
-      }
+      },
     );
   });
 
@@ -108,7 +108,7 @@ describe("GridHeaderSampleRendererControls", () => {
     });
     expect(getSampleRendererGridSlotComponent).toHaveBeenCalledWith(
       expect.objectContaining({ name: "mcap" }),
-      "grid-header-after-resource-count"
+      "grid-header-after-resource-count",
     );
   });
 });

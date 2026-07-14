@@ -41,7 +41,7 @@ import type { LabelProxy } from "../deltas";
  * @param overlay Lighter overlay
  */
 export const buildAnnotationLabel = (
-  overlay: BaseOverlay
+  overlay: BaseOverlay,
 ): LabelProxy | undefined => {
   // Non-persistent overlays live in the scene for UX only and must never
   // reach the persistence pipeline.
@@ -78,8 +78,8 @@ export const buildAnnotationLabel = (
             ...(pendingMask && _maskPath && { mask_path: null }),
           }
         : hadMask
-        ? { mask: null, mask_path: null }
-        : {};
+          ? { mask: null, mask_path: null }
+          : {};
 
       return {
         type: "Detection",

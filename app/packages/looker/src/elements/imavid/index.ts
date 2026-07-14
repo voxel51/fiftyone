@@ -52,7 +52,7 @@ export function withImaVidLookerEvents(): () => Events<ImaVidState> {
 
 const seekFn = (
   { seeking, config: { frameStoreController } }: Readonly<ImaVidState>,
-  event: MouseEvent
+  event: MouseEvent,
 ): Partial<ImaVidState> => {
   const totalFramesCount = frameStoreController.totalFrameCount;
 
@@ -63,9 +63,9 @@ const seekFn = (
     const frameNumber = Math.min(
       Math.max(
         1,
-        Math.round(((event.clientX + 6 - left) / width) * totalFramesCount)
+        Math.round(((event.clientX + 6 - left) / width) * totalFramesCount),
       ),
-      totalFramesCount
+      totalFramesCount,
     );
 
     return {
@@ -154,7 +154,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.framesController.setMediaField(mediaField);
 
         return {};
-      }
+      },
     );
 
     this.element = new Image();
@@ -287,7 +287,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
             return {
               currentFrameNumber: Math.min(
                 frameNumberToDraw,
-                this.framesController.totalFrameCount
+                this.framesController.totalFrameCount,
               ),
             };
           }
@@ -353,7 +353,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     const frameRangeMax = Math.min(
       Math.trunc(currentFrameNumber + offset),
-      this.framesController.totalFrameCount
+      this.framesController.totalFrameCount,
     );
 
     return [currentFrameNumber, frameRangeMax] as const;
@@ -372,7 +372,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     let shouldEnqueueFetch = false;
     const necessaryFrameRange = this.getLookAheadFrameRange(
-      state.currentFrameNumber
+      state.currentFrameNumber,
     );
 
     if (necessaryFrameRange[1] < necessaryFrameRange[0]) {
@@ -381,7 +381,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     const rangeAvailable =
       this.framesController.storeBufferManager.containsRange(
-        necessaryFrameRange
+        necessaryFrameRange,
       );
 
     if (rangeAvailable) {
@@ -398,8 +398,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       const unprocessedBufferRange =
         this.framesController.fetchBufferManager.getUnprocessedBufferRange(
           this.framesController.storeBufferManager.getUnprocessedBufferRange(
-            necessaryFrameRange
-          )
+            necessaryFrameRange,
+          ),
         );
 
       if (unprocessedBufferRange) {
@@ -453,7 +453,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       this.playBackRate = playbackRate;
       this.setTimeoutDelay = getMillisecondsFromPlaybackRate(
         frameRate,
-        playbackRate
+        playbackRate,
       );
     }
 

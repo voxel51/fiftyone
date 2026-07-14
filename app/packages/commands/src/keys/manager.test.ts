@@ -23,7 +23,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -34,7 +34,7 @@ describe("KeyManager", () => {
     expect(() => {
       keyManager.bindKey("ctrl+s", "fo.unregistered");
     }).toThrowError(
-      "The command id fo.unregistered is not registered for binding ctrl+s"
+      "The command id fo.unregistered is not registered for binding ctrl+s",
     );
   });
   it("can match a single sequence command binding", async () => {
@@ -46,7 +46,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -65,7 +65,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -87,7 +87,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -110,7 +110,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -130,7 +130,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -153,7 +153,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -181,7 +181,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command1).toBeDefined();
     const command2 = commandRegistry.registerCommand(
@@ -191,7 +191,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command2).toBeDefined();
     //The start sequence ctrl+s is the same for both commands, one is User the other Core
@@ -226,7 +226,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command).toBeDefined();
     expect(() => {
@@ -254,7 +254,7 @@ describe("KeyManager", () => {
     expect(state.full).toBeDefined();
   });
 
-  it("will not register the same binding in the same scope", async () => {
+  it("matches the earliest enabled command for duplicate bindings", async () => {
     const command1 = commandRegistry.registerCommand(
       "fo.test.command1",
       async () => {
@@ -262,7 +262,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     expect(command1).toBeDefined();
     const command2 = commandRegistry.registerCommand(
@@ -272,7 +272,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     const binding = "ctrl+s, alt+d";
     expect(() => {
@@ -280,7 +280,98 @@ describe("KeyManager", () => {
     }).not.toThrow();
     expect(() => {
       keyManager.bindKey(binding, "fo.test.command2");
-    }).toThrowError(`The binding ${binding} is already bound in this context`);
+    }).not.toThrow();
     expect(command2).toBeDefined();
+
+    let state = keyManager.match(
+      new KeyboardEvent("keydown", { ctrlKey: true, key: "s" }),
+    );
+    expect(state.partial).toBe(true);
+    state = keyManager.match(
+      new KeyboardEvent("keydown", { altKey: true, key: "d" }),
+    );
+    expect(state.full?.id).toBe("fo.test.command1");
+  });
+
+  it("falls back to an older duplicate binding when the latest is disabled", async () => {
+    commandRegistry.registerCommand(
+      "fo.test.command1",
+      async () => {
+        return;
+      },
+      () => {
+        return true;
+      },
+    );
+    commandRegistry.registerCommand(
+      "fo.test.command2",
+      async () => {
+        return;
+      },
+      () => {
+        return false;
+      },
+    );
+
+    keyManager.bindKey("s", "fo.test.command1");
+    keyManager.bindKey("s", "fo.test.command2");
+
+    const state = keyManager.match(new KeyboardEvent("keydown", { key: "s" }));
+    expect(state.full?.id).toBe("fo.test.command1");
+  });
+
+  it("matches the highest-priority enabled duplicate binding", async () => {
+    commandRegistry.registerCommand(
+      "fo.test.command1",
+      async () => {
+        return;
+      },
+      () => {
+        return true;
+      },
+    );
+    commandRegistry.registerCommand(
+      "fo.test.command2",
+      async () => {
+        return;
+      },
+      () => {
+        return true;
+      },
+    );
+
+    keyManager.bindKey("s", "fo.test.command1", 100);
+    keyManager.bindKey("s", "fo.test.command2");
+
+    const state = keyManager.match(new KeyboardEvent("keydown", { key: "s" }));
+    expect(state.full?.id).toBe("fo.test.command1");
+  });
+
+  it("can unbind one duplicate binding without removing the fallback", async () => {
+    commandRegistry.registerCommand(
+      "fo.test.command1",
+      async () => {
+        return;
+      },
+      () => {
+        return true;
+      },
+    );
+    commandRegistry.registerCommand(
+      "fo.test.command2",
+      async () => {
+        return;
+      },
+      () => {
+        return true;
+      },
+    );
+
+    keyManager.bindKey("s", "fo.test.command1");
+    keyManager.bindKey("s", "fo.test.command2");
+    keyManager.unbindKey("s", "fo.test.command2");
+
+    const state = keyManager.match(new KeyboardEvent("keydown", { key: "s" }));
+    expect(state.full?.id).toBe("fo.test.command1");
   });
 });

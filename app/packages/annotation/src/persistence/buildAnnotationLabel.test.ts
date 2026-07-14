@@ -110,7 +110,7 @@ import { buildAnnotationLabel } from "./buildAnnotationLabel";
 const detection = () => new hoisted.MockDetectionOverlay();
 
 const dataOf = (
-  result: ReturnType<typeof buildAnnotationLabel>
+  result: ReturnType<typeof buildAnnotationLabel>,
 ): Record<string, unknown> => {
   expect(result).toBeDefined();
   return (result as { data: Record<string, unknown> }).data;
@@ -276,10 +276,12 @@ describe("buildAnnotationLabel — non-Detection types", () => {
     const result = buildAnnotationLabel(overlay as never);
 
     expect(result?.type).toBe("Polyline");
-    expect((result as { data: { closed: boolean; filled: boolean } }).data
-      .closed).toBe(true);
-    expect((result as { data: { closed: boolean; filled: boolean } }).data
-      .filled).toBe(true);
+    expect(
+      (result as { data: { closed: boolean; filled: boolean } }).data.closed,
+    ).toBe(true);
+    expect(
+      (result as { data: { closed: boolean; filled: boolean } }).data.filled,
+    ).toBe(true);
     expect(result?.path).toBe("lanes");
   });
 

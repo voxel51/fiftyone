@@ -14,7 +14,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { isPlainObject } from "lodash";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";
@@ -54,7 +54,7 @@ export default function TableView(props: ViewPropsType) {
         if (action.rows?.[row] !== false) {
           computedRowActions.push({
             ...action,
-            onClick: (action, e) => {
+            onClick: (action) => {
               handleClick(panelId, {
                 operator: action.on_click,
                 params: { path, event: action.name, row },
@@ -65,7 +65,7 @@ export default function TableView(props: ViewPropsType) {
       }
       return computedRowActions;
     },
-    [row_actions, handleClick, panelId, path]
+    [row_actions, handleClick, panelId, path],
   );
 
   const getTooltips = useCallback((tooltipList) => {
@@ -97,7 +97,7 @@ export default function TableView(props: ViewPropsType) {
         });
       }
     },
-    [on_click_cell, on_click_row, on_click_column, handleClick, panelId, path]
+    [on_click_cell, on_click_row, on_click_column, handleClick, panelId, path],
   );
 
   const headingCellBaseStyles = {
@@ -260,8 +260,8 @@ function getTableData(props) {
     rows: Array.isArray(data)
       ? data
       : Array.isArray(defaultValue)
-      ? defaultValue
-      : [],
+        ? defaultValue
+        : [],
     selectedCells: new Set(),
     selectedRows: new Set(),
     selectedColumns: new Set(),

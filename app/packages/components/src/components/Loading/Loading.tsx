@@ -1,6 +1,6 @@
 import classNames from "classnames";
 import React from "react";
-import { ellipsis, loading } from "./Loading.module.css";
+import styles from "./Loading.module.css";
 
 const Loading: React.FC<
   React.PropsWithChildren<{
@@ -13,7 +13,11 @@ const Loading: React.FC<
   return (
     <div
       data-cy={dataCy}
-      className={ellipsisAnimation ? classNames(ellipsis, loading) : loading}
+      className={
+        ellipsisAnimation
+          ? classNames(styles.ellipsis, styles.loading)
+          : styles.loading
+      }
       style={style}
     >
       <div style={wrapperStyle}>{children}</div>

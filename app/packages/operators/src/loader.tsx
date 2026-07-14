@@ -39,7 +39,7 @@ export function useOperators(datasetLess?: boolean) {
   const [error, setError] = useState<Error | null>(null);
   const datasetName = useRecoilValue(datasetNameAtom);
   const setAvailableOperatorsRefreshCount = useSetRecoilState(
-    availableOperatorsRefreshCount
+    availableOperatorsRefreshCount,
   );
   const setOperatorsInitialized = useSetRecoilState(operatorsInitializedAtom);
   const { initialized } = useOperatorPlacementsResolver();

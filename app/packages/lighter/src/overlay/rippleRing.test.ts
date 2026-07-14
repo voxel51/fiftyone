@@ -88,13 +88,17 @@ describe("drawRippleRings", () => {
     expect(r1 as number).toBeGreaterThan(r0 as number);
     expect(r2 as number).toBeGreaterThan(r1 as number);
     // Stays bounded by base + max.
-    expect(r2 as number).toBeLessThanOrEqual(KEYPOINT_RADIUS + RIPPLE_MAX_RADIUS);
+    expect(r2 as number).toBeLessThanOrEqual(
+      KEYPOINT_RADIUS + RIPPLE_MAX_RADIUS,
+    );
   });
 
   it("opacity decays monotonically as a ring ages within its life", () => {
-    const o0 = (call(0).find((c) => (c[1] as number) === KEYPOINT_RADIUS)?.[2] as {
-      opacity: number;
-    }).opacity;
+    const o0 = (
+      call(0).find((c) => (c[1] as number) === KEYPOINT_RADIUS)?.[2] as {
+        opacity: number;
+      }
+    ).opacity;
     const o1 = (call(RIPPLE_CYCLE_MS / 4)[0][2] as { opacity: number }).opacity;
     const o2 = (call(RIPPLE_CYCLE_MS / 2)[0][2] as { opacity: number }).opacity;
 
@@ -115,7 +119,7 @@ describe("drawRippleRings", () => {
     // at the lead position (radius = KEYPOINT_RADIUS) since it has rolled over.
     const tStagger = call(RIPPLE_CYCLE_MS / RIPPLE_RING_COUNT);
     expect(
-      tStagger.find((c) => (c[1] as number) === KEYPOINT_RADIUS)
+      tStagger.find((c) => (c[1] as number) === KEYPOINT_RADIUS),
     ).toBeDefined();
     expect(t0.find((c) => (c[1] as number) === KEYPOINT_RADIUS)).toBeDefined();
   });

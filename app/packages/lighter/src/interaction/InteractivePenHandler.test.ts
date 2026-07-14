@@ -13,7 +13,7 @@ import type { OverlayEvent } from "./InteractionManager";
 type AddKeypointReturn = string | null;
 
 const makeOverlay = (
-  addMaskKeypoint?: (...args: unknown[]) => AddKeypointReturn
+  addMaskKeypoint?: (...args: unknown[]) => AddKeypointReturn,
 ) => {
   let nextId = 0;
   const addMaskKeypointFn = vi.fn(() => {
@@ -45,7 +45,7 @@ const makeEvent = (worldPoint = { x: 1, y: 2 }, buttons = 0): OverlayEvent =>
   ({
     worldPoint,
     event: { buttons } as PointerEvent,
-  } as OverlayEvent);
+  }) as OverlayEvent;
 
 // Replace the active context's command-stack methods with spies for the
 // duration of one test. The real CommandContext is preserved otherwise.

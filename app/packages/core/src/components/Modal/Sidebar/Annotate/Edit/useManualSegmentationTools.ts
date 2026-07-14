@@ -70,7 +70,7 @@ export const useManualSegmentationTools = () => {
     (newTool: SegmentationTool) => {
       setTool(newTool);
     },
-    [setTool]
+    [setTool],
   );
 
   const increaseToolSize = useCallback(() => {
@@ -87,21 +87,21 @@ export const useManualSegmentationTools = () => {
       if (Number.isNaN(n)) return;
       setToolSizeRaw(Math.max(MIN_TOOL_SIZE, Math.min(n, MAX_TOOL_SIZE)));
     },
-    [setToolSizeRaw]
+    [setToolSizeRaw],
   );
 
   const switchToolShape = useCallback(
     (shape: SegmentationToolShape) => {
       setToolShape(shape);
     },
-    [setToolShape]
+    [setToolShape],
   );
 
   const switchToolMode = useCallback(
     (mode: SegmentationToolMode) => {
       setToolMode(mode);
     },
-    [setToolMode]
+    [setToolMode],
   );
 
   return useMemo(
@@ -128,6 +128,6 @@ export const useManualSegmentationTools = () => {
       increaseToolSize,
       decreaseToolSize,
       setToolSize,
-    ]
+    ],
   );
 };

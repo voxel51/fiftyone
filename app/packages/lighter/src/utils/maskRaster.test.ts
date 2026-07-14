@@ -47,7 +47,7 @@ describe("decodeMaskToRaster", () => {
   it("rejects a multi-channel mask", () => {
     const overlayMask = deserialize(SAMPLE_MASK);
     expect(() => decodeMaskToRaster({ ...overlayMask, channels: 3 })).toThrow(
-      /single-channel/
+      /single-channel/,
     );
   });
 });

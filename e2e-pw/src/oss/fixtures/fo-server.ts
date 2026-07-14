@@ -30,7 +30,7 @@ export class FoWebServer {
         "Starting webserver on port",
         this.#port,
         "with database",
-        dbName
+        dbName,
       );
 
       const mainPyPath = process.env.FIFTYONE_ROOT_DIR
@@ -62,8 +62,8 @@ export class FoWebServer {
           if (!startupComplete) {
             reject(
               new Error(
-                `webserver exited before startup completed (code=${code}, signal=${signal})`
-              )
+                `webserver exited before startup completed (code=${code}, signal=${signal})`,
+              ),
             );
           }
         };
@@ -87,7 +87,7 @@ export class FoWebServer {
       console.log(
         `waiting for webserver (procId = ${proc.pid}) to start on port ${
           this.#port
-        }...`
+        }...`,
       );
 
       await Promise.race([
@@ -135,7 +135,7 @@ export class FoWebServer {
     const timeoutPromise = new Promise<void>((_, reject) => {
       setTimeout(
         () => reject(new Error("Timeout stopping webserver")),
-        timeoutMs
+        timeoutMs,
       );
     });
 

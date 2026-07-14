@@ -32,7 +32,7 @@ export interface ActiveCapabilities {
  */
 export const useActiveCapabilities = <T extends InferenceResultProxy>(
   agent?: AnnotationAgent<T> | null,
-  task?: AgentTaskType | null
+  task?: AgentTaskType | null,
 ): ActiveCapabilities => {
   const [capabilities, setCapabilities] = useAtom(capabilitiesAtom);
   const [isResolved, setIsResolved] = useAtom(isResolvedAtom);
@@ -60,6 +60,6 @@ export const useActiveCapabilities = <T extends InferenceResultProxy>(
 
   return useMemo(
     () => ({ capabilities, isResolved }),
-    [capabilities, isResolved]
+    [capabilities, isResolved],
   );
 };

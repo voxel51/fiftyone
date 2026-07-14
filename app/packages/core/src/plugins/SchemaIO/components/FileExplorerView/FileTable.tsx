@@ -1,4 +1,3 @@
-import React from "react";
 import {
   Table,
   TableBody,
@@ -96,7 +95,7 @@ function FileTable({
               <TableCell>
                 {file.date_modified &&
                   DateTime.fromJSDate(
-                    new Date(file.date_modified)
+                    new Date(file.date_modified),
                   ).toRelative()}
               </TableCell>
               <TableCell>{humanReadableBytes(file.size)}</TableCell>

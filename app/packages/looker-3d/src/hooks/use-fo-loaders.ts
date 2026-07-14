@@ -19,16 +19,16 @@ type CredentialAwareLoader = {
 type FoLoaderNoSuspenseProto<TInput, TResult> = new (...args: any[]) => {
   loadAsync: (
     input: TInput,
-    onProgress?: (event: ProgressEvent<EventTarget>) => void
+    onProgress?: (event: ProgressEvent<EventTarget>) => void,
   ) => Promise<TResult>;
 } & CredentialAwareLoader;
 
 type FoLoaderNoSuspenseInput<
-  TLoader extends FoLoaderNoSuspenseProto<any, any>
+  TLoader extends FoLoaderNoSuspenseProto<any, any>,
 > = Parameters<InstanceType<TLoader>["loadAsync"]>[0];
 
 type FoLoaderNoSuspenseResult<
-  TLoader extends FoLoaderNoSuspenseProto<any, any>
+  TLoader extends FoLoaderNoSuspenseProto<any, any>,
 > = Awaited<ReturnType<InstanceType<TLoader>["loadAsync"]>>;
 
 function disposeLoadedResource(resource: unknown) {
@@ -53,7 +53,7 @@ function hasMatchingCustomCredentialsAudience(urls: unknown): boolean {
   }
 
   const customCredentialsAudience = sessionStorage.getItem(
-    "customCredentialsAudience"
+    "customCredentialsAudience",
   );
 
   if (!customCredentialsAudience) {
@@ -64,14 +64,14 @@ function hasMatchingCustomCredentialsAudience(urls: unknown): boolean {
     .flat()
     .some(
       (url): url is string =>
-        typeof url === "string" && url.includes(customCredentialsAudience)
+        typeof url === "string" && url.includes(customCredentialsAudience),
     );
 }
 
 function configureFoLoaderInstance(
   loaderInstance: CredentialAwareLoader,
   urls: unknown,
-  loadingManager: unknown
+  loadingManager: unknown,
 ) {
   if (loadingManager) {
     loaderInstance.manager = loadingManager;
@@ -95,11 +95,11 @@ function configureFoLoaderInstance(
  */
 export function useFoLoader<
   TLoader extends Parameters<typeof useLoader>[0],
-  TInput extends Parameters<typeof useLoader>[1]
+  TInput extends Parameters<typeof useLoader>[1],
 >(
   loader: TLoader,
   urls: TInput,
-  loaderFunction?: Parameters<typeof useLoader>[2]
+  loaderFunction?: Parameters<typeof useLoader>[2],
 ) {
   const { loadingManager } = useFo3dContext();
 
@@ -120,17 +120,17 @@ export function useFoLoader<
  * React Three error path.
  */
 export function useFoLoaderNoSuspense<
-  TLoader extends FoLoaderNoSuspenseProto<any, any>
+  TLoader extends FoLoaderNoSuspenseProto<any, any>,
 >(
   Loader: TLoader,
   input: FoLoaderNoSuspenseInput<TLoader> | null | undefined,
-  loaderFunction?: (loaderInstance: InstanceType<TLoader>) => void
+  loaderFunction?: (loaderInstance: InstanceType<TLoader>) => void,
 ): FoLoaderNoSuspenseResult<TLoader> | null {
   const { loadingManager } = useFo3dContext();
   const [result, setResult] =
     useState<FoLoaderNoSuspenseResult<TLoader> | null>(null);
   const currentResultRef = useRef<FoLoaderNoSuspenseResult<TLoader> | null>(
-    null
+    null,
   );
   const latestLoaderFunctionRef = useRef(loaderFunction);
 
@@ -155,7 +155,7 @@ export function useFoLoaderNoSuspense<
     configureFoLoaderInstance(
       loader as CredentialAwareLoader,
       input,
-      loadingManager
+      loadingManager,
     );
     latestLoaderFunctionRef.current?.(loader);
 
@@ -178,7 +178,7 @@ export function useFoLoaderNoSuspense<
         if (!cancelled) {
           setResult(null);
         }
-      }
+      },
     );
 
     return () => {

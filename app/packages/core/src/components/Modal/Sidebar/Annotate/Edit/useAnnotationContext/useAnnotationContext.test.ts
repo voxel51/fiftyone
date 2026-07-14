@@ -4,11 +4,7 @@
 
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
-import {
-  atom,
-  getDefaultStore,
-  type PrimitiveAtom,
-} from "jotai";
+import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // vi.mock factories run before imports, so external state lives in vi.hoisted().
@@ -17,6 +13,10 @@ const refs = vi.hoisted(() => ({
   visibleSchemas: [] as string[],
   labelsByPath: {} as Record<string, Array<{ data?: { label?: string } }>>,
   lighter: null as unknown,
+  sampleId: "SAMPLE_ID" as string,
+  engine: null as unknown as {
+    updateLabel: (...args: unknown[]) => void;
+  } & Record<string, unknown>,
 }));
 
 vi.mock("recoil", async (importOriginal) => {
@@ -26,6 +26,11 @@ vi.mock("recoil", async (importOriginal) => {
 
 vi.mock("@fiftyone/lighter", () => ({
   useLighter: () => refs.lighter,
+}));
+
+vi.mock("@fiftyone/annotation", () => ({
+  useAnnotationEngine: () => refs.engine,
+  useActiveAnnotationSampleId: () => refs.sampleId,
 }));
 
 // Stub the schema-state module the hook depends on.
@@ -112,8 +117,10 @@ beforeEach(() => {
   refs.lighter = {
     scene: null,
     addOverlay: vi.fn(),
-    overlayFactory: { create: vi.fn() },
+    overlayFactory: { create: vi.fn(() => ({ id: "OVERLAY_ID" })) },
   };
+  refs.sampleId = "SAMPLE_ID";
+  refs.engine = { updateLabel: vi.fn() } as typeof refs.engine;
   resetAtoms();
 });
 
@@ -143,7 +150,7 @@ describe("useAnnotationContext.select", () => {
 
   it("seeds isEditingMask=true when the label has an inline mask", () => {
     const labelAtom = makeLabelAtom(
-      makeLabel({ data: { mask: { bitmap: "data" } } })
+      makeLabel({ data: { mask: { bitmap: "data" } } }),
     );
 
     const { result } = renderHook(() => useAnnotationContext());
@@ -154,7 +161,7 @@ describe("useAnnotationContext.select", () => {
 
   it("seeds isEditingMask=true when the label has a mask_path", () => {
     const labelAtom = makeLabelAtom(
-      makeLabel({ data: { mask_path: "/path/to/mask.png" } })
+      makeLabel({ data: { mask_path: "/path/to/mask.png" } }),
     );
 
     const { result } = renderHook(() => useAnnotationContext());
@@ -197,7 +204,7 @@ describe("useAnnotationContext.clear", () => {
     // register `predictions` as a visible Detection field.
     setVisible(["predictions"]);
     const labelAtom = makeLabelAtom(
-      makeLabel({ path: "predictions", data: { label: "dog" } })
+      makeLabel({ path: "predictions", data: { label: "dog" } }),
     );
     store.set(editingLabelAtom, labelAtom);
 
@@ -300,9 +307,7 @@ describe("useAnnotationContext.readEditing", () => {
       store.set(editingLabelAtom, labelAtom);
     });
 
-    expect(result.current.readEditing().selected?.label.data._id).toBe(
-      "fresh"
-    );
+    expect(result.current.readEditing().selected?.label.data._id).toBe("fresh");
   });
 
   it("reflects pendingNewType when it's the only thing set", () => {
@@ -365,7 +370,7 @@ describe("useAnnotationContext.lastUsed", () => {
 describe("useAnnotationContext.setData", () => {
   it("merges into the current label's data by default", () => {
     const labelAtom = makeLabelAtom(
-      makeLabel({ id: "abc", data: { label: "cat" } })
+      makeLabel({ id: "abc", data: { label: "cat" } }),
     );
     store.set(editingLabelAtom, labelAtom);
 
@@ -380,7 +385,7 @@ describe("useAnnotationContext.setData", () => {
 
   it("replaces the data wholesale when options.replace is true", () => {
     const labelAtom = makeLabelAtom(
-      makeLabel({ id: "abc", data: { label: "cat", confidence: 0.9 } })
+      makeLabel({ id: "abc", data: { label: "cat", confidence: 0.9 } }),
     );
     store.set(editingLabelAtom, labelAtom);
 
@@ -388,14 +393,67 @@ describe("useAnnotationContext.setData", () => {
     act(() =>
       result.current.setData(
         { _id: "abc", label: "dog" } as AnnotationLabel["data"],
-        { replace: true }
-      )
+        { replace: true },
+      ),
     );
 
     expect(store.get(labelAtom).data).toEqual({
       _id: "abc",
       label: "dog",
     });
+  });
+});
+
+describe("useAnnotationContext.createNew (Classification persist)", () => {
+  it("writes the new Classification through to the engine immediately", () => {
+    // A visible sample-level Classification field with one class.
+    refs.schemas.cls = {
+      type: "Classification",
+      label_schema: { classes: ["dog", "cat"] },
+    };
+    setVisible(["cls"]);
+
+    const { result } = renderHook(() => useAnnotationContext());
+
+    act(() => {
+      result.current.createNew("Classification");
+    });
+
+    // The engine was written exactly once, with the new label's `_id` as the
+    // instanceId, the field as the ref path, and `_cls: Classification` plus
+    // the seeded default class in the payload.
+    expect(refs.engine.updateLabel).toHaveBeenCalledTimes(1);
+    const [ref, partial] = (
+      refs.engine.updateLabel as unknown as { mock: { calls: unknown[][] } }
+    ).mock.calls[0] as [
+      { sample: string; path: string; instanceId: string },
+      Record<string, unknown>,
+    ];
+    expect(ref).toEqual({
+      sample: "SAMPLE_ID",
+      path: "cls",
+      instanceId: "GENERATED_ID",
+    });
+    expect(partial._cls).toBe("Classification");
+    expect(partial._id).toBe("GENERATED_ID");
+    expect(partial.label).toBe("dog");
+  });
+
+  it("does not write to the engine for a Detection create (no draft commit)", () => {
+    refs.schemas.det = {
+      type: "Detection",
+      label_schema: { classes: ["a"] },
+    };
+    setVisible(["det"]);
+
+    const { result } = renderHook(() => useAnnotationContext());
+
+    act(() => {
+      result.current.createNew("Detection");
+    });
+
+    // Detection establishes through the Lighter draw gesture, not createNew.
+    expect(refs.engine.updateLabel).not.toHaveBeenCalled();
   });
 });
 

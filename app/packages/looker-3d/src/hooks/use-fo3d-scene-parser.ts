@@ -39,17 +39,17 @@ const FO_MESH_MATERIAL_TYPES = new Set<FoMeshMaterial["_type"]>([
 
 const hasStringField = <T extends string>(
   node: FoSceneRawNode,
-  field: T
+  field: T,
 ): node is NodeWithStringFields<T> => {
   return typeof (node as NodeRecord)[field] === "string";
 };
 
 const hasNumberFields = <T extends string>(
   node: FoSceneRawNode,
-  fields: readonly T[]
+  fields: readonly T[],
 ): node is NodeWithNumberFields<T> => {
   return fields.every(
-    (field) => typeof (node as NodeRecord)[field] === "number"
+    (field) => typeof (node as NodeRecord)[field] === "number",
   );
 };
 
@@ -64,23 +64,23 @@ const getOptionalBooleanField = (node: FoSceneRawNode, field: string) => {
 };
 
 const isFoPointcloudMaterial = (
-  material: FoSceneRawNode["defaultMaterial"] | undefined
+  material: FoSceneRawNode["defaultMaterial"] | undefined,
 ): material is FoPointcloudMaterialProps => {
   return material?._type === "PointCloudMaterial";
 };
 
 const isFoMeshMaterial = (
-  material: FoSceneRawNode["defaultMaterial"] | undefined
+  material: FoSceneRawNode["defaultMaterial"] | undefined,
 ): material is FoMeshMaterial => {
   return Boolean(
     material &&
-      FO_MESH_MATERIAL_TYPES.has(material._type as FoMeshMaterial["_type"])
+    FO_MESH_MATERIAL_TYPES.has(material._type as FoMeshMaterial["_type"]),
   );
 };
 
 const toVector3 = (
   value: unknown,
-  fallback: [number, number, number] = [0, 0, 0]
+  fallback: [number, number, number] = [0, 0, 0],
 ) => {
   const vector = isNumericTuple(value, 3) ? value : fallback;
   return new Vector3(vector[0], vector[1], vector[2]);
@@ -88,14 +88,14 @@ const toVector3 = (
 
 const toQuaternion = (
   value: unknown,
-  fallback: [number, number, number, number] = [0, 0, 0, 1]
+  fallback: [number, number, number, number] = [0, 0, 0, 1],
 ) => {
   const quaternion = isNumericTuple(value, 4) ? value : fallback;
   return new Quaternion(
     quaternion[0],
     quaternion[1],
     quaternion[2],
-    quaternion[3]
+    quaternion[3],
   );
 };
 
@@ -110,7 +110,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
       return new FbxAsset(
         node.fbxPath,
         getOptionalStringField(node, "preTransformedFbxPath"),
-        meshMaterial
+        meshMaterial,
       );
     }
 
@@ -118,7 +118,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
       return new GltfAsset(
         node.gltfPath,
         getOptionalStringField(node, "preTransformedGltfPath"),
-        meshMaterial
+        meshMaterial,
       );
     }
 
@@ -128,7 +128,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
         getOptionalStringField(node, "mtlPath"),
         getOptionalStringField(node, "preTransformedObjPath"),
         getOptionalStringField(node, "preTransformedMtlPath"),
-        meshMaterial
+        meshMaterial,
       );
     }
 
@@ -136,7 +136,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
       return new StlAsset(
         node.stlPath,
         getOptionalStringField(node, "preTransformedStlPath"),
-        meshMaterial
+        meshMaterial,
       );
     }
 
@@ -146,7 +146,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
         getOptionalStringField(node, "preTransformedPlyPath"),
         meshMaterial,
         getOptionalBooleanField(node, "isPointCloud"),
-        getOptionalBooleanField(node, "centerGeometry") ?? true
+        getOptionalBooleanField(node, "centerGeometry") ?? true,
       );
     }
   }
@@ -156,7 +156,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
       node.pcdPath,
       getOptionalStringField(node, "preTransformedPcdPath"),
       isFoPointcloudMaterial(material) ? material : undefined,
-      getOptionalBooleanField(node, "centerGeometry") ?? false
+      getOptionalBooleanField(node, "centerGeometry") ?? false,
     );
   }
 
@@ -171,7 +171,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
         node.width,
         node.height,
         node.depth,
-        meshMaterial
+        meshMaterial,
       );
     }
 
@@ -196,7 +196,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
         getOptionalBooleanField(node, "openEnded") ?? false,
         node.thetaStart,
         node.thetaLength,
-        meshMaterial
+        meshMaterial,
       );
     }
 
@@ -227,7 +227,7 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
         node.phiLength,
         node.thetaStart,
         node.thetaLength,
-        meshMaterial
+        meshMaterial,
       );
     }
   }

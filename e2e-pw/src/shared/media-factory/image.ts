@@ -98,7 +98,7 @@ export const createImage = async (options: {
 
   if (!hideLogs) {
     console.log(
-      `Image generation, path = ${outputPath}, completed in ${timeTaken} milliseconds`
+      `Image generation, path = ${outputPath}, completed in ${timeTaken} milliseconds`,
     );
   }
 };

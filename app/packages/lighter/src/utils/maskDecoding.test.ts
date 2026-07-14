@@ -43,7 +43,7 @@ describe("decodeMask", () => {
           this.width = width;
           this.height = height;
         }
-      }
+      },
     );
 
     vi.stubGlobal(
@@ -51,7 +51,7 @@ describe("decodeMask", () => {
       vi.fn(async (data: StubImageData) => {
         lastImageData = data;
         return data as unknown as ImageBitmap;
-      })
+      }),
     );
   });
 
@@ -70,8 +70,8 @@ describe("decodeMask", () => {
     expect(rawPixels.src.length).toBe(width * height);
     expect(rawPixels.src).toEqual(
       Uint8Array.from(new Uint8Array(overlayMask.buffer), (value) =>
-        value > 0 ? 1 : 0
-      )
+        value > 0 ? 1 : 0,
+      ),
     );
   });
 

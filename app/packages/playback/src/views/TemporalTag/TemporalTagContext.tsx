@@ -11,12 +11,23 @@ export interface TemporalTagCreatePayload {
   readonly anchor?: string;
 }
 
+export interface TemporalTagUpdatePayload {
+  /** Id of the existing temporal tag to mutate. */
+  readonly id: string;
+  readonly start: number;
+  readonly end: number;
+  readonly tag: string;
+}
+
 export interface TemporalTagContextValue {
   readonly state: TemporalTagModeState;
   readonly actions: TemporalTagModeActions;
   /** Callback to create a tag via the backend. Undefined when temporal
    *  tagging is not wired in (no op-guard needed at call sites). */
   readonly onTagCreate?: (tag: TemporalTagCreatePayload) => Promise<void>;
+  /** Callback to update an existing tag's time range / label via the backend.
+   *  Undefined when editing is not wired in. */
+  readonly onTagUpdate?: (tag: TemporalTagUpdatePayload) => Promise<void>;
   /** Tag labels already present on the timeline. Used to populate the
    *  "add to existing tag" dropdown in the creation popup. */
   readonly existingTags?: readonly string[];

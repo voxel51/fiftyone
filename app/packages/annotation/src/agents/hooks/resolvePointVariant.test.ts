@@ -57,45 +57,53 @@ const labelMissingMask = () => {
 describe("resolvePointVariant", () => {
   it("off-mask click → POSITIVE", () => {
     expect(
-      resolvePointVariant(POINT, { shiftKey: false }, labelMissingMask())
+      resolvePointVariant(POINT, { shiftKey: false }, labelMissingMask()),
     ).toBe(POSITIVE_POINT_VARIANT);
   });
 
   it("on-mask click → NEGATIVE", () => {
     expect(
-      resolvePointVariant(POINT, { shiftKey: false }, labelHittingMask())
+      resolvePointVariant(POINT, { shiftKey: false }, labelHittingMask()),
     ).toBe(NEGATIVE_POINT_VARIANT);
   });
 
   it("shift inverts: off-mask + shift → NEGATIVE", () => {
     expect(
-      resolvePointVariant(POINT, { shiftKey: true }, labelMissingMask())
+      resolvePointVariant(POINT, { shiftKey: true }, labelMissingMask()),
     ).toBe(NEGATIVE_POINT_VARIANT);
   });
 
   it("shift inverts: on-mask + shift → POSITIVE", () => {
     expect(
-      resolvePointVariant(POINT, { shiftKey: true }, labelHittingMask())
+      resolvePointVariant(POINT, { shiftKey: true }, labelHittingMask()),
     ).toBe(POSITIVE_POINT_VARIANT);
   });
 
   it("label without a DetectionOverlay → defaults to POSITIVE (nothing to be on-mask of)", () => {
     const labelWithNonDetectionOverlay = { overlay: {} } as never;
     expect(
-      resolvePointVariant(POINT, { shiftKey: false }, labelWithNonDetectionOverlay)
+      resolvePointVariant(
+        POINT,
+        { shiftKey: false },
+        labelWithNonDetectionOverlay,
+      ),
     ).toBe(POSITIVE_POINT_VARIANT);
   });
 
   it("null label → defaults to POSITIVE", () => {
-    expect(
-      resolvePointVariant(POINT, { shiftKey: false }, null as never)
-    ).toBe(POSITIVE_POINT_VARIANT);
+    expect(resolvePointVariant(POINT, { shiftKey: false }, null as never)).toBe(
+      POSITIVE_POINT_VARIANT,
+    );
   });
 
   it("label without a DetectionOverlay + shift → flips default to NEGATIVE", () => {
     const labelWithNonDetectionOverlay = { overlay: {} } as never;
     expect(
-      resolvePointVariant(POINT, { shiftKey: true }, labelWithNonDetectionOverlay)
+      resolvePointVariant(
+        POINT,
+        { shiftKey: true },
+        labelWithNonDetectionOverlay,
+      ),
     ).toBe(NEGATIVE_POINT_VARIANT);
   });
 

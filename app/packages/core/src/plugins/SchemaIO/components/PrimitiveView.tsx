@@ -1,4 +1,3 @@
-import React from "react";
 import LabelValueView from "./LabelValueView";
 import CheckboxView from "./CheckboxView";
 import FieldView from "./FieldView";
@@ -8,7 +7,7 @@ export default function PrimitiveView(props) {
   const Component = readOnly
     ? LabelValueView
     : type === "boolean"
-    ? CheckboxView
-    : FieldView;
+      ? CheckboxView
+      : FieldView;
   return <Component {...props} />;
 }

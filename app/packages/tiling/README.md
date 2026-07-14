@@ -1,8 +1,8 @@
 # @fiftyone/tiling
 
-Generic, draggable tile grid + sidebars. Data-source-agnostic — the
-playback engine plugs in via the tile registry, but anything that can
-call `registerTile(...)` works.
+Generic, draggable tile grid + sidebars. Data-source-agnostic — the playback
+engine plugs in via the tile registry, but anything that can call
+`registerTile(...)` works.
 
 ## Layout
 

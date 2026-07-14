@@ -70,6 +70,15 @@ export class MaskCanvas {
   // canvas contents encoded for persistence to backend
   private pendingMask?: string;
 
+  /**
+   * Count of in-flight async paint/snapshot encodes. While positive, a freshly
+   * painted mask hasn't yet produced its `pendingMask`, so the owning overlay
+   * must NOT drop the mask on a maskless reproject — destroying the canvas would
+   * abort the encode (it bails on canvas-swap) and lose the mask. See
+   * {@link DetectionOverlay.applyLabel}.
+   */
+  private encodingInFlight = 0;
+
   // ---- Editing canvas state ----
   private canvas?: HTMLCanvasElement;
   private context?: CanvasRenderingContext2D;
@@ -91,7 +100,7 @@ export class MaskCanvas {
    * Plain `undefined` and `{ $binary: { base64 } }` wrappers are unwrapped.
    */
   private static extractSource(
-    mask?: SerializedMask | OverlayMask
+    mask?: SerializedMask | OverlayMask,
   ): string | OverlayMask | undefined {
     if (!mask) return undefined;
     if (typeof mask === "string") return mask;
@@ -201,7 +210,7 @@ export class MaskCanvas {
     containerId: string,
     color: string,
     opacity: number,
-    onDecoded?: () => void
+    onDecoded?: () => void,
   ): void {
     this.decodeMaskIfNeeded(onDecoded);
 
@@ -215,7 +224,7 @@ export class MaskCanvas {
         { type: "canvas", canvas: this.canvas },
         bounds,
         { opacity, tint: color },
-        containerId
+        containerId,
       );
 
       return;
@@ -226,7 +235,7 @@ export class MaskCanvas {
         { type: "bitmap", bitmap: this.maskBitmap },
         bounds,
         { opacity, tint: color },
-        containerId
+        containerId,
       );
 
       return;
@@ -281,6 +290,11 @@ export class MaskCanvas {
     this.pendingMask = undefined;
 
     return mask;
+  }
+
+  /** True while a paint/snapshot encode is still resolving (no `pendingMask` yet). */
+  hasPendingEncode(): boolean {
+    return this.encodingInFlight > 0;
   }
 
   /**
@@ -354,7 +368,7 @@ export class MaskCanvas {
     point: Point,
     toolState: SegmentationToolState,
     // color comes from the draw-time tint; strokes are painted white
-    _style: DrawStyle | undefined
+    _style: DrawStyle | undefined,
   ) {
     if (!this.context) return;
 
@@ -387,7 +401,7 @@ export class MaskCanvas {
     worldPoint: Point,
     bounds: Rect,
     toolState: SegmentationToolState,
-    style: DrawStyle | undefined
+    style: DrawStyle | undefined,
   ): Rect | undefined {
     this.ensureCanvas(bounds);
 
@@ -435,7 +449,7 @@ export class MaskCanvas {
     bounds: Rect,
     toolState: SegmentationToolState,
     // color comes from the draw-time tint; strokes are painted white
-    _style: DrawStyle | undefined
+    _style: DrawStyle | undefined,
   ): Rect | undefined {
     if (worldPoints.length < 3) return undefined;
 
@@ -506,7 +520,7 @@ export class MaskCanvas {
     otherSource: HTMLCanvasElement | ImageBitmap,
     otherBounds: Rect,
     ourBounds: Rect,
-    onEncoded?: (encoded: string) => void
+    onEncoded?: (encoded: string) => void,
   ): Rect {
     this.ensureCanvas(ourBounds);
     this.paintStart(ourBounds);
@@ -515,11 +529,11 @@ export class MaskCanvas {
     const minY = Math.min(ourBounds.y, otherBounds.y);
     const maxX = Math.max(
       ourBounds.x + ourBounds.width,
-      otherBounds.x + otherBounds.width
+      otherBounds.x + otherBounds.width,
     );
     const maxY = Math.max(
       ourBounds.y + ourBounds.height,
-      otherBounds.y + otherBounds.height
+      otherBounds.y + otherBounds.height,
     );
 
     const newBounds =
@@ -567,6 +581,7 @@ export class MaskCanvas {
     this.updateRawPixelsFromCanvas();
 
     const capturedCanvas = this.canvas;
+    this.encodingInFlight++;
     encodeMask(capturedCanvas)
       .then((encoded) => {
         if (this.canvas !== capturedCanvas) return;
@@ -575,6 +590,9 @@ export class MaskCanvas {
       })
       .catch((err) => {
         console.error("[MaskCanvas] paintEnd encode failed:", err);
+      })
+      .finally(() => {
+        this.encodingInFlight--;
       });
 
     return finalBounds;
@@ -604,7 +622,7 @@ export class MaskCanvas {
     from: Point,
     to: Point,
     tool: SegmentationToolState,
-    style: DrawStyle | undefined
+    style: DrawStyle | undefined,
   ): void {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
@@ -652,7 +670,7 @@ export class MaskCanvas {
     width: number,
     height: number,
     offsetX = 0,
-    offsetY = 0
+    offsetY = 0,
   ) {
     const { maskCanvas, maskContext } = createMaskCanvas(width, height);
 
@@ -689,7 +707,7 @@ export class MaskCanvas {
    */
   private updateBounds(
     oldBounds: Rect,
-    extent: { minX: number; minY: number; maxX: number; maxY: number }
+    extent: { minX: number; minY: number; maxX: number; maxY: number },
   ): Rect | undefined {
     if (!this.canvas || !this.context) return undefined;
 
@@ -814,7 +832,7 @@ export class MaskCanvas {
    */
   restoreSnapshot(
     snapshot: MaskSnapshot | undefined,
-    onEncoded?: (encoded: string) => void
+    onEncoded?: (encoded: string) => void,
   ): void {
     if (!snapshot) {
       this.canvas = undefined;
@@ -827,7 +845,7 @@ export class MaskCanvas {
 
     const { maskCanvas, maskContext } = createMaskCanvas(
       snapshot.width,
-      snapshot.height
+      snapshot.height,
     );
     maskContext.putImageData(snapshot.imageData, 0, 0);
 
@@ -839,6 +857,7 @@ export class MaskCanvas {
     this.updateRawPixelsFromCanvas();
 
     const capturedCanvas = this.canvas;
+    this.encodingInFlight++;
     encodeMask(capturedCanvas)
       .then((encoded) => {
         if (this.canvas !== capturedCanvas) return;
@@ -847,6 +866,9 @@ export class MaskCanvas {
       })
       .catch((err) => {
         console.error("[MaskCanvas] restoreSnapshot encode failed:", err);
+      })
+      .finally(() => {
+        this.encodingInFlight--;
       });
   }
 

@@ -16,7 +16,9 @@ class MockWorker {
   postMessage = vi.fn((msg: any) => {
     if (msg.type === "loadModel") {
       setTimeout(() => {
-        this.onmessage?.({ data: { id: msg.id, type: "loadModel", success: true } });
+        this.onmessage?.({
+          data: { id: msg.id, type: "loadModel", success: true },
+        });
       });
     }
   });
@@ -32,12 +34,20 @@ describe("BrowserAnnotationProvider", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     stubBrowserAPIs();
-    vi.mocked(getFetchParameters).mockReturnValue({ origin: "", headers: {}, pathPrefix: "" });
+    vi.mocked(getFetchParameters).mockReturnValue({
+      origin: "",
+      headers: {},
+      pathPrefix: "",
+    });
     vi.mocked(mergeHeaders).mockReturnValue({});
   });
 
   it("Sends init message with fetch parameters after spawning worker", async () => {
-    const params = { origin: "http://api", headers: { Auth: "x" }, pathPrefix: "/api/proxy/fiftyone-xyz" };
+    const params = {
+      origin: "http://api",
+      headers: { Auth: "x" },
+      pathPrefix: "/api/proxy/fiftyone-xyz",
+    };
     vi.mocked(getFetchParameters).mockReturnValue(params);
     vi.mocked(mergeHeaders).mockReturnValue(params.headers);
 
@@ -63,7 +73,11 @@ describe("BrowserAnnotationProvider", () => {
     // Headers instances aren't structured-cloneable. mergeHeaders() flattens
     // them so postMessage doesn't throw OR silently drop headers.
     const headersInstance = new Headers({ Auth: "x" });
-    const params = { origin: "http://api", headers: headersInstance, pathPrefix: "" };
+    const params = {
+      origin: "http://api",
+      headers: headersInstance,
+      pathPrefix: "",
+    };
     const flat = { Auth: "x" };
     vi.mocked(getFetchParameters).mockReturnValue(params as any);
     vi.mocked(mergeHeaders).mockReturnValue(flat);
@@ -82,7 +96,9 @@ describe("BrowserAnnotationProvider", () => {
 
     expect(mergeHeaders).toHaveBeenCalledWith(headersInstance);
     expect(instance.postMessage.mock.calls[0][0].payload.headers).toEqual(flat);
-    expect(instance.postMessage.mock.calls[0][0].payload.headers).not.toBeInstanceOf(Headers);
+    expect(
+      instance.postMessage.mock.calls[0][0].payload.headers,
+    ).not.toBeInstanceOf(Headers);
   });
 
   it("Calls onStatus with loading then ready on successful init", async () => {
@@ -104,7 +120,14 @@ describe("BrowserAnnotationProvider", () => {
       terminate = vi.fn();
       postMessage = vi.fn((msg: any) => {
         setTimeout(() => {
-          this.onmessage?.({ data: { id: msg.id, type: "loadModel", success: false, error: "ONNX init failed" } });
+          this.onmessage?.({
+            data: {
+              id: msg.id,
+              type: "loadModel",
+              success: false,
+              error: "ONNX init failed",
+            },
+          });
         });
       });
     }
@@ -128,7 +151,9 @@ describe("BrowserAnnotationProvider", () => {
       const onStatus = vi.fn();
       const provider = new BrowserAnnotationProvider({ onError, onStatus });
 
-      await expect(provider.initialize()).rejects.toThrow("Missing browser APIs");
+      await expect(provider.initialize()).rejects.toThrow(
+        "Missing browser APIs",
+      );
       expect(onError).toHaveBeenCalledTimes(1);
       expect(onError).toHaveBeenCalledWith({
         kind: "unsupported",
@@ -150,7 +175,9 @@ describe("BrowserAnnotationProvider", () => {
       const provider = new BrowserAnnotationProvider({ onWarning });
       await provider.initialize();
 
-      expect(onWarning).toHaveBeenCalledWith(expect.stringContaining("SharedArrayBuffer"));
+      expect(onWarning).toHaveBeenCalledWith(
+        expect.stringContaining("SharedArrayBuffer"),
+      );
     } finally {
       globalThis.SharedArrayBuffer = original;
     }
@@ -166,7 +193,9 @@ describe("BrowserAnnotationProvider", () => {
       const onError = vi.fn();
       const provider = new BrowserAnnotationProvider({ onError });
 
-      await expect(provider.initialize()).rejects.toThrow("Missing browser APIs");
+      await expect(provider.initialize()).rejects.toThrow(
+        "Missing browser APIs",
+      );
       const msg = onError.mock.calls[0][0].message;
       expect(msg).toContain("WASM SIMD");
       expect(msg).toContain("OffscreenCanvas");
@@ -185,10 +214,24 @@ describe("BrowserAnnotationProvider", () => {
         if (msg.type === "loadModel") {
           setTimeout(() => {
             this.onmessage?.({ data: { type: "status", result: "loading" } });
-            this.onmessage?.({ data: { type: "progress", result: { file: "encoder", loaded: 50, total: 100 } } });
-            this.onmessage?.({ data: { type: "warning", result: "IDB unavailable" } });
-            this.onmessage?.({ data: { type: "error", result: { kind: "download_failure", message: "cdn down" } } });
-            this.onmessage?.({ data: { id: msg.id, type: "loadModel", success: true } });
+            this.onmessage?.({
+              data: {
+                type: "progress",
+                result: { file: "encoder", loaded: 50, total: 100 },
+              },
+            });
+            this.onmessage?.({
+              data: { type: "warning", result: "IDB unavailable" },
+            });
+            this.onmessage?.({
+              data: {
+                type: "error",
+                result: { kind: "download_failure", message: "cdn down" },
+              },
+            });
+            this.onmessage?.({
+              data: { id: msg.id, type: "loadModel", success: true },
+            });
           });
         }
       });
@@ -199,14 +242,26 @@ describe("BrowserAnnotationProvider", () => {
     const onProgress = vi.fn();
     const onWarning = vi.fn();
     const onError = vi.fn();
-    const provider = new BrowserAnnotationProvider({ onStatus, onProgress, onWarning, onError });
+    const provider = new BrowserAnnotationProvider({
+      onStatus,
+      onProgress,
+      onWarning,
+      onError,
+    });
     await provider.initialize();
 
     // Worker-emitted notifications forwarded
     expect(onStatus).toHaveBeenCalledWith("loading");
-    expect(onProgress).toHaveBeenCalledWith({ file: "encoder", loaded: 50, total: 100 });
+    expect(onProgress).toHaveBeenCalledWith({
+      file: "encoder",
+      loaded: 50,
+      total: 100,
+    });
     expect(onWarning).toHaveBeenCalledWith("IDB unavailable");
-    expect(onError).toHaveBeenCalledWith({ kind: "download_failure", message: "cdn down" });
+    expect(onError).toHaveBeenCalledWith({
+      kind: "download_failure",
+      message: "cdn down",
+    });
   });
 
   it("Does not spawn worker when APIs are unsupported", async () => {
@@ -240,7 +295,9 @@ describe("BrowserAnnotationProvider", () => {
     await provider.initialize();
 
     // Start an inference that will never resolve
-    const inferPromise = provider.infer({ imageUrl: "test.jpg", points: [{ x: 0.5, y: 0.5, label: 1 }] }).catch((e: Error) => e);
+    const inferPromise = provider
+      .infer({ imageUrl: "test.jpg", points: [{ x: 0.5, y: 0.5, label: 1 }] })
+      .catch((e: Error) => e);
     provider.dispose();
 
     const err = await inferPromise;
@@ -256,7 +313,9 @@ describe("BrowserAnnotationProvider", () => {
       postMessage = vi.fn((msg: any) => {
         if (msg.type === "loadModel") {
           setTimeout(() => {
-            this.onmessage?.({ data: { id: msg.id, type: "loadModel", success: true } });
+            this.onmessage?.({
+              data: { id: msg.id, type: "loadModel", success: true },
+            });
           });
         }
         // embedAndDecode triggers a worker error instead of resolving
@@ -273,7 +332,9 @@ describe("BrowserAnnotationProvider", () => {
     const provider = new BrowserAnnotationProvider({ onStatus });
     await provider.initialize();
 
-    const err = await provider.infer({ imageUrl: "test.jpg", points: [{ x: 0.5, y: 0.5, label: 1 }] }).catch((e: Error) => e);
+    const err = await provider
+      .infer({ imageUrl: "test.jpg", points: [{ x: 0.5, y: 0.5, label: 1 }] })
+      .catch((e: Error) => e);
     expect(err).toBeInstanceOf(Error);
     expect((err as Error).message).toBe("Worker crashed");
     expect(onStatus).toHaveBeenCalledWith("failure");
@@ -285,7 +346,9 @@ describe("BrowserAnnotationProvider", () => {
     const provider = new BrowserAnnotationProvider();
     await provider.initialize();
 
-    const inferPromise = provider.infer({ imageUrl: "test.jpg", points: [{ x: 0.5, y: 0.5, label: 1 }] }).catch((e: Error) => e);
+    const inferPromise = provider
+      .infer({ imageUrl: "test.jpg", points: [{ x: 0.5, y: 0.5, label: 1 }] })
+      .catch((e: Error) => e);
     provider.abort();
 
     const err = await inferPromise;
@@ -305,7 +368,9 @@ describe("BrowserAnnotationProvider", () => {
   it("Infer rejects when provider is not initialized", async () => {
     const provider = new BrowserAnnotationProvider();
 
-    const err = await provider.infer({ imageUrl: "test.jpg", points: [{ x: 0.5, y: 0.5, label: 1 }] }).catch((e: Error) => e);
+    const err = await provider
+      .infer({ imageUrl: "test.jpg", points: [{ x: 0.5, y: 0.5, label: 1 }] })
+      .catch((e: Error) => e);
     expect(err).toBeInstanceOf(Error);
     expect((err as Error).message).toBe("Worker not initialized");
   });
@@ -333,7 +398,7 @@ describe("BrowserAnnotationProvider", () => {
       expect(WorkerSpy).not.toHaveBeenCalled();
       // The injected worker received the protocol traffic.
       const calls = injected.postMessage.mock.calls.map(
-        (c: unknown[]) => (c[0] as { type: string }).type
+        (c: unknown[]) => (c[0] as { type: string }).type,
       );
       expect(calls).toContain("init");
       expect(calls).toContain("loadModel");

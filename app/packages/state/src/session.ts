@@ -169,7 +169,7 @@ export const useSessionSetter = () => {
 const isTest = typeof process !== "undefined" && process.env.MODE === "test";
 
 export function sessionAtom<K extends keyof Session>(
-  options: SessionAtomOptions<K>
+  options: SessionAtomOptions<K>,
 ) {
   const value = atom<Session[K]>({
     ...options,
@@ -189,7 +189,7 @@ export function sessionAtom<K extends keyof Session>(
           setSelf(
             sessionRef[options.key] === undefined
               ? options.default
-              : sessionRef[options.key]
+              : sessionRef[options.key],
           );
         }
 
@@ -207,7 +207,7 @@ export function sessionAtom<K extends keyof Session>(
             value,
             sessionRef[options.key] === undefined
               ? options.default
-              : sessionRef[options.key]
+              : sessionRef[options.key],
           );
         });
       },
@@ -224,7 +224,7 @@ export function sessionAtom<K extends keyof Session>(
         key: `__${options.key}_selector`,
         get: ({ get }) => get(value),
       },
-      options.key
+      options.key,
     );
   }
 
