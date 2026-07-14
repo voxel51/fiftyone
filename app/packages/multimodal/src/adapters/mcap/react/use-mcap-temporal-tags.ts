@@ -4,10 +4,12 @@ import type {
   TemporalTagCreatePayload,
   TemporalTagUpdatePayload,
 } from "@fiftyone/playback";
-import { useActiveTemporalTagFilterValues } from "@fiftyone/state";
+import {
+  useActiveTemporalTagFilterValues,
+  useTemporalTagColor,
+} from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import { useSampleRendererTemporalTags } from "../../../temporal-tags";
-import { temporalTagColor } from "./mcap-temporal-tag-color";
 
 const NO_TRACKS: Track[] = [];
 const NO_IDS: string[] = [];
@@ -34,6 +36,7 @@ export function useMcapTemporalTags(
     delete: deleteTags,
     temporalTags,
   } = useSampleRendererTemporalTags(ctx);
+  const colorForTag = useTemporalTagColor();
 
   const onTagDelete = useCallback(
     async (event: { data?: unknown }) => {
@@ -90,7 +93,7 @@ export function useMcapTemporalTags(
     return sorted.map(([label, events]) => ({
       id: temporalTagTrackId(label),
       label,
-      color: temporalTagColor(label),
+      color: colorForTag(label),
       events: events.map((t) => ({
         data: t.id,
         label: t.tag,
@@ -98,7 +101,7 @@ export function useMcapTemporalTags(
         endSec: t.end / 1_000_000_000,
       })),
     }));
-  }, [temporalTags]);
+  }, [temporalTags, colorForTag]);
 
   return { tracks, onTagCreate, onTagUpdate, onTagDelete };
 }

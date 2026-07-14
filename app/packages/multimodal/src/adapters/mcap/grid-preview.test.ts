@@ -80,8 +80,10 @@ describe("MCAP grid preview", () => {
       createTopic("/camera/front"),
       createTopic("/diagnostics", "example.Diagnostics"),
     ];
+    const timelineRange = createTimelineRange();
     const client = createClient({
       readDecodedMessages,
+      readTimelineRange: vi.fn(async () => timelineRange),
       readTopics: vi.fn(async () => inventory),
     });
     const entry = { client };
@@ -93,12 +95,15 @@ describe("MCAP grid preview", () => {
     });
 
     expect(first.state.status).toBe("ready");
+    expect(first.bootstrapTimelineRange).toBe(timelineRange);
     expect(first.bootstrapTopics).toBe(inventory);
+    expect(second.bootstrapTimelineRange).toBeUndefined();
     expect(second.bootstrapTopics).toBeUndefined();
     expect(firstImageByte(first.state.frame)).toBe(1);
     expect(first.nextStartTimeNs).toBe(8n);
     expect(second.state.status).toBe("ready");
     expect(client.readTopics).toHaveBeenCalledTimes(1);
+    expect(client.readTimelineRange).toHaveBeenCalledTimes(1);
     expect(readDecodedMessages.mock.calls[1]?.[0]).toMatchObject({
       startTimeNs: 8n,
       topics: ["/camera/front"],
@@ -577,7 +582,7 @@ function createClient(
     readSynchronizedMessageBatch: vi.fn(async () => []),
     readRawMessageRecord: vi.fn(),
     readSynchronizedMessages: vi.fn(),
-    readTimelineRange: vi.fn(),
+    readTimelineRange: vi.fn(async () => createTimelineRange()),
     readTopics: vi.fn(async () => []),
     readTopicTimeBounds: vi.fn(async () => []),
     enumerateNumericFields: vi.fn(async () => []),
@@ -589,6 +594,14 @@ function createClient(
       truncated: false,
     })),
     ...overrides,
+  };
+}
+
+function createTimelineRange() {
+  return {
+    activeTimeline: "log" as const,
+    endTimeNs: 20_000_000_000n,
+    startTimeNs: 500_000_000n,
   };
 }
 
