@@ -3147,7 +3147,7 @@ def get_memory_limit():
     1. cgroup v2 memory limit (``/sys/fs/cgroup/memory.max``)
     2. cgroup v1 memory limit
        (``/sys/fs/cgroup/memory/memory.limit_in_bytes``)
-    3. physical RAM (``os.sysconf``)
+    3. physical RAM (``psutil.virtual_memory``)
 
     A cgroup limit is capped at physical RAM (a cgroup can nominally be
     configured above it), and cgroup "unlimited" values (``"max"`` in v2,
@@ -3159,7 +3159,7 @@ def get_memory_limit():
     try:
         physical = None
         try:
-            physical = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+            physical = psutil.virtual_memory().total
         except Exception:
             pass
 
