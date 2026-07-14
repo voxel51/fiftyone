@@ -110,6 +110,26 @@ describe("McapNetworkStatusPill", () => {
     expect(screen.getByText("buffering 25% of 4s")).toBeTruthy();
   });
 
+  it("clamps completed startup coverage to the gauge range", () => {
+    renderPill({
+      playPending: true,
+      startupCushion: {
+        estimatedWaitSeconds: 0,
+        progressFraction: 1.25,
+        targetSeconds: 4,
+      },
+    });
+
+    const pill = screen.getByText("Preparing playback");
+    expect(pill.getAttribute("title")).toBe(
+      "Playback has buffered 100% of its 4-second startup runway.",
+    );
+    expect(screen.getByText("buffering 100% of 4s")).toBeTruthy();
+    expect(
+      pill.querySelector<HTMLElement>('[style*="height: 100%"]')?.style.height,
+    ).toBe("100%");
+  });
+
   it("uses the limited-network label during gated startup", () => {
     renderPill({
       health: { ...IDLE_HEALTH, limited: true },

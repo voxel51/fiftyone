@@ -172,7 +172,7 @@ function mcapNetworkStatusViewModel({
   }
 
   const startupProgressPercent = gatedStart
-    ? Math.round(gatedStart.progressFraction * 100)
+    ? clampedProgressPercent(gatedStart.progressFraction)
     : null;
   const startupTargetSeconds = gatedStart
     ? Number(gatedStart.targetSeconds.toFixed(1))
