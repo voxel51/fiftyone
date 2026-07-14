@@ -122,7 +122,6 @@ export function useMcap3dPlacementStream({
           return;
         }
         currentTransforms.prefetchPlacement(tick);
-        bumpStreamRangesVersion(store);
       },
     }),
     [active, streamId, store, timeline?.stepNs],
