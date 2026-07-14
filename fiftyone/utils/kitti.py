@@ -12,6 +12,7 @@ import struct
 import os
 
 import numpy as np
+import pypcd4
 
 import eta.core.utils as etau
 import eta.core.web as etaw
@@ -996,10 +997,10 @@ def _load_calibration_matrices(inpath):
 
         if key.startswith("R"):
             m = np.reshape(vals, (3, 3))
-        elif key.startswith("P"):
+        elif key.startswith(("P", "T")):
             m = np.reshape(vals, (3, 4))
-        elif key.startswith("T"):
-            m = np.reshape(vals, (3, 4))
+        else:
+            continue
 
         calib[key] = m
 
@@ -1120,14 +1121,12 @@ def _do_conversion(input):
     # Switch to z-up coordinates
     points = np.stack((points[:, 0], points[:, 2], -points[:, 1]), axis=1)
 
-    from pypcd4 import PointCloud
-
-    rgb = PointCloud.encode_rgb(
+    rgb = pypcd4.PointCloud.encode_rgb(
         np.round(np.clip(colors, 0, 1) * 255).astype(np.uint8)
     )
     xyzrgb = np.column_stack((points.astype(np.float32), rgb))
 
-    PointCloud.from_xyzrgb_points(xyzrgb).save(pcd_path)
+    pypcd4.PointCloud.from_xyzrgb_points(xyzrgb).save(pcd_path)
 
 
 def _write_fo3d_files(pcd_dir, fo3d_dir, overwrite=False, abs_paths=False):

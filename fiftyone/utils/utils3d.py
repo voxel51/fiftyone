@@ -12,6 +12,7 @@ import os
 import warnings
 
 import numpy as np
+import pypcd4
 import scipy.spatial as sp
 from scipy.spatial.transform import Rotation as R
 from typing import Any, Dict, List, Tuple, Union
@@ -1070,17 +1071,19 @@ def _read_point_cloud(filepath):
     ``(n, 3)`` array of RGB values in ``[0, 1]``, or an empty ``(0, 3)`` array
     when the file has no color channel.
     """
-    from pypcd4 import PointCloud
-
-    pc = PointCloud.from_path(filepath)
+    pc = pypcd4.PointCloud.from_path(filepath)
 
     points = pc.numpy(("x", "y", "z")).astype(float)
 
     if "rgb" in pc.fields:
-        colors = PointCloud.decode_rgb(pc.numpy(("rgb",))).astype(float) / 255.0
+        colors = (
+            pypcd4.PointCloud.decode_rgb(pc.numpy(("rgb",))).astype(float)
+            / 255.0
+        )
     elif "rgba" in pc.fields:
         colors = (
-            PointCloud.decode_rgb(pc.numpy(("rgba",))).astype(float) / 255.0
+            pypcd4.PointCloud.decode_rgb(pc.numpy(("rgba",))).astype(float)
+            / 255.0
         )
     else:
         colors = np.zeros((0, 3))

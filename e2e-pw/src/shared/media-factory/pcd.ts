@@ -7,12 +7,12 @@ import { Duration, getPythonCommand } from "src/oss/utils";
 import { dedentPythonCode } from "src/oss/utils/dedent";
 
 /**
- * Generates a PCD (Point Cloud Data) file at the specified path using Open3D,
+ * Generates a PCD (Point Cloud Data) file at the specified path using pypcd4,
  * with a configurable number of points arranged in one of two 3D shapes.
  *
  * The Python code is executed synchronously via a shell subprocess with a
  * 5-second timeout. Stderr output from the subprocess is forwarded to
- * `console.error`. Performance timing is always logged to the console.
+ * `console.error`, and an error is thrown if the subprocess exits nonzero.
  *
  * **Shape layouts:**
  * - `"diagonal"` — Points are arranged along the main diagonal of 3D space,
@@ -86,8 +86,8 @@ export const createPcd = (options: {
   const startTime = performance.now();
   console.log(`Creating pcd with options: ${JSON.stringify(options)}`);
   const pythonCode = `
-  import open3d as o3d
-  pcd = o3d.geometry.PointCloud()
+  import numpy as np
+  from pypcd4 import Encoding, PointCloud
 
   if "${options.shape}" == "diagonal":
     points = [[i, i, i] for i in range(${numPoints})]
@@ -99,8 +99,8 @@ export const createPcd = (options: {
     for index in ${JSON.stringify(imputeNaN?.indices)}:
       points[index[0]][index[1]] = float("nan")
 
-  pcd.points = o3d.utility.Vector3dVector(points)
-  o3d.io.write_point_cloud("${outputPath}", pcd, write_ascii=True)
+  pc = PointCloud.from_xyz_points(np.array(points, dtype=np.float32))
+  pc.save("${outputPath}", Encoding.ASCII)
   `;
 
   const command = getPythonCommand([
@@ -113,6 +113,11 @@ export const createPcd = (options: {
   });
   if (proc.stderr) {
     console.error(proc.stderr.toString());
+  }
+  if (proc.status !== 0) {
+    throw new Error(
+      `Pcd generation failed with exit code ${proc.status}: ${proc.stderr}`
+    );
   }
 
   const endTime = performance.now();
