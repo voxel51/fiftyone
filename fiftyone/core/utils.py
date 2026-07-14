@@ -3165,7 +3165,12 @@ def get_memory_limit():
 
         cgroup = None
         if sys.platform.startswith("linux"):
-            # cgroup v2
+            # cgroup v2. Only the leaf ``memory.max`` is read: in a nested
+            # v2 hierarchy this can report "max" while an ancestor cgroup
+            # enforces a lower limit (v2 exposes no "effective" memory file,
+            # unlike cpuset.cpus.effective for CPUs). Same leaf-only
+            # limitation as get_cpu_count(); walking ancestry would be a
+            # larger change.
             try:
                 with open("/sys/fs/cgroup/memory.max") as f:
                     value = f.read().strip()
