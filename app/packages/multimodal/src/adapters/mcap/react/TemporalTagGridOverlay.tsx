@@ -3,35 +3,11 @@ import { useActiveTemporalTagFilterValues } from "@fiftyone/state";
 import { useMemo } from "react";
 import type { TemporalTag } from "../../../temporal-tags";
 import { useSampleRendererTemporalTags } from "../../../temporal-tags";
+import { temporalTagColor } from "./mcap-temporal-tag-color";
 import styles from "./TemporalTagGridOverlay.module.css";
 
 /** Cap the stacked levels so the bar stays compact on a small grid tile. */
 const MAX_LEVELS = 3;
-
-/** Per-tag color palette — mirrors `use-mcap-temporal-tags` so a tag shows the
- *  same color in the grid overlay and the modal timeline. */
-const TAG_COLORS = [
-  "#f97316",
-  "#3b82f6",
-  "#10b981",
-  "#8b5cf6",
-  "#f43f5e",
-  "#f59e0b",
-  "#06b6d4",
-  "#ec4899",
-];
-
-function hashLabel(label: string): number {
-  let hash = 0;
-  for (let i = 0; i < label.length; i++) {
-    hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
-  }
-  return hash;
-}
-
-function tagColor(tag: string): string {
-  return TAG_COLORS[hashLabel(tag) % TAG_COLORS.length];
-}
 
 interface OverlayMark {
   readonly start: number;
@@ -81,7 +57,7 @@ function buildOverlayModel(
     if (!intervals) {
       continue;
     }
-    const color = tagColor(value);
+    const color = temporalTagColor(value);
     for (const interval of intervals) {
       flat.push({ ...interval, color });
     }

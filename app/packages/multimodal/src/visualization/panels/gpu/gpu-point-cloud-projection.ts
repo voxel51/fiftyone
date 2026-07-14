@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
 import type { ImageViewTransform } from "../base-2d-scene";
+import { fittedImageSize } from "../image-fit";
 
 const QUATERNION_EPSILON = 1e-9;
 
@@ -150,16 +151,14 @@ export function gpuProjectionImagePlaneSize({
   readonly imageHeight: number;
   readonly imageWidth: number;
 }): { readonly height: number; readonly width: number } {
-  const safeContainerHeight = Math.max(1, containerHeight);
-  const safeContainerWidth = Math.max(1, containerWidth);
-  const imageAspect = Math.max(1, imageWidth) / Math.max(1, imageHeight);
-  const containerAspect = safeContainerWidth / safeContainerHeight;
-  const imageIsWider = imageAspect > containerAspect;
-  const constrainByWidth = fit === "contain" ? imageIsWider : !imageIsWider;
-
-  return constrainByWidth
-    ? { height: safeContainerWidth / imageAspect, width: safeContainerWidth }
-    : { height: safeContainerHeight, width: safeContainerHeight * imageAspect };
+  return fittedImageSize(
+    {
+      height: Math.max(1, containerHeight),
+      width: Math.max(1, containerWidth),
+    },
+    { height: Math.max(1, imageHeight), width: Math.max(1, imageWidth) },
+    fit,
+  );
 }
 
 /** Projected image bounds in normalized viewport coordinates. */

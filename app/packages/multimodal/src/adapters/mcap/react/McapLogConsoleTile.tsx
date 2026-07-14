@@ -30,7 +30,11 @@ import {
 } from "./mcap-log-console-rows";
 import { useMcapLogConsoleContext } from "./mcap-log-console-context";
 import {
+  coveredLogReadRange,
+  logWindowForCenter,
   mergeBoundedLogRows,
+  mergeLogReadRanges,
+  missingLogReadRanges,
   pruneLogRows,
   type LogReadRange,
   virtualLogRowRange,
@@ -43,7 +47,10 @@ import type { McapTileProps } from "./mcap-tile-types";
 const PLAYHEAD_REFRESH_MS = 500;
 const LOG_WINDOW_BEFORE_NS = 30_000_000_000n;
 const LOG_WINDOW_AFTER_NS = 2_000_000_000n;
-const LOG_WINDOW_LABEL = "32s";
+const NANOSECONDS_PER_SECOND = 1_000_000_000n;
+const LOG_WINDOW_LABEL = `${
+  (LOG_WINDOW_BEFORE_NS + LOG_WINDOW_AFTER_NS) / NANOSECONDS_PER_SECOND
+}s`;
 const LOG_READ_LIMIT = 600;
 const LOG_ROW_LIMIT = 2_000;
 const LOG_ROW_HEIGHT_PX = 30;
@@ -82,6 +89,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
   const setLogSettings = useSetMcapLogTileSettings();
   const [centerTimeNs, setCenterTimeNs] = useState<bigint | undefined>();
   const [state, setState] = useState<LogRowsState>(INITIAL_ROWS);
+  const lastPlayheadPublishMsRef = useRef(0);
   const fetchedWindowRef = useRef<LogRowsCacheWindow | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ height: 0, scrollTop: 0 });
@@ -98,6 +106,12 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     return valid.length > 0 ? valid : ids;
   }, [enabledTopics, logSources]);
 
+  // This effect resets the throttle when follow mode or playback ownership
+  // changes; fetch-state transitions intentionally preserve it.
+  useEffect(() => {
+    lastPlayheadPublishMsRef.current = 0;
+  }, [followPlayhead, store, timelineIndex]);
+
   // This effect follows the playhead at a bounded refresh rate and pauses
   // while a history read is active so follow-up windows cannot pile up.
   useEffect(() => {
@@ -105,13 +119,12 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
       return undefined;
     }
 
-    let lastPublishMs = 0;
     const publish = () => {
       const now = Date.now();
-      if (now - lastPublishMs < PLAYHEAD_REFRESH_MS) {
+      if (now - lastPlayheadPublishMsRef.current < PLAYHEAD_REFRESH_MS) {
         return;
       }
-      lastPublishMs = now;
+      lastPlayheadPublishMsRef.current = now;
       setCenterTimeNs(timelineIndex.nearestTick(getPlayhead(store)));
     };
 
@@ -135,10 +148,19 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
     [selectedTopics],
   );
   const sourceKey = source ? byteSourceAccessKey(source) : null;
-  const windowStartNs =
-    centerTimeNs !== undefined ? logWindowStartNs(centerTimeNs) : 0n;
-  const windowEndNs =
-    centerTimeNs !== undefined ? centerTimeNs + LOG_WINDOW_AFTER_NS : undefined;
+  const activeWindow = useMemo(
+    () =>
+      centerTimeNs === undefined
+        ? null
+        : logWindowForCenter(
+            centerTimeNs,
+            LOG_WINDOW_BEFORE_NS,
+            LOG_WINDOW_AFTER_NS,
+          ),
+    [centerTimeNs],
+  );
+  const windowStartNs = activeWindow?.startTimeNs ?? 0n;
+  const windowEndNs = activeWindow?.endTimeNs;
   const rows = useMemo(
     () =>
       state.rawRows.filter(
@@ -153,19 +175,13 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
   // This effect reads only the uncovered part of the active log window,
   // cancels stale reads, and retains a bounded live tail for rendering.
   useEffect(() => {
-    if (
-      !source ||
-      !sourceKey ||
-      centerTimeNs === undefined ||
-      selectedTopics.length === 0
-    ) {
+    if (!source || !sourceKey || !activeWindow || selectedTopics.length === 0) {
       fetchedWindowRef.current = null;
       setState(INITIAL_ROWS);
       return undefined;
     }
 
     let cancelled = false;
-    const activeWindow = logWindowForCenter(centerTimeNs);
     const cachedWindow = fetchedWindowRef.current;
     const reusableWindow =
       cachedWindow?.client === client &&
@@ -185,7 +201,10 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
       return undefined;
     }
 
-    const ranges = missingLogReadRanges(reusableWindow, activeWindow);
+    const ranges = missingLogReadRanges(
+      reusableWindow?.ranges ?? null,
+      activeWindow,
+    );
 
     if (ranges.length === 0) {
       setState((current) => {
@@ -239,7 +258,12 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
             break;
           }
           coveredRanges.push(
-            coveredLogReadRange(range, messageCount, lastMessageTimeNs),
+            coveredLogReadRange(
+              range,
+              messageCount,
+              lastMessageTimeNs,
+              LOG_READ_LIMIT,
+            ),
           );
         }
 
@@ -284,7 +308,7 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
       cancelled = true;
     };
   }, [
-    centerTimeNs,
+    activeWindow,
     client,
     selectedLevels.length,
     selectedTopics,
@@ -480,114 +504,12 @@ const McapLogConsoleTile: React.FC<McapTileProps> = () => {
   );
 };
 
-function logWindowStartNs(centerTimeNs: bigint): bigint {
-  return centerTimeNs > LOG_WINDOW_BEFORE_NS
-    ? centerTimeNs - LOG_WINDOW_BEFORE_NS
-    : 0n;
-}
-
-function logWindowForCenter(centerTimeNs: bigint): LogReadRange {
-  return {
-    endTimeNs: centerTimeNs + LOG_WINDOW_AFTER_NS,
-    startTimeNs: logWindowStartNs(centerTimeNs),
-  };
-}
-
 function clipLogCacheWindow(
   cachedWindow: LogRowsCacheWindow,
   activeWindow: LogReadRange,
 ): LogRowsCacheWindow | null {
   const ranges = mergeLogReadRanges(cachedWindow.ranges, activeWindow);
   return ranges.length > 0 ? { ...cachedWindow, ranges } : null;
-}
-
-function missingLogReadRanges(
-  cachedWindow: LogRowsCacheWindow | null,
-  activeWindow: LogReadRange,
-): readonly LogReadRange[] {
-  if (!cachedWindow) {
-    return [activeWindow];
-  }
-
-  const ranges: LogReadRange[] = [];
-  let cursor = activeWindow.startTimeNs;
-  for (const covered of cachedWindow.ranges) {
-    if (covered.startTimeNs > cursor) {
-      ranges.push({ endTimeNs: covered.startTimeNs, startTimeNs: cursor });
-    }
-    if (covered.endTimeNs > cursor) {
-      cursor = covered.endTimeNs;
-    }
-    if (cursor >= activeWindow.endTimeNs) {
-      break;
-    }
-  }
-  if (cursor < activeWindow.endTimeNs) {
-    ranges.push({ endTimeNs: activeWindow.endTimeNs, startTimeNs: cursor });
-  }
-
-  return ranges;
-}
-
-function coveredLogReadRange(
-  range: LogReadRange,
-  messageCount: number,
-  lastMessageTimeNs: bigint | undefined,
-): LogReadRange {
-  if (messageCount >= LOG_READ_LIMIT && lastMessageTimeNs !== undefined) {
-    return {
-      endTimeNs: minBigInt(lastMessageTimeNs, range.endTimeNs),
-      startTimeNs: range.startTimeNs,
-    };
-  }
-
-  return range;
-}
-
-function mergeLogReadRanges(
-  ranges: readonly LogReadRange[],
-  activeWindow: LogReadRange,
-): readonly LogReadRange[] {
-  const clippedRanges: LogReadRange[] = [];
-  for (const range of ranges) {
-    const startTimeNs = maxBigInt(range.startTimeNs, activeWindow.startTimeNs);
-    const endTimeNs = minBigInt(range.endTimeNs, activeWindow.endTimeNs);
-    if (startTimeNs <= endTimeNs) {
-      clippedRanges.push({ endTimeNs, startTimeNs });
-    }
-  }
-  clippedRanges.sort((left, right) =>
-    compareBigInt(left.startTimeNs, right.startTimeNs),
-  );
-
-  const merged: LogReadRange[] = [];
-  for (const range of clippedRanges) {
-    const previous = merged[merged.length - 1];
-    if (!previous || range.startTimeNs > previous.endTimeNs) {
-      merged.push(range);
-      continue;
-    }
-    if (range.endTimeNs > previous.endTimeNs) {
-      merged[merged.length - 1] = {
-        ...previous,
-        endTimeNs: range.endTimeNs,
-      };
-    }
-  }
-
-  return merged;
-}
-
-function minBigInt(left: bigint, right: bigint): bigint {
-  return left < right ? left : right;
-}
-
-function maxBigInt(left: bigint, right: bigint): bigint {
-  return left > right ? left : right;
-}
-
-function compareBigInt(left: bigint, right: bigint): number {
-  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function formatRelativeTime(timeNs: bigint, originNs: bigint): string {

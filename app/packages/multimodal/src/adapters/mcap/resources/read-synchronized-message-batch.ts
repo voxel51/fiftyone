@@ -1,5 +1,6 @@
 import type { McapTypes } from "@mcap/core";
 import type { DecodeClient } from "../../../query/decode";
+import { compareBigInt } from "../bigint";
 import {
   compareByTimelineTime,
   createCandidateSelector,
@@ -889,12 +890,4 @@ function indexedCandidateRecordId(candidate: McapIndexedMessageCandidate) {
     candidate.chunkStartOffset.toString(),
     candidate.messageOffset.toString(),
   ].join(INDEXED_LOOKUP_KEY_SEPARATOR);
-}
-
-function compareBigInt(left: bigint, right: bigint) {
-  if (left === right) {
-    return 0;
-  }
-
-  return left < right ? -1 : 1;
 }

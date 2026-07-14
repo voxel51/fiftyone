@@ -317,7 +317,7 @@ function TemporalPolicySettings({
               onChange={(transformGapWarningMs) =>
                 onUpdate({ transformGapWarningMs })
               }
-              tooltip="Shows a 3D warning when a rendered transform interpolates across a wider gap than this. Rendering continues if the max interpolation gap allows it. Enter 0 to disable the warning."
+              tooltip="Shows a warning when a rendered transform interpolates across a wider gap than this. Rendering continues if the max interpolation gap allows it. Enter 0 to disable the warning."
               value={policy.transformGapWarningMs}
             />
             <PolicyNumberInput

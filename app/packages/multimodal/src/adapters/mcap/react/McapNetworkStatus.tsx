@@ -25,6 +25,15 @@ import styles from "./McapNetworkStatus.module.css";
 
 const HEALTH_HEARTBEAT_MS = 1_000;
 
+interface McapNetworkStatusViewModel {
+  readonly detail: string | null;
+  readonly gaugeFillPercent: number | null;
+  readonly kind: "limited" | "neutral";
+  readonly label: string;
+  readonly throughputLabel: string | null;
+  readonly title: string;
+}
+
 /**
  * Non-visual bridge from transport snapshots and playback buffering edges into
  * the playback-local network-health atom.
@@ -100,6 +109,58 @@ export const McapNetworkStatusPill: React.FC = () => {
     displayThroughput !== null && displayThroughput > 0
       ? `${humanReadableBytes(Math.round(displayThroughput))}/s`
       : null;
+  const view = mcapNetworkStatusViewModel({
+    bufferingDetail,
+    healthLimited: health.limited,
+    playPending,
+    startupCushion,
+    throughputLabel,
+  });
+  if (!view) {
+    return null;
+  }
+
+  return (
+    <span
+      className={`${styles.pill} ${view.kind === "neutral" ? styles.neutral : ""}`}
+      data-cy="mcap-network-status-pill"
+      title={view.title}
+    >
+      {view.gaugeFillPercent !== null ? (
+        // The vessel fills with the runway actually buffered so far.
+        <span aria-hidden="true" className={styles.gauge}>
+          <span
+            className={styles.gaugeFill}
+            style={{ height: `${view.gaugeFillPercent}%` }}
+          />
+        </span>
+      ) : (
+        <span className={styles.dot} aria-hidden="true" />
+      )}
+      {view.label}
+      {view.throughputLabel ? (
+        <span className={styles.throughput}>{view.throughputLabel}</span>
+      ) : null}
+      {view.detail ? (
+        <span className={styles.throughput}>{view.detail}</span>
+      ) : null}
+    </span>
+  );
+};
+
+function mcapNetworkStatusViewModel({
+  bufferingDetail,
+  healthLimited,
+  playPending,
+  startupCushion,
+  throughputLabel,
+}: {
+  readonly bufferingDetail: string | null;
+  readonly healthLimited: boolean;
+  readonly playPending: boolean;
+  readonly startupCushion: ReturnType<typeof useMcapStartupCushionState>;
+  readonly throughputLabel: string | null;
+}): McapNetworkStatusViewModel | null {
   const placementPending =
     playPending && bufferingDetail === MCAP_3D_PLACEMENT_BUFFERING_DETAIL;
   // The bandwidth-aware start gate is holding this play press: name the
@@ -110,66 +171,53 @@ export const McapNetworkStatusPill: React.FC = () => {
     return null;
   }
 
-  const bufferingLabel = placementPending
-    ? "waiting for transforms"
-    : gatedStart
-      ? `buffering ${Math.round(gatedStart.progressFraction * 100)}% of ${Number(
-          gatedStart.targetSeconds.toFixed(1),
-        )}s`
-      : null;
-  const label = placementPending
-    ? "Placement"
-    : gatedStart
-      ? health.limited
-        ? "Slow network"
-        : "Preparing playback"
-      : health.limited
-        ? "Slow network"
-        : "Bandwidth";
+  const startupProgressPercent = gatedStart
+    ? clampedProgressPercent(gatedStart.progressFraction)
+    : null;
+  const startupTargetSeconds = gatedStart
+    ? Number(gatedStart.targetSeconds.toFixed(1))
+    : null;
 
-  return (
-    <span
-      className={`${styles.pill} ${health.limited ? "" : styles.neutral}`}
-      data-cy="mcap-network-status-pill"
-      title={
-        placementPending
-          ? "Playback is waiting for frame transforms needed to place the 3D point cloud."
-          : gatedStart
-            ? `Playback has buffered ${Math.round(
-                gatedStart.progressFraction * 100,
-              )}% of its ${Number(
-                gatedStart.targetSeconds.toFixed(1),
-              )}-second startup runway.`
-            : health.limited
-              ? "Playback is buffering because the network cannot keep up with this recording's data rate."
-              : "Observed MCAP throughput while transfers were active."
-      }
-    >
-      {gatedStart ? (
-        // The vessel fills with the runway actually buffered so far.
-        <span aria-hidden="true" className={styles.gauge}>
-          <span
-            className={styles.gaugeFill}
-            style={{
-              height: `${Math.round(
-                Math.min(1, Math.max(0, gatedStart.progressFraction)) * 100,
-              )}%`,
-            }}
-          />
-        </span>
-      ) : (
-        <span className={styles.dot} aria-hidden="true" />
-      )}
-      {label}
-      {throughputLabel ? (
-        <span className={styles.throughput}>{throughputLabel}</span>
-      ) : null}
-      {bufferingLabel ? (
-        <span className={styles.throughput}>{bufferingLabel}</span>
-      ) : null}
-    </span>
-  );
-};
+  if (placementPending) {
+    return {
+      detail: "waiting for transforms",
+      gaugeFillPercent: gatedStart
+        ? clampedProgressPercent(gatedStart.progressFraction)
+        : null,
+      kind: healthLimited ? "limited" : "neutral",
+      label: "Placement",
+      throughputLabel,
+      title:
+        "Playback is waiting for frame transforms needed to place the 3D point cloud.",
+    };
+  }
+
+  if (gatedStart) {
+    return {
+      detail: `buffering ${startupProgressPercent}% of ${startupTargetSeconds}s`,
+      gaugeFillPercent: clampedProgressPercent(gatedStart.progressFraction),
+      kind: healthLimited ? "limited" : "neutral",
+      label: healthLimited ? "Slow network" : "Preparing playback",
+      throughputLabel,
+      title: `Playback has buffered ${startupProgressPercent}% of its ${startupTargetSeconds}-second startup runway.`,
+    };
+  }
+
+  return {
+    detail: null,
+    gaugeFillPercent: null,
+    kind: healthLimited ? "limited" : "neutral",
+    label: healthLimited ? "Slow network" : "Bandwidth",
+    throughputLabel,
+    title: healthLimited
+      ? "Playback is buffering because the network cannot keep up with this recording's data rate."
+      : "Observed MCAP throughput while transfers were active.",
+  };
+}
+
+function clampedProgressPercent(fraction: number): number {
+  return Math.round(Math.min(1, Math.max(0, fraction)) * 100);
+}
 
 function nowMs(): number {
   return globalThis.performance?.now?.() ?? Date.now();

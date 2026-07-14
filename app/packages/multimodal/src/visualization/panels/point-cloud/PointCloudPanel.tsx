@@ -91,6 +91,7 @@ export function PointCloudPanel({
   canvasSurface,
   className,
   colorBy,
+  controls,
   fit = "initial",
   fitResetKey,
   frustumLayers = [],
@@ -415,6 +416,10 @@ export function PointCloudPanel({
     renderLayers,
     sceneBoundsSummary,
   ]);
+  const showControlStack =
+    showControls &&
+    !canvasError &&
+    Boolean(controls || frameFitPose || measureReadout);
 
   return (
     <div className={className} style={{ ...styles.panel, ...style }}>
@@ -511,38 +516,43 @@ export function PointCloudPanel({
       {!canvasError && showColorLegend && colorRamps.length > 0 ? (
         <ColorRampLegend ramps={colorRamps} />
       ) : null}
-      {showControls && !canvasError && frameFitPose ? (
-        <button
-          aria-label="Recenter view"
-          onClick={handleRecenter}
-          style={styles.recenter}
-          title="Recenter the view on the current scene"
-          type="button"
-        >
-          <Icon
-            name={IconName.Fullscreen}
-            size={Size.Xs}
-            style={styles.controlIcon}
-          />
-        </button>
-      ) : null}
-      {showControls && !canvasError && frameFitPose ? (
-        <button
-          aria-label="Measure distance"
-          aria-pressed={measureArmed}
-          onClick={handleMeasureToggle}
-          style={
-            measureArmed ? styles.measureToggleActive : styles.measureToggle
-          }
-          title="Measure distance on the grid plane (Esc clears)"
-          type="button"
-        >
-          <MeasureRulerIcon />
-        </button>
-      ) : null}
-      {showControls && !canvasError && measureReadout ? (
-        <div data-testid="measure-readout" style={styles.measureReadout}>
-          {measureReadout}
+      {showControlStack ? (
+        <div style={styles.controls}>
+          {measureReadout ? (
+            <div data-testid="measure-readout" style={styles.measureReadout}>
+              {measureReadout}
+            </div>
+          ) : null}
+          {controls}
+          {frameFitPose ? (
+            <button
+              aria-label="Measure distance"
+              aria-pressed={measureArmed}
+              onClick={handleMeasureToggle}
+              style={
+                measureArmed ? styles.measureToggleActive : styles.measureToggle
+              }
+              title="Measure distance on the grid plane (Esc clears)"
+              type="button"
+            >
+              <MeasureRulerIcon />
+            </button>
+          ) : null}
+          {frameFitPose ? (
+            <button
+              aria-label="Recenter view"
+              onClick={handleRecenter}
+              style={styles.recenter}
+              title="Recenter the view on the current scene"
+              type="button"
+            >
+              <Icon
+                name={IconName.Fullscreen}
+                size={Size.Xs}
+                style={styles.controlIcon}
+              />
+            </button>
+          ) : null}
         </div>
       ) : null}
       <PanelNotices notices={panelNotices} scope="scene" />

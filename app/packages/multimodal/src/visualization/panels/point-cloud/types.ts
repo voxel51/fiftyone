@@ -364,6 +364,11 @@ export interface PointCloudPanelProps {
    */
   readonly cameraRig?: ReactNode;
   /**
+   * Caller-specific buttons rendered above the built-in measure and recenter
+   * actions in the bottom-right control stack.
+   */
+  readonly controls?: ReactNode;
+  /**
    * Device-registry surface tag passed through to the WebGPU canvas
    * ("modal-3d", "grid-preview", ...). Bookkeeping only.
    */
@@ -421,8 +426,8 @@ export interface PointCloudPanelProps {
    */
   readonly worldGrid?: WorldGridPanelConfig | null;
   /**
-   * Whether to render the interactive HUD controls (recenter, measure).
-   * Modal surfaces keep them; grid previews turn them off.
+   * Whether to render the interactive HUD control stack (caller controls,
+   * recenter, and measure). Modal surfaces keep it; grid previews turn it off.
    * @default true
    */
   readonly showControls?: boolean;
