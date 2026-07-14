@@ -4,6 +4,7 @@ import {
   stringSelectedValuesAtom,
   temporalTagResults,
   useSyncTemporalTagResults,
+  useTemporalTagColor,
 } from "@fiftyone/state";
 import React from "react";
 import StringFilter from "./StringFilter/StringFilter";
@@ -28,6 +29,7 @@ const TemporalTagsFilter = ({
   title: string;
 }) => {
   useSyncTemporalTagResults();
+  const colorForTag = useTemporalTagColor();
 
   return (
     <StringFilter
@@ -38,6 +40,7 @@ const TemporalTagsFilter = ({
       path={path}
       resultsAtom={temporalTagResults}
       selectedAtom={stringSelectedValuesAtom({ modal, path })}
+      resultColor={(value) => colorForTag(value ?? "")}
       {...rest}
     />
   );

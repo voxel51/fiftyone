@@ -1,4 +1,5 @@
 import { PlaybackSyncMode } from "../../schemas/v1";
+import { compareBigInt } from "./bigint";
 import type {
   McapDecodedMessage,
   McapResolvedStreamSyncPolicy,
@@ -34,6 +35,11 @@ type SyncCandidateTieBreaker<Candidate extends SyncCandidate> = (
   left: Candidate,
   right: Candidate,
 ) => number;
+
+type SyncCandidateSelector<Candidate extends SyncCandidate> = (
+  timeNs: bigint,
+  policy: McapResolvedStreamSyncPolicy | undefined,
+) => readonly Candidate[];
 
 /**
  * Expands per-stream sync policy into concrete time bounds for one playback time.
@@ -177,6 +183,45 @@ export function selectCandidatesForTopic<Candidate extends SyncCandidate>(
 }
 
 /**
+ * Builds a reusable selector for one topic's candidate set. LATEST is the
+ * playback default and is selected for every tick in a batch, so it lazily
+ * sorts once and then resolves each window with two binary searches.
+ */
+export function createCandidateSelector<Candidate extends SyncCandidate>(
+  candidates: readonly Candidate[],
+  tieBreaker?: SyncCandidateTieBreaker<Candidate>,
+): SyncCandidateSelector<Candidate> {
+  let timelineSorted: readonly Candidate[] | null = null;
+
+  return (timeNs, policy) => {
+    if (policy?.mode !== PlaybackSyncMode.LATEST) {
+      return selectCandidatesForTopic(candidates, timeNs, policy, tieBreaker);
+    }
+
+    if (timelineSorted === null) {
+      timelineSorted = [...candidates].sort((left, right) =>
+        compareCandidateByTimelineTime(left, right, tieBreaker),
+      );
+    }
+
+    const startIndex =
+      policy.startTimeNs === undefined
+        ? 0
+        : lowerBoundByTimelineTime(timelineSorted, policy.startTimeNs);
+    const effectiveEndTimeNs =
+      policy.endTimeNs < timeNs ? policy.endTimeNs : timeNs;
+    const endIndex = upperBoundByTimelineTime(
+      timelineSorted,
+      effectiveEndTimeNs,
+    );
+    return timelineSorted.slice(
+      Math.max(startIndex, endIndex - policy.limit),
+      endIndex,
+    );
+  };
+}
+
+/**
  * Orders decoded MCAP messages by playback timeline time.
  */
 export function compareByTimelineTime(
@@ -189,13 +234,7 @@ export function compareByTimelineTime(
 /**
  * Comparator for bigint timestamps.
  */
-export function compareBigInt(left: bigint, right: bigint) {
-  if (left === right) {
-    return 0;
-  }
-
-  return left < right ? -1 : 1;
-}
+export { compareBigInt };
 
 /**
  * Returns whether a timestamp falls within optional inclusive bounds.
@@ -245,6 +284,40 @@ export function maxBigInt(values: readonly bigint[]): bigint {
   }
 
   return max;
+}
+
+function lowerBoundByTimelineTime<Candidate extends SyncCandidate>(
+  candidates: readonly Candidate[],
+  timeNs: bigint,
+): number {
+  let low = 0;
+  let high = candidates.length;
+  while (low < high) {
+    const mid = low + Math.floor((high - low) / 2);
+    if (candidates[mid].timelineTimeNs < timeNs) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  return low;
+}
+
+function upperBoundByTimelineTime<Candidate extends SyncCandidate>(
+  candidates: readonly Candidate[],
+  timeNs: bigint,
+): number {
+  let low = 0;
+  let high = candidates.length;
+  while (low < high) {
+    const mid = low + Math.floor((high - low) / 2);
+    if (candidates[mid].timelineTimeNs <= timeNs) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  return low;
 }
 
 function resolveStreamSyncPolicy(

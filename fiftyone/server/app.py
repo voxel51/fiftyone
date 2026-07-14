@@ -137,7 +137,14 @@ if _allowed_origins:
         Middleware(
             CORSMiddleware,
             allow_origins=_allowed_origins,
-            allow_methods=["GET", "PATCH", "POST", "HEAD", "OPTIONS"],
+            allow_methods=[
+                "GET",
+                "PATCH",
+                "POST",
+                "DELETE",
+                "HEAD",
+                "OPTIONS",
+            ],
             allow_headers=[
                 "authorization",
                 "content-type",

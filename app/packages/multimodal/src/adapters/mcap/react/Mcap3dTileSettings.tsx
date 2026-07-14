@@ -1,5 +1,4 @@
 import { Dialog } from "@fiftyone/components";
-import { TileSettingsContent } from "@fiftyone/tiling";
 import {
   Button,
   Checkbox,
@@ -21,6 +20,7 @@ import {
 } from "@voxel51/voodo";
 import type { Descriptor } from "@voxel51/voodo";
 import React, { useEffect, useMemo, useState } from "react";
+import type { DecodedDiagnostic } from "../../../decoders";
 import type { SceneSource } from "../../../scene-inventory";
 import {
   isFollowTrackingMode,
@@ -45,6 +45,7 @@ import {
   type PointCloudColormapName,
 } from "../../../visualization/panels/point-cloud";
 import {
+  DEFAULT_MCAP_IMAGE_PROJECTION,
   DEFAULT_MCAP_POINT_CLOUD_COLOR,
   MAX_MCAP_POINT_CLOUD_POINT_SIZE,
   MCAP_POINT_CLOUD_POINT_SIZE_STEP,
@@ -53,23 +54,26 @@ import {
   type McapPointCloudColorSettings,
   type McapSceneBackgroundMode,
   useMcapPinholeCameraSettings,
+  useMcapImageProjectionSettingsByTopic,
   useMcapPointCloudStyleSettings,
   useMcapReferenceGridSettings,
   useMcapSceneBackgroundSettings,
+  useSetMcapImageProjection,
 } from "./mcap-modal-settings";
+import type { McapImageGeometryMode } from "./camera-geometry/mcap-camera-model";
 import type { PointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
-import {
-  MCAP_3D_SCENE_UP_AXES,
-  type Mcap3dSceneUpAxis,
-} from "./mcap-3d-scene-up";
 import type { McapPoseTrajectories } from "./mcap-pose-trajectories-context";
 import {
   checkboxNoSpaceToggleProps,
   settingsBooleanNoSpaceToggleProps,
 } from "./mcap-settings-keyboard";
+import { McapFrameSelect } from "./McapFrameSelect";
+import { McapSettingsNumberField } from "./McapSettingsNumberField";
+import { McapSettingsSelect } from "./McapSettingsSelect";
 import McapSidebarGroup from "./McapSidebarGroup";
 import settingsStyles from "./McapTile.settings.module.css";
 import { McapSettingsLabel as SettingsLabel } from "./McapSettingsLabel";
+import McapViewpointSettings from "./McapViewpointSettings";
 import { TRACKING_MODES } from "./use-mcap-3d-camera-tracking";
 
 /**
@@ -111,14 +115,21 @@ export interface Mcap3dTileSettingsPointCloudInputs {
   readonly selectedSources: readonly SceneSource[];
 }
 
+/** Image topics paired with the currently selected camera calibrations. */
+export interface Mcap3dTileSettingsCameraInputs {
+  readonly diagnosticsByTopic: readonly (readonly DecodedDiagnostic[])[];
+  readonly imageTopics: readonly string[];
+}
+
 /**
- * Frame controls owned by the 3D tile instance.
+ * Camera-target frame controls owned by the 3D tile instance. The world
+ * frame is scene-scoped and edited from the sidebar's Scene tab; its id is
+ * carried here read-only so tracking copy can explain follow-mode no-ops.
  */
 export interface Mcap3dTileSettingsFrameControls {
   readonly cameraTargetFrameId: string;
   readonly frameIds: readonly string[];
   readonly updateCameraTargetFrameId: (frameId: string) => void;
-  readonly updateWorldFrameId: (frameId: string) => void;
   readonly worldFrameId: string;
 }
 
@@ -143,44 +154,45 @@ export interface Mcap3dTileSettingsTrackingControls {
 }
 
 /**
- * Scene-orientation controls owned by the modal layout state.
- */
-export interface Mcap3dTileSettingsSceneControls {
-  readonly sceneUpAxis: Mcap3dSceneUpAxis;
-  readonly setSceneUpAxis: (axis: Mcap3dSceneUpAxis) => void;
-}
-
-/**
  * Grouped props for tile-local state consumed by the 3D settings sidebar.
  */
 export interface Mcap3dTileSettingsProps {
+  readonly cameraInputs: Mcap3dTileSettingsCameraInputs;
   readonly frameControls: Mcap3dTileSettingsFrameControls;
   readonly pointCloudInputs: Mcap3dTileSettingsPointCloudInputs;
   readonly poseControls: Mcap3dTileSettingsPoseControls;
-  readonly sceneControls: Mcap3dTileSettingsSceneControls;
   readonly selection: Mcap3dTileSettingsSelectionControls;
   readonly sourceGroups: Mcap3dTileSettingsSourceGroups;
+  readonly tileId: string | null;
   readonly trackingControls: Mcap3dTileSettingsTrackingControls;
 }
 
 /**
- * Settings sidebar for the 3D tile. Unlike the image tile, sources are
- * multi-selectable — overlaying several sensors in one view is the point of
- * a 3D panel — so the sidebar offers per-source checkboxes grouped into
- * collapsible sections, each with a master on/off switch. Modal-wide
- * preferences come from domain hooks, tile-local controls arrive as grouped
- * props, and expanded editor state stays local to this sidebar.
+ * Settings for one 3D view, registered into the sidebar's panel tab
+ * (which frames it with the tile's stream-status strip). Everything here
+ * answers "what does this window show": the view's camera (viewpoint +
+ * tracking), which sources it draws, and its viewport appearance.
+ * Scene-defining state — reference frame, up axis —
+ * lives on the sidebar's Scene tab instead. Unlike the image tile, sources
+ * are multi-selectable — overlaying several sensors in one view is the
+ * point of a 3D panel — so per-source checkboxes group into collapsible
+ * sections, each with a master on/off switch. Modal-wide preferences come
+ * from domain hooks, tile-local controls arrive as grouped props, and
+ * expanded editor state stays local to this component.
  */
 const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
+  cameraInputs,
   frameControls,
   pointCloudInputs,
   poseControls,
-  sceneControls,
   selection,
   sourceGroups,
+  tileId,
   trackingControls,
 }) => {
   const { pinholeCamera, setPinholeCamera } = useMcapPinholeCameraSettings();
+  const imageProjectionSettings = useMcapImageProjectionSettingsByTopic();
+  const setImageProjection = useSetMcapImageProjection();
   const {
     pointCloudColors,
     pointCloudPointSize,
@@ -198,6 +210,18 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   const pointCloudTopics = sourceGroups.pointCloud.topics;
   const cameraSources = sourceGroups.camera.sources;
   const cameraTopics = sourceGroups.camera.topics;
+  const cameraDetailsBySourceId = useMemo(
+    () =>
+      new Map(
+        cameraTopics.map((topic, index) => [
+          topic,
+          (cameraInputs.diagnosticsByTopic[index] ?? []).map(
+            (diagnostic) => diagnostic.message,
+          ),
+        ]),
+      ),
+    [cameraInputs.diagnosticsByTopic, cameraTopics],
+  );
   const sceneAnnotationSources = sourceGroups.sceneAnnotation.sources;
   const sceneAnnotationTopics = sourceGroups.sceneAnnotation.topics;
   const poseSources = sourceGroups.pose.sources;
@@ -207,248 +231,280 @@ const Mcap3dTileSettings: React.FC<Mcap3dTileSettingsProps> = ({
   const pointCloudColorCapabilities = pointCloudInputs.colorCapabilities;
   const selectedPointCloudSources = pointCloudInputs.selectedSources;
   const selectedPoseSources = poseControls.selectedSources;
-  const sceneUpAxis = sceneControls.sceneUpAxis;
-  const setSceneUpAxis = sceneControls.setSceneUpAxis;
   const trackingMode = trackingControls.mode;
   const setTrackingMode = trackingControls.setMode;
   const { setTrajectoryFrameOverrides, trajectories, trajectoryFrameByTopic } =
     poseControls;
-  const { updateCameraTargetFrameId, updateWorldFrameId } = frameControls;
+  const { updateCameraTargetFrameId } = frameControls;
 
   return (
-    <TileSettingsContent>
-      <div className={settingsStyles.root}>
-        <SourceGroup
-          enabled={enabled}
-          selectedCount={pointCloudTopics.length}
-          setSourcesEnabled={setSourcesEnabled}
-          sources={pointCloudSources}
-          title="Point Clouds"
-          toggleAriaLabel="Toggle point clouds"
-          toggleSource={toggleSource}
-        />
+    <div className={settingsStyles.root}>
+      <McapViewpointSettings tileId={tileId} />
 
-        {pointCloudSources.length > 0 ? (
-          <PointCloudStyleSection
-            pointCloudColorCapabilities={pointCloudColorCapabilities}
-            pointCloudColors={pointCloudColors}
-            pointCloudPointSize={pointCloudPointSize}
-            pointCloudSources={pointCloudSources}
-            selectedPointCloudSources={selectedPointCloudSources}
-            setPointCloudColor={setPointCloudColor}
-            setPointCloudPointSize={setPointCloudPointSize}
-            setShowPointCloudColorLegend={setShowPointCloudColorLegend}
-            showPointCloudColorLegend={showPointCloudColorLegend}
-          />
+      <McapSidebarGroup title="Tracking">
+        <McapFrameSelect
+          disabled={frameIds.length === 0}
+          label="Camera Target"
+          onChange={updateCameraTargetFrameId}
+          options={frameIds}
+          tooltip="What the camera tracks. This changes your view, but it does not move data in the world."
+          value={cameraTargetFrameId}
+        />
+        <TrackingModeSelect
+          onChange={setTrackingMode}
+          tooltip="How the camera follows the target frame during playback. Free leaves OrbitControls fully user-driven; follow modes preserve your current offset while tracking motion. Shortcuts: E = ego view, T = top view."
+          value={trackingMode}
+        />
+        {isFollowTrackingMode(trackingMode) &&
+        worldFrameId &&
+        cameraTargetFrameId === worldFrameId ? (
+          <span className={settingsStyles.emptyText}>
+            The camera target and the reference frame match, so follow modes
+            change nothing: a frame cannot move relative to itself. Pick a
+            global reference frame (like map) on the Scene tab to see the target
+            move.
+          </span>
         ) : null}
+      </McapSidebarGroup>
 
-        <SourceGroup
-          enabled={enabled}
-          selectedCount={cameraTopics.length}
-          setSourcesEnabled={setSourcesEnabled}
-          sources={cameraSources}
-          title="Cameras"
-          toggleAriaLabel="Toggle cameras"
-          toggleSource={toggleSource}
+      <SourceGroup
+        enabled={enabled}
+        selectedCount={pointCloudTopics.length}
+        setSourcesEnabled={setSourcesEnabled}
+        sources={pointCloudSources}
+        title="Point Clouds"
+        toggleAriaLabel="Toggle point clouds"
+        toggleSource={toggleSource}
+      />
+
+      {pointCloudSources.length > 0 ? (
+        <PointCloudStyleSection
+          pointCloudColorCapabilities={pointCloudColorCapabilities}
+          pointCloudColors={pointCloudColors}
+          pointCloudPointSize={pointCloudPointSize}
+          pointCloudSources={pointCloudSources}
+          selectedPointCloudSources={selectedPointCloudSources}
+          setPointCloudColor={setPointCloudColor}
+          setPointCloudPointSize={setPointCloudPointSize}
+          setShowPointCloudColorLegend={setShowPointCloudColorLegend}
+          showPointCloudColorLegend={showPointCloudColorLegend}
         />
+      ) : null}
 
-        {cameraSources.length > 0 ? (
-          <McapSidebarGroup
-            defaultExpanded={false}
-            summary={`${pinholeCamera.imagePlaneDepthM} m · ${pinholeCamera.opacityPercent}%`}
-            title="Pinhole"
-          >
-            <SettingsNumberInput
-              label="Depth (m)"
-              max={100}
-              min={0.05}
-              onChange={(imagePlaneDepthM) =>
-                setPinholeCamera({ imagePlaneDepthM })
-              }
-              step={0.25}
-              tooltip="Distance from the optical center to the image plane. Larger depths render bigger camera frustums."
-              value={pinholeCamera.imagePlaneDepthM}
-            />
-            <SettingsNumberInput
-              label="Opacity (%)"
-              max={100}
-              min={0}
-              onChange={(opacityPercent) =>
-                setPinholeCamera({ opacityPercent })
-              }
-              step={1}
-              tooltip="Normal frustum and image-plane opacity. Hovered and focused frustums render fully opaque."
-              value={pinholeCamera.opacityPercent}
-            />
-          </McapSidebarGroup>
-        ) : null}
+      <SourceGroup
+        detailsBySourceId={cameraDetailsBySourceId}
+        enabled={enabled}
+        selectedCount={cameraTopics.length}
+        setSourcesEnabled={setSourcesEnabled}
+        sources={cameraSources}
+        title="Cameras"
+        toggleAriaLabel="Toggle cameras"
+        toggleSource={toggleSource}
+      />
 
-        <SourceGroup
-          enabled={enabled}
-          selectedCount={sceneAnnotationTopics.length}
-          setSourcesEnabled={setSourcesEnabled}
-          sources={sceneAnnotationSources}
-          title="3D Labels"
-          toggleAriaLabel="Toggle 3D labels"
-          toggleSource={toggleSource}
-        />
-
-        <SourceGroup
-          enabled={enabled}
-          selectedCount={poseTopics.length}
-          setSourcesEnabled={setSourcesEnabled}
-          sources={poseSources}
-          title="Ego Pose"
-          toggleAriaLabel="Toggle ego pose"
-          toggleSource={toggleSource}
+      {cameraSources.length > 0 ? (
+        <McapSidebarGroup
+          defaultExpanded={false}
+          summary={`${pinholeCamera.imagePlaneDepthM} m · ${pinholeCamera.opacityPercent}%`}
+          title="Pinhole"
         >
-          {selectedPoseSources
-            .filter(
-              (s) =>
-                trajectories.get(s.id)?.status === "ready" &&
-                !trajectories.get(s.id)?.streamFrameId,
-            )
-            .map((s) => (
-              <FrameSelect
-                disabled={frameIds.length === 0}
-                key={s.id}
-                label={`Trajectory Frame (${s.label})`}
-                onChange={(frameId) =>
-                  setTrajectoryFrameOverrides((current) => ({
-                    ...current,
-                    [s.id]: frameId,
-                  }))
+          <SettingsNumberInput
+            label="Depth (m)"
+            max={100}
+            min={0.05}
+            onChange={(imagePlaneDepthM) =>
+              setPinholeCamera({ imagePlaneDepthM })
+            }
+            step={0.25}
+            tooltip="Distance from the optical center to the image plane. Larger depths render bigger camera frustums."
+            value={pinholeCamera.imagePlaneDepthM}
+          />
+          <SettingsNumberInput
+            label="Opacity (%)"
+            max={100}
+            min={0}
+            onChange={(opacityPercent) => setPinholeCamera({ opacityPercent })}
+            step={1}
+            tooltip="Normal frustum and image-plane opacity. Hovered and focused frustums render fully opaque."
+            value={pinholeCamera.opacityPercent}
+          />
+          {cameraTopics.map((cameraTopic, index) => {
+            const imageTopic = cameraInputs.imageTopics[index];
+            if (!imageTopic) return null;
+            const cameraLabel =
+              cameraSources.find((source) => source.id === cameraTopic)
+                ?.label ?? cameraTopic;
+            const geometry =
+              imageProjectionSettings[imageTopic]?.geometry ??
+              DEFAULT_MCAP_IMAGE_PROJECTION.geometry;
+            return (
+              <FormField
+                key={cameraTopic}
+                label={
+                  <SettingsLabel
+                    label={`Geometry (${cameraLabel})`}
+                    tooltip="Whether the recorded image uses the original distorted camera model or the rectified projection. This also controls the 3D frustum texture."
+                  />
                 }
-                options={frameIds}
-                tooltip="This pose stream declares no coordinate frame; choose the frame its positions are expressed in."
-                value={trajectoryFrameByTopic.get(s.id) ?? ""}
+                control={
+                  <Select
+                    aria-label={`Recorded image geometry (${cameraLabel})`}
+                    exclusive
+                    onChange={(value) => {
+                      if (isMcapImageGeometryMode(value)) {
+                        setImageProjection(imageTopic, { geometry: value });
+                      }
+                    }}
+                    options={MCAP_IMAGE_GEOMETRY_OPTIONS}
+                    portal
+                    zIndex={ZIndex.AboveModal}
+                    value={geometry}
+                  />
+                }
               />
-            ))}
-        </SourceGroup>
-
-        <SourceGroup
-          enabled={enabled}
-          selectedCount={mapLayerTopics.length}
-          setSourcesEnabled={setSourcesEnabled}
-          sources={mapLayerSources}
-          title="Map Layers"
-          toggleAriaLabel="Toggle map layers"
-          toggleSource={toggleSource}
-        />
-
-        <McapSidebarGroup title="View">
-          <SceneUpAxisSelect
-            onChange={setSceneUpAxis}
-            tooltip="World axis treated as up by the 3D camera, gizmo, and reference grid."
-            value={sceneUpAxis}
-          />
-          <FrameSelect
-            disabled={frameIds.length === 0}
-            label="World Frame"
-            onChange={updateWorldFrameId}
-            options={frameIds}
-            tooltip="Where everything exists. Data is transformed into this stable coordinate system before it is drawn."
-            value={worldFrameId}
-          />
-          <FrameSelect
-            disabled={frameIds.length === 0}
-            label="Camera Target"
-            onChange={updateCameraTargetFrameId}
-            options={frameIds}
-            tooltip="What the camera tracks. This changes your view, but it does not move data in the world."
-            value={cameraTargetFrameId}
-          />
-          <TrackingModeSelect
-            onChange={setTrackingMode}
-            tooltip="How the camera follows the target frame during playback. Free leaves OrbitControls fully user-driven; follow modes preserve your current offset while tracking motion. Shortcuts: E = ego view, T = top view."
-            value={trackingMode}
-          />
-          {isFollowTrackingMode(trackingMode) &&
-          worldFrameId &&
-          cameraTargetFrameId === worldFrameId ? (
-            <span className={settingsStyles.emptyText}>
-              The camera target and the world frame match, so follow modes
-              change nothing: a frame cannot move relative to itself. Pick a
-              global world frame (like map) to see the target move.
-            </span>
-          ) : null}
+            );
+          })}
         </McapSidebarGroup>
+      ) : null}
 
-        <McapSidebarGroup defaultExpanded={false} title="Appearance">
-          <div className={settingsStyles.field}>
-            <div className={settingsStyles.sectionHeader}>
-              <SettingsLabel
-                label="Reference Grid"
-                tooltip="Adaptive grid on the world ground plane: minor lines at the configured spacing, brighter cardinal lines every tenth, coarsening by powers of ten as the camera recedes."
-              />
-              <Toggle
-                aria-label="Toggle reference grid"
-                checked={referenceGrid.enabled}
-                onChange={(enabled) => setReferenceGrid({ enabled })}
-                size={Size.Sm}
-                {...settingsBooleanNoSpaceToggleProps}
-              />
-            </div>
-            <SettingsNumberInput
-              disabled={!referenceGrid.enabled}
-              label="Spacing (m)"
-              min={0.01}
-              onChange={(spacingM) => setReferenceGrid({ spacingM })}
-              step={0.5}
-              value={referenceGrid.spacingM}
-            />
-            <SettingsNumberInput
-              disabled={!referenceGrid.enabled}
-              label="Opacity (%)"
-              max={100}
-              min={0}
-              onChange={(opacityPercent) =>
-                setReferenceGrid({ opacityPercent })
+      <SourceGroup
+        enabled={enabled}
+        selectedCount={sceneAnnotationTopics.length}
+        setSourcesEnabled={setSourcesEnabled}
+        sources={sceneAnnotationSources}
+        title="3D Labels"
+        toggleAriaLabel="Toggle 3D labels"
+        toggleSource={toggleSource}
+      />
+
+      <SourceGroup
+        enabled={enabled}
+        selectedCount={poseTopics.length}
+        setSourcesEnabled={setSourcesEnabled}
+        sources={poseSources}
+        title="Ego Pose"
+        toggleAriaLabel="Toggle ego pose"
+        toggleSource={toggleSource}
+      >
+        {selectedPoseSources
+          .filter(
+            (s) =>
+              trajectories.get(s.id)?.status === "ready" &&
+              !trajectories.get(s.id)?.streamFrameId,
+          )
+          .map((s) => (
+            <McapFrameSelect
+              disabled={frameIds.length === 0}
+              key={s.id}
+              label={`Trajectory Frame (${s.label})`}
+              onChange={(frameId) =>
+                setTrajectoryFrameOverrides((current) => ({
+                  ...current,
+                  [s.id]: frameId,
+                }))
               }
-              step={1}
-              value={referenceGrid.opacityPercent}
+              options={frameIds}
+              tooltip="This pose stream declares no coordinate frame; choose the frame its positions are expressed in."
+              value={trajectoryFrameByTopic.get(s.id) ?? ""}
+            />
+          ))}
+      </SourceGroup>
+
+      <SourceGroup
+        enabled={enabled}
+        selectedCount={mapLayerTopics.length}
+        setSourcesEnabled={setSourcesEnabled}
+        sources={mapLayerSources}
+        title="Map Layers"
+        toggleAriaLabel="Toggle map layers"
+        toggleSource={toggleSource}
+      />
+
+      <McapSidebarGroup defaultExpanded={false} title="Appearance">
+        <div className={settingsStyles.field}>
+          <div className={settingsStyles.sectionHeader}>
+            <SettingsLabel
+              label="Reference Grid"
+              tooltip="Adaptive grid on the world ground plane: minor lines at the configured spacing, brighter cardinal lines every tenth, coarsening by powers of ten as the camera recedes."
+            />
+            <Toggle
+              aria-label="Toggle reference grid"
+              checked={referenceGrid.enabled}
+              onChange={(enabled) => setReferenceGrid({ enabled })}
+              size={Size.Sm}
+              {...settingsBooleanNoSpaceToggleProps}
             />
           </div>
+          <SettingsNumberInput
+            disabled={!referenceGrid.enabled}
+            label="Spacing (m)"
+            min={0.01}
+            onChange={(spacingM) => setReferenceGrid({ spacingM })}
+            step={0.5}
+            value={referenceGrid.spacingM}
+          />
+          <SettingsNumberInput
+            disabled={!referenceGrid.enabled}
+            label="Opacity (%)"
+            max={100}
+            min={0}
+            onChange={(opacityPercent) => setReferenceGrid({ opacityPercent })}
+            step={1}
+            value={referenceGrid.opacityPercent}
+          />
+        </div>
 
-          <div className={settingsStyles.field}>
-            <SettingsLabel
-              label="Background"
-              tooltip="Scene backdrop behind the 3D view: a solid color of your choice, or a named gradient — Abyss (dark) or Studio (light)."
-            />
-            <select
-              aria-label="Background style"
+        <label className={settingsStyles.field}>
+          <SettingsLabel
+            label="Background"
+            tooltip="Scene backdrop behind the 3D view: a solid color of your choice, or a named gradient — Abyss (dark) or Studio (light)."
+          />
+          <McapSettingsSelect
+            ariaLabel="Background style"
+            onChange={(mode) =>
+              setSceneBackground({ mode: mode as McapSceneBackgroundMode })
+            }
+            options={SCENE_BACKGROUND_OPTIONS}
+            value={sceneBackground.mode}
+          />
+          {sceneBackground.mode === "solid" ? (
+            <input
+              aria-label="Background color"
               className={settingsStyles.select}
               onChange={(event) =>
-                setSceneBackground({
-                  mode: event.target.value as McapSceneBackgroundMode,
-                })
+                setSceneBackground({ solidColor: event.target.value })
               }
-              value={sceneBackground.mode}
-            >
-              <option value="solid">Solid color</option>
-              <option value="abyss">Abyss</option>
-              <option value="studio">Studio</option>
-            </select>
-            {sceneBackground.mode === "solid" ? (
-              <input
-                aria-label="Background color"
-                className={settingsStyles.select}
-                onChange={(event) =>
-                  setSceneBackground({ solidColor: event.target.value })
-                }
-                type="color"
-                value={sceneBackground.solidColor}
-              />
-            ) : null}
-          </div>
-        </McapSidebarGroup>
-      </div>
-    </TileSettingsContent>
+              type="color"
+              value={sceneBackground.solidColor}
+            />
+          ) : null}
+        </label>
+      </McapSidebarGroup>
+    </div>
   );
 };
 
+const SCENE_BACKGROUND_OPTIONS = [
+  { label: "Solid color", value: "solid" },
+  { label: "Abyss", value: "abyss" },
+  { label: "Studio", value: "studio" },
+];
+
+const MCAP_IMAGE_GEOMETRY_OPTIONS: Descriptor<{ label: string }>[] = [
+  { data: { label: "Auto (recommended)" }, id: "auto" },
+  { data: { label: "Original camera" }, id: "original" },
+  { data: { label: "Rectified" }, id: "rectified" },
+];
+
+function isMcapImageGeometryMode(
+  value: unknown,
+): value is McapImageGeometryMode {
+  return value === "auto" || value === "original" || value === "rectified";
+}
+
 function SourceGroup({
   children,
+  detailsBySourceId,
   enabled,
   selectedCount,
   setSourcesEnabled,
@@ -458,6 +514,7 @@ function SourceGroup({
   toggleSource,
 }: {
   readonly children?: React.ReactNode;
+  readonly detailsBySourceId?: ReadonlyMap<string, readonly string[]>;
   readonly enabled: ReadonlySet<string>;
   readonly selectedCount: number;
   readonly setSourcesEnabled: (
@@ -488,15 +545,28 @@ function SourceGroup({
       }}
     >
       <div className={settingsStyles.optionStack}>
-        {sources.map((s) => (
-          <Checkbox
-            key={s.id}
-            label={s.label}
-            checked={enabled.has(s.id)}
-            onChange={(checked) => toggleSource(s.id, checked)}
-            {...checkboxNoSpaceToggleProps}
-          />
-        ))}
+        {sources.map((s) => {
+          const details = detailsBySourceId?.get(s.id) ?? [];
+          return (
+            <div key={s.id}>
+              <Checkbox
+                label={s.label}
+                checked={enabled.has(s.id)}
+                onChange={(checked) => toggleSource(s.id, checked)}
+                {...checkboxNoSpaceToggleProps}
+              />
+              {details.map((detail, index) => (
+                <Text
+                  color={TextColor.Muted}
+                  key={`${index}:${detail}`}
+                  variant={TextVariant.Xs}
+                >
+                  {detail}
+                </Text>
+              ))}
+            </div>
+          );
+        })}
       </div>
       {children}
     </McapSidebarGroup>
@@ -1326,71 +1396,22 @@ function SettingsNullableNumberInput({
     <FormField
       label={<SettingsLabel label={label} tooltip={tooltip} />}
       control={
-        <Input
-          aria-label={label}
-          onChange={(event) => {
-            if (event.target.value === "") {
-              onChange(null);
-              return;
-            }
-            const next = Number(event.target.value);
-            if (Number.isFinite(next)) {
-              onChange(next);
-            }
-          }}
+        <McapSettingsNumberField
+          ariaLabel={label}
+          empty="null"
+          onCommit={onChange}
           placeholder="auto"
-          size={Size.Sm}
-          step="any"
-          type={InputType.Number}
-          value={value ?? ""}
+          value={value}
         />
       }
     />
   );
 }
 
-function FrameSelect({
-  disabled,
-  label,
-  onChange,
-  options,
-  tooltip,
-  value,
-}: {
-  readonly disabled: boolean;
-  readonly label: string;
-  readonly onChange: (value: string) => void;
-  readonly options: readonly string[];
-  readonly tooltip: string;
-  readonly value: string;
-}) {
-  return (
-    <label className={settingsStyles.field}>
-      <SettingsLabel label={label} tooltip={tooltip} />
-      <select
-        aria-label={label}
-        className={settingsStyles.select}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      >
-        {options.length === 0 ? <option value="">No frames</option> : null}
-        {options.length > 0 && !value ? (
-          <option value="">Select frame</option>
-        ) : null}
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
 function SettingsNumberInput({
   disabled,
   label,
+  mapping,
   max,
   min,
   onChange,
@@ -1400,6 +1421,7 @@ function SettingsNumberInput({
 }: {
   readonly disabled?: boolean;
   readonly label: string;
+  readonly mapping?: "linear" | "multiplicative";
   readonly max?: number;
   readonly min: number;
   readonly onChange: (value: number) => void;
@@ -1416,20 +1438,14 @@ function SettingsNumberInput({
           {label}
         </Text>
       )}
-      <input
-        aria-label={label}
-        className={settingsStyles.select}
-        disabled={Boolean(disabled)}
+      <McapSettingsNumberField
+        ariaLabel={label}
+        disabled={disabled}
+        mapping={mapping}
         max={max}
         min={min}
-        onChange={(event) => {
-          const next = Number(event.target.value);
-          if (Number.isFinite(next)) {
-            onChange(next);
-          }
-        }}
+        onCommit={onChange}
         step={step}
-        type="number"
         value={value}
       />
     </label>
@@ -1448,48 +1464,17 @@ function TrackingModeSelect({
   return (
     <label className={settingsStyles.field}>
       <SettingsLabel label="Tracking Mode" tooltip={tooltip} />
-      <select
-        aria-label="Tracking Mode"
-        className={settingsStyles.select}
-        onChange={(event) => onChange(event.target.value as Mcap3dTrackingMode)}
+      <McapSettingsSelect
+        ariaLabel="Tracking Mode"
+        onChange={(value) => onChange(value as Mcap3dTrackingMode)}
+        options={TRACKING_MODES}
         value={value}
-      >
-        {TRACKING_MODES.map((mode) => (
-          <option key={mode.value} value={mode.value}>
-            {mode.label}
-          </option>
-        ))}
-      </select>
+      />
     </label>
   );
 }
 
-function SceneUpAxisSelect({
-  onChange,
-  tooltip,
-  value,
-}: {
-  readonly onChange: (value: Mcap3dSceneUpAxis) => void;
-  readonly tooltip: string;
-  readonly value: Mcap3dSceneUpAxis;
-}) {
-  return (
-    <label className={settingsStyles.field}>
-      <SettingsLabel label="Up Axis" tooltip={tooltip} />
-      <select
-        aria-label="Up Axis"
-        className={settingsStyles.select}
-        onChange={(event) => onChange(event.target.value as Mcap3dSceneUpAxis)}
-        value={value}
-      >
-        {MCAP_3D_SCENE_UP_AXES.map((axis) => (
-          <option key={axis} value={axis}>
-            {axis.toUpperCase()}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-export default Mcap3dTileSettings;
+// Memoized: the host tile re-renders per playback tick, but this settings
+// tree has no per-tick inputs — the tile stabilizes the grouped props so
+// ticks skip reconciling it.
+export default React.memo(Mcap3dTileSettings);

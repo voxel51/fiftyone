@@ -37,6 +37,16 @@ export interface Mcap3dHoveredEntity {
   readonly label: string | null;
 }
 
+/** Textured camera frustum reported by the MCAP 3D hover surface. */
+export interface Mcap3dHoveredCamera {
+  readonly calibrationTopic: string;
+  readonly distortionModel?: string;
+  readonly frameId?: string;
+  readonly imageTopic: string;
+  readonly kind: "camera";
+  readonly resolution: readonly [number, number];
+}
+
 /** One dwelled-on cloud point with its decoded per-point values. */
 export interface Mcap3dHoveredPoint {
   readonly kind: "point";
@@ -51,8 +61,13 @@ export interface Mcap3dHoveredPoint {
   readonly frameId?: string;
 }
 
-export type Mcap3dHoveredObject = Mcap3dHoveredEntity | Mcap3dHoveredPoint;
+/** Any object supported by the MCAP 3D hover tooltip. */
+export type Mcap3dHoveredObject =
+  | Mcap3dHoveredCamera
+  | Mcap3dHoveredEntity
+  | Mcap3dHoveredPoint;
 
+/** Hovered object plus its tooltip position within the 3D tile. */
 export type Mcap3dHoverTooltipState = Mcap3dHoveredObject & {
   readonly x: number;
   readonly y: number;
@@ -78,6 +93,7 @@ export function useMcap3dHoverTooltip(): {
     readonly ref: RefObject<HTMLDivElement>;
     readonly onPointerMove: (event: React.PointerEvent) => void;
   };
+  readonly onHoverCamera: (hovered: Mcap3dHoveredCamera | null) => void;
   readonly onHoverEntity: (hovered: Mcap3dHoveredEntity | null) => void;
   readonly onHoverPoint: (hovered: Mcap3dHoveredPoint | null) => void;
   readonly tooltip: Mcap3dHoverTooltipState | null;
@@ -107,14 +123,17 @@ export function useMcap3dHoverTooltip(): {
     };
   }, []);
 
-  const onHoverEntity = useCallback(
-    (hovered: Mcap3dHoveredEntity | null) => {
+  const scheduleDelayedHover = useCallback(
+    <Kind extends "camera" | "entity">(
+      kind: Kind,
+      hovered: Extract<Mcap3dHoveredObject, { readonly kind: Kind }> | null,
+    ) => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
       if (!hovered) {
-        setTooltip((current) => (current?.kind === "entity" ? null : current));
+        setTooltip((current) => (current?.kind === kind ? null : current));
         return;
       }
       timerRef.current = setTimeout(() => {
@@ -123,6 +142,16 @@ export function useMcap3dHoverTooltip(): {
       }, HOVER_TOOLTIP_DELAY_MS);
     },
     [pointerPosition],
+  );
+  const onHoverCamera = useCallback(
+    (hovered: Mcap3dHoveredCamera | null) =>
+      scheduleDelayedHover("camera", hovered),
+    [scheduleDelayedHover],
+  );
+  const onHoverEntity = useCallback(
+    (hovered: Mcap3dHoveredEntity | null) =>
+      scheduleDelayedHover("entity", hovered),
+    [scheduleDelayedHover],
   );
 
   const onHoverPoint = useCallback(
@@ -142,6 +171,7 @@ export function useMcap3dHoverTooltip(): {
 
   return {
     containerProps: { onPointerMove, ref: containerRef },
+    onHoverCamera,
     onHoverEntity,
     onHoverPoint,
     tooltip,
@@ -210,12 +240,60 @@ export const Mcap3dHoverTooltip: React.FC<{
     >
       {tooltip.kind === "point" ? (
         <PointTooltipContent tooltip={tooltip} />
+      ) : tooltip.kind === "camera" ? (
+        <CameraTooltipContent tooltip={tooltip} />
       ) : (
         <EntityTooltipContent tooltip={tooltip} />
       )}
     </div>
   );
 };
+
+function CameraTooltipContent({
+  tooltip,
+}: {
+  readonly tooltip: Mcap3dHoveredCamera;
+}) {
+  return (
+    <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+      <Text variant={TextVariant.Sm}>{tooltip.imageTopic}</Text>
+      <div style={tooltipDetailStyle}>
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          Calibration
+        </Text>
+        <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+          {tooltip.calibrationTopic}
+        </Text>
+        {tooltip.frameId ? (
+          <>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              Frame
+            </Text>
+            <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+              {tooltip.frameId}
+            </Text>
+          </>
+        ) : null}
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          Resolution
+        </Text>
+        <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+          {tooltip.resolution[0]} × {tooltip.resolution[1]}
+        </Text>
+        {tooltip.distortionModel ? (
+          <>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              Distortion
+            </Text>
+            <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+              {tooltip.distortionModel}
+            </Text>
+          </>
+        ) : null}
+      </div>
+    </Stack>
+  );
+}
 
 function EntityTooltipContent({
   tooltip,

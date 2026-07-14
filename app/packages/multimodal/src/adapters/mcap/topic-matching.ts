@@ -78,35 +78,61 @@ export function chooseAnnotationTopic(
     return exact;
   }
 
-  let bestTopic: string | null = null;
+  return (
+    findBestMatchingAnnotationTopics(imageTopic, annotationTopics)[0] ?? null
+  );
+}
+
+/**
+ * Returns every annotation topic tied for the strongest positive camera
+ * match, preserving inventory order.
+ */
+export function findBestMatchingAnnotationTopics(
+  imageTopic: string,
+  annotationTopics: readonly string[],
+): readonly string[] {
   let bestScore = 0;
+  let matches: string[] = [];
+  const cameraPrefix = topicPrefix(imageTopic);
   const imageTokens = topicTokens(imageTopic);
 
   for (const annotationTopic of annotationTopics) {
-    const annotationTokens = topicTokens(annotationTopic);
-    let score =
-      cameraPrefix && isTopicAtOrBelowPrefix(annotationTopic, cameraPrefix)
-        ? 10
-        : 0;
-    for (const token of imageTokens) {
-      if (annotationTokens.has(token)) {
-        score += 1;
-      }
-    }
-
+    const score = annotationTopicMatchScore(
+      annotationTopic,
+      cameraPrefix,
+      imageTokens,
+    );
     if (score > bestScore) {
       bestScore = score;
-      bestTopic = annotationTopic;
+      matches = [annotationTopic];
+    } else if (score > 0 && score === bestScore) {
+      matches.push(annotationTopic);
     }
   }
 
-  return bestTopic;
+  return matches;
+}
+
+function annotationTopicMatchScore(
+  annotationTopic: string,
+  cameraPrefix: string,
+  imageTokens: ReadonlySet<string>,
+): number {
+  const annotationTokens = topicTokens(annotationTopic);
+  let score =
+    cameraPrefix && isTopicAtOrBelowPrefix(annotationTopic, cameraPrefix)
+      ? 10
+      : 0;
+  for (const token of imageTokens) {
+    if (annotationTokens.has(token)) score += 1;
+  }
+  return score;
 }
 
 /**
  * Chooses the camera-calibration topic that best matches a selected camera
  * topic. Prefers the exact `<camera prefix>/camera_info` sibling, then
- * falls back to the highest shared-token score.
+ * falls back to a unique highest shared-token score.
  */
 export function chooseCalibrationTopic(
   imageTopic: string,
@@ -125,6 +151,7 @@ export function chooseCalibrationTopic(
 
   let bestTopic: string | null = null;
   let bestScore = 0;
+  let bestScoreTied = false;
   const imageTokens = topicTokens(imageTopic);
 
   for (const calibrationTopic of calibrationTopics) {
@@ -142,10 +169,13 @@ export function chooseCalibrationTopic(
     if (score > bestScore) {
       bestScore = score;
       bestTopic = calibrationTopic;
+      bestScoreTied = false;
+    } else if (score > 0 && score === bestScore) {
+      bestScoreTied = true;
     }
   }
 
-  return bestTopic;
+  return bestScoreTied ? null : bestTopic;
 }
 
 /**

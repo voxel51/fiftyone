@@ -13,17 +13,26 @@ import type {
 import type { ImageTextureHandle } from "./base-2d-scene";
 import { createEncodedVideoTexture } from "./video-texture";
 
+const MAX_VIDEO_DECODE_PREREQUISITES = 600;
+
 /**
  * Decodes an image visualization into a disposable texture handle.
  */
 export async function createImageTexture(
   frame: ImageVisualization,
   textureKey?: string,
+  decodeRunway: readonly ImageVisualization[] = [],
 ): Promise<ImageTextureHandle> {
   if (frame.kind === "raw-image") {
     return createRawImageTexture(frame);
   }
   if (frame.kind === "encoded-video") {
+    const prerequisites = decodeRunway.slice(-MAX_VIDEO_DECODE_PREREQUISITES);
+    for (const prerequisite of prerequisites) {
+      if (prerequisite.kind !== "encoded-video") continue;
+      const handle = await createEncodedVideoTexture(prerequisite, textureKey);
+      handle.dispose();
+    }
     return createEncodedVideoTexture(frame, textureKey);
   }
   return createEncodedImageTexture(frame);

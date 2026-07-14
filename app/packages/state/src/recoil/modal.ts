@@ -1,6 +1,6 @@
 import { PointInfo, type Sample } from "@fiftyone/looker";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
-import { atom, selector } from "recoil";
+import { atom, selector, useRecoilValue } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import type { Lookers } from "../hooks";
@@ -105,6 +105,11 @@ export const isModalActive = selector<boolean>({
   key: "isModalActive",
   get: ({ get }) => Boolean(get(modalSelector)),
 });
+
+/** Returns whether the sample modal is currently active. */
+export function useModalActive(): boolean {
+  return useRecoilValue(isModalActive);
+}
 
 export type ModalNavigationPeek = {
   id: string;

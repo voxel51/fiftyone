@@ -1,10 +1,14 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider, usePlayback } from "./PlaybackProvider";
 import { PlaybackStreamBase } from "./stream-base";
 import type { BufferReadiness } from "./types";
-import { useStream } from "./use-stream";
+import {
+  useStream,
+  useStreamValueSelector,
+  useStreamValuesSelector,
+} from "./use-stream";
 
 class StaticStream extends PlaybackStreamBase<{ at: number }> {
   bufferState(): BufferReadiness {
@@ -15,6 +19,26 @@ class StaticStream extends PlaybackStreamBase<{ at: number }> {
     return { at: time };
   }
 }
+
+const SHARED_CONTENT = { id: "frame" };
+
+class MetadataStream extends PlaybackStreamBase<{
+  readonly content: typeof SHARED_CONTENT;
+  readonly requestedAt: number;
+}> {
+  bufferState(): BufferReadiness {
+    return "ready";
+  }
+  prefetch(): void {}
+  getValue(time: number) {
+    return { content: SHARED_CONTENT, requestedAt: time };
+  }
+}
+
+const selectContent = (
+  value: { readonly content: typeof SHARED_CONTENT } | null,
+) => value?.content ?? null;
+const CAMERA_STREAM_IDS = ["camera"] as const;
 
 const wrap = ({ children }: { children: React.ReactNode }) => (
   <PlaybackProvider duration={10}>{children}</PlaybackProvider>
@@ -52,5 +76,60 @@ describe("useStream", () => {
 
     // Unregister → no further commits, but the last value sticks until cleared.
     act(() => dispose());
+  });
+
+  it("does not re-render a selector consumer for metadata-only changes", () => {
+    const renders = vi.fn();
+    const { result } = renderHook(
+      () => {
+        renders();
+        const content = useStreamValueSelector("camera", selectContent);
+        const { registerStream, seek, subscribeStream } = usePlayback();
+        return { content, registerStream, seek, subscribeStream };
+      },
+      { wrapper: wrap },
+    );
+
+    act(() => {
+      result.current.registerStream(new MetadataStream("camera"));
+      result.current.subscribeStream("camera");
+    });
+    act(() => result.current.seek(1));
+    expect(result.current.content).toBe(SHARED_CONTENT);
+    const rendersAfterContent = renders.mock.calls.length;
+
+    act(() => result.current.seek(2));
+
+    expect(result.current.content).toBe(SHARED_CONTENT);
+    expect(renders).toHaveBeenCalledTimes(rendersAfterContent);
+  });
+
+  it("does not re-render a multi-stream selector for metadata-only changes", () => {
+    const renders = vi.fn();
+    const { result } = renderHook(
+      () => {
+        renders();
+        const content = useStreamValuesSelector(
+          CAMERA_STREAM_IDS,
+          selectContent,
+        );
+        const { registerStream, seek, subscribeStream } = usePlayback();
+        return { content, registerStream, seek, subscribeStream };
+      },
+      { wrapper: wrap },
+    );
+
+    act(() => {
+      result.current.registerStream(new MetadataStream("camera"));
+      result.current.subscribeStream("camera");
+    });
+    act(() => result.current.seek(1));
+    expect(result.current.content).toEqual([SHARED_CONTENT]);
+    const rendersAfterContent = renders.mock.calls.length;
+
+    act(() => result.current.seek(2));
+
+    expect(result.current.content).toEqual([SHARED_CONTENT]);
+    expect(renders).toHaveBeenCalledTimes(rendersAfterContent);
   });
 });

@@ -12,6 +12,8 @@ export type McapMapBaseLayer =
 
 export const OPENFREEMAP_LIBERTY_STYLE_URL =
   "https://tiles.openfreemap.org/styles/liberty";
+/** Provider label shown while the default basemap loads. */
+export const OPENFREEMAP_PROVIDER_NAME = "OpenFreeMap";
 
 export interface McapMapTileSettings {
   /**

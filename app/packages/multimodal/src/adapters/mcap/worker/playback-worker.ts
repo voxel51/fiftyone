@@ -12,10 +12,16 @@ import {
 import type { ByteReadDebugLog } from "../../../query/bytes";
 import { createMcapTransportMeter } from "./transport-meter";
 import { transferablesForMcapResult } from "./playback-worker-transfer";
+import {
+  estimateMcapStreamItemBytes,
+  isMcapStreamBatchFull,
+  wouldOverflowMcapStreamBatch,
+} from "./playback-worker-stream-batch";
 import type {
   McapPlaybackWorkerRequest,
   McapPlaybackWorkerResponse,
   McapPlaybackWorkerRpcRequest,
+  McapPlaybackWorkerStreamItemByType,
   McapPlaybackWorkerStreamType,
   McapPlaybackWorkerTransportResponse,
 } from "./playback-worker-types";
@@ -128,19 +134,58 @@ async function runAndRespond(
 async function streamRequest(
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>,
 ) {
+  let batch: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][] =
+    [];
+  let batchBytes = 0;
+
   for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
     const transferables = transferablesForMcapResult(item);
-    postResponse(
-      {
-        done: false,
-        id: message.id,
-        item,
-        ok: true,
-        stream: true,
-      },
-      transferables,
-    );
+    // Transferable buffers must keep their per-item ownership boundary. Plain
+    // decoded records can share one postMessage to reduce main-thread churn.
+    if (transferables.length > 0) {
+      postStreamBatch(message.id, batch);
+      batch = [];
+      batchBytes = 0;
+      postResponse(
+        {
+          done: false,
+          id: message.id,
+          item,
+          ok: true,
+          stream: true,
+        },
+        transferables,
+      );
+      continue;
+    }
+
+    const itemBytes = estimateMcapStreamItemBytes(item);
+    if (
+      wouldOverflowMcapStreamBatch({
+        batchBytes,
+        batchItems: batch.length,
+        nextItemBytes: itemBytes,
+      })
+    ) {
+      postStreamBatch(message.id, batch);
+      batch = [];
+      batchBytes = 0;
+    }
+
+    batch.push(item);
+    batchBytes += itemBytes;
+    if (
+      isMcapStreamBatchFull({
+        batchBytes,
+        batchItems: batch.length,
+      })
+    ) {
+      postStreamBatch(message.id, batch);
+      batch = [];
+      batchBytes = 0;
+    }
   }
+  postStreamBatch(message.id, batch);
 
   postResponse({
     done: true,
@@ -148,6 +193,23 @@ async function streamRequest(
     ok: true,
     stream: true,
     transport: transportMeter.snapshot(),
+  });
+}
+
+function postStreamBatch(
+  id: number,
+  items: readonly McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][],
+) {
+  if (items.length === 0) {
+    return;
+  }
+
+  postResponse({
+    done: false,
+    id,
+    items,
+    ok: true,
+    stream: true,
   });
 }
 
@@ -238,7 +300,12 @@ function transferablesForResponse(response: McapPlaybackWorkerResponse) {
   }
 
   if ("stream" in response) {
-    return response.done ? [] : transferablesForMcapResult(response.item);
+    if (response.done) {
+      return [];
+    }
+    return transferablesForMcapResult(
+      "items" in response ? response.items : response.item,
+    );
   }
 
   return transferablesForMcapResult(response.result);

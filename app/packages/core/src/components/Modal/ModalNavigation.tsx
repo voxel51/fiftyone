@@ -90,13 +90,15 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
           const navigation = fos.modalNavigation.get();
           if (navigation) {
             clearUndo();
-            return await navigation.next(offset).then((s) => {
+            return await navigation.next(offset).then((selector) => {
               selectiveRenderingEventBus.removeAllListeners();
-              setModal(s);
+              setModal(selector);
             });
           }
         },
-        onNavigationStart: closePanels,
+        onNavigationStart: () => {
+          closePanels();
+        },
         debounceTime: 150,
       }),
     [closePanels, setModal, clearUndo],
@@ -110,13 +112,15 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
           const navigation = fos.modalNavigation.get();
           if (navigation) {
             clearUndo();
-            return await navigation.previous(offset).then((s) => {
+            return await navigation.previous(offset).then((selector) => {
               selectiveRenderingEventBus.removeAllListeners();
-              setModal(s);
+              setModal(selector);
             });
           }
         },
-        onNavigationStart: closePanels,
+        onNavigationStart: () => {
+          closePanels();
+        },
         debounceTime: 150,
       }),
     [closePanels, setModal, clearUndo],

@@ -79,6 +79,12 @@ export interface McapRawMessageContextValue {
   ensureTopics(): void;
 
   /**
+   * Reads the complete decoded message behind an inspector result as JSON.
+   * The large payload is fetched only for an explicit copy action.
+   */
+  readFullMessageJson(topic: string, timeNs: bigint): Promise<string>;
+
+  /**
    * Declares interest in one topic's record while the returned
    * unsubscribe is outstanding. Interested topics follow the playhead;
    * results are kept after unsubscribe for the life of the source.
@@ -89,6 +95,7 @@ export interface McapRawMessageContextValue {
 interface McapRawMessageHandlers {
   ensureTopics(): void;
   onDemandChanged(): void;
+  readFullMessageJson(topic: string, timeNs: bigint): Promise<string>;
 }
 
 interface McapRawMessageInternalValue extends McapRawMessageContextValue {
@@ -129,6 +136,17 @@ export const McapRawMessageProvider: React.FC<{
     handlersRef.current?.ensureTopics();
   }, [handlersRef]);
 
+  const readFullMessageJson = useCallback(
+    (topic: string, timeNs: bigint) => {
+      const handlers = handlersRef.current;
+      if (!handlers) {
+        return Promise.reject(new Error("MCAP message reader is unavailable"));
+      }
+      return handlers.readFullMessageJson(topic, timeNs);
+    },
+    [handlersRef],
+  );
+
   const subscribeRecord = useCallback(
     (topic: string) => {
       return subscribeKey(topic);
@@ -140,6 +158,7 @@ export const McapRawMessageProvider: React.FC<{
     () => ({
       ensureTopics,
       handlersRef,
+      readFullMessageJson,
       recordsByTopic,
       refCountsRef,
       setRecordsByTopic,
@@ -151,6 +170,7 @@ export const McapRawMessageProvider: React.FC<{
     [
       ensureTopics,
       handlersRef,
+      readFullMessageJson,
       recordsByTopic,
       refCountsRef,
       subscribeRecord,
@@ -253,6 +273,18 @@ export function McapRawMessageBridge({
             });
         },
         onDemandChanged: queueFill,
+        async readFullMessageJson(topic, timeNs) {
+          const result = await client.readRawMessageRecord({
+            includeFullJson: true,
+            source,
+            timeNs,
+            topic,
+          });
+          if (result.status !== "ok" || result.fullJson === undefined) {
+            throw new Error(`Could not read the complete message for ${topic}`);
+          }
+          return result.fullJson;
+        },
       }),
       onFill({
         demandKeys,
