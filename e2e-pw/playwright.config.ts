@@ -19,7 +19,7 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI || process.env.IS_UTILITY_DOCKER ? 2 : 0,
+  retries: process.env.CI || process.env.IS_UTILITY_DOCKER ? 1 : 0,
   // One worker per CI shard: 2 workers on a 4-vCPU runner was tried and
   // contention made tests time out (20 failures on an otherwise-green
   // shard). Scale via shard count in e2e.yml instead.
