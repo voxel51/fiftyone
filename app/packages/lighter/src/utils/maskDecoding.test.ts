@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { deserialize } from "@fiftyone/looker/src/numpy";
 import { decodeMask } from "./maskDecoding";
+import type { MaskDecodeRequest, MaskDecodeResponse } from "./maskDecodeWorker";
 
 /**
  * Real mask from an existing FiftyOne detection (base64-encoded,
@@ -138,5 +139,157 @@ describe("decodeMask", () => {
   test("returns a bitmap promise", async () => {
     const { bitmap } = await decodeMask(SAMPLE_MASK);
     expect(bitmap).toBeDefined();
+  });
+});
+
+describe("decodeMask (worker path)", () => {
+  /**
+   * Captures postMessage requests and lets tests emit responses/errors, so the
+   * dispatcher's request routing, response handling, and crash fallback are
+   * exercised without a real Worker (jsdom has none).
+   */
+  class MockWorker {
+    static instances: MockWorker[] = [];
+
+    requests: MaskDecodeRequest[] = [];
+    terminate = vi.fn();
+    private listeners = new Map<string, Set<(event: unknown) => void>>();
+
+    constructor() {
+      MockWorker.instances.push(this);
+    }
+
+    addEventListener(type: string, listener: (event: unknown) => void) {
+      if (!this.listeners.has(type)) {
+        this.listeners.set(type, new Set());
+      }
+      this.listeners.get(type)!.add(listener);
+    }
+
+    postMessage(request: MaskDecodeRequest) {
+      this.requests.push(request);
+    }
+
+    respond(response: MaskDecodeResponse) {
+      this.emit("message", { data: response });
+    }
+
+    emit(type: string, event: unknown) {
+      for (const listener of this.listeners.get(type) ?? []) {
+        listener(event);
+      }
+    }
+  }
+
+  // `maskDecoding` caches its worker in module state, so each test imports a
+  // fresh copy to start with no cached instance.
+  let decode: typeof decodeMask;
+
+  beforeEach(async () => {
+    MockWorker.instances = [];
+    vi.stubGlobal("Worker", MockWorker);
+
+    // Stubs for the main-thread fallback path (jsdom lacks both).
+    vi.stubGlobal(
+      "ImageData",
+      class {
+        constructor(
+          public data: Uint8ClampedArray,
+          public width: number,
+          public height: number,
+        ) {}
+      },
+    );
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn(async (data: unknown) => data as ImageBitmap),
+    );
+
+    vi.resetModules();
+    ({ decodeMask: decode } = await import("./maskDecoding"));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  test("resolves worker responses, routing concurrent requests by uuid", async () => {
+    const first = decode(SAMPLE_MASK);
+    const second = decode(SAMPLE_MASK);
+
+    const worker = MockWorker.instances[0];
+    expect(MockWorker.instances).toHaveLength(1);
+    expect(worker.requests).toHaveLength(2);
+
+    const [firstRequest, secondRequest] = worker.requests;
+    expect(firstRequest.maskData).toBe(SAMPLE_MASK);
+
+    const firstBitmap = {} as ImageBitmap;
+    const secondBitmap = {} as ImageBitmap;
+
+    // Respond out of order to prove uuid routing, not FIFO.
+    worker.respond({
+      uuid: secondRequest.uuid,
+      ok: true,
+      bitmap: secondBitmap,
+      rawPixels: new Uint8Array([0, 1]),
+      width: 2,
+      height: 1,
+    });
+    worker.respond({
+      uuid: firstRequest.uuid,
+      ok: true,
+      bitmap: firstBitmap,
+      rawPixels: new Uint8Array([1, 0, 1]),
+      width: 3,
+      height: 1,
+    });
+
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+    expect(firstResult.bitmap).toBe(firstBitmap);
+    expect(firstResult.rawPixels).toEqual({
+      src: new Uint8Array([1, 0, 1]),
+      width: 3,
+      height: 1,
+    });
+    expect(secondResult.bitmap).toBe(secondBitmap);
+    expect(secondResult.rawPixels.width).toBe(2);
+  });
+
+  test("falls back to main-thread decode when the worker reports a failure", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const promise = decode(SAMPLE_MASK);
+    const worker = MockWorker.instances[0];
+    worker.respond({
+      uuid: worker.requests[0].uuid,
+      ok: false,
+      error: "boom",
+    });
+
+    const overlayMask = deserialize(SAMPLE_MASK);
+    const result = await promise;
+    expect(result.rawPixels.width).toBe(overlayMask.shape[1]);
+    expect(result.rawPixels.height).toBe(overlayMask.shape[0]);
+    expect(createImageBitmap).toHaveBeenCalled();
+  });
+
+  test("worker crash rejects in-flight decodes into the fallback and respawns", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const promise = decode(SAMPLE_MASK);
+    const crashed = MockWorker.instances[0];
+    crashed.emit("error", new Event("error"));
+
+    // In-flight decode still resolves via the main-thread fallback.
+    const result = await promise;
+    expect(result.bitmap).toBeDefined();
+    expect(crashed.terminate).toHaveBeenCalled();
+
+    // The dead instance was dropped: the next decode spawns a new worker.
+    void decode(SAMPLE_MASK);
+    expect(MockWorker.instances).toHaveLength(2);
+    expect(MockWorker.instances[1].requests).toHaveLength(1);
   });
 });
