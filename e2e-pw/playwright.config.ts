@@ -56,11 +56,7 @@ export default defineConfig({
         },
         channel: "chromium",
         bypassCSP: true,
-        launchOptions: {
-          // --disable-dev-shm-usage: CI shards run in a Docker job container
-          // where /dev/shm is small; let Chromium use /tmp instead
-          args: ["--disable-web-security", "--disable-dev-shm-usage"],
-        },
+        launchOptions: { args: ["--disable-web-security"] },
       },
     },
   ],

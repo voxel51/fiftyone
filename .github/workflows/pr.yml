@@ -196,10 +196,18 @@ jobs:
                 filter: 'all',
                 per_page: 100,
               });
+              // Never mirror while another suite run is in flight — a
+              // stale completed green (e.g. a draft-era run whose e2e was
+              // skipped) must not shadow the run actually testing this SHA.
+              const isSelf = (c) =>
+                (c.details_url ?? '').includes(`/runs/${context.runId}/`);
+              const inFlight = data.check_runs.some(
+                (c) => c.status !== 'completed' && !isSelf(c),
+              );
               const prior = data.check_runs
                 .filter((c) => c.status === 'completed')
                 .sort((a, b) => new Date(b.started_at) - new Date(a.started_at))[0];
-              if (prior) {
+              if (prior && !inFlight) {
                 if (prior.conclusion === 'success') {
                   core.info('Mirroring the previous all-tests result: success');
                 } else {

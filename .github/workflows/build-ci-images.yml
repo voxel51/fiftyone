@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - develop
-      # TODO: remove before merge — temporary trigger to bootstrap the images
-      # from this branch so the PR's own CI can pull them
-      - ben/e2e-speedups
     paths:
       - requirements/**
       - setup.py
@@ -15,6 +12,11 @@ on:
       - tests/ci/Dockerfile
       - .github/workflows/build-ci-images.yml
   workflow_dispatch:
+
+# Serialize pushes of the mutable tags
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -45,6 +47,8 @@ jobs:
           context: .
           file: e2e-pw/ci/Dockerfile
           push: true
+          cache-from: type=gha,scope=e2e-image
+          cache-to: type=gha,scope=e2e-image,mode=max
           tags: |
             ${{ vars.FIFTYONE_E2E_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-e2e' }}:latest
             ${{ vars.FIFTYONE_E2E_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-e2e' }}:${{ github.sha }}
@@ -77,6 +81,8 @@ jobs:
           context: .
           file: tests/ci/Dockerfile
           push: true
+          cache-from: type=gha,scope=test-image-${{ matrix.python }}
+          cache-to: type=gha,scope=test-image-${{ matrix.python }},mode=max
           build-args: |
             PYTHON_VERSION=${{ matrix.python }}
           tags: |

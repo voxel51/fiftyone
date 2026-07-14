@@ -16,6 +16,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          # yarn install runs PR-controlled lifecycle scripts
+          persist-credentials: false
           submodules: true
           sparse-checkout: |
             /*
@@ -74,6 +76,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          # yarn install runs PR-controlled lifecycle scripts
+          persist-credentials: false
           sparse-checkout: |
             /*
             !/docs/**

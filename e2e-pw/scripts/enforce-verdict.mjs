@@ -39,7 +39,10 @@ if (unexpected === null) {
 } else if (unexpected > 0) {
   failures.push(`${unexpected} failed spec${unexpected === 1 ? "" : "s"}`);
 }
-if ((stats.expected ?? 0) + (stats.flaky ?? 0) === 0) {
+if (
+  (stats.expected ?? 0) + (stats.flaky ?? 0) + (stats.unexpected ?? 0) ===
+  0
+) {
   failures.push("no tests ran");
 }
 
