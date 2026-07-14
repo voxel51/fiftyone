@@ -3138,9 +3138,9 @@ def get_memory_limit():
 
     Analogous to :func:`get_cpu_count`, this reflects container memory
     limits in environments like Kubernetes (via cgroups) rather than the
-    host's total physical RAM. Use it to size memory-hungry work (e.g. a
-    DuckDB ``memory_limit``) to the container without requiring a
-    hand-set environment variable that matches the deployment's limits.
+    host's total physical RAM. Use it to size memory-hungry work to the
+    container without requiring a hand-set environment variable that
+    matches the deployment's limits.
 
     The function checks the following sources, in order:
 
