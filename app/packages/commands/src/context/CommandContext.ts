@@ -181,6 +181,34 @@ export class CommandContext {
   }
 
   /**
+   * Newest-first descriptions of the undo stack that {@link undo} would act on
+   * (the local stack, else the parent's). Backs the undo history view.
+   */
+  public describeUndoStack(): string[] {
+    if (this.actions.canUndo()) {
+      return this.actions.describeUndoStack();
+    }
+    if (this.parent) {
+      return this.parent.describeUndoStack();
+    }
+    return [];
+  }
+
+  /**
+   * Newest-first descriptions of the redo stack that {@link redo} would act on
+   * (the local stack, else the parent's). Backs the redo history view.
+   */
+  public describeRedoStack(): string[] {
+    if (this.actions.canRedo()) {
+      return this.actions.describeRedoStack();
+    }
+    if (this.parent) {
+      return this.parent.describeRedoStack();
+    }
+    return [];
+  }
+
+  /**
    * Registers a listener that is notified of changes in the
    * undo/redo state.
    * @param listener the listener @see UndoStateListener
@@ -339,20 +367,29 @@ export class CommandContext {
   }
 
   /**
-   * Binds a key sequence to a command for execution.
-   * @param sequence A key sequence, ie. ctrl+s, alt+t, etc
-   * @param commandId the id of a previously registered command
+   * Binds a key sequence to a command for execution. Multiple commands may be
+   * bound to the same sequence; when it is pressed, the highest-priority
+   * command whose enablement predicate passes wins, with ties broken by
+   * registration order (earliest binding wins).
+   * @param sequence A key sequence, ie. ctrl+s, alt+t, etc. @see KeyParser
+   * @param commandId the id of a previously registered command. Throws if no
+   * command with this id is registered in this context.
+   * @param priority higher wins when several commands share the sequence;
+   * defaults to 0.
    */
-  public bindKey(sequence: string, commandId: string): void {
-    this.keys.bindKey(sequence, commandId);
+  public bindKey(sequence: string, commandId: string, priority?: number): void {
+    this.keys.bindKey(sequence, commandId, priority);
   }
 
   /**
-   * Unbinds a previously registered key binding.
+   * Unbinds a previously registered key binding. No-op if nothing matches.
    * @param binding the key sequence of the binding
+   * @param commandId if given, only this command is unbound from the sequence
+   * (other commands sharing it stay bound); if omitted, every command bound to
+   * the sequence is removed.
    */
-  public unbindKey(binding: string) {
-    this.keys.unbindKey(binding);
+  public unbindKey(binding: string, commandId?: string) {
+    this.keys.unbindKey(binding, commandId);
   }
 
   /**

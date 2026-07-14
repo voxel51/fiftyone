@@ -120,6 +120,38 @@ const annotationTips = [
       </>
     ),
   },
+  {
+    text: (
+      <>
+        With a label selected, press <KeyboardShortcut>T</KeyboardShortcut> to{" "}
+        <HighlightText>translate</HighlightText>,{" "}
+        <KeyboardShortcut>S</KeyboardShortcut> to{" "}
+        <HighlightText>scale</HighlightText>, and{" "}
+        <KeyboardShortcut>R</KeyboardShortcut> to{" "}
+        <HighlightText>rotate</HighlightText>.
+      </>
+    ),
+  },
+  {
+    text: (
+      <>
+        In <HighlightText>scale</HighlightText> mode (
+        <KeyboardShortcut>S</KeyboardShortcut>), drag any{" "}
+        <HighlightText>face</HighlightText> of a selected cuboid to resize it
+        along that axis.
+      </>
+    ),
+  },
+  {
+    text: (
+      <>
+        Press <KeyboardShortcut>C</KeyboardShortcut> to toggle{" "}
+        <HighlightText>Create Cuboid</HighlightText> mode, then click to set the{" "}
+        <HighlightText>first corner</HighlightText>, the heading, then the
+        width.
+      </>
+    ),
+  },
 ];
 
 export const AnnotationTips = ({
@@ -149,7 +181,9 @@ export const AnnotationTips = ({
 
   // Rotate through tips every 5 seconds
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible) {
+      return undefined;
+    }
 
     const interval = setInterval(() => {
       setCurrentTipIndex((prev) => (prev + 1) % annotationTips.length);
@@ -184,10 +218,10 @@ export const AnnotationTips = ({
       </TipsContent>
 
       <TipsActions>
-        <TipsButton $variant="primary" onClick={handleCancel}>
-          Got it
+        <TipsButton $variant="secondary" onClick={handleCancel}>
+          Dismiss
         </TipsButton>
-        <TipsButton $variant="secondary" onClick={handleDoNotShowAgain}>
+        <TipsButton $variant="primary" onClick={handleDoNotShowAgain}>
           Don't show again
         </TipsButton>
       </TipsActions>

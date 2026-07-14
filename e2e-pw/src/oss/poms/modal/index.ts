@@ -4,11 +4,13 @@ import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { ModalPanelPom } from "../panels/modal-panel";
 import { UrlPom } from "../url";
+import { ModalAnnotate3dPom } from "./annotate-3d";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalImaAsVideoControlsPom } from "./imavid-controls";
 import { Looker3DControlsPom } from "./looker-3d-controls";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { SampleCanvasPom } from "./sample-canvas";
+import { VideoAnnotatePom } from "./video-annotate";
 import { ModalVideoControlsPom } from "./video-controls";
 
 const SAMPLE_LOAD_TIMEOUT = Duration.Seconds(20);
@@ -30,6 +32,8 @@ export class ModalPom {
   readonly tagger: ModalTaggerPom;
   readonly url: UrlPom;
   readonly video: ModalVideoControlsPom;
+  readonly videoAnnotate: VideoAnnotatePom;
+  readonly annotate3d: ModalAnnotate3dPom;
 
   constructor(
     private readonly page: Page,
@@ -51,6 +55,8 @@ export class ModalPom {
     this.tagger = new ModalTaggerPom(page, this);
     this.url = new UrlPom(page, eventUtils);
     this.video = new ModalVideoControlsPom(page, this);
+    this.videoAnnotate = new VideoAnnotatePom(page, this);
+    this.annotate3d = new ModalAnnotate3dPom(page, this);
   }
 
   get modalSamplePluginTitle() {

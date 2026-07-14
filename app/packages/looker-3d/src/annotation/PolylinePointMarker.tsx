@@ -191,6 +191,10 @@ export const PolylinePointMarker = ({
   // This effect clears the selected vertex when Escape is pressed.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
       if (event.key === "Escape" && selectedPoint) {
         setSelectedPoint(null);
         event.stopImmediatePropagation();

@@ -4,10 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EncodedImageVisualization } from "../../../decoders";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { VISUALIZATION_KIND } from "../../../visualization";
-import type {
-  McapGridPreviewFrame,
-  McapGridPreviewResult,
-} from "../grid-preview";
+import type { McapGridPreviewResult } from "../grid-preview";
+import { firstImageByte } from "../grid-preview-test-utils";
 import {
   useMcapGridPreview,
   type McapGridPreviewState,
@@ -131,9 +129,7 @@ describe("useMcapGridPreview", () => {
     await waitFor(() => {
       expect(latestState.current?.status).toBe("ready");
     });
-    expect(imageFrame(latestState.current?.frame ?? null)?.image.bytes[0]).toBe(
-      1,
-    );
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
 
     act(() => {
       latestState.current?.play();
@@ -150,9 +146,7 @@ describe("useMcapGridPreview", () => {
     hover.resolve(readyResult({ bytes: [9, 8, 7], nextStartTimeNs: 20n }));
 
     await waitFor(() => {
-      expect(
-        imageFrame(latestState.current?.frame ?? null)?.image.bytes[0],
-      ).toBe(9);
+      expect(firstImageByte(latestState.current?.frame ?? null)).toBe(9);
     });
 
     act(() => {
@@ -323,12 +317,6 @@ function createImage(bytes: readonly number[]): EncodedImageVisualization {
     bytes: new Uint8Array(bytes),
     kind: VISUALIZATION_KIND.ENCODED_IMAGE,
   };
-}
-
-function imageFrame(
-  frame: McapGridPreviewFrame | null,
-): Extract<McapGridPreviewFrame, { kind: "image" }> | null {
-  return frame?.kind === "image" ? frame : null;
 }
 
 const SOURCES_BY_ID = new Map<string, ByteSourceDescriptor>();

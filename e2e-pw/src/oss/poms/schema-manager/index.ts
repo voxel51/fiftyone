@@ -81,6 +81,34 @@ export class SchemaManagerPom {
   async moveFields() {
     await this.locator.getByTestId("move-fields").click();
   }
+
+  /**
+   * Deactivate an active field: check its row and move it to hidden. The field
+   * must currently be in the 'Active fields' section.
+   *
+   * @param field The field path, e.g. "frames.detections" or "events"
+   */
+  async deactivateField(field: string) {
+    const row = this.getFieldRow(field);
+    await row.clickCheckbox();
+    await row.assert.isChecked(true);
+    await this.moveFields();
+    await this.assert.isHiddenFieldRow(field);
+  }
+
+  /**
+   * Activate a hidden field: check its row and move it to active. The field
+   * must currently be in the 'Hidden fields' section.
+   *
+   * @param field The field path, e.g. "frames.detections" or "events"
+   */
+  async activateField(field: string) {
+    const row = this.getFieldRow(field);
+    await row.clickCheckbox();
+    await row.assert.isChecked(true);
+    await this.moveFields();
+    await this.assert.isActiveFieldRow(field);
+  }
 }
 
 /**

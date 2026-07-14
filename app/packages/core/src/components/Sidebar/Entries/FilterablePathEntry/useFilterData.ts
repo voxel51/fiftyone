@@ -44,6 +44,18 @@ export const getFilterItemsProps = (
       },
     ];
   }
+  if (path === "_temporal_tags") {
+    return [
+      {
+        color,
+        ftype: "_TEMPORAL_TAGS",
+        listField: false,
+        modal: modal,
+        path: path,
+        title: `${LIST_FIELD}(${STRING_FIELD})`,
+      },
+    ];
+  }
   if (!parent) {
     return [];
   }

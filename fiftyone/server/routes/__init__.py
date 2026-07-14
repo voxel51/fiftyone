@@ -32,6 +32,7 @@ from .sort import Sort
 from .tag import Tag
 from .tagging import Tagging
 from .values import Values
+from .video_labels import VideoLabelsIndex, VideoLabelsWindow
 
 multimodal_routes = []
 if is_feature_enabled("VFF_MULTIMODAL"):
@@ -68,5 +69,7 @@ routes = (
         ("/tagging", Tagging),
         ("/values", Values),
         ("/get-similar-labels-frames", GetSimilarLabelsFrameCollection),
+        ("/video-labels/index", VideoLabelsIndex),
+        ("/video-labels/window", VideoLabelsWindow),
     ]
 )

@@ -15,6 +15,7 @@ function HeaderHarness({
   labelWidth = 100,
   duration = 10,
   rulerOverlay,
+  extraControls,
   extraActions,
   children,
 }: {
@@ -22,6 +23,7 @@ function HeaderHarness({
   labelWidth?: number;
   duration?: number;
   rulerOverlay?: React.ReactNode;
+  extraControls?: React.ReactNode;
   extraActions?: React.ReactNode;
   children?: React.ReactNode;
 }) {
@@ -34,6 +36,7 @@ function HeaderHarness({
           zoomRef={zoomRef}
           onToggle={onToggle}
           rulerOverlay={rulerOverlay}
+          extraControls={extraControls}
           extraActions={extraActions}
         >
           {children}
@@ -105,6 +108,11 @@ describe("TimelineHeader", () => {
     expect(ruler.querySelector('[data-testid="my-overlay"]')).not.toBeNull();
   });
 
+  it("forwards extraControls to the controls row", () => {
+    render(<HeaderHarness extraControls={<button>Toolbar</button>} />);
+    expect(screen.getByRole("button", { name: "Toolbar" })).toBeTruthy();
+  });
+
   it("forwards extraActions to the controls row", () => {
     render(<HeaderHarness extraActions={<button>Tag Mode</button>} />);
     expect(screen.getByRole("button", { name: "Tag Mode" })).toBeTruthy();
@@ -128,7 +136,7 @@ describe("TimelineHeader", () => {
     expect(root.children).toHaveLength(2);
   });
 
-  describe("buffered-ranges strip", () => {
+  describe("buffered-ranges shading", () => {
     function SetBufferedRanges({
       ranges,
     }: {
@@ -160,8 +168,10 @@ describe("TimelineHeader", () => {
         </HeaderHarness>,
       );
       const strip = screen.getByTestId("buffered-ranges-strip");
-      // Lane starts after the label column, like the ruler and playhead.
-      expect(strip.getAttribute("style") ?? "").toContain("left: 100px");
+      // Rendered inside the ruler's tick lane (which carries the label
+      // offset), directly on the bar users scrub.
+      const ruler = screen.getByTestId("timeline-ruler");
+      expect(ruler.contains(strip)).toBe(true);
       const segments = Array.from(strip.children) as HTMLElement[];
       expect(segments).toHaveLength(2);
       // View window is [0, 10] → [2,4] maps to left 20% / width 20%.

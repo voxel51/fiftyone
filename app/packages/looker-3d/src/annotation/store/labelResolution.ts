@@ -63,7 +63,7 @@ export function getDefaultLabel(field: string, workingDoc: WorkingDoc): string {
   const labelCounts: Record<string, number> = {};
 
   for (const l of Object.values(workingDoc.labelsById)) {
-    if (workingDoc.deletedIds.has(l._id) || l.path !== field) continue;
+    if (l.path !== field) continue;
 
     const lbl = l.label;
 

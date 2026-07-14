@@ -214,15 +214,19 @@ export * from "./registry";
 export * from "./state";
 
 export {
+  createSampleRendererMediaContext,
   createSampleRendererRenderContext,
   getMatchingSampleRenderer,
   getSampleRendererGridSlotComponent,
   getSampleRendererComponent,
+  isSampleRendererModalPersistent,
   SAMPLE_RENDERER_GRID_SLOT,
 } from "./sample-renderer";
 export type {
   GridConfig,
   MatchMedia,
+  ModalConfig,
+  SampleRendererGridClickBehavior,
   SampleRendererGridSlot,
   SampleRendererMatchContext,
   SampleRendererMediaContext,

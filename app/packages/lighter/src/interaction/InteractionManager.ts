@@ -872,6 +872,9 @@ export class InteractionManager {
       if (TypeGuards.isSpatial(handler) && startBounds && startPosition) {
         const detail = {
           id: handler.id,
+          // `handler` is the overlay itself when moving/resizing an existing
+          // overlay; a creation proxy exposes the overlay via `.overlay`.
+          overlayId: handler.overlay?.id ?? handler.id,
           startBounds,
           startPosition,
           endPosition: handler.bounds,
@@ -885,7 +888,13 @@ export class InteractionManager {
               handler: interactiveHandler,
             });
           }
-        } else {
+        } else if (this.isSpatialDragEvent(event)) {
+          // A press that set DRAGGING/RESIZE on pointer-down but never crossed
+          // the click threshold is a selection click (or a sub-threshold
+          // micro-adjustment), not an edit — selection already ran on
+          // pointer-down. Emitting a finalize here would commit a no-op edit
+          // and, on video, promote the frame to a keyframe. Gate on the same
+          // spatial drag threshold the click path uses.
           const type =
             interactionState === "DRAGGING"
               ? "lighter:overlay-drag-end"
@@ -1131,6 +1140,11 @@ export class InteractionManager {
         const segmentationToolState =
           segmentationModeBridge.getToolState(scale);
 
+        // Read before commit: an overlay with no valid bounds yet is a
+        // brand-new track whose first polygon establishes it. `commitPenPolygon`
+        // fills the bounds, so this signal must be captured beforehand.
+        const establishingNewTrack = !handler.hasValidBounds?.();
+
         handler.commitPenPolygon({
           point,
           worldPoint,
@@ -1144,6 +1158,23 @@ export class InteractionManager {
           // PaintStrokeCommand emitted by commitPenPolygon. The handler stays
           // installed so the user can keep drawing more polygons.
           interactiveHandler.pruneCommands();
+
+          // The pen handler is already installed by commit time, so the
+          // first-click establish path below is skipped — but a brand-new
+          // track's first polygon still needs `overlay-establish` to fire
+          // (it's the only signal video annotation fans the track across frames
+          // on). Re-emit it here for that first polygon, keeping the handler
+          // installed so the user can keep drawing more polygons.
+          if (establishingNewTrack && handler.hasValidBounds?.()) {
+            this.eventBus.dispatch("lighter:overlay-establish", {
+              id: handler.id,
+              overlayId: handler.overlay?.id ?? handler.id,
+              handler: interactiveHandler,
+              startBounds: handler.bounds,
+              startPosition: { x: handler.bounds.x, y: handler.bounds.y },
+              bounds: handler.bounds,
+            });
+          }
         } else if (interactiveHandler) {
           // First-click case: an InteractiveDetectionHandler still wraps the
           // freshly-created overlay. Tear it down and emit overlay-establish
@@ -1151,6 +1182,8 @@ export class InteractionManager {
           this.removeHandler(interactiveHandler);
           this.eventBus.dispatch("lighter:overlay-establish", {
             id: handler.id,
+            // `handler` is the freshly-created overlay here (see above).
+            overlayId: handler.overlay?.id ?? handler.id,
             handler: interactiveHandler,
             startBounds: handler.bounds,
             startPosition: { x: handler.bounds.x, y: handler.bounds.y },
@@ -1170,16 +1203,22 @@ export class InteractionManager {
         const pointsEstablished =
           overlay instanceof KeypointOverlay && overlay.hasValidBounds();
 
-        interactiveHandler.resetOverlay();
-        this.removeHandler(interactiveHandler);
-
         if (pointsEstablished) {
+          // Tier 1a: points placed — commit. Clear the keypoint scaffolding;
+          // the finalize handler re-arms a fresh session (deactivate→activate).
+          interactiveHandler.resetOverlay();
+          this.removeHandler(interactiveHandler);
+
           this.eventBus.dispatch("lighter:point-selection-finalize", {
             eventId: generateUUID(),
           });
 
           return;
         }
+
+        // No points placed: leave the keypoint session installed so the user
+        // can keep clicking, and fall through to the no-points right-click
+        // tiers — Tier 2 (deselect the committed label) then Tier 3 (exit mode).
       }
     }
 

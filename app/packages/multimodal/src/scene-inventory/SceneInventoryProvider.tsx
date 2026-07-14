@@ -12,6 +12,9 @@ export interface SceneSource {
   readonly type: string;
   readonly label: string;
 
+  /** Domain-specific source relationships and other static inventory facts. */
+  readonly metadata?: Readonly<Record<string, string>>;
+
   /**
    * Total recorded messages for the source when the domain knows it.
    * Layout heuristics use it to rank sources (a video-rate stream

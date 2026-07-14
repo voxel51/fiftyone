@@ -10,9 +10,7 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { modalBridge, useModalLookerOptions } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
-import { activeLabelSchemas } from "../Sidebar/Annotate/state";
-import { LabelsState, labelsState } from "../Sidebar/Annotate/useLabels";
+import { useAnnotationLabelsReady } from "../Sidebar/Annotate/useLabels";
 import type { ModalViewportState } from "@fiftyone/state";
 import {
   useCallback,
@@ -85,20 +83,13 @@ const useHasContent = (enabled: boolean) => {
 };
 
 /**
- * Returns `true` once label schemas have been fetched from the backend
- * (`activeLabelSchemas` is non-null) AND the initial label-load cycle has
- * completed (`labelsState === COMPLETE`).
- *
- * Both conditions are necessary: schemas arrive asynchronously via the
- * `get_label_schemas` operator, so `labelsState` can transiently reach
- * COMPLETE with zero results while schemas are still loading. Requiring
- * non-null schemas ensures that COMPLETE reflects a real, schema-aware fetch.
+ * Returns `true` once the annotation label list is ready to read — label
+ * schemas fetched and an active sample present (see
+ * {@link useAnnotationLabelsReady}). The sidebar list reads the engine
+ * directly, so this gate keys on the engine's preconditions rather than a
+ * mirror-load lifecycle.
  */
-const useLabelsReady = () => {
-  const schemasLoaded = useAtomValue(activeLabelSchemas) !== null;
-  const labelsComplete = useAtomValue(labelsState) === LabelsState.COMPLETE;
-  return schemasLoaded && labelsComplete;
-};
+const useLabelsReady = () => useAnnotationLabelsReady();
 
 /**
  * Returns `true` once the PixiJS renderer has finished async initialization
