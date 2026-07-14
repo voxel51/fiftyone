@@ -11,6 +11,55 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Mark the e2e comment in progress
+        # keeps the authoritative comment honest while a newer run is
+        # executing; the verdict job's rewrite clears the banner
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const flavor = process.env.GITHUB_REPOSITORY.endsWith(
+              'fiftyone-teams',
+            )
+              ? 'FOE'
+              : 'OSS';
+            const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
+            const sha = context.payload.pull_request.head.sha.slice(0, 10);
+            const runUrl = `${context.serverUrl}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              },
+            );
+            const existing = comments.find((c) => c.body.includes(marker));
+            if (existing) {
+              const banner = `> ⏳ e2e running for \`${sha}\` — [run](${runUrl}). Results below are from an earlier run.`;
+              const lines = existing.body
+                .split('\n')
+                .filter((l) => !l.startsWith('> ⏳'));
+              lines.splice(1, 0, banner);
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: lines.join('\n'),
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `${marker}\n> ⏳ e2e running for \`${sha}\` — [run](${runUrl}).`,
+              });
+            }
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
