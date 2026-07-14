@@ -83,8 +83,8 @@ def _parse_layout(text):
             x1, y1, x2, y2 = (float(v) / (_NUM_COORD_BINS - 1) for v in box)
             x0 = min(max(min(x1, x2), 0.0), 1.0)
             y0 = min(max(min(y1, y2), 0.0), 1.0)
-            xf = min(max(max(x1, x2), 0.0), 1.0)
-            yf = min(max(max(y1, y2), 0.0), 1.0)
+            xf = min(max(x1, x2, 0.0), 1.0)
+            yf = min(max(y1, y2, 0.0), 1.0)
             w, h = xf - x0, yf - y0
             if w <= 0 or h <= 0:
                 continue
