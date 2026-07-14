@@ -346,11 +346,18 @@ function publishGridBootstrap(
   source: ByteSourceDescriptor,
   result: McapGridPreviewResult,
 ): void {
-  if (!result.bootstrapTopics && !result.state.frame) {
+  if (
+    !result.bootstrapTimelineRange &&
+    !result.bootstrapTopics &&
+    !result.state.frame
+  ) {
     return;
   }
 
   publishMcapSourceBootstrap(source, {
+    ...(result.bootstrapTimelineRange
+      ? { timelineRange: result.bootstrapTimelineRange }
+      : {}),
     ...(result.bootstrapTopics ? { topics: result.bootstrapTopics } : {}),
     ...(result.state.frame
       ? {
