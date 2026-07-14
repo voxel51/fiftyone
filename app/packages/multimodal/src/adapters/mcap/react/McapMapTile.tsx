@@ -425,28 +425,21 @@ const McapMapTile: React.FC<McapTileProps> = () => {
             {statusText}
           </span>
         ) : null}
-        {!settings.followEgo && readyTracks.length > 0 ? (
+        {readyTracks.length > 0 ? (
           <button
             className={styles.controlButton}
             onClick={() => {
+              if (settings.followEgo) {
+                setSettings({ followEgo: false });
+                setFitRouteNonce((value) => value + 1);
+                return;
+              }
               setSettings({ followEgo: true });
               setRecenterNonce((value) => value + 1);
             }}
             type="button"
           >
-            Recenter
-          </button>
-        ) : null}
-        {readyTracks.length > 0 ? (
-          <button
-            className={styles.controlButton}
-            onClick={() => {
-              setSettings({ followEgo: false });
-              setFitRouteNonce((value) => value + 1);
-            }}
-            type="button"
-          >
-            Fit route
+            {settings.followEgo ? "Fit route" : "Follow ego"}
           </button>
         ) : null}
       </div>
