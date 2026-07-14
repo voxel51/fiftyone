@@ -57,6 +57,25 @@
   color: var(--color-content-text-destructive);
 }
 
+.projectionNotice {
+  background: color-mix(
+    in srgb,
+    var(--color-content-bg-background) 88%,
+    transparent
+  );
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  bottom: 8px;
+  color: var(--color-content-text-secondary);
+  font-size: 11px;
+  left: 8px;
+  max-width: min(420px, calc(100% - 16px));
+  padding: 5px 7px;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
 .emptyText {
   color: var(--color-content-text-secondary);
   font-size: 12px;

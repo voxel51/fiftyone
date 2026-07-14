@@ -4,10 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { useAnnotationEngine, useSyncAnnotationEngine } from "./useEngine";
 import { useSampleInstance } from "./useSample";
 
-let mockModalSample: { sample?: { _id: string } } | undefined;
+let mockModalSample:
+  | { sample?: { _id: string; media_type?: string } }
+  | undefined;
 let mockSceneSample: { sample?: { _id: string } } | undefined;
-
-let mockIsVideo = false;
 
 vi.mock("@fiftyone/state", () => ({
   useModalSample: () => mockModalSample,
@@ -16,8 +16,6 @@ vi.mock("@fiftyone/state", () => ({
   // collapses to one
   useStableSceneSample3d: () => mockSceneSample,
   useCurrentSampleId: () => mockModalSample?.sample?._id ?? null,
-  // a video modal sample is owned by the video surface, not this hook
-  useIsVideo: () => mockIsVideo,
 }));
 
 const schema = {
@@ -69,9 +67,10 @@ describe("useSyncAnnotationEngine", () => {
   });
 
   it("skips a video modal sample — the video surface owns it", () => {
-    mockModalSample = { sample: { _id: "vid" } };
+    // a video modal sample (media_type "video") is owned by the video surface,
+    // not this hook
+    mockModalSample = { sample: { _id: "vid", media_type: "video" } };
     mockSceneSample = undefined;
-    mockIsVideo = true;
 
     const { result, unmount } = renderSync();
 
@@ -84,7 +83,6 @@ describe("useSyncAnnotationEngine", () => {
     ).toThrow(/no store/);
 
     unmount();
-    mockIsVideo = false;
   });
 
   it("registers nothing without a modal sample", () => {

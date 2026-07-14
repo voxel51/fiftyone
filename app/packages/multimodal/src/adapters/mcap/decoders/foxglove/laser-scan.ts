@@ -1,13 +1,25 @@
-import type { DecodedAttributeValue, Decoder } from "../../../../decoders";
-import { resourceHintsForArrayBufferViews } from "../../../../decoders";
+import type {
+  DecodeContext,
+  DecodedAttributeValue,
+  DecodedOutput,
+  Decoder,
+} from "../../../../decoders";
+import {
+  buildPointCloudRenderPayload,
+  resourceHintsForArrayBufferViews,
+} from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
+import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
 import {
   decodePose,
   normalizedQuaternion,
   type ProtobufPose3D,
 } from "./protobuf/geometry";
-import { FOXGLOVE_LASER_SCAN_PAYLOAD } from "./protobuf/payloads";
+import {
+  FOXGLOVE_LASER_SCAN_CDR_PAYLOADS,
+  FOXGLOVE_LASER_SCAN_PAYLOAD,
+} from "./payloads";
 import {
   numberField,
   optionalRecord,
@@ -42,62 +54,82 @@ export const foxgloveLaserScanDecoder: Decoder = {
       FOXGLOVE_LASER_SCAN_PAYLOAD,
       context,
     );
-    const frameId = optionalString(message, "frameId", "frame_id");
-    const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
-    const startAngle = numberField(message, "startAngle", "start_angle");
-    const endAngle = numberField(message, "endAngle", "end_angle");
-    const ranges = numberArrayField(message, "ranges");
-    const intensities = numberArrayField(message, "intensities");
-    const pose = decodePose(optionalRecord(message, "pose"));
-    const decoded = scanToPoints({
-      endAngle,
-      // Intensities are per-range by schema; a mismatched array is
-      // untrustworthy, so it is dropped rather than misaligned.
-      intensities:
-        intensities.length === ranges.length ? intensities : undefined,
-      pose,
-      ranges,
-      startAngle,
-    });
-    const pointCount =
-      decoded.positions.length / LASER_SCAN_POINT_COMPONENT_COUNT;
-
-    const attributes: Record<string, DecodedAttributeValue> = {
-      endAngle,
-      pointCount,
-      rangeCount: ranges.length,
-      startAngle,
-    };
-    if (frameId) {
-      attributes.frameId = frameId;
-    }
-
-    const transferableViews = [
-      decoded.positions,
-      ...(decoded.intensities ? [decoded.intensities] : []),
-    ];
-
-    return {
-      attributes,
-      resourceHints: resourceHintsForArrayBufferViews(...transferableViews),
-      timing: timingFromContext(context, messageTimestamp),
-      visualization: {
-        ...(frameId ? { coordinateFrameId: frameId } : {}),
-        fields: [],
-        kind: VISUALIZATION_KIND.POINT_CLOUD,
-        pointCount,
-        positions: decoded.positions,
-        ...(decoded.intensities
-          ? {
-              scalarFields: [
-                { name: INTENSITY_FIELD_NAME, values: decoded.intensities },
-              ],
-            }
-          : {}),
-      },
-    };
+    return decodeFoxgloveLaserScanRecord(message, context);
   },
 };
+
+/**
+ * Decoders for Foxglove LaserScan messages carried over ROS 2 CDR.
+ */
+export const foxgloveLaserScanCdrDecoders = rosDecodersForPayloads({
+  id: "foxglove.laser-scan.cdr",
+  map: decodeFoxgloveLaserScanRecord,
+  payloads: FOXGLOVE_LASER_SCAN_CDR_PAYLOADS,
+});
+
+export function decodeFoxgloveLaserScanRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const frameId = optionalString(message, "frameId", "frame_id");
+  const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
+  const startAngle = numberField(message, "startAngle", "start_angle");
+  const endAngle = numberField(message, "endAngle", "end_angle");
+  const ranges = numberArrayField(message, "ranges");
+  const intensities = numberArrayField(message, "intensities");
+  const pose = decodePose(optionalRecord(message, "pose"));
+  const decoded = scanToPoints({
+    endAngle,
+    // Intensities are per-range by schema; a mismatched array is
+    // untrustworthy, so it is dropped rather than misaligned.
+    intensities: intensities.length === ranges.length ? intensities : undefined,
+    pose,
+    ranges,
+    startAngle,
+  });
+  const pointCount =
+    decoded.positions.length / LASER_SCAN_POINT_COMPONENT_COUNT;
+  const scalarFields = decoded.intensities
+    ? [{ name: INTENSITY_FIELD_NAME, values: decoded.intensities }]
+    : undefined;
+  const renderPayload = buildPointCloudRenderPayload({
+    positions: decoded.positions,
+    scalarFields,
+  });
+
+  const attributes: Record<string, DecodedAttributeValue> = {
+    endAngle,
+    pointCount,
+    rangeCount: ranges.length,
+    startAngle,
+  };
+  if (frameId) {
+    attributes.frameId = frameId;
+  }
+
+  const transferableViews = [
+    decoded.positions,
+    ...(decoded.intensities ? [decoded.intensities] : []),
+    renderPayload.positions,
+    ...renderPayload.scalarFields.map((field) => field.values),
+    renderPayload.sourceIndices,
+  ];
+
+  return {
+    attributes,
+    resourceHints: resourceHintsForArrayBufferViews(...transferableViews),
+    timing: timingFromContext(context, messageTimestamp),
+    visualization: {
+      ...(frameId ? { coordinateFrameId: frameId } : {}),
+      fields: [],
+      kind: VISUALIZATION_KIND.POINT_CLOUD,
+      pointCount,
+      positions: decoded.positions,
+      renderPayload,
+      ...(scalarFields ? { scalarFields } : {}),
+    },
+  };
+}
 
 /**
  * Cartesian points produced from a polar laser scan.

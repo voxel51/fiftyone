@@ -226,6 +226,7 @@ export type {
   GridConfig,
   MatchMedia,
   ModalConfig,
+  SampleRendererGridClickBehavior,
   SampleRendererGridSlot,
   SampleRendererMatchContext,
   SampleRendererMediaContext,

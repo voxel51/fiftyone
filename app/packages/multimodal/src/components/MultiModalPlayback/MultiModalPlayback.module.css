@@ -14,7 +14,16 @@
 
 .main {
   flex: 1;
+  min-height: 0;
   min-width: 0;
+  position: relative;
+}
+
+/* The shared canvas sits below the mosaic DOM. Its tracked views can only
+   show through when the window shell stops painting an opaque card; tile
+   bodies that do not use the shared stage retain their own backgrounds. */
+.sharedViewStage :global(.mosaic .mosaic-window) {
+  background: transparent;
 }
 
 /* Width comes from an inline style: the left pane tracks the resizable

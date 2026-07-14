@@ -2909,6 +2909,7 @@ __metadata:
     "@fiftyone/flashlight": "npm:*"
     "@fiftyone/looker": "npm:*"
     "@fiftyone/map": "npm:*"
+    "@fiftyone/multimodal": "npm:*"
     "@fiftyone/operators": "npm:*"
     "@fiftyone/spotlight": "npm:*"
     "@fiftyone/state": "npm:*"
@@ -3225,6 +3226,7 @@ __metadata:
     date-fns: "npm:^4.1.0"
     jotai: "npm:^2.9.3"
     lru-cache: "npm:^11.0.1"
+    maplibre-gl: "npm:^4.7.1"
     meshoptimizer: "npm:^0.22.0"
     protobufjs: "npm:^7.6.4"
     three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
@@ -3419,6 +3421,7 @@ __metadata:
     "@fiftyone/state": "workspace:*"
     "@fiftyone/tiling": "workspace:*"
     "@fiftyone/utilities": "workspace:*"
+    "@types/dom-webcodecs": "npm:^0.1.18"
     "@voxel51/voodo": "npm:^0.0.37"
     clsx: "npm:^2.1.0"
     eslint: "npm:9.7.0"
@@ -3427,6 +3430,7 @@ __metadata:
     globals: "npm:^15.8.0"
     jotai: "npm:^2.9.3"
     lru-cache: "npm:^11.0.1"
+    mp4box: "npm:^2.4.1"
     typescript-eslint: "npm:^7.17.0"
     vite: "npm:^7.3.2"
   languageName: unknown
@@ -7297,6 +7301,13 @@ __metadata:
   version: 0.0.9
   resolution: "@types/doctrine@npm:0.0.9"
   checksum: 10/64ef06e6eea2f4f9684d259fedbcb8bf21c954630b96ea2e04875ca42763552b0ba3b01b3dd27ec0f9ea6f8b3b0dba4965d31d5a925cd4c6225fd13a93ae9354
+  languageName: node
+  linkType: hard
+
+"@types/dom-webcodecs@npm:^0.1.18":
+  version: 0.1.18
+  resolution: "@types/dom-webcodecs@npm:0.1.18"
+  checksum: 10/889ffea2c849ed3d23a2486b9eb3ad4da038cacc2bfe538da87e19cf9cad3c98fd29046e36c21725f01bb75d556eec85119ad39575a455d8b1529be95660c966
   languageName: node
   linkType: hard
 
@@ -17487,6 +17498,13 @@ __metadata:
     signum: "npm:^1.0.0"
     to-px: "npm:^1.0.1"
   checksum: 10/28e41ccac43fb4e284cfbbe348c0c5e391417bb997a3f8ad2e280152883721ad55aec1596200060ad4d99b256f5b167dbdf35d4dd83c84c80401a95fa0e5725c
+  languageName: node
+  linkType: hard
+
+"mp4box@npm:^2.4.1":
+  version: 2.4.1
+  resolution: "mp4box@npm:2.4.1"
+  checksum: 10/6c0e9c7a0026176374ec7534c4679cd9b9312ef0b5a849d59e41cb156d9d0b13b68b5801c7da9780d29ae7cb979cd038f9a5bc8350e7cb148f61eb6527734374
   languageName: node
   linkType: hard
 

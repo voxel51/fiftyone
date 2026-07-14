@@ -1,8 +1,11 @@
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import * as THREE from "three";
 
+import MeasureRulerIcon from "../../../components/MeasureRulerIcon";
+import type { PointCloudBounds } from "../../../decoders";
 import { Base3DScene } from "../base-3d-scene";
-import { WebGpuCanvas } from "../webgpu-canvas";
+import { WebGpuCanvas } from "../gpu/webgpu-canvas";
 import {
   PERSPECTIVE_POINT_CAMERA,
   cameraPoseForBounds,
@@ -13,12 +16,25 @@ import { GridSceneLayer } from "./GridSceneLayer";
 import { NOTICE_SEVERITY_ICON_COLORS, styles } from "./panel-styles";
 import {
   DEFAULT_MAX_RENDERED_POINTS,
+  EMPTY_POINT_CLOUD_BOUNDS_SIZE,
   buildPointCloudRenderData,
+  type PointCloudColorOptions,
 } from "./point-cloud-colors";
+import { resolveGpuPointCloudColor } from "./gpu/gpu-point-cloud-color";
+import {
+  createGpuPointCloud3dPickerRegistry,
+  GpuPointCloud3dPickerRegistryContext,
+} from "./gpu/gpu-point-cloud-3d-picker";
+import { gpuPointCloudDrawCount } from "./gpu/gpu-point-cloud-sampling";
 import {
   DEFAULT_POINT_SIZE,
   PointCloudSceneLayer,
+  type GpuPointCloudSceneData,
 } from "./PointCloudSceneLayer";
+import {
+  PointCloudPickingLayer,
+  type GpuPointCloudPickData,
+} from "./PointCloudPickingLayer";
 import { MeasurementLayer } from "./MeasurementLayer";
 import {
   formatMeasurementDistance,
@@ -36,9 +52,19 @@ import type {
   PanelNoticeSeverity,
   PointCloudCameraPose,
   PointCloudColorRamp,
+  PointCloudPanelLayer,
   PointCloudPanelProps,
+  PointCloudRenderData,
 } from "./types";
 import { EMPTY_NOTICES, annotationPrimitiveSummaryForLayers } from "./utils";
+
+const EMPTY_GPU_RENDER_ARRAY = new Float32Array(0);
+
+interface PreparedPointCloudPanelLayer {
+  readonly data: PointCloudRenderData;
+  readonly gpu?: GpuPointCloudSceneData;
+  readonly layer: PointCloudPanelLayer;
+}
 
 /**
  * Production point-cloud visualization panel backed by a stable Three.js
@@ -72,26 +98,78 @@ export function PointCloudPanel({
   worldGrid = null,
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
+  const pointPickerRegistry = useMemo(
+    // The 3D canvas is its own invalidation/device domain. Keep its picker
+    // registry local rather than sharing resources with the modal image stage.
+    () => createGpuPointCloud3dPickerRegistry(),
+    [],
+  );
   const renderLayers = useMemo(
     () =>
-      layers.map((layer) => ({
-        data: buildPointCloudRenderData(
-          layer.frame.positions,
+      layers.map((layer): PreparedPointCloudPanelLayer => {
+        const colorOptions = pointCloudColorOptions(layer, colorBy);
+        const payload = layer.frame.renderPayload;
+        if (!payload) {
+          // Compatibility path for custom/legacy producers. Built-in MCAP
+          // frames take the worker-prepared branch below and never expand
+          // positions/colors on the main thread.
+          return {
+            data: buildPointCloudRenderData(
+              layer.frame.positions,
+              maxRenderedPoints,
+              colorOptions,
+            ),
+            layer,
+          };
+        }
+
+        const gpuColor = resolveGpuPointCloudColor(payload, colorOptions);
+        const renderedPointCount = gpuPointCloudDrawCount(
+          payload.sampledPointCount,
           maxRenderedPoints,
-          {
-            colorBy: layer.colorSettings?.colorBy ?? colorBy,
-            colormap: layer.colorSettings?.colormap,
-            colors: layer.frame.colors,
-            rangeMax: layer.colorSettings?.rangeMax,
-            rangeMin: layer.colorSettings?.rangeMin,
-            scalarFields: layer.frame.scalarFields,
-            uniformColor: layer.colorSettings?.uniformColor,
+        );
+        return {
+          // Scene fitting, legends, and render stats consume this compact
+          // summary. The 3D layer reads typed arrays only from `gpu.payload`.
+          data: {
+            bounds: pointCloudPayloadBounds(payload.bounds),
+            colorRamp: gpuColor.colorRamp,
+            colors: EMPTY_GPU_RENDER_ARRAY,
+            finitePointCount: payload.finitePointCount,
+            positions: EMPTY_GPU_RENDER_ARRAY,
+            renderedPointCount,
           },
-        ),
-        layer,
-      })),
+          gpu: {
+            color: gpuColor,
+            payload,
+            renderedPointCount,
+            ...(layer.contentTimeNs === undefined
+              ? {}
+              : {
+                  resourceKey: `${layer.id}\n${layer.contentTimeNs.toString()}`,
+                }),
+          },
+          layer,
+        };
+      }),
     [colorBy, layers, maxRenderedPoints],
   );
+  const gpuPickData = useMemo(() => {
+    // CPU metadata only. GPU buffers are registered by mounted scene layers;
+    // this map translates the winning sampled ID back to decoded hover data.
+    const byLayerId = new Map<string, GpuPointCloudPickData>();
+    for (const { gpu, layer } of renderLayers) {
+      if (gpu) {
+        byLayerId.set(layer.id, {
+          color: gpu.color,
+          payload: gpu.payload,
+          renderedPointCount: gpu.renderedPointCount,
+          resourceKey: gpu.resourceKey ?? layer.id,
+        });
+      }
+    }
+    return byLayerId;
+  }, [renderLayers]);
   // Legend entries for every distinct active ramp. Ramp bounds churn with
   // playback (per-frame min/max), so identity is the rendered content key —
   // two sensors sharing a field/colormap/range collapse into one entry.
@@ -294,36 +372,50 @@ export function PointCloudPanel({
           up={sceneUp}
         >
           <ScenePickingContext.Provider value={!measureArmed}>
-            {effectiveWorldGrid ? (
-              <WorldGridLayer {...effectiveWorldGrid} />
-            ) : null}
-            {gridLayers.map((layer, index) => (
-              <GridSceneLayer
-                key={layer.id}
-                layer={layer}
-                renderOrder={index - gridLayers.length}
-              />
-            ))}
-            {renderLayers.map(({ data, layer }) => (
-              <PointCloudSceneLayer
-                key={layer.id}
-                data={data}
-                layer={layer}
+            <GpuPointCloud3dPickerRegistryContext.Provider
+              value={pointPickerRegistry}
+            >
+              {/* Visible cloud layers publish live storage bindings into this
+                  canvas-local registry; the picking layer consumes the
+                  registry after all scene children have committed. */}
+              {effectiveWorldGrid ? (
+                <WorldGridLayer {...effectiveWorldGrid} />
+              ) : null}
+              {gridLayers.map((layer, index) => (
+                <GridSceneLayer
+                  key={layer.id}
+                  layer={layer}
+                  renderOrder={index - gridLayers.length}
+                />
+              ))}
+              {renderLayers.map(({ data, gpu, layer }) => (
+                <PointCloudSceneLayer
+                  key={layer.id}
+                  data={data}
+                  gpu={gpu}
+                  layer={layer}
+                  pointSize={pointSize}
+                />
+              ))}
+              {annotationLayers.map((layer) => (
+                <SceneAnnotationLayer key={layer.id} layer={layer} />
+              ))}
+              {frustumLayers.map((layer) => (
+                <CameraFrustumSceneLayer key={layer.id} layer={layer} />
+              ))}
+              <PointCloudPickingLayer
+                gpuPickData={gpuPickData}
+                layers={layers}
+                maxRenderedPoints={maxRenderedPoints}
                 pointSize={pointSize}
               />
-            ))}
-            {annotationLayers.map((layer) => (
-              <SceneAnnotationLayer key={layer.id} layer={layer} />
-            ))}
-            {frustumLayers.map((layer) => (
-              <CameraFrustumSceneLayer key={layer.id} layer={layer} />
-            ))}
-            <MeasurementLayer
-              armed={measureArmed}
-              measurement={measurement}
-              onPick={handleMeasurePick}
-              planeUp={measurePlaneUp}
-            />
+              <MeasurementLayer
+                armed={measureArmed}
+                measurement={measurement}
+                onPick={handleMeasurePick}
+                planeUp={measurePlaneUp}
+              />
+            </GpuPointCloud3dPickerRegistryContext.Provider>
           </ScenePickingContext.Provider>
         </Base3DScene>
       </WebGpuCanvas>
@@ -384,6 +476,38 @@ export function PointCloudPanel({
   );
 }
 
+function pointCloudColorOptions(
+  layer: PointCloudPanelLayer,
+  colorBy: PointCloudPanelProps["colorBy"],
+): PointCloudColorOptions {
+  return {
+    colorBy: layer.colorSettings?.colorBy ?? colorBy,
+    colormap: layer.colorSettings?.colormap,
+    colors: layer.frame.colors,
+    rangeMax: layer.colorSettings?.rangeMax,
+    rangeMin: layer.colorSettings?.rangeMin,
+    scalarFields: layer.frame.scalarFields,
+    uniformColor: layer.colorSettings?.uniformColor,
+  };
+}
+
+function pointCloudPayloadBounds(bounds: PointCloudBounds | null): THREE.Box3 {
+  if (bounds) {
+    return new THREE.Box3(
+      new THREE.Vector3(...bounds.min),
+      new THREE.Vector3(...bounds.max),
+    );
+  }
+  return new THREE.Box3().setFromCenterAndSize(
+    new THREE.Vector3(),
+    new THREE.Vector3(
+      EMPTY_POINT_CLOUD_BOUNDS_SIZE,
+      EMPTY_POINT_CLOUD_BOUNDS_SIZE,
+      EMPTY_POINT_CLOUD_BOUNDS_SIZE,
+    ),
+  );
+}
+
 function colorRampKey(ramp: PointCloudColorRamp): string {
   return [
     ramp.fieldLabel,
@@ -435,27 +559,6 @@ function ColorRampLegend({
         </div>
       ))}
     </div>
-  );
-}
-
-/** Diagonal ruler glyph for the measure toggle — IconName has none. */
-function MeasureRulerIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 17 17 3l4 4L7 21z" />
-      <path d="m8 12 2 2" />
-      <path d="m11 9 2 2" />
-      <path d="m14 6 2 2" />
-    </svg>
   );
 }
 

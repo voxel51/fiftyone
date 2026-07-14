@@ -1,6 +1,16 @@
 import { useTiling } from "@fiftyone/tiling";
+import { useStreamValues } from "@fiftyone/playback";
 import {
+  Align,
+  Card,
+  CardBackground,
+  Icon,
+  IconColor,
+  IconName,
+  Orientation,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -14,9 +24,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useSceneInventory } from "../../../scene-inventory/SceneInventoryProvider";
 import type { StreamInventory } from "../../../schemas/v1";
-import { topicName } from "../stream-topics";
+import { useSceneSourcesByType } from "../../../scene-inventory";
+import type { PointCloudVisualization } from "../../../decoders";
+import { MAX_POINT_CLOUD_RENDER_POINTS } from "../../../decoders";
+import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 import {
   type McapPlaybackFidelityMode,
   type McapTemporalPolicySettings,
@@ -24,9 +37,11 @@ import {
   useMcapTemporalPolicySettings,
 } from "./mcap-modal-settings";
 import McapSidebarGroup from "./McapSidebarGroup";
+import McapPerformanceStats from "./McapPerformanceStats";
 import styles from "./McapSettingsSidebar.module.css";
+import McapTopicsSettings from "./McapTopicsSettings";
 
-type ActiveSettingsTab = "scene" | "panel";
+type ActiveSettingsTab = "panel" | "scene" | "topics";
 
 /**
  * MCAP-specific left sidebar. Panel settings stay on an explicit tab while
@@ -37,25 +52,34 @@ const McapSettingsSidebar: React.FC<{
   readonly topics?: readonly StreamInventory[];
 }> = ({ topics = [] }) => {
   const { focusedTileId, setSettingsSlotEl, tiles } = useTiling();
+  const sampling = usePointCloudSamplingState();
   const focusedTile =
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId] : null;
   const focusedTileTitle = focusedTile?.title ?? null;
   const hasPanelTab = focusedTileTitle !== null;
   const [activeTab, setActiveTab] = useState<ActiveSettingsTab>("scene");
   const hadPanelTabRef = useRef(false);
+  const suppressNextPanelAutoSwitchRef = useRef(false);
   const slotRef = useCallback(
     (el: HTMLDivElement | null) => setSettingsSlotEl(el),
     [setSettingsSlotEl],
   );
+  const suppressNextPanelAutoSwitch = useCallback(() => {
+    suppressNextPanelAutoSwitchRef.current = true;
+  }, []);
 
   useLayoutEffect(() => {
+    const suppressPanelAutoSwitch = suppressNextPanelAutoSwitchRef.current;
     if (hasPanelTab && !hadPanelTabRef.current) {
-      setActiveTab("panel");
-    } else if (!hasPanelTab) {
+      if (!suppressPanelAutoSwitch) {
+        setActiveTab("panel");
+      }
+    } else if (!hasPanelTab && activeTab === "panel") {
       setActiveTab("scene");
     }
+    suppressNextPanelAutoSwitchRef.current = false;
     hadPanelTabRef.current = hasPanelTab;
-  }, [hasPanelTab]);
+  }, [activeTab, hasPanelTab]);
 
   const tabs = useMemo<Descriptor<ToggleSwitchTab>[]>(() => {
     const nextTabs: Descriptor<ToggleSwitchTab>[] = [
@@ -63,7 +87,21 @@ const McapSettingsSidebar: React.FC<{
         id: "scene",
         data: {
           label: "Scene",
-          content: <GlobalSceneSettings topics={topics} />,
+          content: <GlobalSceneSettings sampling={sampling} />,
+        },
+      },
+      {
+        id: "topics",
+        data: {
+          label: "Topics",
+          content: (
+            <TopicsSettingsContent sampling={sampling}>
+              <McapTopicsSettings
+                onTopicActionStart={suppressNextPanelAutoSwitch}
+                topics={topics}
+              />
+            </TopicsSettingsContent>
+          ),
         },
       },
     ];
@@ -73,161 +111,170 @@ const McapSettingsSidebar: React.FC<{
         id: "panel",
         data: {
           label: focusedTileTitle,
-          content: <PanelSettingsContent slotRef={slotRef} />,
+          content: (
+            <PanelSettingsContent sampling={sampling} slotRef={slotRef} />
+          ),
         },
       });
     }
 
     return nextTabs;
-  }, [focusedTileTitle, slotRef, topics]);
-  const defaultIndex = activeTab === "panel" && hasPanelTab ? 1 : 0;
+  }, [
+    focusedTileTitle,
+    sampling,
+    slotRef,
+    suppressNextPanelAutoSwitch,
+    topics,
+  ]);
+  const selectedTab =
+    hasPanelTab &&
+    !hadPanelTabRef.current &&
+    !suppressNextPanelAutoSwitchRef.current
+      ? "panel"
+      : activeTab;
+  const defaultIndex = Math.max(
+    0,
+    tabs.findIndex((tab) => tab.id === selectedTab),
+  );
   const handleTabChange = useCallback(
     (index: number) => {
-      setActiveTab(index === 1 && hasPanelTab ? "panel" : "scene");
+      setActiveTab(
+        (tabs[index]?.id as ActiveSettingsTab | undefined) ?? "scene",
+      );
     },
-    [hasPanelTab],
+    [tabs],
   );
 
   return (
     <div className={styles.sidebarRoot}>
       <ToggleSwitch
-        key={`${hasPanelTab ? "with-panel" : "scene-only"}-${defaultIndex}`}
+        key={hasPanelTab ? "with-panel" : "scene-only"}
         defaultIndex={defaultIndex}
         fullWidth
         onChange={handleTabChange}
         size={Size.Sm}
+        tabListClassName={styles.stickyTabList}
         tabs={tabs}
       />
     </div>
   );
 };
 
+function TopicsSettingsContent({
+  children,
+  sampling,
+}: {
+  readonly children: React.ReactNode;
+  readonly sampling: PointCloudSamplingState | null;
+}) {
+  return (
+    <div className={styles.root}>
+      <PointCloudSamplingWarning sampling={sampling} />
+      {children}
+    </div>
+  );
+}
+
 function PanelSettingsContent({
+  sampling,
   slotRef,
 }: {
+  readonly sampling: PointCloudSamplingState | null;
   readonly slotRef: (el: HTMLDivElement | null) => void;
 }) {
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
+      <PointCloudSamplingWarning sampling={sampling} />
       <div ref={slotRef} />
     </div>
   );
 }
 
 function GlobalSceneSettings({
-  topics,
+  sampling,
 }: {
-  readonly topics: readonly StreamInventory[];
+  readonly sampling: PointCloudSamplingState | null;
 }) {
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
-      <OtherTopicsSettings topics={topics} />
+      <PointCloudSamplingWarning sampling={sampling} />
+      <McapPerformanceStats sampling={sampling} />
       <PlaybackFidelitySettings />
       <TimeResolutionSettings />
     </div>
   );
 }
 
-interface OtherTopicRow {
-  readonly countLabel: string;
-  readonly encoding: string;
-  readonly schemaName: string;
-  readonly statusLabel: string;
-  readonly topic: string;
+interface PointCloudSamplingState {
+  readonly sampledCloudCount: number;
+  readonly largestFinitePointCount: number;
 }
 
-function OtherTopicsSettings({
-  topics,
-}: {
-  readonly topics: readonly StreamInventory[];
-}) {
-  const sceneSources = useSceneInventory();
-  const rows = useMemo(
-    () =>
-      otherTopicRows(
-        topics,
-        sceneSources.map((source) => source.id),
-      ),
-    [sceneSources, topics],
+function usePointCloudSamplingState(): PointCloudSamplingState | null {
+  const pointCloudSources = useSceneSourcesByType(MCAP_SOURCE_TYPE.POINT_CLOUD);
+  const topicIds = useMemo(
+    () => pointCloudSources.map((source) => source.id),
+    [pointCloudSources],
   );
+  const frames =
+    useStreamValues<McapTopicPlaybackFrame<PointCloudVisualization> | null>(
+      topicIds,
+    );
 
-  if (rows.length === 0) {
-    return null;
+  let sampledCloudCount = 0;
+  let largestFinitePointCount = 0;
+  for (const playbackFrame of frames) {
+    const payload = playbackFrame?.frame.renderPayload;
+    if (!payload || payload.finitePointCount <= payload.sampledPointCount) {
+      continue;
+    }
+    sampledCloudCount++;
+    largestFinitePointCount = Math.max(
+      largestFinitePointCount,
+      payload.finitePointCount,
+    );
   }
+
+  return sampledCloudCount > 0
+    ? { largestFinitePointCount, sampledCloudCount }
+    : null;
+}
+
+function PointCloudSamplingWarning({
+  sampling,
+}: {
+  readonly sampling: PointCloudSamplingState | null;
+}) {
+  if (!sampling) return null;
+
+  const description =
+    sampling.sampledCloudCount === 1
+      ? `Showing ${MAX_POINT_CLOUD_RENDER_POINTS.toLocaleString()} of ${sampling.largestFinitePointCount.toLocaleString()} points.`
+      : `${sampling.sampledCloudCount.toLocaleString()} point clouds exceed the ${MAX_POINT_CLOUD_RENDER_POINTS.toLocaleString()}-point display limit.`;
 
   return (
-    <McapSidebarGroup
-      defaultExpanded={false}
-      summary={`${rows.length} not rendered`}
-      title="Other topics"
-    >
-      <div className={styles.topicList}>
-        {rows.map((row) => (
-          <div className={styles.topicRow} key={row.topic}>
-            <Text variant={TextVariant.Xs} color={TextColor.Primary}>
-              {row.topic}
-            </Text>
-            <span className={styles.topicMeta}>
-              {row.schemaName} · {row.encoding} · {row.countLabel}
-            </span>
-            <span className={styles.topicStatus}>{row.statusLabel}</span>
-          </div>
-        ))}
-      </div>
-    </McapSidebarGroup>
+    <Card background={CardBackground.Secondary} compact outlined>
+      <Stack
+        align={Align.Start}
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+      >
+        <Icon
+          color={IconColor.Warning}
+          name={IconName.Warning}
+          size={Size.Sm}
+        />
+        <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+          <Text color={TextColor.Warning} variant={TextVariant.Sm}>
+            Point cloud sampled for display
+          </Text>
+          <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
+            {description}
+          </Text>
+        </Stack>
+      </Stack>
+    </Card>
   );
-}
-
-function otherTopicRows(
-  topics: readonly StreamInventory[],
-  renderedTopicIds: readonly string[],
-): readonly OtherTopicRow[] {
-  const rendered = new Set(renderedTopicIds);
-  return topics
-    .map((topic) => {
-      const name = topicName(topic);
-      if (!name || rendered.has(name)) {
-        return null;
-      }
-      return {
-        countLabel: messageCountLabel(topic.recordCount),
-        encoding:
-          topic.metadata["mcap.message_encoding"] ??
-          topic.payload?.encoding ??
-          "unknown",
-        schemaName:
-          topic.metadata["mcap.schema_name"] ??
-          topic.payload?.schema ??
-          "no schema",
-        statusLabel: genericDecodeStatusLabel(
-          topic.metadata["mcap.generic_decode_status"],
-        ),
-        topic: name,
-      };
-    })
-    .filter((row): row is OtherTopicRow => row !== null)
-    .sort((left, right) => left.topic.localeCompare(right.topic));
-}
-
-function genericDecodeStatusLabel(status: string | undefined): string {
-  switch (status) {
-    case "decodable":
-      return "Inspectable in Message";
-    case "schema-unavailable":
-      return "Schema unavailable";
-    case "unsupported-encoding":
-      return "Encoding unsupported";
-    default:
-      return "Raw status unknown";
-  }
-}
-
-function messageCountLabel(recordCount: string | undefined): string {
-  const count = recordCount === undefined ? Number.NaN : Number(recordCount);
-  if (!Number.isFinite(count) || count < 0) {
-    return "unknown msgs";
-  }
-  return `${count.toLocaleString()} ${count === 1 ? "msg" : "msgs"}`;
 }
 
 const FIDELITY_OPTIONS: readonly {

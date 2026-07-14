@@ -22,6 +22,7 @@ vi.mock("./McapImageTile", () => ({
   ),
 }));
 vi.mock("./Mcap3dTile", () => ({ default: () => null }));
+vi.mock("./McapMapTile", () => ({ default: () => null }));
 
 const SCENE_SOURCES: readonly SceneSource[] = [
   { id: "/cam/image_rect_compressed", type: "image", label: "cam" },
@@ -148,6 +149,7 @@ describe("useMcapModalLayout", () => {
     ]);
     expect(result.current.initialTiles["image-default"].title).toBe("Image");
     expect(result.current.initialTiles["3d-7"].title).toBe("3D");
+    expect(Object.keys(result.current.resetTiles)).toEqual(["image-1", "3d-1"]);
   });
 
   it("restores manual tile titles for surviving leaves", () => {
@@ -358,6 +360,29 @@ describe("useMcapModalLayout", () => {
     });
   });
 
+  it("uses resolver defaults for a never-seen dataset", () => {
+    writeMcapModalLayout(
+      {
+        layout: {
+          direction: "row",
+          first: "image-1",
+          second: "3d-1",
+          splitPercentage: 20,
+        },
+      },
+      "dataset-a",
+    );
+
+    const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-b");
+
+    expect(result.current.initialLayout).toMatchObject({
+      direction: "column",
+      first: "3d-1",
+      second: "image-1",
+    });
+    expect(result.current.defaultLeftOpen).toBe(true);
+  });
+
   it("restores the persisted sidebar width", () => {
     writeMcapModalLayout({ sidebarWidthPx: 480 }, "dataset-a");
     const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-a");
@@ -501,7 +526,7 @@ describe("McapModalLayoutPersistence", () => {
 
   function LayoutDriver({ next }: { next: string | null }) {
     const { setLayout } = useTiling();
-    // Drives the provider's layout from test props — stand-in for the
+    // This effect drives layout from test props — stand-in for the
     // user rearranging tiles.
     useEffect(() => {
       setLayout(next);
@@ -512,7 +537,7 @@ describe("McapModalLayoutPersistence", () => {
 
   function ExpandedDriver({ next }: { next: string | null }) {
     const { setExpandedTileId } = useTiling();
-    // Drives the provider's fullscreen state from test props — stand-in
+    // This effect drives fullscreen state from test props — stand-in
     // for the user toggling a tile's fullscreen button.
     useEffect(() => {
       setExpandedTileId(next);
@@ -529,6 +554,7 @@ describe("McapModalLayoutPersistence", () => {
     readonly title: string;
   }) {
     const { setTileTitle } = useTiling();
+    // This effect drives the manual title from test props.
     useEffect(() => {
       setTileTitle(tileId, title);
     }, [setTileTitle, tileId, title]);

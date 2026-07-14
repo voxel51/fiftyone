@@ -29,6 +29,14 @@ interface DragState {
 interface UseImagePanZoomOptions {
   readonly enabled?: boolean;
   readonly fit: "contain" | "cover";
+  /**
+   * Cursor while interactive and not dragging. Surfaces with precise
+   * hover interactions (dwell inspection) pass "crosshair" so the
+   * resting cursor doesn't occlude what it points at; dragging always
+   * shows "grabbing".
+   * @default "grab"
+   */
+  readonly idleCursor?: CSSProperties["cursor"];
   readonly imageSize: ImageDisplaySize | null;
   readonly resetKey?: string;
 }
@@ -40,6 +48,7 @@ type ImageViewTransformUpdater =
 export function useImagePanZoom({
   enabled = true,
   fit,
+  idleCursor = "grab",
   imageSize,
   resetKey,
 }: UseImagePanZoomOptions) {
@@ -254,11 +263,11 @@ export function useImagePanZoom({
 
   const surfaceStyle = useMemo<CSSProperties>(
     () => ({
-      cursor: canInteract ? (isDragging ? "grabbing" : "grab") : undefined,
+      cursor: canInteract ? (isDragging ? "grabbing" : idleCursor) : undefined,
       overscrollBehavior: enabled ? "contain" : undefined,
       touchAction: enabled ? "none" : undefined,
     }),
-    [canInteract, enabled, isDragging],
+    [canInteract, enabled, idleCursor, isDragging],
   );
 
   return {

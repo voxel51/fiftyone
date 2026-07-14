@@ -13,6 +13,7 @@
         "./temporal-tags": "./src/temporal-tags/index.ts",
         "./inject": "./src/inject/index.ts",
         "./adapters/mcap": "./src/adapters/mcap/index.ts",
+        "./adapters/mcap/react/TemporalTagGridOverlay": "./src/adapters/mcap/react/TemporalTagGridOverlay.tsx",
         "./schemas/v1": "./src/schemas/v1/index.ts",
         "./visualization": "./src/visualization/index.ts",
         "./visualization/panels/image": "./src/visualization/panels/image.tsx",
@@ -40,6 +41,9 @@
             ],
             "adapters/mcap": [
                 "src/adapters/mcap/index.ts"
+            ],
+            "adapters/mcap/react/TemporalTagGridOverlay": [
+                "src/adapters/mcap/react/TemporalTagGridOverlay.tsx"
             ],
             "schemas/v1": [
                 "src/schemas/v1/index.ts"
@@ -84,6 +88,7 @@
         "date-fns": "^4.1.0",
         "jotai": "^2.9.3",
         "lru-cache": "^11.0.1",
+        "maplibre-gl": "^4.7.1",
         "meshoptimizer": "^0.22.0",
         "protobufjs": "^7.6.4",
         "three": "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch",

@@ -11,6 +11,11 @@ import {
 
 interface FakeRenderer {
   readonly disposeCalls: number;
+  onDeviceLost?: (info: {
+    readonly api?: string;
+    readonly message?: string;
+    readonly reason?: string | null;
+  }) => void;
 }
 
 const harness = vi.hoisted(() => ({
@@ -74,10 +79,12 @@ vi.mock("@react-three/fiber", () => ({
   Canvas: forwardRef(function MockCanvas(
     {
       children,
+      "data-webgpu-surface": webGpuSurface,
       gl,
       onCreated,
     }: {
       readonly children?: ReactNode;
+      readonly "data-webgpu-surface"?: string;
       readonly gl?: (canvas: HTMLCanvasElement) => unknown;
       readonly onCreated?: (state: unknown) => void;
     },
@@ -95,7 +102,11 @@ vi.mock("@react-three/fiber", () => ({
       onCreated?.({ gl: renderer, invalidate: () => undefined });
     }, [gl, onCreated]);
 
-    return <div data-testid="mock-r3f-canvas">{children}</div>;
+    return (
+      <div data-testid="mock-r3f-canvas" data-webgpu-surface={webGpuSurface}>
+        {children}
+      </div>
+    );
   }),
 }));
 
@@ -123,6 +134,9 @@ describe("WebGpuCanvas device registration", () => {
       bySurface: { "test-surface": 1 },
       total: 1,
     });
+    expect(
+      document.querySelector('[data-webgpu-surface="test-surface"]'),
+    ).not.toBeNull();
 
     // Children render only after init resolves, so this pins the happy
     // path (init completed while mounted) before unmounting.
@@ -204,6 +218,30 @@ describe("WebGpuCanvas device registration", () => {
       totalRegistered: 1,
       totalReleased: 1,
     });
+  });
+
+  it("surfaces device loss and releases the renderer registration", async () => {
+    const onError = vi.fn();
+    render(
+      <WebGpuCanvas onError={onError} surface="loss-surface">
+        <div data-testid="scene-child" />
+      </WebGpuCanvas>,
+    );
+    await screen.findByTestId("scene-child");
+
+    latestRenderer().onDeviceLost?.({
+      api: "WebGPU",
+      message: "adapter reset",
+      reason: "unknown",
+    });
+
+    await waitFor(() =>
+      expect(onError).toHaveBeenCalledWith(
+        "WebGPU device lost (unknown): adapter reset",
+      ),
+    );
+    expect(screen.queryByTestId("scene-child")).toBeNull();
+    expect(webGpuDeviceStats().total).toBe(0);
   });
 });
 

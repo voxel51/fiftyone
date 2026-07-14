@@ -6,7 +6,8 @@
  * Two entry points share one canvas lifecycle (`useBitmapCanvas`):
  *
  * - `BitmapImageView` decodes encoded image bytes with `createImageBitmap`
- *   and paints the result (image preview cells).
+ *   and paints the result (image preview cells). Encoded video frames use
+ *   WebCodecs for one-frame decode, then share the same canvas paint path.
  * - `BitmapCanvasHost` paints a ready `ImageBitmap` handed in as a prop
  *   (point-cloud preview cells at rest, fed by the shared snapshot
  *   renderer). The host OWNS every bitmap it is handed: it closes the
@@ -21,9 +22,17 @@
  * cancellation, or on unmount).
  */
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef } from "react";
 
-import type { ImageVisualization, RawImageVisualization } from "../../decoders";
+import type {
+  EncodedVideoVisualization,
+  ImageVisualization,
+  RawImageVisualization,
+} from "../../decoders";
+import {
+  createEncodedVideoCanvas,
+  releaseEncodedVideoSession,
+} from "./video-texture";
 
 const DEFAULT_MIME_TYPE = "image/jpeg";
 
@@ -313,6 +322,19 @@ export function BitmapImageFrameView({
   onImageLoaded,
   style,
 }: BitmapImageFrameViewProps) {
+  if (frame.kind === "encoded-video") {
+    return (
+      <BitmapEncodedVideoView
+        className={className}
+        frame={frame}
+        fit={fit}
+        onError={onError}
+        onImageLoaded={onImageLoaded}
+        style={style}
+      />
+    );
+  }
+
   return frame.kind === "raw-image" ? (
     <BitmapRawImageView
       className={className}
@@ -331,6 +353,58 @@ export function BitmapImageFrameView({
       onError={onError}
       onImageLoaded={onImageLoaded}
       style={style}
+    />
+  );
+}
+
+function BitmapEncodedVideoView({
+  className,
+  frame,
+  fit = "cover",
+  onError,
+  onImageLoaded,
+  style,
+}: Omit<BitmapImageFrameViewProps, "frame"> & {
+  readonly frame: EncodedVideoVisualization;
+}) {
+  const { canvasRef, commit } = useBitmapCanvas(fit);
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  const onImageLoadedRef = useRef(onImageLoaded);
+  onImageLoadedRef.current = onImageLoaded;
+  const previewTextureKey = useId();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    createEncodedVideoCanvas(frame, previewTextureKey)
+      .then((source) => {
+        if (cancelled) {
+          closeDrawable(source);
+          return;
+        }
+
+        commit(source);
+        onImageLoadedRef.current?.(source.width, source.height);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          onErrorRef.current?.(error);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      releaseEncodedVideoSession(frame, previewTextureKey);
+    };
+  }, [commit, frame, previewTextureKey]);
+
+  return (
+    <canvas
+      className={className}
+      ref={canvasRef}
+      role="img"
+      style={{ ...styles.canvas, ...style }}
     />
   );
 }

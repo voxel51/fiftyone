@@ -4,6 +4,7 @@
 
 import {
   type ScopedRef,
+  useActiveSampleId,
   useAnnotationEngine,
   useInteraction,
   useSurfaceActions,
@@ -28,6 +29,11 @@ const INSTANCE_TRACK_TYPES: ReadonlySet<LabelType> = new Set([
   LabelType.Detections,
   LabelType.Polyline,
   LabelType.Polylines,
+]);
+
+const TEMPORAL_TYPES: ReadonlySet<LabelType> = new Set([
+  LabelType.TemporalDetection,
+  LabelType.TemporalDetections,
 ]);
 
 /** Membership equality so a selector only re-renders on an id set change. */
@@ -117,6 +123,23 @@ export const useSelectionIsKeyframeable = (): boolean =>
 export const useSelectionIsInstanceTrack = (): boolean =>
   useSelectionTypeGate(INSTANCE_TRACK_TYPES);
 
+/**
+ * The field path of the selected temporal detection, or `null` when the
+ * selection isn't a TD. Read from engine interaction — active refs carry their
+ * `.path`, and the field's type comes from `engine.getLabelType` — so "New TD"
+ * targets the field the user is working in without reaching into the sidebar's
+ * editing pointer.
+ */
+export const useSelectedTemporalDetectionField = (): string | null => {
+  const engine = useAnnotationEngine();
+  return useInteraction(engine, (i) => {
+    const td = i
+      .getActive()
+      .find((ref) => TEMPORAL_TYPES.has(engine.getLabelType(ref.path)));
+    return td?.path ?? null;
+  });
+};
+
 /** Read hovered track ids (engine instanceIds) from interaction state. */
 export const useHoveredTrackIds = (): ReadonlySet<string> => {
   const engine = useAnnotationEngine();
@@ -130,7 +153,8 @@ export const useHoveredTrackIds = (): ReadonlySet<string> => {
 /** The full select / hover seam for timeline rows. */
 export const useVideoInteraction = (): VideoInteraction => {
   const engine = useAnnotationEngine();
-  const actions = useSurfaceActions(engine, SURFACE);
+  const sampleId = useActiveSampleId();
+  const actions = useSurfaceActions(engine, SURFACE, sampleId);
   const getFrame = useCurrentFrameGetter();
 
   const selectedTrackIds = useSelectedTrackIds();

@@ -17,7 +17,7 @@ import {
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
-import { SEEK_BAR_DEBOUNCE } from "../constants";
+import { MAX_SPEED, SEEK_BAR_DEBOUNCE } from "../constants";
 import { clamp, clampAndValidateBounds } from "./utils";
 import type {
   PlaybackClockSource,
@@ -684,7 +684,9 @@ export function usePlaybackEngine({
         // NaN / Infinity / non-positive values would corrupt `dt` in
         // the RAF tick and produce invalid playhead progression.
         if (!Number.isFinite(speed) || speed <= 0) return;
-        store.set(speedAtom, speed);
+        // Clamp (not reject) the upper bound so callers that pass an
+        // out-of-range value land at MAX_SPEED rather than silently no-op.
+        store.set(speedAtom, Math.min(speed, MAX_SPEED));
         // When a clock source is registered, the engine's `dt` arithmetic
         // isn't running — the source already paces the timeline. Speed in that
         // mode has to be applied at the source (e.g. `v.playbackRate` for a

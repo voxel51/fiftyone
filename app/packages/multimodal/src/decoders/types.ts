@@ -24,6 +24,40 @@ export interface EncodedImageVisualization {
   readonly mimeType?: string;
 }
 
+interface BaseEncodedVideoVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.ENCODED_VIDEO;
+  readonly bytes: Uint8Array;
+  readonly coordinateFrameId?: string;
+  readonly format: string;
+  readonly keyframe?: boolean;
+  readonly timestampNs?: bigint;
+}
+
+/**
+ * Encoded H.264 access unit decoded from one message.
+ */
+export interface EncodedH264VideoVisualization extends BaseEncodedVideoVisualization {
+  readonly codec: "h264";
+  readonly h264: {
+    readonly codecString?: string;
+    readonly hasFrame?: boolean;
+    readonly pps?: Uint8Array;
+    readonly sps?: Uint8Array;
+  };
+}
+
+/**
+ * Encoded video access unit decoded from one message. The contract lets MCAP
+ * topics be classified as image-family streams while keeping codec metadata
+ * aligned with the selected codec.
+ */
+export type EncodedVideoVisualization =
+  | EncodedH264VideoVisualization
+  | (BaseEncodedVideoVisualization & {
+      readonly codec: "av1" | "h265" | "vp9";
+      readonly h264?: never;
+    });
+
 /**
  * Raw image pixels normalized by a decoder into display-ready RGBA.
  * `rgba` is row-major from the source image's top-left pixel.
@@ -45,6 +79,7 @@ export interface RawImageVisualization {
  * Image-like visualizations rendered by the multimodal image panel.
  */
 export type ImageVisualization =
+  | EncodedVideoVisualization
   | EncodedImageVisualization
   | RawImageVisualization;
 
@@ -67,6 +102,53 @@ export interface PointCloudScalarField {
 }
 
 /**
+ * Inclusive numeric range computed from finite point-cloud values.
+ */
+export interface PointCloudNumericRange {
+  readonly max: number;
+  readonly min: number;
+}
+
+/**
+ * Axis-aligned bounds computed from every finite point in a decoded cloud.
+ */
+export interface PointCloudBounds {
+  readonly max: readonly [number, number, number];
+  readonly min: readonly [number, number, number];
+}
+
+/**
+ * Sampled values and full-cloud statistics for one decoded scalar channel.
+ * Values belonging to non-finite positions are excluded from the range so it
+ * describes renderable points.
+ */
+export interface PointCloudRenderScalarField {
+  readonly finiteValueCount: number;
+  readonly name: string;
+  readonly range: PointCloudNumericRange | null;
+  /** Capacity-sized values aligned with the sampled render positions. */
+  readonly values: Float32Array;
+}
+
+/**
+ * Decoder-prepared point data shared by point-cloud renderers. The first
+ * `sampledPointCount` entries contain only finite positions; `sourceIndices`
+ * maps each sample back to the corresponding point in the full decoded arrays.
+ */
+export interface PointCloudRenderPayload {
+  readonly bounds: PointCloudBounds | null;
+  /** Allocated point capacity shared by every typed array in this payload. */
+  readonly capacity: number;
+  readonly colors?: Float32Array;
+  readonly finitePointCount: number;
+  readonly heightRange: PointCloudNumericRange | null;
+  readonly positions: Float32Array;
+  readonly sampledPointCount: number;
+  readonly scalarFields: readonly PointCloudRenderScalarField[];
+  readonly sourceIndices: Uint32Array;
+}
+
+/**
  * Positions extracted from a point cloud into an interleaved x/y/z array.
  */
 export interface PointCloudVisualization {
@@ -83,6 +165,12 @@ export interface PointCloudVisualization {
   readonly fields: readonly PointCloudField[];
   readonly pointCount: number;
   readonly positions: Float32Array;
+  /**
+   * Optional bounded, finite render data and full-cloud statistics prepared by
+   * the decoder. Full arrays remain available above for inspection and other
+   * consumers that require every decoded point.
+   */
+  readonly renderPayload?: PointCloudRenderPayload;
   /**
    * Optional canonical per-point sensor-return channels such as intensity/RCS.
    * Each scalar field's values array must have length equal to pointCount.
@@ -147,6 +235,10 @@ export interface CameraCalibrationVisualization {
    * payload (the camera's frame).
    */
   readonly coordinateFrameId?: string;
+  /** ROS CameraInfo horizontal binning; zero means no binning. */
+  readonly binningX?: number;
+  /** ROS CameraInfo vertical binning; zero means no binning. */
+  readonly binningY?: number;
   readonly width: number;
   readonly height: number;
   readonly K: readonly number[];
@@ -154,7 +246,18 @@ export interface CameraCalibrationVisualization {
   readonly P?: readonly number[];
   readonly distortionModel?: string;
   readonly D?: readonly number[];
+  /** ROS CameraInfo sensor-space crop, when the source schema provides it. */
+  readonly roi?: CameraCalibrationRegionOfInterest;
   readonly timestampNs?: bigint;
+}
+
+/** Sensor-space crop carried by ROS CameraInfo calibration messages. */
+export interface CameraCalibrationRegionOfInterest {
+  readonly doRectify: boolean;
+  readonly height: number;
+  readonly width: number;
+  readonly xOffset: number;
+  readonly yOffset: number;
 }
 
 /**
@@ -168,6 +271,10 @@ export interface LocationVisualization {
    * Per-message source coordinate frame of the reporting sensor.
    */
   readonly coordinateFrameId?: string;
+  /** ROS NavSatStatus.status when present; -1 means no fix. */
+  readonly fixStatus?: number;
+  /** ROS NavSatStatus.service bitmask when present. */
+  readonly fixService?: number;
   readonly latitude: number;
   readonly longitude: number;
   readonly altitude?: number;

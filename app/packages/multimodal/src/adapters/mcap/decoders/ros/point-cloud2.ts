@@ -1,8 +1,13 @@
 import type {
+  DecodeContext,
   DecodedAttributeValue,
+  DecodedOutput,
   PointCloudField,
 } from "../../../../decoders";
-import { resourceHintsForArrayBufferViews } from "../../../../decoders";
+import {
+  buildPointCloudRenderPayload,
+  resourceHintsForArrayBufferViews,
+} from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import {
   type DecodedPointCloudData,
@@ -61,94 +66,108 @@ const ROS_TO_FOXGLOVE_FIELD_TYPE = new Map<number, number>([
  */
 export const rosPointCloud2Decoders = rosDecodersForPayloads({
   id: "ros.point-cloud2",
-  map(message, context) {
-    const header = rosHeader(message);
-    const frameId = rosHeaderFrameId(header);
-    const height = integerField(message, "height");
-    const width = integerField(message, "width");
-    const pointStep = integerField(message, "point_step");
-    const rowStep = integerField(message, "row_step");
-    validateLayout({ height, pointStep, rowStep, width });
-    const originalFields = pointFields(arrayField(message, "fields"));
-    const originalFieldMetadata = originalFields.map(
-      (field): Record<string, DecodedAttributeValue> => ({
-        count: field.count,
-        datatype: field.datatype,
-        name: field.name,
-        offset: field.offset,
-      }),
-    );
-    const attributes: Record<string, DecodedAttributeValue> = {
-      ...rosHeaderAttributes(header),
-      fields: originalFieldMetadata,
-      height,
-      pointStep,
-      rowStep,
-      width,
-    };
-    const isDense = optionalBoolean(message, "is_dense");
-    if (isDense !== undefined) {
-      attributes.isDense = isDense;
-    }
-
-    if (optionalBoolean(message, "is_bigendian") === true) {
-      return {
-        attributes: {
-          ...attributes,
-          bigEndian: true,
-          declaredPointCount: height * width,
-          unsupportedReason: "ROS PointCloud2 big-endian data is unsupported",
-        },
-        timing: timingFromRosHeader(context, header),
-      };
-    }
-
-    const data = flattenPointCloudRows({
-      data: bytesField(message, "data"),
-      height,
-      pointStep,
-      rowStep,
-      width,
-    });
-    const fields = originalFields
-      .map(mapRosPointField)
-      .filter((field): field is PointCloudField => field !== undefined);
-    const decodedPoints = filterFinitePoints(
-      extractPointCloudData(data, pointStep, fields),
-    );
-    const pointCount = decodedPoints.positions.length / POINT_COMPONENT_COUNT;
-    attributes.pointCount = pointCount;
-    const packedFieldMetadata = fields.map((field) => ({
-      name: field.name,
-      offset: field.offset,
-      type: field.type,
-    }));
-
-    const transferableViews = [
-      decodedPoints.positions,
-      decodedPoints.colors,
-      ...decodedPoints.scalarFields.map((field) => field.values),
-    ].filter((view): view is Float32Array => view !== undefined);
-
-    return {
-      attributes,
-      resourceHints: resourceHintsForArrayBufferViews(...transferableViews),
-      timing: timingFromRosHeader(context, header),
-      visualization: {
-        ...(frameId ? { coordinateFrameId: frameId } : {}),
-        ...(decodedPoints.colors ? { colors: decodedPoints.colors } : {}),
-        ...(decodedPoints.scalarFields.length
-          ? { scalarFields: decodedPoints.scalarFields }
-          : {}),
-        fields: packedFieldMetadata,
-        kind: VISUALIZATION_KIND.POINT_CLOUD,
-        pointCount,
-        positions: decodedPoints.positions,
-      },
-    };
-  },
+  map: decodeRosPointCloud2Record,
   payloads: ROS_POINT_CLOUD2_PAYLOADS,
 });
+
+/**
+ * Normalizes a decoded ROS PointCloud2 record into point-cloud output.
+ */
+export function decodeRosPointCloud2Record(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const header = rosHeader(message);
+  const frameId = rosHeaderFrameId(header);
+  const height = integerField(message, "height");
+  const width = integerField(message, "width");
+  const pointStep = integerField(message, "point_step");
+  const rowStep = integerField(message, "row_step");
+  validateLayout({ height, pointStep, rowStep, width });
+  const originalFields = pointFields(arrayField(message, "fields"));
+  const originalFieldMetadata = originalFields.map(
+    (field): Record<string, DecodedAttributeValue> => ({
+      count: field.count,
+      datatype: field.datatype,
+      name: field.name,
+      offset: field.offset,
+    }),
+  );
+  const attributes: Record<string, DecodedAttributeValue> = {
+    ...rosHeaderAttributes(header),
+    fields: originalFieldMetadata,
+    height,
+    pointStep,
+    rowStep,
+    width,
+  };
+  const isDense = optionalBoolean(message, "is_dense");
+  if (isDense !== undefined) {
+    attributes.isDense = isDense;
+  }
+
+  if (optionalBoolean(message, "is_bigendian") === true) {
+    return {
+      attributes: {
+        ...attributes,
+        bigEndian: true,
+        declaredPointCount: height * width,
+        unsupportedReason: "ROS PointCloud2 big-endian data is unsupported",
+      },
+      timing: timingFromRosHeader(context, header),
+    };
+  }
+
+  const data = flattenPointCloudRows({
+    data: bytesField(message, "data"),
+    height,
+    pointStep,
+    rowStep,
+    width,
+  });
+  const fields = originalFields
+    .map(mapRosPointField)
+    .filter((field): field is PointCloudField => field !== undefined);
+  const decodedPoints = filterFinitePoints(
+    extractPointCloudData(data, pointStep, fields),
+  );
+  const pointCount = decodedPoints.positions.length / POINT_COMPONENT_COUNT;
+  attributes.pointCount = pointCount;
+  const packedFieldMetadata = fields.map((field) => ({
+    name: field.name,
+    offset: field.offset,
+    type: field.type,
+  }));
+  const renderPayload = buildPointCloudRenderPayload(decodedPoints);
+
+  const transferableViews = [
+    decodedPoints.positions,
+    decodedPoints.colors,
+    ...decodedPoints.scalarFields.map((field) => field.values),
+    renderPayload.positions,
+    renderPayload.colors,
+    ...renderPayload.scalarFields.map((field) => field.values),
+    renderPayload.sourceIndices,
+  ].filter((view): view is Float32Array | Uint32Array => view !== undefined);
+
+  return {
+    attributes,
+    resourceHints: resourceHintsForArrayBufferViews(...transferableViews),
+    timing: timingFromRosHeader(context, header),
+    visualization: {
+      ...(frameId ? { coordinateFrameId: frameId } : {}),
+      ...(decodedPoints.colors ? { colors: decodedPoints.colors } : {}),
+      ...(decodedPoints.scalarFields.length
+        ? { scalarFields: decodedPoints.scalarFields }
+        : {}),
+      fields: packedFieldMetadata,
+      kind: VISUALIZATION_KIND.POINT_CLOUD,
+      pointCount,
+      positions: decodedPoints.positions,
+      renderPayload,
+    },
+  };
+}
 
 interface RosPointField {
   readonly count: number;

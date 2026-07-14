@@ -108,6 +108,9 @@ export function useGridCustomRendererItem(
 
       try {
         const item = new GridCustomRendererItem({
+          clickBehavior:
+            resolvedRenderer.registration.sampleRendererOptions.grid
+              ?.clickBehavior,
           pluginName: resolvedRenderer.registration.name,
           Renderer: resolvedRenderer.Renderer,
           RecoilBridge:

@@ -1,6 +1,7 @@
 import type {
   DecodeContext,
   DecodedAttributeValue,
+  DecodedOutput,
   PoseVisualization,
 } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../visualization";
@@ -26,17 +27,7 @@ import { ROS_ODOMETRY_PAYLOADS, ROS_POSE_STAMPED_PAYLOADS } from "./payloads";
  */
 export const rosPoseStampedDecoders = rosDecodersForPayloads({
   id: "ros.pose-stamped",
-  map(message, context) {
-    const header = rosHeader(message);
-    const pose = recordField(message, "pose");
-
-    return poseOutput({
-      attributes: rosHeaderAttributes(header),
-      context,
-      header,
-      pose,
-    });
-  },
+  map: decodeRosPoseStampedRecord,
   payloads: ROS_POSE_STAMPED_PAYLOADS,
 });
 
@@ -45,30 +36,56 @@ export const rosPoseStampedDecoders = rosDecodersForPayloads({
  */
 export const rosOdometryDecoders = rosDecodersForPayloads({
   id: "ros.odometry",
-  map(message, context) {
-    const header = rosHeader(message);
-    const poseWithCovariance = recordField(message, "pose");
-    const twistWithCovariance = recordField(message, "twist");
-    const twist = recordField(twistWithCovariance, "twist");
-    const childFrameId = stringField(message, "child_frame_id");
-    const attributes: Record<string, DecodedAttributeValue> = {
-      ...rosHeaderAttributes(header),
-    };
-    if (childFrameId) {
-      attributes.childFrameId = childFrameId;
-    }
-
-    return poseOutput({
-      angularVelocity: vectorOrUndefined(recordField(twist, "angular")),
-      attributes,
-      context,
-      header,
-      pose: recordField(poseWithCovariance, "pose"),
-      velocity: vectorOrUndefined(recordField(twist, "linear")),
-    });
-  },
+  map: decodeRosOdometryRecord,
   payloads: ROS_ODOMETRY_PAYLOADS,
 });
+
+/**
+ * Normalizes a decoded ROS PoseStamped record into pose output.
+ */
+export function decodeRosPoseStampedRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const header = rosHeader(message);
+  const pose = recordField(message, "pose");
+
+  return poseOutput({
+    attributes: rosHeaderAttributes(header),
+    context,
+    header,
+    pose,
+  });
+}
+
+/**
+ * Normalizes a decoded ROS Odometry record into pose output.
+ */
+export function decodeRosOdometryRecord(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+): DecodedOutput {
+  const header = rosHeader(message);
+  const poseWithCovariance = recordField(message, "pose");
+  const twistWithCovariance = recordField(message, "twist");
+  const twist = recordField(twistWithCovariance, "twist");
+  const childFrameId = stringField(message, "child_frame_id");
+  const attributes: Record<string, DecodedAttributeValue> = {
+    ...rosHeaderAttributes(header),
+  };
+  if (childFrameId) {
+    attributes.childFrameId = childFrameId;
+  }
+
+  return poseOutput({
+    angularVelocity: vectorOrUndefined(recordField(twist, "angular")),
+    attributes,
+    context,
+    header,
+    pose: recordField(poseWithCovariance, "pose"),
+    velocity: vectorOrUndefined(recordField(twist, "linear")),
+  });
+}
 
 function poseOutput({
   angularVelocity,
@@ -84,7 +101,7 @@ function poseOutput({
   readonly header: Record<string, unknown> | undefined;
   readonly pose: Record<string, unknown> | undefined;
   readonly velocity?: ProtobufVector3;
-}) {
+}): DecodedOutput {
   const frameId = rosHeaderFrameId(header);
   const messageTimestamp = rosHeaderTimestampNs(header);
   const position = decodeVector3(recordField(pose, "position"));

@@ -308,9 +308,9 @@ class WorkerMcapResourceClient implements McapResourceClient {
       throw mcapReadCancelledError();
     }
 
-    // Legacy request-driven switching (callers that never activate a
-    // source): terminate stays the safe preemption — request order cannot
-    // express ownership, so keep-warm would thrash (0.3 s -> ~4.6 s hops).
+    // Request-driven switching for callers that never activate a source:
+    // terminate stays the safe preemption — request order cannot express
+    // ownership, so keep-warm would thrash (0.3 s -> ~4.6 s hops).
     this.resetWorkers("MCAP worker reset for a different source");
     this.activeSourceKey = sourceKey;
   }

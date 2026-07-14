@@ -2,11 +2,8 @@ import { useSetTileTitle } from "@fiftyone/tiling";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointCloudVisualization } from "../../../decoders";
 import { useSceneInventory, type SceneSource } from "../../../scene-inventory";
-import { MCAP_SOURCE_TYPE } from "../scene-sources";
-import {
-  chooseCalibrationTopic,
-  filterDefaultTopicEquivalents,
-} from "../topic-matching";
+import { MCAP_SCENE_SOURCE_METADATA, MCAP_SOURCE_TYPE } from "../scene-sources";
+import { filterDefaultTopicEquivalents } from "../topic-matching";
 import {
   recordMcap3dSourceSelection,
   resolveMcap3dSelectionRestore,
@@ -210,8 +207,13 @@ export function useMcap3dSelection({
   const imageTopicByCalibrationTopic = useMemo(() => {
     const pairs = new Map<string, string>();
     for (const source of defaultImageSources) {
-      const calibrationTopic = chooseCalibrationTopic(source.id, cameraTopics);
-      if (calibrationTopic && !pairs.has(calibrationTopic)) {
+      const calibrationTopic =
+        source.metadata?.[MCAP_SCENE_SOURCE_METADATA.CALIBRATION_TOPIC] ?? null;
+      if (
+        calibrationTopic &&
+        cameraTopics.includes(calibrationTopic) &&
+        !pairs.has(calibrationTopic)
+      ) {
         pairs.set(calibrationTopic, source.id);
       }
     }

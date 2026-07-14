@@ -181,6 +181,54 @@ export function interpolateHexColors(
   );
 }
 
+/**
+ * Complementary color (hue rotated 180°, saturation/lightness preserved)
+ * of normalized RGB channels. Achromatic inputs invert lightness instead,
+ * so gray points still flip visibly under hover emphasis.
+ */
+export function complementaryRgbUnit(
+  color: readonly [number, number, number],
+): readonly [number, number, number] {
+  const r = clamp01(color[0]);
+  const g = clamp01(color[1]);
+  const b = clamp01(color[2]);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const lightness = (max + min) / 2;
+  const chroma = max - min;
+  if (chroma < 1e-6) {
+    const inverted = clamp01(1 - lightness);
+    return [inverted, inverted, inverted];
+  }
+
+  let hue: number;
+  if (max === r) {
+    hue = ((g - b) / chroma + 6) % 6;
+  } else if (max === g) {
+    hue = (b - r) / chroma + 2;
+  } else {
+    hue = (r - g) / chroma + 4;
+  }
+  hue = (hue + 3) % 6;
+
+  const x = chroma * (1 - Math.abs((hue % 2) - 1));
+  const sector = Math.floor(hue);
+  const [r1, g1, b1] =
+    sector === 0
+      ? [chroma, x, 0]
+      : sector === 1
+        ? [x, chroma, 0]
+        : sector === 2
+          ? [0, chroma, x]
+          : sector === 3
+            ? [0, x, chroma]
+            : sector === 4
+              ? [x, 0, chroma]
+              : [chroma, 0, x];
+  const m = lightness - chroma / 2;
+  return [clamp01(r1 + m), clamp01(g1 + m), clamp01(b1 + m)];
+}
+
 export function isFinitePositiveVector(
   value: readonly [number, number, number],
 ): boolean {

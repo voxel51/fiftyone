@@ -499,6 +499,7 @@ async function readImageFrameNear({
 function imageFrame(message: McapDecodedMessage): ImageVisualization | null {
   const visualization = message.decoded.output.visualization;
   return visualization?.kind === VISUALIZATION_KIND.ENCODED_IMAGE ||
+    visualization?.kind === VISUALIZATION_KIND.ENCODED_VIDEO ||
     visualization?.kind === VISUALIZATION_KIND.RAW_IMAGE
     ? visualization
     : null;

@@ -28,6 +28,7 @@ import {
 } from "@fiftyone/annotation";
 import { useLighterAnnotationBridge } from "./useLighterAnnotationBridge";
 import { useLooker3dAnnotationBridge } from "./useLooker3dAnnotationBridge";
+import { useSyncAnnotationSliceMediaType } from "./useSyncAnnotationSliceMediaType";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -120,6 +121,7 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useSyncModalSample();
   useSync3dModalSample();
   useSyncAnnotationEngine();
+  useSyncAnnotationSliceMediaType();
   useEngineUndoableBridge();
   useLighterAnnotationBridge();
   useLooker3dAnnotationBridge();

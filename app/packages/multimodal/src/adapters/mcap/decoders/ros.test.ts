@@ -14,35 +14,80 @@ import {
   isCameraCalibrationStream,
   isCompressedImageStream,
   isGridStream,
+  isImageAnnotationsStream,
   isImageStream,
   isLocationFixStream,
+  isLogStream,
   isPointCloudStream,
   isPoseStream,
+  isSceneUpdateStream,
   streamTopics,
 } from "../stream-topics";
 import { createMcapDecoderRegistry } from ".";
 import {
   ROS_CAMERA_INFO_PAYLOADS,
   ROS_COMPRESSED_IMAGE_PAYLOADS,
+  ROS_DETECTION_2D_ARRAY_PAYLOADS,
+  ROS_DETECTION_3D_ARRAY_PAYLOADS,
+  ROS_DIAGNOSTIC_ARRAY_PAYLOADS,
   ROS_IMAGE_PAYLOADS,
   ROS_LASER_SCAN_PAYLOADS,
+  ROS_MARKER_ARRAY_PAYLOADS,
   ROS_NAV_SAT_FIX_PAYLOADS,
   ROS_OCCUPANCY_GRID_PAYLOADS,
   ROS_ODOMETRY_PAYLOADS,
+  ROS_PATH_PAYLOADS,
   ROS_POINT_CLOUD2_PAYLOADS,
+  ROS_POSE_ARRAY_PAYLOADS,
   ROS_POSE_STAMPED_PAYLOADS,
+  ROS_RCL_LOG_PAYLOADS,
+  ROS_ROSGRAPH_LOG_PAYLOADS,
   rosCameraInfoDecoders,
   rosCompressedImageDecoders,
+  rosDiagnosticArrayDecoders,
+  rosDetection2DArrayDecoders,
+  rosDetection3DArrayDecoders,
   rosImageDecoders,
   rosLaserScanDecoders,
+  rosMarkerArrayDecoders,
   rosNavSatFixDecoders,
   rosOccupancyGridDecoders,
   rosOdometryDecoders,
+  rosPathDecoders,
   rosPointCloud2Decoders,
+  rosPoseArrayDecoders,
   rosPoseStampedDecoders,
+  rosRclLogDecoders,
+  rosRosgraphLogDecoders,
 } from "./ros";
+import {
+  detection2DRecord,
+  detection3DRecord,
+  poseRecord,
+  vectorRecord,
+} from "./ros.test-fixtures";
 
 const TEXT_ENCODER = new TextEncoder();
+const H264_KEYFRAME_BYTES = Uint8Array.of(
+  0,
+  0,
+  0,
+  1,
+  0x67,
+  0x4d,
+  0x00,
+  0x1f,
+  0,
+  0,
+  1,
+  0x68,
+  0xce,
+  0,
+  0,
+  1,
+  0x65,
+  0xb0,
+);
 
 const ROS2_HEADER_DEFINITIONS = `===
 MSG: std_msgs/Header
@@ -133,6 +178,159 @@ float64 y
 float64 z
 float64 w`;
 
+const ROS2_PATH_SCHEMA = `std_msgs/Header header
+geometry_msgs/PoseStamped[] poses
+${ROS2_HEADER_DEFINITIONS}
+===
+MSG: geometry_msgs/PoseStamped
+std_msgs/Header header
+geometry_msgs/Pose pose
+===
+MSG: geometry_msgs/Pose
+geometry_msgs/Point position
+geometry_msgs/Quaternion orientation
+===
+MSG: geometry_msgs/Point
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w`;
+
+const ROS2_POSE_ARRAY_SCHEMA = `std_msgs/Header header
+geometry_msgs/Pose[] poses
+${ROS2_HEADER_DEFINITIONS}
+===
+MSG: geometry_msgs/Pose
+geometry_msgs/Point position
+geometry_msgs/Quaternion orientation
+===
+MSG: geometry_msgs/Point
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w`;
+
+const ROS2_DETECTION_2D_ARRAY_SCHEMA = `std_msgs/Header header
+vision_msgs/Detection2D[] detections
+${ROS2_HEADER_DEFINITIONS}
+===
+MSG: vision_msgs/Detection2D
+vision_msgs/ObjectHypothesisWithPose[] results
+vision_msgs/BoundingBox2D bbox
+string id
+===
+MSG: vision_msgs/ObjectHypothesisWithPose
+vision_msgs/ObjectHypothesis hypothesis
+===
+MSG: vision_msgs/ObjectHypothesis
+string class_id
+float64 score
+===
+MSG: vision_msgs/BoundingBox2D
+vision_msgs/Pose2D center
+float64 size_x
+float64 size_y
+===
+MSG: vision_msgs/Pose2D
+vision_msgs/Point2D position
+float64 theta
+===
+MSG: vision_msgs/Point2D
+float64 x
+float64 y`;
+
+const ROS2_DETECTION_3D_ARRAY_SCHEMA = `std_msgs/Header header
+vision_msgs/Detection3D[] detections
+${ROS2_HEADER_DEFINITIONS}
+===
+MSG: vision_msgs/Detection3D
+vision_msgs/ObjectHypothesisWithPose[] results
+vision_msgs/BoundingBox3D bbox
+string id
+===
+MSG: vision_msgs/ObjectHypothesisWithPose
+vision_msgs/ObjectHypothesis hypothesis
+===
+MSG: vision_msgs/ObjectHypothesis
+string class_id
+float64 score
+===
+MSG: vision_msgs/BoundingBox3D
+geometry_msgs/Pose center
+geometry_msgs/Vector3 size
+===
+MSG: geometry_msgs/Pose
+geometry_msgs/Point position
+geometry_msgs/Quaternion orientation
+===
+MSG: geometry_msgs/Point
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w`;
+
+const ROS1_LOG_SCHEMA = `std_msgs/Header header
+byte level
+string name
+string msg
+string file
+string function
+uint32 line
+string[] topics
+===
+MSG: std_msgs/Header
+uint32 seq
+time stamp
+string frame_id`;
+
+const ROS2_RCL_LOG_SCHEMA = `builtin_interfaces/Time stamp
+uint8 level
+string name
+string msg
+string file
+string function
+uint32 line
+${ROS2_HEADER_DEFINITIONS}`;
+
+const ROS2_DIAGNOSTIC_ARRAY_SCHEMA = `std_msgs/Header header
+diagnostic_msgs/DiagnosticStatus[] status
+${ROS2_HEADER_DEFINITIONS}
+===
+MSG: diagnostic_msgs/DiagnosticStatus
+byte OK=0
+byte WARN=1
+byte ERROR=2
+byte STALE=3
+byte level
+string name
+string message
+string hardware_id
+diagnostic_msgs/KeyValue[] values
+===
+MSG: diagnostic_msgs/KeyValue
+string key
+string value`;
+
 const ROS2_ODOMETRY_SCHEMA = `std_msgs/Header header
 string child_frame_id
 geometry_msgs/PoseWithCovariance pose
@@ -170,6 +368,52 @@ float64 x
 float64 y
 float64 z
 float64 w`;
+
+const ROS2_MARKER_ARRAY_SCHEMA = `visualization_msgs/Marker[] markers
+===
+MSG: visualization_msgs/Marker
+std_msgs/Header header
+string ns
+int32 id
+int32 type
+int32 action
+geometry_msgs/Pose pose
+geometry_msgs/Vector3 scale
+std_msgs/ColorRGBA color
+builtin_interfaces/Duration lifetime
+bool frame_locked
+geometry_msgs/Point[] points
+std_msgs/ColorRGBA[] colors
+string text
+string mesh_resource
+bool mesh_use_embedded_materials
+${ROS2_HEADER_DEFINITIONS}
+===
+MSG: geometry_msgs/Pose
+geometry_msgs/Point position
+geometry_msgs/Quaternion orientation
+===
+MSG: geometry_msgs/Point
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w
+===
+MSG: std_msgs/ColorRGBA
+float32 r
+float32 g
+float32 b
+float32 a`;
 
 const ROS1_NAV_SAT_FIX_SCHEMA = `std_msgs/Header header
 sensor_msgs/NavSatStatus status
@@ -253,6 +497,11 @@ module builtin_interfaces {
   };
 };`;
 
+const ROS2_COMPRESSED_IMAGE_SCHEMA = `std_msgs/Header header
+string format
+uint8[] data
+${ROS2_HEADER_DEFINITIONS}`;
+
 const ROS1_IMAGE_SCHEMA = `std_msgs/Header header
 uint32 height
 uint32 width
@@ -311,13 +560,20 @@ describe("ROS MCAP decoders", () => {
     const payloads = [
       ...ROS_CAMERA_INFO_PAYLOADS,
       ...ROS_COMPRESSED_IMAGE_PAYLOADS,
+      ...ROS_DETECTION_2D_ARRAY_PAYLOADS,
+      ...ROS_DETECTION_3D_ARRAY_PAYLOADS,
+      ...ROS_DIAGNOSTIC_ARRAY_PAYLOADS,
       ...ROS_IMAGE_PAYLOADS,
       ...ROS_LASER_SCAN_PAYLOADS,
       ...ROS_NAV_SAT_FIX_PAYLOADS,
       ...ROS_OCCUPANCY_GRID_PAYLOADS,
       ...ROS_ODOMETRY_PAYLOADS,
+      ...ROS_PATH_PAYLOADS,
       ...ROS_POINT_CLOUD2_PAYLOADS,
+      ...ROS_POSE_ARRAY_PAYLOADS,
       ...ROS_POSE_STAMPED_PAYLOADS,
+      ...ROS_RCL_LOG_PAYLOADS,
+      ...ROS_ROSGRAPH_LOG_PAYLOADS,
     ];
 
     for (const payload of payloads) {
@@ -380,6 +636,42 @@ describe("ROS MCAP decoders", () => {
     expect(
       Array.from(output.visualization.scalarFields?.[1]?.values ?? []),
     ).toEqual([50_000, 60_000, 65_535]);
+    const renderPayload = output.visualization.renderPayload;
+    if (!renderPayload) {
+      throw new Error("Expected point cloud render payload");
+    }
+    expect(renderPayload).toMatchObject({
+      bounds: { max: [9, 10, 11], min: [1, 2, 3] },
+      capacity: 1_024,
+      finitePointCount: 3,
+      heightRange: { max: 11, min: 3 },
+      sampledPointCount: 3,
+    });
+    expect(Array.from(renderPayload.sourceIndices.slice(0, 3))).toEqual([
+      0, 1, 2,
+    ]);
+    expect(renderPayload.scalarFields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          finiteValueCount: 3,
+          name: "intensity",
+          range: { max: 40, min: 10 },
+        }),
+        expect.objectContaining({
+          finiteValueCount: 3,
+          name: "ring",
+          range: { max: 65_535, min: 50_000 },
+        }),
+      ]),
+    );
+    expect(output.resourceHints?.transferables).toEqual(
+      expect.arrayContaining([
+        renderPayload.positions.buffer,
+        renderPayload.sourceIndices.buffer,
+        renderPayload.scalarFields[0].values.buffer,
+        renderPayload.scalarFields[1].values.buffer,
+      ]),
+    );
     expect(output.attributes).toMatchObject({
       frameId: "lidar",
       height: 2,
@@ -419,6 +711,93 @@ describe("ROS MCAP decoders", () => {
     });
   });
 
+  it("decodes ROS log and diagnostics records into console rows", () => {
+    const rosgraph = decoderForSchemaEncoding(
+      rosRosgraphLogDecoders,
+      "ros1msg",
+    ).decode(
+      ros1Message(ROS1_LOG_SCHEMA, {
+        file: "planner.cpp",
+        function: "tick",
+        header: ros1Header({ frameId: "rosout", nsec: 8, sec: 7, seq: 3 }),
+        level: 8,
+        line: 42,
+        msg: "planner failed",
+        name: "planner",
+        topics: ["/plan"],
+      }),
+      { schemaData: schemaData(ROS1_LOG_SCHEMA) },
+    );
+    const rcl = decoderForSchemaEncoding(rosRclLogDecoders, "ros2msg").decode(
+      ros2Message(ROS2_RCL_LOG_SCHEMA, {
+        file: "controller.cpp",
+        function: "update",
+        level: 30,
+        line: 10,
+        msg: "tracking degraded",
+        name: "controller",
+        stamp: { nanosec: 4, sec: 5 },
+      }),
+      { schemaData: schemaData(ROS2_RCL_LOG_SCHEMA) },
+    );
+    const diagnostics = decoderForSchemaEncoding(
+      rosDiagnosticArrayDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_DIAGNOSTIC_ARRAY_SCHEMA, {
+        header: ros2Header({ frameId: "base", nanosec: 9, sec: 6 }),
+        status: [
+          {
+            hardware_id: "lidar-top",
+            level: 2,
+            message: "packet drops",
+            name: "driver",
+            values: [{ key: "drop_rate", value: "0.2" }],
+          },
+        ],
+      }),
+      { schemaData: schemaData(ROS2_DIAGNOSTIC_ARRAY_SCHEMA) },
+    );
+
+    expect(rosgraph.attributes?.logRows).toEqual([
+      expect.objectContaining({
+        file: "planner.cpp",
+        functionName: "tick",
+        level: "error",
+        line: 42,
+        message: "planner failed",
+        name: "planner",
+        timestampNs: 7_000_000_008n,
+        topics: ["/plan"],
+      }),
+    ]);
+    expect(rosgraph.timing?.sourceTimestamps?.messageTime).toBe(7_000_000_008n);
+    expect(rcl.attributes?.logRows).toEqual([
+      expect.objectContaining({
+        level: "warn",
+        levelNumber: 30,
+        message: "tracking degraded",
+        timestampNs: 5_000_000_004n,
+      }),
+    ]);
+    expect(diagnostics.attributes).toMatchObject({
+      diagnosticCount: 1,
+      errorCount: 1,
+    });
+    expect(diagnostics.attributes?.logRows).toEqual([
+      expect.objectContaining({
+        details: [{ key: "drop_rate", value: "0.2" }],
+        hardwareId: "lidar-top",
+        kind: "diagnostic",
+        level: "error",
+        message: "packet drops",
+        name: "driver",
+        status: "ERROR",
+        timestampNs: 6_000_000_009n,
+      }),
+    ]);
+  });
+
   it("decodes ros2 idl CompressedImage into an encoded image visualization", () => {
     const output = decoderForSchemaEncoding(
       rosCompressedImageDecoders,
@@ -449,6 +828,148 @@ describe("ROS MCAP decoders", () => {
       frameId: "camera",
     });
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(3_000_000_004n);
+  });
+
+  it("decodes ROS CompressedImage H.264 into encoded video", () => {
+    const output = decoderForSchemaEncoding(
+      rosCompressedImageDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_COMPRESSED_IMAGE_SCHEMA, {
+        data: Array.from(H264_KEYFRAME_BYTES),
+        format: "bgr8; h264 compressed",
+        header: {
+          frame_id: "camera",
+          stamp: { nanosec: 4, sec: 3 },
+        },
+      }),
+      { schemaData: schemaData(ROS2_COMPRESSED_IMAGE_SCHEMA) },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.ENCODED_VIDEO);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.ENCODED_VIDEO) {
+      throw new Error("Expected encoded video visualization");
+    }
+    expect(output.visualization).toMatchObject({
+      codec: "h264",
+      coordinateFrameId: "camera",
+      format: "bgr8; h264 compressed",
+      keyframe: true,
+      timestampNs: 3_000_000_004n,
+    });
+    expect(output.visualization.h264).toMatchObject({
+      codecString: "avc1.4d001f",
+      hasFrame: true,
+    });
+    expect(output.attributes).toMatchObject({
+      byteLength: H264_KEYFRAME_BYTES.byteLength,
+      codec: "h264",
+      codecString: "avc1.4d001f",
+      format: "bgr8; h264 compressed",
+      frameId: "camera",
+      keyframe: true,
+    });
+    expect(output.timing?.sourceTimestamps?.messageTime).toBe(3_000_000_004n);
+  });
+
+  it("degrades ROS CompressedImage B-frame H.264 without throwing", () => {
+    const output = decoderForSchemaEncoding(
+      rosCompressedImageDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_COMPRESSED_IMAGE_SCHEMA, {
+        data: [0, 0, 1, 0x41, 0xa0],
+        format: "h264",
+        header: {
+          frame_id: "camera",
+          stamp: { nanosec: 4, sec: 3 },
+        },
+      }),
+      { schemaData: schemaData(ROS2_COMPRESSED_IMAGE_SCHEMA) },
+    );
+
+    expect(output.visualization).toBeUndefined();
+    expect(output.attributes).toMatchObject({
+      byteLength: 5,
+      format: "h264",
+      frameId: "camera",
+      unsupportedReason: "H.264 video streams with B-frames are unsupported",
+    });
+  });
+
+  it("degrades ROS CompressedImage non-H.264 video formats", () => {
+    const output = decoderForSchemaEncoding(
+      rosCompressedImageDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_COMPRESSED_IMAGE_SCHEMA, {
+        data: [1, 2, 3],
+        format: "vp9",
+        header: {
+          frame_id: "camera",
+          stamp: { nanosec: 4, sec: 3 },
+        },
+      }),
+      { schemaData: schemaData(ROS2_COMPRESSED_IMAGE_SCHEMA) },
+    );
+
+    expect(output.visualization).toBeUndefined();
+    expect(output.attributes).toMatchObject({
+      byteLength: 3,
+      format: "vp9",
+      frameId: "camera",
+      unsupportedReason: "VP9 video rendering not yet supported",
+    });
+  });
+
+  it("degrades ROS CompressedImage H.264 without Annex-B start codes", () => {
+    const output = decoderForSchemaEncoding(
+      rosCompressedImageDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_COMPRESSED_IMAGE_SCHEMA, {
+        data: [0x65, 0xb0],
+        format: "h264",
+        header: {
+          frame_id: "camera",
+          stamp: { nanosec: 4, sec: 3 },
+        },
+      }),
+      { schemaData: schemaData(ROS2_COMPRESSED_IMAGE_SCHEMA) },
+    );
+
+    expect(output.visualization).toBeUndefined();
+    expect(output.attributes).toMatchObject({
+      byteLength: 2,
+      format: "h264",
+      frameId: "camera",
+      unsupportedReason: "H.264 video requires Annex-B NAL start codes",
+    });
+  });
+
+  it("degrades ROS CompressedImage H.264 parameter sets without frame NALs", () => {
+    const output = decoderForSchemaEncoding(
+      rosCompressedImageDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_COMPRESSED_IMAGE_SCHEMA, {
+        data: [0, 0, 0, 1, 0x67, 0x4d, 0x00, 0x1f, 0, 0, 1, 0x68, 0xce],
+        format: "h264",
+        header: {
+          frame_id: "camera",
+          stamp: { nanosec: 4, sec: 3 },
+        },
+      }),
+      { schemaData: schemaData(ROS2_COMPRESSED_IMAGE_SCHEMA) },
+    );
+
+    expect(output.visualization).toBeUndefined();
+    expect(output.attributes).toMatchObject({
+      byteLength: 13,
+      format: "h264",
+      frameId: "camera",
+      unsupportedReason: "H.264 video requires frame NAL units",
+    });
   });
 
   it("decodes ros1 Image RGB/BGR rows with padding into raw RGBA", () => {
@@ -604,7 +1125,7 @@ describe("ROS MCAP decoders", () => {
     const unsupported = decoder.decode(
       ros1ImageMessage({
         data: [1, 2],
-        encoding: "yuv422",
+        encoding: "nv12",
         height: 1,
         step: 2,
         width: 1,
@@ -624,8 +1145,8 @@ describe("ROS MCAP decoders", () => {
 
     expect(unsupported.visualization).toBeUndefined();
     expect(unsupported.attributes).toMatchObject({
-      encoding: "yuv422",
-      unsupportedReason: "ROS Image encoding 'yuv422' is unsupported",
+      encoding: "nv12",
+      unsupportedReason: "ROS Image encoding 'nv12' is unsupported",
     });
     expect(malformed.visualization).toBeUndefined();
     expect(malformed.attributes?.unsupportedReason).toContain(
@@ -668,11 +1189,20 @@ describe("ROS MCAP decoders", () => {
       throw new Error("Expected camera calibration visualization");
     }
     expect(output.visualization).toMatchObject({
+      binningX: 0,
+      binningY: 0,
       coordinateFrameId: "camera_optical",
       D: [0.1, -0.2, 0, 0, 0],
       distortionModel: "plumb_bob",
       height: 480,
       K,
+      roi: {
+        doRectify: false,
+        height: 0,
+        width: 0,
+        xOffset: 0,
+        yOffset: 0,
+      },
       timestampNs: 5_000_000_006n,
       width: 640,
     });
@@ -711,6 +1241,29 @@ describe("ROS MCAP decoders", () => {
     expect(
       Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
     ).toEqual([5, 7]);
+    const renderPayload = output.visualization.renderPayload;
+    if (!renderPayload) {
+      throw new Error("Expected point cloud render payload");
+    }
+    expect(renderPayload).toMatchObject({
+      capacity: 1_024,
+      finitePointCount: 2,
+      sampledPointCount: 2,
+    });
+    expect(renderPayload.bounds?.min[0]).toBeCloseTo(-1);
+    expect(renderPayload.bounds?.max[0]).toBeCloseTo(1);
+    expect(renderPayload.bounds?.min[1]).toBeCloseTo(0);
+    expect(renderPayload.bounds?.max[1]).toBeCloseTo(0);
+    expect(
+      Array.from(renderPayload.scalarFields[0].values.slice(0, 2)),
+    ).toEqual([5, 7]);
+    expect(output.resourceHints?.transferables).toEqual(
+      expect.arrayContaining([
+        renderPayload.positions.buffer,
+        renderPayload.sourceIndices.buffer,
+        renderPayload.scalarFields[0].values.buffer,
+      ]),
+    );
   });
 
   it("decodes ros2 PoseStamped and Odometry into pose visualizations", () => {
@@ -769,6 +1322,321 @@ describe("ROS MCAP decoders", () => {
     expect(odometry.attributes).toMatchObject({ childFrameId: "base_link" });
   });
 
+  it("decodes ros2 Path and PoseArray into scene-update overlays", () => {
+    const path = decoderForSchemaEncoding(rosPathDecoders, "ros2msg").decode(
+      ros2Message(ROS2_PATH_SCHEMA, {
+        header: ros2Header({ frameId: "map", nanosec: 14, sec: 13 }),
+        poses: [
+          {
+            header: ros2Header({ frameId: "map", nanosec: 1, sec: 1 }),
+            pose: poseRecord([1, 2, 0], [0, 0, 0, 1]),
+          },
+          {
+            header: ros2Header({ frameId: "map", nanosec: 2, sec: 1 }),
+            pose: poseRecord([3, 4, 0], [0, 0, 0, 1]),
+          },
+        ],
+      }),
+      { schemaData: schemaData(ROS2_PATH_SCHEMA), streamId: "/planned_path" },
+    );
+    const poseArray = decoderForSchemaEncoding(
+      rosPoseArrayDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_POSE_ARRAY_SCHEMA, {
+        header: ros2Header({ frameId: "map", nanosec: 16, sec: 15 }),
+        poses: [
+          poseRecord([5, 6, 0], [0, 0, 0, 1]),
+          poseRecord([7, 8, 0], [0, 0, 1, 0]),
+        ],
+      }),
+      {
+        schemaData: schemaData(ROS2_POSE_ARRAY_SCHEMA),
+        streamId: "/pose_hypotheses",
+      },
+    );
+
+    expect(path.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    expect(poseArray.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    if (
+      path.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE ||
+      poseArray.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE
+    ) {
+      throw new Error("Expected scene update visualizations");
+    }
+    expect(path.visualization.entities[0]).toMatchObject({
+      frameId: "map",
+      id: "/planned_path:path",
+      lineCount: 1,
+      timestampNs: 13_000_000_014n,
+    });
+    expect(path.visualization.entities[0]?.lines[0]?.points).toEqual([
+      [1, 2, 0],
+      [3, 4, 0],
+    ]);
+    expect(path.attributes).toMatchObject({
+      frameId: "map",
+      pointCount: 2,
+      poseCount: 2,
+    });
+    expect(poseArray.visualization.entities[0]).toMatchObject({
+      arrowCount: 2,
+      frameId: "map",
+      id: "/pose_hypotheses:pose-array",
+      timestampNs: 15_000_000_016n,
+    });
+    expect(
+      poseArray.visualization.entities[0]?.arrows[0]?.pose.position,
+    ).toEqual([5, 6, 0]);
+    expect(poseArray.attributes).toMatchObject({
+      frameId: "map",
+      poseCount: 2,
+      renderedPoseCount: 2,
+    });
+  });
+
+  it("decodes ros2 vision detections into transient viewer overlays", () => {
+    const detections2d = decoderForSchemaEncoding(
+      rosDetection2DArrayDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_DETECTION_2D_ARRAY_SCHEMA, {
+        detections: [
+          detection2DRecord({
+            classId: "car",
+            id: "track-1",
+            score: 0.93,
+            x: 50,
+            y: 40,
+          }),
+        ],
+        header: ros2Header({ frameId: "camera", nanosec: 18, sec: 17 }),
+      }),
+      { schemaData: schemaData(ROS2_DETECTION_2D_ARRAY_SCHEMA) },
+    );
+    const detections3d = decoderForSchemaEncoding(
+      rosDetection3DArrayDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_DETECTION_3D_ARRAY_SCHEMA, {
+        detections: [
+          detection3DRecord({
+            classId: "pedestrian",
+            id: "track-9",
+            score: 0.81,
+          }),
+        ],
+        header: ros2Header({ frameId: "map", nanosec: 20, sec: 19 }),
+      }),
+      {
+        schemaData: schemaData(ROS2_DETECTION_3D_ARRAY_SCHEMA),
+        streamId: "/detections3d",
+      },
+    );
+
+    expect(detections2d.visualization?.kind).toBe(
+      VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
+    );
+    expect(detections3d.visualization?.kind).toBe(
+      VISUALIZATION_KIND.SCENE_UPDATE,
+    );
+    if (
+      detections2d.visualization?.kind !==
+        VISUALIZATION_KIND.IMAGE_ANNOTATIONS ||
+      detections3d.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE
+    ) {
+      throw new Error("Expected detection visualizations");
+    }
+    expect(detections2d.visualization.points[0]).toMatchObject({
+      points: [
+        [40, 30],
+        [60, 30],
+        [60, 50],
+        [40, 50],
+      ],
+      type: "line-loop",
+    });
+    expect(detections2d.visualization.texts[0]).toMatchObject({
+      position: [40, 16],
+      text: "car 0.93",
+    });
+    expect(detections2d.attributes).toMatchObject({
+      boxCount: 1,
+      classIds: ["car"],
+      detectionCount: 1,
+      frameId: "camera",
+      textCount: 1,
+    });
+    expect(detections3d.visualization.deletions).toEqual([
+      { id: "", timestampNs: 19_000_000_020n, type: "all" },
+    ]);
+    expect(detections3d.visualization.entities[0]).toMatchObject({
+      cubeCount: 1,
+      frameId: "map",
+      id: "/detections3d:detection3d:track-9",
+      metadata: {
+        classId: "pedestrian",
+        id: "track-9",
+        score: "0.8100",
+        source: "vision_msgs",
+      },
+      textCount: 1,
+      timestampNs: 19_000_000_020n,
+    });
+    expect(detections3d.visualization.entities[0]?.cubes[0]?.size).toEqual([
+      2, 1, 1.5,
+    ]);
+  });
+
+  it("decodes ros2 MarkerArray into scene-update entities and deletions", () => {
+    const output = decoderForSchemaEncoding(
+      rosMarkerArrayDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_MARKER_ARRAY_SCHEMA, {
+        markers: [
+          markerRecord({
+            color: colorRecord([1, 0, 0, 0.5]),
+            frameLocked: true,
+            id: 7,
+            lifetime: { nanosec: 4, sec: 3 },
+            ns: "boxes",
+            pose: poseRecord([1, 2, 3], [0, 0, 0, 1]),
+            scale: vectorRecord([4, 5, 6]),
+            type: 1,
+          }),
+          markerRecord({
+            color: colorRecord([0, 1, 0, 1]),
+            id: 2,
+            ns: "plan",
+            points: [
+              vectorRecord([0, 0, 0]),
+              vectorRecord([1, 0, 0]),
+              vectorRecord([1, 1, 0]),
+            ],
+            scale: vectorRecord([2, 1, 1]),
+            type: 4,
+          }),
+          markerRecord({
+            color: colorRecord([0, 0, 1, 1]),
+            id: 3,
+            ns: "labels",
+            pose: poseRecord([0, 0, 2], [0, 0, 0, 1]),
+            scale: vectorRecord([1, 1, 1.5]),
+            text: "car",
+            type: 9,
+          }),
+          markerRecord({ action: 2, id: 8, ns: "boxes", type: 1 }),
+          markerRecord({ action: 3, id: 0, ns: "ignored", type: 1 }),
+        ],
+      }),
+      {
+        schemaData: schemaData(ROS2_MARKER_ARRAY_SCHEMA),
+        streamId: "/markers",
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE) {
+      throw new Error("Expected scene update visualization");
+    }
+
+    expect(output.attributes).toMatchObject({
+      deletionCount: 2,
+      entityCount: 3,
+      markerCount: 5,
+      transparentMarkerCount: 0,
+      unsupportedMarkerCount: 0,
+    });
+    expect(output.visualization.entities[0]).toMatchObject({
+      cubeCount: 1,
+      frameId: "map",
+      frameLocked: true,
+      id: "/markers:boxes:7",
+      lifetimeNs: 3_000_000_004n,
+      metadata: {
+        id: "7",
+        namespace: "boxes",
+        source: "visualization_msgs/Marker",
+        type: "CUBE",
+      },
+      timestampNs: 21_000_000_022n,
+    });
+    expect(output.visualization.entities[0]?.cubes[0]).toMatchObject({
+      color: [1, 0, 0, 0.5],
+      pose: { position: [1, 2, 3], quaternion: [0, 0, 0, 1] },
+      size: [4, 5, 6],
+    });
+    expect(output.visualization.entities[1]?.lines[0]).toMatchObject({
+      points: [
+        [0, 0, 0],
+        [1, 0, 0],
+        [1, 1, 0],
+      ],
+      thickness: 2,
+      type: "line-strip",
+    });
+    expect(output.visualization.entities[2]?.texts[0]).toMatchObject({
+      billboard: true,
+      fontSize: 1.5,
+      text: "car",
+    });
+    expect(output.visualization.deletions).toEqual([
+      {
+        id: "/markers:boxes:8",
+        timestampNs: 21_000_000_022n,
+        type: "matching-id",
+      },
+      {
+        id: "",
+        timestampNs: 21_000_000_022n,
+        type: "all",
+      },
+    ]);
+  });
+
+  it("marks oversized ros2 marker point lists as unsupported", () => {
+    const points = Array.from({ length: 513 }, (_, index) =>
+      vectorRecord([index, 0, 0]),
+    );
+    const output = decoderForSchemaEncoding(
+      rosMarkerArrayDecoders,
+      "ros2msg",
+    ).decode(
+      ros2Message(ROS2_MARKER_ARRAY_SCHEMA, {
+        markers: [
+          markerRecord({
+            id: 10,
+            ns: "too-many-cubes",
+            points,
+            type: 6,
+          }),
+          markerRecord({
+            id: 11,
+            ns: "too-many-spheres",
+            points,
+            type: 7,
+          }),
+        ],
+      }),
+      {
+        schemaData: schemaData(ROS2_MARKER_ARRAY_SCHEMA),
+        streamId: "/markers",
+      },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.SCENE_UPDATE);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE) {
+      throw new Error("Expected scene update visualization");
+    }
+    expect(output.visualization.entities).toEqual([]);
+    expect(output.attributes).toMatchObject({
+      entityCount: 0,
+      unsupportedMarkerCount: 2,
+      unsupportedMarkerTypes: ["CUBE_LIST(513)", "SPHERE_LIST(513)"],
+    });
+  });
+
   it("decodes ros1 NavSatFix into a location visualization", () => {
     const output = decoderForSchemaEncoding(
       rosNavSatFixDecoders,
@@ -793,6 +1661,8 @@ describe("ROS MCAP decoders", () => {
     expect(output.visualization).toMatchObject({
       altitude: 12.5,
       coordinateFrameId: "gps",
+      fixService: 1,
+      fixStatus: 0,
       latitude: 37.77,
       longitude: -122.42,
       positionCovariance: [1, 0, 0, 0, 2, 0, 0, 0, 3],
@@ -892,6 +1762,25 @@ describe("ROS MCAP decoders", () => {
       schema: "sensor_msgs/msg/LaserScan",
       schemaEncoding: "ros2msg",
     });
+    const markers = createTopic("/markers", ROS_MARKER_ARRAY_PAYLOADS[1]);
+    const path = createTopic("/planned_path", ROS_PATH_PAYLOADS[1]);
+    const poseArray = createTopic(
+      "/pose_hypotheses",
+      ROS_POSE_ARRAY_PAYLOADS[1],
+    );
+    const detections2d = createTopic(
+      "/detections2d",
+      ROS_DETECTION_2D_ARRAY_PAYLOADS[1],
+    );
+    const detections3d = createTopic(
+      "/detections3d",
+      ROS_DETECTION_3D_ARRAY_PAYLOADS[1],
+    );
+    const logs = createTopic("/rosout", ROS_RCL_LOG_PAYLOADS[0]);
+    const diagnostics = createTopic(
+      "/diagnostics",
+      ROS_DIAGNOSTIC_ARRAY_PAYLOADS[1],
+    );
 
     expect(isCompressedImageStream(compressed)).toBe(true);
     expect(isCompressedImageStream(rawImage)).toBe(false);
@@ -916,10 +1805,46 @@ describe("ROS MCAP decoders", () => {
     expect(
       isGridStream(createTopic("/map", ROS_OCCUPANCY_GRID_PAYLOADS[0])),
     ).toBe(true);
-    expect(streamTopics([compressed, rawImage, cloud, scan])).toMatchObject({
+    expect(isSceneUpdateStream(markers)).toBe(true);
+    expect(isSceneUpdateStream(path)).toBe(true);
+    expect(isSceneUpdateStream(poseArray)).toBe(true);
+    expect(isImageAnnotationsStream(detections2d)).toBe(true);
+    expect(isSceneUpdateStream(detections3d)).toBe(true);
+    expect(isLogStream(logs)).toBe(true);
+    expect(isLogStream(diagnostics)).toBe(true);
+    expect(
+      streamTopics([
+        compressed,
+        rawImage,
+        cloud,
+        scan,
+        markers,
+        path,
+        poseArray,
+        detections2d,
+        detections3d,
+        logs,
+        diagnostics,
+      ]),
+    ).toMatchObject({
+      annotations: ["/detections2d"],
       image: ["/camera/compressed", "/camera/image"],
+      logs: ["/rosout", "/diagnostics"],
       pointCloud: ["/points", "/scan"],
-      previewable: ["/camera/compressed", "/camera/image", "/points", "/scan"],
+      previewable: [
+        "/camera/compressed",
+        "/camera/image",
+        "/points",
+        "/scan",
+        "/rosout",
+        "/diagnostics",
+      ],
+      sceneUpdates: [
+        "/markers",
+        "/planned_path",
+        "/pose_hypotheses",
+        "/detections3d",
+      ],
     });
   });
 });
@@ -1156,26 +2081,62 @@ function float32Bytes(
   return Array.from(data);
 }
 
-function poseRecord(
-  position: readonly [number, number, number],
-  quaternion: readonly [number, number, number, number],
-) {
+function markerRecord({
+  action = 0,
+  color = colorRecord([1, 1, 1, 1]),
+  colors = [],
+  frameLocked = false,
+  id,
+  lifetime = { nanosec: 0, sec: 0 },
+  meshResource = "",
+  meshUseEmbeddedMaterials = false,
+  ns,
+  points = [],
+  pose = poseRecord([0, 0, 0], [0, 0, 0, 1]),
+  scale = vectorRecord([1, 1, 1]),
+  text = "",
+  type,
+}: {
+  readonly action?: number;
+  readonly color?: ReturnType<typeof colorRecord>;
+  readonly colors?: readonly ReturnType<typeof colorRecord>[];
+  readonly frameLocked?: boolean;
+  readonly id: number;
+  readonly lifetime?: { readonly nanosec: number; readonly sec: number };
+  readonly meshResource?: string;
+  readonly meshUseEmbeddedMaterials?: boolean;
+  readonly ns: string;
+  readonly points?: readonly ReturnType<typeof vectorRecord>[];
+  readonly pose?: ReturnType<typeof poseRecord>;
+  readonly scale?: ReturnType<typeof vectorRecord>;
+  readonly text?: string;
+  readonly type: number;
+}) {
   return {
-    orientation: {
-      w: quaternion[3],
-      x: quaternion[0],
-      y: quaternion[1],
-      z: quaternion[2],
-    },
-    position: vectorRecord(position),
+    action,
+    color,
+    colors,
+    frame_locked: frameLocked,
+    header: ros2Header({ frameId: "map", nanosec: 22, sec: 21 }),
+    id,
+    lifetime,
+    mesh_resource: meshResource,
+    mesh_use_embedded_materials: meshUseEmbeddedMaterials,
+    ns,
+    points,
+    pose,
+    scale,
+    text,
+    type,
   };
 }
 
-function vectorRecord(vector: readonly [number, number, number]) {
+function colorRecord(color: readonly [number, number, number, number]) {
   return {
-    x: vector[0],
-    y: vector[1],
-    z: vector[2],
+    a: color[3],
+    b: color[2],
+    g: color[1],
+    r: color[0],
   };
 }
 
