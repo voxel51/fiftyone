@@ -27,9 +27,17 @@ export class VideoAnnotatePom {
     this.statusSlot = page.getByTestId("video-annotation-status-slot");
   }
 
-  /** Wait until the video-annotation surface (top bar) has mounted. */
+  /**
+   * Wait until the video-annotation surface has mounted AND the timeline
+   * has committed its tracks (`data-timeline-loaded="true"` — stamped once
+   * label schemas land and the frame index resolves). Track reads after
+   * this are deterministic single-shots; no polling required.
+   */
   async waitForSurface() {
     await expect(this.topBar).toBeVisible();
+    await expect(
+      this.page.locator('[data-timeline-loaded="true"]'),
+    ).toBeAttached();
   }
 
   /** All distinct timeline track ids (object instanceIds + `td-…` rows). */

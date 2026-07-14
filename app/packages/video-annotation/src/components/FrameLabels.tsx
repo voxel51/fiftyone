@@ -17,6 +17,7 @@ import {
   useGroupSlice,
   useModalSampleId,
   useView,
+  useLabelSchemasLoaded,
   useVisibleLabelSchemas,
 } from "../state/accessors";
 import { useEngineTemporalSample } from "../sync/useTemporalOverlaySync";
@@ -597,6 +598,18 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     resolveTemporalDetectionColor,
   );
 
+  // Readiness for the data-timeline-loaded test seam: schemas must have
+  // landed (TD/frame fields are schema-gated), and the frame index must
+  // have resolved unless there are no frame fields to index.
+  const schemasLoaded = useLabelSchemasLoaded();
+  const visibleSchemas = useVisibleLabelSchemas();
+  const hasFrameFields = useMemo(
+    () => [...visibleSchemas].some((path) => path.startsWith("frames.")),
+    [visibleSchemas],
+  );
+  const timelineLoaded =
+    schemasLoaded && (frameTracksResolved || !hasFrameFields);
+
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const tracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],
@@ -651,6 +664,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
       <TimelineWithTracks
         decorateTrack={decorateTrack}
         extraControls={<VideoAnnotationToolbar />}
+        loaded={timelineLoaded}
       />
     </TrackProvider>
   );
