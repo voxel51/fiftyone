@@ -26,6 +26,7 @@ export class PlanarCamera implements CameraAdapter {
   private readonly listeners = new AbortController();
 
   private bounds: Bounds | null = null;
+  private focus: Bounds | null = null;
   private home: Rect = { x0: -1, y0: -1, x1: 1, y1: 1 };
   private rect: Rect = this.home;
   private width = 1;
@@ -81,11 +82,17 @@ export class PlanarCamera implements CameraAdapter {
 
   setBounds(bounds: Bounds, width: number, height: number): void {
     this.bounds = bounds;
+    this.focus = null;
     this.width = width;
     this.height = height;
     this.home = fitRect(bounds, width, height, MARGIN);
     this.rect = this.home;
     this.apply();
+  }
+
+  /** No immediate view change — the focus only steers the next reset() */
+  setFocus(bounds: Bounds | null): void {
+    this.focus = bounds;
   }
 
   /** Keep the current zoom + center; re-fit the home rect to the new size */
@@ -107,8 +114,27 @@ export class PlanarCamera implements CameraAdapter {
   }
 
   reset(): void {
-    this.rect = this.home;
+    this.rect = this.focus ? this.frameFocus(this.focus) : this.home;
     this.apply();
+  }
+
+  /**
+   * Fit the focus region like a home rect, but capped at the
+   * interactive zoom limit (a tiny cluster must not out-zoom what the
+   * wheel allows) and clamped to the pannable area, so a reset never
+   * lands somewhere the user couldn't reach by hand.
+   */
+  private frameFocus(focus: Bounds): Rect {
+    const fitted = fitRect(focus, this.width, this.height, MARGIN);
+    const k = Math.min(zoomOf(fitted, this.home), MAX_ZOOM);
+    const w = (this.home.x1 - this.home.x0) / k;
+    const h = (this.home.y1 - this.home.y0) / k;
+    const cx = (focus.xMin + focus.xMax) / 2;
+    const cy = (focus.yMin + focus.yMax) / 2;
+    return clampToHome(
+      { x0: cx - w / 2, x1: cx + w / 2, y0: cy - h / 2, y1: cy + h / 2 },
+      this.home,
+    );
   }
 
   destroy(): void {

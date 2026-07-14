@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildColumns, colorsFromLabels } from "./columns";
+import { buildColumns, colorsFromLabels, visibleBounds } from "./columns";
 import type { EmbeddingPoint } from "./types";
 
 const point = (
@@ -57,6 +57,42 @@ describe("buildColumns", () => {
   it("keeps ids aligned with point order", () => {
     const cols = buildColumns([point(1, 2), point(3, 4)]);
     expect(cols.ids).toEqual(["1,2,", "3,4,"]);
+  });
+});
+
+describe("visibleBounds", () => {
+  const cols = buildColumns([
+    { id: "a", x: 0, y: 0, z: 0, label: null },
+    { id: "b", x: 10, y: -5, z: 2, label: null },
+    { id: "c", x: 4, y: 3, z: 8, label: null },
+  ]);
+
+  it("bounds only the masked-in points", () => {
+    const bounds = visibleBounds(cols, new Uint8Array([0, 1, 1]));
+    expect(bounds).toEqual({
+      xMin: 4,
+      xMax: 10,
+      yMin: -5,
+      yMax: 3,
+      zMin: 2,
+      zMax: 8,
+    });
+  });
+
+  it("uses the full columns for a null mask", () => {
+    expect(visibleBounds(cols, null)).toEqual({
+      xMin: 0,
+      xMax: 10,
+      yMin: -5,
+      yMax: 3,
+      zMin: 0,
+      zMax: 8,
+    });
+  });
+
+  // Callers keep their previous framing; an empty region frames nothing
+  it("returns null when nothing is visible", () => {
+    expect(visibleBounds(cols, new Uint8Array([0, 0, 0]))).toBeNull();
   });
 });
 

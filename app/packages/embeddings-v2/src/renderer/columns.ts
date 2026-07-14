@@ -84,6 +84,42 @@ export function buildColumns(
   };
 }
 
+/**
+ * Bounds of the mask's visible subset (null mask = every point).
+ * Returns null when nothing is visible — callers keep their previous
+ * framing rather than framing an empty region.
+ */
+export function visibleBounds(
+  cols: Columns,
+  mask: Uint8Array | null,
+): Bounds | null {
+  if (!mask) {
+    const { xMin, xMax, yMin, yMax, zMin, zMax } = cols;
+    return { xMin, xMax, yMin, yMax, zMin, zMax };
+  }
+  let xMin = Infinity;
+  let xMax = -Infinity;
+  let yMin = Infinity;
+  let yMax = -Infinity;
+  let zMin = Infinity;
+  let zMax = -Infinity;
+  for (let i = 0; i < cols.n; i++) {
+    if (!mask[i]) continue;
+    const x = cols.xs[i];
+    const y = cols.ys[i];
+    const z = cols.zs[i];
+    if (x < xMin) xMin = x;
+    if (x > xMax) xMax = x;
+    if (y < yMin) yMin = y;
+    if (y > yMax) yMax = y;
+    if (z < zMin) zMin = z;
+    if (z > zMax) zMax = z;
+  }
+  if (xMin === Infinity) return null;
+
+  return { xMin, xMax, yMin, yMax, zMin, zMax };
+}
+
 /** Default coloring: label index -> palette, as flat rgb triplets */
 export function colorsFromLabels(
   cols: Columns,

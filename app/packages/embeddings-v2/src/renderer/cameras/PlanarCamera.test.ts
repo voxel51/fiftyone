@@ -52,3 +52,40 @@ describe("PlanarCamera.toDataPolygon", () => {
     camera.destroy();
   });
 });
+
+describe("PlanarCamera focus", () => {
+  const center = (camera: PlanarCamera["camera"]) => [
+    (camera.left + camera.right) / 2,
+    (camera.bottom + camera.top) / 2,
+  ];
+
+  // Legend/filter hides move the interesting region; reset must follow
+  // it — and forget it again when everything is visible or data changes
+  it("reset frames the focus, and setBounds clears it", () => {
+    const element = document.createElement("div");
+    const camera = new PlanarCamera(element, vi.fn());
+    camera.setBounds(BOUNDS, 100, 100);
+    const homeWidth = camera.camera.right - camera.camera.left;
+
+    camera.setFocus({ xMin: 7, xMax: 9, yMin: 1, yMax: 3, zMin: 0, zMax: 0 });
+    // No immediate movement — focus only steers the next reset
+    expect(center(camera.camera)).toEqual([5, 5]);
+
+    camera.reset();
+    const [cx, cy] = center(camera.camera);
+    expect(cx).toBeCloseTo(8);
+    expect(cy).toBeCloseTo(2);
+    expect(camera.camera.right - camera.camera.left).toBeLessThan(homeWidth);
+
+    camera.setFocus(null);
+    camera.reset();
+    expect(center(camera.camera)).toEqual([5, 5]);
+
+    camera.setFocus({ xMin: 7, xMax: 9, yMin: 1, yMax: 3, zMin: 0, zMax: 0 });
+    camera.setBounds(BOUNDS, 100, 100);
+    camera.reset();
+    expect(center(camera.camera)).toEqual([5, 5]);
+
+    camera.destroy();
+  });
+});

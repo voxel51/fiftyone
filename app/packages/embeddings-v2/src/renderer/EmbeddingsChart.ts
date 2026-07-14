@@ -14,7 +14,12 @@ import {
   WebGLRenderer,
 } from "three";
 import { PlanarCamera } from "./cameras/PlanarCamera";
-import { buildColumns, colorsFromLabels, type Columns } from "./columns";
+import {
+  buildColumns,
+  colorsFromLabels,
+  visibleBounds,
+  type Columns,
+} from "./columns";
 import {
   DEFAULT_SETTINGS,
   EMPHASIS_SIZE_PX,
@@ -319,9 +324,10 @@ export class EmbeddingsChart {
   /**
    * Per-point visibility as 0/1 bytes (null = all visible) — in FiftyOne
    * terms, the current view's membership mask. Hidden points are clipped
-   * in the vertex shader and skipped by every hit-test. Camera framing
-   * intentionally stays on the full data bounds so toggling view stages
-   * never yanks the viewport around.
+   * in the vertex shader and skipped by every hit-test. The current view
+   * never moves when visibility changes, but the camera's FOCUS follows
+   * the visible subset: reset() re-frames to it, and orbit-style cameras
+   * pivot around it.
    */
   setVisible(mask: Uint8Array | null): void {
     const { cols, visibleAttribute } = this;
@@ -338,6 +344,12 @@ export class EmbeddingsChart {
     } else {
       array.fill(1);
       this.visibleMask = null;
+    }
+    if (this.adapter?.setFocus) {
+      // An empty visible subset keeps the previous focus — framing
+      // nothing helps no one
+      const focus = mask ? visibleBounds(cols, mask) : null;
+      if (!mask || focus) this.adapter.setFocus(focus);
     }
     visibleAttribute.needsUpdate = true;
     // The point under a still cursor may just have vanished (or appeared)

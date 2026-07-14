@@ -59,10 +59,20 @@ export type InteractionMode = "explore" | "select";
  */
 export interface CameraAdapter {
   readonly camera: Camera;
-  /** Frame the camera on new data bounds; also becomes the reset target */
+  /** Frame the camera on new data bounds; also becomes the reset target
+   * and clears any focus (new data, stale focus) */
   setBounds(bounds: Bounds, width: number, height: number): void;
   resize(width: number, height: number): void;
   reset(): void;
+  /**
+   * Direct the camera's attention to a sub-region — the bounds of the
+   * currently visible points: reset() re-frames to the focus instead
+   * of the full data bounds, and orbit-style cameras move their pivot
+   * there. Must never yank the current view. Null restores full-data
+   * attention (everything visible). Optional; adapters without it keep
+   * full-bounds framing.
+   */
+  setFocus?(bounds: Bounds | null): void;
   /** True when this pointer-down should draw a lasso, not move the camera */
   isLassoStart(event: PointerEvent): boolean;
   /** Adopt an interaction mode; adapters without modes may omit this */
