@@ -1,6 +1,6 @@
 import { useTheme, Code } from "@fiftyone/components";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { ColorSchemeInput } from "@fiftyone/relay";
+import { ColorSchemeInput, ValueColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { Link } from "@mui/material";
 import colorString from "color-string";
@@ -21,12 +21,18 @@ const validateTagColors = (tags: ColorSchemeInput["labelTags"]) => ({
   fieldColor: isValidColor(tags?.fieldColor)
     ? colorString.to.hex(colorString.get(tags?.fieldColor as string)!.value)
     : undefined,
-  valueColors: tags?.valueColors
-    ?.filter((pair) => isValidColor(pair.color))
-    .map((pair) => ({
-      color: colorString.to.hex(colorString.get(pair.color)!.value),
-      value: pair.value,
-    })),
+  valueColors: Array.isArray(tags?.valueColors)
+    ? tags.valueColors.reduce<ValueColorInput[]>((colors, pair) => {
+        if (isValidColor(pair.color)) {
+          colors.push({
+            color: colorString.to.hex(colorString.get(pair.color)!.value),
+            value: pair.value,
+          });
+        }
+
+        return colors;
+      }, [])
+    : undefined,
 });
 
 const JSONViewer: React.FC = () => {

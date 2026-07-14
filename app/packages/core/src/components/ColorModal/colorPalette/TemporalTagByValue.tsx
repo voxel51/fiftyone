@@ -3,19 +3,17 @@ import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import ValueColorList from "../controls/ValueColorList";
-import { activeColorPath } from "../state";
 import { getRandomColorFromPool } from "../utils";
 import { FieldCHILD_STYLE } from "../ShareStyledDiv";
 
 const TemporalTagByValue: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
-  const activePath = useRecoilValue(activeColorPath);
   const setColorScheme = fos.useSetSessionColorScheme();
 
   const initialValue = colorScheme.temporalTags?.valueColors;
   const setting = useMemo(
     () => colorScheme.temporalTags,
-    [activePath, colorScheme.temporalTags],
+    [colorScheme.temporalTags],
   );
   const values = useMemo(() => setting?.valueColors ?? [], [setting]);
   const defaultValue = {
