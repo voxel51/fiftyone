@@ -11,7 +11,7 @@ runs:
       if: runner.os == 'Linux'
       shell: bash
       run: |
-        set -uo pipefail
+        set -euo pipefail
 
         echo "Disk space before cleanup:"
         df -h /
