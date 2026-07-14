@@ -151,7 +151,7 @@ export default function MaskPreview() {
   const bg = isDark ? "#ffffff" : "#000000";
 
   return (
-    <Container>
+    <Container data-cy="annotate-mask-preview">
       <Label>Mask</Label>
       <CanvasContainer $bg={bg}>
         <StyledCanvas ref={canvasRef} />

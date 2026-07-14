@@ -1,8 +1,8 @@
-import { atom, type PrimitiveAtom, useAtom } from "jotai";
+import { atom, type PrimitiveAtom, useAtom, useAtomValue } from "jotai";
 import { atomFamily } from "jotai-family";
 import { capitalize } from "lodash";
 import { LabelSchemaMeta } from "./useSchemaManager";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { PRIMITIVE_FIELD_TYPES } from "./SchemaManager/constants";
 
 // Tab state for GUI/JSON toggle
@@ -40,9 +40,68 @@ export const activeLabelSchemas: PrimitiveAtom<string[] | null> = atom(
 export const exploreActiveFields = atom<string[] | null>(null);
 
 /**
- * Intersection of activeLabelSchemas and exploreActiveFields.
+ * Media type of the group slice currently being annotated, mirrored from Recoil
+ * by `useSyncAnnotationSliceMediaType`. null when the dataset isn't grouped — in
+ * that case visibleLabelSchemas applies no per-slice filtering. Recoil can't be
+ * read from inside a Jotai getter, so the slice media type is bridged in (same
+ * pattern as exploreActiveFields).
+ */
+export const annotationSliceMediaType = atom<string | null>(null);
+
+const FRAMES_PREFIX = "frames.";
+const CLASSIFICATION_TYPES = new Set(["classification", "classifications"]);
+const TEMPORAL_TYPES = new Set(["temporaldetection", "temporaldetections"]);
+
+/**
+ * Whether an active-schema path is annotatable on a slice of the given media
+ * type. In a grouped dataset the active schema is a superset across slices, so
+ * navigating to a slice must hide the paths that slice can't carry:
+ *   - frame fields (`frames.*`) exist only on video slices;
+ *   - temporal detections span frames, so they're video-only;
+ *   - spatial sample-level labels (detection/polyline/keypoint/seg) live in
+ *     `frames.*` on video, so at the sample level they belong to image/3d;
+ *   - classifications and primitive scalars are whole-sample — valid anywhere.
+ * `sliceMediaType == null` means the dataset isn't grouped → no filtering.
+ */
+const isPathAnnotatableOnSlice = (
+  path: string,
+  rawType: string | undefined,
+  isPrimitive: boolean,
+  sliceMediaType: string | null,
+): boolean => {
+  if (sliceMediaType == null) {
+    return true;
+  }
+
+  const isVideo = sliceMediaType === "video";
+
+  if (path.startsWith(FRAMES_PREFIX)) {
+    return isVideo;
+  }
+
+  if (isPrimitive) {
+    return true;
+  }
+
+  const type = (rawType ?? "").toLowerCase();
+
+  if (CLASSIFICATION_TYPES.has(type)) {
+    return true;
+  }
+
+  if (TEMPORAL_TYPES.has(type)) {
+    return isVideo;
+  }
+
+  return !isVideo;
+};
+
+/**
+ * Intersection of activeLabelSchemas and exploreActiveFields, further narrowed
+ * to the paths the current group slice supports (see isPathAnnotatableOnSlice).
  * Display consumers should read this instead of activeLabelSchemas so that
- * hiding a field in the Explore sidebar also hides it in Annotate.
+ * hiding a field in the Explore sidebar also hides it in Annotate, and so that
+ * navigating between slices only offers schemas valid for the open slice.
  */
 export const visibleLabelSchemas = atom((get) => {
   const active = get(activeLabelSchemas);
@@ -50,14 +109,23 @@ export const visibleLabelSchemas = atom((get) => {
 
   const explore = get(exploreActiveFields);
   const exploreSet = new Set(explore ?? []);
+  const sliceMediaType = get(annotationSliceMediaType);
+
   return active.filter((field) => {
     const type = get(fieldType(field));
     // Primitive fields don't appear in the Explore sidebar — always show them.
     // Everything else is a label (embedded doc) type — filter by explore visibility.
-    if (type && PRIMITIVE_FIELD_TYPES.has(type)) {
-      return true;
+    const isPrimitive = !!type && PRIMITIVE_FIELD_TYPES.has(type);
+    if (!isPrimitive && !exploreSet.has(field)) {
+      return false;
     }
-    return exploreSet.has(field);
+
+    return isPathAnnotatableOnSlice(
+      field,
+      get(labelSchemaData(field))?.type,
+      isPrimitive,
+      sliceMediaType,
+    );
   });
 });
 
@@ -117,6 +185,52 @@ export const fieldAttributeCount = atomFamily((path: string) =>
     return Array.isArray(attrs) ? attrs.length : 0;
   }),
 );
+
+/**
+ * Names of the attributes the annotation schema declares `dynamic` for a label
+ * field path. A dynamic attribute may change within a track's presence
+ * interval, so the video timeline gives it a value-segmented sub-track and the
+ * sidebar forward-fills edits rather than fanning them across the track. Empty
+ * when the schema is unloaded or the field has no dynamic attributes.
+ *
+ * Lives here (not in the video-annotation package) so it reads the same
+ * `labelSchemaData` atom instance core writes — a cross-package atom import
+ * would resolve to a different, never-written family.
+ */
+const dynamicAttributeNamesFromMeta = (
+  meta: LabelSchemaMeta | null | undefined,
+): string[] => {
+  const attributes = meta?.label_schema?.attributes;
+  if (!Array.isArray(attributes)) {
+    return [];
+  }
+
+  return attributes
+    .filter((attribute) => attribute.dynamic && attribute.name)
+    .map((attribute) => attribute.name);
+};
+
+export const useDynamicAttributeNames = (path: string | null): string[] => {
+  const meta = useAtomValue(labelSchemaData(path ?? ""));
+  return useMemo(() => dynamicAttributeNamesFromMeta(meta), [meta]);
+};
+
+/**
+ * A getter resolving dynamic attribute names for ANY field path, reading the
+ * whole schema map once. Use this when several paths' attributes are needed in
+ * one render (e.g. building per-field tracks) — calling the per-path hook in a
+ * loop would break the rules of hooks, and a single primary-field lookup leaks
+ * one field's dynamic attributes onto every other field's tracks.
+ */
+export const useDynamicAttributeNamesGetter = (): ((
+  path: string | null,
+) => string[]) => {
+  const all = useAtomValue(labelSchemasData);
+  return useCallback(
+    (path: string | null) => dynamicAttributeNamesFromMeta(all?.[path ?? ""]),
+    [all],
+  );
+};
 
 export const fieldTypes = atom((get) => {
   return (get(activeLabelSchemas) ?? []).reduce(

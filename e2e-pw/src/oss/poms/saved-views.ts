@@ -323,7 +323,7 @@ class SavedViewAsserter {
 
   async verifySaveViewFails() {
     await expect(this.svp.saveButton()).toBeDisabled();
-    expect(this.svp.nameError()).toBeDefined();
+    await expect(this.svp.nameError()).toBeVisible();
     await this.svp.clickCloseModal();
   }
 

@@ -2,6 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { isNativeMediaType } from "@fiftyone/utilities";
+import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
@@ -75,11 +76,16 @@ const ModalLookerContent = React.memo(
     const shouldRenderImavid = useRecoilValue(
       fos.shouldRenderImaVidLooker(true),
     );
-    const video = useRecoilValue(fos.isVideoDataset);
+    const isVideoDataset = useRecoilValue(fos.isVideoDataset);
 
     const mediaType =
       (sample.sample.media_type as unknown as string) ??
       sample.sample._media_type;
+
+    // the root dataset media type is "group" for grouped datasets, so decide
+    // the video surface from the open sample: true for a video dataset or a
+    // grouped dataset whose active slice is a video sample
+    const video = isVideoDataset || mediaType === "video";
 
     const isNative = isNativeMediaType(mediaType as string);
     const isAnnotate = mode === fos.ModalMode.ANNOTATE;
@@ -97,7 +103,11 @@ const ModalLookerContent = React.memo(
     }
 
     if (video) {
-      return <VideoLookerReact sample={sample} showControls={!isAnnotate} />;
+      return isAnnotate ? (
+        <VideoAnnotationSurface sample={sample} />
+      ) : (
+        <VideoLookerReact sample={sample} showControls />
+      );
     }
 
     if (isNative) {

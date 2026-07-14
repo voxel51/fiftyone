@@ -254,7 +254,10 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     original_fields = fields
     is_scalar = etau.is_str(fields)
     all_fields = foau.list_valid_annotation_fields(
-        sample_collection, require_app_support=True, flatten=True
+        sample_collection,
+        require_app_support=True,
+        flatten=True,
+        include_frames=True,
     )
     if is_scalar:
         fields = [fields]
@@ -379,6 +382,16 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
             # the App
             continue
 
+        if (
+            f.name == "support"
+            and field.document_type is fol.TemporalDetection
+        ):
+            # support is a FrameSupportField ([first, last]); user-provided
+            # schemas configure `first`/`last` as int attributes if desired,
+            # and the sidebar form translates the `[first, last]` range at
+            # the form boundary.
+            continue
+
         try:
             attributes[f.name] = _generate_field_label_schema(
                 collection, f"{field_name}.{f.name}", scan_samples
@@ -431,8 +444,10 @@ def _preserve_applied_ontology(
 ) -> dict:
     # Carries a stored applied_ontology reference through regeneration.
     # Dangling references are not re-validated here; the next save handles it.
-    stored_label_schemas = sample_collection._dataset._doc.label_schemas or {}
-    stored_field_schema = stored_label_schemas.get(field_name) or {}
+    stored_field_schema = (
+        sample_collection._dataset._doc.get_stored_label_schema(field_name)
+        or {}
+    )
     applied_ontology = stored_field_schema.get(foac.APPLIED_ONTOLOGY)
     if applied_ontology is not None:
         label_schema[foac.APPLIED_ONTOLOGY] = applied_ontology

@@ -54,7 +54,9 @@ const useName = (path: string) => {
     ? "sample tag"
     : path.startsWith("_label_tags")
       ? "label tag"
-      : name;
+      : path.startsWith("_temporal_tags")
+        ? "temporal tag"
+        : name;
 
   return name;
 };

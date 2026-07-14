@@ -1,0 +1,410 @@
+import { humanReadableBytes } from "@fiftyone/utilities";
+import type { TilingLayoutMetrics } from "@fiftyone/tiling";
+import type { TemporalTagTimelineProps, Track } from "@fiftyone/playback";
+import { Size, Spinner } from "@voxel51/voodo";
+import clsx from "clsx";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
+import MultiModalPlayback from "../../../components/MultiModalPlayback/MultiModalPlayback";
+import {
+  byteSourceAccessKey,
+  type ByteSourceDescriptor,
+} from "../../../query/bytes";
+import { releaseRetainedImageTextures } from "../../../visualization/panels/image-texture-cache";
+import {
+  releaseGpuPointCloudProjectionResources,
+  releaseGpuPointCloudProjectionResourcesForSource,
+} from "../../../visualization/panels/gpu/gpu-point-cloud-projection-resources";
+import { releaseGpuPointCloudColormapTextures } from "../../../visualization/panels/point-cloud/gpu/gpu-point-cloud-colormap-texture";
+import {
+  markMcapLatencyEvent,
+  startMcapLatencyDebugSession,
+} from "../mcap-latency-debug";
+import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import type { McapResourceClient } from "../types";
+import { clearMcap3dViewState } from "./mcap-3d-view-state";
+import { Mcap3dViewSettingsProvider } from "./mcap-3d-view-settings-context";
+import {
+  McapDataStreamProvider,
+  useMcapDataStream,
+} from "./mcap-data-stream-context";
+import { McapFrameTransformsProvider } from "./mcap-frame-transforms-context";
+import { McapImageAspectRatioProvider } from "./mcap-image-aspect-ratios";
+import { McapLogConsoleProvider } from "./mcap-log-console-context";
+import { McapLocationTracksProvider } from "./mcap-location-tracks-context";
+import { McapNumericSeriesProvider } from "./mcap-numeric-series-context";
+import { McapPoseTrajectoriesProvider } from "./mcap-pose-trajectories-context";
+import { McapRawMessageProvider } from "./mcap-raw-message-context";
+import { McapSceneUpdateHistoryProvider } from "./mcap-scene-update-history-context";
+import { McapSelectionHotkeys } from "./mcap-selected-object";
+import McapAddTileMenu from "./McapAddTileMenu";
+import McapInspectorSidebar from "./McapInspectorSidebar";
+import styles from "./McapModalRenderer.module.css";
+import {
+  McapNetworkHealthTracker,
+  McapNetworkStatusPill,
+} from "./McapNetworkStatus";
+import { McapPausedByteBanking } from "./McapPausedByteBanking";
+import McapSettingsSidebar from "./McapSettingsSidebar";
+import { McapStreams } from "./McapStreams";
+import McapTimestampReadout from "./McapTimestampReadout";
+import {
+  buildMcapAutoLayout,
+  collectPlaybackDeviceCapabilities,
+} from "./playback-layout";
+import {
+  McapModalLayoutPersistence,
+  useMcapModalLayout,
+} from "./use-mcap-modal-layout";
+import { useMcapSceneInventory } from "./use-mcap-scene-inventory";
+
+const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
+
+export interface McapSourcePlaybackProps {
+  readonly children?: React.ReactNode;
+  readonly client: McapResourceClient;
+  /** Track ids to start pinned to the timeline (e.g. from a grid tag filter). */
+  readonly defaultPinnedTrackIds?: readonly string[];
+  readonly fileName: string;
+  readonly headerActions?: React.ReactNode;
+  readonly latencyLabel?: string;
+  readonly latencySourceKey?: string;
+  readonly layoutScopeKey?: string;
+  readonly onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
+  readonly onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
+  readonly onTagDelete?: NonNullable<
+    TemporalTagTimelineProps["eventMenuItems"]
+  >[number]["onSelect"];
+  readonly source: ByteSourceDescriptor | null;
+  readonly tracks?: readonly Track[];
+}
+
+/**
+ * Source-oriented MCAP playback host. Sample renderers and ad hoc panels both
+ * feed it a byte source; it owns inventory loading, MCAP providers, tiling,
+ * layout persistence, and the playback chrome around the discovered streams.
+ */
+export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
+  children,
+  client,
+  defaultPinnedTrackIds,
+  fileName,
+  headerActions,
+  latencyLabel = "mcap modal",
+  latencySourceKey,
+  layoutScopeKey,
+  onTagCreate,
+  onTagUpdate,
+  onTagDelete,
+  source,
+  tracks,
+}) => {
+  // Ownership must precede the children's first reads, and child effects run
+  // before parent effects. The call is idempotent per source.
+  if (source) {
+    client.activateSource?.(source);
+  }
+
+  const latencySessionKey = useRef(createMcapLatencySessionKey()).current;
+  const imageAspectRatiosRef = useRef<Record<string, number>>({});
+  const onImageAspectRatioChange = useCallback(
+    (tileId: string, aspectRatio: number | null) => {
+      if (aspectRatio === null) {
+        delete imageAspectRatiosRef.current[tileId];
+      } else {
+        imageAspectRatiosRef.current[tileId] = aspectRatio;
+      }
+    },
+    [],
+  );
+  const autoLayoutStrategy = useCallback(
+    (tileIds: readonly string[], metrics?: TilingLayoutMetrics) => {
+      const layoutGeometry = metrics ?? currentViewportAspectRatio();
+      return buildMcapAutoLayout(
+        tileIds,
+        imageAspectRatiosRef.current,
+        layoutGeometry,
+      );
+    },
+    [],
+  );
+  // This layout effect starts latency instrumentation before the browser paints.
+  useLayoutEffect(() => {
+    startMcapLatencyDebugSession({
+      detail: {
+        fileName,
+        readProfile: source?.readProfile,
+        rendererMountKey: latencySessionKey,
+        sizeBytes: source?.sizeBytes,
+      },
+      label: latencyLabel,
+      sessionKey: latencySessionKey,
+      sourceKey: source?.sourceId ?? latencySourceKey,
+    });
+  }, [fileName, latencyLabel, latencySessionKey, latencySourceKey, source]);
+
+  // This effect clears session-owned view and GPU state when the host unmounts.
+  useEffect(() => {
+    return () => {
+      clearMcap3dViewState();
+      releaseGpuPointCloudColormapTextures();
+      releaseGpuPointCloudProjectionResources();
+      releaseRetainedImageTextures();
+    };
+  }, []);
+
+  const { status, error, sources, topics, topicCount } = useMcapSceneInventory({
+    client,
+    source,
+  });
+  const effectiveLayoutScopeKey =
+    layoutScopeKey ?? (source ? `mcap-source:${source.sourceId}` : undefined);
+  const metadata = useMemo(
+    () => ({
+      sizeLabel: sourceSizeLabel(source?.sizeBytes),
+      ...sourceCounts(sources),
+      topicCount,
+    }),
+    [source?.sizeBytes, sources, topicCount],
+  );
+  const headerCaption = useMemo(
+    () =>
+      metadata.sizeLabel ? (
+        <McapHeaderCaption sizeLabel={metadata.sizeLabel} />
+      ) : null,
+    [metadata.sizeLabel],
+  );
+  const {
+    initialTiles,
+    initialManualTileTitles,
+    initialLayout,
+    initialExpandedTileId,
+    resetTiles,
+    defaultLeftOpen,
+    onLeftOpenChange,
+    defaultLeftSidebarWidth,
+    onLeftSidebarWidthChange,
+    sceneUpAxis,
+    onSceneUpAxisChange,
+  } = useMcapModalLayout({
+    datasetId: effectiveLayoutScopeKey,
+    readProfile: source?.readProfile,
+    sources,
+  });
+
+  // This effect releases GPU projection buffers from the previous source.
+  useEffect(() => {
+    if (status !== "ready") return;
+    markMcapLatencyEvent(
+      "scene inventory ready",
+      {
+        ...metadata,
+        sourceCount: sources.length,
+      },
+      { onceKey: "scene-inventory-ready" },
+    );
+  }, [metadata, sources.length, status]);
+
+  if (!source) {
+    return <McapPlaybackState text="No MCAP source selected" />;
+  }
+  if (status === "error") {
+    return (
+      <McapPlaybackState
+        error
+        text={`Failed to read recording: ${error ?? "Unknown error"}`}
+      />
+    );
+  }
+  if (status !== "ready") {
+    return (
+      <McapPlaybackState>
+        <Spinner size={Size.Lg} />
+      </McapPlaybackState>
+    );
+  }
+  if (sources.length === 0) {
+    return (
+      <McapPlaybackState
+        text={`No previewable streams in this recording (${topicCount.toLocaleString()} topics found)`}
+      />
+    );
+  }
+
+  return (
+    <React.Fragment key={byteSourceAccessKey(source)}>
+      <McapFrameTransformsProvider>
+        <McapPoseTrajectoriesProvider>
+          <McapLocationTracksProvider>
+            <McapSceneUpdateHistoryProvider>
+              <McapNumericSeriesProvider>
+                <McapRawMessageProvider>
+                  <McapLogConsoleProvider client={client} source={source}>
+                    <McapDataStreamProvider>
+                      <McapProjectionResourceBoundary />
+                      <Mcap3dViewSettingsProvider
+                        sceneUpAxis={sceneUpAxis}
+                        setSceneUpAxis={onSceneUpAxisChange}
+                      >
+                        <McapImageAspectRatioProvider
+                          onChange={onImageAspectRatioChange}
+                        >
+                          <MultiModalPlayback
+                            fileName={fileName}
+                            headerCaption={headerCaption}
+                            headerActions={
+                              <McapHeaderActions actions={headerActions} />
+                            }
+                            addTileMenu={<McapAddTileMenu />}
+                            timelineExtraActions={<McapTimestampReadout />}
+                            sceneSources={sources}
+                            deselectFocusedTileOnRepeatSelect={false}
+                            initialTiles={initialTiles}
+                            initialManualTileTitles={initialManualTileTitles}
+                            autoLayoutStrategy={autoLayoutStrategy}
+                            initialLayout={initialLayout}
+                            initialExpandedTileId={initialExpandedTileId}
+                            resetTiles={resetTiles}
+                            resetManualTileTitles={EMPTY_MANUAL_TILE_TITLES}
+                            resetLayoutStrategy={autoLayoutStrategy}
+                            tracks={
+                              tracks && tracks.length > 0
+                                ? [...tracks]
+                                : undefined
+                            }
+                            defaultPinnedTrackIds={
+                              defaultPinnedTrackIds &&
+                              defaultPinnedTrackIds.length > 0
+                                ? [...defaultPinnedTrackIds]
+                                : undefined
+                            }
+                            onTagDelete={onTagDelete}
+                            leftSidebar={
+                              <McapSettingsSidebar topics={topics} />
+                            }
+                            rightSidebar={<McapInspectorSidebar />}
+                            sharedImageWebGpuViews
+                            defaultRightOpen={false}
+                            defaultLeftOpen={defaultLeftOpen}
+                            onLeftOpenChange={onLeftOpenChange}
+                            leftSidebarWidth={defaultLeftSidebarWidth}
+                            onLeftSidebarWidthChange={onLeftSidebarWidthChange}
+                            onTagCreate={onTagCreate}
+                            onTagUpdate={onTagUpdate}
+                          >
+                            <McapStreams client={client} source={source} />
+                            <McapNetworkHealthTracker client={client} />
+                            <McapPausedByteBanking
+                              client={client}
+                              source={source}
+                            />
+                            <McapSelectionHotkeys />
+                            {children}
+                            <McapModalLayoutPersistence
+                              datasetId={effectiveLayoutScopeKey}
+                            />
+                          </MultiModalPlayback>
+                        </McapImageAspectRatioProvider>
+                      </Mcap3dViewSettingsProvider>
+                    </McapDataStreamProvider>
+                  </McapLogConsoleProvider>
+                </McapRawMessageProvider>
+              </McapNumericSeriesProvider>
+            </McapSceneUpdateHistoryProvider>
+          </McapLocationTracksProvider>
+        </McapPoseTrajectoriesProvider>
+      </McapFrameTransformsProvider>
+    </React.Fragment>
+  );
+};
+
+/** Retires only the previous recording's GPU buffers on an in-place swap. */
+function McapProjectionResourceBoundary() {
+  const sourceKey = useMcapDataStream()?.sourceKey;
+  // This effect releases projection buffers when its recording boundary changes.
+  useEffect(
+    () => () => {
+      if (sourceKey) {
+        releaseGpuPointCloudProjectionResourcesForSource(sourceKey);
+      }
+    },
+    [sourceKey],
+  );
+  return null;
+}
+
+function McapHeaderActions({
+  actions,
+}: {
+  readonly actions?: React.ReactNode;
+}) {
+  return (
+    <>
+      <McapNetworkStatusPill />
+      {actions}
+    </>
+  );
+}
+
+function McapPlaybackState({
+  text,
+  error = false,
+  children,
+}: {
+  text?: string;
+  error?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className={styles.state} data-testid="mcap-modal-state">
+      {children}
+      {text ? (
+        <span className={clsx(styles.stateText, error && styles.stateError)}>
+          {text}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+// Deliberately just the file size: topic/stream/label counts used to render
+// here too, but they ate header real estate without informing any decision.
+function McapHeaderCaption({ sizeLabel }: { readonly sizeLabel: string }) {
+  return <span className={styles.captionText}>{sizeLabel}</span>;
+}
+
+function sourceCounts(sources: readonly { type: string }[]) {
+  return {
+    imageCount: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.IMAGE).length,
+    labelCount: sources.filter(
+      (s) =>
+        s.type === MCAP_SOURCE_TYPE.IMAGE_ANNOTATION ||
+        s.type === MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
+    ).length,
+    pointCloudCount: sources.filter(
+      (s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD,
+    ).length,
+  };
+}
+
+function createMcapLatencySessionKey(): string {
+  return `mcap-source-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function currentViewportAspectRatio(): number {
+  const { viewportHeight, viewportWidth } = collectPlaybackDeviceCapabilities();
+  return viewportWidth / viewportHeight;
+}
+
+function sourceSizeLabel(sizeBytes: string | undefined): string | null {
+  if (!sizeBytes || !/^\d+$/.test(sizeBytes)) return null;
+  const value = Number(sizeBytes);
+  if (!Number.isSafeInteger(value)) return null;
+  if (value === 0) return "0 B";
+  return humanReadableBytes(value) || null;
+}

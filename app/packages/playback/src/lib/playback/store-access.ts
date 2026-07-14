@@ -1,8 +1,9 @@
 // ---------------------------------------------------------------------------
 // Imperative access to playback state for code that already holds a
 // PlaybackStore: PlaybackStream implementations (e.g. the MCAP data
-// stream), component event handlers, and tests. React components subscribe
-// through the hooks in `use-playback-state.ts` / `use-stream.ts` instead.
+// stream), component event handlers, tests, and specialized hooks that sample
+// a high-frequency value. React components normally subscribe through the
+// hooks in `use-playback-state.ts` / `use-stream.ts` instead.
 //
 // This surface is deliberately narrower than the atom set — it encodes who
 // may write what. There is no setPlayhead / setIsPlaying here: the engine
@@ -14,9 +15,15 @@
 import {
   bufferedRangesAtom,
   bufferingDetailAtom,
+  currentTimeAtom,
+  hoverTimeAtom,
   isBufferingAtom,
+  isPlayPendingAtom,
   isPlayingAtom,
+  loopEndAtom,
+  loopStartAtom,
   playheadAtom,
+  streamRangesVersionAtom,
   streamValueAtom,
 } from "./atoms";
 import type { BufferedRanges, PlaybackStore } from "./types";
@@ -24,6 +31,29 @@ import type { BufferedRanges, PlaybackStore } from "./types";
 /** Non-reactive read of the visual playhead position, in seconds. */
 export function getPlayhead(store: PlaybackStore): number {
   return store.get(playheadAtom);
+}
+
+/** Non-reactive read of the latest time committed by the playback engine. */
+export function getCurrentTime(store: PlaybackStore): number {
+  return store.get(currentTimeAtom);
+}
+
+/** Watch playback commits; returns the unsubscribe function. */
+export function subscribeCurrentTime(
+  store: PlaybackStore,
+  callback: () => void,
+): () => void {
+  return store.sub(currentTimeAtom, callback);
+}
+
+/** Non-reactive read of the active loop start, in seconds. */
+export function getLoopStart(store: PlaybackStore): number {
+  return store.get(loopStartAtom);
+}
+
+/** Non-reactive read of the active loop end, in seconds. */
+export function getLoopEnd(store: PlaybackStore): number {
+  return store.get(loopEndAtom);
 }
 
 /**
@@ -37,6 +67,27 @@ export function subscribePlayhead(
   return store.sub(playheadAtom, callback);
 }
 
+/** Non-reactive read of the hovered timeline time, in seconds (or null). */
+export function getHoverTime(store: PlaybackStore): number | null {
+  return store.get(hoverTimeAtom);
+}
+
+/**
+ * Publishes the timeline time the pointer is inspecting (null to clear).
+ * Unlike the playhead, hover is UI-owned, so surfaces write it directly.
+ */
+export function setHoverTime(store: PlaybackStore, timeSec: number | null) {
+  store.set(hoverTimeAtom, timeSec);
+}
+
+/** Subscribes to hovered-time changes; returns an unsubscribe. */
+export function subscribeHoverTime(
+  store: PlaybackStore,
+  callback: () => void,
+): () => void {
+  return store.sub(hoverTimeAtom, callback);
+}
+
 /**
  * Non-reactive read of the playing flag. Use in command/event handlers
  * that need the latest value without subscribing the component body to an
@@ -44,6 +95,26 @@ export function subscribePlayhead(
  */
 export function getIsPlaying(store: PlaybackStore): boolean {
   return store.get(isPlayingAtom);
+}
+
+/**
+ * Non-reactive read of queued play intent. Use with getIsPlaying() in
+ * event handlers that need Play/Pause toggle semantics before active
+ * playback has actually started.
+ */
+export function getIsPlayPending(store: PlaybackStore): boolean {
+  return store.get(isPlayPendingAtom);
+}
+
+/**
+ * Watch queued-play-intent flips — a press waiting on startup coverage
+ * and the moment it starts or is abandoned. Returns the unsubscribe.
+ */
+export function subscribeIsPlayPending(
+  store: PlaybackStore,
+  callback: () => void,
+): () => void {
+  return store.sub(isPlayPendingAtom, callback);
 }
 
 /** Non-reactive read of the engine buffering flag. */
@@ -91,6 +162,14 @@ export function setBufferedRanges(
   ranges: BufferedRanges,
 ): void {
   store.set(bufferedRangesAtom, ranges);
+}
+
+/**
+ * Wake pending playback after a stream's private `bufferedRanges()` changes
+ * without replacing the timeline-visible data ranges.
+ */
+export function bumpStreamRangesVersion(store: PlaybackStore): void {
+  store.set(streamRangesVersionAtom, store.get(streamRangesVersionAtom) + 1);
 }
 
 /** Non-reactive read of a stream's current committed value. */

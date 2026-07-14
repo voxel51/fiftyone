@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ByteClient } from "../../query/bytes";
 import {
   createMcapReaderStore,
+  createCachedMcapDecompressHandlers,
   parseMcapMessageIndexRecord,
   readIndexedMessageTimesForReader,
   type McapIndexedReaderLike,
@@ -265,10 +266,12 @@ describe("MCAP indexed message times", () => {
     expect(readerFactory).toHaveBeenCalledTimes(1);
   });
 
-  it("uses descriptor size before probing byte clients", async () => {
+  it("uses descriptor size without waiting on byte clients", async () => {
+    // Stat never settles: size() must resolve from the descriptor anyway,
+    // proving validator discovery stays off the critical path.
     const byteClient: ByteClient = {
       readBytes: vi.fn(),
-      stat: vi.fn(),
+      stat: vi.fn(() => new Promise<undefined>(() => undefined)),
     };
     const readable = new ByteClientReadable(
       {
@@ -280,8 +283,54 @@ describe("MCAP indexed message times", () => {
     );
 
     await expect(readable.size()).resolves.toBe(128n);
-    expect(byteClient.stat).not.toHaveBeenCalled();
+    await expect(readable.size()).resolves.toBe(128n);
+    // Exactly one background content-validator probe; repeat size() calls
+    // must not stack additional transport work.
+    expect(byteClient.stat).toHaveBeenCalledTimes(1);
     expect(byteClient.readBytes).not.toHaveBeenCalled();
+  });
+
+  it("adopts a background-discovered etag for later reads", async () => {
+    const bytes = new Uint8Array(4);
+    let resolveStat: (source: {
+      readonly etag?: string;
+      readonly sizeBytes?: string;
+      readonly sourceId: string;
+      readonly url: string;
+    }) => void = () => undefined;
+    const byteClient: ByteClient = {
+      readBytes: vi.fn(async (request) => ({
+        bytes,
+        range: request.range,
+        source: request.source,
+      })),
+      stat: vi.fn(
+        () =>
+          new Promise<Awaited<ReturnType<NonNullable<ByteClient["stat"]>>>>(
+            (resolve) => {
+              resolveStat = resolve;
+            },
+          ),
+      ),
+    };
+    const descriptor = {
+      sizeBytes: "128",
+      sourceId: "source:1",
+      url: "mcap-source://sample",
+    };
+    const readable = new ByteClientReadable(descriptor, byteClient);
+
+    await expect(readable.size()).resolves.toBe(128n);
+    resolveStat({ ...descriptor, etag: "abc123" });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    await readable.read(0n, 4n);
+    expect(byteClient.readBytes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: expect.objectContaining({ etag: "abc123" }),
+      }),
+    );
   });
 
   it("uses byte client stat when descriptor size is missing", async () => {
@@ -364,7 +413,185 @@ describe("MCAP indexed message times", () => {
       },
     });
   });
+
+  it("coalesces identical in-flight byte reads per readable", async () => {
+    const read = deferred<Awaited<ReturnType<ByteClient["readBytes"]>>>();
+    const logChunkRead = vi.fn();
+    const readBytes = vi.fn(() => read.promise);
+    const source = {
+      sizeBytes: "1024",
+      sourceId: "source:1",
+      url: "mcap-source://sample",
+    };
+    const readable = new ByteClientReadable(
+      source,
+      { readBytes },
+      {
+        debugChunkReads: true,
+        logChunkRead,
+      },
+    );
+    readable.setChunkIndexes([
+      createChunkIndex({
+        chunkLength: 64n,
+        chunkStartOffset: 128n,
+      }),
+    ]);
+
+    const first = readable.read(128n, 16n);
+    const second = readable.read(128n, 16n);
+
+    expect(readBytes).toHaveBeenCalledTimes(1);
+
+    read.resolve({
+      bytes: new Uint8Array(16),
+      range: { length: 16n, offset: 128n },
+      source,
+    });
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      new Uint8Array(16),
+      new Uint8Array(16),
+    ]);
+    expect(logChunkRead).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cacheResult: "fetched",
+        fetchedBytes: 16,
+      }),
+    );
+    expect(logChunkRead).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cacheResult: "coalesced",
+        fetchedBytes: 0,
+      }),
+    );
+  });
+
+  it("caches decompressed chunk buffers by compressed byte identity", () => {
+    const decompress = vi.fn(
+      (buffer: Uint8Array, decompressedSize: bigint) =>
+        new Uint8Array([buffer[0] ?? 0, Number(decompressedSize)]),
+    );
+    const handlers = createCachedMcapDecompressHandlers(
+      {
+        lz4: decompress,
+      },
+      1024,
+    );
+    const compressed = new Uint8Array([7, 8, 9]);
+    const sameBytes = new Uint8Array(
+      compressed.buffer,
+      compressed.byteOffset,
+      compressed.byteLength,
+    );
+
+    const first = handlers.lz4(compressed, 3n);
+    const second = handlers.lz4(sameBytes, 3n);
+
+    expect(second).toBe(first);
+    expect(decompress).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs debug chunk reads with chunk ids and byte counts", async () => {
+    const logChunkRead = vi.fn();
+    const readBytes = vi.fn(
+      async (request: Parameters<ByteClient["readBytes"]>[0]) => ({
+        bytes: new Uint8Array(16),
+        range: request.range,
+        source: request.source,
+      }),
+    );
+    const readable = new ByteClientReadable(
+      {
+        sizeBytes: "1024",
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+      { readBytes },
+      {
+        debugChunkReads: true,
+        logChunkRead,
+      },
+    );
+    readable.setChunkIndexes([
+      createChunkIndex({
+        chunkLength: 64n,
+        chunkStartOffset: 128n,
+        compression: "zstd",
+      }),
+    ]);
+
+    await readable.read(128n, 16n);
+
+    expect(logChunkRead).toHaveBeenCalledWith({
+      cacheResult: "fetched",
+      chunkId: "128",
+      chunkLengthBytes: "64",
+      chunkStartOffset: "128",
+      compression: "zstd",
+      fetchedBytes: 16,
+      kind: "chunk",
+      overlapBytes: "16",
+      readOffset: "128",
+      requestedBytes: "16",
+    });
+  });
+
+  it("console logs debug chunk reads by default", async () => {
+    const consoleLog = vi
+      .spyOn(console, "log")
+      .mockImplementation(() => undefined);
+    const readBytes = vi.fn(
+      async (request: Parameters<ByteClient["readBytes"]>[0]) => ({
+        bytes: new Uint8Array(16),
+        range: request.range,
+        source: request.source,
+      }),
+    );
+
+    try {
+      const readable = new ByteClientReadable(
+        {
+          sizeBytes: "1024",
+          sourceId: "source:1",
+          url: "mcap-source://sample",
+        },
+        { readBytes },
+        { debugChunkReads: true },
+      );
+      readable.setChunkIndexes([
+        createChunkIndex({
+          chunkLength: 64n,
+          chunkStartOffset: 128n,
+        }),
+      ]);
+
+      await readable.read(128n, 16n);
+
+      expect(consoleLog).toHaveBeenCalledWith(
+        "[mcap] chunk bytes fetched",
+        expect.objectContaining({
+          chunkId: "128",
+          fetchedBytes: 16,
+          requestedBytes: "16",
+        }),
+      );
+    } finally {
+      consoleLog.mockRestore();
+    }
+  });
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, reject, resolve };
+}
 
 async function collect<T>(
   generator: AsyncGenerator<T, void, void>,

@@ -55,7 +55,7 @@ describe("createTemporalTagsClient", () => {
   });
 
   it("serializes repeated filter query params", async () => {
-    const fetchFunction = createFetch({ temporal_tags: [] });
+    const fetchFunction = createFetch({ tags: [] });
     const client = createTemporalTagsClient({
       fetchFunction: fetchFunction as never,
     });
@@ -86,7 +86,7 @@ describe("createTemporalTagsClient", () => {
 
   it("converts create bodies and response tags between app and route shapes", async () => {
     const fetchFunction = createFetch({
-      temporal_tags: [createTemporalTagDto()],
+      tags: [createTemporalTagDto()],
     });
     const client = createTemporalTagsClient({
       fetchFunction: fetchFunction as never,
@@ -131,7 +131,7 @@ describe("createTemporalTagsClient", () => {
 
   it("converts update bodies without route-owned identity fields", async () => {
     const fetchFunction = createFetch({
-      temporal_tag: createTemporalTagDto({ end: 15, tag: "moved" }),
+      tag: createTemporalTagDto({ end: 15, tag: "moved" }),
     });
     const client = createTemporalTagsClient({
       fetchFunction: fetchFunction as never,
@@ -157,6 +157,49 @@ describe("createTemporalTagsClient", () => {
       "sample_id",
     );
     expect(tag.tag).toBe("moved");
+  });
+
+  it("reads list responses from the `tags` field", async () => {
+    const fetchFunction = createFetch({ tags: [createTemporalTagDto()] });
+    const client = createTemporalTagsClient({
+      fetchFunction: fetchFunction as never,
+    });
+
+    await expect(
+      client.listSampleTemporalTags({
+        datasetId: "dataset-id",
+        sampleId: "sample-id",
+      }),
+    ).resolves.toHaveLength(1);
+    await expect(
+      client.listDatasetTemporalTags({ datasetId: "dataset-id" }),
+    ).resolves.toHaveLength(1);
+    await expect(
+      client.createSampleTemporalTags({
+        datasetId: "dataset-id",
+        sampleId: "sample-id",
+        temporalTags: [createTemporalTagInput()],
+      }),
+    ).resolves.toHaveLength(1);
+  });
+
+  it("reads single-tag responses from the `tag` field", async () => {
+    const fetchFunction = createFetch({
+      tag: createTemporalTagDto({ tag: "moved" }),
+    });
+    const client = createTemporalTagsClient({
+      fetchFunction: fetchFunction as never,
+    });
+
+    const tag = await client.updateSampleTemporalTag({
+      datasetId: "dataset-id",
+      sampleId: "sample-id",
+      temporalTagId: "temporal-tag-id",
+      update: { tag: "moved" },
+    });
+
+    expect(tag.tag).toBe("moved");
+    expect(tag.id).toBe("temporal-tag-id");
   });
 
   it("supports deleting explicit temporal tag ids", async () => {
@@ -228,10 +271,10 @@ function responseForRoute(config: FetchConfig) {
   }
 
   if (config.method === "PATCH") {
-    return { temporal_tag: createTemporalTagDto() };
+    return { tag: createTemporalTagDto() };
   }
 
-  return { temporal_tags: [createTemporalTagDto()] };
+  return { tags: [createTemporalTagDto()] };
 }
 
 function routeKey(config: FetchConfig) {

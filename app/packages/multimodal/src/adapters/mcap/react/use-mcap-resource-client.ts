@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import {
+  acquireSharedMcapResourceClient,
   createMcapResourceClient,
   type CreateMcapResourceClientOptions,
 } from "../resource-client";
@@ -10,23 +11,36 @@ import type { McapResourceClient } from "../types";
  */
 export type UseMcapResourceClientOptions = Pick<
   CreateMcapResourceClientOptions,
-  "worker"
+  "byteClient" | "worker"
 >;
 
 /**
- * Creates the MCAP resource client for React renderers and owns cleanup.
+ * Provides the shared MCAP resource client for React renderers. Sample
+ * navigation remounts the renderer per sample, so ownership is ref-counted:
+ * the worker fleet and its warm readers survive next-sample hops instead of
+ * respawning per mount.
  */
 export function useMcapResourceClient(
   options: UseMcapResourceClientOptions = {},
 ): McapResourceClient {
-  const { worker = false } = options;
-  const client = useMemo(() => createMcapResourceClient({ worker }), [worker]);
+  const { byteClient, worker = false } = options;
+  const handle = useMemo(() => {
+    if (byteClient) {
+      const client = createMcapResourceClient({ byteClient, worker });
+      return {
+        client,
+        release: () => client.dispose(),
+      };
+    }
+
+    return acquireSharedMcapResourceClient({ worker });
+  }, [byteClient, worker]);
 
   useEffect(() => {
     return () => {
-      client.dispose();
+      handle.release();
     };
-  }, [client]);
+  }, [handle]);
 
-  return client;
+  return handle.client;
 }

@@ -1,3 +1,4 @@
+import { useAnnotationEngine } from "@fiftyone/annotation";
 import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import type { AnnotationLabel } from "@fiftyone/state";
@@ -8,6 +9,7 @@ import {
   POLYLINE,
 } from "@fiftyone/utilities";
 import { useCallback } from "react";
+import { usePrimitiveController } from "./useActivePrimitive";
 import { useAnnotationContext } from "./useAnnotationContext";
 
 /**
@@ -46,8 +48,10 @@ const hasDrawnContent = (
 };
 
 export default function useExit() {
+  const engine = useAnnotationEngine();
   const annotationContext = useAnnotationContext();
   const { clear } = annotationContext;
+  const { setActivePrimitive } = usePrimitiveController();
   const { scene, removeOverlay } = useLighter();
   const { label, overlay } = annotationContext.selected ?? {
     label: null,
@@ -63,15 +67,20 @@ export default function useExit() {
         scene.exitInteractiveMode();
         removeOverlay(label.data._id, true);
       }
-    } else if (overlay) {
-      scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });
-      if (TypeGuards.isHoverable(overlay)) {
-        overlay.onHoverLeave?.();
-      }
+    } else if (overlay && TypeGuards.isHoverable(overlay)) {
+      // selection deselect is engine-routed — `setActive([])` below drives the
+      // Lighter bridge's applySelected(false); only hover still needs a direct
+      // poke (it isn't engine-routed on exit yet). The redundant sidebar→Lighter
+      // scene.deselectOverlay is intentionally dropped.
+      overlay.onHoverLeave?.();
     }
 
-    // 3D state cleanup happens in looker-3d's useReset3dOnEditExit, which
-    // reacts to the atom transition this clear() produces.
+    // reset the sidebar form + primitive editor
     clear();
-  }, [clear, label, overlay, removeOverlay, scene]);
+    setActivePrimitive(null);
+    // release the engine selection so form-follows-anchor doesn't immediately
+    // re-open the form; surfaces clear their own scene state via their engine
+    // adapters (the 3D adapter + useReset3dOnEditExit watch the anchor).
+    engine.interaction.setActive([]);
+  }, [clear, engine, label, overlay, removeOverlay, scene, setActivePrimitive]);
 }

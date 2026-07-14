@@ -36,6 +36,12 @@
   white-space: nowrap;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .spacer {
   flex: 1;
   min-width: 0;

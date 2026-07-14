@@ -111,9 +111,9 @@ export const useDetectionMode = () => {
   }, [detectionModeActive, deactivateDetectionMode, activateDetectionMode]);
 
   /**
-   * Finalize the previous detection and create the next one. Field and
-   * label class are auto-resolved from {@link useAnnotationContext}'s
-   * last-used memory.
+   * Finalize the previous detection and create the next one. Field and label
+   * class are auto-resolved from {@link useAnnotationContext}'s last-used
+   * memory, falling back to the configured schema's detection field.
    */
   const create = useCallback(() => {
     sceneRef.current?.exitInteractiveMode();

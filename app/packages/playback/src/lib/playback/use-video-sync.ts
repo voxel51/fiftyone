@@ -1,25 +1,27 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, type RefObject } from "react";
-import { currentTimeAtom, isPlayingAtom, playheadAtom } from "./atoms";
+import { isBufferingAtom, isPlayingAtom, seekEventAtom } from "./atoms";
 import { usePlaybackStore } from "./playback-store-context";
 
 /**
- * Seek tolerance in seconds. If the playhead and the video's currentTime
- * drift more than this, we re-sync the video. Lower than the typical
- * `timeupdate` event granularity so a normal play cycle never triggers
- * a sync (avoiding feedback loops with our own RAF updates).
- */
-const SEEK_TOLERANCE_S = 0.15;
-
-/**
- * Bidirectional sync between an HTMLVideoElement and the playback atoms.
+ * Bind an `<video>` element to the playback atoms. Three responsibilities:
  *
- * - `isPlayingAtom` drives `video.play()` / `video.pause()`.
- * - User scrubs (changes to `playheadAtom` that diverge from the video's
- *   currentTime) seek the video.
- * - The video's own `timeupdate` events update `playheadAtom` and
- *   `currentTimeAtom` so the rest of the UI follows the video's natural
- *   playback rate.
+ * - `isPlayingAtom` → `v.play()` / `v.pause()`. When buffering
+ *   (`isBufferingAtom = true`), the video stays paused even if
+ *   `isPlayingAtom` is true. This is how non-video blocking streams
+ *   (label fetches, etc.) backpressure the timeline: the engine sets
+ *   `isBufferingAtom`, the video freezes, and the rest of the system
+ *   waits for the data to land.
+ * - `seekEventAtom` → `v.currentTime`. Explicit seeks (UI scrub, step
+ *   actions, loop wrap) drive the video.
+ * - `ended` → flip `isPlayingAtom` false so the bar's play button is
+ *   correct after natural end-of-stream.
+ *
+ * This hook does **not** read the video's clock back into the
+ * playhead. In the engine's default wallclock mode, the engine owns
+ * the playhead and the video follows. For video-anchored playback,
+ * pair this with the `useVfcClockSource` hook (in `video-annotation`)
+ * which registers a `PlaybackClockSource` with the engine.
  *
  * Pass the ref of a `<video>` element. Every atom read/write and the
  * `store.sub` subscription below target the playback store explicitly
@@ -32,61 +34,52 @@ export function useVideoSync(
 ): void {
   const store = usePlaybackStore();
   const isPlaying = useAtomValue(isPlayingAtom, { store });
-  const setPlayhead = useSetAtom(playheadAtom, { store });
-  const setCurrentTime = useSetAtom(currentTimeAtom, { store });
+  const isBuffering = useAtomValue(isBufferingAtom, { store });
   const setIsPlaying = useSetAtom(isPlayingAtom, { store });
 
-  // play / pause
+  // play / pause / buffering. The buffering gate takes precedence:
+  // while a blocking stream is loading, the video stays paused even
+  // if `isPlayingAtom` is true. Pausing also stops vfc, which freezes
+  // any registered video clock source — so labels-fetch-in-progress
+  // can't be raced by a video that keeps advancing on its own.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return undefined;
-    if (isPlaying) {
+    if (isPlaying && !isBuffering) {
       v.play().catch(() => {
         // Autoplay policy may reject — caller can show a click-to-play UI.
       });
     } else {
       v.pause();
     }
-  }, [isPlaying, videoRef]);
+  }, [isPlaying, isBuffering, videoRef]);
 
-  // Subscribe to the playhead via the store (not useAtomValue) so this
-  // effect doesn't tear down and re-run on every tick. When the playhead
-  // changes for a reason OTHER than the video itself (a scrub), the video
-  // is out of sync — seek it.
+  // Explicit seeks (UI scrub, step actions, loop wrap) come through
+  // `seekEventAtom`. Drive the video element here.
   useEffect(() => {
-    return store.sub(playheadAtom, () => {
+    return store.sub(seekEventAtom, () => {
       const v = videoRef.current;
       if (!v) return;
-      const target = store.get(playheadAtom);
-      if (Math.abs(v.currentTime - target) > SEEK_TOLERANCE_S) {
-        v.currentTime = target;
-      }
+      const ev = store.get(seekEventAtom);
+      if (!ev) return;
+      v.currentTime = ev.time;
     });
   }, [store, videoRef]);
 
-  // Mirror the video's authoritative time into the atoms.
+  // Surface the video's natural end-of-stream as paused so the bar's
+  // play button matches reality. `isPlayingAtom` normally drives the
+  // video; here the video drove itself to a stop, so we have to push
+  // the state back up.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return undefined;
-    const onTimeUpdate = () => {
-      setPlayhead(v.currentTime);
-      setCurrentTime(v.currentTime);
-    };
     const onEnded = () => {
-      // Video reached its end — surface that as paused so the bar's
-      // play button is correct. `isPlayingAtom` normally drives the
-      // video; here the video drove itself to a stop, so we have to
-      // push the state back up.
       v.pause();
       setIsPlaying(false);
     };
-    v.addEventListener("timeupdate", onTimeUpdate);
     v.addEventListener("ended", onEnded);
-    return () => {
-      v.removeEventListener("timeupdate", onTimeUpdate);
-      v.removeEventListener("ended", onEnded);
-    };
-    // setPlayhead / setCurrentTime / setIsPlaying are stable Jotai setters.
+    return () => v.removeEventListener("ended", onEnded);
+    // setIsPlaying is a stable Jotai setter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoRef]);
 }

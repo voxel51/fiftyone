@@ -4,6 +4,16 @@ export {
   createMcapReaderStore,
   type McapReaderStore,
 } from "./reader-store";
+export type { McapChunkReadDebugLog } from "./byte-readable";
+export {
+  collectChunkDataPrefetchRanges,
+  collectWindowPrefetchRanges,
+  prefetchMcapByteRanges,
+  type McapPrefetchByteRange,
+  type McapPrefetchChunkDataRequest,
+  type McapPrefetchWindowRequest,
+} from "./chunk-prefetch";
+export { createCachedMcapDecompressHandlers } from "./decompress-cache";
 export {
   parseMcapMessageIndexRecord,
   readIndexedMessageTimesForReader,
