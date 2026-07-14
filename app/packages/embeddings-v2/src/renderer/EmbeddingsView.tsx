@@ -113,7 +113,9 @@ export const EmbeddingsView = forwardRef<
     ref,
     () => ({
       resetCamera: () => chart?.resetCamera(),
-      clearSelection: () => chart?.setSelected(null),
+      // Drops BOTH selection layers (host + lasso) — this is the
+      // explicit-clear path (Esc, clear affordances)
+      clearSelection: () => chart?.clearSelection(),
     }),
     [chart],
   );

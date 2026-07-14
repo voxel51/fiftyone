@@ -31,6 +31,7 @@ import { ClickDetector } from "./interaction/ClickDetector";
 import { HoverPicker } from "./interaction/HoverPicker";
 import { LassoOverlay } from "./interaction/LassoOverlay";
 import { nearestPoint, selectInPolygon } from "./math";
+import { SelectionLayers } from "./selectionLayers";
 import { DensityPipeline } from "./pipeline";
 import {
   EMPHASIS_FRAGMENT,
@@ -115,6 +116,7 @@ export class EmbeddingsChart {
   private readonly emphasisPoints: Points;
   private readonly emphasisMaterial: RawShaderMaterial;
   private hasSelection = false;
+  private readonly selection = new SelectionLayers();
   private readonly pipeline = new DensityPipeline();
   private readonly lasso: LassoOverlay;
   private readonly picker: HoverPicker;
@@ -294,6 +296,7 @@ export class EmbeddingsChart {
     this.emphasisPoints.geometry = geometry;
     this.material.uniforms.uHasSelection.value = 0;
     this.hasSelection = false;
+    this.selection.clear();
 
     this.ensureAdapter(cols.hasZ);
     this.adapter?.setBounds(cols, this.width, this.height);
@@ -358,12 +361,23 @@ export class EmbeddingsChart {
   }
 
   /**
-   * Select points by index (null clears). One mechanism for lasso and
-   * host alike: members keep their exact color and size, everything
-   * else dims. In FiftyOne terms this is a view/filter result, which
-   * ships as indices or a bitmask — never as an id list.
+   * The HOST selection layer, by index (null clears the layer). The
+   * chart's own lasso keeps a separate layer beneath it: the most
+   * recent writer renders, and clearing this layer restores a live
+   * lasso instead of erasing it (see selectionLayers.ts). Members keep
+   * their exact color and size, everything else dims.
    */
   setSelected(indices: ArrayLike<number> | null): void {
+    this.applySelection(this.selection.writeHost(indices));
+  }
+
+  /** Drop every selection layer (host and lasso) */
+  clearSelection(): void {
+    this.applySelection(this.selection.clear());
+  }
+
+  /** Push the composed selection into the emphasis channel */
+  private applySelection(indices: ArrayLike<number> | null): void {
     const { cols, emphasisAttribute } = this;
     if (!cols || !emphasisAttribute) return;
     this.emphasisMask.fill(0);
@@ -502,7 +516,9 @@ export class EmbeddingsChart {
       polygon,
       this.visibleMask,
     );
-    this.setSelected(indices.length > 0 ? indices : null);
+    this.applySelection(
+      this.selection.writeLasso(indices.length > 0 ? indices : null),
+    );
     this.callbacks.onSelection?.(
       indices,
       this.adapter?.toDataPolygon?.(polygon) ?? null,
@@ -516,7 +532,7 @@ export class EmbeddingsChart {
       this.callbacks.onPointClick(hit);
       return;
     }
-    this.setSelected(null);
+    this.applySelection(this.selection.writeLasso(null));
     this.callbacks.onSelection?.([]);
     // A point hit with no onPointClick host falls through to the clear
     // above, but it is not a background click

@@ -12,6 +12,7 @@ class MockChart {
   setColors = vi.fn();
   setVisible = vi.fn();
   setSelected = vi.fn();
+  clearSelection = vi.fn();
   setRenderSettings = vi.fn();
   setInteractionMode = vi.fn();
   resetCamera = vi.fn();
@@ -78,7 +79,8 @@ describe("EmbeddingsView prop plumbing", () => {
     expect(chart.resetCamera).toHaveBeenCalled();
 
     ref.current?.clearSelection();
-    expect(chart.setSelected).toHaveBeenLastCalledWith(null);
+    // The explicit clear drops both layers, not just the host one
+    expect(chart.clearSelection).toHaveBeenCalled();
   });
 
   it("forwards mode changes to the chart", async () => {
