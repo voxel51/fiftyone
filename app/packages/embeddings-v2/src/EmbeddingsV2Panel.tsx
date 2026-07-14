@@ -46,8 +46,9 @@ export default function EmbeddingsV2Panel() {
     );
   };
 
-  // A stale key (deleted run, switched dataset) falls back to the list
-  const openRun = runs?.find((r) => r.brainKey === openKey) ?? null;
+  // A stale key (deleted run, switched dataset, results not yet
+  // saved) falls back to the list — a pending run has nothing to plot
+  const openRun = runs?.find((r) => r.brainKey === openKey && r.ready) ?? null;
 
   if (openRun) {
     return (

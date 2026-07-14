@@ -46,12 +46,11 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { ColorLegend } from "./ColorLegend";
-import { localColorMask } from "./colorMask";
 import { ContinuousLegend } from "./ContinuousLegend";
 import { categoryHex, MISSING_CATEGORY } from "./colors";
 import HoverCard from "./HoverCard";
 import {
-  onLabels,
+  legendLabels,
   soloLabel,
   toggleLabel,
   type CategoricalFilter,
@@ -67,6 +66,7 @@ import {
 import { clearSelectionNonceState, selectionCountState } from "./state";
 import { useColorColumn } from "./useColorColumn";
 import { useHoverInfo } from "./useHoverInfo";
+import { useLocalColorMask } from "./useLocalColorMask";
 import { useMasks } from "./useMasks";
 import { useRunColumns } from "./useRunColumns";
 import { useSelectionBridge } from "./useSelectionBridge";
@@ -161,31 +161,14 @@ export default function PlotView({
     loading: colorLoading,
     error: colorError,
   } = useColorColumn(datasetName, brainKey, run, colorField);
-  // The color-by field's filter, evaluated client-side against the
-  // color column when provably faithful (see colorMask.ts) — legend
-  // clicks then never wait on the masks round trip
-  const localColor = useMemo(() => {
-    if (!colorField || !colorValues || !colorMeta) return null;
-    const fieldFilter = (filters as Record<string, CategoricalFilter> | null)?.[
-      colorField
-    ];
-    if (!fieldFilter) return null;
-    const mask = localColorMask(fieldFilter, colorValues, colorMeta);
-    return mask ? { field: colorField, mask } : null;
-  }, [filters, colorField, colorValues, colorMeta]);
-
-  // A locally-handled filter must not also reach the server — the whole
-  // point is skipping that aggregation. Identity is stabilized through
-  // JSON so a legend click (which only changes the locally-handled
-  // entry) does not refetch the unchanged remainder
-  const serverFiltersJson = useMemo(() => {
-    const record = { ...((filters ?? {}) as Record<string, unknown>) };
-    if (localColor) delete record[localColor.field];
-    return JSON.stringify(record);
-  }, [filters, localColor]);
-  const serverFilters = useMemo(
-    () => JSON.parse(serverFiltersJson) as Record<string, unknown>,
-    [serverFiltersJson],
+  // The color-by field's filter evaluates client-side when provably
+  // faithful (legend clicks never wait on the masks round trip); the
+  // rest ships to the masks endpoint, identity-stable
+  const { localMask, serverFilters } = useLocalColorMask(
+    filters,
+    colorField,
+    colorValues,
+    colorMeta,
   );
 
   const {
@@ -198,7 +181,7 @@ export default function PlotView({
     view,
     serverFilters,
     loaded?.points.length ?? 0,
-    localColor?.mask ?? null,
+    localMask,
   );
   // The hover card's swatch mirrors the point's rendered color, which
   // buildColors derives from the same class column
@@ -248,21 +231,10 @@ export default function PlotView({
   );
   const legendFilter = (fieldFilter ?? null) as CategoricalFilter | null;
 
-  const classLabels = useMemo(() => {
-    const classes =
-      colorMeta?.style === "categorical" ? colorMeta.classes : undefined;
-    if (!classes?.length) return null;
-    const labels = classes.map((cls) => cls.label);
-    return labels.every((label): label is string => typeof label === "string")
-      ? labels
-      : null;
-  }, [colorMeta]);
-
-  const offLabels = useMemo(() => {
-    if (!classLabels) return null;
-    const on = onLabels(legendFilter, classLabels);
-    return new Set(classLabels.filter((label) => !on.has(label)));
-  }, [classLabels, legendFilter]);
+  const legend = useMemo(
+    () => legendLabels(colorMeta, legendFilter),
+    [colorMeta, legendFilter],
+  );
 
   // Writes read the filter from a fresh snapshot, not the render-time
   // value — rapid clicks must each transform the latest state, or a
@@ -273,19 +245,19 @@ export default function PlotView({
   const handleLegendClick = useRecoilCallback(
     ({ snapshot, set, reset }) =>
       (label: string, solo: boolean) => {
-        if (!colorField || !classLabels) return;
+        if (!colorField || !legend) return;
         const filterState = fos.filter({ path: colorField, modal: false });
         const current = (snapshot.getLoadable(filterState).valueMaybe() ??
           null) as CategoricalFilter | null;
         const transform = solo ? soloLabel : toggleLabel;
-        const next = transform(current, classLabels, label);
+        const next = transform(current, legend.labels, label);
         if (next) {
           set(filterState, next);
         } else {
           reset(filterState);
         }
       },
-    [colorField, classLabels],
+    [colorField, legend],
   );
   const handleLegendToggle = (label: string) => handleLegendClick(label, false);
   const handleLegendSolo = (label: string) => handleLegendClick(label, true);
@@ -483,7 +455,7 @@ export default function PlotView({
           <ColorLegend
             field={colorField}
             meta={colorMeta}
-            offLabels={offLabels}
+            offLabels={legend?.off ?? null}
             onToggle={handleLegendToggle}
             onSolo={handleLegendSolo}
           />

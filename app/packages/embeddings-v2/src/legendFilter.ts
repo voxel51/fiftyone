@@ -22,6 +22,7 @@
  *   dropped on the first legend click.
  * - A filter that turns every class back on collapses to `null`.
  */
+import type { ColorMeta } from "./protocol";
 
 /** One value in a sidebar filter, mirroring fos.Filter's value type */
 type FilterValue = string | boolean | number | null | undefined;
@@ -33,6 +34,27 @@ export interface CategoricalFilter {
   values?: FilterValue[];
   exclude?: boolean;
   [key: string]: FilterValue | FilterValue[];
+}
+
+/**
+ * The legend's view of a color-by field: its string class labels and
+ * which of them the filter currently hides. Null when the field's
+ * classes are not filterable — non-string labels (the sidebar's
+ * numeric filters are range-shaped, not value lists) or no categorical
+ * classes at all — in which case the legend renders inert.
+ */
+export function legendLabels(
+  meta: ColorMeta | null,
+  filter: CategoricalFilter | null,
+): { labels: string[]; off: Set<string> } | null {
+  const classes = meta?.style === "categorical" ? meta.classes : undefined;
+  if (!classes?.length) return null;
+  const labels = classes.map((cls) => cls.label);
+  if (!labels.every((label): label is string => typeof label === "string")) {
+    return null;
+  }
+  const on = onLabels(filter, labels);
+  return { labels, off: new Set(labels.filter((label) => !on.has(label))) };
 }
 
 /** The classes `filter` leaves visible; no value filter means all */

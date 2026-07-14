@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { onLabels, soloLabel, toggleLabel } from "./legendFilter";
+import { legendLabels, onLabels, soloLabel, toggleLabel } from "./legendFilter";
 
 const LABELS = ["cat", "dog", "bird"];
 
@@ -101,6 +101,31 @@ describe("toggleLabel", () => {
     expect(toggleLabel(filter, LABELS, "dog")).toMatchObject({
       isMatching: true,
     });
+  });
+});
+
+describe("legendLabels", () => {
+  const meta = (labels: Array<string | number>) => ({
+    style: "categorical" as const,
+    classes: labels.map((label) => ({ label, count: 1 })),
+  });
+
+  it("derives the off-set from the filter", () => {
+    expect(
+      legendLabels(meta(["cat", "dog"]), { values: ["dog"], exclude: true }),
+    ).toEqual({ labels: ["cat", "dog"], off: new Set(["dog"]) });
+    expect(legendLabels(meta(["cat", "dog"]), null)).toEqual({
+      labels: ["cat", "dog"],
+      off: new Set(),
+    });
+  });
+
+  // Numeric classes can't map to a value-list sidebar filter; the
+  // legend must render inert rather than write a broken filter
+  it("is null for non-string classes and non-categorical fields", () => {
+    expect(legendLabels(meta(["cat", 7]), null)).toBeNull();
+    expect(legendLabels({ style: "continuous" }, null)).toBeNull();
+    expect(legendLabels(null, null)).toBeNull();
   });
 });
 

@@ -66,8 +66,9 @@ export interface EmbeddingsChartCallbacks {
   /**
    * A plain click landed on a point. The chart does not change its own
    * selection for point clicks — the host owns click semantics (toggle,
-   * replace, open, …). Plain clicks on empty space clear the selection
-   * as before.
+   * replace, open, …). Plain clicks on empty space clear the lasso
+   * layer (a host-layer selection resurfaces; the host clears its own
+   * state through its own paths).
    */
   onPointClick?: (hit: HoverHit) => void;
   /**
@@ -94,10 +95,12 @@ export interface EmbeddingsChartOptions {
  * DOM, no React — any host can drive it directly.
  *
  * Host API: setData / setColors / setVisible / setSelected /
- * setRenderSettings. Selection is one mechanism: the lasso and the host
- * both call setSelected. Non-members recede (dim + desaturate) and the
- * selected points redraw at full opacity in an overlay pass above the
- * composite, where blending cannot swallow them. Visibility is a
+ * clearSelection / setRenderSettings. Selection renders one emphasis
+ * channel fed by two retained layers — the host's (setSelected) and the
+ * lasso's — composed most-recent-writer-wins (selectionLayers.ts).
+ * Non-members recede (dim + desaturate) and the selected points redraw
+ * at full opacity in an overlay pass above the composite, where
+ * blending cannot swallow them. Visibility is a
  * second, independent mechanism (view-stage subsetting): hidden points
  * don't render and can't be hovered, clicked, or lassoed.
  */
@@ -294,9 +297,7 @@ export class EmbeddingsChart {
     geometry.boundingSphere = new Sphere(new Vector3(0, 0, 0), 1);
     this.points.geometry = geometry;
     this.emphasisPoints.geometry = geometry;
-    this.material.uniforms.uHasSelection.value = 0;
-    this.hasSelection = false;
-    this.selection.clear();
+    this.clearSelection();
 
     this.ensureAdapter(cols.hasZ);
     this.adapter?.setBounds(cols, this.width, this.height);
