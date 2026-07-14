@@ -37,8 +37,7 @@ App
   workspace, with GPU-accelerated point-cloud rendering, ROS and JSON-schema
   MCAP topic support, H.264 video decoding, LiDAR point-cloud projection onto
   camera images, accurate camera geometry across projections, and
-  generalized support for any MCAP recording rather than a single demo
-  dataset
+  generalized support for any MCAP recording
   `#7759 <https://github.com/voxel51/fiftyone/pull/7759>`_,
   `#7765 <https://github.com/voxel51/fiftyone/pull/7765>`_,
   `#7800 <https://github.com/voxel51/fiftyone/pull/7800>`_,
