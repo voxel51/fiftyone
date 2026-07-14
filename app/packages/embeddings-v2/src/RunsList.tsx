@@ -18,6 +18,7 @@ import {
   Button,
   EmptyState,
   getColorCssVar,
+  IconColor,
   IconName,
   Size,
   Spinner,
@@ -156,13 +157,22 @@ export default function RunsList({
                 title={run.brainKey}
                 badge={run.dims ? `${run.dims}D` : undefined}
                 badgeAccent={run.dims === 3}
-                status={{ label: "Ready", color: TextColor.Success }}
+                status={
+                  run.ready
+                    ? // Icon-tier success: the soft sage the design
+                      // reference uses, not the saturated text green
+                      { label: "Ready", color: IconColor.Success }
+                    : // Deliberately status-agnostic: without run-status
+                      // bookkeeping, "no results yet" cannot distinguish
+                      // still-computing from failed
+                      { label: "Pending", color: TextColor.Secondary }
+                }
                 meta={[
                   run.method,
                   run.model,
                   formatTimestamp(run.timestamp),
                 ].filter((item): item is string => Boolean(item))}
-                onClick={() => onOpen(run.brainKey)}
+                onClick={run.ready ? () => onOpen(run.brainKey) : undefined}
                 actions={
                   confirmKey === run.brainKey ? (
                     <>

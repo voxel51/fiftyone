@@ -12,6 +12,7 @@ import {
   BrandColor,
   getColorCssVar,
   Icon,
+  IconColor,
   IconName,
   Pill,
   Size,
@@ -24,7 +25,8 @@ import "./panel.css";
 
 export interface RunCardStatus {
   label: string;
-  color: TextColor;
+  /** Any content color; icon-tier tokens give the softer status tones */
+  color: TextColor | IconColor;
 }
 
 export interface RunCardProps {
@@ -112,7 +114,10 @@ export function RunCard({
               size={Size.Xs}
               isStatus
               backgroundColor={BackgroundColor.CardElevated}
-              color={status.color}
+              // Pill's prop is under-typed: the class map underneath
+              // (textColorMap) is Record<Color, string>, icon tokens
+              // included — the cast widens types to match the runtime
+              color={status.color as TextColor}
             >
               {status.label}
             </Pill>

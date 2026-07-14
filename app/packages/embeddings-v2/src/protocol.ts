@@ -32,6 +32,9 @@ export interface VisualizationRun {
   patchesField: string | null;
   pointsField: string | null;
   model: string | null;
+  /** The run's results blob exists (readiness says nothing about how a
+   * computation ended — only whether there is anything to load) */
+  ready: boolean;
   timestamp: string | null;
 }
 
@@ -67,9 +70,11 @@ export async function fetchRuns(
 ): Promise<VisualizationRun[]> {
   const response = await getFetchFunction()<
     { datasetName: string },
-    { runs: VisualizationRun[] }
+    { runs: (Omit<VisualizationRun, "ready"> & { ready?: boolean })[] }
   >("POST", "/embeddings/v2/runs", { datasetName });
-  return response.runs;
+  // Servers predating the flag omit it; absent means ready, or every
+  // run on an older deployment would render pending forever
+  return response.runs.map((run) => ({ ...run, ready: run.ready !== false }));
 }
 
 export interface RunInfo extends VisualizationRun {
@@ -81,11 +86,13 @@ export async function fetchRunInfo(
   datasetName: string,
   brainKey: string,
 ): Promise<RunInfo> {
-  return getFetchFunction()<Record<string, unknown>, RunInfo>(
-    "POST",
-    "/embeddings/v2/run-info",
-    { datasetName, brainKey },
-  );
+  const info = await getFetchFunction()<
+    Record<string, unknown>,
+    Omit<RunInfo, "ready"> & { ready?: boolean }
+  >("POST", "/embeddings/v2/run-info", { datasetName, brainKey });
+  // run-info answering at all implies loadable results; the endpoint
+  // doesn't send the flag
+  return { ...info, ready: info.ready !== false };
 }
 
 export interface Slice {

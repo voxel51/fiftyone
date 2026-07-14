@@ -30,6 +30,7 @@ const info = (n: number): RunInfo => ({
   patchesField: null,
   pointsField: null,
   model: null,
+  ready: true,
   timestamp: null,
   n,
 });

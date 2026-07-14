@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { fetchRuns, type VisualizationRun } from "./protocol";
-import { useVisualizationRuns } from "./useVisualizationRuns";
+import { PENDING_POLL_MS, useVisualizationRuns } from "./useVisualizationRuns";
 
 vi.mock("./protocol", () => ({ fetchRuns: vi.fn() }));
 
@@ -13,6 +13,7 @@ const run = (brainKey: string): VisualizationRun => ({
   patchesField: null,
   pointsField: null,
   model: null,
+  ready: true,
   timestamp: null,
 });
 
@@ -47,5 +48,37 @@ describe("useVisualizationRuns", () => {
 
     expect(fetchRuns).not.toHaveBeenCalled();
     expect(result.current.runs).toBeNull();
+  });
+
+  // A run without results must flip to ready without a page reload —
+  // and the poll must stop the moment nothing is pending
+  it("polls while any run is pending, then stops", async () => {
+    vi.useFakeTimers();
+    try {
+      const pending = { ...run("umap"), ready: false };
+      vi.mocked(fetchRuns).mockClear();
+      vi.mocked(fetchRuns).mockResolvedValue([pending]);
+      const { result } = renderHook(() => useVisualizationRuns("ds"));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current.runs).toEqual([pending]);
+
+      vi.mocked(fetchRuns).mockClear();
+      vi.mocked(fetchRuns).mockResolvedValue([run("umap")]);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(PENDING_POLL_MS);
+      });
+      expect(fetchRuns).toHaveBeenCalledTimes(1);
+      expect(result.current.runs).toEqual([run("umap")]);
+
+      // Everything ready: no further ticks
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(PENDING_POLL_MS * 3);
+      });
+      expect(fetchRuns).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

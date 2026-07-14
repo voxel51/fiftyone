@@ -21,6 +21,7 @@ const RUN: VisualizationRun = {
   patchesField: null,
   pointsField: null,
   model: null,
+  ready: true,
   timestamp: null,
 };
 

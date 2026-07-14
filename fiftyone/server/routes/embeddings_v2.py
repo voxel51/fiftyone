@@ -91,6 +91,14 @@ class EmbeddingsV2Runs(HTTPEndpoint):
             if not config.cls.startswith(_VISUALIZATION_CLS):
                 continue
 
+            # Results-blob POINTER presence, not a blob load: the run
+            # doc's GridFS reference is only set once results are saved,
+            # so a run mid-computation (or whose computation died) lists
+            # as not ready. Presence says nothing about how the run
+            # ended — status semantics beyond ready/pending need the
+            # run-status sidecar
+            ready = bool(dataset._doc.brain_methods[brain_key].results)
+
             runs.append(
                 {
                     "brainKey": brain_key,
@@ -99,6 +107,7 @@ class EmbeddingsV2Runs(HTTPEndpoint):
                     "patchesField": getattr(config, "patches_field", None),
                     "pointsField": getattr(config, "points_field", None),
                     "model": getattr(config, "model", None),
+                    "ready": ready,
                     "timestamp": _timestamp(info),
                 }
             )

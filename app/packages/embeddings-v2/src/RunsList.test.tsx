@@ -14,6 +14,7 @@ const run = (
   patchesField: null,
   pointsField: null,
   model: "clip-vit-base32-torch",
+  ready: true,
   timestamp: null,
   ...extra,
 });
@@ -39,6 +40,24 @@ describe("RunsList", () => {
 
     fireEvent.click(screen.getByText("clip_umap"));
     expect(onOpen).toHaveBeenCalledWith("clip_umap");
+  });
+
+  // Clicking a run without results crashed the plot view; pending runs
+  // must render inert until the poll flips them ready
+  it("marks runs without results Pending and inert", () => {
+    const onOpen = vi.fn();
+    render(
+      <RunsList
+        runs={[run("cooking", { ready: false })]}
+        error={null}
+        onOpen={onOpen}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Pending")).toBeDefined();
+    fireEvent.click(screen.getByText("cooking"));
+    expect(onOpen).not.toHaveBeenCalled();
   });
 
   it("shows the upsell until dismissed", () => {

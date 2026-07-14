@@ -110,6 +110,7 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertEqual(runs[0]["brainKey"], "viz")
         self.assertEqual(runs[0]["method"], "manual")
         self.assertEqual(runs[0]["dims"], 2)
+        self.assertTrue(runs[0]["ready"])
         self.assertIsNotNone(runs[0]["timestamp"])
 
         info = v2.EmbeddingsV2RunInfo._post_sync(None, base)
@@ -117,6 +118,21 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertEqual(info["dims"], 2)
         self.assertIsNone(info["patchesField"])
         self.assertIsNotNone(info["timestamp"])
+
+    @drop_datasets
+    def test_runs_without_results_are_not_ready(self):
+        # A run doc exists as soon as a computation registers, but its
+        # results-blob pointer is only set when results save — clicking
+        # such a run must be preventable, so the list reports readiness
+        dataset, _ = _make_samples_run()
+        run_doc = dataset._doc.brain_methods["viz"]
+        run_doc.results = None
+        run_doc.save()
+
+        runs = v2.EmbeddingsV2Runs._post_sync(
+            None, {"datasetName": dataset.name}
+        )["runs"]
+        self.assertFalse(runs[0]["ready"])
 
     @drop_datasets
     def test_geometry_columns(self):
