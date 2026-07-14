@@ -46,7 +46,7 @@ const _pakoExp = _pakoMod.exports;
             r,
             e,
             n,
-            t
+            t,
           );
         }
         return n[i].exports;
@@ -210,14 +210,14 @@ const _pakoExp = _pakoMod.exports;
               q >= 252
                 ? 6
                 : q >= 248
-                ? 5
-                : q >= 240
-                ? 4
-                : q >= 224
-                ? 3
-                : q >= 192
-                ? 2
-                : 1;
+                  ? 5
+                  : q >= 240
+                    ? 4
+                    : q >= 224
+                      ? 3
+                      : q >= 192
+                        ? 2
+                        : 1;
           }
           _utf8len[254] = _utf8len[254] = 1; // Invalid sequence start
 
@@ -293,7 +293,7 @@ const _pakoExp = _pakoMod.exports;
               ) {
                 return String.fromCharCode.apply(
                   null,
-                  utils.shrinkBuf(buf, len)
+                  utils.shrinkBuf(buf, len),
                 );
               }
             }
@@ -1181,10 +1181,10 @@ const _pakoExp = _pakoMod.exports;
             this.next = null; /* next available space in codes[] */
 
             this.lens = new utils.Buf16(
-              320
+              320,
             ); /* temporary storage for code lengths */
             this.work = new utils.Buf16(
-              288
+              288,
             ); /* work area for code table building */
 
             /*
@@ -1400,7 +1400,7 @@ const _pakoExp = _pakoMod.exports;
                 src,
                 end - state.wsize,
                 state.wsize,
-                0
+                0,
               );
               state.wnext = 0;
               state.whave = state.wsize;
@@ -1449,7 +1449,7 @@ const _pakoExp = _pakoMod.exports;
             var len; /* length to copy for repeats, bits to drop */
             var ret; /* return code */
             var hbuf = new utils.Buf8(
-              4
+              4,
             ); /* buffer for gzip header crc calculation */
             var opts;
 
@@ -1711,7 +1711,7 @@ const _pakoExp = _pakoMod.exports;
                           // - no need for additional size check
                           copy,
                           /*len + copy > state.head.extra_max - len ? state.head.extra_max : copy,*/
-                          len
+                          len,
                         );
                         //zmemcpy(state.head.extra + len, next,
                         //        len + copy > state.head.extra_max ?
@@ -2053,7 +2053,7 @@ const _pakoExp = _pakoMod.exports;
                     state.lencode,
                     0,
                     state.work,
-                    opts
+                    opts,
                   );
                   state.lenbits = opts.bits;
 
@@ -2205,7 +2205,7 @@ const _pakoExp = _pakoMod.exports;
                     state.lencode,
                     0,
                     state.work,
-                    opts
+                    opts,
                   );
                   // We have separate tables & no pointers. 2 commented lines below not needed.
                   // state.next_index = opts.table_index;
@@ -2231,7 +2231,7 @@ const _pakoExp = _pakoMod.exports;
                     state.distcode,
                     0,
                     state.work,
-                    opts
+                    opts,
                   );
                   // We have separate tables & no pointers. 2 commented lines below not needed.
                   // state.next_index = opts.table_index;
@@ -2663,7 +2663,7 @@ const _pakoExp = _pakoMod.exports;
                   strm,
                   strm.output,
                   strm.next_out,
-                  _out - strm.avail_out
+                  _out - strm.avail_out,
                 )
               ) {
                 state.mode = MEM;
@@ -2860,7 +2860,7 @@ exports.inflateUndermine = inflateUndermine;
             table,
             table_index,
             work,
-            opts
+            opts,
           ) {
             var bits = opts.bits;
             //here = opts.here; /* table entry for duplication */
@@ -3354,7 +3354,7 @@ exports.inflateUndermine = inflateUndermine;
                 windowBits: 0,
                 to: "",
               },
-              options || {}
+              options || {},
             );
 
             var opt = this.options;
@@ -3419,7 +3419,7 @@ exports.inflateUndermine = inflateUndermine;
                 //In raw mode we need to set the dictionary early
                 status = zlib_inflate.inflateSetDictionary(
                   this.strm,
-                  opt.dictionary
+                  opt.dictionary,
                 );
                 if (status !== c.Z_OK) {
                   throw new Error(msg[status]);
@@ -3474,8 +3474,8 @@ exports.inflateUndermine = inflateUndermine;
               mode === ~~mode
                 ? mode
                 : mode === true
-                ? c.Z_FINISH
-                : c.Z_NO_FLUSH;
+                  ? c.Z_FINISH
+                  : c.Z_NO_FLUSH;
 
             // Convert data if needed
             if (typeof data === "string") {
@@ -3499,13 +3499,13 @@ exports.inflateUndermine = inflateUndermine;
 
               status = zlib_inflate.inflate(
                 strm,
-                c.Z_NO_FLUSH
+                c.Z_NO_FLUSH,
               ); /* no bad return value */
 
               if (status === c.Z_NEED_DICT && dictionary) {
                 status = zlib_inflate.inflateSetDictionary(
                   this.strm,
-                  dictionary
+                  dictionary,
                 );
               }
 
@@ -3530,7 +3530,7 @@ exports.inflateUndermine = inflateUndermine;
                   if (this.options.to === "string") {
                     next_out_utf8 = strings.utf8border(
                       strm.output,
-                      strm.next_out
+                      strm.next_out,
                     );
 
                     tail = strm.next_out - next_out_utf8;
@@ -3545,7 +3545,7 @@ exports.inflateUndermine = inflateUndermine;
                         strm.output,
                         next_out_utf8,
                         tail,
-                        0
+                        0,
                       );
                     }
 
@@ -3724,7 +3724,7 @@ exports.inflateUndermine = inflateUndermine;
       ],
     },
     {},
-    []
+    [],
   )("/lib/inflate.js");
 });
 // added for native module + rollup compatibility (2/2)

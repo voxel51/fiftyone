@@ -39,13 +39,13 @@ const pendingJobs = new Map<Sample, AsyncLabelsRenderingJob>();
 const processingSamples = new Set<Sample>();
 
 const workerPool: Worker[] = Array.from({ length: MAX_WORKERS }, () =>
-  createWorker(LookerUtils.workerCallbacks)
+  createWorker(LookerUtils.workerCallbacks),
 );
 const freeWorkers: Worker[] = workerPool.slice();
 
 const updateRenderingCount = (delta: number) => {
   jotaiStore.set(numConcurrentRenderingLabels, (curr) =>
-    Math.max(0, curr + delta)
+    Math.max(0, curr + delta),
   );
 };
 
@@ -164,7 +164,7 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
 
   const { overlays: filteredOverlays } = accumulateOverlays(
     filteredSample,
-    job.lookerRef.state.config.fieldSchema
+    job.lookerRef.state.config.fieldSchema,
   );
   const transfer = retrieveTransferables(filteredOverlays);
 
@@ -189,7 +189,7 @@ export class AsyncLabelsRenderingManager {
    * If a pending job exists for the same sample, update it.
    */
   enqueueLabelPaintingJob(
-    item: Omit<AsyncLabelsRenderingJob, "resolve" | "reject" | "lookerRef">
+    item: Omit<AsyncLabelsRenderingJob, "resolve" | "reject" | "lookerRef">,
   ): Promise<AsyncJobResolutionResult> {
     const { sample, labels } = item;
 

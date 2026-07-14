@@ -213,7 +213,7 @@ export class KeypointOverlay
   protected getAbsolutePoints(): Point[] {
     if (this._absPointsCache) return this._absPointsCache;
     this._absPointsCache = this.#points.map((e) =>
-      this.relativePointToAbsolute(e.position)
+      this.relativePointToAbsolute(e.position),
     );
     return this._absPointsCache;
   }
@@ -276,7 +276,7 @@ export class KeypointOverlay
     // To reposition points, mutate them individually via movePoint/addPoint/removePoint.
     if (_bounds) {
       console.warn(
-        `KeypointOverlay(${this.id}): setting bounds directly is a no-op; mutate points instead.`
+        `KeypointOverlay(${this.id}): setting bounds directly is a no-op; mutate points instead.`,
       );
     }
     this.markDirty();
@@ -382,21 +382,21 @@ export class KeypointOverlay
    */
   protected renderFill(
     _renderer: Renderer2D,
-    _ctx: KeypointRenderContext
+    _ctx: KeypointRenderContext,
   ): void {
     // intentionally empty
   }
 
   protected renderEdges(
     renderer: Renderer2D,
-    ctx: KeypointRenderContext
+    ctx: KeypointRenderContext,
   ): void {
     if (ctx.edgeSegments.length === 0) return;
 
     renderer.drawLines(
       ctx.edgeSegments,
       { strokeStyle: ctx.strokeColor, lineWidth: ctx.lineWidth },
-      this.containerId
+      this.containerId,
     );
 
     // Dashed overlay when hovered or selected, mirroring BoundingBoxOverlay.
@@ -417,7 +417,7 @@ export class KeypointOverlay
           lineWidth: ctx.lineWidth,
           dashPattern: [overlayDash, overlayDash],
         },
-        this.containerId
+        this.containerId,
       );
     }
   }
@@ -428,7 +428,7 @@ export class KeypointOverlay
    */
   protected renderPreviewLine(
     renderer: Renderer2D,
-    ctx: KeypointRenderContext
+    ctx: KeypointRenderContext,
   ): void {
     if (
       !this.previewPoint ||
@@ -448,13 +448,13 @@ export class KeypointOverlay
         dashPattern: [6, 4],
         opacity: PREVIEW_LINE_OPACITY,
       },
-      this.containerId
+      this.containerId,
     );
   }
 
   protected renderPoints(
     renderer: Renderer2D,
-    ctx: KeypointRenderContext
+    ctx: KeypointRenderContext,
   ): void {
     const defaultPointStyle: DrawStyle = {
       fillStyle: ctx.strokeColor,
@@ -497,7 +497,7 @@ export class KeypointOverlay
           id: this.#points[i].id,
           position,
           variant: this.#points[i].variant,
-        })
+        }),
       );
 
       const effectContext: KeypointEffectContext = {
@@ -529,7 +529,7 @@ export class KeypointOverlay
           pts,
           KEYPOINT_RADIUS,
           { fillStyle: "#ffffff" },
-          this.containerId
+          this.containerId,
         );
       }
     }
@@ -540,20 +540,20 @@ export class KeypointOverlay
         selectedPoint,
         KEYPOINT_SELECTED_RADIUS,
         resolvePointStyle(selectedVariant),
-        this.containerId
+        this.containerId,
       );
       renderer.drawPoint(
         selectedPoint,
         KEYPOINT_RADIUS,
         { fillStyle: "#ffffff" },
-        this.containerId
+        this.containerId,
       );
     }
   }
 
   protected renderLabelText(
     renderer: Renderer2D,
-    ctx: KeypointRenderContext
+    ctx: KeypointRenderContext,
   ): void {
     if (!this.label || !this.label.label?.length) return;
 
@@ -567,7 +567,7 @@ export class KeypointOverlay
         fontColor: "#ffffff",
         backgroundColor: ctx.style.fillStyle || ctx.style.strokeStyle || "#000",
       },
-      this.containerId
+      this.containerId,
     );
   }
 
@@ -650,7 +650,7 @@ export class KeypointOverlay
         worldPoint.x,
         worldPoint.y,
         absPoints[i].x,
-        absPoints[i].y
+        absPoints[i].y,
       );
       if (d <= hitRadius && d < nearestDist) {
         nearestDist = d;
@@ -731,6 +731,7 @@ export class KeypointOverlay
     if (from && (from[0] !== to[0] || from[1] !== to[1])) {
       this.eventBus.dispatch("lighter:keypoint-point-moved", {
         id: this.id,
+        overlayId: this.id,
         pointId: entry.id,
         from: { x: from[0], y: from[1] },
         to: { x: to[0], y: to[1] },
@@ -777,7 +778,7 @@ export class KeypointOverlay
    */
   addPoint(
     worldPoint: Point,
-    options?: { variant?: string; id?: string; dragging?: boolean }
+    options?: { variant?: string; id?: string; dragging?: boolean },
   ): string {
     const { variant, id } = options ?? {};
     const position = this.absolutePointToRelative(worldPoint);
@@ -786,6 +787,7 @@ export class KeypointOverlay
 
     this.eventBus.dispatch("lighter:keypoint-point-added", {
       id: this.id,
+      overlayId: this.id,
       pointId: entry.id,
       point: { x: position[0], y: position[1] },
       variant,
@@ -818,7 +820,7 @@ export class KeypointOverlay
     index: number,
     position: [number, number],
     variant?: string,
-    id?: string
+    id?: string,
   ): string {
     const clamped = Math.max(0, Math.min(index, this.#points.length));
     const entry: KeypointEntry = {
@@ -829,7 +831,7 @@ export class KeypointOverlay
     this.#points.splice(clamped, 0, entry);
 
     this.connections = this.connections.map((path) =>
-      path.map((i) => (i >= clamped ? i + 1 : i))
+      path.map((i) => (i >= clamped ? i + 1 : i)),
     );
 
     if (
@@ -841,6 +843,7 @@ export class KeypointOverlay
 
     this.eventBus.dispatch("lighter:keypoint-point-added", {
       id: this.id,
+      overlayId: this.id,
       pointId: entry.id,
       point: { x: position[0], y: position[1] },
       variant,
@@ -881,6 +884,7 @@ export class KeypointOverlay
 
     this.eventBus.dispatch("lighter:keypoint-point-moved", {
       id: this.id,
+      overlayId: this.id,
       pointId,
       from: { x: from[0], y: from[1] },
       to: { x: to[0], y: to[1] },
@@ -908,7 +912,7 @@ export class KeypointOverlay
    * @param pointId Point ID
    */
   getPointById(
-    pointId: string
+    pointId: string,
   ): { position: [number, number]; variant?: string } | null {
     const entry = this.#points.find((p) => p.id === pointId);
     if (!entry) {
@@ -934,7 +938,7 @@ export class KeypointOverlay
     // Update connections: remove references to deleted index, shift higher indices
     this.connections = this.connections
       .map((path) =>
-        path.filter((i) => i !== index).map((i) => (i > index ? i - 1 : i))
+        path.filter((i) => i !== index).map((i) => (i > index ? i - 1 : i)),
       )
       .filter((path) => path.length > 1);
 
@@ -950,6 +954,7 @@ export class KeypointOverlay
 
     this.eventBus.dispatch("lighter:keypoint-point-deleted", {
       id: this.id,
+      overlayId: this.id,
       pointId,
       variant,
     });

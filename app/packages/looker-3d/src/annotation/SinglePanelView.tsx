@@ -1,4 +1,3 @@
-import type { CameraControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useLayoutEffect, useRef } from "react";
 import styled from "styled-components";
@@ -7,6 +6,7 @@ import type { Vector3 } from "three";
 import { StatusBar } from "../StatusBar";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import { StatusBarRootContainer } from "../containers";
+import type { Fo3dCameraControls } from "../fo3d/camera-controls";
 import { Fo3dSceneContent } from "../fo3d/Fo3dCanvas";
 import HoverMetadataHUD from "../fo3d/HoverMetadataHUD";
 import { useFo3dContext } from "../fo3d/context";
@@ -23,7 +23,7 @@ const MainContainer = styled.main`
 
 interface SinglePanelViewProps {
   assetsGroupRef: React.RefObject<THREE.Group>;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
   cameraRef: React.RefObject<THREE.PerspectiveCamera>;
   defaultCameraPosition: Vector3;
   foScene: FoScene;
@@ -38,8 +38,7 @@ export const SinglePanelView = ({
   foScene,
   onPointerMissed,
 }: SinglePanelViewProps) => {
-  const { upVector, autoRotate, isSceneInitialized, pointCloudSettings } =
-    useFo3dContext();
+  const { upVector, autoRotate, isSceneInitialized } = useFo3dContext();
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -71,7 +70,6 @@ export const SinglePanelView = ({
           cameraControlsRef={cameraControlsRef}
           foScene={foScene}
           isSceneInitialized={isSceneInitialized}
-          pointCloudSettings={pointCloudSettings}
           assetsGroupRef={assetsGroupRef}
           cameraRef={cameraRef}
         />

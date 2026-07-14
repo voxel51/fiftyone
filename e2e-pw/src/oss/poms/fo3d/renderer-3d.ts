@@ -31,7 +31,7 @@ const SAVED_CAMERA_STATE_VALIDATOR_BODY = `
 export function positionsAreClose(
   a: CameraPosition,
   b: CameraPosition,
-  tolerance = 0.5
+  tolerance = 0.5,
 ): boolean {
   return (
     Math.abs(a[0] - b[0]) < tolerance &&
@@ -58,13 +58,13 @@ export class Renderer3dPom {
     this.statusBar =
       this.modalLookerContainer.getByTestId("looker3d-statusbar");
     this.statusBarToggle = this.modalLookerContainer.getByTestId(
-      "looker3d-statusbar-toggle"
+      "looker3d-statusbar-toggle",
     );
     this.statusBarClose = this.modalLookerContainer.getByTestId(
-      "looker3d-statusbar-close"
+      "looker3d-statusbar-close",
     );
     this.statusBarCameraPosition = this.modalLookerContainer.getByTestId(
-      "looker3d-statusbar-camera-position"
+      "looker3d-statusbar-camera-position",
     );
   }
 
@@ -100,23 +100,23 @@ export class Renderer3dPom {
   }
 
   async getSavedCameraState(
-    datasetName: string
+    datasetName: string,
   ): Promise<SavedCameraState | null> {
     return this.page.evaluate(
       ({ name, validatorBody }) => {
         const validateSavedCameraState = new Function("raw", validatorBody);
 
         return validateSavedCameraState(
-          localStorage.getItem(`${name}-fo3d-camera-position`)
+          localStorage.getItem(`${name}-fo3d-camera-position`),
         );
       },
-      { name: datasetName, validatorBody: SAVED_CAMERA_STATE_VALIDATOR_BODY }
+      { name: datasetName, validatorBody: SAVED_CAMERA_STATE_VALIDATOR_BODY },
     ) as Promise<SavedCameraState | null>;
   }
 
   async waitForSavedCameraState(
     datasetName: string,
-    timeout = 10000
+    timeout = 10000,
   ): Promise<SavedCameraState> {
     await this.page.waitForFunction(
       ({ name, validatorBody }) => {
@@ -124,18 +124,18 @@ export class Renderer3dPom {
 
         return Boolean(
           validateSavedCameraState(
-            localStorage.getItem(`${name}-fo3d-camera-position`)
-          )
+            localStorage.getItem(`${name}-fo3d-camera-position`),
+          ),
         );
       },
       { name: datasetName, validatorBody: SAVED_CAMERA_STATE_VALIDATOR_BODY },
-      { timeout }
+      { timeout },
     );
 
     const savedState = await this.getSavedCameraState(datasetName);
     if (!savedState) {
       throw new Error(
-        `Saved camera state for dataset "${datasetName}" was not found`
+        `Saved camera state for dataset "${datasetName}" was not found`,
       );
     }
 
@@ -200,7 +200,7 @@ export class Renderer3dPom {
 
   private parseCameraPosition(text: string): CameraPosition {
     const match = text.match(
-      /(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/
+      /(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/,
     );
 
     if (!match) {
@@ -219,7 +219,7 @@ class Renderer3dAsserter {
   constructor(private readonly renderer3dPom: Renderer3dPom) {}
 
   async expectSomethingToRender(
-    minRenderedPixels = DEFAULT_MIN_RENDERED_PIXELS
+    minRenderedPixels = DEFAULT_MIN_RENDERED_PIXELS,
   ) {
     await expect(this.renderer3dPom.looker3d).toBeVisible();
 

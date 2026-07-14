@@ -1,5 +1,3 @@
-import { useRecoilValue } from "recoil";
-import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useColorByChoices } from "./useColorByChoices";
 
@@ -8,8 +6,6 @@ import { useColorByChoices } from "./useColorByChoices";
 
 export const useColorByField = () => usePanelStatePartial("colorByField", null);
 export function useLabelSelector() {
-  const dataset = useRecoilValue(fos.dataset);
-  const fullSchema = useRecoilValue(fos.fullSchema);
   const [label, setLabel] = useColorByField();
   const { availableFields, isLoading } = useColorByChoices();
 
@@ -26,7 +22,7 @@ export function useLabelSelector() {
       values:
         availableFields &&
         availableFields.filter((item) =>
-          item.toLowerCase().includes(search.toLowerCase())
+          item.toLowerCase().includes(search.toLowerCase()),
         ),
     }),
   };

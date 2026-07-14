@@ -1,7 +1,10 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { PlaybackProvider, usePlayback } from "../../lib/playback/PlaybackProvider";
+import {
+  PlaybackProvider,
+  usePlayback,
+} from "../../lib/playback/PlaybackProvider";
 import PlayheadTime from "./PlayheadTime";
 
 /**
@@ -23,7 +26,7 @@ function renderTime(duration: number, seekTo?: number) {
     <PlaybackProvider duration={duration} stepInterval={1 / 30}>
       {seekTo !== undefined ? <Seeker time={seekTo} /> : null}
       <PlayheadTime />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 

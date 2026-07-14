@@ -303,8 +303,16 @@ def _parse_task_metadata(
     stop_frame = resp.get("stop_frame", None)
     chunk_size = resp.get("chunk_size", None)
 
+    # Frames that have been deleted in CVAT are still reported in the task's
+    # ``frames`` metadata, but they must not be imported: their annotations no
+    # longer exist and their media should not be downloaded
+    deleted_frames = set(resp.get("deleted_frames", None) or [])
+
     cvat_id_map = {}
     for frame_id, frame in enumerate(resp["frames"]):
+        if frame_id in deleted_frames:
+            continue
+
         filename = frame["name"]
         filepath = data_map.get(filename, None)
         if download_media:

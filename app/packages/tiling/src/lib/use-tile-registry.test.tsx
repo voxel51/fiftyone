@@ -24,7 +24,7 @@ const DummyTile: React.FC = () => null;
 
 const makeEntry = (
   type: string,
-  typeLabel = type.charAt(0).toUpperCase() + type.slice(1)
+  typeLabel = type.charAt(0).toUpperCase() + type.slice(1),
 ): RegisteredTile => ({
   type,
   typeLabel,
@@ -41,7 +41,7 @@ describe("useTileRegistry", () => {
         registry: useTileRegistry(),
         tiles: useRegisteredTiles(),
       }),
-      { wrapper: makeWrapper() }
+      { wrapper: makeWrapper() },
     );
     expect(result.current.tiles).toEqual([]);
 
@@ -55,7 +55,7 @@ describe("useTileRegistry", () => {
   it("replaces an existing entry with the same type rather than duplicating", () => {
     const { result } = renderHook(
       () => ({ registry: useTileRegistry(), tiles: useRegisteredTiles() }),
-      { wrapper: makeWrapper() }
+      { wrapper: makeWrapper() },
     );
     act(() => {
       result.current.registry.registerTile(makeEntry("camera", "Old label"));
@@ -68,7 +68,7 @@ describe("useTileRegistry", () => {
   it("returns a disposer that removes the entry", () => {
     const { result } = renderHook(
       () => ({ registry: useTileRegistry(), tiles: useRegisteredTiles() }),
-      { wrapper: makeWrapper() }
+      { wrapper: makeWrapper() },
     );
     let dispose = () => {};
     act(() => {
@@ -84,7 +84,7 @@ describe("useTileRegistry", () => {
   it("disposing the older registration leaves the replacement intact", () => {
     const { result } = renderHook(
       () => ({ registry: useTileRegistry(), tiles: useRegisteredTiles() }),
-      { wrapper: makeWrapper() }
+      { wrapper: makeWrapper() },
     );
     let disposeA = () => {};
     act(() => {
@@ -105,7 +105,7 @@ describe("useTileRegistry", () => {
   it("supports multiple distinct types", () => {
     const { result } = renderHook(
       () => ({ registry: useTileRegistry(), tiles: useRegisteredTiles() }),
-      { wrapper: makeWrapper() }
+      { wrapper: makeWrapper() },
     );
     act(() => {
       result.current.registry.registerTile(makeEntry("camera"));

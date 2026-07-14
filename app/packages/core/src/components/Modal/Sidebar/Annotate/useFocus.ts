@@ -65,7 +65,7 @@ export default function useFocus(): FocusController {
       select(label);
       scene?.selectOverlay(id, { ignoreSideEffects: true });
     },
-    [readEditing, scene, select]
+    [readEditing, scene, select],
   );
 
   const deselectOverlay = useCallback(
@@ -78,11 +78,11 @@ export default function useFocus(): FocusController {
 
       onExit();
     },
-    [isGenerated, onExit]
+    [isGenerated, onExit],
   );
 
-  return useMemo(() => ({ selectOverlay, deselectOverlay }), [
-    selectOverlay,
-    deselectOverlay,
-  ]);
+  return useMemo(
+    () => ({ selectOverlay, deselectOverlay }),
+    [selectOverlay, deselectOverlay],
+  );
 }

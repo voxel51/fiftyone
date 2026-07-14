@@ -33,7 +33,7 @@ const test = base.extend<{
 const quickstartColorByField = getUniqueDatasetNameWithPrefix("quickstart");
 
 const dummyDatasetColorByInstance = getUniqueDatasetNameWithPrefix(
-  "dummy-color-by-instance"
+  "dummy-color-by-instance",
 );
 
 test.afterAll(async ({ foWebServer }) => {
@@ -95,7 +95,7 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
     const gridRefreshedEventPromise =
       eventUtils.getEventReceivedPromiseForPredicate(
         "re-render-tag",
-        () => true
+        () => true,
       );
     // open color modal and modify color in sample tags field and ground_truth
     await gridActionsRow.toggleColorSettings();
@@ -118,7 +118,7 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
 
     // verify validation tag has yellow green as background color
     expect(await tagBubble.getAttribute("style")).toContain(
-      "rgb(154, 205, 50)"
+      "rgb(154, 205, 50)",
     );
 
     // switch dataset to dummy_color_by_instance, and verify that color_by mode is "instance"
@@ -126,7 +126,7 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
     const gridRefreshPromise = grid.getWaitForGridRefreshPromise();
     await fiftyoneLoader.selectDatasetFromSelector(
       page,
-      dummyDatasetColorByInstance
+      dummyDatasetColorByInstance,
     );
     await gridRefreshPromise;
 

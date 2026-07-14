@@ -1,6 +1,15 @@
-import { act, cleanup, render, renderHook } from "@testing-library/react";
-import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+} from "@testing-library/react";
+import React, { useEffect } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { useTileDuplicator } from "./use-tile-state";
+import { useTileRegistry } from "./use-tile-registry";
 import {
   TileIdScope,
   TileSettingsContent,
@@ -9,8 +18,9 @@ import {
   useTiling,
 } from "./TilingProvider";
 
-const makeTile = (title: string): TilingTile => ({
+const makeTile = (title: string, type?: string): TilingTile => ({
   title,
+  ...(type ? { type } : {}),
   render: () => null,
 });
 
@@ -35,6 +45,7 @@ describe("TilingProvider", () => {
       expect(result.current.tiles).toEqual({});
       expect(result.current.layout).toBeNull();
       expect(result.current.focusedTileId).toBeNull();
+      expect(result.current.expandedTileId).toBeNull();
     });
 
     it("renders with the provided initial tile entries", () => {
@@ -47,7 +58,10 @@ describe("TilingProvider", () => {
           <Wrapper initialTiles={initialTiles}>{children}</Wrapper>
         ),
       });
-      expect(Object.keys(result.current.tiles)).toEqual(["camera-1", "lidar-1"]);
+      expect(Object.keys(result.current.tiles)).toEqual([
+        "camera-1",
+        "lidar-1",
+      ]);
     });
 
     it("auto-lays out the initial tiles when no initialLayout is provided", () => {
@@ -62,6 +76,59 @@ describe("TilingProvider", () => {
       });
       expect(result.current.layout).not.toBeNull();
     });
+
+    it("uses a custom strategy for the initial auto layout", () => {
+      const initialTiles = {
+        "a-1": makeTile("a"),
+        "b-1": makeTile("b"),
+      };
+      const autoLayoutStrategy = vi.fn(() => "b-1");
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={initialTiles}
+            autoLayoutStrategy={autoLayoutStrategy}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+
+      expect(autoLayoutStrategy).toHaveBeenCalledWith(["a-1", "b-1"]);
+      expect(result.current.layout).toBe("b-1");
+    });
+
+    it("seeds the expanded tile when the initial id is in the layout", () => {
+      const initialTiles = {
+        "camera-1": makeTile("camera"),
+        "lidar-1": makeTile("lidar"),
+      };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={initialTiles}
+            initialExpandedTileId="lidar-1"
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+      expect(result.current.expandedTileId).toBe("lidar-1");
+    });
+
+    it("ignores an initial expanded tile that is not in the layout", () => {
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={{ "camera-1": makeTile("camera") }}
+            initialExpandedTileId="ghost-1"
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+      expect(result.current.expandedTileId).toBeNull();
+    });
   });
 
   describe("addTile / id counter", () => {
@@ -73,7 +140,9 @@ describe("TilingProvider", () => {
         firstId = result.current.addTile(makeTile("a"), { idPrefix: "camera" });
       });
       act(() => {
-        secondId = result.current.addTile(makeTile("b"), { idPrefix: "camera" });
+        secondId = result.current.addTile(makeTile("b"), {
+          idPrefix: "camera",
+        });
       });
       expect(firstId).toBe("camera-1");
       expect(secondId).toBe("camera-2");
@@ -186,6 +255,48 @@ describe("TilingProvider", () => {
         result.current.setTileTitle("cam-1", "Front Camera");
       });
       expect(result.current.tiles["cam-1"].title).toBe("Front Camera");
+      expect(result.current.manualTileTitles).toEqual({
+        "cam-1": "Front Camera",
+      });
+    });
+
+    it("does not let an auto title override a manual title", () => {
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={{ "cam-1": makeTile("Camera") }}>
+            {children}
+          </Wrapper>
+        ),
+      });
+      act(() => {
+        result.current.setTileTitle("cam-1", "Front Camera");
+      });
+      act(() => {
+        result.current.setTileTitle("cam-1", "Auto Camera", {
+          source: "auto",
+        });
+      });
+      expect(result.current.tiles["cam-1"].title).toBe("Front Camera");
+      expect(result.current.manualTileTitles).toEqual({
+        "cam-1": "Front Camera",
+      });
+    });
+
+    it("accepts auto titles before the tile has a manual title", () => {
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={{ "cam-1": makeTile("Camera") }}>
+            {children}
+          </Wrapper>
+        ),
+      });
+      act(() => {
+        result.current.setTileTitle("cam-1", "Auto Camera", {
+          source: "auto",
+        });
+      });
+      expect(result.current.tiles["cam-1"].title).toBe("Auto Camera");
+      expect(result.current.manualTileTitles).toEqual({});
     });
 
     it("is a no-op when the title is unchanged", () => {
@@ -205,6 +316,26 @@ describe("TilingProvider", () => {
     });
   });
 
+  describe("TileSettingsContent", () => {
+    it("does not bubble sidebar portal clicks back to the tile body", () => {
+      const onPanePointerDown = vi.fn();
+      render(
+        <TilingProvider
+          initialTiles={{
+            "tile-1": makeTile("tile"),
+          }}
+        >
+          <SettingsPortalHarness onPanePointerDown={onPanePointerDown} />
+        </TilingProvider>,
+      );
+
+      fireEvent.click(screen.getByTestId("focus-tile"));
+      fireEvent.pointerDown(screen.getByTestId("settings-button"));
+
+      expect(onPanePointerDown).not.toHaveBeenCalled();
+    });
+  });
+
   describe("removeTile", () => {
     it("drops the tile from the tiles map and the layout", () => {
       const { result } = renderHook(() => useTiling(), {
@@ -215,10 +346,14 @@ describe("TilingProvider", () => {
         ),
       });
       act(() => {
+        result.current.setTileTitle("camera-1", "Manual Camera");
+      });
+      act(() => {
         result.current.removeTile("camera-1");
       });
       expect(result.current.tiles).toEqual({});
       expect(result.current.layout).toBeNull();
+      expect(result.current.manualTileTitles).toEqual({});
     });
 
     it("clears focus when the focused tile is removed", () => {
@@ -251,6 +386,23 @@ describe("TilingProvider", () => {
         result.current.removeTile("a-1");
       });
       expect(result.current.focusedTileId).toBe("b-1");
+    });
+
+    it("clears expanded state when the expanded tile is removed", () => {
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={{ "a-1": makeTile("a"), "b-1": makeTile("b") }}
+            initialExpandedTileId="a-1"
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+      act(() => {
+        result.current.removeTile("a-1");
+      });
+      expect(result.current.expandedTileId).toBeNull();
     });
 
     it("collapses the split when removing the second of two tiles", () => {
@@ -314,9 +466,13 @@ describe("TilingProvider", () => {
       });
       // Replace layout with only "b-1" — "a-1" should be reaped.
       act(() => {
+        result.current.setTileTitle("a-1", "Manual A");
+      });
+      act(() => {
         result.current.setLayout("b-1");
       });
       expect(result.current.tiles).toEqual({ "b-1": initialTiles["b-1"] });
+      expect(result.current.manualTileTitles).toEqual({});
     });
 
     it("clears focus if the focused tile was orphaned by the new layout", () => {
@@ -334,9 +490,45 @@ describe("TilingProvider", () => {
       });
       expect(result.current.focusedTileId).toBeNull();
     });
+
+    it("clears expanded state if the expanded tile was orphaned by the new layout", () => {
+      const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={initialTiles}
+            initialExpandedTileId="a-1"
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+      act(() => {
+        result.current.setLayout("b-1");
+      });
+      expect(result.current.expandedTileId).toBeNull();
+    });
   });
 
   describe("autoLayout", () => {
+    it("keeps the default balanced layout when no custom strategy is provided", () => {
+      const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={initialTiles}>{children}</Wrapper>
+        ),
+      });
+      act(() => {
+        result.current.autoLayout();
+      });
+      expect(result.current.layout).toEqual({
+        direction: "row",
+        first: "a-1",
+        second: "b-1",
+        splitPercentage: 50,
+      });
+    });
+
     it("preserves the tile set after rebuilding the layout tree", () => {
       const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
       const { result } = renderHook(() => useTiling(), {
@@ -350,28 +542,185 @@ describe("TilingProvider", () => {
       expect(result.current.tiles).toEqual(initialTiles);
       expect(result.current.layout).not.toBeNull();
     });
+
+    it("uses a custom strategy and clears expanded state when rebuilding the layout tree", () => {
+      const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
+      const autoLayoutStrategy = vi.fn((ids: readonly string[]) => ({
+        direction: "column" as const,
+        first: ids[1],
+        second: ids[0],
+        splitPercentage: 40,
+      }));
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={initialTiles}
+            initialLayout={{
+              direction: "row",
+              first: "a-1",
+              second: "b-1",
+              splitPercentage: 50,
+            }}
+            initialExpandedTileId="a-1"
+            autoLayoutStrategy={autoLayoutStrategy}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+      act(() => {
+        result.current.autoLayout();
+      });
+      expect(autoLayoutStrategy).toHaveBeenCalledWith(["a-1", "b-1"]);
+      expect(result.current.layout).toEqual({
+        direction: "column",
+        first: "b-1",
+        second: "a-1",
+        splitPercentage: 40,
+      });
+      expect(result.current.expandedTileId).toBeNull();
+    });
+
+    it("passes measured mosaic geometry to the custom strategy", () => {
+      const metrics = {
+        width: 1200,
+        height: 700,
+        tileHorizontalInset: 6,
+        tileVerticalInset: 34,
+      };
+      const autoLayoutStrategy = vi.fn(() => "a-1");
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            autoLayoutStrategy={autoLayoutStrategy}
+            initialLayout="a-1"
+            initialTiles={{ "a-1": makeTile("a") }}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+
+      act(() => {
+        result.current.setLayoutMetrics(metrics);
+        result.current.autoLayout();
+      });
+
+      expect(autoLayoutStrategy).toHaveBeenCalledWith(["a-1"], metrics);
+    });
+  });
+
+  describe("resetLayout", () => {
+    it("restores the initial tile set and arrangement by default", () => {
+      const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
+      const initialLayout = {
+        direction: "column" as const,
+        first: "a-1",
+        second: "b-1",
+        splitPercentage: 30,
+      };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={initialTiles}
+            initialLayout={initialLayout}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+
+      act(() => {
+        result.current.removeTile("a-1");
+        result.current.setTileTitle("b-1", "renamed");
+        result.current.resetLayout();
+      });
+
+      expect(result.current.tiles).toEqual(initialTiles);
+      expect(result.current.manualTileTitles).toEqual({});
+      expect(result.current.layout).toEqual(initialLayout);
+      expect(result.current.focusedTileId).toBeNull();
+      expect(result.current.expandedTileId).toBeNull();
+    });
+
+    it("can restore host defaults instead of a persisted initial layout", () => {
+      const persistedTiles = { "image-9": makeTile("persisted") };
+      const defaultTiles = {
+        "image-1": makeTile("front"),
+        "image-2": makeTile("rear"),
+      };
+      const defaultLayout = {
+        direction: "row" as const,
+        first: "image-1",
+        second: "image-2",
+        splitPercentage: 50,
+      };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={persistedTiles}
+            initialLayout="image-9"
+            resetTiles={defaultTiles}
+            resetLayout={defaultLayout}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+
+      act(() => result.current.resetLayout());
+
+      expect(result.current.tiles).toEqual(defaultTiles);
+      expect(result.current.layout).toEqual(defaultLayout);
+    });
+
+    it("can rebuild host defaults from current mosaic geometry", () => {
+      const metrics = {
+        width: 1200,
+        height: 700,
+        tileHorizontalInset: 6,
+        tileVerticalInset: 34,
+      };
+      const resetLayoutStrategy = vi.fn(() => "image-1");
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialLayout="image-9"
+            initialTiles={{ "image-9": makeTile("persisted") }}
+            resetLayoutStrategy={resetLayoutStrategy}
+            resetTiles={{ "image-1": makeTile("default") }}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+
+      act(() => {
+        result.current.setLayoutMetrics(metrics);
+        result.current.resetLayout();
+      });
+
+      expect(resetLayoutStrategy).toHaveBeenCalledWith(["image-1"], metrics);
+      expect(result.current.layout).toBe("image-1");
+    });
   });
 
   describe("useTiling guard", () => {
     it("throws when called outside a TilingProvider", () => {
-      const consoleError = console.error;
-      console.error = () => {};
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
       expect(() => renderHook(() => useTiling())).toThrow(
-        "useTiling must be used inside <TilingProvider>"
+        "useTiling must be used inside <TilingProvider>",
       );
-      console.error = consoleError;
+      consoleError.mockRestore();
     });
   });
 
   describe("settings portal", () => {
-    function Host({
-      initialFocus,
-    }: {
-      initialFocus?: string;
-    }) {
+    function Host({ initialFocus }: { initialFocus?: string }) {
       const tiling = useTiling();
-      // Bind the slot DOM element on mount so TileSettingsContent
-      // has somewhere to portal into.
+      // This effect primes the focused tile for settings portal tests.
       React.useEffect(() => {
         if (initialFocus) tiling.setFocusedTileId(initialFocus);
       }, [tiling, initialFocus]);
@@ -404,7 +753,7 @@ describe("TilingProvider", () => {
       const utils = render(
         <TilingProvider>
           <Host />
-        </TilingProvider>
+        </TilingProvider>,
       );
       expect(utils.queryByTestId("cam-settings")).toBeNull();
       expect(utils.queryByTestId("lid-settings")).toBeNull();
@@ -414,14 +763,14 @@ describe("TilingProvider", () => {
       const utils = render(
         <TilingProvider initialTiles={{ "cam-1": makeTile("cam") }}>
           <Host />
-        </TilingProvider>
+        </TilingProvider>,
       );
       act(() => {
         utils.getByTestId("focus-cam").click();
       });
-      expect(utils.getByTestId("slot").contains(
-        utils.getByTestId("cam-settings")
-      )).toBe(true);
+      expect(
+        utils.getByTestId("slot").contains(utils.getByTestId("cam-settings")),
+      ).toBe(true);
       expect(utils.queryByTestId("lid-settings")).toBeNull();
     });
 
@@ -434,7 +783,7 @@ describe("TilingProvider", () => {
           }}
         >
           <Host />
-        </TilingProvider>
+        </TilingProvider>,
       );
       act(() => utils.getByTestId("focus-cam").click());
       expect(utils.queryByTestId("cam-settings")).not.toBeNull();
@@ -443,6 +792,308 @@ describe("TilingProvider", () => {
       act(() => utils.getByTestId("focus-lid").click());
       expect(utils.queryByTestId("cam-settings")).toBeNull();
       expect(utils.queryByTestId("lid-settings")).not.toBeNull();
+    });
+  });
+});
+
+function SettingsPortalHarness({
+  onPanePointerDown,
+}: {
+  readonly onPanePointerDown: () => void;
+}) {
+  const { setFocusedTileId, setSettingsSlotEl } = useTiling();
+
+  return (
+    <>
+      <button
+        data-testid="focus-tile"
+        onClick={() => setFocusedTileId("tile-1")}
+      >
+        focus
+      </button>
+      <div data-testid="settings-slot" ref={setSettingsSlotEl} />
+      <TileIdScope tileId="tile-1">
+        <div data-testid="tile-body" onPointerDown={onPanePointerDown}>
+          <TileSettingsContent>
+            <button data-testid="settings-button">settings</button>
+          </TileSettingsContent>
+        </div>
+      </TileIdScope>
+    </>
+  );
+}
+
+const KindTile: React.FC = () => <div data-testid="kind-body" />;
+
+/** Registers a `camera` tile kind for spawn-op tests. */
+function RegisterCameraKind() {
+  const { registerTile } = useTileRegistry();
+  // This effect registers the camera tile kind for spawn-operation tests.
+  useEffect(
+    () =>
+      registerTile({
+        type: "camera",
+        typeLabel: "Camera",
+        icon: null,
+        Tile: KindTile,
+      }),
+    [registerTile],
+  );
+  return null;
+}
+
+function RegisterLidarKind() {
+  const { registerTile } = useTileRegistry();
+  // This effect registers the lidar tile kind for spawn-operation tests.
+  useEffect(
+    () =>
+      registerTile({
+        type: "lidar",
+        typeLabel: "Lidar",
+        icon: null,
+        Tile: KindTile,
+      }),
+    [registerTile],
+  );
+  return null;
+}
+
+function spawnOpsSetup(initialTiles: Record<string, TilingTile>) {
+  return renderHook(() => useTiling(), {
+    wrapper: ({ children }: { children: React.ReactNode }) => (
+      <TilingProvider initialTiles={initialTiles}>
+        <RegisterCameraKind />
+        {children}
+      </TilingProvider>
+    ),
+  });
+}
+
+function changeTypeSetup(initialTiles: Record<string, TilingTile>) {
+  return renderHook(() => useTiling(), {
+    wrapper: ({ children }: { children: React.ReactNode }) => (
+      <TilingProvider
+        initialTiles={initialTiles}
+        initialExpandedTileId="camera-1"
+      >
+        <RegisterCameraKind />
+        <RegisterLidarKind />
+        {children}
+      </TilingProvider>
+    ),
+  });
+}
+
+describe("spawn operations", () => {
+  afterEach(() => cleanup());
+
+  describe("splitTile", () => {
+    it("spawns a fresh same-kind tile in the requested direction", () => {
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("camera", "camera"),
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.splitTile("camera-1", "column");
+      });
+      expect(newId).toBe("camera-2");
+      expect(result.current.layout).toEqual({
+        direction: "column",
+        first: "camera-1",
+        second: "camera-2",
+        splitPercentage: 50,
+      });
+      expect(result.current.tiles["camera-2"].title).toBe("Camera");
+      expect(result.current.focusedTileId).toBe("camera-2");
+    });
+
+    it("does not copy a manual title when spawning a fresh split", () => {
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("camera", "camera"),
+      });
+      act(() => {
+        result.current.setTileTitle("camera-1", "Front Camera");
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.splitTile("camera-1", "row");
+      });
+      expect(newId).toBe("camera-2");
+      expect(result.current.tiles["camera-2"].title).toBe("Camera");
+      expect(result.current.manualTileTitles).toEqual({
+        "camera-1": "Front Camera",
+      });
+    });
+
+    it("returns null for an unknown kind with no duplicate factory", () => {
+      const { result } = spawnOpsSetup({
+        "mystery-1": makeTile("m", "mystery"),
+      });
+      let newId: string | null = "sentinel";
+      act(() => {
+        newId = result.current.splitTile("mystery-1", "row");
+      });
+      expect(newId).toBeNull();
+      expect(result.current.layout).toBe("mystery-1");
+    });
+
+    it("falls back to the duplicate factory for unregistered kinds", () => {
+      const { result } = spawnOpsSetup({
+        "mystery-1": makeTile("m", "mystery"),
+      });
+      act(() => {
+        result.current.registerTileDuplicator("mystery-1", () => ({
+          render: () => null,
+          title: "m (copy)",
+        }));
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.splitTile("mystery-1", "row");
+      });
+      expect(newId).toBe("mystery-2");
+      expect(result.current.tiles["mystery-2"].title).toBe("m (copy)");
+    });
+  });
+
+  describe("duplicateTile", () => {
+    it("prefers the registered duplicate factory", () => {
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("camera", "camera"),
+      });
+      act(() => {
+        result.current.registerTileDuplicator("camera-1", () => ({
+          title: "CAM_FRONT (copy)",
+          render: () => null,
+        }));
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.duplicateTile("camera-1");
+      });
+      expect(newId).toBe("camera-2");
+      expect(result.current.tiles["camera-2"].title).toBe("CAM_FRONT (copy)");
+      // Placed beside the origin.
+      expect(result.current.layout).toMatchObject({
+        first: "camera-1",
+        second: "camera-2",
+      });
+    });
+
+    it("falls back to a fresh same-kind tile without a factory", () => {
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("camera", "camera"),
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.duplicateTile("camera-1");
+      });
+      expect(newId).toBe("camera-2");
+      expect(result.current.tiles["camera-2"].title).toBe("Camera");
+    });
+
+    it("copies the source tile's manual title", () => {
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("camera", "camera"),
+      });
+      act(() => {
+        result.current.setTileTitle("camera-1", "Front Camera");
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.duplicateTile("camera-1");
+      });
+      expect(newId).toBe("camera-2");
+      expect(result.current.tiles["camera-2"].title).toBe("Front Camera");
+      expect(result.current.manualTileTitles).toEqual({
+        "camera-1": "Front Camera",
+        "camera-2": "Front Camera",
+      });
+    });
+
+    it("uses the tile body's useTileDuplicator registration", () => {
+      const DuplicatorBody: React.FC = () => {
+        useTileDuplicator(() => ({
+          title: "live copy",
+          render: () => null,
+        }));
+        return null;
+      };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }: { children: React.ReactNode }) => (
+          <TilingProvider
+            initialTiles={{ "camera-1": makeTile("camera", "camera") }}
+          >
+            <TileIdScope tileId="camera-1">
+              <DuplicatorBody />
+            </TileIdScope>
+            {children}
+          </TilingProvider>
+        ),
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.duplicateTile("camera-1");
+      });
+      expect(newId).toBe("camera-2");
+      expect(result.current.tiles["camera-2"].title).toBe("live copy");
+    });
+  });
+
+  describe("closeOtherTiles", () => {
+    it("keeps only the given tile and focuses it", () => {
+      const { result } = spawnOpsSetup({
+        "camera-1": makeTile("a"),
+        "camera-2": makeTile("b"),
+        "camera-3": makeTile("c"),
+      });
+      act(() => {
+        result.current.setFocusedTileId("camera-1");
+      });
+      act(() => {
+        result.current.closeOtherTiles("camera-2");
+      });
+      expect(result.current.layout).toBe("camera-2");
+      expect(Object.keys(result.current.tiles)).toEqual(["camera-2"]);
+      expect(result.current.focusedTileId).toBe("camera-2");
+    });
+  });
+
+  describe("changeTileType", () => {
+    it("replaces a tile in place with a fresh registered type", () => {
+      const { result } = changeTypeSetup({
+        "camera-1": makeTile("camera", "camera"),
+      });
+      act(() => {
+        result.current.setFocusedTileId("camera-1");
+      });
+      act(() => {
+        result.current.setTileTitle("camera-1", "Front Camera");
+      });
+      let newId: string | null = null;
+      act(() => {
+        newId = result.current.changeTileType("camera-1", "lidar");
+      });
+      expect(newId).toBe("lidar-2");
+      expect(result.current.layout).toBe("lidar-2");
+      expect(result.current.tiles["camera-1"]).toBeUndefined();
+      expect(result.current.tiles["lidar-2"].title).toBe("Lidar");
+      expect(result.current.focusedTileId).toBe("lidar-2");
+      expect(result.current.expandedTileId).toBe("lidar-2");
+      expect(result.current.manualTileTitles).toEqual({});
+    });
+
+    it("returns null when the requested type is not registered", () => {
+      const { result } = changeTypeSetup({
+        "camera-1": makeTile("camera", "camera"),
+      });
+      let newId: string | null = "sentinel";
+      act(() => {
+        newId = result.current.changeTileType("camera-1", "missing");
+      });
+      expect(newId).toBeNull();
+      expect(result.current.layout).toBe("camera-1");
+      expect(result.current.tiles["camera-1"]).toBeDefined();
     });
   });
 });

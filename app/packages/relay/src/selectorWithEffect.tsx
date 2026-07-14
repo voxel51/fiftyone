@@ -48,7 +48,7 @@ export function selectorWithEffect<T>(
       | boolean;
     state?: RecoilState<T>;
   },
-  itemKey?: string
+  itemKey?: string,
 ) {
   return selector({
     ...options,

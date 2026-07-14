@@ -16,7 +16,7 @@ export class MoveKeypointPointCommand implements Undoable {
     private overlay: KeypointOverlay,
     private pointId: string,
     private from: [number, number],
-    private to: [number, number]
+    private to: [number, number],
   ) {
     this.id = `move-keypoint-point-${pointId}-${Date.now()}`;
     this.description = `Move keypoint point ${pointId}`;

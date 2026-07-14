@@ -23,10 +23,18 @@ import {
 } from "@fiftyone/annotation/src/agents";
 import { ProviderErrorKind } from "@fiftyone/annotation";
 
-export const DetectionStatus = (): ReactElement => (
+const DETECTION_2D_STATUS_LABEL = "Click and drag to create a bounding box";
+const DETECTION_3D_STATUS_LABEL =
+  "Press C to toggle cuboid creation · T/R/S for translate/rotate/scale · Shift + hover to crop";
+
+export const DetectionStatus = ({
+  isCuboid = false,
+}: {
+  isCuboid?: boolean;
+}): ReactElement => (
   <StatusItem
     icon={<DetectionIcon />}
-    label="Click and drag to create a bounding box"
+    label={isCuboid ? DETECTION_3D_STATUS_LABEL : DETECTION_2D_STATUS_LABEL}
   />
 );
 
@@ -119,7 +127,7 @@ const isActiveStatus = (status: InferenceStatus): boolean =>
 
 const formatProgressLabel = (
   status: InferenceStatus,
-  progress: InferenceProgress
+  progress: InferenceProgress,
 ): string => {
   const base = STATUS_LABELS[status];
   if (status !== "downloading-weights" || !progress || !progress.total) {
@@ -127,7 +135,7 @@ const formatProgressLabel = (
   }
   const pct = Math.min(
     100,
-    Math.max(0, Math.round((progress.loaded / progress.total) * 100))
+    Math.max(0, Math.round((progress.loaded / progress.total) * 100)),
   );
   return `${base} (${pct}%)`;
 };

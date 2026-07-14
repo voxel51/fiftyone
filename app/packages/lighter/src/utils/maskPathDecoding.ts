@@ -135,7 +135,7 @@ const ensurePool = (): Slot[] | undefined => {
     // main-thread decode path instead of rejecting.
     console.error(
       "[decodeMaskPath] worker pool unavailable; using main-thread decode:",
-      err
+      err,
     );
     return undefined;
   }
@@ -184,7 +184,7 @@ const drain = (): void => {
 export async function decodeMaskPath(
   url: string,
   field: string,
-  cls: string
+  cls: string,
 ): Promise<OverlayMask | undefined> {
   // Defensive: callers should never pass a non-string URL, but if they do,
   // a downstream `fetch(undefined)` would resolve to a phantom request
@@ -218,16 +218,15 @@ export async function decodeMaskPath(
 async function decodeMaskPathImpl(
   url: string,
   field: string,
-  cls: string
+  cls: string,
 ): Promise<OverlayMask | undefined> {
   const pool = ensurePool();
 
   if (!pool) {
     // No worker support (SSR, tests). Fall back to a direct fetch+decode on
     // whatever thread we're on so callers still get a result.
-    const { decodeMaskOnDisk } = await import(
-      "@fiftyone/looker/src/worker/mask-decoder"
-    );
+    const { decodeMaskOnDisk } =
+      await import("@fiftyone/looker/src/worker/mask-decoder");
 
     try {
       const response = await fetch(url);
@@ -235,7 +234,7 @@ async function decodeMaskPathImpl(
       if (!response.ok) {
         console.error(
           `[decodeMaskPath] fallback fetch failed: HTTP ${response.status} ` +
-            `${response.statusText} (${url})`
+            `${response.statusText} (${url})`,
         );
         return undefined;
       }

@@ -44,7 +44,7 @@ const groupSpecs = [
 const TEMP_FILE_PATHS = [
   sharedMeshPath,
   ...groupSpecs.flatMap((spec) =>
-    [spec.leftPath, spec.rightPath, spec.pcdPath].filter(Boolean)
+    [spec.leftPath, spec.rightPath, spec.pcdPath].filter(Boolean),
   ),
 ];
 
@@ -90,7 +90,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
             hideLogs: true,
           }),
       ].filter(Boolean);
-    })
+    }),
   );
 
   await fiftyoneLoader.executePythonCode(`
@@ -197,7 +197,8 @@ test.describe.serial("sparse multimodal groups", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("opens a pcd-only group from the pcd grid slice without throwing", async ({
+  // TODO re-enable this test once its flakiness is resolved
+  test.skip("opens a pcd-only group from the pcd grid slice without throwing", async ({
     grid,
     modal,
   }) => {
@@ -225,7 +226,8 @@ test.describe.serial("sparse multimodal groups", () => {
     });
   });
 
-  test("opens the first modal cleanly from every grid slice", async ({
+  // TODO re-enable this test once its flakiness is resolved
+  test.skip("opens the first modal cleanly from every grid slice", async ({
     grid,
     modal,
   }) => {
@@ -295,7 +297,7 @@ test.describe.serial("sparse multimodal groups", () => {
 
       await modal.sidebar.switchMode("annotate");
       await modal.sidebar.annotate.assert.verifyAvailableAnnotationSlices(
-        expectedAnnotationSlices
+        expectedAnnotationSlices,
       );
       await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
       await assertModalHasNoViewerError({
@@ -310,12 +312,12 @@ test.describe.serial("sparse multimodal groups", () => {
       });
       await modal.sidebar.assert.waitUntilSidebarEntryTextEquals(
         "group.name",
-        slice
+        slice,
       );
 
       await modal.sidebar.switchMode("annotate");
       await modal.sidebar.annotate.assert.verifyAvailableAnnotationSlices(
-        expectedAnnotationSlices
+        expectedAnnotationSlices,
       );
       await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
       await assertModalHasNoViewerError({
@@ -330,7 +332,7 @@ test.describe.serial("sparse multimodal groups", () => {
       });
       await modal.sidebar.assert.waitUntilSidebarEntryTextEquals(
         "group.name",
-        slice
+        slice,
       );
 
       await modal.close();

@@ -11,12 +11,12 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 
-import fiftyone.multimodal.tags as fomt
-from fiftyone.multimodal.tags._temporal_tags import TemporalTagNotFoundError
+import fiftyone.core.tags as fota
 from fiftyone.multimodal.query import (
     resolve_playback_plan,
     resolve_scene_inventory,
 )
+from fiftyone.multimodal.schemas import v1 as foms
 from fiftyone.server import decorators
 from fiftyone.server.utils.datasets import get_dataset
 
@@ -80,7 +80,7 @@ class SampleTagsEndpoint(HTTPEndpoint):
             "tags": [
                 _serialize_temporal_tag(tag)
                 for tag in _handle_temporal_tag_errors(
-                    lambda: fomt.add_temporal_tags(dataset, tags)
+                    lambda: fota.add_temporal_tags(dataset, tags)
                 )
             ]
         }
@@ -97,7 +97,7 @@ class SampleTagsEndpoint(HTTPEndpoint):
 
         return {
             "deleted": _handle_temporal_tag_errors(
-                lambda: fomt.delete_temporal_tags(
+                lambda: fota.delete_temporal_tags(
                     dataset,
                     ids=delete_request["ids"],
                     tags=delete_request["tags"],
@@ -127,7 +127,7 @@ class SampleTagEndpoint(HTTPEndpoint):
         return {
             "tag": _serialize_temporal_tag(
                 _handle_temporal_tag_errors(
-                    lambda: fomt.update_temporal_tag(
+                    lambda: fota.update_temporal_tag(
                         dataset.select([sample_id]),
                         tag_id,
                         start=update["start"],
@@ -159,10 +159,15 @@ class TagCountsEndpoint(HTTPEndpoint):
 
         dataset = _get_dataset_from_request(request)
         tag_filter = _temporal_tag_filter_from_query(request)
+        by_sample = (
+            request.query_params.get("by_sample", "").lower() == "true"
+        )
 
         return {
             "counts": _handle_temporal_tag_errors(
-                lambda: fomt.count_temporal_tags(dataset, filter=tag_filter)
+                lambda: fota.count_temporal_tags(
+                    dataset, filter=tag_filter, by_sample=by_sample
+                )
             )
         }
 
@@ -175,7 +180,7 @@ def _list_tags(request: Request, sample_id: str | None = None) -> dict:
         "tags": [
             _serialize_temporal_tag(tag)
             for tag in _handle_temporal_tag_errors(
-                lambda: fomt.list_temporal_tags(dataset, filter=tag_filter)
+                lambda: fota.list_temporal_tags(dataset, filter=tag_filter)
             )
         ]
     }
@@ -189,7 +194,7 @@ def _get_dataset_from_request(request: Request):
 
 def _temporal_tags_from_create_payload(
     data, sample_id: str
-) -> list[fomt.TemporalTag]:
+) -> list[fota.TemporalTag]:
     _require_dict(data, "request body")
 
     records = data.get("temporal_tags", None)
@@ -216,12 +221,12 @@ def _temporal_tags_from_create_payload(
         _ensure_matching_sample_id(record_sample_id, sample_id)
 
         tags.append(
-            fomt.TemporalTag(
+            fota.TemporalTag(
                 sample_id=sample_id,
                 start=record.get("start", None),
                 end=record.get("end", None),
                 tag=record.get("tag", None),
-                index_type=record.get("index_type", fomt.DEFAULT_INDEX_TYPE),
+                index_type=record.get("index_type"),
                 anchor=record.get("anchor", None),
                 kind=record.get("kind", None),
                 created_by=record.get("created_by", None),
@@ -250,7 +255,7 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
     filter_payload = data.get("filter", None)
 
     if filter_payload is None:
-        tag_filter = fomt.TemporalTagFilter(sample_ids=sample_id)
+        tag_filter = fota.TemporalTagFilter(sample_ids=sample_id)
         has_filter_selector = False
     else:
         _require_dict(filter_payload, "filter")
@@ -259,7 +264,7 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
         )
         _ensure_matching_sample_id(requested_sample_ids, sample_id)
 
-        tag_filter = fomt.TemporalTagFilter(
+        tag_filter = fota.TemporalTagFilter(
             sample_ids=sample_id,
             tags=_first_present(filter_payload, "tags", "tag"),
             anchors=_first_present(filter_payload, "anchors", "anchor"),
@@ -326,7 +331,7 @@ def _tag_update_from_payload(data, *, sample_id: str, tag_id: str) -> dict:
 
 def _temporal_tag_filter_from_query(
     request: Request, sample_id: str | None = None
-) -> fomt.TemporalTagFilter:
+) -> fota.TemporalTagFilter:
     params = request.query_params
     sample_ids = _query_values(params, "sample_ids", "sample_id")
     if sample_id is None:
@@ -339,7 +344,7 @@ def _temporal_tag_filter_from_query(
         _ensure_matching_sample_id(sample_ids, sample_id)
         sample_ids = sample_id
 
-    return fomt.TemporalTagFilter(
+    return fota.TemporalTagFilter(
         sample_ids=sample_ids,
         tags=_query_values(params, "tags", "tag"),
         anchors=_query_values(params, "anchors", "anchor"),
@@ -349,14 +354,14 @@ def _temporal_tag_filter_from_query(
     )
 
 
-def _serialize_temporal_tag(tag: fomt.TemporalTag) -> dict:
+def _serialize_temporal_tag(tag: fota.TemporalTag) -> dict:
     return tag.to_dict()
 
 
 def _handle_temporal_tag_errors(callback):
     try:
         return callback()
-    except TemporalTagNotFoundError as e:
+    except fota.TemporalTagNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except (TypeError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

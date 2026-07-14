@@ -12,7 +12,6 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
-import React from "react";
 
 export default function LabelValueWidget(props: WidgetProps) {
   const { label, value } = props;

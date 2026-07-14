@@ -121,10 +121,7 @@ describe("buildNewLabelData", () => {
 
     it("skips attributes without a default", () => {
       setSchema("foo", {
-        attributes: [
-          { name: "color" },
-          { name: "size", default: 10 },
-        ],
+        attributes: [{ name: "color" }, { name: "size", default: 10 }],
       });
       const data = buildNewLabelData("foo", "Detection") as Record<
         string,

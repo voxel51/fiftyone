@@ -12,7 +12,7 @@ export const useAddAnnotationLabel3dPolyline = () => {
     (
       field: string,
       type: LabelType,
-      data: AnnotationLabel["data"]
+      data: AnnotationLabel["data"],
     ): AnnotationLabel | null => {
       if (type !== POLYLINE) {
         return null;
@@ -29,6 +29,6 @@ export const useAddAnnotationLabel3dPolyline = () => {
         path: field,
       };
     },
-    []
+    [],
   );
 };

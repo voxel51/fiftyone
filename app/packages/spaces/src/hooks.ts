@@ -28,6 +28,7 @@ import {
   currentPanelAreasRenderer,
   panelAreaRenderers,
   panelIdToScopeAtom,
+  panelLoadingSelector,
   panelStatePartialSelector,
   panelStateSelector,
   panelTitlesState,
@@ -63,7 +64,7 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
       new SpaceTree(state, (spaces: SpaceNodeJSON) => {
         setState(spaces);
       }),
-    [state]
+    [state],
   );
 
   const clearSpaces = useCallback(() => {
@@ -72,7 +73,7 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
 
   const updateSpaces = useCallback(
     (
-      serializedTreeOrUpdater: ((spaces: SpaceTree) => void) | SpaceNodeJSON
+      serializedTreeOrUpdater: ((spaces: SpaceTree) => void) | SpaceNodeJSON,
     ) => {
       if (typeof serializedTreeOrUpdater === "function") {
         setState((latestSpaces) => {
@@ -84,7 +85,7 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
         setState(serializedTreeOrUpdater);
       }
     },
-    []
+    [],
   );
 
   return {
@@ -98,10 +99,10 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
  * Get and set multiple panels session or local state
  */
 export function usePanelsState(
-  local?: boolean
+  local?: boolean,
 ): [PanelsStateObject, (newPanelsState: PanelsStateObject) => void] {
   const [panelsState, setPanelsState] = useRecoilState(
-    local ? panelsLocalStateAtom : panelsStateAtom
+    local ? panelsLocalStateAtom : panelsStateAtom,
   );
 
   const state = Object.fromEntries(panelsState);
@@ -130,10 +131,10 @@ export function useSpaceNodes(spaceId: string) {
  * to be memoized using `useCallback` to avoid unnecessary re-renders.
  */
 export function usePanels(
-  predicate?: (panel: SpacePanelRegistration) => boolean
+  predicate?: (panel: SpacePanelRegistration) => boolean,
 ) {
   const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
   const dataset = useRecoilValue(fos.dataset);
   const ctx = useMemo(() => ({ schema, dataset }), [schema, dataset]);
@@ -141,7 +142,7 @@ export function usePanels(
   const panels = useActivePlugins(PluginComponentType.Panel, ctx);
 
   const panelsToReturn = useMemo(() => {
-    const allPanels = plots.concat(panels);
+    const allPanels = [...plots, ...panels];
     if (predicate) {
       return allPanels.filter(predicate);
     }
@@ -153,7 +154,7 @@ export function usePanels(
 
 export function usePanel(
   name: SpaceNodeType,
-  predicate?: (panel: SpacePanelRegistration) => boolean
+  predicate?: (panel: SpacePanelRegistration) => boolean,
 ) {
   const combinedPredicate = useMemo(() => {
     if (predicate) {
@@ -177,7 +178,7 @@ export function useReactivePanel(name: SpaceNodeType) {
     (panel: SpacePanelRegistration) => {
       return panel.name === name;
     },
-    [name]
+    [name],
   );
   const panels = usePanels(predicate);
 
@@ -202,7 +203,7 @@ export function usePanelTitle(id?: string) {
       updatedPanelTitles.set(id || panelId, title);
       setPanelTitles(updatedPanelTitles);
     },
-    [panelTitles, panelId]
+    [panelTitles, panelId],
   );
 
   const resetPanelTitle = useCallback(() => {
@@ -220,25 +221,32 @@ export function usePanelTitle(id?: string) {
  * Note: `id` is optional if hook is used within the component of a panel.
  */
 export function usePanelLoading(
-  id?: string
+  id?: string,
 ): [boolean, (loading: boolean, id?: string) => void] {
   const panelContext = useContext(PanelContext);
-  const [panelsLoadingState, setPanelsLoadingState] = useRecoilState(
-    panelsLoadingStateAtom
-  );
-
   const panelId = (id || panelContext?.node?.id) as string;
-  const panelLoading = Boolean(panelsLoadingState.get(panelId));
+
+  // Subscribe only to this panel's loading state so flips on other panels
+  // don't re-render this consumer.
+  const panelLoading = useRecoilValue(panelLoadingSelector(panelId));
+  const setPanelsLoadingState = useSetRecoilState(panelsLoadingStateAtom);
 
   const setPanelLoading = useCallback(
-    (loading: boolean, id?: string) => {
+    (loading: boolean, targetId?: string) => {
       setPanelsLoadingState((panelsLoading) => {
+        const finalId = targetId || panelId;
+        // Dedupe: returning the same reference skips the Recoil write and
+        // avoids re-rendering every subscriber when the value is unchanged.
+        if (panelsLoading.get(finalId) === loading) return panelsLoading;
+        // Also skip writing `false` for a key that doesn't exist yet — a
+        // missing entry already reads as false
+        if (!loading && !panelsLoading.has(finalId)) return panelsLoading;
         const updatedPanelsLoading = new Map(panelsLoading);
-        updatedPanelsLoading.set(id || panelId, loading);
+        updatedPanelsLoading.set(finalId, loading);
         return updatedPanelsLoading;
       });
     },
-    [panelId, setPanelsLoadingState]
+    [panelId, setPanelsLoadingState],
   );
 
   return [panelLoading, setPanelLoading];
@@ -257,20 +265,20 @@ export function usePanelState<T>(
   defaultState?: T,
   id?: string,
   local?: boolean,
-  scope?: string
+  scope?: string,
 ) {
   const panelScope = useScope(scope);
   const panelContext = usePanelContext();
   const panelId = id || (panelContext?.node?.id as string);
   const [state, setState] = useRecoilState<T>(
-    panelStateSelector({ panelId, local, scope: panelScope })
+    panelStateSelector({ panelId, local, scope: panelScope }),
   );
   const computedState = state || defaultState;
 
-  return [computedState, setState];
+  return [computedState, setState] as [typeof computedState, typeof setState];
 }
 
-export function useSetPanelStateById<T>(local?: boolean, scope?: string) {
+export function useSetPanelStateById(local?: boolean, scope?: string) {
   const panelScope = useScope(scope);
   return useRecoilCallback(
     ({ set, snapshot }) =>
@@ -278,15 +286,15 @@ export function useSetPanelStateById<T>(local?: boolean, scope?: string) {
         const panelIdToScope = await snapshot.getPromise(panelIdToScopeAtom);
         const computedScope = panelScope || panelIdToScope?.[panelId];
         const panelState = await snapshot.getPromise(
-          panelStateSelector({ panelId, local, scope: computedScope })
+          panelStateSelector({ panelId, local, scope: computedScope }),
         );
         const updatedValue = fn(panelState);
         set(
           panelStateSelector({ panelId, local, scope: computedScope }),
-          updatedValue
+          updatedValue,
         );
       },
-    []
+    [],
   );
 }
 
@@ -297,11 +305,10 @@ export function usePanelId() {
 }
 
 export function useSetCustomPanelState<T>(local?: boolean) {
-  const [panelState, setPanelState] = usePanelState<T>(null, undefined, local);
+  const [, setPanelState] = usePanelState<{ state: T }>(null, undefined, local);
   return (fn: (state: T) => T) => {
     setPanelState((panelState) => {
-      const customPanelState = fn(panelState?.state || {});
-      const state = fn(customPanelState);
+      const state = fn((panelState?.state ?? {}) as T);
       return { ...panelState, state };
     });
   };
@@ -313,7 +320,7 @@ export function useSetCustomPanelState<T>(local?: boolean) {
 export function usePanelStateCallback<T>(
   callback: (panelState: T) => void,
   local?: boolean,
-  scope?: string
+  scope?: string,
 ) {
   const panelScope = useScope(scope);
   const panelContext = usePanelContext();
@@ -322,11 +329,11 @@ export function usePanelStateCallback<T>(
     ({ snapshot }) =>
       async () => {
         const panelState = await snapshot.getPromise(
-          panelStateSelector({ panelId, local, scope: panelScope })
+          panelStateSelector({ panelId, local, scope: panelScope }),
         );
         callback(panelState);
       },
-    []
+    [],
   );
 }
 
@@ -357,18 +364,18 @@ export function usePanelStateCallback<T>(
 export function usePanelStateByIdCallback<T>(
   callback: (panelId: string, panelState: T, args: any[]) => void,
   local?: boolean,
-  scope?: string
+  scope?: string,
 ) {
   const panelScope = useScope(scope);
   return useRecoilCallback(
     ({ snapshot }) =>
       async (panelId: string, ...args) => {
         const panelState = await snapshot.getPromise(
-          panelStateSelector({ panelId, local, scope: panelScope })
+          panelStateSelector({ panelId, local, scope: panelScope }),
         );
         callback(panelId, panelState, args as any[]);
       },
-    []
+    [],
   );
 }
 
@@ -386,8 +393,8 @@ export function usePanelStateLazy(local?: boolean, scope?: string) {
     ({ snapshot }) =>
       async () =>
         snapshot.getPromise(
-          panelStateSelector({ panelId, local, scope: panelScope })
-        )
+          panelStateSelector({ panelId, local, scope: panelScope }),
+        ),
   );
 
   return () => resolvePanelState();
@@ -403,13 +410,13 @@ export function usePanelStatePartial<T>(
   key: string,
   defaultState: T,
   local?: boolean,
-  scope?: string
+  scope?: string,
 ) {
   const panelScope = useScope(scope);
   const panelContext = usePanelContext();
   const panelId = panelContext?.node?.id as string;
   const [state, setState] = useRecoilState<T>(
-    panelStatePartialSelector({ panelId, key, local, scope: panelScope })
+    panelStatePartialSelector({ panelId, key, local, scope: panelScope }),
   );
   const computedState = useComputedState(state, defaultState);
   return [computedState, setState];
@@ -427,7 +434,7 @@ export function usePanelTabAutoPosition() {
       async () => {
         return snapshot.getPromise(previousTabsGroupAtom);
       },
-    []
+    [],
   );
 
   function autoPositionElement(group: HTMLElement, item?: HTMLElement) {
@@ -497,12 +504,12 @@ function useScope(scope?: string) {
 
 export function usePanelAreaRenderer(areaId: string) {
   const [currentRenderers, setCurrentRenderers] = useRecoilState(
-    currentPanelAreasRenderer
+    currentPanelAreasRenderer,
   );
 
   const renderers = useSyncExternalStore(
     panelAreaRenderers.subscribe,
-    panelAreaRenderers.getSnapshot
+    panelAreaRenderers.getSnapshot,
   );
 
   const setRenderer = useCallback(
@@ -513,7 +520,7 @@ export function usePanelAreaRenderer(areaId: string) {
         return updatedRenderers;
       });
     },
-    [areaId, setCurrentRenderers]
+    [areaId, setCurrentRenderers],
   );
 
   const unsetRenderer = useCallback(
@@ -526,7 +533,7 @@ export function usePanelAreaRenderer(areaId: string) {
         return updatedRenderers;
       });
     },
-    [areaId, setCurrentRenderers]
+    [areaId, setCurrentRenderers],
   );
 
   const currentRendererId = currentRenderers.get(areaId);
@@ -544,7 +551,7 @@ export function useInitializePanel() {
         panelId: string,
         scope?: string,
         state?: Record<string, unknown>,
-        data?: Record<string, unknown>
+        data?: Record<string, unknown>,
       ) => {
         const currentIdToScope = await snapshot.getPromise(panelIdToScopeAtom);
         if (!isNullish(scope)) {
@@ -556,6 +563,6 @@ export function useInitializePanel() {
         if (data) {
           set(panelStateSelector({ panelId, local: true, scope }), data);
         }
-      }
+      },
   );
 }

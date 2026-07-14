@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import type { CameraControls } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import type { Box3, PerspectiveCamera } from "three";
@@ -10,36 +9,24 @@ import {
   FO3D_CAMERA_LIFECYCLE_ACTION,
   Fo3dCameraLifecycleAction,
 } from "../fo3d/camera-lifecycle";
+import {
+  getCameraControlsTarget,
+  type Fo3dCameraControls,
+} from "../fo3d/camera-controls";
 import { FoScene } from "../fo3d/render-types";
 import { getSavedCameraState, saveCameraState } from "../fo3d/utils";
 import type { Looker3dSettings } from "../settings";
 import { cameraPositionAtom } from "../state";
 import { RenderPath } from "../types";
+import { areVectorsCoLocated, isFiniteVector3, toVector3 } from "../utils";
 import { useFo3dCameraLookAt } from "./use-fo3d-camera-look-at";
 
 const ORIGIN = new Vector3(0, 0, 0);
 const FALLBACK_TARGET_OFFSET = new Vector3(0, 0, 1);
-const MIN_TARGET_DISTANCE_SQUARED = 1e-8;
-
-const isFiniteVector3 = (vector: Vector3): boolean => {
-  return (
-    Number.isFinite(vector.x) &&
-    Number.isFinite(vector.y) &&
-    Number.isFinite(vector.z)
-  );
-};
-
-const toVector3 = (tuple: [number, number, number]) => {
-  return new Vector3(tuple[0], tuple[1], tuple[2]);
-};
-
-const areCoLocated = (a: Vector3, b: Vector3) => {
-  return a.distanceToSquared(b) <= MIN_TARGET_DISTANCE_SQUARED;
-};
 
 interface UseFo3dCameraInitializationArgs {
   cameraRef: React.RefObject<PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
   currentRenderPath: RenderPath;
   foScene: FoScene | null;
   sceneBoundingBox: Box3 | null;
@@ -75,25 +62,27 @@ export const useFo3dCameraInitialization = ({
     (overridePositionTuple: [number, number, number]) => {
       const overridePosition = toVector3(overridePositionTuple);
 
-      if (!areCoLocated(overridePosition, ORIGIN)) {
+      if (!areVectorsCoLocated(overridePosition, ORIGIN)) {
         return ORIGIN;
       }
 
       // If origin override also targets origin, controls get a
       // zero camera-target distance which leads to degenerate state (eye = position - target, and can't be zero)
       // and pinch/truck effectively stalls.
-      const currentTarget = cameraControlsRef.current?.getTarget(new Vector3());
+      const currentTarget = cameraControlsRef.current
+        ? getCameraControlsTarget(cameraControlsRef.current)
+        : null;
       if (
         currentTarget &&
         isFiniteVector3(currentTarget) &&
-        !areCoLocated(overridePosition, currentTarget)
+        !areVectorsCoLocated(overridePosition, currentTarget)
       ) {
         return currentTarget;
       }
 
       return overridePosition.clone().add(FALLBACK_TARGET_OFFSET);
     },
-    [cameraControlsRef]
+    [cameraControlsRef],
   );
 
   // Default camera position for mounts/remounts. Prefer persisted position so
@@ -105,7 +94,7 @@ export const useFo3dCameraInitialization = ({
       return new Vector3(
         savedState.position[0],
         savedState.position[1],
-        savedState.position[2]
+        savedState.position[2],
       );
     }
 
@@ -117,13 +106,12 @@ export const useFo3dCameraInitialization = ({
       return;
     }
 
-    const target = new Vector3();
-    cameraControlsRef.current.getTarget(target);
+    const target = getCameraControlsTarget(cameraControlsRef.current);
 
     saveCameraState(
       datasetName ?? undefined,
       cameraRef.current.position.toArray(),
-      target.toArray()
+      target.toArray(),
     );
   }, [cameraRef, cameraControlsRef, datasetName]);
 
@@ -147,7 +135,7 @@ export const useFo3dCameraInitialization = ({
     }
 
     const latestSavedCameraState = getSavedCameraState(
-      datasetName ?? undefined
+      datasetName ?? undefined,
     );
 
     const config = resolveCameraConfig({
@@ -174,7 +162,6 @@ export const useFo3dCameraInitialization = ({
     const didApply = applyLookAt({
       position: config.position,
       target: config.target,
-      animate: false,
     });
 
     if (!didApply) {
@@ -198,11 +185,11 @@ export const useFo3dCameraInitialization = ({
     dispatchCameraLifecycle,
   ]);
 
-  // Post-init override: animates to new position when operator sets
-  // cameraPositionAtom AFTER init.
+  // Post-init override: jumps to the new position when operator sets
+  // cameraPositionAtom after init.
   const prevOverrideRef = useRef(overriddenCameraPosition);
 
-  // This effect animates to a new overridden camera position after initialization.
+  // This effect applies a new overridden camera position after initialization.
   useEffect(() => {
     // Only fire when overriddenCameraPosition actually changes, not on mount/init
     if (prevOverrideRef.current === overriddenCameraPosition) {
@@ -217,7 +204,6 @@ export const useFo3dCameraInitialization = ({
     applyLookAt({
       position: overriddenCameraPosition,
       target: resolveTargetForOverridePosition(overriddenCameraPosition),
-      animate: true,
     });
   }, [overriddenCameraPosition, applyLookAt, resolveTargetForOverridePosition]);
 

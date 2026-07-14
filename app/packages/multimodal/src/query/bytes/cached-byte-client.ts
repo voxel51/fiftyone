@@ -6,25 +6,49 @@ import {
 import { safeNumber } from "./bigint-utils";
 import { serializeCacheKey } from "../cache-utils";
 import { byteSourceAccessKey } from "./cache";
+import {
+  acquireByteFillSlot,
+  byteFillLockName,
+  byteFillSlotFloor,
+  tryAcquireByteFillSlot,
+} from "./fill-lock";
 import { parseByteSize } from "./byte-size";
+import { monotonicNowMs } from "../../time";
 import type {
   ByteClient,
   ByteCacheLayers,
   ByteRange,
+  ByteRangeCache,
   ByteRangeReadRequest,
   ByteRangeReadResult,
+  ByteReadDebugLog,
 } from "./types";
 
 /**
  * Default byte-cache fill block size from explicit source metadata.
  */
 export function defaultByteCacheBlockSizeBytes(
-  request: ByteRangeReadRequest
+  request: ByteRangeReadRequest,
 ): number {
   return request.source.readProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
     ? DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES
     : DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES;
 }
+
+interface ByteFillOutcome {
+  readonly cacheResult: "fetched" | "persistent-hit";
+  readonly result: ByteRangeReadResult;
+}
+
+/**
+ * Minimum delay before re-evaluating readahead for the same fill shape.
+ */
+const READAHEAD_RETRIGGER_MS = 2_000;
+
+/**
+ * Recent-readahead entries tracked per client before oldest-first pruning.
+ */
+const READAHEAD_TRACKED_FILLS = 64;
 
 /**
  * Wraps a byte reader with raw byte cache lookups, block fills, and request
@@ -32,9 +56,302 @@ export function defaultByteCacheBlockSizeBytes(
  */
 export function createCachedByteClient(
   reader: ByteClient,
-  caches: ByteCacheLayers
+  caches: ByteCacheLayers,
 ): ByteClient {
-  const pendingByteReads = new Map<string, Promise<ByteRangeReadResult>>();
+  const pendingByteReads = new Map<string, Promise<ByteFillOutcome>>();
+  const fillLocks = caches.locks || undefined;
+  const fillSlotFloor = byteFillSlotFloor(caches.fillSlotClass);
+  const readaheadIssuedAtMs = new Map<string, number>();
+
+  const resolveBlockSizeBytes = (
+    request: ByteRangeReadRequest,
+  ): number | undefined =>
+    typeof caches.blockSizeBytes === "function"
+      ? caches.blockSizeBytes(request)
+      : (caches.blockSizeBytes ?? defaultByteCacheBlockSizeBytes(request));
+
+  const fillFromNetwork = async (
+    fillRequest: ByteRangeReadRequest,
+  ): Promise<ByteFillOutcome> => {
+    const result = await reader.readBytes(fillRequest);
+    await caches.memory.put(result);
+    return { cacheResult: "fetched", result };
+  };
+
+  const fillExclusive = (
+    fillRequest: ByteRangeReadRequest,
+    persistent: ByteRangeCache | undefined,
+  ): Promise<ByteFillOutcome> => {
+    if (!fillLocks || !persistent) {
+      // The persistent layer is the cross-context handoff medium; without
+      // it a lock would only serialize fetches that still each hit the
+      // network, so fall through to the plain fetch path.
+      return fillFromNetwork(fillRequest).then((outcome) => {
+        // Persisting must not delay the read; the entry lands for the
+        // next context (or reload) to hit.
+        void persistent?.put(outcome.result).catch(() => undefined);
+        return outcome;
+      });
+    }
+
+    return new Promise<ByteFillOutcome>((resolve, reject) => {
+      fillLocks
+        .request(
+          byteFillLockName(fillRequest),
+          {
+            mode: "exclusive",
+            ...(fillRequest.signal ? { signal: fillRequest.signal } : {}),
+          },
+          async () => {
+            // Re-check the persistent layer under the lock: when another
+            // context raced this fill, its bytes are already on disk and
+            // this read must not touch the network again.
+            const persisted = await persistent.get(fillRequest);
+            if (persisted) {
+              await caches.memory.put(persisted);
+              resolve({ cacheResult: "persistent-hit", result: persisted });
+              return;
+            }
+
+            // Remote fetches are metered through the source's fill slots:
+            // waiting here (in grant order) keeps block arrival aligned
+            // with need order when the link saturates, instead of every
+            // in-flight fill splitting bandwidth and finishing late.
+            const releaseSlot =
+              fillRequest.source.readProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
+                ? await acquireByteFillSlot(
+                    fillLocks,
+                    fillRequest.source,
+                    fillRequest.signal,
+                    fillSlotFloor,
+                  )
+                : undefined;
+            let outcome: ByteFillOutcome;
+            try {
+              outcome = await fillFromNetwork(fillRequest);
+            } finally {
+              releaseSlot?.();
+            }
+            resolve(outcome);
+            // Waiters are released only after the persistent entry lands —
+            // holding the lock through the put is what turns their fetches
+            // into disk hits. The caller was already resolved above, so
+            // this costs waiters nothing extra and the caller nothing.
+            await persistent.put(outcome.result).catch(() => undefined);
+          },
+        )
+        .catch(reject);
+    });
+  };
+
+  const queueReadaheadFill = (readahead: ByteRangeReadRequest) => {
+    void (async () => {
+      const cached = await caches.memory.get(readahead);
+      if (cached) {
+        return;
+      }
+      const fillKey = byteRangeAccessKey(readahead);
+      if (pendingByteReads.has(fillKey)) {
+        return;
+      }
+      const persistent = readahead.source.localFile
+        ? undefined
+        : caches.persistent || undefined;
+      // A persistent hit still promotes to memory: the sequential reader
+      // is about to want these bytes, so move the disk wait off its path.
+      const persistedFill = await persistent?.get(readahead);
+      if (persistedFill) {
+        await caches.memory.put(persistedFill);
+        return;
+      }
+      if (pendingByteReads.has(fillKey)) {
+        return;
+      }
+
+      if (!fillLocks || !persistent) {
+        // Single-context path (no cross-context locks means no slots to
+        // meter with): plain speculative fetch, as before.
+        const startMs = byteReadNowMs();
+        const fill = fillFromNetwork(readahead).finally(() => {
+          pendingByteReads.delete(fillKey);
+        });
+        pendingByteReads.set(fillKey, fill);
+        const outcome = await fill;
+        void persistent?.put(outcome.result).catch(() => undefined);
+        logByteRead(caches, {
+          cacheResult: outcome.cacheResult,
+          fillRequest: readahead,
+          request: readahead,
+          result: outcome.result,
+          startMs,
+        });
+        return;
+      }
+
+      // Speculation runs strictly in the link's spare capacity: no free
+      // fill slot (demand owns the link) or the block already filling in
+      // another context → skip without waiting on anything. Never holding
+      // a slot while blocked is what makes slot waits deadlock-free, and
+      // the retrigger TTL revisits skipped shapes once the link clears.
+      // Readahead is background by definition — the reserved priority
+      // slot is never its to take, whatever this client's class.
+      const releaseSlot = await tryAcquireByteFillSlot(
+        fillLocks,
+        readahead.source,
+        byteFillSlotFloor("background"),
+      );
+      if (!releaseSlot) {
+        return;
+      }
+      try {
+        await new Promise<void>((resolveDone, rejectDone) => {
+          fillLocks
+            .request(
+              byteFillLockName(readahead),
+              { ifAvailable: true, mode: "exclusive" },
+              async (lock) => {
+                if (!lock) {
+                  resolveDone();
+                  return;
+                }
+                // Register in the in-flight map only now that this context
+                // is definitely the filler: a skipped readahead must never
+                // poison a coalesced demand read, while demand arriving
+                // during the fetch still shares the in-memory result.
+                const startMs = byteReadNowMs();
+                let resolveOutcome!: (outcome: ByteFillOutcome) => void;
+                let rejectOutcome!: (error: unknown) => void;
+                const registered = new Promise<ByteFillOutcome>(
+                  (resolveFill, rejectFill) => {
+                    resolveOutcome = resolveFill;
+                    rejectOutcome = rejectFill;
+                  },
+                );
+                // The rejection is for coalesced demand readers; without
+                // any, it must not surface as an unhandled rejection.
+                registered.catch(() => undefined);
+                pendingByteReads.set(fillKey, registered);
+                try {
+                  // Re-check the persistent layer under the lock, exactly
+                  // like the demand path.
+                  const persisted = await persistent.get(readahead);
+                  let outcome: ByteFillOutcome;
+                  if (persisted) {
+                    await caches.memory.put(persisted);
+                    outcome = {
+                      cacheResult: "persistent-hit",
+                      result: persisted,
+                    };
+                  } else {
+                    try {
+                      outcome = await fillFromNetwork(readahead);
+                    } finally {
+                      // The network part is done — free the slot before
+                      // the persistent put so it never gates the link.
+                      releaseSlot();
+                    }
+                  }
+                  resolveOutcome(outcome);
+                  logByteRead(caches, {
+                    cacheResult: outcome.cacheResult,
+                    fillRequest: readahead,
+                    request: readahead,
+                    result: outcome.result,
+                    startMs,
+                  });
+                  if (outcome.cacheResult === "fetched") {
+                    // Lock held through the put: waiters land as disk hits.
+                    await persistent.put(outcome.result).catch(() => undefined);
+                  }
+                  resolveDone();
+                } catch (error) {
+                  rejectOutcome(error);
+                  rejectDone(error);
+                } finally {
+                  pendingByteReads.delete(fillKey);
+                }
+              },
+            )
+            .catch(rejectDone);
+        });
+      } finally {
+        releaseSlot();
+      }
+    })().catch(() => undefined);
+  };
+
+  /**
+   * Sequential consumers (playback) march through block fills one request
+   * at a time, so on remote transports per-request latency leaves the link
+   * idle between fills. Keep the successor block in flight: every
+   * block-widened fill speculatively queues the next block through the
+   * same lock + persistent path. The chain self-sustains while access
+   * stays sequential and dies out on random access; readahead fills are
+   * exactly block-shaped, so they never widen and never cascade.
+   */
+  const maybeQueueRemoteReadahead = (
+    request: ByteRangeReadRequest,
+    fillRequest: ByteRangeReadRequest,
+  ) => {
+    if (request.source.readProfile !== BYTE_SOURCE_READ_PROFILE.REMOTE) {
+      return;
+    }
+    // Only block-widened fills imply forward locality; exact-shape reads
+    // (message indexes, one-off probes) do not.
+    if (fillRequest === request) {
+      return;
+    }
+    const sourceSize = parseByteSize(fillRequest.source.sizeBytes);
+    if (sourceSize === undefined) {
+      return;
+    }
+    const nextOffset = fillRequest.range.offset + fillRequest.range.length;
+    if (nextOffset >= sourceSize) {
+      return;
+    }
+    // Resolve the block size at the readahead's own offset: zoned block
+    // policies change shape across the file, and a chain crossing a zone
+    // boundary must adopt the new zone's fill grid, not drag its own.
+    const blockSizeBytes = resolveBlockSizeBytes({
+      ...request,
+      range: { length: 1n, offset: nextOffset },
+    });
+    if (
+      blockSizeBytes === undefined ||
+      !Number.isSafeInteger(blockSizeBytes) ||
+      blockSizeBytes <= 0
+    ) {
+      return;
+    }
+    const blockEnd = nextOffset + BigInt(blockSizeBytes);
+    const readahead: ByteRangeReadRequest = {
+      // No abort signal on purpose: the readahead belongs to the byte
+      // layer, not to the triggering request. Its cost is bounded by one
+      // block, and its bytes stay useful in the shared caches.
+      range: {
+        length: (blockEnd < sourceSize ? blockEnd : sourceSize) - nextOffset,
+        offset: nextOffset,
+      },
+      source: request.source,
+    };
+
+    const key = byteRangeAccessKey(readahead);
+    const now = byteReadNowMs();
+    const issuedAt = readaheadIssuedAtMs.get(key);
+    if (issuedAt !== undefined && now - issuedAt < READAHEAD_RETRIGGER_MS) {
+      return;
+    }
+    readaheadIssuedAtMs.delete(key);
+    readaheadIssuedAtMs.set(key, now);
+    if (readaheadIssuedAtMs.size > READAHEAD_TRACKED_FILLS) {
+      const oldest = readaheadIssuedAtMs.keys().next().value;
+      if (oldest !== undefined) {
+        readaheadIssuedAtMs.delete(oldest);
+      }
+    }
+
+    queueReadaheadFill(readahead);
+  };
 
   return {
     async stat(source) {
@@ -42,13 +359,11 @@ export function createCachedByteClient(
     },
 
     async readBytes(request) {
+      const startMs = byteReadNowMs();
       // Widen small reads to cacheable blocks when the source size is known.
       let fillRequest = request;
       if (request.cachePolicy?.blockFill !== false) {
-        const blockSizeBytes =
-          typeof caches.blockSizeBytes === "function"
-            ? caches.blockSizeBytes(request)
-            : caches.blockSizeBytes ?? defaultByteCacheBlockSizeBytes(request);
+        const blockSizeBytes = resolveBlockSizeBytes(request);
 
         if (
           blockSizeBytes !== undefined &&
@@ -77,8 +392,17 @@ export function createCachedByteClient(
         }
       }
 
+      maybeQueueRemoteReadahead(request, fillRequest);
+
       const cachedFill = await caches.memory.get(fillRequest);
       if (cachedFill) {
+        logByteRead(caches, {
+          cacheResult: "fill-hit",
+          fillRequest,
+          request,
+          result: cachedFill,
+          startMs,
+        });
         return sliceByteRangeResult(cachedFill, request.range);
       }
 
@@ -88,32 +412,110 @@ export function createCachedByteClient(
       ) {
         const cachedRequest = await caches.memory.get(request);
         if (cachedRequest) {
+          logByteRead(caches, {
+            cacheResult: "request-hit",
+            fillRequest,
+            request,
+            result: cachedRequest,
+            startMs,
+          });
           return cachedRequest;
         }
+      }
+
+      // Exact one-off reads stay out of the persistent layer: their ranges
+      // are not deterministic shapes, so they would fragment it with entries
+      // the block/chunk read paths can never match again.
+      const persistent =
+        request.source.localFile || request.cachePolicy?.blockFill === false
+          ? undefined
+          : caches.persistent || undefined;
+
+      const persistedFill = await persistent?.get(fillRequest);
+      if (persistedFill) {
+        await caches.memory.put(persistedFill);
+        logByteRead(caches, {
+          cacheResult: "persistent-hit",
+          fillRequest,
+          request,
+          result: persistedFill,
+          startMs,
+        });
+        return sliceByteRangeResult(persistedFill, request.range);
       }
 
       // In-flight request coalescing follows the active access URL, while the
       // durable byte cache above follows stable sourceId content identity.
       const fillKey = byteRangeAccessKey(fillRequest);
       let fill = pendingByteReads.get(fillKey);
+      const coalesced = fill !== undefined;
       if (!fill) {
-        fill = reader
-          .readBytes(fillRequest)
-          .then(async (result) => {
-            await caches.memory.put(result);
-
-            return result;
-          })
-          .finally(() => {
-            pendingByteReads.delete(fillKey);
-          });
+        fill = fillExclusive(fillRequest, persistent).finally(() => {
+          pendingByteReads.delete(fillKey);
+        });
         pendingByteReads.set(fillKey, fill);
       }
 
-      const result = await fill;
-      return sliceByteRangeResult(result, request.range);
+      const outcome = await fill;
+      logByteRead(caches, {
+        cacheResult: coalesced ? "coalesced" : outcome.cacheResult,
+        fillRequest,
+        request,
+        result: outcome.result,
+        startMs,
+      });
+      return sliceByteRangeResult(outcome.result, request.range);
     },
   };
+}
+
+function logByteRead(
+  caches: ByteCacheLayers,
+  {
+    cacheResult,
+    fillRequest,
+    request,
+    result,
+    startMs,
+  }: {
+    readonly cacheResult: ByteReadDebugLog["cacheResult"];
+    readonly fillRequest: ByteRangeReadRequest;
+    readonly request: ByteRangeReadRequest;
+    readonly result: ByteRangeReadResult;
+    readonly startMs: number;
+  },
+) {
+  const debugEnabled = caches.debug?.enabled === true;
+  if (!debugEnabled && !caches.onRead) return;
+
+  const entry: ByteReadDebugLog = {
+    blockFill:
+      fillRequest.range.offset !== request.range.offset ||
+      fillRequest.range.length !== request.range.length,
+    cacheResult,
+    durationMs: Number((byteReadNowMs() - startMs).toFixed(1)),
+    fetchedBytes: cacheResult === "fetched" ? result.bytes.byteLength : 0,
+    fillLength: fillRequest.range.length.toString(),
+    fillOffset: fillRequest.range.offset.toString(),
+    readProfile: request.source.readProfile,
+    requestedLength: request.range.length.toString(),
+    requestedOffset: request.range.offset.toString(),
+    returnedBytes: safeNumber(request.range.length),
+    sourceId: request.source.sourceId,
+  };
+
+  caches.onRead?.(entry);
+  if (debugEnabled) {
+    (caches.debug?.log ?? defaultByteReadDebugLogger)(entry);
+  }
+}
+
+function defaultByteReadDebugLogger(entry: ByteReadDebugLog): void {
+  console.log("[multimodal] byte read", entry);
+}
+
+function byteReadNowMs(): number {
+  return monotonicNowMs();
 }
 
 function byteRangeAccessKey(request: ByteRangeReadRequest): string {
@@ -126,7 +528,7 @@ function byteRangeAccessKey(request: ByteRangeReadRequest): string {
 
 function sliceByteRangeResult(
   result: ByteRangeReadResult,
-  range: ByteRange
+  range: ByteRange,
 ): ByteRangeReadResult {
   if (
     result.range.offset === range.offset &&
@@ -144,4 +546,3 @@ function sliceByteRangeResult(
     source: result.source,
   };
 }
-

@@ -31,7 +31,7 @@ function renderBar(duration = 10) {
   return render(
     <PlaybackProvider duration={duration} stepInterval={1 / 30}>
       <SimplePlaybackBar />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -43,11 +43,7 @@ describe("SimplePlaybackBar", () => {
   beforeEach(() => {
     // jsdom reports clientWidth = 0 (no layout engine). Stub a deterministic
     // 100px track width so the ratio math (offsetX / clientWidth) lines up.
-    vi.spyOn(
-      Element.prototype,
-      "clientWidth",
-      "get"
-    ).mockReturnValue(100);
+    vi.spyOn(Element.prototype, "clientWidth", "get").mockReturnValue(100);
     // setPointerCapture is also missing in jsdom.
     Element.prototype.setPointerCapture = vi.fn();
   });
@@ -150,7 +146,7 @@ describe("SimplePlaybackBar", () => {
     function renderAtMidpoint() {
       const result = renderBar(10);
       const track = result.container.querySelector<HTMLDivElement>(
-        `.${styles.track}`
+        `.${styles.track}`,
       )!;
       pointerDown(track, 50); // 50px of 100px → 5s
       expect(screen.getByText("0:05.00 / 0:10.00")).toBeTruthy();
@@ -164,37 +160,33 @@ describe("SimplePlaybackBar", () => {
     it("ArrowRight nudges forward by 1% of duration", () => {
       const { track } = renderAtMidpoint();
       fireEvent.keyDown(track, { key: "ArrowRight" });
-      expect(parseFloat(track.getAttribute("aria-valuenow") ?? "0")).toBeCloseTo(
-        5.1,
-        5
-      );
+      expect(
+        parseFloat(track.getAttribute("aria-valuenow") ?? "0"),
+      ).toBeCloseTo(5.1, 5);
     });
 
     it("ArrowUp nudges forward by 1% (same as ArrowRight)", () => {
       const { track } = renderAtMidpoint();
       fireEvent.keyDown(track, { key: "ArrowUp" });
-      expect(parseFloat(track.getAttribute("aria-valuenow") ?? "0")).toBeCloseTo(
-        5.1,
-        5
-      );
+      expect(
+        parseFloat(track.getAttribute("aria-valuenow") ?? "0"),
+      ).toBeCloseTo(5.1, 5);
     });
 
     it("ArrowLeft nudges backward by 1% of duration", () => {
       const { track } = renderAtMidpoint();
       fireEvent.keyDown(track, { key: "ArrowLeft" });
-      expect(parseFloat(track.getAttribute("aria-valuenow") ?? "0")).toBeCloseTo(
-        4.9,
-        5
-      );
+      expect(
+        parseFloat(track.getAttribute("aria-valuenow") ?? "0"),
+      ).toBeCloseTo(4.9, 5);
     });
 
     it("ArrowDown nudges backward by 1% (same as ArrowLeft)", () => {
       const { track } = renderAtMidpoint();
       fireEvent.keyDown(track, { key: "ArrowDown" });
-      expect(parseFloat(track.getAttribute("aria-valuenow") ?? "0")).toBeCloseTo(
-        4.9,
-        5
-      );
+      expect(
+        parseFloat(track.getAttribute("aria-valuenow") ?? "0"),
+      ).toBeCloseTo(4.9, 5);
     });
 
     it("PageUp jumps forward by 10% of duration", () => {
@@ -224,7 +216,7 @@ describe("SimplePlaybackBar", () => {
     it("ArrowRight clamps at duration", () => {
       const result = renderBar(10);
       const track = result.container.querySelector<HTMLDivElement>(
-        `.${styles.track}`
+        `.${styles.track}`,
       )!;
       pointerDown(track, 100); // seek to 10s (end)
       fireEvent.keyDown(track, { key: "ArrowRight" });
@@ -234,7 +226,7 @@ describe("SimplePlaybackBar", () => {
     it("ArrowLeft clamps at 0", () => {
       const result = renderBar(10);
       const track = result.container.querySelector<HTMLDivElement>(
-        `.${styles.track}`
+        `.${styles.track}`,
       )!;
       // Playhead is at 0 by default
       fireEvent.keyDown(track, { key: "ArrowLeft" });
@@ -250,7 +242,7 @@ describe("SimplePlaybackBar", () => {
     it("does not seek when duration is 0", () => {
       const result = renderBar(0);
       const track = result.container.querySelector<HTMLDivElement>(
-        `.${styles.track}`
+        `.${styles.track}`,
       )!;
       fireEvent.keyDown(track, { key: "ArrowRight" });
       expect(screen.getByText("0:00.00 / 0:00.00")).toBeTruthy();

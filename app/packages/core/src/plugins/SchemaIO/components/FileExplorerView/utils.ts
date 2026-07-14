@@ -23,7 +23,7 @@ export function limitFiles(currentFiles: Array<FileObjectType>, limit: number) {
 }
 
 export function getFileSystemsFromList(
-  fileSystems: Array<FileSystemObjectType>
+  fileSystems: Array<FileSystemObjectType>,
 ) {
   const azure = fileSystems.find((fs) => fs.name.toLowerCase() === "azure");
   const s3 = fileSystems.find((fs) => fs.name.toLowerCase() === "s3");

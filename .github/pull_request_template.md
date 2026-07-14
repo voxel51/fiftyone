@@ -35,9 +35,9 @@ Describe the tests you ran or wrote to verify your changes. Include:
 
 ### Is this a user-facing change that should be mentioned in the release notes?
 
--   [ ] No. You can skip the rest of this section.
--   [ ] Yes. Give a description of this change to be included in the release
-        notes for FiftyOne users.
+- [ ] No. You can skip the rest of this section.
+- [ ] Yes. Give a description of this change to be included in the release
+      notes for FiftyOne users.
 
 <!--
 If answering "yes" above:
@@ -49,8 +49,8 @@ If answering "no" above, leave empty or add "N/A"
 
 ### What areas of FiftyOne does this PR affect?
 
--   [ ] App: FiftyOne application changes
--   [ ] Build: Build and test infrastructure changes
--   [ ] Core: Core `fiftyone` Python library changes
--   [ ] Documentation: FiftyOne documentation changes
--   [ ] Other
+- [ ] App: FiftyOne application changes
+- [ ] Build: Build and test infrastructure changes
+- [ ] Core: Core `fiftyone` Python library changes
+- [ ] Documentation: FiftyOne documentation changes
+- [ ] Other

@@ -25,7 +25,7 @@ export function asRecord(value: unknown): Record<string, unknown> {
 export function optionalRecord(
   record: Record<string, unknown>,
   field: string,
-  fallbackField?: string
+  fallbackField?: string,
 ): Record<string, unknown> | undefined {
   const value =
     record[field] ?? (fallbackField ? record[fallbackField] : undefined);
@@ -41,7 +41,7 @@ export function optionalRecord(
  */
 export function requiredArray(
   record: Record<string, unknown>,
-  field: string
+  field: string,
 ): readonly unknown[] {
   const value = record[field];
   if (!Array.isArray(value)) {
@@ -70,7 +70,7 @@ export function requiredBytes(record: Record<string, unknown>, field: string) {
 export function requiredNumber(
   record: Record<string, unknown>,
   field: string,
-  fallbackField?: string
+  fallbackField?: string,
 ) {
   const value =
     record[field] ?? (fallbackField ? record[fallbackField] : undefined);
@@ -100,7 +100,7 @@ export function requiredString(record: Record<string, unknown>, field: string) {
 export function optionalString(
   record: Record<string, unknown>,
   field: string,
-  fallbackField?: string
+  fallbackField?: string,
 ) {
   const value =
     record[field] ?? (fallbackField ? record[fallbackField] : undefined);
@@ -112,13 +112,30 @@ export function optionalString(
 }
 
 /**
+ * Read an optional numeric field, accepting bigint values and an optional
+ * fallback field name for snake_case/camelCase protobuf runtime differences.
+ */
+export function numberField(
+  record: Record<string, unknown> | undefined,
+  field: string,
+  fallbackField?: string,
+  defaultValue = 0,
+): number {
+  const value =
+    record?.[field] ?? (fallbackField ? record?.[fallbackField] : undefined);
+  if (typeof value === "number") return value;
+  if (typeof value === "bigint") return Number(value);
+  return defaultValue;
+}
+
+/**
  * Read an optional protobuf integer-like field as bigint. Protobufjs may expose
  * timestamp components as bigint, number, string, or Long-like objects. Invalid
  * values are treated as absent.
  */
 export function optionalBigInt(
   record: Record<string, unknown>,
-  field: string
+  field: string,
 ): bigint | undefined {
   const value = record[field];
   if (value === undefined || value === null) {

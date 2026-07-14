@@ -10,7 +10,7 @@ import { CommandContext, CommandContextManager } from "../context";
  */
 export function resolveContext(
   context: string | CommandContext | undefined,
-  inheritParent?: boolean
+  inheritParent?: boolean,
 ): { context: CommandContext; existed: boolean } {
   if (!context) {
     return {
@@ -27,7 +27,7 @@ export function resolveContext(
     return {
       context: CommandContextManager.instance().createCommandContext(
         context,
-        inheritParent ?? true
+        inheritParent ?? true,
       ),
       existed: false,
     };

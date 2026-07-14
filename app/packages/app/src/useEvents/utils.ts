@@ -31,11 +31,11 @@ export const appReadyState = atom<AppReadyState>({
 
 export const processState = (
   session: Session,
-  state: { [key: string]: unknown }
+  state: { [key: string]: unknown },
 ): Partial<LocationState<DatasetPageQuery>> => {
   const unsubscribe = subscribeBefore<DatasetPageQuery>(({ data }) => {
     session.colorScheme = ensureColorScheme(
-      state.color_scheme as ColorSchemeInput
+      state.color_scheme as ColorSchemeInput,
     );
 
     session.sessionGroupSlice =
@@ -160,7 +160,7 @@ const resolveView = (state: { view?: object[] }) => {
 
 const resolveWorkspace = (
   session: Session,
-  state: { spaces?: SpaceNodeJSON }
+  state: { spaces?: SpaceNodeJSON },
 ) => {
   if (env().VITE_NO_STATE) {
     return session.sessionSpaces;

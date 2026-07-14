@@ -144,7 +144,9 @@ describe("useManualSegmentationTools", () => {
 
   describe("memoization", () => {
     it("returns a stable object when nothing changes", () => {
-      const { result, rerender } = renderHook(() => useManualSegmentationTools());
+      const { result, rerender } = renderHook(() =>
+        useManualSegmentationTools(),
+      );
       const before = result.current;
       rerender();
       expect(result.current).toBe(before);

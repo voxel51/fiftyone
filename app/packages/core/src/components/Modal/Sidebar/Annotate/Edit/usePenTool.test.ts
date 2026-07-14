@@ -48,9 +48,7 @@ const makeScene = () => ({
 
 const makeOverlay = (id = "ov-1") => new hoisted.MockDetectionOverlay(id);
 
-const baseArgs = (
-  overrides: Partial<UsePenToolArgs> = {}
-): UsePenToolArgs => ({
+const baseArgs = (overrides: Partial<UsePenToolArgs> = {}): UsePenToolArgs => ({
   scene: makeScene() as never,
   segmentationModeActive: true,
   tool: SegmentationTool.Pen,
@@ -74,7 +72,7 @@ describe("usePenTool", () => {
       const scene = args.scene as ReturnType<typeof makeScene>;
       expect(scene.enterInteractiveMode).toHaveBeenCalledTimes(1);
       expect(scene.enterInteractiveMode.mock.calls[0][0]).toBeInstanceOf(
-        hoisted.MockInteractivePenHandler
+        hoisted.MockInteractivePenHandler,
       );
     });
 
@@ -91,7 +89,10 @@ describe("usePenTool", () => {
       ["segmentation mode inactive", { segmentationModeActive: false }],
       ["tool is not Pen", { tool: SegmentationTool.Brush }],
       ["no overlay selected", { selectedOverlay: undefined }],
-      ["selected overlay is not a DetectionOverlay", { selectedOverlay: { id: "x" } as never }],
+      [
+        "selected overlay is not a DetectionOverlay",
+        { selectedOverlay: { id: "x" } as never },
+      ],
     ])("does not install when %s", (_label, overrides) => {
       const args = baseArgs(overrides);
       renderHook(() => usePenTool(args));
@@ -103,9 +104,12 @@ describe("usePenTool", () => {
   describe("re-render behavior", () => {
     it("skips re-install when re-rendered against the same selectedOverlay", () => {
       const args = baseArgs();
-      const { rerender } = renderHook(({ a }: { a: UsePenToolArgs }) => usePenTool(a), {
-        initialProps: { a: args },
-      });
+      const { rerender } = renderHook(
+        ({ a }: { a: UsePenToolArgs }) => usePenTool(a),
+        {
+          initialProps: { a: args },
+        },
+      );
 
       const scene = args.scene as ReturnType<typeof makeScene>;
       expect(scene.enterInteractiveMode).toHaveBeenCalledTimes(1);
@@ -116,14 +120,20 @@ describe("usePenTool", () => {
 
     it("re-installs when selectedOverlay changes (new detection picked up)", () => {
       const scene = makeScene();
-      const initial = baseArgs({ scene: scene as never, selectedOverlay: makeOverlay("a") as never });
+      const initial = baseArgs({
+        scene: scene as never,
+        selectedOverlay: makeOverlay("a") as never,
+      });
       const { rerender } = renderHook(
         ({ a }: { a: UsePenToolArgs }) => usePenTool(a),
-        { initialProps: { a: initial } }
+        { initialProps: { a: initial } },
       );
       expect(scene.enterInteractiveMode).toHaveBeenCalledTimes(1);
 
-      const next = baseArgs({ scene: scene as never, selectedOverlay: makeOverlay("b") as never });
+      const next = baseArgs({
+        scene: scene as never,
+        selectedOverlay: makeOverlay("b") as never,
+      });
       rerender({ a: next });
 
       // Exit-then-enter cycle: exitInteractiveMode for the previous handler,
@@ -131,10 +141,8 @@ describe("usePenTool", () => {
       // new handler.
       expect(scene.exitInteractiveMode).toHaveBeenCalled();
       expect(scene.enterInteractiveMode).toHaveBeenCalledTimes(2);
-      const lastHandler =
-        scene.enterInteractiveMode.mock.calls[1][0] as InstanceType<
-          typeof hoisted.MockInteractivePenHandler
-        >;
+      const lastHandler = scene.enterInteractiveMode.mock
+        .calls[1][0] as InstanceType<typeof hoisted.MockInteractivePenHandler>;
       expect(lastHandler.overlay.id).toBe("b");
     });
 
@@ -143,12 +151,11 @@ describe("usePenTool", () => {
       const args = baseArgs({ scene: scene as never });
       const { rerender } = renderHook(
         ({ a }: { a: UsePenToolArgs }) => usePenTool(a),
-        { initialProps: { a: args } }
+        { initialProps: { a: args } },
       );
 
-      const handler = scene.enterInteractiveMode.mock.calls[0][0] as InstanceType<
-        typeof hoisted.MockInteractivePenHandler
-      >;
+      const handler = scene.enterInteractiveMode.mock
+        .calls[0][0] as InstanceType<typeof hoisted.MockInteractivePenHandler>;
       expect(handler.cleanup).not.toHaveBeenCalled();
 
       rerender({
@@ -164,11 +171,10 @@ describe("usePenTool", () => {
       const args = baseArgs({ scene: scene as never });
       const { rerender } = renderHook(
         ({ a }: { a: UsePenToolArgs }) => usePenTool(a),
-        { initialProps: { a: args } }
+        { initialProps: { a: args } },
       );
-      const handler = scene.enterInteractiveMode.mock.calls[0][0] as InstanceType<
-        typeof hoisted.MockInteractivePenHandler
-      >;
+      const handler = scene.enterInteractiveMode.mock
+        .calls[0][0] as InstanceType<typeof hoisted.MockInteractivePenHandler>;
 
       rerender({
         a: baseArgs({ scene: scene as never, segmentationModeActive: false }),
@@ -184,9 +190,8 @@ describe("usePenTool", () => {
       const args = baseArgs({ scene: scene as never });
       const { unmount } = renderHook(() => usePenTool(args));
 
-      const handler = scene.enterInteractiveMode.mock.calls[0][0] as InstanceType<
-        typeof hoisted.MockInteractivePenHandler
-      >;
+      const handler = scene.enterInteractiveMode.mock
+        .calls[0][0] as InstanceType<typeof hoisted.MockInteractivePenHandler>;
 
       unmount();
 
@@ -198,8 +203,8 @@ describe("usePenTool", () => {
       const scene = makeScene();
       const { unmount } = renderHook(() =>
         usePenTool(
-          baseArgs({ scene: scene as never, tool: SegmentationTool.Select })
-        )
+          baseArgs({ scene: scene as never, tool: SegmentationTool.Select }),
+        ),
       );
 
       expect(() => unmount()).not.toThrow();

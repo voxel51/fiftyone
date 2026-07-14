@@ -101,7 +101,7 @@ export default function SimilarityIndex({
           ),
         },
       })),
-    [brainKeys]
+    [brainKeys],
   );
 
   return (

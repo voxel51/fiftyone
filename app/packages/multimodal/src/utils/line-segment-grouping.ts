@@ -22,7 +22,7 @@ export interface LabeledSegmentGroup {
  */
 export function groupLineSegmentsByLabel(
   points: readonly Point2[],
-  texts: readonly ImageAnnotationText[]
+  texts: readonly ImageAnnotationText[],
 ): readonly LabeledSegmentGroup[] {
   const segmentCount = Math.floor(points.length / 2);
   if (segmentCount === 0) return [];

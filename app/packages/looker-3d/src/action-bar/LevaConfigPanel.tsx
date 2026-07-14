@@ -8,7 +8,7 @@ import { isLevaConfigPanelOnAtom } from "../state";
 
 export const LevaConfigPanel = React.memo(() => {
   const [isLevaPanelOn, setIsLevaPanelOn] = useRecoilState(
-    isLevaConfigPanelOnAtom
+    isLevaConfigPanelOnAtom,
   );
   const { primary } = useTheme();
 

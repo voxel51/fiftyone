@@ -24,20 +24,20 @@ import type {
  * @returns Matrix4 transformation matrix
  */
 export function staticTransformToMatrix4(
-  staticTransform: StaticTransform
+  staticTransform: StaticTransform,
 ): Matrix4 {
   const matrix = new Matrix4();
   const position = new Vector3(
     staticTransform.translation[0],
     staticTransform.translation[1],
-    staticTransform.translation[2]
+    staticTransform.translation[2],
   );
   // Normalize quaternion to ensure valid rotation (handles floating point errors)
   const quaternion = new Quaternion(
     staticTransform.quaternion[0],
     staticTransform.quaternion[1],
     staticTransform.quaternion[2],
-    staticTransform.quaternion[3]
+    staticTransform.quaternion[3],
   ).normalize();
 
   matrix.compose(position, quaternion, new Vector3(1, 1, 1));
@@ -55,7 +55,7 @@ export function staticTransformToMatrix4(
  */
 export function computeFrustumDepth(
   sceneBounds: Box3 | null,
-  scaleFactor: number = 0.1
+  scaleFactor: number = 0.1,
 ): number {
   return FRUSTUM_DEPTH;
   // todo: need to "tune" proportionating with scene bbox more
@@ -85,7 +85,7 @@ export function computeFrustumDepth(
 export function computeFrustumCorners(
   intrinsics: CameraIntrinsics | null,
   depth: number,
-  imageAspectRatio?: number
+  imageAspectRatio?: number,
 ): {
   nearCorners: Vector3[];
   farCorners: Vector3[];
@@ -220,7 +220,7 @@ export function buildFrustumGeometry(
   staticTransform: StaticTransform,
   intrinsics: CameraIntrinsics | null,
   depth: number,
-  imageAspectRatio?: number
+  imageAspectRatio?: number,
 ): FrustumGeometry {
   const { nearCorners, farCorners, farPlaneWidth, farPlaneHeight } =
     computeFrustumCorners(intrinsics, depth, imageAspectRatio);
@@ -249,7 +249,7 @@ export function buildFrustumGeometry(
 
   // Far plane corners for the mesh (in world space)
   const farPlaneCornerPositions: [number, number, number][] = farCorners.map(
-    (c) => [c.x, c.y, c.z]
+    (c) => [c.x, c.y, c.z],
   );
 
   // Compute transformation matrix
@@ -273,7 +273,7 @@ export function buildFrustumGeometry(
  * @returns true if static transform can be used for rendering
  */
 export function isValidStaticTransform(
-  staticTransform: StaticTransform | null
+  staticTransform: StaticTransform | null,
 ): staticTransform is StaticTransform {
   if (!staticTransform) return false;
 
@@ -310,6 +310,6 @@ export function getCameraPosition(staticTransform: StaticTransform): Vector3 {
   return new Vector3(
     staticTransform.translation[0],
     staticTransform.translation[1],
-    staticTransform.translation[2]
+    staticTransform.translation[2],
   );
 }

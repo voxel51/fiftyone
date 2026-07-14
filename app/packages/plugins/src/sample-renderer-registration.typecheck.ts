@@ -32,6 +32,7 @@ export function typecheckRegisterComponent() {
     sampleRendererOptions: {
       supports: { extensions: ["pdf"] },
       grid: {
+        clickBehavior: "passthrough",
         enabled: true,
         slots: {
           [SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT]:
@@ -72,7 +73,7 @@ export function typecheckRegisterComponent() {
 export function typecheckUseActivePlugins() {
   const sampleRenderers = useActivePlugins(
     PluginComponentType.SampleRenderer,
-    {}
+    {},
   );
   const _sampleRenderers: SampleRendererRegistration[] = sampleRenderers;
 

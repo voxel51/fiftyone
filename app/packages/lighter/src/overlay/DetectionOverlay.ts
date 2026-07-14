@@ -151,8 +151,8 @@ export class DetectionOverlay
     return "DetectionOverlay";
   }
 
-  updateLabel(label: DetectionLabel) {
-    super.updateLabel(label);
+  applyLabel(label: DetectionLabel) {
+    super.applyLabel(label);
 
     if (label.bounding_box) {
       const [x, y, w, h] = label.bounding_box;
@@ -174,18 +174,38 @@ export class DetectionOverlay
         this.mask = new MaskCanvas(label.mask);
       }
       this.markDirty();
-    } else if (label.mask === null) {
-      // null — explicit removal
-      // `undefined` can be cases when mask has not been saved yet - leave it alone
+    } else if (
+      (label.mask === null || !label.mask_path) &&
+      !this.mask?.hasPendingEncode()
+    ) {
+      // Drop a stale mask when the label carries neither inline `mask` data nor
+      // a `mask_path` to decode — an explicit removal (`null`), or reconciling
+      // this overlay onto a label with no mask at all (e.g. a video track's
+      // mask-less frame as the playhead advances past the mask's keyframe).
+      // A pending `mask_path` decode (mask `undefined`, `mask_path` set) is left
+      // alone so the in-flight decode still lands.
+      //
+      // EXCEPTION: a freshly-painted mask whose async encode is still in flight.
+      // A reproject here (e.g. a video auto-extend / keyframe-promotion write
+      // that lands before the encode resolves) carries the COMMITTED, still
+      // mask-less value — stale relative to the local paint. Destroying the
+      // MaskCanvas would abort the encode (it bails on canvas-swap), so the mask
+      // would be lost and never reach the engine. Keep it; the encode's
+      // re-commit carries it across.
       const hadMask = !!this.mask;
       this.maskSource = undefined;
       this.mask?.destroy();
       this.mask = undefined;
       if (hadMask) this.markDirty();
     }
+  }
 
-    this.eventBus.dispatch("lighter:overlay-label-updated", {
+  updateLabel(label: DetectionLabel) {
+    this.applyLabel(label);
+
+    this.eventBus.dispatch("lighter:overlay-commit-requested", {
       id: this.id,
+      overlayId: this.id,
       label,
       hasMask: !!this.mask,
     });
@@ -254,10 +274,10 @@ export class DetectionOverlay
       this.bounds,
       this.containerId,
       maskColor,
-      isEditingMask ? 0.7 : style.opacity ?? BASE_ALPHA,
+      isEditingMask ? 0.7 : (style.opacity ?? BASE_ALPHA),
       () => {
         this.markDirty();
-      }
+      },
     );
 
     // lightweight border when editing detection mask
@@ -265,7 +285,7 @@ export class DetectionOverlay
       renderer.drawScrim(
         this.bounds,
         renderMeta.canonicalMediaBounds,
-        this.containerId
+        this.containerId,
       );
 
       renderer.drawRect(
@@ -275,7 +295,7 @@ export class DetectionOverlay
           lineWidth: 1,
           dashPattern: [4, 4],
         },
-        this.containerId
+        this.containerId,
       );
 
       this.maskKeypoints?.render(renderer, style, renderMeta);
@@ -325,7 +345,7 @@ export class DetectionOverlay
           strokeStyle: hoverStrokeColor,
           lineWidth: style.lineWidth || STROKE_WIDTH,
         },
-        this.containerId
+        this.containerId,
       );
     } else if (overlayStrokeColor && overlayDash) {
       renderer.drawRect(
@@ -335,7 +355,7 @@ export class DetectionOverlay
           lineWidth: style.lineWidth,
           dashPattern: [overlayDash, overlayDash],
         },
-        this.containerId
+        this.containerId,
       );
     }
 
@@ -349,13 +369,13 @@ export class DetectionOverlay
       renderer.drawScrim(
         this.bounds,
         renderMeta.canonicalMediaBounds,
-        this.containerId
+        this.containerId,
       );
       renderer.drawHandles(
         this.bounds,
         style.lineWidth || STROKE_WIDTH,
         color,
-        this.containerId
+        this.containerId,
       );
     }
 
@@ -393,7 +413,7 @@ export class DetectionOverlay
           fontColor: "#ffffff",
           backgroundColor: style.fillStyle || style.strokeStyle || "#000",
         },
-        this.containerId
+        this.containerId,
       );
     }
 
@@ -434,7 +454,7 @@ export class DetectionOverlay
 
   private getResizeRegion(
     worldPoint: Point,
-    scale: number
+    scale: number,
   ): ResizeRegion | null {
     const { x, y, height, width } = this.bounds;
 
@@ -446,20 +466,20 @@ export class DetectionOverlay
     return isNorth && isWest
       ? "RESIZE_NW"
       : isNorth && isEast
-      ? "RESIZE_NE"
-      : isNorth
-      ? "RESIZE_N"
-      : isSouth && isWest
-      ? "RESIZE_SW"
-      : isSouth && isEast
-      ? "RESIZE_SE"
-      : isSouth
-      ? "RESIZE_S"
-      : isWest
-      ? "RESIZE_W"
-      : isEast
-      ? "RESIZE_E"
-      : null;
+        ? "RESIZE_NE"
+        : isNorth
+          ? "RESIZE_N"
+          : isSouth && isWest
+            ? "RESIZE_SW"
+            : isSouth && isEast
+              ? "RESIZE_SE"
+              : isSouth
+                ? "RESIZE_S"
+                : isWest
+                  ? "RESIZE_W"
+                  : isEast
+                    ? "RESIZE_E"
+                    : null;
   }
 
   getCursor(worldPoint: Point, scale: number): string {
@@ -519,7 +539,7 @@ export class DetectionOverlay
       return this.onSegmentationPointerDown(
         point,
         worldPoint,
-        segmentationToolState!
+        segmentationToolState!,
       );
     }
 
@@ -562,7 +582,7 @@ export class DetectionOverlay
   private onSegmentationPointerDown(
     point: Point,
     worldPoint: Point,
-    toolState: SegmentationToolState
+    toolState: SegmentationToolState,
   ): boolean {
     if (toolState.tool === SegmentationTool.Pen) {
       return this.onPenPointerDown(point, worldPoint, toolState);
@@ -587,7 +607,7 @@ export class DetectionOverlay
       worldPoint,
       this.bounds,
       toolState,
-      this.currentStyle
+      this.currentStyle,
     );
 
     if (updatedBounds) {
@@ -611,7 +631,7 @@ export class DetectionOverlay
   private onPenPointerDown(
     _point: Point,
     worldPoint: Point,
-    _toolState: SegmentationToolState
+    _toolState: SegmentationToolState,
   ): boolean {
     this.maskKeypoints ??= new MaskKeypoints({
       coordinateSystem: this.coordinateSystem,
@@ -674,7 +694,7 @@ export class DetectionOverlay
       worldPoint,
       this.bounds,
       segmentationToolState!,
-      this.currentStyle
+      this.currentStyle,
     );
 
     if (updatedBounds) {
@@ -733,7 +753,7 @@ export class DetectionOverlay
     point: Point,
     _event: PointerEvent,
     scale: number,
-    maintainAspectRatio = false
+    maintainAspectRatio = false,
   ): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
@@ -781,7 +801,7 @@ export class DetectionOverlay
 
     if (
       ["SETTING", "RESIZE_NW", "RESIZE_W", "RESIZE_SW"].includes(
-        this.interactionState
+        this.interactionState,
       )
     ) {
       maintainX =
@@ -799,7 +819,7 @@ export class DetectionOverlay
 
     if (
       ["SETTING", "RESIZE_SW", "RESIZE_S", "RESIZE_SE"].includes(
-        this.interactionState
+        this.interactionState,
       )
     ) {
       maintainY =
@@ -858,6 +878,16 @@ export class DetectionOverlay
     const croppedBounds = this.mask?.paintEnd(this.bounds, (encoded) => {
       this.maskSource = encoded;
       this.markDirty();
+      // Mask encoding is async: `pendingMask` only becomes available here, after
+      // the synchronous `overlay-paint-end` dispatch below has already run (and
+      // read an empty pending mask). Re-emit so the Sample write-half re-reads
+      // the overlay and captures the freshly-encoded mask.
+      this.eventBus.dispatch("lighter:overlay-commit-requested", {
+        id: this.id,
+        overlayId: this.id,
+        label: this.label,
+        hasMask: !!this.mask,
+      });
     });
 
     if (croppedBounds) {
@@ -877,6 +907,7 @@ export class DetectionOverlay
     if (wasPainting) {
       this.eventBus.dispatch("lighter:overlay-paint-end", {
         id: this.id,
+        overlayId: this.id,
         paintStrokeData: this.mask?.getPaintStrokeData(),
         isEstablishing,
       });
@@ -984,7 +1015,7 @@ export class DetectionOverlay
       distanceFromLineSegment(
         point,
         { x: drawnBounds.x, y: drawnBounds.y },
-        { x: drawnBounds.x + drawnBounds.width, y: drawnBounds.y }
+        { x: drawnBounds.x + drawnBounds.width, y: drawnBounds.y },
       ),
       distanceFromLineSegment(
         point,
@@ -992,7 +1023,7 @@ export class DetectionOverlay
         {
           x: drawnBounds.x + drawnBounds.width,
           y: drawnBounds.y + drawnBounds.height,
-        }
+        },
       ),
       distanceFromLineSegment(
         point,
@@ -1000,12 +1031,12 @@ export class DetectionOverlay
           x: drawnBounds.x + drawnBounds.width,
           y: drawnBounds.y + drawnBounds.height,
         },
-        { x: drawnBounds.x, y: drawnBounds.y + drawnBounds.height }
+        { x: drawnBounds.x, y: drawnBounds.y + drawnBounds.height },
       ),
       distanceFromLineSegment(
         point,
         { x: drawnBounds.x, y: drawnBounds.y + drawnBounds.height },
-        { x: drawnBounds.x, y: drawnBounds.y }
+        { x: drawnBounds.x, y: drawnBounds.y },
       ),
     ];
 
@@ -1131,8 +1162,9 @@ export class DetectionOverlay
     if (!this.mask) {
       this.mask = new MaskCanvas();
       this.markDirty();
-      this.eventBus.dispatch("lighter:overlay-label-updated", {
+      this.eventBus.dispatch("lighter:overlay-commit-requested", {
         id: this.id,
+        overlayId: this.id,
         label: this.label,
         hasMask: true,
       });
@@ -1149,8 +1181,9 @@ export class DetectionOverlay
     this.mask = undefined;
     this.markDirty();
     if (hadMask) {
-      this.eventBus.dispatch("lighter:overlay-label-updated", {
+      this.eventBus.dispatch("lighter:overlay-commit-requested", {
         id: this.id,
+        overlayId: this.id,
         label: this.label,
         hasMask: false,
       });
@@ -1175,7 +1208,7 @@ export class DetectionOverlay
    */
   addMaskKeypoint(
     worldPoint: Point,
-    options?: { id?: string; variant?: string; dragging?: boolean }
+    options?: { id?: string; variant?: string; dragging?: boolean },
   ): string | null {
     this.maskKeypoints ??= new MaskKeypoints({
       coordinateSystem: this.coordinateSystem,
@@ -1239,7 +1272,7 @@ export class DetectionOverlay
       absolutePoints,
       this.bounds,
       segmentationToolState,
-      this.currentStyle
+      this.currentStyle,
     );
 
     if (updatedBounds) {
@@ -1249,6 +1282,16 @@ export class DetectionOverlay
     this.bounds = this.mask.paintEnd(this.bounds, (encoded) => {
       this.maskSource = encoded;
       this.markDirty();
+      // Mask encoding is async: `pendingMask` only becomes available here, after
+      // the synchronous `overlay-paint-end` dispatch below has already run (and
+      // read an empty pending mask). Re-emit so the Sample write-half re-reads
+      // the overlay and captures the freshly-encoded mask.
+      this.eventBus.dispatch("lighter:overlay-commit-requested", {
+        id: this.id,
+        overlayId: this.id,
+        label: this.label,
+        hasMask: !!this.mask,
+      });
     });
 
     const isEstablishing = this.isBeingEstablished;
@@ -1256,6 +1299,7 @@ export class DetectionOverlay
 
     this.eventBus.dispatch("lighter:overlay-paint-end", {
       id: this.id,
+      overlayId: this.id,
       paintStrokeData: this.mask?.getPaintStrokeData(),
       isEstablishing,
     });
@@ -1324,7 +1368,7 @@ export class DetectionOverlay
    * Returns `true` on success, `false` if the source has no decoded mask
    * (e.g. still loading).
    */
-  mergeFrom(source: DetectionOverlay): boolean {
+  mergeFrom(source: DetectionOverlay, gestureId?: string): boolean {
     const sourceSource = source.mask?.getPreviewSource();
     if (!this.mask || !sourceSource) return false;
 
@@ -1334,7 +1378,20 @@ export class DetectionOverlay
       this.bounds,
       (encoded) => {
         this.maskSource = encoded;
-      }
+        // Mask encoding is async: `pendingMask` only becomes available here,
+        // after the synchronous `overlay-commit-requested` dispatch below has
+        // already run (and read an empty pending mask). Re-emit so the
+        // write-half re-reads the overlay and captures the merged mask —
+        // the same dance as `onPointerUp`'s paint-end. `gestureId` correlates
+        // this async commit to the same merge gesture as the sync one below.
+        this.eventBus.dispatch("lighter:overlay-commit-requested", {
+          id: this.id,
+          overlayId: this.id,
+          label: this.label,
+          hasMask: this.hasMask(),
+          gestureId,
+        });
+      },
     );
 
     this.bounds = newBounds;
@@ -1348,10 +1405,12 @@ export class DetectionOverlay
     ];
     const updatedLabel = { ...this.label, bounding_box: [x, y, w, h] };
 
-    this.eventBus.dispatch("lighter:overlay-label-updated", {
+    this.eventBus.dispatch("lighter:overlay-commit-requested", {
       id: this.id,
+      overlayId: this.id,
       label: updatedLabel,
       hasMask: this.hasMask(),
+      gestureId,
     });
 
     return true;
@@ -1367,13 +1426,22 @@ export class DetectionOverlay
 
   restoreMaskSnapshot(
     snapshot: MaskSnapshot | undefined,
-    bounds: Rect | undefined
+    bounds: Rect | undefined,
   ): void {
     this.mask ??= new MaskCanvas();
 
     if (snapshot) {
       this.mask.restoreSnapshot(snapshot, (encoded) => {
         this.maskSource = encoded;
+        // Mask encoding is async — same re-emit dance as `mergeFrom` and
+        // paint-end: the synchronous dispatch below reads an empty pending
+        // mask; re-emit so the write-half captures the restored mask.
+        this.eventBus.dispatch("lighter:overlay-commit-requested", {
+          id: this.id,
+          overlayId: this.id,
+          label: this.label,
+          hasMask: this.hasMask(),
+        });
       });
     } else {
       // Clearing to "no mask" — drop the rehydration source too so a later
@@ -1383,6 +1451,16 @@ export class DetectionOverlay
     }
     this.bounds = bounds;
     this.markDirty();
+
+    // restores are edits too (undo/redo, failure rollback) — dispatch so the
+    // write-half commits the restored bounds now; the restored mask follows
+    // on the encode re-emit above
+    this.eventBus.dispatch("lighter:overlay-commit-requested", {
+      id: this.id,
+      overlayId: this.id,
+      label: this.label,
+      hasMask: this.hasMask(),
+    });
   }
 
   /**

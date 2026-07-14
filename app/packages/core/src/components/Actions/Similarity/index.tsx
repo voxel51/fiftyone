@@ -2,7 +2,7 @@ import { PillButton } from "@fiftyone/components";
 import { executeOperator } from "@fiftyone/operators";
 import { useOutsideClick, useSimilarityType } from "@fiftyone/state";
 import { Search, Wallpaper } from "@mui/icons-material";
-import React, { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import Loading from "../Loading";
 import type { ActionProps } from "../types";
@@ -28,7 +28,7 @@ const Similarity = ({
   });
 
   const keys = useRecoilValue(
-    availableSimilarityKeys({ modal, isImageSearch: showImageSimilarityIcon })
+    availableSimilarityKeys({ modal, isImageSearch: showImageSimilarityIcon }),
   );
 
   const togglePopover = useCallback(() => {

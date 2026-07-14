@@ -42,7 +42,7 @@ const { DummyWorker } = vi.hoisted(() => {
       addEventListener(
         type: string,
         listener: EventListenerOrEventListenerObject,
-        options?: any
+        options?: any,
       ): void {
         super.addEventListener(type, listener, options);
       }
@@ -50,7 +50,7 @@ const { DummyWorker } = vi.hoisted(() => {
       removeEventListener(
         type: string,
         listener: EventListenerOrEventListenerObject,
-        options?: any
+        options?: any,
       ): void {
         super.removeEventListener(type, listener, options);
       }
@@ -117,7 +117,7 @@ describe("AsyncLabelsRenderingManager", () => {
           });
           this.dispatchEvent(errorEvent);
         }, 10);
-      }
+      },
     );
 
     const promise = manager.enqueueLabelPaintingJob({

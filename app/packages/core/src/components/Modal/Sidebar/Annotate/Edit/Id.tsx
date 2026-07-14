@@ -1,4 +1,3 @@
-import React from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { useAnnotationContext } from "./useAnnotationContext";
 

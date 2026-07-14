@@ -16,7 +16,7 @@ export class MoveOverlayCommand implements Undoable {
     private overlay: Spatial,
     overlayId: string,
     private oldBounds: Rect,
-    private newBounds: Rect
+    private newBounds: Rect,
   ) {
     this.id = `move-${overlayId}-${Date.now()}`;
     this.description = `Move overlay ${overlayId}`;

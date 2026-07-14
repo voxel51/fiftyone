@@ -123,7 +123,7 @@ export interface DecodeExecutor {
    * strategy.
    */
   decode(
-    request: DecodeExecutionRequest
+    request: DecodeExecutionRequest,
   ): DecodedOutput | Promise<DecodedOutput>;
 }
 
@@ -178,6 +178,14 @@ export interface DecodedOutputCacheKey {
  */
 export interface DecodedOutputCache {
   /**
+   * Marks a cache that never stores (`get` always misses, `put` drops).
+   * Clients skip cache lookups — and callers can skip building cache
+   * identity, whose record-id hashing scales with payload size — when
+   * this is `false`. Defaults to `true`.
+   */
+  readonly enabled?: boolean;
+
+  /**
    * Returns a cached decoded result for the fully resolved cache key.
    */
   get(key: DecodedOutputCacheKey): Promise<DecodeResult | undefined>;
@@ -197,6 +205,12 @@ export interface DecodedOutputCache {
  * Generic client for decoding payload bytes into playback/visualization outputs.
  */
 export interface DecodeClient {
+  /**
+   * `false` when the client's decoded-output cache never stores, so
+   * callers can skip building per-message cache identity.
+   */
+  readonly cachesDecodedOutput?: boolean;
+
   /**
    * Selects a decoder for the payload, optionally reuses cached output, and
    * returns the decoded visualization/playback result.

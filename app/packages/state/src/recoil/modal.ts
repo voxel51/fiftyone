@@ -106,9 +106,25 @@ export const isModalActive = selector<boolean>({
   get: ({ get }) => Boolean(get(modalSelector)),
 });
 
+export type ModalNavigationPeek = {
+  id: string;
+  /**
+   * The paginated sample node for the peeked position ({ sample, urls, ... }),
+   * as loaded by the grid. Typed loosely because the paginator's node type
+   * belongs to the relay layer.
+   */
+  sample: unknown;
+};
+
 export type ModalNavigation = {
   next: (offset?: number) => Promise<ModalSelector>;
   previous: (offset?: number) => Promise<ModalSelector>;
+  /**
+   * Resolves the sample `offset` steps from the current one without
+   * navigating, or null past either boundary. Negative offsets peek
+   * backwards. Renderers use this to prewarm adjacent samples' media.
+   */
+  peek?: (offset: number) => Promise<ModalNavigationPeek | null>;
 };
 
 export const modalNavigation = (() => {
@@ -159,12 +175,12 @@ export const modalSample = graphQLSelector<
     if (!data.sample) {
       if (variables.filter.group) {
         throw new GroupSampleNotFound(
-          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`
+          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`,
         );
       }
 
       throw new SampleNotFound(
-        `sample with id ${variables.filter.id} not found`
+        `sample with id ${variables.filter.id} not found`,
       );
     }
 
@@ -213,12 +229,12 @@ export const groupSampleAtMainSlice = graphQLSelector<
     if (!data.sample) {
       if (variables.filter.group) {
         throw new GroupSampleNotFound(
-          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`
+          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`,
         );
       }
 
       throw new SampleNotFound(
-        `sample with id ${variables.filter.id} not found`
+        `sample with id ${variables.filter.id} not found`,
       );
     }
 

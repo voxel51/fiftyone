@@ -109,6 +109,9 @@ describe("GridCustomRendererItem", () => {
 
     const openButton = getOpenModalButton(host) as HTMLElement | null;
     expect(openButton).toBeTruthy();
+    expect(
+      openButton?.querySelector("[data-testid='OpenInFullIcon']"),
+    ).toBeTruthy();
     openButton?.click();
     expect(hostClickSpy).toHaveBeenCalledTimes(1);
 
@@ -117,7 +120,7 @@ describe("GridCustomRendererItem", () => {
     const selectButton = getSelectControl(host) as HTMLElement | null;
     expect(selectButton).toBeTruthy();
     selectButton?.dispatchEvent(
-      new MouseEvent("click", { bubbles: true, shiftKey: true, altKey: true })
+      new MouseEvent("click", { bubbles: true, shiftKey: true, altKey: true }),
     );
     expect(selectSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -129,7 +132,7 @@ describe("GridCustomRendererItem", () => {
           id: "sample-id",
           symbol: BASE_SYMBOL,
         }),
-      })
+      }),
     );
 
     fireEvent.mouseLeave(wrapper as HTMLElement);
@@ -138,6 +141,41 @@ describe("GridCustomRendererItem", () => {
       expect(getOpenModalButton(host)).toBeNull();
       expect(getSelectControl(host)).toBeTruthy();
     });
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("passes unhandled tile activation through when configured", async () => {
+    const Renderer = () => <div data-testid="renderer">preview</div>;
+    const looker = new GridCustomRendererItem({
+      clickBehavior: "passthrough",
+      pluginName: "passive-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const hostClickSpy = vi.fn();
+    const hostContextMenuSpy = vi.fn();
+    host.addEventListener("click", hostClickSpy);
+    host.addEventListener("contextmenu", hostContextMenuSpy);
+
+    looker.attach(host, [200, 120], 12);
+
+    const renderer = await waitFor(() => {
+      const element = host.querySelector("[data-testid='renderer']");
+      expect(element).toBeTruthy();
+      return element as HTMLElement;
+    });
+
+    fireEvent.click(renderer);
+    fireEvent.contextMenu(renderer);
+
+    expect(hostClickSpy).toHaveBeenCalledTimes(1);
+    expect(hostContextMenuSpy).toHaveBeenCalledTimes(1);
 
     looker.destroy();
     host.remove();
@@ -163,7 +201,7 @@ describe("GridCustomRendererItem", () => {
 
     await waitFor(() => {
       expect(
-        getGridCustomRendererFailover(BASE_CTX.dataset.name)
+        getGridCustomRendererFailover(BASE_CTX.dataset.name),
       ).toMatchObject({
         datasetName: "dataset",
         errorMessage: "render failed",
@@ -179,7 +217,7 @@ describe("GridCustomRendererItem", () => {
     expect(looker.getSampleOverlays()).toEqual([]);
     expect(looker.getSizeBytesEstimate()).toBe(
       tileWidthPx * tileHeightPx * RGBA_BYTES_PER_PIXEL +
-        MIN_GRID_RENDERER_SIZE_BYTES
+        MIN_GRID_RENDERER_SIZE_BYTES,
     );
 
     looker.destroy();
@@ -214,7 +252,7 @@ describe("GridCustomRendererItem", () => {
     expect(looker.getSizeBytesEstimate()).toBe(
       tileWidthPx * tileHeightPx * RGBA_BYTES_PER_PIXEL +
         sourceSizeBytes +
-        MIN_GRID_RENDERER_SIZE_BYTES
+        MIN_GRID_RENDERER_SIZE_BYTES,
     );
 
     looker.destroy();
@@ -245,9 +283,9 @@ describe("GridCustomRendererItem", () => {
       consoleErrorSpy.mock.calls.some((call) =>
         call.some(
           (arg) =>
-            typeof arg === "string" && arg.includes("synchronously unmount")
-        )
-      )
+            typeof arg === "string" && arg.includes("synchronously unmount"),
+        ),
+      ),
     ).toBe(false);
 
     looker.destroy();

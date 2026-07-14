@@ -23,7 +23,7 @@ export interface RouteOptions<T extends OperationType> {
   searchParams?: { [key: string]: string };
   transform?: (
     state: LocationState<T>,
-    variables: Partial<VariablesOf<T>>
+    variables: Partial<VariablesOf<T>>,
   ) => Partial<VariablesOf<T>>;
 }
 

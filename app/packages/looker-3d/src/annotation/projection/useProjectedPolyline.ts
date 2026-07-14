@@ -12,7 +12,7 @@ import type { PolylineProjectionData } from "./types";
  */
 export function useProjectedPolyline(
   polyline: PolylineTransformData | null | undefined,
-  frustumData: FrustumData
+  frustumData: FrustumData,
 ): PolylineProjectionData | null {
   return useMemo(() => {
     if (!polyline) return null;

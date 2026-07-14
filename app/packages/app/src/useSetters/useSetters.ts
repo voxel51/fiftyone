@@ -20,7 +20,7 @@ import { REGISTERED_SETTERS } from "./registerSetter";
 const useSetters = (
   environment: Environment,
   router: RoutingContext<Queries>,
-  sessionRef: MutableRefObject<Session>
+  sessionRef: MutableRefObject<Session>,
 ) => {
   const handleError = useRecoilCallback(
     ({ set: setRecoil }) =>
@@ -28,7 +28,7 @@ const useSetters = (
         setRecoil(snackbarErrors, errors);
         setRecoil(pendingEntry, false);
       },
-    []
+    [],
   );
   const subscription = useRecoilValue(stateSubscription);
   const setter = useSessionSetter();

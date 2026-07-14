@@ -36,14 +36,14 @@ import { getTimelineSetFrameNumberEventName } from "./utils";
  * - `subscribe`: A function that subscribes to the timeline.
  */
 export const useCreateTimeline = (
-  newTimelineProps: Optional<CreateFoTimeline, "name">
+  newTimelineProps: Optional<CreateFoTimeline, "name">,
 ) => {
   const { getName } = useDefaultTimelineNameImperative();
   const { name: mayBeTimelineName } = newTimelineProps;
 
   const timelineName = useMemo(
     () => mayBeTimelineName ?? getName(),
-    [mayBeTimelineName, getName]
+    [mayBeTimelineName, getName],
   );
 
   const { __internal_IsTimelineInitialized: isTimelineInitialized, ...config } =
@@ -189,7 +189,7 @@ export const useCreateTimeline = (
       play();
       e.stopPropagation();
     },
-    [timelineName, play]
+    [timelineName, play],
   );
 
   const onPauseEvent = useCallback(
@@ -201,7 +201,7 @@ export const useCreateTimeline = (
       pause();
       e.stopPropagation();
     },
-    [timelineName, pause]
+    [timelineName, pause],
   );
 
   const onSeek = useCallback(
@@ -219,7 +219,7 @@ export const useCreateTimeline = (
       }
       e.stopPropagation();
     },
-    [timelineName]
+    [timelineName],
   );
 
   // animation loop with a controlled frame rate
@@ -309,7 +309,7 @@ export const useCreateTimeline = (
         });
     },
     // updateFreq is read via updateFreqRef.current.
-    [pause, timelineName]
+    [pause, timelineName],
   );
 
   const startAnimation = useCallback(() => {
@@ -339,7 +339,7 @@ export const useCreateTimeline = (
     (subscription: SequenceTimelineSubscription) => {
       addSubscriber({ name: timelineName, subscription });
     },
-    [addSubscriber, timelineName]
+    [addSubscriber, timelineName],
   );
 
   const refresh = useAtomCallback(
@@ -352,8 +352,8 @@ export const useCreateTimeline = (
           newFrameNumber: currentFrameNumber,
         });
       },
-      [timelineName]
-    )
+      [timelineName],
+    ),
   );
 
   /**
@@ -408,7 +408,7 @@ export const useCreateTimeline = (
           name: timelineName,
           newFrameNumber: Math.min(
             frameNumberRef.current + 1,
-            configRef.current.totalFrames
+            configRef.current.totalFrames,
           ),
         });
         e.stopPropagation();
@@ -421,14 +421,14 @@ export const useCreateTimeline = (
       timelineName,
       setFrameNumber,
       newTimelineProps.optOutOfAnimation,
-    ]
+    ],
   );
 
   useKeydownHandler(keyDownHandler);
 
   const setFrameEventName = useMemo(
     () => getTimelineSetFrameNumberEventName(timelineName),
-    [timelineName]
+    [timelineName],
   );
 
   const setFrameNumberFromEventHandler = useCallback(
@@ -439,7 +439,7 @@ export const useCreateTimeline = (
         newFrameNumber: e.detail.frameNumber,
       });
     },
-    [timelineName, pause, setFrameNumber]
+    [timelineName, pause, setFrameNumber],
   );
 
   useEventHandler(window, setFrameEventName, setFrameNumberFromEventHandler);
@@ -456,7 +456,7 @@ export const useCreateTimeline = (
     ({ start, end }: { start: () => void; end: () => void }) => {
       onSeekCallbackRefs.current = { start, end };
     },
-    []
+    [],
   );
 
   return {

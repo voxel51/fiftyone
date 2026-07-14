@@ -11,7 +11,6 @@ import {
   createMemoryByteRangeCache,
   createCachedByteClient,
   createHttpByteClient,
-  BYTE_SOURCE_READ_PROFILE,
   DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES,
   DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES,
   type ByteRangeReadRequest,
@@ -25,7 +24,7 @@ import {
 } from "./decode";
 
 type ExtendedFetchFunction = <Body, Result>(
-  config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal }
+  config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal },
 ) => Promise<FetchFunctionResult<Result>>;
 
 interface FetchCall {
@@ -51,7 +50,7 @@ describe("multimodal query clients", () => {
           ...createByteRangeReadRequest().source,
           sizeBytes: "7",
         },
-      })
+      }),
     ).resolves.toMatchObject({ bytes: new Uint8Array([1, 2, 3]) });
 
     expect(calls[0]?.headers).toEqual({ Range: "bytes=4-6" });
@@ -78,12 +77,38 @@ describe("multimodal query clients", () => {
     });
   });
 
+  it("captures normalized ETag validators from HEAD and ranged responses", async () => {
+    const { extendedFetch } = createFetchMock(
+      {
+        "bytes://source/default": new Uint8Array([9, 9, 9]).buffer,
+      },
+      { etag: 'W/"abc123"' },
+    );
+    const client = createHttpByteClient(extendedFetch);
+    const source = {
+      sourceId: "source:1",
+      url: "bytes://source/default",
+    };
+
+    await expect(client.stat?.(source)).resolves.toEqual({
+      ...source,
+      etag: "abc123",
+      sizeBytes: "3",
+    });
+
+    const read = await client.readBytes({
+      range: { length: 3n, offset: 0n },
+      source,
+    });
+    expect(read.source.etag).toBe("abc123");
+  });
+
   it("falls back to ranged GET when HEAD does not report size", async () => {
     const { calls, extendedFetch } = createFetchMock(
       {
         "bytes://source/default": new Uint8Array([1, 2, 3]).buffer,
       },
-      { head: "missing" }
+      { head: "missing" },
     );
     const client = createHttpByteClient(extendedFetch);
     const request = {
@@ -110,7 +135,7 @@ describe("multimodal query clients", () => {
       {
         "bytes://source/default": new Uint8Array([1, 2, 3]).buffer,
       },
-      { head: "fail" }
+      { head: "fail" },
     );
     const client = createHttpByteClient(extendedFetch);
 
@@ -118,7 +143,7 @@ describe("multimodal query clients", () => {
       client.stat?.({
         sourceId: "source:1",
         url: "bytes://source/default",
-      })
+      }),
     ).resolves.toBeUndefined();
   });
 
@@ -135,7 +160,7 @@ describe("multimodal query clients", () => {
           ...createByteRangeReadRequest().source,
           sizeBytes: "999",
         },
-      })
+      }),
     ).resolves.toMatchObject({
       source: {
         sizeBytes: "7",
@@ -202,13 +227,13 @@ describe("multimodal query clients", () => {
       byteSourceCacheKey({
         sourceId: "source:1",
         url: "bytes://source/old",
-      })
+      }),
     ).toBe(
       byteSourceCacheKey({
         sizeBytes: "128",
         sourceId: "source:1",
         url: "bytes://source/new",
-      })
+      }),
     );
   });
 
@@ -256,7 +281,7 @@ describe("multimodal query clients", () => {
         payload,
         recordId: "record",
         streamId: "stream",
-      })
+      }),
     ).not.toBe(
       decodedOutputCacheKey({
         decoderId: "decoder",
@@ -265,7 +290,7 @@ describe("multimodal query clients", () => {
         payload,
         recordId: "record",
         streamId: "stream",
-      })
+      }),
     );
   });
 
@@ -307,8 +332,8 @@ describe("multimodal query clients", () => {
             attributes: attributes as Record<string, never>,
           },
           payload: { encoding: "custom" },
-        }
-      )
+        },
+      ),
     ).resolves.toBeUndefined();
   });
 
@@ -344,6 +369,57 @@ describe("multimodal query clients", () => {
       range: { length: 64n, offset: 0n },
       source: first.source,
     });
+  });
+
+  it("logs byte-cache fetch and hit debug entries when enabled", async () => {
+    const reader: ByteClient = {
+      readBytes: vi.fn(async (readRequest) => ({
+        bytes: bytesForRange(readRequest),
+        range: readRequest.range,
+        source: readRequest.source,
+      })),
+    };
+    const log = vi.fn();
+    const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
+    const client = createCachedByteClient(reader, {
+      blockSizeBytes: 64,
+      debug: { enabled: true, log },
+      memory: cache,
+    });
+    const first = createByteRangeReadRequest({
+      range: { length: 4n, offset: 4n },
+    });
+    const second = createByteRangeReadRequest({
+      range: { length: 4n, offset: 12n },
+    });
+
+    await client.readBytes(first);
+    await client.readBytes(second);
+
+    expect(log).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        blockFill: true,
+        cacheResult: "fetched",
+        fetchedBytes: 64,
+        fillLength: "64",
+        fillOffset: "0",
+        requestedLength: "4",
+        requestedOffset: "4",
+        returnedBytes: 4,
+      }),
+    );
+    expect(log).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        blockFill: true,
+        cacheResult: "fill-hit",
+        fetchedBytes: 0,
+        requestedLength: "4",
+        requestedOffset: "12",
+        returnedBytes: 4,
+      }),
+    );
   });
 
   it("allows callers to skip block cache fills for scattered exact reads", async () => {
@@ -395,41 +471,6 @@ describe("multimodal query clients", () => {
     await client.readBytes(request);
 
     expect(reader.readBytes).toHaveBeenCalledWith(request);
-  });
-
-  it("uses larger default block fills for explicitly remote sources", async () => {
-    const reader: ByteClient = {
-      readBytes: vi.fn(async (readRequest) => ({
-        bytes: bytesForRange(readRequest),
-        range: readRequest.range,
-        source: readRequest.source,
-      })),
-    };
-    const cache = createMemoryByteRangeCache({
-      maxSizeBytes: DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES * 2,
-    });
-    const client = createCachedByteClient(reader, { memory: cache });
-    const request = createByteRangeReadRequest({
-      range: { length: 4n, offset: 4n },
-      source: {
-        readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
-        sizeBytes: (DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES * 2).toString(),
-        sourceId: "object://bucket/source.bin",
-        url: "object://bucket/source.bin",
-      },
-    });
-
-    await expect(client.readBytes(request)).resolves.toMatchObject({
-      bytes: new Uint8Array([4, 5, 6, 7]),
-    });
-
-    expect(reader.readBytes).toHaveBeenCalledWith({
-      range: {
-        length: BigInt(DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES),
-        offset: 0n,
-      },
-      source: request.source,
-    });
   });
 
   it("does not infer remote block fills from source URL text", async () => {
@@ -504,10 +545,10 @@ describe("multimodal query clients", () => {
 
     await Promise.all([
       client.readBytes(
-        createByteRangeReadRequest({ range: { length: 4n, offset: 4n } })
+        createByteRangeReadRequest({ range: { length: 4n, offset: 4n } }),
       ),
       client.readBytes(
-        createByteRangeReadRequest({ range: { length: 4n, offset: 12n } })
+        createByteRangeReadRequest({ range: { length: 4n, offset: 12n } }),
       ),
     ]);
 
@@ -527,7 +568,7 @@ describe("multimodal query clients", () => {
           ...createByteRangeReadRequest().source,
           sizeBytes: "not-a-number",
         },
-      })
+      }),
     ).resolves.toMatchObject({
       source: {
         sizeBytes: "7",
@@ -540,17 +581,17 @@ describe("multimodal query clients", () => {
     try {
       const client = createHttpByteClient(
         async <Body, Result>(
-          config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal }
+          config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal },
         ): Promise<FetchFunctionResult<Result>> =>
           new Promise((_, reject) => {
             config.signal?.addEventListener("abort", () => {
               reject(new DOMException("aborted", "AbortError"));
             });
-          })
+          }),
       );
       const read = client.readBytes(createByteRangeReadRequest());
       const rejection = expect(read).rejects.toThrow(
-        "HTTP byte-range read timed out"
+        "HTTP byte-range read timed out",
       );
 
       await vi.advanceTimersByTimeAsync(30_000);
@@ -601,6 +642,54 @@ describe("multimodal query clients", () => {
     expect(decoder.decode).toHaveBeenCalledTimes(1);
   });
 
+  it("skips cache lookups entirely for declared-noop decoded caches", async () => {
+    const payload = {
+      encoding: "custom",
+      schema: "custom.Schema",
+      schemaEncoding: "custom-schema",
+    };
+    const decoder: Decoder = {
+      decode: vi.fn(() => ({
+        attributes: { value: 1 },
+        visualization: {
+          bytes: new Uint8Array([1]),
+          kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+        },
+      })),
+      id: "custom-decoder",
+      payload,
+      version: "1",
+    };
+    const registry = new DecoderRegistry();
+    registry.register(decoder);
+    const cache = {
+      clear: vi.fn(() => Promise.resolve()),
+      enabled: false,
+      get: vi.fn(() => Promise.resolve(undefined)),
+      put: vi.fn(() => Promise.resolve()),
+    };
+    const client = createDecodeClient({ cache, registry });
+
+    expect(client.cachesDecodedOutput).toBe(false);
+
+    const request = {
+      bytes: new Uint8Array([1]),
+      cache: {
+        recordId: "record-1",
+        source: createByteRangeReadRequest().source,
+        streamId: "stream-1",
+      },
+      context: { streamId: "stream-1" },
+      payload,
+    };
+    await client.decode(request);
+    await client.decode(request);
+
+    expect(decoder.decode).toHaveBeenCalledTimes(2);
+    expect(cache.get).not.toHaveBeenCalled();
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+
   it("allows decode execution to be injected for worker-backed hot paths", async () => {
     const payload = {
       encoding: "custom",
@@ -623,7 +712,7 @@ describe("multimodal query clients", () => {
     registry.register(decoder);
     const executor: DecodeExecutor = {
       decode: vi.fn(({ bytes, context, decoder: activeDecoder }) =>
-        activeDecoder.decode(bytes, context)
+        activeDecoder.decode(bytes, context),
       ),
     };
     const client = createDecodeClient({
@@ -669,21 +758,21 @@ describe("multimodal query clients", () => {
           schema: "missing.Schema",
           schemaEncoding: "missing-schema",
         },
-      })
+      }),
     ).rejects.toThrow("No decoder registered");
   });
 });
 
 function createFetchMock(
   responses: Readonly<Record<string, ArrayBufferLike>>,
-  options: { readonly head?: "missing" | "fail" } = {}
+  options: { readonly etag?: string; readonly head?: "missing" | "fail" } = {},
 ): {
   calls: FetchCall[];
   extendedFetch: ExtendedFetchFunction;
 } {
   const calls: FetchCall[] = [];
   const extendedFetch: ExtendedFetchFunction = async <Body, Result>(
-    config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal }
+    config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal },
   ): Promise<FetchFunctionResult<Result>> => {
     const { body, headers, method, path, result, signal } = config;
     calls.push({ body, headers, method, path, result, signal });
@@ -704,6 +793,7 @@ function createFetchMock(
             ? new Headers()
             : new Headers({
                 "Content-Length": response.byteLength.toString(),
+                ...(options.etag ? { ETag: options.etag } : {}),
               }),
         response: new ArrayBuffer(0) as Result,
       };
@@ -713,6 +803,7 @@ function createFetchMock(
       headers: headers?.Range
         ? new Headers({
             "Content-Range": contentRangeHeader(headers.Range, response),
+            ...(options.etag ? { ETag: options.etag } : {}),
           })
         : undefined,
       response: response as Result,
@@ -734,7 +825,7 @@ function contentRangeHeader(rangeHeader: string, response: ArrayBufferLike) {
 }
 
 function createByteRangeReadRequest(
-  overrides: Partial<ByteRangeReadRequest> = {}
+  overrides: Partial<ByteRangeReadRequest> = {},
 ): ByteRangeReadRequest {
   return {
     ...(overrides.cachePolicy ? { cachePolicy: overrides.cachePolicy } : {}),
@@ -750,6 +841,6 @@ function createByteRangeReadRequest(
 function bytesForRange(request: ByteRangeReadRequest): Uint8Array {
   return Uint8Array.from(
     { length: Number(request.range.length) },
-    (_, index) => Number(request.range.offset) + index
+    (_, index) => Number(request.range.offset) + index,
   );
 }

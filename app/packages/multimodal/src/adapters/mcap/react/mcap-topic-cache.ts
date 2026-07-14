@@ -16,10 +16,18 @@ interface CacheEntry {
  * topic — distinct from "not yet fetched", which `has()` reports as false.
  * Tracks subscriber count so the data stream can skip fetching for topics
  * with no active tiles.
+ *
+ * The cache is also a tiny external store: interpolation hooks read lookahead
+ * messages directly from it, so they subscribe to `revision` changes via
+ * `subscribeToChanges()` instead of waiting for the playback stream value to
+ * change.
  */
 export class McapTopicCache {
   private readonly cache: LRUCache<string, CacheEntry>;
+  private readonly listeners = new Set<() => void>();
+  private readonly pinned = new Map<string, CacheEntry>();
   private _subscriberCount = 0;
+  private _revision = 0;
 
   constructor(maxEntries = DEFAULT_MAX_ENTRIES) {
     this.cache = new LRUCache({ max: maxEntries });
@@ -27,6 +35,10 @@ export class McapTopicCache {
 
   get isActive(): boolean {
     return this._subscriberCount > 0;
+  }
+
+  get revision(): number {
+    return this._revision;
   }
 
   subscribe(): () => void {
@@ -43,20 +55,56 @@ export class McapTopicCache {
       // for a topic no tile is rendering is pure memory pressure, and a
       // future re-subscribe should start from a clean slate so it can't
       // flash stale data while the next fetch lands.
-      if (this._subscriberCount === 0) this.cache.clear();
+      if (this._subscriberCount === 0) this.clear();
+    };
+  }
+
+  subscribeToChanges(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
     };
   }
 
   has(tick: bigint): boolean {
-    return this.cache.has(tick.toString());
+    const key = tick.toString();
+    return this.pinned.has(key) || this.cache.has(key);
   }
 
   get(tick: bigint): McapDecodedMessage | null | undefined {
-    return this.cache.get(tick.toString())?.msg;
+    const key = tick.toString();
+    const pinned = this.pinned.get(key);
+    return pinned ? pinned.msg : this.cache.get(key)?.msg;
   }
 
-  set(tick: bigint, msg: McapDecodedMessage | null): void {
-    this.cache.set(tick.toString(), { msg });
+  cachedTicks(): bigint[] {
+    const ticks: bigint[] = [];
+    for (const key of this.pinned.keys()) ticks.push(BigInt(key));
+    for (const key of this.cache.keys()) ticks.push(BigInt(key));
+    return ticks;
+  }
+
+  set(
+    tick: bigint,
+    msg: McapDecodedMessage | null,
+    options?: { readonly pinned?: boolean },
+  ): void {
+    const key = tick.toString();
+    if (options?.pinned || this.pinned.has(key)) {
+      const hadEntry = this.pinned.has(key);
+      const previous = this.pinned.get(key)?.msg;
+      this.cache.delete(key);
+      this.pinned.set(key, { msg });
+      if (!hadEntry || previous !== msg) this.bumpRevision();
+      return;
+    }
+
+    const hadEntry = this.cache.has(key);
+    // peek() reads the prior value without refreshing LRU recency, so re-setting
+    // an unchanged value doesn't promote the entry toward the front of the cache.
+    const previous = this.cache.peek(key)?.msg;
+    this.cache.set(key, { msg });
+    if (!hadEntry || previous !== msg) this.bumpRevision();
   }
 
   /** Drop every cached entry without touching subscriptions. Used when
@@ -64,6 +112,20 @@ export class McapTopicCache {
    *  previously-cached frames are now from a different recording and
    *  must not be reused. */
   clear(): void {
+    if (this.cache.size === 0 && this.pinned.size === 0) return;
     this.cache.clear();
+    this.pinned.clear();
+    this.bumpRevision();
+  }
+
+  clearPinned(): void {
+    if (this.pinned.size === 0) return;
+    this.pinned.clear();
+    this.bumpRevision();
+  }
+
+  private bumpRevision(): void {
+    this._revision++;
+    for (const listener of this.listeners) listener();
   }
 }

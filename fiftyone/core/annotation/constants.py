@@ -54,6 +54,7 @@ ATTRIBUTES = "attributes"
 CLASSES = "classes"
 COMPONENT = "component"
 DEFAULT = "default"
+DYNAMIC = "dynamic"
 NAME = "name"
 PRECISION = "precision"
 RANGE = "range"
@@ -79,7 +80,7 @@ STR_LIST_COMPONENTS = {CHECKBOXES, DROPDOWN, TEXT}
 ### Settings constraints
 
 
-ALL_TYPES_SETTINGS = {COMPONENT, READ_ONLY, TYPE}
+ALL_TYPES_SETTINGS = {COMPONENT, DYNAMIC, READ_ONLY, TYPE}
 BOOL_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 DATE_DATETIME_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 DICT_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
@@ -207,7 +208,37 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
         fol.Polylines,
     },
     fom.THREE_D: {fol.Detection, fol.Detections, fol.Polyline, fol.Polylines},
+    fom.VIDEO: {
+        fol.Detection,
+        fol.Detections,
+        fol.Polyline,
+        fol.Polylines,
+        fol.TemporalDetection,
+        fol.TemporalDetections,
+    },
 }
+# Label types that support tracks (an ``instance`` linking the same object
+# across frames). Used to backfill legacy ``index``-based tracks into
+# ``instance``. Mirrors the types accepted by
+# :func:`fiftyone.utils.labels.index_to_instance`.
+TRACK_LABEL_TYPES = (
+    fol.Detection,
+    fol.Detections,
+    fol.Polyline,
+    fol.Polylines,
+    fol.Keypoint,
+    fol.Keypoints,
+)
+# Spatial label types that are only meaningful per-frame on video (a video
+# sample is the whole clip, so spatial detections/polylines belong to its
+# frames). Excluded from sample-level annotation fields for video; still
+# allowed at the frame level.
+SPATIAL_LABEL_TYPES = (
+    fol.Detection,
+    fol.Detections,
+    fol.Polyline,
+    fol.Polylines,
+)
 SUPPORTED_LISTS_OF_PRIMITIVES = (
     fof.FloatField,
     fof.IntField,
@@ -237,10 +268,8 @@ SUPPORTED_PRIMITIVES = (
     fof.UUIDField,
 )
 # label types whose subfields cannot yet be represented by a type/component in
-# annotation, e.g. the TemporalDetection.support field
+# annotation.
 UNSUPPORTED_LABEL_TYPES = {
     fol.GeoLocation,
     fol.GeoLocations,
-    fol.TemporalDetection,
-    fol.TemporalDetections,
 }

@@ -103,8 +103,8 @@ const Section = ({
   const filter = (obj: object) =>
     Object.fromEntries(
       Object.entries(obj).filter(([k]) =>
-        k.toLowerCase().includes(value.toLowerCase())
-      )
+        k.toLowerCase().includes(value.toLowerCase()),
+      ),
     );
 
   const trackEvent = useTrackEvent();
@@ -114,7 +114,7 @@ const Section = ({
     });
     submit({
       changes: Object.fromEntries(
-        Object.entries(changes).map(([k, v]) => [k, v === CheckState.ADD])
+        Object.entries(changes).map(([k, v]) => [k, v === CheckState.ADD]),
       ),
     });
     setTagging(true);
@@ -141,21 +141,23 @@ const Section = ({
               count === 0
                 ? `No ${labels ? "labels" : elementNames.plural}`
                 : disabled
-                ? count === null
-                  ? "loading..."
-                  : "saving..."
-                : placeholder
+                  ? count === null
+                    ? "loading..."
+                    : "saving..."
+                  : placeholder
             }
             value={value}
             onChange={(e) => {
               setValue(e.target.value);
               if (e.target.value.length) {
                 const results = Array.from(
-                  new Set(Object.keys({ ...items, ...changes }))
+                  new Set(Object.keys({ ...items, ...changes })),
                 )
                   .sort()
                   .filter((v) =>
-                    v.toLocaleLowerCase().includes(e.target.value.toLowerCase())
+                    v
+                      .toLocaleLowerCase()
+                      .includes(e.target.value.toLowerCase()),
                   );
                 results.length && setActive(results[0]);
               }
@@ -166,10 +168,10 @@ const Section = ({
                     labels && count > 1
                       ? "labels"
                       : labels
-                      ? "label"
-                      : count > 1
-                      ? elementNames.plural
-                      : elementNames.singular
+                        ? "label"
+                        : count > 1
+                          ? elementNames.plural
+                          : elementNames.singular
                   }`
                 : undefined
             }
@@ -220,10 +222,10 @@ const Section = ({
                 labels && count > 1
                   ? "labels"
                   : labels
-                  ? "label"
-                  : count > 1
-                  ? elementNames.plural
-                  : elementNames.singular
+                    ? "label"
+                    : count > 1
+                      ? elementNames.plural
+                      : elementNames.singular
               }`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -308,7 +310,7 @@ const samplesPlaceholder = (numSamples, elementNames, selected = false) => {
 const useTagCallback = (
   modal,
   targetLabels,
-  lookerRef?: React.MutableRefObject<Lookers | undefined>
+  lookerRef?: React.MutableRefObject<Lookers | undefined>,
 ) => {
   const setAggs = useSetRecoilState(fos.refresher);
   const setLabels = fos.useSetSelectedLabels();
@@ -331,25 +333,25 @@ const useTagCallback = (
       async ({ changes }) => {
         const isGroup = await snapshot.getPromise(fos.isGroup);
         const isNonNestedDynamicGroup = await snapshot.getPromise(
-          fos.isNonNestedDynamicGroup
+          fos.isNonNestedDynamicGroup,
         );
         const isImaVidLookerActive = await snapshot.getPromise(
-          fos.isOrderedDynamicGroup
+          fos.isOrderedDynamicGroup,
         );
 
         const mode = await snapshot.getPromise(groupStatistics(modal));
         const currentSlices = await snapshot.getPromise(
-          fos.currentSlices(modal)
+          fos.currentSlices(modal),
         );
         const slices = await snapshot.getPromise(fos.groupSlices);
         const { samples } = await getFetchFunction()("POST", "/tag", {
           ...tagParameters({
             activeFields: await snapshot.getPromise(
-              fos.activeLabelFields({ modal })
+              fos.activeLabelFields({ modal }),
             ),
             dataset: await snapshot.getPromise(fos.datasetName),
             filters: await snapshot.getPromise(
-              modal ? fos.modalFilters : fos.filters
+              modal ? fos.modalFilters : fos.filters,
             ),
             hiddenLabels: await snapshot.getPromise(fos.hiddenLabelsArray),
             groupData:
@@ -387,7 +389,7 @@ const useTagCallback = (
             });
           });
           updateSamples(
-            Array.from(ids).map((id) => [id.split("-")[0], undefined])
+            Array.from(ids).map((id) => [id.split("-")[0], undefined]),
           );
         } else if (samples) {
           set(fos.refreshGroupQuery, (cur) => cur + 1);
@@ -399,7 +401,7 @@ const useTagCallback = (
               lookerRef?.current as unknown as ImaVidLooker
             )?.frameStoreController.store?.updateSample(
               samples[0]._id,
-              samples[0]
+              samples[0],
             );
 
             lookerRef?.current?.updateSample(samples[0]);
@@ -412,22 +414,22 @@ const useTagCallback = (
 
         finalize.forEach((r) => r());
       },
-    [modal, targetLabels, lookerRef, updateSamples]
+    [modal, targetLabels, lookerRef, updateSamples],
   );
 };
 
 const useLabelPlaceHolder = (
   modal: boolean,
-  elementNames: { plural: string; singular: string }
+  elementNames: { plural: string; singular: string },
 ) => {
   return (): [number, string] => {
     const selectedSamples = useRecoilValue(fos.selectedSamples).size;
     const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
     const selectedLabelCount = useRecoilValue(
-      numItemsInSelection({ labels: true, modal })
+      numItemsInSelection({ labels: true, modal }),
     );
     const totalLabelCount = useRecoilValue(
-      fos.labelCount({ modal, extended: true })
+      fos.labelCount({ modal, extended: true }),
     );
     if (modal && selectedLabels) {
       const labelCount = selectedLabels > 0 ? selectedLabels : totalLabelCount;
@@ -443,15 +445,15 @@ const useLabelPlaceHolder = (
 
 const getUseSamplePlaceHolder = (
   modal: boolean,
-  elementNames: { plural: string; singular: string }
+  elementNames: { plural: string; singular: string },
 ) => {
   return (): [number, string] => {
     const selectedSamples = useRecoilValue(fos.selectedSamples).size;
     const totalSamples = useRecoilValue(
-      fos.count({ path: "", extended: false, modal })
+      fos.count({ path: "", extended: false, modal }),
     );
     const filteredSamples = useRecoilValue(
-      fos.count({ path: "", extended: true, modal })
+      fos.count({ path: "", extended: true, modal }),
     );
     const count = filteredSamples ?? totalSamples;
     const itemCount = useRecoilValue(selectedSamplesCount(modal));

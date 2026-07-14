@@ -31,7 +31,7 @@ export const useRegisterPointSelectionEventHandlers = () => {
   } = useToolsState();
 
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
   const { isActive: isPointSelectionActive } = usePointSelection();
   const { add: addRipple, remove: removeRipple } =
@@ -63,8 +63,8 @@ export const useRegisterPointSelectionEventHandlers = () => {
           addRipple(payload.id, payload.pointId, RIPPLE_VISIBLE_MS);
         }
       },
-      [addNegativePoint, addPositivePoint, addRipple, isPointSelectionActive]
-    )
+      [addNegativePoint, addPositivePoint, addRipple, isPointSelectionActive],
+    ),
   );
 
   useEventHandler(
@@ -90,8 +90,8 @@ export const useRegisterPointSelectionEventHandlers = () => {
         removeNegativePoint,
         removePositivePoint,
         removeRipple,
-      ]
-    )
+      ],
+    ),
   );
 
   useEventHandler(
@@ -105,7 +105,7 @@ export const useRegisterPointSelectionEventHandlers = () => {
           });
         }
       },
-      [isPointSelectionActive, updatePoint]
-    )
+      [isPointSelectionActive, updatePoint],
+    ),
   );
 };

@@ -6,7 +6,7 @@ import { RJSFValidationError, UiSchema } from "@rjsf/utils";
  */
 export function filterEmptyArrays(
   formData: Record<string, unknown>,
-  originalData: Record<string, unknown>
+  originalData: Record<string, unknown>,
 ) {
   const filteredData = { ...formData };
   Object.entries(filteredData).forEach(([key, value]) => {
@@ -20,7 +20,7 @@ export function filterEmptyArrays(
 function isWidgetPath(
   property: string,
   uiSchema: UiSchema,
-  widget: string
+  widget: string,
 ): boolean {
   if (!property) return false;
   // property is in RJSF form has a leading dot, remove it
@@ -47,7 +47,7 @@ function _valueAt(data: Record<string, unknown>, property?: string): unknown {
 export function transformErrors(
   errors: RJSFValidationError[],
   uiSchema?: UiSchema,
-  formData?: Record<string, unknown>
+  formData?: Record<string, unknown>,
 ) {
   const filteredErrors = errors.filter((error) => {
     // Drop type/enum errors whose value is null - if it is explicity

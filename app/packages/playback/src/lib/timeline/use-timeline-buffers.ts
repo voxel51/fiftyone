@@ -20,11 +20,11 @@ export const useTimelineBuffers = (name?: TimelineName) => {
   const timelineName = React.useMemo(() => name ?? getName(), [name, getName]);
 
   const dataLoadedBufferManager = useAtomValue(
-    getDataLoadedBuffersAtom(timelineName)
+    getDataLoadedBuffersAtom(timelineName),
   );
 
   const currentLoadingRange = useAtomValue(
-    getCurrentBufferingRangeAtom(timelineName)
+    getCurrentBufferingRangeAtom(timelineName),
   );
 
   return {

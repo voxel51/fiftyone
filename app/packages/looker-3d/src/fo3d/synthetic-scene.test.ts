@@ -4,7 +4,7 @@ import { buildSyntheticSceneForDirect3dSamples } from "./synthetic-scene";
 
 const buildModalSample = (
   filepath: string,
-  mediaFieldPath = filepath
+  mediaFieldPath = filepath,
 ): ModalSample => {
   return {
     sample: {
@@ -38,7 +38,7 @@ describe("buildSyntheticSceneForDirect3dSamples", () => {
       expect(scene.children).toHaveLength(1);
       expect(scene.children[0]._type).toBe(expectedType);
       expect(scene.children[0][expectedPathField]).toBe(path);
-    }
+    },
   );
 
   it.each([

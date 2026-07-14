@@ -33,7 +33,10 @@ function makeVideo(initialDuration = NaN): FakeVideo {
     }),
     removeEventListener: vi.fn((event: string, fn: EventListener) => {
       const arr = listeners.get(event) ?? [];
-      listeners.set(event, arr.filter((f) => f !== fn));
+      listeners.set(
+        event,
+        arr.filter((f) => f !== fn),
+      );
     }),
     _fire(event: string) {
       for (const fn of listeners.get(event) ?? []) fn(new Event(event));
@@ -43,7 +46,7 @@ function makeVideo(initialDuration = NaN): FakeVideo {
 
 function renderStream(
   video: FakeVideo | null,
-  opts: { blocking?: boolean } = {}
+  opts: { blocking?: boolean } = {},
 ) {
   const videoRef = {
     current: video,
@@ -61,7 +64,7 @@ function renderStream(
           {children}
         </PlaybackProvider>
       ),
-    }
+    },
   );
 }
 
@@ -138,11 +141,11 @@ describe("useVideoStream", () => {
     renderStream(video);
     expect(video.addEventListener).toHaveBeenCalledWith(
       "loadedmetadata",
-      expect.any(Function)
+      expect.any(Function),
     );
     expect(video.addEventListener).toHaveBeenCalledWith(
       "durationchange",
-      expect.any(Function)
+      expect.any(Function),
     );
   });
 
@@ -154,11 +157,11 @@ describe("useVideoStream", () => {
 
     expect(video.removeEventListener).toHaveBeenCalledWith(
       "loadedmetadata",
-      expect.any(Function)
+      expect.any(Function),
     );
     expect(video.removeEventListener).toHaveBeenCalledWith(
       "durationchange",
-      expect.any(Function)
+      expect.any(Function),
     );
   });
 

@@ -45,7 +45,7 @@ describe("AddMaskKeypointCommand", () => {
       overlay,
       "kp-2",
       point,
-      "negative"
+      "negative",
     );
     command.execute();
 

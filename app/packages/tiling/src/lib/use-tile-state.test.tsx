@@ -63,7 +63,7 @@ describe("useTileSelection / useTileSelectionFor / useSetTileSelection", () => {
         value: useTileSelection<{ x: number }>(),
         set: useSetTileSelection(),
       }),
-      { wrapper: wrap("graph-1") }
+      { wrapper: wrap("graph-1") },
     );
     act(() => {
       result.current.set({ x: 7 });
@@ -96,7 +96,7 @@ describe("useTileSelection / useTileSelectionFor / useSetTileSelection", () => {
             </TilingProvider>
           </JotaiProvider>
         ),
-      }
+      },
     );
     expect(result.current).toBeNull();
     act(() => {
@@ -117,52 +117,48 @@ describe("useTileTitle / useTileTitleFor / useSetTileTitle", () => {
   afterEach(() => cleanup());
 
   it("useTileTitle returns null when outside a TileIdScope", () => {
-    const { result } = renderHook(
-      () => ({ title: useTileTitle() }),
-      { wrapper: makePlainWrap() }
-    );
+    const { result } = renderHook(() => ({ title: useTileTitle() }), {
+      wrapper: makePlainWrap(),
+    });
     expect(result.current.title).toBeNull();
   });
 
   it("useTileTitle returns the tile's current title when scoped", () => {
     const store = createStore();
-    const { result } = renderHook(
-      () => ({ title: useTileTitle() }),
-      {
-        wrapper: ({ children }) => (
-          <JotaiProvider store={store}>
-            <TilingProvider initialTiles={{ "cam-1": { title: "Camera", render: () => null } }}>
-              <TileIdScope tileId="cam-1">{children}</TileIdScope>
-            </TilingProvider>
-          </JotaiProvider>
-        ),
-      }
-    );
+    const { result } = renderHook(() => ({ title: useTileTitle() }), {
+      wrapper: ({ children }) => (
+        <JotaiProvider store={store}>
+          <TilingProvider
+            initialTiles={{ "cam-1": { title: "Camera", render: () => null } }}
+          >
+            <TileIdScope tileId="cam-1">{children}</TileIdScope>
+          </TilingProvider>
+        </JotaiProvider>
+      ),
+    });
     expect(result.current.title).toBe("Camera");
   });
 
   it("useTileTitleFor returns null for a null tileId", () => {
-    const { result } = renderHook(
-      () => ({ title: useTileTitleFor(null) }),
-      { wrapper: makePlainWrap() }
-    );
+    const { result } = renderHook(() => ({ title: useTileTitleFor(null) }), {
+      wrapper: makePlainWrap(),
+    });
     expect(result.current.title).toBeNull();
   });
 
   it("useTileTitleFor returns the title for an explicit tileId", () => {
     const store = createStore();
-    const { result } = renderHook(
-      () => ({ title: useTileTitleFor("cam-1") }),
-      {
-        wrapper: ({ children }) => (
-          <JotaiProvider store={store}>
-            <TilingProvider initialTiles={{ "cam-1": { title: "Camera", render: () => null } }}>
-              {children}
-            </TilingProvider>
-          </JotaiProvider>
-        ),
-      }
-    );
+    const { result } = renderHook(() => ({ title: useTileTitleFor("cam-1") }), {
+      wrapper: ({ children }) => (
+        <JotaiProvider store={store}>
+          <TilingProvider
+            initialTiles={{ "cam-1": { title: "Camera", render: () => null } }}
+          >
+            {children}
+          </TilingProvider>
+        </JotaiProvider>
+      ),
+    });
     expect(result.current.title).toBe("Camera");
   });
 
@@ -176,12 +172,16 @@ describe("useTileTitle / useTileTitleFor / useSetTileTitle", () => {
       {
         wrapper: ({ children }) => (
           <JotaiProvider store={store}>
-            <TilingProvider initialTiles={{ "cam-1": { title: "Camera", render: () => null } }}>
+            <TilingProvider
+              initialTiles={{
+                "cam-1": { title: "Camera", render: () => null },
+              }}
+            >
               <TileIdScope tileId="cam-1">{children}</TileIdScope>
             </TilingProvider>
           </JotaiProvider>
         ),
-      }
+      },
     );
     expect(result.current.title).toBe("Camera");
     act(() => {
@@ -200,12 +200,16 @@ describe("useTileTitle / useTileTitleFor / useSetTileTitle", () => {
       {
         wrapper: ({ children }) => (
           <JotaiProvider store={store}>
-            <TilingProvider initialTiles={{ "cam-1": { title: "Camera", render: () => null } }}>
+            <TilingProvider
+              initialTiles={{
+                "cam-1": { title: "Camera", render: () => null },
+              }}
+            >
               {children}
             </TilingProvider>
           </JotaiProvider>
         ),
-      }
+      },
     );
     act(() => {
       result.current.setTitle("Should Not Change");
@@ -223,7 +227,7 @@ describe("useTileTypes", () => {
         registry: useTileRegistry(),
         types: useTileTypes(),
       }),
-      { wrapper: makePlainWrap() }
+      { wrapper: makePlainWrap() },
     );
   }
 

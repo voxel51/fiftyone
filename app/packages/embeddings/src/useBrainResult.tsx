@@ -11,11 +11,11 @@ export const usePointsField = () => usePanelStatePartial("pointsField", null);
 export function useBrainResultsSelector() {
   const [selected, setSelected] = useBrainResult();
   const dataset = useRecoilValue(fos.dataset);
-  const [colorByField, setColorByField] = useColorByField();
+  const [, setColorByField] = useColorByField();
   const [loadingPlotError, setLoadingPlotError] = usePanelStatePartial(
     "loadingPlotError",
     null,
-    true
+    true,
   );
   const handlers = {
     onSelect(selected) {
@@ -26,7 +26,7 @@ export function useBrainResultsSelector() {
     value: selected,
     useSearch: (search) => ({
       values: getBrainKeysFromDataset(dataset).filter((item) =>
-        item.toLowerCase().includes(search.toLowerCase())
+        item.toLowerCase().includes(search.toLowerCase()),
       ),
     }),
   };

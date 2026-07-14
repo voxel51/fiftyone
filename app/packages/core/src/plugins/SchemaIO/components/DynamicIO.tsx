@@ -27,7 +27,7 @@ export default function DynamicIO(props: ViewPropsType) {
       path: string,
       value: unknown,
       schema?: SchemaType,
-      ancestors: AncestorsType = {}
+      ancestors: AncestorsType = {},
     ) => {
       const isComposite = isCompositeView(computedSchema);
       const subSchema = !isComposite ? computedSchema : undefined;
@@ -40,7 +40,7 @@ export default function DynamicIO(props: ViewPropsType) {
         path,
         value,
         schema ?? subSchema ?? computedSchema,
-        computedAncestors
+        computedAncestors,
       );
     };
   }, [onChange, computedSchema, props.path]);
@@ -119,7 +119,7 @@ function useStateInitializer(props: ViewPropsType) {
 function schemaWithInheritedDefault(
   schema: ViewPropsType["schema"],
   parentSchema: ViewPropsType["parentSchema"],
-  path: ViewPropsType["relativePath"]
+  path: ViewPropsType["relativePath"],
 ) {
   const providedDefault = get(schema, "default");
   const inheritedDefault = get(parentSchema, `default.${path}`);
@@ -129,7 +129,7 @@ function schemaWithInheritedDefault(
 
 function schemaWithInheritedVariant(
   schema: ViewPropsType["schema"],
-  parentSchema: ViewPropsType["parentSchema"]
+  parentSchema: ViewPropsType["parentSchema"],
 ) {
   if (isNullish(get(schema, "view.variant"))) {
     set(schema, "view.variant", get(parentSchema, "view.variant"));
@@ -146,7 +146,7 @@ function getComputedSchema(props: ViewPropsType) {
   let computedSchema = schemaWithInheritedDefault(
     schema,
     parentSchema,
-    relativePath
+    relativePath,
   );
   const parentView = parentSchema?.view?.name;
   if (parentView === "MenuView") {

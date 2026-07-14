@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { buildBrushCursor } from "./buildBrushCursor";
 
 const makeState = (
-  overrides: Partial<SegmentationToolState> = {}
+  overrides: Partial<SegmentationToolState> = {},
 ): SegmentationToolState => ({
   active: true,
   size: 16,
@@ -26,7 +26,7 @@ const makeState = (
 /** Pulls the percent-encoded SVG body out of the cursor URL for inspection. */
 const decodeSvg = (cursor: string): string => {
   const match = cursor.match(
-    /^url\("data:image\/svg\+xml,([^"]+)"\) (\d+(?:\.\d+)?) (\d+(?:\.\d+)?), crosshair$/
+    /^url\("data:image\/svg\+xml,([^"]+)"\) (\d+(?:\.\d+)?) (\d+(?:\.\d+)?), crosshair$/,
   );
   if (!match) throw new Error(`Unexpected cursor format: ${cursor}`);
   return decodeURIComponent(match[1]);
@@ -35,20 +35,20 @@ const decodeSvg = (cursor: string): string => {
 describe("buildBrushCursor", () => {
   describe("non-brush tools short-circuit to a CSS keyword", () => {
     it("returns 'default' for Select", () => {
-      expect(buildBrushCursor(makeState({ tool: SegmentationTool.Select }))).toBe(
-        "default"
-      );
+      expect(
+        buildBrushCursor(makeState({ tool: SegmentationTool.Select })),
+      ).toBe("default");
     });
 
     it("returns 'crosshair' for Pen", () => {
       expect(buildBrushCursor(makeState({ tool: SegmentationTool.Pen }))).toBe(
-        "crosshair"
+        "crosshair",
       );
     });
 
     it("returns 'crosshair' for AI", () => {
       expect(buildBrushCursor(makeState({ tool: SegmentationTool.AI }))).toBe(
-        "crosshair"
+        "crosshair",
       );
     });
   });
@@ -61,7 +61,7 @@ describe("buildBrushCursor", () => {
           shape: SegmentationToolShape.Circle,
           mode: SegmentationToolMode.Add,
           cursorSize: 32,
-        })
+        }),
       );
 
       // svgSize = cursorSize + 2*pad = 36, hotspot = center = half + pad = 18.
@@ -85,8 +85,8 @@ describe("buildBrushCursor", () => {
             tool: SegmentationTool.Brush,
             shape: SegmentationToolShape.Circle,
             mode: SegmentationToolMode.Add,
-          })
-        )
+          }),
+        ),
       );
 
       expect(svg).toContain('stroke="black"');
@@ -101,8 +101,8 @@ describe("buildBrushCursor", () => {
             tool: SegmentationTool.Brush,
             shape: SegmentationToolShape.Circle,
             mode: SegmentationToolMode.Remove,
-          })
-        )
+          }),
+        ),
       );
 
       expect(svg).toContain('stroke="red"');
@@ -121,8 +121,8 @@ describe("buildBrushCursor", () => {
             shape: SegmentationToolShape.Square,
             mode: SegmentationToolMode.Remove,
             cursorSize: 32,
-          })
-        )
+          }),
+        ),
       );
 
       expect(remove).toContain("<rect ");
@@ -141,8 +141,8 @@ describe("buildBrushCursor", () => {
             tool: SegmentationTool.Brush,
             shape: SegmentationToolShape.Square,
             mode: SegmentationToolMode.Add,
-          })
-        )
+          }),
+        ),
       );
 
       expect(add).toContain("<rect ");
@@ -155,13 +155,13 @@ describe("buildBrushCursor", () => {
     it("scales SVG width/height and hotspot with cursorSize", () => {
       const small = decodeSvg(
         buildBrushCursor(
-          makeState({ tool: SegmentationTool.Brush, cursorSize: 4 })
-        )
+          makeState({ tool: SegmentationTool.Brush, cursorSize: 4 }),
+        ),
       );
       const large = decodeSvg(
         buildBrushCursor(
-          makeState({ tool: SegmentationTool.Brush, cursorSize: 100 })
-        )
+          makeState({ tool: SegmentationTool.Brush, cursorSize: 100 }),
+        ),
       );
 
       // svgSize = cursorSize + 4 (pad on each side).
@@ -171,10 +171,10 @@ describe("buildBrushCursor", () => {
       expect(large).toContain('height="104"');
 
       const smallHotspot = buildBrushCursor(
-        makeState({ tool: SegmentationTool.Brush, cursorSize: 4 })
+        makeState({ tool: SegmentationTool.Brush, cursorSize: 4 }),
       );
       const largeHotspot = buildBrushCursor(
-        makeState({ tool: SegmentationTool.Brush, cursorSize: 100 })
+        makeState({ tool: SegmentationTool.Brush, cursorSize: 100 }),
       );
       expect(smallHotspot).toMatch(/ 4 4, crosshair$/);
       expect(largeHotspot).toMatch(/ 52 52, crosshair$/);

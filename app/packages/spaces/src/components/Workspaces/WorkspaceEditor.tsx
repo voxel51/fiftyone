@@ -113,7 +113,7 @@ export default function WorkspaceEditor() {
                       }
                     },
                     skipOutput: true,
-                  }
+                  },
                 );
               }}
               disabled={isDeleting}
@@ -147,12 +147,12 @@ export default function WorkspaceEditor() {
                       executeOperator(
                         LOAD_WORKSPACE_OPERATOR,
                         { name: state.name },
-                        { skipOutput: true }
+                        { skipOutput: true },
                       );
                     }
                   },
                   skipOutput: true,
-                }
+                },
               );
             }}
             disabled={isSaving}

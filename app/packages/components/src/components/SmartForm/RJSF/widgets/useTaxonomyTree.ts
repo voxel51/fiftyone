@@ -18,7 +18,7 @@ export interface UseTaxonomyTreeResult {
 }
 
 export const useTaxonomyTree = (
-  name: string | undefined
+  name: string | undefined,
 ): UseTaxonomyTreeResult => {
   const [tree, setTree] = useState<TreeNode | null>(null);
   const [isFetching, setIsFetching] = useState(false);

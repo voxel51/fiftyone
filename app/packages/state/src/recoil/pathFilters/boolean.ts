@@ -20,7 +20,7 @@ export interface BooleanFilter {
 const getFilter = (
   get: GetRecoilValue,
   modal: boolean,
-  path: string
+  path: string,
 ): BooleanFilter => {
   return {
     true: false,
@@ -36,7 +36,7 @@ const getFilter = (
 const getVisibility = (
   get: GetRecoilValue,
   modal: boolean,
-  path: string
+  path: string,
 ): BooleanFilter => {
   return {
     true: false,
@@ -57,7 +57,7 @@ const setFilter = (
   modal: boolean,
   path: string,
   key: string,
-  value: boolean | DefaultValue
+  value: boolean | DefaultValue,
 ) => {
   const filter = {
     onlyMatch: true,
@@ -79,7 +79,7 @@ const setVisibility = (
   modal: boolean,
   path: string,
   key: string,
-  value: boolean | DefaultValue
+  value: boolean | DefaultValue,
 ) => {
   const visibility = {
     exclude: false,
@@ -271,7 +271,7 @@ const helperFunction = (
   trueValue,
   falseValue,
   noneValue,
-  isVisibility
+  isVisibility,
 ) => {
   const values = [];
   if (trueValue) {
@@ -301,18 +301,18 @@ export const generateBooleanSelectorFamily = (key) =>
 
         const trueValueFilter = get(trueAtom({ ...params, isFiltering: true }));
         const falseValueFilter = get(
-          falseAtom({ ...params, isFiltering: true })
+          falseAtom({ ...params, isFiltering: true }),
         );
         const noneValueFilter = get(noneAtom({ ...params, isFiltering: true }));
         const isMatching = get(boolIsMatchingAtom(params));
         const trueValueVisibility = get(
-          trueAtom({ ...params, isFiltering: false })
+          trueAtom({ ...params, isFiltering: false }),
         );
         const falseValueVisibility = get(
-          falseAtom({ ...params, isFiltering: false })
+          falseAtom({ ...params, isFiltering: false }),
         );
         const noneValueVisibility = get(
-          noneAtom({ ...params, isFiltering: false })
+          noneAtom({ ...params, isFiltering: false }),
         );
 
         // if there is no filter and no visibility, return true
@@ -328,7 +328,7 @@ export const generateBooleanSelectorFamily = (key) =>
               trueValueVisibility,
               falseValueVisibility,
               noneValueVisibility,
-              true
+              true,
             );
           };
         }
@@ -344,7 +344,7 @@ export const generateBooleanSelectorFamily = (key) =>
               trueValueFilter,
               falseValueFilter,
               noneValueFilter,
-              false
+              false,
             );
           };
         }
@@ -357,14 +357,14 @@ export const generateBooleanSelectorFamily = (key) =>
               trueValueFilter,
               falseValueFilter,
               noneValueFilter,
-              false
+              false,
             );
             const visibilityResult = helperFunction(
               value,
               trueValueVisibility,
               falseValueVisibility,
               noneValueVisibility,
-              true
+              true,
             );
 
             if (isMatching) {
@@ -380,5 +380,5 @@ export const generateBooleanSelectorFamily = (key) =>
 
 export const boolean = generateBooleanSelectorFamily("booleanFilter");
 export const listBoolean = generateBooleanSelectorFamily(
-  "listFieldBooleanFilter"
+  "listFieldBooleanFilter",
 );

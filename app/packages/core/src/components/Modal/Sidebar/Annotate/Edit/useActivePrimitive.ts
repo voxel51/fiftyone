@@ -46,7 +46,7 @@ export const usePrimitiveController = (): PrimitiveController => {
       isPrimitive,
       setActivePrimitive,
     }),
-    [activePrimitive, isPrimitive, setActivePrimitive]
+    [activePrimitive, isPrimitive, setActivePrimitive],
   );
 };
 

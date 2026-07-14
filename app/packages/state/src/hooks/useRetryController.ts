@@ -73,6 +73,6 @@ export const useRetryController = ({
       recordAttempt,
       reset,
     }),
-    [id, maxAttempts, recordAttempt, reset, retryCounts]
+    [id, maxAttempts, recordAttempt, reset, retryCounts],
   );
 };

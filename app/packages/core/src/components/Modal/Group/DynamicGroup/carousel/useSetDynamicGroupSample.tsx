@@ -14,6 +14,6 @@ export default () => {
         return { ...current, id };
       });
     },
-    [setModal]
+    [setModal],
   );
 };

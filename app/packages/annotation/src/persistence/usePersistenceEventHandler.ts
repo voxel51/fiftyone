@@ -33,6 +33,6 @@ export const usePersistenceEventHandler = () => {
       }
     }, [eventBus, persistAnnotationDeltas]),
     // limit to 1 operation, dropping any requests that come in while in-flight
-    { maxConcurrency: 1, limitBehavior: ConcurrencyLimitBehavior.DROP }
+    { maxConcurrency: 1, limitBehavior: ConcurrencyLimitBehavior.DROP },
   );
 };

@@ -17,7 +17,7 @@ describe("matches with proxy", () => {
       "/my/proxy/datasets/my-dataset",
       { path: "/datasets/:name" },
       search,
-      {}
+      {},
     );
 
   it("resolves with proxy", () => {

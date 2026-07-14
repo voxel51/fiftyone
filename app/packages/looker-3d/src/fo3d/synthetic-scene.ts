@@ -77,7 +77,7 @@ const DEFAULT_SCENE_BACKGROUND: FiftyoneSceneRawJson["background"] = {
  * Returns the synthetic FO3D node metadata for a supported direct-3D file.
  */
 const getNodeConfigForExtension = (
-  extension: string | null
+  extension: string | null,
 ): SyntheticNodeConfig | null => {
   const normalizedExtension = extension?.toLowerCase() ?? null;
 
@@ -175,7 +175,7 @@ export const buildSyntheticSceneNodesForDirect3dSamples = ({
         sample: currentSample,
         slice,
         mediaField,
-      })
+      }),
     )
     .filter((node): node is FiftyoneSceneRawJson => Boolean(node));
 };
@@ -205,7 +205,7 @@ export const buildSyntheticSceneForDirect3dSamples = ({
 
   // glTF/FBX assets are usually authored in Y-up, while the rest of the scene defaults to Z-up.
   const defaultUpAxis = children.every((child) =>
-    Y_UP_NODE_TYPES.has(child._type)
+    Y_UP_NODE_TYPES.has(child._type),
   )
     ? "Y"
     : "Z";
