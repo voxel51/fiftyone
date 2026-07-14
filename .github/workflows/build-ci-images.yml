@@ -31,6 +31,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Free Disk Space (Ubuntu)
+        # the test image's dependency tree exceeds the standard runner's
+        # free disk during build
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          large-packages: false
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -64,6 +71,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Free Disk Space (Ubuntu)
+        # the test image's dependency tree exceeds the standard runner's
+        # free disk during build
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          large-packages: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
