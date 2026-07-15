@@ -164,7 +164,8 @@ describe("reconcilePersisted", () => {
     // source (authoritative DB) is label "car" / confidence 0.1; the user's
     // pending, persisted class is "truck"; confidence in the transient is a
     // stale projection (0.99). The class edit survives; confidence is released
-    // (dropped) so it defers to source on the next merge-aware diff.
+    // (overwritten with the source value) so it defers to source while the
+    // transient entry stays a fully-resolved value for readers.
     const sourceData = {
       ai_seg: {
         _cls: "Detections",
@@ -195,9 +196,8 @@ describe("reconcilePersisted", () => {
       }
     ).detections[0];
     // the user's class edit survives (it was the persisted delta); the stale
-    // confidence is gone (released → defers to source's 0.1).
-    expect(det).toMatchObject({ _id: "d1", label: "truck" });
-    expect(det).not.toHaveProperty("confidence");
+    // confidence is released → carries source's 0.1.
+    expect(det).toMatchObject({ _id: "d1", label: "truck", confidence: 0.1 });
   });
 
   it("keeps the persisted (delta) sub-field even when it diverges from source", () => {
@@ -321,8 +321,9 @@ describe("reconcilePersisted", () => {
     ).detections[0];
     // the in-flight drag survives (changed T0→T1 → kept)...
     expect(det.location).toEqual([5, 6, 7]);
-    // ...while the untouched projected confidence is released (unchanged T0→T1).
-    expect(det).not.toHaveProperty("confidence");
+    // ...while the untouched projected confidence is released (unchanged
+    // T0→T1) → carries source's 0.1.
+    expect(det.confidence).toBe(0.1);
   });
 
   it("releases nothing without a patch baseline (fail safe)", () => {
