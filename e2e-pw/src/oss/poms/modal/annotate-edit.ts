@@ -294,14 +294,6 @@ class ModalAnnotateEditAsserter {
    * @param hasMask Whether the detection is expected to have a mask
    */
   async hasMask(hasMask = true) {
-    if (hasMask) {
-      // deterministic decode barrier: the menu trigger stamps
-      // data-overlay-loaded once the decoded DetectionOverlay is live,
-      // and mask actions exist only after that
-      await expect(
-        this.modalAnnotateEdit.page.getByTestId("label-menu-trigger"),
-      ).toHaveAttribute("data-overlay-loaded", "true");
-    }
     await this.modalAnnotateEdit.openLabelMenu();
     const remove = this.modalAnnotateEdit.page.getByTestId(
       "label-menu-remove-mask",

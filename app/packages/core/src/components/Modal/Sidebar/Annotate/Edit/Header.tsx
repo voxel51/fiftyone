@@ -23,7 +23,10 @@ import useColor from "./useColor";
 import useExit from "./useExit";
 import { useDetectionMode } from "./useDetectionMode";
 import { useSegmentationMode } from "./useSegmentationMode";
-import { useAnnotationController } from "@fiftyone/annotation";
+import {
+  useAnnotationController,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 
 const LabelHamburgerMenu = () => {
   const [open, setOpen] = useState<boolean>(false);
@@ -36,7 +39,8 @@ const LabelHamburgerMenu = () => {
 
   // Permission and read-only state
   const canEditLabels = useRecoilValue(fos.canEditLabels);
-  const { selected, setData } = useAnnotationContext();
+  const { selected, setData, setEditingMask } = useAnnotationContext();
+  const engine = useAnnotationEngine();
   const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
   const { openSchemaManager } = useSchemaManagerModal();
   const isGenerated = useRecoilValue(isGeneratedView);
@@ -47,9 +51,17 @@ const LabelHamburgerMenu = () => {
   const overlay = selected?.overlay;
   const { isEditingMask } = useSegmentationMode();
 
-  // `mask`/`mask_path` are Detection-only fields; the union narrows them
-  // out. Cast at the access site.
-  const maskFields = data as { mask?: unknown; mask_path?: unknown } | null;
+  // Read mask state from the engine-reconciled row (data truth) rather
+  // than the selection-time editing copy, which nothing refreshes on
+  // engine-originated changes (undo/redo). `mask`/`mask_path` are
+  // Detection-only fields; the union narrows them out — cast at the
+  // access site.
+  const rows = useAtomValue(labels);
+  const row = rows.find((l) => l.data._id === data?._id);
+  const maskFields = (row?.data ?? data) as {
+    mask?: unknown;
+    mask_path?: unknown;
+  } | null;
   const isMaskDetection = !!(
     maskFields?.mask ||
     maskFields?.mask_path ||
@@ -65,12 +77,28 @@ const LabelHamburgerMenu = () => {
   }, [overlay]);
 
   const handleRemoveMask = useCallback(() => {
+    // removal is a data operation: the engine write persists (and owns
+    // undo) whether or not the decoded overlay has mounted yet — the
+    // bridge discards an in-flight decode whose mask was removed. The
+    // overlay call is live-canvas cleanup only.
     if (overlay instanceof DetectionOverlay) {
       overlay.removeMask();
-      setData({ mask: undefined, mask_path: undefined });
-      setOpen(false);
+    } else if (selected?.ref) {
+      // null, not undefined: the engine's partial merge drops undefined
+      // keys; null serializes into the delta and clears the field
+      engine.updateLabel(selected.ref, {
+        mask: null,
+        mask_path: null,
+      });
+      // the overlay path ends mask-edit mode via its commit event; the
+      // data path must end it explicitly
+      if (data?._id) {
+        setEditingMask(data._id, false);
+      }
     }
-  }, [overlay, setData]);
+    setData({ mask: undefined, mask_path: undefined });
+    setOpen(false);
+  }, [data, engine, overlay, selected, setData, setEditingMask]);
 
   const handleOpenSchemaManager = () => {
     openSchemaManager();
@@ -81,13 +109,8 @@ const LabelHamburgerMenu = () => {
   const showDelete = !isGenerated;
   const showAddMask =
     isDetection && !isMaskDetection && !currentFieldIsReadOnly; // shown for a fresh box
-  // Gate on the live overlay: while a mask_path decode is in flight the
-  // row holds a stub and removeMask would silently no-op
   const showRemoveMask =
-    isDetection &&
-    isMaskDetection &&
-    !currentFieldIsReadOnly &&
-    overlay instanceof DetectionOverlay;
+    isDetection && isMaskDetection && !currentFieldIsReadOnly;
   const hasMenuItems =
     showDelete || showEditSchema || showAddMask || showRemoveMask;
 
@@ -98,12 +121,7 @@ const LabelHamburgerMenu = () => {
   return (
     <>
       <Clickable onClick={() => setOpen(true)}>
-        <Box
-          ref={anchor}
-          sx={{ p: 0.5 }}
-          data-cy="label-menu-trigger"
-          data-overlay-loaded={String(overlay instanceof DetectionOverlay)}
-        >
+        <Box ref={anchor} sx={{ p: 0.5 }} data-cy="label-menu-trigger">
           <Icon name={IconName.MoreVertical} size={Size.Md} />
         </Box>
       </Clickable>
