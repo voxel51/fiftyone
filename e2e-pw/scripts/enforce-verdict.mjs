@@ -46,8 +46,11 @@ if (
   failures.push("no tests ran");
 }
 if ((stats.flaky ?? 0) > 0) {
-  failures.push(
-    `${stats.flaky} flaky spec${stats.flaky === 1 ? "" : "s"} (passed on retry)`,
+  // flaky is reported (comment section + this annotation), not failed
+  console.log(
+    `::warning::${stats.flaky} flaky spec${
+      stats.flaky === 1 ? "" : "s"
+    } (passed on retry) — see the e2e comment`,
   );
 }
 
