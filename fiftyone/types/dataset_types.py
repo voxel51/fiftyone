@@ -783,6 +783,26 @@ class GeoTIFFDataset(ImageLabelsDataset):
         return foug.GeoTIFFDatasetImporter
 
 
+class VQADataset(ImageLabelsDataset):
+    """A labeled dataset consisting of images and their associated visual
+    question answering (VQA) labels stored in a simple JSON format.
+
+    See :ref:`this page <VQADataset-import>` for importing datasets of this
+    type, and see :ref:`this page <VQADataset-export>` for exporting datasets
+    of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.vqa as fouq
+
+        return fouq.VQADatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.vqa as fouq
+
+        return fouq.VQADatasetExporter
+
+
 class CSVDataset(Dataset):
     """A flexible CSV format that represents slice(s) of field values of a
     dataset as columns of a CSV file.
