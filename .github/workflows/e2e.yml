@@ -135,9 +135,10 @@ jobs:
 
   test-e2e:
     needs: prepare-e2e
-    # Hard budget: a shard that can't finish in 20 minutes is a failure by
+    # Hard budget: a shard that can't finish in 30 minutes is a failure by
     # policy, and the verdict job fails whenever a shard job does.
-    timeout-minutes: 20
+    # (fiftyone-teams runs the same suite ~1.6x slower.)
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     # The prebaked image (built by build-ci-images.yml) carries Python +
     # fiftyone's dependency tree, Node/Yarn, ffmpeg, and Chromium, so shard
