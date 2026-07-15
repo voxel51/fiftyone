@@ -49,6 +49,22 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
+   * Wait until every annotation edit has been persisted (no pending deltas,
+   * no in-flight patch). Autosave is an interval tick, so an edit's patch may
+   * start seconds after its commit — call this before handing off to a fresh
+   * load (or ending a test whose edits a sibling depends on); a navigation
+   * that lands earlier destroys the pending save.
+   */
+  async waitForSavesSettled() {
+    // structural worst case: the edit just missed a tick (3s), its patch
+    // lands, and settlement is confirmed by the following tick (3s) — ~6.5s
+    // plus server round-trips. 10s bounds that chain, it does not pad a race.
+    await expect(
+      this.locator.getByTestId("annotation-save-state"),
+    ).toHaveAttribute("data-settled", "true", { timeout: 10_000 });
+  }
+
+  /**
    * Select an active label by name and position
    *
    * @param label The label name to select

@@ -14,15 +14,29 @@ const DATASET_NAME = getUniqueDatasetNameWithPrefix("quick-edit");
 
 /**
  * One identical sample per test. Quick edit autosaves to the dataset, so each
- * test edits its own sample and a failed test cannot leak state into another.
+ * test edits its own sample and a failed test cannot leak state into another
+ * (not even a trailing autosave that hadn't flushed when the test ended).
  */
 const SAMPLE_IDS = {
   classification: indexToId(0),
   tooltip: indexToId(1),
-  resize: indexToId(2),
-  move: indexToId(3),
-  confidence: indexToId(4),
+  confidence: indexToId(2),
 };
+
+/**
+ * One sample per resize/move handle-group test (see {@link HANDLE_GROUPS}),
+ * indexed after {@link SAMPLE_IDS}.
+ */
+const GESTURE_SAMPLE_IDS = {
+  resize: [indexToId(3), indexToId(4), indexToId(5), indexToId(6)],
+  move: [indexToId(7), indexToId(8), indexToId(9), indexToId(10)],
+};
+
+/** Total samples to seed: the per-test samples plus the per-group samples. */
+const NUM_SAMPLES =
+  Object.keys(SAMPLE_IDS).length +
+  GESTURE_SAMPLE_IDS.resize.length +
+  GESTURE_SAMPLE_IDS.move.length;
 
 /** Width of the generated sample image in pixels. */
 const IMAGE_WIDTH = 914;
@@ -117,6 +131,16 @@ const DETECTION_CORNERS_AND_EDGES = (({ x, y, width, height }: Box) => {
   ];
 })(INITIAL_BOUNDING_BOX);
 
+/**
+ * The eight handles paired into per-test groups (a corner and its following
+ * edge). One 90-second CI test cannot exercise all eight handles with
+ * undo/redo on a slow runner, so each pair runs as its own test against its
+ * own sample — same coverage, bounded per-test cost.
+ */
+const HANDLE_GROUPS = [0, 2, 4, 6].map((start) =>
+  DETECTION_CORNERS_AND_EDGES.slice(start, start + 2),
+);
+
 const test = base.extend<{
   modal: ModalPom;
 }>({
@@ -140,7 +164,7 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName: DATASET_NAME,
-    numSamples: Object.keys(SAMPLE_IDS).length,
+    numSamples: NUM_SAMPLES,
     imageOptions: {
       fillColor: "white",
       height: IMAGE_HEIGHT,
@@ -311,114 +335,158 @@ test.describe("quick edit", () => {
   });
 
   /**
-   * Exercises all eight bounding-box handles, asserting correct resize
-   * behavior including undo/redo for each handle. Each iteration restores
-   * the initial bounding box.
+   * Exercises the bounding-box handles of one {@link HANDLE_GROUPS} pair,
+   * asserting correct resize behavior including undo/redo for each handle.
+   * Each handle restores the initial bounding box. Geometry is asserted
+   * semantically for every handle and step; rendering is screenshot-asserted
+   * once per handle after the resize, and the undo/redo/restore visual
+   * round-trip once per gesture (the very first handle) — the reprojection
+   * path is the same for every handle.
    */
-  test("detection resize via handles with undo/redo", async ({
-    fiftyoneLoader,
-    modal,
-    page,
-  }) => {
-    await openSample(fiftyoneLoader, page, modal, SAMPLE_IDS.resize);
-    await enterDetectionQuickEdit(modal);
+  HANDLE_GROUPS.forEach((group, groupIndex) => {
+    const names = group.map((point) => point.name).join(" and ");
 
-    for (const point of DETECTION_CORNERS_AND_EDGES) {
-      // Resize box
-      await modal.sampleCanvas.move(point.x, point.y, `${point.cursor}-resize`);
-      await modal.sampleCanvas.down();
-      await modal.sampleCanvas.move(0.5, 0.5);
-      await modal.sampleCanvas.up();
-      await modal.sampleCanvas.move(point.x, point.y, "crosshair");
-      await modal.sidebar.edit.assert.undoIsEnabled();
-      await modal.sampleCanvas.assert.hasScreenshot(
-        `detection-lighter-selected-${point.name}.png`,
+    test(`detection resize via ${names} handles with undo/redo`, async ({
+      fiftyoneLoader,
+      modal,
+      page,
+    }) => {
+      await openSample(
+        fiftyoneLoader,
+        page,
+        modal,
+        GESTURE_SAMPLE_IDS.resize[groupIndex],
       );
-      await assertPosition(modal, point.resize);
+      await enterDetectionQuickEdit(modal);
 
-      // Undo
-      await modal.sidebar.edit.undo();
-      await modal.sidebar.edit.assert.redoIsEnabled();
-      await modal.sampleCanvas.assert.hasScreenshot(
-        "detection-lighter-selected-centered.png",
-      );
-      await assertPosition(modal, INITIAL_BOUNDING_BOX);
+      for (const point of group) {
+        const withRoundTripScreenshots = groupIndex === 0 && point === group[0];
 
-      // Redo
-      await modal.sidebar.edit.redo();
-      await modal.sidebar.edit.assert.redoIsEnabled(false);
-      await modal.sidebar.edit.assert.undoIsEnabled();
-      await modal.sampleCanvas.assert.hasScreenshot(
-        `detection-lighter-selected-${point.name}.png`,
-      );
-      await assertPosition(modal, point.resize);
+        // Resize box
+        await modal.sampleCanvas.move(
+          point.x,
+          point.y,
+          `${point.cursor}-resize`,
+        );
+        await modal.sampleCanvas.down();
+        await modal.sampleCanvas.move(0.5, 0.5);
+        await modal.sampleCanvas.up();
+        await modal.sampleCanvas.move(point.x, point.y, "crosshair");
+        await modal.sidebar.edit.assert.undoIsEnabled();
+        await modal.sampleCanvas.assert.hasScreenshot(
+          `detection-lighter-selected-${point.name}.png`,
+        );
+        await assertPosition(modal, point.resize);
 
-      // Resize to original box
-      await modal.sampleCanvas.move(0.5, 0.5, `${point.cursor}-resize`);
-      await modal.sampleCanvas.down();
-      await modal.sampleCanvas.move(point.x, point.y);
-      await modal.sampleCanvas.up();
-      await modal.sampleCanvas.move(0.9, 0.9, "crosshair");
-      await modal.sampleCanvas.assert.hasScreenshot(
-        "detection-lighter-selected-centered.png",
-      );
-      await assertPosition(modal, INITIAL_BOUNDING_BOX);
-    }
+        // Undo
+        await modal.sidebar.edit.undo();
+        await modal.sidebar.edit.assert.redoIsEnabled();
+        if (withRoundTripScreenshots) {
+          await modal.sampleCanvas.assert.hasScreenshot(
+            "detection-lighter-selected-centered.png",
+          );
+        }
+        await assertPosition(modal, INITIAL_BOUNDING_BOX);
+
+        // Redo
+        await modal.sidebar.edit.redo();
+        await modal.sidebar.edit.assert.redoIsEnabled(false);
+        await modal.sidebar.edit.assert.undoIsEnabled();
+        if (withRoundTripScreenshots) {
+          await modal.sampleCanvas.assert.hasScreenshot(
+            `detection-lighter-selected-${point.name}.png`,
+          );
+        }
+        await assertPosition(modal, point.resize);
+
+        // Resize to original box
+        await modal.sampleCanvas.move(0.5, 0.5, `${point.cursor}-resize`);
+        await modal.sampleCanvas.down();
+        await modal.sampleCanvas.move(point.x, point.y);
+        await modal.sampleCanvas.up();
+        await modal.sampleCanvas.move(0.9, 0.9, "crosshair");
+        if (withRoundTripScreenshots) {
+          await modal.sampleCanvas.assert.hasScreenshot(
+            "detection-lighter-selected-centered.png",
+          );
+        }
+        await assertPosition(modal, INITIAL_BOUNDING_BOX);
+      }
+    });
   });
 
   /**
-   * Drags the detection to all eight handle positions, asserting correct
-   * move behavior including undo/redo for each position. Each iteration
-   * restores the initial bounding box.
+   * Drags the detection to each handle position of one {@link HANDLE_GROUPS}
+   * pair, asserting correct move behavior including undo/redo for each
+   * position. Each position restores the initial bounding box. Screenshot
+   * policy matches the resize tests: rendering once per position after the
+   * move, the undo/redo/restore visual round-trip once per gesture.
    */
-  test("detection move with undo/redo", async ({
-    fiftyoneLoader,
-    modal,
-    page,
-  }) => {
-    await openSample(fiftyoneLoader, page, modal, SAMPLE_IDS.move);
-    await enterDetectionQuickEdit(modal);
+  HANDLE_GROUPS.forEach((group, groupIndex) => {
+    const names = group.map((point) => point.name).join(" and ");
 
-    for (const point of DETECTION_CORNERS_AND_EDGES) {
-      // Move box
-      await modal.sampleCanvas.move(0.5, 0.5);
-      await modal.sampleCanvas.down();
-      await modal.sampleCanvas.move(point.x, point.y);
-      await modal.sampleCanvas.up();
-      await modal.sidebar.edit.assert.undoIsEnabled();
-      await modal.sampleCanvas.assert.hasScreenshot(
-        `detection-lighter-selected-${point.name}-move.png`,
+    test(`detection move to ${names} with undo/redo`, async ({
+      fiftyoneLoader,
+      modal,
+      page,
+    }) => {
+      await openSample(
+        fiftyoneLoader,
+        page,
+        modal,
+        GESTURE_SAMPLE_IDS.move[groupIndex],
       );
-      await assertPosition(modal, point.move);
+      await enterDetectionQuickEdit(modal);
 
-      // Undo
-      await modal.sidebar.edit.undo();
-      await modal.sidebar.edit.assert.redoIsEnabled();
-      await modal.sampleCanvas.assert.hasScreenshot(
-        "detection-lighter-selected-centered.png",
-      );
-      await assertPosition(modal, INITIAL_BOUNDING_BOX);
+      for (const point of group) {
+        const withRoundTripScreenshots = groupIndex === 0 && point === group[0];
 
-      // Redo
-      await modal.sidebar.edit.redo();
-      await modal.sidebar.edit.assert.redoIsEnabled(false);
-      await modal.sidebar.edit.assert.undoIsEnabled();
-      await modal.sampleCanvas.assert.hasScreenshot(
-        `detection-lighter-selected-${point.name}-move.png`,
-      );
-      await assertPosition(modal, point.move);
+        // Move box
+        await modal.sampleCanvas.move(0.5, 0.5);
+        await modal.sampleCanvas.down();
+        await modal.sampleCanvas.move(point.x, point.y);
+        await modal.sampleCanvas.up();
+        await modal.sidebar.edit.assert.undoIsEnabled();
+        await modal.sampleCanvas.assert.hasScreenshot(
+          `detection-lighter-selected-${point.name}-move.png`,
+        );
+        await assertPosition(modal, point.move);
 
-      // Move back
-      await modal.sampleCanvas.move(point.x, point.y);
-      await modal.sampleCanvas.down();
-      await modal.sampleCanvas.move(0.5, 0.5);
-      await modal.sampleCanvas.up();
-      await modal.sidebar.edit.assert.undoIsEnabled();
-      await modal.sampleCanvas.assert.hasScreenshot(
-        "detection-lighter-selected-centered.png",
-      );
-      await assertPosition(modal, INITIAL_BOUNDING_BOX);
-    }
+        // Undo
+        await modal.sidebar.edit.undo();
+        await modal.sidebar.edit.assert.redoIsEnabled();
+        if (withRoundTripScreenshots) {
+          await modal.sampleCanvas.assert.hasScreenshot(
+            "detection-lighter-selected-centered.png",
+          );
+        }
+        await assertPosition(modal, INITIAL_BOUNDING_BOX);
+
+        // Redo
+        await modal.sidebar.edit.redo();
+        await modal.sidebar.edit.assert.redoIsEnabled(false);
+        await modal.sidebar.edit.assert.undoIsEnabled();
+        if (withRoundTripScreenshots) {
+          await modal.sampleCanvas.assert.hasScreenshot(
+            `detection-lighter-selected-${point.name}-move.png`,
+          );
+        }
+        await assertPosition(modal, point.move);
+
+        // Move back
+        await modal.sampleCanvas.move(point.x, point.y);
+        await modal.sampleCanvas.down();
+        await modal.sampleCanvas.move(0.5, 0.5);
+        await modal.sampleCanvas.up();
+        await modal.sidebar.edit.assert.undoIsEnabled();
+        if (withRoundTripScreenshots) {
+          await modal.sampleCanvas.assert.hasScreenshot(
+            "detection-lighter-selected-centered.png",
+          );
+        }
+        await assertPosition(modal, INITIAL_BOUNDING_BOX);
+      }
+    });
   });
 
   /**

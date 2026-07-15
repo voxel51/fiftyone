@@ -82,7 +82,7 @@
     "oss/specs/prompt.spec.ts": 15.9,
     "oss/specs/python-panels-grid.spec.ts": 3.1,
     "oss/specs/query-performance.spec.ts": 3.0,
-    "oss/specs/quick-edit.spec.ts": 40.7,
+    "oss/specs/quick-edit.spec.ts": 120.0,
     "oss/specs/quickstart-groups-dynamic.spec.ts": 4.5,
     "oss/specs/quickstart-groups.spec.ts": 41.9,
     "oss/specs/quickstart.spec.ts": 15.8,
