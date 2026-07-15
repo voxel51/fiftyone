@@ -9,7 +9,11 @@ import unittest
 
 import fiftyone as fo
 from fiftyone import ViewField as F
-from fiftyone.utils.eval.vqa import VQAResults, _normalize_answer
+from fiftyone.utils.eval.vqa import (
+    VQAResults,
+    _levenshtein,
+    _normalize_answer,
+)
 
 from decorators import drop_datasets
 
@@ -238,6 +242,103 @@ class VQAEvaluationTests(unittest.TestCase):
         self.assertNotIn("eval2", schema)
         self.assertNotIn("predictions.vqas.eval2", schema)
         self.assertNotIn("eval2", dataset.list_evaluations())
+
+
+def _single_vqa_dataset(gt_kwargs_and_answers):
+    dataset = fo.Dataset()
+    dataset.add_samples(
+        [
+            fo.Sample(
+                filepath="image%d.jpg" % i,
+                ground_truth=fo.VQA(**gt_kwargs),
+                predictions=fo.VQA(answer=pred_answer),
+            )
+            for i, (gt_kwargs, pred_answer) in enumerate(gt_kwargs_and_answers)
+        ]
+    )
+    return dataset
+
+
+class VQAEvalBreadthTests(unittest.TestCase):
+    def test_levenshtein(self):
+        self.assertEqual(_levenshtein("kitten", "sitting"), 3)
+        self.assertEqual(_levenshtein("", "abc"), 3)
+        self.assertEqual(_levenshtein("abc", "abc"), 0)
+
+    @drop_datasets
+    def test_multiple_choice(self):
+        choices = ["a cat", "a dog", "a bird"]
+        dataset = _single_vqa_dataset(
+            [
+                # text-canonical match
+                ({"answer": "a dog", "choices": choices}, "a dog"),
+                # letter resolution: "B" -> index 1 -> "a dog" != gt "a cat"
+                ({"answer": "a cat", "choices": choices}, "B"),
+                # parenthesized letter resolves: "(c)" -> "a bird"
+                ({"answer": "a bird", "choices": choices}, "(c)"),
+            ]
+        )
+
+        results = dataset.evaluate_vqa(
+            "predictions", eval_key="eval", method="multiple_choice"
+        )
+
+        self.assertListEqual(dataset.values("eval"), [1.0, 0.0, 1.0])
+        self.assertListEqual(
+            dataset.values("predictions.eval"), [True, False, True]
+        )
+
+        # confusion matrix lives in the (normalized) choice space
+        self.assertIn("dog", list(results.classes))
+
+    @drop_datasets
+    def test_anls(self):
+        dataset = _single_vqa_dataset(
+            [
+                ({"answer": "building"}, "building"),  # 1.0
+                ({"answer": "buildings"}, "building"),  # 1 - 1/9
+                ({"answer": "building"}, "xyz"),  # thresholded to 0
+            ]
+        )
+
+        results = dataset.evaluate_vqa(
+            "predictions", eval_key="eval", method="anls"
+        )
+
+        scores = dataset.values("eval")
+        self.assertAlmostEqual(scores[0], 1.0)
+        self.assertAlmostEqual(scores[1], 1.0 - 1.0 / 9.0)
+        self.assertAlmostEqual(scores[2], 0.0)
+        self.assertAlmostEqual(
+            results.accuracy, (1.0 + (1.0 - 1.0 / 9.0)) / 3.0
+        )
+
+    @drop_datasets
+    def test_token_f1(self):
+        dataset = _single_vqa_dataset(
+            [({"answer": "cat"}, "black cat")]  # P=1/2, R=1 -> F1=2/3
+        )
+
+        dataset.evaluate_vqa("predictions", eval_key="eval", method="token_f1")
+
+        self.assertAlmostEqual(dataset.values("eval")[0], 2.0 / 3.0)
+
+    @drop_datasets
+    def test_contains(self):
+        dataset = _single_vqa_dataset(
+            [
+                (
+                    {"answer": "Eiffel Tower"},
+                    "The Eiffel Tower in Paris",
+                ),
+                ({"answer": "Big Ben"}, "The Eiffel Tower in Paris"),
+            ]
+        )
+
+        dataset.evaluate_vqa("predictions", eval_key="eval", method="contains")
+
+        self.assertListEqual(dataset.values("eval"), [1.0, 0.0])
+        self.assertListEqual(dataset.values("predictions.eval"), [True, False])
 
 
 if __name__ == "__main__":

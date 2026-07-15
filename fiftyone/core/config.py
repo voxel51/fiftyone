@@ -747,6 +747,18 @@ class EvaluationConfig(EnvConfig):
             "vqa": {
                 "config_cls": "fiftyone.utils.eval.vqa.VQAAccuracyEvaluationConfig",
             },
+            "multiple_choice": {
+                "config_cls": "fiftyone.utils.eval.vqa.MultipleChoiceEvaluationConfig",
+            },
+            "anls": {
+                "config_cls": "fiftyone.utils.eval.vqa.ANLSEvaluationConfig",
+            },
+            "token_f1": {
+                "config_cls": "fiftyone.utils.eval.vqa.TokenF1EvaluationConfig",
+            },
+            "contains": {
+                "config_cls": "fiftyone.utils.eval.vqa.ContainsEvaluationConfig",
+            },
         },
     }
 
