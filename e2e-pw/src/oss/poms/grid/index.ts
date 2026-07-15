@@ -53,6 +53,15 @@ export class GridPom {
   }
 
   async openNthSample(n: number) {
+    // custom-rendered tiles (multimodal) have no looker; open via their
+    // dedicated affordance
+    const custom = this.page.getByTestId("grid-custom-renderer").nth(n);
+    if (await custom.count()) {
+      // the open button is revealed on tile hover
+      await custom.hover();
+      await custom.getByRole("button", { name: "Open sample modal" }).click();
+      return;
+    }
     await this.getNthLooker(n).click({ position: { x: 10, y: 80 } });
   }
 

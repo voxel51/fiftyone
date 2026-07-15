@@ -216,6 +216,12 @@ export class OssLoader extends AbstractFiftyoneLoader {
           return true;
         }
 
+        // custom-rendered tiles (multimodal) have no looker canvas; a
+        // committed renderer wrapper is their terminal ready state
+        if (document.querySelector(`[data-cy=grid-custom-renderer]`)) {
+          return true;
+        }
+
         return (
           document.querySelector(`canvas`)?.getAttribute("canvas-loaded") ===
           "true"

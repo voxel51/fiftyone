@@ -46,10 +46,10 @@ test.describe.serial("annotate-multimodal-disabled", () => {
     modal,
   }) => {
     await grid.openFirstSample();
-    // multimodal media has no built-in viewer, so allow the error/unsupported
-    // media state while the sample doc loads
-    await modal.waitForSampleLoadDomAttribute(true);
 
+    // multimodal media renders through its own viewer, not the looker, so
+    // looker load markers never appear; switching modes auto-waits on the
+    // sidebar tab, which is this test's real precondition
     await modal.sidebar.switchMode("annotate");
 
     // the annotate sidebar must refuse to load and explain why, rather than
