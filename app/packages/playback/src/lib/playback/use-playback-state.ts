@@ -15,6 +15,8 @@
 import { useAtomValue } from "jotai";
 import {
   achievedSpeedAtom,
+  audioMutedAtom,
+  audioVolumeAtom,
   bufferedRangesAtom,
   bufferingDetailAtom,
   currentTimeAtom,
@@ -73,6 +75,18 @@ export function useIsPlayPending(): boolean {
 export function useIsBuffering(): boolean {
   const store = usePlaybackStore();
   return useAtomValue(isBufferingAtom, { store });
+}
+
+/** Audio volume in [0, 1]. Write via `setAudioVolume` in store-access. */
+export function useAudioVolume(): number {
+  const store = usePlaybackStore();
+  return useAtomValue(audioVolumeAtom, { store });
+}
+
+/** Whether timeline audio is muted. Write via `setAudioMuted` in store-access. */
+export function useAudioMuted(): boolean {
+  const store = usePlaybackStore();
+  return useAtomValue(audioMutedAtom, { store });
 }
 
 /**

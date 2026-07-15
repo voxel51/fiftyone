@@ -141,6 +141,21 @@ export const achievedSpeedAtom = atom<number | null>(null) as PrimitiveAtom<
 >;
 
 /**
+ * Audio volume in [0, 1], applied to any audio stream registered via
+ * `useAudioStream`. Independent of `audioMutedAtom` so a persisted volume
+ * survives mute/unmute round-trips.
+ */
+export const audioVolumeAtom = atom(1.0);
+
+/**
+ * Whether timeline audio is muted. Defaults to true: browsers reject
+ * unmuted autoplay before a user gesture, and muted-by-default matches
+ * the legacy player's volume-0 start. While muted, an audio stream goes
+ * dormant (unsubscribed) so it never gates the engine's barrier.
+ */
+export const audioMutedAtom = atom(true);
+
+/**
  * Fired on discontinuous playhead jumps: user seek, step forward/back,
  * play() resetting to loop start, and loop-wrap. NOT fired on normal
  * frame-by-frame RAF ticks.
