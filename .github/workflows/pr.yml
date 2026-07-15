@@ -4,12 +4,26 @@ on:
   pull_request:
     # `edited` catches base changes — notably GitHub auto-retargeting a stacked
     # PR to develop when the PR below it merges — so the heavy suite runs before
-    # it can land (no `synchronize` fires on an auto-retarget).
-    types: [opened, synchronize, reopened, closed, ready_for_review, edited]
+    # it can land (no `synchronize` fires on an auto-retarget). No `closed`:
+    # nothing here runs on it, and its no-op run races the suite still testing
+    # the just-merged SHA, leaving a spurious red X on the merged PR.
+    types: [opened, synchronize, reopened, edited]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # A PR title/body edit is a no-op run (run-ci=false). It gets its own group:
+  # `cancel-in-progress: false` can't protect a *queued* real run — GitHub
+  # allows only one queued run per group — so a shared group lets an edit
+  # displace the suite run before it starts.
+  group: >-
+    ${{ github.workflow }}-${{ github.ref }}-${{
+    (github.event.action == 'edited' && github.event.changes.base == null)
+    && 'noop' || 'ci' }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
 
 jobs:
   modified-files:
@@ -89,7 +103,6 @@ jobs:
   build:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.heavy == 'true' && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true')
@@ -98,7 +111,6 @@ jobs:
   e2e:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.heavy == 'true' && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.e2e-changes == 'true' ||
@@ -111,7 +123,6 @@ jobs:
   lint:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.run-ci == 'true' && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true' ||
@@ -121,26 +132,86 @@ jobs:
   test:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.heavy == 'true' && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/test.yml
+    with:
+      python-versions: >-
+        ${{ (github.base_ref == 'develop' ||
+        startsWith(github.base_ref, 'feat/'))
+        && '["3.10", "3.12"]' || '["3.10", "3.11", "3.12"]' }}
 
   test-windows:
     needs: modified-files
     if: >-
-      github.event.action != 'closed' &&
       needs.modified-files.outputs.heavy == 'true' &&
       needs.modified-files.outputs.fiftyone-changes == 'true'
     uses: ./.github/workflows/windows-test.yml
+    with:
+      python-versions: >-
+        ${{ (github.base_ref == 'develop' ||
+        startsWith(github.base_ref, 'feat/'))
+        && '["3.10", "3.12"]' || '["3.10", "3.11", "3.12"]' }}
 
   all-tests:
     runs-on: ubuntu-latest
-    needs: [build, lint, test, e2e]
+    needs: [modified-files, build, lint, test, e2e]
     if: always()
+    env:
+      # A run that skipped the suite (a no-op body edit, or a failed gate)
+      # must not aggregate its skipped needs into a vacuous green that
+      # becomes the latest `all-tests` for a SHA whose real suite failed.
+      NO_OP: >-
+        ${{ needs.modified-files.result == 'success' &&
+        needs.modified-files.outputs.run-ci != 'true' }}
     steps:
-      - run: sh -c ${{
+      - name: Fail when the CI gate did not complete
+        if: needs.modified-files.result != 'success'
+        run: exit 1
+      - name: Mirror the last real all-tests result
+        if: env.NO_OP == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            // A no-op edit usually lands while the run actually testing this
+            // SHA is still in flight (this job's own check run is in_progress,
+            // so it never matches the completed filter). Poll for that run's
+            // verdict rather than failing on the gap — a vacuous green here
+            // could merge the PR before its suite finishes.
+            const deadline = Date.now() + 45 * 60 * 1000;
+            for (;;) {
+              const { data } = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: context.payload.pull_request.head.sha,
+                check_name: 'all-tests',
+                // `latest` (the default) returns only the newest run per name —
+                // this job's own in_progress run — hiding the completed verdict.
+                filter: 'all',
+                per_page: 100,
+              });
+              const prior = data.check_runs
+                .filter((c) => c.status === 'completed')
+                .sort((a, b) => new Date(b.started_at) - new Date(a.started_at))[0];
+              if (prior) {
+                if (prior.conclusion === 'success') {
+                  core.info('Mirroring the previous all-tests result: success');
+                } else {
+                  core.setFailed(`Mirroring the previous all-tests result: ${prior.conclusion}`);
+                }
+                return;
+              }
+              if (Date.now() >= deadline) {
+                core.setFailed('No completed all-tests for this commit after 45 minutes — deferring to the run testing it.');
+                return;
+              }
+              core.info('No completed all-tests for this commit yet — waiting for the run testing it.');
+              await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
+            }
+      - name: Aggregate suite results
+        if: env.NO_OP != 'true'
+        run: sh -c ${{
           (needs.build.result == 'success' || needs.build.result == 'skipped') &&
           (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
           (needs.test.result == 'success' || needs.test.result == 'skipped') &&

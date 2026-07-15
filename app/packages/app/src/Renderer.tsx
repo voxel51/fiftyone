@@ -15,7 +15,7 @@ import {
   useSetModalState,
 } from "@fiftyone/state";
 import { useColorScheme } from "@mui/material";
-import React, {
+import {
   Suspense,
   useCallback,
   useEffect,

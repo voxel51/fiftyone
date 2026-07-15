@@ -1,5 +1,5 @@
 import { animated } from "@react-spring/web";
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import styled from "styled-components";
 
 import { useHighlightHover } from "../Actions/utils";

@@ -1,4 +1,5 @@
 import { McapStreamReader, type McapTypes } from "@mcap/core";
+import { compareBigInt } from "../bigint";
 import { mcapErrorMessage } from "../errors";
 import type {
   McapIndexedMessageTime,
@@ -182,7 +183,13 @@ function assertMessageIndexRecordsFillRecord(bytes: Uint8Array) {
   }
 }
 
-async function readChunkIndexedMessageTimes({
+/**
+ * Reads one chunk's message-index entries for the given channels — a
+ * footer-only read; chunk message data is never decompressed. Entries
+ * are filtered to the optional inclusive time bounds and returned
+ * sorted ascending.
+ */
+export async function readChunkIndexedMessageTimes({
   channelIds,
   chunkIndex,
   endTimeNs,
@@ -250,7 +257,11 @@ function readExactRange(
   );
 }
 
-function channelIdsForTopics(
+/**
+ * Resolves the channel-id set behind the requested topics (a topic can
+ * map to multiple channels). Undefined topics selects every channel.
+ */
+export function channelIdsForTopics(
   channelsById: ReadonlyMap<number, McapTypes.TypedMcapRecords["Channel"]>,
   topics: readonly string[] | undefined,
 ): ReadonlySet<number> {
@@ -353,7 +364,11 @@ function isWithinIndexedRange(
   return true;
 }
 
-function compareIndexedMessageTimes(
+/**
+ * Deterministic ascending order for indexed message entries: log time,
+ * then chunk offset, message offset, channel id.
+ */
+export function compareIndexedMessageTimes(
   left: McapIndexedMessageTime,
   right: McapIndexedMessageTime,
 ) {
@@ -379,15 +394,4 @@ function compareIndexedMessageTimes(
   }
 
   return left.channelId - right.channelId;
-}
-
-function compareBigInt(left: bigint, right: bigint) {
-  if (left < right) {
-    return -1;
-  }
-  if (left > right) {
-    return 1;
-  }
-
-  return 0;
 }

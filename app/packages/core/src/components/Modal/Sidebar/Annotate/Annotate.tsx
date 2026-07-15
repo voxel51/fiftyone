@@ -28,6 +28,7 @@ import {
 } from "@fiftyone/annotation";
 import { useLighterAnnotationBridge } from "./useLighterAnnotationBridge";
 import { useLooker3dAnnotationBridge } from "./useLooker3dAnnotationBridge";
+import { useSyncAnnotationSliceMediaType } from "./useSyncAnnotationSliceMediaType";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -45,6 +46,9 @@ const DISABLED_MESSAGES: Record<
     </p>
   ),
   videoDataset: <p>Annotation isn&rsquo;t supported for video datasets.</p>,
+  multimodalDataset: (
+    <p>Annotation isn&rsquo;t supported for multimodal datasets.</p>
+  ),
 };
 
 const Container = styled.div`
@@ -120,6 +124,7 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useSyncModalSample();
   useSync3dModalSample();
   useSyncAnnotationEngine();
+  useSyncAnnotationSliceMediaType();
   useEngineUndoableBridge();
   useLighterAnnotationBridge();
   useLooker3dAnnotationBridge();

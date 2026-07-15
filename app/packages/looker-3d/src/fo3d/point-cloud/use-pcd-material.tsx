@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import type { BufferGeometry, Quaternion } from "three";
 import {
   DEFAULT_BOUNDING_BOX,

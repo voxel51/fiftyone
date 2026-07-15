@@ -11,7 +11,7 @@ export const usePointsField = () => usePanelStatePartial("pointsField", null);
 export function useBrainResultsSelector() {
   const [selected, setSelected] = useBrainResult();
   const dataset = useRecoilValue(fos.dataset);
-  const [colorByField, setColorByField] = useColorByField();
+  const [, setColorByField] = useColorByField();
   const [loadingPlotError, setLoadingPlotError] = usePanelStatePartial(
     "loadingPlotError",
     null,

@@ -21,7 +21,7 @@ export const useKeyBinding = (
   useEffect(() => {
     if (!resolvedCtx) {
       console.error(`Could not resolve a command context.`);
-      return;
+      return undefined;
     }
     let cmd: Command | undefined;
     if (typeof command === "string") {

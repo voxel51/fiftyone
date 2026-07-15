@@ -8,6 +8,19 @@ import type { createStore } from "jotai";
 /** Opaque handle to the scoped Jotai store owned by a PlaybackProvider instance. */
 export type PlaybackStore = ReturnType<typeof createStore>;
 
+/**
+ * A discontinuous playhead jump (seek / step / loop-wrap). The `seq`
+ * counter changes even when `time` repeats, so consumers can re-fire on
+ * every event. Read via `useSeekEvent()`.
+ */
+export type SeekEvent = { time: number; seq: number };
+
+/**
+ * Time ranges (seconds, ascending, non-overlapping) where every blocking
+ * stream has data buffered and ready to play.
+ */
+export type BufferedRanges = ReadonlyArray<readonly [number, number]>;
+
 // ---------------------------------------------------------------------------
 // Buffer readiness
 // ---------------------------------------------------------------------------
@@ -101,6 +114,23 @@ export interface PlaybackStream {
    * @default 3
    */
   lookaheadSeconds?: number;
+
+  /**
+   * Minimum contiguous buffered time required before a user-initiated play
+   * request becomes active playback. Keep this small: it protects the first
+   * interaction from immediately stalling without forcing long startup waits.
+   * Streams that omit it preserve the historical "current time only" start
+   * behavior.
+   */
+  startupBufferSeconds?: number;
+
+  /**
+   * Maximum wall-clock time a play request may wait for
+   * `startupBufferSeconds` coverage. Once elapsed, the engine may start as
+   * soon as the current frame is ready, even if the wider startup window is
+   * incomplete. Omit to preserve an unbounded startup-coverage wait.
+   */
+  startupBufferMaxWaitSeconds?: number;
 
   /**
    * How this stream resolves the best cached entry for a given time. Used

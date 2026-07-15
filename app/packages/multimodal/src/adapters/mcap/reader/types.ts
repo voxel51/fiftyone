@@ -1,5 +1,9 @@
 import type { McapIndexedReader, McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
+import type {
+  McapPrefetchChunkDataRequest,
+  McapPrefetchWindowRequest,
+} from "./chunk-prefetch";
 
 /**
  * One timestamp and byte offset entry from an MCAP message index.
@@ -54,6 +58,55 @@ export interface McapReadIndexedMessageTimesRequest {
    * Topic names to include; omitting this reads all indexed topics.
    */
   readonly topics?: readonly string[];
+}
+
+/**
+ * Filters for resolving the newest indexed entries at or before a time.
+ */
+export interface McapReadLatestIndexedMessageTimesRequest {
+  /**
+   * Inclusive upper bound: return the newest entries with log time at
+   * or before this timestamp, however far back they are.
+   */
+  readonly timeNs: bigint;
+
+  /**
+   * Topic names to resolve; each topic gets an independent result.
+   */
+  readonly topics: readonly string[];
+
+  /**
+   * Newest-first entry count per topic; defaults to 1.
+   */
+  readonly limitPerTopic?: number;
+
+  /**
+   * Per-topic cap on chunk message-index reads during the walk.
+   */
+  readonly maxChunkProbesPerTopic?: number;
+}
+
+/**
+ * Filters for resolving per-topic first/last indexed message times.
+ */
+export interface McapReadTopicIndexedTimeBoundsRequest {
+  /**
+   * Topic names to resolve; each topic gets an independent result.
+   */
+  readonly topics: readonly string[];
+
+  /**
+   * Per-topic cap on chunk message-index reads during each walk.
+   */
+  readonly maxChunkProbesPerTopic?: number;
+}
+
+/**
+ * First and last indexed message log times for one topic.
+ */
+export interface McapTopicIndexedTimeBounds {
+  readonly firstLogTimeNs: bigint;
+  readonly lastLogTimeNs: bigint;
 }
 
 /**
@@ -114,7 +167,35 @@ export interface McapIndexedReaderLike {
   ): AsyncGenerator<McapIndexedMessageTime, void, void>;
 
   /**
+   * Resolves the newest indexed entries at or before a time per topic,
+   * with unbounded lookback, without decoding chunk records.
+   */
+  readLatestIndexedMessageTimes?(
+    args: McapReadLatestIndexedMessageTimesRequest,
+  ): Promise<ReadonlyMap<string, readonly McapIndexedMessageTime[]>>;
+
+  /**
+   * Resolves per-topic first/last indexed message times without
+   * decoding chunk records.
+   */
+  readTopicIndexedTimeBounds?(
+    args: McapReadTopicIndexedTimeBoundsRequest,
+  ): Promise<ReadonlyMap<string, McapTopicIndexedTimeBounds | null>>;
+
+  /**
    * Streams full MCAP messages through the core indexed reader API.
    */
   readMessages: McapIndexedReader["readMessages"];
+
+  /**
+   * Warms the byte layer for the exact chunks an already-resolved read is
+   * about to touch. Advisory; failures surface only through the real read.
+   */
+  prefetchChunkData?(request: McapPrefetchChunkDataRequest): Promise<void>;
+
+  /**
+   * Warms the byte layer for an upcoming indexed read over a log-time
+   * window. Advisory; failures surface only through the real read.
+   */
+  prefetchWindow?(request: McapPrefetchWindowRequest): Promise<void>;
 }

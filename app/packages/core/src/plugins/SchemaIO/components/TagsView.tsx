@@ -1,5 +1,4 @@
 import { Box, Chip } from "@mui/material";
-import React from "react";
 import HeaderView from "./HeaderView";
 import { getComponentProps } from "../utils";
 

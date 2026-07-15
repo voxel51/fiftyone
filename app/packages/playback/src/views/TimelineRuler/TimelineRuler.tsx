@@ -2,7 +2,10 @@ import { useDragDelta } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { type ReactNode, useEffect, useRef } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
+import { usePlaybackStore } from "../../lib/playback/playback-store-context";
+import { setHoverTime } from "../../lib/playback/store-access";
 import {
+  useHoverTime,
   useLoopEnd,
   useLoopStart,
   usePlayhead,
@@ -10,14 +13,39 @@ import {
   useViewStart,
 } from "../../lib/playback/use-playback-state";
 import { clamp } from "../../lib/playback/utils";
+import BufferedLaneShading from "./BufferedLaneShading";
 import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;
 const CLICK_PX_THRESHOLD = 3;
 
+// Nice tick spacings in seconds, ascending. We pick the smallest one that
+// keeps the visible tick count at or below TARGET_TICK_DIVISIONS. Without
+// this the interval capped at 1s, so a long file zoomed out crammed a label
+// into every single second.
+const TICK_INTERVALS = [
+  0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600,
+];
+const TARGET_TICK_DIVISIONS = 10;
+
+function chooseTickInterval(viewDuration: number): number {
+  for (const interval of TICK_INTERVALS) {
+    if (viewDuration / interval <= TARGET_TICK_DIVISIONS) return interval;
+  }
+  return TICK_INTERVALS[TICK_INTERVALS.length - 1];
+}
+
 function tickLabel(t: number): string {
   const s = Math.floor(t);
   const frac = Math.round((t - s) * 10) / 10;
+  // Past a minute, seconds-only labels ("150s") get hard to read on long
+  // files; switch to m:ss. Intervals at this scale are whole seconds, so the
+  // fractional branch below only matters for sub-minute zoomed-in views.
+  if (t >= 60) {
+    const minutes = Math.floor(s / 60);
+    const seconds = s - minutes * 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  }
   return frac === 0 ? `${s}s` : `${(s + frac).toFixed(1)}s`;
 }
 
@@ -47,8 +75,48 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const loopEnd = useLoopEnd();
   const { duration, seekSnapped, setView, setLoop, snapPlayheadToFrame } =
     usePlayback();
+  const hoverTime = useHoverTime();
+  const store = usePlaybackStore();
 
   const rulerRef = useRef<HTMLDivElement>(null);
+
+  // Publish the timeline time under the pointer so every hover-capable
+  // surface (plot panels, this ruler) can render one shared caret.
+  const publishHover = (clientX: number) => {
+    const el = rulerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const laneWidth = rect.width - labelWidth;
+    const laneX = clientX - rect.left - labelWidth;
+    // The NaN guard matters: a pointer event without coordinates must
+    // clear rather than publish NaN.
+    if (
+      !Number.isFinite(laneX) ||
+      laneWidth <= 0 ||
+      laneX < 0 ||
+      laneX > laneWidth
+    ) {
+      setHoverTime(store, null);
+      return;
+    }
+    setHoverTime(
+      store,
+      clamp(
+        viewStart + (laneX / laneWidth) * (viewEnd - viewStart),
+        0,
+        duration,
+      ),
+    );
+  };
+
+  // This effect clears a hover this ruler may still be publishing when it
+  // unmounts, so no stale caret survives in sibling surfaces.
+  useEffect(
+    () => () => {
+      setHoverTime(store, null);
+    },
+    [store],
+  );
 
   // Capture state at drag-start so onDelta can compute against it without
   // racing with state updates during the drag.
@@ -232,7 +300,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const loopStartRatio = clamp((loopStart - viewStart) / viewDuration, 0, 1);
   const loopEndRatio = clamp((loopEnd - viewStart) / viewDuration, 0, 1);
 
-  const tickInterval = viewDuration <= 1 ? 0.1 : viewDuration <= 3 ? 0.5 : 1;
+  const tickInterval = chooseTickInterval(viewDuration);
   const ticks: number[] = [];
   const firstTick = Math.ceil(viewStart / tickInterval - 1e-9) * tickInterval;
   for (
@@ -256,7 +324,11 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
     },
     onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
       dragRef.current.lastPointerX = e.clientX;
+      publishHover(e.clientX);
       laneDrag.handleProps.onPointerMove(e);
+    },
+    onPointerLeave: () => {
+      setHoverTime(store, null);
     },
   };
 
@@ -283,6 +355,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       )}
 
       <div className={styles.lane}>
+        <BufferedLaneShading />
         {ticks.map((t) => (
           <span
             key={t}
@@ -326,6 +399,18 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
           loopEndDrag.handleProps.onPointerUp();
         }}
       />
+
+      {hoverTime !== null &&
+      hoverTime >= viewStart - 1e-9 &&
+      hoverTime <= viewEnd + 1e-9 ? (
+        <div
+          className={styles.hoverCaret}
+          data-testid="timeline-hover-caret"
+          style={{
+            left: laneLeft(clamp((hoverTime - viewStart) / viewDuration, 0, 1)),
+          }}
+        />
+      ) : null}
 
       {/* Playhead handle + line share one translated wrapper. translate3d
           on the wrapper is composited (no layout on every tick); the

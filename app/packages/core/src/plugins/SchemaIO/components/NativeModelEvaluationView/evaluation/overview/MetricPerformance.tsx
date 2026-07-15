@@ -75,7 +75,7 @@ export default function MetricPerformance(props) {
         <ToggleButtonGroup
           exclusive
           value={metricMode}
-          onChange={(e, mode) => {
+          onChange={(_e, mode) => {
             if (mode) setMetricMode(mode);
           }}
           sx={{ height: "28px" }}

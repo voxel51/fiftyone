@@ -1713,6 +1713,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@date-fns/tz@npm:^1.5.0":
+  version: 1.5.0
+  resolution: "@date-fns/tz@npm:1.5.0"
+  checksum: 10/a629879b1f307429e0a00a92dea71e19f63398ba304ee0f58f4d141d50c3058d678c4095b25962f7e5fda508c70502811dd565e58df99e5632dc16097da184a8
+  languageName: node
+  linkType: hard
+
 "@dimforge/rapier3d-compat@npm:^0.12.0, @dimforge/rapier3d-compat@npm:~0.12.0":
   version: 0.12.0
   resolution: "@dimforge/rapier3d-compat@npm:0.12.0"
@@ -2717,7 +2724,7 @@ __metadata:
     fs-extra: "npm:^10.1.0"
     jest: "npm:^29.7.0"
     lodash: "npm:^4.18.1"
-    prettier: "npm:2.2.1"
+    prettier: "npm:^3.8.4"
     vite: "npm:^7.3.2"
   languageName: unknown
   linkType: soft
@@ -2872,7 +2879,7 @@ __metadata:
     classnames: "npm:^2.3.1"
     framer-motion: "npm:^6.2.7"
     material-icons: "npm:^1.13.12"
-    prettier: "npm:^2.7.1"
+    prettier: "npm:^3.8.4"
     re-resizable: "npm:^6.9.17"
     react-input-autosize: "npm:^3.0.0"
     react-laag: "npm:^2.0.3"
@@ -2902,6 +2909,7 @@ __metadata:
     "@fiftyone/flashlight": "npm:*"
     "@fiftyone/looker": "npm:*"
     "@fiftyone/map": "npm:*"
+    "@fiftyone/multimodal": "npm:*"
     "@fiftyone/operators": "npm:*"
     "@fiftyone/spotlight": "npm:*"
     "@fiftyone/state": "npm:*"
@@ -2934,7 +2942,7 @@ __metadata:
     lru-cache: "npm:^11.0.1"
     luxon: "npm:^3.6.1"
     numeral: "npm:^2.0.6"
-    prettier: "npm:2.2.1"
+    prettier: "npm:^3.8.4"
     re-resizable: "npm:^6.9.17"
     react-color: "npm:^2.19.3"
     react-draggable: "npm:^4.4.5"
@@ -3082,7 +3090,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/flashlight@workspace:packages/flashlight"
   dependencies:
-    prettier: "npm:^2.7.1"
+    prettier: "npm:^3.8.4"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "npm:^7.3.2"
   languageName: unknown
@@ -3126,7 +3134,7 @@ __metadata:
     react-color: "npm:^2.19.3"
     rollup-plugin-external-globals: "npm:^0.6.1"
     styled-components: "npm:^6.1.18"
-    three: "npm:^0.182.0"
+    three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
     tunnel-rat: "npm:^0.1.2"
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
@@ -3156,7 +3164,7 @@ __metadata:
     lru-cache: "npm:^11.0.1"
     mime: "npm:^2.5.2"
     monotone-convex-hull-2d: "npm:^1.0.1"
-    prettier: "npm:^2.7.1"
+    prettier: "npm:^3.8.4"
     typescript-plugin-css-modules: "npm:^5.1.0"
     uuid: "npm:^14.0.0"
     vite: "npm:^7.3.2"
@@ -3197,11 +3205,16 @@ __metadata:
   resolution: "@fiftyone/multimodal@workspace:packages/multimodal"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.11.0"
+    "@date-fns/tz": "npm:^1.5.0"
     "@fiftyone/components": "npm:*"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/tiling": "npm:*"
     "@fiftyone/utilities": "npm:*"
+    "@foxglove/ros2idl-parser": "npm:^0.3.6"
+    "@foxglove/rosmsg": "npm:^5.0.5"
+    "@foxglove/rosmsg-serialization": "npm:^2.1.2"
+    "@foxglove/rosmsg2-serialization": "npm:^3.1.2"
     "@mcap/core": "npm:^2.2.1"
     "@mcap/support": "npm:^1.1.0"
     "@react-three/drei": "npm:9.105.4"
@@ -3209,9 +3222,16 @@ __metadata:
     "@types/three": "npm:^0.182.0"
     "@voxel51/voodo": "npm:^0.0.37"
     buffer: "npm:^6.0.3"
+    colormap: "npm:^2.3.2"
+    date-fns: "npm:^4.1.0"
+    jotai: "npm:^2.9.3"
     lru-cache: "npm:^11.0.1"
+    maplibre-gl: "npm:^4.7.1"
+    meshoptimizer: "npm:^0.22.0"
     protobufjs: "npm:^7.6.4"
-    three: "npm:^0.182.0"
+    three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
+    uplot: "npm:^1.6.32"
+    vite-plugin-relay: "npm:^2.0.0"
   languageName: unknown
   linkType: soft
 
@@ -3223,7 +3243,7 @@ __metadata:
     "@fiftyone/utilities": "workspace:^"
     "@testing-library/react": "npm:^14.0.0"
     jest: "npm:^29.7.0"
-    prettier: "npm:2.2.1"
+    prettier: "npm:^3.8.4"
     vite: "npm:^7.3.2"
     vitest: "npm:^3.2.6"
   peerDependencies:
@@ -3246,7 +3266,7 @@ __metadata:
     globals: "npm:^15.8.0"
     jotai: "npm:^2.9.3"
     jotai-optics: "npm:^0.4.0"
-    prettier: "npm:^3.3.3"
+    prettier: "npm:^3.8.4"
     typescript-eslint: "npm:^7.17.0"
     vite: "npm:^7.3.2"
     vite-plugin-svgr: "npm:^4.2.0"
@@ -3262,7 +3282,7 @@ __metadata:
     "@babel/preset-typescript": "npm:^7.17.12"
     "@fiftyone/utilities": "workspace:^"
     jest: "npm:^29.7.0"
-    prettier: "npm:2.2.1"
+    prettier: "npm:^3.8.4"
     vite: "npm:^7.3.2"
   languageName: unknown
   linkType: soft
@@ -3272,7 +3292,7 @@ __metadata:
   resolution: "@fiftyone/relay@workspace:packages/relay"
   dependencies:
     "@recoiljs/refine": "npm:^0.1.1"
-    prettier: "npm:^2.7.1"
+    prettier: "npm:^3.8.4"
     react-relay: "npm:^14.1.0"
     recoil-sync: "npm:^0.2.0"
     relay-compiler: "npm:^14.0.0"
@@ -3342,7 +3362,7 @@ __metadata:
     babel-plugin-relay: "npm:^14.1.0"
     html2canvas: "npm:1.0.0-rc.7"
     lodash: "npm:^4.18.1"
-    prettier: "npm:^2.7.1"
+    prettier: "npm:^3.8.4"
     vite: "npm:^7.3.2"
   peerDependencies:
     react: "*"
@@ -3379,7 +3399,7 @@ __metadata:
     lru-cache: "npm:^11.0.1"
     mime: "npm:^2.5.2"
     path-browserify: "npm:^1.0.1"
-    prettier: "npm:^2.7.1"
+    prettier: "npm:^3.8.4"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "npm:^7.3.2"
   peerDependencies:
@@ -3401,6 +3421,7 @@ __metadata:
     "@fiftyone/state": "workspace:*"
     "@fiftyone/tiling": "workspace:*"
     "@fiftyone/utilities": "workspace:*"
+    "@types/dom-webcodecs": "npm:^0.1.18"
     "@voxel51/voodo": "npm:^0.0.37"
     clsx: "npm:^2.1.0"
     eslint: "npm:9.7.0"
@@ -3409,6 +3430,7 @@ __metadata:
     globals: "npm:^15.8.0"
     jotai: "npm:^2.9.3"
     lru-cache: "npm:^11.0.1"
+    mp4box: "npm:^2.4.1"
     typescript-eslint: "npm:^7.17.0"
     vite: "npm:^7.3.2"
   languageName: unknown
@@ -3599,10 +3621,81 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@foxglove/cdr@npm:^3.5.1":
+  version: 3.5.1
+  resolution: "@foxglove/cdr@npm:3.5.1"
+  checksum: 10/1b8faf9a30310ce29fcbc25702146b8966779e651b228b018d6881c5d1a17087eed60c514621056dabc4fe49b65d8f11c53ffc288098bd9615579d5ef3ef0e86
+  languageName: node
+  linkType: hard
+
 "@foxglove/crc@npm:^0.0.3":
   version: 0.0.3
   resolution: "@foxglove/crc@npm:0.0.3"
   checksum: 10/53e2f78fb001884ed4baeb1cb4dd510e1d67d9389e0457c57c4d4eb6ada346528310a7e5e486f93cfcf131657ed8e4a57cc3ba6d0e7a564742c0a51498504065
+  languageName: node
+  linkType: hard
+
+"@foxglove/message-definition@npm:0.5.0, @foxglove/message-definition@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "@foxglove/message-definition@npm:0.5.0"
+  checksum: 10/679ecc3416a153f4aee969e4031fdd4ccf0c63b04c46da74e9c8c78e72284a83dd2d4a3ee9786962f0394711635256dfc1bc69330206da7fec224447b2c7ff09
+  languageName: node
+  linkType: hard
+
+"@foxglove/omgidl-parser@npm:1.2.2":
+  version: 1.2.2
+  resolution: "@foxglove/omgidl-parser@npm:1.2.2"
+  dependencies:
+    tslib: "npm:^2"
+  checksum: 10/97f8511cf6a82410d39998c94ce4d2042a6119bd23d2ba7d57a740cc0b6da60fce82f617e3f0eb631591577c4a52b6e975c731f5ba6cfa4f36e9b30561cd4b51
+  languageName: node
+  linkType: hard
+
+"@foxglove/ros2idl-parser@npm:^0.3.6":
+  version: 0.3.6
+  resolution: "@foxglove/ros2idl-parser@npm:0.3.6"
+  dependencies:
+    "@foxglove/message-definition": "npm:^0.5.0"
+    "@foxglove/omgidl-parser": "npm:1.2.2"
+    md5-typescript: "npm:^1.0.5"
+  checksum: 10/5df7a40316d079e5d00491bccd7b988f0a802c05a4be6b2770945af044f9b1d761653b3b16290d8efb845334b51f5dc31974960046a495e4aee674dacb435673
+  languageName: node
+  linkType: hard
+
+"@foxglove/rosmsg-serialization@npm:^2.1.2":
+  version: 2.1.2
+  resolution: "@foxglove/rosmsg-serialization@npm:2.1.2"
+  dependencies:
+    "@foxglove/message-definition": "npm:0.5.0"
+  checksum: 10/e69b95f2505ce52090e8469fa27ae04410799220212edb55b2a013596585e91928218933495d713334f1c1423a02b52206bd33251045d065d04c55dcac77f278
+  languageName: node
+  linkType: hard
+
+"@foxglove/rosmsg2-serialization@npm:^3.1.2":
+  version: 3.1.2
+  resolution: "@foxglove/rosmsg2-serialization@npm:3.1.2"
+  dependencies:
+    "@foxglove/cdr": "npm:^3.5.1"
+    "@foxglove/message-definition": "npm:0.5.0"
+    "@foxglove/rostime": "npm:^1.1.3"
+  checksum: 10/16913883617b56e7b313dd9fe5990cf61d96779dc114bf4c2c6f91ab8dd8ba0abf081f805aca8be17d213f60714067cc7935a6ea8f79c9f530a099c2a49c8c42
+  languageName: node
+  linkType: hard
+
+"@foxglove/rosmsg@npm:^5.0.5":
+  version: 5.0.5
+  resolution: "@foxglove/rosmsg@npm:5.0.5"
+  dependencies:
+    "@foxglove/message-definition": "npm:0.5.0"
+    md5-typescript: "npm:^1.0.5"
+  checksum: 10/c5980ec59749525d79a8aed26c0e1de6bf315644490f2b8cb8df9055bbac1176a8f738c8a029d7c0911385a620839d88fc9a82224d57c8fd01fa7888a4979b1a
+  languageName: node
+  linkType: hard
+
+"@foxglove/rostime@npm:^1.1.3":
+  version: 1.1.3
+  resolution: "@foxglove/rostime@npm:1.1.3"
+  checksum: 10/056bb9b4df45aa04e9486f074915f4cb440288d9b981d15a73d76b7cd084a03dc6853b3f69ab05ac24a7d5cd31b758a341c61f8b5b065f0da62db9dc24be7c6f
   languageName: node
   linkType: hard
 
@@ -7211,6 +7304,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/dom-webcodecs@npm:^0.1.18":
+  version: 0.1.18
+  resolution: "@types/dom-webcodecs@npm:0.1.18"
+  checksum: 10/889ffea2c849ed3d23a2486b9eb3ad4da038cacc2bfe538da87e19cf9cad3c98fd29046e36c21725f01bb75d556eec85119ad39575a455d8b1529be95660c966
+  languageName: node
+  linkType: hard
+
 "@types/draco3d@npm:^1.4.0":
   version: 1.4.9
   resolution: "@types/draco3d@npm:1.4.9"
@@ -7369,16 +7469,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/mapbox-gl@npm:*, @types/mapbox-gl@npm:>=1.0.0":
-  version: 3.1.0
-  resolution: "@types/mapbox-gl@npm:3.1.0"
-  dependencies:
-    "@types/geojson": "npm:*"
-  checksum: 10/f748f05f5fb32b91632f4f5d176f9ddc767e3913c31f43dbf905ffb5fe6628b52d388043a787fffb6e8b69187addca3624339edf238ec4eb249e37821ed9621f
-  languageName: node
-  linkType: hard
-
-"@types/mapbox-gl@npm:^2.7.4":
+"@types/mapbox-gl@npm:2.7.21":
   version: 2.7.21
   resolution: "@types/mapbox-gl@npm:2.7.21"
   dependencies:
@@ -7647,14 +7738,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:18.2.0":
-  version: 18.2.0
-  resolution: "@types/react@npm:18.2.0"
+"@types/react@npm:18.3.12":
+  version: 18.3.12
+  resolution: "@types/react@npm:18.3.12"
   dependencies:
     "@types/prop-types": "npm:*"
-    "@types/scheduler": "npm:*"
     csstype: "npm:^3.0.2"
-  checksum: 10/c5fe6b798ab0d4ba2c40173275fb7f1e85a67586d40c97b0bee25a514f44de032e7aa90a98482cc38e106e66102727cdf1be9a8413d29509b92cb384adf4864d
+  checksum: 10/c9bbdfeacd5347d2240e0d2cb5336bc57dbc1b9ff557b6c4024b49df83419e4955553518169d3736039f1b62608e15b35762a6c03d49bd86e33add4b43b19033
   languageName: node
   linkType: hard
 
@@ -7695,13 +7785,6 @@ __metadata:
   version: 1.0.4
   resolution: "@types/robust-point-in-polygon@npm:1.0.4"
   checksum: 10/bd4927fa2143027ee6eef5866dccdbb4d54fa38edd05aec2268227ac1a62d009b85bf57193081cef4fae100ddb1ab5b57435a08aaaff8977c46b450042b66eb3
-  languageName: node
-  linkType: hard
-
-"@types/scheduler@npm:*":
-  version: 0.16.8
-  resolution: "@types/scheduler@npm:0.16.8"
-  checksum: 10/6c091b096daa490093bf30dd7947cd28e5b2cd612ec93448432b33f724b162587fed9309a0acc104d97b69b1d49a0f3fc755a62282054d62975d53d7fd13472d
   languageName: node
   linkType: hard
 
@@ -16582,6 +16665,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"md5-typescript@npm:^1.0.5":
+  version: 1.0.5
+  resolution: "md5-typescript@npm:1.0.5"
+  checksum: 10/eb909a106bf830848e5f43bb7cffa6a9d100cf51964294e67753573feef6023761b4ca7fa8c0478c09b145bab698bf4fb8864369a37fe079f0ce810f70384a4a
+  languageName: node
+  linkType: hard
+
 "mdast-util-definitions@npm:^5.0.0":
   version: 5.1.2
   resolution: "mdast-util-definitions@npm:5.1.2"
@@ -16822,17 +16912,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"meshoptimizer@npm:^0.22.0, meshoptimizer@npm:~0.22.0":
+  version: 0.22.0
+  resolution: "meshoptimizer@npm:0.22.0"
+  checksum: 10/6def62fe70181f69a2ff2088cfb8aa8137b5cd6a1a952100957f819b2dba42c1cc8afcb7de41e1e1619c8146ef0612f5f71e1ceab1f9b224567ff285af0080e8
+  languageName: node
+  linkType: hard
+
 "meshoptimizer@npm:~0.18.1":
   version: 0.18.1
   resolution: "meshoptimizer@npm:0.18.1"
   checksum: 10/5cfef6918562b8363a51e92b6eafe81a684fe7b9e31de1c19a6e2068ca8edab745b3e8ef2f0190ecbcc2065134b5dc1de97e4514eb2157914762356c07f93b9f
-  languageName: node
-  linkType: hard
-
-"meshoptimizer@npm:~0.22.0":
-  version: 0.22.0
-  resolution: "meshoptimizer@npm:0.22.0"
-  checksum: 10/6def62fe70181f69a2ff2088cfb8aa8137b5cd6a1a952100957f819b2dba42c1cc8afcb7de41e1e1619c8146ef0612f5f71e1ceab1f9b224567ff285af0080e8
   languageName: node
   linkType: hard
 
@@ -17408,6 +17498,13 @@ __metadata:
     signum: "npm:^1.0.0"
     to-px: "npm:^1.0.1"
   checksum: 10/28e41ccac43fb4e284cfbbe348c0c5e391417bb997a3f8ad2e280152883721ad55aec1596200060ad4d99b256f5b167dbdf35d4dd83c84c80401a95fa0e5725c
+  languageName: node
+  linkType: hard
+
+"mp4box@npm:^2.4.1":
+  version: 2.4.1
+  resolution: "mp4box@npm:2.4.1"
+  checksum: 10/6c0e9c7a0026176374ec7534c4679cd9b9312ef0b5a849d59e41cb156d9d0b13b68b5801c7da9780d29ae7cb979cd038f9a5bc8350e7cb148f61eb6527734374
   languageName: node
   linkType: hard
 
@@ -18613,33 +18710,6 @@ __metadata:
   dependencies:
     fast-diff: "npm:^1.1.2"
   checksum: 10/2dc35f5036a35f4c4f5e645887edda1436acb63687a7f12b2383e0a6f3c1f76b8a0a4709fe4d82e19157210feb5984b159bb714d43290022911ab53d606474ec
-  languageName: node
-  linkType: hard
-
-"prettier@npm:2.2.1":
-  version: 2.2.1
-  resolution: "prettier@npm:2.2.1"
-  bin:
-    prettier: bin-prettier.js
-  checksum: 10/7bad7ef9cf2da3059a83de0729d480879f5adbe9974419a16a953dee69b2c720ebf1df8d1a713306547a5af8c2b6168a79cd94bda15202de0121348123f7903f
-  languageName: node
-  linkType: hard
-
-"prettier@npm:^2.7.1":
-  version: 2.8.8
-  resolution: "prettier@npm:2.8.8"
-  bin:
-    prettier: bin-prettier.js
-  checksum: 10/00cdb6ab0281f98306cd1847425c24cbaaa48a5ff03633945ab4c701901b8e96ad558eb0777364ffc312f437af9b5a07d0f45346266e8245beaf6247b9c62b24
-  languageName: node
-  linkType: hard
-
-"prettier@npm:^3.3.3":
-  version: 3.3.3
-  resolution: "prettier@npm:3.3.3"
-  bin:
-    prettier: bin/prettier.cjs
-  checksum: 10/5beac1f30b5b40162532b8e2f7c3a4eb650910a2695e9c8512a62ffdc09dae93190c29db9107fa7f26d1b6c71aad3628ecb9b5de1ecb0911191099be109434d7
   languageName: node
   linkType: hard
 
@@ -21663,6 +21733,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"three@npm:0.185.1":
+  version: 0.185.1
+  resolution: "three@npm:0.185.1"
+  checksum: 10/517c6f82ef9e8f10a114bbd349066d65ac55a97e8d9e4cd52c7da4014c646c3d0a335718d69c84d80c7e209769b3cff0cc68de922e2c207c227ca17733b72323
+  languageName: node
+  linkType: hard
+
 "three@npm:^0.170.0":
   version: 0.170.0
   resolution: "three@npm:0.170.0"
@@ -21670,10 +21747,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three@npm:^0.182.0":
-  version: 0.182.0
-  resolution: "three@npm:0.182.0"
-  checksum: 10/37bbc10cea96e001ca7485cfe120e1bc8bcff0c448c492140ce9db8bd113efb6972d6cc71f8426a257eb569bf9aa136fd8887f803435d057ea963c815fe9248a
+"three@patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch":
+  version: 0.185.1
+  resolution: "three@patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch::version=0.185.1&hash=0f2236"
+  checksum: 10/54aa1abaef58c01ddd408f4def9bfa3e51844fadfe3102e904c090c4f6b6833eccd4752fc44d9a760b6dfd99a19252bb9364b952a62f15b78cb037f73f48b8b7
   languageName: node
   linkType: hard
 
@@ -22693,6 +22770,13 @@ __metadata:
   version: 1.1.0
   resolution: "update-diff@npm:1.1.0"
   checksum: 10/45f2993ad0d424138763394e9ad527fe726ab6b9d205f7a9326790d28d0ed9d86d57c7b460ed53fa23a683cc078eec9ecb9ff965d4b56712126314deba5bed2f
+  languageName: node
+  linkType: hard
+
+"uplot@npm:^1.6.32":
+  version: 1.6.32
+  resolution: "uplot@npm:1.6.32"
+  checksum: 10/78a4ea0cf46ee1ea2814304b3c24002d52b7e98995dfc5fe9dcf05ce4873b62d26f81f03613dbb8b63e451cbfe369e314591c4fe8113f8453860ca71b8dc7430
   languageName: node
   linkType: hard
 

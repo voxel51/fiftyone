@@ -10,7 +10,7 @@ import { datasetQuery } from "./queries";
 import { SelectorEffectContext, Setter } from "./selectorWithEffect";
 
 export interface PageQuery<T extends OperationType> {
-  event?: "fieldVisibility" | "modal";
+  event?: "fieldVisibility" | "modal" | "slice" | "spaces";
   preloadedQuery: PreloadedQuery<T>;
   concreteRequest: ConcreteRequest;
   data: T["response"];
@@ -26,6 +26,27 @@ let pageQueryReader: <T extends OperationType>() => PageQuery<T>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const subscribersBefore = new Set<PageSubscription<any>>();
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const pageSyncSubscribers = new Map<string, PageSubscription<any>>();
+
+/**
+ * Registers a keyed subscriber that runs for every published page.
+ * Re-registering a key replaces its callback, and stale cleanup cannot remove
+ * the replacement.
+ */
+export function registerPageSync<T extends OperationType>(
+  key: string,
+  subscription: PageSubscription<T>,
+) {
+  pageSyncSubscribers.set(key, subscription);
+
+  return () => {
+    if (pageSyncSubscribers.get(key) === subscription) {
+      pageSyncSubscribers.delete(key);
+    }
+  };
+}
 
 export function subscribeBefore<T extends OperationType>(
   subscription: PageSubscription<T>,
@@ -78,6 +99,8 @@ export const resetEffect = <T,>(viewChange = true): AtomEffect<T> => {
         }
       });
     }
+
+    return undefined;
   };
 };
 
@@ -114,7 +137,11 @@ export function Writer<T extends OperationType>({
       // @ts-ignore
       pageQueryReader = () => pageQuery;
       set((transactionInterface) => {
-        for (const cb of [...subscribersBefore, ...subscribers]) {
+        for (const cb of [
+          ...pageSyncSubscribers.values(),
+          ...subscribersBefore,
+          ...subscribers,
+        ]) {
           cb(pageQuery, transactionInterface, previous);
         }
       });

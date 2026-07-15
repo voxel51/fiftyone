@@ -47,6 +47,27 @@ jobs:
             // Bases mirrored into Enterprise.
             const isSyncBase = (b) => b === 'develop' || b.startsWith('release/');
 
+            // Back-merge PRs (`merge/<ref> → develop`, opened by the
+            // develop-back-merge workflow as voxel51-bot) are *vertical*
+            // reconciliation, handled independently by each repo's own
+            // back-merge. Mirroring one would be a diagonal whole-branch merge
+            // that re-surfaces the entire OSS↔Enterprise divergence and
+            // duplicates the Enterprise repo's own back-merge. Skip the sync;
+            // mark the gate green so the OSS back-merge isn't blocked.
+            if (pr.head.ref.startsWith('merge/') && pr.user.login === 'voxel51-bot') {
+              if (action !== 'closed') {
+                await github.rest.repos.createCommitStatus({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  sha,
+                  state: 'success',
+                  context: 'enterprise / ci',
+                  description: 'No Enterprise sync — back-merge handled natively in Enterprise',
+                });
+              }
+              return;
+            }
+
             // Retarget away from a synced base: close the orphaned mirror.
             if (action === 'edited' && context.payload.changes.base) {
               const from = context.payload.changes.base.ref.from;

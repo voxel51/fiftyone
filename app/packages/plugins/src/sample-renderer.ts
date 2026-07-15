@@ -62,6 +62,12 @@ export type SampleRendererRenderContext<TSample = SampleRendererSampleLike> =
   SampleRendererMatchContext<TSample> & {
     dataset: fos.State.Dataset;
     schema: Schema;
+    /**
+     * The modal selected a new sample whose record is still resolving. A
+     * persistent renderer may keep shell state mounted, but must not present
+     * source-backed content from the retained sample.
+     */
+    transitioning?: boolean;
   };
 
 /**
@@ -69,6 +75,10 @@ export type SampleRendererRenderContext<TSample = SampleRendererSampleLike> =
  */
 export type SampleRendererProps = {
   ctx: SampleRendererRenderContext<SampleRendererSampleLike>;
+  /** Whether a grid renderer is both mounted and unobscured by the modal. */
+  isGridActive?: boolean;
+  /** Reports renderer-owned retained bytes to the grid's hidden-item LRU. */
+  onRetainedBytesChange?: (retainedBytes: number) => void;
 };
 
 /**
@@ -82,15 +92,61 @@ export type SampleRendererGridSlot =
   (typeof SAMPLE_RENDERER_GRID_SLOT)[keyof typeof SAMPLE_RENDERER_GRID_SLOT];
 
 /**
+ * Controls how otherwise-unhandled grid-tile activation events are routed.
+ *
+ * - `"renderer"` (default) keeps click and context-menu events inside the
+ *   sample renderer. Users open the sample modal with the grid's explicit
+ *   open-modal control.
+ * - `"passthrough"` allows those events to bubble to the host grid, where a
+ *   normal tile click opens the sample modal. Renderer-owned interactive
+ *   regions can still call `stopPropagation()` to retain their interactions.
+ *
+ * This option does not disable pointer events or affect hover behavior,
+ * renderer-owned controls, the sample-selection checkbox, or the explicit
+ * open-modal control.
+ */
+export type SampleRendererGridClickBehavior = "renderer" | "passthrough";
+
+/**
  * Grid-specific renderer behavior, including enablement and optional override.
  */
 export type GridConfig = {
+  /**
+   * Enables the sample renderer on the grid surface. Grid rendering is
+   * disabled unless this is explicitly set to `true`.
+   */
   enabled?: boolean;
+  /**
+   * Optional component used only on the grid surface. When omitted, the
+   * renderer's canonical component is used in both the grid and modal.
+   */
   overrideComponent?: React.FunctionComponent<SampleRendererProps>;
+  /**
+   * Controls whether otherwise-unhandled tile activation events stay within
+   * the renderer or pass through to the host grid. Defaults to `"renderer"`.
+   *
+   * Use `"passthrough"` for non-interactive previews that should behave like
+   * native grid tiles. A renderer that mixes interactive and non-interactive
+   * regions may opt into passthrough and call `stopPropagation()` only from
+   * the interactive regions.
+   */
+  clickBehavior?: SampleRendererGridClickBehavior;
   /**
    * Components rendered in named grid slots while this renderer is active.
    */
   slots?: Partial<Record<SampleRendererGridSlot, React.FunctionComponent>>;
+};
+
+/**
+ * Modal-specific renderer behavior.
+ */
+export type ModalConfig = {
+  /**
+   * Keep the renderer shell mounted while navigating between samples it
+   * supports. The renderer must derive all per-sample state from `ctx`
+   * (or key its own internal subtrees).
+   */
+  persistAcrossSamples?: boolean;
 };
 
 /**
@@ -102,6 +158,7 @@ export type SampleRendererOptions<TSample = SampleRendererSampleLike> = {
     | MatchMedia
     | ((ctx: SampleRendererMatchContext<TSample>) => boolean);
   grid?: GridConfig;
+  modal?: ModalConfig;
 };
 
 type SampleRendererRegistrationLike<TSample = SampleRendererSampleLike> = {
@@ -318,6 +375,18 @@ export function isSampleRendererGridEnabled(
   registration: SampleRendererRegistrationLike,
 ) {
   return registration.sampleRendererOptions.grid?.enabled === true;
+}
+
+/**
+ * Returns whether a renderer opts into persisting across sample navigation
+ * in the modal.
+ */
+export function isSampleRendererModalPersistent(
+  registration: SampleRendererRegistrationLike,
+) {
+  return (
+    registration.sampleRendererOptions.modal?.persistAcrossSamples === true
+  );
 }
 
 /**

@@ -550,6 +550,11 @@ def _dense_iou(gt, pred, gt_crowd=False):
     pred_bb = pred.bounding_box  # x,y,w,h of box
     pred_mask_h, pred_mask_w = pred_mask.shape
 
+    # a box with no positive width and height has no region in which to place
+    # its mask, so its IoU is 0 (and this avoids dividing by zero below)
+    if gt_bb[2] <= 0 or gt_bb[3] <= 0 or pred_bb[2] <= 0 or pred_bb[3] <= 0:
+        return 0.0
+
     gt_img_w = round(gt_mask_w / gt_bb[2])
     gt_img_h = round(gt_mask_h / gt_bb[3])
 

@@ -111,7 +111,7 @@ export async function runDemo() {
   console.log("\n--- Demonstrating duplicate registration prevention ---");
   try {
     // This should throw because handler is already registered
-    bus.register(PersistCommand, async (cmd) => {
+    bus.register(PersistCommand, async () => {
       return { success: false };
     });
   } catch (error) {

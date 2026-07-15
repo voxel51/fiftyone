@@ -1,5 +1,4 @@
 import { Pill, Size, TextColor } from "@voxel51/voodo";
-import React from "react";
 import { RunStatus } from "../../types";
 import { STATUS_COLORS, STATUS_LABELS } from "../../constants";
 

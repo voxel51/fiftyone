@@ -1,6 +1,5 @@
 import { LoadingDots } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import React from "react";
 import type { RecoilState } from "recoil";
 import {
   selectorFamily,
@@ -18,6 +17,8 @@ import { pathSearchCount } from "./state";
 
 interface CheckboxesProps {
   color: string;
+  /** Optional per-value color override for each row's checkbox dot. */
+  resultColor?: (value: string | null) => string;
   excludeAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
 
@@ -158,6 +159,7 @@ const useGetCount = (modal: boolean, path: string) => {
 
 const Checkboxes = ({
   color,
+  resultColor,
   excludeAtom,
   isMatchingAtom,
   modal,
@@ -202,9 +204,9 @@ const Checkboxes = ({
         return (
           <Checkbox
             key={value}
-            color={color}
+            color={resultColor ? resultColor(value) : color}
             value={selectedSet.has(value)}
-            forceColor={value === null}
+            forceColor={value === null || Boolean(resultColor)}
             name={value === null ? "None" : value}
             loading={loading}
             count={getCount(count, value)}

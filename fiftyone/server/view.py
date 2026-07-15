@@ -19,6 +19,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.stages as fosg
+import fiftyone.core.tags as fotags
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
@@ -27,6 +28,7 @@ from fiftyone.server.scalars import BSONArray, JSON
 
 
 _LABEL_TAGS = "_label_tags"
+_TEMPORAL_TAGS = "_temporal_tags"
 
 
 def _make_group_field_stage(view):
@@ -226,6 +228,10 @@ def get_extended_view(
         label_tags = filters.get(_LABEL_TAGS, None)
         if label_tags:
             view = _match_label_tags(view, label_tags)
+
+        temporal_tags = filters.get(_TEMPORAL_TAGS, None)
+        if temporal_tags:
+            view = _match_temporal_tags(view, temporal_tags)
 
         stages = []
         match_stage = _make_match_stage(view, filters)
@@ -867,6 +873,35 @@ def _apply_none(expr, f, none):
         expr |= ~(f.exists())
 
     return expr
+
+
+def _match_temporal_tags(
+    view: foc.SampleCollection, temporal_tags
+) -> foc.SampleCollection:
+    values = temporal_tags.get("values")
+    if not values:
+        return view
+
+    exclude = temporal_tags.get("exclude", False)
+
+    # Temporal tags are stored in a dedicated collection keyed by sample id,
+    # not as sample fields. Resolve the sample ids carrying any of the
+    # requested tag values at the dataset level (tags are sparse, so this set
+    # stays small, and we avoid enumerating the view's sample ids on every
+    # grid load), then select / exclude within the current view -- the
+    # select/exclude intersects, so out-of-view tag hits can't leak in.
+    dataset = view._dataset if isinstance(view, fov.DatasetView) else view
+    tags = fotags.list_temporal_tags(
+        dataset, fotags.TemporalTagFilter(tags=values)
+    )
+    sample_ids = {str(tag.sample_id) for tag in tags}
+
+    if exclude:
+        # Excluding with no matches leaves the view untouched.
+        return view.exclude(sample_ids) if sample_ids else view
+
+    # Matching with no matches yields an empty view.
+    return view.select(sample_ids)
 
 
 def _match_label_tags(view: foc.SampleCollection, label_tags):

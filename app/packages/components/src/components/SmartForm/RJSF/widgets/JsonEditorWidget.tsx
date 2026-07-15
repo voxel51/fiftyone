@@ -5,7 +5,7 @@
 import { Code, scrollable } from "@fiftyone/components";
 import { WidgetProps } from "@rjsf/utils";
 import { FormField } from "@voxel51/voodo";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 const DEFAULT_HEIGHT = 200;
 const ERROR_BORDER_STYLES =

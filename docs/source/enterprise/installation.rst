@@ -59,7 +59,7 @@ private PyPI server as shown below:
    structure as :doc:`fiftyone <../api/fiftyone>`, so any existing scripts you
    built using open source will continue to run after you upgrade!
 
-Next Steps
+Next steps
 __________
 
 After installing the Enterprise Python SDK in your virtual environment, you'll need
@@ -564,7 +564,7 @@ Provider names and the class that extra kwargs are passed to:
 
 .. _enterprise-cloud-storage-page:
 
-Managed Cloud Credentials
+Managed cloud credentials
 -------------------------
 
 Cloud provider credentials can be managed directly on the Enterprise server.
@@ -619,7 +619,7 @@ stopping once the first credential is found:
 6.  If any global default credentials for the provider of the media being
     accessed exist, those credentials will be used
 
-Setting Managed Credentials
+Setting managed credentials
 ___________________________
 
 Admins can configure cloud credentials via the Settings > Cloud storage page.
@@ -667,8 +667,9 @@ appropriate provider or specific bucket.
 
 .. _enterprise-cloud-creds-origin-preference:
 
-Cloud Credentials Origin Preference
+Cloud credentials origin preference
 ___________________________________
+
 If credentials are configured both on the local machine and remotely via the
 Enterprise server, the behavior is for the Enterprise SDK to use the first
 matching set of credentials found. 
@@ -690,8 +691,8 @@ credentials from the other source will be attempted before giving up.
 
 .. _enterprise-cloud-creds-local-download:
 
-Cloud Credentials Local Download
-___________________________________
+Cloud credentials local download
+________________________________
 
 By default, users must set up local credentials when using the Enterprise SDK
 with an API connection. This is to prevent downloading credentials from the
@@ -703,8 +704,8 @@ downloading of credentials to machines, set the environment variable
 
 .. _enterprise-ai-model-weights:
 
-AI Model Weights
-________________
+AI model weights
+----------------
 
 The FiftyOne Enterprise App ships with AI-assisted mask segmentation for annotation
 workflows. By default, the required model weights are served from Voxel51's

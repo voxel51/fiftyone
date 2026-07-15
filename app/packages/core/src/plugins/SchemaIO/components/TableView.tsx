@@ -14,7 +14,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { isPlainObject } from "lodash";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";
@@ -54,7 +54,7 @@ export default function TableView(props: ViewPropsType) {
         if (action.rows?.[row] !== false) {
           computedRowActions.push({
             ...action,
-            onClick: (action, e) => {
+            onClick: (action) => {
               handleClick(panelId, {
                 operator: action.on_click,
                 params: { path, event: action.name, row },

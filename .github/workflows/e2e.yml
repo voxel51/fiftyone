@@ -64,7 +64,7 @@ jobs:
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
 
       - name: Install app
-        if: steps.app-static-cache.outputs.cache-hit != 'true' && steps.app-node-cache.outputs.cache-hit != 'true'
+        if: steps.app-static-cache.outputs.cache-hit != 'true'
         run: yarn install
         working-directory: app
 
@@ -90,9 +90,8 @@ jobs:
             e2e-pw/node_modules
           key: node-modules-${{ hashFiles('e2e-pw/yarn.lock') }}
 
-      - name: Install E2E dependencies if not cached
+      - name: Install E2E dependencies
         run: yarn install
-        if: steps.e2e-node-cache.outputs.cache-hit != 'true'
         working-directory: e2e-pw
 
       - name: Get Playwright version
@@ -236,9 +235,8 @@ jobs:
             e2e-pw/node_modules
           key: node-modules-${{ hashFiles('e2e-pw/yarn.lock') }}
 
-      - name: Install E2E dependencies if not cached
+      - name: Install E2E dependencies
         run: yarn install
-        if: steps.e2e-node-cache.outputs.cache-hit != 'true'
         working-directory: e2e-pw
 
       - name: Get Playwright version
@@ -273,4 +271,5 @@ jobs:
         with:
           name: playwright-report-mongodb-${{ matrix.mongodb-version }}-shard-${{ matrix.shard }}
           path: e2e-pw/playwright-report/
-          retention-days: 30
+          # 3 days so reports from Friday/weekend runs survive into Monday.
+          retention-days: 3

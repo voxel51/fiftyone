@@ -1,6 +1,28 @@
 import type { Quaternion, Vector3 } from "three";
 
 /**
+ * How dynamic transforms are resolved between bracketing samples:
+ * `interpolate` slerps/lerps between them; `hold-last` reuses the latest
+ * at-or-before sample verbatim so playback never shows synthesized poses.
+ */
+export type McapFrameTransformResolutionMode = "interpolate" | "hold-last";
+
+export interface McapFrameTransformPolicy {
+  readonly boundaryClampNs: bigint;
+  readonly maxInterpolationGapNs: bigint;
+  /** Defaults to `interpolate` when omitted. */
+  readonly resolutionMode?: McapFrameTransformResolutionMode;
+}
+
+export type McapFrameTransformResolutionKind =
+  | "identity"
+  | "static"
+  | "exact"
+  | "interpolated"
+  | "held"
+  | "clamped";
+
+/**
  * Transform sample from a child frame into its parent frame.
  *
  * The rotation/translation use THREE math types. Note: when a set crosses a
@@ -15,11 +37,21 @@ export interface McapFrameTransformSample {
   readonly translation: Vector3;
 }
 
+export interface McapFrameTransformTopicStats {
+  readonly encodedPayloadBytes: number;
+  readonly messageCount: number;
+  readonly topic: string;
+}
+
 /**
  * Frame transform samples returned by one MCAP resource read.
  */
 export interface McapFrameTransformSet {
+  readonly encodedPayloadBytes?: number;
+  readonly messageCount?: number;
   readonly samples: readonly McapFrameTransformSample[];
+  readonly topicStats?: readonly McapFrameTransformTopicStats[];
+  readonly topics?: readonly string[];
 }
 
 /**
@@ -56,13 +88,23 @@ export interface McapFrameTransformSampleWire {
  * Serialized frame transform set used across worker boundaries.
  */
 export interface McapFrameTransformSetWire {
+  readonly encodedPayloadBytes?: number;
+  readonly messageCount?: number;
   readonly samples: readonly McapFrameTransformSampleWire[];
+  readonly topicStats?: readonly McapFrameTransformTopicStats[];
+  readonly topics?: readonly string[];
 }
 
 /**
  * Composed transform mapping coordinates from sourceFrameId into targetFrameId.
  */
 export interface McapComposedFrameTransform {
+  /**
+   * Largest bracketing sample gap used by any interpolated dynamic edge in
+   * this composed path. Undefined when the path did not interpolate.
+   */
+  readonly maxInterpolationGapNs?: bigint;
+  readonly resolutionKind?: McapFrameTransformResolutionKind;
   readonly rotation: Quaternion;
   readonly sourceFrameId: string;
   readonly targetFrameId: string;
@@ -77,6 +119,8 @@ export type McapFrameTransformResolution = {
   readonly targetFrameId: string;
 } & (
   | {
+      readonly maxInterpolationGapNs?: bigint;
+      readonly resolutionKind?: McapFrameTransformResolutionKind;
       readonly status: "resolved";
       readonly transform: McapComposedFrameTransform;
     }

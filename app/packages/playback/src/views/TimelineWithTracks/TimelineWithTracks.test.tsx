@@ -1,11 +1,4 @@
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
-import React from "react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import { TrackProvider, type Track } from "../../lib/tracks/TrackProvider";
@@ -61,12 +54,6 @@ describe("TimelineWithTracks", () => {
   });
 
   describe("empty state (no tracks)", () => {
-    it("renders the root container with the noTracks modifier", () => {
-      const { container } = renderTimeline({ tracks: [] });
-      const root = container.firstElementChild as HTMLElement;
-      expect(root.className).toContain(styles.noTracks);
-    });
-
     it("does not render the tracks area when there are no tracks", () => {
       const { container } = renderTimeline({ tracks: [] });
       // noTracks branch skips the Drawer entirely — no tracksOuter section
@@ -75,20 +62,9 @@ describe("TimelineWithTracks", () => {
   });
 
   describe("with tracks", () => {
-    it("renders the root container without the noTracks class", () => {
-      const { container } = renderTimeline({
-        tracks: [TRACK_A],
-        pinnedIds: ["track-a"],
-      });
-      const root = container.firstElementChild as HTMLElement;
-      expect(root.className).not.toContain(styles.noTracks);
-    });
-
-    it("renders a pinned track exactly once", () => {
+    it("renders track labels for registered tracks", () => {
       renderTimeline({ tracks: [TRACK_A, TRACK_B], pinnedIds: ["track-a"] });
-      // With the drawer closed (default) a pinned row lives only in the header
-      // overlay — not also in the body — so it mounts once under one track id.
-      expect(screen.getAllByText("Track A")).toHaveLength(1);
+      expect(screen.getByText("Track A")).toBeTruthy();
     });
 
     it("renders rows for both pinned and unpinned tracks", () => {
@@ -98,6 +74,25 @@ describe("TimelineWithTracks", () => {
       });
       expect(screen.getAllByText("Track A").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Track B").length).toBeGreaterThan(0);
+    });
+
+    it("reports drawer changes when its open state is controlled", () => {
+      const onDrawerOpenChange = vi.fn();
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TrackProvider tracks={[TRACK_A]} initialPinnedIds={[]}>
+            <TimelineWithTracks
+              drawerOpen={false}
+              onDrawerOpenChange={onDrawerOpenChange}
+            />
+          </TrackProvider>
+        </PlaybackProvider>,
+      );
+
+      fireEvent.click(screen.getByTestId("timeline-controls-divider"));
+
+      expect(onDrawerOpenChange).toHaveBeenCalledOnce();
+      expect(onDrawerOpenChange).toHaveBeenCalledWith(true);
     });
   });
 

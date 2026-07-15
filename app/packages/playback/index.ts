@@ -7,9 +7,16 @@ export * from "./src/lib/timeline/use-timeline";
 export * from "./src/lib/timeline/use-timeline-viz-utils";
 export * from "./src/lib/timeline/utils";
 export * from "./src/lib/playback/PlaybackProvider";
-export * from "./src/lib/playback/atoms";
 export * from "./src/lib/playback/playback-store-context";
-export type { PlaybackStore, PlaybackStream } from "./src/lib/playback/types";
+export * from "./src/lib/playback/use-playback-state";
+export * from "./src/lib/playback/use-stream";
+export * from "./src/lib/playback/store-access";
+export type {
+  BufferedRanges,
+  PlaybackStore,
+  PlaybackStream,
+  SeekEvent,
+} from "./src/lib/playback/types";
 export * from "./src/lib/tracks/TrackProvider";
 export * from "./src/views/Timeline/Timeline";
 export { default as TimelineWithTracks } from "./src/views/TimelineWithTracks/TimelineWithTracks";
@@ -18,7 +25,10 @@ export type {
   NormalizedEvent,
   TrackEventMenuItem,
 } from "./src/views/TimelineTrack/TimelineTrack";
-export type { TemporalTagCreatePayload } from "./src/views/TemporalTag/TemporalTagContext";
+export type {
+  TemporalTagCreatePayload,
+  TemporalTagUpdatePayload,
+} from "./src/views/TemporalTag/TemporalTagContext";
 export { default as TemporalTagTimeline } from "./src/views/TemporalTag/TemporalTagTimeline";
 export type { TemporalTagTimelineProps } from "./src/views/TemporalTag/TemporalTagTimeline";
 
@@ -48,3 +58,4 @@ export { PlaybackStreamBase } from "./src/lib/playback/stream-base";
 export type { BufferReadiness } from "./src/lib/playback/types";
 export { TrackProvider } from "./src/lib/tracks/TrackProvider";
 export type { Track, TrackEvent } from "./src/lib/tracks/TrackProvider";
+export * from "./src/utils/usePointerLockDrag";

@@ -101,6 +101,11 @@ export const isVideoDataset = selector({
   get: ({ get }) => get(atoms.mediaType) === "video",
 });
 
+export const isMultimodalDataset = selector({
+  key: "isMultimodalDataset",
+  get: ({ get }) => get(atoms.mediaType) === "multimodal",
+});
+
 export const is3DDataset = selector({
   key: "is3DDataset",
   get: ({ get }) => is3d(get(atoms.mediaType)),

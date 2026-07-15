@@ -2061,6 +2061,17 @@ class DetectionsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             foui.compute_ious(preds, gts, keypoint_sigmas=[1])
 
+    def test_compute_ious_degenerate_mask_box(self):
+        # a detection whose box has zero width or height has no area to
+        # overlap, so its mask IoU is 0 rather than a ZeroDivisionError
+        mask = np.ones((10, 10), dtype=bool)
+        gts = [fo.Detection(label="x", bounding_box=[0, 0, 0, 0.5], mask=mask)]
+        preds = [fo.Detection(label="x", bounding_box=[0, 0, 0.5, 0.5], mask=mask)]
+
+        ious = foui.compute_ious(preds, gts, use_masks=True)
+
+        self.assertEqual(ious[0, 0], 0.0)
+
     @drop_datasets
     def test_evaluate_detections_open_images(self):
         dataset = self._make_detections_dataset()

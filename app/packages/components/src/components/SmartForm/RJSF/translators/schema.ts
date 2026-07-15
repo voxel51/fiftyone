@@ -14,7 +14,7 @@ export function translateToJSONSchema(
   context: TranslationContext,
 ): RJSFSchema {
   const schema: RJSFSchema = {};
-  const { type, default: defaultValue, required } = schemaIO;
+  const { type, default: defaultValue } = schemaIO;
 
   // Handle basic types
   switch (type) {

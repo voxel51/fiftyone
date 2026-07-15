@@ -122,7 +122,7 @@ export default function Workspaces() {
                   >
                     {filteredWorkspaces.map((space) => (
                       <Workspace
-                        key={space.id}
+                        key={space.name}
                         onEdit={() => {
                           setOpen(false);
                         }}

@@ -142,7 +142,7 @@ export function usePanels(
   const panels = useActivePlugins(PluginComponentType.Panel, ctx);
 
   const panelsToReturn = useMemo(() => {
-    const allPanels = plots.concat(panels);
+    const allPanels = [...plots, ...panels];
     if (predicate) {
       return allPanels.filter(predicate);
     }
@@ -275,10 +275,10 @@ export function usePanelState<T>(
   );
   const computedState = state || defaultState;
 
-  return [computedState, setState];
+  return [computedState, setState] as [typeof computedState, typeof setState];
 }
 
-export function useSetPanelStateById<T>(local?: boolean, scope?: string) {
+export function useSetPanelStateById(local?: boolean, scope?: string) {
   const panelScope = useScope(scope);
   return useRecoilCallback(
     ({ set, snapshot }) =>
@@ -305,11 +305,10 @@ export function usePanelId() {
 }
 
 export function useSetCustomPanelState<T>(local?: boolean) {
-  const [panelState, setPanelState] = usePanelState<T>(null, undefined, local);
+  const [, setPanelState] = usePanelState<{ state: T }>(null, undefined, local);
   return (fn: (state: T) => T) => {
     setPanelState((panelState) => {
-      const customPanelState = fn(panelState?.state || {});
-      const state = fn(customPanelState);
+      const state = fn((panelState?.state ?? {}) as T);
       return { ...panelState, state };
     });
   };

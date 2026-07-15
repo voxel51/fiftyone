@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import ReactGA from "react-ga4";
 import { graphql, useFragment } from "react-relay";
 import gaConfig from "../ga";

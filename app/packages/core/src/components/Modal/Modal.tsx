@@ -18,7 +18,7 @@ import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import { is3d } from "@fiftyone/utilities";
+import { is3d, MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import React, { Fragment, Suspense, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import {
@@ -218,6 +218,12 @@ const Modal = () => {
     ({ snapshot }) =>
       async () => {
         const mediaType = await snapshot.getPromise(fos.mediaType);
+        // Temporary: multimodal viewers own Escape handling for now, so the
+        // shared modal close shortcut should leave them mounted.
+        if (mediaType === MEDIA_TYPE_MULTIMODAL) {
+          return;
+        }
+
         if (
           activeLookerRef.current ||
           (mediaType && is3d(mediaType)) ||

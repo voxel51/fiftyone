@@ -55,9 +55,10 @@ If you are **not** a Voxel51 team member, open your pull request against the
 **`community`** branch rather than `develop`. If you open one against `develop`
 or a release branch, it is automatically retargeted to `community` for you.
 
-Your changes are unaffected by the retarget. A maintainer integrates the
-`community` branch into `develop` via an automated pull request, so your
-contribution still lands in `develop` — it just goes through `community` first.
+Your changes are unaffected by the retarget. Whenever `community` is ahead of
+`develop`, a `community` → `develop` pull request is opened automatically for a
+maintainer to review and merge, so your contribution still lands in `develop` —
+it just goes through `community` first.
 
 Once your pull request has been merged, your changes will be automatically
 included in the next FiftyOne release!

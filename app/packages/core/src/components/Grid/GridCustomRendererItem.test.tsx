@@ -2,8 +2,10 @@ import { fireEvent, waitFor } from "@testing-library/react";
 import {
   __resetGridCustomRendererFailoverForTests,
   getGridCustomRendererFailover,
+  modalSelector,
 } from "@fiftyone/state";
 import React from "react";
+import { RecoilRoot } from "recoil";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
@@ -34,13 +36,22 @@ const BASE_SYMBOL = { description: "sample-id" } as const;
 const RGBA_BYTES_PER_PIXEL = 4;
 const MIN_GRID_RENDERER_SIZE_BYTES = 1;
 
-const TestBridge = ({ children }: React.PropsWithChildren) => <>{children}</>;
+const TestBridge = ({ children }: React.PropsWithChildren) => (
+  <RecoilRoot>{children}</RecoilRoot>
+);
+const ModalBridge = ({ children }: React.PropsWithChildren) => (
+  <RecoilRoot initializeState={({ set }) => set(modalSelector, { id: "1" })}>
+    {children}
+  </RecoilRoot>
+);
 
 const getOpenModalButton = (host: HTMLElement) =>
-  host.querySelector("button[title='Open sample modal']");
+  host.querySelector<HTMLButtonElement>("button[title='Open sample modal']");
 
 const getSelectControl = (host: HTMLElement) =>
-  host.querySelector("[title='Select sample'], [title='Selected']");
+  host.querySelector<HTMLElement>(
+    "[title='Select sample'], [title='Selected']",
+  );
 
 describe("GridCustomRendererItem", () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
@@ -80,43 +91,54 @@ describe("GridCustomRendererItem", () => {
 
     expect(getGridCustomRendererFailover(BASE_CTX.dataset.name)).toBeNull();
     expect(loadSpy).toHaveBeenCalled();
-    expect(getOpenModalButton(host)).toBeNull();
+    const openButton = getOpenModalButton(host);
+    if (!openButton) {
+      throw new Error("Expected the open-modal button to be mounted");
+    }
     expect(getSelectControl(host)).toBeNull();
 
     const renderer = host.querySelector("[data-testid='renderer']");
-    expect(renderer).toBeTruthy();
+    if (!(renderer instanceof HTMLElement)) {
+      throw new Error("Expected the custom grid renderer to be mounted");
+    }
 
-    const wrapper = renderer?.parentElement as HTMLElement | null;
-    expect(wrapper).toBeTruthy();
+    const wrapper = renderer.parentElement;
+    if (!wrapper) {
+      throw new Error("Expected the custom grid renderer wrapper");
+    }
 
     const hostClickSpy = vi.fn();
     const hostContextMenuSpy = vi.fn();
     host.addEventListener("click", hostClickSpy);
     host.addEventListener("contextmenu", hostContextMenuSpy);
 
-    fireEvent.click(renderer as HTMLElement);
-    fireEvent.contextMenu(renderer as HTMLElement);
+    fireEvent.click(renderer);
+    fireEvent.contextMenu(renderer);
 
     expect(hostClickSpy).not.toHaveBeenCalled();
     expect(hostContextMenuSpy).not.toHaveBeenCalled();
 
-    fireEvent.mouseEnter(wrapper as HTMLElement);
+    openButton.click();
+    expect(hostClickSpy).toHaveBeenCalledTimes(1);
+
+    fireEvent.mouseEnter(wrapper);
 
     await waitFor(() => {
-      expect(getOpenModalButton(host)).toBeTruthy();
+      expect(getOpenModalButton(host)).toBe(openButton);
       expect(getSelectControl(host)).toBeTruthy();
     });
 
-    const openButton = getOpenModalButton(host) as HTMLElement | null;
-    expect(openButton).toBeTruthy();
-    openButton?.click();
-    expect(hostClickSpy).toHaveBeenCalledTimes(1);
+    expect(
+      openButton.querySelector("[data-testid='OpenInFullIcon']"),
+    ).toBeTruthy();
 
     const selectSpy = vi.fn();
     looker.addEventListener("selectthumbnail", selectSpy);
-    const selectButton = getSelectControl(host) as HTMLElement | null;
-    expect(selectButton).toBeTruthy();
-    selectButton?.dispatchEvent(
+    const selectButton = getSelectControl(host);
+    if (!selectButton) {
+      throw new Error("Expected the sample selection control");
+    }
+    selectButton.dispatchEvent(
       new MouseEvent("click", { bubbles: true, shiftKey: true, altKey: true }),
     );
     expect(selectSpy).toHaveBeenCalledWith(
@@ -132,12 +154,47 @@ describe("GridCustomRendererItem", () => {
       }),
     );
 
-    fireEvent.mouseLeave(wrapper as HTMLElement);
+    fireEvent.mouseLeave(wrapper);
 
     await waitFor(() => {
-      expect(getOpenModalButton(host)).toBeNull();
+      expect(getOpenModalButton(host)).toBe(openButton);
       expect(getSelectControl(host)).toBeTruthy();
     });
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("passes unhandled tile activation through when configured", async () => {
+    const Renderer = () => <div data-testid="renderer">preview</div>;
+    const looker = new GridCustomRendererItem({
+      clickBehavior: "passthrough",
+      pluginName: "passive-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const hostClickSpy = vi.fn();
+    const hostContextMenuSpy = vi.fn();
+    host.addEventListener("click", hostClickSpy);
+    host.addEventListener("contextmenu", hostContextMenuSpy);
+
+    looker.attach(host, [200, 120], 12);
+
+    const renderer = await waitFor(() => {
+      const element = host.querySelector("[data-testid='renderer']");
+      expect(element).toBeTruthy();
+      return element as HTMLElement;
+    });
+
+    fireEvent.click(renderer);
+    fireEvent.contextMenu(renderer);
+
+    expect(hostClickSpy).toHaveBeenCalledTimes(1);
+    expect(hostContextMenuSpy).toHaveBeenCalledTimes(1);
 
     looker.destroy();
     host.remove();
@@ -216,6 +273,67 @@ describe("GridCustomRendererItem", () => {
         sourceSizeBytes +
         MIN_GRID_RENDERER_SIZE_BYTES,
     );
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("uses renderer-reported retained bytes instead of the source hint", async () => {
+    const retainedBytes = 321;
+    const Renderer = ({
+      onRetainedBytesChange,
+    }: {
+      onRetainedBytesChange?: (bytes: number) => void;
+    }) => {
+      React.useEffect(() => {
+        onRetainedBytesChange?.(retainedBytes);
+      }, [onRetainedBytesChange]);
+      return <div>preview</div>;
+    };
+    const looker = new GridCustomRendererItem({
+      pluginName: "measured-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const refresh = vi.fn();
+    looker.addEventListener("refresh", refresh);
+
+    looker.attach(host, [10, 20], 12);
+
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(looker.getSizeBytesEstimate()).toBe(
+      10 * 20 * RGBA_BYTES_PER_PIXEL + retainedBytes + 1,
+    );
+
+    looker.destroy();
+    host.remove();
+  });
+
+  it("marks grid renderers inactive while the modal is open", async () => {
+    const Renderer = vi.fn(({ isGridActive }: { isGridActive?: boolean }) => (
+      <div>{String(isGridActive)}</div>
+    ));
+    const looker = new GridCustomRendererItem({
+      pluginName: "activity-renderer",
+      Renderer,
+      RecoilBridge: ModalBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [10, 20], 12);
+
+    await waitFor(() => {
+      expect(Renderer.mock.calls.at(-1)?.[0]).toMatchObject({
+        isGridActive: false,
+      });
+    });
 
     looker.destroy();
     host.remove();

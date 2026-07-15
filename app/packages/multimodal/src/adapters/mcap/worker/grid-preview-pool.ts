@@ -8,6 +8,7 @@ import type {
   McapGridPreviewWorkerResponse,
 } from "./grid-preview-worker-types";
 import { workerFetchParameters } from "./worker-resource-client";
+import type { McapPlaybackWorkerPriority } from "./playback-worker-types";
 
 // Low-resource machines should not be forced to run multiple MCAP workers.
 const MIN_GRID_PREVIEW_WORKERS = 1;
@@ -26,6 +27,7 @@ type McapGridPreviewWorkerSlot = {
  * Options for one grid preview pool request.
  */
 export interface McapGridPreviewPoolRequestOptions {
+  readonly priority?: McapPlaybackWorkerPriority;
   readonly signal?: AbortSignal;
 }
 
@@ -105,7 +107,11 @@ export class McapGridPreviewWorkerPool {
       };
 
       const initRequest: McapGridPreviewWorkerRequest = {
-        payload: workerFetchParameters(),
+        payload: {
+          ...workerFetchParameters(),
+          // Grid previews are ambient work: never the reserved fill slot.
+          fillSlotClass: "background",
+        },
         type: "init",
       };
       worker.postMessage(initRequest);

@@ -5,7 +5,7 @@
 
 import { WidgetProps } from "@rjsf/utils";
 import { FormField, Select } from "@voxel51/voodo";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 function computeSelectChangeValue(
   newValue: string | string[],
@@ -28,8 +28,7 @@ function computeSelectChangeValue(
 }
 
 export default function SelectWidget(props: WidgetProps) {
-  const { value, onChange, schema, uiSchema, disabled, readonly, label } =
-    props;
+  const { value, onChange, schema, disabled, readonly, label } = props;
 
   const enumValues = schema.enum || [];
   const enumNames = schema.enumNames || enumValues;

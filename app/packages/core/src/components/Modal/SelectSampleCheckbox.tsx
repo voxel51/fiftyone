@@ -13,7 +13,6 @@ import {
   selectionIconThumbsup,
   selectionIconX,
 } from "@fiftyone/looker";
-import React from "react";
 import { useRecoilValue } from "recoil";
 
 interface SelectSampleCheckboxProps {

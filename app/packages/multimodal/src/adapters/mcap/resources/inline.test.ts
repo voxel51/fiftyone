@@ -1,3 +1,7 @@
+import { parse as parseRosMessageDefinition } from "@foxglove/rosmsg";
+import { parseRos2idl } from "@foxglove/ros2idl-parser";
+import { MessageWriter as Ros1MessageWriter } from "@foxglove/rosmsg-serialization";
+import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serialization";
 import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
@@ -23,6 +27,157 @@ const FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP = bytes(
 const FRAME_TRANSFORMS_MESSAGE_WITHOUT_TIMESTAMP = bytes(
   "ClMSA21hcBoJYmFzZV9saW5rIhsJAAAAAAAA8D8RAAAAAAAAAAAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPwpVEgliYXNlX2xpbmsaBWxpZGFyIhsJAAAAAAAAAAARAAAAAAAAAEAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw==",
 );
+const CUSTOM_TRANSFORM_BUNDLE_SCHEMA_DATA = bytes(
+  "CrECCgxjdXN0b20ucHJvdG8SBmN1c3RvbSInCgRWZWMzEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBIjIKBFF1YXQSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAESCQoBdxgEIAEoASJ6ChRDYWxpYnJhdGlvblRyYW5zZm9ybRIXCg9wYXJlbnRfZnJhbWVfaWQYASABKAkSFgoOY2hpbGRfZnJhbWVfaWQYAiABKAkSGQoLdHJhbnNsYXRpb24YAyABKAsyBFZlYzMSFgoIcm90YXRpb24YBCABKAsyBFF1YXQiOAoRQ2FsaWJyYXRpb25CdW5kbGUSIwoFcG9zZXMYASADKAsyFENhbGlicmF0aW9uVHJhbnNmb3JtYgZwcm90bzM=",
+);
+const CUSTOM_TRANSFORM_BUNDLE_MESSAGE = bytes(
+  "ClYKA21hcBIMY3VzdG9tX2xpZGFyGhsJAAAAAAAAEEARAAAAAAAAFEAZAAAAAAAAGEAiJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw==",
+);
+const ROS1_TF_MESSAGE_SCHEMA = `geometry_msgs/TransformStamped[] transforms
+===
+MSG: geometry_msgs/TransformStamped
+std_msgs/Header header
+string child_frame_id
+geometry_msgs/Transform transform
+===
+MSG: std_msgs/Header
+uint32 seq
+time stamp
+string frame_id
+===
+MSG: geometry_msgs/Transform
+geometry_msgs/Vector3 translation
+geometry_msgs/Quaternion rotation
+===
+MSG: geometry_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w`;
+const ROS2_TF_MESSAGE_SCHEMA = `geometry_msgs/TransformStamped[] transforms
+===
+MSG: geometry_msgs/TransformStamped
+std_msgs/Header header
+string child_frame_id
+geometry_msgs/Transform transform
+===
+MSG: std_msgs/Header
+builtin_interfaces/Time stamp
+string frame_id
+===
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec
+===
+MSG: geometry_msgs/Transform
+geometry_msgs/Vector3 translation
+geometry_msgs/Quaternion rotation
+===
+MSG: geometry_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w`;
+const FOXGLOVE_ROS2_FRAME_TRANSFORM_SCHEMA = `builtin_interfaces/Time timestamp
+string parent_frame_id
+string child_frame_id
+foxglove_msgs/Vector3 translation
+foxglove_msgs/Quaternion rotation
+===
+MSG: foxglove_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: foxglove_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w
+===
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec`;
+const FOXGLOVE_ROS2_FRAME_TRANSFORMS_SCHEMA = `foxglove_msgs/FrameTransform[] transforms
+===
+MSG: foxglove_msgs/FrameTransform
+builtin_interfaces/Time timestamp
+string parent_frame_id
+string child_frame_id
+foxglove_msgs/Vector3 translation
+foxglove_msgs/Quaternion rotation
+===
+MSG: foxglove_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: foxglove_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w
+===
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec`;
+const ROS2_IDL_TF_MESSAGE_SCHEMA = `module tf2_msgs {
+  module msg {
+    struct TFMessage {
+      sequence<geometry_msgs::msg::TransformStamped> transforms;
+    };
+  };
+};
+module geometry_msgs {
+  module msg {
+    struct TransformStamped {
+      std_msgs::msg::Header header;
+      string child_frame_id;
+      Transform transform;
+    };
+    struct Transform {
+      Vector3 translation;
+      Quaternion rotation;
+    };
+    struct Vector3 {
+      double x;
+      double y;
+      double z;
+    };
+    struct Quaternion {
+      double x;
+      double y;
+      double z;
+      double w;
+    };
+  };
+};
+module std_msgs {
+  module msg {
+    struct Header {
+      builtin_interfaces::msg::Time stamp;
+      string frame_id;
+    };
+  };
+};
+module builtin_interfaces {
+  module msg {
+    struct Time {
+      long sec;
+      unsigned long nanosec;
+    };
+  };
+};`;
 
 describe("MCAP resources", () => {
   it("reads topic inventory from summary channels without scanning messages", async () => {
@@ -162,6 +317,64 @@ describe("MCAP resources", () => {
     );
   });
 
+  it("annotates generic decode availability in topic inventory", async () => {
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              7,
+              createChannel({
+                id: 7,
+                messageEncoding: "json",
+                schemaId: 0,
+                topic: "/state",
+              }),
+            ],
+            [
+              8,
+              createChannel({
+                id: 8,
+                messageEncoding: "ros1",
+                schemaId: 4,
+                topic: "/imu",
+              }),
+            ],
+            [
+              9,
+              createChannel({
+                id: 9,
+                messageEncoding: "cbor",
+                schemaId: 0,
+                topic: "/binary",
+              }),
+            ],
+          ]),
+          schemasById: new Map([
+            [
+              4,
+              createSchema(new Uint8Array(), {
+                encoding: "ros1msg",
+                id: 4,
+                name: "sensor_msgs/Imu",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const topics = await client.readTopics({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(
+      topics.map((topic) => topic.metadata["mcap.generic_decode_status"]),
+    ).toEqual(["decodable", "schema-unavailable", "unsupported-encoding"]);
+  });
+
   it("caches topic reads by source", async () => {
     const source = createMcapSourceDescriptor();
     const client = createInlineMcapResourceClient({
@@ -270,7 +483,56 @@ describe("MCAP resources", () => {
     expect(readMessages).not.toHaveBeenCalled();
   });
 
-  it("discovers foxglove.FrameTransform channels by schema regardless of topic name", async () => {
+  it("skips non-static transform topics during bootstrap", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/sensor_calibration",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledOnce();
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/sensor_calibration"],
+    });
+    expect(set.samples).toEqual([]);
+  });
+
+  it("bootstraps ambiguous transform topics when the first decoded message is static", async () => {
     const readMessages = vi.fn(async function* () {
       yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
         channelId: 10,
@@ -312,8 +574,62 @@ describe("MCAP resources", () => {
       source: createMcapSourceDescriptor(),
     });
 
-    expect(readMessages).toHaveBeenCalledWith({
+    expect(readMessages).toHaveBeenCalledTimes(2);
+    expect(readMessages).toHaveBeenLastCalledWith({
       topics: ["/sensor_calibration"],
+    });
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+    });
+    expect(set.samples[0]?.timeNs).toBeUndefined();
+  });
+
+  it("discovers static foxglove.FrameTransform channels by schema", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/robot/tf_static",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/robot/tf_static"],
     });
     expect(set.samples).toHaveLength(1);
     expect(set.samples[0]).toMatchObject({
@@ -323,6 +639,60 @@ describe("MCAP resources", () => {
     expect(set.samples[0]?.timeNs).toBeUndefined();
     expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
     expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("discovers transform-like protobuf schemas without Foxglove schema names", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(CUSTOM_TRANSFORM_BUNDLE_MESSAGE, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/static_transforms",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(CUSTOM_TRANSFORM_BUNDLE_SCHEMA_DATA, {
+                id: 10,
+                name: "custom.CalibrationBundle",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/static_transforms"],
+    });
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "custom_lidar",
+      parentFrameId: "map",
+    });
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(set.samples[0]?.translation.toArray()).toEqual([4, 5, 6]);
   });
 
   it("includes bootstrap transform channels when summary stats are unavailable", async () => {
@@ -392,7 +762,7 @@ describe("MCAP resources", () => {
               createChannel({
                 id: 10,
                 schemaId: 10,
-                topic: "/calibration_bundle",
+                topic: "/tf_static",
               }),
             ],
           ]),
@@ -430,6 +800,440 @@ describe("MCAP resources", () => {
       "base_link",
       "map",
     ]);
+  });
+
+  it("bootstraps ros1 /tf_static messages as whole-file static transforms", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(
+        ros1TfMessage({
+          transforms: [
+            ros1TransformStamped({
+              childFrameId: "base_link",
+              parentFrameId: "map",
+              stamp: { nsec: 20, sec: 7 },
+              translation: { x: 1, y: 2, z: 3 },
+            }),
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 10n,
+        },
+      );
+      yield createMessage(
+        ros1TfMessage({
+          transforms: [
+            ros1TransformStamped({
+              childFrameId: "lidar",
+              parentFrameId: "base_link",
+              stamp: { nsec: 40, sec: 8 },
+              translation: { x: 4, y: 5, z: 6 },
+            }),
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 1_000n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "ros1",
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(new TextEncoder().encode(ROS1_TF_MESSAGE_SCHEMA), {
+                encoding: "ros1msg",
+                id: 10,
+                name: "tf2_msgs/TFMessage",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 2n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/tf_static"],
+    });
+    expect(set.samples).toHaveLength(2);
+    expect(set.samples.map((sample) => sample.timeNs)).toEqual([
+      undefined,
+      undefined,
+    ]);
+    expect(set.samples.map((sample) => sample.childFrameId)).toEqual([
+      "lidar",
+      "base_link",
+    ]);
+    expect(set.samples.map((sample) => sample.parentFrameId)).toEqual([
+      "base_link",
+      "map",
+    ]);
+  });
+
+  it("reads ros2 cdr TFMessage samples from dynamic frame transform windows", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(
+        ros2TfMessage({
+          transforms: [
+            ros2TransformStamped({
+              childFrameId: "base_link",
+              parentFrameId: "map",
+              stamp: { nanosec: 20, sec: 7 },
+              translation: { x: 1, y: 2, z: 3 },
+            }),
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 7_000_000_020n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "cdr",
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(new TextEncoder().encode(ROS2_TF_MESSAGE_SCHEMA), {
+                encoding: "ros2msg",
+                id: 10,
+                name: "tf2_msgs/msg/TFMessage",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 7_000_000_020n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 7_000_000_020n,
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      endTime: 7_000_000_020n,
+      startTime: 7_000_000_020n,
+      topics: ["/tf"],
+    });
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "base_link",
+      parentFrameId: "map",
+      timeNs: 7_000_000_020n,
+    });
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("reads ros2 idl TFMessage samples from dynamic frame transform windows", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(
+        ros2IdlTfMessage({
+          transforms: [
+            ros2IdlTransformStamped({
+              childFrameId: "camera",
+              parentFrameId: "base_link",
+              stamp: { nsec: 30, sec: 9 },
+              translation: { x: 4, y: 5, z: 6 },
+            }),
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 9_000_000_030n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "cdr",
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(
+                new TextEncoder().encode(ROS2_IDL_TF_MESSAGE_SCHEMA),
+                {
+                  encoding: "ros2idl",
+                  id: 10,
+                  name: "tf2_msgs/msg/TFMessage",
+                },
+              ),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 9_000_000_030n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 9_000_000_030n,
+    });
+
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "camera",
+      parentFrameId: "base_link",
+      timeNs: 9_000_000_030n,
+    });
+    expect(set.samples[0]?.translation.toArray()).toEqual([4, 5, 6]);
+  });
+
+  it("reads foxglove_msgs cdr FrameTransforms samples from dynamic frame transform windows", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(
+        foxgloveRos2FrameTransforms({
+          transforms: [
+            {
+              child_frame_id: "lidar",
+              parent_frame_id: "map",
+              rotation: { w: 1, x: 0, y: 0, z: 0 },
+              timestamp: { nanosec: 40, sec: 8 },
+              translation: { x: 1, y: 2, z: 3 },
+            },
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 8_000_000_040n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "cdr",
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(
+                new TextEncoder().encode(FOXGLOVE_ROS2_FRAME_TRANSFORMS_SCHEMA),
+                {
+                  encoding: "ros2msg",
+                  id: 10,
+                  name: "foxglove_msgs/msg/FrameTransforms",
+                },
+              ),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 8_000_000_040n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 8_000_000_040n,
+    });
+
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+      timeNs: 8_000_000_040n,
+    });
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("reads foxglove_msgs cdr FrameTransform samples from dynamic frame transform windows", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(
+        foxgloveRos2FrameTransform({
+          child_frame_id: "camera",
+          parent_frame_id: "map",
+          rotation: { w: 1, x: 0, y: 0, z: 0 },
+          timestamp: { nanosec: 50, sec: 8 },
+          translation: { x: 4, y: 5, z: 6 },
+        }),
+        {
+          channelId: 10,
+          logTime: 8_000_000_050n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "cdr",
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(
+                new TextEncoder().encode(FOXGLOVE_ROS2_FRAME_TRANSFORM_SCHEMA),
+                {
+                  encoding: "ros2msg",
+                  id: 10,
+                  name: "foxglove_msgs/msg/FrameTransform",
+                },
+              ),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 8_000_000_050n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 8_000_000_050n,
+    });
+
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "camera",
+      parentFrameId: "map",
+      timeNs: 8_000_000_050n,
+    });
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(set.samples[0]?.translation.toArray()).toEqual([4, 5, 6]);
+  });
+
+  it("skips malformed ROS TFMessage payloads without failing the window", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(new Uint8Array([1, 2, 3]), {
+        channelId: 10,
+        logTime: 7_000_000_020n,
+      });
+      yield createMessage(
+        ros1TfMessage({
+          transforms: [
+            ros1TransformStamped({
+              childFrameId: "base_link",
+              parentFrameId: "map",
+              stamp: { nsec: 20, sec: 7 },
+              translation: { x: 1, y: 2, z: 3 },
+            }),
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 7_000_000_020n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "ros1",
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(new TextEncoder().encode(ROS1_TF_MESSAGE_SCHEMA), {
+                encoding: "ros1msg",
+                id: 10,
+                name: "tf2_msgs/TFMessage",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 7_000_000_020n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 7_000_000_020n,
+    });
+
+    expect(set.messageCount).toBe(2);
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "base_link",
+      parentFrameId: "map",
+    });
   });
 
   it("reads dynamic frame transform windows from any schema-discovered topic", async () => {
@@ -649,7 +1453,7 @@ describe("MCAP resources", () => {
     expect(readMessages).not.toHaveBeenCalled();
   });
 
-  it("defers bootstrap scans of channels with message counts above the cap", async () => {
+  it("defers bootstrap scans of static channels with message counts above the cap", async () => {
     const readMessages = vi.fn(async function* () {
       for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
         yield message;
@@ -666,7 +1470,7 @@ describe("MCAP resources", () => {
               createChannel({
                 id: 10,
                 schemaId: 10,
-                topic: "/dense_tf",
+                topic: "/tf_static",
               }),
             ],
           ]),
@@ -842,6 +1646,84 @@ describe("MCAP resources", () => {
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
   });
 
+  it("contains payload decode failures to their topic and preserves shared decode work", async () => {
+    const source = createMcapSourceDescriptor();
+    const messages = [
+      createMessage(new Uint8Array([1]), {
+        channelId: 7,
+        logTime: 90n,
+        publishTime: 91n,
+      }),
+      createMessage(new Uint8Array([2]), {
+        channelId: 8,
+        logTime: 108n,
+        publishTime: 109n,
+      }),
+    ];
+    const decodeClient = createTestDecodeClient();
+    vi.mocked(decodeClient.decode).mockImplementation(async (request) => {
+      if (request.context.streamId === "/camera") {
+        throw new Error("invalid camera calibration");
+      }
+      return {
+        context: request.context,
+        decoderId: "test-decoder",
+        decoderVersion: "1",
+        output: createTestDecodedOutput(),
+        payload: request.payload,
+      };
+    });
+    const readMessages = vi.fn(async function* () {
+      for (const message of messages) yield message;
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient,
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [7, createChannel({ id: 7, topic: "/camera" })],
+            [8, createChannel({ id: 8, topic: "/lidar" })],
+          ]),
+          readMessages,
+        }),
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n, 105n],
+      source,
+      defaultStreamPolicy: {
+        mode: PlaybackSyncMode.NEAREST,
+        toleranceAfterNs: 20n,
+        toleranceBeforeNs: 20n,
+      },
+      topics: ["/camera", "/lidar"],
+    });
+
+    expect(windows).toHaveLength(2);
+    for (const window of windows) {
+      expect(window.messagesByTopic["/camera"]).toEqual([]);
+      expect(window.decodeErrorsByTopic?.["/camera"]).toEqual([
+        expect.objectContaining({
+          code: "message-decode-failed",
+          message: "invalid camera calibration",
+          messageTimeNs: 90n,
+          requestedTimeNs: window.timeNs,
+          topic: "/camera",
+        }),
+      ]);
+      expect(window.messagesByTopic["/lidar"]).toHaveLength(1);
+      expect(window.messages.map((message) => message.topic)).toEqual([
+        "/lidar",
+      ]);
+    }
+    expect(readMessages).toHaveBeenCalledTimes(1);
+    // The selected union is still decoded once per unique message, including
+    // the cached rejected promise reused by the second window.
+    expect(decodeClient.decode).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps synchronized decode cache entries distinct for changed payloads", async () => {
     const source = createMcapSourceDescriptor();
     const messages = [
@@ -966,26 +1848,430 @@ describe("MCAP resources", () => {
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects ambiguous indexed-to-raw message matches", async () => {
+  it("soft-fails topic time bounds to nulls without summary indexes", async () => {
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () => createReader()),
+    });
+
+    await expect(
+      client.readTopicTimeBounds({
+        source: createMcapSourceDescriptor(),
+        topics: ["/camera", "/lidar"],
+      }),
+    ).resolves.toEqual([
+      { firstMessageTimeNs: null, lastMessageTimeNs: null, topic: "/camera" },
+      { firstMessageTimeNs: null, lastMessageTimeNs: null, topic: "/lidar" },
+    ]);
+  });
+
+  it("caches topic time bounds per source and topic set", async () => {
+    const readTopicIndexedTimeBounds = vi.fn(async () => {
+      return new Map([
+        ["/camera", { firstLogTimeNs: 10n, lastLogTimeNs: 90n }],
+      ]);
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        Object.assign(createReader({ chunkIndexes: [createChunkIndex()] }), {
+          readTopicIndexedTimeBounds,
+        }),
+      ),
+    });
+    const request = {
+      source: createMcapSourceDescriptor(),
+      topics: ["/camera"],
+    };
+
+    await expect(client.readTopicTimeBounds(request)).resolves.toEqual([
+      { firstMessageTimeNs: 10n, lastMessageTimeNs: 90n, topic: "/camera" },
+    ]);
+    await client.readTopicTimeBounds(request);
+    expect(readTopicIndexedTimeBounds).toHaveBeenCalledTimes(1);
+  });
+
+  it("serves sparse topics from one bounded scan plus one predecessor probe", async () => {
+    const source = createMcapSourceDescriptor();
+    const old = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 0n,
+      publishTime: 1n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      // Nothing in the scan window — the topic is sparse around the batch.
+    });
+    const readLatestIndexedMessageTimes = vi.fn(async () => {
+      return new Map([
+        ["/topic", [createIndexedMessageTime("/topic", 7, 0n, 0n)]],
+      ]);
+    });
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+      readonly topics?: readonly string[];
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 0n && args?.endTime === 0n) {
+        yield old;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+        }),
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [5_000n, 5_033n],
+      source,
+      topics: ["/topic"],
+    });
+
+    // Both ticks resolve the far-past predecessor under the default
+    // unbounded-latest policy.
+    expect(windows).toHaveLength(2);
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(0n);
+    expect(windows[1]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(0n);
+
+    // The scan stays bounded by the batch tick span — never the file.
+    expect(readIndexedMessageTimes).toHaveBeenCalledWith({
+      endTimeNs: 5_033n,
+      startTimeNs: 5_000n,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledExactlyOnceWith({
+      limitPerTopic: 1,
+      timeNs: 5_000n,
+      topics: ["/topic"],
+    });
+  });
+
+  it("backfills enough indexed predecessors to satisfy latest limits", async () => {
+    const source = createMcapSourceDescriptor();
+    const older = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 80n,
+      publishTime: 81n,
+    });
+    const newer = createMessage(new Uint8Array([2]), {
+      channelId: 7,
+      logTime: 90n,
+      publishTime: 91n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield createIndexedMessageTime("/topic", 7, 90n, 900n);
+    });
+    const readLatestIndexedMessageTimes = vi.fn(async () => {
+      return new Map([
+        [
+          "/topic",
+          [
+            createIndexedMessageTime("/topic", 7, 90n, 900n),
+            createIndexedMessageTime("/topic", 7, 80n, 800n),
+          ],
+        ],
+      ]);
+    });
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 80n && args?.endTime === 80n) {
+        yield older;
+      }
+      if (args?.startTime === 90n && args?.endTime === 90n) {
+        yield newer;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+        }),
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n],
+      source,
+      streamPolicies: {
+        "/topic": {
+          limit: 2,
+          mode: PlaybackSyncMode.LATEST,
+        },
+      },
+      topics: ["/topic"],
+    });
+
+    expect(
+      windows[0]?.messagesByTopic["/topic"]?.map(
+        (message) => message.timelineTimeNs,
+      ),
+    ).toEqual([80n, 90n]);
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledExactlyOnceWith({
+      limitPerTopic: 2,
+      timeNs: 100n,
+      topics: ["/topic"],
+    });
+  });
+
+  it("memoizes predecessor lookups across batches and re-probes on backward seeks", async () => {
+    const source = createMcapSourceDescriptor();
+    const message = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 4_000n,
+      publishTime: 4_001n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      // Every scan window misses the lone message at 4_000n.
+    });
+    const readLatestIndexedMessageTimes = vi.fn(
+      async (args: { readonly timeNs: bigint }) => {
+        return new Map([
+          [
+            "/topic",
+            args.timeNs >= 4_000n
+              ? [createIndexedMessageTime("/topic", 7, 4_000n, 0n)]
+              : [],
+          ],
+        ]);
+      },
+    );
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 4_000n && args?.endTime === 4_000n) {
+        yield message;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+        }),
+      ),
+    });
+
+    // First batch probes once and memoizes the resolution.
+    await client.readSynchronizedMessageBatch({
+      timeNs: [5_000n, 5_033n],
+      source,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(1);
+
+    // Overlapping later batch: memo hit, and its empty scan extends the
+    // memo's validity through 6_000n.
+    await client.readSynchronizedMessageBatch({
+      timeNs: [5_010n, 6_000n],
+      source,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(1);
+
+    // Within the extended interval: still no probe.
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [5_900n],
+      source,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(1);
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(
+      4_000n,
+    );
+
+    // Backward seek before the memoized predecessor: fresh probe.
+    const earlier = await client.readSynchronizedMessageBatch({
+      timeNs: [100n],
+      source,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(2);
+    expect(readLatestIndexedMessageTimes).toHaveBeenLastCalledWith({
+      limitPerTopic: 1,
+      timeNs: 100n,
+      topics: ["/topic"],
+    });
+    expect(earlier[0]?.messagesByTopic["/topic"]).toEqual([]);
+  });
+
+  it("skips the predecessor probe when another topic's tolerance already covers it", async () => {
+    const source = createMcapSourceDescriptor();
+    const camera = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 90n,
+      publishTime: 91n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield createIndexedMessageTime("/camera", 7, 90n, 900n);
+    });
+    const readLatestIndexedMessageTimes = vi.fn(async () => new Map());
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 90n && args?.endTime === 90n) {
+        yield camera;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [7, createChannel({ id: 7, topic: "/camera" })],
+            [8, createChannel({ id: 8, topic: "/lidar" })],
+          ]),
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+        }),
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n],
+      source,
+      streamPolicies: {
+        "/lidar": {
+          mode: PlaybackSyncMode.NEAREST,
+          toleranceAfterNs: 0n,
+          toleranceBeforeNs: 20n,
+        },
+      },
+      topics: ["/camera", "/lidar"],
+    });
+
+    // The lidar tolerance widened the shared scan to [80, 100], which
+    // already contains the camera predecessor — no probe needed.
+    expect(readIndexedMessageTimes).toHaveBeenCalledWith({
+      endTimeNs: 100n,
+      startTimeNs: 80n,
+      topics: ["/camera", "/lidar"],
+    });
+    expect(readLatestIndexedMessageTimes).not.toHaveBeenCalled();
+    expect(windows[0]?.messagesByTopic["/camera"]?.[0]?.timelineTimeNs).toBe(
+      90n,
+    );
+  });
+
+  it("surfaces predecessor probe failures as batch failures", async () => {
+    const source = createMcapSourceDescriptor();
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      // empty scan forces the probe
+    });
+    const readLatestIndexedMessageTimes = vi.fn(async () => {
+      throw new Error("index read failed");
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+        }),
+      ),
+    });
+
+    await expect(
+      client.readSynchronizedMessageBatch({
+        timeNs: [5_000n],
+        source,
+        topics: ["/topic"],
+      }),
+    ).rejects.toThrow("index read failed");
+  });
+
+  it("falls back to a bounded raw lookback for readers without indexes", async () => {
+    const source = createMcapSourceDescriptor();
+    const old = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 1_000n,
+      publishTime: 1_001n,
+    });
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (
+        args?.startTime !== undefined &&
+        args?.endTime !== undefined &&
+        old.logTime >= args.startTime &&
+        old.logTime <= args.endTime
+      ) {
+        yield old;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () => createReader({ readMessages })),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [5_000n],
+      source,
+      topics: ["/topic"],
+    });
+
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(
+      1_000n,
+    );
+    // One bounded scan plus one bounded lookback — clamped at 0, never
+    // the whole file beyond the documented lookback.
+    expect(readMessages.mock.calls.map(([args]) => args)).toEqual([
+      { endTime: 5_000n, startTime: 5_000n, topics: ["/topic"] },
+      { endTime: 5_000n, startTime: 0n, topics: ["/topic"] },
+    ]);
+  });
+
+  it("resolves duplicate same-time messages to one deterministic frame", async () => {
+    // Real recordings can carry multiple messages on one channel at
+    // the same log time. The whole batch used to reject on the
+    // ambiguity, permanently failing every topic it covered.
     const source = createMcapSourceDescriptor();
     const first = createMessage(new Uint8Array([1]), {
       logTime: 90n,
       publishTime: 91n,
+      sequence: 1,
     });
     const second = createMessage(new Uint8Array([2]), {
       logTime: 90n,
       publishTime: 92n,
+      sequence: 2,
     });
     const readIndexedMessageTimes = vi.fn(async function* () {
+      // Duplicate index entries for the duplicate messages.
       yield createIndexedMessageTime("/topic", 7, 90n, 900n);
+      yield createIndexedMessageTime("/topic", 7, 90n, 901n);
     });
     const readMessages = vi.fn(async function* () {
       yield first;
       yield second;
     });
+    const decodeClient = createTestDecodeClient();
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
-      decodeClient: createTestDecodeClient(),
+      decodeClient,
       readerFactory: vi.fn(async () =>
         createReader({
           readIndexedMessageTimes,
@@ -994,18 +2280,21 @@ describe("MCAP resources", () => {
       ),
     });
 
-    await expect(
-      client.readSynchronizedMessageBatch({
-        timeNs: [90n],
-        source,
-        defaultStreamPolicy: {
-          mode: PlaybackSyncMode.STRICT,
-        },
-        topics: ["/topic"],
-      }),
-    ).rejects.toThrow(
-      "Ambiguous MCAP indexed-to-raw match for /topic entry with channel 7 at 90",
-    );
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [90n],
+      source,
+      defaultStreamPolicy: {
+        mode: PlaybackSyncMode.STRICT,
+      },
+      topics: ["/topic"],
+    });
+
+    // One frame, deterministically the lowest-sequence duplicate, and
+    // one decode — the duplicate index entry collapsed at collection.
+    expect(windows[0]?.messagesByTopic["/topic"]).toHaveLength(1);
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.sequence).toBe(1);
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.publishTimeNs).toBe(91n);
+    expect(decodeClient.decode).toHaveBeenCalledTimes(1);
   });
 
   it("returns empty synchronized batches without opening a reader", async () => {
@@ -1069,6 +2358,18 @@ describe("MCAP resources", () => {
       }),
     ).resolves.toEqual({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      byteTimeline: [
+        {
+          cumulativeCompressedBytes: 256,
+          endTimeNs: 250n,
+          startOffsetBytes: 1_000n,
+        },
+        {
+          cumulativeCompressedBytes: 512,
+          endTimeNs: 450n,
+          startOffsetBytes: 1_000n,
+        },
+      ],
       endTimeNs: 450n,
       startTimeNs: 100n,
     });
@@ -1127,6 +2428,13 @@ describe("MCAP resources", () => {
     );
     await expect(client.readTimelineRange(request)).resolves.toEqual({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      byteTimeline: [
+        {
+          cumulativeCompressedBytes: 256,
+          endTimeNs: 20n,
+          startOffsetBytes: 1_000n,
+        },
+      ],
       endTimeNs: 20n,
       startTimeNs: 10n,
     });
@@ -1153,11 +2461,119 @@ function createMcapSourceDescriptor(): ByteSourceDescriptor {
   };
 }
 
+function ros1TfMessage(record: Record<string, unknown>): Uint8Array {
+  const writer = new Ros1MessageWriter(
+    parseRosMessageDefinition(ROS1_TF_MESSAGE_SCHEMA),
+  );
+  return writer.writeMessage(record);
+}
+
+function ros2TfMessage(record: Record<string, unknown>): Uint8Array {
+  const writer = new Ros2MessageWriter(
+    parseRosMessageDefinition(ROS2_TF_MESSAGE_SCHEMA, { ros2: true }),
+  );
+  return writer.writeMessage(record);
+}
+
+function foxgloveRos2FrameTransforms(
+  record: Record<string, unknown>,
+): Uint8Array {
+  const writer = new Ros2MessageWriter(
+    parseRosMessageDefinition(FOXGLOVE_ROS2_FRAME_TRANSFORMS_SCHEMA, {
+      ros2: true,
+    }),
+  );
+  return writer.writeMessage(record);
+}
+
+function foxgloveRos2FrameTransform(
+  record: Record<string, unknown>,
+): Uint8Array {
+  const writer = new Ros2MessageWriter(
+    parseRosMessageDefinition(FOXGLOVE_ROS2_FRAME_TRANSFORM_SCHEMA, {
+      ros2: true,
+    }),
+  );
+  return writer.writeMessage(record);
+}
+
+function ros2IdlTfMessage(record: Record<string, unknown>): Uint8Array {
+  const writer = new Ros2MessageWriter(
+    parseRos2idl(ROS2_IDL_TF_MESSAGE_SCHEMA),
+  );
+  return writer.writeMessage(record);
+}
+
+interface RosTransformStampedOptions {
+  readonly childFrameId: string;
+  readonly parentFrameId: string;
+  readonly translation: {
+    readonly x: number;
+    readonly y: number;
+    readonly z: number;
+  };
+}
+
+function ros2IdlTransformStamped({
+  childFrameId,
+  parentFrameId,
+  stamp,
+  translation,
+}: RosTransformStampedOptions & {
+  readonly stamp: { readonly nsec: number; readonly sec: number };
+}): Record<string, unknown> {
+  return {
+    child_frame_id: childFrameId,
+    header: { frame_id: parentFrameId, stamp },
+    transform: {
+      rotation: { w: 1, x: 0, y: 0, z: 0 },
+      translation,
+    },
+  };
+}
+
+function ros1TransformStamped({
+  childFrameId,
+  parentFrameId,
+  stamp,
+  translation,
+}: RosTransformStampedOptions & {
+  readonly stamp: { readonly nsec: number; readonly sec: number };
+}): Record<string, unknown> {
+  return {
+    child_frame_id: childFrameId,
+    header: { frame_id: parentFrameId, seq: 0, stamp },
+    transform: {
+      rotation: { w: 1, x: 0, y: 0, z: 0 },
+      translation,
+    },
+  };
+}
+
+function ros2TransformStamped({
+  childFrameId,
+  parentFrameId,
+  stamp,
+  translation,
+}: RosTransformStampedOptions & {
+  readonly stamp: { readonly nanosec: number; readonly sec: number };
+}): Record<string, unknown> {
+  return {
+    child_frame_id: childFrameId,
+    header: { frame_id: parentFrameId, stamp },
+    transform: {
+      rotation: { w: 1, x: 0, y: 0, z: 0 },
+      translation,
+    },
+  };
+}
+
 function createReader({
   channelsById = new Map([[7, createChannel({ id: 7, topic: "/topic" })]]),
   chunkIndexes = [],
   messages = [],
   readIndexedMessageTimes,
+  readLatestIndexedMessageTimes,
   readMessages,
   schemasById = new Map([[3, createSchema(new Uint8Array([9]))]]),
   statistics,
@@ -1179,6 +2595,22 @@ function createReader({
     void,
     void
   >;
+  readonly readLatestIndexedMessageTimes?: (args: {
+    readonly limitPerTopic?: number;
+    readonly timeNs: bigint;
+    readonly topics: readonly string[];
+  }) => Promise<
+    ReadonlyMap<
+      string,
+      readonly {
+        readonly channelId: number;
+        readonly chunkStartOffset: bigint;
+        readonly logTimeNs: bigint;
+        readonly messageOffset: bigint;
+        readonly topic: string;
+      }[]
+    >
+  >;
   readonly readMessages?: (args?: {
     readonly endTime?: bigint;
     readonly startTime?: bigint;
@@ -1194,6 +2626,7 @@ function createReader({
     channelsById,
     chunkIndexes,
     readIndexedMessageTimes,
+    readLatestIndexedMessageTimes,
     readMessages:
       readMessages ??
       vi.fn(async function* () {

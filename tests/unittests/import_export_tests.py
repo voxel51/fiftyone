@@ -24,7 +24,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
-import fiftyone.multimodal.tags._temporal_tags as fota
+import fiftyone.core.tags as fota
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.image as foui
 import fiftyone.utils.labels as foul

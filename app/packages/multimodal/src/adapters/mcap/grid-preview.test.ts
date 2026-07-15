@@ -1,25 +1,54 @@
 import { describe, expect, it, vi } from "vitest";
 import type {
   EncodedImageVisualization,
-  ImageAnnotationsVisualization,
+  EncodedVideoVisualization,
   PointCloudVisualization,
 } from "../../decoders";
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { StreamInventory } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
 import {
-  MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS,
+  MCAP_GRID_PREVIEW_MAX_FPS,
+  MCAP_GRID_PREVIEW_MAX_POINTS,
   chooseCameraSelection,
   decodeGridPreview,
+  mcapGridPreviewPlaybackDelayMs,
+  mcapGridPreviewFrameRetainedBytes,
   type McapGridPreviewFrame,
 } from "./grid-preview";
+import { firstImageByte, imageFrame } from "./grid-preview-test-utils";
 import { chooseAnnotationTopic } from "./topic-matching";
 import { streamTopics } from "./stream-topics";
-import type {
-  McapDecodedMessage,
-  McapResourceClient,
-  McapSynchronizedMessageWindow,
-} from "./types";
+import type { McapDecodedMessage, McapResourceClient } from "./types";
+
+describe("MCAP grid preview playback cadence", () => {
+  it("caps playback at twelve frames per second", () => {
+    expect(mcapGridPreviewPlaybackDelayMs(0n, 40_000_000n)).toBeNull();
+  });
+
+  it("skips high-rate frames without stretching the recorded timeline", () => {
+    expect(mcapGridPreviewPlaybackDelayMs(0n, 33_000_000n)).toBeNull();
+    expect(mcapGridPreviewPlaybackDelayMs(0n, 66_000_000n)).toBeNull();
+    expect(mcapGridPreviewPlaybackDelayMs(0n, 99_000_000n)).toBe(99);
+  });
+
+  it("uses recorded frame timing at one-times speed", () => {
+    expect(mcapGridPreviewPlaybackDelayMs(1_000_000_000n, 1_500_000_000n)).toBe(
+      500,
+    );
+  });
+
+  it("subtracts time already spent loading the next frame", () => {
+    expect(mcapGridPreviewPlaybackDelayMs(0n, 500_000_000n, 125)).toBe(375);
+    expect(mcapGridPreviewPlaybackDelayMs(0n, 500_000_000n, 600)).toBe(0);
+  });
+
+  it("uses the frame-rate cap when timeline timing is unavailable", () => {
+    expect(mcapGridPreviewPlaybackDelayMs(undefined, undefined)).toBe(
+      1_000 / MCAP_GRID_PREVIEW_MAX_FPS,
+    );
+  });
+});
 
 describe("MCAP grid preview", () => {
   it("returns an empty no-stream state and caches the missing selection", async () => {
@@ -47,9 +76,15 @@ describe("MCAP grid preview", () => {
     ) {
       yield createImageMessage(request.topics?.[0] ?? "/camera", [1, 2, 3], 7n);
     });
+    const inventory = [
+      createTopic("/camera/front"),
+      createTopic("/diagnostics", "example.Diagnostics"),
+    ];
+    const timelineRange = createTimelineRange();
     const client = createClient({
       readDecodedMessages,
-      readTopics: vi.fn(async () => [createTopic("/camera/front")]),
+      readTimelineRange: vi.fn(async () => timelineRange),
+      readTopics: vi.fn(async () => inventory),
     });
     const entry = { client };
 
@@ -60,38 +95,31 @@ describe("MCAP grid preview", () => {
     });
 
     expect(first.state.status).toBe("ready");
-    expect(imageFrame(first.state.frame)?.image.bytes[0]).toBe(1);
+    expect(first.bootstrapTimelineRange).toBe(timelineRange);
+    expect(first.bootstrapTopics).toBe(inventory);
+    expect(second.bootstrapTimelineRange).toBeUndefined();
+    expect(second.bootstrapTopics).toBeUndefined();
+    expect(firstImageByte(first.state.frame)).toBe(1);
     expect(first.nextStartTimeNs).toBe(8n);
     expect(second.state.status).toBe("ready");
     expect(client.readTopics).toHaveBeenCalledTimes(1);
+    expect(client.readTimelineRange).toHaveBeenCalledTimes(1);
     expect(readDecodedMessages.mock.calls[1]?.[0]).toMatchObject({
       startTimeNs: 8n,
       topics: ["/camera/front"],
     });
   });
 
-  it("pairs exact camera annotations with a nearby image frame", async () => {
-    const imageMessage = createImageMessage("/CAM_FRONT/image_rect_compressed");
-    const annotationMessage = createAnnotationMessage(
-      "/CAM_FRONT/annotations",
-      20n,
-    );
+  it("reads raw image frames as image previews", async () => {
     const readDecodedMessages = vi.fn(async function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
     ) {
-      if (request.topics?.[0] === "/CAM_FRONT/annotations") {
-        yield annotationMessage;
-      }
+      yield createRawImageMessage(request.topics?.[0] ?? "/camera/image", 11n);
     });
-    const readSynchronizedMessages = vi.fn(async () =>
-      createWindow(20n, "/CAM_FRONT/image_rect_compressed", imageMessage),
-    );
     const client = createClient({
       readDecodedMessages,
-      readSynchronizedMessages,
       readTopics: vi.fn(async () => [
-        createTopic("/CAM_FRONT/image_rect_compressed"),
-        createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
+        createTopic("/camera/image", "sensor_msgs/msg/Image", "cdr", "ros2msg"),
       ]),
     });
 
@@ -99,22 +127,46 @@ describe("MCAP grid preview", () => {
       { client },
       { source: createSource() },
     );
+    const image = imageFrame(result.state.frame)?.image;
 
     expect(result.state.status).toBe("ready");
-    expect(result.delayMs).toBe(MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS);
-    expect(imageFrame(result.state.frame)?.annotations?.texts[0]?.text).toBe(
-      "car",
-    );
-    expect(imageFrame(result.state.frame)?.image.bytes[0]).toBe(1);
-    expect(readSynchronizedMessages).toHaveBeenCalledWith(
-      expect.objectContaining({
-        timeNs: 20n,
-        topics: ["/CAM_FRONT/image_rect_compressed"],
-      }),
-    );
+    expect(image?.kind).toBe(VISUALIZATION_KIND.RAW_IMAGE);
+    if (image?.kind !== VISUALIZATION_KIND.RAW_IMAGE) {
+      throw new Error("Expected raw image preview");
+    }
+    expect(Array.from(image.rgba)).toEqual([255, 0, 0, 255]);
   });
 
-  it("falls back to image-only frames when selected annotations are unavailable", async () => {
+  it("reads encoded video frames as image previews", async () => {
+    const readDecodedMessages = vi.fn(async function* (
+      request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
+    ) {
+      yield createVideoMessage(request.topics?.[0] ?? "/camera/video", 12n);
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic(
+          "/camera/video",
+          "sensor_msgs/msg/CompressedImage",
+          "cdr",
+          "ros2msg",
+        ),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      { source: createSource() },
+    );
+    const image = imageFrame(result.state.frame)?.image;
+
+    expect(result.state.status).toBe("ready");
+    expect(image?.kind).toBe(VISUALIZATION_KIND.ENCODED_VIDEO);
+    expect(result.nextStartTimeNs).toBe(13n);
+  });
+
+  it("decodes only media when matching annotations are available", async () => {
     const readDecodedMessages = vi.fn(async function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
     ) {
@@ -140,15 +192,14 @@ describe("MCAP grid preview", () => {
     );
 
     expect(result.state.status).toBe("ready");
-    expect(imageFrame(result.state.frame)?.annotations).toBeNull();
-    expect(imageFrame(result.state.frame)?.image.bytes[0]).toBe(4);
+    expect(result.state.frame).not.toHaveProperty("annotations");
+    expect(firstImageByte(result.state.frame)).toBe(4);
+    expect(result.frameTimeNs).toBe(30n);
     expect(result.nextStartTimeNs).toBe(31n);
     expect(
       readDecodedMessages.mock.calls.map(([request]) => request.topics),
-    ).toEqual([
-      ["/CAM_FRONT/annotations"],
-      ["/CAM_FRONT/image_rect_compressed"],
-    ]);
+    ).toEqual([["/CAM_FRONT/image_rect_compressed"]]);
+    expect(client.readSynchronizedMessages).not.toHaveBeenCalled();
   });
 
   it("returns empty with stream topics when the selected stream has no frame", async () => {
@@ -201,9 +252,72 @@ describe("MCAP grid preview", () => {
       streamTopics: ["/camera/front", "/camera/back"],
       status: "ready",
     });
-    expect(imageFrame(result.state.frame)?.image.bytes[0]).toBe(8);
+    expect(firstImageByte(result.state.frame)).toBe(8);
     expect(readDecodedMessages).toHaveBeenCalledWith(
       expect.objectContaining({ topics: ["/camera/back"] }),
+    );
+  });
+
+  it("uses a preferred downsampled image stream for auto selection", async () => {
+    const readDecodedMessages = vi.fn(async function* (
+      request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
+    ) {
+      yield createImageMessage(request.topics?.[0] ?? "/camera", [7, 8], 44n);
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic("/camera/front/image"),
+        createTopic("/camera/front/image_downsampled"),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      { source: createSource() },
+    );
+
+    expect(result.state).toMatchObject({
+      streamTopic: "/camera/front/image_downsampled",
+      streamTopics: ["/camera/front/image", "/camera/front/image_downsampled"],
+      status: "ready",
+    });
+    expect(readDecodedMessages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        topics: ["/camera/front/image_downsampled"],
+      }),
+    );
+  });
+
+  it("honors an explicit raw image stream when a preferred sibling exists", async () => {
+    const readDecodedMessages = vi.fn(async function* (
+      request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
+    ) {
+      yield createImageMessage(request.topics?.[0] ?? "/camera", [3, 4], 45n);
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic("/camera/front/image"),
+        createTopic("/camera/front/image_downsampled"),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      {
+        selectedStreamTopic: "/camera/front/image",
+        source: createSource(),
+      },
+    );
+
+    expect(result.state).toMatchObject({
+      streamTopic: "/camera/front/image",
+      streamTopics: ["/camera/front/image", "/camera/front/image_downsampled"],
+      status: "ready",
+    });
+    expect(readDecodedMessages).toHaveBeenCalledWith(
+      expect.objectContaining({ topics: ["/camera/front/image"] }),
     );
   });
 
@@ -272,6 +386,39 @@ describe("MCAP grid preview", () => {
     );
   });
 
+  it("uses a preferred downsampled point-cloud stream for auto selection", async () => {
+    const readDecodedMessages = vi.fn(async function* (
+      request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
+    ) {
+      yield createPointCloudMessage(
+        request.topics?.[0] ?? "/lidar/points",
+        [5, 6, 7],
+        55n,
+      );
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic("/lidar/points", "foxglove.PointCloud"),
+        createTopic("/lidar/points_downsampled", "foxglove.PointCloud"),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      { source: createSource() },
+    );
+
+    expect(result.state).toMatchObject({
+      streamTopic: "/lidar/points_downsampled",
+      streamTopics: ["/lidar/points", "/lidar/points_downsampled"],
+      status: "ready",
+    });
+    expect(readDecodedMessages).toHaveBeenCalledWith(
+      expect.objectContaining({ topics: ["/lidar/points_downsampled"] }),
+    );
+  });
+
   it("uses an explicit selected point-cloud stream", async () => {
     const readDecodedMessages = vi.fn(async function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
@@ -308,19 +455,53 @@ describe("MCAP grid preview", () => {
     );
   });
 
+  it("compacts dense point clouds to the grid render budget before transfer", async () => {
+    const sourcePointCount = MCAP_GRID_PREVIEW_MAX_POINTS + 10;
+    const positions = new Float32Array(sourcePointCount * 3);
+    for (let index = 0; index < sourcePointCount; index++) {
+      positions[index * 3] = index;
+    }
+    const readDecodedMessages = vi.fn(async function* () {
+      yield createPointCloudMessage("/lidar/points", positions);
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic("/lidar/points", "foxglove.PointCloud"),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      { source: createSource() },
+    );
+    const frame = pointCloudFrame(result.state.frame)?.pointCloud;
+
+    expect(frame?.pointCount).toBe(MCAP_GRID_PREVIEW_MAX_POINTS);
+    expect(frame?.positions).toBe(frame?.renderPayload?.positions);
+    expect(frame?.positions[0]).toBe(0);
+    expect(frame?.positions.at(-3)).toBe(sourcePointCount - 1);
+    expect(mcapGridPreviewFrameRetainedBytes(result.state.frame)).toBe(
+      MCAP_GRID_PREVIEW_MAX_POINTS * (3 * Float32Array.BYTES_PER_ELEMENT + 4),
+    );
+  });
+
   it("classifies image and annotation topics from schema metadata", () => {
     expect(
       streamTopics([
         createTopic("/camera/front"),
         createTopic("/camera/front/annotations", "foxglove.ImageAnnotations"),
         createTopic("/lidar/points", "foxglove.PointCloud"),
+        createTopic("/markers", "foxglove.SceneUpdate"),
         createTopic("/tf", "foxglove.FrameTransform"),
       ]),
     ).toEqual({
       annotations: ["/camera/front/annotations"],
       image: ["/camera/front"],
+      logs: [],
       pointCloud: ["/lidar/points"],
       previewable: ["/camera/front", "/lidar/points"],
+      sceneUpdates: ["/markers"],
     });
   });
 
@@ -330,7 +511,7 @@ describe("MCAP grid preview", () => {
         createTopic(
           "/radar/points",
           "sensor_msgs/msg/PointCloud2",
-          "cdr",
+          "protobuf",
           "ros2msg",
         ),
         createTopic("/radar/custom", "example.RadarPointCloud"),
@@ -339,27 +520,30 @@ describe("MCAP grid preview", () => {
     ).toEqual({
       annotations: [],
       image: [],
+      logs: [],
       pointCloud: [],
       previewable: [],
+      sceneUpdates: [],
     });
   });
 
-  it("deterministically selects the first camera and its matching annotations", () => {
+  it("deterministically selects the first camera without annotations", () => {
     const selection = chooseCameraSelection({
       annotations: ["/CAM_BACK/annotations", "/CAM_FRONT/annotations"],
       image: [
         "/CAM_FRONT/image_rect_compressed",
         "/CAM_BACK/image_rect_compressed",
       ],
+      logs: [],
       pointCloud: [],
       previewable: [
         "/CAM_FRONT/image_rect_compressed",
         "/CAM_BACK/image_rect_compressed",
       ],
+      sceneUpdates: [],
     });
 
     expect(selection).toEqual({
-      annotationTopic: "/CAM_FRONT/annotations",
       kind: "image",
       streamTopic: "/CAM_FRONT/image_rect_compressed",
     });
@@ -396,10 +580,28 @@ function createClient(
     readFrameTransformBootstrap: vi.fn(),
     readFrameTransformWindow: vi.fn(),
     readSynchronizedMessageBatch: vi.fn(async () => []),
+    readRawMessageRecord: vi.fn(),
     readSynchronizedMessages: vi.fn(),
-    readTimelineRange: vi.fn(),
+    readTimelineRange: vi.fn(async () => createTimelineRange()),
     readTopics: vi.fn(async () => []),
+    readTopicTimeBounds: vi.fn(async () => []),
+    enumerateNumericFields: vi.fn(async () => []),
+    readNumericSeries: vi.fn(async () => ({
+      baseTimeNs: 0n,
+      fields: [],
+      messageCount: 0,
+      topic: "",
+      truncated: false,
+    })),
     ...overrides,
+  };
+}
+
+function createTimelineRange() {
+  return {
+    activeTimeline: "log" as const,
+    endTimeNs: 20_000_000_000n,
+    startTimeNs: 500_000_000n,
   };
 }
 
@@ -449,53 +651,66 @@ function createImageMessage(
   });
 }
 
-function createAnnotationMessage(
+function createRawImageMessage(
   topic: string,
   timelineTimeNs = 10n,
 ): McapDecodedMessage {
-  const visualization: ImageAnnotationsVisualization = {
-    circles: [],
-    kind: VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
-    points: [],
-    texts: [
-      {
-        backgroundColor: null,
-        fontSize: 12,
-        position: [1, 2],
-        text: "car",
-        textColor: null,
-      },
-    ],
+  return createDecodedMessage(topic, "sensor_msgs/msg/Image", {
+    timelineTimeNs,
+    visualization: {
+      height: 1,
+      kind: VISUALIZATION_KIND.RAW_IMAGE,
+      rgba: new Uint8Array([255, 0, 0, 255]),
+      sourceEncoding: "rgb8",
+      width: 1,
+    },
+  });
+}
+
+function createVideoMessage(
+  topic: string,
+  timelineTimeNs = 10n,
+): McapDecodedMessage {
+  const visualization: EncodedVideoVisualization = {
+    bytes: Uint8Array.of(0, 0, 1, 0x65),
+    codec: "h264",
+    format: "h264",
+    h264: {
+      codecString: "avc1.4D001F",
+      hasFrame: true,
+      pps: Uint8Array.of(0x68, 0xce),
+      sps: Uint8Array.of(0x67, 0x4d, 0x00, 0x1f),
+    },
+    keyframe: true,
+    kind: VISUALIZATION_KIND.ENCODED_VIDEO,
+    timestampNs: timelineTimeNs,
   };
 
-  return createDecodedMessage(topic, "foxglove.ImageAnnotations", {
-    visualization,
+  return createDecodedMessage(topic, "sensor_msgs/msg/CompressedImage", {
     timelineTimeNs,
+    visualization,
   });
 }
 
 function createPointCloudMessage(
   topic: string,
-  positions: readonly number[],
+  positions: readonly number[] | Float32Array,
   timelineTimeNs = 10n,
 ): McapDecodedMessage {
   const visualization: PointCloudVisualization = {
     fields: [],
     kind: VISUALIZATION_KIND.POINT_CLOUD,
     pointCount: Math.floor(positions.length / 3),
-    positions: new Float32Array(positions),
+    positions:
+      positions instanceof Float32Array
+        ? positions
+        : new Float32Array(positions),
   };
 
   return createDecodedMessage(topic, "foxglove.PointCloud", {
     visualization,
     timelineTimeNs,
   });
-}
-
-function imageFrame(
-  frame: McapGridPreviewFrame | null,
-): Extract<McapGridPreviewFrame, { kind: "image" }> | null {
-  return frame?.kind === "image" ? frame : null;
 }
 
 function pointCloudFrame(
@@ -535,23 +750,5 @@ function createDecodedMessage(
     sequence: 1,
     timelineTimeNs,
     topic,
-  };
-}
-
-function createWindow(
-  timeNs: bigint,
-  topic: string,
-  message: McapDecodedMessage,
-): McapSynchronizedMessageWindow {
-  return {
-    activeTimeline: "log",
-    endTimeNs: timeNs,
-    messages: [message],
-    messagesByTopic: {
-      [topic]: [message],
-    },
-    startTimeNs: timeNs,
-    streamPolicies: {},
-    timeNs,
   };
 }

@@ -1,9 +1,12 @@
 import { createStore } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
+  achievedSpeedAtom,
+  bufferedRangesAtom,
   currentTimeAtom,
   durationAtom,
   isBufferingAtom,
+  isPlayPendingAtom,
   isPlayingAtom,
   loopEndAtom,
   loopStartAtom,
@@ -11,11 +14,13 @@ import {
   seekEventAtom,
   speedAtom,
   stepIntervalAtom,
+  streamRangesVersionAtom,
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
-import { SEEK_BAR_DEBOUNCE } from "../constants";
+import { MAX_SPEED, SEEK_BAR_DEBOUNCE } from "../constants";
 import { clamp, clampAndValidateBounds } from "./utils";
+import { createPlaybackRateMeter } from "./playback-rate-meter";
 import type {
   PlaybackClockSource,
   PlaybackConfig,
@@ -91,6 +96,7 @@ function displayedFrameStart(time: number, step: number): number {
  * because `targetTime` comes from the source directly.
  */
 const MAX_TICK_DT_S = 0.133;
+const DEFAULT_PREFETCH_LOOKAHEAD_SECONDS = 3;
 
 export function usePlaybackEngine({
   duration = 0,
@@ -141,6 +147,7 @@ export function usePlaybackEngine({
   const streamsRef = useRef<Map<string, PlaybackStream>>(new Map());
   const subscribersRef = useRef<Map<string, number>>(new Map());
   const rafIdRef = useRef<number | null>(null);
+  const achievedRateMeterRef = useRef(createPlaybackRateMeter());
   // Wallclock at the previous tick. Used for `dt`-driven advance when
   // no clock source is registered. Reset to `null` on play() so the
   // first tick after pause doesn't see a huge gap.
@@ -149,6 +156,12 @@ export function usePlaybackEngine({
   // `read()` returns a number, the engine uses that as the next target time;
   // when `null` or `read()` returns `null`, the engine falls back to dt.
   const clockSourceRef = useRef<PlaybackClockSource | null>(null);
+  const pendingPlayRef = useRef(false);
+  const pendingPlayStartedAtMsRef = useRef<number | null>(null);
+  const pendingPlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const tryStartPendingPlaybackRef = useRef<() => void>(() => undefined);
   const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekSeqRef = useRef(0);
   // A seek/step/snap target that couldn't commit immediately because a
@@ -310,6 +323,7 @@ export function usePlaybackEngine({
       // doesn't see a huge dt spike.
       if (lastTimestampRef.current === null) {
         lastTimestampRef.current = timestamp;
+        achievedRateMeterRef.current.reset(timestamp);
         rafIdRef.current = requestAnimationFrame(tick);
         return;
       }
@@ -338,12 +352,25 @@ export function usePlaybackEngine({
       const willWrap = rawNext >= loopEnd;
       const targetTime = willWrap ? loopStart : rawNext;
 
+      let committedMediaSeconds = 0;
       if (runBarrier(targetTime)) {
         store.set(playheadAtom, targetTime);
         doCommit(targetTime);
+        committedMediaSeconds = willWrap
+          ? Math.max(0, loopEnd - currentTime) +
+            Math.max(0, targetTime - loopStart)
+          : Math.max(0, targetTime - currentTime);
         // Loop-wrap is a discontinuous jump — fire immediately so
         // streams can flush their cache and buffer around loopStart.
         if (willWrap) fireSeekEvent(loopStart, true);
+      }
+
+      const achievedSpeed = achievedRateMeterRef.current.sample(
+        timestamp,
+        committedMediaSeconds,
+      );
+      if (achievedSpeed !== null) {
+        store.set(achievedSpeedAtom, achievedSpeed);
       }
 
       rafIdRef.current = requestAnimationFrame(tick);
@@ -356,8 +383,12 @@ export function usePlaybackEngine({
       const isPlaying = store.get(isPlayingAtom);
       if (isPlaying) {
         lastTimestampRef.current = null;
+        achievedRateMeterRef.current.reset();
+        store.set(achievedSpeedAtom, null);
         rafIdRef.current = requestAnimationFrame(tick);
       } else {
+        achievedRateMeterRef.current.reset();
+        store.set(achievedSpeedAtom, null);
         if (rafIdRef.current !== null) {
           cancelAnimationFrame(rafIdRef.current);
           rafIdRef.current = null;
@@ -406,6 +437,152 @@ export function usePlaybackEngine({
 
     settleRafRef.current = requestAnimationFrame(settleTick);
   }, [store, runBarrier, doCommit]);
+
+  const clearPendingPlayTimeout = useCallback(() => {
+    if (pendingPlayTimeoutRef.current === null) return;
+    clearTimeout(pendingPlayTimeoutRef.current);
+    pendingPlayTimeoutRef.current = null;
+  }, []);
+
+  const schedulePendingPlayTimeout = useCallback(() => {
+    clearPendingPlayTimeout();
+    const startedAtMs = pendingPlayStartedAtMsRef.current;
+    if (!pendingPlayRef.current || startedAtMs === null) return;
+
+    const nowMs = performance.now();
+    let nextWaitMs = Number.POSITIVE_INFINITY;
+    for (const stream of streamsRef.current.values()) {
+      if (!stream.blocking || !isActive(stream.id)) continue;
+      const deadlineMs = startupCoverageDeadlineMs(stream, startedAtMs);
+      if (deadlineMs === null) continue;
+      const remainingMs = deadlineMs - nowMs;
+      // An expired stream is already handled by evaluatePlaybackStart. Do
+      // not let it pin the scheduler to a zero-delay loop while another
+      // blocking stream still has a later deadline.
+      if (remainingMs <= 0) continue;
+      nextWaitMs = Math.min(nextWaitMs, remainingMs);
+    }
+
+    if (!Number.isFinite(nextWaitMs)) return;
+    pendingPlayTimeoutRef.current = setTimeout(() => {
+      pendingPlayTimeoutRef.current = null;
+      tryStartPendingPlaybackRef.current();
+    }, Math.ceil(nextWaitMs));
+  }, [clearPendingPlayTimeout, isActive]);
+
+  const evaluatePlaybackStart = useCallback(
+    (time: number, requestMissing: boolean): boolean => {
+      const duration = store.get(durationAtom);
+      const pendingStartedAtMs = pendingPlayStartedAtMsRef.current;
+      const nowMs = performance.now();
+      let activeBlockingStreams = 0;
+      let ready = true;
+
+      for (const s of streamsRef.current.values()) {
+        if (!s.blocking) continue;
+        if (!isActive(s.id)) continue;
+        activeBlockingStreams += 1;
+
+        const state = s.bufferState(time);
+        const currentReady = state === "ready";
+        const startupReady =
+          currentReady &&
+          (streamHasStartupCoverage(s, time, duration) ||
+            startupCoverageWaitExpired(s, pendingStartedAtMs, nowMs));
+
+        if (currentReady && startupReady) continue;
+
+        ready = false;
+        if (requestMissing) {
+          s.prefetch?.([time, startupPrefetchEnd(s, time, duration)]);
+        }
+      }
+
+      if (activeBlockingStreams === 0 && duration <= 0) return false;
+
+      return ready;
+    },
+    [isActive, store],
+  );
+
+  const clearPendingPlay = useCallback(
+    (clearBuffering = false) => {
+      pendingPlayRef.current = false;
+      pendingPlayStartedAtMsRef.current = null;
+      clearPendingPlayTimeout();
+      store.set(isPlayPendingAtom, false);
+      if (clearBuffering) store.set(isBufferingAtom, false);
+    },
+    [clearPendingPlayTimeout, store],
+  );
+
+  const startPlayback = useCallback(() => {
+    clearPendingPlay(true);
+    store.set(isPlayingAtom, true);
+  }, [clearPendingPlay, store]);
+
+  const requestOrStartPlayback = useCallback(
+    (time: number) => {
+      pendingPlayStartedAtMsRef.current ??= performance.now();
+      if (evaluatePlaybackStart(time, true)) {
+        startPlayback();
+        return;
+      }
+
+      pendingPlayRef.current = true;
+      store.set(isPlayPendingAtom, true);
+      store.set(isBufferingAtom, true);
+      schedulePendingPlayTimeout();
+    },
+    [evaluatePlaybackStart, schedulePendingPlayTimeout, startPlayback, store],
+  );
+
+  const tryStartPendingPlayback = useCallback(() => {
+    if (!pendingPlayRef.current) return;
+    if (store.get(isPlayingAtom)) {
+      clearPendingPlay();
+      return;
+    }
+
+    const time = store.get(playheadAtom);
+    if (evaluatePlaybackStart(time, false)) {
+      startPlayback();
+      return;
+    }
+
+    evaluatePlaybackStart(time, true);
+    schedulePendingPlayTimeout();
+  }, [
+    clearPendingPlay,
+    evaluatePlaybackStart,
+    schedulePendingPlayTimeout,
+    startPlayback,
+    store,
+  ]);
+  tryStartPendingPlaybackRef.current = tryStartPendingPlayback;
+
+  useEffect(() => {
+    const unsubscribeBufferedRanges = store.sub(
+      bufferedRangesAtom,
+      tryStartPendingPlayback,
+    );
+    const unsubscribeStreamRanges = store.sub(
+      streamRangesVersionAtom,
+      tryStartPendingPlayback,
+    );
+    return () => {
+      unsubscribeBufferedRanges();
+      unsubscribeStreamRanges();
+    };
+  }, [store, tryStartPendingPlayback]);
+
+  // This effect clears a pending startup deadline when the engine unmounts.
+  useEffect(
+    () => () => {
+      clearPendingPlayTimeout();
+    },
+    [clearPendingPlayTimeout],
+  );
 
   /**
    * Commit `time` now if the barrier is satisfied, else remember it and
@@ -467,6 +644,7 @@ export function usePlaybackEngine({
         store.set(playheadAtom, clamped);
         fireSeekEvent(clamped);
         commitWhenReady(clamped);
+        if (pendingPlayRef.current) requestOrStartPlayback(clamped);
       },
       // Snapping companion to `seek`. Quantizes `time` onto the displayed-
       // frame start when the provider has opted into `snapToFrameOnSettle`;
@@ -485,6 +663,7 @@ export function usePlaybackEngine({
           store.set(playheadAtom, clamped);
           fireSeekEvent(clamped);
           commitWhenReady(clamped);
+          if (pendingPlayRef.current) requestOrStartPlayback(clamped);
           return;
         }
 
@@ -514,18 +693,22 @@ export function usePlaybackEngine({
         store.set(playheadAtom, snapped);
         fireSeekEvent(snapped);
         commitWhenReady(snapped);
+        if (pendingPlayRef.current) requestOrStartPlayback(snapped);
       },
       play: () => {
-        const current = store.get(playheadAtom);
+        let current = store.get(playheadAtom);
         const ls = store.get(loopStartAtom);
         const le = store.get(loopEndAtom);
         if (current < ls || current >= le) {
-          store.set(playheadAtom, ls);
-          fireSeekEvent(ls, true);
+          current = ls;
+          store.set(playheadAtom, current);
+          fireSeekEvent(current, true);
         }
-        store.set(isPlayingAtom, true);
+        requestOrStartPlayback(current);
       },
       pause: () => {
+        const wasPending = pendingPlayRef.current;
+        clearPendingPlay(wasPending);
         store.set(isPlayingAtom, false);
         snapPlayheadToFrame();
       },
@@ -542,6 +725,7 @@ export function usePlaybackEngine({
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
         commitWhenReady(next);
+        if (pendingPlayRef.current) requestOrStartPlayback(next);
       },
       stepForward: () => {
         const next = clamp(
@@ -556,6 +740,7 @@ export function usePlaybackEngine({
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
         commitWhenReady(next);
+        if (pendingPlayRef.current) requestOrStartPlayback(next);
       },
       setView: (start: number, end: number) => {
         const bounds = clampAndValidateBounds(
@@ -581,7 +766,9 @@ export function usePlaybackEngine({
         // NaN / Infinity / non-positive values would corrupt `dt` in
         // the RAF tick and produce invalid playhead progression.
         if (!Number.isFinite(speed) || speed <= 0) return;
-        store.set(speedAtom, speed);
+        // Clamp (not reject) the upper bound so callers that pass an
+        // out-of-range value land at MAX_SPEED rather than silently no-op.
+        store.set(speedAtom, Math.min(speed, MAX_SPEED));
         // When a clock source is registered, the engine's `dt` arithmetic
         // isn't running — the source already paces the timeline. Speed in that
         // mode has to be applied at the source (e.g. `v.playbackRate` for a
@@ -606,6 +793,7 @@ export function usePlaybackEngine({
           id,
           (subscribersRef.current.get(id) ?? 0) + 1,
         );
+        tryStartPendingPlayback();
         // One-shot cleanup. StrictMode's setup→cleanup→setup cycle (and
         // any consumer that retains a stale cleanup) would otherwise
         // double-decrement and drop a still-mounted stream.
@@ -640,10 +828,12 @@ export function usePlaybackEngine({
   }, [
     store,
     fireSeekEvent,
-    doCommit,
+    clearPendingPlay,
     commitWhenReady,
     recomputeDuration,
     recomputeStepInterval,
+    requestOrStartPlayback,
+    tryStartPendingPlayback,
   ]);
 
   const contextValue = useMemo<PlaybackContextValue>(
@@ -652,4 +842,85 @@ export function usePlaybackEngine({
   );
 
   return { store, contextValue };
+}
+
+function streamHasStartupCoverage(
+  stream: PlaybackStream,
+  time: number,
+  duration: number,
+): boolean {
+  const startupSeconds = stream.startupBufferSeconds ?? 0;
+  if (startupSeconds <= 0) return true;
+
+  const ranges = stream.bufferedRanges?.();
+  if (!ranges) return true;
+
+  return rangesCoverInterval(
+    ranges,
+    time,
+    Math.min(duration, time + startupSeconds),
+    startupCoverageStartTolerance(stream),
+  );
+}
+
+function startupCoverageWaitExpired(
+  stream: PlaybackStream,
+  pendingStartedAtMs: number | null,
+  nowMs: number,
+): boolean {
+  const deadlineMs = startupCoverageDeadlineMs(stream, pendingStartedAtMs);
+  return deadlineMs !== null && nowMs >= deadlineMs;
+}
+
+function startupCoverageDeadlineMs(
+  stream: PlaybackStream,
+  pendingStartedAtMs: number | null,
+): number | null {
+  const maxWaitSeconds = stream.startupBufferMaxWaitSeconds;
+  if (
+    pendingStartedAtMs === null ||
+    maxWaitSeconds === undefined ||
+    !Number.isFinite(maxWaitSeconds) ||
+    maxWaitSeconds < 0
+  ) {
+    return null;
+  }
+  return pendingStartedAtMs + maxWaitSeconds * 1_000;
+}
+
+function startupCoverageStartTolerance(stream: PlaybackStream): number {
+  const nativeStep = stream.nativeStepSeconds;
+  return nativeStep !== undefined &&
+    Number.isFinite(nativeStep) &&
+    nativeStep > 0
+    ? nativeStep / 2
+    : 0;
+}
+
+function startupPrefetchEnd(
+  stream: PlaybackStream,
+  time: number,
+  duration: number,
+): number {
+  const lookaheadSeconds = Math.max(
+    stream.startupBufferSeconds ?? 0,
+    stream.lookaheadSeconds ?? DEFAULT_PREFETCH_LOOKAHEAD_SECONDS,
+  );
+  return Math.min(duration, time + lookaheadSeconds);
+}
+
+function rangesCoverInterval(
+  ranges: ReturnType<NonNullable<PlaybackStream["bufferedRanges"]>>,
+  start: number,
+  end: number,
+  startTolerance = 0,
+): boolean {
+  if (end <= start) return true;
+
+  for (const [rangeStart, rangeEnd] of ranges) {
+    if (rangeStart <= start + startTolerance && rangeEnd >= end) return true;
+    if (rangeStart > start) return false;
+  }
+
+  return false;
 }

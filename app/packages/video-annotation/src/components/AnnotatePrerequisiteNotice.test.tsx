@@ -18,15 +18,6 @@ describe("AnnotatePrerequisiteNotice", () => {
     getByText(/frame count is unknown/);
     getByText("Compute metadata");
   });
-
-  it("renders the frames prompt", () => {
-    const { getByText } = render(
-      <AnnotatePrerequisiteNotice blocker="frames" />,
-    );
-
-    getByText("Frames not sampled");
-    getByText(/to_frames/);
-  });
 });
 
 describe("AnnotatePrerequisiteChecking", () => {

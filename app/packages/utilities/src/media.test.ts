@@ -5,6 +5,8 @@ import {
   isDirect3dSamplePath,
   isFo3d,
   isFo3dSamplePath,
+  isMultimodal,
+  isNativeMediaType,
   isPointCloud,
   isWrappableDirect3dSamplePath,
   setContains3d,
@@ -12,7 +14,7 @@ import {
   setContainsPointCloud,
 } from "./media";
 
-const pointCloudTypes = ["point-cloud", "point_cloud"];
+const pointCloudTypes = ["pcd", "point-cloud", "point_cloud"];
 const fo3dTypes = ["3d", "three_d"];
 const otherTypes = ["image", "video", "other", undefined];
 
@@ -47,6 +49,34 @@ describe("media utils", () => {
 
     it("should return false for other types", () => {
       otherTypes.forEach((mt) => expect(is3d(mt)).toBeFalsy());
+    });
+  });
+
+  describe("isMultimodal", () => {
+    it("should return true for multimodal media types", () => {
+      expect(isMultimodal("multimodal")).toBeTruthy();
+    });
+
+    it("should return false for other media types", () => {
+      [...fo3dTypes, ...pointCloudTypes, ...otherTypes, null].forEach((mt) =>
+        expect(isMultimodal(mt)).toBeFalsy(),
+      );
+    });
+  });
+
+  describe("isNativeMediaType", () => {
+    it("should return true for native media types", () => {
+      [null, undefined, "image", "video", "group"].forEach((mt) =>
+        expect(isNativeMediaType(mt)).toBeTruthy(),
+      );
+      fo3dTypes.forEach((mt) => expect(isNativeMediaType(mt)).toBeTruthy());
+      pointCloudTypes.forEach((mt) =>
+        expect(isNativeMediaType(mt)).toBeTruthy(),
+      );
+    });
+
+    it("should return false for multimodal media types", () => {
+      expect(isNativeMediaType("multimodal")).toBeFalsy();
     });
   });
 

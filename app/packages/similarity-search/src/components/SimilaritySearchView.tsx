@@ -1,6 +1,6 @@
 import { usePanelContext } from "@fiftyone/spaces";
 import { Spinner } from "@voxel51/voodo";
-import React, { Suspense } from "react";
+import { Suspense } from "react";
 import { SimilaritySearchViewProps } from "../types";
 import { useSimilarityPanel } from "../hooks/useSimilarityPanel";
 import RunList from "./Home/RunList";
