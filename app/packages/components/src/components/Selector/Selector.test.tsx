@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -101,7 +102,7 @@ describe("Selector", () => {
     expect(visibleResults()).toEqual(["image"]);
   });
 
-  it("displays the updated value once editing ends", () => {
+  it("syncs the displayed value when `value` changes while not editing", () => {
     const { rerender } = renderSelector("image");
     const input = screen.getByTestId("selector-test") as HTMLInputElement;
     expect(input.value).toBe("image");
@@ -117,6 +118,31 @@ describe("Selector", () => {
       />,
     );
 
+    expect(input.value).toBe("video");
+  });
+
+  it("keeps the selected value displayed after selecting, before `value` updates", async () => {
+    // onSelect resolves with the selection, but the `value` prop stays stale —
+    // the optimistic display must not revert to the old value when editing ends
+    const onSelect = vi.fn(async (search: string) => search);
+    render(
+      <Selector
+        value="image"
+        onSelect={onSelect}
+        placeholder="Select slice..."
+        useSearch={useSearch}
+        component={Option}
+        cy="test"
+      />,
+    );
+
+    const input = openResults() as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "video" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    // wait for the selection to close the results, i.e. editing has ended
+    await waitFor(() => expect(visibleResults()).toEqual([]));
+    expect(onSelect).toHaveBeenCalledWith("video", "video");
     expect(input.value).toBe("video");
   });
 });
