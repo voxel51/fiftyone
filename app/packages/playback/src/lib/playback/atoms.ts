@@ -133,6 +133,14 @@ export const stepIntervalAtom = atom(1 / 30);
 export const speedAtom = atom(1.0);
 
 /**
+ * Rolling media-seconds-per-wall-second actually committed by the engine.
+ * Null outside active playback and before the first measurement window.
+ */
+export const achievedSpeedAtom = atom<number | null>(null) as PrimitiveAtom<
+  number | null
+>;
+
+/**
  * Fired on discontinuous playhead jumps: user seek, step forward/back,
  * play() resetting to loop start, and loop-wrap. NOT fired on normal
  * frame-by-frame RAF ticks.

@@ -1,6 +1,7 @@
 import { Size, Text, TextColor, TextVariant, Toggle } from "@voxel51/voodo";
 import React, { useId, useState } from "react";
 import { settingsBooleanNoSpaceToggleProps } from "./mcap-settings-keyboard";
+import { McapSettingsTooltip } from "./McapSettingsLabel";
 import styles from "./McapSidebarGroup.module.css";
 
 export interface McapSidebarGroupToggle {
@@ -20,8 +21,16 @@ const McapSidebarGroup: React.FC<{
   readonly defaultExpanded?: boolean;
   readonly summary?: string;
   readonly title: string;
+  readonly tooltip?: string;
   readonly toggle?: McapSidebarGroupToggle;
-}> = ({ children, defaultExpanded = true, summary, title, toggle }) => {
+}> = ({
+  children,
+  defaultExpanded = true,
+  summary,
+  title,
+  tooltip,
+  toggle,
+}) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const bodyId = useId();
 
@@ -48,6 +57,7 @@ const McapSidebarGroup: React.FC<{
             <span className={styles.summary}>{summary}</span>
           ) : null}
         </button>
+        {tooltip ? <McapSettingsTooltip tooltip={tooltip} /> : null}
         {toggle ? (
           <Toggle
             aria-label={toggle.ariaLabel}

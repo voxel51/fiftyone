@@ -59,6 +59,36 @@ const TELEMETRY_SCHEMA_DATA: Uint8Array = descriptor.FileDescriptorSet.encode(
 ).finish();
 
 describe("readMcapRawMessageRecord", () => {
+  it("returns complete JSON only when explicitly requested", async () => {
+    const record = {
+      data: Array.from({ length: 100 }, (_, index) => index),
+      note: "x".repeat(600),
+    };
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [jsonMessage(record, 1_000_000_000n)],
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        includeFullJson: true,
+        prune: { maxArrayLength: 2, maxStringLength: 3 },
+        source: createSource(),
+        timeNs: 1_000_000_000n,
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(result.truncated).toBe(true);
+    expect(JSON.parse(result.fullJson ?? "")).toEqual(record);
+    expect(rawNodeToJson(rootOf(result))).toEqual({
+      data: [0, 1, "… 98 more items"],
+      note: "xxx…",
+    });
+  });
+
   it("selects the newest message at or before the time (fallback scan)", async () => {
     const reader = createReader({
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),

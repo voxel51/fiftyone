@@ -1,5 +1,5 @@
 /* eslint-disable react/no-unknown-property */
-import { useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import * as THREE from "three";
 
 import type { GridVisualization } from "../../../decoders";
@@ -11,7 +11,9 @@ import type { GridPanelLayer } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
 import { isFinitePositiveNumber } from "./utils";
 
-export function GridSceneLayer({
+// Memoized: unrelated ticks and hovers skip re-rendering map layers whose
+// frame and transform kept identity.
+export const GridSceneLayer = memo(function GridSceneLayer({
   layer,
   renderOrder,
 }: {
@@ -80,7 +82,7 @@ export function GridSceneLayer({
       </group>
     </group>
   );
-}
+});
 
 function createGridTexture(frame: GridVisualization): THREE.DataTexture {
   const texture = new THREE.DataTexture(

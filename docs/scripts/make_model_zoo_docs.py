@@ -174,18 +174,18 @@ _MODEL_TEMPLATE = """
     )
     dataset.apply_model(model, label_field="segmentations_concept")
 
-    # Exemplar concept mode: text prompt + exemplar boxes on frame 1, propagate forward
+    # Exemplar concept mode: text prompt + exemplar boxes on frame 10, propagate in both directions
     model = foz.load_zoo_model(
         "{{ name }}",
         classes=["person"],
         operation_mode="concept",
         propagation_direction="both",
-        prompt_frame_indices=[1],
+        prompt_frame_indices=[10],
     )
     dataset.apply_model(
         model,
         label_field="segmentations_concept_with_exemplar",
-        prompt_field="frames.person_detections",  # exemplar Detections on frame 1
+        prompt_field="frames.person_detections",  # exemplar Detections on frame 10
     )
 
     # Visual mode: segment inside boxes and propagate to all frames

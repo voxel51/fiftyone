@@ -10,6 +10,7 @@ import {
 } from "react";
 import * as THREE from "three";
 
+import { fittedImageSize } from "./image-fit";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
 
 /**
@@ -231,21 +232,13 @@ export function replaceImageMaterialTexture(
   material.needsUpdate = true;
 }
 
+/** Returns the centered destination rect for an image fitted into a panel. */
 export function imageDisplayRect(
   container: ImageDisplaySize,
   imageSize: ImageDisplaySize,
   fit: "contain" | "cover",
 ): ImageDisplayRect {
-  const containerAspect = container.width / Math.max(1, container.height);
-  const imageAspect = imageSize.width / Math.max(1, imageSize.height);
-  const imageIsWider = imageAspect > containerAspect;
-  const constrainByWidth = fit === "contain" ? imageIsWider : !imageIsWider;
-  const width = constrainByWidth
-    ? container.width
-    : container.height * imageAspect;
-  const height = constrainByWidth
-    ? container.width / imageAspect
-    : container.height;
+  const { height, width } = fittedImageSize(container, imageSize, fit);
 
   return {
     height,

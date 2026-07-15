@@ -232,9 +232,11 @@ on the cards below to see how!
     ActivityNet <activitynet.rst>
     Integrating with Annotation Backends <annotation.rst>
     CVAT <cvat.rst>
+    Annotating with CVAT <../tutorials/cvat_annotation.ipynb>
     Label Studio <labelstudio.rst>
     V7 <v7.rst>
     Labelbox <labelbox.rst>
+    Annotating with Labelbox <../tutorials/labelbox_annotation.ipynb>
     Qdrant <qdrant.rst>
     Redis <redis.rst>
     Pinecone <pinecone.rst>

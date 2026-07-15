@@ -70,7 +70,6 @@ export function WebGpuViewStage({
 }: WebGpuViewStageProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const invalidateRef = useRef<(() => void) | null>(null);
-  const pendingInvalidationRef = useRef(false);
   const registrationsRef = useRef(new Set<symbol>());
   const [dpr, setDpr] = useState(currentStageDpr);
   const [error, setError] = useState<string | null>(null);
@@ -81,12 +80,7 @@ export function WebGpuViewStage({
   );
 
   const invalidate = useCallback(() => {
-    const requestRender = invalidateRef.current;
-    if (requestRender) {
-      requestRender();
-    } else {
-      pendingInvalidationRef.current = true;
-    }
+    invalidateRef.current?.();
   }, []);
 
   const registerView = useCallback(() => {
@@ -118,9 +112,6 @@ export function WebGpuViewStage({
     (state: { readonly invalidate: () => void }) => {
       invalidateRef.current = state.invalidate;
       setReady(true);
-      if (pendingInvalidationRef.current) {
-        pendingInvalidationRef.current = false;
-      }
       state.invalidate();
     },
     [],
@@ -142,7 +133,6 @@ export function WebGpuViewStage({
       return;
     }
     invalidateRef.current = null;
-    pendingInvalidationRef.current = false;
     setReady(false);
   }, [viewCount]);
 

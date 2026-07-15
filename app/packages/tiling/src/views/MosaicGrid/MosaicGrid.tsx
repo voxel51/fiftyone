@@ -28,6 +28,7 @@ import type { TilingLayoutMetrics } from "../../lib/types";
 import {
   useSetTileTitle,
   useTileTitle,
+  useTileTitleHighlighted,
   useTileTypes,
 } from "../../lib/use-tile-state";
 import { TileHeader } from "../Tile/Tile";
@@ -133,6 +134,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
   onCloseOthers,
 }) => {
   const titleOverride = useTileTitle();
+  const titleHighlighted = useTileTitleHighlighted();
   const setTileTitle = useSetTileTitle();
   const tileTypes = useTileTypes();
   const [renameRequest, setRenameRequest] = useState(0);
@@ -230,6 +232,7 @@ const TileWindow: React.FC<TileWindowProps> = ({
         <div className={styles.toolbarHeader} onContextMenu={onActionFocus}>
           <ContextMenu className={styles.toolbarContextMenu} menu={contextMenu}>
             <TileHeader
+              highlighted={titleHighlighted}
               title={title}
               onClose={onClose}
               onFullscreen={onFullscreen}

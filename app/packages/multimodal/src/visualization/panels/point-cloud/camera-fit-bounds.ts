@@ -40,6 +40,12 @@ export const PERSPECTIVE_POINT_CAMERA = {
   near: 0.01,
   position: [8, 5, 8] as [number, number, number],
 };
+/** Projection defaults shared by fitted and controlled point-cloud cameras. */
+export const DEFAULT_POINT_CLOUD_CAMERA_PROJECTION = {
+  far: PERSPECTIVE_POINT_CAMERA.far,
+  fovDegrees: PERSPECTIVE_POINT_CAMERA.fov,
+  near: PERSPECTIVE_POINT_CAMERA.near,
+} as const;
 const CAMERA_FIT_PADDING = 1.35;
 const SCENE_MODEL_FALLBACK_SIZE = 1;
 
@@ -295,6 +301,7 @@ export function worldBoundsForLayer(
  */
 export function cameraPoseForBounds(
   bounds: THREE.Box3 | null,
+  fovDegrees = PERSPECTIVE_POINT_CAMERA.fov,
 ): PointCloudCameraPose | null {
   if (!bounds) {
     return null;
@@ -303,7 +310,7 @@ export function cameraPoseForBounds(
   const center = bounds.getCenter(new THREE.Vector3());
   const size = bounds.getSize(new THREE.Vector3());
   const radius = Math.max(EMPTY_POINT_CLOUD_BOUNDS_SIZE, size.length() / 2);
-  const fovRad = THREE.MathUtils.degToRad(PERSPECTIVE_POINT_CAMERA.fov);
+  const fovRad = THREE.MathUtils.degToRad(fovDegrees);
   const distance = (radius / Math.sin(fovRad / 2)) * CAMERA_FIT_PADDING;
   const direction = new THREE.Vector3(...PERSPECTIVE_POINT_CAMERA.position)
     .normalize()

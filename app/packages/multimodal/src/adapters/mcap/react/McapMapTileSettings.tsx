@@ -1,4 +1,3 @@
-import { TileSettingsContent } from "@fiftyone/tiling";
 import { Checkbox, RadioGroup, Size } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 import { useSceneInventory } from "../../../scene-inventory";
@@ -11,7 +10,6 @@ import {
   useToggleMcapMapTileTopic,
 } from "./mcap-map-tile-state";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
-import plotStyles from "./McapPlotTile.module.css";
 import settingsStyles from "./McapTile.settings.module.css";
 
 const BASE_LAYER_OPTIONS = [
@@ -39,50 +37,46 @@ const McapMapTileSettings: React.FC = () => {
   const baseLayer = settings.baseLayer ?? MCAP_MAP_BASE_LAYER.DEFAULT;
 
   return (
-    <TileSettingsContent>
-      <div className={settingsStyles.root}>
-        <div className={settingsStyles.optionStack}>
-          <RadioGroup
-            name="mcap-map-base-layer"
-            onChange={(value) =>
-              setSettings({ baseLayer: value as McapMapBaseLayer })
-            }
-            options={BASE_LAYER_OPTIONS}
-            size={Size.Md}
-            value={baseLayer}
+    <div className={settingsStyles.root}>
+      <div className={settingsStyles.optionStack}>
+        <RadioGroup
+          name="mcap-map-base-layer"
+          onChange={(value) =>
+            setSettings({ baseLayer: value as McapMapBaseLayer })
+          }
+          options={BASE_LAYER_OPTIONS}
+          size={Size.Md}
+          value={baseLayer}
+        />
+        <div className={settingsStyles.fieldRow}>
+          <Checkbox
+            checked={settings.followEgo}
+            label="Follow playhead"
+            onChange={(checked) => setSettings({ followEgo: checked })}
+            {...checkboxNoSpaceToggleProps}
           />
-          <div className={plotStyles.fieldRow}>
-            <Checkbox
-              checked={settings.followEgo}
-              label="Follow playhead"
-              onChange={(checked) => setSettings({ followEgo: checked })}
-              {...checkboxNoSpaceToggleProps}
-            />
-          </div>
         </div>
-        {locationSources.length === 0 ? (
-          <span className={settingsStyles.emptyText}>
-            No GPS topics in this recording
-          </span>
-        ) : (
-          <div className={settingsStyles.optionStack}>
-            {locationSources.map((source) => (
-              <div className={plotStyles.fieldRow} key={source.id}>
-                <Checkbox
-                  checked={enabledTopics.has(source.id)}
-                  label={source.label}
-                  onChange={(checked) =>
-                    toggleTopic(source.id, checked, topics)
-                  }
-                  {...checkboxNoSpaceToggleProps}
-                />
-                <span className={settingsStyles.metaText}>{source.id}</span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
-    </TileSettingsContent>
+      {locationSources.length === 0 ? (
+        <span className={settingsStyles.emptyText}>
+          No GPS topics in this recording
+        </span>
+      ) : (
+        <div className={settingsStyles.optionStack}>
+          {locationSources.map((source) => (
+            <div className={settingsStyles.fieldRow} key={source.id}>
+              <Checkbox
+                checked={enabledTopics.has(source.id)}
+                label={source.label}
+                onChange={(checked) => toggleTopic(source.id, checked, topics)}
+                {...checkboxNoSpaceToggleProps}
+              />
+              <span className={settingsStyles.metaText}>{source.id}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 

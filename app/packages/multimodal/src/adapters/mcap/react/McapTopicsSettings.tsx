@@ -33,6 +33,7 @@ const McapTopicsSettings: React.FC<{
   const openRawMessageTile = useOpenMcapRawMessageTile();
   const open3dTile = useOpenMcapPanelTile(MCAP_TILE_TYPE.THREE_D);
   const openLogTile = useOpenMcapPanelTile(MCAP_TILE_TYPE.LOG);
+  const openMapTile = useOpenMcapPanelTile(MCAP_TILE_TYPE.MAP);
   const [search, setSearch] = useState("");
   const rows = useMemo(
     () => buildMcapTopicInventoryRows({ sceneSources, topics }),
@@ -67,9 +68,10 @@ const McapTopicsSettings: React.FC<{
       open3dTile,
       openImageTile,
       openLogTile,
+      openMapTile,
       openRawMessageTile,
     }),
-    [open3dTile, openImageTile, openLogTile, openRawMessageTile],
+    [open3dTile, openImageTile, openLogTile, openMapTile, openRawMessageTile],
   );
 
   return (
@@ -175,6 +177,7 @@ interface TopicActionHandlers {
   readonly open3dTile: () => void;
   readonly openImageTile: (sourceId: string) => void;
   readonly openLogTile: () => void;
+  readonly openMapTile: () => void;
   readonly openRawMessageTile: (topic: string) => void;
 }
 
@@ -218,6 +221,15 @@ function topicActionsForRow(
       id: "logs",
       label: "Logs",
       onClick: handlers.openLogTile,
+    });
+  }
+
+  if (row.capabilities.includes(MCAP_TOPIC_CAPABILITY.MAP)) {
+    actions.push({
+      ariaLabel: `Map ${row.topic}`,
+      id: "map",
+      label: "Map",
+      onClick: handlers.openMapTile,
     });
   }
 

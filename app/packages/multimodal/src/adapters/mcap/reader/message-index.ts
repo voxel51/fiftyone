@@ -1,4 +1,5 @@
 import { McapStreamReader, type McapTypes } from "@mcap/core";
+import { compareBigInt } from "../bigint";
 import { mcapErrorMessage } from "../errors";
 import type {
   McapIndexedMessageTime,
@@ -393,15 +394,4 @@ export function compareIndexedMessageTimes(
   }
 
   return left.channelId - right.channelId;
-}
-
-function compareBigInt(left: bigint, right: bigint) {
-  if (left < right) {
-    return -1;
-  }
-  if (left > right) {
-    return 1;
-  }
-
-  return 0;
 }
