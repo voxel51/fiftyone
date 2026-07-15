@@ -72,7 +72,7 @@ const TemporalTagRangeOverlay: React.FC<TemporalTagRangeOverlayProps> = ({
       if (vd === 0) return clamp(laneX / laneWidth, 0, 1);
       return clamp(viewStart + (laneX / laneWidth) * vd, viewStart, viewEnd);
     },
-    [viewStart, viewEnd, labelWidth]
+    [viewStart, viewEnd, labelWidth],
   );
 
   // Capture layout at drag start for stable coordinate math.
@@ -100,7 +100,7 @@ const TemporalTagRangeOverlay: React.FC<TemporalTagRangeOverlayProps> = ({
       ctx.actions.startDrag(startTime);
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
     },
-    [ctx, pixelToTime]
+    [ctx, pixelToTime],
   );
 
   const handlePointerMove = useCallback(
@@ -113,7 +113,7 @@ const TemporalTagRangeOverlay: React.FC<TemporalTagRangeOverlayProps> = ({
       ctx?.actions.updateDrag(time);
       if (ctx?.state.phase === "selecting") seek(time);
     },
-    [ctx, pixelToTime, seek]
+    [ctx, pixelToTime, seek],
   );
 
   const handlePointerUp = useCallback(
@@ -123,7 +123,7 @@ const TemporalTagRangeOverlay: React.FC<TemporalTagRangeOverlayProps> = ({
         overlayRef.current?.getBoundingClientRect().bottom ?? e.clientY;
       ctx?.actions.finishDrag(e.clientX, rulerBottom);
     },
-    [ctx]
+    [ctx],
   );
 
   const handlePointerLeave = useCallback(() => {
@@ -155,11 +155,11 @@ const TemporalTagRangeOverlay: React.FC<TemporalTagRangeOverlayProps> = ({
   const visStart =
     phase === "selecting"
       ? Math.min(previewStart ?? 0, previewEnd ?? 0)
-      : selection?.start ?? 0;
+      : (selection?.start ?? 0);
   const visEnd =
     phase === "selecting"
       ? Math.max(previewStart ?? 0, previewEnd ?? 0)
-      : selection?.end ?? 0;
+      : (selection?.end ?? 0);
 
   const showMask =
     (phase === "selecting" || phase === "selected") && visEnd > visStart;
@@ -170,7 +170,11 @@ const TemporalTagRangeOverlay: React.FC<TemporalTagRangeOverlayProps> = ({
         ref={overlayRef}
         className={[
           styles.overlay,
-          (phase === "ready" || phase === "selected" || (phase === "idle" && shiftHeld)) ? styles.overlayActive : "",
+          phase === "ready" ||
+          phase === "selected" ||
+          (phase === "idle" && shiftHeld)
+            ? styles.overlayActive
+            : "",
           phase === "ready" ? styles.overlayReady : "",
           phase === "selecting" ? styles.overlaySelecting : "",
         ]
@@ -197,7 +201,7 @@ const TemporalTagRangeOverlay: React.FC<TemporalTagRangeOverlayProps> = ({
               left: laneLeftCalc(ratio(visStart), labelWidth),
               width: `calc(${laneLeftCalc(
                 ratio(visEnd),
-                labelWidth
+                labelWidth,
               )} - ${laneLeftCalc(ratio(visStart), labelWidth)})`,
             }}
           />
@@ -278,7 +282,7 @@ const StartHandle: React.FC<HandleProps> = ({
   ctx,
 }) => {
   const dragRef = useRef<{ startClientX: number; originalTime: number } | null>(
-    null
+    null,
   );
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {

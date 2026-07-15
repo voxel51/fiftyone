@@ -76,6 +76,7 @@ const AttributeFormContent = ({
     handleDefaultChange,
     handleListDefaultChange,
     handleReadOnlyChange,
+    handleDynamicChange,
     handleValuesModeChange,
     handleTaxonomyChange,
   } = useAttributeForm({ formState, onFormStateChange });
@@ -233,6 +234,27 @@ const AttributeFormContent = ({
         </Text>
       </Stack>
 
+      {/* Section 2b: Dynamic toggle */}
+      <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Sm}
+          align={Align.Center}
+        >
+          <Text variant={TextVariant.Md}>Dynamic</Text>
+          <Toggle
+            checked={formState.dynamic}
+            onChange={handleDynamicChange}
+            size={Size.Md}
+            disabled={isFromOntology}
+          />
+        </Stack>
+        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+          When enabled, the value can change across frames and appears as its
+          own timeline sub-track.
+        </Text>
+      </Stack>
+
       {/* Section 3: Input type */}
       <FormField
         label="Input type"
@@ -266,7 +288,7 @@ const AttributeFormContent = ({
                 }
                 onChange={(index) =>
                   handleValuesModeChange(
-                    index === 0 ? VALUES_MODE.simple : VALUES_MODE.taxonomy
+                    index === 0 ? VALUES_MODE.simple : VALUES_MODE.taxonomy,
                   )
                 }
                 tabs={valuesModeTabs}
@@ -354,7 +376,7 @@ const AttributeFormContent = ({
                   />
                 )
               }
-              error={!isListType ? defaultError ?? undefined : undefined}
+              error={!isListType ? (defaultError ?? undefined) : undefined}
             />
           )}
         </Stack>

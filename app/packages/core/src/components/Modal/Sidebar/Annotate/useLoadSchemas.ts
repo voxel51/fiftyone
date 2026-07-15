@@ -33,8 +33,8 @@ export default function useLoadSchemas() {
 
   // Refetch without pre-clearing the schema atoms: the `get.result`
   // effect above swaps them atomically once the response lands, so
-  // consumers (`useLabels`, `useFocus.selectOverlay`'s `labelMap`
-  // lookup) never see a transient null mid-refetch.
+  // consumers (`useLabels`, `useFormAnchor`'s `labelMap` lookup) never
+  // see a transient null mid-refetch.
   return useCallback(() => {
     setActivePathsOrder(null);
     closeSchemaManager();

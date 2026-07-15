@@ -24,7 +24,7 @@ export const createMaskCanvas = (
   height = 0,
   xOffset = 0,
   yOffset = 0,
-  maskBitmap?: ImageBitmap
+  maskBitmap?: ImageBitmap,
 ) => {
   const maskCanvas = document.createElement("canvas");
   maskCanvas.width = width;

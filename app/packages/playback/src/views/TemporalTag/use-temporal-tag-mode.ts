@@ -14,6 +14,10 @@ export interface TemporalTagPopupAnchor {
 
 export interface TemporalTagModeState {
   readonly phase: TemporalTagPhase;
+  /** "create" for a fresh drag selection, "edit" for mutating an existing tag. */
+  readonly mode: "create" | "edit";
+  /** Id of the tag being edited (only set while `mode === "edit"`). */
+  readonly editId: string | null;
   readonly selection: TemporalTagSelection | null;
   readonly previewEnd: number | null;
   readonly previewStart: number | null;
@@ -27,6 +31,11 @@ export interface TemporalTagModeActions {
   startDrag(startTime: number): void;
   updateDrag(endTime: number, startTime?: number): void;
   finishDrag(anchorX: number, anchorY: number): void;
+  /** Open the popup pre-filled to edit an existing tag's range / label. */
+  startEdit(
+    tag: { id: string; start: number; end: number; label: string },
+    anchor: TemporalTagPopupAnchor,
+  ): void;
   setAnchorHandle(start: number, end: number): void;
   setLabel(label: string): void;
   cancel(): void;
@@ -34,6 +43,8 @@ export interface TemporalTagModeActions {
 
 const INITIAL_STATE: TemporalTagModeState = {
   phase: "idle",
+  mode: "create",
+  editId: null,
   selection: null,
   previewEnd: null,
   previewStart: null,
@@ -49,7 +60,7 @@ export function useTemporalTagMode(): {
 
   const enterTagMode = useCallback(() => {
     setState((s) =>
-      s.phase === "idle" ? { ...INITIAL_STATE, phase: "ready" } : s
+      s.phase === "idle" ? { ...INITIAL_STATE, phase: "ready" } : s,
     );
   }, []);
 
@@ -89,6 +100,8 @@ export function useTemporalTagMode(): {
       return {
         ...s,
         phase: "selected",
+        mode: "create",
+        editId: null,
         selection: { start, end },
         anchor: { x: anchorX, y: anchorY },
         previewStart: null,
@@ -97,6 +110,24 @@ export function useTemporalTagMode(): {
       };
     });
   }, []);
+
+  const startEdit = useCallback(
+    (
+      tag: { id: string; start: number; end: number; label: string },
+      anchor: TemporalTagPopupAnchor,
+    ) => {
+      setState({
+        ...INITIAL_STATE,
+        phase: "selected",
+        mode: "edit",
+        editId: tag.id,
+        selection: { start: tag.start, end: tag.end },
+        anchor: { x: anchor.x, y: anchor.y },
+        pendingLabel: tag.label,
+      });
+    },
+    [],
+  );
 
   const setAnchorHandle = useCallback((start: number, end: number) => {
     setState((s) => {
@@ -107,13 +138,13 @@ export function useTemporalTagMode(): {
 
   const setLabel = useCallback((label: string) => {
     setState((s) =>
-      s.phase === "selected" ? { ...s, pendingLabel: label } : s
+      s.phase === "selected" ? { ...s, pendingLabel: label } : s,
     );
   }, []);
 
   const cancel = useCallback(() => {
     setState((s) =>
-      s.phase === "idle" ? s : { ...INITIAL_STATE, phase: "ready" }
+      s.phase === "idle" ? s : { ...INITIAL_STATE, phase: "ready" },
     );
   }, []);
 
@@ -125,6 +156,7 @@ export function useTemporalTagMode(): {
       startDrag,
       updateDrag,
       finishDrag,
+      startEdit,
       setAnchorHandle,
       setLabel,
       cancel,

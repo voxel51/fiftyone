@@ -2,7 +2,6 @@ import { PillButton } from "@fiftyone/components";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { Bookmark } from "@mui/icons-material";
-import React from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import Loading from "../../../Actions/Loading";
 import type { ActionProps } from "../../../Actions/types";
@@ -29,10 +28,10 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
 
     return Boolean(
       isExtendedSelectionOn ||
-        hasFiltersValue ||
-        selectedSampleSet.size > 0 ||
-        isAttributeVisibilityOn ||
-        get(fos.gridSortBy)
+      hasFiltersValue ||
+      selectedSampleSet.size > 0 ||
+      isAttributeVisibilityOn ||
+      get(fos.gridSortBy),
     );
   },
 });
@@ -89,11 +88,11 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
           ]);
         }
       },
-    []
+    [],
   );
 
   const shouldToggleBookMarkIconOn = useRecoilValue(
-    shouldToggleBookMarkIconOnSelector
+    shouldToggleBookMarkIconOnSelector,
   );
 
   return shouldToggleBookMarkIconOn ? (

@@ -14,10 +14,10 @@ const useSelectLabels: EventHandlerHook = () => {
     (payload) => {
       setter(
         "selectedLabels",
-        toCamelCase(payload.labels) as State.SelectedLabel[]
+        toCamelCase(payload.labels) as State.SelectedLabel[],
       );
     },
-    [setter]
+    [setter],
   );
 };
 

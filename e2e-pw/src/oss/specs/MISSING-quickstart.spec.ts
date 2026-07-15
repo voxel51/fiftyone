@@ -63,7 +63,7 @@ test.describe.serial("quickstart", () => {
 
     const expanded = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
     await sidebar.clickFieldDropdown("id");
     await expanded;
@@ -73,7 +73,7 @@ test.describe.serial("quickstart", () => {
     await modal.waitForSampleLoadDomAttribute();
 
     grid.url.assert.verifySampleId(
-      await modal.sidebar.getSidebarEntryText("id")
+      await modal.sidebar.getSidebarEntryText("id"),
     );
     await grid.url.back();
     grid.url.assert.verifySampleId(null);

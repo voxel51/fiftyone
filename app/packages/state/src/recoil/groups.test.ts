@@ -42,13 +42,13 @@ describe("groupHasSampleOnSlice", () => {
 
   it("returns null variables when the lookup is underspecified", () => {
     expect(
-      testGroupHasSampleOnSlice({ groupId: null, slice: "target" }).variables()
+      testGroupHasSampleOnSlice({ groupId: null, slice: "target" }).variables(),
     ).toBeNull();
     expect(
       testGroupHasSampleOnSlice({
         groupId: "group-id",
         slice: null,
-      }).variables()
+      }).variables(),
     ).toBeNull();
   });
 
@@ -63,7 +63,7 @@ describe("groupHasSampleOnSlice", () => {
       testGroupHasSampleOnSlice({
         groupId: "group-id",
         slice: "target-slice",
-      }).variables()
+      }).variables(),
     ).toMatchObject({
       count: 1,
       view: [],

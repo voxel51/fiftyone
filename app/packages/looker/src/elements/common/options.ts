@@ -9,7 +9,7 @@ import { lookerOptionsInput, lookerOptionsPanel } from "./options.module.css";
 import { makeCheckboxRow } from "./util";
 
 export class OptionsPanelElement<
-  State extends BaseState
+  State extends BaseState,
 > extends BaseElement<State> {
   private showOptions: boolean = false;
   getEvents(): Events<State> {
@@ -59,7 +59,7 @@ export class OptionsPanelElement<
 }
 
 export class LoopVideoOptionElement<
-  State extends ImaVidState | VideoState = VideoState
+  State extends ImaVidState | VideoState = VideoState,
 > extends BaseElement<State> {
   checkbox?: HTMLInputElement;
   label?: HTMLLabelElement;
@@ -90,7 +90,7 @@ export class LoopVideoOptionElement<
 }
 
 export class OnlyShowHoveredOnLabelOptionElement<
-  State extends BaseState
+  State extends BaseState,
 > extends BaseElement<State> {
   checkbox?: HTMLInputElement;
   label?: HTMLLabelElement;
@@ -110,7 +110,7 @@ export class OnlyShowHoveredOnLabelOptionElement<
   createHTMLElement() {
     [this.label, this.checkbox] = makeCheckboxRow(
       "Only show hovered label",
-      false
+      false,
     );
     return makeWrapper([this.label]);
   }
@@ -123,7 +123,7 @@ export class OnlyShowHoveredOnLabelOptionElement<
 }
 
 export class ShowConfidenceOptionElement<
-  State extends BaseState
+  State extends BaseState,
 > extends BaseElement<State> {
   checkbox?: HTMLInputElement;
   label?: HTMLLabelElement;
@@ -156,7 +156,7 @@ export class ShowConfidenceOptionElement<
 }
 
 export class ShowIndexOptionElement<
-  State extends BaseState
+  State extends BaseState,
 > extends BaseElement<State> {
   checkbox?: HTMLInputElement;
   label?: HTMLLabelElement;
@@ -189,7 +189,7 @@ export class ShowIndexOptionElement<
 }
 
 export class ShowLabelOptionElement<
-  State extends BaseState
+  State extends BaseState,
 > extends BaseElement<State> {
   checkbox?: HTMLInputElement;
   label?: HTMLLabelElement;
@@ -222,7 +222,7 @@ export class ShowLabelOptionElement<
 }
 
 export class ShowTooltipOptionElement<
-  State extends BaseState
+  State extends BaseState,
 > extends BaseElement<State> {
   checkbox?: HTMLInputElement;
   label?: HTMLLabelElement;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrainKeyConfig, CloneConfig, QueryType, SearchScope } from "../types";
-import { SCOPE_VIEW, SCOPE_DATASET } from "../constants";
+import { SCOPE_DATASET } from "../constants";
 import { UploadedImage } from "../utils";
 import { useSearchSelection } from "./useSearchSelection";
 import { useSearchSubmission } from "./useSearchSubmission";
@@ -14,7 +14,7 @@ import { useSearchSubmission } from "./useSearchSubmission";
 export const useNewSearchForm = (
   brainKeys: BrainKeyConfig[],
   cloneConfig: CloneConfig | null | undefined,
-  onSubmitted: () => void
+  onSubmitted: () => void,
 ) => {
   const {
     selectedLabels,
@@ -27,7 +27,7 @@ export const useNewSearchForm = (
 
   const firstTextKey = useMemo(
     () => brainKeys.find((bk) => bk.supports_prompts),
-    [brainKeys]
+    [brainKeys],
   );
 
   const defaultBrainKey = useMemo(() => {
@@ -55,7 +55,7 @@ export const useNewSearchForm = (
   const [runName, setRunName] = useState("");
   const [dynamicResults, setDynamicResults] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(
-    null
+    null,
   );
   const [searchScope, setSearchScope] = useState<SearchScope>(SCOPE_DATASET);
 

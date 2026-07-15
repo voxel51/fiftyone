@@ -1,0 +1,108 @@
+.pill {
+  align-items: center;
+  background: color-mix(
+    in srgb,
+    var(--fo-palette-warning-main, #b58105) 18%,
+    transparent
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--fo-palette-warning-main, #b58105) 45%, transparent);
+  border-radius: 999px;
+  color: var(--fo-palette-warning-main, #ffc48b);
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 500;
+  gap: 0.35rem;
+  line-height: 1;
+  margin-left: 0.5rem;
+  padding: 0.2rem 0.55rem;
+  white-space: nowrap;
+}
+
+.neutral {
+  background: color-mix(
+    in srgb,
+    var(--fo-palette-text-secondary, #a8adb7) 12%,
+    transparent
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--fo-palette-text-secondary, #a8adb7) 32%,
+    transparent
+  );
+  color: var(--fo-palette-text-secondary, #c6c9d1);
+}
+
+.dot {
+  animation: mcap-network-pulse 1.6s ease-in-out infinite;
+  background: currentColor;
+  border-radius: 50%;
+  height: 0.4rem;
+  width: 0.4rem;
+}
+
+/* Tiny vessel that fills bottom-up with the real buffered fraction while
+   a gated play press waits. Replaces the pulsing dot in that state. */
+.gauge {
+  border: 1px solid color-mix(in srgb, currentColor 65%, transparent);
+  border-radius: 2px 2px 3px 3px;
+  display: inline-block;
+  height: 0.62rem;
+  overflow: hidden;
+  position: relative;
+  width: 0.5rem;
+}
+
+.gaugeFill {
+  background: color-mix(in srgb, currentColor 80%, transparent);
+  bottom: 0;
+  left: 0;
+  position: absolute;
+  right: 0;
+  transition: height 400ms ease-out;
+}
+
+/* The fluid surface: a lighter meniscus band that gently swells, so the
+   level reads as liquid without any busy motion. */
+.gaugeFill::after {
+  animation: mcap-fluid-surface 2.2s ease-in-out infinite;
+  background: color-mix(in srgb, currentColor 45%, transparent);
+  content: "";
+  height: 2px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.neutral .dot {
+  animation: none;
+  opacity: 0.65;
+}
+
+.throughput {
+  color: color-mix(in srgb, currentColor 75%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes mcap-network-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes mcap-fluid-surface {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}

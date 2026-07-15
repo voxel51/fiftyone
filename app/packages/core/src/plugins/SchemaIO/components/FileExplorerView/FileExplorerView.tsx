@@ -1,6 +1,5 @@
 import Folder from "@mui/icons-material/Folder";
 import { TextField } from "@mui/material";
-import React from "react";
 import FieldWrapper from "../FieldWrapper";
 import FileExplorer from "./FileExplorer";
 

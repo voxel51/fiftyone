@@ -9,7 +9,7 @@
  * containers. Keep styled() wrappers only for components that need
  * non-flex CSS (borders, backgrounds, positioning, fixed dimensions).
  */
-import React, { CSSProperties, HTMLAttributes, forwardRef } from "react";
+import { CSSProperties, HTMLAttributes, forwardRef } from "react";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -19,7 +19,7 @@ function styled(baseStyle: CSSProperties) {
   const Component = forwardRef<HTMLDivElement, DivProps>(
     ({ style, ...props }, ref) => (
       <div ref={ref} style={{ ...baseStyle, ...style }} {...props} />
-    )
+    ),
   );
   return Component;
 }

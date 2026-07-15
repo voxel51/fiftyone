@@ -36,6 +36,10 @@ vi.mock("@fiftyone/plugins", () => ({
   getComponent: (...args: unknown[]) => getComponent(...args),
   getSampleRendererComponent: (...args: unknown[]) =>
     getSampleRendererComponent(...args),
+  isSampleRendererModalPersistent: (registration: {
+    sampleRendererOptions?: { modal?: { persistAcrossSamples?: boolean } };
+  }) =>
+    registration?.sampleRendererOptions?.modal?.persistAcrossSamples === true,
   useActivePlugins: (...args: unknown[]) => useActivePlugins(...args),
 }));
 
@@ -74,10 +78,18 @@ const ctx = {
   surface: "modal",
   dataset: mockDataset,
   schema: mockSchema,
+  transitioning: undefined as boolean | undefined,
 };
 
-const Renderer = ({ ctx }: { ctx: typeof ctx }) => (
-  <div data-testid="renderer">{ctx.media.url}</div>
+type TestCtx = typeof ctx;
+
+const Renderer = ({ ctx }: { ctx: TestCtx }) => (
+  <div
+    data-testid="renderer"
+    data-transitioning={ctx.transitioning || undefined}
+  >
+    {ctx.media.url}
+  </div>
 );
 
 const registration = {
@@ -126,8 +138,20 @@ describe("ModalSampleRenderer", () => {
       "filepath",
       mockDataset,
       mockSchema,
-      "modal"
+      "modal",
     );
+  });
+
+  it("tells a persistent renderer when the next sample is still resolving", () => {
+    render(
+      <ModalSampleRenderer
+        sample={sample}
+        modalMediaField="filepath"
+        transitioning
+      />,
+    );
+
+    expect(screen.getByTestId("renderer").dataset.transitioning).toBe("true");
   });
 
   it("falls back to MetadataLooker when no renderer matches", () => {
@@ -175,4 +199,111 @@ describe("ModalSampleRenderer", () => {
     });
     expect(screen.queryByTestId("renderer")).toBeNull();
   });
+
+  it("remounts a non-persistent renderer when the sample changes", () => {
+    const mountSpy = vi.fn();
+    const TrackedRenderer = ({ ctx }: { ctx: TestCtx }) => {
+      React.useEffect(() => mountSpy(), []);
+      return <div data-testid="renderer">{ctx.sample.sample.id}</div>;
+    };
+    getComponent.mockReturnValue(TrackedRenderer);
+    getSampleRendererComponent.mockReturnValue(TrackedRenderer);
+    createSampleRendererRenderContext.mockImplementation(
+      (nextSample: typeof sample) => ({ ...ctx, sample: nextSample }),
+    );
+
+    const { rerender } = render(
+      <ModalSampleRenderer sample={sample} modalMediaField="filepath" />,
+    );
+    rerender(
+      <ModalSampleRenderer
+        sample={sampleWithId("sample-b")}
+        modalMediaField="filepath"
+      />,
+    );
+
+    expect(screen.getByTestId("renderer").textContent).toBe("sample-b");
+    expect(mountSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps a persistent renderer mounted across sample navigation", () => {
+    const mountSpy = vi.fn();
+    const TrackedRenderer = ({ ctx }: { ctx: TestCtx }) => {
+      React.useEffect(() => mountSpy(), []);
+      return <div data-testid="renderer">{ctx.sample.sample.id}</div>;
+    };
+    usePersistentRegistration(TrackedRenderer);
+    createSampleRendererRenderContext.mockImplementation(
+      (nextSample: typeof sample) => ({ ...ctx, sample: nextSample }),
+    );
+
+    const { rerender } = render(
+      <ModalSampleRenderer sample={sample} modalMediaField="filepath" />,
+    );
+    rerender(
+      <ModalSampleRenderer
+        sample={sampleWithId("sample-b")}
+        modalMediaField="filepath"
+      />,
+    );
+
+    expect(screen.getByTestId("renderer").textContent).toBe("sample-b");
+    expect(mountSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives the next sample a fresh chance after a persistent renderer error", async () => {
+    const FlakyRenderer = ({ ctx }: { ctx: TestCtx }) => {
+      if (ctx.sample.sample.id === "sample-bad") {
+        throw new Error("boom");
+      }
+      return <div data-testid="renderer">{ctx.sample.sample.id}</div>;
+    };
+    usePersistentRegistration(FlakyRenderer);
+    createSampleRendererRenderContext.mockImplementation(
+      (nextSample: typeof sample) => ({ ...ctx, sample: nextSample }),
+    );
+
+    const { rerender } = render(
+      <ModalSampleRenderer
+        sample={sampleWithId("sample-bad")}
+        modalMediaField="filepath"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("metadata").textContent).toBe("sample-bad");
+    });
+
+    rerender(
+      <ModalSampleRenderer
+        sample={sampleWithId("sample-good")}
+        modalMediaField="filepath"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("renderer").textContent).toBe("sample-good");
+    });
+    expect(screen.queryByTestId("metadata")).toBeNull();
+  });
 });
+
+function sampleWithId(id: string) {
+  return { sample: { ...sample.sample, id } } as typeof sample;
+}
+
+function usePersistentRegistration(
+  component: React.FunctionComponent<{ ctx: TestCtx }>,
+) {
+  const persistentRegistration = {
+    ...registration,
+    component,
+    sampleRendererOptions: {
+      ...registration.sampleRendererOptions,
+      modal: { persistAcrossSamples: true },
+    },
+  };
+  useActivePlugins.mockReturnValue([persistentRegistration]);
+  getMatchingSampleRenderer.mockReturnValue(persistentRegistration);
+  getComponent.mockReturnValue(component);
+  getSampleRendererComponent.mockReturnValue(component);
+}

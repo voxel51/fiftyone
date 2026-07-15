@@ -5,6 +5,8 @@
 import { SelectIcon } from "@fiftyone/components";
 import { KnownContexts, useKeyBindings } from "@fiftyone/commands";
 import { buildBrushCursor } from "@fiftyone/lighter";
+import { isVideoDataset } from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
 import {
   Add,
   ArrowDropDown,
@@ -18,10 +20,9 @@ import {
   Remove,
   Timeline,
 } from "@mui/icons-material";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
-import { editing } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 import useExit from "./useExit";
 import {
   MAX_CURSOR_SIZE,
@@ -178,8 +179,13 @@ export const useSegmentationActions = (): {
     mergeTool,
   } = useSegmentationMode();
 
-  const editingValue = useAtomValue(editing);
+  const { isEditing } = useAnnotationContext();
   const onExit = useExit();
+
+  // AI click-to-segment (SAM2 point selection) is image-only for now — the
+  // video surface's session lifecycle doesn't yet support it cleanly, so the
+  // tool is omitted from the toolbar on video datasets.
+  const isVideo = useRecoilValue(isVideoDataset);
 
   // Three-tier Escape behaviour, mirroring the right-click flow in
   // InteractionManager:
@@ -187,7 +193,7 @@ export const useSegmentationActions = (): {
   //   2. switch to the Select tool
   //   3. exit segmentation mode entirely
   const handleEscape = useCallback(() => {
-    if (editingValue !== null) {
+    if (isEditing) {
       onExit();
       return;
     }
@@ -198,12 +204,12 @@ export const useSegmentationActions = (): {
     }
 
     deactivateSegmentationMode();
-  }, [editingValue, tool, onExit, switchTool, deactivateSegmentationMode]);
+  }, [isEditing, tool, onExit, switchTool, deactivateSegmentationMode]);
 
   const brushCursor = useMemo(() => {
     const cursorSize = Math.min(
       MAX_CURSOR_SIZE,
-      Math.max(MIN_CURSOR_SIZE, toolSize)
+      Math.max(MIN_CURSOR_SIZE, toolSize),
     );
 
     return buildBrushCursor({
@@ -254,9 +260,14 @@ export const useSegmentationActions = (): {
             label: "AI",
             icon: <AutoAwesome />,
             shortcut: "A",
-            tooltip: "AI",
+            // AI click-to-segment is image-only for now — the video surface's
+            // session lifecycle doesn't support it cleanly yet.
+            tooltip: isVideo
+              ? "AI-assisted segmentation is not yet supported for video datasets"
+              : "AI",
             isActive: tool === SegmentationTool.AI,
-            onClick: () => switchTool(SegmentationTool.AI),
+            isDisabled: isVideo,
+            onClick: () => !isVideo && switchTool(SegmentationTool.AI),
           },
           {
             id: SegmentationTool.Merge,
@@ -370,6 +381,7 @@ export const useSegmentationActions = (): {
       decreaseToolSize,
       handleEscape,
       increaseToolSize,
+      isVideo,
       mergeTool.disabled,
       setToolSize,
       switchTool,
@@ -379,7 +391,7 @@ export const useSegmentationActions = (): {
       toolMode,
       toolShape,
       toolSize,
-    ]
+    ],
   );
 
   // Wire `shortcut` declarations on toolbar actions into actual keybindings.
@@ -425,7 +437,7 @@ export const useSegmentationActions = (): {
           switchToolShape(
             toolShape === SegmentationToolShape.Circle
               ? SegmentationToolShape.Square
-              : SegmentationToolShape.Circle
+              : SegmentationToolShape.Circle,
           ),
         label: "Toggle brush shape",
         enablement: () => segmentationModeActive,

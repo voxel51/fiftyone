@@ -28,8 +28,8 @@ function storageKey(datasetName: string) {
 function normalizeStreams(topics: readonly string[]) {
   return Array.from(
     new Set(
-      topics.map((topic) => topic.trim()).filter((topic) => topic.length > 0)
-    )
+      topics.map((topic) => topic.trim()).filter((topic) => topic.length > 0),
+    ),
   ).sort((a, b) => a.localeCompare(b));
 }
 
@@ -41,7 +41,7 @@ function normalizeSelectedStream(topic: string | null | undefined) {
 function updateSelectedStream(
   current: SelectedStreamByDataset,
   datasetName: string,
-  topic: string
+  topic: string,
 ) {
   const normalizedTopic = normalizeSelectedStream(topic);
   if (current.get(datasetName) === normalizedTopic) {
@@ -119,7 +119,7 @@ export function useRegisterMcapGridStreamTopics() {
         });
       };
     },
-    [setStreamsByDataset]
+    [setStreamsByDataset],
   );
 }
 
@@ -139,7 +139,7 @@ export function useSelectedStream(datasetName?: string) {
     : "mcap-grid-preview-image-topic";
   const [storedTopic, setStoredTopic] = useBrowserStorage<string>(
     key,
-    MCAP_GRID_STREAM_AUTO
+    MCAP_GRID_STREAM_AUTO,
   );
   const selectedStreamByDataset = useAtomValue(selectedStreamByDatasetAtom);
   const setSelectedStreamByDataset = useSetAtom(selectedStreamByDatasetAtom);
@@ -150,13 +150,13 @@ export function useSelectedStream(datasetName?: string) {
     }
 
     setSelectedStreamByDataset((current) =>
-      updateSelectedStream(current, datasetName, storedTopic)
+      updateSelectedStream(current, datasetName, storedTopic),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setter is stable
   }, [datasetName, storedTopic]);
 
   const selectedTopic = datasetName
-    ? selectedStreamByDataset.get(datasetName) ?? MCAP_GRID_STREAM_AUTO
+    ? (selectedStreamByDataset.get(datasetName) ?? MCAP_GRID_STREAM_AUTO)
     : MCAP_GRID_STREAM_AUTO;
 
   const setSelected = useCallback(
@@ -167,12 +167,12 @@ export function useSelectedStream(datasetName?: string) {
 
       const normalizedTopic = normalizeSelectedStream(topic);
       setSelectedStreamByDataset((current) =>
-        updateSelectedStream(current, datasetName, normalizedTopic)
+        updateSelectedStream(current, datasetName, normalizedTopic),
       );
       setStoredTopic(normalizedTopic);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setters are stable
-    [datasetName]
+    [datasetName],
   );
 
   return [selectedTopic, setSelected] as const;

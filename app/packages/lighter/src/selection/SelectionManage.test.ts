@@ -74,12 +74,13 @@ describe("SelectionManager", () => {
 
     expect(deselectDetail).toStrictEqual({
       id: "id",
-      ignoreSideEffects: false,
+      ignoreSideEffects: true,
     });
 
     expect(selectionChangedDetail).toStrictEqual({
       selectedIds: [],
       deselectedIds: ["id"],
+      ignoreSideEffects: true,
     });
 
     expect(manager.getSelectedIds()).not.toContain("id");

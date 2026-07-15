@@ -42,7 +42,7 @@ Resources and Further Reading
 
 * `nuScenes Dataset Official Site <https://www.nuscenes.org/>`_
 
-* `FiftyOne Brain Documentation <../../brain.html>`_
+* `FiftyOne Brain Documentation <../../brain/index.html>`_
 
 * `FiftyOne Model Zoo <../../user_guide/model_zoo/index.html>`_
 

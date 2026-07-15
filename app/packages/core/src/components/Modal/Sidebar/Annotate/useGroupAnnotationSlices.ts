@@ -23,7 +23,7 @@ export interface AnnotationSliceInfo {
 
 export const resolveSlices = (
   currentSlices: string[],
-  sliceInfo: { name: string; mediaType: string }[]
+  sliceInfo: { name: string; mediaType: string }[],
 ): AnnotationSliceInfo[] => {
   return sliceInfo
     .map(({ name, mediaType }) => ({
@@ -74,7 +74,7 @@ export function useGroupAnnotationSlices(): {
           const slices = await snapshot.getPromise(currentGroupSliceNames);
           return resolveSlices(slices, sliceInfo);
         },
-      [sliceInfo]
+      [sliceInfo],
     ),
   };
 }

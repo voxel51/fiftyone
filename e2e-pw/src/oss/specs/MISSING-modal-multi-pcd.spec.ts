@@ -62,11 +62,11 @@ test.describe.serial("multi-pcd", () => {
 
     await modal.sidebar.assert.verifySidebarEntryText(
       "pcd1-group.name",
-      "pcd1"
+      "pcd1",
     );
     await modal.sidebar.assert.verifySidebarEntryText(
       "pcd2-group.name",
-      "pcd2"
+      "pcd2",
     );
 
     await modal.toggleLooker3dSlice("pcd1");

@@ -30,7 +30,7 @@ const FoAxesHelper = ({
   const size = useMemo(
     // multiplier (10) and offset (100) are arbitrary that seem to work well
     () => maxInOrthonormalPlane * 10 + 100,
-    [maxInOrthonormalPlane]
+    [maxInOrthonormalPlane],
   );
 
   const axes = useMemo(
@@ -51,7 +51,7 @@ const FoAxesHelper = ({
         color: AXIS_BLUE_COLOR,
       },
     ],
-    [size]
+    [size],
   );
 
   const axisComponents = useMemo(() => {
@@ -62,7 +62,7 @@ const FoAxesHelper = ({
             (axis.color === AXIS_RED_COLOR && Math.abs(upVector.x) === 1) ||
             (axis.color === AXIS_GREEN_COLOR && Math.abs(upVector.y) === 1) ||
             (axis.color === AXIS_BLUE_COLOR && Math.abs(upVector.z) === 1)
-          )
+          ),
       )
       .map((axis) => {
         return (
@@ -94,7 +94,7 @@ export const Gizmos = ({
 
   const gridHelperQuarternion = useMemo(
     () => getGridQuaternionFromUpVector(upVector),
-    [upVector]
+    [upVector],
   );
 
   const sceneSize = useMemo(() => {

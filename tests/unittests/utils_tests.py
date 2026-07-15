@@ -727,6 +727,38 @@ class MediaTypeTests(unittest.TestCase):
         self.assertEqual(self.vid_sample.media_type, fom.VIDEO)
         self.assertEqual(self.vid_dataset.media_type, fom.VIDEO)
 
+    def test_3d_types(self):
+        self.assertEqual(fom.get_media_type("scene.pcd"), fom.POINT_CLOUD)
+        self.assertEqual(fom.get_media_type("scene.PCD"), fom.POINT_CLOUD)
+        self.assertEqual(fom.get_media_type("scene.fo3d"), fom.THREE_D)
+        self.assertEqual(fom.get_media_type("scene.FO3D"), fom.THREE_D)
+
+    def test_multimodal_types(self):
+        for ext in fom.MULTIMODAL_EXTENSIONS:
+            self.assertEqual(
+                fom.get_media_type("scene" + ext),
+                fom.MULTIMODAL,
+            )
+            self.assertEqual(
+                fom.get_media_type("scene" + ext.upper()),
+                fom.MULTIMODAL,
+            )
+
+        sample = fo.Sample(filepath="scene.mcap")
+        self.assertEqual(sample.media_type, fom.MULTIMODAL)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        self.assertEqual(dataset.media_type, fom.MULTIMODAL)
+
+    def test_explicit_multimodal_dataset(self):
+        dataset = fo.Dataset(media_type=fom.MULTIMODAL)
+        self.assertEqual(dataset.media_type, fom.MULTIMODAL)
+
+    def test_generic_types_remain_unknown(self):
+        for ext in (".json", ".jsonl", ".parquet"):
+            self.assertEqual(fom.get_media_type("scene" + ext), fom.UNKNOWN)
+
     def test_img_change_attempts(self):
         with self.assertRaises(fom.MediaTypeError):
             self.img_sample.filepath = "video.mp4"
@@ -734,6 +766,12 @@ class MediaTypeTests(unittest.TestCase):
     def test_vid_change_attempts(self):
         with self.assertRaises(fom.MediaTypeError):
             self.vid_sample.filepath = "image.png"
+
+    def test_multimodal_change_attempts(self):
+        sample = fo.Sample(filepath="scene.mcap")
+
+        with self.assertRaises(fom.MediaTypeError):
+            sample.filepath = "image.png"
 
 
 class MigrationTests(unittest.TestCase):

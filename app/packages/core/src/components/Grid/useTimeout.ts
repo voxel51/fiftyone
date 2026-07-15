@@ -12,6 +12,6 @@ export default function useTimeout() {
         }`,
       ]);
     },
-    [setErrors]
+    [setErrors],
   );
 }

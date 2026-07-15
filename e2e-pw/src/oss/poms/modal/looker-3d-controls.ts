@@ -38,12 +38,12 @@ export class Looker3DControlsPom {
     await this.page.waitForFunction(
       (SUCCESS_MSG_INJECTED) => {
         const logs = document.querySelector(
-          "[data-cy=looker3d-logs-action-bar]"
+          "[data-cy=looker3d-logs-action-bar]",
         );
         return logs?.textContent === SUCCESS_MSG_INJECTED;
       },
       SUCCESS_MSG,
-      { timeout: 10000 }
+      { timeout: 10000 },
     );
     // takes a bit of time for 3d assets to mount after load
     // todo: figure out if we can emit event on canvas paint
@@ -98,7 +98,7 @@ class Looker3DControlsAsserter {
 
   async verifySliceSelectorLabel(expectedLabel: string) {
     await expect(this.looker3dControlsPom.sliceSelector).toContainText(
-      expectedLabel
+      expectedLabel,
     );
   }
 

@@ -35,7 +35,7 @@ describe("SchemaIOComponent Real-World Examples", () => {
     it("should have valid SchemaIO format", () => {
       const schema = createFieldSchema(
         ["field1", "field2", "field3"],
-        new Set(["field2"])
+        new Set(["field2"]),
       );
 
       expect(schema.type).toBe("object");
@@ -102,8 +102,8 @@ describe("SchemaIOComponent Real-World Examples", () => {
         ftype === "string"
           ? "string"
           : ftype === "boolean"
-          ? "boolean"
-          : "number",
+            ? "boolean"
+            : "number",
       view: {
         name: "PrimitiveView",
         label: name,

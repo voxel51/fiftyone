@@ -18,7 +18,7 @@ const extensionDatasetNamePairs = ["mp4", "png"].map(
     [
       extension,
       getUniqueDatasetNameWithPrefix(`${extension}-sparse-groups`),
-    ] as const
+    ] as const,
 );
 
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {

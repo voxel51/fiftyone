@@ -33,7 +33,7 @@ const CustomLights = ({ lights }: Pick<FoLightProps, "lights">) => {
 
   const [lightConfig, lightHelperConfig] = useLightControls(
     filteredLights,
-    editingLightRef
+    editingLightRef,
   );
 
   const target = useMemo(() => {

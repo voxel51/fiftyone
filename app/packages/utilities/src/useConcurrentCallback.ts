@@ -52,10 +52,10 @@ export type CallbackResult<T> = {
  */
 export const useConcurrentCallback = <
   R,
-  T extends (...args: Parameters<T>) => Promise<R>
+  T extends (...args: Parameters<T>) => Promise<R>,
 >(
   callback: T,
-  config: ConcurrencyConfig
+  config: ConcurrencyConfig,
 ): ((...args: Parameters<T>) => Promise<CallbackResult<R>>) => {
   const inFlightCount = useRef<number>(0);
 
@@ -80,6 +80,6 @@ export const useConcurrentCallback = <
         }
       }
     },
-    [callback, config.limitBehavior, config.maxConcurrency]
+    [callback, config.limitBehavior, config.maxConcurrency],
   );
 };

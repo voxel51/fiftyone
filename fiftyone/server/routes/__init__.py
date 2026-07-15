@@ -6,7 +6,8 @@ FiftyOne Server routes
 |
 """
 
-from fiftyone.multimodal.server import MultimodalRoutes
+from fiftyone.internal.features.registry import is_feature_enabled
+
 from fiftyone.operators.server import OperatorRoutes
 
 from .aggregate import Aggregate
@@ -30,13 +31,20 @@ from .sort import Sort
 from .tag import Tag
 from .tagging import Tagging
 from .values import Values
+from .video_labels import VideoLabelsIndex, VideoLabelsWindow
+
+multimodal_routes = []
+if is_feature_enabled("VFF_MULTIMODAL"):
+    from fiftyone.multimodal.server import MultimodalRoutes
+
+    multimodal_routes = MultimodalRoutes
 
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
     CameraRoutes
     + EmbeddingsRoutes
     + GroupsRoutes
-    + MultimodalRoutes
+    + multimodal_routes
     + OperatorRoutes
     + RuntimeAssetRoutes
     + SampleRoutes
@@ -59,5 +67,7 @@ routes = (
         ("/tagging", Tagging),
         ("/values", Values),
         ("/get-similar-labels-frames", GetSimilarLabelsFrameCollection),
+        ("/video-labels/index", VideoLabelsIndex),
+        ("/video-labels/window", VideoLabelsWindow),
     ]
 )

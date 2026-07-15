@@ -16,6 +16,7 @@ import { QuickEditEntry } from "../../../Modal/Sidebar/Annotate";
 const PATH_OVERRIDES = {
   tags: "sample tags",
   _label_tags: "label tags",
+  _temporal_tags: "temporal tags",
 };
 
 const hiddenPathLabels = selectorFamily<string[], string>({
@@ -88,9 +89,11 @@ const Title = ({
     <span key="path" data-cy={`sidebar-field-${path}`}>
       <span ref={hoverTarget} {...hoverHandlers}>
         {modal ? (
-          <QuickEditEntry enabled={hovering} path={path}>
-            {PATH_OVERRIDES[path] || path}
-          </QuickEditEntry>
+          <span onMouseUp={(e) => e.stopPropagation()}>
+            <QuickEditEntry enabled={hovering} path={path}>
+              {PATH_OVERRIDES[path] || path}
+            </QuickEditEntry>
+          </span>
         ) : (
           PATH_OVERRIDES[path] || path
         )}

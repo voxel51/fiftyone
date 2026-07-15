@@ -78,4 +78,5 @@ your agent can do out of the box, or :ref:`develop your own
 
    Using Agents <using_agents>
    Developing Tools & Skills <developing_skills>
+   FiftyOne Agent 🚀 __SUB_NEW__ <../enterprise/agent>
    skills_ecosystem/*

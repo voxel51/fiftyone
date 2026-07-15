@@ -46,9 +46,9 @@ const ColorAttribute: React.FC<Prop> = ({ style }) => {
     fos.fields({
       path: expandedPath,
       ftype: [...VALID_COLOR_ATTRIBUTE_TYPES, LIST_FIELD],
-    })
+    }),
   ).filter((field) =>
-    [...VALID_COLOR_ATTRIBUTE_TYPES, null].includes(field.subfield)
+    [...VALID_COLOR_ATTRIBUTE_TYPES, null].includes(field.subfield),
   );
   const ref = React.useRef<HTMLDivElement>(null);
   const [open, setOpen] = React.useState(false);

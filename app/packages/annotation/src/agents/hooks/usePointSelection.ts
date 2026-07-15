@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
 import {
-  DetectionOverlay,
   DrawStyle,
   InteractiveKeypointHandler,
   KeypointOptions,
@@ -14,18 +13,22 @@ import {
 import { atom, getDefaultStore, useAtom } from "jotai";
 import { v4 as uuidv4 } from "uuid";
 import { ClickEventModifiers } from "@fiftyone/utilities";
-import { AnnotationLabel } from "@fiftyone/state";
-import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
+import {
+  NEGATIVE_POINT_VARIANT,
+  POSITIVE_POINT_VARIANT,
+  type PointSelectionVariant,
+  resolvePointVariant,
+} from "./resolvePointVariant";
+import { usePointSelectionSeed } from "./usePointSelectionSeed";
 
-/** Positive points are explicitly *included* in inference results. */
-export const POSITIVE_POINT_VARIANT = "positive" as const;
-/** Negative points are explicitly *excluded* from inference results. */
-export const NEGATIVE_POINT_VARIANT = "negative" as const;
-
-/** Union of supported point selection variants. */
-export type PointSelectionVariant =
-  | typeof POSITIVE_POINT_VARIANT
-  | typeof NEGATIVE_POINT_VARIANT;
+// Re-export the variant identifiers so existing callers can continue to
+// import them from `./usePointSelection`.
+export {
+  NEGATIVE_POINT_VARIANT,
+  POSITIVE_POINT_VARIANT,
+  type PointSelectionVariant,
+};
 
 /** Mapping of supported variant styles to draw styles. */
 const POINT_SELECTION_VARIANT_STYLES: Record<PointSelectionVariant, DrawStyle> =
@@ -64,38 +67,6 @@ export interface PointSelection {
 }
 
 /**
- * Resolve the point variant with the given context.
- *
- * Points placed on the current label's mask are interpreted as negative;
- * points placed off-mask are positive.
- * If shift is pressed while clicking, the variants are inverted.
- *
- * @param relativePoint Point in relative coordinates
- * @param shiftKey Flag indicating whether the shift key is pressed
- * @param label Label to use for mask hit detection
- */
-const resolvePointVariant = (
-  relativePoint: Point,
-  { shiftKey }: ClickEventModifiers,
-  label: AnnotationLabel
-): PointSelectionVariant => {
-  const onMask =
-    label && label.overlay instanceof DetectionOverlay
-      ? label.overlay.containsMaskPixel(relativePoint)
-      : false;
-
-  const variant = onMask ? NEGATIVE_POINT_VARIANT : POSITIVE_POINT_VARIANT;
-
-  return !shiftKey
-    ? // normal variant if shift key is not pressed
-      variant
-    : // otherwise invert the variant
-    variant === POSITIVE_POINT_VARIANT
-    ? NEGATIVE_POINT_VARIANT
-    : POSITIVE_POINT_VARIANT;
-};
-
-/**
  * Point hit action resolver; clicking on an existing point should delete it.
  */
 const resolvePointHit = () => KeypointPointHitAction.DELETE;
@@ -124,27 +95,36 @@ const interactiveHandlerAtom = atom<InteractiveKeypointHandler | null>(null);
  */
 export const usePointSelection = (): PointSelection => {
   const [keypointOverlayId, setKeypointOverlayId] = useAtom(
-    keypointOverlayIdAtom
+    keypointOverlayIdAtom,
   );
   const [isActive, setIsActive] = useAtom(pointSelectionActiveAtom);
-  const [interactiveHandler, setInteractiveHandler] = useAtom(
-    interactiveHandlerAtom
-  );
+  // deactivate() reads the current handler fresh from the store (see
+  // comment in `deactivate`), so we only need the setter side here.
+  const [, setInteractiveHandler] = useAtom(interactiveHandlerAtom);
 
   const { getOverlay, scene, overlayFactory } = useLighter();
   const eventBus = useLighterEventBus(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
-  const { selectedLabel } = useAnnotationContext();
-  const selectedLabelRef = useRef(selectedLabel);
-  selectedLabelRef.current = selectedLabel;
+  const { selected } = useAnnotationContext();
+  const selectedLabelRef = useRef(selected?.label);
+  selectedLabelRef.current = selected?.label;
 
-  // Closure around currently-selected label
+  const { shouldSeedNew } = usePointSelectionSeed();
+
+  // Closure around currently-selected label. When a new mask is about to be
+  // seeded (right after a right-click commit, while the committed mask is
+  // still selected), ignore that mask for hit detection so the first click is
+  // a positive seed for the NEW mask — not a negative point on the old one.
   const resolveVariant = useCallback(
     (relativePoint: Point, ctx: ClickEventModifiers): PointSelectionVariant =>
-      resolvePointVariant(relativePoint, ctx, selectedLabelRef.current),
-    []
+      resolvePointVariant(
+        relativePoint,
+        ctx,
+        shouldSeedNew() ? null : selectedLabelRef.current,
+      ),
+    [shouldSeedNew],
   );
 
   // Guards read fresh from the jotai store so a deactivate→activate pair
@@ -165,7 +145,13 @@ export const usePointSelection = (): PointSelection => {
           label: { label: "", points: [] },
           field: "",
           variantStyles: POINT_SELECTION_VARIANT_STYLES,
-        }
+          // Pure UI scaffolding — keep it out of the SelectionManager so it
+          // never competes for the single-selection slot. Under the engine's
+          // unified active set, a selectable tool overlay would steal scene
+          // selection from the inferred detection, clear its engine anchor, and
+          // make form-follows-anchor tear the edit down each cycle.
+          selectable: false,
+        },
       );
       // UI scaffolding; exclude from persistence
       overlay.isPersistent = false;
@@ -179,7 +165,7 @@ export const usePointSelection = (): PointSelection => {
         overlay,
         eventBus,
         resolveVariant,
-        resolvePointHit
+        resolvePointHit,
       );
       setInteractiveHandler(handler);
       scene.enterInteractiveMode(handler);
@@ -197,33 +183,36 @@ export const usePointSelection = (): PointSelection => {
   ]);
 
   const deactivate = useCallback(() => {
-    if (!getDefaultStore().get(pointSelectionActiveAtom)) {
+    const store = getDefaultStore();
+    if (!store.get(pointSelectionActiveAtom)) {
       return;
     }
 
+    // Read the handler + overlay id fresh from the store rather than from
+    // closure. Same rationale as the activate guard: a same-tick
+    // activate→deactivate pair (e.g. AI right-click finalize) has no
+    // re-render between, so the useAtom values captured by useCallback are
+    // still pre-activate `null`s. Reading fresh ensures cleanup tears down
+    // the resources activate just installed.
+    const currentHandler = store.get(interactiveHandlerAtom);
+    const currentOverlayId = store.get(keypointOverlayIdAtom);
+
     // Points are ephemeral:
     // drop any undo/redo entries pushed before tearing down interactive mode
-    interactiveHandler?.pruneCommands();
+    currentHandler?.pruneCommands();
     setInteractiveHandler(null);
 
     // Clear the interactive keypoint handler; deactivates point interaction
     scene?.exitInteractiveMode();
 
     // Remove the keypoint overlay; removes rendered points from the scene
-    if (keypointOverlayId) {
-      scene?.removeOverlay(keypointOverlayId);
+    if (currentOverlayId) {
+      scene?.removeOverlay(currentOverlayId);
       setKeypointOverlayId(null);
     }
 
     setIsActive(false);
-  }, [
-    interactiveHandler,
-    keypointOverlayId,
-    scene,
-    setInteractiveHandler,
-    setIsActive,
-    setKeypointOverlayId,
-  ]);
+  }, [scene, setInteractiveHandler, setIsActive, setKeypointOverlayId]);
 
   // Clear points from the overlay without removing the overlay from the scene
   const clearPoints = useCallback(() => {

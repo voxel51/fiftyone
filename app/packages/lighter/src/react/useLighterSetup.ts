@@ -32,7 +32,7 @@ export type LighterOptions = Partial<ReturnType<typeof useLookerOptions>>;
 export const useLighterSetupWithPixi = (
   stableCanvas: HTMLCanvasElement,
   options: LighterOptions,
-  sceneId: string
+  sceneId: string,
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
 

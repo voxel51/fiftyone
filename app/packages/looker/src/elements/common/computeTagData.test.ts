@@ -53,7 +53,7 @@ const COLORING = {
 };
 
 const makeInput = (
-  overrides: Partial<Parameters<typeof computeTagData>[0]>
+  overrides: Partial<Parameters<typeof computeTagData>[0]>,
 ) => ({
   activePaths: [],
   attributeVisibility: {},
@@ -108,7 +108,7 @@ describe("computeTagData", () => {
             exclude: false,
           },
         },
-      })
+      }),
     );
 
     expect(result.map((item) => item.value)).toEqual(["sample-tag", "keep: 2"]);
@@ -119,7 +119,7 @@ describe("computeTagData", () => {
       makeInput({
         activePaths: ["filepath"],
         filter: () => false,
-      })
+      }),
     );
 
     expect(result).toEqual([]);

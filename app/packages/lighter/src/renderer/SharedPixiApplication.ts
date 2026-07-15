@@ -52,7 +52,7 @@ class SharedPixiApplication {
    * Performs the actual PIXI application initialization.
    */
   private async performInitialization(
-    canvas: HTMLCanvasElement
+    canvas: HTMLCanvasElement,
   ): Promise<void> {
     this.app = new PIXI.Application();
 

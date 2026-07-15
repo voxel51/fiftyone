@@ -145,8 +145,8 @@ export const active3dSlicesToSampleMap = selector<Record<string, ModalSample>>({
 
     return Object.fromEntries(
       Object.entries(get(all3dSlicesToSampleMap)).filter(([slice]) =>
-        active.includes(slice)
-      )
+        active.includes(slice),
+      ),
     );
   },
 });
@@ -158,7 +158,7 @@ export const all3dSlicesToSampleMap = selector<Record<string, ModalSample>>({
       get(threedSamples).map<[string, ModalSample]>((sample) => [
         getPath(sample.sample, `${get(groupField)}.name`) as unknown as string,
         sample as ModalSample,
-      ])
+      ]),
     );
   },
 });
@@ -282,6 +282,6 @@ export const threedSamples = selector<ModalSample[]>({
         slices: get(all3dSlices),
         count: null,
         paginationData: false,
-      })
+      }),
     ),
 });

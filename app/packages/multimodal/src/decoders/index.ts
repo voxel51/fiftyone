@@ -1,4 +1,5 @@
 export * from "./registry";
+export * from "./point-cloud-render-payload";
 export * from "./resource-hints";
 export * from "./types";
 

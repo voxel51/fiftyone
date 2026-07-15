@@ -12,7 +12,7 @@ import { PagePom } from "src/oss/poms/page";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "one-loading-screen-group-modal"
+  "one-loading-screen-group-modal",
 );
 
 const test = base.extend<{

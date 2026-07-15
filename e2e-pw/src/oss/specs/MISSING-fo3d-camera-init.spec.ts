@@ -136,9 +136,9 @@ test.describe.serial("camera initialization", () => {
         async () =>
           positionsAreClose(
             await renderer3d.getCameraPosition(),
-            DEFAULT_CAMERA_POSITION
+            DEFAULT_CAMERA_POSITION,
           ),
-        { timeout: 10000 }
+        { timeout: 10000 },
       )
       .toBe(false);
 
@@ -175,7 +175,7 @@ test.describe.serial("camera initialization", () => {
         return positionsAreClose(
           saved.position as [number, number, number],
           cameraBefore,
-          1.0
+          1.0,
         );
       })
       .toBe(true);
@@ -195,7 +195,7 @@ test.describe.serial("camera initialization", () => {
           const currentCamera = await renderer3d.getCameraPosition();
           return positionsAreClose(currentCamera, cameraBefore, 1.0);
         },
-        { timeout: 10000, intervals: [500] }
+        { timeout: 10000, intervals: [500] },
       )
       .toBe(true);
 
@@ -205,9 +205,9 @@ test.describe.serial("camera initialization", () => {
       positionsAreClose(
         positionAfter as [number, number, number],
         cameraBefore,
-        1.0
+        1.0,
       ),
-      `Expected camera to be restored to ${cameraBefore}, but got ${positionAfter}`
+      `Expected camera to be restored to ${cameraBefore}, but got ${positionAfter}`,
     ).toBe(true);
   });
 
@@ -232,9 +232,9 @@ test.describe.serial("camera initialization", () => {
           positionsAreClose(
             await renderer3d.getCameraPosition(),
             SCENE_CAMERA_POSITION,
-            1.0
+            1.0,
           ),
-        { timeout: 10000 }
+        { timeout: 10000 },
       )
       .toBe(true);
   });
@@ -265,9 +265,9 @@ test.describe.serial("camera initialization", () => {
           positionsAreClose(
             await renderer3d.getCameraPosition(),
             exploreCameraBefore,
-            modeSwitchTolerance
+            modeSwitchTolerance,
           ),
-        { timeout: 10000 }
+        { timeout: 10000 },
       )
       .toBe(true);
 
@@ -286,9 +286,9 @@ test.describe.serial("camera initialization", () => {
           positionsAreClose(
             await renderer3d.getCameraPosition(),
             annotateCameraAfterDrag,
-            modeSwitchTolerance
+            modeSwitchTolerance,
           ),
-        { timeout: 10000 }
+        { timeout: 10000 },
       )
       .toBe(true);
 
@@ -298,9 +298,9 @@ test.describe.serial("camera initialization", () => {
       positionsAreClose(
         exploreCameraAfterRoundTrip,
         annotateCameraAfterDrag,
-        modeSwitchTolerance
+        modeSwitchTolerance,
       ),
-      `Expected explore camera ${exploreCameraAfterRoundTrip} to match annotate camera ${annotateCameraAfterDrag}`
+      `Expected explore camera ${exploreCameraAfterRoundTrip} to match annotate camera ${annotateCameraAfterDrag}`,
     ).toBe(true);
   });
 
@@ -330,9 +330,9 @@ test.describe.serial("camera initialization", () => {
         async () =>
           !positionsAreClose(
             await renderer3d.getCameraPosition(),
-            initialPosition
+            initialPosition,
           ),
-        { timeout: 10000 }
+        { timeout: 10000 },
       )
       .toBe(true);
 
@@ -340,9 +340,8 @@ test.describe.serial("camera initialization", () => {
     await expect
       .poll(async () => {
         const currentCamera = await renderer3d.getCameraPosition();
-        const savedState = await renderer3d.getSavedCameraState(
-          basicDatasetName
-        );
+        const savedState =
+          await renderer3d.getSavedCameraState(basicDatasetName);
 
         if (!savedState) {
           return false;
@@ -351,7 +350,7 @@ test.describe.serial("camera initialization", () => {
         return positionsAreClose(
           savedState.position as [number, number, number],
           currentCamera,
-          1.0
+          1.0,
         );
       })
       .toBe(true);
@@ -363,18 +362,18 @@ test.describe.serial("camera initialization", () => {
     // Camera should have moved from its initial position.
     expect(
       positionsAreClose(newPosition, initialPosition),
-      `Expected camera to have moved from ${initialPosition}, but it's still at ${newPosition}`
+      `Expected camera to have moved from ${initialPosition}, but it's still at ${newPosition}`,
     ).toBe(false);
 
     expect(
       positionsAreClose(
         savedState!.position as [number, number, number],
         newPosition,
-        1.0
+        1.0,
       ),
       `Expected localStorage to have ${newPosition}, but got ${
         savedState!.position
-      }`
+      }`,
     ).toBe(true);
   });
 });

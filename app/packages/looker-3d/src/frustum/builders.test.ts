@@ -53,7 +53,7 @@ describe("computeFrustumCorners", () => {
       // For off-center principal point, frustum should be asymmetric
       // Top-left X should NOT be the negative of top-right X
       expect(Math.abs(farCorners[0].x)).not.toBeCloseTo(
-        Math.abs(farCorners[1].x)
+        Math.abs(farCorners[1].x),
       );
 
       // The frustum should be shifted in the opposite direction of the principal point offset
@@ -115,10 +115,10 @@ describe("computeFrustumCorners", () => {
 
       // At double the depth, corners should be at double the distance from origin (in X and Y)
       expect(corners2.farCorners[0].x).toBeCloseTo(
-        corners1.farCorners[0].x * 2
+        corners1.farCorners[0].x * 2,
       );
       expect(corners2.farCorners[0].y).toBeCloseTo(
-        corners1.farCorners[0].y * 2
+        corners1.farCorners[0].y * 2,
       );
       expect(corners2.farCorners[0].z).toBeCloseTo(2);
     });
@@ -136,7 +136,7 @@ describe("computeFrustumCorners", () => {
 
       const { farPlaneWidth, farPlaneHeight } = computeFrustumCorners(
         intrinsics,
-        depth
+        depth,
       );
 
       // Width should be smaller relative to height because fx > fy
@@ -269,21 +269,21 @@ describe("isValidStaticTransform", () => {
       isValidStaticTransform({
         translation: [1, 2] as any,
         quaternion: [0, 0, 0, 1],
-      })
+      }),
     ).toBe(false);
 
     expect(
       isValidStaticTransform({
         translation: [1, 2, NaN],
         quaternion: [0, 0, 0, 1],
-      })
+      }),
     ).toBe(false);
 
     expect(
       isValidStaticTransform({
         translation: [1, 2, Infinity],
         quaternion: [0, 0, 0, 1],
-      })
+      }),
     ).toBe(false);
   });
 
@@ -292,14 +292,14 @@ describe("isValidStaticTransform", () => {
       isValidStaticTransform({
         translation: [1, 2, 3],
         quaternion: [0, 0, 0] as any,
-      })
+      }),
     ).toBe(false);
 
     expect(
       isValidStaticTransform({
         translation: [1, 2, 3],
         quaternion: [0, 0, 0, NaN],
-      })
+      }),
     ).toBe(false);
   });
 });

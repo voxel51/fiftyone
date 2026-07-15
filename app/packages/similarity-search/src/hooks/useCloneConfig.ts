@@ -20,7 +20,7 @@ export const useCloneConfig = (): UseCloneConfigResult => {
     (config: CloneConfig) => {
       setCloneConfigAtom(config);
     },
-    [setCloneConfigAtom]
+    [setCloneConfigAtom],
   );
 
   const clearCloneConfig = useCallback(() => {

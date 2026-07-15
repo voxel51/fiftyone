@@ -185,7 +185,7 @@ export class KeyParser {
         } else {
           if (keySequence.key !== "") {
             throw new Error(
-              `Multiple standard keys in keybinding: ${sequence}`
+              `Multiple standard keys in keybinding: ${sequence}`,
             );
           }
           switch (keyLow) {
@@ -208,7 +208,7 @@ export class KeyParser {
                   throw new Error(`The binding ${binding} is missing a key.`);
                 }
                 throw new Error(
-                  `The binding ${binding} contains an invalid key ${key.trim()}`
+                  `The binding ${binding} contains an invalid key ${key.trim()}`,
                 );
               }
               break;

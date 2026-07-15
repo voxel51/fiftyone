@@ -19,7 +19,7 @@ import { useRecoilCallback } from "recoil";
  */
 export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   const tooltip = fos.useTooltip();
@@ -32,7 +32,7 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
           | LighterEventGroup["lighter:overlay-unhover"]
           | LighterEventGroup["lighter:overlay-hover-move"],
         scene: Scene2D,
-        isUnhover: boolean
+        isUnhover: boolean,
       ) => {
         const isTooltipLocked = snapshot
           .getLoadable(fos.isTooltipLocked)
@@ -69,7 +69,7 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
           }
         }
       },
-    [tooltip]
+    [tooltip],
   );
 
   useEventHandler(
@@ -80,8 +80,8 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
           tooltipEventHandler(payload, scene, false);
         }
       },
-      [scene, tooltipEventHandler]
-    )
+      [scene, tooltipEventHandler],
+    ),
   );
 
   useEventHandler(
@@ -92,8 +92,8 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
           tooltipEventHandler(payload, scene, true);
         }
       },
-      [scene, tooltipEventHandler]
-    )
+      [scene, tooltipEventHandler],
+    ),
   );
 
   useEventHandler(
@@ -104,8 +104,8 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
           tooltipEventHandler(payload, scene, false);
         }
       },
-      [scene, tooltipEventHandler]
-    )
+      [scene, tooltipEventHandler],
+    ),
   );
 
   const handleDocumentMouseMove = useRecoilCallback(
@@ -138,7 +138,7 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
           scene?.getInteractionManager()?.resetHoveredHandler();
         }
       },
-    [scene, tooltip]
+    [scene, tooltip],
   );
 
   useEffect(() => {

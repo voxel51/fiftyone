@@ -20,6 +20,12 @@ export interface TrackEvent {
   endSec?: number;
   /** Optional human-readable label, e.g. for hover / inspection. */
   label?: string;
+  /**
+   * Per-event color override. When set, the event's bar / marker paints in
+   * this color instead of the track color — used by value-segmented sub-tracks
+   * to color each segment by its value. Falls back to the track color.
+   */
+  color?: string;
   /** Free-form payload — anything the source produced about this event. */
   data?: unknown;
 }
@@ -45,6 +51,13 @@ export interface Track {
   color: string;
   /** Events on this track, in start-time order. */
   events: TrackEvent[];
+  /**
+   * Id of the parent track when this row is a sub-row (e.g. a dynamic-attribute
+   * timeline nested under its instance track). Sub-rows are not independently
+   * pinnable — they follow their parent's pin state so a parent + its children
+   * always render contiguously in the same bucket. Omit for top-level rows.
+   */
+  parentId?: string;
 }
 
 export interface TrackContextValue {
@@ -61,14 +74,61 @@ export interface TrackContextValue {
 const TrackContext = createContext<TrackContextValue | null>(null);
 
 export interface TrackProviderProps {
-  /** Tracks to broadcast. Treated as mount-time config (no churn). */
-  initialTracks?: Track[];
+  /**
+   * Tracks to broadcast. Reactive; callers should provide a stable reference
+   * so a new identity is a signal that the track list changed.
+   */
+  tracks?: Track[];
   /**
    * Track ids that should start pinned to the timeline. Anything else
-   * sits in the "unpinned" pool, browsable but not rendered.
+   * sits in the "unpinned" pool, browsable but not rendered. **Mount-time
+   * only** — captured into local state on the first render and never read
+   * again. To mutate pin state after mount, call `togglePin` / `setPinned`
+   * from `useTrackPinning()`.
    */
   initialPinnedIds?: string[];
+  /**
+   * Whether a track that first appears AFTER the initial hydration is
+   * auto-pinned (e.g. a newly created tag). Defaults to `true` for the generic
+   * timeline; the annotation surface opts out (`false`) so pinning is always an
+   * explicit user action.
+   */
+  autoPinNewTracks?: boolean;
+  /**
+   * When set, the pinned-id set is persisted client-side under this
+   * `localStorage` key: it hydrates the initial pin state (falling back to
+   * `initialPinnedIds` when nothing is stored) and re-writes on every change.
+   * Callers own the key's scope (e.g. dataset + sample). **Read at mount** like
+   * `initialPinnedIds` — remount (re-key) to switch scopes. Omit for pure
+   * in-memory pinning.
+   */
+  persistKey?: string;
   children: React.ReactNode;
+}
+
+/** Read a persisted pinned-id set; null when absent, empty, or unparseable. */
+function readPersistedPinnedIds(key: string): Set<string> | null {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+
+    return new Set(parsed.filter((id): id is string => typeof id === "string"));
+  } catch {
+    // storage unavailable / malformed — fall back to the seeded ids.
+    return null;
+  }
+}
+
+/** Best-effort write of the pinned-id set; swallows quota / unavailable. */
+function writePersistedPinnedIds(key: string, ids: ReadonlySet<string>): void {
+  try {
+    window.localStorage.setItem(key, JSON.stringify([...ids]));
+  } catch {
+    // persistence is best-effort; ignore storage failures.
+  }
 }
 
 /**
@@ -87,40 +147,53 @@ export interface TrackProviderProps {
  * provider when the user opens that recording.
  */
 export const TrackProvider: React.FC<TrackProviderProps> = ({
-  initialTracks = [],
+  tracks = [],
   initialPinnedIds = [],
+  autoPinNewTracks = true,
+  persistKey,
   children,
 }) => {
-  // Tracks are reactive — the caller is responsible for passing a stable
-  // reference (e.g. via useMemo) so the context value only updates when
-  // the track list genuinely changes. No internal state needed.
-  const [pinnedIds, setPinnedSet] = useState<Set<string>>(
-    () => new Set(initialPinnedIds)
-  );
+  const [pinnedIds, setPinnedSet] = useState<Set<string>>(() => {
+    if (persistKey) {
+      const persisted = readPersistedPinnedIds(persistKey);
+      if (persisted) return persisted;
+    }
+
+    return new Set(initialPinnedIds);
+  });
+
+  // Mirror every pin change into client storage when a key is provided.
+  useEffect(() => {
+    if (!persistKey) return;
+
+    writePersistedPinnedIds(persistKey, pinnedIds);
+  }, [persistKey, pinnedIds]);
 
   // Auto-pin tracks added one-at-a-time after the initial load (e.g. a
   // newly created temporal tag). We distinguish "initial hydration" from
-  // "incremental addition" using a ref: the first time initialTracks
+  // "incremental addition" using a ref: the first time tracks
   // becomes non-empty we mark all IDs as seen without pinning them (they
   // are pre-existing tags the user hasn't explicitly pinned). Any ID that
   // appears after that initial hydration is a new creation and gets pinned.
-  const hydratedRef = useRef(initialTracks.length > 0);
-  const seenTrackIdsRef = useRef<Set<string>>(
-    new Set(initialTracks.map((t) => t.id))
-  );
+  const hydratedRef = useRef(tracks.length > 0);
+  const seenTrackIdsRef = useRef<Set<string>>(new Set(tracks.map((t) => t.id)));
   useEffect(() => {
+    // Opt-out: the surface drives all pinning explicitly, so a new track must
+    // not pin itself.
+    if (!autoPinNewTracks) return;
+
     if (!hydratedRef.current) {
       // Still waiting for the first non-empty batch — don't advance
       // hydratedRef yet or seenTrackIdsRef would stay empty and every
       // track in the real load would look "new" and get auto-pinned.
-      if (initialTracks.length === 0) return;
-      // First non-empty initialTracks — record all IDs as seen so they
+      if (tracks.length === 0) return;
+      // First non-empty tracks — record all IDs as seen so they
       // are not treated as new creations, but do not pin them.
       hydratedRef.current = true;
-      for (const t of initialTracks) seenTrackIdsRef.current.add(t.id);
+      for (const t of tracks) seenTrackIdsRef.current.add(t.id);
       return;
     }
-    const unseen = initialTracks
+    const unseen = tracks
       .map((t) => t.id)
       .filter((id) => !seenTrackIdsRef.current.has(id));
     if (unseen.length === 0) return;
@@ -130,7 +203,7 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
       for (const id of unseen) next.add(id);
       return next;
     });
-  }, [initialTracks]);
+  }, [tracks, autoPinNewTracks]);
 
   const togglePin = useCallback((id: string) => {
     setPinnedSet((prev) => {
@@ -155,12 +228,12 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
 
   const value = useMemo<TrackContextValue>(
     () => ({
-      tracks: initialTracks,
+      tracks,
       pinnedIds,
       togglePin,
       setPinned,
     }),
-    [initialTracks, pinnedIds, togglePin, setPinned]
+    [tracks, pinnedIds, togglePin, setPinned],
   );
 
   return (
@@ -173,7 +246,7 @@ export function useTrackContext(): TrackContextValue {
   const ctx = useContext(TrackContext);
   if (!ctx) {
     throw new Error(
-      "useTrackContext (and friends) must be used inside <TrackProvider>"
+      "useTrackContext (and friends) must be used inside <TrackProvider>",
     );
   }
   return ctx;
@@ -189,7 +262,7 @@ export function usePinnedTracks(): Track[] {
   const { tracks, pinnedIds } = useTrackContext();
   return useMemo(
     () => tracks.filter((t) => pinnedIds.has(t.id)),
-    [tracks, pinnedIds]
+    [tracks, pinnedIds],
   );
 }
 

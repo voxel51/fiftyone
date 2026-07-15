@@ -24,7 +24,7 @@ export type ThumbnailSelectionDetail<TSample = unknown> =
   };
 
 export const getThumbnailSelectionModifiers = (
-  eventLike: Partial<ThumbnailSelectionModifiers>
+  eventLike: Partial<ThumbnailSelectionModifiers>,
 ): ThumbnailSelectionModifiers => ({
   shiftKey: Boolean(eventLike.shiftKey),
   altKey: Boolean(eventLike.altKey),

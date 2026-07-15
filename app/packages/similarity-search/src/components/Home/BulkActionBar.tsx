@@ -12,7 +12,7 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { pluralizeSearches } from "../../utils";
 import { BulkActionBarContainer } from "../styled";
 

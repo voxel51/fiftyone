@@ -17,14 +17,14 @@ export function dateFromDateTimeString(timeZone: string, v: string): number {
     const [hour, minute, second] = times.map(Number);
     return DateTime.fromObject(
       { year, month, day, hour, minute, second },
-      { zone: timeZone }
+      { zone: timeZone },
     ).valueOf();
   }
 
   const [hour, minute] = times.map(Number);
   return DateTime.fromObject(
     { year, month, day, hour, minute },
-    { zone: timeZone }
+    { zone: timeZone },
   ).valueOf();
 }
 
@@ -39,7 +39,7 @@ export function formatDateTimePicker(timeZone: string, v: number): string {
     timeZone,
   }).format(date);
   const day = Intl.DateTimeFormat("en", { day: "2-digit", timeZone }).format(
-    date
+    date,
   );
   const hour = Intl.DateTimeFormat("en", {
     hour: "2-digit",
@@ -56,7 +56,7 @@ export function formatDateTimePicker(timeZone: string, v: number): string {
   }).format(date);
 
   return `${year}-${month}-${day}T${hour}:${handleDigits(
-    minutes
+    minutes,
   )}:${handleDigits(seconds)}`;
 }
 

@@ -40,7 +40,7 @@ const getPrimitiveSchemaType = (type: string): string => {
  */
 export const createReadOnly = (
   name: string,
-  type: string = "string"
+  type: string = "string",
 ): SchemaType => {
   return {
     type: getPrimitiveSchemaType(type),
@@ -54,14 +54,14 @@ export const createReadOnly = (
 
 export const createInput = (
   name: string,
-  { ftype, multipleOf }: { ftype: string; multipleOf: number }
+  { ftype, multipleOf }: { ftype: string; multipleOf: number },
 ): SchemaType => {
   const type =
     ftype === STRING_FIELD
       ? "string"
       : ftype === BOOLEAN_FIELD
-      ? "boolean"
-      : "number";
+        ? "boolean"
+        : "number";
 
   const schema: SchemaType = {
     type,
@@ -87,7 +87,7 @@ export const createSlider = (
     labeled?: boolean;
     minLabel?: string;
     maxLabel?: string;
-  }
+  },
 ): SchemaType => {
   const {
     bare = false,
@@ -114,7 +114,7 @@ export const createSlider = (
 export const createRadio = (
   name: string,
   choices: string[] | number[],
-  type: string = "string"
+  type: string = "string",
 ) => {
   return {
     type,
@@ -135,7 +135,7 @@ export const createRadio = (
  */
 export const createCheckboxList = (
   name: string,
-  choices: string[] | number[]
+  choices: string[] | number[],
 ) => {
   return {
     type: "array",
@@ -177,7 +177,7 @@ export const createTags = (name: string, choices: string[] | number[]) => {
 export const createSelect = (
   name: string,
   choices: string[] | number[],
-  type: string = "string"
+  type: string = "string",
 ) => {
   return {
     type,
@@ -197,7 +197,7 @@ export const createSelect = (
 export const createTree = (
   name: string,
   taxonomy: string,
-  multiSelect: boolean
+  multiSelect: boolean,
 ): SchemaType => {
   if (multiSelect) {
     return {
@@ -259,7 +259,7 @@ export const createText = (name: string, type: string): SchemaType => {
 
 export const createDatePicker = (
   name: string,
-  dateOnly: boolean
+  dateOnly: boolean,
 ): SchemaType => {
   return {
     type: "string",
@@ -289,7 +289,7 @@ export const createJsonInput = (name: string): SchemaType => {
  */
 export const createNumericList = (
   name: string,
-  choices: string[] | number[]
+  choices: string[] | number[],
 ) => {
   return {
     type: "array",
@@ -315,7 +315,7 @@ export const createNumericList = (
  */
 export function generatePrimitiveSchema(
   name: string,
-  schema: PrimitiveSchema
+  schema: PrimitiveSchema,
 ): SchemaType | undefined {
   if (schema.readOnly) {
     return createReadOnly(name, schema.type);

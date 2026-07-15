@@ -23,7 +23,7 @@ describe("createUseEventHandler", () => {
     });
 
     const { result: busResult } = renderHook(() =>
-      useEventBus<TestEventGroup>()
+      useEventBus<TestEventGroup>(),
     );
 
     busResult.current.dispatch("test:eventA", { id: "1", name: "test" });
@@ -41,7 +41,7 @@ describe("createUseEventHandler", () => {
     });
 
     const { result: busResult } = renderHook(() =>
-      useEventBus<TestEventGroup>()
+      useEventBus<TestEventGroup>(),
     );
 
     // Handler should be registered
@@ -60,7 +60,7 @@ describe("createUseEventHandler", () => {
     const handlerB = vi.fn();
 
     const { result: busResult } = renderHook(() =>
-      useEventBus<TestEventGroup>()
+      useEventBus<TestEventGroup>(),
     );
 
     const { rerender } = renderHook(
@@ -73,7 +73,7 @@ describe("createUseEventHandler", () => {
       },
       {
         initialProps: { event: "test:eventA" as keyof TestEventGroup },
-      }
+      },
     );
 
     // Initially handlerA should be registered
@@ -98,7 +98,7 @@ describe("createUseEventHandler", () => {
     const handler2 = vi.fn();
 
     const { result: busResult } = renderHook(() =>
-      useEventBus<TestEventGroup>()
+      useEventBus<TestEventGroup>(),
     );
 
     const { rerender } = renderHook(
@@ -107,7 +107,7 @@ describe("createUseEventHandler", () => {
       },
       {
         initialProps: { handler: handler1 },
-      }
+      },
     );
 
     // Initially handler1 should be registered
@@ -130,7 +130,7 @@ describe("createUseEventHandler", () => {
     const handler = vi.fn();
 
     const { result: busResult } = renderHook(() =>
-      useEventBus<TestEventGroup>()
+      useEventBus<TestEventGroup>(),
     );
 
     renderHook(() => {
@@ -148,7 +148,7 @@ describe("createUseEventHandler", () => {
     const handler = vi.fn();
 
     const { result: busResult } = renderHook(() =>
-      useEventBus<TestEventGroup>()
+      useEventBus<TestEventGroup>(),
     );
 
     renderHook(() => {
@@ -166,7 +166,7 @@ describe("createUseEventHandler", () => {
     const handler2 = vi.fn();
 
     const { result: busResult } = renderHook(() =>
-      useEventBus<TestEventGroup>()
+      useEventBus<TestEventGroup>(),
     );
 
     renderHook(() => {
@@ -187,7 +187,7 @@ describe("createUseEventHandler", () => {
     });
 
     const { result: busResult } = renderHook(() =>
-      useEventBus<TestEventGroup>()
+      useEventBus<TestEventGroup>(),
     );
 
     renderHook(() => {
@@ -206,7 +206,7 @@ describe("createUseEventHandler", () => {
     const handler = vi.fn();
 
     const { result: busResult } = renderHook(() =>
-      useEventBus<TestEventGroup>()
+      useEventBus<TestEventGroup>(),
     );
 
     const { rerender } = renderHook(() => {

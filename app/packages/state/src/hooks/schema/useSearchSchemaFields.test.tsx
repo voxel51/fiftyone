@@ -40,10 +40,10 @@ describe("useResetExcludedFieldStage ", () => {
     const { result } = renderHook(
       () => {
         const [excludedFieldsStage, setExcludedFieldsStage] = useRecoilState(
-          fos.excludedPathsState({})
+          fos.excludedPathsState({}),
         );
         const resetExcludedPaths = useResetRecoilState(
-          fos.excludedPathsState({})
+          fos.excludedPathsState({}),
         );
 
         return {
@@ -54,7 +54,7 @@ describe("useResetExcludedFieldStage ", () => {
       },
       {
         wrapper: Root,
-      }
+      },
     );
 
     expect(result.current.excludedFieldsStage).toStrictEqual({

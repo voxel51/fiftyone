@@ -6,13 +6,13 @@ rendering experience.
 
 ## Table of Contents
 
--   [Basic Usage](#basic-usage)
--   [Core Concepts](#core-concepts)
--   [Field Types](#field-types)
--   [Advanced Features](#advanced-features)
--   [Translation API](#translation-api)
--   [Custom Widgets](#custom-widgets)
--   [Type Safety](#type-safety)
+- [Basic Usage](#basic-usage)
+- [Core Concepts](#core-concepts)
+- [Field Types](#field-types)
+- [Advanced Features](#advanced-features)
+- [Translation API](#translation-api)
+- [Custom Widgets](#custom-widgets)
+- [Type Safety](#type-safety)
 
 ---
 
@@ -125,9 +125,9 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   Text input field
--   Placeholder text
--   Help text below field
+- Text input field
+- Placeholder text
+- Help text below field
 
 ---
 
@@ -146,8 +146,8 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   Number input with constraints
--   Min/max validation
+- Number input with constraints
+- Min/max validation
 
 ---
 
@@ -165,7 +165,7 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   Material-UI checkbox
+- Material-UI checkbox
 
 ---
 
@@ -188,8 +188,8 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   Custom Dropdown widget (wraps SchemaIO DropdownView)
--   Single selection
+- Custom Dropdown widget (wraps SchemaIO DropdownView)
+- Single selection
 
 ---
 
@@ -212,8 +212,8 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   Multi-select dropdown
--   Returns array of selected values
+- Multi-select dropdown
+- Returns array of selected values
 
 ---
 
@@ -236,9 +236,9 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   Custom AutoComplete widget (wraps SchemaIO AutocompleteView)
--   Searchable dropdown
--   Optional free text input
+- Custom AutoComplete widget (wraps SchemaIO AutocompleteView)
+- Searchable dropdown
+- Optional free text input
 
 ---
 
@@ -263,9 +263,9 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   Multi-select autocomplete with chips
--   Add custom tags if `allow_user_input: true`
--   Prevent duplicates if `allow_duplicates: false`
+- Multi-select autocomplete with chips
+- Add custom tags if `allow_user_input: true`
+- Prevent duplicates if `allow_duplicates: false`
 
 ---
 
@@ -288,8 +288,8 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   Radio button group
--   Single selection
+- Radio button group
+- Single selection
 
 ---
 
@@ -307,8 +307,8 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   Color picker widget
--   Returns hex color string
+- Color picker widget
+- Returns hex color string
 
 ---
 
@@ -327,8 +327,8 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   Multi-line textarea (10 rows)
--   Warning: Consider custom widget for syntax highlighting
+- Multi-line textarea (10 rows)
+- Warning: Consider custom widget for syntax highlighting
 
 ---
 
@@ -346,8 +346,8 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   File input widget
--   Returns file path/data
+- File input widget
+- Returns file path/data
 
 ---
 
@@ -369,8 +369,8 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   Add/remove buttons
--   List of text inputs
+- Add/remove buttons
+- List of text inputs
 
 ---
 
@@ -398,8 +398,8 @@ const schemaIOData = { name: "John", age: null };
 
 **Generated UI:**
 
--   Nested fieldset
--   Groups related fields
+- Nested fieldset
+- Groups related fields
 
 ---
 
@@ -467,8 +467,8 @@ const uiSchema = {
 
 **Generated UI:**
 
--   Asterisk (\*) next to label
--   Validation on submit
+- Asterisk (\*) next to label
+- Validation on submit
 
 ---
 
@@ -486,7 +486,7 @@ const uiSchema = {
 
 **Generated UI:**
 
--   Disabled/non-editable field
+- Disabled/non-editable field
 
 ---
 
@@ -502,7 +502,7 @@ const uiSchema = {
 
 **Generated UI:**
 
--   Pre-populated with default value
+- Pre-populated with default value
 
 ---
 
@@ -532,8 +532,8 @@ const uiSchema = {
 
 **Generated UI:**
 
--   Client-side validation
--   Error messages
+- Client-side validation
+- Error messages
 
 ---
 
@@ -594,8 +594,8 @@ const uiSchema = {
 
 **Generated UI:**
 
--   Add/remove address buttons
--   Each address has street/city/zip fields
+- Add/remove address buttons
+- Each address has street/city/zip fields
 
 ---
 
@@ -623,8 +623,8 @@ const uiSchema = {
 
 **Generated UI:**
 
--   Fixed number of fields (2)
--   No add/remove buttons
+- Fixed number of fields (2)
+- No add/remove buttons
 
 ---
 
@@ -791,7 +791,7 @@ const options: TranslationOptions = {
 const result: TranslationResult = translateSchemaComplete(
     schema,
     data,
-    options
+    options,
 );
 
 // result.schema: RJSFSchema
@@ -929,8 +929,8 @@ const uiSchema = {
 
 SmartForm automatically converts between formats, but be aware:
 
--   SchemaIO uses `null` for empty values
--   RJSF uses `undefined`, `""`, or `[]` for empty values
+- SchemaIO uses `null` for empty values
+- RJSF uses `undefined`, `""`, or `[]` for empty values
 
 ### 4. Type Your Schemas
 

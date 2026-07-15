@@ -14,7 +14,7 @@ export class FrameLooker extends AbstractLooker<FrameState> {
 
   getInitialState(
     config: FrameState["config"],
-    options: FrameState["options"]
+    options: FrameState["options"],
   ) {
     options = {
       ...this.getDefaultOptions(),
@@ -73,7 +73,7 @@ export class FrameLooker extends AbstractLooker<FrameState> {
 
   updateOptions(
     options: Partial<FrameState["options"]>,
-    disableReload = false
+    disableReload = false,
   ) {
     const reload =
       !disableReload &&

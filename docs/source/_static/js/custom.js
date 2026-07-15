@@ -812,12 +812,6 @@ function initScrollSpyFix() {
   updateActiveSection();
 }
 
-function initNavIcons() {
-  document.querySelectorAll(".nav.bd-sidenav a.reference").forEach((a) => {
-    if (a.textContent.trim() === "FiftyOne Labs") a.classList.add("nav-labs");
-  });
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   initSidebarToggle();
   initSlidingNavBar();
@@ -830,7 +824,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initDynamicCTAs();
   initDirectAgentAccess();
   initAIChatButtons();
-  initNavIcons();
 });
 
 /* ScrollSpy initializes on window.load, so we must run after it */

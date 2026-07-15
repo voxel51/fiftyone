@@ -51,7 +51,7 @@ const EXPLICIT_COLOR_MAP: Record<string, Readonly<ColorscaleInput["list"]>> = {
 
 export const getGradientFromSchemeName = (
   schemeName: string,
-  numStops: number = NUM_STOPS_FOR_PREDEFINED_NAME
+  numStops: number = NUM_STOPS_FOR_PREDEFINED_NAME,
 ): Readonly<ColorscaleInput["list"]> => {
   let colors: string[] = [];
 
@@ -67,7 +67,7 @@ export const getGradientFromSchemeName = (
       return EXPLICIT_COLOR_MAP[schemeName.toLocaleLowerCase()];
     } else {
       console.error(
-        `Error getting gradient from scheme name ${schemeName} with ${numStops} stops`
+        `Error getting gradient from scheme name ${schemeName} with ${numStops} stops`,
       );
       return DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE;
     }
@@ -81,7 +81,7 @@ export const getGradientFromSchemeName = (
 
 const useGradientMap = (
   colorMap: Readonly<ColorscaleInput["list"]>,
-  flipY: boolean = false
+  flipY: boolean = false,
 ) => {
   const texture = useMemo(() => {
     const gradients = colorMap.map((item) => [item.value, item.color] as const);

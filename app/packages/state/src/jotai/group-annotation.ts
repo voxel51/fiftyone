@@ -20,5 +20,5 @@ export interface GroupVisibilityConfigSnapshot {
 export const preferredGroupAnnotationSliceAtom = atomWithStorage<string | null>(
   "preferredGroupAnnotationSlice",
   null,
-  createDatasetKeyedStorage<string | null>(parseDatasetNameFromUrl)
+  createDatasetKeyedStorage<string | null>(parseDatasetNameFromUrl),
 );

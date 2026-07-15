@@ -151,6 +151,22 @@ just as you would via the :ref:`FiftyOne App <fiftyone-app>`.
    Did you know? You can also navigate directly to a dataset of interest by
    pasting its URL into your browser's URL bar.
 
+
+.. _enterprise-comments:
+
+Comments
+--------
+
+When using a dataset in the FiftyOne Enterprise App, you can add comments
+to samples and start threads with your team. Comments are a great way to
+provide feedback, ask questions, or collaborate with your team. They are
+especially useful for
+:ref:`annotation workflows <enterprise-workflows>`, where you can leave
+comments on samples that need work while reviewing labels.
+
+.. image:: https://cdn.voxel51.com/enterprise/app/comments.webp
+   :alt: Discussion panel with a comment thread on a sample
+
 .. _enterprise-managing-datasets:
 
 Managing a dataset

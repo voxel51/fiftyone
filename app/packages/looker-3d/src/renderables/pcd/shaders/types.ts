@@ -1,5 +1,6 @@
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as THREE from "three";
+import type { PointCloudCrop } from "../../../utils/point-cloud-crop";
 export type Gradients = [number, string][];
 
 export type ShaderProps = {
@@ -12,4 +13,5 @@ export type ShaderProps = {
   upVector?: THREE.Vector3;
   quaternion?: THREE.Quaternion;
   pcdType?: "intensity" | "rgb";
+  pointCloudCrop?: PointCloudCrop | null;
 };

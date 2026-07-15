@@ -42,7 +42,7 @@ type SliceMediaType = { name: string; mediaType: string };
  * or `undefined` if every slice is 3D (or none are defined).
  */
 const pickNon3dSlice = (
-  slices: readonly SliceMediaType[]
+  slices: readonly SliceMediaType[],
 ): string | undefined =>
   slices
     .filter(({ mediaType }) => !is3d(mediaType))
@@ -90,7 +90,7 @@ const EnsureGroupSample = ({ children }: React.PropsWithChildren) => {
 
         set(modalGroupSlice, next);
       },
-    [actions]
+    [actions],
   );
 
   useEffect(() => {

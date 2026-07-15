@@ -1,5 +1,6 @@
 import type { CustomizeColorInput } from "@fiftyone/relay";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
+import type { RecognizedMediaType } from "@fiftyone/utilities";
 
 export type SelectionType = "default" | "alt";
 export type SelectionIconStyle =
@@ -35,13 +36,9 @@ export const DEFAULT_LABEL_SELECTION_STYLE: LabelSelectionStyle = {
 
 export namespace State {
   export type MediaType =
-    | "image"
-    | "group"
+    | RecognizedMediaType
     | "point_cloud"
-    | "point-cloud"
     | "three_d"
-    | "3d"
-    | "video"
     | "unknown";
 
   export enum SPACE {

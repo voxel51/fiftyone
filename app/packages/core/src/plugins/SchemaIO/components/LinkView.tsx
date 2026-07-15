@@ -1,5 +1,4 @@
 import { Box, Link } from "@mui/material";
-import React from "react";
 import { getComponentProps } from "../utils";
 
 export default function LinkView(props) {

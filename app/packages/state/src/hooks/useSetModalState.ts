@@ -15,14 +15,14 @@ import { is3d } from "@fiftyone/utilities";
 
 const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
   const paths = await snapshot.getPromise(
-    schemaAtoms.labelPaths({ expanded: false })
+    schemaAtoms.labelPaths({ expanded: false }),
   );
   const filters = await snapshot.getPromise(filterAtoms.filters);
   const modalFilters = Object.fromEntries(
     Object.entries(filters).filter(
       ([path]) =>
-        paths.some((p) => path.startsWith(p)) || path === "_label_tags"
-    )
+        paths.some((p) => path.startsWith(p)) || path === "_label_tags",
+    ),
   );
 
   set(filterAtoms.modalFilters, modalFilters);
@@ -77,7 +77,9 @@ export default () => {
       set(group3dAtoms.pinned3DSampleSlice, pinned3d ? slice : null);
 
       const results = await Promise.all(
-        data.map(([_, get]) => snapshot.getPromise(get as RecoilState<unknown>))
+        data.map(([_, get]) =>
+          snapshot.getPromise(get as RecoilState<unknown>),
+        ),
       );
 
       for (const i in results) {
@@ -87,6 +89,6 @@ export default () => {
       navigation && (await setModalFilters(cbInterface));
       navigation && modalAtoms.modalNavigation.set(navigation);
     },
-    [environment]
+    [environment],
   );
 };

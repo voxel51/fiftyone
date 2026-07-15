@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
+from fiftyone.operators.operations import build_register_panel_params
 from fiftyone.operators.panel import (
     Panel,
     PanelConfig,
@@ -78,6 +79,30 @@ def test_panel_on_startup(panel, mock_ctx):
     assert (
         mock_ctx.ops.register_panel.call_args[1]["label"] == panel.config.label
     )
+
+
+def test_panel_config_not_on_startup():
+    # panels register from the /operators payload, not a startup execute
+    config = PanelConfig(name="test_panel", label="Test Panel")
+    assert config.on_startup is False
+
+
+def test_resolve_panel_config(panel):
+    panel_config = panel.resolve_panel_config()
+    assert panel_config["name"] == "test_panel"
+    assert panel_config["label"] == "Test Panel"
+    assert panel_config["allow_duplicates"] is False
+    assert panel_config["on_load"].endswith("#on_load")
+    assert panel_config["on_change"].endswith("#on_change")
+
+
+def test_build_register_panel_params_from_panel(panel):
+    params = build_register_panel_params(**panel.resolve_panel_config())
+    assert params["panel_name"] == "test_panel"
+    assert params["panel_label"] == "Test Panel"
+    assert params["allow_duplicates"] is False
+    assert params["on_load"].endswith("#on_load")
+    assert params["on_change"].endswith("#on_change")
 
 
 def test_panel_execute(panel, mock_ctx):

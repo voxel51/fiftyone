@@ -47,7 +47,7 @@ function renderOverlays(opts: RenderOpts) {
         <ViewSetter start={opts.viewStart} end={opts.viewEnd} />
       ) : null}
       <LoopOverlays labelWidth={labelWidth} />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -102,30 +102,30 @@ describe("LoopOverlays", () => {
     expect(masks).toHaveLength(2);
     // Exactly one of the two carries `right: 0`.
     const withRight = Array.from(masks).filter((m) =>
-      (m.getAttribute("style") ?? "").includes("right: 0")
+      (m.getAttribute("style") ?? "").includes("right: 0"),
     );
     expect(withRight).toHaveLength(1);
   });
 
   it("treats bounds within LOOP_EDGE_EPSILON of the view edges as at the edge", () => {
     const duration = 10;
-     const { container } = renderOverlays({
+    const { container } = renderOverlays({
       duration,
       defaultLoopStart: LOOP_EDGE_EPSILON / 2,
       defaultLoopEnd: duration - LOOP_EDGE_EPSILON / 2,
-     });
-     expect(container.querySelectorAll(maskClass)).toHaveLength(0);
-   });
+    });
+    expect(container.querySelectorAll(maskClass)).toHaveLength(0);
+  });
 
-   it("renders the left mask when loop start is just past epsilon", () => {
+  it("renders the left mask when loop start is just past epsilon", () => {
     const duration = 10;
     // slightly greater than epsilon → left mask should render
-     const { container } = renderOverlays({
+    const { container } = renderOverlays({
       duration,
       defaultLoopStart: LOOP_EDGE_EPSILON + 0.01,
-     });
-     expect(container.querySelectorAll(maskClass)).toHaveLength(1);
-   });
+    });
+    expect(container.querySelectorAll(maskClass)).toHaveLength(1);
+  });
 
   it("renders nothing when the view collapses to a zero-width window", () => {
     // viewStart === viewEnd → no room for the loop to be inside, so the

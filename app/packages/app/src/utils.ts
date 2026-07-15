@@ -11,7 +11,7 @@ export const getDatasetName = (pathname?: string) => {
       path: "/datasets/:name",
     },
     window.location.search,
-    {}
+    {},
   );
 
   if (result) {

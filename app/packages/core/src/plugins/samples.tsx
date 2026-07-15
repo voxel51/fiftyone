@@ -35,7 +35,7 @@ registerComponent({
 function TabIndicator() {
   const similarityParameters = useRecoilValue(fos.similarityParameters);
   const resetSimilarityParameters = useResetRecoilState(
-    fos.similarityParameters
+    fos.similarityParameters,
   );
   const selectedSamples = useRecoilValue(fos.selectedSamples);
   const resetSelectedSamples = useResetRecoilState(fos.selectedSamples);

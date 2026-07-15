@@ -77,7 +77,7 @@ const ScalarValueEntry = ({
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
-    cb: () => void
+    cb: () => void,
   ) => void;
   slices?: boolean;
 }) => {
@@ -153,7 +153,7 @@ const ListValueEntry = ({
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
-    cb: () => void
+    cb: () => void,
   ) => void;
   slices?: boolean;
 }) => {
@@ -177,8 +177,8 @@ const ListValueEntry = ({
         embeddedDocType
           ? embeddedDocType
           : subfield
-          ? `${ftype}(${subfield})`
-          : ftype
+            ? `${ftype}(${subfield})`
+            : ftype
       })`}
       backgroundColor={backgroundColor}
       clickable
@@ -263,7 +263,7 @@ const LengthLoadable = ({ path }: { path: string }) => {
 const ListLoadable = ({ path }: { path: string }) => {
   const data = useActiveModalSampleValue<Primitive[]>(path);
   const { fields, ftype, subfield } = fos.useAssertedRecoilValue(
-    fos.field(path)
+    fos.field(path),
   );
   const timeZone = useRecoilValue(fos.timeZone);
 
@@ -275,7 +275,7 @@ const ListLoadable = ({ path }: { path: string }) => {
   const values = useMemo(() => {
     if (data === LOADING) return LOADING;
     return Array.from(data || []).map((value) =>
-      format({ fields, ftype: field, value, timeZone })
+      format({ fields, ftype: field, value, timeZone }),
     );
   }, [data, field, fields, timeZone]);
 
@@ -390,7 +390,7 @@ const useSlicesData = <T,>(path: string) => {
       target,
       keys,
       data[slice].sample,
-      isList
+      isList,
     );
   }
 
@@ -418,7 +418,7 @@ const LoadableValue = ({
 
   const formatted = useMemo(
     () => format({ fields, ftype, timeZone, value }),
-    [fields, ftype, timeZone, value]
+    [fields, ftype, timeZone, value],
   );
 
   return (
@@ -453,7 +453,7 @@ const PathValueEntry = ({
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
-    cb: () => void
+    cb: () => void,
   ) => void;
 }) => {
   const [hovering, setHovering] = useState<boolean>(false);

@@ -19,7 +19,7 @@ export class DisplayOptionsPom {
 
   async setSidebarStatisticsMode(mode: SidebarStatisticsMode) {
     const selector = this.page.getByTestId(
-      `tab-option-View ${mode} sidebar statistics`
+      `tab-option-View ${mode} sidebar statistics`,
     );
     return selector.click();
   }

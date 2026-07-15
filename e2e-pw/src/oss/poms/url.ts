@@ -6,7 +6,7 @@ export class UrlPom {
 
   constructor(
     private readonly page: Page,
-    private readonly eventUtils: EventUtils
+    private readonly eventUtils: EventUtils,
   ) {
     this.assert = new UrlAsserter(this);
   }

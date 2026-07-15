@@ -18,11 +18,14 @@ export class RemoveKeypointPointCommand implements Undoable {
   private readonly relativePosition: [number, number];
   private readonly variant?: string;
 
-  constructor(private overlay: KeypointOverlay, private pointId: string) {
+  constructor(
+    private overlay: KeypointOverlay,
+    private pointId: string,
+  ) {
     const entry = overlay.getPointById(pointId);
     if (!entry) {
       throw new Error(
-        `RemoveKeypointPointCommand: no point with id ${pointId}`
+        `RemoveKeypointPointCommand: no point with id ${pointId}`,
       );
     }
 
@@ -38,7 +41,7 @@ export class RemoveKeypointPointCommand implements Undoable {
 
   undo(): void {
     const worldPoint = this.overlay.relativePointToAbsolute(
-      this.relativePosition
+      this.relativePosition,
     );
     this.overlay.addPoint(worldPoint, {
       variant: this.variant,

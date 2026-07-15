@@ -8,6 +8,7 @@ File storage utilities.
 
 from datetime import datetime
 import enum
+import io
 import json
 import logging
 import multiprocessing.dummy
@@ -1038,14 +1039,28 @@ def _to_bytes(val, encoding="utf-8"):
     return b
 
 
-def get_file_size(path):
+def get_file_size(path_or_file):
     """
     Returns the size of the file at the given path in bytes.
 
     Args:
-        path: the filepath
+        path_or_file: the filepath, or an open binary file handle
 
     Returns:
         the file size in bytes
     """
-    return os.path.getsize(path)
+    # If given a seekable file handle, use seek/tell to get the size.
+    if hasattr(path_or_file, "seek") and hasattr(path_or_file, "tell"):
+        if isinstance(path_or_file, io.TextIOBase):
+            raise TypeError(
+                "get_file_size() requires a binary file handle; got a "
+                "text-mode file. Open the file in binary mode ('rb') instead."
+            )
+        position = path_or_file.tell()
+        try:
+            path_or_file.seek(0, os.SEEK_END)
+            return path_or_file.tell()
+        finally:
+            path_or_file.seek(position)
+
+    return os.path.getsize(path_or_file)

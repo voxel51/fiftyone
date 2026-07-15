@@ -35,9 +35,9 @@ const onSetColorScheme: RegisteredSetter =
           ensureColorScheme(
             readFragment<colorSchemeFragment$key>(
               colorSchemeFragment,
-              colorScheme.setColorScheme
-            )
-          )
+              colorScheme.setColorScheme,
+            ),
+          ),
         );
       },
     });

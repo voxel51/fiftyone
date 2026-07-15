@@ -315,7 +315,7 @@ export const useFont = () => {
 };
 
 const ThemeProvider: React.FC<
-  React.PropsWithChildren<{ customTheme?: Theme }>
+  React.PropsWithChildren<{ customTheme?: typeof theme }>
 > = ({ children, customTheme }) => {
   if (customTheme) theme = customTheme;
   const loadable = useRecoilValueLoadable(fos.theme);

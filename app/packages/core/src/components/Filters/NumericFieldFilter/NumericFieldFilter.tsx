@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import React, { Suspense } from "react";
+import { Suspense } from "react";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import useQueryPerformanceIcon from "../use-query-performance-icon";

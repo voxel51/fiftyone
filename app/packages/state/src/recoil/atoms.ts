@@ -55,7 +55,7 @@ export const modal = (() => {
           });
         },
       ],
-    }
+    },
   );
 })();
 
@@ -130,7 +130,7 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   {
     key: "tagging",
     default: false,
-  }
+  },
 );
 
 export const mediaType = graphQLSyncFragmentAtom<
@@ -145,7 +145,7 @@ export const mediaType = graphQLSyncFragmentAtom<
   },
   {
     key: "mediaType",
-  }
+  },
 );
 
 export const flatSampleFields = graphQLSyncFragmentAtom<
@@ -160,7 +160,7 @@ export const flatSampleFields = graphQLSyncFragmentAtom<
   },
   {
     key: "flatSampleFields",
-  }
+  },
 );
 
 export const sampleFields = selector<StrictField[]>({
@@ -180,7 +180,7 @@ export const flatFrameFields = graphQLSyncFragmentAtom<
   },
   {
     key: "flatFrameFields",
-  }
+  },
 );
 
 export const frameFields = selector<StrictField[]>({
@@ -288,7 +288,7 @@ export const extendedSelection = (() => {
     },
     {
       key: "extendedSelection",
-    }
+    },
   );
 })();
 
@@ -309,7 +309,7 @@ export const extendedSelectionOverrideStage = (() => {
     },
     {
       key: "extendedSelectionOverrideStage",
-    }
+    },
   );
 })();
 
@@ -341,7 +341,7 @@ export const similarityParameters = (() => {
     },
     {
       key: "similarityParameters",
-    }
+    },
   );
 })();
 

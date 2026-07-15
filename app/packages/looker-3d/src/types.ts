@@ -57,6 +57,13 @@ export type SidePanelId =
   | typeof PANEL_ID_SIDE_TOP
   | typeof PANEL_ID_SIDE_BOTTOM;
 
+export type HoveredLabelSource = PanelId | "sidebar";
+
+export interface HoveredLabel {
+  id: string;
+  source?: HoveredLabelSource;
+}
+
 export type SidePanelViewType =
   | typeof VIEW_TYPE_TOP
   | typeof VIEW_TYPE_BOTTOM
@@ -158,7 +165,7 @@ export interface HoverState {
 }
 
 export interface EventHandlers {
-  onPointerOver: () => void;
+  onPointerOver: (e?: ThreeEvent<PointerEvent>) => void;
   onPointerOut: () => void;
   onPointerMissed: () => void;
   onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
@@ -172,9 +179,39 @@ export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";
 export interface RaycastResult {
   sourcePanel: PanelId | null;
   worldPosition: [number, number, number] | null;
+  visibleWorldHeightAtPoint: number | null;
   intersectedObjectUuid: string | null;
+  intersectedLabelId: string | null;
+  isPointCloud: boolean;
   pointIndex: number | null;
   distance: number | null;
+  timestamp: number;
+}
+
+/** A raycast result with no hit; callers stamp their own `timestamp`. */
+export const EMPTY_RAYCAST_RESULT: RaycastResult = {
+  sourcePanel: null,
+  worldPosition: null,
+  visibleWorldHeightAtPoint: null,
+  intersectedObjectUuid: null,
+  intersectedLabelId: null,
+  isPointCloud: false,
+  pointIndex: null,
+  distance: null,
+  timestamp: 0,
+};
+
+export interface MainPanelZoomSyncIntent {
+  id: string;
+  anchor: [number, number, number];
+  zoomRatio: number;
+  visibleWorldHeightAtAnchor?: number | null;
+  timestamp: number;
+}
+
+export interface MainPanelPanSyncIntent {
+  id: string;
+  anchor: [number, number, number];
   timestamp: number;
 }
 
@@ -199,7 +236,7 @@ export interface CuboidCreationState {
  * Type guard to check if an overlay is a Detection overlay (3D).
  */
 export function isDetection3dOverlay(
-  overlay: unknown
+  overlay: unknown,
 ): overlay is OverlayLabel & {
   _cls: "Detection";
   dimensions: THREE.Vector3Tuple;
@@ -223,7 +260,7 @@ export function isDetection3dOverlay(
  * Type guard to check if an overlay is a Polyline overlay (3D).
  */
 export function isPolyline3dOverlay(
-  overlay: unknown
+  overlay: unknown,
 ): overlay is OverlayLabel & {
   _cls: "Polyline";
   points3d: THREE.Vector3Tuple[][];
@@ -242,7 +279,7 @@ export function isPolyline3dOverlay(
  * Type guard to check if a reconciled label is a Detection.
  */
 export function isDetection(
-  label: ReconciledDetection3D | ReconciledPolyline3D
+  label: ReconciledDetection3D | ReconciledPolyline3D,
 ): label is ReconciledDetection3D {
   return label._cls === "Detection";
 }
@@ -251,7 +288,7 @@ export function isDetection(
  * Type guard to check if a reconciled label is a Polyline.
  */
 export function isPolyline(
-  label: ReconciledDetection3D | ReconciledPolyline3D
+  label: ReconciledDetection3D | ReconciledPolyline3D,
 ): label is ReconciledPolyline3D {
   return label._cls === "Polyline";
 }

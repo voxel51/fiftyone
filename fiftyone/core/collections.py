@@ -53,6 +53,7 @@ from fiftyone.internal.docs import hide_from_docs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
+fota = fou.lazy_import("fiftyone.core.tags")
 fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -375,9 +376,7 @@ class SampleCollection(object):
     @hide_from_docs
     def temporal_tags(self):
         """The multimodal temporal tags for this collection."""
-        import fiftyone.multimodal as fomm
-
-        return fomm.TemporalTags(self)
+        return fota.TemporalTags(self)
 
     @property
     def _dataset(self):
@@ -4322,6 +4321,8 @@ class SampleCollection(object):
 
         When evaluating keypoints, "IoUs" are computed via
         `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
+        You can pass ``keypoint_sigmas`` to customize the per-keypoint OKS
+        falloff.
 
         For temporal segment detection, this method uses ActivityNet-style
         evaluation by default.
@@ -7307,9 +7308,7 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        import fiftyone.multimodal as fomm
-
-        tag_filter = fomm.TemporalTagFilter(
+        tag_filter = fota.TemporalTagFilter(
             tags=tags,
             anchors=anchors,
             index_type=index_type,

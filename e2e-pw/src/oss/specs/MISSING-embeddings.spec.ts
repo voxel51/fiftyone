@@ -74,7 +74,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }, testInfo) => {
       fob.compute_visualization(dataset, brain_key="img_viz", embeddings=embeddings)
 
       dataset.save()
-    `
+    `,
   );
 });
 

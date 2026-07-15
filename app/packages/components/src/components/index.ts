@@ -11,7 +11,7 @@ export { default as CopyButton } from "./CopyButton";
 export { default as Dialog } from "./Dialog";
 export { default as EditableLabel } from "./EditableLabel";
 export { default as ErrorBoundary, ErrorDisplayMarkup } from "./ErrorBoundary";
-export { default as ExternalLink, useExternalLink } from "./ExternalLink";
+export { default as ExternalLink } from "./ExternalLink";
 export { default as FilterAndSelectionIndicator } from "./FilterAndSelectionIndicator";
 export { ActionToolbar } from "./ActionToolbar";
 export type {

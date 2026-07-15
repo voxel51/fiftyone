@@ -1,22 +1,9 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  */
-import {
-  lookerPanel,
-  lookerPanelContainer,
-  lookerPanelVerticalContainer,
-  lookerPanelClose,
-  lookerHelpPanelItems,
-  lookerShortcutValue,
-  lookerShortcutTitle,
-  lookerShortcutDetail,
-  lookerPanelFlex,
-  lookerPanelHeader,
-  lookerSectionHeader,
-  lookerSectionHeaderFirst,
-} from "./panel.module.css";
+import styles from "./panel.module.css";
 import { Close as CloseIcon } from "@fiftyone/components";
-import React, { Fragment, useMemo } from "react";
+import { Fragment, useMemo } from "react";
 
 export default function HelpPanel({ containerRef, onClose, items }) {
   const groupedItems = useMemo(() => {
@@ -69,11 +56,11 @@ export default function HelpPanel({ containerRef, onClose, items }) {
   return (
     <div
       ref={containerRef}
-      className={`${lookerPanelContainer}`}
+      className={`${styles.lookerPanelContainer}`}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className={lookerPanelVerticalContainer}>
-        <div className={lookerPanel}>
+      <div className={styles.lookerPanelVerticalContainer}>
+        <div className={styles.lookerPanel}>
           <Scroll>
             <Header>Help</Header>
             <Items>
@@ -90,7 +77,7 @@ export default function HelpPanel({ containerRef, onClose, items }) {
             </Items>
           </Scroll>
           <CloseIcon
-            className={lookerPanelClose}
+            className={styles.lookerPanelClose}
             titleAccess="Close JSON"
             onClick={onClose}
             sx={{
@@ -104,13 +91,13 @@ export default function HelpPanel({ containerRef, onClose, items }) {
 }
 
 function Header({ children }) {
-  return <div className={lookerPanelHeader}>{children}</div>;
+  return <div className={styles.lookerPanelHeader}>{children}</div>;
 }
 function Scroll({ children }) {
-  return <div className={lookerPanelFlex}>{children}</div>;
+  return <div className={styles.lookerPanelFlex}>{children}</div>;
 }
 function Items({ children }) {
-  return <div className={lookerHelpPanelItems}>{children}</div>;
+  return <div className={styles.lookerHelpPanelItems}>{children}</div>;
 }
 function Item({ shortcut, title, detail, isSectionHeader, sectionKey }) {
   if (isSectionHeader) {
@@ -122,8 +109,8 @@ function Item({ shortcut, title, detail, isSectionHeader, sectionKey }) {
     const isFirstSection = sectionKey === "views";
     return (
       <div
-        className={`${lookerSectionHeader} ${
-          isFirstSection ? lookerSectionHeaderFirst : ""
+        className={`${styles.lookerSectionHeader} ${
+          isFirstSection ? styles.lookerSectionHeaderFirst : ""
         }`}
       >
         {sectionName}
@@ -133,11 +120,11 @@ function Item({ shortcut, title, detail, isSectionHeader, sectionKey }) {
   return (
     <Fragment>
       <div
-        className={lookerShortcutValue}
+        className={styles.lookerShortcutValue}
         dangerouslySetInnerHTML={{ __html: shortcut }}
       />
-      <div className={lookerShortcutTitle}>{title}</div>
-      <div className={lookerShortcutDetail}>{detail}</div>
+      <div className={styles.lookerShortcutTitle}>{title}</div>
+      <div className={styles.lookerShortcutDetail}>{detail}</div>
     </Fragment>
   );
 }

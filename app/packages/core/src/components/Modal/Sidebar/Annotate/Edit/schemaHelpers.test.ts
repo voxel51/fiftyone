@@ -44,7 +44,7 @@ describe("createTree", () => {
     it("includes a string items definition", () => {
       const result = createTree("tags", "vehicle-types", true);
       expect((result as { items?: { type: string } }).items?.type).toBe(
-        "string"
+        "string",
       );
     });
 

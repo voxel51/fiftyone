@@ -1,7 +1,10 @@
 import { cleanup, render } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { PlaybackProvider, usePlayback } from "../../lib/playback/PlaybackProvider";
+import {
+  PlaybackProvider,
+  usePlayback,
+} from "../../lib/playback/PlaybackProvider";
 import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import { viewEndAtom, viewStartAtom } from "../../lib/playback/atoms";
 import PlayheadLine from "./PlayheadLine";
@@ -50,7 +53,7 @@ function renderLine(opts: RenderOpts) {
       ) : null}
       {opts.seekTo !== undefined ? <Seeker time={opts.seekTo} /> : null}
       <PlayheadLine labelWidth={labelWidth} />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 

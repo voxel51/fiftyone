@@ -118,7 +118,7 @@ let theme = extendMuiTheme({
 });
 
 const ThemeProvider: React.FC<
-  React.PropsWithChildren<{ customTheme?: Theme }>
+  React.PropsWithChildren<{ customTheme?: typeof theme }>
 > = ({ children }) => {
   return (
     <LegacyTheme.Provider value={theme.colorSchemes["light"].palette}>

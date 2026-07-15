@@ -21,14 +21,14 @@ export type PolylineLabel = RegularLabel & {
   filled?: boolean;
 } & Record<string, unknown>;
 export default class PolylineOverlay<
-  State extends BaseState
+  State extends BaseState,
 > extends CoordinateOverlay<State, PolylineLabel> {
   containsPoint(state: Readonly<State>): CONTAINS {
     const tolerance =
       (state.strokeWidth * TOLERANCE) /
       getRenderedScale(
         [state.windowBBox[2], state.windowBBox[3]],
-        state.dimensions
+        state.dimensions,
       );
     const minDistance = this.getMouseDistance(state);
     if (minDistance <= tolerance) {
@@ -77,7 +77,7 @@ export default class PolylineOverlay<
           path,
           overlayStrokeColor,
           false,
-          overlayDash
+          overlayDash,
         );
       }
     }
@@ -93,8 +93,8 @@ export default class PolylineOverlay<
           distanceFromLineSegment(
             xy,
             [w * shape[i][0], h * shape[i][1]],
-            [w * shape[i + 1][0], h * shape[i + 1][1]]
-          )
+            [w * shape[i + 1][0], h * shape[i + 1][1]],
+          ),
         );
       }
       // acheck final line segment if closed
@@ -103,8 +103,8 @@ export default class PolylineOverlay<
           distanceFromLineSegment(
             xy,
             [w * shape[0][0], h * shape[0][1]],
-            [w * shape[shape.length - 1][0], h * shape[shape.length - 1][1]]
-          )
+            [w * shape[shape.length - 1][0], h * shape[shape.length - 1][1]],
+          ),
         );
       }
     }
@@ -130,7 +130,7 @@ export default class PolylineOverlay<
     path: Coordinates[],
     color: string,
     filled: boolean,
-    dash?: number
+    dash?: number,
   ) {
     ctx.beginPath();
     ctx.lineWidth = state.strokeWidth;

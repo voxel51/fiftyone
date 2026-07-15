@@ -1,5 +1,5 @@
 import { debounce, merge, mergeWith } from "lodash";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
 import { DimensionsType, useUnboundState } from "@fiftyone/state";
@@ -7,7 +7,6 @@ import {
   PANEL_STATE_CHANGE_DEBOUNCE,
   PANEL_STATE_PATH_CHANGE_DEBOUNCE,
 } from "./constants";
-import { executeOperator } from "./operators";
 import { useCurrentSample, useGlobalExecutionContext } from "./state";
 import usePanelEvent from "./usePanelEvent";
 import { memoizedDebounce } from "./utils";
@@ -42,7 +41,7 @@ export interface CustomPanelHooks {
     path: string,
     value: unknown,
     schema: unknown,
-    state?: unknown
+    state?: unknown,
   ) => void;
   data: unknown;
   panelSchema: unknown;
@@ -64,7 +63,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   const [panelStateLocal, setPanelStateLocal] = usePanelState(
     null,
     panelId,
-    true
+    true,
   );
   const setCustomPanelState = useSetCustomPanelState();
   const data = getPanelViewData({
@@ -116,7 +115,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     isLoaded,
     panelId,
     ctx._currentContext,
-    props.onChangeCtx
+    props.onChangeCtx,
   );
   useCtxChangePanelEvent(isLoaded, panelId, ctx.view, props.onChangeView);
   useCtxChangePanelEvent(isLoaded, panelId, ctx.viewName, props.onChangeView);
@@ -126,56 +125,56 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     isLoaded,
     panelId,
     ctx.datasetName,
-    props.onChangeDataset
+    props.onChangeDataset,
   );
   useCtxChangePanelEvent(
     isLoaded,
     panelId,
     ctx.extendedSelection,
-    props.onChangeExtendedSelection
+    props.onChangeExtendedSelection,
   );
   useCtxChangePanelEvent(
     isLoaded,
     panelId,
     currentSample,
-    props.onChangeCurrentSample
+    props.onChangeCurrentSample,
   );
   useCtxChangePanelEvent(
     isLoaded,
     panelId,
     ctx.selectedSamples,
-    props.onChangeSelected
+    props.onChangeSelected,
   );
   useCtxChangePanelEvent(
     isLoaded,
     panelId,
     ctx.selectedLabels,
-    props.onChangeSelectedLabels
+    props.onChangeSelectedLabels,
   );
   useCtxChangePanelEvent(
     isLoaded,
     panelId,
     ctx.groupSlice,
-    props.onChangeGroupSlice
+    props.onChangeGroupSlice,
   );
   useCtxChangePanelEvent(
     isLoaded,
     panelId,
     ctx.queryPerformance,
-    props.onChangeQueryPerformance
+    props.onChangeQueryPerformance,
   );
   useCtxChangePanelEvent(isLoaded, panelId, ctx.spaces, props.onChangeSpaces);
   useCtxChangePanelEvent(
     isLoaded,
     panelId,
     ctx.workspaceName,
-    props.onChangeWorkspace
+    props.onChangeWorkspace,
   );
   useCtxChangePanelEvent(
     isLoaded,
     panelId,
     ctx.activeFields,
-    props.onChangeActiveFields
+    props.onChangeActiveFields,
   );
 
   const handlePanelStateChangeOpDebounced = useMemo(() => {
@@ -186,7 +185,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
         }
       },
       PANEL_STATE_CHANGE_DEBOUNCE,
-      { leading: true }
+      { leading: true },
     );
   }, [triggerPanelEvent]);
 
@@ -194,7 +193,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     handlePanelStateChangeOpDebounced(
       panelState?.state,
       props.onChange,
-      panelId
+      panelId,
     );
   }, [
     panelState?.state,
@@ -230,7 +229,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   const handlePanelStatePathChangeDebounced = useMemo(() => {
     return memoizedDebounce(
       handlePanelStatePathChange,
-      PANEL_STATE_PATH_CHANGE_DEBOUNCE
+      PANEL_STATE_PATH_CHANGE_DEBOUNCE,
     );
   }, [handlePanelStatePathChange]);
 

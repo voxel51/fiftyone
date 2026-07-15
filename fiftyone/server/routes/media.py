@@ -17,6 +17,16 @@ from starlette.responses import FileResponse, Response
 
 _MEDIA_HEADERS = {
     "Accept-Ranges": "bytes",
+    # Cache cors and no-cors responses under separate keys. Without this the
+    # looker's no-cors <img> load (no Origin, no ACAO) gets reused for the
+    # browser-inference worker's cross-origin cors fetch of the same URL, which
+    # then fails the CORS check. Only bites when the app and server are served
+    # from different origins (e.g. a split dev server); same-origin deployments
+    # skip the CORS check entirely.
+    "Vary": "Origin",
+    # Let COEP cross-origin-isolated pages (the segmentation ONNX worker needs
+    # SharedArrayBuffer threading) read /media as a cross-origin subresource.
+    "Cross-Origin-Resource-Policy": "cross-origin",
 }
 MEDIA_FILE_RESPONSE_CHUNK_SIZE = 256 * 1024
 

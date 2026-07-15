@@ -17,6 +17,8 @@ permissions:
 
 jobs:
   triage:
+    # The `community` branch is OSS-only.
+    if: github.repository == 'voxel51/fiftyone'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v9
@@ -69,7 +71,7 @@ jobs:
 
             if (from) {
               body.push(
-                `Community pull requests target the \`community\` branch, so I've changed this PR's base from \`${from}\` to \`community\`. Your changes are unaffected — a maintainer integrates \`community\` into \`develop\` automatically.`,
+                `Community pull requests target the \`community\` branch, so I've changed this PR's base from \`${from}\` to \`community\`. Your changes are unaffected — a maintainer integrates \`community\` into \`develop\`.`,
                 '',
               );
             }

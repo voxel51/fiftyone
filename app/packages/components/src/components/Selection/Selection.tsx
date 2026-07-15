@@ -87,7 +87,7 @@ export default function Selection(props: SelectionProps) {
     debounce((term: string) => {
       onSearch?.(term?.toLowerCase());
     }, 300),
-    [onSearch]
+    [onSearch],
   );
 
   if (!selected) {

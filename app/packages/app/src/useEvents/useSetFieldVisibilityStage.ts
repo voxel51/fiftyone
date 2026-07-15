@@ -37,10 +37,10 @@ const useSetFieldVisibilityStage: EventHandlerHook = () => {
             ...router.get().state,
             event: "fieldVisibility",
             fieldVisibility: stage,
-          }
+          },
         );
       },
-    [session, setter]
+    [session, setter],
   );
 };
 export default useSetFieldVisibilityStage;

@@ -1,7 +1,7 @@
 import React from "react";
 import classnames from "classnames";
 
-import { button } from "./Button.module.css";
+import styles from "./Button.module.css";
 
 const Button: React.FC<
   React.DetailedHTMLProps<
@@ -9,7 +9,7 @@ const Button: React.FC<
     HTMLButtonElement
   >
 > = ({ children, className, ...rest }) => {
-  const classNames = [button, className];
+  const classNames = [styles.button, className];
   return (
     <button className={classnames(...classNames)} {...rest}>
       {children}

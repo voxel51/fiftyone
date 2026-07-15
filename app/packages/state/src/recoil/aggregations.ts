@@ -101,8 +101,8 @@ export const aggregationQuery = graphQLSelectorFamily<
         slices: !useSelection
           ? get(groupSlice)
           : mixed
-          ? get(groupSlices)
-          : get(currentSlices(modal)),
+            ? get(groupSlices)
+            : get(currentSlices(modal)),
         slice: get(groupSlice),
         view: !root ? get(viewAtoms.view) : [],
         queryPerformance:
@@ -164,7 +164,7 @@ export const aggregation = selectorFamily({
         aggregations({
           ...params,
           paths,
-        })
+        }),
       ).find((data) => data.path === path);
 
       if (result?.__typename === "AggregationQueryTimeout") {
@@ -181,7 +181,7 @@ export const modalAggregationPaths = selectorFamily({
     (params: { path: string; mixed?: boolean }) =>
     ({ get }) => {
       const frames = get(
-        schemaAtoms.labelFields({ space: State.SPACE.FRAME })
+        schemaAtoms.labelFields({ space: State.SPACE.FRAME }),
       ).map((path) => get(schemaAtoms.expandPath(path)));
 
       // separate frames path requests and sample path requests
@@ -190,7 +190,7 @@ export const modalAggregationPaths = selectorFamily({
         ? frames
         : [
             ...get(schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })).map(
-              (path) => get(schemaAtoms.expandPath(path))
+              (path) => get(schemaAtoms.expandPath(path)),
             ),
           ];
 

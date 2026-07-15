@@ -42,8 +42,8 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
         fillColor: ["#22577a", "#2a9d8f", "#8f5a3c"][index],
         watermarkString: spec.scene,
         hideLogs: true,
-      })
-    )
+      }),
+    ),
   );
 
   groupSpecs.forEach((spec, index) => {
@@ -192,15 +192,15 @@ test.describe.serial("grouped point-cloud and ply", () => {
   }) => {
     const assertSingleSliceState = async (
       index: number,
-      expectedSlice: "image" | "pcd" | "ply"
+      expectedSlice: "image" | "pcd" | "ply",
     ) => {
       const spec = groupSpecs[index];
       const expectedName =
         expectedSlice === "image"
           ? spec.imageName
           : expectedSlice === "pcd"
-          ? spec.pcdName
-          : spec.plyName;
+            ? spec.pcdName
+            : spec.plyName;
 
       await modal.looker3dControls.waitForAllAssetsLoaded();
 
@@ -256,7 +256,7 @@ test.describe.serial("grouped point-cloud and ply", () => {
       pinned: true,
     });
     await modal.looker3dControls.assert.verifySliceSelectorLabel(
-      "all 3D slices"
+      "all 3D slices",
     );
     await modal.sidebar.assert.verifySidebarEntryTexts({
       "pcd-group.name": "pcd",

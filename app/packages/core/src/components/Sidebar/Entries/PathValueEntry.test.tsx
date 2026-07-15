@@ -9,7 +9,7 @@ describe("format", () => {
         ftype: EMBEDDED_DOCUMENT_FIELD,
         timeZone: "UTC",
         value: null,
-      })
+      }),
     ).not.toThrow();
 
     expect(
@@ -17,7 +17,7 @@ describe("format", () => {
         ftype: EMBEDDED_DOCUMENT_FIELD,
         timeZone: "UTC",
         value: null,
-      })
+      }),
     ).toBeNull();
   });
 });

@@ -1,8 +1,8 @@
-FiftyOne User Guide
-===================
+FiftyOne Concepts
+=================
 
 Each section in this guide provides an example-centric deep dive into a core
-feature of FiftyOne, with the goal of getting you up-and-running with FiftyOne
+concept of FiftyOne, with the goal of getting you up-and-running with FiftyOne
 on your data quickly and easily.
 
 .. Callout items --------------------------------------------------------------
@@ -49,6 +49,12 @@ on your data quickly and easily.
     :description: Use grouped datasets to represent your multiview image, video, and point cloud data.
     :button_text: Learn more about grouped datasets
     :button_link: groups.html
+
+.. customcalloutitem::
+    :header: FiftyOne Multimodal __SUB_NEW__
+    :description: Visualize, play back, and index time-synchronized multimodal sensor data stored in MCAP files.
+    :button_text: Learn more about multimodal support
+    :button_link: multimodal.html
 
 .. customcalloutitem::
     :header: Annotating datasets __SUB_NEW__
@@ -112,16 +118,13 @@ on your data quickly and easily.
     :hidden:
 
     FiftyOne basics <basics>
-    Importing data <import_datasets>
-    Using datasets <using_datasets>
-    Using the App <app>
     Dataset views <using_views>
     Grouped datasets <groups>
-    Annotating datasets __SUB_NEW__ <annotation>
-    Evaluating models __SUB_NEW__ <evaluation>
     Using aggregations <using_aggregations>
     Interactive plots <plots>
-    Exporting datasets <export_datasets>
     Drawing labels on samples <draw_labels>
     Using sample parsers <sample_parsers>
     Configuring FiftyOne <config>
+    Roles and permissions 🚀 <../enterprise/roles_and_permissions>
+    Dataset Versioning 🚀 <../enterprise/dataset_versioning>
+    Query Performance 🚀 <../enterprise/query_performance>

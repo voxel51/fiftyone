@@ -8,6 +8,7 @@ import { ClassificationOverlay } from "./ClassificationOverlay";
 import { ImageOverlay } from "./ImageOverlay";
 import { KeypointOverlay } from "./KeypointOverlay";
 import { PolylineOverlay } from "./PolylineOverlay";
+import { TemporalOverlay } from "./TemporalOverlay";
 
 /**
  * Constructor type for overlays.
@@ -31,11 +32,12 @@ export class OverlayFactory {
     factory.register("detection", (opts) => new DetectionOverlay(opts));
     factory.register(
       "classification",
-      (opts) => new ClassificationOverlay(opts)
+      (opts) => new ClassificationOverlay(opts),
     );
     factory.register("image", (opts) => new ImageOverlay(opts));
     factory.register("keypoint", (opts) => new KeypointOverlay(opts));
     factory.register("polyline", (opts) => new PolylineOverlay(opts));
+    factory.register("temporal", (opts) => new TemporalOverlay(opts));
 
     return factory;
   }

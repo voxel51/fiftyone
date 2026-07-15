@@ -32,7 +32,7 @@ export const load3dOverlayForSample = (
   selectedLabels: Record<string, unknown>,
   currentPath: string[] = [],
   schema: Schema,
-  rest: string[] = []
+  rest: string[] = [],
 ) => {
   let overlays: OverlayLabel[] = [];
 
@@ -68,7 +68,7 @@ export const load3dOverlayForSample = (
           selectedLabels,
           [...currentPath, labelKey],
           schema,
-          [LABEL_LIST[cls]]
+          [LABEL_LIST[cls]],
         ),
       ];
     }
@@ -81,7 +81,7 @@ export const load3dOverlays = (
   samples: { [sliceOrFilename: string]: ModalSample } | fos.Sample[],
   selectedLabels: Record<string, unknown>,
   currentPath: string[] = [],
-  schema: Schema
+  schema: Schema,
 ) => {
   const overlays = [];
   for (const [_sliceOrFilename, sampleWrapper] of Object.entries(samples)) {
@@ -95,8 +95,8 @@ export const load3dOverlays = (
         sampleWrapper.sample,
         selectedLabels,
         currentPath,
-        schema
-      )
+        schema,
+      ),
     );
   }
 

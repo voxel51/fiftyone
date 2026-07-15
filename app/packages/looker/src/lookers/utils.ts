@@ -6,12 +6,12 @@ import type { BaseState, Buffers } from "../state";
 
 export const hasFrame = (buffers: Buffers, frameNumber: number) => {
   return buffers.some(
-    ([start, end]) => start <= frameNumber && frameNumber <= end
+    ([start, end]) => start <= frameNumber && frameNumber <= end,
   );
 };
 
 export const retrieveTransferables = <State extends BaseState>(
-  overlays?: Overlay<State>[]
+  overlays?: Overlay<State>[],
 ) => {
   // collect any mask targets array buffer that overlays might have
   // we'll transfer that to the worker instead of copying it

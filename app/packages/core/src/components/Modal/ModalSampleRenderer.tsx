@@ -3,6 +3,7 @@ import {
   getComponent,
   getMatchingSampleRenderer,
   getSampleRendererComponent,
+  isSampleRendererModalPersistent,
   PluginComponentType,
   SampleRendererProps,
   useActivePlugins,
@@ -14,17 +15,28 @@ import { MetadataLooker } from "./MetadataLooker";
 type ModalSampleRendererProps = {
   sample: fos.ModalSample;
   modalMediaField: string;
+  transitioning?: boolean;
 };
+
+type ModalSampleRendererErrorBoundaryProps = React.PropsWithChildren<{
+  fallback: React.ReactNode;
+  /**
+   * Identity of the current sample. A persistent renderer's boundary
+   * survives navigation, so an error on one sample must not pin every
+   * following sample to the fallback.
+   */
+  resetKey: string;
+}>;
 
 /**
  * Error boundary for modal sample renderers.
  * On error, renders the provided fallback and logs the failure.
  */
 class ModalSampleRendererErrorBoundary extends React.Component<
-  React.PropsWithChildren<{ fallback: React.ReactNode }>,
+  ModalSampleRendererErrorBoundaryProps,
   { hasError: boolean }
 > {
-  constructor(props: React.PropsWithChildren<{ fallback: React.ReactNode }>) {
+  constructor(props: ModalSampleRendererErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
   }
@@ -36,8 +48,14 @@ class ModalSampleRendererErrorBoundary extends React.Component<
   componentDidCatch(error: Error) {
     console.error(
       "Modal sample renderer failed, falling back to the built-in metadata renderer:",
-      error
+      error,
     );
+  }
+
+  componentDidUpdate(prevProps: ModalSampleRendererErrorBoundaryProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
   }
 
   render() {
@@ -54,7 +72,11 @@ class ModalSampleRendererErrorBoundary extends React.Component<
  * to the built-in metadata renderer when no renderer is available.
  */
 export const ModalSampleRenderer = React.memo(
-  ({ sample, modalMediaField }: ModalSampleRendererProps) => {
+  ({
+    sample,
+    modalMediaField,
+    transitioning = false,
+  }: ModalSampleRendererProps) => {
     const dataset = fos.useCurrentDataset();
     const schema = fos.useModalSampleSchema();
     const { isDisabled: isDatasetRendererDisabled } =
@@ -62,11 +84,11 @@ export const ModalSampleRenderer = React.memo(
 
     const activatorCtx = useMemo(
       () => ({ dataset, schema }),
-      [dataset, schema]
+      [dataset, schema],
     );
     const sampleRenderers = useActivePlugins(
       PluginComponentType.SampleRenderer,
-      activatorCtx
+      activatorCtx,
     );
 
     if (!dataset) {
@@ -77,13 +99,16 @@ export const ModalSampleRenderer = React.memo(
       return <MetadataLooker sample={sample} />;
     }
 
-    const ctx = createSampleRendererRenderContext(
-      sample,
-      modalMediaField,
-      dataset,
-      schema,
-      "modal"
-    );
+    const ctx = {
+      ...createSampleRendererRenderContext(
+        sample,
+        modalMediaField,
+        dataset,
+        schema,
+        "modal",
+      ),
+      transitioning,
+    };
     const matchedRenderer = getMatchingSampleRenderer(sampleRenderers, ctx);
     const canonicalRenderer = matchedRenderer
       ? getComponent<SampleRendererProps>(matchedRenderer.name)
@@ -96,19 +121,25 @@ export const ModalSampleRenderer = React.memo(
     const Renderer = getSampleRendererComponent(
       matchedRenderer,
       "modal",
-      canonicalRenderer
+      canonicalRenderer,
     );
 
-    // Include sample ID so the error boundary resets when navigating between samples
-    const rendererKey = `${matchedRenderer.name}-${sample.sample.id}`;
+    // Persistent renderers own their per-sample state, so keying by
+    // renderer keeps the subtree mounted across sample navigation (the
+    // boundary resets itself via resetKey). Everything else includes the
+    // sample ID so navigation remounts renderer and boundary together.
+    const rendererKey = isSampleRendererModalPersistent(matchedRenderer)
+      ? matchedRenderer.name
+      : `${matchedRenderer.name}-${sample.sample.id}`;
 
     return (
       <ModalSampleRendererErrorBoundary
         key={rendererKey}
+        resetKey={sample.sample.id}
         fallback={<MetadataLooker sample={sample} />}
       >
         <Renderer ctx={ctx} />
       </ModalSampleRendererErrorBoundary>
     );
-  }
+  },
 );

@@ -144,7 +144,7 @@ describe("useFo3dBounds", () => {
     // Initially not ready
     const { result, rerender } = renderHook(
       ({ isReady }: { isReady: boolean }) => useFo3dBounds(objectRef, isReady),
-      { initialProps: { isReady: false } }
+      { initialProps: { isReady: false } },
     );
 
     expect(result.current.boundingBox).toBeNull();
@@ -276,7 +276,7 @@ describe("useFo3dBounds", () => {
 
     // With stableSamples=1, should stabilize after just 1 consistent box
     const { result, unmount } = renderHook(() =>
-      useFo3dBounds(objectRef, undefined, { stableSamples: 1 })
+      useFo3dBounds(objectRef, undefined, { stableSamples: 1 }),
     );
 
     expect(result.current.boundingBox).toBeNull();
@@ -326,7 +326,7 @@ describe("useFo3dBounds", () => {
 
     // Use looser epsilon tolerance (0.001) so boxes are considered equal
     const { result, unmount } = renderHook(() =>
-      useFo3dBounds(objectRef, undefined, { stableSamples: 3, epsilon: 0.001 })
+      useFo3dBounds(objectRef, undefined, { stableSamples: 3, epsilon: 0.001 }),
     );
 
     act(() => {

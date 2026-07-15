@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import type { CameraControls } from "@react-three/drei";
 import { useEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import type { Vector3 } from "three";
@@ -8,6 +7,7 @@ import {
   isFo3dCameraLifecycleReady,
   type Fo3dCameraLifecycleState,
 } from "../fo3d/camera-lifecycle";
+import type { Fo3dCameraControls } from "../fo3d/camera-controls";
 import { useFo3dContext } from "../fo3d/context";
 import {
   activeNodeAtom,
@@ -20,9 +20,11 @@ import { useZoomToSelected } from "./use-zoom-to-selected";
 interface UseFo3dInteractionLifecycleArgs {
   cameraLifecycleState: Fo3dCameraLifecycleState;
   interactionSample: fos.ModalSample;
+  activeSampleMap: Record<string, fos.ModalSample>;
   upVector: Vector3 | null;
   mode: string;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
+  useLegacyCoordinates?: boolean;
 }
 
 /**
@@ -31,9 +33,11 @@ interface UseFo3dInteractionLifecycleArgs {
 export const useFo3dInteractionLifecycle = ({
   cameraLifecycleState,
   interactionSample,
+  activeSampleMap,
   upVector,
   mode,
   cameraControlsRef,
+  useLegacyCoordinates = false,
 }: UseFo3dInteractionLifecycleArgs) => {
   const { setAutoRotate } = useFo3dContext();
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
@@ -66,7 +70,7 @@ export const useFo3dInteractionLifecycle = ({
         set(clearTransformStateSelector, null);
         setAutoRotateRef.current(false);
       },
-    []
+    [],
   );
 
   // This effect clears active interaction state when scene readiness changes.
@@ -77,9 +81,11 @@ export const useFo3dInteractionLifecycle = ({
   // Zoom to selected labels and use them as the new lookAt
   const handleZoomToSelected = useZoomToSelected({
     interactionSample,
+    activeSampleMap,
     upVector,
     mode,
     cameraControlsRef,
+    useLegacyCoordinates,
   });
 
   fos.useEventHandler(window, SET_ZOOM_TO_SELECTED_EVENT, handleZoomToSelected);

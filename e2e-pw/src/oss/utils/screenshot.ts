@@ -10,7 +10,7 @@ export const compareLocatorScreenshotToBuffer = async (
   expected: Buffer,
   opts?: {
     beforeScreenshot?: () => void | Promise<void>;
-  }
+  },
 ) => {
   if (opts?.beforeScreenshot) {
     await opts?.beforeScreenshot?.();

@@ -565,11 +565,44 @@ def _find_label_schema_refs_by_ontology(
         # $filter can iterate it; we keep only the pairs whose
         # value's applied_ontology matches the target. ($$this is
         # the current pair, ``.v`` is its value — the schema dict.)
+        # Frame schemas live in a separate dict keyed by relative
+        # field, so we union them in, re-keyed to their ``frames.``
+        # path so the returned field names address the right store.
         {
             "$addFields": {
                 "_matching_fields": {
                     "$filter": {
-                        "input": {"$objectToArray": "$label_schemas"},
+                        "input": {
+                            "$concatArrays": [
+                                {
+                                    "$objectToArray": {
+                                        "$ifNull": ["$label_schemas", {}]
+                                    }
+                                },
+                                {
+                                    "$map": {
+                                        "input": {
+                                            "$objectToArray": {
+                                                "$ifNull": [
+                                                    "$frame_label_schemas",
+                                                    {},
+                                                ]
+                                            }
+                                        },
+                                        "as": "pair",
+                                        "in": {
+                                            "k": {
+                                                "$concat": [
+                                                    "frames.",
+                                                    "$$pair.k",
+                                                ]
+                                            },
+                                            "v": "$$pair.v",
+                                        },
+                                    }
+                                },
+                            ]
+                        },
                         "cond": {
                             "$eq": [
                                 "$$this.v.applied_ontology",
@@ -649,9 +682,9 @@ def delete_ontology(name: str, force: bool = False) -> None:
         # pylint: disable-next=no-member
         dataset_doc = DatasetDocument.objects.get(id=ref.dataset_id)
         for field_name in ref.field_names:
-            schema = dataset_doc.label_schemas.get(field_name, {})
-            dataset_doc.label_schemas[field_name] = inline_applied_ontology(
-                schema, ontology
+            schema = dataset_doc.get_stored_label_schema(field_name) or {}
+            dataset_doc.set_stored_label_schema(
+                field_name, inline_applied_ontology(schema, ontology)
             )
         dataset_doc.save()
 

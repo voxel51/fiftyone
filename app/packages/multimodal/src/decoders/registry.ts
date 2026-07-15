@@ -26,7 +26,7 @@ export class DecoderRegistry {
 
     if (existingDecoder) {
       throw new Error(
-        `Decoder already registered for ${formatDecoderKey(decoder.payload)}`
+        `Decoder already registered for ${formatDecoderKey(decoder.payload)}`,
       );
     }
 

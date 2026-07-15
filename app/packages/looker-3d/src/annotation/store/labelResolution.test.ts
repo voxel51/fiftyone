@@ -12,7 +12,7 @@ import { DETECTION } from "@fiftyone/utilities";
 
 function makeDetection(
   id: string,
-  overrides: Partial<ReconciledDetection3D> = {}
+  overrides: Partial<ReconciledDetection3D> = {},
 ): ReconciledDetection3D {
   return {
     _id: id,
@@ -28,13 +28,10 @@ function makeDetection(
   };
 }
 
-function makeDoc(
-  labels: ReconciledDetection3D[],
-  deletedIds: string[] = []
-): WorkingDoc {
+function makeDoc(labels: ReconciledDetection3D[]): WorkingDoc {
   const labelsById: WorkingDoc["labelsById"] = {};
   for (const l of labels) labelsById[l._id] = l;
-  return { labelsById, deletedIds: new Set(deletedIds) };
+  return { labelsById };
 }
 
 function setSchemaClasses(field: string, classes: string[]) {
@@ -80,18 +77,6 @@ describe("getDefaultLabel", () => {
       makeDetection("3", { label: "car" }),
     ]);
     expect(getDefaultLabel("predictions", doc)).toBe("car");
-  });
-
-  it("ignores deleted labels", () => {
-    const doc = makeDoc(
-      [
-        makeDetection("1", { label: "car" }),
-        makeDetection("2", { label: "car" }),
-        makeDetection("3", { label: "person" }),
-      ],
-      ["1", "2"]
-    );
-    expect(getDefaultLabel("predictions", doc)).toBe("person");
   });
 
   it("ignores labels from other fields", () => {

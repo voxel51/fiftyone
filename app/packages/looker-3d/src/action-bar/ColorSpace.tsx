@@ -54,7 +54,7 @@ const ColorSpaceChoices = () => {
         setCurrent(shadeBy);
       };
     },
-    [current, setCurrent]
+    [current, setCurrent],
   );
 
   return (
@@ -122,13 +122,13 @@ const CustomColorSpace = () => {
         });
       };
     },
-    [setCustomColorMap]
+    [setCustomColorMap],
   );
 
   if (!defaultPcdSlice || activePcdSlices?.length < 2) {
     const slice =
       activePcdSlices?.length > 0
-        ? activePcdSlices?.at(0) ?? defaultPcdSlice
+        ? (activePcdSlices?.at(0) ?? defaultPcdSlice)
         : "default";
     return (
       <animated.div style={{ display: "flex", ...springProps }}>

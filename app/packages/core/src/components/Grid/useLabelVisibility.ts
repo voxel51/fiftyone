@@ -18,6 +18,6 @@ export default () => ({
           gridActivePathsLUT.set(key, new Set(currentActiveLabelFields));
         }
       },
-    []
+    [],
   ),
 });

@@ -12,7 +12,7 @@ export default () => {
         reset(dynamicGroupAtoms.dynamicGroupIndex);
         reset(dynamicGroupAtoms.dynamicGroupCurrentElementIndex);
       },
-    []
+    [],
   );
 
   const commit = useRecoilCallback(
@@ -20,7 +20,7 @@ export default () => {
       async (selector: ModalSelector) => {
         set(modalSelector, selector);
       },
-    []
+    [],
   );
 
   return useCallback(
@@ -28,6 +28,6 @@ export default () => {
       await setter();
       selector && commit(selector);
     },
-    [commit, setter]
+    [commit, setter],
   );
 };

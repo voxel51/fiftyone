@@ -192,7 +192,7 @@ export default function Info(props) {
                   <TableCell>{formatValueAsNumber(row.compareValue)}</TableCell>
                 )}
               </TableRow>
-            )
+            ),
           )}
         </TableBody>
       </EvaluationTable>

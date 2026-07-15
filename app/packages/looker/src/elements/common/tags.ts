@@ -54,7 +54,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       },
       playing,
     }: Readonly<State>,
-    sample: Readonly<Sample>
+    sample: Readonly<Sample>,
   ) {
     this.handleFont(fontSize);
     if (this.playing !== playing) {
@@ -100,15 +100,15 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.element.dispatchEvent(
       new CustomEvent("re-render-tag", {
         bubbles: true,
-      })
+      }),
     );
 
     const spacing = `${fontSize * SPACING_COEFFICIENT}px`;
     for (const { path, value, color, title } of elements.filter((e) =>
-      Boolean(e)
+      Boolean(e),
     )) {
       this.element.appendChild(
-        applyTagValue(color, path, title, value, spacing)
+        applyTagValue(color, path, title, value, spacing),
       );
     }
 
@@ -122,7 +122,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
       this.element.style.setProperty(
         "line-height",
-        `${fontSize * LINE_HEIGHT_COEFFICIENT}px`
+        `${fontSize * LINE_HEIGHT_COEFFICIENT}px`,
       );
     }
   }
@@ -133,7 +133,7 @@ export const applyTagValue = (
   path: string | undefined,
   title: string,
   value: string,
-  spacing: string
+  spacing: string,
 ) => {
   const div = document.createElement("div");
   const child = prettify(value);
@@ -215,7 +215,7 @@ function sortObjectArrays(a, b) {
       return comparison;
     }
     const valueComparison = JSON.stringify(a[key])?.localeCompare(
-      JSON.stringify(b[key])
+      JSON.stringify(b[key]),
     );
     if (valueComparison !== 0) {
       return valueComparison;

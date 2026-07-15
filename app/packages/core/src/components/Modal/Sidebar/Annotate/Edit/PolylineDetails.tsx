@@ -1,8 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { Box, Typography } from "@mui/material";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { currentData } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 import type { Coordinates } from "@fiftyone/looker/src/state";
 
 /**
@@ -48,9 +47,10 @@ const countVertices = (points: Coordinates[][] | undefined): number => {
 };
 
 export const PolylineDetails = () => {
-  const currentDataValue = useAtomValue(
-    currentData
-  ) as fos.PolylineAnnotationLabel["data"];
+  const { selected } = useAnnotationContext();
+  const currentDataValue = selected?.data as
+    | fos.PolylineAnnotationLabel["data"]
+    | null;
 
   const { segmentCount, vertexCount } = useMemo(() => {
     const points = currentDataValue?.points3d ?? currentDataValue?.points;

@@ -35,7 +35,7 @@ describe("dateFromDateTimeString", () => {
     const resultUTC = dateFromDateTimeString("UTC", datetimeString);
     const resultEST = dateFromDateTimeString(
       "America/New_York",
-      datetimeString
+      datetimeString,
     );
 
     expect(resultUTC).toBe(1710081045000);
@@ -47,7 +47,7 @@ describe("dateFromDateTimeString", () => {
     const resultUTC = dateFromDateTimeString("UTC", datetimeString);
     const resultEst = dateFromDateTimeString(
       "America/New_York",
-      datetimeString
+      datetimeString,
     );
 
     expect(resultEst).toBe(1718469000000);

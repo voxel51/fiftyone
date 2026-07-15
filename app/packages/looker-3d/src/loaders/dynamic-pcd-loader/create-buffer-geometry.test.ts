@@ -33,7 +33,7 @@ describe("createBufferGeometry", () => {
     expect(geometry.getAttribute("position")).toBeDefined();
 
     const posAttribute = geometry.getAttribute(
-      "position"
+      "position",
     ) as Float32BufferAttribute;
     expect(posAttribute).toBeInstanceOf(Float32BufferAttribute);
     expect(Array.from(posAttribute.array)).toEqual(position);
@@ -60,7 +60,7 @@ describe("createBufferGeometry", () => {
     const geometry = createBufferGeometry(mockHeader, position, attributes);
 
     const intensityAttr = geometry.getAttribute(
-      "intensity"
+      "intensity",
     ) as Float32BufferAttribute;
     expect(intensityAttr).toBeInstanceOf(Float32BufferAttribute);
     expect(intensityAttr.itemSize).toBe(1);
@@ -71,7 +71,7 @@ describe("createBufferGeometry", () => {
     expect(intensityAttr.array[2]).toBeCloseTo(0.3, 5);
 
     const confidenceAttr = geometry.getAttribute(
-      "confidence"
+      "confidence",
     ) as Float32BufferAttribute;
     expect(confidenceAttr).toBeInstanceOf(Float32BufferAttribute);
   });
@@ -159,7 +159,7 @@ describe("createBufferGeometry", () => {
     const geometry = createBufferGeometry(mockHeader, position, attributes);
 
     const normalAttr = geometry.getAttribute(
-      "normal"
+      "normal",
     ) as Float32BufferAttribute;
     expect(normalAttr).toBeInstanceOf(Float32BufferAttribute);
     expect(normalAttr.itemSize).toBe(3);
@@ -176,7 +176,7 @@ describe("createBufferGeometry", () => {
     const geometry = createBufferGeometry(mockHeader, position, attributes);
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      'Field "unknown_field" not found in header fields'
+      'Field "unknown_field" not found in header fields',
     );
     expect(geometry.getAttribute("unknown_field")).toBeUndefined();
 
@@ -196,7 +196,7 @@ describe("createBufferGeometry", () => {
     const geometry = createBufferGeometry(mockHeader, position, attributes);
 
     expect(geometry.getAttribute("unknown")).toBeInstanceOf(
-      Float32BufferAttribute
+      Float32BufferAttribute,
     );
   });
 
@@ -210,7 +210,7 @@ describe("createBufferGeometry", () => {
     const geometry = createBufferGeometry(mockHeader, position, attributes);
 
     expect(geometry.getAttribute("intensity")).toBeInstanceOf(
-      Float32BufferAttribute
+      Float32BufferAttribute,
     );
     expect(geometry.getAttribute("empty_field")).toBeUndefined();
   });
@@ -241,19 +241,19 @@ describe("createBufferGeometry", () => {
     const geometry = createBufferGeometry(mockHeader, position, attributes);
 
     const int8Attr = geometry.getAttribute(
-      "int8_field"
+      "int8_field",
     ) as Float32BufferAttribute;
     expect(int8Attr.array).toBeInstanceOf(Float32Array);
     expect(Array.from(int8Attr.array)).toEqual([100, -50, 127]);
 
     const int16Attr = geometry.getAttribute(
-      "int16_field"
+      "int16_field",
     ) as Float32BufferAttribute;
     expect(int16Attr.array).toBeInstanceOf(Float32Array);
     expect(Array.from(int16Attr.array)).toEqual([1000, -500, 32767]);
 
     const uint8Attr = geometry.getAttribute(
-      "uint8_field"
+      "uint8_field",
     ) as Float32BufferAttribute;
     expect(uint8Attr.array).toBeInstanceOf(Float32Array);
     expect(Array.from(uint8Attr.array)).toEqual([255, 128, 0]);

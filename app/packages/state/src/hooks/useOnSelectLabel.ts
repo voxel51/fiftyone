@@ -37,7 +37,7 @@ export function useOnSelectLabel() {
               sourceInstanceId: instanceId,
               sourceSampleId: sampleId,
               sourceLabelId: id,
-            })
+            }),
           );
           return;
         }
@@ -60,9 +60,9 @@ export function useOnSelectLabel() {
           Object.entries(labels).map(([labelId, data]) => ({
             ...data,
             labelId,
-          }))
+          })),
         );
       },
-    []
+    [],
   );
 }

@@ -57,7 +57,9 @@ describe("Modal keyboard shortcuts handler", () => {
   afterEach(() => {
     vi.clearAllMocks();
     // Clean up any created elements
-    document.querySelectorAll("[data-test-element]").forEach((el) => el.remove());
+    document
+      .querySelectorAll("[data-test-element]")
+      .forEach((el) => el.remove());
   });
 
   describe("when no form field is focused", () => {
@@ -210,7 +212,7 @@ describe("Modal keyboard shortcuts handler", () => {
       keysHandler(new KeyboardEvent("keydown", { key: "x" }));
       keysHandler(new KeyboardEvent("keydown", { key: "Escape" }));
       keysHandler(
-        new KeyboardEvent("keydown", { code: "Space", altKey: true })
+        new KeyboardEvent("keydown", { code: "Space", altKey: true }),
       );
 
       expect(mockHandlers.toggleSidebar).not.toHaveBeenCalled();

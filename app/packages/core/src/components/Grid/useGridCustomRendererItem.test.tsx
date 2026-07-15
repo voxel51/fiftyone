@@ -66,8 +66,7 @@ vi.mock("@fiftyone/analytics", () => ({
 vi.mock("recoil", () => ({
   useRecoilBridgeAcrossReactRoots_UNSTABLE: vi.fn(
     () =>
-      ({ children }: React.PropsWithChildren) =>
-        <>{children}</>
+      ({ children }: React.PropsWithChildren) => <>{children}</>,
   ),
 }));
 
@@ -136,13 +135,13 @@ describe("useGridCustomRendererItem", () => {
       })),
     } as any;
     const { result } = renderHook(() =>
-      useGridCustomRendererItem(createDefaultLooker)
+      useGridCustomRendererItem(createDefaultLooker),
     );
 
     const looker = result.current.createItem(
       sampleResult,
       { description: "sample-id" } as any,
-      12
+      12,
     );
 
     expect(looker).toBeInstanceOf(GridCustomRendererItem);
@@ -159,7 +158,7 @@ describe("useGridCustomRendererItem", () => {
       current: vi.fn(() => fallbackLooker),
     } as any;
     const { result } = renderHook(() =>
-      useGridCustomRendererItem(createDefaultLooker)
+      useGridCustomRendererItem(createDefaultLooker),
     );
     const symbol = { description: "sample-id" } as any;
 
@@ -173,7 +172,7 @@ describe("useGridCustomRendererItem", () => {
         sample: sampleResult.sample,
         symbol,
       }),
-      { fontSize: 12 }
+      { fontSize: 12 },
     );
     expect(trackEvent).not.toHaveBeenCalled();
   });
@@ -198,7 +197,7 @@ describe("useGridCustomRendererItem", () => {
       isDisabled: true,
     });
     const { result } = renderHook(() =>
-      useGridCustomRendererItem(createDefaultLooker)
+      useGridCustomRendererItem(createDefaultLooker),
     );
     const symbol = { description: "sample-id" } as any;
 
@@ -211,7 +210,7 @@ describe("useGridCustomRendererItem", () => {
         sample: sampleResult.sample,
         symbol,
       }),
-      { fontSize: 12 }
+      { fontSize: 12 },
     );
     expect(trackEvent).not.toHaveBeenCalled();
   });

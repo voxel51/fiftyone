@@ -1,6 +1,5 @@
 import { Archetype3d, Looker3dOverlayLabel } from "@fiftyone/looker-3d";
 import { AnnotationLabel } from "@fiftyone/state";
-import { DetectionOverlay } from "@fiftyone/lighter";
 import type {
   AnnotationAgentDownloadProgress,
   AnnotationAgentLifecycleStatus,
@@ -39,14 +38,6 @@ export type AnnotationEventGroup = {
    */
   "annotation:persistenceError": { error?: Error };
   /**
-   * Notification event emitted when a label is upserted successfully.
-   */
-  "annotation:upsertSuccess": MutationSuccess<"upsert">;
-  /**
-   * Notification event emitted when an error occurs while upserting a label.
-   */
-  "annotation:upsertError": MutationError<"upsert">;
-  /**
    * Notification event emitted when a label is deleted successfully.
    */
   "annotation:deleteSuccess": MutationSuccess<"delete">;
@@ -54,58 +45,6 @@ export type AnnotationEventGroup = {
    * Notification event emitted when an error occurs while deleting a label.
    */
   "annotation:deleteError": MutationError<"delete">;
-  /**
-   * Notification event emitted when a sidebar value is updated.
-   */
-  "annotation:sidebarValueUpdated": {
-    overlayId: string;
-    currentLabel: AnnotationLabel["data"];
-    value: Partial<AnnotationLabel["data"]>;
-  };
-  /**
-   * Notification event emitted when a label is selected.
-   */
-  "annotation:sidebarLabelSelected": {
-    id: string;
-    type: AnnotationLabel["type"];
-    data?: Partial<AnnotationLabel["data"]>;
-  };
-  /**
-   * Notification event emitted when a label is hovered.
-   */
-  "annotation:sidebarLabelHover": {
-    id: string;
-    tooltip?: boolean;
-  };
-  /**
-   * Notification event emitted when a label is unhovered.
-   */
-  "annotation:sidebarLabelUnhover": {
-    id: string;
-  };
-  /**
-   * Notification event emitted when a canvas overlay is established.
-   */
-  "annotation:canvasDetectionOverlayEstablish": {
-    id: string;
-    overlay: DetectionOverlay;
-  };
-  /**
-   * Notification event emitted when a canvas overlay is hovered.
-   * TODO: FOR NOW THIS IS ONLY FOR 3D LABELS.
-   * USE THIS FOR 2D ONCE WE GET RID OF LIGHTER HOVER EVENTS.
-   */
-  "annotation:canvasOverlayHover": {
-    id: string;
-  };
-  /**
-   * Notification event emitted when a canvas overlay is unhovered.
-   * TODO: FOR NOW THIS IS ONLY FOR 3D LABELS.
-   * USE THIS FOR 2D ONCE WE GET RID OF LIGHTER HOVER EVENTS.
-   */
-  "annotation:canvasOverlayUnhover": {
-    id: string;
-  };
   /**
    * Notification event emitted when a label is selected for annotation.
    */
@@ -122,12 +61,6 @@ export type AnnotationEventGroup = {
     segmentIndex: number;
     pointIndex: number;
     position: [number, number, number];
-  };
-  /**
-   * Notification event emitted when a label is unselected for annotation.
-   */
-  "annotation:3dLabelUnselected": {
-    id: string;
   };
   /**
    * Notification event emitted when cuboid creation starts (first click).
@@ -158,6 +91,78 @@ export type AnnotationEventGroup = {
    * Notification event emitted when a label edit is undone.
    */
   "annotation:undoLabelEdit": { label: Partial<AnnotationLabel["data"]> };
+
+  /**
+   * Notification event emitted when a label's `keyframe` attribute changes
+   * on a tracked instance. Consumers (e.g. auto-interpolate) use this to
+   * re-propagate between bracketing keyframes after a change.
+   *
+   * - `kind: "set"` — keyframe just became `true`, either by mark-keyframe
+   *   gesture or by an edit (draw / drag / resize) that promotes the label.
+   * - `kind: "removed"` — keyframe was `true` and no longer is, either by
+   *   unmarking or by deleting the underlying detection.
+   */
+  "annotation:keyframeChanged": {
+    /** Synthetic overlay id (`instance-…` / `track-…`). */
+    trackId: string;
+    /** Cross-frame identity, when the label has an `fo.Instance`. */
+    instanceId: string | null;
+    /** 1-indexed frame number where the change happened. */
+    frame: number;
+    kind: "set" | "removed";
+    /**
+     * Frame field the changed label lives on (e.g. `frames.polylines`). The
+     * re-lerp targets THIS field, not the stream's primary — a track on a
+     * non-primary field re-lerps in place. Omitted falls back to the primary.
+     */
+    path?: string;
+    /**
+     * Gesture `undoKey` the triggering edit committed under. When present, the
+     * auto-interpolate re-lerp commits under it too, coalescing the geometry
+     * edit / keyframe toggle and the resulting interpolation into ONE undo unit.
+     */
+    undoKey?: string;
+  };
+
+  /**
+   * Notification event emitted when an entire object track is deleted.
+   */
+  "annotation:trackDeleted": {
+    /** Synthetic overlay id (`instance-…` / `track-…`) of the deleted track. */
+    trackId: string;
+  };
+
+  /**
+   * Notification event emitted when a track is split at a frame: frames at or
+   * after `atFrame` are re-keyed onto a fresh instance, the original keeps the
+   * earlier frames.
+   */
+  "annotation:trackSplit": {
+    /** Synthetic overlay id of the track that was split. */
+    trackId: string;
+    /** The original track's `instance._id` (keeps frames `< atFrame`). */
+    instanceId: string;
+    /** The minted `instance._id` carrying frames `>= atFrame`. */
+    newInstanceId: string;
+    /** 1-indexed split boundary; this frame lands on the new track. */
+    atFrame: number;
+  };
+
+  /**
+   * Notification event emitted when one track is merged into another: the
+   * source's frames are re-keyed onto the target's instance (target-wins on
+   * overlapping frames) and the source ceases to exist.
+   */
+  "annotation:trackMerged": {
+    /** Synthetic overlay id of the absorbed (source) track. */
+    sourceTrackId: string;
+    /** Synthetic overlay id of the surviving (target) track. */
+    targetTrackId: string;
+    /** The source track's `instance._id` (no longer present after merge). */
+    sourceInstanceId: string;
+    /** The target track's `instance._id` (now carries the merged frames). */
+    targetInstanceId: string;
+  };
 
   /**
    * Notification event emitted when the active annotation agent transitions

@@ -11,7 +11,7 @@ function computeBoundsForDetection(detection: ReconciledDetection3D): Box3 {
   const [dx, dy, dz] = detection.dimensions;
   return new Box3(
     new Vector3(cx - dx / 2, cy - dy / 2, cz - dz / 2),
-    new Vector3(cx + dx / 2, cy + dy / 2, cz + dz / 2)
+    new Vector3(cx + dx / 2, cy + dy / 2, cz + dz / 2),
   );
 }
 

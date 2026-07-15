@@ -1,7 +1,7 @@
 import { Replay, Save } from "@mui/icons-material";
 import { Box, IconButton, Stack } from "@mui/material";
 import { merge } from "lodash";
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import FieldView from "./FieldView";
 
 export default function LazyFieldView(props) {

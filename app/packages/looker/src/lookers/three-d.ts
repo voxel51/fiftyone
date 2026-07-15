@@ -21,7 +21,7 @@ export class ThreeDLooker extends AbstractLooker<ThreeDState> {
 
   getInitialState(
     config: ThreeDState["config"],
-    options: ThreeDState["options"]
+    options: ThreeDState["options"],
   ) {
     options = {
       ...this.getDefaultOptions(),
@@ -42,7 +42,7 @@ export class ThreeDLooker extends AbstractLooker<ThreeDState> {
 
   updateOptions(
     options: Partial<ThreeDState["options"]>,
-    disableReload = false
+    disableReload = false,
   ) {
     const reload =
       !disableReload &&

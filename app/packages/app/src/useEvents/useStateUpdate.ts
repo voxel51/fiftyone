@@ -27,7 +27,7 @@ const useStateUpdate: EventHandlerHook = ({
         currentSearch: router.history.location.search,
         nextDataset: stateless
           ? getDatasetName()
-          : (payload.state.dataset as string) ?? null,
+          : ((payload.state.dataset as string) ?? null),
         nextView: stateless
           ? getParam("view") || undefined
           : (payload.state.saved_view_slug as string),
@@ -46,7 +46,7 @@ const useStateUpdate: EventHandlerHook = ({
         router.history.push(path, state);
       }
     },
-    [readyStateRef, router, session, setReadyState]
+    [readyStateRef, router, session, setReadyState],
   );
 };
 

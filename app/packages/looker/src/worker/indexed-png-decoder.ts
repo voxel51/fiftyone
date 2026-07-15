@@ -4,7 +4,7 @@ export type ColorPalette = number[][];
 export const indexedPngBufferToRgb = (
   inputData: Uint8Array,
   bitDepth: ValidPngBitDepth,
-  colorPalette: ColorPalette
+  colorPalette: ColorPalette,
 ) => {
   const inputDataLength = inputData.length;
   const indicesPerByte = 8 / bitDepth;

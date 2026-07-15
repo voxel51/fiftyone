@@ -140,7 +140,7 @@ const HoverMetadataHUD = () => {
               );
             })
         : [],
-    [hoverMetadata]
+    [hoverMetadata],
   );
 
   const onClose = useCallback(() => {

@@ -30,6 +30,10 @@ class Frames(HTTPEndpoint):
         dataset = data.get("dataset")
         stages = data.get("view")
         sample_id = data.get("sampleId")
+        # Optional field projection: callers that need only a few frame fields
+        # (e.g. the ImaVid image stream wants just `filepath`) pass them here to
+        # avoid shipping the whole frame document.
+        fields = data.get("fields")
 
         view = await fosv.get_view(
             dataset, stages=stages, extended_stages=extended, awaitable=True
@@ -55,9 +59,19 @@ class Frames(HTTPEndpoint):
 
         view = await run_sync_task(run, view)
 
+        post_pipeline = None
+        if fields:
+            projection = {"frame_number": True}
+            for field in fields:
+                projection[field] = True
+
+            post_pipeline = [{"$project": projection}]
+
         frames = await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
-            view._pipeline(frames_only=True, support=support),
+            view._pipeline(
+                frames_only=True, support=support, post_pipeline=post_pipeline
+            ),
         ).to_list(end_frame - start_frame + 1)
 
         return JSONResponse(

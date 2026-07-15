@@ -22,7 +22,7 @@ describe("useSampleTemporalTags", () => {
     render(
       <TemporalTagsHarness
         options={{ client, datasetId: "dataset-id", sampleId: undefined }}
-      />
+      />,
     );
 
     expect(screen.getByTestId("temporal-tags").textContent).toBe("idle::");
@@ -41,12 +41,12 @@ describe("useSampleTemporalTags", () => {
           datasetId: "dataset-id",
           sampleId: "sample-id",
         }}
-      />
+      />,
     );
 
     await waitFor(() => {
       expect(screen.getByTestId("temporal-tags").textContent).toBe(
-        "ready:tag-a:"
+        "ready:tag-a:",
       );
     });
     expect(client.listSampleTemporalTags).toHaveBeenCalledWith({
@@ -71,12 +71,12 @@ describe("useSampleTemporalTags", () => {
           filter: { start: 1 },
           sampleId: "sample-a",
         }}
-      />
+      />,
     );
 
     await waitFor(() => {
       expect(screen.getByTestId("temporal-tags").textContent).toBe(
-        "ready:sample-a-1:"
+        "ready:sample-a-1:",
       );
     });
 
@@ -88,12 +88,12 @@ describe("useSampleTemporalTags", () => {
           filter: { start: 2 },
           sampleId: "sample-b",
         }}
-      />
+      />,
     );
 
     await waitFor(() => {
       expect(screen.getByTestId("temporal-tags").textContent).toBe(
-        "ready:sample-b-2:"
+        "ready:sample-b-2:",
       );
     });
     expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(2);
@@ -104,7 +104,7 @@ describe("useSampleTemporalTags", () => {
     const second = deferred<readonly TemporalTag[]>();
     const client = createTemporalTagsClient({
       listSampleTemporalTags: vi.fn(({ sampleId }) =>
-        sampleId === "sample-a" ? first.promise : second.promise
+        sampleId === "sample-a" ? first.promise : second.promise,
       ),
     });
 
@@ -115,7 +115,7 @@ describe("useSampleTemporalTags", () => {
           datasetId: "dataset-id",
           sampleId: "sample-a",
         }}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -129,7 +129,7 @@ describe("useSampleTemporalTags", () => {
           datasetId: "dataset-id",
           sampleId: "sample-b",
         }}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -141,7 +141,7 @@ describe("useSampleTemporalTags", () => {
       await second.promise;
     });
     expect(screen.getByTestId("temporal-tags").textContent).toBe(
-      "ready:sample-b:"
+      "ready:sample-b:",
     );
 
     await act(async () => {
@@ -149,7 +149,7 @@ describe("useSampleTemporalTags", () => {
       await first.promise;
     });
     expect(screen.getByTestId("temporal-tags").textContent).toBe(
-      "ready:sample-b:"
+      "ready:sample-b:",
     );
   });
 
@@ -172,7 +172,7 @@ describe("useSampleTemporalTags", () => {
           datasetId: "dataset-id",
           sampleId: "sample-id",
         }}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -235,12 +235,12 @@ describe("useSampleTemporalTags", () => {
           datasetId: "dataset-id",
           sampleId: "sample-id",
         }}
-      />
+      />,
     );
 
     await waitFor(() => {
       expect(screen.getByTestId("temporal-tags").textContent).toBe(
-        "error::boom"
+        "error::boom",
       );
     });
   });
@@ -300,7 +300,7 @@ function SampleRendererTemporalTagsHarness({
 }
 
 function createTemporalTagsClient(
-  overrides: Partial<TemporalTagsClient> = {}
+  overrides: Partial<TemporalTagsClient> = {},
 ): TemporalTagsClient {
   return {
     clearSampleTemporalTags: vi.fn(async () => 1),

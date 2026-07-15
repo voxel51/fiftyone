@@ -1,8 +1,14 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React, { useCallback } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
-import { useLoopEnd, useLoopStart } from "../../lib/playback/use-playback-state";
-import { fmtBound, LOOP_EDGE_EPSILON } from "../TimelineControls/timeline-controls-utils";
+import {
+  useLoopEnd,
+  useLoopStart,
+} from "../../lib/playback/use-playback-state";
+import {
+  fmtBound,
+  LOOP_EDGE_EPSILON,
+} from "../TimelineControls/timeline-controls-utils";
 import styles from "./LoopBounds.module.css";
 
 /**
@@ -29,7 +35,7 @@ const LoopBounds: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const onLoopEndReset = useCallback(
     () => setLoop(loopStart, duration),
-    [loopStart, duration]
+    [loopStart, duration],
   );
 
   const activateOnEnter =
@@ -46,10 +52,7 @@ const LoopBounds: React.FC = () => {
     <>
       <span className={styles.divider} aria-hidden />
       <span className={styles.loopBounds}>
-        <Text
-          variant={TextVariant.Xs}
-          color={TextColor.Muted}
-        >
+        <Text variant={TextVariant.Xs} color={TextColor.Muted}>
           {" ( "}
         </Text>
         <Text
@@ -64,10 +67,7 @@ const LoopBounds: React.FC = () => {
         >
           {fmtBound(loopStart)}
         </Text>
-        <Text
-          variant={TextVariant.Xs}
-          color={TextColor.Muted}
-        >
+        <Text variant={TextVariant.Xs} color={TextColor.Muted}>
           {" / "}
         </Text>
         <Text
@@ -82,10 +82,7 @@ const LoopBounds: React.FC = () => {
         >
           {fmtBound(loopEnd)}
         </Text>
-        <Text
-          variant={TextVariant.Xs}
-          color={TextColor.Muted}
-        >
+        <Text variant={TextVariant.Xs} color={TextColor.Muted}>
           {" ) "}
         </Text>
       </span>

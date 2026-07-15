@@ -2,7 +2,7 @@ import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Check } from "@mui/icons-material";
 import type { MutableRefObject } from "react";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import Loading from "../Loading";
 import type { ActionProps } from "../types";

@@ -1,33 +1,25 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  PLUGIN_COMPONENT_SLOT,
   PluginActivator,
   PluginComponentType,
-  componentHasSlot,
   registerComponent,
   unregisterComponent,
   useActivePlugins,
   usePluginComponent,
 } from "./registry";
-import type { ComponentOptions } from "./registry";
 
 const NullComponent = () => null;
 
 const registered: string[] = [];
 
-const register = (
-  name: string,
-  activator?: PluginActivator,
-  componentOptions?: ComponentOptions
-) => {
+const register = (name: string, activator?: PluginActivator) => {
   registerComponent<PluginComponentType.Component>({
     name,
     label: name,
     component: NullComponent,
     type: PluginComponentType.Component,
     activator,
-    componentOptions,
   });
   registered.push(name);
 };
@@ -63,7 +55,7 @@ describe("useActivePlugins: runtime behavior", () => {
     const { result } = renderHook(() =>
       useActivePlugins(PluginComponentType.Component, {
         dataset: { mediaType: "video" },
-      })
+      }),
     );
 
     const names = result.current.map((p) => p.name).sort();
@@ -94,7 +86,7 @@ describe("useActivePlugins: runtime behavior", () => {
         initialProps: {
           ctx: { mediaType: "video" } as Record<string, unknown>,
         },
-      }
+      },
     );
 
     expect(result.current.map((p) => p.name)).toEqual(["video-only"]);
@@ -105,7 +97,7 @@ describe("useActivePlugins: runtime behavior", () => {
 
   it("reflects plugins registered after mount", () => {
     const { result } = renderHook(() =>
-      useActivePlugins(PluginComponentType.Component, {})
+      useActivePlugins(PluginComponentType.Component, {}),
     );
 
     expect(result.current).toEqual([]);
@@ -123,29 +115,8 @@ describe("useActivePlugins: runtime behavior", () => {
     // back in.
     register("probe", () => true);
     expect(() =>
-      renderHook(() => useActivePlugins(PluginComponentType.Component, {}))
+      renderHook(() => useActivePlugins(PluginComponentType.Component, {})),
     ).not.toThrow();
-  });
-
-  it("lets callers filter generic components by explicit slot metadata", () => {
-    register("slotless", () => true);
-    register("grid-header", () => true, {
-      slots: [PLUGIN_COMPONENT_SLOT.GRID_HEADER_AFTER_RESOURCE_COUNT],
-    });
-
-    const { result } = renderHook(() =>
-      useActivePlugins(PluginComponentType.Component, {})
-    );
-    const slotComponents = result.current.filter((component) =>
-      componentHasSlot(
-        component,
-        PLUGIN_COMPONENT_SLOT.GRID_HEADER_AFTER_RESOURCE_COUNT
-      )
-    );
-
-    expect(slotComponents.map((component) => component.name)).toEqual([
-      "grid-header",
-    ]);
   });
 });
 
@@ -157,7 +128,7 @@ describe("usePluginComponent: runtime behavior", () => {
     const { result, rerender } = renderHook(
       ({ allow }: { allow: boolean }) =>
         usePluginComponent("Target", { allow }),
-      { initialProps: { allow: true } }
+      { initialProps: { allow: true } },
     );
     expect(result.current?.name).toBe("Target");
 

@@ -1,4 +1,10 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -34,7 +40,7 @@ describe("TilingInspectorSidebar", () => {
     render(
       <TilingProvider>
         <TilingInspectorSidebar />
-      </TilingProvider>
+      </TilingProvider>,
     );
     expect(screen.getByText("Select a tile to inspect.")).toBeTruthy();
   });
@@ -48,13 +54,15 @@ describe("TilingInspectorSidebar", () => {
       >
         <FocusButton id="graph-1" />
         <TilingInspectorSidebar />
-      </TilingProvider>
+      </TilingProvider>,
     );
     act(() => {
       screen.getByTestId("focus-graph-1").click();
     });
     expect(
-      screen.getByText(/Click something inside the tile.* to inspect its data/i)
+      screen.getByText(
+        /Click something inside the tile.* to inspect its data/i,
+      ),
     ).toBeTruthy();
   });
 
@@ -73,7 +81,7 @@ describe("TilingInspectorSidebar", () => {
         </TileIdScope>
         <FocusButton id="graph-1" />
         <TilingInspectorSidebar />
-      </TilingProvider>
+      </TilingProvider>,
     );
     act(() => {
       screen.getByTestId("focus-graph-1").click();
@@ -83,7 +91,7 @@ describe("TilingInspectorSidebar", () => {
     // RTL normalizes whitespace by default; match on the multi-line content
     // by tag instead so the pretty-printed indentation is preserved.
     const pre = screen.getByText(
-      (_text, node) => node?.tagName === "PRE" && node.textContent === json
+      (_text, node) => node?.tagName === "PRE" && node.textContent === json,
     );
     expect(pre).toBeTruthy();
   });
@@ -92,10 +100,12 @@ describe("TilingInspectorSidebar", () => {
     render(
       <TilingProvider>
         <TilingInspectorSidebar />
-      </TilingProvider>
+      </TilingProvider>,
     );
     fireEvent.click(screen.getByRole("tab", { name: "Annotate" }));
-    expect(screen.getByText("Annotation workflows are coming soon.")).toBeTruthy();
+    expect(
+      screen.getByText("Annotation workflows are coming soon."),
+    ).toBeTruthy();
   });
 
   it("falls back to String() when the selection cannot be JSON-serialised", () => {
@@ -111,7 +121,7 @@ describe("TilingInspectorSidebar", () => {
         </TileIdScope>
         <FocusButton id="graph-1" />
         <TilingInspectorSidebar />
-      </TilingProvider>
+      </TilingProvider>,
     );
     act(() => {
       screen.getByTestId("focus-graph-1").click();
@@ -119,7 +129,8 @@ describe("TilingInspectorSidebar", () => {
     });
     // JSON.stringify throws on circular refs → formatSelection returns String(value).
     const pre = screen.getByText(
-      (_text, node) => node?.tagName === "PRE" && node.textContent === "[object Object]"
+      (_text, node) =>
+        node?.tagName === "PRE" && node.textContent === "[object Object]",
     );
     expect(pre).toBeTruthy();
   });

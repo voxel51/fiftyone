@@ -22,7 +22,7 @@ describe("useBrowserStorage", () => {
   describe("undefined value handling", () => {
     it("should remove item from storage when setting undefined (no parseFn)", () => {
       const { result } = renderHook(() =>
-        useTestableState("test-key", "default")
+        useTestableState("test-key", "default"),
       );
 
       act(() => {
@@ -43,7 +43,7 @@ describe("useBrowserStorage", () => {
       };
 
       const { result } = renderHook(() =>
-        useTestableState("test-key", { default: "value" }, false, parseFn)
+        useTestableState("test-key", { default: "value" }, false, parseFn),
       );
 
       act(() => {
@@ -78,7 +78,7 @@ describe("useBrowserStorage", () => {
       localStorage.setItem("test-key", "undefined");
 
       const { result } = renderHook(() =>
-        useTestableState("test-key", "default-value")
+        useTestableState("test-key", "default-value"),
       );
       expect(result.current.value).toBe("default-value");
     });
@@ -92,7 +92,7 @@ describe("useBrowserStorage", () => {
       };
 
       const { result } = renderHook(() =>
-        useTestableState("test-key", { default: "value" }, false, parseFn)
+        useTestableState("test-key", { default: "value" }, false, parseFn),
       );
 
       expect(result.current.value).toEqual({ default: "value" });
@@ -102,7 +102,7 @@ describe("useBrowserStorage", () => {
   describe("sessionStorage support", () => {
     it("should handle undefined values in sessionStorage", () => {
       const { result } = renderHook(() =>
-        useTestableState("test-key", "default", true)
+        useTestableState("test-key", "default", true),
       );
 
       act(() => {
@@ -120,7 +120,7 @@ describe("useBrowserStorage", () => {
       sessionStorage.setItem("test-key", "undefined");
 
       const { result } = renderHook(() =>
-        useTestableState("test-key", "default-value", true)
+        useTestableState("test-key", "default-value", true),
       );
       expect(result.current.value).toBe("default-value");
     });
@@ -129,7 +129,7 @@ describe("useBrowserStorage", () => {
   describe("null value handling", () => {
     it("should handle null values by not removing from storage", () => {
       const { result } = renderHook(() =>
-        useTestableState("test-key", "default")
+        useTestableState("test-key", "default"),
       );
 
       act(() => {
@@ -147,7 +147,7 @@ describe("useBrowserStorage", () => {
   describe("basic functionality", () => {
     it("should work with normal values", () => {
       const { result } = renderHook(() =>
-        useTestableState("test-key", "default")
+        useTestableState("test-key", "default"),
       );
 
       act(() => {

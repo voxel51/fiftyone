@@ -54,7 +54,7 @@ export function useTransientStore(): TransientStore {
  * Hook that returns the transient state for a specific cuboid.
  */
 export function useTransientCuboid(
-  labelId: LabelId
+  labelId: LabelId,
 ): TransientCuboidState | undefined {
   const store = useRecoilValue(transientAtom);
   return store.cuboids[labelId];
@@ -64,7 +64,7 @@ export function useTransientCuboid(
  * Hook that returns the transient state for a specific polyline.
  */
 export function useTransientPolyline(
-  labelId: LabelId
+  labelId: LabelId,
 ): TransientPolylineState | undefined {
   const store = useRecoilValue(transientAtom);
   return store.polylines[labelId];
@@ -111,7 +111,7 @@ export function useUpdateTransient() {
         return newState;
       });
     },
-    []
+    [],
   );
 
   /**
@@ -137,7 +137,7 @@ export function useUpdateTransient() {
         };
       });
     },
-    []
+    [],
   );
 
   /**
@@ -150,7 +150,7 @@ export function useUpdateTransient() {
         activeDragLabel: labelId,
       }));
     },
-    [setTransient]
+    [setTransient],
   );
 
   /**
@@ -175,7 +175,7 @@ export function useUpdateTransient() {
         };
       });
     },
-    [setTransient]
+    [setTransient],
   );
 
   return {
@@ -197,7 +197,7 @@ export function useStartDrag() {
     (labelId: LabelId) => {
       setActiveDragLabel(labelId);
     },
-    [setActiveDragLabel]
+    [setActiveDragLabel],
   );
 }
 
@@ -268,7 +268,7 @@ export function useTransientCleanup() {
     window.addEventListener("pointercancel", handlePointerCancel);
     document.documentElement.addEventListener(
       "pointerleave",
-      handlePointerLeave
+      handlePointerLeave,
     );
 
     return () => {
@@ -276,7 +276,7 @@ export function useTransientCleanup() {
       window.removeEventListener("pointercancel", handlePointerCancel);
       document.documentElement.removeEventListener(
         "pointerleave",
-        handlePointerLeave
+        handlePointerLeave,
       );
       if (fallbackTimeoutRef.current) {
         clearTimeout(fallbackTimeoutRef.current);

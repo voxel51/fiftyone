@@ -5,19 +5,27 @@ export * from "./use-active-modal-sample-value";
 import type { Schema } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo, useRef } from "react";
-import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useRecoilValueLoadable,
+  useSetRecoilState,
+} from "recoil";
 import { ModalMode, modalMode } from "../../jotai";
 import { preferredGroupAnnotationSliceAtom } from "../../jotai/group-annotation";
 import type { ModalViewportState } from "../../jotai/modal";
 import { __unsafeModalViewportAtom } from "../../jotai/modal";
 import type { ModalSample } from "../../recoil";
+import type { Sample } from "@fiftyone/looker";
 import {
   State,
   activeFields,
+  activeModalSample,
   currentSampleId,
   fieldSchema,
   lookerOptions,
   modalSample,
+  selectedLabelMap,
   selectedMediaField,
 } from "../../recoil";
 import { GroupSampleNotFound } from "../../recoil/modal";
@@ -49,19 +57,22 @@ export interface ModalModeController {
  */
 export const useModalModeController = (): ModalModeController => {
   const setMode = useSetAtom(modalMode);
+  const clearSelectedLabels = useSetRecoilState(selectedLabelMap);
 
-  const activateAnnotateMode = useCallback(
-    () => setMode(ModalMode.ANNOTATE),
-    [setMode]
-  );
+  // Explore's 3D selection has no deselect affordance in Annotate, so clear it
+  // on entry; 2D entry uses the engine anchor, not this map.
+  const activateAnnotateMode = useCallback(() => {
+    clearSelectedLabels({});
+    setMode(ModalMode.ANNOTATE);
+  }, [clearSelectedLabels, setMode]);
   const activateExploreMode = useCallback(
     () => setMode(ModalMode.EXPLORE),
-    [setMode]
+    [setMode],
   );
 
   return useMemo(
     () => ({ activateAnnotateMode, activateExploreMode }),
-    [activateExploreMode, activateAnnotateMode]
+    [activateExploreMode, activateAnnotateMode],
   );
 };
 
@@ -87,6 +98,27 @@ export const useModalSample = (): ModalSample | undefined => {
 };
 
 /**
+ * Get the sample currently being acted on in the modal.
+ *
+ * Unlike {@link useModalSample}, which always resolves the 2D `modalGroupSlice`
+ * sample, this is 3D-aware: when a 3D slice is pinned it returns that slice's
+ * sample. It mirrors the sample the sidebar and looker display, so annotation
+ * edits persist to the slice the user is actually editing (e.g. a cuboid edit
+ * targets the point-cloud sample, not the 2D image slice).
+ *
+ * Returns `undefined` if the modal is closed or the sample is still loading.
+ */
+export const useActiveModalSample = (): Sample | undefined => {
+  const loadable = useRecoilValueLoadable(activeModalSample);
+
+  if (loadable.state === "hasValue") {
+    return loadable.contents;
+  }
+
+  return undefined;
+};
+
+/**
  * Like {@link useModalSample} but holds the last settled value across loading
  * transitions so consumers don't lose the sample mid-navigation. Returns
  * `undefined` before the first value settles. Treats `GroupSampleNotFound` as
@@ -96,7 +128,7 @@ export const useModalSample = (): ModalSample | undefined => {
 export const useStableModalSample = (): ModalSample | undefined => {
   const loadable = useRecoilValueLoadable(modalSample);
   const ref = useRef<ModalSample | undefined>(
-    loadable.state === "hasValue" ? loadable.contents : undefined
+    loadable.state === "hasValue" ? loadable.contents : undefined,
   );
   if (loadable.state === "hasValue") {
     ref.current = loadable.contents;
@@ -172,7 +204,7 @@ export const useModalMediaPath = (): string | null => {
   }
 
   return Array.isArray(sample.urls)
-    ? sample.urls.find((u) => u.field === mediaField)?.url ??
-        sample.urls[0]?.url
+    ? (sample.urls.find((u) => u.field === mediaField)?.url ??
+        sample.urls[0]?.url)
     : sample.urls[mediaField];
 };

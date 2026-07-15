@@ -9,7 +9,7 @@ export class HistogramPom {
 
   constructor(
     private readonly page: Page,
-    private readonly eventUtils: EventUtils
+    private readonly eventUtils: EventUtils,
   ) {
     this.assert = new HistogramAsserter(this);
 
@@ -20,7 +20,7 @@ export class HistogramPom {
   async selectField(field: string) {
     const promise = this.eventUtils.getEventReceivedPromiseForPredicate(
       `histogram-${field}`,
-      () => true
+      () => true,
     );
     await this.selector.selectResult(field);
     await promise;

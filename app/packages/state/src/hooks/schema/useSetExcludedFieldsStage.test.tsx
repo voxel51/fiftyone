@@ -56,7 +56,7 @@ describe("useSetShowNestedFields hook used in schema code", () => {
       },
       {
         wrapper: Root,
-      }
+      },
     );
 
     act(() => {

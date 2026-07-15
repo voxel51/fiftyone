@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
-import type { ByteSourceDescriptor } from "../../../query/bytes";
+import {
+  byteSourceAccessKey,
+  type ByteSourceDescriptor,
+} from "../../../query/bytes";
 import type { StreamInventory } from "../../../schemas/v1";
 import type { LoadStatus } from "../../../load-status";
 import { mcapErrorMessage } from "../errors";
+import {
+  getMcapSourceBootstrap,
+  peekMcapSourceBootstrap,
+} from "../source-bootstrap-cache";
 import type { McapResourceClient } from "../types";
 
 export type McapTopicsStatus = LoadStatus;
@@ -24,6 +31,17 @@ const IDLE_TOPICS_STATE: McapTopicsState = {
   topics: [],
 };
 
+const LOADING_TOPICS_STATE: McapTopicsState = {
+  error: null,
+  status: "loading",
+  topics: [],
+};
+
+type SourcedTopicsState = {
+  readonly sourceKey: string;
+  readonly value: McapTopicsState;
+};
+
 /**
  * Loads MCAP topic inventory through the adapter resource client.
  */
@@ -31,19 +49,30 @@ export function useMcapTopics({
   client,
   source,
 }: UseMcapTopicsOptions): McapTopicsState {
-  const [state, setState] = useState<McapTopicsState>(IDLE_TOPICS_STATE);
+  const sourceKey = source ? byteSourceAccessKey(source) : "";
+  const bootstrapTopics = source
+    ? peekMcapSourceBootstrap(source)?.topics
+    : undefined;
+  const [state, setState] = useState<SourcedTopicsState>({
+    sourceKey: "",
+    value: IDLE_TOPICS_STATE,
+  });
 
+  // This effect revalidates cached inventory for the active source.
   useEffect(() => {
     if (!source) {
-      setState(IDLE_TOPICS_STATE);
-      return;
+      setState({ sourceKey: "", value: IDLE_TOPICS_STATE });
+      return undefined;
     }
 
+    const effectSourceKey = byteSourceAccessKey(source);
     let active = true;
+    const cachedTopics = getMcapSourceBootstrap(source)?.topics;
     setState({
-      error: null,
-      status: "loading",
-      topics: [],
+      sourceKey: effectSourceKey,
+      value: cachedTopics
+        ? { error: null, status: "ready", topics: cachedTopics }
+        : LOADING_TOPICS_STATE,
     });
 
     client
@@ -54,9 +83,8 @@ export function useMcapTopics({
         }
 
         setState({
-          error: null,
-          status: "ready",
-          topics,
+          sourceKey: effectSourceKey,
+          value: { error: null, status: "ready", topics },
         });
       })
       .catch((caughtError) => {
@@ -65,9 +93,12 @@ export function useMcapTopics({
         }
 
         setState({
-          error: mcapErrorMessage(caughtError),
-          status: "error",
-          topics: [],
+          sourceKey: effectSourceKey,
+          value: {
+            error: mcapErrorMessage(caughtError),
+            status: "error",
+            topics: [],
+          },
         });
       });
 
@@ -76,5 +107,21 @@ export function useMcapTopics({
     };
   }, [client, source]);
 
-  return state;
+  // A persistent renderer swaps sources in place, and state lags the swap
+  // by one effect tick — report loading rather than leaking the previous
+  // sample's inventory into that render.
+  if (state.sourceKey !== sourceKey) {
+    if (!source) {
+      return IDLE_TOPICS_STATE;
+    }
+    return bootstrapTopics
+      ? { error: null, status: "ready", topics: bootstrapTopics }
+      : LOADING_TOPICS_STATE;
+  }
+
+  if (state.value.status === "loading" && bootstrapTopics) {
+    return { error: null, status: "ready", topics: bootstrapTopics };
+  }
+
+  return state.value;
 }

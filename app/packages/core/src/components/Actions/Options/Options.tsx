@@ -28,7 +28,7 @@ import Popout from "../Popout";
 
 const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
-    fos.sortFilterResults(modal)
+    fos.sortFilterResults(modal),
   );
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   if (queryPerformance) {
@@ -85,7 +85,7 @@ const Patches = ({ modal }: { modal: boolean }) => {
 
 const MediaFields = ({ modal }) => {
   const [selectedMediaField, setSelectedMediaField] = useRecoilState(
-    fos.selectedMediaField(modal)
+    fos.selectedMediaField(modal),
   );
   const mediaFields = useRecoilValue(fos.mediaFields);
 
@@ -127,10 +127,10 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
 
   const [mode, setMode] = useRecoilState(fos.dynamicGroupsViewMode(modal));
   const setIsCarouselVisible = useSetRecoilState(
-    fos.groupMediaIsCarouselVisibleSetting
+    fos.groupMediaIsCarouselVisibleSetting,
   );
   const setIsMainVisible = useSetRecoilState(
-    fos.groupMediaIsMain2DViewerVisibleSetting
+    fos.groupMediaIsMain2DViewerVisibleSetting,
   );
 
   const tabOptions = useMemo(() => {
@@ -196,7 +196,7 @@ const QueryPerformance = () => {
   const theme = useTheme();
   const [enabled, setEnabled] = useRecoilState(fos.queryPerformance);
   const [maxSearch, setMaxSearch] = useRecoilState(
-    fos.queryPerformanceMaxSearch
+    fos.queryPerformanceMaxSearch,
   );
   const resetMaxSearch = useResetRecoilState(fos.queryPerformanceMaxSearch);
   if (!useRecoilValue(fos.enableQueryPerformanceConfig)) {

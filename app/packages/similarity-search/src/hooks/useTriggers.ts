@@ -17,7 +17,7 @@ export type TriggerOptions = {
  * Each trigger accepts an optional `TriggerOptions` arg for callbacks.
  */
 export default function useTriggers<
-  T extends Record<string, (...args: any[]) => void>
+  T extends Record<string, (...args: any[]) => void>,
 >(eventMap: { [K in keyof T]: string }): T {
   const trigger = useTriggerPanelEvent();
   const eventMapRef = useRef(eventMap);
@@ -33,7 +33,7 @@ export default function useTriggers<
           trigger,
           eventMapRef.current[k],
           payload,
-          options
+          options,
         )) as T[typeof k];
     }
 
@@ -48,11 +48,11 @@ function safeTrigger(
     eventName: string,
     payload?: any,
     prompt?: boolean,
-    callback?: (result?: { result?: unknown; error?: unknown }) => void
+    callback?: (result?: { result?: unknown; error?: unknown }) => void,
   ) => void,
   eventName: string,
   payload?: any,
-  options?: TriggerOptions
+  options?: TriggerOptions,
 ) {
   if (payload?._reactName) {
     // Support <button onClick={triggers.myTrigger} />

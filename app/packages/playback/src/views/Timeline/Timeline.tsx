@@ -44,7 +44,7 @@ export const Timeline = React.memo(
           const newSeekBarValue = Number(e.target.value);
           seekTo(newSeekBarValue);
         },
-        [seekTo]
+        [seekTo],
       );
 
       const onSeekStart = React.useCallback(() => {
@@ -52,7 +52,7 @@ export const Timeline = React.memo(
         dispatchEvent(
           new CustomEvent("seek", {
             detail: { timelineName: name, start: true },
-          })
+          }),
         );
       }, [pause, name]);
 
@@ -60,7 +60,7 @@ export const Timeline = React.memo(
         dispatchEvent(
           new CustomEvent("seek", {
             detail: { timelineName: name, start: false },
-          })
+          }),
         );
       }, [name]);
 
@@ -121,6 +121,6 @@ export const Timeline = React.memo(
           </FoTimelineControlsContainer>
         </FoTimelineContainer>
       );
-    }
-  )
+    },
+  ),
 );

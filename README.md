@@ -96,12 +96,12 @@ App.
 
 You'll need the following tools installed:
 
--   [Python](https://www.python.org) (3.10 - 3.12)
--   [Node.js](https://nodejs.org) - on Linux, we recommend using
-    [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
--   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
-    [enable Yarn](https://yarnpkg.com/getting-started/install) via
-    `corepack enable`
+- [Python](https://www.python.org) (3.10 - 3.12)
+- [Node.js](https://nodejs.org) - on Linux, we recommend using
+  [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
+- [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
+  [enable Yarn](https://yarnpkg.com/getting-started/install) via
+  `corepack enable`
 
 We strongly recommend that you install FiftyOne in a
 [virtual environment](https://docs.voxel51.com/installation/virtualenv.html) to
@@ -242,9 +242,9 @@ sudo apt-get upgrade
 sudo apt-get install python3-venv python3-dev build-essential git-all libgl1-mesa-dev
 ```
 
--   On Linux, you will need at least the `openssl` and `libcurl` packages
--   On Debian-based distributions, you will need to install `libcurl4` or
-    `libcurl3` instead of `libcurl`, depending on the age of your distribution
+- On Linux, you will need at least the `openssl` and `libcurl` packages
+- On Debian-based distributions, you will need to install `libcurl4` or
+  `libcurl3` instead of `libcurl`, depending on the age of your distribution
 
 ```shell
 # Ubuntu
@@ -334,9 +334,9 @@ version. For example, this
 
 Double-click on the installer to run it, and follow the steps in the installer.
 
--   Check the box to add Python to your `PATH`
--   At the end of the installer, there is an option to disable the `PATH`
-    length limit. It is recommended to click this
+- Check the box to add Python to your `PATH`
+- At the end of the installer, there is an option to disable the `PATH` length
+  limit. It is recommended to click this
 
 #### 2. Install Microsoft Visual C++
 
@@ -351,14 +351,14 @@ on the installer to run it, and follow the steps in the installer.
 
 #### 4. Create and activate a virtual environment
 
--   Press `Win + R`. type `cmd`, and press `Enter`. Alternatively, search
-    **Command Prompt** in the Start Menu.
--   Navigate to your project. `cd C:\path\to\your\project`
--   Create the environment `python -m venv fiftyone_env`
--   Activate the environment typing this in the command line window
-    `fiftyone_env\Scripts\activate`
--   After activation, your command prompt should change and show the name of
-    the virtual environment `(fiftyone_env) C:\path\to\your\project`
+- Press `Win + R`. type `cmd`, and press `Enter`. Alternatively, search
+  **Command Prompt** in the Start Menu.
+- Navigate to your project. `cd C:\path\to\your\project`
+- Create the environment `python -m venv fiftyone_env`
+- Activate the environment typing this in the command line window
+  `fiftyone_env\Scripts\activate`
+- After activation, your command prompt should change and show the name of the
+  virtual environment `(fiftyone_env) C:\path\to\your\project`
 
 #### 5. Install FFmpeg (optional)
 
@@ -416,43 +416,43 @@ for more information.
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; key features &nbsp; 🔑
 
--   **[Native Annotation:](https://docs.voxel51.com/user_guide/annotation.html)**
-    Create and edit 2D and 3D labels directly in the App or integrate with your
-    favorite annotation tools — then curate, QA, and iterate, all in one
-    platform.
+- **[Native Annotation:](https://docs.voxel51.com/user_guide/annotation.html)**
+  Create and edit 2D and 3D labels directly in the App or integrate with your
+  favorite annotation tools — then curate, QA, and iterate, all in one
+  platform.
 
 https://github.com/user-attachments/assets/b06bcdac-d64f-4465-8668-12007dc0eeaa
 
--   **[Visualize Complex Datasets:](https://docs.voxel51.com/user_guide/app.html)**
-    Easily explore images, videos, and associated labels in a powerful visual
-    interface.
+- **[Visualize Complex Datasets:](https://docs.voxel51.com/user_guide/app.html)**
+  Easily explore images, videos, and associated labels in a powerful visual
+  interface.
 
 https://github.com/user-attachments/assets/9dc2db88-967d-43fa-bda0-85e4d5ab6a7a
 
--   **[Explore Embeddings:](https://docs.voxel51.com/user_guide/app.html#embeddings-panel)**
-    Select points of interest and view the corresponding samples/labels.
+- **[Explore Embeddings:](https://docs.voxel51.com/user_guide/app.html#embeddings-panel)**
+  Select points of interest and view the corresponding samples/labels.
 
 https://github.com/user-attachments/assets/246faeb7-dcab-4e01-9357-e50f6b106da7
 
--   **[Analyze and Improve Models:](https://docs.voxel51.com/user_guide/evaluation.html)**
-    Evaluate model performance, identify failure modes, and fine-tune your
-    models.
+- **[Analyze and Improve Models:](https://docs.voxel51.com/user_guide/evaluation.html)**
+  Evaluate model performance, identify failure modes, and fine-tune your
+  models.
 
 https://github.com/user-attachments/assets/8c32d6c4-51e7-4fea-9a3c-2ffd9690f5d6
 
--   **[Advanced Data Curation:](https://docs.voxel51.com/brain.html)** Quickly
-    find and fix data issues, annotation errors, and edge cases.
+- **[Advanced Data Curation:](https://docs.voxel51.com/brain.html)** Quickly
+  find and fix data issues, annotation errors, and edge cases.
 
 https://github.com/user-attachments/assets/24fa1960-c2dd-46ae-ae5f-d58b3b84cfe4
 
--   **[Rich Integrations:](https://docs.voxel51.com/integrations/index.html)**
-    Works with popular deep learning libraries like PyTorch, Hugging Face,
-    Ultralytics, and more.
+- **[Rich Integrations:](https://docs.voxel51.com/integrations/index.html)**
+  Works with popular deep learning libraries like PyTorch, Hugging Face,
+  Ultralytics, and more.
 
 https://github.com/user-attachments/assets/de5f25e1-a967-4362-9e04-616449e745e5
 
--   **[Open and Extensible:](https://docs.voxel51.com/plugins/index.html)**
-    Customize and extend FiftyOne to fit your specific needs.
+- **[Open and Extensible:](https://docs.voxel51.com/plugins/index.html)**
+  Customize and extend FiftyOne to fit your specific needs.
 
 https://github.com/user-attachments/assets/c7ed496d-0cf7-45d6-9853-e349f1abd6f8
 

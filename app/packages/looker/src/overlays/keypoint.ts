@@ -21,7 +21,7 @@ interface KeypointLabel extends RegularLabel {
 }
 
 export default class KeypointOverlay<
-  State extends BaseState
+  State extends BaseState,
 > extends CoordinateOverlay<State, KeypointLabel> {
   constructor(field, label) {
     super(field, label);
@@ -72,7 +72,7 @@ export default class KeypointOverlay<
           getColor(
             state.options.coloring.pool,
             state.options.coloring.seed,
-            index
+            index,
           )
       : (_: number) => color;
     for (let i = 0; i < points.length; i++) {
@@ -89,7 +89,7 @@ export default class KeypointOverlay<
         y,
         selected ? state.pointRadius * 2 : state.pointRadius,
         0,
-        Math.PI * 2
+        Math.PI * 2,
       );
       ctx.fill();
 
@@ -134,7 +134,7 @@ export default class KeypointOverlay<
   }
 
   private getDistanceAndMaybePoint(
-    state: Readonly<State>
+    state: Readonly<State>,
   ): [number, number | null] | null {
     const distances: [number, number][] = [];
     let {
@@ -156,7 +156,7 @@ export default class KeypointOverlay<
       const d = distance(
         x,
         y,
-        ...(multiply(dimensions, point) as [number, number])
+        ...(multiply(dimensions, point) as [number, number]),
       );
       if (d <= pointRadius * TOLERANCE) {
         distances.push([0, i]);
@@ -177,7 +177,7 @@ export default class KeypointOverlay<
             distanceFromLineSegment(
               [x, y],
               multiply(dimensions, path[j - 1]),
-              multiply(dimensions, path[j])
+              multiply(dimensions, path[j]),
             ),
             null,
           ]);
@@ -194,15 +194,15 @@ export default class KeypointOverlay<
 
   private getFilteredPoints(
     state: Readonly<State>,
-    skeleton?: KeypointSkeleton
+    skeleton?: KeypointSkeleton,
   ): (Coordinates | null)[] {
     return this.label.points.map((p, i) => {
       return p.every((c) => typeof c === "number") &&
         state.options.pointFilter(
           this.field,
           Object.fromEntries(
-            getAttributes(skeleton, this.label, i)
-          ) as unknown as Point
+            getAttributes(skeleton, this.label, i),
+          ) as unknown as Point,
         )
         ? p
         : null;
@@ -214,7 +214,7 @@ export default class KeypointOverlay<
     state: Readonly<State>,
     path: Coordinates[],
     color: string,
-    dash?: number
+    dash?: number,
   ) {
     ctx.beginPath();
     ctx.lineWidth = state.strokeWidth;
@@ -245,7 +245,7 @@ export const getKeypointPoints = (labels: KeypointLabel[]): Coordinates[] => {
 
 const getSkeleton = (
   name: string,
-  state: BaseState
+  state: BaseState,
 ): KeypointSkeleton | null => {
   const defaultSkeleton = state.options.defaultSkeleton;
 
@@ -259,13 +259,13 @@ const getSkeleton = (
 const getAttributes = (
   skeleton: KeypointSkeleton | null,
   label: KeypointLabel,
-  index: number
+  index: number,
 ): [string, unknown][] => {
   return Object.entries(label)
     .filter(([k, v]) => Array.isArray(v) && k !== "tags")
     .map(([k, v]) => [k, v[index]])
     .concat(skeleton ? [["label", skeleton.labels[index]]] : []) as [
     string,
-    unknown
+    unknown,
   ][];
 };

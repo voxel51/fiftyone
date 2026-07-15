@@ -9,7 +9,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "smoke-annotate-action-switching"
+  "smoke-annotate-action-switching",
 );
 const id = "000000000000000000000000";
 

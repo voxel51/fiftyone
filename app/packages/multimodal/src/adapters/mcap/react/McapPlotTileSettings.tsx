@@ -1,0 +1,217 @@
+import { Checkbox } from "@voxel51/voodo";
+import React, { useMemo, useState } from "react";
+import type { McapTopicNumericFields } from "../types";
+import { useMcapNumericSeriesContext } from "./mcap-numeric-series-context";
+import {
+  type McapPlotSeriesConfig,
+  useMcapPlotTileSeries,
+  useToggleMcapPlotSeries,
+} from "./mcap-plot-tile-state";
+import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
+import { matchesMcapTopicFilter } from "./mcap-topic-filter";
+import McapPlotTileStyles from "./McapPlotTile.module.css";
+import { McapSettingsFilterInput } from "./McapSettingsFilterInput";
+import McapSidebarGroup from "./McapSidebarGroup";
+import settingsStyles from "./McapTile.settings.module.css";
+
+/**
+ * Settings sidebar for the plot tile: every topic with numeric leaf
+ * fields, one checkbox per field, enabled series carrying their color
+ * swatch. Topics without plottable fields are listed disabled with an
+ * availability reason — a legible gap beats silent absence. Registered
+ * into the sidebar's tile-settings registry, so it renders while this
+ * tile is focused.
+ */
+const McapPlotTileSettings: React.FC = () => {
+  const { enumeration } = useMcapNumericSeriesContext();
+  const seriesConfigs = useMcapPlotTileSeries();
+  const toggleSeries = useToggleMcapPlotSeries();
+  const [filter, setFilter] = useState("");
+
+  const filtered = useMemo(
+    () => filterTopics(enumeration.topics, filter),
+    [enumeration.topics, filter],
+  );
+
+  return (
+    <div className={settingsStyles.root}>
+      {enumeration.status === "loading" || enumeration.status === "idle" ? (
+        <span className={settingsStyles.emptyText}>Scanning topics…</span>
+      ) : enumeration.status === "error" ? (
+        <span className={settingsStyles.emptyText}>
+          Could not scan this recording&apos;s topics
+        </span>
+      ) : enumeration.topics.length === 0 ? (
+        <span className={settingsStyles.emptyText}>
+          No plottable topics in this recording
+        </span>
+      ) : (
+        <>
+          <McapSettingsFilterInput
+            onChange={setFilter}
+            placeholder="Filter topics and fields"
+            value={filter}
+          />
+          {filtered.map((topic) => (
+            <PlotTopicGroup
+              key={topic.topic}
+              seriesConfigs={seriesConfigs}
+              toggleSeries={toggleSeries}
+              topic={topic}
+            />
+          ))}
+          {filtered.length === 0 ? (
+            <span className={settingsStyles.emptyText}>
+              Nothing matches &quot;{filter}&quot;
+            </span>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+};
+
+function PlotTopicGroup({
+  seriesConfigs,
+  toggleSeries,
+  topic,
+}: {
+  readonly seriesConfigs: readonly McapPlotSeriesConfig[];
+  readonly toggleSeries: (
+    topic: string,
+    fieldPath: string,
+    enabled: boolean,
+  ) => void;
+  readonly topic: McapTopicNumericFields;
+}) {
+  const enabledByPath = useMemo(() => {
+    const byPath = new Map<string, McapPlotSeriesConfig>();
+    for (const config of seriesConfigs) {
+      if (config.topic === topic.topic) {
+        byPath.set(config.fieldPath, config);
+      }
+    }
+    return byPath;
+  }, [seriesConfigs, topic.topic]);
+
+  if (topic.availability !== "ready") {
+    const copy = unavailableTopicCopy(topic.availability);
+    return (
+      <McapSidebarGroup
+        defaultExpanded={false}
+        summary={copy.summary}
+        title={topic.topic}
+      >
+        <span className={settingsStyles.emptyText}>{copy.message}</span>
+      </McapSidebarGroup>
+    );
+  }
+
+  if (topic.fields.length === 0) {
+    const copy = unavailableTopicCopy("no-numeric-fields");
+    return (
+      <McapSidebarGroup
+        defaultExpanded={false}
+        summary={copy.summary}
+        title={topic.topic}
+      >
+        <span className={settingsStyles.emptyText}>{copy.message}</span>
+      </McapSidebarGroup>
+    );
+  }
+
+  return (
+    <McapSidebarGroup
+      defaultExpanded={enabledByPath.size > 0}
+      summary={
+        `${enabledByPath.size} of ${topic.fields.length} plotted` +
+        (topic.sampled ? " · sampled" : "")
+      }
+      title={topic.topic}
+    >
+      <div className={settingsStyles.optionStack}>
+        {topic.fields.map((field) => {
+          const enabled = enabledByPath.get(field.path);
+          return (
+            <div
+              className={settingsStyles.fieldRow}
+              key={field.path}
+              title={`${field.path} (${field.valueType})`}
+            >
+              <Checkbox
+                checked={enabled !== undefined}
+                label={field.path}
+                onChange={(checked) =>
+                  toggleSeries(topic.topic, field.path, checked)
+                }
+                {...checkboxNoSpaceToggleProps}
+              />
+              {enabled ? (
+                <span
+                  aria-hidden="true"
+                  className={McapPlotTileStyles.swatch}
+                  style={{ backgroundColor: enabled.color }}
+                />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </McapSidebarGroup>
+  );
+}
+
+function unavailableTopicCopy(
+  availability: Exclude<McapTopicNumericFields["availability"], "ready">,
+): { readonly message: string; readonly summary: string } {
+  switch (availability) {
+    case "schema-unavailable":
+      return {
+        message:
+          "This topic's schema could not be read, so numeric fields cannot be listed",
+        summary: "schema unavailable",
+      };
+    case "unsupported-encoding":
+      return {
+        message: "This topic's message encoding is not plottable yet",
+        summary: "encoding unsupported",
+      };
+    case "no-numeric-fields":
+      return {
+        message:
+          "This topic decodes, but its schema has no scalar numeric fields to plot",
+        summary: "no numeric fields",
+      };
+  }
+}
+
+/**
+ * Case-insensitive filter over topics and field paths: a matching topic
+ * keeps all its fields, otherwise only matching fields survive.
+ */
+function filterTopics(
+  topics: readonly McapTopicNumericFields[],
+  filter: string,
+): readonly McapTopicNumericFields[] {
+  if (!filter.trim()) {
+    return topics;
+  }
+
+  const matches: McapTopicNumericFields[] = [];
+  for (const topic of topics) {
+    if (matchesMcapTopicFilter(filter, topic.topic)) {
+      matches.push(topic);
+      continue;
+    }
+    const fields = topic.fields.filter((field) =>
+      matchesMcapTopicFilter(filter, field.path),
+    );
+    if (fields.length > 0) {
+      matches.push({ ...topic, fields });
+    }
+  }
+
+  return matches;
+}
+
+export default McapPlotTileSettings;

@@ -6,14 +6,17 @@ export class PagePom {
   readonly assert: PageAsserter;
   readonly datasetSelector: SelectorPom;
 
-  constructor(private readonly page: Page, eventUtils: EventUtils) {
+  constructor(
+    private readonly page: Page,
+    eventUtils: EventUtils,
+  ) {
     this.assert = new PageAsserter(this);
     this.datasetSelector = new SelectorPom(page, eventUtils, "dataset");
   }
 
   get globalLoadingScreenCount(): Promise<number> {
     return this.page.evaluate(
-      () => window.__FO_PLAYWRIGHT_LOADING_SCREEN_COUNT
+      () => window.__FO_PLAYWRIGHT_LOADING_SCREEN_COUNT,
     );
   }
 
@@ -40,7 +43,7 @@ export class PagePom {
       `[data-cy=${dataset ? "dataset" : "index"}-page]`,
       {
         state: "visible",
-      }
+      },
     );
   }
 }

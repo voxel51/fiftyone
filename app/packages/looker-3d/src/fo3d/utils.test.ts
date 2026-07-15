@@ -15,7 +15,7 @@ const buildModalSample = ({
       filepath,
     },
     urls,
-  } as ModalSample);
+  }) as ModalSample;
 
 describe("getMediaPathForFo3dSample", () => {
   it("falls back to the sample filepath when array urls are empty", () => {
@@ -25,8 +25,8 @@ describe("getMediaPathForFo3dSample", () => {
           filepath: "/tmp/fallback.fo3d",
           urls: [],
         }),
-        "filepath"
-      )
+        "filepath",
+      ),
     ).toBe("/tmp/fallback.fo3d");
   });
 
@@ -36,8 +36,8 @@ describe("getMediaPathForFo3dSample", () => {
         buildModalSample({
           filepath: "/tmp/fallback.fo3d",
         }),
-        "filepath"
-      )
+        "filepath",
+      ),
     ).toBe("/tmp/fallback.fo3d");
   });
 });

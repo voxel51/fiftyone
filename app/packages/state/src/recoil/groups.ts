@@ -131,7 +131,7 @@ export const groupSlice = selector<string>({
     if (!get(similarityParameters)) {
       set(
         sessionGroupSlice,
-        get(defaultGroupSlice) === slice ? new DefaultValue() : slice
+        get(defaultGroupSlice) === slice ? new DefaultValue() : slice,
       );
       set(selectedLabels, []);
       set(selectedSamples, new Map());
@@ -167,7 +167,7 @@ export const defaultGroupSlice = graphQLSyncFragmentAtom<
   },
   {
     key: "defaultGroupSlice",
-  }
+  },
 );
 
 export const modalGroupSlice = atom<string | null>({
@@ -190,7 +190,7 @@ export const groupMediaTypesMap = selector({
   key: "groupMediaTypesMap",
   get: ({ get }) =>
     Object.fromEntries(
-      get(groupMediaTypes).map(({ name, mediaType }) => [name, mediaType])
+      get(groupMediaTypes).map(({ name, mediaType }) => [name, mediaType]),
     ),
 });
 
@@ -231,7 +231,7 @@ export const currentGroupSliceNames = selector<string[]>({
         slices,
         count: null,
         paginationData: false,
-      })
+      }),
     );
     const availableSliceSet = new Set(
       samples
@@ -239,9 +239,9 @@ export const currentGroupSliceNames = selector<string[]>({
           (sample) =>
             getPath(sample.sample, `${currentGroupField}.name`) as unknown as
               | string
-              | null
+              | null,
         )
-        .filter(Boolean)
+        .filter(Boolean),
     );
 
     return slices.filter((slice) => availableSliceSet.has(slice));
@@ -366,7 +366,7 @@ export const groupSamples = graphQLSelectorFamily<
   mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
     if (!foq.isPaginateSamplesConnection(data.samples)) {
       throw new Error(
-        `groupSamples: unexpected samples response __typename ${data.samples.__typename}`
+        `groupSamples: unexpected samples response __typename ${data.samples.__typename}`,
       );
     }
     return data.samples.edges.map((edge) => {
@@ -414,7 +414,7 @@ export const groupHasSampleOnSlice = graphQLSelectorFamily<
   mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
     if (!foq.isPaginateSamplesConnection(data.samples)) {
       throw new Error(
-        `groupHasSampleOnSlice: unexpected samples response __typename ${data.samples.__typename}`
+        `groupHasSampleOnSlice: unexpected samples response __typename ${data.samples.__typename}`,
       );
     }
     return data.samples.edges.length > 0;
@@ -452,7 +452,7 @@ export const activeModalSidebarSample = selector({
 
       const sampleId =
         currentModalLooker?.frameStoreController?.store.frameIndex.get(
-          currentFrameNumber
+          currentFrameNumber,
         );
       const sample =
         currentModalLooker?.frameStoreController?.store.samples.get(sampleId);

@@ -31,6 +31,7 @@ describe("worker-backed MCAP resource client", () => {
 
     expect(worker.messages[0]).toEqual({
       payload: {
+        fillSlotClass: "priority",
         headers: { Authorization: "token" },
         origin: "http://localhost:5151",
         pathPrefix: "/proxy",
@@ -51,6 +52,47 @@ describe("worker-backed MCAP resource client", () => {
     worker.respond({ id: 1, ok: true, result: createTimelineRange(1n, 2n) });
 
     await expect(range).resolves.toEqual(createTimelineRange(1n, 2n));
+  });
+
+  it("emits worker transport progress by lane", async () => {
+    const { client, workers } = createClientHarness();
+    const onTransport = vi.fn();
+    const unsubscribe = client.subscribeTransport?.(onTransport);
+    const range = client.readTimelineRange(createTimelineRequest());
+    const worker = workers[0];
+    const snapshot = {
+      busyMs: 100,
+      capturedAtMs: 200,
+      fetchedBytes: 1_000,
+      reads: 1,
+    };
+
+    worker.respond({
+      ok: true,
+      transport: snapshot,
+      type: "transport",
+    });
+
+    expect(onTransport).toHaveBeenCalledWith({
+      lane: "foreground",
+      snapshot,
+    });
+
+    worker.respond({ id: 1, ok: true, result: createTimelineRange(1n, 2n) });
+    await expect(range).resolves.toEqual(createTimelineRange(1n, 2n));
+
+    unsubscribe?.();
+    worker.respond({
+      ok: true,
+      transport: {
+        busyMs: 200,
+        capturedAtMs: 300,
+        fetchedBytes: 2_000,
+        reads: 2,
+      },
+      type: "transport",
+    });
+    expect(onTransport).toHaveBeenCalledTimes(1);
   });
 
   it("sends topic reads at idle-prefetch priority", async () => {
@@ -75,7 +117,7 @@ describe("worker-backed MCAP resource client", () => {
     await expect(topics).resolves.toEqual(result);
   });
 
-  it("sends frame transform bootstrap reads at current-frame priority", async () => {
+  it("sends frame transform bootstrap reads at placement priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {
       source: createSource("source:1"),
@@ -100,7 +142,7 @@ describe("worker-backed MCAP resource client", () => {
     expect(worker.messages[1]).toMatchObject({
       id: 1,
       payload: request,
-      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME,
       type: "readFrameTransformBootstrap",
     });
 
@@ -116,7 +158,7 @@ describe("worker-backed MCAP resource client", () => {
     expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
   });
 
-  it("sends frame transform windows at idle-prefetch priority", async () => {
+  it("sends frame transform windows at placement-frame priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {
       endTimeNs: 20n,
@@ -126,6 +168,36 @@ describe("worker-backed MCAP resource client", () => {
     const workerResult: McapFrameTransformSet = { samples: [] };
 
     const window = client.readFrameTransformWindow(request);
+    const worker = workers[0];
+
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      payload: request,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME,
+      type: "readFrameTransformWindow",
+    });
+
+    worker.respond({
+      id: 1,
+      ok: true,
+      result: structuredClone(dehydrateMcapFrameTransformSet(workerResult)),
+    });
+
+    await expect(window).resolves.toEqual(workerResult);
+  });
+
+  it("can demote frame transform windows to idle-prefetch priority", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      endTimeNs: 20n,
+      source: createSource("source:1"),
+      startTimeNs: 10n,
+    };
+    const workerResult: McapFrameTransformSet = { samples: [] };
+
+    const window = client.readFrameTransformWindow(request, {
+      priority: "idle",
+    });
     const worker = workers[0];
 
     expect(worker.messages[1]).toMatchObject({
@@ -164,6 +236,183 @@ describe("worker-backed MCAP resource client", () => {
     worker.respond({ id: 1, ok: true, result: [] });
 
     await expect(windows).resolves.toEqual([]);
+  });
+
+  it("cancels speculative idle reads and notifies the idle worker", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      timeNs: [1n, 2n],
+      source: createSource("source:1"),
+      topics: ["/camera"],
+    };
+
+    const idleBatch = client.readSynchronizedMessageBatch(request, {
+      priority: "idle",
+    });
+    const idleWorker = workers[0];
+
+    client.cancelIdleReads?.();
+
+    await expect(idleBatch).rejects.toThrow("MCAP read cancelled");
+    expect(idleWorker.messages.at(-1)).toMatchObject({
+      id: 1,
+      type: "cancel",
+    });
+
+    // A late worker response for the cancelled id must not break anything.
+    idleWorker.respond({ error: "late", id: 1, ok: false });
+  });
+
+  it("can demote speculative playback batches to idle-prefetch priority", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      timeNs: [1n, 2n],
+      source: createSource("source:1"),
+      topics: ["/camera"],
+    };
+
+    const windows = client.readSynchronizedMessageBatch(request, {
+      priority: "idle",
+    });
+    const worker = workers[0];
+
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      type: "readSynchronizedMessageBatch",
+    });
+
+    worker.respond({ id: 1, ok: true, result: [] });
+
+    await expect(windows).resolves.toEqual([]);
+  });
+
+  it("uses a separate foreground worker while idle-prefetch work is pending", async () => {
+    const { client, workers } = createClientHarness();
+    const source = createSource("source:1");
+
+    const idle = client.readSynchronizedMessageBatch(
+      {
+        timeNs: [1n, 2n],
+        source,
+        topics: ["/camera"],
+      },
+      { priority: "idle" },
+    );
+    const current = client.readSynchronizedMessages({
+      timeNs: 1n,
+      source,
+      topics: ["/camera"],
+    });
+
+    expect(workers).toHaveLength(2);
+    expect(workers[0].messages[1]).toMatchObject({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      type: "readSynchronizedMessageBatch",
+    });
+    expect(workers[1].messages[1]).toMatchObject({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      type: "readSynchronizedMessages",
+    });
+
+    const currentWindow = createSynchronizedWindow(1n);
+    workers[1].respond({ id: 1, ok: true, result: currentWindow });
+    await expect(current).resolves.toEqual(currentWindow);
+
+    workers[0].respond({ id: 1, ok: true, result: [] });
+    await expect(idle).resolves.toEqual([]);
+  });
+
+  it("keeps workers warm and fails stale reads under explicit ownership", async () => {
+    const { client, workers } = createClientHarness();
+
+    client.activateSource?.(createSource("source:1"));
+    const first = client.readTimelineRange(createTimelineRequest("source:1"));
+    const worker = workers[0];
+
+    client.activateSource?.(createSource("source:2"));
+
+    // Switching preempts the old source's work by cancelling: the pending
+    // read rejects with the benign cancelled error and the worker is told
+    // to abort the matching job instead of being terminated.
+    await expect(first).rejects.toThrow("MCAP read cancelled");
+    expect(worker.terminate).not.toHaveBeenCalled();
+    expect(worker.messages.at(-1)).toEqual({ id: 1, type: "cancel" });
+
+    // A late read for the retired source fails fast without flipping
+    // ownership back.
+    await expect(
+      client.readTimelineRange(createTimelineRequest("source:1")),
+    ).rejects.toThrow("MCAP read cancelled");
+
+    // The active source proceeds on the same warm worker.
+    const second = client.readTimelineRange(createTimelineRequest("source:2"));
+    expect(workers).toHaveLength(1);
+    worker.respond({
+      id: 2,
+      ok: true,
+      result: createTimelineRange(2n, 3n),
+    });
+    await expect(second).resolves.toEqual(createTimelineRange(2n, 3n));
+
+    // Back-navigation re-activates the earlier source legitimately.
+    client.activateSource?.(createSource("source:1"));
+    const third = client.readTimelineRange(createTimelineRequest("source:1"));
+    worker.respond({
+      id: 3,
+      ok: true,
+      result: createTimelineRange(1n, 2n),
+    });
+    await expect(third).resolves.toEqual(createTimelineRange(1n, 2n));
+  });
+
+  it("cancels in-flight streams when a declared switch preempts them", async () => {
+    const { client, workers } = createClientHarness();
+
+    client.activateSource?.(createSource("source:1"));
+    const stream = client.readDecodedMessages({
+      source: createSource("source:1"),
+      topics: ["/camera"],
+    });
+    const first = stream.next();
+    const worker = workers[0];
+
+    client.activateSource?.(createSource("source:2"));
+
+    // The consumer settles with the benign cancelled error even though a
+    // dropped queued job would never produce a worker response.
+    await expect(first).rejects.toThrow("MCAP read cancelled");
+    expect(worker.terminate).not.toHaveBeenCalled();
+    expect(worker.messages.at(-1)).toEqual({ id: 1, type: "cancel" });
+  });
+
+  it("resets idle-prefetch work when the active source changes", async () => {
+    const { client, workers } = createClientHarness();
+
+    const idle = client.readSynchronizedMessageBatch(
+      {
+        timeNs: [1n, 2n],
+        source: createSource("source:1"),
+        topics: ["/camera"],
+      },
+      { priority: "idle" },
+    );
+    const idleWorker = workers[0];
+    const range = client.readTimelineRange(createTimelineRequest("source:2"));
+    const foregroundWorker = workers[1];
+
+    expect(idleWorker.messages.at(-1)).toEqual({ type: "dispose" });
+    expect(idleWorker.terminate).toHaveBeenCalledTimes(1);
+    await expect(idle).rejects.toThrow("different source");
+
+    foregroundWorker.respond({
+      id: 1,
+      ok: true,
+      result: createTimelineRange(2n, 3n),
+    });
+    await expect(range).resolves.toEqual(createTimelineRange(2n, 3n));
   });
 
   it("rejects failed worker responses", async () => {
@@ -218,6 +467,134 @@ describe("worker-backed MCAP resource client", () => {
       done: true,
       value: undefined,
     });
+  });
+
+  it("can demote decoded-message streams to idle-prefetch priority", async () => {
+    // Callers can still opt into ordinary idle prefetch for bounded decoded
+    // streams; full-history context reads use the separate bulk lane below.
+    const { client, workers } = createClientHarness();
+    const stream = client.readDecodedMessages(
+      {
+        source: createSource("source:1"),
+        topics: ["/odom"],
+      },
+      { priority: "idle" },
+    );
+    const first = stream.next();
+
+    expect(workers[0].messages[1]).toMatchObject({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      type: "readDecodedMessages",
+    });
+
+    workers[0].respond({
+      done: true,
+      id: 1,
+      ok: true,
+      stream: true,
+    });
+
+    await expect(first).resolves.toEqual({
+      done: true,
+      value: undefined,
+    });
+  });
+
+  it("routes bulk decoded-message streams to the bulk lane", async () => {
+    const { client, workers } = createClientHarness();
+    const stream = client.readDecodedMessages(
+      {
+        source: createSource("source:1"),
+        topics: ["/odom"],
+      },
+      { priority: "bulk" },
+    );
+    const first = stream.next();
+    const worker = workers[0];
+
+    expect(worker.messages[0]).toMatchObject({
+      payload: {
+        headers: { Authorization: "token" },
+        origin: "http://localhost:5151",
+        pathPrefix: "/proxy",
+      },
+      type: "init",
+    });
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
+      type: "readDecodedMessages",
+    });
+
+    worker.respond({
+      done: true,
+      id: 1,
+      ok: true,
+      stream: true,
+    });
+
+    await expect(first).resolves.toEqual({
+      done: true,
+      value: undefined,
+    });
+  });
+
+  it("releases the bulk worker once its queue drains", async () => {
+    const { client, workers } = createClientHarness();
+    const stream = client.readDecodedMessages(
+      {
+        source: createSource("source:1"),
+        topics: ["/odom"],
+      },
+      { priority: "bulk" },
+    );
+    const first = stream.next();
+    const worker = workers[0];
+
+    worker.respond({
+      done: true,
+      id: 1,
+      ok: true,
+      stream: true,
+    });
+    await expect(first).resolves.toEqual({ done: true, value: undefined });
+
+    // Bulk work is one-shot: the drained lane's worker (and its caches) go
+    // away instead of lingering for the rest of the session.
+    expect(worker.messages.at(-1)).toMatchObject({ type: "dispose" });
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
+
+    // The next bulk read lazily recreates the lane's worker.
+    const next = client.readDecodedMessages(
+      {
+        source: createSource("source:1"),
+        topics: ["/pose"],
+      },
+      { priority: "bulk" },
+    );
+    const nextFirst = next.next();
+    const recreated = workers.at(-1);
+    expect(recreated).not.toBe(worker);
+    expect(recreated?.messages[0]).toMatchObject({
+      payload: {
+        headers: { Authorization: "token" },
+        origin: "http://localhost:5151",
+        pathPrefix: "/proxy",
+      },
+      type: "init",
+    });
+    const nextRequest = recreated?.messages[1];
+    if (nextRequest?.type !== "readDecodedMessages") {
+      throw new Error("Expected a decoded-message request on the new worker");
+    }
+    recreated?.respond({
+      done: true,
+      id: nextRequest.id,
+      ok: true,
+      stream: true,
+    });
+    await expect(nextFirst).resolves.toEqual({ done: true, value: undefined });
   });
 
   it("resets the worker on source changes and ignores stale responses", async () => {
@@ -286,7 +663,7 @@ describe("worker-backed MCAP resource client", () => {
     });
 
     expect(() => client.readTimelineRange(createTimelineRequest())).toThrow(
-      "worker blocked"
+      "worker blocked",
     );
   });
 
@@ -297,7 +674,7 @@ describe("worker-backed MCAP resource client", () => {
     });
 
     expect(() => client.readTimelineRange(createTimelineRequest())).toThrow(
-      "postMessage failed"
+      "postMessage failed",
     );
 
     expect(worker.onmessage).toBeNull();
@@ -371,9 +748,21 @@ function createTimelineRange(startTimeNs: bigint, endTimeNs: bigint) {
   };
 }
 
+function createSynchronizedWindow(timeNs: bigint) {
+  return {
+    activeTimeline: "log" as const,
+    endTimeNs: timeNs,
+    messages: [],
+    messagesByTopic: {},
+    startTimeNs: timeNs,
+    streamPolicies: {},
+    timeNs,
+  };
+}
+
 function createSource(
   sourceId: string,
-  url = `mcap-source://${encodeURIComponent(sourceId)}`
+  url = `mcap-source://${encodeURIComponent(sourceId)}`,
 ) {
   return {
     sizeBytes: "1024",
@@ -445,7 +834,7 @@ class MockWorker {
   constructor(
     private readonly options: {
       readonly throwOnMessageType?: McapPlaybackWorkerRequest["type"];
-    } = {}
+    } = {},
   ) {}
 
   private get throwOnMessageType() {

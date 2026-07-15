@@ -13,5 +13,7 @@ export type {
 } from "./useInferenceStatus";
 export * from "./useRegisterAgentLifecycleEvents";
 export * from "./useSampleDescriptor";
+export * from "./useSegmentBitmapSource";
 export * from "./usePointSelection";
+export * from "./usePointSelectionSeed";
 export * from "./useToolsContext";

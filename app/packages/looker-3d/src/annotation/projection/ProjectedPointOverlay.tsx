@@ -54,7 +54,7 @@ export function ProjectedPointOverlay({
   const projectedPoint = useProjected3dPoint(
     raycastResult,
     frustumData,
-    panelId
+    panelId,
   );
 
   if (!projectedPoint) return null;

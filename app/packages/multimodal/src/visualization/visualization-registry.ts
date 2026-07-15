@@ -4,9 +4,16 @@
  * Stable visual artifact kinds emitted by decoders.
  */
 export const VISUALIZATION_KIND = Object.freeze({
+  CAMERA_CALIBRATION: "camera-calibration",
   ENCODED_IMAGE: "encoded-image",
+  ENCODED_VIDEO: "encoded-video",
+  GRID: "grid",
   IMAGE_ANNOTATIONS: "image-annotations",
+  LOCATION: "location",
   POINT_CLOUD: "point-cloud",
+  POSE: "pose",
+  RAW_IMAGE: "raw-image",
+  SCENE_UPDATE: "scene-update",
 } as const);
 
 /**
@@ -36,7 +43,18 @@ export type PanelType = (typeof PANEL_TYPE)[keyof typeof PANEL_TYPE];
 export const VISUALIZATION_PANEL_REGISTRY: Readonly<
   Record<VisualizationKind, PanelType>
 > = Object.freeze({
+  // Calibration is data, not imagery: its only renderable form is a camera
+  // frustum in the 3D scene, so it maps to the 3D panel family.
+  [VISUALIZATION_KIND.CAMERA_CALIBRATION]: PANEL_TYPE.THREE_D,
   [VISUALIZATION_KIND.ENCODED_IMAGE]: PANEL_TYPE.IMAGE,
+  [VISUALIZATION_KIND.ENCODED_VIDEO]: PANEL_TYPE.IMAGE,
+  [VISUALIZATION_KIND.GRID]: PANEL_TYPE.THREE_D,
   [VISUALIZATION_KIND.IMAGE_ANNOTATIONS]: PANEL_TYPE.IMAGE,
+  // No MAP panel exists yet; locations currently surface as a 3D-tile HUD
+  // readout. The mapping records the natural home for the data.
+  [VISUALIZATION_KIND.LOCATION]: PANEL_TYPE.MAP,
   [VISUALIZATION_KIND.POINT_CLOUD]: PANEL_TYPE.THREE_D,
+  [VISUALIZATION_KIND.POSE]: PANEL_TYPE.THREE_D,
+  [VISUALIZATION_KIND.RAW_IMAGE]: PANEL_TYPE.IMAGE,
+  [VISUALIZATION_KIND.SCENE_UPDATE]: PANEL_TYPE.THREE_D,
 });

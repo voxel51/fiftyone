@@ -21,7 +21,6 @@ import {
   SCHEMA_MANAGER_QUERY_VALUE,
   useSchemaManagerUrl,
 } from "./useSchemaManagerUrl";
-import { URL_CHANGED_EVENT } from "./useUrlSearchSubscription";
 
 const setSearch = (qs: string) => {
   // jsdom lets us pushState; we go through it so subscribers fire.
@@ -94,14 +93,14 @@ describe("useSchemaManagerUrl", () => {
     });
 
     expect(window.location.search).toContain(
-      `${SCHEMA_MANAGER_QUERY_PARAM}=${SCHEMA_MANAGER_QUERY_VALUE}`
+      `${SCHEMA_MANAGER_QUERY_PARAM}=${SCHEMA_MANAGER_QUERY_VALUE}`,
     );
     expect(window.location.search).toContain("id=abc");
   });
 
   it("removes the param from the URL when the atom transitions to false", () => {
     setSearch(
-      `?${SCHEMA_MANAGER_QUERY_PARAM}=${SCHEMA_MANAGER_QUERY_VALUE}&id=abc`
+      `?${SCHEMA_MANAGER_QUERY_PARAM}=${SCHEMA_MANAGER_QUERY_VALUE}&id=abc`,
     );
     stubModal(true);
 
@@ -109,7 +108,7 @@ describe("useSchemaManagerUrl", () => {
 
     // Mount with atom=true + URL has param: no rewrite (URL is authority on mount).
     expect(window.location.search).toContain(
-      `${SCHEMA_MANAGER_QUERY_PARAM}=${SCHEMA_MANAGER_QUERY_VALUE}`
+      `${SCHEMA_MANAGER_QUERY_PARAM}=${SCHEMA_MANAGER_QUERY_VALUE}`,
     );
 
     // Now flip atom to false (simulate the close button).
@@ -119,7 +118,7 @@ describe("useSchemaManagerUrl", () => {
     });
 
     expect(window.location.search).not.toContain(
-      `${SCHEMA_MANAGER_QUERY_PARAM}=${SCHEMA_MANAGER_QUERY_VALUE}`
+      `${SCHEMA_MANAGER_QUERY_PARAM}=${SCHEMA_MANAGER_QUERY_VALUE}`,
     );
     expect(window.location.search).toContain("id=abc");
   });
@@ -134,7 +133,7 @@ describe("useSchemaManagerUrl", () => {
     renderHook(() => useSchemaManagerUrl());
 
     expect(window.location.search).toContain(
-      `${SCHEMA_MANAGER_QUERY_PARAM}=${SCHEMA_MANAGER_QUERY_VALUE}`
+      `${SCHEMA_MANAGER_QUERY_PARAM}=${SCHEMA_MANAGER_QUERY_VALUE}`,
     );
   });
 

@@ -14,7 +14,7 @@ export const calculateItemLayout = (
   newOrder: string[],
   activeKey: string | null = null,
   delta = 0,
-  lastTouched: string | null = null
+  lastTouched: string | null = null,
 ) => {
   let groupActive = false;
   const currentY = {};
@@ -130,7 +130,7 @@ export const getAfterKey = (
   items: InteractiveItems,
   order: string[],
   direction: Direction,
-  isDisabled: (entry: fos.SidebarEntry) => boolean
+  isDisabled: (entry: fos.SidebarEntry) => boolean,
 ): string | null => {
   if (activeKey === null || !items[activeKey]) {
     return null;
@@ -145,7 +145,7 @@ export const getAfterKey = (
     : measureEntries(activeKey, items, order);
 
   const data = measurement.data.filter(
-    ({ key }) => !isDisabled(items[key].entry)
+    ({ key }) => !isDisabled(items[key].entry),
   );
 
   const top = items[activeKey].el?.getBoundingClientRect().top ?? 0;
@@ -191,7 +191,7 @@ export const getAfterKey = (
     try {
       while (
         [fos.EntryKind.PATH, fos.EntryKind.EMPTY].includes(
-          items[order[index]].entry.kind
+          items[order[index]].entry.kind,
         )
       )
         index++;
@@ -232,7 +232,7 @@ export const getEntryKey = (entry: fos.SidebarEntry) => {
   }
 
   if (entry.kind === fos.EntryKind.LABEL) {
-    return `label-${entry.atom.toString()}`;
+    return `label-${entry.id}`;
   }
 
   if (entry.kind === fos.EntryKind.LOADING) {
@@ -261,7 +261,7 @@ const isShown = (entry: fos.SidebarEntry) => {
 const measureEntries = (
   activeKey: string,
   items: InteractiveItems,
-  order: string[]
+  order: string[],
 ): {
   data: { top: number; height: number; key: string }[];
   activeHeight: number;
@@ -294,7 +294,7 @@ const measureEntries = (
 const measureGroups = (
   activeKey: string,
   items: InteractiveItems,
-  order: string[]
+  order: string[],
 ): {
   data: { top: number; height: number; key: string }[];
   activeHeight: number;
@@ -304,7 +304,7 @@ const measureGroups = (
     height: 0,
     key: getEntryKey(items[order[0]].entry),
   };
-  const data: typeof current[] = [];
+  const data: (typeof current)[] = [];
   let activeHeight = -MARGIN;
 
   for (let i = 0; i < order.length; i++) {

@@ -73,7 +73,7 @@ const Sink = () => {
 
   useEffect(() => {
     const eventAHandler: EventHandler<DemoEventGroup["demo:eventA"]> = (
-      data
+      data,
       // type-safe payload access
     ) => console.log(data.id, data.name);
 
@@ -86,7 +86,7 @@ const Sink = () => {
     };
 
     const eventBHandler: EventHandler<DemoEventGroup["demo:eventB"]> = (
-      data
+      data,
       // type-safe payload access
     ) => console.log(data.value);
 
@@ -113,7 +113,7 @@ const Sink = () => {
     "demo:eventC",
     useCallback((data) => {
       console.log(data.foo);
-    }, [])
+    }, []),
   );
 
   // Optional payload handler
@@ -121,7 +121,7 @@ const Sink = () => {
     "demo:eventD",
     useCallback(() => {
       console.log("Event D received (no payload)");
-    }, [])
+    }, []),
   );
 
   // Async handler using the hook - handlers run in parallel
@@ -130,7 +130,7 @@ const Sink = () => {
     useCallback(async (data) => {
       await new Promise((resolve) => setTimeout(resolve, 50));
       console.log("Hook async handler completed:", data.name);
-    }, [])
+    }, []),
   );
 
   return <Fragment />;

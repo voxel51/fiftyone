@@ -27,6 +27,21 @@ export const SidebarLeftIcon = ((): React.ReactElement => (
   </svg>
 )) as unknown as React.FC;
 
+/** A rectangle with a horizontal bar near the BOTTOM edge — implies a bottom panel. */
+export const SidebarBottomIcon = ((): React.ReactElement => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect width="20" height="18" x="2" y="3" rx="2" />
+    <path d="M2 15h20" />
+  </svg>
+)) as unknown as React.FC;
+
 /** Mirror — vertical bar near the RIGHT edge for the right-side panel. */
 export const SidebarRightIcon = ((): React.ReactElement => (
   <svg

@@ -9,19 +9,20 @@ import {
   ROI,
 } from "../types";
 import { useCallback, useEffect, useMemo } from "react";
-import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { atom, useAtom } from "jotai";
 import { useToolsContext } from "./useToolsContext";
 import { useActiveTask } from "./useActiveTask";
 import { useActiveCapabilities } from "./useActiveCapabilities";
 import { useSampleDescriptor } from "./useSampleDescriptor";
+import { useSegmentBitmapSource } from "./useSegmentBitmapSource";
 
 /**
  * Converts an `[x, y, w, h]` bounding box to a four-corner {@link ROI}
  * polygon, represented as counter-clockwise points from the top-left corner.
  */
 const bboxToRoi = (
-  bbox: [x: number, y: number, width: number, height: number]
+  bbox: [x: number, y: number, width: number, height: number],
 ): ROI => [
   [bbox[0], bbox[1]], // top-left
   [bbox[0], bbox[1] + bbox[3]], // bottom-left
@@ -65,7 +66,7 @@ export interface ResolvedAgent<T> {
  * @param agent Agent to wrap
  */
 export const useAnnotationAgent = <T extends InferenceResultProxy>(
-  agent?: AnnotationAgent<T>
+  agent?: AnnotationAgent<T>,
 ): ResolvedAgent<T> | null => {
   const [supportedTasks, setSupportedTasks] = useAtom(supportedTaskAtom);
 
@@ -81,7 +82,7 @@ export const useAnnotationAgent = <T extends InferenceResultProxy>(
         .infer(annotationContext)
         .then((res) => ({ labelId, ...res }));
     },
-    [agent, annotationContext]
+    [agent, annotationContext],
   );
 
   useEffect(() => {
@@ -102,7 +103,7 @@ export const useAnnotationAgent = <T extends InferenceResultProxy>(
 
   const resolvedAgent = useMemo(
     () => ({ infer, inferenceCapabilities: capabilities, supportedTasks }),
-    [capabilities, infer, supportedTasks]
+    [capabilities, infer, supportedTasks],
   );
 
   return agent ? resolvedAgent : null;
@@ -120,22 +121,23 @@ export const useAnnotationAgent = <T extends InferenceResultProxy>(
  * In all cases, this context includes the current {@link SampleDescriptor}.
  */
 const useAgentContext = (): AnnotationContext | null => {
-  const { selectedLabel } = useAnnotationContext();
+  const { selected } = useAnnotationContext();
   const sampleDescriptor = useSampleDescriptor();
   const toolsContext = useToolsContext();
+  const getMediaBitmap = useSegmentBitmapSource() ?? undefined;
 
   return useMemo(() => {
     // Gate on the `type` discriminator and an actual array — Detection3D
     // shares `type: "Detection"` but has no 2D `bounding_box`, so a
     // structural test alone would feed `undefined` into `bboxToRoi`.
     const bbox =
-      selectedLabel?.type === "Detection"
-        ? (selectedLabel as DetectionAnnotationLabel).data.bounding_box
+      selected?.label?.type === "Detection"
+        ? (selected?.label as DetectionAnnotationLabel).data.bounding_box
         : undefined;
     const labelOverride =
-      selectedLabel?.type === "Detection" && Array.isArray(bbox)
+      selected?.label?.type === "Detection" && Array.isArray(bbox)
         ? {
-            textPrompt: selectedLabel.data.label,
+            textPrompt: selected?.label.data.label,
             regionsOfInterest: [bboxToRoi(bbox)],
           }
         : {};
@@ -147,6 +149,7 @@ const useAgentContext = (): AnnotationContext | null => {
       ...toolsContext,
       ...labelOverride,
       sampleDescriptor,
+      getMediaBitmap,
     };
-  }, [sampleDescriptor, selectedLabel, toolsContext]);
+  }, [sampleDescriptor, selected?.label, toolsContext, getMediaBitmap]);
 };

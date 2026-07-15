@@ -130,7 +130,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose, initialPath?) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chosenFile, setChosenFile] = useState(null);
   const [customPath, setCustomPath] = useState<string | null>(
-    initialPath ?? null
+    initialPath ?? null,
   );
   const [initialized, setInitialized] = useState(false);
   const [customPathChanged, setCustomPathChanged] = useState(false);
@@ -172,7 +172,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose, initialPath?) {
     }
     const resolvedProvidedFilepath = joinPaths(currentPath, provideFilepath);
     const matchingExistingFile = currentFiles.find(
-      (f) => f.absolute_path === resolvedProvidedFilepath
+      (f) => f.absolute_path === resolvedProvidedFilepath,
     );
     let chosenFile = selectedFile;
     if (matchingExistingFile) {

@@ -34,6 +34,7 @@ describe("MCAP grid preview worker pool", () => {
     expect(workers).toHaveLength(1);
     expect(workers[0].messages[0]).toEqual({
       payload: {
+        fillSlotClass: "background",
         headers: { Authorization: "token" },
         origin: "http://localhost:5151",
         pathPrefix: "/proxy",
@@ -51,7 +52,7 @@ describe("MCAP grid preview worker pool", () => {
   it("does not create more workers than the configured pool size", async () => {
     const { pool, workers } = createPoolHarness({ poolSize: 2 });
     const requests = Array.from({ length: 8 }, (_, index) =>
-      pool.request({ source: createSource(`source:${index}`) })
+      pool.request({ source: createSource(`source:${index}`) }),
     );
 
     expect(workers.length).toBeLessThanOrEqual(2);
@@ -63,7 +64,7 @@ describe("MCAP grid preview worker pool", () => {
   it("allows a single-worker pool on low-resource configurations", async () => {
     const { pool, workers } = createPoolHarness({ poolSize: 1 });
     const requests = Array.from({ length: 4 }, (_, index) =>
-      pool.request({ source: createSource(`source:${index}`) })
+      pool.request({ source: createSource(`source:${index}`) }),
     );
 
     expect(workers).toHaveLength(1);
@@ -111,7 +112,7 @@ describe("MCAP grid preview worker pool", () => {
     const controller = new AbortController();
     const request = pool.request(
       { source: createSource("source:1") },
-      { signal: controller.signal }
+      { signal: controller.signal },
     );
 
     controller.abort();
@@ -159,11 +160,11 @@ function createResult() {
 }
 
 function rpcMessages(
-  worker: MockGridPreviewWorker
+  worker: MockGridPreviewWorker,
 ): McapGridPreviewWorkerRpcRequest[] {
   return worker.messages.filter(
     (message): message is McapGridPreviewWorkerRpcRequest =>
-      message.type === "decodeGridPreview"
+      message.type === "decodeGridPreview",
   );
 }
 

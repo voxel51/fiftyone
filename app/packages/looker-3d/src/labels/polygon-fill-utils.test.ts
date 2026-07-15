@@ -179,7 +179,7 @@ describe("polygon-fill-utils", () => {
       expect(mesh).toBeNull();
       expect(consoleSpy).toHaveBeenCalledWith(
         "Failed to create filled polygon mesh:",
-        expect.any(Error)
+        expect.any(Error),
       );
 
       // Restore original method

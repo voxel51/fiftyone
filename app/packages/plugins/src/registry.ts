@@ -24,7 +24,7 @@ export function usingRegistry() {
  * @param registration The plugin registration
  */
 export function registerComponent<TType extends PluginComponentType>(
-  registration: PluginComponentRegistrationByType[TType]
+  registration: PluginComponentRegistrationByType[TType],
 ) {
   if (!registration.activator) {
     registration.activator = () => true;
@@ -64,7 +64,7 @@ export function getComponent<T>(name: string) {
 }
 
 export function usePlugin<TType extends PluginComponentType>(
-  type: TType
+  type: TType,
 ): PluginComponentRegistrationByType[TType][] {
   return usingRegistry().getByType(type);
 }
@@ -72,7 +72,7 @@ export function usePlugin<TType extends PluginComponentType>(
 /** a utility for safely calling plugin defined activator functions */
 export function safePluginActivator(
   plugin: PluginComponentRegistration,
-  ctx: any
+  ctx: any,
 ): boolean {
   if (typeof plugin.activator === "function") {
     try {
@@ -107,7 +107,7 @@ const getRegistryVersion = () => usingRegistry().getVersion();
 
 export function useActivePlugins<TType extends PluginComponentType>(
   type: TType,
-  ctx: Record<string, unknown>
+  ctx: Record<string, unknown>,
 ) {
   // useSyncExternalStore reads the snapshot synchronously during render and
   // atomically subscribes, so a register/unregister event that fires between
@@ -119,7 +119,7 @@ export function useActivePlugins<TType extends PluginComponentType>(
       usingRegistry()
         .getByType(type)
         .filter((plugin) => safePluginActivator(plugin, ctx)),
-    [type, ctx, version]
+    [type, ctx, version],
   );
 }
 
@@ -163,23 +163,6 @@ export enum Categories {
 }
 
 export type PluginActivator = (props: any) => boolean;
-
-/**
- * Stable component slots exposed by core surfaces.
- */
-export const PLUGIN_COMPONENT_SLOT = {
-  GRID_HEADER_AFTER_RESOURCE_COUNT: "grid-header-after-resource-count",
-} as const;
-
-export type PluginComponentSlot =
-  typeof PLUGIN_COMPONENT_SLOT[keyof typeof PLUGIN_COMPONENT_SLOT];
-
-export type ComponentOptions = {
-  /**
-   * Named UI insertion points where this component can be rendered.
-   */
-  slots?: readonly PluginComponentSlot[];
-};
 
 export type PanelOptions = {
   /**
@@ -257,7 +240,7 @@ type PluginComponentProps<T> = T & {
 
 type BasePluginComponentRegistration<
   TType extends PluginComponentType,
-  TComponentProps
+  TComponentProps,
 > = {
   /**
    * The name of the plugin
@@ -302,7 +285,6 @@ export type ComponentRegistration<T extends {} = {}> =
     PluginComponentType.Component,
     PluginComponentProps<T>
   > & {
-    componentOptions?: ComponentOptions;
     panelOptions?: never;
     sampleRendererOptions?: never;
   };
@@ -352,19 +334,9 @@ export function getCategoryLabel(category: CategoryID): string {
 }
 
 export function getCategoryForPanel(
-  panel: PanelRegistration | PlotRegistration
+  panel: PanelRegistration | PlotRegistration,
 ) {
   return panel.panelOptions?.category || "custom";
-}
-
-/**
- * Returns whether a generic component is registered for a named UI slot.
- */
-export function componentHasSlot(
-  registration: ComponentRegistration,
-  slot: PluginComponentSlot
-) {
-  return registration.componentOptions?.slots?.includes(slot) === true;
 }
 
 const DEFAULT_ACTIVATOR = () => true;
@@ -382,14 +354,19 @@ const REQUIRED = ["name", "type", "component"];
 export class PluginComponentRegistry {
   private data = new Map<string, PluginComponentRegistration>();
   private pluginDefinitions = new Map<string, PluginDefinitionLike>();
-  private scripts = new Set<string>();
+  private scripts = new Map<string, Promise<void>>();
   private subscribers = new Set<RegistryEventHandler>();
   private version = 0;
   getVersion() {
     return this.version;
   }
-  registerScript(name: string) {
-    this.scripts.add(name);
+  // Track the in-flight load so overlapping loadPlugins() calls await the same
+  // promise instead of resolving early off a "started" flag.
+  registerScript(name: string, promise: Promise<void>) {
+    this.scripts.set(name, promise);
+  }
+  getScript(name: string) {
+    return this.scripts.get(name);
   }
   registerPluginDefinition(pluginDefinition: PluginDefinitionLike) {
     this.pluginDefinitions.set(pluginDefinition.name, pluginDefinition);
@@ -417,35 +394,35 @@ export class PluginComponentRegistry {
     for (const fieldName of REQUIRED) {
       assert(
         registration[fieldName],
-        `${fieldName} is required to register a Plugin Component`
+        `${fieldName} is required to register a Plugin Component`,
       );
     }
     warn(
       !this.data.has(name),
-      `${name} is already a registered Plugin Component`
+      `${name} is already a registered Plugin Component`,
     );
     warn(
       registration.type !== PluginComponentType.Plot,
-      `${name} is a Plot Plugin Component. This is deprecated. Please use "Panel" instead.`
+      `${name} is a Plot Plugin Component. This is deprecated. Please use "Panel" instead.`,
     );
 
     if (registration.type === PluginComponentType.SampleRenderer) {
       assert(
         registration.sampleRendererOptions,
-        `${name} declared SampleRenderer without sampleRendererOptions`
+        `${name} declared SampleRenderer without sampleRendererOptions`,
       );
 
       const { supports } = registration.sampleRendererOptions;
 
       assert(
         Boolean(supports),
-        `${name} declared SampleRenderer without sampleRendererOptions.supports`
+        `${name} declared SampleRenderer without sampleRendererOptions.supports`,
       );
 
       if (supports && typeof supports !== "function") {
         warn(
           hasMatchMediaMatchers(supports),
-          `${name} declared sampleRendererOptions.supports without any matchers`
+          `${name} declared sampleRendererOptions.supports without any matchers`,
         );
       }
     }

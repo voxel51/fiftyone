@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import React from "react";
 import { useRecoilValue } from "recoil";
 import { ModalLooker } from "../ModalLooker";
 import { GroupSampleWrapper } from "./GroupSampleWrapper";

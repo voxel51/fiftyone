@@ -140,6 +140,39 @@ describe("useTemporalTagMode", () => {
     });
   });
 
+  describe("startEdit", () => {
+    it("opens the selected phase in edit mode pre-filled from the tag", () => {
+      const { result } = renderHook(() => useTemporalTagMode());
+      act(() =>
+        result.current.actions.startEdit(
+          { id: "tag-1", start: 2, end: 6, label: "near miss" },
+          { x: 300, y: 120 },
+        ),
+      );
+      expect(result.current.state.phase).toBe("selected");
+      expect(result.current.state.mode).toBe("edit");
+      expect(result.current.state.editId).toBe("tag-1");
+      expect(result.current.state.selection).toEqual({ start: 2, end: 6 });
+      expect(result.current.state.anchor).toEqual({ x: 300, y: 120 });
+      expect(result.current.state.pendingLabel).toBe("near miss");
+    });
+
+    it("a fresh drag returns to create mode after an edit", () => {
+      const { result } = renderHook(() => useTemporalTagMode());
+      act(() =>
+        result.current.actions.startEdit(
+          { id: "tag-1", start: 2, end: 6, label: "x" },
+          { x: 0, y: 0 },
+        ),
+      );
+      act(() => result.current.actions.startDrag(1));
+      act(() => result.current.actions.updateDrag(5));
+      act(() => result.current.actions.finishDrag(0, 0));
+      expect(result.current.state.mode).toBe("create");
+      expect(result.current.state.editId).toBeNull();
+    });
+  });
+
   describe("setAnchorHandle", () => {
     function reachSelected() {
       const hook = renderHook(() => useTemporalTagMode());

@@ -18,21 +18,21 @@ describe("getSourceFieldFromStages", () => {
   it("extracts the field from a ToPatches stage when isPatches is true", () => {
     const stages = [toPatches("ground_truth")];
     expect(getSourceFieldFromStages(stages, { isPatches: true })).toBe(
-      "ground_truth"
+      "ground_truth",
     );
   });
 
   it("returns undefined for a ToPatches stage when isPatches is false", () => {
     const stages = [toPatches("ground_truth")];
     expect(
-      getSourceFieldFromStages(stages, { isPatches: false })
+      getSourceFieldFromStages(stages, { isPatches: false }),
     ).toBeUndefined();
   });
 
   it("returns undefined when there are no matching stages", () => {
     const stages = [otherStage("fiftyone.core.stages.SortBy")];
     expect(
-      getSourceFieldFromStages(stages, { isPatches: true })
+      getSourceFieldFromStages(stages, { isPatches: true }),
     ).toBeUndefined();
   });
 
@@ -48,14 +48,14 @@ describe("getSourceFieldFromStages", () => {
       otherStage("fiftyone.core.stages.SortBy"),
     ];
     expect(getSourceFieldFromStages(stages, { isPatches: true })).toBe(
-      "predictions"
+      "predictions",
     );
   });
 
   it("returns the first matching stage when multiple match", () => {
     const stages = [toPatches("first_field"), toPatches("second_field")];
     expect(getSourceFieldFromStages(stages, { isPatches: true })).toBe(
-      "first_field"
+      "first_field",
     );
   });
 });

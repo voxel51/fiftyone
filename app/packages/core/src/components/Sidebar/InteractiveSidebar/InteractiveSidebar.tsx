@@ -76,7 +76,7 @@ const InteractiveSidebar = ({
               container?.current.dispatchEvent(
                 new CustomEvent("animation-onRest", {
                   bubbles: true,
-                })
+                }),
               );
             }
           },
@@ -95,7 +95,7 @@ const InteractiveSidebar = ({
       order.current,
       null,
       0,
-      lastTouched.current
+      lastTouched.current,
     );
 
     controller.set({ minHeight: minHeight + MARGIN });
@@ -111,7 +111,7 @@ const InteractiveSidebar = ({
     }
   }, [controller]);
   const [observer] = useState<ResizeObserver>(
-    () => new ResizeObserver(placeItems)
+    () => new ResizeObserver(placeItems),
   );
 
   const getNewOrder = useGetNewOrder({
@@ -150,14 +150,14 @@ const InteractiveSidebar = ({
         if (down.current && canScroll && delta < 24) {
           container.current?.scroll(
             0,
-            container.current.scrollTop + (up ? -1 : 1)
+            container.current.scrollTop + (up ? -1 : 1),
           );
           animate(y);
           scrollWith(direction, y);
         }
       });
     },
-    [animate]
+    [animate],
   );
 
   useEventHandler(document.body, "mousemove", ({ clientY }) => {
@@ -173,7 +173,7 @@ const InteractiveSidebar = ({
     (
       event: React.MouseEvent<HTMLDivElement>,
       key: string,
-      callback: () => void
+      callback: () => void,
     ) => {
       if (event.button !== 0) return;
 
@@ -186,7 +186,7 @@ const InteractiveSidebar = ({
       lastTouched.current = null;
       placeItems();
     },
-    [placeItems]
+    [placeItems],
   );
 
   useExit({
@@ -230,7 +230,7 @@ const InteractiveSidebar = ({
             group,
             entry,
             items.current[key].controller,
-            trigger
+            trigger,
           );
           const style = entry.kind === fos.EntryKind.INPUT ? { zIndex: 0 } : {};
 

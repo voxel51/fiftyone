@@ -33,7 +33,7 @@ export const useLookerOptionsUpdate = () => {
     ({ snapshot, set }) =>
       async (update: object, updater?: (updated: {}) => void) => {
         const currentOptions = await snapshot.getPromise(
-          fos.savedLookerOptions
+          fos.savedLookerOptions,
         );
 
         const panels = await snapshot.getPromise(fos.lookerPanels);
@@ -45,7 +45,7 @@ export const useLookerOptionsUpdate = () => {
         };
         set(fos.savedLookerOptions, updated);
         if (updater) updater(updated);
-      }
+      },
   );
 };
 
@@ -63,7 +63,7 @@ export const useInitializeImaVidSubscriptions = () => {
         set(fos.imaVidLookerState("playing"), null);
         set(fos.imaVidLookerState("seeking"), null);
       },
-    []
+    [],
   );
 
   return { subscribeToImaVidStateChanges };
@@ -98,7 +98,7 @@ export const useTooltipEventHandler = () => {
           set(fos.tooltipDetail, null);
         }
       },
-    [tooltip]
+    [tooltip],
   );
 
   return useCallback(
@@ -110,6 +110,6 @@ export const useTooltipEventHandler = () => {
         looker.removeEventListener("tooltip", tooltipEventHandler);
       };
     },
-    [tooltipEventHandler]
+    [tooltipEventHandler],
   );
 };

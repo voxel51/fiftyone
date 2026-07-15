@@ -26,7 +26,7 @@ type WriterContext = {
 };
 
 export type RegisteredWriter<K extends WriterKeys> = (
-  ctx: WriterContext
+  ctx: WriterContext,
 ) => (value: Session[K]) => void;
 
 export const REGISTERED_WRITERS: {

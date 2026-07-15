@@ -102,7 +102,7 @@ function RegisteredSelector() {
         sampleId: "sample",
         topics: ["/camera/front", "/camera/back", "/lidar/points"],
       }),
-    [register]
+    [register],
   );
 
   return <McapGridStreamSelector />;

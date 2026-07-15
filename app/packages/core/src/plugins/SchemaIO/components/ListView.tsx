@@ -16,7 +16,7 @@ export default function ListView(props: ViewPropsType) {
   const { state, addItem, deleteItem, updateItem, size } = useListState(
     data ?? schema.default ?? DEFAULT_LIST_STATE,
     path,
-    onChange
+    onChange,
   );
 
   const { items, view = {} } = schema;
@@ -163,7 +163,7 @@ function DeleteButton(props) {
 function useListState(
   initialState: Array<unknown>,
   path: ViewPropsType["path"],
-  onChange: ViewPropsType["onChange"]
+  onChange: ViewPropsType["onChange"],
 ) {
   const nextIdRef = useRef(0);
 
@@ -180,7 +180,7 @@ function useListState(
         onChange(path, Object.values(updatedState));
       },
       LIST_CHANGE_THROTTLE,
-      { leading: false, trailing: true }
+      { leading: false, trailing: true },
     );
     return throttledOnChange;
   }, [onChange, path]);

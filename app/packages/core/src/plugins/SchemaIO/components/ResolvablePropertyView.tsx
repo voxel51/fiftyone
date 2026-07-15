@@ -73,7 +73,7 @@ export default function ResolvablePropertyView(props) {
       providedParams: Record<string, unknown> | undefined,
       serializedObservedData: string,
       path?: string,
-      validate?: boolean
+      validate?: boolean,
     ) => {
       const computedParams = providedParams
         ? { ...params, ...providedParams }
@@ -106,7 +106,7 @@ export default function ResolvablePropertyView(props) {
         },
       });
     },
-    [resolver, onValidationErrors]
+    [resolver, onValidationErrors],
   );
   const manualRefresh = auto_update === false;
   const wrapper = useMemo(() => {

@@ -24,7 +24,7 @@ const COLORMAP_OPTIONS = [
   "Legacy",
 ] as const;
 
-type ColormapType = typeof COLORMAP_OPTIONS[number];
+type ColormapType = (typeof COLORMAP_OPTIONS)[number];
 
 interface PcdColormapModalProps {
   attribute: string;
@@ -41,7 +41,7 @@ const GradientPreview: React.FC<{
 }> = ({ stops }) => {
   const gradient = useMemo(
     () => stops.map((stop) => `${stop.color} ${stop.value * 100}%`).join(", "),
-    [stops]
+    [stops],
   );
 
   return (
@@ -158,7 +158,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
   const [hasChanges, setHasChanges] = useState(false);
   const [newRowIndices, setNewRowIndices] = useState<Set<number>>(new Set());
   const [selectedColormap, setSelectedColormap] = useState<ColormapType | null>(
-    null
+    null,
   );
 
   const defaultValue = useMemo(
@@ -172,11 +172,11 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
         color: rgbStringToHex(getRGBColorFromPool(colorScheme.colorPool)),
       },
     ],
-    [colorScheme.colorPool]
+    [colorScheme.colorPool],
   );
 
   const [numStops, setNumStops] = useState(
-    initialColorscale?.list?.length ?? 20
+    initialColorscale?.list?.length ?? 20,
   );
 
   const [colorList, setColorList] = useState(() => {
@@ -202,7 +202,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
       setColorList(gradient);
       setHasChanges(true);
     },
-    [numStops]
+    [numStops],
   );
 
   const handleSave = useCallback(() => {
@@ -218,7 +218,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
       setColorList(newList);
       setHasChanges(true);
     },
-    [colorList]
+    [colorList],
   );
 
   const handleValueChange = useCallback(
@@ -229,7 +229,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
       setColorList(newList);
       setHasChanges(true);
     },
-    [colorList]
+    [colorList],
   );
 
   const addColorStop = useCallback(() => {
@@ -282,7 +282,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
       });
       setHasChanges(true);
     },
-    [colorList]
+    [colorList],
   );
 
   const redistributeStops = useCallback(
@@ -321,7 +321,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
       setColorList(newStops);
       setHasChanges(true);
     },
-    [colorList]
+    [colorList],
   );
 
   return (
@@ -344,7 +344,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
               }}
               useSearch={(search: string) => ({
                 values: COLORMAP_OPTIONS.filter((option) =>
-                  option.toLowerCase().includes(search.toLowerCase())
+                  option.toLowerCase().includes(search.toLowerCase()),
                 ),
               })}
               containerStyle={{ width: "100%", marginBottom: "16px" }}
@@ -402,7 +402,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
                         if (selectedColormap) {
                           const gradient = getGradientFromSchemeName(
                             selectedColormap,
-                            numStops
+                            numStops,
                           );
                           setColorList(gradient);
                           setHasChanges(true);

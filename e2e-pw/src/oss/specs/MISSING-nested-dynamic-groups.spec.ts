@@ -22,7 +22,7 @@ const test = base.extend<{
 });
 
 const nestedDynamicGroupsDatasetName = getUniqueDatasetNameWithPrefix(
-  "nested-dynamic-groups"
+  "nested-dynamic-groups",
 );
 
 function* orderGenerator() {
@@ -59,7 +59,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
         width: 100,
         height: 100,
         watermarkString: imgPath.split("/").pop().split(".")[0],
-      })
+      }),
   );
 
   await Promise.all(imageCreatePromises);
@@ -117,7 +117,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(
     page,
-    nestedDynamicGroupsDatasetName
+    nestedDynamicGroupsDatasetName,
   );
 });
 
@@ -144,7 +144,7 @@ test(`dynamic groups of groups works`, async ({
     nestedDynamicGroupsDatasetName,
     {
       searchParams: new URLSearchParams({ view: "groups" }),
-    }
+    },
   );
   const gridRefreshPromiseSetRenderFramesAsVideo =
     grid.getWaitForGridRefreshPromise();

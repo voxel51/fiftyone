@@ -23,7 +23,7 @@ export function usePlaybackStore(): PlaybackStore {
   const store = useContext(PlaybackStoreContext);
   if (!store) {
     throw new Error(
-      "usePlaybackStore must be used inside a <PlaybackProvider>"
+      "usePlaybackStore must be used inside a <PlaybackProvider>",
     );
   }
   return store;

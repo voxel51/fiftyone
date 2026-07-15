@@ -1,14 +1,18 @@
 import { buildThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import {
+  type SampleRendererGridClickBehavior,
   type SampleRendererProps,
   type SampleRendererRenderContext,
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import { TemporalTagGridOverlay } from "@fiftyone/multimodal/adapters/mcap/react/TemporalTagGridOverlay";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Checkbox } from "@mui/material";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
+import classes from "./GridCustomRendererItem.module.css";
 import GridTagBubbles from "./GridTagBubbles";
 
 type GridCustomRendererItemConfig = {
@@ -16,6 +20,7 @@ type GridCustomRendererItemConfig = {
   Renderer: React.ComponentType<SampleRendererProps>;
   RecoilBridge: React.ComponentType<React.PropsWithChildren>;
   ctx: SampleRendererRenderContext;
+  clickBehavior?: SampleRendererGridClickBehavior;
   symbol: ID;
 };
 
@@ -29,18 +34,13 @@ type GridSizeHintSample = {
   } | null;
 };
 
-type GridSelectionSample = {
-  _id?: string;
-  id?: string;
-};
-
 /** Error boundary for a sample renderer with fallback behavior. */
 class GridCustomRendererErrorBoundary extends React.Component<
   React.PropsWithChildren<{ onError: (error: Error) => void }>,
   { hasError: boolean }
 > {
   constructor(
-    props: React.PropsWithChildren<{ onError: (error: Error) => void }>
+    props: React.PropsWithChildren<{ onError: (error: Error) => void }>,
   ) {
     super(props);
     this.state = { hasError: false };
@@ -90,11 +90,26 @@ const OPEN_MODAL_BUTTON_STYLES: React.CSSProperties = {
   background: "rgba(18, 18, 18, 0.72)",
   color: "#f5f5f5",
   fontSize: "14px",
-  lineHeight: "20px",
-  textAlign: "center",
+  alignItems: "center",
+  display: "flex",
+  justifyContent: "center",
   padding: 0,
   cursor: "pointer",
   zIndex: 20,
+};
+
+// Bottom chrome for a tile: stacks the tag bubbles and (for multimodal) the
+// temporal-tag overlay in a column so they don't overlap. Anchored to the
+// bottom; children flow (bubbles on top, overlay beneath).
+const FOOTER_STYLES: React.CSSProperties = {
+  position: "absolute",
+  left: 0,
+  right: 0,
+  bottom: 0,
+  display: "flex",
+  flexDirection: "column",
+  pointerEvents: "none",
+  zIndex: 10,
 };
 
 const SELECT_SAMPLE_BUTTON_STYLES: React.CSSProperties = {
@@ -136,7 +151,7 @@ function getPixelSizeBytes(width: number, height: number): number {
 
 function getSourceSizeHintBytes(
   sourceSizeBytes: number,
-  mediaType: string | null
+  mediaType: string | null,
 ): number {
   if (sourceSizeBytes > 0) {
     return Math.min(sourceSizeBytes, SOURCE_SIZE_HINT_CAP_BYTES);
@@ -153,34 +168,42 @@ function getSourceSizeHintBytes(
 }
 
 type GridCustomRendererWrapperProps = React.PropsWithChildren<{
+  clickBehavior?: SampleRendererGridClickBehavior;
   selected: boolean;
   onOpenModal: React.MouseEventHandler<HTMLButtonElement>;
   onSelect: React.MouseEventHandler<HTMLButtonElement>;
 }>;
 
 const stopGridActivationPropagation: React.MouseEventHandler<HTMLElement> = (
-  event
+  event,
 ) => {
   event.stopPropagation();
 };
 
 const GridCustomRendererWrapper = ({
   children,
+  clickBehavior = "renderer",
   selected,
   onOpenModal,
   onSelect,
 }: GridCustomRendererWrapperProps) => {
   const [hovering, setHovering] = React.useState(false);
   const showSelectionControl = hovering || selected;
+  const passThroughGridActivation = clickBehavior === "passthrough";
 
   return (
     <div
+      className={classes.container}
       style={CONTAINER_STYLES}
       onMouseEnter={() => setHovering(true)}
       onMouseMove={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
-      onClick={stopGridActivationPropagation}
-      onContextMenu={stopGridActivationPropagation}
+      onClick={
+        passThroughGridActivation ? undefined : stopGridActivationPropagation
+      }
+      onContextMenu={
+        passThroughGridActivation ? undefined : stopGridActivationPropagation
+      }
     >
       {children}
       {showSelectionControl && (
@@ -191,18 +214,36 @@ const GridCustomRendererWrapper = ({
           onClick={onSelect}
         />
       )}
-      {hovering && (
-        <>
-          <button
-            title="Open sample modal"
-            onClick={onOpenModal}
-            style={OPEN_MODAL_BUTTON_STYLES}
-          >
-            ↩
-          </button>
-        </>
-      )}
+      <button
+        aria-label="Open sample modal"
+        className={classes.openModalButton}
+        title="Open sample modal"
+        onClick={onOpenModal}
+        style={OPEN_MODAL_BUTTON_STYLES}
+      >
+        <OpenInFullIcon fontSize="inherit" />
+      </button>
     </div>
+  );
+};
+
+const GridCustomRenderer = ({
+  Renderer,
+  ctx,
+  onRetainedBytesChange,
+}: {
+  readonly Renderer: React.ComponentType<SampleRendererProps>;
+  readonly ctx: SampleRendererRenderContext;
+  readonly onRetainedBytesChange: (retainedBytes: number) => void;
+}) => {
+  const modalActive = fos.useModalActive();
+
+  return (
+    <Renderer
+      ctx={ctx}
+      isGridActive={!modalActive}
+      onRetainedBytesChange={onRetainedBytesChange}
+    />
   );
 };
 
@@ -229,19 +270,20 @@ export class GridCustomRendererItem {
   private destroyed = false;
   private selected = false;
   private inSelectionMode = false;
+  private retainedSizeBytes?: number;
   private dimensions?: GridItemDimensions;
 
   constructor(private readonly config: GridCustomRendererItemConfig) {
     Object.assign(this.hostElement.style, HOST_ELEMENT_STYLES);
     this.pluginFailed = fos.isGridCustomRendererFailOpen(
-      this.config.ctx.dataset.name
+      this.config.ctx.dataset.name,
     );
   }
 
   addEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    options?: boolean | AddEventListenerOptions
+    options?: boolean | AddEventListenerOptions,
   ) {
     this.eventTarget.addEventListener(eventType, handler, options);
   }
@@ -249,7 +291,7 @@ export class GridCustomRendererItem {
   removeEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    options?: boolean | EventListenerOptions
+    options?: boolean | EventListenerOptions,
   ) {
     this.eventTarget.removeEventListener(eventType, handler, options);
   }
@@ -257,6 +299,16 @@ export class GridCustomRendererItem {
   private dispatchEvent(eventType: string, detail?: unknown) {
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
+
+  private handleRetainedBytesChange = (retainedBytes: number) => {
+    const normalized = getFiniteSizeBytes(retainedBytes);
+    if (this.retainedSizeBytes === normalized) {
+      return;
+    }
+
+    this.retainedSizeBytes = normalized;
+    this.dispatchEvent("refresh");
+  };
 
   private isDatasetFailOpen() {
     return fos.isGridCustomRendererFailOpen(this.config.ctx.dataset.name);
@@ -287,15 +339,25 @@ export class GridCustomRendererItem {
           key={ctx.media.url ?? this.config.pluginName}
         >
           <GridCustomRendererWrapper
+            clickBehavior={this.config.clickBehavior}
             selected={this.selected}
             onOpenModal={this.handleOpenModalClick}
             onSelect={this.handleSelectSampleClick}
           >
-            <Renderer ctx={ctx} />
-            <GridTagBubbles sample={sample} />
+            <GridCustomRenderer
+              Renderer={Renderer}
+              ctx={ctx}
+              onRetainedBytesChange={this.handleRetainedBytesChange}
+            />
+            <div style={FOOTER_STYLES}>
+              <GridTagBubbles sample={sample} />
+              {ctx.media?.mediaType === MEDIA_TYPE_MULTIMODAL ? (
+                <TemporalTagGridOverlay ctx={ctx} />
+              ) : null}
+            </div>
           </GridCustomRendererWrapper>
         </GridCustomRendererErrorBoundary>
-      </RecoilBridge>
+      </RecoilBridge>,
     );
   }
 
@@ -313,7 +375,7 @@ export class GridCustomRendererItem {
   }
 
   private handleSelectSampleClick = (
-    event: React.MouseEvent<HTMLButtonElement>
+    event: React.MouseEvent<HTMLButtonElement>,
   ) => {
     event.preventDefault();
     event.stopPropagation();
@@ -328,7 +390,7 @@ export class GridCustomRendererItem {
   };
 
   private handleOpenModalClick = (
-    event: React.MouseEvent<HTMLButtonElement>
+    event: React.MouseEvent<HTMLButtonElement>,
   ) => {
     event.preventDefault();
     event.stopPropagation();
@@ -338,7 +400,7 @@ export class GridCustomRendererItem {
     }
 
     this.mountedElement.dispatchEvent(
-      new MouseEvent("click", { bubbles: true, cancelable: true })
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
     );
   };
 
@@ -350,7 +412,7 @@ export class GridCustomRendererItem {
     console.error(
       `Grid sample renderer failed (plugin: ${this.config.pluginName}), ` +
         "disabling custom grid renderers for this dataset for the rest of this browser session:",
-      error
+      error,
     );
 
     this.pluginFailed = true;
@@ -371,7 +433,7 @@ export class GridCustomRendererItem {
   attach(
     element: HTMLElement | string,
     dimensions?: GridItemDimensions,
-    _fontSize?: number
+    _fontSize?: number,
   ) {
     if (this.destroyed) {
       return;
@@ -478,13 +540,12 @@ export class GridCustomRendererItem {
       isSampleFile && safeSample
         ? getFiniteSizeBytes(safeSample.metadata?.size_bytes)
         : 0;
-    const sourceSizeHintBytes = getSourceSizeHintBytes(
-      sourceSizeBytes,
-      this.config.ctx.media.mediaType
-    );
+    const retainedSizeBytes =
+      this.retainedSizeBytes ??
+      getSourceSizeHintBytes(sourceSizeBytes, this.config.ctx.media.mediaType);
 
     return Math.ceil(
-      MIN_GRID_RENDERER_SIZE_BYTES + renderedSizeBytes + sourceSizeHintBytes
+      MIN_GRID_RENDERER_SIZE_BYTES + renderedSizeBytes + retainedSizeBytes,
     );
   }
 }

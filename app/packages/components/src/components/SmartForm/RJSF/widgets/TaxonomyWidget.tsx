@@ -51,7 +51,7 @@ export default function TaxonomyWidget(props: WidgetProps) {
 
   const leafIndex = useMemo(
     () => (tree ? buildLeafNameIndex(tree) : new Map<string, TreePath>()),
-    [tree]
+    [tree],
   );
 
   const treeValue = useMemo(() => {
@@ -78,14 +78,14 @@ export default function TaxonomyWidget(props: WidgetProps) {
         onChange(path[path.length - 1]);
       }
     },
-    [onChange]
+    [onChange],
   );
 
   const handleMultiChange = useCallback(
     (paths: TreePath[]) => {
       onChange(paths.map((p) => p[p.length - 1]));
     },
-    [onChange]
+    [onChange],
   );
 
   // RJSF validation errors take priority. Taxonomy-state errors (missing config,
@@ -94,13 +94,13 @@ export default function TaxonomyWidget(props: WidgetProps) {
   const taxonomyStateError = !taxonomy
     ? "No taxonomy configured"
     : fetchError
-    ? "Failed to load taxonomy"
-    : undefined;
+      ? "Failed to load taxonomy"
+      : undefined;
 
   const existingNames = useMemo(() => {
     if (multiSelect && Array.isArray(value)) {
       return value.filter(
-        (v): v is string => typeof v === "string" && v !== ""
+        (v): v is string => typeof v === "string" && v !== "",
       );
     }
     if (!multiSelect && typeof value === "string" && value !== "") {

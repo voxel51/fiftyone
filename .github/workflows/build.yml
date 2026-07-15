@@ -64,7 +64,7 @@ jobs:
             app/.yarn/cache
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
       - name: Install app
-        if: steps.app-static-cache.outputs.cache-hit != 'true' && steps.node-cache.outputs.cache-hit != 'true'
+        if: steps.app-static-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
       - name: Build app
         if: steps.app-static-cache.outputs.cache-hit != 'true'

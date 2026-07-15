@@ -1,8 +1,9 @@
 // ---------------------------------------------------------------------------
-// Reactive read-only hooks for the playback atoms. Components MUST go
-// through these instead of calling `useAtomValue(...)` directly — keeps
-// jotai out of the view layer and gives us one place to evolve the
-// reactive read story (memoization, derived state, dev warnings, …).
+// Reactive read hooks for the playback atoms. Components MUST go through
+// these instead of calling `useAtomValue(...)` directly — keeps jotai out
+// of the view layer and gives us one place to evolve the reactive read
+// story (memoization, derived state, dev warnings, …). Imperative reads
+// and stream-side writes live in `store-access.ts`.
 //
 // Every hook reads through `usePlaybackStore()` and targets that store
 // explicitly via `useAtomValue(atom, { store })`. That way the playback
@@ -13,9 +14,14 @@
 
 import { useAtomValue } from "jotai";
 import {
+  achievedSpeedAtom,
+  bufferedRangesAtom,
+  bufferingDetailAtom,
   currentTimeAtom,
   durationAtom,
+  hoverTimeAtom,
   isBufferingAtom,
+  isPlayPendingAtom,
   isPlayingAtom,
   loopEndAtom,
   loopStartAtom,
@@ -27,11 +33,22 @@ import {
   viewStartAtom,
 } from "./atoms";
 import { usePlaybackStore } from "./playback-store-context";
+import type { BufferedRanges, SeekEvent } from "./types";
 
 /** Visual playhead position in seconds — updates every RAF tick + on scrub. */
 export function usePlayhead(): number {
   const store = usePlaybackStore();
   return useAtomValue(playheadAtom, { store });
+}
+
+/**
+ * Timeline time the pointer is inspecting across hover-capable surfaces
+ * (ruler, plot panels), or null when nothing is hovered. Render-only —
+ * surfaces publish it via `setHoverTime` in store-access.
+ */
+export function useHoverTime(): number | null {
+  const store = usePlaybackStore();
+  return useAtomValue(hoverTimeAtom, { store });
 }
 
 /**
@@ -48,9 +65,32 @@ export function useIsPlaying(): boolean {
   return useAtomValue(isPlayingAtom, { store });
 }
 
+export function useIsPlayPending(): boolean {
+  const store = usePlaybackStore();
+  return useAtomValue(isPlayPendingAtom, { store });
+}
+
 export function useIsBuffering(): boolean {
   const store = usePlaybackStore();
   return useAtomValue(isBufferingAtom, { store });
+}
+
+/**
+ * Optional progress detail for the buffering indicator (e.g. "3/7
+ * streams"), or `null` when no stream has published one.
+ */
+export function useBufferingDetail(): string | null {
+  const store = usePlaybackStore();
+  return useAtomValue(bufferingDetailAtom, { store });
+}
+
+/**
+ * Time ranges (seconds) buffered and ready to play across every blocking
+ * stream, as published by the data layer. Empty until a stream reports.
+ */
+export function useBufferedRanges(): BufferedRanges {
+  const store = usePlaybackStore();
+  return useAtomValue(bufferedRangesAtom, { store });
 }
 
 /** Live duration (max of registered streams, or the provider's fallback). */
@@ -93,12 +133,18 @@ export function useSpeed(): number {
   return useAtomValue(speedAtom, { store });
 }
 
+/** Rolling media-seconds-per-wall-second actually committed by the engine. */
+export function useAchievedSpeed(): number | null {
+  const store = usePlaybackStore();
+  return useAtomValue(achievedSpeedAtom, { store });
+}
+
 /**
  * Most recent discontinuous-jump event (seek / step / loop-wrap). `null`
  * before any jump has fired. The `seq` counter changes even when `time`
  * repeats, so consumers can re-fire on every event.
  */
-export function useSeekEvent(): { time: number; seq: number } | null {
+export function useSeekEvent(): SeekEvent | null {
   const store = usePlaybackStore();
   return useAtomValue(seekEventAtom, { store });
 }

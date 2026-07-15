@@ -12,5 +12,5 @@ export const registeredTilesAtom = atom<RegisteredTile[]>([]);
 // Cast preserves the writable shape; jotai's null-narrowed overload
 // resolves to a read-only Atom otherwise.
 export const tileSelectionAtom = atomFamily(
-  (_tileId: string) => atom<unknown>(null) as PrimitiveAtom<unknown>
+  (_tileId: string) => atom<unknown>(null) as PrimitiveAtom<unknown>,
 );

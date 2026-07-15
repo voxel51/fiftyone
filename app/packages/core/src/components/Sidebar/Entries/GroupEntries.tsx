@@ -112,7 +112,7 @@ type GroupEntryProps = {
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
-    cb: () => void
+    cb: () => void,
   ) => void;
 } & React.HTMLProps<HTMLDivElement>;
 
@@ -223,7 +223,7 @@ const GroupEntry = React.memo(
                       if (ref.current) {
                         ref.current.setSelectionRange(
                           0,
-                          ref.current.value.length
+                          ref.current.value.length,
                         );
                         ref.current.focus();
                       }
@@ -251,18 +251,18 @@ const GroupEntry = React.memo(
         </div>
       </div>
     );
-  }
+  },
 );
 
 const useShown = (
   key: string,
-  modal: boolean
+  modal: boolean,
 ): [boolean, SetterOrUpdater<boolean>] => {
   const expanded = useRecoilValueLoadable(
-    fos.groupShown({ group: key, modal, loading: false })
+    fos.groupShown({ group: key, modal, loading: false }),
   );
   const [expandedLoading, setExpanded] = useRecoilStateLoadable(
-    fos.groupShown({ group: key, modal, loading: true })
+    fos.groupShown({ group: key, modal, loading: true }),
   );
 
   if (expanded.state === "hasValue") {
@@ -283,7 +283,7 @@ interface PathGroupProps {
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
-    cb: () => void
+    cb: () => void,
   ) => void;
 }
 
@@ -306,7 +306,7 @@ export const PathGroupEntry = React.memo(
             entries={[
               {
                 count: useRecoilValue(
-                  numGroupFieldsFiltered({ modal, group: name })
+                  numGroupFieldsFiltered({ modal, group: name }),
                 ),
                 dataCy: `clear-filters-${name}`,
                 icon: <FilterList />,
@@ -316,7 +316,7 @@ export const PathGroupEntry = React.memo(
               },
               {
                 count: useRecoilValue(
-                  numGroupFieldsVisible({ modal, group: name })
+                  numGroupFieldsVisible({ modal, group: name }),
                 ),
                 dataCy: `clear-visibility-${name}`,
                 icon: <VisibilityIcon />,
@@ -325,7 +325,7 @@ export const PathGroupEntry = React.memo(
               },
               {
                 count: useRecoilValue(
-                  numGroupFieldsActive({ modal, group: name })
+                  numGroupFieldsActive({ modal, group: name }),
                 ),
                 dataCy: `clear-shown-${name}`,
                 icon: <Check />,
@@ -343,5 +343,5 @@ export const PathGroupEntry = React.memo(
         trigger={mutable ? trigger : undefined}
       />
     );
-  }
+  },
 );

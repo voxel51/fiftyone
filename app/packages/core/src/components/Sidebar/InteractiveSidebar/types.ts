@@ -18,6 +18,6 @@ export type RenderEntry = (
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
-    cb: () => void
-  ) => void
+    cb: () => void,
+  ) => void,
 ) => { children: React.ReactNode; disabled?: boolean };

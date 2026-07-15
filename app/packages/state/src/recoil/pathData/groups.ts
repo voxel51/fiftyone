@@ -22,7 +22,7 @@ export const dynamicGroupsElementCount = selectorFamily({
             modal,
             paths: [""],
             useSelection: false,
-          })
+          }),
         )?.at(0)?.count ?? 0
       );
     },

@@ -44,7 +44,7 @@ const onSetFieldVisibilityStage: RegisteredSetter =
         ...router.get().state,
         event: "fieldVisibility",
         fieldVisibility: stage,
-      }
+      },
     );
 
     // send event as side effect

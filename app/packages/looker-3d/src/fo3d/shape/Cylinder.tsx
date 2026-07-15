@@ -28,9 +28,9 @@ export const Cylinder = ({
         cylinder.heightSegments,
         cylinder.openEnded,
         cylinder.thetaStart,
-        cylinder.thetaLength
+        cylinder.thetaLength,
       ),
-    [cylinder]
+    [cylinder],
   );
   const { material } = useMeshMaterialControls(name, cylinder.defaultMaterial);
 

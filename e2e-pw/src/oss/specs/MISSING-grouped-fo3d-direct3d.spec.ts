@@ -52,8 +52,8 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
         fillColor: ["#3d405b", "#264653", "#6d597a"][index],
         watermarkString: spec.scene,
         hideLogs: true,
-      })
-    )
+      }),
+    ),
   );
 
   groupSpecs.forEach((spec, index) => {
@@ -206,7 +206,7 @@ test.describe.serial("grouped fo3d and direct 3d", () => {
 
     const assertFo3dOnlyState = async (
       index: number,
-      expectedSlice: "fo3d_left" | "fo3d_right"
+      expectedSlice: "fo3d_left" | "fo3d_right",
     ) => {
       const spec = groupSpecs[index];
       const expectedName =
@@ -230,7 +230,7 @@ test.describe.serial("grouped fo3d and direct 3d", () => {
 
     const assertFo3dAndDirectState = async (
       index: number,
-      waitForAssets = true
+      waitForAssets = true,
     ) => {
       const spec = groupSpecs[index];
 
@@ -240,7 +240,7 @@ test.describe.serial("grouped fo3d and direct 3d", () => {
 
       await modal.assert.verifyModalSamplePluginTitle(
         "fo3d_right and pcd_as_3d",
-        { pinned: true }
+        { pinned: true },
       );
       await modal.looker3dControls.assert.verifySliceSelectorLabel("2 slices");
       await modal.sidebar.assert.verifySidebarEntryTexts({
@@ -256,7 +256,7 @@ test.describe.serial("grouped fo3d and direct 3d", () => {
 
     const navigateMixedState = async (
       direction: "forward" | "backward",
-      expectedIndex: number
+      expectedIndex: number,
     ) => {
       const spec = groupSpecs[expectedIndex];
 

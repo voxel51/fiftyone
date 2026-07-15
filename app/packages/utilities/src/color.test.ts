@@ -143,7 +143,7 @@ describe("Color Utilities", () => {
     it("should generate consistent colors for same seed", () => {
       const generator = createColorGenerator(
         ["#ff0000", "#00ff00", "#0000ff"],
-        1
+        1,
       );
       expect(generator("key1")).toBe(generator("key1"));
       expect(generator("key2")).toBe(generator("key2"));
@@ -152,11 +152,11 @@ describe("Color Utilities", () => {
     it("should generate different colors for different seeds", () => {
       const generator1 = createColorGenerator(
         ["#ff0000", "#00ff00", "#0000ff"],
-        1
+        1,
       );
       const generator2 = createColorGenerator(
         ["#ff0000", "#00ff00", "#0000ff"],
-        2
+        2,
       );
       expect(generator1("key1")).not.toBe(generator2("key1"));
     });

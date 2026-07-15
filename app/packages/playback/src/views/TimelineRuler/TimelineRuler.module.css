@@ -22,6 +22,22 @@
   pointer-events: none;
 }
 
+/* Buffered-ranges wash behind the ticks (see BufferedLaneShading).
+   First child of the lane, so ticks and their labels paint above it. */
+.bufferedShading {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bufferedSegment {
+  background: var(--color-content-border-active);
+  bottom: 0;
+  opacity: 0.16;
+  position: absolute;
+  top: 0;
+}
+
 .tick {
   position: absolute;
   top: 0;
@@ -101,4 +117,18 @@
   width: 1px;
   background: var(--color-brand-primary);
   z-index: 3;
+}
+
+/* Shared hover-time caret: the moment being inspected on ANY time-axis
+   surface (this ruler, plot panels) — dashed to stay distinct from the
+   solid playhead line. */
+.hoverCaret {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed var(--color-content-text-secondary);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 2;
 }

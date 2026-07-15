@@ -4,7 +4,7 @@ import styles from "./SidebarPanel.module.css";
 
 export interface SidebarPanelProps {
   /** Section title shown at the top of the panel. */
-  title: string;
+  title: ReactNode;
   children: ReactNode;
 }
 

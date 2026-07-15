@@ -9,7 +9,7 @@ export default function OperatorInvocationRequestExecutor() {
   const { requests, onSuccess, onError } = useInvocationRequestQueue();
   const pendingRequests = useMemo(() => {
     return requests.filter(
-      (queueItem) => queueItem.status === QueueItemStatus.Pending
+      (queueItem) => queueItem.status === QueueItemStatus.Pending,
     );
   }, [requests]);
 

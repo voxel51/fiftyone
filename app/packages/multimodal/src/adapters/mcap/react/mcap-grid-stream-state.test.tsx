@@ -69,11 +69,11 @@ describe("mcap-grid-stream-state", () => {
   it("persists the selected stream topic per dataset with auto as the default", async () => {
     localStorage.setItem(
       "mcap-grid-preview-image-topic:dataset",
-      JSON.stringify("/camera/front")
+      JSON.stringify("/camera/front"),
     );
 
     const { result } = renderHook(() =>
-      useMcapGridSelectedStreamTopic("dataset")
+      useMcapGridSelectedStreamTopic("dataset"),
     );
 
     await waitFor(() => {
@@ -86,13 +86,13 @@ describe("mcap-grid-stream-state", () => {
 
     expect(result.current[0]).toBe("/camera/back");
     expect(localStorage.getItem("mcap-grid-preview-image-topic:dataset")).toBe(
-      JSON.stringify("/camera/back")
+      JSON.stringify("/camera/back"),
     );
   });
 
   it("uses auto when no dataset is available", () => {
     const { result } = renderHook(() =>
-      useMcapGridSelectedStreamTopic(undefined)
+      useMcapGridSelectedStreamTopic(undefined),
     );
 
     expect(result.current[0]).toBe(MCAP_GRID_STREAM_AUTO);

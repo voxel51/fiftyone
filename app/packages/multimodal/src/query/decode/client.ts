@@ -30,8 +30,11 @@ export function createDecodeClient({
   readonly registry?: DecoderRegistry;
 }): DecodeClient {
   const pendingDecodes = new Map<string, Promise<DecodeResult>>();
+  const cachesDecodedOutput = cache.enabled !== false;
 
   return {
+    cachesDecodedOutput,
+
     async decode(request) {
       const decoder = registry.find(request.payload);
       if (!decoder) {
@@ -60,18 +63,19 @@ export function createDecodeClient({
         payload: request.payload,
       });
 
-      const cacheKey = request.cache
-        ? {
-            decoderId: decoder.id,
-            decoderOptionsKey: request.cache.decoderOptionsKey,
-            decoderVersion: decoder.version,
-            payload: request.payload,
-            recordId: request.cache.recordId,
-            source: request.cache.source,
-            streamId: request.cache.streamId,
-            timeNs: request.cache.timeNs,
-          }
-        : undefined;
+      const cacheKey =
+        cachesDecodedOutput && request.cache
+          ? {
+              decoderId: decoder.id,
+              decoderOptionsKey: request.cache.decoderOptionsKey,
+              decoderVersion: decoder.version,
+              payload: request.payload,
+              recordId: request.cache.recordId,
+              source: request.cache.source,
+              streamId: request.cache.streamId,
+              timeNs: request.cache.timeNs,
+            }
+          : undefined;
       if (!cacheKey) {
         return runDecode();
       }

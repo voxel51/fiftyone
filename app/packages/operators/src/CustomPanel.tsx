@@ -1,4 +1,4 @@
-import { CenteredStack, CodeBlock, scrollable } from "@fiftyone/components";
+import { CenteredStack, scrollable } from "@fiftyone/components";
 import { clearUseKeyStores } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 import {
   PanelSkeleton,
@@ -25,7 +25,7 @@ const SpinnerContainer = styled(Box)`
 `;
 
 export function CustomPanel(props: CustomPanelProps) {
-  const { panelId, dimensions, panelName, panelLabel, isModalPanel } = props;
+  const { panelId, dimensions, panelName, isModalPanel } = props;
   const { height, width } = dimensions?.bounds || {};
   const { count } = useActivePanelEventsCount(panelId);
   const [_, setLoading] = usePanelLoading(panelId);

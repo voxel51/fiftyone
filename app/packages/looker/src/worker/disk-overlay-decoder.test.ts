@@ -47,7 +47,7 @@ describe("decodeOverlayOnDisk", () => {
       COLOR_SCALE,
       SOURCES,
       cls,
-      maskPathDecodingPromises
+      maskPathDecodingPromises,
     );
 
     expect(label.mask).toBeDefined();
@@ -78,7 +78,7 @@ describe("decodeOverlayOnDisk", () => {
       COLOR_SCALE,
       SOURCES,
       cls,
-      maskPathDecodingPromises
+      maskPathDecodingPromises,
     );
 
     expect(getSampleSrc).toHaveBeenCalledWith("/path/to/mask");
@@ -90,7 +90,7 @@ describe("decodeOverlayOnDisk", () => {
       mockBlob,
       SEGMENTATION,
       field,
-      COLORING
+      COLORING,
     );
     expect(label.mask).toBeDefined();
     expect(label.mask.data).toBe(overlayMask);
@@ -119,7 +119,7 @@ describe("decodeOverlayOnDisk", () => {
       COLOR_SCALE,
       SOURCES,
       cls,
-      maskPathDecodingPromises
+      maskPathDecodingPromises,
     );
 
     expect(getSampleSrc).toHaveBeenCalledWith("/path/to/map");
@@ -131,7 +131,7 @@ describe("decodeOverlayOnDisk", () => {
       mockBlob,
       HEATMAP,
       field,
-      COLORING
+      COLORING,
     );
     expect(label.map).toBeDefined();
     expect(label.map.data).toBe(overlayMask);
@@ -170,7 +170,7 @@ describe("decodeOverlayOnDisk", () => {
       COLOR_SCALE,
       SOURCES,
       cls,
-      maskPathDecodingPromises
+      maskPathDecodingPromises,
     );
 
     await Promise.all(maskPathDecodingPromises);
@@ -202,7 +202,7 @@ describe("decodeOverlayOnDisk", () => {
       COLOR_SCALE,
       SOURCES,
       cls,
-      maskPathDecodingPromises
+      maskPathDecodingPromises,
     );
 
     expect(getSampleSrc).toHaveBeenCalledWith("/path/to/mask");
@@ -226,7 +226,7 @@ describe("recastBufferToMonoChannel", () => {
       input,
       width,
       height,
-      stride
+      stride,
     );
     const resultArray = new Uint8Array(resultBuffer);
 
@@ -246,7 +246,7 @@ describe("recastBufferToMonoChannel", () => {
       input,
       width,
       height,
-      stride
+      stride,
     );
     const resultArray = new Uint8Array(resultBuffer);
     expect(resultArray).toEqual(new Uint8Array([10, 40]));
@@ -265,7 +265,7 @@ describe("recastBufferToMonoChannel", () => {
       input,
       width,
       height,
-      stride
+      stride,
     );
     const resultArray = new Uint8Array(resultBuffer);
     expect(resultArray).toEqual(new Uint8Array([10, 40]));
@@ -281,7 +281,7 @@ describe("recastBufferToMonoChannel", () => {
       input,
       width,
       height,
-      stride
+      stride,
     );
     const resultArray = new Uint8Array(resultBuffer);
 

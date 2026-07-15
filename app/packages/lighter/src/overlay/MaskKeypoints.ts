@@ -86,14 +86,14 @@ export class MaskKeypoints extends KeypointOverlay {
    */
   override addPoint(
     worldPoint: Point,
-    options?: { variant?: string; id?: string; dragging?: boolean }
+    options?: { variant?: string; id?: string; dragging?: boolean },
   ): string | null {
     let shouldAddPoint = true;
 
     if (options?.dragging && this.lastKeypoint) {
       const dist = Math.hypot(
         worldPoint.x - this.lastKeypoint.x,
-        worldPoint.y - this.lastKeypoint.y
+        worldPoint.y - this.lastKeypoint.y,
       );
 
       shouldAddPoint = dist >= this.keypointThreshold;
@@ -128,7 +128,7 @@ export class MaskKeypoints extends KeypointOverlay {
     const connections = points.reduce(
       (memo, _point, index) =>
         index === 0 ? memo : [...memo, [index - 1, index]],
-      []
+      [],
     );
     this.setConnections(connections);
   }
@@ -150,7 +150,7 @@ export class MaskKeypoints extends KeypointOverlay {
       renderer.drawLines(
         edgeSegments,
         { strokeStyle: strokeColor, lineWidth },
-        this.containerId
+        this.containerId,
       );
     }
 
@@ -165,7 +165,7 @@ export class MaskKeypoints extends KeypointOverlay {
           lineWidth,
           opacity: PREVIEW_LINE_OPACITY,
         },
-        this.containerId
+        this.containerId,
       );
     }
 
@@ -181,7 +181,7 @@ export class MaskKeypoints extends KeypointOverlay {
           dashPattern: [6, 4],
           opacity: PREVIEW_LINE_OPACITY,
         },
-        this.containerId
+        this.containerId,
       );
 
       // a second preview line to the first point
@@ -196,7 +196,7 @@ export class MaskKeypoints extends KeypointOverlay {
             dashPattern: [6, 4],
             opacity: PREVIEW_LINE_OPACITY,
           },
-          this.containerId
+          this.containerId,
         );
       }
     }
@@ -224,7 +224,7 @@ export class MaskKeypoints extends KeypointOverlay {
         regularPoints,
         KEYPOINT_RADIUS,
         pointStyle,
-        this.containerId
+        this.containerId,
       );
     }
 
@@ -234,13 +234,13 @@ export class MaskKeypoints extends KeypointOverlay {
         selectedPoint,
         KEYPOINT_SELECTED_RADIUS,
         pointStyle,
-        this.containerId
+        this.containerId,
       );
       renderer.drawPoint(
         selectedPoint,
         KEYPOINT_RADIUS,
         { fillStyle: "#ffffff" },
-        this.containerId
+        this.containerId,
       );
     }
 

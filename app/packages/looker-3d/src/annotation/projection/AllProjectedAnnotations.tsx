@@ -1,5 +1,7 @@
+import type { Vector3 } from "three";
 import type { FrustumData } from "../../frustum/types";
 import {
+  useCuboidOrientation,
   useCurrentSelected3dAnnotationLabel,
   useHoveredLabel3d,
 } from "../../state";
@@ -10,6 +12,7 @@ import { OverlaySvg } from "./shared";
 
 interface AllProjectedAnnotationsProps {
   frustumData: FrustumData;
+  upVector?: Vector3 | null;
 }
 
 /**
@@ -17,10 +20,12 @@ interface AllProjectedAnnotationsProps {
  */
 export function AllProjectedAnnotations({
   frustumData,
+  upVector,
 }: AllProjectedAnnotationsProps) {
   const renderModel = useRenderModel();
   const selectedLabel = useCurrentSelected3dAnnotationLabel();
   const hoveredLabel = useHoveredLabel3d();
+  const showCuboidOrientation = useCuboidOrientation();
 
   const { intrinsics } = frustumData;
 
@@ -53,6 +58,8 @@ export function AllProjectedAnnotations({
           isSelected={detection._id === selectedId}
           isHovered={detection._id === hoveredId && !isSameAsSelected}
           isAnyLabelSelected={isAnyLabelSelected}
+          showOrientation={showCuboidOrientation}
+          upVector={upVector}
         />
       ))}
 

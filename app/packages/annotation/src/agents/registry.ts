@@ -20,7 +20,7 @@ export interface AgentRegistry {
   register(
     id: string,
     label: string,
-    agent: AnnotationAgent<InferenceResultProxy>
+    agent: AnnotationAgent<InferenceResultProxy>,
   ): Promise<void>;
 
   /** Returns all currently registered {@link AgentDescriptor}s. */

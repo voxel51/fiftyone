@@ -1,4 +1,3 @@
-import { useUndoRedo } from "@fiftyone/commands";
 import {
   ClassificationIcon,
   DetectionIcon,
@@ -16,7 +15,12 @@ import {
   useCurrent3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import { is3DDataset, useIs3dPinned } from "@fiftyone/state";
+import {
+  is3DDataset,
+  isVideoDataset,
+  useIs3dPinned,
+  useIsGroupDataset,
+} from "@fiftyone/state";
 import {
   DETECTION,
   DETECTIONS,
@@ -26,18 +30,21 @@ import {
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { Anchor, Text, Tooltip } from "@voxel51/voodo";
-import { useAtomValue, useSetAtom } from "jotai";
 import { createContext, useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
-import { editing } from "./Edit";
-import { fieldsOfType } from "./Edit/state";
+import {
+  useAnnotationContext,
+  useAnnotationFields,
+} from "./Edit/useAnnotationContext";
 import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
+import { useAnnotationUndoRedo } from "./useAnnotationUndoRedo";
 import { useDeactivateAllModes } from "./useDeactivateAllModes";
+import { useGroupAnnotationSliceReady } from "./useGroupAnnotationSliceReady";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -284,8 +291,12 @@ const Polyline = () => {
   );
 };
 
+// Undo/Redo show a generic tooltip rather than a full stack dump: on video a
+// single edit fans out across many frames, so the raw stack reads as noise.
+// `useAnnotationUndoRedo` still exposes `undoStack` / `redoStack` for debugging
+// and a likely future "history panel" resurfacing.
 export const Undo = () => {
-  const { undo, undoEnabled } = useUndoRedo();
+  const { undo, undoEnabled } = useAnnotationUndoRedo();
 
   return (
     <Tooltip anchor={Anchor.Top} content={<Text>Undo</Text>} portal>
@@ -301,7 +312,7 @@ export const Undo = () => {
 };
 
 export const Redo = () => {
-  const { redo, redoEnabled } = useUndoRedo();
+  const { redo, redoEnabled } = useAnnotationUndoRedo();
 
   return (
     <Tooltip anchor={Anchor.Top} content={<Text>Redo</Text>} portal>
@@ -317,23 +328,23 @@ export const Redo = () => {
 };
 
 export const ThreeDPolylines = () => {
-  const setEditing = useSetAtom(editing);
+  const { createNew } = useAnnotationContext();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const deactivateAll = useDeactivateAll();
-  const visibleFields = useAtomValue(fieldsOfType(POLYLINE));
+  const { fields } = useAnnotationFields(POLYLINE);
 
   const polylineFields = use3dAnnotationFields(
     useCallback(
       (fieldType) =>
         fieldType === POLYLINE.toLocaleLowerCase() ||
         fieldType === POLYLINES.toLocaleLowerCase(),
-      []
-    )
+      [],
+    ),
   );
 
   const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
-  const disabled = visibleFields.length === 0;
+  const disabled = fields.length === 0;
   const isPolylineAnnotateActive =
     current3dAnnotationMode === ANNOTATION_POLYLINE;
 
@@ -350,6 +361,8 @@ export const ThreeDPolylines = () => {
       portal
     >
       <Square
+        data-cy="polyline-mode-3d"
+        data-cy-active={String(isPolylineAnnotateActive)}
         $active={isPolylineAnnotateActive}
         className={disabled ? "disabled" : ""}
         onClick={() => {
@@ -359,7 +372,7 @@ export const ThreeDPolylines = () => {
           if (isPolylineAnnotateActive) return;
 
           if (!hasPolylineFieldsInSchema) {
-            setEditing(POLYLINE);
+            createNew(POLYLINE);
             return;
           }
 
@@ -373,23 +386,23 @@ export const ThreeDPolylines = () => {
 };
 
 export const ThreeDCuboids = () => {
-  const setEditing = useSetAtom(editing);
+  const { createNew } = useAnnotationContext();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const deactivateAll = useDeactivateAll();
-  const visibleFields = useAtomValue(fieldsOfType(DETECTION));
+  const { fields } = useAnnotationFields(DETECTION);
 
   const cuboidFields = use3dAnnotationFields(
     useCallback(
       (fieldType) =>
         fieldType === DETECTION.toLocaleLowerCase() ||
         fieldType === DETECTIONS.toLocaleLowerCase(),
-      []
-    )
+      [],
+    ),
   );
 
   const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;
-  const disabled = visibleFields.length === 0;
+  const disabled = fields.length === 0;
   const isCuboidAnnotateActive = current3dAnnotationMode === ANNOTATION_CUBOID;
 
   return (
@@ -405,6 +418,8 @@ export const ThreeDCuboids = () => {
       portal
     >
       <Square
+        data-cy="cuboid-mode"
+        data-cy-active={String(isCuboidAnnotateActive)}
         $active={isCuboidAnnotateActive}
         className={disabled ? "disabled" : ""}
         onClick={() => {
@@ -414,7 +429,7 @@ export const ThreeDCuboids = () => {
           if (isCuboidAnnotateActive) return;
 
           if (!hasCuboidFieldsInSchema) {
-            setEditing(DETECTION);
+            createNew(DETECTION);
             return;
           }
 
@@ -430,6 +445,13 @@ export const ThreeDCuboids = () => {
 const Actions = () => {
   // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
+  // Video annotation handles the per-frame spatial label types — boxes,
+  // instance masks (Segmentation mode paints onto a detection), and polylines —
+  // plus sample-level Classification (the field picker filters frame-level
+  // paths out). So the surface shows that set (Select + Classification +
+  // Detection + Segmentation + Polyline). Undo/redo are shown — the engine's
+  // value-based stack backs them on video too.
+  const isVideo = useRecoilValue(isVideoDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const is3dSamplePinned = useIs3dPinned();
 
@@ -447,6 +469,14 @@ const Actions = () => {
     !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
+  // For group datasets the 2D-vs-3D decision depends on the resolved annotation
+  // slice, which isn't known until the group's sample data loads. Withhold the
+  // slice-dependent tools until then so a 3D sample never flashes 2D tools.
+  // Non-group datasets resolve immediately and don't gate.
+  const isGroupDataset = useIsGroupDataset();
+  const [groupAnnotationSliceReady] = useGroupAnnotationSliceReady();
+  const toolsResolved = !isGroupDataset || groupAnnotationSliceReady;
+
   const deactivateAll = useDeactivateAllModes();
 
   return (
@@ -455,17 +485,29 @@ const Actions = () => {
         <Row>
           <ItemLeft style={{ columnGap: "0.1rem" }}>
             <Select active={noActiveActions} />
-            <Classification />
-            {areThreeDActionsVisible ? (
+            {isVideo ? (
               <>
-                <ThreeDCuboids />
-                <ThreeDPolylines />
-              </>
-            ) : (
-              <>
+                <Classification />
                 <Detection />
                 <Segmentation />
                 <Polyline />
+              </>
+            ) : (
+              <>
+                <Classification />
+                {toolsResolved &&
+                  (areThreeDActionsVisible ? (
+                    <>
+                      <ThreeDCuboids />
+                      <ThreeDPolylines />
+                    </>
+                  ) : (
+                    <>
+                      <Detection />
+                      <Segmentation />
+                      <Polyline />
+                    </>
+                  ))}
               </>
             )}
           </ItemLeft>

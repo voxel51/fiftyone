@@ -187,19 +187,19 @@ export default function RunList({
         return next;
       });
     },
-    [onMediaToggle]
+    [onMediaToggle],
   );
 
   const visibleRunIds = useMemo(
     () => filteredRuns.map((r) => r.run_id),
-    [filteredRuns]
+    [filteredRuns],
   );
 
   const allVisibleSelected = useMemo(
     () =>
       visibleRunIds.length > 0 &&
       visibleRunIds.every((id) => selectedRunIds.has(id)),
-    [visibleRunIds, selectedRunIds]
+    [visibleRunIds, selectedRunIds],
   );
 
   const handleSelectAllToggle = useCallback(
@@ -210,7 +210,7 @@ export default function RunList({
         onDeselectAll();
       }
     },
-    [visibleRunIds, onSelectAll, onDeselectAll]
+    [visibleRunIds, onSelectAll, onDeselectAll],
   );
 
   const handleBulkDelete = useCallback(() => {
@@ -299,7 +299,7 @@ export default function RunList({
       onDelete,
       onRename,
       handleToggleExpand,
-    ]
+    ],
   );
 
   return (

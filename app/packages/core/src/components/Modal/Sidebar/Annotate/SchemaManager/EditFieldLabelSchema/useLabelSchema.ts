@@ -31,11 +31,11 @@ import { type AttributeConfig, reconcileComponent } from "../utils";
 
 const fetchAndMergeOntologyAttributes = async (
   name: string,
-  setCurrent: (updater: (live: unknown) => unknown) => void
+  setCurrent: (updater: (live: unknown) => unknown) => void,
 ): Promise<void> => {
   const result = await getFetchFunction()(
     "GET",
-    `/ontologies/${encodeURIComponent(name)}/attributes`
+    `/ontologies/${encodeURIComponent(name)}/attributes`,
   );
 
   const attrs = (result as { attributes: AttributeConfig[] }).attributes;
@@ -166,7 +166,7 @@ export const useAppliedOntology = (field: string) => {
             return acc;
           }, [])
         : [],
-    [schema?.attributes]
+    [schema?.attributes],
   );
 
   return {
@@ -389,7 +389,7 @@ export default function useLabelSchema(field: string) {
   const validate = useValidate(field);
   const schemaChanged = useHasChanges(
     validate.currentLabelSchema,
-    save.savedLabelSchema
+    save.savedLabelSchema,
   );
 
   const hasChanges =

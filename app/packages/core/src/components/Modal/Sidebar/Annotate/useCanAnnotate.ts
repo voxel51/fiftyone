@@ -7,21 +7,22 @@ import {
   useGroupSlices,
   useIsGroupDataset,
 } from "@fiftyone/state";
-import { isAnnotationSupported } from "@fiftyone/utilities";
+import { isAnnotationSupported, isMultimodal } from "@fiftyone/utilities";
 import { useRecoilValue } from "recoil";
 
 /**
  * Returns true if the current group dataset has at least one slice with a
- * media type that supports annotation (image or 3D).
+ * media type that supports annotation (image, video, or 3D).
  */
 function useHasAnnotationSupportedSlices(): boolean {
-  return useGroupSlices(["image", "3d"]).length > 0;
+  return useGroupSlices(["image", "video", "3d"]).length > 0;
 }
 
 export type AnnotationDisabledReason =
   | "generatedView"
   | "groupDatasetNoSupportedSlices"
   | "videoDataset"
+  | "multimodalDataset"
   | null;
 
 export interface CanAnnotateResult {
@@ -54,6 +55,13 @@ export default function useCanAnnotate(): CanAnnotateResult {
     return {
       showAnnotationTab: true,
       disabledReason: "groupDatasetNoSupportedSlices",
+    };
+  }
+
+  if (!isGroup && isMultimodal(currentMediaType)) {
+    return {
+      showAnnotationTab: true,
+      disabledReason: "multimodalDataset",
     };
   }
 

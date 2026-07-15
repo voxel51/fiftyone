@@ -1,7 +1,7 @@
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import Draggable from "react-draggable";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -81,13 +81,13 @@ export default () => {
   const mode = useAtomValue(modalMode);
   const isGroup = useMemo(
     () => isActualGroup || isDynamicGroup,
-    [isActualGroup, isDynamicGroup]
+    [isActualGroup, isDynamicGroup],
   );
 
   const [defaultXCoord, setDefaultXCoord] = fos.useBrowserStorage<number>(
     "modal-actions-row-x-coord",
     0,
-    false
+    false,
   );
 
   return (

@@ -122,7 +122,7 @@ test.describe.serial("operator prompt", () => {
     await operatorsPromptDrawer.execute();
     await operatorsPromptDrawer.assert.isExecuting();
     await expect(operatorsPromptDrawer.content).toContainText(
-      "Message:Hi E2E!"
+      "Message:Hi E2E!",
     );
     await operatorsPromptDrawer.close();
     await operatorsPromptDrawer.assert.isClosed();
@@ -138,10 +138,10 @@ test.describe.serial("operator prompt", () => {
     await operatorsBrowser.choose("E2E: Progress");
     await operatorsPrompt.assert.isExecuting();
     await expect(operatorsPromptViewModal.content).toContainText(
-      "Loading 1 of 2"
+      "Loading 1 of 2",
     );
     await expect(operatorsPromptViewModal.content).toContainText(
-      "Loading 2 of 2"
+      "Loading 2 of 2",
     );
     await operatorsPromptViewModal.done();
     await operatorsPrompt.assert.isClosed();

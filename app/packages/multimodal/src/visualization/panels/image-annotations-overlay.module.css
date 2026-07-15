@@ -8,6 +8,12 @@
   stroke: var(--ann-hover, #ff7a18);
 }
 
+/* Selected reads differently from a transient hover: same highlight
+   color, but a dashed outline. */
+.selected {
+  stroke-dasharray: 6 4;
+}
+
 .fillInterior {
   fill: transparent;
   stroke: none;

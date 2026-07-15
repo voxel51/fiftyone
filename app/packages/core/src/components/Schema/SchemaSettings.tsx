@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
-import React, { Fragment, useCallback, useRef } from "react";
+import { Fragment, useCallback, useRef } from "react";
 import { useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import { TabOption } from "../utils";
@@ -58,26 +58,22 @@ const SchemaSettings = () => {
     setSearchTerm,
     setSelectedTab,
     selectedTab,
-    datasetName,
-    excludedPaths,
     resetExcludedPaths,
     isFilterRuleActive,
     setShowNestedFields,
     mergedSchema,
     excludedPathsStripped,
   } = fos.useSchemaSettings();
-  const { searchResults } = fos.useSearchSchemaFields(mergedSchema);
+  const { searchResults, setSearchResults } =
+    fos.useSearchSchemaFields(mergedSchema);
 
   const applyDisabled =
     isFilterRuleActive && (!searchTerm || !searchResults.length);
   const resetDisabled = isFilterRuleActive && !searchResults.length;
 
-  const { setSearchResults, searchMetaFilter } =
-    fos.useSearchSchemaFields(mergedSchema);
-
   const { setFieldVisibilityStage } = fos.useSetSelectedFieldsStage();
   const resetFieldVisibilityStage = useResetRecoilState(
-    fos.fieldVisibilityStage
+    fos.fieldVisibilityStage,
   );
 
   const { resetAttributeFilters } = fos.useSchemaSettings();
@@ -98,7 +94,7 @@ const SchemaSettings = () => {
         setSettingsModal({ open: false });
       }
     },
-    [setSettingsModal]
+    [setSettingsModal],
   );
   fos.useEventHandler(document, "keydown", keyboardHandler);
 

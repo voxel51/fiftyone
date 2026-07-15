@@ -1,0 +1,79 @@
+import { useTileId } from "@fiftyone/tiling";
+import { atom, useAtomValue, useStore } from "jotai";
+import { useCallback, useMemo } from "react";
+import { MCAP_LOG_LEVELS, type McapLogLevel } from "../log-records";
+
+/**
+ * View configuration for one log console tile. This is the log tile's
+ * settings-shaped state — what to show and how to follow — as opposed to
+ * the moment's state (window center, fetched rows), which stays ephemeral
+ * component state.
+ */
+export interface McapLogTileSettings {
+  /**
+   * `undefined` means "all log topics currently present". Once the user
+   * edits topic visibility, this becomes the explicit visible list.
+   */
+  readonly enabledTopics?: readonly string[];
+  /** Keep the visible window following the playhead. */
+  readonly followPlayhead: boolean;
+  readonly selectedLevels: readonly McapLogLevel[];
+}
+
+export type McapLogTileSettingsByTile = Readonly<
+  Record<string, McapLogTileSettings>
+>;
+
+export const DEFAULT_MCAP_LOG_TILE_SETTINGS: McapLogTileSettings = {
+  followPlayhead: true,
+  selectedLevels: MCAP_LOG_LEVELS,
+};
+
+/**
+ * Per-tile log view settings, stored in the tiling shell's per-instance
+ * Jotai store like the plot/map/raw tiles' state; layout persistence
+ * snapshots it per dataset.
+ */
+export const mcapLogTileSettingsAtom = atom<McapLogTileSettingsByTile>({});
+
+/** Subscribe to the surrounding log tile's view settings. */
+export function useMcapLogTileSettings(): McapLogTileSettings {
+  const tileId = useTileId();
+  const byTile = useAtomValue(mcapLogTileSettingsAtom);
+  return useMemo(
+    () =>
+      tileId
+        ? { ...DEFAULT_MCAP_LOG_TILE_SETTINGS, ...byTile[tileId] }
+        : DEFAULT_MCAP_LOG_TILE_SETTINGS,
+    [byTile, tileId],
+  );
+}
+
+/** Patch the surrounding log tile's view settings. */
+export function useSetMcapLogTileSettings(): (
+  patch: Partial<McapLogTileSettings>,
+) => void {
+  const tileId = useTileId();
+  const store = useStore();
+  return useCallback(
+    (patch) => {
+      if (!tileId) return;
+      store.set(mcapLogTileSettingsAtom, (previous) => {
+        const current = {
+          ...DEFAULT_MCAP_LOG_TILE_SETTINGS,
+          ...previous[tileId],
+        };
+        const next = { ...current, ...patch };
+        if (
+          next.enabledTopics === current.enabledTopics &&
+          next.followPlayhead === current.followPlayhead &&
+          next.selectedLevels === current.selectedLevels
+        ) {
+          return previous;
+        }
+        return { ...previous, [tileId]: next };
+      });
+    },
+    [store, tileId],
+  );
+}

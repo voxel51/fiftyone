@@ -35,7 +35,7 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
 
   const allBrainKeys = useMemo(
     () => panelData.brain_keys ?? [],
-    [panelData.brain_keys]
+    [panelData.brain_keys],
   );
   const appliedRunId = (panelData as Record<string, unknown>).applied_run_id as
     | string
@@ -53,11 +53,11 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   const patchesField = useMemo(() => {
     if (!isPatchesView) return undefined;
     const stage = (viewStages as any[])?.find(
-      (s: any) => s._cls === "fiftyone.core.stages.ToPatches"
+      (s: any) => s._cls === "fiftyone.core.stages.ToPatches",
     );
     if (!stage) return undefined;
     return stage.kwargs?.find(
-      ([k]: [string, unknown]) => k === "field"
+      ([k]: [string, unknown]) => k === "field",
     )?.[1] as string | undefined;
   }, [isPatchesView, viewStages]);
 
@@ -71,18 +71,18 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   // Filter runs to only those whose brain_key is in the effective set
   const effectiveBrainKeySet = useMemo(
     () => new Set(brainKeys.map((bk) => bk.key)),
-    [brainKeys]
+    [brainKeys],
   );
   const runs = useMemo(
     () => allRuns.filter((r) => effectiveBrainKeySet.has(r.brain_key)),
-    [allRuns, effectiveBrainKeySet]
+    [allRuns, effectiveBrainKeySet],
   );
 
   // currentUser is null in OSS, populated by FOE via panel data
   const currentUser =
     ((panelData as Record<string, unknown>).current_user as string) ?? null;
   const canManage = Boolean(
-    (panelData as Record<string, unknown>).can_manage ?? true
+    (panelData as Record<string, unknown>).can_manage ?? true,
   );
   const isReadOnly = useRecoilValue(fos.readOnly) as boolean;
 
@@ -126,11 +126,11 @@ type PanelActionsDeps = {
     deleteRun: (payload: { run_id: string }, options?: TriggerOptions) => void;
     bulkDeleteRuns: (
       payload: { run_ids: string[] },
-      options?: TriggerOptions
+      options?: TriggerOptions,
     ) => void;
     renameRun: (
       payload: { run_id: string; new_name: string },
-      options?: TriggerOptions
+      options?: TriggerOptions,
     ) => void;
   };
   setCloneConfig: (config: CloneConfig) => void;
@@ -160,7 +160,7 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
     (runId: string) => {
       triggers.applyRun({ run_id: runId });
     },
-    [triggers]
+    [triggers],
   );
 
   const handleDelete = useCallback(
@@ -174,15 +174,15 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
             if (result?.error) {
               console.error(
                 "Delete run failed; reconciling from server:",
-                result.error
+                result.error,
               );
               refreshRuns();
             }
           },
-        }
+        },
       );
     },
-    [triggers, removeRun, refreshRuns]
+    [triggers, removeRun, refreshRuns],
   );
 
   const handleBulkDelete = useCallback(
@@ -197,15 +197,15 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
             if (result?.error) {
               console.error(
                 "Bulk delete failed; reconciling from server:",
-                result.error
+                result.error,
               );
               refreshRuns();
             }
           },
-        }
+        },
       );
     },
-    [triggers, removeRuns, clearAndExit, refreshRuns]
+    [triggers, removeRuns, clearAndExit, refreshRuns],
   );
 
   const handleClone = useCallback(
@@ -222,14 +222,14 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
       });
       navigateNewSearch();
     },
-    [runs, setCloneConfig, navigateNewSearch]
+    [runs, setCloneConfig, navigateNewSearch],
   );
 
   const handleRename = useCallback(
     (runId: string, newName: string) => {
       triggers.renameRun({ run_id: runId, new_name: newName });
     },
-    [triggers]
+    [triggers],
   );
 
   const handleNewSearch = useCallback(() => {
@@ -268,7 +268,7 @@ const useSimilarityPanelActions = (deps: PanelActionsDeps) => {
       handleNewSearch,
       handleRename,
       handleSubmitted,
-    ]
+    ],
   );
 };
 
@@ -307,15 +307,15 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     deleteRun: (payload: { run_id: string }, options?: TriggerOptions) => void;
     bulkDeleteRuns: (
       payload: { run_ids: string[] },
-      options?: TriggerOptions
+      options?: TriggerOptions,
     ) => void;
     renameRun: (
       payload: { run_id: string; new_name: string },
-      options?: TriggerOptions
+      options?: TriggerOptions,
     ) => void;
     getSampleMedia: (
       payload: { sample_ids: string[] },
-      options?: TriggerOptions
+      options?: TriggerOptions,
     ) => void;
   }>({
     applyRun: view.apply_run,
@@ -421,7 +421,7 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
       selectAll,
       deselectAll,
       clearAndExit,
-    ]
+    ],
   );
 
   return {

@@ -13,7 +13,7 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import React, { useState } from "react";
+import { useState } from "react";
 import { RunFilterState, DateFilterPreset } from "../../types";
 import { DATE_PRESET_OPTIONS, OWNER_ALL, OWNER_MINE } from "../../constants";
 import { FilterBarSearchCol, FilterBarDateCol } from "../styled";

@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { useImageSlicesIfAvailable } from "../../../annotation/useImageSlicesIfAvailable";
 import type {
@@ -22,16 +22,14 @@ export function useFetchFrustumParameters() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [fetchTrigger, setFetchTrigger] = useState(0);
-  const { activeFo3dSlice: currentFo3dSlice, non3dSlices: allNon3dSlices } =
-    fos.useRenderConfig3dState();
+  const allNon3dSlices = fos.useNon3dSlices();
 
   const datasetId = useRecoilValue(fos.datasetId);
-  const sampleId = useRecoilValue(fos.currentSampleId);
+  const sampleId = fos.useCurrentSampleId();
   const isGroup = useRecoilValue(fos.isGroup);
   const modalSample = fos.useStableModalSample();
 
-  const { resolveUrlForImageSlice, isLoadingImageSlices } =
-    useImageSlicesIfAvailable(modalSample);
+  const { resolveUrlForImageSlice } = useImageSlicesIfAvailable(modalSample);
 
   const refetch = useCallback(() => {
     setFetchTrigger((prev) => prev + 1);
@@ -63,26 +61,22 @@ export function useFetchFrustumParameters() {
             fetch<void, GroupStaticTransformResponse>(
               "GET",
               `/dataset/${encodeURIComponent(
-                datasetId
-              )}/sample/${encodeURIComponent(sampleId)}/group/static_transforms`
+                datasetId,
+              )}/sample/${encodeURIComponent(sampleId)}/group/static_transforms`,
             ),
             fetch<void, GroupIntrinsicsResponse>(
               "GET",
               `/dataset/${encodeURIComponent(
-                datasetId
-              )}/sample/${encodeURIComponent(sampleId)}/group/intrinsics`
+                datasetId,
+              )}/sample/${encodeURIComponent(sampleId)}/group/intrinsics`,
             ),
-          ]
+          ],
         );
 
         // Build frustum data for each non-3D slice
         const frustums: FrustumData[] = [];
 
         for (const sliceName of allNon3dSlices) {
-          if (sliceName === currentFo3dSlice) {
-            continue;
-          }
-
           const staticTransformResult =
             staticTransformResponse.results[sliceName];
           const intrinsicsResult = intrinsicsResponse.results[sliceName];
@@ -112,13 +106,10 @@ export function useFetchFrustumParameters() {
             intrinsics = intrinsicsResult.intrinsics as CameraIntrinsics | null;
           }
 
-          const imageUrl = resolveUrlForImageSlice(sliceName) ?? undefined;
-
           frustums.push({
             sliceName,
             staticTransform,
             intrinsics,
-            imageUrl,
           });
         }
 
@@ -143,19 +134,20 @@ export function useFetchFrustumParameters() {
     return () => {
       cancelled = true;
     };
-  }, [
-    isGroup,
-    datasetId,
-    sampleId,
-    currentFo3dSlice,
-    allNon3dSlices,
-    resolveUrlForImageSlice,
-    fetchTrigger,
-  ]);
+  }, [isGroup, datasetId, sampleId, allNon3dSlices, fetchTrigger]);
+
+  const dataWithImageUrls = useMemo(
+    () =>
+      data.map((frustum) => ({
+        ...frustum,
+        imageUrl: resolveUrlForImageSlice(frustum.sliceName) ?? undefined,
+      })),
+    [data, resolveUrlForImageSlice],
+  );
 
   return {
-    data,
-    isLoading: isLoading || isLoadingImageSlices,
+    data: dataWithImageUrls,
+    isLoading,
     error,
     refetch,
   };

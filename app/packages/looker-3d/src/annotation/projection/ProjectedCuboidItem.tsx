@@ -1,4 +1,6 @@
+import type { Vector3 } from "three";
 import type { FrustumData } from "../../frustum/types";
+import { getComplementaryColor } from "../../utils";
 import type { ReconciledDetection3D } from "../types";
 import { resolveVisualProps } from "./shared";
 import { SvgCuboidProjection } from "./SvgCuboidProjection";
@@ -10,6 +12,8 @@ interface ProjectedCuboidItemProps {
   isSelected: boolean;
   isHovered: boolean;
   isAnyLabelSelected: boolean;
+  showOrientation: boolean;
+  upVector?: Vector3 | null;
 }
 
 /**
@@ -21,8 +25,10 @@ export function ProjectedCuboidItem({
   isSelected,
   isHovered,
   isAnyLabelSelected,
+  showOrientation,
+  upVector,
 }: ProjectedCuboidItemProps) {
-  const projection = useProjectedCuboid(detection, frustumData);
+  const projection = useProjectedCuboid(detection, frustumData, upVector);
 
   if (!projection) return null;
 
@@ -30,14 +36,19 @@ export function ProjectedCuboidItem({
     detection.color,
     isSelected,
     isHovered,
-    isAnyLabelSelected
+    isAnyLabelSelected,
   );
+  const orientationColor = showOrientation
+    ? getComplementaryColor(color)
+    : color;
 
   return (
     <SvgCuboidProjection
       data={projection}
       color={color}
+      orientationColor={orientationColor}
       opacity={opacity}
+      showOrientation={showOrientation}
       strokeDasharray={strokeDasharray}
     />
   );

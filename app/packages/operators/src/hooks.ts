@@ -38,7 +38,7 @@ function useOperatorThrottledContextSetter() {
         setContext(context);
       },
       RESOLVE_PLACEMENTS_TTL,
-      { leading: true }
+      { leading: true },
     );
   }, [setContext]);
 
@@ -120,7 +120,7 @@ export function useOperatorPlacementsResolver() {
 
 export function useActivePanelEventsCount(id: string) {
   const [activePanelEventsCount, setActivePanelEventsCount] = useRecoilState(
-    activePanelsEventCountAtom
+    activePanelsEventCountAtom,
   );
   const count = useMemo(() => {
     return activePanelEventsCount.get(id) || 0;
@@ -134,7 +134,7 @@ export function useActivePanelEventsCount(id: string) {
         return new Map(counts).set(computedId, updatedCount);
       });
     },
-    [id, setActivePanelEventsCount]
+    [id, setActivePanelEventsCount],
   );
 
   const decrement = useCallback(
@@ -148,7 +148,7 @@ export function useActivePanelEventsCount(id: string) {
         return new Map(counts).set(computedId, updatedCount);
       });
     },
-    [id, setActivePanelEventsCount]
+    [id, setActivePanelEventsCount],
   );
 
   return { count, increment, decrement };
@@ -158,7 +158,7 @@ export function useFirstExistingUri(uris: string[]) {
   const availableOperators = useMemo(() => listLocalAndRemoteOperators(), []);
   return useMemo(() => {
     const existingUri = uris.find((uri) =>
-      availableOperators.allOperators.some((op) => op.uri === uri)
+      availableOperators.allOperators.some((op) => op.uri === uri),
     );
     const exists = Boolean(existingUri);
     return { firstExistingUri: existingUri, exists };

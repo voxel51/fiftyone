@@ -35,12 +35,17 @@ export default function (modal: boolean, path: string) {
 
     const isLabelTag = path === "_label_tags";
     const isSampleTag = path === "tags";
-    const name = isLabelTag ? "tags" : path.split(".").slice(-1)[0];
+    const isTemporalTag = path === "_temporal_tags";
+    const name = isLabelTag
+      ? "tags"
+      : isTemporalTag
+        ? "temporal tags"
+        : path.split(".").slice(-1)[0];
     const listName = isLabelTag
       ? "labels"
       : isList
-      ? path.split(".").slice(-2)[0]
-      : null;
+        ? path.split(".").slice(-2)[0]
+        : null;
 
     const options: Option[] = [];
     if (!isFilterMode) {
@@ -69,8 +74,8 @@ export default function (modal: boolean, path: string) {
         tooltip: isLabelTag
           ? "dataset.select_labels(tags=expr)"
           : isKeypoints
-          ? "dataset.filter_keypoints(field, expr, only_matches=True)"
-          : "dataset.filter_labels(field, expr, only_matches=True)",
+            ? "dataset.filter_keypoints(field, expr, only_matches=True)"
+            : "dataset.filter_labels(field, expr, only_matches=True)",
       });
     }
 
@@ -82,8 +87,8 @@ export default function (modal: boolean, path: string) {
         tooltip: isLabelTag
           ? "dataset.exclude_labels(tags=expr, omit_empty=False)"
           : isKeypoints
-          ? "dataset.filter_keypoints(field, ~expr, only_matches=False)"
-          : "dataset.filter_labels(field, ~expr, only_matches=False)",
+            ? "dataset.filter_keypoints(field, ~expr, only_matches=False)"
+            : "dataset.filter_labels(field, ~expr, only_matches=False)",
       });
     }
 
@@ -95,10 +100,10 @@ export default function (modal: boolean, path: string) {
         tooltip: isLabelTag
           ? "dataset.match_labels(tags=expr)"
           : isSampleTag
-          ? "dataset.match_tags(expr)"
-          : isList
-          ? "dataset.match_labels(fields=field, filter=expr)"
-          : "dataset.match(expr)",
+            ? "dataset.match_tags(expr)"
+            : isList
+              ? "dataset.match_labels(fields=field, filter=expr)"
+              : "dataset.match(expr)",
       });
     }
 
@@ -110,10 +115,10 @@ export default function (modal: boolean, path: string) {
         tooltip: isLabelTag
           ? "dataset.match_labels(tags=expr, bool=False)"
           : isSampleTag
-          ? "dataset.match_tags(expr, bool=False)"
-          : isList
-          ? "dataset.match_labels(fields=field, filter=expr, bool=False)"
-          : "dataset.match(~expr)",
+            ? "dataset.match_tags(expr, bool=False)"
+            : isList
+              ? "dataset.match_labels(fields=field, filter=expr, bool=False)"
+              : "dataset.match(~expr)",
       });
     }
 

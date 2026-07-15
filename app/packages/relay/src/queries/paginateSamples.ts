@@ -32,7 +32,7 @@ export type PaginateSamplesNode = Exclude<
  * safe to access.
  */
 export const isPaginateSamplesConnection = (
-  samples: paginateSamplesQuery$data["samples"]
+  samples: paginateSamplesQuery$data["samples"],
 ): samples is PaginateSamplesConnection =>
   samples.__typename === "SampleItemStrConnection";
 

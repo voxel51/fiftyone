@@ -1,4 +1,5 @@
 export * from "./useUndoRedo";
+export * from "./useUndoHistory";
 export * from "./useCreateCommand";
 export * from "./useCommandContext";
 export * from "./useKeyBinding";

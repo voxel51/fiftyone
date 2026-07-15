@@ -173,13 +173,13 @@ const dispatchSideEffect = ({
 
   let update = !fos.viewsAreEqual(
     currentEntry.state.view,
-    nextEntry.state.view
+    nextEntry.state.view,
   );
   if (currentDataset !== nextDataset) {
     update = true;
     session.colorScheme = fos.ensureColorScheme(
       data.dataset?.appConfig?.colorScheme,
-      data.config
+      data.config,
     );
     session.fieldVisibilityStage = nextEntry.state.fieldVisibility;
     session.sessionSpaces =

@@ -49,7 +49,7 @@ from .database import (
     drop_orphan_runs,
     drop_orphan_delegated_ops,
     drop_orphan_stores,
-    drop_orphan_temporal_tags,
+    drop_orphan_tags,
     list_collections,
     get_collection_stats,
     get_indexed_values,

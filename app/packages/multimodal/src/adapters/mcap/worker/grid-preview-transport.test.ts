@@ -31,7 +31,7 @@ describe("MCAP grid preview transport", () => {
     const request = transport.request(
       worker,
       { source: createSource() },
-      { signal: controller.signal }
+      { signal: controller.signal },
     );
 
     controller.abort();

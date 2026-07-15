@@ -26,7 +26,7 @@ describe("integrity of generated contracts", () => {
 
     const roundTrip = fromBinary(
       TimeTrackSchema,
-      toBinary(TimeTrackSchema, track)
+      toBinary(TimeTrackSchema, track),
     );
 
     expect(roundTrip.timeTrackId).toBe("sample.index");
@@ -43,7 +43,7 @@ describe("integrity of generated contracts", () => {
 
     const roundTrip = fromBinary(
       SceneInventorySchema,
-      toBinary(SceneInventorySchema, scene)
+      toBinary(SceneInventorySchema, scene),
     );
 
     expect(roundTrip.inventoryId).toBe("inventory-1");
@@ -59,7 +59,7 @@ describe("integrity of generated contracts", () => {
 
     const roundTrip = fromBinary(
       PlaybackPlanSchema,
-      toBinary(PlaybackPlanSchema, plan)
+      toBinary(PlaybackPlanSchema, plan),
     );
 
     expect(roundTrip.sourceInventoryId).toBe("inventory-1");

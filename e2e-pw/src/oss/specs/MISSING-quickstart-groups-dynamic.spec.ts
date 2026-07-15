@@ -53,7 +53,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
 
       view = dataset.group_by("scene_id", order_by="timestamp")
       dataset.save_view("dynamic", view)
-      `
+      `,
   );
 });
 

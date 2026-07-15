@@ -5,9 +5,6 @@ on:
     branches:
       - main
       - release/v[0-9]+.[0-9]+.[0-9]+
-      # Batches non-member contributions accumulated on `community` into
-      # `develop` via a standing "AUTOMATED MERGE community to develop" PR.
-      - community
   workflow_dispatch:
     inputs:
       ref_name:
@@ -21,6 +18,8 @@ jobs:
         with:
           ref: develop
           fetch-depth: 0
+          # Push as voxel51-bot, which can bypass the merge/* branch ruleset.
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
       - run: |
           git config user.name 'voxel51-bot'
           git config user.email 'bot@voxel51.com'

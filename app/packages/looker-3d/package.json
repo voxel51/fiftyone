@@ -23,11 +23,10 @@
         "r3f-perf": "^7.2.3",
         "react-color": "^2.19.3",
         "styled-components": "^6.1.18",
-        "three": "^0.182.0",
+        "three": "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch",
         "tunnel-rat": "^0.1.2"
     },
     "devDependencies": {
-        "@biomejs/biome": "^1.8.3",
         "@types/chroma-js": "^3.1.1",
         "@types/node": "^20.11.10",
         "@types/three": "^0.176.0",
