@@ -100,8 +100,10 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
     // ── 2. Place a positive point — inference auto-fires on context change ──
     await modal.sampleCanvas.click(0.5, 0.5);
 
-    // ── 3. Wait for auto-save to settle, then exit segmentation mode ────────
-    await modal.sidebar.annotate.waitForSavesSettled();
+    // ── 3. Wait for the inferred detection to persist ───────────────────────
+    // inference runs in a worker: settlement alone reads "settled" before
+    // the label exists, so wait on the persisted state itself
+    await annotateSDK.waitForDetectionCount(datasetName, "instances");
 
     await modal.sidebar.annotate.segmentationMode();
     await modal.sidebar.annotate.assert.segmentationModeIsActive(false);

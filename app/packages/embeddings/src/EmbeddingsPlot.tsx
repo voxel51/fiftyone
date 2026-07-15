@@ -1,7 +1,7 @@
 import { Loading, useTheme } from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Data } from "plotly.js";
 import Plot from "react-plotly.js";
 import { useRecoilValue } from "recoil";
@@ -48,10 +48,6 @@ export function EmbeddingsPlot({
   const [zoomRev] = useZoomRevision();
   const resetZoom = useResetPlotZoom();
   const { isLoading, traces, style } = usePlot();
-  // the traces object plotly has finished drawing; comparing identity against
-  // the current traces distinguishes "plot shows this data" from "plot still
-  // shows the previous data (or nothing)"
-  const [renderedTraces, setRenderedTraces] = useState<unknown>(null);
   const [dragMode, setDragMode] = usePanelStatePartial(
     "dragMode",
     "lasso",
@@ -85,16 +81,14 @@ export function EmbeddingsPlot({
   const isCategorical = style === "categorical";
 
   return (
-    <div
-      style={{ height: "100%" }}
-      data-cy="embeddings-plot-container"
-      data-plot-rendered={renderedTraces === traces ? "true" : "false"}
-    >
+    <div style={{ height: "100%" }} data-cy="embeddings-plot-container">
       {bounds?.width && (
         <Plot
           data={data as Data[]}
           style={{ zIndex: 1 }}
-          onAfterPlot={() => setRenderedTraces(traces)}
+          onAfterPlot={() =>
+            document.dispatchEvent(new CustomEvent("embeddings-plot-rendered"))
+          }
           onSelected={(selected) => {
             if (!selected || selected?.points?.length === 0) return;
 

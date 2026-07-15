@@ -116,6 +116,7 @@ test.describe.serial("segmentation tool snapshots", () => {
   });
 
   test("ai", async ({
+    annotateSDK,
     datasetName,
     fiftyoneLoader,
     mockSam2Worker,
@@ -133,7 +134,9 @@ test.describe.serial("segmentation tool snapshots", () => {
     // deterministic 8x8 all-foreground mask at bbox {0.4, 0.4, 0.2, 0.2}.
     await modal.sampleCanvas.click(0.5, 0.5);
 
-    await modal.sidebar.annotate.waitForSavesSettled();
+    // inference runs in a worker: settlement alone reads "settled" before
+    // the label exists, so wait on the persisted state itself
+    await annotateSDK.waitForDetectionCount(datasetName, "instances");
 
     // Right-click to finalize the AI session: destroys the keypoint
     // overlay (and its ripple animation), leaving only the mask render.
