@@ -1,4 +1,3 @@
-import { usePlayhead } from "@fiftyone/playback";
 import { useMemo } from "react";
 
 import type { SceneUpdateVisualization } from "../../../decoders";
@@ -17,6 +16,7 @@ import {
   useTopicCacheSnapshot,
 } from "./use-interpolated-image-annotations";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
+import { useOptionalPlayhead } from "./use-optional-playhead";
 
 /**
  * Layers smooth-mode interpolation over the 3D tile's scene-annotation
@@ -41,8 +41,9 @@ export function useInterpolatedSceneUpdateFrames({
 }): readonly (McapTopicPlaybackFrame<SceneUpdateVisualization> | null)[] {
   const dataStream = useMcapDataStream();
   const history = useMcapSceneUpdateHistoryContext();
-  // Re-render every RAF tick so the lerp tracks the playhead.
-  const playhead = usePlayhead();
+  // Smooth mode tracks every RAF tick. As-recorded mode samples placement time
+  // only when its content-driven parent renders, avoiding a broad 60 Hz root.
+  const playhead = useOptionalPlayhead(interpolate);
   const timeline = dataStream?.getTimelineIndex() ?? null;
   // Late-arriving lookahead messages must re-derive the lifecycle snapshot and
   // lerp even while the playhead is paused mid-gap.

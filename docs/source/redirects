@@ -6,6 +6,9 @@
 #   from/broken/page2.ext to/existing/page2.ext
 #
 
+# Introduced in v1.19.0
+brain.rst  brain/index.rst
+
 # Introduced in v2.11.0
 getting_started/install.rst  installation/index.rst
 getting_started/virtualenv.rst  installation/virtualenv.rst

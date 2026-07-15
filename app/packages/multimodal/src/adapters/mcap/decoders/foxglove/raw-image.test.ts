@@ -76,13 +76,15 @@ describe("foxgloveRawImageDecoder", () => {
       }),
     );
 
-    const { attributes, visualization } = foxgloveRawImageDecoder.decode(
-      EMPTY_BYTES,
-      {},
-    );
+    const { attributes, resourceHints, visualization } =
+      foxgloveRawImageDecoder.decode(EMPTY_BYTES, {});
     const image = expectRawImage(visualization);
 
     expect(Array.from(image.rgba)).toEqual([0, 0, 0, 255, 255, 255, 255, 255]);
+    expect(image.depth?.metersPerUnit).toBe(0.001);
+    expect(image.depth?.values).toBeInstanceOf(Uint16Array);
+    expect(Array.from(image.depth?.values ?? [])).toEqual([1_000, 2_000]);
+    expect(resourceHints?.transferables).toContain(image.depth?.values.buffer);
     expect(attributes).toMatchObject({
       depthMax: 2_000,
       depthMin: 1_000,

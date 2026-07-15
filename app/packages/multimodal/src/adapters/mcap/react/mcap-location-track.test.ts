@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  createLocationTrackCursor,
   decimateLocationTrackSegments,
   horizontalAccuracyM,
+  indexedLocationTrailCoordinates,
+  indexLocationTrack,
   interpolateLocationAtTime,
   isValidLocationPoint,
   locationTrailCoordinates,
+  resolveIndexedLocationAtTime,
   segmentLocationTrack,
   type McapLocationTrackPoint,
 } from "./mcap-location-track";
@@ -113,6 +117,154 @@ describe("interpolateLocationAtTime", () => {
     expect(location?.altitude).toBeCloseTo(15);
     expect(location?.accuracyM).toBeCloseTo(6);
     expect(location?.bearingDeg).toBeDefined();
+  });
+});
+
+describe("indexed location lookup", () => {
+  it("advances a cursor, preserves no-fix gaps, and resets on backwards seeks", () => {
+    const segments = segmentLocationTrack([
+      point(0),
+      point(10),
+      point(20, { fixStatus: -1 }),
+      point(30),
+      point(40),
+    ]);
+    const indexed = indexLocationTrack(segments);
+    const cursor = createLocationTrackCursor();
+
+    const first = resolveIndexedLocationAtTime(indexed, 5_000_000_000n, cursor);
+    expect(first.state).toBe("active");
+    expect(first.segmentIndex).toBe(0);
+    expect(first.location?.latitude).toBeCloseTo(37.005);
+
+    const gap = resolveIndexedLocationAtTime(indexed, 20_000_000_000n, cursor);
+    expect(gap).toMatchObject({
+      boundarySegmentIndex: 1,
+      location: null,
+      segmentIndex: null,
+      state: "gap",
+    });
+
+    const second = resolveIndexedLocationAtTime(
+      indexed,
+      35_000_000_000n,
+      cursor,
+    );
+    expect(second.state).toBe("active");
+    expect(second.segmentIndex).toBe(1);
+
+    const backwards = resolveIndexedLocationAtTime(
+      indexed,
+      2_500_000_000n,
+      cursor,
+    );
+    expect(backwards.state).toBe("active");
+    expect(backwards.segmentIndex).toBe(0);
+    expect(backwards.location?.latitude).toBeCloseTo(37.0025);
+  });
+
+  it("resolves before/after states and geometric line progress", () => {
+    const segments = segmentLocationTrack([
+      point(0, { latitude: 0, longitude: 0 }),
+      point(9, { latitude: 0, longitude: 0.001 }),
+      point(10, { latitude: 0, longitude: 0.002 }),
+    ]);
+    const indexed = indexLocationTrack(segments);
+
+    expect(resolveIndexedLocationAtTime(indexed, -1n)).toMatchObject({
+      boundarySegmentIndex: 0,
+      state: "before",
+    });
+    const active = resolveIndexedLocationAtTime(indexed, 9_500_000_000n);
+    expect(active.state).toBe("active");
+    expect(active.lineProgress).toBeCloseTo(0.75, 2);
+    expect(
+      resolveIndexedLocationAtTime(indexed, 11_000_000_000n),
+    ).toMatchObject({
+      boundarySegmentIndex: 1,
+      state: "after",
+    });
+  });
+
+  it("builds the same bounded trail without scanning other segments", () => {
+    const segments = segmentLocationTrack(
+      Array.from({ length: 11 }, (_, index) => point(index)),
+    );
+    const timeNs = 5_250_000_000n;
+    const windowNs = 2_500_000_000n;
+    const indexed = indexLocationTrack(segments);
+    const resolved = resolveIndexedLocationAtTime(indexed, timeNs);
+
+    expect(
+      indexedLocationTrailCoordinates(indexed, resolved, windowNs),
+    ).toEqual(locationTrailCoordinates(segments, timeNs, windowNs));
+  });
+
+  it("freezes the indexed trail at the final fix after the track", () => {
+    const segments = segmentLocationTrack(
+      Array.from({ length: 6 }, (_, index) => point(index)),
+    );
+    const indexed = indexLocationTrack(segments);
+    const resolved = resolveIndexedLocationAtTime(indexed, 10_000_000_000n);
+
+    expect(resolved.state).toBe("after");
+    expect(
+      indexedLocationTrailCoordinates(indexed, resolved, 2_500_000_000n),
+    ).toEqual(
+      locationTrailCoordinates(segments, 5_000_000_000n, 2_500_000_000n),
+    );
+  });
+
+  it("does not build an indexed trail before a track or inside a gap", () => {
+    const segments = segmentLocationTrack([
+      point(0),
+      point(1),
+      point(2, { fixStatus: -1 }),
+      point(3),
+      point(4),
+    ]);
+    const indexed = indexLocationTrack(segments);
+    const before = resolveIndexedLocationAtTime(indexed, -1n);
+    const gap = resolveIndexedLocationAtTime(indexed, 2_500_000_000n);
+
+    expect(before.state).toBe("before");
+    expect(gap.state).toBe("gap");
+    expect(
+      indexedLocationTrailCoordinates(indexed, before, 2_000_000_000n),
+    ).toEqual([]);
+    expect(
+      indexedLocationTrailCoordinates(indexed, gap, 2_000_000_000n),
+    ).toEqual([]);
+  });
+
+  it("resolves large forward seeks across segments and points", () => {
+    const segmented = indexLocationTrack(
+      Array.from({ length: 200 }, (_, segmentIndex) => ({
+        points: [point(segmentIndex * 10), point(segmentIndex * 10 + 1)],
+      })),
+    );
+    const segmentCursor = createLocationTrackCursor();
+    resolveIndexedLocationAtTime(segmented, 0n, segmentCursor);
+    const distantSegment = resolveIndexedLocationAtTime(
+      segmented,
+      1_500_500_000_000n,
+      segmentCursor,
+    );
+    expect(distantSegment.segmentIndex).toBe(150);
+    expect(distantSegment.location?.latitude).toBeCloseTo(38.5005);
+
+    const longSegment = indexLocationTrack([
+      { points: Array.from({ length: 1_000 }, (_, index) => point(index)) },
+    ]);
+    const pointCursor = createLocationTrackCursor();
+    resolveIndexedLocationAtTime(longSegment, 0n, pointCursor);
+    const distantPoint = resolveIndexedLocationAtTime(
+      longSegment,
+      900_500_000_000n,
+      pointCursor,
+    );
+    expect(distantPoint.pointIndex).toBe(900);
+    expect(distantPoint.location?.latitude).toBeCloseTo(37.9005);
   });
 });
 

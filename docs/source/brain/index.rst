@@ -18,7 +18,7 @@ curate your data from an art into a measurable science.
 
 .. customanimatedcta::
     :button_text: Try experimental Brain features in FiftyOne Labs
-    :button_link: labs/index.html
+    :button_link: ../labs/index.html
 
 The FiftyOne Brain methods are useful across the stages of the machine learning
 workflow:
@@ -2435,3 +2435,10 @@ your current session.
 
     fob.brain_config.default_similarity_backend = "qdrant"
     fob.brain_config.default_visualization_method = "tsne"
+
+.. toctree::
+    :maxdepth: 1
+    :hidden:
+
+    Overview <self>
+    Labs <../labs/index>

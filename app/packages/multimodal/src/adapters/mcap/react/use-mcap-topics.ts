@@ -6,6 +6,10 @@ import {
 import type { StreamInventory } from "../../../schemas/v1";
 import type { LoadStatus } from "../../../load-status";
 import { mcapErrorMessage } from "../errors";
+import {
+  getMcapSourceBootstrap,
+  peekMcapSourceBootstrap,
+} from "../source-bootstrap-cache";
 import type { McapResourceClient } from "../types";
 
 export type McapTopicsStatus = LoadStatus;
@@ -46,20 +50,30 @@ export function useMcapTopics({
   source,
 }: UseMcapTopicsOptions): McapTopicsState {
   const sourceKey = source ? byteSourceAccessKey(source) : "";
+  const bootstrapTopics = source
+    ? peekMcapSourceBootstrap(source)?.topics
+    : undefined;
   const [state, setState] = useState<SourcedTopicsState>({
     sourceKey: "",
     value: IDLE_TOPICS_STATE,
   });
 
+  // This effect revalidates cached inventory for the active source.
   useEffect(() => {
     if (!source) {
       setState({ sourceKey: "", value: IDLE_TOPICS_STATE });
-      return;
+      return undefined;
     }
 
     const effectSourceKey = byteSourceAccessKey(source);
     let active = true;
-    setState({ sourceKey: effectSourceKey, value: LOADING_TOPICS_STATE });
+    const cachedTopics = getMcapSourceBootstrap(source)?.topics;
+    setState({
+      sourceKey: effectSourceKey,
+      value: cachedTopics
+        ? { error: null, status: "ready", topics: cachedTopics }
+        : LOADING_TOPICS_STATE,
+    });
 
     client
       .readTopics({ source })
@@ -97,7 +111,16 @@ export function useMcapTopics({
   // by one effect tick — report loading rather than leaking the previous
   // sample's inventory into that render.
   if (state.sourceKey !== sourceKey) {
-    return source ? LOADING_TOPICS_STATE : IDLE_TOPICS_STATE;
+    if (!source) {
+      return IDLE_TOPICS_STATE;
+    }
+    return bootstrapTopics
+      ? { error: null, status: "ready", topics: bootstrapTopics }
+      : LOADING_TOPICS_STATE;
+  }
+
+  if (state.value.status === "loading" && bootstrapTopics) {
+    return { error: null, status: "ready", topics: bootstrapTopics };
   }
 
   return state.value;

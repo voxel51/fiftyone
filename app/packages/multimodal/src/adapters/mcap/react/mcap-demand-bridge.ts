@@ -54,6 +54,7 @@ export function useMcapDemandRegistry<
       } else {
         counts.set(key, current - 1);
       }
+      handlersRef.current?.onDemandChanged();
     };
   }, []);
 
@@ -86,6 +87,8 @@ export interface McapDemandBridgeFillContext extends McapDemandBridgeRuntime {
  */
 export interface McapDemandBridgeOptions<THandlers extends McapDemandHandlers> {
   readonly dataStreamRef: MutableRefObject<McapDataStream | null>;
+  /** Trailing delay for demand changes; playhead fills bypass it. */
+  readonly demandDebounceMs?: number;
   readonly deferredRetryMs: number;
   readonly handlersRef: MutableRefObject<THandlers | null>;
   readonly makeHandlers: (runtime: McapDemandBridgeRuntime) => THandlers;
@@ -100,11 +103,13 @@ export interface McapDemandBridgeOptions<THandlers extends McapDemandHandlers> {
 
 /**
  * Starts one active-source demand bridge epoch and returns its teardown.
- * The shared lifecycle owns microtask coalescing, idle-network deferral,
- * timeline readiness retries, playhead throttling, and timeout cleanup.
+ * The shared lifecycle owns demand batching/debouncing, idle-network
+ * deferral, timeline readiness retries, playhead throttling, and timeout
+ * cleanup.
  */
 export function startMcapDemandBridge<THandlers extends McapDemandHandlers>({
   dataStreamRef,
+  demandDebounceMs = 0,
   deferredRetryMs,
   handlersRef,
   makeHandlers,
@@ -118,6 +123,7 @@ export function startMcapDemandBridge<THandlers extends McapDemandHandlers>({
 }: McapDemandBridgeOptions<THandlers>): () => void {
   let cancelled = false;
   let fillQueued = false;
+  let demandFillTimeout: ReturnType<typeof setTimeout> | undefined;
   let deferPending = false;
   let lastPlayheadFillMs = Number.NEGATIVE_INFINITY;
   const timeouts = new Set<ReturnType<typeof setTimeout>>();
@@ -167,7 +173,26 @@ export function startMcapDemandBridge<THandlers extends McapDemandHandlers>({
   };
 
   const queueFill = () => {
-    if (fillQueued || cancelled) {
+    if (cancelled) {
+      return;
+    }
+    if (demandDebounceMs > 0) {
+      if (demandFillTimeout !== undefined) {
+        clearTimeout(demandFillTimeout);
+        timeouts.delete(demandFillTimeout);
+      }
+      const timeout = setTimeout(() => {
+        timeouts.delete(timeout);
+        if (demandFillTimeout === timeout) {
+          demandFillTimeout = undefined;
+        }
+        fill(true);
+      }, demandDebounceMs);
+      demandFillTimeout = timeout;
+      timeouts.add(timeout);
+      return;
+    }
+    if (fillQueued) {
       return;
     }
     fillQueued = true;
@@ -203,6 +228,7 @@ export function startMcapDemandBridge<THandlers extends McapDemandHandlers>({
 
   return () => {
     cancelled = true;
+    demandFillTimeout = undefined;
     unsubscribePlayhead?.();
     for (const timeout of timeouts) {
       clearTimeout(timeout);

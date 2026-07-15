@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PlaybackSyncMode } from "../../schemas/v1";
 import {
   createWindowBounds,
+  createCandidateSelector,
   isUnboundedLatestPolicy,
   selectSynchronizedWindow,
 } from "./sync";
@@ -152,6 +153,39 @@ describe("MCAP sync policy selection", () => {
         "MCAP sync policy for /camera must request a positive integer frame limit",
       );
     }
+  });
+
+  it("selects latest candidates from unsorted input across batch windows", () => {
+    const tieBreaker = (left: McapDecodedMessage, right: McapDecodedMessage) =>
+      left.sequence - right.sequence;
+    const selector = createCandidateSelector(
+      [
+        createDecodedMessage("/camera", 110n),
+        createDecodedMessage("/camera", 80n),
+        { ...createDecodedMessage("/camera", 100n), sequence: 2 },
+        createDecodedMessage("/camera", 100n),
+        createDecodedMessage("/camera", 90n),
+      ],
+      tieBreaker,
+    );
+    const firstPolicy = createWindowBounds({
+      timeNs: 95n,
+      streamPolicies: { "/camera": { limit: 2 } },
+      topics: ["/camera"],
+    }).streamPolicies["/camera"];
+    const secondPolicy = createWindowBounds({
+      timeNs: 105n,
+      streamPolicies: { "/camera": { limit: 2 } },
+      topics: ["/camera"],
+    }).streamPolicies["/camera"];
+
+    expect(
+      selector(95n, firstPolicy).map((message) => message.timelineTimeNs),
+    ).toEqual([80n, 90n]);
+
+    expect(
+      selector(105n, secondPolicy).map((message) => message.sequence),
+    ).toEqual([1, 2]);
   });
 });
 

@@ -1,6 +1,6 @@
 import { isPlayingAtom } from "@fiftyone/playback/src/lib/playback/atoms";
 import { PlaybackStoreContext } from "@fiftyone/playback/src/lib/playback/playback-store-context";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { createStore } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
@@ -20,8 +20,7 @@ afterEach(() => {
 });
 
 describe("McapLocationTracksBridge", () => {
-  it("delays full-track reads, uses the bulk lane, and publishes no-fix gaps", async () => {
-    vi.useFakeTimers();
+  it("starts full-track reads immediately, uses the bulk lane, and publishes no-fix gaps", async () => {
     const source = createSource("drive");
     const locationSources = [locationSource("/gps")];
     const client = createClient(async function* () {
@@ -38,10 +37,6 @@ describe("McapLocationTracksBridge", () => {
       />,
     );
 
-    await advanceTimers(1_499);
-    expect(client.readDecodedMessages).not.toHaveBeenCalled();
-
-    await advanceTimers(1);
     expect(client.readDecodedMessages).toHaveBeenCalledWith(
       {
         activeTimeline: "log",
@@ -51,13 +46,14 @@ describe("McapLocationTracksBridge", () => {
       },
       { priority: "bulk" },
     );
-    expect(screen.getByTestId("location-tracks").textContent).toBe(
-      "/gps:ready:2:2:full",
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:2:2:full",
+      );
+    });
   });
 
   it("marks topics as error when the bulk read rejects", async () => {
-    vi.useFakeTimers();
     const source = createSource("drive");
     const locationSources = [locationSource("/gps")];
     const client = createClient(async function* () {
@@ -73,11 +69,11 @@ describe("McapLocationTracksBridge", () => {
       />,
     );
 
-    await advanceTimers(1_500);
-
-    expect(screen.getByTestId("location-tracks").textContent).toBe(
-      "/gps:error:0:0:full",
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:error:0:0:full",
+      );
+    });
   });
 
   it("retries deferred track reads after playback pressure stands down", async () => {
@@ -106,7 +102,6 @@ describe("McapLocationTracksBridge", () => {
       />,
     );
 
-    await advanceTimers(1_500);
     expect(client.readDecodedMessages).not.toHaveBeenCalled();
 
     store.set(isPlayingAtom, false);
@@ -121,7 +116,6 @@ describe("McapLocationTracksBridge", () => {
   });
 
   it("marks the track truncated when the read limit is reached before usable fixes", async () => {
-    vi.useFakeTimers();
     const source = createSource("drive");
     const client = createClient(async function* () {
       for (let index = 0; index < 25_000; index += 1) {
@@ -137,11 +131,11 @@ describe("McapLocationTracksBridge", () => {
       />,
     );
 
-    await advanceTimers(1_500);
-
-    expect(screen.getByTestId("location-tracks").textContent).toBe(
-      "/gps:ready:0:0:truncated",
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:0:0:truncated",
+      );
+    });
   });
 });
 

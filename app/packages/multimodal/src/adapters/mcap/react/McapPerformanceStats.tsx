@@ -35,11 +35,13 @@ import { webGpuDeviceStats } from "../../../visualization/panels/gpu/webgpu-devi
 import { webGpuSnapshotRendererStats } from "../../../visualization/panels/gpu/webgpu-snapshot-renderer";
 import { imageTextureCacheStats } from "../../../visualization/panels/image-texture-cache";
 import { gpuPointCloudColormapTextureStats } from "../../../visualization/panels/point-cloud/gpu/gpu-point-cloud-colormap-texture";
+import { mcapMapPerformanceStats } from "./mcap-map-performance";
 import styles from "./McapSettingsSidebar.module.css";
 
 const STATS_REFRESH_INTERVAL_MS = 1_000;
 const PLAYHEAD_REFRESH_INTERVAL_MS = 250;
 const COPY_CONFIRMATION_MS = 1_500;
+const LONG_FRAME_THRESHOLD_MS = 50;
 
 interface PointCloudSamplingSummary {
   readonly largestFinitePointCount: number;
@@ -99,6 +101,7 @@ function LivePerformanceStats({
   const [copied, setCopied] = useState(false);
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // This effect samples cumulative runtime counters for the live panel.
   useEffect(() => {
     const interval = setInterval(
       () => setRuntime(readRuntimeStats()),
@@ -107,6 +110,7 @@ function LivePerformanceStats({
     return () => clearInterval(interval);
   }, []);
 
+  // This effect clears the copy-feedback timer on unmount.
   useEffect(
     () => () => {
       if (copyResetTimer.current !== null) {
@@ -157,6 +161,7 @@ function LivePerformanceStats({
     environment,
     gridLive,
     imageTextures,
+    map,
     projection,
     snapshotRenderer,
     webGpu,
@@ -199,11 +204,23 @@ function LivePerformanceStats({
               formatOptionalMilliseconds(framePerformance.p95FrameTimeMs),
             ],
             [
-              "Long frames (≥50 ms)",
+              `Long frames (≥${LONG_FRAME_THRESHOLD_MS} ms)`,
               `${formatInteger(framePerformance.longFrames)} / s`,
             ],
           ]}
           title="Rendering"
+        />
+        <StatsGroup
+          rows={[
+            [
+              "Tile / surface commits",
+              `${map.reactCommits.tile} / ${map.reactCommits.surface}`,
+            ],
+            ["Playback paints", formatInteger(map.playbackPaints)],
+            ["Follow commands", formatInteger(map.followCommands)],
+            ["GeoJSON source updates", formatInteger(map.totalSourceUpdates)],
+          ]}
+          title="Map"
         />
         <StatsGroup
           rows={[
@@ -337,6 +354,7 @@ function useFramePerformanceStats(): FramePerformanceStats {
     p95FrameTimeMs: null,
   });
 
+  // This effect samples browser frame cadence for the rendering summary.
   useEffect(() => {
     if (typeof window.requestAnimationFrame !== "function") return;
 
@@ -367,8 +385,9 @@ function useFramePerformanceStats(): FramePerformanceStats {
         setStats({
           averageFrameTimeMs: totalFrameTime / frameDurations.length,
           framesPerSecond: (frameDurations.length * 1_000) / elapsed,
-          longFrames: frameDurations.filter((duration) => duration >= 50)
-            .length,
+          longFrames: frameDurations.filter(
+            (duration) => duration >= LONG_FRAME_THRESHOLD_MS,
+          ).length,
           p95FrameTimeMs: sortedDurations[p95Index],
         });
         frameDurations = [];
@@ -426,6 +445,7 @@ function readRuntimeStats() {
     },
     gridLive: gridLiveLeaseStats(),
     imageTextures: imageTextureCacheStats(),
+    map: mcapMapPerformanceStats(),
     projection: gpuPointCloudProjectionResourceStats(),
     snapshotRenderer: webGpuSnapshotRendererStats(),
     webGpu: webGpuDeviceStats(),
