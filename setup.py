@@ -80,7 +80,7 @@ setup(
         "sseclient-py>=1.7.2,<2",
         "sse-starlette>=0.10.3,<4",
         "starlette>=1.3.1,<1.4",
-        "strawberry-graphql>=0.315.7,<0.317.0",
+        "strawberry-graphql>=0.315.7,<0.322.0",
         "tabulate>=0.7,<0.11",
         "tqdm>=2,<5",
         "xmltodict>=1,<2",
@@ -88,7 +88,7 @@ setup(
         # ML Libraries
         "matplotlib<4",
         "numpy<3",
-        "opencv-python-headless<5",
+        "opencv-python-headless<6",
         "pandas<4",
         "rtree<2",
         "scikit-learn<2",
@@ -122,7 +122,7 @@ setup(
     python_requires=">=3.10",
     extras_require={
         "multimodal-mcap": [
-            "protobuf==6.33.6",
+            "protobuf==7.35.1",
         ],
         "multimodal": ["fiftyone[multimodal-mcap]"],
     },
