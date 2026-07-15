@@ -3,7 +3,6 @@ import { LRUCache } from "lru-cache";
 import { mcapErrorMessage } from "../errors";
 import { decodeGridPreview, type McapGridPreviewEntry } from "../grid-preview";
 import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
-import { MCAP_PLAYBACK_WORKER_PRIORITY } from "./playback-worker-types";
 import { createWorkerResourceClient } from "./worker-resource-client";
 import type {
   McapGridPreviewWorkerRequest,
@@ -11,6 +10,9 @@ import type {
   McapGridPreviewWorkerRpcRequest,
 } from "./grid-preview-worker-types";
 
+// Visibility-gated loading keeps the active set near one dense viewport. A
+// 24-source limit still covers the observed one-worker viewport while bounding
+// reader/index and per-client byte-cache memory to 120 sources across 5 lanes.
 const GRID_PREVIEW_SOURCE_CACHE_LIMIT = 24;
 
 type McapGridPreviewWorkerScope = {
@@ -63,7 +65,7 @@ workerScope.onmessage = (event: MessageEvent<McapGridPreviewWorkerRequest>) => {
 
   scheduler.enqueue({
     id: message.id,
-    priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+    priority: message.priority,
     run: () => runAndRespond(message),
     sourceKey: message.sourceKey,
   });
@@ -127,6 +129,12 @@ function transferablesForResponse(
       frame.pointCloud.positions,
       frame.pointCloud.colors,
       ...(frame.pointCloud.scalarFields?.map((field) => field.values) ?? []),
+      frame.pointCloud.renderPayload?.positions,
+      frame.pointCloud.renderPayload?.colors,
+      frame.pointCloud.renderPayload?.sourceIndices,
+      ...(frame.pointCloud.renderPayload?.scalarFields.map(
+        (field) => field.values,
+      ) ?? []),
     );
   }
 

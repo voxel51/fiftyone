@@ -10,16 +10,40 @@
   width: 100%;
 }
 
+.modalActivationSurface {
+  cursor: pointer;
+}
+
+.bufferingIndicator {
+  align-items: center;
+  background: rgba(16, 17, 20, 0.72);
+  border-radius: 50%;
+  bottom: 8px;
+  display: flex;
+  height: 20px;
+  justify-content: center;
+  left: 8px;
+  pointer-events: none;
+  position: absolute;
+  width: 20px;
+  z-index: 2;
+}
+
 .imagePanel {
   inset: 0;
   position: absolute;
 }
 
-.annotationLayer {
-  inset: 0;
-  opacity: 0.5;
-  pointer-events: none;
-  position: absolute;
+.pointCloud {
+  cursor: default;
+}
+
+.livePointCloud {
+  cursor: grab;
+}
+
+.livePointCloud:active {
+  cursor: grabbing;
 }
 
 .status {

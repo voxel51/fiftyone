@@ -1,6 +1,7 @@
 import type { McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { DecodeClient } from "../../query/decode";
+import { isMcapReadCancelledError, McapTopicDecodeError } from "./errors";
 import type { McapIndexedReaderLike } from "./reader";
 import type { McapTimelineStrategy } from "./timeline";
 import type { McapDecodedMessage } from "./types";
@@ -40,37 +41,53 @@ export async function decodeMcapMessage({
     schema ?? reader?.schemasById.get(resolvedChannel.schemaId);
   const topic = resolvedChannel.topic;
   const timelineTimeNs = timeline.messageTimeNs(message);
-  const decoded = await decodeClient.decode({
-    bytes: message.data,
-    // Cache identity costs a full-payload record-id hash per message; a
-    // client with a declared-noop cache (the playback worker: decoded
-    // buffers are transferred, so worker-side reuse is impossible) never
-    // reads it — skip building it.
-    cache:
-      decodeClient.cachesDecodedOutput === false
-        ? undefined
-        : {
-            decoderOptionsKey: timeline.cacheKeySuffix,
-            recordId: mcapMessageRecordId(message),
-            source,
-            streamId: topic,
-            timeNs: timelineTimeNs,
-          },
-    context: {
-      schemaData: resolvedSchema?.data,
-      sourceTimestamps: {
-        logTime: message.logTime,
-        publishTime: message.publishTime,
+  const payload = {
+    encoding: resolvedChannel.messageEncoding,
+    schema: resolvedSchema?.name,
+    schemaEncoding: resolvedSchema?.encoding,
+  };
+  let decoded;
+  try {
+    decoded = await decodeClient.decode({
+      bytes: message.data,
+      // Cache identity costs a full-payload record-id hash per message; a
+      // client with a declared-noop cache (the playback worker: decoded
+      // buffers are transferred, so worker-side reuse is impossible) never
+      // reads it — skip building it.
+      cache:
+        decodeClient.cachesDecodedOutput === false
+          ? undefined
+          : {
+              decoderOptionsKey: timeline.cacheKeySuffix,
+              recordId: mcapMessageRecordId(message),
+              source,
+              streamId: topic,
+              timeNs: timelineTimeNs,
+            },
+      context: {
+        schemaData: resolvedSchema?.data,
+        sourceTimestamps: {
+          logTime: message.logTime,
+          publishTime: message.publishTime,
+        },
+        streamId: topic,
+        timeRangeStartKey: timeline.decodeTimeRangeStartKey,
       },
-      streamId: topic,
-      timeRangeStartKey: timeline.decodeTimeRangeStartKey,
-    },
-    payload: {
-      encoding: resolvedChannel.messageEncoding,
-      schema: resolvedSchema?.name,
-      schemaEncoding: resolvedSchema?.encoding,
-    },
-  });
+      payload,
+    });
+  } catch (error) {
+    if (isMcapReadCancelledError(error)) throw error;
+    throw new McapTopicDecodeError({
+      cause: error,
+      messageTimeNs: timelineTimeNs,
+      payloadIdentity: JSON.stringify([
+        payload.encoding,
+        payload.schemaEncoding ?? null,
+        payload.schema ?? null,
+      ]),
+      topic,
+    });
+  }
 
   return {
     activeTimeline: timeline.id,

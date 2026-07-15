@@ -1,6 +1,13 @@
 /* eslint-disable react/no-unknown-property */
 import { useFrame, useThree } from "@react-three/fiber";
-import { useContext, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import {
+  memo,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import * as THREE from "three";
 import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
@@ -59,7 +66,10 @@ export interface GpuPointCloudSceneData {
   readonly resourceKey?: string;
 }
 
-export function PointCloudSceneLayer({
+// Memoized: callers keep layer/data/gpu identity stable across renders their
+// content didn't cause (useKeyedIdentityMap), so unrelated ticks and hovers
+// skip this subtree entirely.
+export const PointCloudSceneLayer = memo(function PointCloudSceneLayer({
   data,
   gpu,
   layer,
@@ -101,7 +111,7 @@ export function PointCloudSceneLayer({
       ) : null}
     </group>
   );
-}
+});
 
 interface GpuPointCloud3dResource {
   readonly capacity: number;

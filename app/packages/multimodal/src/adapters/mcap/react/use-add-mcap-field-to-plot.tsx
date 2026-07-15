@@ -7,12 +7,12 @@ import {
 import { useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
 import type { MosaicNode } from "react-mosaic-component";
-import McapPlotTile from "./McapPlotTile";
 import {
   addMcapPlotSeriesToTile,
   mcapPlotTileSeriesAtom,
 } from "./mcap-plot-tile-state";
 import { MCAP_TILE_TYPE } from "./mcap-tile-types";
+import { getMcapTileDefinition } from "./use-mcap-tiles";
 
 /**
  * Adds a raw-message numeric field to the first existing plot tile, or
@@ -33,8 +33,11 @@ export function useAddMcapFieldToPlot(): (
       const current = stateRef.current;
       let tileId = firstPlotTileId(current.layout, current.tiles);
       if (!tileId) {
+        const definition = getMcapTileDefinition(MCAP_TILE_TYPE.PLOT);
+        if (!definition) return;
+        const Tile = definition.Tile;
         const tile: TilingTile = {
-          render: () => <McapPlotTile />,
+          render: () => <Tile />,
           title: "Plot",
           type: MCAP_TILE_TYPE.PLOT,
         };

@@ -2,17 +2,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { mcapErrorMessage } from "../errors";
 import {
-  DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE,
-  MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS,
+  mcapGridPreviewPlaybackDelayMs,
+  type McapGridPreviewResult,
   type McapGridPreviewSnapshot,
   type McapGridPreviewStatus,
 } from "../grid-preview";
+import { publishMcapSourceBootstrap } from "../source-bootstrap-cache";
 import { getMcapGridPreviewPool } from "../worker";
+import { MCAP_PLAYBACK_WORKER_PRIORITY } from "../worker/playback-worker-types";
 
 /**
  * State returned by the MCAP grid preview hook.
  */
 export interface McapGridPreviewState extends McapGridPreviewSnapshot {
+  readonly isBuffering: boolean;
   pause(): void;
   play(): void;
 }
@@ -21,9 +24,15 @@ export interface McapGridPreviewState extends McapGridPreviewSnapshot {
  * Options for rendering one lightweight MCAP stream preview in the grid.
  */
 export interface UseMcapGridPreviewOptions {
+  readonly enabled?: boolean;
+  /** Whether this tile is the user's current interactive target. */
+  readonly hovered?: boolean;
   readonly selectedStreamTopic?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }
+
+/** Suppresses buffering chrome for ordinary fast grid frame reads. */
+export const MCAP_GRID_BUFFERING_DELAY_MS = 150;
 
 const IDLE_PREVIEW_STATE: McapGridPreviewSnapshot = {
   error: null,
@@ -40,6 +49,8 @@ const IDLE_PREVIEW_STATE: McapGridPreviewSnapshot = {
  * advance playback from the last rendered frame.
  */
 export function useMcapGridPreview({
+  enabled = true,
+  hovered = false,
   selectedStreamTopic,
   source,
 }: UseMcapGridPreviewOptions): McapGridPreviewState {
@@ -47,44 +58,103 @@ export function useMcapGridPreview({
     useState<McapGridPreviewSnapshot>(IDLE_PREVIEW_STATE);
   const [playing, setPlaying] = useState(false);
   const initialLoadInFlightRef = useRef(false);
+  const loadedRequestRef = useRef<{
+    readonly selectedStreamTopic?: string | null;
+    readonly source: ByteSourceDescriptor;
+  } | null>(null);
+  const frameTimeNsRef = useRef<bigint | undefined>(undefined);
   const nextStartTimeNsRef = useRef<bigint | undefined>(undefined);
+  const {
+    finish: finishBuffering,
+    start: startBuffering,
+    visible: isBuffering,
+  } = useGridPreviewBufferingIndicator();
   const pause = useCallback(() => setPlaying(false), []);
-  const play = useCallback(() => setPlaying(true), []);
+  const play = useCallback(() => {
+    if (enabled) {
+      setPlaying(true);
+    }
+  }, [enabled]);
 
-  // This effect loads the initial preview frame for the current source and
-  // holds a pool reference for the lifetime of the grid cell.
+  // Reset only when the requested source/stream changes. Visibility changes
+  // intentionally preserve the last frame so hidden-cache re-entry is free.
   useEffect(() => {
-    if (!source) {
-      initialLoadInFlightRef.current = false;
-      nextStartTimeNsRef.current = undefined;
+    initialLoadInFlightRef.current = false;
+    loadedRequestRef.current = null;
+    frameTimeNsRef.current = undefined;
+    nextStartTimeNsRef.current = undefined;
+    finishBuffering();
+    setPlaying(false);
+    setState(
+      source
+        ? {
+            error: null,
+            frame: null,
+            hasPreviewTopics: false,
+            streamTopic: null,
+            streamTopics: [],
+            status: "loading",
+          }
+        : IDLE_PREVIEW_STATE,
+    );
+  }, [finishBuffering, selectedStreamTopic, source]);
+
+  // This effect stops hover playback whenever the grid renderer is inactive.
+  useEffect(() => {
+    if (!enabled) {
+      finishBuffering();
       setPlaying(false);
-      setState(IDLE_PREVIEW_STATE);
+    }
+  }, [enabled, finishBuffering]);
+
+  // This effect keeps the shared worker/cache pool alive while the tile can
+  // issue preview reads. Request reprioritization below must not tear it down.
+  useEffect(() => {
+    if (!enabled || !source) {
+      return undefined;
+    }
+
+    const pool = getMcapGridPreviewPool();
+    pool.acquire();
+    return () => pool.release();
+  }, [enabled, source]);
+
+  // Initial frames are visible-only background work until hover promotes the
+  // pending request. Hover playback also stays at CURRENT_FRAME priority.
+  useEffect(() => {
+    if (!enabled || !source) {
+      return undefined;
+    }
+    const loadedRequest = loadedRequestRef.current;
+    if (
+      loadedRequest?.source === source &&
+      loadedRequest.selectedStreamTopic === selectedStreamTopic
+    ) {
       return undefined;
     }
 
     let active = true;
     const controller = new AbortController();
     const pool = getMcapGridPreviewPool();
-    pool.acquire();
     initialLoadInFlightRef.current = true;
+    frameTimeNsRef.current = undefined;
     nextStartTimeNsRef.current = undefined;
-    setPlaying(false);
-    setState({
-      error: null,
-      frame: null,
-      hasPreviewTopics: false,
-      streamTopic: null,
-      streamTopics: [],
-      status: "loading",
-    });
 
     const request = selectedStreamTopic
       ? { selectedStreamTopic, source }
       : { source };
     pool
-      .request(request, { signal: controller.signal })
+      .request(request, {
+        priority: hovered
+          ? MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME
+          : MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+        signal: controller.signal,
+      })
       .then((result) => {
         if (active) {
+          publishGridBootstrap(source, result);
+          loadedRequestRef.current = { selectedStreamTopic, source };
+          frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState(result.state);
         }
@@ -113,9 +183,8 @@ export function useMcapGridPreview({
       active = false;
       initialLoadInFlightRef.current = false;
       controller.abort();
-      pool.release();
     };
-  }, [selectedStreamTopic, source]);
+  }, [enabled, hovered, selectedStreamTopic, source]);
 
   // This effect runs the hover playback loop: while playing, it keeps
   // requesting the next frame, wrapping back to the start when the
@@ -123,16 +192,21 @@ export function useMcapGridPreview({
   useEffect(() => {
     if (
       !playing ||
+      !enabled ||
       !source ||
       state.status !== "ready" ||
       initialLoadInFlightRef.current
     ) {
-      return;
+      return undefined;
     }
 
     let active = true;
     const controller = new AbortController();
     const pool = getMcapGridPreviewPool();
+    pool.acquire();
+    let bootstrapPublished = false;
+    let previousFrameTimeNs = frameTimeNsRef.current;
+    let presentedAtMs = performance.now();
 
     const run = async () => {
       try {
@@ -151,25 +225,59 @@ export function useMcapGridPreview({
                 source,
                 startTimeNs: nextStartTimeNsRef.current,
               };
+          startBuffering();
           const result = await pool.request(request, {
+            priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
             signal: controller.signal,
           });
+          finishBuffering();
 
           if (!active) {
             break;
           }
 
           if (!result.state.frame) {
+            frameTimeNsRef.current = undefined;
             nextStartTimeNsRef.current = undefined;
-            await delayMs(playbackDelayMs());
+            previousFrameTimeNs = undefined;
+            await delayMs(
+              mcapGridPreviewPlaybackDelayMs(undefined, undefined),
+              controller.signal,
+            );
+            if (!active) {
+              break;
+            }
             continue;
           }
 
+          const playbackDelayMs = mcapGridPreviewPlaybackDelayMs(
+            previousFrameTimeNs,
+            result.frameTimeNs,
+            performance.now() - presentedAtMs,
+          );
+          if (playbackDelayMs === null) {
+            nextStartTimeNsRef.current = result.nextStartTimeNs;
+            continue;
+          }
+
+          await delayMs(playbackDelayMs, controller.signal);
+          if (!active) {
+            break;
+          }
+
+          if (!bootstrapPublished) {
+            publishGridBootstrap(source, result);
+            bootstrapPublished = true;
+          }
+
+          frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState(result.state);
-          await delayMs(playbackDelayMs(result.delayMs));
+          previousFrameTimeNs = result.frameTimeNs;
+          presentedAtMs = performance.now();
         }
       } catch (caughtError) {
+        finishBuffering();
         if (active && !controller.signal.aborted) {
           setState((currentState) => ({
             ...currentState,
@@ -184,21 +292,100 @@ export function useMcapGridPreview({
 
     return () => {
       active = false;
+      finishBuffering();
       controller.abort();
+      pool.release();
     };
-  }, [playing, selectedStreamTopic, source, state.status]);
+  }, [
+    enabled,
+    finishBuffering,
+    playing,
+    selectedStreamTopic,
+    source,
+    startBuffering,
+    state.status,
+  ]);
 
-  return { ...state, pause, play };
+  return { ...state, isBuffering, pause, play };
 }
 
-function playbackDelayMs(
-  frameDelayMs = MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS,
-): number {
-  return Math.max(0, frameDelayMs / DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE);
+function useGridPreviewBufferingIndicator() {
+  const [visible, setVisible] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const finish = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setVisible(false);
+  }, []);
+  const start = useCallback(() => {
+    if (timerRef.current !== null) {
+      return;
+    }
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      setVisible(true);
+    }, MCAP_GRID_BUFFERING_DELAY_MS);
+  }, []);
+
+  // This effect clears the timer without scheduling state during unmount.
+  useEffect(
+    () => () => {
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+      }
+    },
+    [],
+  );
+
+  return { finish, start, visible };
 }
 
-function delayMs(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+function publishGridBootstrap(
+  source: ByteSourceDescriptor,
+  result: McapGridPreviewResult,
+): void {
+  if (
+    !result.bootstrapTimelineRange &&
+    !result.bootstrapTopics &&
+    !result.state.frame
+  ) {
+    return;
+  }
+
+  publishMcapSourceBootstrap(source, {
+    ...(result.bootstrapTimelineRange
+      ? { timelineRange: result.bootstrapTimelineRange }
+      : {}),
+    ...(result.bootstrapTopics ? { topics: result.bootstrapTopics } : {}),
+    ...(result.state.frame
+      ? {
+          poster: result.state.frame,
+          ...(result.state.streamTopic
+            ? { posterTopic: result.state.streamTopic }
+            : {}),
+        }
+      : {}),
+  });
 }
 
+function delayMs(milliseconds: number, signal: AbortSignal): Promise<void> {
+  if (milliseconds <= 0 || signal.aborted) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(finish, milliseconds);
+    signal.addEventListener("abort", finish, { once: true });
+
+    function finish() {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", finish);
+      resolve();
+    }
+  });
+}
+
+/** Status type exposed alongside the grid preview hook. */
 export type { McapGridPreviewStatus };

@@ -2,6 +2,7 @@ import { usePlaybackStore, type PlaybackStore } from "@fiftyone/playback";
 import { atom, useAtomValue, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { useMemo } from "react";
+import type { DecodedDiagnostic } from "../../../decoders";
 
 /**
  * Per-topic playback readiness at the current playhead tick:
@@ -52,6 +53,14 @@ const mcapTopicStartTimeSecAtom = atomFamily(
  */
 const mcapTopicStaleAgeNsAtom = atomFamily(
   (_topic: string) => atom<bigint | null>(null) as PrimitiveAtom<bigint | null>,
+);
+
+const EMPTY_DIAGNOSTICS: readonly DecodedDiagnostic[] = [];
+const mcapTopicDiagnosticsAtom = atomFamily(
+  (_topic: string) =>
+    atom<readonly DecodedDiagnostic[]>(EMPTY_DIAGNOSTICS) as PrimitiveAtom<
+      readonly DecodedDiagnostic[]
+    >,
 );
 
 /**
@@ -106,6 +115,21 @@ export function useMcapTopicStaleAges(
   return useAtomValue(staleAgesAtom, { store });
 }
 
+/** Decoder capability diagnostics, index-aligned with the supplied topics. */
+export function useMcapTopicDiagnostics(
+  topics: readonly string[],
+): readonly (readonly DecodedDiagnostic[])[] {
+  const store = usePlaybackStore();
+  const diagnosticsAtom = useMemo(
+    () =>
+      atom((get) =>
+        topics.map((topic) => get(mcapTopicDiagnosticsAtom(topic))),
+      ),
+    [topics],
+  );
+  return useAtomValue(diagnosticsAtom, { store });
+}
+
 /** Non-reactive read for the data stream and tests. */
 export function getMcapTopicStatus(
   store: PlaybackStore,
@@ -138,6 +162,46 @@ export function setMcapTopicStaleAgeNs(
   ageNs: bigint | null,
 ): void {
   store.set(mcapTopicStaleAgeNsAtom(topic), ageNs);
+}
+
+/** Replaces a topic's latest decoder diagnostics when their content changes. */
+export function setMcapTopicDiagnostics(
+  store: PlaybackStore,
+  topic: string,
+  diagnostics: readonly DecodedDiagnostic[],
+): void {
+  const atom = mcapTopicDiagnosticsAtom(topic);
+  const next = diagnostics.length > 0 ? diagnostics : EMPTY_DIAGNOSTICS;
+  if (decodedDiagnosticsEqual(store.get(atom), next)) return;
+  store.set(atom, next);
+}
+
+/** Reads a topic's latest decoder diagnostics without subscribing. */
+export function getMcapTopicDiagnostics(
+  store: PlaybackStore,
+  topic: string,
+): readonly DecodedDiagnostic[] {
+  return store.get(mcapTopicDiagnosticsAtom(topic));
+}
+
+function decodedDiagnosticsEqual(
+  left: readonly DecodedDiagnostic[],
+  right: readonly DecodedDiagnostic[],
+): boolean {
+  return (
+    left === right ||
+    (left.length === right.length &&
+      left.every((diagnostic, index) => {
+        const candidate = right[index];
+        return (
+          candidate !== undefined &&
+          diagnostic.capability === candidate.capability &&
+          diagnostic.code === candidate.code &&
+          diagnostic.message === candidate.message &&
+          diagnostic.severity === candidate.severity
+        );
+      }))
+  );
 }
 
 /** Non-reactive write for the data stream's topic-bounds publishing. */

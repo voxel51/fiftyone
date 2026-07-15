@@ -134,7 +134,7 @@ describe("McapRawMessageTree", () => {
     expect(screen.queryByTestId("mcap-raw-plot-label")).toBeNull();
     expect(screen.queryByTestId("mcap-raw-plot-enabled")).toBeNull();
     expect(screen.queryByTestId("mcap-raw-plot-unlisted")).toBeNull();
-    expect(screen.queryByTestId("mcap-raw-plot-data.0")).toBeNull();
+    expect(screen.getByTestId("mcap-raw-plot-data.0")).toBeTruthy();
   });
 
   it("hides add-to-plot actions when no handler is available", () => {
@@ -164,5 +164,19 @@ describe("McapRawMessageTree", () => {
     expect(
       screen.getByTestId("mcap-raw-plot-pose.position.x").textContent,
     ).toBe("plotted");
+  });
+
+  it("emits an indexed dotted path for numeric array elements", () => {
+    render(
+      <McapRawMessageTree
+        onAddNumericFieldToPlot={addToPlot}
+        plottableFieldPaths={new Set(["data.0"])}
+        root={ROOT}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("mcap-raw-plot-data.0"));
+
+    expect(addToPlot).toHaveBeenCalledWith("data.0");
   });
 });

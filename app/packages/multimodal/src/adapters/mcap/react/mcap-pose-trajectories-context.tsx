@@ -2,7 +2,6 @@
 // components whose relay fragments cannot evaluate under vitest, and this
 // bridge has direct unit tests.
 import { PlaybackStoreContext } from "@fiftyone/playback/src/lib/playback/playback-store-context";
-import { getIsPlaying } from "@fiftyone/playback/src/lib/playback/store-access";
 import React, {
   createContext,
   useContext,
@@ -15,11 +14,11 @@ import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { byteSourceAccessKey } from "../../../query/bytes";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { MCAP_ACTIVE_TIMELINE, type McapResourceClient } from "../types";
-import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
-  getMcapNetworkHealth,
-  shouldDeferMcapIdleWorkForStore,
-} from "./mcap-network-health";
+  shouldDeferMcapBulkHistory,
+  startMcapBulkTopicLifecycle,
+} from "./mcap-bulk-topic-lifecycle";
+import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
   decimateTrajectory,
   type McapPoseTrajectoryPoint,
@@ -145,7 +144,6 @@ export function McapPoseTrajectoriesBridge({
 }) {
   const { setTrajectories } = useContextValue();
   const sourceKey = source ? byteSourceAccessKey(source) : null;
-  const fetchedTopicsRef = useRef(new Set<string>());
   const trajectoriesRef = useRef(new Map<string, McapPoseTrajectoryState>());
   // Nullable on purpose: callers inside the playback shell provide the store
   // (enabling the network-health gate); standalone callers and tests get
@@ -156,7 +154,6 @@ export function McapPoseTrajectoriesBridge({
   // drops state for topics that leave the inventory. It re-keys (full
   // reset) when the source changes.
   useEffect(() => {
-    fetchedTopicsRef.current = new Set();
     trajectoriesRef.current = new Map();
     setTrajectories(EMPTY_TRAJECTORIES);
 
@@ -164,124 +161,64 @@ export function McapPoseTrajectoriesBridge({
       return undefined;
     }
 
-    let cancelled = false;
-    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
     const commit = (topic: string, state: McapPoseTrajectoryState) => {
-      if (cancelled) {
-        return;
-      }
       trajectoriesRef.current.set(topic, state);
       setTrajectories(new Map(trajectoriesRef.current));
     };
 
-    // A near-full-file scan on a starved link would fight foreground
-    // catch-up for bandwidth (lanes are separate workers, not separate
-    // links). While the user is actively waiting on a limited network,
-    // stand down and re-check.
-    const shouldStandDown = (): boolean => {
-      if (!playbackStore) {
-        return false;
-      }
-      // An actively advancing playhead on a limited link cannot spare the
-      // scan any bandwidth — worse, the single-flight fill locks let a
-      // scan-initiated block fill become the fetch the playhead later
-      // waits on (measured as multi-second mid-play freezes). Run only
-      // while paused or once the link has genuinely recovered.
-      if (
-        getIsPlaying(playbackStore) &&
-        getMcapNetworkHealth(playbackStore).limited
-      ) {
-        return true;
-      }
-      return shouldDeferMcapIdleWorkForStore(playbackStore, null);
-    };
-
-    const scheduleRetry = (delayMs: number) => {
-      if (cancelled || retryTimeout !== null) {
-        return;
-      }
-      retryTimeout = setTimeout(() => {
-        retryTimeout = null;
-        start();
-      }, delayMs);
-    };
-
-    const start = () => {
-      if (cancelled) {
-        return;
-      }
-      if (shouldStandDown()) {
-        scheduleRetry(TRAJECTORY_DEFERRED_RETRY_MS);
-        return;
-      }
-
-      for (const topic of poseTopics) {
-        if (fetchedTopicsRef.current.has(topic)) {
-          continue;
-        }
-        fetchedTopicsRef.current.add(topic);
+    return startMcapBulkTopicLifecycle({
+      initialDelayMs: TRAJECTORY_START_DELAY_MS,
+      retryDelayMs: TRAJECTORY_DEFERRED_RETRY_MS,
+      shouldStandDown: () => shouldDeferMcapBulkHistory(playbackStore),
+      topics: poseTopics,
+      runTopic: async (topic, control) => {
         commit(topic, { points: [], status: "loading" });
 
-        void (async () => {
-          const points: McapPoseTrajectoryPoint[] = [];
-          let streamFrameId: string | undefined;
-          try {
-            for await (const message of client.readDecodedMessages(
-              {
-                activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-                limit: TRAJECTORY_READ_LIMIT,
-                source,
-                topics: [topic],
-              },
-              { priority: "bulk" },
-            )) {
-              if (cancelled) {
-                return;
-              }
-              // The "limited" verdict trails the stall that raises it, so
-              // the pre-start gate alone still races a cold play press.
-              // Re-check per message and stand down mid-read: breaking out
-              // of the stream cancels the worker job at its next read
-              // boundary, and the bytes already banked make the retry
-              // cheaper than the abandoned attempt.
-              if (shouldStandDown()) {
-                fetchedTopicsRef.current.delete(topic);
-                scheduleRetry(TRAJECTORY_DEFERRED_RETRY_MS);
-                return;
-              }
-              const visualization = message.decoded.output.visualization;
-              if (visualization?.kind !== VISUALIZATION_KIND.POSE) {
-                continue;
-              }
-              if (!streamFrameId && visualization.coordinateFrameId) {
-                streamFrameId = visualization.coordinateFrameId;
-              }
-              points.push({
-                position: visualization.position,
-                timeNs: message.timelineTimeNs,
-              });
+        const points: McapPoseTrajectoryPoint[] = [];
+        let streamFrameId: string | undefined;
+        try {
+          for await (const message of client.readDecodedMessages(
+            {
+              activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+              limit: TRAJECTORY_READ_LIMIT,
+              source,
+              topics: [topic],
+            },
+            { priority: "bulk" },
+          )) {
+            if (control.isCancelled()) return;
+            // The "limited" verdict trails the stall that raises it, so
+            // the pre-start gate alone still races a cold play press.
+            // Re-check per message and stand down mid-read: breaking out
+            // of the stream cancels the worker job at its next read
+            // boundary, and the bytes already banked make the retry
+            // cheaper than the abandoned attempt.
+            if (control.standDown()) return;
+            const visualization = message.decoded.output.visualization;
+            if (visualization?.kind !== VISUALIZATION_KIND.POSE) {
+              continue;
             }
-
-            commit(topic, {
-              points: decimateTrajectory(points),
-              status: "ready",
-              ...(streamFrameId ? { streamFrameId } : {}),
+            if (!streamFrameId && visualization.coordinateFrameId) {
+              streamFrameId = visualization.coordinateFrameId;
+            }
+            points.push({
+              position: visualization.position,
+              timeNs: message.timelineTimeNs,
             });
-          } catch {
-            commit(topic, { points: [], status: "error" });
           }
-        })();
-      }
-    };
 
-    scheduleRetry(TRAJECTORY_START_DELAY_MS);
-
-    return () => {
-      cancelled = true;
-      if (retryTimeout !== null) {
-        clearTimeout(retryTimeout);
-      }
-    };
+          if (control.isCancelled()) return;
+          commit(topic, {
+            points: decimateTrajectory(points),
+            status: "ready",
+            ...(streamFrameId ? { streamFrameId } : {}),
+          });
+        } catch {
+          if (control.isCancelled()) return;
+          commit(topic, { points: [], status: "error" });
+        }
+      },
+    });
     // `poseTopics` identity is derived from the scene inventory, so this
     // covers both source swaps and topics appearing late.
   }, [
