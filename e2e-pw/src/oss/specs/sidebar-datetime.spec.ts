@@ -84,14 +84,11 @@ test.describe
     await sidebar.toggleSidebarMode();
     await sidebar.toggleSidebarGroup("METADATA");
 
-    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    const entryExpandPromise = await eventUtils.arm("animation-onRest");
 
     await sidebar.clickFieldCheckbox("dates");
     await sidebar.clickFieldDropdown("dates");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
     expect(await page.getByTestId("tag-dates").count()).toBe(2);
   });
 
@@ -103,14 +100,11 @@ test.describe
     await sidebar.toggleSidebarMode();
     await sidebar.toggleSidebarGroup("METADATA");
 
-    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    const entryExpandPromise = await eventUtils.arm("animation-onRest");
 
     await sidebar.clickFieldCheckbox("seconds");
     await sidebar.clickFieldDropdown("seconds");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
 
     expect(await page.getByTestId("tag-seconds").count()).toBe(2);
   });

@@ -313,10 +313,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
 
     // change the first of the image slice's two detections cat -> dog
     await modal.annotate3d.selectLabel("cat");
-    const saved = modal.sidebar.annotate.waitForPatch();
     await modal.sidebar.edit.selectFieldChoice("label", "dog");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await saved;
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     // only the image sample changed (now one dog + one cat); 3D slices untouched
     await expect
@@ -352,10 +351,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.sampleCanvas.move(0.82, 0.82);
     await modal.sampleCanvas.up();
 
-    const saved = modal.sidebar.annotate.waitForPatch();
     await modal.sidebar.edit.selectFieldChoice("label", "dog");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await saved;
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     // the new "dog" detection lands on the image sample only — 3D slices untouched
     await expect
@@ -390,10 +388,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
 
     // select the mesh cuboid and change its class
     await modal.annotate3d.selectLabel("cat");
-    const saved = modal.sidebar.annotate.waitForPatch();
     await modal.sidebar.edit.selectFieldChoice("label", "dog");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await saved;
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     // only the mesh sample changed; image + cloud untouched
     await expect
@@ -449,10 +446,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
 
     // the freshly-drawn cuboid auto-selects with its edit form open; give it a
     // distinct class so the create is unambiguous, then let it autosave
-    const saved = modal.sidebar.annotate.waitForPatch();
     await modal.sidebar.edit.selectFieldChoice("label", "dog");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await saved;
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     // the created "dog" cuboid lands on the mesh sample only — the seeded "cat"
     // stays and image + cloud are untouched

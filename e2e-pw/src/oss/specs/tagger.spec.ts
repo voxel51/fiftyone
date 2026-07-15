@@ -69,13 +69,13 @@ test.describe.serial("tag", () => {
     await sidebar.clickFieldCheckbox("tags");
     await sidebar.clickFieldDropdown("tags");
     // mount eventListener
-    const gridRefreshedEventPromise = grid.getWaitForGridRefreshPromise();
+    const gridRefreshedEventPromise = await grid.armGridRefresh();
 
     await grid.actionsRow.toggleTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("sample");
     await tagger.addNewTag("sample", "test1");
 
-    await gridRefreshedEventPromise;
+    await gridRefreshedEventPromise.received;
 
     const bubble = page.getByTestId("tag-tags-test1");
     await expect(bubble).toHaveCount(5);
@@ -91,13 +91,13 @@ test.describe.serial("tag", () => {
     await sidebar.clickFieldCheckbox("_label_tags");
     await sidebar.clickFieldDropdown("_label_tags");
     // mount eventListener
-    const gridRefreshedEventPromise = grid.getWaitForGridRefreshPromise();
+    const gridRefreshedEventPromise = await grid.armGridRefresh();
 
     await grid.actionsRow.toggleTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("label");
     await tagger.addNewTag("label", "labelTest");
 
-    await gridRefreshedEventPromise;
+    await gridRefreshedEventPromise.received;
     // verify the bubble in the image
     // the first sample has 17 label tag count, the second sample has 22 tag count
     const bubble1 = page.getByTestId("tag-_label_tags-labeltest:-17");
@@ -128,12 +128,9 @@ test.describe.serial("tag", () => {
     // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
     // await expect(modal.looker).toHaveScreenshot("labels.png");
 
-    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    const entryExpandPromise = await eventUtils.arm("animation-onRest");
     await modal.sidebar.clickFieldDropdown("predictions");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
     await modal.sidebar.applyFilter("bird");
 
     await modal.looker.hover();

@@ -82,7 +82,7 @@ test.describe.serial("default video slice group", () => {
   test("video as default slice renders", async ({ grid, modal }) => {
     await grid.sliceSelector.assert.verifyHasSlices(["video", "image"]);
     await grid.sliceSelector.assert.verifyActiveSlice("video");
-    await grid.assert.isLookerCountEqualTo(1);
+    await grid.assert.isTileCountEqualTo(1);
 
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
@@ -90,11 +90,11 @@ test.describe.serial("default video slice group", () => {
     await modal.assert.verifyCarouselLength(2);
     await modal.close();
 
-    const promise = grid.getWaitForGridRefreshPromise();
+    const promise = await grid.armGridRefresh();
     await grid.selectSlice("image");
-    await promise;
+    await promise.received;
 
-    await grid.assert.isLookerCountEqualTo(2);
+    await grid.assert.isTileCountEqualTo(2);
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.waitForCarouselToLoad();

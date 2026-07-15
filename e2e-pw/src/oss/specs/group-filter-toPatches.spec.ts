@@ -72,27 +72,25 @@ test(`group dataset with filters converts toPatches correctly`, async ({
   await grid.assert.isEntryCountTextEqualTo("5 groups with slice");
 
   // apply a sidebar filter
-  const entryExpandPromise =
-    eventUtils.getEventReceivedPromiseForPredicate("animation-onRest");
+  const entryExpandPromise = await eventUtils.arm("animation-onRest");
   await sidebar.clickFieldDropdown("predictions");
-  await entryExpandPromise;
+  await entryExpandPromise.received;
 
   await sidebar.waitForElement("checkbox-carrot");
   await sidebar.applyLabelFromList(["carrot"], "select-detections-with-label");
 
   // convert to patches
   await grid.actionsRow.toggleToClipsOrPatches();
-  const toPatchesRefresh = grid.getWaitForGridRefreshPromise();
+  const toPatchesRefresh = await grid.armGridRefresh();
   await gridActionsRow.clickToPatchesByLabelField("predictions");
-  await toPatchesRefresh;
+  await toPatchesRefresh.received;
 
   // verify result:
   await grid.assert.isEntryCountTextEqualTo("5 patches");
 
   // not-carrot should not be in the sidebar filter anymore
-  const expandPromise =
-    eventUtils.getEventReceivedPromiseForPredicate("animation-onRest");
+  const expandPromise = await eventUtils.arm("animation-onRest");
   await sidebar.clickFieldDropdown("predictions");
-  await expandPromise;
+  await expandPromise.received;
   expect(await page.getByTestId("checkbox-not-carrot").count()).toEqual(0);
 });

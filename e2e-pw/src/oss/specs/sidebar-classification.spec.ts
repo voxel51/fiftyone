@@ -50,21 +50,14 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     // Test the visibility mode:
     await sidebar.toggleSidebarMode();
     // mount eventListener
-    const gridRefreshedEventPromise =
-      eventUtils.getEventReceivedPromiseForPredicate(
-        "re-render-tag",
-        () => true,
-      );
-    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    const gridRefreshedEventPromise = await eventUtils.arm("re-render-tag");
+    const entryExpandPromise = await eventUtils.arm("animation-onRest");
 
     // test case: visibility mode - show label
     await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
     await sidebar.applyLabelFromList(["cat"], "show-label");
-    await gridRefreshedEventPromise;
+    await gridRefreshedEventPromise.received;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "visible-cat.png",
       { animations: "allow" },
@@ -72,7 +65,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
 
     // test case: visibility mode - hide label
     await sidebar.applyLabelFromList([], "hide-label");
-    await gridRefreshedEventPromise;
+    await gridRefreshedEventPromise.received;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "not-visible-cat.png",
       { animations: "allow" },
@@ -84,13 +77,10 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    const entryExpandPromise = await eventUtils.arm("animation-onRest");
 
     await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
     await sidebar.waitForElement("checkbox-frog");
     await sidebar.waitForElement("checkbox-ship");
     await sidebar.applyLabelFromList(["frog"], "show-samples-with-label");
@@ -107,15 +97,11 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     // Test with visibility mode:
     await sidebar.toggleSidebarMode();
     // mount eventListener
-    const gridRefreshedEventPromise =
-      eventUtils.getEventReceivedPromiseForPredicate(
-        "re-render-tag",
-        () => true,
-      );
+    const gridRefreshedEventPromise = await eventUtils.arm("re-render-tag");
 
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(["frog"], "show-label");
-    await gridRefreshedEventPromise;
+    await gridRefreshedEventPromise.received;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-frog-ship-visible-frog.png",
       { animations: "allow" },
@@ -123,7 +109,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
 
     // test case: visibility mode - hide label
     await sidebar.applyLabelFromList([], "hide-label");
-    await gridRefreshedEventPromise;
+    await gridRefreshedEventPromise.received;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-frog-ship-invisible-frog.png",
       { animations: "allow" },
@@ -135,12 +121,9 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    const entryExpandPromise = await eventUtils.arm("animation-onRest");
     await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
 
     await sidebar.applyLabelFromList(["ship"], "omit-samples-with-label");
 
@@ -153,15 +136,11 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await sidebar.toggleSidebarMode();
 
     // mount eventListener
-    const gridRefreshedEventPromise =
-      eventUtils.getEventReceivedPromiseForPredicate(
-        "re-render-tag",
-        () => true,
-      );
+    const gridRefreshedEventPromise = await eventUtils.arm("re-render-tag");
 
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(["cat"], "show-label");
-    await gridRefreshedEventPromise;
+    await gridRefreshedEventPromise.received;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-ship-visible-cat.png",
       { animations: "allow" },
@@ -169,7 +148,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
 
     // test case: visibility mode - hide label
     await sidebar.applyLabelFromList([], "hide-label");
-    await gridRefreshedEventPromise;
+    await gridRefreshedEventPromise.received;
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-ship-invisible-cat.png",
       { animations: "allow" },

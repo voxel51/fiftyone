@@ -84,10 +84,6 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     await modal.sidebar.annotate.pickTool("Pen");
     await modal.sidebar.annotate.assert.toolIsActive("Pen");
 
-    // Auto-save runs on a 3 s interval (`useAutoSave`); set up the response
-    // wait BEFORE we start interacting so we don't race the timer.
-    const persistResponse = modal.sidebar.annotate.waitForPatch();
-
     // ── 2. Place 4 pen points forming a rectangle, then right-click commit ──
     // First click in segmentation+pen mode creates the new overlay; subsequent
     // clicks add pen keypoints onto it.
@@ -99,7 +95,7 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     await modal.sampleCanvas.rightClick(0.5, 0.5);
 
     // ── 3. Wait for autosave to flush, then exit segmentation mode ──────────
-    await persistResponse;
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     await modal.sidebar.annotate.segmentationMode();
     await modal.sidebar.annotate.assert.segmentationModeIsActive(false);

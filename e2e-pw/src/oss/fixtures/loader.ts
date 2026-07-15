@@ -210,14 +210,15 @@ export class OssLoader extends AbstractFiftyoneLoader {
       return;
     }
 
+    // a grid tile's terminal state depends on its kind: lookers finish
+    // drawing a canvas (or report an error); custom-renderer tiles are
+    // ready once their wrapper commits
     await page.waitForFunction(
       () => {
         if (document.querySelector(`[data-cy=looker-error-info]`)) {
           return true;
         }
 
-        // custom-rendered tiles (multimodal) have no looker canvas; a
-        // committed renderer wrapper is their terminal ready state
         if (document.querySelector(`[data-cy=grid-custom-renderer]`)) {
           return true;
         }

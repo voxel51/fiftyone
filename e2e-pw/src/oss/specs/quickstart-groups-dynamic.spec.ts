@@ -66,7 +66,7 @@ test.describe.serial("quickstart-groups", () => {
 
   test("dynamic groups", async ({ grid, modal }) => {
     await grid.assert.isEntryCountTextEqualTo("8 groups with slice");
-    await grid.assert.isLookerCountEqualTo(8);
+    await grid.assert.isTileCountEqualTo(8);
 
     await grid.openFirstSample();
     await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });

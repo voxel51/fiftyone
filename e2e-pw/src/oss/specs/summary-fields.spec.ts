@@ -61,12 +61,9 @@ test.describe.serial("summary fields", () => {
       one: "two",
       three: "four",
     });
-    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    const entryExpandPromise = await eventUtils.arm("animation-onRest");
     await modal.sidebar.clickFieldDropdown("summaries");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
     await modal.sidebar.assert.verifyObject("summaries", {
       five: "six",
       seven: "eight",

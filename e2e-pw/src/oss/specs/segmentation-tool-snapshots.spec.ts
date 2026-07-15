@@ -90,8 +90,6 @@ test.describe.serial("segmentation tool snapshots", () => {
     await openAnnotate(modal, page, fiftyoneLoader, datasetName);
     await modal.sidebar.annotate.pickTool("Pen");
 
-    const persist = modal.sidebar.annotate.waitForPatch();
-
     // Rectangle polygon centered on the canvas
     await modal.sampleCanvas.click(0.4, 0.4);
     await modal.sampleCanvas.click(0.6, 0.4);
@@ -99,7 +97,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     await modal.sampleCanvas.click(0.4, 0.6);
     await modal.sampleCanvas.rightClick(0.5, 0.5);
 
-    await persist;
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     await modal.sampleCanvas.assert.hasScreenshot("seg-pen-rectangle.png");
   });
@@ -108,13 +106,11 @@ test.describe.serial("segmentation tool snapshots", () => {
     await openAnnotate(modal, page, fiftyoneLoader, datasetName);
     await modal.sidebar.annotate.pickTool("Brush");
 
-    const persist = modal.sidebar.annotate.waitForPatch();
-
     // Single diagonal stroke. drag() generates intermediate moves so the
     // brush dabs continuously instead of only at the endpoints.
     await modal.sampleCanvas.drag(0.35, 0.4, 0.65, 0.6);
 
-    await persist;
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     await modal.sampleCanvas.assert.hasScreenshot("seg-brush-stroke.png");
   });
@@ -133,13 +129,11 @@ test.describe.serial("segmentation tool snapshots", () => {
     await openAnnotate(modal, page, fiftyoneLoader, datasetName);
     await modal.sidebar.annotate.pickTool("AI");
 
-    const persist = modal.sidebar.annotate.waitForPatch();
-
     // One positive point near the center; mock worker returns a
     // deterministic 8x8 all-foreground mask at bbox {0.4, 0.4, 0.2, 0.2}.
     await modal.sampleCanvas.click(0.5, 0.5);
 
-    await persist;
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     // Right-click to finalize the AI session: destroys the keypoint
     // overlay (and its ripple animation), leaving only the mask render.
@@ -172,14 +166,12 @@ test.describe.serial("segmentation tool snapshots", () => {
     await openAnnotate(modal, page, fiftyoneLoader, datasetName);
     await modal.sidebar.annotate.pickTool("Merge");
 
-    const persist = modal.sidebar.annotate.waitForPatch();
-
     // Click the first detection to set as merge target, then the second
     // detection to merge into the target.
     await modal.sampleCanvas.click(0.35, 0.5);
     await modal.sampleCanvas.click(0.65, 0.5);
 
-    await persist;
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     await modal.sampleCanvas.assert.hasScreenshot("seg-merge-union.png");
 

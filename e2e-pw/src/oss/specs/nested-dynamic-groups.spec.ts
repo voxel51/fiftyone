@@ -128,7 +128,7 @@ test(`dynamic groups of groups works`, async ({
   modal,
   sidebar,
 }) => {
-  await grid.assert.isLookerCountEqualTo(4);
+  await grid.assert.isTileCountEqualTo(4);
   await grid.assert.isEntryCountTextEqualTo("4 groups with slice");
 
   await sidebar.clickFieldCheckbox("scene_key");
@@ -146,13 +146,12 @@ test(`dynamic groups of groups works`, async ({
       searchParams: new URLSearchParams({ view: "groups" }),
     },
   );
-  const gridRefreshPromiseSetRenderFramesAsVideo =
-    grid.getWaitForGridRefreshPromise();
+  const gridRefreshPromiseSetRenderFramesAsVideo = await grid.armGridRefresh();
   await grid.actionsRow.toggleDisplayOptions();
   await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
-  await gridRefreshPromiseSetRenderFramesAsVideo;
+  await gridRefreshPromiseSetRenderFramesAsVideo.received;
 
-  await grid.assert.isLookerCountEqualTo(2);
+  await grid.assert.isTileCountEqualTo(2);
   await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
 
   await grid.assert.nthSampleHasTagValue(0, "scene_key", "1");

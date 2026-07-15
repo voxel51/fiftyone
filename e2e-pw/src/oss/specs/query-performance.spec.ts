@@ -200,26 +200,17 @@ test.describe.serial("query performance sidebar", () => {
       await sidebar.asserter.assertFieldMissingQueryPerformance(field);
     }
 
-    let animation = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    let animation = await eventUtils.arm("animation-onRest");
     await sidebar.clickFieldDropdown("inf_label_list");
-    await animation;
+    await animation.received;
 
-    animation = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    animation = await eventUtils.arm("animation-onRest");
     await sidebar.clickFieldDropdown("nan_label_list");
-    await animation;
+    await animation.received;
 
-    animation = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    animation = await eventUtils.arm("animation-onRest");
     await sidebar.clickFieldDropdown("ninf_label_list");
-    await animation;
+    await animation.received;
 
     const subfieldsIndexed = ["id", "label", "tags"];
     for (const field of [

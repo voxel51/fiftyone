@@ -94,14 +94,13 @@ test.beforeEach(async ({ page, fiftyoneLoader, grid }) => {
     searchParams: new URLSearchParams({ view: "groups" }),
   });
 
-  const gridRefreshPromiseSetRenderFramesAsVideo =
-    grid.getWaitForGridRefreshPromise();
+  const gridRefreshPromiseSetRenderFramesAsVideo = await grid.armGridRefresh();
   await grid.actionsRow.toggleDisplayOptions();
   await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
-  await gridRefreshPromiseSetRenderFramesAsVideo;
+  await gridRefreshPromiseSetRenderFramesAsVideo.received;
 
   await grid.assert.isEntryCountTextEqualTo("2 groups");
-  await grid.assert.isLookerCountEqualTo(2);
+  await grid.assert.isTileCountEqualTo(2);
 });
 
 test("check modal playback and tagging behavior", async ({ modal, grid }) => {

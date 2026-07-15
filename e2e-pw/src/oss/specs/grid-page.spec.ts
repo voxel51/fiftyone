@@ -51,7 +51,7 @@ test.describe.serial("grid page", () => {
     page,
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await grid.assert.isLookerCountEqualTo(21);
+    await grid.assert.isTileCountEqualTo(21);
   });
 
   test("modal group carousel has correct second page (all 21 samples)", async ({

@@ -42,13 +42,10 @@ test.describe.serial("sidebar-filter-visibility", () => {
     // only show ground_truth (on by default), hide predictions
     await sidebar.clickFieldCheckbox("predictions");
 
-    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    const entryExpandPromise = await eventUtils.arm("animation-onRest");
     // select bottle in ground_truth.detections.label
     await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
     await sidebar.applyLabelFromList(
       ["bottle"],
       "select-detections-with-label",
@@ -90,13 +87,10 @@ test.describe.serial("sidebar-filter-visibility", () => {
     // only show ground_truth (on by default), hide predictions
     await sidebar.clickFieldCheckbox("predictions");
 
-    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    const entryExpandPromise = await eventUtils.arm("animation-onRest");
 
     await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
     await sidebar.applyLabelFromList(
       ["bottle"],
       "exclude-detections-with-label",
@@ -105,7 +99,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     // verify the number of samples in the result
     await grid.assert.isEntryCountTextEqualTo("5 samples");
     await grid.waitForGridToLoad();
-    await grid.assert.isLookerCountEqualTo(5);
+    await grid.assert.isTileCountEqualTo(5);
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "exclude-bottle.png",
       { animations: "allow" },
@@ -139,20 +133,17 @@ test.describe.serial("sidebar-filter-visibility", () => {
     // only show ground_truth (on by default), hide predictions
     await sidebar.clickFieldCheckbox("predictions");
 
-    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    const entryExpandPromise = await eventUtils.arm("animation-onRest");
 
     await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
 
-    const gridRefreshPromise = grid.getWaitForGridRefreshPromise();
+    const gridRefreshPromise = await grid.armGridRefresh();
     await sidebar.applyLabelFromList(["bottle"], "show-samples-with-label");
 
     // verify the number of samples in the result
     await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
-    await gridRefreshPromise;
+    await gridRefreshPromise.received;
 
     await expect(grid.getForwardSection()).toHaveScreenshot("show-bottle.png", {
       animations: "allow",
@@ -186,13 +177,10 @@ test.describe.serial("sidebar-filter-visibility", () => {
     // only show ground_truth (on by default), hide predictions
     await sidebar.clickFieldCheckbox("predictions");
 
-    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    const entryExpandPromise = await eventUtils.arm("animation-onRest");
 
     await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
     await sidebar.applyLabelFromList(["bottle"], "omit-samples-with-label");
 
     // verify the number of samples in the result

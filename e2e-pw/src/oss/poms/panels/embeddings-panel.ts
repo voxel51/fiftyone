@@ -91,10 +91,16 @@ class EmebddingsAsserter {
   async verifyLassoSelectsSamples() {
     await this.embeddingsPom.selector.openResults();
     await this.embeddingsPom.selector.selectResult("img_viz");
-    await this.embeddingsPom.plotContainer.waitFor({
-      state: "visible",
-      timeout: 2000,
-    });
+
+    // lassoing before plotly has drawn the points selects nothing; the app
+    // stamps data-plot-rendered once the current traces are on screen.
+    // bound: traces fetch + plotly draw, measured up to ~10s on the slowest
+    // (enterprise) CI runners — 30s bounds the chain without racing it
+    await expect(this.embeddingsPom.plotContainer).toHaveAttribute(
+      "data-plot-rendered",
+      "true",
+      { timeout: 30_000 },
+    );
 
     await this.embeddingsPom.lassoTool.click();
     await this.embeddingsPom.selectAll();

@@ -61,7 +61,7 @@ test.describe.serial("quickstart-groups", () => {
     grid,
     page,
   }) => {
-    await grid.assert.isLookerCountEqualTo(4);
+    await grid.assert.isTileCountEqualTo(4);
     const selectorSlice = page.getByTestId("selector-slice");
     await expect(selectorSlice).toHaveValue("left");
   });
@@ -207,23 +207,17 @@ test.describe.serial("quickstart-groups", () => {
     sidebar,
     eventUtils,
   }) => {
-    let entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    let entryExpandPromise = await eventUtils.arm("animation-onRest");
     await sidebar.toggleSidebarGroup("GROUP");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
 
-    entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "animation-onRest",
-      () => true,
-    );
+    entryExpandPromise = await eventUtils.arm("animation-onRest");
     await sidebar.clickFieldDropdown("group.name");
-    await entryExpandPromise;
+    await entryExpandPromise.received;
 
-    const promise = grid.getWaitForGridRefreshPromise();
+    const promise = await grid.armGridRefresh();
     await sidebar.applyFilter("left");
-    await promise;
+    await promise.received;
 
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();

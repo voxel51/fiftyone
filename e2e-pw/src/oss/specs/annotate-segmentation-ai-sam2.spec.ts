@@ -97,16 +97,11 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
     await modal.sidebar.annotate.pickTool("AI");
     await modal.sidebar.annotate.assert.toolIsActive("AI");
 
-    // Set up the persistence wait BEFORE clicking so we don't race the
-    // 3s auto-save timer. Clicking a point auto-triggers inference, and
-    // the resulting detection is picked up by the next auto-save tick.
-    const persistResponse = modal.sidebar.annotate.waitForPatch();
-
     // ── 2. Place a positive point — inference auto-fires on context change ──
     await modal.sampleCanvas.click(0.5, 0.5);
 
-    // ── 3. Wait for auto-save to flush, then exit segmentation mode ─────────
-    await persistResponse;
+    // ── 3. Wait for auto-save to settle, then exit segmentation mode ────────
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     await modal.sidebar.annotate.segmentationMode();
     await modal.sidebar.annotate.assert.segmentationModeIsActive(false);

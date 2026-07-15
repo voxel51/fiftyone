@@ -92,11 +92,7 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
     // turn on the sample tag bubble
     await sidebar.clickFieldCheckbox("tags");
     // mount eventListener
-    const gridRefreshedEventPromise =
-      eventUtils.getEventReceivedPromiseForPredicate(
-        "re-render-tag",
-        () => true,
-      );
+    const gridRefreshedEventPromise = await eventUtils.arm("re-render-tag");
     // open color modal and modify color in sample tags field and ground_truth
     await gridActionsRow.toggleColorSettings();
 
@@ -114,7 +110,7 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
     await colorModal.closeColorModal();
     const tagBubble = page.getByTestId("tag-validation").first();
 
-    await gridRefreshedEventPromise;
+    await gridRefreshedEventPromise.received;
 
     // verify validation tag has yellow green as background color
     expect(await tagBubble.getAttribute("style")).toContain(
@@ -123,12 +119,12 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
 
     // switch dataset to dummy_color_by_instance, and verify that color_by mode is "instance"
     // we're asserting that when dataset is switched, session color settings are reset to default from app config
-    const gridRefreshPromise = grid.getWaitForGridRefreshPromise();
+    const gridRefreshPromise = await grid.armGridRefresh();
     await fiftyoneLoader.selectDatasetFromSelector(
       page,
       dummyDatasetColorByInstance,
     );
-    await gridRefreshPromise;
+    await gridRefreshPromise.received;
 
     // open color modal
     await gridActionsRow.toggleColorSettings();
