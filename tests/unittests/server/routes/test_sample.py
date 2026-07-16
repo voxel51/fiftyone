@@ -138,6 +138,11 @@ class TestSampleRoutes:
         dataset.add_sample_field(
             "empty_polylines", fo.EmbeddedDocumentField, fol.Polylines
         )
+        dataset.add_sample_field(
+            "empty_temporal_detections",
+            fo.EmbeddedDocumentField,
+            fol.TemporalDetections,
+        )
 
         dataset.add_sample_field(
             "empty_primitive",
@@ -568,6 +573,49 @@ class TestSampleRoutes:
         assert sample.ground_truth.detections[1].label == "dog"
 
     @pytest.mark.asyncio
+    async def test_patch_add_temporal_detection_to_uninitialized_field(
+        self, mutator, mock_request, sample
+    ):
+        """'add' a TemporalDetection to a declared-but-unpopulated field.
+
+        Exercises both the TemporalDetection(s) deserializer registration and
+        ensure_sample_field materializing the parent TemporalDetections — the
+        path that lets a user create the first temporal event on a sample
+        whose TD field has no value yet.
+        """
+        new_td = {
+            "_cls": "TemporalDetection",
+            "label": "approach",
+            "support": [1, 31],
+        }
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/empty_temporal_detections/detections/-",
+                "value": new_td,
+            }
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
+        tds = sample.empty_temporal_detections
+        assert tds is not None
+        assert len(tds.detections) == 1
+        assert isinstance(tds.detections[0], fol.TemporalDetection)
+        assert tds.detections[0].label == "approach"
+        assert list(tds.detections[0].support) == [1, 31]
+
+    @pytest.mark.asyncio
     async def test_patch_rmv_detect_list(self, mutator, mock_request, sample):
         """Tests 'remove' from a list of labels."""
         assert len(sample.ground_truth.detections) == 1
@@ -974,9 +1022,7 @@ class TestCommitMask:
             scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
         )
 
-    def _make_commit_request(
-        self, dataset_id, sample_id, field, detection_id
-    ):
+    def _make_commit_request(self, dataset_id, sample_id, field, detection_id):
         """Build a mock POST request for the commit-mask endpoint."""
         mock_request = MagicMock()
         mock_request.headers = {}
@@ -1090,16 +1136,22 @@ class TestCommitMask:
         "setup, status, description",
         [
             (
-                {"field": "ground_truth", "det_kwargs": {
-                    "mask": np.ones((5, 5), dtype=np.uint8),
-                }},
+                {
+                    "field": "ground_truth",
+                    "det_kwargs": {
+                        "mask": np.ones((5, 5), dtype=np.uint8),
+                    },
+                },
                 400,
                 "mask but no mask_path",
             ),
             (
-                {"field": "ground_truth", "det_kwargs": {
-                    "mask_path": "/tmp/_placeholder.png",
-                }},
+                {
+                    "field": "ground_truth",
+                    "det_kwargs": {
+                        "mask_path": "/tmp/_placeholder.png",
+                    },
+                },
                 400,
                 "mask_path but no in-database mask",
             ),
@@ -1136,9 +1188,7 @@ class TestCommitMask:
                 field_name=setup["field"],
                 **det_kwargs,
             )
-            det_id = str(
-                sample[setup["field"]].detections[0].id
-            )
+            det_id = str(sample[setup["field"]].detections[0].id)
 
         request = self._make_commit_request(
             dataset_id, sample.id, setup["field"], det_id
@@ -1967,3 +2017,54 @@ class TestEnsureSampleField:
 
         with pytest.raises(AttributeError):
             sample.get_field("nonexistent")
+
+    def test_initializes_unset_frame_detections_field(self):
+        """Tests that ensure_sample_field initializes a frame-level Detections
+        field. Frame fields live in a separate schema owned by the frame
+        document, so the sample-schema lookup can't see them — the function
+        must rebase onto the frame and use the frame schema."""
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+        dataset.add_frame_field(
+            "detections", fo.EmbeddedDocumentField, fol.Detections
+        )
+        try:
+            sample = fo.Sample(filepath="/tmp/test_ensure_frame.mp4")
+            sample.frames[2]  # materialize a frame with null detections
+            dataset.add_sample(sample)
+            sample.reload()
+
+            assert sample.frames[2].get_field("detections") is None
+
+            fors.ensure_sample_field(
+                sample, "frames.2.detections.detections.0"
+            )
+
+            val = sample.frames[2].get_field("detections")
+            assert isinstance(val, fol.Detections)
+            assert val.detections == []
+        finally:
+            dataset.delete()
+
+    def test_initializes_frame_detections_on_docless_frame(self):
+        """Tests that ensure_sample_field materializes a frame that has no
+        document yet and initializes its Detections field (drawing on a
+        previously-unlabeled frame)."""
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+        dataset.add_frame_field(
+            "detections", fo.EmbeddedDocumentField, fol.Detections
+        )
+        try:
+            sample = fo.Sample(filepath="/tmp/test_ensure_docless.mp4")
+            sample.frames[1]
+            dataset.add_sample(sample)
+            sample.reload()
+
+            fors.ensure_sample_field(sample, "frames.7.detections.detections")
+
+            val = sample.frames[7].get_field("detections")
+            assert isinstance(val, fol.Detections)
+            assert val.detections == []
+        finally:
+            dataset.delete()

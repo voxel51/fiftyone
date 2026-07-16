@@ -26,7 +26,7 @@ export type RecognizedMediaType =
 export const isAnnotationSupported = (
   mediaType: string | null | undefined,
 ): boolean => {
-  return !!mediaType && !["video", "group"].includes(mediaType);
+  return !!mediaType && !["group", "multimodal"].includes(mediaType);
 };
 
 const DIRECT_3D_SAMPLE_EXTENSIONS = new Set([

@@ -18,6 +18,7 @@ export default graphql`
 
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
       name
+      mediaType
       defaultGroupSlice
       viewName
       savedViewSlug
@@ -51,6 +52,13 @@ export default graphql`
             rgb
           }
           labelTags {
+            fieldColor
+            valueColors {
+              value
+              color
+            }
+          }
+          temporalTags {
             fieldColor
             valueColors {
               value

@@ -1,4 +1,8 @@
-import type { SampleRendererProps } from "@fiftyone/plugins";
+import {
+  createSampleRendererMediaContext,
+  type SampleRendererProps,
+  type SampleRendererSampleLike,
+} from "@fiftyone/plugins";
 import { getSampleSrc } from "@fiftyone/state";
 import {
   BYTE_SOURCE_READ_PROFILE,
@@ -33,10 +37,31 @@ function remoteReadProfile(filepath: string) {
 export function getMcapSourceDescriptor(
   ctx: SampleRendererProps["ctx"],
 ): ByteSourceDescriptor | null {
-  const media = ctx.media;
-  const sample = ctx.sample.sample;
+  return descriptorFromSample(ctx.sample.sample, ctx.media.path);
+}
 
-  const filepath = normalizeFilepath(media.path);
+/**
+ * Builds an MCAP byte source for a sample outside the renderer's own
+ * context — e.g. an adjacent sample peeked for prewarming. Returns null
+ * unless the selected media resolves to an `.mcap` path.
+ */
+export function getMcapSourceDescriptorForSample(
+  sample: SampleRendererSampleLike,
+  mediaField: string,
+): ByteSourceDescriptor | null {
+  const media = createSampleRendererMediaContext(sample, mediaField);
+  if (media.extension !== "mcap") {
+    return null;
+  }
+
+  return descriptorFromSample(sample.sample, media.path);
+}
+
+function descriptorFromSample(
+  sample: SampleRendererSampleLike["sample"],
+  mediaPath: string | null,
+): ByteSourceDescriptor | null {
+  const filepath = normalizeFilepath(mediaPath);
 
   if (!filepath) {
     return null;

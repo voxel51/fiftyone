@@ -108,7 +108,7 @@ export default function ClassPerformance(props) {
           <ToggleButtonGroup
             exclusive
             value={classMode}
-            onChange={(e, mode) => {
+            onChange={(_e, mode) => {
               if (mode) setClassMode(mode);
             }}
             sx={{ height: "28px" }}

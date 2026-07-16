@@ -44,6 +44,7 @@ const createRegistration = (
         }
       | ((ctx: any) => boolean);
     grid?: {
+      clickBehavior?: "renderer" | "passthrough";
       enabled?: boolean;
       overrideComponent?: React.FunctionComponent<{ ctx: any }>;
       slots?: Partial<Record<string, React.FunctionComponent>>;

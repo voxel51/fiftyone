@@ -80,7 +80,7 @@ const LabelHamburgerMenu = () => {
   const showEditSchema = canEditLabels.enabled && currentFieldIsReadOnly;
   const showDelete = !isGenerated;
   const showAddMask =
-    isDetection && !isMaskDetection && !currentFieldIsReadOnly;
+    isDetection && !isMaskDetection && !currentFieldIsReadOnly; // shown for a fresh box
   const showRemoveMask =
     isDetection && isMaskDetection && !currentFieldIsReadOnly;
   const hasMenuItems =
@@ -93,7 +93,7 @@ const LabelHamburgerMenu = () => {
   return (
     <>
       <Clickable onClick={() => setOpen(true)}>
-        <Box ref={anchor} sx={{ p: 0.5 }}>
+        <Box ref={anchor} sx={{ p: 0.5 }} data-cy="label-menu-trigger">
           <Icon name={IconName.MoreVertical} size={Size.Md} />
         </Box>
       </Clickable>
@@ -104,12 +104,21 @@ const LabelHamburgerMenu = () => {
         onClose={() => setOpen(false)}
         sx={{ zIndex: 9999 }}
       >
-        {showAddMask && <MenuItem onClick={handleAddMask}>Add mask</MenuItem>}
+        {showAddMask && (
+          <MenuItem onClick={handleAddMask} data-cy="label-menu-add-mask">
+            Add mask
+          </MenuItem>
+        )}
         {showRemoveMask && (
-          <MenuItem onClick={handleRemoveMask}>Remove mask</MenuItem>
+          <MenuItem onClick={handleRemoveMask} data-cy="label-menu-remove-mask">
+            Remove mask
+          </MenuItem>
         )}
         {showDelete && (
-          <MenuItem onClick={deleteCommand.callback}>
+          <MenuItem
+            onClick={deleteCommand.callback}
+            data-cy="label-menu-delete"
+          >
             <Stack direction="row" gap={1} alignItems="center">
               <Icon name={IconName.Delete} size={Size.Md} />
               <Text>{deleteCommand.descriptor.label}</Text>
@@ -162,7 +171,7 @@ const Header = () => {
   return (
     <Row>
       <ItemLeft style={{ columnGap: "0.5rem" }}>
-        <Round onClick={handleExit}>
+        <Round onClick={handleExit} data-cy="annotate-edit-back">
           <Back />
         </Round>
         {Icon && <Icon fill={color} />}

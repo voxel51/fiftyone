@@ -2,6 +2,7 @@ import { usePlaybackStore, type PlaybackStore } from "@fiftyone/playback";
 import { atom, useAtomValue, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { useMemo } from "react";
+import type { DecodedDiagnostic } from "../../../decoders";
 
 /**
  * Per-topic playback readiness at the current playhead tick:
@@ -9,11 +10,10 @@ import { useMemo } from "react";
  * - "loading" — the tick isn't cached for this topic yet (fetch in flight
  *   or about to be requested). Tiles keep their previous frame and show a
  *   subtle catching-up indicator.
- * - "ready"   — the latest message at or before the current tick is being
- *   shown and is recent.
- * - "stale"   — a frame is being shown but its source message is older
- *   than the staleness threshold (mid-recording sensor dropout). The
- *   frame keeps rendering; the badge keeps it honest.
+ * - "ready"   — the latest message at or before the current tick is being shown
+ *   within the stale-warning threshold.
+ * - "stale"   — the latest message at or before the current tick is still being
+ *   shown, but is older than the configured stale-warning threshold.
  * - "gap"     — the tick was fetched and the topic has no message at or
  *   before it. Under latest-at-or-before selection this means the
  *   playhead is before the topic's first message.
@@ -44,6 +44,23 @@ const mcapTopicStatusAtom = atomFamily(
  */
 const mcapTopicStartTimeSecAtom = atomFamily(
   (_topic: string) => atom<number | null>(null) as PrimitiveAtom<number | null>,
+);
+
+/**
+ * Per-topic age of the displayed stale media frame. Null when the topic is not
+ * currently stale. Kept separate from `McapTopicStatus` so badges can say
+ * exactly how far behind the rendered content is.
+ */
+const mcapTopicStaleAgeNsAtom = atomFamily(
+  (_topic: string) => atom<bigint | null>(null) as PrimitiveAtom<bigint | null>,
+);
+
+const EMPTY_DIAGNOSTICS: readonly DecodedDiagnostic[] = [];
+const mcapTopicDiagnosticsAtom = atomFamily(
+  (_topic: string) =>
+    atom<readonly DecodedDiagnostic[]>(EMPTY_DIAGNOSTICS) as PrimitiveAtom<
+      readonly DecodedDiagnostic[]
+    >,
 );
 
 /**
@@ -82,6 +99,37 @@ export function useMcapTopicStartTimes(
   return useAtomValue(startTimesAtom, { store });
 }
 
+/**
+ * Reactive displayed-frame stale ages, index-aligned with `topics`. Null means
+ * the topic is not currently stale.
+ */
+export function useMcapTopicStaleAges(
+  topics: readonly string[],
+): readonly (bigint | null)[] {
+  const store = usePlaybackStore();
+  const staleAgesAtom = useMemo(
+    () =>
+      atom((get) => topics.map((topic) => get(mcapTopicStaleAgeNsAtom(topic)))),
+    [topics],
+  );
+  return useAtomValue(staleAgesAtom, { store });
+}
+
+/** Decoder capability diagnostics, index-aligned with the supplied topics. */
+export function useMcapTopicDiagnostics(
+  topics: readonly string[],
+): readonly (readonly DecodedDiagnostic[])[] {
+  const store = usePlaybackStore();
+  const diagnosticsAtom = useMemo(
+    () =>
+      atom((get) =>
+        topics.map((topic) => get(mcapTopicDiagnosticsAtom(topic))),
+      ),
+    [topics],
+  );
+  return useAtomValue(diagnosticsAtom, { store });
+}
+
 /** Non-reactive read for the data stream and tests. */
 export function getMcapTopicStatus(
   store: PlaybackStore,
@@ -97,6 +145,63 @@ export function setMcapTopicStatus(
   status: McapTopicStatus,
 ): void {
   store.set(mcapTopicStatusAtom(topic), status);
+}
+
+/** Non-reactive read for the data stream and tests. */
+export function getMcapTopicStaleAgeNs(
+  store: PlaybackStore,
+  topic: string,
+): bigint | null {
+  return store.get(mcapTopicStaleAgeNsAtom(topic));
+}
+
+/** Non-reactive write for the data stream's stale warning publishing. */
+export function setMcapTopicStaleAgeNs(
+  store: PlaybackStore,
+  topic: string,
+  ageNs: bigint | null,
+): void {
+  store.set(mcapTopicStaleAgeNsAtom(topic), ageNs);
+}
+
+/** Replaces a topic's latest decoder diagnostics when their content changes. */
+export function setMcapTopicDiagnostics(
+  store: PlaybackStore,
+  topic: string,
+  diagnostics: readonly DecodedDiagnostic[],
+): void {
+  const atom = mcapTopicDiagnosticsAtom(topic);
+  const next = diagnostics.length > 0 ? diagnostics : EMPTY_DIAGNOSTICS;
+  if (decodedDiagnosticsEqual(store.get(atom), next)) return;
+  store.set(atom, next);
+}
+
+/** Reads a topic's latest decoder diagnostics without subscribing. */
+export function getMcapTopicDiagnostics(
+  store: PlaybackStore,
+  topic: string,
+): readonly DecodedDiagnostic[] {
+  return store.get(mcapTopicDiagnosticsAtom(topic));
+}
+
+function decodedDiagnosticsEqual(
+  left: readonly DecodedDiagnostic[],
+  right: readonly DecodedDiagnostic[],
+): boolean {
+  return (
+    left === right ||
+    (left.length === right.length &&
+      left.every((diagnostic, index) => {
+        const candidate = right[index];
+        return (
+          candidate !== undefined &&
+          diagnostic.capability === candidate.capability &&
+          diagnostic.code === candidate.code &&
+          diagnostic.message === candidate.message &&
+          diagnostic.severity === candidate.severity
+        );
+      }))
+  );
 }
 
 /** Non-reactive write for the data stream's topic-bounds publishing. */

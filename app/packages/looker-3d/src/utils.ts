@@ -1,3 +1,4 @@
+import chroma from "chroma-js";
 import {
   Box3,
   type BufferAttribute,
@@ -5,15 +6,20 @@ import {
   Euler,
   type EulerOrder,
   type InterleavedBufferAttribute,
+  type Object3D,
   Plane,
   Quaternion,
   type Raycaster,
+  type Scene,
   Vector3,
   type Vector3Tuple,
   type Vector4Tuple,
 } from "three";
 import { COLOR_POOL } from "./constants";
-import type { FoMeshMaterial, FoPointcloudMaterialProps } from "./hooks";
+import type {
+  FoMeshMaterial,
+  FoPointcloudMaterialProps,
+} from "./fo3d/render-types";
 
 export type FoSceneRawNode = {
   _type: string;
@@ -161,6 +167,123 @@ export const deg2rad = (degrees: number) => degrees * (Math.PI / 180);
 export function formatNumber(n: number, decimals = 3): string {
   return n.toFixed(decimals);
 }
+
+export const getComplementaryColor = (
+  color: string,
+  options?: { brighten?: number },
+) => {
+  let result = chroma(color).set("hsl.h", "+180");
+
+  if (options?.brighten) {
+    result = result.brighten(options.brighten);
+  }
+
+  return result.hex();
+};
+
+const DEFAULT_SCENE_UP_VECTOR = new Vector3(0, 0, 1);
+
+export const getCuboidForwardFaceBasePoint = ({
+  dimensions,
+  orientation,
+  upVector,
+}: {
+  dimensions: Vector3Tuple;
+  orientation: Quaternion;
+  upVector?: Vector3 | null;
+}) => {
+  const headingExtent = Math.abs(dimensions[0]);
+  const yExtent = Math.abs(dimensions[1]);
+  const zExtent = Math.abs(dimensions[2]);
+
+  if (
+    !Number.isFinite(headingExtent) ||
+    !Number.isFinite(yExtent) ||
+    !Number.isFinite(zExtent) ||
+    headingExtent <= 0
+  ) {
+    return null;
+  }
+
+  const candidates = [
+    { extent: yExtent, point: new Vector3(headingExtent / 2, -yExtent / 2, 0) },
+    { extent: yExtent, point: new Vector3(headingExtent / 2, yExtent / 2, 0) },
+    { extent: zExtent, point: new Vector3(headingExtent / 2, 0, -zExtent / 2) },
+    { extent: zExtent, point: new Vector3(headingExtent / 2, 0, zExtent / 2) },
+  ].filter(({ extent }) => Number.isFinite(extent) && extent > 0);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const effectiveUp =
+    upVector && upVector.lengthSq() > 0
+      ? upVector.clone().normalize()
+      : DEFAULT_SCENE_UP_VECTOR;
+
+  let bestCandidate = candidates[0];
+  let bestScore = Infinity;
+
+  for (const candidate of candidates) {
+    const faceDirection = candidate.point
+      .clone()
+      .setX(0)
+      .normalize()
+      .applyQuaternion(orientation);
+    const score = faceDirection.dot(effectiveUp);
+
+    if (score < bestScore) {
+      bestScore = score;
+      bestCandidate = candidate;
+    }
+  }
+
+  return bestCandidate.point;
+};
+
+export type Vector3Input = Vector3 | Vector3Tuple;
+
+const MIN_VECTOR_DISTANCE_SQUARED = 1e-8;
+
+export const toVector3 = (value: Vector3Input) => {
+  if (value instanceof Vector3) {
+    return value.clone();
+  }
+
+  return new Vector3(value[0], value[1], value[2]);
+};
+
+export const isFiniteVector3 = (vector: Vector3): boolean => {
+  return (
+    Number.isFinite(vector.x) &&
+    Number.isFinite(vector.y) &&
+    Number.isFinite(vector.z)
+  );
+};
+
+export const areVectorsCoLocated = (
+  a: Vector3,
+  b: Vector3,
+  minDistanceSquared = MIN_VECTOR_DISTANCE_SQUARED,
+) => {
+  return a.distanceToSquared(b) <= minDistanceSquared;
+};
+
+export const findObjectByUserData = (
+  scene: Scene,
+  key: string,
+  value: unknown,
+): Object3D | null => {
+  let result: Object3D | null = null;
+
+  scene.traverse((object) => {
+    if (!result && object.userData?.[key] === value) {
+      result = object;
+    }
+  });
+
+  return result;
+};
 
 /**
  * Converts an array of degrees to an array of radians.
@@ -684,27 +807,4 @@ export const rad2deg = (radians: number): number => radians * (180 / Math.PI);
 export const formatDegrees = (radians: number | undefined): string => {
   if (radians === undefined || !Number.isFinite(radians)) return "";
   return Math.round(rad2deg(radians)).toString();
-};
-
-/**
- * Converts raycast precision (1-10) to a raycaster threshold value.
- * Higher precision values = smaller threshold (more precise).
- *
- * - Precision 1-5: linear from 2.0 to 1.0 (lenient range)
- * - Precision 5-10: exponential from 1.0 to 0.001 (precise range)
- *
- * @param precision - Value from 1 to 10
- * @returns Threshold value for raycaster.params.Points.threshold
- */
-export const precisionToThreshold = (precision: number): number => {
-  const safePrecision = Number.isFinite(precision) ? precision : 5;
-  const clampedValue = Math.max(1, Math.min(10, safePrecision));
-
-  if (clampedValue <= 5) {
-    // Linear: precision 1 -> 2.0, precision 5 -> 1.0
-    return 2 - (clampedValue - 1) * 0.25;
-  }
-
-  // Exponential: precision 5 -> 1.0, precision 10 -> 0.01
-  return Math.pow(10, (5 - clampedValue) * 0.4);
 };

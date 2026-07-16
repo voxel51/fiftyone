@@ -144,6 +144,7 @@ describe("useDetectionMode", () => {
 
       expect(scene().exitInteractiveMode).toHaveBeenCalledOnce();
       expect(annotationContext().createNew).toHaveBeenCalledOnce();
+      // field/class resolve from last-used memory → configured schema field
       expect(annotationContext().createNew).toHaveBeenCalledWith("Detection");
     });
   });

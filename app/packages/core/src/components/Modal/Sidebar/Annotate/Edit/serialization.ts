@@ -85,7 +85,7 @@ export function serializeFieldValue(
  * @returns the initial value of the field
  */
 export function parseDatabaseValue(
-  type: string,
+  _type: string,
   value: unknown,
 ): Primitive | Date {
   /**
@@ -96,6 +96,16 @@ export function parseDatabaseValue(
     // within editor we use Date objects, parse the timestamp to a Date
     // and then we will serialize it back on submission to the server
     return new Date(timestamp);
+  }
+  // Transient values stored on Sample (e.g. after an undo restored the
+  // original database value through setField) are already-serialized ISO
+  // strings — parse them back into Date instances so the picker shows the
+  // correct value instead of falling back to "now".
+  if ((_type === "date" || _type === "datetime") && typeof value === "string") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
   }
   return value as Primitive;
 }

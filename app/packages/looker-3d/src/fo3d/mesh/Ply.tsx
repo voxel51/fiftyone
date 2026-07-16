@@ -13,6 +13,7 @@ import { HoveredPointMarker } from "../../components/HoveredPointMarker";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { usePointCloudHoverFromRaycast } from "../../hooks/use-point-cloud-hover-from-raycast";
+import type { PointCloudCrop } from "../../utils/point-cloud-crop";
 import { useFo3dContext } from "../context";
 import { usePcdMaterial } from "../point-cloud/use-pcd-material";
 import type {
@@ -30,6 +31,7 @@ interface PlyProps {
   quaternion: Quaternion;
   scale: Vector3;
   children?: React.ReactNode;
+  pointCloudCrop?: PointCloudCrop | null;
 }
 
 const DEFAULT_PLY_MATERIAL: FoMeshMaterial = {
@@ -60,17 +62,15 @@ const PlyWithPointsMaterial = ({
   geometry,
   defaultMaterial,
   quaternion,
-  position,
-  scale,
   vertexColorsAvailable,
+  pointCloudCrop,
 }: {
   name: string;
   geometry: BufferGeometry;
   defaultMaterial: FoMeshMaterial;
   quaternion: Quaternion;
-  position: Vector3;
-  scale: Vector3;
   vertexColorsAvailable: boolean;
+  pointCloudCrop?: PointCloudCrop | null;
 }) => {
   const overrideMaterial = {
     shadingMode: "height",
@@ -89,6 +89,7 @@ const PlyWithPointsMaterial = ({
     pointsContainerRef,
     quaternion,
     vertexColorsAvailable,
+    pointCloudCrop,
   );
 
   const mesh = useMemo(() => new Points(geometry), [geometry]);
@@ -192,6 +193,7 @@ export const Ply = ({
   quaternion,
   scale,
   children,
+  pointCloudCrop,
 }: PlyProps) => {
   const { fo3dRoot } = useFo3dContext();
   const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
@@ -269,9 +271,8 @@ export const Ply = ({
           geometry={geometry}
           defaultMaterial={resolvedDefaultMaterial}
           quaternion={quaternion}
-          position={position}
-          scale={scale}
           vertexColorsAvailable={isUsingVertexColors}
+          pointCloudCrop={pointCloudCrop}
         />
       );
     }
@@ -300,9 +301,8 @@ export const Ply = ({
     shouldRenderAsPointCloud,
     name,
     resolvedDefaultMaterial,
-    position,
-    scale,
     quaternion,
+    pointCloudCrop,
   ]);
 
   if (!mesh) {

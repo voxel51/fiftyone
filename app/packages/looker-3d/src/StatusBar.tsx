@@ -16,7 +16,6 @@ import {
 import { isInMultiPanelViewAtom } from "@fiftyone/state";
 import Text from "@mui/material/Typography";
 import { animated, useSpring } from "@react-spring/web";
-import { PerfHeadless, getPerf } from "r3f-perf";
 import {
   type RefObject,
   useCallback,
@@ -27,14 +26,16 @@ import {
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import type { OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
-import tunnel from "tunnel-rat";
 import { AnnotationTips } from "./AnnotationTips";
 import { StatusBarContainer } from "./containers";
 import {
   activeNodeAtom,
   activeSegmentationStateAtom,
   cameraViewStatusAtom,
+  cuboidCreationStateAtom,
+  isCreatingCuboidAtom,
   isStatusBarOnAtom,
+  useFo3dPerformanceStats,
 } from "./state";
 
 const PerfContainer = styled.div`
@@ -135,7 +136,7 @@ const CloseBar = styled.div<{ $bg: string }>`
   background-color: ${(p) => p.$bg};
 `;
 
-const PerfPanel = styled.div<{ $bg: string }>`
+const StatusPanel = styled.div<{ $bg: string }>`
   display: flex;
   flex-direction: column;
   padding-left: 1em;
@@ -168,8 +169,6 @@ const ViewStatusMessage = styled.div<{ $color: string; $multiview: boolean }>`
   user-select: none;
   pointer-events: none;
 `;
-
-export const StatusTunnel = tunnel();
 
 const CameraInfo = ({
   cameraRef,
@@ -218,35 +217,7 @@ const CameraInfo = ({
 };
 
 const PerfStats = () => {
-  const [perfStats, setPerfStats] = useState({
-    fps: 0,
-    calls: 0,
-    triangles: 0,
-    points: 0,
-    geometries: 0,
-    textures: 0,
-    programs: 0,
-  });
-
-  useEffect(() => {
-    const updateStats = () => {
-      const perfState = getPerf() as any;
-      if (!perfState) return;
-
-      setPerfStats({
-        fps: perfState.log?.fps || 0,
-        calls: perfState.gl?.info?.render?.calls || 0,
-        triangles: perfState.gl?.info?.render?.triangles || 0,
-        points: perfState.gl?.info?.render?.points || 0,
-        geometries: perfState.gl?.info?.memory?.geometries || 0,
-        textures: perfState.gl?.info?.memory?.textures || 0,
-        programs: perfState.gl?.info?.programs?.length || 0,
-      });
-    };
-
-    const interval = setInterval(updateStats, 500);
-    return () => clearInterval(interval);
-  }, []);
+  const perfStats = useFo3dPerformanceStats();
 
   const statBarColors = {
     // blue
@@ -409,6 +380,15 @@ export const StatusBar = ({
   const segmentState = useRecoilValue(activeSegmentationStateAtom);
   const cameraViewStatus = useRecoilValue(cameraViewStatusAtom);
   const isMultiviewOn = useRecoilValue(isInMultiPanelViewAtom);
+  const isCreatingCuboid = useRecoilValue(isCreatingCuboidAtom);
+  const cuboidCreationState = useRecoilValue(cuboidCreationStateAtom);
+
+  const cuboidCreationHint =
+    cuboidCreationState.step === 0
+      ? "Click to place the first corner"
+      : cuboidCreationState.step === 1
+        ? "Click to set the heading"
+        : "Click to set the width";
 
   const springProps = useSpring({
     transform: showPerfStatus ? "translateY(10%)" : "translateY(0%)",
@@ -455,7 +435,18 @@ export const StatusBar = ({
         </SegmentHint>
       )}
 
-      {!segmentState.isActive && (
+      {isCreatingCuboid && (
+        <SegmentHint $border={theme.primary.main} $text={"#e0e0e0"}>
+          <SegmentHintRow>
+            <InfoOutlinedIcon
+              style={{ fontSize: 12, color: theme.primary.main }}
+            />
+            {cuboidCreationHint} • Esc to exit
+          </SegmentHintRow>
+        </SegmentHint>
+      )}
+
+      {!segmentState.isActive && !isCreatingCuboid && (
         <AnnotationTips isMultiviewOn={isMultiviewOn} />
       )}
 
@@ -471,12 +462,9 @@ export const StatusBar = ({
                 <Close />
               </IconButton>
             </CloseBar>
-            <PerfPanel $bg={`hsla(208.46, 87%, 53%, 0.20)`}>
+            <StatusPanel $bg={`hsla(208.46, 87%, 53%, 0.20)`}>
               <CameraInfo cameraRef={cameraRef} />
-              <StatusTunnel.In>
-                <PerfHeadless />
-              </StatusTunnel.In>
-            </PerfPanel>
+            </StatusPanel>
           </StatusBarContainer>
         </>
       )}

@@ -1,4 +1,3 @@
-import { usePlayhead } from "@fiftyone/playback";
 import {
   useCallback,
   useEffect,
@@ -8,11 +7,14 @@ import {
 } from "react";
 
 import type { ImageAnnotationsVisualization } from "../../../decoders";
+import type { ImageAnnotationRenderMetadata } from "../../../visualization/panels/image-annotation-render-metadata";
 import type { McapDecodedMessage } from "../types";
 import {
-  interpolateImageAnnotations,
   interpolationFraction,
-  lowerBoundBigInt,
+  prepareImageAnnotationInterpolation,
+  prepareImageAnnotationRenderMetadata,
+  sampleImageAnnotationInterpolation,
+  type PreparedImageAnnotationInterpolation,
   vizOf,
 } from "./interpolate-image-annotations";
 import {
@@ -21,6 +23,7 @@ import {
 } from "./mcap-data-stream-context";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import type { McapTopicCache } from "./mcap-topic-cache";
+import { useOptionalPlayhead } from "./use-optional-playhead";
 
 /** Options for the interpolated image-annotation hooks. */
 export interface UseInterpolatedImageAnnotationsOptions {
@@ -60,6 +63,7 @@ export function useInterpolatedImageAnnotationSets(
   { interpolate = true }: UseInterpolatedImageAnnotationsOptions = {},
 ): readonly {
   readonly frame: ImageAnnotationsVisualization;
+  readonly renderMetadata: ImageAnnotationRenderMetadata;
   readonly topic: string;
 }[] {
   const stableTopics = useStableTopics(topics);
@@ -103,10 +107,28 @@ export function useInterpolatedImageAnnotationSets(
     [],
   );
 
-  // Re-render every RAF tick so the lerp tracks the playhead.
-  const playhead = usePlayhead();
+  // Smooth mode tracks every RAF tick. As-recorded mode samples placement time
+  // only when stream/cache content renders for another reason.
+  const playhead = useOptionalPlayhead(interpolate);
   const timeline = dataStream?.getTimelineIndex() ?? null;
   const cacheSnapshot = useTopicCacheSnapshot(dataStream, stableTopics);
+  // Fresh caches whenever the stream or timeline changes so entries keyed by
+  // now-unreachable visualization objects don't linger. The deps are the
+  // reset triggers, not values the factories read — hence the lint disables.
+  const interpolationCache = useMemo<InterpolationCache>(
+    () => new WeakMap(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dataStream, timeline],
+  );
+  const nextMessageCache = useMemo<
+    WeakMap<McapTopicCache, NextMessageCacheEntry>
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  >(() => new WeakMap(), [dataStream, timeline]);
+  const renderMetadataCache = useMemo<RenderMetadataCache>(
+    () => new WeakMap(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dataStream, timeline],
+  );
 
   return useMemo(
     () =>
@@ -114,20 +136,55 @@ export function useInterpolatedImageAnnotationSets(
         cacheSnapshot,
         dataStream,
         interpolate,
+        interpolationCache,
+        nextMessageCache,
         playhead,
+        renderMetadataCache,
         timeline,
         topics: stableTopics,
       }),
-    [cacheSnapshot, dataStream, interpolate, playhead, stableTopics, timeline],
+    [
+      cacheSnapshot,
+      dataStream,
+      interpolate,
+      interpolationCache,
+      nextMessageCache,
+      playhead,
+      renderMetadataCache,
+      stableTopics,
+      timeline,
+    ],
   );
 }
+
+type InterpolationCache = WeakMap<
+  ImageAnnotationsVisualization,
+  WeakMap<ImageAnnotationsVisualization, PreparedImageAnnotationInterpolation>
+>;
+
+interface NextMessageCacheEntry {
+  readonly currentIndex: number;
+  readonly currentMessage: McapDecodedMessage;
+  readonly nextIndex: number | null;
+  readonly nextMessage: McapDecodedMessage | null;
+  readonly revision: number;
+  readonly timeline: McapTimelineIndex;
+}
+
+type RenderMetadataCache = WeakMap<
+  ImageAnnotationsVisualization,
+  ImageAnnotationRenderMetadata
+>;
 
 interface AnnotationSetsFromCachesArgs {
   /** Invalidation token from `useSyncExternalStore`; frame derivation reads caches below. */
   readonly cacheSnapshot: string;
   readonly dataStream: McapDataStream | null;
   readonly interpolate: boolean;
+  readonly interpolationCache: InterpolationCache;
+  readonly nextMessageCache: WeakMap<McapTopicCache, NextMessageCacheEntry>;
   readonly playhead: number;
+  readonly renderMetadataCache: RenderMetadataCache;
   readonly timeline: McapTimelineIndex | null;
   readonly topics: readonly string[];
 }
@@ -135,17 +192,22 @@ interface AnnotationSetsFromCachesArgs {
 function annotationSetsFromCaches({
   dataStream,
   interpolate,
+  interpolationCache,
+  nextMessageCache,
   playhead,
+  renderMetadataCache,
   timeline,
   topics,
 }: AnnotationSetsFromCachesArgs): readonly {
   readonly frame: ImageAnnotationsVisualization;
+  readonly renderMetadata: ImageAnnotationRenderMetadata;
   readonly topic: string;
 }[] {
   if (!dataStream || !timeline) return [];
 
   const sets: {
     frame: ImageAnnotationsVisualization;
+    renderMetadata: ImageAnnotationRenderMetadata;
     topic: string;
   }[] = [];
   for (const topic of topics) {
@@ -154,12 +216,15 @@ function annotationSetsFromCaches({
       ? currentAnnotationFrame({
           cache,
           interpolate,
+          interpolationCache,
+          nextMessageCache,
           playhead,
+          renderMetadataCache,
           timeline,
         })
       : null;
     if (frame) {
-      sets.push({ frame, topic });
+      sets.push({ ...frame, topic });
     }
   }
   return sets;
@@ -188,8 +253,9 @@ function useStableTopics(topics: readonly string[]): readonly string[] {
  * returns a `"topic:revision|"` digest string. The digest changes whenever a
  * watched cache bumps its revision (frames arrive, change, or are cleared),
  * which is what drives the hook to re-derive annotation frames as data streams in.
+ * Shared with `use-interpolated-scene-updates`.
  */
-function useTopicCacheSnapshot(
+export function useTopicCacheSnapshot(
   dataStream: McapDataStream | null,
   topics: readonly string[],
 ): string {
@@ -260,65 +326,179 @@ function normalizeTopics(topics: readonly string[]): readonly string[] {
 function currentAnnotationFrame({
   cache,
   interpolate,
+  interpolationCache,
+  nextMessageCache,
   playhead,
+  renderMetadataCache,
   timeline,
 }: {
   readonly cache: McapTopicCache;
   readonly interpolate: boolean;
+  readonly interpolationCache: InterpolationCache;
+  readonly nextMessageCache: WeakMap<McapTopicCache, NextMessageCacheEntry>;
   readonly playhead: number;
+  readonly renderMetadataCache: RenderMetadataCache;
   readonly timeline: McapTimelineIndex;
-}): ImageAnnotationsVisualization | null {
+}): {
+  readonly frame: ImageAnnotationsVisualization;
+  readonly renderMetadata: ImageAnnotationRenderMetadata;
+} | null {
   const currentTick = timeline.nearestTick(playhead);
   if (currentTick === undefined) return null;
   const currentMsg = cache.get(currentTick);
   if (!currentMsg) return null;
   const currentViz = vizOf(currentMsg);
   if (!currentViz) return null;
-  if (!interpolate) return currentViz;
+  if (!interpolate) {
+    return annotationFrameWithMetadata(renderMetadataCache, currentViz);
+  }
 
-  const nextMsg = nextDistinctAnnotationMessage({
+  const nextMsg = nextDistinctCachedMessage({
     cache,
     currentTick,
     currentTimelineTimeNs: currentMsg.timelineTimeNs,
+    lookupCache: nextMessageCache,
+    currentMessage: currentMsg,
     timeline,
   });
-  if (!nextMsg) return currentViz;
+  if (!nextMsg) {
+    return annotationFrameWithMetadata(renderMetadataCache, currentViz);
+  }
   const nextViz = vizOf(nextMsg);
-  if (!nextViz) return currentViz;
+  if (!nextViz) {
+    return annotationFrameWithMetadata(renderMetadataCache, currentViz);
+  }
 
   const f = interpolationFraction({
     nextTimelineTimeNs: nextMsg.timelineTimeNs,
     playheadNs: timeline.secToNs(playhead),
     previousTimelineTimeNs: currentMsg.timelineTimeNs,
   });
-  if (f === null) return currentViz;
+  if (f === null) {
+    return annotationFrameWithMetadata(renderMetadataCache, currentViz);
+  }
 
-  return interpolateImageAnnotations(currentViz, nextViz, f);
+  const prepared = preparedImageAnnotationInterpolation(
+    interpolationCache,
+    currentViz,
+    nextViz,
+  );
+  return sampleImageAnnotationInterpolation(prepared, f);
 }
 
-function nextDistinctAnnotationMessage({
+function annotationFrameWithMetadata(
+  cache: RenderMetadataCache,
+  frame: ImageAnnotationsVisualization,
+): {
+  readonly frame: ImageAnnotationsVisualization;
+  readonly renderMetadata: ImageAnnotationRenderMetadata;
+} {
+  let renderMetadata = cache.get(frame);
+  if (!renderMetadata) {
+    renderMetadata = prepareImageAnnotationRenderMetadata(frame);
+    cache.set(frame, renderMetadata);
+  }
+  return { frame, renderMetadata };
+}
+
+export function preparedImageAnnotationInterpolation(
+  cache: InterpolationCache,
+  previous: ImageAnnotationsVisualization,
+  next: ImageAnnotationsVisualization,
+): PreparedImageAnnotationInterpolation {
+  let byNext = cache.get(previous);
+  if (!byNext) {
+    byNext = new WeakMap();
+    cache.set(previous, byNext);
+  }
+  let prepared = byNext.get(next);
+  if (!prepared) {
+    prepared = prepareImageAnnotationInterpolation(previous, next);
+    byNext.set(next, prepared);
+  }
+  return prepared;
+}
+
+/**
+ * Finds the next cached source message strictly after `currentTick` whose
+ * timeline time differs from the current message's. Decoder-agnostic; shared
+ * by the 2D image-annotation and 3D scene-update interpolation hooks.
+ */
+export function nextDistinctCachedMessage({
   cache,
   currentTick,
   currentTimelineTimeNs,
+  currentMessage,
+  lookupCache,
   timeline,
 }: {
   readonly cache: McapTopicCache;
   readonly currentTick: bigint;
   readonly currentTimelineTimeNs: bigint;
+  readonly currentMessage?: McapDecodedMessage;
+  readonly lookupCache?: WeakMap<McapTopicCache, NextMessageCacheEntry>;
   readonly timeline: McapTimelineIndex;
 }): McapDecodedMessage | null {
   // Ticks are synchronized with LATEST semantics, so several cached ticks can
   // point to the same source annotation. Walk forward only far enough to find
   // the next cached source message; if lookahead is missing, staying on the
   // current frame is cheaper and visually safer than scanning the full file.
-  const startIndex = lowerBoundBigInt(timeline.ticks, currentTick) + 1;
+  const currentIndex = timeline.indexOfTick(currentTick);
+  if (currentIndex === undefined) return null;
+  const cached = lookupCache?.get(cache);
+  if (
+    currentMessage &&
+    cached?.timeline === timeline &&
+    cached.revision === cache.revision &&
+    cached.currentMessage === currentMessage
+  ) {
+    if (
+      cached.nextMessage &&
+      cached.nextIndex !== null &&
+      currentIndex >= cached.currentIndex &&
+      currentIndex < cached.nextIndex
+    ) {
+      return cached.nextMessage;
+    }
+    // A miss is only reusable at the exact scan frontier. As the playhead
+    // advances, the bounded search window slides and can expose a sparse next
+    // message without any cache revision or current-message change.
+    if (!cached.nextMessage && currentIndex === cached.currentIndex) {
+      return null;
+    }
+  }
+  const startIndex = currentIndex + 1;
   const endIndex = Math.min(
-    timeline.ticks.length,
+    timeline.tickCount,
     startIndex + MAX_NEXT_MESSAGE_SCAN_TICKS,
   );
   for (let i = startIndex; i < endIndex; i++) {
-    const msg = cache.get(timeline.ticks[i]);
-    if (msg && msg.timelineTimeNs !== currentTimelineTimeNs) return msg;
+    const tick = timeline.tickAt(i);
+    if (tick === undefined) break;
+    const msg = cache.get(tick);
+    if (msg && msg.timelineTimeNs !== currentTimelineTimeNs) {
+      if (lookupCache && currentMessage) {
+        lookupCache.set(cache, {
+          currentIndex,
+          currentMessage,
+          nextIndex: i,
+          nextMessage: msg,
+          revision: cache.revision,
+          timeline,
+        });
+      }
+      return msg;
+    }
+  }
+  if (lookupCache && currentMessage) {
+    lookupCache.set(cache, {
+      currentIndex,
+      currentMessage,
+      nextIndex: null,
+      nextMessage: null,
+      revision: cache.revision,
+      timeline,
+    });
   }
   return null;
 }

@@ -1,50 +1,77 @@
-import type {
-  EncodedImageVisualization,
-  ImageAnnotationsVisualization,
+import {
+  buildPointCloudRenderPayload,
+  type PointCloudRenderPayload,
+  ImageVisualization,
   PointCloudVisualization,
 } from "../../decoders";
 import type { ByteSourceDescriptor } from "../../query/bytes";
-import { PlaybackSyncMode } from "../../schemas/v1";
+import type { StreamInventory } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
-import { chooseAnnotationTopic } from "./topic-matching";
+import { filterDefaultTopicEquivalents } from "./topic-matching";
 import { streamTopics, type McapPreviewTopics } from "./stream-topics";
 import type {
   McapDecodedMessage,
   McapResourceClient,
-  McapStreamSyncPolicy,
+  McapTimelineRange,
 } from "./types";
 
-const IMAGE_SYNC_TOLERANCE_NS = 120_000_000n;
 const NEXT_FRAME_STEP_NS = 1n;
+const NANOSECONDS_PER_MILLISECOND = 1_000_000;
+const POINT_COMPONENT_COUNT = 3;
+const COLOR_COMPONENT_COUNT = 3;
 
-const IMAGE_SYNC_POLICY: McapStreamSyncPolicy = {
-  mode: PlaybackSyncMode.NEAREST,
-  toleranceAfterNs: IMAGE_SYNC_TOLERANCE_NS,
-  toleranceBeforeNs: IMAGE_SYNC_TOLERANCE_NS,
-} as const;
+/** Maximum point count retained by one MCAP grid preview frame. */
+export const MCAP_GRID_PREVIEW_MAX_POINTS = 120_000;
 
+/** Re-exported annotation-topic matcher used by MCAP preview consumers. */
 export { chooseAnnotationTopic } from "./topic-matching";
+/** Re-exported stream classifier used by MCAP preview consumers. */
 export { streamTopics } from "./stream-topics";
 
-/**
- * Default playback speed for animated MCAP grid previews.
- */
-export const DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE = 1.5;
+/** Maximum rendered frame rate for local and remote MCAP grid previews. */
+export const MCAP_GRID_PREVIEW_MAX_FPS = 12;
+
+const MCAP_GRID_PREVIEW_MIN_FRAME_DELAY_MS = 1_000 / MCAP_GRID_PREVIEW_MAX_FPS;
 
 /**
- * Default cadence for image-only MCAP grid preview playback.
+ * Returns the remaining wall-clock delay before presenting an MCAP grid frame.
+ * Returns `null` when the frame should be skipped to preserve 1x playback
+ * without exceeding {@link MCAP_GRID_PREVIEW_MAX_FPS}.
  */
-export const MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS = 83;
+export function mcapGridPreviewPlaybackDelayMs(
+  previousFrameTimeNs: undefined,
+  frameTimeNs: undefined,
+  elapsedMs?: number,
+): number;
+export function mcapGridPreviewPlaybackDelayMs(
+  previousFrameTimeNs: bigint | undefined,
+  frameTimeNs: bigint | undefined,
+  elapsedMs?: number,
+): number | null;
+export function mcapGridPreviewPlaybackDelayMs(
+  previousFrameTimeNs: bigint | undefined,
+  frameTimeNs: bigint | undefined,
+  elapsedMs = 0,
+): number | null {
+  const timelineDelayMs =
+    previousFrameTimeNs !== undefined &&
+    frameTimeNs !== undefined &&
+    frameTimeNs > previousFrameTimeNs
+      ? Number(frameTimeNs - previousFrameTimeNs) / NANOSECONDS_PER_MILLISECOND
+      : 0;
 
-/**
- * Default cadence for point-cloud MCAP grid preview playback.
- */
-export const MCAP_GRID_PREVIEW_POINT_CLOUD_FRAME_DELAY_MS = 83;
+  if (
+    timelineDelayMs > 0 &&
+    timelineDelayMs < MCAP_GRID_PREVIEW_MIN_FRAME_DELAY_MS
+  ) {
+    return null;
+  }
 
-/**
- * Default cadence for annotated MCAP grid preview playback.
- */
-export const MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS = 500;
+  return Math.max(
+    0,
+    Math.max(MCAP_GRID_PREVIEW_MIN_FRAME_DELAY_MS, timelineDelayMs) - elapsedMs,
+  );
+}
 
 /**
  * Supported stream topic buckets used by grid preview selection.
@@ -52,10 +79,9 @@ export const MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS = 500;
 export type McapGridTopics = McapPreviewTopics;
 
 /**
- * Selected camera image topic plus its best matching annotation topic.
+ * Selected camera image topic.
  */
 export interface McapGridCameraSelection {
-  readonly annotationTopic: string | null;
   readonly kind: "image";
   readonly streamTopic: string;
 }
@@ -76,11 +102,10 @@ export type McapGridPreviewSelection =
   | McapGridPointCloudSelection;
 
 /**
- * Render-ready image preview frame, optionally paired with annotations.
+ * Render-ready image preview frame.
  */
 export interface McapGridImagePreviewFrame {
-  readonly annotations: ImageAnnotationsVisualization | null;
-  readonly image: EncodedImageVisualization;
+  readonly image: ImageVisualization;
   readonly kind: "image";
 }
 
@@ -126,7 +151,12 @@ export interface McapGridPreviewSnapshot {
  * Result returned by the grid preview worker for one high-level request.
  */
 export interface McapGridPreviewResult {
-  readonly delayMs?: number;
+  /** Full recording bounds, handed off on initial grid reads for overlays. */
+  readonly bootstrapTimelineRange?: McapTimelineRange;
+  /** Full source inventory, handed off on initial grid reads for modal reuse. */
+  readonly bootstrapTopics?: readonly StreamInventory[];
+  /** Timeline timestamp of the decoded frame, used for 1x hover playback. */
+  readonly frameTimeNs?: bigint;
   readonly nextStartTimeNs?: bigint;
   readonly state: McapGridPreviewSnapshot;
 }
@@ -137,6 +167,8 @@ export interface McapGridPreviewResult {
 export interface McapGridPreviewEntry {
   readonly client: McapResourceClient;
   autoSelection?: McapGridPreviewSelection | null;
+  inventory?: readonly StreamInventory[];
+  timelineRange?: McapTimelineRange | null;
   topics?: McapGridTopics;
 }
 
@@ -157,15 +189,29 @@ export async function decodeGridPreview(
   { selectedStreamTopic, source, startTimeNs }: McapGridPreviewDecodeRequest,
 ): Promise<McapGridPreviewResult> {
   if (entry.topics === undefined) {
-    entry.topics = streamTopics(await entry.client.readTopics({ source }));
+    const [inventory, timelineRange] = await Promise.all([
+      entry.client.readTopics({ source }),
+      readGridTimelineRange(entry.client, source),
+    ]);
+    entry.inventory = inventory;
+    entry.timelineRange = timelineRange;
+    entry.topics = streamTopics(entry.inventory);
+  } else if (entry.timelineRange === undefined) {
+    entry.timelineRange = await readGridTimelineRange(entry.client, source);
   }
 
   const topics = entry.topics;
+  const bootstrapTimelineRange =
+    startTimeNs === undefined ? (entry.timelineRange ?? undefined) : undefined;
+  const bootstrapTopics =
+    startTimeNs === undefined ? entry.inventory : undefined;
   const previewTopics = topics.previewable;
   const selection = chooseSelection(entry, topics, selectedStreamTopic);
 
   if (selectedStreamTopic && !selection) {
     return {
+      bootstrapTimelineRange,
+      bootstrapTopics,
       state: {
         error: null,
         frame: null,
@@ -179,6 +225,8 @@ export async function decodeGridPreview(
 
   if (!selection) {
     return {
+      bootstrapTimelineRange,
+      bootstrapTopics,
       state: {
         error: null,
         frame: null,
@@ -199,6 +247,8 @@ export async function decodeGridPreview(
 
   if (!result) {
     return {
+      bootstrapTimelineRange,
+      bootstrapTopics,
       state: {
         error: null,
         frame: null,
@@ -211,7 +261,9 @@ export async function decodeGridPreview(
   }
 
   return {
-    delayMs: result.delayMs,
+    bootstrapTimelineRange,
+    bootstrapTopics,
+    frameTimeNs: result.frameTimeNs,
     nextStartTimeNs: result.nextStartTimeNs,
     state: {
       error: null,
@@ -224,6 +276,19 @@ export async function decodeGridPreview(
   };
 }
 
+async function readGridTimelineRange(
+  client: McapResourceClient,
+  source: ByteSourceDescriptor,
+): Promise<McapTimelineRange | null> {
+  try {
+    return await client.readTimelineRange({ source });
+  } catch {
+    // A preview remains useful for unusual MCAPs without indexed bounds; the
+    // temporal-tag overlay will fall back to its prior tag-derived domain.
+    return null;
+  }
+}
+
 function chooseSelection(
   entry: McapGridPreviewEntry,
   topics: McapGridTopics,
@@ -232,10 +297,6 @@ function chooseSelection(
   if (selectedStreamTopic) {
     if (topics.image.includes(selectedStreamTopic)) {
       return {
-        annotationTopic: chooseAnnotationTopic(
-          selectedStreamTopic,
-          topics.annotations,
-        ),
         kind: "image",
         streamTopic: selectedStreamTopic,
       };
@@ -265,19 +326,21 @@ function chooseAutoSelection(
 }
 
 /**
- * Picks the first camera stream and its best matching annotation topic.
- * Deterministic so a sample keeps the same preview camera across renders.
+ * Picks the first camera stream. Deterministic so a sample keeps the same
+ * preview camera across renders.
  */
 export function chooseCameraSelection(
   topics: McapGridTopics,
 ): McapGridCameraSelection | null {
-  const imageTopic = topics.image[0];
+  const imageTopic = filterDefaultTopicEquivalents(topics.image, {
+    getKind: () => "image",
+    getTopic: (topic) => topic,
+  })[0];
   if (!imageTopic) {
     return null;
   }
 
   return {
-    annotationTopic: chooseAnnotationTopic(imageTopic, topics.annotations),
     kind: "image",
     streamTopic: imageTopic,
   };
@@ -286,7 +349,10 @@ export function chooseCameraSelection(
 function choosePointCloudSelection(
   topics: McapGridTopics,
 ): McapGridPointCloudSelection | null {
-  const pointCloudTopic = topics.pointCloud[0];
+  const pointCloudTopic = filterDefaultTopicEquivalents(topics.pointCloud, {
+    getKind: () => "point-cloud",
+    getTopic: (topic) => topic,
+  })[0];
   return pointCloudTopic
     ? {
         kind: "point-cloud",
@@ -303,11 +369,11 @@ interface ReadPreviewFrameRequest {
 }
 
 /**
- * One decoded preview frame plus playback timing for the next tick.
+ * One decoded preview frame plus its timeline position.
  */
 interface McapGridPreviewReadResult {
-  readonly delayMs: number;
   readonly frame: McapGridPreviewFrame;
+  readonly frameTimeNs: bigint;
   readonly nextStartTimeNs: bigint;
 }
 
@@ -316,13 +382,6 @@ async function readNextPreviewFrame(
 ): Promise<McapGridPreviewReadResult | null> {
   if (request.selection.kind === "point-cloud") {
     return readNextPointCloudPreviewFrame(request);
-  }
-
-  if (request.selection.annotationTopic) {
-    const annotatedFrame = await readNextAnnotatedPreviewFrame(request);
-    if (annotatedFrame) {
-      return annotatedFrame;
-    }
   }
 
   return readNextImagePreviewFrame(request);
@@ -351,62 +410,9 @@ async function readNextImagePreviewFrame({
   }
 
   return {
-    delayMs: MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS,
-    frame: { annotations: null, image, kind: "image" },
+    frame: { image, kind: "image" },
+    frameTimeNs: imageMessage.timelineTimeNs,
     nextStartTimeNs: imageMessage.timelineTimeNs + NEXT_FRAME_STEP_NS,
-  };
-}
-
-async function readNextAnnotatedPreviewFrame({
-  client,
-  selection,
-  source,
-  startTimeNs,
-}: ReadPreviewFrameRequest): Promise<McapGridPreviewReadResult | null> {
-  if (selection.kind !== "image") {
-    return null;
-  }
-
-  if (!selection.annotationTopic) {
-    return null;
-  }
-
-  const annotationMessage = await readNextMessage({
-    client,
-    source,
-    startTimeNs,
-    topic: selection.annotationTopic,
-  });
-  const annotations = annotationMessage
-    ? annotationsFrame(annotationMessage)
-    : null;
-
-  if (!annotationMessage || !annotations) {
-    return null;
-  }
-
-  const image =
-    (await readImageFrameNear({
-      client,
-      source,
-      timeNs: annotationMessage.timelineTimeNs,
-      topic: selection.streamTopic,
-    })) ??
-    (await readNextMessage({
-      client,
-      source,
-      startTimeNs: annotationMessage.timelineTimeNs,
-      topic: selection.streamTopic,
-    }).then((message) => (message ? imageFrame(message) : null)));
-
-  if (!image) {
-    return null;
-  }
-
-  return {
-    delayMs: MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS,
-    frame: { annotations, image, kind: "image" },
-    nextStartTimeNs: annotationMessage.timelineTimeNs + NEXT_FRAME_STEP_NS,
   };
 }
 
@@ -435,8 +441,8 @@ async function readNextPointCloudPreviewFrame({
   }
 
   return {
-    delayMs: MCAP_GRID_PREVIEW_POINT_CLOUD_FRAME_DELAY_MS,
     frame: { kind: "point-cloud", pointCloud },
+    frameTimeNs: pointCloudMessage.timelineTimeNs,
     nextStartTimeNs: pointCloudMessage.timelineTimeNs + NEXT_FRAME_STEP_NS,
   };
 }
@@ -464,43 +470,11 @@ async function readNextMessage({
   return null;
 }
 
-async function readImageFrameNear({
-  client,
-  source,
-  timeNs,
-  topic,
-}: {
-  readonly client: McapResourceClient;
-  readonly source: ByteSourceDescriptor;
-  readonly timeNs: bigint;
-  readonly topic: string;
-}): Promise<EncodedImageVisualization | null> {
-  const window = await client.readSynchronizedMessages({
-    source,
-    streamPolicies: {
-      [topic]: IMAGE_SYNC_POLICY,
-    },
-    timeNs,
-    topics: [topic],
-  });
-  const message = window.messagesByTopic[topic]?.[0];
-  return message ? imageFrame(message) : null;
-}
-
-function imageFrame(
-  message: McapDecodedMessage,
-): EncodedImageVisualization | null {
+function imageFrame(message: McapDecodedMessage): ImageVisualization | null {
   const visualization = message.decoded.output.visualization;
-  return visualization?.kind === VISUALIZATION_KIND.ENCODED_IMAGE
-    ? visualization
-    : null;
-}
-
-function annotationsFrame(
-  message: McapDecodedMessage,
-): ImageAnnotationsVisualization | null {
-  const visualization = message.decoded.output.visualization;
-  return visualization?.kind === VISUALIZATION_KIND.IMAGE_ANNOTATIONS
+  return visualization?.kind === VISUALIZATION_KIND.ENCODED_IMAGE ||
+    visualization?.kind === VISUALIZATION_KIND.ENCODED_VIDEO ||
+    visualization?.kind === VISUALIZATION_KIND.RAW_IMAGE
     ? visualization
     : null;
 }
@@ -509,7 +483,147 @@ function pointCloudFrame(
   message: McapDecodedMessage,
 ): PointCloudVisualization | null {
   const visualization = message.decoded.output.visualization;
-  return visualization?.kind === VISUALIZATION_KIND.POINT_CLOUD
-    ? visualization
-    : null;
+  if (visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
+    return null;
+  }
+
+  return compactGridPointCloud(visualization);
+}
+
+/**
+ * Returns the major retained binary allocation size for one grid frame.
+ */
+export function mcapGridPreviewFrameRetainedBytes(
+  frame: McapGridPreviewFrame | null,
+): number {
+  if (!frame) {
+    return 0;
+  }
+
+  const buffers = new Set<ArrayBufferLike>();
+  collectArrayBuffers(frame, buffers, new Set<object>());
+  let total = 0;
+  for (const buffer of buffers) {
+    total += buffer.byteLength;
+  }
+  return total;
+}
+
+function collectArrayBuffers(
+  value: unknown,
+  buffers: Set<ArrayBufferLike>,
+  visited: Set<object>,
+): void {
+  if (ArrayBuffer.isView(value)) {
+    buffers.add(value.buffer);
+    return;
+  }
+  if (!value || typeof value !== "object" || visited.has(value)) {
+    return;
+  }
+
+  visited.add(value);
+  for (const child of Object.values(value)) {
+    collectArrayBuffers(child, buffers, visited);
+  }
+}
+
+function compactGridPointCloud(
+  frame: PointCloudVisualization,
+): PointCloudVisualization {
+  const sampledPointCount =
+    frame.renderPayload?.sampledPointCount ?? frame.pointCount;
+  if (sampledPointCount <= MCAP_GRID_PREVIEW_MAX_POINTS) {
+    return frame;
+  }
+  const sourcePayload =
+    frame.renderPayload ??
+    buildPointCloudRenderPayload({
+      colors: frame.colors,
+      positions: frame.positions,
+      scalarFields: frame.scalarFields,
+    });
+  const renderPayload = compactGridRenderPayload(sourcePayload);
+  const scalarFields = renderPayload.scalarFields.map(({ name, values }) => ({
+    name,
+    values,
+  }));
+
+  return {
+    ...frame,
+    colors: renderPayload.colors,
+    pointCount: renderPayload.sampledPointCount,
+    positions: renderPayload.positions,
+    renderPayload,
+    scalarFields: scalarFields.length > 0 ? scalarFields : undefined,
+  };
+}
+
+function compactGridRenderPayload(
+  source: PointCloudRenderPayload,
+): PointCloudRenderPayload {
+  const sampledPointCount = Math.min(
+    source.sampledPointCount,
+    MCAP_GRID_PREVIEW_MAX_POINTS,
+  );
+  const capacity = Math.max(1, sampledPointCount);
+  const positions = new Float32Array(capacity * POINT_COMPONENT_COUNT);
+  const colors = source.colors
+    ? new Float32Array(capacity * COLOR_COMPONENT_COUNT)
+    : undefined;
+  const sourceIndices = new Uint32Array(capacity);
+  const scalarFields = source.scalarFields.map((field) => ({
+    ...field,
+    values: new Float32Array(capacity),
+  }));
+
+  for (let targetIndex = 0; targetIndex < sampledPointCount; targetIndex++) {
+    const sourceIndex = evenlySampledIndex(
+      targetIndex,
+      sampledPointCount,
+      source.sampledPointCount,
+    );
+    const targetOffset = targetIndex * POINT_COMPONENT_COUNT;
+    const sourceOffset = sourceIndex * POINT_COMPONENT_COUNT;
+    positions[targetOffset] = source.positions[sourceOffset];
+    positions[targetOffset + 1] = source.positions[sourceOffset + 1];
+    positions[targetOffset + 2] = source.positions[sourceOffset + 2];
+    if (colors && source.colors) {
+      const targetColorOffset = targetIndex * COLOR_COMPONENT_COUNT;
+      const sourceColorOffset = sourceIndex * COLOR_COMPONENT_COUNT;
+      colors[targetColorOffset] = source.colors[sourceColorOffset];
+      colors[targetColorOffset + 1] = source.colors[sourceColorOffset + 1];
+      colors[targetColorOffset + 2] = source.colors[sourceColorOffset + 2];
+    }
+    for (let fieldIndex = 0; fieldIndex < scalarFields.length; fieldIndex++) {
+      scalarFields[fieldIndex].values[targetIndex] =
+        source.scalarFields[fieldIndex].values[sourceIndex];
+    }
+    // The grid discards the full decoded arrays, so indices now address the
+    // compact arrays instead of the worker's original message payload.
+    sourceIndices[targetIndex] = targetIndex;
+  }
+
+  return {
+    bounds: source.bounds,
+    capacity,
+    ...(colors ? { colors } : {}),
+    finitePointCount: source.finitePointCount,
+    heightRange: source.heightRange,
+    positions,
+    sampledPointCount,
+    scalarFields,
+    sourceIndices,
+  };
+}
+
+function evenlySampledIndex(
+  targetIndex: number,
+  targetCount: number,
+  sourceCount: number,
+): number {
+  if (targetCount <= 1 || sourceCount <= 1) {
+    return 0;
+  }
+  return Math.floor((targetIndex * (sourceCount - 1)) / (targetCount - 1));
 }

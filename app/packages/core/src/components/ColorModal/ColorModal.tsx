@@ -19,6 +19,7 @@ import FieldSetting from "./FieldSetting";
 import GlobalSetting from "./GlobalSetting";
 import JSONViewer from "./JSONViewer";
 import LabelTag from "./LabelTag";
+import TemporalTag from "./TemporalTag";
 import {
   Container,
   Display,
@@ -84,7 +85,12 @@ const ColorModal = () => {
                 bottomLeft: true,
                 topLeft: true,
               }}
-              onResizeStop={(e, direction, ref, { width: dw, height: dh }) => {
+              onResizeStop={(
+                e,
+                _direction,
+                _ref,
+                { width: dw, height: dh },
+              ) => {
                 setWidth(width + dw);
                 setHeight(height + dh);
                 if (e.detail === 2) {
@@ -146,8 +152,11 @@ const ColorModal = () => {
                     {typeof activeEntry === "object" &&
                       activeEntry?.path === "_label_tags" && <LabelTag />}
                     {typeof activeEntry === "object" &&
+                      activeEntry?.path === "_temporal_tags" && <TemporalTag />}
+                    {typeof activeEntry === "object" &&
                       activeEntry?.path &&
-                      activeEntry.path !== "_label_tags" && (
+                      activeEntry.path !== "_label_tags" &&
+                      activeEntry.path !== "_temporal_tags" && (
                         <FieldSetting
                           key={activeEntry.path}
                           path={activeEntry.path}

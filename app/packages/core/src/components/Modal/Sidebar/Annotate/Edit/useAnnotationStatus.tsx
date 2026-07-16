@@ -2,6 +2,8 @@ import {
   useInferenceStatus,
   useToolsContext,
 } from "@fiftyone/annotation/src/agents";
+import { ANNOTATION_CUBOID } from "@fiftyone/looker-3d/src/constants";
+import { useCurrent3dAnnotationMode } from "@fiftyone/looker-3d/src/state/accessors";
 import type { PolylineAnnotationLabel } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
@@ -42,6 +44,7 @@ export const useAnnotationStatus = () => {
   const { setContent } = useModalStatusBar();
 
   const detectionModeActive = useAtomValue(_unsafeDetectionModeActiveAtom);
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const segmentationModeActive = useAtomValue(
     _unsafeSegmentationModeActiveAtom,
   );
@@ -62,8 +65,11 @@ export const useAnnotationStatus = () => {
   const vertexCount = countVertices(polylineData?.points);
   const hasAiPoints =
     (positivePoints?.length ?? 0) + (negativePoints?.length ?? 0) > 0;
+  const cuboidModeActive = current3dAnnotationMode === ANNOTATION_CUBOID;
 
   const content = useMemo<StatusContent>(() => {
+    if (cuboidModeActive) return <DetectionStatus isCuboid />;
+
     if (detectionModeActive) return <DetectionStatus />;
 
     if (segmentationModeActive) {
@@ -99,6 +105,7 @@ export const useAnnotationStatus = () => {
 
     return null;
   }, [
+    cuboidModeActive,
     detectionModeActive,
     segmentationModeActive,
     polylineModeActive,

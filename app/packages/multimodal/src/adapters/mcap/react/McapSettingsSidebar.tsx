@@ -1,102 +1,389 @@
-import { SidebarPanel, useTiling } from "@fiftyone/tiling";
-import { Checkbox, Text, TextColor, TextVariant } from "@voxel51/voodo";
-import React, { useCallback, useMemo } from "react";
-import { useSceneInventory, type SceneSource } from "../../../scene-inventory";
-import { MCAP_SOURCE_TYPE } from "../scene-sources";
-import { useMcapModalSettings } from "./mcap-modal-settings";
-import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
+import { TileIdScope, useTiling } from "@fiftyone/tiling";
+import {
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  ToggleSwitch,
+} from "@voxel51/voodo";
+import type { Descriptor, ToggleSwitchTab } from "@voxel51/voodo";
+import React, {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { StreamInventory } from "../../../schemas/v1";
+import {
+  type McapPlaybackFidelityMode,
+  type McapTemporalPolicySettings,
+  useMcapPlaybackSettings,
+  useMcapTemporalPolicySettings,
+} from "./mcap-modal-settings";
+import {
+  useMcapTileSettings,
+  type McapTileSettingsRegistration,
+} from "./mcap-tile-settings-context";
+import McapPerformanceStats from "./McapPerformanceStats";
+import {
+  McapSceneStatusStrip,
+  usePointCloudSamplingSummary,
+} from "./McapSceneStatus";
+import McapSceneWorldSettings from "./McapSceneWorldSettings";
+import { McapSettingsNumberField } from "./McapSettingsNumberField";
+import McapSidebarGroup from "./McapSidebarGroup";
 import styles from "./McapSettingsSidebar.module.css";
+import { McapTileStreamNoticeStrip } from "./McapTileStreamState";
+import McapTopicsSettings from "./McapTopicsSettings";
+
+type ActiveSettingsTab = "panel" | "scene" | "topics";
 
 /**
- * MCAP-specific left sidebar. When a pane is active, the pane body portals
- * its settings into this shell; when no pane is active, the sidebar exposes
- * scene-wide label settings.
+ * MCAP-specific left sidebar. Each tab is one scope of the viewer's
+ * information hierarchy and shows only that scope's facts:
+ *
+ * - **Scene** — the shared world and its time: scene-wide status, the
+ *   coordinate system (world frame, up axis), playback time semantics, and
+ *   opt-in diagnostics. Nothing here reaches into a single tile.
+ * - **Topics** — the recording's catalog: what streams exist and what can
+ *   be opened from them.
+ * - **\<focused tile\>** — everything about one view: its stream status,
+ *   camera, layers, and appearance. Content comes from the tile-settings
+ *   registry when the focused tile registered one, else from the legacy
+ *   tiling DOM slot.
  */
-const McapSettingsSidebar: React.FC = () => {
+const McapSettingsSidebar: React.FC<{
+  readonly topics?: readonly StreamInventory[];
+}> = ({ topics = [] }) => {
   const { focusedTileId, setSettingsSlotEl, tiles } = useTiling();
+  const registeredPanelSettings = useMcapTileSettings(focusedTileId);
   const focusedTile =
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId] : null;
+  const focusedTileTitle = focusedTile?.title ?? null;
+  const hasPanelTab = focusedTileTitle !== null;
+  const [activeTab, setActiveTab] = useState<ActiveSettingsTab>("scene");
+  const hadPanelTabRef = useRef(false);
+  const suppressNextPanelAutoSwitchRef = useRef(false);
   const slotRef = useCallback(
     (el: HTMLDivElement | null) => setSettingsSlotEl(el),
     [setSettingsSlotEl],
   );
+  const suppressNextPanelAutoSwitch = useCallback(() => {
+    suppressNextPanelAutoSwitchRef.current = true;
+  }, []);
 
-  const contextTitle = focusedTile ? focusedTile.title : "Scene context";
+  useLayoutEffect(() => {
+    const suppressPanelAutoSwitch = suppressNextPanelAutoSwitchRef.current;
+    if (hasPanelTab && !hadPanelTabRef.current) {
+      if (!suppressPanelAutoSwitch) {
+        setActiveTab("panel");
+      }
+    } else if (!hasPanelTab && activeTab === "panel") {
+      setActiveTab("scene");
+    }
+    suppressNextPanelAutoSwitchRef.current = false;
+    hadPanelTabRef.current = hasPanelTab;
+  }, [activeTab, hasPanelTab]);
+
+  const tabs = useMemo<Descriptor<ToggleSwitchTab>[]>(() => {
+    const nextTabs: Descriptor<ToggleSwitchTab>[] = [
+      {
+        id: "scene",
+        data: {
+          label: "Scene",
+          content: <GlobalSceneSettings />,
+        },
+      },
+      {
+        id: "topics",
+        data: {
+          label: "Topics",
+          content: (
+            <McapTopicsSettings
+              onTopicActionStart={suppressNextPanelAutoSwitch}
+              topics={topics}
+            />
+          ),
+        },
+      },
+    ];
+
+    if (focusedTileTitle) {
+      nextTabs.push({
+        id: "panel",
+        data: {
+          label: focusedTileTitle,
+          content: (
+            <PanelSettingsContent
+              registration={registeredPanelSettings}
+              slotRef={slotRef}
+              tileId={focusedTileId}
+            />
+          ),
+        },
+      });
+    }
+
+    return nextTabs;
+  }, [
+    focusedTileId,
+    focusedTileTitle,
+    registeredPanelSettings,
+    slotRef,
+    suppressNextPanelAutoSwitch,
+    topics,
+  ]);
+  const selectedTab =
+    hasPanelTab &&
+    !hadPanelTabRef.current &&
+    !suppressNextPanelAutoSwitchRef.current
+      ? "panel"
+      : activeTab;
+  const defaultIndex = Math.max(
+    0,
+    tabs.findIndex((tab) => tab.id === selectedTab),
+  );
+  const handleTabChange = useCallback(
+    (index: number) => {
+      setActiveTab(
+        (tabs[index]?.id as ActiveSettingsTab | undefined) ?? "scene",
+      );
+    },
+    [tabs],
+  );
 
   return (
-    <SidebarPanel
-      title={<span className={styles.contextTitle}>{contextTitle}</span>}
-    >
-      <div ref={slotRef} />
-      {!focusedTile ? <GlobalSceneSettings /> : null}
-    </SidebarPanel>
+    <div className={styles.sidebarRoot}>
+      <ToggleSwitch
+        key={hasPanelTab ? "with-panel" : "scene-only"}
+        defaultIndex={defaultIndex}
+        fullWidth
+        onChange={handleTabChange}
+        size={Size.Sm}
+        tabListClassName={styles.stickyTabList}
+        tabs={tabs}
+      />
+    </div>
   );
 };
 
-function GlobalSceneSettings() {
-  const sources = useSceneInventory();
-  const {
-    interpolate2dAnnotations,
-    interpolate3dAnnotations,
-    setInterpolate2dAnnotations,
-    setInterpolate3dAnnotations,
-  } = useMcapModalSettings();
-  const counts = useMemo(() => sceneCounts(sources), [sources]);
-
+/**
+ * The focused tile's settings, framed by the sidebar: registry-backed
+ * tiles render as ordinary children — inside a `TileIdScope` so their
+ * tileId-scoped hooks resolve, below the tile's stream-status strip when
+ * the registration declares stream topics — while tiles that still use the
+ * tiling portal get the DOM slot they expect. Exactly one of the two is
+ * mounted at a time.
+ */
+function PanelSettingsContent({
+  registration,
+  slotRef,
+  tileId,
+}: {
+  readonly registration: McapTileSettingsRegistration | null;
+  readonly slotRef: (el: HTMLDivElement | null) => void;
+  readonly tileId: string | null;
+}) {
   return (
-    <div className={styles.root}>
-      <div className={styles.summaryGrid}>
-        <SummaryMetric label="Images" value={counts.images} />
-        <SummaryMetric label="3D" value={counts.pointClouds} />
-        <SummaryMetric label="Labels" value={counts.labels} />
-      </div>
-
-      <section className={styles.section}>
-        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-          Labels
-        </Text>
-        <div className={styles.controlStack}>
-          <Checkbox
-            label="Interpolate between 2D annotations"
-            checked={interpolate2dAnnotations}
-            onChange={setInterpolate2dAnnotations}
-            {...checkboxNoSpaceToggleProps}
-          />
-          <Checkbox
-            label="Interpolate between 3D annotations"
-            checked={interpolate3dAnnotations}
-            onChange={setInterpolate3dAnnotations}
-            {...checkboxNoSpaceToggleProps}
-          />
-        </div>
-      </section>
+    <div className={`${styles.root} ${styles.tabContent}`}>
+      {registration && tileId ? (
+        <TileIdScope tileId={tileId}>
+          {registration.streamTopics?.length ? (
+            <McapTileStreamNoticeStrip topics={registration.streamTopics} />
+          ) : null}
+          {registration.content}
+        </TileIdScope>
+      ) : (
+        <div ref={slotRef} />
+      )}
     </div>
   );
 }
 
-function SummaryMetric({
+/**
+ * The Scene tab: status first, then the world's coordinate system, then how
+ * playback interprets time, then opt-in diagnostics last — configuration
+ * reads top-down from "is the scene healthy" to "how do I debug it".
+ */
+function GlobalSceneSettings() {
+  const sampling = usePointCloudSamplingSummary();
+
+  return (
+    <div className={`${styles.root} ${styles.tabContent}`}>
+      <McapSceneStatusStrip sampling={sampling} />
+      <McapSceneWorldSettings />
+      <PlaybackFidelitySettings />
+      <TimeResolutionSettings />
+      <McapPerformanceStats sampling={sampling} />
+    </div>
+  );
+}
+
+const FIDELITY_OPTIONS: readonly {
+  readonly label: string;
+  readonly value: McapPlaybackFidelityMode;
+}[] = [
+  { label: "Smooth", value: "smooth" },
+  { label: "As recorded", value: "as-recorded" },
+];
+
+function PlaybackFidelitySettings() {
+  const { fidelityMode, setFidelityMode } = useMcapPlaybackSettings();
+
+  return (
+    <McapSidebarGroup title="Playback">
+      <div className={styles.controlStack}>
+        <label className={styles.controlRow}>
+          <ControlLabel
+            label="Between messages"
+            tooltip="Smooth interpolates continuous signals — transforms and 2D/3D label geometry — between recorded messages for fluid playback. As recorded never synthesizes: every signal holds its latest recorded message, so the scene only shows values that exist in the recording."
+          />
+          <select
+            aria-label="Between messages"
+            className={styles.modeSelect}
+            onChange={(event) =>
+              setFidelityMode(event.target.value as McapPlaybackFidelityMode)
+            }
+            value={fidelityMode}
+          >
+            {FIDELITY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </McapSidebarGroup>
+  );
+}
+
+function TimeResolutionSettings() {
+  const { resetTemporalPolicy, setTemporalPolicy, temporalPolicy } =
+    useMcapTemporalPolicySettings();
+
+  return (
+    <TemporalPolicySettings
+      onReset={resetTemporalPolicy}
+      onUpdate={setTemporalPolicy}
+      policy={temporalPolicy}
+    />
+  );
+}
+
+function TemporalPolicySettings({
+  onReset,
+  onUpdate,
+  policy,
+}: {
+  readonly onReset: () => void;
+  readonly onUpdate: (policy: Partial<McapTemporalPolicySettings>) => void;
+  readonly policy: McapTemporalPolicySettings;
+}) {
+  return (
+    <McapSidebarGroup defaultExpanded={false} title="Advanced timing">
+      <div className={styles.policyGroups}>
+        <div className={styles.policyGroup}>
+          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+            Observations
+          </Text>
+          <div className={styles.controlStack}>
+            <PolicyNumberInput
+              label="Stale frame warning"
+              onChange={(staleMediaWarningMs) =>
+                onUpdate({ staleMediaWarningMs })
+              }
+              tooltip="Shows a stale badge when latest-at-or-before observations are older than this threshold. Observation lookup is unbounded and never uses future samples. Enter 0 to disable the warning."
+              value={policy.staleMediaWarningMs}
+            />
+          </div>
+        </div>
+        <div className={styles.policyGroup}>
+          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+            Transforms
+          </Text>
+          <div className={styles.controlStack}>
+            <PolicyNumberInput
+              label="Max interpolation gap"
+              onChange={(maxInterpolationGapMs) =>
+                onUpdate({ maxInterpolationGapMs })
+              }
+              tooltip="Largest gap between bracketing transform samples that can be interpolated. Larger gaps make placement unavailable. Enter 0 to remove the gap limit."
+              value={policy.maxInterpolationGapMs}
+            />
+            <PolicyNumberInput
+              label="Large gap warning"
+              onChange={(transformGapWarningMs) =>
+                onUpdate({ transformGapWarningMs })
+              }
+              tooltip="Shows a warning when a rendered transform interpolates across a wider gap than this. Rendering continues if the max interpolation gap allows it. Enter 0 to disable the warning."
+              value={policy.transformGapWarningMs}
+            />
+            <PolicyNumberInput
+              label="Boundary clamp"
+              onChange={(boundaryClampMs) => onUpdate({ boundaryClampMs })}
+              tooltip="Start/end tolerance for using the nearest transform sample when a full interpolation bracket does not exist. Enter 0 to disable boundary clamping."
+              value={policy.boundaryClampMs}
+            />
+          </div>
+        </div>
+      </div>
+      <button className={styles.resetButton} onClick={onReset} type="button">
+        Reset to defaults
+      </button>
+    </McapSidebarGroup>
+  );
+}
+
+function PolicyNumberInput({
   label,
+  onChange,
+  tooltip,
   value,
 }: {
   readonly label: string;
+  readonly onChange: (value: number) => void;
+  readonly tooltip: string;
   readonly value: number;
 }) {
   return (
-    <div className={styles.metric}>
-      <span className={styles.metricValue}>{value.toLocaleString()}</span>
-      <span className={styles.metricLabel}>{label}</span>
-    </div>
+    <label className={styles.controlRow}>
+      <ControlLabel label={label} tooltip={tooltip} />
+      <McapSettingsNumberField
+        ariaLabel={label}
+        max={60_000}
+        min={0}
+        onCommit={onChange}
+        step={50}
+        unit="ms"
+        value={value}
+      />
+    </label>
   );
 }
 
-function sceneCounts(sources: readonly SceneSource[]) {
-  return {
-    images: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.IMAGE).length,
-    labels: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.IMAGE_ANNOTATION)
-      .length,
-    pointClouds: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD)
-      .length,
-  };
+function ControlLabel({
+  label,
+  tooltip,
+}: {
+  readonly label: string;
+  readonly tooltip: string;
+}) {
+  return (
+    <span className={styles.labelWithTooltip}>
+      <span className={styles.controlLabel}>{label}</span>
+      <span
+        aria-label={tooltip}
+        className={styles.tooltipIcon}
+        data-tooltip={tooltip}
+        role="img"
+        tabIndex={0}
+      >
+        ?
+      </span>
+    </span>
+  );
 }
 
 export default McapSettingsSidebar;

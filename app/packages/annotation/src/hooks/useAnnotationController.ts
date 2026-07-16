@@ -1,6 +1,6 @@
-import { useCallback, useMemo } from "react";
-import { useAnnotationContextManager } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useAnnotationContextManager";
 import { useModalModeController } from "@fiftyone/state";
+import { useCallback, useMemo } from "react";
+import { useRegisteredAnnotationContextManager } from "../state";
 import { useAnnotationEventBus } from "./useAnnotationEventBus";
 
 /**
@@ -27,21 +27,29 @@ export interface AnnotationController {
  * This hook is the authoritative way to enter and exit annotation mode.
  */
 export const useAnnotationController = (): AnnotationController => {
-  const contextManager = useAnnotationContextManager();
+  const contextManager = useRegisteredAnnotationContextManager();
   const modeController = useModalModeController();
   const eventBus = useAnnotationEventBus();
 
   const enter = useCallback(
     async (path?: string, labelId?: string) => {
       modeController.activateAnnotateMode();
-      await contextManager.enter(path, labelId);
+
+      if (contextManager) {
+        await contextManager.enter(path, labelId);
+      } else {
+        console.warn(
+          "No AnnotationContextManager registered; entering annotation mode without context setup",
+        );
+      }
+
       eventBus.dispatch("annotation:enterAnnotationMode", { path, labelId });
     },
     [contextManager, eventBus, modeController],
   );
 
   const exit = useCallback(() => {
-    contextManager.exit();
+    contextManager?.exit();
     modeController.activateExploreMode();
     eventBus.dispatch("annotation:exitAnnotationMode");
   }, [contextManager, eventBus, modeController]);

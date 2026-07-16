@@ -1,6 +1,7 @@
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
-import { mcapError } from "../errors";
+import { mcapError, mcapReadCancelledError } from "../errors";
 import type {
+  McapPlaybackWorkerPriority,
   McapPlaybackWorkerRequest,
   McapPlaybackWorkerRequestPayloadByType,
   McapPlaybackWorkerResponse,
@@ -8,8 +9,10 @@ import type {
   McapPlaybackWorkerRpcRequest,
   McapPlaybackWorkerStreamItemByType,
   McapPlaybackWorkerStreamType,
+  McapPlaybackWorkerTransportResponse,
   McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
+import type { McapTransportSnapshot } from "./transport-meter";
 
 type PendingRequest<
   Type extends McapPlaybackWorkerUnaryType = McapPlaybackWorkerUnaryType,
@@ -17,6 +20,7 @@ type PendingRequest<
   readonly reject: (error: Error) => void;
   readonly resolve: (result: McapPlaybackWorkerResultByType[Type]) => void;
   readonly sourceKey: string;
+  readonly type: McapPlaybackWorkerUnaryType;
 };
 
 type PendingStream = {
@@ -38,6 +42,7 @@ export class McapPlaybackWorkerTransport {
 
   constructor(
     private readonly isActiveSource: (sourceKey: string) => boolean,
+    private readonly onTransport?: (snapshot: McapTransportSnapshot) => void,
   ) {}
 
   /**
@@ -48,15 +53,17 @@ export class McapPlaybackWorkerTransport {
     sourceKey: string,
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority?: McapPlaybackWorkerPriority,
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     const id = this.nextRequestId++;
-    const message = createRpcRequest(id, sourceKey, type, payload);
+    const message = createRpcRequest(id, sourceKey, type, payload, priority);
 
     return new Promise((resolve, reject) => {
       this.pending.set(id, {
         reject,
         resolve: resolve as PendingRequest["resolve"],
         sourceKey,
+        type,
       });
 
       try {
@@ -69,6 +76,46 @@ export class McapPlaybackWorkerTransport {
   }
 
   /**
+   * Cancels matching pending unary requests: rejects each locally with the
+   * canonical cancelled error and returns their ids so the caller can tell
+   * the worker to drop or abort the matching jobs. Late worker responses
+   * for these ids are ignored by handleResponse.
+   */
+  cancelPending(
+    filter: (pending: {
+      readonly type: McapPlaybackWorkerUnaryType;
+    }) => boolean,
+  ): number[] {
+    const cancelledIds: number[] = [];
+    for (const [id, pending] of this.pending) {
+      if (!filter({ type: pending.type })) {
+        continue;
+      }
+      this.pending.delete(id);
+      pending.reject(mcapReadCancelledError());
+      cancelledIds.push(id);
+    }
+
+    return cancelledIds;
+  }
+
+  /**
+   * Cancels every pending stream: rejects each locally with the canonical
+   * cancelled error and returns their ids so the caller can tell the worker
+   * to drop or abort the matching jobs. Queued jobs the worker drops send
+   * no response, so local settlement is what keeps consumers from hanging.
+   */
+  cancelStreams(): number[] {
+    const cancelledIds: number[] = [];
+    for (const [id, stream] of [...this.streams]) {
+      this.failStream(id, stream, mcapReadCancelledError());
+      cancelledIds.push(id);
+    }
+
+    return cancelledIds;
+  }
+
+  /**
    * Sends one streaming worker RPC and yields incremental response payloads.
    */
   async *stream<Type extends McapPlaybackWorkerStreamType>(
@@ -76,9 +123,10 @@ export class McapPlaybackWorkerTransport {
     sourceKey: string,
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
+    priority?: McapPlaybackWorkerPriority,
   ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
     const id = this.nextRequestId++;
-    const message = createRpcRequest(id, sourceKey, type, payload);
+    const message = createRpcRequest(id, sourceKey, type, payload, priority);
     const stream: PendingStream = {
       done: false,
       rejectors: [],
@@ -113,6 +161,15 @@ export class McapPlaybackWorkerTransport {
    * Applies one worker response to the matching pending request or stream.
    */
   handleResponse(response: McapPlaybackWorkerResponse) {
+    if (isTransportResponse(response)) {
+      this.onTransport?.(response.transport);
+      return;
+    }
+
+    if ("transport" in response && response.transport) {
+      this.onTransport?.(response.transport);
+    }
+
     if (response.ok && "stream" in response) {
       this.handleStreamResponse(response);
       return;
@@ -138,6 +195,15 @@ export class McapPlaybackWorkerTransport {
         this.failStream(response.id, stream, new Error(response.error));
       }
     }
+  }
+
+  /**
+   * True when no unary request or stream is in flight. Lanes that exist for
+   * one-shot work (bulk history) use this to release their worker once the
+   * queue drains.
+   */
+  isIdle(): boolean {
+    return this.pending.size === 0 && this.streams.size === 0;
   }
 
   /**
@@ -174,7 +240,10 @@ export class McapPlaybackWorkerTransport {
     if (response.done) {
       this.finishStream(response.id, stream);
     } else {
-      pushStreamValue(stream, response.item);
+      const items = "items" in response ? response.items : [response.item];
+      for (const item of items) {
+        pushStreamValue(stream, item);
+      }
     }
   }
 
@@ -199,28 +268,37 @@ export class McapPlaybackWorkerTransport {
   }
 }
 
+function isTransportResponse(
+  response: McapPlaybackWorkerResponse,
+): response is McapPlaybackWorkerTransportResponse {
+  return "type" in response && response.type === "transport";
+}
+
 function createRpcRequest<Type extends McapPlaybackWorkerUnaryType>(
   id: number,
   sourceKey: string,
   type: Type,
   payload: McapPlaybackWorkerRequestPayloadByType[Type],
+  priority?: McapPlaybackWorkerPriority,
 ): McapPlaybackWorkerRpcRequest<Type>;
 function createRpcRequest<Type extends McapPlaybackWorkerStreamType>(
   id: number,
   sourceKey: string,
   type: Type,
   payload: McapPlaybackWorkerRequestPayloadByType[Type],
+  priority?: McapPlaybackWorkerPriority,
 ): McapPlaybackWorkerRpcRequest<Type>;
 function createRpcRequest(
   id: number,
   sourceKey: string,
   type: McapPlaybackWorkerRpcRequest["type"],
   payload: McapPlaybackWorkerRpcRequest["payload"],
+  priority?: McapPlaybackWorkerPriority,
 ): McapPlaybackWorkerRequest {
   return {
     id,
     payload,
-    priority: mcapPlaybackWorkerOperation(type).priority,
+    priority: priority ?? mcapPlaybackWorkerOperation(type).priority,
     sourceKey,
     type,
   } as McapPlaybackWorkerRequest;

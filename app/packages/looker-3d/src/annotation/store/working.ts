@@ -2,6 +2,7 @@ import * as fos from "@fiftyone/state";
 import { isEqual } from "lodash";
 import { useEffect, useRef } from "react";
 import {
+  atom,
   atomFamily,
   DefaultValue,
   selector,
@@ -35,7 +36,6 @@ import type { LabelId, WorkingDoc, WorkingState } from "./types";
 const defaultWorkingState: WorkingState = {
   doc: {
     labelsById: {},
-    deletedIds: new Set(),
   },
   initialized: false,
 };
@@ -50,26 +50,62 @@ export const workingAtomFamily = atomFamily<WorkingState, string>({
 });
 
 /**
- * Public facade selector for accessing the working state of the current sample.
- * Automatically keys by the current sample ID.
+ * The 3D scene's stable, non-suspending sample id, mirrored into a synchronous
+ * atom. The working store always holds the SCENE's labels, but the scene's own
+ * id differs from `currentSampleId` in a grouped modal (the selected 2D slice
+ * vs. the pinned 3D scene). The facade must key by the scene id so every
+ * consumer — seed, render, the engine bridge — agrees on one family entry.
+ *
+ * Mirrored rather than read directly: the underlying `sceneSample` selector is
+ * async, and keying this synchronous facade off it would suspend the working
+ * store and hang the 3D render on "Pixelating…". {@link useBindStableSceneSampleId}
+ * (mounted with the annotation bridge) feeds the last settled value here;
+ * `undefined` outside an active 3D annotation session, where the facade falls
+ * back to `currentSampleId` (non-grouped: the two coincide anyway).
+ */
+const stableSceneSampleIdAtom = atom<string | undefined>({
+  key: "fo3d-stableSceneSampleId",
+  default: undefined,
+});
+
+/**
+ * Public facade selector for the working state of the active 3D scene, keyed by
+ * the stable scene id (falling back to `currentSampleId` when no scene is
+ * bound).
  */
 export const workingAtom = selector<WorkingState>({
   key: "fo3d-workingStoreFacade",
   get: ({ get }) => {
-    const sampleId = get(fos.currentSampleId);
+    const sampleId = get(stableSceneSampleIdAtom) ?? get(fos.currentSampleId);
     if (!sampleId) {
       return defaultWorkingState;
     }
     return get(workingAtomFamily(sampleId));
   },
   set: ({ get, set }, newValue) => {
-    const sampleId = get(fos.currentSampleId);
+    const sampleId = get(stableSceneSampleIdAtom) ?? get(fos.currentSampleId);
     if (!sampleId || newValue instanceof DefaultValue) {
       return;
     }
     set(workingAtomFamily(sampleId), newValue);
   },
 });
+
+/**
+ * Mirror the stable scene sample id into {@link stableSceneSampleIdAtom} so the
+ * working-store facade keys off the scene, not the selected slice. Mount with
+ * the annotation bridge (not the 3D viewer) so the binding outlives the
+ * viewer's visibility; resets on unmount.
+ */
+export function useBindStableSceneSampleId(): void {
+  const setSceneId = useSetRecoilState(stableSceneSampleIdAtom);
+  const sceneId = fos.useStableSceneSample3d()?.sample?._id;
+
+  useEffect(() => {
+    setSceneId(sceneId);
+    return () => setSceneId(undefined);
+  }, [sceneId, setSceneId]);
+}
 
 /**
  * Selector that returns just the working document for the current sample.
@@ -143,7 +179,6 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
     setWorking({
       doc: {
         labelsById,
-        deletedIds: new Set(),
       },
       initialized: true,
     });
@@ -184,8 +219,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
 
           // Baseline no longer includes this label (e.g. annotationSchemas
           // contracted). User-created labels (isNew) are always kept.
-          // Soft-deleted labels are also kept so their data survives for undo.
-          if (!raw && !label.isNew && !state.doc.deletedIds.has(id)) {
+          if (!raw && !label.isNew) {
             if (!next) next = { ...prev };
             delete next[id];
             changed = true;
@@ -229,7 +263,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
 
         set(workingAtom, {
           ...state,
-          doc: { labelsById: next, deletedIds: state.doc.deletedIds },
+          doc: { labelsById: next },
         });
       },
     [],
@@ -280,21 +314,12 @@ export function useWorkingLabel(
 }
 
 /**
- * Hook that returns whether a label has been deleted.
- */
-export function useIsLabelDeleted(labelId: LabelId): boolean {
-  const doc = useWorkingDoc();
-  return doc.deletedIds.has(labelId);
-}
-
-/**
  * Hook that returns all detections from the working store.
  */
 export function useWorkingDetections(): ReconciledDetection3D[] {
   const doc = useWorkingDoc();
   return Object.values(doc.labelsById).filter(
-    (label): label is ReconciledDetection3D =>
-      isDetection(label) && !doc.deletedIds.has(label._id),
+    (label): label is ReconciledDetection3D => isDetection(label),
   );
 }
 
@@ -304,29 +329,8 @@ export function useWorkingDetections(): ReconciledDetection3D[] {
 export function useWorkingPolylines(): ReconciledPolyline3D[] {
   const doc = useWorkingDoc();
   return Object.values(doc.labelsById).filter(
-    (label): label is ReconciledPolyline3D =>
-      isPolyline(label) && !doc.deletedIds.has(label._id),
+    (label): label is ReconciledPolyline3D => isPolyline(label),
   );
-}
-
-/**
- * Hook that returns all deleted labels from the working store.
- */
-export function useDeletedWorkingLabels(): (
-  | ReconciledDetection3D
-  | ReconciledPolyline3D
-)[] {
-  const doc = useWorkingDoc();
-  const deletedLabels: (ReconciledDetection3D | ReconciledPolyline3D)[] = [];
-
-  doc.deletedIds.forEach((deletedId) => {
-    const label = doc.labelsById[deletedId];
-    if (label) {
-      deletedLabels.push(label);
-    }
-  });
-
-  return deletedLabels;
 }
 
 // =============================================================================
@@ -416,10 +420,6 @@ export function useAddWorkingLabel() {
           : roundPolyline(label);
 
         set(workingAtom, (prev) => {
-          // Remove from deletedIds if present
-          const newDeletedIds = new Set(prev.doc.deletedIds);
-          newDeletedIds.delete(roundedLabel._id);
-
           return {
             ...prev,
             doc: {
@@ -428,7 +428,6 @@ export function useAddWorkingLabel() {
                 ...prev.doc.labelsById,
                 [roundedLabel._id]: roundedLabel,
               },
-              deletedIds: newDeletedIds,
             },
           };
         });
@@ -438,47 +437,42 @@ export function useAddWorkingLabel() {
 }
 
 /**
- * Hook that returns a callback to delete a label from the working store.
+ * Hook that returns a callback to HARD-remove a label from the working store
+ * (drops it from `labelsById`). This is the engine
+ * bridge's `unmount`: when a label leaves the engine's scope (a delete, or a
+ * scope contraction), its working entry goes too.
  */
-export function useDeleteWorkingLabel() {
+export function useRemoveWorkingLabel() {
   return useRecoilCallback(
-    ({ set }) =>
+    ({ snapshot, set }) =>
       (labelId: LabelId) => {
-        set(workingAtom, (prev) => {
-          const newDeletedIds = new Set(prev.doc.deletedIds);
-          newDeletedIds.add(labelId);
+        // Resolve the scene key from the sync atom and write the family entry
+        // directly — NOT the facade. The facade's `currentSampleId` fallback is
+        // async on a grouped pcd slice, and a functional-updater set against it
+        // throws while it is pending (the bridge unmount lands here during modal
+        // teardown, after the scene id resets). No scene key = nothing to remove.
+        const sampleId = snapshot
+          .getLoadable(stableSceneSampleIdAtom)
+          .getValue();
 
-          return {
-            ...prev,
-            doc: {
-              ...prev.doc,
-              deletedIds: newDeletedIds,
-            },
-          };
-        });
-      },
-    [],
-  );
-}
+        if (!sampleId) {
+          return;
+        }
 
-/**
- * Hook that returns a callback to restore a deleted label.
- */
-export function useRestoreWorkingLabel() {
-  return useRecoilCallback(
-    ({ set }) =>
-      (labelId: LabelId) => {
-        set(workingAtom, (prev) => {
-          const newDeletedIds = new Set(prev.doc.deletedIds);
-          newDeletedIds.delete(labelId);
+        const prev = snapshot
+          .getLoadable(workingAtomFamily(sampleId))
+          .getValue();
 
-          return {
-            ...prev,
-            doc: {
-              ...prev.doc,
-              deletedIds: newDeletedIds,
-            },
-          };
+        if (!prev.doc.labelsById[labelId]) {
+          return;
+        }
+
+        const labelsById = { ...prev.doc.labelsById };
+        delete labelsById[labelId];
+
+        set(workingAtomFamily(sampleId), {
+          ...prev,
+          doc: { ...prev.doc, labelsById },
         });
       },
     [],

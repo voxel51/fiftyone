@@ -3,7 +3,9 @@ import type { McapDecodedMessage } from "../types";
 import { McapTopicCache } from "./mcap-topic-cache";
 
 const MESSAGE = {
-  decoded: { output: { visualization: null } },
+  decoded: {
+    output: { resourceHints: { sizeBytes: 128 }, visualization: null },
+  },
 } as unknown as McapDecodedMessage;
 
 describe("McapTopicCache", () => {
@@ -91,5 +93,91 @@ describe("McapTopicCache", () => {
 
     releaseB();
     expect(cache.isActive).toBe(false);
+  });
+
+  it("keeps pinned runway entries outside normal LRU churn", () => {
+    const cache = new McapTopicCache(2);
+
+    cache.set(0n, null, { pinned: true });
+    cache.set(1n, null);
+    cache.set(2n, null);
+    cache.set(3n, null);
+
+    expect(cache.has(0n)).toBe(true);
+    expect(cache.get(0n)).toBeNull();
+    expect(cache.has(1n)).toBe(false);
+
+    cache.clearPinned();
+
+    expect(cache.has(0n)).toBe(false);
+  });
+
+  it("counts one decoded message once across multiple tick placements", () => {
+    const cache = new McapTopicCache();
+
+    cache.set(1n, MESSAGE);
+    cache.set(2n, MESSAGE);
+    cache.set(3n, MESSAGE, { pinned: true });
+
+    expect(cache.stats()).toEqual({
+      decodedBytes: 128,
+      entryCount: 2,
+      pinnedEntryCount: 1,
+    });
+
+    cache.pruneOutside(3n, 3n);
+    expect(cache.stats().decodedBytes).toBe(128);
+
+    cache.clearPinned();
+    expect(cache.stats()).toEqual({
+      decodedBytes: 0,
+      entryCount: 0,
+      pinnedEntryCount: 0,
+    });
+  });
+
+  it("releases unique decoded bytes on replacement, LRU eviction, and clear", () => {
+    const cache = new McapTopicCache(1);
+    const second = {
+      ...MESSAGE,
+      decoded: {
+        ...MESSAGE.decoded,
+        output: {
+          ...MESSAGE.decoded.output,
+          resourceHints: { sizeBytes: 256 },
+        },
+      },
+    };
+
+    cache.set(1n, MESSAGE);
+    expect(cache.stats().decodedBytes).toBe(128);
+
+    cache.set(2n, second);
+    expect(cache.stats()).toEqual({
+      decodedBytes: 256,
+      entryCount: 1,
+      pinnedEntryCount: 0,
+    });
+
+    cache.set(2n, MESSAGE);
+    expect(cache.stats().decodedBytes).toBe(128);
+
+    cache.clear();
+    expect(cache.stats().decodedBytes).toBe(0);
+  });
+
+  it("prunes ordinary placements outside a protected runway", () => {
+    const cache = new McapTopicCache();
+    cache.set(1n, MESSAGE);
+    cache.set(2n, MESSAGE);
+    cache.set(3n, MESSAGE);
+    cache.set(4n, MESSAGE, { pinned: true });
+
+    expect(cache.pruneOutside(2n, 3n)).toBe(1);
+    expect(cache.has(1n)).toBe(false);
+    expect(cache.has(2n)).toBe(true);
+    expect(cache.has(3n)).toBe(true);
+    expect(cache.has(4n)).toBe(true);
+    expect(cache.stats().decodedBytes).toBe(128);
   });
 });

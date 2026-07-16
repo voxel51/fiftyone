@@ -71,7 +71,7 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
   const [open, setOpen] = useState(false);
   const [selectedField, setSelectedField] = useRecoilState(selectedFieldInfo);
 
-  function onHover(e) {
+  function onHover() {
     setSelectedField(instanceId);
   }
   function onHoverEnd(e) {
@@ -556,7 +556,7 @@ function FieldInfoTable({
   );
 }
 
-function keyValueIsRenderable([key, value]) {
+function keyValueIsRenderable([, value]) {
   if (value === undefined || value === null) return true;
   switch (typeof value) {
     case "string":

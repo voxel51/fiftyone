@@ -3,7 +3,7 @@
  */
 
 import { type EventDispatcher, getEventBus } from "@fiftyone/events";
-import { CONTAINS } from "../core/Scene2D";
+import { CONTAINS } from "../core/containment";
 import type { LighterEventGroup } from "../events";
 import type {
   InteractionHandler,
@@ -263,7 +263,7 @@ export abstract class BaseOverlay<
    * @param point - The point to test.
    * @returns The containment level (NONE = 0, CONTENT = 1, BORDER = 2).
    */
-  getContainmentLevel(point: Point): CONTAINS {
+  getContainmentLevel(_point: Point): CONTAINS {
     return CONTAINS.NONE;
   }
 
@@ -308,7 +308,7 @@ export abstract class BaseOverlay<
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverEnter(point: Point | null, event: PointerEvent | null): boolean {
+  onHoverEnter(_point: Point | null, _event: PointerEvent | null): boolean {
     this.isHoveredState = true;
     this.markDirty();
     return true;
@@ -321,7 +321,7 @@ export abstract class BaseOverlay<
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverLeave?(point?: Point | null, event?: PointerEvent | null): boolean {
+  onHoverLeave?(_point?: Point | null, _event?: PointerEvent | null): boolean {
     this.isHoveredState = false;
     this.markDirty();
     return true;
@@ -334,7 +334,7 @@ export abstract class BaseOverlay<
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverMove(point?: Point | null, event?: PointerEvent | null): boolean {
+  onHoverMove(_point?: Point | null, _event?: PointerEvent | null): boolean {
     return true;
   }
 
@@ -389,10 +389,23 @@ export abstract class BaseOverlay<
   }
 
   /**
-   * Updates the label for this overlay.
+   * Apply label state without emitting — the silent half of
+   * {@link updateLabel}. Used by Sample→overlay reconciliation so an applied
+   * change does not re-enter the overlay→Sample write path. Subclasses override
+   * to apply their derived state, but must NOT dispatch
+   * `lighter:overlay-commit-requested` here (that belongs in {@link updateLabel}).
+   * @param label - The new label.
+   */
+  applyLabel(label: Label) {
+    this.label = label;
+  }
+
+  /**
+   * Apply a label as a user edit: {@link applyLabel} plus the
+   * `lighter:overlay-commit-requested` dispatch that drives downstream sync.
    * @param label - The new label.
    */
   updateLabel(label: Label) {
-    this.label = label;
+    this.applyLabel(label);
   }
 }

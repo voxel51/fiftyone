@@ -1,29 +1,35 @@
 import {
   BufferAttribute,
+  Object3D,
   PerspectiveCamera,
   Plane,
   Quaternion,
   Raycaster,
+  Scene,
   Vector3,
 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import { COLOR_POOL } from "./constants";
 import {
+  areVectorsCoLocated,
   computeMinMaxForColorBufferAttribute,
   computeMinMaxForScalarBufferAttribute,
   createPlane,
   deg2rad,
   eulerToQuaternion,
+  findObjectByUserData,
   formatNumber,
   getAxisAlignedBoundingBoxForPoints3d,
   getColorFromPoolBasedOnHash,
   getGridQuaternionFromUpVector,
   getPlaneFromPositionAndQuaternion,
   getPlaneIntersection,
+  isFiniteVector3,
   isValidPoint3d,
   isValidPolylineSegment,
   quaternionToEuler,
   toEulerFromDegreesArray,
+  toVector3,
   toNDC,
   validatePoints3d,
   validatePoints3dArray,
@@ -80,6 +86,59 @@ describe("formatNumber", () => {
     expect(formatNumber(1.2346, 3)).toBe("1.235");
     expect(formatNumber(1.2344, 3)).toBe("1.234");
     expect(formatNumber(1.9999, 3)).toBe("2.000");
+  });
+});
+
+describe("toVector3", () => {
+  it("converts tuples to Vector3 instances", () => {
+    expect(toVector3([1, 2, 3]).toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("clones Vector3 inputs", () => {
+    const input = new Vector3(4, 5, 6);
+    const result = toVector3(input);
+
+    expect(result.toArray()).toEqual([4, 5, 6]);
+    expect(result).not.toBe(input);
+  });
+});
+
+describe("isFiniteVector3", () => {
+  it("returns true only when every component is finite", () => {
+    expect(isFiniteVector3(new Vector3(1, 2, 3))).toBe(true);
+    expect(isFiniteVector3(new Vector3(Number.NaN, 2, 3))).toBe(false);
+    expect(isFiniteVector3(new Vector3(1, Number.POSITIVE_INFINITY, 3))).toBe(
+      false,
+    );
+  });
+});
+
+describe("areVectorsCoLocated", () => {
+  it("checks whether two vectors are within the distance threshold", () => {
+    expect(
+      areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0, 0, 0)),
+    ).toBe(true);
+    expect(
+      areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0.01, 0, 0)),
+    ).toBe(false);
+    expect(
+      areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0.01, 0, 0), 1e-2),
+    ).toBe(true);
+  });
+});
+
+describe("findObjectByUserData", () => {
+  it("returns the first scene object with matching user data", () => {
+    const scene = new Scene();
+    const child = new Object3D();
+    const laterChild = new Object3D();
+    child.userData.labelId = "label-1";
+    laterChild.userData.labelId = "label-1";
+    scene.add(child);
+    scene.add(laterChild);
+
+    expect(findObjectByUserData(scene, "labelId", "label-1")).toBe(child);
+    expect(findObjectByUserData(scene, "labelId", "missing")).toBeNull();
   });
 });
 

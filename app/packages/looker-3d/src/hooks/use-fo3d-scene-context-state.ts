@@ -44,8 +44,6 @@ export const useFo3dSceneContextState = ({
     setAutoRotate,
     pointCloudSettings,
     setPointCloudSettings,
-    raycastPrecision,
-    setRaycastPrecision,
   } = useFo3dPersistentPreferences();
 
   const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
@@ -72,8 +70,6 @@ export const useFo3dSceneContextState = ({
       setAutoRotate,
       pointCloudSettings,
       setPointCloudSettings,
-      raycastPrecision,
-      setRaycastPrecision,
       hoverMetadata,
       setHoverMetadata,
       pluginSettings: settings ?? null,
@@ -94,8 +90,6 @@ export const useFo3dSceneContextState = ({
       setAutoRotate,
       pointCloudSettings,
       setPointCloudSettings,
-      raycastPrecision,
-      setRaycastPrecision,
       hoverMetadata,
       setHoverMetadata,
       settings,

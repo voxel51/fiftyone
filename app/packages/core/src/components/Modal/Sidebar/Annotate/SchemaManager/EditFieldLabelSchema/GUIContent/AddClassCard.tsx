@@ -24,7 +24,6 @@ interface AddClassCardProps {
 }
 
 const AddClassCard = ({
-  attributeCount,
   existingClasses,
   onSave,
   onCancel,

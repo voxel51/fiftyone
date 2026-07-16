@@ -15,10 +15,20 @@ import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import LabelList from "./LabelList";
 import { labelSchemasData } from "./state";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
+import { useEngineUndoableBridge } from "./useEngineUndoableBridge";
+import { useFormAnchor } from "./useFormAnchor";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useLabels from "./useLabels";
 import { useRegisterPolylineSidebarSyncHandlers } from "./Edit/useRegisterPolylineSidebarSyncHandlers";
 import useSourceFieldToActivate from "./useSourceFieldToActivate";
+import {
+  useSync3dModalSample,
+  useSyncAnnotationEngine,
+  useSyncModalSample,
+} from "@fiftyone/annotation";
+import { useLighterAnnotationBridge } from "./useLighterAnnotationBridge";
+import { useLooker3dAnnotationBridge } from "./useLooker3dAnnotationBridge";
+import { useSyncAnnotationSliceMediaType } from "./useSyncAnnotationSliceMediaType";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -36,6 +46,9 @@ const DISABLED_MESSAGES: Record<
     </p>
   ),
   videoDataset: <p>Annotation isn&rsquo;t supported for video datasets.</p>,
+  multimodalDataset: (
+    <p>Annotation isn&rsquo;t supported for multimodal datasets.</p>
+  ),
 };
 
 const Container = styled.div`
@@ -108,6 +121,14 @@ interface AnnotateProps {
 }
 
 const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
+  useSyncModalSample();
+  useSync3dModalSample();
+  useSyncAnnotationEngine();
+  useSyncAnnotationSliceMediaType();
+  useEngineUndoableBridge();
+  useLighterAnnotationBridge();
+  useLooker3dAnnotationBridge();
+  useFormAnchor();
   useRegisterAIAnnotationEventHandlers();
   useRegisterPolylineSidebarSyncHandlers();
 

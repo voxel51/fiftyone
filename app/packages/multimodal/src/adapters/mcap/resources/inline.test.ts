@@ -1,3 +1,7 @@
+import { parse as parseRosMessageDefinition } from "@foxglove/rosmsg";
+import { parseRos2idl } from "@foxglove/ros2idl-parser";
+import { MessageWriter as Ros1MessageWriter } from "@foxglove/rosmsg-serialization";
+import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serialization";
 import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
@@ -23,6 +27,157 @@ const FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP = bytes(
 const FRAME_TRANSFORMS_MESSAGE_WITHOUT_TIMESTAMP = bytes(
   "ClMSA21hcBoJYmFzZV9saW5rIhsJAAAAAAAA8D8RAAAAAAAAAAAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPwpVEgliYXNlX2xpbmsaBWxpZGFyIhsJAAAAAAAAAAARAAAAAAAAAEAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw==",
 );
+const CUSTOM_TRANSFORM_BUNDLE_SCHEMA_DATA = bytes(
+  "CrECCgxjdXN0b20ucHJvdG8SBmN1c3RvbSInCgRWZWMzEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBIjIKBFF1YXQSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAESCQoBdxgEIAEoASJ6ChRDYWxpYnJhdGlvblRyYW5zZm9ybRIXCg9wYXJlbnRfZnJhbWVfaWQYASABKAkSFgoOY2hpbGRfZnJhbWVfaWQYAiABKAkSGQoLdHJhbnNsYXRpb24YAyABKAsyBFZlYzMSFgoIcm90YXRpb24YBCABKAsyBFF1YXQiOAoRQ2FsaWJyYXRpb25CdW5kbGUSIwoFcG9zZXMYASADKAsyFENhbGlicmF0aW9uVHJhbnNmb3JtYgZwcm90bzM=",
+);
+const CUSTOM_TRANSFORM_BUNDLE_MESSAGE = bytes(
+  "ClYKA21hcBIMY3VzdG9tX2xpZGFyGhsJAAAAAAAAEEARAAAAAAAAFEAZAAAAAAAAGEAiJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw==",
+);
+const ROS1_TF_MESSAGE_SCHEMA = `geometry_msgs/TransformStamped[] transforms
+===
+MSG: geometry_msgs/TransformStamped
+std_msgs/Header header
+string child_frame_id
+geometry_msgs/Transform transform
+===
+MSG: std_msgs/Header
+uint32 seq
+time stamp
+string frame_id
+===
+MSG: geometry_msgs/Transform
+geometry_msgs/Vector3 translation
+geometry_msgs/Quaternion rotation
+===
+MSG: geometry_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w`;
+const ROS2_TF_MESSAGE_SCHEMA = `geometry_msgs/TransformStamped[] transforms
+===
+MSG: geometry_msgs/TransformStamped
+std_msgs/Header header
+string child_frame_id
+geometry_msgs/Transform transform
+===
+MSG: std_msgs/Header
+builtin_interfaces/Time stamp
+string frame_id
+===
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec
+===
+MSG: geometry_msgs/Transform
+geometry_msgs/Vector3 translation
+geometry_msgs/Quaternion rotation
+===
+MSG: geometry_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: geometry_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w`;
+const FOXGLOVE_ROS2_FRAME_TRANSFORM_SCHEMA = `builtin_interfaces/Time timestamp
+string parent_frame_id
+string child_frame_id
+foxglove_msgs/Vector3 translation
+foxglove_msgs/Quaternion rotation
+===
+MSG: foxglove_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: foxglove_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w
+===
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec`;
+const FOXGLOVE_ROS2_FRAME_TRANSFORMS_SCHEMA = `foxglove_msgs/FrameTransform[] transforms
+===
+MSG: foxglove_msgs/FrameTransform
+builtin_interfaces/Time timestamp
+string parent_frame_id
+string child_frame_id
+foxglove_msgs/Vector3 translation
+foxglove_msgs/Quaternion rotation
+===
+MSG: foxglove_msgs/Vector3
+float64 x
+float64 y
+float64 z
+===
+MSG: foxglove_msgs/Quaternion
+float64 x
+float64 y
+float64 z
+float64 w
+===
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec`;
+const ROS2_IDL_TF_MESSAGE_SCHEMA = `module tf2_msgs {
+  module msg {
+    struct TFMessage {
+      sequence<geometry_msgs::msg::TransformStamped> transforms;
+    };
+  };
+};
+module geometry_msgs {
+  module msg {
+    struct TransformStamped {
+      std_msgs::msg::Header header;
+      string child_frame_id;
+      Transform transform;
+    };
+    struct Transform {
+      Vector3 translation;
+      Quaternion rotation;
+    };
+    struct Vector3 {
+      double x;
+      double y;
+      double z;
+    };
+    struct Quaternion {
+      double x;
+      double y;
+      double z;
+      double w;
+    };
+  };
+};
+module std_msgs {
+  module msg {
+    struct Header {
+      builtin_interfaces::msg::Time stamp;
+      string frame_id;
+    };
+  };
+};
+module builtin_interfaces {
+  module msg {
+    struct Time {
+      long sec;
+      unsigned long nanosec;
+    };
+  };
+};`;
 
 describe("MCAP resources", () => {
   it("reads topic inventory from summary channels without scanning messages", async () => {
@@ -162,6 +317,64 @@ describe("MCAP resources", () => {
     );
   });
 
+  it("annotates generic decode availability in topic inventory", async () => {
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              7,
+              createChannel({
+                id: 7,
+                messageEncoding: "json",
+                schemaId: 0,
+                topic: "/state",
+              }),
+            ],
+            [
+              8,
+              createChannel({
+                id: 8,
+                messageEncoding: "ros1",
+                schemaId: 4,
+                topic: "/imu",
+              }),
+            ],
+            [
+              9,
+              createChannel({
+                id: 9,
+                messageEncoding: "cbor",
+                schemaId: 0,
+                topic: "/binary",
+              }),
+            ],
+          ]),
+          schemasById: new Map([
+            [
+              4,
+              createSchema(new Uint8Array(), {
+                encoding: "ros1msg",
+                id: 4,
+                name: "sensor_msgs/Imu",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const topics = await client.readTopics({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(
+      topics.map((topic) => topic.metadata["mcap.generic_decode_status"]),
+    ).toEqual(["decodable", "schema-unavailable", "unsupported-encoding"]);
+  });
+
   it("caches topic reads by source", async () => {
     const source = createMcapSourceDescriptor();
     const client = createInlineMcapResourceClient({
@@ -270,7 +483,56 @@ describe("MCAP resources", () => {
     expect(readMessages).not.toHaveBeenCalled();
   });
 
-  it("discovers foxglove.FrameTransform channels by schema regardless of topic name", async () => {
+  it("skips non-static transform topics during bootstrap", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/sensor_calibration",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledOnce();
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/sensor_calibration"],
+    });
+    expect(set.samples).toEqual([]);
+  });
+
+  it("bootstraps ambiguous transform topics when the first decoded message is static", async () => {
     const readMessages = vi.fn(async function* () {
       yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
         channelId: 10,
@@ -312,8 +574,62 @@ describe("MCAP resources", () => {
       source: createMcapSourceDescriptor(),
     });
 
-    expect(readMessages).toHaveBeenCalledWith({
+    expect(readMessages).toHaveBeenCalledTimes(2);
+    expect(readMessages).toHaveBeenLastCalledWith({
       topics: ["/sensor_calibration"],
+    });
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+    });
+    expect(set.samples[0]?.timeNs).toBeUndefined();
+  });
+
+  it("discovers static foxglove.FrameTransform channels by schema", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/robot/tf_static",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/robot/tf_static"],
     });
     expect(set.samples).toHaveLength(1);
     expect(set.samples[0]).toMatchObject({
@@ -323,6 +639,60 @@ describe("MCAP resources", () => {
     expect(set.samples[0]?.timeNs).toBeUndefined();
     expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
     expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("discovers transform-like protobuf schemas without Foxglove schema names", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(CUSTOM_TRANSFORM_BUNDLE_MESSAGE, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/static_transforms",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(CUSTOM_TRANSFORM_BUNDLE_SCHEMA_DATA, {
+                id: 10,
+                name: "custom.CalibrationBundle",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/static_transforms"],
+    });
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "custom_lidar",
+      parentFrameId: "map",
+    });
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(set.samples[0]?.translation.toArray()).toEqual([4, 5, 6]);
   });
 
   it("includes bootstrap transform channels when summary stats are unavailable", async () => {
@@ -392,7 +762,7 @@ describe("MCAP resources", () => {
               createChannel({
                 id: 10,
                 schemaId: 10,
-                topic: "/calibration_bundle",
+                topic: "/tf_static",
               }),
             ],
           ]),
@@ -430,6 +800,440 @@ describe("MCAP resources", () => {
       "base_link",
       "map",
     ]);
+  });
+
+  it("bootstraps ros1 /tf_static messages as whole-file static transforms", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(
+        ros1TfMessage({
+          transforms: [
+            ros1TransformStamped({
+              childFrameId: "base_link",
+              parentFrameId: "map",
+              stamp: { nsec: 20, sec: 7 },
+              translation: { x: 1, y: 2, z: 3 },
+            }),
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 10n,
+        },
+      );
+      yield createMessage(
+        ros1TfMessage({
+          transforms: [
+            ros1TransformStamped({
+              childFrameId: "lidar",
+              parentFrameId: "base_link",
+              stamp: { nsec: 40, sec: 8 },
+              translation: { x: 4, y: 5, z: 6 },
+            }),
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 1_000n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "ros1",
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(new TextEncoder().encode(ROS1_TF_MESSAGE_SCHEMA), {
+                encoding: "ros1msg",
+                id: 10,
+                name: "tf2_msgs/TFMessage",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 2n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/tf_static"],
+    });
+    expect(set.samples).toHaveLength(2);
+    expect(set.samples.map((sample) => sample.timeNs)).toEqual([
+      undefined,
+      undefined,
+    ]);
+    expect(set.samples.map((sample) => sample.childFrameId)).toEqual([
+      "lidar",
+      "base_link",
+    ]);
+    expect(set.samples.map((sample) => sample.parentFrameId)).toEqual([
+      "base_link",
+      "map",
+    ]);
+  });
+
+  it("reads ros2 cdr TFMessage samples from dynamic frame transform windows", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(
+        ros2TfMessage({
+          transforms: [
+            ros2TransformStamped({
+              childFrameId: "base_link",
+              parentFrameId: "map",
+              stamp: { nanosec: 20, sec: 7 },
+              translation: { x: 1, y: 2, z: 3 },
+            }),
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 7_000_000_020n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "cdr",
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(new TextEncoder().encode(ROS2_TF_MESSAGE_SCHEMA), {
+                encoding: "ros2msg",
+                id: 10,
+                name: "tf2_msgs/msg/TFMessage",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 7_000_000_020n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 7_000_000_020n,
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      endTime: 7_000_000_020n,
+      startTime: 7_000_000_020n,
+      topics: ["/tf"],
+    });
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "base_link",
+      parentFrameId: "map",
+      timeNs: 7_000_000_020n,
+    });
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("reads ros2 idl TFMessage samples from dynamic frame transform windows", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(
+        ros2IdlTfMessage({
+          transforms: [
+            ros2IdlTransformStamped({
+              childFrameId: "camera",
+              parentFrameId: "base_link",
+              stamp: { nsec: 30, sec: 9 },
+              translation: { x: 4, y: 5, z: 6 },
+            }),
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 9_000_000_030n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "cdr",
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(
+                new TextEncoder().encode(ROS2_IDL_TF_MESSAGE_SCHEMA),
+                {
+                  encoding: "ros2idl",
+                  id: 10,
+                  name: "tf2_msgs/msg/TFMessage",
+                },
+              ),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 9_000_000_030n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 9_000_000_030n,
+    });
+
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "camera",
+      parentFrameId: "base_link",
+      timeNs: 9_000_000_030n,
+    });
+    expect(set.samples[0]?.translation.toArray()).toEqual([4, 5, 6]);
+  });
+
+  it("reads foxglove_msgs cdr FrameTransforms samples from dynamic frame transform windows", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(
+        foxgloveRos2FrameTransforms({
+          transforms: [
+            {
+              child_frame_id: "lidar",
+              parent_frame_id: "map",
+              rotation: { w: 1, x: 0, y: 0, z: 0 },
+              timestamp: { nanosec: 40, sec: 8 },
+              translation: { x: 1, y: 2, z: 3 },
+            },
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 8_000_000_040n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "cdr",
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(
+                new TextEncoder().encode(FOXGLOVE_ROS2_FRAME_TRANSFORMS_SCHEMA),
+                {
+                  encoding: "ros2msg",
+                  id: 10,
+                  name: "foxglove_msgs/msg/FrameTransforms",
+                },
+              ),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 8_000_000_040n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 8_000_000_040n,
+    });
+
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+      timeNs: 8_000_000_040n,
+    });
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("reads foxglove_msgs cdr FrameTransform samples from dynamic frame transform windows", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(
+        foxgloveRos2FrameTransform({
+          child_frame_id: "camera",
+          parent_frame_id: "map",
+          rotation: { w: 1, x: 0, y: 0, z: 0 },
+          timestamp: { nanosec: 50, sec: 8 },
+          translation: { x: 4, y: 5, z: 6 },
+        }),
+        {
+          channelId: 10,
+          logTime: 8_000_000_050n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "cdr",
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(
+                new TextEncoder().encode(FOXGLOVE_ROS2_FRAME_TRANSFORM_SCHEMA),
+                {
+                  encoding: "ros2msg",
+                  id: 10,
+                  name: "foxglove_msgs/msg/FrameTransform",
+                },
+              ),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 8_000_000_050n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 8_000_000_050n,
+    });
+
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "camera",
+      parentFrameId: "map",
+      timeNs: 8_000_000_050n,
+    });
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(set.samples[0]?.translation.toArray()).toEqual([4, 5, 6]);
+  });
+
+  it("skips malformed ROS TFMessage payloads without failing the window", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(new Uint8Array([1, 2, 3]), {
+        channelId: 10,
+        logTime: 7_000_000_020n,
+      });
+      yield createMessage(
+        ros1TfMessage({
+          transforms: [
+            ros1TransformStamped({
+              childFrameId: "base_link",
+              parentFrameId: "map",
+              stamp: { nsec: 20, sec: 7 },
+              translation: { x: 1, y: 2, z: 3 },
+            }),
+          ],
+        }),
+        {
+          channelId: 10,
+          logTime: 7_000_000_020n,
+        },
+      );
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                messageEncoding: "ros1",
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(new TextEncoder().encode(ROS1_TF_MESSAGE_SCHEMA), {
+                encoding: "ros1msg",
+                id: 10,
+                name: "tf2_msgs/TFMessage",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 7_000_000_020n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 7_000_000_020n,
+    });
+
+    expect(set.messageCount).toBe(2);
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "base_link",
+      parentFrameId: "map",
+    });
   });
 
   it("reads dynamic frame transform windows from any schema-discovered topic", async () => {
@@ -649,7 +1453,7 @@ describe("MCAP resources", () => {
     expect(readMessages).not.toHaveBeenCalled();
   });
 
-  it("defers bootstrap scans of channels with message counts above the cap", async () => {
+  it("defers bootstrap scans of static channels with message counts above the cap", async () => {
     const readMessages = vi.fn(async function* () {
       for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
         yield message;
@@ -666,7 +1470,7 @@ describe("MCAP resources", () => {
               createChannel({
                 id: 10,
                 schemaId: 10,
-                topic: "/dense_tf",
+                topic: "/tf_static",
               }),
             ],
           ]),
@@ -839,6 +1643,84 @@ describe("MCAP resources", () => {
       windows[1]?.messages.map((message) => message.timelineTimeNs),
     ).toEqual([90n, 108n]);
     expect(readMessages).toHaveBeenCalledTimes(1);
+    expect(decodeClient.decode).toHaveBeenCalledTimes(2);
+  });
+
+  it("contains payload decode failures to their topic and preserves shared decode work", async () => {
+    const source = createMcapSourceDescriptor();
+    const messages = [
+      createMessage(new Uint8Array([1]), {
+        channelId: 7,
+        logTime: 90n,
+        publishTime: 91n,
+      }),
+      createMessage(new Uint8Array([2]), {
+        channelId: 8,
+        logTime: 108n,
+        publishTime: 109n,
+      }),
+    ];
+    const decodeClient = createTestDecodeClient();
+    vi.mocked(decodeClient.decode).mockImplementation(async (request) => {
+      if (request.context.streamId === "/camera") {
+        throw new Error("invalid camera calibration");
+      }
+      return {
+        context: request.context,
+        decoderId: "test-decoder",
+        decoderVersion: "1",
+        output: createTestDecodedOutput(),
+        payload: request.payload,
+      };
+    });
+    const readMessages = vi.fn(async function* () {
+      for (const message of messages) yield message;
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient,
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [7, createChannel({ id: 7, topic: "/camera" })],
+            [8, createChannel({ id: 8, topic: "/lidar" })],
+          ]),
+          readMessages,
+        }),
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n, 105n],
+      source,
+      defaultStreamPolicy: {
+        mode: PlaybackSyncMode.NEAREST,
+        toleranceAfterNs: 20n,
+        toleranceBeforeNs: 20n,
+      },
+      topics: ["/camera", "/lidar"],
+    });
+
+    expect(windows).toHaveLength(2);
+    for (const window of windows) {
+      expect(window.messagesByTopic["/camera"]).toEqual([]);
+      expect(window.decodeErrorsByTopic?.["/camera"]).toEqual([
+        expect.objectContaining({
+          code: "message-decode-failed",
+          message: "invalid camera calibration",
+          messageTimeNs: 90n,
+          requestedTimeNs: window.timeNs,
+          topic: "/camera",
+        }),
+      ]);
+      expect(window.messagesByTopic["/lidar"]).toHaveLength(1);
+      expect(window.messages.map((message) => message.topic)).toEqual([
+        "/lidar",
+      ]);
+    }
+    expect(readMessages).toHaveBeenCalledTimes(1);
+    // The selected union is still decoded once per unique message, including
+    // the cached rejected promise reused by the second window.
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
   });
 
@@ -1476,6 +2358,18 @@ describe("MCAP resources", () => {
       }),
     ).resolves.toEqual({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      byteTimeline: [
+        {
+          cumulativeCompressedBytes: 256,
+          endTimeNs: 250n,
+          startOffsetBytes: 1_000n,
+        },
+        {
+          cumulativeCompressedBytes: 512,
+          endTimeNs: 450n,
+          startOffsetBytes: 1_000n,
+        },
+      ],
       endTimeNs: 450n,
       startTimeNs: 100n,
     });
@@ -1534,6 +2428,13 @@ describe("MCAP resources", () => {
     );
     await expect(client.readTimelineRange(request)).resolves.toEqual({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      byteTimeline: [
+        {
+          cumulativeCompressedBytes: 256,
+          endTimeNs: 20n,
+          startOffsetBytes: 1_000n,
+        },
+      ],
       endTimeNs: 20n,
       startTimeNs: 10n,
     });
@@ -1557,6 +2458,113 @@ function createMcapSourceDescriptor(): ByteSourceDescriptor {
     sizeBytes: "128",
     sourceId: "source:1",
     url: "mcap-source://sample",
+  };
+}
+
+function ros1TfMessage(record: Record<string, unknown>): Uint8Array {
+  const writer = new Ros1MessageWriter(
+    parseRosMessageDefinition(ROS1_TF_MESSAGE_SCHEMA),
+  );
+  return writer.writeMessage(record);
+}
+
+function ros2TfMessage(record: Record<string, unknown>): Uint8Array {
+  const writer = new Ros2MessageWriter(
+    parseRosMessageDefinition(ROS2_TF_MESSAGE_SCHEMA, { ros2: true }),
+  );
+  return writer.writeMessage(record);
+}
+
+function foxgloveRos2FrameTransforms(
+  record: Record<string, unknown>,
+): Uint8Array {
+  const writer = new Ros2MessageWriter(
+    parseRosMessageDefinition(FOXGLOVE_ROS2_FRAME_TRANSFORMS_SCHEMA, {
+      ros2: true,
+    }),
+  );
+  return writer.writeMessage(record);
+}
+
+function foxgloveRos2FrameTransform(
+  record: Record<string, unknown>,
+): Uint8Array {
+  const writer = new Ros2MessageWriter(
+    parseRosMessageDefinition(FOXGLOVE_ROS2_FRAME_TRANSFORM_SCHEMA, {
+      ros2: true,
+    }),
+  );
+  return writer.writeMessage(record);
+}
+
+function ros2IdlTfMessage(record: Record<string, unknown>): Uint8Array {
+  const writer = new Ros2MessageWriter(
+    parseRos2idl(ROS2_IDL_TF_MESSAGE_SCHEMA),
+  );
+  return writer.writeMessage(record);
+}
+
+interface RosTransformStampedOptions {
+  readonly childFrameId: string;
+  readonly parentFrameId: string;
+  readonly translation: {
+    readonly x: number;
+    readonly y: number;
+    readonly z: number;
+  };
+}
+
+function ros2IdlTransformStamped({
+  childFrameId,
+  parentFrameId,
+  stamp,
+  translation,
+}: RosTransformStampedOptions & {
+  readonly stamp: { readonly nsec: number; readonly sec: number };
+}): Record<string, unknown> {
+  return {
+    child_frame_id: childFrameId,
+    header: { frame_id: parentFrameId, stamp },
+    transform: {
+      rotation: { w: 1, x: 0, y: 0, z: 0 },
+      translation,
+    },
+  };
+}
+
+function ros1TransformStamped({
+  childFrameId,
+  parentFrameId,
+  stamp,
+  translation,
+}: RosTransformStampedOptions & {
+  readonly stamp: { readonly nsec: number; readonly sec: number };
+}): Record<string, unknown> {
+  return {
+    child_frame_id: childFrameId,
+    header: { frame_id: parentFrameId, seq: 0, stamp },
+    transform: {
+      rotation: { w: 1, x: 0, y: 0, z: 0 },
+      translation,
+    },
+  };
+}
+
+function ros2TransformStamped({
+  childFrameId,
+  parentFrameId,
+  stamp,
+  translation,
+}: RosTransformStampedOptions & {
+  readonly stamp: { readonly nanosec: number; readonly sec: number };
+}): Record<string, unknown> {
+  return {
+    child_frame_id: childFrameId,
+    header: { frame_id: parentFrameId, stamp },
+    transform: {
+      rotation: { w: 1, x: 0, y: 0, z: 0 },
+      translation,
+    },
   };
 }
 

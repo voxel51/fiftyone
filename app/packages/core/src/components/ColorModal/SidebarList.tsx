@@ -26,9 +26,21 @@ const SidebarList: React.FC = () => {
   }
 
   const [width, setWidth] = useState(WIDTH);
+  // Temporal tags are a multimodal-only concept, so only surface the color
+  // entry for multimodal datasets (matches the sidebar filter gating).
+  const isMultimodal = useRecoilValue(fos.isMultimodalDataset);
   const stableGroup = [
     { paths: [ACTIVE_FIELD.GLOBAL, ACTIVE_FIELD.JSON], name: "general" },
-    { paths: [{ path: "tags" }, { path: "_label_tags" }], name: "tags" },
+    {
+      paths: isMultimodal
+        ? [
+            { path: "tags" },
+            { path: "_label_tags" },
+            { path: "_temporal_tags" },
+          ]
+        : [{ path: "tags" }, { path: "_label_tags" }],
+      name: "tags",
+    },
   ];
   const fieldGroups = useRecoilValue(
     fos.sidebarGroups({ modal: false, loading: false }),
@@ -70,7 +82,7 @@ const SidebarList: React.FC = () => {
         bottomLeft: false,
         topLeft: false,
       }}
-      onResizeStop={(e, direction, ref, { width: d }) => {
+      onResizeStop={(e, _direction, _ref, { width: d }) => {
         setWidth(width + d);
         // reset sidebar width on double click
         if (e.detail === 2) setWidth(WIDTH);

@@ -1,14 +1,19 @@
 /**
  * Tile kinds the MCAP adapter can render. A tile kind is named for what
- * it shows ("image", "3d"), not for the sensor behind it. The values
- * prefix mosaic leaf ids (`image-1`, `3d-1`) — see
- * `mcapTileTypeFromId` in mcap-layout-persistence.
+ * it shows ("image", "3d"), not for the sensor behind it. The same
+ * values are stored on tiling entries and prefix persisted MCAP mosaic
+ * leaf ids (`image-1`, `3d-1`) — see `mcapTileTypeFromId` in
+ * mcap-layout-persistence.
  *
  * Kept in a leaf module (no imports) so the tile catalog, the layout
  * resolver, and the tile bodies can all share it without cycles.
  */
 export const MCAP_TILE_TYPE = {
   IMAGE: "image",
+  LOG: "log",
+  MAP: "map",
+  PLOT: "plot",
+  RAW: "raw",
   THREE_D: "3d",
 } as const;
 

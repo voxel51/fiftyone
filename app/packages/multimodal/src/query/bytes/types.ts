@@ -26,6 +26,19 @@ export interface ByteRange {
  */
 export interface ByteSourceDescriptor {
   /**
+   * Transport-discovered content validator (HTTP ETag from HEAD or ranged
+   * GET responses). Not part of source identity — persistent caches use it
+   * to detect content rewrites hiding behind an unchanged id and size.
+   */
+  readonly etag?: string;
+
+  /**
+   * Browser-owned local file backing this source. Structured-cloneable, so it
+   * can cross to playback workers; intentionally ignored by cache keys.
+   */
+  readonly localFile?: File;
+
+  /**
    * Optional source locality hint used to choose default cache fill size.
    */
   readonly readProfile?: ByteSourceReadProfile;
@@ -60,6 +73,13 @@ export interface ByteRangeReadRequest {
      */
     readonly blockFill?: boolean;
   };
+
+  /**
+   * Abort signal for the transport fetch behind this read. Coalesced reads
+   * share one physical fetch, which follows the signal of the request that
+   * started it — abort granularity is the physical fetch, not the waiter.
+   */
+  readonly signal?: AbortSignal;
 
   /**
    * Source to read from.
@@ -100,6 +120,30 @@ export interface ByteRangeReadResult {
   readonly bytes: Uint8Array;
 }
 
+export interface ByteReadDebugLog {
+  readonly blockFill: boolean;
+  readonly cacheResult:
+    | "coalesced"
+    | "fill-hit"
+    | "fetched"
+    | "persistent-hit"
+    | "request-hit";
+  readonly durationMs: number;
+  readonly fetchedBytes: number;
+  readonly fillLength: string;
+  readonly fillOffset: string;
+  readonly readProfile?: ByteSourceReadProfile;
+  readonly requestedLength: string;
+  readonly requestedOffset: string;
+  readonly returnedBytes: number;
+  readonly sourceId: string;
+}
+
+export interface ByteReadDebugOptions {
+  readonly enabled?: boolean;
+  readonly log?: (entry: ByteReadDebugLog) => void;
+}
+
 /**
  * Generic client for reading source byte ranges.
  */
@@ -115,6 +159,27 @@ export interface ByteClient {
    * Reads the requested source byte range and returns exactly that range.
    */
   readBytes(request: ByteRangeReadRequest): Promise<ByteRangeReadResult>;
+}
+
+/**
+ * Minimal cross-context exclusive-lock surface used to single-flight
+ * identical network block fills and to meter fill concurrency. It is
+ * structurally compatible with the Web Locks API (`navigator.locks`),
+ * which shares the Cache API's origin scope — together they make one
+ * context's fetch every context's bytes. With `ifAvailable`, an
+ * ungranted request invokes the callback with a falsy lock instead of
+ * waiting, exactly like the Web Locks API.
+ */
+export interface ByteFillLockManager {
+  request<T>(
+    name: string,
+    options: {
+      readonly ifAvailable?: boolean;
+      readonly mode: "exclusive";
+      readonly signal?: AbortSignal;
+    },
+    callback: (lock: unknown) => Promise<T> | T,
+  ): Promise<T>;
 }
 
 /**
@@ -138,6 +203,14 @@ export interface ByteRangeCache {
 }
 
 /**
+ * Slot class for a client's network block fills. "priority" fills may use
+ * every fill slot including the reserved first one; "background" fills
+ * (idle lookahead, bulk history scans) never take the reserved slot, so a
+ * playback-critical fill always has one immediately available.
+ */
+export type ByteFillSlotClass = "background" | "priority";
+
+/**
  * Byte cache tiers used by byte query clients.
  */
 export interface ByteCacheLayers {
@@ -148,7 +221,42 @@ export interface ByteCacheLayers {
   readonly blockSizeBytes?: ByteCacheBlockSizeBytes;
 
   /**
+   * Optional debug logging for logical byte requests, cache fills, and
+   * transport-backed read durations.
+   */
+  readonly debug?: ByteReadDebugOptions;
+
+  /**
    * In-memory raw byte-range cache used by the default cached byte client.
    */
   readonly memory: ByteRangeCache;
+
+  /**
+   * Always-on observer for completed logical byte reads, independent of
+   * debug logging. Health/telemetry consumers use this to measure real
+   * transport pressure (see `cacheResult`/`fetchedBytes` per entry).
+   */
+  readonly onRead?: (entry: ByteReadDebugLog) => void;
+
+  /**
+   * Persistent byte-range cache shared across execution contexts (main
+   * thread and workers) and page loads. `false` disables the default
+   * Cache API layer; omitting it lets clients construct the default.
+   */
+  readonly persistent?: ByteRangeCache | false;
+
+  /**
+   * Slot class this client's remote fills are metered under. Defaults to
+   * "priority"; execution contexts that only do speculative or bulk work
+   * declare "background" so they can never occupy the reserved slot.
+   */
+  readonly fillSlotClass?: ByteFillSlotClass;
+
+  /**
+   * Cross-context lock manager that single-flights identical block fills
+   * across worker lanes, with the persistent layer as the handoff medium.
+   * `false` disables locking; omitting it lets clients adopt
+   * `navigator.locks` when the runtime provides it.
+   */
+  readonly locks?: ByteFillLockManager | false;
 }

@@ -10,10 +10,38 @@ describe("mcapSceneSources", () => {
   it("classifies supported payloads and omits unsupported topics", () => {
     const sources = mcapSceneSources([
       createTopic("/CAM_FRONT/image_rect_compressed"),
+      createTopic("/CAM_REAR/image", "sensor_msgs/msg/Image", "cdr", "ros2msg"),
+      createTopic("/CAM_VIDEO", "foxglove.CompressedVideo"),
+      createTopic(
+        "/CAM_VIDEO_CDR",
+        "foxglove_msgs/msg/CompressedVideo",
+        "cdr",
+        "ros2msg",
+      ),
+      createTopic("/CAM_RGBD/raw", "foxglove.RawImage"),
+      createTopic(
+        "/CAM_RGBD/raw_cdr",
+        "foxglove_msgs/msg/RawImage",
+        "cdr",
+        "ros2msg",
+      ),
       createTopic("/LIDAR_TOP", "foxglove.PointCloud"),
+      createTopic("/scan", "foxglove.LaserScan"),
       createTopic("/CAM_FRONT/annotations", "foxglove.ImageAnnotations"),
+      createTopic("/markers/annotations", "foxglove.SceneUpdate"),
+      createTopic("/map", "foxglove.Grid"),
+      createTopic("/drivable_area", "foxglove.Grid"),
+      createTopic("/CAM_FRONT/camera_info", "foxglove.CameraCalibration"),
+      createTopic("/pose", "foxglove.PoseInFrame"),
+      createTopic("/odom", "Pose", "json", "jsonschema"),
+      createTopic("/gps", "foxglove.LocationFix"),
       createTopic("/tf", "foxglove.FrameTransform"),
-      createTopic("/diagnostics", "diagnostic_msgs/DiagnosticArray", "ros1"),
+      createTopic(
+        "/diagnostics",
+        "diagnostic_msgs/DiagnosticArray",
+        "ros1",
+        "ros1msg",
+      ),
     ]);
 
     expect(sources).toEqual([
@@ -21,6 +49,34 @@ describe("mcapSceneSources", () => {
         id: "/CAM_FRONT/image_rect_compressed",
         type: MCAP_SOURCE_TYPE.IMAGE,
         label: "CAM_FRONT",
+        metadata: {
+          "mcap.calibration_topic": "/CAM_FRONT/camera_info",
+        },
+      },
+      {
+        id: "/CAM_REAR/image",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "CAM_REAR",
+      },
+      {
+        id: "/CAM_VIDEO",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "CAM_VIDEO",
+      },
+      {
+        id: "/CAM_VIDEO_CDR",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "CAM_VIDEO_CDR",
+      },
+      {
+        id: "/CAM_RGBD/raw",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "CAM_RGBD",
+      },
+      {
+        id: "/CAM_RGBD/raw_cdr",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "CAM_RGBD/raw_cdr",
       },
       {
         id: "/LIDAR_TOP",
@@ -28,9 +84,54 @@ describe("mcapSceneSources", () => {
         label: "LIDAR_TOP",
       },
       {
+        id: "/scan",
+        type: MCAP_SOURCE_TYPE.POINT_CLOUD,
+        label: "scan",
+      },
+      {
         id: "/CAM_FRONT/annotations",
         type: MCAP_SOURCE_TYPE.IMAGE_ANNOTATION,
         label: "CAM_FRONT/annotations",
+      },
+      {
+        id: "/markers/annotations",
+        type: MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
+        label: "markers/annotations",
+      },
+      {
+        id: "/map",
+        type: MCAP_SOURCE_TYPE.MAP_LAYER,
+        label: "map",
+      },
+      {
+        id: "/drivable_area",
+        type: MCAP_SOURCE_TYPE.MAP_LAYER,
+        label: "drivable_area",
+      },
+      {
+        id: "/CAM_FRONT/camera_info",
+        type: MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
+        label: "CAM_FRONT/camera_info",
+      },
+      {
+        id: "/pose",
+        type: MCAP_SOURCE_TYPE.POSE,
+        label: "pose",
+      },
+      {
+        id: "/odom",
+        type: MCAP_SOURCE_TYPE.POSE,
+        label: "odom",
+      },
+      {
+        id: "/gps",
+        type: MCAP_SOURCE_TYPE.LOCATION,
+        label: "gps",
+      },
+      {
+        id: "/diagnostics",
+        type: MCAP_SOURCE_TYPE.LOG,
+        label: "diagnostics",
       },
     ]);
   });
@@ -44,6 +145,93 @@ describe("mcapSceneSources", () => {
     expect(sources.map((s) => s.label)).toEqual([
       "camera/front",
       "camera/back",
+    ]);
+  });
+
+  it("does not attach an arbitrary calibration when fuzzy matches tie", () => {
+    const sources = mcapSceneSources([
+      createTopic("/boxi/hesai/intensity_image", "foxglove.CompressedVideo"),
+      createTopic(
+        "/boxi/alphasense/front_left/camera_info",
+        "sensor_msgs/msg/CameraInfo",
+        "cdr",
+        "ros2msg",
+      ),
+      createTopic(
+        "/boxi/alphasense/front_right/camera_info",
+        "sensor_msgs/msg/CameraInfo",
+        "cdr",
+        "ros2msg",
+      ),
+    ]);
+
+    expect(sources[0]).toEqual({
+      id: "/boxi/hesai/intensity_image",
+      label: "boxi/hesai/intensity_image",
+      type: MCAP_SOURCE_TYPE.IMAGE,
+    });
+  });
+
+  it("classifies JSON-schema ROS topics from Test1-style MCAPs", () => {
+    const sources = mcapSceneSources([
+      createTopic(
+        "IMG1_ltm_pyr_L1",
+        "sensor_msgs/CompressedImage",
+        "json",
+        "jsonschema",
+      ),
+      createTopic(
+        "IMG1_ltm_pyr_L1_left",
+        "sensor_msgs/CompressedImage",
+        "json",
+        "jsonschema",
+      ),
+      createTopic(
+        "IMG1_ltm_pyr_L1_right",
+        "sensor_msgs/CompressedImage",
+        "json",
+        "jsonschema",
+      ),
+      createTopic(
+        "IMG1_ltm_pyr_L1_wide",
+        "sensor_msgs/CompressedImage",
+        "json",
+        "jsonschema",
+      ),
+      createTopic(
+        "GNSS_Position",
+        "sensor_msgs/NavSatFix",
+        "json",
+        "jsonschema",
+      ),
+    ]);
+
+    expect(sources).toEqual([
+      {
+        id: "IMG1_ltm_pyr_L1",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "IMG1_ltm_pyr_L1",
+      },
+      {
+        id: "IMG1_ltm_pyr_L1_left",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "IMG1_ltm_pyr_L1_left",
+      },
+      {
+        id: "IMG1_ltm_pyr_L1_right",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "IMG1_ltm_pyr_L1_right",
+      },
+      {
+        id: "IMG1_ltm_pyr_L1_wide",
+        type: MCAP_SOURCE_TYPE.IMAGE,
+        label: "IMG1_ltm_pyr_L1_wide",
+      },
+      {
+        id: "GNSS_Position",
+        type: MCAP_SOURCE_TYPE.LOCATION,
+        label: "GNSS_Position",
+      },
     ]);
   });
 
@@ -88,7 +276,15 @@ describe("mcapStreamPolicies", () => {
       mcapSceneSources([
         createTopic("/cam/image_rect_compressed"),
         createTopic("/cam/annotations", "foxglove.ImageAnnotations"),
+        createTopic("/markers/annotations", "foxglove.SceneUpdate"),
         createTopic("/lidar", "foxglove.PointCloud"),
+        createTopic("/map", "foxglove.Grid"),
+        createTopic(
+          "/diagnostics",
+          "diagnostic_msgs/DiagnosticArray",
+          "ros1",
+          "ros1msg",
+        ),
       ]),
     );
 
@@ -100,8 +296,31 @@ describe("mcapStreamPolicies", () => {
     expect(policies["/cam/annotations"]).toEqual({
       mode: PlaybackSyncMode.LATEST,
     });
+    expect(policies["/markers/annotations"]).toEqual({
+      mode: PlaybackSyncMode.LATEST,
+    });
     expect(policies["/lidar"]).toEqual({
       mode: PlaybackSyncMode.LATEST,
+    });
+    // A one-shot static /map stays resolvable for the whole run through the
+    // same unbounded lookback.
+    expect(policies["/map"]).toEqual({
+      mode: PlaybackSyncMode.LATEST,
+    });
+    expect(policies["/diagnostics"]).toEqual({
+      mode: PlaybackSyncMode.LATEST,
+    });
+  });
+
+  it("leaves latest lookback unbounded", () => {
+    const sources = mcapSceneSources([
+      createTopic("/cam/image_rect_compressed"),
+    ]);
+
+    expect(mcapStreamPolicies(sources)).toEqual({
+      "/cam/image_rect_compressed": {
+        mode: PlaybackSyncMode.LATEST,
+      },
     });
   });
 
