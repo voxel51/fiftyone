@@ -562,8 +562,12 @@ function accumulatePresence(
  */
 function assignDisplayOrdinals(states: Map<string, InstanceState>): void {
   const classCounters = new Map<string, number>();
+  // Assign in id order so instance-only ordinals (and thus row order) don't
+  // depend on accumulation/insertion order — the same clip renders the same
+  // rows in the same order every run.
+  const ordered = [...states.entries()].sort(([a], [b]) => a.localeCompare(b));
 
-  for (const state of states.values()) {
+  for (const [, state] of ordered) {
     if (state.persistedIndex === undefined) {
       continue;
     }
@@ -574,7 +578,7 @@ function assignDisplayOrdinals(states: Map<string, InstanceState>): void {
     }
   }
 
-  for (const state of states.values()) {
+  for (const [, state] of ordered) {
     if (state.persistedIndex !== undefined) {
       state.displayIndex = state.persistedIndex;
       continue;
@@ -653,7 +657,13 @@ function sortByClassThenOrdinal(
       return sa.classLabel.localeCompare(sb.classLabel);
     }
 
-    return sa.displayIndex - sb.displayIndex;
+    if (sa.displayIndex !== sb.displayIndex) {
+      return sa.displayIndex - sb.displayIndex;
+    }
+
+    // final tiebreaker on the track id — a total order, so ties never leave
+    // the row sequence to the (unstable) accumulation order
+    return a.id.localeCompare(b.id);
   });
 }
 

@@ -149,6 +149,28 @@ describe("buildPerInstanceTracks", () => {
     expect(tracks.map((t) => t.label)).toEqual(["person 3", "person 4"]);
   });
 
+  it("orders rows deterministically regardless of label accumulation order", () => {
+    // three instance-only tracks of one class — no persisted index, so the
+    // ordinal is assigned; the resulting row order must not depend on the
+    // order the labels happen to arrive in
+    const mk = (inst: string): LabelData => ({
+      _id: `doc-${inst}`,
+      _cls: "Detection",
+      label: "person",
+      instance: { _cls: "Instance", _id: inst },
+    });
+
+    const forward = build(1, { 1: [mk("a"), mk("b"), mk("c")] }).map(
+      (t) => t.id,
+    );
+    const reversed = build(1, { 1: [mk("c"), mk("b"), mk("a")] }).map(
+      (t) => t.id,
+    );
+
+    expect(forward).toEqual(["a", "b", "c"]);
+    expect(reversed).toEqual(forward);
+  });
+
   it("builds a track per instance across multiple fields, colored by each field's path", () => {
     const POLY_PATH = "frames.polylines";
     const box: LabelData = {
